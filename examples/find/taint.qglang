@@ -1,0 +1,1 @@
+FIND taint api.entry -> db.write

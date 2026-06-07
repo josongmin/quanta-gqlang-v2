@@ -1,0 +1,52 @@
+rules:
+  - id: qglang-v2-no-runtime-sdk-index-imports
+    message: QGLang v2 frontend owners must not import runtime, SDK, or index owners.
+    severity: ERROR
+    languages:
+      - generic
+    paths:
+      include:
+        - /crates/**/*.rs
+    pattern-regex: '(?m)\\b(quanta_runtime|quanta_sdk|quanta_index)(::|_)'
+
+  - id: qglang-v2-no-legacy-gqlang-imports
+    message: QGLang v2 frontend owners must not import legacy quanta_gqlang_* modules.
+    severity: ERROR
+    languages:
+      - generic
+    paths:
+      include:
+        - /crates/**/*.rs
+    pattern-regex: '\\bquanta_gqlang_(?!v2_)\\w+'
+
+  - id: qglang-v2-no-runtime-sdk-index-dependencies
+    message: QGLang v2 frontend workspace must not depend on runtime, SDK, or index crates.
+    severity: ERROR
+    languages:
+      - generic
+    paths:
+      include:
+        - /Cargo.toml
+        - /crates/**/Cargo.toml
+    pattern-regex: '\\b(quanta-runtime|quanta-sdk|quanta-index)(-[A-Za-z0-9_-]+)?\\b'
+
+  - id: qglang-v2-no-legacy-gqlang-dependencies
+    message: QGLang v2 frontend workspace must not depend on legacy quanta-gqlang-* crates.
+    severity: ERROR
+    languages:
+      - generic
+    paths:
+      include:
+        - /Cargo.toml
+        - /crates/**/Cargo.toml
+    pattern-regex: '\\bquanta-gqlang-(?!v2-)[A-Za-z0-9_-]+\\b'
+
+  - id: qglang-v2-no-host-coupling-tokens
+    message: Frontend crates must remain host-agnostic and must not embed backend carrier names.
+    severity: ERROR
+    languages:
+      - generic
+    paths:
+      include:
+        - /crates/**/*.rs
+    pattern-regex: '\\b(SearchHost|IdeReadHost|ServingQueryRequestV1|ServingQueryResultV1|native_runtime_provider_registry_v1)\\b'

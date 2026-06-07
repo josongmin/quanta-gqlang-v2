@@ -1,0 +1,20 @@
+[package]
+categories.workspace   = true
+description            = "QGLang v2 semantic analysis owner"
+edition.workspace      = true
+keywords.workspace     = true
+license.workspace      = true
+name                   = "quanta-gqlang-v2-sema"
+readme.workspace       = true
+rust-version.workspace = true
+version.workspace      = true
+
+[lib]
+name = "quanta_gqlang_v2_sema"
+path = "src/lib.rs"
+
+[dependencies]
+quanta-gqlang-v2-syntax = { version = "0.1.0", path = "../quanta-gqlang-v2-syntax" }
+
+[lints]
+workspace = true

@@ -1,0 +1,1 @@
+COMPARE baseline=baseline::nightly-2026-06-07 ;; candidate=result::catalog-users ;; metric=semantic

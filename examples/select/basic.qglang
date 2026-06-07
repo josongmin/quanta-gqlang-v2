@@ -1,0 +1,1 @@
+SELECT id, profile.name FROM catalog.users WHERE active = true LIMIT 7

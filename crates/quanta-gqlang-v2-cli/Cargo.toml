@@ -1,0 +1,27 @@
+[package]
+categories.workspace   = true
+description            = "QGLang v2 CLI owner"
+edition.workspace      = true
+keywords.workspace     = true
+license.workspace      = true
+name                   = "quanta-gqlang-v2-cli"
+readme.workspace       = true
+rust-version.workspace = true
+version.workspace      = true
+
+[lib]
+name = "quanta_gqlang_v2_cli"
+path = "src/lib.rs"
+
+[[bin]]
+name = "quanta-gqlang-v2-cli"
+path = "src/main.rs"
+
+[dependencies]
+quanta-gqlang-v2-ir = { version = "0.1.0", path = "../quanta-gqlang-v2-ir" }
+
+[dev-dependencies]
+quanta-gqlang-v2-lsp = { version = "0.1.0", path = "../quanta-gqlang-v2-lsp" }
+
+[lints]
+workspace = true

@@ -1,0 +1,1 @@
+EXPORT source=result::latest ;; kind=sarif ;; profile=strict

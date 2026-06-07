@@ -1,0 +1,1 @@
+MODEL embeddings.code ;; provider=openai ;; source=models/code-search

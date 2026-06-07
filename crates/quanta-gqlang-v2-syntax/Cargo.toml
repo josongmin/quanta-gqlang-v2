@@ -1,0 +1,17 @@
+[package]
+categories.workspace   = true
+description            = "QGLang v2 syntax owner"
+edition.workspace      = true
+keywords.workspace     = true
+license.workspace      = true
+name                   = "quanta-gqlang-v2-syntax"
+readme.workspace       = true
+rust-version.workspace = true
+version.workspace      = true
+
+[lib]
+name = "quanta_gqlang_v2_syntax"
+path = "src/lib.rs"
+
+[lints]
+workspace = true

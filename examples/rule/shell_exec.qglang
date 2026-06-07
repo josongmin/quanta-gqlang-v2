@@ -1,0 +1,1 @@
+RULE shell.exec ;; check-ref=checks/shell/exec

@@ -1,0 +1,24 @@
+[package]
+categories.workspace   = true
+description            = "QGLang v2 LSP owner"
+edition.workspace      = true
+keywords.workspace     = true
+license.workspace      = true
+name                   = "quanta-gqlang-v2-lsp"
+readme.workspace       = true
+rust-version.workspace = true
+version.workspace      = true
+
+[lib]
+name = "quanta_gqlang_v2_lsp"
+path = "src/lib.rs"
+
+[[bin]]
+name = "quanta-gqlang-v2-lsp"
+path = "src/main.rs"
+
+[dependencies]
+quanta-gqlang-v2-ir = { version = "0.1.0", path = "../quanta-gqlang-v2-ir" }
+
+[lints]
+workspace = true

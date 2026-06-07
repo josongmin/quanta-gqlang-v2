@@ -1,0 +1,1 @@
+EXPLAIN rule::owasp.sql-injection ;; evidence=trace ;; truth=confirm
