@@ -1,3 +1,11 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
+
 use quanta_gqlang_v2_ir::catalog::autocomplete_surface::{
     autocomplete_matches_v1, autocomplete_row_by_label_v1, autocomplete_suggestion_rows_v1,
     autocomplete_surface_integrity_v1, AutocompleteSuggestionCategoryV1,

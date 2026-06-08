@@ -1,7 +1,8 @@
 use crate::entity_schema::{
-    validate_name_v1, validate_path_segments_v1, validate_unique_field_names_v1, PublicEntityRefV1,
-    PublicFactSchemaAvailabilityV1, PublicFactSchemaSourceProvenanceV1,
-    PublicFactSchemaValidationErrorV1, PublicFieldArityV1, PublicFieldTypeV1,
+    validate_name_v1, validate_no_runtime_rowset_marker_v1, validate_path_segments_v1,
+    validate_unique_field_names_v1, PublicEntityRefV1, PublicFactSchemaAvailabilityV1,
+    PublicFactSchemaSourceProvenanceV1, PublicFactSchemaValidationErrorV1, PublicFieldArityV1,
+    PublicFieldTypeV1,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -16,7 +17,15 @@ impl PublicRelationRefV1 {
     }
 
     pub fn validate_v1(&self) -> Result<(), PublicFactSchemaValidationErrorV1> {
-        validate_path_segments_v1(&self.path, "relation_path")
+        validate_path_segments_v1(&self.path, "relation_path")?;
+        for segment in &self.path {
+            validate_no_runtime_rowset_marker_v1(
+                segment,
+                "relation_path_runtime_local",
+                "relation path segment",
+            )?;
+        }
+        Ok(())
     }
 }
 
@@ -42,7 +51,13 @@ pub struct PublicRelationEndpointSchemaV1 {
 impl PublicRelationEndpointSchemaV1 {
     pub fn validate_v1(&self) -> Result<(), PublicFactSchemaValidationErrorV1> {
         self.entity.validate_v1()?;
-        validate_name_v1(&self.role, "relation_endpoint_role")
+        validate_name_v1(&self.role, "relation_endpoint_role")?;
+        validate_no_runtime_rowset_marker_v1(
+            &self.role,
+            "relation_endpoint_role_runtime_local",
+            "relation endpoint role",
+        )?;
+        Ok(())
     }
 }
 
@@ -58,6 +73,11 @@ pub struct PublicRelationFieldSchemaV1 {
 impl PublicRelationFieldSchemaV1 {
     pub fn validate_v1(&self) -> Result<(), PublicFactSchemaValidationErrorV1> {
         validate_name_v1(&self.name, "relation_field_name")?;
+        validate_no_runtime_rowset_marker_v1(
+            &self.name,
+            "relation_field_name_runtime_local",
+            "relation field name",
+        )?;
         self.value_type.validate_v1()?;
         self.provenance.validate_v1()?;
         Ok(())

@@ -1,3 +1,11 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
+
 use quanta_gqlang_v2_syntax::ast::{AstRootV1, DocumentAstV1};
 use quanta_gqlang_v2_syntax::declarations::pack::{GateDeclAstV1, PackDeclAstV1, ProfileDeclAstV1};
 use quanta_gqlang_v2_syntax::declarations::view::{ModelDeclAstV1, RuleDeclAstV1, ViewDeclAstV1};

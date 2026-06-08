@@ -1,5 +1,6 @@
 use quanta_gqlang_v2_ir::catalog::autocomplete_surface::{
-    autocomplete_suggestion_rows_v1, AutocompleteSuggestionKindV1,
+    autocomplete_suggestion_rows_v1, autocomplete_surface_integrity_v1,
+    AutocompleteSuggestionKindV1,
 };
 use quanta_gqlang_v2_ir::catalog::capability_catalog::CatalogScopeMarkerV1;
 use quanta_gqlang_v2_ir::catalog::example_registry::example_row_by_id_v1;
@@ -16,6 +17,10 @@ pub struct CompletionItemV1 {
 }
 
 pub fn handle_completion(prefix: &str) -> Result<Vec<CompletionItemV1>, String> {
+    // Fail closed if the autocomplete surface has drifted (e.g. a row pointing at an
+    // example for a different capability). `example_query` is surfaced verbatim to
+    // the user, so the same guard the tests assert must run on the live path too.
+    autocomplete_surface_integrity_v1().map_err(str::to_string)?;
     let ranked = crate::handlers::completion_rank::rank_matches_v1(
         prefix,
         autocomplete_suggestion_rows_v1(),

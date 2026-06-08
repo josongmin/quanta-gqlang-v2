@@ -281,7 +281,7 @@ pub const AUTOCOMPLETE_SUGGESTION_ROWS_V1: &[AutocompleteSuggestionRowV1] = &[
         "SHOW tail completion must be served from deterministic plural catalog nouns.",
         CatalogScopeMarkerV1::ShowCategoryTail,
         "show.rules",
-        &["example.describe.rule"],
+        &[],
     ),
     autocomplete_row_v1(
         "packs",
@@ -291,7 +291,7 @@ pub const AUTOCOMPLETE_SUGGESTION_ROWS_V1: &[AutocompleteSuggestionRowV1] = &[
         "SHOW tail completion must be served from deterministic plural catalog nouns.",
         CatalogScopeMarkerV1::ShowCategoryTail,
         "show.packs",
-        &["example.use_pack.secure_pack"],
+        &[],
     ),
     autocomplete_row_v1(
         "profiles",
@@ -361,7 +361,7 @@ pub const AUTOCOMPLETE_SUGGESTION_ROWS_V1: &[AutocompleteSuggestionRowV1] = &[
         "DESCRIBE tail completion must seed a typed target prefix only.",
         CatalogScopeMarkerV1::DescribeTargetTail,
         "describe.pack",
-        &["example.use_pack.secure_pack"],
+        &[],
     ),
     autocomplete_row_v1(
         "profile::",
@@ -416,9 +416,23 @@ pub fn autocomplete_surface_integrity_v1() -> Result<(), &'static str> {
             if example_row_by_id_v1(example_id).is_none() {
                 return Err("autocomplete row references unknown example id");
             }
+            // The example must exercise THIS row's capability. Existence alone let a
+            // SHOW/DESCRIBE row point at an unrelated-root example (e.g. a mutating
+            // `USE PACK` snippet surfaced under `SHOW packs`), which the completion
+            // handler then shows to the user verbatim.
+            if !example_backs_capability_v1(example_id, row.capability_id) {
+                return Err("autocomplete row references an example for a different capability");
+            }
         }
     }
     Ok(())
+}
+
+fn example_backs_capability_v1(example_id: &str, capability_id: &str) -> bool {
+    match example_row_by_id_v1(example_id) {
+        Some(example) => example.capability_ids.contains(&capability_id),
+        None => false,
+    }
 }
 
 fn normalize_completion_prefix_v1(input: &str) -> String {
@@ -426,4 +440,32 @@ fn normalize_completion_prefix_v1(input: &str) -> String {
         .trim()
         .to_ascii_lowercase()
         .replace(['_', '-', ' '], "")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{autocomplete_surface_integrity_v1, example_backs_capability_v1};
+
+    #[test]
+    fn integrity_passes_for_all_autocomplete_rows() {
+        assert_eq!(autocomplete_surface_integrity_v1(), Ok(()));
+    }
+
+    #[test]
+    fn cross_root_example_reference_is_rejected_by_the_capability_guard() {
+        // A meta `USE PACK` example must not back a SHOW/DESCRIBE catalog row.
+        assert!(!example_backs_capability_v1(
+            "example.use_pack.secure_pack",
+            "show.packs"
+        ));
+        assert!(!example_backs_capability_v1(
+            "example.describe.rule",
+            "show.rules"
+        ));
+        // A correctly-shaped reference is accepted.
+        assert!(example_backs_capability_v1(
+            "example.show.capabilities",
+            "show.capabilities"
+        ));
+    }
 }

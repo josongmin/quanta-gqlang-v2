@@ -1,3 +1,11 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
+
 use quanta_gqlang_v2_cli::explain_view::{
     build_explain_view_v1, build_find_explain_view_v1, DegradedBadgeV1, ExplainViewV1,
     PathWitnessStepV1, PathWitnessViewV1,

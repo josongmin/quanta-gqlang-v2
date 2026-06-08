@@ -71,9 +71,7 @@ impl ZeroQueryResponseV1 {
 }
 
 pub fn handle_zero_query() -> Result<ZeroQueryResponseV1, String> {
-    Ok(ZeroQueryResponseV1::from_scaffold_v1(
-        starter_scaffold::build_starter_scaffold_v1(),
-    ))
+    starter_scaffold::build_starter_scaffold_v1().map(ZeroQueryResponseV1::from_scaffold_v1)
 }
 
 impl ZeroQueryResponseV1 {

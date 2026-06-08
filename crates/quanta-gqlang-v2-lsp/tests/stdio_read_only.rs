@@ -1,3 +1,11 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
+
 use std::io::{BufRead, BufReader, Cursor, Write};
 use std::process::{Command, Stdio};
 
@@ -57,7 +65,7 @@ fn stdio_front_door_supports_all_read_only_methods_v1() {
         run_request_v1(r#"{"method":"diagnostics","query":"SELECT id catalog.users"}"#);
     assert_eq!(diagnostics_status, 0);
     assert!(diagnostics_stdout.contains(r#""method":"diagnostics""#));
-    assert!(diagnostics_stdout.contains(r#""code":"missing_from_clause""#));
+    assert!(diagnostics_stdout.contains(r#""code":"expected_from_keyword""#));
 
     let (zero_query_status, zero_query_stdout) = run_request_v1(r#"{"method":"zero_query"}"#);
     assert_eq!(zero_query_status, 0);
@@ -115,7 +123,7 @@ fn stdio_front_door_surfaces_handler_fail_closed_errors_v1() {
     assert_eq!(status, 1);
     assert_eq!(
         stdout.trim(),
-        r#"{"ok":false,"error":{"code":"handler_rejected","message":"class=syntax code=invalid_describe_path message=DESCRIBE target path cannot be empty"}}"#
+        r#"{"ok":false,"error":{"code":"handler_rejected","message":"class=syntax code=describe_target_invalid_shape message=DESCRIBE target must use `<kind>::<identifier>`"}}"#
     );
 
     let (meta_status, meta_stdout) = run_request_v1(

@@ -1,3 +1,11 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
+
 #[path = "../src/catalog/metric_inventory.rs"]
 pub mod metric_inventory;
 

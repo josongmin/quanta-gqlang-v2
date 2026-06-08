@@ -1,16 +1,17 @@
-#[allow(dead_code, unreachable_pub)]
-#[path = "../src/facts/entity_schema.rs"]
-mod entity_schema;
-#[allow(dead_code, unreachable_pub)]
-#[path = "../src/facts/relation_schema.rs"]
-mod relation_schema;
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
 
-use entity_schema::{
+use quanta_gqlang_v2_ir::entity_schema::{
     PublicEntityFieldSchemaV1, PublicEntityRefV1, PublicEntitySchemaV1,
     PublicFactSchemaAvailabilityV1, PublicFactSchemaDegradedReasonV1, PublicFactSchemaSourceKindV1,
     PublicFactSchemaSourceProvenanceV1, PublicFieldArityV1, PublicFieldTypeV1, PublicScalarTypeV1,
 };
-use relation_schema::{
+use quanta_gqlang_v2_ir::relation_schema::{
     PublicRelationDirectionV1, PublicRelationEndpointCardinalityV1, PublicRelationEndpointSchemaV1,
     PublicRelationFieldSchemaV1, PublicRelationRefV1, PublicRelationSchemaV1,
 };

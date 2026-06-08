@@ -1,3 +1,11 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
+
 use quanta_gqlang_v2_ir::check_ir::CheckExecutionModeV1;
 use quanta_gqlang_v2_ir::explain_ir::{ExplainEvidenceModeIrV1, ExplainTruthExpectationIrV1};
 use quanta_gqlang_v2_ir::find_ir::{FindExecutionPlanIrV1, FindFlowWindowIrV1};

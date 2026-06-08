@@ -1,5 +1,6 @@
 use quanta_gqlang_v2_ir::explain_ir::ExplainShapeIrV1;
 use quanta_gqlang_v2_ir::find_ir::FindExecutionPlanIrV1;
+use quanta_gqlang_v2_ir::root_ir::DegradedReasonV1;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExplainHintCardV1 {
@@ -39,21 +40,27 @@ pub fn explain_hint_from_find_v1(
 }
 
 fn badges_v1(reasons: &[String]) -> Vec<String> {
+    // Map through the shared DegradedReasonV1 authority rather than re-matching the
+    // raw code strings: the badge label keys off the enum variant, so a code rename
+    // in one place can never silently desync the LSP badge here (the match is
+    // exhaustive over the enum).
     reasons
         .iter()
-        .map(|reason| match reason.as_str() {
-            "runtime-host-routing-unavailable" => "degraded:routing".to_string(),
-            "semantic-confirm-lane-unavailable" => "degraded:semantic-confirm".to_string(),
-            "truth-evidence-materialization-unavailable" => {
+        .map(|reason| match DegradedReasonV1::from_code_v1(reason) {
+            Some(DegradedReasonV1::RuntimeHostRoutingUnavailable) => "degraded:routing".to_string(),
+            Some(DegradedReasonV1::SemanticConfirmLaneUnavailable) => {
+                "degraded:semantic-confirm".to_string()
+            }
+            Some(DegradedReasonV1::TruthEvidenceMaterializationUnavailable) => {
                 "degraded:truth-materialization".to_string()
             }
-            "retrieval-result-materialization-unavailable" => {
+            Some(DegradedReasonV1::RetrievalResultMaterializationUnavailable) => {
                 "degraded:retrieval-materialization".to_string()
             }
-            "catalog-and-interactive-host-truth-unavailable" => {
+            Some(DegradedReasonV1::CatalogAndInteractiveHostTruthUnavailable) => {
                 "degraded:catalog-truth".to_string()
             }
-            _ => format!("degraded:{reason}"),
+            None => format!("degraded:{reason}"),
         })
         .collect()
 }

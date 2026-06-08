@@ -1,3 +1,11 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
+
 use quanta_gqlang_v2_ir::find_ir::{
     FindExecutionPlanIrV1, FindFlowWindowIrV1, FindIrV1, FindSliceDirectionIrV1,
     FindSummaryFacetIrV1,

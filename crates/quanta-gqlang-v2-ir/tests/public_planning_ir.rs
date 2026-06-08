@@ -1,3 +1,11 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
+
 use quanta_gqlang_v2_ir::ai_plan::{
     AiExplorationPlanV1, AiObjectiveV1, DiscoveryPlanV1, ExplorationBudgetV1, ReconfirmationPlanV1,
 };

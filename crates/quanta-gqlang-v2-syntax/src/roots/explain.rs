@@ -71,7 +71,12 @@ pub fn decode_explain_shape_v1(
             });
         }
 
-        if index == 0 && !segment.contains('=') {
+        // The first segment is the positional target unless it is actually a
+        // known `key=value` clause. Checking the clause-key whitelist (rather than
+        // just "contains '='") lets parameterized targets such as
+        // `graph::reachability(seed=auth)` carry an `=` without being mistaken for
+        // a clause.
+        if index == 0 && !is_known_clause_segment_v1(segment) {
             target = Some(segment.to_string());
             continue;
         }
@@ -160,6 +165,16 @@ fn parse_truth_expectation_v1(
     }
 }
 
+fn is_known_clause_segment_v1(segment: &str) -> bool {
+    match segment.split_once('=') {
+        Some((raw_key, _)) => matches!(
+            normalize_clause_symbol_v1(raw_key).as_str(),
+            "target" | "evidence" | "truth" | "truth-expectation"
+        ),
+        None => false,
+    }
+}
+
 fn normalize_clause_symbol_v1(raw_value: &str) -> String {
     raw_value
         .trim()
@@ -205,6 +220,25 @@ mod tests {
                 target: "rule::owasp.sql-injection".to_string(),
                 evidence: ExplainEvidenceModeV1::Trace,
                 truth_expectation: ExplainTruthExpectationV1::Confirm,
+            })
+        );
+    }
+
+    #[test]
+    fn explain_shape_accepts_parameterized_target_containing_equals() {
+        // Regression: a positional target that itself contains `=` (a parameterized
+        // analysis target) used to be sliced at the `=` and rejected as an
+        // unsupported clause.
+        let root = ExplainRootAstV1 {
+            target: Some("graph::reachability(seed=auth) ;; evidence=trace".to_string()),
+        };
+
+        assert_eq!(
+            root.shape(),
+            Ok(ExplainShapeAstV1 {
+                target: "graph::reachability(seed=auth)".to_string(),
+                evidence: ExplainEvidenceModeV1::Trace,
+                truth_expectation: ExplainTruthExpectationV1::Inspect,
             })
         );
     }

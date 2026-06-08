@@ -41,19 +41,11 @@ pub fn run(input: &str) -> Result<HeadlessReadReportV1, String> {
         degraded_reasons: summary
             .roots
             .iter()
-            .filter_map(headless_degraded_reason_v1)
+            .filter_map(|root| {
+                root.degraded_reason
+                    .map(|reason| reason.code_v1().to_string())
+            })
             .collect(),
         query_summary: summary,
     })
-}
-
-fn headless_degraded_reason_v1(root: &query::QueryRootSummaryV1) -> Option<String> {
-    match root.ir_kind {
-        "find" => Some("runtime-host-routing-unavailable".to_string()),
-        "check" => Some("semantic-confirm-lane-unavailable".to_string()),
-        "explain" => Some("truth-evidence-materialization-unavailable".to_string()),
-        "retrieval" => Some("retrieval-result-materialization-unavailable".to_string()),
-        "interactive" => Some("catalog-and-interactive-host-truth-unavailable".to_string()),
-        _ => None,
-    }
 }

@@ -16,6 +16,74 @@ pub enum PublicIrRootV1 {
     Meta(MetaIrV1),
 }
 
+/// The read-only-shell execution lane a lowered root cannot materialize. This is
+/// the single source of truth for the degraded-reason codes — previously the same
+/// five strings were copy-pasted across the CLI doctor/headless producers (and the
+/// explain-view consumers), with `_ => None` fallthrough arms that silently
+/// dropped new roots.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum DegradedReasonV1 {
+    RuntimeHostRoutingUnavailable,
+    SemanticConfirmLaneUnavailable,
+    TruthEvidenceMaterializationUnavailable,
+    RetrievalResultMaterializationUnavailable,
+    CatalogAndInteractiveHostTruthUnavailable,
+}
+
+impl DegradedReasonV1 {
+    #[must_use]
+    pub const fn code_v1(self) -> &'static str {
+        match self {
+            Self::RuntimeHostRoutingUnavailable => "runtime-host-routing-unavailable",
+            Self::SemanticConfirmLaneUnavailable => "semantic-confirm-lane-unavailable",
+            Self::TruthEvidenceMaterializationUnavailable => {
+                "truth-evidence-materialization-unavailable"
+            }
+            Self::RetrievalResultMaterializationUnavailable => {
+                "retrieval-result-materialization-unavailable"
+            }
+            Self::CatalogAndInteractiveHostTruthUnavailable => {
+                "catalog-and-interactive-host-truth-unavailable"
+            }
+        }
+    }
+
+    /// Exhaustive over `PublicIrRootV1` (no catch-all) so a new IR root forces a
+    /// deliberate degraded-lane decision here instead of silently degrading to
+    /// "no reason".
+    #[must_use]
+    pub fn for_ir_root_v1(root: &PublicIrRootV1) -> Option<Self> {
+        match root {
+            PublicIrRootV1::Find(_) => Some(Self::RuntimeHostRoutingUnavailable),
+            PublicIrRootV1::Check(_) => Some(Self::SemanticConfirmLaneUnavailable),
+            PublicIrRootV1::Explain(_) => Some(Self::TruthEvidenceMaterializationUnavailable),
+            PublicIrRootV1::Retrieval(_) => Some(Self::RetrievalResultMaterializationUnavailable),
+            PublicIrRootV1::Interactive(_) => Some(Self::CatalogAndInteractiveHostTruthUnavailable),
+            PublicIrRootV1::Select(_)
+            | PublicIrRootV1::Declaration(_)
+            | PublicIrRootV1::Meta(_) => None,
+        }
+    }
+
+    #[must_use]
+    pub fn from_code_v1(code: &str) -> Option<Self> {
+        match code {
+            "runtime-host-routing-unavailable" => Some(Self::RuntimeHostRoutingUnavailable),
+            "semantic-confirm-lane-unavailable" => Some(Self::SemanticConfirmLaneUnavailable),
+            "truth-evidence-materialization-unavailable" => {
+                Some(Self::TruthEvidenceMaterializationUnavailable)
+            }
+            "retrieval-result-materialization-unavailable" => {
+                Some(Self::RetrievalResultMaterializationUnavailable)
+            }
+            "catalog-and-interactive-host-truth-unavailable" => {
+                Some(Self::CatalogAndInteractiveHostTruthUnavailable)
+            }
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum InteractiveIrV1 {
     Show {

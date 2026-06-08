@@ -1,3 +1,11 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
+
 use quanta_gqlang_v2_lsp::handlers::completion::handle_completion;
 use quanta_gqlang_v2_lsp::handlers::quickfix::{
     example_backed_quickfix_v1, handle_quickfix, QuickfixSuggestionV1,
@@ -56,11 +64,29 @@ fn quickfix_suggests_query_scaffold_for_missing_view_query_shape_v1() {
             code: "missing-query-scaffold".to_string(),
             label: "Add VIEW query scaffold for catalog.users".to_string(),
             detail: "named query declaration".to_string(),
-            scaffold: "VIEW catalog.users ;; query=SELECT id FROM catalog.users LIMIT 25"
+            scaffold: "VIEW catalog.users ;; body=SELECT id FROM catalog.users LIMIT 25"
                 .to_string(),
             edits_document: false,
         }]
     );
+    // A quickfix scaffold handed to the user must parse under the canonical grammar.
+    assert!(
+        quanta_gqlang_v2_ir::frontend::parse_document_v1(&fixes[0].scaffold).is_ok(),
+        "VIEW quickfix scaffold must re-parse, got {:?}",
+        fixes[0].scaffold
+    );
+}
+
+#[test]
+fn quickfix_root_detection_is_case_insensitive_v1() {
+    // Hover analysis upper-cases the root keyword, so a lowercase `model` still
+    // produces a `missing_required_clause` diagnostic; the quickfix must resolve
+    // the same scaffold instead of silently dropping it on a case mismatch.
+    let lower = handle_quickfix("model billing").expect("lowercase MODEL should scaffold");
+    let upper = handle_quickfix("MODEL billing").expect("uppercase MODEL should scaffold");
+    assert_eq!(lower, upper);
+    assert_eq!(lower.len(), 1);
+    assert_eq!(lower[0].code, "missing-model-scaffold");
 }
 
 #[test]
@@ -69,7 +95,7 @@ fn quickfix_fails_closed_on_malformed_describe_target_v1() {
         .expect_err("malformed DESCRIBE target should fail closed");
     assert_eq!(
         err,
-        "class=syntax code=invalid_describe_path message=DESCRIBE target path cannot be empty"
+        "class=syntax code=describe_target_invalid_shape message=DESCRIBE target must use `<kind>::<identifier>`"
     );
 }
 

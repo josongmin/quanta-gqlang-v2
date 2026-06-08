@@ -1,3 +1,11 @@
+use quanta_gqlang_v2_ir::catalog::capability_catalog::{
+    capability_catalog_authority_v1, capability_catalog_integrity_v1, capability_row_by_id_v1,
+};
+use quanta_gqlang_v2_ir::catalog::example_registry::{
+    example_registry_authority_v1, example_registry_rows_v1,
+    read_only_example_registry_integrity_v1, ExampleCategoryV1,
+};
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ZeroQueryModeV1 {
     ReadOnly,
@@ -129,6 +137,8 @@ pub struct StarterSuggestionV1 {
     pub root_kind: StarterRootKindV1,
     pub query_scaffold: &'static str,
     pub behavior: StarterBehaviorV1,
+    pub authority: &'static str,
+    pub provenance_marker: &'static str,
     pub reason: StarterReasonV1,
 }
 
@@ -142,6 +152,7 @@ pub struct StarterGroupV1 {
 pub struct StarterScaffoldReportV1 {
     pub mode: ZeroQueryModeV1,
     pub provenance: ZeroQueryProvenanceV1,
+    pub authority: &'static str,
     pub groups: Vec<StarterGroupV1>,
 }
 
@@ -151,6 +162,7 @@ impl StarterScaffoldReportV1 {
         let mut lines = vec![
             format!("starter.mode={}", self.mode.label_v1()),
             format!("starter.provenance={}", self.provenance.label_v1()),
+            format!("starter.authority={}", self.authority),
         ];
 
         for (group_index, group) in self.groups.iter().enumerate() {
@@ -180,6 +192,14 @@ impl StarterScaffoldReportV1 {
                     suggestion.behavior.label_v1()
                 ));
                 lines.push(format!(
+                    "starter.group[{group_index}].suggestion[{suggestion_index}].authority={}",
+                    suggestion.authority
+                ));
+                lines.push(format!(
+                    "starter.group[{group_index}].suggestion[{suggestion_index}].provenance_marker={}",
+                    suggestion.provenance_marker
+                ));
+                lines.push(format!(
                     "starter.group[{group_index}].suggestion[{suggestion_index}].reason.code={}",
                     suggestion.reason.code.label_v1()
                 ));
@@ -195,188 +215,179 @@ impl StarterScaffoldReportV1 {
 }
 
 #[derive(Copy, Clone)]
-struct CatalogStarterAssetV1 {
-    show_query_scaffold: &'static str,
-    describe_query_scaffold: &'static str,
+struct CatalogPairSpecV1 {
+    show_capability_id: &'static str,
+    show_query: &'static str,
+    describe_capability_id: &'static str,
+    describe_query: &'static str,
 }
 
-#[derive(Copy, Clone)]
-struct ExampleStarterAssetV1 {
-    group: StarterGroupKindV1,
-    label: &'static str,
-    root_kind: StarterRootKindV1,
-    query_scaffold: &'static str,
-    reason_code: StarterReasonCodeV1,
-    reason_detail: &'static str,
-}
-
-const CATALOG_SHOW_REASON_V1: &str =
-    "Lists a typed catalog surface without runtime execution or search.";
-const CATALOG_DESCRIBE_REASON_V1: &str =
-    "Pins a concrete typed catalog target for deterministic detail preview.";
-const QUERY_SHAPE_REASON_V1: &str =
-    "Shows a typed query scaffold that stays in read-only syntax/sema/IR lanes.";
-const RETRIEVAL_SHAPE_REASON_V1: &str =
-    "Shows retrieval or interactive shape without materializing runtime results.";
-
-const CATALOG_ASSETS_V1: &[CatalogStarterAssetV1] = &[
-    CatalogStarterAssetV1 {
-        show_query_scaffold: "SHOW capabilities",
-        describe_query_scaffold: "DESCRIBE capability::code.search",
+const CATALOG_PAIR_SPECS_V1: &[CatalogPairSpecV1] = &[
+    CatalogPairSpecV1 {
+        show_capability_id: "show.capabilities",
+        show_query: "SHOW capabilities",
+        describe_capability_id: "describe.capability",
+        describe_query: "DESCRIBE capability::code.search",
     },
-    CatalogStarterAssetV1 {
-        show_query_scaffold: "SHOW models",
-        describe_query_scaffold: "DESCRIBE model::providers.embedding",
+    CatalogPairSpecV1 {
+        show_capability_id: "show.models",
+        show_query: "SHOW models",
+        describe_capability_id: "describe.model",
+        describe_query: "DESCRIBE model::providers.embedding",
     },
-    CatalogStarterAssetV1 {
-        show_query_scaffold: "SHOW views",
-        describe_query_scaffold: "DESCRIBE view::catalog.users",
+    CatalogPairSpecV1 {
+        show_capability_id: "show.views",
+        show_query: "SHOW views",
+        describe_capability_id: "describe.view",
+        describe_query: "DESCRIBE view::catalog.users",
     },
-    CatalogStarterAssetV1 {
-        show_query_scaffold: "SHOW rules",
-        describe_query_scaffold: "DESCRIBE rule::owasp.sql-injection",
+    CatalogPairSpecV1 {
+        show_capability_id: "show.rules",
+        show_query: "SHOW rules",
+        describe_capability_id: "describe.rule",
+        describe_query: "DESCRIBE rule::owasp.sql-injection",
     },
-    CatalogStarterAssetV1 {
-        show_query_scaffold: "SHOW packs",
-        describe_query_scaffold: "DESCRIBE pack::security.audit",
+    CatalogPairSpecV1 {
+        show_capability_id: "show.packs",
+        show_query: "SHOW packs",
+        describe_capability_id: "describe.pack",
+        describe_query: "DESCRIBE pack::security.audit",
     },
-    CatalogStarterAssetV1 {
-        show_query_scaffold: "SHOW profiles",
-        describe_query_scaffold: "DESCRIBE profile::strict.review",
+    CatalogPairSpecV1 {
+        show_capability_id: "show.profiles",
+        show_query: "SHOW profiles",
+        describe_capability_id: "describe.profile",
+        describe_query: "DESCRIBE profile::strict.review",
     },
-    CatalogStarterAssetV1 {
-        show_query_scaffold: "SHOW gates",
-        describe_query_scaffold: "DESCRIBE gate::release.blockers",
+    CatalogPairSpecV1 {
+        show_capability_id: "show.gates",
+        show_query: "SHOW gates",
+        describe_capability_id: "describe.gate",
+        describe_query: "DESCRIBE gate::release.blockers",
     },
 ];
 
-const EXAMPLE_ASSETS_V1: &[ExampleStarterAssetV1] = &[
-    ExampleStarterAssetV1 {
-        group: StarterGroupKindV1::Analysis,
-        label: "SELECT high severity files",
-        root_kind: StarterRootKindV1::Select,
-        query_scaffold: "SELECT id, path FROM catalog.files WHERE severity = 'high' LIMIT 10",
-        reason_code: StarterReasonCodeV1::QueryShapePreview,
-        reason_detail: QUERY_SHAPE_REASON_V1,
-    },
-    ExampleStarterAssetV1 {
-        group: StarterGroupKindV1::Analysis,
-        label: "FIND reachability from entrypoint to sink",
-        root_kind: StarterRootKindV1::Find,
-        query_scaffold: "FIND reachability api.entry -> db.write | via=auth | depth=3",
-        reason_code: StarterReasonCodeV1::QueryShapePreview,
-        reason_detail: QUERY_SHAPE_REASON_V1,
-    },
-    ExampleStarterAssetV1 {
-        group: StarterGroupKindV1::Analysis,
-        label: "CHECK owasp.sql with confirm lane",
-        root_kind: StarterRootKindV1::Check,
-        query_scaffold:
-            "CHECK owasp.sql scope=repo://runtime ;; pattern=call = \"std::process::Command\" ;; confirm=require",
-        reason_code: StarterReasonCodeV1::QueryShapePreview,
-        reason_detail: QUERY_SHAPE_REASON_V1,
-    },
-    ExampleStarterAssetV1 {
-        group: StarterGroupKindV1::Analysis,
-        label: "EXPLAIN authz rule with counterexample",
-        root_kind: StarterRootKindV1::Explain,
-        query_scaffold:
-            "EXPLAIN target=view::user_authz ;; evidence=counterexample ;; truth=refute",
-        reason_code: StarterReasonCodeV1::QueryShapePreview,
-        reason_detail: QUERY_SHAPE_REASON_V1,
-    },
-    ExampleStarterAssetV1 {
-        group: StarterGroupKindV1::Retrieval,
-        label: "SAMPLE callgraph entrypoints",
-        root_kind: StarterRootKindV1::Sample,
-        query_scaffold:
-            "SAMPLE query=callgraph entrypoints ;; scope=repo::frontend ;; mode=hybrid ;; limit=5",
-        reason_code: StarterReasonCodeV1::RetrievalShapePreview,
-        reason_detail: RETRIEVAL_SHAPE_REASON_V1,
-    },
-    ExampleStarterAssetV1 {
-        group: StarterGroupKindV1::Retrieval,
-        label: "COMPARE two hotspot result sets",
-        root_kind: StarterRootKindV1::Compare,
-        query_scaffold:
-            "COMPARE baseline=result::hotspots/main ;; candidate=result::hotspots/pr ;; metric=semantic",
-        reason_code: StarterReasonCodeV1::RetrievalShapePreview,
-        reason_detail: RETRIEVAL_SHAPE_REASON_V1,
-    },
-    ExampleStarterAssetV1 {
-        group: StarterGroupKindV1::Retrieval,
-        label: "EXPORT hotspot result to sarif",
-        root_kind: StarterRootKindV1::Export,
-        query_scaffold:
-            "EXPORT source=result::hotspots/latest ;; kind=sarif ;; profile=security-audit",
-        reason_code: StarterReasonCodeV1::RetrievalShapePreview,
-        reason_detail: RETRIEVAL_SHAPE_REASON_V1,
-    },
-];
+pub fn build_starter_scaffold_v1() -> Result<StarterScaffoldReportV1, String> {
+    capability_catalog_integrity_v1().map_err(str::to_string)?;
+    read_only_example_registry_integrity_v1().map_err(str::to_string)?;
 
-#[must_use]
-pub fn build_starter_scaffold_v1() -> StarterScaffoldReportV1 {
-    StarterScaffoldReportV1 {
+    Ok(StarterScaffoldReportV1 {
         mode: ZeroQueryModeV1::ReadOnly,
         provenance: ZeroQueryProvenanceV1::TypedCatalogExampleMetadata,
+        authority: example_registry_authority_v1(),
         groups: vec![
-            build_catalog_group_v1(),
-            build_example_group_v1(StarterGroupKindV1::Analysis),
-            build_example_group_v1(StarterGroupKindV1::Retrieval),
+            build_catalog_group_v1()?,
+            build_example_group_v1(
+                StarterGroupKindV1::Analysis,
+                ExampleCategoryV1::QueryStarter,
+                |stable_id| stable_id.starts_with("example."),
+            )?,
+            build_example_group_v1(
+                StarterGroupKindV1::Retrieval,
+                ExampleCategoryV1::InteractiveStarter,
+                |stable_id| {
+                    matches!(
+                        stable_id,
+                        "example.sample.repo_frontend"
+                            | "example.compare.semantic"
+                            | "example.export.sarif"
+                    )
+                },
+            )?,
         ],
-    }
+    })
 }
 
-fn build_catalog_group_v1() -> StarterGroupV1 {
-    let suggestions = CATALOG_ASSETS_V1
-        .iter()
-        .flat_map(|asset| {
-            [
-                StarterSuggestionV1 {
-                    label: asset.show_query_scaffold,
-                    root_kind: StarterRootKindV1::Show,
-                    query_scaffold: asset.show_query_scaffold,
-                    behavior: StarterBehaviorV1::ReadOnlyScaffold,
-                    reason: StarterReasonV1 {
-                        code: StarterReasonCodeV1::CatalogOverview,
-                        detail: CATALOG_SHOW_REASON_V1,
-                    },
-                },
-                StarterSuggestionV1 {
-                    label: asset.describe_query_scaffold,
-                    root_kind: StarterRootKindV1::Describe,
-                    query_scaffold: asset.describe_query_scaffold,
-                    behavior: StarterBehaviorV1::ReadOnlyScaffold,
-                    reason: StarterReasonV1 {
-                        code: StarterReasonCodeV1::TypedTargetDetail,
-                        detail: CATALOG_DESCRIBE_REASON_V1,
-                    },
-                },
-            ]
-        })
-        .collect();
+fn build_catalog_group_v1() -> Result<StarterGroupV1, String> {
+    let mut suggestions = Vec::with_capacity(CATALOG_PAIR_SPECS_V1.len() * 2);
+    for spec in CATALOG_PAIR_SPECS_V1 {
+        let show_row = capability_row_by_id_v1(spec.show_capability_id)
+            .ok_or_else(|| format!("missing capability row `{}`", spec.show_capability_id))?;
+        suggestions.push(StarterSuggestionV1 {
+            label: spec.show_query,
+            root_kind: StarterRootKindV1::Show,
+            query_scaffold: spec.show_query,
+            behavior: StarterBehaviorV1::ReadOnlyScaffold,
+            authority: capability_catalog_authority_v1(),
+            provenance_marker: show_row.provenance.source_marker,
+            reason: StarterReasonV1 {
+                code: StarterReasonCodeV1::CatalogOverview,
+                detail: show_row.reason,
+            },
+        });
 
-    StarterGroupV1 {
+        let describe_row = capability_row_by_id_v1(spec.describe_capability_id)
+            .ok_or_else(|| format!("missing capability row `{}`", spec.describe_capability_id))?;
+        suggestions.push(StarterSuggestionV1 {
+            label: spec.describe_query,
+            root_kind: StarterRootKindV1::Describe,
+            query_scaffold: spec.describe_query,
+            behavior: StarterBehaviorV1::ReadOnlyScaffold,
+            authority: capability_catalog_authority_v1(),
+            provenance_marker: describe_row.provenance.source_marker,
+            reason: StarterReasonV1 {
+                code: StarterReasonCodeV1::TypedTargetDetail,
+                detail: describe_row.reason,
+            },
+        });
+    }
+
+    Ok(StarterGroupV1 {
         kind: StarterGroupKindV1::Catalog,
         suggestions,
-    }
+    })
 }
 
-fn build_example_group_v1(kind: StarterGroupKindV1) -> StarterGroupV1 {
-    let suggestions = EXAMPLE_ASSETS_V1
-        .iter()
-        .filter(|asset| asset.group == kind)
-        .map(|asset| StarterSuggestionV1 {
-            label: asset.label,
-            root_kind: asset.root_kind,
-            query_scaffold: asset.query_scaffold,
-            behavior: StarterBehaviorV1::ReadOnlyScaffold,
-            reason: StarterReasonV1 {
-                code: asset.reason_code,
-                detail: asset.reason_detail,
-            },
-        })
-        .collect();
+fn build_example_group_v1(
+    kind: StarterGroupKindV1,
+    category: ExampleCategoryV1,
+    include: impl Fn(&str) -> bool,
+) -> Result<StarterGroupV1, String> {
+    let reason_code = match category {
+        ExampleCategoryV1::QueryStarter => StarterReasonCodeV1::QueryShapePreview,
+        ExampleCategoryV1::InteractiveStarter => StarterReasonCodeV1::RetrievalShapePreview,
+        ExampleCategoryV1::DeclarationStarter | ExampleCategoryV1::MetaStarter => {
+            return Err("unsupported zero-query starter category".to_string())
+        }
+    };
 
-    StarterGroupV1 { kind, suggestions }
+    let suggestions = example_registry_rows_v1()
+        .iter()
+        .filter(|row| row.category == category && include(row.stable_id))
+        .map(|row| {
+            Ok(StarterSuggestionV1 {
+                label: row.title,
+                root_kind: root_kind_v1(row.query_text)?,
+                query_scaffold: row.query_text,
+                behavior: StarterBehaviorV1::ReadOnlyScaffold,
+                authority: example_registry_authority_v1(),
+                provenance_marker: row.provenance.source_marker,
+                reason: StarterReasonV1 {
+                    code: reason_code,
+                    detail: row.reason,
+                },
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+
+    Ok(StarterGroupV1 { kind, suggestions })
+}
+
+fn root_kind_v1(query_text: &str) -> Result<StarterRootKindV1, String> {
+    let trimmed = query_text.trim();
+    if trimmed.starts_with("USE PACK ") || trimmed.starts_with("REQUIRE CERTIFIED") {
+        return Err("zero-query scaffolds must stay query-only and non-mutating".to_string());
+    }
+    match trimmed.split_whitespace().next().unwrap_or_default() {
+        "SHOW" => Ok(StarterRootKindV1::Show),
+        "DESCRIBE" => Ok(StarterRootKindV1::Describe),
+        "SELECT" => Ok(StarterRootKindV1::Select),
+        "FIND" => Ok(StarterRootKindV1::Find),
+        "CHECK" => Ok(StarterRootKindV1::Check),
+        "EXPLAIN" => Ok(StarterRootKindV1::Explain),
+        "SAMPLE" => Ok(StarterRootKindV1::Sample),
+        "COMPARE" => Ok(StarterRootKindV1::Compare),
+        "EXPORT" => Ok(StarterRootKindV1::Export),
+        other => Err(format!("unsupported starter root `{other}`")),
+    }
 }

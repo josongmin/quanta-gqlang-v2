@@ -1,3 +1,11 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
+
 use quanta_gqlang_v2_ir::{
     lower_document_to_ir_v1, root_ir::DeclarationIrV1, root_ir::GateBindingIrV1, root_ir::MetaIrV1,
     root_ir::PackActivationIrV1, root_ir::ProfileAdmissionIrV1, root_ir::PublicIrRootV1,

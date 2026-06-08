@@ -127,15 +127,19 @@ impl CheckRootIntentV1 {
             })?;
             match key {
                 "class" => {
+                    reject_duplicate_field_v1(class.is_some(), "class")?;
                     class = Some(decode_required_component(value, "class")?);
                 }
                 "scope" => {
+                    reject_duplicate_field_v1(scope.is_some(), "scope")?;
                     scope = Some(decode_optional_component(value, "scope")?);
                 }
                 "pattern" => {
+                    reject_duplicate_field_v1(pattern.is_some(), "pattern")?;
                     pattern = Some(decode_optional_component(value, "pattern")?);
                 }
                 "confirm" => {
+                    reject_duplicate_field_v1(confirm.is_some(), "confirm")?;
                     confirm = Some(CheckConfirmIntentV1::decode(value)?);
                 }
                 other => {
@@ -207,6 +211,18 @@ impl fmt::Display for CheckPayloadErrorV1 {
 }
 
 impl std::error::Error for CheckPayloadErrorV1 {}
+
+fn reject_duplicate_field_v1(
+    already_set: bool,
+    field_name: &str,
+) -> Result<(), CheckPayloadErrorV1> {
+    if already_set {
+        return Err(CheckPayloadErrorV1::new(format!(
+            "CHECK payload field `{field_name}` is duplicated"
+        )));
+    }
+    Ok(())
+}
 
 fn normalize_optional(
     value: Option<String>,
@@ -391,6 +407,32 @@ mod tests {
         assert_eq!(
             err.message,
             "CHECK intent requires semantic scope, pattern, or both"
+        );
+    }
+
+    #[test]
+    fn duplicate_check_payload_field_is_rejected() {
+        let root = CheckRootAstV1 {
+            rule_id: "rule.x".to_string(),
+            scope: "check:v1|class=a|class=b|scope=~|pattern=p|confirm=skip".to_string(),
+        };
+        let result = root.intent();
+        assert!(
+            matches!(&result, Err(error) if error.message.contains("duplicated")),
+            "duplicate `class` key must fail closed, got {result:?}"
+        );
+    }
+
+    #[test]
+    fn duplicate_confirm_key_does_not_silently_flip_policy() {
+        let root = CheckRootAstV1 {
+            rule_id: "rule.y".to_string(),
+            scope: "check:v1|class=a|scope=~|pattern=p|confirm=skip|confirm=require".to_string(),
+        };
+        let result = root.intent();
+        assert!(
+            matches!(&result, Err(error) if error.message.contains("duplicated")),
+            "duplicate `confirm` key must fail closed, got {result:?}"
         );
     }
 }

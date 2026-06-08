@@ -10,15 +10,51 @@ use crate::roots::explain::ExplainRootAstV1;
 use crate::roots::find::{FindRootAstV1, FindSubkindV1};
 
 pub fn parse_document_v1(input: &str) -> Result<DocumentAstV1, SyntaxDiagnosticPageV1> {
-    let trimmed = input.trim();
-    if trimmed.is_empty() {
+    if input.trim().is_empty() {
         return Err(diagnostic_page_v1("empty_document", "document is empty"));
     }
 
+    let mut roots = Vec::new();
+    let mut diagnostics = Vec::new();
+    for statement in document_statements_v1(input) {
+        match parse_root_v1(&statement) {
+            Ok(root) => roots.push(root),
+            // Error recovery: keep parsing the remaining statements so a single
+            // request surfaces every malformed statement at once instead of
+            // stopping at the first failure.
+            Err(page) => diagnostics.extend(page.diagnostics),
+        }
+    }
+
+    if !diagnostics.is_empty() {
+        return Err(SyntaxDiagnosticPageV1 { diagnostics });
+    }
+
     Ok(DocumentAstV1 {
-        roots: vec![parse_root_v1(trimmed)?],
+        roots,
         with_clause: None,
     })
+}
+
+/// Split a document into statements: exactly one per non-blank line. The canonical
+/// form produced by `format_document_v1` is one root per line, so statement
+/// boundaries are physical newlines. This is deliberately a *line*-oriented
+/// contract with no implicit line continuation: a statement may not span lines and
+/// a string literal may not contain a newline. The alternative — gluing lines that
+/// do not begin with a root keyword onto the previous statement — is ambiguous on a
+/// terminator-less grammar (it silently swallows a typo'd root keyword, wrongly
+/// splits a wrapped line that begins with a keyword-like identifier, and rewrites
+/// newlines
+/// inside literals), so every line is parsed independently and surfaces its own
+/// honest diagnostic. Blank lines are ignored.
+#[must_use]
+pub fn document_statements_v1(input: &str) -> Vec<String> {
+    input
+        .lines()
+        .map(str::trim)
+        .filter(|statement| !statement.is_empty())
+        .map(str::to_string)
+        .collect()
 }
 
 fn parse_root_v1(input: &str) -> Result<AstRootV1, SyntaxDiagnosticPageV1> {

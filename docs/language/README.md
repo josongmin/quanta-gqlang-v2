@@ -29,6 +29,27 @@ Read-only binary fronts:
 2. LSP stdio JSON methods: `hover`, `completion`, `symbols`, `diagnostics`, `zero_query`, `quickfix`
 3. malformed argv, malformed JSON, unknown methods, and mutating requests fail closed
 
+Typed frontend surfaces (recovered local tickets):
+
+These are typed frontend metadata only — read-only, presentation-level, and never
+runtime truth claims. Degraded reasons are presentation-only and share a single
+authority enum; they are not invented runtime truth.
+
+1. AI exploration profile (`E05E`): `AiExplorationPlanV1`, `AiObjectiveV1`,
+   `ExplorationBudgetV1`, and `WorkingSetV1` are an explicit profile over the same
+   DSL. Reconfirmation is same-intent replay through `ci_gate` or `lint`, and the
+   AI lane cannot emit final policy truth directly. See [ai-profile.md](./ai-profile.md).
+2. Public planning IR (`E06C`): planning carries explicit `required_capabilities`,
+   `truth_expectation`, `bridge_mode`, and export mode; roots that require planning
+   metadata fail closed when it is absent, and lowering-ready normalization
+   preserves planning metadata rather than dropping it.
+3. Metric inventory and external findings (`E11C`): `metric.<name>` is a typed,
+   host-ingested vocabulary and external findings are public frontend data nouns —
+   not analyzer-computed truth.
+4. Explain and path-witness UX (`E12C`): explain presentation, path-witness
+   rendering, degraded badges (via the shared degraded-reason authority), and
+   why-no-result guidance are presentation-only.
+
 Out of scope:
 
 1. runtime execution substrate

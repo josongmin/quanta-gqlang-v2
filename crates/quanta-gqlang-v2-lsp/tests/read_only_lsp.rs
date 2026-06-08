@@ -1,3 +1,11 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
+
 use quanta_gqlang_v2_lsp::handlers::completion::handle_completion;
 use quanta_gqlang_v2_lsp::handlers::diagnostics::{handle_diagnostics, DiagnosticItemV1};
 use quanta_gqlang_v2_lsp::handlers::hover::{handle_hover, HoverCardV1};
@@ -62,6 +70,88 @@ fn hover_exposes_root_category_and_typed_target_summary() {
 }
 
 #[test]
+fn select_with_limit_before_where_is_a_clean_error_not_a_panic() {
+    // Regression: the hand-rolled WHERE/LIMIT splitter computed `remainder[14..0]`
+    // for `LIMIT` appearing before `WHERE` and panicked the LSP front door.
+    let result = handle_hover("SELECT a FROM t LIMIT 5 WHERE x = 1");
+    assert!(
+        result.is_err(),
+        "LIMIT-before-WHERE must be a clean diagnostic, got {result:?}"
+    );
+}
+
+#[test]
+fn select_where_value_containing_limit_keyword_is_not_misparsed() {
+    // Regression: `LIMIT ` inside a quoted WHERE value used to be mistaken for the
+    // LIMIT clause and produced a spurious numeric diagnostic on a valid query.
+    let hover = handle_hover("SELECT id FROM catalog.users WHERE name = 'LIMIT x'")
+        .expect("quoted LIMIT inside a WHERE value must parse");
+    assert_eq!(hover.typed_target, "catalog.users");
+    assert!(
+        hover
+            .summary
+            .contains(&"filter=name = 'LIMIT x'".to_string()),
+        "got {:?}",
+        hover.summary
+    );
+}
+
+#[test]
+fn multi_statement_document_does_not_produce_garbage() {
+    // Regression: the parser became multi-statement; the LSP read-only surface must
+    // split on the same boundaries instead of mangling two statements into one root
+    // (which used to embed a newline in the SHOW category / SELECT table).
+    let hover = handle_hover("SHOW models\nSHOW views").expect("first statement hovers cleanly");
+    assert_eq!(hover.root_keyword, "SHOW");
+    assert_eq!(hover.typed_target, "models");
+
+    let clean = handle_diagnostics("SHOW models\nSHOW views").expect("diagnostics");
+    assert!(
+        clean.is_empty(),
+        "valid 2-statement document must have no diagnostics, got {clean:?}"
+    );
+
+    // Per-statement error recovery: a malformed second statement is still reported.
+    let mixed = handle_diagnostics("SHOW capabilities\nSHOW bogus").expect("diagnostics");
+    assert!(
+        mixed
+            .iter()
+            .any(|item| item.code == "unsupported_show_category"),
+        "the malformed second statement must be diagnosed, got {mixed:?}"
+    );
+}
+
+#[test]
+fn view_body_clause_matches_the_canonical_parser() {
+    // Regression: hover/diagnostics read `query=` while the canonical grammar uses
+    // `body=`, so a valid `body=` VIEW drew a false diagnostic and an invalid
+    // `query=` VIEW drew none. Align the read-only surface with the parser.
+    let valid = "VIEW catalog.users ;; body=SELECT id FROM catalog.users LIMIT 25";
+    assert!(
+        handle_diagnostics(valid).expect("diagnostics").is_empty(),
+        "a valid body= VIEW must not be flagged"
+    );
+    assert_eq!(
+        handle_hover(valid).expect("body= VIEW hovers").root_keyword,
+        "VIEW"
+    );
+    assert!(
+        !handle_diagnostics("VIEW catalog.users ;; query=SELECT id FROM catalog.users")
+            .expect("diagnostics")
+            .is_empty(),
+        "an unsupported query= VIEW clause must be flagged"
+    );
+    // A malformed body= value (not a valid SELECT) must also draw a diagnostic,
+    // matching the canonical decoder rather than a false-clean editor advisory.
+    assert!(
+        !handle_diagnostics("VIEW catalog.users ;; body=SELECT id catalog.users")
+            .expect("diagnostics")
+            .is_empty(),
+        "a body= that is not a valid SELECT must be flagged"
+    );
+}
+
+#[test]
 fn diagnostics_separate_syntax_and_sema_classes() {
     let syntax = handle_diagnostics("SELECT id catalog.users")
         .expect("syntax diagnostics should be returned");
@@ -69,8 +159,8 @@ fn diagnostics_separate_syntax_and_sema_classes() {
         syntax,
         vec![DiagnosticItemV1 {
             class: "syntax".to_string(),
-            code: "missing_from_clause".to_string(),
-            message: "SELECT root requires a FROM clause".to_string(),
+            code: "expected_from_keyword".to_string(),
+            message: "SELECT projection must be followed by FROM".to_string(),
         }]
     );
 
@@ -80,7 +170,7 @@ fn diagnostics_separate_syntax_and_sema_classes() {
         vec![DiagnosticItemV1 {
             class: "sema".to_string(),
             code: "unsupported_show_category".to_string(),
-            message: "unsupported SHOW category `catalog`".to_string(),
+            message: "SHOW category `catalog` is unsupported; expected one of capabilities, models, views, rules, packs, profiles, gates".to_string(),
         }]
     );
 }
@@ -116,14 +206,14 @@ fn malformed_input_fails_closed() {
     let hover_error = handle_hover("FIND unknown src -> sink").expect_err("invalid FIND");
     assert_eq!(
         hover_error,
-        "class=sema code=unknown_find_subkind message=unknown FIND subkind `unknown`"
+        "class=sema code=unsupported_find_subkind message=unsupported FIND subkind `unknown`"
     );
 
     let symbols_error =
         handle_symbols("DESCRIBE model::").expect_err("invalid DESCRIBE should fail closed");
     assert_eq!(
         symbols_error,
-        "class=syntax code=invalid_describe_path message=DESCRIBE target path cannot be empty"
+        "class=syntax code=describe_target_invalid_shape message=DESCRIBE target must use `<kind>::<identifier>`"
     );
 
     let use_pack_diag = handle_diagnostics(

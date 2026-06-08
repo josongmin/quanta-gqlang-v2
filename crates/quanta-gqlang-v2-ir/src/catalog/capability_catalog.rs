@@ -42,6 +42,7 @@ pub struct CapabilityCatalogRowV1 {
 }
 
 const CATALOG_SOURCE_FILE_V1: &str = "crates/quanta-gqlang-v2-ir/src/catalog/capability_catalog.rs";
+const EXTERNAL_FRONTEND_CATALOG_AUTHORITY_V1: &str = "external-frontend-catalog";
 
 const fn provenance_v1(
     source_kind: CatalogSourceKindV1,
@@ -328,6 +329,50 @@ pub const fn capability_catalog_rows_v1() -> &'static [CapabilityCatalogRowV1] {
     CAPABILITY_CATALOG_ROWS_V1
 }
 
+pub const fn capability_catalog_authority_v1() -> &'static str {
+    EXTERNAL_FRONTEND_CATALOG_AUTHORITY_V1
+}
+
+pub fn capability_catalog_integrity_v1() -> Result<(), &'static str> {
+    let rows = capability_catalog_rows_v1();
+    for (index, row) in rows.iter().enumerate() {
+        if rows
+            .iter()
+            .skip(index + 1)
+            .any(|other| other.stable_id == row.stable_id)
+        {
+            return Err("capability row stable_id must be unique");
+        }
+    }
+    for row in rows {
+        if row.stable_id.trim().is_empty() {
+            return Err("capability row stable_id must not be empty");
+        }
+        if row.label.trim().is_empty() {
+            return Err("capability row label must not be empty");
+        }
+        if row.summary.trim().is_empty() {
+            return Err("capability row summary must not be empty");
+        }
+        if row.reason.trim().is_empty() {
+            return Err("capability row reason must not be empty");
+        }
+        if row.provenance.source_kind != CatalogSourceKindV1::FrontendSpec {
+            return Err("capability row provenance must stay frontend-owned");
+        }
+        if row.provenance.source_file != CATALOG_SOURCE_FILE_V1 {
+            return Err("capability row provenance source_file drifted");
+        }
+        if row.provenance.source_marker != row.stable_id {
+            return Err("capability row provenance marker must match stable_id");
+        }
+        if row.scope != expected_scope_for_category_v1(row.category) {
+            return Err("capability row scope/category pairing drifted");
+        }
+    }
+    Ok(())
+}
+
 pub fn capability_row_by_id_v1(stable_id: &str) -> Option<&'static CapabilityCatalogRowV1> {
     capability_catalog_rows_v1()
         .iter()
@@ -338,4 +383,15 @@ pub fn capability_row_by_label_v1(label: &str) -> Option<&'static CapabilityCata
     capability_catalog_rows_v1()
         .iter()
         .find(|row| row.label == label)
+}
+
+const fn expected_scope_for_category_v1(category: CapabilityCategoryV1) -> CatalogScopeMarkerV1 {
+    match category {
+        CapabilityCategoryV1::ShowCategory => CatalogScopeMarkerV1::ShowCategoryTail,
+        CapabilityCategoryV1::DescribeTargetKind => CatalogScopeMarkerV1::DescribeTargetTail,
+        CapabilityCategoryV1::QueryRoot
+        | CapabilityCategoryV1::InteractiveRoot
+        | CapabilityCategoryV1::DeclarationRoot
+        | CapabilityCategoryV1::MetaCommand => CatalogScopeMarkerV1::DocumentRoot,
+    }
 }

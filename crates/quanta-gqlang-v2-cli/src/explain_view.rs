@@ -4,6 +4,7 @@ use quanta_gqlang_v2_ir::explain_ir::{
 use quanta_gqlang_v2_ir::find_ir::{
     FindExecutionPlanIrV1, FindFlowWindowIrV1, FindSliceDirectionIrV1, FindSummaryFacetIrV1,
 };
+use quanta_gqlang_v2_ir::root_ir::DegradedReasonV1;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DegradedBadgeV1 {
@@ -157,17 +158,23 @@ pub fn degraded_badges_v1(reasons: &[String]) -> Vec<DegradedBadgeV1> {
     reasons
         .iter()
         .map(|reason| {
-            let label = match reason.as_str() {
-                "runtime-host-routing-unavailable" => "Routing unavailable",
-                "semantic-confirm-lane-unavailable" => "Semantic confirm unavailable",
-                "truth-evidence-materialization-unavailable" => "Truth materialization unavailable",
-                "retrieval-result-materialization-unavailable" => {
+            // Label keys off the shared DegradedReasonV1 authority (enum, not raw
+            // string) so a code rename cannot silently desync this presenter.
+            let label = match DegradedReasonV1::from_code_v1(reason) {
+                Some(DegradedReasonV1::RuntimeHostRoutingUnavailable) => "Routing unavailable",
+                Some(DegradedReasonV1::SemanticConfirmLaneUnavailable) => {
+                    "Semantic confirm unavailable"
+                }
+                Some(DegradedReasonV1::TruthEvidenceMaterializationUnavailable) => {
+                    "Truth materialization unavailable"
+                }
+                Some(DegradedReasonV1::RetrievalResultMaterializationUnavailable) => {
                     "Retrieval materialization unavailable"
                 }
-                "catalog-and-interactive-host-truth-unavailable" => {
+                Some(DegradedReasonV1::CatalogAndInteractiveHostTruthUnavailable) => {
                     "Catalog host truth unavailable"
                 }
-                _ => "Degraded",
+                None => "Degraded",
             };
             DegradedBadgeV1 {
                 code: reason.clone(),

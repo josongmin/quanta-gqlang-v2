@@ -535,6 +535,7 @@ fn mutating_method_v1(method: &str) -> bool {
         .to_ascii_lowercase()
         .replace(['/', '-', '_'], "");
     normalized.contains("rename")
+        || normalized.contains("executecommand")
         || normalized.contains("applyedit")
         || normalized == "apply"
         || normalized.contains("codeaction")
@@ -637,6 +638,15 @@ fn render_quickfix_json_v1(item: &QuickfixSuggestionV1) -> String {
         ("detail", json_string_v1(&item.detail)),
         ("scaffold", json_string_v1(&item.scaffold)),
         ("edits_document", json_bool_v1(item.edits_document)),
+        ("authority", json_string_v1(item.authority_v1())),
+        (
+            "apply_command",
+            json_option_string_v1(item.apply_command_v1()),
+        ),
+        (
+            "workspace_edit",
+            json_option_string_v1(item.workspace_edit_v1()),
+        ),
     ])
 }
 

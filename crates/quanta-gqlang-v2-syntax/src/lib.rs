@@ -1,3 +1,13 @@
+#![cfg_attr(
+    test,
+    allow(
+        clippy::expect_used,
+        clippy::unwrap_used,
+        clippy::indexing_slicing,
+        clippy::panic,
+        reason = "unit-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+    )
+)]
 #![forbid(unsafe_code)]
 
 pub mod ast;
@@ -18,7 +28,7 @@ pub use ast::{AstRootV1, DocumentAstV1};
 pub use diagnostics::{SyntaxDiagnosticPageV1, SyntaxDiagnosticV1};
 pub use formatter::format_document_v1;
 pub use lexer::tokenize_v1;
-pub use parser::parse_document_v1;
+pub use parser::{document_statements_v1, parse_document_v1};
 pub use token::{TokenKindV1, TokenV1};
 
 #[cfg(test)]

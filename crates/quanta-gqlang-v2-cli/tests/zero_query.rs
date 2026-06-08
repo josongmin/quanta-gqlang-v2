@@ -1,9 +1,17 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
+
 use quanta_gqlang_v2_lsp::handlers::{starter_scaffold, zero_query};
 
 #[test]
 fn starter_scaffold_is_deterministic_and_read_only() {
-    let first = starter_scaffold::build_starter_scaffold_v1();
-    let second = starter_scaffold::build_starter_scaffold_v1();
+    let first = starter_scaffold::build_starter_scaffold_v1().expect("starter scaffold");
+    let second = starter_scaffold::build_starter_scaffold_v1().expect("starter scaffold rerun");
 
     assert_eq!(first, second);
     assert_eq!(first.mode, starter_scaffold::ZeroQueryModeV1::ReadOnly);
@@ -11,6 +19,7 @@ fn starter_scaffold_is_deterministic_and_read_only() {
         first.provenance,
         starter_scaffold::ZeroQueryProvenanceV1::TypedCatalogExampleMetadata
     );
+    assert_eq!(first.authority, "external-read-only-shell");
     assert_eq!(
         first
             .groups
@@ -38,7 +47,7 @@ fn starter_scaffold_is_deterministic_and_read_only() {
 
 #[test]
 fn catalog_starters_are_stable_show_describe_pairs() {
-    let report = starter_scaffold::build_starter_scaffold_v1();
+    let report = starter_scaffold::build_starter_scaffold_v1().expect("starter scaffold");
     let catalog = &report.groups[0];
 
     assert_eq!(catalog.kind, starter_scaffold::StarterGroupKindV1::Catalog);
@@ -68,11 +77,15 @@ fn catalog_starters_are_stable_show_describe_pairs() {
         catalog.suggestions[1].reason.code,
         starter_scaffold::StarterReasonCodeV1::TypedTargetDetail
     );
+    assert_eq!(
+        catalog.suggestions[0].authority,
+        "external-frontend-catalog"
+    );
 }
 
 #[test]
 fn zero_query_scaffold_stays_non_mutating_and_never_claims_runtime_counts() {
-    let report = starter_scaffold::build_starter_scaffold_v1();
+    let report = starter_scaffold::build_starter_scaffold_v1().expect("starter scaffold");
     let rendered = report.render_v1();
     let queries = report
         .groups
@@ -89,6 +102,7 @@ fn zero_query_scaffold_stays_non_mutating_and_never_claims_runtime_counts() {
     assert!(!rendered.contains("result_count"));
     assert!(!rendered.contains("code_action"));
     assert!(rendered.contains("starter.provenance=typed-catalog-example-metadata"));
+    assert!(rendered.contains("starter.authority=external-read-only-shell"));
 }
 
 #[test]
@@ -117,7 +131,7 @@ fn lsp_zero_query_translates_typed_groups_and_reasons() {
     );
     assert_eq!(
         first.groups[1].suggestions[0].query_scaffold,
-        "SELECT id, path FROM catalog.files WHERE severity = 'high' LIMIT 10"
+        "SELECT id, profile.name FROM catalog.users WHERE active = true LIMIT 7"
     );
     assert_eq!(
         first.groups[2].suggestions[0].reason_code,

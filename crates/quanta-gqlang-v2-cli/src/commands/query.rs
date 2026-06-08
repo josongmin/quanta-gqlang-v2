@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use quanta_gqlang_v2_ir::frontend::{
-    self, AstRootV1, CertifiedAdmissionPolicyAstV1, CertifiedTruthRequirementAstV1, CheckRootAstV1,
+    AstRootV1, CertifiedAdmissionPolicyAstV1, CertifiedTruthRequirementAstV1, CheckRootAstV1,
     CheckRootIntentV1, CompareRootAstV1, DescribeRootAstV1, DocumentAstV1, ExplainRootAstV1,
     ExplainShapeAstV1, ExportRootAstV1, FindRootAstV1, GateDeclAstV1, MetaCommandAstV1,
     MetaCommandShapeV1, ModelDeclAstV1, PackActivationModeAstV1, PackDeclAstV1, ProfileDeclAstV1,
@@ -11,9 +11,9 @@ use quanta_gqlang_v2_ir::frontend::{
 };
 use quanta_gqlang_v2_ir::root_ir::{
     CertifiedAdmissionPolicyIrV1, CertifiedTruthRequirementIrV1, CompareMetricIrV1,
-    DeclarationIrV1, ExportKindIrV1, GateBindingIrV1, InteractiveIrV1, InteractiveRefIrV1,
-    InteractiveTargetIrV1, MetaIrV1, PackActivationIrV1, ProfileAdmissionIrV1, PublicIrRootV1,
-    ViewQueryIrV1,
+    DeclarationIrV1, DegradedReasonV1, ExportKindIrV1, GateBindingIrV1, InteractiveIrV1,
+    InteractiveRefIrV1, InteractiveTargetIrV1, MetaIrV1, PackActivationIrV1, ProfileAdmissionIrV1,
+    PublicIrRootV1, ViewQueryIrV1,
 };
 use quanta_gqlang_v2_ir::IrLoweringErrorV1;
 
@@ -31,6 +31,9 @@ pub struct QueryRootSummaryV1 {
     pub typed_summary: String,
     pub ir_kind: &'static str,
     pub ir_summary: String,
+    /// Computed once from the typed IR root; the single source of the read-only
+    /// shell degraded lane for both the doctor and headless reports.
+    pub degraded_reason: Option<DegradedReasonV1>,
 }
 
 impl QuerySummaryV1 {
@@ -77,13 +80,13 @@ pub fn run(input: &str) -> Result<QuerySummaryV1, String> {
 }
 
 pub(crate) fn parse_document_v1(input: &str) -> Result<DocumentAstV1, SyntaxDiagnosticPageV1> {
-    frontend::parse_document_v1(input)
+    quanta_gqlang_v2_ir::frontend::parse_document_v1(input)
 }
 
 pub(crate) fn analyze_document_v1(
     doc: &DocumentAstV1,
 ) -> Result<TypedDocumentV1, SemaDiagnosticPageV1> {
-    frontend::analyze_document_v1(doc)
+    quanta_gqlang_v2_ir::frontend::analyze_document_v1(doc)
 }
 
 pub(crate) fn lower_document_to_ir_v1(
@@ -111,6 +114,7 @@ pub(crate) fn build_query_summary_v1(
                 typed_summary: typed_root_summary_v1(typed_root),
                 ir_kind: ir_root_kind_v1(ir_root),
                 ir_summary: ir_root_summary_v1(ir_root),
+                degraded_reason: DegradedReasonV1::for_ir_root_v1(ir_root),
             })
             .collect(),
     }

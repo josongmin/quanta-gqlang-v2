@@ -27,6 +27,12 @@ impl PublicFactSchemaSourceProvenanceV1 {
             });
         }
 
+        validate_no_runtime_rowset_marker_v1(
+            &self.source_ref,
+            "fact_schema_source_ref_runtime_local",
+            "fact schema provenance source_ref",
+        )?;
+
         Ok(())
     }
 }
@@ -59,7 +65,15 @@ impl PublicEntityRefV1 {
     }
 
     pub fn validate_v1(&self) -> Result<(), PublicFactSchemaValidationErrorV1> {
-        validate_path_segments_v1(&self.path, "entity_path")
+        validate_path_segments_v1(&self.path, "entity_path")?;
+        for segment in &self.path {
+            validate_no_runtime_rowset_marker_v1(
+                segment,
+                "entity_path_runtime_local",
+                "entity path segment",
+            )?;
+        }
+        Ok(())
     }
 }
 
@@ -109,6 +123,11 @@ pub struct PublicEntityFieldSchemaV1 {
 impl PublicEntityFieldSchemaV1 {
     pub fn validate_v1(&self) -> Result<(), PublicFactSchemaValidationErrorV1> {
         validate_name_v1(&self.name, "entity_field_name")?;
+        validate_no_runtime_rowset_marker_v1(
+            &self.name,
+            "entity_field_name_runtime_local",
+            "entity field name",
+        )?;
         self.value_type.validate_v1()?;
         self.provenance.validate_v1()?;
         Ok(())
@@ -204,6 +223,30 @@ pub(crate) fn validate_unique_field_names_v1(
                 message: message.to_string(),
             });
         }
+    }
+
+    Ok(())
+}
+
+pub(crate) fn validate_no_runtime_rowset_marker_v1(
+    value: &str,
+    code: &'static str,
+    subject: &'static str,
+) -> Result<(), PublicFactSchemaValidationErrorV1> {
+    // Match the `rowset` runtime-transport marker only as a whole token delimited
+    // by non-alphanumeric separators (`_`, `.`, `::`, whitespace, …). Collapsing
+    // every separator before a substring `contains("rowset")` produced false
+    // positives across word boundaries (e.g. `escrow set` -> `escrowset`).
+    let leaks_rowset_token = value
+        .split(|ch: char| !ch.is_ascii_alphanumeric())
+        .any(|segment| {
+            segment.eq_ignore_ascii_case("rowset") || segment.eq_ignore_ascii_case("rowsets")
+        });
+    if leaks_rowset_token {
+        return Err(PublicFactSchemaValidationErrorV1 {
+            code,
+            message: format!("{subject} must not leak runtime-only rowset transport"),
+        });
     }
 
     Ok(())

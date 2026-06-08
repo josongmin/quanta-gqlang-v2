@@ -115,10 +115,18 @@ fn parse_completion_context_v1(prefix: &str) -> Result<CompletionContextV1, Stri
         });
     }
 
-    let Some((head, tail)) = split_head_v1(trimmed) else {
-        return Ok(CompletionContextV1::Root {
-            fragment: trimmed.to_string(),
-        });
+    // A trailing space means the root keyword is complete and the cursor is in
+    // argument position, so `SHOW ` / `DESCRIBE ` must enter their tail contexts
+    // with an empty fragment (full category/target list) rather than re-matching
+    // the keyword the user just finished typing.
+    let (head, tail): (&str, &str) = match split_head_v1(trimmed) {
+        Some((head, tail)) => (head, tail),
+        None if prefix.ends_with(char::is_whitespace) => (trimmed, ""),
+        None => {
+            return Ok(CompletionContextV1::Root {
+                fragment: trimmed.to_string(),
+            });
+        }
     };
 
     if head.eq_ignore_ascii_case("SHOW") {
@@ -216,4 +224,42 @@ fn normalized_v1(value: &str) -> String {
         .trim()
         .to_ascii_lowercase()
         .replace(['_', '-', ' '], "")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::rank_matches_v1;
+    use quanta_gqlang_v2_ir::catalog::autocomplete_surface::autocomplete_suggestion_rows_v1;
+    use quanta_gqlang_v2_ir::catalog::capability_catalog::CatalogScopeMarkerV1;
+
+    #[test]
+    fn show_with_trailing_space_lists_categories_not_the_keyword() {
+        let matches =
+            rank_matches_v1("SHOW ", autocomplete_suggestion_rows_v1()).unwrap_or_default();
+        let labels = matches
+            .iter()
+            .map(|entry| entry.row.label)
+            .collect::<Vec<_>>();
+        assert!(
+            labels.contains(&"capabilities"),
+            "`SHOW ` should list catalog categories, got {labels:?}"
+        );
+    }
+
+    #[test]
+    fn describe_with_trailing_space_lists_targets_not_the_keyword() {
+        let matches =
+            rank_matches_v1("DESCRIBE ", autocomplete_suggestion_rows_v1()).unwrap_or_default();
+        assert!(
+            !matches.is_empty()
+                && matches
+                    .iter()
+                    .all(|entry| entry.row.scope == CatalogScopeMarkerV1::DescribeTargetTail),
+            "`DESCRIBE ` should list describe targets, got {:?}",
+            matches
+                .iter()
+                .map(|entry| entry.row.label)
+                .collect::<Vec<_>>()
+        );
+    }
 }

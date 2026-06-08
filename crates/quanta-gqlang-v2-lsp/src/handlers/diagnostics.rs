@@ -1,9 +1,11 @@
-use crate::handlers::hover::analyze_query_v1;
-pub use crate::handlers::hover::DiagnosticItemV1;
+use crate::handlers::read_only_analysis::analyze_statements_v1;
+pub use crate::handlers::read_only_analysis::DiagnosticItemV1;
 
 pub fn handle_diagnostics(query: &str) -> Result<Vec<DiagnosticItemV1>, String> {
-    match analyze_query_v1(query) {
-        Ok(_) => Ok(Vec::new()),
-        Err(err) => Ok(vec![err.diagnostic_item_v1()]),
-    }
+    // Report a diagnostic for every malformed statement in the document, not just
+    // the first, mirroring the parser's per-statement error recovery.
+    Ok(analyze_statements_v1(query)
+        .into_iter()
+        .filter_map(|result| result.err().map(|err| err.diagnostic_item_v1()))
+        .collect())
 }

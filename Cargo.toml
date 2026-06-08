@@ -25,7 +25,12 @@ unsafe_code      = "forbid"
 unused_imports   = "deny"
 
 [workspace.lints.clippy]
-all                             = { level = "warn", priority = -3 }
+all = { level = "warn", priority = -3 }
+# `allow_attributes` (prefer #[expect] over #[allow]) and `_without_reason` both
+# stay denied. The linted surface (`--lib --bins --examples`) carries no allow
+# attributes; the reasoned `#![allow(...)]` blocks in integration tests live in
+# `--tests` targets, which this lint gate does not compile, so the strict policy
+# holds without weakening test ergonomics.
 allow_attributes                = "deny"
 allow_attributes_without_reason = "deny"
 as_conversions                  = "warn"

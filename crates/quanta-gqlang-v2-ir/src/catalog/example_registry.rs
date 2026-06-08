@@ -1,4 +1,7 @@
-use super::capability_catalog::{CatalogProvenanceV1, CatalogScopeMarkerV1, CatalogSourceKindV1};
+use super::capability_catalog::{
+    capability_row_by_id_v1, CatalogProvenanceV1, CatalogScopeMarkerV1, CatalogSourceKindV1,
+};
+use quanta_gqlang_v2_sema::{parse_document_v1, AstRootV1};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ExampleCategoryV1 {
@@ -21,6 +24,7 @@ pub struct ExampleRegistryRowV1 {
 }
 
 const EXAMPLE_SOURCE_FILE_V1: &str = "crates/quanta-gqlang-v2-ir/src/catalog/example_registry.rs";
+const EXTERNAL_READ_ONLY_SHELL_AUTHORITY_V1: &str = "external-read-only-shell";
 
 const fn provenance_v1(source_marker: &'static str) -> CatalogProvenanceV1 {
     CatalogProvenanceV1 {
@@ -153,8 +157,153 @@ pub const fn example_registry_rows_v1() -> &'static [ExampleRegistryRowV1] {
     EXAMPLE_REGISTRY_ROWS_V1
 }
 
+pub const fn example_registry_authority_v1() -> &'static str {
+    EXTERNAL_READ_ONLY_SHELL_AUTHORITY_V1
+}
+
+pub fn read_only_example_registry_integrity_v1() -> Result<(), &'static str> {
+    let rows = example_registry_rows_v1();
+    for (index, row) in rows.iter().enumerate() {
+        if rows
+            .iter()
+            .skip(index + 1)
+            .any(|other| other.stable_id == row.stable_id)
+        {
+            return Err("example row stable_id must be unique");
+        }
+    }
+    for row in rows {
+        if row.stable_id.trim().is_empty() {
+            return Err("example row stable_id must not be empty");
+        }
+        if row.title.trim().is_empty() {
+            return Err("example row title must not be empty");
+        }
+        if row.query_text.trim().is_empty() {
+            return Err("example row query_text must not be empty");
+        }
+        if row.reason.trim().is_empty() {
+            return Err("example row reason must not be empty");
+        }
+        if row.scope != CatalogScopeMarkerV1::ReadOnlyShell {
+            return Err("example row scope must stay read-only-shell");
+        }
+        if row.provenance.source_kind != CatalogSourceKindV1::CuratedReadOnlyExample {
+            return Err("example row provenance must stay curated read-only example");
+        }
+        if row.provenance.source_file != EXAMPLE_SOURCE_FILE_V1 {
+            return Err("example row provenance source_file drifted");
+        }
+        if row.provenance.source_marker != row.stable_id {
+            return Err("example row provenance marker must match stable_id");
+        }
+        if row.capability_ids.is_empty() {
+            return Err("example row capability_ids must not be empty");
+        }
+        if !example_query_is_admissible_v1(row.query_text, row.category) {
+            return Err("example row query_text must parse and match its declared category");
+        }
+        for capability_id in row.capability_ids {
+            if capability_row_by_id_v1(capability_id).is_none() {
+                return Err("example row references unknown capability id");
+            }
+        }
+    }
+    Ok(())
+}
+
 pub fn example_row_by_id_v1(stable_id: &str) -> Option<&'static ExampleRegistryRowV1> {
     example_registry_rows_v1()
         .iter()
         .find(|row| row.stable_id == stable_id)
+}
+
+/// Validate a curated example against the REAL grammar instead of a hand-rolled
+/// keyword whitelist (which had drifted from the parser in both directions), and
+/// confirm the parsed root matches the row's declared category. This is the only
+/// gate on `query_text`, which is handed verbatim to users, so it must agree with
+/// the parser exactly.
+fn example_query_is_admissible_v1(query_text: &str, category: ExampleCategoryV1) -> bool {
+    let Ok(document) = parse_document_v1(query_text) else {
+        return false;
+    };
+    if document.roots.len() != 1 {
+        return false;
+    }
+    match document.roots.first() {
+        Some(root) => root_matches_category_v1(root, category),
+        None => false,
+    }
+}
+
+fn root_matches_category_v1(root: &AstRootV1, category: ExampleCategoryV1) -> bool {
+    match category {
+        ExampleCategoryV1::QueryStarter => matches!(
+            root,
+            AstRootV1::Select(_) | AstRootV1::Find(_) | AstRootV1::Check(_) | AstRootV1::Explain(_)
+        ),
+        ExampleCategoryV1::InteractiveStarter => matches!(
+            root,
+            AstRootV1::Show(_)
+                | AstRootV1::Describe(_)
+                | AstRootV1::Sample(_)
+                | AstRootV1::Compare(_)
+                | AstRootV1::Export(_)
+        ),
+        ExampleCategoryV1::DeclarationStarter => matches!(
+            root,
+            AstRootV1::View(_)
+                | AstRootV1::Rule(_)
+                | AstRootV1::Model(_)
+                | AstRootV1::Pack(_)
+                | AstRootV1::Profile(_)
+                | AstRootV1::Gate(_)
+        ),
+        ExampleCategoryV1::MetaStarter => matches!(root, AstRootV1::Meta(_)),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        example_query_is_admissible_v1, read_only_example_registry_integrity_v1, ExampleCategoryV1,
+    };
+
+    #[test]
+    fn integrity_passes_for_all_curated_rows() {
+        assert_eq!(read_only_example_registry_integrity_v1(), Ok(()));
+    }
+
+    #[test]
+    fn admissibility_requires_category_to_match_the_parsed_root() {
+        assert!(example_query_is_admissible_v1(
+            "SELECT id FROM catalog.users",
+            ExampleCategoryV1::QueryStarter
+        ));
+        assert!(!example_query_is_admissible_v1(
+            "SELECT id FROM catalog.users",
+            ExampleCategoryV1::InteractiveStarter
+        ));
+    }
+
+    #[test]
+    fn admissibility_rejects_query_text_the_old_whitelist_wrongly_accepted() {
+        // Both pass the old first-token whitelist but are rejected by the grammar.
+        assert!(!example_query_is_admissible_v1(
+            "SELECT",
+            ExampleCategoryV1::QueryStarter
+        ));
+        assert!(!example_query_is_admissible_v1(
+            "USE PACK secure-pack",
+            ExampleCategoryV1::MetaStarter
+        ));
+    }
+
+    #[test]
+    fn admissibility_accepts_declaration_roots_the_old_whitelist_dropped() {
+        assert!(example_query_is_admissible_v1(
+            "VIEW catalog.users ;; query-ref=queries/catalog/users",
+            ExampleCategoryV1::DeclarationStarter
+        ));
+    }
 }

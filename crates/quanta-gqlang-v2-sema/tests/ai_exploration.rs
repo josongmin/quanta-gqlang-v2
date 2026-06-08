@@ -1,3 +1,11 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
+
 use quanta_gqlang_v2_sema::admissibility::validate_ai_plan_v1;
 use quanta_gqlang_v2_sema::ai::exploration::{
     AiExplorationPlanV1, AiExportTargetV1, AiObjectiveV1, CandidateBasisV1, DiscoveryBasisV1,

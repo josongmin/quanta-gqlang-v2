@@ -1,7 +1,9 @@
 use quanta_gqlang_v2_ir::catalog::capability_catalog::capability_row_by_id_v1;
 use quanta_gqlang_v2_ir::catalog::example_registry::example_row_by_id_v1;
 
-use crate::handlers::hover::{analyze_query_v1, ReadOnlyLspErrorV1, ReadOnlyRootSummaryV1};
+use crate::handlers::read_only_analysis::{
+    analyze_query_v1, ReadOnlyLspErrorV1, ReadOnlyRootSummaryV1,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct QuickfixSuggestionV1 {
@@ -13,9 +15,39 @@ pub struct QuickfixSuggestionV1 {
 }
 
 pub fn handle_quickfix(input: &str) -> Result<Vec<QuickfixSuggestionV1>, String> {
-    match analyze_query_v1(input) {
+    let fixes = match analyze_query_v1(input) {
         Ok(summary) => quickfix_from_summary_v1(&summary),
         Err(err) => quickfix_from_error_v1(input, &err),
+    }?;
+    validate_quickfix_metadata_only_v1(fixes)
+}
+
+pub const READ_ONLY_QUICKFIX_AUTHORITY_V1: &str = "external-read-only-suggestion";
+
+impl QuickfixSuggestionV1 {
+    #[must_use]
+    pub const fn authority_v1(&self) -> &'static str {
+        READ_ONLY_QUICKFIX_AUTHORITY_V1
+    }
+
+    #[must_use]
+    pub const fn apply_command_v1(&self) -> Option<&'static str> {
+        None
+    }
+
+    #[must_use]
+    pub const fn workspace_edit_v1(&self) -> Option<&'static str> {
+        None
+    }
+
+    pub fn validate_metadata_only_v1(&self) -> Result<(), String> {
+        if self.edits_document {
+            return Err("quickfix must remain metadata-only and cannot apply edits".to_string());
+        }
+        if self.scaffold.trim().is_empty() {
+            return Err("quickfix scaffold cannot be empty".to_string());
+        }
+        Ok(())
     }
 }
 
@@ -35,46 +67,32 @@ fn quickfix_from_error_v1(
     input: &str,
     err: &ReadOnlyLspErrorV1,
 ) -> Result<Vec<QuickfixSuggestionV1>, String> {
-    match detect_root_v1(input) {
-        Some("MODEL") if matches!(err.code, "missing_named_target" | "missing_required_clause") => {
-            Ok(vec![missing_model_quickfix_v1(
-                extract_named_target_v1(input)
-                    .as_deref()
-                    .unwrap_or("new_model"),
-            )?])
-        }
-        Some("PROFILE")
-            if matches!(err.code, "missing_named_target" | "missing_required_clause") =>
-        {
-            Ok(vec![missing_profile_quickfix_v1(
-                extract_named_target_v1(input)
-                    .as_deref()
-                    .unwrap_or("strict-review"),
-            )?])
-        }
-        Some("VIEW") if err.code == "missing_view_query_shape" => {
-            Ok(vec![missing_query_quickfix_v1(
-                extract_named_target_v1(input)
-                    .as_deref()
-                    .unwrap_or("catalog.users"),
-            )?])
-        }
-        Some("SELECT")
-            if matches!(
-                err.code,
-                "missing_from_clause" | "missing_projection" | "missing_table_ref"
-            ) =>
-        {
-            Ok(vec![starter_query_quickfix_v1(
-                "missing-query-scaffold",
-                "Add SELECT starter",
-                "example.select.catalog_users",
-            )?])
-        }
-        Some("DESCRIBE") | Some("SHOW") | Some("VIEW") | Some("MODEL") | Some("PROFILE") => {
-            Err(err.render_v1())
-        }
-        _ => Ok(Vec::new()),
+    // Key off the malformed root, not the specific diagnostic code: the diagnostics
+    // are now the canonical parser's vocabulary (no LSP shadow codes), so a
+    // declaration/SELECT root that fails to parse offers its starter scaffold while
+    // every other root fails closed.
+    match detect_root_v1(input).as_deref() {
+        Some("MODEL") => Ok(vec![missing_model_quickfix_v1(
+            extract_named_target_v1(input)
+                .as_deref()
+                .unwrap_or("new_model"),
+        )?]),
+        Some("PROFILE") => Ok(vec![missing_profile_quickfix_v1(
+            extract_named_target_v1(input)
+                .as_deref()
+                .unwrap_or("strict-review"),
+        )?]),
+        Some("VIEW") => Ok(vec![missing_query_quickfix_v1(
+            extract_named_target_v1(input)
+                .as_deref()
+                .unwrap_or("catalog.users"),
+        )?]),
+        Some("SELECT") => Ok(vec![starter_query_quickfix_v1(
+            "missing-query-scaffold",
+            "Add SELECT starter",
+            "example.select.catalog_users",
+        )?]),
+        _ => Err(err.render_v1()),
     }
 }
 
@@ -104,7 +122,7 @@ fn missing_query_quickfix_v1(view_name: &str) -> Result<QuickfixSuggestionV1, St
         code: "missing-query-scaffold".to_string(),
         label: format!("Add VIEW query scaffold for {view_name}"),
         detail: capability.summary.to_string(),
-        scaffold: format!("VIEW {view_name} ;; query=SELECT id FROM catalog.users LIMIT 25"),
+        scaffold: format!("VIEW {view_name} ;; body=SELECT id FROM catalog.users LIMIT 25"),
         edits_document: false,
     })
 }
@@ -156,8 +174,11 @@ pub fn example_backed_quickfix_v1(example_id: &str) -> Option<QuickfixSuggestion
     })
 }
 
-fn detect_root_v1(input: &str) -> Option<&str> {
-    input.split_whitespace().next()
+fn detect_root_v1(input: &str) -> Option<String> {
+    input
+        .split_whitespace()
+        .next()
+        .map(|keyword| keyword.to_ascii_uppercase())
 }
 
 fn extract_named_target_v1(input: &str) -> Option<String> {
@@ -172,4 +193,13 @@ fn extract_named_target_v1(input: &str) -> Option<String> {
         return None;
     }
     Some(target.to_string())
+}
+
+fn validate_quickfix_metadata_only_v1(
+    fixes: Vec<QuickfixSuggestionV1>,
+) -> Result<Vec<QuickfixSuggestionV1>, String> {
+    for fix in &fixes {
+        fix.validate_metadata_only_v1()?;
+    }
+    Ok(fixes)
 }

@@ -1,4 +1,14 @@
-#![allow(dead_code)]
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+)]
+#![allow(
+    dead_code,
+    reason = "shared test helpers are used by a subset of the integration-test crates that include this module"
+)]
 
 use std::fs;
 use std::path::PathBuf;
