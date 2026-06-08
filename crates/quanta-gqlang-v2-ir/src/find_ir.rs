@@ -200,6 +200,11 @@ impl From<FindSummaryFacetV1> for FindSummaryFacetIrV1 {
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "FIND IR tests assert validated plan decoding success"
+    )]
+
     use super::{FindExecutionPlanIrV1, FindFlowWindowIrV1, FindIrV1, SummaryPlanIrV1};
 
     #[test]

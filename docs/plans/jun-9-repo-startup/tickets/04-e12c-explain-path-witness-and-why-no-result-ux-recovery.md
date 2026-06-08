@@ -1,6 +1,6 @@
 # 04 E12C Explain, Path Witness, And Why-No-Result UX Recovery
 
-Status: `Ready`
+Status: `Done`
 
 Original ticket: [E12C](../../../../../semantica-codegraph-v2/docs/rfcs/2026-06-05-rfc-qglang-v2-semantic-host-dx-platform/tickets-v2/external/E12C-explain-and-path-witness-ux.md)
 
@@ -60,4 +60,3 @@ Restore the local `E12C` UX surface:
 2. degraded reasons are re-copied into presenter-local switches
 3. runtime truth is invented in CLI or LSP messaging
 4. the named rail is still missing
-

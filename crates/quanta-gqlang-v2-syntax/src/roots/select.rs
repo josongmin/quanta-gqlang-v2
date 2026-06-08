@@ -714,6 +714,11 @@ fn select_error_v1(code: &'static str, message: impl Into<String>) -> SelectRoot
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "SELECT syntax tests assert shape decoding success for validated fixtures"
+    )]
+
     use super::{
         parse_select_root_v1, parse_select_shape_v1, SelectFieldRefAstV1, SelectFilterAstV1,
         SelectFilterOpV1, SelectLiteralAstV1, SelectProjectionAstV1, SelectQueryShapeV1,

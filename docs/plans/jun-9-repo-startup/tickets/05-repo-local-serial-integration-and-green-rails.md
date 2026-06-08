@@ -1,6 +1,6 @@
 # 05 Repo-Local Serial Integration And Green Rails
 
-Status: `Ready`
+Status: `Done`
 
 ## Goal
 
@@ -63,4 +63,3 @@ repo-local proof story with `just ci`.
 2. docs still describe the narrower base as if the restored local ticket scope does not exist
 3. `taplo`, `clippy`, `nextest`, doc tests, or semgrep are still red
 4. the repo-local closeout claim depends on any cross-repo gate
-

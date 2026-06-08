@@ -187,6 +187,15 @@ impl TypedDescribeTargetKindV1 {
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "SHOW and DESCRIBE sema tests assert validated decoding success"
+    )]
+    #![expect(
+        clippy::panic,
+        reason = "unexpected typed variants must fail closed in unit tests"
+    )]
+
     use super::{
         TypedDescribeTargetKindV1, TypedShowCategoryV1, TypedShowDescribeRootV1,
         TypedShowDescribeSpecV1,

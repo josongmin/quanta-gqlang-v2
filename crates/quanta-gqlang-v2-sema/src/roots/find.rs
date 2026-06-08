@@ -274,6 +274,11 @@ fn normalize_token(raw: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "FIND sema tests assert validated seed analysis success"
+    )]
+
     use super::{
         FindFlowWindowV1, FindSliceDirectionV1, FindSummaryFacetV1, TypedFindRootV1,
         TypedFindSpecV1,

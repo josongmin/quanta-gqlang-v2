@@ -198,6 +198,15 @@ impl From<SyntaxGateDeclShapeAstV1> for TypedGateDeclarationV1 {
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "declaration sema tests assert validated shape decoding success"
+    )]
+    #![expect(
+        clippy::panic,
+        reason = "unexpected typed declaration variants must fail closed in unit tests"
+    )]
+
     use super::{
         TypedDeclarationRootV1, TypedGateCheckBindingModeV1, TypedProfileAdmissionPolicyV1,
         TypedViewQueryV1,

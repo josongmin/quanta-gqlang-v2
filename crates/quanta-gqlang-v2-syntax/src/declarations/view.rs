@@ -268,6 +268,15 @@ fn normalize_clause_symbol_v1(raw_value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "declaration tests assert shape decoding success for validated fixtures"
+    )]
+    #![expect(
+        clippy::panic,
+        reason = "unexpected declaration variants must fail closed in unit tests"
+    )]
+
     use super::{
         DeclarationShapeErrorV1, ModelDeclAstV1, ModelDeclShapeAstV1, ModelSourceBindingAstV1,
         RuleCheckLinkageAstV1, RuleDeclAstV1, RuleDeclShapeAstV1, ViewDeclAstV1,

@@ -1,6 +1,6 @@
 # 06 LSP Read-Only Interpreter Extraction
 
-Status: `Ready`
+Status: `Done`
 
 ## Goal
 
@@ -43,4 +43,3 @@ diagnostics, symbols, and quickfix stop depending on one oversized owner file.
 1. the shared interpreter still lives only in `hover.rs`
 2. a handler regains mutation or backend truth behavior
 3. cleanup changes the visible read-only shell contract
-

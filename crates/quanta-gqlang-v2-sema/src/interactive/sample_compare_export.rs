@@ -231,6 +231,11 @@ impl From<SyntaxSampleCompareExportAstErrorV1> for TypedSampleCompareExportError
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "interactive sema tests assert validated shape decoding success"
+    )]
+
     use super::{
         analyze_compare_root_v1, analyze_export_root_v1, analyze_sample_root_v1,
         TypedCompareIntentV1, TypedCompareMetricV1, TypedExportIntentV1, TypedExportKindV1,

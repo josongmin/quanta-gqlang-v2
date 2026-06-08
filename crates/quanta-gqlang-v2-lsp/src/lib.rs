@@ -1,14 +1,3 @@
-#![cfg_attr(
-    test,
-    allow(
-        clippy::expect_used,
-        clippy::unwrap_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        reason = "unit-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
-    )
-)]
-
 use std::io::{Read, Write};
 
 pub mod handlers;

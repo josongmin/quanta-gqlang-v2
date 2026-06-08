@@ -1,6 +1,6 @@
 # 01 E05E AI Profile, Working Set, And Reconfirmation Recovery
 
-Status: `Ready`
+Status: `Done`
 
 Original ticket: [E05E](../../../../../semantica-codegraph-v2/docs/rfcs/2026-06-05-rfc-qglang-v2-semantic-host-dx-platform/tickets-v2/external/E05E-ai-exploration-profile-working-set-and-reconfirmation-semantics.md)
 
@@ -65,4 +65,3 @@ Restore the local `E05E` surface inside this repo:
 2. reconfirmation is implied but not encoded
 3. `ai_profile_contract` is restored only as generic workspace coverage
 4. the restored shape invents backend truth or runtime execution behavior
-

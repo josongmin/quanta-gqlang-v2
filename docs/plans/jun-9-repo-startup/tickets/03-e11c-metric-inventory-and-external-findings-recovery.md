@@ -1,6 +1,6 @@
 # 03 E11C Metric Inventory And External Findings Recovery
 
-Status: `Ready`
+Status: `Done`
 
 Original ticket: [E11C](../../../../../semantica-codegraph-v2/docs/rfcs/2026-06-05-rfc-qglang-v2-semantic-host-dx-platform/tickets-v2/external/E11C-metric-inventory-and-external-findings-surface.md)
 
@@ -57,4 +57,3 @@ Restore the local `E11C` catalog plane:
 2. `metric.<name>` is not a typed surface again
 3. the implementation introduces backend truth claims
 4. the named rail is still missing
-

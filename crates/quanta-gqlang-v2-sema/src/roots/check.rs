@@ -36,6 +36,15 @@ impl TypedCheckRootV1 {
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "CHECK sema tests assert validated decode and analyze success"
+    )]
+    #![expect(
+        clippy::panic,
+        reason = "unexpected typed variants must fail closed in unit tests"
+    )]
+
     use super::{CheckConfirmIntentV1, CheckExecutionModeV1, CheckRootIntentV1, TypedCheckRootV1};
     use crate::{analyze_root_v1, TypedRootV1};
     use quanta_gqlang_v2_syntax::ast::AstRootV1;

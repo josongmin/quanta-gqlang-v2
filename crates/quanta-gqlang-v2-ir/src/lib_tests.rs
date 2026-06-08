@@ -1,6 +1,15 @@
 //! Test-only wiring checks for the IR lowering surface. Kept out of `lib.rs`
 //! so the production module carries no inline `#[cfg(test)]` content.
 
+#![expect(
+    clippy::expect_used,
+    reason = "IR wiring tests assert validated parse, sema, and lowering success"
+)]
+#![expect(
+    clippy::indexing_slicing,
+    reason = "wiring tests assert the single lowered root directly"
+)]
+
 use crate::{lower_document_to_ir_v1, PublicIrRootV1, CRATE_ID_V1, SEMA_CRATE_ID_V1};
 
 #[test]

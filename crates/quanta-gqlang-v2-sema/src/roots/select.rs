@@ -247,6 +247,15 @@ impl TypedSelectLiteralV1 {
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "SELECT sema tests assert validated parse and analysis success"
+    )]
+    #![expect(
+        clippy::panic,
+        reason = "unexpected typed variants must fail closed in unit tests"
+    )]
+
     use super::{
         analyze_select_root_v1, TypedSelectFieldRefV1, TypedSelectFilterOpV1, TypedSelectLiteralV1,
         TypedSelectProjectionV1,

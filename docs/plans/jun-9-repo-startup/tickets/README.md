@@ -1,6 +1,6 @@
 # Jun 9 Repo Startup Ticket Pack
 
-Status: `Ready`
+Status: `Done`
 
 ## What This Packet Is
 
@@ -34,16 +34,26 @@ Original ticket anchors in the sibling RFC packet:
 4. [E12C](../../../../../semantica-codegraph-v2/docs/rfcs/2026-06-05-rfc-qglang-v2-semantic-host-dx-platform/tickets-v2/external/E12C-explain-and-path-witness-ux.md)
 5. [dispatch/INDEX](../../../../../semantica-codegraph-v2/docs/rfcs/2026-06-05-rfc-qglang-v2-semantic-host-dx-platform/tickets-v2/dispatch/INDEX.md)
 
-## Current Base Snapshot
+## Closure Snapshot
 
 1. local docs say this repo currently ships a read-only shell only
 2. local docs say experimental catalog and AI-adjacent surfaces are metadata-only
-3. the repo-local composition rail is `just ci`
-4. the named ticket proof rails below are currently missing from this repo:
+3. the named ticket proof rails are present in this repo:
    - `ai_profile_contract`
    - `public_planning_ir`
    - `metric_inventory`
    - `explain_path_ux`
+4. the repo-local composition rails are green:
+   - `cargo clippy --workspace --tests -- -D warnings`
+   - `just ci`
+5. Wave 3 cleanup is landed:
+   - `read_only_analysis.rs` owns shared LSP read-only interpretation
+   - root-local test helpers moved out of `syntax/src/lib.rs`
+   - crate-root test-time allow blocks are removed
+
+## Historical Note
+
+1. per-ticket `Current Base` sections below capture the startup baseline before the recovery landed
 
 ## Canonical Waves
 
@@ -70,7 +80,6 @@ Original ticket anchors in the sibling RFC packet:
    generic workspace-only test story
 5. keep frontend-only ownership, read-only shell behavior, and no-runtime-truth
    claims intact
-6. `05` owns repo-local glue and the final `just ci` claim
-7. `06` and `07` are post-closure cleanup tickets, not prerequisites for local
+6. `05` owned repo-local glue and the final `just ci` claim
+7. `06` and `07` were post-closure cleanup tickets, not prerequisites for local
    ticket recovery
-

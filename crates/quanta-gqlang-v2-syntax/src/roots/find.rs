@@ -336,6 +336,11 @@ fn parse_csv_directive(
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "FIND syntax tests assert seed decoding success for validated fixtures"
+    )]
+
     use super::{parse_find_seed_v1, FindRootAstV1, FindSubkindV1, ParsedFindRootSeedV1};
 
     #[test]

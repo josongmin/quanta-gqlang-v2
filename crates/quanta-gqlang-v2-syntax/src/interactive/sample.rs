@@ -434,6 +434,11 @@ fn normalize_symbol_v1(raw: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "interactive syntax tests assert validated intent decoding success"
+    )]
+
     use super::{
         CompareIntentAstV1, CompareMetricV1, CompareRootAstV1, ExportIntentAstV1, ExportKindV1,
         ExportRootAstV1, InteractiveRefAstV1, SampleRetrievalIntentAstV1, SampleRetrievalModeV1,

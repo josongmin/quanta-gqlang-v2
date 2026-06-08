@@ -428,6 +428,19 @@ fn declaration_shape_error_v1(message: impl Into<String>) -> DeclarationShapeErr
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "declaration tests assert parse and shape decoding success for validated fixtures"
+    )]
+    #![expect(
+        clippy::indexing_slicing,
+        reason = "pack tests assert the single dispatched root directly"
+    )]
+    #![expect(
+        clippy::panic,
+        reason = "unexpected declaration variants must fail closed in unit tests"
+    )]
+
     use super::{
         DeclarationShapeErrorV1, GateCheckBindingModeV1, GateDeclAstV1, GateDeclShapeAstV1,
         PackActivationModeV1, PackDeclAstV1, PackDeclShapeAstV1, ProfileAdmissionPolicyV1,

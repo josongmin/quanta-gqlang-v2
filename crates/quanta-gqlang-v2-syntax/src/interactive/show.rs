@@ -255,6 +255,11 @@ fn show_describe_error_v1(
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "SHOW and DESCRIBE syntax tests assert parse success for validated fixtures"
+    )]
+
     use super::{
         parse_describe_root_v1, parse_show_root_v1, DescribeRootAstV1, DescribeTargetAstV1,
         DescribeTargetKindAstV1, ShowCategoryAstV1, ShowDescribeSyntaxErrorV1, ShowRootAstV1,

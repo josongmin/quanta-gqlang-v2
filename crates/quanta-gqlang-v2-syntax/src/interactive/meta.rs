@@ -287,6 +287,15 @@ fn meta_shape_error_v1(code: &'static str, message: impl Into<String>) -> MetaCo
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "meta-command tests assert shape decoding success for validated fixtures"
+    )]
+    #![expect(
+        clippy::panic,
+        reason = "unexpected meta-command variants must fail closed in unit tests"
+    )]
+
     use super::{
         CertifiedAdmissionPolicyAstV1, CertifiedTruthRequirementAstV1, MetaCommandAstV1,
         MetaCommandShapeV1, PackActivationModeAstV1, RequireCertifiedMetaAstV1, UsePackMetaAstV1,

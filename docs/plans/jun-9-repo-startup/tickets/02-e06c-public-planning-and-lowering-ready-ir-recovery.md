@@ -1,6 +1,6 @@
 # 02 E06C Public Planning And Lowering-Ready IR Recovery
 
-Status: `Ready`
+Status: `Done`
 
 Original ticket: [E06C](../../../../../semantica-codegraph-v2/docs/rfcs/2026-06-05-rfc-qglang-v2-semantic-host-dx-platform/tickets-v2/external/E06C-public-planning-and-lowering-ready-ir.md)
 
@@ -61,4 +61,3 @@ Restore the local `E06C` planning surface:
 2. truth/bridge/capability metadata are not all explicit
 3. `public_planning_ir` is not restored as a standalone rail
 4. the restored IR imports runtime-local or provider-local nouns
-

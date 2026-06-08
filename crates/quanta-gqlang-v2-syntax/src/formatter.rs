@@ -531,6 +531,11 @@ fn format_certified_admission_v1(value: CertifiedAdmissionPolicyAstV1) -> &'stat
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "formatter tests assert parse success for validated round-trip fixtures"
+    )]
+
     use super::format_document_v1;
     use crate::parse_document_v1;
 

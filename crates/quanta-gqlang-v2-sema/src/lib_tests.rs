@@ -3,6 +3,19 @@
 //! assert the typed lowering preserves the structured roots. They live here rather
 //! than in `lib.rs` so the production module stays free of `#[cfg(test)]` bloat.
 
+#![expect(
+    clippy::expect_used,
+    reason = "sema wiring tests assert validated parse and analyze success"
+)]
+#![expect(
+    clippy::indexing_slicing,
+    reason = "wiring tests assert the single lowered root directly"
+)]
+#![expect(
+    clippy::panic,
+    reason = "unexpected validated variants must fail closed in unit tests"
+)]
+
 use crate::{
     declarations, interactive, AstRootV1, MetaCommandAstV1, TypedDocumentV1, TypedMetaCommandV1,
     TypedRootV1,

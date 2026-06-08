@@ -1,6 +1,6 @@
 # 00 Packet Scope And Repo Boundary
 
-Status: `Ready`
+Status: `Done`
 
 ## Goal
 
@@ -52,4 +52,3 @@ recovery from cross-repo closeout.
 1. the packet mixes repo-local recovery with cross-repo closure
 2. the packet treats cleanup tickets as prerequisites for local ticket recovery
 3. the packet allows Wave 1 tickets to edit the shared serial glue files
-

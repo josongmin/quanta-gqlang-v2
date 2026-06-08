@@ -356,6 +356,11 @@ fn decode_hex(value: u8) -> Option<u8> {
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "CHECK syntax tests assert decode success for validated fixtures"
+    )]
+
     use super::{CheckConfirmIntentV1, CheckExecutionModeV1, CheckRootAstV1, CheckRootIntentV1};
 
     #[test]

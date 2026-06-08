@@ -32,6 +32,15 @@ impl CheckIrV1 {
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "CHECK IR tests assert validated sema and lowering success"
+    )]
+    #![expect(
+        clippy::panic,
+        reason = "unexpected lowered variants must fail closed in unit tests"
+    )]
+
     use super::{CheckConfirmIntentV1, CheckExecutionModeV1, CheckRootIntentV1};
     use crate::{lower_root_to_ir_v1, PublicIrRootV1};
     use quanta_gqlang_v2_sema::analyze_root_v1;

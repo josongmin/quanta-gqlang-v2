@@ -1,6 +1,6 @@
 # 07 IR Facade And Lint/Test Root Cleanup
 
-Status: `Ready`
+Status: `Done`
 
 ## Goal
 
@@ -11,12 +11,12 @@ were added at the crate roots.
 
 1. `05-repo-local-serial-integration-and-green-rails`
 
-## Current Base
+## Closure Snapshot
 
-1. `crates/quanta-gqlang-v2-ir/src/frontend.rs` is a broad facade
-2. multiple crate roots carry test-time allow blocks
-3. `sema/src/lib.rs` and `ir/src/lib.rs` still contain substantial `#[cfg(test)]`
-   content
+1. `crates/quanta-gqlang-v2-ir/src/frontend.rs` is reduced to a narrow boundary shim
+2. crate-root test-time allow blocks are removed
+3. syntax, sema, and IR test-only lint exceptions are localized to dedicated test modules
+4. `cargo clippy --workspace --tests -- -D warnings` is green
 
 ## Owner Files
 

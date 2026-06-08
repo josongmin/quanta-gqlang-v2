@@ -190,6 +190,15 @@ impl SelectLiteralIrV1 {
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "SELECT IR tests assert validated parse, sema, and lowering success"
+    )]
+    #![expect(
+        clippy::panic,
+        reason = "unexpected lowered variants must fail closed in unit tests"
+    )]
+
     use super::{
         lower_select_root_to_ir_v1, SelectFieldRefIrV1, SelectFilterOpIrV1, SelectLiteralIrV1,
         SelectProjectionIrV1,

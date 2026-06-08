@@ -1,19 +1,24 @@
 # Repo Startup Worker Start Here
 
-Status: `Ready`
+Status: `Done`
 
 ## Current Routing Snapshot
 
-Current live truth in this repo:
+Current closure truth in this repo:
 
 1. local public docs describe a read-only shell only
 2. local public docs still allow catalog and AI-adjacent metadata surfaces, but
    not runtime truth claims
 3. the original local RFC tickets for `E05E`, `E06C`, `E11C`, and `E12C`
    remain pointed at this repo
-4. the current base no longer carries the named proof rails for those four tickets
-5. the repo-local composition rail is:
+4. the named proof rails for those four tickets are present and green
+5. the repo-local composition rails are:
+   - `cargo clippy --workspace --tests -- -D warnings`
    - `just ci`
+
+## Historical Note
+
+1. the individual ticket `Current Base` sections are the startup baseline, not the post-closeout state
 
 ## Hard Routing Rules
 
@@ -59,4 +64,3 @@ Current live truth in this repo:
 4. reintroducing duplicate degraded-reason strings instead of using the shared
    enum authority
 5. letting cleanup tickets widen into new product claims or backend wiring
-
