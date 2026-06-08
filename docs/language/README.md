@@ -29,6 +29,17 @@ Read-only binary fronts:
 2. LSP stdio JSON methods: `hover`, `completion`, `symbols`, `diagnostics`, `zero_query`, `quickfix`
 3. malformed argv, malformed JSON, unknown methods, and mutating requests fail closed
 
+Repo-local front-door proof rails:
+
+1. shipped example docs must round-trip through the actual CLI binary for
+   `parse`, `sema`, `query`, `fmt`, and `headless`
+2. CLI fail-closed behavior must cover bad argv, unreadable files, and explicit
+   parse/sema/no-result shell classification
+3. LSP stdio must prove read-only methods, mutating-method rejection, malformed
+   JSON rejection, and same-session recovery after fail-closed responses
+4. these rails are frontend-only proof; they do not claim runtime execution,
+   provider routing, or backend result materialization
+
 Typed frontend surfaces (recovered local tickets):
 
 These are typed frontend metadata only — read-only, presentation-level, and never

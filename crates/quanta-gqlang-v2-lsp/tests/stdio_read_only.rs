@@ -7,7 +7,7 @@
 )]
 
 use std::io::{BufRead, BufReader, Cursor, Write};
-use std::process::{Command, Stdio};
+use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 
 use quanta_gqlang_v2_lsp::run_stdio_session_v1;
 
@@ -25,6 +25,27 @@ fn spawn_binary_v1() -> std::process::Child {
         .stdout(Stdio::piped())
         .spawn()
         .expect("binary should spawn")
+}
+
+fn spawn_binary_session_v1() -> (Child, ChildStdin, BufReader<ChildStdout>) {
+    let mut child = spawn_binary_v1();
+    let stdin = child.stdin.take().expect("stdin pipe");
+    let stdout = child.stdout.take().expect("stdout pipe");
+    (child, stdin, BufReader::new(stdout))
+}
+
+fn write_request_line_v1(stdin: &mut ChildStdin, request: &str) {
+    stdin.write_all(request.as_bytes()).expect("request write");
+    stdin.write_all(b"\n").expect("newline write");
+    stdin.flush().expect("request flush");
+}
+
+fn read_response_line_v1(stdout_reader: &mut BufReader<ChildStdout>) -> String {
+    let mut line = String::new();
+    stdout_reader
+        .read_line(&mut line)
+        .expect("response should arrive before EOF");
+    line
 }
 
 #[test]
@@ -138,34 +159,15 @@ fn stdio_front_door_surfaces_handler_fail_closed_errors_v1() {
 
 #[test]
 fn stdio_binary_keeps_session_open_across_multiple_requests_v1() {
-    let mut child = spawn_binary_v1();
-    let mut stdin = child.stdin.take().expect("stdin pipe");
-    let stdout = child.stdout.take().expect("stdout pipe");
-    let mut stdout_reader = BufReader::new(stdout);
+    let (mut child, mut stdin, mut stdout_reader) = spawn_binary_session_v1();
 
-    stdin
-        .write_all(br#"{"method":"hover","query":"SELECT id FROM catalog.files"}"#)
-        .expect("first request write");
-    stdin.write_all(b"\n").expect("newline write");
-    stdin.flush().expect("first request flush");
-
-    let mut first_line = String::new();
-    stdout_reader
-        .read_line(&mut first_line)
-        .expect("first response should arrive before EOF");
+    write_request_line_v1(&mut stdin, r#"{"method":"hover","query":"SELECT id FROM catalog.files"}"#);
+    let first_line = read_response_line_v1(&mut stdout_reader);
     assert!(first_line.contains(r#""ok":true"#));
     assert!(first_line.contains(r#""method":"hover""#));
 
-    stdin
-        .write_all(br#"{"method":"zero_query"}"#)
-        .expect("second request write");
-    stdin.write_all(b"\n").expect("second newline write");
-    stdin.flush().expect("second request flush");
-
-    let mut second_line = String::new();
-    stdout_reader
-        .read_line(&mut second_line)
-        .expect("second response should arrive in the same session");
+    write_request_line_v1(&mut stdin, r#"{"method":"zero_query"}"#);
+    let second_line = read_response_line_v1(&mut stdout_reader);
     assert!(second_line.contains(r#""ok":true"#));
     assert!(second_line.contains(r#""method":"zero_query""#));
 
@@ -175,23 +177,43 @@ fn stdio_binary_keeps_session_open_across_multiple_requests_v1() {
 }
 
 #[test]
-fn stdio_binary_accepts_surrogate_pair_json_escape_v1() {
-    let mut child = spawn_binary_v1();
-    let mut stdin = child.stdin.take().expect("stdin pipe");
-    let stdout = child.stdout.take().expect("stdout pipe");
-    let mut stdout_reader = BufReader::new(stdout);
+fn stdio_binary_recovers_after_fail_closed_requests_v1() {
+    let (mut child, mut stdin, mut stdout_reader) = spawn_binary_session_v1();
 
-    stdin
-        .write_all(br#"{"method":"completion","prefix":"\uD83D\uDE00"}"#)
-        .expect("request write");
-    stdin.write_all(b"\n").expect("newline write");
-    stdin.flush().expect("request flush");
+    write_request_line_v1(&mut stdin, r#"{"method":"rename","input":"MODEL shell"}"#);
+    let rename_line = read_response_line_v1(&mut stdout_reader);
+    assert!(rename_line.contains(r#""ok":false"#));
+    assert!(rename_line.contains(r#""code":"command_plane_forbidden""#));
+
+    write_request_line_v1(&mut stdin, r#"{"method":"hover","query":"REQUIRE CERTIFIED"}"#);
+    let hover_line = read_response_line_v1(&mut stdout_reader);
+    assert!(hover_line.contains(r#""ok":true"#));
+    assert!(hover_line.contains(r#""method":"hover""#));
+    assert!(hover_line.contains(r#""root_keyword":"REQUIRE CERTIFIED""#));
+
+    write_request_line_v1(&mut stdin, r#"{"method":"hover","query":true}"#);
+    let malformed_line = read_response_line_v1(&mut stdout_reader);
+    assert!(malformed_line.contains(r#""ok":false"#));
+    assert!(malformed_line.contains(r#""code":"malformed_json""#));
+
+    write_request_line_v1(&mut stdin, r#"{"method":"zero_query"}"#);
+    let zero_query_line = read_response_line_v1(&mut stdout_reader);
+    assert!(zero_query_line.contains(r#""ok":true"#));
+    assert!(zero_query_line.contains(r#""method":"zero_query""#));
+
+    drop(stdin);
+    let status = child.wait().expect("child should exit");
+    assert!(status.success());
+}
+
+#[test]
+fn stdio_binary_accepts_surrogate_pair_json_escape_v1() {
+    let (mut child, mut stdin, mut stdout_reader) = spawn_binary_session_v1();
+
+    write_request_line_v1(&mut stdin, r#"{"method":"completion","prefix":"\uD83D\uDE00"}"#);
     drop(stdin);
 
-    let mut response = String::new();
-    stdout_reader
-        .read_line(&mut response)
-        .expect("response should be readable");
+    let response = read_response_line_v1(&mut stdout_reader);
 
     let status = child.wait().expect("child should exit");
     assert!(status.success());

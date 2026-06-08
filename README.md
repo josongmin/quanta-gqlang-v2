@@ -51,6 +51,18 @@ LSP front door:
 3. mutating or unknown methods fail closed
 4. binary entry: `cargo run -p quanta-gqlang-v2-lsp`
 
+Repo-owned front-door e2e:
+
+1. CLI shipped-example matrix: `parse`, `sema`, `query`, `fmt`, and `headless`
+   stay deterministic on the frontend-owned example corpus
+2. CLI bad argv, unreadable file, parse-error, and no-result shell behavior stay
+   fail-closed
+3. LSP stdio methods stay read-only, mutating methods stay forbidden, malformed
+   JSON stays fail-closed, and the same stdio session must recover after those
+   failures
+4. these rails prove frontend determinism and fail-closed behavior only; they do
+   not prove runtime execution or backend materialization
+
 검증 진입점:
 
 1. `just nextest`

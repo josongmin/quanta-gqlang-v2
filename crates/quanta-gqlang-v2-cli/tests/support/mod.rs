@@ -12,6 +12,7 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::process::{Command, Output};
 
 use quanta_gqlang_v2_cli::commands::{headless, parse, query, sema};
 
@@ -23,6 +24,14 @@ pub(crate) struct ExampleRoundTripExpectationV1 {
     pub typed_summary_fragments: &'static [&'static str],
     pub ir_kind: &'static str,
     pub ir_summary: &'static str,
+    pub degraded_reason: Option<&'static str>,
+}
+
+pub(crate) struct BinaryFrontDoorExpectationV1 {
+    pub example_relative: &'static str,
+    pub syntax_kind: &'static str,
+    pub typed_kind: &'static str,
+    pub ir_kind: &'static str,
     pub degraded_reason: Option<&'static str>,
 }
 
@@ -56,6 +65,25 @@ pub(crate) fn example_source_v1(relative: &str) -> String {
     fs::read_to_string(example_path_v1(relative)).expect("read example")
 }
 
+fn run_cli_file_v1(command: &str, example_relative: &str) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_quanta-gqlang-v2-cli"))
+        .arg(command)
+        .arg("--file")
+        .arg(example_path_v1(example_relative))
+        .output()
+        .expect("spawn qglang cli")
+}
+
+fn stdout_success_v1(output: Output) -> String {
+    assert!(
+        output.status.success(),
+        "status={:?}\nstderr={}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8(output.stdout).expect("stdout utf-8")
+}
+
 pub(crate) fn assert_shipped_examples_listed_v1(doc: &str, doc_label: &str) {
     for example_relative in SHIPPED_EXAMPLE_DOC_PATHS_V1 {
         assert!(
@@ -63,6 +91,102 @@ pub(crate) fn assert_shipped_examples_listed_v1(doc: &str, doc_label: &str) {
             "{doc_label} is missing shipped example `{example_relative}`"
         );
     }
+}
+
+pub(crate) fn assert_read_only_cli_binary_round_trip_v1(
+    expectation: &BinaryFrontDoorExpectationV1,
+) {
+    let parse_stdout = stdout_success_v1(run_cli_file_v1("parse", expectation.example_relative));
+    assert!(
+        parse_stdout.contains("parse.root_count=1"),
+        "missing parse root count for {}:\n{parse_stdout}",
+        expectation.example_relative
+    );
+    assert!(
+        parse_stdout.contains(&format!("parse.root[0].kind={}", expectation.syntax_kind)),
+        "missing parse kind for {}:\n{parse_stdout}",
+        expectation.example_relative
+    );
+
+    let sema_stdout = stdout_success_v1(run_cli_file_v1("sema", expectation.example_relative));
+    assert!(
+        sema_stdout.contains("sema.root_count=1"),
+        "missing sema root count for {}:\n{sema_stdout}",
+        expectation.example_relative
+    );
+    assert!(
+        sema_stdout.contains(&format!("sema.root[0].kind={}", expectation.typed_kind)),
+        "missing sema kind for {}:\n{sema_stdout}",
+        expectation.example_relative
+    );
+
+    let query_stdout = stdout_success_v1(run_cli_file_v1("query", expectation.example_relative));
+    assert!(
+        query_stdout.contains("query.root_count=1"),
+        "missing query root count for {}:\n{query_stdout}",
+        expectation.example_relative
+    );
+    assert!(
+        query_stdout.contains(&format!("query.root[0].syntax.kind={}", expectation.syntax_kind)),
+        "missing query syntax kind for {}:\n{query_stdout}",
+        expectation.example_relative
+    );
+    assert!(
+        query_stdout.contains(&format!("query.root[0].typed.kind={}", expectation.typed_kind)),
+        "missing query typed kind for {}:\n{query_stdout}",
+        expectation.example_relative
+    );
+    assert!(
+        query_stdout.contains(&format!("query.root[0].ir.kind={}", expectation.ir_kind)),
+        "missing query ir kind for {}:\n{query_stdout}",
+        expectation.example_relative
+    );
+
+    let headless_stdout =
+        stdout_success_v1(run_cli_file_v1("headless", expectation.example_relative));
+    assert!(
+        headless_stdout.contains("headless.mode=read-only"),
+        "missing headless read-only mode for {}:\n{headless_stdout}",
+        expectation.example_relative
+    );
+    assert!(
+        headless_stdout.contains("headless.command_plane=forbidden"),
+        "missing headless command-plane flag for {}:\n{headless_stdout}",
+        expectation.example_relative
+    );
+    assert!(
+        headless_stdout
+            .contains("headless.no_result_reason=read-only-shell-has-no-execution-backend"),
+        "missing headless no-result reason for {}:\n{headless_stdout}",
+        expectation.example_relative
+    );
+    assert!(
+        headless_stdout.contains(&format!("headless.root[0].kind={}", expectation.syntax_kind)),
+        "missing headless root kind for {}:\n{headless_stdout}",
+        expectation.example_relative
+    );
+    match expectation.degraded_reason {
+        Some(reason) => assert!(
+            headless_stdout.contains(reason),
+            "missing degraded reason `{reason}` for {}:\n{headless_stdout}",
+            expectation.example_relative
+        ),
+        None => assert!(
+            !headless_stdout.contains("headless.degraded[0]="),
+            "unexpected degraded reason for {}:\n{headless_stdout}",
+            expectation.example_relative
+        ),
+    }
+}
+
+pub(crate) fn assert_cli_fmt_round_trip_v1(example_relative: &str) {
+    let source = example_source_v1(example_relative);
+    let formatted = stdout_success_v1(run_cli_file_v1("fmt", example_relative));
+    assert_eq!(
+        formatted.trim(),
+        source.trim(),
+        "fmt front door drifted for {example_relative}"
+    );
 }
 
 pub(crate) fn assert_read_only_cli_library_round_trip_v1(
