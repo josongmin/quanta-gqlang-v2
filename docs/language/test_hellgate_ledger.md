@@ -72,7 +72,6 @@ A surface marked "— (contract-only)" in the Binary e2e column is intentionally
 | Surface | Binary e2e rail (file) | Contract-only rail (file) | Notes |
 | --- | --- | --- | --- |
 | Typed sema conformance | — (exercised via CLI `sema` corpus) | `crates/quanta-gqlang-v2-sema/tests/sema_conformance.rs` | CLI `sema` binary matrix re-proves typed decoding end-to-end through the front door. |
-| AI exploration profile | — (contract-only) | `crates/quanta-gqlang-v2-sema/tests/ai_exploration.rs` | Typed frontend metadata; not runtime truth. |
 | Pack-trust handshake | — (contract-only) | `crates/quanta-gqlang-v2-sema/tests/pack_trust_handshake.rs` | |
 
 ## Normalized IR

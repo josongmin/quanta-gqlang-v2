@@ -1,10 +1,7 @@
 #![forbid(unsafe_code)]
 
-pub mod admissibility;
-pub mod ai;
 pub mod declarations;
 pub mod interactive;
-pub mod profile;
 pub mod roots;
 
 // Wiring unit tests live in their own module so this root stays production-only.
