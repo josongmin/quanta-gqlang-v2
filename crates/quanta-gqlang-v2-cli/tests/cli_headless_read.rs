@@ -61,16 +61,15 @@ fn query_summary_reports_root_and_ir_shape() {
     assert!(summary.render_v1().contains("query.root[0].ir.kind=check"));
 }
 
+use quanta_gqlang_v2_cli::NO_RESULT_REASON_V1;
+
 #[test]
 fn headless_report_stays_read_only_and_never_edits() {
     let report = headless::run("SHOW capabilities").expect("headless");
 
     assert_eq!(report.mode, "read-only");
     assert_eq!(report.command_plane, "forbidden");
-    assert_eq!(
-        report.no_result_reason,
-        "read-only-shell-has-no-execution-backend"
-    );
+    assert_eq!(report.no_result_reason, NO_RESULT_REASON_V1);
     assert_eq!(report.root_kinds, vec!["show"]);
     assert!(report
         .render_v1()

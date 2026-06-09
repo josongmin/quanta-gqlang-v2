@@ -9,6 +9,8 @@
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
+use quanta_gqlang_v2_cli::NO_RESULT_REASON_V1;
+
 fn example_path_v1(relative: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
@@ -85,8 +87,9 @@ fn core_examples_round_trip_through_read_only_cli_v1() {
         let headless_stdout = stdout_success_v1(run_cli_file_v1("headless", example_relative));
         assert!(headless_stdout.contains("headless.mode=read-only"));
         assert!(headless_stdout.contains("headless.command_plane=forbidden"));
-        assert!(headless_stdout
-            .contains("headless.no_result_reason=read-only-shell-has-no-execution-backend"));
+        assert!(headless_stdout.contains(&format!(
+            "headless.no_result_reason={NO_RESULT_REASON_V1}"
+        )));
         assert!(headless_stdout.contains(&format!("headless.root[0].kind={syntax_kind}")));
         if let Some(reason) = degraded_reason {
             assert!(headless_stdout.contains(reason));
@@ -94,4 +97,18 @@ fn core_examples_round_trip_through_read_only_cli_v1() {
             assert!(!headless_stdout.contains("headless.degraded[0]="));
         }
     }
+}
+
+#[test]
+fn explain_front_door_surfaces_witness_and_no_result_guidance_v1() {
+    let stdout = stdout_success_v1(run_cli_file_v1(
+        "explain",
+        "examples/explain/why_no_result.qglang",
+    ));
+
+    assert!(stdout.contains("explain.subject=rule::owasp.sql-injection"));
+    assert!(stdout.contains("explain.evidence=trace"));
+    assert!(stdout.contains("explain.truth=confirm"));
+    assert!(stdout.contains("explain.path_witness.kind=path"));
+    assert!(stdout.contains("explain.why_no_result=read-only-shell-has-no-execution-backend"));
 }

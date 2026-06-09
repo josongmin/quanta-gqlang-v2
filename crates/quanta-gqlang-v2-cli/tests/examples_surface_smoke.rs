@@ -9,6 +9,8 @@
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
+use quanta_gqlang_v2_cli::NO_RESULT_REASON_V1;
+
 fn example_path_v1(relative: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../..")
@@ -90,8 +92,9 @@ fn surface_examples_round_trip_through_read_only_cli_v1() {
 
         let headless_stdout = stdout_success_v1(run_cli_file_v1("headless", example_relative));
         assert!(headless_stdout.contains("headless.mode=read-only"));
-        assert!(headless_stdout
-            .contains("headless.no_result_reason=read-only-shell-has-no-execution-backend"));
+        assert!(headless_stdout.contains(&format!(
+            "headless.no_result_reason={NO_RESULT_REASON_V1}"
+        )));
         assert!(headless_stdout.contains(&format!("headless.root[0].kind={syntax_kind}")));
         if let Some(reason) = degraded_reason {
             assert!(headless_stdout.contains(reason));

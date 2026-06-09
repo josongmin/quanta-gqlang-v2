@@ -70,3 +70,18 @@ Repo-owned front-door e2e:
 3. `just lint`
 4. `just semgrep`
 5. `just ci`
+
+### Proof rails
+
+The repo-owned e2e boundary is proven by two kinds of rails. Binary-only rails
+spawn the real CLI/LSP binary and assert stdout/stderr/exit code (usage, empty
+input, transport parity, doctor classification, negative-DSL, and the LSP stdio
+framing / escape / multi-statement / command-plane / read-only-authority gates).
+Contract-only rails are in-crate library tests for syntax, sema, and IR shapes.
+The scope is syntax/sema/normalized-IR/CLI/LSP only; runtime execution, provider
+routing, result counts, host DTOs, and backend materialization are out of scope
+and are never asserted as real. The full surface-to-rail mapping is the coverage
+ledger at [docs/language/test_hellgate_ledger.md](docs/language/test_hellgate_ledger.md),
+and the language boundary is documented in
+[docs/language/README.md](docs/language/README.md). The whole set is gated by
+`just ci`.

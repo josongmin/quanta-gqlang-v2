@@ -15,6 +15,7 @@ use std::path::PathBuf;
 use std::process::{Command, Output};
 
 use quanta_gqlang_v2_cli::commands::{headless, parse, query, sema};
+use quanta_gqlang_v2_cli::NO_RESULT_REASON_V1;
 
 pub(crate) struct ExampleRoundTripExpectationV1 {
     pub example_relative: &'static str,
@@ -162,7 +163,7 @@ pub(crate) fn assert_read_only_cli_binary_round_trip_v1(
     );
     assert!(
         headless_stdout
-            .contains("headless.no_result_reason=read-only-shell-has-no-execution-backend"),
+            .contains(&format!("headless.no_result_reason={NO_RESULT_REASON_V1}")),
         "missing headless no-result reason for {}:\n{headless_stdout}",
         expectation.example_relative
     );
@@ -256,7 +257,7 @@ pub(crate) fn assert_read_only_cli_library_round_trip_v1(
     assert_eq!(headless_report.root_kinds, vec![expectation.syntax_kind]);
     assert_eq!(
         headless_report.no_result_reason,
-        "read-only-shell-has-no-execution-backend"
+        NO_RESULT_REASON_V1
     );
     match expectation.degraded_reason {
         Some(reason) => assert_eq!(headless_report.degraded_reasons, vec![reason.to_string()]),

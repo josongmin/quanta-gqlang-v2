@@ -22,7 +22,7 @@ use support::{cli_stderr_v1, cli_stdout_v1, run_cli_argv_v1};
 /// The exact usage block `main.rs` renders. Duplicated here on purpose: this
 /// test *is* the contract that the front-door text may not drift unnoticed.
 const USAGE_CONTRACT_V1: &str = concat!(
-    "cli.usage=quanta-gqlang-v2-cli <parse|sema|query|fmt|doctor|headless> (--file <path> | <input...>)\n",
+    "cli.usage=quanta-gqlang-v2-cli <parse|sema|query|fmt|explain|doctor|headless> (--file <path> | <input...>)\n",
     "cli.read_only=true\n",
     "cli.command_plane=forbidden"
 );

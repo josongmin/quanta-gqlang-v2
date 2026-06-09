@@ -7,6 +7,7 @@
 )]
 
 use quanta_gqlang_v2_cli::doctor;
+use quanta_gqlang_v2_cli::NO_RESULT_REASON_V1;
 
 #[test]
 fn doctor_separates_parse_errors() {
@@ -37,10 +38,7 @@ fn doctor_reports_no_result_and_degraded_reasons_without_fake_runtime_truth() {
             .expect("doctor no-result classification");
 
     assert_eq!(report.status.as_str_v1(), "no-result");
-    assert_eq!(
-        report.no_result_reason.as_deref(),
-        Some("read-only-shell-has-no-execution-backend")
-    );
+    assert_eq!(report.no_result_reason.as_deref(), Some(NO_RESULT_REASON_V1));
     assert!(report
         .degraded_reasons
         .iter()
