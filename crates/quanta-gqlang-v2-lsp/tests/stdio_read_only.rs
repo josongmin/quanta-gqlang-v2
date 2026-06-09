@@ -100,6 +100,16 @@ fn stdio_front_door_supports_all_read_only_methods_v1() {
     assert!(quickfix_stdout.contains(r#""method":"quickfix""#));
     assert!(quickfix_stdout.contains(r#""code":"missing-model-scaffold""#));
     assert!(quickfix_stdout.contains(r#""edits_document":false"#));
+
+    let (explain_status, explain_stdout) = run_request_v1(
+        r#"{"method":"explain","query":"EXPLAIN rule::owasp.sql-injection ;; evidence=trace ;; truth=confirm"}"#,
+    );
+    assert_eq!(explain_status, 0);
+    assert!(explain_stdout.contains(r#""method":"explain""#));
+    assert!(explain_stdout.contains(r#""title":"EXPLAIN rule::owasp.sql-injection""#));
+    assert!(
+        explain_stdout.contains(r#""why_no_result":"read-only-shell-has-no-execution-backend""#)
+    );
 }
 
 #[test]

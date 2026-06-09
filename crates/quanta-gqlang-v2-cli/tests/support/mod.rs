@@ -162,8 +162,7 @@ pub(crate) fn assert_read_only_cli_binary_round_trip_v1(
         expectation.example_relative
     );
     assert!(
-        headless_stdout
-            .contains(&format!("headless.no_result_reason={NO_RESULT_REASON_V1}")),
+        headless_stdout.contains(&format!("headless.no_result_reason={NO_RESULT_REASON_V1}")),
         "missing headless no-result reason for {}:\n{headless_stdout}",
         expectation.example_relative
     );
@@ -255,10 +254,7 @@ pub(crate) fn assert_read_only_cli_library_round_trip_v1(
     assert_eq!(headless_report.command_plane, "forbidden");
     assert_eq!(headless_report.root_count, 1);
     assert_eq!(headless_report.root_kinds, vec![expectation.syntax_kind]);
-    assert_eq!(
-        headless_report.no_result_reason,
-        NO_RESULT_REASON_V1
-    );
+    assert_eq!(headless_report.no_result_reason, NO_RESULT_REASON_V1);
     match expectation.degraded_reason {
         Some(reason) => assert_eq!(headless_report.degraded_reasons, vec![reason.to_string()]),
         None => assert!(headless_report.degraded_reasons.is_empty()),

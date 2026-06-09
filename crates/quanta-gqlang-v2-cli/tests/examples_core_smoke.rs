@@ -87,9 +87,9 @@ fn core_examples_round_trip_through_read_only_cli_v1() {
         let headless_stdout = stdout_success_v1(run_cli_file_v1("headless", example_relative));
         assert!(headless_stdout.contains("headless.mode=read-only"));
         assert!(headless_stdout.contains("headless.command_plane=forbidden"));
-        assert!(headless_stdout.contains(&format!(
-            "headless.no_result_reason={NO_RESULT_REASON_V1}"
-        )));
+        assert!(
+            headless_stdout.contains(&format!("headless.no_result_reason={NO_RESULT_REASON_V1}"))
+        );
         assert!(headless_stdout.contains(&format!("headless.root[0].kind={syntax_kind}")));
         if let Some(reason) = degraded_reason {
             assert!(headless_stdout.contains(reason));
@@ -101,14 +101,28 @@ fn core_examples_round_trip_through_read_only_cli_v1() {
 
 #[test]
 fn explain_front_door_surfaces_witness_and_no_result_guidance_v1() {
-    let stdout = stdout_success_v1(run_cli_file_v1(
+    // EXPLAIN of a rule carries no graph path witness — only the typed
+    // evidence/truth shape and the honest no-result guidance.
+    let explain_stdout = stdout_success_v1(run_cli_file_v1(
         "explain",
         "examples/explain/why_no_result.qglang",
     ));
+    assert!(explain_stdout.contains("explain.subject=rule::owasp.sql-injection"));
+    assert!(explain_stdout.contains("explain.evidence=trace"));
+    assert!(explain_stdout.contains("explain.truth=confirm"));
+    assert!(
+        !explain_stdout.contains("explain.path_witness."),
+        "EXPLAIN of a rule must not synthesize a FIND-only path witness:\n{explain_stdout}"
+    );
+    assert!(
+        explain_stdout.contains("explain.why_no_result=read-only-shell-has-no-execution-backend")
+    );
 
-    assert!(stdout.contains("explain.subject=rule::owasp.sql-injection"));
-    assert!(stdout.contains("explain.evidence=trace"));
-    assert!(stdout.contains("explain.truth=confirm"));
-    assert!(stdout.contains("explain.path_witness.kind=path"));
-    assert!(stdout.contains("explain.why_no_result=read-only-shell-has-no-execution-backend"));
+    // The path witness is a FIND-only surface: a taint query surfaces its
+    // source -> sink steps alongside the same no-result guidance.
+    let find_stdout = stdout_success_v1(run_cli_file_v1("explain", "examples/find/taint.qglang"));
+    assert!(find_stdout.contains("explain.path_witness.kind=taint"));
+    assert!(find_stdout.contains("explain.path_witness.step[0].label=source"));
+    assert!(find_stdout.contains("explain.path_witness.step[1].label=sink"));
+    assert!(find_stdout.contains("explain.why_no_result=read-only-shell-has-no-execution-backend"));
 }

@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::handlers::completion::CompletionItemV1;
 use crate::handlers::diagnostics::DiagnosticItemV1;
+use crate::handlers::explain_view::ExplainHintCardV1;
 use crate::handlers::hover::HoverCardV1;
 use crate::handlers::quickfix::QuickfixSuggestionV1;
 use crate::handlers::symbols::SymbolItemV1;
@@ -24,6 +25,7 @@ enum ReadOnlyRequestV1 {
     Diagnostics { query: String },
     ZeroQuery,
     Quickfix { input: String },
+    Explain { query: String },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -34,6 +36,7 @@ enum ReadOnlyResponseV1 {
     Diagnostics(Vec<DiagnosticItemV1>),
     ZeroQuery(ZeroQueryResponseV1),
     Quickfix(Vec<QuickfixSuggestionV1>),
+    Explain(ExplainHintCardV1),
 }
 
 struct JsonCursorV1<'a> {
@@ -89,6 +92,13 @@ impl LspServerV1 {
         crate::handlers::quickfix::handle_quickfix(input)
     }
 
+    pub fn explain(
+        &self,
+        query: &str,
+    ) -> Result<crate::handlers::explain_view::ExplainHintCardV1, String> {
+        crate::handlers::explain_view::handle_explain_v1(query)
+    }
+
     fn dispatch_request_v1(
         &self,
         request: &ReadOnlyRequestV1,
@@ -117,6 +127,10 @@ impl LspServerV1 {
             ReadOnlyRequestV1::Quickfix { input } => self
                 .quickfix(input)
                 .map(ReadOnlyResponseV1::Quickfix)
+                .map_err(handler_rejected_v1),
+            ReadOnlyRequestV1::Explain { query } => self
+                .explain(query)
+                .map(ReadOnlyResponseV1::Explain)
                 .map_err(handler_rejected_v1),
         }
     }
@@ -251,6 +265,11 @@ impl ReadOnlyRequestV1 {
                 reject_extra_fields_v1(method, &fields)?;
                 Ok(Self::Quickfix { input })
             }
+            "explain" => {
+                let query = remove_required_field_v1(&mut fields, "query")?;
+                reject_extra_fields_v1(method, &fields)?;
+                Ok(Self::Explain { query })
+            }
             _ if mutating_method_v1(method) => Err(StdioLspErrorV1::new(
                 "command_plane_forbidden",
                 format!("mutating method `{method}` is forbidden on the read-only front door"),
@@ -270,6 +289,7 @@ impl ReadOnlyRequestV1 {
             Self::Diagnostics { .. } => "diagnostics",
             Self::ZeroQuery => "zero_query",
             Self::Quickfix { .. } => "quickfix",
+            Self::Explain { .. } => "explain",
         }
     }
 }
@@ -287,6 +307,7 @@ impl ReadOnlyResponseV1 {
             }
             Self::ZeroQuery(report) => render_zero_query_response_json_v1(report),
             Self::Quickfix(items) => json_array_v1(items.iter().map(render_quickfix_json_v1)),
+            Self::Explain(card) => render_explain_hint_card_json_v1(card),
         }
     }
 }
@@ -646,6 +667,28 @@ fn render_quickfix_json_v1(item: &QuickfixSuggestionV1) -> String {
         (
             "workspace_edit",
             json_option_string_v1(item.workspace_edit_v1()),
+        ),
+    ])
+}
+
+fn render_explain_hint_card_json_v1(card: &ExplainHintCardV1) -> String {
+    json_object_v1([
+        ("title", json_string_v1(&card.title)),
+        (
+            "badges",
+            json_array_v1(card.badges.iter().map(|badge| json_string_v1(badge))),
+        ),
+        (
+            "witness_preview",
+            json_array_v1(
+                card.witness_preview
+                    .iter()
+                    .map(|entry| json_string_v1(entry)),
+            ),
+        ),
+        (
+            "why_no_result",
+            json_option_string_v1(card.why_no_result.as_deref()),
         ),
     ])
 }

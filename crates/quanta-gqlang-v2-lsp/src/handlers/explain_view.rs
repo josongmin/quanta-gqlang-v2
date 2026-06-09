@@ -1,6 +1,13 @@
 use quanta_gqlang_v2_ir::explain_ir::ExplainShapeIrV1;
 use quanta_gqlang_v2_ir::find_ir::FindExecutionPlanIrV1;
+use quanta_gqlang_v2_ir::frontend::{
+    analyze_document_v1, parse_document_v1, SemaDiagnosticPageV1, SyntaxDiagnosticPageV1,
+};
+use quanta_gqlang_v2_ir::lower_document_to_ir_v1;
 use quanta_gqlang_v2_ir::root_ir::DegradedReasonV1;
+use quanta_gqlang_v2_ir::root_ir::PublicIrRootV1;
+
+const NO_RESULT_REASON_V1: &str = "read-only-shell-has-no-execution-backend";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExplainHintCardV1 {
@@ -36,6 +43,36 @@ pub fn explain_hint_from_find_v1(
         badges: badges_v1(degraded_reasons),
         witness_preview: witness_preview_v1(plan),
         why_no_result: why_no_result.map(ToOwned::to_owned),
+    }
+}
+
+pub fn handle_explain_v1(query: &str) -> Result<ExplainHintCardV1, String> {
+    let doc = parse_document_v1(query).map_err(render_parse_error_v1)?;
+    let typed = analyze_document_v1(&doc).map_err(render_sema_error_v1)?;
+    let ir_roots = lower_document_to_ir_v1(&typed).map_err(|err| err.message)?;
+    let degraded_reasons = ir_roots
+        .iter()
+        .filter_map(|root| {
+            DegradedReasonV1::for_ir_root_v1(root).map(|reason| reason.code_v1().to_string())
+        })
+        .collect::<Vec<_>>();
+
+    let Some(first_root) = ir_roots.first() else {
+        return Err("explain front door requires a non-empty document".to_string());
+    };
+
+    match first_root {
+        PublicIrRootV1::Explain(spec) => Ok(explain_hint_from_shape_v1(
+            &spec.shape().map_err(|err| err.message)?,
+            &degraded_reasons,
+            Some(NO_RESULT_REASON_V1),
+        )),
+        PublicIrRootV1::Find(plan) => Ok(explain_hint_from_find_v1(
+            &plan.execution_plan().map_err(|err| err.message)?,
+            &degraded_reasons,
+            Some(NO_RESULT_REASON_V1),
+        )),
+        _ => Err("explain front door only supports EXPLAIN or FIND roots".to_string()),
     }
 }
 
@@ -129,4 +166,16 @@ fn witness_preview_v1(plan: &FindExecutionPlanIrV1) -> Vec<String> {
             format!("facets={}", spec.requested_facets.len()),
         ],
     }
+}
+
+fn render_parse_error_v1(page: SyntaxDiagnosticPageV1) -> String {
+    page.diagnostics
+        .into_iter()
+        .map(|diag| format!("{}: {}", diag.code, diag.message))
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn render_sema_error_v1(page: SemaDiagnosticPageV1) -> String {
+    page.diagnostics.join("; ")
 }

@@ -10,13 +10,13 @@ use quanta_gqlang_v2_cli::explain_view::{
     build_explain_view_v1, build_find_explain_view_v1, DegradedBadgeV1, ExplainViewV1,
     PathWitnessStepV1, PathWitnessViewV1,
 };
+use quanta_gqlang_v2_cli::NO_RESULT_REASON_V1;
 use quanta_gqlang_v2_ir::explain_ir::{
     ExplainEvidenceModeIrV1, ExplainShapeIrV1, ExplainTruthExpectationIrV1,
 };
 use quanta_gqlang_v2_ir::find_ir::{
     FindExecutionPlanIrV1, FindFlowWindowIrV1, FlowPlanIrV1, ReachabilityPlanIrV1,
 };
-use quanta_gqlang_v2_cli::NO_RESULT_REASON_V1;
 
 #[test]
 fn explain_view_surfaces_evidence_truth_and_degraded_badges() {
@@ -111,10 +111,7 @@ fn flow_witness_stays_external_and_never_claims_runtime_truth() {
     assert_eq!(view.subject, "ingress -> egress");
     assert_eq!(view.evidence, "trace");
     assert_eq!(view.truth, "inspect");
-    assert_eq!(
-        view.why_no_result.as_deref(),
-        Some(NO_RESULT_REASON_V1)
-    );
+    assert_eq!(view.why_no_result.as_deref(), Some(NO_RESULT_REASON_V1));
     assert!(view
         .degraded_badges
         .iter()
