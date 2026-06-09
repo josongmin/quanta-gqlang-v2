@@ -74,20 +74,13 @@ pub(super) fn declaration_summary_v1(
 }
 
 pub(super) fn pack_activation_mode_summary_v1(mode: PackActivationModeAstV1) -> &'static str {
-    match mode {
-        PackActivationModeAstV1::Session => "session",
-        PackActivationModeAstV1::Workspace => "workspace",
-    }
+    mode.as_str_v1()
 }
 
 pub(super) fn certified_truth_summary_v1(value: CertifiedTruthRequirementAstV1) -> &'static str {
-    match value {
-        CertifiedTruthRequirementAstV1::CertifiedOnly => "certified-only",
-    }
+    value.as_str_v1()
 }
 
 pub(super) fn certified_admission_summary_v1(value: CertifiedAdmissionPolicyAstV1) -> &'static str {
-    match value {
-        CertifiedAdmissionPolicyAstV1::FailClosed => "fail-closed",
-    }
+    value.as_str_v1()
 }

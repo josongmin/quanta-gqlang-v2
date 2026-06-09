@@ -1,8 +1,10 @@
 use quanta_gqlang_v2_ir::explain_ir::{
     ExplainEvidenceModeIrV1, ExplainShapeIrV1, ExplainTruthExpectationIrV1,
 };
-use quanta_gqlang_v2_ir::find_ir::{
-    FindExecutionPlanIrV1, FindFlowWindowIrV1, FindSliceDirectionIrV1, FindSummaryFacetIrV1,
+use quanta_gqlang_v2_ir::find_ir::{FindExecutionPlanIrV1, FindFlowWindowIrV1};
+use quanta_gqlang_v2_ir::frontend::{
+    explain_find_subject_v1, explain_find_witness_v1, slice_direction_label_v1,
+    summary_facet_label_v1, WitnessBoundV1, WitnessDetailV1, WitnessStepV1,
 };
 use quanta_gqlang_v2_ir::root_ir::DegradedReasonV1;
 
@@ -99,7 +101,7 @@ pub fn build_find_explain_view_v1(
     why_no_result: Option<&str>,
 ) -> ExplainViewV1 {
     ExplainViewV1 {
-        subject: find_subject_v1(plan),
+        subject: explain_find_subject_v1(plan),
         evidence: "trace",
         truth: "inspect",
         degraded_badges: degraded_badges_v1(degraded_reasons),
@@ -108,92 +110,68 @@ pub fn build_find_explain_view_v1(
     }
 }
 
+/// Adapt the shared, presentation-neutral `WitnessModelV1` (the single 7-variant
+/// walk lives in `ir`) into the CLI's own `PathWitnessViewV1`. The CLI is the
+/// crate that wants index-suffixed intermediate labels (`via[0]`) and a `note`,
+/// so it layers those on here; the neutral model carries the structural facts.
 pub fn render_path_witness_v1(plan: &FindExecutionPlanIrV1) -> PathWitnessViewV1 {
-    match plan {
-        FindExecutionPlanIrV1::Reachability(spec) => PathWitnessViewV1 {
-            kind: "reachability",
-            steps: path_sequence_v1(&spec.source, &spec.required_waypoints, &spec.sink, "via"),
-            note: spec
-                .max_hops
-                .map(|depth| format!("bounded by max_hops={depth}")),
-        },
-        FindExecutionPlanIrV1::Flow(spec) => PathWitnessViewV1 {
-            kind: "flow",
-            steps: path_sequence_v1(&spec.source, &spec.stages, &spec.sink, "through"),
-            note: Some(format!("window={}", flow_window_label_v1(spec.window))),
-        },
-        FindExecutionPlanIrV1::Slice(spec) => PathWitnessViewV1 {
-            kind: "slice",
-            steps: vec![
-                PathWitnessStepV1 {
-                    label: "anchor".to_string(),
-                    detail: spec.anchor.clone(),
-                },
-                PathWitnessStepV1 {
-                    label: "direction".to_string(),
-                    detail: slice_direction_label_v1(spec.direction).to_string(),
-                },
-                PathWitnessStepV1 {
-                    label: "frontier".to_string(),
-                    detail: spec.frontier.clone().unwrap_or_else(|| "auto".to_string()),
-                },
-            ],
-            note: None,
-        },
-        FindExecutionPlanIrV1::Taint(spec) => PathWitnessViewV1 {
-            kind: "taint",
-            steps: path_sequence_v1(&spec.source, &spec.blocked_by, &spec.sink, "sanitizer"),
-            note: spec
-                .max_hops
-                .map(|depth| format!("bounded by max_hops={depth}")),
-        },
-        FindExecutionPlanIrV1::Path(spec) => PathWitnessViewV1 {
-            kind: "path",
-            steps: path_sequence_v1(
-                &spec.source,
-                &spec.required_waypoints,
-                &spec.sink,
-                "through",
-            ),
-            note: spec
-                .max_hops
-                .map(|depth| format!("bounded by max_hops={depth}")),
-        },
-        FindExecutionPlanIrV1::PointsTo(spec) => PathWitnessViewV1 {
-            kind: "points_to",
-            steps: vec![
-                PathWitnessStepV1 {
-                    label: "reference".to_string(),
-                    detail: spec.reference.clone(),
-                },
-                PathWitnessStepV1 {
-                    label: "pointee".to_string(),
-                    detail: spec.expected_pointee.clone(),
-                },
-            ],
-            note: spec.scope.as_ref().map(|scope| format!("scope={scope}")),
-        },
-        FindExecutionPlanIrV1::Summary(spec) => PathWitnessViewV1 {
-            kind: "summary",
-            steps: vec![
-                PathWitnessStepV1 {
-                    label: "callable".to_string(),
-                    detail: spec.callable.clone(),
-                },
-                PathWitnessStepV1 {
-                    label: "facets".to_string(),
-                    detail: spec
-                        .requested_facets
-                        .iter()
-                        .map(summary_facet_label_v1)
-                        .collect::<Vec<_>>()
-                        .join(","),
-                },
-            ],
-            note: spec
-                .expansion_depth
-                .map(|depth| format!("bounded by expansion_depth={depth}")),
-        },
+    let model = explain_find_witness_v1(plan);
+    PathWitnessViewV1 {
+        kind: model.kind,
+        steps: index_witness_steps_v1(&model.steps),
+        note: model.bound.as_ref().map(witness_note_v1),
+    }
+}
+
+/// Reattach the CLI's per-intermediate index suffix (e.g. `via` -> `via[0]`),
+/// keeping the leading `source` and trailing `sink` (and the fixed-label slice /
+/// points-to / summary steps) unsuffixed exactly as before.
+fn index_witness_steps_v1(steps: &[WitnessStepV1]) -> Vec<PathWitnessStepV1> {
+    let mut intermediate_index = 0usize;
+    steps
+        .iter()
+        .map(|step| {
+            let detail = witness_detail_v1(&step.detail);
+            let label = if matches!(step.label.as_str(), "source" | "sink")
+                || is_fixed_label_v1(&step.label)
+            {
+                step.label.clone()
+            } else {
+                let label = format!("{}[{intermediate_index}]", step.label);
+                intermediate_index += 1;
+                label
+            };
+            PathWitnessStepV1 { label, detail }
+        })
+        .collect()
+}
+
+/// The non-path-sequence step labels carry no index suffix in the CLI surface.
+fn is_fixed_label_v1(label: &str) -> bool {
+    matches!(
+        label,
+        "anchor" | "direction" | "frontier" | "reference" | "pointee" | "callable" | "facets"
+    )
+}
+
+fn witness_detail_v1(detail: &WitnessDetailV1) -> String {
+    match detail {
+        WitnessDetailV1::Text(text) => text.clone(),
+        WitnessDetailV1::Direction(direction) => slice_direction_label_v1(*direction).to_string(),
+        WitnessDetailV1::Facets(facets) => facets
+            .iter()
+            .map(summary_facet_label_v1)
+            .collect::<Vec<_>>()
+            .join(","),
+    }
+}
+
+fn witness_note_v1(bound: &WitnessBoundV1) -> String {
+    match bound {
+        WitnessBoundV1::MaxHops(depth) => format!("bounded by max_hops={depth}"),
+        WitnessBoundV1::Window(window) => format!("window={}", flow_window_label_v1(*window)),
+        WitnessBoundV1::Scope(scope) => format!("scope={scope}"),
+        WitnessBoundV1::ExpansionDepth(depth) => format!("bounded by expansion_depth={depth}"),
     }
 }
 
@@ -227,44 +205,6 @@ pub fn degraded_badges_v1(reasons: &[String]) -> Vec<DegradedBadgeV1> {
         .collect()
 }
 
-fn find_subject_v1(plan: &FindExecutionPlanIrV1) -> String {
-    match plan {
-        FindExecutionPlanIrV1::Reachability(spec) => format!("{} -> {}", spec.source, spec.sink),
-        FindExecutionPlanIrV1::Flow(spec) => format!("{} -> {}", spec.source, spec.sink),
-        FindExecutionPlanIrV1::Slice(spec) => spec.anchor.clone(),
-        FindExecutionPlanIrV1::Taint(spec) => format!("{} -> {}", spec.source, spec.sink),
-        FindExecutionPlanIrV1::Path(spec) => format!("{} -> {}", spec.source, spec.sink),
-        FindExecutionPlanIrV1::PointsTo(spec) => spec.reference.clone(),
-        FindExecutionPlanIrV1::Summary(spec) => spec.callable.clone(),
-    }
-}
-
-fn path_sequence_v1(
-    source: &str,
-    intermediates: &[String],
-    sink: &str,
-    middle_label: &str,
-) -> Vec<PathWitnessStepV1> {
-    let mut steps = vec![PathWitnessStepV1 {
-        label: "source".to_string(),
-        detail: source.to_string(),
-    }];
-    steps.extend(
-        intermediates
-            .iter()
-            .enumerate()
-            .map(|(index, item)| PathWitnessStepV1 {
-                label: format!("{middle_label}[{index}]"),
-                detail: item.clone(),
-            }),
-    );
-    steps.push(PathWitnessStepV1 {
-        label: "sink".to_string(),
-        detail: sink.to_string(),
-    });
-    steps
-}
-
 fn explain_evidence_label_v1(mode: ExplainEvidenceModeIrV1) -> &'static str {
     match mode {
         ExplainEvidenceModeIrV1::Auto => "auto",
@@ -287,23 +227,5 @@ fn flow_window_label_v1(window: FindFlowWindowIrV1) -> &'static str {
         FindFlowWindowIrV1::Node => "node",
         FindFlowWindowIrV1::Block => "block",
         FindFlowWindowIrV1::Function => "function",
-    }
-}
-
-fn slice_direction_label_v1(direction: FindSliceDirectionIrV1) -> &'static str {
-    match direction {
-        FindSliceDirectionIrV1::Forward => "forward",
-        FindSliceDirectionIrV1::Backward => "backward",
-        FindSliceDirectionIrV1::Bidirectional => "bidirectional",
-    }
-}
-
-fn summary_facet_label_v1(facet: &FindSummaryFacetIrV1) -> &'static str {
-    match facet {
-        FindSummaryFacetIrV1::Parameters => "parameters",
-        FindSummaryFacetIrV1::Returns => "returns",
-        FindSummaryFacetIrV1::Reads => "reads",
-        FindSummaryFacetIrV1::Writes => "writes",
-        FindSummaryFacetIrV1::Effects => "effects",
     }
 }

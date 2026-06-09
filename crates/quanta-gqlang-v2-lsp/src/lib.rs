@@ -1,6 +1,7 @@
 use std::io::{Read, Write};
 
 pub mod handlers;
+pub(crate) mod json;
 pub mod server;
 
 pub fn run_stdio_session_v1<R: Read, W: Write>(

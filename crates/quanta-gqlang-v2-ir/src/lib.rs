@@ -6,6 +6,7 @@ pub mod check_ir;
 #[path = "facts/entity_schema.rs"]
 pub mod entity_schema;
 pub mod explain_ir;
+pub mod explain_presentation;
 pub mod find_ir;
 pub mod frontend;
 pub mod lowering_ready;

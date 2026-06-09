@@ -16,6 +16,13 @@ pub enum PublicIrRootV1 {
     Meta(MetaIrV1),
 }
 
+/// The read-only shell's single "why no result" label, surfaced by every
+/// front-door producer (CLI headless/doctor/explain, LSP explain) so the wording
+/// cannot desync between them. Presentation-only — it asserts no runtime truth.
+/// This is the single source of truth; the CLI and LSP re-export it through
+/// `ir::frontend` rather than copy-pasting the literal.
+pub const NO_RESULT_REASON_V1: &str = "read-only-shell-has-no-execution-backend";
+
 /// The read-only-shell execution lane a lowered root cannot materialize. This is
 /// the single source of truth for the degraded-reason codes — previously the same
 /// five strings were copy-pasted across the CLI doctor/headless producers (and the

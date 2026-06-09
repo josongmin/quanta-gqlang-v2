@@ -1,13 +1,12 @@
 use quanta_gqlang_v2_ir::explain_ir::ExplainShapeIrV1;
 use quanta_gqlang_v2_ir::find_ir::FindExecutionPlanIrV1;
 use quanta_gqlang_v2_ir::frontend::{
-    analyze_document_v1, parse_document_v1, SemaDiagnosticPageV1, SyntaxDiagnosticPageV1,
+    analyze_document_v1, explain_find_subject_v1, explain_find_witness_v1, parse_document_v1,
+    SemaDiagnosticPageV1, SyntaxDiagnosticPageV1, WitnessDetailV1, NO_RESULT_REASON_V1,
 };
 use quanta_gqlang_v2_ir::lower_document_to_ir_v1;
 use quanta_gqlang_v2_ir::root_ir::DegradedReasonV1;
 use quanta_gqlang_v2_ir::root_ir::PublicIrRootV1;
-
-const NO_RESULT_REASON_V1: &str = "read-only-shell-has-no-execution-backend";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExplainHintCardV1 {
@@ -39,7 +38,7 @@ pub fn explain_hint_from_find_v1(
     why_no_result: Option<&str>,
 ) -> ExplainHintCardV1 {
     ExplainHintCardV1 {
-        title: format!("WITNESS {}", find_title_v1(plan)),
+        title: format!("WITNESS {}", explain_find_subject_v1(plan)),
         badges: badges_v1(degraded_reasons),
         witness_preview: witness_preview_v1(plan),
         why_no_result: why_no_result.map(ToOwned::to_owned),
@@ -102,70 +101,23 @@ fn badges_v1(reasons: &[String]) -> Vec<String> {
         .collect()
 }
 
-fn find_title_v1(plan: &FindExecutionPlanIrV1) -> String {
-    match plan {
-        FindExecutionPlanIrV1::Reachability(spec) => format!("{} -> {}", spec.source, spec.sink),
-        FindExecutionPlanIrV1::Flow(spec) => format!("{} -> {}", spec.source, spec.sink),
-        FindExecutionPlanIrV1::Slice(spec) => spec.anchor.clone(),
-        FindExecutionPlanIrV1::Taint(spec) => format!("{} -> {}", spec.source, spec.sink),
-        FindExecutionPlanIrV1::Path(spec) => format!("{} -> {}", spec.source, spec.sink),
-        FindExecutionPlanIrV1::PointsTo(spec) => spec.reference.clone(),
-        FindExecutionPlanIrV1::Summary(spec) => spec.callable.clone(),
-    }
-}
-
+/// Adapt the shared, presentation-neutral `WitnessModelV1` (the single 7-variant
+/// walk lives in `ir`) into the LSP's own `label=detail` preview lines. The LSP
+/// renders the slice direction with its enum's debug casing and the summary
+/// facets as a count — both intentionally diverging from the CLI surface — so it
+/// formats those from the neutral structural detail here rather than re-walking
+/// the plan. (The neutral step labels are already the bare stems the LSP wants,
+/// without the CLI's `[index]` suffix.)
 fn witness_preview_v1(plan: &FindExecutionPlanIrV1) -> Vec<String> {
-    match plan {
-        FindExecutionPlanIrV1::Reachability(spec) => {
-            let mut preview = vec![format!("source={}", spec.source)];
-            preview.extend(
-                spec.required_waypoints
-                    .iter()
-                    .map(|via| format!("via={via}")),
-            );
-            preview.push(format!("sink={}", spec.sink));
-            preview
-        }
-        FindExecutionPlanIrV1::Flow(spec) => {
-            let mut preview = vec![format!("source={}", spec.source)];
-            preview.extend(spec.stages.iter().map(|stage| format!("through={stage}")));
-            preview.push(format!("sink={}", spec.sink));
-            preview
-        }
-        FindExecutionPlanIrV1::Slice(spec) => vec![
-            format!("anchor={}", spec.anchor),
-            format!("direction={:?}", spec.direction),
-            format!("frontier={}", spec.frontier.as_deref().unwrap_or("auto")),
-        ],
-        FindExecutionPlanIrV1::Taint(spec) => {
-            let mut preview = vec![format!("source={}", spec.source)];
-            preview.extend(
-                spec.blocked_by
-                    .iter()
-                    .map(|item| format!("sanitizer={item}")),
-            );
-            preview.push(format!("sink={}", spec.sink));
-            preview
-        }
-        FindExecutionPlanIrV1::Path(spec) => {
-            let mut preview = vec![format!("source={}", spec.source)];
-            preview.extend(
-                spec.required_waypoints
-                    .iter()
-                    .map(|item| format!("through={item}")),
-            );
-            preview.push(format!("sink={}", spec.sink));
-            preview
-        }
-        FindExecutionPlanIrV1::PointsTo(spec) => vec![
-            format!("reference={}", spec.reference),
-            format!("pointee={}", spec.expected_pointee),
-        ],
-        FindExecutionPlanIrV1::Summary(spec) => vec![
-            format!("callable={}", spec.callable),
-            format!("facets={}", spec.requested_facets.len()),
-        ],
-    }
+    explain_find_witness_v1(plan)
+        .steps
+        .into_iter()
+        .map(|step| match step.detail {
+            WitnessDetailV1::Text(text) => format!("{}={text}", step.label),
+            WitnessDetailV1::Direction(direction) => format!("{}={direction:?}", step.label),
+            WitnessDetailV1::Facets(facets) => format!("{}={}", step.label, facets.len()),
+        })
+        .collect()
 }
 
 fn render_parse_error_v1(page: SyntaxDiagnosticPageV1) -> String {

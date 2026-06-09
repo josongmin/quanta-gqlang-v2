@@ -23,6 +23,16 @@ pub enum PackActivationModeAstV1 {
     Workspace,
 }
 
+impl PackActivationModeAstV1 {
+    #[must_use]
+    pub const fn as_str_v1(self) -> &'static str {
+        match self {
+            Self::Session => "session",
+            Self::Workspace => "workspace",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct UsePackMetaAstV1<'a> {
     pub pack_id: &'a str,
@@ -35,9 +45,27 @@ pub enum CertifiedTruthRequirementAstV1 {
     CertifiedOnly,
 }
 
+impl CertifiedTruthRequirementAstV1 {
+    #[must_use]
+    pub const fn as_str_v1(self) -> &'static str {
+        match self {
+            Self::CertifiedOnly => "certified-only",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CertifiedAdmissionPolicyAstV1 {
     FailClosed,
+}
+
+impl CertifiedAdmissionPolicyAstV1 {
+    #[must_use]
+    pub const fn as_str_v1(self) -> &'static str {
+        match self {
+            Self::FailClosed => "fail-closed",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

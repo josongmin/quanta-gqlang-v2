@@ -467,26 +467,19 @@ fn pack_activation_summary_v1(mode: PackActivationIrV1) -> &'static str {
 }
 
 fn pack_activation_meta_summary_v1(mode: PackActivationModeAstV1) -> &'static str {
-    match mode {
-        PackActivationModeAstV1::Session => "session",
-        PackActivationModeAstV1::Workspace => "workspace",
-    }
+    mode.as_str_v1()
 }
 
 fn certified_truth_meta_summary_v1(
     truth_requirement: CertifiedTruthRequirementAstV1,
 ) -> &'static str {
-    match truth_requirement {
-        CertifiedTruthRequirementAstV1::CertifiedOnly => "certified-only",
-    }
+    truth_requirement.as_str_v1()
 }
 
 fn certified_admission_meta_summary_v1(
     admission_policy: CertifiedAdmissionPolicyAstV1,
 ) -> &'static str {
-    match admission_policy {
-        CertifiedAdmissionPolicyAstV1::FailClosed => "fail-closed",
-    }
+    admission_policy.as_str_v1()
 }
 
 fn typed_pack_activation_summary_v1(mode: TypedPackActivationModeV1) -> &'static str {

@@ -30,3 +30,13 @@ pub use quanta_gqlang_v2_sema::{
     TypedCertifiedTruthRequirementV1, TypedDocumentV1, TypedMetaCommandV1,
     TypedPackActivationModeV1, TypedRootV1,
 };
+
+// Owned by this crate (`ir`): the presentation-neutral EXPLAIN/FIND core shared
+// by the CLI and LSP front doors, plus the single read-only "why no result"
+// label. These are surfaced here so the read-only consumers reach them through
+// the same narrow hub as everything else.
+pub use crate::explain_presentation::{
+    explain_find_subject_v1, explain_find_witness_v1, slice_direction_label_v1,
+    summary_facet_label_v1, WitnessBoundV1, WitnessDetailV1, WitnessModelV1, WitnessStepV1,
+};
+pub use crate::root_ir::NO_RESULT_REASON_V1;
