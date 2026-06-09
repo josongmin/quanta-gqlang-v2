@@ -22,7 +22,11 @@ use support::{response_lines_v1, run_binary_bytes_v1, run_binary_line_v1};
 struct EscapeRejectionCaseV1 {
     label: &'static str,
     request: &'static str,
-    message_fragment: &'static str,
+    /// The EXACT, full trimmed response line. Each surrogate/escape branch emits
+    /// a short deterministic error object, so pinning the whole line (not a
+    /// substring) kills every field-value, message-text, and code mutation in
+    /// `parse_unicode_escape_v1`. Captured from the real binary.
+    expected_line: &'static str,
 }
 
 #[test]
@@ -31,53 +35,44 @@ fn invalid_escapes_and_surrogates_fail_closed_v1() {
         EscapeRejectionCaseV1 {
             label: "lone low surrogate",
             request: r#"{"method":"completion","prefix":"\uDE00"}"#,
-            message_fragment: "unexpected low surrogate",
+            expected_line: r#"{"ok":false,"error":{"code":"malformed_json","message":"unexpected low surrogate `\\uDE00`"}}"#,
         },
         EscapeRejectionCaseV1 {
             label: "high surrogate not followed by an escape separator",
             request: r#"{"method":"completion","prefix":"\uD83DA"}"#,
-            message_fragment: "found `A`",
+            expected_line: r#"{"ok":false,"error":{"code":"malformed_json","message":"expected `\\`, found `A`"}}"#,
         },
         EscapeRejectionCaseV1 {
             label: "high surrogate followed by another high surrogate",
             request: r#"{"method":"completion","prefix":"\uD83D\uD83D"}"#,
-            message_fragment: "expected low surrogate after",
+            expected_line: r#"{"ok":false,"error":{"code":"malformed_json","message":"expected low surrogate after `\\uD83D`"}}"#,
         },
         EscapeRejectionCaseV1 {
             label: "high surrogate with a non-`u` escape separator",
             request: r#"{"method":"completion","prefix":"\uD83D\n"}"#,
-            message_fragment: "after surrogate pair separator",
+            expected_line: r#"{"ok":false,"error":{"code":"malformed_json","message":"expected `u` after surrogate pair separator, found `n`"}}"#,
         },
         EscapeRejectionCaseV1 {
             label: "non-hex unicode escape digit",
             request: r#"{"method":"completion","prefix":"\uXYZ0"}"#,
-            message_fragment: "invalid unicode escape digit",
+            expected_line: r#"{"ok":false,"error":{"code":"malformed_json","message":"invalid unicode escape digit `X`"}}"#,
         },
         EscapeRejectionCaseV1 {
             label: "unsupported escape sequence",
             request: r#"{"method":"completion","prefix":"\x"}"#,
-            message_fragment: "unsupported JSON escape",
+            expected_line: r#"{"ok":false,"error":{"code":"malformed_json","message":"unsupported JSON escape `\\x`"}}"#,
         },
     ];
 
     for case in &cases {
         let (code, line) = run_binary_line_v1(case.request);
         assert_eq!(code, Some(1), "{}: must fail closed (exit 1)", case.label);
-        assert!(
-            line.contains(r#""ok":false"#),
-            "{}: expected ok:false, got {line}",
+        // Full-line equality: covers ok:false, the exact code, AND the exact
+        // surrogate/escape message in one mutation-proof assertion.
+        assert_eq!(
+            line, case.expected_line,
+            "{}: full line drifted",
             case.label
-        );
-        assert!(
-            line.contains(r#""code":"malformed_json""#),
-            "{}: expected malformed_json, got {line}",
-            case.label
-        );
-        assert!(
-            line.contains(case.message_fragment),
-            "{}: expected message fragment `{}`, got {line}",
-            case.label,
-            case.message_fragment
         );
     }
 }
@@ -104,15 +99,24 @@ fn session_recovers_after_a_malformed_escape_v1() {
         2,
         "both frames must produce a response, got {lines:?}"
     );
-    assert!(
-        lines[0].contains(r#""code":"malformed_json""#),
-        "got {}",
-        lines[0]
+    // First line: the exact lone-low-surrogate rejection (not just any error).
+    assert_eq!(
+        lines[0],
+        r#"{"ok":false,"error":{"code":"malformed_json","message":"unexpected low surrogate `\\uDE00`"}}"#,
+        "first frame must be the exact lone-low-surrogate rejection"
     );
-    assert!(lines[1].contains(r#""ok":true"#), "got {}", lines[1]);
+    // Second line: the recovered zero_query envelope, pinned to its
+    // deterministic read-only prefix so recovery cannot pass on a stub line.
     assert!(
-        lines[1].contains(r#""method":"zero_query""#),
-        "got {}",
+        lines[1].starts_with(
+            r#"{"ok":true,"method":"zero_query","result":{"mode":"read-only","provenance":"typed-catalog-example-metadata","groups":[{"id":"catalog","#
+        ),
+        "second frame must recover the read-only zero_query envelope, got {}",
+        lines[1]
+    );
+    assert!(
+        lines[1].ends_with("]}}"),
+        "recovered zero_query must close groups array + result + envelope, got {}",
         lines[1]
     );
 }

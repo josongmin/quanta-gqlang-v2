@@ -67,6 +67,19 @@ const MUTATING_CASES_V1: &[MutatingCaseV1] = &[
         label: "bare apply",
         method: "apply",
     },
+    // Boundary: the barrier normalizes by stripping `/-_` and lowercasing
+    // before matching, so a dash-separated form must still fire (kills a
+    // mutation that drops the separator-normalization step).
+    MutatingCaseV1 {
+        label: "dash-separated apply-edit",
+        method: "apply-edit",
+    },
+    // Boundary: case-insensitive recognition (kills a mutation that forgets to
+    // lowercase before matching).
+    MutatingCaseV1 {
+        label: "uppercase RENAME",
+        method: "RENAME",
+    },
 ];
 
 #[test]
@@ -81,24 +94,22 @@ fn mutating_methods_fail_closed_v1() {
             "{}: forbidden method must exit with code 1",
             case.label
         );
-        assert!(
-            line.contains("\"ok\":false"),
-            "{}: response must report ok:false, got `{line}`",
-            case.label
+        // EXACT full-line equality: ok:false + command_plane_forbidden + the
+        // verbatim method echo, in one mutation-proof assertion. The line is
+        // short and the serializer is deterministic, so this is not brittle.
+        let expected = format!(
+            r#"{{"ok":false,"error":{{"code":"command_plane_forbidden","message":"mutating method `{}` is forbidden on the read-only front door"}}}}"#,
+            case.method
         );
+        assert_eq!(line, expected, "{}: full line drifted", case.label);
+        // Non-degradation: the barrier must classify as command_plane_forbidden,
+        // never collapse into any other error class.
         assert!(
-            line.contains("\"code\":\"command_plane_forbidden\""),
-            "{}: response must carry command_plane_forbidden, got `{line}`",
-            case.label
-        );
-        assert!(
-            line.contains(&format!("mutating method `{}` is forbidden", case.method)),
-            "{}: response must echo the method verbatim, got `{line}`",
-            case.label
-        );
-        assert!(
-            !line.contains("unsupported_method"),
-            "{}: barrier must not degrade into unsupported_method, got `{line}`",
+            !line.contains("unsupported_method")
+                && !line.contains("handler_rejected")
+                && !line.contains("malformed_json")
+                && !line.contains("unexpected_field"),
+            "{}: barrier must not degrade into another error class, got `{line}`",
             case.label
         );
     }
@@ -109,31 +120,54 @@ fn mutating_methods_fail_closed_v1() {
 /// not a blanket reject of everything it does not recognize.
 #[test]
 fn unknown_non_mutating_method_is_unsupported_not_forbidden_v1() {
-    let label = "workspace/index probe";
-    let request = "{\"method\":\"workspace/index\",\"query\":\"SELECT id FROM catalog.files\"}";
-    let (code, line) = run_binary_line_v1(request);
+    // Each probe is an unknown but NON-mutating method that must fall through to
+    // `unsupported_method`, pinned by EXACT full line. The second/third rows are
+    // boundary cases: the barrier's `apply` branch matches the *exact* normalized
+    // token, so `applyfoo` (normalizes to `applyfoo`) and `workspace/apply`
+    // (normalizes to `workspaceapply`) must NOT be forbidden — this kills a
+    // mutation that loosens `normalized == "apply"` into a substring match.
+    struct ContrastCaseV1 {
+        label: &'static str,
+        method: &'static str,
+    }
+    let cases = [
+        ContrastCaseV1 {
+            label: "workspace/index probe",
+            method: "workspace/index",
+        },
+        ContrastCaseV1 {
+            label: "applyfoo is not the exact apply token",
+            method: "applyfoo",
+        },
+        ContrastCaseV1 {
+            label: "workspace/apply is not the exact apply token",
+            method: "workspace/apply",
+        },
+    ];
 
-    assert_eq!(
-        code,
-        Some(1),
-        "{label}: unknown method must exit with code 1"
-    );
-    assert!(
-        line.contains("\"ok\":false"),
-        "{label}: response must report ok:false, got `{line}`"
-    );
-    assert!(
-        line.contains("\"code\":\"unsupported_method\""),
-        "{label}: non-mutating unknown method must be unsupported_method, got `{line}`"
-    );
-    assert!(
-        !line.contains("command_plane_forbidden"),
-        "{label}: barrier must stay specific and not fire here, got `{line}`"
-    );
-    assert!(
-        line.contains("unknown read-only method `workspace/index`"),
-        "{label}: response must echo the unknown method, got `{line}`"
-    );
+    for case in &cases {
+        let request = format!(
+            "{{\"method\":\"{}\",\"query\":\"SELECT id FROM catalog.files\"}}",
+            case.method
+        );
+        let (code, line) = run_binary_line_v1(&request);
+        let label = case.label;
+
+        assert_eq!(
+            code,
+            Some(1),
+            "{label}: unknown method must exit with code 1"
+        );
+        let expected = format!(
+            r#"{{"ok":false,"error":{{"code":"unsupported_method","message":"unknown read-only method `{}`"}}}}"#,
+            case.method
+        );
+        assert_eq!(line, expected, "{label}: full line drifted");
+        assert!(
+            !line.contains("command_plane_forbidden"),
+            "{label}: barrier must stay specific and not fire here, got `{line}`"
+        );
+    }
 }
 
 /// Recovery: in ONE byte stream, a forbidden frame must not poison the session.
@@ -154,28 +188,26 @@ fn forbidden_frame_does_not_poison_session_v1() {
         "{label}: expected exactly two response frames, got `{stdout}`"
     );
 
+    // First frame: the EXACT forbidden envelope for the executeCommand method.
     let forbidden = lines[0];
-    assert!(
-        forbidden.contains("\"ok\":false"),
-        "{label}: first frame must report ok:false, got `{forbidden}`"
-    );
-    assert!(
-        forbidden.contains("\"code\":\"command_plane_forbidden\""),
-        "{label}: first frame must be command_plane_forbidden, got `{forbidden}`"
-    );
-    assert!(
-        forbidden.contains("mutating method `workspace/executeCommand` is forbidden"),
-        "{label}: first frame must echo the forbidden method, got `{forbidden}`"
+    assert_eq!(
+        forbidden,
+        r#"{"ok":false,"error":{"code":"command_plane_forbidden","message":"mutating method `workspace/executeCommand` is forbidden on the read-only front door"}}"#,
+        "{label}: first frame must be the exact forbidden envelope"
     );
 
+    // Second frame: the recovered zero_query, pinned to its deterministic
+    // read-only envelope so recovery can never pass on a stub/empty line.
     let recovered = lines[1];
     assert!(
-        recovered.contains("\"ok\":true"),
-        "{label}: second frame must report ok:true after the barrier, got `{recovered}`"
+        recovered.starts_with(
+            r#"{"ok":true,"method":"zero_query","result":{"mode":"read-only","provenance":"typed-catalog-example-metadata","groups":[{"id":"catalog","#
+        ),
+        "{label}: second frame must recover the read-only zero_query envelope, got `{recovered}`"
     );
     assert!(
-        recovered.contains("\"method\":\"zero_query\""),
-        "{label}: second frame must be the recovered zero_query, got `{recovered}`"
+        recovered.ends_with("]}}"),
+        "{label}: recovered zero_query must close groups array + result + envelope, got `{recovered}`"
     );
 
     assert_eq!(

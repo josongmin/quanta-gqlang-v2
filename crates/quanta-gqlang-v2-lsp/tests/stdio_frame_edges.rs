@@ -31,6 +31,36 @@ const ZERO_QUERY_V1: &str = r#"{"method":"zero_query"}"#;
 const HOVER_REQUIRE_V1: &str = r#"{"method":"hover","query":"REQUIRE CERTIFIED"}"#;
 const UNCLOSED_OBJECT_V1: &str = r#"{"method":"hover","query":"SELECT id FROM catalog.files""#;
 
+/// The exact, full-line `hover` card for `REQUIRE CERTIFIED`. The server's
+/// serializer emits a deterministic field order, so pinning the whole line (not
+/// a scatter of `contains`) kills any field-value or ordering mutation in the
+/// meta hover path.
+const HOVER_REQUIRE_LINE_V1: &str = r#"{"ok":true,"method":"hover","result":{"root_keyword":"REQUIRE CERTIFIED","category":"meta","typed_target":"certified-only","summary":["truth=certified-only","admission=fail-closed"]}}"#;
+
+/// The exact fail-closed line for an object left unclosed at EOF.
+const UNCLOSED_ERROR_LINE_V1: &str = r#"{"ok":false,"error":{"code":"malformed_json","message":"incomplete JSON object at end of input"}}"#;
+
+/// Assert that a `zero_query` response line is the genuine read-only scaffold
+/// envelope, pinning the deterministic prefix tokens in order so the test can
+/// never pass on a truncated or reshaped payload. The body is large and
+/// example-driven, so we anchor the stable envelope rather than the full line.
+fn assert_zero_query_envelope_v1(line: &str) {
+    assert!(
+        line.starts_with(
+            r#"{"ok":true,"method":"zero_query","result":{"mode":"read-only","provenance":"typed-catalog-example-metadata","groups":[{"id":"catalog","#
+        ),
+        "zero_query envelope/prefix drifted: {line}"
+    );
+    assert!(
+        line.ends_with("]}}"),
+        "zero_query response must close groups array + result + envelope: {line}"
+    );
+    assert!(
+        line.contains(r#""behavior":"read-only-scaffold""#),
+        "zero_query body must carry read-only-scaffold suggestions: {line}"
+    );
+}
+
 // ------------------------------------------------------------------------
 // In-process, byte-precise framing.
 // ------------------------------------------------------------------------
@@ -42,8 +72,7 @@ fn session_drains_final_frame_without_trailing_newline_v1() {
     assert_eq!(status, 0);
     let lines = response_lines_v1(&stdout);
     assert_eq!(lines.len(), 1, "exactly one response, got {lines:?}");
-    assert!(lines[0].contains(r#""ok":true"#));
-    assert!(lines[0].contains(r#""method":"zero_query""#));
+    assert_zero_query_envelope_v1(lines[0]);
 }
 
 #[test]
@@ -54,9 +83,10 @@ fn session_processes_two_glued_objects_in_one_buffer_v1() {
     assert_eq!(status, 0);
     let lines = response_lines_v1(&stdout);
     assert_eq!(lines.len(), 2, "both frames must dispatch, got {lines:?}");
-    assert!(lines[0].contains(r#""method":"zero_query""#));
-    assert!(lines[1].contains(r#""method":"hover""#));
-    assert!(lines[1].contains(r#""root_keyword":"REQUIRE CERTIFIED""#));
+    assert_zero_query_envelope_v1(lines[0]);
+    // Second frame is short and fully deterministic: pin the whole line so a
+    // glued-frame boundary that drops/duplicates bytes cannot pass.
+    assert_eq!(lines[1].trim(), HOVER_REQUIRE_LINE_V1);
 }
 
 #[test]
@@ -66,8 +96,8 @@ fn session_processes_whitespace_separated_objects_v1() {
     assert_eq!(status, 0);
     let lines = response_lines_v1(&stdout);
     assert_eq!(lines.len(), 2, "got {lines:?}");
-    assert!(lines[0].contains(r#""method":"zero_query""#));
-    assert!(lines[1].contains(r#""method":"hover""#));
+    assert_zero_query_envelope_v1(lines[0]);
+    assert_eq!(lines[1].trim(), HOVER_REQUIRE_LINE_V1);
 }
 
 #[test]
@@ -76,10 +106,7 @@ fn session_fails_closed_on_object_left_unclosed_at_eof_v1() {
     assert_eq!(status, 1, "an incomplete frame at EOF must fail closed");
     let lines = response_lines_v1(&stdout);
     assert_eq!(lines.len(), 1, "got {lines:?}");
-    assert_eq!(
-        lines[0].trim(),
-        r#"{"ok":false,"error":{"code":"malformed_json","message":"incomplete JSON object at end of input"}}"#
-    );
+    assert_eq!(lines[0].trim(), UNCLOSED_ERROR_LINE_V1);
 }
 
 #[test]
@@ -110,11 +137,14 @@ fn session_emits_nothing_for_whitespace_only_input_v1() {
 fn binary_drains_request_without_trailing_newline_v1() {
     let output = run_binary_bytes_v1(ZERO_QUERY_V1.as_bytes());
     assert_eq!(output.status.code(), Some(0));
+    assert!(
+        binary_stderr_v1(&output).is_empty(),
+        "clean drain must not write to stderr"
+    );
     let stdout = binary_stdout_v1(&output);
     let lines = response_lines_v1(&stdout);
     assert_eq!(lines.len(), 1, "got {lines:?}");
-    assert!(lines[0].contains(r#""ok":true"#));
-    assert!(lines[0].contains(r#""method":"zero_query""#));
+    assert_zero_query_envelope_v1(lines[0]);
 }
 
 #[test]
@@ -125,8 +155,8 @@ fn binary_processes_glued_frames_then_clean_eof_v1() {
     let stdout = binary_stdout_v1(&output);
     let lines = response_lines_v1(&stdout);
     assert_eq!(lines.len(), 2, "got {lines:?}");
-    assert!(lines[0].contains(r#""method":"zero_query""#));
-    assert!(lines[1].contains(r#""root_keyword":"REQUIRE CERTIFIED""#));
+    assert_zero_query_envelope_v1(lines[0]);
+    assert_eq!(lines[1].trim(), HOVER_REQUIRE_LINE_V1);
 }
 
 #[test]
@@ -134,14 +164,13 @@ fn binary_fails_closed_on_unclosed_object_at_eof_v1() {
     let output = run_binary_bytes_v1(UNCLOSED_OBJECT_V1.as_bytes());
     assert_eq!(output.status.code(), Some(1));
     let stdout = binary_stdout_v1(&output);
-    assert!(
-        stdout.contains(r#""code":"malformed_json""#),
-        "got {stdout:?}"
+    let lines = response_lines_v1(&stdout);
+    assert_eq!(
+        lines.len(),
+        1,
+        "an unclosed frame emits exactly one error line, got {lines:?}"
     );
-    assert!(
-        stdout.contains("incomplete JSON object at end of input"),
-        "got {stdout:?}"
-    );
+    assert_eq!(lines[0].trim(), UNCLOSED_ERROR_LINE_V1);
 }
 
 #[test]

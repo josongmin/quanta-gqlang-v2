@@ -20,99 +20,103 @@ mod support;
 
 use support::{response_lines_v1, run_binary_bytes_v1, run_binary_line_v1};
 
-/// One table-driven negative case: a labeled request plus the stable substring
-/// fragment the observed response line must contain.
+/// One table-driven negative case: a labeled request plus the EXACT, full
+/// trimmed response line the binary must emit. Full-line equality (captured
+/// from the real binary) kills error-class, code, and message mutations that a
+/// substring `contains` would silently survive.
 struct NegativeCaseV1 {
     label: &'static str,
     request: &'static str,
-    expect_fragment: &'static str,
+    expected_line: &'static str,
 }
 
 /// Malformed DSL roots routed through `hover` must FAIL CLOSED: exit code 1,
 /// an `ok:false` envelope, the `handler_rejected` outer code, and the embedded
-/// DSL `code=<...>` classification of the rejecting parser/sema stage.
+/// `class=.. code=.. message=..` classification of the rejecting parser/sema
+/// stage — all pinned exactly.
 #[test]
 fn stdio_hover_fails_closed_on_malformed_dsl_roots_v1() {
     let cases = [
         NegativeCaseV1 {
             label: "find-unknown-subkind",
             request: r#"{"method":"hover","query":"FIND unknown src -> sink"}"#,
-            expect_fragment: "code=unsupported_find_subkind",
+            expected_line: r#"{"ok":false,"error":{"code":"handler_rejected","message":"class=sema code=unsupported_find_subkind message=unsupported FIND subkind `unknown`"}}"#,
         },
         NegativeCaseV1 {
             label: "describe-invalid-shape",
             request: r#"{"method":"hover","query":"DESCRIBE model::"}"#,
-            expect_fragment: "code=describe_target_invalid_shape",
+            expected_line: r#"{"ok":false,"error":{"code":"handler_rejected","message":"class=syntax code=describe_target_invalid_shape message=DESCRIBE target must use `<kind>::<identifier>`"}}"#,
         },
         NegativeCaseV1 {
             label: "check-missing-rule-or-scope",
             request: r#"{"method":"hover","query":"CHECK rule.hybrid"}"#,
-            expect_fragment: "code=check_missing_rule_or_scope",
+            expected_line: r#"{"ok":false,"error":{"code":"handler_rejected","message":"class=syntax code=check_missing_rule_or_scope message=CHECK requires `<rule_id> <scope>`"}}"#,
         },
         NegativeCaseV1 {
             label: "explain-invalid-shape",
             request: r#"{"method":"hover","query":"EXPLAIN rule::owasp.sql-injection ;; truth=maybe"}"#,
-            expect_fragment: "code=invalid_explain_shape",
+            expected_line: r#"{"ok":false,"error":{"code":"handler_rejected","message":"class=syntax code=invalid_explain_shape message=EXPLAIN truth expectation 'maybe' is unsupported"}}"#,
         },
         NegativeCaseV1 {
             label: "require-unsupported-meta",
             request: r#"{"method":"hover","query":"REQUIRE CERTIFIED ;; truth=maybe"}"#,
-            expect_fragment: "code=unsupported_require_meta",
+            expected_line: r#"{"ok":false,"error":{"code":"handler_rejected","message":"class=syntax code=unsupported_require_meta message=unsupported REQUIRE target `CERTIFIED ;; truth=maybe`"}}"#,
         },
         NegativeCaseV1 {
             label: "use-unsupported-meta",
             request: r#"{"method":"hover","query":"USE PROFILE strict-review"}"#,
-            expect_fragment: "code=unsupported_use_meta",
+            expected_line: r#"{"ok":false,"error":{"code":"handler_rejected","message":"class=syntax code=unsupported_use_meta message=unsupported USE target `PROFILE`"}}"#,
         },
         NegativeCaseV1 {
             label: "nonsense-unsupported-root",
             request: r#"{"method":"hover","query":"FROBNICATE x"}"#,
-            expect_fragment: "code=unsupported_root",
+            expected_line: r#"{"ok":false,"error":{"code":"handler_rejected","message":"class=syntax code=unsupported_root message=unsupported root keyword `FROBNICATE`"}}"#,
         },
     ];
 
     for case in cases {
         let (exit, line) = run_binary_line_v1(case.request);
         assert_eq!(exit, Some(1), "{}: must exit fail-closed", case.label);
-        assert!(
-            line.contains(r#""ok":false"#),
-            "{}: expected ok:false envelope, got {line}",
+        // Full-line equality pins ok:false + handler_rejected + the exact
+        // embedded class/code/message in one mutation-proof assertion.
+        assert_eq!(
+            line, case.expected_line,
+            "{}: full line drifted",
             case.label
         );
+        // Non-degradation: a malformed DSL root must reject through the handler,
+        // never collapse into a schema-level error class.
         assert!(
-            line.contains(r#""code":"handler_rejected""#),
-            "{}: expected handler_rejected outer code, got {line}",
+            !line.contains(r#""code":"command_plane_forbidden""#)
+                && !line.contains(r#""code":"unsupported_method""#)
+                && !line.contains(r#""code":"malformed_json""#)
+                && !line.contains(r#""code":"unexpected_field""#),
+            "{}: must not degrade to a schema-level error class, got {line}",
             case.label
-        );
-        assert!(
-            line.contains(case.expect_fragment),
-            "{}: expected embedded `{}`, got {line}",
-            case.label,
-            case.expect_fragment
         );
     }
 }
 
 /// Malformed DSL roots routed through `diagnostics` must REPORT, not fail
 /// closed: exit code 0, an `ok:true` envelope, and a classified diagnostic
-/// item carrying the expected `"code":"<...>"`.
+/// item — pinned by exact full line.
 #[test]
 fn stdio_diagnostics_reports_classified_dsl_items_v1() {
     let cases = [
         NegativeCaseV1 {
             label: "use-pack-invalid-lockfile",
             request: r#"{"method":"diagnostics","query":"USE PACK secure-pack ;; activation=session ;; lockfile=packs/secure-pack.txt"}"#,
-            expect_fragment: r#""code":"use_pack_invalid_lockfile""#,
+            expected_line: r#"{"ok":true,"method":"diagnostics","result":[{"class":"syntax","code":"use_pack_invalid_lockfile","message":"USE PACK lockfile `packs/secure-pack.txt` must end with `.lock` and include a non-empty file stem"}]}"#,
         },
         NegativeCaseV1 {
             label: "select-missing-from",
             request: r#"{"method":"diagnostics","query":"SELECT id catalog.users"}"#,
-            expect_fragment: r#""code":"expected_from_keyword""#,
+            expected_line: r#"{"ok":true,"method":"diagnostics","result":[{"class":"syntax","code":"expected_from_keyword","message":"SELECT projection must be followed by FROM"}]}"#,
         },
         NegativeCaseV1 {
             label: "show-unsupported-category",
             request: r#"{"method":"diagnostics","query":"SHOW catalog"}"#,
-            expect_fragment: r#""code":"unsupported_show_category""#,
+            expected_line: r#"{"ok":true,"method":"diagnostics","result":[{"class":"sema","code":"unsupported_show_category","message":"SHOW category `catalog` is unsupported; expected one of capabilities, models, views, rules, packs, profiles, gates"}]}"#,
         },
     ];
 
@@ -124,16 +128,20 @@ fn stdio_diagnostics_reports_classified_dsl_items_v1() {
             "{}: diagnostics must report (exit 0)",
             case.label
         );
-        assert!(
-            line.contains(r#""ok":true"#),
-            "{}: expected ok:true envelope, got {line}",
+        // Full-line equality: ok:true + a single, fully classified diagnostic
+        // item (class + code + message). A non-empty `result` array is implied
+        // by the literal item, so this can never pass on an empty report.
+        assert_eq!(
+            line, case.expected_line,
+            "{}: full line drifted",
             case.label
         );
+        // Non-degradation: diagnostics REPORTS; it must never fail-closed into
+        // the handler_rejected envelope used by the hover path above.
         assert!(
-            line.contains(case.expect_fragment),
-            "{}: expected classified item `{}`, got {line}",
-            case.label,
-            case.expect_fragment
+            !line.contains(r#""code":"handler_rejected""#) && !line.contains(r#""ok":false"#),
+            "{}: diagnostics must report, not fail closed, got {line}",
+            case.label
         );
     }
 }
@@ -160,28 +168,26 @@ fn stdio_session_recovers_after_dsl_fail_closed_v1() {
         "expected exactly two response lines, got {stdout}"
     );
 
+    // First line: the EXACT fail-closed envelope for the unsupported root.
     let fail_line = lines[0];
-    assert!(
-        fail_line.contains(r#""ok":false"#),
-        "first line must be fail-closed, got {fail_line}"
-    );
-    assert!(
-        fail_line.contains(r#""code":"handler_rejected""#),
-        "first line must carry handler_rejected, got {fail_line}"
-    );
-    assert!(
-        fail_line.contains("code=unsupported_root"),
-        "first line must carry the embedded DSL code, got {fail_line}"
+    assert_eq!(
+        fail_line,
+        r#"{"ok":false,"error":{"code":"handler_rejected","message":"class=syntax code=unsupported_root message=unsupported root keyword `FROBNICATE`"}}"#,
+        "first line must be the exact unsupported-root rejection"
     );
 
+    // Second line: the recovered zero_query, pinned to its deterministic
+    // read-only envelope prefix so recovery cannot pass on a stub/empty line.
     let recovered_line = lines[1];
     assert!(
-        recovered_line.contains(r#""ok":true"#),
-        "second line must recover ok:true, got {recovered_line}"
+        recovered_line.starts_with(
+            r#"{"ok":true,"method":"zero_query","result":{"mode":"read-only","provenance":"typed-catalog-example-metadata","groups":[{"id":"catalog","#
+        ),
+        "second line must recover the read-only zero_query envelope, got {recovered_line}"
     );
     assert!(
-        recovered_line.contains(r#""method":"zero_query""#),
-        "second line must be the zero_query response, got {recovered_line}"
+        recovered_line.ends_with("]}}"),
+        "recovered zero_query must close groups array + result + envelope, got {recovered_line}"
     );
 
     assert_eq!(
