@@ -11,6 +11,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "quanta-gqlang-v2-conformance"
+version = "0.1.0"
+dependencies = [
+ "quanta-gqlang-v2-ir",
+]
+
+[[package]]
 name = "quanta-gqlang-v2-ir"
 version = "0.1.0"
 dependencies = [

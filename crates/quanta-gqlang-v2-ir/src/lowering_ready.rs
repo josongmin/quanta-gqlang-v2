@@ -52,16 +52,7 @@ impl LoweringReadyIrV1 {
 
     #[must_use]
     pub fn root_kind_v1(&self) -> PublicPlanRootKindV1 {
-        match &self.root {
-            PublicIrRootV1::Select(_) => PublicPlanRootKindV1::Select,
-            PublicIrRootV1::Find(_) => PublicPlanRootKindV1::Find,
-            PublicIrRootV1::Check(_) => PublicPlanRootKindV1::Check,
-            PublicIrRootV1::Explain(_) => PublicPlanRootKindV1::Explain,
-            PublicIrRootV1::Retrieval(_) => PublicPlanRootKindV1::Retrieval,
-            PublicIrRootV1::Interactive(_) => PublicPlanRootKindV1::Interactive,
-            PublicIrRootV1::Declaration(_) => PublicPlanRootKindV1::Declaration,
-            PublicIrRootV1::Meta(_) => PublicPlanRootKindV1::Meta,
-        }
+        self.root.plan_root_kind_v1()
     }
 }
 

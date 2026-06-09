@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "crates/quanta-gqlang-v2-cli",
+    "crates/quanta-gqlang-v2-conformance",
     "crates/quanta-gqlang-v2-ir",
     "crates/quanta-gqlang-v2-lsp",
     "crates/quanta-gqlang-v2-sema",

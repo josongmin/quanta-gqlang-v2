@@ -47,6 +47,7 @@ EXPECTED_WORKSPACE_MEMBERS: Set[str] = {
     "quanta-gqlang-v2-ir",
     "quanta-gqlang-v2-cli",
     "quanta-gqlang-v2-lsp",
+    "quanta-gqlang-v2-conformance",
 }
 ALLOWED_INTERNAL_DEPENDENCIES: Dict[str, Set[str]] = {
     "quanta-gqlang-v2-syntax": set(),
@@ -54,6 +55,10 @@ ALLOWED_INTERNAL_DEPENDENCIES: Dict[str, Set[str]] = {
     "quanta-gqlang-v2-ir": {"quanta-gqlang-v2-sema"},
     "quanta-gqlang-v2-cli": {"quanta-gqlang-v2-ir"},
     "quanta-gqlang-v2-lsp": {"quanta-gqlang-v2-ir"},
+    # Dev-only conformance registry: a leaf that reads the public ir pipeline to
+    # self-validate the 17-family front-door table. Consumed by other crates'
+    # tests via vetted dev edges (see ALLOWED_DEV_EDGES).
+    "quanta-gqlang-v2-conformance": {"quanta-gqlang-v2-ir"},
 }
 # Vetted dev-dependency edges that are exempt from the layering rule. These are
 # test-only (`[dev-dependencies]`) edges that do NOT exist as normal-dep edges

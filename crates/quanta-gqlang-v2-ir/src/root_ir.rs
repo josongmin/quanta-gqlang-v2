@@ -1,6 +1,7 @@
 use crate::check_ir::CheckIrV1;
 use crate::explain_ir::ExplainIrV1;
 use crate::find_ir::FindIrV1;
+use crate::planning::PublicPlanRootKindV1;
 use crate::retrieval_ir::RetrievalIrV1;
 use crate::select_ir::SelectIrV1;
 
@@ -14,6 +15,25 @@ pub enum PublicIrRootV1 {
     Interactive(InteractiveIrV1),
     Declaration(DeclarationIrV1),
     Meta(MetaIrV1),
+}
+
+impl PublicIrRootV1 {
+    /// The public plan root-kind this lowered root collapses to. This is the
+    /// single authority for the 17-family → 8-kind mapping; every consumer
+    /// (lowering-ready validation, the conformance registry) routes through it.
+    #[must_use]
+    pub fn plan_root_kind_v1(&self) -> PublicPlanRootKindV1 {
+        match self {
+            Self::Select(_) => PublicPlanRootKindV1::Select,
+            Self::Find(_) => PublicPlanRootKindV1::Find,
+            Self::Check(_) => PublicPlanRootKindV1::Check,
+            Self::Explain(_) => PublicPlanRootKindV1::Explain,
+            Self::Retrieval(_) => PublicPlanRootKindV1::Retrieval,
+            Self::Interactive(_) => PublicPlanRootKindV1::Interactive,
+            Self::Declaration(_) => PublicPlanRootKindV1::Declaration,
+            Self::Meta(_) => PublicPlanRootKindV1::Meta,
+        }
+    }
 }
 
 /// The read-only shell's single "why no result" label, surfaced by every

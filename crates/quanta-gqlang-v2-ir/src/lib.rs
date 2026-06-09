@@ -3,6 +3,7 @@
 pub mod ai_plan;
 pub mod catalog;
 pub mod check_ir;
+pub mod diagnostic_class;
 #[path = "facts/entity_schema.rs"]
 pub mod entity_schema;
 pub mod explain_ir;
