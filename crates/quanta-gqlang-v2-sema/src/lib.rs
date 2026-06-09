@@ -7,8 +7,7 @@ pub mod interactive;
 pub mod profile;
 pub mod roots;
 
-// Test-only round-trip helpers (typed -> AST) live in their own module so the
-// production surface above carries no `#[cfg(test)]` reconstruction bloat.
+// Wiring unit tests live in their own module so this root stays production-only.
 #[cfg(test)]
 mod lib_tests;
 

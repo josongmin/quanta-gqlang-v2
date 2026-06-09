@@ -37,7 +37,7 @@ pub fn run(input: &str) -> Result<HeadlessReadReportV1, String> {
         command_plane: "forbidden",
         root_count: summary.root_count,
         root_kinds: summary.roots.iter().map(|root| root.syntax_kind).collect(),
-        no_result_reason: "read-only-shell-has-no-execution-backend",
+        no_result_reason: crate::NO_RESULT_REASON_V1,
         degraded_reasons: summary
             .roots
             .iter()

@@ -395,18 +395,6 @@ pub fn autocomplete_row_by_label_v1(label: &str) -> Option<&'static Autocomplete
         .find(|row| row.label == label)
 }
 
-pub fn autocomplete_matches_v1(prefix: &str) -> Vec<&'static AutocompleteSuggestionRowV1> {
-    let normalized_prefix = normalize_completion_prefix_v1(prefix);
-    if normalized_prefix.is_empty() {
-        return autocomplete_suggestion_rows_v1().iter().collect();
-    }
-
-    autocomplete_suggestion_rows_v1()
-        .iter()
-        .filter(|row| normalize_completion_prefix_v1(row.label).starts_with(&normalized_prefix))
-        .collect()
-}
-
 pub fn autocomplete_surface_integrity_v1() -> Result<(), &'static str> {
     for row in autocomplete_suggestion_rows_v1() {
         if capability_row_by_id_v1(row.capability_id).is_none() {
@@ -433,13 +421,6 @@ fn example_backs_capability_v1(example_id: &str, capability_id: &str) -> bool {
         Some(example) => example.capability_ids.contains(&capability_id),
         None => false,
     }
-}
-
-fn normalize_completion_prefix_v1(input: &str) -> String {
-    input
-        .trim()
-        .to_ascii_lowercase()
-        .replace(['_', '-', ' '], "")
 }
 
 #[cfg(test)]

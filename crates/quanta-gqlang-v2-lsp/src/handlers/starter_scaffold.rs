@@ -5,6 +5,7 @@ use quanta_gqlang_v2_ir::catalog::example_registry::{
     example_registry_authority_v1, example_registry_rows_v1,
     read_only_example_registry_integrity_v1, ExampleCategoryV1,
 };
+use quanta_gqlang_v2_ir::frontend::{parse_document_v1, AstRootV1};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ZeroQueryModeV1 {
@@ -374,20 +375,35 @@ fn build_example_group_v1(
 }
 
 fn root_kind_v1(query_text: &str) -> Result<StarterRootKindV1, String> {
-    let trimmed = query_text.trim();
-    if trimmed.starts_with("USE PACK ") || trimmed.starts_with("REQUIRE CERTIFIED") {
-        return Err("zero-query scaffolds must stay query-only and non-mutating".to_string());
-    }
-    match trimmed.split_whitespace().next().unwrap_or_default() {
-        "SHOW" => Ok(StarterRootKindV1::Show),
-        "DESCRIBE" => Ok(StarterRootKindV1::Describe),
-        "SELECT" => Ok(StarterRootKindV1::Select),
-        "FIND" => Ok(StarterRootKindV1::Find),
-        "CHECK" => Ok(StarterRootKindV1::Check),
-        "EXPLAIN" => Ok(StarterRootKindV1::Explain),
-        "SAMPLE" => Ok(StarterRootKindV1::Sample),
-        "COMPARE" => Ok(StarterRootKindV1::Compare),
-        "EXPORT" => Ok(StarterRootKindV1::Export),
-        other => Err(format!("unsupported starter root `{other}`")),
+    // Classify by the canonical parser rather than a hand-rolled first-token
+    // keyword whitelist: this defers to the single source of grammar truth (the
+    // same `parse_document_v1` the example-registry integrity gate validates
+    // against), so the starter root kind can never drift from it on case or
+    // vocabulary. Declaration/meta roots are rejected to keep scaffolds query-only.
+    let document = parse_document_v1(query_text)
+        .map_err(|_| format!("starter scaffold did not parse as a query root: {query_text}"))?;
+    let root = document
+        .roots
+        .first()
+        .ok_or_else(|| format!("starter scaffold parsed to an empty document: {query_text}"))?;
+    match root {
+        AstRootV1::Show(_) => Ok(StarterRootKindV1::Show),
+        AstRootV1::Describe(_) => Ok(StarterRootKindV1::Describe),
+        AstRootV1::Select(_) => Ok(StarterRootKindV1::Select),
+        AstRootV1::Find(_) => Ok(StarterRootKindV1::Find),
+        AstRootV1::Check(_) => Ok(StarterRootKindV1::Check),
+        AstRootV1::Explain(_) => Ok(StarterRootKindV1::Explain),
+        AstRootV1::Sample(_) => Ok(StarterRootKindV1::Sample),
+        AstRootV1::Compare(_) => Ok(StarterRootKindV1::Compare),
+        AstRootV1::Export(_) => Ok(StarterRootKindV1::Export),
+        AstRootV1::View(_)
+        | AstRootV1::Rule(_)
+        | AstRootV1::Model(_)
+        | AstRootV1::Pack(_)
+        | AstRootV1::Profile(_)
+        | AstRootV1::Gate(_)
+        | AstRootV1::Meta(_) => {
+            Err("zero-query scaffolds must stay query-only and non-mutating".to_string())
+        }
     }
 }

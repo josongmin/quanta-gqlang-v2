@@ -7,7 +7,7 @@
 )]
 
 use quanta_gqlang_v2_ir::catalog::autocomplete_surface::{
-    autocomplete_matches_v1, autocomplete_row_by_label_v1, autocomplete_suggestion_rows_v1,
+    autocomplete_row_by_label_v1, autocomplete_suggestion_rows_v1,
     autocomplete_surface_integrity_v1, AutocompleteSuggestionCategoryV1,
     AutocompleteSuggestionKindV1,
 };
@@ -18,22 +18,23 @@ use quanta_gqlang_v2_ir::catalog::example_registry::{example_row_by_id_v1, Examp
 
 #[test]
 fn typed_autocomplete_rows_cover_existing_completion_expectations_v1() {
-    let root_rows = autocomplete_matches_v1("SE");
-    assert!(root_rows.iter().any(|row| row.label == "SELECT"));
-    assert!(root_rows
-        .iter()
-        .all(|row| normalized_v1(row.label).starts_with("se")));
-
-    let noun_rows = autocomplete_matches_v1("pro");
-    assert!(noun_rows.iter().any(|row| row.label == "PROFILE"));
-    assert!(noun_rows.iter().any(|row| row.label == "profiles"));
-    assert!(noun_rows.iter().any(|row| row.label == "profile::"));
-
-    for row in noun_rows {
-        assert!(!row.reason.is_empty());
-        assert!(!row.detail.is_empty());
-        assert!(!row.provenance.source_file.is_empty());
-        assert!(!row.provenance.source_marker.is_empty());
+    // Pin that the completion CATALOG carries the rows the LSP ranker draws from,
+    // each with populated presentation metadata. Scope-aware prefix matching is the
+    // ranker's job and is covered by completion_rank.rs / autocomplete_quickfix.rs;
+    // this test only guards catalog coverage, not a matcher.
+    for label in ["SELECT", "PROFILE", "profiles", "profile::"] {
+        let row = autocomplete_row_by_label_v1(label)
+            .unwrap_or_else(|| panic!("completion catalog must carry `{label}`"));
+        assert!(!row.reason.is_empty(), "{label} reason");
+        assert!(!row.detail.is_empty(), "{label} detail");
+        assert!(
+            !row.provenance.source_file.is_empty(),
+            "{label} source_file"
+        );
+        assert!(
+            !row.provenance.source_marker.is_empty(),
+            "{label} source_marker"
+        );
     }
 }
 
@@ -96,11 +97,4 @@ fn profile_family_rows_carry_expected_scope_and_categories_v1() {
     let example = example_row_by_id_v1("example.profile.strict_review")
         .expect("profile example should exist");
     assert_eq!(example.category, ExampleCategoryV1::DeclarationStarter);
-}
-
-fn normalized_v1(input: &str) -> String {
-    input
-        .trim()
-        .to_ascii_lowercase()
-        .replace(['_', '-', ' '], "")
 }

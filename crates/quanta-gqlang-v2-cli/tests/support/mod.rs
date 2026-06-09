@@ -127,12 +127,18 @@ pub(crate) fn assert_read_only_cli_binary_round_trip_v1(
         expectation.example_relative
     );
     assert!(
-        query_stdout.contains(&format!("query.root[0].syntax.kind={}", expectation.syntax_kind)),
+        query_stdout.contains(&format!(
+            "query.root[0].syntax.kind={}",
+            expectation.syntax_kind
+        )),
         "missing query syntax kind for {}:\n{query_stdout}",
         expectation.example_relative
     );
     assert!(
-        query_stdout.contains(&format!("query.root[0].typed.kind={}", expectation.typed_kind)),
+        query_stdout.contains(&format!(
+            "query.root[0].typed.kind={}",
+            expectation.typed_kind
+        )),
         "missing query typed kind for {}:\n{query_stdout}",
         expectation.example_relative
     );
@@ -161,7 +167,10 @@ pub(crate) fn assert_read_only_cli_binary_round_trip_v1(
         expectation.example_relative
     );
     assert!(
-        headless_stdout.contains(&format!("headless.root[0].kind={}", expectation.syntax_kind)),
+        headless_stdout.contains(&format!(
+            "headless.root[0].kind={}",
+            expectation.syntax_kind
+        )),
         "missing headless root kind for {}:\n{headless_stdout}",
         expectation.example_relative
     );
@@ -254,4 +263,31 @@ pub(crate) fn assert_read_only_cli_library_round_trip_v1(
         None => assert!(headless_report.degraded_reasons.is_empty()),
     }
     assert_eq!(headless_report.query_summary, query_summary);
+}
+
+/// Run the shipped CLI binary front door with an arbitrary argv vector. Unlike
+/// `run_cli_file_v1`, this leaves argument shaping to the caller so usage,
+/// help, and arg-count contracts can be exercised end-to-end.
+pub(crate) fn run_cli_argv_v1(args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_quanta-gqlang-v2-cli"))
+        .args(args)
+        .output()
+        .expect("spawn qglang cli")
+}
+
+pub(crate) fn cli_stdout_v1(output: &Output) -> String {
+    String::from_utf8(output.stdout.clone()).expect("stdout utf-8")
+}
+
+pub(crate) fn cli_stderr_v1(output: &Output) -> String {
+    String::from_utf8(output.stderr.clone()).expect("stderr utf-8")
+}
+
+/// Materialize `contents` into a uniquely-named file under the integration-test
+/// temp dir and return its path, for `--file` front-door scenarios that need an
+/// empty or whitespace-only document on disk.
+pub(crate) fn write_target_tmp_input_v1(name: &str, contents: &str) -> PathBuf {
+    let path = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
+    fs::write(&path, contents).expect("write temp input");
+    path
 }

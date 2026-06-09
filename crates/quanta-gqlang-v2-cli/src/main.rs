@@ -19,7 +19,7 @@ use quanta_gqlang_v2_cli::commands;
 use quanta_gqlang_v2_cli::doctor::{self, DoctorStatusV1};
 
 const USAGE_V1: &str = concat!(
-    "cli.usage=quanta-gqlang-v2-cli <parse|sema|query|fmt|doctor|headless> (--file <path> | <input...>)\n",
+    "cli.usage=quanta-gqlang-v2-cli <parse|sema|query|fmt|explain|doctor|headless> (--file <path> | <input...>)\n",
     "cli.read_only=true\n",
     "cli.command_plane=forbidden"
 );
@@ -30,6 +30,7 @@ enum CliCommandV1 {
     Sema,
     Query,
     Fmt,
+    Explain,
     Doctor,
     Headless,
 }
@@ -41,6 +42,7 @@ impl CliCommandV1 {
             "sema" => Ok(Self::Sema),
             "query" => Ok(Self::Query),
             "fmt" => Ok(Self::Fmt),
+            "explain" => Ok(Self::Explain),
             "doctor" => Ok(Self::Doctor),
             "headless" => Ok(Self::Headless),
             _ => Err(CliErrorV1::usage_v1(format!("unsupported command `{raw}`"))),
@@ -225,6 +227,12 @@ fn execute_invocation_v1(invocation: CliInvocationV1) -> Result<CliOutputV1, Cli
         CliCommandV1::Fmt => commands::format::run(&invocation.input)
             .map(|formatted| CliOutputV1 {
                 stdout: formatted,
+                exit_code: 0,
+            })
+            .map_err(CliErrorV1::command_v1),
+        CliCommandV1::Explain => commands::explain::run(&invocation.input)
+            .map(|view| CliOutputV1 {
+                stdout: view.render_v1(),
                 exit_code: 0,
             })
             .map_err(CliErrorV1::command_v1),

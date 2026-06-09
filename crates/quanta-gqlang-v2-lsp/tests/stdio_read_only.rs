@@ -161,7 +161,10 @@ fn stdio_front_door_surfaces_handler_fail_closed_errors_v1() {
 fn stdio_binary_keeps_session_open_across_multiple_requests_v1() {
     let (mut child, mut stdin, mut stdout_reader) = spawn_binary_session_v1();
 
-    write_request_line_v1(&mut stdin, r#"{"method":"hover","query":"SELECT id FROM catalog.files"}"#);
+    write_request_line_v1(
+        &mut stdin,
+        r#"{"method":"hover","query":"SELECT id FROM catalog.files"}"#,
+    );
     let first_line = read_response_line_v1(&mut stdout_reader);
     assert!(first_line.contains(r#""ok":true"#));
     assert!(first_line.contains(r#""method":"hover""#));
@@ -185,7 +188,10 @@ fn stdio_binary_recovers_after_fail_closed_requests_v1() {
     assert!(rename_line.contains(r#""ok":false"#));
     assert!(rename_line.contains(r#""code":"command_plane_forbidden""#));
 
-    write_request_line_v1(&mut stdin, r#"{"method":"hover","query":"REQUIRE CERTIFIED"}"#);
+    write_request_line_v1(
+        &mut stdin,
+        r#"{"method":"hover","query":"REQUIRE CERTIFIED"}"#,
+    );
     let hover_line = read_response_line_v1(&mut stdout_reader);
     assert!(hover_line.contains(r#""ok":true"#));
     assert!(hover_line.contains(r#""method":"hover""#));
@@ -203,14 +209,17 @@ fn stdio_binary_recovers_after_fail_closed_requests_v1() {
 
     drop(stdin);
     let status = child.wait().expect("child should exit");
-    assert!(status.success());
+    assert_eq!(status.code(), Some(1));
 }
 
 #[test]
 fn stdio_binary_accepts_surrogate_pair_json_escape_v1() {
     let (mut child, mut stdin, mut stdout_reader) = spawn_binary_session_v1();
 
-    write_request_line_v1(&mut stdin, r#"{"method":"completion","prefix":"\uD83D\uDE00"}"#);
+    write_request_line_v1(
+        &mut stdin,
+        r#"{"method":"completion","prefix":"\uD83D\uDE00"}"#,
+    );
     drop(stdin);
 
     let response = read_response_line_v1(&mut stdout_reader);

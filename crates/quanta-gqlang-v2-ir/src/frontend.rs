@@ -4,8 +4,12 @@
 //! `ir` alone — never on `sema` or `syntax` directly. This module is the single,
 //! intentionally narrow hub through which the syntax- and sema-owned frontend
 //! types reach those crates. It re-exports ONLY the symbols the read-only
-//! consumers actually use (the internal SELECT shape vocabulary and the meta
-//! shape-error type are deliberately not surfaced here), and groups the exports
+//! consumers actually use: the SELECT root/projection/field-ref types that the
+//! LSP read-only summary and CLI query renderer need ARE surfaced, but the
+//! internal SELECT filter/literal/shape vocabulary (`SelectFilterAstV1`,
+//! `SelectLiteralAstV1`, `SelectQueryShapeV1`, `SelectTableRefAstV1`,
+//! `SelectRootErrorV1`, `parse_select_shape_v1`) and the meta shape-error type
+//! (`MetaCommandShapeErrorV1`) are deliberately withheld. The exports are grouped
 //! by their owning layer so crate provenance stays visible at the boundary.
 
 // Owned by `quanta-gqlang-v2-syntax` (re-exported here through `sema`): the parser

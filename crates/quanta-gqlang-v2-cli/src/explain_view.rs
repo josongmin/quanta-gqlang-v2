@@ -35,6 +35,49 @@ pub struct ExplainViewV1 {
     pub why_no_result: Option<String>,
 }
 
+impl ExplainViewV1 {
+    pub fn render_v1(&self) -> String {
+        let mut lines = vec![
+            format!("explain.subject={}", self.subject),
+            format!("explain.evidence={}", self.evidence),
+            format!("explain.truth={}", self.truth),
+            format!("explain.degraded_count={}", self.degraded_badges.len()),
+        ];
+
+        for (index, badge) in self.degraded_badges.iter().enumerate() {
+            lines.push(format!("explain.degraded[{index}].code={}", badge.code));
+            lines.push(format!("explain.degraded[{index}].label={}", badge.label));
+        }
+
+        if let Some(path_witness) = &self.path_witness {
+            lines.push(format!("explain.path_witness.kind={}", path_witness.kind));
+            lines.push(format!(
+                "explain.path_witness.step_count={}",
+                path_witness.steps.len()
+            ));
+            for (index, step) in path_witness.steps.iter().enumerate() {
+                lines.push(format!(
+                    "explain.path_witness.step[{index}].label={}",
+                    step.label
+                ));
+                lines.push(format!(
+                    "explain.path_witness.step[{index}].detail={}",
+                    step.detail
+                ));
+            }
+            if let Some(note) = &path_witness.note {
+                lines.push(format!("explain.path_witness.note={note}"));
+            }
+        }
+
+        if let Some(why_no_result) = &self.why_no_result {
+            lines.push(format!("explain.why_no_result={why_no_result}"));
+        }
+
+        lines.join("\n")
+    }
+}
+
 pub fn build_explain_view_v1(
     shape: &ExplainShapeIrV1,
     degraded_reasons: &[String],

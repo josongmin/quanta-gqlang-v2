@@ -104,7 +104,7 @@ pub fn run_v1(input: &str) -> Result<DoctorReportV1, String> {
         root_kinds: summary.roots.iter().map(|root| root.syntax_kind).collect(),
         parse_diagnostics: Vec::new(),
         sema_diagnostics: Vec::new(),
-        no_result_reason: Some("read-only-shell-has-no-execution-backend".to_string()),
+        no_result_reason: Some(crate::NO_RESULT_REASON_V1.to_string()),
         degraded_reasons,
         query_summary: Some(summary),
     })
