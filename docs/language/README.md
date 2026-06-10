@@ -15,6 +15,7 @@ Shipped root families:
 2. interactive roots: `SHOW`, `DESCRIBE`, `SAMPLE`, `COMPARE`, `EXPORT`
 3. declaration roots: `VIEW`, `RULE`, `MODEL`, `PACK`, `PROFILE`, `GATE`
 4. meta roots: `USE PACK`, `REQUIRE CERTIFIED`
+5. composition roots: `LET` bindings consumed by a body via a trailing `WITH`
 
 Shipped example families:
 
@@ -22,6 +23,7 @@ Shipped example families:
 2. interactive: `examples/show/capabilities.qglang`, `examples/describe/rule_detail.qglang`, `examples/sample/retrieval.qglang`, `examples/export/sarif.qglang`, `examples/compare/semantic_delta.qglang`
 3. declarations: `examples/view/catalog_users.qglang`, `examples/rule/shell_exec.qglang`, `examples/model/embeddings_code.qglang`, `examples/pack/security_default.qglang`, `examples/profile/strict_review.qglang`, `examples/gate/release_gate.qglang`
 4. meta: `examples/use_pack/secure_pack.qglang`, `examples/require_certified/strict_only.qglang`
+5. composition: `examples/composition/let_with_find.qglang`
 
 Read-only binary fronts:
 
