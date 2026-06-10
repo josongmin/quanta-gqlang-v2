@@ -201,3 +201,41 @@ fn rejected_frame_does_not_poison_session_v1() {
         "{label}: session must still exit 1 because of the rejected frame"
     );
 }
+
+/// An escaped-unicode method NAME decodes to its plain form BEFORE the allowlist
+/// match, so it cannot smuggle past as a distinct string: `rename` decodes
+/// to `rename` and is rejected with the single `method_not_allowed` code, echoing
+/// the DECODED name (not the raw escape). This pins the decode-then-match path
+/// for method names specifically (the value-escape path is pinned separately by
+/// stdio_json_escape_negative.rs).
+#[test]
+fn escaped_unicode_method_name_decodes_then_is_not_allowed_v1() {
+    // `rename` is the JSON-escaped form of `rename` (r == 'r'); the
+    // request carries the literal escape, and the hand-rolled parser decodes it
+    // before the allowlist match. Written as a normal string with `\\u` so a
+    // real backslash-u reaches the binary.
+    let (code, line) = run_binary_line_v1("{\"method\":\"\\u0072ename\"}");
+    assert_eq!(code, Some(1), "escaped-unicode method must exit 1");
+    assert_eq!(
+        line,
+        r#"{"ok":false,"error":{"code":"method_not_allowed","message":"method `rename` is not an allowed read-only method"}}"#,
+        "escaped-unicode method must decode to `rename` and be method_not_allowed"
+    );
+}
+
+/// An empty OR whitespace-only method fails closed with the dedicated
+/// `empty_method` code (the method string is trimmed first, so `"   "` collapses
+/// to empty). Pins both shapes — previously the empty/whitespace path had no
+/// test.
+#[test]
+fn empty_or_whitespace_method_yields_empty_method_v1() {
+    for request in [r#"{"method":""}"#, r#"{"method":"   "}"#] {
+        let (code, line) = run_binary_line_v1(request);
+        assert_eq!(code, Some(1), "`{request}`: empty/whitespace method must exit 1");
+        assert_eq!(
+            line,
+            r#"{"ok":false,"error":{"code":"empty_method","message":"method cannot be empty"}}"#,
+            "`{request}`: must be the exact empty_method envelope"
+        );
+    }
+}
