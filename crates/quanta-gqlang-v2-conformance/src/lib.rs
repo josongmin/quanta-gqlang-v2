@@ -22,6 +22,8 @@
 //! [`quanta_gqlang_v2_ir::diagnostic_class::front_door_diagnostic_class_v1`], so
 //! there is no second copy of that mapping to drift.
 
+pub mod leakage;
+
 use quanta_gqlang_v2_ir::planning::PublicPlanRootKindV1;
 
 /// Declare the closed `RootFamilyV1` enum AND the canonical `ROOT_FAMILIES_V1`

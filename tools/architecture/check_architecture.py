@@ -71,7 +71,17 @@ ALLOWED_INTERNAL_DEPENDENCIES: Dict[str, Set[str]] = {
 ALLOWED_DEV_EDGES: Set[tuple[str, str]] = {
     ("quanta-gqlang-v2-ir", "quanta-gqlang-v2-syntax"),
     ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-lsp"),
+    # The CLI/LSP integration tests drive the dev-only conformance registry and
+    # its shared leakage fixture; these are test-only edges, never normal deps.
+    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-conformance"),
+    ("quanta-gqlang-v2-lsp", "quanta-gqlang-v2-conformance"),
 }
+# The conformance leakage fixture intentionally enumerates the runtime-truth
+# denylist tokens as DATA (the single source both no-runtime-leakage sweeps scan
+# against), so it is exempt from the runtime-truth source token scan below.
+RUNTIME_TRUTH_SCAN_EXEMPT_FILES = (
+    "crates/quanta-gqlang-v2-conformance/src/leakage.rs",
+)
 FORBIDDEN_DEPENDENCY_PREFIXES = (
     "quanta-runtime",
     "quanta-sdk",
@@ -226,6 +236,8 @@ def main() -> int:
                 )
 
     for source_file in sorted(ROOT.glob("crates/**/src/**/*.rs")):
+        if source_file.relative_to(ROOT).as_posix() in RUNTIME_TRUTH_SCAN_EXEMPT_FILES:
+            continue
         text = source_file.read_text()
         for regex, reason in FORBIDDEN_SOURCE_REGEXES:
             if regex.search(text):
