@@ -133,7 +133,7 @@ Binary-only rails (spawn the real binary, assert stdout/stderr/exit code):
   `crates/quanta-gqlang-v2-lsp/tests/stdio_multi_statement_contract.rs`
 - LSP negative-DSL fail-closed at the binary:
   `crates/quanta-gqlang-v2-lsp/tests/stdio_negative_dsl_hellgate.rs`
-- LSP command-plane barrier (mutating methods always `command_plane_forbidden`,
+- LSP command-plane barrier (non-allowlisted methods always `method_not_allowed`,
   exit 1, session recovers):
   `crates/quanta-gqlang-v2-lsp/tests/stdio_command_plane_hellgate.rs`
 - LSP read-only authority (quickfix metadata-only + zero-query authority, no

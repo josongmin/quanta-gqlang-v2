@@ -87,8 +87,7 @@ fn stdio_hover_fails_closed_on_malformed_dsl_roots_v1() {
         // Non-degradation: a malformed DSL root must reject through the handler,
         // never collapse into a schema-level error class.
         assert!(
-            !line.contains(r#""code":"command_plane_forbidden""#)
-                && !line.contains(r#""code":"unsupported_method""#)
+            !line.contains(r#""code":"method_not_allowed""#)
                 && !line.contains(r#""code":"malformed_json""#)
                 && !line.contains(r#""code":"unexpected_field""#),
             "{}: must not degrade to a schema-level error class, got {line}",

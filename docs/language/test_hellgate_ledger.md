@@ -52,7 +52,7 @@ A surface marked "— (contract-only)" in the Binary e2e column is intentionally
 | JSON escape / surrogate-pair rejection | `crates/quanta-gqlang-v2-lsp/tests/stdio_json_escape_negative.rs` | — | Drives the hand-rolled `parse_unicode_escape_v1` error branches. |
 | Multi-statement first-statement contract | `crates/quanta-gqlang-v2-lsp/tests/stdio_multi_statement_contract.rs` | — | `hover` / `symbols` summarize only the first statement of a document. |
 | Negative-DSL fail-closed | `crates/quanta-gqlang-v2-lsp/tests/stdio_negative_dsl_hellgate.rs` | — | Each malformed root fails closed at the spawned binary. |
-| Command-plane barrier | `crates/quanta-gqlang-v2-lsp/tests/stdio_command_plane_hellgate.rs` | `crates/quanta-gqlang-v2-lsp/tests/edit_command_handshake.rs` | Mutating / command-plane methods always `command_plane_forbidden`, exit 1; barrier is mutation-specific (not catch-all); session not poisoned. |
+| Command-plane barrier | `crates/quanta-gqlang-v2-lsp/tests/stdio_command_plane_hellgate.rs` | `crates/quanta-gqlang-v2-lsp/tests/edit_command_handshake.rs` | Non-allowlisted methods (mutating or simply unknown) always `method_not_allowed`, exit 1; closed allowlist, no name-pattern classification; session recovers. |
 | Read-only authority (quickfix metadata-only + zero-query authority) | `crates/quanta-gqlang-v2-lsp/tests/stdio_readonly_authority_hellgate.rs` | `crates/quanta-gqlang-v2-lsp/tests/autocomplete_quickfix.rs` | Quickfix returns metadata only; zero-query path executes no query. |
 | Autocomplete / catalog completion | — (contract-only) | `crates/quanta-gqlang-v2-lsp/tests/autocomplete_handshake.rs`, `catalog_autocomplete_handshake.rs` | Completion shapes pinned at library level only. |
 

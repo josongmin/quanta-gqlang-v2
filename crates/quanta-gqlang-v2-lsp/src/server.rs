@@ -271,13 +271,9 @@ impl ReadOnlyRequestV1 {
                 reject_extra_fields_v1(method, &fields)?;
                 Ok(Self::Explain { query })
             }
-            _ if mutating_method_v1(method) => Err(StdioLspErrorV1::new(
-                "command_plane_forbidden",
-                format!("mutating method `{method}` is forbidden on the read-only front door"),
-            )),
             _ => Err(StdioLspErrorV1::new(
-                "unsupported_method",
-                format!("unknown read-only method `{method}`"),
+                "method_not_allowed",
+                format!("method `{method}` is not an allowed read-only method"),
             )),
         }
     }
@@ -338,19 +334,6 @@ fn reject_extra_fields_v1(
         "unexpected_field",
         format!("unexpected fields for `{method}`: {extras}"),
     ))
-}
-
-fn mutating_method_v1(method: &str) -> bool {
-    let normalized = method
-        .trim()
-        .to_ascii_lowercase()
-        .replace(['/', '-', '_'], "");
-    normalized.contains("rename")
-        || normalized.contains("executecommand")
-        || normalized.contains("applyedit")
-        || normalized == "apply"
-        || normalized.contains("codeaction")
-        || normalized.contains("workspaceedit")
 }
 
 fn render_success_json_v1(method: &str, response: &ReadOnlyResponseV1) -> String {

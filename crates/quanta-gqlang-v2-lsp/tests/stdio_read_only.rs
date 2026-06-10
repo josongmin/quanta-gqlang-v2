@@ -118,7 +118,7 @@ fn stdio_front_door_rejects_unknown_or_mutating_methods_v1() {
     assert_eq!(rename_status, 1);
     assert_eq!(
         rename_stdout.trim(),
-        r#"{"ok":false,"error":{"code":"command_plane_forbidden","message":"mutating method `rename` is forbidden on the read-only front door"}}"#
+        r#"{"ok":false,"error":{"code":"method_not_allowed","message":"method `rename` is not an allowed read-only method"}}"#
     );
 
     let (unknown_status, unknown_stdout) =
@@ -126,7 +126,7 @@ fn stdio_front_door_rejects_unknown_or_mutating_methods_v1() {
     assert_eq!(unknown_status, 1);
     assert_eq!(
         unknown_stdout.trim(),
-        r#"{"ok":false,"error":{"code":"unsupported_method","message":"unknown read-only method `workspace/index`"}}"#
+        r#"{"ok":false,"error":{"code":"method_not_allowed","message":"method `workspace/index` is not an allowed read-only method"}}"#
     );
 }
 
@@ -196,7 +196,7 @@ fn stdio_binary_recovers_after_fail_closed_requests_v1() {
     write_request_line_v1(&mut stdin, r#"{"method":"rename","input":"MODEL shell"}"#);
     let rename_line = read_response_line_v1(&mut stdout_reader);
     assert!(rename_line.contains(r#""ok":false"#));
-    assert!(rename_line.contains(r#""code":"command_plane_forbidden""#));
+    assert!(rename_line.contains(r#""code":"method_not_allowed""#));
 
     write_request_line_v1(
         &mut stdin,
