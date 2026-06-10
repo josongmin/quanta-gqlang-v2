@@ -28,6 +28,7 @@ pub enum CapabilityCategoryV1 {
     MetaCommand,
     ShowCategory,
     DescribeTargetKind,
+    CompositionOperator,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -392,6 +393,7 @@ const fn expected_scope_for_category_v1(category: CapabilityCategoryV1) -> Catal
         CapabilityCategoryV1::QueryRoot
         | CapabilityCategoryV1::InteractiveRoot
         | CapabilityCategoryV1::DeclarationRoot
-        | CapabilityCategoryV1::MetaCommand => CatalogScopeMarkerV1::DocumentRoot,
+        | CapabilityCategoryV1::MetaCommand
+        | CapabilityCategoryV1::CompositionOperator => CatalogScopeMarkerV1::DocumentRoot,
     }
 }

@@ -328,7 +328,7 @@ pub(crate) fn render_sema_page_v1(page: SemaDiagnosticPageV1) -> String {
 }
 
 pub(crate) fn render_ir_error_v1(error: IrLoweringErrorV1) -> String {
-    format!("ir.error={}", error.message)
+    format!("ir.error={}: {}", error.code, error.message)
 }
 
 fn syntax_meta_summary_v1(command: &MetaCommandAstV1) -> String {

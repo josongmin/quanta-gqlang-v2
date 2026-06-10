@@ -63,14 +63,20 @@ pub fn find_runtime_truth_token_v1(haystack: &str) -> Option<&'static str> {
     let lower = haystack.to_ascii_lowercase();
     let bytes = lower.as_bytes();
     for &token in RUNTIME_TRUTH_DENYLIST_V1 {
-        let token_bytes = token.as_bytes();
-        let last_is_word = is_word_byte_v1(token_bytes[token_bytes.len() - 1]);
+        let Some(&last_byte) = token.as_bytes().last() else {
+            continue;
+        };
+        let last_is_word = is_word_byte_v1(last_byte);
         let mut from = 0usize;
-        while let Some(rel) = lower[from..].find(token) {
+        while let Some(rel) = lower.get(from..).and_then(|tail| tail.find(token)) {
             let start = from + rel;
             let end = start + token.len();
-            let before_ok = start == 0 || !is_word_byte_v1(bytes[start - 1]);
-            let after_ok = !last_is_word || end >= bytes.len() || !is_word_byte_v1(bytes[end]);
+            let before_ok = start
+                .checked_sub(1)
+                .and_then(|prev| bytes.get(prev))
+                .map_or(true, |&byte| !is_word_byte_v1(byte));
+            let after_ok =
+                !last_is_word || bytes.get(end).map_or(true, |&byte| !is_word_byte_v1(byte));
             if before_ok && after_ok {
                 return Some(token);
             }

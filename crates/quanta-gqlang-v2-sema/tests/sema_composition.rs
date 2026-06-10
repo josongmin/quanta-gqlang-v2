@@ -30,7 +30,11 @@ fn typed_composition_v1(input: &str) -> TypedCompositionV1 {
 fn sema_error_v1(input: &str) -> String {
     let doc = parse_document_v1(input).expect("parse");
     let page = analyze_document_v1(&doc).expect_err("expected sema failure");
-    page.diagnostics.into_iter().next().expect("a diagnostic")
+    page.diagnostics
+        .into_iter()
+        .next()
+        .expect("a diagnostic")
+        .to_string()
 }
 
 #[test]

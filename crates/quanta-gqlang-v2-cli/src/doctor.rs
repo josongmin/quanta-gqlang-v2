@@ -80,7 +80,11 @@ pub fn run_v1(input: &str) -> Result<DoctorReportV1, String> {
                 status: DoctorStatusV1::SemaError,
                 root_kinds: doc.roots.iter().map(query::syntax_root_kind_v1).collect(),
                 parse_diagnostics: Vec::new(),
-                sema_diagnostics: page.diagnostics,
+                sema_diagnostics: page
+                    .diagnostics
+                    .iter()
+                    .map(|diag| format!("{}: {}", diag.code, diag.message))
+                    .collect(),
                 no_result_reason: None,
                 degraded_reasons: Vec::new(),
                 query_summary: None,

@@ -6,9 +6,17 @@
 //! never re-implements root semantics. All rejects are fail-closed with a
 //! stable `composition_*` code; there is no default arm and no heuristic.
 
-use crate::{analyze_root_v1, SemaDiagnosticPageV1, TypedRootV1};
+use crate::{analyze_root_v1, SemaDiagnosticPageV1, SemaDiagnosticV1, TypedRootV1};
 use quanta_gqlang_v2_syntax::ast::AstRootV1;
 use quanta_gqlang_v2_syntax::interactive::composition::CompositionRootAstV1;
+
+/// The closed `composition_*` reject-code set, registered once. Every producer
+/// (this analyzer) and consumer (LSP classification, conformance rails) must
+/// reference these constants — a renamed literal in one place can no longer
+/// silently desync the others.
+pub const COMPOSITION_INVALID_PRODUCER_CODE_V1: &str = "composition_invalid_producer";
+pub const COMPOSITION_UNDEFINED_BINDING_CODE_V1: &str = "composition_undefined_binding";
+pub const COMPOSITION_INVALID_BODY_CODE_V1: &str = "composition_invalid_body";
 
 /// The working-set basis a `LET` producer establishes (D3 total mapping).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -63,10 +71,10 @@ pub fn analyze_composition_v1(
         .iter()
         .position(|binding| binding.name == spec.with_name)
         .ok_or_else(|| {
-            composition_page_v1(format!(
-                "composition_undefined_binding: WITH `{}` names no LET binding",
-                spec.with_name
-            ))
+            composition_page_v1(
+                COMPOSITION_UNDEFINED_BINDING_CODE_V1,
+                format!("WITH `{}` names no LET binding", spec.with_name),
+            )
         })?;
 
     // The body must be a working-set *consumer*: `WITH <set>` scopes the body
@@ -108,9 +116,8 @@ fn composition_body_consumer_v1(root: &AstRootV1) -> Result<(), SemaDiagnosticPa
         | AstRootV1::Gate(_)
         | AstRootV1::Meta(_)
         | AstRootV1::Composition(_) => Err(composition_page_v1(
-            "composition_invalid_body: WITH body must be a working-set consumer \
-             (FIND, SELECT, CHECK, or EXPLAIN)"
-                .to_string(),
+            COMPOSITION_INVALID_BODY_CODE_V1,
+            "WITH body must be a working-set consumer (FIND, SELECT, CHECK, or EXPLAIN)",
         )),
     }
 }
@@ -138,14 +145,17 @@ fn composition_basis_for_root_v1(
         | AstRootV1::Gate(_)
         | AstRootV1::Meta(_)
         | AstRootV1::Composition(_) => Err(composition_page_v1(
-            "composition_invalid_producer: LET producer must be SAMPLE, SELECT, or FIND"
-                .to_string(),
+            COMPOSITION_INVALID_PRODUCER_CODE_V1,
+            "LET producer must be SAMPLE, SELECT, or FIND",
         )),
     }
 }
 
-fn composition_page_v1(message: String) -> SemaDiagnosticPageV1 {
+fn composition_page_v1(code: &'static str, message: impl Into<String>) -> SemaDiagnosticPageV1 {
     SemaDiagnosticPageV1 {
-        diagnostics: vec![message],
+        diagnostics: vec![SemaDiagnosticV1 {
+            code,
+            message: message.into(),
+        }],
     }
 }

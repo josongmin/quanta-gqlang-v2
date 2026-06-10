@@ -90,7 +90,7 @@ fn doctor_sema_error_lane_pins_whole_stdout_v1() {
         doctor_stdout_with_newline_v1(concat!(
             "doctor.status=sema-error\n",
             "doctor.root[0].kind=find\n",
-            "doctor.sema_diagnostic[0]=`depth` must be greater than zero"
+            "doctor.sema_diagnostic[0]=invalid_find_seed: `depth` must be greater than zero"
         )),
         "sema-error stdout must match byte-for-byte"
     );

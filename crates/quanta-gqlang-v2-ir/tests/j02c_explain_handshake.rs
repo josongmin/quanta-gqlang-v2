@@ -55,6 +55,7 @@ fn explain_handshake_rejects_duplicated_truth_clause_fail_closed() {
     assert_eq!(
         lowered,
         Err(quanta_gqlang_v2_ir::IrLoweringErrorV1 {
+            code: "invalid_explain_target",
             message: "EXPLAIN truth expectation clause is duplicated".to_string(),
         }),
     );

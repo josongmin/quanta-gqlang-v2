@@ -136,6 +136,7 @@ mod tests {
         assert_eq!(
             lower_root_to_ir_v1(&typed_root),
             Err(crate::IrLoweringErrorV1 {
+                code: "invalid_explain_target",
                 message: "EXPLAIN truth expectation clause is duplicated".to_string(),
             }),
         );

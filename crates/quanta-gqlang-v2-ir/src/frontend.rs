@@ -24,9 +24,14 @@ pub use quanta_gqlang_v2_sema::{
     ShowRootAstV1, SyntaxDiagnosticPageV1, ViewDeclAstV1,
 };
 // Owned by `quanta-gqlang-v2-sema`: the semantic analyzer entry point, its
-// diagnostic page, and the typed roots produced by analysis.
+// diagnostic page (typed `code` + `message` entries), the registered
+// composition reject-code constants, and the typed roots produced by analysis.
+pub use quanta_gqlang_v2_sema::interactive::composition::{
+    COMPOSITION_INVALID_BODY_CODE_V1, COMPOSITION_INVALID_PRODUCER_CODE_V1,
+    COMPOSITION_UNDEFINED_BINDING_CODE_V1,
+};
 pub use quanta_gqlang_v2_sema::{
-    analyze_document_v1, SemaDiagnosticPageV1, TypedCertifiedAdmissionPolicyV1,
+    analyze_document_v1, SemaDiagnosticPageV1, SemaDiagnosticV1, TypedCertifiedAdmissionPolicyV1,
     TypedCertifiedTruthRequirementV1, TypedDocumentV1, TypedMetaCommandV1,
     TypedPackActivationModeV1, TypedRootV1,
 };

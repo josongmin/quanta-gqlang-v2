@@ -46,11 +46,20 @@ pub(super) fn meta_summary_v1(command: &MetaCommandAstV1) -> ReadOnlyRootSummary
                 ],
             }
         }
-        // Registered debt (silent-failure audit): a `shape()` reject collapses to
-        // an empty summary under a hardcoded USE PACK keyword — wrong label for a
-        // failing REQUIRE CERTIFIED, and the reject code is invisible to the
-        // client. Tracked for the typed-summary remediation pass.
-        // nosemgrep: qglang-v2-no-silent-err-discard
-        Err(_) => root_summary_v1("USE PACK", "meta", String::new(), Vec::new()),
+        // Defensive arm: the keyword comes from the command variant (never a
+        // hardcoded guess) and the reject surfaces in the summary lines, so a
+        // failing REQUIRE CERTIFIED can no longer masquerade as a clean USE PACK.
+        Err(err) => {
+            let keyword = match command {
+                MetaCommandAstV1::UsePack { .. } => "USE PACK",
+                MetaCommandAstV1::RequireCertified => "REQUIRE CERTIFIED",
+            };
+            root_summary_v1(
+                keyword,
+                "meta",
+                String::new(),
+                vec![format!("reject={}: {}", err.code, err.message)],
+            )
+        }
     }
 }

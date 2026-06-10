@@ -7,6 +7,7 @@ mod summary;
 
 use quanta_gqlang_v2_ir::frontend::{
     analyze_document_v1, parse_document_v1, AstRootV1, DocumentAstV1, SemaDiagnosticPageV1,
+    SemaDiagnosticV1, COMPOSITION_INVALID_PRODUCER_CODE_V1, COMPOSITION_UNDEFINED_BINDING_CODE_V1,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -159,37 +160,31 @@ fn composition_sema_errors_v1(document: &DocumentAstV1) -> Vec<ReadOnlyLspErrorV
     }
 }
 
-/// Map a sema diagnostic page to LSP errors, keeping only composition codes. The
-/// sema message embeds the code as a `composition_*: <message>` prefix (the sema
-/// layer carries no separate code field), so the code is the leading token before
-/// the first `: `.
+/// Map a sema diagnostic page to LSP errors, keeping only composition codes.
+/// The code is a typed field on the diagnostic and is compared against the
+/// registered constants — no string-parsing of the message, no drift surface.
 fn sema_page_to_composition_errors_v1(page: SemaDiagnosticPageV1) -> Vec<ReadOnlyLspErrorV1> {
     page.diagnostics
         .into_iter()
-        .filter_map(|diagnostic| composition_sema_error_v1(&diagnostic))
+        .filter_map(composition_sema_error_v1)
         .collect()
 }
 
-fn composition_sema_error_v1(diagnostic: &str) -> Option<ReadOnlyLspErrorV1> {
-    let (code, message) = match diagnostic.split_once(": ") {
-        Some((code, message)) => (code.trim(), message.trim()),
-        None => (diagnostic.trim(), diagnostic.trim()),
-    };
-    let static_code = composition_sema_code_v1(code)?;
+fn composition_sema_error_v1(diagnostic: SemaDiagnosticV1) -> Option<ReadOnlyLspErrorV1> {
+    let static_code = composition_sema_code_v1(diagnostic.code)?;
     Some(ReadOnlyLspErrorV1 {
         class: DiagnosticClassV1::Sema,
         code: static_code,
-        message: message.to_string(),
+        message: diagnostic.message,
     })
 }
 
-/// The closed set of sema-classified composition codes (D3/D4). Returning the
-/// `&'static str` keeps the LSP error's `code` field a static, no-default match —
-/// a new composition sema code must be added here deliberately.
-fn composition_sema_code_v1(code: &str) -> Option<&'static str> {
+/// The closed set of sema-classified composition codes (D3/D4), matched against
+/// the constants the sema layer itself raises. A new composition sema code must
+/// be admitted here deliberately; everything else stays on the parser-only path.
+fn composition_sema_code_v1(code: &'static str) -> Option<&'static str> {
     match code {
-        "composition_invalid_producer" => Some("composition_invalid_producer"),
-        "composition_undefined_binding" => Some("composition_undefined_binding"),
+        COMPOSITION_INVALID_PRODUCER_CODE_V1 | COMPOSITION_UNDEFINED_BINDING_CODE_V1 => Some(code),
         _ => None,
     }
 }

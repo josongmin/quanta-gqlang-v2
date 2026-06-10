@@ -140,5 +140,5 @@ fn render_parse_error_v1(page: SyntaxDiagnosticPageV1) -> String {
 }
 
 fn render_sema_error_v1(page: SemaDiagnosticPageV1) -> String {
-    page.diagnostics.join("; ")
+    page.to_string()
 }

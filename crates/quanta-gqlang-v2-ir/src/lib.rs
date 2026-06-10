@@ -46,17 +46,30 @@ use quanta_gqlang_v2_sema::{
 };
 pub use root_ir::PublicIrRootV1;
 
+/// A lowering reject: a stable machine-readable `code` plus the human message.
+/// The code is carried as a typed field end-to-end (sema/IR sources keep their
+/// own codes) so consumers route on it instead of string-parsing the message.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct IrLoweringErrorV1 {
+    pub code: &'static str,
     pub message: String,
 }
+
+impl std::fmt::Display for IrLoweringErrorV1 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.code, self.message)
+    }
+}
+
+impl std::error::Error for IrLoweringErrorV1 {}
 
 pub fn lower_root_to_ir_v1(root: &TypedRootV1) -> Result<PublicIrRootV1, IrLoweringErrorV1> {
     let ir = match root {
         TypedRootV1::Select(spec) => {
             PublicIrRootV1::Select(select_ir::lower_select_root_to_ir_v1(spec).map_err(|err| {
                 IrLoweringErrorV1 {
-                    message: format!("{}: {}", err.code, err.message),
+                    code: err.code,
+                    message: err.message,
                 }
             })?)
         }
@@ -66,6 +79,7 @@ pub fn lower_root_to_ir_v1(root: &TypedRootV1) -> Result<PublicIrRootV1, IrLower
                 seed: spec.seed.clone(),
             };
             ir.execution_plan().map_err(|err| IrLoweringErrorV1 {
+                code: "invalid_find_seed",
                 message: err.message,
             })?;
             PublicIrRootV1::Find(ir)
@@ -73,6 +87,7 @@ pub fn lower_root_to_ir_v1(root: &TypedRootV1) -> Result<PublicIrRootV1, IrLower
         TypedRootV1::Check(spec) => {
             let ir = check_ir::CheckIrV1::from_typed(spec);
             ir.intent().map_err(|err| IrLoweringErrorV1 {
+                code: "invalid_check_payload",
                 message: err.message,
             })?;
             PublicIrRootV1::Check(ir)
@@ -82,6 +97,7 @@ pub fn lower_root_to_ir_v1(root: &TypedRootV1) -> Result<PublicIrRootV1, IrLower
                 target: spec.target.clone(),
             };
             ir.shape().map_err(|err| IrLoweringErrorV1 {
+                code: "invalid_explain_target",
                 message: err.message,
             })?;
             PublicIrRootV1::Explain(ir)
@@ -133,7 +149,8 @@ fn lower_show_describe_root_to_ir_v1(
     spec: &TypedShowDescribeRootV1,
 ) -> Result<PublicIrRootV1, IrLoweringErrorV1> {
     match spec.typed_spec().map_err(|err| IrLoweringErrorV1 {
-        message: format!("{}: {}", err.code, err.message),
+        code: err.code,
+        message: err.message,
     })? {
         TypedShowDescribeSpecV1::Show(spec) => Ok(PublicIrRootV1::Interactive(
             root_ir::InteractiveIrV1::Show {
@@ -176,7 +193,10 @@ fn lower_show_describe_root_to_ir_v1(
 fn lower_sample_compare_export_root_to_ir_v1(
     spec: &TypedSampleCompareExportRootV1,
 ) -> Result<PublicIrRootV1, IrLoweringErrorV1> {
-    match spec.shape().map_err(|err| IrLoweringErrorV1 { message: err.message })? {
+    match spec.shape().map_err(|err| IrLoweringErrorV1 {
+        code: "invalid_sample_compare_export",
+        message: err.message,
+    })? {
         TypedSampleCompareExportShapeV1::Sample(intent) => Ok(PublicIrRootV1::Retrieval(
             retrieval_ir::RetrievalIrV1 {
                 query: intent.query,

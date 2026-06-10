@@ -136,7 +136,10 @@ mod tests {
         assert_eq!(
             typed_root,
             Err(crate::SemaDiagnosticPageV1 {
-                diagnostics: vec!["EXPLAIN evidence clause is duplicated".to_string()],
+                diagnostics: vec![crate::SemaDiagnosticV1 {
+                    code: "invalid_explain_target",
+                    message: "EXPLAIN evidence clause is duplicated".to_string(),
+                }],
             }),
         );
     }

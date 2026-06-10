@@ -41,11 +41,13 @@ pub(super) fn summary_from_root_v1(root: &AstRootV1) -> ReadOnlyRootSummaryV1 {
                     format!("pattern={:?}", intent.pattern),
                     format!("confirm={:?}", intent.confirm),
                 ],
-                // Registered debt (silent-failure audit): an `intent()` reject
-                // degrades to a scope-only summary with no reject indicator.
-                // Tracked for the typed-summary remediation pass.
-                // nosemgrep: qglang-v2-no-silent-err-discard
-                Err(_) => vec![format!("scope={}", spec.scope.trim())],
+                // Degraded summary: the reject is surfaced alongside the raw
+                // scope so the client can tell a failed intent decode from a
+                // root that simply has no structured intent.
+                Err(err) => vec![
+                    format!("reject={}", err.message),
+                    format!("scope={}", spec.scope.trim()),
+                ],
             };
             root_summary_v1("CHECK", "query", spec.rule_id.clone(), summary)
         }
@@ -58,11 +60,12 @@ pub(super) fn summary_from_root_v1(root: &AstRootV1) -> ReadOnlyRootSummaryV1 {
                         format!("truth={:?}", shape.truth_expectation),
                     ],
                 ),
-                // Registered debt (silent-failure audit): a `shape()` reject
-                // degrades to an empty summary with no reject indicator.
-                // Tracked for the typed-summary remediation pass.
-                // nosemgrep: qglang-v2-no-silent-err-discard
-                Err(_) => (spec.target.clone().unwrap_or_default(), Vec::new()),
+                // Degraded summary: the reject is surfaced so the client can
+                // tell a failed shape decode from a root with no shape data.
+                Err(err) => (
+                    spec.target.clone().unwrap_or_default(),
+                    vec![format!("reject={}", err.message)],
+                ),
             };
             root_summary_v1("EXPLAIN", "query", typed_target, summary)
         }

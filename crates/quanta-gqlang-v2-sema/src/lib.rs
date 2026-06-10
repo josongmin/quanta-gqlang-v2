@@ -39,10 +39,42 @@ pub use quanta_gqlang_v2_syntax::{
     SyntaxDiagnosticPageV1,
 };
 
+/// One sema diagnostic: a stable machine-readable code plus the human message.
+/// Mirrors the syntax layer's `SyntaxDiagnosticV1` so downstream layers (CLI,
+/// LSP) read the code as a typed field — never by string-parsing a
+/// `code: message` prefix back out of prose.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SemaDiagnosticV1 {
+    pub code: &'static str,
+    pub message: String,
+}
+
+impl std::fmt::Display for SemaDiagnosticV1 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.code, self.message)
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SemaDiagnosticPageV1 {
-    pub diagnostics: Vec<String>,
+    pub diagnostics: Vec<SemaDiagnosticV1>,
 }
+
+impl std::fmt::Display for SemaDiagnosticPageV1 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut first = true;
+        for diagnostic in &self.diagnostics {
+            if !first {
+                write!(f, "; ")?;
+            }
+            first = false;
+            write!(f, "{diagnostic}")?;
+        }
+        Ok(())
+    }
+}
+
+impl std::error::Error for SemaDiagnosticPageV1 {}
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TypedDocumentV1 {
@@ -129,7 +161,7 @@ pub fn analyze_root_v1(root: &AstRootV1) -> Result<TypedRootV1, SemaDiagnosticPa
     match root {
         AstRootV1::Select(spec) => roots::select::analyze_select_root_v1(spec)
             .map(TypedRootV1::Select)
-            .map_err(|err| sema_diagnostic_page_v1(format!("{}: {}", err.code, err.message))),
+            .map_err(|err| sema_diagnostic_page_v1(err.code, err.message)),
         AstRootV1::Find(spec) => {
             let typed = roots::find::TypedFindRootV1 {
                 subkind: spec.subkind.as_str().to_string(),
@@ -137,76 +169,76 @@ pub fn analyze_root_v1(root: &AstRootV1) -> Result<TypedRootV1, SemaDiagnosticPa
             };
             typed
                 .typed_spec()
-                .map_err(|err| sema_diagnostic_page_v1(err.message.clone()))?;
+                .map_err(|err| sema_diagnostic_page_v1("invalid_find_seed", err.message.clone()))?;
             Ok(TypedRootV1::Find(typed))
         }
         AstRootV1::Check(spec) => {
             let typed = roots::check::TypedCheckRootV1::from_ast(spec);
-            typed
-                .intent()
-                .map_err(|err| sema_diagnostic_page_v1(err.message.clone()))?;
+            typed.intent().map_err(|err| {
+                sema_diagnostic_page_v1("invalid_check_payload", err.message.clone())
+            })?;
             Ok(TypedRootV1::Check(typed))
         }
         AstRootV1::Explain(spec) => {
             let typed = roots::explain::TypedExplainRootV1 {
                 target: spec.target.clone(),
             };
-            typed
-                .shape()
-                .map_err(|err| sema_diagnostic_page_v1(err.message.clone()))?;
+            typed.shape().map_err(|err| {
+                sema_diagnostic_page_v1("invalid_explain_target", err.message.clone())
+            })?;
             Ok(TypedRootV1::Explain(typed))
         }
         AstRootV1::Show(spec) => {
             interactive::show_describe::TypedShowDescribeRootV1::from_show_ast_v1(spec)
                 .map(TypedRootV1::ShowDescribe)
-                .map_err(|err| sema_diagnostic_page_v1(format!("{}: {}", err.code, err.message)))
+                .map_err(|err| sema_diagnostic_page_v1(err.code, err.message))
         }
         AstRootV1::Describe(spec) => {
             interactive::show_describe::TypedShowDescribeRootV1::from_describe_ast_v1(spec)
                 .map(TypedRootV1::ShowDescribe)
-                .map_err(|err| sema_diagnostic_page_v1(format!("{}: {}", err.code, err.message)))
+                .map_err(|err| sema_diagnostic_page_v1(err.code, err.message))
         }
         AstRootV1::Sample(spec) => interactive::sample_compare_export::analyze_sample_root_v1(spec)
             .map(TypedRootV1::SampleCompareExport)
-            .map_err(|err| sema_diagnostic_page_v1(err.message)),
+            .map_err(|err| sema_diagnostic_page_v1("invalid_sample_payload", err.message)),
         AstRootV1::Compare(spec) => {
             interactive::sample_compare_export::analyze_compare_root_v1(spec)
                 .map(TypedRootV1::SampleCompareExport)
-                .map_err(|err| sema_diagnostic_page_v1(err.message))
+                .map_err(|err| sema_diagnostic_page_v1("invalid_compare_payload", err.message))
         }
         AstRootV1::Export(spec) => interactive::sample_compare_export::analyze_export_root_v1(spec)
             .map(TypedRootV1::SampleCompareExport)
-            .map_err(|err| sema_diagnostic_page_v1(err.message)),
+            .map_err(|err| sema_diagnostic_page_v1("invalid_export_payload", err.message)),
         AstRootV1::View(spec) => spec
             .shape_v1()
             .map(declarations::model_pack::TypedDeclarationRootV1::from_view_shape_v1)
             .map(TypedRootV1::Declaration)
-            .map_err(|err| sema_diagnostic_page_v1(err.message)),
+            .map_err(|err| sema_diagnostic_page_v1("invalid_view_shape", err.message)),
         AstRootV1::Rule(spec) => spec
             .shape_v1()
             .map(declarations::model_pack::TypedDeclarationRootV1::from_rule_shape_v1)
             .map(TypedRootV1::Declaration)
-            .map_err(|err| sema_diagnostic_page_v1(err.message)),
+            .map_err(|err| sema_diagnostic_page_v1("invalid_rule_shape", err.message)),
         AstRootV1::Model(spec) => spec
             .shape_v1()
             .map(declarations::model_pack::TypedDeclarationRootV1::from_model_shape_v1)
             .map(TypedRootV1::Declaration)
-            .map_err(|err| sema_diagnostic_page_v1(err.message)),
+            .map_err(|err| sema_diagnostic_page_v1("invalid_model_shape", err.message)),
         AstRootV1::Pack(spec) => spec
             .shape()
             .map(declarations::model_pack::TypedDeclarationRootV1::from_pack_shape_v1)
             .map(TypedRootV1::Declaration)
-            .map_err(|err| sema_diagnostic_page_v1(err.message)),
+            .map_err(|err| sema_diagnostic_page_v1("invalid_pack_shape", err.message)),
         AstRootV1::Profile(spec) => spec
             .shape()
             .map(declarations::model_pack::TypedDeclarationRootV1::from_profile_shape_v1)
             .map(TypedRootV1::Declaration)
-            .map_err(|err| sema_diagnostic_page_v1(err.message)),
+            .map_err(|err| sema_diagnostic_page_v1("invalid_profile_shape", err.message)),
         AstRootV1::Gate(spec) => spec
             .shape()
             .map(declarations::model_pack::TypedDeclarationRootV1::from_gate_shape_v1)
             .map(TypedRootV1::Declaration)
-            .map_err(|err| sema_diagnostic_page_v1(err.message)),
+            .map_err(|err| sema_diagnostic_page_v1("invalid_gate_shape", err.message)),
         AstRootV1::Meta(command) => analyze_meta_command_v1(command).map(TypedRootV1::Meta),
         AstRootV1::Composition(spec) => {
             interactive::composition::analyze_composition_v1(spec).map(TypedRootV1::Composition)
@@ -214,9 +246,12 @@ pub fn analyze_root_v1(root: &AstRootV1) -> Result<TypedRootV1, SemaDiagnosticPa
     }
 }
 
-fn sema_diagnostic_page_v1(message: impl Into<String>) -> SemaDiagnosticPageV1 {
+fn sema_diagnostic_page_v1(code: &'static str, message: impl Into<String>) -> SemaDiagnosticPageV1 {
     SemaDiagnosticPageV1 {
-        diagnostics: vec![message.into()],
+        diagnostics: vec![SemaDiagnosticV1 {
+            code,
+            message: message.into(),
+        }],
     }
 }
 
@@ -225,7 +260,7 @@ fn analyze_meta_command_v1(
 ) -> Result<TypedMetaCommandV1, SemaDiagnosticPageV1> {
     match command
         .shape()
-        .map_err(|err| sema_diagnostic_page_v1(format!("{}: {}", err.code, err.message)))?
+        .map_err(|err| sema_diagnostic_page_v1(err.code, err.message))?
     {
         MetaCommandShapeV1::UsePack(spec) => Ok(TypedMetaCommandV1::UsePack {
             pack_id: spec.pack_id.to_string(),

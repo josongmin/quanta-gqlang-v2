@@ -266,7 +266,7 @@ fn show_and_describe_do_not_fallback_to_generic_targets_v1() {
     assert!(invalid_show
         .diagnostics
         .iter()
-        .any(|diag| diag.contains("unsupported_show_category")));
+        .any(|diag| diag.code == "unsupported_show_category"));
 
     let invalid_describe = analyze_root_v1(&AstRootV1::Describe(DescribeRootAstV1 {
         target: "catalog::overview".to_string(),
@@ -275,5 +275,5 @@ fn show_and_describe_do_not_fallback_to_generic_targets_v1() {
     assert!(invalid_describe
         .diagnostics
         .iter()
-        .any(|diag| diag.contains("unsupported_describe_kind")));
+        .any(|diag| diag.code == "unsupported_describe_kind"));
 }

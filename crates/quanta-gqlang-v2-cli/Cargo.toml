@@ -22,7 +22,7 @@ quanta-gqlang-v2-ir = { version = "0.1.0", path = "../quanta-gqlang-v2-ir" }
 
 [dev-dependencies]
 quanta-gqlang-v2-conformance = { version = "0.1.0", path = "../quanta-gqlang-v2-conformance" }
-quanta-gqlang-v2-lsp = { version = "0.1.0", path = "../quanta-gqlang-v2-lsp" }
+quanta-gqlang-v2-lsp         = { version = "0.1.0", path = "../quanta-gqlang-v2-lsp" }
 
 [lints]
 workspace = true
