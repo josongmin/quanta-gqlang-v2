@@ -262,10 +262,10 @@ pub(crate) fn ir_root_summary_v1(root: &PublicIrRootV1) -> String {
             Err(err) => format!("invalid-select-ir {}: {}", err.code, err.message),
         },
         PublicIrRootV1::Find(spec) => format!("{spec:?}"),
-        PublicIrRootV1::Check(spec) => match spec.execution_mode() {
-            Ok(mode) => format!("rule_id={} mode={mode:?}", spec.rule_id),
-            Err(err) => format!("invalid-check-ir {}", err.message),
-        },
+        PublicIrRootV1::Check(spec) => {
+            let mode = spec.execution_mode();
+            format!("rule_id={} mode={mode:?}", spec.intent().rule_id)
+        }
         PublicIrRootV1::Explain(spec) => {
             let shape = spec.shape();
             format!(

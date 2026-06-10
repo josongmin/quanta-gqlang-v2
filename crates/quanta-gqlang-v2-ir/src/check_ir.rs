@@ -6,28 +6,34 @@ pub use quanta_gqlang_v2_sema::roots::check::{
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckIrV1 {
-    pub rule_id: String,
-    pub scope: String,
+    // The CHECK intent is decoded + validated ONCE, at lowering, and stored
+    // structured here. `intent()` returns it without re-decoding the
+    // `check:v1|...` scope payload on every access (the audit's SMELL-1).
+    intent: CheckRootIntentV1,
 }
 
 impl CheckIrV1 {
-    pub fn from_typed(spec: &TypedCheckRootV1) -> Self {
-        Self {
-            rule_id: spec.rule_id.clone(),
-            scope: spec.scope.clone(),
-        }
+    /// Decode + validate the CHECK payload ONCE (called from lowering). Fails
+    /// closed on a malformed payload; the decoded intent is then stored.
+    pub fn from_typed(spec: &TypedCheckRootV1) -> Result<Self, CheckPayloadErrorV1> {
+        Ok(Self {
+            intent: CheckRootIntentV1::decode(&spec.rule_id, &spec.scope)?,
+        })
     }
 
     pub fn from_intent(intent: CheckRootIntentV1) -> Self {
-        Self::from_typed(&TypedCheckRootV1::from_intent(intent))
+        Self { intent }
     }
 
-    pub fn intent(&self) -> Result<CheckRootIntentV1, CheckPayloadErrorV1> {
-        CheckRootIntentV1::decode(&self.rule_id, &self.scope)
+    /// The validated CHECK intent. Infallible — it was decoded at lowering.
+    #[must_use]
+    pub fn intent(&self) -> &CheckRootIntentV1 {
+        &self.intent
     }
 
-    pub fn execution_mode(&self) -> Result<CheckExecutionModeV1, CheckPayloadErrorV1> {
-        Ok(self.intent()?.execution_mode())
+    #[must_use]
+    pub fn execution_mode(&self) -> CheckExecutionModeV1 {
+        self.intent.execution_mode()
     }
 }
 
@@ -67,9 +73,9 @@ mod tests {
             panic!("expected CHECK IR root");
         };
 
-        assert_eq!(spec.intent().expect("decode"), intent);
+        assert_eq!(spec.intent(), &intent);
         assert_eq!(
-            spec.execution_mode().expect("mode"),
+            spec.execution_mode(),
             CheckExecutionModeV1::Hybrid,
         );
     }

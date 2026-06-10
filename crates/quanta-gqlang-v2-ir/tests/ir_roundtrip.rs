@@ -67,7 +67,7 @@ fn core_roots_lower_to_expected_public_ir_v1() {
         panic!("expected CHECK IR root");
     };
     assert_eq!(
-        check.execution_mode().expect("CHECK mode"),
+        check.execution_mode(),
         CheckExecutionModeV1::Hybrid
     );
 

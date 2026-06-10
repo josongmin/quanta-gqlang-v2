@@ -85,8 +85,7 @@ pub fn lower_root_to_ir_v1(root: &TypedRootV1) -> Result<PublicIrRootV1, IrLower
             PublicIrRootV1::Find(ir)
         }
         TypedRootV1::Check(spec) => {
-            let ir = check_ir::CheckIrV1::from_typed(spec);
-            ir.intent().map_err(|err| IrLoweringErrorV1 {
+            let ir = check_ir::CheckIrV1::from_typed(spec).map_err(|err| IrLoweringErrorV1 {
                 code: "invalid_check_payload",
                 message: err.message,
             })?;

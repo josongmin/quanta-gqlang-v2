@@ -40,9 +40,9 @@ fn check_handshake_preserves_pattern_semantic_and_hybrid_intent() {
     )
     .expect("pattern intent");
     let pattern_ir = lower_check_from_intent_v1(pattern_only.clone());
-    assert_eq!(pattern_ir.intent().expect("decode"), pattern_only);
+    assert_eq!(pattern_ir.intent(), &pattern_only);
     assert_eq!(
-        pattern_ir.execution_mode().expect("mode"),
+        pattern_ir.execution_mode(),
         CheckExecutionModeV1::PatternOnly
     );
 
@@ -56,9 +56,9 @@ fn check_handshake_preserves_pattern_semantic_and_hybrid_intent() {
     )
     .expect("semantic intent");
     let semantic_ir = lower_check_from_intent_v1(semantic_only.clone());
-    assert_eq!(semantic_ir.intent().expect("decode"), semantic_only);
+    assert_eq!(semantic_ir.intent(), &semantic_only);
     assert_eq!(
-        semantic_ir.execution_mode().expect("mode"),
+        semantic_ir.execution_mode(),
         CheckExecutionModeV1::SemanticOnly
     );
 
@@ -72,20 +72,21 @@ fn check_handshake_preserves_pattern_semantic_and_hybrid_intent() {
     )
     .expect("hybrid intent");
     let hybrid_ir = lower_check_from_intent_v1(hybrid.clone());
-    assert_eq!(hybrid_ir.intent().expect("decode"), hybrid);
+    assert_eq!(hybrid_ir.intent(), &hybrid);
     assert_eq!(
-        hybrid_ir.execution_mode().expect("mode"),
+        hybrid_ir.execution_mode(),
         CheckExecutionModeV1::Hybrid
     );
 }
 
 #[test]
 fn check_handshake_rejects_empty_semantic_and_pattern_intent_fail_closed() {
-    let error = CheckIrV1 {
+    // The malformed payload now fails closed at construction (lowering), where
+    // the decode happens once — not on a later `intent()` read.
+    let error = CheckIrV1::from_typed(&quanta_gqlang_v2_sema::roots::check::TypedCheckRootV1 {
         rule_id: "rule.invalid".to_string(),
         scope: "check:v1|class=security|scope=~|pattern=~|confirm=skip".to_string(),
-    }
-    .intent()
+    })
     .expect_err("CHECK without semantic scope or pattern must fail closed");
 
     assert_eq!(
