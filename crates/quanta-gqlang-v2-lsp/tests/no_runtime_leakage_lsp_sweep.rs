@@ -48,6 +48,14 @@ const SWEEP_REQUESTS_V1: &[(&str, &str)] = &[
         "quickfix",
         r#"{"method":"quickfix","input":"DESCRIBE model::billing_warehouse"}"#,
     ),
+    // `explain` is the method that renders degraded badges / witness previews —
+    // the read-only surface most likely to surface runtime-truth content — so it
+    // must be in the sweep. Without it the sweep covered only 6 of the 7
+    // allowlisted methods.
+    (
+        "explain",
+        r#"{"method":"explain","query":"EXPLAIN rule::owasp.sql-injection ;; evidence=trace ;; truth=confirm"}"#,
+    ),
 ];
 
 fn assert_no_runtime_leakage_v1(method: &str, response: &str) {

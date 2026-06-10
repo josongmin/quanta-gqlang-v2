@@ -5,9 +5,17 @@
 //! the 17 roots — see `docs/language/README.md`).
 //!
 //! This crate ships no production behavior (`publish = false`); it exists so the
-//! CLI/LSP negative hellgates, the binary example matrix, and the doc-conformance
-//! gates all iterate ONE table instead of each maintaining its own per-family
-//! list that can silently drift out of sync.
+//! front-door rails iterate ONE table instead of each maintaining its own
+//! per-family list that can silently drift. Current consumers:
+//! - the CLI and LSP negative hellgates drive every family's canonical negative
+//!   through the spawned binary (`cli_negative_dsl_hellgate.rs`,
+//!   `stdio_negative_dsl_hellgate.rs`);
+//! - the doc-conformance gate pins the language README to the registry
+//!   (`docs_conformance.rs`);
+//! - the shipped example corpus is pinned to the registry's root example paths
+//!   (`registry_corpus_consistency.rs`);
+//! - the crate's own `self_validation.rs` drives every family through the real
+//!   parse → sema → lower pipeline.
 //!
 //! Scope discipline: this registry is breadth (one canonical example + one
 //! canonical fail-closed negative per family). The in-crate syntax/sema
