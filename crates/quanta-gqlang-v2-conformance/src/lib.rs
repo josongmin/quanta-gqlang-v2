@@ -1,6 +1,8 @@
 #![forbid(unsafe_code)]
-//! Dev-only conformance registry — the single source of truth for the 17 DSL
-//! root families' *front-door breadth*.
+//! Dev-only conformance registry — the single source of truth for the DSL
+//! front-door families' breadth: the 17 root families plus the clause-level
+//! `LET`/`WITH` composition family (a composition of roots, not itself one of
+//! the 17 roots — see `docs/language/README.md`).
 //!
 //! This crate ships no production behavior (`publish = false`); it exists so the
 //! CLI/LSP negative hellgates, the binary example matrix, and the doc-conformance
@@ -34,8 +36,10 @@ use quanta_gqlang_v2_ir::planning::PublicPlanRootKindV1;
 /// no-dependency way to keep the single enumeration honest.)
 macro_rules! declare_root_families_v1 {
     ($($variant:ident),+ $(,)?) => {
-        /// The closed DSL root families. Closed-world by design: extension is a
-        /// new variant plus the compiler enumerating every site that must answer.
+        /// The closed DSL front-door families (the 17 root families plus the
+        /// clause-level LET/WITH composition family). Closed-world by design:
+        /// extension is a new variant plus the compiler enumerating every site
+        /// that must answer.
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
         pub enum RootFamilyV1 {
             $($variant),+

@@ -9,10 +9,12 @@
 //! Self-validation hellgate for the conformance registry.
 //!
 //! This is the rail that keeps the registry from rotting. It drives every one of
-//! the 17 specs through the REAL `parse → sema → lower` pipeline and proves:
+//! all 18 specs (the 17 root families plus the LET/WITH composition family)
+//! through the REAL `parse → sema → lower` pipeline and proves:
 //!   1. the array covers each family exactly once (no drop, no duplicate);
 //!   2. every shipped example parses, analyzes, lowers, and lands on the exact
-//!      `ir_root_kind` the spec declares (the 17→8 mapping is real, not asserted);
+//!      `ir_root_kind` the spec declares (the family → IR-root-kind mapping is
+//!      real, exercised through lowering, not asserted);
 //!   3. every canonical negative fails closed at the parser stage with its
 //!      declared diagnostic code AND a distinctive message fragment (the fragment
 //!      catches a same-code-wrong-reason regression the bare code cannot).
