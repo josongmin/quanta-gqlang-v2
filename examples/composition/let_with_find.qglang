@@ -1,0 +1,2 @@
+LET suspects = SELECT id FROM catalog.users LIMIT 5
+FIND taint api.entry -> db.write WITH suspects

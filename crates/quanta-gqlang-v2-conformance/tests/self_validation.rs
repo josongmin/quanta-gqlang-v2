@@ -35,7 +35,7 @@ fn repo_relative_v1(relative: &str) -> PathBuf {
 
 #[test]
 fn registry_covers_each_family_exactly_once_v1() {
-    assert_eq!(ROOT_FAMILIES_V1.len(), 17, "expected 17 root families");
+    assert_eq!(ROOT_FAMILIES_V1.len(), 18, "expected 18 root families");
 
     let unique: BTreeSet<_> = ROOT_FAMILIES_V1
         .iter()

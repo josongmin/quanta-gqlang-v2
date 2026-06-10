@@ -65,6 +65,7 @@ declare_root_families_v1!(
     Gate,
     UsePack,
     RequireCertified,
+    Composition,
 );
 
 /// One canonical fail-closed negative for a family: the malformed source, the
@@ -294,6 +295,20 @@ pub const fn spec_for_v1(family: RootFamilyV1) -> RootSurfaceSpecV1 {
                 "REQUIRE CERTIFIED ;; truth=maybe",
                 "unsupported_require_meta",
                 "unsupported REQUIRE target",
+            ),
+            applicability: core,
+        },
+        // `LET <name> = <producer>` bindings consumed by a body that names them
+        // via a trailing `WITH <binding>` (E03C). The leading token is LET.
+        RootFamilyV1::Composition => RootSurfaceSpecV1 {
+            family,
+            keyword: "LET",
+            example_path: "examples/composition/let_with_find.qglang",
+            ir_root_kind: Kind::Composition,
+            negative: negative_v1(
+                "LET a = SELECT id FROM catalog.users",
+                "composition_unconsumed_let",
+                "must be consumed by a body",
             ),
             applicability: core,
         },
