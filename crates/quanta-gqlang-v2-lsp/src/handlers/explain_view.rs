@@ -67,7 +67,7 @@ pub fn handle_explain_v1(query: &str) -> Result<ExplainHintCardV1, String> {
             Some(NO_RESULT_REASON_V1),
         )),
         PublicIrRootV1::Find(plan) => Ok(explain_hint_from_find_v1(
-            &plan.execution_plan().map_err(|err| err.message)?,
+            plan.execution_plan(),
             &degraded_reasons,
             Some(NO_RESULT_REASON_V1),
         )),

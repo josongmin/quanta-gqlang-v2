@@ -5,18 +5,29 @@ use quanta_gqlang_v2_sema::roots::find::{
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FindIrV1 {
-    pub subkind: String,
-    pub seed: String,
+    // The FIND execution plan is parsed + validated ONCE, at lowering, and stored
+    // structured here. `execution_plan()` returns it without re-parsing the seed
+    // on every access (the audit's SMELL-1).
+    plan: FindExecutionPlanIrV1,
 }
 
 impl FindIrV1 {
-    pub fn execution_plan(&self) -> Result<FindExecutionPlanIrV1, FindIrValidationErrorV1> {
+    /// Parse + validate the FIND seed ONCE (called from lowering). Fails closed
+    /// on an unsupported subkind / malformed seed; the plan is then stored.
+    pub fn from_typed_v1(subkind: &str, seed: &str) -> Result<Self, FindIrValidationErrorV1> {
         let typed_root = TypedFindRootV1 {
-            subkind: self.subkind.clone(),
-            seed: self.seed.clone(),
+            subkind: subkind.to_string(),
+            seed: seed.to_string(),
         };
-        let typed_spec = typed_root.typed_spec()?;
-        Ok(typed_spec.into())
+        Ok(Self {
+            plan: typed_root.typed_spec()?.into(),
+        })
+    }
+
+    /// The validated FIND execution plan. Infallible — validated at lowering.
+    #[must_use]
+    pub fn execution_plan(&self) -> &FindExecutionPlanIrV1 {
+        &self.plan
     }
 }
 
@@ -209,23 +220,13 @@ mod tests {
 
     #[test]
     fn lowers_find_matrix_into_execution_plans() {
-        let reachability = FindIrV1 {
-            subkind: "reachability".to_string(),
-            seed: "api.entry -> db.write | via=auth,repo | depth=3".to_string(),
-        }
-        .execution_plan()
-        .expect("reachability");
+        let reachability = FindIrV1::from_typed_v1("reachability", "api.entry -> db.write | via=auth,repo | depth=3").expect("reachability").execution_plan().clone();
         assert!(matches!(
             reachability,
             FindExecutionPlanIrV1::Reachability(_)
         ));
 
-        let flow = FindIrV1 {
-            subkind: "flow".to_string(),
-            seed: "ingress -> egress | through=ssa".to_string(),
-        }
-        .execution_plan()
-        .expect("flow");
+        let flow = FindIrV1::from_typed_v1("flow", "ingress -> egress | through=ssa").expect("flow").execution_plan().clone();
         assert_eq!(
             flow,
             FindExecutionPlanIrV1::Flow(super::FlowPlanIrV1 {
@@ -236,44 +237,19 @@ mod tests {
             })
         );
 
-        let slice = FindIrV1 {
-            subkind: "slice".to_string(),
-            seed: "callsite.foo | direction=forward | frontier=cfg".to_string(),
-        }
-        .execution_plan()
-        .expect("slice");
+        let slice = FindIrV1::from_typed_v1("slice", "callsite.foo | direction=forward | frontier=cfg").expect("slice").execution_plan().clone();
         assert!(matches!(slice, FindExecutionPlanIrV1::Slice(_)));
 
-        let taint = FindIrV1 {
-            subkind: "taint".to_string(),
-            seed: "user.input -> shell.exec | sanitizers=escape | depth=4".to_string(),
-        }
-        .execution_plan()
-        .expect("taint");
+        let taint = FindIrV1::from_typed_v1("taint", "user.input -> shell.exec | sanitizers=escape | depth=4").expect("taint").execution_plan().clone();
         assert!(matches!(taint, FindExecutionPlanIrV1::Taint(_)));
 
-        let path = FindIrV1 {
-            subkind: "path".to_string(),
-            seed: "handler -> sink | through=router,middleware | depth=6".to_string(),
-        }
-        .execution_plan()
-        .expect("path");
+        let path = FindIrV1::from_typed_v1("path", "handler -> sink | through=router,middleware | depth=6").expect("path").execution_plan().clone();
         assert!(matches!(path, FindExecutionPlanIrV1::Path(_)));
 
-        let points_to = FindIrV1 {
-            subkind: "points_to".to_string(),
-            seed: "ptr => heap.obj | scope=fn:main".to_string(),
-        }
-        .execution_plan()
-        .expect("points_to");
+        let points_to = FindIrV1::from_typed_v1("points_to", "ptr => heap.obj | scope=fn:main").expect("points_to").execution_plan().clone();
         assert!(matches!(points_to, FindExecutionPlanIrV1::PointsTo(_)));
 
-        let summary = FindIrV1 {
-            subkind: "summary".to_string(),
-            seed: "pkg::open | include=params,returns | depth=2".to_string(),
-        }
-        .execution_plan()
-        .expect("summary");
+        let summary = FindIrV1::from_typed_v1("summary", "pkg::open | include=params,returns | depth=2").expect("summary").execution_plan().clone();
         assert_eq!(
             summary,
             FindExecutionPlanIrV1::Summary(SummaryPlanIrV1 {
@@ -289,12 +265,10 @@ mod tests {
 
     #[test]
     fn propagates_find_validation_errors() {
-        let error = FindIrV1 {
-            subkind: "flow".to_string(),
-            seed: "ingress -> egress | window=kernel".to_string(),
-        }
-        .execution_plan()
-        .expect_err("invalid window must fail");
+        // The invalid window now fails closed at construction (lowering), where
+        // the seed is parsed once.
+        let error = FindIrV1::from_typed_v1("flow", "ingress -> egress | window=kernel")
+            .expect_err("invalid window must fail");
         assert_eq!(error.message, "unknown flow window `kernel`");
     }
 }

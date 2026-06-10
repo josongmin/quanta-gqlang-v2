@@ -24,10 +24,7 @@ fn capability_v1(
 #[test]
 fn roots_requiring_planning_metadata_fail_closed_v1() {
     let find = LoweringReadyIrV1::new_v1(
-        PublicIrRootV1::Find(FindIrV1 {
-            subkind: "path".to_string(),
-            seed: "entry -> sink".to_string(),
-        }),
+        PublicIrRootV1::Find(FindIrV1::from_typed_v1("path", "entry -> sink").expect("valid find")),
         None,
     )
     .expect_err("FIND must require planning metadata");
@@ -58,10 +55,7 @@ fn planning_root_mismatch_and_missing_capabilities_fail_closed_v1() {
         ai_plan: None,
     };
     let mismatch = LoweringReadyIrV1::new_v1(
-        PublicIrRootV1::Find(FindIrV1 {
-            subkind: "taint".to_string(),
-            seed: "api.entry -> db.write".to_string(),
-        }),
+        PublicIrRootV1::Find(FindIrV1::from_typed_v1("taint", "api.entry -> db.write").expect("valid find")),
         Some(mismatch_plan),
     )
     .expect_err("root mismatch must fail closed");

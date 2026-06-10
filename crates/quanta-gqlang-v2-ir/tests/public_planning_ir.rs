@@ -63,10 +63,7 @@ fn lowering_ready_ir_preserves_public_planning_metadata_v1() {
         ai_plan: Some(ai_plan),
     };
     let ready = LoweringReadyIrV1::new_v1(
-        PublicIrRootV1::Find(FindIrV1 {
-            subkind: "taint".to_string(),
-            seed: "web -> db".to_string(),
-        }),
+        PublicIrRootV1::Find(FindIrV1::from_typed_v1("taint", "web -> db").expect("valid find")),
         Some(plan.clone()),
     )
     .expect("planning metadata should validate");
@@ -79,10 +76,7 @@ fn lowering_ready_ir_preserves_public_planning_metadata_v1() {
 #[test]
 fn roots_requiring_planning_metadata_fail_closed_when_absent_v1() {
     let find_err = LoweringReadyIrV1::new_v1(
-        PublicIrRootV1::Find(FindIrV1 {
-            subkind: "path".to_string(),
-            seed: "entry -> sink".to_string(),
-        }),
+        PublicIrRootV1::Find(FindIrV1::from_typed_v1("path", "entry -> sink").expect("valid find")),
         None,
     )
     .expect_err("FIND should require planning metadata");

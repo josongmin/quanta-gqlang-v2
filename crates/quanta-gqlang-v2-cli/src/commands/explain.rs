@@ -30,9 +30,8 @@ pub fn run(input: &str) -> Result<ExplainViewV1, String> {
             Some(crate::NO_RESULT_REASON_V1),
         )),
         PublicIrRootV1::Find(plan) => {
-            let plan = plan.execution_plan().map_err(|err| err.message)?;
             Ok(explain_view::build_find_explain_view_v1(
-                &plan,
+                plan.execution_plan(),
                 &degraded_reasons,
                 Some(crate::NO_RESULT_REASON_V1),
             ))

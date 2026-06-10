@@ -107,18 +107,16 @@ fn find_handshake_keeps_subkind_matrix_explicit() {
 
     for (input, expected) in cases {
         let find = lower_find_root_v1(input);
-        assert_eq!(find.execution_plan(), Ok(expected), "{input}");
+        assert_eq!(find.execution_plan(), &expected, "{input}");
     }
 }
 
 #[test]
 fn find_handshake_rejects_unknown_subkind_fail_closed() {
-    let error = FindIrV1 {
-        subkind: "mystery".to_string(),
-        seed: "anything".to_string(),
-    }
-    .execution_plan()
-    .expect_err("unknown FIND subkind must fail closed");
+    // The unknown subkind now fails closed at construction (lowering), where the
+    // seed is parsed once — not on a later `execution_plan()` read.
+    let error = FindIrV1::from_typed_v1("mystery", "anything")
+        .expect_err("unknown FIND subkind must fail closed");
 
     assert_eq!(error.message, "unknown FIND subkind `mystery`");
 }

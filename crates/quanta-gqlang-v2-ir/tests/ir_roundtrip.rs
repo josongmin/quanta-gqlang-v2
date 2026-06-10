@@ -50,14 +50,12 @@ fn core_roots_lower_to_expected_public_ir_v1() {
     };
     assert_eq!(
         find.execution_plan(),
-        Ok(FindExecutionPlanIrV1::Flow(
-            quanta_gqlang_v2_ir::find_ir::FlowPlanIrV1 {
-                source: "ingress".to_string(),
-                sink: "egress".to_string(),
-                stages: vec!["ssa".to_string()],
-                window: FindFlowWindowIrV1::Function,
-            },
-        ))
+        &FindExecutionPlanIrV1::Flow(quanta_gqlang_v2_ir::find_ir::FlowPlanIrV1 {
+            source: "ingress".to_string(),
+            sink: "egress".to_string(),
+            stages: vec!["ssa".to_string()],
+            window: FindFlowWindowIrV1::Function,
+        })
     );
 
     let check = lower_root_v1(
