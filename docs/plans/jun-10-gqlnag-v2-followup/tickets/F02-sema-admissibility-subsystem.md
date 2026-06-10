@@ -1,5 +1,8 @@
 # F02 — E05A/B/C/D sema admissibility 서브시스템 신설 (W1)
 
+> **STATUS: NOT STARTED (jun-10 재점검).** external W1. 코드 확인: `sema/src/admissibility/` 디렉터리 부재 — 미착수. quanta-runtime 무관(external 빌드 green)이라 즉시 가능.
+
+
 원천: E-sema-ir-retrieval 감사. `crates/quanta-gqlang-v2-sema/src/admissibility/` 디렉터리 자체가
 디스크에 없음 (메인 세션 직접 확인). E05A/E05B/E05D = missing, E05C = partial.
 

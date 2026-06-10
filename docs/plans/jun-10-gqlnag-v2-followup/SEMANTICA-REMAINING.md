@@ -1,4 +1,16 @@
-# Semantica 잔여 작업 — 최종 확정 (jun-10, 라이브 코드 정적 검증)
+# Semantica 잔여 작업
+
+> ## ⚠️ 재점검 갱신 (jun-10, 빌드 복구 후) — 아래 표는 빌드차단 시점 스냅샷, 다수 항목 DONE
+> `quanta-runtime` 빌드가 복구되어 정적 추정이 cargo 검증으로 승격됐고, 표의 상당수가 완료됐습니다.
+> 권위 있는 현재 상태는 [INDEX.md 대시보드](INDEX.md) 입니다. 요약:
+> - **DONE(검증):** F11(S01/S02/S03), F12(S04A/S11/S17–20/S04B), F13(S05A/S06A/S06B), F14-S07C, F15, F16, F17, F18(4/14).
+> - **남은 semantica:** F18-10(실소비처 재배선 후 삭제), F21(V6B carrier 15+ cutover), planner-v1 tooling 11파일, F14-S08C feature 레일.
+> - **참고:** semantica 가 아닌 **External W1(F02–F08)** 이 최대 미착수 덩어리 — 이 문서 범위 밖, INDEX 참조.
+> 아래 원본 표는 빌드차단 당시(정적) 기록으로 보존.
+
+---
+
+# (원본) Semantica 잔여 작업 — 최종 확정 (jun-10, 라이브 코드 정적 검증)
 
 메인 세션이 현재 `semantica-codegraph-v2` HEAD(`7cd0c4aed4`) 라이브 소스를 직접 grep/read/git 으로 검증.
 빌드는 PTA/DFG 캠페인(quanta-runtime 미컴파일)으로 막혀 있어 **정적 검증**. 이미 끝낸 항목(F01/F09/F11-S02/F16-generator) 제외.

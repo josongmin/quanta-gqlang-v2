@@ -1,5 +1,8 @@
 # F21 — V6B compat carrier demote + J06 최종 closeout (W5, joint)
 
+> **STATUS: NOT STARTED (jun-10 재점검).** semantica V6B. compat carrier 15+ 소비처 cutover = 대형 마이그레이션 — 미착수. 소비처 인벤토리 산출됨.
+
+
 원천: J-caller 감사 + STATUS V6B(33%) 자기보고. V6B 의 남은 코드작업과 J06 클레임 규율 마감.
 
 ## Gap 목록 (라이브)

@@ -1,5 +1,8 @@
 # F20 — J08A/J08B/J09A/J09B/J09C mirror-tautology fixture 의 behavioral 승격 (W5, joint)
 
+> **STATUS: NOT STARTED (jun-10 재점검).** joint. J08A/J08B/J09A/J09B/J09C mirror-tautology → behavioral 승격 — 미착수.
+
+
 원천: J-caller 감사. handshake fixture 품질이 3계층으로 갈림 — 상위 3개만 behavioral,
 하위 5개는 constant-mirror tautology (상수 리스트를 자기 자신과 비교; 행동 회귀 탐지 불능).
 

@@ -1,17 +1,43 @@
-# jun-10 gqlang-v2 followup — RFC 미구현 잔여 작업 패킷
+# jun-10 gqlang-v2 followup — 작업 패킷 + 진행 대시보드
 
-기원: `semantica-codegraph-v2/docs/rfcs/2026-06-05-rfc-qglang-v2-semantic-host-dx-platform` 전체를
-2-라운드 적대적→객관적 감사(48 agents, 라이브 코드 기준)로 검증한 결과.
+기원: RFC `2026-06-05-rfc-qglang-v2-semantic-host-dx-platform` 전체를 2-라운드 적대적→객관적 감사로
+검증 → 21개 follow-up 티켓(F01–F21). 아래 대시보드는 **jun-10 재점검(코드 상태 직접 확인)** 기준.
 
-- 99개 티켓 판정 중 **60개가 self-report 대비 과대평가**
-- 라이브 코드로 `complete` 확인된 것: E07C, S07A, S07B 단 3개
-- 핵심 발견 6건은 메인 세션에서 직접 재검증 완료 (file:line 일치)
+## 현재 상태 대시보드 (jun-10 재점검)
 
-상태 어휘는 RFC STATUS.md 의 Complete Rule 을 그대로 따른다:
-`complete > source-landed > partial > residue-open > planned-only > missing`.
-**Packet prose alone is not completion evidence.**
+**✅ DONE — cargo test/metadata 로 검증됨 (12 티켓 + 부분)**
 
-## Wave 순서 (의존성 기준)
+| 티켓 | 검증 |
+|---|---|
+| F01 composition ingress arm | cargo green (V6A 18 + 외부 grammar drift 대응) |
+| F09 CHECK 문법 | external workspace green |
+| F10 parser foundation (agent) | external green, proof-rail 4종 PASS, typed_ast 삭제 |
+| F11 contract (S01+S02+S03 전체) | exec-contract 17 + diagnostics 4 + host_spi 7 green |
+| F12 proof-pack (SSOT+claim_state+S17-20+S04B) | proof_pack_registry 7 green |
+| F13 adapter (S05A+S06B+S06A 전체) | host-adapter green |
+| F14-S07C residue guard (+drain) | bash-replicate + compile green (S08C=문서화 결정) |
+| F15 closeout gate 3 fixes | hellgate 11 + mutation proof |
+| F16 generator alias + ledger regen | pytest + regen |
+| F17 digest alias drain | compile-verified (13 manifest + 17 .rs) |
+| F18 삭제 4/14 | cargo-metadata-verified |
+
+빌드 복구 후 검증이 실제 이슈 4건 포착·수정: bridge API-drift 5곳, seam-plane, composition grammar drift, CandidateBasisV1 충돌.
+
+**🔲 REMAINING — 미착수 (코드 상태로 확인)**
+
+| 묶음 | 티켓 | 비고 |
+|---|---|---|
+| **External W1 코어 (최대 미착수 덩어리)** | F02·F03·F04·F05·F06·F07·F08 | sema admissibility/AI profile/product IR/metric/fact wiring/trust/cli zero-query 전부 부재. **external 빌드 green → runtime 무관, 즉시 착수 가능.** |
+| Semantica 삭제 마이그레이션 | F18-10 | 10개 crate 의 실소비처(runtime/execution/query-owner-surface) 재배선 후 삭제 = 진짜 S13B/S12B |
+| Semantica V6B cutover | F21 | compat carrier 15+ 소비처 cutover (대형) |
+| Joint | F19·F20 | proof-rail 타겟명 정합 / mirror-tautology 행동승격 (runtime green → 검증 가능) |
+| 자투리 | planner-v1 tooling 11파일, F14-S08C feature 레일 | 파일별 확인 필요 |
+
+**권장 다음 순서:** External W1(F02→F04→F05→F03/F06/F07/F08, 빌드빠름·즉시 가능) → Joint F19/F20 → Semantica 대형 마이그레이션 F21 → F18-10.
+
+---
+
+## Wave 순서 (의존성 기준 — 원본 구조)
 
 ### W0 — 빌드 차단 해제 (최우선, 다른 모든 joint proof 의 전제)
 - [F01](tickets/F01-composition-ingress-bridge-e0004.md) — ingress-bridge E0004 (Composition arm 누락) 수정 + V6A full-loop 재증명

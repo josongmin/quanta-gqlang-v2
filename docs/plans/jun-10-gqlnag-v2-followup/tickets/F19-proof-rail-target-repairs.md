@@ -1,5 +1,8 @@
 # F19 — J01/J02A/J09C proof-rail 타겟명·touch-file 수리 (W5, joint)
 
+> **STATUS: NOT STARTED (jun-10 재점검).** joint. J01/J02A/J09C proof-rail 타겟명·touch-file 정합 — 미착수(runtime 빌드됨 → 검증 가능).
+
+
 원천: J-ingress-handshake-matrix + J-caller 감사 CH2. 티켓이 명명한 cargo test 타겟이
 실제 파일명과 달라 **acceptance 커맨드 자체가 hard fail** 하는 케이스들.
 

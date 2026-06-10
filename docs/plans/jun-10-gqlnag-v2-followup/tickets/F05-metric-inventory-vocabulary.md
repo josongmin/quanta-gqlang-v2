@@ -1,5 +1,8 @@
 # F05 — E11C metric inventory 어휘 복원 + `metric.<name>` 표현식 타겟 (W1)
 
+> **STATUS: NOT STARTED (jun-10 재점검).** external W1. `metric.<name>` target + 9-family 어휘 부재 — 미착수(스코프 결정 선행).
+
+
 원천: E-shell-pack-catalog 감사 "DECISIVE refutation". 메인 세션 직접 재검증 완료 (0 hits).
 
 ## 현재 상태 (라이브)

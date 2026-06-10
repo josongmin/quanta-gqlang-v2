@@ -1,5 +1,8 @@
 # F04 — E06B product IR + E07A typed retrieval + E07B fragment policy (W1)
 
+> **STATUS: NOT STARTED (jun-10 재점검).** external W1. `ir/src/product/`, `ir/src/retrieval/spec.rs`, fragment policy 전부 부재 — 미착수.
+
+
 원천: E-sema-ir-retrieval 감사. 셋 다 missing (high confidence).
 
 ## 현재 상태 (라이브)

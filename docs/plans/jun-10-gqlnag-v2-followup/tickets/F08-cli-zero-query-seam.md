@@ -1,5 +1,8 @@
 # F08 — E12A CLI zero-query/scaffold seam 신설 (W1)
 
+> **STATUS: NOT STARTED (jun-10 재점검).** external W1. CLI zero-query verb 부재(로직은 LSP 소유) — 미착수.
+
+
 원천: E-shell-pack-catalog 감사. scaffold 로직은 진짜지만 LSP 소유 — CLI seam 부재를
 CLI-디렉터리 테스트가 가리고(masking) 있음.
 

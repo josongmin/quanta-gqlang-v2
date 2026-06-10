@@ -1,5 +1,11 @@
 # F10 — E01/E03B/E03D/E04C parser-foundation 부채 일괄 해소 (W1)
 
+> **STATUS: DONE (jun-10) — background agent, external workspace 전체 GREEN 으로 검증.**
+> - `src/root.rs` + `src/error.rs` 신설(RootKindV1/ParseErrorV1), proof-rail 테스트 4종 신설+PASS: `parser_foundation`(8) / `sample_compare_export_grammar`(5) / `meta_commands`(6, context-builtins) / `typed_params`(9).
+> - typed_ast 결정 = **DELETE**(dead code, sema 측 typed layer 가 canonical). `typed_ast.rs` 제거됨.
+> - 메인 세션 재검증: `cargo test --workspace` 0 fail, 위 4 테스트 직접 실행 GREEN.
+
+
 원천: E-parser-grammar 감사 CHALLENGE 1/3/4. 공통 패턴: **티켓이 명명한 proof-rail 테스트 파일이
 존재하지 않아 DoD 검증이 한 번도 실행된 적 없음** + dead-code seam.
 

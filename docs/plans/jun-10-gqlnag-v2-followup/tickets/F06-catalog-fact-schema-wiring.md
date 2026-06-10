@@ -1,5 +1,8 @@
 # F06 — E11A public fact/relation schema 를 catalog root 에 배선 (W1)
 
+> **STATUS: NOT STARTED (jun-10 재점검).** external W1. fact schema 가 SHOW/DESCRIBE catalog root 에 미배선 — 미착수.
+
+
 원천: E-shell-pack-catalog 감사. "root-referencing 은 affirmatively REFUTED" — schema 타입이
 정의만 있고 catalog-facing root 가 하나도 참조 안 함.
 

@@ -1,5 +1,8 @@
 # F03 — E05E/E06C AI profile sema + planning IR 프로듀서 배선 (W1)
 
+> **STATUS: NOT STARTED (jun-10 재점검).** external W1. `sema/src/ai_profile.rs` 부재, planning IR 프로듀서 미배선 — 미착수.
+
+
 원천: E-sema-ir-retrieval 감사. E05E = source-landed(unwired), E06C = source-landed(unwired).
 타입+밸리데이터+자기시험만 있고 **production 프로듀서가 0개인 섬(island)** 상태.
 

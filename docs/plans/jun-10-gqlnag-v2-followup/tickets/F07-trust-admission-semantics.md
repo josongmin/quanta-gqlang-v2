@@ -1,5 +1,8 @@
 # F07 — E10B REQUIRE certified: admission/trust 의미론 구현 (W1)
 
+> **STATUS: NOT STARTED (jun-10 재점검).** external W1. `trust_policy.rs` + 3대 admission reject 부재 — 미착수.
+
+
 원천: E-shell-pack-catalog 감사. RequireCertified 는 파서 문법만 있고 sema-time admission 의미론 0.
 
 ## 현재 상태 (라이브)
