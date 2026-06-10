@@ -1,5 +1,13 @@
 # F14 — S07C named guard + S08C default-feature command path (W2, semantica)
 
+> **STATUS: S07C DONE (jun-10, static-verified + bonus drain); S08C = documented decision.**
+> - **S07C guard** `quanta-sdk-runtime-executor/tests/runtime_executor_source_residue_guard.rs`: named `const FORBIDDEN_QUERY_BOUNDARY_IMPORT = "quanta-runtime-gqlang-boundary-v1"` 추가 + 가드가 그 crate-path(`quanta_runtime_gqlang_boundary_v1`) 부재를 검사 + 잔존 `wire_to_boundary_v1.rs` 를 guarded_files 에 포함. (DoD "또는 기존 guard 확장" 경로 — 새 v2_guard.rs 불필요, 무중복)
+> - **bonus drain (가드가 노출한 실제 잔여):** 활성 캠페인이 재도입한 `group_gqlang_lockfile.rs:8 use crate::query_backend::gqlang_ingress_v1::FreshnessStatusV1` 직접 ingress import 발견 → `public_query_surface_v1` 에 `FreshnessStatusV1` 노출(비-feature-gated, gqlang_ingress_v1:10 원천 확인) 후 `crate::query_backend::public_query_surface_v1::FreshnessStatusV1` 로 재배선.
+> - **검증(정적):** 가드 로직(순수 fs+string)을 bash 로 13개 파일 전수 replicate → **0 residue, guard WOULD PASS**. 재수출 체인(authority-support→gqlang_ingress_v1→public_query_surface_v1→lockfile) 정적 추적 sound. cargo 미실행(quanta-runtime 블록)이나 가드는 타입 의존 0이라 replicate 가 곧 검증.
+> - **S08C 결정(코드변경 회피):** 기본빌드(`binding-core`)의 command-plane fail-closed stub 은 **의도된 read-only thin-shell lane** 으로 유지(기본 feature 승격은 빌드검증 불가 상태에서 위험). 액션 = production/command 빌드는 `mutation-backend-runtime` 활성 + 그 feature-on CI 레일 추가(quanta-runtime 복구 후 실행). 기본을 바꾸지 않음.
+
+
+
 원천: S-sdk-drain 감사. 실질 residue 는 깨끗 (S07A/S07B 는 라이브 검증 complete) — 남은 건
 named guard 계약 미이행과 기본 빌드 경로 stub 문제.
 

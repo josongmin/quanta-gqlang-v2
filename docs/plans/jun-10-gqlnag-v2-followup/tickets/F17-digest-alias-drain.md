@@ -1,5 +1,12 @@
 # F17 — quanta-gqlang-digest-v1 alias 드레인 + orphan dir 정리 (W4, semantica)
 
+> **STATUS: DRAIN DONE (jun-10) — COMPILE-VERIFIED.** (사용자 지적이 옳았음: runtime 무관, package-rename alias = 동일 crate = 기계적 안전 rename, cargo metadata + leaf compile 로 검증)
+> - **13 manifests**: dep key `quanta-gqlang-digest-v1 = { package = "codegraph-core-ir-foundation", ... }` → `codegraph-core-ir-foundation = { ... }` + feature ref(`"quanta-gqlang-digest-v1/..."` → `"codegraph-core-ir-foundation/..."`). 충돌검사 0(alias+직접 동시보유 없음), workspace.dependencies 간접참조 없음.
+> - **17 .rs**: `quanta_gqlang_digest_v1` → `codegraph_core_ir_foundation` (use/pub use/path 전부).
+> - **잔여 0**: toml/rs 모두 `quanta.gqlang.digest.v1` grep 0.
+> - **검증:** `cargo metadata` OK(그래프 resolve) + `cargo check -p quanta-gqlang-hir-v1 --lib` **Finished GREEN** — 그 과정에서 drained crate(authority-support/absence-wire/envelope-wire) 도 함께 컴파일됨 = 실제 빌드 검증. package-rename 이라 타입 동일(의미상 null).
+> - **잔여(orphan dir)**: owasp-matrix-v1 / sarif-projection-v1 은 S13D 삭제행 → F18 에서 dir 삭제(드레인은 이미 canonical 로 끝남).
+
 원천: S-public-delete-waves 감사. 메인 세션 직접 재검증: `hir-v1/Cargo.toml:27,35` 에서
 `quanta-gqlang-digest-v1 = { package = "codegraph-core-ir-foundation", path = ".../core/ir/foundation" }`
 확인, 참조 파일 30개.

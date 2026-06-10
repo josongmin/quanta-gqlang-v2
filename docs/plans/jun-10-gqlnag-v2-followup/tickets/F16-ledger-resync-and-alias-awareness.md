@@ -1,6 +1,10 @@
 # F16 — S09B/S09C/J06 레저 재동기화 + generator alias 인지 (W3, semantica)
 
-> STATUS: PARTIAL (jun-10) — generator alias-awareness CODE done + tests green; ledger regen deferred to post-F17
+> STATUS: DONE (jun-10) — generator alias-awareness CODE green + **ledger regen done post-F17**.
+> - 후속(F17 드레인 직후): `python3 tools/ci/gqlang-v2/generate_dependency_snapshot.py` 재실행 성공 → committed 레저 갱신(`current-public-legacy-delete-readiness.md` -50줄=digest-v1 blocker 클리어, orphan/runtime-boundary/workspace-delete-gates 갱신). S09C orphan stale + J06 delete_rows 동시 해소. committed==regen 이므로 F15 staleness 가드 통과.
+> - (이하 PARTIAL 노트는 ledger regen 완료로 충족됨)
+>
+> 원래 PARTIAL 노트:
 >
 > **Done (this run, repo `semantica-codegraph-v2`):**
 > - `tools/ci/gqlang-v2/generate_dependency_snapshot.py:272-288` — new helper

@@ -1,5 +1,13 @@
 # F12 — S04A/S11/S17–S20 proof-pack registry 탈공허화 + claim_state 강제 (W2, semantica)
 
+> **STATUS: CORE DONE (jun-10) — SSOT exec-contract GREEN (17 tests, 0 warn); conformance rewire static.**
+> - **SSOT 신설** `exec-contract/src/proof_pack.rs` (+ lib.rs mod/re-export): `ProofPackFamilyV1`(4 closed families), `ProofPackRegistryV1::ROWS_V1`(가족별 **DISTINCT** parity_criteria/residual_risk_report — 감사가 지적한 동일 보일러플레이트 제거), `validate_v1`(가족 1:1 커버 + non-empty + parity/residual **pairwise distinct** fail-closed), `row_id_v1`(게이트 grep 어휘), `ClaimStateV1`(S11 5-milestone: source_landed→owner_local_green→joint_green→delete_closeout→final_complete) + `can_advance_to_v1`(스킵 금지) + `is_final_v1`.
+> - **conformance 탈공허화** `exec-conformance/tests/proof_pack_registry.rs`: test-local `PROOF_PACK_ROWS_V1` 타우톨로지 제거 → SSOT import 후 검증(validate/distinctness/claim-discipline). row-id 리터럴은 게이트 grep 위해 assert 형태로 유지 → **F15 per-ticket S17-20 grep 과 정합**.
+> - **검증:** `cargo test -p exec-contract` 17 GREEN(F12 4 + F11-S02 3 + 기존 10), 0 warning. 적대 mutation proof: residual 2개 동일화 시 validate_v1 FAIL(비공허). 게이트 4개 row-id 리터럴 잔존 확인.
+> - **Deferred(honest):** (1) `LegacyProofPortV1`(S04B) — 레거시 proof-port 어휘 미상이라 미구현(날조 안 함). (2) 게이트가 per-family `claim_state` 를 출력하는 통합(현재는 코드 enforce 까지). (3) conformance 테스트 빌드검증 — quanta-runtime 블록.
+
+
+
 원천: S-contract-spi-proof + S-ledger + S-proofpack 감사. 공통 진단: `proof_pack_registry.rs` 가
 **test-local 리터럴을 자기 자신과 비교하는 tautology** 이고, claim discipline 은 prose 로만 존재.
 

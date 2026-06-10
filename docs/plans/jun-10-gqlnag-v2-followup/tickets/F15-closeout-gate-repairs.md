@@ -1,5 +1,15 @@
 # F15 — closeout gate 3대 구조 결함 수리 (W3, semantica)
 
+> **STATUS: DONE (jun-10) — static hellgate GREEN, mutation-proven non-vacuous.**
+> 파일: `tools/ci/gates/gate-gqlang-v2-semantica-closeout.sh` (+ 신규 테스트 `tools/ci/gates/test-gate-gqlang-v2-semantica-closeout-f15.sh`)
+> - **결함1 survivor 모순:** `SHALLOW_FOLD_DELETE_CRATES:122` `quanta-runtime-query-preset-wire`(LIVE survivor) → legacy shim `quanta-runtime-gqlang-query-preset-wire`(absent) 로 교정. check_fold_closeout(S15/S16 parent) 이 이제 satisfiable. (S15A child arm 은 이미 올바른 이름 사용 — 일치시킴)
+> - **결함2 S17-20 비차별:** `S17|S18|S19|S20)` 단일 arm 분리 → 4개 per-ticket arm + 신규 `check_proof_pack_row` 헬퍼(row 1개만 검사). `--ticket S17`=sonarqube_class … `S20`=host_required 가 각자 단독 fail 가능. (aggregate 용 `check_proof_pack_rows` 복수형은 유지)
+> - **결함3 staleness 세탁:** `check_snapshot_generator_stability` 에 `git diff --exit-code HEAD -- ${GENERATED_SNAPSHOT_DIR}` 가드 추가 → fresh regen 이 committed 와 다르면(stale) fail-closed. (기존 fresh×2 diff 는 committed drift 를 못 봄)
+> - **검증:** `bash -n` clean; hellgate 11 assertions ALL PASS; 적대적 mutation proof — survivor 재주입 시 탐지 확인(비공허). DEEP_FOLD 8행 포함 14개 crate 를 실제 파일시스템과 교차검증.
+> - gate 전체 실행은 cargo metadata 필요(PTA 캠페인 블록)라 미실행 — 3 결함은 순수 셸 로직이라 정적 완결.
+
+
+
 원천: S-runtime-fold / S-proofpack / S-ledger 감사. 메인 세션에서 survivor-모순과 S17–20 collapse
 직접 재검증 완료. **이 티켓이 끝나야 다른 모든 "gate PASS" 가 증거 능력을 가짐.**
 

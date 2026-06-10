@@ -1,6 +1,19 @@
 # F11 — S01/S02/S03 계약 gap 보수 (W2, semantica)
 
-> **STATUS: PARTIAL (jun-10) — S02 DONE/verified; S01·S03·CandidateBasisV1 BLOCKED/deferred.**
+> **STATUS: S01+S02+S03 ALL DONE (jun-10) — quanta-runtime 빌드 복구 후 전부 compile+test 검증.**
+> - **S01 finding plane DONE (SOTA++):** `exec-contract/src/diagnostics.rs` 신설 — 전체 finding plane: `SeverityV1`/`LocationV1`/`PathWitnessRefV1`/`MetricSnapshotRefV1`/`IssueKindV1`/`IssueWorkflowStateV1`(read-vs-mutate `is_triage_mutation_v1`)/`HotspotStatusV1`/`DeltaStateV1`/`ExternalOriginV1`/`SuppressionReasonV1`/`CandidateBasisV1{Heuristic,Inferred,Certified}`(RFC 교정셋)/`RankingMetadataV1`/`DiagnosticProjectionV1`(18필드, truth.rs 의 TruthClass/Outcome/CoverageStatus 재사용). RFC 불변식 코드 인코딩: `admits_through_gate_v1()==false`(ranking 은 gate-allow 아님), `derived_truth_class_v1()==None`(ranking 은 truth_class 안 올림), RankingMetadata 에 truth_class 필드 부재(구조적 분리). `validate_v1` fail-closed(외부origin은 ExternalIssue 일때만).
+> - **CandidateBasisV1 충돌 해소:** `result.rs` 의 잘못된 `CandidateBasisV1{Lexical,Semantic,Hybrid,Fragment}`(실제론 match basis) → `CandidateMatchBasisV1` 로 rename + 소비처 2곳(ai_workflow) 갱신. finding-plane CandidateBasisV1 가 canonical.
+> - **conformance** `diagnostics_issue_ranking_contract.rs` 신설: shared projection / external provenance fail-closed / read-vs-mutate split / ranking-never-admits-nor-raises-truth — **4 tests GREEN**.
+> - **검증:** exec-contract 17 + diagnostics conformance 4 GREEN.
+> - (S03 의 seam 테스트는 빌드 검증 중 plane 가정 오류 발견·수정: Resolve=Retrieval, PatternLint=ProductWorkflow, 나머지 6=Analysis 로 정밀화.)
+>
+> 이전 노트:
+> - **S03 DONE (static-verified):** `host_spi_contract.rs` 에 8개 analysis-trait(Resolve/Relation/Path/TaintAnalysis/PointsTo/Summary/Explain/PatternLint) DummyHost impl 추가(기존 serving-plane 10개와 동일 compile-only 패턴) + 비공허 테스트 `seam_inventory_covers_all_analysis_hosts_v1`(8개 Analysis-plane seam 존재 assert). 적대검증: 8 trait + 8 ServingHostKindV1 variant + 23 contract type 전부 소스에 존재 확인(시그니처는 trait body 에서 직접 추출). cargo 는 conformance→runtime 블록이라 미실행, 타입 전수 resolve 정적확인.
+>
+> - **S01 finding-plane — DEFER (날조 회피):** S01 티켓이 `DiagnosticProjectionV1` 의 top-level + enum(IssueKindV1/IssueWorkflowStateV1/HotspotStatusV1/RankingMetadataV1/`CandidateBasisV1{Heuristic,Inferred,Certified}`)은 명세하나, `DiagnosticProjectionV1` 가 참조하는 leaf 7종(`SeverityV1`/`LocationV1`/`PathWitnessRefV1`/`MetricSnapshotRefV1`/`DeltaStateV1`/`ExternalOriginV1`/`SuppressionReasonV1`)은 shape 미명세 → RFC-002 Appendix 확인 필요(현재 exec-contract 부재). 3종(TruthClassV1/OutcomeV1/CoverageStatusV1)만 존재. leaf shape 확보 후 `exec-contract/src/diagnostics.rs` 신설(빌드 가능, 검증 가능).
+> - **S01 CandidateBasisV1 교정 — DEFER:** spec 은 `{Heuristic,Inferred,Certified}` 인데 `result.rs` 의 현행 `CandidateBasisV1{Lexical,Semantic,Hybrid,Fragment}`(실제론 retrieval-mode 의미)와 이름 충돌. 올바른 fix 는 result.rs 것을 `CandidateRetrievalBasisV1` 등으로 rename + 필드/소비처 재배선인데, 소비처가 차단된 ai_workflow bridge/conformance 테스트라 검증 불가(ripple). 빌드 복구 후.
+>
+> 이하 원래 S02 노트:
 > - **S02 DONE (exec-contract, verified green):** `ExportKindV1` 에 wire-mapping SSOT 추가(`request.rs` `as_wire_str_v1`/`from_wire_str_v1`), `BridgeReceiptV1::validate_v1`(`command_bridge.rs`)에 closed-set 검사 추가 → 비공집합 `export_kind`("garbage")가 `command_bridge_receipt_invalid_export_kind` 로 fail-closed. 신규 테스트 3개(positive/negative/round-trip) + 기존 13개 `cargo test -p quanta-gqlang-v2-exec-contract` GREEN. 적대검증: 차단된 producer 들이 쓰는 "command_bridge"/"working_set" 는 모두 수용 → 무리플.
 > - **환경 블로커:** semantica 워크트리의 미커밋 `quanta-runtime` WIP(`taint/types.rs` → `quanta_contract_types::security` 미해결, `pta_solver::PointsToResult` 필드 드리프트)가 host-adapter/ingress-bridge/exec-conformance 빌드를 막음. 따라서:
 >   - **S03 (8 analysis-trait conformance coverage)**: host_spi_contract.rs 가 exec-conformance(→bridge→quanta-runtime) 빌드를 끌어 **테스트 실행 차단**. 코드 추가는 가능하나 green 증명 불가 → 블로커 해소 후 진행.

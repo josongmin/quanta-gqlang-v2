@@ -1,5 +1,15 @@
 # F18 — S12B/S13A/S13B잔여/S13C/S13D 삭제 웨이브 실행 (W4, semantica)
 
+> **STATUS: 4/14 DELETED (jun-10, cargo-metadata-verified); 10 BLOCKED by real consumers.**
+> 검증 방법: `cargo metadata` 로 crate별 reverse-dep 계산(= runtime 컴파일 불필요) → 0-consumer 만 삭제.
+> - **삭제 완료(0 reverse-dep, cargo metadata OK):**
+>   - `quanta-gqlang-ranked-proof-contamination-detector-v1` (S13A, member) — workspace member 라인 2곳 제거 + dir 삭제
+>   - `quanta-gqlang-sigil-v1` (S13B, orphan) / `quanta-gqlang-planner` (S13C, orphan) / `quanta-gqlang-owasp-matrix-v1` (S13D, orphan) — dir 삭제
+> - **BLOCKED (실소비처 존재 — 삭제 전 소비처 재배선 필요 = 진짜 S13B/S12B 마이그레이션):**
+>   - catalog-binding-v1(7), validation-v1(8), fragment-v1(6), gates-v1(2: exec-conformance/runtime), core(4: lowering/runtime/execution/query-owner-surface), lowering(1: query-owner-surface), hir-v1(2: runtime/query-owner-surface), catalog-v1(3: adapters-security/runtime/execution), sdk-handlers-v1(2: hir-v1/command-owner-surface), sarif-projection-v1(2: exec-conformance/observation-wire)
+>   - 이 소비처 재배선은 quanta-runtime/execution 코드를 건드려야 함(현재 미컴파일) → 빌드 복구 후 안전.
+> - **잔여(S13B gate-silent):** planner-v1 이 tooling 11파일(catalog yaml/boundary policy/lint/god-surface-baseline.json)에 잔존. 일부는 baseline/allowlist 라 의도적일 수 있어 일괄삭제 위험 → 파일별 확인 후 정리.
+
 원천: S-public-delete-waves 감사. self-report 는 정직 (planned-only/partial) — 이 티켓은
 "미시작 작업의 실행" 패킷. F15(게이트 수리)·F17(alias 드레인) 후 진행 권장.
 

@@ -1,5 +1,16 @@
 # F13 — S05A/S06A/S06B 어댑터 gap (W2, semantica)
 
+> **STATUS: S05A+S06B+S06A ALL DONE (jun-10) — runtime 빌드 복구 후 전부 cargo test 검증.**
+> - **S06A DONE (SOTA++):** `host-adapter/src/catalog_adapter.rs` 신설 — `CatalogBridgeV1` 가 catalog-bridge seam(host_kind=Capability, result_kind=CapabilityCatalog, CapabilityQueryV1 shape)의 단일 owner. `for_category_v1`(SHOW)/`for_capability_v1`(DESCRIBE) 생성자. show_adapter/describe_adapter 는 bridge 로 위임(thin projection) → inline Capability 리터럴 0(중복 라우팅 제거). hellgate `catalog_bridge_routes_every_read_to_the_capability_host_v1` + show/describe lowering 테스트 GREEN.
+> - **S05A/S06B 도 재검증 GREEN:** adapter_lowering_matrix 6 / search_projection_ownership 2 (runtime 빌드 후 실행).
+>
+> 이전 노트: quanta-runtime 블록이라 cargo 미실행 — 타입/전파경로 정적 추적으로 검증.
+> - **S05A (reject 커버)** `exec-conformance/tests/adapter_lowering_matrix.rs`: `select_root_fails_closed_on_unsupported_entity_kind_v1` 추가 — `EntityKindV1::Diagnostic`(SELECT surface map 미지원 변종)으로 `lower_request_v1` 호출 → `LoweringErrorV1::Select(SelectLoweringErrorV1::UnsupportedEntityKind(Diagnostic))` fail-closed assert. 전파경로 확인: `request_lowering.rs:50-52` `lower_select_v1(spec).map_err(LoweringErrorV1::Select)`. (이전엔 reject assert 0)
+> - **S06B (진짜 ownership proof)** `exec-conformance/tests/search_projection_ownership.rs`: 17줄 tautology(matches! 자기검사) 제거 → `lower_sample_v1` 로 실제 lowering 후 **`runtime_packet.backend_owner == "quanta-index"`** assert (text + symbol 2 케이스). off-rail `host-adapter/tests/search_host_quanta_index.rs` 의 실제 증명을 S06B 게이트 레일(`--test search_projection_ownership`)로 이식. 모든 타입은 그 실제 sibling 에서 검증.
+> - **S06A (catalog_adapter.rs)**: DEFERRED — `host-adapter/src/catalog_adapter.rs` 신설은 show/describe catalog 로직 consolidation refactor 라 컴파일러 필요(빌드 블록). thin re-export stub 는 audit 가 싫어하는 placeholder 이므로 회피. quanta-runtime 복구 후 진행.
+
+
+
 원천: S-adapter-lowering-bridge 감사. 어댑터 본체는 진짜 — gap 은 (1) create-miss 1건,
 (2) vacuous proof 2건.
 
