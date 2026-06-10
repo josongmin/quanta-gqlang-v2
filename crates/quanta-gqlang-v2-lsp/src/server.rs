@@ -10,6 +10,22 @@ use crate::handlers::diagnostics::DiagnosticItemV1;
 use crate::handlers::explain_view::ExplainHintCardV1;
 use crate::handlers::hover::HoverCardV1;
 use crate::handlers::quickfix::QuickfixSuggestionV1;
+
+/// The complete read-only stdio method allowlist, in dispatch order. This is the
+/// single list the doc gate checks the README against (so a shipped method can
+/// never go undocumented — the `explain` omission the audit caught). A binary
+/// test pins that each name is accepted by the dispatch (not `method_not_allowed`)
+/// and that the count matches the dispatch arms, so the const cannot drift from
+/// the closed allowlist in `parse_json_v1`.
+pub const READ_ONLY_METHOD_NAMES_V1: [&str; 7] = [
+    "hover",
+    "completion",
+    "symbols",
+    "diagnostics",
+    "zero_query",
+    "quickfix",
+    "explain",
+];
 use crate::handlers::symbols::SymbolItemV1;
 use crate::handlers::zero_query::{ZeroQueryGroupV1, ZeroQueryResponseV1, ZeroQuerySuggestionV1};
 
