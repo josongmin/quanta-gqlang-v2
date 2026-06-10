@@ -26,6 +26,7 @@
 
 mod support;
 
+use quanta_gqlang_v2_conformance::leakage::find_runtime_truth_token_v1;
 use support::{
     cli_stdout_v1, example_path_v1, run_cli_argv_v1, write_target_tmp_input_v1,
     SHIPPED_EXAMPLE_DOC_PATHS_V1,
@@ -45,36 +46,6 @@ const EXPLAIN_EXAMPLE_PREFIXES_V1: &[&str] = &["examples/find/", "examples/expla
 /// the *honest* markers the shell legitimately emits (e.g. `no_result_reason`,
 /// `why_no_result`, `root_count`, `step_count`, `degraded_count`,
 /// `diagnostic_count`, and the `*-unavailable` degraded-reason enum values).
-const FORBIDDEN_RUNTIME_TOKENS_V1: &[&str] = &[
-    "result_count",
-    "row_count",
-    "rows_returned",
-    "rows=",
-    "match_count",
-    "matches_found",
-    "results_found",
-    "num_results",
-    "execution_time",
-    "elapsed_ms",
-    "executed_at",
-    "ran_at",
-    "provider_response",
-    "provider_endpoint",
-    "routed_to",
-    "host_dto",
-    "host_response",
-    "backend_result",
-    "edit_applied",
-    "applied_edit",
-    "workspace_edit_applied",
-    "materialized_result",
-    "result_materialized",
-    "runtime_truth",
-    "confirmed_true",
-    "verdict=",
-    "actual_result",
-];
-
 /// Honest absence authority suffix. Every degraded-reason value emitted by any
 /// front door must end with this; it is the single honest-absence enum, never a
 /// positive runtime claim.
@@ -97,12 +68,14 @@ fn run_command_file_stdout_v1(command: &str, example_relative: &str) -> String {
     cli_stdout_v1(&output)
 }
 
-/// Assert no runtime-truth token leaks into `stdout`. On failure the message
-/// names the offending (command, example, token).
+/// Assert no runtime-truth token leaks into `stdout`. The denylist and the
+/// boundary-aware, case-insensitive matcher are the single shared authority
+/// (`quanta_gqlang_v2_conformance::leakage`), so the CLI and LSP sweeps can no
+/// longer drift and an honest identifier that merely contains a token as a
+/// substring (`query_result_count`) no longer false-positives.
 fn assert_no_forbidden_tokens_v1(command: &str, example_relative: &str, stdout: &str) {
-    for token in FORBIDDEN_RUNTIME_TOKENS_V1 {
-        assert!(
-            !stdout.contains(token),
+    if let Some(token) = find_runtime_truth_token_v1(stdout) {
+        panic!(
             "runtime-leakage detected: command=`{command}` example=`{example_relative}` \
              leaked forbidden token=`{token}`\n--- stdout ---\n{stdout}"
         );
