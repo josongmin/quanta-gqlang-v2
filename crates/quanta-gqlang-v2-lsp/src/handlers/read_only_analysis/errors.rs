@@ -4,6 +4,22 @@ use quanta_gqlang_v2_ir::diagnostic_class::{
 };
 use quanta_gqlang_v2_ir::frontend::SyntaxDiagnosticPageV1;
 
+/// Map every diagnostic in a syntax page to an LSP error, preserving the
+/// per-line recovery order. Used by the whole-document diagnostics surface so a
+/// document with several malformed lines surfaces them all at once, exactly as
+/// the canonical parser's phase-1 recovery collected them.
+pub(super) fn syntax_page_to_lsp_errors_v1(
+    page: SyntaxDiagnosticPageV1,
+) -> impl Iterator<Item = ReadOnlyLspErrorV1> {
+    page.diagnostics
+        .into_iter()
+        .map(|diagnostic| ReadOnlyLspErrorV1 {
+            class: diagnostic_class_for_syntax_code_v1(diagnostic.code),
+            code: diagnostic.code,
+            message: diagnostic.message,
+        })
+}
+
 pub(super) fn syntax_page_to_lsp_error_v1(page: SyntaxDiagnosticPageV1) -> ReadOnlyLspErrorV1 {
     let Some(diagnostic) = page.diagnostics.into_iter().next() else {
         return syntax_error_v1(

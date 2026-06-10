@@ -1,4 +1,3 @@
-use std::fmt::Write;
 
 use quanta_gqlang_v2_ir::frontend::{
     AstRootV1, CertifiedAdmissionPolicyAstV1, CertifiedTruthRequirementAstV1, CheckRootAstV1,
@@ -38,37 +37,31 @@ pub struct QueryRootSummaryV1 {
 
 impl QuerySummaryV1 {
     pub fn render_v1(&self) -> String {
-        let mut out = String::new();
-        let _ = writeln!(&mut out, "query.root_count={}", self.root_count);
+        let mut lines = vec![format!("query.root_count={}", self.root_count)];
         for (index, root) in self.roots.iter().enumerate() {
-            let _ = writeln!(
-                &mut out,
+            lines.push(format!(
                 "query.root[{index}].syntax.kind={}",
                 root.syntax_kind
-            );
-            let _ = writeln!(
-                &mut out,
+            ));
+            lines.push(format!(
                 "query.root[{index}].syntax.summary={}",
                 root.syntax_summary
-            );
-            let _ = writeln!(
-                &mut out,
+            ));
+            lines.push(format!(
                 "query.root[{index}].typed.kind={}",
                 root.typed_kind
-            );
-            let _ = writeln!(
-                &mut out,
+            ));
+            lines.push(format!(
                 "query.root[{index}].typed.summary={}",
                 root.typed_summary
-            );
-            let _ = writeln!(&mut out, "query.root[{index}].ir.kind={}", root.ir_kind);
-            let _ = writeln!(
-                &mut out,
+            ));
+            lines.push(format!("query.root[{index}].ir.kind={}", root.ir_kind));
+            lines.push(format!(
                 "query.root[{index}].ir.summary={}",
                 root.ir_summary
-            );
+            ));
         }
-        out.trim_end().to_string()
+        lines.join("\n")
     }
 }
 
@@ -138,6 +131,7 @@ pub(crate) fn syntax_root_kind_v1(root: &AstRootV1) -> &'static str {
         AstRootV1::Profile(_) => "profile",
         AstRootV1::Gate(_) => "gate",
         AstRootV1::Meta(_) => "meta",
+        AstRootV1::Composition(_) => "composition",
     }
 }
 
@@ -151,6 +145,7 @@ pub(crate) fn typed_root_kind_v1(root: &TypedRootV1) -> &'static str {
         TypedRootV1::SampleCompareExport(_) => "sample_compare_export",
         TypedRootV1::Declaration(_) => "declaration",
         TypedRootV1::Meta(_) => "meta",
+        TypedRootV1::Composition(_) => "composition",
     }
 }
 
@@ -164,6 +159,7 @@ pub(crate) fn ir_root_kind_v1(root: &PublicIrRootV1) -> &'static str {
         PublicIrRootV1::Interactive(_) => "interactive",
         PublicIrRootV1::Declaration(_) => "declaration",
         PublicIrRootV1::Meta(_) => "meta",
+        PublicIrRootV1::Composition(_) => "composition",
     }
 }
 
@@ -204,6 +200,12 @@ pub(crate) fn syntax_root_summary_v1(root: &AstRootV1) -> String {
         AstRootV1::Profile(ProfileDeclAstV1 { name }) => format!("carrier={name}"),
         AstRootV1::Gate(GateDeclAstV1 { name }) => format!("carrier={name}"),
         AstRootV1::Meta(command) => syntax_meta_summary_v1(command),
+        AstRootV1::Composition(spec) => format!(
+            "lets={} with={} body={}",
+            spec.lets.len(),
+            spec.with_name,
+            syntax_root_kind_v1(&spec.body)
+        ),
     }
 }
 
@@ -244,6 +246,7 @@ pub(crate) fn typed_root_summary_v1(root: &TypedRootV1) -> String {
                 typed_certified_admission_summary_v1(*admission_policy)
             ),
         },
+        TypedRootV1::Composition(spec) => format!("{spec:?}"),
     }
 }
 
@@ -278,43 +281,51 @@ pub(crate) fn ir_root_summary_v1(root: &PublicIrRootV1) -> String {
         PublicIrRootV1::Interactive(spec) => interactive_ir_summary_v1(spec),
         PublicIrRootV1::Declaration(spec) => declaration_ir_summary_v1(spec),
         PublicIrRootV1::Meta(spec) => meta_ir_summary_v1(spec),
+        PublicIrRootV1::Composition(spec) => {
+            let ids = spec
+                .bindings
+                .iter()
+                .map(|(reference, _)| reference.working_set_id.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!(
+                "bindings=[{ids}] narrowed_by={} body={}",
+                spec.narrowed_by,
+                ir_root_kind_v1(&spec.body)
+            )
+        }
     }
 }
 
 pub(crate) fn render_syntax_page_v1(page: SyntaxDiagnosticPageV1) -> String {
-    let mut out = String::new();
-    let _ = writeln!(
-        &mut out,
+    let mut lines = vec![format!(
         "syntax.diagnostic_count={}",
         page.diagnostics.len()
-    );
+    )];
     for (index, diagnostic) in page.diagnostics.iter().enumerate() {
         let span = diagnostic.span.as_ref().map_or_else(
             || "none".to_string(),
             |span| format!("{}..{}", span.start, span.end),
         );
-        let _ = writeln!(
-            &mut out,
+        lines.push(format!(
             "syntax.diagnostic[{index}].code={}",
             diagnostic.code
-        );
-        let _ = writeln!(
-            &mut out,
+        ));
+        lines.push(format!(
             "syntax.diagnostic[{index}].message={}",
             diagnostic.message
-        );
-        let _ = writeln!(&mut out, "syntax.diagnostic[{index}].span={span}");
+        ));
+        lines.push(format!("syntax.diagnostic[{index}].span={span}"));
     }
-    out.trim_end().to_string()
+    lines.join("\n")
 }
 
 pub(crate) fn render_sema_page_v1(page: SemaDiagnosticPageV1) -> String {
-    let mut out = String::new();
-    let _ = writeln!(&mut out, "sema.diagnostic_count={}", page.diagnostics.len());
+    let mut lines = vec![format!("sema.diagnostic_count={}", page.diagnostics.len())];
     for (index, diagnostic) in page.diagnostics.iter().enumerate() {
-        let _ = writeln!(&mut out, "sema.diagnostic[{index}]={diagnostic}");
+        lines.push(format!("sema.diagnostic[{index}]={diagnostic}"));
     }
-    out.trim_end().to_string()
+    lines.join("\n")
 }
 
 pub(crate) fn render_ir_error_v1(error: IrLoweringErrorV1) -> String {
@@ -530,16 +541,18 @@ trait AstRootExtV1 {
 
 impl AstRootExtV1 for AstRootV1 {
     fn as_check_intent_v1(&self) -> Option<CheckRootIntentV1> {
-        match self {
-            AstRootV1::Check(spec) => spec.intent().ok(),
-            _ => None,
+        if let AstRootV1::Check(spec) = self {
+            spec.intent().ok()
+        } else {
+            None
         }
     }
 
     fn as_explain_shape_v1(&self) -> Option<ExplainShapeAstV1> {
-        match self {
-            AstRootV1::Explain(spec) => spec.shape().ok(),
-            _ => None,
+        if let AstRootV1::Explain(spec) = self {
+            spec.shape().ok()
+        } else {
+            None
         }
     }
 }

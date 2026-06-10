@@ -54,7 +54,7 @@ A surface marked "— (contract-only)" in the Binary e2e column is intentionally
 | Negative-DSL fail-closed | `crates/quanta-gqlang-v2-lsp/tests/stdio_negative_dsl_hellgate.rs` | — | Each malformed root fails closed at the spawned binary. |
 | Command-plane barrier | `crates/quanta-gqlang-v2-lsp/tests/stdio_command_plane_hellgate.rs` | `crates/quanta-gqlang-v2-lsp/tests/edit_command_handshake.rs` | Mutating / command-plane methods always `command_plane_forbidden`, exit 1; barrier is mutation-specific (not catch-all); session not poisoned. |
 | Read-only authority (quickfix metadata-only + zero-query authority) | `crates/quanta-gqlang-v2-lsp/tests/stdio_readonly_authority_hellgate.rs` | `crates/quanta-gqlang-v2-lsp/tests/autocomplete_quickfix.rs` | Quickfix returns metadata only; zero-query path executes no query. |
-| Autocomplete / catalog completion | — (contract-only) | `crates/quanta-gqlang-v2-lsp/tests/autocomplete_handshake.rs`, `catalog_autocomplete_handshake.rs`, `catalog_completion.rs` | Completion shapes pinned at library level only. |
+| Autocomplete / catalog completion | — (contract-only) | `crates/quanta-gqlang-v2-lsp/tests/autocomplete_handshake.rs`, `catalog_autocomplete_handshake.rs` | Completion shapes pinned at library level only. |
 
 ## Syntax
 
@@ -86,9 +86,28 @@ A surface marked "— (contract-only)" in the Binary e2e column is intentionally
 | IR round-trip | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/ir_roundtrip.rs` | |
 | Fact schema / rowset guard / public fact schema | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/fact_schema_rowset_guard.rs`, `public_fact_schema.rs`, `fact_model_handshake.rs` | Typed host-ingested vocabulary, not analyzer-computed truth. |
 | Model / pack / gate handshake | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/model_pack_gate_handshake.rs` | |
-| Metric inventory | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/metric_inventory.rs` | `metric.<name>` typed vocabulary; external findings are frontend data nouns. |
+| Metric inventory | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/metric_inventory.rs` | Typed metric-identifier vocabulary; external findings are frontend data nouns. Disjoint from the COMPARE `metric=` clause vocabulary. |
+| Catalog completion coverage | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/catalog_completion.rs` | ir-owned catalog coverage guard; the LSP ranker draws from these rows. |
 | AI profile IR contract | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/ai_profile_contract.rs` | Same-intent replay; AI lane cannot emit final policy truth. |
 
 ## Composition gate
 
 The entire rail set above is composed and gated by `just ci`.
+
+## E03C — `LET` / `WITH` composition (added jun-10)
+
+`LET`/`WITH` is a composition clause family (not a root family), covered by
+dedicated binary + contract rails rather than the 17-root example matrix.
+
+| Surface | Binary e2e rail | Contract-only rail | Notes |
+|---|---|---|---|
+| syntax: grammar, grouping, fmt | — | `crates/quanta-gqlang-v2-syntax/tests/let_with_composition.rs` | 14 cases incl every `composition_*` code |
+| sema: alias→index, D3 producers | — | `crates/quanta-gqlang-v2-sema/tests/sema_composition.rs` | undefined/invalid-producer fail-closed; producer errors pass through |
+| ir: lowering + `WorkingSetV1` wiring | — | `crates/quanta-gqlang-v2-ir/tests/composition_ir.rs` | degraded `-unavailable` round-trip; body lane preserved |
+| CLI front door | `crates/quanta-gqlang-v2-cli/tests/composition_frontdoor_hellgate.rs` | — | parse/sema/query/fmt/doctor/headless + S1-S8 |
+| CLI no-runtime-leakage | `crates/quanta-gqlang-v2-cli/tests/no_runtime_leakage_cli_sweep.rs` | — | composition case (S6): denylist + `-unavailable` suffix |
+| LSP stdio front door | `crates/quanta-gqlang-v2-lsp/tests/stdio_composition_contract.rs` | — | hover/symbols/diagnostics/quickfix; read-only |
+
+Boundary: composition lowers to typed IR referencing `WorkingSetRefIrV1`
+descriptors (no `items` field — no runtime-packet widening); materialization is
+host-side and out of scope here.

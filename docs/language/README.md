@@ -54,9 +54,11 @@ authority enum; they are not invented runtime truth.
    `truth_expectation`, `bridge_mode`, and export mode; roots that require planning
    metadata fail closed when it is absent, and lowering-ready normalization
    preserves planning metadata rather than dropping it.
-3. Metric inventory and external findings (`E11C`): `metric.<name>` is a typed,
-   host-ingested vocabulary and external findings are public frontend data nouns —
-   not analyzer-computed truth.
+3. Metric inventory and external findings (`E11C`): metric identifiers
+   (`query_result_count`, `external_finding_count`, …) are a typed, host-ingested
+   vocabulary and external findings are public frontend data nouns — not
+   analyzer-computed truth. The inventory is host-contract data; it has no DSL
+   grammar position and is deliberately not surfaced as completion.
 4. Explain and path-witness UX (`E12C`): explain presentation, path-witness
    rendering, degraded badges (via the shared degraded-reason authority), and
    why-no-result guidance are presentation-only.

@@ -380,8 +380,13 @@ fn root_kind_v1(query_text: &str) -> Result<StarterRootKindV1, String> {
     // same `parse_document_v1` the example-registry integrity gate validates
     // against), so the starter root kind can never drift from it on case or
     // vocabulary. Declaration/meta roots are rejected to keep scaffolds query-only.
-    let document = parse_document_v1(query_text)
-        .map_err(|_| format!("starter scaffold did not parse as a query root: {query_text}"))?;
+    let document = parse_document_v1(query_text).map_err(|page| {
+        let reject = page
+            .diagnostics
+            .first()
+            .map_or("unknown_reject", |diagnostic| diagnostic.code);
+        format!("starter scaffold did not parse as a query root ({reject}): {query_text}")
+    })?;
     let root = document
         .roots
         .first()
@@ -402,7 +407,8 @@ fn root_kind_v1(query_text: &str) -> Result<StarterRootKindV1, String> {
         | AstRootV1::Pack(_)
         | AstRootV1::Profile(_)
         | AstRootV1::Gate(_)
-        | AstRootV1::Meta(_) => {
+        | AstRootV1::Meta(_)
+        | AstRootV1::Composition(_) => {
             Err("zero-query scaffolds must stay query-only and non-mutating".to_string())
         }
     }

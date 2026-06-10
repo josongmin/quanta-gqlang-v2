@@ -195,6 +195,9 @@ pub fn degraded_badges_v1(reasons: &[String]) -> Vec<DegradedBadgeV1> {
                 Some(DegradedReasonV1::CatalogAndInteractiveHostTruthUnavailable) => {
                     "Catalog host truth unavailable"
                 }
+                Some(DegradedReasonV1::CompositionMaterializationUnavailable) => {
+                    "Composition materialization unavailable"
+                }
                 None => "Degraded",
             };
             DegradedBadgeV1 {

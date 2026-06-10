@@ -3,6 +3,7 @@
 pub mod ai_plan;
 pub mod catalog;
 pub mod check_ir;
+pub mod composition_ir;
 pub mod diagnostic_class;
 #[path = "facts/entity_schema.rs"]
 pub mod entity_schema;
@@ -29,6 +30,7 @@ use quanta_gqlang_v2_sema::declarations::model_pack::{
     TypedDeclarationRootV1, TypedGateCheckBindingModeV1, TypedPackActivationModeV1,
     TypedProfileAdmissionPolicyV1, TypedViewQueryV1,
 };
+use quanta_gqlang_v2_sema::interactive::composition::{TypedCompositionV1, TypedWorkingSetBasisV1};
 use quanta_gqlang_v2_sema::interactive::sample_compare_export::TypedSampleCompareExportRootV1;
 use quanta_gqlang_v2_sema::interactive::sample_compare_export::{
     TypedCompareMetricV1, TypedSampleCompareExportShapeV1, TypedSampleRetrievalModeV1,
@@ -88,8 +90,37 @@ pub fn lower_root_to_ir_v1(root: &TypedRootV1) -> Result<PublicIrRootV1, IrLower
         TypedRootV1::SampleCompareExport(spec) => lower_sample_compare_export_root_to_ir_v1(spec)?,
         TypedRootV1::Declaration(spec) => lower_declaration_root_to_ir_v1(spec),
         TypedRootV1::Meta(command) => lower_meta_command_to_ir_v1(command),
+        TypedRootV1::Composition(spec) => lower_composition_root_to_ir_v1(spec)?,
     };
     Ok(ir)
+}
+
+fn lower_composition_root_to_ir_v1(
+    spec: &TypedCompositionV1,
+) -> Result<PublicIrRootV1, IrLoweringErrorV1> {
+    let mut bindings = Vec::with_capacity(spec.bindings.len());
+    for binding in &spec.bindings {
+        // Reuse the per-root lowering verbatim; the producer keeps its own IR
+        // (and its own degraded lane) inside the composition — nothing dropped.
+        let producer = lower_root_to_ir_v1(&binding.producer)?;
+        let reference = composition_ir::WorkingSetRefIrV1 {
+            working_set_id: binding.name.clone(),
+            kind: working_set::WorkingSetKindV1::CandidateSet,
+            basis: match binding.basis {
+                TypedWorkingSetBasisV1::SearchQuery => working_set::WorkingSetBasisV1::SearchQuery,
+                TypedWorkingSetBasisV1::AiDiscovery => working_set::WorkingSetBasisV1::AiDiscovery,
+            },
+        };
+        bindings.push((reference, producer));
+    }
+    let body = lower_root_to_ir_v1(&spec.body)?;
+    Ok(PublicIrRootV1::Composition(
+        composition_ir::CompositionIrV1 {
+            bindings,
+            narrowed_by: spec.with_index,
+            body: Box::new(body),
+        },
+    ))
 }
 
 pub fn lower_document_to_ir_v1(

@@ -71,7 +71,17 @@ pub fn handle_explain_v1(query: &str) -> Result<ExplainHintCardV1, String> {
             &degraded_reasons,
             Some(NO_RESULT_REASON_V1),
         )),
-        _ => Err("explain front door only supports EXPLAIN or FIND roots".to_string()),
+        // Closed front door: every unsupported root is listed explicitly so a
+        // future IR root variant is a compile error here, not a silent reject.
+        PublicIrRootV1::Select(_)
+        | PublicIrRootV1::Check(_)
+        | PublicIrRootV1::Retrieval(_)
+        | PublicIrRootV1::Interactive(_)
+        | PublicIrRootV1::Declaration(_)
+        | PublicIrRootV1::Meta(_)
+        | PublicIrRootV1::Composition(_) => {
+            Err("explain front door only supports EXPLAIN or FIND roots".to_string())
+        }
     }
 }
 
@@ -95,6 +105,9 @@ fn badges_v1(reasons: &[String]) -> Vec<String> {
             }
             Some(DegradedReasonV1::CatalogAndInteractiveHostTruthUnavailable) => {
                 "degraded:catalog-truth".to_string()
+            }
+            Some(DegradedReasonV1::CompositionMaterializationUnavailable) => {
+                "degraded:composition-materialization".to_string()
             }
             None => format!("degraded:{reason}"),
         })

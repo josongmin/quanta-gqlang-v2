@@ -11,6 +11,7 @@ pub enum PublicPlanRootKindV1 {
     Interactive,
     Declaration,
     Meta,
+    Composition,
 }
 
 impl PublicPlanRootKindV1 {

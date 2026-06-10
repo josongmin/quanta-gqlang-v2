@@ -59,6 +59,7 @@ pub enum TypedRootV1 {
     SampleCompareExport(interactive::sample_compare_export::TypedSampleCompareExportRootV1),
     Declaration(declarations::model_pack::TypedDeclarationRootV1),
     Meta(TypedMetaCommandV1),
+    Composition(interactive::composition::TypedCompositionV1),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -207,6 +208,9 @@ pub fn analyze_root_v1(root: &AstRootV1) -> Result<TypedRootV1, SemaDiagnosticPa
             .map(TypedRootV1::Declaration)
             .map_err(|err| sema_diagnostic_page_v1(err.message)),
         AstRootV1::Meta(command) => analyze_meta_command_v1(command).map(TypedRootV1::Meta),
+        AstRootV1::Composition(spec) => {
+            interactive::composition::analyze_composition_v1(spec).map(TypedRootV1::Composition)
+        }
     }
 }
 

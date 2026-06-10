@@ -1,0 +1,36 @@
+# F11 — S01/S02/S03 계약 gap 보수 (W2, semantica)
+
+원천: S-contract-spi-proof 감사. 셋 다 claimed=complete → verified=partial.
+대상 repo: `semantica-codegraph-v2/packages/analysis/quanta-v2/crates/`.
+
+## Gap 목록 (라이브)
+
+1. **S01 — CandidateBasisV1 variant 불일치 + finding plane 부재**
+   - `quanta-gqlang-v2-exec-contract/src/result.rs:275-280` `CandidateBasisV1` =
+     `{Lexical, Semantic, Hybrid, Fragment}` — 티켓이 의무화한 `{Heuristic, Inferred, Certified}` 0 hits
+   - finding/diagnostics plane 전체 미구축: `DiagnosticProjectionV1`/`IssueKindV1`/`IssueWorkflowStateV1`/
+     `HotspotStatusV1`/`RankingMetadataV1` workspace 0 hits. contract src 에 diagnostics/issue/ranking 파일 없음
+   - `request_result_contract.rs:40,136` residue-rejection 이 provider_backed flag 만 assert —
+     `authority_carrier_v2`/`planner_carrier_v1`/`GqlangBoundExecuteRequestV1` 부재 assert 없음
+2. **S02 — export_kind 닫힌집합 깨짐**
+   - `result.rs:188` `BridgeReceiptV1.export_kind: String`, `command_bridge.rs:29-33` non-empty 검사만 —
+     `request.rs:251` 에 닫힌 enum `ExportKindV1{WorkingSet,ReviewProjection,CommandBridge}` 가 60줄 옆에 있는데
+     receipt 경계에서 `"garbage"` 가 validate_v1() 통과
+3. **S03 — 8개 analysis trait 의 conformance 0**
+   - Resolve/Relation/Path/Taint/PointsTo/Summary/Explain/PatternLint Host 가 소스에 존재하나
+     tests/ 전체에서 참조 0. `host_spi_contract.rs` DummyHost 는 serving-plane subset 만 impl
+
+## 작업
+
+1. S01: basis variant 정합 (스펙 따라 `{Heuristic,Inferred,Certified}` 로 교정 또는 티켓 개정 — 교정 권장,
+   기존 4-variant 는 retrieval mode 로 분리), finding plane 타입 신설, residue-rejection negative 강화
+2. S02: `export_kind` 를 `ExportKindV1` enum 으로 교체(또는 validate 에서 enum-parse 강제) + illegal 값 거부
+   negative 테스트
+3. S03: 8개 trait 각각 DummyHost impl + 호출 + fail-closed 거동 assert 를 host_spi_contract(또는 신규
+   analysis_host_contract.rs) 에 추가
+
+## DoD
+
+- 위 named 타입 전부 실재 + negative 테스트 green
+- `export_kind:"garbage"` 가 typed code 로 거부됨
+- 19개 host trait 전부 conformance 테스트에서 참조됨 (`rg "<TraitName>" tests/` 전수 ≥1)

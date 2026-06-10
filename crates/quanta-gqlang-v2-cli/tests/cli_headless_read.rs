@@ -51,8 +51,12 @@ fn format_command_stays_deterministic() {
 
 #[test]
 fn query_summary_reports_root_and_ir_shape() {
-    let summary = query::run("CHECK owasp.sql scope=repo://runtime ;; pattern=call = \"std::process::Command\" ;; confirm=require")
-        .expect("query summary");
+    // F09: CHECK requires an explicit `check:v1|class=...` payload — implicit
+    // class inference is rejected, so this uses the canonical typed form.
+    let summary = query::run(
+        "CHECK owasp.sql check:v1|class=security|scope=repo%3A%2F%2Fruntime|pattern=call%20%3D%20%22std%3A%3AProcess%22|confirm=require",
+    )
+    .expect("query summary");
 
     assert_eq!(summary.root_count, 1);
     assert_eq!(summary.roots[0].syntax_kind, "check");

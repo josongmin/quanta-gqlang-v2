@@ -10,7 +10,7 @@ use quanta_gqlang_v2_sema::interactive::show_describe::{
     TypedDescribeTargetKindV1, TypedShowCategoryV1, TypedShowDescribeSpecV1,
 };
 use quanta_gqlang_v2_sema::roots::check::{
-    CheckConfirmIntentV1, CheckExecutionModeV1, CheckRootIntentV1,
+    CheckConfirmIntentV1, CheckEmitIntentV1, CheckExecutionModeV1, CheckRootIntentV1,
 };
 use quanta_gqlang_v2_sema::roots::explain::{
     TypedExplainEvidenceModeV1, TypedExplainTruthExpectationV1,
@@ -91,6 +91,7 @@ fn check_modes_and_explain_shapes_stay_explicit_v1() {
                 None,
                 Some("path ~= \"src/**/*.rs\"".to_string()),
                 CheckConfirmIntentV1::Prompt,
+                CheckEmitIntentV1::Findings,
             )
             .expect("pattern-only intent"),
             CheckExecutionModeV1::PatternOnly,
@@ -102,6 +103,7 @@ fn check_modes_and_explain_shapes_stay_explicit_v1() {
                 Some("repo://frontend".to_string()),
                 None,
                 CheckConfirmIntentV1::Skip,
+                CheckEmitIntentV1::Findings,
             )
             .expect("semantic-only intent"),
             CheckExecutionModeV1::SemanticOnly,
@@ -113,6 +115,7 @@ fn check_modes_and_explain_shapes_stay_explicit_v1() {
                 Some("repo://runtime".to_string()),
                 Some("call = \"std::process::Command\"".to_string()),
                 CheckConfirmIntentV1::Require,
+                CheckEmitIntentV1::Findings,
             )
             .expect("hybrid intent"),
             CheckExecutionModeV1::Hybrid,

@@ -3,7 +3,8 @@
     clippy::unwrap_used,
     clippy::indexing_slicing,
     clippy::panic,
-    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+    clippy::wildcard_enum_match_arm,
+    reason = "integration-test assertions intentionally use expect/unwrap/indexing, exercise fail-closed panics, and bind-all match arms that panic on unexpected variants"
 )]
 
 //! Contract: exhaustive EXPORT-kind / SAMPLE-mode / COMPARE-metric matrix.

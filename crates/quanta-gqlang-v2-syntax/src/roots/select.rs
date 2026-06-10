@@ -537,10 +537,10 @@ fn parse_filter_literal_v1(
         Some(SelectTokenV1::Word(value)) if value.chars().all(|ch| ch.is_ascii_digit()) => value
             .parse::<i64>()
             .map(SelectLiteralAstV1::Integer)
-            .map_err(|_| {
+            .map_err(|err| {
                 select_error_v1(
                     "invalid_integer_literal",
-                    format!("integer literal {value} does not fit into i64"),
+                    format!("integer literal {value} does not fit into i64: {err}"),
                 )
             }),
         Some(SelectTokenV1::Minus) => match cursor.next_v1() {
@@ -549,10 +549,10 @@ fn parse_filter_literal_v1(
                 signed
                     .parse::<i64>()
                     .map(SelectLiteralAstV1::Integer)
-                    .map_err(|_| {
+                    .map_err(|err| {
                         select_error_v1(
                             "invalid_integer_literal",
-                            format!("integer literal {signed} does not fit into i64"),
+                            format!("integer literal {signed} does not fit into i64: {err}"),
                         )
                     })
             }
@@ -571,10 +571,10 @@ fn parse_filter_literal_v1(
 fn parse_limit_v1(cursor: &mut SelectTokenCursorV1) -> Result<u64, SelectRootErrorV1> {
     match cursor.next_v1() {
         Some(SelectTokenV1::Word(value)) if value.chars().all(|ch| ch.is_ascii_digit()) => {
-            value.parse::<u64>().map_err(|_| {
+            value.parse::<u64>().map_err(|err| {
                 select_error_v1(
                     "invalid_limit_value",
-                    format!("LIMIT value {value} does not fit into u64"),
+                    format!("LIMIT value {value} does not fit into u64: {err}"),
                 )
             })
         }

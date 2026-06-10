@@ -193,8 +193,8 @@ fn parse_positive_u32(
         return Ok(None);
     };
 
-    let parsed = raw_value.parse::<u32>().map_err(|_| FindRootSemaErrorV1 {
-        message: format!("`{field}` must be a positive u32, got `{raw_value}`"),
+    let parsed = raw_value.parse::<u32>().map_err(|err| FindRootSemaErrorV1 {
+        message: format!("`{field}` must be a positive u32, got `{raw_value}`: {err}"),
     })?;
     if parsed == 0 {
         return Err(FindRootSemaErrorV1 {

@@ -1,6 +1,7 @@
 use quanta_gqlang_v2_syntax::roots::check::CheckRootAstV1;
 pub use quanta_gqlang_v2_syntax::roots::check::{
-    CheckConfirmIntentV1, CheckExecutionModeV1, CheckPayloadErrorV1, CheckRootIntentV1,
+    CheckConfirmIntentV1, CheckEmitIntentV1, CheckExecutionModeV1, CheckPayloadErrorV1,
+    CheckRootIntentV1,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -45,7 +46,10 @@ mod tests {
         reason = "unexpected typed variants must fail closed in unit tests"
     )]
 
-    use super::{CheckConfirmIntentV1, CheckExecutionModeV1, CheckRootIntentV1, TypedCheckRootV1};
+    use super::{
+        CheckConfirmIntentV1, CheckEmitIntentV1, CheckExecutionModeV1, CheckRootIntentV1,
+        TypedCheckRootV1,
+    };
     use crate::{analyze_root_v1, TypedRootV1};
     use quanta_gqlang_v2_syntax::ast::AstRootV1;
     use quanta_gqlang_v2_syntax::roots::check::CheckRootAstV1;
@@ -58,6 +62,7 @@ mod tests {
             None,
             Some("path ~= \"src/**/*.rs\"".to_string()),
             CheckConfirmIntentV1::Prompt,
+            CheckEmitIntentV1::Findings,
         )
         .expect("intent");
         let root = CheckRootAstV1::from_intent(intent.clone());
@@ -83,6 +88,7 @@ mod tests {
             Some("repo://frontend".to_string()),
             None,
             CheckConfirmIntentV1::Skip,
+            CheckEmitIntentV1::Findings,
         )
         .expect("intent");
         let typed = TypedCheckRootV1::from_intent(intent.clone());

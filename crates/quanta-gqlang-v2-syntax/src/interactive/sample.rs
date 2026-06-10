@@ -50,6 +50,17 @@ pub struct CompareIntentAstV1 {
     pub metric: CompareMetricV1,
 }
 
+impl CompareIntentAstV1 {
+    /// E03B `compare_target`: the explicit candidate a `COMPARE` is measured
+    /// against. `COMPARE` requires this target by construction — the decoder
+    /// rejects a payload without an explicit `candidate` ref — so there is no
+    /// implicit/self compare.
+    #[must_use]
+    pub const fn compare_target(&self) -> &InteractiveRefAstV1 {
+        &self.candidate
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ExportKindV1 {
     Json,
@@ -64,6 +75,39 @@ pub struct ExportIntentAstV1 {
     pub source: InteractiveRefAstV1,
     pub kind: ExportKindV1,
     pub profile: Option<String>,
+}
+
+/// E03B `bridge_receipt`: the typed, read-only descriptor an `EXPORT` hands to
+/// the command bridge. `EXPORT` is bridge-only — it never mutates and never
+/// promotes a gate verdict — so the receipt carries only what is exported
+/// (`export_target`), the serialization `kind`, and an optional `profile`. There
+/// is deliberately no approval-token or apply field: a mutating export is
+/// unrepresentable here by construction.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExportBridgeReceiptV1 {
+    pub export_target: InteractiveRefAstV1,
+    pub kind: ExportKindV1,
+    pub profile: Option<String>,
+}
+
+impl ExportIntentAstV1 {
+    /// E03B `export_target`: the source reference whose materialized result is
+    /// handed to the bridge for serialization.
+    #[must_use]
+    pub const fn export_target(&self) -> &InteractiveRefAstV1 {
+        &self.source
+    }
+
+    /// The typed [`ExportBridgeReceiptV1`] this export hands to the command
+    /// bridge. Bridge-only by construction: no mutation/approval field exists.
+    #[must_use]
+    pub fn bridge_receipt(&self) -> ExportBridgeReceiptV1 {
+        ExportBridgeReceiptV1 {
+            export_target: self.source.clone(),
+            kind: self.kind,
+            profile: self.profile.clone(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -395,8 +439,8 @@ fn parse_positive_u32_v1(
 ) -> Result<u32, SampleCompareExportAstErrorV1> {
     let value = raw
         .parse::<u32>()
-        .map_err(|_| SampleCompareExportAstErrorV1 {
-            message: format!("{root_name} field `{field_name}` must be a positive u32"),
+        .map_err(|err| SampleCompareExportAstErrorV1 {
+            message: format!("{root_name} field `{field_name}` must be a positive u32: {err}"),
         })?;
     if value == 0 {
         return Err(SampleCompareExportAstErrorV1 {

@@ -1,1 +1,1 @@
-CHECK rule.hybrid check:v1|class=security|scope=repo://runtime|pattern=call%20%3D%20%22std::process::Command%22|confirm=require
+CHECK rule.hybrid check:v1|class=security|scope=repo://runtime|pattern=call%20%3D%20%22std::process::Command%22|confirm=require|emit=findings

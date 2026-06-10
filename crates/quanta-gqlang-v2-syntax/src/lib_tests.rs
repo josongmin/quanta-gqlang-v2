@@ -41,10 +41,17 @@ fn parser_dispatches_core_roots_v1() {
         AstRootV1::Find(spec) if spec.subkind == FindSubkindV1::Taint && spec.seed == "src -> sink"
     ));
 
-    let check = parse_document_v1("CHECK rule.scope workspace").expect("check");
+    // E02C: CHECK requires an explicit `check:v1|class=...` payload (implicit
+    // class inference is rejected), so dispatch is verified with a valid payload.
+    let check = parse_document_v1(
+        "CHECK rule.hybrid check:v1|class=security|scope=repo%3A%2F%2Fruntime|pattern=call%20%3D%20%22std%3A%3Aprocess%3A%3ACommand%22|confirm=require",
+    )
+    .expect("check");
     assert!(matches!(
         &check.roots[0],
-        AstRootV1::Check(spec) if spec.rule_id == "rule.scope" && spec.scope == "workspace"
+        AstRootV1::Check(spec)
+            if spec.rule_id == "rule.hybrid"
+            && spec.scope == "check:v1|class=security|scope=repo%3A%2F%2Fruntime|pattern=call%20%3D%20%22std%3A%3Aprocess%3A%3ACommand%22|confirm=require"
     ));
 
     let explain = parse_document_v1("EXPLAIN result-123").expect("explain");

@@ -37,6 +37,46 @@ impl CheckConfirmIntentV1 {
     }
 }
 
+/// The read-only emission target of a `CHECK`. `CHECK` never mutates: it emits
+/// findings (optionally as SARIF). A `CHECK` that requests a direct
+/// command-bridge `apply` is rejected at decode time (E02C reject set), so no
+/// mutating emission variant exists here by construction.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CheckEmitIntentV1 {
+    Findings,
+    Sarif,
+}
+
+impl CheckEmitIntentV1 {
+    /// The emission target a `CHECK` defaults to when no `emit` clause is given:
+    /// plain read-only findings.
+    #[must_use]
+    pub const fn default_v1() -> Self {
+        Self::Findings
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Findings => "findings",
+            Self::Sarif => "sarif",
+        }
+    }
+
+    fn decode(raw: &str) -> Result<Self, CheckPayloadErrorV1> {
+        match raw {
+            "findings" => Ok(Self::Findings),
+            "sarif" => Ok(Self::Sarif),
+            "apply" | "command-bridge" | "command_bridge" => Err(CheckPayloadErrorV1::new(
+                "CHECK is read-only; a direct command-bridge apply emission is rejected"
+                    .to_string(),
+            )),
+            other => Err(CheckPayloadErrorV1::new(format!(
+                "unknown CHECK emit intent `{other}`"
+            ))),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CheckExecutionModeV1 {
     PatternOnly,
@@ -51,6 +91,7 @@ pub struct CheckRootIntentV1 {
     pub scope: Option<String>,
     pub pattern: Option<String>,
     pub confirm: CheckConfirmIntentV1,
+    pub emit: CheckEmitIntentV1,
 }
 
 impl CheckRootIntentV1 {
@@ -60,6 +101,7 @@ impl CheckRootIntentV1 {
         scope: Option<String>,
         pattern: Option<String>,
         confirm: CheckConfirmIntentV1,
+        emit: CheckEmitIntentV1,
     ) -> Result<Self, CheckPayloadErrorV1> {
         let rule_id = rule_id.into();
         let class = class.into();
@@ -88,6 +130,7 @@ impl CheckRootIntentV1 {
             scope,
             pattern,
             confirm,
+            emit,
         })
     }
 
@@ -105,14 +148,22 @@ impl CheckRootIntentV1 {
         let scope = encode_optional_component(self.scope.as_deref());
         let pattern = encode_optional_component(self.pattern.as_deref());
         format!(
-            "{CHECK_SCOPE_PAYLOAD_PREFIX_V1}class={class}|scope={scope}|pattern={pattern}|confirm={}",
+            "{CHECK_SCOPE_PAYLOAD_PREFIX_V1}class={class}|scope={scope}|pattern={pattern}|confirm={}|emit={}",
             self.confirm.as_str(),
+            self.emit.as_str(),
         )
     }
 
     pub fn decode(rule_id: &str, scope_field: &str) -> Result<Self, CheckPayloadErrorV1> {
+        // E02C: implicit class inference is rejected. A `CHECK` whose scope is
+        // not an explicit `check:v1|class=...` payload fails closed — it is never
+        // silently stamped a default/legacy class.
         if !scope_field.starts_with(CHECK_SCOPE_PAYLOAD_PREFIX_V1) {
-            return Self::decode_legacy(rule_id, scope_field);
+            return Err(CheckPayloadErrorV1::new(
+                "CHECK requires an explicit `check:v1|class=...` payload; \
+                 implicit class inference is rejected"
+                    .to_string(),
+            ));
         }
 
         let payload = &scope_field[CHECK_SCOPE_PAYLOAD_PREFIX_V1.len()..];
@@ -120,6 +171,7 @@ impl CheckRootIntentV1 {
         let mut scope = None;
         let mut pattern = None;
         let mut confirm = None;
+        let mut emit = None;
 
         for segment in payload.split('|') {
             let (key, value) = segment.split_once('=').ok_or_else(|| {
@@ -142,6 +194,10 @@ impl CheckRootIntentV1 {
                     reject_duplicate_field_v1(confirm.is_some(), "confirm")?;
                     confirm = Some(CheckConfirmIntentV1::decode(value)?);
                 }
+                "emit" => {
+                    reject_duplicate_field_v1(emit.is_some(), "emit")?;
+                    emit = Some(CheckEmitIntentV1::decode(value)?);
+                }
                 other => {
                     return Err(CheckPayloadErrorV1::new(format!(
                         "unknown CHECK payload field `{other}`"
@@ -160,19 +216,11 @@ impl CheckRootIntentV1 {
         let confirm = confirm.ok_or_else(|| {
             CheckPayloadErrorV1::new("CHECK payload missing `confirm`".to_string())
         })?;
+        // `emit` is the one optional clause: an absent `emit` is a read-only
+        // findings emission (backward-compatible with pre-`emit` payloads).
+        let emit = emit.unwrap_or_else(CheckEmitIntentV1::default_v1);
 
-        Self::new(rule_id.to_string(), class, scope, pattern, confirm)
-    }
-
-    fn decode_legacy(rule_id: &str, scope_field: &str) -> Result<Self, CheckPayloadErrorV1> {
-        let legacy_scope = normalize_optional(Some(scope_field.to_string()), "scope")?;
-        Self::new(
-            rule_id.to_string(),
-            "legacy".to_string(),
-            legacy_scope,
-            None,
-            CheckConfirmIntentV1::Skip,
-        )
+        Self::new(rule_id.to_string(), class, scope, pattern, confirm, emit)
     }
 }
 
@@ -330,9 +378,9 @@ fn decode_component(encoded: &str, field_name: &str) -> Result<String, CheckPayl
         }
     }
 
-    String::from_utf8(bytes).map_err(|_| {
+    String::from_utf8(bytes).map_err(|err| {
         CheckPayloadErrorV1::new(format!(
-            "CHECK payload field `{field_name}` is not valid UTF-8"
+            "CHECK payload field `{field_name}` is not valid UTF-8: {err}"
         ))
     })
 }
@@ -361,7 +409,10 @@ mod tests {
         reason = "CHECK syntax tests assert decode success for validated fixtures"
     )]
 
-    use super::{CheckConfirmIntentV1, CheckExecutionModeV1, CheckRootAstV1, CheckRootIntentV1};
+    use super::{
+        CheckConfirmIntentV1, CheckEmitIntentV1, CheckExecutionModeV1, CheckRootAstV1,
+        CheckRootIntentV1,
+    };
 
     #[test]
     fn encoded_check_payload_round_trips_reserved_text() {
@@ -371,11 +422,16 @@ mod tests {
             Some("repo:semantica|crate=runtime".to_string()),
             Some("path ~= \"src/**/*.rs\" && call = \"std::process::Command\"".to_string()),
             CheckConfirmIntentV1::Require,
+            CheckEmitIntentV1::Sarif,
         )
         .expect("intent");
         let root = CheckRootAstV1::from_intent(intent.clone());
 
         assert_eq!(root.intent().expect("decode"), intent);
+        assert_eq!(
+            root.intent().expect("decode").emit,
+            CheckEmitIntentV1::Sarif
+        );
         assert_eq!(
             root.execution_mode().expect("mode"),
             CheckExecutionModeV1::Hybrid,
@@ -383,19 +439,32 @@ mod tests {
     }
 
     #[test]
-    fn legacy_scope_decodes_as_semantic_only_check() {
+    fn bare_scope_rejects_implicit_class_inference() {
+        // E02C line 48: a bare scope with no explicit class must fail closed,
+        // NOT decode as a synthetic `legacy` class (the audited violation).
         let root = CheckRootAstV1 {
             rule_id: "rule.audit/stale".to_string(),
             scope: "repo://frontend".to_string(),
         };
-        let intent = root.intent().expect("decode");
+        let err = root.intent().expect_err("implicit class must be rejected");
+        assert!(
+            err.message.contains("implicit class"),
+            "reject must name implicit class inference, got: {}",
+            err.message
+        );
+    }
 
-        assert_eq!(intent.rule_id, "rule.audit/stale");
-        assert_eq!(intent.class, "legacy");
-        assert_eq!(intent.scope.as_deref(), Some("repo://frontend"));
-        assert_eq!(intent.pattern, None);
-        assert_eq!(intent.confirm, CheckConfirmIntentV1::Skip);
-        assert_eq!(intent.execution_mode(), CheckExecutionModeV1::SemanticOnly);
+    #[test]
+    fn absent_emit_clause_defaults_to_findings() {
+        // A pre-`emit` payload still decodes; emit defaults to read-only findings.
+        let root = CheckRootAstV1 {
+            rule_id: "rule.audit/stale".to_string(),
+            scope: "check:v1|class=audit|scope=repo%3A%2F%2Ffrontend|pattern=~|confirm=skip"
+                .to_string(),
+        };
+        let intent = root.intent().expect("decode");
+        assert_eq!(intent.class, "audit");
+        assert_eq!(intent.emit, CheckEmitIntentV1::Findings);
     }
 
     #[test]
@@ -406,6 +475,7 @@ mod tests {
             None,
             None,
             CheckConfirmIntentV1::Prompt,
+            CheckEmitIntentV1::Findings,
         )
         .expect_err("missing scope and pattern must fail");
 

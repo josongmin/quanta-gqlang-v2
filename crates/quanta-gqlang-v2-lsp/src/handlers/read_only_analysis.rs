@@ -5,7 +5,9 @@
 mod errors;
 mod summary;
 
-use quanta_gqlang_v2_ir::frontend::{document_statements_v1, parse_document_v1};
+use quanta_gqlang_v2_ir::frontend::{
+    analyze_document_v1, parse_document_v1, AstRootV1, DocumentAstV1, SemaDiagnosticPageV1,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SymbolItemV1 {
@@ -76,11 +78,14 @@ pub(crate) struct ReadOnlyRootSummaryV1 {
 
 pub(crate) fn analyze_query_v1(query: &str) -> Result<ReadOnlyRootSummaryV1, ReadOnlyLspErrorV1> {
     // The single-card read-only surfaces (hover/symbols/quickfix) summarize the
-    // first statement; `analyze_statements_v1` covers a multi-statement document.
-    // Statement boundaries match the canonical parser so the read-only surface can
-    // never disagree with it about where one statement ends and the next begins.
-    match document_statements_v1(query).into_iter().next() {
-        Some(statement) => analyze_statement_v1(&statement),
+    // FIRST root of the document. The canonical parser owns statement boundaries
+    // AND the composition grouping pass (D2: a `[LET]* WITH <body>` run folds into
+    // one root), so the first root may itself be a whole composition block — the
+    // read-only surface can never disagree with the parser about where one
+    // statement (or one composition block) ends and the next begins.
+    let document = parse_first_page_v1(query)?;
+    match document.roots.first() {
+        Some(root) => Ok(summary::summary_from_root_v1(root)),
         None => Err(errors::syntax_error_v1(
             "empty_document",
             "document is empty",
@@ -91,30 +96,104 @@ pub(crate) fn analyze_query_v1(query: &str) -> Result<ReadOnlyRootSummaryV1, Rea
 pub(crate) fn analyze_statements_v1(
     query: &str,
 ) -> Vec<Result<ReadOnlyRootSummaryV1, ReadOnlyLspErrorV1>> {
-    let statements = document_statements_v1(query);
-    if statements.is_empty() {
+    // Diagnostics span the WHOLE document. Parse once so the grouping pass folds
+    // composition runs into single roots (a `LET`/`WITH` line parsed in isolation
+    // would fail closed); the parser's phase-1 per-line recovery still surfaces
+    // every malformed line at once.
+    let document = match parse_document_v1(query) {
+        Ok(document) => document,
+        Err(page) => {
+            return errors::syntax_page_to_lsp_errors_v1(page)
+                .map(Err)
+                .collect()
+        }
+    };
+    if document.roots.is_empty() {
         return vec![Err(errors::syntax_error_v1(
             "empty_document",
             "document is empty",
         ))];
     }
-    statements
+    // Composition is the one root whose rejects live in the SEMA layer
+    // (`composition_undefined_binding` / `composition_invalid_producer`, D3/D4):
+    // run sema and surface those with `class=sema`, exactly as the lower layer
+    // classified them. Sema runs only when a composition is present so every
+    // non-composition document stays byte-identical to the parser-only path.
+    let sema_errors = composition_sema_errors_v1(&document);
+    document
+        .roots
         .iter()
-        .map(|statement| analyze_statement_v1(statement))
+        .map(|root| {
+            if matches!(root, AstRootV1::Composition(_)) {
+                if let Some(err) = composition_root_error_v1(&sema_errors) {
+                    return Err(err);
+                }
+            }
+            Ok(summary::summary_from_root_v1(root))
+        })
         .collect()
 }
 
-fn analyze_statement_v1(statement: &str) -> Result<ReadOnlyRootSummaryV1, ReadOnlyLspErrorV1> {
-    // VALIDITY is owned entirely by the canonical parser: the read-only surface no
-    // longer re-implements parsing (no shadow grammar that can accept what the
-    // parser rejects or vice versa). On success the statement is a fully validated
-    // typed `AstRootV1`, which we only FORMAT for the hover/symbols presentation.
-    let document = parse_document_v1(statement).map_err(errors::syntax_page_to_lsp_error_v1)?;
-    match document.roots.first() {
-        Some(root) => Ok(summary::summary_from_root_v1(root)),
-        None => Err(errors::syntax_error_v1(
-            "empty_document",
-            "document is empty",
-        )),
+/// Parse a document but, on failure, collapse the page to a single
+/// first-statement error (the single-card surfaces present one root).
+fn parse_first_page_v1(query: &str) -> Result<DocumentAstV1, ReadOnlyLspErrorV1> {
+    parse_document_v1(query).map_err(errors::syntax_page_to_lsp_error_v1)
+}
+
+/// Run sema over the document and keep only the `composition_*` diagnostics. The
+/// sema page is fail-fast, so this surfaces the first composition reject; the
+/// composition contract docs carry exactly one composition, so one item is the
+/// whole story. Non-composition sema codes are intentionally NOT surfaced here:
+/// the parser-only path already pins those, and widening would regress it.
+fn composition_sema_errors_v1(document: &DocumentAstV1) -> Vec<ReadOnlyLspErrorV1> {
+    if !document
+        .roots
+        .iter()
+        .any(|root| matches!(root, AstRootV1::Composition(_)))
+    {
+        return Vec::new();
     }
+    match analyze_document_v1(document) {
+        Ok(_) => Vec::new(),
+        Err(page) => sema_page_to_composition_errors_v1(page),
+    }
+}
+
+/// Map a sema diagnostic page to LSP errors, keeping only composition codes. The
+/// sema message embeds the code as a `composition_*: <message>` prefix (the sema
+/// layer carries no separate code field), so the code is the leading token before
+/// the first `: `.
+fn sema_page_to_composition_errors_v1(page: SemaDiagnosticPageV1) -> Vec<ReadOnlyLspErrorV1> {
+    page.diagnostics
+        .into_iter()
+        .filter_map(|diagnostic| composition_sema_error_v1(&diagnostic))
+        .collect()
+}
+
+fn composition_sema_error_v1(diagnostic: &str) -> Option<ReadOnlyLspErrorV1> {
+    let (code, message) = match diagnostic.split_once(": ") {
+        Some((code, message)) => (code.trim(), message.trim()),
+        None => (diagnostic.trim(), diagnostic.trim()),
+    };
+    let static_code = composition_sema_code_v1(code)?;
+    Some(ReadOnlyLspErrorV1 {
+        class: DiagnosticClassV1::Sema,
+        code: static_code,
+        message: message.to_string(),
+    })
+}
+
+/// The closed set of sema-classified composition codes (D3/D4). Returning the
+/// `&'static str` keeps the LSP error's `code` field a static, no-default match —
+/// a new composition sema code must be added here deliberately.
+fn composition_sema_code_v1(code: &str) -> Option<&'static str> {
+    match code {
+        "composition_invalid_producer" => Some("composition_invalid_producer"),
+        "composition_undefined_binding" => Some("composition_undefined_binding"),
+        _ => None,
+    }
+}
+
+fn composition_root_error_v1(errors: &[ReadOnlyLspErrorV1]) -> Option<ReadOnlyLspErrorV1> {
+    errors.first().cloned()
 }

@@ -29,6 +29,22 @@ const MISMATCHED_PROVIDER_MAPPINGS_V1: [external_findings::ExternalFindingSeveri
     }];
 
 #[test]
+fn metric_inventory_names_are_disjoint_from_compare_metric_vocabulary_v1() {
+    // The host-ingested metric inventory and the COMPARE `metric=` clause are two
+    // unrelated closed vocabularies (the clause is the 3-value `CompareMetricV1`
+    // in the syntax crate). Pin that they never share a token, so the two can
+    // never be conflated into a single "metric" surface.
+    const COMPARE_METRIC_VOCABULARY_V1: [&str; 3] = ["exact", "structural", "semantic"];
+    for descriptor in metric_inventory_rows_v1() {
+        let name = descriptor.id.as_str_v1();
+        assert!(
+            !COMPARE_METRIC_VOCABULARY_V1.contains(&name),
+            "metric inventory id `{name}` collides with the COMPARE metric vocabulary"
+        );
+    }
+}
+
+#[test]
 fn metric_inventory_exposes_named_external_signal_rows_v1() {
     validate_metric_inventory_v1(metric_inventory_rows_v1()).expect("inventory should validate");
 

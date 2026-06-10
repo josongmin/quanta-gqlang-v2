@@ -6,9 +6,10 @@ use crate::declarations::pack::{
 use crate::declarations::view::{
     ModelDeclShapeAstV1, RuleDeclShapeAstV1, ViewDeclShapeAstV1, ViewQueryShapeAstV1,
 };
+use crate::interactive::composition::CompositionRootAstV1;
 use crate::interactive::meta::{
-    CertifiedAdmissionPolicyAstV1, CertifiedTruthRequirementAstV1, LetBindingAstV1,
-    MetaCommandAstV1, MetaCommandShapeV1, WithClauseAstV1,
+    CertifiedAdmissionPolicyAstV1, CertifiedTruthRequirementAstV1, MetaCommandAstV1,
+    MetaCommandShapeV1,
 };
 use crate::interactive::sample::{
     CompareIntentAstV1, CompareMetricV1, ExportIntentAstV1, ExportKindV1, InteractiveRefAstV1,
@@ -25,30 +26,31 @@ use crate::roots::select::{
 
 pub fn format_document_v1(doc: &DocumentAstV1) -> String {
     let mut lines = Vec::new();
-    if let Some(with_clause) = &doc.with_clause {
-        lines.push(format_with_clause_v1(with_clause));
-    }
     for root in &doc.roots {
         lines.push(format_root_v1(root));
     }
     lines.join("\n")
 }
 
-fn format_with_clause_v1(with_clause: &WithClauseAstV1) -> String {
-    if with_clause.bindings.is_empty() {
-        return "WITH".to_string();
+/// Canonical multi-line form: one `LET <name> = <producer>` per binding, then
+/// the body root carrying its trailing `WITH <binding>` consumption clause. The
+/// embedded newlines flow through `format_document_v1`'s join, so reparse
+/// re-groups it idempotently.
+fn format_composition_v1(spec: &CompositionRootAstV1) -> String {
+    let mut lines = Vec::with_capacity(spec.lets.len() + 1);
+    for binding in &spec.lets {
+        lines.push(format!(
+            "LET {} = {}",
+            binding.name,
+            format_root_v1(&binding.producer)
+        ));
     }
-    let bindings = with_clause
-        .bindings
-        .iter()
-        .map(format_let_binding_v1)
-        .collect::<Vec<_>>()
-        .join(", ");
-    format!("WITH {bindings}")
-}
-
-fn format_let_binding_v1(binding: &LetBindingAstV1) -> String {
-    format!("LET {} = {}", binding.name.trim(), binding.value.trim())
+    lines.push(format!(
+        "{} WITH {}",
+        format_root_v1(&spec.body),
+        spec.with_name
+    ));
+    lines.join("\n")
 }
 
 fn format_root_v1(root: &AstRootV1) -> String {
@@ -114,6 +116,7 @@ fn format_root_v1(root: &AstRootV1) -> String {
             .map(|shape| format!("GATE {}", format_gate_decl_v1(&shape)))
             .unwrap_or_else(|_| format!("GATE {}", spec.name.trim())),
         AstRootV1::Meta(command) => format_meta_command_v1(command),
+        AstRootV1::Composition(spec) => format_composition_v1(spec),
     }
 }
 

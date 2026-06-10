@@ -1,5 +1,7 @@
 #[path = "common.rs"]
 mod common;
+#[path = "composition.rs"]
+mod composition;
 #[path = "declarations.rs"]
 mod declarations;
 #[path = "meta.rs"]
@@ -8,6 +10,7 @@ mod meta;
 mod select;
 
 use self::common::root_summary_v1;
+use self::composition::composition_summary_v1;
 use self::declarations::declaration_summary_from_carrier_v1;
 use self::meta::meta_summary_v1;
 use self::select::select_summary_v1;
@@ -104,5 +107,16 @@ pub(super) fn summary_from_root_v1(root: &AstRootV1) -> ReadOnlyRootSummaryV1 {
             declaration_summary_from_carrier_v1("GATE", name)
         }
         AstRootV1::Meta(command) => meta_summary_v1(command),
+        AstRootV1::Composition(spec) => {
+            // D2: the composition block IS the first statement. Summarize the
+            // grouped block — the body's own root summary is reused for the body
+            // symbol/label rather than re-derived (no shadow grammar).
+            let lets: Vec<(String, &AstRootV1)> = spec
+                .lets
+                .iter()
+                .map(|binding| (binding.name.clone(), binding.producer.as_ref()))
+                .collect();
+            composition_summary_v1(&lets, &spec.with_name, spec.body.as_ref())
+        }
     }
 }

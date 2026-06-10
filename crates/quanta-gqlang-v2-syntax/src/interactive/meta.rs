@@ -1,20 +1,72 @@
 use std::fmt;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct LetBindingAstV1 {
-    pub name: String,
-    pub value: String,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct WithClauseAstV1 {
-    pub bindings: Vec<LetBindingAstV1>,
-}
+// `LET` / `WITH` composition AST moved to `interactive::composition` (E03C):
+// the previous doc-level `WithClauseAstV1` stub encoded the wrong shape
+// (stringly producer, document-level option) and is replaced by the grouped
+// `CompositionRootAstV1` root variant.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MetaCommandKindV1 {
     UsePack,
     RequireCertified,
+}
+
+/// E03D context builtins: the frozen set of delta/context references a meta
+/// command may name. These are EXPLICIT typed syntax nodes (not free-form
+/// strings) so that an unknown builtin fails closed at parse time instead of
+/// being smuggled through as an opaque token. The set is deliberately closed —
+/// adding a builtin is a grammar change, not a runtime lookup.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ContextBuiltinV1 {
+    /// The diff currently under review.
+    CurrentDiff,
+    /// The set of files changed by the current diff.
+    ChangedFiles,
+    /// The set of symbols changed by the current diff.
+    ChangedSymbols,
+}
+
+impl ContextBuiltinV1 {
+    /// The canonical surface token of this builtin.
+    #[must_use]
+    pub const fn canonical_name_v1(self) -> &'static str {
+        match self {
+            Self::CurrentDiff => "current_diff",
+            Self::ChangedFiles => "changed_files",
+            Self::ChangedSymbols => "changed_symbols",
+        }
+    }
+
+    /// Decode a single surface token into a typed context builtin. Fail-closed:
+    /// an unknown token — including a cross-plane command verb such as `apply`
+    /// or `mutate` — is rejected with a typed diagnostic, never silently passed
+    /// through.
+    pub fn from_token_v1(raw: &str) -> Result<Self, MetaCommandShapeErrorV1> {
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            return Err(meta_shape_error_v1(
+                "context_builtin_missing",
+                "context builtin is missing; expected one of current_diff, changed_files, changed_symbols",
+            ));
+        }
+        if trimmed.contains(char::is_whitespace) {
+            return Err(meta_shape_error_v1(
+                "context_builtin_invalid_shape",
+                format!("context builtin `{trimmed}` must be a single token"),
+            ));
+        }
+        match trimmed.to_ascii_lowercase().as_str() {
+            "current_diff" => Ok(Self::CurrentDiff),
+            "changed_files" => Ok(Self::ChangedFiles),
+            "changed_symbols" => Ok(Self::ChangedSymbols),
+            other => Err(meta_shape_error_v1(
+                "unsupported_context_builtin",
+                format!(
+                    "context builtin `{other}` is unsupported; expected one of current_diff, changed_files, changed_symbols"
+                ),
+            )),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

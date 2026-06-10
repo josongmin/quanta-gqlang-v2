@@ -1,4 +1,5 @@
 use crate::check_ir::CheckIrV1;
+use crate::composition_ir::CompositionIrV1;
 use crate::explain_ir::ExplainIrV1;
 use crate::find_ir::FindIrV1;
 use crate::planning::PublicPlanRootKindV1;
@@ -15,6 +16,7 @@ pub enum PublicIrRootV1 {
     Interactive(InteractiveIrV1),
     Declaration(DeclarationIrV1),
     Meta(MetaIrV1),
+    Composition(CompositionIrV1),
 }
 
 impl PublicIrRootV1 {
@@ -32,6 +34,7 @@ impl PublicIrRootV1 {
             Self::Interactive(_) => PublicPlanRootKindV1::Interactive,
             Self::Declaration(_) => PublicPlanRootKindV1::Declaration,
             Self::Meta(_) => PublicPlanRootKindV1::Meta,
+            Self::Composition(_) => PublicPlanRootKindV1::Composition,
         }
     }
 }
@@ -55,6 +58,7 @@ pub enum DegradedReasonV1 {
     TruthEvidenceMaterializationUnavailable,
     RetrievalResultMaterializationUnavailable,
     CatalogAndInteractiveHostTruthUnavailable,
+    CompositionMaterializationUnavailable,
 }
 
 impl DegradedReasonV1 {
@@ -72,6 +76,9 @@ impl DegradedReasonV1 {
             Self::CatalogAndInteractiveHostTruthUnavailable => {
                 "catalog-and-interactive-host-truth-unavailable"
             }
+            Self::CompositionMaterializationUnavailable => {
+                "composition-materialization-unavailable"
+            }
         }
     }
 
@@ -86,6 +93,7 @@ impl DegradedReasonV1 {
             PublicIrRootV1::Explain(_) => Some(Self::TruthEvidenceMaterializationUnavailable),
             PublicIrRootV1::Retrieval(_) => Some(Self::RetrievalResultMaterializationUnavailable),
             PublicIrRootV1::Interactive(_) => Some(Self::CatalogAndInteractiveHostTruthUnavailable),
+            PublicIrRootV1::Composition(_) => Some(Self::CompositionMaterializationUnavailable),
             PublicIrRootV1::Select(_)
             | PublicIrRootV1::Declaration(_)
             | PublicIrRootV1::Meta(_) => None,
@@ -105,6 +113,9 @@ impl DegradedReasonV1 {
             }
             "catalog-and-interactive-host-truth-unavailable" => {
                 Some(Self::CatalogAndInteractiveHostTruthUnavailable)
+            }
+            "composition-materialization-unavailable" => {
+                Some(Self::CompositionMaterializationUnavailable)
             }
             _ => None,
         }

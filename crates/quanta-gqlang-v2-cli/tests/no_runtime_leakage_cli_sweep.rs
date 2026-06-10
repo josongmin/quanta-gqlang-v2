@@ -26,7 +26,10 @@
 
 mod support;
 
-use support::{cli_stdout_v1, example_path_v1, run_cli_argv_v1, SHIPPED_EXAMPLE_DOC_PATHS_V1};
+use support::{
+    cli_stdout_v1, example_path_v1, run_cli_argv_v1, write_target_tmp_input_v1,
+    SHIPPED_EXAMPLE_DOC_PATHS_V1,
+};
 
 /// Commands that apply to *every* shipped example regardless of root family.
 const UNIVERSAL_COMMANDS_V1: &[&str] = &["parse", "sema", "query", "fmt", "doctor", "headless"];
@@ -275,4 +278,39 @@ fn degraded_reasons_are_honest_absence_authority_v1() {
         "expected several degraded reasons across the sweep (non-vacuous invariant), \
          observed only {observed_total}"
     );
+}
+
+/// E03C (S6): a `LET` / `WITH` composition is a multi-line, `--file`-only
+/// document outside the shipped 17-root example corpus, so it is swept
+/// separately. It must obey the same no-runtime-leakage contract: no forbidden
+/// token in any command's output, and every degraded reason it surfaces (the
+/// composition lane) is an honest `-unavailable` absence — never a materialized
+/// working set or runtime count.
+#[test]
+fn composition_document_obeys_no_runtime_leakage_v1() {
+    let doc = concat!(
+        "LET suspects = SAMPLE query=AuthMiddleware ;; scope=repo::auth ;; mode=semantic ;; limit=20\n",
+        "FIND taint api.entry -> db.write WITH suspects\n",
+    );
+    let path = write_target_tmp_input_v1("no_leak_composition.qglang", doc);
+    let path_str = path.to_str().expect("temp path is valid UTF-8");
+    for command in UNIVERSAL_COMMANDS_V1 {
+        let output = run_cli_argv_v1(&[command, "--file", path_str]);
+        assert!(
+            output.status.success(),
+            "command `{command}` unexpectedly failed for the composition document \
+             (status={:?})\nstderr={}",
+            output.status.code(),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = cli_stdout_v1(&output);
+        assert_no_forbidden_tokens_v1(command, "composition", &stdout);
+        for reason in extract_degraded_reasons_v1(&stdout) {
+            assert!(
+                reason.ends_with(DEGRADED_REASON_SUFFIX_V1),
+                "command `{command}`: composition degraded reason `{reason}` must end with \
+                 `{DEGRADED_REASON_SUFFIX_V1}`"
+            );
+        }
+    }
 }

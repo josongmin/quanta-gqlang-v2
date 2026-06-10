@@ -17,7 +17,7 @@ use quanta_gqlang_v2_syntax::interactive::sample::{
 };
 use quanta_gqlang_v2_syntax::parse_document_v1;
 use quanta_gqlang_v2_syntax::roots::check::{
-    CheckConfirmIntentV1, CheckRootAstV1, CheckRootIntentV1,
+    CheckConfirmIntentV1, CheckEmitIntentV1, CheckRootAstV1, CheckRootIntentV1,
 };
 
 fn assert_input_round_trip_v1(input: &str, expected: &str) {
@@ -58,13 +58,13 @@ fn formats_core_roots_idempotently_v1() {
         Some("repo:semantica|crate=runtime".to_string()),
         Some("path ~= \"src/**/*.rs\"".to_string()),
         CheckConfirmIntentV1::Require,
+        CheckEmitIntentV1::Findings,
     )
     .expect("check intent");
     let check_root = CheckRootAstV1::from_intent(check_intent.clone());
     let expected = format!("CHECK {} {}", check_root.rule_id, check_root.scope);
     let check_doc = DocumentAstV1 {
         roots: vec![AstRootV1::Check(check_root)],
-        with_clause: None,
     };
     assert_formatted_doc_round_trip_v1(&check_doc, &expected);
 }
@@ -91,7 +91,6 @@ fn formats_interactive_roots_idempotently_v1() {
                 },
             ),
         )],
-        with_clause: None,
     };
     assert_formatted_doc_round_trip_v1(
         &sample_doc,
@@ -114,7 +113,6 @@ fn formats_interactive_roots_idempotently_v1() {
                 },
             ),
         )],
-        with_clause: None,
     };
     assert_formatted_doc_round_trip_v1(
         &compare_doc,
@@ -194,7 +192,6 @@ fn formatted_output_is_deterministic_for_manual_document_roots_v1() {
                 name: "embeddings.code ;; provider=openai ;; source=models/code-search".to_string(),
             }),
         ],
-        with_clause: None,
     };
 
     assert_eq!(

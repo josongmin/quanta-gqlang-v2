@@ -2,6 +2,9 @@ use crate::ast::{AstRootV1, DocumentAstV1};
 use crate::declarations::pack::{GateDeclAstV1, PackDeclAstV1, ProfileDeclAstV1};
 use crate::declarations::view::{ModelDeclAstV1, RuleDeclAstV1, ViewDeclAstV1};
 use crate::diagnostics::{SyntaxDiagnosticPageV1, SyntaxDiagnosticV1};
+use crate::interactive::composition::{
+    is_valid_binding_name_v1, CompositionRootAstV1, LetBindingAstV1,
+};
 use crate::interactive::meta::MetaCommandAstV1;
 use crate::interactive::sample::{CompareRootAstV1, ExportRootAstV1, SampleRootAstV1};
 use crate::interactive::show::{parse_describe_root_v1, parse_show_root_v1};
@@ -14,14 +17,14 @@ pub fn parse_document_v1(input: &str) -> Result<DocumentAstV1, SyntaxDiagnosticP
         return Err(diagnostic_page_v1("empty_document", "document is empty"));
     }
 
-    let mut roots = Vec::new();
+    // Phase 1: classify every physical line into a statement. `LET`/`WITH` are
+    // composition operators, every other head is an ordinary root. Per-line
+    // error recovery surfaces all malformed lines at once.
+    let mut statements = Vec::new();
     let mut diagnostics = Vec::new();
     for statement in document_statements_v1(input) {
-        match parse_root_v1(&statement) {
-            Ok(root) => roots.push(root),
-            // Error recovery: keep parsing the remaining statements so a single
-            // request surfaces every malformed statement at once instead of
-            // stopping at the first failure.
+        match classify_statement_v1(&statement) {
+            Ok(stmt) => statements.push(stmt),
             Err(page) => diagnostics.extend(page.diagnostics),
         }
     }
@@ -30,10 +33,158 @@ pub fn parse_document_v1(input: &str) -> Result<DocumentAstV1, SyntaxDiagnosticP
         return Err(SyntaxDiagnosticPageV1 { diagnostics });
     }
 
-    Ok(DocumentAstV1 {
-        roots,
-        with_clause: None,
+    // Phase 2: deterministically group `[LET]* WITH <body>` runs into one
+    // composition root; everything else stays a standalone root.
+    let roots = group_statements_v1(statements)?;
+    Ok(DocumentAstV1 { roots })
+}
+
+/// A classified document line: a `LET` binding, or a root that may carry a
+/// trailing `WITH <binding>` working-set reference. `WITH` is the explicit
+/// point-of-consumption operator (SQL-CTE style: the body names the working set
+/// it consumes), so it trails the body rather than standing alone — phase 2
+/// folds a `[LET]+ <body> WITH <binding>` run into one [`CompositionRootAstV1`].
+enum StatementV1 {
+    Root {
+        root: AstRootV1,
+        /// `Some(binding)` if the line ended with ` WITH <binding>`.
+        scope: Option<String>,
+    },
+    Let(LetBindingAstV1),
+}
+
+fn classify_statement_v1(line: &str) -> Result<StatementV1, SyntaxDiagnosticPageV1> {
+    let (head, _tail) = split_head_tail_v1(line);
+    match head.to_ascii_uppercase().as_str() {
+        "LET" => {
+            let (_, tail) = split_head_tail_v1(line);
+            parse_let_statement_v1(tail).map(StatementV1::Let)
+        }
+        // A standalone `WITH` line is the old shape: `WITH` is now a trailing
+        // consumption clause on the body, never its own statement.
+        "WITH" => Err(diagnostic_page_v1(
+            "composition_with_must_trail_body",
+            "WITH must trail a body root as `<consumer-root> WITH <binding>`, not stand alone",
+        )),
+        _ => {
+            let (root_src, scope) = split_trailing_with_ref_v1(line);
+            let root = parse_root_v1(root_src)?;
+            Ok(StatementV1::Root { root, scope })
+        }
+    }
+}
+
+/// Split a trailing ` WITH <binding>` working-set reference off a body line. The
+/// reference is recognized only when the text after the *last* ` WITH ` is a
+/// single valid binding identifier — so a `WITH` inside a quoted literal (whose
+/// suffix is not a bare identifier) is left as part of the body and parsed by
+/// the inner root grammar. Deterministic, no heuristic guess.
+fn split_trailing_with_ref_v1(line: &str) -> (&str, Option<String>) {
+    const SEP: &str = " with "; // matched case-insensitively
+    let lowered = line.to_ascii_lowercase();
+    if let Some(pos) = lowered.rfind(SEP) {
+        // ASCII-lowercasing preserves byte length, so `pos` is a valid char
+        // boundary in the original `line` too.
+        let (head, rest) = line.split_at(pos);
+        let candidate = rest.get(SEP.len()..).unwrap_or("").trim();
+        if is_valid_binding_name_v1(candidate) {
+            return (head.trim_end(), Some(candidate.to_string()));
+        }
+    }
+    (line, None)
+}
+
+/// Parse `<name> = <producer>` (the text after the `LET` head). The binding
+/// name is the leading identifier; the `=` that separates it from the producer
+/// is the *first* `=` after the name, never one inside the producer payload.
+fn parse_let_statement_v1(tail: &str) -> Result<LetBindingAstV1, SyntaxDiagnosticPageV1> {
+    let trimmed = tail.trim();
+    let name_end = trimmed
+        .find(|ch: char| ch == '=' || ch.is_whitespace())
+        .unwrap_or(trimmed.len());
+    let (name, rest) = trimmed.split_at(name_end);
+    let name = name.trim();
+    let Some(producer_src) = rest.trim_start().strip_prefix('=') else {
+        return Err(diagnostic_page_v1(
+            "composition_let_missing_equals",
+            "LET binding requires `<name> = <producer>`",
+        ));
+    };
+    if !is_valid_binding_name_v1(name) {
+        return Err(diagnostic_page_v1(
+            "composition_invalid_binding_name",
+            format!("LET binding name `{name}` must match `[a-z][a-z0-9_]*`"),
+        ));
+    }
+    let producer_src = producer_src.trim();
+    let (producer_head, _) = split_head_tail_v1(producer_src);
+    if matches!(producer_head.to_ascii_uppercase().as_str(), "LET" | "WITH") {
+        return Err(diagnostic_page_v1(
+            "composition_nested_binding",
+            "LET producer may not itself be a LET or WITH statement",
+        ));
+    }
+    let producer = parse_root_v1(producer_src)?;
+    Ok(LetBindingAstV1 {
+        name: name.to_string(),
+        producer: Box::new(producer),
     })
+}
+
+/// Fold a classified statement stream into roots. `LET` bindings accumulate in
+/// declaration order; a body line carrying a trailing `WITH <binding>` consumes
+/// the accumulated bindings and becomes the composed body. A `LET` that is never
+/// consumed by such a body fails closed. No silent drop or repair.
+fn group_statements_v1(
+    statements: Vec<StatementV1>,
+) -> Result<Vec<AstRootV1>, SyntaxDiagnosticPageV1> {
+    let mut roots = Vec::new();
+    let mut pending: Vec<LetBindingAstV1> = Vec::new();
+    let mut seen_names: Vec<String> = Vec::new();
+    for statement in statements {
+        match statement {
+            StatementV1::Let(binding) => {
+                if seen_names.iter().any(|name| name == &binding.name) {
+                    return Err(diagnostic_page_v1(
+                        "composition_duplicate_binding",
+                        format!("LET binding `{}` is declared more than once", binding.name),
+                    ));
+                }
+                seen_names.push(binding.name.clone());
+                pending.push(binding);
+            }
+            // A body that names a working set (`... WITH <binding>`) is a
+            // composition: it consumes the pending bindings.
+            StatementV1::Root {
+                root,
+                scope: Some(with_name),
+            } => {
+                roots.push(AstRootV1::Composition(CompositionRootAstV1 {
+                    lets: std::mem::take(&mut pending),
+                    with_name,
+                    body: Box::new(root),
+                }));
+            }
+            // A plain root with no working-set reference cannot consume pending
+            // bindings; dangling `LET`s without a consuming body fail closed.
+            StatementV1::Root { root, scope: None } => {
+                if !pending.is_empty() {
+                    return Err(diagnostic_page_v1(
+                        "composition_unconsumed_let",
+                        "LET bindings must be consumed by a body that names them via `WITH <binding>`",
+                    ));
+                }
+                roots.push(root);
+            }
+        }
+    }
+    if !pending.is_empty() {
+        return Err(diagnostic_page_v1(
+            "composition_unconsumed_let",
+            "LET bindings must be consumed by a body that names them via `WITH <binding>`",
+        ));
+    }
+    Ok(roots)
 }
 
 /// Split a document into statements: exactly one per non-blank line. The canonical

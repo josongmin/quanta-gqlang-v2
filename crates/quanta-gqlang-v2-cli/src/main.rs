@@ -195,10 +195,12 @@ fn read_input_file_v1(path: PathBuf) -> Result<String, CliErrorV1> {
 fn inline_input_v1(args: &[OsString]) -> Result<String, CliErrorV1> {
     let mut parts = Vec::with_capacity(args.len());
     for arg in args {
-        let value = arg
-            .clone()
-            .into_string()
-            .map_err(|_| CliErrorV1::usage_v1("input must be valid UTF-8".to_string()))?;
+        let value = arg.clone().into_string().map_err(|raw| {
+            CliErrorV1::usage_v1(format!(
+                "input must be valid UTF-8, got `{}`",
+                raw.to_string_lossy()
+            ))
+        })?;
         parts.push(value);
     }
     Ok(parts.join(" "))

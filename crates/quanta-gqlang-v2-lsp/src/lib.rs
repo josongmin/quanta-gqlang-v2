@@ -39,6 +39,10 @@ pub fn run_stdio_front_door_v1() -> u8 {
     match run_stdio_session_v1(&mut stdin, &mut stdout) {
         Ok(status) => status,
         Err(err) => {
+            #[expect(
+                clippy::let_underscore_must_use,
+                reason = "stderr is the last-resort diagnostics channel; a failed write here has no further channel to report to, and the nonzero exit status below still signals the failure"
+            )]
             let _ = writeln!(
                 std::io::stderr().lock(),
                 "{}",

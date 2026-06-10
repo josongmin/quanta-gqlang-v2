@@ -6,7 +6,9 @@
     reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
 )]
 
-use quanta_gqlang_v2_ir::check_ir::{CheckConfirmIntentV1, CheckExecutionModeV1, CheckIrV1};
+use quanta_gqlang_v2_ir::check_ir::{
+    CheckConfirmIntentV1, CheckEmitIntentV1, CheckExecutionModeV1, CheckIrV1,
+};
 use quanta_gqlang_v2_ir::lower_root_to_ir_v1;
 use quanta_gqlang_v2_ir::root_ir::PublicIrRootV1;
 use quanta_gqlang_v2_sema::analyze_root_v1;
@@ -34,6 +36,7 @@ fn check_handshake_preserves_pattern_semantic_and_hybrid_intent() {
         None,
         Some("path ~= \"src/**/*.rs\"".to_string()),
         CheckConfirmIntentV1::Prompt,
+        CheckEmitIntentV1::Findings,
     )
     .expect("pattern intent");
     let pattern_ir = lower_check_from_intent_v1(pattern_only.clone());
@@ -49,6 +52,7 @@ fn check_handshake_preserves_pattern_semantic_and_hybrid_intent() {
         Some("repo://frontend".to_string()),
         None,
         CheckConfirmIntentV1::Skip,
+        CheckEmitIntentV1::Findings,
     )
     .expect("semantic intent");
     let semantic_ir = lower_check_from_intent_v1(semantic_only.clone());
@@ -64,6 +68,7 @@ fn check_handshake_preserves_pattern_semantic_and_hybrid_intent() {
         Some("repo://runtime".to_string()),
         Some("call = \"std::process::Command\"".to_string()),
         CheckConfirmIntentV1::Require,
+        CheckEmitIntentV1::Findings,
     )
     .expect("hybrid intent");
     let hybrid_ir = lower_check_from_intent_v1(hybrid.clone());
