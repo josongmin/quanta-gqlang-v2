@@ -39,7 +39,7 @@ fn core_roots_lower_to_expected_public_ir_v1() {
     let PublicIrRootV1::Select(select) = select else {
         panic!("expected SELECT IR root");
     };
-    let shape = select.shape_v1().expect("SELECT shape");
+    let shape = select.shape_v1();
     assert_eq!(shape.table.dotted_name_v1(), "catalog.files");
     assert!(matches!(shape.projection, SelectProjectionIrV1::Fields(_)));
     assert_eq!(shape.limit, Some(10));

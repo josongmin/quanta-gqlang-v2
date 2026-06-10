@@ -5,8 +5,12 @@ use quanta_gqlang_v2_sema::roots::select::{
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SelectIrV1 {
-    // Shared IR lowering ownership still forwards the raw SELECT root through this field.
-    pub from_entity: String,
+    // The SELECT shape is parsed + validated ONCE, at lowering, and stored
+    // structured here alongside its canonical text. `shape_v1()` returns the
+    // structure without re-parsing the query string on every access (the audit's
+    // SMELL-1).
+    shape: SelectQueryIrV1,
+    canonical_query: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -89,22 +93,23 @@ impl From<SelectSemaDiagnosticV1> for SelectIrLoweringErrorV1 {
 impl SelectIrV1 {
     pub fn from_typed_v1(spec: &TypedSelectRootV1) -> Result<Self, SelectIrLoweringErrorV1> {
         let validated = spec.shape_v1()?;
+        let canonical_query = validated.canonical_query_v1();
         Ok(Self {
-            from_entity: validated.canonical_query_v1(),
+            shape: SelectQueryIrV1::from_typed_shape_v1(validated),
+            canonical_query,
         })
     }
 
     #[must_use]
     pub fn raw_query_v1(&self) -> &str {
-        &self.from_entity
+        &self.canonical_query
     }
 
-    pub fn shape_v1(&self) -> Result<SelectQueryIrV1, SelectIrLoweringErrorV1> {
-        let typed = TypedSelectRootV1 {
-            from_entity: self.from_entity.clone(),
-        };
-        let shape = typed.shape_v1()?;
-        Ok(SelectQueryIrV1::from_typed_shape_v1(shape))
+    /// The validated SELECT query shape. Infallible — validated at lowering, never
+    /// re-parsed on access.
+    #[must_use]
+    pub fn shape_v1(&self) -> &SelectQueryIrV1 {
+        &self.shape
     }
 }
 
@@ -217,7 +222,7 @@ mod tests {
         let Some(PublicIrRootV1::Select(select)) = ir_roots.first() else {
             panic!("expected a SELECT IR root");
         };
-        let shape = select.shape_v1().expect("shape should parse");
+        let shape = select.shape_v1();
         assert_eq!(shape.table.entity_path, vec!["catalog", "users"]);
         assert_eq!(
             shape.projection,
@@ -230,7 +235,7 @@ mod tests {
                 },
             ]),
         );
-        let filter = shape.filter.expect("filter should exist");
+        let filter = shape.filter.as_ref().expect("filter should exist");
         assert_eq!(filter.field.field_path, vec!["active"]);
         assert_eq!(filter.op, SelectFilterOpIrV1::Eq);
         assert_eq!(filter.value, SelectLiteralIrV1::Boolean(true));

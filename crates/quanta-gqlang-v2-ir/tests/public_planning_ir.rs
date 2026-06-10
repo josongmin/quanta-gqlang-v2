@@ -83,9 +83,12 @@ fn roots_requiring_planning_metadata_fail_closed_when_absent_v1() {
     assert_eq!(find_err.code, "missing_planning_metadata");
 
     let select_ready = LoweringReadyIrV1::new_v1(
-        PublicIrRootV1::Select(SelectIrV1 {
-            from_entity: "SELECT id FROM catalog.files".to_string(),
-        }),
+        PublicIrRootV1::Select(
+            SelectIrV1::from_typed_v1(&quanta_gqlang_v2_sema::roots::select::TypedSelectRootV1 {
+                from_entity: "SELECT id FROM catalog.files".to_string(),
+            })
+            .expect("valid select"),
+        ),
         None,
     )
     .expect("SELECT may remain planning-free");

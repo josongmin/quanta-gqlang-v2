@@ -37,7 +37,7 @@ fn select_vertical_slice_keeps_table_only_row_shape() {
         panic!("expected SELECT IR root");
     };
 
-    let shape = select.shape_v1().expect("SELECT shape");
+    let shape = select.shape_v1();
     assert_eq!(shape.table.dotted_name_v1(), "catalog.symbols");
     assert_eq!(
         shape.projection,
@@ -45,7 +45,7 @@ fn select_vertical_slice_keeps_table_only_row_shape() {
             field_path: vec!["symbol".to_string(), "name".to_string()],
         }]),
     );
-    let filter = shape.filter.expect("filter must exist");
+    let filter = shape.filter.as_ref().expect("filter must exist");
     assert_eq!(
         filter.field.field_path,
         vec!["symbol".to_string(), "kind".to_string()]

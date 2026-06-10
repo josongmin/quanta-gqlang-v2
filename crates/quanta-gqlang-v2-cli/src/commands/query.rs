@@ -251,16 +251,16 @@ pub(crate) fn typed_root_summary_v1(root: &TypedRootV1) -> String {
 
 pub(crate) fn ir_root_summary_v1(root: &PublicIrRootV1) -> String {
     match root {
-        PublicIrRootV1::Select(spec) => match spec.shape_v1() {
-            Ok(shape) => format!(
+        PublicIrRootV1::Select(spec) => {
+            let shape = spec.shape_v1();
+            format!(
                 "table={} projection={:?} filter={:?} limit={:?}",
                 shape.table.dotted_name_v1(),
                 shape.projection,
                 shape.filter,
                 shape.limit
-            ),
-            Err(err) => format!("invalid-select-ir {}: {}", err.code, err.message),
-        },
+            )
+        }
         PublicIrRootV1::Find(spec) => format!("{spec:?}"),
         PublicIrRootV1::Check(spec) => {
             let mode = spec.execution_mode();
