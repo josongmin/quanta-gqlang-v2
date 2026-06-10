@@ -24,10 +24,28 @@
 
 use quanta_gqlang_v2_ir::planning::PublicPlanRootKindV1;
 
-/// The 17 closed DSL root families. Closed-world by design: extension is a new
-/// variant plus the compiler enumerating every site that must answer for it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RootFamilyV1 {
+/// Declare the closed `RootFamilyV1` enum AND the canonical `ROOT_FAMILIES_V1`
+/// list from ONE source list, so the enum and the iteration list can never
+/// drift: adding a family is a single edit to the invocation below, and
+/// `spec_for_v1`'s exhaustive `match` then refuses to compile until its spec is
+/// supplied. (Rust has no built-in variant iteration; this macro is the
+/// no-dependency way to keep the single enumeration honest.)
+macro_rules! declare_root_families_v1 {
+    ($($variant:ident),+ $(,)?) => {
+        /// The closed DSL root families. Closed-world by design: extension is a
+        /// new variant plus the compiler enumerating every site that must answer.
+        #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+        pub enum RootFamilyV1 {
+            $($variant),+
+        }
+
+        /// Every family, in canonical order — generated from the same list as the
+        /// enum, so it always covers exactly the variant set.
+        pub const ROOT_FAMILIES_V1: &[RootFamilyV1] = &[$(RootFamilyV1::$variant),+];
+    };
+}
+
+declare_root_families_v1!(
     Select,
     Find,
     Check,
@@ -45,29 +63,7 @@ pub enum RootFamilyV1 {
     Gate,
     UsePack,
     RequireCertified,
-}
-
-/// Every family, in canonical order. The self-validation hellgate pins this
-/// array against the variant set so a dropped or duplicated entry fails closed.
-pub const ROOT_FAMILIES_V1: [RootFamilyV1; 17] = [
-    RootFamilyV1::Select,
-    RootFamilyV1::Find,
-    RootFamilyV1::Check,
-    RootFamilyV1::Explain,
-    RootFamilyV1::Show,
-    RootFamilyV1::Describe,
-    RootFamilyV1::Sample,
-    RootFamilyV1::Compare,
-    RootFamilyV1::Export,
-    RootFamilyV1::View,
-    RootFamilyV1::Rule,
-    RootFamilyV1::Model,
-    RootFamilyV1::Pack,
-    RootFamilyV1::Profile,
-    RootFamilyV1::Gate,
-    RootFamilyV1::UsePack,
-    RootFamilyV1::RequireCertified,
-];
+);
 
 /// One canonical fail-closed negative for a family: the malformed source, the
 /// exact diagnostic code, and a distinctive message fragment (the fragment
@@ -196,7 +192,11 @@ pub const fn spec_for_v1(family: RootFamilyV1) -> RootSurfaceSpecV1 {
             keyword: "SAMPLE",
             example_path: "examples/sample/retrieval.qglang",
             ir_root_kind: Kind::Retrieval,
-            negative: negative_v1("SAMPLE", "sample_missing_query", "SAMPLE"),
+            negative: negative_v1(
+                "SAMPLE",
+                "sample_missing_query",
+                "requires structured payload",
+            ),
             applicability: core,
         },
         RootFamilyV1::Compare => RootSurfaceSpecV1 {
@@ -204,7 +204,11 @@ pub const fn spec_for_v1(family: RootFamilyV1) -> RootSurfaceSpecV1 {
             keyword: "COMPARE",
             example_path: "examples/compare/semantic_delta.qglang",
             ir_root_kind: Kind::Interactive,
-            negative: negative_v1("COMPARE", "compare_missing_baseline", "COMPARE"),
+            negative: negative_v1(
+                "COMPARE",
+                "compare_missing_baseline",
+                "requires structured payload",
+            ),
             applicability: core,
         },
         RootFamilyV1::Export => RootSurfaceSpecV1 {
@@ -212,7 +216,11 @@ pub const fn spec_for_v1(family: RootFamilyV1) -> RootSurfaceSpecV1 {
             keyword: "EXPORT",
             example_path: "examples/export/sarif.qglang",
             ir_root_kind: Kind::Interactive,
-            negative: negative_v1("EXPORT", "export_missing_source", "EXPORT"),
+            negative: negative_v1(
+                "EXPORT",
+                "export_missing_source",
+                "requires structured payload",
+            ),
             applicability: core,
         },
         RootFamilyV1::View => RootSurfaceSpecV1 {
@@ -220,7 +228,7 @@ pub const fn spec_for_v1(family: RootFamilyV1) -> RootSurfaceSpecV1 {
             keyword: "VIEW",
             example_path: "examples/view/catalog_users.qglang",
             ir_root_kind: Kind::Declaration,
-            negative: negative_v1("VIEW", "view_missing_name", "VIEW"),
+            negative: negative_v1("VIEW", "view_missing_name", "requires payload"),
             applicability: core,
         },
         RootFamilyV1::Rule => RootSurfaceSpecV1 {
@@ -228,7 +236,7 @@ pub const fn spec_for_v1(family: RootFamilyV1) -> RootSurfaceSpecV1 {
             keyword: "RULE",
             example_path: "examples/rule/shell_exec.qglang",
             ir_root_kind: Kind::Declaration,
-            negative: negative_v1("RULE", "rule_missing_name", "RULE"),
+            negative: negative_v1("RULE", "rule_missing_name", "requires payload"),
             applicability: core,
         },
         RootFamilyV1::Model => RootSurfaceSpecV1 {
@@ -236,7 +244,7 @@ pub const fn spec_for_v1(family: RootFamilyV1) -> RootSurfaceSpecV1 {
             keyword: "MODEL",
             example_path: "examples/model/embeddings_code.qglang",
             ir_root_kind: Kind::Declaration,
-            negative: negative_v1("MODEL", "model_missing_name", "MODEL"),
+            negative: negative_v1("MODEL", "model_missing_name", "requires payload"),
             applicability: core,
         },
         RootFamilyV1::Pack => RootSurfaceSpecV1 {
@@ -244,7 +252,7 @@ pub const fn spec_for_v1(family: RootFamilyV1) -> RootSurfaceSpecV1 {
             keyword: "PACK",
             example_path: "examples/pack/security_default.qglang",
             ir_root_kind: Kind::Declaration,
-            negative: negative_v1("PACK", "pack_missing_name", "PACK"),
+            negative: negative_v1("PACK", "pack_missing_name", "requires payload"),
             applicability: core,
         },
         RootFamilyV1::Profile => RootSurfaceSpecV1 {
@@ -252,7 +260,7 @@ pub const fn spec_for_v1(family: RootFamilyV1) -> RootSurfaceSpecV1 {
             keyword: "PROFILE",
             example_path: "examples/profile/strict_review.qglang",
             ir_root_kind: Kind::Declaration,
-            negative: negative_v1("PROFILE", "profile_missing_name", "PROFILE"),
+            negative: negative_v1("PROFILE", "profile_missing_name", "requires payload"),
             applicability: core,
         },
         RootFamilyV1::Gate => RootSurfaceSpecV1 {
@@ -260,7 +268,7 @@ pub const fn spec_for_v1(family: RootFamilyV1) -> RootSurfaceSpecV1 {
             keyword: "GATE",
             example_path: "examples/gate/release_gate.qglang",
             ir_root_kind: Kind::Declaration,
-            negative: negative_v1("GATE", "gate_missing_name", "GATE"),
+            negative: negative_v1("GATE", "gate_missing_name", "requires payload"),
             applicability: core,
         },
         RootFamilyV1::UsePack => RootSurfaceSpecV1 {
@@ -292,6 +300,6 @@ pub const fn spec_for_v1(family: RootFamilyV1) -> RootSurfaceSpecV1 {
 
 /// The full registry, one spec per family in [`ROOT_FAMILIES_V1`] order.
 #[must_use]
-pub fn root_surface_specs_v1() -> [RootSurfaceSpecV1; 17] {
-    ROOT_FAMILIES_V1.map(spec_for_v1)
+pub fn root_surface_specs_v1() -> Vec<RootSurfaceSpecV1> {
+    ROOT_FAMILIES_V1.iter().copied().map(spec_for_v1).collect()
 }

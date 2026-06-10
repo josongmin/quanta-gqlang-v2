@@ -47,7 +47,7 @@ fn registry_covers_each_family_exactly_once_v1() {
         "ROOT_FAMILIES_V1 has a duplicate variant"
     );
 
-    for family in ROOT_FAMILIES_V1 {
+    for &family in ROOT_FAMILIES_V1 {
         assert_eq!(
             spec_for_v1(family).family,
             family,
@@ -105,6 +105,37 @@ fn every_negative_fails_closed_with_declared_code_and_fragment_v1() {
             neg.source,
             diag.message,
             neg.message_fragment
+        );
+    }
+}
+
+#[test]
+fn keyword_leads_every_example_and_negative_v1() {
+    // Pin that `keyword` is the real leading token of both the shipped example
+    // and the canonical negative, so a wrong keyword (e.g. a typo) cannot sit
+    // unvalidated in the registry.
+    for spec in root_surface_specs_v1() {
+        let example = read_example_v1(&spec);
+        assert!(
+            example
+                .trim_start()
+                .to_uppercase()
+                .starts_with(spec.keyword),
+            "{:?}: example `{}` does not lead with keyword `{}`",
+            spec.family,
+            example.trim(),
+            spec.keyword
+        );
+        assert!(
+            spec.negative
+                .source
+                .trim_start()
+                .to_uppercase()
+                .starts_with(spec.keyword),
+            "{:?}: negative `{}` does not lead with keyword `{}`",
+            spec.family,
+            spec.negative.source,
+            spec.keyword
         );
     }
 }
