@@ -76,7 +76,7 @@ fn core_roots_lower_to_expected_public_ir_v1() {
     let PublicIrRootV1::Explain(explain) = explain else {
         panic!("expected EXPLAIN IR root");
     };
-    let shape = explain.shape().expect("EXPLAIN shape");
+    let shape = explain.shape();
     assert_eq!(shape.target, "rule::owasp.sql-injection");
     assert_eq!(shape.evidence, ExplainEvidenceModeIrV1::Trace);
     assert_eq!(

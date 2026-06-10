@@ -93,13 +93,11 @@ pub fn lower_root_to_ir_v1(root: &TypedRootV1) -> Result<PublicIrRootV1, IrLower
             PublicIrRootV1::Check(ir)
         }
         TypedRootV1::Explain(spec) => {
-            let ir = explain_ir::ExplainIrV1 {
-                target: spec.target.clone(),
-            };
-            ir.shape().map_err(|err| IrLoweringErrorV1 {
-                code: "invalid_explain_target",
-                message: err.message,
-            })?;
+            let ir = explain_ir::ExplainIrV1::from_typed_target_v1(spec.target.as_deref())
+                .map_err(|err| IrLoweringErrorV1 {
+                    code: "invalid_explain_target",
+                    message: err.message,
+                })?;
             PublicIrRootV1::Explain(ir)
         }
         TypedRootV1::ShowDescribe(spec) => lower_show_describe_root_to_ir_v1(spec)?,

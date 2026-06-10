@@ -6,7 +6,10 @@ use quanta_gqlang_v2_sema::roots::explain::{
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExplainIrV1 {
-    pub target: Option<String>,
+    // The explain shape is decoded + validated ONCE, at lowering, and stored
+    // structured here. `shape()` returns it without re-decoding — the IR no
+    // longer re-parses the target string on every access.
+    shape: ExplainShapeIrV1,
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
@@ -39,10 +42,19 @@ pub struct ExplainShapeIrErrorV1 {
 }
 
 impl ExplainIrV1 {
-    pub fn shape(&self) -> Result<ExplainShapeIrV1, ExplainShapeIrErrorV1> {
-        decode_typed_explain_shape_v1(self.target.as_deref())
+    /// Decode + validate the explain shape ONCE (called from lowering). The
+    /// structured shape is stored, so reads never re-decode the target string.
+    pub fn from_typed_target_v1(target: Option<&str>) -> Result<Self, ExplainShapeIrErrorV1> {
+        let shape = decode_typed_explain_shape_v1(target)
             .map(ExplainShapeIrV1::from)
-            .map_err(ExplainShapeIrErrorV1::from)
+            .map_err(ExplainShapeIrErrorV1::from)?;
+        Ok(Self { shape })
+    }
+
+    /// The validated explain shape. Infallible — it was validated at lowering.
+    #[must_use]
+    pub fn shape(&self) -> &ExplainShapeIrV1 {
+        &self.shape
     }
 }
 
@@ -118,11 +130,11 @@ mod tests {
 
         assert_eq!(
             spec.shape(),
-            Ok(ExplainShapeIrV1 {
+            &ExplainShapeIrV1 {
                 target: "view::user_authz".to_string(),
                 evidence: ExplainEvidenceModeIrV1::Counterexample,
                 truth_expectation: ExplainTruthExpectationIrV1::Refute,
-            })
+            }
         );
     }
 

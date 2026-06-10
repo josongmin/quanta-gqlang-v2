@@ -24,14 +24,11 @@ pub fn run(input: &str) -> Result<ExplainViewV1, String> {
     };
 
     match first_root {
-        PublicIrRootV1::Explain(spec) => {
-            let shape = spec.shape().map_err(|err| err.message)?;
-            Ok(explain_view::build_explain_view_v1(
-                &shape,
-                &degraded_reasons,
-                Some(crate::NO_RESULT_REASON_V1),
-            ))
-        }
+        PublicIrRootV1::Explain(spec) => Ok(explain_view::build_explain_view_v1(
+            spec.shape(),
+            &degraded_reasons,
+            Some(crate::NO_RESULT_REASON_V1),
+        )),
         PublicIrRootV1::Find(plan) => {
             let plan = plan.execution_plan().map_err(|err| err.message)?;
             Ok(explain_view::build_find_explain_view_v1(

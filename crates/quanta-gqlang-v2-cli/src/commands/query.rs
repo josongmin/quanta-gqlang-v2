@@ -266,13 +266,13 @@ pub(crate) fn ir_root_summary_v1(root: &PublicIrRootV1) -> String {
             Ok(mode) => format!("rule_id={} mode={mode:?}", spec.rule_id),
             Err(err) => format!("invalid-check-ir {}", err.message),
         },
-        PublicIrRootV1::Explain(spec) => match spec.shape() {
-            Ok(shape) => format!(
+        PublicIrRootV1::Explain(spec) => {
+            let shape = spec.shape();
+            format!(
                 "target={} evidence={:?} truth={:?}",
                 shape.target, shape.evidence, shape.truth_expectation
-            ),
-            Err(err) => format!("invalid-explain-ir {}", err.message),
-        },
+            )
+        }
         PublicIrRootV1::Retrieval(spec) => format!(
             "query={} mode={:?} scope={:?} limit={}",
             spec.query, spec.mode, spec.scope, spec.limit

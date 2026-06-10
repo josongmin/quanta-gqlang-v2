@@ -62,7 +62,7 @@ pub fn handle_explain_v1(query: &str) -> Result<ExplainHintCardV1, String> {
 
     match first_root {
         PublicIrRootV1::Explain(spec) => Ok(explain_hint_from_shape_v1(
-            &spec.shape().map_err(|err| err.message)?,
+            spec.shape(),
             &degraded_reasons,
             Some(NO_RESULT_REASON_V1),
         )),

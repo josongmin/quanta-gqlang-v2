@@ -35,7 +35,7 @@ fn explain_handshake_preserves_truth_and_evidence_shape() {
         panic!("expected EXPLAIN IR root");
     };
 
-    let shape = explain.shape().expect("EXPLAIN shape");
+    let shape = explain.shape();
     assert_eq!(shape.target, "rule::owasp.sql-injection");
     assert_eq!(shape.evidence, ExplainEvidenceModeIrV1::Trace);
     assert_eq!(
