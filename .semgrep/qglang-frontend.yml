@@ -1,4 +1,8 @@
 rules:
+  # NOTE: these are single-quoted YAML strings, so `\b` reaches the regex engine
+  # as a word boundary. Do NOT write `\\b` here: that is a literal backslash
+  # followed by `b`, which can never match Rust source — the rule goes silently
+  # dead while the gate stays green.
   - id: qglang-v2-no-runtime-sdk-index-imports
     message: QGLang v2 frontend owners must not import runtime, SDK, or index owners.
     severity: ERROR
@@ -7,7 +11,7 @@ rules:
     paths:
       include:
         - /crates/**/*.rs
-    pattern-regex: '(?m)\\b(quanta_runtime|quanta_sdk|quanta_index)(::|_)'
+    pattern-regex: '(?m)\b(quanta_runtime|quanta_sdk|quanta_index)(::|_)'
 
   - id: qglang-v2-no-legacy-gqlang-imports
     message: QGLang v2 frontend owners must not import legacy quanta_gqlang_* modules.
@@ -17,7 +21,7 @@ rules:
     paths:
       include:
         - /crates/**/*.rs
-    pattern-regex: '\\bquanta_gqlang_(?!v2_)\\w+'
+    pattern-regex: '\bquanta_gqlang_(?!v2_)\w+'
 
   - id: qglang-v2-no-runtime-sdk-index-dependencies
     message: QGLang v2 frontend workspace must not depend on runtime, SDK, or index crates.
@@ -28,7 +32,7 @@ rules:
       include:
         - /Cargo.toml
         - /crates/**/Cargo.toml
-    pattern-regex: '\\b(quanta-runtime|quanta-sdk|quanta-index)(-[A-Za-z0-9_-]+)?\\b'
+    pattern-regex: '\b(quanta-runtime|quanta-sdk|quanta-index)(-[A-Za-z0-9_-]+)?\b'
 
   - id: qglang-v2-no-legacy-gqlang-dependencies
     message: QGLang v2 frontend workspace must not depend on legacy quanta-gqlang-* crates.
@@ -39,7 +43,7 @@ rules:
       include:
         - /Cargo.toml
         - /crates/**/Cargo.toml
-    pattern-regex: '\\bquanta-gqlang-(?!v2-)[A-Za-z0-9_-]+\\b'
+    pattern-regex: '\bquanta-gqlang-(?!v2-)[A-Za-z0-9_-]+\b'
 
   - id: qglang-v2-no-host-coupling-tokens
     message: Frontend crates must remain host-agnostic and must not embed backend carrier names.
@@ -49,4 +53,33 @@ rules:
     paths:
       include:
         - /crates/**/*.rs
-    pattern-regex: '\\b(SearchHost|IdeReadHost|ServingQueryRequestV1|ServingQueryResultV1|native_runtime_provider_registry_v1)\\b'
+    pattern-regex: '\b(SearchHost|IdeReadHost|ServingQueryRequestV1|ServingQueryResultV1|native_runtime_provider_registry_v1)\b'
+
+  - id: qglang-v2-no-silent-err-discard
+    message: >-
+      `Err(_) =>` silently swallows the error payload: the caller can no longer
+      tell a reject from an empty result. Bind the error and surface its
+      code/message (or route it into the diagnostics channel). Legacy sites are
+      registered debt and carry an explicit `nosemgrep` marker.
+    severity: ERROR
+    languages:
+      - generic
+    paths:
+      include:
+        - /crates/**/src/**/*.rs
+    pattern-regex: 'Err\(_\)\s*=>'
+
+  - id: qglang-v2-no-string-typed-error-results-in-core
+    message: >-
+      Core crates (syntax/sema/ir) must fail with typed, code-bearing error
+      structs. `Result<_, String>` erases the error code/span and forces
+      downstream layers to string-parse diagnostics.
+    severity: ERROR
+    languages:
+      - generic
+    paths:
+      include:
+        - /crates/quanta-gqlang-v2-syntax/src/**/*.rs
+        - /crates/quanta-gqlang-v2-sema/src/**/*.rs
+        - /crates/quanta-gqlang-v2-ir/src/**/*.rs
+    pattern-regex: 'Result<(?:[^<>]|<[^<>]*>){0,80},\s*String\s*>'

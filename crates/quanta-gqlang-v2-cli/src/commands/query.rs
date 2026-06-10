@@ -1,4 +1,3 @@
-
 use quanta_gqlang_v2_ir::frontend::{
     AstRootV1, CertifiedAdmissionPolicyAstV1, CertifiedTruthRequirementAstV1, CheckRootAstV1,
     CheckRootIntentV1, CompareRootAstV1, DescribeRootAstV1, DocumentAstV1, ExplainRootAstV1,

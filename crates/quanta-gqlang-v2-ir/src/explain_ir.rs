@@ -103,6 +103,9 @@ mod tests {
         assert!(matches!(typed_root, Ok(TypedRootV1::Explain(_))));
         let typed_root = match typed_root {
             Ok(root) => root,
+            // The assert above pins Ok; in-src tests stay panic-free, so the
+            // impossible reject arm early-returns instead of unwrapping.
+            // nosemgrep: qglang-v2-no-silent-err-discard
             Err(_) => return,
         };
 

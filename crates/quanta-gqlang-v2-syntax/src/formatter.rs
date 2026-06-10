@@ -481,6 +481,11 @@ fn format_meta_command_v1(command: &MetaCommandAstV1) -> String {
             );
             "REQUIRE CERTIFIED".to_string()
         }
+        // Deliberate fallback: the formatter must never fail, so a shape reject
+        // echoes a raw reconstruction of the surface text instead of erroring.
+        // The reject itself still surfaces through the parse/sema diagnostics
+        // channel — this arm only affects formatting.
+        // nosemgrep: qglang-v2-no-silent-err-discard
         Err(_) => match command {
             MetaCommandAstV1::UsePack {
                 pack_id,

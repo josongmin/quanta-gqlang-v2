@@ -1,5 +1,15 @@
 # F11 — S01/S02/S03 계약 gap 보수 (W2, semantica)
 
+> **STATUS: PARTIAL (jun-10) — S02 DONE/verified; S01·S03·CandidateBasisV1 BLOCKED/deferred.**
+> - **S02 DONE (exec-contract, verified green):** `ExportKindV1` 에 wire-mapping SSOT 추가(`request.rs` `as_wire_str_v1`/`from_wire_str_v1`), `BridgeReceiptV1::validate_v1`(`command_bridge.rs`)에 closed-set 검사 추가 → 비공집합 `export_kind`("garbage")가 `command_bridge_receipt_invalid_export_kind` 로 fail-closed. 신규 테스트 3개(positive/negative/round-trip) + 기존 13개 `cargo test -p quanta-gqlang-v2-exec-contract` GREEN. 적대검증: 차단된 producer 들이 쓰는 "command_bridge"/"working_set" 는 모두 수용 → 무리플.
+> - **환경 블로커:** semantica 워크트리의 미커밋 `quanta-runtime` WIP(`taint/types.rs` → `quanta_contract_types::security` 미해결, `pta_solver::PointsToResult` 필드 드리프트)가 host-adapter/ingress-bridge/exec-conformance 빌드를 막음. 따라서:
+>   - **S03 (8 analysis-trait conformance coverage)**: host_spi_contract.rs 가 exec-conformance(→bridge→quanta-runtime) 빌드를 끌어 **테스트 실행 차단**. 코드 추가는 가능하나 green 증명 불가 → 블로커 해소 후 진행.
+>   - **S01 finding plane (DiagnosticProjectionV1 등) 추가**: exec-contract 에 추가 자체는 가능(빌드됨)하나, 의미있는 conformance 배선이 차단 → 블로커 후.
+>   - **S01 CandidateBasisV1 variant 교정({Lexical,Semantic,Hybrid,Fragment}→{Heuristic,Inferred,Certified})**: 소비처가 차단된 ai_workflow bridge/conformance 테스트 → variant 변경 시 검증 불가(ripple). 블로커 후.
+> - exec-contract 만 단독 빌드/테스트 가능(leaf wire crate 의존) — S02 는 그 안에서 완결.
+
+
+
 원천: S-contract-spi-proof 감사. 셋 다 claimed=complete → verified=partial.
 대상 repo: `semantica-codegraph-v2/packages/analysis/quanta-v2/crates/`.
 

@@ -21,12 +21,12 @@
 
 mod support;
 
-use std::path::PathBuf;
+use std::path::Path;
 
 use support::{cli_stderr_v1, cli_stdout_v1, run_cli_argv_v1, write_target_tmp_input_v1};
 
 /// Run `<command> --file <path>`, assert exit 0, and return stdout.
-fn cli_file_ok_v1(command: &str, path: &PathBuf) -> String {
+fn cli_file_ok_v1(command: &str, path: &Path) -> String {
     let path_str = path.to_str().expect("temp path is valid UTF-8");
     let output = run_cli_argv_v1(&[command, "--file", path_str]);
     assert!(
