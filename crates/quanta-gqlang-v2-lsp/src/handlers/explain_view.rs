@@ -18,7 +18,7 @@ pub struct ExplainHintCardV1 {
 
 pub fn explain_hint_from_shape_v1(
     shape: &ExplainShapeIrV1,
-    degraded_reasons: &[String],
+    degraded_reasons: &[DegradedReasonV1],
     why_no_result: Option<&str>,
 ) -> ExplainHintCardV1 {
     ExplainHintCardV1 {
@@ -34,7 +34,7 @@ pub fn explain_hint_from_shape_v1(
 
 pub fn explain_hint_from_find_v1(
     plan: &FindExecutionPlanIrV1,
-    degraded_reasons: &[String],
+    degraded_reasons: &[DegradedReasonV1],
     why_no_result: Option<&str>,
 ) -> ExplainHintCardV1 {
     ExplainHintCardV1 {
@@ -49,16 +49,16 @@ pub fn handle_explain_v1(query: &str) -> Result<ExplainHintCardV1, String> {
     let doc = parse_document_v1(query).map_err(render_parse_error_v1)?;
     let typed = analyze_document_v1(&doc).map_err(render_sema_error_v1)?;
     let ir_roots = lower_document_to_ir_v1(&typed).map_err(|err| err.message)?;
-    let degraded_reasons = ir_roots
-        .iter()
-        .filter_map(|root| {
-            DegradedReasonV1::for_ir_root_v1(root).map(|reason| reason.code_v1().to_string())
-        })
-        .collect::<Vec<_>>();
 
     let Some(first_root) = ir_roots.first() else {
         return Err("explain front door requires a non-empty document".to_string());
     };
+    // First-statement contract: only the FIRST root's degraded reason is rendered
+    // (the explained subject is the first root), never a cross-root aggregate.
+    // Typed end-to-end — no code-string round-trip.
+    let degraded_reasons: Vec<DegradedReasonV1> = DegradedReasonV1::for_ir_root_v1(first_root)
+        .into_iter()
+        .collect();
 
     match first_root {
         PublicIrRootV1::Explain(spec) => Ok(explain_hint_from_shape_v1(
@@ -85,31 +85,29 @@ pub fn handle_explain_v1(query: &str) -> Result<ExplainHintCardV1, String> {
     }
 }
 
-fn badges_v1(reasons: &[String]) -> Vec<String> {
-    // Map through the shared DegradedReasonV1 authority rather than re-matching the
-    // raw code strings: the badge label keys off the enum variant, so a code rename
-    // in one place can never silently desync the LSP badge here (the match is
-    // exhaustive over the enum).
+fn badges_v1(reasons: &[DegradedReasonV1]) -> Vec<String> {
+    // Typed end-to-end: an exhaustive match over the closed DegradedReasonV1
+    // enum, with no `from_code` round-trip and no unreachable `None` fallback
+    // arm. A new variant is a compile error here, never a silent `degraded:<raw>`.
     reasons
         .iter()
-        .map(|reason| match DegradedReasonV1::from_code_v1(reason) {
-            Some(DegradedReasonV1::RuntimeHostRoutingUnavailable) => "degraded:routing".to_string(),
-            Some(DegradedReasonV1::SemanticConfirmLaneUnavailable) => {
+        .map(|reason| match reason {
+            DegradedReasonV1::RuntimeHostRoutingUnavailable => "degraded:routing".to_string(),
+            DegradedReasonV1::SemanticConfirmLaneUnavailable => {
                 "degraded:semantic-confirm".to_string()
             }
-            Some(DegradedReasonV1::TruthEvidenceMaterializationUnavailable) => {
+            DegradedReasonV1::TruthEvidenceMaterializationUnavailable => {
                 "degraded:truth-materialization".to_string()
             }
-            Some(DegradedReasonV1::RetrievalResultMaterializationUnavailable) => {
+            DegradedReasonV1::RetrievalResultMaterializationUnavailable => {
                 "degraded:retrieval-materialization".to_string()
             }
-            Some(DegradedReasonV1::CatalogAndInteractiveHostTruthUnavailable) => {
+            DegradedReasonV1::CatalogAndInteractiveHostTruthUnavailable => {
                 "degraded:catalog-truth".to_string()
             }
-            Some(DegradedReasonV1::CompositionMaterializationUnavailable) => {
+            DegradedReasonV1::CompositionMaterializationUnavailable => {
                 "degraded:composition-materialization".to_string()
             }
-            None => format!("degraded:{reason}"),
         })
         .collect()
 }

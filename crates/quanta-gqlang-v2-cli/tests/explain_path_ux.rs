@@ -17,6 +17,7 @@ use quanta_gqlang_v2_ir::explain_ir::{
 use quanta_gqlang_v2_ir::find_ir::{
     FindExecutionPlanIrV1, FindFlowWindowIrV1, FlowPlanIrV1, ReachabilityPlanIrV1,
 };
+use quanta_gqlang_v2_ir::root_ir::DegradedReasonV1;
 
 #[test]
 fn explain_view_surfaces_evidence_truth_and_degraded_badges() {
@@ -27,8 +28,8 @@ fn explain_view_surfaces_evidence_truth_and_degraded_badges() {
             truth_expectation: ExplainTruthExpectationIrV1::Refute,
         },
         &[
-            "truth-evidence-materialization-unavailable".to_string(),
-            "runtime-host-routing-unavailable".to_string(),
+            DegradedReasonV1::TruthEvidenceMaterializationUnavailable,
+            DegradedReasonV1::RuntimeHostRoutingUnavailable,
         ],
         Some(NO_RESULT_REASON_V1),
     );
@@ -64,7 +65,7 @@ fn reachability_path_witness_preserves_source_via_sink_order() {
             required_waypoints: vec!["auth".to_string(), "repo".to_string()],
             max_hops: Some(3),
         }),
-        &["runtime-host-routing-unavailable".to_string()],
+        &[DegradedReasonV1::RuntimeHostRoutingUnavailable],
         Some(NO_RESULT_REASON_V1),
     );
 
@@ -104,7 +105,7 @@ fn flow_witness_stays_external_and_never_claims_runtime_truth() {
             stages: vec!["ssa".to_string(), "cfg".to_string()],
             window: FindFlowWindowIrV1::Function,
         }),
-        &["semantic-confirm-lane-unavailable".to_string()],
+        &[DegradedReasonV1::SemanticConfirmLaneUnavailable],
         Some(NO_RESULT_REASON_V1),
     );
 

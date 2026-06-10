@@ -82,7 +82,7 @@ impl ExplainViewV1 {
 
 pub fn build_explain_view_v1(
     shape: &ExplainShapeIrV1,
-    degraded_reasons: &[String],
+    degraded_reasons: &[DegradedReasonV1],
     why_no_result: Option<&str>,
 ) -> ExplainViewV1 {
     ExplainViewV1 {
@@ -97,7 +97,7 @@ pub fn build_explain_view_v1(
 
 pub fn build_find_explain_view_v1(
     plan: &FindExecutionPlanIrV1,
-    degraded_reasons: &[String],
+    degraded_reasons: &[DegradedReasonV1],
     why_no_result: Option<&str>,
 ) -> ExplainViewV1 {
     ExplainViewV1 {
@@ -175,33 +175,32 @@ fn witness_note_v1(bound: &WitnessBoundV1) -> String {
     }
 }
 
-pub fn degraded_badges_v1(reasons: &[String]) -> Vec<DegradedBadgeV1> {
+pub fn degraded_badges_v1(reasons: &[DegradedReasonV1]) -> Vec<DegradedBadgeV1> {
     reasons
         .iter()
         .map(|reason| {
-            // Label keys off the shared DegradedReasonV1 authority (enum, not raw
-            // string) so a code rename cannot silently desync this presenter.
-            let label = match DegradedReasonV1::from_code_v1(reason) {
-                Some(DegradedReasonV1::RuntimeHostRoutingUnavailable) => "Routing unavailable",
-                Some(DegradedReasonV1::SemanticConfirmLaneUnavailable) => {
-                    "Semantic confirm unavailable"
-                }
-                Some(DegradedReasonV1::TruthEvidenceMaterializationUnavailable) => {
+            // Typed end-to-end: an exhaustive match over the closed
+            // DegradedReasonV1 enum, with no `from_code` round-trip and no
+            // unreachable `None`/`_` fallback arm. A new variant is a compile
+            // error here, never a silent "Degraded" badge.
+            let label = match reason {
+                DegradedReasonV1::RuntimeHostRoutingUnavailable => "Routing unavailable",
+                DegradedReasonV1::SemanticConfirmLaneUnavailable => "Semantic confirm unavailable",
+                DegradedReasonV1::TruthEvidenceMaterializationUnavailable => {
                     "Truth materialization unavailable"
                 }
-                Some(DegradedReasonV1::RetrievalResultMaterializationUnavailable) => {
+                DegradedReasonV1::RetrievalResultMaterializationUnavailable => {
                     "Retrieval materialization unavailable"
                 }
-                Some(DegradedReasonV1::CatalogAndInteractiveHostTruthUnavailable) => {
+                DegradedReasonV1::CatalogAndInteractiveHostTruthUnavailable => {
                     "Catalog host truth unavailable"
                 }
-                Some(DegradedReasonV1::CompositionMaterializationUnavailable) => {
+                DegradedReasonV1::CompositionMaterializationUnavailable => {
                     "Composition materialization unavailable"
                 }
-                None => "Degraded",
             };
             DegradedBadgeV1 {
-                code: reason.clone(),
+                code: reason.code_v1().to_string(),
                 label: label.to_string(),
             }
         })
