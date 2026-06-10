@@ -1,6 +1,9 @@
 # F12 — S04A/S11/S17–S20 proof-pack registry 탈공허화 + claim_state 강제 (W2, semantica)
 
-> **STATUS: CORE DONE (jun-10) — SSOT exec-contract GREEN (17 tests, 0 warn); conformance rewire static.**
+> **STATUS: FULLY DONE (jun-10) — SSOT + claim_state + S17-20 + S04B LegacyProofPortV1, all cargo-test GREEN.**
+> - **S04B LegacyProofPortV1 추가 (runtime 빌드 후):** `proof_pack.rs` 에 `LegacyProofPortV1{PlannerSurface,ExplainPreflight,DoctorSurface,IntegrationProvenanceAbsence,GateOwnerCutover}` SSOT + `proof_file_v1()` 매핑(각 port→exact `exec-conformance/tests/*.rs`). conformance `every_legacy_proof_port_owns_a_present_conformance_file_v1` — 5 port 의 proof 파일 존재를 fail-closed assert(greppable ownership, delete 티켓 선결조건). proof_pack_registry 7 tests GREEN.
+>
+> 이전 CORE 노트:
 > - **SSOT 신설** `exec-contract/src/proof_pack.rs` (+ lib.rs mod/re-export): `ProofPackFamilyV1`(4 closed families), `ProofPackRegistryV1::ROWS_V1`(가족별 **DISTINCT** parity_criteria/residual_risk_report — 감사가 지적한 동일 보일러플레이트 제거), `validate_v1`(가족 1:1 커버 + non-empty + parity/residual **pairwise distinct** fail-closed), `row_id_v1`(게이트 grep 어휘), `ClaimStateV1`(S11 5-milestone: source_landed→owner_local_green→joint_green→delete_closeout→final_complete) + `can_advance_to_v1`(스킵 금지) + `is_final_v1`.
 > - **conformance 탈공허화** `exec-conformance/tests/proof_pack_registry.rs`: test-local `PROOF_PACK_ROWS_V1` 타우톨로지 제거 → SSOT import 후 검증(validate/distinctness/claim-discipline). row-id 리터럴은 게이트 grep 위해 assert 형태로 유지 → **F15 per-ticket S17-20 grep 과 정합**.
 > - **검증:** `cargo test -p exec-contract` 17 GREEN(F12 4 + F11-S02 3 + 기존 10), 0 warning. 적대 mutation proof: residual 2개 동일화 시 validate_v1 FAIL(비공허). 게이트 4개 row-id 리터럴 잔존 확인.
