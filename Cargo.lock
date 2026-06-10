@@ -30,6 +30,7 @@ dependencies = [
 name = "quanta-gqlang-v2-lsp"
 version = "0.1.0"
 dependencies = [
+ "quanta-gqlang-v2-conformance",
  "quanta-gqlang-v2-ir",
 ]
 

@@ -24,33 +24,8 @@
 
 mod support;
 
+use quanta_gqlang_v2_conformance::leakage::find_runtime_truth_token_v1;
 use support::run_binary_line_v1;
-
-/// Tokens that would betray runtime/backend truth leaking into the read-only
-/// front door. None of these may appear in any response — the shell only emits
-/// frontend classification metadata.
-const RUNTIME_TRUTH_DENYLIST_V1: &[&str] = &[
-    "result_count",
-    "row_count",
-    "rows_returned",
-    "match_count",
-    "matches_found",
-    "results_found",
-    "execution_time",
-    "elapsed_ms",
-    "provider_response",
-    "provider_endpoint",
-    "routed_to",
-    "host_dto",
-    "host_response",
-    "backend_result",
-    "edit_applied",
-    "applied_edit",
-    "workspace_edit_applied",
-    "materialized_result",
-    "runtime_truth",
-    "confirmed_true",
-];
 
 /// `(method label, request JSON)` — known-good inputs mirrored from
 /// `stdio_read_only.rs` so this guard tracks the real surface.
@@ -88,11 +63,11 @@ fn assert_no_runtime_leakage_v1(method: &str, response: &str) {
         response.contains(&format!(r#""method":"{method}""#)),
         "method `{method}` response must echo its method: {response}"
     );
-    for token in RUNTIME_TRUTH_DENYLIST_V1 {
-        assert!(
-            !response.contains(token),
-            "method `{method}` leaked runtime-truth token `{token}`: {response}"
-        );
+    // Single shared, boundary-aware authority (same list + matcher the CLI sweep
+    // uses) so the two sweeps can never drift and an honest identifier that
+    // merely contains a token as a substring does not false-positive.
+    if let Some(token) = find_runtime_truth_token_v1(response) {
+        panic!("method `{method}` leaked runtime-truth token `{token}`: {response}");
     }
 }
 

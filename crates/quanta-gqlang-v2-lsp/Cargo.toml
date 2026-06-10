@@ -20,5 +20,8 @@ path = "src/main.rs"
 [dependencies]
 quanta-gqlang-v2-ir = { version = "0.1.0", path = "../quanta-gqlang-v2-ir" }
 
+[dev-dependencies]
+quanta-gqlang-v2-conformance = { version = "0.1.0", path = "../quanta-gqlang-v2-conformance" }
+
 [lints]
 workspace = true
