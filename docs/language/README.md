@@ -34,9 +34,11 @@ separately — it is covered by the dedicated composition rails rather than the
 
 Read-only binary fronts:
 
-1. CLI: `parse`, `sema`, `query`, `fmt`, `doctor`, `headless`
-2. LSP stdio JSON methods: `hover`, `completion`, `symbols`, `diagnostics`, `zero_query`, `quickfix`
-3. malformed argv, malformed JSON, unknown methods, and mutating requests fail closed
+1. CLI: `parse`, `sema`, `query`, `fmt`, `explain`, `doctor`, `headless`
+2. LSP stdio JSON methods: `hover`, `completion`, `symbols`, `diagnostics`, `zero_query`, `quickfix`, `explain`
+3. malformed argv, malformed JSON, and any non-allowlisted method fail closed
+   (the stdio dispatch is a closed 7-method allowlist; every other method —
+   mutating or simply unknown — is rejected with `method_not_allowed`)
 
 Repo-local front-door proof rails:
 
@@ -44,8 +46,8 @@ Repo-local front-door proof rails:
    `parse`, `sema`, `query`, `fmt`, and `headless`
 2. CLI fail-closed behavior must cover bad argv, unreadable files, and explicit
    parse/sema/no-result shell classification
-3. LSP stdio must prove read-only methods, mutating-method rejection, malformed
-   JSON rejection, and same-session recovery after fail-closed responses
+3. LSP stdio must prove read-only methods, non-allowlisted-method rejection,
+   malformed JSON rejection, and same-session recovery after fail-closed responses
 4. these rails are frontend-only proof; they do not claim runtime execution,
    provider routing, or backend result materialization
 

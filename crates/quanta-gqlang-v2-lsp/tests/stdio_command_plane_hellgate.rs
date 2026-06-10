@@ -10,10 +10,12 @@
 //! Locks the read-only front door as a pure, closed allowlist at the real
 //! spawned stdio binary. The dispatch recognizes exactly seven read-only
 //! methods; EVERY other method — whether it looks mutating (rename, applyEdit,
-//! executeCommand, codeAction, workspaceEdit, escaped-unicode bypass attempts)
-//! or is simply an unknown name (delete, drop, didChange, arbitrary garbage) —
-//! fails closed with the SINGLE code `method_not_allowed`, exit code 1, and must
-//! not poison the session for a subsequent valid request.
+//! executeCommand, codeAction, workspaceEdit) or is simply an unknown name
+//! (delete, drop, didChange, arbitrary garbage) — fails closed with the SINGLE
+//! code `method_not_allowed`, exit code 1, and must not poison the session for a
+//! subsequent valid request. (Escaped-unicode method names decode to their
+//! plain form BEFORE this allowlist match — that decode path is pinned by
+//! `stdio_json_escape_negative.rs` — so they cannot smuggle past the allowlist.)
 //!
 //! NOTE: the old "barrier is mutation-specific / not a catch-all" contrast
 //! property is intentionally DELETED. Classifying *why* a method was refused
