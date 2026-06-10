@@ -21,6 +21,7 @@
 
 mod support;
 
+use quanta_gqlang_v2_conformance::root_surface_specs_v1;
 use support::{cli_stderr_v1, cli_stdout_v1, run_cli_argv_v1};
 
 /// One malformed-DSL front-door case. `argv` is passed verbatim to the binary
@@ -203,6 +204,45 @@ fn cli_binary_fails_closed_for_malformed_dsl_roots_v1() {
             stdout.is_empty(),
             "case `{}`: malformed root must not write stdout, got:\n{stdout}",
             case.label
+        );
+    }
+}
+
+#[test]
+fn cli_binary_fails_closed_for_every_registry_family_negative_v1() {
+    // The conformance registry is the single source of truth for each family's
+    // canonical fail-closed negative. Driving ALL of them through the real binary
+    // makes this hellgate consume that one table — every front-door family
+    // (the 17 roots + the composition family) is pinned at the binary, not just
+    // the skewed hand-written subset above. Each negative source is a single
+    // statement, passed as one argv tail (inline argv ≡ document).
+    for spec in root_surface_specs_v1() {
+        let out = run_cli_argv_v1(&["parse", spec.negative.source]);
+
+        assert_eq!(
+            out.status.code(),
+            Some(1),
+            "{:?}: registry negative `{}` must exit 1; stderr=\n{}",
+            spec.family,
+            spec.negative.source,
+            cli_stderr_v1(&out)
+        );
+        let stderr = cli_stderr_v1(&out);
+        assert!(
+            stderr.contains("cli.error.class=command"),
+            "{:?}: missing `cli.error.class=command`:\n{stderr}",
+            spec.family
+        );
+        assert!(
+            stderr.contains(spec.negative.code),
+            "{:?}: missing registry code `{}`:\n{stderr}",
+            spec.family,
+            spec.negative.code
+        );
+        assert!(
+            cli_stdout_v1(&out).is_empty(),
+            "{:?}: malformed root must not write stdout",
+            spec.family
         );
     }
 }

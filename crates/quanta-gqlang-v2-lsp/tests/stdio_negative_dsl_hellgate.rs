@@ -18,6 +18,8 @@
 
 mod support;
 
+use quanta_gqlang_v2_conformance::root_surface_specs_v1;
+use quanta_gqlang_v2_ir::diagnostic_class::front_door_diagnostic_class_v1;
 use support::{response_lines_v1, run_binary_bytes_v1, run_binary_line_v1};
 
 /// One table-driven negative case: a labeled request plus the EXACT, full
@@ -141,6 +143,46 @@ fn stdio_diagnostics_reports_classified_dsl_items_v1() {
             !line.contains(r#""code":"handler_rejected""#) && !line.contains(r#""ok":false"#),
             "{}: diagnostics must report, not fail closed, got {line}",
             case.label
+        );
+    }
+}
+
+/// Registry-driven breadth: every family's canonical negative, reported through
+/// `diagnostics` at the spawned binary, must carry the registry's exact code AND
+/// the display class derived from that code via the single ir authority
+/// (`front_door_diagnostic_class_v1`). This makes the LSP negative hellgate
+/// consume the one registry table (every front-door family, not a hand-picked
+/// subset) and pins the code→class authority end-to-end at the binary.
+#[test]
+fn stdio_diagnostics_reports_every_registry_family_negative_v1() {
+    for spec in root_surface_specs_v1() {
+        let request = format!(
+            r#"{{"method":"diagnostics","query":"{}"}}"#,
+            spec.negative.source
+        );
+        let (exit, line) = run_binary_line_v1(&request);
+        assert_eq!(
+            exit,
+            Some(0),
+            "{:?}: diagnostics reports (exit 0), got {line}",
+            spec.family
+        );
+        assert!(
+            line.contains(r#""ok":true"#),
+            "{:?}: diagnostics must report ok:true, got {line}",
+            spec.family
+        );
+        assert!(
+            line.contains(&format!(r#""code":"{}""#, spec.negative.code)),
+            "{:?}: missing registry code `{}` in {line}",
+            spec.family,
+            spec.negative.code
+        );
+        let class = front_door_diagnostic_class_v1(spec.negative.code).as_str_v1();
+        assert!(
+            line.contains(&format!(r#""class":"{class}""#)),
+            "{:?}: missing derived class `{class}` in {line}",
+            spec.family
         );
     }
 }
