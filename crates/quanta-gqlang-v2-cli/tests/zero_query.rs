@@ -5,142 +5,72 @@
     clippy::panic,
     reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
 )]
+//! F08/E12A hellgate — the CLI `zero-query` verb. This rail goes through the CLI
+//! seam ONLY (`commands::zero_query::run` + the shipped binary); it no longer
+//! imports the LSP handler, so a green here actually proves the CLI surface
+//! exists (the prior masking the audit caught). The load-bearing guard is #2:
+//! every suggested query must reparse through the CLI's own parser, so a starter
+//! scaffold can never ship a query the grammar would reject.
 
-use quanta_gqlang_v2_lsp::handlers::{starter_scaffold, zero_query};
+mod support;
 
-#[test]
-fn starter_scaffold_is_deterministic_and_read_only() {
-    let first = starter_scaffold::build_starter_scaffold_v1().expect("starter scaffold");
-    let second = starter_scaffold::build_starter_scaffold_v1().expect("starter scaffold rerun");
+use quanta_gqlang_v2_cli::commands::{parse, zero_query};
+use support::{cli_stderr_v1, cli_stdout_v1, run_cli_argv_v1};
 
-    assert_eq!(first, second);
-    assert_eq!(first.mode, starter_scaffold::ZeroQueryModeV1::ReadOnly);
-    assert_eq!(
-        first.provenance,
-        starter_scaffold::ZeroQueryProvenanceV1::TypedCatalogExampleMetadata
-    );
-    assert_eq!(first.authority, "external-read-only-shell");
-    assert_eq!(
-        first
-            .groups
-            .iter()
-            .map(|group| group.kind)
-            .collect::<Vec<_>>(),
-        vec![
-            starter_scaffold::StarterGroupKindV1::Catalog,
-            starter_scaffold::StarterGroupKindV1::Analysis,
-            starter_scaffold::StarterGroupKindV1::Retrieval,
-        ]
-    );
-    assert!(first
-        .groups
-        .iter()
-        .all(|group| !group.suggestions.is_empty()));
-    assert!(first
-        .groups
-        .iter()
-        .flat_map(|group| group.suggestions.iter())
-        .all(|suggestion| {
-            suggestion.behavior == starter_scaffold::StarterBehaviorV1::ReadOnlyScaffold
-        }));
+/// Pull the `...suggestion[N].query=<QUERY>` payloads out of the rendered report.
+/// The query itself can contain `=` (e.g. `WHERE active = true`), so split once
+/// on the `.query=` marker rather than the first `=`.
+fn suggested_queries_v1(rendered: &str) -> Vec<String> {
+    rendered
+        .lines()
+        .filter(|line| line.contains(".suggestion[") && line.contains(".query="))
+        .filter_map(|line| line.split_once(".query=").map(|(_, query)| query.to_string()))
+        .collect()
 }
 
 #[test]
-fn catalog_starters_are_stable_show_describe_pairs() {
-    let report = starter_scaffold::build_starter_scaffold_v1().expect("starter scaffold");
-    let catalog = &report.groups[0];
+fn zero_query_verb_renders_groups_and_suggestions_v1() {
+    let rendered = zero_query::run().expect("zero-query verb");
+    let rerun = zero_query::run().expect("zero-query rerun");
+    assert_eq!(rendered, rerun, "zero-query must be deterministic");
 
-    assert_eq!(catalog.kind, starter_scaffold::StarterGroupKindV1::Catalog);
-    assert_eq!(catalog.suggestions.len(), 14);
-    assert_eq!(catalog.suggestions[0].query_scaffold, "SHOW capabilities");
-    assert_eq!(
-        catalog.suggestions[1].query_scaffold,
-        "DESCRIBE capability::code.search"
+    assert!(rendered.contains("zero_query.mode=read-only"));
+    assert!(rendered.contains("zero_query.group[0].id=catalog"));
+    assert!(
+        !suggested_queries_v1(&rendered).is_empty(),
+        "zero-query must surface at least one suggestion:\n{rendered}"
     );
-    assert_eq!(catalog.suggestions[12].query_scaffold, "SHOW gates");
-    assert_eq!(
-        catalog.suggestions[13].query_scaffold,
-        "DESCRIBE gate::release.blockers"
-    );
-    assert!(catalog.suggestions.iter().all(|suggestion| {
-        matches!(
-            suggestion.root_kind,
-            starter_scaffold::StarterRootKindV1::Show
-                | starter_scaffold::StarterRootKindV1::Describe
-        )
-    }));
-    assert_eq!(
-        catalog.suggestions[0].reason.code,
-        starter_scaffold::StarterReasonCodeV1::CatalogOverview
-    );
-    assert_eq!(
-        catalog.suggestions[1].reason.code,
-        starter_scaffold::StarterReasonCodeV1::TypedTargetDetail
-    );
-    assert_eq!(
-        catalog.suggestions[0].authority,
-        "external-frontend-catalog"
-    );
-}
-
-#[test]
-fn zero_query_scaffold_stays_non_mutating_and_never_claims_runtime_counts() {
-    let report = starter_scaffold::build_starter_scaffold_v1().expect("starter scaffold");
-    let rendered = report.render_v1();
-    let queries = report
-        .groups
-        .iter()
-        .flat_map(|group| group.suggestions.iter())
-        .map(|suggestion| suggestion.query_scaffold)
-        .collect::<Vec<_>>();
-
-    assert!(queries.iter().any(|query| query.starts_with("SELECT ")));
-    assert!(queries.iter().any(|query| query.starts_with("SAMPLE ")));
-    assert!(!queries
-        .iter()
-        .any(|query| query.starts_with("USE ") || query.starts_with("REQUIRE ")));
+    // Read-only: no mutating verbs, no fabricated runtime counts.
     assert!(!rendered.contains("result_count"));
     assert!(!rendered.contains("code_action"));
-    assert!(rendered.contains("starter.provenance=typed-catalog-example-metadata"));
-    assert!(rendered.contains("starter.authority=external-read-only-shell"));
 }
 
 #[test]
-fn lsp_zero_query_translates_typed_groups_and_reasons() {
-    let first = zero_query::handle_zero_query().expect("zero query");
-    let second = zero_query::handle_zero_query().expect("zero query rerun");
+fn every_suggested_query_reparses_through_the_cli_parser_v1() {
+    let rendered = zero_query::run().expect("zero-query verb");
+    let queries = suggested_queries_v1(&rendered);
+    assert!(!queries.is_empty(), "no suggestions extracted");
 
-    assert_eq!(first, second);
-    assert_eq!(first.mode, "read-only");
-    assert_eq!(first.provenance, "typed-catalog-example-metadata");
-    assert_eq!(
-        first
-            .groups
-            .iter()
-            .map(|group| group.id)
-            .collect::<Vec<_>>(),
-        vec!["catalog", "analysis", "retrieval"]
-    );
-    assert_eq!(
-        first.groups[0].suggestions[0].reason_code,
-        "catalog_overview"
-    );
-    assert_eq!(
-        first.groups[0].suggestions[1].reason_code,
-        "typed_target_detail"
-    );
-    assert_eq!(
-        first.groups[1].suggestions[0].query_scaffold,
-        "SELECT id, profile.name FROM catalog.users WHERE active = true LIMIT 7"
-    );
-    assert_eq!(
-        first.groups[2].suggestions[0].reason_code,
-        "retrieval_shape_preview"
-    );
-    assert!(first
-        .groups
-        .iter()
-        .flat_map(|group| group.suggestions.iter())
-        .all(|suggestion| suggestion.behavior == "read-only-scaffold"));
-    assert!(!first.render_v1().contains("result_count"));
+    for query in &queries {
+        let report = parse::run(query)
+            .unwrap_or_else(|err| panic!("scaffolded query did not reparse: `{query}` -> {err}"));
+        assert_eq!(
+            report.root_count, 1,
+            "scaffolded query must parse to exactly one root: `{query}`"
+        );
+    }
+}
+
+#[test]
+fn zero_query_binary_is_nullary_and_read_only_v1() {
+    // No args → exit 0 with the rendered scaffold on stdout.
+    let ok = run_cli_argv_v1(&["zero-query"]);
+    assert!(ok.status.success(), "zero-query should exit 0");
+    assert!(cli_stdout_v1(&ok).contains("zero_query.group[0].id=catalog"));
+
+    // Stray argument → usage fault (exit 2), nothing on stdout.
+    let bad = run_cli_argv_v1(&["zero-query", "extra"]);
+    assert_eq!(bad.status.code(), Some(2), "stray arg must be a usage fault");
+    assert!(cli_stdout_v1(&bad).is_empty());
+    assert!(cli_stderr_v1(&bad).contains("zero-query takes no arguments"));
 }

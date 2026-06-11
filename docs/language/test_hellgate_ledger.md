@@ -78,8 +78,8 @@ A surface marked "— (contract-only)" in the Binary e2e column is intentionally
 
 | Surface | Binary e2e rail (file) | Contract-only rail (file) | Notes |
 | --- | --- | --- | --- |
-| SELECT vertical slice | — (exercised via CLI `query` corpus) | `crates/quanta-gqlang-v2-ir/tests/j01_select_vertical_slice.rs` | Table-only row shape kept; non-table widening rejected fail-closed. |
-| FIND / CHECK / EXPLAIN handshakes | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/j02a_find_handshake.rs`, `j02b_check_handshake.rs`, `j02c_explain_handshake.rs` | |
+| SELECT vertical slice | — (exercised via CLI `query` corpus) | `crates/quanta-gqlang-v2-ir/tests/select_vertical_slice.rs` | Table-only row shape kept; non-table widening rejected fail-closed. |
+| FIND / CHECK / EXPLAIN handshakes | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/j02a_handshake.rs`, `j02b_check_handshake.rs`, `j02c_explain_handshake.rs` | |
 | Public planning IR (`required_capabilities`, `truth_expectation`, `bridge_mode`, export mode) | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/public_planning_ir.rs` | Roots needing planning metadata fail closed when it is absent. |
 | Lowering-ready normalization | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/lowering_ready_ir.rs` | Preserves planning metadata rather than dropping it; lowering-ready, not lowered. |
 | Degraded-reason authority | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/degraded_reason.rs` | Single `DegradedReasonV1` authority; codes round-trip and stay unique. Presentation-only, not invented runtime truth. |

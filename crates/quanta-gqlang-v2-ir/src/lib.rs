@@ -13,8 +13,11 @@ pub mod find_ir;
 pub mod frontend;
 pub mod lowering_ready;
 pub mod planning;
+pub mod product;
+pub mod planning_producer;
 #[path = "facts/relation_schema.rs"]
 pub mod relation_schema;
+pub mod retrieval;
 pub mod retrieval_ir;
 pub mod root_ir;
 pub mod select_ir;

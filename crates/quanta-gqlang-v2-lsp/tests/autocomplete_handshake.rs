@@ -38,3 +38,16 @@ fn malformed_quickfix_input_fails_closed_v1() {
         "class=syntax code=describe_target_invalid_shape message=DESCRIBE target must use `<kind>::<identifier>`"
     );
 }
+
+#[test]
+fn unsupported_quickfix_describe_kind_fails_closed_v1() {
+    // Second negative: a well-shaped target whose KIND is outside the closed
+    // catalog vocabulary still fails closed with its own typed code, not the
+    // shape code above — proving the reject is decoded, not pattern-matched.
+    let err = handle_quickfix("DESCRIBE bogus::thing")
+        .expect_err("an unsupported describe kind must stay fail-closed");
+    assert!(
+        err.contains("code=unsupported_describe_kind"),
+        "expected unsupported-kind reject, got: {err}"
+    );
+}

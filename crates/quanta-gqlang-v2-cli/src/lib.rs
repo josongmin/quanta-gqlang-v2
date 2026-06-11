@@ -6,8 +6,15 @@ pub mod explain_view;
 /// list the doc gate checks the README and the `--help` usage string against, so
 /// a shipped command can never go undocumented (the `explain` omission the audit
 /// caught). A binary test pins that each token is a real, accepted command.
-pub const CLI_COMMAND_TOKENS_V1: [&str; 7] = [
-    "parse", "sema", "query", "fmt", "explain", "doctor", "headless",
+pub const CLI_COMMAND_TOKENS_V1: [&str; 8] = [
+    "parse",
+    "sema",
+    "query",
+    "fmt",
+    "explain",
+    "doctor",
+    "headless",
+    "zero-query",
 ];
 
 /// The read-only shell's single "why no result" label, shared by the headless and

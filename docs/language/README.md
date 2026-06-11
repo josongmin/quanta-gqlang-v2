@@ -34,7 +34,7 @@ separately — it is covered by the dedicated composition rails rather than the
 
 Read-only binary fronts:
 
-1. CLI: `parse`, `sema`, `query`, `fmt`, `explain`, `doctor`, `headless`
+1. CLI: `parse`, `sema`, `query`, `fmt`, `explain`, `doctor`, `headless`, `zero-query` (nullary read-only starter scaffold)
 2. LSP stdio JSON methods: `hover`, `completion`, `symbols`, `diagnostics`, `zero_query`, `quickfix`, `explain`
 3. malformed argv, malformed JSON, and any non-allowlisted method fail closed
    (the stdio dispatch is a closed 7-method allowlist; every other method —
@@ -153,7 +153,7 @@ Contract-only rails (in-crate library tests):
 - Syntax declaration-family negatives (VIEW / RULE / MODEL / PACK / PROFILE /
   GATE fail-closed): `crates/quanta-gqlang-v2-syntax/tests/declaration_conformance.rs`
 - Sema typed conformance: `crates/quanta-gqlang-v2-sema/tests/sema_conformance.rs`
-- IR vertical slices and planning rails: `j01_select_vertical_slice.rs`,
+- IR vertical slices and planning rails: `select_vertical_slice.rs`,
   `public_planning_ir.rs`, and `degraded_reason.rs` under
   `crates/quanta-gqlang-v2-ir/tests/`.
 

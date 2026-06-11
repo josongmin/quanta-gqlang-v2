@@ -32,6 +32,18 @@ pub struct QueryRootSummaryV1 {
     /// Computed once from the typed IR root; the single source of the read-only
     /// shell degraded lane for both the doctor and headless reports.
     pub degraded_reason: Option<DegradedReasonV1>,
+    /// E06C public planning metadata for the root, when the root is on the query
+    /// plane (Declaration/Meta carry none). This is the CLI's non-test consumer
+    /// of `LoweringReadyIrV1` — it surfaces the planned capability + truth lane.
+    pub plan: Option<QueryPlanSummaryV1>,
+}
+
+/// The query-plane planning summary a root carries — its required capability set
+/// and the truth lane the plan commits to (E06C).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct QueryPlanSummaryV1 {
+    pub capability: String,
+    pub truth: String,
 }
 
 impl QuerySummaryV1 {
@@ -59,6 +71,13 @@ impl QuerySummaryV1 {
                 "query.root[{index}].ir.summary={}",
                 root.ir_summary
             ));
+            if let Some(plan) = &root.plan {
+                lines.push(format!(
+                    "query.root[{index}].plan.capability={}",
+                    plan.capability
+                ));
+                lines.push(format!("query.root[{index}].plan.truth={}", plan.truth));
+            }
         }
         lines.join("\n")
     }
@@ -107,9 +126,30 @@ pub(crate) fn build_query_summary_v1(
                 ir_kind: ir_root_kind_v1(ir_root),
                 ir_summary: ir_root_summary_v1(ir_root),
                 degraded_reason: DegradedReasonV1::for_ir_root_v1(ir_root),
+                plan: query_plan_summary_v1(ir_root),
             })
             .collect(),
     }
+}
+
+/// Consume the `LoweringReadyIrV1` planning producer for `ir_root` and project
+/// its plan into the read-only summary. `None` for query-plane-less roots
+/// (Declaration/Meta) and for any plan that fails lowering-ready validation —
+/// the summary degrades to no plan line rather than fabricating one.
+fn query_plan_summary_v1(ir_root: &PublicIrRootV1) -> Option<QueryPlanSummaryV1> {
+    let ready =
+        quanta_gqlang_v2_ir::planning_producer::lowering_ready_for_root_v1(ir_root.clone()).ok()?;
+    let plan = ready.planning.as_ref()?;
+    let capability = plan
+        .required_capabilities
+        .iter()
+        .map(|requirement| format!("{:?}", requirement.capability))
+        .collect::<Vec<_>>()
+        .join(",");
+    Some(QueryPlanSummaryV1 {
+        capability,
+        truth: format!("{:?}", plan.truth_expectation),
+    })
 }
 
 pub(crate) fn syntax_root_kind_v1(root: &AstRootV1) -> &'static str {
@@ -186,7 +226,7 @@ pub(crate) fn syntax_root_summary_v1(root: &AstRootV1) -> String {
             None => format!("target={}", target.as_deref().unwrap_or("<missing>")),
         },
         AstRootV1::Show(ShowRootAstV1 { category }) => format!("category={category}"),
-        AstRootV1::Describe(DescribeRootAstV1 { target }) => format!("target={target}"),
+        AstRootV1::Describe(DescribeRootAstV1 { target }) => describe_summary_v1(target),
         AstRootV1::Sample(SampleRootAstV1 { query_text }) => format!("payload={query_text}"),
         AstRootV1::Compare(CompareRootAstV1 { baseline_ref }) => {
             format!("payload={baseline_ref}")
@@ -205,6 +245,27 @@ pub(crate) fn syntax_root_summary_v1(root: &AstRootV1) -> String {
             spec.with_name,
             syntax_root_kind_v1(&spec.body)
         ),
+    }
+}
+
+/// DESCRIBE summary — when `target` names a published entity/relation, render its
+/// schema fields from the catalog registry so the headless summary surfaces the
+/// real fact surface (E11A: catalog-facing root referencing the schema types),
+/// not just the echoed target. An unknown target falls back to `target=<name>`.
+fn describe_summary_v1(target: &str) -> String {
+    match quanta_gqlang_v2_ir::catalog::fact_catalog::describe_schema_rows_v1(target) {
+        Some(rows) => {
+            let fields = rows
+                .iter()
+                .enumerate()
+                .map(|(index, (name, type_label))| {
+                    format!("describe.schema.field[{index}]={name}:{type_label}")
+                })
+                .collect::<Vec<_>>()
+                .join(" ");
+            format!("target={target} {fields}")
+        }
+        None => format!("target={target}"),
     }
 }
 

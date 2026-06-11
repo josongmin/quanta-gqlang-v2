@@ -2,6 +2,8 @@
 
 > **STATUS: 4/14 DELETED (jun-10, cargo-metadata-verified); 10 BLOCKED by real consumers.**
 > 검증 방법: `cargo metadata` 로 crate별 reverse-dep 계산(= runtime 컴파일 불필요) → 0-consumer 만 삭제.
+>
+> **🔴 jun-10 어딧 정정**: 본문의 "quanta-runtime 미컴파일 → 빌드 복구 후 안전" 전제는 **틀림**. `cargo check -p quanta-runtime` EXIT=0(클린 컴파일). 유일 블로커는 `codeagent-quanta-bridge` 바이너리(feature flag, gqlang 무관). **→ 12크레이트 소비처 재배선이 지금 unblocked.** 실측: 5 ABSENT(이미삭제) + 12 PRESENT(실소비처) + planner/planner-contract(bare, 12소비처 각) 도 PRESENT. 안전삭제 0. INDEX "Semantica 작업 계획" 참조.
 > - **삭제 완료(0 reverse-dep, cargo metadata OK):**
 >   - `quanta-gqlang-ranked-proof-contamination-detector-v1` (S13A, member) — workspace member 라인 2곳 제거 + dir 삭제
 >   - `quanta-gqlang-sigil-v1` (S13B, orphan) / `quanta-gqlang-planner` (S13C, orphan) / `quanta-gqlang-owasp-matrix-v1` (S13D, orphan) — dir 삭제

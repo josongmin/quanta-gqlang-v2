@@ -1,7 +1,11 @@
 #![forbid(unsafe_code)]
 
+pub mod admissibility;
+pub mod ai_profile;
 pub mod declarations;
+pub mod fragment_policy;
 pub mod interactive;
+pub mod metric_vocabulary;
 pub mod roots;
 
 // Wiring unit tests live in their own module so this root stays production-only.
@@ -154,14 +158,23 @@ pub fn analyze_document_v1(doc: &DocumentAstV1) -> Result<TypedDocumentV1, SemaD
         .iter()
         .map(analyze_root_v1)
         .collect::<Result<Vec<_>, _>>()?;
+    // E05C: document-level admissibility — duplicate declaration names and VIEW
+    // reference cycles fail closed before the typed document is handed on.
+    admissibility::admit_document_v1(&roots)?;
     Ok(TypedDocumentV1 { roots })
 }
 
 pub fn analyze_root_v1(root: &AstRootV1) -> Result<TypedRootV1, SemaDiagnosticPageV1> {
     match root {
-        AstRootV1::Select(spec) => roots::select::analyze_select_root_v1(spec)
-            .map(TypedRootV1::Select)
-            .map_err(|err| sema_diagnostic_page_v1(err.code, err.message)),
+        AstRootV1::Select(spec) => {
+            let typed = roots::select::analyze_select_root_v1(spec)
+                .map_err(|err| sema_diagnostic_page_v1(err.code, err.message))?;
+            // E11C: `metric.<name>` projections resolve against the metric
+            // inventory vocabulary; an unknown metric name fails closed.
+            metric_vocabulary::admit_select_metric_projections_v1(&typed)
+                .map_err(|err| sema_diagnostic_page_v1(err.code, err.message))?;
+            Ok(TypedRootV1::Select(typed))
+        }
         AstRootV1::Find(spec) => {
             let typed = roots::find::TypedFindRootV1 {
                 subkind: spec.subkind.as_str().to_string(),

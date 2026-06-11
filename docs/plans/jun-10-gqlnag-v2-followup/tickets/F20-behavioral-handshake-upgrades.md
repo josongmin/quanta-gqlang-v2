@@ -1,6 +1,13 @@
 # F20 — J08A/J08B/J09A/J09B/J09C mirror-tautology fixture 의 behavioral 승격 (W5, joint)
 
-> **STATUS: NOT STARTED (jun-10 재점검).** joint. J08A/J08B/J09A/J09B/J09C mirror-tautology → behavioral 승격 — 미착수.
+> **STATUS: F20 FULLY DONE (jun-11) — external(4 fixtures) + sema(J08A/J08B/J09A/J09B/J09C 5 fixtures) all behavioral, green, clippy-clean.**
+> sema exec-conformance behavioral 승격(constant-mirror → 실 host 호출+typed neg): `fact_model_handshake`(EntityIndexHost, 4), `autocomplete_handshake`(IdeReadHost.completion suggestion-only, 4), `catalog_autocomplete_handshake`(CapabilityHost, 3), `zero_query_handshake`(Capability+EntityIndex, 4), `explain_path_handshake`(Explain/PathHost, 5), `show_describe_handshake`(CapabilityHost, 6 신설). 각 fixture 실 trait 메서드 호출 + fail-closed reject를 typed `.code`로 검증(vocab을 behavior에 결바). conformance 20 bin green(무관 선행 gate_owner_cutover_guard 1건 제외). J09C ExplainHost/PathHost production impl은 여전히 0(그건 ingress 구현 시) — 본 작업은 conformance 품질 상향.
+> (구) **STATUS: J09C sema DONE (`explain_path_handshake` constant-mirror→behavioral, 실 ExplainHost/PathHost 호출+typed neg×4, 5 green) + EXTERNAL FIXTURE DONE (jun-10) — 이 레포(quanta-gqlang-v2) fixture 4/5 behavioral. 잔여: J09C ExplainHost/PathHost impl(semantica exec-host-spi).** workspace 103 bin ok, clippy tests 0.
+> - **재점검 정정**: F20 의 "라이브" 품질감사가 일부 stale — J08A `ir/tests/fact_model_handshake.rs` 는 이미 2 test/2 typed-code negative(`entity_field_name_runtime_local`/`fact_schema_source_ref_runtime_local`)+실 `validate_v1` 호출로 DoD 충족 상태였음(승격 불요).
+> - **J08B `lsp/tests/catalog_autocomplete_handshake.rs`**: constant-mirror → behavioral 승격. 소유자 pin 은 유지하되 **partition invariant**(catalog≠example owner)로 강화 + **fail-closed negative ×2**(`capability_row_by_id_v1`/`example_row_by_id_v1` 미지 id→None) + 모든 autocomplete row 실 resolution→typed provenance assert. (3 tests)
+> - **J09B `lsp/tests/autocomplete_handshake.rs`**: 실 handler 호출(`handle_completion`/`handle_quickfix`)은 기존부터 behavioral. negative 1→2 강화(`describe_target_invalid_shape` + `unsupported_describe_kind` — 거부가 decode 임을 증명). (3 tests)
+> - **J09A `cli/tests/zero_query_handshake.rs`**: F08 에서 이미 CLI seam(`zero_query::run`) 경유 behavioral 로 재작성 — group partition + non-mutating fail-closed 속성 assert(constant-mirror 아님). (2 tests)
+> - **잔여(semantica)**: J09C — `exec-host-spi`의 ExplainHost/PathHost 는 workspace impl 0. Dummy impl + explain()/find_path() 실호출 + fail-closed 경로 실행은 semantica 워크트리 작업(이 레포 범위 밖). external 측 `cli/tests/explain_path_handshake.rs`(F19 신설)는 front-door `explain::run` 경유로 이미 behavioral.
 
 
 원천: J-caller 감사. handshake fixture 품질이 3계층으로 갈림 — 상위 3개만 behavioral,

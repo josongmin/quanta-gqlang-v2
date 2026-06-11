@@ -1,6 +1,11 @@
 # F19 — J01/J02A/J09C proof-rail 타겟명·touch-file 수리 (W5, joint)
 
-> **STATUS: NOT STARTED (jun-10 재점검).** joint. J01/J02A/J09C proof-rail 타겟명·touch-file 정합 — 미착수(runtime 빌드됨 → 검증 가능).
+> **STATUS: J03A DONE (sema+ir `show_describe_handshake` behavioral green) + EXTERNAL-SIDE DONE (jun-10) — 이 레포(quanta-gqlang-v2) 측 proof-rail 타겟명 전부 정합. 잔여: semantica 측 joint dry-run(아래 작업4).**
+> - **J01**: `ir/tests/j01_select_vertical_slice.rs` → `select_vertical_slice.rs` rename. `--test select_vertical_slice` GREEN(2). 다른 rail 이 옛이름 미참조 확인 후 안전 rename.
+> - **J02A**: `ir/tests/j02a_find_handshake.rs` → `j02a_handshake.rs` rename. `--test j02a_handshake` GREEN(3).
+> - **J09C**: `explain_path_ux.rs` 는 jun-9 plan(ticket 04)이 `explain_path_ux` rail 명을 의존 → rename 대신 **handshake 전용 신설** `cli/tests/explain_path_handshake.rs`(front-door `explain::run` 경유 E2E, unit builder 테스트와 구분). `--test explain_path_handshake` GREEN(2), 기존 `explain_path_ux` 도 GREEN 유지(충돌 회피). ir touch-file `ir/src/retrieval/spec.rs` 는 F04 신설로 충족(확인).
+> - 문서 정합: `docs/language/{README.md,test_hellgate_ledger.md}` 의 옛 파일명 참조 갱신. 코드/게이트 측 옛이름 잔재 0(rg 검증). workspace 103 bin ok, clippy gate+tests 0.
+> - **잔여(joint, semantica 측)**: 작업4 — 전 joint 티켓 Proof Rail 전수 `cargo test --no-run` dry-run 으로 동류 불일치 추가 발굴은 semantica 워크트리에서 수행 필요(이 레포 범위 밖).
 
 
 원천: J-ingress-handshake-matrix + J-caller 감사 CH2. 티켓이 명명한 cargo test 타겟이

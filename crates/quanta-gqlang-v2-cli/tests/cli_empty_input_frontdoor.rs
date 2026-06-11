@@ -25,7 +25,7 @@ use support::{cli_stderr_v1, cli_stdout_v1, run_cli_argv_v1, write_target_tmp_in
 const EXPECTED_EMPTY_STDERR_V1: &str = concat!(
     "cli.error.class=usage\n",
     "cli.error.message=input cannot be empty\n",
-    "cli.usage=quanta-gqlang-v2-cli <parse|sema|query|fmt|explain|doctor|headless> (--file <path> | <input...>)\n",
+    "cli.usage=quanta-gqlang-v2-cli <parse|sema|query|fmt|explain|doctor|headless> (--file <path> | <input...>) | zero-query\n",
     "cli.read_only=true\n",
     "cli.command_plane=forbidden\n",
 );

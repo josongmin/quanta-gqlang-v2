@@ -19,7 +19,7 @@ use quanta_gqlang_v2_cli::commands;
 use quanta_gqlang_v2_cli::doctor::{self, DoctorStatusV1};
 
 const USAGE_V1: &str = concat!(
-    "cli.usage=quanta-gqlang-v2-cli <parse|sema|query|fmt|explain|doctor|headless> (--file <path> | <input...>)\n",
+    "cli.usage=quanta-gqlang-v2-cli <parse|sema|query|fmt|explain|doctor|headless> (--file <path> | <input...>) | zero-query\n",
     "cli.read_only=true\n",
     "cli.command_plane=forbidden"
 );
@@ -33,6 +33,7 @@ enum CliCommandV1 {
     Explain,
     Doctor,
     Headless,
+    ZeroQuery,
 }
 
 impl CliCommandV1 {
@@ -45,8 +46,14 @@ impl CliCommandV1 {
             "explain" => Ok(Self::Explain),
             "doctor" => Ok(Self::Doctor),
             "headless" => Ok(Self::Headless),
+            "zero-query" => Ok(Self::ZeroQuery),
             _ => Err(CliErrorV1::usage_v1(format!("unsupported command `{raw}`"))),
         }
+    }
+
+    /// Whether the verb takes no input (the read-only zero-query scaffold seam).
+    const fn is_nullary_v1(self) -> bool {
+        matches!(self, Self::ZeroQuery)
     }
 }
 
@@ -160,6 +167,20 @@ fn parse_invocation_v1(args: Vec<OsString>) -> Result<CliInvocationV1, CliErrorV
             .ok_or_else(|| CliErrorV1::usage_v1("command must be valid UTF-8".to_string()))?,
     )?;
 
+    // Nullary verbs (zero-query) take no input — reject stray arguments rather
+    // than silently ignoring them, and skip the non-empty-input requirement.
+    if command.is_nullary_v1() {
+        if !input_args.is_empty() {
+            return Err(CliErrorV1::usage_v1(
+                "zero-query takes no arguments".to_string(),
+            ));
+        }
+        return Ok(CliInvocationV1 {
+            command,
+            input: String::new(),
+        });
+    }
+
     let input = match input_args {
         [] => {
             return Err(CliErrorV1::usage_v1(
@@ -250,6 +271,12 @@ fn execute_invocation_v1(invocation: CliInvocationV1) -> Result<CliOutputV1, Cli
         CliCommandV1::Headless => commands::headless::run(&invocation.input)
             .map(|report| CliOutputV1 {
                 stdout: report.render_v1(),
+                exit_code: 0,
+            })
+            .map_err(CliErrorV1::command_v1),
+        CliCommandV1::ZeroQuery => commands::zero_query::run()
+            .map(|stdout| CliOutputV1 {
+                stdout,
                 exit_code: 0,
             })
             .map_err(CliErrorV1::command_v1),

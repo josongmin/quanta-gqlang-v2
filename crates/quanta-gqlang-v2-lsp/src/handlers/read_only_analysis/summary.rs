@@ -75,12 +75,23 @@ pub(super) fn summary_from_root_v1(root: &AstRootV1) -> ReadOnlyRootSummaryV1 {
             category.clone(),
             vec![format!("catalog_category={category}")],
         ),
-        AstRootV1::Describe(DescribeRootAstV1 { target }) => root_summary_v1(
-            "DESCRIBE",
-            "interactive",
-            target.clone(),
-            vec![format!("target={target}")],
-        ),
+        AstRootV1::Describe(DescribeRootAstV1 { target }) => {
+            // E11A: a DESCRIBE of a published entity/relation renders its real
+            // schema fields from the catalog registry (catalog-facing root
+            // referencing the public fact-schema surface). Unknown targets keep
+            // only the bare `target=` line so the client can tell "no published
+            // schema" from "echoed back".
+            let mut summary = vec![format!("target={target}")];
+            if let Some(rows) =
+                quanta_gqlang_v2_ir::catalog::fact_catalog::describe_schema_rows_v1(target)
+            {
+                summary.extend(
+                    rows.iter()
+                        .map(|(name, type_label)| format!("schema.field={name}:{type_label}")),
+                );
+            }
+            root_summary_v1("DESCRIBE", "interactive", target.clone(), summary)
+        }
         AstRootV1::Sample(SampleRootAstV1 { query_text }) => root_summary_v1(
             "SAMPLE",
             "interactive",

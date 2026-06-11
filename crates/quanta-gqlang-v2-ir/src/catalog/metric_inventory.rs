@@ -1,3 +1,11 @@
+
+/// E11C external metric vocabulary, re-exported from sema so the catalog plane
+/// exposes the named inventory alongside the internal projection counters.
+pub use quanta_gqlang_v2_sema::metric_vocabulary::{
+    metric_descriptor_v1 as external_metric_descriptor_v1,
+    MetricDescriptorV1 as ExternalMetricDescriptorV1, MetricFamilyV1 as ExternalMetricFamilyV1,
+    EXTERNAL_METRIC_VOCABULARY_V1,
+};
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MetricIdV1 {
     QueryResultCount,

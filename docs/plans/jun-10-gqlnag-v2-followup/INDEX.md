@@ -23,17 +23,60 @@
 
 빌드 복구 후 검증이 실제 이슈 4건 포착·수정: bridge API-drift 5곳, seam-plane, composition grammar drift, CandidateBasisV1 충돌.
 
-**🔲 REMAINING — 미착수 (코드 상태로 확인)**
+**✅ External W1 코어 전부 DONE (jun-10)** — F02·F03·F04·F05·F06·F07·F08 모두 헬게이트 드리븐(e2e RED → TDD → 적대/객관 어딧 → 보강)으로 완료. workspace 100 test-bin green, clippy gate(`--lib/bins/examples`) + `--tests` 0 warn.
+
+| 티켓 | proof rail | 핵심 |
+|---|---|---|
+| F02 | `sema --test admissibility_matrix`(9) | E05A/B/C/D admissibility 서브시스템 |
+| F03 | `ir planning_producer`(5)+`sema ai_profile`(3)+`cli query_plan_summary`(4) | E06C planning producer + E05E AI-lane admissibility + CLI plan 소비자 |
+| F04 | `ir --test product_ir`/`typed_retrieval_surface`, `sema --test fragment_policy`(6) | E06B product IR + E07 typed retrieval/fragment |
+| F05 | `sema --test select_metric_target`(3) | E11C metric inventory 어휘 + `metric.<name>` |
+| F06 | `ir/cli/lsp --test fact_*`(4+2+2) | E11A fact schema → DESCRIBE catalog root 배선 |
+| F07 | `sema --test trust_policy`(5) | E10B REQUIRE CERTIFIED fail-closed admission |
+| F08 | `cli zero_query`(3)+`handshake`(2)+`ir zero_query_scaffold`(4) | E12A scaffold core→ir + CLI zero-query verb |
+
+**🔲 REMAINING — 미착수**
 
 | 묶음 | 티켓 | 비고 |
 |---|---|---|
-| **External W1 코어 (최대 미착수 덩어리)** | F02·F03·F04·F05·F06·F07·F08 | sema admissibility/AI profile/product IR/metric/fact wiring/trust/cli zero-query 전부 부재. **external 빌드 green → runtime 무관, 즉시 착수 가능.** |
-| Semantica 삭제 마이그레이션 | F18-10 | 10개 crate 의 실소비처(runtime/execution/query-owner-surface) 재배선 후 삭제 = 진짜 S13B/S12B |
+| Joint (external 측 DONE) | F19·F20 | ✅ external proof-rail 타겟명 정합 + fixture behavioral 승격 완료. 잔여: F19 semantica dry-run, F20 J09C ExplainHost/PathHost impl(semantica) |
+| Semantica 삭제 마이그레이션 | F18-10 | 10개 crate 의 실소비처 재배선 후 삭제 = 진짜 S13B/S12B |
 | Semantica V6B cutover | F21 | compat carrier 15+ 소비처 cutover (대형) |
-| Joint | F19·F20 | proof-rail 타겟명 정합 / mirror-tautology 행동승격 (runtime green → 검증 가능) |
 | 자투리 | planner-v1 tooling 11파일, F14-S08C feature 레일 | 파일별 확인 필요 |
 
-**권장 다음 순서:** External W1(F02→F04→F05→F03/F06/F07/F08, 빌드빠름·즉시 가능) → Joint F19/F20 → Semantica 대형 마이그레이션 F21 → F18-10.
+**이 레포(quanta-gqlang-v2/external) 측은 전부 DONE.** 잔여 작업은 전부 semantica-codegraph-v2 워크트리.
+
+### Semantica 최종 어딧 (jun-10, 4영역 실코드 검증)
+
+**🔴 stale claim 정정**: F18·F21 의 "quanta-runtime 미컴파일 → 빌드 복구 후" 전제는 **틀림**. `quanta-runtime`(cargo check EXIT=0)·memssa·exec-contract·exec-host-spi·host-adapter **전부 클린 컴파일**. 유일 블로커는 `codeagent-quanta-bridge` 바이너리(feature flag 누락, gqlang 무관). **→ F18 재배선·F21 컷오버 지금 unblocked.**
+
+| 영역 | 실제 상태 (검증) |
+|---|---|
+| F19-sema | 42 test 중 J03A `show_describe_handshake.rs` **1개 부재** → rail hard-fail. 나머지 18 OK |
+| F20-J09C | ExplainHost(1)/PathHost(4) trait 존재, **production impl 0**, test엔 `unreachable!` Dummy뿐. `explain_path_handshake.rs`(sema) constant-mirror — 메서드 미호출 |
+| F21 | carrier 3종 존재(dual #[path]). 실 prod 생성사이트 **4개**(15+ 아님). 목적지 `ServingQueryRequestV1`+`lower_public_ir_root_to_request_v1` 존재. `#[deprecated]`/변환어댑터 미착수. "17 test err" 결함 해소됨 |
+| F18 | **5 ABSENT**(이미삭제 0소비처) + **12 PRESENT**(실소비처: catalog-binding 21·validation 18·fragment 13·core 10·catalog-v1 5·hir-v1 4·sdk-handlers 4·gates-v1 2·sarif-proj 2·lowering 1·planner/contract 12×2). 안전삭제 0 — 재배선 필요. 게이트/lint/catalog residue 다수 |
+
+### Semantica 작업 계획 (의존순 — 보강판)
+
+> **📋 구체 실행계획(파일·타입·시그니처·헬게이트·검증커맨드 단위): [SEMANTICA-EXECUTION-PLAN.md](SEMANTICA-EXECUTION-PLAN.md)** (4영역 병렬 어딧 기반).
+
+| # | 작업 | 크기 | 의존 | 병렬군 |
+|---|---|---|---|---|
+| 1 | **F19/J03A**: `show_describe_handshake` **sema(exec-conformance)+ir(external)** 신설 (CapabilityHost behavioral) | S | — | A |
+| 2 | **F20-J09C**: `explain_path_handshake`(sema) behavioral — Dummy impl 실호출 + neg≥2 | S–M | — | A |
+| 3 | **F18a**: 삭제된 5크레이트 tooling residue 청소(baseline/lint/catalog yaml/gate needle) | S–M | — | A |
+| 4 | **F21**: carrier 강등 — adapter `from_gqlang_execution_request_v1`+`#[deprecated]`+**진짜 컷오버 2사이트**(나머지 pre-planning/subquery는 allow)+guard+round-trip | M | — | B |
+| 5 | **F18b**: **10 gqlang 크레이트**(planner 제외) 재배선 후 삭제 — topo: leaf(validation/fragment/gates/sdk-handlers/sarif-proj)→catalog-binding/hir→catalog-v1→core/lowering | **L** | 빌드 OK | C |
+| 6 | **J06 closeout**: ledger regen→S-ticket complete→joint bundle(J03A 포함)→`gate --all` | M | 1·3·4·5 | D |
+
+**정정**: F18b는 **10** 크레이트(bare planner/planner-contract는 gqlang-* 아님 → 범위 밖). F21 실 컷오버는 **2사이트**(15+ 아님). F19 J03A는 **external+sema 양쪽** 파일 부재.
+
+**실행 순서:** 배치A(1+2+3 병렬, quick win) → B(4 F21) → C(5 F18b, critical path, 단계별 `cargo check -p`) → D(6 J06).
+
+⚠️ **착수 전 결정**: semantica `main` 에 uncommitted WIP(memssa/taint) 존재 → 작업 브랜치 분리 방침 필요.
+
+**권장 다음 순서:** ~~External W1~~ ✅ → ~~F19/F20 external~~ ✅ → **Semantica 배치 A(1·2·3) 병렬** → B(F21) → C(F18b) → D(J06).
 
 ---
 
