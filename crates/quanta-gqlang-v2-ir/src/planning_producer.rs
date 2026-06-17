@@ -23,7 +23,7 @@ fn capability_for_kind_v1(
 ) -> Option<(CapabilityNameV1, CapabilityReasonV1)> {
     use PublicPlanRootKindV1 as K;
     Some(match kind {
-        K::Select | K::Retrieval | K::Composition => {
+        K::Select | K::Retrieval => {
             (CapabilityNameV1::Search, CapabilityReasonV1::RootExecution)
         }
         K::Find => (CapabilityNameV1::Path, CapabilityReasonV1::RootExecution),
@@ -39,7 +39,10 @@ fn capability_for_kind_v1(
             CapabilityNameV1::CatalogIntrospection,
             CapabilityReasonV1::CatalogRead,
         ),
-        K::Declaration | K::Meta => return None,
+        // Composition is served through its WITH body. It must not invent a
+        // second top-level planning lane here; semantica ingress lowers the
+        // body with `None` planning and attaches only the working-set ref.
+        K::Composition | K::Declaration | K::Meta => return None,
     })
 }
 
@@ -72,22 +75,20 @@ fn lane_for_kind_v1(
             ExportModeV1::None,
             None,
         ),
-        K::Select
-        | K::Find
-        | K::Interactive
-        | K::Composition
-        | K::Declaration
-        | K::Meta => (
-            TruthExpectationV1::Observational,
-            BridgeModeV1::DirectRead,
-            ExportModeV1::None,
-            None,
-        ),
+        K::Select | K::Find | K::Interactive | K::Composition | K::Declaration | K::Meta => {
+            (
+                TruthExpectationV1::Observational,
+                BridgeModeV1::DirectRead,
+                ExportModeV1::None,
+                None,
+            )
+        }
     }
 }
 
-/// Produce the planning IR for a lowered root. `None` for non-query-plane roots
-/// (Declaration/Meta) — they carry no plan.
+/// Produce the planning IR for a lowered root. `None` for declaration/meta
+/// command roots and for composition, whose planning authority stays delegated
+/// to its served WITH body instead of inventing a second top-level plan.
 #[must_use]
 pub fn plan_for_root_v1(root: &PublicIrRootV1) -> Option<PublicPlanV1> {
     let kind = root.plan_root_kind_v1();

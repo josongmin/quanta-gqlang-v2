@@ -8,10 +8,11 @@
 //! F03 hellgate (jun-10-gqlnag-v2-followup) — production planning-IR producer.
 //!
 //! NOTE TO OTHER AGENTS: this pins that the planning IR has a PRODUCTION
-//! producer (previously test-only). Every query-plane root kind yields a valid
-//! `PublicPlanV1`; Declaration/Meta yield none; and `lowering_ready_for_root_v1`
-//! supplies the plan so the planning-required roots pass lowering-ready
-//! validation (the previously-unreachable production path).
+//! producer (previously test-only). Query roots that need their own planning
+//! lane yield a valid `PublicPlanV1`; Declaration/Meta yield none; composition
+//! delegates planning to its served WITH body and also yields none; and
+//! `lowering_ready_for_root_v1` supplies the plan so the planning-required roots
+//! pass lowering-ready validation (the previously-unreachable production path).
 
 use quanta_gqlang_v2_ir::planning::{CapabilityNameV1, PublicPlanRootKindV1, TruthExpectationV1};
 use quanta_gqlang_v2_ir::planning_producer::{
@@ -31,15 +32,15 @@ fn lower_one_v1(input: &str) -> PublicIrRootV1 {
 fn plan_is_produced_and_valid_for_query_roots_v1() {
     let cases = [
         ("SELECT id FROM catalog.files LIMIT 3", CapabilityNameV1::Search),
-        (
-            "FIND taint api.entry -> db.write",
-            CapabilityNameV1::Path,
-        ),
+        ("FIND taint api.entry -> db.write", CapabilityNameV1::Path),
         (
             "CHECK rule.x check:v1|class=security|scope=repo%3A%2F%2Fr|pattern=~|confirm=skip",
             CapabilityNameV1::PatternLint,
         ),
-        ("EXPLAIN rule::owasp.x ;; evidence=trace", CapabilityNameV1::Explain),
+        (
+            "EXPLAIN rule::owasp.x ;; evidence=trace",
+            CapabilityNameV1::Explain,
+        ),
         ("SHOW capabilities", CapabilityNameV1::CatalogIntrospection),
     ];
     for (input, expected_capability) in cases {
@@ -63,11 +64,19 @@ fn explain_plan_carries_explain_evidence_truth_v1() {
 }
 
 #[test]
-fn declaration_and_meta_have_no_plan_v1() {
+fn declaration_meta_and_composition_have_no_top_level_plan_v1() {
     let view = lower_one_v1("VIEW catalog.users ;; query-ref=queries/catalog/users");
-    assert!(plan_for_root_v1(&view).is_none(), "declaration carries no plan");
+    assert!(
+        plan_for_root_v1(&view).is_none(),
+        "declaration carries no plan"
+    );
     let meta = lower_one_v1("REQUIRE CERTIFIED");
     assert!(plan_for_root_v1(&meta).is_none(), "meta carries no plan");
+    let composition = lower_one_v1("LET suspects = SELECT id FROM catalog.users LIMIT 5\nFIND taint api.entry -> db.write WITH suspects");
+    assert!(
+        plan_for_root_v1(&composition).is_none(),
+        "composition planning stays delegated to its WITH body"
+    );
 }
 
 #[test]
@@ -82,7 +91,10 @@ fn lowering_ready_supplies_plan_for_planning_required_roots_v1() {
     ] {
         let ready = lowering_ready_for_root_v1(lower_one_v1(input))
             .unwrap_or_else(|err| panic!("lowering-ready for `{input}` must succeed: {err:?}"));
-        assert!(ready.planning.is_some(), "`{input}` must carry planning metadata");
+        assert!(
+            ready.planning.is_some(),
+            "`{input}` must carry planning metadata"
+        );
     }
 }
 
@@ -94,7 +106,10 @@ fn ai_lane_plan_reaches_the_some_ai_plan_validation_branch_v1() {
     let retrieval = lower_one_v1("SAMPLE query=auth middleware ;; mode=semantic ;; limit=20");
     let plan = plan_for_ai_retrieval_v1(&retrieval).expect("retrieval yields an AI plan");
     assert!(plan.ai_plan.is_some());
-    assert_eq!(plan.truth_expectation, TruthExpectationV1::ReconfirmRequired);
+    assert_eq!(
+        plan.truth_expectation,
+        TruthExpectationV1::ReconfirmRequired
+    );
     plan.validate_v1()
         .expect("AI-lane plan must satisfy the AI validation branch");
     // non-retrieval roots get no AI plan

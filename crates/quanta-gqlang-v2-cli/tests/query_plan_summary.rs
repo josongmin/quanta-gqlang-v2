@@ -28,8 +28,9 @@ fn query_plane_root_surfaces_plan_capability_and_truth_v1() {
 
 #[test]
 fn explain_root_plan_commits_to_explain_evidence_v1() {
-    let summary = query::run("EXPLAIN rule::owasp.sql-injection ;; evidence=trace ;; truth=confirm")
-        .expect("query summary");
+    let summary =
+        query::run("EXPLAIN rule::owasp.sql-injection ;; evidence=trace ;; truth=confirm")
+            .expect("query summary");
     let plan = summary.roots[0]
         .plan
         .as_ref()
@@ -48,4 +49,20 @@ fn declaration_root_has_no_plan_line_v1() {
         "declaration roots carry no planning metadata"
     );
     assert!(!summary.render_v1().contains(".plan.capability="));
+}
+
+#[test]
+fn composition_root_keeps_planning_delegated_to_its_with_body_v1() {
+    let summary = query::run(
+        "LET suspects = SELECT id FROM catalog.users LIMIT 5\nFIND taint api.entry -> db.write WITH suspects",
+    )
+    .expect("query summary");
+    assert!(
+        summary.roots[0].plan.is_none(),
+        "composition must not invent a second top-level planning lane"
+    );
+    assert!(
+        !summary.render_v1().contains(".plan.capability="),
+        "composition summary must not fabricate a plan line"
+    );
 }
