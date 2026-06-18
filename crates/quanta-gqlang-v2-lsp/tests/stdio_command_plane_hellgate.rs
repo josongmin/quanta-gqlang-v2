@@ -231,7 +231,11 @@ fn escaped_unicode_method_name_decodes_then_is_not_allowed_v1() {
 fn empty_or_whitespace_method_yields_empty_method_v1() {
     for request in [r#"{"method":""}"#, r#"{"method":"   "}"#] {
         let (code, line) = run_binary_line_v1(request);
-        assert_eq!(code, Some(1), "`{request}`: empty/whitespace method must exit 1");
+        assert_eq!(
+            code,
+            Some(1),
+            "`{request}`: empty/whitespace method must exit 1"
+        );
         assert_eq!(
             line,
             r#"{"ok":false,"error":{"code":"empty_method","message":"method cannot be empty"}}"#,

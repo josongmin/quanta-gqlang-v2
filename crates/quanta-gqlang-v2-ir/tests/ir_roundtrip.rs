@@ -64,10 +64,7 @@ fn core_roots_lower_to_expected_public_ir_v1() {
     let PublicIrRootV1::Check(check) = check else {
         panic!("expected CHECK IR root");
     };
-    assert_eq!(
-        check.execution_mode(),
-        CheckExecutionModeV1::Hybrid
-    );
+    assert_eq!(check.execution_mode(), CheckExecutionModeV1::Hybrid);
 
     let explain =
         lower_root_v1("EXPLAIN rule::owasp.sql-injection ;; evidence=trace ;; truth=confirm");

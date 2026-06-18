@@ -15,7 +15,9 @@ fn describe_published_entity_renders_schema_fields_v1() {
         .expect("DESCRIBE of a published entity should hover");
     assert_eq!(card.root_keyword, "DESCRIBE");
     assert!(
-        card.summary.iter().any(|line| line == "schema.field=environment:string"),
+        card.summary
+            .iter()
+            .any(|line| line == "schema.field=environment:string"),
         "hover must surface published schema fields, got {:?}",
         card.summary
     );
@@ -29,7 +31,9 @@ fn describe_unknown_entity_omits_schema_fields_v1() {
         .hover("DESCRIBE model::nope.absent")
         .expect("DESCRIBE of an unknown target should still hover");
     assert!(
-        card.summary.iter().all(|line| !line.starts_with("schema.field=")),
+        card.summary
+            .iter()
+            .all(|line| !line.starts_with("schema.field=")),
         "unknown target must not invent schema fields, got {:?}",
         card.summary
     );

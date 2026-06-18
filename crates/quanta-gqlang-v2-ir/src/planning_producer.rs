@@ -23,9 +23,7 @@ fn capability_for_kind_v1(
 ) -> Option<(CapabilityNameV1, CapabilityReasonV1)> {
     use PublicPlanRootKindV1 as K;
     Some(match kind {
-        K::Select | K::Retrieval => {
-            (CapabilityNameV1::Search, CapabilityReasonV1::RootExecution)
-        }
+        K::Select | K::Retrieval => (CapabilityNameV1::Search, CapabilityReasonV1::RootExecution),
         K::Find => (CapabilityNameV1::Path, CapabilityReasonV1::RootExecution),
         K::Check => (
             CapabilityNameV1::PatternLint,
@@ -75,14 +73,12 @@ fn lane_for_kind_v1(
             ExportModeV1::None,
             None,
         ),
-        K::Select | K::Find | K::Interactive | K::Composition | K::Declaration | K::Meta => {
-            (
-                TruthExpectationV1::Observational,
-                BridgeModeV1::DirectRead,
-                ExportModeV1::None,
-                None,
-            )
-        }
+        K::Select | K::Find | K::Interactive | K::Composition | K::Declaration | K::Meta => (
+            TruthExpectationV1::Observational,
+            BridgeModeV1::DirectRead,
+            ExportModeV1::None,
+            None,
+        ),
     }
 }
 

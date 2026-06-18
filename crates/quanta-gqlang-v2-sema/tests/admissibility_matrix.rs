@@ -107,9 +107,8 @@ fn duplicate_declaration_name_fails_closed_v1() {
 #[test]
 fn view_reference_cycle_fails_closed_v1() {
     // A VIEW whose inline body selects FROM its own name is a 1-cycle.
-    let codes = analyze_reject_code_v1(
-        "VIEW recent.errors ;; body=SELECT id FROM recent.errors LIMIT 5",
-    );
+    let codes =
+        analyze_reject_code_v1("VIEW recent.errors ;; body=SELECT id FROM recent.errors LIMIT 5");
     assert!(
         codes.contains(&"declaration_cycle"),
         "expected declaration_cycle, got {codes:?}"
@@ -133,9 +132,8 @@ fn multi_view_mutual_reference_cycle_fails_closed_v1() {
 #[test]
 fn independent_declarations_admit_v1() {
     // Distinct names + a body that selects a real catalog table must admit.
-    let root = analyze_ok_root_v1(
-        "VIEW recent.errors ;; body=SELECT id FROM catalog.errors LIMIT 5",
-    );
+    let root =
+        analyze_ok_root_v1("VIEW recent.errors ;; body=SELECT id FROM catalog.errors LIMIT 5");
     assert!(matches!(root, TypedRootV1::Declaration(_)));
 }
 

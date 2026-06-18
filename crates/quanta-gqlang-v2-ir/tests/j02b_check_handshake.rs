@@ -73,10 +73,7 @@ fn check_handshake_preserves_pattern_semantic_and_hybrid_intent() {
     .expect("hybrid intent");
     let hybrid_ir = lower_check_from_intent_v1(hybrid.clone());
     assert_eq!(hybrid_ir.intent(), &hybrid);
-    assert_eq!(
-        hybrid_ir.execution_mode(),
-        CheckExecutionModeV1::Hybrid
-    );
+    assert_eq!(hybrid_ir.execution_mode(), CheckExecutionModeV1::Hybrid);
 }
 
 #[test]

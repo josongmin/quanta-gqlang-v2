@@ -13,8 +13,8 @@ pub mod find_ir;
 pub mod frontend;
 pub mod lowering_ready;
 pub mod planning;
-pub mod product;
 pub mod planning_producer;
+pub mod product;
 #[path = "facts/relation_schema.rs"]
 pub mod relation_schema;
 pub mod retrieval;
@@ -77,12 +77,13 @@ pub fn lower_root_to_ir_v1(root: &TypedRootV1) -> Result<PublicIrRootV1, IrLower
             })?)
         }
         TypedRootV1::Find(spec) => {
-            let ir = find_ir::FindIrV1::from_typed_v1(&spec.subkind, &spec.seed).map_err(|err| {
-                IrLoweringErrorV1 {
-                    code: "invalid_find_seed",
-                    message: err.message,
-                }
-            })?;
+            let ir =
+                find_ir::FindIrV1::from_typed_v1(&spec.subkind, &spec.seed).map_err(|err| {
+                    IrLoweringErrorV1 {
+                        code: "invalid_find_seed",
+                        message: err.message,
+                    }
+                })?;
             PublicIrRootV1::Find(ir)
         }
         TypedRootV1::Check(spec) => {

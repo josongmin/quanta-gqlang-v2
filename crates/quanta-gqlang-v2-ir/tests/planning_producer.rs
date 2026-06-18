@@ -31,7 +31,10 @@ fn lower_one_v1(input: &str) -> PublicIrRootV1 {
 #[test]
 fn plan_is_produced_and_valid_for_query_roots_v1() {
     let cases = [
-        ("SELECT id FROM catalog.files LIMIT 3", CapabilityNameV1::Search),
+        (
+            "SELECT id FROM catalog.files LIMIT 3",
+            CapabilityNameV1::Search,
+        ),
         ("FIND taint api.entry -> db.write", CapabilityNameV1::Path),
         (
             "CHECK rule.x check:v1|class=security|scope=repo%3A%2F%2Fr|pattern=~|confirm=skip",
@@ -113,5 +116,7 @@ fn ai_lane_plan_reaches_the_some_ai_plan_validation_branch_v1() {
     plan.validate_v1()
         .expect("AI-lane plan must satisfy the AI validation branch");
     // non-retrieval roots get no AI plan
-    assert!(plan_for_ai_retrieval_v1(&lower_one_v1("SELECT id FROM catalog.files LIMIT 3")).is_none());
+    assert!(
+        plan_for_ai_retrieval_v1(&lower_one_v1("SELECT id FROM catalog.files LIMIT 3")).is_none()
+    );
 }

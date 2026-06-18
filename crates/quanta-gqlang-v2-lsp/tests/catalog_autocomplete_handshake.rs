@@ -45,7 +45,10 @@ fn every_autocomplete_row_resolves_to_typed_provenance_v1() {
     autocomplete_surface_integrity_v1().expect("autocomplete references must resolve");
 
     let rows = autocomplete_suggestion_rows_v1();
-    assert!(!rows.is_empty(), "autocomplete surface must offer suggestions");
+    assert!(
+        !rows.is_empty(),
+        "autocomplete surface must offer suggestions"
+    );
     for row in rows {
         let capability =
             capability_row_by_id_v1(row.capability_id).expect("capability id must resolve");

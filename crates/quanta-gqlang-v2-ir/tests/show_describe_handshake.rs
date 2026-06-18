@@ -38,7 +38,10 @@ fn describe_narrows_to_entity_schema_rows_v1() {
         assert!(!field.is_empty() && !type_label.is_empty());
     }
     // The kind-prefixed DESCRIBE target form resolves to the same rows.
-    assert_eq!(describe_schema_rows_v1(&format!("model::{name}")).as_ref(), Some(&rows));
+    assert_eq!(
+        describe_schema_rows_v1(&format!("model::{name}")).as_ref(),
+        Some(&rows)
+    );
 }
 
 #[test]

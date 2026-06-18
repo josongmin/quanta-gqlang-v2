@@ -1,4 +1,3 @@
-
 /// E11C external metric vocabulary, re-exported from sema so the catalog plane
 /// exposes the named inventory alongside the internal projection counters.
 pub use quanta_gqlang_v2_sema::metric_vocabulary::{

@@ -9,7 +9,8 @@
 //! fails the build, not a DESCRIBE at runtime) and resolve by canonical name.
 
 use quanta_gqlang_v2_ir::catalog::fact_catalog::{
-    describe_schema_rows_v1, entity_schema_for_v1, published_entity_names_v1, relation_schema_for_v1,
+    describe_schema_rows_v1, entity_schema_for_v1, published_entity_names_v1,
+    relation_schema_for_v1,
 };
 
 #[test]
@@ -39,7 +40,8 @@ fn describe_rows_render_entity_fields_v1() {
     let prefixed = describe_schema_rows_v1("model::catalog.deployments").expect("entity rows");
     assert_eq!(bare, prefixed, "kind prefix must not change resolved rows");
     assert!(
-        bare.iter().any(|(name, ty)| name == "environment" && ty == "string"),
+        bare.iter()
+            .any(|(name, ty)| name == "environment" && ty == "string"),
         "got {bare:?}"
     );
 }

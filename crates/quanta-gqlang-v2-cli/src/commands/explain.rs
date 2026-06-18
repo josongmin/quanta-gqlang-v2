@@ -29,13 +29,11 @@ pub fn run(input: &str) -> Result<ExplainViewV1, String> {
             &degraded_reasons,
             Some(crate::NO_RESULT_REASON_V1),
         )),
-        PublicIrRootV1::Find(plan) => {
-            Ok(explain_view::build_find_explain_view_v1(
-                plan.execution_plan(),
-                &degraded_reasons,
-                Some(crate::NO_RESULT_REASON_V1),
-            ))
-        }
+        PublicIrRootV1::Find(plan) => Ok(explain_view::build_find_explain_view_v1(
+            plan.execution_plan(),
+            &degraded_reasons,
+            Some(crate::NO_RESULT_REASON_V1),
+        )),
         // Closed front door: every unsupported root is listed explicitly so a
         // future IR root variant is a compile error here, not a silent reject.
         PublicIrRootV1::Select(_)

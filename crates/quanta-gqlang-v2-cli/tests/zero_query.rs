@@ -24,7 +24,10 @@ fn suggested_queries_v1(rendered: &str) -> Vec<String> {
     rendered
         .lines()
         .filter(|line| line.contains(".suggestion[") && line.contains(".query="))
-        .filter_map(|line| line.split_once(".query=").map(|(_, query)| query.to_string()))
+        .filter_map(|line| {
+            line.split_once(".query=")
+                .map(|(_, query)| query.to_string())
+        })
         .collect()
 }
 
@@ -70,7 +73,11 @@ fn zero_query_binary_is_nullary_and_read_only_v1() {
 
     // Stray argument → usage fault (exit 2), nothing on stdout.
     let bad = run_cli_argv_v1(&["zero-query", "extra"]);
-    assert_eq!(bad.status.code(), Some(2), "stray arg must be a usage fault");
+    assert_eq!(
+        bad.status.code(),
+        Some(2),
+        "stray arg must be a usage fault"
+    );
     assert!(cli_stdout_v1(&bad).is_empty());
     assert!(cli_stderr_v1(&bad).contains("zero-query takes no arguments"));
 }

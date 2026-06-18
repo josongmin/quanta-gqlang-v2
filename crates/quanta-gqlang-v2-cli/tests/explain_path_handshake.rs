@@ -22,7 +22,10 @@ fn explain_root_front_door_surfaces_subject_and_why_no_result_v1() {
         Some(NO_RESULT_REASON_V1),
         "presentation-only: the front door always carries the shared no-result reason"
     );
-    assert!(view.path_witness.is_none(), "an EXPLAIN root carries no path witness");
+    assert!(
+        view.path_witness.is_none(),
+        "an EXPLAIN root carries no path witness"
+    );
 }
 
 #[test]
@@ -32,7 +35,11 @@ fn find_front_door_preserves_source_via_sink_order_v1() {
         .path_witness
         .as_ref()
         .expect("a FIND reachability/flow root must surface a path witness");
-    let labels: Vec<&str> = witness.steps.iter().map(|step| step.label.as_str()).collect();
+    let labels: Vec<&str> = witness
+        .steps
+        .iter()
+        .map(|step| step.label.as_str())
+        .collect();
     let source_idx = labels.iter().position(|label| *label == "source");
     let sink_idx = labels.iter().position(|label| *label == "sink");
     assert!(

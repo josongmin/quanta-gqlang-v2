@@ -74,9 +74,6 @@ mod tests {
         };
 
         assert_eq!(spec.intent(), &intent);
-        assert_eq!(
-            spec.execution_mode(),
-            CheckExecutionModeV1::Hybrid,
-        );
+        assert_eq!(spec.execution_mode(), CheckExecutionModeV1::Hybrid,);
     }
 }

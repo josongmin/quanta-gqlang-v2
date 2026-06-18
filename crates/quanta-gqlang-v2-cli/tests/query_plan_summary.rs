@@ -14,12 +14,18 @@ use quanta_gqlang_v2_cli::commands::query;
 fn query_plane_root_surfaces_plan_capability_and_truth_v1() {
     let summary = query::run("SELECT id FROM catalog.files LIMIT 3").expect("query summary");
     let root = &summary.roots[0];
-    let plan = root.plan.as_ref().expect("a query-plane root must carry a plan");
+    let plan = root
+        .plan
+        .as_ref()
+        .expect("a query-plane root must carry a plan");
     assert!(
         !plan.capability.is_empty(),
         "plan must name at least one required capability"
     );
-    assert_eq!(plan.truth, "Observational", "SELECT commits to observational truth");
+    assert_eq!(
+        plan.truth, "Observational",
+        "SELECT commits to observational truth"
+    );
 
     let rendered = summary.render_v1();
     assert!(rendered.contains("query.root[0].plan.capability="));
@@ -42,8 +48,8 @@ fn explain_root_plan_commits_to_explain_evidence_v1() {
 fn declaration_root_has_no_plan_line_v1() {
     // A VIEW declaration is not on the query plane; the producer yields no plan,
     // and the summary must not fabricate one.
-    let summary = query::run("VIEW catalog.users ;; query-ref=queries/catalog/users")
-        .expect("query summary");
+    let summary =
+        query::run("VIEW catalog.users ;; query-ref=queries/catalog/users").expect("query summary");
     assert!(
         summary.roots[0].plan.is_none(),
         "declaration roots carry no planning metadata"
