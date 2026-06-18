@@ -220,13 +220,22 @@ mod tests {
 
     #[test]
     fn lowers_find_matrix_into_execution_plans() {
-        let reachability = FindIrV1::from_typed_v1("reachability", "api.entry -> db.write | via=auth,repo | depth=3").expect("reachability").execution_plan().clone();
+        let reachability = FindIrV1::from_typed_v1(
+            "reachability",
+            "api.entry -> db.write | via=auth,repo | depth=3",
+        )
+        .expect("reachability")
+        .execution_plan()
+        .clone();
         assert!(matches!(
             reachability,
             FindExecutionPlanIrV1::Reachability(_)
         ));
 
-        let flow = FindIrV1::from_typed_v1("flow", "ingress -> egress | through=ssa").expect("flow").execution_plan().clone();
+        let flow = FindIrV1::from_typed_v1("flow", "ingress -> egress | through=ssa")
+            .expect("flow")
+            .execution_plan()
+            .clone();
         assert_eq!(
             flow,
             FindExecutionPlanIrV1::Flow(super::FlowPlanIrV1 {
@@ -237,19 +246,42 @@ mod tests {
             })
         );
 
-        let slice = FindIrV1::from_typed_v1("slice", "callsite.foo | direction=forward | frontier=cfg").expect("slice").execution_plan().clone();
+        let slice =
+            FindIrV1::from_typed_v1("slice", "callsite.foo | direction=forward | frontier=cfg")
+                .expect("slice")
+                .execution_plan()
+                .clone();
         assert!(matches!(slice, FindExecutionPlanIrV1::Slice(_)));
 
-        let taint = FindIrV1::from_typed_v1("taint", "user.input -> shell.exec | sanitizers=escape | depth=4").expect("taint").execution_plan().clone();
+        let taint = FindIrV1::from_typed_v1(
+            "taint",
+            "user.input -> shell.exec | sanitizers=escape | depth=4",
+        )
+        .expect("taint")
+        .execution_plan()
+        .clone();
         assert!(matches!(taint, FindExecutionPlanIrV1::Taint(_)));
 
-        let path = FindIrV1::from_typed_v1("path", "handler -> sink | through=router,middleware | depth=6").expect("path").execution_plan().clone();
+        let path = FindIrV1::from_typed_v1(
+            "path",
+            "handler -> sink | through=router,middleware | depth=6",
+        )
+        .expect("path")
+        .execution_plan()
+        .clone();
         assert!(matches!(path, FindExecutionPlanIrV1::Path(_)));
 
-        let points_to = FindIrV1::from_typed_v1("points_to", "ptr => heap.obj | scope=fn:main").expect("points_to").execution_plan().clone();
+        let points_to = FindIrV1::from_typed_v1("points_to", "ptr => heap.obj | scope=fn:main")
+            .expect("points_to")
+            .execution_plan()
+            .clone();
         assert!(matches!(points_to, FindExecutionPlanIrV1::PointsTo(_)));
 
-        let summary = FindIrV1::from_typed_v1("summary", "pkg::open | include=params,returns | depth=2").expect("summary").execution_plan().clone();
+        let summary =
+            FindIrV1::from_typed_v1("summary", "pkg::open | include=params,returns | depth=2")
+                .expect("summary")
+                .execution_plan()
+                .clone();
         assert_eq!(
             summary,
             FindExecutionPlanIrV1::Summary(SummaryPlanIrV1 {

@@ -34,13 +34,34 @@ pub struct FindAdmissibilityV1 {
 
 /// One row per FIND subkind — kept in lock-step with `FindSubkindV1` (7).
 pub const FIND_ADMISSIBILITY_MATRIX_V1: [FindAdmissibilityV1; 7] = [
-    FindAdmissibilityV1 { subkind: FindSubkindV1::Reachability, required_capability: "graph.reachability" },
-    FindAdmissibilityV1 { subkind: FindSubkindV1::Flow, required_capability: "graph.flow" },
-    FindAdmissibilityV1 { subkind: FindSubkindV1::Slice, required_capability: "graph.slice" },
-    FindAdmissibilityV1 { subkind: FindSubkindV1::Taint, required_capability: "analysis.taint" },
-    FindAdmissibilityV1 { subkind: FindSubkindV1::Path, required_capability: "graph.path" },
-    FindAdmissibilityV1 { subkind: FindSubkindV1::PointsTo, required_capability: "analysis.points_to" },
-    FindAdmissibilityV1 { subkind: FindSubkindV1::Summary, required_capability: "analysis.summary" },
+    FindAdmissibilityV1 {
+        subkind: FindSubkindV1::Reachability,
+        required_capability: "graph.reachability",
+    },
+    FindAdmissibilityV1 {
+        subkind: FindSubkindV1::Flow,
+        required_capability: "graph.flow",
+    },
+    FindAdmissibilityV1 {
+        subkind: FindSubkindV1::Slice,
+        required_capability: "graph.slice",
+    },
+    FindAdmissibilityV1 {
+        subkind: FindSubkindV1::Taint,
+        required_capability: "analysis.taint",
+    },
+    FindAdmissibilityV1 {
+        subkind: FindSubkindV1::Path,
+        required_capability: "graph.path",
+    },
+    FindAdmissibilityV1 {
+        subkind: FindSubkindV1::PointsTo,
+        required_capability: "analysis.points_to",
+    },
+    FindAdmissibilityV1 {
+        subkind: FindSubkindV1::Summary,
+        required_capability: "analysis.summary",
+    },
 ];
 
 impl FindAdmissibilityV1 {
@@ -111,16 +132,34 @@ pub struct ExecutionProfileRuleV1 {
 /// admissible — so deterministic lanes (CI-gate / lint) fence off the
 /// non-deterministic interactive/ranked roots.
 pub const PROFILE_ADMISSIBILITY_MATRIX_V1: &[ExecutionProfileRuleV1] = &[
-    ExecutionProfileRuleV1 { profile: SemaExecutionProfileV1::CiGate, root: ProfileRootKindV1::Sample, admitted: false, reason: "CI-gate is deterministic; ranked sampling is not admissible" },
-    ExecutionProfileRuleV1 { profile: SemaExecutionProfileV1::CiGate, root: ProfileRootKindV1::Composition, admitted: false, reason: "CI-gate does not admit interactive composition" },
-    ExecutionProfileRuleV1 { profile: SemaExecutionProfileV1::Lint, root: ProfileRootKindV1::Sample, admitted: false, reason: "the lint lane does not admit ranked sampling" },
+    ExecutionProfileRuleV1 {
+        profile: SemaExecutionProfileV1::CiGate,
+        root: ProfileRootKindV1::Sample,
+        admitted: false,
+        reason: "CI-gate is deterministic; ranked sampling is not admissible",
+    },
+    ExecutionProfileRuleV1 {
+        profile: SemaExecutionProfileV1::CiGate,
+        root: ProfileRootKindV1::Composition,
+        admitted: false,
+        reason: "CI-gate does not admit interactive composition",
+    },
+    ExecutionProfileRuleV1 {
+        profile: SemaExecutionProfileV1::Lint,
+        root: ProfileRootKindV1::Sample,
+        admitted: false,
+        reason: "the lint lane does not admit ranked sampling",
+    },
 ];
 
 impl ExecutionProfileRuleV1 {
     /// Total lookup — returns the explicit rejection rule if any, else an
     /// admitted rule.
     #[must_use]
-    pub fn lookup_v1(root: &TypedRootV1, profile: SemaExecutionProfileV1) -> ExecutionProfileRuleV1 {
+    pub fn lookup_v1(
+        root: &TypedRootV1,
+        profile: SemaExecutionProfileV1,
+    ) -> ExecutionProfileRuleV1 {
         let kind = ProfileRootKindV1::of_v1(root);
         match PROFILE_ADMISSIBILITY_MATRIX_V1
             .iter()
@@ -257,9 +296,12 @@ pub(crate) fn admit_document_v1(roots: &[TypedRootV1]) -> Result<(), SemaDiagnos
 /// is weaker than certified-only. A document WITHOUT `REQUIRE CERTIFIED` is
 /// untouched (no over-blocking).
 pub fn enforce_trust_policy_v1(roots: &[TypedRootV1]) -> Result<(), SemaDiagnosticPageV1> {
-    let require_certified = roots
-        .iter()
-        .any(|root| matches!(root, TypedRootV1::Meta(TypedMetaCommandV1::RequireCertified { .. })));
+    let require_certified = roots.iter().any(|root| {
+        matches!(
+            root,
+            TypedRootV1::Meta(TypedMetaCommandV1::RequireCertified { .. })
+        )
+    });
     if !require_certified {
         return Ok(());
     }

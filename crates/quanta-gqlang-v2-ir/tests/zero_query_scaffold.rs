@@ -26,14 +26,21 @@ fn starter_scaffold_is_deterministic_and_read_only_v1() {
     );
     assert_eq!(first.authority, "external-read-only-shell");
     assert_eq!(
-        first.groups.iter().map(|group| group.kind).collect::<Vec<_>>(),
+        first
+            .groups
+            .iter()
+            .map(|group| group.kind)
+            .collect::<Vec<_>>(),
         vec![
             StarterGroupKindV1::Catalog,
             StarterGroupKindV1::Analysis,
             StarterGroupKindV1::Retrieval,
         ]
     );
-    assert!(first.groups.iter().all(|group| !group.suggestions.is_empty()));
+    assert!(first
+        .groups
+        .iter()
+        .all(|group| !group.suggestions.is_empty()));
     assert!(first
         .groups
         .iter()
@@ -70,7 +77,10 @@ fn catalog_starters_are_stable_show_describe_pairs_v1() {
         catalog.suggestions[1].reason.code,
         StarterReasonCodeV1::TypedTargetDetail
     );
-    assert_eq!(catalog.suggestions[0].authority, "external-frontend-catalog");
+    assert_eq!(
+        catalog.suggestions[0].authority,
+        "external-frontend-catalog"
+    );
 }
 
 #[test]
@@ -104,10 +114,17 @@ fn zero_query_surface_translates_typed_groups_and_reasons_v1() {
     assert_eq!(first.mode, "read-only");
     assert_eq!(first.provenance, "typed-catalog-example-metadata");
     assert_eq!(
-        first.groups.iter().map(|group| group.id).collect::<Vec<_>>(),
+        first
+            .groups
+            .iter()
+            .map(|group| group.id)
+            .collect::<Vec<_>>(),
         vec!["catalog", "analysis", "retrieval"]
     );
-    assert_eq!(first.groups[0].suggestions[0].reason_code, "catalog_overview");
+    assert_eq!(
+        first.groups[0].suggestions[0].reason_code,
+        "catalog_overview"
+    );
     assert_eq!(
         first.groups[0].suggestions[1].reason_code,
         "typed_target_detail"

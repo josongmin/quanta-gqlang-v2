@@ -1,5 +1,20 @@
 # jun-10 gqlang-v2 followup — 작업 패킷 + 진행 대시보드
 
+> **2026-06-15 authority update**
+>
+> 이 문서는 external coordination/historical packet이다.
+> live closeout truth는 더 이상 이 파일이 아니다.
+>
+> current authority:
+>
+> 1. semantica live code
+> 2. `/Users/songmin/Documents/code-new/semantica-codegraph-v2/docs/rfcs/2026-06-05-rfc-qglang-v2-semantic-host-dx-platform/tickets-v2/STATUS.md`
+> 3. `/Users/songmin/Documents/code-new/semantica-codegraph-v2/tools/ci/gates/gate-gqlang-v2-semantica-closeout.sh`
+> 4. `/Users/songmin/Documents/code-new/semantica-codegraph-v2/docs/operation/jun-15-qglang-v2-authoritative-closeout-state.md`
+>
+> do not treat `F18b` / `F21` in this file as semantica gate IDs.
+> use them only as historical coordination labels.
+
 기원: RFC `2026-06-05-rfc-qglang-v2-semantic-host-dx-platform` 전체를 2-라운드 적대적→객관적 감사로
 검증 → 21개 follow-up 티켓(F01–F21). 아래 대시보드는 **jun-10 재점검(코드 상태 직접 확인)** 기준.
 
@@ -59,7 +74,11 @@
 
 ### Semantica 작업 계획 (의존순 — 보강판)
 
-> **📋 구체 실행계획(파일·타입·시그니처·헬게이트·검증커맨드 단위): [SEMANTICA-EXECUTION-PLAN.md](SEMANTICA-EXECUTION-PLAN.md)** (4영역 병렬 어딧 기반).
+> **🎯 잔여 작업(F18b·F21·J06)의 확정 SSOT: [FINAL-PLAN.md](FINAL-PLAN.md)** (jun-11, Track A/B/C).
+> 핵심: F21 carrier demotion 은 별도 티켓이 아니라 Track C(v2 프런트엔드 입구 전환)에 흡수됨.
+> 아래 표의 #4(F21)·#5(F18b)·#6(J06) 항목은 FINAL-PLAN 의 Track 구조로 대체.
+>
+> **📋 구체 실행계획(파일·타입·시그니처·헬게이트·검증커맨드 단위): [SEMANTICA-EXECUTION-PLAN.md](SEMANTICA-EXECUTION-PLAN.md)** (4영역 병렬 어딧 기반 — 배치 A 는 완료, F18b/F21/J06 은 FINAL-PLAN 참조).
 
 | # | 작업 | 크기 | 의존 | 병렬군 |
 |---|---|---|---|---|

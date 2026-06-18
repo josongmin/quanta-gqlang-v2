@@ -1,5 +1,18 @@
 # Semantica 최종 실행계획 (jun-10, 코드기준 어딧 보강판)
 
+> **2026-06-15 authority update**
+>
+> 이 문서는 semantica residual work를 탐색하던 시점의 planning note다.
+> live closeout truth는 아래를 우선한다.
+>
+> 1. `/Users/songmin/Documents/code-new/semantica-codegraph-v2/docs/rfcs/2026-06-05-rfc-qglang-v2-semantic-host-dx-platform/tickets-v2/STATUS.md`
+> 2. `/Users/songmin/Documents/code-new/semantica-codegraph-v2/tools/ci/gates/gate-gqlang-v2-semantica-closeout.sh`
+> 3. `/Users/songmin/Documents/code-new/semantica-codegraph-v2/docs/operation/jun-15-qglang-v2-authoritative-closeout-state.md`
+>
+> 특히 본 문서의 old `F18b`/`F21` framing, consumer 규모, 단계 이름은
+> current semantica row/gate authority보다 앞설 수 없다.
+>
+> **⚠️ 부분 SUPERSEDED**: 배치 A(#1·#2·#3)는 완료. 잔여 #4(F21)·#5(F18b)·#6(J06)의 확정 계획은 **[FINAL-PLAN.md](FINAL-PLAN.md)** — 본 문서의 해당 절(§2의 #4/#5/#6)은 조사 원자료로만 유효.
 > 대상 레포: `/Users/songmin/Documents/code-new/semantica-codegraph-v2`
 > 검증: 4개 병렬 적대적 어딧(Explore) + spot-check + `cargo check -p quanta-runtime` EXIT=0.
 > external(quanta-gqlang-v2) 측은 전부 DONE — 본 문서는 semantica 잔여 작업 전부.
