@@ -1,33 +1,26 @@
 use std::collections::BTreeMap;
 
 use crate::json::{
-    json_array_v1, json_bool_v1, json_object_v1, json_option_string_v1, json_string_v1,
-    JsonCursorV1,
+    json_array_v1, json_bool_v1, json_object_v1, json_string_v1, json_usize_v1, JsonCursorV1,
 };
 
-use crate::handlers::completion::CompletionItemV1;
-use crate::handlers::diagnostics::DiagnosticItemV1;
-use crate::handlers::explain_view::ExplainHintCardV1;
-use crate::handlers::hover::HoverCardV1;
-use crate::handlers::quickfix::QuickfixSuggestionV1;
+use crate::handlers::v3_diagnostics::V3DiagnosticItemV1;
 
-/// The complete read-only stdio method allowlist, in dispatch order. This is the
-/// single list the doc gate checks the README against (so a shipped method can
-/// never go undocumented — the `explain` omission the audit caught). A binary
-/// test pins that each name is accepted by the dispatch (not `method_not_allowed`)
-/// and that the count matches the dispatch arms, so the const cannot drift from
-/// the closed allowlist in `parse_json_v1`.
-pub const READ_ONLY_METHOD_NAMES_V1: [&str; 7] = [
-    "hover",
-    "completion",
-    "symbols",
-    "diagnostics",
-    "zero_query",
-    "quickfix",
-    "explain",
-];
-use crate::handlers::symbols::SymbolItemV1;
-use crate::handlers::zero_query::{ZeroQueryGroupV1, ZeroQueryResponseV1, ZeroQuerySuggestionV1};
+/// The complete read-only stdio method allowlist, in dispatch order.
+///
+/// CUTOVER (ticket 09): the LSP is now v3-ONLY. The v2 read-only methods
+/// (`hover`/`completion`/`symbols`/`diagnostics`/`zero_query`/`quickfix`/
+/// `explain`) were rooted in the legacy `ir`/`sema`/`syntax` stack and have been
+/// removed; the single going-forward analysis surface is `v3_diagnostics`, which
+/// runs over the ONE shared compiler pipeline
+/// `quanta-gqlang-v2-pipeline::compile_program` (`D22`).
+///
+/// This const is the single list the doc gate checks the README against (so a
+/// shipped method can never go undocumented). A binary test pins that each name
+/// is accepted by the dispatch (not `method_not_allowed`) and that the count
+/// matches the dispatch arms, so the const cannot drift from the closed
+/// allowlist in `parse_json_v1`.
+pub const READ_ONLY_METHOD_NAMES_V1: [&str; 1] = ["v3_diagnostics"];
 
 #[derive(Default)]
 pub struct LspServerV1;
@@ -40,24 +33,12 @@ pub struct StdioLspErrorV1 {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum ReadOnlyRequestV1 {
-    Hover { query: String },
-    Completion { prefix: String },
-    Symbols { query: String },
-    Diagnostics { query: String },
-    ZeroQuery,
-    Quickfix { input: String },
-    Explain { query: String },
+    V3Diagnostics { query: String },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum ReadOnlyResponseV1 {
-    Hover(HoverCardV1),
-    Completion(Vec<CompletionItemV1>),
-    Symbols(Vec<SymbolItemV1>),
-    Diagnostics(Vec<DiagnosticItemV1>),
-    ZeroQuery(ZeroQueryResponseV1),
-    Quickfix(Vec<QuickfixSuggestionV1>),
-    Explain(ExplainHintCardV1),
+    V3Diagnostics(Vec<V3DiagnosticItemV1>),
 }
 
 impl LspServerV1 {
@@ -73,47 +54,16 @@ impl LspServerV1 {
         Ok(render_success_json_v1(method, &response))
     }
 
-    pub fn hover(&self, query: &str) -> Result<crate::handlers::hover::HoverCardV1, String> {
-        crate::handlers::hover::handle_hover(query)
-    }
-
-    pub fn completion(
-        &self,
-        prefix: &str,
-    ) -> Result<Vec<crate::handlers::completion::CompletionItemV1>, String> {
-        crate::handlers::completion::handle_completion(prefix)
-    }
-
-    pub fn symbols(
+    /// v3 read-only diagnostics over the ONE shared compiler pipeline (D22).
+    ///
+    /// Infallible at the handler boundary: a compile failure is a diagnostic on
+    /// the read-only surface (data), not a handler reject, so the SAME failing
+    /// query yields the SAME stage-tagged pipeline code the CLI surfaces.
+    pub fn v3_diagnostics(
         &self,
         query: &str,
-    ) -> Result<Vec<crate::handlers::symbols::SymbolItemV1>, String> {
-        crate::handlers::symbols::handle_symbols(query)
-    }
-
-    pub fn diagnostics(
-        &self,
-        query: &str,
-    ) -> Result<Vec<crate::handlers::diagnostics::DiagnosticItemV1>, String> {
-        crate::handlers::diagnostics::handle_diagnostics(query)
-    }
-
-    pub fn zero_query(&self) -> Result<crate::handlers::zero_query::ZeroQueryResponseV1, String> {
-        crate::handlers::zero_query::handle_zero_query()
-    }
-
-    pub fn quickfix(
-        &self,
-        input: &str,
-    ) -> Result<Vec<crate::handlers::quickfix::QuickfixSuggestionV1>, String> {
-        crate::handlers::quickfix::handle_quickfix(input)
-    }
-
-    pub fn explain(
-        &self,
-        query: &str,
-    ) -> Result<crate::handlers::explain_view::ExplainHintCardV1, String> {
-        crate::handlers::explain_view::handle_explain_v1(query)
+    ) -> Vec<crate::handlers::v3_diagnostics::V3DiagnosticItemV1> {
+        crate::handlers::v3_diagnostics::handle_v3_diagnostics_v1(query)
     }
 
     fn dispatch_request_v1(
@@ -121,34 +71,9 @@ impl LspServerV1 {
         request: &ReadOnlyRequestV1,
     ) -> Result<ReadOnlyResponseV1, StdioLspErrorV1> {
         match request {
-            ReadOnlyRequestV1::Hover { query } => self
-                .hover(query)
-                .map(ReadOnlyResponseV1::Hover)
-                .map_err(handler_rejected_v1),
-            ReadOnlyRequestV1::Completion { prefix } => self
-                .completion(prefix)
-                .map(ReadOnlyResponseV1::Completion)
-                .map_err(handler_rejected_v1),
-            ReadOnlyRequestV1::Symbols { query } => self
-                .symbols(query)
-                .map(ReadOnlyResponseV1::Symbols)
-                .map_err(handler_rejected_v1),
-            ReadOnlyRequestV1::Diagnostics { query } => self
-                .diagnostics(query)
-                .map(ReadOnlyResponseV1::Diagnostics)
-                .map_err(handler_rejected_v1),
-            ReadOnlyRequestV1::ZeroQuery => self
-                .zero_query()
-                .map(ReadOnlyResponseV1::ZeroQuery)
-                .map_err(handler_rejected_v1),
-            ReadOnlyRequestV1::Quickfix { input } => self
-                .quickfix(input)
-                .map(ReadOnlyResponseV1::Quickfix)
-                .map_err(handler_rejected_v1),
-            ReadOnlyRequestV1::Explain { query } => self
-                .explain(query)
-                .map(ReadOnlyResponseV1::Explain)
-                .map_err(handler_rejected_v1),
+            ReadOnlyRequestV1::V3Diagnostics { query } => Ok(ReadOnlyResponseV1::V3Diagnostics(
+                self.v3_diagnostics(query),
+            )),
         }
     }
 }
@@ -253,39 +178,10 @@ impl ReadOnlyRequestV1 {
         }
 
         match method {
-            "hover" => {
+            "v3_diagnostics" => {
                 let query = remove_required_field_v1(&mut fields, "query")?;
                 reject_extra_fields_v1(method, &fields)?;
-                Ok(Self::Hover { query })
-            }
-            "completion" => {
-                let prefix = remove_required_field_v1(&mut fields, "prefix")?;
-                reject_extra_fields_v1(method, &fields)?;
-                Ok(Self::Completion { prefix })
-            }
-            "symbols" => {
-                let query = remove_required_field_v1(&mut fields, "query")?;
-                reject_extra_fields_v1(method, &fields)?;
-                Ok(Self::Symbols { query })
-            }
-            "diagnostics" => {
-                let query = remove_required_field_v1(&mut fields, "query")?;
-                reject_extra_fields_v1(method, &fields)?;
-                Ok(Self::Diagnostics { query })
-            }
-            "zero_query" => {
-                reject_extra_fields_v1(method, &fields)?;
-                Ok(Self::ZeroQuery)
-            }
-            "quickfix" => {
-                let input = remove_required_field_v1(&mut fields, "input")?;
-                reject_extra_fields_v1(method, &fields)?;
-                Ok(Self::Quickfix { input })
-            }
-            "explain" => {
-                let query = remove_required_field_v1(&mut fields, "query")?;
-                reject_extra_fields_v1(method, &fields)?;
-                Ok(Self::Explain { query })
+                Ok(Self::V3Diagnostics { query })
             }
             _ => Err(StdioLspErrorV1::new(
                 "method_not_allowed",
@@ -296,13 +192,7 @@ impl ReadOnlyRequestV1 {
 
     const fn method_label_v1(&self) -> &'static str {
         match self {
-            Self::Hover { .. } => "hover",
-            Self::Completion { .. } => "completion",
-            Self::Symbols { .. } => "symbols",
-            Self::Diagnostics { .. } => "diagnostics",
-            Self::ZeroQuery => "zero_query",
-            Self::Quickfix { .. } => "quickfix",
-            Self::Explain { .. } => "explain",
+            Self::V3Diagnostics { .. } => "v3_diagnostics",
         }
     }
 }
@@ -310,23 +200,11 @@ impl ReadOnlyRequestV1 {
 impl ReadOnlyResponseV1 {
     fn render_json_v1(&self) -> String {
         match self {
-            Self::Hover(card) => render_hover_card_json_v1(card),
-            Self::Completion(items) => {
-                json_array_v1(items.iter().map(render_completion_item_json_v1))
+            Self::V3Diagnostics(items) => {
+                json_array_v1(items.iter().map(render_v3_diagnostic_item_json_v1))
             }
-            Self::Symbols(items) => json_array_v1(items.iter().map(render_symbol_item_json_v1)),
-            Self::Diagnostics(items) => {
-                json_array_v1(items.iter().map(render_diagnostic_item_json_v1))
-            }
-            Self::ZeroQuery(report) => render_zero_query_response_json_v1(report),
-            Self::Quickfix(items) => json_array_v1(items.iter().map(render_quickfix_json_v1)),
-            Self::Explain(card) => render_explain_hint_card_json_v1(card),
         }
     }
-}
-
-fn handler_rejected_v1(error: String) -> StdioLspErrorV1 {
-    StdioLspErrorV1::new("handler_rejected", error)
 }
 
 fn remove_required_field_v1(
@@ -360,124 +238,12 @@ fn render_success_json_v1(method: &str, response: &ReadOnlyResponseV1) -> String
     ])
 }
 
-fn render_hover_card_json_v1(card: &HoverCardV1) -> String {
+fn render_v3_diagnostic_item_json_v1(item: &V3DiagnosticItemV1) -> String {
     json_object_v1([
-        ("root_keyword", json_string_v1(&card.root_keyword)),
-        ("category", json_string_v1(&card.category)),
-        ("typed_target", json_string_v1(&card.typed_target)),
-        (
-            "summary",
-            json_array_v1(card.summary.iter().map(|entry| json_string_v1(entry))),
-        ),
-    ])
-}
-
-fn render_completion_item_json_v1(item: &CompletionItemV1) -> String {
-    json_object_v1([
-        ("label", json_string_v1(&item.label)),
-        ("kind", json_string_v1(&item.kind)),
-        ("detail", json_string_v1(&item.detail)),
-        ("reason", json_string_v1(&item.reason)),
-        ("scope", json_string_v1(&item.scope)),
-        ("match_reason", json_string_v1(&item.match_reason)),
-        (
-            "example_query",
-            json_option_string_v1(item.example_query.as_deref()),
-        ),
-    ])
-}
-
-fn render_symbol_item_json_v1(item: &SymbolItemV1) -> String {
-    json_object_v1([
-        ("name", json_string_v1(&item.name)),
-        ("kind", json_string_v1(&item.kind)),
-        ("detail", json_option_string_v1(item.detail.as_deref())),
-    ])
-}
-
-fn render_diagnostic_item_json_v1(item: &DiagnosticItemV1) -> String {
-    json_object_v1([
-        ("class", json_string_v1(&item.class)),
+        ("stage", json_string_v1(&item.stage)),
         ("code", json_string_v1(&item.code)),
         ("message", json_string_v1(&item.message)),
-    ])
-}
-
-fn render_zero_query_response_json_v1(report: &ZeroQueryResponseV1) -> String {
-    json_object_v1([
-        ("mode", json_string_v1(report.mode)),
-        ("provenance", json_string_v1(report.provenance)),
-        (
-            "groups",
-            json_array_v1(report.groups.iter().map(render_zero_query_group_json_v1)),
-        ),
-    ])
-}
-
-fn render_zero_query_group_json_v1(group: &ZeroQueryGroupV1) -> String {
-    json_object_v1([
-        ("id", json_string_v1(group.id)),
-        ("title", json_string_v1(group.title)),
-        (
-            "suggestions",
-            json_array_v1(
-                group
-                    .suggestions
-                    .iter()
-                    .map(render_zero_query_suggestion_json_v1),
-            ),
-        ),
-    ])
-}
-
-fn render_zero_query_suggestion_json_v1(suggestion: &ZeroQuerySuggestionV1) -> String {
-    json_object_v1([
-        ("label", json_string_v1(suggestion.label)),
-        ("root_kind", json_string_v1(suggestion.root_kind)),
-        ("query_scaffold", json_string_v1(suggestion.query_scaffold)),
-        ("behavior", json_string_v1(suggestion.behavior)),
-        ("reason_code", json_string_v1(suggestion.reason_code)),
-        ("reason_detail", json_string_v1(suggestion.reason_detail)),
-    ])
-}
-
-fn render_quickfix_json_v1(item: &QuickfixSuggestionV1) -> String {
-    json_object_v1([
-        ("code", json_string_v1(&item.code)),
-        ("label", json_string_v1(&item.label)),
-        ("detail", json_string_v1(&item.detail)),
-        ("scaffold", json_string_v1(&item.scaffold)),
-        ("edits_document", json_bool_v1(item.edits_document)),
-        ("authority", json_string_v1(item.authority_v1())),
-        (
-            "apply_command",
-            json_option_string_v1(item.apply_command_v1()),
-        ),
-        (
-            "workspace_edit",
-            json_option_string_v1(item.workspace_edit_v1()),
-        ),
-    ])
-}
-
-fn render_explain_hint_card_json_v1(card: &ExplainHintCardV1) -> String {
-    json_object_v1([
-        ("title", json_string_v1(&card.title)),
-        (
-            "badges",
-            json_array_v1(card.badges.iter().map(|badge| json_string_v1(badge))),
-        ),
-        (
-            "witness_preview",
-            json_array_v1(
-                card.witness_preview
-                    .iter()
-                    .map(|entry| json_string_v1(entry)),
-            ),
-        ),
-        (
-            "why_no_result",
-            json_option_string_v1(card.why_no_result.as_deref()),
-        ),
+        ("span_start", json_usize_v1(item.span_start)),
+        ("span_end", json_usize_v1(item.span_end)),
     ])
 }

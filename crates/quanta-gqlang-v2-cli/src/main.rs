@@ -9,6 +9,22 @@
     )
 )]
 
+//! QGLang CLI front door (v3-ONLY).
+//!
+//! HARD CUTOVER: the CLI now drives EXACTLY the one shared v3 compiler pipeline
+//! (`quanta-gqlang-v2-pipeline`) over the one shared v3 surface parser/formatter
+//! (`quanta-gqlang-v2-surface`). The legacy v2 `syntax -> sema -> ir` direct
+//! verbs (`parse`, `sema`, `explain`, `doctor`, `headless`, `zero-query`) are
+//! gone; `query` and `fmt` are now the v3 path and `v3-query` / `v3-fmt` are
+//! retained as explicit aliases for the same behavior.
+//!
+//! - `query` / `v3-query`: compile the input through `pipeline::compile_program`
+//!   (single item) or `pipeline::compile_document` over `surface::parse_document`
+//!   (multi-item, `;`-separated) and render the per-family plan + cost summary.
+//! - `fmt` / `v3-fmt`: parse through `surface::parse_program` /
+//!   `surface::parse_document` and render canonical surface via
+//!   `surface::format_item` / `surface::format_document`. Idempotent.
+
 use std::env;
 use std::ffi::OsString;
 use std::fs;
@@ -16,44 +32,26 @@ use std::path::PathBuf;
 use std::process;
 
 use quanta_gqlang_v2_cli::commands;
-use quanta_gqlang_v2_cli::doctor::{self, DoctorStatusV1};
 
 const USAGE_V1: &str = concat!(
-    "cli.usage=quanta-gqlang-v2-cli <parse|sema|query|fmt|explain|doctor|headless> (--file <path> | <input...>) | zero-query\n",
+    "cli.usage=quanta-gqlang-v2-cli <query|fmt|v3-query|v3-fmt> (--file <path> | <input...>)\n",
     "cli.read_only=true\n",
     "cli.command_plane=forbidden"
 );
 
 #[derive(Copy, Clone)]
 enum CliCommandV1 {
-    Parse,
-    Sema,
     Query,
     Fmt,
-    Explain,
-    Doctor,
-    Headless,
-    ZeroQuery,
 }
 
 impl CliCommandV1 {
     fn parse_v1(raw: &str) -> Result<Self, CliErrorV1> {
         match raw {
-            "parse" => Ok(Self::Parse),
-            "sema" => Ok(Self::Sema),
-            "query" => Ok(Self::Query),
-            "fmt" => Ok(Self::Fmt),
-            "explain" => Ok(Self::Explain),
-            "doctor" => Ok(Self::Doctor),
-            "headless" => Ok(Self::Headless),
-            "zero-query" => Ok(Self::ZeroQuery),
+            "query" | "v3-query" => Ok(Self::Query),
+            "fmt" | "v3-fmt" => Ok(Self::Fmt),
             _ => Err(CliErrorV1::usage_v1(format!("unsupported command `{raw}`"))),
         }
-    }
-
-    /// Whether the verb takes no input (the read-only zero-query scaffold seam).
-    const fn is_nullary_v1(self) -> bool {
-        matches!(self, Self::ZeroQuery)
     }
 }
 
@@ -167,20 +165,6 @@ fn parse_invocation_v1(args: Vec<OsString>) -> Result<CliInvocationV1, CliErrorV
             .ok_or_else(|| CliErrorV1::usage_v1("command must be valid UTF-8".to_string()))?,
     )?;
 
-    // Nullary verbs (zero-query) take no input — reject stray arguments rather
-    // than silently ignoring them, and skip the non-empty-input requirement.
-    if command.is_nullary_v1() {
-        if !input_args.is_empty() {
-            return Err(CliErrorV1::usage_v1(
-                "zero-query takes no arguments".to_string(),
-            ));
-        }
-        return Ok(CliInvocationV1 {
-            command,
-            input: String::new(),
-        });
-    }
-
     let input = match input_args {
         [] => {
             return Err(CliErrorV1::usage_v1(
@@ -229,52 +213,13 @@ fn inline_input_v1(args: &[OsString]) -> Result<String, CliErrorV1> {
 
 fn execute_invocation_v1(invocation: CliInvocationV1) -> Result<CliOutputV1, CliErrorV1> {
     match invocation.command {
-        CliCommandV1::Parse => commands::parse::run(&invocation.input)
-            .map(|report| CliOutputV1 {
-                stdout: report.render_v1(),
+        CliCommandV1::Query => commands::v3_query::run(&invocation.input)
+            .map(|stdout| CliOutputV1 {
+                stdout,
                 exit_code: 0,
             })
             .map_err(CliErrorV1::command_v1),
-        CliCommandV1::Sema => commands::sema::run(&invocation.input)
-            .map(|report| CliOutputV1 {
-                stdout: report.render_v1(),
-                exit_code: 0,
-            })
-            .map_err(CliErrorV1::command_v1),
-        CliCommandV1::Query => commands::query::run(&invocation.input)
-            .map(|report| CliOutputV1 {
-                stdout: report.render_v1(),
-                exit_code: 0,
-            })
-            .map_err(CliErrorV1::command_v1),
-        CliCommandV1::Fmt => commands::format::run(&invocation.input)
-            .map(|formatted| CliOutputV1 {
-                stdout: formatted,
-                exit_code: 0,
-            })
-            .map_err(CliErrorV1::command_v1),
-        CliCommandV1::Explain => commands::explain::run(&invocation.input)
-            .map(|view| CliOutputV1 {
-                stdout: view.render_v1(),
-                exit_code: 0,
-            })
-            .map_err(CliErrorV1::command_v1),
-        CliCommandV1::Doctor => doctor::run_v1(&invocation.input)
-            .map(|report| CliOutputV1 {
-                stdout: report.render_v1(),
-                exit_code: match report.status {
-                    DoctorStatusV1::NoResult => 0,
-                    DoctorStatusV1::ParseError | DoctorStatusV1::SemaError => 1,
-                },
-            })
-            .map_err(CliErrorV1::command_v1),
-        CliCommandV1::Headless => commands::headless::run(&invocation.input)
-            .map(|report| CliOutputV1 {
-                stdout: report.render_v1(),
-                exit_code: 0,
-            })
-            .map_err(CliErrorV1::command_v1),
-        CliCommandV1::ZeroQuery => commands::zero_query::run()
+        CliCommandV1::Fmt => commands::v3_format::run(&invocation.input)
             .map(|stdout| CliOutputV1 {
                 stdout,
                 exit_code: 0,

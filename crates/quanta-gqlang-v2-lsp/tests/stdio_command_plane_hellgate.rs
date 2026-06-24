@@ -8,8 +8,8 @@
 //! LSP command-plane barrier hellgate.
 //!
 //! Locks the read-only front door as a pure, closed allowlist at the real
-//! spawned stdio binary. The dispatch recognizes exactly seven read-only
-//! methods; EVERY other method — whether it looks mutating (rename, applyEdit,
+//! spawned stdio binary. The dispatch recognizes exactly ONE read-only method
+//! (`v3_diagnostics`); EVERY other method — whether it looks mutating (rename, applyEdit,
 //! executeCommand, codeAction, workspaceEdit) or is simply an unknown name
 //! (delete, drop, didChange, arbitrary garbage) — fails closed with the SINGLE
 //! code `method_not_allowed`, exit code 1, and must not poison the session for a
@@ -156,13 +156,13 @@ fn non_allowlisted_methods_fail_closed_v1() {
 }
 
 /// Recovery: in ONE byte stream, a rejected frame must not poison the session.
-/// The rejected frame fails closed, then a valid `zero_query` frame still
+/// The rejected frame fails closed, then a valid `v3_diagnostics` frame still
 /// succeeds, and the process as a whole still exits non-zero because of the
 /// earlier error frame.
 #[test]
 fn rejected_frame_does_not_poison_session_v1() {
-    let label = "rejected then zero_query recovery";
-    let stream = "{\"method\":\"workspace/executeCommand\"}\n{\"method\":\"zero_query\"}\n";
+    let label = "rejected then v3_diagnostics recovery";
+    let stream = "{\"method\":\"workspace/executeCommand\"}\n{\"method\":\"v3_diagnostics\",\"query\":\"from users u | project u.id as id\"}\n";
     let output = run_binary_bytes_v1(stream.as_bytes());
     let stdout = String::from_utf8(output.stdout.clone()).expect("stdout utf-8");
     let lines = response_lines_v1(&stdout);
@@ -181,18 +181,13 @@ fn rejected_frame_does_not_poison_session_v1() {
         "{label}: first frame must be the exact method_not_allowed envelope"
     );
 
-    // Second frame: the recovered zero_query, pinned to its deterministic
-    // read-only envelope so recovery can never pass on a stub/empty line.
+    // Second frame: the recovered v3_diagnostics, pinned to its deterministic
+    // clean-compile envelope so recovery can never pass on a stub/empty line.
     let recovered = lines[1];
-    assert!(
-        recovered.starts_with(
-            r#"{"ok":true,"method":"zero_query","result":{"mode":"read-only","provenance":"typed-catalog-example-metadata","groups":[{"id":"catalog","#
-        ),
-        "{label}: second frame must recover the read-only zero_query envelope, got `{recovered}`"
-    );
-    assert!(
-        recovered.ends_with("]}}"),
-        "{label}: recovered zero_query must close groups array + result + envelope, got `{recovered}`"
+    assert_eq!(
+        recovered,
+        r#"{"ok":true,"method":"v3_diagnostics","result":[]}"#,
+        "{label}: second frame must recover the read-only v3_diagnostics envelope, got `{recovered}`"
     );
 
     assert_eq!(

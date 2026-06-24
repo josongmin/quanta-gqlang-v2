@@ -1,0 +1,20 @@
+[package]
+categories.workspace   = true
+description            = "QGLang v3 module system, packs, and extension models"
+edition.workspace      = true
+keywords.workspace     = true
+license.workspace      = true
+name                   = "quanta-gqlang-v2-modules"
+readme.workspace       = true
+rust-version.workspace = true
+version.workspace      = true
+
+[lib]
+name = "quanta_gqlang_v2_modules"
+path = "src/lib.rs"
+
+[dependencies]
+quanta-gqlang-v2-hir = { version = "0.1.0", path = "../quanta-gqlang-v2-hir" }
+
+[lints]
+workspace = true

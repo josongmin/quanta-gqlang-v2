@@ -1,40 +1,30 @@
 #![forbid(unsafe_code)]
-//! Dev-only conformance registry — the single source of truth for the DSL
-//! front-door families' breadth: the 17 root families plus the clause-level
-//! `LET`/`WITH` composition family (a composition of roots, not itself one of
-//! the 17 roots — see `docs/language/README.md`).
+//! Dev-only v3 PARITY GUARD — proves the v3 frontend (`quanta-gqlang-v2-pipeline`
+//! over `quanta-gqlang-v2-surface`) covers ALL 18 DSL root families end to end,
+//! and separately pins the current fail-closed behavior of standalone `let` /
+//! horn-`rule` units that parse but do not yet compile through the public
+//! pipeline seam.
 //!
-//! This crate ships no production behavior (`publish = false`); it exists so the
-//! front-door rails iterate ONE table instead of each maintaining its own
-//! per-family list that can silently drift. Current consumers:
-//! - the CLI and LSP negative hellgates drive every family's canonical negative
-//!   through the spawned binary (`cli_negative_dsl_hellgate.rs`,
-//!   `stdio_negative_dsl_hellgate.rs`);
-//! - the doc-conformance gate pins the language README to the registry
-//!   (`docs_conformance.rs`);
-//! - the shipped example corpus is pinned to the registry's root example paths
-//!   (`registry_corpus_consistency.rs`);
-//! - the crate's own `self_validation.rs` drives every family through the real
-//!   parse → sema → lower pipeline.
+//! This crate replaces the former v2-IR-based root-family registry. It ships no
+//! production behavior (`publish = false`); it exists so the single v3 compiler
+//! is *proven* to classify every front-door family — the 17 root families plus
+//! the clause-level `LET`/`WITH` composition family (a composition of roots, not
+//! itself one of the 17 — see `docs/language/README.md`).
 //!
-//! Scope discipline: this registry is breadth (one canonical example + one
-//! canonical fail-closed negative per family). The in-crate syntax/sema
-//! conformance corpora remain the DEPTH corpora (many cases per family) and are
-//! deliberately NOT folded in here.
+//! Each family carries ONE representative v3 surface example string and its
+//! expected classification: the compiled-item kind ([`FamilyKindV1`]) and, for
+//! plan-producing families, the plan's `result_kind` and `effect`. The
+//! `tests/self_validation.rs` hellgate drives every example through
+//! [`quanta_gqlang_v2_pipeline::compile_program`] and asserts the outcome, so this
+//! crate now PROVES v3 covers all 18 families (a fail-closed test pins that an
+//! unsupported construct still rejects).
 //!
 //! Construction is a `match` over [`RootFamilyV1`] in [`spec_for_v1`], so adding
-//! a family variant is a compile error until every field is supplied. The
-//! `tests/self_validation.rs` hellgate then proves — through the REAL
-//! parse → sema → lower pipeline — that every example lowers to its declared IR
-//! root kind and every negative fails closed with its declared code and message
-//! fragment. The negative's *display class* (`syntax` / `sema`) is not stored
-//! here: it is derived from the code via the single ir authority
-//! [`quanta_gqlang_v2_ir::diagnostic_class::front_door_diagnostic_class_v1`], so
-//! there is no second copy of that mapping to drift.
+//! a family variant is a compile error until every field is supplied.
 
 pub mod leakage;
 
-use quanta_gqlang_v2_ir::planning::PublicPlanRootKindV1;
+use quanta_gqlang_v2_planning::{EffectClassV1, ResultKindV1};
 
 /// Declare the closed `RootFamilyV1` enum AND the canonical `ROOT_FAMILIES_V1`
 /// list from ONE source list, so the enum and the iteration list can never
@@ -80,255 +70,375 @@ declare_root_families_v1!(
     Composition,
 );
 
-/// One canonical fail-closed negative for a family: the malformed source, the
-/// exact diagnostic code, and a distinctive message fragment (the fragment
-/// guards against a same-code-wrong-reason regression the bare code cannot
-/// catch). The display class is derived from `code`, not stored.
-#[derive(Clone, Copy, Debug)]
-pub struct NegativeCaseV1 {
-    pub source: &'static str,
-    pub code: &'static str,
-    pub message_fragment: &'static str,
+/// The v3 compiled-item kind a family lands on — the stable "item.kind" each
+/// family is proven to classify into. Mirrors the
+/// [`quanta_gqlang_v2_pipeline::CompiledItemV1`] variants without re-exporting the
+/// pipeline's payload-carrying enum, so the registry asserts a discriminant the
+/// pipeline owns.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FamilyKindV1 {
+    /// A relational query (the `SELECT`/`from..project` pipe).
+    RelationalQuery,
+    /// A standalone `let` value artifact with no serving plan.
+    ValueArtifact,
+    /// A graph query (`FIND`).
+    GraphQuery,
+    /// A legality check (`CHECK`).
+    Legality,
+    /// A presentation verb (`EXPLAIN` / `SHOW` / `DESCRIBE` / `SAMPLE` /
+    /// `COMPARE` / `EXPORT`).
+    Presentation,
+    /// A standalone horn-rule logic artifact with no serving plan.
+    RuleArtifact,
+    /// A catalog declaration (`VIEW` / `MODEL` / `PACK` / `PROFILE` / `GATE` /
+    /// `RULE`), registered with no plan.
+    CatalogRegistration,
+    /// A composition (`LET..WITH`).
+    Composition,
+    /// A meta directive (`USE PACK` / `REQUIRE CERTIFIED`).
+    Meta,
 }
 
-/// Per-command front-door applicability. Carried here so command matrices read
-/// applicability from the single source of truth instead of each test growing a
-/// local "rows this command skips" denylist.
-#[derive(Clone, Copy, Debug)]
-pub struct CommandApplicabilityV1 {
-    /// The CLI `explain` command / LSP `explain` method accept only EXPLAIN and
-    /// FIND first roots.
-    pub explain: bool,
-}
-
-/// The full front-door spec for one root family.
-#[derive(Clone, Copy, Debug)]
-pub struct RootSurfaceSpecV1 {
-    pub family: RootFamilyV1,
-    pub keyword: &'static str,
-    pub example_path: &'static str,
-    pub ir_root_kind: PublicPlanRootKindV1,
-    pub negative: NegativeCaseV1,
-    pub applicability: CommandApplicabilityV1,
-}
-
-const fn negative_v1(
-    source: &'static str,
-    code: &'static str,
-    message_fragment: &'static str,
-) -> NegativeCaseV1 {
-    NegativeCaseV1 {
-        source,
-        code,
-        message_fragment,
+impl FamilyKindV1 {
+    /// Stable keyword for diagnostics and drift messages.
+    #[must_use]
+    pub const fn keyword(self) -> &'static str {
+        match self {
+            Self::RelationalQuery => "relational_query",
+            Self::ValueArtifact => "value_artifact",
+            Self::GraphQuery => "graph_query",
+            Self::Legality => "legality",
+            Self::Presentation => "presentation",
+            Self::RuleArtifact => "rule_artifact",
+            Self::CatalogRegistration => "catalog_registration",
+            Self::Composition => "composition",
+            Self::Meta => "meta",
+        }
     }
+}
+
+/// The plan classification a plan-producing family is proven to land on: the
+/// `result_kind` and `effect` the v3 pipeline's public plan must carry. Families
+/// that produce NO plan (catalog declarations, `USE PACK`) carry `None`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PlanOutcomeV1 {
+    /// The plan's result kind.
+    pub result_kind: ResultKindV1,
+    /// The plan's effect class.
+    pub effect: EffectClassV1,
+}
+
+const fn plan_outcome_v1(
+    result_kind: ResultKindV1,
+    effect: EffectClassV1,
+) -> Option<PlanOutcomeV1> {
+    Some(PlanOutcomeV1 {
+        result_kind,
+        effect,
+    })
+}
+
+/// What the v3 pipeline is proven to do with a family's representative example.
+///
+/// Most families compile to a [`FamilyKindV1`]. `USE PACK` is the one family
+/// whose validity is inherently SCHEMA-bound: its pack manifest lives in a graph
+/// the public [`quanta_gqlang_v2_pipeline::compile_program`] entry point does not
+/// (and must not) carry, so the honest provable outcome through the public
+/// entry point is a fail-closed `modules` reject. Recognizing-and-routing the
+/// family to its modules stage IS coverage; this variant pins the stable reject
+/// code so the family stays exercised end to end.
+#[derive(Clone, Copy, Debug)]
+pub enum FamilyOutcomeV1 {
+    /// The example compiles to this compiled-item kind, with the given plan
+    /// outcome (for plan-producing families) or `None` (no-plan families).
+    Compiles {
+        /// The compiled-item kind.
+        kind: FamilyKindV1,
+        /// The plan outcome, or `None` for catalog registrations.
+        plan: Option<PlanOutcomeV1>,
+    },
+    /// The example is recognized and routed to its stage, then fails closed with
+    /// this stable diagnostic code (the schema-bound `USE PACK` family).
+    FailsClosed {
+        /// The stable diagnostic code the reject carries.
+        code: &'static str,
+    },
+}
+
+/// The full v3 parity spec for one root family: the canonical surface example,
+/// the leading keyword, and the outcome the v3 pipeline is proven to produce.
+#[derive(Clone, Copy, Debug)]
+pub struct RootFamilySpecV1 {
+    /// The family this spec describes.
+    pub family: RootFamilyV1,
+    /// The leading v3 surface keyword (the first token of the example).
+    pub keyword: &'static str,
+    /// A representative v3 surface example string.
+    pub example: &'static str,
+    /// The outcome the v3 pipeline is proven to produce for the example.
+    pub outcome: FamilyOutcomeV1,
+}
+
+/// Standalone surface items that the parser accepts but the root-family registry
+/// deliberately does not count as one of the 18 servable/root families.
+///
+/// Today this is exactly the value-only `let` declaration unit and the horn
+/// `rule` unit. They are parsed into shared HIR, routed into the pipeline, and
+/// now compile into explicit non-servable artifacts rather than failing closed
+/// or pretending to be relational plans.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SupplementalSurfaceUnitV1 {
+    /// A standalone `let <name> = <value>` declaration unit.
+    Decl,
+    /// A standalone horn-rule `rule <name> : <head> if <body>` unit.
+    HornRule,
+}
+
+/// The canonical set of supplemental units pinned separately from the 18 root
+/// families.
+pub const SUPPLEMENTAL_SURFACE_UNITS_V1: &[SupplementalSurfaceUnitV1] = &[
+    SupplementalSurfaceUnitV1::Decl,
+    SupplementalSurfaceUnitV1::HornRule,
+];
+
+/// The current public-pipeline outcome for one supplemental unit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SupplementalOutcomeV1 {
+    /// The compiled-item discriminant the unit lands on.
+    pub kind: FamilyKindV1,
+    /// Whether the compiled unit carries a serving plan.
+    pub has_plan: bool,
+}
+
+/// One supplemental-unit spec: keyword, representative example, and the exact
+/// current public-pipeline outcome.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SupplementalSurfaceUnitSpecV1 {
+    /// The standalone parsed unit.
+    pub unit: SupplementalSurfaceUnitV1,
+    /// The leading keyword of the example.
+    pub keyword: &'static str,
+    /// A representative surface example accepted by the parser.
+    pub example: &'static str,
+    /// The current public-pipeline outcome this unit produces.
+    pub outcome: SupplementalOutcomeV1,
+}
+
+const fn compiles_v1(kind: FamilyKindV1, plan: Option<PlanOutcomeV1>) -> FamilyOutcomeV1 {
+    FamilyOutcomeV1::Compiles { kind, plan }
+}
+
+const fn supplemental_compiles_v1(kind: FamilyKindV1, has_plan: bool) -> SupplementalOutcomeV1 {
+    SupplementalOutcomeV1 { kind, has_plan }
 }
 
 /// The single per-family authority. Exhaustive `match`: a new [`RootFamilyV1`]
 /// variant cannot compile until its spec is supplied here.
 #[must_use]
-pub const fn spec_for_v1(family: RootFamilyV1) -> RootSurfaceSpecV1 {
-    use PublicPlanRootKindV1 as Kind;
-
-    let core = CommandApplicabilityV1 { explain: false };
-    let explainable = CommandApplicabilityV1 { explain: true };
+pub const fn spec_for_v1(family: RootFamilyV1) -> RootFamilySpecV1 {
+    use EffectClassV1 as Effect;
+    use FamilyKindV1 as Kind;
+    use ResultKindV1 as Result;
 
     match family {
-        RootFamilyV1::Select => RootSurfaceSpecV1 {
+        RootFamilyV1::Select => RootFamilySpecV1 {
             family,
-            keyword: "SELECT",
-            example_path: "examples/select/basic.qglang",
-            ir_root_kind: Kind::Select,
-            negative: negative_v1(
-                "SELECT id catalog.users",
-                "expected_from_keyword",
-                "must be followed by FROM",
+            keyword: "from",
+            example: "from users u | where u.id > 1 | project u.id as id, u.name as name",
+            outcome: compiles_v1(
+                Kind::RelationalQuery,
+                plan_outcome_v1(Result::Table, Effect::ReadOnly),
             ),
-            applicability: core,
         },
-        RootFamilyV1::Find => RootSurfaceSpecV1 {
+        RootFamilyV1::Find => RootFamilySpecV1 {
             family,
-            keyword: "FIND",
-            example_path: "examples/find/taint.qglang",
-            ir_root_kind: Kind::Find,
-            negative: negative_v1(
-                "FIND unknown api.entry -> db.write",
-                "unsupported_find_subkind",
-                "unsupported FIND subkind",
+            keyword: "find",
+            example: "find taint api.entry -> db.write | sanitizers=authz.clean | depth=3",
+            outcome: compiles_v1(
+                Kind::GraphQuery,
+                plan_outcome_v1(Result::PathWitness, Effect::ProofEvidenceOnly),
             ),
-            applicability: explainable,
         },
-        RootFamilyV1::Check => RootSurfaceSpecV1 {
+        RootFamilyV1::Check => RootFamilySpecV1 {
             family,
-            keyword: "CHECK",
-            example_path: "examples/check/hybrid_rule.qglang",
-            ir_root_kind: Kind::Check,
-            negative: negative_v1(
-                "CHECK rule.hybrid",
-                "check_missing_rule_or_scope",
-                "CHECK requires",
+            keyword: "check",
+            example: "check rule.hybrid | scope=repo | confirm=require | emit=sarif | mode=hybrid",
+            outcome: compiles_v1(
+                Kind::Legality,
+                plan_outcome_v1(Result::Alert, Effect::ReadOnly),
             ),
-            applicability: core,
         },
-        RootFamilyV1::Explain => RootSurfaceSpecV1 {
+        RootFamilyV1::Explain => RootFamilySpecV1 {
             family,
-            keyword: "EXPLAIN",
-            example_path: "examples/explain/why_no_result.qglang",
-            ir_root_kind: Kind::Explain,
-            negative: negative_v1(
-                "EXPLAIN rule::owasp.sql-injection ;; truth=maybe",
-                "invalid_explain_shape",
-                "truth expectation",
+            keyword: "explain",
+            example: "explain rule.sqli | evidence=trace | truth=confirm",
+            outcome: compiles_v1(
+                Kind::Presentation,
+                plan_outcome_v1(Result::ProofExplain, Effect::ReadOnly),
             ),
-            applicability: explainable,
         },
-        RootFamilyV1::Show => RootSurfaceSpecV1 {
+        RootFamilyV1::Show => RootFamilySpecV1 {
             family,
-            keyword: "SHOW",
-            example_path: "examples/show/capabilities.qglang",
-            ir_root_kind: Kind::Interactive,
-            negative: negative_v1("SHOW catalog", "unsupported_show_category", "SHOW category"),
-            applicability: core,
-        },
-        RootFamilyV1::Describe => RootSurfaceSpecV1 {
-            family,
-            keyword: "DESCRIBE",
-            example_path: "examples/describe/rule_detail.qglang",
-            ir_root_kind: Kind::Interactive,
-            negative: negative_v1(
-                "DESCRIBE model::",
-                "describe_target_invalid_shape",
-                "DESCRIBE target must use",
+            keyword: "show",
+            example: "show capabilities",
+            outcome: compiles_v1(
+                Kind::Presentation,
+                plan_outcome_v1(Result::Table, Effect::ReadOnly),
             ),
-            applicability: core,
         },
-        RootFamilyV1::Sample => RootSurfaceSpecV1 {
+        RootFamilyV1::Describe => RootFamilySpecV1 {
             family,
-            keyword: "SAMPLE",
-            example_path: "examples/sample/retrieval.qglang",
-            ir_root_kind: Kind::Retrieval,
-            negative: negative_v1(
-                "SAMPLE",
-                "sample_missing_query",
-                "requires structured payload",
+            keyword: "describe",
+            example: "describe rule::owasp.sqli",
+            outcome: compiles_v1(
+                Kind::Presentation,
+                plan_outcome_v1(Result::Alert, Effect::ReadOnly),
             ),
-            applicability: core,
         },
-        RootFamilyV1::Compare => RootSurfaceSpecV1 {
+        RootFamilyV1::Sample => RootFamilySpecV1 {
             family,
-            keyword: "COMPARE",
-            example_path: "examples/compare/semantic_delta.qglang",
-            ir_root_kind: Kind::Interactive,
-            negative: negative_v1(
-                "COMPARE",
-                "compare_missing_baseline",
-                "requires structured payload",
+            keyword: "sample",
+            example: "sample query=\"callgraph\" | mode=semantic | limit=5 | scope=repo",
+            outcome: compiles_v1(
+                Kind::Presentation,
+                plan_outcome_v1(Result::Table, Effect::ReadOnly),
             ),
-            applicability: core,
         },
-        RootFamilyV1::Export => RootSurfaceSpecV1 {
+        RootFamilyV1::Compare => RootFamilySpecV1 {
             family,
-            keyword: "EXPORT",
-            example_path: "examples/export/sarif.qglang",
-            ir_root_kind: Kind::Interactive,
-            negative: negative_v1(
-                "EXPORT",
-                "export_missing_source",
-                "requires structured payload",
+            keyword: "compare",
+            example: "compare baseline=run.a | candidate=run.b | metric=semantic",
+            outcome: compiles_v1(
+                Kind::Presentation,
+                plan_outcome_v1(Result::PathWitness, Effect::ReadOnly),
             ),
-            applicability: core,
         },
-        RootFamilyV1::View => RootSurfaceSpecV1 {
+        RootFamilyV1::Export => RootFamilySpecV1 {
             family,
-            keyword: "VIEW",
-            example_path: "examples/view/catalog_users.qglang",
-            ir_root_kind: Kind::Declaration,
-            negative: negative_v1("VIEW", "view_missing_name", "requires payload"),
-            applicability: core,
-        },
-        RootFamilyV1::Rule => RootSurfaceSpecV1 {
-            family,
-            keyword: "RULE",
-            example_path: "examples/rule/shell_exec.qglang",
-            ir_root_kind: Kind::Declaration,
-            negative: negative_v1("RULE", "rule_missing_name", "requires payload"),
-            applicability: core,
-        },
-        RootFamilyV1::Model => RootSurfaceSpecV1 {
-            family,
-            keyword: "MODEL",
-            example_path: "examples/model/embeddings_code.qglang",
-            ir_root_kind: Kind::Declaration,
-            negative: negative_v1("MODEL", "model_missing_name", "requires payload"),
-            applicability: core,
-        },
-        RootFamilyV1::Pack => RootSurfaceSpecV1 {
-            family,
-            keyword: "PACK",
-            example_path: "examples/pack/security_default.qglang",
-            ir_root_kind: Kind::Declaration,
-            negative: negative_v1("PACK", "pack_missing_name", "requires payload"),
-            applicability: core,
-        },
-        RootFamilyV1::Profile => RootSurfaceSpecV1 {
-            family,
-            keyword: "PROFILE",
-            example_path: "examples/profile/strict_review.qglang",
-            ir_root_kind: Kind::Declaration,
-            negative: negative_v1("PROFILE", "profile_missing_name", "requires payload"),
-            applicability: core,
-        },
-        RootFamilyV1::Gate => RootSurfaceSpecV1 {
-            family,
-            keyword: "GATE",
-            example_path: "examples/gate/release_gate.qglang",
-            ir_root_kind: Kind::Declaration,
-            negative: negative_v1("GATE", "gate_missing_name", "requires payload"),
-            applicability: core,
-        },
-        RootFamilyV1::UsePack => RootSurfaceSpecV1 {
-            family,
-            keyword: "USE PACK",
-            example_path: "examples/use_pack/secure_pack.qglang",
-            ir_root_kind: Kind::Meta,
-            negative: negative_v1(
-                "USE PACK secure-pack ;; activation=session ;; lockfile=packs/secure-pack.txt",
-                "use_pack_invalid_lockfile",
-                "must end with `.lock`",
+            keyword: "export",
+            example: "export source=result.latest | kind=sarif | profile=strict",
+            outcome: compiles_v1(
+                Kind::Presentation,
+                plan_outcome_v1(Result::Table, Effect::ExportOnly),
             ),
-            applicability: core,
         },
-        RootFamilyV1::RequireCertified => RootSurfaceSpecV1 {
+        RootFamilyV1::View => RootFamilySpecV1 {
             family,
-            keyword: "REQUIRE CERTIFIED",
-            example_path: "examples/require_certified/strict_only.qglang",
-            ir_root_kind: Kind::Meta,
-            negative: negative_v1(
-                "REQUIRE CERTIFIED ;; truth=maybe",
-                "unsupported_require_meta",
-                "unsupported REQUIRE target",
-            ),
-            applicability: core,
+            keyword: "view",
+            example: "view catalog.users | query-ref=queries.catalog.users",
+            outcome: compiles_v1(Kind::CatalogRegistration, None),
         },
-        // `LET <name> = <producer>` bindings consumed by a body that names them
-        // via a trailing `WITH <binding>` (E03C). The leading token is LET.
-        RootFamilyV1::Composition => RootSurfaceSpecV1 {
+        // The catalog RULE binding family uses the `ruledef` keyword; bare `rule`
+        // keeps its horn-rule meaning in the surface grammar.
+        RootFamilyV1::Rule => RootFamilySpecV1 {
             family,
-            keyword: "LET",
-            example_path: "examples/composition/let_with_find.qglang",
-            ir_root_kind: Kind::Composition,
-            negative: negative_v1(
-                "LET a = SELECT id FROM catalog.users",
-                "composition_unconsumed_let",
-                "must be consumed by a body",
+            keyword: "ruledef",
+            example: "ruledef shell.exec | check-ref=checks.shell-exec",
+            outcome: compiles_v1(Kind::CatalogRegistration, None),
+        },
+        RootFamilyV1::Model => RootFamilySpecV1 {
+            family,
+            keyword: "model",
+            example: "model embeddings.code | provider=openai | source=models.code",
+            outcome: compiles_v1(Kind::CatalogRegistration, None),
+        },
+        RootFamilyV1::Pack => RootFamilySpecV1 {
+            family,
+            keyword: "pack",
+            example: "pack secure-pack | source=registry.security | activation=workspace",
+            outcome: compiles_v1(Kind::CatalogRegistration, None),
+        },
+        RootFamilyV1::Profile => RootFamilySpecV1 {
+            family,
+            keyword: "profile",
+            example:
+                "profile strict | capabilities=graph.read,graph.trace | admission=certified-only",
+            outcome: compiles_v1(Kind::CatalogRegistration, None),
+        },
+        RootFamilyV1::Gate => RootFamilySpecV1 {
+            family,
+            keyword: "gate",
+            example: "gate release | checks=owasp.sql,authz.path | binding=all",
+            outcome: compiles_v1(Kind::CatalogRegistration, None),
+        },
+        // USE PACK is schema-bound: its pack manifest lives in a graph the public
+        // entry point does not carry, so the provable v3 outcome through
+        // `compile_program` is a fail-closed `modules` reject. The family is still
+        // recognized and routed to its modules stage — that is the coverage.
+        RootFamilyV1::UsePack => RootFamilySpecV1 {
+            family,
+            keyword: "use",
+            example: "use pack secure-pack | activation=session | lockfile=packs.secure-pack.lock",
+            outcome: FamilyOutcomeV1::FailsClosed {
+                code: "modules.unknown_pack_manifest",
+            },
+        },
+        RootFamilyV1::RequireCertified => RootFamilySpecV1 {
+            family,
+            keyword: "require",
+            example: "require certified",
+            outcome: compiles_v1(
+                Kind::Meta,
+                plan_outcome_v1(Result::ProofExplain, Effect::ProofEvidenceOnly),
             ),
-            applicability: core,
+        },
+        // `LET <name> = <producer> <body> WITH <binding>` (the clause-level
+        // composition family). Its plan is the BODY's plan.
+        RootFamilyV1::Composition => RootFamilySpecV1 {
+            family,
+            keyword: "let",
+            example: "let suspects = find taint a.b -> c.d | depth=2 \
+                      find taint api.entry -> db.write | depth=3 with suspects",
+            // The composition body here is a bounded FIND -> path_witness.
+            outcome: compiles_v1(
+                Kind::Composition,
+                plan_outcome_v1(Result::PathWitness, Effect::ProofEvidenceOnly),
+            ),
         },
     }
 }
 
-/// The full registry, one spec per family in [`ROOT_FAMILIES_V1`] order.
+/// The full v3 parity registry, one spec per family in [`ROOT_FAMILIES_V1`] order.
 #[must_use]
-pub fn root_surface_specs_v1() -> Vec<RootSurfaceSpecV1> {
+pub fn root_family_specs_v1() -> Vec<RootFamilySpecV1> {
     ROOT_FAMILIES_V1.iter().copied().map(spec_for_v1).collect()
 }
+
+/// The current standalone parsed units that are OUTSIDE the 18-family servable
+/// registry, in canonical order.
+#[must_use]
+pub fn supplemental_surface_unit_specs_v1() -> Vec<SupplementalSurfaceUnitSpecV1> {
+    SUPPLEMENTAL_SURFACE_UNITS_V1
+        .iter()
+        .copied()
+        .map(supplemental_surface_unit_spec_v1)
+        .collect()
+}
+
+/// The single authority for standalone parsed units that are not yet part of
+/// the 18-family servable registry.
+#[must_use]
+pub const fn supplemental_surface_unit_spec_v1(
+    unit: SupplementalSurfaceUnitV1,
+) -> SupplementalSurfaceUnitSpecV1 {
+    match unit {
+        SupplementalSurfaceUnitV1::Decl => SupplementalSurfaceUnitSpecV1 {
+            unit,
+            keyword: "let",
+            example: "let x = 1 + 2",
+            outcome: supplemental_compiles_v1(FamilyKindV1::ValueArtifact, false),
+        },
+        SupplementalSurfaceUnitV1::HornRule => SupplementalSurfaceUnitSpecV1 {
+            unit,
+            keyword: "rule",
+            example: "rule adult : person.id if person.age >= 18",
+            outcome: supplemental_compiles_v1(FamilyKindV1::RuleArtifact, false),
+        },
+    }
+}
+
+/// A canonical construct the v3 frontend MUST reject fail-closed: a malformed
+/// surface source the pipeline cannot classify into any family. Used by the
+/// fail-closed parity test so coverage of the 18 families is paired with a proof
+/// that an unsupported construct does not silently slip through.
+pub const UNSUPPORTED_CONSTRUCT_V1: &str = "totally not a qglang root";

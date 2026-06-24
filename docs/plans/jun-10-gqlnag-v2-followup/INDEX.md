@@ -54,9 +54,9 @@
 
 | 묶음 | 티켓 | 비고 |
 |---|---|---|
-| Joint (external 측 DONE) | F19·F20 | ✅ external proof-rail 타겟명 정합 + fixture behavioral 승격 완료. 잔여: F19 semantica dry-run, F20 J09C ExplainHost/PathHost impl(semantica) |
+| Joint (external 측 DONE) | F19·F20 | historical label only. external proof-rail 타겟명 정합 + fixture behavioral 승격은 landed. semantica live truth는 별도 authority 문서가 소유 |
 | Semantica 삭제 마이그레이션 | F18-10 | 10개 crate 의 실소비처 재배선 후 삭제 = 진짜 S13B/S12B |
-| Semantica V6B cutover | F21 | compat carrier 15+ 소비처 cutover (대형) |
+| Semantica V6B cutover | F21 | historical label only. jun-10 어딧 기준 실제 scope는 prod create 4사이트 / 진짜 컷오버 2사이트였고, live closeout truth는 semantica authority가 소유 |
 | 자투리 | planner-v1 tooling 11파일, F14-S08C feature 레일 | 파일별 확인 필요 |
 
 **이 레포(quanta-gqlang-v2/external) 측은 전부 DONE.** 잔여 작업은 전부 semantica-codegraph-v2 워크트리.
@@ -68,8 +68,8 @@
 | 영역 | 실제 상태 (검증) |
 |---|---|
 | F19-sema | 42 test 중 J03A `show_describe_handshake.rs` **1개 부재** → rail hard-fail. 나머지 18 OK |
-| F20-J09C | ExplainHost(1)/PathHost(4) trait 존재, **production impl 0**, test엔 `unreachable!` Dummy뿐. `explain_path_handshake.rs`(sema) constant-mirror — 메서드 미호출 |
-| F21 | carrier 3종 존재(dual #[path]). 실 prod 생성사이트 **4개**(15+ 아님). 목적지 `ServingQueryRequestV1`+`lower_public_ir_root_to_request_v1` 존재. `#[deprecated]`/변환어댑터 미착수. "17 test err" 결함 해소됨 |
+| F20-J09C | jun-10 finding은 stale. semantica current code에는 `ProductionReadQueryHost` 쪽 `ExplainHost`/`CapabilityHost`, `ProductionAnalysisHost` 쪽 `PathHost` production impl 이 존재한다. 남은 truth는 impl absence가 아니라 behavioral/exact rerun 및 semantica authority closeout state였다 |
+| F21 | carrier 3종 존재(dual #[path]). jun-10 어딧 기준 실 prod 생성사이트는 **4개**였고 진짜 컷오버 대상은 **2사이트**였다. 이 문서의 `15+ 소비처` framing은 stale 이며, live closeout truth는 semantica authority가 소유 |
 | F18 | **5 ABSENT**(이미삭제 0소비처) + **12 PRESENT**(실소비처: catalog-binding 21·validation 18·fragment 13·core 10·catalog-v1 5·hir-v1 4·sdk-handlers 4·gates-v1 2·sarif-proj 2·lowering 1·planner/contract 12×2). 안전삭제 0 — 재배선 필요. 게이트/lint/catalog residue 다수 |
 
 ### Semantica 작업 계획 (의존순 — 보강판)
@@ -83,7 +83,7 @@
 | # | 작업 | 크기 | 의존 | 병렬군 |
 |---|---|---|---|---|
 | 1 | **F19/J03A**: `show_describe_handshake` **sema(exec-conformance)+ir(external)** 신설 (CapabilityHost behavioral) | S | — | A |
-| 2 | **F20-J09C**: `explain_path_handshake`(sema) behavioral — Dummy impl 실호출 + neg≥2 | S–M | — | A |
+| 2 | **F20-J09C**: `explain_path_handshake`(sema) behavioral — production impl absence가 아니라 behavioral proof refresh / neg≥2 로 정리 | S–M | — | A |
 | 3 | **F18a**: 삭제된 5크레이트 tooling residue 청소(baseline/lint/catalog yaml/gate needle) | S–M | — | A |
 | 4 | **F21**: carrier 강등 — adapter `from_gqlang_execution_request_v1`+`#[deprecated]`+**진짜 컷오버 2사이트**(나머지 pre-planning/subquery는 allow)+guard+round-trip | M | — | B |
 | 5 | **F18b**: **10 gqlang 크레이트**(planner 제외) 재배선 후 삭제 — topo: leaf(validation/fragment/gates/sdk-handlers/sarif-proj)→catalog-binding/hir→catalog-v1→core/lowering | **L** | 빌드 OK | C |

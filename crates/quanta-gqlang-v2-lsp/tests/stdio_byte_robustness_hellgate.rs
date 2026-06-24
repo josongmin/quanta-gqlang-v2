@@ -18,8 +18,10 @@
 //!     identically to a single-shot read (single and glued requests), and
 //!   * a high count of glued frames with no separators each dispatch in order.
 //!
-//! Where output is deterministic the whole line is pinned with `assert_eq!`; the
-//! invalid-UTF-8 message carries a byte index, so its stable prefix is pinned.
+//! The vehicle is the v3-only read-only method `v3_diagnostics`; a clean compile
+//! yields a fully deterministic empty-result line, so every response line is
+//! pinned whole with `assert_eq!`. The invalid-UTF-8 message carries a byte
+//! index, so its stable prefix is pinned.
 
 mod support;
 
@@ -29,11 +31,14 @@ use support::{binary_stdout_v1, response_lines_v1, run_binary_bytes_v1, run_sess
 
 use quanta_gqlang_v2_lsp::run_stdio_session_v1;
 
-const ZERO_QUERY_V1: &str = r#"{"method":"zero_query"}"#;
+/// A clean-compiling relational query, used purely as a deterministic transport
+/// vehicle: the pipeline compiles it end to end, so `v3_diagnostics` returns an
+/// empty diagnostics list — a byte-stable line we can pin whole.
+const CLEAN_QUERY_V1: &str =
+    r#"{"method":"v3_diagnostics","query":"from users u | project u.id as id"}"#;
 
-/// The deterministic prefix of the zero_query read-only scaffold envelope. The
-/// body is large and example-driven, so the stable envelope head is anchored.
-const ZERO_QUERY_ENVELOPE_PREFIX_V1: &str = r#"{"ok":true,"method":"zero_query","result":{"mode":"read-only","provenance":"typed-catalog-example-metadata","groups":[{"id":"catalog","#;
+/// The exact, full-line response for `CLEAN_QUERY_V1`.
+const CLEAN_QUERY_LINE_V1: &str = r#"{"ok":true,"method":"v3_diagnostics","result":[]}"#;
 
 /// A `Read` adapter that yields **at most one byte per `read()` call**, modelling
 /// a client that dribbles a request across many tiny syscalls. Proving the session
@@ -68,21 +73,6 @@ fn run_one_byte_session_v1(input: &[u8]) -> String {
     String::from_utf8(output).expect("stdout utf-8")
 }
 
-fn assert_zero_query_line_v1(line: &str) {
-    assert!(
-        line.starts_with(ZERO_QUERY_ENVELOPE_PREFIX_V1),
-        "zero_query envelope drifted: {line}"
-    );
-    assert!(
-        line.ends_with("]}}"),
-        "zero_query line must close the envelope: {line}"
-    );
-    assert!(
-        line.contains(r#""behavior":"read-only-scaffold""#),
-        "zero_query body must carry read-only-scaffold suggestions: {line}"
-    );
-}
-
 // ------------------------------------------------------------------------
 // 1. Invalid UTF-8 inside a brace-balanced frame.
 // ------------------------------------------------------------------------
@@ -91,7 +81,7 @@ fn assert_zero_query_line_v1(line: &str) {
 /// and the frame extracts cleanly; UTF-8 validation then rejects it. The error
 /// message embeds a byte index, so the stable prefix is pinned rather than the
 /// whole line.
-const INVALID_UTF8_FRAME_V1: &[u8] = b"{\"method\":\"hover\",\"query\":\"\xff\xfe\"}\n";
+const INVALID_UTF8_FRAME_V1: &[u8] = b"{\"method\":\"v3_diagnostics\",\"query\":\"\xff\xfe\"}\n";
 const INVALID_UTF8_MESSAGE_PREFIX_V1: &str = "request bytes are not valid UTF-8";
 
 #[test]
@@ -122,11 +112,11 @@ fn binary_rejects_invalid_utf8_inside_balanced_frame_v1() {
 
 #[test]
 fn binary_recovers_after_invalid_utf8_frame_v1() {
-    // The invalid-UTF-8 frame is immediately followed by a valid zero_query frame
-    // in one byte stream. The session must emit the error for the first frame and
-    // still serve the second, proving the read-only front door recovers in place.
+    // The invalid-UTF-8 frame is immediately followed by a valid frame in one byte
+    // stream. The session must emit the error for the first frame and still serve
+    // the second, proving the read-only front door recovers in place.
     let mut input = INVALID_UTF8_FRAME_V1.to_vec();
-    input.extend_from_slice(ZERO_QUERY_V1.as_bytes());
+    input.extend_from_slice(CLEAN_QUERY_V1.as_bytes());
     input.push(b'\n');
 
     let output = run_binary_bytes_v1(&input);
@@ -148,12 +138,12 @@ fn binary_recovers_after_invalid_utf8_frame_v1() {
         "first line must be the invalid-UTF-8 error: {}",
         lines[0]
     );
-    assert!(
-        lines[1].contains(r#""ok":true"#) && lines[1].contains(r#""method":"zero_query""#),
-        "session must recover and serve the trailing zero_query frame: {}",
+    assert_eq!(
+        lines[1].trim(),
+        CLEAN_QUERY_LINE_V1,
+        "session must recover and serve the trailing v3_diagnostics frame: {}",
         lines[1]
     );
-    assert_zero_query_line_v1(lines[1]);
 }
 
 // ------------------------------------------------------------------------
@@ -162,7 +152,7 @@ fn binary_recovers_after_invalid_utf8_frame_v1() {
 
 #[test]
 fn session_reassembles_single_request_from_one_byte_reads_v1() {
-    let request = format!("{ZERO_QUERY_V1}\n");
+    let request = format!("{CLEAN_QUERY_V1}\n");
     let dribbled = run_one_byte_session_v1(request.as_bytes());
     let (single_status, single_shot) = run_session_bytes_v1(request.as_bytes());
     assert_eq!(single_status, 0);
@@ -172,14 +162,14 @@ fn session_reassembles_single_request_from_one_byte_reads_v1() {
     );
     let lines = response_lines_v1(&dribbled);
     assert_eq!(lines.len(), 1, "got {lines:?}");
-    assert_zero_query_line_v1(lines[0]);
+    assert_eq!(lines[0].trim(), CLEAN_QUERY_LINE_V1);
 }
 
 #[test]
 fn session_reassembles_two_glued_requests_from_one_byte_reads_v1() {
     // Two objects glued with no separator, then dribbled one byte at a time. Both
     // must dispatch in order and match the single-shot read exactly.
-    let glued = format!("{ZERO_QUERY_V1}{ZERO_QUERY_V1}");
+    let glued = format!("{CLEAN_QUERY_V1}{CLEAN_QUERY_V1}");
     let dribbled = run_one_byte_session_v1(glued.as_bytes());
     let (single_status, single_shot) = run_session_bytes_v1(glued.as_bytes());
     assert_eq!(single_status, 0);
@@ -193,8 +183,8 @@ fn session_reassembles_two_glued_requests_from_one_byte_reads_v1() {
         2,
         "both glued frames must dispatch, got {lines:?}"
     );
-    assert_zero_query_line_v1(lines[0]);
-    assert_zero_query_line_v1(lines[1]);
+    assert_eq!(lines[0].trim(), CLEAN_QUERY_LINE_V1);
+    assert_eq!(lines[1].trim(), CLEAN_QUERY_LINE_V1);
 }
 
 // ------------------------------------------------------------------------
@@ -203,11 +193,11 @@ fn session_reassembles_two_glued_requests_from_one_byte_reads_v1() {
 
 const GLUED_FRAME_COUNT_V1: usize = 64;
 
-fn glued_zero_query_buffer_v1() -> Vec<u8> {
-    ZERO_QUERY_V1.repeat(GLUED_FRAME_COUNT_V1).into_bytes()
+fn glued_clean_query_buffer_v1() -> Vec<u8> {
+    CLEAN_QUERY_V1.repeat(GLUED_FRAME_COUNT_V1).into_bytes()
 }
 
-fn assert_all_zero_query_v1(lines: &[&str]) {
+fn assert_all_clean_query_v1(lines: &[&str]) {
     assert_eq!(
         lines.len(),
         GLUED_FRAME_COUNT_V1,
@@ -215,29 +205,25 @@ fn assert_all_zero_query_v1(lines: &[&str]) {
         lines.len()
     );
     for line in lines {
-        assert!(
-            line.contains(r#""ok":true"#) && line.contains(r#""method":"zero_query""#),
-            "every glued frame must yield an ok zero_query line: {line}"
-        );
-        assert_zero_query_line_v1(line);
+        assert_eq!(line.trim(), CLEAN_QUERY_LINE_V1);
     }
 }
 
 #[test]
 fn session_drains_high_count_glued_frames_in_process_v1() {
-    let buffer = glued_zero_query_buffer_v1();
+    let buffer = glued_clean_query_buffer_v1();
     let (status, stdout) = run_session_bytes_v1(&buffer);
     assert_eq!(status, 0);
     let lines = response_lines_v1(&stdout);
-    assert_all_zero_query_v1(&lines);
+    assert_all_clean_query_v1(&lines);
 }
 
 #[test]
 fn binary_drains_high_count_glued_frames_v1() {
-    let buffer = glued_zero_query_buffer_v1();
+    let buffer = glued_clean_query_buffer_v1();
     let output = run_binary_bytes_v1(&buffer);
     assert_eq!(output.status.code(), Some(0));
     let stdout = binary_stdout_v1(&output);
     let lines = response_lines_v1(&stdout);
-    assert_all_zero_query_v1(&lines);
+    assert_all_clean_query_v1(&lines);
 }

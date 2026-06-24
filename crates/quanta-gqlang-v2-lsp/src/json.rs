@@ -255,10 +255,11 @@ pub(crate) fn json_string_v1(value: &str) -> String {
     output
 }
 
-pub(crate) fn json_option_string_v1(value: Option<&str>) -> String {
-    value
-        .map(json_string_v1)
-        .unwrap_or_else(|| "null".to_string())
+/// Render a `usize` as a JSON number. Used for byte-offset spans, which are
+/// non-negative integers, so the decimal form is a valid JSON number with no
+/// quoting or lossy numeric coercion.
+pub(crate) fn json_usize_v1(value: usize) -> String {
+    value.to_string()
 }
 
 pub(crate) fn json_bool_v1(value: bool) -> String {

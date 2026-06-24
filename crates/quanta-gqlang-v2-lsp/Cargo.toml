@@ -18,10 +18,10 @@ name = "quanta-gqlang-v2-lsp"
 path = "src/main.rs"
 
 [dependencies]
-quanta-gqlang-v2-ir = { version = "0.1.0", path = "../quanta-gqlang-v2-ir" }
+quanta-gqlang-v2-pipeline = { version = "0.1.0", path = "../quanta-gqlang-v2-pipeline" }
 
 [dev-dependencies]
-quanta-gqlang-v2-conformance = { version = "0.1.0", path = "../quanta-gqlang-v2-conformance" }
+quanta-gqlang-v2-pipeline = { version = "0.1.0", path = "../quanta-gqlang-v2-pipeline" }
 
 [lints]
 workspace = true

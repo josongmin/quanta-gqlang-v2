@@ -1,10 +1,1 @@
-pub mod completion;
-pub(crate) mod completion_rank;
-pub mod diagnostics;
-pub mod explain_view;
-pub mod hover;
-pub mod quickfix;
-pub(crate) mod read_only_analysis;
-pub mod starter_scaffold;
-pub mod symbols;
-pub mod zero_query;
+pub mod v3_diagnostics;

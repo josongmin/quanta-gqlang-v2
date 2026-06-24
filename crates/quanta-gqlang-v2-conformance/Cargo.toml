@@ -1,6 +1,6 @@
 [package]
 categories.workspace   = true
-description            = "QGLang v2 dev-only conformance registry: single source of truth for the 17 root families"
+description            = "QGLang v3 dev-only parity guard: proves the 18 root families and pins standalone decl/rule gaps"
 edition.workspace      = true
 keywords.workspace     = true
 license.workspace      = true
@@ -15,7 +15,10 @@ name = "quanta_gqlang_v2_conformance"
 path = "src/lib.rs"
 
 [dependencies]
-quanta-gqlang-v2-ir = { version = "0.1.0", path = "../quanta-gqlang-v2-ir" }
+quanta-gqlang-v2-hir = { version = "0.1.0", path = "../quanta-gqlang-v2-hir" }
+quanta-gqlang-v2-pipeline = { version = "0.1.0", path = "../quanta-gqlang-v2-pipeline" }
+quanta-gqlang-v2-planning = { version = "0.1.0", path = "../quanta-gqlang-v2-planning" }
+quanta-gqlang-v2-surface = { version = "0.1.0", path = "../quanta-gqlang-v2-surface" }
 
 [lints]
 workspace = true

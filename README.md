@@ -17,6 +17,14 @@
 3. SDK/runtime wire
 4. `quanta-index-sdk`
 
+Sibling consumer seam:
+
+1. downstream repos may reference this repo only through the host-agnostic
+   frontend contract crate: `quanta-gqlang-v2-frontend-contract`
+2. semantica/sdk consumers must not depend on deleted legacy
+   `quanta-gqlang-v2-{syntax,sema,ir}` crates
+3. semantica runtime DTOs and backend wiring remain downstream-owned
+
 언어 릴리스 표면:
 
 1. parser-stable read-only shell

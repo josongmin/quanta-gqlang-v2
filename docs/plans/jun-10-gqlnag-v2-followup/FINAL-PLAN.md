@@ -11,6 +11,11 @@
 > - `/Users/songmin/Documents/code-new/semantica-codegraph-v2/tools/ci/gates/gate-gqlang-v2-semantica-closeout.sh`
 > - `/Users/songmin/Documents/code-new/semantica-codegraph-v2/docs/operation/jun-15-qglang-v2-authoritative-closeout-state.md`
 >
+> current live status at 2026-06-24:
+>
+> - `S21`, `S21A`, `S21B`, `S21C`, `S21D`, `S21E`, `J06` are all `complete` in semantica `STATUS.md`
+> - the sections below preserve the 2026-06-11 open-work plan; they are not current completion claims
+>
 > use this file for historical coordination only.
 
 이 문서는 `quanta-gqlang-v2` 쪽 coordination note 이다.
@@ -50,11 +55,11 @@
 - frontend: `quanta-gqlang-core`, `quanta-gqlang-lowering`, `quanta-gqlang-hir-v1`, `quanta-gqlang-catalog-v1`, `quanta-gqlang-sdk-handlers-v1` 포함
 - product: `quanta-gqlang-sarif-projection-v1`
 
-즉 `J06` 는 아직 gate 수준에서도 "crate absence + mandatory joint bundle" 전제가 살아 있다.
+즉 이 문서 작성 시점의 `J06` 는 gate 수준에서도 "crate absence + mandatory joint bundle" 전제가 살아 있었다.
 
 ### 2.2 production ingress truth
 
-현재 semantica production ingress 는 여전히 rich legacy carrier 를 만든다.
+이 문서 작성 시점의 semantica production ingress 는 여전히 rich legacy carrier 를 만들었다.
 
 - `GqlangExecutionRequestV1` 는 `normalized_ast`, `typed_query_v1`, `planner_carrier_v1`, `analysis_invocation_source_v1`, authority digest sidecar 를 들고 있다.
 - native ingress 생성은 여전히 normalized AST 에서 planner carrier 와 authority bundle 을 직접 민트한다.
@@ -64,7 +69,7 @@
 
 ### 2.3 bridge truth
 
-`PublicIrRootV1 -> ServingQueryRequestV1` bridge 는 이미 있지만 범위가 좁다.
+`PublicIrRootV1 -> ServingQueryRequestV1` bridge 는 이미 있었지만 범위가 좁았다.
 
 - query-plane root 만 lower 한다.
 - `Declaration` 과 `Meta` 는 reject 한다.
@@ -74,7 +79,7 @@
 
 ### 2.4 현재 삭제 후보의 live consumer 규모
 
-아래 숫자는 2026-06-11 현재 `cargo metadata --no-deps` reverse dependency 기준이다.
+아래 숫자는 2026-06-11 시점 `cargo metadata --no-deps` reverse dependency 기준이다.
 
 | crate | cargo consumer 수 | 현재 consumer |
 |---|---:|---|
@@ -97,16 +102,15 @@
 
 ### 2.5 오늘 확보한 compile truth
 
-아래 owner-local `check` 는 2026-06-11 현재 green 이다.
+아래 owner-local `check` 는 2026-06-11 시점 green 이었다.
 
-```bash
-scripts/quanta-build-cli cargo --lane gqlang-closeout-p3-* -- check -p quanta-runtime
-scripts/quanta-build-cli cargo --lane gqlang-closeout-p2-* -- check -p quanta-runtime-observation-wire
-scripts/quanta-build-cli cargo --lane gqlang-closeout-p2-* -- check -p quanta-runtime-command-owner-surface
-scripts/quanta-build-cli cargo --lane gqlang-closeout-p1b-* -- check -p quanta-gqlang-v2-exec-conformance
-```
+- `scripts/quanta-build-cli cargo --lane <explicit closeout lane> -- check -p quanta-runtime`
+- `scripts/quanta-build-cli cargo --lane <explicit closeout lane> -- check -p quanta-runtime-observation-wire`
+- `scripts/quanta-build-cli cargo --lane <explicit closeout lane> -- check -p quanta-runtime-command-owner-surface`
+- `scripts/quanta-build-cli cargo --lane <explicit closeout lane> -- check -p quanta-gqlang-v2-exec-conformance`
 
-`quanta-runtime` 는 unused variable warning 3개가 있었지만 compile 실패는 아니었다.
+이전 `gqlang-closeout-p*-*` 표기는 historical shorthand 였다. `zsh`에서는 quoting 없이 복붙 실행되지 않는다.
+`quanta-runtime` 는 당시 unused variable warning 3개가 있었지만 compile 실패는 아니었다.
 
 ---
 
@@ -141,12 +145,18 @@ scripts/quanta-build-cli cargo --lane gqlang-closeout-p1b-* -- check -p quanta-g
 - 전용 브랜치/워크트리로 gateway/wire 작업을 다른 동시 세션과 분리
 - 각 대상 crate 의 cargo consumer + source consumer inventory 저장
 - `GqlangExecutionRequestV1`, `GqlangBoundExecuteRequestV1`, `ExistingQuerySurfaceV1` 생성자와 reader cluster 고정
+- 실제 cutover edit surface 는 root `quanta-runtime` owner path 로 제한:
+  `packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/gateway/surface_factory.rs`
+  및 `surface_factory/*`
+- `packages/analysis/quanta-v2/crates/quanta-runtime-orchestration/src/gateway/surface_factory/*`
+  아래 동명 파일은 relocation/reference copy 로만 취급하고 V6B 수정면으로 사용하지 않는다
 - compile rail 은 `scripts/quanta-build-cli` 로 통일
 
 P0 완료 기준:
 
 - crate별 reverse dependency 표 확보
 - carrier field별 reader 목록 확보
+- live compile owner 와 non-owner copy 경계 고정
 - owner-local check lane 기준선 확보
 
 ### P1. 작은 삭제 파동
@@ -234,6 +244,7 @@ P3 완료 기준:
 
 마지막에만 아래를 실행한다.
 
+- `S21` hostile-closeout 과 `S21A`~`S21E` child row 가 먼저 `complete` 여야 한다
 - Semantica ticket row close
 - mandatory joint bundle 재검증
 - generated dependency snapshot regen
@@ -242,8 +253,8 @@ P3 완료 기준:
 P4 완료 기준:
 
 1. mandatory joint bundle 통과
-2. 삭제 대상 crate 부재 확인
-3. `J06` row complete
+2. `S21` / `S21A`~`S21E` / `J06` row complete
+3. 삭제 대상 crate 부재 확인
 4. regenerated snapshot 과 committed snapshot 일치
 5. closeout gate green
 
@@ -263,7 +274,7 @@ P4 완료 기준:
 
 ## 7. 최종 결론
 
-최종 순서는 이것으로 고정한다.
+최종 순서는 이것으로 고정했다.
 
 1. `P0` inventory 동결
 2. `P1` 작은 삭제 파동: `sarif-projection-v1 -> fragment-v1 -> validation-v1`
@@ -273,4 +284,4 @@ P4 완료 기준:
 
 한 줄로 줄이면 이렇다.
 
-**As-Is 는 external frontend ready + semantica runtime cutover pending 이고, To-Be 는 runtime/gateway owner cutover 뒤 delete-wave 와 `J06` closeout 이 완료된 상태다.**
+**이 문서의 As-Is 는 2026-06-11 시점 external frontend ready + semantica runtime cutover pending 이고, To-Be 는 runtime/gateway owner cutover 뒤 delete-wave 와 `J06` closeout 이 완료된 상태였다. 현재 live truth는 상단 authority 문서를 따른다.**

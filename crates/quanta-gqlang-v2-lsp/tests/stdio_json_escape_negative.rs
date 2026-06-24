@@ -34,32 +34,32 @@ fn invalid_escapes_and_surrogates_fail_closed_v1() {
     let cases = [
         EscapeRejectionCaseV1 {
             label: "lone low surrogate",
-            request: r#"{"method":"completion","prefix":"\uDE00"}"#,
+            request: r#"{"method":"v3_diagnostics","query":"\uDE00"}"#,
             expected_line: r#"{"ok":false,"error":{"code":"malformed_json","message":"unexpected low surrogate `\\uDE00`"}}"#,
         },
         EscapeRejectionCaseV1 {
             label: "high surrogate not followed by an escape separator",
-            request: r#"{"method":"completion","prefix":"\uD83DA"}"#,
+            request: r#"{"method":"v3_diagnostics","query":"\uD83DA"}"#,
             expected_line: r#"{"ok":false,"error":{"code":"malformed_json","message":"expected `\\`, found `A`"}}"#,
         },
         EscapeRejectionCaseV1 {
             label: "high surrogate followed by another high surrogate",
-            request: r#"{"method":"completion","prefix":"\uD83D\uD83D"}"#,
+            request: r#"{"method":"v3_diagnostics","query":"\uD83D\uD83D"}"#,
             expected_line: r#"{"ok":false,"error":{"code":"malformed_json","message":"expected low surrogate after `\\uD83D`"}}"#,
         },
         EscapeRejectionCaseV1 {
             label: "high surrogate with a non-`u` escape separator",
-            request: r#"{"method":"completion","prefix":"\uD83D\n"}"#,
+            request: r#"{"method":"v3_diagnostics","query":"\uD83D\n"}"#,
             expected_line: r#"{"ok":false,"error":{"code":"malformed_json","message":"expected `u` after surrogate pair separator, found `n`"}}"#,
         },
         EscapeRejectionCaseV1 {
             label: "non-hex unicode escape digit",
-            request: r#"{"method":"completion","prefix":"\uXYZ0"}"#,
+            request: r#"{"method":"v3_diagnostics","query":"\uXYZ0"}"#,
             expected_line: r#"{"ok":false,"error":{"code":"malformed_json","message":"invalid unicode escape digit `X`"}}"#,
         },
         EscapeRejectionCaseV1 {
             label: "unsupported escape sequence",
-            request: r#"{"method":"completion","prefix":"\x"}"#,
+            request: r#"{"method":"v3_diagnostics","query":"\x"}"#,
             expected_line: r#"{"ok":false,"error":{"code":"malformed_json","message":"unsupported JSON escape `\\x`"}}"#,
         },
     ];
@@ -82,8 +82,8 @@ fn session_recovers_after_a_malformed_escape_v1() {
     // A bad-escape frame followed by a valid frame in the same byte stream: the
     // first must fail closed without swallowing or corrupting the second.
     let stream = concat!(
-        "{\"method\":\"completion\",\"prefix\":\"\\uDE00\"}\n",
-        "{\"method\":\"zero_query\"}\n",
+        "{\"method\":\"v3_diagnostics\",\"query\":\"\\uDE00\"}\n",
+        "{\"method\":\"v3_diagnostics\",\"query\":\"from users u | project u.id as id\"}\n",
     );
     let output = run_binary_bytes_v1(stream.as_bytes());
     assert_eq!(
@@ -105,18 +105,11 @@ fn session_recovers_after_a_malformed_escape_v1() {
         r#"{"ok":false,"error":{"code":"malformed_json","message":"unexpected low surrogate `\\uDE00`"}}"#,
         "first frame must be the exact lone-low-surrogate rejection"
     );
-    // Second line: the recovered zero_query envelope, pinned to its
-    // deterministic read-only prefix so recovery cannot pass on a stub line.
-    assert!(
-        lines[1].starts_with(
-            r#"{"ok":true,"method":"zero_query","result":{"mode":"read-only","provenance":"typed-catalog-example-metadata","groups":[{"id":"catalog","#
-        ),
-        "second frame must recover the read-only zero_query envelope, got {}",
-        lines[1]
-    );
-    assert!(
-        lines[1].ends_with("]}}"),
-        "recovered zero_query must close groups array + result + envelope, got {}",
+    // Second line: the recovered v3_diagnostics envelope, pinned to its exact
+    // deterministic clean-compile line so recovery cannot pass on a stub line.
+    assert_eq!(
+        lines[1], r#"{"ok":true,"method":"v3_diagnostics","result":[]}"#,
+        "second frame must recover the read-only v3_diagnostics envelope, got {}",
         lines[1]
     );
 }

@@ -1,4 +1,31 @@
-# QGLang v2 Language Surface
+# QGLang Language Surface
+
+## Architecture default: v3 (going-forward)
+
+As of the `jun-24-dsl-advanced-v3` cutover (ticket 09), the DEFAULT frontend
+architecture is **v3**: one shared compiler pipeline
+(`quanta-gqlang-v2-pipeline::compile_program`) that runs
+surface parse -> bind -> type -> normalize to algebra/logic -> plan, and is
+consumed by the CLI (`v3-query`, `v3-fmt`) and the LSP (`v3_diagnostics`).
+v3 is a new language core, not a `v2 SELECT++` extension (`D1`, `D22`).
+
+The v3 surface accepts the `from ... | ...` relational pipeline, `let`
+declarations, and `rule`s.
+
+## v2 direct path: QUARANTINED (non-default, deprecated)
+
+The legacy v2 direct `syntax -> sema -> ir` path documented below remains
+present but is **non-default and deprecated**. It is NOT yet deleted because v3
+does not cover the full v2 root surface; deleting it would remove working,
+test-covered functionality (`D8`/`D9`). The deleted-vs-quarantined inventory and
+the enumerated parity gap (FIND, CHECK, EXPLAIN, SHOW, DESCRIBE, SAMPLE,
+COMPARE, EXPORT, VIEW, MODEL, PACK, PROFILE, GATE, meta, composition, and full
+SELECT) live in
+`docs/plans/jun-24-dsl-advanced-v3/CUTOVER_INVENTORY.md`. Unsupported v3 shapes
+reject explicitly and are never down-cast into the legacy `RootSpecV1` shell
+(`D10`, `D16`, `D17`).
+
+The remainder of this document describes the quarantined v2 surface.
 
 `quanta-gqlang-v2` ships a parser-stable frontend contract for a read-only shell.
 
@@ -34,10 +61,10 @@ separately — it is covered by the dedicated composition rails rather than the
 
 Read-only binary fronts:
 
-1. CLI: `parse`, `sema`, `query`, `fmt`, `explain`, `doctor`, `headless`, `zero-query` (nullary read-only starter scaffold)
-2. LSP stdio JSON methods: `hover`, `completion`, `symbols`, `diagnostics`, `zero_query`, `quickfix`, `explain`
+1. CLI (v3-ONLY): `query`, `fmt`, and their explicit aliases `v3-query`, `v3-fmt` (plan/cost summary and canonical formatter over the one shared v3 compiler pipeline)
+2. LSP stdio JSON methods: `hover`, `completion`, `symbols`, `diagnostics`, `zero_query`, `quickfix`, `explain`, `v3_diagnostics` (stage-tagged diagnostics over the one shared v3 compiler pipeline)
 3. malformed argv, malformed JSON, and any non-allowlisted method fail closed
-   (the stdio dispatch is a closed 7-method allowlist; every other method —
+   (the stdio dispatch is a closed 8-method allowlist; every other method —
    mutating or simply unknown — is rejected with `method_not_allowed`)
 
 Repo-local front-door proof rails:

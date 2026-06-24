@@ -16,6 +16,8 @@
 //!   * an object left unclosed at EOF fails closed as `malformed_json`,
 //!   * empty / whitespace-only input exits cleanly with no output.
 //!
+//! The vehicle is the v3-only `v3_diagnostics` method; a clean compile yields a
+//! fully deterministic empty-result line, so every response line is pinned whole.
 //! Each invariant is pinned twice: once in-process over an exact byte buffer
 //! (`run_session_bytes_v1`) for byte precision, and once against the spawned
 //! binary (`run_binary_bytes_v1`) for the true process-level contract.
@@ -27,39 +29,26 @@ use support::{
     run_session_bytes_v1,
 };
 
-const ZERO_QUERY_V1: &str = r#"{"method":"zero_query"}"#;
-const HOVER_REQUIRE_V1: &str = r#"{"method":"hover","query":"REQUIRE CERTIFIED"}"#;
-const UNCLOSED_OBJECT_V1: &str = r#"{"method":"hover","query":"SELECT id FROM catalog.files""#;
+/// A clean-compiling query used as a deterministic transport vehicle.
+const CLEAN_QUERY_V1: &str =
+    r#"{"method":"v3_diagnostics","query":"from users u | project u.id as id"}"#;
 
-/// The exact, full-line `hover` card for `REQUIRE CERTIFIED`. The server's
-/// serializer emits a deterministic field order, so pinning the whole line (not
-/// a scatter of `contains`) kills any field-value or ordering mutation in the
-/// meta hover path.
-const HOVER_REQUIRE_LINE_V1: &str = r#"{"ok":true,"method":"hover","result":{"root_keyword":"REQUIRE CERTIFIED","category":"meta","typed_target":"certified-only","summary":["truth=certified-only","admission=fail-closed"]}}"#;
+/// A second clean query, distinct from `CLEAN_QUERY_V1`, so glued-frame ordering
+/// can be told apart frame-by-frame.
+const CLEAN_QUERY_TWO_V1: &str =
+    r#"{"method":"v3_diagnostics","query":"from orders o | project o.id as id"}"#;
+
+/// An object left unclosed at EOF: the trailing `"` opens a string that the
+/// closing brace never escapes out of, so the frame never balances.
+const UNCLOSED_OBJECT_V1: &str =
+    r#"{"method":"v3_diagnostics","query":"from users u | project u.id as id""#;
+
+/// The exact, full-line response for `CLEAN_QUERY_V1` / `CLEAN_QUERY_TWO_V1`
+/// (both compile cleanly, so both surface an empty diagnostics list).
+const CLEAN_QUERY_LINE_V1: &str = r#"{"ok":true,"method":"v3_diagnostics","result":[]}"#;
 
 /// The exact fail-closed line for an object left unclosed at EOF.
 const UNCLOSED_ERROR_LINE_V1: &str = r#"{"ok":false,"error":{"code":"malformed_json","message":"incomplete JSON object at end of input"}}"#;
-
-/// Assert that a `zero_query` response line is the genuine read-only scaffold
-/// envelope, pinning the deterministic prefix tokens in order so the test can
-/// never pass on a truncated or reshaped payload. The body is large and
-/// example-driven, so we anchor the stable envelope rather than the full line.
-fn assert_zero_query_envelope_v1(line: &str) {
-    assert!(
-        line.starts_with(
-            r#"{"ok":true,"method":"zero_query","result":{"mode":"read-only","provenance":"typed-catalog-example-metadata","groups":[{"id":"catalog","#
-        ),
-        "zero_query envelope/prefix drifted: {line}"
-    );
-    assert!(
-        line.ends_with("]}}"),
-        "zero_query response must close groups array + result + envelope: {line}"
-    );
-    assert!(
-        line.contains(r#""behavior":"read-only-scaffold""#),
-        "zero_query body must carry read-only-scaffold suggestions: {line}"
-    );
-}
 
 // ------------------------------------------------------------------------
 // In-process, byte-precise framing.
@@ -68,36 +57,34 @@ fn assert_zero_query_envelope_v1(line: &str) {
 #[test]
 fn session_drains_final_frame_without_trailing_newline_v1() {
     // No `\n` after the closing brace: the frame must still flush at EOF.
-    let (status, stdout) = run_session_bytes_v1(ZERO_QUERY_V1.as_bytes());
+    let (status, stdout) = run_session_bytes_v1(CLEAN_QUERY_V1.as_bytes());
     assert_eq!(status, 0);
     let lines = response_lines_v1(&stdout);
     assert_eq!(lines.len(), 1, "exactly one response, got {lines:?}");
-    assert_zero_query_envelope_v1(lines[0]);
+    assert_eq!(lines[0].trim(), CLEAN_QUERY_LINE_V1);
 }
 
 #[test]
 fn session_processes_two_glued_objects_in_one_buffer_v1() {
     // Concatenated with no separator and no trailing newline.
-    let glued = format!("{ZERO_QUERY_V1}{HOVER_REQUIRE_V1}");
+    let glued = format!("{CLEAN_QUERY_V1}{CLEAN_QUERY_TWO_V1}");
     let (status, stdout) = run_session_bytes_v1(glued.as_bytes());
     assert_eq!(status, 0);
     let lines = response_lines_v1(&stdout);
     assert_eq!(lines.len(), 2, "both frames must dispatch, got {lines:?}");
-    assert_zero_query_envelope_v1(lines[0]);
-    // Second frame is short and fully deterministic: pin the whole line so a
-    // glued-frame boundary that drops/duplicates bytes cannot pass.
-    assert_eq!(lines[1].trim(), HOVER_REQUIRE_LINE_V1);
+    assert_eq!(lines[0].trim(), CLEAN_QUERY_LINE_V1);
+    assert_eq!(lines[1].trim(), CLEAN_QUERY_LINE_V1);
 }
 
 #[test]
 fn session_processes_whitespace_separated_objects_v1() {
-    let separated = format!("{ZERO_QUERY_V1}\n  \n{HOVER_REQUIRE_V1}\n");
+    let separated = format!("{CLEAN_QUERY_V1}\n  \n{CLEAN_QUERY_TWO_V1}\n");
     let (status, stdout) = run_session_bytes_v1(separated.as_bytes());
     assert_eq!(status, 0);
     let lines = response_lines_v1(&stdout);
     assert_eq!(lines.len(), 2, "got {lines:?}");
-    assert_zero_query_envelope_v1(lines[0]);
-    assert_eq!(lines[1].trim(), HOVER_REQUIRE_LINE_V1);
+    assert_eq!(lines[0].trim(), CLEAN_QUERY_LINE_V1);
+    assert_eq!(lines[1].trim(), CLEAN_QUERY_LINE_V1);
 }
 
 #[test]
@@ -135,7 +122,7 @@ fn session_emits_nothing_for_whitespace_only_input_v1() {
 
 #[test]
 fn binary_drains_request_without_trailing_newline_v1() {
-    let output = run_binary_bytes_v1(ZERO_QUERY_V1.as_bytes());
+    let output = run_binary_bytes_v1(CLEAN_QUERY_V1.as_bytes());
     assert_eq!(output.status.code(), Some(0));
     assert!(
         binary_stderr_v1(&output).is_empty(),
@@ -144,19 +131,19 @@ fn binary_drains_request_without_trailing_newline_v1() {
     let stdout = binary_stdout_v1(&output);
     let lines = response_lines_v1(&stdout);
     assert_eq!(lines.len(), 1, "got {lines:?}");
-    assert_zero_query_envelope_v1(lines[0]);
+    assert_eq!(lines[0].trim(), CLEAN_QUERY_LINE_V1);
 }
 
 #[test]
 fn binary_processes_glued_frames_then_clean_eof_v1() {
-    let glued = format!("{ZERO_QUERY_V1}{HOVER_REQUIRE_V1}");
+    let glued = format!("{CLEAN_QUERY_V1}{CLEAN_QUERY_TWO_V1}");
     let output = run_binary_bytes_v1(glued.as_bytes());
     assert_eq!(output.status.code(), Some(0));
     let stdout = binary_stdout_v1(&output);
     let lines = response_lines_v1(&stdout);
     assert_eq!(lines.len(), 2, "got {lines:?}");
-    assert_zero_query_envelope_v1(lines[0]);
-    assert_eq!(lines[1].trim(), HOVER_REQUIRE_LINE_V1);
+    assert_eq!(lines[0].trim(), CLEAN_QUERY_LINE_V1);
+    assert_eq!(lines[1].trim(), CLEAN_QUERY_LINE_V1);
 }
 
 #[test]

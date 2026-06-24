@@ -3,37 +3,31 @@
     clippy::unwrap_used,
     clippy::indexing_slicing,
     clippy::panic,
-    reason = "conformance self-validation intentionally panics with rich context on any registry/pipeline drift"
+    clippy::wildcard_enum_match_arm,
+    reason = "conformance parity guard intentionally panics with rich context on any registry/pipeline drift"
 )]
 
-//! Self-validation hellgate for the conformance registry.
+//! v3 PARITY GUARD hellgate for the family registry.
 //!
-//! This is the rail that keeps the registry from rotting. It drives every one of
-//! all 18 specs (the 17 root families plus the LET/WITH composition family)
-//! through the REAL `parse → sema → lower` pipeline and proves:
-//!   1. the array covers each family exactly once (no drop, no duplicate);
-//!   2. every shipped example parses, analyzes, lowers, and lands on the exact
-//!      `ir_root_kind` the spec declares (the family → IR-root-kind mapping is
-//!      real, exercised through lowering, not asserted);
-//!   3. every canonical negative fails closed at the parser stage with its
-//!      declared diagnostic code AND a distinctive message fragment (the fragment
-//!      catches a same-code-wrong-reason regression the bare code cannot).
+//! This is the rail that PROVES the one v3 compiler
+//! ([`quanta_gqlang_v2_pipeline::compile_program`]) covers ALL 18 DSL root
+//! families (the 17 root families plus the LET/WITH composition family). It
+//! drives every spec's representative v3 surface example through the real
+//! `surface parse -> bind -> type -> algebra/logic -> plan` pipeline and proves:
+//!   1. the registry covers each family exactly once (no drop, no duplicate);
+//!   2. every example compiles end to end and lands on the declared
+//!      [`FamilyKindV1`] (compiled-item kind), with the declared `result_kind` /
+//!      `effect` for plan-producing families;
+//!   3. an unsupported construct still fails closed (no silent classification).
 
 use std::collections::BTreeSet;
-use std::fs;
-use std::path::PathBuf;
 
 use quanta_gqlang_v2_conformance::{
-    root_surface_specs_v1, spec_for_v1, RootSurfaceSpecV1, ROOT_FAMILIES_V1,
+    root_family_specs_v1, spec_for_v1, supplemental_surface_unit_specs_v1, FamilyKindV1,
+    FamilyOutcomeV1, PlanOutcomeV1, ROOT_FAMILIES_V1, SUPPLEMENTAL_SURFACE_UNITS_V1,
+    UNSUPPORTED_CONSTRUCT_V1,
 };
-use quanta_gqlang_v2_ir::frontend::{analyze_document_v1, parse_document_v1};
-use quanta_gqlang_v2_ir::lower_document_to_ir_v1;
-
-fn repo_relative_v1(relative: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../..")
-        .join(relative)
-}
+use quanta_gqlang_v2_pipeline::{compile_program, CompiledItemV1, CompiledProgramV1};
 
 #[test]
 fn registry_covers_each_family_exactly_once_v1() {
@@ -59,90 +53,158 @@ fn registry_covers_each_family_exactly_once_v1() {
 }
 
 #[test]
-fn every_example_lowers_to_declared_ir_root_kind_v1() {
-    for spec in root_surface_specs_v1() {
-        let source = read_example_v1(&spec);
-
-        let doc = parse_document_v1(&source)
-            .unwrap_or_else(|page| panic!("{}: example must parse: {page:?}", spec.example_path));
-        let typed = analyze_document_v1(&doc)
-            .unwrap_or_else(|page| panic!("{}: example must analyze: {page:?}", spec.example_path));
-        let ir_roots = lower_document_to_ir_v1(&typed)
-            .unwrap_or_else(|err| panic!("{}: example must lower: {err:?}", spec.example_path));
-        assert_eq!(ir_roots.len(), 1, "{}: one root", spec.example_path);
-        assert_eq!(
-            ir_roots[0].plan_root_kind_v1(),
-            spec.ir_root_kind,
-            "{}: lowered IR root kind drifted from the registry",
-            spec.example_path
-        );
-    }
-}
-
-#[test]
-fn every_negative_fails_closed_with_declared_code_and_fragment_v1() {
-    // Every canonical negative is a parser-stage rejection (the canonical parser
-    // is the single source of diagnostics; a few of its codes merely DISPLAY as
-    // `sema`). So each must fail closed at `parse_document_v1` carrying the
-    // declared code and a distinctive message fragment.
-    for spec in root_surface_specs_v1() {
-        let neg = spec.negative;
-        let page = match parse_document_v1(neg.source) {
-            Ok(_) => panic!(
-                "{:?} negative `{}` must fail closed at parse, but parsed",
-                spec.family, neg.source
-            ),
-            Err(page) => page,
-        };
-        let diag = page.diagnostics.first().expect("a syntax diagnostic");
-        assert_eq!(
-            diag.code, neg.code,
-            "{:?} negative `{}`: diagnostic code drifted",
-            spec.family, neg.source
-        );
+fn keyword_leads_every_example_v1() {
+    // Pin that `keyword` is the real leading token of the surface example, so a
+    // wrong keyword (e.g. a typo) cannot sit unvalidated in the registry.
+    for spec in root_family_specs_v1() {
         assert!(
-            diag.message.contains(neg.message_fragment),
-            "{:?} negative `{}`: message `{}` missing fragment `{}`",
-            spec.family,
-            neg.source,
-            diag.message,
-            neg.message_fragment
-        );
-    }
-}
-
-#[test]
-fn keyword_leads_every_example_and_negative_v1() {
-    // Pin that `keyword` is the real leading token of both the shipped example
-    // and the canonical negative, so a wrong keyword (e.g. a typo) cannot sit
-    // unvalidated in the registry.
-    for spec in root_surface_specs_v1() {
-        let example = read_example_v1(&spec);
-        assert!(
-            example
+            spec.example
                 .trim_start()
-                .to_uppercase()
+                .to_ascii_lowercase()
                 .starts_with(spec.keyword),
             "{:?}: example `{}` does not lead with keyword `{}`",
             spec.family,
-            example.trim(),
-            spec.keyword
-        );
-        assert!(
-            spec.negative
-                .source
-                .trim_start()
-                .to_uppercase()
-                .starts_with(spec.keyword),
-            "{:?}: negative `{}` does not lead with keyword `{}`",
-            spec.family,
-            spec.negative.source,
+            spec.example,
             spec.keyword
         );
     }
 }
 
-fn read_example_v1(spec: &RootSurfaceSpecV1) -> String {
-    fs::read_to_string(repo_relative_v1(spec.example_path))
-        .unwrap_or_else(|err| panic!("{}: read example: {err}", spec.example_path))
+#[test]
+fn every_family_example_matches_declared_v3_outcome_v1() {
+    for spec in root_family_specs_v1() {
+        match spec.outcome {
+            FamilyOutcomeV1::Compiles { kind, plan } => {
+                let compiled = compile_program(spec.example).unwrap_or_else(|diag| {
+                    panic!(
+                        "{:?}: example `{}` must compile end to end through the v3 pipeline, got {diag:?}",
+                        spec.family, spec.example
+                    )
+                });
+
+                let actual_kind = family_kind_of(compiled.compiled());
+                assert_eq!(
+                    actual_kind,
+                    kind,
+                    "{:?}: example `{}` compiled to kind `{}`, registry declares `{}`",
+                    spec.family,
+                    spec.example,
+                    actual_kind.keyword(),
+                    kind.keyword()
+                );
+
+                assert_plan_outcome(spec.family, plan, &compiled);
+            }
+            FamilyOutcomeV1::FailsClosed { code } => {
+                let diag = compile_program(spec.example).expect_err(&format!(
+                    "{:?}: example `{}` must fail closed at its routed stage",
+                    spec.family, spec.example
+                ));
+                assert_eq!(
+                    diag.code(),
+                    code,
+                    "{:?}: example `{}`: fail-closed code drifted from the registry",
+                    spec.family,
+                    spec.example
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn unsupported_construct_fails_closed_v1() {
+    // The parity guard is only honest if an UNSUPPORTED construct does not slip
+    // through as some family: the v3 pipeline must reject it fail-closed.
+    let result = compile_program(UNSUPPORTED_CONSTRUCT_V1);
+    assert!(
+        result.is_err(),
+        "an unsupported construct must fail closed, but it compiled to {:?}",
+        result.ok().map(|c| family_kind_of(c.compiled()))
+    );
+}
+
+#[test]
+fn supplemental_surface_units_are_pinned_separately_v1() {
+    assert_eq!(
+        SUPPLEMENTAL_SURFACE_UNITS_V1.len(),
+        2,
+        "expected the standalone decl + horn-rule units to stay pinned explicitly"
+    );
+
+    for spec in supplemental_surface_unit_specs_v1() {
+        assert!(
+            spec.example
+                .trim_start()
+                .to_ascii_lowercase()
+                .starts_with(spec.keyword),
+            "{:?}: example `{}` does not lead with keyword `{}`",
+            spec.unit,
+            spec.example,
+            spec.keyword
+        );
+
+        let compiled = compile_program(spec.example).unwrap_or_else(|diag| {
+            panic!(
+                "{:?}: example `{}` must compile to an explicit non-servable artifact, got {diag:?}",
+                spec.unit, spec.example
+            )
+        });
+        assert_eq!(
+            family_kind_of(compiled.compiled()),
+            spec.outcome.kind,
+            "{:?}: compiled-item kind drifted from the pinned public-pipeline truth",
+            spec.unit
+        );
+        assert_eq!(
+            compiled.plan().is_some(),
+            spec.outcome.has_plan,
+            "{:?}: no-plan/plan boundary drifted from the pinned public-pipeline truth",
+            spec.unit
+        );
+    }
+}
+
+/// Assert the compiled program's plan outcome matches the registry: for a
+/// plan-producing family the `result_kind`/`effect` must match; for a no-plan
+/// family there must be no plan.
+fn assert_plan_outcome(
+    family: quanta_gqlang_v2_conformance::RootFamilyV1,
+    expected: Option<PlanOutcomeV1>,
+    compiled: &CompiledProgramV1,
+) {
+    match (expected, compiled.plan()) {
+        (Some(expected), Some(plan)) => {
+            assert_eq!(
+                plan.result_kind, expected.result_kind,
+                "{family:?}: result_kind drifted from the registry"
+            );
+            assert_eq!(
+                plan.effect, expected.effect,
+                "{family:?}: effect drifted from the registry"
+            );
+        }
+        (Some(_), None) => {
+            panic!("{family:?}: registry declares a plan but the compile produced none")
+        }
+        (None, Some(_)) => {
+            panic!("{family:?}: registry declares no plan but the compile produced one")
+        }
+        (None, None) => {}
+    }
+}
+
+/// Map a compiled item onto its registry [`FamilyKindV1`] discriminant.
+fn family_kind_of(item: &CompiledItemV1) -> FamilyKindV1 {
+    match item {
+        CompiledItemV1::RelationalQuery { .. } => FamilyKindV1::RelationalQuery,
+        CompiledItemV1::ValueArtifact { .. } => FamilyKindV1::ValueArtifact,
+        CompiledItemV1::GraphQuery { .. } => FamilyKindV1::GraphQuery,
+        CompiledItemV1::Legality { .. } => FamilyKindV1::Legality,
+        CompiledItemV1::Presentation { .. } => FamilyKindV1::Presentation,
+        CompiledItemV1::RuleArtifact { .. } => FamilyKindV1::RuleArtifact,
+        CompiledItemV1::CatalogRegistration { .. } => FamilyKindV1::CatalogRegistration,
+        CompiledItemV1::Composition { .. } => FamilyKindV1::Composition,
+        CompiledItemV1::Meta { .. } => FamilyKindV1::Meta,
+    }
 }

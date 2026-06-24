@@ -1,11 +1,18 @@
 [workspace]
 members = [
+    "crates/quanta-gqlang-v2-algebra",
+    "crates/quanta-gqlang-v2-binder",
     "crates/quanta-gqlang-v2-cli",
     "crates/quanta-gqlang-v2-conformance",
-    "crates/quanta-gqlang-v2-ir",
+    "crates/quanta-gqlang-v2-frontend-contract",
+    "crates/quanta-gqlang-v2-hir",
+    "crates/quanta-gqlang-v2-logic",
     "crates/quanta-gqlang-v2-lsp",
-    "crates/quanta-gqlang-v2-sema",
-    "crates/quanta-gqlang-v2-syntax",
+    "crates/quanta-gqlang-v2-modules",
+    "crates/quanta-gqlang-v2-pipeline",
+    "crates/quanta-gqlang-v2-planning",
+    "crates/quanta-gqlang-v2-surface",
+    "crates/quanta-gqlang-v2-types",
 ]
 resolver = "2"
 
