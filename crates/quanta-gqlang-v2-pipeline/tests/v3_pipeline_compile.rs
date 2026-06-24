@@ -1,6 +1,6 @@
 //! v3 rail: the ONE shared frontend compiler service (ticket 08, D22).
 //!
-//! syntax->sema->ir path pinned: source text -> `compile_program` runs
+//! syntax->sema->ir path pinned: source text -> `compile_program_structural` runs
 //! surface::parse_program -> binder resolution -> types check -> algebra
 //! normalization -> planning, and returns a `CompiledProgramV1` exposing the
 //! HIR, the algebra root, and the public plan with the FIXED cost schema.
@@ -15,7 +15,7 @@
     reason = "integration test rail: assertion panics and indexing are intentional"
 )]
 
-use quanta_gqlang_v2_pipeline::{compile_program, CompiledProgramV1};
+use quanta_gqlang_v2_pipeline::{compile_program_structural, CompiledProgramV1};
 use quanta_gqlang_v2_planning::SemanticCostV1;
 
 /// rail 1: a non-trivial advanced v3 query compiles cleanly through every stage
@@ -23,7 +23,7 @@ use quanta_gqlang_v2_planning::SemanticCostV1;
 #[test]
 fn e2e_success_full_stack_to_plan() {
     let src = "from users u | where u.id > 1 | project u.id as id, u.name as name";
-    let compiled: CompiledProgramV1 = compile_program(src).expect("compiles end to end");
+    let compiled: CompiledProgramV1 = compile_program_structural(src).expect("compiles end to end");
 
     // HIR surfaced.
     assert!(compiled.query().is_some(), "query HIR present");
@@ -62,7 +62,7 @@ fn e2e_success_full_stack_to_plan() {
 #[test]
 fn e2e_determinism_same_source_twice() {
     let src = "from findings f | where f.score > 1 | project f.id as id";
-    let a = compile_program(src).expect("compiles a");
-    let b = compile_program(src).expect("compiles b");
+    let a = compile_program_structural(src).expect("compiles a");
+    let b = compile_program_structural(src).expect("compiles b");
     assert_eq!(a, b, "identical compile outputs for identical source");
 }

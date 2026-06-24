@@ -2,10 +2,12 @@
 //!
 //! D22: CLI, LSP, formatter, and tests must consume a SINGLE compiler pipeline;
 //! shadow parser/sema implementations are forbidden. This handler is a thin,
-//! read-only adapter over [`quanta_gqlang_v2_pipeline::compile_program`]. It does
-//! NOT re-parse, re-bind, or re-type anything: it asks the shared pipeline to
-//! compile the source and, on the first failing stage, surfaces that stage's
-//! already-typed diagnostic verbatim — stage tag, stable code, exact byte span.
+//! read-only adapter over
+//! [`quanta_gqlang_v2_pipeline::compile_program_structural`]. It does NOT
+//! re-parse, re-bind, or re-type anything: it asks the shared pipeline to
+//! compile the source under explicit structural-only authority and, on the
+//! first failing stage, surfaces that stage's already-typed diagnostic verbatim
+//! — stage tag, stable code, exact byte span.
 //!
 //! Because the pipeline short-circuits on the FIRST failing stage (D10
 //! fail-closed; no silent downgrade), at most one diagnostic is produced per
@@ -18,7 +20,7 @@
 //! advanced query produces the SAME diagnostic code the CLI surfaces from the
 //! other side of the same pipeline — there is no LSP-local rewrite to drift.
 
-use quanta_gqlang_v2_pipeline::{compile_program, PipelineDiagnosticV1};
+use quanta_gqlang_v2_pipeline::{compile_program_structural, PipelineDiagnosticV1};
 
 /// A single stage-tagged pipeline diagnostic, flattened for the read-only LSP
 /// wire surface. Every field is copied verbatim from the typed pipeline
@@ -60,7 +62,7 @@ impl V3DiagnosticItemV1 {
 /// read-only surface (a diagnostic), not a transport error.
 #[must_use]
 pub fn handle_v3_diagnostics_v1(source: &str) -> Vec<V3DiagnosticItemV1> {
-    match compile_program(source) {
+    match compile_program_structural(source) {
         Ok(_) => Vec::new(),
         Err(diagnostic) => vec![V3DiagnosticItemV1::from_pipeline_v1(&diagnostic)],
     }

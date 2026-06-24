@@ -46,6 +46,18 @@ pub enum AlgebraDiagnosticV1 {
         /// Span of the offending apply composition.
         span: SpanV1,
     },
+    /// A `join`/`semijoin`/`antijoin` (an inner join family operator, NOT an
+    /// explicit `cross`) resolved to no join predicate. A missing ON/where
+    /// condition must NOT be silently downgraded to a cartesian product:
+    /// `predicate = None` is reserved for the EXPLICIT `cross` operator. The
+    /// author must either supply a predicate or write `cross` to opt into a
+    /// cartesian product (`D10`, fail-closed).
+    EmptyJoinPredicate {
+        /// The join-family symbol as written (`join`, `semijoin`, `antijoin`).
+        symbol: String,
+        /// Span of the offending join composition.
+        span: SpanV1,
+    },
     /// A `limit` or `top-k` shape was applied to an input whose order is not
     /// semantic (a bag/set), so the kept rows would be non-deterministic.
     UnorderedLimit {
@@ -112,6 +124,7 @@ impl AlgebraDiagnosticV1 {
                 format!("algebra.ill_formed_aggregate.{}", reason.code())
             }
             Self::MissingCorrelation { .. } => "algebra.missing_correlation".to_owned(),
+            Self::EmptyJoinPredicate { .. } => "algebra.empty_join_predicate".to_owned(),
             Self::UnorderedLimit { .. } => "algebra.unordered_limit".to_owned(),
             Self::UnionArity { .. } => "algebra.union_arity".to_owned(),
             Self::UnionColumnMismatch { .. } => "algebra.union_column_mismatch".to_owned(),
@@ -126,6 +139,7 @@ impl AlgebraDiagnosticV1 {
             | Self::ArityMismatch { span, .. }
             | Self::IllFormedAggregate { span, .. }
             | Self::MissingCorrelation { span }
+            | Self::EmptyJoinPredicate { span, .. }
             | Self::UnorderedLimit { span }
             | Self::UnionArity { span, .. }
             | Self::UnionColumnMismatch { span, .. } => *span,
@@ -158,6 +172,10 @@ impl AlgebraDiagnosticV1 {
             },
             Self::MissingCorrelation { .. } => {
                 "correlated apply has no visible correlation columns referencing the outer input"
+                    .to_owned()
+            }
+            Self::EmptyJoinPredicate { .. } => {
+                "join requires an ON/where predicate; use `cross` for a cartesian product"
                     .to_owned()
             }
             Self::UnorderedLimit { .. } => {

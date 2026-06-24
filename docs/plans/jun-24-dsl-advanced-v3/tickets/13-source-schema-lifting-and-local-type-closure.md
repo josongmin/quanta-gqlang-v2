@@ -13,11 +13,21 @@ As of `2026-06-24`, the local type-closure seam owned by this ticket is live:
 5. proof rails:
    `v3_alias_type_closure_gap.rs`,
    `v3_frontend_context.rs`,
-   `audit_edge_cases.rs`
+   `audit_edge_cases.rs`,
+   `v3_normalize_item_decl_rule.rs`
 6. verified with:
    `cargo test -p quanta-gqlang-v2-pipeline`,
    `cargo test --workspace`,
    `cargo clippy --workspace --all-targets`
+
+Narrowing that matters:
+
+1. standalone `let` declaration bodies do not have binder-visible locals to lift
+2. the declaration-side failure mode therefore closes as:
+   closed body -> full type-check
+   free symbol -> fail-closed `bind` reject
+3. the live D34 lifting seam is the query / alias / capture / param lane, not a
+   hidden declaration-body skip path
 
 ## Goal
 
@@ -112,14 +122,16 @@ That produces false-green behavior on exactly the shapes advanced users rely on:
 
 1. one deterministic local typed-env lifting algorithm
 2. no silent env-open skip path for binder-visible locals
-3. red rails for alias bad-overload and alias bad-projection closure
+3. green lock rails for alias bad-overload and alias bad-projection closure
 
 ## Proof Rails
 
-1. un-ignore and satisfy the alias red rails in
+1. keep the alias closure lock rails green in
    `crates/quanta-gqlang-v2-pipeline/tests/v3_alias_type_closure_gap.rs`
 2. add one correlated-capture typing rail
-3. add one param/local binding typing rail
+3. keep the declaration/body no-skip rail green in
+   `crates/quanta-gqlang-v2-pipeline/tests/v3_normalize_item_decl_rule.rs`
+4. add one param/local binding typing rail
 
 ## Reject Or Escalate
 

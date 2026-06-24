@@ -217,6 +217,55 @@ fn union_column_name_mismatch_rejects() {
     assert_eq!(err.span(), sp(0, 30));
 }
 
+#[test]
+fn join_without_predicate_rejects_empty_predicate() {
+    // `from users u | join orders o => { }` -- a `join` (NOT a `cross`) whose right
+    // operand is a bare source, so no ON/where filter wraps it. The author asked for
+    // a join but supplied no join condition. Fail-closed (D10): this must NOT be
+    // silently downgraded to a cross/cartesian product (which `predicate = None`
+    // would otherwise mean). Reject with a typed, DISTINCT diagnostic.
+    let b = HirBuilderV1::new();
+    let users = b.relation_source("users", None, sp(0, 5));
+    let orders = b.relation_source("orders", None, sp(6, 12));
+    let join = b.compose("join", vec![users, orders], sp(0, 20));
+
+    let err = normalize_relation(&join, &NormalizeOptionsV1::default())
+        .expect_err("join without a predicate must reject");
+    assert_eq!(err.code(), "algebra.empty_join_predicate");
+    assert_eq!(
+        err.message(),
+        "join requires an ON/where predicate; use `cross` for a cartesian product"
+    );
+    assert_eq!(err.span(), sp(0, 20));
+    match err {
+        AlgebraDiagnosticV1::EmptyJoinPredicate { symbol, .. } => assert_eq!(symbol, "join"),
+        other => panic!("expected EmptyJoinPredicate, got {other:?}"),
+    }
+}
+
+#[test]
+fn explicit_cross_join_still_accepted() {
+    // The DISTINCTION the fix must preserve: an EXPLICIT `cross` over two bare
+    // sources is a legitimate cartesian product and must still normalize to a Join
+    // with `predicate = None`. Only the predicate-less `join` is rejected.
+    use quanta_gqlang_v2_algebra::AlgebraOpV1;
+
+    let b = HirBuilderV1::new();
+    let users = b.relation_source("users", None, sp(0, 5));
+    let orders = b.relation_source("orders", None, sp(6, 12));
+    let cross = b.compose("cross", vec![users, orders], sp(0, 20));
+
+    let node = normalize_relation(&cross, &NormalizeOptionsV1::default())
+        .expect("explicit cross join must be accepted");
+    let AlgebraOpV1::Join(join) = &node.op else {
+        panic!("cross must lower to a Join node");
+    };
+    assert!(
+        join.predicate.is_none(),
+        "an explicit cross is a cartesian product with no predicate"
+    );
+}
+
 fn seg(name: &str, _b: &HirBuilderV1, a: usize, z: usize) -> quanta_gqlang_v2_hir::PathSegmentV1 {
     quanta_gqlang_v2_hir::PathSegmentV1 {
         name: name.to_owned(),

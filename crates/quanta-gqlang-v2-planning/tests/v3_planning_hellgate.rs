@@ -16,8 +16,8 @@
 //! error occurred.
 
 use quanta_gqlang_v2_algebra::{
-    AlgebraNodeV1, AlgebraOpV1, ColumnProvenanceV1, ColumnV1, ScanV1, SortDirectionV1, SortKeyV1,
-    SortV1,
+    AlgebraNodeV1, AlgebraOpV1, ColumnProvenanceV1, ColumnV1, ProjectV1, ScanV1, SortDirectionV1,
+    SortKeyV1, SortV1,
 };
 use quanta_gqlang_v2_hir::{HirNodeIdV1, LiteralV1, SpanV1, ValueExprHirV1, ValueExprKindV1};
 use quanta_gqlang_v2_logic::{
@@ -209,6 +209,55 @@ fn ordered_recursive_closure_rejects() {
         "unsupported construct mix: a recursive closure result has no total-order rendering \
          contract"
     );
+}
+
+/// recursive closure whose ORDERED (Sequence) result is wrapped by a non-Sort
+/// root operator (e.g. `... | sort by id | project {id}`) must still reject:
+/// the ordered-recursive incoherence is a property of the result CARDINALITY,
+/// not of whether a Sort happens to be the immediate root operator.
+#[test]
+fn ordered_recursive_closure_under_project_rejects() {
+    // Mirrors `from mytable | sort by id | project {id}` over a recursive rule:
+    // the Sort makes the result a Sequence, then a Project re-shapes columns
+    // while PRESERVING that ordered cardinality. The root op is Project, not Sort.
+    let sorted = AlgebraNodeV1::new(
+        id(2),
+        span(),
+        vec![col("x")],
+        CardinalityV1::Sequence,
+        AlgebraOpV1::Sort(SortV1 {
+            input: Box::new(scan("reach", CardinalityV1::Set)),
+            keys: vec![SortKeyV1 {
+                expr: lit(20),
+                direction: SortDirectionV1::Ascending,
+            }],
+        }),
+    );
+    let projected = AlgebraNodeV1::new(
+        id(3),
+        span(),
+        vec![col("x")],
+        CardinalityV1::Sequence,
+        AlgebraOpV1::Project(ProjectV1 {
+            input: Box::new(sorted),
+            items: vec![lit(30)],
+        }),
+    );
+    let request = PlanRequestV1 {
+        root: projected,
+        recursion: fixpoint_proof(),
+        witness: None,
+        result_kind: RequestedResultKindV1::Table,
+        effect: EffectClassV1::ReadOnly,
+        truth_lane: TruthLaneV1::Deterministic,
+    };
+    let err = produce_plan(&request)
+        .expect_err("ordered recursive closure under a project root must reject");
+    assert_eq!(
+        err.code(),
+        "planning.unsupported_mix.ordered_recursive_closure"
+    );
+    assert_eq!(err.unsupported_reason_code(), "ordered_recursive_closure");
 }
 
 /// path_witness result + missing witness contract/selection ->

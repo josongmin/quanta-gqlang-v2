@@ -10,8 +10,8 @@ As of `2026-06-24`, the correctness seam owned by this ticket is live:
    authority
 2. `compile_with_context`, `compile_item_with_context`, and
    `compile_document_with_context` are the explicit semantic entrypoints
-3. `compile_program` and `compile_with` remain structural/compat shims and must
-   not be reported as semantic proof
+3. `compile_*_structural` and `compile_*_with_schema` remain explicit
+   non-semantic helpers and must not be reported as semantic proof
 4. `frontend-contract` re-exports the context-first compile surface
 5. proof rails:
    `v3_frontend_context.rs`,

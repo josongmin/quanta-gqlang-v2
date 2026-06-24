@@ -197,7 +197,33 @@ pub(crate) fn parse_composition(
     Ok(ProgramItemHirV1::from(comp))
 }
 
+// The composition (producer, body) family matrix.
+//
+// The composition grammar admits a STRICT, ASYMMETRIC matrix of which family a
+// producer slot vs a body slot may hold. Any family outside its column rejects
+// fail-closed at PARSE time (a typed `UnexpectedToken`), so the boundary cannot
+// silently widen when a new family parser is added later. STRUCTURE ONLY (D13):
+// this matrix is the parseability gate; producer/body KIND legality for a given
+// composition (e.g. whether a CHECK body is meaningful for a FIND producer) is a
+// downstream concern (tickets 02/03), not enforced here.
+//
+//   | family    | producer (parse_producer) | body (parse_body) |
+//   |-----------|:-------------------------:|:-----------------:|
+//   | from      | yes                       | yes               |
+//   | sample    | yes                       | no                |
+//   | find      | yes                       | yes               |
+//   | check     | no                        | yes               |
+//   | explain   | no                        | yes               |
+//   | all other | no                        | no                |
+//
+// Note the asymmetry: `sample` is a producer but never a body; `check`/`explain`
+// are bodies but never producers. The reported `find` producer + `check` body
+// pairing is therefore a LEGAL composition, not a defect. (Rails pinning every
+// accepted/rejected cell live in `tests/v3_family_hellgate.rs`.)
+
 /// Parse a composition PRODUCER (SELECT / SAMPLE / FIND). Other forms reject.
+///
+/// See the composition (producer, body) matrix comment above for the full table.
 fn parse_producer(
     cur: &mut CursorV1<'_>,
     source: &str,
@@ -298,6 +324,20 @@ fn parse_ref_list(
         break;
     }
     Ok(refs)
+}
+
+/// Parse a comma-separated list of references whose empty form is illegal.
+fn parse_required_ref_list(
+    cur: &mut CursorV1<'_>,
+    source: &str,
+    what: &str,
+    empty_span: SpanV1,
+    empty_msg: impl Into<String>,
+) -> Result<Vec<GraphRefV1>, ParseDiagnosticV1> {
+    if !matches!(cur.peek().kind, TokenKindV1::Ident(_)) {
+        return Err(reject(cur, empty_span, empty_msg));
+    }
+    parse_ref_list(cur, source, what)
 }
 
 /// Consume a `| key` clause head, returning `true` if a clause was present.
@@ -403,17 +443,35 @@ fn parse_find(cur: &mut CursorV1<'_>, source: &str) -> Result<ProgramItemHirV1, 
         seen.push(key.clone());
         match key.as_str() {
             "via" => {
-                let refs = parse_ref_list(cur, source, "a via reference")?;
+                let refs = parse_required_ref_list(
+                    cur,
+                    source,
+                    "a via reference",
+                    key_span,
+                    "FIND via list must not be empty",
+                )?;
                 end = refs.last().map(|r| r.span.end).unwrap_or(end);
                 constraints.via = refs;
             }
             "through" => {
-                let refs = parse_ref_list(cur, source, "a through reference")?;
+                let refs = parse_required_ref_list(
+                    cur,
+                    source,
+                    "a through reference",
+                    key_span,
+                    "FIND through list must not be empty",
+                )?;
                 end = refs.last().map(|r| r.span.end).unwrap_or(end);
                 constraints.through = refs;
             }
             "sanitizers" => {
-                let refs = parse_ref_list(cur, source, "a sanitizer reference")?;
+                let refs = parse_required_ref_list(
+                    cur,
+                    source,
+                    "a sanitizer reference",
+                    key_span,
+                    "FIND sanitizers list must not be empty",
+                )?;
                 end = refs.last().map(|r| r.span.end).unwrap_or(end);
                 constraints.sanitizers = refs;
             }
@@ -435,7 +493,24 @@ fn parse_find(cur: &mut CursorV1<'_>, source: &str) -> Result<ProgramItemHirV1, 
             "direction" => {
                 let (kw, sp) = cur.expect_ident("a direction keyword")?;
                 end = sp.end;
-                constraints.direction = Some(GraphDirectionV1 { keyword: kw });
+                // The `direction` tag is open in the HIR, but the surface must
+                // fail closed: only the well-attested traversal directions are
+                // admitted. An unknown keyword rejects with a typed
+                // UnsupportedConstruct at the keyword span, mirroring the
+                // confirm/emit/mode open-tag validation policy, rather than
+                // silently minting an unvalidated GraphDirectionV1.
+                match kw.as_str() {
+                    "forward" | "backward" | "both" | "undirected" => {
+                        constraints.direction = Some(GraphDirectionV1 { keyword: kw });
+                    }
+                    other => {
+                        return Err(reject(
+                            cur,
+                            sp,
+                            format!("unsupported FIND direction '{other}'"),
+                        ))
+                    }
+                }
             }
             "depth" => {
                 let (n, sp) = parse_u32(cur, "a depth bound")?;
@@ -735,6 +810,13 @@ fn parse_sample(
     }
     cur.expect(&TokenKindV1::Op("=".to_string()), "'=' after 'query'")?;
     let (query_text, q_text_span) = expect_string(cur, "a quoted query text")?;
+    if query_text.is_empty() {
+        return Err(reject(
+            cur,
+            q_text_span,
+            "SAMPLE query_text must not be empty",
+        ));
+    }
     let mut end = q_text_span.end;
 
     let mut mode = SampleModeV1::Lexical;
@@ -1096,7 +1178,13 @@ fn parse_profile(
         note_clause(cur, &mut seen, "PROFILE", &key, key_span)?;
         match key.as_str() {
             "capabilities" => {
-                let refs = parse_ref_list(cur, source, "a capability reference")?;
+                let refs = parse_required_ref_list(
+                    cur,
+                    source,
+                    "a capability reference",
+                    key_span,
+                    "PROFILE capabilities list must not be empty",
+                )?;
                 end = refs.last().map(|r| r.span.end).unwrap_or(end);
                 capabilities = refs;
             }
@@ -1163,7 +1251,13 @@ fn parse_gate(cur: &mut CursorV1<'_>, source: &str) -> Result<ProgramItemHirV1, 
         note_clause(cur, &mut seen, "GATE", &key, key_span)?;
         match key.as_str() {
             "checks" => {
-                let refs = parse_ref_list(cur, source, "a check reference")?;
+                let refs = parse_required_ref_list(
+                    cur,
+                    source,
+                    "a check reference",
+                    key_span,
+                    "GATE checks list must not be empty",
+                )?;
                 end = refs.last().map(|r| r.span.end).unwrap_or(end);
                 checks = refs;
             }

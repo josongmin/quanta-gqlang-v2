@@ -5,7 +5,7 @@
 //! code/span. Each test asserts the actual stage tag plus the inner typed
 //! code, not just that an error occurred.
 //!
-//! syntax->sema->ir path pinned: source text -> `compile_program` -> the stage
+//! syntax->sema->ir path pinned: source text -> `compile_program_structural` -> the stage
 //! that rejects (parse / type / algebra) -> `PipelineDiagnosticV1` tagged with
 //! that stage and carrying the inner code.
 
@@ -18,7 +18,9 @@
     reason = "integration hellgate rail: assertion panics and exhaustive matches are intentional"
 )]
 
-use quanta_gqlang_v2_pipeline::{compile_program, PipelineDiagnosticV1, PipelineStageV1};
+use quanta_gqlang_v2_pipeline::{
+    compile_program_structural, PipelineDiagnosticV1, PipelineStageV1,
+};
 
 /// rail 2: fail at PARSE. A malformed surface program rejects tagged `parse`
 /// with the exact surface parse code and span preserved.
@@ -26,7 +28,7 @@ use quanta_gqlang_v2_pipeline::{compile_program, PipelineDiagnosticV1, PipelineS
 fn fail_at_parse_tagged_parse() {
     // unclosed paren in the filter predicate: a surface parse error.
     let src = "from users | where (a + 1";
-    let diag = compile_program(src).expect_err("must reject at parse");
+    let diag = compile_program_structural(src).expect_err("must reject at parse");
 
     assert_eq!(diag.stage(), PipelineStageV1::Parse, "tagged parse stage");
     assert_eq!(diag.stage().as_str(), "parse");
@@ -48,7 +50,7 @@ fn fail_at_type_tagged_type() {
     // `1 + "x"` is closed under the (empty) env, so the type stage checks it and
     // rejects with no `+` overload for (int, string).
     let src = "from users | project 1 + \"x\" as bad";
-    let diag = compile_program(src).expect_err("must reject at type");
+    let diag = compile_program_structural(src).expect_err("must reject at type");
 
     assert_eq!(diag.stage(), PipelineStageV1::Type, "tagged type stage");
     assert_eq!(diag.stage().as_str(), "type");
@@ -73,7 +75,7 @@ fn fail_at_algebra_tagged_algebra() {
     // `count` is a known aggregate) but cannot lower: an aggregate fold is not a
     // valid partition key, so the algebra normalizer rejects at the algebra stage.
     let src = "from findings f | group by count(f.id)";
-    let diag = compile_program(src).expect_err("must reject at algebra");
+    let diag = compile_program_structural(src).expect_err("must reject at algebra");
 
     assert_eq!(
         diag.stage(),
@@ -100,7 +102,7 @@ fn short_circuits_on_first_stage() {
     // parse error (unclosed paren) AND a would-be type error live together; the
     // parse stage must win.
     let src = "from users | where (1 + \"x\"";
-    let diag = compile_program(src).expect_err("must reject");
+    let diag = compile_program_structural(src).expect_err("must reject");
     assert_eq!(
         diag.stage(),
         PipelineStageV1::Parse,

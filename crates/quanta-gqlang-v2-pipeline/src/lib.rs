@@ -6,12 +6,12 @@
 //!
 //! ## Entry point
 //!
-//! [`compile_program`] runs the FULL stack against a source string and returns a
-//! [`CompiledProgramV1`] (the shared HIR item, the normalized algebra root, and
-//! the host-agnostic public plan or explicit non-servable artifact). The
-//! context-first semantic surface is [`compile_with_context`] over
-//! [`FrontendContextV1`]; [`compile_program`] / [`compile_with`] remain
-//! structural/compat shims.
+//! [`compile_with_context`] is the semantic entry point over
+//! [`FrontendContextV1`]. Explicit non-semantic helpers also exist:
+//! [`compile_program_structural`] / [`compile_item_structural`] /
+//! [`compile_document_structural`] for structural-only authority and
+//! [`compile_program_with_schema`] / [`compile_item_with_schema`] /
+//! [`compile_document_with_schema`] for schema-only authority.
 //!
 //! Stages run in order and SHORT-CIRCUIT on the first failure, returning a
 //! stage-tagged [`PipelineDiagnosticV1`] that preserves the inner stage
@@ -29,8 +29,9 @@ mod compile;
 mod diagnostic;
 
 pub use compile::{
-    compile_document, compile_document_with_context, compile_item, compile_item_with_context,
-    compile_program, compile_with, compile_with_context, CompiledItemV1, CompiledProgramV1,
-    FrontendContextV1, NoServeReasonV1,
+    compile_document_structural, compile_document_with_context, compile_document_with_schema,
+    compile_item_structural, compile_item_with_context, compile_item_with_schema,
+    compile_program_structural, compile_program_with_schema, compile_with_context, CompiledItemV1,
+    CompiledProgramV1, FrontendContextV1, NoServeReasonV1,
 };
 pub use diagnostic::{PipelineDiagnosticV1, PipelineStageV1};

@@ -9,7 +9,7 @@
 //! v3 `v3-query` plan + fixed semantic-cost summary rail (ticket 08, D32 / D22).
 //!
 //! syntax->sema->ir path pinned: source text -> the shared
-//! `pipeline::compile_program` (parse -> bind -> type -> normalize -> plan) ->
+//! `pipeline::compile_program_structural` (parse -> bind -> type -> normalize -> plan) ->
 //! the deterministic plan/cost renderer surfaced through the real CLI binary's
 //! `v3-query` command. The asserted seam is that the FIVE fixed
 //! `SemanticCostV1` fields (D32) all render with stable keyword text, and that

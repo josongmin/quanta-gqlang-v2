@@ -10,7 +10,7 @@
 //! CLI/LSP parity hellgate over the ONE shared pipeline (ticket 08, D22, D10).
 //!
 //! syntax->sema->ir path pinned: a SINGLE failing advanced source -> both
-//! `pipeline::compile_program` (what the CLI worker surfaces from its side) and
+//! `pipeline::compile_program_structural` (what the CLI worker surfaces from its side) and
 //! the LSP `v3_diagnostics` stdio method -> the SAME stage-tagged code. If the
 //! LSP rewrote, downgraded, or reclassified the diagnostic, this fails closed.
 //!
@@ -23,7 +23,7 @@
 
 mod support;
 
-use quanta_gqlang_v2_pipeline::{compile_program, PipelineStageV1};
+use quanta_gqlang_v2_pipeline::{compile_program_structural, PipelineStageV1};
 use support::run_binary_line_v1;
 
 /// The single failing advanced fixture: `group by count(f.id)` binds (alias `f`
@@ -39,7 +39,8 @@ const EXPECTED_PARITY_STAGE_V1: &str = "algebra";
 #[test]
 fn pipeline_side_emits_the_expected_stage_and_code_v1() {
     // The pipeline truth (CLI side) for the fixture.
-    let diag = compile_program(ADVANCED_FAILING_SRC_V1).expect_err("advanced query must reject");
+    let diag = compile_program_structural(ADVANCED_FAILING_SRC_V1)
+        .expect_err("advanced query must reject");
     assert_eq!(
         diag.stage(),
         PipelineStageV1::Algebra,
@@ -56,7 +57,7 @@ fn pipeline_side_emits_the_expected_stage_and_code_v1() {
 #[test]
 fn lsp_v3_diagnostics_code_equals_pipeline_code_v1() {
     // Compute the pipeline code directly (no LSP-local reasoning).
-    let pipeline_code = compile_program(ADVANCED_FAILING_SRC_V1)
+    let pipeline_code = compile_program_structural(ADVANCED_FAILING_SRC_V1)
         .expect_err("advanced query must reject")
         .code();
 
@@ -86,7 +87,7 @@ fn lsp_v3_diagnostics_preserves_parse_stage_code_too_v1() {
     // A second stage to prove the LSP path is genuinely stage-faithful, not a
     // hard-coded single-stage shim: an unclosed paren rejects at PARSE.
     let src = "from users | where (a + 1";
-    let pipeline = compile_program(src).expect_err("must reject at parse");
+    let pipeline = compile_program_structural(src).expect_err("must reject at parse");
     assert_eq!(pipeline.stage(), PipelineStageV1::Parse);
     let pipeline_code = pipeline.code();
 
@@ -113,7 +114,7 @@ fn lsp_v3_diagnostics_preserves_parse_stage_code_too_v1() {
 fn assert_lsp_matches_pipeline_v1(src: &str, expected_stage: PipelineStageV1, expected_code: &str) {
     // Pipeline truth (CLI side): the family rejects at the named stage with the
     // anchored code and a concrete primary span.
-    let pipeline = compile_program(src).expect_err("advanced family source must reject");
+    let pipeline = compile_program_structural(src).expect_err("advanced family source must reject");
     assert_eq!(
         pipeline.stage(),
         expected_stage,

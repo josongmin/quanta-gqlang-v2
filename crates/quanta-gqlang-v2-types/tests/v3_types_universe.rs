@@ -106,6 +106,31 @@ fn scenario_4_nested_record_with_list_field_types() {
 }
 
 #[test]
+fn list_unifies_to_most_general_element_type() {
+    // [a, b] with a: int, b: optional<int>  =>  list<optional<int>>
+    //
+    // `int` is assignable into `optional<int>`, so the list is homogeneous; the
+    // inferred element type must be the most general member (`optional<int>`),
+    // not the first-seen `int`.
+    let b = HirBuilderV1::new();
+    let first = b.symbol("a", sp(1, 2));
+    let second = b.symbol("b", sp(4, 5));
+    let list = b.list(vec![first, second], sp(0, 6));
+
+    let env = TypeEnvV1::new()
+        .with("a", TypeV1::int())
+        .with("b", TypeV1::optional(TypeV1::int()));
+    let checker = TypeCheckerV1::new();
+
+    let ty = checker.type_value(&list, &env).expect("list should type");
+    assert_eq!(
+        ty,
+        TypeV1::list(TypeV1::optional(TypeV1::int())),
+        "list element type must generalize int into optional<int>"
+    );
+}
+
+#[test]
 fn scenario_5_path_and_proof_payloads_type_under_registry() {
     // path_length(p)         => int      (p: path)
     // path_locations(p)      => list<location>
@@ -207,4 +232,26 @@ fn null_is_assignable_into_optional() {
     assert!(TypeV1::Null.is_assignable_to(&TypeV1::optional(TypeV1::int())));
     assert!(TypeV1::int().is_assignable_to(&TypeV1::optional(TypeV1::int())));
     assert!(!TypeV1::int().is_assignable_to(&TypeV1::float()));
+}
+
+#[test]
+fn empty_list_is_assignable_into_concrete_list() {
+    // An empty list types to `list<null>` (see `type_list` in `check.rs`). The
+    // documented intent is that it "stays assignable into any concrete list via
+    // later context", so `list<null>` must be assignable into `list<int>`.
+    let empty = TypeV1::list(TypeV1::Null);
+    assert!(empty.is_assignable_to(&TypeV1::list(TypeV1::int())));
+    assert!(empty.is_assignable_to(&TypeV1::list(TypeV1::string())));
+    assert!(empty.is_assignable_to(&TypeV1::list(TypeV1::optional(TypeV1::int()))));
+    // ...and into another empty list (identity / null element).
+    assert!(empty.is_assignable_to(&TypeV1::list(TypeV1::Null)));
+    // A concrete list element is assignable when the element type is assignable
+    // (e.g. `null` element into optional element), and same cardinality holds.
+    assert!(TypeV1::list(TypeV1::int())
+        .is_assignable_to(&TypeV1::list(TypeV1::optional(TypeV1::int()))));
+    // But cardinality must match: a `list` (sequence) is not a `set`.
+    assert!(!empty.is_assignable_to(&TypeV1::set(TypeV1::int())));
+    // And a non-empty concrete list does NOT silently widen across element
+    // types that are not assignable (`int` element into `float` element).
+    assert!(!TypeV1::list(TypeV1::int()).is_assignable_to(&TypeV1::list(TypeV1::float())));
 }

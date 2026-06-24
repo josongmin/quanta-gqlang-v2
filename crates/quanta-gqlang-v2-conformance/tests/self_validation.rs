@@ -10,7 +10,7 @@
 //! v3 PARITY GUARD hellgate for the family registry.
 //!
 //! This is the rail that PROVES the one v3 compiler
-//! ([`quanta_gqlang_v2_pipeline::compile_program`]) covers ALL 18 DSL root
+//! ([`quanta_gqlang_v2_pipeline::compile_program_structural`]) covers ALL 18 DSL root
 //! families (the 17 root families plus the LET/WITH composition family). It
 //! drives every spec's representative v3 surface example through the real
 //! `surface parse -> bind -> type -> algebra/logic -> plan` pipeline and proves:
@@ -27,7 +27,7 @@ use quanta_gqlang_v2_conformance::{
     FamilyOutcomeV1, PlanOutcomeV1, ROOT_FAMILIES_V1, SUPPLEMENTAL_SURFACE_UNITS_V1,
     UNSUPPORTED_CONSTRUCT_V1,
 };
-use quanta_gqlang_v2_pipeline::{compile_program, CompiledItemV1, CompiledProgramV1};
+use quanta_gqlang_v2_pipeline::{compile_program_structural, CompiledItemV1, CompiledProgramV1};
 
 #[test]
 fn registry_covers_each_family_exactly_once_v1() {
@@ -75,7 +75,7 @@ fn every_family_example_matches_declared_v3_outcome_v1() {
     for spec in root_family_specs_v1() {
         match spec.outcome {
             FamilyOutcomeV1::Compiles { kind, plan } => {
-                let compiled = compile_program(spec.example).unwrap_or_else(|diag| {
+                let compiled = compile_program_structural(spec.example).unwrap_or_else(|diag| {
                     panic!(
                         "{:?}: example `{}` must compile end to end through the v3 pipeline, got {diag:?}",
                         spec.family, spec.example
@@ -96,7 +96,7 @@ fn every_family_example_matches_declared_v3_outcome_v1() {
                 assert_plan_outcome(spec.family, plan, &compiled);
             }
             FamilyOutcomeV1::FailsClosed { code } => {
-                let diag = compile_program(spec.example).expect_err(&format!(
+                let diag = compile_program_structural(spec.example).expect_err(&format!(
                     "{:?}: example `{}` must fail closed at its routed stage",
                     spec.family, spec.example
                 ));
@@ -116,7 +116,7 @@ fn every_family_example_matches_declared_v3_outcome_v1() {
 fn unsupported_construct_fails_closed_v1() {
     // The parity guard is only honest if an UNSUPPORTED construct does not slip
     // through as some family: the v3 pipeline must reject it fail-closed.
-    let result = compile_program(UNSUPPORTED_CONSTRUCT_V1);
+    let result = compile_program_structural(UNSUPPORTED_CONSTRUCT_V1);
     assert!(
         result.is_err(),
         "an unsupported construct must fail closed, but it compiled to {:?}",
@@ -144,7 +144,7 @@ fn supplemental_surface_units_are_pinned_separately_v1() {
             spec.keyword
         );
 
-        let compiled = compile_program(spec.example).unwrap_or_else(|diag| {
+        let compiled = compile_program_structural(spec.example).unwrap_or_else(|diag| {
             panic!(
                 "{:?}: example `{}` must compile to an explicit non-servable artifact, got {diag:?}",
                 spec.unit, spec.example

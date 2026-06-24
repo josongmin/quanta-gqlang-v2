@@ -387,6 +387,39 @@ fn apply_inner_binding_shadows_outer_column_name() {
 }
 
 #[test]
+fn apply_inner_quantifier_binder_shadowing_outer_name_is_not_a_correlation() {
+    // users x APPLY ( orders | WHERE exists x ( x.id = x.parent ) )
+    //
+    // The inner filter's predicate is a quantifier that BINDS `x` locally. Every
+    // bare `x` inside the quantifier body resolves to that LOCAL quantifier
+    // binder, NOT the outer column also named `x`. The inner subtree therefore
+    // references nothing from the outer side, so the apply is UNCORRELATED and
+    // must be rejected with MissingCorrelation rather than fabricating a
+    // correlation column for the coincidental name `x`.
+    let b = HirBuilderV1::new();
+
+    // Left side: users x  (outer column named `x`).
+    let left_users = b.relation_source("users", Some(alias("x", 0, 1)), sp(0, 7));
+
+    // Right side: orders | WHERE exists x ( x.id = x.parent )
+    let orders = b.relation_source("orders", None, sp(8, 14));
+    let x_base_lhs = b.symbol("x", sp(30, 31));
+    let x_id = b.path(x_base_lhs, vec![seg("id", 32, 34)], sp(30, 34));
+    let x_base_rhs = b.symbol("x", sp(37, 38));
+    let x_parent = b.path(x_base_rhs, vec![seg("parent", 39, 45)], sp(37, 45));
+    let body = b.compare("=", x_id, x_parent, sp(30, 45));
+    let quant = b.quantifier("exists", vec!["x".to_owned()], body, sp(22, 46));
+    let inner = b.relation_filter(orders, quant, sp(8, 46));
+
+    let apply = b.compose("apply", vec![left_users, inner], sp(0, 50));
+
+    let err = normalize_relation(&apply, &NormalizeOptionsV1::default())
+        .expect_err("quantifier-bound `x` is local; apply is uncorrelated");
+    assert_eq!(err.code(), "algebra.missing_correlation");
+    assert_eq!(err.span(), sp(0, 50));
+}
+
+#[test]
 fn unary_limit_uses_caller_supplied_window() {
     // sort( users u ) | limit  — caller supplies the (count, offset) window the
     // structure-only HIR cannot carry. The normalizer must thread it into the

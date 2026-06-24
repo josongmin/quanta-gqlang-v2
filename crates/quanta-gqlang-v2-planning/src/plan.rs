@@ -199,10 +199,15 @@ fn reject_unsupported_mix(
             span,
         });
     }
-    // 5. A recursive closure has no total-order rendering contract.
+    // 5. A recursive closure has no total-order rendering contract. The
+    //    incoherence is a property of the RESULT cardinality: any recursive
+    //    program whose root renders an ordered (`Sequence`) result is invalid,
+    //    regardless of which operator sits at the immediate root. Keying off the
+    //    cardinality (rather than requiring the root op to be a `Sort`) catches
+    //    cases where the ordering is established lower in the tree and a column
+    //    re-shape (e.g. `Project`) preserves it at the root.
     if matches!(request.recursion, RecursionShapeV1::Fixpoint(_))
         && request.root.cardinality == CardinalityV1::Sequence
-        && ends_in_sort(&request.root)
     {
         return Err(PlanningDiagnosticV1::UnsupportedMix {
             reason: UnsupportedMixReasonV1::OrderedRecursiveClosure,
@@ -210,12 +215,6 @@ fn reject_unsupported_mix(
         });
     }
     Ok(())
-}
-
-/// Whether the algebra root's outermost meaningful operator is a sort (so the
-/// result is explicitly ordered at the top).
-fn ends_in_sort(node: &AlgebraNodeV1) -> bool {
-    matches!(node.op, AlgebraOpV1::Sort(_))
 }
 
 fn map_result_kind(kind: RequestedResultKindV1) -> ResultKindV1 {
@@ -265,17 +264,24 @@ fn classify_node(node: &AlgebraNodeV1) -> CardinalityClassV1 {
         AlgebraOpV1::Limit(_) => CardinalityClassV1::Bounded,
         AlgebraOpV1::Join(_) | AlgebraOpV1::Apply(_) => CardinalityClassV1::Multiplicative,
         AlgebraOpV1::Aggregate(aggregate) => {
-            // A SCALAR aggregate (no grouping keys, e.g. `count(*) from t`)
-            // collapses every input row to exactly ONE output row, regardless of
-            // input size. The empty-keyed Group input encodes that shape.
+            // An aggregate's output cardinality is governed by its GROUPING
+            // partition, not by the size of the input it folds. The structural
+            // invariant (enforced by `AlgebraNodeV1::new`'s `debug_assert`, see
+            // algebra `node.rs`) guarantees the direct input is always a `Group`.
+            // A GROUPED aggregate (non-empty keys) emits one row per distinct key:
+            // linear in the number of groups, at most linear in the input. A
+            // SCALAR aggregate has NO partition keys (the canonical empty-keyed
+            // `Group` for `count(*) from t`), so it folds the WHOLE input into
+            // exactly ONE row: `ScalarOrSingleton` (`D26`). We classify off the
+            // ABSENCE of a non-empty grouping partition rather than asserting the
+            // empty-keyed `Group` structure, so the result stays correct even in
+            // release builds where the `debug_assert` is compiled out.
             if let AlgebraOpV1::Group(group) = &aggregate.input.op {
-                if group.keys.is_empty() {
-                    return CardinalityClassV1::ScalarOrSingleton;
+                if !group.keys.is_empty() {
+                    return classify_node(&aggregate.input);
                 }
             }
-            // A grouped aggregate is one row per distinct key: linear in the
-            // number of groups, which is at most linear in the input.
-            classify_node(&aggregate.input)
+            CardinalityClassV1::ScalarOrSingleton
         }
         AlgebraOpV1::Group(group) => classify_node(&group.input),
         AlgebraOpV1::Project(project) => classify_node(&project.input),

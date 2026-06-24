@@ -308,6 +308,14 @@ impl TypeV1 {
     /// * `null` is assignable into any optional type;
     /// * a present `T` is assignable into `optional<T>` (and `optional<U>` for
     ///   any `U` that `T` is assignable to);
+    /// * a `collection<S>` is assignable into a same-cardinality
+    ///   `collection<E>` when `S` is assignable into `E`. Because the empty
+    ///   list/collection literal types to `collection<null>` (its element type
+    ///   is unknown), `null` as the *element* of a collection is assignable into
+    ///   any element type — this is what keeps an empty `[]` assignable into any
+    ///   concrete `list<T>` "via later context" (see `type_list`). Note this
+    ///   element rule is element-only: a bare `null` value is still only
+    ///   assignable into an optional, not into a concrete scalar;
     /// * `int` is NOT implicitly assignable to `float` — numeric widening is an
     ///   explicit operator/overload concern, not a silent subtype rule, so the
     ///   universe stays predictable for downstream planning.
@@ -318,6 +326,20 @@ impl TypeV1 {
         }
         if let Self::Optional(inner) = expected {
             return self.is_null() || self.is_assignable_to(inner);
+        }
+        if let (
+            Self::Collection {
+                element: src,
+                cardinality: src_card,
+            },
+            Self::Collection {
+                element: dst,
+                cardinality: dst_card,
+            },
+        ) = (self, expected)
+        {
+            // Same cardinality is required: a `list` (sequence) is not a `set`.
+            return src_card == dst_card && (src.is_null() || src.is_assignable_to(dst));
         }
         false
     }

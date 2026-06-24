@@ -1,5 +1,44 @@
 # 11 Module System Packs And Extension Models
 
+Status: `Materially Implemented On Current Main`
+
+## Current Main Receipt
+
+As of `2026-06-24`, the owner-local module/pack/extension seam is live:
+
+1. `quanta-gqlang-v2-modules` owns the canonical module/import graph, pack
+   manifests, lockfiles, metadata, signatures, visibility, and declarative model
+   packs
+2. deterministic graph rules are pinned:
+   local shadowing, direct-import precedence over re-export, ambiguity rejects,
+   and import-cycle rejects
+3. pack validation is lock-backed and fail-closed:
+   compatibility windows, dependency ranges, lock mismatches, and overlapping
+   exports all reject with typed diagnostics
+4. declarative model packs are schema-validated, additive, and fail closed on
+   conflicting facts or invalid attributes
+5. catalog/meta seams are wired:
+   `PACK`/`PROFILE`/`GATE`/`RULEDEF` registration, `USE PACK`, and
+   `REQUIRE CERTIFIED` all resolve through typed modules diagnostics
+6. proof rails:
+   `v3_modules_graph.rs`,
+   `v3_modules_packs.rs`,
+   `v3_modules_hellgate.rs`,
+   `v3_catalog_hellgate.rs`,
+   `crates/quanta-gqlang-v2-lsp/tests/v3_diagnostics_parity_hellgate.rs`
+7. verified with:
+   `cargo test -p quanta-gqlang-v2-modules`,
+   `cargo test --workspace`,
+   `cargo clippy --workspace --all-targets`
+
+Honest residual:
+
+1. current LSP/CLI consume this lane mainly through diagnostics, plan summaries,
+   and pack/catalog seams; there is no separate module-browser or pack-manager UX
+   in this packet
+2. runtime/provider-side pack activation and execution remain downstream and out
+   of scope
+
 ## Goal
 
 Make `v3` reusable and extensible without forcing core edits or query

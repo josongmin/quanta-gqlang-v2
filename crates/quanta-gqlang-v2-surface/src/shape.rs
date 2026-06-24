@@ -29,10 +29,19 @@ pub(crate) fn parse_result_shape(
 
 fn parse_shape_record(cur: &mut CursorV1<'_>) -> Result<ResultShapeHirV1, ParseDiagnosticV1> {
     let open = cur.expect(&TokenKindV1::LBrace, "'{' to open a result-shape record")?;
-    let mut fields = Vec::new();
+    let mut fields: Vec<ShapeFieldV1> = Vec::new();
     if !matches!(cur.peek().kind, TokenKindV1::RBrace) {
         loop {
             let (name, name_span) = cur.expect_ident("result-shape field name")?;
+            // D10 fail-closed: a result-shape record must not declare the same
+            // field name twice (silent last-wins would drop an output field).
+            // Reject at the offending name's exact span, mirroring the
+            // composition binding and clause-key duplicate guards.
+            if fields.iter().any(|f| f.name == name) {
+                return Err(
+                    cur.unsupported(name_span, format!("duplicate result-shape field '{name}'"))
+                );
+            }
             cur.expect(&TokenKindV1::Colon, "':' after result-shape field name")?;
             let shape = parse_result_shape(cur)?;
             fields.push(ShapeFieldV1 {
@@ -48,6 +57,13 @@ fn parse_shape_record(cur: &mut CursorV1<'_>) -> Result<ResultShapeHirV1, ParseD
     }
     let close = cur.expect(&TokenKindV1::RBrace, "'}' to close a result-shape record")?;
     let span = open.span.merge(&close.span);
+    if fields.is_empty() {
+        // D10 fail-closed: an empty `{}` record produces no output fields and is
+        // rejected explicitly, mirroring the "at least one item" requirement of
+        // projection / value-key lists rather than silently compiling a
+        // zero-field shape.
+        return Err(cur.unsupported(span, "result-shape record must declare at least one field"));
+    }
     Ok(cur.builder.shape_record(fields, span))
 }
 

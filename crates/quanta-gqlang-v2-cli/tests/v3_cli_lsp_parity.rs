@@ -9,13 +9,13 @@
 //! CLI/LSP diagnostic parity over the SAME failing advanced query (ticket 08
 //! required rail 7, D22).
 //!
-//! Both surfaces consume the ONE shared `pipeline::compile_program` (D22), so for
+//! Both surfaces consume the ONE shared `pipeline::compile_program_structural` (D22), so for
 //! one failing fixture the CLI binary's stage-tagged error output and the LSP
 //! `v3_diagnostics` handler must carry the SAME stage tag, the SAME inner stable
 //! code, and the SAME exact byte span. A drift here means a surface forked the
 //! compiler path, which D22 forbids.
 //!
-//! syntax->sema->ir path pinned: source text -> `compile_program` -> first
+//! syntax->sema->ir path pinned: source text -> `compile_program_structural` -> first
 //! failing stage's typed diagnostic -> {CLI binary stderr, LSP handler item}.
 
 mod support;

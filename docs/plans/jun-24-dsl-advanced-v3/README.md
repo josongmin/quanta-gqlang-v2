@@ -1,11 +1,11 @@
 # Jun 24 — DSL Advanced v3
 
-Status: `Current Main Audit Refreshed` + `Tickets 12-15 Materially Implemented`
+Status: `Current Main Audit Refreshed` + `Tickets 09, 11-15 Materially Implemented`
 
 ## Current Verified State
 
-As of `2026-06-24`, current `main` materially closes the semantic gaps owned by
-tickets `12`, `13`, `14`, and `15`.
+As of `2026-06-24`, current `main` materially closes the repo-local gaps owned
+by tickets `09`, `11`, `12`, `13`, `14`, and `15`.
 
 Verified locally with:
 
@@ -15,12 +15,60 @@ Verified locally with:
 
 Honest remaining boundary:
 
-1. ticket `09` still owns repo-local packet closure
-2. ticket `10` still owns downstream semantica serving truth
-3. ticket `12` now has an explicit context-first semantic surface, but legacy
-   structural/compat entrypoints still exist and are not semantic proof
-4. ticket `15` now has explicit artifact/no-serve contracts, but no separate
+1. ticket `10` still owns downstream semantica serving truth
+2. explicit structural/schema-only helper entrypoints still exist, but they are
+   partial-authority helpers rather than repo-local closure blockers and must
+   not be reported as semantic proof
+3. ticket `15` now has explicit artifact/no-serve contracts, but no separate
    LSP artifact renderer was introduced; current LSP remains diagnostics-first
+
+## Closure Scopes And DoD
+
+Repo-local closure is the end of ticket `09` plus the live owner lanes from
+`11` through `15`:
+
+1. CLI, LSP, tests, conformance, and downstream facade use the one pipeline
+   seam; no shadow parser/sema path exists
+2. `compile_with_context` is the semantic compile API and structural/schema-only
+   helpers remain explicitly non-semantic
+3. module/import graph, packs, signatures, metadata, and declarative model-pack
+   seams are deterministic, typed, and fail closed
+4. alias/local/query closure is fail-closed: binder-visible locals are typed or
+   rejected, with no env-open skip path
+5. horn `rule` lowers through the public pipeline into recursive-predicate
+   semantics with typed unsupported-head rejects
+6. standalone `let` / horn `rule` compile into explicit artifact/no-serve
+   outcomes instead of placeholder algebra failures
+7. `quanta-gqlang-v2-frontend-contract` exposes the stable downstream bundle,
+   including item/document structural helpers and family inspection
+8. `cargo fmt --all`, `cargo clippy --workspace --all-targets`, and
+   `cargo test --workspace` are green
+9. packet docs describe current-head truth rather than deleted `v2` crate
+   assumptions
+
+Full sibling cutover closure adds ticket `10` on top of that repo-local DoD:
+
+1. `semantica` depends on this repo only through the allowed `v3` frontend seam,
+   preferably `quanta-gqlang-v2-frontend-contract`
+2. `semantica` does not absorb this repo as a workspace member
+3. no semantica manifest or bridge path depends on deleted `syntax` / `sema` /
+   `ir` crates
+4. no ingress authority starts from `PublicIrRootV1` or widens
+   `RootSpecV1::Select` to fake `v3` support
+5. semantica-owned runtime DTOs, provider routing, SDK/backend wiring, and
+   host-adapter lowering start from `CompiledProgramV1`
+6. semantica's default public SDK/query facades stop exporting legacy
+   request/root helpers and default authority starts from `ServingProgramRequestV1`
+7. downstream bridge/conformance rails are rewritten to the `v3` bundle seam
+8. only after those downstream rails are green may anyone claim end-to-end
+   advanced-serving closure
+
+Out of scope for this repo even after full packet closure:
+
+1. runtime substrate implementation
+2. provider registry ownership
+3. semantica-native request/response DTO ownership
+4. SDK backend wiring or materialization logic
 
 ## Goal
 
@@ -178,8 +226,8 @@ materially closed on current `main`:
 Honest residuals:
 
 1. current semantic closure uses the explicit context-first API; legacy
-   structural/compat entrypoints remain and must not be treated as semantic
-   proof
+   structural/schema-only helper entrypoints remain and must not be treated as
+   semantic proof
 2. current artifact surfacing is explicit in pipeline, CLI, conformance, and
    downstream facade tests; no separate LSP artifact-rendering surface exists
 
@@ -303,8 +351,8 @@ Implications:
 
 Current-main note:
 
-1. tickets `12`, `13`, `14`, and `15` are implemented locally
-2. ticket `09` remains the repo-local closure lane
+1. tickets `11`, `12`, `13`, `14`, and `15` are implemented locally
+2. ticket `09` is now materially closed on current head
 3. ticket `10` remains the downstream serving handoff lane
 
 | # | Ticket | Lane |

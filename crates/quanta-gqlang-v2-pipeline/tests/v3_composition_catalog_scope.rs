@@ -3,10 +3,11 @@
 //! composition's nested items, just as they do at the document top level.
 //!
 //! Regression: `composition_catalog_scope_leak` — `compile_composition` used to
-//! compile each producer and the body through `compile_item` (which mints a
-//! throwaway catalog per item) instead of threading the shared document catalog,
-//! so a duplicate VIEW name declared by a producer and the body was silently
-//! accepted instead of rejected with `modules.duplicate_catalog_name`.
+//! compile each producer and the body through a stand-alone item entry point
+//! (which mints a throwaway catalog per item) instead of threading the shared
+//! document catalog, so a duplicate VIEW name declared by a producer and the
+//! body was silently accepted instead of rejected with
+//! `modules.duplicate_catalog_name`.
 #![allow(
     clippy::expect_used,
     reason = "integration test: panic on the absence of the expected reject is intentional"
@@ -16,8 +17,7 @@ use quanta_gqlang_v2_hir::{
     CatalogDeclHirV1, CatalogPayloadV1, CompositionBindingV1, CompositionHirV1, GraphRefV1,
     HirNodeIdV1, ProgramItemHirV1, SpanV1, ViewBodyV1,
 };
-use quanta_gqlang_v2_pipeline::{compile_document, PipelineStageV1};
-use quanta_gqlang_v2_types::TypeEnvV1;
+use quanta_gqlang_v2_pipeline::{compile_document_structural, PipelineStageV1};
 
 /// A `VIEW <name> = query-ref <target>` catalog declaration carrier.
 fn view_decl(raw_id: u32, name: &str) -> ProgramItemHirV1 {
@@ -56,7 +56,7 @@ fn composition_producer_and_body_share_catalog_scope() {
     );
     let items = vec![ProgramItemHirV1::Composition(Box::new(composition))];
 
-    let result = compile_document(&items, &TypeEnvV1::new());
+    let result = compile_document_structural(&items);
 
     let diagnostic = result.expect_err(
         "a composition whose producer and body declare the same VIEW name must reject \

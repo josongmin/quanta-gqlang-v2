@@ -18,7 +18,7 @@
 
 use quanta_gqlang_v2_algebra::{AlgebraOpV1, ColumnProvenanceV1};
 use quanta_gqlang_v2_hir::ValueExprKindV1;
-use quanta_gqlang_v2_pipeline::compile_program;
+use quanta_gqlang_v2_pipeline::compile_program_structural;
 
 /// rail: a single-key `group by` compiles end to end into an explicit Group
 /// whose key value expression is preserved (the `f.repo` path), the output
@@ -27,7 +27,7 @@ use quanta_gqlang_v2_pipeline::compile_program;
 #[test]
 fn group_by_lowers_to_explicit_group_with_carried_key() {
     let src = "from findings f | group by f.repo";
-    let compiled = compile_program(src).expect("group by compiles end to end");
+    let compiled = compile_program_structural(src).expect("group by compiles end to end");
 
     let root = compiled
         .algebra()

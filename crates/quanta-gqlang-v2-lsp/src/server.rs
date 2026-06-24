@@ -13,7 +13,7 @@ use crate::handlers::v3_diagnostics::V3DiagnosticItemV1;
 /// `explain`) were rooted in the legacy `ir`/`sema`/`syntax` stack and have been
 /// removed; the single going-forward analysis surface is `v3_diagnostics`, which
 /// runs over the ONE shared compiler pipeline
-/// `quanta-gqlang-v2-pipeline::compile_program` (`D22`).
+/// `quanta-gqlang-v2-pipeline::compile_program_structural` (`D22`).
 ///
 /// This const is the single list the doc gate checks the README against (so a
 /// shipped method can never go undocumented). A binary test pins that each name

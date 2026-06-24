@@ -44,6 +44,17 @@ fn err(src: &str) -> quanta_gqlang_v2_surface::ParseDiagnosticV1 {
     parse_program(src, &builder).expect_err("must reject")
 }
 
+fn assert_empty_find_list_rejects(src: &str, key: &str) {
+    let diag = err(src);
+    assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
+    assert_eq!(diag.message, format!("FIND {key} list must not be empty"));
+    let start = src
+        .find(key)
+        .expect("list key must be present in the test input");
+    assert_eq!(diag.span.start, start);
+    assert_eq!(diag.span.end, start + key.len());
+}
+
 // ---- FIND ------------------------------------------------------------------
 
 #[test]
@@ -207,6 +218,12 @@ fn sample_parses_to_presentation() {
 #[test]
 fn sample_zero_limit_rejects() {
     let diag = err("sample query=\"x\" | mode=lexical | limit=0");
+    assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
+}
+
+#[test]
+fn sample_empty_query_rejects() {
+    let diag = err("sample query=\"\" | limit=1");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
 }
 
@@ -642,6 +659,28 @@ fn find_duplicate_list_clause_rejects() {
 }
 
 #[test]
+fn find_empty_list_clauses_reject() {
+    for (src, key) in [
+        ("find taint a -> b | via=", "via"),
+        ("find taint a -> b | through=", "through"),
+        ("find taint a -> b | sanitizers=", "sanitizers"),
+    ] {
+        assert_empty_find_list_rejects(src, key);
+    }
+}
+
+#[test]
+fn find_empty_list_clauses_before_next_clause_reject() {
+    for (src, key) in [
+        ("find taint a -> b | via= | scope=x", "via"),
+        ("find taint a -> b | through= | scope=x", "through"),
+        ("find taint a -> b | sanitizers= | scope=x", "sanitizers"),
+    ] {
+        assert_empty_find_list_rejects(src, key);
+    }
+}
+
+#[test]
 fn find_depth_zero_rejects() {
     // PUNCH-LIST find_depth_zero_boundary: a `depth=0` bound is meaningless
     // (a zero-hop graph walk). The parser must reject it fail-closed with a
@@ -668,6 +707,51 @@ fn find_depth_one_is_accepted() {
         other => panic!("expected GraphQuery, got {other:?}"),
     };
     assert_eq!(gq.constraints.depth, Some(1));
+}
+
+#[test]
+fn find_direction_unknown_keyword_rejects() {
+    // PUNCH-LIST direction_keyword_validation: the FIND `direction` clause must
+    // not silently mint an unvalidated keyword. An unknown direction value must
+    // reject fail-closed with a typed UnsupportedConstruct pointed at the bad
+    // keyword span, mirroring the confirm/emit/mode open-tag validation policy,
+    // rather than building direction=Some(GraphDirectionV1{ keyword: <any> }).
+    let src = "find taint a -> b | direction=invalid_keyword";
+    let diag = err(src);
+    assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
+    assert!(
+        diag.message.contains("direction") && diag.message.contains("invalid_keyword"),
+        "msg: {}",
+        diag.message
+    );
+    // span covers the offending keyword exactly: `invalid_keyword` at byte 29.
+    let start = src
+        .find("invalid_keyword")
+        .expect("keyword present in input");
+    assert_eq!(diag.span.start, start);
+    assert_eq!(diag.span.end, start + "invalid_keyword".len());
+}
+
+#[test]
+fn find_direction_known_keywords_parse() {
+    // Each well-attested traversal direction stays legal and is carried through
+    // verbatim into the open GraphDirectionV1 tag.
+    for kw in ["forward", "backward", "both", "undirected"] {
+        let src = format!("find taint a -> b | direction={kw}");
+        let item = program(&src);
+        let gq = match item {
+            ProgramItemHirV1::GraphQuery(g) => g,
+            other => panic!("expected GraphQuery, got {other:?}"),
+        };
+        assert_eq!(
+            gq.constraints
+                .direction
+                .as_ref()
+                .map(|d| d.keyword.as_str()),
+            Some(kw),
+            "direction {kw} must parse"
+        );
+    }
 }
 
 #[test]
@@ -700,6 +784,19 @@ fn find_summary_facets_list_parses() {
 }
 
 #[test]
+fn find_via_list_preserves_written_order() {
+    let item = program("find taint a -> b | via=m1,m2,m3");
+    let gq = match item {
+        ProgramItemHirV1::GraphQuery(g) => g,
+        other => panic!("expected GraphQuery, got {other:?}"),
+    };
+    assert_eq!(gq.constraints.via.len(), 3);
+    assert_eq!(gq.constraints.via[0].name, "m1");
+    assert_eq!(gq.constraints.via[1].name, "m2");
+    assert_eq!(gq.constraints.via[2].name, "m3");
+}
+
+#[test]
 fn find_slice_seed_endpoints_are_not_dropped() {
     // PUNCH-LIST find_conflicting_endpoint_modifiers: the parser is STRUCTURAL
     // only (D13) and must NOT silently drop a `source -> sink` seed on a slice
@@ -716,97 +813,152 @@ fn find_slice_seed_endpoints_are_not_dropped() {
     assert_eq!(gq.endpoints.sink.as_ref().unwrap().name, "db.write");
 }
 
+// ---- COMPOSITION-PRODUCER-BODY-MISMATCH-VALIDATION -------------------------
+//
+// The composition grammar admits a strict (producer, body) family matrix:
+//   producer ::= from | sample | find        (parse_producer)
+//   body     ::= from | find | check | explain (parse_body)
+// A family outside its column rejects fail-closed at PARSE time with a typed
+// diagnostic, so the boundary cannot silently widen if a new family parser is
+// added later. (The reported repro `find` producer + `check` body is a VALID
+// pairing per this matrix; CHECK is deliberately an admitted body. These rails
+// pin both the accepted cells AND the rejected cells so the boundary is fixed.)
+
 #[test]
-fn composition_binding_names_can_shadow_keywords() {
-    // REPRO: let find = sample ... find ... with find
-    // The binding name matches the family keyword `find`.
-    // This should either PARSE (bug) or REJECT (correct).
+fn composition_find_producer_check_body_is_accepted() {
+    // The reported repro: a FIND producer with a CHECK body is a LEGAL pairing
+    // (CHECK is an admitted composition body). It must parse to a Composition
+    // whose producer is the graph query and whose body is the legality check.
+    let src = "let q = find taint a -> b | depth=1 check rule.x | confirm=skip with q";
+    let item = program(src);
+    let comp = match item {
+        ProgramItemHirV1::Composition(c) => c,
+        other => panic!("expected Composition, got {other:?}"),
+    };
+    assert_eq!(comp.bindings.len(), 1);
+    assert!(matches!(
+        *comp.bindings[0].producer,
+        ProgramItemHirV1::GraphQuery(_)
+    ));
+    assert!(matches!(*comp.body, ProgramItemHirV1::Legality(_)));
+    assert_eq!(comp.with_name, "q");
+}
+
+fn composition_body(src: &str) -> ProgramItemHirV1 {
+    match program(src) {
+        ProgramItemHirV1::Composition(c) => *c.body,
+        other => panic!("expected Composition for {src:?}, got {other:?}"),
+    }
+}
+
+#[test]
+fn composition_admitted_body_families_parse() {
+    // Every body column member parses: from / find / check / explain.
+    let prefix = "let q = sample query=\"x\" | mode=lexical | limit=1 ";
+    assert!(matches!(
+        composition_body(&format!("{prefix}from users u with q")),
+        ProgramItemHirV1::Query(_)
+    ));
+    assert!(matches!(
+        composition_body(&format!("{prefix}find taint a -> b with q")),
+        ProgramItemHirV1::GraphQuery(_)
+    ));
+    assert!(matches!(
+        composition_body(&format!("{prefix}check rule.x | confirm=skip with q")),
+        ProgramItemHirV1::Legality(_)
+    ));
+    assert!(matches!(
+        composition_body(&format!("{prefix}explain rule.x with q")),
+        ProgramItemHirV1::Presentation(_)
+    ));
+}
+
+#[test]
+fn composition_non_body_family_rejects() {
+    // A family OUTSIDE the body column (e.g. show / compare / sample / export /
+    // view) must reject fail-closed where the body is expected, rather than the
+    // boundary silently widening. `with` never appears, so the failure is the
+    // body family rejection, not the binding hygiene guard.
+    for src in [
+        "let q = sample query=\"x\" | mode=lexical | limit=1 show capabilities with q",
+        "let q = sample query=\"x\" | mode=lexical | limit=1 compare baseline=a | candidate=b with q",
+        "let q = sample query=\"x\" | mode=lexical | limit=1 export source=s | kind=json with q",
+        "let q = sample query=\"x\" | mode=lexical | limit=1 view v | query-ref=r with q",
+    ] {
+        let diag = err(src);
+        assert_eq!(
+            diag.code,
+            ParseErrorCodeV1::UnexpectedToken,
+            "body family must reject for {src:?}"
+        );
+    }
+}
+
+#[test]
+fn composition_explain_producer_rejects() {
+    // EXPLAIN is an admitted BODY but NOT an admitted PRODUCER. Using it on the
+    // right of `let <name> =` must reject fail-closed at the producer position,
+    // pinning the asymmetry between the producer and body columns of the matrix.
+    let src = "let q = explain rule.x find taint a -> b with q";
+    let diag = err(src);
+    // `at_composition` only fires for from/sample/find producers, so `explain`
+    // here is not recognized as a composition at all and the standalone `let`
+    // value/decl path rejects it. Either way it must FAIL (not parse as a comp).
+    assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+}
+
+#[test]
+fn composition_binding_names_may_shadow_family_keywords() {
+    // A composition binding name may equal a later family keyword. The parser
+    // must still preserve the composition structure instead of mis-tokenizing
+    // the body or rejecting on keyword shadowing.
     let src = "let find = sample query=\"auth\" | mode=semantic | limit=3 find taint api.entry -> db.write with find";
-    let result = parse_program(src, &quanta_gqlang_v2_hir::HirBuilderV1::new());
-    match result {
-        Ok(_) => {
-            // Parser accepted it - keyword shadowing is allowed
-            println!("Parser accepted: let find = ... find ... with find");
-        }
-        Err(diag) => {
-            // Parser rejected it
-            println!("Parser rejected: {}", diag.message);
-            println!("Code: {:?}", diag.code);
-        }
-    }
+    let item = program(src);
+    let comp = match item {
+        ProgramItemHirV1::Composition(c) => c,
+        other => panic!("expected Composition, got {other:?}"),
+    };
+    assert_eq!(comp.bindings.len(), 1);
+    assert_eq!(comp.bindings[0].name, "find");
+    assert!(matches!(
+        *comp.bindings[0].producer,
+        ProgramItemHirV1::Presentation(_)
+    ));
+    assert!(matches!(*comp.body, ProgramItemHirV1::GraphQuery(_)));
+    assert_eq!(comp.with_name, "find");
 }
-#[cfg(test)]
-mod test_shadowing {
-    use quanta_gqlang_v2_hir::HirBuilderV1;
-    use quanta_gqlang_v2_surface::parse_program;
 
-    #[test]
-    fn test_keyword_shadowing() {
-        let builder = HirBuilderV1::new();
-
-        // Try to parse: let find = sample ... find ... with find
-        let src = "let find = sample query=\"auth\" | mode=semantic | limit=3 find taint api.entry -> db.write with find";
-
-        match parse_program(src, &builder) {
-            Ok(result) => {
-                eprintln!("PARSED SUCCESSFULLY (bug confirmed!)");
-                eprintln!(
-                    "Parsed item type: {}",
-                    match result.item {
-                        quanta_gqlang_v2_surface::SurfaceItemV1::Program(_) => "Program",
-                        _ => "Other",
-                    }
-                );
-            }
-            Err(diag) => {
-                eprintln!("REJECTED (correct!)");
-                eprintln!("Message: {}", diag.message);
-            }
-        }
-    }
-}
-#[cfg(test)]
-mod tests {
-    use quanta_gqlang_v2_hir::{check_tree, HirBuilderV1, HirRootRefV1};
-    use quanta_gqlang_v2_surface::{parse_program, SurfaceItemV1};
-
-    #[test]
-    fn composition_with_keyword_shadowing_binding() {
-        let builder = HirBuilderV1::new();
-
-        // Test case: let find = sample ... find ... with find
-        // The binding name `find` matches a family keyword
-        let src = "let find = sample query=\"auth\" | mode=semantic | limit=3 find taint api.entry -> db.write with find";
-
-        match parse_program(src, &builder) {
-            Ok(parsed) => {
-                eprintln!("✓ PARSER ACCEPTED the keyword-shadowing binding");
-
-                // Verify tree integrity
-                match check_tree(
-                    HirRootRefV1::Item(&match &parsed.item {
-                        SurfaceItemV1::Program(p) => p.clone(),
-                        other => panic!("unexpected surface item type: {other:?}"),
-                    }),
-                    parsed.source_len,
-                ) {
-                    Ok(_) => eprintln!("✓ HIR tree integrity check passed"),
-                    Err(e) => eprintln!("✗ HIR tree integrity check failed: {}", e),
-                }
-
-                match &parsed.item {
-                    SurfaceItemV1::Program(program_item) => {
-                        eprintln!(
-                            "Program item type: {:?}",
-                            std::mem::discriminant(program_item)
-                        );
-                    }
-                    _ => {}
-                }
-            }
-            Err(diag) => {
-                eprintln!("✗ PARSER REJECTED: {}", diag.message);
-            }
-        }
-    }
+#[test]
+fn find_seed_and_clause_endpoints_coexist_unvalidated() {
+    // SEED-CLAUSE-ENDPOINT-CONFLICT: the parser is STRUCTURAL only (D13) and
+    // admits seed endpoints (source -> sink) and clause-based endpoints
+    // (anchor=, reference=, pointee=, callable=) to coexist in a single FIND
+    // without validation or rejection. This is ambiguous syntax that should be
+    // rejected downstream during classification (ticket 03), not here.
+    
+    // Test 1: find slice api -> db | anchor=x
+    // seed (source/sink) + clause (anchor) coexist without validation
+    let src1 = "find slice api -> db | anchor=x";
+    let item1 = program(src1);
+    let gq1 = match item1 {
+        ProgramItemHirV1::GraphQuery(g) => g,
+        other => panic!("expected GraphQuery, got {other:?}"),
+    };
+    // Both seed AND clause-based endpoints are present
+    assert!(gq1.endpoints.source.is_some(), "seed source should be present");
+    assert!(gq1.endpoints.sink.is_some(), "seed sink should be present");
+    assert!(gq1.endpoints.anchor.is_some(), "clause anchor should be present");
+    
+    // Test 2: find points_to a -> b | reference=p | pointee=q
+    // seed (source/sink) + clause (reference/pointee) coexist
+    let src2 = "find points_to a -> b | reference=p | pointee=q";
+    let item2 = program(src2);
+    let gq2 = match item2 {
+        ProgramItemHirV1::GraphQuery(g) => g,
+        other => panic!("expected GraphQuery, got {other:?}"),
+    };
+    assert!(gq2.endpoints.source.is_some(), "seed source should be present");
+    assert!(gq2.endpoints.sink.is_some(), "seed sink should be present");
+    assert!(gq2.endpoints.reference.is_some(), "clause reference should be present");
+    assert!(gq2.endpoints.pointee.is_some(), "clause pointee should be present");
 }

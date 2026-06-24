@@ -231,7 +231,8 @@ impl GraphQuerySemanticsV1 {
         //    delegate to the witness contract this crate already owns so the
         //    reject codes are shared.
         let shape = Self::relation_shape(query.kind);
-        let max_path_length = Self::path_length_bound(shape, &query.constraints);
+        let max_path_length =
+            Self::path_length_bound(query.kind, query.span, shape, &query.constraints)?;
         let request = WitnessRequestV1 {
             shape,
             dedup: Self::dedup_identity(query.kind),
@@ -256,22 +257,38 @@ impl GraphQuerySemanticsV1 {
     /// the count of waypoint hops serves as a structural bound. An acyclic
     /// relation needs no bound regardless. The returned `None` over a cyclic
     /// relation is exactly what [`WitnessContractV1::bind`] rejects.
-    #[must_use]
-    fn path_length_bound(shape: RelationShapeV1, constraints: &GraphConstraintsV1) -> Option<u64> {
+    ///
+    /// `depth` and waypoints are TWO COMPETING binding strategies. Supplying both
+    /// over a cyclic relation is rejected with
+    /// [`LogicDiagnosticV1::GraphConflictingPathBound`] rather than silently
+    /// letting `depth` win and dropping the waypoint constraint: a silent
+    /// downgrade would violate `D10`, and accepting a seed that means two
+    /// different things at once would violate `D26`. (An ACYCLIC relation derives
+    /// no bound from waypoints, so there is no competing strategy to conflict
+    /// with and `depth` simply applies.)
+    fn path_length_bound(
+        kind: GraphQueryKindV1,
+        span: SpanV1,
+        shape: RelationShapeV1,
+        constraints: &GraphConstraintsV1,
+    ) -> Result<Option<u64>, LogicDiagnosticV1> {
+        let waypoints = constraints.via.len() + constraints.through.len();
         if let Some(depth) = constraints.depth {
-            return Some(u64::from(depth));
+            if shape == RelationShapeV1::Cyclic && waypoints > 0 {
+                return Err(LogicDiagnosticV1::GraphConflictingPathBound { kind, span });
+            }
+            return Ok(Some(u64::from(depth)));
         }
         if shape == RelationShapeV1::Acyclic {
             // No structural bound needed; acyclic enumeration is finite.
-            return None;
+            return Ok(None);
         }
-        let waypoints = constraints.via.len() + constraints.through.len();
         if waypoints > 0 {
             // Each waypoint is a mandatory hop; the witness must pass through all
             // of them, so the waypoint count bounds enumeration length. (Saturate
             // the rare overflow into the cap rather than wrapping.)
-            return Some(u64::try_from(waypoints).unwrap_or(u64::MAX));
+            return Ok(Some(u64::try_from(waypoints).unwrap_or(u64::MAX)));
         }
-        None
+        Ok(None)
     }
 }

@@ -1,9 +1,8 @@
 #![forbid(unsafe_code)]
 //! Dev-only v3 PARITY GUARD — proves the v3 frontend (`quanta-gqlang-v2-pipeline`
 //! over `quanta-gqlang-v2-surface`) covers ALL 18 DSL root families end to end,
-//! and separately pins the current fail-closed behavior of standalone `let` /
-//! horn-`rule` units that parse but do not yet compile through the public
-//! pipeline seam.
+//! and separately pins the current explicit artifact/no-plan behavior of
+//! standalone `let` / horn-`rule` units through the public pipeline seam.
 //!
 //! This crate replaces the former v2-IR-based root-family registry. It ships no
 //! production behavior (`publish = false`); it exists so the single v3 compiler
@@ -15,7 +14,7 @@
 //! expected classification: the compiled-item kind ([`FamilyKindV1`]) and, for
 //! plan-producing families, the plan's `result_kind` and `effect`. The
 //! `tests/self_validation.rs` hellgate drives every example through
-//! [`quanta_gqlang_v2_pipeline::compile_program`] and asserts the outcome, so this
+//! [`quanta_gqlang_v2_pipeline::compile_program_structural`] and asserts the outcome, so this
 //! crate now PROVES v3 covers all 18 families (a fail-closed test pins that an
 //! unsupported construct still rejects).
 //!
@@ -142,7 +141,7 @@ const fn plan_outcome_v1(
 ///
 /// Most families compile to a [`FamilyKindV1`]. `USE PACK` is the one family
 /// whose validity is inherently SCHEMA-bound: its pack manifest lives in a graph
-/// the public [`quanta_gqlang_v2_pipeline::compile_program`] entry point does not
+/// the public [`quanta_gqlang_v2_pipeline::compile_program_structural`] entry point does not
 /// (and must not) carry, so the honest provable outcome through the public
 /// entry point is a fail-closed `modules` reject. Recognizing-and-routing the
 /// family to its modules stage IS coverage; this variant pins the stable reject
@@ -363,7 +362,7 @@ pub const fn spec_for_v1(family: RootFamilyV1) -> RootFamilySpecV1 {
         },
         // USE PACK is schema-bound: its pack manifest lives in a graph the public
         // entry point does not carry, so the provable v3 outcome through
-        // `compile_program` is a fail-closed `modules` reject. The family is still
+        // `compile_program_structural` is a fail-closed `modules` reject. The family is still
         // recognized and routed to its modules stage — that is the coverage.
         RootFamilyV1::UsePack => RootFamilySpecV1 {
             family,

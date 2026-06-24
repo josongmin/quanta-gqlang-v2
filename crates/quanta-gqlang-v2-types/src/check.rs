@@ -193,7 +193,13 @@ impl TypeCheckerV1 {
             match &element_ty {
                 None => element_ty = Some(ty),
                 Some(expected) => {
-                    if !ty.is_assignable_to(expected) && !expected.is_assignable_to(&ty) {
+                    if expected.is_assignable_to(&ty) && !ty.is_assignable_to(expected) {
+                        // `expected` widens into `ty` but not vice versa, so `ty`
+                        // is the more general member; generalize the element type
+                        // to keep the inferred `list<T>` assignable for every
+                        // element seen so far.
+                        element_ty = Some(ty);
+                    } else if !ty.is_assignable_to(expected) {
                         return Err(TypeErrorV1::Mismatch {
                             span,
                             expected: expected.clone(),

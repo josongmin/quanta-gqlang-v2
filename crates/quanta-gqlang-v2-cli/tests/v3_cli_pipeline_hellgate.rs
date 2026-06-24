@@ -8,7 +8,7 @@
 
 //! v3 CLI fail-closed hellgate (ticket 08, D10 / D22).
 //!
-//! syntax->sema->ir path pinned: source text -> `pipeline::compile_program` ->
+//! syntax->sema->ir path pinned: source text -> `pipeline::compile_program_structural` ->
 //! the FIRST failing stage's typed diagnostic -> the real CLI binary's
 //! stage-tagged error output. Each case asserts the ACTUAL stage tag and inner
 //! stable code (not just that an error occurred), pinned against the real

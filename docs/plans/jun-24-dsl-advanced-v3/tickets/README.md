@@ -1,6 +1,6 @@
 # Jun 24 DSL Advanced v3 Ticket Pack
 
-Status: `Current Main Updated` + `12-15 Implemented With Green Rails`
+Status: `Current Main Updated` + `11-15 Implemented With Green Rails` + `10 Downstream Umbrella Open` + `16/17 Proof And Packet Sync Open`
 
 ## Current Main Receipt
 
@@ -11,6 +11,14 @@ implemented on current `main`:
 2. `13`: source-schema lifting and local type closure are live
 3. `14`: source horn-rule lowering into recursive predicate semantics is live
 4. `15`: explicit non-relational artifact and no-serve contracts are live
+5. `11`: module/import graph, packs, signatures, metadata, and declarative
+   model-pack seams are live
+
+Operational follow-up lanes still open on `2026-06-25`:
+
+1. `10`: downstream semantica cutover umbrella and SSOT
+2. `16`: current-main proof, dirty-tree classification, and artifact hygiene
+3. `17`: final packet sync after semantica D5 proof closure
 
 Local verification receipt:
 
@@ -26,6 +34,10 @@ Live regression rails:
 4. `crates/quanta-gqlang-v2-cli/tests/v3_cli_item_surfacing.rs`
 5. `crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs`
 6. `crates/quanta-gqlang-v2-conformance/tests/self_validation.rs`
+7. `crates/quanta-gqlang-v2-modules/tests/v3_modules_graph.rs`
+8. `crates/quanta-gqlang-v2-modules/tests/v3_modules_packs.rs`
+9. `crates/quanta-gqlang-v2-modules/tests/v3_modules_hellgate.rs`
+10. `crates/quanta-gqlang-v2-modules/tests/v3_catalog_hellgate.rs`
 
 ## What This Packet Is
 
@@ -64,11 +76,13 @@ Historical architecture warning:
 3. `v3` quality required a new core, not incremental `SELECT` patches
 4. semantica integration is downstream work; this packet owns frontend
    contracts, typing, normalization, and tooling inside this repo only
-5. the packet still needs an explicit downstream handoff because current
-   semantica serving contracts are narrower than the planned `v3` surface
+5. the packet still needs an explicit downstream handoff because semantica
+   still has residual compat/public-facade cleanup before the `v3` seam is the
+   only default serving authority
 6. current head now closes the old false-green semantic compile path through
-   explicit frontend context and lifted local typing, but legacy structural
-   entrypoints remain and must not be reported as semantic proof
+   explicit frontend context and lifted local typing, but explicit
+   structural/schema-only helpers remain and must not be reported as semantic
+   proof
 7. current head now lowers source horn rules through the public pipeline into
    recursive predicate semantics, with explicit unsupported-head rejects
 8. current head now exposes explicit non-relational compiled artifacts and
@@ -98,6 +112,8 @@ Historical architecture warning:
 14. [13-source-schema-lifting-and-local-type-closure](./13-source-schema-lifting-and-local-type-closure.md)
 15. [14-horn-rule-semantics-and-recursive-predicate-lowering](./14-horn-rule-semantics-and-recursive-predicate-lowering.md)
 16. [15-non-relational-artifact-contract-and-servable-boundaries](./15-non-relational-artifact-contract-and-servable-boundaries.md)
+17. [16-current-main-proof-and-artifact-hygiene](./16-current-main-proof-and-artifact-hygiene.md)
+18. [17-downstream-cutover-closeout-and-packet-sync](./17-downstream-cutover-closeout-and-packet-sync.md)
 
 ## Worker Contract
 
@@ -108,8 +124,9 @@ Historical architecture warning:
 5. ticket 09 is the only lane allowed to claim repo-local packet closure
 6. ticket 10 is a downstream sibling handoff; it does not expand this repo's
    ownership, but it is required before any end-to-end serving claim
-7. ticket 11 is the extensibility/DX lane; no one may claim SOTA alignment while
-   module/pack/extension ergonomics remain undefined
+7. ticket 11 is now materially implemented on current head; preserve its
+   deterministic module/pack/extension rails before claiming extensibility or DX
+   closure
 8. no one may claim semantic closure while multiplicity/order, witness
    selection, or pack-conflict behavior remains implicit
 9. no one may claim deterministic authoring while import precedence, re-export
@@ -125,3 +142,5 @@ Historical architecture warning:
     current crate map or escalate the ownership conflict explicitly
 14. every worker closeout must include the receipt fields from
     [EXECUTION_PLAYBOOK.md](./EXECUTION_PLAYBOOK.md)
+15. ticket 16 must classify current-main proof state and artifact hygiene before
+    ticket 17 closes the packet as synchronized SSOT

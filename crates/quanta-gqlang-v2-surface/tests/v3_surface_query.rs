@@ -19,7 +19,42 @@
 use quanta_gqlang_v2_hir::{
     check_tree, HirBuilderV1, HirRootRefV1, RelationExprKindV1, ResultShapeKindV1, ValueExprKindV1,
 };
-use quanta_gqlang_v2_surface::{parse_program, SurfaceItemV1};
+use quanta_gqlang_v2_surface::{parse_program, ParseErrorCodeV1, SurfaceItemV1};
+
+#[test]
+fn empty_result_shape_record_is_rejected() {
+    // D10 fail-closed: an empty result-shape record `{}` carries no output
+    // fields and must reject explicitly at the brace span rather than silently
+    // compiling to a zero-field shape, mirroring the projection/value-key
+    // "at least one item" requirement.
+    let src = "from users => {}";
+    let builder = HirBuilderV1::new();
+    let err = parse_program(src, &builder).expect_err("empty result shape rejects");
+    assert_eq!(err.code, ParseErrorCodeV1::UnsupportedConstruct);
+    // span points at the empty `{}` braces (bytes 14..16).
+    assert_eq!(err.span.start, 14);
+    assert_eq!(err.span.end, 16);
+}
+
+#[test]
+fn duplicate_result_shape_field_is_rejected() {
+    // D10 fail-closed: a result-shape record must not declare the same field
+    // name twice. A silent last-wins would drop an output field, so the parser
+    // rejects at the offending (second) field name's exact span.
+    let src = "from users => { a: 1, a: 2 }";
+    let builder = HirBuilderV1::new();
+    let err = parse_program(src, &builder).expect_err("duplicate shape field rejects");
+    assert_eq!(err.code, ParseErrorCodeV1::UnsupportedConstruct);
+    assert_eq!(err.code_str(), "surface.parse.unsupported_construct");
+    // second `a` starts at byte 22 in `from users => { a: 1, a: 2 }`.
+    assert_eq!(err.span.start, 22);
+    assert_eq!(err.span.end, 23);
+    assert!(
+        err.message.contains("duplicate"),
+        "message: {}",
+        err.message
+    );
+}
 
 #[test]
 fn aliased_projection_with_nested_shape() {

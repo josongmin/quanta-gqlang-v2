@@ -2,10 +2,16 @@
 
 Current main status at `2026-06-24`:
 
-1. tickets `12`, `13`, `14`, and `15` are materially implemented and backed by
-   green owner-local rails
-2. repo-local packet closure is still ticket `09`
-3. downstream serving closure is still ticket `10`
+1. tickets `09`, `12`, `13`, `14`, and `15` are materially implemented and
+   backed by green owner-local rails
+2. ticket `11` is also materially implemented and backed by green owner-local
+   rails
+3. downstream serving closure is still ticket `10`, now treated as the umbrella
+   lane for the semantica D5 execution packet
+4. tickets `16` and `17` are the remaining qglang-side closeout lanes:
+   current-main proof/artifact hygiene first, then final packet sync
+5. structural/schema-only helpers remain explicit partial-authority helpers and
+   are not semantic proof
 
 1. Read [00-packet-scope-and-pinned-decisions](./00-packet-scope-and-pinned-decisions.md) first.
    Cite decisions by `D#`.
@@ -47,21 +53,48 @@ Current main status at `2026-06-24`:
    - 15 now owns the live non-relational compiled-artifact and no-serve
      boundary contract
    - 08 is tooling and proof only
-   - 09 is the only repo-local closure lane
+   - 09 is the hard-cutover closure lane
    - 10 is the downstream semantica handoff lane; it cannot pull runtime
      substrate logic back into this repo
-   - 11 owns reusable module/pack/extension ergonomics and closes with 08/09
-6. Definition of done is ticket 09's checklist, ending in default `v3` path
-   green and `v2` direct path deleted or quarantined. Ticket 10 must still be
-   ready before anyone claims end-to-end advanced serving integration. Ticket 11
-   must still be ready before anyone claims SOTA-level DX/extensibility.
-   Multiplicity/order semantics, witness mode, and pack-conflict behavior must
-   also be explicit before anyone claims semantic closure.
-   Import precedence, module-cycle policy, nested result-shape ownership, and
-   fixed semantic-cost fields must also be explicit before anyone claims
-   deterministic authoring or explainability closure.
-   Public semantic compile APIs now have an explicit context-first surface;
-   structural/compat shims are not semantic proof. Horn `rule` now reaches
-   recursive-predicate lowering with fail-closed unsupported-head rails.
-   Standalone `let` / horn-rule now compile to explicit artifact/no-serve
-   outcomes; any regression reopens ticket `15`.
+   - 11 now owns the live reusable module/pack/extension ergonomics lane
+   - 16 owns current-main proof, dirty-tree classification, and artifact
+     hygiene before final packet closure claims
+   - 17 is the terminal packet-sync lane; it may close only after the semantica
+     D5 execution packet is green
+6. Closure scopes:
+   - repo-local closure is ticket `09` plus the live owner lanes from `11`-`15`
+   - full sibling cutover closure is repo-local closure plus downstream ticket
+     `10`, qglang ticket `16`, and qglang ticket `17`
+   - ticket `11` no longer sits as an undefined future lane; its current rails
+     must stay green for any extensibility/DX claim
+7. Repo-local DoD:
+   - one pipeline seam only across CLI/LSP/tests/conformance/facade
+   - module/import graph, packs, metadata, signatures, and model packs are
+     deterministic and fail closed
+   - `compile_with_context` is the semantic API; structural/schema-only helpers
+     are not semantic proof
+   - alias/local expressions are typed or rejected; no env-open skip path
+   - horn `rule` lowers to recursive-predicate semantics with fail-closed
+     unsupported-head rails
+   - standalone `let` / horn-rule compile to explicit artifact/no-serve
+     outcomes
+8. Downstream ticket `10` DoD:
+   - semantica consumes this repo only as a downstream frontend seam, preferably
+     through `quanta-gqlang-v2-frontend-contract`
+   - semantica does not absorb this repo as a workspace member
+   - no semantica manifest or ingress path depends on deleted `syntax` /
+     `sema` / `ir` crates or `PublicIrRootV1`
+   - semantica-owned runtime DTOs and host-adapter lowering start from
+     `CompiledProgramV1`
+   - semantica default public SDK/query facades stop exporting legacy
+     `ServingQueryRequestV1` / deleted root-helper authority
+   - end-to-end advanced-serving claims require downstream bridge/conformance
+     rails green on that seam
+   - qglang packet closeout claims require ticket `16` proof closure and ticket
+     `17` packet sync after semantica D5 closes
+9. Semantic-closure guardrails that remain mandatory:
+   - multiplicity/order semantics, witness mode, and pack-conflict behavior
+     must be explicit before anyone claims semantic closure
+   - import precedence, module-cycle policy, nested result-shape ownership, and
+     fixed semantic-cost fields must be explicit before anyone claims
+     deterministic authoring or explainability closure

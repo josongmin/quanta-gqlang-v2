@@ -20,7 +20,7 @@ fn compat() -> VersionRangeV1 {
 fn manifest_and_lock_round_trip() {
     let host = VersionV1::new(3, 1, 0);
     let graph = PackGraphV1::new()
-        .with_manifest(
+        .add_manifest(
             PackManifestV1::new(PackIdV1::new("app", VersionV1::new(1, 0, 0)), compat())
                 .with_dependency(DependencyReqV1::new(
                     "lib",
@@ -28,10 +28,12 @@ fn manifest_and_lock_round_trip() {
                 ))
                 .with_export("AppQuery"),
         )
-        .with_manifest(
+        .unwrap()
+        .add_manifest(
             PackManifestV1::new(PackIdV1::new("lib", VersionV1::new(2, 1, 0)), compat())
                 .with_export("LibHelper"),
-        );
+        )
+        .unwrap();
 
     // Validation passes: compat ok, dependency in range, no overlap.
     graph.validate(host).unwrap();

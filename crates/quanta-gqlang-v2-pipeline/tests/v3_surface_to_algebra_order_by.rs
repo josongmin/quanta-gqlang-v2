@@ -19,7 +19,7 @@
 
 use quanta_gqlang_v2_algebra::{AlgebraOpV1, SortDirectionV1};
 use quanta_gqlang_v2_hir::ValueExprKindV1;
-use quanta_gqlang_v2_pipeline::compile_program;
+use quanta_gqlang_v2_pipeline::compile_program_structural;
 use quanta_gqlang_v2_types::CardinalityV1;
 
 /// rail: a single-key `order by` compiles end to end into an explicit Sort
@@ -29,7 +29,7 @@ use quanta_gqlang_v2_types::CardinalityV1;
 #[test]
 fn order_by_lowers_to_explicit_sort_with_carried_key() {
     let src = "from findings f | order by f.id";
-    let compiled = compile_program(src).expect("order by compiles end to end");
+    let compiled = compile_program_structural(src).expect("order by compiles end to end");
 
     let root = compiled
         .algebra()
@@ -74,7 +74,7 @@ fn order_by_lowers_to_explicit_sort_with_carried_key() {
 #[test]
 fn order_by_decodes_directions_and_preserves_key_order() {
     let src = "from findings f | order by f.severity desc, f.id asc";
-    let compiled = compile_program(src).expect("order by compiles end to end");
+    let compiled = compile_program_structural(src).expect("order by compiles end to end");
 
     let root = compiled
         .algebra()

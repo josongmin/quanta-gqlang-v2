@@ -9,7 +9,7 @@
 //! v3 diagnostics determinism at the binary front door (ticket 08, D22).
 //!
 //! syntax->sema->ir path pinned: source text -> the `v3_diagnostics` stdio method
-//! -> `pipeline::compile_program` -> the first failing stage's typed diagnostic,
+//! -> `pipeline::compile_program_structural` -> the first failing stage's typed diagnostic,
 //! flattened to a stage/code/message/span JSON row.
 //!
 //! Extends the `stdio_completion_determinism` pattern to the new read-only

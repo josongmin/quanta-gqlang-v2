@@ -7,18 +7,18 @@
 //!
 //! Input may be a SINGLE top-level item or a `;`-separated multi-item document:
 //! the input is parsed through `surface::parse_document` (the one shared parser)
-//! and compiled through `pipeline::compile_document` so cross-item catalog rules
-//! (duplicate registration, VIEW cycles, REQUIRE CERTIFIED gates) fire. Each
-//! item's per-family outcome is rendered in source order.
+//! and compiled through `pipeline::compile_document_structural` so cross-item
+//! catalog rules (duplicate registration, VIEW cycles, REQUIRE CERTIFIED gates)
+//! fire without smuggling an empty schema as semantic authority. Each item's
+//! per-family outcome is rendered in source order.
 //!
 //! Fail-closed (D10): a failing stage returns the stage-tagged pipeline
 //! diagnostic carrying the inner stage's exact stable code and span, formatted by
 //! [`render_pipeline_diagnostic_v1`].
 
 use quanta_gqlang_v2_hir::{HirBuilderV1, ProgramItemHirV1};
-use quanta_gqlang_v2_pipeline::{compile_document, PipelineDiagnosticV1};
+use quanta_gqlang_v2_pipeline::{compile_document_structural, PipelineDiagnosticV1};
 use quanta_gqlang_v2_surface::parse_document;
-use quanta_gqlang_v2_types::TypeEnvV1;
 
 use crate::v3_plan::render_compiled_item_v1;
 
@@ -37,9 +37,8 @@ use crate::v3_plan::render_compiled_item_v1;
 /// rendered stage-tagged pipeline diagnostic on the first failing item/stage.
 pub fn run(input: &str) -> Result<String, String> {
     let items = parse_items_v1(input).map_err(|diag| render_pipeline_diagnostic_v1(&diag))?;
-    let schema = TypeEnvV1::new();
     let compiled =
-        compile_document(&items, &schema).map_err(|diag| render_pipeline_diagnostic_v1(&diag))?;
+        compile_document_structural(&items).map_err(|diag| render_pipeline_diagnostic_v1(&diag))?;
     Ok(compiled
         .iter()
         .map(render_compiled_item_v1)

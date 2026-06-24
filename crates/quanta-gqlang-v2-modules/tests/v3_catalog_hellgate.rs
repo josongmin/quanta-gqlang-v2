@@ -62,10 +62,12 @@ fn inline_view(id: u32, source_name: &str) -> CatalogPayloadV1 {
 
 fn host_packs() -> PackGraphV1 {
     let compat = VersionRangeV1::new(VersionV1::new(3, 0, 0), VersionV1::new(4, 0, 0));
-    PackGraphV1::new().with_manifest(PackManifestV1::new(
-        PackIdV1::new("security-pack", VersionV1::new(1, 0, 0)),
-        compat,
-    ))
+    PackGraphV1::new()
+        .add_manifest(PackManifestV1::new(
+            PackIdV1::new("security-pack", VersionV1::new(1, 0, 0)),
+            compat,
+        ))
+        .unwrap()
 }
 
 // Happy path: register VIEW + RULE + PACK + PROFILE + GATE and SHOW-style

@@ -389,10 +389,14 @@ fn binary_join(
     // BAG (the cross multiplies multiplicities, no dedup).
     let mut columns = left.columns.clone();
     columns.extend(right.columns.clone());
+    // `predicate = None` is RESERVED for the explicit `cross` operator (an opt-in
+    // cartesian product). A plain `join` whose right operand carries no filter
+    // predicate has a MISSING join condition; we must not fabricate a cross join
+    // from it (D10, fail-closed). Validate post-extraction.
     let predicate = if cross {
         None
     } else {
-        join_predicate(right_hir)
+        require_join_predicate(right_hir, &compose.op.symbol, node.span)?
     };
     Ok(AlgebraNodeV1::new(
         node.id,
@@ -415,6 +419,24 @@ fn join_predicate(right: &RelationExprHirV1) -> Option<Box<quanta_gqlang_v2_hir:
         Some(Box::new((*filter.predicate).clone()))
     } else {
         None
+    }
+}
+
+/// Like [`join_predicate`] but fail-closed: a predicate is MANDATORY. Used for
+/// join-family operators that have no cartesian form (`join`, `semijoin`,
+/// `antijoin`). A missing predicate is never an implicit cross product — only
+/// the explicit `cross` operator carries `predicate = None` (`D10`).
+fn require_join_predicate(
+    right: &RelationExprHirV1,
+    symbol: &str,
+    span: quanta_gqlang_v2_hir::SpanV1,
+) -> Result<Option<Box<quanta_gqlang_v2_hir::BoolExprHirV1>>, AlgebraDiagnosticV1> {
+    match join_predicate(right) {
+        Some(p) => Ok(Some(p)),
+        None => Err(AlgebraDiagnosticV1::EmptyJoinPredicate {
+            symbol: symbol.to_owned(),
+            span,
+        }),
     }
 }
 
@@ -459,9 +481,20 @@ fn binary_apply(
         return Err(AlgebraDiagnosticV1::MissingCorrelation { span: node.span });
     }
 
-    // Apply output: left columns, then right columns whose provenance becomes
-    // Correlated where they reference the outer side. Output is a BAG (lateral
-    // expansion multiplies multiplicities).
+    // Apply output cardinality (D26). Lateral expansion is order-preserving on the
+    // LEFT dimension (for each outer row, in order, the correlated inner is
+    // expanded), but a correlated inner may produce zero, one, or MANY rows per
+    // outer row. So:
+    //   - Sequence is PRESERVED: order does not change multiplicity.
+    //   - Bag is PRESERVED: already duplicate-permitting.
+    //   - Set DOWNGRADES to Bag: expanding each distinct outer row by a variable
+    //     number of inner rows lets the same outer key recur across output rows,
+    //     breaking the Set's distinctness guarantee. Preserving Set here would
+    //     wrongly claim duplicate-elimination the lateral expansion does not provide.
+    let cardinality = match left.cardinality {
+        CardinalityV1::Set | CardinalityV1::Bag => CardinalityV1::Bag,
+        CardinalityV1::Sequence => CardinalityV1::Sequence,
+    };
     //
     // Correlated provenance is keyed by the outer symbol each right output column
     // DERIVES FROM, not by the column's output name. An inner projection may alias
@@ -492,7 +525,7 @@ fn binary_apply(
         node.id,
         node.span,
         columns,
-        CardinalityV1::Bag,
+        cardinality,
         AlgebraOpV1::Apply(ApplyV1 {
             left: Box::new(left),
             right: Box::new(right),
@@ -577,7 +610,9 @@ fn binary_semi(
     // Semi-join output is EXACTLY the left schema and cardinality.
     let columns = left.columns.clone();
     let cardinality = left.cardinality;
-    let predicate = join_predicate(right_hir);
+    // A semi-join has no cartesian form: a missing predicate is always a defect,
+    // never an opt-in cross. Reject rather than fabricate `predicate = None`.
+    let predicate = require_join_predicate(right_hir, &compose.op.symbol, node.span)?;
     Ok(AlgebraNodeV1::new(
         node.id,
         node.span,
@@ -601,7 +636,9 @@ fn binary_anti(
     let right = normalize_node(right_hir, ctx)?;
     let columns = left.columns.clone();
     let cardinality = left.cardinality;
-    let predicate = join_predicate(right_hir);
+    // An anti-join, like a semi-join, has no cartesian form: a missing predicate
+    // is always a defect. Reject rather than fabricate `predicate = None`.
+    let predicate = require_join_predicate(right_hir, &compose.op.symbol, node.span)?;
     Ok(AlgebraNodeV1::new(
         node.id,
         node.span,
@@ -1049,7 +1086,20 @@ fn collect_bool_symbols(node: &quanta_gqlang_v2_hir::BoolExprHirV1, acc: &mut BT
         BoolExprKindV1::Not(inner) | BoolExprKindV1::Paren(inner) => {
             collect_bool_symbols(inner, acc);
         }
-        BoolExprKindV1::Quantifier(quant) => collect_bool_symbols(&quant.body, acc),
+        BoolExprKindV1::Quantifier(quant) => {
+            // The quantifier binds its own variable names; references to them
+            // inside the body resolve to those LOCAL binders, not to any outer
+            // column of the same name. Collect the body's symbols into a scratch
+            // set, drop the binder names, and only then merge the genuinely free
+            // symbols into `acc`. Folding the binders in directly would let a
+            // coincidental name collision fabricate a spurious Apply correlation.
+            let mut body_symbols = BTreeSet::new();
+            collect_bool_symbols(&quant.body, &mut body_symbols);
+            for binder in &quant.binders {
+                let _ = body_symbols.remove(binder);
+            }
+            acc.extend(body_symbols);
+        }
     }
 }
 

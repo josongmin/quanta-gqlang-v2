@@ -152,6 +152,18 @@ pub enum ModuleDiagnosticV1 {
         /// The non-certified admission tag the profile declared.
         admission: &'static str,
     },
+    /// Two manifests added to the same [`crate::PackGraphV1`] declare the same
+    /// pack name. Per `D28` pack conflicts fail closed with a deterministic
+    /// diagnostic — never silent last-wins / overwrite — so the graph rejects
+    /// before mutating its state.
+    DuplicatePackName {
+        /// The colliding pack name.
+        name: String,
+        /// The version already registered under that name.
+        existing: VersionV1,
+        /// The version of the rejected duplicate.
+        incoming: VersionV1,
+    },
     /// `USE PACK <id>` names a pack with no resolvable manifest in the host
     /// pack graph. Pack activation requires a known manifest.
     UnknownPackManifest {
@@ -185,6 +197,7 @@ impl ModuleDiagnosticV1 {
             Self::InvalidModelData { .. } => "modules.invalid_model_data",
             Self::SignatureArityMismatch { .. } => "modules.signature_arity_mismatch",
             Self::DuplicateCatalogName { .. } => "modules.duplicate_catalog_name",
+            Self::DuplicatePackName { .. } => "modules.duplicate_pack_name",
             Self::ViewInlineCycle { .. } => "modules.view_inline_cycle",
             Self::CertifiedRequiredViolation { .. } => "modules.certified_required_violation",
             Self::UnknownPackManifest { .. } => "modules.unknown_pack_manifest",
@@ -302,6 +315,18 @@ impl fmt::Display for ModuleDiagnosticV1 {
                 self.code(),
                 kind,
                 name,
+            ),
+            Self::DuplicatePackName {
+                name,
+                existing,
+                incoming,
+            } => write!(
+                f,
+                "{}: pack `{}` is declared twice (existing {} vs incoming {})",
+                self.code(),
+                name,
+                existing,
+                incoming,
             ),
             Self::ViewInlineCycle { cycle } => write!(
                 f,

@@ -95,6 +95,18 @@ pub enum LogicDiagnosticV1 {
         /// Span of the offending graph query.
         span: SpanV1,
     },
+    /// A FIND graph query over a CYCLIC relation supplied BOTH an explicit
+    /// `depth` bound AND bounding waypoints (`via` / `through`). These are two
+    /// competing path-length binding strategies; silently letting `depth` win
+    /// would drop the waypoint constraint (a silent downgrade, `D10`) and accept
+    /// a seed that means two different things at once (`D26`). The query fails
+    /// closed so the user explicitly picks ONE binding strategy.
+    GraphConflictingPathBound {
+        /// The FIND subkind that carried the conflicting bounds.
+        kind: GraphQueryKindV1,
+        /// Span of the offending graph query.
+        span: SpanV1,
+    },
     /// A least-fixpoint was requested over a rule body that is not monotone
     /// (it negates or aggregates the recursive predicate inside its own
     /// recursion), so the fixpoint is not guaranteed to exist / be unique.
@@ -173,6 +185,9 @@ impl LogicDiagnosticV1 {
             }
             Self::GraphEndpointMissing { .. } => "logic.graph_endpoint_missing".to_owned(),
             Self::GraphEndpointUnexpected { .. } => "logic.graph_endpoint_unexpected".to_owned(),
+            Self::GraphConflictingPathBound { .. } => {
+                "logic.graph_conflicting_path_bound".to_owned()
+            }
             Self::NonMonotoneRecursion { reason, .. } => {
                 format!("logic.non_monotone_recursion.{}", reason.code())
             }
@@ -190,6 +205,7 @@ impl LogicDiagnosticV1 {
             | Self::UnboundedWitness { span, .. }
             | Self::GraphEndpointMissing { span, .. }
             | Self::GraphEndpointUnexpected { span, .. }
+            | Self::GraphConflictingPathBound { span, .. }
             | Self::NonMonotoneRecursion { span, .. } => *span,
         }
     }
@@ -252,6 +268,13 @@ impl LogicDiagnosticV1 {
                     "FIND `{}` does not accept a `{}` endpoint",
                     crate::graph::graph_query_keyword(*kind),
                     role.keyword()
+                )
+            }
+            Self::GraphConflictingPathBound { kind, .. } => {
+                format!(
+                    "FIND `{}` supplies both an explicit `depth` bound and bounding waypoints \
+                     (`via`/`through`); choose one path-length binding strategy",
+                    crate::graph::graph_query_keyword(*kind)
                 )
             }
             Self::NonMonotoneRecursion {

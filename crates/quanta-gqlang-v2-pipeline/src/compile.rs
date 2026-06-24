@@ -1,6 +1,6 @@
 //! The single end-to-end compile entry point (ticket 08, D22).
 //!
-//! [`compile_program`] runs the FULL v3 frontend stack against a source string
+//! [`compile_program_structural`] runs the FULL v3 frontend stack against a source string
 //! and routes EVERY parsed root family through the one shared compiler. There is
 //! no second parser / binder / type / algebra / planner anywhere downstream
 //! (D22). Stages run in order and SHORT-CIRCUIT on the first failure, returning a
@@ -69,8 +69,8 @@ use crate::diagnostic::PipelineDiagnosticV1;
 ///
 /// Semantic compile now consumes a frozen module graph plus a source-schema/type
 /// environment through one inspectable value rather than inventing empty
-/// defaults internally. The legacy entry points still exist as structural/compat
-/// shims, but the context-first API is the semantic surface.
+/// defaults internally. Structural and schema-only helpers remain available,
+/// but they are named explicitly and are not semantic proof.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FrontendContextV1 {
     module_graph: ModuleGraphV1,
@@ -89,13 +89,14 @@ impl FrontendContextV1 {
 
     /// Structural-only default context: empty module graph and empty schema.
     #[must_use]
-    pub fn structural() -> Self {
+    pub fn structural_only() -> Self {
         Self::new(ModuleGraphV1::new(), TypeEnvV1::new())
     }
 
-    /// Compatibility shim for callers that only have schema authority.
+    /// Explicit partial-authority constructor for callers that only have schema
+    /// authority.
     #[must_use]
-    pub fn from_schema(schema: TypeEnvV1) -> Self {
+    pub fn schema_only(schema: TypeEnvV1) -> Self {
         Self::new(ModuleGraphV1::new(), schema)
     }
 
@@ -310,29 +311,28 @@ impl CompiledItemV1 {
     }
 }
 
-/// Compile a source string through the full v3 frontend stack with the
-/// structural-only default context.
+/// Compile a source string through the full v3 frontend stack with explicit
+/// structural-only authority.
 ///
 /// # Errors
 ///
 /// Returns a stage-tagged [`PipelineDiagnosticV1`] on the first failing stage,
 /// preserving the inner stage diagnostic's stable code and span.
-pub fn compile_program(source: &str) -> Result<CompiledProgramV1, PipelineDiagnosticV1> {
-    compile_with_context(source, &FrontendContextV1::structural())
+pub fn compile_program_structural(source: &str) -> Result<CompiledProgramV1, PipelineDiagnosticV1> {
+    compile_with_context(source, &FrontendContextV1::structural_only())
 }
 
 /// Compile a source string through the full stack against a caller-supplied
-/// schema [`TypeEnvV1`]. The env types schema-dependent value expressions; the
-/// default [`compile_program`] passes an empty env.
+/// schema [`TypeEnvV1`] only.
 ///
 /// # Errors
 ///
 /// Returns a stage-tagged [`PipelineDiagnosticV1`] on the first failing stage.
-pub fn compile_with(
+pub fn compile_program_with_schema(
     source: &str,
     schema: &TypeEnvV1,
 ) -> Result<CompiledProgramV1, PipelineDiagnosticV1> {
-    compile_with_context(source, &FrontendContextV1::from_schema(schema.clone()))
+    compile_with_context(source, &FrontendContextV1::schema_only(schema.clone()))
 }
 
 /// Compile a source string through the full stack against explicit semantic
@@ -368,11 +368,23 @@ pub fn compile_with_context(
 /// # Errors
 ///
 /// Returns a stage-tagged [`PipelineDiagnosticV1`] on the first failing stage.
-pub fn compile_item(
+pub fn compile_item_structural(
+    item: &ProgramItemHirV1,
+) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
+    compile_item_with_context(item, &FrontendContextV1::structural_only())
+}
+
+/// Compile one already-parsed program item through the stages its family runs
+/// against a caller-supplied schema [`TypeEnvV1`] only.
+///
+/// # Errors
+///
+/// Returns a stage-tagged [`PipelineDiagnosticV1`] on the first failing stage.
+pub fn compile_item_with_schema(
     item: &ProgramItemHirV1,
     schema: &TypeEnvV1,
 ) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    compile_item_with_context(item, &FrontendContextV1::from_schema(schema.clone()))
+    compile_item_with_context(item, &FrontendContextV1::schema_only(schema.clone()))
 }
 
 /// Compile one already-parsed program item through explicit semantic authority.
@@ -386,7 +398,7 @@ pub fn compile_item_with_context(
 ) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
     // A stand-alone item registers into its own throwaway catalog; cross-item
     // duplicate / cycle / certified rejection needs a SHARED catalog, which is
-    // what [`compile_document`] threads.
+    // what the document entry points thread.
     let mut catalog = CatalogV1::new();
     compile_item_in(item, context, &mut catalog)
 }
@@ -404,11 +416,23 @@ pub fn compile_item_with_context(
 /// # Errors
 ///
 /// Returns the first failing item's stage-tagged [`PipelineDiagnosticV1`].
-pub fn compile_document(
+pub fn compile_document_structural(
+    items: &[ProgramItemHirV1],
+) -> Result<Vec<CompiledItemV1>, PipelineDiagnosticV1> {
+    compile_document_with_context(items, &FrontendContextV1::structural_only())
+}
+
+/// Compile a document of program items that share ONE catalog against a
+/// caller-supplied schema [`TypeEnvV1`] only.
+///
+/// # Errors
+///
+/// Returns the first failing item's stage-tagged [`PipelineDiagnosticV1`].
+pub fn compile_document_with_schema(
     items: &[ProgramItemHirV1],
     schema: &TypeEnvV1,
 ) -> Result<Vec<CompiledItemV1>, PipelineDiagnosticV1> {
-    compile_document_with_context(items, &FrontendContextV1::from_schema(schema.clone()))
+    compile_document_with_context(items, &FrontendContextV1::schema_only(schema.clone()))
 }
 
 /// Compile a document of items through explicit semantic authority.
@@ -639,11 +663,26 @@ fn compile_composition(
     // Producers and the body share the document catalog scope (D10): a duplicate
     // catalog declaration across nested items rejects tagged `modules`, just as
     // it does at the document top level.
+    //
+    // D34 (capture lane): each `LET <name> = <producer>` binding is binder-visible
+    // to later producers and the body. Its OUTPUT row type must therefore lift
+    // into the local type environment so a body/later-producer expression over a
+    // producer column (`from <name> x | where x.col ...`) is type-checked, not
+    // silently skipped because the source name stayed schema-open. Accumulate each
+    // producer's output relation type into a working schema and compile subsequent
+    // producers and the body against that augmented context.
+    let mut local_context = context.clone();
     let mut bindings = Vec::with_capacity(comp.bindings.len());
     for binding in &comp.bindings {
-        bindings.push(compile_item_in(&binding.producer, context, catalog)?);
+        let compiled = compile_item_in(&binding.producer, &local_context, catalog)?;
+        if let Some(relation) = producer_output_relation(&binding.producer, &local_context) {
+            let mut schema = local_context.schema().clone();
+            schema.insert(binding.name.clone(), relation);
+            local_context = FrontendContextV1::new(local_context.module_graph().clone(), schema);
+        }
+        bindings.push(compiled);
     }
-    let body = compile_item_in(&comp.body, context, catalog)?;
+    let body = compile_item_in(&comp.body, &local_context, catalog)?;
 
     Ok(CompiledItemV1::Composition {
         hir: Box::new(comp.clone()),
@@ -684,6 +723,76 @@ fn compile_meta(
         hir: Box::new(meta.clone()),
         plan,
     })
+}
+
+// ---- composition producer output schema (D34 capture lane) -----------------
+
+/// The output relation type a composition producer exposes to later producers
+/// and the body, when one is derivable under the supplied authority.
+///
+/// Only a relational-query producer denotes a row-shaped working set whose
+/// columns a downstream `from <name> x | ... x.col ...` expression references.
+/// Its output row is the record of its TOP-LEVEL projection aliases, each typed
+/// under the same lifted source-local environment the relational path already
+/// uses (`type_check_relation`). A projection item whose type stays
+/// authority-open contributes no field rather than a guessed one, so the lifted
+/// row never over-binds: a downstream reference to such a column simply stays
+/// env-open exactly as it would have without lifting.
+///
+/// Non-relational producers (FIND / CHECK / presentation / value decl / rule /
+/// catalog / meta / nested composition) carry no row schema to lift here, so
+/// `None` is returned and the binding name stays schema-open (no silent
+/// over-binding, D34).
+fn producer_output_relation(
+    producer: &ProgramItemHirV1,
+    context: &FrontendContextV1,
+) -> Option<TypeV1> {
+    let ProgramItemHirV1::Query(query) = producer else {
+        return None;
+    };
+    let checker = TypeCheckerV1::new();
+    let output_env = type_check_relation(&checker, &query.body, context.schema()).ok()?;
+    let local_env = merged_env(context.schema(), &output_env);
+    let fields = projection_row_fields(&checker, &query.body, &local_env)?;
+    Some(TypeV1::Relation {
+        row: Box::new(TypeV1::record(fields)),
+        cardinality: quanta_gqlang_v2_types::CardinalityV1::Bag,
+    })
+}
+
+/// The top-level projection's aliased output columns, typed under `env`. Returns
+/// `None` when the relation does not terminate in a projection (no nameable
+/// output columns to lift). A projection item without an alias, or one whose
+/// value type stays authority-open, contributes no field.
+fn projection_row_fields(
+    checker: &TypeCheckerV1,
+    relation: &RelationExprHirV1,
+    env: &TypeEnvV1,
+) -> Option<Vec<quanta_gqlang_v2_types::RecordFieldTyV1>> {
+    let RelationExprKindV1::Project(project) = &relation.kind else {
+        return None;
+    };
+    let mut fields = Vec::new();
+    for item in &project.items {
+        if let Some(alias) = &item.alias {
+            if let Ok(Some(ty)) = infer_value_type(checker, &item.value, env) {
+                fields.push(quanta_gqlang_v2_types::RecordFieldTyV1::new(
+                    alias.name.clone(),
+                    ty,
+                ));
+            }
+        }
+    }
+    // A projection that contributes NO named columns (every item is alias-less, or
+    // every aliased item stays authority-open) denotes no nameable output row. Lift
+    // `None` rather than `Some(vec![])` so the binding is not created against a
+    // phantom empty-record relation: the name stays schema-open and a downstream
+    // reference stays env-open exactly as it would have without lifting (D34, the
+    // lifted row never over-binds).
+    if fields.is_empty() {
+        return None;
+    }
+    Some(fields)
 }
 
 // ---- shared stage helpers --------------------------------------------------

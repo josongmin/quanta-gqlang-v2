@@ -108,6 +108,13 @@ pub struct AlgebraNodeV1 {
 
 impl AlgebraNodeV1 {
     /// Assemble a node from its parts.
+    ///
+    /// Enforces the structural invariant that an [`AlgebraOpV1::Aggregate`]'s
+    /// direct input is always an [`AlgebraOpV1::Group`] node (see
+    /// [`AggregateV1`]). The check is a `debug_assert`: a malformed
+    /// `Aggregate(input=non-Group)` fails fast in debug/test builds rather than
+    /// being silently mis-classified downstream, while release builds pay no
+    /// runtime cost.
     #[must_use]
     pub fn new(
         origin: HirNodeIdV1,
@@ -116,6 +123,14 @@ impl AlgebraNodeV1 {
         cardinality: CardinalityV1,
         op: AlgebraOpV1,
     ) -> Self {
+        if let AlgebraOpV1::Aggregate(aggregate) = &op {
+            debug_assert!(
+                matches!(aggregate.input.op, AlgebraOpV1::Group(_)),
+                "Aggregate input must be a Group node (scalar aggregates use \
+                 Group(keys=[])), but found {:?}",
+                aggregate.input.family()
+            );
+        }
         Self {
             origin,
             span,
@@ -328,9 +343,19 @@ pub struct GroupV1 {
 }
 
 /// Aggregate: fold each partition of a [`GroupV1`] input.
+///
+/// STRUCTURAL INVARIANT: the input to an Aggregate MUST be a [`GroupV1`] node
+/// (`AlgebraOpV1::Group`). Grouping keys never live on the Aggregate — they are
+/// the output columns of the input Group, and the Aggregate carries only folds.
+/// Scalar aggregates (no grouping keys) are represented as
+/// `Aggregate(input=Group(keys=[]))`, NOT as an Aggregate over a Scan/Filter.
+/// This invariant is checked by a `debug_assert` in [`AlgebraNodeV1::new`], so a
+/// malformed `Aggregate(input=non-Group)` fails fast in debug/test builds rather
+/// than being silently mis-classified downstream.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AggregateV1 {
-    /// The grouping input (must normalize from a [`GroupV1`] node).
+    /// The grouping input. MUST be a [`GroupV1`] node (`AlgebraOpV1::Group`); a
+    /// scalar aggregate uses `Group(keys=[])`. See the struct-level invariant.
     pub input: Box<AlgebraNodeV1>,
     /// Ordered aggregate folds. Aggregates ONLY; grouping keys live in `input`.
     pub aggregates: Vec<AggregateExprV1>,

@@ -2,12 +2,12 @@
 //!
 //! CUTOVER STATUS (ticket 09): the LSP is now v3-ONLY. The single analysis
 //! surface is the `v3_diagnostics` method, which runs over the ONE shared
-//! compiler pipeline `quanta-gqlang-v2-pipeline::compile_program` (`D22`). The
-//! legacy v2 read-only methods (`hover`, `completion`, `symbols`, `diagnostics`,
+//! compiler pipeline
+//! `quanta-gqlang-v2-pipeline::compile_program_structural` (`D22`). The legacy
+//! v2 read-only methods (`hover`, `completion`, `symbols`, `diagnostics`,
 //! `zero_query`, `quickfix`, `explain`) were rooted in the `ir`/`sema`/`syntax`
-//! stack and have been REMOVED — the crate no longer depends on any v2 crate.
-//! Their handler modules and v2-bound tests were deleted in this wave; only the
-//! v2-agnostic stdio transport scaffold survives, re-pointed at the pipeline.
+//! stack and have been REMOVED. Only the transport scaffold survives, re-pointed
+//! at the pipeline.
 
 use std::io::{Read, Write};
 

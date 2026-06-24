@@ -18,8 +18,9 @@
 //! gone; `query` and `fmt` are now the v3 path and `v3-query` / `v3-fmt` are
 //! retained as explicit aliases for the same behavior.
 //!
-//! - `query` / `v3-query`: compile the input through `pipeline::compile_program`
-//!   (single item) or `pipeline::compile_document` over `surface::parse_document`
+//! - `query` / `v3-query`: compile the input through
+//!   `pipeline::compile_program_structural` (single item) or
+//!   `pipeline::compile_document_structural` over `surface::parse_document`
 //!   (multi-item, `;`-separated) and render the per-family plan + cost summary.
 //! - `fmt` / `v3-fmt`: parse through `surface::parse_program` /
 //!   `surface::parse_document` and render canonical surface via

@@ -14,7 +14,9 @@ Their responsibility was not dropped. It was reseated into one v3 frontend:
 3. binding / schema / catalog authority: `binder`, `types`, `modules`
 4. normalized frontend semantics: `algebra` + `logic`
 5. host-agnostic plan / truth / effect contract: `planning`
-6. one compile entrypoint: `quanta-gqlang-v2-pipeline::compile_program`
+6. one compiler service:
+   semantic entrypoint `quanta-gqlang-v2-pipeline::compile_with_context`
+   plus explicit structural/schema-only helpers
 7. downstream consumer seam: `quanta-gqlang-v2-frontend-contract`
 
 Cites: `D8` (architecture cleanliness mandatory), `D10` (fail-closed),
@@ -26,7 +28,7 @@ Cites: `D8` (architecture cleanliness mandatory), `D10` (fail-closed),
 Current head v3 covers the old public language breadth through the shared
 frontend, not through resurrected legacy crates.
 
-Served by `compile_program` today:
+Served by the shared pipeline today:
 
 1. relational query
 2. all FIND subkinds: `reachability`, `flow`, `slice`, `taint`, `path`,

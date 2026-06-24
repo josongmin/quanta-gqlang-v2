@@ -8,7 +8,7 @@
 
 //! v3 CLI per-family surfacing hellgate (D22 / D32 / D10).
 //!
-//! `v3-query` consumes the ONE shared `pipeline::compile_program` (D22) and
+//! `v3-query` consumes the ONE shared `pipeline::compile_program_structural` (D22) and
 //! renders EVERY item kind deterministically through the real CLI binary:
 //!
 //! - a plan-bearing family (FIND / CHECK) renders its `item.kind`, plan summary,

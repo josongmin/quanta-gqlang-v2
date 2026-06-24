@@ -7,7 +7,7 @@
 
 use quanta_gqlang_v2_binder::ModuleGraphV1;
 use quanta_gqlang_v2_pipeline::{
-    compile_program, compile_with_context, FrontendContextV1, PipelineStageV1,
+    compile_program_structural, compile_with_context, FrontendContextV1, PipelineStageV1,
 };
 use quanta_gqlang_v2_types::{CardinalityV1, RecordFieldTyV1, TypeEnvV1, TypeV1};
 
@@ -28,8 +28,8 @@ fn users_relation_schema() -> TypeEnvV1 {
 fn context_first_compile_closes_alias_typing_explicitly() {
     let src = "from users u | where u.id + \"x\" > 1 | project u.id as id";
 
-    let structural =
-        compile_program(src).expect("structural compile stays permissive without authority");
+    let structural = compile_program_structural(src)
+        .expect("structural compile stays permissive without authority");
     assert!(
         structural.plan().is_some(),
         "structural path still compiles"

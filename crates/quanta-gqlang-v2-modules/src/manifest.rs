@@ -166,11 +166,22 @@ impl PackGraphV1 {
         }
     }
 
-    /// Add a manifest (keyed by pack name; replaces a same-name entry).
-    #[must_use]
-    pub fn with_manifest(mut self, manifest: PackManifestV1) -> Self {
+    /// Add a manifest, keyed by pack name, failing closed on a duplicate name.
+    ///
+    /// Per `D28` a pack-name conflict is a hard reject with a deterministic
+    /// [`ModuleDiagnosticV1::DuplicatePackName`] diagnostic — never a silent
+    /// last-wins overwrite. The duplicate is rejected BEFORE the graph mutates,
+    /// so a rejected `add_manifest` leaves the graph state untouched.
+    pub fn add_manifest(mut self, manifest: PackManifestV1) -> Result<Self, ModuleDiagnosticV1> {
+        if let Some(existing) = self.manifests.get(&manifest.id.name) {
+            return Err(ModuleDiagnosticV1::DuplicatePackName {
+                name: manifest.id.name.clone(),
+                existing: existing.id.version,
+                incoming: manifest.id.version,
+            });
+        }
         let _ = self.manifests.insert(manifest.id.name.clone(), manifest);
-        self
+        Ok(self)
     }
 
     /// Borrow a manifest by pack name.

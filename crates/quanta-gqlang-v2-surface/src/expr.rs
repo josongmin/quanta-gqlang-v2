@@ -275,10 +275,17 @@ fn parse_call(
 
 fn parse_record(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosticV1> {
     let open = cur.expect(&TokenKindV1::LBrace, "'{' to open record")?;
-    let mut fields = Vec::new();
+    let mut fields: Vec<RecordFieldV1> = Vec::new();
     if !matches!(cur.peek().kind, TokenKindV1::RBrace) {
         loop {
             let (name, name_span) = cur.expect_ident("record field name")?;
+            // D10 fail-closed: a record literal must not declare the same field
+            // name twice (silent last-wins would drop a field). Reject at the
+            // offending name's exact span, mirroring the composition binding and
+            // clause-key duplicate guards.
+            if fields.iter().any(|f| f.name == name) {
+                return Err(cur.unsupported(name_span, format!("duplicate record field '{name}'")));
+            }
             cur.expect(&TokenKindV1::Colon, "':' after record field name")?;
             let value = parse_value(cur)?;
             fields.push(RecordFieldV1 {

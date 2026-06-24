@@ -10,9 +10,10 @@
 pub use quanta_gqlang_v2_algebra::*;
 pub use quanta_gqlang_v2_hir::*;
 pub use quanta_gqlang_v2_pipeline::{
-    compile_document, compile_document_with_context, compile_item, compile_item_with_context,
-    compile_program, compile_with, compile_with_context, CompiledItemV1, CompiledProgramV1,
-    FrontendContextV1, NoServeReasonV1, PipelineDiagnosticV1, PipelineStageV1,
+    compile_document_structural, compile_document_with_context, compile_document_with_schema,
+    compile_item_structural, compile_item_with_context, compile_item_with_schema,
+    compile_program_structural, compile_program_with_schema, compile_with_context, CompiledItemV1,
+    CompiledProgramV1, FrontendContextV1, NoServeReasonV1, PipelineDiagnosticV1, PipelineStageV1,
 };
 pub use quanta_gqlang_v2_planning::*;
 pub use quanta_gqlang_v2_surface::{

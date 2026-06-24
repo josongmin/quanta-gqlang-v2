@@ -102,3 +102,23 @@ fn parse_expr_rejects_trailing() {
     let diag = parse_expr("a + b )", &builder).expect_err("must reject");
     assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
 }
+
+/// D10 fail-closed: a record literal must not declare the same field name twice.
+/// A silent last-wins would drop a field, so the parser rejects at the offending
+/// (second) field name's exact span.
+#[test]
+fn record_literal_duplicate_field_rejects() {
+    let builder = HirBuilderV1::new();
+    let src = "{ a: 1, a: 2 }";
+    let diag = parse_expr(src, &builder).expect_err("duplicate record field rejects");
+    assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
+    assert_eq!(diag.code_str(), "surface.parse.unsupported_construct");
+    // second `a` is at byte 8 in `{ a: 1, a: 2 }`.
+    assert_eq!(diag.span.start, 8);
+    assert_eq!(diag.span.end, 9);
+    assert!(
+        diag.message.contains("duplicate"),
+        "message: {}",
+        diag.message
+    );
+}

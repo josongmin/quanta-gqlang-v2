@@ -1,7 +1,7 @@
 //! Deterministic v3 plan / cost / explain rendering (ticket 08, D32 / D22).
 //!
 //! Renders the host-agnostic [`quanta_gqlang_v2_planning::PublicPlanV1`] from the
-//! shared pipeline ([`quanta_gqlang_v2_pipeline::compile_program`], D22) into a
+//! shared pipeline ([`quanta_gqlang_v2_pipeline::compile_program_structural`], D22) into a
 //! STABLE `key=value` line report. The renderer consumes the fixed semantic-cost
 //! schema from ticket 07 unchanged (D32): the five fields
 //! `estimated_cardinality_class`, `recursion_risk_class`,

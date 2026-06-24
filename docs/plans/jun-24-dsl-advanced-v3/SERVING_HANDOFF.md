@@ -1,6 +1,6 @@
 # Semantica Serving Contract Handoff (Ticket 10)
 
-Status: breaking cutover plan
+Status: partial downstream cutover landed; public-facade cleanup still open
 
 ## Purpose
 
@@ -24,30 +24,46 @@ Short answer:
 Local current head (`quanta-gqlang-v2`):
 
 1. the sole frontend is `quanta-gqlang-v2-pipeline`
-2. `compile_with_context` is the semantic frontend entrypoint;
-   `compile_program` / `compile_with` remain structural/compat shims
-3. the legacy direct crates `quanta-gqlang-v2-syntax`,
+2. `compile_with_context` is the semantic frontend entrypoint
+3. explicit non-semantic helpers remain available:
+   `compile_program_structural`,
+   `compile_item_structural`,
+   `compile_document_structural`,
+   `compile_program_with_schema`,
+   `compile_item_with_schema`,
+   `compile_document_with_schema`
+4. the legacy direct crates `quanta-gqlang-v2-syntax`,
    `quanta-gqlang-v2-sema`, and `quanta-gqlang-v2-ir` are physically deleted
-4. `CompiledProgramV1` is the load-bearing downstream bundle:
+5. `CompiledProgramV1` is the load-bearing downstream bundle:
    - `item()` -> parsed surface item
    - `compiled()` -> family-specific compiled result
    - `algebra()` -> normalized algebra root for relational queries
    - `plan()` -> host-agnostic public plan when the item has one
    - standalone decl/rule units may compile as explicit no-plan artifacts
 
-Semantica current head still contains stale advanced-serving assumptions:
+Semantica current head has already landed most of the structural cutover:
 
-1. outer and nested semantica workspaces now both exclude the external
+1. outer and nested semantica workspaces both exclude the external
    frontend-consumer crates (`ingress-bridge`, `exec-conformance`)
-2. the remaining manifests can now point at the canonical sibling seam
+2. the active bridge depends on the canonical sibling seam
    `quanta-gqlang-v2-frontend-contract`
-3. `query_bridge.rs` still parses text through the deleted
-   `syntax -> sema -> ir -> PublicIrRootV1` stack
-4. bridge and conformance tests still assert against `PublicIrRootV1` and the
-   old `RootSpecV1`-shaped compat shell
+3. `query_bridge.rs` no longer parses through the deleted
+   `syntax -> sema -> ir -> PublicIrRootV1` stack; canonical text ingress now
+   compiles via the frontend contract and lowers to `ServingProgramRequestV1`
+4. legacy `lower_query_text_to_request_v1`,
+   `lower_query_text_to_plan_v1`,
+   `lower_public_ir_root_to_request_v1`, and
+   `lower_public_ir_root_to_plan_v1` remain only as fail-closed compat residue
+5. `quanta-runtime-public-ingress-surface` already owns
+   `execute_serving_program_request_v1`; the request-native
+   `execute_serving_query_request_v1` rail survives as residual compat
+6. the remaining structural drift is the flat semantica public SDK/query
+   facades, which still advertise legacy request/root helpers as if they were
+   current authority
 
-This means the workspace/dependency boundary is now correct, but the code-level
-advanced-serving seam is still structurally invalid against current head.
+This means the workspace/dependency boundary and the core bridge/runtime cutover
+are mostly correct. The remaining work is to delete residual public compat
+surfaces and collapse tests/docs onto the program-request seam.
 
 ## Boundary Decision
 
@@ -67,7 +83,8 @@ Pinned rule:
 Preferred reference surface:
 
 1. **Primary sibling seam: `quanta-gqlang-v2-frontend-contract`**
-   - re-exports `compile_with_context` plus compat shims
+   - re-exports `compile_with_context`
+   - re-exports the explicit structural/schema-only helpers
    - re-exports `FrontendContextV1`
    - re-exports `CompiledProgramV1` / `CompiledItemV1`
    - re-exports `NoServeReasonV1`
@@ -94,6 +111,8 @@ work on the seam itself.
 
 ### Phase 1: sever stale dependency edges
 
+Status: materially landed on semantica current head
+
 Semantica changes:
 
 1. remove `quanta-gqlang-v2-ingress-bridge` and
@@ -112,6 +131,8 @@ Intentional effect:
    the type checker at once
 
 ### Phase 2: replace the ingress bridge front door
+
+Status: materially landed on semantica current head
 
 Delete the old ingress story:
 
@@ -135,6 +156,9 @@ Replace it with a `v3`-native ingress story:
 
 ### Phase 3: evolve the sibling serving contract
 
+Status: materially landed for the relational serving family; residual compat
+request shell still exists for stale callers
+
 Breaking change is explicit:
 
 1. `RootSpecV1` is no longer the primary language-serving contract
@@ -157,6 +181,9 @@ Non-negotiable rule:
 
 ### Phase 4: host adapter owns runtime lowering
 
+Status: materially landed for `ServingProgramRequestV1`; request-native compat
+execution still remains for stale callers
+
 Semantica host-adapter changes:
 
 1. lower the new sibling `v3` contract into runtime-native plans
@@ -171,6 +198,8 @@ Reject source:
 3. semantica-owned contract rejection codes when runtime support is absent
 
 ### Phase 5: replace the tests, not just the code
+
+Status: partially open
 
 Semantica tests that must be rewritten around the `v3` seam:
 
@@ -188,6 +217,19 @@ New test authority:
 2. bundle -> sibling `v3` request contract
 3. contract -> host adapter lowering
 4. unsupported shapes -> typed fail-closed rejection
+
+Remaining semantica cleanup after the core cutover:
+
+1. stop exporting `ServingQueryRequestV1`,
+   `execute_serving_query_request_v1`,
+   `gqlang_public_serving_request_from_text_surface_v1`, and deleted
+   `PublicIrRootV1`-named lowerers from the flat public SDK/query facades
+2. keep any remaining legacy request/root helpers owner-local only, not default
+   public surface
+3. rewrite source-contract tests so they pin `text -> ServingProgramRequestV1`
+   and `text -> execute_query_text_v1`, not `text -> ServingQueryRequestV1`
+4. delete the residual request-native runtime ingress once no public caller
+   still depends on it
 
 ## Family Mapping Rules
 
@@ -232,7 +274,8 @@ The new bridge must classify by `CompiledItemV1`, not by deleted root carriers.
 5. port ingress bridge to `CompiledProgramV1`
 6. port host adapter to the new contract
 7. rewrite bridge and conformance rails
-8. only then delete any remaining compat shims
+8. only then decide whether the explicit structural/schema-only helpers should
+   stay public or narrow further
 
 ## Definition Of Done
 

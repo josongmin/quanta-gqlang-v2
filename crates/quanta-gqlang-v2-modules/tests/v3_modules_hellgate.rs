@@ -58,14 +58,16 @@ fn overlapping_pack_export_rejects() {
     let host = VersionV1::new(3, 0, 0);
     let compat = VersionRangeV1::new(VersionV1::new(3, 0, 0), VersionV1::new(4, 0, 0));
     let graph = PackGraphV1::new()
-        .with_manifest(
+        .add_manifest(
             PackManifestV1::new(PackIdV1::new("pack-a", VersionV1::new(1, 0, 0)), compat)
                 .with_export("Sanitizer"),
         )
-        .with_manifest(
+        .unwrap()
+        .add_manifest(
             PackManifestV1::new(PackIdV1::new("pack-b", VersionV1::new(2, 0, 0)), compat)
                 .with_export("Sanitizer"),
-        );
+        )
+        .unwrap();
 
     let err = graph.validate(host).unwrap_err();
     assert_eq!(err.code(), "modules.overlapping_pack_export");
@@ -82,6 +84,54 @@ fn overlapping_pack_export_rejects() {
     assert_eq!(
         err.to_string(),
         "modules.overlapping_pack_export: symbol `Sanitizer` is exported by overlapping packs pack-a@1.0.0, pack-b@2.0.0"
+    );
+}
+
+// Hellgate 2 variant (fail-closed): adding two manifests with the same pack
+// name but different versions is a hard reject — never a silent last-wins
+// overwrite (`D28`). The graph rejects before mutating its state.
+#[test]
+fn duplicate_pack_name_rejects() {
+    let compat = VersionRangeV1::new(VersionV1::new(3, 0, 0), VersionV1::new(4, 0, 0));
+    let first = PackGraphV1::new()
+        .add_manifest(
+            PackManifestV1::new(PackIdV1::new("mypack", VersionV1::new(1, 0, 0)), compat)
+                .with_export("Symbol1"),
+        )
+        .unwrap();
+
+    let err = first
+        .clone()
+        .add_manifest(
+            PackManifestV1::new(PackIdV1::new("mypack", VersionV1::new(2, 0, 0)), compat)
+                .with_export("Symbol2"),
+        )
+        .unwrap_err();
+
+    assert_eq!(err.code(), "modules.duplicate_pack_name");
+    match &err {
+        ModuleDiagnosticV1::DuplicatePackName {
+            name,
+            existing,
+            incoming,
+        } => {
+            assert_eq!(name, "mypack");
+            assert_eq!(*existing, VersionV1::new(1, 0, 0));
+            assert_eq!(*incoming, VersionV1::new(2, 0, 0));
+        }
+        other => panic!("expected DuplicatePackName, got {other:?}"),
+    }
+    assert_eq!(
+        err.to_string(),
+        "modules.duplicate_pack_name: pack `mypack` is declared twice (existing 1.0.0 vs incoming 2.0.0)"
+    );
+
+    // Fail-closed before mutation: the original graph still pins 1.0.0 only and
+    // is byte-identical to its pre-rejection state (no partial overwrite).
+    assert_eq!(first.len(), 1);
+    assert_eq!(
+        first.manifest("mypack").map(|m| m.id.version),
+        Some(VersionV1::new(1, 0, 0))
     );
 }
 
@@ -126,10 +176,12 @@ fn import_cycle_rejects() {
 fn compat_mismatch_rejects() {
     let host = VersionV1::new(2, 9, 0);
     let compat = VersionRangeV1::new(VersionV1::new(3, 0, 0), VersionV1::new(4, 0, 0));
-    let graph = PackGraphV1::new().with_manifest(PackManifestV1::new(
-        PackIdV1::new("needs-v3", VersionV1::new(1, 0, 0)),
-        compat,
-    ));
+    let graph = PackGraphV1::new()
+        .add_manifest(PackManifestV1::new(
+            PackIdV1::new("needs-v3", VersionV1::new(1, 0, 0)),
+            compat,
+        ))
+        .unwrap();
 
     let err = graph.validate(host).unwrap_err();
     assert_eq!(err.code(), "modules.compat_mismatch");
@@ -143,10 +195,12 @@ fn compat_mismatch_rejects() {
 #[test]
 fn lock_mismatch_rejects() {
     let compat = VersionRangeV1::new(VersionV1::new(3, 0, 0), VersionV1::new(4, 0, 0));
-    let graph = PackGraphV1::new().with_manifest(PackManifestV1::new(
-        PackIdV1::new("p", VersionV1::new(1, 2, 0)),
-        compat,
-    ));
+    let graph = PackGraphV1::new()
+        .add_manifest(PackManifestV1::new(
+            PackIdV1::new("p", VersionV1::new(1, 2, 0)),
+            compat,
+        ))
+        .unwrap();
     // Lock pins a different version than the manifest declares.
     let stale = LockfileV1::new().with_pin("p", VersionV1::new(1, 1, 0));
 
@@ -164,18 +218,20 @@ fn dependency_unsatisfied_rejects() {
     let host = VersionV1::new(3, 0, 0);
     let compat = VersionRangeV1::new(VersionV1::new(3, 0, 0), VersionV1::new(4, 0, 0));
     let graph = PackGraphV1::new()
-        .with_manifest(
+        .add_manifest(
             PackManifestV1::new(PackIdV1::new("app", VersionV1::new(1, 0, 0)), compat)
                 .with_dependency(quanta_gqlang_v2_modules::DependencyReqV1::new(
                     "lib",
                     VersionRangeV1::new(VersionV1::new(2, 0, 0), VersionV1::new(3, 0, 0)),
                 )),
         )
+        .unwrap()
         // lib is present but at 1.5.0, outside the [2.0.0, 3.0.0) range.
-        .with_manifest(PackManifestV1::new(
+        .add_manifest(PackManifestV1::new(
             PackIdV1::new("lib", VersionV1::new(1, 5, 0)),
             compat,
-        ));
+        ))
+        .unwrap();
 
     let err = graph.validate(host).unwrap_err();
     assert_eq!(err.code(), "modules.dependency_unsatisfied");

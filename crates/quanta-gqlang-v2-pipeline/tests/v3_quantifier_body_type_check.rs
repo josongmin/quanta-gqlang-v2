@@ -19,7 +19,9 @@
     reason = "integration test rail: assertion panics and exhaustive matches are intentional"
 )]
 
-use quanta_gqlang_v2_pipeline::{compile_program, PipelineDiagnosticV1, PipelineStageV1};
+use quanta_gqlang_v2_pipeline::{
+    compile_program_structural, PipelineDiagnosticV1, PipelineStageV1,
+};
 
 /// A type error inside an `exists`-quantifier body rejects at the `type` stage
 /// rather than compiling through. The binder `t` is in scope of the body, so
@@ -28,7 +30,8 @@ use quanta_gqlang_v2_pipeline::{compile_program, PipelineDiagnosticV1, PipelineS
 #[test]
 fn quantifier_body_type_error_rejects_at_type() {
     let src = "from users u | where exists t in ( t + \"string\" );";
-    let diag = compile_program(src).expect_err("type error inside quantifier body must reject");
+    let diag =
+        compile_program_structural(src).expect_err("type error inside quantifier body must reject");
 
     assert_eq!(diag.stage(), PipelineStageV1::Type, "tagged type stage");
     assert_eq!(diag.stage().as_str(), "type");
@@ -47,5 +50,6 @@ fn quantifier_body_type_error_rejects_at_type() {
 #[test]
 fn well_typed_quantifier_body_still_compiles() {
     let src = "from users u | where exists t in ( t ) | project u.id as id";
-    let _ = compile_program(src).expect("well-typed quantifier body must compile cleanly");
+    let _ =
+        compile_program_structural(src).expect("well-typed quantifier body must compile cleanly");
 }
