@@ -1,25 +1,34 @@
 # Jun 24 — DSL Advanced v3
 
-Status: `Current Main Audit Refreshed` + `Tickets 09, 11-15 Materially Implemented`
+Status: `Current Main Re-Audited` + `Tickets 09, 11-16 Materially Implemented`
 
 ## Current Verified State
 
-As of `2026-06-24`, current `main` materially closes the repo-local gaps owned
-by tickets `09`, `11`, `12`, `13`, `14`, and `15`.
+As of `2026-06-25`, current `main` materially closes the repo-local gaps owned
+by tickets `09`, `11`, `12`, `13`, `14`, `15`, and the current-main
+proof/artifact hygiene lane `16`.
+
+Current qglang worktree truth on that head:
+
+1. repo-local proof is green on the exact current head
+2. the worktree is clean: `git status --short --branch` is empty after the
+   branch header
+3. `git diff --check` is clean and no untracked repro artifacts are present
 
 Verified locally with:
 
-1. `cargo fmt --all`
+1. `cargo fmt --all -- --check`
 2. `cargo clippy --workspace --all-targets`
 3. `cargo test --workspace`
 
 Honest remaining boundary:
 
 1. ticket `10` still owns downstream semantica serving truth
-2. explicit structural/schema-only helper entrypoints still exist, but they are
+2. ticket `17` still owns the final packet SSOT sync after semantica D5 closes
+3. explicit structural/schema-only helper entrypoints still exist, but they are
    partial-authority helpers rather than repo-local closure blockers and must
    not be reported as semantic proof
-3. ticket `15` now has explicit artifact/no-serve contracts, but no separate
+4. ticket `15` now has explicit artifact/no-serve contracts, but no separate
    LSP artifact renderer was introduced; current LSP remains diagnostics-first
 
 ## Closure Scopes And DoD
@@ -41,12 +50,14 @@ Repo-local closure is the end of ticket `09` plus the live owner lanes from
    outcomes instead of placeholder algebra failures
 7. `quanta-gqlang-v2-frontend-contract` exposes the stable downstream bundle,
    including item/document structural helpers and family inspection
-8. `cargo fmt --all`, `cargo clippy --workspace --all-targets`, and
+8. `cargo fmt --all -- --check`,
+   `cargo clippy --workspace --all-targets`, and
    `cargo test --workspace` are green
 9. packet docs describe current-head truth rather than deleted `v2` crate
    assumptions
 
-Full sibling cutover closure adds ticket `10` on top of that repo-local DoD:
+Full sibling cutover closure adds ticket `10` on top of that repo-local DoD;
+packet SSOT closeout still requires ticket `17`:
 
 1. `semantica` depends on this repo only through the allowed `v3` frontend seam,
    preferably `quanta-gqlang-v2-frontend-contract`

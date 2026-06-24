@@ -1,6 +1,7 @@
 # Semantica Serving Contract Handoff (Ticket 10)
 
-Status: partial downstream cutover landed; public-facade cleanup still open
+Status: partial downstream cutover landed; semantica D5 execution packet still
+open
 
 ## Purpose
 
@@ -41,15 +42,18 @@ Local current head (`quanta-gqlang-v2`):
    - `plan()` -> host-agnostic public plan when the item has one
    - standalone decl/rule units may compile as explicit no-plan artifacts
 
-Semantica current head has already landed most of the structural cutover:
+Semantica current head has landed the canonical dependency seam and
+program-request rail, but not the full downstream closeout:
 
-1. outer and nested semantica workspaces both exclude the external
-   frontend-consumer crates (`ingress-bridge`, `exec-conformance`)
-2. the active bridge depends on the canonical sibling seam
-   `quanta-gqlang-v2-frontend-contract`
+1. semantica still keeps `quanta-gqlang-v2-ingress-bridge` and
+   `quanta-gqlang-v2-exec-conformance` as live workspace members; workspace
+   member cleanup is not current-head truth
+2. the active bridge and host-adapter paths depend on the canonical sibling
+   seam `quanta-gqlang-v2-frontend-contract`
 3. `query_bridge.rs` no longer parses through the deleted
    `syntax -> sema -> ir -> PublicIrRootV1` stack; canonical text ingress now
-   compiles via the frontend contract and lowers to `ServingProgramRequestV1`
+   compiles via the frontend contract structural bundle seam and lowers to
+   `ServingProgramRequestV1`
 4. legacy `lower_query_text_to_request_v1`,
    `lower_query_text_to_plan_v1`,
    `lower_public_ir_root_to_request_v1`, and
@@ -57,13 +61,17 @@ Semantica current head has already landed most of the structural cutover:
 5. `quanta-runtime-public-ingress-surface` already owns
    `execute_serving_program_request_v1`; the request-native
    `execute_serving_query_request_v1` rail survives as residual compat
-6. the remaining structural drift is the flat semantica public SDK/query
-   facades, which still advertise legacy request/root helpers as if they were
-   current authority
+6. `quanta-sdk-query-backend-owner` already exposes
+   `lower_query_text_to_program_request_v1`, `execute_query_text_v1`, and
+   `ServingProgramRequestV1` on the program-request rail
+7. semantica D5 still tracks open work across runtime public ingress, runtime
+   executor, ingress-bridge/host-adapter compat collapse, exec-conformance,
+   and workspace/member delete-prep closure
 
-This means the workspace/dependency boundary and the core bridge/runtime cutover
-are mostly correct. The remaining work is to delete residual public compat
-surfaces and collapse tests/docs onto the program-request seam.
+This means the canonical dependency seam and the core program-request ingress
+rail exist, but the downstream packet is not closed. Remaining work is broader
+than flat public-facade cleanup and stays owned by the semantica D5 execution
+packet.
 
 ## Boundary Decision
 
@@ -111,7 +119,7 @@ work on the seam itself.
 
 ### Phase 1: sever stale dependency edges
 
-Status: materially landed on semantica current head
+Status: partially landed; workspace-member cleanup is still open
 
 Semantica changes:
 
@@ -132,7 +140,8 @@ Intentional effect:
 
 ### Phase 2: replace the ingress bridge front door
 
-Status: materially landed on semantica current head
+Status: partially landed; canonical ingress exists but legacy shims still
+survive
 
 Delete the old ingress story:
 
@@ -156,8 +165,8 @@ Replace it with a `v3`-native ingress story:
 
 ### Phase 3: evolve the sibling serving contract
 
-Status: materially landed for the relational serving family; residual compat
-request shell still exists for stale callers
+Status: partially landed for the relational serving family; residual request
+compat still exists for stale callers
 
 Breaking change is explicit:
 
@@ -181,8 +190,8 @@ Non-negotiable rule:
 
 ### Phase 4: host adapter owns runtime lowering
 
-Status: materially landed for `ServingProgramRequestV1`; request-native compat
-execution still remains for stale callers
+Status: partially landed for `ServingProgramRequestV1`; request-native compat
+execution and non-relational family closure still remain open
 
 Semantica host-adapter changes:
 

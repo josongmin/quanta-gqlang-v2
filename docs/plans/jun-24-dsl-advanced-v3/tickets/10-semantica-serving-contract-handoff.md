@@ -1,5 +1,8 @@
 # 10 Semantica Serving Contract Handoff
 
+Status: semantica D5 execution packet open; qglang ticket `10` remains the
+downstream umbrella and packet SSOT
+
 ## Goal
 
 Complete the breaking downstream cutover so semantica finishes deleting the
@@ -10,20 +13,22 @@ frontend bundle seam.
 
 1. this repo no longer ships `quanta-gqlang-v2-syntax`,
    `quanta-gqlang-v2-sema`, or `quanta-gqlang-v2-ir`
-2. semantica already depends on `quanta-gqlang-v2-frontend-contract` for the
-   active bridge/runtime cutover
+2. semantica bridge/host-adapter paths already depend on
+   `quanta-gqlang-v2-frontend-contract`
 3. semantica `query_bridge.rs` already compiles text through the frontend
-   contract and lowers relational serving into `ServingProgramRequestV1`
-4. legacy request/root helpers in semantica now mostly fail closed instead of
-   fabricating stale `PublicIrRootV1` or request shells
-5. flat semantica SDK/query public facades already default to
+   contract structural bundle seam and lowers relational serving into
    `ServingProgramRequestV1`
-6. the remaining stale seams are runtime public ingress, runtime executor,
-   ingress-bridge/host-adapter compat residue, exec-conformance, and
-   workspace/member delete-prep closure
-7. therefore the real task is still a **breaking downstream cutover**, but the
-   open work is now execution-packet closure, not workspace membership or
-   direct-bridge bootstrap
+4. legacy request/root helpers in semantica remain as fail-closed compat
+   residue instead of silently fabricating stale request/root authority
+5. semantica public/query-owner facades already expose the
+   `ServingProgramRequestV1` rail through
+   `lower_query_text_to_program_request_v1` and `execute_query_text_v1`
+6. the semantica D5 packet is still open and explicitly tracks remaining work
+   across runtime public ingress, runtime executor, ingress-bridge/host-adapter
+   compat collapse, exec-conformance, and workspace/member delete-prep closure
+7. therefore the real task is not raw bridge bootstrap; it is downstream
+   execution-packet closure plus final qglang packet re-sync after semantica
+   produces a green D5 receipt
 
 Authoritative detail lives in:
 

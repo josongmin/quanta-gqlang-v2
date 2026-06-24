@@ -1,5 +1,8 @@
 # 17 Downstream Cutover Closeout and Packet Sync
 
+Status: open; blocked on semantica D5 green receipt plus exact-head packet
+re-sync
+
 ## Goal
 
 Re-synchronize the qglang umbrella packet with the final semantica D5 cutover
@@ -15,13 +18,15 @@ finishes.
    `packages/analysis/quanta-v2/D5_GQLANG_V3_CUTOVER_PACKET/`
 4. qglang repo-local proof rails were refreshed on `2026-06-25` and are green
 5. packet sync must stay blocked until:
-   - ticket `16` closes the last local tracked diff
    - semantica D5 proof rails are green
+   - qglang ticket `16` receipt is refreshed against the exact qglang head
+     being synchronized
 
 ## Deliverables
 
 1. update the packet SSOT files after semantica D5 closes:
    - `README.md`
+   - `tickets/README.md`
    - `WORKER_START_HERE.md`
    - `SERVING_HANDOFF.md`
    - `10-semantica-serving-contract-handoff.md`
@@ -33,8 +38,8 @@ finishes.
 
 ## Inputs Required Before Closeout
 
-1. ticket `16` closed with the last local diff resolved and the refreshed
-   repo-local proof receipt preserved
+1. ticket `16` refreshed with the repo-local proof receipt preserved on the
+   exact qglang head being synced
 2. semantica D5 packet closed through `06-proof-closeout-mainline-foldback-and-worktree-cleanup`
 3. ambient blockers, if any, recorded separately from ticket-owned failures
 
@@ -44,4 +49,4 @@ finishes.
    truth
 2. no packet file implies downstream closure without a green D5 receipt
 3. ticket `10` remains the umbrella, while `17` becomes the terminal sync lane
-4. stale “large dirty tree” language from the older `16` snapshot is gone
+4. stale dirty-tree language from older `16` snapshots is gone

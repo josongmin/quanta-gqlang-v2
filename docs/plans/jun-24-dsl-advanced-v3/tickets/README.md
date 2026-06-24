@@ -1,11 +1,11 @@
 # Jun 24 DSL Advanced v3 Ticket Pack
 
-Status: `Current Main Updated` + `11-15 Implemented With Green Rails` + `10 Downstream Umbrella Open` + `16 Repo-Local Closeout Narrowed` + `17 Packet Sync Blocked On D5`
+Status: `Current Main Re-Audited` + `11-16 Materially Implemented With Fresh Proof` + `10 Downstream Umbrella Open` + `17 Packet Sync Blocked On D5`
 
 ## Current Main Receipt
 
-As of `2026-06-24`, the packet's previously open semantic gaps are materially
-implemented on current `main`:
+As of `2026-06-25`, the packet's previously open semantic and qglang-side
+proof-hygiene gaps are materially implemented on current `main`:
 
 1. `12`: explicit context-first semantic compile surface is live
 2. `13`: source-schema lifting and local type closure are live
@@ -13,28 +13,27 @@ implemented on current `main`:
 4. `15`: explicit non-relational artifact and no-serve contracts are live
 5. `11`: module/import graph, packs, signatures, metadata, and declarative
    model-pack seams are live
+6. `16`: current-main proof/artifact hygiene is refreshed against the clean live
+   head and no longer depends on an older dirty-tree snapshot
 
 Operational follow-up lanes still open on `2026-06-25`:
 
 1. `10`: downstream semantica cutover umbrella and SSOT
-2. `16`: repo-local closeout is now narrowed to the last current-main diff plus
-   refreshed proof receipt
-3. `17`: final packet sync remains blocked until semantica D5 proof closure
+2. `17`: final packet sync remains blocked until semantica D5 proof closure
 
 Local verification receipt:
 
-1. `cargo fmt --all`
+1. `cargo fmt --all -- --check`
 2. `cargo clippy --workspace --all-targets`
 3. `cargo test --workspace`
 
 Closeout refresh on `2026-06-25`:
 
-1. `git status --short --branch` now shows one tracked modification only:
-   `crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs`
+1. `git status --short --branch` is clean after the branch header
 2. `git diff --check`
-3. `cargo test -p quanta-gqlang-v2-surface --test v3_family_hellgate --quiet`
-4. `cargo test --workspace --quiet`
-5. `cargo clippy --workspace --all-targets --quiet`
+3. `cargo fmt --all -- --check`
+4. `cargo clippy --workspace --all-targets`
+5. `cargo test --workspace`
 
 Live regression rails:
 
@@ -156,5 +155,5 @@ Historical architecture warning:
     current crate map or escalate the ownership conflict explicitly
 14. every worker closeout must include the receipt fields from
     [EXECUTION_PLAYBOOK.md](./EXECUTION_PLAYBOOK.md)
-15. ticket 16 must classify current-main proof state and artifact hygiene before
-    ticket 17 closes the packet as synchronized SSOT
+15. ticket 16's receipt must stay fresh on the exact qglang head that ticket
+    17 syncs as synchronized SSOT
