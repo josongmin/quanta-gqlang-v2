@@ -2,38 +2,37 @@
 
 ## Goal
 
-Freeze the current dirty-tree truth on `main`, classify every open change into a
-small number of reviewable buckets, and define the exact proof/artifact hygiene
-required before any packet closeout or end-to-end serving claim.
+Close the remaining repo-local current-main delta in `quanta-gqlang-v2` and
+refresh the proof receipt so the qglang side is ready to block only on
+semantica D5, not on stale local hygiene claims.
 
 ## Current-Head Truth
 
-1. current `main` is dirty as of `2026-06-25`
-2. current tracked changes fall into three buckets:
-   - language core: `algebra`, `pipeline`, `planning`, `surface`, `types`
-   - tooling/proof: `cli`, `lsp`, `conformance`, `frontend-contract`, owner
-     rails
-   - packet/docs: `docs/language/README.md`, `CUTOVER_INVENTORY.md`,
-     `SERVING_HANDOFF.md`, and the `jun-24-dsl-advanced-v3` ticket pack
-3. current diff stat snapshot is `52 files changed, 1529 insertions, 568 deletions`
-4. the latest `git status --short --branch` snapshot shows tracked modifications
-   only; no untracked repro artifacts are present in the current status output
+1. current `main` is still dirty as of `2026-06-25`, but the open delta is now
+   narrowed to one tracked file only:
+   `crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs`
+2. the remaining diff in that file is formatting/assert-layout churn, not a new
+   crate-family or ownership lane
+3. no untracked repro artifacts are present in the latest
+   `git status --short --branch` output
+4. current proof refresh on `2026-06-25`:
+   - `git diff --check` passed
+   - `cargo test -p quanta-gqlang-v2-surface --test v3_family_hellgate --quiet` passed
+   - `cargo test --workspace --quiet` passed
+   - `cargo clippy --workspace --all-targets --quiet` passed
 
 ## Deliverables
 
-1. classify every touched path into:
-   - `language core`
-   - `tooling/proof`
-   - `packet/docs`
-2. keep repo-local proof claims tied to current tracked deltas, not to older
-   green receipts
-3. define untracked repro policy:
-   - keep only stable, intentionally named regression rails that are wired into
-     the proof plan
-   - delete scratch repro files, one-off shell scripts, and ad hoc experiments
-     before closeout
-4. record the exact proof ladder required to move from dirty current-main to a
-   credible closeout receipt
+1. decide whether the last tracked diff in `v3_family_hellgate.rs` is:
+   - intentional readability/formatting worth landing, or
+   - pure churn worth reverting
+2. keep repo-local proof claims tied to the refreshed `2026-06-25` receipt, not
+   the older bulk-dirty snapshot
+3. preserve the current clean artifact boundary:
+   no ad hoc repro files, no scratch prompt files outside the packet, and no
+   stale dirty-tree claims in packet docs
+4. record the exact proof ladder that must stay green when the last diff is
+   resolved
 
 ## Required Proof Rails
 
@@ -46,10 +45,11 @@ required before any packet closeout or end-to-end serving claim.
    - `crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs`
    - CLI/LSP parity rails under `crates/quanta-gqlang-v2-cli/tests` and
      `crates/quanta-gqlang-v2-lsp/tests`
+5. `git diff --check`
 
 ## Definition Of Done
 
-1. every open change is classified under one of the three buckets
-2. artifact keep/delete rules are explicit and fail closed
-3. repo-local proof commands are pinned and reproducible
+1. the last tracked diff is either landed intentionally or removed
+2. the `2026-06-25` repo-local proof receipt is explicit and reproducible
+3. packet docs no longer describe a stale large dirty-tree state
 4. no one claims end-to-end advanced-serving closure from this ticket alone

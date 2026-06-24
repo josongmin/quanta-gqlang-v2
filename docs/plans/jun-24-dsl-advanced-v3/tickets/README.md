@@ -1,6 +1,6 @@
 # Jun 24 DSL Advanced v3 Ticket Pack
 
-Status: `Current Main Updated` + `11-15 Implemented With Green Rails` + `10 Downstream Umbrella Open` + `16/17 Proof And Packet Sync Open`
+Status: `Current Main Updated` + `11-15 Implemented With Green Rails` + `10 Downstream Umbrella Open` + `16 Repo-Local Closeout Narrowed` + `17 Packet Sync Blocked On D5`
 
 ## Current Main Receipt
 
@@ -17,14 +17,24 @@ implemented on current `main`:
 Operational follow-up lanes still open on `2026-06-25`:
 
 1. `10`: downstream semantica cutover umbrella and SSOT
-2. `16`: current-main proof, dirty-tree classification, and artifact hygiene
-3. `17`: final packet sync after semantica D5 proof closure
+2. `16`: repo-local closeout is now narrowed to the last current-main diff plus
+   refreshed proof receipt
+3. `17`: final packet sync remains blocked until semantica D5 proof closure
 
 Local verification receipt:
 
 1. `cargo fmt --all`
 2. `cargo clippy --workspace --all-targets`
 3. `cargo test --workspace`
+
+Closeout refresh on `2026-06-25`:
+
+1. `git status --short --branch` now shows one tracked modification only:
+   `crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs`
+2. `git diff --check`
+3. `cargo test -p quanta-gqlang-v2-surface --test v3_family_hellgate --quiet`
+4. `cargo test --workspace --quiet`
+5. `cargo clippy --workspace --all-targets --quiet`
 
 Live regression rails:
 
@@ -114,6 +124,10 @@ Historical architecture warning:
 16. [15-non-relational-artifact-contract-and-servable-boundaries](./15-non-relational-artifact-contract-and-servable-boundaries.md)
 17. [16-current-main-proof-and-artifact-hygiene](./16-current-main-proof-and-artifact-hygiene.md)
 18. [17-downstream-cutover-closeout-and-packet-sync](./17-downstream-cutover-closeout-and-packet-sync.md)
+
+## Worker Prompt
+
+1. [REMAINING_WORKER_PROMPT.md](./REMAINING_WORKER_PROMPT.md)
 
 ## Worker Contract
 

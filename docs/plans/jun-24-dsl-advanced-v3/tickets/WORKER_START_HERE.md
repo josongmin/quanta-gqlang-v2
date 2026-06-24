@@ -1,6 +1,6 @@
 # Worker Start Here
 
-Current main status at `2026-06-24`:
+Current main status at `2026-06-25`:
 
 1. tickets `09`, `12`, `13`, `14`, and `15` are materially implemented and
    backed by green owner-local rails
@@ -8,9 +8,14 @@ Current main status at `2026-06-24`:
    rails
 3. downstream serving closure is still ticket `10`, now treated as the umbrella
    lane for the semantica D5 execution packet
-4. tickets `16` and `17` are the remaining qglang-side closeout lanes:
-   current-main proof/artifact hygiene first, then final packet sync
-5. structural/schema-only helpers remain explicit partial-authority helpers and
+4. repo-local proof rails were rerun on current head:
+   `git diff --check`, `cargo test -p quanta-gqlang-v2-surface --test v3_family_hellgate --quiet`,
+   `cargo test --workspace --quiet`, and
+   `cargo clippy --workspace --all-targets --quiet` all passed
+5. tickets `16` and `17` are now narrow closeout lanes:
+   - `16`: decide and close the last tracked diff on current main
+   - `17`: sync packet SSOT after semantica D5 closes
+6. structural/schema-only helpers remain explicit partial-authority helpers and
    are not semantic proof
 
 1. Read [00-packet-scope-and-pinned-decisions](./00-packet-scope-and-pinned-decisions.md) first.
@@ -57,10 +62,10 @@ Current main status at `2026-06-24`:
    - 10 is the downstream semantica handoff lane; it cannot pull runtime
      substrate logic back into this repo
    - 11 now owns the live reusable module/pack/extension ergonomics lane
-   - 16 owns current-main proof, dirty-tree classification, and artifact
-     hygiene before final packet closure claims
-   - 17 is the terminal packet-sync lane; it may close only after the semantica
-     D5 execution packet is green
+   - 16 owns the repo-local closeout delta: the last tracked diff plus refreshed
+     proof receipt on current head
+   - 17 is the terminal packet-sync lane; it is blocked until the semantica D5
+     execution packet is green
 6. Closure scopes:
    - repo-local closure is ticket `09` plus the live owner lanes from `11`-`15`
    - full sibling cutover closure is repo-local closure plus downstream ticket
@@ -90,8 +95,9 @@ Current main status at `2026-06-24`:
      `ServingQueryRequestV1` / deleted root-helper authority
    - end-to-end advanced-serving claims require downstream bridge/conformance
      rails green on that seam
-   - qglang packet closeout claims require ticket `16` proof closure and ticket
-     `17` packet sync after semantica D5 closes
+   - qglang packet closeout claims require ticket `16` to either land or delete
+     the last tracked diff, and ticket `17` packet sync after semantica D5
+     closes
 9. Semantic-closure guardrails that remain mandatory:
    - multiplicity/order semantics, witness mode, and pack-conflict behavior
      must be explicit before anyone claims semantic closure

@@ -935,7 +935,7 @@ fn find_seed_and_clause_endpoints_coexist_unvalidated() {
     // (anchor=, reference=, pointee=, callable=) to coexist in a single FIND
     // without validation or rejection. This is ambiguous syntax that should be
     // rejected downstream during classification (ticket 03), not here.
-    
+
     // Test 1: find slice api -> db | anchor=x
     // seed (source/sink) + clause (anchor) coexist without validation
     let src1 = "find slice api -> db | anchor=x";
@@ -945,10 +945,16 @@ fn find_seed_and_clause_endpoints_coexist_unvalidated() {
         other => panic!("expected GraphQuery, got {other:?}"),
     };
     // Both seed AND clause-based endpoints are present
-    assert!(gq1.endpoints.source.is_some(), "seed source should be present");
+    assert!(
+        gq1.endpoints.source.is_some(),
+        "seed source should be present"
+    );
     assert!(gq1.endpoints.sink.is_some(), "seed sink should be present");
-    assert!(gq1.endpoints.anchor.is_some(), "clause anchor should be present");
-    
+    assert!(
+        gq1.endpoints.anchor.is_some(),
+        "clause anchor should be present"
+    );
+
     // Test 2: find points_to a -> b | reference=p | pointee=q
     // seed (source/sink) + clause (reference/pointee) coexist
     let src2 = "find points_to a -> b | reference=p | pointee=q";
@@ -957,8 +963,17 @@ fn find_seed_and_clause_endpoints_coexist_unvalidated() {
         ProgramItemHirV1::GraphQuery(g) => g,
         other => panic!("expected GraphQuery, got {other:?}"),
     };
-    assert!(gq2.endpoints.source.is_some(), "seed source should be present");
+    assert!(
+        gq2.endpoints.source.is_some(),
+        "seed source should be present"
+    );
     assert!(gq2.endpoints.sink.is_some(), "seed sink should be present");
-    assert!(gq2.endpoints.reference.is_some(), "clause reference should be present");
-    assert!(gq2.endpoints.pointee.is_some(), "clause pointee should be present");
+    assert!(
+        gq2.endpoints.reference.is_some(),
+        "clause reference should be present"
+    );
+    assert!(
+        gq2.endpoints.pointee.is_some(),
+        "clause pointee should be present"
+    );
 }
