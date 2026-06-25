@@ -263,3 +263,61 @@ pub fn walk_composition<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &Compos
 /// Recurse into the children of a meta directive. Payloads are open tags/strings,
 /// so there are no id-bearing children here.
 pub fn walk_meta<V: HirVisitorV1 + ?Sized>(_visitor: &mut V, _node: &MetaHirV1) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::expr::{
+        BoolExprHirV1, BoolExprKindV1, CompareExprV1, CompareOpV1, LiteralV1, ValueExprHirV1,
+        ValueExprKindV1,
+    };
+    use crate::id::HirNodeIdV1;
+    use crate::span::SpanV1;
+
+    /// A visitor that overrides ONLY `visit_value` (to count leaves) and leaves
+    /// every other hook at its trait default. Driving it therefore exercises the
+    /// default-method bodies of the non-overridden hooks: if a default delegates
+    /// to its `walk_*` it recurses into children (and into `visit_value`); if the
+    /// default body were replaced with `()` the recursion would never happen.
+    struct ValueCounter {
+        values: usize,
+    }
+
+    impl HirVisitorV1 for ValueCounter {
+        fn visit_value(&mut self, node: &ValueExprHirV1) {
+            self.values += 1;
+            walk_value(self, node);
+        }
+    }
+
+    fn lit_value(id: u32) -> ValueExprHirV1 {
+        ValueExprHirV1::new(
+            HirNodeIdV1::from_raw(id),
+            SpanV1::point(0),
+            ValueExprKindV1::Literal(LiteralV1::Int("1".to_string())),
+        )
+    }
+
+    /// Default `visit_bool` (NOT overridden by `ValueCounter`) must delegate to
+    /// `walk_bool`, which descends a Compare into its two operand values. Driving
+    /// a Bool root therefore counts exactly two values. If the default
+    /// `visit_bool` body were replaced with `()`, zero values would be counted.
+    #[test]
+    fn default_visit_bool_recurses_into_compare_operands() {
+        let compare = BoolExprHirV1::new(
+            HirNodeIdV1::from_raw(10),
+            SpanV1::point(0),
+            BoolExprKindV1::Compare(CompareExprV1 {
+                op: CompareOpV1 {
+                    symbol: ">".to_string(),
+                },
+                lhs: Box::new(lit_value(11)),
+                rhs: Box::new(lit_value(12)),
+            }),
+        );
+        let mut counter = ValueCounter { values: 0 };
+        // visit_bool uses the trait DEFAULT body (delegates to walk_bool).
+        counter.visit_bool(&compare);
+        assert_eq!(counter.values, 2);
+    }
+}

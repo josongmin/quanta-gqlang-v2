@@ -1469,3 +1469,23 @@ fn parse_keyword_value(
     }
     Ok((text, SpanV1::new(first_span.start, end)))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::is_family_keyword;
+
+    /// `is_family_keyword` discriminates the leading keywords it owns from any
+    /// other word. Kills family.rs:45 (`is_family_keyword` -> `true`): a
+    /// non-family word must return `false`.
+    #[test]
+    fn family_keyword_discriminates() {
+        // a representative member of the owned set returns true.
+        assert!(is_family_keyword("find"));
+        assert!(is_family_keyword("require"));
+        // arbitrary non-family words return false (the `-> true` mutant fails).
+        assert!(!is_family_keyword("from"));
+        assert!(!is_family_keyword("let"));
+        assert!(!is_family_keyword("zzz_not_a_family"));
+        assert!(!is_family_keyword(""));
+    }
+}

@@ -11,6 +11,7 @@
     reason = "integration test rail: assertion panics are intentional"
 )]
 
+use quanta_gqlang_v2_hir::SpanV1;
 use quanta_gqlang_v2_pipeline::{compile_program_structural, PipelineStageV1};
 
 /// Every stage tag round-trips through `as_str` and `Display` identically, in
@@ -65,6 +66,24 @@ fn type_diagnostic_exposes_inner_code_and_displays() {
     // The span is non-degenerate: it covers part of the source expression.
     let span = diag.span();
     assert!(span.end >= span.start, "span is well-formed");
+}
+
+/// `span()` returns the inner diagnostic's ACTUAL source offsets, never a
+/// synthesized zero placeholder. A `let bad = 1 + "x"` type reject points at the
+/// `1 + "x"` region, which starts past byte 0, so the wrapper cannot be returning
+/// `SpanV1::default()` (0..0). Pins the exact region.
+#[test]
+fn span_is_inner_source_offsets_not_default_placeholder() {
+    let diag = compile_program_structural("let bad = 1 + \"x\"")
+        .expect_err("a bad overload fails at type");
+    let span = diag.span();
+    assert_ne!(
+        span,
+        SpanV1::default(),
+        "span must be the inner diagnostic's real offsets, not the (0,0) default"
+    );
+    // Exact region: the `1 + "x"` body expression starts at byte 10.
+    assert_eq!(span, SpanV1 { start: 10, end: 17 });
 }
 
 /// A logic failure (unsupported rule head) exposes its `logic.*` code and a

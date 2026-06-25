@@ -414,6 +414,66 @@ mod tests {
         assert_eq!(fields.get("k").map(String::as_str), Some("é"));
     }
 
+    // --- `\u`-escape decode paths driven through the literal escape syntax (not
+    // raw UTF-8 source chars), so the surrogate-pair scalar arithmetic and the
+    // hex accumulation shift are actually exercised. The escape sequences are
+    // built from `BACKSLASH` so the parser sees real `\uXXXX` input. ---
+
+    const BACKSLASH: char = '\\';
+
+    fn u_escape_v1(hex: &str) -> String {
+        format!("{BACKSLASH}u{hex}")
+    }
+
+    fn parse_single_escaped_char_v1(escaped: &str) -> char {
+        let input = format!("{{\"k\":\"{escaped}\"}}");
+        let fields = parse_v1(&input).expect("escaped char decodes");
+        fields
+            .get("k")
+            .and_then(|s| s.chars().next())
+            .expect("decoded value has a first char")
+    }
+
+    #[test]
+    fn bmp_unicode_escape_via_backslash_u_decodes_exact_scalar_v1() {
+        // `é` is é (U+00E9). The four hex digits must accumulate as
+        // ((((0<<4|0)<<4|0)<<4|E)<<4|9) = 0x00E9; a `>>` instead of `<<` in the
+        // accumulation would collapse the high nibbles and yield the wrong scalar.
+        let decoded = parse_single_escaped_char_v1(&u_escape_v1("00E9"));
+        assert_eq!(decoded, '\u{00E9}');
+    }
+
+    #[test]
+    fn hex_accumulation_uses_all_four_nibbles_in_order_v1() {
+        // `Ὂ` exercises every nibble position (1, F, 4, A) so a wrong shift
+        // direction or width in `(value << 4) | digit` changes the scalar.
+        let decoded = parse_single_escaped_char_v1(&u_escape_v1("1F4A"));
+        assert_eq!(decoded, '\u{1F4A}');
+    }
+
+    #[test]
+    fn surrogate_pair_via_backslash_u_decodes_exact_astral_scalar_v1() {
+        // `😀` is U+1F600 (😀). The scalar is computed as
+        //   0x10000 + ((0xD83D - 0xD800) << 10) + (0xDE00 - 0xDC00)
+        // = 0x10000 + (0x3D << 10) + 0x200 = 0x1F600.
+        // Each term is load-bearing: flipping `+`->`-`/`*`, `<<`->`>>`, or
+        // `-`->`+`/`/` produces a different (and mostly wrong) scalar.
+        let escaped = format!("{}{}", u_escape_v1("D83D"), u_escape_v1("DE00"));
+        let decoded = parse_single_escaped_char_v1(&escaped);
+        assert_eq!(decoded, '\u{1F600}');
+    }
+
+    #[test]
+    fn surrogate_pair_low_offset_is_added_not_dropped_v1() {
+        // `𝄞` is U+1D11E (musical G-clef). Here the low-surrogate
+        // offset (0xDD1E - 0xDC00 = 0x11E) is large and the high contribution
+        // ((0xD834-0xD800)<<10 = 0xD000) does not overlap it, so the final `+`
+        // term and its `-` subtraction are both pinned to an exact scalar.
+        let escaped = format!("{}{}", u_escape_v1("D834"), u_escape_v1("DD1E"));
+        let decoded = parse_single_escaped_char_v1(&escaped);
+        assert_eq!(decoded, '\u{1D11E}');
+    }
+
     #[test]
     fn whitespace_around_tokens_is_skipped_v1() {
         let fields = parse_v1("  {  \"a\"  :  \"b\"  ,  \"c\" : \"d\"  }  ")

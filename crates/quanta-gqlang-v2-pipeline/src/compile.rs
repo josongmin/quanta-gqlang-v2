@@ -1262,7 +1262,10 @@ fn root_symbol_name(value: &ValueExprHirV1) -> Option<String> {
     reason = "unit rail: assertion panics are intentional"
 )]
 mod tests {
-    use super::{producer_output_relation, FrontendContextV1};
+    use super::{
+        bind_item, bind_standalone, producer_output_relation, resolve_local, Binder,
+        FrontendContextV1, ModuleGraphV1,
+    };
     use quanta_gqlang_v2_hir::HirBuilderV1;
     use quanta_gqlang_v2_surface::parse_program;
     use quanta_gqlang_v2_types::{CardinalityV1, RecordFieldTyV1, TypeEnvV1, TypeV1};
@@ -1341,5 +1344,69 @@ mod tests {
         let relation = producer_output_relation(&producer, &context, CardinalityV1::Bag)
             .expect("a relational producer with a named projection lifts a relation");
         assert_eq!(lifted_cardinality(&relation), CardinalityV1::Bag);
+    }
+
+    /// `bind_item` is fail-closed: a query item carrying an unresolved free symbol
+    /// must surface a `bind`-stage reject, NOT silently succeed. Pins that the
+    /// helper actually runs the binder and propagates its first diagnostic; a body
+    /// replaced with `Ok(())` would swallow the reject.
+    #[test]
+    fn bind_item_propagates_unresolved_symbol_reject() {
+        let query = item("from users u | where unknownvar > 1 | project u.id as id");
+        let graph = ModuleGraphV1::new();
+        let err = bind_item(&query, &graph)
+            .expect_err("an unresolved free symbol in a query body must reject at bind");
+        assert_eq!(err.code(), "binder.unresolved_symbol");
+    }
+
+    /// `bind_item` on a clean, fully-resolved query item returns `Ok(())`; pairs
+    /// with the reject case so the helper is pinned to BOTH outcomes (a body that
+    /// always errored would fail here).
+    #[test]
+    fn bind_item_accepts_a_resolved_query() {
+        let query = item("from users u | project u.id as id");
+        let graph = ModuleGraphV1::new();
+        assert!(
+            bind_item(&query, &graph).is_ok(),
+            "a fully-resolved query binds cleanly"
+        );
+    }
+
+    /// `resolve_local` dispatches a query item into the binder and records its
+    /// unresolved-symbol diagnostic. A body replaced with `()` would resolve
+    /// nothing, leaving the binder diagnostic-free.
+    #[test]
+    fn resolve_local_records_query_binder_diagnostic() {
+        let query = item("from users u | where unknownvar > 1 | project u.id as id");
+        let graph = ModuleGraphV1::new();
+        let mut binder = Binder::new(&graph);
+        resolve_local(&mut binder, &query);
+        let result = binder.finish();
+        assert!(
+            result
+                .diagnostics()
+                .iter()
+                .any(|d| d.code() == "binder.unresolved_symbol"),
+            "resolve_local must run the binder, surfacing the unresolved-symbol reject"
+        );
+    }
+
+    /// `bind_standalone` wraps `resolve_local` in a balanced scope frame and must
+    /// still surface the wrapped item's binder diagnostics. A body replaced with
+    /// `()` would record nothing.
+    #[test]
+    fn bind_standalone_surfaces_wrapped_binder_diagnostic() {
+        let query = item("from users u | where unknownvar > 1 | project u.id as id");
+        let graph = ModuleGraphV1::new();
+        let mut binder = Binder::new(&graph);
+        bind_standalone(&mut binder, &query);
+        let result = binder.finish();
+        assert!(
+            result
+                .diagnostics()
+                .iter()
+                .any(|d| d.code() == "binder.unresolved_symbol"),
+            "bind_standalone must resolve the wrapped item, surfacing its reject"
+        );
     }
 }

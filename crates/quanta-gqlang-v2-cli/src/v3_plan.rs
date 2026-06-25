@@ -264,3 +264,41 @@ fn render_witness_selection_v1(selection: Option<WitnessSelectionPolicyV1>) -> S
         Some(other) => other.keyword().to_owned(),
     }
 }
+
+#[cfg(test)]
+mod render_witness_selection_tests_v1 {
+    use super::render_witness_selection_v1;
+    use quanta_gqlang_v2_planning::WitnessSelectionPolicyV1;
+
+    /// An absent policy renders exactly `none`. Pins the `None` arm against the
+    /// whole-body stubs (`String::new()` / `"xyzzy".into()`).
+    #[test]
+    fn absent_policy_renders_none_v1() {
+        assert_eq!(render_witness_selection_v1(None), "none");
+    }
+
+    /// `TopK` exposes its finite cap `k` in the rendered set bound. Pins the
+    /// `top_k(k={k})` format string (and the whole-body stubs): the cap is
+    /// surfaced verbatim, not the closed keyword `top_k`.
+    #[test]
+    fn top_k_renders_cap_inline_v1() {
+        assert_eq!(
+            render_witness_selection_v1(Some(WitnessSelectionPolicyV1::TopK { k: 7 })),
+            "top_k(k=7)"
+        );
+    }
+
+    /// The non-`TopK` policies render their closed keyword verbatim. Pins the
+    /// `other.keyword()` arm against the whole-body stubs.
+    #[test]
+    fn keyword_policies_render_their_keyword_v1() {
+        assert_eq!(
+            render_witness_selection_v1(Some(WitnessSelectionPolicyV1::CanonicalOne)),
+            "canonical_one"
+        );
+        assert_eq!(
+            render_witness_selection_v1(Some(WitnessSelectionPolicyV1::AllWitness)),
+            "all_witness"
+        );
+    }
+}

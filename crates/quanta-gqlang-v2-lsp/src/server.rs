@@ -247,3 +247,50 @@ fn render_v3_diagnostic_item_json_v1(item: &V3DiagnosticItemV1) -> String {
         ("span_end", json_usize_v1(item.span_end)),
     ])
 }
+
+#[cfg(test)]
+#[expect(
+    clippy::expect_used,
+    reason = "unit tests intentionally use expect to assert exact frame boundaries"
+)]
+mod tests {
+    use super::extract_next_request_frame_v1;
+
+    #[test]
+    fn frame_extractor_treats_braces_inside_strings_as_literal_v1() {
+        // The string value contains a `}` (index 7) and a `{` (index 9). The
+        // extractor must enter string mode on the opening `"` and ignore those
+        // braces, so the frame closes only at the FINAL `}` (index 11), giving
+        // end == 12. If the `b'"' => in_string = true` arm is deleted, the inner
+        // `}` is read as structural and prematurely closes the frame at index 7
+        // (end == 8) — so pinning the exact end span kills that mutation.
+        let buffer = b"{\"k\":\"a}{b\"}";
+        assert_eq!(buffer.len(), 12, "buffer layout is what the test assumes");
+        let frame = extract_next_request_frame_v1(buffer, true)
+            .expect("balanced object extracts")
+            .expect("a complete frame is present");
+        assert_eq!(
+            frame,
+            (0, 12),
+            "frame spans the whole brace-balanced object"
+        );
+    }
+
+    #[test]
+    fn frame_extractor_closing_brace_inside_string_does_not_terminate_early_v1() {
+        // Two top-level objects back to back, the first carrying an embedded `}`
+        // inside its string value. With string tracking, the first frame is the
+        // full first object; a second call resumes after it. Without the `"`
+        // arm, the first frame would be truncated at the embedded `}`.
+        let buffer = b"{\"a\":\"}\"}{\"b\":\"c\"}";
+        let frame = extract_next_request_frame_v1(buffer, false)
+            .expect("first object extracts")
+            .expect("first frame present");
+        // First object is `{"a":"}"}` = 9 bytes, indices 0..=8, end == 9.
+        assert_eq!(
+            frame,
+            (0, 9),
+            "embedded brace is inside the string, not structural"
+        );
+    }
+}

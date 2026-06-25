@@ -336,6 +336,51 @@ fn default_item_hooks_delegate_into_their_walks() {
     assert_eq!(pres_counter.relations, 0);
 }
 
+/// Counts ONLY value nodes by overriding `visit_value`; deliberately does NOT
+/// override `visit_bool`, so every bool node is traversed through the trait
+/// DEFAULT `visit_bool` hook (which delegates to `walk_bool`). The bool->value
+/// kernel edges (Compare operands) are then the observation surface: if the
+/// default `visit_bool` body stopped delegating to `walk_bool`, nested bools
+/// would not recurse and their value operands would never be reached.
+#[derive(Default)]
+struct BoolNestedValueCounter {
+    values: usize,
+}
+
+impl HirVisitorV1 for BoolNestedValueCounter {
+    fn visit_value(&mut self, _node: &ValueExprHirV1) {
+        self.values += 1;
+        // intentionally do not recurse: every value here is a leaf symbol, and
+        // the point is to count reach through the DEFAULT visit_bool delegation.
+    }
+}
+
+#[test]
+fn default_bool_hook_delegates_into_walk_bool_reaching_value_operands() {
+    let b = HirBuilderV1::new();
+    // and( or( a < b , not( c < d ) ) , e < f )
+    // Six leaf value operands, each reachable ONLY by the default visit_bool
+    // hook recursing through And/Or/Not into the three Compare nodes.
+    let leaf = |name: &str, s: usize| b.symbol(name, SpanV1::new(s, s + 1));
+    let cmp_ab = b.compare("<", leaf("a", 0), leaf("b", 2), SpanV1::new(0, 3));
+    let cmp_cd = b.compare("<", leaf("c", 6), leaf("d", 8), SpanV1::new(6, 9));
+    let not_cd = b.not(cmp_cd, SpanV1::new(4, 9));
+    let disj = b.or(cmp_ab, not_cd, SpanV1::new(0, 9));
+    let cmp_ef = b.compare("<", leaf("e", 12), leaf("f", 14), SpanV1::new(12, 15));
+    let conj = b.and(disj, cmp_ef, SpanV1::new(0, 15));
+
+    let mut counter = BoolNestedValueCounter::default();
+    // Drive through the DEFAULT visit_bool hook (the visitor does not override it).
+    counter.visit_bool(&conj);
+
+    // All three Compares contribute 2 value operands each = 6. Reaching them
+    // requires the default visit_bool to delegate into walk_bool at every level
+    // (And -> Or -> {Compare, Not -> Compare}, and And -> Compare). If the
+    // default body were replaced with `()`, recursion stops at the top And and
+    // the count collapses to 0.
+    assert_eq!(counter.values, 6);
+}
+
 #[test]
 fn from_raw_round_trips_and_default_hooks_are_pure_observation() {
     // a bare leaf visited through the default value hook records exactly itself.

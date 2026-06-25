@@ -42,3 +42,29 @@ fn context_first_compile_closes_alias_typing_explicitly() {
     assert_eq!(diag.stage(), PipelineStageV1::Type);
     assert_eq!(diag.code(), "types.bad_overload");
 }
+
+/// `module_graph()` returns a borrow of the STORED graph the context was built
+/// with, never a freshly-leaked empty default. A context built with a non-empty
+/// import graph must hand back exactly that graph; an empty/default placeholder
+/// would compare unequal.
+#[test]
+fn module_graph_accessor_returns_the_stored_graph() {
+    let graph = ModuleGraphV1::new().with_import("alias", "target.module");
+    assert_ne!(
+        graph,
+        ModuleGraphV1::new(),
+        "the fixture graph is genuinely non-default"
+    );
+
+    let context = FrontendContextV1::new(graph.clone(), TypeEnvV1::new());
+    assert_eq!(
+        *context.module_graph(),
+        graph,
+        "module_graph() must return the stored graph, not a leaked empty default"
+    );
+    assert_ne!(
+        *context.module_graph(),
+        ModuleGraphV1::new(),
+        "the accessor must not erase the imports into an empty default graph"
+    );
+}
