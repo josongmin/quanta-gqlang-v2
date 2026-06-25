@@ -1,7 +1,10 @@
 # Semantica Serving Contract Handoff (Ticket 10)
 
-Status: partial downstream cutover landed; semantica D5 execution packet still
-open
+Status: downstream cutover LANDED on semantica `main` (D5 receipt `…77d2f34983`,
+head `…f189330b16`); serving-correctness closed, only an ambient test-closure
+residual remains (see ticket `17`). `ServingQueryRequestV1` / `RootSpecV1` and the
+dead spec tree are deleted; relational serving lowers into `ServingProgramRequestV1`
+with an exhaustive `served_family_v1()` label; the `exec-conformance` orphan is removed.
 
 ## Purpose
 

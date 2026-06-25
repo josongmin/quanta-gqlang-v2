@@ -1,6 +1,6 @@
 # Jun 24 DSL Advanced v3 Ticket Pack
 
-Status: `Current Main Re-Audited` + `11-16 Materially Implemented With Fresh Proof` + `10 Downstream Umbrella Open` + `17 Packet Sync Blocked On D5`
+Status: `Current Main Re-Audited` + `11-16 Implemented With Fresh Proof` + `10 Downstream Umbrella` + `17 Packet Sync CLOSED (synced to landed D5 receipt …77d2f34983; only an ambient test-closure residual remains)`
 
 ## Current Main Receipt
 

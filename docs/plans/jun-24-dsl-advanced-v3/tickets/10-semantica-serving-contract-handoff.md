@@ -1,7 +1,9 @@
 # 10 Semantica Serving Contract Handoff
 
-Status: semantica D5 execution packet open; qglang ticket `10` remains the
-downstream umbrella and packet SSOT
+Status: semantica D5 serving cutover LANDED (`01`–`06` + adversarial structural
+completion, receipt `…77d2f34983`); qglang ticket `10` remains the downstream
+umbrella and packet SSOT. Terminal sync is recorded in ticket `17`; the only
+open item is an ambient test-closure residual (D5 `07`), not a serving blocker.
 
 ## Goal
 

@@ -1,7 +1,30 @@
 # 17 Downstream Cutover Closeout and Packet Sync
 
-Status: open; blocked on semantica D5 green receipt plus exact-head packet
-re-sync
+Status: CLOSED on `2026-06-26` — synced to the landed semantica D5 receipt.
+
+## Closeout Receipt (`2026-06-26`)
+
+Both gating inputs are now satisfied, so the terminal sync is performed:
+
+1. qglang ticket `16` is closed; its repo-local proof receipt is refreshed on the
+   exact head being synced (build/test/clippy/fmt green, artifact-hygiene rail
+   green, full mutation hardening landed).
+2. semantica D5 serving cutover landed on its `main`: tickets `01`–`06` plus the
+   adversarial-audit structural completion (receipt `…77d2f34983`, D5 head
+   `…f189330b16`). Legacy serving authority removed; `exec-conformance` orphan
+   crate deleted; `LoweredQueryPlanV1` collapsed; `ServingQueryRequestV1` /
+   `RootSpecV1` + the dead spec tree deleted (true zero dual-truth); the bridge
+   lowers relational serving into `ServingProgramRequestV1` with an EXHAUSTIVE
+   `served_family_v1()` label.
+
+Honest residual (recorded separately, NOT used to claim false green): D5 ticket
+`07` lists only ambient / doc-hygiene / other-lane items. The one execution-side
+residual is that the `group_gqlang_public_path` preflight assertion runs under a
+test closure (`runtime-executor-surface` → `quanta-taint-solver` /
+`quanta-adapters-analysis-facade`) currently churning under a separate concurrent
+owner — an AMBIENT test-closure state, not a gqlang/serving-correctness blocker.
+End-to-end advanced-serving green therefore still waits on that ambient closure,
+but the serving cutover correctness is landed.
 
 ## Goal
 
