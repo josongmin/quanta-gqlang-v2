@@ -170,6 +170,109 @@ fn zero_witness_cap_rejects() {
     );
 }
 
+// A zero PATH-LENGTH bound is degenerate and rejects on a CYCLIC relation: zero
+// edges can never traverse the cycle, so the supplied bound is ill-formed. The
+// zero-path check fires AFTER the missing-cap / zero-cap / missing-path checks,
+// so a cyclic relation with a present-but-zero path bound lands here.
+#[test]
+fn cyclic_zero_path_length_bound_rejects() {
+    let request = WitnessRequestV1 {
+        shape: RelationShapeV1::Cyclic,
+        dedup: DedupIdentityV1::NodeSequence,
+        max_witnesses: Some(5),
+        max_path_length: Some(0),
+        tie_break: WitnessTieBreakV1::ShortestThenLexical,
+        span: sp(3, 11),
+    };
+
+    let err = WitnessContractV1::bind(&request).expect_err("zero path-length bound rejects");
+    assert_eq!(err.code(), "logic.unbounded_witness.zero_path_length_bound");
+    assert_eq!(
+        err.message(),
+        "ill-formed witness bound: a path-length bound of zero can never traverse an edge"
+    );
+    assert_eq!(err.span(), sp(3, 11));
+    match err {
+        LogicDiagnosticV1::UnboundedWitness { reason, .. } => {
+            assert_eq!(reason, UnboundedWitnessReasonV1::ZeroPathLengthBound);
+            assert_eq!(reason.code(), "zero_path_length_bound");
+        }
+        other => panic!("expected UnboundedWitness, got {other:?}"),
+    }
+}
+
+// The zero-path-length reject fires "regardless of shape": even an ACYCLIC
+// relation (which does not require a path bound at all) rejects a supplied
+// zero bound, so `depth = 0` cannot silently admit a non-traversing contract.
+#[test]
+fn acyclic_zero_path_length_bound_still_rejects() {
+    let request = WitnessRequestV1 {
+        shape: RelationShapeV1::Acyclic,
+        dedup: DedupIdentityV1::Endpoints,
+        max_witnesses: Some(4),
+        max_path_length: Some(0),
+        tie_break: WitnessTieBreakV1::Lexical,
+        span: sp(1, 2),
+    };
+
+    let err =
+        WitnessContractV1::bind(&request).expect_err("acyclic zero path-length bound rejects");
+    assert_eq!(err.code(), "logic.unbounded_witness.zero_path_length_bound");
+    match err {
+        LogicDiagnosticV1::UnboundedWitness { reason, .. } => {
+            assert_eq!(reason, UnboundedWitnessReasonV1::ZeroPathLengthBound);
+        }
+        other => panic!("expected UnboundedWitness, got {other:?}"),
+    }
+}
+
+// Rejection order is deterministic: when BOTH the cap is missing AND the
+// (cyclic) path bound is missing, the MISSING-CAP reason wins (checked first),
+// not the missing-path-bound reason.
+#[test]
+fn missing_cap_beats_missing_path_bound_in_reject_order() {
+    let request = WitnessRequestV1 {
+        shape: RelationShapeV1::Cyclic,
+        dedup: DedupIdentityV1::NodeSet,
+        max_witnesses: None,
+        max_path_length: None,
+        tie_break: WitnessTieBreakV1::Lexical,
+        span: sp(0, 5),
+    };
+
+    let err = WitnessContractV1::bind(&request).expect_err("missing both rejects on cap first");
+    match err {
+        LogicDiagnosticV1::UnboundedWitness { reason, .. } => {
+            assert_eq!(reason, UnboundedWitnessReasonV1::MissingMaxWitnesses);
+        }
+        other => panic!("expected UnboundedWitness, got {other:?}"),
+    }
+}
+
+// Rejection order: a zero cap (present but degenerate) is checked BEFORE the
+// missing-path-bound rule, so a cyclic relation with a zero cap and no path
+// bound rejects on ZERO-CAP, not on missing-path-bound.
+#[test]
+fn zero_cap_beats_missing_path_bound_in_reject_order() {
+    let request = WitnessRequestV1 {
+        shape: RelationShapeV1::Cyclic,
+        dedup: DedupIdentityV1::NodeSequence,
+        max_witnesses: Some(0),
+        max_path_length: None,
+        tie_break: WitnessTieBreakV1::ShortestThenLexical,
+        span: sp(2, 6),
+    };
+
+    let err = WitnessContractV1::bind(&request).expect_err("zero cap beats missing path bound");
+    assert_eq!(err.code(), "logic.unbounded_witness.zero_max_witnesses");
+    match err {
+        LogicDiagnosticV1::UnboundedWitness { reason, .. } => {
+            assert_eq!(reason, UnboundedWitnessReasonV1::ZeroMaxWitnesses);
+        }
+        other => panic!("expected UnboundedWitness, got {other:?}"),
+    }
+}
+
 // An unknown source quantifier keyword rejects rather than silently lowering.
 #[test]
 fn unknown_quantifier_rejects() {

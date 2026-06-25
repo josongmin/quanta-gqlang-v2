@@ -17,7 +17,7 @@
 use quanta_gqlang_v2_hir::{
     check_tree, BoolExprKindV1, HirBuilderV1, HirRootRefV1, ValueExprKindV1,
 };
-use quanta_gqlang_v2_surface::{parse_program, SurfaceItemV1};
+use quanta_gqlang_v2_surface::{parse_program, ParseErrorCodeV1, SurfaceItemV1};
 
 #[test]
 fn declaration_embeds_shared_value_expr() {
@@ -64,6 +64,32 @@ fn rule_embeds_shared_value_head_and_bool_body() {
         other => panic!("and.lhs should be Compare, got {other:?}"),
     }
     check_tree(HirRootRefV1::Rule(&rule), src.len()).expect("sound tree");
+}
+
+/// A `let` declaration missing its `=` after the name fails closed with a typed
+/// token error (the `expect('=')` reject arm in `parse_decl`).
+#[test]
+fn decl_missing_equals_rejects() {
+    let builder = HirBuilderV1::new();
+    let diag = parse_program("let total 1", &builder).expect_err("must reject");
+    assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+    assert!(diag.message.contains('='), "message: {}", diag.message);
+}
+
+/// A `rule` missing its `:` after the name fails closed with a typed token error.
+#[test]
+fn rule_missing_colon_rejects() {
+    let builder = HirBuilderV1::new();
+    let diag = parse_program("rule adult person.id if x", &builder).expect_err("must reject");
+    assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+}
+
+/// A `rule` missing its `if` between head and body fails closed.
+#[test]
+fn rule_missing_if_rejects() {
+    let builder = HirBuilderV1::new();
+    let diag = parse_program("rule adult : person.id person.age", &builder).expect_err("rejects");
+    assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
 }
 
 #[test]

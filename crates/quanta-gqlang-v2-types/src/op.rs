@@ -203,4 +203,54 @@ mod tests {
         let lt = registry.binary_overloads("<");
         assert!(lt.iter().all(|ov| ov.result == TypeV1::bool()));
     }
+
+    #[test]
+    fn unary_negation_has_int_float_duration_overloads() {
+        let registry = OperatorRegistryV1::closed();
+        assert!(registry.has_unary("-"));
+        assert!(registry.has_unary("+"));
+        assert!(registry.has_unary("not"));
+        // `-` accepts int/float/duration, each mapping operand -> same result.
+        let neg = registry.unary_overloads("-");
+        assert_eq!(neg.len(), 3);
+        assert!(neg
+            .iter()
+            .any(|ov| ov.operand == TypeV1::int() && ov.result == TypeV1::int()));
+        assert!(neg
+            .iter()
+            .any(|ov| ov.operand == TypeV1::float() && ov.result == TypeV1::float()));
+        // `not` is bool -> bool.
+        let not = registry.unary_overloads("not");
+        assert_eq!(not.len(), 1);
+        assert!(not
+            .first()
+            .is_some_and(|ov| ov.operand == TypeV1::bool() && ov.result == TypeV1::bool()));
+    }
+
+    #[test]
+    fn unknown_unary_operator_is_absent_and_empty() {
+        let registry = OperatorRegistryV1::closed();
+        assert!(!registry.has_unary("~"));
+        assert!(registry.unary_overloads("~").is_empty());
+        // A binary symbol is not a unary symbol.
+        assert!(!registry.has_unary("++"));
+        assert!(registry.unary_overloads("++").is_empty());
+    }
+
+    #[test]
+    fn default_matches_closed() {
+        // `Default` must produce the same closed registry as `closed()`.
+        let def = OperatorRegistryV1::default();
+        let closed = OperatorRegistryV1::closed();
+        assert_eq!(
+            def.binary_overloads("+").len(),
+            closed.binary_overloads("+").len()
+        );
+        assert_eq!(
+            def.unary_overloads("-").len(),
+            closed.unary_overloads("-").len()
+        );
+        assert!(def.has_binary("="));
+        assert!(def.has_unary("not"));
+    }
 }

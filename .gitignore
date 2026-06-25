@@ -10,3 +10,8 @@
 *.bak
 *.orig
 /*.sh
+/mutants.out/
+/target-cov/
+lcov.info
+coverage.txt
+mutants-*.txt

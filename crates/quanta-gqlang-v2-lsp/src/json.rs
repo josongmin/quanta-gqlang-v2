@@ -277,3 +277,205 @@ const fn is_high_surrogate_v1(value: u32) -> bool {
 const fn is_low_surrogate_v1(value: u32) -> bool {
     value >= 0xDC00 && value <= 0xDFFF
 }
+
+#[cfg(test)]
+#[expect(
+    clippy::expect_used,
+    reason = "unit tests intentionally use expect/expect_err to assert exact parse results and reject envelopes"
+)]
+mod tests {
+    use super::{
+        json_array_v1, json_bool_v1, json_object_v1, json_string_v1, json_usize_v1, JsonCursorV1,
+    };
+
+    /// Parse and, on error, surface the fail-closed envelope JSON the front door
+    /// would emit. `StdioLspErrorV1`'s fields are private to `server`, so we pin
+    /// the public `render_json_v1` line instead — exactly what a client sees.
+    fn parse_v1(input: &str) -> Result<std::collections::BTreeMap<String, String>, String> {
+        JsonCursorV1::new(input)
+            .parse_flat_object_v1()
+            .map_err(|err| err.render_json_v1())
+    }
+
+    // --- branches the brace-balanced frame extractor strips before the parser
+    // ever runs, so they are unreachable from the stdio front door and are
+    // pinned here against the parser directly. ---
+
+    #[test]
+    fn empty_object_parses_to_empty_map_v1() {
+        let fields = parse_v1("{}").expect("empty object parses");
+        assert!(fields.is_empty(), "empty object yields no fields");
+    }
+
+    fn err_line_v1(code: &str, message: &str) -> String {
+        format!(
+            r#"{{"ok":false,"error":{{"code":"{code}","message":{}}}}}"#,
+            json_string_v1(message)
+        )
+    }
+
+    #[test]
+    fn empty_object_then_trailing_content_is_rejected_v1() {
+        let err = parse_v1("{}x").expect_err("trailing after empty object rejects");
+        assert_eq!(
+            err,
+            err_line_v1("trailing_content", "trailing content after JSON object")
+        );
+    }
+
+    #[test]
+    fn populated_object_then_trailing_content_is_rejected_v1() {
+        let err = parse_v1(r#"{"a":"b"} x"#).expect_err("trailing after object rejects");
+        assert_eq!(
+            err,
+            err_line_v1("trailing_content", "trailing content after JSON object")
+        );
+    }
+
+    #[test]
+    fn unterminated_string_is_rejected_v1() {
+        let err = parse_v1(r#"{"a"#).expect_err("unterminated string rejects");
+        assert_eq!(
+            err,
+            err_line_v1("malformed_json", "unterminated JSON string")
+        );
+    }
+
+    #[test]
+    fn unterminated_escape_at_end_of_input_is_rejected_v1() {
+        // A backslash with nothing after it inside the string.
+        let err = parse_v1("{\"a\\").expect_err("unterminated escape rejects");
+        assert_eq!(
+            err,
+            err_line_v1("malformed_json", "unterminated JSON escape")
+        );
+    }
+
+    #[test]
+    fn unterminated_unicode_escape_mid_hex_is_rejected_v1() {
+        let err = parse_v1(r#"{"a":"\u12"#).expect_err("truncated \\u rejects");
+        assert_eq!(
+            err,
+            err_line_v1("malformed_json", "unterminated unicode escape")
+        );
+    }
+
+    #[test]
+    fn unterminated_surrogate_pair_escape_is_rejected_v1() {
+        // A high surrogate, then the `\` separator, then end of input.
+        let err = parse_v1(r#"{"a":"\uD83D\"#).expect_err("unterminated surrogate pair rejects");
+        assert_eq!(
+            err,
+            err_line_v1("malformed_json", "unterminated surrogate pair escape")
+        );
+    }
+
+    #[test]
+    fn expect_char_at_end_of_input_is_rejected_v1() {
+        // Whitespace-trimmed empty input: `expect_char_v1('{')` hits end of input.
+        let err = parse_v1("   ").expect_err("empty input rejects");
+        assert_eq!(
+            err,
+            err_line_v1("malformed_json", "expected `{`, found end of input")
+        );
+    }
+
+    #[test]
+    fn missing_opening_brace_reports_found_char_v1() {
+        let err = parse_v1("x").expect_err("non-brace start rejects");
+        assert_eq!(
+            err,
+            err_line_v1("malformed_json", "expected `{`, found `x`")
+        );
+    }
+
+    // --- positive decode paths. ---
+
+    #[test]
+    fn all_simple_escapes_decode_to_their_control_chars_v1() {
+        let fields = parse_v1(r#"{"k":"\"\\\/\b\f\n\r\t"}"#).expect("simple escapes decode");
+        assert_eq!(
+            fields.get("k").map(String::as_str),
+            Some("\"\\/\u{8}\u{c}\n\r\t")
+        );
+    }
+
+    #[test]
+    fn valid_surrogate_pair_decodes_to_astral_scalar_v1() {
+        // `😀` is the grinning-face emoji `😀` (U+1F600).
+        let fields = parse_v1(r#"{"k":"😀"}"#).expect("surrogate pair decodes");
+        assert_eq!(fields.get("k").map(String::as_str), Some("😀"));
+    }
+
+    #[test]
+    fn bmp_unicode_escape_decodes_v1() {
+        // A non-surrogate BMP scalar via `\u`.
+        let fields = parse_v1(r#"{"k":"é"}"#).expect("bmp escape decodes");
+        assert_eq!(fields.get("k").map(String::as_str), Some("é"));
+    }
+
+    #[test]
+    fn whitespace_around_tokens_is_skipped_v1() {
+        let fields = parse_v1("  {  \"a\"  :  \"b\"  ,  \"c\" : \"d\"  }  ")
+            .expect("interior whitespace is skipped");
+        assert_eq!(fields.get("a").map(String::as_str), Some("b"));
+        assert_eq!(fields.get("c").map(String::as_str), Some("d"));
+    }
+
+    // --- encoders. ---
+
+    #[test]
+    fn json_string_escapes_every_special_char_v1() {
+        let encoded = json_string_v1("\"\\\u{8}\u{c}\n\r\t");
+        assert_eq!(encoded, r#""\"\\\b\f\n\r\t""#);
+    }
+
+    #[test]
+    fn json_string_escapes_other_control_chars_as_u_hex_v1() {
+        // A control char with no dedicated escape (U+0001) becomes its \uXXXX form.
+        let encoded = json_string_v1("\u{1}");
+        assert_eq!(encoded, "\"\\u0001\"");
+    }
+
+    #[test]
+    fn json_string_passes_through_non_control_chars_v1() {
+        let encoded = json_string_v1("héllo 😀");
+        assert_eq!(encoded, "\"héllo 😀\"");
+    }
+
+    #[test]
+    fn json_object_joins_fields_with_quoted_keys_v1() {
+        let rendered = json_object_v1([("a", "1".to_string()), ("b", "2".to_string())]);
+        assert_eq!(rendered, r#"{"a":1,"b":2}"#);
+    }
+
+    #[test]
+    fn json_object_with_zero_fields_is_empty_braces_v1() {
+        let rendered = json_object_v1::<0>([]);
+        assert_eq!(rendered, "{}");
+    }
+
+    #[test]
+    fn json_array_joins_items_with_commas_v1() {
+        let rendered = json_array_v1(["1".to_string(), "2".to_string()].into_iter());
+        assert_eq!(rendered, "[1,2]");
+    }
+
+    #[test]
+    fn json_array_empty_is_empty_brackets_v1() {
+        let rendered = json_array_v1(std::iter::empty());
+        assert_eq!(rendered, "[]");
+    }
+
+    #[test]
+    fn json_usize_renders_decimal_v1() {
+        assert_eq!(json_usize_v1(0), "0");
+        assert_eq!(json_usize_v1(42), "42");
+    }
+
+    #[test]
+    fn json_bool_renders_keywords_v1() {
+        assert_eq!(json_bool_v1(true), "true");
+        assert_eq!(json_bool_v1(false), "false");
+    }
+}

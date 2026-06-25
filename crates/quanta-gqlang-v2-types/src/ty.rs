@@ -396,3 +396,220 @@ fn write_comma_list(f: &mut fmt::Formatter<'_>, items: &[TypeV1]) -> fmt::Result
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every scalar must map to a stable, unique lowercase keyword and round-trip
+    /// through `Display`. This locks the public spelling shared by CLI/LSP/tests.
+    #[test]
+    fn scalar_keywords_are_stable_unique_and_display_match() {
+        let all = [
+            (ScalarTyV1::Bool, "bool"),
+            (ScalarTyV1::Int, "int"),
+            (ScalarTyV1::Float, "float"),
+            (ScalarTyV1::String, "string"),
+            (ScalarTyV1::Duration, "duration"),
+            (ScalarTyV1::Location, "location"),
+            (ScalarTyV1::Path, "path"),
+            (ScalarTyV1::EntityRef, "entity_ref"),
+            (ScalarTyV1::SymbolRef, "symbol_ref"),
+            (ScalarTyV1::RuleRef, "rule_ref"),
+            (ScalarTyV1::SourceScope, "source_scope"),
+            (ScalarTyV1::ProofTree, "proof_tree"),
+        ];
+        let mut seen = std::collections::BTreeSet::new();
+        for (scalar, keyword) in &all {
+            assert_eq!(scalar.keyword(), *keyword);
+            assert_eq!(format!("{scalar}"), *keyword);
+            assert!(seen.insert(*keyword), "duplicate keyword {keyword}");
+        }
+    }
+
+    /// Only `int` and `float` are numeric; references/proof-family scalars are not.
+    #[test]
+    fn is_numeric_only_for_int_and_float() {
+        assert!(ScalarTyV1::Int.is_numeric());
+        assert!(ScalarTyV1::Float.is_numeric());
+        assert!(!ScalarTyV1::Bool.is_numeric());
+        assert!(!ScalarTyV1::String.is_numeric());
+        assert!(!ScalarTyV1::Duration.is_numeric());
+        assert!(!ScalarTyV1::Path.is_numeric());
+    }
+
+    /// The proof/witness family is exactly `path`, `location`, `proof_tree`.
+    #[test]
+    fn is_proof_family_membership() {
+        assert!(ScalarTyV1::Path.is_proof_family());
+        assert!(ScalarTyV1::Location.is_proof_family());
+        assert!(ScalarTyV1::ProofTree.is_proof_family());
+        assert!(!ScalarTyV1::Int.is_proof_family());
+        assert!(!ScalarTyV1::EntityRef.is_proof_family());
+        assert!(!ScalarTyV1::Duration.is_proof_family());
+    }
+
+    /// Cardinality has two distinct keyword spellings: the cardinality name and
+    /// the author-facing collection keyword (`Sequence` renders as `list`).
+    #[test]
+    fn cardinality_keywords_distinguish_name_from_collection_spelling() {
+        assert_eq!(CardinalityV1::Set.keyword(), "set");
+        assert_eq!(CardinalityV1::Bag.keyword(), "bag");
+        assert_eq!(CardinalityV1::Sequence.keyword(), "sequence");
+
+        assert_eq!(CardinalityV1::Set.collection_keyword(), "set");
+        assert_eq!(CardinalityV1::Bag.collection_keyword(), "bag");
+        assert_eq!(CardinalityV1::Sequence.collection_keyword(), "list");
+    }
+
+    /// Constructors build the documented values.
+    #[test]
+    fn union_variant_and_record_field_constructors() {
+        let variant = UnionVariantTyV1::new("ok", TypeV1::int());
+        assert_eq!(variant.tag, "ok");
+        assert_eq!(variant.payload, TypeV1::int());
+
+        let field = RecordFieldTyV1::new("id", TypeV1::string());
+        assert_eq!(field.name, "id");
+        assert_eq!(field.ty, TypeV1::string());
+    }
+
+    /// Wrapping an already-optional type is idempotent (documented invariant):
+    /// `optional(optional(T)) == optional(T)`.
+    #[test]
+    fn optional_wrapping_is_idempotent() {
+        let once = TypeV1::optional(TypeV1::int());
+        let twice = TypeV1::optional(once.clone());
+        assert_eq!(once, twice);
+        assert_eq!(twice, TypeV1::Optional(Box::new(TypeV1::int())));
+        assert!(once.is_optional());
+    }
+
+    /// `unwrap_optional` strips exactly one optional layer and is a no-op on
+    /// non-optional types.
+    #[test]
+    fn unwrap_optional_strips_one_layer() {
+        let opt = TypeV1::optional(TypeV1::string());
+        assert_eq!(opt.unwrap_optional(), &TypeV1::string());
+        // Non-optional types are returned as-is.
+        let plain = TypeV1::int();
+        assert_eq!(plain.unwrap_optional(), &TypeV1::int());
+        assert_eq!(TypeV1::Null.unwrap_optional(), &TypeV1::Null);
+    }
+
+    /// `is_null` is true only for the `Null` type.
+    #[test]
+    fn is_null_only_for_null() {
+        assert!(TypeV1::Null.is_null());
+        assert!(!TypeV1::int().is_null());
+        assert!(!TypeV1::optional(TypeV1::int()).is_null());
+    }
+
+    /// The set helper builds a set-cardinality collection; list builds a sequence.
+    #[test]
+    fn set_and_list_helpers_carry_cardinality() {
+        let s = TypeV1::set(TypeV1::int());
+        assert_eq!(
+            s,
+            TypeV1::Collection {
+                element: Box::new(TypeV1::int()),
+                cardinality: CardinalityV1::Set,
+            }
+        );
+        let l = TypeV1::list(TypeV1::int());
+        assert_eq!(
+            l,
+            TypeV1::Collection {
+                element: Box::new(TypeV1::int()),
+                cardinality: CardinalityV1::Sequence,
+            }
+        );
+        // A set is never assignable into a list (cardinality differs).
+        assert!(!s.is_assignable_to(&l));
+        assert!(!l.is_assignable_to(&s));
+    }
+
+    /// `Display` for every recursive structural variant must match the documented
+    /// rendering grammar exactly.
+    #[test]
+    fn display_renders_every_structural_variant() {
+        // Tuple.
+        let tuple = TypeV1::Tuple(vec![TypeV1::int(), TypeV1::string(), TypeV1::Null]);
+        assert_eq!(format!("{tuple}"), "tuple<int, string, null>");
+
+        // Record (order preserved).
+        let record = TypeV1::record(vec![
+            RecordFieldTyV1::new("id", TypeV1::int()),
+            RecordFieldTyV1::new("name", TypeV1::string()),
+        ]);
+        assert_eq!(format!("{record}"), "{ id: int, name: string }");
+
+        // Optional.
+        assert_eq!(
+            format!("{}", TypeV1::optional(TypeV1::int())),
+            "optional<int>"
+        );
+
+        // Collections render by their author-facing keyword.
+        assert_eq!(format!("{}", TypeV1::list(TypeV1::int())), "list<int>");
+        assert_eq!(format!("{}", TypeV1::set(TypeV1::string())), "set<string>");
+        assert_eq!(
+            format!("{}", TypeV1::collection(TypeV1::int(), CardinalityV1::Bag)),
+            "bag<int>"
+        );
+
+        // Union (variant order preserved, ` | ` separated).
+        let union = TypeV1::Union(vec![
+            UnionVariantTyV1::new("ok", TypeV1::int()),
+            UnionVariantTyV1::new("err", TypeV1::string()),
+        ]);
+        assert_eq!(format!("{union}"), "union<ok: int | err: string>");
+
+        // Relation renders cardinality name then row.
+        let relation = TypeV1::Relation {
+            row: Box::new(TypeV1::record(vec![RecordFieldTyV1::new(
+                "x",
+                TypeV1::int(),
+            )])),
+            cardinality: CardinalityV1::Set,
+        };
+        assert_eq!(format!("{relation}"), "relation<set, { x: int }>");
+
+        // Empty tuple and empty record degenerate cases.
+        assert_eq!(format!("{}", TypeV1::Tuple(vec![])), "tuple<>");
+        assert_eq!(format!("{}", TypeV1::record(vec![])), "{  }");
+    }
+
+    /// Record equality is order-sensitive (documented): the same fields in a
+    /// different order are NOT equal.
+    #[test]
+    fn record_equality_is_order_sensitive() {
+        let a = TypeV1::record(vec![
+            RecordFieldTyV1::new("a", TypeV1::int()),
+            RecordFieldTyV1::new("b", TypeV1::string()),
+        ]);
+        let b = TypeV1::record(vec![
+            RecordFieldTyV1::new("b", TypeV1::string()),
+            RecordFieldTyV1::new("a", TypeV1::int()),
+        ]);
+        assert_ne!(a, b);
+    }
+
+    /// A present `T` is assignable into `optional<U>` whenever `T` is assignable
+    /// into `U`, transitively through a collection element.
+    #[test]
+    fn assignability_through_optional_and_collection_elements() {
+        // present int into optional<int>
+        assert!(TypeV1::int().is_assignable_to(&TypeV1::optional(TypeV1::int())));
+        // list<int> into list<optional<int>> via element rule
+        assert!(TypeV1::list(TypeV1::int())
+            .is_assignable_to(&TypeV1::list(TypeV1::optional(TypeV1::int()))));
+        // bare null NOT assignable into a concrete scalar
+        assert!(!TypeV1::Null.is_assignable_to(&TypeV1::int()));
+        // int NOT silently widened to float
+        assert!(!TypeV1::int().is_assignable_to(&TypeV1::float()));
+        // unrelated structural types are not assignable
+        assert!(!TypeV1::int().is_assignable_to(&TypeV1::string()));
+        assert!(!TypeV1::Tuple(vec![TypeV1::int()]).is_assignable_to(&TypeV1::int()));
+    }
+}

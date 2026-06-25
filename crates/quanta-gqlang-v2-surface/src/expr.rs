@@ -79,6 +79,23 @@ fn parse_comparison(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagno
         return parse_quantifier(cur);
     }
 
+    // Parenthesized BOOLEAN grouping: `(a or b)`, `(not a)`, etc. A `(` here only
+    // opens a bool group when its top-level (depth-1) content carries a boolean
+    // connective the value grammar cannot hold (`and`/`or`/`not`). A plain
+    // `(a + b)` or a comparison-bearing `(a + b) > c` stays a VALUE paren so its
+    // author grouping is preserved as a value node and any following compare op
+    // still binds — so this branch is taken only for the genuinely-boolean case.
+    if matches!(cur.peek().kind, TokenKindV1::LParen) && paren_opens_bool(cur) {
+        let open = cur.bump();
+        let inner = parse_bool(cur)?;
+        let close = cur.expect(
+            &TokenKindV1::RParen,
+            "')' to close parenthesized boolean expression",
+        )?;
+        let span = open.span.merge(&close.span);
+        return Ok(cur.builder.paren_bool(inner, span));
+    }
+
     let lhs = parse_additive(cur)?;
     if let TokenKindV1::Op(sym) = &cur.peek().kind {
         if is_compare_op(sym) {
@@ -126,6 +143,49 @@ fn parse_quantifier(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagno
 
 fn is_compare_op(sym: &str) -> bool {
     matches!(sym, "=" | "<>" | "!=" | "<" | "<=" | ">" | ">=")
+}
+
+/// Whether the `(` at the cursor opens a BOOLEAN group rather than a value paren.
+///
+/// Scans forward to the matching `)` and reports `true` iff, at paren-depth 1
+/// (i.e. directly inside this paren, not within a nested paren), it sees a token
+/// only the boolean grammar can hold: an `and`/`or`/`not`/`exists`/`forall`
+/// keyword or a comparison operator. A purely arithmetic `(a + b)` has none of
+/// those at depth 1, so it stays a value paren; `(a + b) > c` keeps its `>` at
+/// depth 0, so it is also not a bool paren here. Fail-safe: an unbalanced run
+/// (no matching `)` before EOF) reports `false`, leaving the value path to emit
+/// the precise unclosed-paren diagnostic.
+fn paren_opens_bool(cur: &CursorV1<'_>) -> bool {
+    // cursor is on the opening `(`; start scanning the token after it.
+    let mut depth: usize = 1;
+    let mut n = 1usize;
+    loop {
+        let kind = &cur.peek_ahead(n).kind;
+        if matches!(kind, TokenKindV1::Eof) {
+            return false;
+        }
+        if matches!(kind, TokenKindV1::LParen) {
+            depth += 1;
+        } else if matches!(kind, TokenKindV1::RParen) {
+            depth -= 1;
+            if depth == 0 {
+                return false;
+            }
+        } else if depth == 1 {
+            // A boolean-only token directly inside this paren marks a bool group.
+            if let TokenKindV1::Ident(s) = kind {
+                if matches!(s.as_str(), "and" | "or" | "not" | "exists" | "forall") {
+                    return true;
+                }
+            }
+            if let TokenKindV1::Op(sym) = kind {
+                if is_compare_op(sym) {
+                    return true;
+                }
+            }
+        }
+        n += 1;
+    }
 }
 
 // ---- value precedence levels ----------------------------------------------
