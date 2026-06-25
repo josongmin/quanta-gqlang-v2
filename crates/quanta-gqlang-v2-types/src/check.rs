@@ -426,6 +426,48 @@ mod tests {
     }
 
     #[test]
+    fn match_signature_checks_variadic_argument_types() {
+        // Pins check.rs:372 `if !arg.is_assignable_to(variadic)` INSIDE the
+        // variadic loop (distinct from the arity `!` at :356). The closed
+        // registry has no variadic builtin, so this drives the variadic path
+        // directly. Signature: one fixed `string`, then any number of `int`s.
+        let int = TypeV1::scalar(ScalarTyV1::Int);
+        let sig = BuiltinSignatureV1 {
+            params: vec![string()],
+            variadic: Some(int.clone()),
+            accepts_any_single: false,
+            result: boolean(),
+        };
+
+        // Fixed string + two assignable int variadic args => MATCHES. Deleting
+        // the `!` flips an assignable variadic arg to an early `None`, so this
+        // Some assertion kills that mutant.
+        let ok = match_signature(&sig, &[string(), int.clone(), int.clone()]);
+        assert_eq!(
+            ok,
+            Some(boolean()),
+            "int variadic args after the fixed string must be accepted"
+        );
+
+        // A variadic arg of the WRONG type (string where int is required) must
+        // REJECT. Without the `!` this wrongly accepts, so this None assertion
+        // also pins the variadic type gate.
+        let bad = match_signature(&sig, &[string(), string()]);
+        assert_eq!(
+            bad, None,
+            "a non-int variadic arg must be rejected by the variadic type gate"
+        );
+
+        // Zero variadic args (just the fixed param) still matches.
+        let none_variadic = match_signature(&sig, &[string()]);
+        assert_eq!(
+            none_variadic,
+            Some(boolean()),
+            "the fixed param alone, with no variadic args, must match"
+        );
+    }
+
+    #[test]
     fn signature_accepts_arity_boundaries() {
         // Backstops the arity gate used by match_signature: fixed-2 admits
         // exactly 2, any_single admits exactly 1.
