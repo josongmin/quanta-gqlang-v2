@@ -44,8 +44,36 @@ fn repo_root_carries_no_loose_source_or_compiled_artifacts() {
             || name.ends_with(".rmeta")
             || name.ends_with(".o")
             || name.ends_with(".d");
-        if is_loose_source || is_compiled_artifact {
+        // loose shell/scratch scripts at the root are repro debris too.
+        let is_loose_script = name.ends_with(".sh") || name.ends_with(".bash");
+        // editor / agent backup files never belong in the tree, anywhere.
+        let is_backup = name.ends_with(".bak") || name.ends_with(".orig") || name.ends_with('~');
+        if is_loose_source || is_compiled_artifact || is_loose_script || is_backup {
             offenders.push(name);
+        }
+    }
+
+    // A backup file (`.bak` / `.orig` / `~`) is debris wherever it lands, so sweep
+    // every crate's src+tests too, not just the repo root.
+    for crate_dir in std::fs::read_dir(root.join("crates"))
+        .into_iter()
+        .flatten()
+        .flatten()
+    {
+        for sub in ["src", "tests"] {
+            let dir = crate_dir.path().join(sub);
+            let Ok(walk) = std::fs::read_dir(&dir) else {
+                continue;
+            };
+            for entry in walk.flatten() {
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if name.ends_with(".bak") || name.ends_with(".orig") || name.ends_with('~') {
+                    offenders.push(format!(
+                        "crates/{}/{sub}/{name}",
+                        crate_dir.file_name().to_string_lossy()
+                    ));
+                }
+            }
         }
     }
 

@@ -7,3 +7,6 @@
 
 # scratch repro files belong in a crate, never the repo root
 /test_*.rs
+*.bak
+*.orig
+/*.sh
