@@ -21,7 +21,13 @@ use std::cell::Cell;
 /// diagnostic instead, so the public API stays total (`Ok` or typed `Err`,
 /// never an unwind/abort). The bound is far above any hand-written program yet
 /// well under the stack frames available, so legal input is unaffected.
-const MAX_RECURSION_DEPTH: usize = 256;
+///
+/// Each nesting level expands into a chain of precedence-climbing frames
+/// (`parse_bool -> parse_or -> ... -> parse_primary -> parse_value`), so the
+/// effective native stack cost per level is a multiple of this counter; the
+/// bound is chosen conservatively so even that multiplied frame chain stays well
+/// inside the default thread stack while still admitting any realistic program.
+const MAX_RECURSION_DEPTH: usize = 64;
 
 /// Shared parsing state: token stream + position + the id-allocating builder.
 pub(crate) struct CursorV1<'b> {

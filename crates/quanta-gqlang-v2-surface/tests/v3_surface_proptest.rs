@@ -58,12 +58,83 @@ fn arb_any_string() -> impl Strategy<Value = String> {
 /// strings with unbalanced nesting, `;`-storms, and keyword soup.
 fn arb_fragment() -> impl Strategy<Value = String> {
     prop::sample::select(vec![
-        "(", ")", "{", "}", "[", "]", "(", ")", "(", ")", ";", ";;", "|", "=>", "->", ",", ".",
-        ":", "+", "-", "*", "/", "=", "<", ">", "<=", ">=", "<>", "!=", "\"", "\"x\"", "\"unterm",
-        "let", "rule", "from", "where", "project", "join", "on", "group", "order", "by", "with",
-        "find", "check", "explain", "show", "view", "model", "pack", "profile", "gate", "use",
-        "and", "or", "not", "if", "as", "in", "true", "false", "null", "reachability", "flow",
-        "SELECT", "FROM", "WHERE", "x", "y", "a1", "_z", "42", "3.14", " ", "\n", "\t", "#c",
+        "(",
+        ")",
+        "{",
+        "}",
+        "[",
+        "]",
+        "(",
+        ")",
+        "(",
+        ")",
+        ";",
+        ";;",
+        "|",
+        "=>",
+        "->",
+        ",",
+        ".",
+        ":",
+        "+",
+        "-",
+        "*",
+        "/",
+        "=",
+        "<",
+        ">",
+        "<=",
+        ">=",
+        "<>",
+        "!=",
+        "\"",
+        "\"x\"",
+        "\"unterm",
+        "let",
+        "rule",
+        "from",
+        "where",
+        "project",
+        "join",
+        "on",
+        "group",
+        "order",
+        "by",
+        "with",
+        "find",
+        "check",
+        "explain",
+        "show",
+        "view",
+        "model",
+        "pack",
+        "profile",
+        "gate",
+        "use",
+        "and",
+        "or",
+        "not",
+        "if",
+        "as",
+        "in",
+        "true",
+        "false",
+        "null",
+        "reachability",
+        "flow",
+        "SELECT",
+        "FROM",
+        "WHERE",
+        "x",
+        "y",
+        "a1",
+        "_z",
+        "42",
+        "3.14",
+        " ",
+        "\n",
+        "\t",
+        "#c",
     ])
     .prop_map(str::to_owned)
 }
@@ -77,8 +148,12 @@ fn arb_structured_string() -> impl Strategy<Value = String> {
 /// Deeply nested balanced parens/brackets/braces around a tiny core: stresses
 /// recursion depth without tripping a stack overflow on reasonable bounds.
 fn arb_deep_nesting() -> impl Strategy<Value = String> {
-    (1usize..600, prop::sample::select(vec!['(', '[', '{']), prop::sample::select(vec!['x', '1'])).prop_map(
-        |(n, open, core)| {
+    (
+        1usize..3000,
+        prop::sample::select(vec!['(', '[', '{']),
+        prop::sample::select(vec!['x', '1']),
+    )
+        .prop_map(|(n, open, core)| {
             let close = match open {
                 '(' => ')',
                 '[' => ']',
@@ -93,8 +168,7 @@ fn arb_deep_nesting() -> impl Strategy<Value = String> {
                 s.push(close);
             }
             s
-        },
-    )
+        })
 }
 
 /// Syntactically plausible v3 items, so the round-trip path is actually
@@ -147,7 +221,9 @@ fn arb_document_source() -> impl Strategy<Value = String> {
 
 /// Project a parse result to a stable, comparable witness for determinism:
 /// either the canonical formatted text (Ok) or the typed diagnostic (Err).
-fn program_witness(r: &Result<ParsedProgramV1, ParseDiagnosticV1>) -> Result<String, ParseDiagnosticV1> {
+fn program_witness(
+    r: &Result<ParsedProgramV1, ParseDiagnosticV1>,
+) -> Result<String, ParseDiagnosticV1> {
     match r {
         Ok(p) => Ok(format_item(&p.item.to_program_item())),
         Err(e) => Err(e.clone()),
@@ -166,6 +242,69 @@ fn document_witness(
     }
 }
 
+// ---- 0. regression: deep nesting fails CLOSED (no stack-overflow abort) -----
+
+use quanta_gqlang_v2_surface::ParseErrorCodeV1;
+
+/// Pinned regression for the totality bug proptest surfaced: an adversarially
+/// deep paren/bracket/brace nest used to overflow the native stack and ABORT
+/// the process (a fail-open totality violation). It must now fail CLOSED with a
+/// typed diagnostic from every recursive entry point.
+#[test]
+fn deeply_nested_input_fails_closed_not_abort() {
+    // `(` and `[` are value/list openers that recurse per level, so the depth
+    // budget is the gate: the typed reject must be the fail-closed
+    // UnsupportedConstruct. (`{` is a record opener that needs `field:` after the
+    // brace, so it rejects shallowly with UnexpectedToken before recursing — also
+    // fail-closed, asserted separately below.)
+    for (open, close) in [('(', ')'), ('[', ']')] {
+        // 5000 levels deep: far past the recursion budget, and the size that
+        // previously aborted the process via stack overflow.
+        let depth = 5000;
+        let mut s = String::with_capacity(depth * 2 + 1);
+        s.extend(std::iter::repeat(open).take(depth));
+        s.push('x');
+        s.extend(std::iter::repeat(close).take(depth));
+
+        let prog = parse_program(&s, &HirBuilderV1::new());
+        assert!(prog.is_err(), "deep {open}..{close} program must reject");
+
+        let expr_err = parse_expr(&s, &HirBuilderV1::new()).expect_err("deep expr must reject");
+        assert_eq!(
+            expr_err.code,
+            ParseErrorCodeV1::UnsupportedConstruct,
+            "deep {open}..{close} nest is a fail-closed UnsupportedConstruct (depth budget)"
+        );
+
+        let pred = parse_predicate(&s, &HirBuilderV1::new());
+        assert!(pred.is_err(), "deep {open}..{close} predicate must reject");
+    }
+
+    // Deeply nested braces must also fail closed (no abort), via the record path.
+    let depth = 5000;
+    let s = "{".repeat(depth) + "x" + &"}".repeat(depth);
+    assert!(
+        parse_expr(&s, &HirBuilderV1::new()).is_err(),
+        "deep brace nest must reject, not abort"
+    );
+}
+
+/// `not not not ...` (boolean prefix self-recursion) also fails closed.
+#[test]
+fn deeply_nested_not_fails_closed() {
+    let s = "not ".repeat(5000) + "x";
+    let pred = parse_predicate(&s, &HirBuilderV1::new());
+    assert!(pred.is_err(), "deep `not` chain must reject, not abort");
+}
+
+/// `- - - ...` (unary value prefix self-recursion) also fails closed.
+#[test]
+fn deeply_nested_unary_fails_closed() {
+    let s = "-".repeat(5000) + "1";
+    let expr = parse_expr(&s, &HirBuilderV1::new());
+    assert!(expr.is_err(), "deep unary chain must reject, not abort");
+}
+
 // ---- 1. TOTALITY / panic-freedom -------------------------------------------
 
 proptest! {
@@ -174,74 +313,86 @@ proptest! {
     /// `lex` never panics on arbitrary input.
     #[test]
     fn lex_never_panics_any(s in arb_any_string()) {
-        let _ = lex(&s);
+        let r = lex(&s);
+        prop_assert!(r.is_ok() || r.is_err());
     }
 
     #[test]
     fn lex_never_panics_structured(s in arb_structured_string()) {
-        let _ = lex(&s);
+        let r = lex(&s);
+        prop_assert!(r.is_ok() || r.is_err());
     }
 
     #[test]
     fn lex_never_panics_deep(s in arb_deep_nesting()) {
-        let _ = lex(&s);
+        let r = lex(&s);
+        prop_assert!(r.is_ok() || r.is_err());
     }
 
     /// `parse_program` never panics — every input is Ok or a typed diagnostic.
     #[test]
     fn parse_program_never_panics(s in arb_program_source()) {
         let builder = HirBuilderV1::new();
-        let _ = parse_program(&s, &builder);
+        let r = parse_program(&s, &builder);
+        prop_assert!(r.is_ok() || r.is_err());
     }
 
     #[test]
     fn parse_program_never_panics_any(s in arb_any_string()) {
         let builder = HirBuilderV1::new();
-        let _ = parse_program(&s, &builder);
+        let r = parse_program(&s, &builder);
+        prop_assert!(r.is_ok() || r.is_err());
     }
 
     #[test]
     fn parse_program_never_panics_deep(s in arb_deep_nesting()) {
         let builder = HirBuilderV1::new();
-        let _ = parse_program(&s, &builder);
+        let r = parse_program(&s, &builder);
+        prop_assert!(r.is_ok() || r.is_err());
     }
 
     /// `parse_document` never panics.
     #[test]
     fn parse_document_never_panics(s in arb_document_source()) {
         let builder = HirBuilderV1::new();
-        let _ = parse_document(&s, &builder);
+        let r = parse_document(&s, &builder);
+        prop_assert!(r.is_ok() || r.is_err());
     }
 
     #[test]
     fn parse_document_never_panics_any(s in arb_any_string()) {
         let builder = HirBuilderV1::new();
-        let _ = parse_document(&s, &builder);
+        let r = parse_document(&s, &builder);
+        prop_assert!(r.is_ok() || r.is_err());
     }
 
     /// The bare-expression entry points never panic either.
     #[test]
     fn parse_expr_never_panics(s in arb_program_source()) {
         let builder = HirBuilderV1::new();
-        let _ = parse_expr(&s, &builder);
+        let r = parse_expr(&s, &builder);
+        prop_assert!(r.is_ok() || r.is_err());
     }
 
     #[test]
     fn parse_predicate_never_panics(s in arb_program_source()) {
         let builder = HirBuilderV1::new();
-        let _ = parse_predicate(&s, &builder);
+        let r = parse_predicate(&s, &builder);
+        prop_assert!(r.is_ok() || r.is_err());
     }
 
     #[test]
     fn parse_expr_never_panics_any(s in arb_any_string()) {
         let builder = HirBuilderV1::new();
-        let _ = parse_expr(&s, &builder);
+        let r = parse_expr(&s, &builder);
+        prop_assert!(r.is_ok() || r.is_err());
     }
 
     #[test]
     fn parse_predicate_never_panics_any(s in arb_any_string()) {
         let builder = HirBuilderV1::new();
-        let _ = parse_predicate(&s, &builder);
+        let r = parse_predicate(&s, &builder);
+        prop_assert!(r.is_ok() || r.is_err());
     }
 }
 
