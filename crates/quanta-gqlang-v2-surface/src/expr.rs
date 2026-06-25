@@ -31,12 +31,14 @@ use quanta_gqlang_v2_hir::{
 /// comparison/connective lowers to `BoolExprKind::Value`, so `where x` and
 /// `where x > 1` share one entry point.
 pub(crate) fn parse_bool(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagnosticV1> {
-    parse_or(cur)
+    // Fail closed against adversarially-deep nesting before recursing.
+    cur.with_recursion_depth(parse_or)
 }
 
 /// Parse a full value expression (entry point for decl bodies, args, etc.).
 pub(crate) fn parse_value(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosticV1> {
-    parse_additive(cur)
+    // Fail closed against adversarially-deep nesting before recursing.
+    cur.with_recursion_depth(parse_additive)
 }
 
 // ---- boolean precedence levels --------------------------------------------
@@ -65,10 +67,13 @@ fn parse_and(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagnosticV1>
 
 fn parse_not(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagnosticV1> {
     if cur.is_keyword("not") {
-        let kw = cur.bump();
-        let inner = parse_not(cur)?;
-        let span = kw.span.merge(&inner.span);
-        return Ok(cur.builder.not(inner, span));
+        // `not not not ...` self-recurses without re-entering parse_bool; guard.
+        return cur.with_recursion_depth(|cur| {
+            let kw = cur.bump();
+            let inner = parse_not(cur)?;
+            let span = kw.span.merge(&inner.span);
+            Ok(cur.builder.not(inner, span))
+        });
     }
     parse_comparison(cur)
 }
@@ -215,11 +220,18 @@ fn parse_multiplicative(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseD
 fn parse_unary(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosticV1> {
     if let TokenKindV1::Op(sym) = &cur.peek().kind {
         if sym == "-" || sym == "+" {
-            let sym = sym.clone();
-            let op_tok = cur.bump();
-            let operand = parse_unary(cur)?;
-            let span = op_tok.span.merge(&operand.span);
-            return Ok(cur.builder.unary(sym, operand, span));
+            // `- - - ...` self-recurses without re-entering parse_value; guard.
+            return cur.with_recursion_depth(|cur| {
+                let sym = if let TokenKindV1::Op(s) = &cur.peek().kind {
+                    s.clone()
+                } else {
+                    String::new()
+                };
+                let op_tok = cur.bump();
+                let operand = parse_unary(cur)?;
+                let span = op_tok.span.merge(&operand.span);
+                Ok(cur.builder.unary(sym, operand, span))
+            });
         }
     }
     parse_postfix(cur)

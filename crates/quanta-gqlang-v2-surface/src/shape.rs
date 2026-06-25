@@ -16,15 +16,18 @@ use quanta_gqlang_v2_hir::{ResultShapeHirV1, ShapeFieldV1};
 pub(crate) fn parse_result_shape(
     cur: &mut CursorV1<'_>,
 ) -> Result<ResultShapeHirV1, ParseDiagnosticV1> {
-    if matches!(cur.peek().kind, TokenKindV1::LBrace) {
-        return parse_shape_record(cur);
-    }
-    if matches!(cur.peek().kind, TokenKindV1::LBracket) {
-        return parse_shape_list(cur);
-    }
-    let value = parse_value(cur)?;
-    let span = value.span;
-    Ok(cur.builder.shape_leaf(value, span))
+    // Result shapes nest (`{ a: [ { ... } ] }`); fail closed on adversarial depth.
+    cur.with_recursion_depth(|cur| {
+        if matches!(cur.peek().kind, TokenKindV1::LBrace) {
+            return parse_shape_record(cur);
+        }
+        if matches!(cur.peek().kind, TokenKindV1::LBracket) {
+            return parse_shape_list(cur);
+        }
+        let value = parse_value(cur)?;
+        let span = value.span;
+        Ok(cur.builder.shape_leaf(value, span))
+    })
 }
 
 fn parse_shape_record(cur: &mut CursorV1<'_>) -> Result<ResultShapeHirV1, ParseDiagnosticV1> {

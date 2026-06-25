@@ -9,11 +9,27 @@
 use crate::diag::{ParseDiagnosticV1, ParseErrorCodeV1};
 use crate::lexer::{TokenKindV1, TokenV1};
 use quanta_gqlang_v2_hir::{HirBuilderV1, SpanV1};
+use std::cell::Cell;
+
+/// Maximum recursive-descent nesting depth.
+///
+/// The expression grammar is recursive (`(`, `[`, `{` each recurse into the
+/// value/bool grammar), so adversarial input with thousands of nested brackets
+/// would otherwise overflow the native stack and ABORT the process — a
+/// fail-open totality violation. Every recursion entry checks this budget and
+/// fails CLOSED with a typed [`ParseErrorCodeV1::UnsupportedConstruct`]
+/// diagnostic instead, so the public API stays total (`Ok` or typed `Err`,
+/// never an unwind/abort). The bound is far above any hand-written program yet
+/// well under the stack frames available, so legal input is unaffected.
+const MAX_RECURSION_DEPTH: usize = 256;
 
 /// Shared parsing state: token stream + position + the id-allocating builder.
 pub(crate) struct CursorV1<'b> {
     tokens: Vec<TokenV1>,
     pos: usize,
+    /// Current recursive-descent nesting depth (fail-closed against stack
+    /// exhaustion on adversarially-nested input).
+    depth: Cell<usize>,
     /// The single builder for the whole parse; borrowed by every sub-parser.
     pub(crate) builder: &'b HirBuilderV1,
 }
@@ -24,8 +40,42 @@ impl<'b> CursorV1<'b> {
         Self {
             tokens,
             pos: 0,
+            depth: Cell::new(0),
             builder,
         }
+    }
+
+    /// Run `body` one level deeper in the recursive-descent grammar, failing
+    /// CLOSED if the nesting budget is exhausted BEFORE recursing.
+    ///
+    /// This is the fail-closed conversion of an otherwise-fatal stack overflow
+    /// (a process abort on adversarially-nested input) into a typed, span-exact
+    /// diagnostic — upholding the totality contract (every input yields `Ok` or
+    /// a typed `Err`, never an unwind/abort). The depth is always restored after
+    /// `body` returns (success OR error), so sibling nesting at the same level
+    /// is unaffected and only true stack depth is bounded.
+    ///
+    /// Uses interior mutability for the counter so it composes with the
+    /// `&mut self` recursive descent inside `body` without a borrow conflict.
+    pub(crate) fn with_recursion_depth<T>(
+        &mut self,
+        body: impl FnOnce(&mut Self) -> Result<T, ParseDiagnosticV1>,
+    ) -> Result<T, ParseDiagnosticV1> {
+        let next = self.depth.get().saturating_add(1);
+        if next > MAX_RECURSION_DEPTH {
+            return Err(ParseDiagnosticV1::new(
+                ParseErrorCodeV1::UnsupportedConstruct,
+                self.here_span(),
+                format!(
+                    "expression nesting exceeds the maximum supported depth of \
+                     {MAX_RECURSION_DEPTH}"
+                ),
+            ));
+        }
+        self.depth.set(next);
+        let out = body(self);
+        self.depth.set(self.depth.get().saturating_sub(1));
+        out
     }
 
     /// The current token (EOF token if past the end).

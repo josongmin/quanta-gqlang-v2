@@ -23,5 +23,8 @@ quanta-gqlang-v2-logic = { version = "0.1.0", path = "../quanta-gqlang-v2-logic"
 quanta-gqlang-v2-modules = { version = "0.1.0", path = "../quanta-gqlang-v2-modules" }
 quanta-gqlang-v2-planning = { version = "0.1.0", path = "../quanta-gqlang-v2-planning" }
 
+[dev-dependencies]
+proptest = "1.11.0"
+
 [lints]
 workspace = true
