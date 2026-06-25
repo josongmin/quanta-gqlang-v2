@@ -26,6 +26,18 @@ owner — an AMBIENT test-closure state, not a gqlang/serving-correctness blocke
 End-to-end advanced-serving green therefore still waits on that ambient closure,
 but the serving cutover correctness is landed.
 
+Reproduction receipt (`2026-06-26`): running
+`cargo test -p quanta-sdk-runtime-executor --features runtime-executor-surface
+--lib group_gqlang_public_path` fails to compile with 29 errors, ALL located in
+`quanta-taint-solver` (`interproc/wire_indices.rs`, `memssa_build_solver/core.rs`,
+`adapter_solver_*`) — an unresolved `runtime` crate alias plus missing
+`RepoLocalProductRulepackEnvGuardV1` env-guard helpers from a sibling mid-refactor.
+ZERO errors touch any gqlang serving / preflight / ingress file. Independently,
+the frontend seam (`quanta-gqlang-v2-host-adapter` + `quanta-gqlang-v2-exec-contract`,
+both depending on `quanta-gqlang-v2-frontend-contract`) builds clean (check exit 0).
+This confirms the residual is purely ambient: the preflight green run is gated only
+on the taint-solver owner's churn clearing, not on any gqlang/serving defect.
+
 ## Goal
 
 Re-synchronize the qglang umbrella packet with the final semantica D5 cutover

@@ -1,12 +1,16 @@
 # Jun 24 — DSL Advanced v3
 
-Status: `Current Main Re-Audited` + `Tickets 09, 11-16 Materially Implemented`
+Status: `Current Main Re-Audited` + `Tickets 09, 11-16 Implemented` +
+`Ticket 17 CLOSED (2026-06-26)` + `Ticket 10 downstream cutover LANDED`
 
 ## Current Verified State
 
-As of `2026-06-25`, current `main` materially closes the repo-local gaps owned
+As of `2026-06-26`, current `main` materially closes the repo-local gaps owned
 by tickets `09`, `11`, `12`, `13`, `14`, `15`, and the current-main
-proof/artifact hygiene lane `16`.
+proof/artifact hygiene lane `16`. Ticket `17` (downstream cutover closeout and
+packet SSOT sync) is now CLOSED against the landed semantica D5 receipt
+(`…77d2f34983`); ticket `10`'s downstream serving cutover is LANDED (semantica
+D5 tickets `01`–`06` + adversarial structural completion).
 
 Current qglang worktree truth on that head:
 
@@ -23,8 +27,24 @@ Verified locally with:
 
 Honest remaining boundary:
 
-1. ticket `10` still owns downstream semantica serving truth
-2. ticket `17` still owns the final packet SSOT sync after semantica D5 closes
+1. ticket `10`'s downstream semantica serving cutover is LANDED on semantica
+   `main` (D5 `01`–`06`): semantica depends on this repo only through
+   `quanta-gqlang-v2-frontend-contract`, lowers relational serving into
+   `ServingProgramRequestV1`, and ships no references to the deleted
+   `syntax` / `sema` / `ir` crates
+2. ticket `17` packet SSOT sync is CLOSED (`2026-06-26`); the only open D5
+   residual is `07a` — running the `group_gqlang_public_path` preflight
+   assertion green under its heavy ambient test closure
+   (`runtime-executor-surface` → `quanta-taint-solver` /
+   `quanta-adapters-analysis-facade`). This is an ambient test-closure state,
+   NOT a gqlang/serving-correctness blocker. Reproduced `2026-06-26`: that
+   lib-test closure fails to compile with 29 errors, ALL in `quanta-taint-solver`
+   (`interproc/wire_indices.rs`, `memssa_build_solver`, `adapter_solver_*` —
+   unresolved `runtime` crate alias + missing rulepack env-guard helpers from a
+   sibling mid-refactor); ZERO errors touch any gqlang serving / preflight /
+   ingress file, and the frontend seam itself (`quanta-gqlang-v2-host-adapter`
+   + `quanta-gqlang-v2-exec-contract`) builds clean (check exit 0). The preflight
+   green run therefore still waits on the taint-solver owner's churn clearing
 3. explicit structural/schema-only helper entrypoints still exist, but they are
    partial-authority helpers rather than repo-local closure blockers and must
    not be reported as semantic proof
@@ -363,8 +383,10 @@ Implications:
 Current-main note:
 
 1. tickets `11`, `12`, `13`, `14`, and `15` are implemented locally
-2. ticket `09` is now materially closed on current head
-3. ticket `10` remains the downstream serving handoff lane
+2. ticket `09` is materially closed on current head
+3. ticket `16` is closed; ticket `17` is CLOSED (`2026-06-26`)
+4. ticket `10`'s downstream serving cutover is LANDED on semantica `main`
+   (D5 `01`–`06`); only the ambient D5-`07a` test-closure run remains
 
 | # | Ticket | Lane |
 |---|--------|------|
@@ -427,5 +449,10 @@ Current-main note:
 
 Current-main receipt:
 
-1. criteria `10` through `13` are now satisfied locally
-2. criteria `5` and `6` still depend on tickets `09` and `10`
+1. criteria `10` through `13` are satisfied locally
+2. criterion `5` is satisfied: ticket `09` deleted the v2 root-carrier surface;
+   semantica no longer references the deleted `syntax` / `sema` / `ir` crates
+3. criterion `6` is satisfied at the serving-correctness layer: semantica D5
+   `01`–`06` map advanced `v3` shapes through the frontend seam into
+   `ServingProgramRequestV1`. End-to-end advanced-serving green still waits only
+   on the ambient D5-`07a` test-closure run, not on any serving-correctness gap
