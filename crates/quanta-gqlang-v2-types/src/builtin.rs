@@ -415,4 +415,91 @@ mod tests {
         assert!(!registry.has("frobnicate"));
         assert!(registry.lookup_all("frobnicate").is_empty());
     }
+
+    #[test]
+    fn scalar_builtin_is_not_aggregate() {
+        // Pins builtin.rs:98 `is_aggregate`: a Scalar builtin must report false.
+        // (If the body were hardcoded to `true`, this would fail.)
+        let registry = BuiltinRegistryV1::closed();
+        let starts_with = registry.lookup("starts_with").expect("starts_with exists");
+        assert_eq!(starts_with.meta.aggregation, AggregationClassV1::Scalar);
+        assert!(!starts_with.meta.is_aggregate());
+    }
+
+    #[test]
+    fn is_pure_deterministic_requires_both_pure_and_deterministic() {
+        // Pins builtin.rs:105 `&&` vs `||`. We exercise all four corners so the
+        // boundary between AND and OR is observable:
+        //   pure   + deterministic    => true  (AND and OR agree)
+        //   impure + deterministic    => AND=false, OR=true   (distinguishes)
+        //   pure   + nondeterministic => AND=false, OR=true   (distinguishes)
+        //   impure + nondeterministic => false (AND and OR agree)
+        let mk = |purity, determinism| BuiltinMetaV1 {
+            purity,
+            determinism,
+            monotonicity: MonotonicityV1::Monotone,
+            aggregation: AggregationClassV1::Scalar,
+            cost: CostClassV1::Constant,
+        };
+        assert!(mk(PurityV1::Pure, DeterminismV1::Deterministic).is_pure_deterministic());
+        assert!(
+            !mk(PurityV1::Impure, DeterminismV1::Deterministic).is_pure_deterministic(),
+            "impure-but-deterministic must be false (AND), not true (OR)"
+        );
+        assert!(
+            !mk(PurityV1::Pure, DeterminismV1::NonDeterministic).is_pure_deterministic(),
+            "pure-but-nondeterministic must be false (AND), not true (OR)"
+        );
+        assert!(!mk(PurityV1::Impure, DeterminismV1::NonDeterministic).is_pure_deterministic());
+    }
+
+    #[test]
+    fn max_arity_reflects_signature_shape() {
+        // Pins builtin.rs:159 `max_arity`: distinct values for the three shapes,
+        // so it cannot collapse to a constant None / Some(0) / Some(1).
+        // Fixed binary signature => Some(2).
+        let fixed2 = BuiltinSignatureV1::fixed(
+            vec![
+                TypeV1::scalar(ScalarTyV1::String),
+                TypeV1::scalar(ScalarTyV1::String),
+            ],
+            TypeV1::scalar(ScalarTyV1::Bool),
+        );
+        assert_eq!(fixed2.max_arity(), Some(2));
+        // accepts_any_single => Some(1).
+        let any1 = BuiltinSignatureV1::any_single(TypeV1::scalar(ScalarTyV1::Int));
+        assert_eq!(any1.max_arity(), Some(1));
+        // variadic-unbounded => None.
+        let variadic = BuiltinSignatureV1 {
+            params: vec![TypeV1::scalar(ScalarTyV1::Int)],
+            variadic: Some(TypeV1::scalar(ScalarTyV1::Int)),
+            accepts_any_single: false,
+            result: TypeV1::scalar(ScalarTyV1::Int),
+        };
+        assert_eq!(variadic.max_arity(), None);
+    }
+
+    #[test]
+    fn entries_exposes_real_registry_contents() {
+        // Pins builtin.rs:225 `entries`: must return the actual installed
+        // entries, not an empty slice or a default-filled one.
+        let registry = BuiltinRegistryV1::closed();
+        let entries = registry.entries();
+        assert!(
+            entries.len() > 10,
+            "registry must expose its many real entries, got {}",
+            entries.len()
+        );
+        // A specific real entry must be present with its real name.
+        assert!(
+            entries.iter().any(|e| e.name == "count"),
+            "entries() must include the real `count` builtin"
+        );
+        assert!(entries.iter().any(|e| e.name == "now"));
+        // Slice length matches the lookup count for a name with overloads.
+        assert_eq!(
+            entries.iter().filter(|e| e.name == "sum").count(),
+            registry.lookup_all("sum").len()
+        );
+    }
 }

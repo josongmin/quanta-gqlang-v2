@@ -349,3 +349,19 @@ fn select_query_defers_to_relational_pipeline() {
         other => panic!("expected a relational-deferred marker, got {other:?}"),
     }
 }
+
+/// Each `NoPlanReasonV1` renders its stable keyword verbatim. These keywords
+/// are a closed vocabulary surfaced through explain / diagnostics and CLI/LSP
+/// rendering, so any drift (or an empty / placeholder string) must fail.
+#[test]
+fn no_plan_reason_keywords_are_stable_verbatim() {
+    assert_eq!(
+        NoPlanReasonV1::CatalogDeclaration.keyword(),
+        "catalog_declaration"
+    );
+    assert_eq!(NoPlanReasonV1::MetaActivation.keyword(), "meta_activation");
+    assert_eq!(
+        NoPlanReasonV1::RelationalDeferred.keyword(),
+        "relational_deferred"
+    );
+}

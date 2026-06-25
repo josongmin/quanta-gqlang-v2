@@ -384,3 +384,59 @@ fn match_signature(signature: &BuiltinSignatureV1, args: &[TypeV1]) -> Option<Ty
 pub fn scalar(scalar: ScalarTyV1) -> TypeV1 {
     TypeV1::scalar(scalar)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn string() -> TypeV1 {
+        TypeV1::scalar(ScalarTyV1::String)
+    }
+
+    fn boolean() -> TypeV1 {
+        TypeV1::scalar(ScalarTyV1::Bool)
+    }
+
+    #[test]
+    fn match_signature_accepts_correct_arity_and_rejects_wrong_arity() {
+        // Pins check.rs:372 `if !signature_accepts_arity(..)`. The `!` must be
+        // present: with correct arity + assignable args the signature MATCHES
+        // (Some), and with wrong arity it REJECTS (None). Deleting `!` flips the
+        // first case to None, which this asserts against.
+        let sig = BuiltinSignatureV1::fixed(vec![string(), string()], boolean());
+
+        // Correct arity (2) with assignable args => Some(result).
+        let ok = match_signature(&sig, &[string(), string()]);
+        assert_eq!(
+            ok,
+            Some(boolean()),
+            "a 2-string signature must match exactly two string args"
+        );
+
+        // Wrong arity (1, below min 2) => None.
+        let too_few = match_signature(&sig, &[string()]);
+        assert_eq!(too_few, None, "one arg must not match a 2-arg signature");
+
+        // Wrong arity (3, above max 2) => None.
+        let too_many = match_signature(&sig, &[string(), string(), string()]);
+        assert_eq!(
+            too_many, None,
+            "three args must not match a 2-arg signature"
+        );
+    }
+
+    #[test]
+    fn signature_accepts_arity_boundaries() {
+        // Backstops the arity gate used by match_signature: fixed-2 admits
+        // exactly 2, any_single admits exactly 1.
+        let fixed2 = BuiltinSignatureV1::fixed(vec![string(), string()], boolean());
+        assert!(!signature_accepts_arity(&fixed2, 1));
+        assert!(signature_accepts_arity(&fixed2, 2));
+        assert!(!signature_accepts_arity(&fixed2, 3));
+
+        let any1 = BuiltinSignatureV1::any_single(TypeV1::scalar(ScalarTyV1::Int));
+        assert!(!signature_accepts_arity(&any1, 0));
+        assert!(signature_accepts_arity(&any1, 1));
+        assert!(!signature_accepts_arity(&any1, 2));
+    }
+}

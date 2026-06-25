@@ -72,6 +72,27 @@ fn not_exists_underscore_keyword_also_recognized() {
     assert_eq!(check.polarity, ExistencePolarityV1::NotExists);
 }
 
+// The stable explain/diagnostic keyword for each polarity is part of the
+// contract. Pins source.rs:34 (`keyword()` arm bodies replaced with `""` /
+// `"xyzzy"`): the exact strings `exists` / `not exists` must be returned, and
+// they must round-trip back through `from_keyword`.
+#[test]
+fn polarity_keyword_strings_are_exact_and_round_trip() {
+    assert_eq!(ExistencePolarityV1::Exists.keyword(), "exists");
+    assert_eq!(ExistencePolarityV1::NotExists.keyword(), "not exists");
+
+    // Round-trip: the keyword a polarity reports must parse back to the same
+    // polarity (kills any non-keyword replacement like "" or "xyzzy").
+    assert_eq!(
+        ExistencePolarityV1::from_keyword(ExistencePolarityV1::Exists.keyword()),
+        Some(ExistencePolarityV1::Exists)
+    );
+    assert_eq!(
+        ExistencePolarityV1::from_keyword(ExistencePolarityV1::NotExists.keyword()),
+        Some(ExistencePolarityV1::NotExists)
+    );
+}
+
 #[test]
 fn unknown_quantifier_rejects_with_typed_code() {
     let outer = scan("api");
