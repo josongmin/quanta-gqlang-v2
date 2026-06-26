@@ -1,1 +1,1 @@
-PROFILE strict-review ;; capabilities=graph.read,graph.trace ;; admission=certified-only
+profile strict-review | capabilities=graph.read,graph.trace | admission=certified-only

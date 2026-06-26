@@ -1,1 +1,1 @@
-PACK security-default ;; source=registry://packs/security-default ;; activation=workspace
+pack security-default | source=registry.security | activation=workspace

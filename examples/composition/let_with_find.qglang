@@ -1,2 +1,2 @@
-LET suspects = SELECT id FROM catalog.users LIMIT 5
-FIND taint api.entry -> db.write WITH suspects
+let suspects = sample query="auth" | mode=semantic | limit=3
+find taint api.entry -> db.write | depth=3 with suspects

@@ -1,1 +1,1 @@
-SELECT id, profile.name FROM catalog.users WHERE active = true LIMIT 7
+from users u | where u.active = true | project u.id, u.name

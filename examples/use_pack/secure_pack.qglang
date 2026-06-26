@@ -1,1 +1,2 @@
-USE PACK secure-pack ;; activation=session ;; lockfile=packs/secure-pack.lock
+# USE PACK resolves only with a registered pack manifest (compile_with_context);
+use pack secure-pack | activation=session | lockfile=packs.secure-pack.lock

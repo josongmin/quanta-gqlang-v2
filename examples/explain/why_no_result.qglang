@@ -1,1 +1,1 @@
-EXPLAIN rule::owasp.sql-injection ;; evidence=trace ;; truth=confirm
+explain rule.sqli | evidence=trace | truth=confirm

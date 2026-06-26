@@ -1,1 +1,1 @@
-GATE release-gate ;; checks=owasp.sql,authz.path ;; binding=all
+gate release-gate | checks=owasp.sql,authz.path | binding=all

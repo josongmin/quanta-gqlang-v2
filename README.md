@@ -47,9 +47,9 @@ Sibling consumer seam:
 
 CLI front door:
 
-1. supported read-only subcommands: `parse`, `sema`, `query`, `fmt`, `doctor`, `headless`
-2. inline argv tail: `cargo run -p quanta-gqlang-v2-cli -- query SELECT id FROM catalog.files LIMIT 5`
-3. file-path input: `cargo run -p quanta-gqlang-v2-cli -- headless --file examples/show/capabilities.qglang`
+1. supported read-only subcommands: `query`, `fmt` (aliases `v3-query`, `v3-fmt`)
+2. inline argv tail: `cargo run -p quanta-gqlang-v2-cli -- query 'from files f | where f.size > 0 | project f.id'`
+3. file-path input: `cargo run -p quanta-gqlang-v2-cli -- query --file examples/show/capabilities.qglang`
 4. malformed argv, unreadable files, and command errors fail closed with non-zero exit
 
 LSP front door:
@@ -61,8 +61,8 @@ LSP front door:
 
 Repo-owned front-door e2e:
 
-1. CLI shipped-example matrix: `parse`, `sema`, `query`, `fmt`, and `headless`
-   stay deterministic on the frontend-owned example corpus
+1. CLI shipped-example matrix: `query` and `fmt` stay deterministic on the
+   frontend-owned example corpus under `examples/`
 2. CLI bad argv, unreadable file, parse-error, and no-result shell behavior stay
    fail-closed
 3. LSP stdio methods stay read-only, mutating methods stay forbidden, malformed

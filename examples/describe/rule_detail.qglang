@@ -1,1 +1,1 @@
-DESCRIBE rule::owasp.sql-injection
+describe rule::owasp.sqli
