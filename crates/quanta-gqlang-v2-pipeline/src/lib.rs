@@ -35,3 +35,11 @@ pub use compile::{
     CompiledProgramV1, FrontendContextV1, NoServeReasonV1,
 };
 pub use diagnostic::{PipelineDiagnosticV1, PipelineStageV1};
+
+// The `FrontendContextV1` primary bundle authority types (GQW3-18): re-export
+// the module-graph and pack-manifest authorities so downstream consumers can
+// build a fully-authoritative context without a second owner-crate edge.
+pub use quanta_gqlang_v2_binder::ModuleGraphV1;
+pub use quanta_gqlang_v2_modules::{
+    PackGraphV1, PackIdV1, PackManifestV1, VersionRangeV1, VersionV1,
+};

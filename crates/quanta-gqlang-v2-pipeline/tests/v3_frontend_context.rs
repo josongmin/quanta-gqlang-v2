@@ -6,6 +6,7 @@
 )]
 
 use quanta_gqlang_v2_binder::ModuleGraphV1;
+use quanta_gqlang_v2_modules::PackGraphV1;
 use quanta_gqlang_v2_pipeline::{
     compile_program_structural, compile_with_context, FrontendContextV1, PipelineStageV1,
 };
@@ -35,7 +36,8 @@ fn context_first_compile_closes_alias_typing_explicitly() {
         "structural path still compiles"
     );
 
-    let context = FrontendContextV1::new(ModuleGraphV1::new(), users_relation_schema());
+    let context =
+        FrontendContextV1::new(ModuleGraphV1::new(), users_relation_schema(), PackGraphV1::new());
     let diag = compile_with_context(src, &context)
         .expect_err("explicit semantic authority must type-check alias expressions");
 
@@ -56,7 +58,7 @@ fn module_graph_accessor_returns_the_stored_graph() {
         "the fixture graph is genuinely non-default"
     );
 
-    let context = FrontendContextV1::new(graph.clone(), TypeEnvV1::new());
+    let context = FrontendContextV1::new(graph.clone(), TypeEnvV1::new(), PackGraphV1::new());
     assert_eq!(
         *context.module_graph(),
         graph,

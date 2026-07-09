@@ -67,37 +67,49 @@ use crate::diagnostic::PipelineDiagnosticV1;
 
 /// Explicit frontend semantic authority bundle.
 ///
-/// Semantic compile now consumes a frozen module graph plus a source-schema/type
-/// environment through one inspectable value rather than inventing empty
-/// defaults internally. Structural and schema-only helpers remain available,
-/// but they are named explicitly and are not semantic proof.
+/// Semantic compile now consumes a frozen module graph, a source-schema/type
+/// environment, AND a frozen pack-manifest authority ([`PackGraphV1`]) through
+/// one inspectable value rather than inventing empty defaults internally
+/// (GQW3-12/GQW3-18). This is the PRIMARY authority bundle, not a sidecar:
+/// `USE PACK` resolves against `pack_graph`, so any context rebuild that drops
+/// pack authority would silently turn a known-pack resolution into an
+/// `unknown_pack_manifest` fail-close.
+///
+/// Structural and schema-only helpers remain available, but they are named
+/// explicitly, fill an EMPTY [`PackGraphV1`], and are not semantic proof.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FrontendContextV1 {
     module_graph: ModuleGraphV1,
     schema: TypeEnvV1,
+    pack_graph: PackGraphV1,
 }
 
 impl FrontendContextV1 {
-    /// Build a context from explicit semantic authority.
+    /// Build a context from explicit semantic authority (module graph + schema +
+    /// pack-manifest authority). This is the primary constructor: all three
+    /// authorities are first-class and cannot be silently dropped.
     #[must_use]
-    pub fn new(module_graph: ModuleGraphV1, schema: TypeEnvV1) -> Self {
+    pub fn new(module_graph: ModuleGraphV1, schema: TypeEnvV1, pack_graph: PackGraphV1) -> Self {
         Self {
             module_graph,
             schema,
+            pack_graph,
         }
     }
 
-    /// Structural-only default context: empty module graph and empty schema.
+    /// Structural-only default context: empty module graph, empty schema, and an
+    /// empty pack graph. `USE PACK` against this context stays fail-closed with
+    /// `modules.unknown_pack_manifest` (no pack authority present).
     #[must_use]
     pub fn structural_only() -> Self {
-        Self::new(ModuleGraphV1::new(), TypeEnvV1::new())
+        Self::new(ModuleGraphV1::new(), TypeEnvV1::new(), PackGraphV1::new())
     }
 
     /// Explicit partial-authority constructor for callers that only have schema
-    /// authority.
+    /// authority. Pack graph is empty.
     #[must_use]
     pub fn schema_only(schema: TypeEnvV1) -> Self {
-        Self::new(ModuleGraphV1::new(), schema)
+        Self::new(ModuleGraphV1::new(), schema, PackGraphV1::new())
     }
 
     /// Frozen module/import graph authority.
@@ -110,6 +122,13 @@ impl FrontendContextV1 {
     #[must_use]
     pub fn schema(&self) -> &TypeEnvV1 {
         &self.schema
+    }
+
+    /// Frozen pack-manifest authority. `USE PACK` resolves a pack id against this
+    /// graph's typed manifest map; an unknown pack stays fail-closed.
+    #[must_use]
+    pub fn pack_graph(&self) -> &PackGraphV1 {
+        &self.pack_graph
     }
 }
 
@@ -497,7 +516,7 @@ fn compile_item_in(
         ProgramItemHirV1::Presentation(pres) => compile_presentation(context, item, pres),
         ProgramItemHirV1::CatalogDecl(decl) => compile_catalog_decl(decl, catalog),
         ProgramItemHirV1::Composition(comp) => compile_composition(comp, context, catalog),
-        ProgramItemHirV1::Meta(meta) => compile_meta(meta, catalog),
+        ProgramItemHirV1::Meta(meta) => compile_meta(meta, context, catalog),
     }
 }
 
@@ -727,7 +746,15 @@ fn compile_composition(
         if let Some(relation) = &relation {
             let mut schema = local_context.schema().clone();
             schema.insert(binding.name.clone(), relation.clone());
-            local_context = FrontendContextV1::new(local_context.module_graph().clone(), schema);
+            // Thread the pack-manifest authority through the composition-local
+            // context rebuild: a `USE PACK` producer/body inside a composition must
+            // still resolve against the caller's pack graph, never a silently
+            // dropped empty one (GQW3-18 frozen rule 6).
+            local_context = FrontendContextV1::new(
+                local_context.module_graph().clone(),
+                schema,
+                local_context.pack_graph().clone(),
+            );
         }
         binding_outputs.push(relation);
         bindings.push(compiled);
@@ -747,16 +774,24 @@ fn compile_composition(
 /// A meta directive: modules validates it (`USE PACK` lockfile / manifest;
 /// `REQUIRE CERTIFIED` flips the catalog flag), then planning classifies its
 /// effect. `USE PACK` produces no plan; `REQUIRE CERTIFIED` is a gate plan.
+///
+/// The `USE PACK` pack-manifest resolution runs against the caller's frozen
+/// [`PackGraphV1`] authority (`context.pack_graph()`), NOT a local empty graph
+/// (GQW3-18): a known pack in the context resolves; an unknown pack (or an empty
+/// structural-only context) stays fail-closed as `modules.unknown_pack_manifest`.
+/// `REQUIRE CERTIFIED` needs no manifest and is unaffected by the pack graph.
 fn compile_meta(
     meta: &MetaHirV1,
+    context: &FrontendContextV1,
     catalog: &mut CatalogV1,
 ) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    // Modules stage: validate the directive against an empty pack graph. A
-    // REQUIRE CERTIFIED needs no manifest; a USE PACK with an unknown pack id (or
-    // a bad lockfile path) rejects tagged `modules`.
-    let manifests = PackGraphV1::new();
+    // Modules stage: validate the directive against the caller's real pack graph
+    // authority. A REQUIRE CERTIFIED needs no manifest; a USE PACK resolves its
+    // pack id against `context.pack_graph()`'s typed manifest map (never a string
+    // heuristic), and an unknown pack id (or a bad lockfile path) rejects tagged
+    // `modules`.
     catalog
-        .apply_meta(meta, &manifests)
+        .apply_meta(meta, context.pack_graph())
         .map_err(|module| PipelineDiagnosticV1::Modules(Box::new(module), meta.span))?;
 
     // Planning stage: classify the directive's effect.
