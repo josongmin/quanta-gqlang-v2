@@ -229,9 +229,12 @@ pub fn walk_item<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &ProgramItemHi
 /// open refs (no shared expr kernel), so there are no id-bearing children here.
 pub fn walk_graph_query<V: HirVisitorV1 + ?Sized>(_visitor: &mut V, _node: &GraphQueryHirV1) {}
 
-/// Recurse into the children of a legality check (CHECK). Refs are open (no
-/// shared expr kernel), so there are no id-bearing children here.
-pub fn walk_legality<V: HirVisitorV1 + ?Sized>(_visitor: &mut V, _node: &LegalityHirV1) {}
+/// Recurse into the explicit graph confirmation child of a legality check.
+pub fn walk_legality<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &LegalityHirV1) {
+    if let Some(confirm) = &node.semantic_confirm {
+        visitor.visit_graph_query(confirm);
+    }
+}
 
 /// Recurse into the children of a presentation verb. Configs are open refs/tags,
 /// so there are no id-bearing children here.

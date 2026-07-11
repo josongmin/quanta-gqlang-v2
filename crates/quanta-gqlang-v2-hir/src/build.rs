@@ -444,6 +444,22 @@ impl HirBuilderV1 {
         )
     }
 
+    /// A legality check with an explicit graph-backed semantic confirmation.
+    pub fn legality_with_semantic_confirm(
+        &self,
+        rule_ref: crate::item::GraphRefV1,
+        scope: Option<crate::item::GraphRefV1>,
+        pattern: Option<crate::item::GraphRefV1>,
+        semantic_confirm: GraphQueryHirV1,
+        confirm: crate::item::ConfirmModeV1,
+        emit: crate::item::EmitModeV1,
+        mode: crate::item::DetectionModeV1,
+        span: SpanV1,
+    ) -> LegalityHirV1 {
+        self.legality(rule_ref, scope, pattern, confirm, emit, mode, span)
+            .with_semantic_confirm(semantic_confirm)
+    }
+
     /// A presentation verb item from an already-built verb payload.
     pub fn presentation(&self, kind: PresentationKindV1, span: SpanV1) -> PresentationHirV1 {
         PresentationHirV1::new(self.ids.next(), span, kind)

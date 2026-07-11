@@ -426,6 +426,10 @@ fn format_check(c: &LegalityHirV1) -> String {
     out.push_str(&format!(" | confirm={}", confirm_mode(c.confirm)));
     out.push_str(&format!(" | emit={}", emit_mode(c.emit)));
     out.push_str(&format!(" | mode={}", detection_mode(c.mode)));
+    if let Some(confirm) = &c.semantic_confirm {
+        out.push_str(" using ");
+        out.push_str(&format_find(confirm));
+    }
     out
 }
 

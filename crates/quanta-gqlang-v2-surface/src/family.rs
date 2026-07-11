@@ -36,7 +36,7 @@ use quanta_gqlang_v2_hir::SpanV1;
 use quanta_gqlang_v2_hir::{
     ActivationV1, AdmissionV1, CatalogPayloadV1, CompareMetricV1, ConfirmModeV1, DetectionModeV1,
     EmitModeV1, EvidenceModeV1, ExportFormatV1, GateBindingV1, GraphConstraintsV1,
-    GraphDirectionV1, GraphEndpointsV1, GraphQueryKindV1, GraphRefV1, MetaKindV1,
+    GraphDirectionV1, GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, MetaKindV1,
     PresentationKindV1, ProgramItemHirV1, SampleModeV1, ShowCategoryV1, TruthModeV1, ViewBodyV1,
 };
 
@@ -389,6 +389,15 @@ fn note_clause(
 
 fn parse_find(cur: &mut CursorV1<'_>, source: &str) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
     let find_kw = cur.expect_keyword("find", "'find' to start a graph query")?;
+    let graph = parse_find_body(cur, source, find_kw.span)?;
+    Ok(ProgramItemHirV1::from(graph))
+}
+
+fn parse_find_body(
+    cur: &mut CursorV1<'_>,
+    source: &str,
+    find_span: SpanV1,
+) -> Result<GraphQueryHirV1, ParseDiagnosticV1> {
     let (subkind_word, subkind_span) = cur.expect_ident("a FIND subkind")?;
     let kind = match subkind_word.as_str() {
         "reachability" => GraphQueryKindV1::Reachability,
@@ -573,9 +582,8 @@ fn parse_find(cur: &mut CursorV1<'_>, source: &str) -> Result<ProgramItemHirV1, 
         }
     }
 
-    let span = find_kw.span.merge(&SpanV1::point(end));
-    let gq = cur.builder.graph_query(kind, endpoints, constraints, span);
-    Ok(ProgramItemHirV1::from(gq))
+    let span = find_span.merge(&SpanV1::point(end));
+    Ok(cur.builder.graph_query(kind, endpoints, constraints, span))
 }
 
 // ---- CHECK -----------------------------------------------------------------
@@ -674,10 +682,25 @@ fn parse_check(
         )
     })?;
 
+    let semantic_confirm = if cur.eat_keyword("using").is_some() {
+        let find_kw = cur.expect_keyword("find", "'find' after CHECK 'using'")?;
+        Some(parse_find_body(cur, source, find_kw.span)?)
+    } else {
+        None
+    };
+
+    if let Some(query) = &semantic_confirm {
+        end = query.span.end;
+    }
     let span = check_kw.span.merge(&SpanV1::point(end));
-    let chk = cur
-        .builder
-        .legality(rule_ref, scope, pattern, confirm, emit, mode, span);
+    let chk = match semantic_confirm {
+        Some(query) => cur.builder.legality_with_semantic_confirm(
+            rule_ref, scope, pattern, query, confirm, emit, mode, span,
+        ),
+        None => cur
+            .builder
+            .legality(rule_ref, scope, pattern, confirm, emit, mode, span),
+    };
     Ok(ProgramItemHirV1::from(chk))
 }
 

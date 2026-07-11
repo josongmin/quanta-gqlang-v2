@@ -266,41 +266,7 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
             ProgramItemHirV1::Query(query) => self.resolve_query(query),
             ProgramItemHirV1::Decl(decl) => self.resolve_decl(decl, &[]),
             ProgramItemHirV1::Rule(rule) => self.resolve_rule(rule, &[]),
-            ProgramItemHirV1::GraphQuery(graph) => {
-                let endpoints = &graph.endpoints;
-                for endpoint in [
-                    endpoints.source.as_ref(),
-                    endpoints.sink.as_ref(),
-                    endpoints.anchor.as_ref(),
-                    endpoints.reference.as_ref(),
-                    endpoints.pointee.as_ref(),
-                    endpoints.callable.as_ref(),
-                ]
-                .into_iter()
-                .flatten()
-                {
-                    self.resolve_local_ref(endpoint, graph.id);
-                }
-                let constraints = &graph.constraints;
-                for waypoint in constraints
-                    .via
-                    .iter()
-                    .chain(constraints.through.iter())
-                    .chain(constraints.sanitizers.iter())
-                {
-                    self.resolve_local_ref(waypoint, graph.id);
-                }
-                for waypoint in [
-                    constraints.scope.as_ref(),
-                    constraints.window.as_ref(),
-                    constraints.frontier.as_ref(),
-                ]
-                .into_iter()
-                .flatten()
-                {
-                    self.resolve_local_ref(waypoint, graph.id);
-                }
-            }
+            ProgramItemHirV1::GraphQuery(graph) => self.resolve_graph_query(graph),
             ProgramItemHirV1::Legality(legality) => {
                 self.resolve_local_ref(&legality.rule_ref, legality.id);
                 for opt in [legality.scope.as_ref(), legality.pattern.as_ref()]
@@ -308,6 +274,9 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
                     .flatten()
                 {
                     self.resolve_local_ref(opt, legality.id);
+                }
+                if let Some(confirm) = &legality.semantic_confirm {
+                    self.resolve_graph_query(confirm);
                 }
             }
             ProgramItemHirV1::Presentation(presentation) => {
@@ -317,6 +286,42 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
             // Catalog declarations register names (modules' concern) and meta
             // directives carry no local binder references.
             ProgramItemHirV1::CatalogDecl(_) | ProgramItemHirV1::Meta(_) => {}
+        }
+    }
+
+    fn resolve_graph_query(&mut self, graph: &quanta_gqlang_v2_hir::GraphQueryHirV1) {
+        let endpoints = &graph.endpoints;
+        for endpoint in [
+            endpoints.source.as_ref(),
+            endpoints.sink.as_ref(),
+            endpoints.anchor.as_ref(),
+            endpoints.reference.as_ref(),
+            endpoints.pointee.as_ref(),
+            endpoints.callable.as_ref(),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            self.resolve_local_ref(endpoint, graph.id);
+        }
+        let constraints = &graph.constraints;
+        for waypoint in constraints
+            .via
+            .iter()
+            .chain(constraints.through.iter())
+            .chain(constraints.sanitizers.iter())
+        {
+            self.resolve_local_ref(waypoint, graph.id);
+        }
+        for waypoint in [
+            constraints.scope.as_ref(),
+            constraints.window.as_ref(),
+            constraints.frontier.as_ref(),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            self.resolve_local_ref(waypoint, graph.id);
         }
     }
 

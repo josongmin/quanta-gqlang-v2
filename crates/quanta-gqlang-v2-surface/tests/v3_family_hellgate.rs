@@ -123,6 +123,39 @@ fn check_parses_to_legality() {
 }
 
 #[test]
+fn check_owns_explicit_semantic_confirm_query() {
+    let src = "check rule.hybrid | pattern=p | confirm=require | emit=findings | mode=hybrid using find reachability src.entry -> sink.write | depth=8";
+    let item = program(src);
+    let chk = match item {
+        ProgramItemHirV1::Legality(c) => c,
+        other => panic!("expected Legality, got {other:?}"),
+    };
+    let confirm = chk
+        .semantic_confirm
+        .as_ref()
+        .expect("an explicit semantic confirm query is retained in CHECK HIR");
+    assert_eq!(confirm.kind, GraphQueryKindV1::Reachability);
+    assert_eq!(
+        confirm.endpoints.source.as_ref().map(|r| r.name.as_str()),
+        Some("src.entry")
+    );
+    assert_eq!(
+        confirm.endpoints.sink.as_ref().map(|r| r.name.as_str()),
+        Some("sink.write")
+    );
+    assert_eq!(confirm.constraints.depth, Some(8));
+    assert_eq!(chk.span.end, src.len());
+}
+
+#[test]
+fn check_using_requires_a_find_query() {
+    let diag =
+        err("check rule.hybrid | confirm=require | mode=hybrid using check other | confirm=skip");
+    assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+    assert!(diag.message.contains("find"), "msg: {}", diag.message);
+}
+
+#[test]
 fn check_missing_confirm_rejects() {
     // CHECK requires an explicit confirm clause: fail closed when absent.
     let diag = err("check rule.hybrid | scope=repo | emit=findings");

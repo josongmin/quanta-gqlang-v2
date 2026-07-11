@@ -97,6 +97,9 @@ fn find_roundtrips() {
 fn check_roundtrips() {
     assert_roundtrip("check rule.hybrid | scope=repo | confirm=require | emit=sarif | mode=hybrid");
     assert_roundtrip("check rule.x | confirm=skip | emit=findings | mode=pattern");
+    assert_roundtrip(
+        "check rule.hybrid | pattern=p | confirm=require | emit=findings | mode=hybrid using find reachability src.entry -> sink.write | depth=8",
+    );
 }
 
 #[test]

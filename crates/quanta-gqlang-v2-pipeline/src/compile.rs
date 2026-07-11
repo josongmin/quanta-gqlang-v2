@@ -638,6 +638,9 @@ fn compile_legality(
     check: &LegalityHirV1,
 ) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
     bind_item(item, context.module_graph())?;
+    if let Some(confirm) = &check.semantic_confirm {
+        GraphQuerySemanticsV1::classify(confirm).map_err(PipelineDiagnosticV1::Logic)?;
+    }
     let plan = classify_to_plan(item)?;
     Ok(CompiledItemV1::Legality {
         hir: Box::new(check.clone()),

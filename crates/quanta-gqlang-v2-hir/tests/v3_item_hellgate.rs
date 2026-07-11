@@ -419,6 +419,45 @@ fn reject_malformed_graph_query_node_inverted_span() {
     );
 }
 
+#[test]
+fn reject_duplicate_id_between_check_and_semantic_confirm() {
+    use quanta_gqlang_v2_hir::{GraphQueryHirV1, LegalityHirV1};
+
+    let confirm = GraphQueryHirV1::new(
+        HirNodeIdV1::from_raw(9),
+        SpanV1::new(60, 90),
+        GraphQueryKindV1::Reachability,
+        GraphEndpointsV1 {
+            source: Some(gref("src", 70, 73)),
+            sink: Some(gref("sink", 77, 81)),
+            ..GraphEndpointsV1::default()
+        },
+        GraphConstraintsV1 {
+            depth: Some(4),
+            ..GraphConstraintsV1::default()
+        },
+    );
+    let check = LegalityHirV1::new(
+        HirNodeIdV1::from_raw(9),
+        SpanV1::new(0, 90),
+        gref("rule.hybrid", 6, 17),
+        None,
+        None,
+        ConfirmModeV1::Require,
+        EmitModeV1::Findings,
+        DetectionModeV1::Hybrid,
+    )
+    .with_semantic_confirm(confirm);
+    let item = ProgramItemHirV1::from(check);
+
+    let err = check_tree(HirRootRefV1::Item(&item), 90).unwrap_err();
+    assert_eq!(err.code(), "hir.integrity.duplicate_node_id");
+    let HirIntegrityErrorV1::DuplicateNodeId { id, .. } = err else {
+        panic!("expected DuplicateNodeId, got {err:?}");
+    };
+    assert_eq!(id.raw(), 9);
+}
+
 /// A duplicate id between a composition producer and its body must fail closed.
 #[test]
 fn reject_duplicate_id_across_composition_children() {

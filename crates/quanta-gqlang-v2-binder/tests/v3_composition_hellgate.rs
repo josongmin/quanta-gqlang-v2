@@ -23,8 +23,8 @@ use quanta_gqlang_v2_binder::{
     BindDiagnosticV1, Binder, BinderKindV1, ModuleGraphV1, ResolvedTargetV1,
 };
 use quanta_gqlang_v2_hir::{
-    GraphConstraintsV1, GraphEndpointsV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1,
-    ProgramItemHirV1, SpanV1,
+    ConfirmModeV1, DetectionModeV1, EmitModeV1, GraphConstraintsV1, GraphEndpointsV1,
+    GraphQueryKindV1, GraphRefV1, HirBuilderV1, ProgramItemHirV1, SpanV1,
 };
 
 // Build a SAMPLE-ish producer item: a relation source query is the simplest
@@ -81,6 +81,66 @@ fn composition_body_and_with_resolve_to_let() {
         ResolvedTargetV1::Local(b) => {
             assert_eq!(b.name, "s");
             assert_eq!(b.kind, BinderKindV1::CompositionLet);
+        }
+        other => panic!("expected composition-let local, got {other:?}"),
+    }
+}
+
+#[test]
+fn check_semantic_confirm_endpoint_resolves_to_composition_let() {
+    let b = HirBuilderV1::new();
+    let binding = b.composition_binding("s", SpanV1::new(4, 5), working_set_producer(&b));
+    let confirm = b.graph_query(
+        GraphQueryKindV1::Reachability,
+        GraphEndpointsV1 {
+            source: Some(GraphRefV1 {
+                name: "s".to_owned(),
+                span: SpanV1::new(60, 61),
+            }),
+            sink: Some(GraphRefV1 {
+                name: "catalog.sink".to_owned(),
+                span: SpanV1::new(65, 77),
+            }),
+            ..GraphEndpointsV1::default()
+        },
+        GraphConstraintsV1 {
+            depth: Some(4),
+            ..GraphConstraintsV1::default()
+        },
+        SpanV1::new(45, 87),
+    );
+    let confirm_node = confirm.id;
+    let body = b.legality_with_semantic_confirm(
+        GraphRefV1 {
+            name: "rule.hybrid".to_owned(),
+            span: SpanV1::new(20, 31),
+        },
+        None,
+        None,
+        confirm,
+        ConfirmModeV1::Require,
+        EmitModeV1::Findings,
+        DetectionModeV1::Hybrid,
+        SpanV1::new(15, 87),
+    );
+    let composition = b.composition(
+        vec![binding],
+        "s",
+        SpanV1::new(90, 91),
+        ProgramItemHirV1::from(body),
+        SpanV1::new(0, 91),
+    );
+
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.resolve_composition(&composition);
+    let result = binder.finish();
+
+    assert!(result.is_ok(), "diags: {:?}", result.diagnostics());
+    match result.target_of(confirm_node).unwrap() {
+        ResolvedTargetV1::Local(binding) => {
+            assert_eq!(binding.name, "s");
+            assert_eq!(binding.kind, BinderKindV1::CompositionLet);
         }
         other => panic!("expected composition-let local, got {other:?}"),
     }

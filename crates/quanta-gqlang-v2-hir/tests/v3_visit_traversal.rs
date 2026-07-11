@@ -198,8 +198,8 @@ fn walk_item_dispatches_decl_and_rule_variants() {
 #[test]
 fn walk_item_leaf_items_have_no_id_bearing_value_children() {
     let b = HirBuilderV1::new();
-    // FIND / CHECK / META carry only open refs, so the walker reaches no shared
-    // value/bool kernel nodes (their walk_* are intentional no-ops).
+    // Bare FIND / CHECK / META carry only open refs, so the walker reaches no
+    // shared value/bool kernel nodes.
     let find = b.graph_query(
         GraphQueryKindV1::Reachability,
         GraphEndpointsV1 {
@@ -264,10 +264,11 @@ fn shape_default_hook_recurses_record_and_list_into_leaf_values() {
 #[derive(Default)]
 struct DefaultDelegationCounter {
     relations: usize,
+    graph_queries: usize,
 }
 
-// Only `visit_relation` is overridden as the observation point. `visit_value`,
-// `visit_bool`, `visit_shape`, `visit_query`, `visit_catalog_decl`,
+// Only `visit_relation` and `visit_graph_query` are overridden as observation
+// points. `visit_value`, `visit_bool`, `visit_shape`, `visit_query`, `visit_catalog_decl`,
 // `visit_composition`, `visit_presentation`, and `visit_meta` all run through
 // their trait DEFAULTS, which is exactly the delegation path the integrity gate
 // (overriding every hook) never executes.
@@ -275,6 +276,11 @@ impl HirVisitorV1 for DefaultDelegationCounter {
     fn visit_relation(&mut self, node: &quanta_gqlang_v2_hir::RelationExprHirV1) {
         self.relations += 1;
         quanta_gqlang_v2_hir::walk_relation(self, node);
+    }
+
+    fn visit_graph_query(&mut self, node: &quanta_gqlang_v2_hir::GraphQueryHirV1) {
+        self.graph_queries += 1;
+        quanta_gqlang_v2_hir::walk_graph_query(self, node);
     }
 }
 
@@ -334,6 +340,39 @@ fn default_item_hooks_delegate_into_their_walks() {
     let mut pres_counter = DefaultDelegationCounter::default();
     pres_counter.visit_item(&pres_item);
     assert_eq!(pres_counter.relations, 0);
+}
+
+#[test]
+fn legality_default_hook_visits_semantic_confirm_query_once() {
+    let b = HirBuilderV1::new();
+    let confirm = b.graph_query(
+        GraphQueryKindV1::Reachability,
+        GraphEndpointsV1 {
+            source: Some(gref("src.entry", 80, 89)),
+            sink: Some(gref("sink.write", 93, 103)),
+            ..GraphEndpointsV1::default()
+        },
+        GraphConstraintsV1 {
+            depth: Some(8),
+            ..GraphConstraintsV1::default()
+        },
+        SpanV1::new(62, 113),
+    );
+    let check = b.legality_with_semantic_confirm(
+        gref("rule.hybrid", 6, 17),
+        None,
+        None,
+        confirm,
+        ConfirmModeV1::Require,
+        EmitModeV1::Findings,
+        DetectionModeV1::Hybrid,
+        SpanV1::new(0, 113),
+    );
+
+    let mut counter = DefaultDelegationCounter::default();
+    counter.visit_item(&ProgramItemHirV1::from(check));
+
+    assert_eq!(counter.graph_queries, 1);
 }
 
 /// Counts ONLY value nodes by overriding `visit_value`; deliberately does NOT

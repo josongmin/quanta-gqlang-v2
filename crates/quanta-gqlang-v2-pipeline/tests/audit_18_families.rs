@@ -108,6 +108,27 @@ fn f09_check_legality() {
     assert!(compiled.plan().is_some(), "CHECK carries alert plan");
 }
 
+#[test]
+fn f09_check_semantic_confirm_compiles_through_find_logic() {
+    let src = "check rule.sqli | confirm=require | emit=findings | mode=hybrid using find reachability src -> dst | depth=5";
+    let compiled = compile_program_structural(src).expect("bounded CHECK confirm must compile");
+    assert!(matches!(
+        compiled.compiled(),
+        CompiledItemV1::Legality { .. }
+    ));
+}
+
+#[test]
+fn f09_check_semantic_confirm_rejects_unbounded_find_logic() {
+    let src = "check rule.sqli | confirm=require | emit=findings | mode=hybrid using find reachability src -> dst";
+    let err = compile_program_structural(src)
+        .expect_err("an unbounded cyclic CHECK confirm must fail at the logic stage");
+    assert_eq!(
+        err.code(),
+        "logic.unbounded_witness.missing_path_length_bound"
+    );
+}
+
 // Families 10-15: Presentation verbs
 #[test]
 fn f10_explain_presentation() {

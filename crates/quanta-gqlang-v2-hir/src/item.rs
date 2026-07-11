@@ -284,6 +284,12 @@ pub struct LegalityHirV1 {
     pub scope: Option<GraphRefV1>,
     /// Optional pattern reference.
     pub pattern: Option<GraphRefV1>,
+    /// Explicit graph query used to semantically confirm pattern candidates.
+    ///
+    /// This is owned by the public CHECK syntax. Hosts lower this query through
+    /// the same canonical FIND lowering seam as a top-level graph query; rule
+    /// names are never interpreted as hidden query-registry keys.
+    pub semantic_confirm: Option<Box<GraphQueryHirV1>>,
     /// Confirmation policy.
     pub confirm: ConfirmModeV1,
     /// Emission target.
@@ -311,10 +317,18 @@ impl LegalityHirV1 {
             rule_ref,
             scope,
             pattern,
+            semantic_confirm: None,
             confirm,
             emit,
             mode,
         }
+    }
+
+    /// Attach the explicit semantic-confirm query carried by CHECK syntax.
+    #[must_use]
+    pub fn with_semantic_confirm(mut self, query: GraphQueryHirV1) -> Self {
+        self.semantic_confirm = Some(Box::new(query));
+        self
     }
 }
 
