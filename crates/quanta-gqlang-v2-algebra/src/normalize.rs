@@ -37,7 +37,8 @@ use crate::diagnostic::{AlgebraDiagnosticV1, IllFormedAggregateReasonV1};
 use crate::node::{
     AggregateExprV1, AggregateV1, AlgebraNodeV1, AlgebraOpV1, AntiJoinV1, ApplyV1,
     ColumnProvenanceV1, ColumnV1, CorrelationColumnV1, FilterV1, GroupV1, JoinV1, LimitV1,
-    ProjectV1, ScanV1, SemiJoinV1, SortKeyV1, SortV1, UnionV1,
+    ProjectV1, RelationSourceAuthorityV1, RelationSourceIdentityV1, ScanV1, SemiJoinV1, SortKeyV1,
+    SortV1, UnionV1,
 };
 use quanta_gqlang_v2_hir::{
     CompositionV1, ProjectionItemV1, ProjectionV1, QueryHirV1, RelationExprHirV1,
@@ -68,6 +69,9 @@ pub struct NormalizeOptionsV1 {
     /// surface count/offset) supplies it here. `None` means "keep everything"
     /// (`count = u64::MAX`, `offset = 0`).
     pub limit_window: Option<(u64, u64)>,
+    /// Exact relation identities and the missing-name contract issued by the
+    /// compile context.
+    pub relation_source_authority_v1: RelationSourceAuthorityV1,
 }
 
 impl NormalizeOptionsV1 {
@@ -83,7 +87,17 @@ impl NormalizeOptionsV1 {
             aggregates: aggregates.into_iter().map(Into::into).collect(),
             distinct_marker: Some("distinct".to_owned()),
             limit_window: None,
+            relation_source_authority_v1: RelationSourceAuthorityV1::schema_open_v1(),
         }
+    }
+
+    #[must_use]
+    pub fn with_relation_source_authority_v1(
+        mut self,
+        authority_v1: RelationSourceAuthorityV1,
+    ) -> Self {
+        self.relation_source_authority_v1 = authority_v1;
+        self
     }
 
     /// Set the `(count, offset)` window threaded into the unary `limit`
@@ -154,6 +168,27 @@ impl Ctx<'_> {
             .cloned()
             .unwrap_or_else(|| name.to_owned())
     }
+
+    fn source_identity_v1(
+        &self,
+        relation_v1: &str,
+        span_v1: quanta_gqlang_v2_hir::SpanV1,
+    ) -> Result<RelationSourceIdentityV1, AlgebraDiagnosticV1> {
+        if let Some(identity_v1) = self
+            .options
+            .relation_source_authority_v1
+            .exact_identity_v1(relation_v1)
+        {
+            return Ok(identity_v1.clone());
+        }
+        if self.options.relation_source_authority_v1.is_closed_v1() {
+            return Err(AlgebraDiagnosticV1::UnknownRelationSource {
+                relation: relation_v1.to_string(),
+                span: span_v1,
+            });
+        }
+        Ok(RelationSourceIdentityV1::SchemaOpen)
+    }
 }
 
 fn collect_aliases(relation: &RelationExprHirV1, acc: &mut BTreeMap<String, String>) {
@@ -175,14 +210,18 @@ fn collect_aliases(relation: &RelationExprHirV1, acc: &mut BTreeMap<String, Stri
 
 fn normalize_node(relation: &RelationExprHirV1, ctx: &Ctx<'_>) -> NormalizeResultV1 {
     match &relation.kind {
-        RelationExprKindV1::Source(source) => Ok(normalize_source(relation, source)),
+        RelationExprKindV1::Source(source) => normalize_source(relation, source, ctx),
         RelationExprKindV1::Filter(filter) => normalize_filter(relation, filter, ctx),
         RelationExprKindV1::Project(project) => normalize_project(relation, project, ctx),
         RelationExprKindV1::Compose(compose) => normalize_compose(relation, compose, ctx),
     }
 }
 
-fn normalize_source(node: &RelationExprHirV1, source: &RelationSourceV1) -> AlgebraNodeV1 {
+fn normalize_source(
+    node: &RelationExprHirV1,
+    source: &RelationSourceV1,
+    ctx: &Ctx<'_>,
+) -> NormalizeResultV1 {
     let alias = source.alias.as_ref().map(|a| a.name.clone());
     // A scan binds the whole row under the alias; the single output column is
     // the row binding with Source provenance and no specific field.
@@ -196,16 +235,17 @@ fn normalize_source(node: &RelationExprHirV1, source: &RelationSourceV1) -> Alge
         },
     );
     // A raw source is a BAG: duplicate rows are not silently eliminated (D26).
-    AlgebraNodeV1::new(
+    Ok(AlgebraNodeV1::new(
         node.id,
         node.span,
         vec![column],
         CardinalityV1::Bag,
         AlgebraOpV1::Scan(ScanV1 {
             relation: source.name.clone(),
+            source_identity_v1: ctx.source_identity_v1(&source.name, node.span)?,
             alias,
         }),
-    )
+    ))
 }
 
 fn normalize_filter(

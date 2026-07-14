@@ -39,6 +39,8 @@ pub enum ScalarTyV1 {
     Location,
     /// A path value (an ordered route, e.g. a file path or a graph path head).
     Path,
+    /// A canonical repository-relative source path.
+    RepoPath,
     /// A reference to a domain entity.
     EntityRef,
     /// A reference to a bound symbol/name in the program.
@@ -64,6 +66,7 @@ impl ScalarTyV1 {
             Self::Duration => "duration",
             Self::Location => "location",
             Self::Path => "path",
+            Self::RepoPath => "repo_path",
             Self::EntityRef => "entity_ref",
             Self::SymbolRef => "symbol_ref",
             Self::RuleRef => "rule_ref",
@@ -413,6 +416,7 @@ mod tests {
             (ScalarTyV1::Duration, "duration"),
             (ScalarTyV1::Location, "location"),
             (ScalarTyV1::Path, "path"),
+            (ScalarTyV1::RepoPath, "repo_path"),
             (ScalarTyV1::EntityRef, "entity_ref"),
             (ScalarTyV1::SymbolRef, "symbol_ref"),
             (ScalarTyV1::RuleRef, "rule_ref"),
@@ -436,17 +440,29 @@ mod tests {
         assert!(!ScalarTyV1::String.is_numeric());
         assert!(!ScalarTyV1::Duration.is_numeric());
         assert!(!ScalarTyV1::Path.is_numeric());
+        assert!(!ScalarTyV1::RepoPath.is_numeric());
     }
 
     /// The proof/witness family is exactly `path`, `location`, `proof_tree`.
     #[test]
     fn is_proof_family_membership() {
         assert!(ScalarTyV1::Path.is_proof_family());
+        assert!(!ScalarTyV1::RepoPath.is_proof_family());
         assert!(ScalarTyV1::Location.is_proof_family());
         assert!(ScalarTyV1::ProofTree.is_proof_family());
         assert!(!ScalarTyV1::Int.is_proof_family());
         assert!(!ScalarTyV1::EntityRef.is_proof_family());
         assert!(!ScalarTyV1::Duration.is_proof_family());
+    }
+
+    #[test]
+    fn repo_path_is_distinct_from_broad_path_and_only_self_assignable_v1() {
+        let broad_v1 = TypeV1::scalar(ScalarTyV1::Path);
+        let repo_v1 = TypeV1::scalar(ScalarTyV1::RepoPath);
+        assert_ne!(broad_v1, repo_v1);
+        assert!(!broad_v1.is_assignable_to(&repo_v1));
+        assert!(!repo_v1.is_assignable_to(&broad_v1));
+        assert!(repo_v1.is_assignable_to(&repo_v1));
     }
 
     /// Cardinality has two distinct keyword spellings: the cardinality name and

@@ -39,7 +39,8 @@ mod normalize;
 pub use diagnostic::{AlgebraDiagnosticV1, IllFormedAggregateReasonV1};
 pub use node::{
     AggregateExprV1, AggregateV1, AlgebraFamilyV1, AlgebraNodeV1, AlgebraOpV1, AntiJoinV1, ApplyV1,
-    ColumnProvenanceV1, ColumnV1, CorrelationColumnV1, FilterV1, GroupV1, JoinV1, LimitV1,
-    ProjectV1, ScanV1, SemiJoinV1, SortDirectionV1, SortKeyV1, SortV1, UnionV1,
+    BuiltinRelationV1, ColumnProvenanceV1, ColumnV1, CorrelationColumnV1, FilterV1, GroupV1,
+    JoinV1, LimitV1, ProjectV1, RelationSourceAuthorityV1, RelationSourceIdentityV1, ScanV1,
+    SemiJoinV1, SortDirectionV1, SortKeyV1, SortV1, UnionV1,
 };
 pub use normalize::{normalize_query, normalize_relation, NormalizeOptionsV1, NormalizeResultV1};

@@ -41,9 +41,12 @@
 //! query expressions are typed rather than silently skipped when schema
 //! authority is supplied.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
-use quanta_gqlang_v2_algebra::{normalize_query, AlgebraNodeV1, NormalizeOptionsV1};
+use quanta_gqlang_v2_algebra::{
+    normalize_query, AlgebraNodeV1, BuiltinRelationV1, NormalizeOptionsV1,
+    RelationSourceAuthorityV1, RelationSourceIdentityV1,
+};
 use quanta_gqlang_v2_binder::{Binder, ModuleGraphV1};
 use quanta_gqlang_v2_hir::{
     BoolExprHirV1, BoolExprKindV1, CatalogDeclHirV1, CompositionHirV1, DeclHirV1, GraphQueryHirV1,
@@ -61,7 +64,9 @@ use quanta_gqlang_v2_planning::{
     RecursionShapeV1, RequestedResultKindV1, TruthLaneV1,
 };
 use quanta_gqlang_v2_surface::{parse_program, SurfaceItemV1};
-use quanta_gqlang_v2_types::{BuiltinRegistryV1, CardinalityV1, TypeCheckerV1, TypeEnvV1, TypeV1};
+use quanta_gqlang_v2_types::{
+    BuiltinRegistryV1, CardinalityV1, RecordFieldTyV1, ScalarTyV1, TypeCheckerV1, TypeEnvV1, TypeV1,
+};
 
 use crate::diagnostic::PipelineDiagnosticV1;
 
@@ -82,6 +87,7 @@ pub struct FrontendContextV1 {
     module_graph: ModuleGraphV1,
     schema: TypeEnvV1,
     pack_graph: PackGraphV1,
+    relation_source_authority_v1: RelationSourceAuthorityV1,
 }
 
 impl FrontendContextV1 {
@@ -90,10 +96,50 @@ impl FrontendContextV1 {
     /// authorities are first-class and cannot be silently dropped.
     #[must_use]
     pub fn new(module_graph: ModuleGraphV1, schema: TypeEnvV1, pack_graph: PackGraphV1) -> Self {
+        let relation_source_identities_v1 = schema
+            .iter()
+            .map(|(name_v1, _)| {
+                (
+                    name_v1.clone(),
+                    RelationSourceIdentityV1::Named(name_v1.clone()),
+                )
+            })
+            .collect();
         Self {
             module_graph,
             schema,
             pack_graph,
+            relation_source_authority_v1: RelationSourceAuthorityV1::closed_v1(
+                relation_source_identities_v1,
+            ),
+        }
+    }
+
+    /// Closed public query relation catalog. Source membership is not carried
+    /// here; runtime source authority binds values after compilation.
+    #[must_use]
+    pub fn canonical_query_serving_v1() -> Self {
+        let builtin_v1 = BuiltinRelationV1::WorkspaceFiles;
+        let name_v1 = builtin_v1.authored_name_v1();
+        let mut schema_v1 = TypeEnvV1::new();
+        schema_v1.insert(
+            name_v1,
+            TypeV1::Relation {
+                row: Box::new(TypeV1::Record(vec![RecordFieldTyV1::new(
+                    "path",
+                    TypeV1::Scalar(ScalarTyV1::RepoPath),
+                )])),
+                cardinality: CardinalityV1::Sequence,
+            },
+        );
+        Self {
+            module_graph: ModuleGraphV1::new(),
+            schema: schema_v1,
+            pack_graph: PackGraphV1::new(),
+            relation_source_authority_v1: RelationSourceAuthorityV1::closed_v1(BTreeMap::from([(
+                name_v1.to_string(),
+                RelationSourceIdentityV1::Builtin(builtin_v1),
+            )])),
         }
     }
 
@@ -102,7 +148,12 @@ impl FrontendContextV1 {
     /// `modules.unknown_pack_manifest` (no pack authority present).
     #[must_use]
     pub fn structural_only() -> Self {
-        Self::new(ModuleGraphV1::new(), TypeEnvV1::new(), PackGraphV1::new())
+        Self {
+            module_graph: ModuleGraphV1::new(),
+            schema: TypeEnvV1::new(),
+            pack_graph: PackGraphV1::new(),
+            relation_source_authority_v1: RelationSourceAuthorityV1::schema_open_v1(),
+        }
     }
 
     /// Explicit partial-authority constructor for callers that only have schema
@@ -129,6 +180,21 @@ impl FrontendContextV1 {
     #[must_use]
     pub fn pack_graph(&self) -> &PackGraphV1 {
         &self.pack_graph
+    }
+
+    fn normalization_options_v1(&self, builtins_v1: &BuiltinRegistryV1) -> NormalizeOptionsV1 {
+        aggregate_options(builtins_v1)
+            .with_relation_source_authority_v1(self.relation_source_authority_v1.clone())
+    }
+
+    fn install_composition_binding_v1(&mut self, name_v1: &str, relation_v1: Option<&TypeV1>) {
+        if let Some(relation_v1) = relation_v1 {
+            self.schema.insert(name_v1, relation_v1.clone());
+        }
+        self.relation_source_authority_v1.insert_exact_v1(
+            name_v1.to_string(),
+            RelationSourceIdentityV1::CompositionBinding(name_v1.to_string()),
+        );
     }
 }
 
@@ -540,7 +606,7 @@ fn compile_relational(
     }
 
     // ---- algebra -----------------------------------------------------------
-    let options = aggregate_options(checker.builtins());
+    let options = context.normalization_options_v1(checker.builtins());
     let algebra = normalize_query(query, &options).map_err(PipelineDiagnosticV1::Algebra)?;
 
     // ---- logic (relational queries carry no source-level recursion here) ----
@@ -727,38 +793,14 @@ fn compile_composition(
     let mut binding_outputs = Vec::with_capacity(comp.bindings.len());
     for binding in &comp.bindings {
         let compiled = compile_item_in(&binding.producer, &local_context, catalog)?;
-        // D26: lift the producer's ACTUAL normalized output cardinality, not a
-        // hardcoded Bag. A relational producer carries its algebra root, whose
-        // `cardinality` is the explicit multiplicity / duplicate-elimination /
-        // order semantics the plan keys off. Threading it into the lifted schema
-        // relation keeps that semantics visible to downstream producers and the
-        // body, instead of silently downgrading a Set/Sequence producer to Bag.
-        let producer_cardinality = match &compiled {
-            CompiledItemV1::RelationalQuery { algebra, .. } => algebra.cardinality,
-            CompiledItemV1::ValueArtifact { .. }
-            | CompiledItemV1::GraphQuery { .. }
-            | CompiledItemV1::RuleArtifact { .. }
-            | CompiledItemV1::Legality { .. }
-            | CompiledItemV1::Presentation { .. }
-            | CompiledItemV1::CatalogRegistration { .. }
-            | CompiledItemV1::Composition { .. }
-            | CompiledItemV1::Meta { .. } => CardinalityV1::Bag,
-        };
-        let relation =
-            producer_output_relation(&binding.producer, &local_context, producer_cardinality);
-        if let Some(relation) = &relation {
-            let mut schema = local_context.schema().clone();
-            schema.insert(binding.name.clone(), relation.clone());
-            // Thread the pack-manifest authority through the composition-local
-            // context rebuild: a `USE PACK` producer/body inside a composition must
-            // still resolve against the caller's pack graph, never a silently
-            // dropped empty one (GQW3-18 frozen rule 6).
-            local_context = FrontendContextV1::new(
-                local_context.module_graph().clone(),
-                schema,
-                local_context.pack_graph().clone(),
-            );
-        }
+        // D26/D34: the sealed compiled producer owns both output shape and
+        // multiplicity. Do not reconstruct either from raw HIR or install a
+        // default cardinality for a non-relational family.
+        let relation = producer_output_relation(&compiled, &local_context);
+        // The binding identity exists independently of whether the producer's
+        // row schema is derivable. Install exact identity unconditionally, and
+        // install row typing only when the sealed producer exposes a contract.
+        local_context.install_composition_binding_v1(&binding.name, relation.as_ref());
         binding_outputs.push(relation);
         bindings.push(compiled);
     }
@@ -819,43 +861,75 @@ fn compile_meta(
 /// The output relation type a composition producer exposes to later producers
 /// and the body, when one is derivable under the supplied authority.
 ///
-/// Only a relational-query producer denotes a row-shaped working set whose
-/// columns a downstream `from <name> x | ... x.col ...` expression references.
-/// Its output row is the record of its TOP-LEVEL projection aliases, each typed
-/// under the same lifted source-local environment the relational path already
-/// uses (`type_check_relation`). A projection item whose type stays
-/// authority-open contributes no field rather than a guessed one, so the lifted
-/// row never over-binds: a downstream reference to such a column simply stays
-/// env-open exactly as it would have without lifting.
-///
-/// Non-relational producers (FIND / CHECK / presentation / value decl / rule /
-/// catalog / meta / nested composition) carry no row schema to lift here, so
-/// `None` is returned and the binding name stays schema-open (no silent
-/// over-binding, D34).
-///
-/// The lifted relation's `cardinality` is the producer's ACTUAL normalized
-/// output cardinality (D26): the caller threads the producer algebra root's
-/// `cardinality` so a Set/Sequence producer is not silently downgraded to Bag
-/// when its schema is lifted into the local type environment.
+/// A relational producer exposes its typed top-level projection. The two
+/// non-relational producer families with a closed composition-row contract also
+/// expose an exact host-agnostic row: SAMPLE is `Set<{path: RepoPath}>`; bounded
+/// PATH/REACHABILITY FIND is `Set<{function: EntityRef}>`. Other FIND and
+/// presentation families remain schema-open until their own public row contract
+/// exists. No runtime/provider type participates in this authority.
 fn producer_output_relation(
-    producer: &ProgramItemHirV1,
+    producer: &CompiledItemV1,
     context: &FrontendContextV1,
-    cardinality: CardinalityV1,
 ) -> Option<TypeV1> {
-    let ProgramItemHirV1::Query(query) = producer else {
-        return None;
-    };
-    let checker = TypeCheckerV1::new();
-    let output_env = type_check_relation(&checker, &query.body, context.schema()).ok()?;
-    let local_env = merged_env(context.schema(), &output_env);
-    let fields = projection_row_fields(&checker, &query.body, &local_env)?;
-    // D26: carry the producer's ACTUAL normalized output cardinality so the lifted
-    // schema relation preserves multiplicity / duplicate-elimination / order
-    // semantics rather than silently defaulting every producer to Bag.
-    Some(TypeV1::Relation {
-        row: Box::new(TypeV1::record(fields)),
+    match producer {
+        CompiledItemV1::RelationalQuery { hir, algebra, .. } => {
+            let checker = TypeCheckerV1::new();
+            let output_env = type_check_relation(&checker, &hir.body, context.schema()).ok()?;
+            let local_env = merged_env(context.schema(), &output_env);
+            let fields = projection_row_fields(&checker, &hir.body, &local_env)?;
+            Some(TypeV1::Relation {
+                row: Box::new(TypeV1::record(fields)),
+                cardinality: algebra.cardinality,
+            })
+        }
+        CompiledItemV1::Presentation { hir, plan }
+            if matches!(
+                hir.kind,
+                quanta_gqlang_v2_hir::PresentationKindV1::Sample { .. }
+            ) =>
+        {
+            Some(exact_non_relational_output_relation_v1(
+                "path",
+                ScalarTyV1::RepoPath,
+                plan.multiplicity_order.cardinality,
+            ))
+        }
+        CompiledItemV1::GraphQuery { hir, plan }
+            if matches!(
+                hir.kind,
+                quanta_gqlang_v2_hir::GraphQueryKindV1::Path
+                    | quanta_gqlang_v2_hir::GraphQueryKindV1::Reachability
+            ) =>
+        {
+            Some(exact_non_relational_output_relation_v1(
+                "function",
+                ScalarTyV1::EntityRef,
+                plan.multiplicity_order.cardinality,
+            ))
+        }
+        CompiledItemV1::ValueArtifact { .. }
+        | CompiledItemV1::GraphQuery { .. }
+        | CompiledItemV1::RuleArtifact { .. }
+        | CompiledItemV1::Legality { .. }
+        | CompiledItemV1::Presentation { .. }
+        | CompiledItemV1::CatalogRegistration { .. }
+        | CompiledItemV1::Composition { .. }
+        | CompiledItemV1::Meta { .. } => None,
+    }
+}
+
+fn exact_non_relational_output_relation_v1(
+    field_name: &str,
+    field_type: ScalarTyV1,
+    cardinality: CardinalityV1,
+) -> TypeV1 {
+    TypeV1::Relation {
+        row: Box::new(TypeV1::record(vec![RecordFieldTyV1::new(
+            field_name,
+            TypeV1::scalar(field_type),
+        )])),
         cardinality,
-    })
+    }
 }
 
 /// The top-level projection's aliased output columns, typed under `env`. Returns
@@ -1301,8 +1375,8 @@ fn root_symbol_name(value: &ValueExprHirV1) -> Option<String> {
 )]
 mod tests {
     use super::{
-        bind_item, bind_standalone, producer_output_relation, resolve_local, Binder,
-        FrontendContextV1, ModuleGraphV1,
+        bind_item, bind_standalone, compile_program_with_schema, producer_output_relation,
+        resolve_local, Binder, FrontendContextV1, ModuleGraphV1,
     };
     use quanta_gqlang_v2_hir::HirBuilderV1;
     use quanta_gqlang_v2_surface::parse_program;
@@ -1347,9 +1421,13 @@ mod tests {
     /// duplicate-elimination / output-order semantics are explicit and testable.
     #[test]
     fn lifted_producer_relation_preserves_set_cardinality() {
-        let producer = item("from users u | project u.id as id");
         let context = FrontendContextV1::schema_only(users_schema());
-        let relation = producer_output_relation(&producer, &context, CardinalityV1::Set)
+        let producer = compile_program_with_schema(
+            "from users u | group by u.id | project u.id as id",
+            context.schema(),
+        )
+        .expect("producer compiles");
+        let relation = producer_output_relation(producer.compiled(), &context)
             .expect("a relational producer with a named projection lifts a relation");
         assert_eq!(
             lifted_cardinality(&relation),
@@ -1362,9 +1440,13 @@ mod tests {
     /// `Sequence` relation, never a `Bag`.
     #[test]
     fn lifted_producer_relation_preserves_sequence_cardinality() {
-        let producer = item("from users u | project u.id as id");
         let context = FrontendContextV1::schema_only(users_schema());
-        let relation = producer_output_relation(&producer, &context, CardinalityV1::Sequence)
+        let producer = compile_program_with_schema(
+            "from users u | order by u.id asc | project u.id as id",
+            context.schema(),
+        )
+        .expect("producer compiles");
+        let relation = producer_output_relation(producer.compiled(), &context)
             .expect("a relational producer with a named projection lifts a relation");
         assert_eq!(
             lifted_cardinality(&relation),
@@ -1377,9 +1459,11 @@ mod tests {
     /// threads the real cardinality rather than inverting the default.
     #[test]
     fn lifted_producer_relation_preserves_bag_cardinality() {
-        let producer = item("from users u | project u.id as id");
         let context = FrontendContextV1::schema_only(users_schema());
-        let relation = producer_output_relation(&producer, &context, CardinalityV1::Bag)
+        let producer =
+            compile_program_with_schema("from users u | project u.id as id", context.schema())
+                .expect("producer compiles");
+        let relation = producer_output_relation(producer.compiled(), &context)
             .expect("a relational producer with a named projection lifts a relation");
         assert_eq!(lifted_cardinality(&relation), CardinalityV1::Bag);
     }

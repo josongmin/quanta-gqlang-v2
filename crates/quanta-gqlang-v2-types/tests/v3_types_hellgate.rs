@@ -268,3 +268,40 @@ fn unsupported_proof_arithmetic_rejects_bad_overload() {
         "types.bad_overload: operator `+` has no overload for (proof_tree, proof_tree)"
     );
 }
+
+#[test]
+fn repo_path_exact_equality_is_typed_bool_v1() {
+    let b = HirBuilderV1::new();
+    let left = b.symbol("left", sp(0, 4));
+    let right = b.symbol("right", sp(7, 12));
+    let equality = b.binary("=", left, right, sp(0, 12));
+    let env = TypeEnvV1::new()
+        .with("left", TypeV1::scalar(ScalarTyV1::RepoPath))
+        .with("right", TypeV1::scalar(ScalarTyV1::RepoPath));
+
+    let actual = TypeCheckerV1::new()
+        .type_value(&equality, &env)
+        .expect("exact repo_path equality must be supported");
+    assert_eq!(actual, TypeV1::bool());
+}
+
+#[test]
+fn repo_path_does_not_coerce_to_broad_path_v1() {
+    let b = HirBuilderV1::new();
+    let repo = b.symbol("repo", sp(0, 4));
+    let broad = b.symbol("broad", sp(7, 12));
+    let equality = b.binary("=", repo, broad, sp(0, 12));
+    let env = TypeEnvV1::new()
+        .with("repo", TypeV1::scalar(ScalarTyV1::RepoPath))
+        .with("broad", TypeV1::scalar(ScalarTyV1::Path));
+
+    let error = TypeCheckerV1::new()
+        .type_value(&equality, &env)
+        .expect_err("repo_path and path must remain distinct scalar identities");
+    assert_eq!(error.code(), "types.bad_overload");
+    assert_eq!(
+        error.to_string(),
+        "types.bad_overload: operator `=` has no overload for (repo_path, path)"
+    );
+    assert_eq!(error.span(), sp(0, 12));
+}

@@ -82,6 +82,7 @@ fn scan(name: &str) -> AlgebraNodeV1 {
         CardinalityV1::Bag,
         AlgebraOpV1::Scan(ScanV1 {
             relation: name.to_owned(),
+            source_identity_v1: quanta_gqlang_v2_algebra::RelationSourceIdentityV1::SchemaOpen,
             alias: None,
         }),
     )
@@ -111,6 +112,7 @@ fn from_root_scan_is_single_family_at_root_span() {
         CardinalityV1::Bag,
         AlgebraOpV1::Scan(ScanV1 {
             relation: "users".to_owned(),
+            source_identity_v1: quanta_gqlang_v2_algebra::RelationSourceIdentityV1::SchemaOpen,
             alias: None,
         }),
     );

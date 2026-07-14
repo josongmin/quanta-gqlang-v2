@@ -66,6 +66,7 @@ fn scan(name: &str, cardinality: CardinalityV1) -> AlgebraNodeV1 {
         cardinality,
         AlgebraOpV1::Scan(ScanV1 {
             relation: name.to_owned(),
+            source_identity_v1: quanta_gqlang_v2_algebra::RelationSourceIdentityV1::SchemaOpen,
             alias: None,
         }),
     )

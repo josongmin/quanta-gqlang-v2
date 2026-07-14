@@ -14,13 +14,98 @@
 //! These rails fail RED before the normalization impl exists and prove the
 //! D10 "no silent downgrade" contract.
 
+use std::collections::BTreeMap;
+
 use quanta_gqlang_v2_algebra::{
-    normalize_relation, AlgebraDiagnosticV1, IllFormedAggregateReasonV1, NormalizeOptionsV1,
+    normalize_relation, AlgebraDiagnosticV1, AlgebraOpV1, BuiltinRelationV1,
+    IllFormedAggregateReasonV1, NormalizeOptionsV1, RelationSourceAuthorityV1,
+    RelationSourceIdentityV1,
 };
 use quanta_gqlang_v2_hir::{HirBuilderV1, SpanV1};
 
 fn sp(a: usize, b: usize) -> SpanV1 {
     SpanV1::new(a, b)
+}
+
+#[test]
+fn closed_relation_authority_preserves_exact_typed_scan_identity_v1() {
+    let b = HirBuilderV1::new();
+    let files = b.relation_source("files", None, sp(4, 9));
+    let options = NormalizeOptionsV1::default().with_relation_source_authority_v1(
+        RelationSourceAuthorityV1::closed_v1(BTreeMap::from([(
+            "files".to_owned(),
+            RelationSourceIdentityV1::Builtin(BuiltinRelationV1::WorkspaceFiles),
+        )])),
+    );
+
+    let node = normalize_relation(&files, &options)
+        .expect("closed authority must admit its exact typed relation source");
+    let AlgebraOpV1::Scan(scan) = node.op else {
+        panic!("relation source must normalize to Scan")
+    };
+    assert_eq!(scan.relation, "files");
+    assert_eq!(
+        scan.source_identity_v1,
+        RelationSourceIdentityV1::Builtin(BuiltinRelationV1::WorkspaceFiles)
+    );
+}
+
+#[test]
+fn closed_relation_authority_rejects_unknown_with_exact_typed_diagnostic_v1() {
+    let b = HirBuilderV1::new();
+    let unknown = b.relation_source("unknown_relation", None, sp(7, 23));
+    let options = NormalizeOptionsV1::default()
+        .with_relation_source_authority_v1(RelationSourceAuthorityV1::closed_v1(BTreeMap::new()));
+
+    let error = normalize_relation(&unknown, &options)
+        .expect_err("closed authority must reject an absent relation source");
+    assert_eq!(error.code(), "algebra.unknown_relation_source");
+    assert_eq!(
+        error.message(),
+        "relation source `unknown_relation` is absent from the closed compile authority"
+    );
+    assert_eq!(error.span(), sp(7, 23));
+    assert!(matches!(
+        error,
+        AlgebraDiagnosticV1::UnknownRelationSource { relation, span }
+            if relation == "unknown_relation" && span == sp(7, 23)
+    ));
+}
+
+#[test]
+fn closed_relation_authority_does_not_rewrite_authored_names_v1() {
+    let b = HirBuilderV1::new();
+    let case_variant = b.relation_source("Files", None, sp(2, 7));
+    let options = NormalizeOptionsV1::default().with_relation_source_authority_v1(
+        RelationSourceAuthorityV1::closed_v1(BTreeMap::from([(
+            "files".to_owned(),
+            RelationSourceIdentityV1::Builtin(BuiltinRelationV1::WorkspaceFiles),
+        )])),
+    );
+
+    let error = normalize_relation(&case_variant, &options)
+        .expect_err("closed authority must not lowercase or rewrite authored relation names");
+    assert!(matches!(
+        error,
+        AlgebraDiagnosticV1::UnknownRelationSource { relation, span }
+            if relation == "Files" && span == sp(2, 7)
+    ));
+}
+
+#[test]
+fn structural_relation_authority_is_explicitly_schema_open_v1() {
+    let b = HirBuilderV1::new();
+    let users = b.relation_source("users", None, sp(0, 5));
+
+    let node = normalize_relation(&users, &NormalizeOptionsV1::default())
+        .expect("structural normalization keeps relation authority schema-open");
+    let AlgebraOpV1::Scan(scan) = node.op else {
+        panic!("relation source must normalize to Scan")
+    };
+    assert_eq!(
+        scan.source_identity_v1,
+        RelationSourceIdentityV1::SchemaOpen
+    );
 }
 
 #[test]

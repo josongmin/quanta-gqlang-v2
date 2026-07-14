@@ -18,8 +18,10 @@
     reason = "integration rail: assertion panics are intentional"
 )]
 
-use quanta_gqlang_v2_pipeline::compile_program_with_schema;
-use quanta_gqlang_v2_types::{CardinalityV1, RecordFieldTyV1, TypeEnvV1, TypeV1};
+use quanta_gqlang_v2_pipeline::{
+    compile_program_structural, compile_program_with_schema, CompiledItemV1,
+};
+use quanta_gqlang_v2_types::{CardinalityV1, RecordFieldTyV1, ScalarTyV1, TypeEnvV1, TypeV1};
 
 /// `users(id: int, name: string)` as the only frontend schema authority.
 fn users_relation_schema() -> TypeEnvV1 {
@@ -106,5 +108,95 @@ fn composition_body_accepts_valid_producer_column() {
     assert!(
         compiled.plan().is_some(),
         "the composition body produces a servable plan"
+    );
+}
+
+fn exact_binding_output_v1(source_v1: &str) -> Option<TypeV1> {
+    let compiled_v1 = compile_program_structural(source_v1).expect("composition compiles");
+    let CompiledItemV1::Composition {
+        binding_outputs, ..
+    } = compiled_v1.compiled()
+    else {
+        panic!("expected compiled composition")
+    };
+    assert_eq!(binding_outputs.len(), 1);
+    binding_outputs.first().cloned().flatten()
+}
+
+#[test]
+fn sample_producer_issues_exact_path_relation_and_types_body_v1() {
+    let source_v1 = "let p = sample query=\"auth\" | mode=lexical | limit=2 \
+                     from p x | project x.path as path with p";
+    assert_eq!(
+        exact_binding_output_v1(source_v1),
+        Some(TypeV1::Relation {
+            row: Box::new(TypeV1::record(vec![RecordFieldTyV1::new(
+                "path",
+                TypeV1::scalar(ScalarTyV1::RepoPath),
+            )])),
+            cardinality: CardinalityV1::Set,
+        })
+    );
+}
+
+#[test]
+fn sample_producer_rejects_noncontract_body_field_v1() {
+    let source_v1 = "let p = sample query=\"auth\" | mode=lexical | limit=2 \
+                     from p x | project x.function as function with p";
+    let error_v1 = compile_program_structural(source_v1)
+        .expect_err("SAMPLE rows expose only the exact `path` field");
+    assert_eq!(error_v1.stage().as_str(), "type");
+    assert_eq!(error_v1.code(), "types.bad_projection");
+}
+
+#[test]
+fn graph_find_producers_issue_one_exact_function_relation_v1() {
+    for family_v1 in ["path", "reachability"] {
+        let source_v1 = format!(
+            "let f = find {family_v1} app.start -> app.end | depth=2 \
+             from f x | project x.function as function with f"
+        );
+        assert_eq!(
+            exact_binding_output_v1(&source_v1),
+            Some(TypeV1::Relation {
+                row: Box::new(TypeV1::record(vec![RecordFieldTyV1::new(
+                    "function",
+                    TypeV1::scalar(ScalarTyV1::EntityRef),
+                )])),
+                cardinality: CardinalityV1::Set,
+            }),
+            "{family_v1} must issue the exact function relation"
+        );
+
+        let invalid_source_v1 = format!(
+            "let f = find {family_v1} app.start -> app.end | depth=2 \
+             from f x | project x.path as path with f"
+        );
+        let error_v1 = compile_program_structural(&invalid_source_v1)
+            .expect_err("graph FIND rows expose only the exact `function` field");
+        assert_eq!(error_v1.stage().as_str(), "type");
+        assert_eq!(error_v1.code(), "types.bad_projection");
+    }
+}
+
+#[test]
+fn unsupported_find_producer_does_not_gain_a_relation_schema_v1() {
+    let source_v1 = "let f = find taint app.input -> app.sink | depth=2 \
+                     from f x | project x.function as function with f";
+    assert_eq!(
+        exact_binding_output_v1(source_v1),
+        None,
+        "TAINT rows have no frontend-issued relational contract"
+    );
+}
+
+#[test]
+fn relational_producer_without_source_schema_does_not_gain_a_guessed_output_v1() {
+    let source_v1 = "let p = from files f | project f.path as path \
+                     from p x | project x.path as path with p";
+    assert_eq!(
+        exact_binding_output_v1(source_v1),
+        None,
+        "schema-open relational producers must not fabricate a field type"
     );
 }

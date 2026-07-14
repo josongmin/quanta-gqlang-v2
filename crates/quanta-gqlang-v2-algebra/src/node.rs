@@ -22,8 +22,92 @@
 //! reference the left row's columns through visible CORRELATION columns. There is
 //! no root-local side channel and no planner-only heuristic (`D23`).
 
+use std::collections::BTreeMap;
+
 use quanta_gqlang_v2_hir::{BoolExprHirV1, HirNodeIdV1, SpanV1, ValueExprHirV1};
 use quanta_gqlang_v2_types::CardinalityV1;
+
+/// Closed language-owned relation identities. Authored names are resolved to
+/// these identities once during normalization; downstream consumers never use
+/// a string spelling as builtin authority.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum BuiltinRelationV1 {
+    WorkspaceFiles,
+}
+
+impl BuiltinRelationV1 {
+    #[must_use]
+    pub const fn authored_name_v1(self) -> &'static str {
+        match self {
+            Self::WorkspaceFiles => "files",
+        }
+    }
+}
+
+/// Resolved identity of an algebra relation source.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum RelationSourceIdentityV1 {
+    Builtin(BuiltinRelationV1),
+    CompositionBinding(String),
+    Named(String),
+    SchemaOpen,
+}
+
+/// Exact relation identities plus the authority's missing-name contract.
+///
+/// Structural compilation remains explicitly schema-open while still being
+/// able to install exact composition-local bindings. Semantic compilation is
+/// closed: an authored name absent from its exact map is a typed error.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RelationSourceAuthorityV1 {
+    SchemaOpen(BTreeMap<String, RelationSourceIdentityV1>),
+    Closed(BTreeMap<String, RelationSourceIdentityV1>),
+}
+
+impl Default for RelationSourceAuthorityV1 {
+    fn default() -> Self {
+        Self::schema_open_v1()
+    }
+}
+
+impl RelationSourceAuthorityV1 {
+    #[must_use]
+    pub const fn schema_open_v1() -> Self {
+        Self::SchemaOpen(BTreeMap::new())
+    }
+
+    #[must_use]
+    pub const fn closed_v1(identities_v1: BTreeMap<String, RelationSourceIdentityV1>) -> Self {
+        Self::Closed(identities_v1)
+    }
+
+    pub fn insert_exact_v1(
+        &mut self,
+        authored_name_v1: impl Into<String>,
+        identity_v1: RelationSourceIdentityV1,
+    ) {
+        match self {
+            Self::SchemaOpen(identities_v1) | Self::Closed(identities_v1) => {
+                identities_v1.insert(authored_name_v1.into(), identity_v1);
+            }
+        }
+    }
+
+    pub(crate) fn exact_identity_v1(
+        &self,
+        authored_name_v1: &str,
+    ) -> Option<&RelationSourceIdentityV1> {
+        match self {
+            Self::SchemaOpen(identities_v1) | Self::Closed(identities_v1) => {
+                identities_v1.get(authored_name_v1)
+            }
+        }
+    }
+
+    pub(crate) const fn is_closed_v1(&self) -> bool {
+        matches!(self, Self::Closed(_))
+    }
+}
 
 /// Where a single output column originated.
 ///
@@ -273,6 +357,8 @@ impl AlgebraFamilyV1 {
 pub struct ScanV1 {
     /// The relation source name as written.
     pub relation: String,
+    /// Typed source identity resolved by the frontend context.
+    pub source_identity_v1: RelationSourceIdentityV1,
     /// The binding alias in scope, if the source was aliased.
     pub alias: Option<String>,
 }

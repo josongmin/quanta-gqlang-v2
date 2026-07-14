@@ -144,6 +144,7 @@ impl OperatorRegistryV1 {
                 ScalarTyV1::Duration,
                 ScalarTyV1::Location,
                 ScalarTyV1::Path,
+                ScalarTyV1::RepoPath,
                 ScalarTyV1::EntityRef,
                 ScalarTyV1::SymbolRef,
                 ScalarTyV1::RuleRef,
@@ -202,6 +203,23 @@ mod tests {
         let registry = OperatorRegistryV1::closed();
         let lt = registry.binary_overloads("<");
         assert!(lt.iter().all(|ov| ov.result == TypeV1::bool()));
+    }
+
+    #[test]
+    fn repo_path_allows_exact_equality_but_not_ordering_or_arithmetic_v1() {
+        let registry_v1 = OperatorRegistryV1::closed();
+        let repo_path_v1 = TypeV1::scalar(ScalarTyV1::RepoPath);
+        assert!(registry_v1
+            .binary_overloads("=")
+            .iter()
+            .any(|overload_v1| overload_v1.lhs == repo_path_v1 && overload_v1.rhs == repo_path_v1));
+        for operator_v1 in ["<", "<=", ">", ">=", "+", "-", "*", "/", "%"] {
+            assert!(!registry_v1
+                .binary_overloads(operator_v1)
+                .iter()
+                .any(|overload_v1| overload_v1.lhs == repo_path_v1
+                    || overload_v1.rhs == repo_path_v1));
+        }
     }
 
     #[test]

@@ -11,6 +11,8 @@ use quanta_gqlang_v2_hir::SpanV1;
 /// A typed algebra-normalization diagnostic.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AlgebraDiagnosticV1 {
+    /// A closed relation catalog did not contain the authored source.
+    UnknownRelationSource { relation: String, span: SpanV1 },
     /// A composition operator symbol has no algebra lowering.
     UnsupportedComposition {
         /// The unknown composition symbol as written (e.g. `"crossapply++"`).
@@ -118,6 +120,7 @@ impl AlgebraDiagnosticV1 {
     #[must_use]
     pub fn code(&self) -> String {
         match self {
+            Self::UnknownRelationSource { .. } => "algebra.unknown_relation_source".to_owned(),
             Self::UnsupportedComposition { .. } => "algebra.unsupported_composition".to_owned(),
             Self::ArityMismatch { .. } => "algebra.arity_mismatch".to_owned(),
             Self::IllFormedAggregate { reason, .. } => {
@@ -135,7 +138,8 @@ impl AlgebraDiagnosticV1 {
     #[must_use]
     pub fn span(&self) -> SpanV1 {
         match self {
-            Self::UnsupportedComposition { span, .. }
+            Self::UnknownRelationSource { span, .. }
+            | Self::UnsupportedComposition { span, .. }
             | Self::ArityMismatch { span, .. }
             | Self::IllFormedAggregate { span, .. }
             | Self::MissingCorrelation { span }
@@ -151,6 +155,9 @@ impl AlgebraDiagnosticV1 {
     #[must_use]
     pub fn message(&self) -> String {
         match self {
+            Self::UnknownRelationSource { relation, .. } => {
+                format!("relation source `{relation}` is absent from the closed compile authority")
+            }
             Self::UnsupportedComposition { symbol, .. } => {
                 format!("unsupported composition operator `{symbol}` has no algebra lowering")
             }
