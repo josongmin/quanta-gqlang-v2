@@ -36,8 +36,11 @@ fn context_first_compile_closes_alias_typing_explicitly() {
         "structural path still compiles"
     );
 
-    let context =
-        FrontendContextV1::new(ModuleGraphV1::new(), users_relation_schema(), PackGraphV1::new());
+    let context = FrontendContextV1::new(
+        ModuleGraphV1::new(),
+        users_relation_schema(),
+        PackGraphV1::new(),
+    );
     let diag = compile_with_context(src, &context)
         .expect_err("explicit semantic authority must type-check alias expressions");
 
