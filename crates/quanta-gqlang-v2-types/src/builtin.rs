@@ -60,6 +60,19 @@ impl ExpressionEffectsV2 {
         }
     }
 
+    /// Source predicate invocation is not an aggregate call. All other
+    /// effects remain conservative until a body-effect proof exists.
+    #[must_use]
+    pub(crate) const fn conservative_source_predicate() -> Self {
+        Self {
+            purity: PurityV1::Impure,
+            determinism: DeterminismV1::NonDeterministic,
+            monotonicity: MonotonicityV1::NonMonotone,
+            aggregation: AggregationClassV1::Scalar,
+            cost: CostClassV1::SuperLinear,
+        }
+    }
+
     #[must_use]
     pub fn join(self, other: Self) -> Self {
         let monotonicity = if self.monotonicity == MonotonicityV1::NonMonotone
@@ -141,6 +154,9 @@ pub struct BuiltinRegistryV2 {
 }
 
 impl BuiltinRegistryV2 {
+    pub(crate) fn all_entries(&self) -> impl Iterator<Item = &BuiltinEntryV2> {
+        self.entries.iter()
+    }
     fn try_from_entries(entries: Vec<BuiltinEntryV2>) -> Result<Self, TypeDiagnosticV2> {
         let mut ids = BTreeSet::new();
         let mut names = BTreeMap::new();
@@ -383,6 +399,17 @@ impl BuiltinRegistryV2 {
         self.entries
             .iter()
             .filter(move |entry| entry.family_id == family)
+    }
+
+    /// Effects of the selected builtin overload itself, before composing
+    /// effects from its arguments. The resolved ID, not the family name, is
+    /// the authority because overloads may have distinct effects.
+    #[must_use]
+    pub fn effects_of_resolved(&self, id: BuiltinIdV2) -> Option<ExpressionEffectsV2> {
+        self.entries
+            .iter()
+            .find(|entry| entry.id == id)
+            .map(|entry| entry.effects)
     }
 
     pub(crate) fn agreed_fixed_parameters(
@@ -662,6 +689,75 @@ mod tests {
                 .unwrap_err()
                 .code(),
             "types.registry_duplicate_id"
+        );
+    }
+
+    #[test]
+    fn resolved_intrinsic_effects_do_not_inherit_nested_aggregation() {
+        let scalar = ExpressionEffectsV2::pure_scalar();
+        let aggregate = ExpressionEffectsV2 {
+            aggregation: AggregationClassV1::Aggregate,
+            cost: CostClassV1::Linear,
+            ..scalar
+        };
+        let registry = BuiltinRegistryV2::try_from_entries(vec![
+            e(
+                31,
+                31,
+                "abs",
+                fixed(vec![ValueTypeV1::int()], ValueTypeV1::int()),
+                scalar,
+            ),
+            e(
+                32,
+                32,
+                "sum",
+                fixed(vec![ValueTypeV1::int()], ValueTypeV1::int()),
+                aggregate,
+            ),
+        ])
+        .expect("nonoverlapping fixture");
+        let abs = registry
+            .effects_of_resolved(BuiltinIdV2(31))
+            .expect("resolved abs");
+        let sum = registry
+            .effects_of_resolved(BuiltinIdV2(32))
+            .expect("resolved sum");
+        assert_eq!(abs.aggregation, AggregationClassV1::Scalar);
+        assert_eq!(sum.aggregation, AggregationClassV1::Aggregate);
+        assert_eq!(abs.join(sum).aggregation, AggregationClassV1::Aggregate);
+        assert_eq!(registry.effects_of_resolved(BuiltinIdV2(33)), None);
+    }
+
+    #[test]
+    fn resolved_effects_distinguish_overloads_within_one_family() {
+        let scalar = ExpressionEffectsV2::pure_scalar();
+        let nonmonotone = ExpressionEffectsV2 {
+            monotonicity: MonotonicityV1::NonMonotone,
+            ..scalar
+        };
+        let registry = BuiltinRegistryV2::try_from_entries(vec![
+            e(
+                41,
+                41,
+                "f",
+                fixed(vec![ValueTypeV1::int()], ValueTypeV1::int()),
+                scalar,
+            ),
+            e(
+                42,
+                41,
+                "f",
+                fixed(vec![ValueTypeV1::float()], ValueTypeV1::float()),
+                nonmonotone,
+            ),
+        ])
+        .expect("disjoint overload domains");
+        assert_eq!(registry.family_id("f"), Some(BuiltinFamilyIdV2(41)));
+        assert_eq!(registry.effects_of_resolved(BuiltinIdV2(41)), Some(scalar));
+        assert_eq!(
+            registry.effects_of_resolved(BuiltinIdV2(42)),
+            Some(nonmonotone)
         );
     }
 }

@@ -104,7 +104,7 @@ types               -> hir
 modules             -> hir + types
 sema                -> hir + binder + types + modules
 algebra             -> sema + types
-logic               -> sema + algebra + types
+logic               -> sema + types
 planning            -> sema + algebra + logic + types
 pipeline            -> surface + sema + algebra + logic + planning + modules
 frontend-contract   -> pipeline
@@ -138,6 +138,7 @@ servable. No `Option` means "the stage was skipped".
 pub struct ClosedFrontendAuthorityV2 {
     modules: ValidatedModuleAuthorityPartsV2,
     relations: RelationCatalogV2,
+    graph_references: GraphReferenceCatalogV2,
     budgets: FrontendBudgetV2,
 }
 ```
@@ -158,7 +159,7 @@ the exact module-graph node/edge/step and authority-byte/string dimensions.
 configuration. `ValidatedModuleAuthorityPartsV2` and `RelationCatalogV2` each
 retain the exact profile under which their untrusted authority inputs were
 admitted. `FrontendBudgetV2` projects the same profile canonically.
-`ClosedFrontendAuthorityV2::try_new` rejects unless both retained profiles equal
+`ClosedFrontendAuthorityV2::try_new` rejects unless all retained profiles equal
 that projection. A proof built with a larger authority allowance therefore
 cannot be paired later with a smaller frontend budget.
 
@@ -171,6 +172,7 @@ Editor analysis uses a different type:
 pub struct OpenAnalysisAuthorityInputV2 {
     optional_modules: Option<ValidatedModuleAuthorityPartsV2>,
     optional_relations: Option<RelationCatalogV2>,
+    optional_graph_references: Option<GraphReferenceCatalogV2>,
     host_sources: SourceRegistryViewV2,
     budgets: FrontendBudgetV2,
 }
@@ -191,7 +193,9 @@ Required core outputs and ownership:
 5. `RelationOutputContractV2` — sema, retained unchanged by algebra
 6. `ResolvedGraphQueryV2`, `ResolvedCheckV2`, `ResolvedPresentationV2` — sema
 7. `LoweredRelationItemV2` — algebra, retaining `SemanticItemIdV2`
-8. `ResolvedRuleV2` and `RuleProgramContractV2` — logic, retaining item IDs
+8. `ResolvedRuleV2` — sema producer; `RuleProgramContractV2` — logic consumer,
+   both retaining item IDs. Sema's `RuleCallPolarityV2` is the canonical edge
+   polarity input; logic maps it to its internal recursion model.
 9. `GraphQueryContractV2` — logic, retaining the resolved graph item ID
 10. `CheckContractV2` and `PresentationContractV2` — pipeline assembly
 
@@ -210,8 +214,9 @@ Expression effects retain:
 
 ## Relational Stage Contract
 
-Source HIR has explicit variants only for source-reachable syntax: source,
-filter, project, inner join, explicit cross join, group-by, and order-by. The
+Source HIR has six explicit relation-stage variants for source-reachable
+syntax: source, filter, project, join (inner or explicit cross), group-by, and
+order-by. The
 grammar does not acquire union, limit, semi-join, anti-join, or HAVING merely to
 make every algebra operator source-reachable. Typed relation IR may add derived
 aggregate and correlated-subquery forms. Checked logical algebra retains its
@@ -281,6 +286,8 @@ AnalysisDocumentV2
 SemanticPlanV2
 FrontendDiagnosticV2
 FrontendFailureV2
+FrontendAuthorityErrorV2
+FrontendTransactionErrorV2
 ```
 
 It does not export raw HIR builders, unchecked type/algebra constructors,

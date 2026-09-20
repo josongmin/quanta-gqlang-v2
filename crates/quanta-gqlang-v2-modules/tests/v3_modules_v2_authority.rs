@@ -1816,6 +1816,23 @@ fn private_declaration_is_not_importable() {
 }
 
 #[test]
+fn absent_declaration_is_not_exported() {
+    let error = finish_graph_case(|sources, app, left, _, builder| {
+        builder
+            .try_import(ModuleImportInputV2 {
+                owner_module_id: app.clone(),
+                local_name: "missing".into(),
+                target: asset_ref(sources, left, NamespaceKindV2::Value, "missing", 21),
+                location: checked(sources, 1, 22),
+            })
+            .unwrap();
+    })
+    .unwrap_err();
+    assert_eq!(error.code(), "modules.not_exported");
+    assert!(error.secondary().is_none());
+}
+
+#[test]
 fn duplicate_module_preserves_both_locations() {
     let sources = registry(&[(1, 128)]);
     let app = module_id(&sources, "app", 0);
@@ -3452,65 +3469,82 @@ fn fingerprint_changes_when_manifest_field_changes() {
 
 #[test]
 fn fingerprint_mutation_matrix_covers_all_manifest_semantics() {
-    fn build(
-        name: &str,
+    #[derive(Clone)]
+    struct FingerprintCase<'a> {
+        name: &'a str,
         version: VersionV2,
-        digest_text: &str,
-        range_upper: VersionV2,
-        with_dependency: bool,
-        with_suite: bool,
-    ) -> [u8; 32] {
+        digest_text: &'a str,
+        language_lower: VersionV2,
+        language_upper: VersionV2,
+        dependency_name: &'a str,
+        dependency_lower: VersionV2,
+        dependency_upper: VersionV2,
+        export_name: &'a str,
+        suite_name: &'a str,
+        suite_member: &'a str,
+    }
+
+    fn build(case: &FingerprintCase<'_>) -> [u8; 32] {
         let zeros = "0".repeat(64);
-        let mut pin_lines = vec![
-            format!("{name} {version} {digest_text}\n"),
+        let mut pin_lines = [
+            format!("{} {} {}\n", case.name, case.version, case.digest_text),
+            format!("y 1.0.0 {zeros}\n"),
             format!("z 1.0.0 {zeros}\n"),
         ];
         pin_lines.sort();
         let lock = pin_lines.concat();
         let parts = finish_pack_inputs(Some(&lock), |sources| {
-            let dependency = PackIdV2::try_new("z", checked(sources, 1, 30)).unwrap();
+            let dependency =
+                PackIdV2::try_new(case.dependency_name, checked(sources, 1, 30)).unwrap();
             let primary = PackManifestInputV2 {
-                pack_id: PackIdV2::try_new(name, checked(sources, 1, 10)).unwrap(),
-                version,
-                content_digest: ContentDigestV2::try_parse(digest_text, checked(sources, 1, 11))
-                    .unwrap(),
+                pack_id: PackIdV2::try_new(case.name, checked(sources, 1, 10)).unwrap(),
+                version: case.version,
+                content_digest: ContentDigestV2::try_parse(
+                    case.digest_text,
+                    checked(sources, 1, 11),
+                )
+                .unwrap(),
                 language_range: VersionRangeV2::try_new(
-                    VersionV2::new(1, 0, 0),
-                    range_upper,
+                    case.language_lower,
+                    case.language_upper,
                     checked(sources, 1, 12),
                 )
                 .unwrap(),
-                dependencies: if with_dependency {
-                    vec![LocatedDependencyInputV2 {
-                        pack_id: dependency,
-                        version_range: VersionRangeV2::try_new(
-                            VersionV2::new(1, 0, 0),
-                            VersionV2::new(2, 0, 0),
-                            checked(sources, 1, 13),
-                        )
-                        .unwrap(),
-                        location: checked(sources, 1, 14),
-                    }]
-                } else {
-                    vec![]
-                },
-                exports: vec![],
-                suites: if with_suite {
-                    vec![LocatedSuiteInputV2 {
-                        name: "core".into(),
-                        members: vec![LocatedSuiteMemberInputV2 {
-                            name: "scan".into(),
-                            location: checked(sources, 1, 15),
-                        }],
+                dependencies: vec![LocatedDependencyInputV2 {
+                    pack_id: dependency,
+                    version_range: VersionRangeV2::try_new(
+                        case.dependency_lower,
+                        case.dependency_upper,
+                        checked(sources, 1, 13),
+                    )
+                    .unwrap(),
+                    location: checked(sources, 1, 14),
+                }],
+                exports: vec![LocatedExportInputV2 {
+                    name: case.export_name.into(),
+                    location: checked(sources, 1, 15),
+                }],
+                suites: vec![LocatedSuiteInputV2 {
+                    name: case.suite_name.into(),
+                    members: vec![LocatedSuiteMemberInputV2 {
+                        name: case.suite_member.into(),
                         location: checked(sources, 1, 16),
-                    }]
-                } else {
-                    vec![]
-                },
+                    }],
+                    location: checked(sources, 1, 17),
+                }],
                 location: checked(sources, 1, 17),
             };
             vec![
                 primary,
+                manifest_input(
+                    sources,
+                    "y",
+                    VersionV2::new(1, 0, 0),
+                    vec![],
+                    vec![],
+                    vec![],
+                    40,
+                ),
                 manifest_input(
                     sources,
                     "z",
@@ -3528,64 +3562,41 @@ fn fingerprint_mutation_matrix_covers_all_manifest_semantics() {
 
     let zeros = "0".repeat(64);
     let ones = "1".repeat(64);
-    let base = build(
-        "a",
-        VersionV2::new(1, 0, 0),
-        &zeros,
-        VersionV2::new(2, 0, 0),
-        false,
-        false,
-    );
-    let mutations = [
-        build(
-            "c",
-            VersionV2::new(1, 0, 0),
-            &zeros,
-            VersionV2::new(2, 0, 0),
-            false,
-            false,
-        ),
-        build(
-            "a",
-            VersionV2::new(1, 1, 0),
-            &zeros,
-            VersionV2::new(2, 0, 0),
-            false,
-            false,
-        ),
-        build(
-            "a",
-            VersionV2::new(1, 0, 0),
-            &ones,
-            VersionV2::new(2, 0, 0),
-            false,
-            false,
-        ),
-        build(
-            "a",
-            VersionV2::new(1, 0, 0),
-            &zeros,
-            VersionV2::new(3, 0, 0),
-            false,
-            false,
-        ),
-        build(
-            "a",
-            VersionV2::new(1, 0, 0),
-            &zeros,
-            VersionV2::new(2, 0, 0),
-            true,
-            false,
-        ),
-        build(
-            "a",
-            VersionV2::new(1, 0, 0),
-            &zeros,
-            VersionV2::new(2, 0, 0),
-            false,
-            true,
-        ),
+    let base_case = FingerprintCase {
+        name: "a",
+        version: VersionV2::new(1, 0, 0),
+        digest_text: &zeros,
+        language_lower: VersionV2::new(1, 0, 0),
+        language_upper: VersionV2::new(2, 0, 0),
+        dependency_name: "z",
+        dependency_lower: VersionV2::new(1, 0, 0),
+        dependency_upper: VersionV2::new(2, 0, 0),
+        export_name: "x",
+        suite_name: "core",
+        suite_member: "scan",
+    };
+    let base = build(&base_case);
+    macro_rules! mutated {
+        ($field:ident = $value:expr) => {{
+            let mut case = base_case.clone();
+            case.$field = $value;
+            case
+        }};
+    }
+    let cases = vec![
+        mutated!(name = "b"),
+        mutated!(version = VersionV2::new(1, 1, 0)),
+        mutated!(digest_text = &ones),
+        mutated!(language_lower = VersionV2::new(0, 9, 0)),
+        mutated!(language_upper = VersionV2::new(3, 0, 0)),
+        mutated!(dependency_name = "y"),
+        mutated!(dependency_lower = VersionV2::new(0, 9, 0)),
+        mutated!(dependency_upper = VersionV2::new(3, 0, 0)),
+        mutated!(export_name = "y"),
+        mutated!(suite_name = "extended"),
+        mutated!(suite_member = "join"),
     ];
+    let mutations: Vec<_> = cases.iter().map(build).collect();
     assert!(mutations.iter().all(|fingerprint| fingerprint != &base));
 }
 

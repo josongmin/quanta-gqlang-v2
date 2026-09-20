@@ -50,6 +50,10 @@ pub struct BindingV1 {
     /// The HIR node id of the binding site, so downstream side-tables can key
     /// resolutions back to the introducing node.
     pub node: HirNodeIdV1,
+    /// Zero-based ordinal within the owning HIR node. The pair `(node,
+    /// ordinal)` is the stable binding identity; owner node alone is not
+    /// sufficient for multi-binder quantifiers or projections.
+    ordinal: usize,
 }
 
 impl BindingV1 {
@@ -66,7 +70,32 @@ impl BindingV1 {
             kind,
             span,
             node,
+            ordinal: 0,
         }
+    }
+
+    /// Construct a binding with an explicit ordinal within its owner node.
+    #[must_use]
+    pub fn new_indexed(
+        name: impl Into<String>,
+        kind: BinderKindV1,
+        span: SpanV1,
+        node: HirNodeIdV1,
+        ordinal: usize,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            kind,
+            span,
+            node,
+            ordinal,
+        }
+    }
+
+    /// Stable `(owner node, ordinal)` identity.
+    #[must_use]
+    pub const fn identity(&self) -> (HirNodeIdV1, usize) {
+        (self.node, self.ordinal)
     }
 }
 
@@ -135,12 +164,6 @@ impl LexicalScopeV1 {
     /// own push/pop; a no-op pop can never under/over-resolve).
     pub fn pop(&mut self) {
         let _ = self.frames.pop();
-    }
-
-    /// Current nesting depth (number of live frames).
-    #[must_use]
-    pub fn depth(&self) -> usize {
-        self.frames.len()
     }
 
     /// Add a binding to the innermost frame.
@@ -222,16 +245,26 @@ impl LexicalScopeV1 {
     /// Resolve `name` against the visible scope stack, honouring capture edges.
     #[must_use]
     pub fn resolve(&self, name: &str) -> LexicalResolutionV1 {
+        self.resolve_with_capture(name).0
+    }
+
+    /// Resolve a name and report the exact frame index containing its binding.
+    /// An inaccessible binding beyond a non-capturing edge remains an
+    /// [`LexicalResolutionV1::IllegalCapture`] with no usable frame index.
+    pub(crate) fn resolve_with_capture(&self, name: &str) -> (LexicalResolutionV1, Option<usize>) {
         // `crossed_barrier` flips true once we walk OUT through a non-capturing
         // edge; any binding found after that point is an illegal capture.
         let mut crossed_barrier = false;
-        for frame in self.frames.iter().rev() {
+        for (frame_index, frame) in self.frames.iter().enumerate().rev() {
             for binding in frame.bindings.iter().rev() {
                 if binding.name == name {
                     return if crossed_barrier {
-                        LexicalResolutionV1::IllegalCapture(binding.clone())
+                        (LexicalResolutionV1::IllegalCapture(binding.clone()), None)
                     } else {
-                        LexicalResolutionV1::Bound(binding.clone())
+                        (
+                            LexicalResolutionV1::Bound(binding.clone()),
+                            Some(frame_index),
+                        )
                     };
                 }
             }
@@ -240,7 +273,47 @@ impl LexicalScopeV1 {
                 crossed_barrier = true;
             }
         }
-        LexicalResolutionV1::Unbound
+        (LexicalResolutionV1::Unbound, None)
+    }
+
+    /// Internal frame position for explicit relational capture ownership.
+    pub(crate) fn current_frame_index(&self) -> Option<usize> {
+        self.frames.len().checked_sub(1)
+    }
+
+    /// Replace the bindings in the current frame with one complete relation
+    /// stage output. This is the row-frame transition primitive: projection
+    /// drops its input aliases, while join installs the merged left/right
+    /// output only after both inputs have been resolved independently.
+    pub(crate) fn replace_current_bindings(&mut self, bindings: Vec<BindingV1>) {
+        if let Some(frame) = self.frames.last_mut() {
+            frame.bindings = bindings;
+        }
+    }
+
+    /// First visible binding outside the current frame. Relation-stage frame
+    /// replacement uses this to preserve the shadowing rule without treating a
+    /// projected output as a duplicate of the input frame it replaces.
+    pub(crate) fn visible_outer_binding(&self, name: &str) -> Option<&BindingV1> {
+        let top = self.frames.last()?;
+        if top.parent_edge == CaptureV1::NonCapturing {
+            return None;
+        }
+        let upper = self.frames.len().saturating_sub(1);
+        for frame in self.frames.iter().take(upper).rev() {
+            if let Some(binding) = frame
+                .bindings
+                .iter()
+                .rev()
+                .find(|binding| binding.name == name)
+            {
+                return Some(binding);
+            }
+            if frame.parent_edge == CaptureV1::NonCapturing {
+                break;
+            }
+        }
+        None
     }
 }
 

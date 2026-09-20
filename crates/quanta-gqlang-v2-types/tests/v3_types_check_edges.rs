@@ -1,11 +1,26 @@
 #![allow(clippy::unwrap_used, reason = "owner assertions")]
 
 use quanta_gqlang_v2_hir::{
-    check_document_v2, CallArgHirV1, CallArgsHirV1, DeclHirV1, HirBuilderV1, HirDocumentV1,
-    HirNodeIdV1, PathSegmentV1, ProgramItemHirV1, RecordFieldV1, SourceIdV2, SourceRegistrationV2,
-    SourceRegistryViewV2, SpanV1,
+    check_document_v2, CallArgHirV1, CallArgsHirV1, CheckedHirDocumentV2, DeclHirV1, HirBuilderV1,
+    HirDocumentV1, HirNodeIdV1, PathSegmentV1, ProgramItemHirV1, RecordFieldV1, SourceIdV2,
+    SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
 };
 use quanta_gqlang_v2_types::*;
+
+fn resolved_type_inputs(
+    checked: CheckedHirDocumentV2<'_>,
+    entries: Vec<ResolvedTypeInputEntryV2>,
+    contexts: Vec<ContextualExpectedTypeInputV2>,
+) -> Result<ResolvedTypeInputsV2<'_>, TypeDiagnosticV2> {
+    let registry = SourceRegistryViewV2::try_new(Vec::new())
+        .unwrap()
+        .try_extend_document(SourceRegistrationV2 {
+            source_id: checked.document().source_id,
+            source_len: checked.document().source_len,
+        })
+        .unwrap();
+    ResolvedTypeInputsV2::try_new(checked, &registry, entries, contexts)
+}
 
 fn document(body: quanta_gqlang_v2_hir::ValueExprHirV1) -> HirDocumentV1 {
     HirDocumentV1 {
@@ -26,8 +41,7 @@ fn check_value(
     entries: Vec<ResolvedTypeInputEntryV2>,
 ) -> TypedExpressionFactsV2 {
     let doc = document(body);
-    let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), entries, vec![]).unwrap();
+    let inputs = resolved_type_inputs(check_document_v2(&doc).unwrap(), entries, vec![]).unwrap();
     ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -58,8 +72,7 @@ fn assert_bad_projection(base_type: ValueTypeV1, field: &str) {
     };
     let doc = document(path);
     let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![input], vec![])
-            .unwrap();
+        resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
     let error = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -83,6 +96,317 @@ fn assert_bad_projection(base_type: ValueTypeV1, field: &str) {
 }
 
 #[test]
+fn type_inputs_require_the_exact_extended_document_registry() {
+    let builder = HirBuilderV1::new();
+    let value = builder.int("7", SpanV1::new(0, 1));
+    let doc = document(value);
+    let checked = check_document_v2(&doc).unwrap();
+    let host = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
+        source_id: SourceIdV2::from_raw(99),
+        source_len: 12,
+    }])
+    .unwrap();
+    let exact = host
+        .try_extend_document(SourceRegistrationV2 {
+            source_id: doc.source_id,
+            source_len: doc.source_len,
+        })
+        .unwrap();
+    ResolvedTypeInputsV2::try_new(checked, &exact, vec![], vec![]).unwrap();
+
+    let wrong_length = host
+        .try_extend_document(SourceRegistrationV2 {
+            source_id: doc.source_id,
+            source_len: doc.source_len - 1,
+        })
+        .unwrap();
+    let error = ResolvedTypeInputsV2::try_new(checked, &wrong_length, vec![], vec![]).unwrap_err();
+    assert_eq!(error.code(), "types.source_registry_mismatch");
+}
+
+#[test]
+fn binding_from_prior_expression_reuses_the_single_kernel_fact() {
+    let builder = HirBuilderV1::new();
+    let producer = builder.int("7", SpanV1::new(0, 1));
+    let producer_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: producer.id,
+    };
+    let reference = builder.symbol("projected", SpanV1::new(3, 12));
+    let reference_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: reference.id,
+    };
+    let root = builder.list(vec![producer, reference], SpanV1::new(0, 13));
+    let doc = document(root);
+    let inputs = resolved_type_inputs(
+        check_document_v2(&doc).unwrap(),
+        vec![ResolvedTypeInputEntryV2 {
+            key: reference_key,
+            value: ResolvedTypeInputValueV2::BindingFromExpression(producer_key),
+        }],
+        vec![],
+    )
+    .unwrap();
+    let facts = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&inputs)
+        .unwrap();
+    assert_eq!(
+        facts.get(reference_key).unwrap().state,
+        ExpressionTypeStateV2::Known(ValueTypeV1::int())
+    );
+}
+
+#[test]
+fn binding_expression_dependencies_reject_foreign_missing_self_and_forward_edges() {
+    for target in [
+        SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(99),
+            node_id: HirNodeIdV1::from_raw(1),
+        },
+        SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(7),
+            node_id: HirNodeIdV1::from_raw(99_999),
+        },
+    ] {
+        let builder = HirBuilderV1::new();
+        let reference = builder.symbol("x", SpanV1::new(0, 1));
+        let key = SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(7),
+            node_id: reference.id,
+        };
+        let doc = document(reference);
+        let error = resolved_type_inputs(
+            check_document_v2(&doc).unwrap(),
+            vec![ResolvedTypeInputEntryV2 {
+                key,
+                value: ResolvedTypeInputValueV2::BindingFromExpression(target),
+            }],
+            vec![],
+        )
+        .unwrap_err();
+        assert_eq!(error.code(), "types.invalid_binding_dependency");
+    }
+
+    let builder = HirBuilderV1::new();
+    let reference = builder.symbol("self_ref", SpanV1::new(0, 8));
+    let key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: reference.id,
+    };
+    let doc = document(reference);
+    let error = resolved_type_inputs(
+        check_document_v2(&doc).unwrap(),
+        vec![ResolvedTypeInputEntryV2 {
+            key,
+            value: ResolvedTypeInputValueV2::BindingFromExpression(key),
+        }],
+        vec![],
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "types.invalid_binding_dependency");
+
+    let builder = HirBuilderV1::new();
+    let reference = builder.symbol("future", SpanV1::new(0, 6));
+    let reference_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: reference.id,
+    };
+    let producer = builder.int("7", SpanV1::new(8, 9));
+    let producer_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: producer.id,
+    };
+    let root = builder.list(vec![reference, producer], SpanV1::new(0, 10));
+    let doc = document(root);
+    let inputs = resolved_type_inputs(
+        check_document_v2(&doc).unwrap(),
+        vec![ResolvedTypeInputEntryV2 {
+            key: reference_key,
+            value: ResolvedTypeInputValueV2::BindingFromExpression(producer_key),
+        }],
+        vec![],
+    )
+    .unwrap();
+    let error = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&inputs)
+        .unwrap_err();
+    assert_eq!(error.code(), "types.unavailable_binding_dependency");
+
+    let builder = HirBuilderV1::new();
+    let left = builder.symbol("left", SpanV1::new(0, 4));
+    let right = builder.symbol("right", SpanV1::new(6, 11));
+    let left_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: left.id,
+    };
+    let right_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: right.id,
+    };
+    let root = builder.list(vec![left, right], SpanV1::new(0, 12));
+    let doc = document(root);
+    let inputs = resolved_type_inputs(
+        check_document_v2(&doc).unwrap(),
+        vec![
+            ResolvedTypeInputEntryV2 {
+                key: left_key,
+                value: ResolvedTypeInputValueV2::BindingFromExpression(right_key),
+            },
+            ResolvedTypeInputEntryV2 {
+                key: right_key,
+                value: ResolvedTypeInputValueV2::BindingFromExpression(left_key),
+            },
+        ],
+        vec![],
+    )
+    .unwrap();
+    let error = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&inputs)
+        .unwrap_err();
+    assert_eq!(error.code(), "types.unavailable_binding_dependency");
+}
+
+#[test]
+fn predeclared_forward_declaration_uses_one_kernel_pass() {
+    let builder = HirBuilderV1::new();
+    let reference = builder.symbol("later", SpanV1::new(8, 13));
+    let reference_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: reference.id,
+    };
+    let later = builder.int("1", SpanV1::new(32, 33));
+    let later_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: later.id,
+    };
+    let doc = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(7),
+        source_len: 64,
+        items: vec![
+            ProgramItemHirV1::Decl(Box::new(DeclHirV1::new(
+                HirNodeIdV1::from_raw(10_000),
+                SpanV1::new(0, 16),
+                "first".into(),
+                SpanV1::new(0, 5),
+                reference,
+            ))),
+            ProgramItemHirV1::Decl(Box::new(DeclHirV1::new(
+                HirNodeIdV1::from_raw(10_001),
+                SpanV1::new(20, 40),
+                "later".into(),
+                SpanV1::new(20, 25),
+                later,
+            ))),
+        ],
+    };
+    let inputs = resolved_type_inputs(
+        check_document_v2(&doc).unwrap(),
+        vec![ResolvedTypeInputEntryV2 {
+            key: reference_key,
+            value: ResolvedTypeInputValueV2::BindingFromDeclaration(later_key),
+        }],
+        vec![],
+    )
+    .unwrap();
+    let facts = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&inputs)
+        .unwrap();
+    assert_eq!(
+        facts.get(reference_key).unwrap().state,
+        ExpressionTypeStateV2::Known(ValueTypeV1::int())
+    );
+}
+
+#[test]
+fn cyclic_declarations_fail_without_guessing_a_type() {
+    let builder = HirBuilderV1::new();
+    let left = builder.symbol("right", SpanV1::new(8, 13));
+    let right = builder.symbol("left", SpanV1::new(30, 34));
+    let left_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: left.id,
+    };
+    let right_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: right.id,
+    };
+    let doc = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(7),
+        source_len: 64,
+        items: vec![
+            ProgramItemHirV1::Decl(Box::new(DeclHirV1::new(
+                HirNodeIdV1::from_raw(10_000),
+                SpanV1::new(0, 16),
+                "left".into(),
+                SpanV1::new(0, 4),
+                left,
+            ))),
+            ProgramItemHirV1::Decl(Box::new(DeclHirV1::new(
+                HirNodeIdV1::from_raw(10_001),
+                SpanV1::new(20, 40),
+                "right".into(),
+                SpanV1::new(20, 25),
+                right,
+            ))),
+        ],
+    };
+    let inputs = resolved_type_inputs(
+        check_document_v2(&doc).unwrap(),
+        vec![
+            ResolvedTypeInputEntryV2 {
+                key: left_key,
+                value: ResolvedTypeInputValueV2::BindingFromDeclaration(right_key),
+            },
+            ResolvedTypeInputEntryV2 {
+                key: right_key,
+                value: ResolvedTypeInputValueV2::BindingFromDeclaration(left_key),
+            },
+        ],
+        vec![],
+    )
+    .unwrap();
+    assert_eq!(
+        ExpressionTypeKernelV2::try_closed()
+            .unwrap()
+            .check_document(&inputs)
+            .unwrap_err()
+            .code(),
+        "types.cyclic_declaration_dependency"
+    );
+}
+
+#[test]
+fn declaration_lazy_dependency_rejects_non_declaration_target() {
+    let builder = HirBuilderV1::new();
+    let reference = builder.symbol("x", SpanV1::new(0, 1));
+    let reference_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: reference.id,
+    };
+    let literal = builder.int("1", SpanV1::new(3, 4));
+    let literal_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: literal.id,
+    };
+    let doc = document(builder.list(vec![reference, literal], SpanV1::new(0, 5)));
+    let error = resolved_type_inputs(
+        check_document_v2(&doc).unwrap(),
+        vec![ResolvedTypeInputEntryV2 {
+            key: reference_key,
+            value: ResolvedTypeInputValueV2::BindingFromDeclaration(literal_key),
+        }],
+        vec![],
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "types.invalid_binding_dependency");
+}
+
+#[test]
 fn typed_literals_keep_values_and_numeric_boundaries() {
     let builder = HirBuilderV1::new();
     let value = builder.int(i128::MAX.to_string(), SpanV1::new(0, 40));
@@ -91,8 +415,7 @@ fn typed_literals_keep_values_and_numeric_boundaries() {
         node_id: value.id,
     };
     let doc = document(value);
-    let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
+    let inputs = resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
     let facts = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -122,8 +445,7 @@ fn unary_minimum_uses_closed_deferred_child_fact() {
         node_id: unary.id,
     };
     let doc = document(unary);
-    let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
+    let inputs = resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
     let facts = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -151,8 +473,7 @@ fn non_finite_and_nonzero_underflow_reject_with_exact_codes() {
         let builder = HirBuilderV1::new();
         let doc = document(builder.float(text, SpanV1::new(0, text.len())));
         let inputs =
-            ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![], vec![])
-                .unwrap();
+            resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
         assert_eq!(
             ExpressionTypeKernelV2::try_closed()
                 .unwrap()
@@ -170,8 +491,7 @@ fn signed_exponent_whitespace_and_separator_numeric_payloads_reject_as_malformed
         let builder = HirBuilderV1::new();
         let doc = document(builder.int(text, SpanV1::new(0, text.len())));
         let inputs =
-            ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![], vec![])
-                .unwrap();
+            resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
         assert_eq!(
             ExpressionTypeKernelV2::try_closed()
                 .unwrap()
@@ -185,8 +505,7 @@ fn signed_exponent_whitespace_and_separator_numeric_payloads_reject_as_malformed
         let builder = HirBuilderV1::new();
         let doc = document(builder.float(text, SpanV1::new(0, text.len())));
         let inputs =
-            ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![], vec![])
-                .unwrap();
+            resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
         assert_eq!(
             ExpressionTypeKernelV2::try_closed()
                 .unwrap()
@@ -208,7 +527,7 @@ fn empty_list_is_unknown_without_context_and_exact_with_checked_context() {
     };
     let doc = document(list);
     let checked = check_document_v2(&doc).unwrap();
-    let open = ResolvedTypeInputsV2::try_new(checked, vec![], vec![]).unwrap();
+    let open = resolved_type_inputs(checked, vec![], vec![]).unwrap();
     assert_eq!(
         ExpressionTypeKernelV2::try_closed()
             .unwrap()
@@ -225,7 +544,7 @@ fn empty_list_is_unknown_without_context_and_exact_with_checked_context() {
         expected_type: expected.clone(),
         reason: ContextualTypeReasonV2::ExpectedBinding,
     };
-    let contextual = ResolvedTypeInputsV2::try_new(checked, vec![], vec![context]).unwrap();
+    let contextual = resolved_type_inputs(checked, vec![], vec![context]).unwrap();
     assert_eq!(
         ExpressionTypeKernelV2::try_closed()
             .unwrap()
@@ -249,8 +568,7 @@ fn positive_plus_and_larger_than_minimum_magnitude_reject() {
         let unary = builder.unary(operator, child, SpanV1::new(0, 40));
         let doc = document(unary);
         let inputs =
-            ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![], vec![])
-                .unwrap();
+            resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
         assert_eq!(
             ExpressionTypeKernelV2::try_closed()
                 .unwrap()
@@ -301,8 +619,7 @@ fn mixed_string_and_integer_addition_rejects_bad_overload() {
         SpanV1::new(0, 7),
     );
     let doc = document(value);
-    let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
+    let inputs = resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
     assert_eq!(
         ExpressionTypeKernelV2::try_closed()
             .unwrap()
@@ -483,8 +800,7 @@ fn size_builtin_accepts_only_its_exact_collection_domain() {
         };
         let doc = document(call);
         let inputs =
-            ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![entry], vec![])
-                .unwrap();
+            resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![entry], vec![]).unwrap();
         let result = ExpressionTypeKernelV2::try_closed()
             .unwrap()
             .check_document(&inputs);
@@ -687,8 +1003,7 @@ fn repo_path_equality_is_exact_and_does_not_coerce_to_path() {
         ];
         let doc = document(equality);
         let inputs =
-            ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), entries, vec![])
-                .unwrap();
+            resolved_type_inputs(check_document_v2(&doc).unwrap(), entries, vec![]).unwrap();
         let result = ExpressionTypeKernelV2::try_closed()
             .unwrap()
             .check_document(&inputs);
@@ -724,8 +1039,7 @@ fn proof_tree_arithmetic_is_not_admitted_by_value_overloads() {
         })
         .collect();
     let doc = document(sum);
-    let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), entries, vec![]).unwrap();
+    let inputs = resolved_type_inputs(check_document_v2(&doc).unwrap(), entries, vec![]).unwrap();
     assert_eq!(
         ExpressionTypeKernelV2::try_closed()
             .unwrap()

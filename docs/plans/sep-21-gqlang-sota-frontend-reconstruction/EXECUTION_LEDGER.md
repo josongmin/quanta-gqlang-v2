@@ -38,8 +38,36 @@ Frozen on `2026-09-21` before product edits.
   receipt 03 existed. It is an integration state only, not a verified ticket
   boundary or releasable candidate.
 - Preservation: no reset, amend, or history rewrite was performed.
-- Current work continues from `fcf106b` with Ticket 03 dirty changes owned by
-  `/root` for HIR/types and `/root/ticket03_modules_impl` for modules.
+- Ticket 03 work continued from `fcf106b` under `/root` for HIR/types and
+  `/root/ticket03_modules_impl` for modules; later external commits absorbed
+  that work before its final owner receipt was written.
+- During final RR, three external commits advanced and pushed `main`/`origin`
+  without a commit action by this execution owner:
+  `ceb41425c8dc5caa3f524e2b86c7e0f21416e672` (`checkpoint frontend HIR and
+  binder authority reconstruction`),
+  `6583091cc5483f7e193c2113858dad8916585303` (`align algebra with closed
+  relational HIR`), and
+  `f9ec9543888954106bb7c8bf1dc6500a5e6d34f7` (`align planning with closed
+  composition HIR`). No reset or history rewrite was performed.
+- `ceb4142` absorbed the active Ticket 01-03/docs work together with binder
+  consumer changes; `6583091` added algebra consumer changes; `f9ec954` added
+  planning changes and more Ticket 03 tests. These commits are integration
+  snapshots, not automatic verification of tickets 03-07. Their mixed scope is
+  audited by receipt 03 plus separate consumer-delta review.
+- After `f9ec954`, two module-only lint repairs remain dirty. The execution
+  owner did not create or amend these external commits.
+- Final Ticket 03 RR added two missing semantic rails (`sum(*)` rejection and
+  absent-not-exported), expanded the fingerprint field matrix, and retained one
+  earlier module lint repair. Its three-file product dirty fingerprint and all
+  proof are recorded in `receipts/03.md`; Ticket 03 is owner-verified without a
+  clean commit boundary.
+- Independent audit classifies `ceb4142`, `6583091`, and `f9ec954` as
+  `UNQUALIFIED PARTIAL CONSUMER MIGRATION`. Binder has 29 focused V1 tests
+  green; algebra tests are red with 74 compiler errors across four suites;
+  planning has 89 focused V1 tests green; pipeline check is red with 25
+  compiler errors; strict binder/planning Clippy is red on 6 denied
+  allow-attribute errors in algebra. Tickets 04, 05, and 07 contain the exact
+  structural blockers and remain `PLANNED`.
 - Evidence rule: receipts 01/02 retain their original frozen-source evidence;
   their schema backfills below do not extend that evidence. Receipt 03 must
   separately enumerate inherited contamination in `e896a110..96eab779` and
@@ -74,10 +102,10 @@ short scope is an additional collision check, not a substitute for that list.
 | Ticket | Owner | State | Dependency state | Short write set |
 |---|---|---|---|---|
 | 00 | `/root` | `ACCEPTED` | base frozen | packet decisions and this ledger only |
-| 01 | `/root/ticket01_impl` | `VERIFIED` | 00 satisfied; RR re-review found no remaining scope blocker | workspace manifests/lock, empty sema crate, architecture/Semgrep/CI gates, mechanical `lsp` to `diagnostics-stdio` move, receipt 01 |
+| 01 | `/root/ticket01_impl` | `VERIFIED` on receipt fingerprint; post-receipt doc-gate delta open | 00 satisfied; execute later doc-gate change on integrated source before current-tree closure | workspace manifests/lock, empty sema crate, architecture/Semgrep/CI gates, mechanical `lsp` to `diagnostics-stdio` move, receipt 01 |
 | 02 | `/root/ticket02_prep` | `VERIFIED` | RR re-review clean; owner-local proof green | surface and HIR owners/tests named in ticket 02, receipt 02 |
-| 03 | `/root` + `/root/ticket03_modules_impl` | `ACTIVE` | 02 verified; HIR/types focused proof observed; modules, final RR, and receipt 03 still open | HIR source-registry extension, types and modules owners/tests named in ticket 03, receipt 03 |
-| 04 | `/root` | `QUEUED` | waits for 02 and 03 | sema, binder, integrator-owned pipeline seam, legacy API inventory, receipt 04 |
+| 03 | `/root` + producer owners | `REPAIR` | prior owner proof preserved; Ticket 04 exposed new HIR/types/modules producer seams not covered by receipt 03 | HIR owned proof, types registry/declaration/rule solver, modules predeclaration/family refs, receipt 03 delta |
+| 04 | `/root` + scoped owners | `RED_CAPTURED — IMPLEMENTING` | 02 verified; 03 reopened producer seams; Binder owner proof is focused only | sema, Binder, integrator-owned pipeline seam, legacy API inventory, receipt 04 |
 | 05 | `/root/algebra_impl` | `QUEUED` | waits for 04 | algebra owner/tests plus integrator-owned pipeline seam, receipt 05 |
 | 06 | `/root/logic_impl` | `QUEUED` | waits for 04 | logic owner/tests plus integrator-owned pipeline seam, receipt 06 |
 | 07 | `/root` | `QUEUED` | waits for 05 and 06 | planning, final document assembly, curated facade, integrator seams, receipt 07 |
@@ -144,3 +172,238 @@ sections are normative. Concrete repairs:
 
 No ticket 04 implementation starts until ticket 03's final RR and receipt are
 complete. These plan corrections do not advance any implementation state.
+
+## 2026-09-21 Ticket 03 Verification And Consumer Delta Audit
+
+- Ticket 03 advanced `ACTIVE -> REVIEW -> REPAIR -> VERIFIED` on
+  `HEAD=f9ec9543888954106bb7c8bf1dc6500a5e6d34f7` plus the exact three-file
+  product follow-up fingerprint recorded in `receipts/03.md`.
+- Final RR repaired the API sketch, authority-byte ownership wording,
+  unsupported aggregate-Star and absent-export negatives, and field-by-field
+  fingerprint mutation matrix. Owner proof is 69 HIR + 204 surface + 56 types
+  + 109 modules tests, strict four-crate Clippy, architecture checker, and seven
+  architecture unit tests.
+- The deliberate aggregate-Star mutation failed its exact owner rail, was
+  reverted, and the full owner proof returned green.
+- Ticket 04 is now dependency-ready but remains `PLANNED`; no implementation
+  was started in this audit turn.
+- The inherited external consumer range `fcf106b..f9ec954` was audited
+  separately. Binder/planning focused green does not close their V2 contracts;
+  algebra and pipeline remain compiler-red as recorded above and in Tickets
+  04/05/07.
+
+## 2026-09-21 Ticket 04 Start
+
+- Frozen start: `HEAD=main=origin/main=f9ec9543888954106bb7c8bf1dc6500a5e6d34f7`.
+  Ticket 02/03 dirty owner follow-ups and packet docs are preserved and do not
+  overlap Ticket 04 product owners.
+- State: `PLANNED -> READY -> RED_CAPTURED`.
+- RED evidence: sema selected zero tests; binder's 29 V1-focused tests passed
+  but do not exercise incremental Join/projection frames or explicit EXISTS
+  capture sets; `cargo check -p quanta-gqlang-v2-pipeline --all-targets` failed
+  with 25 library errors plus 4 lib-test errors on retired module/type APIs,
+  private HIR fields, removed Compose/Quantifier, and composition DTO mismatch.
+- Integrator added only the four final-DAG path dependencies to the reserved
+  sema manifest. Sema implementation, binder migration, and adversarial review
+  proceed on disjoint write sets; pipeline remains deferred until Ticket 07.
+- Sema implementation exposed a missing upstream carrier: later-stage aliases
+  could not depend on an earlier expression fact without sema synthesizing a
+  type or invoking the types kernel more than once. Ticket 03 temporarily
+  reopens `VERIFIED -> REPAIR`; types owns the new
+  `BindingFromExpression(SourceQualifiedNodeIdV2)` edge and fail-closed
+  foreign/missing/self/forward/cycle validation. Ticket 04 consumes it and does
+  not infer the type itself.
+
+## 2026-09-21 Ticket 04 First Adversarial Checkpoint
+
+- `HEAD=main=origin/main=f9ec9543888954106bb7c8bf1dc6500a5e6d34f7` throughout this
+  checkpoint. Shared dirty product edits were preserved; no commit, reset, or
+  cherry-pick was performed by this owner.
+- Binder owner implemented sequential Join/projection frame visibility,
+  default output names and duplicate rejection, explicit nested/empty EXISTS
+  capture sets, exact `(owner HIR node, ordinal)` binding identity, and stable
+  diagnostic order. Its focused owner proof is 43/43 tests plus strict Clippy.
+  This does not prove sema or pipeline integration.
+- HIR now has an owned checked-document proof (one document-wide integrity
+  traversal, borrowed `as_checked` view). Types node-ID inputs now preserve
+  the caller's extended host+document registry and a prior-expression binding
+  dependency. HIR/types focused tests passed 70/59, respectively, before the
+  additional declaration/rule producer work below. These counts are a
+  checkpoint, not final Ticket 03 verification.
+- Read-only RR found further P0 ownership gaps: forward `let` references need
+  declaration-only lazy type dependencies while later relation aliases remain
+  forbidden; source rules need a types-owned bounded singleton type proof;
+  modules must predeclare IDs and validate every catalog family through one
+  session; generic graph selectors need host-agnostic typed authority; the
+  sema item/expr/relation DTOs must be lossless and source-reachable only.
+  Source-less authority errors cannot be fabricated as document byte zero.
+- Ticket 00/03/04/05/06 and the architecture owner map were amended with exact
+  producer/consumer decisions, kind matrix, tests, and completion gates.
+  `/root/ticket04_types_solver` owns the types producer repair;
+  `/root/ticket04_rr_audit` was reassigned the modules producer repair;
+  `/root/ticket04_sema_impl` owns the sema consumer. Their disjoint source
+  write sets are active. Ticket 04 remains `RED_CAPTURED — IMPLEMENTING` and
+  Ticket 03 remains `REPAIR` until fresh owner receipts exist.
+
+## 2026-09-21 All-Ticket Final Reconciliation Checkpoint
+
+- Exact reference is still `main@f9ec9543888954106bb7c8bf1dc6500a5e6d34f7`
+  plus shared dirty edits. No implementation commit or history rewrite was
+  made by the integrator. Per-ticket current-code/duplicate-owner/remaining
+  work sections were added to Tickets 03-09; Tickets 00/04/05 and target
+  architecture were corrected to the actual six source stages and 12 existing
+  algebra operators. The invented `Unnest`/`Intersect`/`Except` work was
+  explicitly removed.
+- Live sema RR found a seven-stage relation draft and public arbitrary-output
+  constructors; the owner narrowed the dirty draft to six stages with a
+  checked Join subkind and crate-scoped stage constructors. It still rejects
+  every nonempty document in `resolve_document_bodies`, so no Ticket 04 green
+  is recorded. Exact catalog-ref/proof and item-ID ties remain open.
+- Types' initial rule solver subset is 5/5 green and declaration-dependency
+  subset 3/3 green; full solver matrix and final full owner receipt remain
+  open. Modules' new predeclaration/family suite subset is 6/6 green; its
+  full owner suite/strict Clippy and final receipt remain open. Subset outcomes
+  are not promoted to Ticket 03 `VERIFIED`.
+- `python3 tools/architecture/check_architecture.py` passed at this checkpoint:
+  14 members, 43 normal edges (21 final, 22 declared transitional), one
+  declared transitional dev edge. `git diff --check` passed. Neither is
+  final-DAG, workspace, remote CI, or packet closure evidence.
+
+## 2026-09-21 Second All-Ticket Live Audit
+
+- HEAD remains `f9ec9543888954106bb7c8bf1dc6500a5e6d34f7`; the shared
+  dirty overlay is moving as the disjoint HIR/types/modules/sema owners work.
+  Tickets 01/02 retain their frozen owner receipts, 03 is `REPAIR`, 04 is
+  `RED_CAPTURED — IMPLEMENTING`, and 05-09 are not started. No owner-local
+  checkpoint is promoted to workspace integration.
+- Ticket 03 types now has a declaration-only lazy dependency and finite-domain
+  rule solver using the existing registries. Latest all-targets check passed;
+  the earlier 67-test full suite predates new tests. The post-repair types
+  suite passed 78/78 and strict Clippy passed on that checkpoint.
+  Constructed Record/List now measures 6,884 steps over 74 candidate types
+  after major charge-before-work repairs; canonical source budget usage,
+  remaining fixed/input-map allocation, contextual negatives, and
+  sema-owned host-signature
+  sealing remain gates. Modules now has one-session
+  predeclaration/resolution/probe, local/host/visible/external provenance
+  collision rejects, and 122/122 owner-local tests plus strict Clippy on
+  verified file hashes in `receipts/03.md`. This does not prove sema consumes
+  all family references or make Ticket 03 verified.
+- Ticket 04 sema has 8/8 focused `v3_document_transaction` tests, including
+  forward value declarations and source-rule relational EXISTS rejection.
+  A separate earlier 19-test sema all-target run passed, followed by further
+  GraphQuery/Presentation source edits not covered by that result. Sema strict
+  Clippy and full owner/family matrix have not passed. Binder's 43/43 and
+  strict Clippy are separate owner proof, not document transaction proof.
+  Later isolated GraphQuery, SHOW, Catalog/RuleBinding, CHECK, and Query/Source
+  tests brought source-positive root reachability to 7/9; Rule and
+  Composition plus non-Scan relation stages remain RED. The latest sema
+  `cargo check --tests` passed, but no post-delta full suite/Clippy receipt
+  exists.
+- The shared Boolean parser permits relational EXISTS in a rule body. Ticket
+  00 now pins an explicit semantic prohibition there, with exact-span source
+  and direct-solver negatives; query EXISTS remains supported and must be
+  typed/capturing. Tickets 03/04 contain the work. No grammar split or silent
+  unsupported behavior is inferred.
+- `python3 tools/architecture/check_architecture.py` passed again on this
+  overlay: 14 members, 43 normal edges (21 final, 22 transitional), one
+  transitional dev edge. This is transition-only evidence. The 05-09
+  dependency and final-DAG gates in their tickets remain unchanged.
+- Ticket 01 post-receipt doc-gate recheck attempted on the live tree and
+  exited 101 before selecting the test: its pipeline dependency still has
+  25 V1-consumer compiler errors. The new assertion remains unexecuted;
+  Ticket 07's pipeline integration must precede the exact rerun. Final
+  architecture mode independently exits 1 on the 22 normal and one dev
+  declared transitional edges; transition-mode green is not final-DAG proof.
+
+## Later Ticket 03-06 Contract Audit Delta
+
+- Types' subsequent owner-local frozen source passed 79/79 all-target tests
+  and strict Clippy. Shape-aware Record/List usage is 15 nodes, 20 edges,
+  8,632 steps over 74 candidates; the earlier 78/78 and 6,884-step entries
+  are historical. Receipt 03 records hashes. Ticket 03 remains `REPAIR`:
+  source budget projection, catalog predicate identity, remaining allocation
+  audit, and combined owner/consumer proof are open.
+- Sema later passed 26/26 all-target owner tests before an additional FIND
+  depth-negative edit. Its strict Clippy remains RED and Rule/Composition
+  source producers are absent; no Ticket 04 `FOCUSED_GREEN` is recorded.
+  Row-aligned output columns now carry an exact scan-stage origin and FIND
+  carries checked item location plus budget caps. These producer shapes still
+  require wrong-scan/foreign-location mutation proof.
+- The read-only Ticket 05/06 handoff found that a bare `Vec<ResolvedRuleV2>`
+  cannot prove a complete source program, and `ResolvedRuleV2::try_new`
+  currently compares caller-assembled expected/actual call lists. Ticket 04
+  must seal complete Rule membership and independent checked-HIR/types call
+  equality. Ticket 06 must use iterative budgeted Tarjan, reject undeclared
+  targets, and produce a canonical real edge/path cycle witness. Its current
+  logic→algebra edge exists only for EXISTS Semi/Anti, now Ticket 05-owned.
+  The target DAG was corrected to `logic -> sema + types`; the checker and
+  actual Cargo edge remain unchanged until Ticket 06's recorded migration.
+- A later focused sema document suite selected/executed 16/16 after a simple
+  unary Rule source path and FIND depth-over-budget negative. Named root
+  reachability is now 8/9; call-bearing Rule still rejects and Composition
+  remains absent. The result is not a post-edit all-target or strict Clippy
+  receipt, and Ticket 06 SCC source reachability is still RED.
+
+## Later Ticket 07-09 Adversarial Audit Delta
+
+- Ticket 07's initial planner sketch omitted Meta and Composition, lacked a
+  concrete result/explain carrier, and left pipeline/Cargo.toml outside its
+  edge-cut write set. Its cost labels also conflicted with live V1 fields.
+  The ticket now pins exhaustive plan/nonplan dispatch, exact nested/inline
+  identities, retained result/explain facts, and a four-field V2 success
+  cost schema; the dead V1 unsupported field moves to typed diagnostics.
+  No Ticket 07 code was executed or called green.
+- Ticket 08's NDJSON CRLF limit needed one pending-CR state; inline argv and
+  non-regular files needed preallocation byte caps. Live `Lsp` public symbols
+  escaped the package-name-only scan. The ticket now names exact machine
+  states and boundary cases. Ticket 09's CLI/service parity runs via a
+  dependency-neutral script that builds/discovers both binaries, not a
+  conformance Cargo test with unavailable dependency `CARGO_BIN_EXE_*`.
+- Ticket 09 now accounts separately for 18 root families and Decl/HornRule
+  supplemental units. Its resource map references owner receipts per
+  dimension and runs representative cross-boundary cases instead of copying
+  every limit case into every family row. These are queued acceptance
+  requirements, not a completed conformance receipt.
+
+## Latest Ticket 03/04 Owner Checkpoints
+
+- Types superseded the earlier 79/79 checkpoint with 81/81 all-target tests
+  and strict Clippy after iterative budgeted rule prepass, nearest lexical
+  shadow verification, and types-owned unary source-callable projection.
+  Hashes are in `receipts/03.md`. Host catalog predicate identity remains a
+  separate types/modules producer change, not covered by this result.
+- Sema superseded the earlier 30/30 and 34/34 checkpoints with 36/36
+  all-target owner tests. Source-local self/mutual Rule calls now produce
+  exact typed dependency edges; builtin calls stay outside SCC. Host calls,
+  Query non-Scan stages, Inline VIEW, Composition, and strict Clippy remain
+  open. Neither owner checkpoint is a Ticket 03/04 closeout or Ticket 06
+  source SCC legality proof.
+
+## Final Ticket Audit Delta — owner-local evidence and new semantic seams
+
+- The preceding 81/81 types and 122/122 modules lines are historical. Latest
+  owner-local source/test fingerprints in `receipts/03.md` passed types 83/83
+  and modules 126/126 all-target tests plus strict Clippy. Distinct host key
+  and same-session catalog proof are produced; sema host-call ingress has a
+  source positive, but a combined Ticket 03 receipt is still open.
+- Ticket 04's 36/36 full sema result predates later source work. A subsequent
+  43/43 all-target run covered Filter/Project/inner Join/Sort and a
+  modules-proven host Predicate call; strict Clippy exited 101 with 45
+  lib-test errors. Binder GroupBy still leaks the pre-group frame;
+  Composition local working-set authority is pinned but not implemented.
+- Ticket 04 owns Binder key-only Group output and aggregate-only partition
+  authority; Ticket 05 consumes that sealed contract. Ticket 00 pins both
+  sort directions to NULLS LAST. Types owns host key, modules owns host
+  provenance proof, sema owns call collision and SCC-edge selection. These
+  splits prevent algebra, logic, or planning from adding parallel resolvers.
+
+The 43/43 sema run's three-file hash subset and strict-Clippy RED are in
+`receipts/04.md`. Group, Composition, Inline VIEW, relational EXISTS/graph
+subqueries, and complete all-family transaction still block Ticket 04
+focused green. The receipt is not a whole dirty-tree fingerprint.
+
+After that 43/43 run, Binder and sema each passed two focused Group tests on
+the key-only public frame and Set row, retaining the pre-group frame as a
+separate partition input. Aggregate-only candidate authorization is still
+RED; this focused 2+2 does not supersede all-target/Clippy evidence.

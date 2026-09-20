@@ -5,6 +5,7 @@ mod check;
 mod diag;
 mod env;
 mod op;
+mod solver;
 mod ty;
 
 pub use builtin::{
@@ -13,11 +14,11 @@ pub use builtin::{
 };
 pub use check::{
     ContextualExpectedTypeInputV2, ContextualTypeReasonV2, ExpressionTypeKernelV2,
-    ExpressionTypeStateV2, ResolvedCallTargetV2, ResolvedCallableInputV2,
-    ResolvedPredicateCallableV2, ResolvedPredicateIdV2, ResolvedRelationPredicateInputV2,
-    ResolvedTypeInputEntryV2, ResolvedTypeInputValueV2, ResolvedTypeInputsV2,
-    SourceQualifiedNodeIdV2, TypedExpressionFactV2, TypedExpressionFactsV2, TypedLiteralFactV2,
-    UnknownTypeCauseV2,
+    ExpressionTypeStateV2, HostCallableNamespaceV2, ResolvedCallTargetV2, ResolvedCallableInputV2,
+    ResolvedHostPredicateCallableV2, ResolvedHostPredicateKeyV2, ResolvedPredicateCallableV2,
+    ResolvedPredicateIdV2, ResolvedRelationPredicateInputV2, ResolvedTypeInputEntryV2,
+    ResolvedTypeInputValueV2, ResolvedTypeInputsV2, SourceQualifiedNodeIdV2, TypedExpressionFactV2,
+    TypedExpressionFactsV2, TypedLiteralFactV2, UnknownTypeCauseV2,
 };
 pub use diag::{TypeAuthorityDiagnosticV2, TypeDiagnosticV2};
 pub use env::{
@@ -25,6 +26,11 @@ pub use env::{
     RelationSourceInputV2, RelationSourceV2,
 };
 pub use op::{OperatorIdV2, OperatorRegistryV2};
+pub use solver::{
+    RuleBindingIdV2, RuleCallInputV2, RuleCallableTargetV2, RulePredicateInputV2,
+    RuleSymbolInputV2, RuleTypeAnalysisV2, RuleTypeBudgetV2, RuleTypeProofV2, RuleTypeSolverV2,
+    RuleTypeUsageV2,
+};
 pub use ty::{
     CardinalityV1, CollectionTypeV1, FiniteF64V2, OptionalTypeV1, RecordFieldTypeV1, RecordFieldV1,
     RecordTypeV1, RelationTypeV1, ScalarTyV1, TupleTypeV1, TypeV1, TypedLiteralValueV2,

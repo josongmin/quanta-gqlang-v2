@@ -49,6 +49,8 @@ are similarly migrated, not duplicated.
 16. `crates/quanta-gqlang-v2-cli/tests/command_doc_gate.rs`
 17. `crates/quanta-gqlang-v2-diagnostics-stdio/tests/method_allowlist_doc_gate.rs`
 18. CLI and diagnostics owner-local test support modules
+19. `tools/test_frontdoor_parity.py` — dependency-neutral two-binary
+    build/discovery/execution harness, replacing the CLI-owned LSP parity test
 
 Surface, modules, sema, and logic budget implementations are read-only inputs
 from tickets 02, 03, 04, and 06. Missing charge points reopen their owner ticket;
@@ -111,8 +113,14 @@ frontend diagnostics retain source spans. An oversized frame reports range
 
 `max_frame_bytes` counts JSON payload bytes only: it excludes the required LF
 and the optional CR immediately before LF. A payload exactly at the limit is
-accepted. Observing payload byte `limit + 1` switches to discard-through-LF
-without retaining later payload bytes. Source length is checked independently
+accepted. Keep one pending trailing CR byte outside the payload counter: if
+the next byte is LF, drop that CR as framing; otherwise commit it as payload
+before processing the next byte. Only when the committed payload count reaches
+`limit + 1` switch to discard-through-LF without retaining later payload
+bytes. At EOF, a pending CR is payload of an incomplete frame, not a free
+terminator. Test exact-limit+CRLF (accept), exact-limit+CR+non-LF (oversize),
+fragmented CR/LF at the cap, and limit+1 without CR (discard/recover). Source
+length is checked independently
 after JSON decode and reports `frontend.resource_limit_exceeded` with dimension
 `max_source_bytes`.
 
@@ -169,7 +177,13 @@ truncate silently, or clear unrelated buffered requests.
 3. The diagnostics stdio service applies `max_frame_bytes` before deserialization
    and passes the same authority budget to document analysis.
 4. CLI applies `max_source_bytes` while reading and passes the same open
-   authority budget to document analysis.
+   authority budget to document analysis. Both `--file` and inline argv are
+   ingress paths: check a regular file's metadata when available, but read
+   every file/pipe through a bounded `limit + 1` stream before constructing
+   a `String`; incrementally sum each inline argument's UTF-8 byte length
+   plus join spaces with checked arithmetic before cloning/joining. Reject
+   over-limit input without echoing its bytes in an error. A precheck only
+   on the file path leaves inline argv and non-regular files unbounded.
 5. Every cumulative field is charged once by the canonical owner table in
    `TARGET_ARCHITECTURE.md`. Pipeline passes identical immutable configuration
    and creates one counter per owner; it does not pass remaining counters across
@@ -220,11 +234,18 @@ Prove the old identity did not return:
 test -z "$(rg -l 'quanta[-_]gqlang[-_]v2[-_]lsp' \
   Cargo.toml Cargo.lock crates README.md docs/language)"
 rg -n 'UTF-8 NDJSON, not JSON-RPC/LSP' README.md docs/language
+test -z "$(rg -l '\b(Lsp|lsp)\b|Lsp[A-Z]|_[Ll][Ss][Pp]_' \
+  crates --glob '*.rs' --glob 'Cargo.toml')"
 ```
 
 The first command must find no old identity; the second must find the honest
 transport description. Historical audit evidence under this Sep-21 packet may
 retain the old name because it describes the audited base.
+The third command covers public and test symbols such as live
+`LspServerV1`, `StdioLspErrorV1`, and `v3_cli_lsp_parity.rs`; renaming only
+the package string is insufficient. Keep any honest “not JSON-RPC/LSP” prose
+outside the active `crates` scan and document an exact allowlist if a future
+source comment must retain it.
 
 ## Required Budget Fields
 
@@ -263,12 +284,17 @@ object expectations that contradict NDJSON. Migrate CLI
 `v3_cli_fmt_idempotence.rs`; rename every remaining `lsp` test/helper token.
 
 1. `[MOVE+REWRITE]` `crates/quanta-gqlang-v2-cli/tests/v3_cli_front_door_contract.rs` to `crates/quanta-gqlang-v2-cli/tests/v3_document_frontdoor_v2.rs`
-2. `[MOVE+REWRITE]` `crates/quanta-gqlang-v2-cli/tests/v3_cli_lsp_parity.rs` to `crates/quanta-gqlang-v2-conformance/tests/v3_cli_service_parity_v2.rs`; this black-box harness owns parity without a CLI-to-service Cargo edge
+2. `[MOVE+REWRITE]` `crates/quanta-gqlang-v2-cli/tests/v3_cli_lsp_parity.rs` to `tools/test_frontdoor_parity.py`; this black-box harness owns parity without a CLI-to-service or conformance-to-binaries Cargo edge
 3. `[RENAME+REWRITE CURRENT]` `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_extractor_edges.rs` to `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_resynchronization.rs`
 4. `[ADD]` `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_resource_limits.rs`
 5. `[RENAME+REWRITE CURRENT]` `crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs` to `crates/quanta-gqlang-v2-diagnostics-stdio/tests/document_diagnostics_parity.rs`
 6. `[UPDATE AFTER CRATE MOVE]` remaining diagnostics byte/JSON/frame/determinism/allowlist tests in place
 7. `[ADD]` `crates/quanta-gqlang-v2-pipeline/tests/v3_frontend_budget.rs`
+8. `[UPDATE]` `crates/quanta-gqlang-v2-cli/tests/v3_cli_plan_summary.rs`
+   and `v3_cli_item_surfacing.rs` — consume Ticket 07's ordered four-field
+   `SemanticCostV2` accessor; remove the dead V1
+   `cost.unsupported_reason_code=none` success line while retaining typed
+   unsupported reason on error output
 
 Audited transport/front-door disposition after the NDJSON cut:
 
@@ -314,7 +340,7 @@ following valid request is processed.
 ```bash
 cargo test -p quanta-gqlang-v2-cli
 cargo test -p quanta-gqlang-v2-diagnostics-stdio
-cargo test -p quanta-gqlang-v2-conformance --test v3_cli_service_parity_v2
+python3 tools/test_frontdoor_parity.py
 cargo test -p quanta-gqlang-v2-pipeline --test v3_frontend_budget
 cargo clippy -p quanta-gqlang-v2-cli -p quanta-gqlang-v2-diagnostics-stdio --all-targets -- -D warnings
 python3 tools/architecture/check_architecture.py
@@ -410,14 +436,54 @@ a total-byte proof.
 
 ### Parity and final dependency edge
 
-Preserve CLI/service parity using a separate black-box integration harness that
-depends on both binaries or libraries. Do not retain `CLI -> diagnostics-stdio`
-even as a dev dependency. Move `v3_cli_service_parity_v2` to that harness before
-the architecture guard switches to final mode. The receipt records the old
-test deletion and new harness path; the final DAG has no exception.
+Preserve CLI/service parity using `tools/test_frontdoor_parity.py`, a
+dependency-neutral black-box harness. It builds both exact named bins with
+`cargo build --message-format=json`, selects the two `compiler-artifact`
+records whose target kind is `bin` and package/target names match, rejects a
+missing or duplicate executable path, then invokes both with the same bounded
+fixtures and compares canonical stage/code/source byte spans and analysis
+status. It reports selected/executed fixture counts and nonzero exit on drift.
+Do not rely on `CARGO_BIN_EXE_*` for binaries owned by another package: Cargo
+does not supply those to conformance tests. Do not retain
+`CLI -> diagnostics-stdio` even as a dev dependency or add conformance dev
+edges to the binaries. The receipt records the old test deletion and new
+script path; `just ci` and Ticket 09's final recipe invoke this script, while
+workspace Cargo tests remain independently runnable.
 
 Migrate old compiled-item field consumers in CLI `v3_query.rs` and
 `v3_format.rs` to facade accessors. Record zero matches for the removed fields
 and V1 compile/analyze names.
 
 Requires 07. Blocks 09.
+
+## 2026-09-21 Live-Tree Final Reconciliation (HEAD `f9ec954`)
+
+The current diagnostics crate is already named `diagnostics-stdio`; do not
+repeat Ticket 01's rename. Its live manifest still depends on pipeline, and
+the CLI still has a `v3_cli_lsp_parity.rs` test. Preserve the byte-fragment,
+UTF-8, deterministic-output, and process assertions; replace the framing and
+request parser once, then migrate the parity harness to conformance. The
+direct `CLI -> diagnostics-stdio` edge, if present during migration, is
+transitional only and must be absent in final architecture mode.
+
+The NDJSON decoder must first bound bytes through LF, then decode UTF-8, then
+parse a JSON object with duplicate-key rejection *during* deserialization.
+Parsing into a last-write-wins generic object and checking duplicates later
+cannot prove the wire contract. Assert the decoded `source` byte length
+separately; escaped JSON may be shorter or longer than the source it encodes.
+An over-limit line must discard only through its LF and leave following
+complete lines intact. Test the exact-limit payload, `limit+1` discard,
+invalid UTF-8/JSON/duplicate key, incomplete EOF tail, and a subsequent valid
+frame under one-byte and coalesced writes. Include exact-limit+CRLF,
+exact-limit+CR+non-LF, and split CR/LF boundary cases so CR lookbehind cannot
+silently exceed the payload cap. For CLI, test exact/+1 inline joined-argv
+bytes, exact/+1 regular file, and a non-regular input stream whose metadata
+cannot prove its eventual length; no path may allocate the full source before
+rejecting.
+
+Only the facade document APIs are allowed on executable paths. The receipt
+must show the direct pipeline dependency removed from diagnostics, direct
+internal frontend dependencies removed from CLI, the cost-schema accessor
+used by CLI, every tracked test move, and the frozen 244-line V1 seam
+inventory reduced to zero active definitions/usages before deleting that
+temporary inventory.

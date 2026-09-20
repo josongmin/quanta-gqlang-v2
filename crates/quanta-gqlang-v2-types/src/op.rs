@@ -131,6 +131,13 @@ mod tests {
 }
 
 impl OperatorRegistryV2 {
+    pub(crate) fn all_unary_overloads(&self) -> impl Iterator<Item = &UnaryOverloadV1> {
+        self.unary.values().flatten()
+    }
+
+    pub(crate) fn all_binary_overloads(&self) -> impl Iterator<Item = &BinaryOverloadV1> {
+        self.binary.values().flatten()
+    }
     fn try_from_entries(
         unary: Vec<(String, UnaryOverloadV1)>,
         binary: Vec<(String, BinaryOverloadV1)>,

@@ -273,6 +273,50 @@ pub struct CheckedHirDocumentV2<'a> {
     node_count: usize,
 }
 
+/// Owned proof that a complete HIR document passed the document-wide
+/// integrity traversal exactly once.
+///
+/// The document and its proof metadata cannot be separated through the public
+/// API. Downstream document transactions can borrow a [`CheckedHirDocumentV2`]
+/// without repeating integrity validation.
+#[derive(Clone, Debug)]
+pub struct CheckedHirDocumentOwnedV2 {
+    document: HirDocumentV1,
+    node_count: usize,
+}
+
+impl CheckedHirDocumentOwnedV2 {
+    /// Consume and validate one document, retaining the validated document.
+    pub fn try_new(document: HirDocumentV1) -> Result<Self, HirIntegrityDiagnosticV2> {
+        let node_count = check_document_v2(&document)?.node_count();
+        Ok(Self {
+            document,
+            node_count,
+        })
+    }
+
+    /// Borrow the checked document and its retained proof metadata.
+    #[must_use]
+    pub const fn as_checked(&self) -> CheckedHirDocumentV2<'_> {
+        CheckedHirDocumentV2 {
+            document: &self.document,
+            node_count: self.node_count,
+        }
+    }
+
+    /// Borrow the underlying document without discarding its proof carrier.
+    #[must_use]
+    pub const fn document(&self) -> &HirDocumentV1 {
+        &self.document
+    }
+
+    /// Total id-bearing nodes across all roots.
+    #[must_use]
+    pub const fn node_count(&self) -> usize {
+        self.node_count
+    }
+}
+
 impl<'a> CheckedHirDocumentV2<'a> {
     /// Checked document.
     #[must_use]

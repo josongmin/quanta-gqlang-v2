@@ -70,7 +70,56 @@ pub enum TypeDiagnosticV2 {
         node_id: HirNodeIdV1,
         location: LocatedSpanV2,
     },
+    InvalidBindingDependency {
+        node_id: HirNodeIdV1,
+        target_node_id: HirNodeIdV1,
+        location: LocatedSpanV2,
+    },
+    UnavailableBindingDependency {
+        node_id: HirNodeIdV1,
+        target_node_id: HirNodeIdV1,
+        location: LocatedSpanV2,
+    },
+    CyclicDeclarationDependency {
+        node_id: HirNodeIdV1,
+        location: LocatedSpanV2,
+    },
+    InvalidRuleTypeBudget,
+    InvalidRuleInput {
+        location: LocatedSpanV2,
+    },
+    InvalidRuleHead {
+        node_id: HirNodeIdV1,
+        location: LocatedSpanV2,
+    },
+    UnknownRuleCallable {
+        location: LocatedSpanV2,
+    },
+    RuleTypeResourceLimit {
+        dimension: &'static str,
+        location: LocatedSpanV2,
+    },
+    ContradictoryRuleType {
+        location: LocatedSpanV2,
+    },
+    AmbiguousRuleType {
+        location: LocatedSpanV2,
+        candidates: usize,
+    },
+    UnanchoredRecursiveRule {
+        location: LocatedSpanV2,
+    },
+    RulePredicateArity {
+        location: LocatedSpanV2,
+    },
+    RelationExistsInRule {
+        location: LocatedSpanV2,
+    },
+    SourceRegistryMismatch {
+        location: LocatedSpanV2,
+    },
     InvalidResolvedIdentity,
+    HostPredicateIdentityLimit,
     UnknownOperator {
         node_id: HirNodeIdV1,
         symbol: String,
@@ -114,6 +163,62 @@ pub enum TypeDiagnosticV2 {
 
 impl TypeDiagnosticV2 {
     #[must_use]
+    pub const fn primary(&self) -> Option<LocatedSpanV2> {
+        match self {
+            Self::DuplicateRecordField { primary, .. }
+            | Self::DuplicateUnionTag { primary, .. } => Some(*primary),
+            Self::InvalidTypeName { location }
+            | Self::IntegerOutOfRange { location, .. }
+            | Self::FloatNonFinite { location }
+            | Self::FloatUnderflow { location, .. }
+            | Self::MalformedLiteral { location, .. }
+            | Self::MissingNodeFact { location, .. }
+            | Self::DuplicateNodeFact { location, .. }
+            | Self::ForeignDocumentFact { location, .. }
+            | Self::UnusedContextualInput { location, .. }
+            | Self::WrongNodeFactKind { location, .. }
+            | Self::InvalidBindingDependency { location, .. }
+            | Self::UnavailableBindingDependency { location, .. }
+            | Self::CyclicDeclarationDependency { location, .. }
+            | Self::InvalidRuleInput { location }
+            | Self::InvalidRuleHead { location, .. }
+            | Self::UnknownRuleCallable { location }
+            | Self::RuleTypeResourceLimit { location, .. }
+            | Self::ContradictoryRuleType { location }
+            | Self::AmbiguousRuleType { location, .. }
+            | Self::UnanchoredRecursiveRule { location }
+            | Self::RulePredicateArity { location }
+            | Self::RelationExistsInRule { location }
+            | Self::SourceRegistryMismatch { location }
+            | Self::UnknownOperator { location, .. }
+            | Self::UnknownBuiltin { location, .. }
+            | Self::BadOverload { location, .. }
+            | Self::BadProjection { location, .. }
+            | Self::HeterogeneousCollection { location, .. }
+            | Self::InvalidStarArgument { location, .. } => Some(*location),
+            Self::ExtraNodeFact { .. }
+            | Self::InvalidRuleTypeBudget
+            | Self::InvalidResolvedIdentity
+            | Self::HostPredicateIdentityLimit
+            | Self::RegistryDuplicateId { .. }
+            | Self::RelationUsedAsValue
+            | Self::TypeShapeLimit
+            | Self::RedundantOptional => None,
+        }
+    }
+
+    #[must_use]
+    pub const fn secondary(&self) -> Option<LocatedSpanV2> {
+        if let Self::DuplicateRecordField { secondary, .. }
+        | Self::DuplicateUnionTag { secondary, .. } = self
+        {
+            Some(*secondary)
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
     pub const fn code(&self) -> &'static str {
         match self {
             Self::InvalidTypeName { .. } => "types.invalid_type_name",
@@ -129,7 +234,22 @@ impl TypeDiagnosticV2 {
             Self::ExtraNodeFact { .. } => "types.extra_resolved_input",
             Self::UnusedContextualInput { .. } => "types.unused_contextual_input",
             Self::WrongNodeFactKind { .. } => "types.wrong_resolved_input_kind",
+            Self::InvalidBindingDependency { .. } => "types.invalid_binding_dependency",
+            Self::UnavailableBindingDependency { .. } => "types.unavailable_binding_dependency",
+            Self::CyclicDeclarationDependency { .. } => "types.cyclic_declaration_dependency",
+            Self::InvalidRuleTypeBudget => "types.invalid_rule_type_budget",
+            Self::InvalidRuleInput { .. } => "types.invalid_rule_input",
+            Self::InvalidRuleHead { .. } => "types.invalid_rule_head",
+            Self::UnknownRuleCallable { .. } => "types.unknown_rule_callable",
+            Self::RuleTypeResourceLimit { .. } => "types.rule_type_resource_limit",
+            Self::ContradictoryRuleType { .. } => "types.contradictory_rule_type",
+            Self::AmbiguousRuleType { .. } => "types.ambiguous_rule_type",
+            Self::UnanchoredRecursiveRule { .. } => "types.unanchored_recursive_rule",
+            Self::RulePredicateArity { .. } => "types.rule_predicate_arity",
+            Self::RelationExistsInRule { .. } => "types.relation_exists_in_rule",
+            Self::SourceRegistryMismatch { .. } => "types.source_registry_mismatch",
             Self::InvalidResolvedIdentity => "types.invalid_resolved_identity",
+            Self::HostPredicateIdentityLimit => "types.host_predicate_identity_limit",
             Self::UnknownOperator { .. } => "types.unknown_operator",
             Self::UnknownBuiltin { .. } => "types.unknown_builtin",
             Self::BadOverload { .. } => "types.bad_overload",
@@ -200,7 +320,22 @@ impl fmt::Display for TypeDiagnosticV2 {
             | Self::ExtraNodeFact { .. }
             | Self::UnusedContextualInput { .. }
             | Self::WrongNodeFactKind { .. }
+            | Self::InvalidBindingDependency { .. }
+            | Self::UnavailableBindingDependency { .. }
+            | Self::CyclicDeclarationDependency { .. }
+            | Self::InvalidRuleTypeBudget
+            | Self::InvalidRuleInput { .. }
+            | Self::InvalidRuleHead { .. }
+            | Self::UnknownRuleCallable { .. }
+            | Self::RuleTypeResourceLimit { .. }
+            | Self::ContradictoryRuleType { .. }
+            | Self::AmbiguousRuleType { .. }
+            | Self::UnanchoredRecursiveRule { .. }
+            | Self::RulePredicateArity { .. }
+            | Self::RelationExistsInRule { .. }
+            | Self::SourceRegistryMismatch { .. }
             | Self::InvalidResolvedIdentity
+            | Self::HostPredicateIdentityLimit
             | Self::UnknownOperator { .. }
             | Self::UnknownBuiltin { .. }
             | Self::HeterogeneousCollection { .. }
@@ -213,6 +348,37 @@ impl fmt::Display for TypeDiagnosticV2 {
     }
 }
 impl std::error::Error for TypeDiagnosticV2 {}
+
+#[cfg(test)]
+mod tests {
+    use super::TypeDiagnosticV2;
+    use quanta_gqlang_v2_hir::{LocatedSpanV2, SourceIdV2, SpanV1};
+
+    #[test]
+    fn source_locations_are_projected_by_the_diagnostic_owner() {
+        let primary = LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(7),
+            span: SpanV1::new(3, 5),
+        };
+        let secondary = LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(7),
+            span: SpanV1::new(12, 14),
+        };
+        let duplicate = TypeDiagnosticV2::DuplicateRecordField {
+            name: "x".into(),
+            primary,
+            secondary,
+        };
+        assert_eq!(duplicate.primary(), Some(primary));
+        assert_eq!(duplicate.secondary(), Some(secondary));
+        let located = TypeDiagnosticV2::RelationExistsInRule { location: primary };
+        assert_eq!(located.primary(), Some(primary));
+        assert_eq!(located.secondary(), None);
+        let locationless = TypeDiagnosticV2::InvalidRuleTypeBudget;
+        assert_eq!(locationless.primary(), None);
+        assert_eq!(locationless.secondary(), None);
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TypeAuthorityDiagnosticV2 {

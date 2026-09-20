@@ -36,13 +36,19 @@ payloads; they must not restate current Tarjan positives under new filenames.
 6. `crates/quanta-gqlang-v2-logic/src/aggregate.rs`
 7. `crates/quanta-gqlang-v2-logic/src/lib.rs`
 8. `crates/quanta-gqlang-v2-logic/Cargo.toml` — integrator only; remove direct
-   HIR edge and add sema
+   HIR and algebra edges and add sema
 9. `/Cargo.lock` — integrator only if the edge cut changes it
 10. `crates/quanta-gqlang-v2-pipeline/src/compile.rs` — integrator only
 11. the exact logic and pipeline rule/graph tests listed below
 12. `docs/plans/sep-21-gqlang-sota-frontend-reconstruction/receipts/06.md`
 13. `crates/quanta-gqlang-v2-logic/tests/support/mod.rs` when repeated `sp`,
     `id`, and graph-reference helpers from touched tests are consolidated
+14. `tools/architecture/check_architecture.py` and its `valid`/transition
+    fixtures — integrator only; move logic→algebra from final to declared
+    transitional edges while it is still present, then remove the actual and
+    transitional edge in this ticket; rerun the architecture tests and both
+    transition/final modes. Ticket 01's earlier edge-count receipt is historical
+    and does not prove this changed graph.
 
 `crates/quanta-gqlang-v2-sema/src/rule.rs` is a read-only input owned and frozen
 by ticket 04. If it lacks resolved IDs, polarity, spans, or budget projection,
@@ -50,15 +56,24 @@ stop and amend 04; do not patch sema from this ticket.
 
 ## Rule Implementation
 
-1. Accept only the complete `Vec<ResolvedRuleV2>` emitted by ticket 04; logic
-   performs no lexical name, variable, call-kind, or arity resolution.
+1. Accept only the complete Rule enumeration sealed by ticket 04's
+   `SemanticDocumentV2`, not an arbitrary caller-supplied
+   `Vec<ResolvedRuleV2>`; logic performs no lexical name, variable,
+   call-kind, or arity resolution.
 2. Validate that every dependency target ID belongs to the frozen program and
    that every edge retains polarity/span.
 3. Build one document rule program before Tarjan/stratification.
-4. Change the existing dependency graph/Tarjan inputs from names to stable IDs.
+4. Change the existing dependency graph/Tarjan inputs from names to stable
+   IDs. Only locally declared predicate targets become SCC nodes/edges;
+builtin/external calls are not silently inserted as local graph nodes.
+   Ticket 04's `ResolvedRuleV2::calls()` contains only source-local predicate
+   dependencies; builtin/host call facts remain in the typed body but are not
+   SCC edges. A bare types `Predicate(id)` target does not prove local origin.
 5. Reject recursive aggregate and negation cycles from the retained edge
    polarity.
-6. Preserve head/body/edge spans on deterministic cycle diagnostics.
+6. Preserve head/body/edge checked locations on deterministic cycle
+   diagnostics; choose a canonical offending edge and actual cycle path
+   independent of source/call insertion order.
 7. Migrate the existing recursive-aggregate matrix carrier to fixed
    `RejectAllRecursiveAggregatesV2` policy. Remove default `min`/`max`
    admission and public `with_admitted` extension from the V2 path; this packet
@@ -70,27 +85,17 @@ stop and amend 04; do not patch sema from this ticket.
 2. Require explicit bounded depth for every transitive traversal in this packet.
 3. Preserve max path length, witness cap, dedup identity, tie-break, relation
    shape, and endpoint contract in `GraphQueryContractV2`.
-4. Use iterative graph traversal or a checked graph-depth budget.
+4. Use iterative graph traversal or a checked graph-depth budget. This
+   frontend performs static contract validation only; it does not enumerate
+   runtime witnesses.
 5. Preserve nested FIND contracts inside CHECK.
 
 ## Required Contracts
 
 ```rust
-pub struct ResolvedRuleV2 {
-    item_id: SemanticItemIdV2,
-    predicate: ResolvedPredicateIdV2,
-    head_term: TypedExprV2,
-    body: TypedBoolExprV2,
-    dependencies: Vec<ResolvedPredicateEdgeV2>,
-    span: SpanV1,
-}
-
-pub struct ResolvedPredicateEdgeV2 {
-    target: ResolvedPredicateIdV2,
-    polarity: BodyPolarityV1,
-    span: SpanV1,
-}
-
+// Inputs are the sealed Ticket 04 `ResolvedRuleV2` and `ResolvedRuleCallV2`.
+// Each call retains its exact SourceQualifiedNodeIdV2, types-owned target,
+// polarity, and CheckedLocatedSpanV2; logic does not define a second edge DTO.
 pub struct RuleProgramContractV2 {
     document_source_id: SourceIdV2,
     member_item_ids: Vec<SemanticItemIdV2>,
@@ -99,6 +104,17 @@ pub struct RuleProgramContractV2 {
 }
 ```
 
+The Ticket 04 producer must compare each expected call-node ID, resolved
+target, polarity, and checked location to its types/HIR facts. A right call ID
+with a transplanted target is invalid. Logic projects only source-predicate
+targets into SCC edges; builtin or external-host calls retain their semantic
+facts but are not local recursive dependencies. Mutation tests cover both
+target transplant and omitted/duplicate/polarity-flipped call edges.
+The logic adapter reads the exact Rule item IDs from the same sealed semantic
+document, sorts/compares them to the program members, and rejects duplicate,
+missing, extra, foreign-source, or nonlocal-target IDs. The `Vec` field above
+is stored output, not a caller-selected proof input.
+
 `GraphQueryContractV2` must expose exact witness bounds through read-only
 accessors. A Boolean `bounded=true` is insufficient.
 
@@ -106,8 +122,8 @@ accessors. A Boolean `bounded=true` is insufficient.
 
 1. Verify ticket 04 produced predicate IDs and predeclared every source rule
    name; reopen 04 if the frozen input contract is incomplete.
-2. Validate and consume ticket 04's resolved dependency edges; do not rewalk
-   expression HIR or re-resolve calls.
+2. Validate and consume ticket 04's resolved dependency edges and complete
+   Rule item enumeration; do not rewalk expression HIR or re-resolve calls.
 3. Construct one `RuleProgramContractV2` from all document rules.
 4. Change Tarjan/stratification inputs from names to stable predicate IDs.
 5. Preserve user-facing names only for deterministic diagnostics/rendering.
@@ -118,7 +134,10 @@ accessors. A Boolean `bounded=true` is insufficient.
 8. Require explicit bounded depth for transitive graph traversal; no acyclic
    proof shortcut is admitted in this packet.
 9. Retain via/through as ordered path constraints.
-10. Make DFS/Tarjan iterative or charge every traversal step to graph budget.
+10. Replace recursive `TarjanState::strong_connect` with iterative frames so
+    the admitted 50k-node graph cannot exhaust the process stack. Charge
+    each edge visit, SCC emission, and stratification relaxation before work
+    or allocation; test exact limit and one-under step budget.
 11. Return exact graph and rule contracts to pipeline/planning.
 
 The private logic counter receives `max_rule_graph_nodes`,
@@ -145,6 +164,46 @@ No surface, sema, algebra, or planning counter is reused or recharged here.
 Existing SCC/stratification/witness positives remain in their owner files. The
 two new pipeline files prove public document reachability only.
 
+The existing 48 logic tests are a migration inventory, not 48 new tests:
+keep Tarjan positive/mutual/self-loop and stratification cases in
+`v3_logic_recursion.rs` but replace string keys and raw-HIR `from_rule`;
+replace the old `min` recursion admission and `with_admitted` extension with
+the fixed reject-all policy. In `v3_logic_hellgate.rs`, keep negation and
+aggregate cycles but assert the exact canonical edge-span diagnostic;
+unknown quantifier negatives move to sema. In `v3_graph_query_hellgate.rs`,
+flip the old PointsTo-without-depth and via-without-depth positives to exact
+bound failures. In `v3_graph_query_depth_waypoint_conflict.rs`, depth together
+with via/through must become valid and retain waypoint order. In
+`v3_logic_witness.rs`, keep cap/dedup/tie-break fields but remove the old
+acyclic-without-depth positive and keyword-only pins. `v3_logic_source.rs`
+EXISTS-to-Semi/Anti belongs to Ticket 05, not logic. Rewrite
+`test_endpoint_conflict.rs` to assert exact code, role, and checked location,
+not any error. External integration tests build source documents through
+Ticket 04's public sema transaction; they must not make private sema
+constructors public or invent a logic-side test DTO.
+
+Before the final DAG check, migrate every logic public diagnostic/request
+field that currently names HIR `SpanV1` or `GraphQueryKindV1` to Ticket 04's
+checked location and sema-reexported closed graph-kind carrier (or a single
+sema-owned wrapper). The direct HIR edge appears in
+`logic/src/diagnostic.rs`, `graph.rs`, and `witness.rs`; removing only the
+Cargo line is not a migration. The inherited `logic/src/source.rs` imports
+algebra solely to construct Semi/Anti joins. Transfer that behavior and its
+tests to Ticket 05, remove `source.rs`'s algebra use and the logic→algebra
+Cargo edge, and keep Rule/Graph typed adaptation within logic. This is a
+disjoint 05/06 owner handoff: Ticket 05 edits algebra, Ticket 06 edits logic,
+and Ticket 07 alone reconnects the pipeline; neither owner edits the other's
+crate to make a focused suite pass.
+
+`recursion.rs` currently inserts every call target as a graph node, including
+an undeclared target, and its recursive Tarjan DFS has no budget. The typed
+adapter must fail closed on a nonlocal predicate target, omit builtin/host
+calls from local SCC edges, use an explicit iterative work stack, and charge
+all relaxation visits. A sorted list of SCC names is not a diagnostic cycle
+witness: select a canonical offending negated/aggregate edge and prove an
+actual return path in the SCC, then pin edge location and permutation-stable
+rendering.
+
 Audited existing-test disposition:
 
 1. Strengthen `test_endpoint_conflict.rs` to assert
@@ -164,9 +223,9 @@ Audited existing-test disposition:
 
 | Source | Outcome |
 |---|---|
-| `rule r : x if r(x)` | recursive positive SCC |
-| `rule r : x if not r(x)` | `logic.negation_cycle` |
-| `rule r : x if count(r(x)) > 0` | recursive aggregate reject |
+| `rule r : x if x = 1 and r(x)` | anchored recursive positive SCC |
+| `rule r : x if x = 1 and not r(x)` | anchored `logic.negation_cycle` |
+| `rule r : x if x = 1 and count(r(x)) > 0` | anchored recursive aggregate reject |
 | recursive `min(r(x))` / `max(r(x))` | same recursive aggregate reject |
 | nonrecursive `count/min/max` | success when ordinary aggregate context allows it |
 | `rule r : x if r` | bare predicate reject |
@@ -199,9 +258,9 @@ ticket 07 and enumerated in receipt 06.
 ## RED
 
 ```text
-rule r : x if r(x)             -> recursive=false
-rule r : x if not r(x)         -> recursive=false
-rule r : x if count(r) > 0     -> recursive aggregate accepted
+rule r : x if x = 1 and r(x)             -> recursive=false
+rule r : x if x = 1 and not r(x)         -> recursive=false
+rule r : x if x = 1 and count(r(x)) > 0  -> recursive aggregate accepted
 ```
 
 `via`/`through` also incorrectly turns a cyclic traversal into a bounded one.
@@ -269,6 +328,15 @@ This section is normative and supersedes conflicting earlier wording.
   reject.
 - `GraphQueryContractV2` is produced from the exact `ResolvedGraphQueryV2` and
   is the only graph value supplied to a CHECK contract in ticket 07.
+- `ResolvedRuleV2` and `RuleCallPolarityV2` are sema-produced ticket 04
+  contracts. The earlier sketch's logic-owned `BodyPolarityV1` in a sema
+  output is invalid under the dependency DAG; logic maps the already resolved
+  polarity into its internal graph edge. It never asks HIR for a call name.
+- Unanchored recursive rules such as `rule r : x if r(x)` are rejected by the
+  ticket 03 types-owned singleton constraint proof before this stage. The
+  positive/negated/aggregate source fixtures above include the `x = 1`
+  concrete anchor and must first pass ticket 04 owner typing; logic then tests
+  their polarity and SCC result, not a guessed variable type.
 
 ### Static boundedness only
 
@@ -289,3 +357,33 @@ foreign/duplicate item identities, depth/witness exact boundary and one-over,
 and source permutation stability.
 
 Requires 04. May run in parallel with 05 after sema contracts are frozen.
+
+## 2026-09-21 Live-Tree Final Reconciliation (HEAD `f9ec954`)
+
+Ticket 06 is not implemented. Existing `recursion.rs` already owns Tarjan and
+stratification, while `graph.rs`/`witness.rs` own endpoint and witness
+classification; none is a candidate for a second V2 algorithm. The inherited
+`GraphQueryContractV1` carries only kind, witness, and span, and the old
+`PointsTo` acyclic-by-treatment shortcut conflicts with this packet's explicit
+bound policy. Migrate those owners in place.
+
+The first admissible input is Ticket 04's complete document rule set with
+resolved predicate IDs, exact polarity/spans, unary typed heads, and graph
+selector identities. `logic/src/source.rs` must become a typed adapter only:
+no raw HIR, name lookup, or call-argument dependency fallback. The owner test
+must distinguish an anchored positive self-loop from unanchored type failure,
+negated loop, aggregate loop, mutual SCC, and a missing target ID. For graph,
+assert every transitive subkind's depth/cap at exact limit and one over,
+waypoints insufficient without depth, and exact resolved endpoint/witness
+fields. Strict logic owner proof precedes the Ticket 07 public-document
+reachability test; a preexisting Tarjan unit pass is not source reachability.
+
+Additional producer/consumer gate: an earlier Ticket 04 draft exposed public
+rule/call constructors with only same-source validation. The dirty revision
+has narrowed them and added call-node IDs, but no source rule producer or
+exact target/polarity set proof exists yet. Ticket 04 must seal the HIR/types
+call set before Ticket 06 starts. Ticket 06 then supplies mutation fixtures
+for omitted, duplicated, foreign-rule, target-transplanted, and
+polarity-flipped edges and proves SCC/negation/aggregate classification
+changes or rejects deterministically. A name-based rebuild in logic is not a
+repair.

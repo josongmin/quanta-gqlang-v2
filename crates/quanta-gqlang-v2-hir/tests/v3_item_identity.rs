@@ -12,11 +12,11 @@
 #![allow(clippy::panic, reason = "tests panic on unexpected variants")]
 
 use quanta_gqlang_v2_hir::{
-    check_document_v2, check_tree, ActivationV1, CatalogPayloadV1, ConfirmModeV1, DetectionModeV1,
-    EmitModeV1, GraphConstraintsV1, GraphEndpointsV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1,
-    HirDocumentV1, HirIntegrityErrorV1, HirRootRefV1, LocatedSpanErrorV2, LocatedSpanV2,
-    MetaKindV1, PresentationKindV1, ProgramItemHirV1, ShowCategoryV1, SourceIdV2, SpanV1,
-    UsePackActivationV1, UsePackHirV1, ViewBodyV1,
+    check_document_v2, check_tree, ActivationV1, CatalogPayloadV1, CheckedHirDocumentOwnedV2,
+    ConfirmModeV1, DetectionModeV1, EmitModeV1, GraphConstraintsV1, GraphEndpointsV1,
+    GraphQueryKindV1, GraphRefV1, HirBuilderV1, HirDocumentV1, HirIntegrityErrorV1, HirRootRefV1,
+    LocatedSpanErrorV2, LocatedSpanV2, MetaKindV1, PresentationKindV1, ProgramItemHirV1,
+    ShowCategoryV1, SourceIdV2, SpanV1, UsePackActivationV1, UsePackHirV1, ViewBodyV1,
 };
 
 fn gref(name: &str, start: usize, end: usize) -> GraphRefV1 {
@@ -90,6 +90,29 @@ fn document_integrity_accepts_valid_multi_root_with_one_authority() {
     assert_eq!(checked.document().source_id, SourceIdV2::from_raw(42));
     assert_eq!(checked.document().source_len, 19);
     assert_eq!(checked.node_count(), 4);
+
+    let owned = CheckedHirDocumentOwnedV2::try_new(document).unwrap();
+    assert_eq!(owned.node_count(), 4);
+    assert_eq!(owned.document().source_id, SourceIdV2::from_raw(42));
+    assert_eq!(owned.as_checked().node_count(), 4);
+}
+
+#[test]
+fn owned_document_integrity_proof_rejects_invalid_input_before_ownership() {
+    let builder = HirBuilderV1::new();
+    let item = ProgramItemHirV1::from(builder.decl(
+        "x",
+        SpanV1::new(4, 5),
+        builder.int("1", SpanV1::new(8, 9)),
+        SpanV1::new(0, 10),
+    ));
+    let error = CheckedHirDocumentOwnedV2::try_new(HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(4),
+        source_len: 9,
+        items: vec![item],
+    })
+    .unwrap_err();
+    assert_eq!(error.code(), "hir.integrity.span_out_of_bounds");
 }
 
 #[test]

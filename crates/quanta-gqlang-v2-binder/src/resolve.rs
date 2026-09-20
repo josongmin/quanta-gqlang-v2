@@ -11,10 +11,12 @@
 //! - `D28`/`D30`: imports resolve against the frozen [`ModuleGraphViewV1`]
 //!   only; conflicting imports fail closed with no import-order tiebreak.
 //!
-//! Resolution is fail-soft in the sense that it collects ALL diagnostics in
-//! deterministic pre-order rather than stopping at the first, so a single pass
-//! reports every reject. A unit with any diagnostic is rejected (`is_ok()` is
-//! false); downstream typing (ticket 03) only ever sees a clean resolution.
+//! Resolution is fail-soft in the sense that it collects ALL diagnostics rather
+//! than stopping at the first. [`Binder::finish`] applies the stable
+//! `(primary span, code, name, rendering)` order, so tree traversal and symbol
+//! insertion order cannot select a different first failure. A unit with any
+//! diagnostic is rejected (`is_ok()` is false); downstream typing only sees a
+//! clean resolution.
 
 use crate::diagnostic::BindDiagnosticV1;
 use crate::module_graph::ModuleGraphViewV1;
@@ -65,11 +67,44 @@ pub struct ResolutionV1 {
 }
 
 /// The result of resolving one HIR unit: every resolved reference plus every
-/// diagnostic, both in deterministic pre-order.
+/// diagnostic, with diagnostics in deterministic source order.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct BindResultV1 {
     resolutions: Vec<ResolutionV1>,
     diagnostics: Vec<BindDiagnosticV1>,
+    /// Ordered alias frame produced by every relation node. Consumers use this
+    /// side table instead of reconstructing stage visibility from raw HIR.
+    relation_outputs: BTreeMap<HirNodeIdV1, Vec<BindingV1>>,
+    /// The input frame consumed by grouping. It is not the public group output
+    /// and can be admitted later only by an exact aggregate-argument proof.
+    partition_inputs: BTreeMap<HirNodeIdV1, Vec<BindingV1>>,
+    /// Uncommitted partition-input name candidates. Only an exact later
+    /// aggregate-call proof can authorize one; syntactic call position alone
+    /// is never a successful semantic resolution.
+    partition_candidates: BTreeMap<HirNodeIdV1, PartitionCandidateV1>,
+    /// Exact correlation edges keyed by the relational-EXISTS boolean node.
+    /// Every visited EXISTS owns an entry, including uncorrelated empty sets.
+    capture_edges: BTreeMap<HirNodeIdV1, Vec<(HirNodeIdV1, HirNodeIdV1, usize)>>,
+}
+
+/// Exact source argument reference tentatively linked to a Group input.
+/// `call_stack` is outermost-to-innermost; no name or callee spelling grants
+/// semantic authority until the types owner resolves each callable overload.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PartitionCandidateV1 {
+    reference: HirNodeIdV1,
+    group: HirNodeIdV1,
+    binding: BindingV1,
+    call_stack: Vec<HirNodeIdV1>,
+    span: SpanV1,
+}
+
+impl PartitionCandidateV1 {
+    #[must_use] pub const fn reference(&self) -> HirNodeIdV1 { self.reference }
+    #[must_use] pub const fn group(&self) -> HirNodeIdV1 { self.group }
+    #[must_use] pub const fn binding(&self) -> &BindingV1 { &self.binding }
+    #[must_use] pub fn call_stack(&self) -> &[HirNodeIdV1] { &self.call_stack }
+    #[must_use] pub const fn span(&self) -> SpanV1 { self.span }
 }
 
 impl BindResultV1 {
@@ -79,7 +114,7 @@ impl BindResultV1 {
         &self.resolutions
     }
 
-    /// All diagnostics, in pre-order.
+    /// All diagnostics in stable source/code order.
     #[must_use]
     pub fn diagnostics(&self) -> &[BindDiagnosticV1] {
         &self.diagnostics
@@ -100,6 +135,64 @@ impl BindResultV1 {
             .find(|r| r.reference == reference)
             .map(|r| &r.target)
     }
+
+    /// Ordered alias frame produced by one relation node.
+    #[must_use]
+    pub fn relation_output(&self, relation: HirNodeIdV1) -> Option<&[BindingV1]> {
+        self.relation_outputs.get(&relation).map(Vec::as_slice)
+    }
+
+    /// Every relation output frame in stable node-id order.
+    pub fn relation_outputs(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (HirNodeIdV1, &[BindingV1])> + '_ {
+        self.relation_outputs
+            .iter()
+            .map(|(node, bindings)| (*node, bindings.as_slice()))
+    }
+
+    /// Private-to-the-frontend partition input, distinct from the key-only
+    /// public output frame. The semantic owner validates aggregate use.
+    #[must_use]
+    pub fn partition_input(&self, group: HirNodeIdV1) -> Option<&[BindingV1]> {
+        self.partition_inputs.get(&group).map(Vec::as_slice)
+    }
+
+    /// Every deferred partition-input use in exact reference-ID order.
+    pub fn partition_candidates(&self) -> impl ExactSizeIterator<Item = &PartitionCandidateV1> {
+        self.partition_candidates.values()
+    }
+
+    /// Whether the relational-EXISTS node was visited and therefore owns an
+    /// explicit capture set (which may be empty).
+    #[must_use]
+    pub fn has_capture_set(&self, relation_exists: HirNodeIdV1) -> bool {
+        self.capture_edges.contains_key(&relation_exists)
+    }
+
+    /// Exact `(reference_node, binding_owner_node, binding_ordinal)` capture
+    /// edges for one relational EXISTS, sorted and deduplicated by stable HIR
+    /// identity.
+    #[must_use]
+    pub fn capture_edges(
+        &self,
+        relation_exists: HirNodeIdV1,
+    ) -> &[(HirNodeIdV1, HirNodeIdV1, usize)] {
+        self.capture_edges
+            .get(&relation_exists)
+            .map_or(&[], Vec::as_slice)
+    }
+
+    /// Every explicit relational-EXISTS capture set in node-id order. Empty
+    /// sets are retained, so absence cannot be confused with uncorrelatedness.
+    pub fn capture_sets(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (HirNodeIdV1, &[(HirNodeIdV1, HirNodeIdV1, usize)])> + '_
+    {
+        self.capture_edges
+            .iter()
+            .map(|(owner, edges)| (*owner, edges.as_slice()))
+    }
 }
 
 /// Drives resolution over a HIR unit against a frozen module graph.
@@ -113,6 +206,13 @@ pub struct Binder<'g, G: ModuleGraphViewV1> {
     declarations: BTreeMap<String, DeclSymbolV1>,
     scope: LexicalScopeV1,
     result: BindResultV1,
+    /// Active relational EXISTS nodes and their own frame indices. A nested
+    /// reference can cross more than one EXISTS boundary; every crossed owner
+    /// gets its exact capture edge, not only the innermost node.
+    capture_owners: Vec<(HirNodeIdV1, usize)>,
+    relation_partition: BTreeMap<HirNodeIdV1, HirNodeIdV1>,
+    active_partition: Option<HirNodeIdV1>,
+    active_calls: Vec<HirNodeIdV1>,
 }
 
 /// A top-level declaration symbol-table entry.
@@ -131,6 +231,10 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
             declarations: BTreeMap::new(),
             scope: LexicalScopeV1::new(),
             result: BindResultV1::default(),
+            capture_owners: Vec::new(),
+            relation_partition: BTreeMap::new(),
+            active_partition: None,
+            active_calls: Vec::new(),
         }
     }
 
@@ -151,21 +255,50 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
         let _ = self.declarations.insert(name, DeclSymbolV1 { node, span });
     }
 
-    /// Register every declaration/rule name in a program slice before resolving
-    /// any bodies, so forward references across declarations resolve and
-    /// duplicates are caught up front.
-    pub fn declare_program(&mut self, decls: &[DeclHirV1], rules: &[RuleHirV1]) {
-        for decl in decls {
+    /// Register every value declaration name before resolving any body, so
+    /// forward value references resolve and duplicates are caught up front.
+    /// Rule/predicate names remain in their distinct callable namespace and are
+    /// intentionally not admitted as bare value symbols here.
+    pub fn declare_program(&mut self, decls: &[DeclHirV1], _rules: &[RuleHirV1]) {
+        let mut ordered = decls.iter().collect::<Vec<_>>();
+        ordered.sort_by_key(|decl| {
+            (
+                decl.name_span.start,
+                decl.name_span.end,
+                decl.name.as_str(),
+                decl.id,
+            )
+        });
+        for decl in ordered {
             self.declare(decl.name.clone(), decl.id, decl.name_span);
-        }
-        for rule in rules {
-            self.declare(rule.name.clone(), rule.id, rule.name_span);
         }
     }
 
     /// Finish and take the accumulated result.
     #[must_use]
-    pub fn finish(self) -> BindResultV1 {
+    pub fn finish(mut self) -> BindResultV1 {
+        self.result.diagnostics.sort_by(|left, right| {
+            let left_span = left.primary_span();
+            let right_span = right.primary_span();
+            (
+                left_span.start,
+                left_span.end,
+                left.code(),
+                left.name(),
+                left.to_string(),
+            )
+                .cmp(&(
+                    right_span.start,
+                    right_span.end,
+                    right.code(),
+                    right.name(),
+                    right.to_string(),
+                ))
+        });
+        for edges in self.result.capture_edges.values_mut() {
+            edges.sort_unstable();
+            edges.dedup();
+        }
         self.result
     }
 
@@ -176,8 +309,8 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
     /// them. Quantifiers inside the filter open nested capturing subscopes.
     pub fn resolve_query(&mut self, query: &QueryHirV1) {
         self.scope.push(CaptureV1::Capturing);
-        self.bind_relation_sources(&query.body);
-        self.resolve_relation(&query.body);
+        let output = self.resolve_relation(&query.body);
+        self.scope.replace_current_bindings(output);
         if let Some(shape) = &query.result_shape {
             self.resolve_shape(shape);
         }
@@ -235,15 +368,16 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
         // a silent scope leak. At the top level there is no enclosing frame, so
         // the barrier is inert.
         self.scope.push(CaptureV1::NonCapturing);
-        for binding in &composition.bindings {
+        for (ordinal, binding) in composition.bindings.iter().enumerate() {
             // Resolve the producer in the scope established BEFORE this LET name
             // is visible (sequential LET semantics; no self-reference).
             self.resolve_composition_producer(&binding.producer);
-            self.introduce(BindingV1::new(
+            self.introduce(BindingV1::new_indexed(
                 binding.name.clone(),
                 BinderKindV1::CompositionLet,
                 binding.name_span,
                 composition.id,
+                ordinal,
             ));
         }
         self.resolve_composition_body(&composition.body);
@@ -394,12 +528,13 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
     // ---- binding introduction ---------------------------------------------
 
     fn bind_params(&mut self, params: &[ParamV1]) {
-        for param in params {
-            self.introduce(BindingV1::new(
+        for (ordinal, param) in params.iter().enumerate() {
+            self.introduce(BindingV1::new_indexed(
                 param.name.clone(),
                 BinderKindV1::Param,
                 param.span,
                 param.node,
+                ordinal,
             ));
         }
     }
@@ -421,35 +556,6 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
     /// Close the innermost nested scope opened by [`Binder::open_scope`].
     pub fn close_scope(&mut self) {
         self.scope.pop();
-    }
-
-    fn bind_relation_sources(&mut self, relation: &RelationExprHirV1) {
-        match &relation.kind {
-            RelationExprKindV1::Source(source) => {
-                if let Some(alias) = &source.alias {
-                    self.introduce(BindingV1::new(
-                        alias.name.clone(),
-                        BinderKindV1::Alias,
-                        alias.span,
-                        relation.id,
-                    ));
-                }
-            }
-            RelationExprKindV1::Project(project) => {
-                self.bind_relation_sources(&project.input);
-            }
-            RelationExprKindV1::Filter(filter) => {
-                self.bind_relation_sources(&filter.input);
-            }
-            RelationExprKindV1::Join(join) => match join {
-                JoinHirV1::Inner { left, right, .. } | JoinHirV1::Cross { left, right } => {
-                    self.bind_relation_sources(left);
-                    self.bind_relation_sources(right);
-                }
-            },
-            RelationExprKindV1::GroupBy(group) => self.bind_relation_sources(&group.input),
-            RelationExprKindV1::OrderBy(order) => self.bind_relation_sources(&order.input),
-        }
     }
 
     fn introduce(&mut self, binding: BindingV1) {
@@ -478,42 +584,179 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
 
     // ---- reference resolution ----------------------------------------------
 
-    fn resolve_relation(&mut self, relation: &RelationExprHirV1) {
-        match &relation.kind {
-            RelationExprKindV1::Source(_) => {}
+    fn resolve_relation(&mut self, relation: &RelationExprHirV1) -> Vec<BindingV1> {
+        let output = match &relation.kind {
+            RelationExprKindV1::Source(source) => {
+                let bindings = source.alias.as_ref().map_or_else(Vec::new, |alias| {
+                    vec![BindingV1::new_indexed(
+                        alias.name.clone(),
+                        BinderKindV1::Alias,
+                        alias.span,
+                        relation.id,
+                        0,
+                    )]
+                });
+                self.checked_new_relation_frame(bindings)
+            }
             RelationExprKindV1::Project(project) => {
-                self.resolve_relation(&project.input);
+                let input = self.resolve_relation(&project.input);
+                self.scope.replace_current_bindings(input);
+                let previous_partition = self.active_partition;
+                self.active_partition = self.relation_partition.get(&project.input.id).copied();
                 for item in project.items() {
                     self.resolve_value(&item.value);
                 }
+                self.active_partition = previous_partition;
+                if let Some(group) = self.relation_partition.get(&project.input.id).copied() {
+                    self.relation_partition.insert(relation.id, group);
+                }
+                let outputs = project.items().iter().enumerate().map(|(ordinal, item)| {
+                    let (name, span) = Self::projection_output_name(item);
+                    BindingV1::new_indexed(name, BinderKindV1::Alias, span, relation.id, ordinal)
+                });
+                self.checked_new_relation_frame(outputs)
             }
             RelationExprKindV1::Filter(filter) => {
-                self.resolve_relation(&filter.input);
+                let input = self.resolve_relation(&filter.input);
+                self.scope.replace_current_bindings(input.clone());
+                let previous_partition = self.active_partition;
+                self.active_partition = self.relation_partition.get(&filter.input.id).copied();
                 self.resolve_bool(&filter.predicate);
+                self.active_partition = previous_partition;
+                if let Some(group) = self.relation_partition.get(&filter.input.id).copied() {
+                    self.relation_partition.insert(relation.id, group);
+                }
+                input
             }
             RelationExprKindV1::Join(join) => match join {
                 JoinHirV1::Inner { left, right, on } => {
-                    self.resolve_relation(left);
-                    self.resolve_relation(right);
+                    let left = self.resolve_relation(left);
+                    // Sibling inputs are resolved independently. In particular,
+                    // the right alias cannot leak backward into the left input.
+                    self.scope.replace_current_bindings(Vec::new());
+                    let previous_partition = self.active_partition.take();
+                    let right = self.resolve_relation(right);
+                    let output = self.checked_relation_frame(left.into_iter().chain(right));
+                    self.scope.replace_current_bindings(output.clone());
                     self.resolve_bool(on);
+                    self.active_partition = previous_partition;
+                    output
                 }
                 JoinHirV1::Cross { left, right } => {
-                    self.resolve_relation(left);
-                    self.resolve_relation(right);
+                    let left = self.resolve_relation(left);
+                    self.scope.replace_current_bindings(Vec::new());
+                    let previous_partition = self.active_partition.take();
+                    let right = self.resolve_relation(right);
+                    self.active_partition = previous_partition;
+                    self.checked_relation_frame(left.into_iter().chain(right))
                 }
             },
             RelationExprKindV1::GroupBy(group) => {
-                self.resolve_relation(&group.input);
+                let input = self.resolve_relation(&group.input);
+                self.scope.replace_current_bindings(input.clone());
+                let previous_partition = self.active_partition.take();
                 for key in group.keys() {
                     self.resolve_value(key);
                 }
+                self.active_partition = previous_partition;
+                self.result.partition_inputs.insert(relation.id, input);
+                self.relation_partition.insert(relation.id, relation.id);
+                let outputs = group.keys().iter().enumerate().map(|(ordinal, key)| {
+                    let (name, span) = Self::value_output_name(key);
+                    BindingV1::new_indexed(name, BinderKindV1::Alias, span, relation.id, ordinal)
+                });
+                self.checked_new_relation_frame(outputs)
             }
             RelationExprKindV1::OrderBy(order) => {
-                self.resolve_relation(&order.input);
+                let input = self.resolve_relation(&order.input);
+                self.scope.replace_current_bindings(input.clone());
+                let previous_partition = self.active_partition;
+                self.active_partition = self.relation_partition.get(&order.input.id).copied();
                 for key in order.keys() {
                     self.resolve_value(&key.value);
                 }
+                self.active_partition = previous_partition;
+                if let Some(group) = self.relation_partition.get(&order.input.id).copied() {
+                    self.relation_partition.insert(relation.id, group);
+                }
+                input
             }
+        };
+        let _ = self
+            .result
+            .relation_outputs
+            .insert(relation.id, output.clone());
+        output
+    }
+
+    /// Build one deterministic row frame while rejecting duplicate output
+    /// names. The first binding remains authoritative so failure paths do not
+    /// gain last-wins behavior.
+    fn checked_relation_frame(
+        &mut self,
+        bindings: impl IntoIterator<Item = BindingV1>,
+    ) -> Vec<BindingV1> {
+        let mut by_name = BTreeMap::<String, SpanV1>::new();
+        let mut output = Vec::new();
+        for binding in bindings {
+            if let Some(existing_span) = by_name.get(&binding.name) {
+                self.result.diagnostics.push(BindDiagnosticV1::Duplicate {
+                    name: binding.name.clone(),
+                    first_span: *existing_span,
+                    second_span: binding.span,
+                });
+            } else {
+                let _ = by_name.insert(binding.name.clone(), binding.span);
+                output.push(binding);
+            }
+        }
+        output
+    }
+
+    /// Validate newly introduced relation bindings against visible lexical
+    /// parents exactly once, then validate duplicate names within the frame.
+    fn checked_new_relation_frame(
+        &mut self,
+        bindings: impl IntoIterator<Item = BindingV1>,
+    ) -> Vec<BindingV1> {
+        let bindings = bindings.into_iter().collect::<Vec<_>>();
+        for binding in &bindings {
+            if let Some(outer) = self.scope.visible_outer_binding(&binding.name) {
+                self.result.diagnostics.push(BindDiagnosticV1::Shadowed {
+                    name: binding.name.clone(),
+                    outer_span: outer.span,
+                    inner_span: binding.span,
+                });
+            }
+        }
+        self.checked_relation_frame(bindings)
+    }
+
+    /// Canonical projection output naming. Explicit aliases win; otherwise a
+    /// symbol keeps its name, a path uses its final segment, and every other
+    /// expression uses `col`. Duplicate defaults are rejected by the same row
+    /// frame validator as explicit aliases.
+    fn projection_output_name(item: &quanta_gqlang_v2_hir::ProjectionItemV1) -> (String, SpanV1) {
+        if let Some(alias) = &item.alias {
+            return (alias.name.clone(), alias.span);
+        }
+        Self::value_output_name(&item.value)
+    }
+
+    fn value_output_name(value: &ValueExprHirV1) -> (String, SpanV1) {
+        match &value.kind {
+            ValueExprKindV1::Symbol(symbol) => (symbol.name.clone(), value.span),
+            ValueExprKindV1::Path(path) => path.segments.as_slice().last().map_or_else(
+                || ("col".to_owned(), value.span),
+                |segment| (segment.name.clone(), segment.span),
+            ),
+            ValueExprKindV1::Literal(_)
+            | ValueExprKindV1::Unary(_)
+            | ValueExprKindV1::Binary(_)
+            | ValueExprKindV1::Call(_)
+            | ValueExprKindV1::Paren(_)
+            | ValueExprKindV1::Record(_)
+            | ValueExprKindV1::List(_) => ("col".to_owned(), value.span),
         }
     }
 
@@ -538,12 +781,13 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
                 // outer bindings (correlated quantification). Capture remains
                 // an explicit edge per D25.
                 self.scope.push(CaptureV1::Capturing);
-                for binder in quant.binders.as_slice() {
-                    self.introduce(BindingV1::new(
+                for (ordinal, binder) in quant.binders.as_slice().iter().enumerate() {
+                    self.introduce(BindingV1::new_indexed(
                         binder.name.clone(),
                         BinderKindV1::Quantified,
                         binder.span,
                         node.id,
+                        ordinal,
                     ));
                 }
                 self.resolve_bool(&quant.body);
@@ -551,8 +795,13 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
             }
             BoolExprKindV1::RelationExists(exists) => {
                 self.scope.push(CaptureV1::Capturing);
-                self.bind_relation_sources(&exists.relation);
-                self.resolve_relation(&exists.relation);
+                let _ = self.result.capture_edges.entry(node.id).or_default();
+                if let Some(frame_index) = self.scope.current_frame_index() {
+                    self.capture_owners.push((node.id, frame_index));
+                }
+                let output = self.resolve_relation(&exists.relation);
+                self.scope.replace_current_bindings(output);
+                let _ = self.capture_owners.pop();
                 self.scope.pop();
             }
         }
@@ -575,11 +824,13 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
                 self.resolve_value(&binary.rhs);
             }
             ValueExprKindV1::Call(call) => {
+                self.active_calls.push(node.id);
                 for arg in call.args().as_slice() {
                     if let CallArgHirV1::Expr(value) = arg {
                         self.resolve_value(value);
                     }
                 }
+                self.active_calls.pop();
             }
             ValueExprKindV1::Paren(inner) => self.resolve_value(inner),
             ValueExprKindV1::Record(record) => {
@@ -613,8 +864,20 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
     /// frozen import graph. Import order is never authority (`D28`/`D30`): an
     /// ambiguous import is a hard reject, not a tiebreak.
     fn resolve_name(&mut self, name: &str, reference: HirNodeIdV1, span: SpanV1) {
-        match self.scope.resolve(name) {
+        let (resolution, binding_frame) = self.scope.resolve_with_capture(name);
+        match resolution {
             LexicalResolutionV1::Bound(binding) => {
+                if let Some(binding_frame) = binding_frame {
+                    for &(owner, owner_frame) in &self.capture_owners {
+                        if binding_frame < owner_frame {
+                            self.result.capture_edges.entry(owner).or_default().push((
+                                reference,
+                                binding.node,
+                                binding.identity().1,
+                            ));
+                        }
+                    }
+                }
                 self.result.resolutions.push(ResolutionV1 {
                     reference,
                     span,
@@ -655,6 +918,18 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
         candidates.dedup();
         match candidates.len() {
             0 => {
+                if let (Some(group), false) = (self.active_partition, self.active_calls.is_empty()) {
+                    if let Some(binding) = self.result.partition_inputs.get(&group)
+                        .and_then(|frame| frame.iter().find(|binding| binding.name == name)).cloned() {
+                        self.result.partition_candidates.insert(reference, PartitionCandidateV1 {
+                            reference, group, binding: binding.clone(), call_stack: self.active_calls.clone(), span,
+                        });
+                        self.result.resolutions.push(ResolutionV1 {
+                            reference, span, name: name.to_owned(), target: ResolvedTargetV1::Local(binding),
+                        });
+                        return;
+                    }
+                }
                 self.result.diagnostics.push(BindDiagnosticV1::Unresolved {
                     name: name.to_owned(),
                     span,

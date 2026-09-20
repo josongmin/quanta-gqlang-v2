@@ -1,6 +1,6 @@
 # 03 — Authority, Types, Modules, And Invalid States
 
-Status: `ACTIVE`
+Status: `REPAIR — TICKET 04 PRODUCER-SEAM REOPEN`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
@@ -198,9 +198,9 @@ ExternalCatalogV2::try_new(
     session: &mut ModuleBudgetSessionV2,
 )
     -> Result<ExternalCatalogV2, ModuleDiagnosticV2>
-SignatureV2::try_new(parameters: Vec<LocatedParameterInputV2>,
-                     result: ValueTypeV1, callable_kind: CallableKindV2,
-                     effects: ExpressionEffectsV2)
+SignatureV2::try_new(input: SignatureInputV2,
+                     source_registry: &SourceRegistryViewV2,
+                     session: &mut ModuleBudgetSessionV2)
     -> Result<SignatureV2, ModuleDiagnosticV2>
 SignatureV2::try_as_resolved_predicate(ResolvedPredicateIdV2)
     -> Result<ResolvedPredicateCallableV2, ModuleDiagnosticV2>
@@ -277,7 +277,7 @@ DocumentCatalogAuthorityV2::try_new(
     source_registry: &SourceRegistryViewV2,
     session: &mut ModuleBudgetSessionV2,
 ) -> Result<DocumentCatalogAuthorityV2, ModuleDiagnosticV2>
-ModuleGraphBuilderV2::resolve(current_module: ModuleIdV2,
+ModuleGraphBuilderV2::resolve(current: CurrentModuleSelectionInputV2,
                               session: &mut ModuleBudgetSessionV2)
     -> Result<ResolvedGraphV2, ModuleDiagnosticV2>
 LockfileV2::parse(source_id: SourceIdV2, text: &str,
@@ -686,7 +686,7 @@ ticket 04 equality gate.
 
 `ModuleBudgetV2` is the private counter configuration derived only from a
 checked `AuthorityBudgetProfileV2`; it has no independent public constructor or
-mutable limit setter. Builders charge UTF-8/raw lock input bytes before validation,
+mutable limit setter. Builders charge module-owned authored UTF-8/raw lock input bytes before validation,
 cloning, sorting, deduplication, or hashing and reject any single field over the
 string limit. Repeated inputs charge again before idempotent dedup. Registered
 source lengths are bounds metadata and do not charge unless their text is
@@ -699,6 +699,15 @@ next charge emits `modules.resource_exhausted { dimension, limit, observed }`.
 Diagnostic identifier excerpts are UTF-8-boundary truncated to 128 bytes and
 rendered owner messages to 1,024 bytes without changing codes/locations.
 The already-iterative module cycle DFS is retained, not rewritten.
+
+The module counters intentionally do not re-walk or recharge opaque checked
+`ValueTypeV1`/`RelationTypeV1` payload internals. Those values were admitted by
+the types owner under `MAX_TYPE_DEPTH` and `MAX_TYPE_NODES`; modules charges the
+enclosing asset/signature node, every authored parameter name, and every other
+module-owned string. No module ingress accepts raw record fields, union tags,
+or type nodes. If serialized host input later needs a total wire-byte ceiling,
+that ceiling belongs at its serialization ingress; modules must not invent an
+unstable `Display` encoding to charge a checked type a second time.
 
 An empty module is declared explicitly with `try_add_module`; declarations and
 edges require an already-added owner and never create it implicitly. Duplicate
@@ -1270,9 +1279,9 @@ completion evidence:
     IDs, and source-registry-bound authority names. The integration suite now
     has 40 tests versus 39 at `e896a110`; receipt 03 must still enumerate exact
     old-to-new test disposition rather than infer preservation from the count.
-45. Modules implementation remains active under
-    `/root/ticket03_modules_impl`. No modules-green, full Ticket 03 RR, atomic
-    cutover, receipt 03, hosted CI, or packet completion is claimed here.
+45. At that intermediate checkpoint, modules implementation remained active
+    under `/root/ticket03_modules_impl`; no modules-green, full Ticket 03 RR,
+    atomic cutover, receipt 03, hosted CI, or packet completion was claimed.
 46. Closed the budget-provenance contract: types owns checked
     `AuthorityBudgetProfileV2`; module and relation proofs retain it; ticket 04
     compares both with the canonical `FrontendBudgetV2` projection. Document
@@ -1301,6 +1310,371 @@ completion evidence:
 53. The authority-byte ceiling is explicitly per sealed admission session, not
     a global total across module, relation, and document-catalog proofs. Each
     session has one non-resettable owner and charges repeated input again.
+54. Final adversarial RR found and closed five residual gaps: actual checked
+    `SignatureV2`/module-resolution signatures now replace the stale API sketch;
+    checked type payload byte ownership is explicit; unsupported `sum(*)` and
+    absent declarations have distinct negatives; and fingerprint mutation
+    coverage changes every dependency/suite field, not merely collection
+    presence.
+55. Consolidated module proof is 109 tests (1 unit + 108 integration); types is
+    56 tests. The six deleted V1 module suites' 56 authored cases are mapped
+    one-by-one in `receipts/03-test-disposition.md`, including three intentional
+    contract deletions rather than compatibility assertions.
+56. Captured the complete simplified public-API output hashes and all 52 types
+    plus 76 modules exported type names in `receipts/03-public-api-inventory.md`.
+    Duplicate scans found no `SignatureInstanceV1`, public sibling `TypeV2`, or
+    default-constructible closed bindings/activations.
+57. A deliberate aggregate-Star mutation was killed by the exact owner test,
+    reverted, and followed by full owner tests and strict Clippy. Receipt 03
+    records the RED and restored GREEN without leaving the mutation in source.
+58. External commits `ceb4142`, `6583091`, and `f9ec954` were separately audited.
+    They are unqualified consumer migrations, not Ticket 04/05/07 completion;
+    their exact binder/algebra/planning/pipeline gaps are written into those
+    tickets and the execution ledger.
 
-Ticket status stays `ACTIVE` until implementation, owner-local tests, RR repair,
-and receipt 03 all satisfy these amended contracts.
+Ticket 03 owner scope is verified by `receipts/03.md`. This does not claim a
+clean ticket-only commit, hosted CI, workspace closure, or any Ticket 04-09
+consumer completion.
+
+Verification artifacts:
+
+- [Ticket 03 receipt](../receipts/03.md)
+- [exact public API inventory](../receipts/03-public-api-inventory.md)
+- [56-case deleted-test disposition](../receipts/03-test-disposition.md)
+
+## Ticket 04 Producer-Seam Reopen
+
+Ticket 04 exposed one types-owner omission that its consumer may not patch
+around: a later stage reference such as `project ... as x | order by x` needs
+the type of an earlier expression, while `ResolvedTypeInputValueV2` accepted
+only a caller-supplied completed type. Supplying that type from sema would make
+sema a second type checker; invoking the kernel by stage would violate the
+single document-kernel contract.
+
+The canonical types owner therefore adds exactly one dependency carrier:
+`BindingFromExpression(SourceQualifiedNodeIdV2)`. Admission rejects foreign,
+missing, and self targets. The kernel accepts only a target fact already
+produced in document traversal order; forward and cyclic dependencies reject
+as `types.unavailable_binding_dependency`. The carrier copies the checked type
+state, not effects or call identity, because reading a materialized row binding
+does not re-evaluate its producer. Direct, foreign/missing/self, forward, and
+cycle rails live in the existing types suite. Receipt 03 must append the final
+full-suite/Clippy proof before returning to `VERIFIED`.
+
+Forward document declarations are a distinct legal edge: `let a = b; let b =
+1` is predeclared by Ticket 04, but `BindingFromExpression` intentionally
+rejects a future stage value. Types must add a separately checked
+declaration-reference input that proves both reference and target belong to
+predeclared `DeclHirV1` bodies in the same checked document. The kernel may
+resolve that target lazily through one node index during its one document pass,
+with a visiting/done cycle guard. It must not relax the prior-fact rule for
+relation stages. Tests: forward declaration succeeds, self/mutual declaration
+cycles reject with stable witness, and a later relation alias remains rejected.
+
+The subsequent Ticket 04 adversarial owner/consumer audit found two more
+producer omissions. They are **not** covered by the earlier 56-types/109-modules
+verification; Ticket 03 remains `REPAIR` until a new receipt delta and owner
+tests prove them.
+
+1. **Types rule-variable proof.** Add one bounded, deterministic finite-domain
+   constraint solver to the existing types owner. It takes checked HIR plus
+   exact Binder binding identities, resolved callable IDs/signatures, and the
+   source-rule unary predicate IDs supplied by sema. Types, not sema, extracts
+   literal/operator/builtin/call constraints and runs a monotone worklist.
+   Candidate concrete types come only from sealed host signatures and closed
+   operator/builtin/literal domains; no guessed default, unbounded type
+   variable, or second overload engine. A sealed output maps each exact
+   rule/quantifier binding and source predicate ID to one concrete type or
+   reports contradiction/ambiguity/unanchored recursion. Empty intersection
+   rejects; multiple candidates or unanchored self/mutual recursive component
+   rejects closed compilation and is explicit Unknown only in open analysis.
+   It must charge node/edge/iteration work against an immutable positive budget
+   projected from `FrontendBudgetV2`, with exact-limit and one-over rails.
+   The existing `ExpressionTypeKernelV2::check_document` then runs once using
+   this proof; it does not infer those variables again. Required owner tests:
+   anchored int self/mutual recursion, conflicting int/string anchors,
+   ambiguous overload, unanchored self/mutual recursion, quantifier anchoring,
+   unknown external signature, foreign/duplicate binding ID, arity mismatch,
+   deterministic permutation, and budget boundary. This is needed because
+   `rule r : x if r(x)` has no source of concrete type and cannot be a closed
+   positive test merely by setting `x` to a convenient scalar.
+2. **Modules document predeclaration and family references.** Extend the
+   existing `DocumentCatalogValidatorV2` single session with predeclaration,
+   typed local/host/external reference resolution, and final validation using
+   the same IDs/counter. `CatalogAssetIdV2::derive` remains nonpublic; sema
+   cannot replicate it. `DocumentCatalogDependencyInputV2` currently accepts
+   only a local View source; add Model, Pack, Profile, Gate, and RuleBinding
+   reference policy without widening View cycle detection to unrelated edges.
+   Preserve exact checked registry identity and provenance on every minted
+   location. The owner matrix needs positive forward/import/external refs,
+   unknown/wrong-kind/ambiguous refs per family, duplicate ID, non-View edge
+   without false View-cycle, and cumulative budget exact-limit/one-over.
+   Receipt 03 must record changed public API, existing-test disposition, and
+   zero second catalog-resolver definitions before `VERIFIED` resumes.
+
+## 2026-09-21 Live-Tree Final Reconciliation (HEAD `f9ec954` + dirty overlay)
+
+This is an execution checklist, not a fresh green receipt. The earlier 56-types/
+109-modules counts cover the pre-reopen API and must not be reused for this
+overlay.
+
+| Owner | Already implemented in the overlay | Still required before `VERIFIED` |
+|---|---|---|
+| HIR | owned checked-document proof and invalid/valid owner tests | rerun full HIR owner suite and strict Clippy on the final producer fingerprint; prove sema borrows this proof without a second integrity pass |
+| Types | exact extended-registry input; prior-expression dependency; declaration-only forward reference; initial finite-domain rule solver using the existing operator/builtin registries | complete the solver's mutual-recursion, quantifier, host-signature, arity, permutation, forged-ID, open-Unknown, and exact budget matrix; prove the single expression-kernel pass; full owner suite and strict Clippy |
+| Modules | same-session `predeclare_assets`/`resolve_reference`/`validate_predeclared` path; inert catalog target kinds and full-path parser | finish every family positive/wrong-kind/unknown, local/import/external ambiguity, View-only cycle, foreign registry, validator-reuse, and cumulative exact-limit/+1 tests; full owner suite and strict Clippy |
+
+The types solver is an extension of the canonical checker/registries, not a
+second sema inference engine. The modules predeclaration is an extension of
+`DocumentCatalogValidatorV2`, not a sema map or a second asset-ID derivation.
+`validate(input)` may delegate to the same session, but an accepted reference
+must resolve to the identical `CatalogAssetIdV2` before and after final
+validation. Owner tests must assert that identity and that the counter cannot
+reset through either entry point.
+
+Rule-solver ingress must reject a same-spelling symbol mapped to a binding in
+another rule or quantifier scope; matching text and an existing `(owner,
+ordinal)` are not Binder proof. Likewise a caller-provided Builtin family or
+host predicate signature must be tied to the checked call's callee spelling
+and sealed callable authority, not merely to arity or a family ID that exists
+somewhere in the registry. Add cross-rule same-name and cross-call target
+transplant negatives. Types cannot depend on Binder under the final DAG; sema
+imports Binder's exact output and seals the cross-owner mapping before
+invoking the types solver.
+The shared Boolean parser is also used for source rule bodies and currently
+accepts `exists (from ...)` there (`surface/src/unit.rs::parse_rule` calls
+`parse_bool`). The initial rule solver's generic unsupported result for
+`RelationExists` was therefore a reachable language gap. Ticket 00 now pins
+the explicit rule-body semantic prohibition; the dirty solver returns a
+dedicated `RelationExistsInRule` diagnostic and Ticket 04 has a focused
+exact-span source reject. Retain both in the final receipt. Query EXISTS
+remains a supported typed/capturing path.
+
+The live modules resolver currently filters same-spelling candidates to the
+expected kind before checking the remainder. Under the pinned fail-closed
+policy, a different-kind local/import/external candidate with the same
+spelling cannot be silently discarded while another kind wins. Add an exact
+cross-kind collision fixture and reject deterministically. Final validation
+must also prove a `ResolvedDocumentCatalogReferenceV2` came from this
+predeclaration/visibility session, not merely that a same-named ID exists in
+some authority sharing its source registry.
+
+The fresh receipt must list the exact changed public symbols, selected and
+executed test counts, Clippy exit, failure-injection outcome, and scoped dirty
+fingerprint. Until then Ticket 03 is `REPAIR`, even if `cargo check --lib` or a
+five-case solver subset passes.
+
+## 2026-09-21 Second Live Producer Audit — No Duplicate Solver/Resolver
+
+The dirty implementation has moved beyond the first subset, but no combined
+producer/consumer fingerprint has been verified:
+
+1. Types extends the existing `ExpressionTypeKernelV2`, operator registry, and
+   builtin registry. `types/src/check.rs` now has declaration-only lazy
+   `BindingFromDeclaration` dependency and cycle rejection; relation-stage
+   `BindingFromExpression` stays prior-fact-only. `types/src/solver.rs` owns a
+   finite-domain rule constraint worklist, exact lexical binding-scope checks,
+   closed/open results, and a positive node/edge/step budget. It is not a
+   second general type checker. The latest types all-target suite passed
+   78/78 (7 unit, 16 solver, 25 check-edge, 16 hellgate, 14 universe) after
+   exact-budget and relational-EXISTS defense tests. Strict all-target Clippy
+   passed on the same checkpoint. The earlier
+   67-test suite is historical only.
+2. Finish rule `Record` and `List` constraints in the same solver, including
+   contextual empty-list typing, nested shapes, ambiguity, and precise
+   diagnosis. The current `solver.rs` has Record/List constraint branches and
+   a positive constructed-value rule test; contextual empty list and the
+   negative/permutation matrix still need explicit proof. That positive needs
+   a 100,000-step test allowance. After RR added charge-before-work to
+   universe seeding, host-param cloning, list/record candidate expansion,
+   tuple materialization, and propagation support, its measured usage is
+   15 nodes, 20 edges, 6,884 steps over 74 candidate types. Exact 6,884
+   passes; 6,883 steps, 14 nodes, 19 edges, and a one-step seed reject.
+   Latest 78/78 tests and strict Clippy passed on this correction. This is
+   not a byte-level bound for every fixed tuple/input map allocation; audit
+   host-signature/type-shape universe growth and show Ticket 04
+   projects the canonical frontend budget without silently increasing it.
+   Keep the explicit
+   direct-solver rule-body relational EXISTS reject, and prove the source-level
+   `sema.invalid_item_shape` boundary pinned in Ticket 00. Add closed and open
+   Unknown cases and exact budget/effect/overload permutation rails. Do not
+   manufacture rule types in sema.
+3. The caller-provided host predicate target is not authority by itself.
+   Seal it to the checked host signature and authored callee at the
+   sema/modules ingress, then test a signature transplanted between same-arity
+   calls, a cross-rule same-spelling Binder target, duplicate/foreign node IDs,
+   wrong arity, and unknown/ambiguous callables. The types solver cannot import
+   Binder under the final DAG; sema must supply and verify exact Binder IDs.
+4. Modules extends `DocumentCatalogValidatorV2` in one session instead of
+   introducing a sema-side resolver. `modules/src/authority.rs` now
+   predeclares, resolves, and validates with a validator-local session token;
+   same-spelling cross-kind candidates reject before expected-kind filtering,
+   and a local declaration colliding with a distinct host declaration of the
+   same asset ID rejects. RR also closed distinct visible-host/external
+   origin collisions, foreign-owner predeclarations, and same-session
+   `probe_reference`: only true absence returns `Ok(None)`; wrong kind,
+   ambiguity, foreign authority, and budget failure terminate with typed
+   errors. The latest modules owner run passed 122/122 and strict Clippy on
+   the hashes below. Sema still must supply every source family reference and
+   compare exact validated identities; inert API targets do not prove source
+   reachability. EXPLAIN/CHECK dual-namespace integration remains Ticket 04.
+5. Update `receipts/03.md` with final owner hashes, changed public symbols,
+   current full-suite/Clippy counts, one failing mutation and recovery, and
+   cross-owner Ticket 04 integration. Do not restore `VERIFIED` from the older
+   receipt or a compilation-only check.
+
+Modules owner-local post-probe checkpoint: 122 tests passed (1 unit, 13 new
+predeclaration/probe tests, 108 existing; zero doctests), strict all-target
+Clippy passed, and scoped diff-check passed. `probe_reference` returns `None`
+only for true absence; wrong kind/ambiguity/registry/budget errors terminate
+the same session. The foreign-owner and distinct-host-origin cases are now
+covered. This closes the modules *owner-local implementation* items above on
+its recorded fingerprint, not the Ticket 03 cross-owner sema ingress, types
+solver, mutation, or final receipt gates.
+
+HIR's owned checked-document producer has also now passed its full 70-test
+owner suite and strict Clippy on the hashes in `receipts/03.md`. Sema must
+still consume that exact owned proof without rerunning integrity or admitting
+an unchecked document.
+
+## Latest Types Owner Supersession And Catalog Identity Gate
+
+The 78-test/6,884-step result above is an earlier fingerprint. The latest
+types owner-local frozen source passed 79/79 all-target tests and strict
+Clippy; the Record/List candidate universe remains 74, with shape-aware
+usage 15 nodes, 20 edges, 8,632 steps. `ValueTypeV1::node_count()` is charged
+for registry/host signature shapes and set clones before allocation. Exact
+and one-under usage and a nested-host-signature scaling test passed. The
+source hashes and count breakdown are in `receipts/03.md`. Do not treat this
+as a sema-source or byte-level total-memory proof.
+
+Host predicate identity remains an explicit producer gate. Types
+`ResolvedPredicateIdV2::try_new` accepts the canonical ASCII `::` grammar,
+while modules `CatalogAssetIdV2` admits punctuation in local asset names;
+`SignatureV2::try_as_resolved_predicate(id)` accepts an ID supplied by its
+caller and does not itself prove an injective catalog-to-types mapping. Either
+Implement an injective modules-owned typed identity projection with an
+exact catalog asset ID round trip. A temporary sema rejection of unsupported
+names is fail-closed during the cutover but is not a final Ticket 03/04
+completion condition, because those names are legal catalog inputs. Prefer a
+distinct typed host target/key carrying length-prefixed canonical asset
+identity over squeezing arbitrary punctuation into the source-predicate
+ASCII grammar or hashing into a collision-prone display token. Sema must
+retrieve the signature from the exact
+resolved catalog asset and match the payload kind; a display-name hash,
+punctuation stripping, or caller-selected predicate ID is forbidden.
+Owner/consumer tests: two punctuation-distinct legal names remain distinct
+and source-callable, wrong payload kind and same-spelling local/host collision reject;
+the accepted signature's parameter types and source catalog ID are unchanged.
+
+### Newly audited rule-solver producer repairs
+
+1. At the audited pre-repair checkpoint, `RuleTypeSolverV2::analyze_open` invoked recursive
+   `Expected::visit_rule` and fills maps/sets/cloned names before creating
+   `prepass_steps` or charging the supplied budget (`solver.rs:385-399` versus
+   first charge near `:589`). Move budget admission to the front of this
+   prepass: charge every visited rule/expression/call/binding and each cloned
+   name/set before growth, check source-qualified node and step caps, and use
+   an iterative work stack or a separately checked maximum depth. A checked
+   HIR integrity proof counts nodes but does not cap them. A programmatic
+   checked oversized/deep rule must fail with the exact resource diagnostic
+   before unbounded allocation or stack growth. Test exact limit, one over,
+   and a deep but otherwise valid quantifier/expression chain.
+2. At the audited pre-repair checkpoint, `Expected` stored every active binding owner for a symbol and ingress
+   accepted any same-name owner in that set (old `solver.rs:239-262,463-472`). This
+   admits a forged outer binding for an inner same-name quantifier. Resolve
+   the nearest lexical same-name `(owner, ordinal)` expected binding (or
+   compare to an independently sealed Binder map) and require exact equality.
+   Add `rule r : x if exists x in (x = 1)` with a valid inner target and a
+   forged outer-head target; the latter must reject at the inner symbol span.
+   A different-name quantifier test cannot detect this shadowing failure.
+3. A source predicate call cannot be typed by sema from
+   `RuleTypeProofV2::predicate_type` alone without fabricating the callable's
+   Bool result/effects. Add a types-owned `source_callable(id)` projection (or
+   equivalent sealed result) from the inferred unary predicate proof. It
+   returns the exact ID, one inferred parameter type, Bool result, and the
+   fixed source-rule effect policy; absent/foreign IDs reject. Sema uses this
+   value in `ResolvedTypeInputsV2` and never calls
+   `ResolvedPredicateCallableV2::try_new` with guessed semantics. Prove one
+   anchored self-call, a mutual call, and negative/aggregate polarity through
+   the source transaction before Ticket 04/06 can count recursion reachable.
+
+Owner-local supersession: the three types-owned repairs above now pass an
+81/81 full owner suite and strict Clippy on the hashes in `receipts/03.md`.
+The `Expected` prepass is iterative and charged before growth, with depth
+64 accepted/65 rejected; nearest same-name lexical binding rejects forged
+outer shadow targets; `RuleTypeProofV2::try_source_predicate_callable` emits
+the inferred unary/Bool/conservative-Scalar signature. Sema has separately
+shown anchored source recursion and negation from source on a later 34/34
+owner run. This does not prove mutual/aggregate source recursion, host
+predicate mapping, full Ticket 04, or a combined Ticket 03 receipt.
+
+### Host predicate identity implementation split
+
+The read-only seam audit located `CatalogAssetIdV2` as the typed
+`(ModuleIdV2, NamespaceKindV2, local_name)` tuple; legal local names include
+`.`, `/`, `:`, and `::`, and can exceed the 256-byte source
+`ResolvedPredicateIdV2` grammar. The final repair is disjoint:
+
+1. Types owns a distinct `ResolvedHostPredicateKeyV2` encoded injectively
+   from length-prefixed canonical module/kind/local components, with no
+   truncation, hash-only identity, punctuation replacement, or source-ID
+   grammar reuse. `ResolvedCallableInputV2`, `ResolvedCallTargetV2`, and
+   `RuleCallableTargetV2` distinguish host from source predicate. Retain the
+   host signature's exact parameter/result/effect facts in the typed call.
+   Check component lengths and charge the encoded length before allocating
+   the key; a public types constructor must not create an unbounded vector
+   ahead of modules' authority budget. Test exact/+1 key bytes and long
+   punctuation-distinct assets under the module session limit.
+2. Modules owns a nonforgeable same-session
+   `DocumentCatalogValidatorV2::resolve_host_predicate_call` proof: call its
+   exact `resolve_reference(expected_kind=Predicate)`, look up that ID in
+   `external_catalog().asset(id)`, require a Predicate payload, project the
+   types host callable from the full catalog tuple, and retain checked use
+   location plus asset ID. Sema cannot manufacture the proof from a string or
+   select an unrelated signature.
+3. Sema routes source-local and host predicate calls separately, verifies
+   the exact authored callee/use location against the modules proof, passes
+   its typed callable into the one expression kernel, and emits SCC edges
+   only for source-local predicates. Tests cover punctuation-distinct and
+   long legal names, same-spelling source/host ambiguity, wrong kind,
+   wrong session, unproven alias/ID transplant under the existing resolver
+   visibility policy, cross-call target transplant, and
+   immutable signature effects. Ticket 06 verifies host calls do not become
+   local SCC nodes.
+
+Types/modules owners may implement steps 1-2 in parallel only after sharing
+the exact type API; Ticket 04 consumes the frozen proof and never edits either
+owner to make a source test pass. Both owner-local receipts and a sema source
+integration positive are required before this gate closes.
+
+### Latest host-proof owner checkpoint and remaining gate
+
+The 81/81 types and 122/122 modules counts above are prior fingerprints.
+Types' distinct host/source identity and injective length-prefixed key passed
+83/83 all-target tests and strict Clippy. Modules' same-session exact
+Predicate/signature proof passed 126/126 all-target tests and strict Clippy.
+Full owner file hashes and source/test counts are in `receipts/03.md`.
+These changes reuse the existing type kernel and catalog validator; they do
+not add another resolver or checker.
+
+Ticket 03 stays `REPAIR`. Ticket 04 has a source host-call positive and one
+source/host same-spelling collision negative in a later 43/43 sema owner run,
+but still needs builtin/host collision, legal punctuation names, imported
+alias origin, proof-key/location transplants, and host exclusion from local
+SCC edges. Then run a combined
+owner/consumer command set on one frozen dirty fingerprint, plus the required
+mutation and public API diff. An owner-local count must not be reported as a
+cross-owner or pipeline result.
+
+### Intrinsic aggregate effect lookup required by Group
+
+Ticket 04's aggregate-only partition-input seam cannot authorize a call from
+the composed `TypedExpressionFact.effects`: a scalar `abs(sum(x))` inherits
+aggregate effects from its child. Types owns a read-only intrinsic-effects
+lookup keyed by the exact chosen `BuiltinIdV2` from
+`ResolvedCallTargetV2::Builtin`, with absent IDs rejecting. Do not expose a
+family-name/string classifier or duplicate the builtin registry in Binder or
+sema. The owner test must distinguish a scalar wrapper's intrinsic Scalar
+class from its aggregate-composed expression class, then rerun types all-
+target tests and strict Clippy with new hashes in `receipts/03.md`.

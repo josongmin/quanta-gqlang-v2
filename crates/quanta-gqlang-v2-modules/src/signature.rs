@@ -5,7 +5,8 @@ use crate::graph::is_segment;
 use crate::ModuleDiagnosticV2;
 use quanta_gqlang_v2_hir::{CheckedLocatedSpanV2, LocatedSpanV2, SourceRegistryViewV2};
 use quanta_gqlang_v2_types::{
-    ExpressionEffectsV2, ResolvedPredicateCallableV2, ResolvedPredicateIdV2, ValueTypeV1,
+    ExpressionEffectsV2, ResolvedHostPredicateCallableV2, ResolvedHostPredicateKeyV2,
+    ResolvedPredicateCallableV2, ResolvedPredicateIdV2, ValueTypeV1,
 };
 use std::collections::BTreeMap;
 
@@ -130,6 +131,24 @@ impl SignatureV2 {
         )
         .map_err(|error| {
             ModuleDiagnosticV2::without_location("modules.invalid_signature", error.to_string())
+        })
+    }
+    pub(crate) fn try_as_resolved_host_predicate(
+        &self,
+        key: ResolvedHostPredicateKeyV2,
+        location: &CheckedLocatedSpanV2,
+    ) -> Result<ResolvedHostPredicateCallableV2, ModuleDiagnosticV2> {
+        ResolvedHostPredicateCallableV2::try_new(
+            key,
+            self.parameters
+                .iter()
+                .map(|parameter| parameter.value_type.clone())
+                .collect(),
+            self.result.clone(),
+            self.effects,
+        )
+        .map_err(|error| {
+            ModuleDiagnosticV2::new("modules.invalid_signature", error.to_string(), location)
         })
     }
     #[must_use]

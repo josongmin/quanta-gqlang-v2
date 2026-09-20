@@ -11,7 +11,8 @@
 //! from <source> [<alias>]
 //!   | where <bool-expr>
 //!   | project <value> [as <alias>], ...
-//!   | join <source> [<alias>] [on <bool-expr>]
+//!   | join <source> [<alias>] on <bool-expr>
+//!   | cross join <source> [<alias>]
 //!   | group by <value>, ...
 //!   | order by <value> [desc|asc], ...
 //!   => <result-shape>          # optional nested result shape
@@ -24,13 +25,13 @@
 //!
 //! - `where` lowers to `RelationExprKind::Filter`.
 //! - `project` lowers to `RelationExprKind::Project`.
-//! - `join` lowers to `Compose("join", [left, right])`; an optional `on`
-//!   predicate wraps the compose in a `Filter`.
-//! - `group by` lowers to `Compose("group_by", [input, keys])` where `keys` is a
-//!   `Project` carrying the group-key value exprs.
-//! - `order by` lowers to `Compose("order_by", [input, keys])` likewise; sort
-//!   direction is folded into the key alias as `asc`/`desc` (an open tag,
-//!   interpreted by ticket 04). No bag/order semantics are decided here (D26).
+//! - `join ... on ...` lowers directly to `JoinHirV1::Inner`; `cross join`
+//!   lowers directly to `JoinHirV1::Cross` and cannot carry a predicate.
+//! - `group by` lowers to `RelationExprKindV1::GroupBy` with checked nonempty
+//!   value keys.
+//! - `order by` lowers to `RelationExprKindV1::OrderBy` with checked nonempty
+//!   keys whose `SortDirectionHirV1` is explicit. No bag/order semantics are
+//!   decided here (D26).
 
 use crate::cursor::CursorV1;
 use crate::diag::ParseDiagnosticV1;

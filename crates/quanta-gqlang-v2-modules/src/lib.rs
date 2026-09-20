@@ -21,10 +21,13 @@ pub use authority::{
 pub use budget::ModuleBudgetV2;
 pub use catalog::{
     DocumentCatalogAssetInputV2, DocumentCatalogAuthorityV2, DocumentCatalogDependencyInputV2,
-    DocumentCatalogInputV2, ExternalCatalogAssetInputV2, ExternalCatalogAssetV2,
-    ExternalCatalogDependencyInputV2, ExternalCatalogPayloadInputV2, ExternalCatalogPayloadV2,
-    ExternalCatalogV2, ExternalPackContractV2, GateBindingV2, GateContractV2,
-    ProfileAdmissionInputV2, ProfileAdmissionV2, RequireCertifiedInputV2,
+    DocumentCatalogDependencyV2, DocumentCatalogFamilyReferenceInputV2,
+    DocumentCatalogFinalInputV2, DocumentCatalogInputV2, DocumentCatalogReferenceFamilyV2,
+    DocumentCatalogReferenceInputV2, DocumentCatalogReferenceOriginV2, ExternalCatalogAssetInputV2,
+    ExternalCatalogAssetV2, ExternalCatalogDependencyInputV2, ExternalCatalogPayloadInputV2,
+    ExternalCatalogPayloadV2, ExternalCatalogV2, ExternalPackContractV2, GateBindingV2,
+    GateContractV2, PredeclaredDocumentAssetV2, ProfileAdmissionInputV2, ProfileAdmissionV2,
+    RequireCertifiedInputV2, ResolvedDocumentCatalogReferenceV2, ResolvedHostPredicateProofV2,
 };
 pub use diagnostic::{ModuleDiagnosticV2, ResourceExhaustionV2};
 pub use extension::{

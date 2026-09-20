@@ -41,6 +41,9 @@ glob-export assertions cannot remain green.
 9. `crates/quanta-gqlang-v2-planning/src/lib.rs`
 10. `crates/quanta-gqlang-v2-planning/Cargo.toml` — integrator only; remove
     direct HIR edge and add sema
+10a. `crates/quanta-gqlang-v2-pipeline/Cargo.toml` — integrator only; remove
+     direct HIR, Binder, and types edges after migrating production imports;
+     the final pipeline edges are surface+sema+algebra+logic+planning+modules
 11. `/Cargo.lock` — integrator only if the edge cut changes it
 12. `crates/quanta-gqlang-v2-pipeline/src/compile.rs` — integrator only
 13. `crates/quanta-gqlang-v2-pipeline/src/lib.rs` — integrator only
@@ -60,8 +63,10 @@ glob-export assertions cannot remain green.
 
 1. Remove raw-HIR `classify_item`, `classify_find`, `classify_check`, and
    `classify_presentation` entry points.
-2. Add `SemanticPlanInputV2` over relational, graph, check, presentation, and
-   rule contracts.
+2. Add `SemanticPlanInputV2` over relational, graph, check, presentation,
+   document rule-program, REQUIRE CERTIFIED meta, and checked composition
+   body contracts. Catalog, value Declaration, and USE PACK are explicit
+   nonplan outcomes, not silently skipped items.
 3. Separate `AuthorityLaneV2` from `EvaluationDeterminismV2`.
 4. Derive query determinism, monotonicity, capabilities, and semantic cost from
    retained expression effects.
@@ -77,7 +82,7 @@ glob-export assertions cannot remain green.
     Open analysis receives explicit stage statuses and never borrows the V1 path.
 13. Give `SemanticCostV2` one ordered field iterator/accessor as the canonical
     schema order; ticket 08's CLI renderer consumes it rather than hardcoding a
-    second five-field list.
+    second field list.
 
 ## Required Planning Input
 
@@ -88,6 +93,8 @@ pub enum SemanticPlanInputV2 {
     Check(CheckContractV2),
     Presentation(PresentationContractV2),
     Rule(RuleProgramContractV2),
+    MetaRequireCertified(ResolvedMetaV2),
+    Composition(CheckedCompositionPlanInputV2),
 }
 
 pub struct SemanticPlanV2 {
@@ -98,11 +105,30 @@ pub struct SemanticPlanV2 {
     result: ResultContractV2,
     capabilities: BTreeSet<CapabilityV2>,
     semantic_cost: SemanticCostV2,
+    explain: ExplainNoteV2,
 }
 ```
 
 The planner may derive summaries from sealed logical algebra/logic contracts but
 may not inspect authored HIR options.
+`ResultContractV2` is not an empty result-kind wrapper: it retains the closed
+`ResultKindV2`, per-row `RenderRequirementV2`, optional bounded
+`WitnessSelectionPolicyV2`, and `MultiplicityOrderContractV2` (including
+cardinality/order semantics). FIND also retains the exact graph witness
+depth/cap/dedup/tie-break provenance from `GraphQueryContractV2` rather than
+reclassifying HIR. `ExplainNoteV2` retains a checked root location, ordered
+logical algebra family list, and recursive flag. Migrate the existing
+`PublicPlanV1` fields; do not drop them while replacing its raw input.
+Tests must compare these fields across logic/algebra → planner → facade → CLI,
+including wrong origin, witness cap, order, and recursive-flag mutations.
+`CheckedCompositionPlanInputV2` retains the composition root ID, ordered
+producer item IDs and their checked outputs, exact `WITH` binding identity,
+and one sealed body input. It dispatches to the body's existing plan policy;
+it is not a second classifier. Do not turn nested producer outputs into
+extra top-level plans. `ResolvedMetaKindV2::UsePack`, Catalog, and value
+Declaration produce checked `NoPlanReasonV2` outcomes. An inline VIEW body
+is lowered through Ticket 05 for its typed relation/schema proof but its
+Catalog declaration still has no per-declaration serving plan.
 
 ## Required Public Facade
 
@@ -111,9 +137,9 @@ DTO roots; nested DTO fields use curated explicit exports, never crate globs:
 
 ```rust
 compile_source_document_v2(SourceIdV2, &str, &ClosedFrontendAuthorityV2)
-    -> Result<CompiledDocumentV2, FrontendFailureV2>
+    -> Result<CompiledDocumentV2, FrontendTransactionErrorV2>
 analyze_source_document_v2(SourceIdV2, &str, &OpenAnalysisAuthorityV2)
-    -> Result<AnalysisDocumentV2, FrontendFailureV2>
+    -> Result<AnalysisDocumentV2, FrontendTransactionErrorV2>
 format_source_document_v2(SourceIdV2, &str, &FrontendBudgetV2)
     -> Result<String, FrontendFailureV2>
 ```
@@ -121,7 +147,8 @@ format_source_document_v2(SourceIdV2, &str, &FrontendBudgetV2)
 Stable root types are `ClosedFrontendAuthorityV2`,
 `ClosedFrontendAuthorityBuilderV2`, `OpenAnalysisAuthorityV2`,
 `FrontendBudgetV2`, `CompiledDocumentV2`,
-`AnalysisDocumentV2`, `SemanticPlanV2`, `FrontendDiagnosticV2`, and the curated
+`AnalysisDocumentV2`, `SemanticPlanV2`, `FrontendDiagnosticV2`,
+`FrontendAuthorityErrorV2`, `FrontendTransactionErrorV2`, and the curated
 host-assignable `SourceIdV2`. The facade
 also exports `FrontendFailureV2`. It does not expose owner constructors for HIR,
 types, algebra, logic, or planning.
@@ -142,7 +169,7 @@ NotApplicable(NoPlanReasonV2)
 
 Only `SemanticAnalysisV2::Complete` may invoke checked algebra, logic, and
 planning. `Incomplete` maps later stages to `BlockedByDiagnostics`; the public
-`Err(FrontendFailureV2)` branch maps to wire error. Fully resolved open analysis
+`Err(FrontendTransactionErrorV2)` branch maps to wire error. Fully resolved open analysis
 may carry complete stage
 payloads but remains `AnalysisDocumentV2`. There is no implicit or fallible
 conversion to `CompiledDocumentV2`.
@@ -156,8 +183,10 @@ conversion to `CompiledDocumentV2`.
 2. Delete `NoPlanReasonV1::keyword` and its spelling pin with the V1 raw-HIR
    classifier. It has no production consumer.
 3. Replace `v3_planning_cost_schema.rs` plus the V1 pipeline duplicate with one
-   V2 owner-schema assertion and one CLI consumer assertion. Never delete both
-   sides before `SemanticCostV2` has a production reader.
+   V2 planning-owner schema assertion. Record the CLI consumer assertion as a
+   Ticket 08 deferred gate; Ticket 07 does not edit CLI across the owner
+   boundary. Never delete both sides before `SemanticCostV2` has a production
+   reader.
 4. Preserve every cost/capability/result keyword that the final CLI actually
    renders. Remove only verified no-consumer pins.
 5. Normalize touched lint headers and consolidate `id/span/col/lit/pred/node`
@@ -214,7 +243,7 @@ conversion to `CompiledDocumentV2`.
 1. `[UPDATE]` `crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs` — sealed-input capabilities/effects
 2. `[UPDATE]` `crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs` and `crates/quanta-gqlang-v2-planning/tests/v3_planning_cost_schema.rs` — retain vocabulary/schema
 3. `[UPDATE]` `crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs` — sealed provenance only
-4. `[MOVE+REWRITE]` `crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs` to `crates/quanta-gqlang-v2-planning/tests/v3_semantic_item_contracts.rs` — CHECK/EXPLAIN/presentation matrices
+4. `[MOVE+REWRITE]` `crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs` to `crates/quanta-gqlang-v2-planning/tests/v3_semantic_item_contracts.rs` — CHECK/EXPLAIN/presentation/Meta/Composition and explicit Catalog/Declaration nonplan matrices
 5. `[UPDATE]` `crates/quanta-gqlang-v2-planning/tests/v3_planning_hellgate.rs` and `crates/quanta-gqlang-v2-planning/tests/v3_planning_truth.rs` — legality, effect, witness retention
 6. `[MOVE+REWRITE]` `crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs` to `crates/quanta-gqlang-v2-frontend-contract/tests/public_api_surface.rs`
 7. `[UPDATE]` `crates/quanta-gqlang-v2-frontend-contract/src/lib.rs` — forbidden-import `compile_fail` doctests
@@ -283,6 +312,16 @@ The `rg` command must return no matches.
 9. final document assembly rejects a deliberately omitted algebra, logic, or
    plan contract and preserves explicit `NoPlanReasonV2` for non-executable
    declarations
+10. REQUIRE CERTIFIED plan only from the exact modules-validated directive;
+    Model Catalog and USE PACK remain typed nonplan outcomes, independent of
+    provider/provenance display text
+11. Composition Query/FIND/CHECK/EXPLAIN bodies dispatch via the same sealed
+    plan policy; wrong-body, wrong-producer, and swapped WITH target IDs reject
+12. inline VIEW relation schema/provenance is lowered and checked once, while
+    the Catalog item remains a single nonplan top-level entry
+13. result render requirement, witness selection/cap/tie-break,
+    multiplicity/order, and explain location/family/recursive flag survive
+    planner→facade→CLI with exact values
 
 ## Mutation Cases
 
@@ -290,6 +329,11 @@ The `rg` command must return no matches.
 2. drop CHECK emit mode
 3. reclassify FIND from raw HIR
 4. reintroduce one facade glob export
+5. swap composition body or inline VIEW producer under a valid same-source ID
+6. replace the modules-certified Meta proof with a same-spelling string or
+   force a Model Catalog declaration into an advisory serving plan
+7. retain the dead `unsupported_reason_code=none` success field or introduce
+   physical cost labels in the V2 schema
 
 ## Definition Of Done
 
@@ -317,7 +361,8 @@ substitute.
 
 `LoweredDocumentV2` is pipeline-owned and contains private exact-key maps for
 algebra outputs, graph outputs, the optional document rule program, and
-presentation inputs, plus source order. Construction compares exact sets:
+presentation/meta/composition inputs, plus source order. Construction compares
+exact sets for both top-level items and nested producer/body identities:
 
 ```text
 expected_applicable_item_ids == produced_item_ids
@@ -326,9 +371,18 @@ expected_applicable_item_ids == produced_item_ids
 Missing, duplicate, extra, cross-document, and wrong-kind outputs are typed
 failures. Positional zip is forbidden. CHECK assembly verifies that its nested
 `GraphQueryContractV2` carries the identity named by `ResolvedCheckV2`.
+Composition assembly verifies each ordered producer's ID/output kind, the
+`WITH` reference target, and its one body ID/contract; same-document but
+wrong-body or wrong-producer transplants reject. Inline VIEW's algebra output
+is matched to its Catalog payload without creating a top-level plan key.
+The pipeline/facade `SourceIdV2` is the canonical HIR-defined identity
+re-exported through sema, not a duplicate alias or hidden direct HIR Cargo
+edge. Audit all pipeline/planning production imports and manifest edges after
+the cut; strict final architecture must not depend on a transitional
+pipeline→HIR/Binder/types path.
 
-Use `Result<AnalysisDocumentV2, FrontendFailureV2>` and
-`Result<CompiledDocumentV2, FrontendFailureV2>` at the public facade. A
+Use `Result<AnalysisDocumentV2, FrontendTransactionErrorV2>` and
+`Result<CompiledDocumentV2, FrontendTransactionErrorV2>` at the public facade. A
 successful `AnalysisDocumentV2` has only `Complete`, `BlockedByDiagnostics`, or
 `NotApplicable` item states; transport-level `error` is the `Err` branch and is
 not a fourth internal status.
@@ -350,22 +404,40 @@ set. Missing, extra, duplicate, or foreign member IDs reject.
 
 Pin an exhaustive conversion table in code and tests:
 
-| Existing input | AuthorityLaneV2 | EvaluationDeterminismV2 |
+| Sealed input | AuthorityLaneV2 | EvaluationDeterminismV2 |
 |---|---|---|
-| local/exact | local | deterministic iff effects say deterministic |
-| catalog/certified | certified | derived from effects |
-| model/advisory | advisory | derived from effects |
+| ordinary typed relation, graph, CHECK, or presentation | frontend_checked | deterministic iff retained effects say deterministic |
+| exact `REQUIRE CERTIFIED` item matched to modules admission proof | certified_requirement_validated | derived from effects; this does not certify unrelated outputs |
+| Model catalog declaration | no serving plan | not applicable; advisory is not inferred from its name/provider bytes |
 | unresolved open-analysis item | no plan | not applicable |
 
-All `SemanticCostV2` fields remain qualitative and ordered exactly as
-`cpu`, `memory`, `io`, `network`, `coordination`; the public iterator returns
-`SemanticCostDimensionV2` in that order. No cardinality estimate or physical
-operator is introduced.
+No accepted source producer currently carries a general certified/advisory
+truth lane for arbitrary relations. `RelationSourceV2::provenance` is a free
+string, not certification. Ticket 04 must retain the exact modules-validated
+`REQUIRE CERTIFIED` directive proof; Ticket 07 consumes it. Do not classify
+catalog/model/host text into a lane. A future advisory model plan requires a
+new typed authority producer and separate packet, not a planner guess.
+
+The V1 `SemanticCostV1::FIELD_NAMES`/CLI renderer pin five fields, but every
+successful `PublicPlanV1` producer assigns `unsupported_reason_code: None`;
+rejection returns a typed `PlanningDiagnosticV1` instead. V2 deliberately
+uses four ordered success fields: `estimated_cardinality_class`,
+`recursion_risk_class`, `witness_explosion_risk_class`, and
+`ordering_contract`. Move unsupported reason codes solely to typed failure
+diagnostics. Use one `SemanticCostV2` ordered accessor/iterator and update the
+planning-owner schema assertion here. Ticket 08 owns the CLI consumer renderer
+and old fifth-field CLI tests; Ticket 07 records that deferred consumer gate.
+A successful CLI plan must emit exactly the four names and
+must not render `unsupported_reason_code=none`. Do not introduce `cpu`,
+`memory`, `io`, `network`, or `coordination` fields: those suggest physical
+estimates the frontend cannot derive. The cardinality *class* remains
+qualitative; no numeric cardinality estimate or physical operator is added.
 
 ### Public closed-authority path
 
 The facade owns `ClosedFrontendAuthorityBuilderV2` and bounded declarative DTOs
-for module, relation, source-registry, and budget inputs. The builder invokes
+for module, relation, graph-reference selector, source-registry, and budget
+inputs. The builder invokes
 pipeline, which delegates validation/sealing to modules/types/sema, then returns
 `ClosedFrontendAuthorityV2`; the facade adds no direct modules/types
 dependency. Raw maps,
@@ -377,4 +449,86 @@ Facade proof is two-part: (1) an AST/source inventory of every `pub use`; and
 both positive construction/compile and compile-fail for internal owner types.
 A doctest that merely lacks direct dependencies is not sufficient.
 
+### Inherited external delta audit (`fcf106b..f9ec954`)
+
+Commit `f9ec954` is an **UNQUALIFIED PARTIAL CONSUMER MIGRATION**, not Ticket 07
+progress. Its 89 planning tests exercise the old V1 vocabulary/classifier.
+Planning still depends directly on HIR and publicly exports `classify_item` and
+`PublicPlanV1`; the commit adds another raw-HIR
+`classify_composition_body`. That helper has no composition-specific rail,
+maps every CHECK to `alert_plan`, and collapses composition EXPLAIN to a generic
+proof plan, losing the exact mode/confirm/emit and evidence/truth contracts.
+
+Ticket 07 must delete all raw-HIR classifiers in the same cut, remove the HIR
+dependency, and route every option through the exhaustive semantic mapping.
+Keep only vocabulary algorithms whose inputs are already sealed. At the
+current inherited start, planning tests are focused V1 green, pipeline is red
+with 25 compiler errors, and strict planning/binder Clippy is red because the
+Ticket 05 algebra dependency contains 6 denied allow-attribute errors. Receipt
+07 must report those as distinct evidence classes and cannot count architecture
+lint green while 22 transitional normal edges remain as final-DAG proof.
+
 Requires 05 and 06. Blocks 08 and 09.
+
+## 2026-09-21 Live-Tree Final Reconciliation (HEAD `f9ec954`)
+
+The 89 inherited planning tests prove the V1 vocabulary and classifier only.
+`PlanRequestV1` still exposes a raw algebra root and caller-selected result,
+effect, and truth; `PublicPlanV1` has no physical tree by design. Do not add a
+physical optimizer to satisfy the old review. The repair is a sealed semantic
+input and exhaustive semantic-policy projection, with the existing cost,
+capability, result, explain, and witness vocabulary retained where valid.
+
+Before implementing the facade, build an exact-key integration table from
+Ticket 04 semantic items, Ticket 05 relation outputs, and Ticket 06 graph/rule
+outputs. For every applicable item, require one correct-kind result; for
+declarations require a checked `NoPlanReasonV2`; for rules require one
+document-program plan and exact member references rather than a plan copied
+per rule. Inject missing, extra, duplicate, foreign, wrong-kind, and
+same-ID/wrong-nested-graph outputs. Only after this table passes may the
+facade expose `CompiledDocumentV2`/`AnalysisDocumentV2`.
+
+The facade's closed-authority builder must be exercised from an isolated
+external crate depending only on `frontend-contract`; positive construction
+and negative internal-root imports are both required. Explicitly inventory
+all `pub use` lines and normal Cargo edges after removal of the present HIR,
+algebra, planning, surface, and types glob dependencies. A V1 owner test count
+or empty doctest run is not a V2 external-consumer receipt.
+
+Ticket 05's exact test inventory found an omitted pipeline consumer:
+`crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs`
+still reads old algebra fields/string source IDs. Migrate its real source-ID,
+column-origin, and wrong-authority assertions to the sealed semantic→algebra
+contract in this Ticket 07 integration gate. Also migrate planning's direct
+algebra field access after Ticket 05 makes node fields private; the earlier
+89 V1 tests do not cover that cut. Do not silently delete either rail to
+obtain a workspace compile.
+
+## Composition And Group Consumer Audit Delta
+
+Ticket 04's Binder already owns sequential LET visibility and the
+non-capturing outer-composition barrier. Its sema producer must provide an
+exact `(composition ID, LET ordinal) -> typed local output` table; planning
+does not re-resolve names or treat LET output as a host catalog asset. For a
+Composition plan, require exactly one checked `WITH` target in that table,
+one kind-compatible sealed body result, and exact nested producer/body item
+identities. Reject missing, extra, duplicated, wrong-kind, forward/self,
+foreign-composition, and same-display-name/wrong-ordinal outputs; no plan is
+created for each LET as an independent root item.
+
+The nested producer output is not newly invented by planning. Ticket 04
+migrates the exact existing Sample row `Set<{path: RepoPath}>` and bounded
+PATH/REACHABILITY FIND row `Set<{function: EntityRef}>` from the V1 pipeline
+into sealed sema facts; other FIND kinds have no relation row. Ticket 07
+consumes those facts and migrates `v3_composition_type_env.rs` in the pipeline
+integration suite. Its V1 empty-projection/schema-open success becomes a
+closed-compile negative; no missing local row may fall back to an unrelated
+host relation with the same name.
+
+For grouped queries, consume Ticket 05's key-only public result contract and
+aggregate-only partition proof. `ResultContractV2` may expose only the final
+row columns; it must not leak pre-group input columns or infer an aggregate
+from a string. Explain retains the checked Group/Sort stages, including both
+sort directions' sealed `NULLS LAST` policy. Add a planner→facade negative
+that swaps Group output and partition-input identities while keeping the
+same display names.

@@ -38,6 +38,17 @@ condition.
 | Facade | none suitable: current crate is a glob-export surface | `DELETE` + `NEW` | delete globs/V1 seams and add the curated document-only facade |
 | Sema | no document-scoped typed semantic transaction exists | `NEW` | add typestate carriers and orchestration only; delegate lexical/type/module algorithms to their owners |
 
+The Ticket 04 owner/consumer RR sharpened the `NEW` boundary: sema also owns
+only the checked, immutable host graph-selector catalog carrier because no
+existing module asset ID can represent the parser's dotted/slash/`::` graph
+paths. It does **not** add a graph runtime or duplicate modules catalog
+resolution. Types keeps the one expression/overload implementation and adds
+bounded rule-variable constraints plus declaration-only forward dependency;
+modules keeps the one catalog algorithm and adds same-session predeclaration
+and all-family typed references. A `TypedExprV2` with no closed structure or a
+sema relation enum copied from all algebra operators is not reuse: it forces
+downstream raw-HIR reconstruction or fabricates unreachable source syntax.
+
 ## Confirmed Deletions
 
 1. `CompositionOpV1` and synthetic `_keys` relation sources.

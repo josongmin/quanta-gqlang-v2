@@ -1,0 +1,244 @@
+ticket=04
+frozen_head=f9ec9543888954106bb7c8bf1dc6500a5e6d34f7
+scope=active Rust source/tests plus README.md and docs/language; docs/plans excluded
+command=exact Ticket 04 step 16 command, sorted
+
+crates/quanta-gqlang-v2-cli/src/commands/v3_query.rs:10://! and compiled through `pipeline::compile_document_structural` so cross-item
+crates/quanta-gqlang-v2-cli/src/commands/v3_query.rs:20:use quanta_gqlang_v2_pipeline::{compile_document_structural, PipelineDiagnosticV1};
+crates/quanta-gqlang-v2-cli/src/commands/v3_query.rs:41:        compile_document_structural(&items).map_err(|diag| render_pipeline_diagnostic_v1(&diag))?;
+crates/quanta-gqlang-v2-cli/src/main.rs:22://!   `pipeline::compile_program_structural` (single item) or
+crates/quanta-gqlang-v2-cli/src/main.rs:23://!   `pipeline::compile_document_structural` over `surface::parse_document`
+crates/quanta-gqlang-v2-cli/src/v3_plan.rs:4://! shared pipeline ([`quanta_gqlang_v2_pipeline::compile_program_structural`], D22) into a
+crates/quanta-gqlang-v2-cli/tests/v3_cli_item_surfacing.rs:11://! `v3-query` consumes the ONE shared `pipeline::compile_program_structural` (D22) and
+crates/quanta-gqlang-v2-cli/tests/v3_cli_lsp_parity.rs:12://! Both surfaces consume the ONE shared `pipeline::compile_program_structural` (D22), so for
+crates/quanta-gqlang-v2-cli/tests/v3_cli_lsp_parity.rs:18://! syntax->sema->ir path pinned: source text -> `compile_program_structural` -> first
+crates/quanta-gqlang-v2-cli/tests/v3_cli_pipeline_hellgate.rs:11://! syntax->sema->ir path pinned: source text -> `pipeline::compile_program_structural` ->
+crates/quanta-gqlang-v2-cli/tests/v3_cli_plan_summary.rs:12://! `pipeline::compile_program_structural` (parse -> bind -> type -> normalize -> plan) ->
+crates/quanta-gqlang-v2-conformance/src/lib.rs:142:/// the public [`quanta_gqlang_v2_pipeline::compile_program_structural`] entry point does not
+crates/quanta-gqlang-v2-conformance/src/lib.rs:17://! [`quanta_gqlang_v2_pipeline::compile_program_structural`] and asserts the outcome, so this
+crates/quanta-gqlang-v2-conformance/src/lib.rs:363:        // `compile_program_structural` is a fail-closed `modules` reject. The family is still
+crates/quanta-gqlang-v2-conformance/tests/self_validation.rs:119:    let result = compile_program_structural(UNSUPPORTED_CONSTRUCT_V1);
+crates/quanta-gqlang-v2-conformance/tests/self_validation.rs:13://! ([`quanta_gqlang_v2_pipeline::compile_program_structural`]) covers ALL 18 DSL root
+crates/quanta-gqlang-v2-conformance/tests/self_validation.rs:147:        let compiled = compile_program_structural(spec.example).unwrap_or_else(|diag| {
+crates/quanta-gqlang-v2-conformance/tests/self_validation.rs:30:use quanta_gqlang_v2_pipeline::{compile_program_structural, CompiledItemV1, CompiledProgramV1};
+crates/quanta-gqlang-v2-conformance/tests/self_validation.rs:78:                let compiled = compile_program_structural(spec.example).unwrap_or_else(|diag| {
+crates/quanta-gqlang-v2-conformance/tests/self_validation.rs:99:                let diag = compile_program_structural(spec.example).expect_err(&format!(
+crates/quanta-gqlang-v2-diagnostics-stdio/src/handlers/v3_diagnostics.rs:23:use quanta_gqlang_v2_pipeline::{compile_program_structural, PipelineDiagnosticV1};
+crates/quanta-gqlang-v2-diagnostics-stdio/src/handlers/v3_diagnostics.rs:65:    match compile_program_structural(source) {
+crates/quanta-gqlang-v2-diagnostics-stdio/src/handlers/v3_diagnostics.rs:6://! [`quanta_gqlang_v2_pipeline::compile_program_structural`]. It does NOT
+crates/quanta-gqlang-v2-diagnostics-stdio/src/lib.rs:6://! `quanta-gqlang-v2-pipeline::compile_program_structural` (`D22`). The legacy
+crates/quanta-gqlang-v2-diagnostics-stdio/src/server.rs:16:/// `quanta-gqlang-v2-pipeline::compile_program_structural` (`D22`).
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_determinism.rs:12://! -> `pipeline::compile_program_structural` -> the first failing stage's typed diagnostic,
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs:117:    let pipeline = compile_program_structural(src).expect_err("advanced family source must reject");
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs:13://! `pipeline::compile_program_structural` (what the CLI worker surfaces from its side) and
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs:26:use quanta_gqlang_v2_pipeline::{compile_program_structural, PipelineStageV1};
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs:42:    let diag = compile_program_structural(ADVANCED_FAILING_SRC_V1)
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs:60:    let pipeline_code = compile_program_structural(ADVANCED_FAILING_SRC_V1)
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs:90:    let pipeline = compile_program_structural(src).expect_err("must reject at parse");
+crates/quanta-gqlang-v2-frontend-contract/src/lib.rs:13:    compile_document_structural, compile_document_with_context, compile_document_with_schema,
+crates/quanta-gqlang-v2-frontend-contract/src/lib.rs:14:    compile_item_structural, compile_item_with_context, compile_item_with_schema,
+crates/quanta-gqlang-v2-frontend-contract/src/lib.rs:15:    compile_program_structural, compile_program_with_schema, compile_with_context, CompiledItemV1,
+crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs:37:        compile_program_structural("from users | project 1 as x").expect("query compiles");
+crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs:49:    let program = compile_program_structural("require certified").expect("meta compiles");
+crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs:68:    let diag = compile_with_context("from users u | where u.id + \"x\" > 1", &context)
+crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs:80:    let compiled = compile_item_structural(&item).expect("structural item helper must compile");
+crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs:8:    compile_document_structural, compile_item_structural, compile_program_structural,
+crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs:91:    let diag = compile_document_structural(&items)
+crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs:9:    compile_with_context, compiled_program_item_v1, format_item, CatalogDeclHirV1,
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:1378:        bind_item, bind_standalone, compile_program_with_schema, producer_output_relation,
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:1425:        let producer = compile_program_with_schema(
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:1444:        let producer = compile_program_with_schema(
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:1464:            compile_program_with_schema("from users u | project u.id as id", context.schema())
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:3://! [`compile_program_structural`] runs the FULL v3 frontend stack against a source string
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:435:pub fn compile_program_structural(source: &str) -> Result<CompiledProgramV1, PipelineDiagnosticV1> {
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:436:    compile_with_context(source, &FrontendContextV1::structural_only())
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:445:pub fn compile_program_with_schema(
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:449:    compile_with_context(source, &FrontendContextV1::schema_only(schema.clone()))
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:458:pub fn compile_with_context(
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:472:    let compiled = compile_item_with_context(&program, context)?;
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:485:pub fn compile_item_structural(
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:488:    compile_item_with_context(item, &FrontendContextV1::structural_only())
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:497:pub fn compile_item_with_schema(
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:501:    compile_item_with_context(item, &FrontendContextV1::schema_only(schema.clone()))
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:509:pub fn compile_item_with_context(
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:533:pub fn compile_document_structural(
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:536:    compile_document_with_context(items, &FrontendContextV1::structural_only())
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:545:pub fn compile_document_with_schema(
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:549:    compile_document_with_context(items, &FrontendContextV1::schema_only(schema.clone()))
+crates/quanta-gqlang-v2-pipeline/src/compile.rs:557:pub fn compile_document_with_context(
+crates/quanta-gqlang-v2-pipeline/src/lib.rs:11://! [`compile_program_structural`] / [`compile_item_structural`] /
+crates/quanta-gqlang-v2-pipeline/src/lib.rs:12://! [`compile_document_structural`] for structural-only authority and
+crates/quanta-gqlang-v2-pipeline/src/lib.rs:13://! [`compile_program_with_schema`] / [`compile_item_with_schema`] /
+crates/quanta-gqlang-v2-pipeline/src/lib.rs:14://! [`compile_document_with_schema`] for schema-only authority.
+crates/quanta-gqlang-v2-pipeline/src/lib.rs:32:    compile_document_structural, compile_document_with_context, compile_document_with_schema,
+crates/quanta-gqlang-v2-pipeline/src/lib.rs:33:    compile_item_structural, compile_item_with_context, compile_item_with_schema,
+crates/quanta-gqlang-v2-pipeline/src/lib.rs:34:    compile_program_structural, compile_program_with_schema, compile_with_context, CompiledItemV1,
+crates/quanta-gqlang-v2-pipeline/src/lib.rs:9://! [`compile_with_context`] is the semantic entry point over
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:103:    let compiled = compile_program_structural(src).expect("CHECK must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:114:    let compiled = compile_program_structural(src).expect("bounded CHECK confirm must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:124:    let err = compile_program_structural(src)
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:136:    let compiled = compile_program_structural(src).expect("EXPLAIN must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:147:    let compiled = compile_program_structural(src).expect("SHOW must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:14:    let compiled = compile_program_structural(src).expect("SELECT must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:157:    let compiled = compile_program_structural(src).expect("DESCRIBE must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:167:    let compiled = compile_program_structural(src).expect("SAMPLE must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:177:    let compiled = compile_program_structural(src).expect("COMPARE must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:187:    let compiled = compile_program_structural(src).expect("EXPORT must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:198:    let compiled = compile_program_structural(src).expect("VIEW must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:212:    let compiled = compile_program_structural(src).expect("MODEL must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:222:    let compiled = compile_program_structural(src).expect("PACK must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:232:    let compiled = compile_program_structural(src).expect("PROFILE must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:242:    let compiled = compile_program_structural(src).expect("GATE must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:252:    let compiled = compile_program_structural(src).expect("RULEDEF must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:265:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:275:    let compiled = compile_program_structural(src).expect("REQUIRE CERTIFIED must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:28:    let compiled = compile_program_structural(src).expect("FIND reachability must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:290:    let compiled = compile_program_structural(src).expect("COMPOSITION must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:39:    let compiled = compile_program_structural(src).expect("FIND flow must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:50:    let compiled = compile_program_structural(src).expect("FIND slice must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:60:    let compiled = compile_program_structural(src).expect("FIND taint must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:70:    let compiled = compile_program_structural(src).expect("FIND path must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:81:    let compiled = compile_program_structural(src).expect("FIND points_to must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:8:use quanta_gqlang_v2_pipeline::{compile_program_structural, CompiledItemV1};
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs:92:    let compiled = compile_program_structural(src).expect("FIND summary must compile");
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:100:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:10:    compile_item_structural, compile_program_structural, CompiledItemV1, PipelineStageV1,
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:111:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:120:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:128:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:136:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:144:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:152:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:163:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:171:    let compiled = compile_program_structural(src).expect("REQUIRE CERTIFIED compiles");
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:179:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:190:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:201:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:212:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:220:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:231:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:23:    let result = compile_item_structural(&item);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:43:    let result = compile_item_structural(&item);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:55:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:63:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:81:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs:92:    let result = compile_program_structural(src);
+crates/quanta-gqlang-v2-pipeline/tests/v3_alias_type_closure_gap.rs:15:use quanta_gqlang_v2_pipeline::compile_program_with_schema;
+crates/quanta-gqlang-v2-pipeline/tests/v3_alias_type_closure_gap.rs:37:    let diag = compile_program_with_schema(src, &users_relation_schema())
+crates/quanta-gqlang-v2-pipeline/tests/v3_alias_type_closure_gap.rs:49:    let diag = compile_program_with_schema(src, &users_relation_schema())
+crates/quanta-gqlang-v2-pipeline/tests/v3_alias_type_closure_gap.rs:65:    let alias_diag = compile_program_with_schema(via_alias, &users_relation_schema())
+crates/quanta-gqlang-v2-pipeline/tests/v3_alias_type_closure_gap.rs:71:    let source_diag = compile_program_with_schema(via_source_name, &users_relation_schema())
+crates/quanta-gqlang-v2-pipeline/tests/v3_alias_type_closure_gap.rs:81:    let no_alias_diag = compile_program_with_schema(no_alias, &users_relation_schema())
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_catalog_scope.rs:20:use quanta_gqlang_v2_pipeline::{compile_document_structural, PipelineStageV1};
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_catalog_scope.rs:59:    let result = compile_document_structural(&items);
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_producer_cardinality.rs:20:use quanta_gqlang_v2_pipeline::{compile_program_with_schema, CompiledItemV1};
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_producer_cardinality.rs:54:    let compiled = compile_program_with_schema(src, &findings_schema())
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_producer_cardinality.rs:95:        compile_program_with_schema(src, &findings_schema()).expect("composition compiles");
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs:105:    let compiled = compile_program_with_schema(src, &users_relation_schema())
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs:115:    let compiled_v1 = compile_program_structural(source_v1).expect("composition compiles");
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs:146:    let error_v1 = compile_program_structural(source_v1)
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs:175:        let error_v1 = compile_program_structural(&invalid_source_v1)
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs:22:    compile_program_structural, compile_program_with_schema, CompiledItemV1,
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs:48:    let diag = compile_program_with_schema(src, &users_relation_schema()).expect_err(
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs:66:    let diag = compile_program_with_schema(src, &users_relation_schema()).expect_err(
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs:88:    let compiled = compile_program_with_schema(src, &users_relation_schema()).expect(
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs:111:    let diag = compile_program_structural("let bad = unresolved + 1")
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs:125:    let diag = compile_program_structural("from findings f | group by count(f.id)")
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs:143:        compile_program_structural("use pack unknown.pack | activation=session | lockfile=x.lock")
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs:15:use quanta_gqlang_v2_pipeline::{compile_program_structural, PipelineStageV1};
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs:44:    let diag = compile_program_structural("from users | project 1 as")
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs:60:    let diag = compile_program_structural("let bad = 1 + \"x\"")
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs:77:    let diag = compile_program_structural("let bad = 1 + \"x\"")
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs:93:    let diag = compile_program_structural("rule r : 1 + 2 if base")
+crates/quanta-gqlang-v2-pipeline/tests/v3_frontend_context.rs:11:    compile_program_structural, compile_with_context, FrontendContextV1, PipelineStageV1,
+crates/quanta-gqlang-v2-pipeline/tests/v3_frontend_context.rs:32:    let structural = compile_program_structural(src)
+crates/quanta-gqlang-v2-pipeline/tests/v3_frontend_context.rs:44:    let diag = compile_with_context(src, &context)
+crates/quanta-gqlang-v2-pipeline/tests/v3_normalize_item_decl_rule.rs:15:    compile_program_structural, compile_program_with_schema, CompiledItemV1, NoServeReasonV1,
+crates/quanta-gqlang-v2-pipeline/tests/v3_normalize_item_decl_rule.rs:24:    let compiled = compile_program_structural(src).expect("decl compiles end to end");
+crates/quanta-gqlang-v2-pipeline/tests/v3_normalize_item_decl_rule.rs:60:    let diag = compile_program_structural("let bad = 1 + \"x\"")
+crates/quanta-gqlang-v2-pipeline/tests/v3_normalize_item_decl_rule.rs:72:    let diag = compile_program_with_schema("let bad = k + 1", &schema)
+crates/quanta-gqlang-v2-pipeline/tests/v3_normalize_item_decl_rule.rs:82:    let compiled = compile_program_structural(src).expect("rule compiles end to end");
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_compile.rs:18:use quanta_gqlang_v2_pipeline::{compile_program_structural, CompiledProgramV1};
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_compile.rs:26:    let compiled: CompiledProgramV1 = compile_program_structural(src).expect("compiles end to end");
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_compile.rs:3://! syntax->sema->ir path pinned: source text -> `compile_program_structural` runs
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_compile.rs:65:    let a = compile_program_structural(src).expect("compiles a");
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_compile.rs:66:    let b = compile_program_structural(src).expect("compiles b");
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_hellgate.rs:105:    let diag = compile_program_structural(src).expect_err("must reject");
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_hellgate.rs:22:    compile_program_structural, PipelineDiagnosticV1, PipelineStageV1,
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_hellgate.rs:31:    let diag = compile_program_structural(src).expect_err("must reject at parse");
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_hellgate.rs:53:    let diag = compile_program_structural(src).expect_err("must reject at type");
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_hellgate.rs:78:    let diag = compile_program_structural(src).expect_err("must reject at algebra");
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_hellgate.rs:8://! syntax->sema->ir path pinned: source text -> `compile_program_structural` -> the stage
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs:182:        let res = caught(|| compile_program_structural(&src));
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs:185:            "compile_program_structural panicked on {:?}: {}",
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs:197:            compile_program_with_schema(&src, &schema)
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs:201:            "compile_program_with_schema panicked on {:?}: {}",
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs:211:        let a = compile_program_structural(&src);
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs:212:        let b = compile_program_structural(&src);
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs:228:        let a = compile_program_with_schema(&src, &schema);
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs:229:        let b = compile_program_with_schema(&src, &schema);
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs:33:    compile_program_structural, compile_program_with_schema, CompiledProgramV1,
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs:8://! 1. TOTALITY / panic-freedom: [`compile_program_structural`] and
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs:9://!    [`compile_program_with_schema`] (empty schema) must NEVER panic on an
+crates/quanta-gqlang-v2-pipeline/tests/v3_quantifier_body_type_check.rs:23:    compile_program_structural, PipelineDiagnosticV1, PipelineStageV1,
+crates/quanta-gqlang-v2-pipeline/tests/v3_quantifier_body_type_check.rs:34:        compile_program_structural(src).expect_err("type error inside quantifier body must reject");
+crates/quanta-gqlang-v2-pipeline/tests/v3_quantifier_body_type_check.rs:54:        compile_program_structural(src).expect("well-typed quantifier body must compile cleanly");
+crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs:124:    let program_v1 = compile_with_context(
+crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs:160:        compile_with_context(source_v1, &FrontendContextV1::canonical_query_serving_v1())
+crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs:16:    compile_program_structural, compile_with_context, CompiledItemV1, FrontendContextV1,
+crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs:177:    let structural_v1 = compile_program_structural(source_v1)
+crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs:43:    let program_v1 = compile_with_context(
+crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs:69:    let error_v1 = compile_with_context(
+crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs:98:    let program_v1 = compile_with_context(
+crates/quanta-gqlang-v2-pipeline/tests/v3_surface_to_algebra_group_by.rs:21:use quanta_gqlang_v2_pipeline::compile_program_structural;
+crates/quanta-gqlang-v2-pipeline/tests/v3_surface_to_algebra_group_by.rs:30:    let compiled = compile_program_structural(src).expect("group by compiles end to end");
+crates/quanta-gqlang-v2-pipeline/tests/v3_surface_to_algebra_order_by.rs:22:use quanta_gqlang_v2_pipeline::compile_program_structural;
+crates/quanta-gqlang-v2-pipeline/tests/v3_surface_to_algebra_order_by.rs:32:    let compiled = compile_program_structural(src).expect("order by compiles end to end");
+crates/quanta-gqlang-v2-pipeline/tests/v3_surface_to_algebra_order_by.rs:77:    let compiled = compile_program_structural(src).expect("order by compiles end to end");
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:114:    let q = compile_program_structural("from users | project 1 as x").expect("query compiles");
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:120:/// `compile_item_with_schema` threads schema authority into single-item compile,
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:124:fn compile_item_with_schema_types_alias_dependent_projection() {
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:126:    let good = compile_item_with_schema(&item("from users u | project u.id as id"), &schema)
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:131:        compile_item_with_schema(&item("from users u | project u.id + \"x\" as bad"), &schema)
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:137:/// `compile_item_structural` compiles a single already-parsed item with no schema
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:141:fn compile_item_structural_compiles_value_decl() {
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:143:        compile_item_structural(&item("let x = 1 + 2")).expect("decl compiles structurally");
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:157:/// `compile_document_structural` compiles every item in order against ONE shared
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:166:    let compiled = compile_document_structural(&items).expect("two distinct VIEWs both register");
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:182:    let diag = compile_document_structural(&items)
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:187:    assert!(compile_item_structural(&items[0]).is_ok());
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:188:    assert!(compile_item_structural(&items[1]).is_ok());
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:191:/// `compile_document_with_schema` threads schema authority through every item of
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:195:fn compile_document_with_schema_short_circuits_on_first_type_error() {
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:201:    let compiled = compile_document_with_schema(&good, &schema).expect("both queries type");
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:208:    let diag = compile_document_with_schema(&bad, &schema)
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:21:    compile_document_structural, compile_document_with_schema, compile_item_structural,
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:220:    let compiled = compile_program_structural("from users | project 1 as a => { col: 1 + 2 }")
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:22:    compile_item_with_schema, compile_program_structural, compile_program_with_schema,
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:231:    let compiled = compile_program_structural("from users | project 1 as a => [ 1 + 2 ]")
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:244:    let diag = compile_program_structural("from users | project 1 as a => 1 + \"x\"")
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:254:    let diag = compile_program_structural("from users | project 1 as a => { col: 1 + \"x\" }")
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:267:    let compiled = compile_program_with_schema(
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:285:    let diag = compile_program_with_schema(
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:299:    let compiled = compile_program_with_schema(
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:318:    let diag = compile_program_structural("let bad = [ { a: -(1) + \"x\" } ]")
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:325:    let ok = compile_program_structural("let good = [ { a: -(1) + (2) } ]")
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:339:    let diag = compile_program_structural("rule r : 1 + 2 if base")
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:350:    let compiled = compile_program_structural(
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:400:        compile_program_structural("rule r : head if (lonely)").expect("paren-symbol body lowers");
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:68:        compile_program_structural("from users | project 1 as x").expect("query compiles");
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs:91:    let comp = compile_program_with_schema(
+crates/quanta-gqlang-v2-pipeline/tests/v3_use_pack_authority.rs:102:    let diag = compile_with_context(src, &context_with_secure_pack())
+crates/quanta-gqlang-v2-pipeline/tests/v3_use_pack_authority.rs:148:    let compiled = compile_with_context(src, &rebuilt)
+crates/quanta-gqlang-v2-pipeline/tests/v3_use_pack_authority.rs:29:    compile_program_structural, compile_with_context, CompiledItemV1, FrontendContextV1,
+crates/quanta-gqlang-v2-pipeline/tests/v3_use_pack_authority.rs:60:    let compiled = compile_with_context(src, &context_with_secure_pack())
+crates/quanta-gqlang-v2-pipeline/tests/v3_use_pack_authority.rs:78:    let diag = compile_program_structural(src)
+docs/language/README.md:30:1. `quanta_gqlang_v2_pipeline::compile_with_context`
+docs/language/README.md:36:1. `compile_program_structural`
+docs/language/README.md:37:2. `compile_item_structural`
+docs/language/README.md:38:3. `compile_document_structural`
+docs/language/README.md:39:4. `compile_program_with_schema`
+docs/language/README.md:40:5. `compile_item_with_schema`
+docs/language/README.md:41:6. `compile_document_with_schema`
+docs/language/README.md:45:1. `compile_with_context` is the semantic API
+docs/language/README.md:95:2. it runs over `compile_program_structural`

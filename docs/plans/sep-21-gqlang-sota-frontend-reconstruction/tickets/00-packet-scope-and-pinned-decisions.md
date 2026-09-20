@@ -52,6 +52,74 @@ SSOT.
 20. The ticket 01 sema crate is intentionally behavior-empty until ticket 04;
     architecture membership is its only ticket 01 rail.
 
+## 2026-09-21 Owner/Consumer Audit Decisions
+
+These refine the twenty frozen decisions without widening runtime ownership.
+They supersede conflicting later sketches.
+
+1. A closed graph-reference use requires an explicit immutable frontend symbol
+   catalog with typed selector IDs/kinds and checked host registry identity.
+   Graph selectors are not modules catalog asset IDs and are not a runtime
+   graph-existence promise. Open analysis may omit that catalog only by
+   returning explicit incomplete facts.
+2. An unannotated unary rule head is admitted only as one Symbol. A closed
+   source rule needs a types-owned unique concrete type proof for that variable
+   and every quantified variable; an unanchored recursive rule is not a
+   well-typed positive case. Sema does not choose a convenient type.
+3. Source-less authority construction errors and source-backed document
+   diagnostics are distinct variants of a frontend transaction error. No
+   synthetic source ID or byte-zero span is used to disguise configuration
+   failure.
+4. Sema's typed source relation representation has the six variants already
+   produced by HIR: Source, Filter, Project, Join (inner/cross subkind),
+   GroupBy, and OrderBy. The existing 12-operator algebra adds only Apply,
+   Aggregate, Limit, Union, SemiJoin, and AntiJoin beyond those stage families;
+   it does not imply extra source syntax. `Unnest`, `Intersect`, and `Except`
+   are not in the current algebra and are not authorized additions.
+5. Document catalog reference kind mapping is explicit: View query reference
+   to Query, Model source to ModelSource, Pack source to PackSource, Profile
+   capability to Capability, Gate check and RuleBinding check to Check. These
+   kinds are inert frontend metadata in modules; they do not introduce runtime
+   provider or SDK ownership. Full authored catalog path spelling is retained
+   under the selected module, with no punctuation-based ID guess.
+6. The shared Boolean parser currently accepts relational `exists (from ...)`
+   inside a rule body, but this packet admits relational existence only in
+   query predicates. Ticket 04 must reject the rule-body form at its exact
+   `RelationExists` span with `sema.invalid_item_shape`; Ticket 03's rule solver
+   must also reject it explicitly if called directly. Add a source fixture and
+   a direct solver fixture. This is a semantic prohibition, not a claim that
+   the parser has separate rule/query Boolean grammars or that the form is
+   supported in rules.
+7. The breaking V2 semantic-cost success schema has four fixed qualitative
+   dimensions: estimated cardinality class, recursion risk class, witness
+   explosion risk class, and ordering contract. V1's fifth
+   `unsupported_reason_code` is always `None` on successful plan producers;
+   unsupported constructs return typed diagnostics instead. Ticket 07 removes
+   the dead success field and puts reason codes only in failure diagnostics,
+   with one updated planner→CLI schema rail. This preserves the prior D32
+   requirement for a fixed host-agnostic schema, but deliberately changes its
+   major-version field set. CPU/memory/I/O/network/coordination estimates are
+   not frontend-owned.
+8. `ORDER BY` has no authored null-placement syntax in this packet. Both
+   ascending and descending keys default to `NULLS LAST`; sema seals that
+   value in each checked order key, and algebra consumes it without choosing
+   a second default. Changing this is a language-contract change, not a
+   formatter or transport option.
+9. `GROUP BY` publishes only its ordered key columns. Its input row remains a
+   separate, non-public partition-input authority solely for the arguments
+   of a types-proven aggregate call in a following projection. Ordinary
+   filter/order/projection references cannot see dropped pre-group bindings.
+   Binder records exact candidate identities but does not classify aggregate
+   callees by spelling; sema authorizes those candidates from the one types
+   callable/effects proof before the expression type walk.
+10. Rule call spellings do not prefer source, builtin, or host. Any collision
+    among the three exact authority domains is `sema.ambiguous_callable`.
+    Modules `probe_reference(Predicate)` checks a potential host collision
+    when a source or builtin candidate exists; host-only calls use the
+    same-session `resolve_host_predicate_call` directly so a successful call
+    is not double charged. Wrong-kind, ambiguity, and budget errors from
+    modules remain hard errors.
+
 ## Public Success Definitions
 
 `CompiledDocumentV2` means:

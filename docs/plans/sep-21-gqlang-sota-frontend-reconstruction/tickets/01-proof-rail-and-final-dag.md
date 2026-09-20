@@ -1,6 +1,6 @@
 # 01 — Proof Rail And Final DAG
 
-Status: `VERIFIED`
+Status: `VERIFIED ON RECEIPT FINGERPRINT — POST-RECEIPT DOC-GATE DELTA UNQUALIFIED`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
@@ -360,3 +360,42 @@ at this intermediate checkpoint because Cargo first compiles the deliberately
 unmigrated binder consumer of ticket 02's breaking HIR. Its execution remains a
 ticket-04+/09 integration obligation; this addendum does not overwrite the
 historical green result recorded in receipt 01.
+
+The post-receipt `method_allowlist_doc_gate.rs` source change is therefore not
+covered by receipt 01. Do not call the current-tree Ticket 01 gate green until
+the exact new test executes on the integrated stack. Preserve the earlier
+fingerprint's verified evidence separately.
+
+Recheck on `main@f9ec954` plus the active dirty overlay:
+`cargo test -p quanta-gqlang-v2-diagnostics-stdio --test
+method_allowlist_doc_gate` exited 101 before selecting that test because the
+unchanged pipeline V1 consumer failed compilation with 25 errors (retired
+modules/types imports, private HIR fields, removed Compose/Quantifier, and
+obsolete type construction). This is an integration dependency failure, not
+a passed or failed doc-gate assertion. Re-execute the exact command after
+Ticket 07 migrates the pipeline; do not bypass the compiler with a text-only
+path scan and declare the Rust gate green.
+
+## 2026-09-21 Live-Tree Duplicate/Scope Check
+
+The crate/binary is already `quanta-gqlang-v2-diagnostics-stdio`; Ticket 08
+changes its protocol in place and must not create another transport crate.
+The current architecture checker passes with 14 members, 43 normal edges
+(21 final, 22 declared transitional), and one transitional dev edge. This
+reconfirms the transition ratchet only; Ticket 09, not Ticket 01, removes the
+exception set and proves final mode. No new Ticket 01 implementation work was
+identified by this pass. Its receipt remains tied to its recorded fingerprint.
+
+## Post-Receipt DAG Correction Assigned To Ticket 06
+
+The original final allowlist included `logic -> algebra` solely for the
+inherited EXISTS→Semi/Anti assembly in `logic/src/source.rs`. Ticket 05 now
+owns that relational lowering and Ticket 06 owns Rule/Graph contracts, so the
+final target is `logic -> sema + types`. This is a planned change to the
+architecture checker, not evidence that its current allowlist has changed.
+Ticket 06's integrator write set must migrate the old normal edge to an exact
+transitional edge while it is present, remove the actual Cargo edge, then
+remove that transition entry. Update the valid/transition fixtures and rerun
+the architecture unit suite plus both checker modes. The 21-final-edge
+Ticket 01 receipt is historical; only a post-change receipt can establish the
+revised 20-edge final allowlist.

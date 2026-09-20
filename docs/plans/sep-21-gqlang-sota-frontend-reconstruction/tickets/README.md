@@ -1,6 +1,6 @@
 # Ticket Index
 
-Status: `EXECUTION ACTIVE — TICKETS 01-02 VERIFIED, TICKET 03 ACTIVE, PACKET NOT COMPLETE`
+Status: `EXECUTION ACTIVE — 01-02 FROZEN OWNER RECEIPTS, 01 DOC-GATE DELTA OPEN, 03 REPAIR, 04 IMPLEMENTING, 05-09 OPEN`
 
 ## Canonical Order
 
@@ -16,6 +16,12 @@ Status: `EXECUTION ACTIVE — TICKETS 01-02 VERIFIED, TICKET 03 ACTIVE, PACKET N
 10. [09-conformance-truth-sync-and-closeout](./09-conformance-truth-sync-and-closeout.md)
 
 Worker protocol: [WORKER_START_HERE.md](./WORKER_START_HERE.md)
+
+The final live-tree reconciliation is in the last section of Tickets 03-09 and
+in [FINAL_AUDIT.md](../FINAL_AUDIT.md). It distinguishes existing owner
+algorithms from unfinished cutover work; Ticket 01/02 receipts remain scoped
+to their earlier owner proof, and neither `cargo check --lib` nor a focused
+subset advances Ticket 03/04 to green.
 
 ## Dependency Matrix
 
@@ -49,6 +55,25 @@ repository root.
 | 07 | 05 and 06 focused green on cutover stack | final document assembly, semantic-only plan input, and curated public facade | planning/pipeline/facade suites and export scan |
 | 08 | 07 focused green on cutover stack | shared front door, bounded source/framing/graphs, deterministic recovery, V1 deletion | CLI/diagnostics/pipeline budget suites plus workspace compile |
 | 09 | immutable candidate contains 01-08 receipts | traceability, semantic family matrix, truth sync, exact-head receipt | complete final command list on one SHA |
+
+## Latest Live Work Order — `main@f9ec954` Plus Dirty Overlay
+
+Read each ticket's final live-audit section for file-level steps. This table is
+an ownership and no-duplicate-work index, not a replacement for its tests or
+receipt. A dirty implementation is never an accepted landed output by itself.
+
+| Ticket | Reuse; do not rebuild | Next unproved acceptance |
+|---|---|---|
+| 00 | frozen frontend/runtime and six-stage/12-op scope | keep the rule-body relational EXISTS semantic exclusion synchronized with 03/04 source and direct-solver tests |
+| 01 | diagnostics-stdio rename, 14-member transition architecture gate and non-vacuous lint owner | retain historical receipt; execute the later doc-gate test on integrated source; final exception removal belongs to 09 |
+| 02 | parser, formatter, direct six-stage HIR and integrity traversal | retain its scoped receipt; the later owned-document proof delta is 03/04 work, not a new syntax tree |
+| 03 | one types kernel/registries and one modules validator/session; host key/proof owner code | prove sema host-call ingress/collision/SCC exclusion, remaining allocation/contextual negatives, mutation and fresh combined receipt; latest types 83/83 and modules 126/126 owner tests are scoped |
+| 04 | Binder sequential frames/captures and sema checked DTO skeleton; latest sema 43/43 owner suite includes Source/Filter/Project/Join/Sort and host Rule call; later Group key-only Binder/sema focused 2+2 | produce all nine root families from source in one checked transaction; Group aggregate-only partition authorization, Composition, Inline VIEW, EXISTS/graph subqueries, and strict Clippy (45 errors at prior snapshot) remain RED |
+| 05 | one 12-op algebra and existing owner suites | migrate raw-HIR normalizer to sealed six-stage relation input, preserve group/correlation, compile all four owner suites |
+| 06 | existing Tarjan/stratifier and graph/witness checks | consume full typed rule set and sealed graph IDs; prove SCC/polarity and explicit transitive bounds from source |
+| 07 | planning vocabulary/traversals | cover all nine semantic item kinds including Meta/Composition, preserve result/explain contracts, cut pipeline HIR/Binder/types edges, expose only curated facade; 89 V1 tests are not proof |
+| 08 | renamed stdio byte loop, CLI and transport byte fixtures | use facade-only APIs, bounded NDJSON with CRLF lookbehind and inline/file byte caps, move parity to dependency-neutral two-binary script, delete frozen V1/LSP seams |
+| 09 | conformance routing fixtures and artifact hygiene | prove disjoint 18-root+2-supplemental semantic manifests, truth/traceability inventories, final DAG and immutable committed-head gates; no closeout receipt exists |
 
 A ticket is not ready if its start gate is missing, its RED cannot be observed,
 or an intended path falls outside its write set. Amend the packet before coding;

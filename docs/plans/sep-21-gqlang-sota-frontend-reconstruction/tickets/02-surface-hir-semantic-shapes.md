@@ -459,6 +459,10 @@ the original receipt:
    added instead of parser-only assumptions.
 4. The specified duplicate `find_through_and_sanitizers_empty_reject` was
    deleted only after its stronger message/span rail was confirmed present.
+5. Final consumer-delta audit found stale `surface/query.rs` module docs still
+   describing deleted `Compose`/synthetic `_keys` lowering. The docs now name
+   direct Inner/Cross Join, GroupBy, OrderBy, checked nonempty keys, and explicit
+   sort direction; no runtime compatibility path was added.
 
 Join operands were reviewed but not narrowed: the pinned HIR definition in
 this ticket intentionally permits relation-expression operands on both sides,
@@ -471,13 +475,24 @@ Current owner proof after these repairs:
 ```text
 cargo test -p quanta-gqlang-v2-hir --all-targets: 69 passed
 cargo test -p quanta-gqlang-v2-surface --all-targets: 204 passed
-cargo test -p quanta-gqlang-v2-types --all-targets: 54 passed (try_path consumer migration)
+cargo test -p quanta-gqlang-v2-types --all-targets: 56 passed (try_path consumer migration plus final Ticket 03 rails)
 ```
 
 The strict three-crate Clippy command is rerun after the final source change and
 recorded in receipt 02. Broad workspace compilation remains intentionally red
 at unmigrated ticket-04+ consumers of the atomic HIR cutover; it is not evidence
 against these owner-local results and is not claimed green here.
+
+## 2026-09-21 Live-Tree Duplicate/Scope Check
+
+The six relation HIR stage variants, explicit inner/cross Join payload, and
+single HIR integrity traversal already exist; Ticket 04/05 must consume them
+without introducing a second syntax/IR tree or fabricated Union/Limit stages.
+The later dirty `CheckedHirDocumentOwnedV2` addition changes HIR producer code
+after receipt 02. Its owner tests and strict Clippy belong in Ticket 03's
+reopened producer delta and Ticket 04's consumer receipt; the 69-test Ticket
+02 result alone does not verify that new carrier. No parser/formatter feature
+work was added by this reconciliation.
 
 ## Dependencies
 

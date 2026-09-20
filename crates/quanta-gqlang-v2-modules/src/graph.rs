@@ -40,6 +40,11 @@ pub enum NamespaceKindV2 {
     Relation,
     Predicate,
     Type,
+    Query,
+    Check,
+    Capability,
+    ModelSource,
+    PackSource,
     View,
     Model,
     Pack,
@@ -56,6 +61,11 @@ impl NamespaceKindV2 {
             Self::Relation => "relation",
             Self::Predicate => "predicate",
             Self::Type => "type",
+            Self::Query => "query",
+            Self::Check => "check",
+            Self::Capability => "capability",
+            Self::ModelSource => "model_source",
+            Self::PackSource => "pack_source",
             Self::View => "view",
             Self::Model => "model",
             Self::Pack => "pack",
@@ -74,6 +84,11 @@ impl NamespaceKindV2 {
             "relation" => Ok(Self::Relation),
             "predicate" => Ok(Self::Predicate),
             "type" => Ok(Self::Type),
+            "query" => Ok(Self::Query),
+            "check" => Ok(Self::Check),
+            "capability" => Ok(Self::Capability),
+            "model_source" => Ok(Self::ModelSource),
+            "pack_source" => Ok(Self::PackSource),
             "view" => Ok(Self::View),
             "model" => Ok(Self::Model),
             "pack" => Ok(Self::Pack),
@@ -104,7 +119,7 @@ impl CatalogAssetIdV2 {
         local_name: &str,
         location: &CheckedLocatedSpanV2,
     ) -> Result<Self, ModuleDiagnosticV2> {
-        if !is_segment(local_name) {
+        if !is_catalog_local_name(local_name) {
             return Err(ModuleDiagnosticV2::new(
                 "modules.invalid_catalog_name",
                 format!("invalid catalog local name `{}`", excerpt(local_name)),
@@ -220,6 +235,17 @@ pub struct AmbiguousCandidateV2 {
 }
 
 impl AmbiguousCandidateV2 {
+    pub(crate) fn from_catalog_reference(
+        origin: CatalogAssetIdV2,
+        declaration_location: LocatedSpanV2,
+        witness: Vec<LocatedEdgeV2>,
+    ) -> Self {
+        Self {
+            origin,
+            declaration_location,
+            witness,
+        }
+    }
     #[must_use]
     pub const fn origin(&self) -> &CatalogAssetIdV2 {
         &self.origin
@@ -360,7 +386,7 @@ impl ModuleGraphBuilderV2 {
         self.check_location(&input.target.location)?;
         session.charge_string(&input.target.local_name)?;
         session.charge_string(input.target.module_id.as_str())?;
-        if !is_segment(&input.local_name) {
+        if !is_catalog_local_name(&input.local_name) {
             return Err(ModuleDiagnosticV2::new(
                 "modules.invalid_catalog_name",
                 "invalid import alias",
@@ -409,7 +435,7 @@ impl ModuleGraphBuilderV2 {
         self.check_location(&input.target.location)?;
         session.charge_string(&input.target.local_name)?;
         session.charge_string(input.target.module_id.as_str())?;
-        if !is_segment(&input.exported_name) {
+        if !is_catalog_local_name(&input.exported_name) {
             return Err(ModuleDiagnosticV2::new(
                 "modules.invalid_catalog_name",
                 "invalid re-export name",
@@ -903,6 +929,50 @@ pub(crate) fn is_segment(value: &str) -> bool {
     let mut bytes = value.bytes();
     matches!(bytes.next(), Some(b'a'..=b'z' | b'A'..=b'Z' | b'_'))
         && bytes.all(|byte| matches!(byte, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_' | b'-'))
+}
+
+/// The source grammar's `GraphRefV1` path spelling, kept as one local asset
+/// name under an independently selected module. In particular `::` is not a
+/// module separator here. No case folding or separator rewriting is allowed.
+pub(crate) fn is_catalog_local_name(value: &str) -> bool {
+    fn segment(bytes: &[u8], mut at: usize, allow_digits: bool) -> Option<usize> {
+        let first = *bytes.get(at)?;
+        let ident = first.is_ascii_alphabetic() || first == b'_';
+        if !(ident || allow_digits && first.is_ascii_digit()) {
+            return None;
+        }
+        at += 1;
+        while bytes.get(at).is_some_and(|byte| {
+            if ident {
+                byte.is_ascii_alphanumeric() || *byte == b'_'
+            } else {
+                byte.is_ascii_digit()
+            }
+        }) {
+            at += 1;
+        }
+        Some(at)
+    }
+
+    let bytes = value.as_bytes();
+    let Some(mut at) = segment(bytes, 0, true) else {
+        return false;
+    };
+    while let Some(&separator) = bytes.get(at) {
+        if !matches!(separator, b'.' | b'-' | b'/' | b':') {
+            return false;
+        }
+        at += 1;
+        if separator == b':' && bytes.get(at) == Some(&b':') {
+            at += 1;
+        }
+        let allow_digits = matches!(separator, b'-' | b'/');
+        let Some(next) = segment(bytes, at, allow_digits) else {
+            return false;
+        };
+        at = next;
+    }
+    true
 }
 
 pub(crate) fn is_qualified_name(value: &str) -> bool {

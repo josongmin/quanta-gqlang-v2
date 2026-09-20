@@ -14,7 +14,17 @@
 )]
 
 use quanta_gqlang_v2_binder::{BindDiagnosticV1, Binder, CaptureV1, ModuleGraphV1};
-use quanta_gqlang_v2_hir::{HirBuilderV1, SpanV1};
+use quanta_gqlang_v2_hir::{
+    AliasV1, HirBuilderV1, LogicalBinderV1, LogicalQuantifierKindV1, NonEmptyBindersV1,
+    PathSegmentV1, ProjectionItemV1, RelationExistsPolarityV1, SpanV1,
+};
+
+fn alias(name: &str, start: usize) -> AliasV1 {
+    AliasV1 {
+        name: name.to_owned(),
+        span: SpanV1::new(start, start + 1),
+    }
+}
 
 // (2) unresolved symbol -> fail closed.
 #[test]
@@ -49,7 +59,7 @@ fn duplicate_declaration_rejects() {
 
     let graph = ModuleGraphV1::new();
     let mut binder = Binder::new(&graph);
-    binder.declare_program(&[d1, d2], &[]);
+    binder.declare_program(&[d1.clone(), d2.clone()], &[]);
     let result = binder.finish();
 
     assert!(!result.is_ok());
@@ -60,6 +70,28 @@ fn duplicate_declaration_rejects() {
         diag.to_string(),
         "binder.duplicate_declaration: duplicate declaration `dup` \
          (first at 4..7, again at 24..27)"
+    );
+
+    let mut reversed = Binder::new(&graph);
+    reversed.declare_program(&[d2, d1], &[]);
+    assert_eq!(reversed.finish().diagnostics(), result.diagnostics());
+
+    let first_body = b.int("3", SpanV1::new(40, 41));
+    let later = b.decl("dup", SpanV1::new(44, 47), first_body, SpanV1::new(40, 47));
+    let earlier_body = b.int("4", SpanV1::new(50, 51));
+    let earlier = b.decl(
+        "dup",
+        SpanV1::new(14, 17),
+        earlier_body,
+        SpanV1::new(10, 51),
+    );
+    let mut shuffled = Binder::new(&graph);
+    shuffled.declare_program(&[later, earlier], &[]);
+    let shuffled = shuffled.finish();
+    assert_eq!(shuffled.diagnostics().len(), 1);
+    assert_eq!(
+        shuffled.diagnostics()[0].primary_span(),
+        SpanV1::new(44, 47)
     );
 }
 
@@ -182,4 +214,228 @@ fn local_binding_shadows_import_deterministically() {
         quanta_gqlang_v2_binder::ResolvedTargetV1::Local(_) => {}
         other => panic!("local must win over import, got {other:?}"),
     }
+}
+
+#[test]
+fn diagnostics_are_sorted_by_location_then_code_not_emission_order() {
+    let b = HirBuilderV1::new();
+    let unresolved = b.symbol("early", SpanV1::new(5, 10));
+    let decl = b.decl("body", SpanV1::new(0, 4), unresolved, SpanV1::new(0, 10));
+
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    // Emit the later duplicate first, then the earlier unresolved reference.
+    binder.declare("dup", decl.id, SpanV1::new(70, 73));
+    binder.declare("dup", decl.id, SpanV1::new(80, 83));
+    binder.resolve_decl(&decl, &[]);
+    let result = binder.finish();
+
+    assert_eq!(result.diagnostics().len(), 2);
+    assert_eq!(result.diagnostics()[0].code(), "binder.unresolved_symbol");
+    assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(5, 10));
+    assert_eq!(
+        result.diagnostics()[1].code(),
+        "binder.duplicate_declaration"
+    );
+    assert_eq!(result.diagnostics()[1].primary_span(), SpanV1::new(80, 83));
+
+    // Emit the same failures in the opposite order; finish must select the
+    // same first diagnostic and preserve the same complete vector.
+    let mut reversed = Binder::new(&graph);
+    reversed.resolve_decl(&decl, &[]);
+    reversed.declare("dup", decl.id, SpanV1::new(70, 73));
+    reversed.declare("dup", decl.id, SpanV1::new(80, 83));
+    let reversed = reversed.finish();
+    assert_eq!(reversed.diagnostics(), result.diagnostics());
+}
+
+#[test]
+fn relation_alias_shadowing_outer_row_binding_rejects() {
+    let b = HirBuilderV1::new();
+    let outer = b.relation_source(
+        "catalog.outer",
+        Some(AliasV1 {
+            name: "x".to_owned(),
+            span: SpanV1::new(10, 11),
+        }),
+        SpanV1::new(0, 11),
+    );
+    let inner = b.relation_source(
+        "catalog.inner",
+        Some(AliasV1 {
+            name: "x".to_owned(),
+            span: SpanV1::new(30, 31),
+        }),
+        SpanV1::new(20, 31),
+    );
+    let exists = b.relation_exists(RelationExistsPolarityV1::Exists, inner, SpanV1::new(18, 32));
+    let query = b.query(
+        b.relation_filter(outer, exists, SpanV1::new(0, 32)),
+        None,
+        SpanV1::new(0, 32),
+    );
+
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.resolve_query(&query);
+    let result = binder.finish();
+
+    assert_eq!(result.diagnostics().len(), 1);
+    assert_eq!(result.diagnostics()[0].code(), "binder.shadowed_binding");
+    assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(30, 31));
+}
+
+#[test]
+fn duplicate_default_path_names_reject_at_second_segment() {
+    let b = HirBuilderV1::new();
+    let source = b.relation_source("catalog.users", Some(alias("u", 10)), SpanV1::new(0, 11));
+    let first = b
+        .try_path(
+            b.symbol("u", SpanV1::new(20, 21)),
+            vec![PathSegmentV1 {
+                name: "id".to_owned(),
+                span: SpanV1::new(22, 24),
+            }],
+            SpanV1::new(20, 24),
+        )
+        .unwrap();
+    let second = b
+        .try_path(
+            b.symbol("u", SpanV1::new(30, 31)),
+            vec![PathSegmentV1 {
+                name: "id".to_owned(),
+                span: SpanV1::new(32, 34),
+            }],
+            SpanV1::new(30, 34),
+        )
+        .unwrap();
+    let projected = b
+        .try_project(
+            source,
+            vec![
+                ProjectionItemV1 {
+                    value: first,
+                    alias: None,
+                },
+                ProjectionItemV1 {
+                    value: second,
+                    alias: None,
+                },
+            ],
+            SpanV1::new(0, 34),
+        )
+        .unwrap();
+    let query = b.query(projected, None, SpanV1::new(0, 34));
+
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.resolve_query(&query);
+    let result = binder.finish();
+
+    assert_eq!(result.diagnostics().len(), 1);
+    assert_eq!(
+        result.diagnostics()[0].code(),
+        "binder.duplicate_declaration"
+    );
+    assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(32, 34));
+}
+
+#[test]
+fn duplicate_canonical_col_names_reject_at_second_expression() {
+    let b = HirBuilderV1::new();
+    let source = b.relation_source("catalog.users", Some(alias("u", 10)), SpanV1::new(0, 11));
+    let projected = b
+        .try_project(
+            source,
+            vec![
+                ProjectionItemV1 {
+                    value: b.int("1", SpanV1::new(20, 21)),
+                    alias: None,
+                },
+                ProjectionItemV1 {
+                    value: b.int("2", SpanV1::new(30, 31)),
+                    alias: None,
+                },
+            ],
+            SpanV1::new(0, 31),
+        )
+        .unwrap();
+    let query = b.query(projected, None, SpanV1::new(0, 31));
+
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.resolve_query(&query);
+    let result = binder.finish();
+
+    assert_eq!(result.diagnostics().len(), 1);
+    assert_eq!(
+        result.diagnostics()[0].code(),
+        "binder.duplicate_declaration"
+    );
+    assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(30, 31));
+}
+
+#[test]
+fn bare_rule_name_is_not_a_value_binding() {
+    let b = HirBuilderV1::new();
+    let rule = b.rule(
+        "is_valid",
+        SpanV1::new(5, 13),
+        b.symbol("x", SpanV1::new(15, 16)),
+        b.bool_literal(true, SpanV1::new(20, 24)),
+        SpanV1::new(0, 24),
+    );
+    let bare = b.symbol("is_valid", SpanV1::new(30, 38));
+    let decl = b.decl("v", SpanV1::new(26, 27), bare, SpanV1::new(26, 38));
+
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.declare_program(&[decl.clone()], &[rule]);
+    binder.resolve_decl(&decl, &[]);
+    let result = binder.finish();
+
+    assert_eq!(result.diagnostics().len(), 1);
+    assert_eq!(result.diagnostics()[0].code(), "binder.unresolved_symbol");
+    assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(30, 38));
+}
+
+#[test]
+fn duplicate_quantifier_binders_reject_exact_second_name() {
+    let b = HirBuilderV1::new();
+    let binders = NonEmptyBindersV1::try_new(vec![
+        LogicalBinderV1 {
+            name: "x".to_owned(),
+            span: SpanV1::new(20, 21),
+        },
+        LogicalBinderV1 {
+            name: "x".to_owned(),
+            span: SpanV1::new(24, 25),
+        },
+    ])
+    .unwrap();
+    let quant = b.logical_quantifier(
+        LogicalQuantifierKindV1::Exists,
+        binders,
+        b.bool_literal(true, SpanV1::new(30, 34)),
+        SpanV1::new(18, 34),
+    );
+    let rule = b.rule(
+        "r",
+        SpanV1::new(0, 1),
+        b.int("1", SpanV1::new(10, 11)),
+        quant,
+        SpanV1::new(0, 34),
+    );
+
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.resolve_rule(&rule, &[]);
+    let result = binder.finish();
+
+    assert_eq!(result.diagnostics().len(), 1);
+    assert_eq!(
+        result.diagnostics()[0].code(),
+        "binder.duplicate_declaration"
+    );
+    assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(24, 25));
 }

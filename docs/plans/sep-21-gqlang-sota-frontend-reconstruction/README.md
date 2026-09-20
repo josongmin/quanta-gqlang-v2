@@ -1,6 +1,6 @@
 # Sep 21 — QGLang SOTA++ Frontend Reconstruction
 
-Status: `EXECUTION ACTIVE — TICKETS 01-02 VERIFIED; TICKET 03 ACTIVE; PACKET NOT COMPLETE`
+Status: `EXECUTION ACTIVE — 01-02 FROZEN OWNER RECEIPTS; 01 DOC-GATE DELTA OPEN; 03 REPAIR; 04 IMPLEMENTING; 05-09 OPEN`
 
 Audit base: `main@e896a11024bd5a1e1ef03c094a70032f4e6c765f`
 
@@ -11,6 +11,34 @@ for before/after comparisons. External integration commits `96eab779` and
 `fcf106b` are recorded in `EXECUTION_LEDGER.md`; neither is a clean Ticket 03
 verification boundary. Tickets 04-09 remain unverified, and only ticket 09 may
 declare packet closure.
+
+During final RR, externally created mixed-scope commits `ceb4142`, `6583091`,
+and `f9ec954` advanced `main`/`origin`. They contain Ticket 03 plus binder,
+algebra, and planning consumer deltas, but do not advance tickets 03-07 by
+commit presence alone. Ticket 03 was subsequently owner-verified with an exact
+dirty fingerprint and receipt; the binder/algebra/planning deltas remain
+unqualified inputs to Tickets 04/05/07. `EXECUTION_LEDGER.md` records their
+exact SHAs and audit status.
+
+Ticket 04's live owner/consumer RR reopened Ticket 03 for types declaration/rule
+proof and modules predeclaration/all-family reference authority. The earlier
+Ticket 03 receipt remains valid only for its frozen owner scope; new producer
+code requires a fresh receipt delta. Binder's 43 focused tests and strict
+Clippy pass, but the sema transaction is not complete. The exact current
+blockers and work packages are in Tickets 03/04 and `FINAL_AUDIT.md`.
+
+The second live audit's all-target-proven sema paths are declarations and
+`REQUIRE CERTIFIED` (8/8 focused transaction tests); a later GraphQuery test
+and a SHOW Presentation test passed in isolation; later RuleBinding Catalog
+and CHECK focused tests brought the dirty reachability checkpoint to 6/9;
+a later Query/Source positive made that checkpoint 7/9 root variants, not
+all-family proof. A subsequent call-free unary Rule path raises named root
+reachability to 8/9; call-bearing Rule and Composition remain RED. Modules producer
+predeclaration/host proof has 126 owner-local tests and strict Clippy on recorded
+hashes; sema family integration is unproved. Types now has a later 83/83
+owner-local suite and strict Clippy, while sema's later 43/43 owner run is
+still partial and strict Clippy is RED with 45 lib-test errors. These checkpoints do not change
+Ticket 03/04 status.
 
 This packet supersedes current-head completion claims in the Jun-24 packet. It
 does not erase historical receipts. It records the delta between those receipts

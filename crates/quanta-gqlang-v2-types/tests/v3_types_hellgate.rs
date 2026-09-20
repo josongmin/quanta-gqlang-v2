@@ -1,12 +1,27 @@
 #![allow(clippy::unwrap_used, reason = "owner assertions")]
 
 use quanta_gqlang_v2_hir::{
-    check_document_v2, CallArgHirV1, CallArgsHirV1, DeclHirV1, HirBuilderV1, HirDocumentV1,
-    HirNodeIdV1, LogicalBinderV1, LogicalQuantifierKindV1, NonEmptyBindersV1, ProgramItemHirV1,
-    RelationExistsPolarityV1, RuleHirV1, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2,
-    SpanV1,
+    check_document_v2, CallArgHirV1, CallArgsHirV1, CheckedHirDocumentV2, DeclHirV1, HirBuilderV1,
+    HirDocumentV1, HirNodeIdV1, LogicalBinderV1, LogicalQuantifierKindV1, NonEmptyBindersV1,
+    ProgramItemHirV1, RelationExistsPolarityV1, RuleHirV1, SourceIdV2, SourceRegistrationV2,
+    SourceRegistryViewV2, SpanV1,
 };
 use quanta_gqlang_v2_types::*;
+
+fn resolved_type_inputs(
+    checked: CheckedHirDocumentV2<'_>,
+    entries: Vec<ResolvedTypeInputEntryV2>,
+    contexts: Vec<ContextualExpectedTypeInputV2>,
+) -> Result<ResolvedTypeInputsV2<'_>, TypeDiagnosticV2> {
+    let registry = SourceRegistryViewV2::try_new(Vec::new())
+        .unwrap()
+        .try_extend_document(SourceRegistrationV2 {
+            source_id: checked.document().source_id,
+            source_len: checked.document().source_len,
+        })
+        .unwrap();
+    ResolvedTypeInputsV2::try_new(checked, &registry, entries, contexts)
+}
 
 fn checked_document(body: quanta_gqlang_v2_hir::ValueExprHirV1) -> HirDocumentV1 {
     HirDocumentV1 {
@@ -51,7 +66,7 @@ fn resolved_inputs_reject_missing_duplicate_foreign_and_extra_entries() {
     let doc = checked_document(symbol);
     let checked = check_document_v2(&doc).unwrap();
     assert_eq!(
-        ResolvedTypeInputsV2::try_new(checked, vec![], vec![])
+        resolved_type_inputs(checked, vec![], vec![])
             .unwrap_err()
             .code(),
         "types.missing_resolved_input"
@@ -63,7 +78,7 @@ fn resolved_inputs_reject_missing_duplicate_foreign_and_extra_entries() {
         )),
     };
     assert_eq!(
-        ResolvedTypeInputsV2::try_new(checked, vec![entry.clone(), entry], vec![])
+        resolved_type_inputs(checked, vec![entry.clone(), entry], vec![])
             .unwrap_err()
             .code(),
         "types.duplicate_resolved_input"
@@ -78,7 +93,7 @@ fn resolved_inputs_reject_missing_duplicate_foreign_and_extra_entries() {
         )),
     };
     assert_eq!(
-        ResolvedTypeInputsV2::try_new(checked, vec![foreign], vec![])
+        resolved_type_inputs(checked, vec![foreign], vec![])
             .unwrap_err()
             .code(),
         "types.foreign_document_input"
@@ -105,8 +120,7 @@ fn kernel_selects_stable_operator_and_builtin_ids() {
         value: ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(ValueTypeV1::int())),
     };
     let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![entry], vec![])
-            .unwrap();
+        resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![entry], vec![]).unwrap();
     let facts = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -134,8 +148,7 @@ fn kernel_selects_stable_operator_and_builtin_ids() {
         )),
     };
     let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![input], vec![])
-            .unwrap();
+        resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
     let facts = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -164,7 +177,7 @@ fn resolved_inputs_reject_extra_and_wrong_kind_before_kernel_walk() {
         )),
     };
     assert_eq!(
-        ResolvedTypeInputsV2::try_new(checked, vec![wrong], vec![])
+        resolved_type_inputs(checked, vec![wrong], vec![])
             .unwrap_err()
             .code(),
         "types.wrong_resolved_input_kind"
@@ -177,7 +190,7 @@ fn resolved_inputs_reject_extra_and_wrong_kind_before_kernel_walk() {
         value: ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(ValueTypeV1::int())),
     };
     assert_eq!(
-        ResolvedTypeInputsV2::try_new(checked, vec![extra], vec![])
+        resolved_type_inputs(checked, vec![extra], vec![])
             .unwrap_err()
             .code(),
         "types.extra_resolved_input"
@@ -187,7 +200,7 @@ fn resolved_inputs_reject_extra_and_wrong_kind_before_kernel_walk() {
 #[test]
 fn star_is_accepted_only_for_explicit_count_star_signature() {
     let registry = BuiltinRegistryV2::try_closed().unwrap();
-    for (name, expected_ok) in [("count", true), ("starts_with", false)] {
+    for (name, expected_ok) in [("count", true), ("sum", false), ("starts_with", false)] {
         let builder = HirBuilderV1::new();
         let call = builder.call(
             name,
@@ -211,8 +224,7 @@ fn star_is_accepted_only_for_explicit_count_star_signature() {
             )),
         };
         let inputs =
-            ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![input], vec![])
-                .unwrap();
+            resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
         let result = ExpressionTypeKernelV2::try_closed()
             .unwrap()
             .check_document(&inputs);
@@ -250,8 +262,7 @@ fn star_is_accepted_only_for_explicit_count_star_signature() {
     };
     let doc = checked_document(call);
     let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![input], vec![])
-            .unwrap();
+        resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
     assert_eq!(
         ExpressionTypeKernelV2::try_closed()
             .unwrap()
@@ -273,8 +284,7 @@ fn unknown_and_bad_operator_reject_distinctly() {
         let unary = builder.unary(operator, operand, SpanV1::new(0, 4));
         let doc = checked_document(unary);
         let inputs =
-            ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![], vec![])
-                .unwrap();
+            resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
         assert_eq!(
             ExpressionTypeKernelV2::try_closed()
                 .unwrap()
@@ -301,8 +311,7 @@ fn unused_contextual_input_rejects_during_kernel_finalization() {
         reason: ContextualTypeReasonV2::ExpectedBinding,
     };
     let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![], vec![context])
-            .unwrap();
+        resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![context]).unwrap();
     assert_eq!(
         ExpressionTypeKernelV2::try_closed()
             .unwrap()
@@ -340,8 +349,7 @@ fn callable_parameters_contextualize_empty_lists_without_external_context_facts(
     };
     let doc = checked_document(call);
     let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![input], vec![])
-            .unwrap();
+        resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
     let facts = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -384,8 +392,7 @@ fn callable_parameters_contextualize_empty_lists_without_external_context_facts(
     };
     let doc = checked_document(call);
     let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![input], vec![])
-            .unwrap();
+        resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
     let facts = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -429,8 +436,7 @@ fn unknown_operands_select_only_unique_safe_operator_ids() {
         };
         let doc = checked_document(unary);
         let inputs =
-            ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![input], vec![])
-                .unwrap();
+            resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
         let facts = ExpressionTypeKernelV2::try_closed()
             .unwrap()
             .check_document(&inputs)
@@ -468,8 +474,7 @@ fn parent_nodes_conservatively_compose_call_effects() {
     };
     let doc = checked_document(parent);
     let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![input], vec![])
-            .unwrap();
+        resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
     let facts = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -501,8 +506,7 @@ fn unresolved_callable_effects_are_fail_closed() {
     };
     let doc = checked_document(call);
     let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![input], vec![])
-            .unwrap();
+        resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
     let facts = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -552,8 +556,7 @@ fn predicate_calls_are_checked_once_and_retain_opaque_identity_and_effects() {
     };
     let doc = checked_document(call);
     let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![input], vec![])
-            .unwrap();
+        resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
     let facts = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -566,6 +569,135 @@ fn predicate_calls_are_checked_once_and_retain_opaque_identity_and_effects() {
     assert_eq!(fact.effects, effects);
     assert!(
         matches!(fact.resolved_call(), Some(ResolvedCallTargetV2::Predicate(id)) if id == &predicate_id)
+    );
+}
+
+#[test]
+fn host_predicate_key_is_bounded_exact_and_disjoint_from_source_ids() {
+    let local = format!("p.{}", "x".repeat(300));
+    let len = ResolvedHostPredicateKeyV2::checked_canonical_len(
+        "pkg::inner",
+        HostCallableNamespaceV2::Predicate,
+        &local,
+    )
+    .unwrap();
+    assert!(len > 256);
+    assert_eq!(
+        ResolvedHostPredicateKeyV2::try_from_catalog_parts(
+            "pkg::inner",
+            HostCallableNamespaceV2::Predicate,
+            &local,
+            len - 1
+        )
+        .unwrap_err()
+        .code(),
+        "types.host_predicate_identity_limit"
+    );
+    let exact = ResolvedHostPredicateKeyV2::try_from_catalog_parts(
+        "pkg::inner",
+        HostCallableNamespaceV2::Predicate,
+        &local,
+        len,
+    )
+    .unwrap();
+    assert_eq!(exact.canonical_bytes().len(), len);
+    assert!(ResolvedPredicateIdV2::try_new(&local).is_err());
+    let other_split = ResolvedHostPredicateKeyV2::try_from_catalog_parts(
+        "pkg",
+        HostCallableNamespaceV2::Predicate,
+        &format!("inner::{local}"),
+        len + 8,
+    )
+    .unwrap();
+    assert_ne!(exact, other_split);
+    let other_kind = ResolvedHostPredicateKeyV2::try_from_catalog_parts(
+        "pkg::inner",
+        HostCallableNamespaceV2::Rule,
+        &local,
+        len,
+    )
+    .unwrap();
+    assert_ne!(exact, other_kind);
+    assert_eq!(
+        ResolvedHostPredicateKeyV2::try_from_catalog_parts(
+            "",
+            HostCallableNamespaceV2::Predicate,
+            &local,
+            len
+        )
+        .unwrap_err()
+        .code(),
+        "types.invalid_resolved_identity"
+    );
+}
+
+#[test]
+fn host_predicate_call_retains_exact_host_target_and_effects() {
+    let builder = HirBuilderV1::new();
+    let call = builder.call(
+        "p",
+        SpanV1::new(0, 1),
+        CallArgsHirV1::try_new(vec![CallArgHirV1::Expr(
+            builder.int("1", SpanV1::new(5, 6)),
+        )])
+        .unwrap(),
+        SpanV1::new(0, 7),
+    );
+    let node = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(9),
+        node_id: call.id,
+    };
+    let len = ResolvedHostPredicateKeyV2::checked_canonical_len(
+        "pkg::module",
+        HostCallableNamespaceV2::Predicate,
+        "p.with/slash",
+    )
+    .unwrap();
+    let key = ResolvedHostPredicateKeyV2::try_from_catalog_parts(
+        "pkg::module",
+        HostCallableNamespaceV2::Predicate,
+        "p.with/slash",
+        len,
+    )
+    .unwrap();
+    let effects = ExpressionEffectsV2 {
+        purity: PurityV1::Impure,
+        determinism: DeterminismV1::NonDeterministic,
+        monotonicity: MonotonicityV1::NonMonotone,
+        aggregation: AggregationClassV1::Scalar,
+        cost: CostClassV1::Linear,
+    };
+    let callable = ResolvedHostPredicateCallableV2::try_new(
+        key.clone(),
+        vec![ValueTypeV1::int()],
+        ValueTypeV1::bool(),
+        effects,
+    )
+    .unwrap();
+    let doc = checked_document(call);
+    let inputs = resolved_type_inputs(
+        check_document_v2(&doc).unwrap(),
+        vec![ResolvedTypeInputEntryV2 {
+            key: node,
+            value: ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::HostPredicate(
+                callable,
+            )),
+        }],
+        vec![],
+    )
+    .unwrap();
+    let facts = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&inputs)
+        .unwrap();
+    let fact = facts.get(node).unwrap();
+    assert_eq!(
+        fact.state,
+        ExpressionTypeStateV2::Known(ValueTypeV1::bool())
+    );
+    assert_eq!(fact.effects, effects);
+    assert!(
+        matches!(fact.resolved_call(), Some(ResolvedCallTargetV2::HostPredicate(found)) if found == &key)
     );
 }
 
@@ -617,8 +749,7 @@ fn logical_quantifier_retains_complete_nested_predicate_effects() {
     };
     let doc = checked_rule(builder.int("1", SpanV1::new(20, 21)), quantifier);
     let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![input], vec![])
-            .unwrap();
+        resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
     let facts = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -654,7 +785,7 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
     let doc = checked_rule(builder.int("1", SpanV1::new(0, 1)), exists);
     let checked = check_document_v2(&doc).unwrap();
     assert_eq!(
-        ResolvedTypeInputsV2::try_new(
+        resolved_type_inputs(
             checked,
             vec![ResolvedTypeInputEntryV2 {
                 key: SourceQualifiedNodeIdV2 {
@@ -736,7 +867,7 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
             ),
         },
     ];
-    let inputs = ResolvedTypeInputsV2::try_new(checked, entries, vec![]).unwrap();
+    let inputs = resolved_type_inputs(checked, entries, vec![]).unwrap();
     let facts = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -760,7 +891,7 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
     assert_eq!(fact.effects.purity, PurityV1::Impure);
     assert_eq!(fact.effects.cost, CostClassV1::Linear);
 
-    let unknown_inputs = ResolvedTypeInputsV2::try_new(
+    let unknown_inputs = resolved_type_inputs(
         checked,
         vec![
             ResolvedTypeInputEntryV2 {
@@ -816,8 +947,7 @@ fn comparison_and_boolean_parents_emit_complete_bool_facts() {
         node_id: parent.id,
     };
     let doc = checked_rule(builder.int("1", SpanV1::new(0, 1)), parent);
-    let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
+    let inputs = resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
     let facts = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -860,8 +990,7 @@ fn builtin_bad_arity_rejects_without_fabricating_a_target() {
     };
     let doc = checked_document(call);
     let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![input], vec![])
-            .unwrap();
+        resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
     assert_eq!(
         ExpressionTypeKernelV2::try_closed()
             .unwrap()
@@ -906,8 +1035,7 @@ fn ambiguous_unknown_builtin_domain_keeps_conservative_effects_without_id() {
         },
     ];
     let doc = checked_document(call);
-    let inputs =
-        ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), entries, vec![]).unwrap();
+    let inputs = resolved_type_inputs(check_document_v2(&doc).unwrap(), entries, vec![]).unwrap();
     let facts = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)

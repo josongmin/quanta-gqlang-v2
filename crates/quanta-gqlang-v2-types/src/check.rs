@@ -5,8 +5,8 @@ use crate::op::{OperatorIdV2, OperatorRegistryV2};
 use crate::ty::{FiniteF64V2, RecordFieldTypeV1, RecordTypeV1, TypedLiteralValueV2, ValueTypeV1};
 use crate::TypeDiagnosticV2;
 use quanta_gqlang_v2_hir::{
-    BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CheckedHirDocumentV2, HirNodeIdV1, HirVisitorV1,
-    LiteralV1, LocatedSpanV2, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2,
+    BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CheckedHirDocumentV2,
+    ExtendedSourceRegistryViewV2, HirNodeIdV1, HirVisitorV1, LiteralV1, LocatedSpanV2, SourceIdV2,
     ValueExprHirV1, ValueExprKindV1,
 };
 use std::collections::{BTreeMap, BTreeSet};
@@ -22,6 +22,7 @@ pub enum UnknownTypeCauseV2 {
     UnresolvedEditorBinding,
     UnresolvedEditorCallable,
     EmptyCollectionElement,
+    UnanchoredRuleVariable,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -33,6 +34,11 @@ pub enum ExpressionTypeStateV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ResolvedTypeInputValueV2 {
     Binding(ExpressionTypeStateV2),
+    BindingFromExpression(SourceQualifiedNodeIdV2),
+    /// A predeclared top-level declaration body. Unlike a materialized
+    /// relation-stage binding this may be evaluated forward, within the same
+    /// document-kernel invocation.
+    BindingFromDeclaration(SourceQualifiedNodeIdV2),
     Callable(ResolvedCallableInputV2),
     RelationPredicate(ResolvedRelationPredicateInputV2),
 }
@@ -53,10 +59,95 @@ impl ResolvedPredicateIdV2 {
     }
 }
 
+/// The namespace kind is part of host catalog identity, not a source rule ID.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum HostCallableNamespaceV2 {
+    Predicate,
+    Rule,
+}
+
+impl HostCallableNamespaceV2 {
+    const fn tag(self) -> u8 {
+        match self {
+            Self::Predicate => 1,
+            Self::Rule => 2,
+        }
+    }
+}
+
+/// Exact host catalog identity encoded without punctuation rewriting or a
+/// source-rule identifier size limit. Module authority, not this neutral DTO,
+/// proves that the parts came from a visible catalog asset.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ResolvedHostPredicateKeyV2(Vec<u8>);
+
+impl ResolvedHostPredicateKeyV2 {
+    const PREFIX: &'static [u8] = b"gqlang-host-predicate-v2\0";
+
+    /// No allocation. The modules owner charges this exact byte count before
+    /// constructing a key under its sealed authority budget.
+    pub fn checked_canonical_len(
+        module_id: &str,
+        _kind: HostCallableNamespaceV2,
+        local_name: &str,
+    ) -> Result<usize, TypeDiagnosticV2> {
+        if module_id.is_empty() || local_name.is_empty() {
+            return Err(TypeDiagnosticV2::InvalidResolvedIdentity);
+        }
+        let _module_len = u64::try_from(module_id.len())
+            .map_err(|_conversion_error| TypeDiagnosticV2::HostPredicateIdentityLimit)?;
+        let _local_len = u64::try_from(local_name.len())
+            .map_err(|_conversion_error| TypeDiagnosticV2::HostPredicateIdentityLimit)?;
+        Self::PREFIX
+            .len()
+            .checked_add(8)
+            .and_then(|size| size.checked_add(module_id.len()))
+            .and_then(|size| size.checked_add(1))
+            .and_then(|size| size.checked_add(8))
+            .and_then(|size| size.checked_add(local_name.len()))
+            .ok_or(TypeDiagnosticV2::HostPredicateIdentityLimit)
+    }
+
+    /// `max_encoded_bytes` must come from the caller's charged authority
+    /// budget; a zero or undersized limit rejects before any allocation.
+    pub fn try_from_catalog_parts(
+        module_id: &str,
+        kind: HostCallableNamespaceV2,
+        local_name: &str,
+        max_encoded_bytes: usize,
+    ) -> Result<Self, TypeDiagnosticV2> {
+        let total = Self::checked_canonical_len(module_id, kind, local_name)?;
+        if max_encoded_bytes == 0 || total > max_encoded_bytes {
+            return Err(TypeDiagnosticV2::HostPredicateIdentityLimit);
+        }
+        let module_len = u64::try_from(module_id.len())
+            .map_err(|_conversion_error| TypeDiagnosticV2::HostPredicateIdentityLimit)?;
+        let local_len = u64::try_from(local_name.len())
+            .map_err(|_conversion_error| TypeDiagnosticV2::HostPredicateIdentityLimit)?;
+        let mut bytes = Vec::new();
+        bytes
+            .try_reserve_exact(total)
+            .map_err(|_allocation_error| TypeDiagnosticV2::HostPredicateIdentityLimit)?;
+        bytes.extend_from_slice(Self::PREFIX);
+        bytes.extend_from_slice(&module_len.to_be_bytes());
+        bytes.extend_from_slice(module_id.as_bytes());
+        bytes.push(kind.tag());
+        bytes.extend_from_slice(&local_len.to_be_bytes());
+        bytes.extend_from_slice(local_name.as_bytes());
+        Ok(Self(bytes))
+    }
+
+    #[must_use]
+    pub fn canonical_bytes(&self) -> &[u8] {
+        &self.0
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ResolvedCallableInputV2 {
     Builtin(BuiltinFamilyIdV2),
     Predicate(ResolvedPredicateCallableV2),
+    HostPredicate(ResolvedHostPredicateCallableV2),
     Unknown(UnknownTypeCauseV2),
 }
 
@@ -83,6 +174,64 @@ impl ResolvedPredicateCallableV2 {
             result,
             effects,
         })
+    }
+
+    #[must_use]
+    pub const fn id(&self) -> &ResolvedPredicateIdV2 {
+        &self.id
+    }
+    #[must_use]
+    pub fn params(&self) -> &[ValueTypeV1] {
+        &self.params
+    }
+    #[must_use]
+    pub const fn result(&self) -> &ValueTypeV1 {
+        &self.result
+    }
+    #[must_use]
+    pub const fn effects(&self) -> ExpressionEffectsV2 {
+        self.effects
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ResolvedHostPredicateCallableV2 {
+    key: ResolvedHostPredicateKeyV2,
+    params: Vec<ValueTypeV1>,
+    result: ValueTypeV1,
+    effects: ExpressionEffectsV2,
+}
+
+impl ResolvedHostPredicateCallableV2 {
+    pub fn try_new(
+        key: ResolvedHostPredicateKeyV2,
+        params: Vec<ValueTypeV1>,
+        result: ValueTypeV1,
+        effects: ExpressionEffectsV2,
+    ) -> Result<Self, TypeDiagnosticV2> {
+        Ok(Self {
+            key,
+            params,
+            result,
+            effects,
+        })
+    }
+
+    #[must_use]
+    pub const fn key(&self) -> &ResolvedHostPredicateKeyV2 {
+        &self.key
+    }
+    #[must_use]
+    pub fn params(&self) -> &[ValueTypeV1] {
+        &self.params
+    }
+    #[must_use]
+    pub const fn result(&self) -> &ValueTypeV1 {
+        &self.result
+    }
+    #[must_use]
+    pub const fn effects(&self) -> ExpressionEffectsV2 {
+        self.effects
     }
 }
 
@@ -153,6 +302,7 @@ impl ResolvedRelationPredicateInputV2 {
 pub enum ResolvedCallTargetV2 {
     Builtin(BuiltinIdV2),
     Predicate(ResolvedPredicateIdV2),
+    HostPredicate(ResolvedHostPredicateKeyV2),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -180,20 +330,48 @@ pub struct ResolvedTypeInputsV2<'a> {
     values: BTreeMap<SourceQualifiedNodeIdV2, ResolvedTypeInputValueV2>,
     contexts: BTreeMap<SourceQualifiedNodeIdV2, (ValueTypeV1, ContextualTypeReasonV2)>,
     context_locations: BTreeMap<SourceQualifiedNodeIdV2, quanta_gqlang_v2_hir::SpanV1>,
-    source_registry: SourceRegistryViewV2,
+    source_registry: ExtendedSourceRegistryViewV2,
+    declaration_bodies: BTreeMap<HirNodeIdV1, &'a ValueExprHirV1>,
 }
 
 impl<'a> ResolvedTypeInputsV2<'a> {
     pub fn try_new(
         checked: CheckedHirDocumentV2<'a>,
+        source_registry: &ExtendedSourceRegistryViewV2,
         entries: Vec<ResolvedTypeInputEntryV2>,
         contexts: Vec<ContextualExpectedTypeInputV2>,
     ) -> Result<Self, TypeDiagnosticV2> {
         let source_id = checked.document().source_id;
+        if source_registry.source_len(source_id) != Some(checked.document().source_len) {
+            return Err(TypeDiagnosticV2::SourceRegistryMismatch {
+                location: LocatedSpanV2 {
+                    source_id,
+                    span: quanta_gqlang_v2_hir::SpanV1::new(0, checked.document().source_len),
+                },
+            });
+        }
         let mut required = RequiredInputs::default();
         for item in &checked.document().items {
             required.visit_item(item);
         }
+        let declaration_bodies = checked
+            .document()
+            .items
+            .iter()
+            .filter_map(|item| match item {
+                quanta_gqlang_v2_hir::ProgramItemHirV1::Decl(decl) => {
+                    Some((decl.body.id, &decl.body))
+                }
+                quanta_gqlang_v2_hir::ProgramItemHirV1::Query(_)
+                | quanta_gqlang_v2_hir::ProgramItemHirV1::Rule(_)
+                | quanta_gqlang_v2_hir::ProgramItemHirV1::GraphQuery(_)
+                | quanta_gqlang_v2_hir::ProgramItemHirV1::Legality(_)
+                | quanta_gqlang_v2_hir::ProgramItemHirV1::Presentation(_)
+                | quanta_gqlang_v2_hir::ProgramItemHirV1::CatalogDecl(_)
+                | quanta_gqlang_v2_hir::ProgramItemHirV1::Composition(_)
+                | quanta_gqlang_v2_hir::ProgramItemHirV1::Meta(_) => None,
+            })
+            .collect::<BTreeMap<_, _>>();
         let mut values = BTreeMap::new();
         for entry in entries {
             if entry.key.source_id != source_id {
@@ -217,6 +395,12 @@ impl<'a> ResolvedTypeInputsV2<'a> {
                     RequiredInputKind::Binding,
                     ResolvedTypeInputValueV2::Binding(_)
                 ) | (
+                    RequiredInputKind::Binding,
+                    ResolvedTypeInputValueV2::BindingFromExpression(_)
+                ) | (
+                    RequiredInputKind::Binding,
+                    ResolvedTypeInputValueV2::BindingFromDeclaration(_)
+                ) | (
                     RequiredInputKind::Callable,
                     ResolvedTypeInputValueV2::Callable(_)
                 ) | (
@@ -229,6 +413,32 @@ impl<'a> ResolvedTypeInputsV2<'a> {
                     node_id: entry.key.node_id,
                     location: LocatedSpanV2 { source_id, span },
                 });
+            }
+            if let ResolvedTypeInputValueV2::BindingFromExpression(target) = &entry.value {
+                if target.source_id != source_id
+                    || target.node_id == entry.key.node_id
+                    || !required.value_nodes.contains_key(&target.node_id)
+                {
+                    return Err(TypeDiagnosticV2::InvalidBindingDependency {
+                        node_id: entry.key.node_id,
+                        target_node_id: target.node_id,
+                        location: LocatedSpanV2 { source_id, span },
+                    });
+                }
+            }
+            if let ResolvedTypeInputValueV2::BindingFromDeclaration(target) = &entry.value {
+                if target.source_id != source_id
+                    || !required
+                        .declaration_value_nodes
+                        .contains(&entry.key.node_id)
+                    || !declaration_bodies.contains_key(&target.node_id)
+                {
+                    return Err(TypeDiagnosticV2::InvalidBindingDependency {
+                        node_id: entry.key.node_id,
+                        target_node_id: target.node_id,
+                        location: LocatedSpanV2 { source_id, span },
+                    });
+                }
             }
             if values.insert(entry.key, entry.value).is_some() {
                 return Err(TypeDiagnosticV2::DuplicateNodeFact {
@@ -286,23 +496,13 @@ impl<'a> ResolvedTypeInputsV2<'a> {
             .into_iter()
             .map(|(node_id, span)| (SourceQualifiedNodeIdV2 { source_id, node_id }, span))
             .collect();
-        let source_registry = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
-            source_id,
-            source_len: checked.document().source_len,
-        }])
-        .map_err(|_registry_error| TypeDiagnosticV2::ForeignDocumentFact {
-            node_id: HirNodeIdV1::from_raw(0),
-            location: LocatedSpanV2 {
-                source_id,
-                span: quanta_gqlang_v2_hir::SpanV1::point(0),
-            },
-        })?;
         Ok(Self {
             checked,
             values,
             contexts: checked_contexts,
             context_locations,
-            source_registry,
+            source_registry: source_registry.clone(),
+            declaration_bodies,
         })
     }
 }
@@ -311,6 +511,8 @@ impl<'a> ResolvedTypeInputsV2<'a> {
 struct RequiredInputs {
     nodes: BTreeMap<HirNodeIdV1, (quanta_gqlang_v2_hir::SpanV1, RequiredInputKind)>,
     context_nodes: BTreeMap<HirNodeIdV1, quanta_gqlang_v2_hir::SpanV1>,
+    value_nodes: BTreeMap<HirNodeIdV1, quanta_gqlang_v2_hir::SpanV1>,
+    declaration_value_nodes: BTreeSet<HirNodeIdV1>,
 }
 #[derive(Clone, Copy)]
 enum RequiredInputKind {
@@ -319,7 +521,19 @@ enum RequiredInputKind {
     RelationPredicate,
 }
 impl HirVisitorV1 for RequiredInputs {
+    fn visit_decl(&mut self, node: &quanta_gqlang_v2_hir::DeclHirV1) {
+        struct DeclValueCollector<'a>(&'a mut BTreeSet<HirNodeIdV1>);
+        impl HirVisitorV1 for DeclValueCollector<'_> {
+            fn visit_value(&mut self, value: &ValueExprHirV1) {
+                let _ = self.0.insert(value.id);
+                quanta_gqlang_v2_hir::walk_value(self, value);
+            }
+        }
+        DeclValueCollector(&mut self.declaration_value_nodes).visit_value(&node.body);
+        quanta_gqlang_v2_hir::walk_decl(self, node);
+    }
     fn visit_value(&mut self, node: &ValueExprHirV1) {
+        let _ = self.value_nodes.insert(node.id, node.span);
         let kind = match node.kind {
             ValueExprKindV1::Symbol(_) => Some(RequiredInputKind::Binding),
             ValueExprKindV1::Call(_) => Some(RequiredInputKind::Callable),
@@ -665,6 +879,12 @@ impl DocumentChecker<'_, '_> {
         if let Some(fact) = self.facts.get(&key) {
             return Ok(fact.state.clone());
         }
+        if self.visiting.contains(&node.id) {
+            return Err(TypeDiagnosticV2::CyclicDeclarationDependency {
+                node_id: node.id,
+                location: self.location(node),
+            });
+        }
         let _ = self.visiting.insert(node.id);
         let mut operator_id = None;
         let mut resolved_call = None;
@@ -678,6 +898,28 @@ impl DocumentChecker<'_, '_> {
             }
             ValueExprKindV1::Symbol(_) => match self.inputs.values.get(&key) {
                 Some(ResolvedTypeInputValueV2::Binding(state)) => state.clone(),
+                Some(ResolvedTypeInputValueV2::BindingFromExpression(target)) => self
+                    .facts
+                    .get(target)
+                    .map(|fact| fact.state.clone())
+                    .ok_or(TypeDiagnosticV2::UnavailableBindingDependency {
+                        node_id: node.id,
+                        target_node_id: target.node_id,
+                        location: self.location(node),
+                    })?,
+                Some(ResolvedTypeInputValueV2::BindingFromDeclaration(target)) => {
+                    let body = self
+                        .inputs
+                        .declaration_bodies
+                        .get(&target.node_id)
+                        .copied()
+                        .ok_or(TypeDiagnosticV2::InvalidBindingDependency {
+                            node_id: node.id,
+                            target_node_id: target.node_id,
+                            location: self.location(node),
+                        })?;
+                    self.type_expr(body, false)?
+                }
                 _ => {
                     return Err(TypeDiagnosticV2::MissingNodeFact {
                         node_id: node.id,
@@ -957,12 +1199,23 @@ impl DocumentChecker<'_, '_> {
                     vec![None; args.len()]
                 }
             }
+            ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::HostPredicate(
+                predicate,
+            )) => {
+                if predicate.params.len() == args.len() {
+                    predicate.params.iter().cloned().map(Some).collect()
+                } else {
+                    vec![None; args.len()]
+                }
+            }
             ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::Builtin(family)) => self
                 .kernel
                 .builtins
                 .agreed_fixed_parameters(*family, args.len()),
             ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::Unknown(_))
             | ResolvedTypeInputValueV2::Binding(_)
+            | ResolvedTypeInputValueV2::BindingFromExpression(_)
+            | ResolvedTypeInputValueV2::BindingFromDeclaration(_)
             | ResolvedTypeInputValueV2::RelationPredicate(_) => vec![None; args.len()],
         }
     }
@@ -1248,6 +1501,47 @@ impl DocumentChecker<'_, '_> {
             first_unknown_cause(&lhs, &rhs).unwrap_or(UnknownTypeCauseV2::UnresolvedEditorBinding);
         Ok(ExpressionTypeStateV2::Unknown(cause))
     }
+    fn resolve_predicate_signature(
+        &self,
+        node: &ValueExprHirV1,
+        any_star: bool,
+        arg_types: &[ExpressionTypeStateV2],
+        params: &[ValueTypeV1],
+        result: ValueTypeV1,
+        effects: ExpressionEffectsV2,
+        target: ResolvedCallTargetV2,
+        diagnostic_name: &'static str,
+    ) -> Result<
+        (
+            ExpressionTypeStateV2,
+            ExpressionEffectsV2,
+            Option<ResolvedCallTargetV2>,
+        ),
+        TypeDiagnosticV2,
+    > {
+        if any_star {
+            return Err(TypeDiagnosticV2::InvalidStarArgument {
+                node_id: node.id,
+                location: self.location(node),
+            });
+        }
+        if params.len() == arg_types.len()
+            && params
+                .iter()
+                .zip(arg_types)
+                .all(|(expected, actual)| state_accepts(actual, expected))
+        {
+            Ok((ExpressionTypeStateV2::Known(result), effects, Some(target)))
+        } else {
+            Err(TypeDiagnosticV2::BadOverload {
+                node_id: node.id,
+                name: diagnostic_name.into(),
+                operands: known_operands(arg_types),
+                location: self.location(node),
+            })
+        }
+    }
+
     fn resolve_call(
         &self,
         node: &ValueExprHirV1,
@@ -1351,39 +1645,37 @@ impl DocumentChecker<'_, '_> {
                 ))
             }
             ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::Predicate(predicate)) => {
-                if any_star {
-                    return Err(TypeDiagnosticV2::InvalidStarArgument {
-                        node_id: node.id,
-                        location: self.location(node),
-                    });
-                }
-                if predicate.params.len() == arg_types.len()
-                    && predicate
-                        .params
-                        .iter()
-                        .zip(arg_types)
-                        .all(|(expected, actual)| state_accepts(actual, expected))
-                {
-                    Ok((
-                        ExpressionTypeStateV2::Known(predicate.result),
-                        predicate.effects,
-                        Some(ResolvedCallTargetV2::Predicate(predicate.id)),
-                    ))
-                } else {
-                    Err(TypeDiagnosticV2::BadOverload {
-                        node_id: node.id,
-                        name: "predicate".into(),
-                        operands: known_operands(arg_types),
-                        location: self.location(node),
-                    })
-                }
+                self.resolve_predicate_signature(
+                    node,
+                    any_star,
+                    arg_types,
+                    &predicate.params,
+                    predicate.result,
+                    predicate.effects,
+                    ResolvedCallTargetV2::Predicate(predicate.id),
+                    "predicate",
+                )
             }
+            ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::HostPredicate(
+                predicate,
+            )) => self.resolve_predicate_signature(
+                node,
+                any_star,
+                arg_types,
+                &predicate.params,
+                predicate.result,
+                predicate.effects,
+                ResolvedCallTargetV2::HostPredicate(predicate.key),
+                "host predicate",
+            ),
             ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::Unknown(cause)) => Ok((
                 ExpressionTypeStateV2::Unknown(cause),
                 ExpressionEffectsV2::conservative_unknown(),
                 None,
             )),
             ResolvedTypeInputValueV2::Binding(_)
+            | ResolvedTypeInputValueV2::BindingFromExpression(_)
+            | ResolvedTypeInputValueV2::BindingFromDeclaration(_)
             | ResolvedTypeInputValueV2::RelationPredicate(_) => {
                 Err(TypeDiagnosticV2::WrongNodeFactKind {
                     node_id: node.id,

@@ -2,7 +2,7 @@
 //!
 //! Each test pins an observable behaviour a surviving cargo-mutants mutation
 //! would otherwise leave undetected: the exact span a diagnostic carries, the
-//! exact count `len`/`is_empty`/`depth` report, the exact capture/shadow
+//! exact count `len`/`is_empty` report, the exact capture/shadow
 //! boundary, and the observable binding effect of each `resolve_*`/`close_scope`
 //! entry point.
 
@@ -105,22 +105,6 @@ fn module_graph_is_empty_tracks_contents() {
 
     let populated = ModuleGraphV1::new().with_import("a", "x.a");
     assert!(!populated.is_empty());
-}
-
-// ===== scope.rs:143 depth -> 0 / 1 =========================================
-#[test]
-fn scope_depth_counts_live_frames() {
-    let mut scope = LexicalScopeV1::new();
-    assert_eq!(scope.depth(), 0);
-
-    scope.push(CaptureV1::Capturing);
-    assert_eq!(scope.depth(), 1);
-
-    scope.push(CaptureV1::Capturing);
-    assert_eq!(scope.depth(), 2);
-
-    scope.pop();
-    assert_eq!(scope.depth(), 1);
 }
 
 // ===== scope.rs:192 replace == with != in same_frame_or_outer ==============

@@ -1,6 +1,6 @@
 # 04 — Semantic Kernel And Document Transaction
 
-Status: `PLANNED`
+Status: `RED_CAPTURED — IMPLEMENTING`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
@@ -174,7 +174,7 @@ CheckedSyntaxDocumentV2::try_from_hir(document: HirDocumentV1)
   -> Result<CheckedSyntaxDocumentV2, FrontendFailureV2>
 resolve_checked_document_v2(checked: CheckedSyntaxDocumentV2,
   authority: &ClosedFrontendAuthorityV2)
-  -> Result<SemanticDocumentV2, FrontendFailureV2>
+  -> Result<SemanticDocumentV2, FrontendTransactionErrorV2>
 ```
 
 These are sema-owned APIs and are never exported by the frontend facade. The
@@ -189,7 +189,7 @@ surface and sema:
 ```text
 resolve_source_to_semantics_v2(source_id: SourceIdV2, source: &str,
   authority: &ClosedFrontendAuthorityV2)
-  -> Result<SemanticDocumentV2, FrontendFailureV2>
+  -> Result<SemanticDocumentV2, FrontendTransactionErrorV2>
 analyze_source_to_semantics_v2(source_id: SourceIdV2, source: &str,
   authority: &OpenAnalysisAuthorityV2) -> SemanticAnalysisV2
 ```
@@ -210,7 +210,7 @@ identity and diagnostics because the authority is immutable.
 ```text
 Complete(SemanticDocumentV2)
 Incomplete(IncompleteSemanticDocumentV2)
-Error(FrontendFailureV2)
+Error(FrontendTransactionErrorV2)
 ```
 
 The incomplete carrier contains explicit unresolved facts and ordered
@@ -228,9 +228,9 @@ Authority constructors are pinned:
 
 ```text
 ClosedFrontendAuthorityV2::try_new(validated_module_authority_parts,
-  relation_catalog, budget)
+  relation_catalog, graph_reference_catalog, budget)
 OpenAnalysisAuthorityInputV2::try_new(optional_modules, optional_relations,
-  host_sources, budget)
+  optional_graph_references, host_sources, budget)
 OpenAnalysisAuthorityV2::try_new(input)
 OpenAnalysisAuthorityV2::try_standard_v2()
 ```
@@ -604,13 +604,15 @@ Add a private-field `OpenAnalysisAuthorityInputV2` with these explicit inputs:
 
 1. optional `ValidatedModuleAuthorityPartsV2`;
 2. optional `RelationCatalogV2`;
-3. one checked host `SourceRegistryViewV2`;
-4. one `FrontendBudgetV2`.
+3. optional `GraphReferenceCatalogV2`;
+4. one checked host `SourceRegistryViewV2`;
+5. one `FrontendBudgetV2`.
 
 `OpenAnalysisAuthorityV2::try_new(input)` checks source-registry compatibility
 and retained authority-profile equality for every supplied proof. Missing
-module or relation authority means unresolved editor facts, never an empty
-closed proof. `try_standard_v2() -> Result<Self, FrontendFailureV2>` is the only
+module, relation, or graph-selector authority means unresolved editor facts,
+never an empty closed proof. `try_standard_v2() ->
+Result<Self, FrontendAuthorityErrorV2>` is the only
 standard constructor because builtin/operator registry creation is fallible.
 Ticket 08 must propagate this failure at startup/request handling; no unwrap,
 default, or error erasure is allowed.
@@ -628,14 +630,20 @@ This ticket owns the following private-field, fallibly constructed results:
   downstream per-item outputs;
 - `ResolvedCallTargetV2` from ticket 03, reused directly; do not introduce a
   second `ResolvedCallV2` identity;
-- `TypedExprV2 { key: SourceQualifiedNodeIdV2, value_type, effects,
-  resolved_call }`; `SourceQualifiedNodeIdV2` is the only expression ID;
+- `TypedExprV2 { key: SourceQualifiedNodeIdV2, shape, value_type, effects,
+  resolved_call, aggregate_context }`; `SourceQualifiedNodeIdV2` is the only
+  expression ID. The closed shape retains literal/operator/path/call-star
+  identity and ordered child keys or typed children, so algebra and logic do
+  not reconstruct expression structure from raw HIR;
 - `TypedBoolExprV2`, constructible only from a `TypedExprV2` whose checked type
   is Bool;
 - `TypedRelationV2 { item_id, root: TypedRelationExprV2, output }`; its closed
-  expression enum covers Scan, Filter, Project, Join, Cross, Group, Sort,
-  Unnest, Union, Intersect, Except, and Apply using typed expression references,
-  resolved relation-source IDs, checked correlations, and private constructors;
+  source expression enum covers only the six HIR variants: Source, Filter,
+  Project, Join (inner/cross), GroupBy, and OrderBy. It retains typed expression
+  references, resolved source IDs, checked correlations, and producer-sealed
+  output contracts. Apply, Aggregate, Limit, Union, SemiJoin, and AntiJoin
+  are the six existing non-stage algebra operators handled by ticket 05, not
+  fabricated source-reachable sema variants;
 - `ResolvedGraphQueryV2`, `ResolvedCheckV2`, and
   `ResolvedPresentationV2`, each retaining `SemanticItemIdV2`;
 - `AggregateContextV2` and `RelationOutputContractV2`, retained rather than
@@ -682,4 +690,696 @@ not revisit raw HIR or redo semantic validation.
 - provider text preserved byte-for-byte as opaque metadata with no lookup;
 - old private-HIR references are zero-match in binder after its migration.
 
+### Inherited external delta audit (`fcf106b..f9ec954`)
+
+Commit `ceb4142` is an **UNQUALIFIED PARTIAL CONSUMER MIGRATION**, not Ticket 04
+progress. Its 29 binder tests pass, but the production walk still pre-registers
+the complete relation tree before resolution. In a Join this makes the RHS
+alias visible while resolving the LHS, projection does not replace the active
+row frame, and relational EXISTS records no explicit correlation set. The
+implementation still returns V1 binder carriers rather than the semantic V2
+contracts above. Three deleted nested-composition tests are accepted only as a
+transfer to Ticket 02's closed-HIR invalid-state proof; they are not closure
+evidence here.
+
+Ticket 04 must add exact rails for:
+
+1. RHS aliases are unavailable in a Join LHS but available to `ON` and later
+   stages;
+2. projection replaces the row frame, so dropped fields cannot resolve later;
+3. correlated EXISTS retains the exact nonempty capture set and uncorrelated
+   EXISTS retains an explicit empty set;
+4. competing binder failures select the pinned diagnostic independent of
+   traversal/insertion order;
+5. stage-order fixtures include both `group by ... | project ... aggregate`
+   and the existing `project ... aggregate | group by ...`, so Ticket 05 never
+   guesses whether an existing partition must be retained.
+
+At the current inherited start (`f9ec954`), `cargo test -p
+quanta-gqlang-v2-binder` is focused V1 green only. `cargo check -p
+quanta-gqlang-v2-pipeline` is red with 25 compiler errors. Receipt 04 must use
+the actual ticket-start HEAD plus dirty fingerprint and keep those result
+classes separate.
+
 Requires 02 and 03. Blocks 05-09.
+
+## 2026-09-21 Owner/Consumer RR Reopen — Exact Work Remaining
+
+This section is normative over every earlier contradictory signature or DTO
+sketch. The live-source audit distinguished fixes already in the dirty tree
+from gaps that still prevent `FOCUSED_GREEN`. Do not mark this ticket green from
+successful compilation of an authority/DTO skeleton or from Binder's V1 tests.
+
+### Producer seams that must close before the sema transaction
+
+1. **One integrity pass, owned proof.** HIR owns
+   `CheckedHirDocumentOwnedV2::try_new(HirDocumentV1)` and a borrowing
+   `as_checked()` method. Sema's `CheckedSyntaxDocumentV2` contains that opaque
+   owned proof; it never re-runs `check_document_v2` after moving the document.
+   The current dirty HIR implementation and positive/invalid owner tests are
+   the candidate; include them in the final HIR proof and receipt 03 delta.
+2. **Exact combined source registry.** Types' `ResolvedTypeInputsV2::try_new`
+   takes the same `&ExtendedSourceRegistryViewV2` that sema constructed from
+   sealed host authority and the checked document. Types must not mint a
+   document-only registry: record-field checked locations must inherit the
+   combined identity. Reject source ID/length mismatch before a kernel walk.
+   The dirty types implementation and exact/wrong-length owner test are the
+   candidate; add a host-parent mismatch integration test at the sema authority
+   boundary. The `BindingFromExpression` dependency target is a types-owned
+   node ID, never a sema-inferred type; foreign, missing, self, forward, and
+   cyclic dependencies reject deterministically.
+3. **Modules predeclaration and all-family reference validation.** The current
+   `DocumentCatalogValidatorV2::validate` creates local IDs only at final
+   validation, while sema needs those IDs for forward references and typed
+   item DTOs. Add one modules-owned predeclaration/resolution API on the
+   existing validator and its single non-resettable budget session. It accepts
+   all document assets once, seals checked local IDs/kinds, resolves typed
+   local/visible-host/external references with expected-kind and ambiguity
+   diagnostics, then final validation consumes that exact predeclaration. The
+   old `validate(input)` may delegate internally for existing clients but may
+   not run a second ID derivation or reset the counter. Extend the current
+   View-only dependency rule to cover Model source, Pack source, Profile
+   capabilities, Gate checks, and RuleBinding check references with explicit
+   source/target-kind policy. Keep view-cycle detection limited to actual View
+   edges; do not classify every family dependency as a view-cycle edge.
+   Semantically unknown source/target kinds are a hard design failure, not a
+   reason to silently omit an edge. Negative owner tests: missing/wrong-kind
+   target for each family, forward local target, imported/external target,
+   duplicate ID, ambiguous visible import, cycle only on View edges, and
+   exact-limit/one-over across predeclaration plus final validation. Sema
+   cannot call `CatalogAssetIdV2::derive` or duplicate module lookup logic.
+
+   The source-backed family kind matrix is fixed here; the new kinds are
+   frontend-only inert catalog metadata, not runtime/provider handles:
+
+   | Authored reference | Required namespace kind |
+   |---|---|
+   | `VIEW query-ref` | `Query` |
+   | `MODEL source` | `ModelSource` |
+   | `PACK source` | `PackSource` |
+   | `PROFILE capabilities[]` | `Capability` |
+   | `GATE checks[]` | `Check` |
+   | `RULEDEF check-ref` | `Check` |
+
+   `CHECK rule-ref` resolves a `Rule` catalog asset or the exact source-rule
+   predicate namespace; neither path treats it as a bare value. Authored
+   catalog names preserve their full dotted/slash/`::`/hyphen spelling as one
+   checked local path under the selected module. Do not split `catalog.users`
+   heuristically into a different module or strip punctuation. Module ID
+   syntax remains separate; local exact, visible current-module, and external
+   candidates have deterministic kind-directed resolution and reject distinct
+   same-name IDs as ambiguous. A wrong-kind candidate is not silently ignored
+   to pick a different kind.
+4. **Graph selector authority.** `GraphRefV1` accepts dotted, slash, hyphen,
+   and `::` names; these cannot be reinterpreted as modules'
+   `CatalogAssetIdV2` segments. Add an immutable, host-agnostic
+   `GraphReferenceCatalogV2` to closed authority and an optional one to open
+   authority. It seals typed canonical selector ID, kind, checked host
+   location, and exact host registry/budget profile; it contains no graph
+   runtime, provider lookup, traversal, SDK, or existence-at-runtime promise.
+   FIND endpoint/waypoint/sanitizer/scope/window/frontier references and
+   graph-valued presentation references use context-required selector kinds.
+   CHECK rule references and catalog-family references use the rule/modules
+   namespace, not this selector catalog. The source spellings above must have
+   positive exact-ID tests; unknown, ambiguous, wrong-kind, foreign registry,
+   and missing optional open authority must each have distinct negative or
+   `Incomplete` tests. No raw string is labeled `ResolvedGraphReferenceV2`.
+
+   The selector-kind matrix is:
+
+   | Authored use | Required graph selector kind |
+   |---|---|
+   | FIND source/sink/anchor/reference/pointee/via/through | `Entity` |
+   | FIND callable | `Callable` |
+   | FIND/CHECK/SAMPLE scope | `Scope` |
+   | FIND window/frontier/sanitizer | `Window` / `Frontier` / `Sanitizer` respectively |
+   | CHECK pattern | `Pattern` |
+   | COMPARE baseline/candidate | `Snapshot` |
+   | EXPORT source | `ExportSource` |
+   | DESCRIBE path | `Entity` with exact host-admitted entity subtype matching authored `kind` |
+
+   EXPLAIN target may resolve to a catalog `Rule` or graph `Entity`, but two
+   distinct candidates are ambiguous; neither namespace silently wins.
+   EXPORT profile is modules `Profile`; CHECK rule is source Predicate or
+   modules `Rule`. SHOW has no selector. The host catalog proves frontend
+   reference identity/kind only, never runtime existence or provider routing.
+5. **Source-less construction errors.** `FrontendDiagnosticV2.primary` remains
+   mandatory for source-backed transaction failures. Authority/budget/standard
+   constructor failures before a source exists return a distinct
+   `FrontendAuthorityErrorV2` with stable code and bounded message, not a
+   fabricated `SourceIdV2::from_raw(0)`/`SpanV1::point(0)`. Therefore
+   `FrontendBudgetV2::{try_new,standard_v2,authority_profile}` and
+   `ClosedFrontendAuthorityV2::try_new` /
+   `OpenAnalysisAuthorityV2::{try_new,try_standard_v2}` return this type.
+   Source entrypoints convert only genuinely document-anchored failures into
+   `FrontendFailureV2`. `FrontendTransactionErrorV2` is the closed sum
+   `Authority(FrontendAuthorityErrorV2) | Document(FrontendFailureV2)` and is
+   the error type for semantic source/checked-document entrypoints and the
+   `SemanticAnalysisV2::Error` payload. Modules source-less budget/registry
+   errors remain source-less; a missing primary may not be silently anchored
+   at byte zero.
+   Test constructor failures without any source ID and deterministic ordering
+   of multiple source-backed diagnostics separately.
+
+### Sema-owned complete carriers and algorithm gates
+
+1. `TypedExprV2` is a closed, private-field typed expression tree or shape
+   table keyed solely by `SourceQualifiedNodeIdV2`. It retains every HIR value
+   and Boolean variant; literal value, operator ID, ordered children,
+   path-segment names/spans, resolved binding ID, resolved call target, and
+   `CallArg::Star` are never recovered by a downstream HIR walk. The node's
+   type/effects come only from one types-kernel result. Tests compare every
+   shape, resolved target, effect, and child key with the input plus kernel
+   facts; missing/extra/duplicate child facts reject.
+   In the live draft, `Path { segments: Vec<String> }` and record fields omit
+   authored segment/name spans, and `RelationExists` stores only a set of outer
+   bindings, losing each inner reference location. Replace them with checked
+   path/field/correlation carriers that retain `(outer binding identity,
+   inner reference node and location)` per edge, including multiple references
+   to the same binding. `TypedExprV2::try_from_fact` and
+   `AggregateContextV2::try_new` cannot remain public caller-selected proofs:
+   the producer must tie each shape and placement to the exact checked HIR
+   node. Add same-key wrong-shape, wrong-position, dropped-correlation, and
+   duplicate-reference negative tests. Store the checked expression location
+   in `TypedExprV2`; passing it only to a constructor error loses downstream
+   diagnostic provenance. Preserve operator/callee subspans where the authored
+   HIR carries them.
+2. `TypedRelationExprV2` has exactly the six source-reachable HIR stage kinds
+   above. A `Join` carries inner/cross as a checked subkind, not two redundant
+   source variants. Algebra-only operators are introduced by ticket 05.
+   `ResolvedRelationSourceIdV2` is a closed sema enum over types-owned
+   `RelationSourceIdV2` and modules-owned `CatalogAssetIdV2`; provenance uses
+   that enum, not a string or `RelationSourceIdV2` alone. Source stages retain
+   exact source ID, row type, alias/frame and provenance. Stage constructors
+   are crate-private or validate output equality against producer-derived
+   inputs: caller-supplied `RelationOutputContractV2` cannot forge source
+   provenance, row, cardinality, partition/order, or effects. Negative tests
+   explicitly attempt forged scan/filter/project/join output contracts.
+3. `ResolvedValueBindingV2` retains Binder's exact `(owner HirNodeIdV1,
+   ordinal)` identity. The display name is not the ID. Use the Binder
+   relation-output and capture side tables; don't duplicate its scope walk.
+   Pin omitted projection names (Symbol name, final Path segment, otherwise
+   canonical `col`), duplicate defaults, dropped-field rejection after
+   projection, independently bound JOIN RHS, and nested EXISTS capture
+   ownership. An uncorrelated EXISTS has an explicit empty capture set.
+4. `SemanticDocumentV2` covers all nine `ProgramItemHirV1` variants in exact
+   source order: Query, Decl, Rule, GraphQuery, Legality, Presentation,
+   CatalogDecl, Composition, and Meta. Each item has one
+   `SemanticItemIdV2`; duplicate/missing/extra/foreign IDs reject before any
+   partial result escapes. Exact ID alone is insufficient: assembly also
+   compares each produced semantic variant with the authored HIR item kind
+   and proves the catalog authority came from this exact document input and
+   extended registry, not another same-source-ID/length transaction.
+   Negative tests inject a same-ID wrong variant and a foreign catalog proof.
+   Nested CHECK/FIND and inline VIEW identities are
+   checked by an explicit parent-child relation, not merely equal source ID.
+   Graph DTO retains direction and all endpoint/constraint references; CHECK
+   retains rule, scope, pattern, policy, and nested graph; Catalog DTO retains
+   every payload-specific ref/activation/admission/binding/provider field;
+   Composition retains LET producer/WITH consumer and nested body; Meta keeps
+   exact directive and checked refs. Only genuinely illegal grammar shapes may
+   return `sema.invalid_item_shape`; dropping a supported family is not a
+   successful Ticket 04 implementation.
+5. Namespace lookup is deterministic and kind-directed. Local lexical values
+   shadow only value bindings; they do not shadow predicates, relations, or
+   catalog assets of another kind. Source rules predeclare in the predicate
+   namespace, never as bare values. Module visibility is the sole import
+   precedence authority. Within one namespace, two distinct visible IDs for
+   the same spelling are ambiguous; no declaration-order/last-wins fallback.
+   Builtins and user predicates require call syntax; an exact collision in a
+   callable context rejects unless a documented qualified form disambiguates
+   it. Record precedence and collision tests for builtin/source-rule/module
+   Predicate or Rule, relation catalog/module Relation or View/document View,
+   and composition-local bindings.
+6. Rule grammar remains `rule name : <value> if <bool>`, but closed unary rule
+   semantics admit only a single Symbol head. Arbitrary expression heads
+   reject at the exact head span. No concrete type can be guessed for a head
+   or quantifier binder: ticket 03 types owns a bounded finite-domain
+   rule-variable constraint solver over exact Binder identities, all source
+   rule IDs, authoritative host signatures, literal/operator/builtin
+   constraints, and checked document HIR. Its sealed result supplies unique
+   concrete binding types and unary predicate signatures to the existing
+   `ResolvedTypeInputsV2` builder; the existing expression kernel then runs
+   exactly once. Empty candidate intersection rejects contradiction; multiple
+   candidates or an unanchored recursive SCC reject closed compilation and
+   remain explicit incomplete facts in open analysis. `rule r : x if r(x)` is
+   unanchored and therefore *not* a closed positive fixture. Use an anchored
+   recursive fixture such as `rule r : x if x = 1 and r(x)` after checking the
+   operator overload selects a unique `int`. Tests: arbitrary head,
+   self/mutual unanchored recursion, conflicting anchors, ambiguous overload,
+   unanchored quantifier, free variable, predicate arity, unknown callable,
+   exact solver budget, and one-over. Sema does not implement a second
+   overload/constraint engine, and logic does not infer types.
+7. Charge `max_semantic_steps` in one document-wide, non-resettable sema
+   session: one charge at entry to each authored item, each resolved reference,
+   each Binder binding/capture fact imported, each node-ID type input emitted,
+   each relation stage assembled, and each semantic item/catalog DTO emitted.
+   Charge immediately before work/allocation and attach the actual source
+   span of that work to an over-limit failure. Surface owns parse tokens and
+   expression-node count; types' rule solver charges its own bounded
+   node/edge/iteration dimensions; modules owns its existing admission
+   session. Do not charge the same event in two sema phases. Owner tests set a
+   custom limit to exactly the sum of a documented tiny fixture's charges,
+   assert success at that limit, then assert the next charge fails at its
+   expected source span and code.
+
+### Checkpoint evidence required
+
+- Re-run HIR/types/modules/Binder owner suites and strict Clippy after their
+  producer changes. Preserve Ticket 03's earlier receipt as frozen evidence,
+  append the changed API/test counts and a fresh scoped fingerprint rather
+  than pretending the original proof covers new code.
+- The sema receipt records a source-family acceptance matrix, every typed DTO
+  field's producer/consumer, one-kernel-call proof, one-catalog-validation
+  proof, authority source identity, exact budget schedule, and all RED-to-GREEN
+  commands. A skeleton with unsupported valid families is `REPAIR`, not
+  `FOCUSED_GREEN`.
+- Keep the preexisting pipeline compiler failures classified as deferred
+  ticket 07 consumer migration. A focused Ticket 04 pass never implies a
+  releasable workspace or final V2 facade.
+
+## 2026-09-21 Live-Tree Final Reconciliation (HEAD `f9ec954` + dirty overlay)
+
+The sema crate now contains authority, diagnostics, document, expression,
+relation, rule, name, and item modules plus owner tests. This is an in-flight
+producer, not an implemented document transaction: at this checkpoint
+`resolve_document_bodies` rejected every nonempty document. The later live
+delta below has Decl/RequireCertified source paths, but no DTO-constructor or
+two-family test may satisfy the nine-family acceptance matrix.
+
+The next checkpoint must execute this order without substituting constructor
+tests for source-document tests:
+
+1. Freeze the Ticket 03 producer APIs and rerun their owner suites. Import the
+   exact checked HIR, Binder side tables, types results, modules predeclared
+   IDs, and graph-selector proof; do not parse or resolve any of them twice.
+2. The initial seven-variant sema relation draft (`Scan`, `Filter`,
+   `Project`, `Join`, `Cross`, `Group`, `Sort`) was found by RR and has been
+   collapsed in the dirty overlay to six variants with checked inner/cross
+   `JoinModeV2`; stage constructors were narrowed to crate scope. This is
+   only a shape repair. Tie each producer-only output to owner-derived row,
+   source-sum provenance, cardinality, partition, ordering, and effects;
+   restrict `TypedRelationV2::try_new` to the producer or verify its authored
+   item ID at construction. Negative owner tests must forge each output field
+   independently and try a same-root/foreign-item-ID transplant.
+3. Materialize all nine authored item variants in one source-order transaction,
+   with exact item ID and variant equality. Resolve nested CHECK/FIND and
+   inline VIEW child identities explicitly; compare the exact set of semantic
+   catalog references with the validated `DocumentCatalogAuthorityV2` proof.
+   Reject a foreign catalog proof even if source ID and length happen to match.
+   Test one positive source case
+   per variant plus missing/extra/duplicate/foreign/wrong-kind mutations.
+   `GraphReferenceCatalogV2::resolve` must not return a detached spelling/kind
+   tuple: the resolved selector retains its checked host declaration location
+   and opaque catalog/registry/profile provenance (or an equivalent sealed
+   reference back to the exact catalog). A same-spelling/kind ID transplanted
+   from another host registry or catalog must fail even when it compares equal
+   as text. No downstream graph DTO may reconstruct that proof by relookup.
+4. Invoke the types kernel once on the complete resolved input. Rule-variable
+   singleton proof comes from types; Binder identities/captures come from
+   Binder; module references from modules. Document-level source rules must
+   retain exact target ID, polarity, and span for Ticket 06. Graph and item
+   payloads must retain every authored option for Ticket 07. Before constructing
+   solver inputs, compare each rule-symbol mapping to Binder's exact resolved
+   target and each call target to the checked callee spelling plus sealed
+   builtin/host/source-predicate authority. Same-spelling cross-rule and
+   cross-call transplants reject; a caller-supplied signature is not proof.
+5. Charge one non-resettable semantic budget with an enumerated tiny fixture's
+   event ledger. Run limit and limit+1, ordered multi-diagnostic, open
+   incomplete vs closed failure, wrong authority/profile/registry, and
+   source-less construction-error tests. Then run the entire sema/Binder owner
+   suites, strict Clippy, architecture guard, and postimplementation RR.
+
+`cargo check --lib` on the new crate or a small authority/DTO test subset is
+only a compilation checkpoint. Ticket 04 remains `RED_CAPTURED — IMPLEMENTING`
+until the above source-document matrix and fresh receipt are green.
+
+## 2026-09-21 Second Live Consumer Audit — Source Reachability Gate
+
+`sema/src/document.rs` now has a checked-HIR → predeclared modules → body →
+final catalog validation → private exact-item-set assembly path. The current
+body resolver's last all-target-proven source families were value `Decl` and
+`Meta(RequireCertified)`; the other seven root DTO variants existed as types
+only on that fingerprint. A `cargo check --tests` checkpoint is not an executed
+test or strict Clippy receipt. The serialized
+`v3_document_transaction` run passed 8/8, including forward declarations and
+an exact-span rule-body relational EXISTS rejection; it does not cover the
+seven unproduced root variants or qualify the full owner suite. A later dirty
+GraphQuery source-positive test passed in isolation and Presentation resolution
+is being edited; neither is included in that 8/8 or 19-test all-target
+checkpoint. Recompute the exact produced-family set only after the next
+stable sema full run.
+
+Next compilation-only checkpoint: `cargo check -p quanta-gqlang-v2-sema
+--tests` passed with 12 dead-code warnings. Focused source positives now exist
+for 4/9 roots: Decl, GraphQuery/FIND, Presentation/SHOW, and
+Meta/RequireCertified. Only SHOW has an executed Presentation positive; other
+Presentation verbs, EXPLAIN dual authority, and Meta/UsePack lack positive
+source proof. Query, Rule, CHECK, CatalogDecl, and Composition remain source
+RED. The latest full sema owner suite and strict Clippy have not run after
+these changes; 4/9 is a reachability checkpoint, not semantic closure.
+
+The subsequent dirty checkpoint advanced to 6/9 root variants: authored
+CatalogDecl/RuleBinding is matched to modules-issued exact name/kind/checked
+span, CHECK resolves its local Rule and optional typed Scope/Pattern with exact
+nested FIND identity, and private assembly compares catalog asset and family
+dependency sets to the modules proof. One focused catalog+CHECK source test and
+`cargo check -p sema --tests` passed (10 dead-code warnings). Query, Rule,
+Composition remain without source producers; most Catalog/Presentation/Meta
+subvariants and the full owner suite/Clippy remain unproved. The 4/9 statement
+above is an earlier checkpoint, not the latest reachability count.
+
+Next isolated Query/Source positive passed: Binder `resolve_query` produced
+the checked relation frame, the sealed host `RelationCatalogV2` supplied exact
+row/cardinality/provenance, and the typed stage retained its source-qualified
+HIR key. Sema `cargo check --tests` passed with seven dead-code warnings.
+Reachability is now 7/9 roots at the named subvariants; Rule and Composition
+remain absent. Filter/Project/Join/GroupBy/OrderBy source stages and the
+remaining family subvariants still need source positives and negatives.
+At that checkpoint the post-Query full sema suite and strict Clippy were unrun.
+
+A later full sema owner run passed 23/23 before a new typed-child semantic
+budget charge; seven dead-code warnings remain. Rerun after the budget edit
+and eliminate warnings by completing/using the missing source branches, not
+by suppressing them. This is not a 04 `FOCUSED_GREEN` receipt.
+
+The immediate post-budget rerun passed 24/24, including a typed-child
+exact-step/one-over diagnostic. Seven dead-code warnings still prevent strict
+Clippy; Rule/Composition and non-Scan relation stages remain RED. Ticket 05
+subsequently reopened relation provenance/location/nested-EXISTS producer
+gaps, so the 24-test fingerprint is a checkpoint, not a frozen Ticket 04
+handoff.
+
+Implementation order and hard acceptance for the remaining root work:
+
+1. For every authored root variant, add a minimal source-positive and a
+   wrong-kind/foreign-ID negative in the sema owner suite. Query must traverse
+   all six HIR relation stages; Rule must synthesize the unary head parameter
+   for Binder and submit exact symbol/call targets to the types solver; FIND
+   and CHECK must retain every checked graph selector, role, option, nested
+   identity, and host provenance; Presentation, Catalog, Composition, and
+   `Meta(UsePack)` must retain all authored payloads. Merely constructing the
+   nine DTO variants is not evidence.
+2. Build one complete `ResolvedTypeInputsV2` for the whole document and call
+   `ExpressionTypeKernelV2::check_document` once. Retain exact typed value and
+   Boolean nodes, subspans, captures, effects, and aggregate context. Replace
+   current generic item-span type errors with the owner diagnostic location;
+   a source-backed type error must point to the violating operand/callee, not
+   the first document item.
+3. The graph catalog now preserves checked host declaration location and full
+   catalog identity; expression DTOs preserve path/record subspans and each
+   correlation edge. Verify that every constructor remains producer-private
+   and every downstream DTO carries the proof unchanged. Negative tests must
+   transplant a same-spelling graph ID across registries/catalogs, a relation
+   output with one forged field, an item ID with wrong variant, and a nested
+   CHECK/FIND child ID with the right source but wrong node.
+4. Collect every authored catalog declaration before body resolution, then
+   supply exact six-family located references and resolved View-only edges to
+   the single modules validator. Compare the exact set of sema catalog refs
+   against the validator's sealed authority, not only source registry and
+   count. Prove forward View/reference and both orders of
+   `REQUIRE CERTIFIED` against one final validation.
+5. `exists (from ...)` in a rule body is parser-reachable. Preserve the
+   Ticket 00/04 semantic prohibition: exact-span
+   `sema.invalid_item_shape` at source ingress and a direct types-solver
+   negative. Query EXISTS remains a supported typed/capturing relation path;
+   rejecting the source-rule form must not disable query correlation.
+6. Execute the full sema/Binder/types/modules owner suites, strict Clippy,
+   exact semantic budget limit and limit+1, ordered multi-diagnostic/open
+   incomplete cases, architecture transition guard, and a failure-injection
+   mutation. Record selected/executed counts and every still-red consumer in
+   `receipts/04.md`. No physical algebra/planning or final facade claim belongs
+   to Ticket 04.
+7. An earlier `sema/src/rule.rs` draft exposed public constructors for a
+   caller-selected rule call list and checked only source ID. The dirty draft
+   now narrows constructors and retains call-node IDs. Complete the producer
+   comparison against the exact checked-HIR call-node set, types-resolved
+   target, authored polarity, and checked location before sealing. The current
+   expected-call tuple still omits the target, so same-key target transplant
+   must reject. Add missing/duplicate/extra edges, a same-source
+   different-rule head/body transplant, and a negated edge relabeled positive.
+   Ticket 06 may trust only this sealed rule graph, never reconstruct it from
+   names or raw HIR.
+8. EXPLAIN target can be a modules catalog Rule or a graph Entity. Resolve
+   both through their existing owners, using modules' same-session
+   nonterminal absence probe and an equivalent typed nonterminal lookup on the
+   immutable graph catalog; reject two present candidates as ambiguous.
+   A modules wrong-kind or ambiguity error is not an absence fallback. Add
+   both probe orders, catalog-only, graph-only, dual-present, wrong-kind plus
+   graph-present, and neither-present source fixtures. CHECK's source-predicate
+   versus catalog Rule choice needs the analogous exact-ID matrix.
+9. `SemanticDocumentV2::try_assemble` currently checks expression map keys
+   against contained fact keys and source ID, but not that the map is the
+   complete checked-HIR/types expression set. Require exact equality of
+   checked expression IDs, types-owned fact IDs, and materialized semantic
+   expression IDs; reject omitted/extra child nodes and same-key wrong-shape
+   transplants. Apply the graph-catalog `admits` and checked-use-location
+   validation through nested CHECK/FIND and composition graph payloads as well
+   as standalone Graph roots.
+10. After charge-before-work repair, the types solver's constructed
+    Record/List fixture measures 15 nodes, 20 edges, and 6,884 steps over
+    74 candidate types. In the source rule path, project the
+    one canonical `FrontendBudgetV2` into `RuleTypeBudgetV2`, retain exact
+    solver usage in the receipt, and test standard-budget positive plus exact
+    limit/limit+1. Do not enlarge or reset the budget just to make one fixture
+    pass. Ticket 03 charged the major candidate prepass/tuple allocation
+    paths; the remaining input-map/fixed-allocation and host-signature-driven
+    universe bound still need source stress proof before resource closure.
+11. Ticket 05 lowering currently cannot consume the producer without falling
+    back to HIR: relation stages retain expression IDs but no direct typed
+    projection/group/sort payload, `OutputProvenanceV2` is only a source set,
+    and `RelationExists` retains a subquery root ID without the typed child
+    relation. Freeze one sealed `SemanticDocumentV2` lookup contract for every
+    referenced expression and nested relation; require exact ID, membership,
+    type/effect, and capture proof. Add per-output-column origin aligned
+    one-to-one with the checked row schema (direct source field versus derived
+    typed expression; algebra-only programmatic variants remain algebra-owned).
+    The sema producer proves these, including column reorder/alias/group and
+    nested EXISTS transplants; Ticket 05 must not infer them from raw HIR or
+    caller-provided optional maps.
+12. Each `TypedRelationExprV2` stage and its root item must retain a checked
+    source-qualified location, not only a node ID. The final DAG removes
+    algebra's direct HIR dependency while current algebra diagnostics still
+    store `SpanV1`/`HirNodeIdV1`; absent sema locations would force a HIR
+    rewalk or fabricated error position. Expose a read-only host-agnostic
+    checked location through sema and test foreign-source and wrong-stage
+    location transplants. Algebra may import semantic/types primitives via
+    final allowed edges, not direct HIR syntax.
+13. In row-aligned `OutputColumnOriginV2::SourceField`, the host/View asset
+    ID alone is insufficient: self-joining the same relation under two
+    aliases gives two scan occurrences with one asset ID. Retain the exact
+    source-qualified scan-stage or Binder binding ID in each origin and
+    validate its mapping to the sealed source. Test self-join same asset,
+    swapped alias/scan ID, and duplicate field names. Projection-derived
+    columns still point to typed expression IDs. Re-export the existing
+    host-agnostic checked location and sort-direction primitives through
+    sema, or replace with one sema-owned closed carrier, so Ticket 05 can
+    drop the direct HIR Cargo edge without inventing duplicate enums.
+14. Seal complete rule membership at the document producer: enumerate every
+    authored Rule item from the checked HIR in source order, require exactly
+    one `ResolvedRuleV2` per item with the same source-qualified ID, and
+    expose the immutable enumeration through `SemanticDocumentV2`. For each
+    rule, derive the expected call-node/target/polarity/location tuples from
+    the checked body plus types result independently of the supplied call
+    vector; `ResolvedRuleV2::try_new` comparing two caller-built vectors is
+    not a proof. Reject omitted, duplicate, foreign, target-swapped, and
+    polarity-swapped calls in sema owner tests. Logic consumes this sealed
+    document enumeration and must not rebuild it from names. Distinguish
+    source-local predicate calls from host predicate calls by the exact
+    resolved modules/catalog origin before emitting SCC edges:
+    `ResolvedCallTargetV2::Predicate(id)` alone does not encode origin.
+    Builtin/host calls stay in typed expression facts but not local
+    `ResolvedRuleV2::calls()`. Test a host predicate with the same display name
+    as a source rule and a forged local/host origin transplant.
+15. Preserve the authored FIND kind, every ordered/optional selector,
+    direction, depth, summary facet, and one checked whole-query location in
+    `ResolvedGraphQueryV2`. Project immutable `FrontendBudgetV2` depth and
+    witness caps, but do not duplicate logic's subkind-to-dedup/tie-break
+    policy: Ticket 06 owns that derivation. HIR `GraphConstraintsV1` has no
+    authored cap/dedup/tie-break field, so none may be invented as source
+    metadata. Re-export the canonical closed `GraphQueryKindV1` through sema
+    so logic can remove its direct HIR dependency without cloning the enum.
+    Test wrong-registry query span and selector/span transplants.
+16. Resolve host predicate calls via the exact modules catalog asset:
+    `resolve_reference` -> `external_catalog().asset(reference.id())` ->
+    `ExternalCatalogPayloadV2::Predicate(signature)`. Do not synthesize a
+    `ResolvedPredicateIdV2` from its display name: types' current ID grammar
+    permits only ASCII `::` segments, while modules permits local names with
+    `.` and `/`. Ticket 03 must add a modules-owned injective typed host
+    identity bridge. Explicit rejection is acceptable only as a temporary
+    fail-closed cutover state, not final coverage; never normalize distinct
+    host names to one ID. Test punctuation names, same-spelling
+    local/host predicates, and invalid payload kind.
+17. Do not manufacture planning authority from free-form relation
+    `provenance: String`. For `REQUIRE CERTIFIED`, compare the authored Meta
+    item checked location and exact count to
+    `DocumentCatalogAuthorityV2::require_certified_location()` after modules
+    validates profile admissions; expose the validated directive as a closed
+    sema fact. No other item becomes "certified" by inheriting that display
+    string. Catalog Model remains non-serving metadata in this packet. Test a
+    forged/missing certified directive and a renamed host provenance string
+    that cannot change plan authority.
+18. Re-export the canonical HIR-defined `SourceIdV2` through sema alongside
+    checked locations and graph-kind/direction carriers. Ticket 07's pipeline
+    and facade need to name source identity after their direct HIR Cargo edge
+    is removed; a second ID type or a hidden syntax import is forbidden.
+
+## Latest Rule Source Producer Checkpoint
+
+The sema owner subsequently added one partial Rule source path: a unary
+`rule r : x if x = 1` is prechecked, Binder supplies the exact head parameter
+and `(owner, ordinal)` symbol identities, types' rule solver anchors `x`,
+the one expression kernel proves the Bool body, and a closed
+`ResolvedRuleV2` is emitted. The focused document transaction suite passed
+16/16, including unanchored `x = x` rejection, rule-body relation EXISTS
+rejection, exact child type-error location, and FIND depth-over-budget.
+Call-bearing rules still reject, so no source call graph, negation SCC, or
+complete rule-program proof exists. This raises named root reachability to
+8/9; Composition, five non-Scan relation stages, and subvariant coverage
+remain RED. The focused 16/16 result is not a post-delta full sema suite or
+strict Clippy receipt. Steps 14-18 above are still mandatory.
+
+Later focused source work completed builtin-only Rule calls and all six
+Catalog reference-form declaration branches in the same modules validator
+session. The owner reported 18/18 then 19/19 focused document tests;
+`SemanticDocumentV2::try_assemble` compares six-family dependency edges and
+profile admissions to the modules proof. Builtin calls remain typed facts,
+not SCC edges. Source-predicate and host calls, Inline VIEW, USE PACK,
+Composition, and the non-Scan relation matrix remain RED. The prior full
+30/30 sema run predates these edits; strict Clippy exited 101 on an earlier
+source (20 library, 41 library-test errors), so no current owner closure is
+claimed. Steps 14-18 and full post-delta owner proof remain required.
+
+The next full owner checkpoint passed 34/34 after source-local anchored and
+negated Rule calls, six Catalog reference forms, and exact validated REQUIRE
+CERTIFIED location/count. A later focused two-rule mutual-dependency test
+passed 1/1, but the 34/34 full run predates it. Source-local Rule calls are
+therefore no longer universally RED; host calls, full aggregate/negation SCC
+outcomes, Composition, Inline VIEW, five non-Scan stages, and strict Clippy
+remain open. Ticket 06, not sema, classifies the accepted mutual/negative
+dependency graph. The host ID producer split is in Ticket 03.
+
+## Final Live Gap Audit — Group, Sort, Host Calls, Composition
+
+The earlier 36/36 sema all-target result is historical. The later 43/43
+all-target owner run includes Query Scan/Filter/Project/inner Join/Sort,
+host Predicate calls, and a self-Join proof with two scan occurrences,
+distinct column-expression origins, checked `ON`, and Bag output. Strict
+Clippy still fails with 45 lib-test errors. Group has a later focused
+key-only frame/row milestone, but no aggregate partition-input proof; the
+existing Sort/host positives do not satisfy their full negative matrix or
+the public pipeline. Exact three-file hashes are in `receipts/04.md`.
+
+### Group output and aggregate-only input — Binder/Sema owner
+
+At the pre-repair audit snapshot, `binder/src/resolve.rs:593-600` resolved
+Group keys in the input frame and returned that entire frame, while
+`algebra/src/normalize.rs:389-418` emitted key-only Group columns. The
+subsequent focused Binder/sema milestone implements step 1 and the key-only
+part of step 3 below; steps 2, 4, and full owner proof remain open:
+
+1. Binder resolves every authored key against the input frame, then replaces
+   the public frame with ordered key-only `Alias` bindings at exact identity
+   `(group_relation.id, authored_key_ordinal)`. Factor Project's output naming
+   rule for both stages: Symbol name, final Path segment, otherwise `col`.
+   Group has no authored alias. Use the existing checked relation-frame
+   constructor to reject duplicate implicit names at the second key span.
+2. Keep the input frame as an opaque, keyed `PartitionInputV2` side authority
+   attached to that Group stage, never as public output. Binder may retain a
+   deferred candidate for a post-group reference inside a call argument, but
+   must not accept it merely because it is syntactically inside a call. Sema
+   first resolves the exact types-owned callable and its *intrinsic* effects
+   by the chosen `BuiltinIdV2`; only an aggregate call may consume these
+   candidates, and only for its argument
+   subtree. A scalar/builtin/host nonaggregate call, nested aggregate, plain
+   Project value, Filter, Join ON, or OrderBy cannot consume them. Missing,
+   ambiguous, transplanted, or dropped partition identities reject.
+3. `QueryTypeInputsV2::visit_relation` seeds `(group.id, ordinal) ->
+   BindingFromExpression(key.id)` before downstream expressions are typed.
+   Materialization checks Binder frame count/order/identities against the
+   authored keys, retains key-only row schema and exact typed key origins,
+   marks Set cardinality, and seals partition-input identities separately.
+   Algebra receives that sealed partition, not the Binder frame or raw HIR.
+4. Owner tests: `group by u.id | order by id` succeeds with `(group.id,0)`;
+   `order by u.id` and post-group `where u.id` reject; two keys preserve order
+   and ordinals; duplicate final Path names and two computed `col` names
+   reject at the second span; Project→Group uses the prior Project binding;
+   Group→aggregate Project accepts `sum(u.value)` only through partition
+   authority, while `project u.value`, `project abs(u.value)`, and a forged
+   aggregate-candidate identity reject. Keep `project ... aggregate | group
+   by ...` as a separate stage-order fixture, with no accidental second Group.
+   Do not use composed `TypedExpressionFact.effects` as the classifier:
+   `abs(sum(x))` has aggregate-composed effects although `abs` is scalar.
+   Pin a negative where a scalar wrapper cannot gain partition access merely
+   from an aggregate child, and a same-family different-overload fixture if
+   the builtin registry supports one.
+
+### Sort and host-call decisions
+
+- HIR `OrderKeyHirV1` has only Asc/Desc; no source null-placement token exists.
+  Apply Ticket 00's `NULLS LAST` default to both directions in sema's
+  `OrderKeyContractV2`. Retain checked key type and exact expression ID.
+  Test ascending/descending nullable keys, order after Project alias, and
+  rejection of an unavailable pre-Project/pre-Group field. Ticket 05 may not
+  rederive this default.
+- For every Rule call, compare exact source Rule ID and builtin family
+  candidates. If either exists, run one modules Predicate probe at the call's
+  checked location; a host hit or source+builtin overlap rejects with
+  `sema.ambiguous_callable`. With neither candidate, call modules
+  `resolve_host_predicate_call` directly, consume its sealed same-session
+  `ResolvedHostPredicateProofV2`, and feed its distinct host key/signature to
+  types. Revalidate key, target, and location at semantic assembly. Host and
+  builtin calls remain typed facts but never source-local SCC edges. Tests
+  cover dotted/slashed names, imported alias preserving underlying ID,
+  source/host and builtin/host collisions, wrong payload kind, foreign
+  session/location/key transplants, and exact/one-under admission budget.
+
+### Composition working-set authority
+
+Binder already resolves sequential `LET`, no self-reference, `WITH`, and an
+outer-composition capture barrier in `binder/src/resolve.rs:316-375`; do not
+reimplement lexical scope in sema. The current sema scans only root Queries
+and resolves relation/graph sources by host text, so no Composition producer
+is source-positive. Implement one typed local working-set table keyed by
+`(composition.id, ordinal)` and the exact Binder `CompositionLet` target:
+
+1. Visit each LET producer in source order before inserting its binding.
+   Seal its actual semantic output and kind (`Query` relation, `GraphQuery`
+   graph result, or `Sample` result) with source-qualified producer node ID,
+   output contract, and checked location. Migrate the existing exact
+   composition-row contract from `pipeline/src/compile.rs:859-934` into this
+   one producer: Sample has `Set<{path: RepoPath}>`; bounded PATH and
+   REACHABILITY FIND have `Set<{function: EntityRef}>`. Query uses its sealed
+   typed output row; other FIND kinds have no relational row contract. The
+   Sample/FIND row is a frontend type contract, not runtime materialization.
+   Do not turn any local result into a host catalog asset or synthesize a
+   relation/graph selector ID.
+2. On a relation Source or graph/scope reference, consult the exact Binder
+   target first. A `CompositionLet` target must consume the matching sealed
+   local producer with a kind-compatible typed source-use carrier; a mismatch
+   rejects at the use span. Only an actually unbound local reference may go
+   through the existing host modules/graph catalog resolver. A local binding
+   cannot fall back to a same-spelled host name when its producer is wrong.
+3. Resolve the body and `WITH` against the same table. Require `WITH` to name
+   one prior LET and retain the exact consumed producer/body identity and
+   source order in the Composition semantic item; Ticket 07 selects the body
+   result without replanning each LET as an independent root item.
+4. Migrate `pipeline/tests/v3_composition_type_env.rs`: Query projection
+   `id` then `from p` succeeds, bad overload/missing field reject; Sample
+   `from p` exposes only `path: RepoPath`, not `function`; PATH/REACHABILITY
+   FIND exposes only `function: EntityRef`, not `path`; TAINT FIND cannot be
+   consumed as a relation. The V1
+   `composition_empty_projection_does_not_overbind` positive is intentionally
+   inverted: closed V2 must reject an untyped/missing producer row or field,
+   not pass via schema-open env. Add sequential LET→LET, wrong-kind use,
+   forward/self reference, duplicate LET, missing WITH, same-spelling host
+   shadow, and outer-composition capture negatives with exact use spans.
+
+The post-43/43 focused Group milestone changed Binder public output to
+`(group.id, key ordinal)` and retained the pre-group frame under
+`partition_input(group.id)`. Sema maps the keys to their typed expressions,
+checks Binder output/partition identity, and emits a key-only Set row.
+Binder 2/2 and sema 2/2 focused tests passed, including `group by r.id |
+order by id` and rejection of post-group `r`. This is not a post-edit
+all-target or Clippy result. Aggregate-only partition candidate authorization
+is still RED; Ticket 05 may not yet consume Group as a complete sealed stage.

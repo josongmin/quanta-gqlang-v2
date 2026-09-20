@@ -14,6 +14,10 @@ name = "quanta_gqlang_v2_sema"
 path = "src/lib.rs"
 
 [dependencies]
+quanta-gqlang-v2-binder  = { version = "0.1.0", path = "../quanta-gqlang-v2-binder" }
+quanta-gqlang-v2-hir     = { version = "0.1.0", path = "../quanta-gqlang-v2-hir" }
+quanta-gqlang-v2-modules = { version = "0.1.0", path = "../quanta-gqlang-v2-modules" }
+quanta-gqlang-v2-types   = { version = "0.1.0", path = "../quanta-gqlang-v2-types" }
 
 [lints]
 workspace = true

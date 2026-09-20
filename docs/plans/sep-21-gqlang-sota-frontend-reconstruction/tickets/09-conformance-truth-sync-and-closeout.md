@@ -67,6 +67,8 @@ an end-to-end/conformance claim.
     inventory
 22. `crates/quanta-gqlang-v2-frontend-contract/tests/external_consumer/` and the
     facade export inventory introduced by ticket 07
+23. `tools/test_frontdoor_parity.py` introduced by Ticket 08 and its `just ci`
+    invocation; no conformance→binary Cargo edge is admitted
 
 Ticket 09 must remove the temporary ticket-01 Clippy exceptions for
 `clippy::allow_attributes` and `clippy::duplicated_attributes`. Final CI and the
@@ -87,11 +89,29 @@ For every public family, test:
 7. retained semantic contract fields
 8. CLI/service parity
 9. deterministic diagnostic code and exact spans
-10. resource-boundary rejection
+10. reference to the owning resource-boundary receipt or one selected
+    cross-front-door projection case; do not repeat every limit for this family
 11. one relevant mutation case
 
 The existing 18-family suite is renamed routing smoke unless it is upgraded to
 this matrix. Variant/result-kind/effect-only checks are insufficient.
+
+The registry has two disjoint manifests, not one 18-row manifest:
+`ROOT_FAMILIES_V1` contains 18 public root families including Composition;
+`SUPPLEMENTAL_SURFACE_UNITS_V1` contains standalone Decl and HornRule.
+Preserve both sets and assert declared = selected = executed separately for
+18 roots and 2 supplemental units. Decl must prove its typed declaration
+payload and checked no-plan reason; HornRule must prove its exact
+`RuleProgramMemberV2`/document-program outcome (and no copied per-rule plan).
+Do not fold the two into the root count or delete their `unit` specs when
+moving `self_validation.rs`.
+
+Ticket 08 and owner receipts already prove exact-limit/+1 behavior for every
+budget dimension. Ticket 09 records a one-to-one dimension→owner receipt map
+and executes only representative cross-boundary projection/parity rows (CLI,
+stdio, closed facade), with declared/selected/executed non-vacuity. A
+per-family resource pointer is required for traceability; 18 copies of the
+same limit test are not.
 
 ## Required Cross-Stage Scenarios
 
@@ -108,7 +128,8 @@ this matrix. Variant/result-kind/effect-only checks are insufficient.
 11. nondeterministic builtin plan effect
 12. Unicode/escape/formatter round trips
 13. malformed framing recovery
-14. every resource budget
+14. every resource-budget dimension accounted for by one owner receipt,
+    with representative cross-front-door projection cases
 
 ## Documentation Truth
 
@@ -198,7 +219,8 @@ examples into a second registry.
    clause-specific message/span matrix.
 6. Keep the first two registry non-vacuity tests; delete only the compile-time
    uniqueness restatement and unconsumed keyword table. `SupplementalSurfaceUnitSpecV1.unit`
-   must be asserted by the semantic matrix or deleted with all writers.
+   must be asserted by the separate two-unit semantic manifest and never
+   deleted with its Decl/HornRule source coverage.
 7. Repoint the redundant conformance USE PACK row to its stronger pipeline
    owner instead of executing the same source twice. Delete the duplicated
    REQUIRE CERTIFIED rows after the semantic matrix owns result/effect.
@@ -244,11 +266,14 @@ not_applicable_reason
 closed_negative_case
 open_diagnostic_case
 cli_service_parity
-resource_boundary
+resource_owner_receipt_or_cross_boundary_case
 owner_mutation_receipt
 ```
 
-The registry test fails if any field is absent. `not_applicable_reason` must be
+The registry test fails if any field is absent. The resource field points to
+an owner receipt or a selected cross-boundary case; the separate dimension
+manifest proves full budget coverage without repeating identical limit cases
+for every family. `not_applicable_reason` must be
 non-empty exactly when `applicability=not_applicable`; closed and open cases are
 separate and are not required to produce the same successful artifact.
 
@@ -292,6 +317,7 @@ python3 tools/architecture/check_architecture.py --require-final
 cargo deny check bans licenses sources advisories
 typos .
 tools/lint/run_semgrep.sh
+python3 tools/test_frontdoor_parity.py
 just ci
 ```
 
@@ -307,7 +333,7 @@ stop and amend this packet before implementation:
 cargo test -p quanta-gqlang-v2-conformance --test v3_semantic_family_matrix
 cargo test -p quanta-gqlang-v2-conformance --test v3_registry_non_vacuity_v2
 cargo test -p quanta-gqlang-v2-conformance --test v3_public_api_inventory
-cargo test -p quanta-gqlang-v2-conformance --test v3_cli_service_parity_v2
+python3 tools/test_frontdoor_parity.py
 find examples -type f -name '*.qglang' -print | sort
 rg -n 'Status:.*(CLOSED|Implemented|green)|repo-local proof is green' README.md docs
 git status --short
@@ -412,3 +438,48 @@ filenames, zero deleted-ledger references, zero old HIR API references, and zero
 transition-only dependency exceptions before closeout.
 
 Requires 01-08. Runs serially after all implementation merges.
+
+## 2026-09-21 Live-Tree Final Reconciliation (HEAD `f9ec954`)
+
+This ticket has no implementation or closure receipt. The inherited
+`self_validation.rs` drives V1 `compile_program_structural` and checks mostly
+family kind/result/effect; it is routing evidence, not the semantic matrix.
+Keep one representative routing smoke and migrate existing source fixtures
+into the applicability-aware registry. Do not clone all 18 cases into another
+test file. A conformance row is executable only if its fixture, authority,
+expected semantic payload, owner mutation proof, and selected/executed count
+are machine checked; a table in Markdown alone does not count.
+
+Before claiming final status, reconcile every actual test path in the landed
+diff against `TEST_PATH_INVENTORY.tsv`, every F01-F37 against `TRACEABILITY.md`,
+and every current public method/example/proof claim against its generated
+inventory. Then freeze one *clean committed* candidate containing 01-08 and
+run the full command list without changing that SHA. The existing dirty
+`f9ec954` overlay and prior 822-test base result are not that candidate.
+Record hosted CI as independently verified green/failed/unavailable; do not
+promote a local pass or a cached remote ref. The no-commit policy leaves this
+ticket open until the user authorizes the candidate commit.
+
+## Final Cross-Owner Semantic Fixtures
+
+The 18-root + two-supplemental manifest must include these boundary cases
+without cloning the underlying owner suites:
+
+1. Query: same host source self-Join has two distinct scan occurrences;
+   Group publishes only ordered keys, aggregate projection can use a sealed
+   partition input, ordinary post-group reference cannot; ASC and DESC both
+   retain NULLS LAST in the semantic payload and plan/explain output.
+2. HornRule supplemental: source-local self/mutual dependency edges reach the
+   one document program; builtin and host Predicate calls are typed but do
+   not become local SCC edges. Same-spelling source/builtin/host collisions
+   reject at the authored call location.
+3. Composition: sequential LET outputs are consumed by exact Binder local
+   identity. A Sample producer exposes only `path: RepoPath`, PATH or
+   REACHABILITY FIND only `function: EntityRef`, and other FIND kinds no
+   relation row. Wrong field, wrong kind, and host-fallback shadowing reject;
+   `WITH` selects the sealed body output without an independent LET plan.
+   The old schema-open empty-projection success must be a closed V2 reject.
+
+Each fixture must assert the exact semantic payload, diagnostic code/span or
+typed result, and CLI/stdio parity where applicable. Running a route-only
+V1 family label test does not satisfy these rows.
