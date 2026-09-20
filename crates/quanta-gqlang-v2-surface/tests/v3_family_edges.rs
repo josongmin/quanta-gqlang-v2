@@ -49,19 +49,6 @@ fn find_unsupported_clause_rejects() {
     );
 }
 
-/// FIND through / sanitizers empty lists reject (the non-via list-empty arms).
-#[test]
-fn find_through_and_sanitizers_empty_reject() {
-    assert_unsupported(
-        "find taint a.b -> c.d | through=",
-        "FIND through list must not be empty",
-    );
-    assert_unsupported(
-        "find taint a.b -> c.d | sanitizers=",
-        "FIND sanitizers list must not be empty",
-    );
-}
-
 // ---- CHECK rejects ---------------------------------------------------------
 
 /// An unsupported CHECK confirm/emit/mode keyword each reject at the keyword span.

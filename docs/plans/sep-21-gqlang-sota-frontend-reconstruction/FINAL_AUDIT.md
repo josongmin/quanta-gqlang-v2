@@ -1,6 +1,6 @@
 # Final Current-Head Audit
 
-Status: `AUDIT COMPLETE — REPAIR NOT STARTED`
+Status: `AUDIT COMPLETE — REPAIR ACTIVE; PACKET NOT COMPLETE`
 
 Base: `main@e896a11024bd5a1e1ef03c094a70032f4e6c765f`
 
@@ -196,11 +196,47 @@ implementation:
    (algebra), 06 (logic), and 07 (planning) existed. Ticket 04 now stops at the
    atomic `SemanticDocumentV2`; ticket 07 owns complete lower/plan assembly and
    is the first point where final compile/analyze DTOs can exist.
-6. tickets 05/06 duplicated semantic-owner work: aggregate placement was listed
-   under algebra, and rule variable/call resolution under logic despite sema
-   being read-only to both. Ticket 04 now exclusively owns those decisions;
-   algebra lowers sealed aggregate context and logic consumes resolved rule
-   edges for document-wide SCC/stratification.
+6. tickets 05/06 originally duplicated semantic-owner work: aggregate placement
+   was listed under algebra, and rule variable/call resolution under logic
+   despite sema being read-only to both. The final-audit corrective sections
+   now make ticket 04 the exclusive owner; algebra lowers sealed aggregate
+   context and logic consumes resolved rule edges for SCC/stratification.
+
+The 2026-09-21 implementation-aware adversarial pass also found and corrected
+the following plan defects: impossible 04-06 pipeline gates, undefined
+cross-ticket DTOs and join identity, correlation loss in semi/anti lowering,
+no facade-only closed-authority constructor, contradictory analysis error
+states, ambiguous authority-byte scope, stale diagnostics paths/protocol truth,
+an impossible final parity dependency edge, deleted-ledger references, and the
+`_punchlist` filename conflict. The normative corrective sections at the end of
+tickets 04-09 override older conflicting prose; implementation receipts must
+cite those sections explicitly.
+
+### Implementation-aware correction matrix
+
+| Severity | Defect found during implementation audit | Normative correction |
+|---|---|---|
+| P0 | 04-06 required pipeline consumers before their migration ticket | 04-06 owner-only focused proof; 07 integration gate |
+| P0 | open authority `partial_authority` and infallible standard constructor were undefined | 04 explicit input DTO plus `try_standard_v2` |
+| P0 | FIND/CHECK/presentation handoff types had no producer chain | 04 resolved DTOs, 06 graph contract, 07 identity-checked assembly |
+| P0 | rule types invented `PredicateIdV2`, vector unary heads, and an unowned Bool type | reuse `ResolvedPredicateIdV2`; Bool proof and unary head fixed |
+| P0 | algebra contract invented parallel expression/relation IDs | reuse `SourceQualifiedNodeIdV2` and sema `TypedRelationExprV2` |
+| P0 | correlated EXISTS could lose lateral bindings in plain semi/anti nodes | correlation set is mandatory on correlated semi/anti lowering |
+| P0 | lowerer outputs had no stable document join key | `SemanticItemIdV2` plus exact-set assembly |
+| P0 | facade-only hosts could not construct closed authority | facade-owned checked closed-authority builder |
+| P0 | analysis API mixed result errors with item stage states | public `Result<AnalysisDocumentV2, FrontendFailureV2>` |
+| P0 | authority profile equality was described as a global byte-total proof | explicit per-admission-session ceiling and maximum-residency semantics |
+| P1 | sema and algebra both owned aggregate legality | sema owns; algebra consumes sealed context only |
+| P1 | algebra could recompute relation output contracts | exact retained sema contract only |
+| P1 | logic budget wording implied runtime traversal/witness emission | static contract/SCC validation charges only |
+| P1 | acyclic traversal bypass had no proof producer | all transitive traversal requires explicit bounded depth |
+| P1 | diagnostics paths/protocol gate were stale | current paths plus UTF-8 NDJSON truth |
+| P1 | CLI/service parity required a forbidden final Cargo edge | dependency-neutral conformance harness |
+| P1 | final ledger deletion contradicted its own path gate | migrate proof rows and gate before deletion |
+| P1 | `_punchlist`, uniform family matrices, and dirty-SHA closure were contradictory | rename in 06; applicability-aware matrices; clean committed closure precondition |
+
+All rows are plan repairs only until their owning implementation ticket and
+receipt are complete. They must not be counted as product closure.
 
 The canonical keep/migrate/delete/build census and existing-test disposition are
 in [IMPLEMENTATION_REUSE_AUDIT.md](./IMPLEMENTATION_REUSE_AUDIT.md). Each ticket

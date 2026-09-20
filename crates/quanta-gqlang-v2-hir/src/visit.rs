@@ -29,6 +29,8 @@ use crate::unit::{DeclHirV1, QueryHirV1, RuleHirV1};
 /// observe that node, and call the corresponding `walk_*` (or the default) to
 /// continue into children.
 pub trait HirVisitorV1 {
+    /// Visit any non-node source span carried by a HIR payload.
+    fn visit_auxiliary_span(&mut self, _span: crate::span::SpanV1) {}
     /// Visit a value expression.
     fn visit_value(&mut self, node: &ValueExprHirV1) {
         walk_value(self, node);
@@ -38,9 +40,13 @@ pub trait HirVisitorV1 {
         walk_bool(self, node);
     }
     /// Visit the auxiliary span of a call `*` argument.
-    fn visit_call_star(&mut self, _span: crate::span::SpanV1) {}
+    fn visit_call_star(&mut self, span: crate::span::SpanV1) {
+        self.visit_auxiliary_span(span);
+    }
     /// Visit the auxiliary span carried by a logical binder.
-    fn visit_logical_binder(&mut self, _span: crate::span::SpanV1) {}
+    fn visit_logical_binder(&mut self, span: crate::span::SpanV1) {
+        self.visit_auxiliary_span(span);
+    }
     /// Visit a relation expression.
     fn visit_relation(&mut self, node: &RelationExprHirV1) {
         walk_relation(self, node);
@@ -105,6 +111,9 @@ pub fn walk_value<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &ValueExprHir
         ValueExprKindV1::Literal(_) | ValueExprKindV1::Symbol(_) => {}
         ValueExprKindV1::Path(path) => {
             visitor.visit_value(&path.base);
+            for segment in path.segments.as_slice() {
+                visitor.visit_auxiliary_span(segment.span);
+            }
         }
         ValueExprKindV1::Unary(unary) => {
             visitor.visit_value(&unary.operand);
@@ -114,6 +123,7 @@ pub fn walk_value<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &ValueExprHir
             visitor.visit_value(&binary.rhs);
         }
         ValueExprKindV1::Call(call) => {
+            visitor.visit_auxiliary_span(call.callee.span);
             walk_call_args(visitor, call);
         }
         ValueExprKindV1::Paren(inner) => {
@@ -121,6 +131,7 @@ pub fn walk_value<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &ValueExprHir
         }
         ValueExprKindV1::Record(record) => {
             for field in &record.fields {
+                visitor.visit_auxiliary_span(field.name_span);
                 visitor.visit_value(&field.value);
             }
         }
@@ -180,10 +191,17 @@ fn walk_compare<V: HirVisitorV1 + ?Sized>(visitor: &mut V, compare: &CompareExpr
 /// Recurse into the children of a relation expression.
 pub fn walk_relation<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &RelationExprHirV1) {
     match &node.kind {
-        RelationExprKindV1::Source(_) => {}
+        RelationExprKindV1::Source(source) => {
+            if let Some(alias) = &source.alias {
+                visitor.visit_auxiliary_span(alias.span);
+            }
+        }
         RelationExprKindV1::Project(project) => {
             visitor.visit_relation(&project.input);
-            for item in &project.items {
+            for item in project.items() {
+                if let Some(alias) = &item.alias {
+                    visitor.visit_auxiliary_span(alias.span);
+                }
                 visitor.visit_value(&item.value);
             }
         }
@@ -225,6 +243,7 @@ pub fn walk_shape<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &ResultShapeH
         }
         ResultShapeKindV1::Record(record) => {
             for field in &record.fields {
+                visitor.visit_auxiliary_span(field.name_span);
                 visitor.visit_shape(&field.shape);
             }
         }
@@ -244,11 +263,13 @@ pub fn walk_query<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &QueryHirV1) 
 
 /// Recurse into the children of a declaration unit.
 pub fn walk_decl<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &DeclHirV1) {
+    visitor.visit_auxiliary_span(node.name_span);
     visitor.visit_value(&node.body);
 }
 
 /// Recurse into the children of a rule unit.
 pub fn walk_rule<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &RuleHirV1) {
+    visitor.visit_auxiliary_span(node.name_span);
     visitor.visit_value(&node.head);
     visitor.visit_bool(&node.body);
 }
@@ -270,10 +291,37 @@ pub fn walk_item<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &ProgramItemHi
 
 /// Recurse into the children of a graph query (FIND). Endpoints/constraints are
 /// open refs (no shared expr kernel), so there are no id-bearing children here.
-pub fn walk_graph_query<V: HirVisitorV1 + ?Sized>(_visitor: &mut V, _node: &GraphQueryHirV1) {}
+pub fn walk_graph_query<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &GraphQueryHirV1) {
+    for reference in [
+        node.endpoints.source.as_ref(),
+        node.endpoints.sink.as_ref(),
+        node.endpoints.anchor.as_ref(),
+        node.endpoints.reference.as_ref(),
+        node.endpoints.pointee.as_ref(),
+        node.endpoints.callable.as_ref(),
+        node.constraints.scope.as_ref(),
+        node.constraints.window.as_ref(),
+        node.constraints.frontier.as_ref(),
+    ]
+    .into_iter()
+    .flatten()
+    .chain(node.constraints.via.iter())
+    .chain(node.constraints.through.iter())
+    .chain(node.constraints.sanitizers.iter())
+    {
+        visitor.visit_auxiliary_span(reference.span);
+    }
+}
 
 /// Recurse into the explicit graph confirmation child of a legality check.
 pub fn walk_legality<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &LegalityHirV1) {
+    visitor.visit_auxiliary_span(node.rule_ref.span);
+    if let Some(scope) = &node.scope {
+        visitor.visit_auxiliary_span(scope.span);
+    }
+    if let Some(pattern) = &node.pattern {
+        visitor.visit_auxiliary_span(pattern.span);
+    }
     if let Some(confirm) = &node.semantic_confirm {
         visitor.visit_graph_query(confirm);
     }
@@ -281,17 +329,56 @@ pub fn walk_legality<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &LegalityH
 
 /// Recurse into the children of a presentation verb. Configs are open refs/tags,
 /// so there are no id-bearing children here.
-pub fn walk_presentation<V: HirVisitorV1 + ?Sized>(_visitor: &mut V, _node: &PresentationHirV1) {}
+pub fn walk_presentation<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &PresentationHirV1) {
+    use crate::item::PresentationKindV1;
+    match &node.kind {
+        PresentationKindV1::Explain { target_ref, .. } => {
+            visitor.visit_auxiliary_span(target_ref.span);
+        }
+        PresentationKindV1::Describe { path, .. } => visitor.visit_auxiliary_span(path.span),
+        PresentationKindV1::Sample { scope, .. } => {
+            if let Some(scope) = scope {
+                visitor.visit_auxiliary_span(scope.span);
+            }
+        }
+        PresentationKindV1::Compare {
+            baseline_ref,
+            candidate_ref,
+            ..
+        } => {
+            visitor.visit_auxiliary_span(baseline_ref.span);
+            visitor.visit_auxiliary_span(candidate_ref.span);
+        }
+        PresentationKindV1::Export {
+            source_ref,
+            profile,
+            ..
+        } => {
+            visitor.visit_auxiliary_span(source_ref.span);
+            if let Some(profile) = profile {
+                visitor.visit_auxiliary_span(profile.span);
+            }
+        }
+        PresentationKindV1::Show { .. } => {}
+    }
+}
 
 /// SAMPLE carries no id-bearing child expressions.
-pub fn walk_sample<V: HirVisitorV1 + ?Sized>(_visitor: &mut V, _node: &SampleHirV1) {}
+pub fn walk_sample<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &SampleHirV1) {
+    if let Some(scope) = &node.scope {
+        visitor.visit_auxiliary_span(scope.span);
+    }
+}
 
 /// EXPLAIN carries no id-bearing child expressions.
-pub fn walk_explain<V: HirVisitorV1 + ?Sized>(_visitor: &mut V, _node: &ExplainHirV1) {}
+pub fn walk_explain<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &ExplainHirV1) {
+    visitor.visit_auxiliary_span(node.target_ref.span);
+}
 
 /// Recurse into the children of a catalog declaration. Only a VIEW with an
 /// inline SELECT embeds an id-bearing child (the inline query).
 pub fn walk_catalog_decl<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &CatalogDeclHirV1) {
+    visitor.visit_auxiliary_span(node.name_span);
     match &node.payload {
         CatalogPayloadV1::View(ViewBodyV1::Inline(query)) => visitor.visit_query(query),
         CatalogPayloadV1::View(ViewBodyV1::QueryRef(_))
@@ -306,7 +393,9 @@ pub fn walk_catalog_decl<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &Catal
 /// Recurse into the children of a composition: every producer item then the
 /// body item, all of which are id-bearing `ProgramItemHirV1` subtrees.
 pub fn walk_composition<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &CompositionHirV1) {
+    visitor.visit_auxiliary_span(node.with_name_span);
     for binding in &node.bindings {
+        visitor.visit_auxiliary_span(binding.name_span);
         match &binding.producer {
             CompositionProducerV1::Query(query) => visitor.visit_query(query),
             CompositionProducerV1::Sample(sample) => visitor.visit_sample(sample),

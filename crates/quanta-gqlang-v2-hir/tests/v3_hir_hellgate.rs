@@ -9,8 +9,9 @@
 #![allow(clippy::panic, reason = "tests panic on unexpected Ok")]
 
 use quanta_gqlang_v2_hir::{
-    check_tree, BinaryExprV1, BinaryOpV1, HirIntegrityErrorV1, HirNodeIdV1, HirRootRefV1,
-    LiteralV1, SpanV1, ValueExprHirV1, ValueExprKindV1,
+    check_tree, BinaryExprV1, BinaryOpV1, CallArgsHirV1, HirBuilderV1, HirIntegrityErrorV1,
+    HirNodeIdV1, HirRootRefV1, LiteralV1, PathSegmentV1, RecordFieldV1, SpanV1, ValueExprHirV1,
+    ValueExprKindV1,
 };
 
 fn lit_int(id: u32, span: SpanV1) -> ValueExprHirV1 {
@@ -117,4 +118,51 @@ fn accept_sound_hand_built_tree() {
     let checked = check_tree(HirRootRefV1::Value(&root), 5).unwrap();
     assert_eq!(checked.node_count(), 3);
     assert_eq!(checked.source_len(), 5);
+}
+
+#[test]
+fn reject_out_of_bounds_auxiliary_spans_across_value_payloads() {
+    let builder = HirBuilderV1::new();
+    let path = builder
+        .try_path(
+            builder.symbol("x", SpanV1::new(0, 1)),
+            vec![PathSegmentV1 {
+                name: "field".into(),
+                span: SpanV1::new(9, 10),
+            }],
+            SpanV1::new(0, 4),
+        )
+        .unwrap();
+    let call = builder.call(
+        "f",
+        SpanV1::new(9, 10),
+        CallArgsHirV1::try_new(vec![]).unwrap(),
+        SpanV1::new(0, 4),
+    );
+    let record = builder.record(
+        vec![RecordFieldV1 {
+            name: "field".into(),
+            name_span: SpanV1::new(9, 10),
+            value: builder.int("1", SpanV1::new(2, 3)),
+        }],
+        SpanV1::new(0, 4),
+    );
+    for root in [&path, &call, &record] {
+        assert!(matches!(
+            check_tree(HirRootRefV1::Value(root), 4),
+            Err(HirIntegrityErrorV1::AuxiliarySpanOutOfBounds { .. })
+        ));
+    }
+}
+
+#[test]
+fn reject_empty_path_before_hir_construction() {
+    let builder = HirBuilderV1::new();
+    let base = builder.symbol("x", SpanV1::new(0, 1));
+
+    let error = builder
+        .try_path(base, Vec::new(), SpanV1::new(0, 1))
+        .unwrap_err();
+
+    assert_eq!(error, "path access requires at least one segment");
 }

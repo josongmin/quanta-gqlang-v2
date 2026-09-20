@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import unittest
 from collections import defaultdict
+import importlib.util
 from pathlib import Path
 
 
@@ -29,6 +30,11 @@ MEMBERS = [
     "quanta-gqlang-v2-types",
 ]
 
+_checker_spec = importlib.util.spec_from_file_location("architecture_checker", CHECKER)
+assert _checker_spec and _checker_spec.loader
+architecture_checker = importlib.util.module_from_spec(_checker_spec)
+_checker_spec.loader.exec_module(architecture_checker)
+
 
 def read_topology(path: Path) -> dict:
     topology = json.loads(path.read_text(encoding="utf-8"))
@@ -38,6 +44,7 @@ def read_topology(path: Path) -> dict:
     return {
         "normal_edges": base["normal_edges"] + topology.get("add_normal_edges", []),
         "dev_edges": base["dev_edges"] + topology.get("add_dev_edges", []),
+        "build_edges": base.get("build_edges", []) + topology.get("add_build_edges", []),
         "runtime_edge": topology.get("runtime_edge"),
     }
 
@@ -61,10 +68,13 @@ def materialize_fixture(destination: Path, fixture_name: str, *, omit: str | Non
 
     normal_by_consumer: dict[str, list[str]] = defaultdict(list)
     dev_by_consumer: dict[str, list[str]] = defaultdict(list)
+    build_by_consumer: dict[str, list[str]] = defaultdict(list)
     for consumer, dependency in topology["normal_edges"]:
         normal_by_consumer[consumer].append(dependency)
     for consumer, dependency in topology["dev_edges"]:
         dev_by_consumer[consumer].append(dependency)
+    for consumer, dependency in topology.get("build_edges", []):
+        build_by_consumer[consumer].append(dependency)
     runtime_edge = topology.get("runtime_edge")
     if runtime_edge:
         normal_by_consumer[runtime_edge[0]].append(runtime_edge[1])
@@ -102,6 +112,11 @@ def materialize_fixture(destination: Path, fixture_name: str, *, omit: str | Non
         if dev_dependencies:
             lines.extend(["", "[dev-dependencies]"])
             for dependency in sorted(dev_dependencies):
+                lines.append(f'{dependency} = {{ path = "../{dependency}" }}')
+        build_dependencies = build_by_consumer[member]
+        if build_dependencies:
+            lines.extend(["", "[build-dependencies]"])
+            for dependency in sorted(build_dependencies):
                 lines.append(f'{dependency} = {{ path = "../{dependency}" }}')
         (crate / "Cargo.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -169,6 +184,20 @@ class ArchitectureCheckerTest(unittest.TestCase):
             result = run_checker(root)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("workspace members drifted", result.stderr)
+
+    def test_build_dependency_does_not_inherit_normal_edge_permission(self) -> None:
+        temporary, root = self.fixture("build-edge")
+        with temporary:
+            result = run_checker(root)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "illegal build internal edges: quanta-gqlang-v2-surface -> quanta-gqlang-v2-hir",
+            result.stderr,
+        )
+
+    def test_unknown_dependency_kind_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "unknown dependency kind future-kind"):
+            architecture_checker.dependency_kind({"kind": "future-kind"})
 
 
 if __name__ == "__main__":

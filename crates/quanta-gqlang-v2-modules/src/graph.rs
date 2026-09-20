@@ -1,423 +1,926 @@
-//! The canonical module / import graph and its deterministic resolution rules
-//! (deliverables 1, 10; `D30`).
-//!
-//! This module owns the frozen authority the binder (ticket 02) consumes. It
-//! pins, by construction and by test, the four rules ticket 11 must freeze:
-//!
-//! 1. import shadowing: a module's own (local) declaration of a name shadows any
-//!    imported name of the same short name. Shadowing is structural and
-//!    deterministic, never import-order-sensitive (`D30`).
-//! 2. re-export precedence: when a module both directly imports a name and
-//!    re-exports a name from a transitive module, the DIRECT import takes
-//!    precedence over the re-export. Two re-exports of distinct targets do NOT
-//!    silently pick a winner — they collapse to an ambiguous set.
-//! 3. ambiguous import: any short name that resolves to more than one distinct
-//!    fully-qualified target after rules 1-2 is a hard fail-closed reject
-//!    ([`ModuleDiagnosticV1::AmbiguousImport`]) — no last-wins, no import-order
-//!    tiebreak (`D28`).
-//! 4. cycle policy: a module dependency cycle is an EXPLICIT typed reject
-//!    ([`ModuleDiagnosticV1::ImportCycle`]); there is no silent accept and no
-//!    assumed future cycle semantics (`D30`, ticket reject rule 2).
-//!
-//! Determinism note: all candidate sets are sorted and de-duplicated before any
-//! decision, so resolution never depends on the order edges were added.
+//! Checked module/import authority and deterministic visibility resolution.
 
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
-use crate::diagnostic::ModuleDiagnosticV1;
-use crate::visibility::VisibilityV1;
+use crate::budget::ModuleBudgetSessionV2;
+use crate::visibility::VisibilityV2;
+use crate::ModuleDiagnosticV2;
+use quanta_gqlang_v2_hir::{CheckedLocatedSpanV2, LocatedSpanV2, SourceRegistryIdentityV2};
 
-/// A fully-qualified target: `module::symbol`.
-fn qualify(module: &str, symbol: &str) -> String {
-    format!("{module}::{symbol}")
+/// Canonical, collision-free qualified module identity.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ModuleIdV2(String);
+
+impl ModuleIdV2 {
+    pub fn try_new(
+        value: &str,
+        location: CheckedLocatedSpanV2,
+    ) -> Result<Self, ModuleDiagnosticV2> {
+        if !is_qualified_name(value) {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_module_id",
+                format!("invalid module id `{}`", excerpt(value)),
+                &location,
+            ));
+        }
+        Ok(Self(value.to_owned()))
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }
 
-/// One module's declarations, direct imports, and re-exports.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-struct ModuleNode {
-    /// Local declarations: short name -> visibility.
-    declarations: BTreeMap<String, VisibilityV1>,
-    /// Direct imports: local short name -> (source module, source symbol).
-    direct_imports: BTreeMap<String, (String, String)>,
-    /// Re-exports: re-exported short name -> set of (source module, source
-    /// symbol) it forwards. A set (not a single value) so two distinct
-    /// re-export sources stay ambiguous instead of last-wins.
-    reexports: BTreeMap<String, BTreeSet<(String, String)>>,
+/// Disjoint semantic namespaces. Stable tags are part of the public format.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum NamespaceKindV2 {
+    Value,
+    Relation,
+    Predicate,
+    Type,
+    View,
+    Model,
+    Pack,
+    Profile,
+    Gate,
+    Rule,
 }
 
-/// The module/import graph builder + resolver.
-///
-/// Build a graph with [`ModuleGraphBuilderV1`], then call
-/// [`ModuleGraphBuilderV1::resolve`] to freeze it into a [`ResolvedGraphV1`].
-/// Resolution applies the four canonical rules and fails closed on the first
-/// deterministically-ordered violation.
-#[derive(Clone, Debug, Default)]
-pub struct ModuleGraphBuilderV1 {
-    modules: BTreeMap<String, ModuleNode>,
+impl NamespaceKindV2 {
+    #[must_use]
+    pub const fn tag(self) -> &'static str {
+        match self {
+            Self::Value => "value",
+            Self::Relation => "relation",
+            Self::Predicate => "predicate",
+            Self::Type => "type",
+            Self::View => "view",
+            Self::Model => "model",
+            Self::Pack => "pack",
+            Self::Profile => "profile",
+            Self::Gate => "gate",
+            Self::Rule => "rule",
+        }
+    }
+
+    pub(crate) fn try_from_tag(
+        tag: &str,
+        location: &CheckedLocatedSpanV2,
+    ) -> Result<Self, ModuleDiagnosticV2> {
+        match tag {
+            "value" => Ok(Self::Value),
+            "relation" => Ok(Self::Relation),
+            "predicate" => Ok(Self::Predicate),
+            "type" => Ok(Self::Type),
+            "view" => Ok(Self::View),
+            "model" => Ok(Self::Model),
+            "pack" => Ok(Self::Pack),
+            "profile" => Ok(Self::Profile),
+            "gate" => Ok(Self::Gate),
+            "rule" => Ok(Self::Rule),
+            _ => Err(ModuleDiagnosticV2::new(
+                "modules.unknown_catalog_kind",
+                format!("unknown catalog kind `{}`", excerpt(tag)),
+                location,
+            )),
+        }
+    }
 }
 
-impl ModuleGraphBuilderV1 {
-    /// An empty graph.
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            modules: BTreeMap::new(),
+/// Derived identity of one catalog declaration.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CatalogAssetIdV2 {
+    module_id: ModuleIdV2,
+    namespace_kind: NamespaceKindV2,
+    local_name: String,
+}
+
+impl CatalogAssetIdV2 {
+    pub(crate) fn derive(
+        module_id: ModuleIdV2,
+        namespace_kind: NamespaceKindV2,
+        local_name: &str,
+        location: &CheckedLocatedSpanV2,
+    ) -> Result<Self, ModuleDiagnosticV2> {
+        if !is_segment(local_name) {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_catalog_name",
+                format!("invalid catalog local name `{}`", excerpt(local_name)),
+                location,
+            ));
         }
-    }
-
-    /// Declare a module with no contents (idempotent).
-    #[must_use]
-    pub fn module(mut self, name: impl Into<String>) -> Self {
-        let _ = self.modules.entry(name.into()).or_default();
-        self
-    }
-
-    /// Add a local declaration `symbol` with `visibility` to `module`.
-    #[must_use]
-    pub fn declare(
-        mut self,
-        module: impl Into<String>,
-        symbol: impl Into<String>,
-        visibility: VisibilityV1,
-    ) -> Self {
-        let _ = self
-            .modules
-            .entry(module.into())
-            .or_default()
-            .declarations
-            .insert(symbol.into(), visibility);
-        self
-    }
-
-    /// Add a direct import into `module`: bind local short name `local` to
-    /// `from_module::from_symbol`.
-    #[must_use]
-    pub fn import(
-        mut self,
-        module: impl Into<String>,
-        local: impl Into<String>,
-        from_module: impl Into<String>,
-        from_symbol: impl Into<String>,
-    ) -> Self {
-        let _ = self
-            .modules
-            .entry(module.into())
-            .or_default()
-            .direct_imports
-            .insert(local.into(), (from_module.into(), from_symbol.into()));
-        self
-    }
-
-    /// Add a re-export into `module`: expose short name `local` forwarding to
-    /// `from_module::from_symbol`. Adding a second distinct source for the same
-    /// `local` retains both (so it stays ambiguous, never last-wins).
-    #[must_use]
-    pub fn reexport(
-        mut self,
-        module: impl Into<String>,
-        local: impl Into<String>,
-        from_module: impl Into<String>,
-        from_symbol: impl Into<String>,
-    ) -> Self {
-        let _ = self
-            .modules
-            .entry(module.into())
-            .or_default()
-            .reexports
-            .entry(local.into())
-            .or_default()
-            .insert((from_module.into(), from_symbol.into()));
-        self
-    }
-
-    /// Detect a module dependency cycle over import + re-export edges.
-    ///
-    /// Returns the canonicalized cycle (rotated to start at the lexically
-    /// smallest member, closed by repeating that member) if any cycle exists.
-    /// Deterministic: modules and their out-edges are visited in sorted order.
-    fn detect_cycle(&self) -> Option<Vec<String>> {
-        // States: 0 = unvisited, 1 = on stack, 2 = done. Keyed by owned name to
-        // avoid borrowing the modules map while the DFS mutates its own stack.
-        let mut state: BTreeMap<String, u8> = BTreeMap::new();
-        for name in self.modules.keys() {
-            let _ = state.insert(name.clone(), 0u8);
-        }
-        // Iterative DFS carrying the path, visiting roots in sorted order.
-        for root in self.modules.keys() {
-            if state.get(root).copied().unwrap_or(2) != 0 {
-                continue;
-            }
-            let mut path: Vec<String> = Vec::new();
-            // Stack of (node, next-child-index into its sorted out-edges).
-            let mut stack: Vec<(String, usize)> = vec![(root.clone(), 0)];
-            let _ = state.insert(root.clone(), 1);
-            path.push(root.clone());
-            while let Some((node, idx)) = stack.last().cloned() {
-                let edges = self.out_edges(&node);
-                if let Some(next) = edges.get(idx) {
-                    if let Some(top) = stack.last_mut() {
-                        top.1 += 1;
-                    }
-                    match state.get(next).copied().unwrap_or(2) {
-                        0 => {
-                            let _ = state.insert(next.clone(), 1);
-                            stack.push((next.clone(), 0));
-                            path.push(next.clone());
-                        }
-                        1 => {
-                            // Back edge: `next` is on the current path -> cycle.
-                            return Some(canonical_cycle(&path, next));
-                        }
-                        _ => {}
-                    }
-                } else {
-                    let _ = state.insert(node, 2);
-                    let _ = stack.pop();
-                    let _ = path.pop();
-                }
-            }
-        }
-        None
-    }
-
-    /// Sorted out-edge target module names for `node` (imports + re-exports).
-    fn out_edges(&self, node: &str) -> Vec<String> {
-        let mut targets: BTreeSet<String> = BTreeSet::new();
-        if let Some(m) = self.modules.get(node) {
-            for (src, _) in m.direct_imports.values() {
-                let _ = targets.insert(src.clone());
-            }
-            for sources in m.reexports.values() {
-                for (src, _) in sources {
-                    let _ = targets.insert(src.clone());
-                }
-            }
-        }
-        targets.into_iter().collect()
-    }
-
-    /// Resolve `src_mod::src_sym` to the fully-qualified name of the module that
-    /// actually DECLARES the symbol, following re-export chains.
-    ///
-    /// A module exports `sym` if it declares it Public, OR re-exports it (which
-    /// is followed transitively to the declaring origin). A plain import is NOT
-    /// re-exposed — only declarations and re-exports cross the module boundary
-    /// (visibility rule, deliverable 4). The cycle policy already ran, so this
-    /// chain is acyclic and terminates. `importer` is carried only for the
-    /// unknown-module diagnostic.
-    fn resolve_export_origin(
-        &self,
-        importer: &str,
-        src_mod: &str,
-        src_sym: &str,
-    ) -> Result<String, ModuleDiagnosticV1> {
-        let target =
-            self.modules
-                .get(src_mod)
-                .ok_or_else(|| ModuleDiagnosticV1::UnknownModule {
-                    importer: importer.to_string(),
-                    missing: src_mod.to_string(),
-                })?;
-
-        // A Public local declaration is the origin.
-        if let Some(vis) = target.declarations.get(src_sym) {
-            if vis.is_importable() {
-                return Ok(qualify(src_mod, src_sym));
-            }
-        }
-
-        // Otherwise it may be re-exported: follow the (unique) re-export source
-        // to its origin. A re-export with two distinct sources is ambiguous.
-        if let Some(sources) = target.reexports.get(src_sym) {
-            let mut origins: BTreeSet<String> = BTreeSet::new();
-            for (next_mod, next_sym) in sources {
-                origins.insert(self.resolve_export_origin(src_mod, next_mod, next_sym)?);
-            }
-            let mut origins: Vec<String> = origins.into_iter().collect();
-            if origins.len() > 1 {
-                return Err(ModuleDiagnosticV1::AmbiguousImport {
-                    name: src_sym.to_string(),
-                    candidates: origins,
-                });
-            }
-            if let Some(origin) = origins.pop() {
-                return Ok(origin);
-            }
-        }
-
-        Err(ModuleDiagnosticV1::NotExported {
-            module: src_mod.to_string(),
-            symbol: src_sym.to_string(),
+        Ok(Self {
+            module_id,
+            namespace_kind,
+            local_name: local_name.to_owned(),
         })
     }
 
-    /// Resolve `module`'s direct imports + re-exports into the distinct
-    /// fully-qualified target set per local name, applying shadowing and
-    /// re-export precedence. Returns a map suitable for ambiguity checking.
-    fn resolve_module_names(
-        &self,
-        module: &str,
-        node: &ModuleNode,
-    ) -> Result<BTreeMap<String, BTreeSet<String>>, ModuleDiagnosticV1> {
-        let mut resolved: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    #[must_use]
+    pub const fn module_id(&self) -> &ModuleIdV2 {
+        &self.module_id
+    }
 
-        // Rule 2 (lower precedence first): re-exports. Each re-exported source is
-        // followed to its declaring ORIGIN so transitive re-export chains resolve
-        // to one fully-qualified name.
-        for (local, sources) in &node.reexports {
-            let bucket = resolved.entry(local.clone()).or_default();
-            for (src_mod, src_sym) in sources {
-                let _ = bucket.insert(self.resolve_export_origin(module, src_mod, src_sym)?);
+    #[must_use]
+    pub const fn namespace_kind(&self) -> NamespaceKindV2 {
+        self.namespace_kind
+    }
+
+    #[must_use]
+    pub fn local_name(&self) -> &str {
+        &self.local_name
+    }
+}
+
+/// Declarative asset reference resolved inside an authority transaction.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CatalogAssetRefInputV2 {
+    pub module_id: ModuleIdV2,
+    pub namespace_kind: NamespaceKindV2,
+    pub local_name: String,
+    pub location: CheckedLocatedSpanV2,
+}
+
+impl CatalogAssetRefInputV2 {
+    pub(crate) fn derive(self) -> Result<CatalogAssetIdV2, ModuleDiagnosticV2> {
+        CatalogAssetIdV2::derive(
+            self.module_id,
+            self.namespace_kind,
+            &self.local_name,
+            &self.location,
+        )
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ModuleNodeInputV2 {
+    pub module_id: ModuleIdV2,
+    pub location: CheckedLocatedSpanV2,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CurrentModuleSelectionInputV2 {
+    pub module_id: ModuleIdV2,
+    pub location: CheckedLocatedSpanV2,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ModuleDeclarationInputV2 {
+    pub owner_module_id: ModuleIdV2,
+    pub local_name: String,
+    pub namespace_kind: NamespaceKindV2,
+    pub visibility: VisibilityV2,
+    pub location: CheckedLocatedSpanV2,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ModuleImportInputV2 {
+    pub owner_module_id: ModuleIdV2,
+    pub local_name: String,
+    pub target: CatalogAssetRefInputV2,
+    pub location: CheckedLocatedSpanV2,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ModuleReexportInputV2 {
+    pub owner_module_id: ModuleIdV2,
+    pub exported_name: String,
+    pub target: CatalogAssetRefInputV2,
+    pub location: CheckedLocatedSpanV2,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LocatedEdgeV2 {
+    pub from: ModuleIdV2,
+    pub to: ModuleIdV2,
+    pub location: LocatedSpanV2,
+}
+
+impl Ord for LocatedEdgeV2 {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.from
+            .cmp(&other.from)
+            .then(self.to.cmp(&other.to))
+            .then(loc_key(self.location).cmp(&loc_key(other.location)))
+    }
+}
+impl PartialOrd for LocatedEdgeV2 {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AmbiguousCandidateV2 {
+    origin: CatalogAssetIdV2,
+    declaration_location: LocatedSpanV2,
+    witness: Vec<LocatedEdgeV2>,
+}
+
+impl AmbiguousCandidateV2 {
+    #[must_use]
+    pub const fn origin(&self) -> &CatalogAssetIdV2 {
+        &self.origin
+    }
+    #[must_use]
+    pub const fn declaration_location(&self) -> LocatedSpanV2 {
+        self.declaration_location
+    }
+    #[must_use]
+    pub fn witness(&self) -> &[LocatedEdgeV2] {
+        &self.witness
+    }
+}
+
+#[derive(Clone, Debug)]
+struct DeclarationV2 {
+    id: CatalogAssetIdV2,
+    visibility: VisibilityV2,
+    location: CheckedLocatedSpanV2,
+}
+
+#[derive(Clone, Debug)]
+struct EdgeV2 {
+    target: CatalogAssetIdV2,
+    location: CheckedLocatedSpanV2,
+}
+
+#[derive(Clone, Debug)]
+struct ModuleNodeV2 {
+    location: CheckedLocatedSpanV2,
+    declarations: BTreeMap<(NamespaceKindV2, String), DeclarationV2>,
+    imports: BTreeMap<(NamespaceKindV2, String), EdgeV2>,
+    reexports: BTreeMap<(NamespaceKindV2, String), Vec<EdgeV2>>,
+}
+
+/// Low-level graph phase. Public callers use `ModuleAuthorityBuilderV2`.
+#[derive(Clone, Debug)]
+pub struct ModuleGraphBuilderV2 {
+    modules: BTreeMap<ModuleIdV2, ModuleNodeV2>,
+    registry_identity: Option<SourceRegistryIdentityV2>,
+}
+
+impl ModuleGraphBuilderV2 {
+    #[must_use]
+    pub(crate) fn new() -> Self {
+        Self {
+            modules: BTreeMap::new(),
+            registry_identity: None,
+        }
+    }
+
+    pub(crate) fn bind_registry(&mut self, identity: SourceRegistryIdentityV2) {
+        self.registry_identity = Some(identity);
+    }
+
+    pub(crate) fn try_add_module(
+        &mut self,
+        input: ModuleNodeInputV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<(), ModuleDiagnosticV2> {
+        session.charge_node()?;
+        session.charge_string(input.module_id.as_str())?;
+        self.check_location(&input.location)?;
+        if let Some(original) = self.modules.get(&input.module_id) {
+            return Err(ModuleDiagnosticV2::conflict(
+                "modules.duplicate_module",
+                format!("duplicate module `{}`", excerpt(input.module_id.as_str())),
+                &input.location,
+                &original.location,
+            ));
+        }
+        self.modules.insert(
+            input.module_id,
+            ModuleNodeV2 {
+                location: input.location,
+                declarations: BTreeMap::new(),
+                imports: BTreeMap::new(),
+                reexports: BTreeMap::new(),
+            },
+        );
+        Ok(())
+    }
+
+    pub(crate) fn try_declare(
+        &mut self,
+        input: ModuleDeclarationInputV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<(), ModuleDiagnosticV2> {
+        session.charge_node()?;
+        session.charge_string(input.owner_module_id.as_str())?;
+        session.charge_string(&input.local_name)?;
+        self.check_location(&input.location)?;
+        let id = CatalogAssetIdV2::derive(
+            input.owner_module_id.clone(),
+            input.namespace_kind,
+            &input.local_name,
+            &input.location,
+        )?;
+        let node = self
+            .modules
+            .get_mut(&input.owner_module_id)
+            .ok_or_else(|| {
+                ModuleDiagnosticV2::new(
+                    "modules.unknown_module",
+                    "declaration owner is absent",
+                    &input.location,
+                )
+            })?;
+        let key = (input.namespace_kind, input.local_name);
+        if let Some(original) = node.declarations.get(&key) {
+            return Err(ModuleDiagnosticV2::conflict(
+                "modules.duplicate_declaration",
+                "duplicate module declaration",
+                &input.location,
+                &original.location,
+            ));
+        }
+        node.declarations.insert(
+            key,
+            DeclarationV2 {
+                id,
+                visibility: input.visibility,
+                location: input.location,
+            },
+        );
+        Ok(())
+    }
+
+    pub(crate) fn try_import(
+        &mut self,
+        input: ModuleImportInputV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<(), ModuleDiagnosticV2> {
+        session.charge_edge()?;
+        session.charge_string(input.owner_module_id.as_str())?;
+        session.charge_string(&input.local_name)?;
+        self.check_location(&input.location)?;
+        self.check_location(&input.target.location)?;
+        session.charge_string(&input.target.local_name)?;
+        session.charge_string(input.target.module_id.as_str())?;
+        if !is_segment(&input.local_name) {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_catalog_name",
+                "invalid import alias",
+                &input.location,
+            ));
+        }
+        let target = input.target.derive()?;
+        let node = self
+            .modules
+            .get_mut(&input.owner_module_id)
+            .ok_or_else(|| {
+                ModuleDiagnosticV2::new(
+                    "modules.unknown_module",
+                    "import owner is absent",
+                    &input.location,
+                )
+            })?;
+        let key = (target.namespace_kind, input.local_name);
+        if let Some(original) = node.imports.get(&key) {
+            return Err(ModuleDiagnosticV2::conflict(
+                "modules.duplicate_import",
+                "duplicate direct import alias",
+                &input.location,
+                &original.location,
+            ));
+        }
+        node.imports.insert(
+            key,
+            EdgeV2 {
+                target,
+                location: input.location,
+            },
+        );
+        Ok(())
+    }
+
+    pub(crate) fn try_reexport(
+        &mut self,
+        input: ModuleReexportInputV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<(), ModuleDiagnosticV2> {
+        session.charge_edge()?;
+        session.charge_string(input.owner_module_id.as_str())?;
+        session.charge_string(&input.exported_name)?;
+        self.check_location(&input.location)?;
+        self.check_location(&input.target.location)?;
+        session.charge_string(&input.target.local_name)?;
+        session.charge_string(input.target.module_id.as_str())?;
+        if !is_segment(&input.exported_name) {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_catalog_name",
+                "invalid re-export name",
+                &input.location,
+            ));
+        }
+        let target = input.target.derive()?;
+        let node = self
+            .modules
+            .get_mut(&input.owner_module_id)
+            .ok_or_else(|| {
+                ModuleDiagnosticV2::new(
+                    "modules.unknown_module",
+                    "re-export owner is absent",
+                    &input.location,
+                )
+            })?;
+        let key = (target.namespace_kind, input.exported_name);
+        let edges = node.reexports.entry(key).or_default();
+        if let Some(existing) = edges.iter_mut().find(|edge| edge.target == target) {
+            if loc_key(input.location.location()) < loc_key(existing.location.location()) {
+                existing.location = input.location;
+            }
+            return Ok(());
+        }
+        edges.push(EdgeV2 {
+            target,
+            location: input.location,
+        });
+        edges.sort_by(|left, right| {
+            left.target
+                .cmp(&right.target)
+                .then(loc_key(left.location.location()).cmp(&loc_key(right.location.location())))
+        });
+        Ok(())
+    }
+
+    fn check_location(
+        &mut self,
+        location: &CheckedLocatedSpanV2,
+    ) -> Result<(), ModuleDiagnosticV2> {
+        match &self.registry_identity {
+            None => self.registry_identity = Some(location.registry_identity().clone()),
+            Some(identity) if identity == location.registry_identity() => {}
+            Some(_) => {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.source_registry_mismatch",
+                    "location belongs to another source registry",
+                    location,
+                ))
             }
         }
+        Ok(())
+    }
 
-        // Rule 2 (higher precedence): a DIRECT import overrides any re-export of
-        // the same local name — the direct import REPLACES the re-export bucket
-        // rather than unioning with it.
-        for (local, (src_mod, src_sym)) in &node.direct_imports {
-            let q = self.resolve_export_origin(module, src_mod, src_sym)?;
-            let mut bucket = BTreeSet::new();
-            let _ = bucket.insert(q);
-            let _ = resolved.insert(local.clone(), bucket);
+    pub(crate) fn resolve(
+        &self,
+        current: CurrentModuleSelectionInputV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<ResolvedGraphV2, ModuleDiagnosticV2> {
+        session.charge_string(current.module_id.as_str())?;
+        if self.registry_identity.as_ref() != Some(current.location.registry_identity()) {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.source_registry_mismatch",
+                "current-module location belongs to another registry",
+                &current.location,
+            ));
+        }
+        if !self.modules.contains_key(&current.module_id) {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.unknown_module",
+                format!(
+                    "unknown current module `{}`",
+                    excerpt(current.module_id.as_str())
+                ),
+                &current.location,
+            ));
+        }
+        if let Some(cycle) = self.detect_cycle(session)? {
+            let locations = cycle.iter().map(|edge| edge.location).collect::<Vec<_>>();
+            let primary = cycle
+                .first()
+                .and_then(|edge| self.checked_edge_location(edge))
+                .unwrap_or(&current.location);
+            return Err(ModuleDiagnosticV2::new(
+                "modules.import_cycle",
+                "module dependency cycle",
+                primary,
+            )
+            .with_witness(locations));
         }
 
-        // Rule 1: a LOCAL declaration shadows any imported/re-exported name.
-        // Shadowing fully removes the imported candidates for that short name.
-        for local in node.declarations.keys() {
-            let mut bucket = BTreeSet::new();
-            let _ = bucket.insert(qualify(module, local));
-            let _ = resolved.insert(local.clone(), bucket);
+        // Validate and resolve every component before selecting the current view.
+        let mut all = BTreeMap::new();
+        for module_id in self.modules.keys() {
+            let bindings = self.resolve_module(module_id, session)?;
+            all.insert(module_id.clone(), bindings);
         }
+        let Some(visible) = all.get(&current.module_id).cloned() else {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.internal_graph_invariant",
+                "validated current module has no resolved binding table",
+                &current.location,
+            ));
+        };
+        Ok(ResolvedGraphV2 {
+            current_module: current.module_id,
+            visible: ResolvedModuleBindingsV2 { bindings: visible },
+            all,
+        })
+    }
 
+    fn checked_edge_location(&self, wanted: &LocatedEdgeV2) -> Option<&CheckedLocatedSpanV2> {
+        let node = self.modules.get(&wanted.from)?;
+        node.imports
+            .values()
+            .chain(node.reexports.values().flatten())
+            .find(|edge| {
+                edge.target.module_id == wanted.to && edge.location.location() == wanted.location
+            })
+            .map(|edge| &edge.location)
+    }
+
+    fn checked_declaration_location(
+        &self,
+        wanted: &CatalogAssetIdV2,
+    ) -> Option<&CheckedLocatedSpanV2> {
+        self.modules
+            .get(&wanted.module_id)?
+            .declarations
+            .get(&(wanted.namespace_kind, wanted.local_name.clone()))
+            .map(|declaration| &declaration.location)
+    }
+
+    fn ambiguity_primary<'a>(
+        &'a self,
+        candidates: &[AmbiguousCandidateV2],
+    ) -> Option<&'a CheckedLocatedSpanV2> {
+        let first = candidates.first()?;
+        first
+            .witness
+            .last()
+            .and_then(|edge| self.checked_edge_location(edge))
+            .or_else(|| self.checked_declaration_location(&first.origin))
+    }
+
+    fn resolve_module(
+        &self,
+        module_id: &ModuleIdV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<BTreeMap<(NamespaceKindV2, String), ResolvedBindingV2>, ModuleDiagnosticV2> {
+        let Some(node) = self.modules.get(module_id) else {
+            return Err(ModuleDiagnosticV2::without_location(
+                "modules.unknown_module",
+                "module disappeared during resolution",
+            ));
+        };
+        let mut resolved = BTreeMap::new();
+        for (key, edges) in &node.reexports {
+            let mut candidates: BTreeMap<CatalogAssetIdV2, AmbiguousCandidateV2> = BTreeMap::new();
+            for edge in edges {
+                for candidate in self.resolve_origin(module_id, edge, session)? {
+                    match candidates.get_mut(&candidate.origin) {
+                        Some(existing) if candidate.witness < existing.witness => {
+                            *existing = candidate
+                        }
+                        None => {
+                            candidates.insert(candidate.origin.clone(), candidate);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            if candidates.len() > 1 {
+                let values = candidates.into_values().collect::<Vec<_>>();
+                let evidence = values
+                    .iter()
+                    .flat_map(|candidate| candidate.witness.iter().map(|edge| edge.location))
+                    .collect();
+                let Some(primary) = self.ambiguity_primary(&values) else {
+                    return Err(ModuleDiagnosticV2::without_location(
+                        "modules.ambiguous_import",
+                        "ambiguous re-export has no checked witness",
+                    ));
+                };
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.ambiguous_import",
+                    format!("ambiguous binding `{}`", excerpt(&key.1)),
+                    primary,
+                )
+                .with_witness(evidence)
+                .with_ambiguous_candidates(values));
+            }
+            if let Some(candidate) = candidates.into_values().next() {
+                resolved.insert(
+                    key.clone(),
+                    ResolvedBindingV2::from_candidate(
+                        key.1.clone(),
+                        candidate,
+                        VisibilityV2::Public,
+                    ),
+                );
+            }
+        }
+        // Direct imports replace re-export candidates.
+        for (key, edge) in &node.imports {
+            let mut candidates = self.resolve_origin(module_id, edge, session)?;
+            if candidates.len() != 1 {
+                let evidence = candidates
+                    .iter()
+                    .flat_map(|candidate| candidate.witness.iter().map(|item| item.location))
+                    .collect();
+                let diagnostic_candidates = candidates.clone();
+                let primary = self
+                    .ambiguity_primary(&diagnostic_candidates)
+                    .unwrap_or(&edge.location);
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.ambiguous_import",
+                    format!("ambiguous binding `{}`", excerpt(&key.1)),
+                    primary,
+                )
+                .with_witness(evidence)
+                .with_ambiguous_candidates(diagnostic_candidates));
+            }
+            let Some(candidate) = candidates.pop() else {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.not_exported",
+                    "target did not resolve to an exported declaration",
+                    &edge.location,
+                ));
+            };
+            resolved.insert(
+                key.clone(),
+                ResolvedBindingV2::from_candidate(key.1.clone(), candidate, VisibilityV2::Public),
+            );
+        }
+        // Local declarations replace all imported forms.
+        for (key, declaration) in &node.declarations {
+            resolved.insert(
+                key.clone(),
+                ResolvedBindingV2 {
+                    local_name: key.1.clone(),
+                    resolved_asset_id: declaration.id.clone(),
+                    namespace_kind: key.0,
+                    visibility: declaration.visibility,
+                    declaration_origin: declaration.id.clone(),
+                    declaration_location: declaration.location.location(),
+                    edge_witness: Vec::new(),
+                },
+            );
+        }
         Ok(resolved)
     }
 
-    /// Freeze the graph into a [`ResolvedGraphV1`], failing closed on the first
-    /// deterministically-ordered violation: cycle first, then per-module
-    /// (sorted) unknown-module / not-exported / ambiguous-import.
-    pub fn resolve(&self) -> Result<ResolvedGraphV1, ModuleDiagnosticV1> {
-        // Rule 4: cycle policy is checked before name resolution.
-        if let Some(cycle) = self.detect_cycle() {
-            return Err(ModuleDiagnosticV1::ImportCycle { cycle });
-        }
-
-        let mut per_module: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
-        for (module, node) in &self.modules {
-            let resolved = self.resolve_module_names(module, node)?;
-            let mut frozen: BTreeMap<String, String> = BTreeMap::new();
-            for (local, targets) in resolved {
-                // Rule 3: ambiguity is a hard reject; candidates sorted by
-                // BTreeSet iteration order.
-                let mut candidates: Vec<String> = targets.into_iter().collect();
-                if candidates.len() > 1 {
-                    return Err(ModuleDiagnosticV1::AmbiguousImport {
-                        name: local,
-                        candidates,
-                    });
+    fn resolve_origin(
+        &self,
+        importer: &ModuleIdV2,
+        first_edge: &EdgeV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<Vec<AmbiguousCandidateV2>, ModuleDiagnosticV2> {
+        let first = LocatedEdgeV2 {
+            from: importer.clone(),
+            to: first_edge.target.module_id.clone(),
+            location: first_edge.location.location(),
+        };
+        let mut stack = vec![(first_edge.target.clone(), vec![first])];
+        let mut outcomes: BTreeMap<CatalogAssetIdV2, AmbiguousCandidateV2> = BTreeMap::new();
+        while let Some((target, witness)) = stack.pop() {
+            session.charge_step()?;
+            let node = self.modules.get(&target.module_id).ok_or_else(|| {
+                ModuleDiagnosticV2::new(
+                    "modules.unknown_module",
+                    format!("unknown module `{}`", excerpt(target.module_id.as_str())),
+                    &first_edge.location,
+                )
+            })?;
+            let key = (target.namespace_kind, target.local_name.clone());
+            if let Some(declaration) = node.declarations.get(&key) {
+                if !declaration.visibility.is_importable() && &target.module_id != importer {
+                    return Err(ModuleDiagnosticV2::conflict(
+                        "modules.not_exported",
+                        "target declaration is private",
+                        &first_edge.location,
+                        &declaration.location,
+                    ));
                 }
-                if let Some(target) = candidates.pop() {
-                    let _ = frozen.insert(local, target);
+                let candidate = AmbiguousCandidateV2 {
+                    origin: declaration.id.clone(),
+                    declaration_location: declaration.location.location(),
+                    witness,
+                };
+                match outcomes.get_mut(&candidate.origin) {
+                    Some(existing) if candidate.witness < existing.witness => *existing = candidate,
+                    None => {
+                        outcomes.insert(candidate.origin.clone(), candidate);
+                    }
+                    _ => {}
+                }
+                continue;
+            }
+            let Some(next_edges) = node.reexports.get(&key) else {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.not_exported",
+                    "target symbol is absent or not exported",
+                    &first_edge.location,
+                ));
+            };
+            for next in next_edges.iter().rev() {
+                let mut next_witness = witness.clone();
+                next_witness.push(LocatedEdgeV2 {
+                    from: target.module_id.clone(),
+                    to: next.target.module_id.clone(),
+                    location: next.location.location(),
+                });
+                stack.push((next.target.clone(), next_witness));
+            }
+        }
+        Ok(outcomes.into_values().collect())
+    }
+
+    fn detect_cycle(
+        &self,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<Option<Vec<LocatedEdgeV2>>, ModuleDiagnosticV2> {
+        let mut candidates = Vec::new();
+        for root in self.modules.keys() {
+            let mut stack = vec![(
+                root.clone(),
+                Vec::<LocatedEdgeV2>::new(),
+                BTreeSet::from([root.clone()]),
+            )];
+            while let Some((node_id, path, seen)) = stack.pop() {
+                let Some(node) = self.modules.get(&node_id) else {
+                    continue;
+                };
+                let mut edges = node
+                    .imports
+                    .values()
+                    .chain(node.reexports.values().flatten())
+                    .collect::<Vec<_>>();
+                edges.sort_by(|a, b| {
+                    a.target
+                        .cmp(&b.target)
+                        .then(loc_key(a.location.location()).cmp(&loc_key(b.location.location())))
+                });
+                for edge in edges.into_iter().rev() {
+                    session.charge_step()?;
+                    let located = LocatedEdgeV2 {
+                        from: node_id.clone(),
+                        to: edge.target.module_id.clone(),
+                        location: edge.location.location(),
+                    };
+                    if seen.contains(&edge.target.module_id) {
+                        let position = path
+                            .iter()
+                            .position(|item| item.from == edge.target.module_id)
+                            .unwrap_or(0);
+                        let mut cycle = path.get(position..).map_or_else(Vec::new, <[_]>::to_vec);
+                        cycle.push(located);
+                        candidates.push(canonicalize_located_cycle(cycle));
+                    } else {
+                        let mut next_path = path.clone();
+                        next_path.push(located);
+                        let mut next_seen = seen.clone();
+                        next_seen.insert(edge.target.module_id.clone());
+                        stack.push((edge.target.module_id.clone(), next_path, next_seen));
+                    }
                 }
             }
-            let _ = per_module.insert(module.clone(), frozen);
         }
-
-        Ok(ResolvedGraphV1 { per_module })
+        candidates.sort();
+        Ok(candidates.into_iter().next())
     }
 }
 
-/// Rotate `path` to start at the lexically smallest member of the cycle that
-/// begins at `back` (the back-edge target), and close it by repeating that
-/// member. The returned vector is the canonical, order-independent cycle.
-fn canonical_cycle(path: &[String], back: &str) -> Vec<String> {
-    // The cycle is the suffix of `path` starting at `back`.
-    let start = path.iter().position(|n| n == back).unwrap_or(0);
-    let cycle_slice: Vec<&str> = path
-        .get(start..)
-        .map(|s| s.iter().map(String::as_str).collect())
-        .unwrap_or_default();
-    if cycle_slice.is_empty() {
-        return Vec::new();
+fn canonicalize_located_cycle(cycle: Vec<LocatedEdgeV2>) -> Vec<LocatedEdgeV2> {
+    if cycle.is_empty() {
+        return cycle;
     }
-    // Rotate to the lexically smallest member for determinism.
-    let min_pos = cycle_slice
-        .iter()
-        .enumerate()
-        .min_by(|a, b| a.1.cmp(b.1))
-        .map(|(i, _)| i)
-        .unwrap_or(0);
-    let mut rotated: Vec<String> = Vec::with_capacity(cycle_slice.len() + 1);
-    for offset in 0..cycle_slice.len() {
-        let idx = (min_pos + offset) % cycle_slice.len();
-        if let Some(name) = cycle_slice.get(idx) {
-            rotated.push((*name).to_string());
-        }
-    }
-    // Close the cycle by repeating the start.
-    if let Some(first) = rotated.first().cloned() {
-        rotated.push(first);
-    }
-    rotated
+    rotations(&cycle).min().unwrap_or_default()
 }
 
-/// A frozen, resolved module graph: every module's local short name maps to
-/// exactly one fully-qualified target.
-///
-/// This is the value the binder consumes. It is inert: it encodes the already-
-/// decided resolution and exposes no precedence or re-ranking surface, so the
-/// binder cannot invent import-order authority (`D30`).
+fn rotations(items: &[LocatedEdgeV2]) -> impl Iterator<Item = Vec<LocatedEdgeV2>> + '_ {
+    (0..items.len()).map(|offset| {
+        items
+            .iter()
+            .cycle()
+            .skip(offset)
+            .take(items.len())
+            .cloned()
+            .collect()
+    })
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ResolvedGraphV1 {
-    per_module: BTreeMap<String, BTreeMap<String, String>>,
+pub struct ResolvedBindingV2 {
+    local_name: String,
+    resolved_asset_id: CatalogAssetIdV2,
+    namespace_kind: NamespaceKindV2,
+    visibility: VisibilityV2,
+    declaration_origin: CatalogAssetIdV2,
+    declaration_location: LocatedSpanV2,
+    edge_witness: Vec<LocatedEdgeV2>,
 }
 
-impl ResolvedGraphV1 {
-    /// Resolve `name` within `module` to its single fully-qualified target, if
-    /// the module imports/declares it.
-    #[must_use]
-    pub fn lookup(&self, module: &str, name: &str) -> Option<&str> {
-        self.per_module
-            .get(module)
-            .and_then(|m| m.get(name))
-            .map(String::as_str)
+impl ResolvedBindingV2 {
+    fn from_candidate(
+        local_name: String,
+        candidate: AmbiguousCandidateV2,
+        visibility: VisibilityV2,
+    ) -> Self {
+        Self {
+            local_name,
+            resolved_asset_id: candidate.origin.clone(),
+            namespace_kind: candidate.origin.namespace_kind,
+            visibility,
+            declaration_origin: candidate.origin,
+            declaration_location: candidate.declaration_location,
+            edge_witness: candidate.witness,
+        }
     }
+    #[must_use]
+    pub fn local_name(&self) -> &str {
+        &self.local_name
+    }
+    #[must_use]
+    pub const fn resolved_asset_id(&self) -> &CatalogAssetIdV2 {
+        &self.resolved_asset_id
+    }
+    #[must_use]
+    pub const fn namespace_kind(&self) -> NamespaceKindV2 {
+        self.namespace_kind
+    }
+    #[must_use]
+    pub const fn visibility(&self) -> VisibilityV2 {
+        self.visibility
+    }
+    #[must_use]
+    pub const fn declaration_origin(&self) -> &CatalogAssetIdV2 {
+        &self.declaration_origin
+    }
+    #[must_use]
+    pub const fn declaration_location(&self) -> LocatedSpanV2 {
+        self.declaration_location
+    }
+    #[must_use]
+    pub fn edge_witness(&self) -> &[LocatedEdgeV2] {
+        &self.edge_witness
+    }
+}
 
-    /// All `(local name, target)` bindings visible in `module`, sorted.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResolvedModuleBindingsV2 {
+    bindings: BTreeMap<(NamespaceKindV2, String), ResolvedBindingV2>,
+}
+impl ResolvedModuleBindingsV2 {
     #[must_use]
-    pub fn bindings(&self, module: &str) -> Vec<(String, String)> {
-        self.per_module
-            .get(module)
-            .map(|m| {
-                m.iter()
-                    .map(|(k, v)| (k.clone(), v.clone()))
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default()
+    pub fn get(&self, kind: NamespaceKindV2, local_name: &str) -> Option<&ResolvedBindingV2> {
+        self.bindings.get(&(kind, local_name.to_owned()))
     }
+    pub fn iter(&self) -> impl Iterator<Item = &ResolvedBindingV2> {
+        self.bindings.values()
+    }
+}
 
-    /// Number of modules in the frozen graph.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResolvedGraphV2 {
+    current_module: ModuleIdV2,
+    visible: ResolvedModuleBindingsV2,
+    all: BTreeMap<ModuleIdV2, BTreeMap<(NamespaceKindV2, String), ResolvedBindingV2>>,
+}
+impl ResolvedGraphV2 {
     #[must_use]
-    pub fn module_count(&self) -> usize {
-        self.per_module.len()
+    pub const fn current_module(&self) -> &ModuleIdV2 {
+        &self.current_module
     }
+    #[must_use]
+    pub const fn visible_bindings(&self) -> &ResolvedModuleBindingsV2 {
+        &self.visible
+    }
+    #[must_use]
+    pub fn module_bindings(
+        &self,
+        module: &ModuleIdV2,
+    ) -> Option<impl Iterator<Item = &ResolvedBindingV2>> {
+        self.all.get(module).map(|bindings| bindings.values())
+    }
+}
 
-    /// Project this resolved graph into the flat binder-consumed view for one
-    /// module: short name -> distinct fully-qualified targets.
-    ///
-    /// This is the integration seam with the binder's `ModuleGraphViewV1`
-    /// (ticket 02). Because resolution already collapsed each name to exactly
-    /// one target (or rejected on ambiguity), every returned set has at most one
-    /// element — the binder will therefore never re-derive precedence.
-    #[must_use]
-    pub fn binder_view(&self, module: &str) -> BTreeMap<String, Vec<String>> {
-        self.per_module
-            .get(module)
-            .map(|m| {
-                m.iter()
-                    .map(|(local, target)| (local.clone(), vec![target.clone()]))
-                    .collect()
-            })
-            .unwrap_or_default()
+pub(crate) fn is_segment(value: &str) -> bool {
+    let mut bytes = value.bytes();
+    matches!(bytes.next(), Some(b'a'..=b'z' | b'A'..=b'Z' | b'_'))
+        && bytes.all(|byte| matches!(byte, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_' | b'-'))
+}
+
+pub(crate) fn is_qualified_name(value: &str) -> bool {
+    !value.is_empty() && value.split("::").all(is_segment)
+}
+
+pub(crate) fn excerpt(value: &str) -> String {
+    let mut end = value.len().min(128);
+    while !value.is_char_boundary(end) {
+        end -= 1;
     }
+    value[..end].to_owned()
+}
+
+pub(crate) fn loc_key(location: LocatedSpanV2) -> (u32, usize, usize) {
+    (
+        location.source_id.raw(),
+        location.span.start,
+        location.span.end,
+    )
 }

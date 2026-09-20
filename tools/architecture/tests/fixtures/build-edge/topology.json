@@ -1,0 +1,6 @@
+{
+  "base": "../valid/topology.json",
+  "add_build_edges": [
+    ["quanta-gqlang-v2-surface", "quanta-gqlang-v2-hir"]
+  ]
+}

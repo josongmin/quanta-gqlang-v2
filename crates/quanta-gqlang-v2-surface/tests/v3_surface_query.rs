@@ -87,9 +87,9 @@ fn aliased_projection_with_nested_shape() {
     }
 
     // two projection items, each aliased.
-    assert_eq!(project.items.len(), 2);
-    assert_eq!(project.items[0].alias.as_ref().unwrap().name, "id");
-    assert_eq!(project.items[1].alias.as_ref().unwrap().name, "name");
+    assert_eq!(project.items().len(), 2);
+    assert_eq!(project.items()[0].alias.as_ref().unwrap().name, "id");
+    assert_eq!(project.items()[1].alias.as_ref().unwrap().name, "name");
 
     // nested result shape: record { id: leaf, tags: [ leaf ] }.
     let shape = query.result_shape.as_ref().expect("result shape present");
@@ -153,9 +153,9 @@ fn group_by_with_aggregate_call_projection() {
         RelationExprKindV1::Project(p) => p,
         other => panic!("group input should be Project, got {other:?}"),
     };
-    assert_eq!(project.items.len(), 2);
+    assert_eq!(project.items().len(), 2);
     assert!(matches!(
-        project.items[1].value.kind,
+        project.items()[1].value.kind,
         ValueExprKindV1::Call(_)
     ));
     check_tree(HirRootRefV1::Query(&query), src.len()).expect("sound tree");

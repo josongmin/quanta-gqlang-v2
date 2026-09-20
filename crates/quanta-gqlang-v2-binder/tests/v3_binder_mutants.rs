@@ -20,8 +20,8 @@ use quanta_gqlang_v2_binder::{
     LexicalScopeV1, ModuleGraphV1, ParamV1, ResolvedTargetV1, ShadowReportKindV1,
 };
 use quanta_gqlang_v2_hir::{
-    AliasV1, EvidenceModeV1, GraphRefV1, HirBuilderV1, HirNodeIdV1, PresentationKindV1,
-    ProgramItemHirV1, SpanV1, TruthModeV1,
+    AliasV1, CompositionBodyV1, EvidenceModeV1, ExplainHirV1, GraphRefV1, HirBuilderV1,
+    HirNodeIdV1, PresentationKindV1, SpanV1, TruthModeV1,
 };
 
 fn id(raw: u32) -> HirNodeIdV1 {
@@ -246,7 +246,7 @@ fn resolve_presentation_resolves_target_ref() {
     let b = HirBuilderV1::new();
     // producer: a trivial relation-source query.
     let source = b.relation_source("catalog.users", None, SpanV1::new(8, 13));
-    let producer = ProgramItemHirV1::from(b.query(source, None, SpanV1::new(0, 13)));
+    let producer = b.query(source, None, SpanV1::new(0, 13)).into();
     let binding = b.composition_binding("s", SpanV1::new(4, 5), producer);
 
     // EXPLAIN s : target_ref names the LET-bound working set.
@@ -261,8 +261,9 @@ fn resolve_presentation_resolves_target_ref() {
         },
         SpanV1::new(45, 51),
     );
+    let explain = ExplainHirV1::try_from(explain).unwrap();
     let explain_node = explain.id;
-    let body = ProgramItemHirV1::from(explain);
+    let body = CompositionBodyV1::Explain(Box::new(explain));
 
     let composition = b.composition(
         vec![binding],

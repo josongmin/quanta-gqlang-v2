@@ -367,6 +367,9 @@ impl IntegrityCollector {
 }
 
 impl HirVisitorV1 for IntegrityCollector {
+    fn visit_auxiliary_span(&mut self, span: SpanV1) {
+        self.record_auxiliary_span(span);
+    }
     fn visit_value(&mut self, node: &ValueExprHirV1) {
         self.record(node.id, node.span);
         crate::visit::walk_value(self, node);

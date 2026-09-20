@@ -335,3 +335,28 @@ edges and one present transitional dev edge after the rename.
 ## Dependencies
 
 Requires ticket 00. Blocks every other implementation ticket.
+
+## Current-Head Documentation-Truth Addendum — 2026-09-21
+
+The final ticket audit found that `docs/language/test_hellgate_ledger.md`, which
+the root README advertised as the complete mapping, still named the retired v2
+syntax/sema/IR and LSP rails. All 50 unique referenced Rust test paths were
+absent. The active README surfaces were correct, so this was stale proof
+documentation rather than a missing transport migration.
+
+Repair:
+
+1. Replaced the ledger with the current 14-crate frontend authority map and 77
+   existing Rust rail paths.
+2. Corrected the stale modules subsection in `docs/language/README.md` to the
+   actual `v3_modules_v2_authority.rs` owner rail and listed all three current
+   conformance rails.
+3. Extended `method_allowlist_doc_gate.rs` so every backticked Rust path in the
+   ledger must exist and the deleted LSP package path cannot reappear.
+
+A direct repository path scan reports `ledger_paths=77 missing=0` and the stale
+package/test-name scan is empty. The expanded Rust doc-gate cannot be executed
+at this intermediate checkpoint because Cargo first compiles the deliberately
+unmigrated binder consumer of ticket 02's breaking HIR. Its execution remains a
+ticket-04+/09 integration obligation; this addendum does not overwrite the
+historical green result recorded in receipt 01.

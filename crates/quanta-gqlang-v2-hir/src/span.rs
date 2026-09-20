@@ -71,11 +71,17 @@ impl SourceRegistryViewV2 {
                 });
             }
         }
-        let registrations = lengths.iter().map(|(source_id, source_len)| SourceRegistrationV2 {
-            source_id: *source_id,
-            source_len: *source_len,
-        }).collect::<Vec<_>>();
-        Ok(Self { lengths, identity: SourceRegistryIdentityV2(registrations.into()) })
+        let registrations = lengths
+            .iter()
+            .map(|(source_id, source_len)| SourceRegistrationV2 {
+                source_id: *source_id,
+                source_len: *source_len,
+            })
+            .collect::<Vec<_>>();
+        Ok(Self {
+            lengths,
+            identity: SourceRegistryIdentityV2(registrations.into()),
+        })
     }
 
     pub fn try_check_location(
@@ -83,21 +89,36 @@ impl SourceRegistryViewV2 {
         location: LocatedSpanV2,
     ) -> Result<CheckedLocatedSpanV2, SourceRegistryDiagnosticV2> {
         let source_len = self.lengths.get(&location.source_id).copied().ok_or(
-            SourceRegistryDiagnosticV2::UnknownSourceId { source_id: location.source_id },
+            SourceRegistryDiagnosticV2::UnknownSourceId {
+                source_id: location.source_id,
+            },
         )?;
-        location.validate(location.source_id, source_len).map_err(|error|
-            SourceRegistryDiagnosticV2::InvalidLocation { location, error }
-        )?;
+        location
+            .validate(location.source_id, source_len)
+            .map_err(|error| SourceRegistryDiagnosticV2::InvalidLocation { location, error })?;
         Ok(CheckedLocatedSpanV2 {
             location,
             registry_identity: self.identity(),
         })
     }
 
-    pub fn try_extend_document(&self, entry: SourceRegistrationV2) -> Result<ExtendedSourceRegistryViewV2, SourceRegistryDiagnosticV2> {
-        let mut entries = self.lengths.iter().map(|(source_id, source_len)| SourceRegistrationV2 { source_id: *source_id, source_len: *source_len }).collect::<Vec<_>>();
+    pub fn try_extend_document(
+        &self,
+        entry: SourceRegistrationV2,
+    ) -> Result<ExtendedSourceRegistryViewV2, SourceRegistryDiagnosticV2> {
+        let mut entries = self
+            .lengths
+            .iter()
+            .map(|(source_id, source_len)| SourceRegistrationV2 {
+                source_id: *source_id,
+                source_len: *source_len,
+            })
+            .collect::<Vec<_>>();
         entries.push(entry);
-        Ok(ExtendedSourceRegistryViewV2 { combined: Self::try_new(entries)?, parent_identity: self.identity() })
+        Ok(ExtendedSourceRegistryViewV2 {
+            combined: Self::try_new(entries)?,
+            parent_identity: self.identity(),
+        })
     }
 
     #[must_use]
@@ -112,12 +133,28 @@ impl SourceRegistryViewV2 {
 }
 
 impl ExtendedSourceRegistryViewV2 {
-    pub fn try_check_location(&self, location: LocatedSpanV2) -> Result<CheckedLocatedSpanV2, SourceRegistryDiagnosticV2> {
+    pub fn try_check_location(
+        &self,
+        location: LocatedSpanV2,
+    ) -> Result<CheckedLocatedSpanV2, SourceRegistryDiagnosticV2> {
         self.combined.try_check_location(location)
     }
-    #[must_use] pub fn parent_identity(&self) -> &SourceRegistryIdentityV2 { &self.parent_identity }
-    #[must_use] pub fn identity(&self) -> SourceRegistryIdentityV2 { self.combined.identity() }
-    #[must_use] pub fn source_len(&self, source_id: SourceIdV2) -> Option<usize> { self.combined.source_len(source_id) }
+    #[must_use]
+    pub fn parent_identity(&self) -> &SourceRegistryIdentityV2 {
+        &self.parent_identity
+    }
+    #[must_use]
+    pub fn identity(&self) -> SourceRegistryIdentityV2 {
+        self.combined.identity()
+    }
+    #[must_use]
+    pub fn source_len(&self, source_id: SourceIdV2) -> Option<usize> {
+        self.combined.source_len(source_id)
+    }
+    #[must_use]
+    pub const fn combined(&self) -> &SourceRegistryViewV2 {
+        &self.combined
+    }
 }
 
 /// A location proven to be within the bounds of one exact source registry.
@@ -144,9 +181,18 @@ impl CheckedLocatedSpanV2 {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SourceRegistryDiagnosticV2 {
-    DuplicateSourceId { source_id: SourceIdV2, original_len: usize, duplicate_len: usize },
-    UnknownSourceId { source_id: SourceIdV2 },
-    InvalidLocation { location: LocatedSpanV2, error: LocatedSpanErrorV2 },
+    DuplicateSourceId {
+        source_id: SourceIdV2,
+        original_len: usize,
+        duplicate_len: usize,
+    },
+    UnknownSourceId {
+        source_id: SourceIdV2,
+    },
+    InvalidLocation {
+        location: LocatedSpanV2,
+        error: LocatedSpanErrorV2,
+    },
 }
 
 impl SourceRegistryDiagnosticV2 {
@@ -155,9 +201,18 @@ impl SourceRegistryDiagnosticV2 {
         match self {
             Self::DuplicateSourceId { .. } => "hir.source_registry.duplicate_source_id",
             Self::UnknownSourceId { .. } => "hir.source_registry.unknown_source_id",
-            Self::InvalidLocation { error: LocatedSpanErrorV2::Inverted { .. }, .. } => "hir.source_registry.inverted_span",
-            Self::InvalidLocation { error: LocatedSpanErrorV2::OutOfBounds { .. }, .. } => "hir.source_registry.location_out_of_bounds",
-            Self::InvalidLocation { error: LocatedSpanErrorV2::WrongSource { .. }, .. } => "hir.source_registry.unknown_source_id",
+            Self::InvalidLocation {
+                error: LocatedSpanErrorV2::Inverted { .. },
+                ..
+            } => "hir.source_registry.inverted_span",
+            Self::InvalidLocation {
+                error: LocatedSpanErrorV2::OutOfBounds { .. },
+                ..
+            } => "hir.source_registry.location_out_of_bounds",
+            Self::InvalidLocation {
+                error: LocatedSpanErrorV2::WrongSource { .. },
+                ..
+            } => "hir.source_registry.unknown_source_id",
         }
     }
 }
@@ -165,9 +220,32 @@ impl SourceRegistryDiagnosticV2 {
 impl core::fmt::Display for SourceRegistryDiagnosticV2 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::DuplicateSourceId { source_id, original_len, duplicate_len } => write!(f, "{}: source {} registered twice with lengths {} and {}", self.code(), source_id.raw(), original_len, duplicate_len),
-            Self::UnknownSourceId { source_id } => write!(f, "{}: source {} is not registered", self.code(), source_id.raw()),
-            Self::InvalidLocation { location, .. } => write!(f, "{}: span {}..{} is invalid for source {}", self.code(), location.span.start, location.span.end, location.source_id.raw()),
+            Self::DuplicateSourceId {
+                source_id,
+                original_len,
+                duplicate_len,
+            } => write!(
+                f,
+                "{}: source {} registered twice with lengths {} and {}",
+                self.code(),
+                source_id.raw(),
+                original_len,
+                duplicate_len
+            ),
+            Self::UnknownSourceId { source_id } => write!(
+                f,
+                "{}: source {} is not registered",
+                self.code(),
+                source_id.raw()
+            ),
+            Self::InvalidLocation { location, .. } => write!(
+                f,
+                "{}: span {}..{} is invalid for source {}",
+                self.code(),
+                location.span.start,
+                location.span.end,
+                location.source_id.raw()
+            ),
         }
     }
 }
@@ -297,37 +375,117 @@ impl SpanV1 {
 }
 
 #[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "owner assertions")]
 mod source_registry_tests {
     use super::*;
     #[test]
     fn registry_rejects_duplicates_unknown_inverted_and_oob_with_exact_codes() {
-        let source=SourceIdV2::from_raw(1);
-        let duplicate=SourceRegistryViewV2::try_new(vec![SourceRegistrationV2{source_id:source,source_len:4},SourceRegistrationV2{source_id:source,source_len:5}]).unwrap_err();
-        assert_eq!(duplicate.code(),"hir.source_registry.duplicate_source_id");
-        let registry=SourceRegistryViewV2::try_new(vec![SourceRegistrationV2{source_id:source,source_len:4}]).unwrap();
-        assert_eq!(registry.try_check_location(LocatedSpanV2{source_id:SourceIdV2::from_raw(2),span:SpanV1::point(0)}).unwrap_err().code(),"hir.source_registry.unknown_source_id");
-        assert_eq!(registry.try_check_location(LocatedSpanV2{source_id:source,span:SpanV1::new(3,2)}).unwrap_err().code(),"hir.source_registry.inverted_span");
-        assert_eq!(registry.try_check_location(LocatedSpanV2{source_id:source,span:SpanV1::new(0,5)}).unwrap_err().code(),"hir.source_registry.location_out_of_bounds");
+        let source = SourceIdV2::from_raw(1);
+        let duplicate = SourceRegistryViewV2::try_new(vec![
+            SourceRegistrationV2 {
+                source_id: source,
+                source_len: 4,
+            },
+            SourceRegistrationV2 {
+                source_id: source,
+                source_len: 5,
+            },
+        ])
+        .unwrap_err();
+        assert_eq!(duplicate.code(), "hir.source_registry.duplicate_source_id");
+        let registry = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
+            source_id: source,
+            source_len: 4,
+        }])
+        .unwrap();
+        assert_eq!(
+            registry
+                .try_check_location(LocatedSpanV2 {
+                    source_id: SourceIdV2::from_raw(2),
+                    span: SpanV1::point(0)
+                })
+                .unwrap_err()
+                .code(),
+            "hir.source_registry.unknown_source_id"
+        );
+        assert_eq!(
+            registry
+                .try_check_location(LocatedSpanV2 {
+                    source_id: source,
+                    span: SpanV1::new(3, 2)
+                })
+                .unwrap_err()
+                .code(),
+            "hir.source_registry.inverted_span"
+        );
+        assert_eq!(
+            registry
+                .try_check_location(LocatedSpanV2 {
+                    source_id: source,
+                    span: SpanV1::new(0, 5)
+                })
+                .unwrap_err()
+                .code(),
+            "hir.source_registry.location_out_of_bounds"
+        );
     }
     #[test]
     fn registry_identity_is_deterministic_and_copy_extend_rejects_collision() {
-        let one=SourceRegistrationV2{source_id:SourceIdV2::from_raw(1),source_len:4};let two=SourceRegistrationV2{source_id:SourceIdV2::from_raw(2),source_len:8};
-        let a=SourceRegistryViewV2::try_new(vec![one,two]).unwrap();let b=SourceRegistryViewV2::try_new(vec![two,one]).unwrap();assert_eq!(a.identity(),b.identity());
-        assert_eq!(a.try_extend_document(one).unwrap_err().code(),"hir.source_registry.duplicate_source_id");
-        let extended=a.try_extend_document(SourceRegistrationV2{source_id:SourceIdV2::from_raw(3),source_len:12}).unwrap();
-        assert_eq!(extended.parent_identity(),&a.identity());
-        assert_ne!(extended.identity(),a.identity());
+        let one = SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(1),
+            source_len: 4,
+        };
+        let two = SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(2),
+            source_len: 8,
+        };
+        let a = SourceRegistryViewV2::try_new(vec![one, two]).unwrap();
+        let b = SourceRegistryViewV2::try_new(vec![two, one]).unwrap();
+        assert_eq!(a.identity(), b.identity());
+        assert_eq!(
+            a.try_extend_document(one).unwrap_err().code(),
+            "hir.source_registry.duplicate_source_id"
+        );
+        let extended = a
+            .try_extend_document(SourceRegistrationV2 {
+                source_id: SourceIdV2::from_raw(3),
+                source_len: 12,
+            })
+            .unwrap();
+        assert_eq!(extended.parent_identity(), &a.identity());
+        assert_ne!(extended.identity(), a.identity());
+        assert_eq!(extended.combined().identity(), extended.identity());
     }
     #[test]
     fn identity_is_structural_and_checked_locations_share_backing() {
-        let entries=vec![SourceRegistrationV2{source_id:SourceIdV2::from_raw(9),source_len:20}];
-        let first=SourceRegistryViewV2::try_new(entries.clone()).unwrap();
-        let equal=SourceRegistryViewV2::try_new(entries).unwrap();
-        let unequal=SourceRegistryViewV2::try_new(vec![SourceRegistrationV2{source_id:SourceIdV2::from_raw(9),source_len:21}]).unwrap();
-        assert_eq!(first.identity(),equal.identity());
-        assert_ne!(first.identity(),unequal.identity());
-        let left=first.try_check_location(LocatedSpanV2{source_id:SourceIdV2::from_raw(9),span:SpanV1::new(0,1)}).unwrap();
-        let right=first.try_check_location(LocatedSpanV2{source_id:SourceIdV2::from_raw(9),span:SpanV1::new(1,2)}).unwrap();
-        assert!(std::sync::Arc::ptr_eq(&left.registry_identity.0,&right.registry_identity.0));
+        let entries = vec![SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(9),
+            source_len: 20,
+        }];
+        let first = SourceRegistryViewV2::try_new(entries.clone()).unwrap();
+        let equal = SourceRegistryViewV2::try_new(entries).unwrap();
+        let unequal = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(9),
+            source_len: 21,
+        }])
+        .unwrap();
+        assert_eq!(first.identity(), equal.identity());
+        assert_ne!(first.identity(), unequal.identity());
+        let left = first
+            .try_check_location(LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(9),
+                span: SpanV1::new(0, 1),
+            })
+            .unwrap();
+        let right = first
+            .try_check_location(LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(9),
+                span: SpanV1::new(1, 2),
+            })
+            .unwrap();
+        assert!(std::sync::Arc::ptr_eq(
+            &left.registry_identity.0,
+            &right.registry_identity.0
+        ));
     }
 }

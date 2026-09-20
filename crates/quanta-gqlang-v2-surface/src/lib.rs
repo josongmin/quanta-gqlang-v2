@@ -56,8 +56,7 @@ mod shape;
 mod unit;
 
 pub use budget::{ParseBudgetDimensionV2, ParseBudgetV2};
-pub use diag::ResourceExhaustionV2;
-pub use diag::{ParseDiagnosticV1, ParseErrorCodeV1};
+pub use diag::{ParseDiagnosticV1, ParseErrorCodeV1, ResourceExhaustionV2, SurfaceDiagnosticV2};
 pub use format::{format_document, format_item};
 pub use lexer::{lex, LexErrorV1, TokenKindV1, TokenV1};
 pub use parser::{
@@ -65,11 +64,8 @@ pub use parser::{
     ParsedProgramV1, SurfaceItemV1,
 };
 
-/// One surface diagnostic vocabulary for V2 entry points.
-pub type SurfaceDiagnosticV2 = ParseDiagnosticV1;
-
 use cursor::CursorV1;
-use quanta_gqlang_v2_hir::{BoolExprHirV1, HirBuilderV1, ValueExprHirV1};
+use quanta_gqlang_v2_hir::{BoolExprHirV1, HirBuilderV1, SourceIdV2, ValueExprHirV1};
 
 /// Parse a single bare value expression from `source` into shared value HIR.
 ///
@@ -114,11 +110,13 @@ pub fn parse_predicate(
 
 /// Parse then canonically format a document with one explicit parse budget.
 pub fn format_source_document_with_parse_budget_v2(
+    source_id: SourceIdV2,
     source: &str,
     budget: &ParseBudgetV2,
 ) -> Result<String, SurfaceDiagnosticV2> {
     let builder = HirBuilderV1::new();
-    let parsed = parser::parse_document_items_with_budget(source, &builder, budget)?;
+    let parsed = parser::parse_document_items_with_budget(source, &builder, budget)
+        .map_err(|error| SurfaceDiagnosticV2::from_parse(source_id, error))?;
     let items = parsed
         .items
         .into_iter()

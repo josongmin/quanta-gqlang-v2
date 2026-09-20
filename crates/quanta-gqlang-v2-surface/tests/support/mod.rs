@@ -147,7 +147,7 @@ impl HirVisitorV1 for Witness {
                 format!(
                     "relation:project:{:?}",
                     project
-                        .items
+                        .items()
                         .iter()
                         .map(|item| item.alias.as_ref().map(|a| a.name.as_str()))
                         .collect::<Vec<_>>()

@@ -4,7 +4,7 @@ Status: `PLANNED`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
-## Findings Closed
+## Findings Owned / To Close
 
 F12's protocol-hardening portion, F24, F26, and F36.
 
@@ -120,7 +120,7 @@ after JSON decode and reports `frontend.resource_limit_exceeded` with dimension
 
 1. CLI `query` and diagnostics stdio call
    `analyze_source_document_v2(source_id, source,
-   OpenAnalysisAuthorityV2::standard_v2())`. The CLI is a single-document
+   OpenAnalysisAuthorityV2::try_standard_v2()?)`. The CLI is a single-document
    standard-authority caller and uses explicit source ID `0`; stdio uses the
    request's required `source_id`.
 2. CLI `fmt` calls only facade `format_source_document_v2` with the standard
@@ -141,7 +141,9 @@ after JSON decode and reports `frontend.resource_limit_exceeded` with dimension
 
 ## Resource Budgets
 
-Add one `FrontendBudgetV2` covering:
+Consume and verify ticket 04's one `FrontendBudgetV2`; ticket 08 does not
+create a second budget type or add missing owner charge points. The canonical
+configuration covers:
 
 1. source bytes
 2. frame bytes
@@ -152,6 +154,7 @@ Add one `FrontendBudgetV2` covering:
 7. module graph nodes/edges and rule graph nodes/edges as separate limits
 8. witness depth/cap
 9. semantic, module, and rule traversal steps as separate limits
+10. per-admission-session authority input bytes and per-authority-string bytes
 
 Budget exhaustion returns typed `resource_limit_exceeded`; it does not panic,
 truncate silently, or clear unrelated buffered requests.
@@ -159,7 +162,8 @@ truncate silently, or clear unrelated buffered requests.
 ## Budget Ownership And Projection
 
 1. `quanta-gqlang-v2-sema::FrontendBudgetV2` is the sole public configuration
-   and is created by the authority constructors from ticket 04.
+   created and validated by ticket 04 authority constructors. Ticket 08 only
+   consumes it and verifies identical projection at each front door.
 2. Pipeline reads that value and uses the private owner-local views created by
    tickets 02-06. Owner-local types are not public knobs.
 3. The diagnostics stdio service applies `max_frame_bytes` before deserialization
@@ -193,8 +197,9 @@ EOF emits one `transport.incomplete_frame`; an empty tail emits nothing.
 4. Replace both public executable paths with source-document analysis. Closed
    compilation remains library-only for embedding hosts.
 5. Share one diagnostic rendering DTO and ordering policy.
-6. Construct one `OpenAnalysisAuthorityV2::standard_v2()` per CLI/service
-   request path and use its same `FrontendBudgetV2` for ingress and analysis.
+6. Construct one `OpenAnalysisAuthorityV2::try_standard_v2()` per CLI/service
+   request path, propagate construction failure, and use its same
+   `FrontendBudgetV2` for ingress and analysis.
    Embedding hosts construct closed authority only through the library seam.
 7. Verify the owner charge points from tickets 02-06; add only CLI source-read
    and service frame-accumulation prechecks in this ticket.
@@ -214,7 +219,7 @@ Prove the old identity did not return:
 ```bash
 test -z "$(rg -l 'quanta[-_]gqlang[-_]v2[-_]lsp' \
   Cargo.toml Cargo.lock crates README.md docs/language)"
-rg -n 'diagnostics-stdio|flat-JSON|not an LSP' README.md docs/language
+rg -n 'UTF-8 NDJSON, not JSON-RPC/LSP' README.md docs/language
 ```
 
 The first command must find no old identity; the second must find the honest
@@ -236,6 +241,8 @@ max_semantic_steps
 max_module_graph_nodes
 max_module_graph_edges
 max_module_steps
+max_authority_bytes
+max_authority_string_bytes
 max_rule_graph_nodes
 max_rule_graph_edges
 max_rule_steps
@@ -256,10 +263,10 @@ object expectations that contradict NDJSON. Migrate CLI
 `v3_cli_fmt_idempotence.rs`; rename every remaining `lsp` test/helper token.
 
 1. `[MOVE+REWRITE]` `crates/quanta-gqlang-v2-cli/tests/v3_cli_front_door_contract.rs` to `crates/quanta-gqlang-v2-cli/tests/v3_document_frontdoor_v2.rs`
-2. `[MOVE+REWRITE]` `crates/quanta-gqlang-v2-cli/tests/v3_cli_lsp_parity.rs` to `crates/quanta-gqlang-v2-cli/tests/v3_cli_service_parity_v2.rs`
-3. `[MOVE+REWRITE]` `crates/quanta-gqlang-v2-lsp/tests/stdio_frame_extractor_edges.rs` to `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_resynchronization.rs`
+2. `[MOVE+REWRITE]` `crates/quanta-gqlang-v2-cli/tests/v3_cli_lsp_parity.rs` to `crates/quanta-gqlang-v2-conformance/tests/v3_cli_service_parity_v2.rs`; this black-box harness owns parity without a CLI-to-service Cargo edge
+3. `[RENAME+REWRITE CURRENT]` `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_extractor_edges.rs` to `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_resynchronization.rs`
 4. `[ADD]` `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_resource_limits.rs`
-5. `[MOVE+REWRITE]` `crates/quanta-gqlang-v2-lsp/tests/v3_diagnostics_parity_hellgate.rs` to `crates/quanta-gqlang-v2-diagnostics-stdio/tests/document_diagnostics_parity.rs`
+5. `[RENAME+REWRITE CURRENT]` `crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs` to `crates/quanta-gqlang-v2-diagnostics-stdio/tests/document_diagnostics_parity.rs`
 6. `[UPDATE AFTER CRATE MOVE]` remaining diagnostics byte/JSON/frame/determinism/allowlist tests in place
 7. `[ADD]` `crates/quanta-gqlang-v2-pipeline/tests/v3_frontend_budget.rs`
 
@@ -307,10 +314,11 @@ following valid request is processed.
 ```bash
 cargo test -p quanta-gqlang-v2-cli
 cargo test -p quanta-gqlang-v2-diagnostics-stdio
+cargo test -p quanta-gqlang-v2-conformance --test v3_cli_service_parity_v2
 cargo test -p quanta-gqlang-v2-pipeline --test v3_frontend_budget
 cargo clippy -p quanta-gqlang-v2-cli -p quanta-gqlang-v2-diagnostics-stdio --all-targets -- -D warnings
 python3 tools/architecture/check_architecture.py
-test -z "$(rg -l 'compile_(program_structural|program_with_schema|with_context|item_structural|item_with_schema|item_with_context|document_structural|document_with_schema|document_with_context)' crates README.md docs --glob '*.rs' --glob '*.md')"
+test -z "$(rg -l 'compile_(program_structural|program_with_schema|with_context|item_structural|item_with_schema|item_with_context|document_structural|document_with_schema|document_with_context)' crates README.md docs/language docs/plans/jun-24-dsl-advanced-v3 --glob '*.rs' --glob '*.md')"
 git diff --check
 ```
 
@@ -319,8 +327,8 @@ git diff --check
 1. retaining CLI multi-root and service single-root paths
 2. enforcing limits only at CLI while library/service remain unbounded
 3. clearing the entire buffer after one malformed prefix
-4. calling flat JSON an LSP
-5. retaining any LSP naming or claims on the renamed flat-JSON service
+4. calling NDJSON an LSP or JSON-RPC
+5. retaining any LSP naming or stale flat-JSON claims on the NDJSON service
 6. leaving a frozen V1 compile-seam definition, export, call, test description,
    or doc comment listed by the inventory
 
@@ -355,5 +363,57 @@ git diff --check
    compiles before integration
 
 ## Dependencies
+
+## 2026-09-21 Final Adversarial Audit Corrections
+
+This section is normative and supersedes conflicting earlier wording.
+
+### Current paths and protocol truth
+
+The current files are:
+
+- `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_extractor_edges.rs`
+- `crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs`
+
+Treat them as `[RENAME+REWRITE CURRENT]`; no deleted `quanta-gqlang-v2-lsp`
+path is a write target. Update root README, language README, and
+`method_allowlist_doc_gate.rs` to the exact phrase `UTF-8 NDJSON, not
+JSON-RPC/LSP`; remove the stale `private flat-JSON protocol` oracle.
+
+Every response/diagnostic has an exact schema with unknown fields denied.
+User-derived identifier/method excerpts are truncated on UTF-8 boundaries to
+128 bytes before formatting; final messages are capped at 1,024 bytes. Unknown
+method/field errors must not echo an unbounded frame.
+
+### Front-door authority and errors
+
+Both executable front doors call `OpenAnalysisAuthorityV2::try_standard_v2()`
+or receive a checked open authority and propagate construction failure. The
+library compile entry accepts the facade builder's closed authority. Wire
+`analysis_status=error` is produced only from the public `Err` branch; internal
+successful analysis states map exhaustively to complete/blocked/not-applicable.
+Whole-document wire mapping is exact: `error` only for the public `Err` branch;
+`incomplete` iff at least one applicable item is `BlockedByDiagnostics`; and
+`complete` otherwise, including a valid document whose items are all
+`NotApplicable`.
+
+The authority byte cap is per sealed admission session: one module-authority
+session, one relation-authority admission, and one per-document catalog
+session, each independently bounded by the projected value. It is not a sum
+across sessions. Document this maximum resident-input model and test every
+domain at exact limit and one over; profile equality alone is not described as
+a total-byte proof.
+
+### Parity and final dependency edge
+
+Preserve CLI/service parity using a separate black-box integration harness that
+depends on both binaries or libraries. Do not retain `CLI -> diagnostics-stdio`
+even as a dev dependency. Move `v3_cli_service_parity_v2` to that harness before
+the architecture guard switches to final mode. The receipt records the old
+test deletion and new harness path; the final DAG has no exception.
+
+Migrate old compiled-item field consumers in CLI `v3_query.rs` and
+`v3_format.rs` to facade accessors. Record zero matches for the removed fields
+and V1 compile/analyze names.
 
 Requires 07. Blocks 09.

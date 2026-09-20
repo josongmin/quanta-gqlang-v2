@@ -99,13 +99,45 @@ pub struct PathSegmentV1 {
     pub span: SpanV1,
 }
 
+/// Checked non-empty path-segment sequence.
+///
+/// The private backing vector prevents programmatic HIR construction from
+/// encoding a `Path` node that is semantically just its base expression.
+#[derive(Clone, Debug, PartialEq)]
+pub struct NonEmptyPathSegmentsV1(Vec<PathSegmentV1>);
+
+impl NonEmptyPathSegmentsV1 {
+    /// Validate and construct a non-empty path-segment sequence.
+    pub fn try_new(segments: Vec<PathSegmentV1>) -> Result<Self, &'static str> {
+        if segments.is_empty() {
+            Err("path access requires at least one segment")
+        } else {
+            Ok(Self(segments))
+        }
+    }
+
+    /// Borrow the ordered path segments.
+    #[must_use]
+    pub fn as_slice(&self) -> &[PathSegmentV1] {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for NonEmptyPathSegmentsV1 {
+    type Target = [PathSegmentV1];
+
+    fn deref(&self) -> &Self::Target {
+        self.as_slice()
+    }
+}
+
 /// Field/path access against a base value.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PathAccessV1 {
     /// The base expression the path is rooted at.
     pub base: Box<ValueExprHirV1>,
     /// Ordered non-empty path segments applied to `base`.
-    pub segments: Vec<PathSegmentV1>,
+    pub segments: NonEmptyPathSegmentsV1,
 }
 
 /// Open symbolic unary operator tag. Legality is NOT decided here.

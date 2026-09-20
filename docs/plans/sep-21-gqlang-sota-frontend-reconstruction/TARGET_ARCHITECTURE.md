@@ -72,7 +72,15 @@ owners.
 | tokens, document items, expression depth/nodes, collection/projection width | surface |
 | semantic steps | sema |
 | module graph nodes/edges/steps | modules |
+| authority bytes and single authority-string bytes | modules/types owner of each sealed admission session |
 | rule graph nodes/edges/steps, witness depth/count | logic |
+
+The authority byte ceiling is per sealed admission session, not a global sum:
+module authority, relation authority, and per-document catalog validation each
+have exactly one non-resettable counter. The worst-case admitted bytes across
+those three simultaneously resident domains is therefore three ceilings; host
+concurrency/memory policy remains outside this frontend. Profile equality proves
+the ceiling used by each proof, not aggregate byte usage.
 
 Algebra and planning operate over already bounded sealed inputs and may not
 recharge source/expression dimensions. Pipeline creates exactly one counter per
@@ -117,7 +125,7 @@ SourceDocument
   -> DeclaredDocumentV2
   -> ResolvedDocumentV2
   -> SemanticDocumentV2
-  -> LoweredDocumentV2
+  -> LoweredDocumentV2     // exact-key assembly by SemanticItemIdV2
   -> CompiledDocumentV2
 ```
 
@@ -128,21 +136,31 @@ servable. No `Option` means "the stage was skipped".
 
 ```rust
 pub struct ClosedFrontendAuthorityV2 {
-    imports: ResolvedGraphV2,
+    modules: ValidatedModuleAuthorityPartsV2,
     relations: RelationCatalogV2,
-    external_catalog: ExternalCatalogV2,
-    pack_authority: ValidatedPackAuthorityV2,
     budgets: FrontendBudgetV2,
 }
 ```
 
-`ResolvedGraphV2` is the single owner of current-module identity; the closed
-authority exposes that identity by delegation and does not store a second copy.
-`ValidatedPackAuthorityV2` owns a validated graph plus the lock proof verified
-against that exact graph, so independently validated graph/lock values cannot
-be mixed during authority construction. Modules depends on the canonical
-`types` crate for catalog signatures; it must not define an opaque or parallel
-type-tag universe.
+`ValidatedModuleAuthorityPartsV2` is one sealed modules-owned result containing
+the resolved graph, external catalog, validated pack authority, exact host
+source registry, and its `AuthorityBudgetProfileV2`. `ResolvedGraphV2` remains
+the single owner of current-module identity; the closed authority exposes it by
+delegation and does not store a second copy. `ValidatedPackAuthorityV2` owns a
+validated graph plus the lock proof verified against that exact graph, so
+independently validated graph/lock values cannot be mixed during authority
+construction. Modules depends on the canonical `types` crate for catalog
+signatures; it must not define an opaque or parallel type-tag universe.
+
+`AuthorityBudgetProfileV2` is a types-owned immutable checked value containing
+the exact module-graph node/edge/step and authority-byte/string dimensions.
+`ModuleBudgetV2` is derived from that profile; it is not an independent public
+configuration. `ValidatedModuleAuthorityPartsV2` and `RelationCatalogV2` each
+retain the exact profile under which their untrusted authority inputs were
+admitted. `FrontendBudgetV2` projects the same profile canonically.
+`ClosedFrontendAuthorityV2::try_new` rejects unless both retained profiles equal
+that projection. A proof built with a larger authority allowance therefore
+cannot be paired later with a smaller frontend budget.
 
 Construction is fallible. No raw `BTreeMap` or default-empty authority is a
 semantic compile input.
@@ -150,7 +168,13 @@ semantic compile input.
 Editor analysis uses a different type:
 
 ```rust
-pub struct OpenAnalysisAuthorityV2 { /* incomplete by contract */ }
+pub struct OpenAnalysisAuthorityInputV2 {
+    optional_modules: Option<ValidatedModuleAuthorityPartsV2>,
+    optional_relations: Option<RelationCatalogV2>,
+    host_sources: SourceRegistryViewV2,
+    budgets: FrontendBudgetV2,
+}
+pub struct OpenAnalysisAuthorityV2 { /* checked incomplete authority */ }
 pub struct AnalysisDocumentV2 { /* may retain unresolved refs */ }
 ```
 
@@ -158,18 +182,23 @@ pub struct AnalysisDocumentV2 { /* may retain unresolved refs */ }
 
 ## Typed Semantic Contracts
 
-Required core outputs:
+Required core outputs and ownership:
 
-1. `ResolvedCallV2::{Builtin, Predicate}`
-2. `TypedExprV2`
-3. `ExpressionEffectsV2`
-4. `TypedRelationV2`
-5. `RelationOutputContractV2`
-6. `ResolvedRuleV2`
-7. `RuleProgramContractV2`
-8. `GraphQueryContractV2`
-9. `CheckContractV2`
-10. `PresentationContractV2`
+1. `SemanticItemIdV2` — sema, canonical per-item join key
+2. `ResolvedCallTargetV2::{Builtin, Predicate}` — types, reused without alias
+3. `TypedExprV2` and Bool-proven `TypedBoolExprV2` — sema
+4. `ExpressionEffectsV2` — types
+5. `RelationOutputContractV2` — sema, retained unchanged by algebra
+6. `ResolvedGraphQueryV2`, `ResolvedCheckV2`, `ResolvedPresentationV2` — sema
+7. `LoweredRelationItemV2` — algebra, retaining `SemanticItemIdV2`
+8. `ResolvedRuleV2` and `RuleProgramContractV2` — logic, retaining item IDs
+9. `GraphQueryContractV2` — logic, retaining the resolved graph item ID
+10. `CheckContractV2` and `PresentationContractV2` — pipeline assembly
+
+`SourceQualifiedNodeIdV2` is the only expression identity. Parallel names such
+as `TypedExprIdV2`, `PredicateIdV2`, and `ResolvedCallV2` are forbidden. Every
+document assembly compares exact expected and produced item-ID sets; positional
+zip is forbidden.
 
 Expression effects retain:
 
@@ -219,7 +248,7 @@ Planning cannot import raw HIR. Its entry point accepts only sealed inputs:
 
 ```rust
 pub enum SemanticPlanInputV2 {
-    Relational(CheckedRelationalContractV2),
+    Relational(LoweredRelationItemV2),
     Graph(GraphQueryContractV2),
     Check(CheckContractV2),
     Presentation(PresentationContractV2),
@@ -239,6 +268,7 @@ compile_source_document_v2
 analyze_source_document_v2
 format_source_document_v2
 ClosedFrontendAuthorityV2
+ClosedFrontendAuthorityBuilderV2
 OpenAnalysisAuthorityV2
 FrontendBudgetV2
 CompiledDocumentV2

@@ -1,10 +1,16 @@
 # Sep 21 — QGLang SOTA++ Frontend Reconstruction
 
-Status: `PLANNED — NOT IMPLEMENTED`
+Status: `EXECUTION ACTIVE — TICKETS 01-02 VERIFIED; TICKET 03 ACTIVE; PACKET NOT COMPLETE`
 
 Audit base: `main@e896a11024bd5a1e1ef03c094a70032f4e6c765f`
 
 Audit date: `2026-09-21`
+
+Execution started after the audit. The original audit base remains authoritative
+for before/after comparisons. External integration commits `96eab779` and
+`fcf106b` are recorded in `EXECUTION_LEDGER.md`; neither is a clean Ticket 03
+verification boundary. Tickets 04-09 remain unverified, and only ticket 09 may
+declare packet closure.
 
 This packet supersedes current-head completion claims in the Jun-24 packet. It
 does not erase historical receipts. It records the delta between those receipts
@@ -68,7 +74,8 @@ The repair is not 37 local patches. It is one ownership reconstruction:
    optimization, provider routing, execution, and SDK wiring stay out of repo.
 8. Rename the current process and crate to
    `quanta-gqlang-v2-diagnostics-stdio`. Actual JSON-RPC/LSP support is a
-   separate future packet and must not reuse the flat-JSON transport.
+   separate future packet. Ticket 08 rewrites the renamed service to bounded
+   UTF-8 NDJSON; it remains neither JSON-RPC nor LSP.
 
 ## Wave Order
 

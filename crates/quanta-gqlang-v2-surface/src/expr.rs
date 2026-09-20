@@ -19,7 +19,7 @@
 //! shape — because `*` binds tighter than `+`, comparison tighter than `and`.
 
 use crate::cursor::CursorV1;
-use crate::diag::ParseDiagnosticV1;
+use crate::diag::{ParseDiagnosticV1, ParseErrorCodeV1};
 use crate::lexer::TokenKindV1;
 use crate::query::parse_query;
 use quanta_gqlang_v2_hir::{
@@ -302,7 +302,9 @@ fn parse_postfix(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnost
     let last = segments.last().map(|s| s.span).unwrap_or(base.span);
     let span = base.span.merge(&last);
     cur.charge_expression_node(span)?;
-    Ok(cur.builder.path(base, segments, span))
+    cur.builder
+        .try_path(base, segments, span)
+        .map_err(|message| ParseDiagnosticV1::new(ParseErrorCodeV1::UnexpectedToken, span, message))
 }
 
 fn parse_primary(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosticV1> {

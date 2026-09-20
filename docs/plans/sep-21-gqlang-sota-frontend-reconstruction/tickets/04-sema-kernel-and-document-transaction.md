@@ -4,7 +4,7 @@ Status: `PLANNED`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
-## Findings Closed
+## Findings Owned / To Close
 
 F02, F05, F06, F08, F09, F10's document assembly, F15, F16, F19, F24's
 pipeline half, F28, F30's resolution half, F31's metadata retention, and F33.
@@ -79,7 +79,7 @@ may not perform a second name lookup or overload search after these owners run.
 4. `DeclaredDocumentV2`
 5. `ResolvedDocumentV2`
 6. `TypedExprV2`
-7. `ResolvedCallV2`
+7. `ResolvedCallTargetV2` from types; no sema alias
 8. `ExpressionEffectsV2`
 9. `TypedRelationV2`
 10. `RelationOutputContractV2`
@@ -229,21 +229,29 @@ Authority constructors are pinned:
 ```text
 ClosedFrontendAuthorityV2::try_new(validated_module_authority_parts,
   relation_catalog, budget)
-OpenAnalysisAuthorityV2::standard_v2()
-OpenAnalysisAuthorityV2::try_new(partial_authority, budget)
+OpenAnalysisAuthorityInputV2::try_new(optional_modules, optional_relations,
+  host_sources, budget)
+OpenAnalysisAuthorityV2::try_new(input)
+OpenAnalysisAuthorityV2::try_standard_v2()
 ```
 
-`standard_v2()` contains the builtin/operator registry and
+`try_standard_v2()` contains the builtin/operator registry and
 `FrontendBudgetV2::standard_v2()` but no invented external relation, module,
 catalog, pack, or lock authority.
 
 `ValidatedModuleAuthorityPartsV2` owns one resolved graph (and therefore its
 current-module identity), one external catalog, one validated pack authority,
-and their exact host `SourceRegistryViewV2`; its private fields prevent mixing
-proofs from different budget sessions. The constructor compares the relation
-catalog's source-registry identity with that host registry and rejects a
-mismatch. For each checked document, sema builds a new registry from the
-retained host registry with `SourceRegistryViewV2::try_extend_document` and
+their exact host `SourceRegistryViewV2`, and the exact
+`AuthorityBudgetProfileV2` used for admission; its private fields prevent
+mixing proofs from different registry or budget sessions. `RelationCatalogV2`
+retains both its registry identity and its authority budget profile. The
+constructor compares the relation catalog's source-registry identity with that
+host registry and rejects a mismatch. It also projects
+`AuthorityBudgetProfileV2` canonically from `FrontendBudgetV2` and rejects
+unless both retained profiles equal that projection. A larger-budget cached
+proof cannot be paired with a smaller frontend budget. For each checked
+document, sema builds a new registry from the retained host registry with
+`SourceRegistryViewV2::try_extend_document` and
 `HirDocumentV1::{source_id,source_len}`, rejecting duplicate source IDs before
 any binding/type/catalog work. It does not silently renumber either host or
 document sources.
@@ -251,8 +259,9 @@ document sources.
 The resulting `ExtendedSourceRegistryViewV2` proves append-only ancestry. Host
 authority proofs must match its host-parent identity, while all newly minted
 document DTO locations must match its combined identity. Sema passes the sealed
-`ValidatedModuleAuthorityPartsV2` into `DocumentCatalogValidatorV2::try_new`;
-it does not compare opaque IDs itself or revalidate cached host catalogs.
+`ExtendedSourceRegistryViewV2` and `ValidatedModuleAuthorityPartsV2` into
+`DocumentCatalogValidatorV2::try_new`; it does not compare opaque IDs itself or
+revalidate cached host catalogs.
 
 The atomic 08 cut removes these nine exact V1 seams after all callers migrate:
 
@@ -290,9 +299,10 @@ the stack becomes `INTEGRATED`.
    paths.
 3. Implement namespace predeclaration for document catalog assets, source rules,
    composition locals, module imports, relation sources, and builtins.
-   Mint every modules/types authority DTO location through the combined
-   `SourceRegistryViewV2::try_check_location`; never forward a bare
-   `LocatedSpanV2` as authority evidence.
+   Mint every document modules/types authority DTO location through
+   `ExtendedSourceRegistryViewV2::try_check_location`; never forward a bare
+   `LocatedSpanV2` as authority evidence. Host-only cached inputs retain checks
+   against the extension's opaque parent registry identity.
 4. Implement typed reference resolution with expected/actual kind diagnostics.
 5. Convert Binder output to stable resolved IDs and explicit capture edges.
 6. Build node-ID-keyed type inputs from Binder/module resolution, including one
@@ -306,9 +316,12 @@ the stack becomes `INTEGRATED`.
 11. Assemble all source rules before global logic validation.
 12. Build ticket 03's neutral `DocumentCatalogInputV2` from resolved typed
     assets, dependency edges, profile admission, activations, and locations;
-    call `DocumentCatalogAuthorityV2::try_new` exactly once after all bodies and
-    metadata. Sema does not reimplement view-cycle, certification, unknown-pack,
-    or activation validation and never passes raw HIR bodies to modules.
+    construct `DocumentCatalogValidatorV2` exactly once from the sealed module
+    authority and `ExtendedSourceRegistryViewV2`, then call its public
+    `validate` method exactly once after all bodies and metadata. Sema never
+    calls crate-private `DocumentCatalogAuthorityV2::try_new`, does not
+    reimplement view-cycle, certification, unknown-pack, or activation
+    validation, and never passes raw HIR bodies to modules.
 13. Add pipeline orchestration over `SemanticDocumentV2`.
 14. Add `FrontendBudgetV2` as the one public limit configuration carried by
     closed/open authority. Project it into ticket 02's `ParseBudgetV2`, ticket
@@ -385,6 +398,16 @@ max_rule_steps
 max_witness_depth
 max_witnesses
 ```
+
+`FrontendBudgetV2::authority_profile()` is the only projection into ticket
+03 authority admission. It returns the checked `AuthorityBudgetProfileV2`
+containing `max_module_graph_nodes`, `max_module_graph_edges`,
+`max_module_steps`, `max_authority_bytes`, and
+`max_authority_string_bytes`. Closed-authority construction compares this value
+with the profiles sealed into both `ValidatedModuleAuthorityPartsV2` and
+`RelationCatalogV2`; inequality is a typed construction error. It never
+revalidates a large proof under a smaller limit and never accepts an unrelated
+`ModuleBudgetV2` argument.
 
 The named CLI/service profile `FrontendBudgetV2::standard_v2()` is pinned to:
 
@@ -485,14 +508,15 @@ ordering; single-element transport determinism tests may not claim it.
 ```bash
 cargo test -p quanta-gqlang-v2-sema
 cargo test -p quanta-gqlang-v2-binder
-cargo test -p quanta-gqlang-v2-pipeline --test v3_document_semantics_v2
 cargo test -p quanta-gqlang-v2-sema --test v3_document_transaction
 cargo test -p quanta-gqlang-v2-sema --test v3_semantic_budget
-cargo test -p quanta-gqlang-v2-pipeline --test v3_legacy_api_ratchet
-cargo clippy -p quanta-gqlang-v2-sema -p quanta-gqlang-v2-binder -p quanta-gqlang-v2-pipeline --all-targets -- -D warnings
+cargo clippy -p quanta-gqlang-v2-sema -p quanta-gqlang-v2-binder --all-targets -- -D warnings
 python3 tools/architecture/check_architecture.py
 git diff --check
 ```
+
+The pipeline semantic-document and legacy-ratchet commands are deferred to
+ticket 07 and listed, with their current failures, in receipt 04.
 
 ## Forbidden Shortcuts
 
@@ -548,5 +572,107 @@ git diff --check
    `INTEGRATED`, by itself
 
 ## Dependencies
+
+## 2026-09-21 Final Adversarial Audit Corrections
+
+This section is normative and supersedes any earlier API, ownership, or
+verification wording in this ticket that conflicts with it.
+
+### Executable stage boundary
+
+- Ticket 04 may reach only `FOCUSED_GREEN`. Its owner proof is `sema` plus
+  `binder`; it must not require `algebra`, `logic`, `planning`, or `pipeline` to
+  compile before their consumer migrations in tickets 05-07.
+- Record the currently deferred consumer failures in receipt 04 by exact path,
+  symbol, and compiler code. The known migration set is
+  `binder/src/resolve.rs` and `pipeline/src/compile.rs` for private
+  `ProjectionV1`, `PathAccessV1`, `CallExprV1`, composition producer/body, and
+  removed `Compose`/`Quantifier` variants.
+- Cross-stage pipeline proof first becomes required by ticket 07. Ticket 04
+  must not claim `INTEGRATED` from an owner-only pass.
+
+### Exact authority constructors
+
+Add a private-field `OpenAnalysisAuthorityInputV2` with these explicit inputs:
+
+1. optional `ValidatedModuleAuthorityPartsV2`;
+2. optional `RelationCatalogV2`;
+3. one checked host `SourceRegistryViewV2`;
+4. one `FrontendBudgetV2`.
+
+`OpenAnalysisAuthorityV2::try_new(input)` checks source-registry compatibility
+and retained authority-profile equality for every supplied proof. Missing
+module or relation authority means unresolved editor facts, never an empty
+closed proof. `try_standard_v2() -> Result<Self, FrontendFailureV2>` is the only
+standard constructor because builtin/operator registry creation is fallible.
+Ticket 08 must propagate this failure at startup/request handling; no unwrap,
+default, or error erasure is allowed.
+
+Ticket 04 owns private-field `ClosedFrontendAuthorityV2` and its internal
+`try_new` constructor for semantic owner tests. Ticket 07 owns the public
+facade builder and host-facing DTO after all lowerers exist; it delegates
+validation/sealing through pipeline and sema.
+
+### Canonical semantic DTO chain
+
+This ticket owns the following private-field, fallibly constructed results:
+
+- `SemanticItemIdV2 { source_id, hir_item_id }`, the sole join key for all
+  downstream per-item outputs;
+- `ResolvedCallTargetV2` from ticket 03, reused directly; do not introduce a
+  second `ResolvedCallV2` identity;
+- `TypedExprV2 { key: SourceQualifiedNodeIdV2, value_type, effects,
+  resolved_call }`; `SourceQualifiedNodeIdV2` is the only expression ID;
+- `TypedBoolExprV2`, constructible only from a `TypedExprV2` whose checked type
+  is Bool;
+- `TypedRelationV2 { item_id, root: TypedRelationExprV2, output }`; its closed
+  expression enum covers Scan, Filter, Project, Join, Cross, Group, Sort,
+  Unnest, Union, Intersect, Except, and Apply using typed expression references,
+  resolved relation-source IDs, checked correlations, and private constructors;
+- `ResolvedGraphQueryV2`, `ResolvedCheckV2`, and
+  `ResolvedPresentationV2`, each retaining `SemanticItemIdV2`;
+- `AggregateContextV2` and `RelationOutputContractV2`, retained rather than
+  recomputed by algebra;
+- `SemanticDocumentV2`, a private exact-key map plus original source order.
+
+`ExpressionEffectsV2` stays types-owned. `OutputProvenanceV2` is a field of the
+sema-owned `RelationOutputContractV2`; `OrderKeyContractV2` is a sema-owned
+checked descriptor containing the source-qualified expression key, direction,
+null policy, and checked type. There is no `TypedRelationNodeV2` or
+`TypedExprIdV2` parallel universe.
+
+FIND produces `ResolvedGraphQueryV2`; CHECK produces `ResolvedCheckV2` with the
+exact nested graph item identity; presentation clauses produce
+`ResolvedPresentationV2`. Ticket 06 converts the graph value into
+`GraphQueryContractV2`. Ticket 07 assembles `CheckContractV2` only when the
+nested graph contract has the same document and item identity. Planning may
+not revisit raw HIR or redo semantic validation.
+
+### Ownership clarifications
+
+- "global validation" here means document catalog/reference/type/aggregate
+  validation only. SCC, stratification, graph boundedness, and witness policy
+  belong to ticket 06; sema must not depend on logic.
+- Aggregate placement, nesting, star legality, and expression effects are
+  decided here exactly once. Ticket 05 consumes the sealed result.
+- `CatalogPayloadV1::Model.provider` is bounded opaque frontend metadata. No
+  provider lookup, capability routing, SDK selection, or backend registry may
+  be added.
+- The authority-byte limit is a per sealed admission session limit, not a
+  cross-domain total. Module authority, relation authority, and per-document
+  catalog validation each have one counter and the same projected ceiling;
+  receipt 04 must state this explicitly. No proof may reset its own counter.
+
+### Additional required tests
+
+- every optional-authority combination: absent, modules only, relations only,
+  both, and mismatched profile/source registry;
+- `try_standard_v2` failure propagation with a deliberately invalid registry
+  fixture;
+- duplicate/missing/extra/foreign `SemanticItemIdV2` rejection;
+- nested CHECK/FIND identity mismatch rejection;
+- Bool-only `TypedBoolExprV2` construction;
+- provider text preserved byte-for-byte as opaque metadata with no lookup;
+- old private-HIR references are zero-match in binder after its migration.
 
 Requires 02 and 03. Blocks 05-09.

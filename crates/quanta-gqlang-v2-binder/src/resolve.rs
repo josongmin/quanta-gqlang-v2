@@ -22,9 +22,9 @@ use crate::scope::{
     BinderKindV1, BindingV1, CaptureV1, LexicalResolutionV1, LexicalScopeV1, ShadowReportKindV1,
 };
 use quanta_gqlang_v2_hir::{
-    BoolExprHirV1, BoolExprKindV1, CompositionHirV1, DeclHirV1, GraphRefV1, HirNodeIdV1,
-    ProgramItemHirV1, QueryHirV1, RelationExprHirV1, RelationExprKindV1, RuleHirV1, SpanV1,
-    ValueExprHirV1, ValueExprKindV1,
+    BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CompositionBodyV1, CompositionHirV1,
+    CompositionProducerV1, DeclHirV1, GraphRefV1, HirNodeIdV1, JoinHirV1, QueryHirV1,
+    RelationExprHirV1, RelationExprKindV1, RuleHirV1, SpanV1, ValueExprHirV1, ValueExprKindV1,
 };
 use std::collections::BTreeMap;
 
@@ -238,7 +238,7 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
         for binding in &composition.bindings {
             // Resolve the producer in the scope established BEFORE this LET name
             // is visible (sequential LET semantics; no self-reference).
-            self.resolve_item(&binding.producer);
+            self.resolve_composition_producer(&binding.producer);
             self.introduce(BindingV1::new(
                 binding.name.clone(),
                 BinderKindV1::CompositionLet,
@@ -246,7 +246,7 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
                 composition.id,
             ));
         }
-        self.resolve_item(&composition.body);
+        self.resolve_composition_body(&composition.body);
         // WITH must consume a defined LET. Resolve it against the composition
         // frame; an unresolved WITH is fail-closed.
         self.resolve_with(
@@ -257,35 +257,39 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
         self.scope.pop();
     }
 
-    /// Resolve a program item's LOCAL binder references. Dispatches by family;
-    /// for the new (graph/legality/presentation/meta/nested-composition) items
-    /// only references that bind to LOCAL scope are recorded, leaving catalog /
-    /// module ref legality to its owning seam (`D30`).
-    fn resolve_item(&mut self, item: &ProgramItemHirV1) {
-        match item {
-            ProgramItemHirV1::Query(query) => self.resolve_query(query),
-            ProgramItemHirV1::Decl(decl) => self.resolve_decl(decl, &[]),
-            ProgramItemHirV1::Rule(rule) => self.resolve_rule(rule, &[]),
-            ProgramItemHirV1::GraphQuery(graph) => self.resolve_graph_query(graph),
-            ProgramItemHirV1::Legality(legality) => {
-                self.resolve_local_ref(&legality.rule_ref, legality.id);
-                for opt in [legality.scope.as_ref(), legality.pattern.as_ref()]
-                    .into_iter()
-                    .flatten()
-                {
-                    self.resolve_local_ref(opt, legality.id);
-                }
-                if let Some(confirm) = &legality.semantic_confirm {
-                    self.resolve_graph_query(confirm);
+    fn resolve_composition_producer(&mut self, producer: &CompositionProducerV1) {
+        match producer {
+            CompositionProducerV1::Query(query) => self.resolve_query(query),
+            CompositionProducerV1::Sample(sample) => {
+                if let Some(scope) = &sample.scope {
+                    self.resolve_local_ref(scope, sample.id);
                 }
             }
-            ProgramItemHirV1::Presentation(presentation) => {
-                self.resolve_presentation(presentation);
+            CompositionProducerV1::GraphQuery(graph) => self.resolve_graph_query(graph),
+        }
+    }
+
+    fn resolve_composition_body(&mut self, body: &CompositionBodyV1) {
+        match body {
+            CompositionBodyV1::Query(query) => self.resolve_query(query),
+            CompositionBodyV1::GraphQuery(graph) => self.resolve_graph_query(graph),
+            CompositionBodyV1::Legality(legality) => self.resolve_legality(legality),
+            CompositionBodyV1::Explain(explain) => {
+                self.resolve_local_ref(&explain.target_ref, explain.id);
             }
-            ProgramItemHirV1::Composition(inner) => self.resolve_composition(inner),
-            // Catalog declarations register names (modules' concern) and meta
-            // directives carry no local binder references.
-            ProgramItemHirV1::CatalogDecl(_) | ProgramItemHirV1::Meta(_) => {}
+        }
+    }
+
+    fn resolve_legality(&mut self, legality: &quanta_gqlang_v2_hir::LegalityHirV1) {
+        self.resolve_local_ref(&legality.rule_ref, legality.id);
+        for reference in [legality.scope.as_ref(), legality.pattern.as_ref()]
+            .into_iter()
+            .flatten()
+        {
+            self.resolve_local_ref(reference, legality.id);
+        }
+        if let Some(confirm) = &legality.semantic_confirm {
+            self.resolve_graph_query(confirm);
         }
     }
 
@@ -322,41 +326,6 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
         .flatten()
         {
             self.resolve_local_ref(waypoint, graph.id);
-        }
-    }
-
-    fn resolve_presentation(&mut self, presentation: &quanta_gqlang_v2_hir::PresentationHirV1) {
-        use quanta_gqlang_v2_hir::PresentationKindV1;
-        let node = presentation.id;
-        match &presentation.kind {
-            PresentationKindV1::Explain { target_ref, .. } => {
-                self.resolve_local_ref(target_ref, node);
-            }
-            PresentationKindV1::Describe { path, .. } => self.resolve_local_ref(path, node),
-            PresentationKindV1::Sample { scope, .. } => {
-                if let Some(scope) = scope {
-                    self.resolve_local_ref(scope, node);
-                }
-            }
-            PresentationKindV1::Compare {
-                baseline_ref,
-                candidate_ref,
-                ..
-            } => {
-                self.resolve_local_ref(baseline_ref, node);
-                self.resolve_local_ref(candidate_ref, node);
-            }
-            PresentationKindV1::Export {
-                source_ref,
-                profile,
-                ..
-            } => {
-                self.resolve_local_ref(source_ref, node);
-                if let Some(profile) = profile {
-                    self.resolve_local_ref(profile, node);
-                }
-            }
-            PresentationKindV1::Show { .. } => {}
         }
     }
 
@@ -472,11 +441,14 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
             RelationExprKindV1::Filter(filter) => {
                 self.bind_relation_sources(&filter.input);
             }
-            RelationExprKindV1::Compose(compose) => {
-                for operand in &compose.operands {
-                    self.bind_relation_sources(operand);
+            RelationExprKindV1::Join(join) => match join {
+                JoinHirV1::Inner { left, right, .. } | JoinHirV1::Cross { left, right } => {
+                    self.bind_relation_sources(left);
+                    self.bind_relation_sources(right);
                 }
-            }
+            },
+            RelationExprKindV1::GroupBy(group) => self.bind_relation_sources(&group.input),
+            RelationExprKindV1::OrderBy(order) => self.bind_relation_sources(&order.input),
         }
     }
 
@@ -511,7 +483,7 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
             RelationExprKindV1::Source(_) => {}
             RelationExprKindV1::Project(project) => {
                 self.resolve_relation(&project.input);
-                for item in &project.items {
+                for item in project.items() {
                     self.resolve_value(&item.value);
                 }
             }
@@ -519,9 +491,27 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
                 self.resolve_relation(&filter.input);
                 self.resolve_bool(&filter.predicate);
             }
-            RelationExprKindV1::Compose(compose) => {
-                for operand in &compose.operands {
-                    self.resolve_relation(operand);
+            RelationExprKindV1::Join(join) => match join {
+                JoinHirV1::Inner { left, right, on } => {
+                    self.resolve_relation(left);
+                    self.resolve_relation(right);
+                    self.resolve_bool(on);
+                }
+                JoinHirV1::Cross { left, right } => {
+                    self.resolve_relation(left);
+                    self.resolve_relation(right);
+                }
+            },
+            RelationExprKindV1::GroupBy(group) => {
+                self.resolve_relation(&group.input);
+                for key in group.keys() {
+                    self.resolve_value(key);
+                }
+            }
+            RelationExprKindV1::OrderBy(order) => {
+                self.resolve_relation(&order.input);
+                for key in order.keys() {
+                    self.resolve_value(&key.value);
                 }
             }
         }
@@ -542,21 +532,27 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
             BoolExprKindV1::Not(inner) | BoolExprKindV1::Paren(inner) => {
                 self.resolve_bool(inner);
             }
-            BoolExprKindV1::Quantifier(quant) => {
+            BoolExprKindV1::LogicalQuantifier(quant) => {
                 // A quantifier opens a nested CAPTURING scope: its bound
                 // variables are visible to its body, and the body may also see
                 // outer bindings (correlated quantification). Capture remains
                 // an explicit edge per D25.
                 self.scope.push(CaptureV1::Capturing);
-                for binder in &quant.binders {
+                for binder in quant.binders.as_slice() {
                     self.introduce(BindingV1::new(
-                        binder.clone(),
+                        binder.name.clone(),
                         BinderKindV1::Quantified,
-                        node.span,
+                        binder.span,
                         node.id,
                     ));
                 }
                 self.resolve_bool(&quant.body);
+                self.scope.pop();
+            }
+            BoolExprKindV1::RelationExists(exists) => {
+                self.scope.push(CaptureV1::Capturing);
+                self.bind_relation_sources(&exists.relation);
+                self.resolve_relation(&exists.relation);
                 self.scope.pop();
             }
         }
@@ -579,8 +575,10 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
                 self.resolve_value(&binary.rhs);
             }
             ValueExprKindV1::Call(call) => {
-                for arg in &call.args {
-                    self.resolve_value(arg);
+                for arg in call.args().as_slice() {
+                    if let CallArgHirV1::Expr(value) = arg {
+                        self.resolve_value(value);
+                    }
                 }
             }
             ValueExprKindV1::Paren(inner) => self.resolve_value(inner),

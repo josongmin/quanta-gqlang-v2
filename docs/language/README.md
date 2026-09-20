@@ -86,7 +86,12 @@ CLI:
 
 Diagnostics stdio:
 
-1. the only read-only analysis method is `v3_diagnostics`
+1. the read-only analysis method set is:
+
+<!-- supported-diagnostics-methods:start -->
+- `v3_diagnostics`
+<!-- supported-diagnostics-methods:end -->
+
 2. it runs over `compile_program_structural`
 3. it surfaces the first failing stage's typed diagnostic verbatim
 4. no legacy `hover` / `completion` / `symbols` / `diagnostics` / `zero_query`
@@ -169,15 +174,14 @@ Logic / modules rails:
 3. `crates/quanta-gqlang-v2-logic/tests/v3_logic_witness.rs`
 4. `crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs`
 5. `crates/quanta-gqlang-v2-logic/tests/v3_graph_query_hellgate.rs`
-6. `crates/quanta-gqlang-v2-modules/tests/v3_modules_packs.rs`
-7. `crates/quanta-gqlang-v2-modules/tests/v3_modules_graph.rs`
-8. `crates/quanta-gqlang-v2-modules/tests/v3_modules_hellgate.rs`
-9. `crates/quanta-gqlang-v2-modules/tests/v3_catalog_hellgate.rs`
+6. `crates/quanta-gqlang-v2-modules/tests/v3_modules_v2_authority.rs`
 
 Conformance rails:
 
 1. `crates/quanta-gqlang-v2-conformance/tests/self_validation.rs`
-2. `crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs`
+2. `crates/quanta-gqlang-v2-conformance/tests/registry_non_vacuous.rs`
+3. `crates/quanta-gqlang-v2-conformance/tests/current_head_artifact_hygiene.rs`
+4. `crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs`
 
 ## Boundary
 

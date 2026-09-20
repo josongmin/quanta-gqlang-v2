@@ -82,7 +82,42 @@ pub struct ProjectionV1 {
     /// The input relation being projected.
     pub input: Box<RelationExprHirV1>,
     /// Ordered projection items.
-    pub items: Vec<ProjectionItemV1>,
+    items: NonEmptyProjectionItemsV1,
+}
+
+impl ProjectionV1 {
+    pub fn try_new(
+        input: RelationExprHirV1,
+        items: Vec<ProjectionItemV1>,
+    ) -> Result<Self, &'static str> {
+        Ok(Self {
+            input: Box::new(input),
+            items: NonEmptyProjectionItemsV1::try_new(items)?,
+        })
+    }
+
+    #[must_use]
+    pub fn items(&self) -> &[ProjectionItemV1] {
+        self.items.as_slice()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct NonEmptyProjectionItemsV1(Vec<ProjectionItemV1>);
+
+impl NonEmptyProjectionItemsV1 {
+    pub fn try_new(items: Vec<ProjectionItemV1>) -> Result<Self, &'static str> {
+        if items.is_empty() {
+            Err("projection requires at least one item")
+        } else {
+            Ok(Self(items))
+        }
+    }
+
+    #[must_use]
+    pub fn as_slice(&self) -> &[ProjectionItemV1] {
+        &self.0
+    }
 }
 
 /// A filter over an input relation.

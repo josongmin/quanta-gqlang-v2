@@ -55,7 +55,12 @@ CLI front door:
 Diagnostics stdio front door:
 
 1. stdio JSON requests only
-2. supported read-only method: `v3_diagnostics`
+2. supported read-only methods are declared by this exact-set block:
+
+<!-- supported-diagnostics-methods:start -->
+- `v3_diagnostics`
+<!-- supported-diagnostics-methods:end -->
+
 3. mutating or unknown methods fail closed
 4. binary entry: `cargo run -p quanta-gqlang-v2-diagnostics-stdio`
 5. this is a private flat-JSON protocol, not JSON-RPC or LSP; it does not implement

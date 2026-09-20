@@ -31,33 +31,39 @@ fn alias_resolves_in_projection_and_filter() {
 
     // projection: u.id
     let proj_base = b.symbol("u", SpanV1::new(7, 8));
-    let proj_path = b.path(
-        proj_base,
-        vec![quanta_gqlang_v2_hir::PathSegmentV1 {
-            name: "id".to_owned(),
-            span: SpanV1::new(9, 11),
-        }],
-        SpanV1::new(7, 11),
-    );
-    let projected = b.project(
-        source,
-        vec![ProjectionItemV1 {
-            value: proj_path,
-            alias: None,
-        }],
-        SpanV1::new(0, 40),
-    );
+    let proj_path = b
+        .try_path(
+            proj_base,
+            vec![quanta_gqlang_v2_hir::PathSegmentV1 {
+                name: "id".to_owned(),
+                span: SpanV1::new(9, 11),
+            }],
+            SpanV1::new(7, 11),
+        )
+        .unwrap();
+    let projected = b
+        .try_project(
+            source,
+            vec![ProjectionItemV1 {
+                value: proj_path,
+                alias: None,
+            }],
+            SpanV1::new(0, 40),
+        )
+        .unwrap();
 
     // filter: u.active = true
     let filter_base = b.symbol("u", SpanV1::new(38, 39));
-    let filter_path = b.path(
-        filter_base,
-        vec![quanta_gqlang_v2_hir::PathSegmentV1 {
-            name: "active".to_owned(),
-            span: SpanV1::new(40, 46),
-        }],
-        SpanV1::new(38, 46),
-    );
+    let filter_path = b
+        .try_path(
+            filter_base,
+            vec![quanta_gqlang_v2_hir::PathSegmentV1 {
+                name: "active".to_owned(),
+                span: SpanV1::new(40, 46),
+            }],
+            SpanV1::new(38, 46),
+        )
+        .unwrap();
     let rhs = b.bool_lit(true, SpanV1::new(49, 53));
     let pred = b.compare("=", filter_path, rhs, SpanV1::new(38, 53));
     let filtered = b.relation_filter(projected, pred, SpanV1::new(0, 53));

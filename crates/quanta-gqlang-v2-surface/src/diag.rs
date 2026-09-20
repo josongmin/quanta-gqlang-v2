@@ -8,7 +8,7 @@
 //! silently downgrades to a narrower v2-style subset.
 
 use crate::budget::ParseBudgetDimensionV2;
-use quanta_gqlang_v2_hir::SpanV1;
+use quanta_gqlang_v2_hir::{SourceIdV2, SpanV1};
 use std::fmt;
 
 /// Stable, machine-readable parse/lex error codes.
@@ -60,6 +60,50 @@ pub struct ParseDiagnosticV1 {
     /// Structured resource details when `code` is `ResourceExhausted`.
     pub resource: Option<ResourceExhaustionV2>,
 }
+
+/// Document-scoped V2 diagnostic retaining caller-owned source identity.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SurfaceDiagnosticV2 {
+    pub source_id: SourceIdV2,
+    pub code: ParseErrorCodeV1,
+    pub span: SpanV1,
+    pub message: String,
+    pub resource: Option<ResourceExhaustionV2>,
+}
+
+impl SurfaceDiagnosticV2 {
+    #[must_use]
+    pub(crate) fn from_parse(source_id: SourceIdV2, diagnostic: ParseDiagnosticV1) -> Self {
+        Self {
+            source_id,
+            code: diagnostic.code,
+            span: diagnostic.span,
+            message: diagnostic.message,
+            resource: diagnostic.resource,
+        }
+    }
+
+    #[must_use]
+    pub const fn code_str(&self) -> &'static str {
+        self.code.code()
+    }
+}
+
+impl fmt::Display for SurfaceDiagnosticV2 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}: {} (source {}, at {}..{})",
+            self.code.code(),
+            self.message,
+            self.source_id.raw(),
+            self.span.start,
+            self.span.end,
+        )
+    }
+}
+
+impl std::error::Error for SurfaceDiagnosticV2 {}
 
 /// Structured resource exhaustion details.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

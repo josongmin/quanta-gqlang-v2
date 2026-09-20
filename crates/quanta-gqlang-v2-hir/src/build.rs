@@ -8,7 +8,7 @@
 
 use crate::expr::{
     BinaryBoolV1, LogicalQuantifierHirV1, LogicalQuantifierKindV1, NonEmptyBindersV1,
-    RelationExistsHirV1, RelationExistsPolarityV1,
+    NonEmptyPathSegmentsV1, RelationExistsHirV1, RelationExistsPolarityV1,
 };
 use crate::expr::{
     BinaryExprV1, BinaryOpV1, BoolExprHirV1, BoolExprKindV1, CallArgsHirV1, CallExprV1,
@@ -99,19 +99,20 @@ impl HirBuilderV1 {
     }
 
     /// Path access `base.seg0.seg1...` over an existing base expression.
-    pub fn path(
+    pub fn try_path(
         &self,
         base: ValueExprHirV1,
         segments: Vec<PathSegmentV1>,
         span: SpanV1,
-    ) -> ValueExprHirV1 {
-        self.value(
+    ) -> Result<ValueExprHirV1, &'static str> {
+        let segments = NonEmptyPathSegmentsV1::try_new(segments)?;
+        Ok(self.value(
             span,
             ValueExprKindV1::Path(PathAccessV1 {
                 base: Box::new(base),
                 segments,
             }),
-        )
+        ))
     }
 
     /// Unary operation with an open operator symbol.
@@ -312,19 +313,16 @@ impl HirBuilderV1 {
     }
 
     /// Projection over an input relation.
-    pub fn project(
+    pub fn try_project(
         &self,
         input: RelationExprHirV1,
         items: Vec<ProjectionItemV1>,
         span: SpanV1,
-    ) -> RelationExprHirV1 {
-        self.relation(
+    ) -> Result<RelationExprHirV1, &'static str> {
+        Ok(self.relation(
             span,
-            RelationExprKindV1::Project(ProjectionV1 {
-                input: Box::new(input),
-                items,
-            }),
-        )
+            RelationExprKindV1::Project(ProjectionV1::try_new(input, items)?),
+        ))
     }
 
     /// Filter over an input relation, embedding a shared boolean predicate.

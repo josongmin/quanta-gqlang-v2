@@ -1,142 +1,657 @@
-//! Lockfile model for reproducible, offline pack resolution (deliverable 8).
-//!
-//! A [`LockfileV1`] pins each pack name to one resolved version. Resolution must
-//! be reproducible offline from manifest + lock data (ticket pinned semantics
-//! 7): given a [`crate::manifest::PackGraphV1`] and a matching lock, the locked
-//! version set is replayed deterministically and any drift between lock and
-//! manifest fails closed with [`ModuleDiagnosticV1::LockMismatch`].
-//!
-//! The lock has a textual round-trip form ([`LockfileV1::to_text`] /
-//! [`LockfileV1::parse`]) so a lock can be committed and reproduced byte-for-
-//! byte: entries are emitted in canonical sorted order.
+//! Canonical lockfile verification and validated pack activations.
 
 use std::collections::BTreeMap;
 
-use crate::diagnostic::ModuleDiagnosticV1;
-use crate::manifest::PackGraphV1;
-use crate::version::VersionV1;
+use crate::budget::ModuleBudgetSessionV2;
+use crate::graph::excerpt;
+use crate::manifest::{ContentDigestV2, PackIdV2, ValidatedPackGraphV2, ValidatedPackManifestV2};
+use crate::version::VersionV2;
+use crate::ModuleDiagnosticV2;
+use quanta_gqlang_v2_hir::{
+    CheckedLocatedSpanV2, LocatedSpanV2, SourceIdV2, SourceRegistryIdentityV2,
+    SourceRegistryViewV2, SpanV1,
+};
 
-/// A reproducible lock: pack name -> resolved version.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct LockfileV1 {
-    entries: BTreeMap<String, VersionV1>,
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LockReferenceInputV2 {
+    pub path: String,
+    pub location: CheckedLocatedSpanV2,
 }
 
-impl LockfileV1 {
-    /// An empty lock.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LockReferenceV2 {
+    path: String,
+    location: CheckedLocatedSpanV2,
+}
+impl LockReferenceV2 {
+    pub(crate) fn try_new(
+        input: LockReferenceInputV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<Self, ModuleDiagnosticV2> {
+        session.charge_string(&input.path)?;
+        Self::try_new_precharged(input)
+    }
+    pub(crate) fn try_new_precharged(
+        input: LockReferenceInputV2,
+    ) -> Result<Self, ModuleDiagnosticV2> {
+        if !canonical_lock_path(&input.path) {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_lockfile_path",
+                format!("invalid lock reference `{}`", excerpt(&input.path)),
+                &input.location,
+            ));
+        }
+        Ok(Self {
+            path: input.path,
+            location: input.location,
+        })
+    }
     #[must_use]
-    pub fn new() -> Self {
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+    #[must_use]
+    pub const fn location(&self) -> &CheckedLocatedSpanV2 {
+        &self.location
+    }
+}
+fn canonical_lock_path(path: &str) -> bool {
+    !path.is_empty()
+        && path.ends_with(".lock")
+        && !path.starts_with('/')
+        && !path.contains('\\')
+        && !path.contains('\0')
+        && path
+            .split('/')
+            .all(|segment| !segment.is_empty() && segment != "." && segment != "..")
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LockPinV2 {
+    pack_id: PackIdV2,
+    version: VersionV2,
+    content_digest: ContentDigestV2,
+    location: CheckedLocatedSpanV2,
+}
+impl LockPinV2 {
+    #[must_use]
+    pub const fn pack_id(&self) -> &PackIdV2 {
+        &self.pack_id
+    }
+    #[must_use]
+    pub const fn version(&self) -> VersionV2 {
+        self.version
+    }
+    #[must_use]
+    pub const fn content_digest(&self) -> ContentDigestV2 {
+        self.content_digest
+    }
+    #[must_use]
+    pub const fn location(&self) -> &CheckedLocatedSpanV2 {
+        &self.location
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct LockfileV2 {
+    pins: BTreeMap<PackIdV2, LockPinV2>,
+    source_id: SourceIdV2,
+    registry_identity: SourceRegistryIdentityV2,
+    reference: Option<LockReferenceV2>,
+}
+impl LockfileV2 {
+    pub(crate) fn empty(source_id: SourceIdV2, source_registry: &SourceRegistryViewV2) -> Self {
         Self {
-            entries: BTreeMap::new(),
+            pins: BTreeMap::new(),
+            source_id,
+            registry_identity: source_registry.identity(),
+            reference: None,
         }
     }
-
-    /// Pin `pack` to `version` (builder style; replaces any existing pin).
-    #[must_use]
-    pub fn with_pin(mut self, pack: impl Into<String>, version: VersionV1) -> Self {
-        let _ = self.entries.insert(pack.into(), version);
-        self
-    }
-
-    /// The locked version for `pack`, if pinned.
-    #[must_use]
-    pub fn locked_version(&self, pack: &str) -> Option<VersionV1> {
-        self.entries.get(pack).copied()
-    }
-
-    /// Number of pinned packs.
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.entries.len()
-    }
-
-    /// Whether the lock pins nothing.
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
-    }
-
-    /// Derive a lock from a pack graph: pin every pack to its manifest version.
-    /// The result is canonical and replayable.
-    #[must_use]
-    pub fn from_graph(graph: &PackGraphV1) -> Self {
-        let mut lock = Self::new();
-        for (name, version) in graph.pinned_versions() {
-            lock = lock.with_pin(name, version);
+    pub(crate) fn parse(
+        source_id: SourceIdV2,
+        text: &str,
+        source_registry: &SourceRegistryViewV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<Self, ModuleDiagnosticV2> {
+        // Raw bytes were charged before mutation by ModuleAuthorityBuilderV2.
+        if source_registry.source_len(source_id) != Some(text.len()) {
+            let diagnostic = source_registry
+                .source_len(source_id)
+                .and_then(|registered_len| {
+                    source_registry
+                        .try_check_location(LocatedSpanV2 {
+                            source_id,
+                            span: SpanV1::new(0, registered_len),
+                        })
+                        .ok()
+                        .map(|location| {
+                            ModuleDiagnosticV2::new(
+                                "modules.lock_source_length_mismatch",
+                                "registered lock source length differs from submitted bytes",
+                                &location,
+                            )
+                        })
+                });
+            return Err(diagnostic.unwrap_or_else(|| {
+                ModuleDiagnosticV2::without_location(
+                    "modules.lock_source_length_mismatch",
+                    "registered lock source length differs from submitted bytes",
+                )
+            }));
         }
-        lock
+        if !text.is_empty() && !text.ends_with('\n') {
+            let location = source_registry
+                .try_check_location(LocatedSpanV2 {
+                    source_id,
+                    span: SpanV1::new(text.len(), text.len()),
+                })
+                .map_err(|_source_error| {
+                    ModuleDiagnosticV2::without_location(
+                        "modules.source_registry_mismatch",
+                        "lock EOF location is outside registered source",
+                    )
+                })?;
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_lock_syntax",
+                "lock text must end with LF",
+                &location,
+            ));
+        }
+        let mut pins: BTreeMap<PackIdV2, LockPinV2> = BTreeMap::new();
+        let mut parsed_order = Vec::new();
+        let mut offset = 0usize;
+        for line_with_lf in text.split_inclusive('\n') {
+            let line = &line_with_lf[..line_with_lf.len() - 1];
+            let raw = LocatedSpanV2 {
+                source_id,
+                span: SpanV1::new(offset, offset + line.len()),
+            };
+            let location = source_registry
+                .try_check_location(raw)
+                .map_err(|_source_error| {
+                    ModuleDiagnosticV2::without_location(
+                        "modules.invalid_lock_syntax",
+                        "lock line location is outside registered source",
+                    )
+                })?;
+            if line.is_empty() || line.contains('\r') || line.contains('\t') {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.invalid_lock_syntax",
+                    "lock line contains forbidden whitespace",
+                    &location,
+                ));
+            }
+            let fields = line.split(' ').collect::<Vec<_>>();
+            if fields.len() != 3 || fields.iter().any(|field| field.is_empty()) {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.invalid_lock_syntax",
+                    "lock line must contain exactly three single-space-separated fields",
+                    &location,
+                ));
+            }
+            let [pack_text, version_text, digest_text] = fields.as_slice() else {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.invalid_lock_syntax",
+                    "lock line has an invalid field shape",
+                    &location,
+                ));
+            };
+            session.check_string_width(pack_text)?;
+            session.check_string_width(version_text)?;
+            session.check_string_width(digest_text)?;
+            let pack_id = PackIdV2::try_new(pack_text, location.clone())?;
+            let version = VersionV2::try_parse(version_text, location.clone())?;
+            let content_digest = ContentDigestV2::try_parse(digest_text, location.clone())?;
+            session.charge_node()?;
+            parsed_order.push((pack_id.clone(), location.clone()));
+            if let Some(original) = pins.get(&pack_id) {
+                return Err(ModuleDiagnosticV2::conflict(
+                    "modules.duplicate_lock_pin",
+                    "duplicate lock pin",
+                    &location,
+                    &original.location,
+                ));
+            }
+            pins.insert(
+                pack_id.clone(),
+                LockPinV2 {
+                    pack_id,
+                    version,
+                    content_digest,
+                    location,
+                },
+            );
+            offset += line_with_lf.len();
+        }
+        let lock = Self {
+            pins,
+            source_id,
+            registry_identity: source_registry.identity(),
+            reference: None,
+        };
+        if lock.to_text() != text {
+            let primary = parsed_order
+                .iter()
+                .zip(lock.pins.keys())
+                .find(|((actual, _), canonical)| actual != *canonical)
+                .map(|((_, location), _)| location)
+                .or_else(|| parsed_order.first().map(|(_, location)| location));
+            let Some(primary) = primary else {
+                return Err(ModuleDiagnosticV2::without_location(
+                    "modules.invalid_lock_syntax",
+                    "lock text is not canonical",
+                ));
+            };
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_lock_syntax",
+                "lock entries are not in canonical sorted order",
+                primary,
+            ));
+        }
+        Ok(lock)
     }
 
-    /// Serialize to canonical text, one `pack version` line per pin in sorted
-    /// order, terminated by a newline. Round-trips through [`LockfileV1::parse`].
+    pub(crate) fn with_reference(
+        mut self,
+        reference: LockReferenceV2,
+    ) -> Result<Self, ModuleDiagnosticV2> {
+        if reference.location.registry_identity() != &self.registry_identity {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.source_registry_mismatch",
+                "lock reference belongs to another registry",
+                &reference.location,
+            ));
+        }
+        self.reference = Some(reference);
+        Ok(self)
+    }
+
     #[must_use]
     pub fn to_text(&self) -> String {
-        let mut out = String::new();
-        for (pack, version) in &self.entries {
-            out.push_str(pack);
-            out.push(' ');
-            out.push_str(&version.to_string());
-            out.push('\n');
+        let mut output = String::new();
+        for pin in self.pins.values() {
+            output.push_str(pin.pack_id.as_str());
+            output.push(' ');
+            output.push_str(&pin.version.to_string());
+            output.push(' ');
+            output.push_str(&pin.content_digest.to_hex());
+            output.push('\n');
         }
-        out
+        output
     }
 
-    /// Parse canonical lock text. Returns `None` on any malformed line (wrong
-    /// field count, unparsable version).
     #[must_use]
-    pub fn parse(text: &str) -> Option<Self> {
-        let mut lock = Self::new();
-        for line in text.lines() {
-            let trimmed = line.trim();
-            if trimmed.is_empty() {
-                continue;
-            }
-            let mut parts = trimmed.split_whitespace();
-            let pack = parts.next()?;
-            let version = VersionV1::parse(parts.next()?)?;
-            if parts.next().is_some() {
-                return None;
-            }
-            lock = lock.with_pin(pack, version);
-        }
-        Some(lock)
+    pub const fn source_id(&self) -> SourceIdV2 {
+        self.source_id
     }
 
-    /// Verify this lock exactly reproduces `graph`: every manifest pack must be
-    /// pinned to its manifest version and vice versa. Fail-closed with
-    /// [`ModuleDiagnosticV1::LockMismatch`] on the first sorted discrepancy.
-    pub fn verify_against(&self, graph: &PackGraphV1) -> Result<(), ModuleDiagnosticV1> {
-        let manifest_versions: BTreeMap<String, VersionV1> = graph.pinned_versions();
-
-        // Every manifest pack must be locked at the exact manifest version.
-        for (name, version) in &manifest_versions {
-            match self.entries.get(name) {
-                Some(locked) if *locked == *version => {}
-                Some(locked) => {
-                    return Err(ModuleDiagnosticV1::LockMismatch {
-                        pack: name.clone(),
-                        detail: format!("locked {locked} but manifest declares {version}"),
-                    });
-                }
-                None => {
-                    return Err(ModuleDiagnosticV1::LockMismatch {
-                        pack: name.clone(),
-                        detail: format!("manifest declares {version} but lock has no pin"),
-                    });
-                }
+    pub(crate) fn verify_against(
+        &self,
+        graph: &ValidatedPackGraphV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<VerifiedLockSetV2, ModuleDiagnosticV2> {
+        if &self.registry_identity != graph.registry_identity() {
+            return Err(ModuleDiagnosticV2::without_location(
+                "modules.source_registry_mismatch",
+                "lock and pack graph registry identities differ",
+            ));
+        }
+        for (pack_id, manifest) in graph.manifests() {
+            session.charge_step()?;
+            let Some(pin) = self.pins.get(pack_id) else {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.lock_mismatch",
+                    "manifest has no lock pin",
+                    manifest.location(),
+                ));
+            };
+            if pin.version != manifest.coordinate().version()
+                || pin.content_digest != manifest.content_digest()
+            {
+                return Err(ModuleDiagnosticV2::conflict(
+                    "modules.lock_mismatch",
+                    "lock version or digest differs from manifest",
+                    &pin.location,
+                    manifest.location(),
+                ));
             }
         }
-
-        // Every locked pack must exist in the manifest set (no stale pins).
-        for name in self.entries.keys() {
-            if !manifest_versions.contains_key(name) {
-                return Err(ModuleDiagnosticV1::LockMismatch {
-                    pack: name.clone(),
-                    detail: "lock pins a pack absent from the manifest graph".to_string(),
-                });
+        for pin in self.pins.values() {
+            session.charge_step()?;
+            if graph.raw_manifest(&pin.pack_id).is_none() {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.lock_mismatch",
+                    "lock pins an absent manifest",
+                    &pin.location,
+                ));
             }
         }
+        Ok(VerifiedLockSetV2 {
+            pins: self.pins.clone(),
+            fingerprint: *graph.fingerprint(),
+            registry_identity: self.registry_identity.clone(),
+            reference: self.reference.clone(),
+        })
+    }
+}
 
-        Ok(())
+#[derive(Clone, Debug)]
+pub struct VerifiedLockSetV2 {
+    pins: BTreeMap<PackIdV2, LockPinV2>,
+    fingerprint: [u8; 32],
+    registry_identity: SourceRegistryIdentityV2,
+    reference: Option<LockReferenceV2>,
+}
+impl VerifiedLockSetV2 {
+    #[must_use]
+    pub const fn fingerprint(&self) -> &[u8; 32] {
+        &self.fingerprint
+    }
+    #[must_use]
+    pub const fn registry_identity(&self) -> &SourceRegistryIdentityV2 {
+        &self.registry_identity
+    }
+    #[must_use]
+    pub const fn reference(&self) -> Option<&LockReferenceV2> {
+        self.reference.as_ref()
+    }
+    #[must_use]
+    pub fn pin(&self, id: &PackIdV2) -> Option<&LockPinV2> {
+        self.pins.get(id)
+    }
+    #[must_use]
+    pub fn to_text(&self) -> String {
+        let mut output = String::new();
+        for pin in self.pins.values() {
+            output.push_str(pin.pack_id.as_str());
+            output.push(' ');
+            output.push_str(&pin.version.to_string());
+            output.push(' ');
+            output.push_str(&pin.content_digest.to_hex());
+            output.push('\n');
+        }
+        output
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CatalogPackActivationV2 {
+    Manual,
+    Session,
+    Workspace,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UsePackActivationV2 {
+    Session,
+    Workspace,
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PackActivationInputV2 {
+    pub pack_id: PackIdV2,
+    pub activation: UsePackActivationV2,
+    pub lock_reference: LockReferenceInputV2,
+    pub location: CheckedLocatedSpanV2,
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ValidatedPackActivationV2 {
+    pack_id: PackIdV2,
+    activation: UsePackActivationV2,
+    location: LocatedSpanV2,
+}
+impl ValidatedPackActivationV2 {
+    #[must_use]
+    pub const fn pack_id(&self) -> &PackIdV2 {
+        &self.pack_id
+    }
+    #[must_use]
+    pub const fn activation(&self) -> UsePackActivationV2 {
+        self.activation
+    }
+    #[must_use]
+    pub const fn location(&self) -> LocatedSpanV2 {
+        self.location
+    }
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ValidatedPackActivationsV2 {
+    activations: BTreeMap<PackIdV2, ValidatedPackActivationV2>,
+}
+impl ValidatedPackActivationsV2 {
+    fn empty() -> Self {
+        Self {
+            activations: BTreeMap::new(),
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &ValidatedPackActivationV2> {
+        self.activations.values()
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ValidatedPackAuthorityV2 {
+    manifests: BTreeMap<PackIdV2, ValidatedPackManifestV2>,
+    graph_fingerprint: [u8; 32],
+    lock: VerifiedLockSetV2,
+    registry_identity: SourceRegistryIdentityV2,
+}
+impl ValidatedPackAuthorityV2 {
+    pub(crate) fn try_new(
+        graph: ValidatedPackGraphV2,
+        lock: VerifiedLockSetV2,
+    ) -> Result<Self, ModuleDiagnosticV2> {
+        if graph.fingerprint() != lock.fingerprint()
+            || graph.registry_identity() != lock.registry_identity()
+        {
+            return Err(ModuleDiagnosticV2::without_location(
+                "modules.pack_lock_proof_mismatch",
+                "pack graph and verified lock proof differ",
+            ));
+        }
+        let manifests = graph
+            .manifests()
+            .map(|(id, manifest)| {
+                (
+                    id.clone(),
+                    ValidatedPackManifestV2::from_raw(manifest.clone()),
+                )
+            })
+            .collect();
+        Ok(Self {
+            manifests,
+            graph_fingerprint: *graph.fingerprint(),
+            registry_identity: graph.registry_identity().clone(),
+            lock,
+        })
+    }
+    #[must_use]
+    pub fn manifest(&self, id: &PackIdV2) -> Option<&ValidatedPackManifestV2> {
+        self.manifests.get(id)
+    }
+    #[must_use]
+    pub const fn registry_identity(&self) -> &SourceRegistryIdentityV2 {
+        &self.registry_identity
+    }
+    #[must_use]
+    pub const fn graph_fingerprint(&self) -> &[u8; 32] {
+        &self.graph_fingerprint
+    }
+    #[must_use]
+    pub const fn verified_lock(&self) -> &VerifiedLockSetV2 {
+        &self.lock
+    }
+    #[expect(
+        dead_code,
+        reason = "pinned host-phase API; document callers use the combined-registry path"
+    )]
+    pub(crate) fn validate_activations(
+        &self,
+        inputs: Vec<PackActivationInputV2>,
+        source_registry: &SourceRegistryViewV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<ValidatedPackActivationsV2, ModuleDiagnosticV2> {
+        if source_registry.identity() != self.registry_identity {
+            return Err(ModuleDiagnosticV2::without_location(
+                "modules.source_registry_mismatch",
+                "activation registry differs from pack authority",
+            ));
+        }
+        if inputs.is_empty() {
+            return Ok(ValidatedPackActivationsV2::empty());
+        }
+        let expected_reference = self.lock.reference().ok_or_else(|| {
+            ModuleDiagnosticV2::without_location(
+                "modules.missing_lockfile",
+                "pack authority has no lock reference",
+            )
+        })?;
+        let mut activations: BTreeMap<PackIdV2, ValidatedPackActivationV2> = BTreeMap::new();
+        let mut locations: BTreeMap<PackIdV2, CheckedLocatedSpanV2> = BTreeMap::new();
+        for input in inputs {
+            session.charge_edge()?;
+            session.charge_string(input.pack_id.as_str())?;
+            if input.location.registry_identity() != &self.registry_identity {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.source_registry_mismatch",
+                    "activation location belongs to another registry",
+                    &input.location,
+                ));
+            }
+            let reference = LockReferenceV2::try_new(input.lock_reference, session)?;
+            if let Some(original) = locations.get(&input.pack_id) {
+                return Err(ModuleDiagnosticV2::conflict(
+                    "modules.duplicate_pack_activation",
+                    "duplicate pack activation",
+                    &input.location,
+                    original,
+                ));
+            }
+            if reference.path() != expected_reference.path() {
+                return Err(ModuleDiagnosticV2::conflict(
+                    "modules.lock_reference_mismatch",
+                    "activation lock reference differs from sealed authority",
+                    reference.location(),
+                    expected_reference.location(),
+                ));
+            }
+            if !self.manifests.contains_key(&input.pack_id) {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.unknown_pack",
+                    "activation names an unknown pack",
+                    &input.location,
+                ));
+            }
+            locations.insert(input.pack_id.clone(), input.location.clone());
+            activations.insert(
+                input.pack_id.clone(),
+                ValidatedPackActivationV2 {
+                    pack_id: input.pack_id,
+                    activation: input.activation,
+                    location: input.location.location(),
+                },
+            );
+        }
+        Ok(ValidatedPackActivationsV2 { activations })
+    }
+
+    pub(crate) fn validate_document_activations(
+        &self,
+        inputs: Vec<PackActivationInputV2>,
+        combined_identity: &SourceRegistryIdentityV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<ValidatedPackActivationsV2, ModuleDiagnosticV2> {
+        if inputs.is_empty() {
+            return Ok(ValidatedPackActivationsV2::empty());
+        }
+        let expected_reference = self.lock.reference().ok_or_else(|| {
+            ModuleDiagnosticV2::without_location(
+                "modules.missing_lockfile",
+                "pack authority has no lock reference",
+            )
+        })?;
+        let mut activations = BTreeMap::new();
+        let mut locations: BTreeMap<PackIdV2, CheckedLocatedSpanV2> = BTreeMap::new();
+        for input in inputs {
+            session.charge_edge()?;
+            session.charge_string(input.pack_id.as_str())?;
+            if input.location.registry_identity() != combined_identity
+                || input.lock_reference.location.registry_identity() != combined_identity
+            {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.source_registry_mismatch",
+                    "activation location belongs to another document registry",
+                    &input.location,
+                ));
+            }
+            let reference = LockReferenceV2::try_new(input.lock_reference, session)?;
+            if let Some(original) = locations.get(&input.pack_id) {
+                return Err(ModuleDiagnosticV2::conflict(
+                    "modules.duplicate_pack_activation",
+                    "duplicate pack activation",
+                    &input.location,
+                    original,
+                ));
+            }
+            if reference.path() != expected_reference.path() {
+                return Err(ModuleDiagnosticV2::conflict(
+                    "modules.lock_reference_mismatch",
+                    "activation lock reference differs from sealed authority",
+                    reference.location(),
+                    expected_reference.location(),
+                ));
+            }
+            if !self.manifests.contains_key(&input.pack_id) {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.unknown_pack",
+                    "activation names an unknown pack",
+                    &input.location,
+                ));
+            }
+            locations.insert(input.pack_id.clone(), input.location.clone());
+            activations.insert(
+                input.pack_id.clone(),
+                ValidatedPackActivationV2 {
+                    pack_id: input.pack_id,
+                    activation: input.activation,
+                    location: input.location.location(),
+                },
+            );
+        }
+        Ok(ValidatedPackActivationsV2 { activations })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{ModuleBudgetV2, PackGraphV2};
+    use quanta_gqlang_v2_hir::SourceRegistrationV2;
+    use quanta_gqlang_v2_types::AuthorityBudgetProfileV2;
+
+    #[test]
+    fn pack_lock_proof_mismatch_rejects_before_sealing() {
+        let source_registry = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(1),
+            source_len: 1,
+        }])
+        .expect("test registry must be valid");
+        let budget = ModuleBudgetV2::from_profile(
+            AuthorityBudgetProfileV2::try_new(8, 8, 32, 256, 64)
+                .expect("test budget must be valid"),
+        );
+        let mut session = budget.begin_session_v2();
+        let graph = PackGraphV2::empty(&source_registry)
+            .validate(VersionV2::new(1, 0, 0), &mut session)
+            .expect("empty graph must validate");
+        let mismatched_lock = VerifiedLockSetV2 {
+            pins: BTreeMap::new(),
+            fingerprint: [0xff; 32],
+            registry_identity: source_registry.identity(),
+            reference: None,
+        };
+        let error = ValidatedPackAuthorityV2::try_new(graph, mismatched_lock)
+            .expect_err("mismatched proofs must reject");
+        assert_eq!(error.code(), "modules.pack_lock_proof_mismatch");
     }
 }

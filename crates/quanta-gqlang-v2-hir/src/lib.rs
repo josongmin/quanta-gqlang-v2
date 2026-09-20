@@ -45,22 +45,24 @@ mod visit;
 pub use build::HirBuilderV1;
 pub use id::{HirNodeIdGen, HirNodeIdV1};
 pub use span::{
-    CheckedLocatedSpanV2, ExtendedSourceRegistryViewV2, LocatedSpanErrorV2, LocatedSpanV2, SourceIdV2, SourceRegistrationV2,
-    SourceRegistryDiagnosticV2, SourceRegistryIdentityV2, SourceRegistryViewV2, SpanV1,
+    CheckedLocatedSpanV2, ExtendedSourceRegistryViewV2, LocatedSpanErrorV2, LocatedSpanV2,
+    SourceIdV2, SourceRegistrationV2, SourceRegistryDiagnosticV2, SourceRegistryIdentityV2,
+    SourceRegistryViewV2, SpanV1,
 };
 
 pub use expr::{
     BinaryBoolV1, BinaryExprV1, BinaryOpV1, BoolExprHirV1, BoolExprKindV1, CallArgHirV1,
     CallArgsHirV1, CallExprV1, CalleeRefV1, CompareExprV1, CompareOpV1, ListExprV1, LiteralV1,
     LogicalBinderV1, LogicalQuantifierHirV1, LogicalQuantifierKindV1, NonEmptyBindersV1,
-    PathAccessV1, PathSegmentV1, RecordExprV1, RecordFieldV1, RelationExistsHirV1,
-    RelationExistsPolarityV1, SymbolRefV1, UnaryExprV1, UnaryOpV1, ValueExprHirV1, ValueExprKindV1,
+    NonEmptyPathSegmentsV1, PathAccessV1, PathSegmentV1, RecordExprV1, RecordFieldV1,
+    RelationExistsHirV1, RelationExistsPolarityV1, SymbolRefV1, UnaryExprV1, UnaryOpV1,
+    ValueExprHirV1, ValueExprKindV1,
 };
 
 pub use relation::{
-    AliasV1, GroupByHirV1, JoinHirV1, NonEmptyRelationKeysV1, OrderByHirV1, OrderKeyHirV1,
-    ProjectionItemV1, ProjectionV1, RelationExprHirV1, RelationExprKindV1, RelationFilterV1,
-    RelationSourceV1, SortDirectionHirV1,
+    AliasV1, GroupByHirV1, JoinHirV1, NonEmptyProjectionItemsV1, NonEmptyRelationKeysV1,
+    OrderByHirV1, OrderKeyHirV1, ProjectionItemV1, ProjectionV1, RelationExprHirV1,
+    RelationExprKindV1, RelationFilterV1, RelationSourceV1, SortDirectionHirV1,
 };
 
 pub use shape::{ResultShapeHirV1, ResultShapeKindV1, ShapeFieldV1, ShapeListV1, ShapeRecordV1};

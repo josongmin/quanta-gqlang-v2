@@ -20,7 +20,7 @@
 
 use crate::budget::{ParseBudgetCounterV2, ParseBudgetV2};
 use crate::cursor::CursorV1;
-use crate::diag::{ParseDiagnosticV1, ParseErrorCodeV1};
+use crate::diag::{ParseDiagnosticV1, ParseErrorCodeV1, SurfaceDiagnosticV2};
 use crate::family::{at_composition, is_family_keyword, parse_composition, parse_family};
 use crate::lexer::{lex_with_budget, TokenKindV1};
 use crate::query::parse_query;
@@ -229,9 +229,10 @@ pub fn parse_source_document_v2(
     source_id: SourceIdV2,
     source: &str,
     budget: &ParseBudgetV2,
-) -> Result<ParsedDocumentV2, ParseDiagnosticV1> {
+) -> Result<ParsedDocumentV2, SurfaceDiagnosticV2> {
     let builder = HirBuilderV1::new();
-    let parsed = parse_document_items_with_budget(source, &builder, budget)?;
+    let parsed = parse_document_items_with_budget(source, &builder, budget)
+        .map_err(|error| SurfaceDiagnosticV2::from_parse(source_id, error))?;
     Ok(ParsedDocumentV2 {
         hir: HirDocumentV1 {
             source_id,

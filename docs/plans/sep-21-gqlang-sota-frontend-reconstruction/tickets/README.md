@@ -1,6 +1,6 @@
 # Ticket Index
 
-Status: `EXECUTION ACTIVE — TICKET 00 ACCEPTED, TICKET 01 ACTIVE`
+Status: `EXECUTION ACTIVE — TICKETS 01-02 VERIFIED, TICKET 03 ACTIVE, PACKET NOT COMPLETE`
 
 ## Canonical Order
 
@@ -43,9 +43,9 @@ repository root.
 | 01 | 00 accepted | sema skeleton, mechanical diagnostics-stdio rename, final DAG plus exact transition ratchet, non-vacuous proof rails | all commands in 01 green with inspected and transition counts |
 | 02 | 01 landed | typed source/HIR stages and UTF-8/formatter integrity | HIR/surface suites plus mutation cases |
 | 03 | 01 landed; 02 location/HIR carrier frozen before modules changes | checked type/module/catalog/lock authority values | types/modules suites plus negative matrix |
-| 04 | 02 and 03 landed | one document-scoped semantic transaction and internal semantic resolve/analyze APIs | sema/binder/pipeline semantic-document suites |
-| 05 | 04 V2 relation contract frozen on cutover stack | typed relational lowering and aggregate legality | algebra/pipeline relational suites |
-| 06 | 04 V2 rule contract frozen on cutover stack | document rule program, stratification, graph bounds | logic/pipeline rule and graph suites |
+| 04 | 02 and 03 landed | one document-scoped semantic transaction and internal semantic resolve/analyze APIs | sema + binder owner proof; pipeline failures deferred exactly |
+| 05 | 04 V2 relation contract frozen on cutover stack | typed relational lowering over sealed aggregate/output contracts | algebra owner proof; pipeline failures deferred exactly |
+| 06 | 04 V2 rule contract frozen on cutover stack | document rule program, stratification, static graph bounds | logic owner proof; pipeline failures deferred exactly |
 | 07 | 05 and 06 focused green on cutover stack | final document assembly, semantic-only plan input, and curated public facade | planning/pipeline/facade suites and export scan |
 | 08 | 07 focused green on cutover stack | shared front door, bounded source/framing/graphs, deterministic recovery, V1 deletion | CLI/diagnostics/pipeline budget suites plus workspace compile |
 | 09 | immutable candidate contains 01-08 receipts | traceability, semantic family matrix, truth sync, exact-head receipt | complete final command list on one SHA |
@@ -63,11 +63,17 @@ PLANNED
   -> IMPLEMENTING
   -> FOCUSED_GREEN
   -> INTEGRATED
+  -> REPO_LOCAL_CLOSED
   -> CLOSED_BY_09
 ```
 
-Only ticket 09 may set `CLOSED_BY_09`. `FOCUSED_GREEN` means the ticket's exact
-commands passed; it does not imply workspace, remote CI, or downstream closure.
+Only ticket 09 may set `REPO_LOCAL_CLOSED` or `CLOSED_BY_09`.
+`REPO_LOCAL_CLOSED` requires one clean immutable candidate SHA and every local
+gate but records hosted CI as unavailable; it is not remote closure. For tickets
+04-06, `FOCUSED_GREEN`
+explicitly means owner crates only and the receipt must enumerate deferred
+consumer failures. Ticket 07 is the first cross-stage integration gate.
+`FOCUSED_GREEN` never implies workspace, remote CI, or downstream closure.
 Every state transition is recorded with SHA, dirty fingerprint, command, exit
 code, selected/executed count, and owned-path diff.
 
@@ -98,6 +104,10 @@ reviews and integrates that scoped diff before any later ticket starts:
 12. `/crates/quanta-gqlang-v2-planning/Cargo.toml`
 13. `/crates/quanta-gqlang-v2-cli/Cargo.toml`
 14. `/crates/quanta-gqlang-v2-conformance/Cargo.toml`
+15. `/crates/quanta-gqlang-v2-sema/Cargo.toml`
+16. `/crates/quanta-gqlang-v2-pipeline/Cargo.toml`
+17. `/crates/quanta-gqlang-v2-frontend-contract/Cargo.toml`
+18. `/crates/quanta-gqlang-v2-diagnostics-stdio/Cargo.toml`
 
 Workers may prepare a patch for a reserved file but do not merge or edit it in
 the shared integration branch. The integrator applies the smallest required

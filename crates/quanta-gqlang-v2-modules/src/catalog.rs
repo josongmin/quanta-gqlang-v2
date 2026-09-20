@@ -1,378 +1,1023 @@
-//! Declaration + META catalog semantics over `hir::CatalogDeclHirV1` /
-//! `hir::MetaHirV1` (ticket 11, families VIEW/MODEL/PACK/PROFILE/GATE/RULE and
-//! the USE PACK / REQUIRE CERTIFIED meta directives).
-//!
-//! This is the FRONTEND-CONTRACT seam for the declaration families: each
-//! declaration PARSES (upstream) then BINDS into a catalog of stable assets.
-//! Declarations produce NO relational plan; they register in a
-//! [`CatalogV1`] and resolve fail-closed under the v2 admissibility rules:
-//!
-//! - duplicate asset name (`<kind>::<name>` collision) rejects
-//!   ([`ModuleDiagnosticV1::DuplicateCatalogName`]);
-//! - a VIEW whose inline SELECT references (transitively) itself rejects
-//!   ([`ModuleDiagnosticV1::ViewInlineCycle`]);
-//! - `REQUIRE CERTIFIED` forces every PROFILE to admission `certified-only`;
-//!   any non-certified profile then rejects
-//!   ([`ModuleDiagnosticV1::CertifiedRequiredViolation`]);
-//! - `USE PACK <id>` whose pack name has no resolvable manifest rejects
-//!   ([`ModuleDiagnosticV1::UnknownPackManifest`]);
-//! - `USE PACK` lockfile paths must end in `.lock`
-//!   ([`ModuleDiagnosticV1::InvalidLockfilePath`]).
-//!
-//! Catalog asset ids are the stable string `"<kind>::<name>"`, matching the
-//! SHOW catalog categories so SHOW-style enumeration is a direct projection.
+//! Checked external and document catalog authority.
 
 use std::collections::BTreeMap;
 
-use quanta_gqlang_v2_hir::{
-    ActivationV1, AdmissionV1, CatalogDeclHirV1, CatalogPayloadV1, MetaHirV1, MetaKindV1,
-    ViewBodyV1,
+use crate::budget::ModuleBudgetSessionV2;
+use crate::graph::{
+    excerpt, loc_key, CatalogAssetIdV2, CatalogAssetRefInputV2, ModuleIdV2, NamespaceKindV2,
 };
+use crate::lockfile::{CatalogPackActivationV2, ValidatedPackAuthorityV2};
+use crate::manifest::PackIdV2;
+use crate::signature::{CallableKindV2, SignatureInputV2, SignatureV2};
+use crate::ModuleDiagnosticV2;
+use quanta_gqlang_v2_hir::{
+    CheckedLocatedSpanV2, LocatedSpanV2, SourceRegistryIdentityV2, SourceRegistryViewV2,
+};
+use quanta_gqlang_v2_types::{RelationTypeV1, ValueTypeV1};
 
-use crate::diagnostic::ModuleDiagnosticV1;
-use crate::manifest::PackGraphV1;
+// Checked external and document catalog authority -------------------------
 
-/// The closed set of catalog asset kinds, one per declaration family.
-///
-/// The string form is the `<kind>` prefix of an asset id and matches the SHOW
-/// catalog category vocabulary (`views`/`models`/`packs`/`profiles`/`gates`/
-/// `rules`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum CatalogKindV1 {
-    /// A VIEW declaration.
-    View,
-    /// A MODEL declaration.
-    Model,
-    /// A PACK declaration.
-    Pack,
-    /// A PROFILE declaration.
-    Profile,
-    /// A GATE declaration.
-    Gate,
-    /// A RULE binding declaration.
-    Rule,
+pub enum ProfileAdmissionV2 {
+    Allowlist,
+    ReviewRequired,
+    CertifiedOnly,
 }
-
-impl CatalogKindV1 {
-    /// The stable lowercase tag used as the `<kind>` prefix of an asset id.
+impl ProfileAdmissionV2 {
     #[must_use]
     pub const fn tag(self) -> &'static str {
         match self {
-            Self::View => "view",
-            Self::Model => "model",
-            Self::Pack => "pack",
-            Self::Profile => "profile",
-            Self::Gate => "gate",
-            Self::Rule => "rule",
-        }
-    }
-
-    /// The kind a catalog payload registers under.
-    #[must_use]
-    pub const fn of_payload(payload: &CatalogPayloadV1) -> Self {
-        match payload {
-            CatalogPayloadV1::View(_) => Self::View,
-            CatalogPayloadV1::Model { .. } => Self::Model,
-            CatalogPayloadV1::Pack { .. } => Self::Pack,
-            CatalogPayloadV1::Profile { .. } => Self::Profile,
-            CatalogPayloadV1::Gate { .. } => Self::Gate,
-            CatalogPayloadV1::RuleBinding { .. } => Self::Rule,
+            Self::Allowlist => "allowlist",
+            Self::ReviewRequired => "review-required",
+            Self::CertifiedOnly => "certified-only",
         }
     }
 }
-
-/// A registered catalog asset: a stable id plus the declaration that produced
-/// it. The declaration is retained by value so resolution and SHOW-style
-/// enumeration read the same frozen structure the binder consumed.
-#[derive(Clone, Debug, PartialEq)]
-pub struct CatalogAssetV1 {
-    /// The asset kind.
-    pub kind: CatalogKindV1,
-    /// The declared (unqualified) name.
-    pub name: String,
-    /// The originating declaration.
-    pub decl: CatalogDeclHirV1,
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum GateBindingV2 {
+    All,
+    Any,
 }
-
-impl CatalogAssetV1 {
-    /// The stable asset id, `"<kind>::<name>"`.
+impl GateBindingV2 {
     #[must_use]
-    pub fn asset_id(&self) -> String {
-        format!("{}::{}", self.kind.tag(), self.name)
+    pub const fn tag(self) -> &'static str {
+        match self {
+            Self::All => "all",
+            Self::Any => "any",
+        }
     }
 }
-
-/// A catalog/registry of VIEW/MODEL/PACK/PROFILE/GATE/RULE declarations plus the
-/// active META state (`REQUIRE CERTIFIED`, `USE PACK` activations).
-///
-/// Registration is incremental and fail-closed: re-registering a colliding
-/// `<kind>::<name>` rejects immediately. [`CatalogV1::resolve`] then applies the
-/// cross-declaration admissibility rules (VIEW inline-select cycles, REQUIRE
-/// CERTIFIED admission forcing) against a host [`PackGraphV1`].
-#[derive(Clone, Debug, Default)]
-pub struct CatalogV1 {
-    /// Assets keyed by stable asset id for deterministic enumeration.
-    assets: BTreeMap<String, CatalogAssetV1>,
-    /// Whether `REQUIRE CERTIFIED` is in force.
-    require_certified: bool,
-    /// Recorded `USE PACK` activations, pack id -> activation.
-    active_packs: BTreeMap<String, ActivationV1>,
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GateContractV2 {
+    binding: GateBindingV2,
 }
-
-impl CatalogV1 {
-    /// An empty catalog with no active META state.
+impl GateContractV2 {
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new(binding: GateBindingV2) -> Self {
+        Self { binding }
+    }
+    #[must_use]
+    pub const fn binding(&self) -> GateBindingV2 {
+        self.binding
+    }
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExternalPackContractV2 {
+    pack_id: PackIdV2,
+    activation: CatalogPackActivationV2,
+}
+impl ExternalPackContractV2 {
+    #[must_use]
+    pub const fn new(pack_id: PackIdV2, activation: CatalogPackActivationV2) -> Self {
         Self {
-            assets: BTreeMap::new(),
-            require_certified: false,
-            active_packs: BTreeMap::new(),
+            pack_id,
+            activation,
         }
     }
-
-    /// Register one declaration, minting its `<kind>::<name>` asset id.
-    /// Fail-closed with [`ModuleDiagnosticV1::DuplicateCatalogName`] when an
-    /// asset of the same id is already registered.
-    pub fn register(&mut self, decl: CatalogDeclHirV1) -> Result<(), ModuleDiagnosticV1> {
-        let kind = CatalogKindV1::of_payload(&decl.payload);
-        let asset = CatalogAssetV1 {
-            kind,
-            name: decl.name.clone(),
-            decl,
-        };
-        let id = asset.asset_id();
-        if self.assets.contains_key(&id) {
-            return Err(ModuleDiagnosticV1::DuplicateCatalogName {
-                kind: kind.tag(),
-                name: asset.name,
-            });
-        }
-        let _ = self.assets.insert(id, asset);
-        Ok(())
+    #[must_use]
+    pub const fn pack_id(&self) -> &PackIdV2 {
+        &self.pack_id
     }
+    #[must_use]
+    pub const fn activation(&self) -> CatalogPackActivationV2 {
+        self.activation
+    }
+}
 
-    /// Apply a META directive to the catalog state. `USE PACK` validates the
-    /// lockfile path shape and the pack-name -> manifest resolution against
-    /// `manifests`; `REQUIRE CERTIFIED` flips the certified-only requirement.
-    pub fn apply_meta(
-        &mut self,
-        meta: &MetaHirV1,
-        manifests: &PackGraphV1,
-    ) -> Result<(), ModuleDiagnosticV1> {
-        match &meta.kind {
-            MetaKindV1::RequireCertified => {
-                self.require_certified = true;
-                Ok(())
-            }
-            MetaKindV1::UsePack {
-                pack_id,
-                activation,
-                lockfile,
-            } => {
-                if let Some(path) = lockfile {
-                    if !path.ends_with(".lock") {
-                        return Err(ModuleDiagnosticV1::InvalidLockfilePath {
-                            pack: pack_id.clone(),
-                            path: path.clone(),
-                        });
-                    }
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExternalCatalogPayloadV2 {
+    Value(ValueTypeV1),
+    Relation(RelationTypeV1),
+    Predicate(SignatureV2),
+    Type(ValueTypeV1),
+    View(RelationTypeV1),
+    Model(PackIdV2),
+    Pack(ExternalPackContractV2),
+    Profile(ProfileAdmissionV2),
+    Gate(GateContractV2),
+    Rule(SignatureV2),
+}
+impl ExternalCatalogPayloadV2 {
+    #[must_use]
+    pub const fn namespace_kind(&self) -> NamespaceKindV2 {
+        match self {
+            Self::Value(_) => NamespaceKindV2::Value,
+            Self::Relation(_) => NamespaceKindV2::Relation,
+            Self::Predicate(_) => NamespaceKindV2::Predicate,
+            Self::Type(_) => NamespaceKindV2::Type,
+            Self::View(_) => NamespaceKindV2::View,
+            Self::Model(_) => NamespaceKindV2::Model,
+            Self::Pack(_) => NamespaceKindV2::Pack,
+            Self::Profile(_) => NamespaceKindV2::Profile,
+            Self::Gate(_) => NamespaceKindV2::Gate,
+            Self::Rule(_) => NamespaceKindV2::Rule,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExternalCatalogPayloadInputV2 {
+    Value(ValueTypeV1),
+    Relation(RelationTypeV1),
+    Predicate(SignatureInputV2),
+    Type(ValueTypeV1),
+    View(RelationTypeV1),
+    Model(PackIdV2),
+    Pack(ExternalPackContractV2),
+    Profile(ProfileAdmissionV2),
+    Gate(GateContractV2),
+    Rule(SignatureInputV2),
+}
+impl ExternalCatalogPayloadInputV2 {
+    fn namespace_kind(&self) -> NamespaceKindV2 {
+        match self {
+            Self::Value(_) => NamespaceKindV2::Value,
+            Self::Relation(_) => NamespaceKindV2::Relation,
+            Self::Predicate(_) => NamespaceKindV2::Predicate,
+            Self::Type(_) => NamespaceKindV2::Type,
+            Self::View(_) => NamespaceKindV2::View,
+            Self::Model(_) => NamespaceKindV2::Model,
+            Self::Pack(_) => NamespaceKindV2::Pack,
+            Self::Profile(_) => NamespaceKindV2::Profile,
+            Self::Gate(_) => NamespaceKindV2::Gate,
+            Self::Rule(_) => NamespaceKindV2::Rule,
+        }
+    }
+    fn try_into_checked(
+        self,
+        location: &CheckedLocatedSpanV2,
+        source_registry: &SourceRegistryViewV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<ExternalCatalogPayloadV2, ModuleDiagnosticV2> {
+        match self {
+            Self::Value(value) => Ok(ExternalCatalogPayloadV2::Value(value)),
+            Self::Relation(value) => Ok(ExternalCatalogPayloadV2::Relation(value)),
+            Self::Predicate(input) => {
+                if input.callable_kind != CallableKindV2::Predicate {
+                    return Err(ModuleDiagnosticV2::new(
+                        "modules.catalog_payload_kind_mismatch",
+                        "Predicate payload requires predicate callable kind",
+                        location,
+                    ));
                 }
-                if manifests.manifest(pack_id).is_none() {
-                    return Err(ModuleDiagnosticV1::UnknownPackManifest {
-                        pack: pack_id.clone(),
-                    });
+                Ok(ExternalCatalogPayloadV2::Predicate(
+                    SignatureV2::try_new(input, source_registry, session)?,
+                ))
+            }
+            Self::Type(value) => Ok(ExternalCatalogPayloadV2::Type(value)),
+            Self::View(value) => Ok(ExternalCatalogPayloadV2::View(value)),
+            Self::Model(value) => {
+                session.charge_string(value.as_str())?;
+                Ok(ExternalCatalogPayloadV2::Model(value))
+            }
+            Self::Pack(value) => {
+                session.charge_string(value.pack_id().as_str())?;
+                Ok(ExternalCatalogPayloadV2::Pack(value))
+            }
+            Self::Profile(value) => Ok(ExternalCatalogPayloadV2::Profile(value)),
+            Self::Gate(value) => Ok(ExternalCatalogPayloadV2::Gate(value)),
+            Self::Rule(input) => {
+                if input.callable_kind != CallableKindV2::Rule {
+                    return Err(ModuleDiagnosticV2::new(
+                        "modules.catalog_payload_kind_mismatch",
+                        "Rule payload requires rule callable kind",
+                        location,
+                    ));
                 }
-                let _ = self.active_packs.insert(pack_id.clone(), *activation);
-                Ok(())
+                Ok(ExternalCatalogPayloadV2::Rule(SignatureV2::try_new(
+                    input,
+                    source_registry,
+                    session,
+                )?))
             }
         }
     }
+}
 
-    /// Whether `REQUIRE CERTIFIED` is in force.
-    #[must_use]
-    pub const fn certified_required(&self) -> bool {
-        self.require_certified
-    }
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExternalCatalogDependencyInputV2 {
+    pub target: CatalogAssetRefInputV2,
+    pub expected_kind: NamespaceKindV2,
+    pub location: CheckedLocatedSpanV2,
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExternalCatalogAssetInputV2 {
+    pub module_name: String,
+    pub local_name: String,
+    pub kind_token: String,
+    pub typed_payload: ExternalCatalogPayloadInputV2,
+    pub provenance: String,
+    pub location: CheckedLocatedSpanV2,
+    pub dependencies: Vec<ExternalCatalogDependencyInputV2>,
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExternalCatalogDependencyV2 {
+    target_asset_id: CatalogAssetIdV2,
+    expected_kind: NamespaceKindV2,
+    location: LocatedSpanV2,
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExternalCatalogAssetV2 {
+    id: CatalogAssetIdV2,
+    kind: NamespaceKindV2,
+    typed_payload: ExternalCatalogPayloadV2,
+    provenance: String,
+    location: LocatedSpanV2,
+    dependencies: Vec<ExternalCatalogDependencyV2>,
+}
 
-    /// Borrow a registered asset by its stable `<kind>::<name>` id.
-    #[must_use]
-    pub fn asset(&self, asset_id: &str) -> Option<&CatalogAssetV1> {
-        self.assets.get(asset_id)
-    }
+#[derive(Clone, Debug)]
+pub(crate) struct PrecheckedExternalCatalogAssetV2 {
+    asset: ExternalCatalogAssetV2,
+    location: CheckedLocatedSpanV2,
+    registry_identity: SourceRegistryIdentityV2,
+}
 
-    /// Number of registered assets.
-    #[must_use]
-    pub fn len(&self) -> usize {
-        self.assets.len()
-    }
+impl PrecheckedExternalCatalogAssetV2 {
+    pub(crate) fn try_admit(
+        input: ExternalCatalogAssetInputV2,
+        source_registry: &SourceRegistryViewV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<Self, ModuleDiagnosticV2> {
+        session.charge_node()?;
+        session.charge_string(&input.module_name)?;
+        session.charge_string(&input.local_name)?;
+        session.charge_string(&input.kind_token)?;
+        session.charge_string(&input.provenance)?;
+        ensure_registry(&input.location, source_registry)?;
 
-    /// Whether the catalog holds no assets.
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.assets.is_empty()
-    }
+        for dependency in &input.dependencies {
+            session.charge_edge()?;
+            session.charge_string(dependency.target.module_id.as_str())?;
+            session.charge_string(&dependency.target.local_name)?;
+            ensure_registry(&dependency.location, source_registry)?;
+            ensure_registry(&dependency.target.location, source_registry)?;
+        }
 
-    /// All asset ids in deterministic sorted order (SHOW-style enumeration over
-    /// every category).
-    #[must_use]
-    pub fn asset_ids(&self) -> Vec<String> {
-        self.assets.keys().cloned().collect()
-    }
-
-    /// Asset ids of a single kind, in deterministic sorted order. This is the
-    /// direct projection a `SHOW <category>` introspection consumes.
-    #[must_use]
-    pub fn enumerate(&self, kind: CatalogKindV1) -> Vec<String> {
-        self.assets
-            .iter()
-            .filter(|(_, asset)| asset.kind == kind)
-            .map(|(id, _)| id.clone())
-            .collect()
-    }
-
-    /// Resolve the whole catalog fail-closed under the v2 admissibility rules.
-    ///
-    /// Order is deterministic: (1) every VIEW inline-select reference cycle, then
-    /// (2) the REQUIRE CERTIFIED admission forcing over every PROFILE. All
-    /// iteration is over sorted `BTreeMap`s so the first reject is stable.
-    pub fn resolve(&self) -> Result<ResolvedCatalogV1, ModuleDiagnosticV1> {
-        self.check_view_cycles()?;
-        self.check_certified_admission()?;
-        Ok(ResolvedCatalogV1 {
-            asset_ids: self.asset_ids(),
+        let module_id = ModuleIdV2::try_new(&input.module_name, input.location.clone())?;
+        let kind = NamespaceKindV2::try_from_tag(&input.kind_token, &input.location)?;
+        if kind != input.typed_payload.namespace_kind() {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.catalog_payload_kind_mismatch",
+                "catalog kind token does not match typed payload",
+                &input.location,
+            ));
+        }
+        let typed_payload =
+            input
+                .typed_payload
+                .try_into_checked(&input.location, source_registry, session)?;
+        let id = CatalogAssetIdV2::derive(module_id, kind, &input.local_name, &input.location)?;
+        let mut dependencies: BTreeMap<CatalogAssetIdV2, ExternalCatalogDependencyV2> =
+            BTreeMap::new();
+        for dependency in input.dependencies {
+            if dependency.target.namespace_kind != dependency.expected_kind {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.catalog_dependency_kind_conflict",
+                    "dependency reference kind differs from expected kind",
+                    &dependency.location,
+                ));
+            }
+            let target_asset_id = dependency.target.derive()?;
+            match dependencies.get_mut(&target_asset_id) {
+                Some(existing) if existing.expected_kind != dependency.expected_kind => {
+                    return Err(ModuleDiagnosticV2::new(
+                        "modules.catalog_dependency_kind_conflict",
+                        "same catalog target declared with different expected kinds",
+                        &dependency.location,
+                    ));
+                }
+                Some(existing)
+                    if loc_key(dependency.location.location()) < loc_key(existing.location) =>
+                {
+                    existing.location = dependency.location.location();
+                }
+                Some(_) => {}
+                None => {
+                    dependencies.insert(
+                        target_asset_id.clone(),
+                        ExternalCatalogDependencyV2 {
+                            target_asset_id,
+                            expected_kind: dependency.expected_kind,
+                            location: dependency.location.location(),
+                        },
+                    );
+                }
+            }
+        }
+        Ok(Self {
+            asset: ExternalCatalogAssetV2 {
+                id,
+                kind,
+                typed_payload,
+                provenance: input.provenance,
+                location: input.location.location(),
+                dependencies: dependencies.into_values().collect(),
+            },
+            location: input.location,
+            registry_identity: source_registry.identity(),
         })
     }
 
-    /// (1) Reject any VIEW whose inline SELECT transitively references itself.
-    ///
-    /// Only inline VIEW bodies form edges: an inline VIEW's relation sources that
-    /// name another VIEW (`view::<name>`) are edges to follow. A VIEW referencing
-    /// a non-VIEW source (a base table) is a leaf. Detection is a DFS over the
-    /// VIEW subgraph; the first cycle (smallest entry under sorted iteration)
-    /// rejects.
-    fn check_view_cycles(&self) -> Result<(), ModuleDiagnosticV1> {
-        // Build the VIEW -> referenced-VIEW-name adjacency from inline bodies.
-        let mut edges: BTreeMap<String, Vec<String>> = BTreeMap::new();
-        for asset in self.assets.values() {
-            if asset.kind != CatalogKindV1::View {
-                continue;
+    pub(crate) const fn id(&self) -> &CatalogAssetIdV2 {
+        &self.asset.id
+    }
+
+    pub(crate) const fn location(&self) -> &CheckedLocatedSpanV2 {
+        &self.location
+    }
+}
+impl ExternalCatalogAssetV2 {
+    #[must_use]
+    pub const fn id(&self) -> &CatalogAssetIdV2 {
+        &self.id
+    }
+    #[must_use]
+    pub const fn kind(&self) -> NamespaceKindV2 {
+        self.kind
+    }
+    #[must_use]
+    pub const fn payload(&self) -> &ExternalCatalogPayloadV2 {
+        &self.typed_payload
+    }
+    #[must_use]
+    pub fn provenance(&self) -> &str {
+        &self.provenance
+    }
+    #[must_use]
+    pub const fn location(&self) -> LocatedSpanV2 {
+        self.location
+    }
+    #[must_use]
+    pub fn dependencies(&self) -> &[ExternalCatalogDependencyV2] {
+        &self.dependencies
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ExternalCatalogV2 {
+    assets: BTreeMap<CatalogAssetIdV2, ExternalCatalogAssetV2>,
+    registry_identity: SourceRegistryIdentityV2,
+}
+impl ExternalCatalogV2 {
+    pub(crate) fn try_new(
+        inputs: Vec<PrecheckedExternalCatalogAssetV2>,
+        source_registry: &SourceRegistryViewV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<Self, ModuleDiagnosticV2> {
+        let mut assets: BTreeMap<CatalogAssetIdV2, ExternalCatalogAssetV2> = BTreeMap::new();
+        let mut original_locations: BTreeMap<CatalogAssetIdV2, CheckedLocatedSpanV2> =
+            BTreeMap::new();
+        for input in inputs {
+            if input.registry_identity != source_registry.identity() {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.source_registry_mismatch",
+                    "prechecked external asset belongs to another registry",
+                    &input.location,
+                ));
             }
-            let CatalogPayloadV1::View(body) = &asset.decl.payload else {
+            let id = input.asset.id.clone();
+            if let Some(original) = original_locations.get(&id) {
+                return Err(ModuleDiagnosticV2::conflict(
+                    "modules.duplicate_external_catalog_asset",
+                    "duplicate external catalog asset",
+                    &input.location,
+                    original,
+                ));
+            }
+            original_locations.insert(id.clone(), input.location);
+            assets.insert(id, input.asset);
+        }
+        for asset in assets.values() {
+            for dependency in &asset.dependencies {
+                session.charge_step()?;
+                let Some(target) = assets.get(&dependency.target_asset_id) else {
+                    let edge_location = source_registry
+                        .try_check_location(dependency.location)
+                        .map_err(|_source_error| {
+                            ModuleDiagnosticV2::without_location(
+                                "modules.source_registry_mismatch",
+                                "catalog edge location lost registry proof",
+                            )
+                        })?;
+                    return Err(ModuleDiagnosticV2::new(
+                        "modules.unknown_catalog_reference",
+                        format!(
+                            "external dependency target `{}` is absent",
+                            excerpt(dependency.target_asset_id.local_name())
+                        ),
+                        &edge_location,
+                    ));
+                };
+                if target.kind != dependency.expected_kind {
+                    let edge_location = source_registry
+                        .try_check_location(dependency.location)
+                        .map_err(|_source_error| {
+                            ModuleDiagnosticV2::without_location(
+                                "modules.source_registry_mismatch",
+                                "catalog edge location lost registry proof",
+                            )
+                        })?;
+                    let target_location = source_registry
+                        .try_check_location(target.location)
+                        .map_err(|_source_error| {
+                            ModuleDiagnosticV2::without_location(
+                                "modules.source_registry_mismatch",
+                                "catalog target location lost registry proof",
+                            )
+                        })?;
+                    return Err(ModuleDiagnosticV2::conflict(
+                        "modules.catalog_reference_kind_mismatch",
+                        "external dependency target has wrong kind",
+                        &edge_location,
+                        &target_location,
+                    ));
+                }
+            }
+        }
+        if let Some(cycle) = catalog_cycle(&assets, session)? {
+            let Some(first_location) = cycle.first().copied() else {
+                return Err(ModuleDiagnosticV2::without_location(
+                    "modules.catalog_dependency_cycle",
+                    "empty external catalog cycle witness",
+                ));
+            };
+            let first =
+                source_registry
+                    .try_check_location(first_location)
+                    .map_err(|_source_error| {
+                        ModuleDiagnosticV2::without_location(
+                            "modules.source_registry_mismatch",
+                            "cycle location lost registry proof",
+                        )
+                    })?;
+            return Err(ModuleDiagnosticV2::new(
+                "modules.catalog_dependency_cycle",
+                "external catalog dependency cycle",
+                &first,
+            )
+            .with_witness(cycle));
+        }
+        Ok(Self {
+            assets,
+            registry_identity: source_registry.identity(),
+        })
+    }
+    #[must_use]
+    pub fn asset(&self, id: &CatalogAssetIdV2) -> Option<&ExternalCatalogAssetV2> {
+        self.assets.get(id)
+    }
+    pub fn iter(&self) -> impl Iterator<Item = &ExternalCatalogAssetV2> {
+        self.assets.values()
+    }
+    #[must_use]
+    pub const fn source_registry_identity(&self) -> &SourceRegistryIdentityV2 {
+        &self.registry_identity
+    }
+}
+fn ensure_registry(
+    location: &CheckedLocatedSpanV2,
+    registry: &SourceRegistryViewV2,
+) -> Result<(), ModuleDiagnosticV2> {
+    if location.registry_identity() != &registry.identity() {
+        Err(ModuleDiagnosticV2::new(
+            "modules.source_registry_mismatch",
+            "location belongs to another source registry",
+            location,
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn catalog_cycle(
+    assets: &BTreeMap<CatalogAssetIdV2, ExternalCatalogAssetV2>,
+    session: &mut ModuleBudgetSessionV2,
+) -> Result<Option<Vec<LocatedSpanV2>>, ModuleDiagnosticV2> {
+    let mut found: Vec<Vec<(CatalogAssetIdV2, LocatedSpanV2)>> = Vec::new();
+    for root in assets.keys() {
+        let mut stack = vec![(
+            root.clone(),
+            Vec::new(),
+            std::collections::BTreeSet::from([root.clone()]),
+        )];
+        while let Some((node, path, seen)) = stack.pop() {
+            let Some(asset) = assets.get(&node) else {
                 continue;
             };
-            let mut targets = Vec::new();
-            match body {
-                ViewBodyV1::Inline(query) => {
-                    collect_view_refs(&query.body, &mut targets);
-                }
-                ViewBodyV1::QueryRef(_) => {}
-            }
-            // Keep only edges to names that are themselves registered VIEWs.
-            targets.retain(|name| {
-                self.assets
-                    .contains_key(&format!("{}::{}", CatalogKindV1::View.tag(), name))
-            });
-            targets.sort();
-            targets.dedup();
-            let _ = edges.insert(asset.name.clone(), targets);
-        }
-
-        // DFS for a back-edge, starting from each VIEW in sorted order.
-        for start in edges.keys() {
-            let mut stack: Vec<String> = Vec::new();
-            if let Some(cycle) = dfs_cycle(start, &edges, &mut stack) {
-                return Err(ModuleDiagnosticV1::ViewInlineCycle { cycle });
-            }
-        }
-        Ok(())
-    }
-
-    /// (2) When `REQUIRE CERTIFIED` is in force every PROFILE must be admission
-    /// `certified-only`; the first non-certified PROFILE (sorted) rejects.
-    fn check_certified_admission(&self) -> Result<(), ModuleDiagnosticV1> {
-        if !self.require_certified {
-            return Ok(());
-        }
-        for asset in self.assets.values() {
-            if asset.kind != CatalogKindV1::Profile {
-                continue;
-            }
-            if let CatalogPayloadV1::Profile { admission, .. } = &asset.decl.payload {
-                if *admission != AdmissionV1::CertifiedOnly {
-                    return Err(ModuleDiagnosticV1::CertifiedRequiredViolation {
-                        profile: asset.name.clone(),
-                        admission: admission_tag(*admission),
-                    });
+            for edge in asset.dependencies.iter().rev() {
+                session.charge_step()?;
+                if seen.contains(&edge.target_asset_id) {
+                    let position = path
+                        .iter()
+                        .position(|(id, _)| id == &edge.target_asset_id)
+                        .map_or(0, |index| index + 1);
+                    let mut cycle = path.get(position..).map_or_else(Vec::new, <[_]>::to_vec);
+                    cycle.push((edge.target_asset_id.clone(), edge.location));
+                    cycle = canonicalize_catalog_cycle(cycle);
+                    found.push(cycle);
+                } else if !seen.contains(&edge.target_asset_id) {
+                    let mut next_path = path.clone();
+                    next_path.push((edge.target_asset_id.clone(), edge.location));
+                    let mut next_seen = seen.clone();
+                    next_seen.insert(edge.target_asset_id.clone());
+                    stack.push((edge.target_asset_id.clone(), next_path, next_seen));
                 }
             }
         }
-        Ok(())
     }
+    found.sort_by(|left, right| {
+        left.iter()
+            .map(|(id, loc)| (id.clone(), loc_key(*loc)))
+            .collect::<Vec<_>>()
+            .cmp(
+                &right
+                    .iter()
+                    .map(|(id, loc)| (id.clone(), loc_key(*loc)))
+                    .collect::<Vec<_>>(),
+            )
+    });
+    Ok(found
+        .into_iter()
+        .next()
+        .map(|cycle| cycle.into_iter().map(|(_, location)| location).collect()))
 }
 
-/// The frozen result of resolving a [`CatalogV1`]: the deterministically-sorted
-/// asset ids that survived every admissibility rule. No plan is produced;
-/// declarations are catalog state, not relational producers.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ResolvedCatalogV1 {
-    asset_ids: Vec<String>,
+pub struct DocumentCatalogAssetInputV2 {
+    pub owner_module_id: ModuleIdV2,
+    pub local_name: String,
+    pub namespace_kind: NamespaceKindV2,
+    pub location: CheckedLocatedSpanV2,
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProfileAdmissionInputV2 {
+    pub profile: CatalogAssetRefInputV2,
+    pub admission: ProfileAdmissionV2,
+    pub location: CheckedLocatedSpanV2,
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DocumentCatalogDependencyInputV2 {
+    pub source: CatalogAssetRefInputV2,
+    pub target: CatalogAssetRefInputV2,
+    pub expected_target_kind: NamespaceKindV2,
+    pub location: CheckedLocatedSpanV2,
+}
+#[derive(Clone, Debug)]
+struct DocumentCatalogDependencyV2 {
+    source_asset_id: CatalogAssetIdV2,
+    target_asset_id: CatalogAssetIdV2,
+    expected_target_kind: NamespaceKindV2,
+    location: CheckedLocatedSpanV2,
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RequireCertifiedInputV2 {
+    pub location: CheckedLocatedSpanV2,
+}
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DocumentCatalogInputV2 {
+    pub assets: Vec<DocumentCatalogAssetInputV2>,
+    pub profile_admissions: Vec<ProfileAdmissionInputV2>,
+    pub activations: Vec<crate::PackActivationInputV2>,
+    pub require_certified_directives: Vec<RequireCertifiedInputV2>,
+    pub dependency_edges: Vec<DocumentCatalogDependencyInputV2>,
 }
 
-impl ResolvedCatalogV1 {
-    /// The resolved asset ids in deterministic sorted order.
+#[derive(Clone, Debug)]
+pub struct DocumentCatalogAuthorityV2 {
+    assets: BTreeMap<CatalogAssetIdV2, NamespaceKindV2>,
+    profiles: BTreeMap<CatalogAssetIdV2, ProfileAdmissionV2>,
+    activations: crate::ValidatedPackActivationsV2,
+    require_certified: Option<LocatedSpanV2>,
+    registry_identity: SourceRegistryIdentityV2,
+}
+impl DocumentCatalogAuthorityV2 {
+    pub(crate) fn try_new(
+        input: DocumentCatalogInputV2,
+        external: &ExternalCatalogV2,
+        packs: &ValidatedPackAuthorityV2,
+        source_registry: &SourceRegistryViewV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<Self, ModuleDiagnosticV2> {
+        // Activation authority participates in REQUIRE CERTIFIED reachability,
+        // so validate and seal it before certification closure.
+        let activations = packs.validate_document_activations(
+            input.activations,
+            &source_registry.identity(),
+            session,
+        )?;
+        let mut assets: BTreeMap<CatalogAssetIdV2, NamespaceKindV2> = BTreeMap::new();
+        let mut asset_locations: BTreeMap<CatalogAssetIdV2, CheckedLocatedSpanV2> = BTreeMap::new();
+        for asset in input.assets {
+            session.charge_node()?;
+            session.charge_string(asset.owner_module_id.as_str())?;
+            session.charge_string(&asset.local_name)?;
+            ensure_registry(&asset.location, source_registry)?;
+            let id = CatalogAssetIdV2::derive(
+                asset.owner_module_id,
+                asset.namespace_kind,
+                &asset.local_name,
+                &asset.location,
+            )?;
+            if let Some(original) = asset_locations.get(&id) {
+                return Err(ModuleDiagnosticV2::conflict(
+                    "modules.duplicate_document_catalog_asset",
+                    "duplicate document catalog asset",
+                    &asset.location,
+                    original,
+                ));
+            }
+            asset_locations.insert(id.clone(), asset.location);
+            assets.insert(id, asset.namespace_kind);
+        }
+        let mut profiles = BTreeMap::new();
+        let mut profile_locations: BTreeMap<CatalogAssetIdV2, CheckedLocatedSpanV2> =
+            BTreeMap::new();
+        for profile in input.profile_admissions {
+            session.charge_edge()?;
+            ensure_registry(&profile.location, source_registry)?;
+            ensure_registry(&profile.profile.location, source_registry)?;
+            session.charge_string(profile.profile.module_id.as_str())?;
+            session.charge_string(&profile.profile.local_name)?;
+            let profile_asset_id = profile.profile.derive()?;
+            match assets.get(&profile_asset_id) {
+                Some(NamespaceKindV2::Profile) => {}
+                Some(_) => {
+                    return Err(ModuleDiagnosticV2::new(
+                        "modules.profile_admission_wrong_kind",
+                        "profile admission target is not a Profile",
+                        &profile.location,
+                    ))
+                }
+                None => {
+                    return Err(ModuleDiagnosticV2::new(
+                        "modules.unknown_profile_admission",
+                        "profile admission target is absent",
+                        &profile.location,
+                    ))
+                }
+            }
+            if let Some(original) = profile_locations.get(&profile_asset_id) {
+                return Err(ModuleDiagnosticV2::conflict(
+                    "modules.duplicate_profile_admission",
+                    "duplicate profile admission",
+                    &profile.location,
+                    original,
+                ));
+            }
+            profile_locations.insert(profile_asset_id.clone(), profile.location);
+            profiles.insert(profile_asset_id, profile.admission);
+        }
+        for (id, kind) in &assets {
+            if *kind == NamespaceKindV2::Profile && !profiles.contains_key(id) {
+                let Some(location) = asset_locations.get(id) else {
+                    return Err(ModuleDiagnosticV2::without_location(
+                        "modules.missing_profile_admission",
+                        "profile location missing from document catalog",
+                    ));
+                };
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.missing_profile_admission",
+                    "local Profile requires exactly one admission",
+                    location,
+                ));
+            }
+        }
+        let mut dependency_edges: BTreeMap<
+            (CatalogAssetIdV2, CatalogAssetIdV2),
+            DocumentCatalogDependencyV2,
+        > = BTreeMap::new();
+        for edge in input.dependency_edges {
+            session.charge_edge()?;
+            ensure_registry(&edge.location, source_registry)?;
+            ensure_registry(&edge.source.location, source_registry)?;
+            ensure_registry(&edge.target.location, source_registry)?;
+            session.charge_string(edge.source.module_id.as_str())?;
+            session.charge_string(&edge.source.local_name)?;
+            session.charge_string(edge.target.module_id.as_str())?;
+            session.charge_string(&edge.target.local_name)?;
+            if edge.target.namespace_kind != edge.expected_target_kind {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.catalog_reference_kind_mismatch",
+                    "target reference kind differs from expected kind",
+                    &edge.location,
+                ));
+            }
+            let source_asset_id = edge.source.derive()?;
+            let target_asset_id = edge.target.derive()?;
+            if assets.get(&source_asset_id) != Some(&NamespaceKindV2::View) {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.catalog_dependency_source_wrong_kind",
+                    "document dependency source must be a local View",
+                    &edge.location,
+                ));
+            }
+            let local_target = assets.get(&target_asset_id).copied();
+            let external_target = external.asset(&target_asset_id);
+            let actual = local_target.or_else(|| external_target.map(ExternalCatalogAssetV2::kind));
+            let Some(actual) = actual else {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.unknown_catalog_reference",
+                    "document dependency target is absent",
+                    &edge.location,
+                ));
+            };
+            if actual != edge.expected_target_kind {
+                let target_location = if let Some(location) = asset_locations.get(&target_asset_id)
+                {
+                    location.clone()
+                } else {
+                    let Some(external_target) = external_target else {
+                        return Err(ModuleDiagnosticV2::new(
+                            "modules.unknown_catalog_reference",
+                            "document dependency target is absent",
+                            &edge.location,
+                        ));
+                    };
+                    source_registry
+                        .try_check_location(external_target.location())
+                        .map_err(|_source_error| {
+                            ModuleDiagnosticV2::without_location(
+                                "modules.source_registry_mismatch",
+                                "catalog target location lost registry proof",
+                            )
+                        })?
+                };
+                return Err(ModuleDiagnosticV2::conflict(
+                    "modules.catalog_reference_kind_mismatch",
+                    "document dependency target has wrong kind",
+                    &edge.location,
+                    &target_location,
+                ));
+            }
+            let key = (source_asset_id.clone(), target_asset_id.clone());
+            let resolved_edge = DocumentCatalogDependencyV2 {
+                source_asset_id,
+                target_asset_id,
+                expected_target_kind: edge.expected_target_kind,
+                location: edge.location,
+            };
+            match dependency_edges.get_mut(&key) {
+                Some(existing)
+                    if existing.expected_target_kind != resolved_edge.expected_target_kind =>
+                {
+                    return Err(ModuleDiagnosticV2::new(
+                        "modules.catalog_dependency_kind_conflict",
+                        "duplicate edge disagrees on expected kind",
+                        &resolved_edge.location,
+                    ))
+                }
+                Some(existing)
+                    if loc_key(resolved_edge.location.location())
+                        < loc_key(existing.location.location()) =>
+                {
+                    *existing = resolved_edge
+                }
+                Some(_) => {}
+                None => {
+                    dependency_edges.insert(key, resolved_edge);
+                }
+            }
+        }
+        if let Some(cycle) = document_cycle(&dependency_edges, &assets, session)? {
+            let witness = cycle.iter().map(|location| location.location()).collect();
+            let Some(first) = cycle.first() else {
+                return Err(ModuleDiagnosticV2::without_location(
+                    "modules.view_inline_cycle",
+                    "empty document View cycle witness",
+                ));
+            };
+            return Err(ModuleDiagnosticV2::new(
+                "modules.view_inline_cycle",
+                "document View dependency cycle",
+                first,
+            )
+            .with_witness(witness));
+        }
+        let mut require_location: Option<CheckedLocatedSpanV2> = None;
+        for directive in input.require_certified_directives {
+            session.charge_edge()?;
+            ensure_registry(&directive.location, source_registry)?;
+            if require_location.as_ref().map_or(true, |current| {
+                loc_key(directive.location.location()) < loc_key(current.location())
+            }) {
+                require_location = Some(directive.location);
+            }
+        }
+        if let Some(require) = &require_location {
+            for (id, admission) in &profiles {
+                if *admission != ProfileAdmissionV2::CertifiedOnly {
+                    return Err(ModuleDiagnosticV2::new(
+                        "modules.certified_required_violation",
+                        format!(
+                            "profile `{}` is not certified-only",
+                            excerpt(id.local_name())
+                        ),
+                        require,
+                    ));
+                }
+            }
+            let reachable = reachable_external_profiles(&dependency_edges, external, &activations);
+            for asset in reachable {
+                if let ExternalCatalogPayloadV2::Profile(admission) = asset.payload() {
+                    if *admission != ProfileAdmissionV2::CertifiedOnly {
+                        return Err(ModuleDiagnosticV2::new(
+                            "modules.certified_required_violation",
+                            format!(
+                                "external profile `{}` is not certified-only",
+                                excerpt(asset.id.local_name())
+                            ),
+                            require,
+                        ));
+                    }
+                }
+            }
+        }
+        Ok(Self {
+            assets,
+            profiles,
+            activations,
+            require_certified: require_location.map(|location| location.location()),
+            registry_identity: source_registry.identity(),
+        })
+    }
+    pub fn assets(&self) -> impl Iterator<Item = (&CatalogAssetIdV2, NamespaceKindV2)> {
+        self.assets.iter().map(|(id, kind)| (id, *kind))
+    }
     #[must_use]
-    pub fn asset_ids(&self) -> &[String] {
-        &self.asset_ids
+    pub const fn activations(&self) -> &crate::ValidatedPackActivationsV2 {
+        &self.activations
+    }
+    pub fn profiles(&self) -> impl Iterator<Item = (&CatalogAssetIdV2, ProfileAdmissionV2)> {
+        self.profiles.iter().map(|(id, admission)| (id, *admission))
+    }
+    #[must_use]
+    pub const fn require_certified_location(&self) -> Option<LocatedSpanV2> {
+        self.require_certified
+    }
+    #[must_use]
+    pub const fn source_registry_identity(&self) -> &SourceRegistryIdentityV2 {
+        &self.registry_identity
     }
 }
 
-/// Stable lowercase tag for a PROFILE admission policy.
-const fn admission_tag(admission: AdmissionV1) -> &'static str {
-    match admission {
-        AdmissionV1::Allowlist => "allowlist",
-        AdmissionV1::ReviewRequired => "review-required",
-        AdmissionV1::CertifiedOnly => "certified-only",
+fn document_cycle(
+    edges: &BTreeMap<(CatalogAssetIdV2, CatalogAssetIdV2), DocumentCatalogDependencyV2>,
+    assets: &BTreeMap<CatalogAssetIdV2, NamespaceKindV2>,
+    session: &mut ModuleBudgetSessionV2,
+) -> Result<Option<Vec<CheckedLocatedSpanV2>>, ModuleDiagnosticV2> {
+    let mut adjacency: BTreeMap<CatalogAssetIdV2, Vec<&DocumentCatalogDependencyV2>> =
+        BTreeMap::new();
+    for edge in edges.values() {
+        if assets.get(&edge.target_asset_id) == Some(&NamespaceKindV2::View) {
+            adjacency
+                .entry(edge.source_asset_id.clone())
+                .or_default()
+                .push(edge);
+        }
     }
-}
-
-/// Collect the relation-source names a VIEW inline body references, recursing
-/// through projection / filter / composition. Each leaf `Source` name is a
-/// candidate VIEW edge; the caller filters to registered VIEWs.
-fn collect_view_refs(relation: &quanta_gqlang_v2_hir::RelationExprHirV1, out: &mut Vec<String>) {
-    use quanta_gqlang_v2_hir::RelationExprKindV1;
-    match &relation.kind {
-        RelationExprKindV1::Source(source) => out.push(source.name.clone()),
-        RelationExprKindV1::Project(project) => collect_view_refs(&project.input, out),
-        RelationExprKindV1::Filter(filter) => collect_view_refs(&filter.input, out),
-        RelationExprKindV1::Compose(compose) => {
-            for operand in &compose.operands {
-                collect_view_refs(operand, out);
+    for outgoing in adjacency.values_mut() {
+        outgoing.sort_by(|left, right| {
+            left.target_asset_id
+                .cmp(&right.target_asset_id)
+                .then(loc_key(left.location.location()).cmp(&loc_key(right.location.location())))
+        });
+    }
+    let mut cycles = Vec::new();
+    for root in adjacency.keys() {
+        let mut stack = vec![(
+            root.clone(),
+            Vec::<(CatalogAssetIdV2, CheckedLocatedSpanV2)>::new(),
+            std::collections::BTreeSet::from([root.clone()]),
+        )];
+        while let Some((node, path, seen)) = stack.pop() {
+            for edge in adjacency.get(&node).into_iter().flatten().rev() {
+                session.charge_step()?;
+                if seen.contains(&edge.target_asset_id) {
+                    let position = path
+                        .iter()
+                        .position(|(id, _)| id == &edge.target_asset_id)
+                        .map_or(0, |index| index + 1);
+                    let mut cycle = path.get(position..).map_or_else(Vec::new, <[_]>::to_vec);
+                    cycle.push((edge.target_asset_id.clone(), edge.location.clone()));
+                    cycle = canonicalize_document_cycle(cycle);
+                    cycles.push(cycle);
+                } else {
+                    let mut next_path = path.clone();
+                    next_path.push((edge.target_asset_id.clone(), edge.location.clone()));
+                    let mut next_seen = seen.clone();
+                    next_seen.insert(edge.target_asset_id.clone());
+                    stack.push((edge.target_asset_id.clone(), next_path, next_seen));
+                }
             }
         }
     }
+    cycles.sort_by(|left, right| {
+        left.iter()
+            .map(|(id, loc)| (id.clone(), loc_key(loc.location())))
+            .collect::<Vec<_>>()
+            .cmp(
+                &right
+                    .iter()
+                    .map(|(id, loc)| (id.clone(), loc_key(loc.location())))
+                    .collect::<Vec<_>>(),
+            )
+    });
+    Ok(cycles
+        .into_iter()
+        .next()
+        .map(|cycle| cycle.into_iter().map(|(_, location)| location).collect()))
 }
 
-/// DFS from `node` over `edges`; returns a cycle path (closed at the repeated
-/// entry) if a back-edge to a node already on `stack` is found.
-fn dfs_cycle(
-    node: &str,
-    edges: &BTreeMap<String, Vec<String>>,
-    stack: &mut Vec<String>,
-) -> Option<Vec<String>> {
-    if let Some(pos) = stack.iter().position(|n| n == node) {
-        // Back-edge: the cycle is the stack tail from `pos`, closed at `node`.
-        let mut cycle: Vec<String> = stack.get(pos..).map_or_else(Vec::new, <[String]>::to_vec);
-        cycle.push(node.to_string());
-        return Some(cycle);
-    }
-    stack.push(node.to_string());
-    if let Some(targets) = edges.get(node) {
-        for target in targets {
-            if let Some(cycle) = dfs_cycle(target, edges, stack) {
-                return Some(cycle);
+fn canonicalize_catalog_cycle(
+    cycle: Vec<(CatalogAssetIdV2, LocatedSpanV2)>,
+) -> Vec<(CatalogAssetIdV2, LocatedSpanV2)> {
+    (0..cycle.len())
+        .map(|offset| {
+            cycle
+                .iter()
+                .cycle()
+                .skip(offset)
+                .take(cycle.len())
+                .cloned()
+                .collect::<Vec<_>>()
+        })
+        .min_by_key(|rotation| {
+            rotation
+                .iter()
+                .map(|(id, location)| (id.clone(), loc_key(*location)))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default()
+}
+
+fn canonicalize_document_cycle(
+    cycle: Vec<(CatalogAssetIdV2, CheckedLocatedSpanV2)>,
+) -> Vec<(CatalogAssetIdV2, CheckedLocatedSpanV2)> {
+    (0..cycle.len())
+        .map(|offset| {
+            cycle
+                .iter()
+                .cycle()
+                .skip(offset)
+                .take(cycle.len())
+                .cloned()
+                .collect::<Vec<_>>()
+        })
+        .min_by_key(|rotation| {
+            rotation
+                .iter()
+                .map(|(id, location)| (id.clone(), loc_key(location.location())))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default()
+}
+fn reachable_external_profiles<'a>(
+    edges: &BTreeMap<(CatalogAssetIdV2, CatalogAssetIdV2), DocumentCatalogDependencyV2>,
+    external: &'a ExternalCatalogV2,
+    activations: &crate::ValidatedPackActivationsV2,
+) -> Vec<&'a ExternalCatalogAssetV2> {
+    let mut queue = edges
+        .values()
+        .map(|edge| edge.target_asset_id.clone())
+        .collect::<Vec<_>>();
+    for activation in activations.iter() {
+        queue.extend(external.iter().filter_map(|asset| match asset.payload() {
+            ExternalCatalogPayloadV2::Pack(contract)
+                if contract.pack_id() == activation.pack_id() =>
+            {
+                Some(asset.id().clone())
             }
+            ExternalCatalogPayloadV2::Pack(_)
+            | ExternalCatalogPayloadV2::Value(_)
+            | ExternalCatalogPayloadV2::Relation(_)
+            | ExternalCatalogPayloadV2::Predicate(_)
+            | ExternalCatalogPayloadV2::Type(_)
+            | ExternalCatalogPayloadV2::View(_)
+            | ExternalCatalogPayloadV2::Model(_)
+            | ExternalCatalogPayloadV2::Profile(_)
+            | ExternalCatalogPayloadV2::Gate(_)
+            | ExternalCatalogPayloadV2::Rule(_) => None,
+        }));
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    let mut profiles = Vec::new();
+    while let Some(id) = queue.pop() {
+        if !seen.insert(id.clone()) {
+            continue;
+        }
+        if let Some(asset) = external.asset(&id) {
+            if asset.kind == NamespaceKindV2::Profile {
+                profiles.push(asset);
+            }
+            queue.extend(
+                asset
+                    .dependencies
+                    .iter()
+                    .map(|edge| edge.target_asset_id.clone()),
+            );
         }
     }
-    let _ = stack.pop();
-    None
+    profiles.sort_by_key(|asset| asset.id.clone());
+    profiles
 }

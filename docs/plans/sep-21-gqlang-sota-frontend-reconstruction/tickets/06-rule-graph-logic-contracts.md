@@ -4,7 +4,7 @@ Status: `PLANNED`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
-## Findings Closed
+## Findings Owned / To Close
 
 F10, F17, F20's logic producer, F26's logic recursion bounds, and F30.
 
@@ -22,7 +22,7 @@ explicit boundedness proofs rather than HIR-shape heuristics.
 | `DELETE` | one-rule-at-a-time producer, callee-argument heuristic, waypoint-as-depth inference | remove at the pipeline/source adapter |
 | `NEW` | document-wide resolved rule-program adapter, exact dependency edges, budget counter/proof fields | no second SCC/DFS/stratifier is allowed |
 
-Existing `v3_logic_recursion.rs`, graph, witness, hellgate, and punchlist suites
+Existing `v3_logic_recursion.rs`, graph, witness, hellgate, and mutation suites
 remain the owner rails. New tests cover source-document reachability and missing
 payloads; they must not restate current Tarjan positives under new filenames.
 
@@ -67,8 +67,7 @@ stop and amend 04; do not patch sema from this ticket.
 ## Graph Implementation
 
 1. Keep waypoint constraints as path predicates only.
-2. Require explicit depth for cyclic relation traversal unless a distinct
-   acyclic proof exists.
+2. Require explicit bounded depth for every transitive traversal in this packet.
 3. Preserve max path length, witness cap, dedup identity, tie-break, relation
    shape, and endpoint contract in `GraphQueryContractV2`.
 4. Use iterative graph traversal or a checked graph-depth budget.
@@ -78,20 +77,23 @@ stop and amend 04; do not patch sema from this ticket.
 
 ```rust
 pub struct ResolvedRuleV2 {
-    predicate: PredicateIdV2,
-    head_terms: Vec<TypedExprV2>,
+    item_id: SemanticItemIdV2,
+    predicate: ResolvedPredicateIdV2,
+    head_term: TypedExprV2,
     body: TypedBoolExprV2,
     dependencies: Vec<ResolvedPredicateEdgeV2>,
     span: SpanV1,
 }
 
 pub struct ResolvedPredicateEdgeV2 {
-    target: PredicateIdV2,
+    target: ResolvedPredicateIdV2,
     polarity: BodyPolarityV1,
     span: SpanV1,
 }
 
 pub struct RuleProgramContractV2 {
+    document_source_id: SourceIdV2,
+    member_item_ids: Vec<SemanticItemIdV2>,
     rules: Vec<ResolvedRuleV2>,
     proof: StratificationProofV2,
 }
@@ -113,17 +115,19 @@ accessors. A Boolean `bounded=true` is insufficient.
    proof.
 7. Remove `lower_source_rule`, `root_symbol_name`, and call-argument dependency
    heuristics.
-8. Change graph boundedness so only explicit depth or an independent acyclic
-    proof satisfies cyclic traversal.
+8. Require explicit bounded depth for transitive graph traversal; no acyclic
+   proof shortcut is admitted in this packet.
 9. Retain via/through as ordered path constraints.
 10. Make DFS/Tarjan iterative or charge every traversal step to graph budget.
 11. Return exact graph and rule contracts to pipeline/planning.
 
 The private logic counter receives `max_rule_graph_nodes`,
 `max_rule_graph_edges`, `max_rule_steps`, `max_witness_depth`, and
-`max_witnesses` from the immutable frontend budget. It charges each rule node,
-dependency edge, SCC/stratification visit, graph traversal step, and emitted
-witness before work/allocation. Exact limit succeeds; the next charge rejects.
+`max_witnesses` from the immutable frontend budget. It charges each source
+contract node/edge and each SCC/stratification/static-validation visit before
+work/allocation. It validates declared depth and witness caps against the
+budget but does not execute graph traversal or emit witnesses. Exact limit
+succeeds; the next charge rejects.
 No surface, sema, algebra, or planning counter is reused or recharged here.
 
 ## Test Files
@@ -134,7 +138,7 @@ No surface, sema, algebra, or planning counter is reused or recharged here.
 4. `[UPDATE]` `crates/quanta-gqlang-v2-logic/tests/v3_graph_query_depth_waypoint_conflict.rs` — counterexamples and explicit bounds
 5. `[UPDATE]` `crates/quanta-gqlang-v2-logic/tests/v3_graph_query_hellgate.rs` — graph budget exhaustion
 6. `[UPDATE]` `crates/quanta-gqlang-v2-logic/tests/v3_logic_witness.rs` and `crates/quanta-gqlang-v2-logic/tests/test_endpoint_conflict.rs` — exact retained contract fields
-7. `[UPDATE]` `crates/quanta-gqlang-v2-logic/tests/v3_logic_punchlist.rs` — mutation cases without a second suite
+7. `[MOVE+REWRITE]` `crates/quanta-gqlang-v2-logic/tests/v3_logic_punchlist.rs` to `crates/quanta-gqlang-v2-logic/tests/v3_logic_mutation_rails.rs` — mutation cases without a second suite
 8. `[ADD]` `crates/quanta-gqlang-v2-pipeline/tests/v3_source_rule_document.rs`
 9. `[ADD]` `crates/quanta-gqlang-v2-pipeline/tests/v3_graph_contract_retention.rs`
 
@@ -175,12 +179,13 @@ Audited existing-test disposition:
 
 ```bash
 cargo test -p quanta-gqlang-v2-logic
-cargo test -p quanta-gqlang-v2-pipeline --test v3_source_rule_document
-cargo test -p quanta-gqlang-v2-pipeline --test v3_graph_contract_retention
-cargo clippy -p quanta-gqlang-v2-logic -p quanta-gqlang-v2-pipeline --all-targets -- -D warnings
+cargo clippy -p quanta-gqlang-v2-logic --all-targets -- -D warnings
 python3 tools/architecture/check_architecture.py
 git diff --check
 ```
+
+`v3_source_rule_document` and `v3_graph_contract_retention` are deferred to
+ticket 07 and enumerated in receipt 06.
 
 ## Forbidden Shortcuts
 
@@ -234,5 +239,53 @@ ticket 04 and must already be green before this ticket starts.
 4. graph boundedness is explicit and retained downstream
 
 ## Dependencies
+
+## 2026-09-21 Final Adversarial Audit Corrections
+
+This section is normative and supersedes conflicting earlier wording.
+
+### Owner boundary and focused proof
+
+- Ticket 06 may reach only `FOCUSED_GREEN`; compile/test `logic` only. Pipeline
+  graph/rule proof is ticket 07 integration work.
+- Logic consumes sema-resolved identities and Bool proof. It does not resolve
+  callee strings, infer types, validate aggregate placement, or perform runtime
+  graph traversal.
+- Rename `tests/v3_logic_punchlist.rs` to
+  `tests/v3_logic_mutation_rails.rs` in this ticket. Ticket 09 therefore has no
+  surviving `_punchlist` exception.
+
+### Exact rule and graph contracts
+
+- Reuse ticket 03 `ResolvedPredicateIdV2`; `PredicateIdV2` is forbidden.
+- Reuse ticket 04 `TypedBoolExprV2` for bodies. Unary rules use one
+  `head_term: TypedExprV2`, never `Vec<TypedExprV2>`.
+- `ResolvedRuleV2`, `ResolvedPredicateEdgeV2`, `RuleProgramContractV2`, and
+  `GraphQueryContractV2` have private fields and owner-only fallible
+  constructors.
+- Every result retains `SemanticItemIdV2`. A document-level
+  `RuleProgramContractV2` additionally retains the document source identity and
+  exact sorted member-item IDs. Duplicate, missing, extra, or foreign IDs
+  reject.
+- `GraphQueryContractV2` is produced from the exact `ResolvedGraphQueryV2` and
+  is the only graph value supplied to a CHECK contract in ticket 07.
+
+### Static boundedness only
+
+This repository charges source-contract nodes/edges, SCC/stratification work,
+and static validation walks. It does not execute a graph or emit witnesses.
+Source `depth` must be positive and `<= max_witness_depth`; the effective
+declared witness cap must be positive and `<= max_witnesses`. Exact-limit and
+one-over cases are mandatory. Remove any independent
+`DEFAULT_MAX_WITNESSES`; defaults come only from `FrontendBudgetV2`.
+
+No unowned "acyclic proof" shortcut is accepted in this packet. Every graph
+shape that can traverse transitively requires an explicit bounded depth. If a
+future proof type is desired, it needs a separately owned producer and packet.
+
+Required tests include multi-cycle and permuted-edge canonical SCC witnesses,
+positive acyclic diamond, negation-cycle rejection, unary-head construction,
+foreign/duplicate item identities, depth/witness exact boundary and one-over,
+and source permutation stability.
 
 Requires 04. May run in parallel with 05 after sema contracts are frozen.

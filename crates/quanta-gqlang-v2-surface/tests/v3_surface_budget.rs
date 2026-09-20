@@ -2,7 +2,8 @@
 
 use quanta_gqlang_v2_hir::SourceIdV2;
 use quanta_gqlang_v2_surface::{
-    parse_source_document_v2, ParseBudgetDimensionV2, ParseBudgetV2, ParseErrorCodeV1,
+    format_source_document_with_parse_budget_v2, parse_source_document_v2, ParseBudgetDimensionV2,
+    ParseBudgetV2, ParseErrorCodeV1,
 };
 
 fn budget(
@@ -16,8 +17,21 @@ fn budget(
     ParseBudgetV2::try_new(tokens, items, nodes, depth, width, projection).unwrap()
 }
 
+#[test]
+fn formatter_v2_preserves_source_identity_on_failure() {
+    let error = format_source_document_with_parse_budget_v2(
+        SourceIdV2::from_raw(91),
+        "let x = @",
+        &ParseBudgetV2::standard_v2(),
+    )
+    .unwrap_err();
+    assert_eq!(error.source_id, SourceIdV2::from_raw(91));
+    assert_eq!(error.code, ParseErrorCodeV1::UnexpectedChar);
+}
+
 fn exhausted(source: &str, budget: &ParseBudgetV2, dimension: ParseBudgetDimensionV2) {
     let error = parse_source_document_v2(SourceIdV2::from_raw(7), source, budget).unwrap_err();
+    assert_eq!(error.source_id, SourceIdV2::from_raw(7));
     assert_eq!(error.code, ParseErrorCodeV1::ResourceExhausted);
     let resource = error.resource.unwrap();
     assert_eq!(resource.dimension, dimension);

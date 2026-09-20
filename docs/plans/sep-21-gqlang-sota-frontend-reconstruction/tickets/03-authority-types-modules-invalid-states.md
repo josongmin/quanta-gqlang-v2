@@ -4,7 +4,7 @@ Status: `ACTIVE`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
-## Findings Closed
+## Findings Owned / To Close
 
 F06's type carrier, F15, F19, F22, F23, F25, F27, F32, and F37.
 
@@ -189,7 +189,8 @@ SourceRegistryViewV2::try_check_location(LocatedSpanV2)
 ExtendedSourceRegistryViewV2::try_check_location(LocatedSpanV2)
     -> Result<CheckedLocatedSpanV2, SourceRegistryDiagnosticV2>
 RelationCatalogV2::try_new(inputs: Vec<RelationSourceInputV2>,
-                           source_registry: &SourceRegistryViewV2)
+                           source_registry: &SourceRegistryViewV2,
+                           budget_profile: AuthorityBudgetProfileV2)
     -> Result<RelationCatalogV2, TypeAuthorityDiagnosticV2>
 ExternalCatalogV2::try_new(
     assets,
@@ -209,8 +210,12 @@ PackManifestV2::try_new(input: PackManifestInputV2,
     -> Result<PackManifestV2, ModuleDiagnosticV2>
 ExpressionTypeKernelV2::check_document(inputs: &ResolvedTypeInputsV2)
     -> Result<TypedExpressionFactsV2, TypeDiagnosticV2>
+AuthorityBudgetProfileV2::try_new(module_nodes, module_edges, module_steps,
+                                  authority_bytes, authority_string_bytes)
+    -> Result<AuthorityBudgetProfileV2, TypeAuthorityDiagnosticV2>
+ModuleBudgetV2::from_profile(AuthorityBudgetProfileV2) -> ModuleBudgetV2
 ModuleBudgetV2::begin_session_v2(&self) -> ModuleBudgetSessionV2
-ModuleAuthorityBuilderV2::try_new(ModuleBudgetV2, SourceRegistryViewV2)
+ModuleAuthorityBuilderV2::try_new(AuthorityBudgetProfileV2, SourceRegistryViewV2)
     -> Result<ModuleAuthorityBuilderV2, ModuleDiagnosticV2>
 ModuleAuthorityBuilderV2::try_add_module(ModuleNodeInputV2)
     -> Result<(), ModuleDiagnosticV2>
@@ -233,8 +238,7 @@ ModuleAuthorityBuilderV2::try_add_model_pack(ModelPackInputV2)
 ModuleAuthorityBuilderV2::finish(current_module: CurrentModuleSelectionInputV2,
                                  language_version: VersionV2)
     -> Result<ValidatedModuleAuthorityPartsV2, ModuleDiagnosticV2>
-DocumentCatalogValidatorV2::try_new(ModuleBudgetV2,
-                                     ExtendedSourceRegistryViewV2,
+DocumentCatalogValidatorV2::try_new(ExtendedSourceRegistryViewV2,
                                      &ValidatedModuleAuthorityPartsV2)
     -> Result<DocumentCatalogValidatorV2, ModuleDiagnosticV2>
 DocumentCatalogValidatorV2::validate(DocumentCatalogInputV2)
@@ -296,20 +300,25 @@ ModuleNodeInputV2 { module_id, location }
 CurrentModuleSelectionInputV2 { module_id, location }
 ModuleDeclarationInputV2 { owner_module_id, local_name,
                            namespace_kind, visibility, location }
-ModuleImportInputV2 { owner_module_id, local_name, target_asset_id,
+CatalogAssetRefInputV2 { module_name, namespace_kind, local_name, location }
+ModuleImportInputV2 { owner_module_id, local_name, target: CatalogAssetRefInputV2,
                       location }
-ModuleReexportInputV2 { owner_module_id, exported_name, target_asset_id,
+ModuleReexportInputV2 { owner_module_id, exported_name,
+                        target: CatalogAssetRefInputV2,
                         location }
 ExternalCatalogAssetInputV2 { module_name, local_name, kind_token,
-                              typed_payload, provenance, location,
+                              payload: ExternalCatalogPayloadInputV2,
+                              provenance, location,
                               dependencies }
 ExternalCatalogAssetV2 { id, kind, typed_payload, provenance, location,
                          dependencies } // validated output only
-ExternalCatalogDependencyInputV2 { target_asset_id, expected_kind, location }
+ExternalCatalogDependencyInputV2 { target: CatalogAssetRefInputV2,
+                                   expected_kind, location }
 LockPinV2 { pack_id, version, content_digest, location }
 RelationSourceInputV2 { provenance_namespace, qualified_name,
                         lookup_name, row, cardinality, provenance, location }
 LocatedParameterInputV2 { name, value_type, location }
+SignatureInputV2 { parameters, result, callable_kind, effects, location }
 PackManifestInputV2 { pack_id, version, content_digest, language_range,
                       dependencies, exports, suites, location }
 LocatedDependencyInputV2 { pack_id, version_range, location }
@@ -322,8 +331,10 @@ DocumentCatalogInputV2 { assets, profile_admissions, activations,
                          require_certified_directives, dependency_edges }
 DocumentCatalogAssetInputV2 { owner_module_id, local_name, namespace_kind,
                               location }
-ProfileAdmissionInputV2 { profile_asset_id, admission, location }
-DocumentCatalogDependencyInputV2 { source_asset_id, target_asset_id,
+ProfileAdmissionInputV2 { profile: CatalogAssetRefInputV2,
+                          admission, location }
+DocumentCatalogDependencyInputV2 { source: CatalogAssetRefInputV2,
+                                   target: CatalogAssetRefInputV2,
                                    expected_target_kind, location }
 RequireCertifiedInputV2 { location }
 ModelSchemaInputV2 { schema_version, attributes, location }
@@ -340,6 +351,15 @@ location read-only for diagnostics/sorting. Module/document builders reject a
 checked location whose registry identity differs from the builder's owned
 registry. Low-level parsers/constructors that initially receive raw spans are
 crate-private and must mint this proof before mutation.
+
+`CatalogAssetRefInputV2` and `SignatureInputV2` are public declarative ingress,
+not completed authority values. An enclosing session-owning builder validates
+their checked locations, canonical names, namespace/payload compatibility,
+parameter uniqueness, result domain, callable kind, and effects atomically.
+Only then does it derive private-field `CatalogAssetIdV2`/resolved references
+and opaque `SignatureV2`. There is no public constructor for either completed
+result, and callers cannot smuggle a precomputed ID or signature through a
+payload enum.
 
 `NamespaceKindV2` is closed and its exact stable tags are `value`, `relation`,
 `predicate`, `type`, `view`, `model`, `pack`, `profile`, `gate`, and `rule`.
@@ -366,6 +386,12 @@ states its expected target kind. Construction resolves the target ID and rejects
 an actual-kind mismatch with both edge and target locations. An exhaustive
 ten-kind matrix tests accepted payload, mismatched payload, unknown token, and
 dependency expected/actual kind.
+
+The declarative `ExternalCatalogPayloadInputV2` has the same ten variants, but
+its Predicate and Rule cases contain `SignatureInputV2`, not `SignatureV2`.
+The enclosing catalog builder validates and seals the completed signature in
+the same transaction as namespace/payload matching. Input and validated enums
+are not aliases and no public conversion accepts a prebuilt signature.
 
 Modules owns closed semantic enums rather than retaining syntax enums:
 `ProfileAdmissionV2::{Allowlist, ReviewRequired, CertifiedOnly}` with stable
@@ -574,12 +600,14 @@ DTOs. `try_extend_document` adds exactly one document registration without
 exposing a raw map and rejects a collision with cached host authority. It
 returns a private-field `ExtendedSourceRegistryViewV2` that retains both the
 exact structural host-parent identity and the combined identity.
-Both `RelationCatalogV2` and `ExternalCatalogV2` require this proof; ticket 04
-constructs one combined external-plus-document registry and rejects collisions.
-Each retains the opaque deterministic `SourceRegistryIdentityV2` it was checked
-against. `ModuleAuthorityBuilderV2` seals the external identity with its host
-registry; `ClosedFrontendAuthorityV2::try_new` compares the separately built
-relation catalog identity with the sealed registry. A same-ID/different-length
+Host `RelationCatalogV2` and `ExternalCatalogV2` validate locations against the
+base `SourceRegistryViewV2` and retain its opaque deterministic identity.
+Ticket 04 extends that exact host registry only for document-local DTOs;
+`ExtendedSourceRegistryViewV2` checks those locations against the combined
+identity while retaining the host-parent proof. `ModuleAuthorityBuilderV2`
+seals the external identity with its host registry;
+`ClosedFrontendAuthorityV2::try_new` compares the separately built relation
+catalog identity with the sealed host registry. A same-ID/different-length
 registry cannot be substituted by convention.
 
 Host proof compatibility and document-location compatibility are distinct:
@@ -619,8 +647,10 @@ than fabricating source zero. Low-level resolution remains crate-private.
 Namespace kinds are disjoint name spaces. Declaration, direct-import,
 re-export, ambiguity, and visibility keys are exactly
 `(owner_module_id, namespace_kind, local_name)`. Import kind is derived from
-`target_asset_id`; it is never separately caller supplied. The same spelling in
-two different namespace kinds is valid. External catalog lookup is by the full
+the internally resolved target asset ID; it is never separately caller
+supplied. Public import/re-export DTOs carry `CatalogAssetRefInputV2`, and the
+builder derives the ID only after validation. The same spelling in two
+different namespace kinds is valid. External catalog lookup is by the full
 derived `CatalogAssetIdV2`, so equal kind/local names in two modules are valid;
 no module-dropping `(kind, local_name)` index exists.
 
@@ -647,9 +677,16 @@ then witness, and rendering uses candidate zero only as the primary while
 retaining every other location as structured evidence. A three-origin input
 permutation test and a two-path/same-origin non-ambiguity test pin this behavior.
 
-`ModuleBudgetV2` has private positive node/edge/step,
-`max_authority_bytes`, and `max_authority_string_bytes` limits and a fallible
-constructor. Builders charge UTF-8/raw lock input bytes before validation,
+`AuthorityBudgetProfileV2` is the canonical private-field checked value for
+positive module node/edge/step, `max_authority_bytes`, and
+`max_authority_string_bytes` limits. `ModuleBudgetV2` is derived from it and
+cannot alter a field. Both `ValidatedModuleAuthorityPartsV2` and
+`RelationCatalogV2` retain the complete profile and expose it read-only for the
+ticket 04 equality gate.
+
+`ModuleBudgetV2` is the private counter configuration derived only from a
+checked `AuthorityBudgetProfileV2`; it has no independent public constructor or
+mutable limit setter. Builders charge UTF-8/raw lock input bytes before validation,
 cloning, sorting, deduplication, or hashing and reject any single field over the
 string limit. Repeated inputs charge again before idempotent dedup. Registered
 source lengths are bounds metadata and do not charge unless their text is
@@ -688,7 +725,8 @@ the exact host `SourceRegistryViewV2` from that one build. Its fields are
 private; consumers use typed accessors and cannot mix proofs from two builds.
 Document-catalog validation uses a separate public
 session-owning `DocumentCatalogValidatorV2` for its per-document build; it does
-not accept a caller-created session.
+not accept a caller-created session or a second budget. It derives its one
+session from the sealed module authority's retained profile.
 
 Stable IDs are collision-free checked canonical values, not truncated hashes:
 `ModuleIdV2` owns a normalized qualified module name; `CatalogAssetIdV2` owns
@@ -920,18 +958,30 @@ iteration and provenance, never a runtime/provider/SDK registry.
 
 ## Test Files
 
-Registry, resolution, cycle, version, lock, signature, and catalog positives
-retain their existing owner. Update these files instead of cloning the suites:
+The implementation uses one authoritative integration suite rather than six
+overlapping module files. This disposition supersedes the earlier in-place
+list; receipt 03 must map every deleted semantic case to a retained replacement
+test by name, not infer preservation from aggregate counts:
 
 1. `[UPDATE]` `crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs` — numeric boundaries and typed facts
 2. `[UPDATE]` `crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs` — checked constructor/duplicate negatives
 3. `[UPDATE]` `crates/quanta-gqlang-v2-types/tests/v3_types_universe.rs` — relation-only authority and metadata retention
-4. `[UPDATE]` `crates/quanta-gqlang-v2-modules/tests/v3_modules_mutation_rails.rs` — duplicate mutation matrix
-5. `[UPDATE]` `crates/quanta-gqlang-v2-modules/tests/v3_modules_graph.rs` — permutation and typed visibility
-6. `[UPDATE]` `crates/quanta-gqlang-v2-modules/tests/v3_catalog_hellgate.rs` — kind/external-catalog/span matrix
-7. `[UPDATE]` `crates/quanta-gqlang-v2-modules/tests/v3_modules_packs.rs` and `crates/quanta-gqlang-v2-modules/tests/v3_modules_version_lock_edges.rs` — proof wrappers and duplicate pins
-8. `[UPDATE]` `crates/quanta-gqlang-v2-modules/tests/v3_modules_hellgate.rs` — exact primary/secondary/edge spans
-9. `[ADD]` `crates/quanta-gqlang-v2-modules/tests/v3_module_budget.rs` — no existing resource-owner file
+4. `[DELETE AFTER CASE-BY-CASE MIGRATION]` `v3_modules_mutation_rails.rs`,
+   `v3_modules_graph.rs`, `v3_catalog_hellgate.rs`, `v3_modules_packs.rs`,
+   `v3_modules_version_lock_edges.rs`, and `v3_modules_hellgate.rs`.
+5. `[ADD, SOLE MODULE TEST OWNER]`
+   `crates/quanta-gqlang-v2-modules/tests/v3_modules_v2_authority.rs` — graph,
+   visibility, ambiguity, catalog, signature, pack, lock, extension, budget,
+   permutation, and mutation rails. Macro-generated namespace rows count as
+   parameter cases, not authored semantic test bodies.
+
+The consolidated suite is accepted only if it retains all unique old behaviors
+and adds: exact node/edge/step/byte/string boundaries; proof mismatch; multiple
+and permuted cycles; duplicate same/different matrices; external/activation/
+lock/schema/profile duplicates; model agreement/conflict/invalid value;
+certified success plus activated-profile closure; acyclic diamond; private and
+not-exported failures; canonical lock roundtrip and malformed located errors;
+suite idempotence; and ambiguity primary/secondary permutation stability.
 
 Additional audited dispositions:
 
@@ -1100,9 +1150,17 @@ integrator-owned.
 
 ## 2026-09-21 Final-Audit Work Log
 
-Audit base was re-frozen from `e896a11024bd5a1e1ef03c094a70032f4e6c765f`
-to externally integrated `96eab779bfce0a5178dbbd48e86bd457158db228`.
-This section records contract repairs, not completion evidence:
+The original audit base is
+`e896a11024bd5a1e1ef03c094a70032f4e6c765f`. External commit
+`96eab779bfce0a5178dbbd48e86bd457158db228` is contaminated with Ticket
+03-owned destructive changes in addition to the verified Ticket 01/02 stack.
+External commit `fcf106b56e794eb38f74c52b3bd2c1cf34f77fdc` is an atomic-red partial
+Ticket 03 snapshot: types did not compile, modules had no Ticket 03 source
+delta, formatting failed, and receipt 03 was absent. Neither commit is promoted
+to a verified Ticket 03 baseline. Receipt 03 must audit both
+`e896a110..96eab779` and `96eab779..final`, with preservation compared to
+`e896a110`. This section records contract and implementation checkpoints, not
+completion evidence:
 
 1. Replaced phase-local counters with one opaque mutable module-budget session;
    graph, pack, lock, catalog, and resolution work cannot reset limits.
@@ -1200,6 +1258,49 @@ This section records contract repairs, not completion evidence:
 42. Kept repeated directives observable: REQUIRE CERTIFIED is an entry list
     with charged deterministic idempotence, while duplicate activation,
     lockfile, and model-schema mutations reject before overwrite.
+43. Recovered the inherited type/HIR atomic-red state without a compatibility
+    layer. The latest recorded focused checkpoint passed
+    `cargo test -p quanta-gqlang-v2-hir --all-targets` with 68 tests and
+    `cargo test -p quanta-gqlang-v2-types --all-targets` with 46 tests, followed
+    by strict all-target Clippy for both crates. This is owner-local evidence
+    only; it is not Ticket 03 verification.
+44. The type checkpoint includes private checked `TypeV1`/`ValueTypeV1`
+    carriers, closed overload/effect facts, recursive relation-type exclusion,
+    complete relation-existence typing, contextual-input consumption, stable
+    IDs, and source-registry-bound authority names. The integration suite now
+    has 40 tests versus 39 at `e896a110`; receipt 03 must still enumerate exact
+    old-to-new test disposition rather than infer preservation from the count.
+45. Modules implementation remains active under
+    `/root/ticket03_modules_impl`. No modules-green, full Ticket 03 RR, atomic
+    cutover, receipt 03, hosted CI, or packet completion is claimed here.
+46. Closed the budget-provenance contract: types owns checked
+    `AuthorityBudgetProfileV2`; module and relation proofs retain it; ticket 04
+    compares both with the canonical `FrontendBudgetV2` projection. Document
+    catalog validation derives its session from the sealed module proof instead
+    of accepting a caller-selected second budget.
+47. Closed the declarative-constructor hole: public
+    `CatalogAssetRefInputV2` and `SignatureInputV2` are validated atomically by
+    session-owning builders, while derived catalog IDs, resolved references,
+    and completed signatures remain private/opaque.
+48. Removed the public default-empty module-binding escape; bindings are
+    produced only by successful graph resolution. Ambiguity primary location is
+    derived from the canonical sorted candidate witness, not input edge order.
+49. `SignatureInputV2` now includes a registry-checked location; nested
+    signature parameters are validated and budgeted before admission. External
+    and model inputs charge all submitted strings/nodes/edges before mutation,
+    including rejected duplicate attempts.
+50. `REQUIRE CERTIFIED` evaluates the exact local plus activation-reachable
+    profile closure. It no longer validates only document dependency targets.
+51. Expected builtin/predicate parameter types now contextualize empty list
+    arguments inside the types kernel. This is owner logic, not sema inference;
+    ambiguous overload families still provide no fabricated context.
+52. Added direct same-type record duplicate, NaN, exact recursive type-node
+    boundary, one-over, predicate-Star, and quantifier-effect rails. The latest
+    types run is 56 tests (`7 + 19 + 16 + 14`) and strict Clippy is green after
+    repairing unsafe indexing in the overload-context helper.
+53. The authority-byte ceiling is explicitly per sealed admission session, not
+    a global total across module, relation, and document-catalog proofs. Each
+    session has one non-resettable owner and charges repeated input again.
 
 Ticket status stays `ACTIVE` until implementation, owner-local tests, RR repair,
 and receipt 03 all satisfy these amended contracts.

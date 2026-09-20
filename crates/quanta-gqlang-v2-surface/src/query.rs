@@ -167,7 +167,15 @@ fn parse_project(
     let input_span = input.span;
     let items = parse_projection_items(cur)?;
     let span = project_span(input_span, &items);
-    Ok(cur.builder.project(input, items, span))
+    cur.builder
+        .try_project(input, items, span)
+        .map_err(|message| {
+            ParseDiagnosticV1::new(
+                crate::diag::ParseErrorCodeV1::UnexpectedToken,
+                span,
+                message,
+            )
+        })
 }
 
 fn parse_join(

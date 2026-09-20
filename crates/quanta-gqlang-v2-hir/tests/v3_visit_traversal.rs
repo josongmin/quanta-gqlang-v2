@@ -55,7 +55,16 @@ fn walk_value_recurses_path_paren_unary_binary_call_record_list() {
     let rhs = b.int("1", SpanV1::new(4, 5));
     let bin = b.binary("+", lhs, rhs, SpanV1::new(0, 5));
     let parened = b.paren_value(bin, SpanV1::new(0, 7));
-    let path = b.path(parened, vec![], SpanV1::new(0, 9));
+    let path = b
+        .try_path(
+            parened,
+            vec![quanta_gqlang_v2_hir::PathSegmentV1 {
+                name: "field".into(),
+                span: SpanV1::new(8, 9),
+            }],
+            SpanV1::new(0, 9),
+        )
+        .unwrap();
 
     // a call whose args include a unary, a record, and a list.
     let neg = b.unary("-", b.int("2", SpanV1::new(20, 21)), SpanV1::new(19, 21));
@@ -149,7 +158,9 @@ fn walk_relation_recurses_filter_project_compose_through_default_hooks() {
         value: b.symbol("id", SpanV1::new(25, 27)),
         alias: None,
     };
-    let projected = b.project(filtered, vec![proj_item], SpanV1::new(0, 27));
+    let projected = b
+        .try_project(filtered, vec![proj_item], SpanV1::new(0, 27))
+        .unwrap();
     // cross join the projected relation with another source.
     let other = b.relation_source("roles", None, SpanV1::new(30, 35));
     let composed = b.cross_join(projected, other, SpanV1::new(0, 35));

@@ -1,55 +1,54 @@
-//! QGLang v3 module system, packs, and extension models (ticket 11).
+//! Checked module, catalog, pack, lock, signature, and model authority.
 //!
-//! Owns the reuse/extension layer above the closed language core: the
-//! module/import graph the binder (ticket 02) consumes, parameterized
-//! signatures, pack manifests + lockfiles, visibility/export rules, query
-//! metadata, and declarative extension/model packs. Cites packet decisions:
-//!
-//! - `D19`: reusable module/import/signature boundaries and packable query
-//!   libraries are first-class architecture, modeled here as concrete types
-//!   rather than tooling sugar.
-//! - `D28`: extension/model pack conflicts and overlapping imports fail closed
-//!   with deterministic diagnostics; no last-wins. See
-//!   [`ModuleDiagnosticV1::AmbiguousImport`],
-//!   [`ModuleDiagnosticV1::OverlappingPackExport`], and
-//!   [`ModuleDiagnosticV1::ModelConflict`].
-//! - `D30`: this crate OWNS module/import graph semantics (shadowing, re-export
-//!   precedence, ambiguity, cycle policy) and exposes them as a frozen
-//!   [`ResolvedGraphV1`]. There is no import-order authority; the binder only
-//!   consumes the frozen result.
-//!
-//! # Out of lane
-//!
-//! Binder name resolution itself is ticket 02; overload / closed-type legality
-//! is ticket 03; runtime/provider wiring stays downstream (`D7`). This crate
-//! produces frozen graphs, validated packs, and typed diagnostics only.
-//!
-//! # Binder integration seam
-//!
-//! [`ResolvedGraphV1::binder_view`] projects a frozen module into the flat
-//! `short name -> distinct targets` shape the binder's `ModuleGraphViewV1`
-//! consumes. Because resolution has already collapsed each name to one target
-//! (or rejected on ambiguity), every projected set has at most one element, so
-//! the binder never re-derives precedence (`D30`).
+//! Public ingress is declarative and source-checked. Completed authority and
+//! derived IDs are opaque; one session-owning builder validates and seals them.
 
+mod authority;
+mod budget;
 mod catalog;
 mod diagnostic;
 mod extension;
 mod graph;
 mod lockfile;
 mod manifest;
-mod metadata;
 mod signature;
 mod version;
 mod visibility;
 
-pub use catalog::{CatalogAssetV1, CatalogKindV1, CatalogV1, ResolvedCatalogV1};
-pub use diagnostic::ModuleDiagnosticV1;
-pub use extension::{compose_models, ComposedModelV1, ModelFactV1, ModelPackV1, ModelSchemaV1};
-pub use graph::{ModuleGraphBuilderV1, ResolvedGraphV1};
-pub use lockfile::LockfileV1;
-pub use manifest::{DependencyReqV1, PackGraphV1, PackIdV1, PackManifestV1, SuiteV1};
-pub use metadata::{HelpDocV1, QueryKindV1, QueryMetadataV1, SeverityClassV1};
-pub use signature::{SignatureInstanceV1, SignatureParamV1, SignatureV1};
-pub use version::{VersionRangeV1, VersionV1};
-pub use visibility::VisibilityV1;
+pub use authority::{
+    DocumentCatalogValidatorV2, ModuleAuthorityBuilderV2, ValidatedModuleAuthorityPartsV2,
+};
+pub use budget::ModuleBudgetV2;
+pub use catalog::{
+    DocumentCatalogAssetInputV2, DocumentCatalogAuthorityV2, DocumentCatalogDependencyInputV2,
+    DocumentCatalogInputV2, ExternalCatalogAssetInputV2, ExternalCatalogAssetV2,
+    ExternalCatalogDependencyInputV2, ExternalCatalogPayloadInputV2, ExternalCatalogPayloadV2,
+    ExternalCatalogV2, ExternalPackContractV2, GateBindingV2, GateContractV2,
+    ProfileAdmissionInputV2, ProfileAdmissionV2, RequireCertifiedInputV2,
+};
+pub use diagnostic::{ModuleDiagnosticV2, ResourceExhaustionV2};
+pub use extension::{
+    ComposedModelFactV2, ComposedModelV2, LocatedModelValueInputV2, ModelAttributeInputV2,
+    ModelFactInputV2, ModelPackInputV2, ModelSchemaInputV2, ModelSchemaV2,
+};
+pub use graph::{
+    AmbiguousCandidateV2, CatalogAssetIdV2, CatalogAssetRefInputV2, CurrentModuleSelectionInputV2,
+    LocatedEdgeV2, ModuleDeclarationInputV2, ModuleGraphBuilderV2, ModuleIdV2, ModuleImportInputV2,
+    ModuleNodeInputV2, ModuleReexportInputV2, NamespaceKindV2, ResolvedBindingV2, ResolvedGraphV2,
+    ResolvedModuleBindingsV2,
+};
+pub use lockfile::{
+    CatalogPackActivationV2, LockPinV2, LockReferenceInputV2, LockReferenceV2, LockfileV2,
+    PackActivationInputV2, UsePackActivationV2, ValidatedPackActivationV2,
+    ValidatedPackActivationsV2, ValidatedPackAuthorityV2, VerifiedLockSetV2,
+};
+pub use manifest::{
+    ContentDigestV2, LocatedDependencyInputV2, LocatedExportInputV2, LocatedSuiteInputV2,
+    LocatedSuiteMemberInputV2, PackCoordinateV2, PackGraphV2, PackIdV2, PackManifestInputV2,
+    PackManifestV2, ValidatedPackGraphV2, ValidatedPackManifestV2,
+};
+pub use signature::{
+    CallableKindV2, LocatedParameterInputV2, SignatureInputV2, SignatureParameterV2, SignatureV2,
+};
+pub use version::{VersionRangeV2, VersionV2};
+pub use visibility::VisibilityV2;

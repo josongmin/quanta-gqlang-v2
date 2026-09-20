@@ -1,29 +1,18 @@
-//! Semantic versions and inclusive-lower / exclusive-upper dependency ranges.
-//!
-//! Ticket 11 needs reproducible, host-agnostic version comparison for pack
-//! identity, dependency ranges, and language/feature compatibility windows
-//! (deliverable 3). This is a deliberately small, self-contained `major.minor.patch`
-//! model: no pre-release / build metadata grammar, because pack resolution here
-//! is offline and deterministic (`D28`) rather than a general-purpose registry.
+//! Canonical versions and checked half-open dependency ranges.
 
+use crate::ModuleDiagnosticV2;
+use quanta_gqlang_v2_hir::CheckedLocatedSpanV2;
 use std::fmt;
 
-/// A `major.minor.patch` semantic version.
-///
-/// Ordering is the usual lexicographic ordering on the three numeric fields, so
-/// `1.2.0 < 1.10.0` and range membership is total and deterministic.
+/// Canonical three-component version used by checked pack authority.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct VersionV1 {
-    /// Major version component.
-    pub major: u64,
-    /// Minor version component.
-    pub minor: u64,
-    /// Patch version component.
-    pub patch: u64,
+pub struct VersionV2 {
+    major: u64,
+    minor: u64,
+    patch: u64,
 }
 
-impl VersionV1 {
-    /// Construct a version from its three components.
+impl VersionV2 {
     #[must_use]
     pub const fn new(major: u64, minor: u64, patch: u64) -> Self {
         Self {
@@ -33,64 +22,134 @@ impl VersionV1 {
         }
     }
 
-    /// Parse a `major.minor.patch` string. Returns `None` for any other shape
-    /// (missing component, non-numeric component, trailing data).
-    #[must_use]
-    pub fn parse(text: &str) -> Option<Self> {
-        let mut parts = text.split('.');
-        let major = parts.next()?.parse().ok()?;
-        let minor = parts.next()?.parse().ok()?;
-        let patch = parts.next()?.parse().ok()?;
-        if parts.next().is_some() {
-            return None;
+    pub fn try_parse(
+        text: &str,
+        location: CheckedLocatedSpanV2,
+    ) -> Result<Self, ModuleDiagnosticV2> {
+        let mut components = text.split('.');
+        let Some(major_text) = components.next() else {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_version",
+                "version must be canonical major.minor.patch",
+                &location,
+            ));
+        };
+        let Some(minor_text) = components.next() else {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_version",
+                "version must be canonical major.minor.patch",
+                &location,
+            ));
+        };
+        let Some(patch_text) = components.next() else {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_version",
+                "version must be canonical major.minor.patch",
+                &location,
+            ));
+        };
+        if components.next().is_some()
+            || [major_text, minor_text, patch_text]
+                .into_iter()
+                .any(|component| !canonical_decimal(component))
+        {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_version",
+                "version must be canonical major.minor.patch",
+                &location,
+            ));
         }
-        Some(Self::new(major, minor, patch))
+        let parse = |component: &str| component.parse::<u64>().ok();
+        let Some(major) = parse(major_text) else {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_version",
+                "version component exceeds u64",
+                &location,
+            ));
+        };
+        let Some(minor) = parse(minor_text) else {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_version",
+                "version component exceeds u64",
+                &location,
+            ));
+        };
+        let Some(patch) = parse(patch_text) else {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_version",
+                "version component exceeds u64",
+                &location,
+            ));
+        };
+        Ok(Self::new(major, minor, patch))
     }
-}
 
-impl fmt::Display for VersionV1 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
-    }
-}
-
-/// A half-open dependency / compatibility range `[lower, upper)`.
-///
-/// Inclusive lower bound, exclusive upper bound. This is the only range shape
-/// the manifest exposes so that membership is unambiguous and order-free: a
-/// version is in range iff `lower <= v < upper`. An empty range (`upper <=
-/// lower`) is representable but never satisfiable, which is itself a useful
-/// fail-closed signal.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct VersionRangeV1 {
-    /// Inclusive lower bound.
-    pub lower: VersionV1,
-    /// Exclusive upper bound.
-    pub upper: VersionV1,
-}
-
-impl VersionRangeV1 {
-    /// Construct a half-open range `[lower, upper)`.
     #[must_use]
-    pub const fn new(lower: VersionV1, upper: VersionV1) -> Self {
-        Self { lower, upper }
+    pub const fn major(self) -> u64 {
+        self.major
     }
-
-    /// Whether `version` satisfies this range: `lower <= version < upper`.
     #[must_use]
-    pub fn contains(&self, version: VersionV1) -> bool {
+    pub const fn minor(self) -> u64 {
+        self.minor
+    }
+    #[must_use]
+    pub const fn patch(self) -> u64 {
+        self.patch
+    }
+}
+
+impl fmt::Display for VersionV2 {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}.{}.{}", self.major, self.minor, self.patch)
+    }
+}
+
+fn canonical_decimal(component: &str) -> bool {
+    !component.is_empty()
+        && component.bytes().all(|byte| byte.is_ascii_digit())
+        && (component == "0" || !component.starts_with('0'))
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct VersionRangeV2 {
+    lower: VersionV2,
+    upper: VersionV2,
+    location: CheckedLocatedSpanV2,
+}
+
+impl VersionRangeV2 {
+    pub fn try_new(
+        lower: VersionV2,
+        upper: VersionV2,
+        location: CheckedLocatedSpanV2,
+    ) -> Result<Self, ModuleDiagnosticV2> {
+        if lower >= upper {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.invalid_version_range",
+                "version range lower bound must be less than upper bound",
+                &location,
+            ));
+        }
+        Ok(Self {
+            lower,
+            upper,
+            location,
+        })
+    }
+    #[must_use]
+    pub const fn lower(&self) -> VersionV2 {
+        self.lower
+    }
+    #[must_use]
+    pub const fn upper(&self) -> VersionV2 {
+        self.upper
+    }
+    #[must_use]
+    pub fn contains(&self, version: VersionV2) -> bool {
         self.lower <= version && version < self.upper
     }
-
-    /// Whether the range admits at least one version (`lower < upper`).
     #[must_use]
-    pub fn is_satisfiable(&self) -> bool {
-        self.lower < self.upper
-    }
-}
-
-impl fmt::Display for VersionRangeV1 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, ">={}, <{}", self.lower, self.upper)
+    pub const fn location(&self) -> &CheckedLocatedSpanV2 {
+        &self.location
     }
 }

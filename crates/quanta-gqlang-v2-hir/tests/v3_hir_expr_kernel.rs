@@ -81,14 +81,16 @@ fn value_expr_tree_shape_ids_and_spans() {
     let b = HirBuilderV1::new();
 
     let a = b.symbol("a", SpanV1::new(0, 1));
-    let a_b = b.path(
-        a,
-        vec![PathSegmentV1 {
-            name: "b".into(),
-            span: SpanV1::new(2, 3),
-        }],
-        SpanV1::new(0, 3),
-    );
+    let a_b = b
+        .try_path(
+            a,
+            vec![PathSegmentV1 {
+                name: "b".into(),
+                span: SpanV1::new(2, 3),
+            }],
+            SpanV1::new(0, 3),
+        )
+        .unwrap();
 
     let one = b.int("1", SpanV1::new(8, 9));
     let x = b.string("x", SpanV1::new(11, 14));
@@ -215,14 +217,16 @@ fn relation_projection_with_aliases_and_nested_list() {
 
     // id: u.id
     let u_id_base = b.symbol("u", SpanV1::new(24, 25));
-    let u_id = b.path(
-        u_id_base,
-        vec![PathSegmentV1 {
-            name: "id".into(),
-            span: SpanV1::new(26, 28),
-        }],
-        SpanV1::new(24, 28),
-    );
+    let u_id = b
+        .try_path(
+            u_id_base,
+            vec![PathSegmentV1 {
+                name: "id".into(),
+                span: SpanV1::new(26, 28),
+            }],
+            SpanV1::new(24, 28),
+        )
+        .unwrap();
     let id_item = ProjectionItemV1 {
         value: u_id,
         alias: Some(AliasV1 {
@@ -233,23 +237,27 @@ fn relation_projection_with_aliases_and_nested_list() {
 
     // tags: [u.t1, u.t2]
     let u_t1_base = b.symbol("u", SpanV1::new(37, 38));
-    let u_t1 = b.path(
-        u_t1_base,
-        vec![PathSegmentV1 {
-            name: "t1".into(),
-            span: SpanV1::new(39, 41),
-        }],
-        SpanV1::new(37, 41),
-    );
+    let u_t1 = b
+        .try_path(
+            u_t1_base,
+            vec![PathSegmentV1 {
+                name: "t1".into(),
+                span: SpanV1::new(39, 41),
+            }],
+            SpanV1::new(37, 41),
+        )
+        .unwrap();
     let u_t2_base = b.symbol("u", SpanV1::new(43, 44));
-    let u_t2 = b.path(
-        u_t2_base,
-        vec![PathSegmentV1 {
-            name: "t2".into(),
-            span: SpanV1::new(45, 47),
-        }],
-        SpanV1::new(43, 47),
-    );
+    let u_t2 = b
+        .try_path(
+            u_t2_base,
+            vec![PathSegmentV1 {
+                name: "t2".into(),
+                span: SpanV1::new(45, 47),
+            }],
+            SpanV1::new(43, 47),
+        )
+        .unwrap();
     let tags_list = b.list(vec![u_t1, u_t2], SpanV1::new(36, 48));
     let tags_item = ProjectionItemV1 {
         value: tags_list,
@@ -259,16 +267,18 @@ fn relation_projection_with_aliases_and_nested_list() {
         }),
     };
 
-    let proj = b.project(source, vec![id_item, tags_item], SpanV1::new(0, src.len()));
+    let proj = b
+        .try_project(source, vec![id_item, tags_item], SpanV1::new(0, src.len()))
+        .unwrap();
 
     let RelationExprKindV1::Project(p) = &proj.kind else {
         panic!("expected projection")
     };
-    assert_eq!(p.items.len(), 2);
-    assert_eq!(p.items[0].alias.as_ref().unwrap().name, "id");
-    assert_eq!(p.items[1].alias.as_ref().unwrap().name, "tags");
+    assert_eq!(p.items().len(), 2);
+    assert_eq!(p.items()[0].alias.as_ref().unwrap().name, "id");
+    assert_eq!(p.items()[1].alias.as_ref().unwrap().name, "tags");
     // nested list shape in second item
-    let ValueExprKindV1::List(list) = &p.items[1].value.kind else {
+    let ValueExprKindV1::List(list) = &p.items()[1].value.kind else {
         panic!("tags is a list")
     };
     assert_eq!(list.elements.len(), 2);
@@ -283,6 +293,18 @@ fn relation_projection_with_aliases_and_nested_list() {
     collector.visit_relation(&proj);
     assert_unique_ids(&collector.ids);
     assert_eq!(checked.node_count(), collector.ids.len());
+}
+
+#[test]
+fn projection_requires_at_least_one_item_at_public_construction() {
+    let builder = HirBuilderV1::new();
+    let source = builder.relation_source("users", None, SpanV1::new(0, 5));
+    assert_eq!(
+        builder
+            .try_project(source, vec![], SpanV1::new(0, 15))
+            .unwrap_err(),
+        "projection requires at least one item"
+    );
 }
 
 /// Scenario 4: a DeclHirV1 and a RuleHirV1 each EMBED a shared ValueExprHirV1.
@@ -335,25 +357,29 @@ fn nested_result_shape_shares_value_kernel() {
     let b = HirBuilderV1::new();
 
     let u = b.symbol("u", SpanV1::new(6, 7));
-    let u_id = b.path(
-        u,
-        vec![PathSegmentV1 {
-            name: "id".into(),
-            span: SpanV1::new(8, 10),
-        }],
-        SpanV1::new(6, 10),
-    );
+    let u_id = b
+        .try_path(
+            u,
+            vec![PathSegmentV1 {
+                name: "id".into(),
+                span: SpanV1::new(8, 10),
+            }],
+            SpanV1::new(6, 10),
+        )
+        .unwrap();
     let id_leaf = b.shape_leaf(u_id, SpanV1::new(6, 10));
 
     let c = b.symbol("c", SpanV1::new(32, 33));
-    let c_n = b.path(
-        c,
-        vec![PathSegmentV1 {
-            name: "n".into(),
-            span: SpanV1::new(34, 35),
-        }],
-        SpanV1::new(32, 35),
-    );
+    let c_n = b
+        .try_path(
+            c,
+            vec![PathSegmentV1 {
+                name: "n".into(),
+                span: SpanV1::new(34, 35),
+            }],
+            SpanV1::new(32, 35),
+        )
+        .unwrap();
     let name_leaf = b.shape_leaf(c_n, SpanV1::new(32, 35));
     let child_record = b.shape_record(
         vec![ShapeFieldV1 {
@@ -411,35 +437,41 @@ fn query_visitor_visits_every_node_exactly_once() {
         SpanV1::new(0, 7),
     );
     let u1 = b.symbol("u", SpanV1::new(24, 25));
-    let u1_id = b.path(
-        u1,
-        vec![PathSegmentV1 {
-            name: "id".into(),
-            span: SpanV1::new(26, 28),
-        }],
-        SpanV1::new(24, 28),
-    );
-    let proj = b.project(
-        source,
-        vec![ProjectionItemV1 {
-            value: u1_id,
-            alias: Some(AliasV1 {
+    let u1_id = b
+        .try_path(
+            u1,
+            vec![PathSegmentV1 {
                 name: "id".into(),
-                span: SpanV1::new(20, 22),
-            }),
-        }],
-        SpanV1::new(0, 30),
-    );
+                span: SpanV1::new(26, 28),
+            }],
+            SpanV1::new(24, 28),
+        )
+        .unwrap();
+    let proj = b
+        .try_project(
+            source,
+            vec![ProjectionItemV1 {
+                value: u1_id,
+                alias: Some(AliasV1 {
+                    name: "id".into(),
+                    span: SpanV1::new(20, 22),
+                }),
+            }],
+            SpanV1::new(0, 30),
+        )
+        .unwrap();
 
     let u2 = b.symbol("u", SpanV1::new(43, 44));
-    let u2_id = b.path(
-        u2,
-        vec![PathSegmentV1 {
-            name: "id".into(),
-            span: SpanV1::new(45, 47),
-        }],
-        SpanV1::new(43, 47),
-    );
+    let u2_id = b
+        .try_path(
+            u2,
+            vec![PathSegmentV1 {
+                name: "id".into(),
+                span: SpanV1::new(45, 47),
+            }],
+            SpanV1::new(43, 47),
+        )
+        .unwrap();
     let leaf = b.shape_leaf(u2_id, SpanV1::new(43, 47));
     let shape = b.shape_record(
         vec![ShapeFieldV1 {

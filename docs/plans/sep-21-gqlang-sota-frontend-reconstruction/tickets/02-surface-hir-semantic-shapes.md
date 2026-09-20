@@ -77,9 +77,12 @@ V1-shape assertions are deleted in the same change.
     witness for round trips. It exhaustively encodes every semantic field of all
     nine `ProgramItemHirV1` variants plus nested value, Bool, relation, result
     shape, alias, order direction, binder, and CallArg Star/Expr payloads; only
-    IDs and spans are omitted. Mutation pairs prove each previously omitted
-    field changes the witness. It is not public syntax IR and cannot be consumed
-    by production stages.
+    IDs, spans, and syntax-only redundant `Paren` wrappers are omitted. Required
+    grouping still changes the nested operator tree and therefore the witness;
+    explicit-paren source preservation is covered separately by exact formatter
+    cases. Mutation pairs prove each previously omitted semantic field changes
+    the witness. It is not public syntax IR and cannot be consumed by production
+    stages.
 12. Add `ParseBudgetV2` and charge tokens, document items, expression
     depth/nodes, collection width, and projection width.
 13. Extend the existing integrity implementation with a document-level check
@@ -129,6 +132,13 @@ enum CallArgHirV1 {
 one sole `Star`; mixed/multiple Star states cannot be built through public HIR
 constructors. Every parser/builder ingress uses that carrier.
 
+`PathAccessV1` likewise stores a private-backed `NonEmptyPathSegmentsV1` and is
+created through `HirBuilderV1::try_path`. A zero-segment path is the base value,
+not a distinct HIR state, and rejects before an ID-bearing path node is minted.
+`ProjectionV1` uses the equivalent checked `NonEmptyProjectionItemsV1` carrier
+and `try_project`; the parser and programmatic HIR therefore admit the same
+minimum cardinalities.
+
 `GroupByHirV1` and `OrderByHirV1` do not expose raw public `Vec` key fields.
 Each uses one private, checked `NonEmptyRelationKeysV1` carrier (or an
 equivalent private field plus fallible constructor) so a zero-key stage cannot
@@ -171,7 +181,11 @@ parse_source_document_v2(
     budget: &ParseBudgetV2,
 )
     -> Result<ParsedDocumentV2, SurfaceDiagnosticV2>;
-format_source_document_with_parse_budget_v2(source: &str, budget: &ParseBudgetV2)
+format_source_document_with_parse_budget_v2(
+    source_id: SourceIdV2,
+    source: &str,
+    budget: &ParseBudgetV2,
+)
     -> Result<String, SurfaceDiagnosticV2>;
 check_document_v2(document: &HirDocumentV1)
     -> Result<CheckedHirDocumentV2<'_>, HirIntegrityDiagnosticV2>;
@@ -184,9 +198,11 @@ the HIR checker consumes that HIR-owned view, so HIR never depends on surface
 and callers cannot supply a mismatched second source length.
 
 These are owner-crate APIs. Ticket 07's facade-level
-`format_source_document_v2(&str, &FrontendBudgetV2)` projects the public budget
-to `ParseBudgetV2` and calls the second function; surface must not depend on
-sema.
+`format_source_document_v2(SourceIdV2, &str, &FrontendBudgetV2)` projects the
+public budget to `ParseBudgetV2` and calls the second function; surface must not
+depend on sema. Formatting retains the caller-owned source identity for every
+diagnostic. No formatter layer invents source ID `0`; only an explicitly named
+legacy single-source wrapper may do so under the restriction below.
 
 Existing public `lex`, expression/predicate/program parsers, document parser,
 and formatter entry points become bounded convenience wrappers over the same
@@ -424,6 +440,44 @@ git diff --check
 4. HIR integrity checking is mandatory input to ticket 04
 5. exactly one raw HIR tree, call-argument carrier, recursion counter, and
    document source-length authority remain
+
+## Current-Head Final Audit Addendum — 2026-09-21
+
+The adversarial re-audit found and closed four issues not fully represented by
+the original receipt:
+
+1. `SurfaceDiagnosticV2` is now a concrete source-qualified diagnostic, and
+   both bounded parse and format entry points accept/retain caller-owned
+   `SourceIdV2` on failure.
+2. HIR integrity traversal now validates every id-less auxiliary span carried
+   by path segments, callees, aliases, record/shape field names, declaration
+   and rule names, graph references, legality/presentation references, catalog
+   names, and composition names/bindings. Value-payload and graph-reference OOB
+   rails prove both traversal classes.
+3. Raw empty projection and empty path states are closed with private-backed
+   non-empty carriers plus fallible builders. Exact empty-state rejects were
+   added instead of parser-only assumptions.
+4. The specified duplicate `find_through_and_sanitizers_empty_reject` was
+   deleted only after its stronger message/span rail was confirmed present.
+
+Join operands were reviewed but not narrowed: the pinned HIR definition in
+this ticket intentionally permits relation-expression operands on both sides,
+while the authored grammar currently produces a source on the right. This is
+not a duplicate carrier or an implementation gap; later sema/algebra legality
+owns restrictions on programmatically composed relation trees.
+
+Current owner proof after these repairs:
+
+```text
+cargo test -p quanta-gqlang-v2-hir --all-targets: 69 passed
+cargo test -p quanta-gqlang-v2-surface --all-targets: 204 passed
+cargo test -p quanta-gqlang-v2-types --all-targets: 54 passed (try_path consumer migration)
+```
+
+The strict three-crate Clippy command is rerun after the final source change and
+recorded in receipt 02. Broad workspace compilation remains intentionally red
+at unmigrated ticket-04+ consumers of the atomic HIR cutover; it is not evidence
+against these owner-local results and is not claimed green here.
 
 ## Dependencies
 

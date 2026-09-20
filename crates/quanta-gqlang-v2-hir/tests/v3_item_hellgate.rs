@@ -475,3 +475,25 @@ fn reject_duplicate_id_across_composition_children() {
     };
     assert_eq!(id.raw(), 5);
 }
+
+#[test]
+fn reject_out_of_bounds_graph_reference_auxiliary_span() {
+    let builder = HirBuilderV1::new();
+    let item = ProgramItemHirV1::GraphQuery(Box::new(builder.graph_query(
+        GraphQueryKindV1::Reachability,
+        GraphEndpointsV1 {
+            source: Some(gref("outside", 21, 28)),
+            ..GraphEndpointsV1::default()
+        },
+        GraphConstraintsV1::default(),
+        SpanV1::new(0, 20),
+    )));
+
+    assert!(matches!(
+        check_tree(HirRootRefV1::Item(&item), 20),
+        Err(HirIntegrityErrorV1::AuxiliarySpanOutOfBounds {
+            span: SpanV1 { start: 21, end: 28 },
+            source_len: 20,
+        })
+    ));
+}

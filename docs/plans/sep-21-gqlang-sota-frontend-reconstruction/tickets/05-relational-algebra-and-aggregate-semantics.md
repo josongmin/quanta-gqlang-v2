@@ -4,7 +4,7 @@ Status: `PLANNED`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
-## Findings Closed
+## Findings Owned / To Close
 
 F01, F04, F06's algebra half, F07, F16's lowering half, and F23's algebra
 invariants.
@@ -57,10 +57,11 @@ not patch sema from this ticket.
 6. Preserve GROUP partition keys through aggregate projection.
 7. Consume ticket 04's `AggregateContextV2` for projection, predicate, join,
    group key, ordering, HAVING, nested-call, and recursive-rule contexts.
-8. Reject nested aggregate calls.
+8. Trust the sealed aggregate legality proof; reject only an impossible forged
+   contract at the private constructor boundary.
 9. Lower aggregate-star explicitly.
-10. Lower correlated EXISTS/NOT EXISTS to SemiJoin/AntiJoin using the binder's
-    explicit correlation set.
+10. Lower correlated EXISTS/NOT EXISTS to correlation-carrying SemiJoin/
+    AntiJoin; uncorrelated forms use plain SemiJoin/AntiJoin.
 11. Remove debug-only structural invariants.
 
 ## Required Input/Output Contract
@@ -69,7 +70,8 @@ Algebra receives a sealed relation contract, not HIR plus optional side tables:
 
 ```rust
 pub struct TypedRelationV2 {
-    root: TypedRelationNodeV2,
+    item_id: SemanticItemIdV2,
+    root: TypedRelationExprV2,
     output: RelationOutputContractV2,
     span: SpanV1,
 }
@@ -79,42 +81,42 @@ pub struct RelationOutputContractV2 {
     cardinality: CardinalityV1,
     relation_sources: BTreeSet<RelationSourceIdV2>,
     provenance: OutputProvenanceV2,
-    partition_keys: Vec<TypedExprIdV2>,
+    partition_keys: Vec<SourceQualifiedNodeIdV2>,
     ordering: Vec<OrderKeyContractV2>,
     effects: ExpressionEffectsV2,
 }
 
-pub struct CheckedRelationalContractV2 {
+pub struct LoweredRelationItemV2 {
+    item_id: SemanticItemIdV2,
     checked_root: CheckedAlgebraNodeV2,
     output: RelationOutputContractV2,
 }
 ```
 
-Ticket 05 is the only producer of `CheckedRelationalContractV2`; ticket 07
-consumes this exact type. The normalized root owns the same output contract or a
-mechanically derived equivalent. No caller may recompute source identities,
+Ticket 05 is the only producer of `LoweredRelationItemV2`; ticket 07
+consumes this exact type. The normalized root retains the exact input output
+contract. No caller may recompute source identities,
 provenance, schema, or effects from projections or raw HIR.
 
 ## Step-By-Step Procedure
 
 1. Add private constructors for logical algebra nodes and invariant errors.
-2. Add lowering from each `TypedRelationNodeV2` variant one at a time.
+2. Add lowering from each sema-owned `TypedRelationExprV2` variant one at a time.
 3. Lower Scan/Filter/Project before Join/Group/Aggregate/Sort.
 4. Lower Join directly from typed left/right/on/kind.
 5. Add explicit Cross validation and reject predicate-free non-Cross joins.
 6. Verify ticket 04 emitted `AggregateContextV2` on every typed expression and
    require it in aggregate lowering. If absent, reopen 04; this ticket must not
    edit sema.
-7. Add recursive aggregate search so nested aggregate calls always reject.
+7. Consume `AggregateContextV2`; do not add an algebra-side recursive aggregate
+   search or a second legality decision.
 8. Lower aggregate star separately from expression arguments.
    Only `count(*)` is valid in this packet; `sum(*)`, `min(*)`, `max(*)`, mixed
    `count(*, x)`, and a bare `*` all reject in sema before algebra.
 9. Preserve existing group partition when applying aggregate projection.
 10. Lower EXISTS/NOT EXISTS only from the explicit typed subquery carrier and
-    binder-produced correlation columns.
-11. Migrate planning consumers to the checked algebra type before deleting raw
-    public fields.
-12. Remove old raw-HIR normalization entry points and debug-only assertions.
+    binder-produced correlation set, retaining that set on correlated nodes.
+11. Remove old raw-HIR normalization entry points and debug-only assertions.
 
 ## Exact Aggregate Matrix
 
@@ -163,11 +165,13 @@ two new boundary files.
 
 ```bash
 cargo test -p quanta-gqlang-v2-algebra
-cargo test -p quanta-gqlang-v2-pipeline --test v3_relational_semantics_v2
-cargo clippy -p quanta-gqlang-v2-algebra -p quanta-gqlang-v2-pipeline --all-targets -- -D warnings
+cargo clippy -p quanta-gqlang-v2-algebra --all-targets -- -D warnings
 python3 tools/architecture/check_architecture.py
 git diff --check
 ```
+
+`v3_relational_semantics_v2` and existing group/order pipeline tests are
+deferred to ticket 07 and enumerated in receipt 05.
 
 ## Forbidden Shortcuts
 
@@ -199,8 +203,9 @@ ticket-05 RED.
 4. group-by-with-hidden-key cardinality/partition test
 5. correlated and uncorrelated EXISTS/NOT EXISTS trees
 6. constructor invalid-state tests
-7. one pipeline test proving ticket 04 rejects an illegal aggregate before
-   algebra; detailed placement/nesting negatives remain in sema owner tests
+7. one ticket-07 pipeline test proving ticket 04 rejects an illegal aggregate
+   before algebra; ticket 05 records it as deferred and keeps detailed
+   placement/nesting negatives in sema owner tests
 
 ## Mutation Cases
 
@@ -209,7 +214,8 @@ ticket-05 RED.
 3. treat aggregate star as ordinary symbol
 4. bypass duplicate output validation
 
-Each mutation must be killed by an owner or pipeline test.
+Each mutation must be killed by an algebra owner test; ticket 07 separately
+proves the integrated pipeline path.
 
 ## Definition Of Done
 
@@ -219,5 +225,61 @@ Each mutation must be killed by an owner or pipeline test.
 4. all F01/F04/F06/F07 repros have positive and negative rails
 
 ## Dependencies
+
+## 2026-09-21 Final Adversarial Audit Corrections
+
+This section is normative and supersedes conflicting earlier wording.
+
+### Owner boundary and focused proof
+
+- Ticket 05 may reach only `FOCUSED_GREEN`; its owner proof compiles/tests
+  `algebra` only. Pipeline relational tests are deferred to ticket 07 and the
+  exact deferred failures belong in receipt 05.
+- Algebra consumes sema-owned `TypedExprV2`, `AggregateContextV2`,
+  `OrderKeyContractV2`, and the exact retained `RelationOutputContractV2`.
+  It must not reconstruct schema, provenance, effects, cardinality, aggregate
+  placement, nesting, star legality, or call resolution.
+- Delete the earlier instruction to update planning in step 11. Planning is a
+  ticket 07 consumer and is read-only here.
+
+### Exact checked algebra contract
+
+`CheckedAlgebraNodeV2` is algebra-owned, has private fields, retains one
+`SemanticItemIdV2`, and is constructible only by the lowering transaction.
+There is no `TypedRelationNodeV2`, no `TypedExprIdV2`, and no second call-target
+type. Per-item output is:
+
+```text
+LoweredRelationItemV2 {
+  item_id: SemanticItemIdV2,
+  root: CheckedAlgebraNodeV2,
+  output: RelationOutputContractV2,
+}
+```
+
+The lowering transaction returns an exact-key map and rejects duplicate output
+keys before insertion. Ticket 07 compares the produced key set with the
+applicable semantic-item key set; order-based zip is forbidden.
+
+### Correlation-preserving EXISTS
+
+Uncorrelated EXISTS/NOT EXISTS may lower to plain SemiJoin/AntiJoin. Correlated
+forms must retain a non-empty checked `CorrelationSetV2` on the semi/anti node
+(or an equivalent `ApplyKindV2::{Semi, Anti}` node); a plain node without that
+carrier is invalid. Each correlation entry is a resolved outer binding identity
+plus the inner reference location. Empty, duplicate, foreign-scope, or dropped
+correlation sets reject.
+
+Required exact-tree oracles are separate for uncorrelated EXISTS, correlated
+EXISTS, uncorrelated NOT EXISTS, and correlated NOT EXISTS. Add a mutation rail
+that deletes one correlation entry and proves the contract validator fails.
+
+### Consumer migration inventory
+
+Migrate `algebra/src/normalize.rs` from private HIR fields and removed variants.
+Do not patch around them with public compatibility fields. Record zero matches
+for `.items`, `.segments`, `.args`, `RelationExprKindV1::Compose`, and
+`BoolExprKindV1::Quantifier` outside their owners. The group/order pipeline
+tests are migrated and executed only during ticket 07 integration.
 
 Requires 04. May run in parallel with 06 after sema contracts are frozen.

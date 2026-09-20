@@ -91,7 +91,7 @@ fn format_relation(rel: &RelationExprHirV1) -> String {
         },
         RelationExprKindV1::Project(proj) => {
             let items = proj
-                .items
+                .items()
                 .iter()
                 .map(format_projection_item)
                 .collect::<Vec<_>>()
@@ -218,7 +218,7 @@ fn format_value_prec(value: &ValueExprHirV1, parent: u8, right_child: bool) -> S
         ValueExprKindV1::Symbol(sym) => sym.name.clone(),
         ValueExprKindV1::Path(path) => {
             let mut out = format_value_prec(&path.base, 40, false);
-            for seg in &path.segments {
+            for seg in path.segments.as_slice() {
                 out.push('.');
                 out.push_str(&seg.name);
             }

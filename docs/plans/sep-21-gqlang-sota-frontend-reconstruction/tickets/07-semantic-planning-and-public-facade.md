@@ -4,7 +4,7 @@ Status: `PLANNED`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
-## Findings Closed
+## Findings Owned / To Close
 
 F13, F18, F20's consumer half, F21, F23's public exposure, and F31.
 
@@ -52,6 +52,9 @@ glob-export assertions cannot remain green.
 19. `crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_compile.rs`
 20. `crates/quanta-gqlang-v2-planning/tests/support/mod.rs` when repeated
     planning helpers from touched tests are consolidated
+21. `tools/test_frontend_external_consumer.py` plus isolated positive and
+    negative fixtures under
+    `crates/quanta-gqlang-v2-frontend-contract/tests/external_consumer/`
 
 ## Implementation
 
@@ -80,7 +83,7 @@ glob-export assertions cannot remain green.
 
 ```rust
 pub enum SemanticPlanInputV2 {
-    Relational(CheckedRelationalContractV2),
+    Relational(LoweredRelationItemV2),
     Graph(GraphQueryContractV2),
     Check(CheckContractV2),
     Presentation(PresentationContractV2),
@@ -110,13 +113,14 @@ DTO roots; nested DTO fields use curated explicit exports, never crate globs:
 compile_source_document_v2(SourceIdV2, &str, &ClosedFrontendAuthorityV2)
     -> Result<CompiledDocumentV2, FrontendFailureV2>
 analyze_source_document_v2(SourceIdV2, &str, &OpenAnalysisAuthorityV2)
-    -> AnalysisDocumentV2
+    -> Result<AnalysisDocumentV2, FrontendFailureV2>
 format_source_document_v2(SourceIdV2, &str, &FrontendBudgetV2)
     -> Result<String, FrontendFailureV2>
 ```
 
 Stable root types are `ClosedFrontendAuthorityV2`,
-`OpenAnalysisAuthorityV2`, `FrontendBudgetV2`, `CompiledDocumentV2`,
+`ClosedFrontendAuthorityBuilderV2`, `OpenAnalysisAuthorityV2`,
+`FrontendBudgetV2`, `CompiledDocumentV2`,
 `AnalysisDocumentV2`, `SemanticPlanV2`, `FrontendDiagnosticV2`, and the curated
 host-assignable `SourceIdV2`. The facade
 also exports `FrontendFailureV2`. It does not expose owner constructors for HIR,
@@ -137,8 +141,9 @@ NotApplicable(NoPlanReasonV2)
 ```
 
 Only `SemanticAnalysisV2::Complete` may invoke checked algebra, logic, and
-planning. `Incomplete` maps later stages to `BlockedByDiagnostics`; `Error`
-maps to wire error. Fully resolved open analysis may carry complete stage
+planning. `Incomplete` maps later stages to `BlockedByDiagnostics`; the public
+`Err(FrontendFailureV2)` branch maps to wire error. Fully resolved open analysis
+may carry complete stage
 payloads but remains `AnalysisDocumentV2`. There is no implicit or fallible
 conversion to `CompiledDocumentV2`.
 
@@ -215,6 +220,9 @@ conversion to `CompiledDocumentV2`.
 7. `[UPDATE]` `crates/quanta-gqlang-v2-frontend-contract/src/lib.rs` — forbidden-import `compile_fail` doctests
 8. `[ADD]` `crates/quanta-gqlang-v2-pipeline/tests/v3_compiled_document_assembly.rs`
 9. `[ADD]` `crates/quanta-gqlang-v2-pipeline/tests/v3_analysis_document_assembly.rs`
+10. `[ADD]` `crates/quanta-gqlang-v2-frontend-contract/tests/external_consumer/` — fixture with only the facade dependency
+11. `[MIGRATE+RUN DEFERRED]` pipeline document, relational, group/order,
+    rule, graph, and legacy-ratchet tests enumerated by receipts 04-06
 
 Keep existing cost/capability/provenance cases. Delete raw-HIR classification
 fixtures after their semantic-contract replacement; do not retain both public
@@ -228,6 +236,11 @@ cargo test -p quanta-gqlang-v2-pipeline --test v3_compiled_document_assembly
 cargo test -p quanta-gqlang-v2-pipeline --test v3_analysis_document_assembly
 cargo test -p quanta-gqlang-v2-frontend-contract
 cargo test -p quanta-gqlang-v2-frontend-contract --doc
+python3 tools/test_frontend_external_consumer.py
+cargo test -p quanta-gqlang-v2-pipeline --test v3_document_semantics_v2
+cargo test -p quanta-gqlang-v2-pipeline --test v3_relational_semantics_v2
+cargo test -p quanta-gqlang-v2-pipeline --test v3_source_rule_document
+cargo test -p quanta-gqlang-v2-pipeline --test v3_graph_contract_retention
 cargo clippy -p quanta-gqlang-v2-planning -p quanta-gqlang-v2-pipeline -p quanta-gqlang-v2-frontend-contract --all-targets -- -D warnings
 python3 tools/architecture/check_architecture.py
 rg -n '^pub use .*::\*' crates/quanta-gqlang-v2-frontend-contract/src
@@ -287,5 +300,81 @@ The `rg` command must return no matches.
 5. ticket 04 semantic output cannot bypass complete pipeline assembly
 
 ## Dependencies
+
+## 2026-09-21 Final Adversarial Audit Corrections
+
+This section is normative and supersedes conflicting earlier wording.
+
+### Integration gate
+
+Ticket 07 is the first cross-stage integration gate. Before planning, compile
+sema, binder, algebra, logic, planning, and pipeline together; migrate every
+deferred consumer from receipts 04-06; run the deferred group/order/rule/graph
+tests; and require zero old private-HIR references. A 04-06 owner pass is not a
+substitute.
+
+### Exact assembly and error model
+
+`LoweredDocumentV2` is pipeline-owned and contains private exact-key maps for
+algebra outputs, graph outputs, the optional document rule program, and
+presentation inputs, plus source order. Construction compares exact sets:
+
+```text
+expected_applicable_item_ids == produced_item_ids
+```
+
+Missing, duplicate, extra, cross-document, and wrong-kind outputs are typed
+failures. Positional zip is forbidden. CHECK assembly verifies that its nested
+`GraphQueryContractV2` carries the identity named by `ResolvedCheckV2`.
+
+Use `Result<AnalysisDocumentV2, FrontendFailureV2>` and
+`Result<CompiledDocumentV2, FrontendFailureV2>` at the public facade. A
+successful `AnalysisDocumentV2` has only `Complete`, `BlockedByDiagnostics`, or
+`NotApplicable` item states; transport-level `error` is the `Err` branch and is
+not a fourth internal status.
+
+`CompiledDocumentV2` has private fields and accessors for source identity,
+canonical diagnostics, source-ordered `CompiledItemV2` entries, and authority
+fingerprint. Each item is a closed enum whose variants carry the relevant
+checked contract and `Option<SemanticPlanV2>`; `None` is legal only for the
+explicit `NotApplicable` variants. No parallel arrays are public.
+
+The document-wide `RuleProgramContractV2` receives exactly one plan stored in
+`CompiledRuleProgramV2`. Each source rule item stores a checked
+`RuleProgramMemberV2 { program_id, member_item_id }` reference and does not
+duplicate the plan. Rule member IDs are excluded from per-item plan-key
+equality and are instead checked for exact equality with the program member
+set. Missing, extra, duplicate, or foreign member IDs reject.
+
+### Planning vocabulary mapping
+
+Pin an exhaustive conversion table in code and tests:
+
+| Existing input | AuthorityLaneV2 | EvaluationDeterminismV2 |
+|---|---|---|
+| local/exact | local | deterministic iff effects say deterministic |
+| catalog/certified | certified | derived from effects |
+| model/advisory | advisory | derived from effects |
+| unresolved open-analysis item | no plan | not applicable |
+
+All `SemanticCostV2` fields remain qualitative and ordered exactly as
+`cpu`, `memory`, `io`, `network`, `coordination`; the public iterator returns
+`SemanticCostDimensionV2` in that order. No cardinality estimate or physical
+operator is introduced.
+
+### Public closed-authority path
+
+The facade owns `ClosedFrontendAuthorityBuilderV2` and bounded declarative DTOs
+for module, relation, source-registry, and budget inputs. The builder invokes
+pipeline, which delegates validation/sealing to modules/types/sema, then returns
+`ClosedFrontendAuthorityV2`; the facade adds no direct modules/types
+dependency. Raw maps,
+empty defaults, and direct internal-crate dependencies by hosts are forbidden.
+Only the minimum checked DTO/builders needed by this path are curated exports.
+
+Facade proof is two-part: (1) an AST/source inventory of every `pub use`; and
+(2) an external fixture whose sole dependency is `frontend-contract`, proving
+both positive construction/compile and compile-fail for internal owner types.
+A doctest that merely lacks direct dependencies is not sufficient.
 
 Requires 05 and 06. Blocks 08 and 09.

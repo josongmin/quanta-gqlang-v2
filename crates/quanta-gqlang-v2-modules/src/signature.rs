@@ -1,114 +1,177 @@
-//! Parameterized signatures / interfaces for reusable query abstractions
-//! (deliverable 2).
-//!
-//! A [`SignatureV1`] is the reuse boundary's declared interface: a name, an
-//! ordered list of typed parameters, and a result obligation. It lets a module
-//! publish a reusable query abstraction whose callers bind concrete arguments
-//! by position. This crate owns the STRUCTURAL contract (arity + labeled
-//! parameter identity) and the deterministic instantiation check; closed type
-//! legality of the bound arguments remains ticket 03's authority (`D13`), so the
-//! parameter/argument "type" here is an opaque symbolic tag, not a resolved
-//! [`quanta_gqlang_v2_hir`] type.
+//! Checked typed callable signatures for external predicate and rule authority.
 
-use crate::diagnostic::ModuleDiagnosticV1;
+use crate::budget::ModuleBudgetSessionV2;
+use crate::graph::is_segment;
+use crate::ModuleDiagnosticV2;
+use quanta_gqlang_v2_hir::{CheckedLocatedSpanV2, LocatedSpanV2, SourceRegistryViewV2};
+use quanta_gqlang_v2_types::{
+    ExpressionEffectsV2, ResolvedPredicateCallableV2, ResolvedPredicateIdV2, ValueTypeV1,
+};
+use std::collections::BTreeMap;
 
-/// A single declared parameter of a signature.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SignatureParamV1 {
-    /// The parameter's local name (used for diagnostics and labeled binding).
-    pub name: String,
-    /// An opaque symbolic type tag. Closed legality of this tag is ticket 03's
-    /// authority; this crate only carries it through instantiation.
-    pub type_tag: String,
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CallableKindV2 {
+    Predicate,
+    Rule,
 }
-
-impl SignatureParamV1 {
-    /// Construct a parameter.
+impl CallableKindV2 {
     #[must_use]
-    pub fn new(name: impl Into<String>, type_tag: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-            type_tag: type_tag.into(),
+    pub const fn tag(self) -> &'static str {
+        match self {
+            Self::Predicate => "predicate",
+            Self::Rule => "rule",
         }
     }
 }
 
-/// A parameterized signature / interface a reusable module abstraction exposes.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SignatureV1 {
-    /// The signature name (unique within its module).
+pub struct LocatedParameterInputV2 {
     pub name: String,
-    /// Ordered formal parameters.
-    pub params: Vec<SignatureParamV1>,
-    /// The opaque symbolic result tag the abstraction produces.
-    pub result_tag: String,
+    pub value_type: ValueTypeV1,
+    pub location: CheckedLocatedSpanV2,
 }
 
-/// A structurally-checked instantiation of a signature.
-///
-/// Produced only by [`SignatureV1::instantiate`]; holds the signature name and
-/// the per-parameter `(param, argument_tag)` bindings in declaration order.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SignatureInstanceV1 {
-    /// The instantiated signature name.
-    pub signature: String,
-    /// Bound `(parameter, argument tag)` pairs, in declaration order.
-    pub bindings: Vec<(SignatureParamV1, String)>,
-    /// The result tag carried from the signature.
-    pub result_tag: String,
+pub struct SignatureInputV2 {
+    pub parameters: Vec<LocatedParameterInputV2>,
+    pub result: ValueTypeV1,
+    pub callable_kind: CallableKindV2,
+    pub effects: ExpressionEffectsV2,
+    pub location: CheckedLocatedSpanV2,
 }
 
-impl SignatureV1 {
-    /// Construct a signature.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SignatureParameterV2 {
+    name: String,
+    value_type: ValueTypeV1,
+    location: LocatedSpanV2,
+}
+impl SignatureParameterV2 {
     #[must_use]
-    pub fn new(name: impl Into<String>, result_tag: impl Into<String>) -> Self {
-        Self {
-            name: name.into(),
-            params: Vec::new(),
-            result_tag: result_tag.into(),
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    #[must_use]
+    pub const fn value_type(&self) -> &ValueTypeV1 {
+        &self.value_type
+    }
+    #[must_use]
+    pub const fn location(&self) -> LocatedSpanV2 {
+        self.location
+    }
+}
+
+/// Typed callable declaration. Source locations are excluded from semantic
+/// equality so separately authored identical interfaces remain identical.
+#[derive(Clone, Debug)]
+pub struct SignatureV2 {
+    parameters: Vec<SignatureParameterV2>,
+    result: ValueTypeV1,
+    callable_kind: CallableKindV2,
+    effects: ExpressionEffectsV2,
+}
+impl SignatureV2 {
+    pub(crate) fn try_new(
+        input: SignatureInputV2,
+        source_registry: &SourceRegistryViewV2,
+        session: &mut ModuleBudgetSessionV2,
+    ) -> Result<Self, ModuleDiagnosticV2> {
+        session.charge_node()?;
+        check_registry(&input.location, source_registry)?;
+        for parameter in &input.parameters {
+            session.charge_node()?;
+            session.charge_string(&parameter.name)?;
+            check_registry(&parameter.location, source_registry)?;
         }
-    }
-
-    /// Append a formal parameter (builder style).
-    #[must_use]
-    pub fn with_param(mut self, param: SignatureParamV1) -> Self {
-        self.params.push(param);
-        self
-    }
-
-    /// Declared arity.
-    #[must_use]
-    pub fn arity(&self) -> usize {
-        self.params.len()
-    }
-
-    /// Instantiate this signature against positional argument tags.
-    ///
-    /// Fail-closed on arity mismatch with
-    /// [`ModuleDiagnosticV1::SignatureArityMismatch`]. Type legality of the
-    /// argument tags is NOT checked here (ticket 03 owns that); the binding is
-    /// carried through for the typer to consume.
-    pub fn instantiate(
-        &self,
-        argument_tags: &[String],
-    ) -> Result<SignatureInstanceV1, ModuleDiagnosticV1> {
-        if argument_tags.len() != self.params.len() {
-            return Err(ModuleDiagnosticV1::SignatureArityMismatch {
-                signature: self.name.clone(),
-                expected: self.params.len(),
-                found: argument_tags.len(),
+        let mut seen: BTreeMap<String, CheckedLocatedSpanV2> = BTreeMap::new();
+        let mut checked = Vec::with_capacity(input.parameters.len());
+        for parameter in input.parameters {
+            if !is_segment(&parameter.name) {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.invalid_signature_parameter",
+                    "invalid signature parameter name",
+                    &parameter.location,
+                ));
+            }
+            if let Some(original) = seen.get(&parameter.name) {
+                return Err(ModuleDiagnosticV2::conflict(
+                    "modules.duplicate_signature_parameter",
+                    "duplicate signature parameter",
+                    &parameter.location,
+                    original,
+                ));
+            }
+            seen.insert(parameter.name.clone(), parameter.location.clone());
+            checked.push(SignatureParameterV2 {
+                name: parameter.name,
+                value_type: parameter.value_type,
+                location: parameter.location.location(),
             });
         }
-        let bindings = self
-            .params
-            .iter()
-            .cloned()
-            .zip(argument_tags.iter().cloned())
-            .collect();
-        Ok(SignatureInstanceV1 {
-            signature: self.name.clone(),
-            bindings,
-            result_tag: self.result_tag.clone(),
+        Ok(Self {
+            parameters: checked,
+            result: input.result,
+            callable_kind: input.callable_kind,
+            effects: input.effects,
         })
     }
+    pub fn try_as_resolved_predicate(
+        &self,
+        id: ResolvedPredicateIdV2,
+    ) -> Result<ResolvedPredicateCallableV2, ModuleDiagnosticV2> {
+        ResolvedPredicateCallableV2::try_new(
+            id,
+            self.parameters
+                .iter()
+                .map(|parameter| parameter.value_type.clone())
+                .collect(),
+            self.result.clone(),
+            self.effects,
+        )
+        .map_err(|error| {
+            ModuleDiagnosticV2::without_location("modules.invalid_signature", error.to_string())
+        })
+    }
+    #[must_use]
+    pub fn parameters(&self) -> &[SignatureParameterV2] {
+        &self.parameters
+    }
+    #[must_use]
+    pub const fn result(&self) -> &ValueTypeV1 {
+        &self.result
+    }
+    #[must_use]
+    pub const fn callable_kind(&self) -> CallableKindV2 {
+        self.callable_kind
+    }
+    #[must_use]
+    pub const fn effects(&self) -> ExpressionEffectsV2 {
+        self.effects
+    }
 }
+
+fn check_registry(
+    location: &CheckedLocatedSpanV2,
+    source_registry: &SourceRegistryViewV2,
+) -> Result<(), ModuleDiagnosticV2> {
+    if location.registry_identity() != &source_registry.identity() {
+        return Err(ModuleDiagnosticV2::new(
+            "modules.source_registry_mismatch",
+            "signature location belongs to another source registry",
+            location,
+        ));
+    }
+    Ok(())
+}
+impl PartialEq for SignatureV2 {
+    fn eq(&self, other: &Self) -> bool {
+        self.parameters
+            .iter()
+            .map(|p| (&p.name, &p.value_type))
+            .eq(other.parameters.iter().map(|p| (&p.name, &p.value_type)))
+            && self.result == other.result
+            && self.callable_kind == other.callable_kind
+            && self.effects == other.effects
+    }
+}
+impl Eq for SignatureV2 {}

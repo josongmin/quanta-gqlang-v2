@@ -13,6 +13,7 @@
 
 mod support;
 
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -34,6 +35,32 @@ fn documented_transport_section_v1<'a>(document: &'a str, heading: &str) -> &'a 
     let tail = document.get(start + heading.len()..).expect("heading end");
     let end = tail.find("\n## ").unwrap_or(tail.len());
     tail.get(..end).expect("section bounds")
+}
+
+const SUPPORTED_METHODS_START_V1: &str = "<!-- supported-diagnostics-methods:start -->";
+const SUPPORTED_METHODS_END_V1: &str = "<!-- supported-diagnostics-methods:end -->";
+
+fn documented_supported_methods_v1(document: &str) -> BTreeSet<String> {
+    let (_, after_start) = document
+        .split_once(SUPPORTED_METHODS_START_V1)
+        .expect("missing supported diagnostics methods start marker");
+    let (body, _) = after_start
+        .split_once(SUPPORTED_METHODS_END_V1)
+        .expect("missing supported diagnostics methods end marker");
+    body.lines()
+        .filter_map(|line| {
+            let line = line.trim();
+            if line.is_empty() {
+                return None;
+            }
+            Some(
+                line.strip_prefix("- `")
+                    .and_then(|value| value.strip_suffix('`'))
+                    .unwrap_or_else(|| panic!("invalid supported-method entry `{line}`"))
+                    .to_owned(),
+            )
+        })
+        .collect()
 }
 
 #[test]
@@ -74,6 +101,18 @@ fn every_allowlisted_method_is_dispatched_and_documented_v1() {
             "transport section must explicitly delimit the non-LSP protocol"
         );
     }
+    let expected_methods = READ_ONLY_METHOD_NAMES_V1
+        .into_iter()
+        .map(str::to_owned)
+        .collect::<BTreeSet<_>>();
+    assert_eq!(
+        documented_supported_methods_v1(root_transport),
+        expected_methods
+    );
+    assert_eq!(
+        documented_supported_methods_v1(language_transport),
+        expected_methods
+    );
     for method in READ_ONLY_METHOD_NAMES_V1 {
         // const <-> dispatch: a real allowlisted method must NOT fall through to
         // `method_not_allowed` (a missing required field yields `missing_field`,
@@ -88,5 +127,53 @@ fn every_allowlisted_method_is_dispatched_and_documented_v1() {
 
         assert!(root_transport.contains(method));
         assert!(language_transport.contains(method));
+    }
+}
+
+#[test]
+fn supported_method_parser_detects_an_extra_advertised_name_v1() {
+    let document = format!(
+        "{SUPPORTED_METHODS_START_V1}\n- `v3_diagnostics`\n- `invented_method`\n{SUPPORTED_METHODS_END_V1}"
+    );
+    let documented = documented_supported_methods_v1(&document);
+    assert!(documented.contains("invented_method"));
+    assert_ne!(
+        documented,
+        READ_ONLY_METHOD_NAMES_V1
+            .into_iter()
+            .map(str::to_owned)
+            .collect::<BTreeSet<_>>()
+    );
+}
+
+#[test]
+fn hellgate_ledger_references_only_current_repository_files_v1() {
+    let root = repository_root_v1();
+    let ledger_path = root.join("docs/language/test_hellgate_ledger.md");
+    let ledger = read_document_v1(&ledger_path);
+    let retired_package = ["quanta-gqlang-v2-", "lsp/"].concat();
+
+    assert!(
+        !ledger.contains(&retired_package),
+        "hellgate ledger must not reference the deleted LSP package"
+    );
+
+    let mut referenced = BTreeSet::new();
+    for fragment in ledger.split('`').skip(1).step_by(2) {
+        if fragment.starts_with("crates/") && fragment.ends_with(".rs") {
+            referenced.insert(fragment);
+        }
+    }
+    assert!(
+        !referenced.is_empty(),
+        "hellgate ledger must contain repository rail paths"
+    );
+    for relative in referenced {
+        let path = root.join(relative);
+        assert!(
+            path.is_file(),
+            "hellgate ledger references missing rail {}",
+            path.display()
+        );
     }
 }

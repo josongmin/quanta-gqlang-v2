@@ -4,7 +4,7 @@ Status: `PLANNED — ONLY TICKET AUTHORIZED TO CLOSE PACKET`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
-## Findings Closed
+## Findings Owned / To Close
 
 F03 final closure, F14, F29, and proof coverage for every other finding.
 
@@ -62,6 +62,11 @@ an end-to-end/conformance claim.
     owner-local fixture manifest
 20. existing integration-test crate headers required to normalize inherited
     reasoned `#![allow]` attributes without changing test behavior
+21. `crates/quanta-gqlang-v2-diagnostics-stdio/tests/method_allowlist_doc_gate.rs`
+    to move path/protocol truth from the deleted ledger to the final proof-rail
+    inventory
+22. `crates/quanta-gqlang-v2-frontend-contract/tests/external_consumer/` and the
+    facade export inventory introduced by ticket 07
 
 Ticket 09 must remove the temporary ticket-01 Clippy exceptions for
 `clippy::allow_attributes` and `clippy::duplicated_attributes`. Final CI and the
@@ -109,7 +114,7 @@ this matrix. Variant/result-kind/effect-only checks are insufficient.
 
 1. Generate or verify method allowlists from code.
 2. Generate or verify example inventory bidirectionally.
-3. Verify every proof-ledger path exists.
+3. Verify every final proof-rail inventory path exists.
 4. Separate historical receipts from current-head receipts.
 5. Remove all `closed`, `implemented`, or `green` claims lacking the new exact
    receipt.
@@ -131,7 +136,7 @@ this matrix. Variant/result-kind/effect-only checks are insufficient.
    equal executed cases.
 7. Run mutation cases or equivalent controlled reversions for each critical
    owner invariant and record that the intended test fails.
-8. Regenerate/validate method allowlist, example inventory, proof-ledger paths,
+8. Regenerate/validate method allowlist, example inventory, final proof-rail paths,
    and public API inventory from current source.
 9. Generate `TRUTH_CLAIM_INVENTORY.tsv` with path, line, exact claim, scope
    (`historical` or `current-head`), supporting receipt, and action. Add one
@@ -172,10 +177,9 @@ examples into a second registry.
 ## Final Test-Suite Disposition
 
 1. Delete `docs/language/test_hellgate_ledger.md`; do not regenerate a second
-   proof-path inventory. Repoint the root README to
-   `docs/language/README.md#proof-rails` and make the existing conformance/
-   hygiene rail extract every test path from that section and fail on a missing
-   file.
+   proof-path inventory. `TEST_PATH_INVENTORY.tsv` is the sole machine-readable
+   authority. Root/language README proof-rail sections link to or are generated
+   from it; conformance and hygiene read only the TSV and fail on missing paths.
 2. `examples-v2.tsv` declares exactly one row for every `examples/**/*.qglang`
    path with family, authority fixture, expected compiled kind or expected
    diagnostic code, and open-analysis expectation. Tests prove filesystem ↔
@@ -235,14 +239,18 @@ source
 authority_fixture
 expected_compiled_kind
 expected_semantic_contract
-negative_unknown_ref
-negative_wrong_kind_ref
-negative_option_mix
+applicability
+not_applicable_reason
+closed_negative_case
+open_diagnostic_case
 cli_service_parity
 resource_boundary
+owner_mutation_receipt
 ```
 
-The registry test fails if any field is absent for any public family.
+The registry test fails if any field is absent. `not_applicable_reason` must be
+non-empty exactly when `applicability=not_applicable`; closed and open cases are
+separate and are not required to produce the same successful artifact.
 
 ## RED
 
@@ -266,7 +274,7 @@ Do not use a prose-only before/after comparison as the RED receipt.
 2. declared/selected/executed registry equality
 3. public facade inventory against source exports
 4. bidirectional example filesystem/index equality
-5. proof-ledger path existence and line-anchor validation
+5. final proof-rail inventory path existence and line-anchor validation
 6. current command/method allowlist derived from code
 7. final-DAG mode with zero transitional edges
 8. documentation status scan with explicit historical-scope allowlist
@@ -299,7 +307,7 @@ stop and amend this packet before implementation:
 cargo test -p quanta-gqlang-v2-conformance --test v3_semantic_family_matrix
 cargo test -p quanta-gqlang-v2-conformance --test v3_registry_non_vacuity_v2
 cargo test -p quanta-gqlang-v2-conformance --test v3_public_api_inventory
-cargo test -p quanta-gqlang-v2-cli --test v3_cli_service_parity_v2
+cargo test -p quanta-gqlang-v2-conformance --test v3_cli_service_parity_v2
 find examples -type f -name '*.qglang' -print | sort
 rg -n 'Status:.*(CLOSED|Implemented|green)|repo-local proof is green' README.md docs
 git status --short
@@ -346,6 +354,8 @@ Do not close when:
 7. the worktree contains unrelated or unexplained changes
 8. remote state is inferred from cached refs
 9. any transitional normal or dev dependency edge remains
+10. tickets 01-08 are not contained in one clean committed candidate SHA
+11. hosted CI was queried for that SHA and is `failed`
 
 ## Definition Of Done
 
@@ -354,7 +364,51 @@ Do not close when:
 3. the final commands are green on one immutable head
 4. public docs match that head
 5. no runtime/provider/physical-planning ownership leaked into this repo
+6. closeout state is `CLOSED_BY_09` only with hosted green, otherwise
+   `REPO_LOCAL_CLOSED` with hosted status `unavailable`
 
 ## Dependencies
+
+## 2026-09-21 Final Adversarial Audit Corrections
+
+This section is normative and supersedes conflicting earlier wording.
+
+### Truth-source disposition
+
+Delete `docs/language/test_hellgate_ledger.md` only after its live rows are
+migrated to the canonical `TEST_PATH_INVENTORY.tsv`. README proof rails link to
+or are generated from that inventory. This ticket owns the corresponding rewrite of
+`method_allowlist_doc_gate.rs`. The final path-existence check reads the new
+authority; it must not reference the deleted ledger.
+
+The semantic matrix has two explicit sections:
+
+1. closed compile: valid, missing, wrong-kind, ambiguous, option, and resource
+   cases only where the family owns that dimension;
+2. open CLI/service diagnostic parity: unresolved cases and byte/framing
+   failures under standard open authority.
+
+Every row carries `applicability: required | not_applicable` and a non-empty
+`not_applicable_reason` when skipped. Do not force meaningless variants onto
+every family. Owner mutation receipts are referenced once; the final tree runs
+representative cross-boundary mutations rather than copied per-family tests.
+
+### Immutable closeout precondition
+
+Packet closure requires a clean committed candidate SHA containing tickets
+01-08. The ledger's no-commit policy means the user must authorize that commit;
+without authorization ticket 09 stops before closure. If the work remains dirty
+or the candidate commit lacks any receipt, a dirty fingerprint is evidence, not
+`repair_commit` or closure SHA.
+
+Hosted CI is recorded separately as `green`, `failed`, or `unavailable` after
+the immutable local SHA passes. A verified `failed` blocks closure;
+`unavailable` permits only `REPO_LOCAL_CLOSED` and remains an explicit external
+evidence gap. Local output never fabricates hosted green.
+
+Final facade proof includes the curated `pub use` inventory and the external
+fixture that depends only on `frontend-contract`. Confirm zero `_punchlist`
+filenames, zero deleted-ledger references, zero old HIR API references, and zero
+transition-only dependency exceptions before closeout.
 
 Requires 01-08. Runs serially after all implementation merges.

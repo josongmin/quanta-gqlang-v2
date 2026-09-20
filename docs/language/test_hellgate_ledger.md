@@ -1,113 +1,74 @@
 # Test hellgate ledger
 
-This ledger maps each DSL surface and root family in `quanta-gqlang-v2` to the
-proof rails that guard it. It is the precise companion to the
-[Proof rails section](./README.md#proof-rails-test-hellgates) of the language
-README.
+This ledger maps the current v3 frontend authorities to repository-owned proof
+rails. Every referenced path exists at the current source snapshot. It replaces
+the retired v2 syntax/sema/IR and LSP inventory; those crates and methods are
+not compatibility promises.
 
-**Scope.** syntax, sema, normalized IR, the CLI front door, and the LSP stdio
-front door. Everything here proves frontend determinism and fail-closed
-behavior only.
+## Proof boundary
 
-**Out of scope.** Runtime execution, provider/registry routing, result counts,
-host DTO materialization, mutable edits, and backend closure. No rail in this
-ledger asserts any of these as real.
+- Binary e2e means the shipped CLI or diagnostics-stdio process is spawned and
+  its framing, channel, response, or exit behavior is asserted.
+- Contract proof means a crate-local public or owner API is exercised. It does
+  not prove a shipped process boundary.
+- These rails prove frontend syntax, HIR, binding, types, modules, algebra,
+  logic, planning IR, pipeline composition, CLI, and diagnostics transport.
+- Runtime execution, provider routing, result materialization, backend DTOs,
+  deployment, and activation remain out of scope.
 
-## Rail kinds
+## Source, HIR, and type authorities
 
-- **Binary e2e** — spawns the real shipped binary
-  (`CARGO_BIN_EXE_quanta-gqlang-v2-cli` / `...-lsp`), feeds front-door bytes, and
-  asserts stdout / stderr / output channel / process exit code. Only a spawned
-  process can pin an exit code or a channel.
-- **Contract-only** — an in-crate library test against the public API. Pins
-  typed shapes, diagnostic codes, normalization, and fail-closed branches. Makes
-  no claim about exit codes or output channels.
+| Authority | Primary rails | Contract pinned |
+|---|---|---|
+| Surface grammar and item families | `crates/quanta-gqlang-v2-surface/tests/v3_surface_query.rs`, `crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs`, `crates/quanta-gqlang-v2-surface/tests/v3_document_hellgate.rs` | Typed query stages, all root families, document/source identity, fail-closed grammar |
+| Expression grammar | `crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_kernel.rs`, `crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs`, `crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs` | Precedence, path/call/quantifier/existence shapes, mutation-sensitive branches |
+| UTF-8 and formatting | `crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs`, `crates/quanta-gqlang-v2-surface/tests/v3_format_hellgate.rs`, `crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs`, `crates/quanta-gqlang-v2-surface/tests/v3_lexer_symbol_rails.rs` | Unicode and escape correctness, precedence-aware canonicalization, independent structural witness, property rails |
+| Parse resource budgets | `crates/quanta-gqlang-v2-surface/tests/v3_surface_budget.rs` | Exact-limit/one-over-limit token, item, expression, collection, and projection dimensions |
+| HIR identity and integrity | `crates/quanta-gqlang-v2-hir/tests/v3_item_identity.rs`, `crates/quanta-gqlang-v2-hir/tests/v3_hir_hellgate.rs`, `crates/quanta-gqlang-v2-hir/tests/v3_span_semantics.rs` | Unique IDs, source-qualified document integrity, node and auxiliary span bounds, invalid-state rejection |
+| HIR semantic carriers and traversal | `crates/quanta-gqlang-v2-hir/tests/v3_hir_expr_kernel.rs`, `crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs`, `crates/quanta-gqlang-v2-hir/tests/v3_visit_traversal.rs` | Closed join/group/order/call/path/composition shapes and exhaustive traversal |
+| Closed type universe and checking | `crates/quanta-gqlang-v2-types/tests/v3_types_universe.rs`, `crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs`, `crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs` | Non-forgeable type states, overload resolution, record projection, complete effects/facts, type budgets |
 
-A surface marked "— (contract-only)" in the Binary e2e column is intentionally
-**not** proven at the binary; its only rail is the library contract.
+## Semantic-stage authorities
 
-## CLI front door
+| Authority | Primary rails | Contract pinned |
+|---|---|---|
+| Binding and scope | `crates/quanta-gqlang-v2-binder/tests/v3_binder_scope.rs`, `crates/quanta-gqlang-v2-binder/tests/v3_binder_hellgate.rs`, `crates/quanta-gqlang-v2-binder/tests/v3_binder_mutants.rs`, `crates/quanta-gqlang-v2-binder/tests/v3_composition_hellgate.rs` | Frame/capture barriers, ambiguity rejection, composition scope, negative mutants |
+| Module/catalog authority | `crates/quanta-gqlang-v2-modules/tests/v3_modules_v2_authority.rs` | Source registry, lock/import/export closure, catalog coherence, budget provenance, cycle and ambiguity rejection |
+| Relational algebra | `crates/quanta-gqlang-v2-algebra/tests/v3_algebra_normalization.rs`, `crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs`, `crates/quanta-gqlang-v2-algebra/tests/v3_algebra_mutants.rs`, `crates/quanta-gqlang-v2-algebra/tests/v3_algebra_probe.rs` | Typed lowering, normalization, semantic mutants, operator reachability probes |
+| Logic and graph rules | `crates/quanta-gqlang-v2-logic/tests/v3_logic_recursion.rs`, `crates/quanta-gqlang-v2-logic/tests/v3_logic_source.rs`, `crates/quanta-gqlang-v2-logic/tests/v3_logic_witness.rs`, `crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs`, `crates/quanta-gqlang-v2-logic/tests/v3_graph_query_hellgate.rs` | Multi-rule SCC/stratification, source provenance, witness stability, graph-query legality |
+| Planning IR | `crates/quanta-gqlang-v2-planning/tests/v3_planning_truth.rs`, `crates/quanta-gqlang-v2-planning/tests/v3_planning_hellgate.rs`, `crates/quanta-gqlang-v2-planning/tests/v3_planning_cost_schema.rs`, `crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs`, `crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs`, `crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs` | Current public plan schema, truth/capability/provenance derivation, fail-closed item planning |
 
-| Surface / root family | Binary e2e rail (file) | Contract-only rail (file) | Notes |
-| --- | --- | --- | --- |
-| Shipped positive corpus (`parse` / `sema` / `query` / `fmt` / `headless` matrix over the 17 examples) | `crates/quanta-gqlang-v2-cli/tests/examples_binary_frontdoor_matrix.rs` | `crates/quanta-gqlang-v2-cli/tests/examples_core_smoke.rs`, `examples_declaration_a_smoke.rs`, `examples_declaration_b_smoke.rs`, `examples_surface_smoke.rs` | Binary matrix is the round-trip rail; the `*_smoke.rs` set adds per-family library coverage. |
-| Release-docs / shipped-example listing invariants | `crates/quanta-gqlang-v2-cli/tests/examples_release_smoke.rs` | — | Asserts the language constraint substrings and that all 17 example paths are listed in `README.md` and `docs/language/README.md`. |
-| Usage / help channel + exit-code contract | `crates/quanta-gqlang-v2-cli/tests/cli_help_usage_contract.rs` | — | help → stdout / exit 0; usage error → stderr / exit 2; canonical usage block echoed. |
-| Empty / whitespace-only input | `crates/quanta-gqlang-v2-cli/tests/cli_empty_input_frontdoor.rs` | — | Blank document fails closed (exit 2, usage), never reaches a command. |
-| Transport parity (inline argv ≡ `--file`) | `crates/quanta-gqlang-v2-cli/tests/cli_transport_parity.rs` | — | Byte-identical stdout and same exit code for both transports. |
-| `doctor` three-way classification (parse-error / sema-error / no-result) | `crates/quanta-gqlang-v2-cli/tests/doctor_frontdoor_hellgate.rs` | `crates/quanta-gqlang-v2-cli/tests/doctor_shell.rs` | Binary rail promotes the three lanes (incl. the previously binary-untested `sema-error`) to real exit codes / channels. |
-| Negative-DSL fail-closed (malformed roots) | `crates/quanta-gqlang-v2-cli/tests/cli_negative_dsl_hellgate.rs` | `crates/quanta-gqlang-v2-syntax/tests/parser_conformance.rs` (diagnostic codes) | Binary rail: every malformed root exits 1; library rail pins the parser diagnostic per root. |
-| Intra-root variant front door (SELECT operators / negative-int literal, EXPORT kinds, SAMPLE modes round-trip; negative-`LIMIT` fail-closed) | `crates/quanta-gqlang-v2-cli/tests/dsl_variant_frontdoor.rs` | `crates/quanta-gqlang-v2-syntax/tests/select_filter_matrix.rs`, `interactive_variant_matrix.rs` | Promotes the per-variant matrices to the binary: each headline variant survives the full `parse → sema → IR → render` stack and round-trips through `fmt`; the `LIMIT` non-negative guard fails closed (exit 1, command channel, `invalid_limit_value`). |
-| `headless` read surface | — (contract-only) | `crates/quanta-gqlang-v2-cli/tests/cli_headless_read.rs` | `headless` is also exercised by the binary matrix corpus; this file is the dedicated library rail. |
-| Zero-query / no-result shell | — (contract-only) | `crates/quanta-gqlang-v2-cli/tests/zero_query.rs`, `zero_query_handshake.rs` | No-result classification also asserted via `doctor` binary rail above. |
-| `USE PACK` meta root | — (contract-only) | `crates/quanta-gqlang-v2-cli/tests/use_pack_cli.rs` | |
-| Explain / path-witness UX | — (contract-only) | `crates/quanta-gqlang-v2-cli/tests/explain_path_ux.rs` | Presentation-only; no runtime path execution. |
+## Composed pipeline
 
-## LSP stdio front door
+| Surface | Primary rails | Contract pinned |
+|---|---|---|
+| All root families | `crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_compile.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_hellgate.rs` | Frontend transaction across the complete declared root-family set |
+| Context, catalog, and composition | `crates/quanta-gqlang-v2-pipeline/tests/v3_frontend_context.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_composition_catalog_scope.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_use_pack_authority.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs` | Shared authority, catalog scope, type environment, pack lock, relation-source closure |
+| Stage-shape gaps and normalization | `crates/quanta-gqlang-v2-pipeline/tests/v3_alias_type_closure_gap.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_normalize_item_decl_rule.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_surface_to_algebra_group_by.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_surface_to_algebra_order_by.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_quantifier_body_type_check.rs` | Alias/type closure, item lowering, group/order preservation, quantified body checking |
+| Adversarial and generated coverage | `crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs` | Edge branches, property behavior, stable diagnostics |
 
-| Surface | Binary e2e rail (file) | Contract-only rail (file) | Notes |
-| --- | --- | --- | --- |
-| Read-only method matrix + same-session recovery (`hover` / `completion` / `symbols` / `diagnostics` / `zero_query` / `quickfix`) | `crates/quanta-gqlang-v2-lsp/tests/stdio_read_only.rs` | `crates/quanta-gqlang-v2-lsp/tests/read_only_lsp.rs`, `read_only_handshake.rs` | Binary rail proves session recovers after fail-closed frames. |
-| Stdio framing edges (EOF, glued frames, incomplete-at-EOF) | `crates/quanta-gqlang-v2-lsp/tests/stdio_frame_edges.rs` | — | Locks `extract_next_request_frame_v1` byte-boundary behavior at the binary. |
-| JSON escape / surrogate-pair rejection | `crates/quanta-gqlang-v2-lsp/tests/stdio_json_escape_negative.rs` | — | Drives the hand-rolled `parse_unicode_escape_v1` error branches. |
-| Multi-statement first-statement contract | `crates/quanta-gqlang-v2-lsp/tests/stdio_multi_statement_contract.rs` | — | `hover` / `symbols` summarize only the first statement of a document. |
-| Negative-DSL fail-closed | `crates/quanta-gqlang-v2-lsp/tests/stdio_negative_dsl_hellgate.rs` | — | Each malformed root fails closed at the spawned binary. |
-| Command-plane barrier | `crates/quanta-gqlang-v2-lsp/tests/stdio_command_plane_hellgate.rs` | `crates/quanta-gqlang-v2-lsp/tests/edit_command_handshake.rs` | Non-allowlisted methods (mutating or simply unknown) always `method_not_allowed`, exit 1; closed allowlist, no name-pattern classification; session recovers. |
-| Read-only authority (quickfix metadata-only + zero-query authority) | `crates/quanta-gqlang-v2-lsp/tests/stdio_readonly_authority_hellgate.rs` | `crates/quanta-gqlang-v2-lsp/tests/autocomplete_quickfix.rs` | Quickfix returns metadata only; zero-query path executes no query. |
-| Autocomplete / catalog completion | — (contract-only) | `crates/quanta-gqlang-v2-lsp/tests/autocomplete_handshake.rs`, `catalog_autocomplete_handshake.rs` | Completion shapes pinned at library level only. |
+## Shipped front doors
 
-## Syntax
+| Front door | Binary rails | Contract pinned |
+|---|---|---|
+| CLI | `crates/quanta-gqlang-v2-cli/tests/v3_cli_front_door_contract.rs`, `crates/quanta-gqlang-v2-cli/tests/v3_cli_pipeline_hellgate.rs`, `crates/quanta-gqlang-v2-cli/tests/v3_cli_fmt_idempotence.rs`, `crates/quanta-gqlang-v2-cli/tests/v3_cli_item_surfacing.rs`, `crates/quanta-gqlang-v2-cli/tests/v3_cli_plan_summary.rs`, `crates/quanta-gqlang-v2-cli/tests/command_doc_gate.rs` | Command allowlist, source/file parity, exit/channel contract, formatting fixed point, item and plan surfacing |
+| CLI/diagnostics parity | `crates/quanta-gqlang-v2-cli/tests/v3_cli_lsp_parity.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs` | Historical filename retained; assertions target the current diagnostics-stdio binary and shared compiler result |
+| Diagnostics stdio | `crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_determinism.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_edges.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_extractor_edges.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_json_escape_negative.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_json_object_negative.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_byte_robustness_hellgate.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_command_plane_hellgate.rs` | Private flat-JSON framing, deterministic diagnostics, malformed-byte/JSON recovery, closed read-only command plane |
+| Documentation/allowlist drift | `crates/quanta-gqlang-v2-diagnostics-stdio/tests/method_allowlist_doc_gate.rs` | Only `v3_diagnostics` is advertised and dispatched; transport is explicitly not JSON-RPC or LSP; ledger paths must exist |
 
-| Surface | Binary e2e rail (file) | Contract-only rail (file) | Notes |
-| --- | --- | --- | --- |
-| Positive root decoding (all root families) | — (exercised via CLI binary corpus) | `crates/quanta-gqlang-v2-syntax/tests/parser_conformance.rs` | Library rail decodes every shipped root; the binary corpus matrix re-proves it through the CLI. |
-| SELECT filter / literal / `LIMIT` variant matrix (all six comparison operators, integer literal incl. negative, `LIMIT` non-negative + overflow guards) | `crates/quanta-gqlang-v2-cli/tests/dsl_variant_frontdoor.rs` (subset, via CLI) | `crates/quanta-gqlang-v2-syntax/tests/select_filter_matrix.rs` | Every `SelectFilterOpV1` / `SelectLiteralAstV1` value decodes through `parse_document_v1`, re-derives its canonical query, and is a `format_document_v1` fixed point; negative/overflow `LIMIT` pins the fail-closed branches. |
-| Interactive variant matrix (EXPORT kinds, SAMPLE modes, COMPARE metrics) | `crates/quanta-gqlang-v2-cli/tests/dsl_variant_frontdoor.rs` (subset, via CLI) | `crates/quanta-gqlang-v2-syntax/tests/interactive_variant_matrix.rs` | Every `ExportKindV1` / `SampleRetrievalModeV1` / `CompareMetricV1` value decodes through both the `decode_*_intent_v1` API and the front door, is a format fixed point, and unknown values fail closed. |
-| Multi-statement recovery | — (contract-only) | `crates/quanta-gqlang-v2-syntax/tests/multi_statement.rs` | Each line is its own root; recovery reports all malformed statements. |
-| Declaration-family negatives (VIEW / RULE / MODEL / PACK / PROFILE / GATE) | `crates/quanta-gqlang-v2-cli/tests/cli_negative_dsl_hellgate.rs` (subset, via CLI) | `crates/quanta-gqlang-v2-syntax/tests/declaration_conformance.rs` | Library rail pins fail-closed branches at `parse_document_v1`. |
-| Query formatting (`fmt`) | `crates/quanta-gqlang-v2-cli/tests/examples_binary_frontdoor_matrix.rs` (`fmt` round-trip) | `crates/quanta-gqlang-v2-syntax/tests/query_formatting.rs` | `format_document_v1` idempotence proven both ways. |
+## Architecture and composition gates
 
-## Sema
+| Gate | Rail | What it proves |
+|---|---|---|
+| Public downstream boundary | `crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs` | Host-agnostic frontend contract remains consumable without runtime substrate types |
+| Registry and artifact integrity | `crates/quanta-gqlang-v2-conformance/tests/registry_non_vacuous.rs`, `crates/quanta-gqlang-v2-conformance/tests/self_validation.rs`, `crates/quanta-gqlang-v2-conformance/tests/current_head_artifact_hygiene.rs` | Conformance targets are non-vacuous, registered, and current-source artifacts are clean |
+| Full local composition | `just ci` | Repository-configured format, lint, architecture, Semgrep, test, and conformance composition; it is local proof, not hosted-CI evidence |
 
-| Surface | Binary e2e rail (file) | Contract-only rail (file) | Notes |
-| --- | --- | --- | --- |
-| Typed sema conformance | — (exercised via CLI `sema` corpus) | `crates/quanta-gqlang-v2-sema/tests/sema_conformance.rs` | CLI `sema` binary matrix re-proves typed decoding end-to-end through the front door. |
-| Pack-trust handshake | — (contract-only) | `crates/quanta-gqlang-v2-sema/tests/pack_trust_handshake.rs` | |
+## Maintenance rule
 
-## Normalized IR
-
-| Surface | Binary e2e rail (file) | Contract-only rail (file) | Notes |
-| --- | --- | --- | --- |
-| SELECT vertical slice | — (exercised via CLI `query` corpus) | `crates/quanta-gqlang-v2-ir/tests/select_vertical_slice.rs` | Table-only row shape kept; non-table widening rejected fail-closed. |
-| FIND / CHECK / EXPLAIN handshakes | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/j02a_handshake.rs`, `j02b_check_handshake.rs`, `j02c_explain_handshake.rs` | |
-| Public planning IR (`required_capabilities`, `truth_expectation`, `bridge_mode`, export mode) | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/public_planning_ir.rs` | Roots needing planning metadata fail closed when it is absent. |
-| Lowering-ready normalization | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/lowering_ready_ir.rs` | Preserves planning metadata rather than dropping it; lowering-ready, not lowered. |
-| Degraded-reason authority | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/degraded_reason.rs` | Single `DegradedReasonV1` authority; codes round-trip and stay unique. Presentation-only, not invented runtime truth. |
-| IR round-trip | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/ir_roundtrip.rs` | |
-| Fact schema / rowset guard / public fact schema | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/fact_schema_rowset_guard.rs`, `public_fact_schema.rs`, `fact_model_handshake.rs` | Typed host-ingested vocabulary, not analyzer-computed truth. |
-| Model / pack / gate handshake | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/model_pack_gate_handshake.rs` | |
-| Metric inventory | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/metric_inventory.rs` | Typed metric-identifier vocabulary; external findings are frontend data nouns. Disjoint from the COMPARE `metric=` clause vocabulary. |
-| Catalog completion coverage | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/catalog_completion.rs` | ir-owned catalog coverage guard; the LSP ranker draws from these rows. |
-| AI profile IR contract | — (contract-only) | `crates/quanta-gqlang-v2-ir/tests/ai_profile_contract.rs` | Same-intent replay; AI lane cannot emit final policy truth. |
-
-## Composition gate
-
-The entire rail set above is composed and gated by `just ci`.
-
-## E03C — `LET` / `WITH` composition (added jun-10)
-
-`LET`/`WITH` is a composition clause family (not a root family), covered by
-dedicated binary + contract rails rather than the 17-root example matrix.
-
-| Surface | Binary e2e rail | Contract-only rail | Notes |
-|---|---|---|---|
-| syntax: grammar, grouping, fmt | — | `crates/quanta-gqlang-v2-syntax/tests/let_with_composition.rs` | 14 cases incl every `composition_*` code |
-| sema: alias→index, D3 producers | — | `crates/quanta-gqlang-v2-sema/tests/sema_composition.rs` | undefined/invalid-producer fail-closed; producer errors pass through |
-| ir: lowering + `WorkingSetV1` wiring | — | `crates/quanta-gqlang-v2-ir/tests/composition_ir.rs` | degraded `-unavailable` round-trip; body lane preserved |
-| CLI front door | `crates/quanta-gqlang-v2-cli/tests/composition_frontdoor_hellgate.rs` | — | parse/sema/query/fmt/doctor/headless + S1-S8 |
-| CLI no-runtime-leakage | `crates/quanta-gqlang-v2-cli/tests/no_runtime_leakage_cli_sweep.rs` | — | composition case (S6): denylist + `-unavailable` suffix |
-| LSP stdio front door | `crates/quanta-gqlang-v2-lsp/tests/stdio_composition_contract.rs` | — | hover/symbols/diagnostics/quickfix; read-only |
-
-Boundary: composition lowers to typed IR referencing `WorkingSetRefIrV1`
-descriptors (no `items` field — no runtime-packet widening); materialization is
-host-side and out of scope here.
+When a rail is renamed or deleted, update this ledger and its owning ticket in
+the same change. `method_allowlist_doc_gate.rs` scans every backticked Rust test
+path under the crates directory in this file and fails if the target does not
+exist. A
+test filename containing legacy terminology is not authority for a retired
+protocol; its table entry must state the actual current boundary.

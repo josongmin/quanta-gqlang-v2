@@ -29,5 +29,6 @@
     ["quanta-gqlang-v2-diagnostics-stdio", "quanta-gqlang-v2-frontend-contract"],
     ["quanta-gqlang-v2-conformance", "quanta-gqlang-v2-frontend-contract"]
   ],
-  "dev_edges": []
+  "dev_edges": [],
+  "build_edges": []
 }
