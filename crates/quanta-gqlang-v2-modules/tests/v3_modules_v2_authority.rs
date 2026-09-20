@@ -309,6 +309,56 @@ fn disconnected_cycle_rejects_whole_graph_with_located_witness() {
 }
 
 #[test]
+fn competing_cycles_choose_same_canonical_witness_under_permutation() {
+    fn run(reverse: bool) -> Vec<LocatedSpanV2> {
+        let sources = registry(&[(1, 128)]);
+        let app = module_id(&sources, "app", 0);
+        let a = module_id(&sources, "a", 1);
+        let b = module_id(&sources, "b", 2);
+        let mut builder = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+        for (id, at) in [(&app, 3), (&a, 4), (&b, 5)] {
+            builder
+                .try_add_module(ModuleNodeInputV2 {
+                    module_id: id.clone(),
+                    location: checked(&sources, 1, at),
+                })
+                .unwrap();
+        }
+        let mut edges = vec![(a, 20), (b, 10)];
+        if reverse {
+            edges.reverse();
+        }
+        for (owner, at) in edges {
+            builder
+                .try_import(ModuleImportInputV2 {
+                    owner_module_id: owner.clone(),
+                    local_name: "x".into(),
+                    target: asset_ref(&sources, &owner, NamespaceKindV2::Value, "x", at + 30),
+                    location: checked(&sources, 1, at),
+                })
+                .unwrap();
+        }
+        builder
+            .finish(
+                CurrentModuleSelectionInputV2 {
+                    module_id: app,
+                    location: checked(&sources, 1, 6),
+                },
+                VersionV2::new(1, 0, 0),
+            )
+            .unwrap_err()
+            .edge_witness()
+            .to_vec()
+    }
+    let forward = run(false);
+    let reverse = run(true);
+    assert_eq!(forward, reverse);
+    assert_eq!(forward.len(), 1);
+    // Module identity is the primary sort key, so cycle `a` wins over lower-span `b`.
+    assert_eq!(forward.first().unwrap().span, SpanV1::new(20, 21));
+}
+
+#[test]
 fn three_origin_ambiguity_retains_all_candidates_independent_of_input_order() {
     fn run(order: &[usize]) -> Vec<String> {
         let sources = registry(&[(1, 2048)]);
@@ -594,6 +644,68 @@ fn external_catalog_validates_payload_and_dependency_kinds() {
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.catalog_payload_kind_mismatch");
+}
+
+#[test]
+fn external_catalog_rejects_duplicate_and_unresolved_assets() {
+    let sources = registry(&[(1, 256)]);
+    let app = module_id(&sources, "app", 0);
+    let external = module_id(&sources, "host", 1);
+    let mut duplicate = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+    for (value_type, at) in [(ValueTypeV1::int(), 2), (ValueTypeV1::string(), 3)] {
+        let result = duplicate.try_add_external(ExternalCatalogAssetInputV2 {
+            module_name: "host".into(),
+            local_name: "x".into(),
+            kind_token: "value".into(),
+            typed_payload: ExternalCatalogPayloadInputV2::Value(value_type),
+            provenance: "host".into(),
+            location: checked(&sources, 1, at),
+            dependencies: vec![],
+        });
+        if at == 2 {
+            result.unwrap();
+        } else {
+            let error = result.unwrap_err();
+            assert_eq!(error.code(), "modules.duplicate_external_catalog_asset");
+            assert!(error.secondary().is_some());
+        }
+    }
+
+    let relation =
+        RelationTypeV1::try_new(RecordTypeV1::try_new(vec![]).unwrap(), CardinalityV1::Set)
+            .unwrap();
+    let mut unresolved = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+    unresolved
+        .try_add_module(ModuleNodeInputV2 {
+            module_id: app.clone(),
+            location: checked(&sources, 1, 4),
+        })
+        .unwrap();
+    unresolved
+        .try_add_external(ExternalCatalogAssetInputV2 {
+            module_name: "host".into(),
+            local_name: "view".into(),
+            kind_token: "view".into(),
+            typed_payload: ExternalCatalogPayloadInputV2::View(relation),
+            provenance: "host".into(),
+            location: checked(&sources, 1, 5),
+            dependencies: vec![ExternalCatalogDependencyInputV2 {
+                target: asset_ref(&sources, &external, NamespaceKindV2::Value, "missing", 6),
+                expected_kind: NamespaceKindV2::Value,
+                location: checked(&sources, 1, 7),
+            }],
+        })
+        .unwrap();
+    let error = unresolved
+        .finish(
+            CurrentModuleSelectionInputV2 {
+                module_id: app,
+                location: checked(&sources, 1, 8),
+            },
+            VersionV2::new(1, 0, 0),
+        )
+        .unwrap_err();
+    assert_eq!(error.code(), "modules.unknown_catalog_reference");
 }
 
 #[test]
@@ -1776,6 +1888,41 @@ fn duplicate_direct_import_rejects_even_when_target_matches() {
 }
 
 #[test]
+fn duplicate_direct_import_rejects_different_target() {
+    let sources = registry(&[(1, 128)]);
+    let app = module_id(&sources, "app", 0);
+    let left = module_id(&sources, "left", 1);
+    let right = module_id(&sources, "right", 2);
+    let mut builder = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+    for (id, at) in [(&app, 3), (&left, 4), (&right, 5)] {
+        builder
+            .try_add_module(ModuleNodeInputV2 {
+                module_id: id.clone(),
+                location: checked(&sources, 1, at),
+            })
+            .unwrap();
+    }
+    builder
+        .try_import(ModuleImportInputV2 {
+            owner_module_id: app.clone(),
+            local_name: "x".into(),
+            target: asset_ref(&sources, &left, NamespaceKindV2::Value, "x", 6),
+            location: checked(&sources, 1, 7),
+        })
+        .unwrap();
+    let error = builder
+        .try_import(ModuleImportInputV2 {
+            owner_module_id: app,
+            local_name: "x".into(),
+            target: asset_ref(&sources, &right, NamespaceKindV2::Value, "x", 8),
+            location: checked(&sources, 1, 9),
+        })
+        .unwrap_err();
+    assert_eq!(error.code(), "modules.duplicate_import");
+    assert!(error.secondary().is_some());
+}
+
+#[test]
 fn identical_reexport_is_idempotent_and_keeps_earliest_edge() {
     let parts = finish_graph_case(|sources, app, left, _, builder| {
         builder
@@ -1925,6 +2072,47 @@ fn nonempty_pack_graph_requires_lockfile() {
 fn empty_pack_graph_rejects_unexpected_lockfile() {
     let error = finish_pack_inputs(Some(""), |_| vec![]).unwrap_err();
     assert_eq!(error.code(), "modules.unexpected_lockfile");
+}
+
+#[test]
+fn builder_rejects_duplicate_lockfile_and_model_pack_at_ingress() {
+    let sources = registry(&[(1, 128), (2, 0)]);
+    let mut lock_builder = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+    for at in [1, 2] {
+        let result = lock_builder.try_set_lockfile(
+            LockReferenceInputV2 {
+                path: "packs.lock".into(),
+                location: checked(&sources, 1, at),
+            },
+            SourceIdV2::from_raw(2),
+            "",
+        );
+        if at == 1 {
+            result.unwrap();
+        } else {
+            let error = result.unwrap_err();
+            assert_eq!(error.code(), "modules.duplicate_lockfile_input");
+            assert!(error.secondary().is_some());
+        }
+    }
+
+    let pack = PackIdV2::try_new("model-pack", checked(&sources, 1, 3)).unwrap();
+    let mut model_builder = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+    for at in [4, 5] {
+        let result = model_builder.try_add_model_pack(ModelPackInputV2 {
+            pack_id: pack.clone(),
+            model_version: VersionV2::new(1, 0, 0),
+            facts: vec![],
+            location: checked(&sources, 1, at),
+        });
+        if at == 4 {
+            result.unwrap();
+        } else {
+            let error = result.unwrap_err();
+            assert_eq!(error.code(), "modules.duplicate_model_pack");
+            assert!(error.secondary().is_some());
+        }
+    }
 }
 
 #[test]
@@ -2153,6 +2341,50 @@ fn duplicate_dependency_rejects_even_when_ranges_match() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.duplicate_pack_dependency");
+}
+
+#[test]
+fn duplicate_dependency_rejects_different_ranges() {
+    let lock = format!("a 1.0.0 {}\nb 1.0.0 {}\n", "0".repeat(64), "0".repeat(64));
+    let error = finish_pack_inputs(Some(&lock), |sources| {
+        let b = PackIdV2::try_new("b", checked(sources, 1, 20)).unwrap();
+        let dep = |upper, at| LocatedDependencyInputV2 {
+            pack_id: b.clone(),
+            version_range: VersionRangeV2::try_new(
+                VersionV2::new(1, 0, 0),
+                upper,
+                checked(sources, 1, at + 1),
+            )
+            .unwrap(),
+            location: checked(sources, 1, at),
+        };
+        vec![
+            manifest_input(
+                sources,
+                "a",
+                VersionV2::new(1, 0, 0),
+                vec![
+                    dep(VersionV2::new(2, 0, 0), 30),
+                    dep(VersionV2::new(3, 0, 0), 40),
+                ],
+                vec![],
+                vec![],
+                10,
+            ),
+            manifest_input(
+                sources,
+                "b",
+                VersionV2::new(1, 0, 0),
+                vec![],
+                vec![],
+                vec![],
+                50,
+            ),
+        ]
+    })
+    .unwrap_err();
+    assert_eq!(error.code(), "modules.duplicate_pack_dependency");
+    assert!(error.secondary().is_some());
 }
 
 #[test]
@@ -2633,6 +2865,202 @@ fn document_profile_requires_exactly_one_admission() {
 }
 
 #[test]
+fn document_catalog_duplicate_profile_and_reference_negative_matrix() {
+    let duplicate_asset = document_case_error(|sources, app| DocumentCatalogInputV2 {
+        assets: vec![
+            DocumentCatalogAssetInputV2 {
+                owner_module_id: app.clone(),
+                local_name: "x".into(),
+                namespace_kind: NamespaceKindV2::Value,
+                location: checked(sources, 9, 1),
+            },
+            DocumentCatalogAssetInputV2 {
+                owner_module_id: app.clone(),
+                local_name: "x".into(),
+                namespace_kind: NamespaceKindV2::Value,
+                location: checked(sources, 9, 2),
+            },
+        ],
+        profile_admissions: vec![],
+        activations: vec![],
+        require_certified_directives: vec![],
+        dependency_edges: vec![],
+    });
+    assert_eq!(
+        duplicate_asset.code(),
+        "modules.duplicate_document_catalog_asset"
+    );
+    assert!(duplicate_asset.secondary().is_some());
+
+    let wrong_profile_kind = document_case_error(|sources, app| DocumentCatalogInputV2 {
+        assets: vec![DocumentCatalogAssetInputV2 {
+            owner_module_id: app.clone(),
+            local_name: "x".into(),
+            namespace_kind: NamespaceKindV2::Value,
+            location: checked(sources, 9, 1),
+        }],
+        profile_admissions: vec![ProfileAdmissionInputV2 {
+            profile: CatalogAssetRefInputV2 {
+                module_id: app.clone(),
+                namespace_kind: NamespaceKindV2::Value,
+                local_name: "x".into(),
+                location: checked(sources, 9, 2),
+            },
+            admission: ProfileAdmissionV2::CertifiedOnly,
+            location: checked(sources, 9, 3),
+        }],
+        activations: vec![],
+        require_certified_directives: vec![],
+        dependency_edges: vec![],
+    });
+    assert_eq!(
+        wrong_profile_kind.code(),
+        "modules.profile_admission_wrong_kind"
+    );
+
+    let unknown_profile = document_case_error(|sources, app| DocumentCatalogInputV2 {
+        assets: vec![],
+        profile_admissions: vec![ProfileAdmissionInputV2 {
+            profile: CatalogAssetRefInputV2 {
+                module_id: app.clone(),
+                namespace_kind: NamespaceKindV2::Profile,
+                local_name: "missing".into(),
+                location: checked(sources, 9, 1),
+            },
+            admission: ProfileAdmissionV2::CertifiedOnly,
+            location: checked(sources, 9, 2),
+        }],
+        activations: vec![],
+        require_certified_directives: vec![],
+        dependency_edges: vec![],
+    });
+    assert_eq!(unknown_profile.code(), "modules.unknown_profile_admission");
+
+    let duplicate_profile = document_case_error(|sources, app| {
+        let profile = || ProfileAdmissionInputV2 {
+            profile: CatalogAssetRefInputV2 {
+                module_id: app.clone(),
+                namespace_kind: NamespaceKindV2::Profile,
+                local_name: "p".into(),
+                location: checked(sources, 9, 2),
+            },
+            admission: ProfileAdmissionV2::CertifiedOnly,
+            location: checked(sources, 9, 3),
+        };
+        DocumentCatalogInputV2 {
+            assets: vec![DocumentCatalogAssetInputV2 {
+                owner_module_id: app.clone(),
+                local_name: "p".into(),
+                namespace_kind: NamespaceKindV2::Profile,
+                location: checked(sources, 9, 1),
+            }],
+            profile_admissions: vec![profile(), profile()],
+            activations: vec![],
+            require_certified_directives: vec![],
+            dependency_edges: vec![],
+        }
+    });
+    assert_eq!(
+        duplicate_profile.code(),
+        "modules.duplicate_profile_admission"
+    );
+    assert!(duplicate_profile.secondary().is_some());
+
+    let wrong_reference_kind = document_case_error(|sources, app| DocumentCatalogInputV2 {
+        assets: vec![DocumentCatalogAssetInputV2 {
+            owner_module_id: app.clone(),
+            local_name: "v".into(),
+            namespace_kind: NamespaceKindV2::View,
+            location: checked(sources, 9, 1),
+        }],
+        profile_admissions: vec![],
+        activations: vec![],
+        require_certified_directives: vec![],
+        dependency_edges: vec![DocumentCatalogDependencyInputV2 {
+            source: CatalogAssetRefInputV2 {
+                module_id: app.clone(),
+                namespace_kind: NamespaceKindV2::View,
+                local_name: "v".into(),
+                location: checked(sources, 9, 2),
+            },
+            target: CatalogAssetRefInputV2 {
+                module_id: app.clone(),
+                namespace_kind: NamespaceKindV2::Value,
+                local_name: "missing".into(),
+                location: checked(sources, 9, 3),
+            },
+            expected_target_kind: NamespaceKindV2::Type,
+            location: checked(sources, 9, 4),
+        }],
+    });
+    assert_eq!(
+        wrong_reference_kind.code(),
+        "modules.catalog_reference_kind_mismatch"
+    );
+
+    let unknown_target = document_case_error(|sources, app| DocumentCatalogInputV2 {
+        assets: vec![DocumentCatalogAssetInputV2 {
+            owner_module_id: app.clone(),
+            local_name: "v".into(),
+            namespace_kind: NamespaceKindV2::View,
+            location: checked(sources, 9, 1),
+        }],
+        profile_admissions: vec![],
+        activations: vec![],
+        require_certified_directives: vec![],
+        dependency_edges: vec![DocumentCatalogDependencyInputV2 {
+            source: CatalogAssetRefInputV2 {
+                module_id: app.clone(),
+                namespace_kind: NamespaceKindV2::View,
+                local_name: "v".into(),
+                location: checked(sources, 9, 2),
+            },
+            target: CatalogAssetRefInputV2 {
+                module_id: app.clone(),
+                namespace_kind: NamespaceKindV2::Value,
+                local_name: "missing".into(),
+                location: checked(sources, 9, 3),
+            },
+            expected_target_kind: NamespaceKindV2::Value,
+            location: checked(sources, 9, 4),
+        }],
+    });
+    assert_eq!(unknown_target.code(), "modules.unknown_catalog_reference");
+
+    let wrong_source = document_case_error(|sources, app| DocumentCatalogInputV2 {
+        assets: vec![DocumentCatalogAssetInputV2 {
+            owner_module_id: app.clone(),
+            local_name: "x".into(),
+            namespace_kind: NamespaceKindV2::Value,
+            location: checked(sources, 9, 1),
+        }],
+        profile_admissions: vec![],
+        activations: vec![],
+        require_certified_directives: vec![],
+        dependency_edges: vec![DocumentCatalogDependencyInputV2 {
+            source: CatalogAssetRefInputV2 {
+                module_id: app.clone(),
+                namespace_kind: NamespaceKindV2::Value,
+                local_name: "x".into(),
+                location: checked(sources, 9, 2),
+            },
+            target: CatalogAssetRefInputV2 {
+                module_id: app.clone(),
+                namespace_kind: NamespaceKindV2::Value,
+                local_name: "x".into(),
+                location: checked(sources, 9, 3),
+            },
+            expected_target_kind: NamespaceKindV2::Value,
+            location: checked(sources, 9, 4),
+        }],
+    });
+    assert_eq!(
+        wrong_source.code(),
+        "modules.catalog_dependency_source_wrong_kind"
+    );
+}
+
+#[test]
 fn document_view_dependency_self_cycle_rejects() {
     let host = registry(&[(1, 128)]);
     let parts = empty_authority(&host);
@@ -2860,6 +3288,51 @@ fn duplicate_activation_validates_and_charges_attempted_lock_path_before_dedup()
         .validate(input)
         .unwrap_err();
     assert_eq!(error.code(), "modules.invalid_lockfile_path");
+}
+
+#[test]
+fn duplicate_pack_activation_rejects_identical_valid_references() {
+    let parts = pack_authority(|text| text).unwrap();
+    let zeros = "0".repeat(64);
+    let lock = format!("secure-pack 1.0.0 {zeros}\n");
+    let host = registry(&[(1, 4096), (2, lock.len())]);
+    let extended = host
+        .try_extend_document(SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(9),
+            source_len: 32,
+        })
+        .unwrap();
+    let doc_loc = |at| {
+        extended
+            .try_check_location(LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(9),
+                span: SpanV1::new(at, at + 1),
+            })
+            .unwrap()
+    };
+    let pack = PackIdV2::try_new("secure-pack", checked(&host, 1, 1)).unwrap();
+    let activation = |at| PackActivationInputV2 {
+        pack_id: pack.clone(),
+        activation: UsePackActivationV2::Session,
+        lock_reference: LockReferenceInputV2 {
+            path: "packs/security.lock".into(),
+            location: doc_loc(at),
+        },
+        location: doc_loc(at + 1),
+    };
+    let input = DocumentCatalogInputV2 {
+        assets: vec![],
+        profile_admissions: vec![],
+        require_certified_directives: vec![],
+        dependency_edges: vec![],
+        activations: vec![activation(1), activation(3)],
+    };
+    let error = DocumentCatalogValidatorV2::try_new(extended, &parts)
+        .unwrap()
+        .validate(input)
+        .unwrap_err();
+    assert_eq!(error.code(), "modules.duplicate_pack_activation");
+    assert!(error.secondary().is_some());
 }
 
 #[test]
@@ -3583,6 +4056,103 @@ fn agreeing_model_packs_merge_and_retain_sorted_provenance() {
         vec!["a", "b"]
     );
     assert_eq!(fact.location().span, SpanV1::new(30, 31));
+}
+
+#[test]
+fn conflicting_values_across_distinct_model_packs_reject_with_both_locations() {
+    let zeros = "0".repeat(64);
+    let lock = format!("a 1.0.0 {zeros}\nb 1.0.0 {zeros}\n");
+    let sources = registry(&[(1, 1024), (2, lock.len())]);
+    let app = module_id(&sources, "app", 0);
+    let packs = [
+        PackIdV2::try_new("a", checked(&sources, 1, 1)).unwrap(),
+        PackIdV2::try_new("b", checked(&sources, 1, 2)).unwrap(),
+    ];
+    let mut builder = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+    builder
+        .try_add_module(ModuleNodeInputV2 {
+            module_id: app.clone(),
+            location: checked(&sources, 1, 3),
+        })
+        .unwrap();
+    for (index, pack) in packs.iter().enumerate() {
+        builder
+            .try_add_manifest(PackManifestInputV2 {
+                pack_id: pack.clone(),
+                version: VersionV2::new(1, 0, 0),
+                content_digest: ContentDigestV2::try_parse(
+                    &zeros,
+                    checked(&sources, 1, 10 + index),
+                )
+                .unwrap(),
+                language_range: VersionRangeV2::try_new(
+                    VersionV2::new(1, 0, 0),
+                    VersionV2::new(2, 0, 0),
+                    checked(&sources, 1, 12 + index),
+                )
+                .unwrap(),
+                dependencies: vec![],
+                exports: vec![],
+                suites: vec![],
+                location: checked(&sources, 1, 14 + index),
+            })
+            .unwrap();
+    }
+    builder
+        .try_set_lockfile(
+            LockReferenceInputV2 {
+                path: "model.lock".into(),
+                location: checked(&sources, 1, 20),
+            },
+            SourceIdV2::from_raw(2),
+            &lock,
+        )
+        .unwrap();
+    builder
+        .try_set_model_schema(ModelSchemaInputV2 {
+            schema_version: VersionV2::new(1, 0, 0),
+            attributes: vec![ModelAttributeInputV2 {
+                attribute: "kind".into(),
+                allowed_values: ["source", "sink"]
+                    .into_iter()
+                    .enumerate()
+                    .map(|(index, value)| LocatedModelValueInputV2 {
+                        value: value.into(),
+                        location: checked(&sources, 1, 21 + index),
+                    })
+                    .collect(),
+                location: checked(&sources, 1, 23),
+            }],
+            location: checked(&sources, 1, 24),
+        })
+        .unwrap();
+    for (index, (pack, value)) in packs.iter().zip(["source", "sink"]).enumerate() {
+        builder
+            .try_add_model_pack(ModelPackInputV2 {
+                pack_id: pack.clone(),
+                model_version: VersionV2::new(1, 0, 0),
+                facts: vec![ModelFactInputV2 {
+                    target: "framework::read".into(),
+                    attribute: "kind".into(),
+                    value: value.into(),
+                    location: checked(&sources, 1, 30 + index),
+                }],
+                location: checked(&sources, 1, 32 + index),
+            })
+            .unwrap();
+    }
+    let error = builder
+        .finish(
+            CurrentModuleSelectionInputV2 {
+                module_id: app,
+                location: checked(&sources, 1, 40),
+            },
+            VersionV2::new(1, 1, 0),
+        )
+        .unwrap_err();
+    assert_eq!(error.code(), "modules.model_conflict");
+    assert!(error.primary().is_some());
+    assert!(error.secondary().is_some());
 }
 
 #[test]

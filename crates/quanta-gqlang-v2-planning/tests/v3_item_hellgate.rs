@@ -28,11 +28,11 @@
 //! was produced.
 
 use quanta_gqlang_v2_hir::{
-    ActivationV1, CatalogDeclHirV1, CatalogPayloadV1, CompareMetricV1, ConfirmModeV1,
-    DetectionModeV1, EmitModeV1, EvidenceModeV1, ExportFormatV1, GateBindingV1, GraphConstraintsV1,
+    CatalogDeclHirV1, CatalogPayloadV1, CompareMetricV1, ConfirmModeV1, DetectionModeV1,
+    EmitModeV1, EvidenceModeV1, ExportFormatV1, GateBindingV1, GraphConstraintsV1,
     GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, HirNodeIdV1, LegalityHirV1,
     MetaHirV1, MetaKindV1, PresentationHirV1, PresentationKindV1, ProgramItemHirV1, SampleModeV1,
-    ShowCategoryV1, SpanV1, TruthModeV1, ViewBodyV1,
+    ShowCategoryV1, SpanV1, TruthModeV1, UsePackActivationV1, UsePackHirV1, ViewBodyV1,
 };
 use quanta_gqlang_v2_planning::{
     classify_item, CapabilityV1, EffectClassV1, EvidenceRequirementV1, ItemClassificationV1,
@@ -300,11 +300,11 @@ fn use_pack_is_no_plan_marker() {
     let use_pack = MetaHirV1::new(
         id(1),
         span(),
-        MetaKindV1::UsePack {
+        MetaKindV1::UsePack(UsePackHirV1 {
             pack_id: "owasp".to_owned(),
-            activation: ActivationV1::Session,
-            lockfile: Some("owasp.lock".to_owned()),
-        },
+            activation: UsePackActivationV1::Session,
+            lockfile: "owasp.lock".to_owned(),
+        }),
     );
     match classify_item(&ProgramItemHirV1::from(use_pack)) {
         ItemClassificationV1::NoPlan(reason) => {

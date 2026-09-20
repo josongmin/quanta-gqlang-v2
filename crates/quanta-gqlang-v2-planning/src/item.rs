@@ -27,8 +27,8 @@
 use std::collections::BTreeSet;
 
 use quanta_gqlang_v2_hir::{
-    GraphQueryHirV1, LegalityHirV1, MetaHirV1, MetaKindV1, PresentationHirV1, PresentationKindV1,
-    ProgramItemHirV1, SpanV1,
+    CompositionBodyV1, GraphQueryHirV1, LegalityHirV1, MetaHirV1, MetaKindV1, PresentationHirV1,
+    PresentationKindV1, ProgramItemHirV1, SpanV1,
 };
 use quanta_gqlang_v2_logic::{GraphQueryContractV1, GraphQuerySemanticsV1, RelationShapeV1};
 use quanta_gqlang_v2_types::CardinalityV1;
@@ -107,8 +107,21 @@ pub fn classify_item(item: &ProgramItemHirV1) -> ItemClassificationV1 {
         }
         // A composition's servability is its BODY's: classify the body. Binding /
         // producer legality is the binder's / logic's concern, not planning's.
-        ProgramItemHirV1::Composition(c) => classify_item(&c.body),
+        ProgramItemHirV1::Composition(c) => classify_composition_body(&c.body),
         ProgramItemHirV1::Meta(m) => classify_meta(m),
+    }
+}
+
+fn classify_composition_body(body: &CompositionBodyV1) -> ItemClassificationV1 {
+    match body {
+        CompositionBodyV1::Query(_) => {
+            ItemClassificationV1::NoPlan(NoPlanReasonV1::RelationalDeferred)
+        }
+        CompositionBodyV1::GraphQuery(find) => classify_find(find),
+        CompositionBodyV1::Legality(check) => classify_check(check),
+        CompositionBodyV1::Explain(explain) => {
+            ItemClassificationV1::Plan(proof_explain_plan(explain.span))
+        }
     }
 }
 

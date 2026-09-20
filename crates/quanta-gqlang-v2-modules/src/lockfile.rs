@@ -623,6 +623,7 @@ impl ValidatedPackAuthorityV2 {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used, reason = "owner assertions")]
 mod tests {
     use super::*;
     use crate::{ModuleBudgetV2, PackGraphV2};
