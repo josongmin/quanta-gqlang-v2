@@ -1,271 +1,255 @@
 #!/usr/bin/env python3
-#
-# Architecture guard for the QGLang v2 workspace.
-#
-# This script is the `just arch-lint` gate. It now enforces FOUR independent
-# guard dimensions:
-#
-#   1. Crate-dep layering (incl. dev-dependencies).
-#      The normal-dep DAG is cli->ir, lsp->ir, ir->sema, sema->syntax.
-#      dev-dependencies are checked against the SAME layering, except for an
-#      explicit `ALLOWED_DEV_EDGES` allowlist of vetted test-only edges. Any
-#      other dev-dep that breaks layering (e.g. a future cli/lsp dev-dep on
-#      sema/syntax) fails. Forbidden backend/legacy crate deps still fail too.
-#
-#   2. Frontend-hub-bypass guard.
-#      cli/lsp must consume syntax/sema types ONLY via the
-#      `quanta_gqlang_v2_ir::frontend` re-export hub. A direct
-#      `use quanta_gqlang_v2_ir::syntax::` / `::sema::` import bypasses the hub
-#      and fails. ir-OWNED submodules (root_ir, explain_ir, find_ir, catalog,
-#      lower_document_to_ir_v*, ...) remain legitimately consumable directly.
-#
-#   3. Runtime-truth token denylist.
-#      Frontend `src` must not embed runtime-execution-result vocabulary. This
-#      is a mix of fixed tokens and word-boundary pattern families chosen so
-#      that honest tokens (no_result_reason, root_count,
-#      runtime-host-routing-unavailable, ...) do NOT trip.
-#
-# Single-authority degraded-reason enforcement (one canonical owner of the
-# degraded-reason constant) is intentionally NOT added here yet: a separate
-# change owns de-duplicating that constant first, and this guard would be
-# premature until then.
+"""Cargo-metadata architecture guard for the QGLang v2 frontend workspace."""
+
 from __future__ import annotations
 
+import argparse
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import Iterable
 
 
-ROOT = Path(__file__).resolve().parents[2]
-WORKSPACE_MANIFEST = ROOT / "Cargo.toml"
-EXPECTED_WORKSPACE_MEMBERS: Set[str] = {
-    "quanta-gqlang-v2-syntax",
-    "quanta-gqlang-v2-sema",
-    "quanta-gqlang-v2-ir",
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+EXPECTED_WORKSPACE_MEMBERS = {
+    "quanta-gqlang-v2-algebra",
+    "quanta-gqlang-v2-binder",
     "quanta-gqlang-v2-cli",
-    "quanta-gqlang-v2-lsp",
     "quanta-gqlang-v2-conformance",
+    "quanta-gqlang-v2-diagnostics-stdio",
+    "quanta-gqlang-v2-frontend-contract",
+    "quanta-gqlang-v2-hir",
+    "quanta-gqlang-v2-logic",
+    "quanta-gqlang-v2-modules",
+    "quanta-gqlang-v2-pipeline",
+    "quanta-gqlang-v2-planning",
+    "quanta-gqlang-v2-sema",
+    "quanta-gqlang-v2-surface",
+    "quanta-gqlang-v2-types",
 }
-ALLOWED_INTERNAL_DEPENDENCIES: Dict[str, Set[str]] = {
-    "quanta-gqlang-v2-syntax": set(),
-    "quanta-gqlang-v2-sema": {"quanta-gqlang-v2-syntax"},
-    "quanta-gqlang-v2-ir": {"quanta-gqlang-v2-sema"},
-    "quanta-gqlang-v2-cli": {"quanta-gqlang-v2-ir"},
-    "quanta-gqlang-v2-lsp": {"quanta-gqlang-v2-ir"},
-    # Dev-only conformance registry: a leaf that reads the public ir pipeline to
-    # self-validate the 17-family front-door table. Consumed by other crates'
-    # tests via vetted dev edges (see ALLOWED_DEV_EDGES).
-    "quanta-gqlang-v2-conformance": {"quanta-gqlang-v2-ir"},
+
+FINAL_NORMAL_EDGES = {
+    ("quanta-gqlang-v2-surface", "quanta-gqlang-v2-hir"),
+    ("quanta-gqlang-v2-binder", "quanta-gqlang-v2-hir"),
+    ("quanta-gqlang-v2-types", "quanta-gqlang-v2-hir"),
+    ("quanta-gqlang-v2-modules", "quanta-gqlang-v2-hir"),
+    ("quanta-gqlang-v2-modules", "quanta-gqlang-v2-types"),
+    ("quanta-gqlang-v2-sema", "quanta-gqlang-v2-hir"),
+    ("quanta-gqlang-v2-sema", "quanta-gqlang-v2-binder"),
+    ("quanta-gqlang-v2-sema", "quanta-gqlang-v2-types"),
+    ("quanta-gqlang-v2-sema", "quanta-gqlang-v2-modules"),
+    ("quanta-gqlang-v2-algebra", "quanta-gqlang-v2-sema"),
+    ("quanta-gqlang-v2-algebra", "quanta-gqlang-v2-types"),
+    ("quanta-gqlang-v2-logic", "quanta-gqlang-v2-sema"),
+    ("quanta-gqlang-v2-logic", "quanta-gqlang-v2-algebra"),
+    ("quanta-gqlang-v2-logic", "quanta-gqlang-v2-types"),
+    ("quanta-gqlang-v2-planning", "quanta-gqlang-v2-sema"),
+    ("quanta-gqlang-v2-planning", "quanta-gqlang-v2-algebra"),
+    ("quanta-gqlang-v2-planning", "quanta-gqlang-v2-logic"),
+    ("quanta-gqlang-v2-planning", "quanta-gqlang-v2-types"),
+    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-surface"),
+    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-sema"),
+    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-algebra"),
+    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-logic"),
+    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-planning"),
+    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-modules"),
+    ("quanta-gqlang-v2-frontend-contract", "quanta-gqlang-v2-pipeline"),
+    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-frontend-contract"),
+    (
+        "quanta-gqlang-v2-diagnostics-stdio",
+        "quanta-gqlang-v2-frontend-contract",
+    ),
+    ("quanta-gqlang-v2-conformance", "quanta-gqlang-v2-frontend-contract"),
 }
-# Vetted dev-dependency edges that are exempt from the layering rule. These are
-# test-only (`[dev-dependencies]`) edges that do NOT exist as normal-dep edges
-# but are legitimately needed by integration/unit tests:
-#   * ir -> syntax: ir already depends on syntax transitively via the normal
-#     edge ir->sema->syntax; the dev-dep just lets ir's own tests touch syntax
-#     types directly. (Also a normal layering edge in spirit.)
-#   * cli -> lsp: cli's integration tests drive the lsp surface end-to-end.
-# Anything NOT listed here is held to the normal-dep layering.
-ALLOWED_DEV_EDGES: Set[tuple[str, str]] = {
-    ("quanta-gqlang-v2-ir", "quanta-gqlang-v2-syntax"),
-    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-lsp"),
-    # The CLI/LSP integration tests drive the dev-only conformance registry and
-    # its shared leakage fixture; these are test-only edges, never normal deps.
-    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-conformance"),
-    ("quanta-gqlang-v2-lsp", "quanta-gqlang-v2-conformance"),
+
+# Development dependencies may follow an edge in the final DAG. Any additional
+# test-only exception must be declared independently instead of weakening the
+# normal graph.
+FINAL_DEV_EDGES = FINAL_NORMAL_EDGES
+
+TRANSITIONAL_NORMAL_EDGES = {
+    ("quanta-gqlang-v2-algebra", "quanta-gqlang-v2-hir"),
+    ("quanta-gqlang-v2-algebra", "quanta-gqlang-v2-binder"),
+    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-hir"),
+    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-pipeline"),
+    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-planning"),
+    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-surface"),
+    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-types"),
+    ("quanta-gqlang-v2-conformance", "quanta-gqlang-v2-hir"),
+    ("quanta-gqlang-v2-conformance", "quanta-gqlang-v2-pipeline"),
+    ("quanta-gqlang-v2-conformance", "quanta-gqlang-v2-planning"),
+    ("quanta-gqlang-v2-conformance", "quanta-gqlang-v2-surface"),
+    ("quanta-gqlang-v2-frontend-contract", "quanta-gqlang-v2-algebra"),
+    ("quanta-gqlang-v2-frontend-contract", "quanta-gqlang-v2-hir"),
+    ("quanta-gqlang-v2-frontend-contract", "quanta-gqlang-v2-planning"),
+    ("quanta-gqlang-v2-frontend-contract", "quanta-gqlang-v2-surface"),
+    ("quanta-gqlang-v2-frontend-contract", "quanta-gqlang-v2-types"),
+    ("quanta-gqlang-v2-logic", "quanta-gqlang-v2-hir"),
+    ("quanta-gqlang-v2-diagnostics-stdio", "quanta-gqlang-v2-pipeline"),
+    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-hir"),
+    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-binder"),
+    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-types"),
+    ("quanta-gqlang-v2-planning", "quanta-gqlang-v2-hir"),
 }
-# The conformance leakage fixture intentionally enumerates the runtime-truth
-# denylist tokens as DATA (the single source both no-runtime-leakage sweeps scan
-# against), so it is exempt from the runtime-truth source token scan below.
-RUNTIME_TRUTH_SCAN_EXEMPT_FILES = (
-    "crates/quanta-gqlang-v2-conformance/src/leakage.rs",
-)
+TRANSITIONAL_DEV_EDGES = {
+    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-diagnostics-stdio"),
+}
+
 FORBIDDEN_DEPENDENCY_PREFIXES = (
     "quanta-runtime",
     "quanta-sdk",
     "quanta-index",
+    "quanta-provider",
 )
-# Frontend crates whose `src` must consume syntax/sema types ONLY through the
-# `quanta_gqlang_v2_ir::frontend` re-export hub.
-FRONTEND_HUB_CONSUMER_DIRS = (
-    "crates/quanta-gqlang-v2-cli/src",
-    "crates/quanta-gqlang-v2-lsp/src",
-)
-# A direct import of the syntax/sema re-export submodules bypasses the frontend
-# hub. ir-OWNED submodules (root_ir, explain_ir, find_ir, catalog,
-# lower_document_to_ir_v*, ...) are deliberately NOT matched here.
-FRONTEND_HUB_BYPASS_REGEX = re.compile(
-    r"\buse\s+quanta_gqlang_v2_ir::(?:syntax|sema)::"
-)
-# Runtime-truth token pattern families. These are word-boundary-anchored so an
-# honest identifier that merely CONTAINS one of these as a substring does not
-# trip (e.g. `no_result_reason`, `root_count`,
-# `runtime-host-routing-unavailable`). Every pattern here has been verified
-# absent from all `crates/*/src`. They are kept SEPARATE from the legacy/leakage
-# regexes below so the reason message is specific.
-RUNTIME_TRUTH_TOKEN_PATTERNS = (
-    "result_count",
-    "row_count",
-    "rows_returned",
-    "match_count",
-    "provider_routing",
-    "host_dto",
-    "backend_result",
-    "edit_applied",
-)
-FORBIDDEN_SOURCE_REGEXES = (
-    (
-        re.compile(r"\b(quanta_runtime|quanta_sdk|quanta_index)(::|_)"),
-        "runtime/sdk/index source import leakage",
-    ),
-    (
-        re.compile(r"\bquanta_gqlang_(?!v2_)\w+"),
-        "legacy quanta_gqlang_* source import leakage",
-    ),
-) + tuple(
-    (
-        # \b on the trailing side too, so `result_counter`, `host_dtos`, and
-        # `no_result_reason` (no boundary before `result`) do not match.
-        re.compile(r"\b" + re.escape(token) + r"\b"),
-        f"runtime-truth token leakage ({token})",
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=REPOSITORY_ROOT,
+        help="workspace root containing Cargo.toml",
     )
-    for token in RUNTIME_TRUTH_TOKEN_PATTERNS
-)
-FORBIDDEN_SOURCE_TOKENS = {
-    "SearchHost": "frontend crates must stay host-agnostic",
-    "IdeReadHost": "frontend crates must stay host-agnostic",
-    "ServingQueryRequestV1": "frontend crates must not embed serving carrier DTOs",
-    "ServingQueryResultV1": "frontend crates must not embed serving carrier DTOs",
-    "native_runtime_provider_registry_v1": "provider registry ownership does not belong here",
-}
+    parser.add_argument(
+        "--require-final",
+        action="store_true",
+        help="reject every still-present declared transitional edge",
+    )
+    return parser.parse_args()
 
 
-def is_normal_dependency(dependency: dict) -> bool:
-    return dependency.get("kind") in (None, "normal")
-
-
-def is_dev_dependency(dependency: dict) -> bool:
-    return dependency.get("kind") == "dev"
-
-
-def is_layering_checked_edge(consumer: str, dependency: dict) -> bool:
-    """Should this (consumer -> dependency) edge be held to crate layering?
-
-    Normal deps always are. dev-deps are now checked too, EXCEPT the vetted,
-    test-only edges in ALLOWED_DEV_EDGES. Other dependency kinds (build, etc.)
-    are not layering edges. This is the guard-1 behaviour change: dev-deps used
-    to be exempt entirely.
-    """
-    if is_normal_dependency(dependency):
-        return True
-    if is_dev_dependency(dependency):
-        return (consumer, dependency["name"]) not in ALLOWED_DEV_EDGES
-    return False
-
-
-def cargo_metadata() -> dict:
+def cargo_metadata(root: Path) -> dict:
     result = subprocess.run(
         [
             "cargo",
             "metadata",
             "--manifest-path",
-            str(WORKSPACE_MANIFEST),
+            str(root / "Cargo.toml"),
             "--format-version",
             "1",
+            "--no-deps",
         ],
-        cwd=ROOT,
-        check=True,
+        cwd=root,
+        check=False,
         capture_output=True,
         text=True,
     )
+    if result.returncode != 0:
+        print("architecture lint failed: cargo metadata failed", file=sys.stderr)
+        print(result.stderr.rstrip(), file=sys.stderr)
+        raise SystemExit(1)
     return json.loads(result.stdout)
 
 
+def dependency_kind(dependency: dict) -> str | None:
+    kind = dependency.get("kind")
+    if kind is None or kind == "normal":
+        return "normal"
+    if kind == "dev":
+        return "dev"
+    return None
+
+
+def render_edge(edge: tuple[str, str]) -> str:
+    return f"{edge[0]} -> {edge[1]}"
+
+
+def render_edges(edges: Iterable[tuple[str, str]]) -> str:
+    return ", ".join(render_edge(edge) for edge in sorted(edges))
+
+
 def main() -> int:
-    metadata = cargo_metadata()
-    packages = {
+    args = parse_args()
+    root = args.root.resolve()
+    metadata = cargo_metadata(root)
+    workspace_ids = set(metadata["workspace_members"])
+    workspace_packages = {
         package["name"]: package
         for package in metadata["packages"]
-        if package["name"] in EXPECTED_WORKSPACE_MEMBERS
+        if package["id"] in workspace_ids
     }
-    errors: List[str] = []
+    errors: list[str] = []
 
-    package_names = set(packages)
+    package_names = set(workspace_packages)
     if package_names != EXPECTED_WORKSPACE_MEMBERS:
         errors.append(
             "workspace members drifted: expected "
             f"{sorted(EXPECTED_WORKSPACE_MEMBERS)}, got {sorted(package_names)}"
         )
 
-    for package_name, allowed_internal in ALLOWED_INTERNAL_DEPENDENCIES.items():
-        package = packages.get(package_name)
-        if package is None:
-            continue
-
-        seen_internal = {
-            dependency["name"]
-            for dependency in package["dependencies"]
-            if is_layering_checked_edge(package_name, dependency)
-            and dependency["name"] in EXPECTED_WORKSPACE_MEMBERS
-        }
-        illegal_internal = sorted(seen_internal - allowed_internal)
-        if illegal_internal:
-            errors.append(
-                f"{package_name} has illegal internal deps: {illegal_internal}; "
-                f"allowed={sorted(allowed_internal)} "
-                f"(dev-dep exceptions: {sorted(d for c, d in ALLOWED_DEV_EDGES if c == package_name)})"
-            )
-
+    normal_edges: set[tuple[str, str]] = set()
+    dev_edges: set[tuple[str, str]] = set()
+    for consumer, package in sorted(workspace_packages.items()):
         for dependency in package["dependencies"]:
-            if not (
-                is_normal_dependency(dependency) or is_dev_dependency(dependency)
-            ):
+            kind = dependency_kind(dependency)
+            if kind is None:
                 continue
-            dep_name = dependency["name"]
-            if dep_name.startswith(FORBIDDEN_DEPENDENCY_PREFIXES):
+            dependency_name = dependency["name"]
+            if dependency_name.startswith(FORBIDDEN_DEPENDENCY_PREFIXES):
                 errors.append(
-                    f"{package_name} depends on forbidden backend crate {dep_name}"
+                    f"{consumer} has forbidden {kind} dependency {dependency_name}"
                 )
-            if dep_name.startswith("quanta-gqlang-") and not dep_name.startswith(
+            if dependency_name.startswith("quanta-gqlang-") and not dependency_name.startswith(
                 "quanta-gqlang-v2-"
             ):
                 errors.append(
-                    f"{package_name} depends on forbidden legacy crate {dep_name}"
+                    f"{consumer} has forbidden legacy {kind} dependency {dependency_name}"
                 )
+            if dependency_name.startswith("quanta-gqlang-v2-"):
+                if dependency_name not in EXPECTED_WORKSPACE_MEMBERS:
+                    errors.append(
+                        f"{consumer} has undeclared frontend {kind} dependency {dependency_name}"
+                    )
+                    continue
+                edge = (consumer, dependency_name)
+                if kind == "normal":
+                    normal_edges.add(edge)
+                else:
+                    dev_edges.add(edge)
 
-    for source_file in sorted(ROOT.glob("crates/**/src/**/*.rs")):
-        if source_file.relative_to(ROOT).as_posix() in RUNTIME_TRUTH_SCAN_EXEMPT_FILES:
-            continue
-        text = source_file.read_text()
-        for regex, reason in FORBIDDEN_SOURCE_REGEXES:
-            if regex.search(text):
-                errors.append(f"{source_file}: {reason}")
-        for token, reason in FORBIDDEN_SOURCE_TOKENS.items():
-            if token in text:
-                errors.append(f"{source_file}: found forbidden token {token} ({reason})")
+    illegal_normal = normal_edges - FINAL_NORMAL_EDGES - TRANSITIONAL_NORMAL_EDGES
+    illegal_dev = dev_edges - FINAL_DEV_EDGES - TRANSITIONAL_DEV_EDGES
+    if illegal_normal:
+        errors.append(f"illegal normal internal edges: {render_edges(illegal_normal)}")
+    if illegal_dev:
+        errors.append(f"illegal dev internal edges: {render_edges(illegal_dev)}")
 
-    # Guard 2: frontend-hub-bypass. cli/lsp src must reach syntax/sema types only
-    # through quanta_gqlang_v2_ir::frontend, never the ::syntax::/::sema::
-    # re-export submodules directly. ir-owned submodules stay legal.
-    for hub_dir in FRONTEND_HUB_CONSUMER_DIRS:
-        for source_file in sorted((ROOT / hub_dir).glob("**/*.rs")):
-            if FRONTEND_HUB_BYPASS_REGEX.search(source_file.read_text()):
-                errors.append(
-                    f"{source_file}: frontend-hub bypass — import syntax/sema via "
-                    "quanta_gqlang_v2_ir::frontend, not "
-                    "quanta_gqlang_v2_ir::syntax::/::sema::"
-                )
+    transitional_normal_present = normal_edges & TRANSITIONAL_NORMAL_EDGES
+    transitional_dev_present = dev_edges & TRANSITIONAL_DEV_EDGES
+    if args.require_final and (transitional_normal_present or transitional_dev_present):
+        errors.append(
+            "final architecture required but transitional edges remain: "
+            f"normal=[{render_edges(transitional_normal_present)}], "
+            f"dev=[{render_edges(transitional_dev_present)}]"
+        )
 
-    if errors:
-        print("architecture lint failed", file=sys.stderr)
-        for error in errors:
-            print(f"- {error}", file=sys.stderr)
-        return 1
-
-    print("architecture lint passed")
-    return 0
+    verdict = "failed" if errors else "passed"
+    stream = sys.stderr if errors else sys.stdout
+    print(f"architecture lint {verdict}", file=stream)
+    print(f"workspace_members={len(package_names)}", file=stream)
+    print(
+        f"normal_edges={len(normal_edges)} "
+        f"final_present={len(normal_edges & FINAL_NORMAL_EDGES)} "
+        f"transitional_present={len(transitional_normal_present)} "
+        f"transitional_declared={len(TRANSITIONAL_NORMAL_EDGES)}",
+        file=stream,
+    )
+    print(
+        f"dev_edges={len(dev_edges)} "
+        f"final_dev_present={len(dev_edges & FINAL_DEV_EDGES)} "
+        f"transitional_dev_present={len(transitional_dev_present)} "
+        f"transitional_dev_declared={len(TRANSITIONAL_DEV_EDGES)}",
+        file=stream,
+    )
+    for edge in sorted(transitional_normal_present):
+        print(f"transitional normal {render_edge(edge)}", file=stream)
+    for edge in sorted(transitional_dev_present):
+        print(f"transitional dev {render_edge(edge)}", file=stream)
+    for error in errors:
+        print(f"- {error}", file=sys.stderr)
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":

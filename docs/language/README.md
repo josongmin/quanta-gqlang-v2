@@ -75,7 +75,7 @@ Current non-servable truth:
 3. unsupported mixes reject fail-closed with typed planning or logic codes
 4. nothing is down-cast into legacy `RootSpecV1`
 
-## CLI And LSP
+## CLI And Diagnostics Stdio
 
 CLI:
 
@@ -84,13 +84,15 @@ CLI:
 3. `query` parses multi-item documents and compiles through the shared pipeline
 4. per-item output renders compiled kind first, then plan or artifact detail
 
-LSP:
+Diagnostics stdio:
 
 1. the only read-only analysis method is `v3_diagnostics`
 2. it runs over `compile_program_structural`
 3. it surfaces the first failing stage's typed diagnostic verbatim
 4. no legacy `hover` / `completion` / `symbols` / `diagnostics` / `zero_query`
    method remains
+5. it is a private flat-JSON protocol, not JSON-RPC or LSP; it does not implement
+   `initialize` or document lifecycle methods
 
 ## Examples
 
@@ -129,15 +131,15 @@ CLI rails:
 5. `crates/quanta-gqlang-v2-cli/tests/v3_cli_plan_summary.rs`
 6. `crates/quanta-gqlang-v2-cli/tests/command_doc_gate.rs`
 
-LSP rails:
+Diagnostics stdio rails:
 
-1. `crates/quanta-gqlang-v2-lsp/tests/v3_diagnostics_determinism.rs`
-2. `crates/quanta-gqlang-v2-lsp/tests/v3_diagnostics_parity_hellgate.rs`
-3. `crates/quanta-gqlang-v2-lsp/tests/stdio_frame_edges.rs`
-4. `crates/quanta-gqlang-v2-lsp/tests/stdio_json_escape_negative.rs`
-5. `crates/quanta-gqlang-v2-lsp/tests/stdio_byte_robustness_hellgate.rs`
-6. `crates/quanta-gqlang-v2-lsp/tests/stdio_command_plane_hellgate.rs`
-7. `crates/quanta-gqlang-v2-lsp/tests/method_allowlist_doc_gate.rs`
+1. `crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_determinism.rs`
+2. `crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs`
+3. `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_edges.rs`
+4. `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_json_escape_negative.rs`
+5. `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_byte_robustness_hellgate.rs`
+6. `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_command_plane_hellgate.rs`
+7. `crates/quanta-gqlang-v2-diagnostics-stdio/tests/method_allowlist_doc_gate.rs`
 
 Surface / pipeline / planning rails:
 
@@ -186,7 +188,7 @@ This repo owns:
 3. HIR
 4. normalized frontend semantics
 5. planning IR
-6. CLI/LSP/formatter
+6. CLI/diagnostics-stdio/formatter
 7. frontend-facing downstream contract
 
 This repo does not own:

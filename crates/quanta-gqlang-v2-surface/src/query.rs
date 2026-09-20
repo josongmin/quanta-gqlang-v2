@@ -37,7 +37,10 @@ use crate::diag::ParseDiagnosticV1;
 use crate::expr::{parse_bool, parse_optional_alias, parse_projection_item, parse_value};
 use crate::lexer::TokenKindV1;
 use crate::shape::parse_result_shape;
-use quanta_gqlang_v2_hir::{AliasV1, ProjectionItemV1, QueryHirV1, RelationExprHirV1, SpanV1};
+use quanta_gqlang_v2_hir::{
+    AliasV1, OrderKeyHirV1, ProjectionItemV1, QueryHirV1, RelationExprHirV1, SortDirectionHirV1,
+    SpanV1,
+};
 
 /// Parse a full query unit starting at `from`.
 pub(crate) fn parse_query(cur: &mut CursorV1<'_>) -> Result<QueryHirV1, ParseDiagnosticV1> {
@@ -135,6 +138,9 @@ fn parse_stage(
     if cur.eat_keyword("join").is_some() {
         return parse_join(cur, input);
     }
+    if cur.eat_keyword("cross").is_some() {
+        return parse_cross_join(cur, input);
+    }
     if cur.eat_keyword("group").is_some() {
         return parse_group(cur, input);
     }
@@ -170,16 +176,20 @@ fn parse_join(
 ) -> Result<RelationExprHirV1, ParseDiagnosticV1> {
     let left_span = left.span;
     let right = parse_source(cur)?;
-    let mut span = left_span.merge(&right.span);
-    let compose = cur.builder.compose("join", vec![left, right], span);
+    cur.expect_keyword("on", "'on' after an inner join source")?;
+    let predicate = parse_bool(cur)?;
+    let span = left_span.merge(&predicate.span);
+    Ok(cur.builder.inner_join(left, right, predicate, span))
+}
 
-    // optional `on <bool>` -> wrap the compose in a filter (structure only).
-    if cur.eat_keyword("on").is_some() {
-        let predicate = parse_bool(cur)?;
-        span = span.merge(&predicate.span);
-        return Ok(cur.builder.relation_filter(compose, predicate, span));
-    }
-    Ok(compose)
+fn parse_cross_join(
+    cur: &mut CursorV1<'_>,
+    left: RelationExprHirV1,
+) -> Result<RelationExprHirV1, ParseDiagnosticV1> {
+    cur.expect_keyword("join", "'join' after 'cross'")?;
+    let right = parse_source(cur)?;
+    let span = left.span.merge(&right.span);
+    Ok(cur.builder.cross_join(left, right, span))
 }
 
 fn parse_group(
@@ -189,12 +199,15 @@ fn parse_group(
     cur.expect_keyword("by", "'by' after 'group'")?;
     let input_span = input.span;
     let items = parse_value_key_items(cur, false)?;
-    let keys_span = project_span(input_span, &items);
-    let keys = cur
-        .builder
-        .project(clone_source_ref(cur, input_span), items, keys_span);
-    let span = input_span.merge(&keys.span);
-    Ok(cur.builder.compose("group_by", vec![input, keys], span))
+    let span = project_span(input_span, &items);
+    let keys = items.into_iter().map(|item| item.value).collect();
+    cur.builder.group_by(input, keys, span).map_err(|message| {
+        ParseDiagnosticV1::new(
+            crate::diag::ParseErrorCodeV1::UnexpectedToken,
+            span,
+            message,
+        )
+    })
 }
 
 fn parse_order(
@@ -205,18 +218,23 @@ fn parse_order(
     let input_span = input.span;
     let items = parse_value_key_items(cur, true)?;
     let span = project_span(input_span, &items);
-    let keys = cur
-        .builder
-        .project(clone_source_ref(cur, input_span), items, span);
-    let span = input_span.merge(&keys.span);
-    Ok(cur.builder.compose("order_by", vec![input, keys], span))
-}
-
-/// A placeholder relation source used as the input of the synthetic key
-/// projection for group/order. It re-references the pipeline position by span;
-/// ticket 04 rebinds it to the real producer. Named `_keys` so it is inert.
-fn clone_source_ref(cur: &mut CursorV1<'_>, span: SpanV1) -> RelationExprHirV1 {
-    cur.builder.relation_source("_keys", None, span)
+    let keys = items
+        .into_iter()
+        .map(|item| OrderKeyHirV1 {
+            value: item.value,
+            direction: match item.alias.as_ref().map(|alias| alias.name.as_str()) {
+                Some("desc") => SortDirectionHirV1::Desc,
+                _ => SortDirectionHirV1::Asc,
+            },
+        })
+        .collect();
+    cur.builder.order_by(input, keys, span).map_err(|message| {
+        ParseDiagnosticV1::new(
+            crate::diag::ParseErrorCodeV1::UnexpectedToken,
+            span,
+            message,
+        )
+    })
 }
 
 fn parse_projection_items(
@@ -224,6 +242,8 @@ fn parse_projection_items(
 ) -> Result<Vec<ProjectionItemV1>, ParseDiagnosticV1> {
     let mut items = Vec::new();
     loop {
+        cur.budget
+            .charge_projection_element(items.len() + 1, cur.here_span())?;
         items.push(parse_projection_item(cur)?);
         if cur.eat(&TokenKindV1::Comma).is_some() {
             continue;
@@ -241,6 +261,8 @@ fn parse_value_key_items(
 ) -> Result<Vec<ProjectionItemV1>, ParseDiagnosticV1> {
     let mut items = Vec::new();
     loop {
+        cur.budget
+            .charge_projection_element(items.len() + 1, cur.here_span())?;
         let value = parse_value(cur)?;
         let mut alias = None;
         if allow_direction {

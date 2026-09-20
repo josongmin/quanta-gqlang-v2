@@ -1,0 +1,269 @@
+# Target Architecture
+
+Status: `PINNED FOR IMPLEMENTATION`
+
+## Ownership Rules
+
+### HIR
+
+Owns source-shaped syntax, node identity, spans, and lossless formatting input.
+It does not own name resolution, types, algebra, recursion legality, or plans.
+It also owns `SourceIdV2` and `LocatedSpanV2 { source_id, span }`. Bare
+`SpanV1` is valid inside one registered source; cross-document authority and
+diagnostics use the located form so byte offsets cannot be attributed to the
+wrong file.
+
+Raw HIR remains one internal tree. Existing `*V1` HIR names are migrated in
+place because raw HIR is not exported by the curated V2 facade. A version
+suffix does not justify a parallel `*V2` syntax tree or a conversion layer.
+
+### Modules
+
+Owns module/import resolution, typed catalog namespaces, pack manifests, lock
+verification inputs, duplicate policy, and source-rich module diagnostics.
+
+### Sema
+
+Owns the one document-scoped semantic transaction:
+
+1. consume checked syntax
+2. predeclare document symbols
+3. resolve catalog/module/relation/predicate references
+4. bind scopes in evaluation order
+5. type expressions and relations
+6. aggregate builtin effects
+7. emit sealed semantic contracts
+
+No downstream crate may repeat these decisions from raw strings or HIR shape.
+
+### Algebra
+
+Owns logical relational normalization from typed relation contracts. Public
+nodes are valid by construction. It does not resolve names or type expressions.
+
+### Logic
+
+Owns graph-query boundedness, witness contracts, recursive-program SCC and
+stratification, and semi/anti semantics. It consumes resolved IDs and typed
+polarity, never callee strings.
+
+### Planning
+
+Owns host-agnostic truth/evidence/effect/result/capability classification from
+verified algebra/logic/item contracts. It is not a physical optimizer.
+
+### Pipeline
+
+Owns orchestration only. It parses, invokes the semantic transaction, lowers the
+sealed contracts, and assembles `CompiledDocumentV2`. It must not contain local
+type walkers, name heuristics, or catalog mutation policy.
+
+### Resource Budgets
+
+Sema authority owns the public immutable `FrontendBudgetV2` configuration.
+Pipeline projects it once per document into private owner-local counters; no
+remaining-count state crosses crate boundaries and no dimension has two charge
+owners.
+
+| Dimension | Canonical charge owner |
+|---|---|
+| frame bytes | diagnostics stdio transport |
+| source bytes | pipeline source ingress; CLI/service may mirror the same absolute pre-allocation rejection |
+| tokens, document items, expression depth/nodes, collection/projection width | surface |
+| semantic steps | sema |
+| module graph nodes/edges/steps | modules |
+| rule graph nodes/edges/steps, witness depth/count | logic |
+
+Algebra and planning operate over already bounded sealed inputs and may not
+recharge source/expression dimensions. Pipeline creates exactly one counter per
+applicable owner and invokes that owner once. Mirrored byte prechecks are not
+cumulative counters and must produce the same limit/code as pipeline.
+
+### Frontend Contract
+
+Owns the intentionally small downstream API. CLI and the diagnostics stdio
+service consume only this crate.
+
+## Final Dependency DAG
+
+```text
+consumer -> direct internal dependencies
+
+hir                 -> none
+surface             -> hir
+binder              -> hir
+types               -> hir
+modules             -> hir + types
+sema                -> hir + binder + types + modules
+algebra             -> sema + types
+logic               -> sema + algebra + types
+planning            -> sema + algebra + logic + types
+pipeline            -> surface + sema + algebra + logic + planning + modules
+frontend-contract   -> pipeline
+cli                 -> frontend-contract
+diagnostics-stdio   -> frontend-contract
+conformance         -> frontend-contract
+```
+
+Development-only exceptions must be explicit in the architecture guard. Normal
+dependencies may not point opposite this graph.
+
+## Semantic State Machine
+
+```text
+SourceDocument
+  -> ParsedDocumentV2
+  -> CheckedSyntaxDocumentV2
+  -> DeclaredDocumentV2
+  -> ResolvedDocumentV2
+  -> SemanticDocumentV2
+  -> LoweredDocumentV2
+  -> CompiledDocumentV2
+```
+
+Each transition is fallible and typed. Only the final state is externally
+servable. No `Option` means "the stage was skipped".
+
+## Authority Model
+
+```rust
+pub struct ClosedFrontendAuthorityV2 {
+    imports: ResolvedGraphV2,
+    relations: RelationCatalogV2,
+    external_catalog: ExternalCatalogV2,
+    pack_authority: ValidatedPackAuthorityV2,
+    budgets: FrontendBudgetV2,
+}
+```
+
+`ResolvedGraphV2` is the single owner of current-module identity; the closed
+authority exposes that identity by delegation and does not store a second copy.
+`ValidatedPackAuthorityV2` owns a validated graph plus the lock proof verified
+against that exact graph, so independently validated graph/lock values cannot
+be mixed during authority construction. Modules depends on the canonical
+`types` crate for catalog signatures; it must not define an opaque or parallel
+type-tag universe.
+
+Construction is fallible. No raw `BTreeMap` or default-empty authority is a
+semantic compile input.
+
+Editor analysis uses a different type:
+
+```rust
+pub struct OpenAnalysisAuthorityV2 { /* incomplete by contract */ }
+pub struct AnalysisDocumentV2 { /* may retain unresolved refs */ }
+```
+
+`AnalysisDocumentV2` cannot be converted implicitly into `CompiledDocumentV2`.
+
+## Typed Semantic Contracts
+
+Required core outputs:
+
+1. `ResolvedCallV2::{Builtin, Predicate}`
+2. `TypedExprV2`
+3. `ExpressionEffectsV2`
+4. `TypedRelationV2`
+5. `RelationOutputContractV2`
+6. `ResolvedRuleV2`
+7. `RuleProgramContractV2`
+8. `GraphQueryContractV2`
+9. `CheckContractV2`
+10. `PresentationContractV2`
+
+Expression effects retain:
+
+1. purity
+2. evaluation determinism
+3. monotonicity
+4. aggregation class
+5. semantic cost class
+
+## Relational Stage Contract
+
+Source HIR has explicit variants only for source-reachable syntax: source,
+filter, project, inner join, explicit cross join, group-by, and order-by. The
+grammar does not acquire union, limit, semi-join, anti-join, or HAVING merely to
+make every algebra operator source-reachable. Typed relation IR may add derived
+aggregate and correlated-subquery forms. Checked logical algebra retains its
+existing 12-operator vocabulary, including programmatic-only union/limit/apply
+forms. A string operator tag is not a valid semantic carrier at any boundary.
+
+Every typed stage carries its output:
+
+1. row schema
+2. relation source identities
+3. multiplicity/cardinality
+4. partition keys
+5. ordering
+6. expression effects
+
+Composition consumes this output contract directly. It never reconstructs row
+types from raw HIR.
+
+## Rule Contract
+
+1. A source `rule <name> : <head-term> if <body>` predeclares predicate `<name>`.
+2. Current grammar is unary unless the syntax ticket explicitly expands arity.
+3. Variables present in the head are rule variables.
+4. Quantifier variables are scoped explicitly.
+5. Other free value symbols reject.
+6. Predicate dependencies require call syntax and resolve by predicate ID.
+7. Bare predicate symbols reject unless zero-arity predicates are introduced.
+8. Positive, negated, and aggregated polarity comes from typed expression nodes.
+9. All document rules form one program before Tarjan/stratification.
+
+## Planning Contract
+
+Planning cannot import raw HIR. Its entry point accepts only sealed inputs:
+
+```rust
+pub enum SemanticPlanInputV2 {
+    Relational(CheckedRelationalContractV2),
+    Graph(GraphQueryContractV2),
+    Check(CheckContractV2),
+    Presentation(PresentationContractV2),
+    Rule(RuleProgramContractV2),
+}
+```
+
+`AuthorityLaneV2` and `EvaluationDeterminismV2` are separate. A nondeterministic
+builtin must not be hidden behind a lane named deterministic.
+
+## Public API
+
+The facade exports source/document entry points and stable DTOs only:
+
+```rust
+compile_source_document_v2
+analyze_source_document_v2
+format_source_document_v2
+ClosedFrontendAuthorityV2
+OpenAnalysisAuthorityV2
+FrontendBudgetV2
+CompiledDocumentV2
+AnalysisDocumentV2
+SemanticPlanV2
+FrontendDiagnosticV2
+FrontendFailureV2
+```
+
+It does not export raw HIR builders, unchecked type/algebra constructors,
+normalizer internals, or crate-wide globs.
+
+## Deleted Seams
+
+The cutover removes or makes crate-private:
+
+1. `compile_program_structural`
+2. `compile_item_structural`
+3. `compile_item_with_schema`
+4. public `compile_item_with_context`
+5. raw-HIR `classify_item`
+6. `env_closed` skip semantics
+7. `root_symbol_name` dependency inference
+8. raw-HIR `producer_output_relation` reconstruction
+9. string-tagged `CompositionOpV1`
+10. frontend-contract glob re-exports
+
+Compatibility wrappers that preserve these behaviors are explicitly forbidden.

@@ -14,7 +14,9 @@
     reason = "integration test rail: assertion panics are intentional"
 )]
 
-use quanta_gqlang_v2_hir::{HirBuilderV1, ProgramItemHirV1};
+mod support;
+
+use quanta_gqlang_v2_hir::{HirBuilderV1, ProgramItemHirV1, SpanV1};
 use quanta_gqlang_v2_surface::{
     format_document, format_item, parse_document, parse_program, SurfaceItemV1,
 };
@@ -22,19 +24,47 @@ use quanta_gqlang_v2_surface::{
 fn parse(src: &str) -> ProgramItemHirV1 {
     let builder = HirBuilderV1::new();
     let parsed = parse_program(src, &builder).unwrap_or_else(|e| panic!("parse {src:?}: {e}"));
-    match parsed.item {
-        SurfaceItemV1::Program(p) => p,
-        SurfaceItemV1::Query(q) => ProgramItemHirV1::from(q),
-        SurfaceItemV1::Decl(d) => ProgramItemHirV1::from(d),
-        SurfaceItemV1::Rule(r) => ProgramItemHirV1::from(r),
-    }
+    parsed.item.into_program_item()
 }
 
 /// Structural equality of two items ignoring node ids and spans: re-render both
 /// and compare the canonical text. Two items render identically iff their
 /// structure matches, so canonical-text equality is the structural oracle.
 fn same_structure(a: &ProgramItemHirV1, b: &ProgramItemHirV1) -> bool {
-    format_item(a) == format_item(b)
+    support::structural_witness(a) == support::structural_witness(b)
+}
+
+#[test]
+fn programmatic_precedence_is_preserved_by_reparse() {
+    let builder = HirBuilderV1::new();
+    let span = SpanV1::new(0, 1);
+    let add = builder.binary(
+        "+",
+        builder.symbol("a", span),
+        builder.symbol("b", span),
+        span,
+    );
+    let mul = builder.binary("*", add, builder.symbol("c", span), span);
+    let item = ProgramItemHirV1::from(builder.decl("x", span, mul, span));
+    let reparsed = parse(&format_item(&item));
+    assert_eq!(
+        support::structural_witness(&item),
+        support::structural_witness(&reparsed)
+    );
+
+    let and = builder.and(
+        builder.bool_value(builder.symbol("a", span), span),
+        builder.bool_value(builder.symbol("b", span), span),
+        span,
+    );
+    let not = builder.not(and, span);
+    let rule =
+        ProgramItemHirV1::from(builder.rule("r", span, builder.symbol("x", span), not, span));
+    let reparsed = parse(&format_item(&rule));
+    assert_eq!(
+        support::structural_witness(&rule),
+        support::structural_witness(&reparsed)
+    );
 }
 
 /// The core rail: parse, format, re-parse, and assert the round trip is stable,
@@ -64,6 +94,55 @@ fn assert_roundtrip(src: &str) {
     // idempotence at the text level: format(format(x)) == format(x).
     let text3 = format_item(&parse(&text2));
     assert_eq!(text2, text3, "format not idempotent for {src:?}");
+}
+
+fn assert_witness_diff(left: &str, right: &str) {
+    assert_ne!(
+        support::structural_witness(&parse(left)),
+        support::structural_witness(&parse(right)),
+        "witness collapsed semantic mutation: {left:?} vs {right:?}"
+    );
+}
+
+#[test]
+fn structural_witness_distinguishes_every_semantic_payload_category() {
+    for (left, right) in [
+        ("from a", "from b"),
+        ("let x = 1", "let y = 1"),
+        ("rule r : x if true", "rule s : x if true"),
+        ("find flow a -> b", "find taint a -> b"),
+        ("check r | confirm=skip", "check r | confirm=prompt"),
+        ("show capabilities", "show models"),
+        (
+            "model m | provider=a | source=s",
+            "model m | provider=b | source=s",
+        ),
+        (
+            "let a = sample query=\"x\" | mode=lexical | limit=1 find flow x -> y with a",
+            "let b = sample query=\"x\" | mode=lexical | limit=1 find flow x -> y with b",
+        ),
+        (
+            "use pack p | activation=session | lockfile=a.lock",
+            "use pack p | activation=session | lockfile=b.lock",
+        ),
+        ("let x = a + b", "let x = a * b"),
+        ("rule r : x if a and b", "rule r : x if a or b"),
+        (
+            "from a | where exists (from b)",
+            "from a | where not exists (from b)",
+        ),
+        ("from a | group by x", "from a | project x"),
+        ("from a => { x: a }", "from a => { y: a }"),
+        ("from a x", "from a y"),
+        ("from a | order by x asc", "from a | order by x desc"),
+        (
+            "rule r : x if exists a in (a)",
+            "rule r : x if exists b in (b)",
+        ),
+        ("let x = f(a)", "let x = f(*)"),
+    ] {
+        assert_witness_diff(left, right);
+    }
 }
 
 #[test]
@@ -149,12 +228,7 @@ fn document_roundtrips() {
     let items: Vec<ProgramItemHirV1> = doc
         .items
         .into_iter()
-        .map(|i| match i {
-            SurfaceItemV1::Program(p) => p,
-            SurfaceItemV1::Query(q) => ProgramItemHirV1::from(q),
-            SurfaceItemV1::Decl(d) => ProgramItemHirV1::from(d),
-            SurfaceItemV1::Rule(r) => ProgramItemHirV1::from(r),
-        })
+        .map(SurfaceItemV1::into_program_item)
         .collect();
     let text = format_document(&items);
 
@@ -166,12 +240,7 @@ fn document_roundtrips() {
     let items2: Vec<ProgramItemHirV1> = doc2
         .items
         .into_iter()
-        .map(|i| match i {
-            SurfaceItemV1::Program(p) => p,
-            SurfaceItemV1::Query(q) => ProgramItemHirV1::from(q),
-            SurfaceItemV1::Decl(d) => ProgramItemHirV1::from(d),
-            SurfaceItemV1::Rule(r) => ProgramItemHirV1::from(r),
-        })
+        .map(SurfaceItemV1::into_program_item)
         .collect();
     // idempotent at document level.
     assert_eq!(text, format_document(&items2));

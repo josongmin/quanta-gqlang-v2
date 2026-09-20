@@ -16,12 +16,12 @@
 use crate::expr::{BoolExprHirV1, ValueExprHirV1};
 use crate::id::HirNodeIdV1;
 use crate::item::{
-    CatalogDeclHirV1, CompositionHirV1, GraphQueryHirV1, LegalityHirV1, MetaHirV1,
-    PresentationHirV1, ProgramItemHirV1,
+    CatalogDeclHirV1, CompositionHirV1, ExplainHirV1, GraphQueryHirV1, LegalityHirV1, MetaHirV1,
+    PresentationHirV1, ProgramItemHirV1, SampleHirV1,
 };
 use crate::relation::RelationExprHirV1;
 use crate::shape::ResultShapeHirV1;
-use crate::span::SpanV1;
+use crate::span::{SourceIdV2, SpanV1};
 use crate::unit::{DeclHirV1, QueryHirV1, RuleHirV1};
 use crate::visit::HirVisitorV1;
 use std::collections::HashMap;
@@ -111,6 +111,18 @@ pub enum HirIntegrityErrorV1 {
         /// The declared source length the span exceeded.
         source_len: usize,
     },
+    /// An id-less structural child span is inverted.
+    InvertedAuxiliarySpan {
+        /// The offending span.
+        span: SpanV1,
+    },
+    /// An id-less structural child span exceeds the source.
+    AuxiliarySpanOutOfBounds {
+        /// The offending span.
+        span: SpanV1,
+        /// Registered source length.
+        source_len: usize,
+    },
 }
 
 impl HirIntegrityErrorV1 {
@@ -121,6 +133,8 @@ impl HirIntegrityErrorV1 {
             Self::DuplicateNodeId { .. } => "hir.integrity.duplicate_node_id",
             Self::InvertedSpan { .. } => "hir.integrity.inverted_span",
             Self::SpanOutOfBounds { .. } => "hir.integrity.span_out_of_bounds",
+            Self::InvertedAuxiliarySpan { .. } => "hir.integrity.inverted_auxiliary_span",
+            Self::AuxiliarySpanOutOfBounds { .. } => "hir.integrity.auxiliary_span_out_of_bounds",
         }
     }
 }
@@ -159,6 +173,21 @@ impl fmt::Display for HirIntegrityErrorV1 {
                 "{}: HIR node id {} span {}..{} exceeds source length {}",
                 self.code(),
                 id.raw(),
+                span.start,
+                span.end,
+                source_len,
+            ),
+            Self::InvertedAuxiliarySpan { span } => write!(
+                f,
+                "{}: auxiliary HIR span {}..{} is inverted",
+                self.code(),
+                span.start,
+                span.end,
+            ),
+            Self::AuxiliarySpanOutOfBounds { span, source_len } => write!(
+                f,
+                "{}: auxiliary HIR span {}..{} exceeds source length {}",
+                self.code(),
                 span.start,
                 span.end,
                 source_len,
@@ -221,6 +250,63 @@ pub fn check_tree(
     }
 }
 
+/// One parsed HIR document with a single source-length authority.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HirDocumentV1 {
+    /// Source identity carried into later diagnostics.
+    pub source_id: SourceIdV2,
+    /// Byte length of the source.
+    pub source_len: usize,
+    /// Top-level items in authored order.
+    pub items: Vec<ProgramItemHirV1>,
+}
+
+/// Document integrity diagnostic. The existing stable tree diagnostic remains
+/// the single error vocabulary for node identity and span failures.
+pub type HirIntegrityDiagnosticV2 = HirIntegrityErrorV1;
+
+/// Borrowed proof that every root in one document passed one shared integrity
+/// traversal.
+#[derive(Clone, Copy, Debug)]
+pub struct CheckedHirDocumentV2<'a> {
+    document: &'a HirDocumentV1,
+    node_count: usize,
+}
+
+impl<'a> CheckedHirDocumentV2<'a> {
+    /// Checked document.
+    #[must_use]
+    pub const fn document(&self) -> &'a HirDocumentV1 {
+        self.document
+    }
+
+    /// Total id-bearing nodes across all roots.
+    #[must_use]
+    pub const fn node_count(&self) -> usize {
+        self.node_count
+    }
+}
+
+/// Validate every document root with one shared id set and source bound.
+pub fn check_document_v2(
+    document: &HirDocumentV1,
+) -> Result<CheckedHirDocumentV2<'_>, HirIntegrityDiagnosticV2> {
+    let mut collector = IntegrityCollector::new(document.source_len);
+    for item in &document.items {
+        HirRootRefV1::Item(item).accept(&mut collector);
+        if collector.error.is_some() {
+            break;
+        }
+    }
+    match collector.error {
+        Some(error) => Err(error),
+        None => Ok(CheckedHirDocumentV2 {
+            document,
+            node_count: collector.seen.len(),
+        }),
+    }
+}
+
 /// Collect every node's `(id, span)` and check invariants. Stops recording new
 /// errors after the first, but traversal still completes (cheap, bounded).
 struct IntegrityCollector {
@@ -264,6 +350,20 @@ impl IntegrityCollector {
         }
         let _ = self.seen.insert(id, span);
     }
+
+    fn record_auxiliary_span(&mut self, span: SpanV1) {
+        if self.error.is_some() {
+            return;
+        }
+        if !span.is_well_formed() {
+            self.error = Some(HirIntegrityErrorV1::InvertedAuxiliarySpan { span });
+        } else if span.end > self.source_len {
+            self.error = Some(HirIntegrityErrorV1::AuxiliarySpanOutOfBounds {
+                span,
+                source_len: self.source_len,
+            });
+        }
+    }
 }
 
 impl HirVisitorV1 for IntegrityCollector {
@@ -274,6 +374,13 @@ impl HirVisitorV1 for IntegrityCollector {
     fn visit_bool(&mut self, node: &BoolExprHirV1) {
         self.record(node.id, node.span);
         crate::visit::walk_bool(self, node);
+    }
+    fn visit_call_star(&mut self, span: SpanV1) {
+        self.record_auxiliary_span(span);
+    }
+
+    fn visit_logical_binder(&mut self, span: SpanV1) {
+        self.record_auxiliary_span(span);
     }
     fn visit_relation(&mut self, node: &RelationExprHirV1) {
         self.record(node.id, node.span);
@@ -306,6 +413,14 @@ impl HirVisitorV1 for IntegrityCollector {
     fn visit_presentation(&mut self, node: &PresentationHirV1) {
         self.record(node.id, node.span);
         crate::visit::walk_presentation(self, node);
+    }
+    fn visit_sample(&mut self, node: &SampleHirV1) {
+        self.record(node.id, node.span);
+        crate::visit::walk_sample(self, node);
+    }
+    fn visit_explain(&mut self, node: &ExplainHirV1) {
+        self.record(node.id, node.span);
+        crate::visit::walk_explain(self, node);
     }
     fn visit_catalog_decl(&mut self, node: &CatalogDeclHirV1) {
         self.record(node.id, node.span);

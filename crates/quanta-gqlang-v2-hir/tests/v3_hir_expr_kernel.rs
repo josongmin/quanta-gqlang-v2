@@ -13,10 +13,10 @@ use std::collections::HashSet;
 
 use quanta_gqlang_v2_hir::{
     check_tree, walk_bool, walk_query, walk_relation, walk_shape, walk_value, AliasV1,
-    BoolExprHirV1, BoolExprKindV1, HirBuilderV1, HirNodeIdV1, HirRootRefV1, HirVisitorV1,
-    PathSegmentV1, ProjectionItemV1, QueryHirV1, RecordFieldV1, RelationExprHirV1,
-    RelationExprKindV1, ResultShapeHirV1, ResultShapeKindV1, ShapeFieldV1, SpanV1, ValueExprHirV1,
-    ValueExprKindV1,
+    BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CallArgsHirV1, HirBuilderV1, HirNodeIdV1,
+    HirRootRefV1, HirVisitorV1, PathSegmentV1, ProjectionItemV1, QueryHirV1, RecordFieldV1,
+    RelationExprHirV1, RelationExprKindV1, ResultShapeHirV1, ResultShapeKindV1, ShapeFieldV1,
+    SpanV1, ValueExprHirV1, ValueExprKindV1,
 };
 
 /// Collects every visited node's (id, span) across all node kinds.
@@ -92,7 +92,12 @@ fn value_expr_tree_shape_ids_and_spans() {
 
     let one = b.int("1", SpanV1::new(8, 9));
     let x = b.string("x", SpanV1::new(11, 14));
-    let call = b.call("f", SpanV1::new(6, 7), vec![one, x], SpanV1::new(6, 15));
+    let call = b.call(
+        "f",
+        SpanV1::new(6, 7),
+        CallArgsHirV1::try_new(vec![CallArgHirV1::Expr(one), CallArgHirV1::Expr(x)]).unwrap(),
+        SpanV1::new(6, 15),
+    );
 
     let sum = b.binary("+", a_b, call, SpanV1::new(0, 15));
 
@@ -116,7 +121,7 @@ fn value_expr_tree_shape_ids_and_spans() {
         panic!("expected call rhs")
     };
     assert_eq!(c.callee.name, "f");
-    assert_eq!(c.args.len(), 2);
+    assert_eq!(c.args().len(), 2);
 
     let mut collector = NodeCollector::default();
     collector.visit_value(&sum);
@@ -128,6 +133,21 @@ fn value_expr_tree_shape_ids_and_spans() {
     // checked constructor accepts the sound tree.
     let checked = check_tree(HirRootRefV1::Value(&sum), src.len()).unwrap();
     assert_eq!(checked.node_count(), 6);
+}
+
+#[test]
+fn call_args_reject_mixed_and_multiple_star_states() {
+    let span = SpanV1::new(0, 1);
+    let builder = HirBuilderV1::new();
+    assert!(CallArgsHirV1::try_new(vec![
+        CallArgHirV1::Expr(builder.int("1", span)),
+        CallArgHirV1::star(span),
+    ])
+    .is_err());
+    assert!(
+        CallArgsHirV1::try_new(vec![CallArgHirV1::star(span), CallArgHirV1::star(span),]).is_err()
+    );
+    assert!(CallArgsHirV1::try_new(vec![CallArgHirV1::star(span)]).is_ok());
 }
 
 /// Scenario 2: bool formula `(x > 1) and (y = 2 or z)` — grouping preserved.

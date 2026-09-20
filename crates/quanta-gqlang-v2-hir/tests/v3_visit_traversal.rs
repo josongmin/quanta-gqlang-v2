@@ -14,8 +14,9 @@
 #![allow(clippy::panic, reason = "tests panic on unexpected variants")]
 
 use quanta_gqlang_v2_hir::{
-    walk_item, ConfirmModeV1, DetectionModeV1, EmitModeV1, GraphConstraintsV1, GraphEndpointsV1,
-    GraphQueryKindV1, GraphRefV1, HirBuilderV1, HirNodeIdV1, HirVisitorV1, ProgramItemHirV1,
+    walk_item, CallArgHirV1, CallArgsHirV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
+    GraphConstraintsV1, GraphEndpointsV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1, HirNodeIdV1,
+    HirVisitorV1, LogicalBinderV1, LogicalQuantifierKindV1, NonEmptyBindersV1, ProgramItemHirV1,
     SpanV1, ValueExprHirV1,
 };
 
@@ -74,7 +75,12 @@ fn walk_value_recurses_path_paren_unary_binary_call_record_list() {
     let call = b.call(
         "f",
         SpanV1::new(50, 51),
-        vec![neg, rec, list],
+        CallArgsHirV1::try_new(vec![
+            CallArgHirV1::Expr(neg),
+            CallArgHirV1::Expr(rec),
+            CallArgHirV1::Expr(list),
+        ])
+        .unwrap(),
         SpanV1::new(50, 60),
     );
 
@@ -106,9 +112,13 @@ fn walk_bool_recurses_compare_and_or_not_paren_quantifier_value() {
     let parened = b.paren_bool(zval, SpanV1::new(9, 12));
     let negated = b.not(parened, SpanV1::new(7, 12));
     // quantifier exists over a literal body
-    let quant = b.quantifier(
-        "exists",
-        vec!["q".into()],
+    let quant = b.logical_quantifier(
+        LogicalQuantifierKindV1::Exists,
+        NonEmptyBindersV1::try_new(vec![LogicalBinderV1 {
+            name: "q".into(),
+            span: SpanV1::new(22, 23),
+        }])
+        .unwrap(),
         b.bool_literal(true, SpanV1::new(20, 24)),
         SpanV1::new(15, 24),
     );
@@ -140,9 +150,9 @@ fn walk_relation_recurses_filter_project_compose_through_default_hooks() {
         alias: None,
     };
     let projected = b.project(filtered, vec![proj_item], SpanV1::new(0, 27));
-    // compose two sources via an open symbol
+    // cross join the projected relation with another source.
     let other = b.relation_source("roles", None, SpanV1::new(30, 35));
-    let composed = b.compose("join", vec![projected, other], SpanV1::new(0, 35));
+    let composed = b.cross_join(projected, other, SpanV1::new(0, 35));
 
     let mut trace = IdTrace::default();
     trace.visit_relation(&composed);
@@ -293,24 +303,19 @@ fn default_item_hooks_delegate_into_their_walks() {
     // visit_relation forces the default visit_composition / visit_catalog_decl /
     // visit_query / visit_shape / visit_value / visit_bool / visit_meta hooks to
     // each run through their trait-default delegation.
-    use quanta_gqlang_v2_hir::{CatalogPayloadV1, MetaKindV1, ViewBodyV1};
-
     // producer: VIEW v = SELECT (users WHERE active) with a leaf result shape.
     let users = b.relation_source("users", None, SpanV1::new(20, 25));
     let pred = b.bool_value(b.symbol("active", SpanV1::new(32, 38)), SpanV1::new(32, 38));
     let filtered = b.relation_filter(users, pred, SpanV1::new(20, 38));
     let shape = b.shape_leaf(b.symbol("id", SpanV1::new(40, 42)), SpanV1::new(40, 42));
     let inline = b.query(filtered, Some(shape), SpanV1::new(20, 42));
-    let view = b.catalog_decl(
-        "v",
-        SpanV1::new(14, 15),
-        CatalogPayloadV1::View(ViewBodyV1::Inline(Box::new(inline))),
-        SpanV1::new(10, 42),
-    );
-    let binding = b.composition_binding("v", SpanV1::new(4, 5), view.into());
+    let binding = b.composition_binding("v", SpanV1::new(4, 5), inline.into());
 
-    // body: REQUIRE CERTIFIED (a meta directive).
-    let body = b.meta(MetaKindV1::RequireCertified, SpanV1::new(45, 60));
+    let body = b.query(
+        b.relation_source("results", None, SpanV1::new(45, 52)),
+        None,
+        SpanV1::new(45, 52),
+    );
 
     let comp = b.composition(
         vec![binding],
@@ -324,8 +329,8 @@ fn default_item_hooks_delegate_into_their_walks() {
     let mut counter = DefaultDelegationCounter::default();
     counter.visit_item(&item);
 
-    // The inline SELECT reaches the source relation and the filter relation = 2.
-    assert_eq!(counter.relations, 2);
+    // Producer source+filter and body source.
+    assert_eq!(counter.relations, 3);
 
     // Also drive a bare presentation item through the default visit_presentation
     // hook (its walk is a no-op, so no relations are reached).

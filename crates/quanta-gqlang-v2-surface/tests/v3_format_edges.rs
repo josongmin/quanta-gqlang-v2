@@ -1,8 +1,8 @@
 //! Formatter edge rails: round-trips for the value/bool kinds, family modes,
 //! and compose shapes the main formatter hellgate leaves uncovered.
 //!
-//! Each rail asserts that the canonical render re-parses to the SAME structure
-//! (canonical text is the structural oracle) and is idempotent. These lock the
+//! Each rail asserts that the canonical render re-parses to the same independent
+//! visitor-derived structure and is idempotent. These lock the
 //! formatter's per-kind arms (unary, call, paren, list, escaped string, every
 //! literal kind, each bool connective, each find subkind, each enum-valued mode)
 //! as the exact inverse of the grammar.
@@ -14,18 +14,15 @@
     reason = "integration test rail: assertion panics are intentional"
 )]
 
+mod support;
+
 use quanta_gqlang_v2_hir::{HirBuilderV1, ProgramItemHirV1};
-use quanta_gqlang_v2_surface::{format_item, parse_program, SurfaceItemV1};
+use quanta_gqlang_v2_surface::{format_item, parse_program};
 
 fn parse(src: &str) -> ProgramItemHirV1 {
     let builder = HirBuilderV1::new();
     let parsed = parse_program(src, &builder).unwrap_or_else(|e| panic!("parse {src:?}: {e}"));
-    match parsed.item {
-        SurfaceItemV1::Program(p) => p,
-        SurfaceItemV1::Query(q) => ProgramItemHirV1::from(q),
-        SurfaceItemV1::Decl(d) => ProgramItemHirV1::from(d),
-        SurfaceItemV1::Rule(r) => ProgramItemHirV1::from(r),
-    }
+    parsed.item.into_program_item()
 }
 
 /// parse -> format -> re-parse -> format must be a fixed point, and the rendered
@@ -35,12 +32,11 @@ fn assert_roundtrip(src: &str) {
     let text1 = format_item(&item1);
     let item2 = parse(&text1);
     let text2 = format_item(&item2);
-    assert_eq!(text1, text2, "round-trip not stable for {src:?}");
     assert_eq!(
-        format_item(&item1),
-        format_item(&item2),
-        "structure changed across round-trip for {src:?}"
+        support::structural_witness(&item1),
+        support::structural_witness(&item2)
     );
+    assert_eq!(text1, text2, "round-trip not stable for {src:?}");
 }
 
 /// The rendered text is also asserted to equal an EXACT expected canonical form,
@@ -81,6 +77,25 @@ fn string_escapes_round_trip() {
     assert_roundtrip("let x = \"a\\\\b\"");
     assert_roundtrip("let x = \"a\\nb\"");
     assert_roundtrip("let x = \"a\\tb\"");
+    assert_roundtrip("let x = \"a\\rb\\bc\\f\"");
+    assert_roundtrip("let x = \"\\u{1f642}\"");
+    assert_renders("let x = \"한글🙂é\"", "let x = \"한글🙂é\"");
+}
+
+#[test]
+fn invalid_escape_forms_reject() {
+    for source in [
+        r#"let x = "\q""#,
+        r#"let x = "\u{}""#,
+        r#"let x = "\u{d800}""#,
+        r#"let x = "\u110000""#,
+    ] {
+        let builder = HirBuilderV1::new();
+        assert!(
+            parse_program(source, &builder).is_err(),
+            "accepted {source:?}"
+        );
+    }
 }
 
 // ---- bool-expr connectives -------------------------------------------------
@@ -203,6 +218,6 @@ fn catalog_enum_modes_render() {
 fn query_compose_shapes_render() {
     assert_roundtrip("from o x | group by x.a, x.b");
     assert_roundtrip("from o x | order by x.total desc, x.id asc");
-    assert_roundtrip("from a x | join b y");
+    assert_roundtrip("from a x | cross join b y");
     assert_roundtrip("from a x | join b y on x.k = y.k");
 }

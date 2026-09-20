@@ -18,13 +18,16 @@
 //! - No legacy parse path is retained; the legacy v2 parser stack has been
 //!   removed entirely (ticket 09 cutover), so v3 is the sole frontend.
 
+use crate::budget::{ParseBudgetCounterV2, ParseBudgetV2};
 use crate::cursor::CursorV1;
 use crate::diag::{ParseDiagnosticV1, ParseErrorCodeV1};
 use crate::family::{at_composition, is_family_keyword, parse_composition, parse_family};
-use crate::lexer::{lex, TokenKindV1};
+use crate::lexer::{lex_with_budget, TokenKindV1};
 use crate::query::parse_query;
 use crate::unit::{parse_decl, parse_rule};
-use quanta_gqlang_v2_hir::{DeclHirV1, HirBuilderV1, ProgramItemHirV1, QueryHirV1, RuleHirV1};
+use quanta_gqlang_v2_hir::{
+    DeclHirV1, HirBuilderV1, HirDocumentV1, ProgramItemHirV1, QueryHirV1, RuleHirV1, SourceIdV2,
+};
 
 /// A parsed top-level surface item. Exactly one shared HIR unit per program.
 ///
@@ -94,9 +97,19 @@ pub fn parse_program(
     source: &str,
     builder: &HirBuilderV1,
 ) -> Result<ParsedProgramV1, ParseDiagnosticV1> {
-    let tokens = lex(source)?;
-    let mut cur = CursorV1::new(tokens, builder);
+    parse_program_with_budget(source, builder, &ParseBudgetV2::standard_v2())
+}
 
+pub(crate) fn parse_program_with_budget(
+    source: &str,
+    builder: &HirBuilderV1,
+    budget: &ParseBudgetV2,
+) -> Result<ParsedProgramV1, ParseDiagnosticV1> {
+    let counter = ParseBudgetCounterV2::new(budget);
+    let tokens = lex_with_budget(source, &counter)?;
+    let mut cur = CursorV1::new(tokens, builder, counter);
+
+    cur.budget.charge_document_item(cur.here_span())?;
     reject_v2_isms(&cur)?;
 
     let item = parse_one_item(&mut cur, source)?;
@@ -126,10 +139,19 @@ pub fn parse_program(
 /// globally unique across the WHOLE document by construction (the builder mints
 /// monotonically increasing ids and never resets between items).
 #[derive(Clone, Debug, PartialEq)]
+pub struct ParsedDocumentV2 {
+    /// Canonical HIR document and its single source-length authority.
+    pub hir: HirDocumentV1,
+}
+
+/// Legacy single-source document result. It intentionally does not expose a
+/// document identity; callers needing cross-document identity must use
+/// [`parse_source_document_v2`].
+#[derive(Clone, Debug, PartialEq)]
 pub struct ParsedDocumentV1 {
-    /// The ordered top-level items, in source order.
+    /// Ordered surface items.
     pub items: Vec<SurfaceItemV1>,
-    /// Byte length of the source the document was parsed from.
+    /// Byte length of the parsed source.
     pub source_len: usize,
 }
 
@@ -153,8 +175,17 @@ pub fn parse_document(
     source: &str,
     builder: &HirBuilderV1,
 ) -> Result<ParsedDocumentV1, ParseDiagnosticV1> {
-    let tokens = lex(source)?;
-    let mut cur = CursorV1::new(tokens, builder);
+    parse_document_items_with_budget(source, builder, &ParseBudgetV2::standard_v2())
+}
+
+pub(crate) fn parse_document_items_with_budget(
+    source: &str,
+    builder: &HirBuilderV1,
+    budget: &ParseBudgetV2,
+) -> Result<ParsedDocumentV1, ParseDiagnosticV1> {
+    let counter = ParseBudgetCounterV2::new(budget);
+    let tokens = lex_with_budget(source, &counter)?;
+    let mut cur = CursorV1::new(tokens, builder, counter);
 
     let mut items = Vec::new();
     while !cur.at_eof() {
@@ -168,6 +199,7 @@ pub fn parse_document(
             ));
         }
 
+        cur.budget.charge_document_item(cur.here_span())?;
         reject_v2_isms(&cur)?;
         let item = parse_one_item(&mut cur, source)?;
         items.push(item);
@@ -189,6 +221,27 @@ pub fn parse_document(
     Ok(ParsedDocumentV1 {
         items,
         source_len: source.len(),
+    })
+}
+
+/// Parse a source document with an explicit bounded profile.
+pub fn parse_source_document_v2(
+    source_id: SourceIdV2,
+    source: &str,
+    budget: &ParseBudgetV2,
+) -> Result<ParsedDocumentV2, ParseDiagnosticV1> {
+    let builder = HirBuilderV1::new();
+    let parsed = parse_document_items_with_budget(source, &builder, budget)?;
+    Ok(ParsedDocumentV2 {
+        hir: HirDocumentV1 {
+            source_id,
+            source_len: parsed.source_len,
+            items: parsed
+                .items
+                .into_iter()
+                .map(SurfaceItemV1::into_program_item)
+                .collect(),
+        },
     })
 }
 

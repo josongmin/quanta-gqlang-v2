@@ -1,0 +1,811 @@
+file	line	test	n_assert	n_lines	flags
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs	30	closed_relation_authority_preserves_exact_typed_scan_identity_v1	3	21	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs	53	closed_relation_authority_rejects_unknown_with_exact_typed_diagnostic_v1	5	20	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs	75	closed_relation_authority_does_not_rewrite_authored_names_v1	2	18	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs	95	structural_relation_authority_is_explicitly_schema_open_v1	2	14	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs	111	unsupported_composition_rejects_with_typed_code	4	15	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs	128	join_arity_mismatch_rejects	3	15	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs	145	uncorrelated_apply_rejects_missing_correlation	4	16	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs	163	limit_over_unordered_input_rejects	3	14	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs	179	nested_aggregate_rejects_ill_formed	5	28	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs	209	union_arity_mismatch_rejects	3	49	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs	260	union_column_name_mismatch_rejects	4	43	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs	305	join_without_predicate_rejects_empty_predicate	6	24	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs	331	explicit_cross_join_still_accepted	2	21	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_mutants.rs	48	algebra_family_keywords_are_exact_stable_strings	12	16	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_mutants.rs	66	sort_direction_keywords_are_exact_stable_strings	2	6	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_mutants.rs	74	projection_with_non_aggregate_call_stays_a_plain_project	2	32	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_mutants.rs	108	join_with_filter_predicate_keeps_the_predicate	2	32	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_mutants.rs	142	correlated_apply_resolves_the_correct_outer_column_index	7	74	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_mutants.rs	218	order_by_desc_lowers_to_descending	3	33	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_normalization.rs	41	correlated_subquery_normalizes_into_explicit_apply_with_visible_correlation	9	56	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_normalization.rs	99	apply_inner_projecting_outer_column_carries_correlated_provenance	1	26	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_normalization.rs	127	apply_inner_aliasing_outer_column_to_new_name_carries_correlated_provenance	5	47	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_normalization.rs	176	duplicate_sensitive_aggregate_makes_set_vs_bag_explicit	13	76	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_normalization.rs	254	project_filter_sort_limit_pipeline_has_stable_provenance	18	84	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_normalization.rs	354	apply_inner_binding_shadows_outer_column_name	4	33	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_normalization.rs	389	apply_inner_quantifier_binder_shadowing_outer_name_is_not_a_correlation	3	31	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_normalization.rs	422	unary_limit_uses_caller_supplied_window	3	18	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_probe.rs	40	scalar_aggregate_with_no_group_keys_is_a_set_not_a_bag	5	39	
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_probe.rs	81	union_arms_agreeing_on_names_merge_with_unioned_provenance	4	46	MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-algebra/tests/v3_algebra_probe.rs	129	apply_inner_column_sharing_outer_name_keeps_distinct_local_provenance	8	53	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_hellgate.rs	20	unresolved_symbol_rejects	4	19	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_hellgate.rs	42	duplicate_declaration_rejects	4	22	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_hellgate.rs	67	shadowed_binding_rejects	4	25	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_hellgate.rs	95	illegal_capture_rejects	4	32	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_hellgate.rs	131	ambiguous_import_rejects	6	31	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_hellgate.rs	166	local_binding_shadows_import_deterministically	2	19	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_mutants.rs	36	primary_span_returns_real_offending_span	6	42	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_mutants.rs	81	module_graph_len_counts_distinct_names	4	18	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_mutants.rs	102	module_graph_is_empty_tracks_contents	2	6	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_mutants.rs	111	scope_depth_counts_live_frames	4	13	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_mutants.rs	141	shadow_search_stops_at_noncapturing_barrier	2	27	NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-binder/tests/v3_binder_mutants.rs	173	shadow_search_reports_outer_shadow_when_visible	2	22	LET_UNDERSCORE
+crates/quanta-gqlang-v2-binder/tests/v3_binder_mutants.rs	202	resolve_rule_binds_params_and_resolves_head_and_body	6	35	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_mutants.rs	244	resolve_presentation_resolves_target_ref	4	44	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_mutants.rs	295	close_scope_pops_the_frame	4	27	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_mutants.rs	326	let_visible_until_scope_closed	2	19	NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-binder/tests/v3_binder_mutants.rs	352	resolve_shape_resolves_value_positions	4	28	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_mutants.rs	383	resolve_shape_walks_nested_record_and_list	2	25	NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-binder/tests/v3_binder_mutants.rs	412	scope_resolve_distinguishes_bound_from_unbound	2	12	LET_UNDERSCORE
+crates/quanta-gqlang-v2-binder/tests/v3_binder_scope.rs	23	alias_resolves_in_projection_and_filter	5	61	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_scope.rs	87	let_binding_resolves	4	24	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_scope.rs	114	unambiguous_import_resolves	3	18	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_scope.rs	137	correlated_capture_resolves_across_capturing_edge	3	26	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_scope.rs	166	parameter_resolves_in_body	4	24	
+crates/quanta-gqlang-v2-binder/tests/v3_binder_scope.rs	193	declaration_reference_resolves	4	28	
+crates/quanta-gqlang-v2-binder/tests/v3_composition_hellgate.rs	58	composition_body_and_with_resolve_to_let	4	29	
+crates/quanta-gqlang-v2-binder/tests/v3_composition_hellgate.rs	89	check_semantic_confirm_endpoint_resolves_to_composition_let	4	58	
+crates/quanta-gqlang-v2-binder/tests/v3_composition_hellgate.rs	151	with_undefined_binding_rejects	3	31	
+crates/quanta-gqlang-v2-binder/tests/v3_composition_hellgate.rs	188	inner_with_naming_outer_let_rejects	2	45	
+crates/quanta-gqlang-v2-binder/tests/v3_composition_hellgate.rs	243	inner_body_naming_outer_let_does_not_leak	4	61	
+crates/quanta-gqlang-v2-binder/tests/v3_composition_hellgate.rs	311	inner_let_shadowing_outer_let_is_deterministic	4	60	
+crates/quanta-gqlang-v2-binder/tests/v3_composition_hellgate.rs	374	duplicate_let_name_rejects	2	32	
+crates/quanta-gqlang-v2-cli/src/v3_plan.rs	275	absent_policy_renders_none_v1	1	3	
+crates/quanta-gqlang-v2-cli/src/v3_plan.rs	283	top_k_renders_cap_inline_v1	1	6	
+crates/quanta-gqlang-v2-cli/src/v3_plan.rs	293	keyword_policies_render_their_keyword_v1	2	10	
+crates/quanta-gqlang-v2-cli/tests/command_doc_gate.rs	28	every_command_token_is_in_usage_and_documented_v1	2	18	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_fmt_idempotence.rs	48	v3_fmt_is_a_fixed_point_on_messy_advanced_inputs_v1	2	41	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_fmt_idempotence.rs	93	v3_fmt_preserves_string_literals_idempotently_v1	1	9	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_front_door_contract.rs	27	lone_help_token_prints_usage_with_exit_zero_v1	3	21	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_front_door_contract.rs	55	lone_command_token_is_not_help_short_circuit_v1	4	21	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_front_door_contract.rs	82	error_class_drives_distinct_exit_codes_v1	4	23	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_front_door_contract.rs	112	help_token_as_command_input_is_usage_error_v1	3	17	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_front_door_contract.rs	137	file_flag_with_one_path_reads_that_path_v1	3	18	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_front_door_contract.rs	162	two_non_file_inline_tokens_are_joined_and_compiled_v1	3	17	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_front_door_contract.rs	186	file_flag_with_multiple_paths_is_usage_error_v1	3	17	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_item_surfacing.rs	54	find_surfaces_graph_query_plan_with_cost_schema_v1	1	16	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_item_surfacing.rs	73	check_surfaces_legality_alert_plan_v1	1	15	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_item_surfacing.rs	91	decl_surfaces_value_artifact_v1	1	16	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_item_surfacing.rs	110	rule_surfaces_logic_artifact_v1	1	15	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_item_surfacing.rs	129	view_surfaces_catalog_registration_asset_id_v1	2	16	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_item_surfacing.rs	149	composition_surfaces_body_plan_and_bound_producers_v1	1	19	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_item_surfacing.rs	172	require_certified_surfaces_meta_gate_plan_v1	1	18	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_item_surfacing.rs	194	unbounded_find_fails_closed_with_exact_logic_code_v1	4	17	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_lsp_parity.rs	38	cli_and_lsp_agree_on_stage_code_and_span_for_same_failure_v1	5	43	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_pipeline_hellgate.rs	33	v3_query_fail_closed_with_exact_stage_tagged_code_v1	5	60	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_pipeline_hellgate.rs	97	v3_fmt_fail_closed_with_exact_parse_code_v1	4	21	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_plan_summary.rs	40	v3_plan_prints_all_five_fixed_cost_fields_with_stable_text_v1	2	38	
+crates/quanta-gqlang-v2-cli/tests/v3_cli_plan_summary.rs	84	v3_plan_summary_is_deterministic_and_unordered_stays_unordered_v1	2	21	
+crates/quanta-gqlang-v2-conformance/tests/current_head_artifact_hygiene.rs	29	repo_root_carries_no_loose_source_or_compiled_artifacts	1	59	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-conformance/tests/registry_non_vacuous.rs	21	root_family_specs_cover_every_family_non_vacuously	2	13	
+crates/quanta-gqlang-v2-conformance/tests/registry_non_vacuous.rs	36	supplemental_surface_unit_specs_are_non_vacuous	2	12	
+crates/quanta-gqlang-v2-conformance/tests/registry_non_vacuous.rs	50	family_kind_keywords_are_exact_and_nonempty	2	18	
+crates/quanta-gqlang-v2-conformance/tests/self_validation.rs	32	registry_covers_each_family_exactly_once_v1	3	21	
+crates/quanta-gqlang-v2-conformance/tests/self_validation.rs	55	keyword_leads_every_example_v1	1	16	
+crates/quanta-gqlang-v2-conformance/tests/self_validation.rs	73	every_family_example_matches_declared_v3_outcome_v1	4	40	
+crates/quanta-gqlang-v2-conformance/tests/self_validation.rs	115	unsupported_construct_fails_closed_v1	1	10	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-conformance/tests/self_validation.rs	127	supplemental_surface_units_are_pinned_separately_v1	5	39	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	304	empty_object_parses_to_empty_map_v1	1	4	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	317	empty_object_then_trailing_content_is_rejected_v1	2	7	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	326	populated_object_then_trailing_content_is_rejected_v1	2	7	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	335	unterminated_string_is_rejected_v1	32	207	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	354	unterminated_unicode_escape_mid_hex_is_rejected_v1	28	188	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	403	valid_surrogate_pair_decodes_to_astral_scalar_v1	1	5	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	410	bmp_unicode_escape_decodes_v1	1	5	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	437	bmp_unicode_escape_via_backslash_u_decodes_exact_scalar_v1	1	7	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	446	hex_accumulation_uses_all_four_nibbles_in_order_v1	1	6	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	454	surrogate_pair_via_backslash_u_decodes_exact_astral_scalar_v1	1	10	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	466	surrogate_pair_low_offset_is_added_not_dropped_v1	1	9	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	477	whitespace_around_tokens_is_skipped_v1	2	6	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	487	json_string_escapes_every_special_char_v1	2	11	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	500	json_string_passes_through_non_control_chars_v1	1	4	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	506	json_object_joins_fields_with_quoted_keys_v1	1	4	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	512	json_object_with_zero_fields_is_empty_braces_v1	1	4	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	518	json_array_joins_items_with_commas_v1	1	4	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	524	json_array_empty_is_empty_brackets_v1	1	4	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	530	json_usize_renders_decimal_v1	2	4	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/json.rs	536	json_bool_renders_keywords_v1	2	4	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/server.rs	259	frame_extractor_treats_braces_inside_strings_as_literal_v1	2	18	
+crates/quanta-gqlang-v2-diagnostics-stdio/src/server.rs	279	frame_extractor_closing_brace_inside_string_does_not_terminate_early_v1	1	16	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/method_allowlist_doc_gate.rs	39	every_allowlisted_method_is_dispatched_and_documented_v1	8	46	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_byte_robustness_hellgate.rs	87	binary_rejects_invalid_utf8_inside_balanced_frame_v1	5	24	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_byte_robustness_hellgate.rs	113	binary_recovers_after_invalid_utf8_frame_v1	4	34	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_byte_robustness_hellgate.rs	153	session_reassembles_single_request_from_one_byte_reads_v1	4	13	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_byte_robustness_hellgate.rs	168	session_reassembles_two_glued_requests_from_one_byte_reads_v1	5	20	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_byte_robustness_hellgate.rs	212	session_drains_high_count_glued_frames_in_process_v1	1	7	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_byte_robustness_hellgate.rs	221	binary_drains_high_count_glued_frames_v1	1	8	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_command_plane_hellgate.rs	123	non_allowlisted_methods_fail_closed_v1	3	33	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_command_plane_hellgate.rs	162	rejected_frame_does_not_poison_session_v1	4	36	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_command_plane_hellgate.rs	206	escaped_unicode_method_name_decodes_then_is_not_allowed_v1	2	13	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_command_plane_hellgate.rs	225	empty_or_whitespace_method_yields_empty_method_v1	2	15	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_edges.rs	57	session_drains_final_frame_without_trailing_newline_v1	3	8	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_edges.rs	67	session_processes_two_glued_objects_in_one_buffer_v1	4	10	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_edges.rs	79	session_processes_whitespace_separated_objects_v1	4	9	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_edges.rs	90	session_fails_closed_on_object_left_unclosed_at_eof_v1	3	7	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_edges.rs	99	session_emits_nothing_for_empty_input_v1	2	8	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_edges.rs	109	session_emits_nothing_for_whitespace_only_input_v1	2	8	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_edges.rs	123	binary_drains_request_without_trailing_newline_v1	4	12	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_edges.rs	137	binary_processes_glued_frames_then_clean_eof_v1	4	10	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_edges.rs	149	binary_fails_closed_on_unclosed_object_at_eof_v1	3	12	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_edges.rs	163	binary_empty_stdin_exits_clean_without_output_v1	3	6	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_edges.rs	171	binary_whitespace_only_stdin_exits_clean_without_output_v1	2	9	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_extractor_edges.rs	31	frame_not_starting_with_brace_is_rejected_up_front_v1	7	56	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_extractor_edges.rs	44	nested_object_frame_extracts_whole_then_parser_rejects_value_v1	2	13	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_extractor_edges.rs	65	non_brace_frame_clears_the_buffer_and_does_not_serve_the_trailing_frame_v1	3	22	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_json_escape_negative.rs	32	invalid_escapes_and_surrogates_fail_closed_v1	2	46	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_json_escape_negative.rs	80	session_recovers_after_a_malformed_escape_v1	4	35	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_json_object_negative.rs	45	malformed_balanced_objects_fail_closed_with_exact_lines_v1	0	22	NO_ASSERTION,NO_ASSERTION
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_determinism.rs	61	v3_diagnostics_advanced_query_is_byte_identical_across_spawns_v1	2	13	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_determinism.rs	76	v3_diagnostics_find_logic_stage_is_byte_identical_across_spawns_v1	2	16	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_determinism.rs	94	v3_diagnostics_meta_modules_stage_is_byte_identical_across_spawns_v1	2	15	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_determinism.rs	111	v3_diagnostics_clean_query_yields_empty_ordered_list_v1	2	12	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs	39	pipeline_side_emits_the_expected_stage_and_code_v1	4	16	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs	57	lsp_v3_diagnostics_code_equals_pipeline_code_v1	5	26	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs	85	lsp_v3_diagnostics_preserves_parse_stage_code_too_v1	5	21	
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs	161	lsp_v3_diagnostics_parity_for_find_logic_stage_v1	0	7	NO_ASSERTION
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs	174	lsp_v3_diagnostics_parity_for_meta_modules_stage_v1	0	7	NO_ASSERTION
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs	187	lsp_v3_diagnostics_parity_for_composition_undefined_binding_v1	0	7	NO_ASSERTION
+crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs	200	lsp_v3_diagnostics_parity_for_composition_body_logic_stage_v1	0	8	NO_ASSERTION
+crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs	34	downstream_contract_reexports_compile_bundle_and_formatter_v1	3	11	MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs	47	downstream_contract_exposes_non_relational_family_inspection_v1	2	6	MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs	55	downstream_contract_reexports_context_first_compile_surface_v1	2	16	
+crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs	73	downstream_contract_reexports_item_structural_helper_v1	1	12	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs	87	downstream_contract_reexports_document_structural_scope_v1	3	8	
+crates/quanta-gqlang-v2-hir/src/visit.rs	308	default_visit_bool_recurses_into_compare_operands	1	17	
+crates/quanta-gqlang-v2-hir/tests/v3_builder_literals.rs	17	float_constructor_carries_raw_float_literal	3	13	
+crates/quanta-gqlang-v2-hir/tests/v3_builder_literals.rs	32	bool_lit_constructor_carries_bool_literal	2	13	
+crates/quanta-gqlang-v2-hir/tests/v3_builder_literals.rs	47	null_constructor_carries_null_literal	1	5	
+crates/quanta-gqlang-v2-hir/tests/v3_builder_literals.rs	54	next_id_mints_fresh_monotonic_ids_tracked_by_minted	7	15	
+crates/quanta-gqlang-v2-hir/tests/v3_hir_expr_kernel.rs	76	value_expr_tree_shape_ids_and_spans	12	55	
+crates/quanta-gqlang-v2-hir/tests/v3_hir_expr_kernel.rs	134	bool_formula_preserves_explicit_grouping	6	45	
+crates/quanta-gqlang-v2-hir/tests/v3_hir_expr_kernel.rs	182	relation_projection_with_aliases_and_nested_list	9	84	
+crates/quanta-gqlang-v2-hir/tests/v3_hir_expr_kernel.rs	269	decl_and_rule_embed_shared_value_expr	2	40	
+crates/quanta-gqlang-v2-hir/tests/v3_hir_expr_kernel.rs	312	nested_result_shape_shares_value_kernel	4	64	
+crates/quanta-gqlang-v2-hir/tests/v3_hir_expr_kernel.rs	380	query_visitor_visits_every_node_exactly_once	2	64	
+crates/quanta-gqlang-v2-hir/tests/v3_hir_expr_kernel.rs	447	record_construction_embeds_shared_values	2	26	
+crates/quanta-gqlang-v2-hir/tests/v3_hir_hellgate.rs	37	reject_duplicate_node_id	7	24	
+crates/quanta-gqlang-v2-hir/tests/v3_hir_hellgate.rs	64	reject_inverted_span	6	18	
+crates/quanta-gqlang-v2-hir/tests/v3_hir_hellgate.rs	85	reject_span_out_of_bounds	7	24	
+crates/quanta-gqlang-v2-hir/tests/v3_hir_hellgate.rs	112	accept_sound_hand_built_tree	2	8	
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	48	select_family_is_sound_program_item	1	9	
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	61	find_family_taint_is_sound_program_item	2	28	
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	93	check_family_is_sound_program_item	3	17	
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	114	explain_family_is_sound_program_item	0	13	NO_ASSERTION
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	129	show_family_is_sound_program_item	0	11	NO_ASSERTION
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	142	describe_family_is_sound_program_item	0	12	NO_ASSERTION
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	156	sample_family_is_sound_program_item	0	14	NO_ASSERTION
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	172	compare_family_is_sound_program_item	0	13	NO_ASSERTION
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	187	export_family_is_sound_program_item	0	13	NO_ASSERTION
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	204	view_inline_select_is_sound_and_nests_query	1	16	
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	222	view_query_ref_is_sound_program_item	0	11	NO_ASSERTION
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	235	model_pack_profile_gate_rule_decls_are_sound	0	57	NO_ASSERTION
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	296	meta_family_is_sound_program_item	0	15	NO_ASSERTION
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	315	composition_nests_query_producer_and_find_body	4	45	
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	364	nested_item_ids_are_globally_unique_through_one_builder	1	26	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	396	reject_malformed_graph_query_node_inverted_span	6	24	
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	422	reject_duplicate_id_between_check_and_semantic_confirm	4	37	
+crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs	462	reject_duplicate_id_across_composition_children	4	47	
+crates/quanta-gqlang-v2-hir/tests/v3_item_identity.rs	28	id_and_span_accessors_report_the_carried_payload_for_every_variant	20	127	
+crates/quanta-gqlang-v2-hir/tests/v3_item_identity.rs	159	checked_root_exposes_item_root_and_source_len	4	13	
+crates/quanta-gqlang-v2-hir/tests/v3_item_identity.rs	176	check_tree_validates_each_leaf_root_variant_directly	6	65	
+crates/quanta-gqlang-v2-hir/tests/v3_item_identity.rs	246	check_tree_validates_each_dedicated_item_root_variant	6	90	
+crates/quanta-gqlang-v2-hir/tests/v3_span_semantics.rs	12	new_stores_offsets_verbatim_without_validation	3	8	
+crates/quanta-gqlang-v2-hir/tests/v3_span_semantics.rs	22	checked_accepts_well_formed_and_zero_width	2	5	
+crates/quanta-gqlang-v2-hir/tests/v3_span_semantics.rs	29	checked_rejects_inverted_range	1	4	
+crates/quanta-gqlang-v2-hir/tests/v3_span_semantics.rs	35	point_is_zero_width_at_offset	5	8	
+crates/quanta-gqlang-v2-hir/tests/v3_span_semantics.rs	45	len_is_byte_width_and_saturates_on_inverted	2	5	
+crates/quanta-gqlang-v2-hir/tests/v3_span_semantics.rs	52	is_empty_tracks_zero_or_negative_width	3	5	
+crates/quanta-gqlang-v2-hir/tests/v3_span_semantics.rs	59	is_well_formed_is_start_le_end	3	5	
+crates/quanta-gqlang-v2-hir/tests/v3_span_semantics.rs	66	is_within_requires_well_formed_and_in_bounds	4	9	
+crates/quanta-gqlang-v2-hir/tests/v3_span_semantics.rs	77	merge_is_the_tight_covering_hull	4	18	
+crates/quanta-gqlang-v2-hir/tests/v3_span_semantics.rs	97	default_span_is_zero_point	2	5	
+crates/quanta-gqlang-v2-hir/tests/v3_visit_traversal.rs	49	walk_value_recurses_path_paren_unary_binary_call_record_list	2	43	
+crates/quanta-gqlang-v2-hir/tests/v3_visit_traversal.rs	94	walk_bool_recurses_compare_and_or_not_paren_quantifier_value	2	34	
+crates/quanta-gqlang-v2-hir/tests/v3_visit_traversal.rs	130	walk_relation_recurses_filter_project_compose_through_default_hooks	2	24	
+crates/quanta-gqlang-v2-hir/tests/v3_visit_traversal.rs	156	walk_item_dispatches_decl_and_rule_variants	3	40	
+crates/quanta-gqlang-v2-hir/tests/v3_visit_traversal.rs	198	walk_item_leaf_items_have_no_id_bearing_value_children	2	31	
+crates/quanta-gqlang-v2-hir/tests/v3_visit_traversal.rs	231	shape_default_hook_recurses_record_and_list_into_leaf_values	1	27	
+crates/quanta-gqlang-v2-hir/tests/v3_visit_traversal.rs	287	default_item_hooks_delegate_into_their_walks	2	56	
+crates/quanta-gqlang-v2-hir/tests/v3_visit_traversal.rs	345	legality_default_hook_visits_semantic_confirm_query_once	1	31	
+crates/quanta-gqlang-v2-hir/tests/v3_visit_traversal.rs	397	default_bool_hook_delegates_into_walk_bool_reaching_value_operands	1	24	
+crates/quanta-gqlang-v2-hir/tests/v3_visit_traversal.rs	423	from_raw_round_trips_and_default_hooks_are_pure_observation	2	10	
+crates/quanta-gqlang-v2-logic/tests/test_endpoint_conflict.rs	31	slice_with_extra_endpoints_should_reject	1	28	
+crates/quanta-gqlang-v2-logic/tests/v3_graph_query_depth_waypoint_conflict.rs	42	taint_depth_and_via_conflict_rejects_with_typed_code	6	35	
+crates/quanta-gqlang-v2-logic/tests/v3_graph_query_depth_waypoint_conflict.rs	80	reachability_depth_and_through_conflict_rejects	2	22	
+crates/quanta-gqlang-v2-logic/tests/v3_graph_query_depth_waypoint_conflict.rs	106	taint_depth_only_still_admits	1	21	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-logic/tests/v3_graph_query_hellgate.rs	53	bounded_taint_admits_with_witness_contract	3	25	
+crates/quanta-gqlang-v2-logic/tests/v3_graph_query_hellgate.rs	82	unbounded_reachability_rejects_with_typed_code	6	31	
+crates/quanta-gqlang-v2-logic/tests/v3_graph_query_hellgate.rs	117	points_to_admits_without_path_bound	2	18	
+crates/quanta-gqlang-v2-logic/tests/v3_graph_query_hellgate.rs	139	taint_missing_sink_rejects_with_typed_code	7	29	
+crates/quanta-gqlang-v2-logic/tests/v3_graph_query_hellgate.rs	172	reachability_with_via_waypoint_admits	1	22	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-logic/tests/v3_graph_query_hellgate.rs	198	bounded_path_admits_with_node_sequence_dedup	1	23	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs	32	negation_cycle_rejects_with_typed_code	6	25	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs	61	mutual_negation_cycle_rejects_with_sorted_cycle	4	16	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs	81	recursive_aggregate_count_rejects_with_typed_code	4	17	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs	102	unbounded_witness_missing_cap_rejects_with_typed_code	6	24	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs	130	cyclic_witness_without_path_bound_rejects	3	20	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs	154	zero_witness_cap_rejects	3	17	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs	177	cyclic_zero_path_length_bound_rejects	7	25	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs	207	acyclic_zero_path_length_bound_still_rejects	4	20	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs	232	missing_cap_beats_missing_path_bound_in_reject_order	3	18	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs	255	zero_cap_beats_missing_path_bound_in_reject_order	4	19	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs	277	unknown_quantifier_rejects	1	4	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs	285	aggregated_self_recursion_rejects_non_monotone	3	16	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_punchlist.rs	51	every_admitted_subkind_carries_a_bound_witness_contract	2	82	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_punchlist.rs	138	find_depth_zero_rejects_as_degenerate_bound	6	32	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_punchlist.rs	175	witness_bind_rejects_zero_path_length_bound	4	18	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_recursion.rs	32	positive_transitive_closure_admits_with_proof	5	22	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_recursion.rs	58	rule_def_built_from_shared_hir_rule	3	14	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_recursion.rs	76	stratified_negation_admits_with_layered_strata	4	39	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_recursion.rs	119	recursive_aggregate_matrix_admits_min_and_nonrecursive	4	26	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_recursion.rs	151	with_admitted_uses_supplied_names_not_default	5	25	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_recursion.rs	180	acyclic_view_composition_admits_no_recursion	3	12	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_recursion.rs	198	mutual_recursion_marks_both_members_recursive	5	16	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_recursion.rs	219	self_loop_is_recursive_but_singleton_base_is_not	4	15	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_recursion.rs	241	deep_negation_chain_layers_strata_monotonically	5	30	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_recursion.rs	279	negation_chain_converges_regardless_of_declaration_order	5	16	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_recursion.rs	300	add_rule_is_observable_through_rules_and_stratify	5	26	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_source.rs	30	exists_lowers_to_semijoin_preserving_outer_schema	4	18	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_source.rs	50	not_exists_lowers_to_antijoin	2	14	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_source.rs	66	not_exists_underscore_keyword_also_recognized	1	7	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-logic/tests/v3_logic_source.rs	79	polarity_keyword_strings_are_exact_and_round_trip	4	15	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_source.rs	96	unknown_quantifier_rejects_with_typed_code	4	12	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_witness.rs	25	cyclic_witness_with_full_bounds_binds	5	16	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_witness.rs	43	acyclic_witness_without_path_bound_binds	3	16	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_witness.rs	64	cyclic_path_length_bound_of_one_binds	5	16	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_witness.rs	84	acyclic_with_explicit_path_bound_preserves_it	2	13	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_witness.rs	102	bind_round_trips_every_dedup_and_tie_break_variant	3	28	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_witness.rs	135	dedup_identity_keywords_are_stable	3	5	
+crates/quanta-gqlang-v2-logic/tests/v3_logic_witness.rs	142	tie_break_keywords_are_stable	2	7	
+crates/quanta-gqlang-v2-modules/tests/v3_catalog_hellgate.rs	75	register_and_enumerate_catalog	4	72	
+crates/quanta-gqlang-v2-modules/tests/v3_catalog_hellgate.rs	150	duplicate_catalog_name_rejects	6	29	
+crates/quanta-gqlang-v2-modules/tests/v3_catalog_hellgate.rs	183	same_name_distinct_kinds_coexist	1	20	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-modules/tests/v3_catalog_hellgate.rs	206	view_inline_select_cycle_rejects	5	27	
+crates/quanta-gqlang-v2-modules/tests/v3_catalog_hellgate.rs	236	view_inline_select_over_base_table_resolves	1	8	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-modules/tests/v3_catalog_hellgate.rs	247	require_certified_non_certified_profile_rejects	7	34	
+crates/quanta-gqlang-v2-modules/tests/v3_catalog_hellgate.rs	284	require_certified_all_certified_resolves	1	21	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-modules/tests/v3_catalog_hellgate.rs	308	use_pack_known_manifest_resolves	0	13	NO_ASSERTION,NO_ASSERTION,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-modules/tests/v3_catalog_hellgate.rs	324	use_pack_unknown_manifest_rejects	3	18	
+crates/quanta-gqlang-v2-modules/tests/v3_catalog_hellgate.rs	345	use_pack_invalid_lockfile_path_rejects	3	18	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_graph.rs	13	small_graph_resolves_deterministically	3	19	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_graph.rs	35	local_declaration_shadows_import	1	11	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-modules/tests/v3_modules_graph.rs	49	direct_import_precedence_over_reexport	1	14	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-modules/tests/v3_modules_graph.rs	67	binder_view_projection_is_singleton	2	11	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_graph.rs	81	self_cycle_rejects	2	8	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_graph.rs	95	acyclic_diamond_resolves	2	13	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_hellgate.rs	25	ambiguous_import_two_reexports_rejects	6	27	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_hellgate.rs	56	overlapping_pack_export_rejects	6	32	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_hellgate.rs	93	duplicate_pack_name_rejects	9	43	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_hellgate.rs	140	import_cycle_rejects	5	31	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_hellgate.rs	175	compat_mismatch_rejects	3	17	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_hellgate.rs	195	lock_mismatch_rejects	3	18	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_hellgate.rs	216	dependency_unsatisfied_rejects	3	26	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_hellgate.rs	246	model_conflict_rejects	3	22	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_hellgate.rs	271	invalid_model_data_rejects	3	15	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_hellgate.rs	289	not_exported_rejects	3	12	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_hellgate.rs	304	signature_arity_mismatch_rejects	3	12	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_mutation_rails.rs	52	certified_required_is_false_by_default	1	6	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_mutation_rails.rs	62	asset_returns_the_registered_declaration	4	16	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_mutation_rails.rs	82	catalog_is_empty_tracks_registration	3	12	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_mutation_rails.rs	98	validate_rejects_value_outside_allowed_set	5	19	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_mutation_rails.rs	119	validate_accepts_value_inside_allowed_set	0	8	NO_ASSERTION,NO_ASSERTION,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-modules/tests/v3_modules_mutation_rails.rs	131	model_conflict_values_render_in_first_seen_order_for_same_named_packs	6	31	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_mutation_rails.rs	166	composed_model_is_empty_tracks_facts	4	15	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_mutation_rails.rs	185	reexport_with_two_distinct_origins_is_ambiguous	5	22	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_mutation_rails.rs	211	module_count_reflects_distinct_modules	1	11	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-modules/tests/v3_modules_mutation_rails.rs	226	pack_graph_len_reflects_manifest_count	2	19	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_mutation_rails.rs	249	pack_graph_is_empty_tracks_manifests	3	15	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_packs.rs	19	manifest_and_lock_round_trip	4	34	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_packs.rs	56	suite_membership_is_deterministic	1	15	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-modules/tests/v3_modules_packs.rs	74	signature_instantiates	7	16	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_packs.rs	93	query_metadata_model	4	19	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_packs.rs	115	agreeing_model_packs_compose	3	17	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_version_lock_edges.rs	33	version_parse_accepts_canonical_and_rejects_malformed	8	19	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_version_lock_edges.rs	56	version_ordering_is_numeric_not_lexical	3	5	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_version_lock_edges.rs	65	version_range_membership_and_satisfiability	9	21	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_version_lock_edges.rs	89	version_and_range_display	2	5	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_version_lock_edges.rs	99	query_kind_tokens_are_stable	3	5	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_version_lock_edges.rs	108	severity_tokens_and_ordering	5	7	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_version_lock_edges.rs	120	lockfile_len_and_is_empty	8	16	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_version_lock_edges.rs	139	lockfile_parse_skips_blank_lines	4	9	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_version_lock_edges.rs	151	lockfile_parse_rejects_malformed_lines	4	10	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_version_lock_edges.rs	164	verify_against_accepts_exact_lock	1	5	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-modules/tests/v3_modules_version_lock_edges.rs	173	verify_against_rejects_version_drift	6	18	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_version_lock_edges.rs	194	verify_against_rejects_missing_pin	4	12	
+crates/quanta-gqlang-v2-modules/tests/v3_modules_version_lock_edges.rs	210	verify_against_rejects_stale_pin	4	15	
+crates/quanta-gqlang-v2-pipeline/src/compile.rs	1422	lifted_producer_relation_preserves_set_cardinality	1	15	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/src/compile.rs	1441	lifted_producer_relation_preserves_sequence_cardinality	1	15	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/src/compile.rs	1460	lifted_producer_relation_preserves_bag_cardinality	1	9	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/src/compile.rs	1475	bind_item_propagates_unresolved_symbol_reject	2	7	
+crates/quanta-gqlang-v2-pipeline/src/compile.rs	1487	bind_item_accepts_a_resolved_query	1	8	
+crates/quanta-gqlang-v2-pipeline/src/compile.rs	1500	resolve_local_records_query_binder_diagnostic	1	14	
+crates/quanta-gqlang-v2-pipeline/src/compile.rs	1519	bind_standalone_surfaces_wrapped_binder_diagnostic	1	14	
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	11	f01_relational_query_select	4	11	NO_EXACT_ORACLE,MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	25	f02_find_reachability	2	9	NO_EXACT_ORACLE,MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	36	f03_find_flow	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	47	f04_find_slice	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	57	f05_find_taint	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	67	f06_find_path	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	78	f07_find_points_to	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	89	f08_find_summary	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	100	f09_check_legality	2	9	NO_EXACT_ORACLE,MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	111	f09_check_semantic_confirm_compiles_through_find_logic	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	121	f09_check_semantic_confirm_rejects_unbounded_find_logic	2	9	
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	133	f10_explain_presentation	2	9	NO_EXACT_ORACLE,MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	144	f11_show_presentation	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	154	f12_describe_presentation	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	164	f13_sample_presentation	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	174	f14_compare_presentation	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	184	f15_export_presentation	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	195	f16_view_catalog_decl	2	12	NO_EXACT_ORACLE,MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	209	f17_model_catalog_decl	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	219	f18_pack_catalog_decl	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	229	f19_profile_catalog_decl	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	239	f20_gate_catalog_decl	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	249	f21_rule_binding_catalog_decl	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	262	f22_use_pack_meta_reject	3	8	
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	272	f23_require_certified_meta	2	12	NO_EXACT_ORACLE,MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs	287	f24_composition_let_with	2	9	NO_EXACT_ORACLE,MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	14	decl_compiles_to_value_artifact	1	15	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	32	rule_compiles_to_logic_artifact	1	17	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	52	find_unknown_subkind_rejects	1	5	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	60	unbounded_find_rejects_logic_not_planning	4	15	
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	78	check_missing_confirm_rejects_parse	1	8	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	89	sample_zero_limit_rejects_parse	1	5	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	97	compare_missing_candidate_rejects_parse	1	8	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	108	export_missing_kind_rejects_parse	1	5	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	116	composition_undefined_with_parse_guard	1	6	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	125	composition_duplicate_let_rejects_parse	1	5	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	133	composition_invalid_producer_kind_rejects_parse	1	5	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	141	composition_invalid_body_kind_rejects_parse	1	5	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	149	profile_missing_admission_rejects_parse	1	8	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	160	gate_missing_binding_rejects_parse	1	5	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	168	require_certified_no_args	1	5	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	176	use_pack_missing_lockfile_rejects_parse	1	8	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	187	pack_missing_activation_rejects_parse	1	8	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	198	model_missing_provider_rejects_parse	1	8	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	209	model_missing_source_rejects_parse	1	5	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	217	ruledef_missing_check_ref_rejects_parse	1	8	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs	228	sample_missing_limit_rejects_parse	1	5	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-pipeline/tests/v3_alias_type_closure_gap.rs	34	alias_bad_overload_should_reject_once_row_schema_is_lifted	3	7	
+crates/quanta-gqlang-v2-pipeline/tests/v3_alias_type_closure_gap.rs	46	alias_bad_projection_should_reject_once_row_schema_is_lifted	3	7	
+crates/quanta-gqlang-v2-pipeline/tests/v3_alias_type_closure_gap.rs	62	aliased_source_does_not_lift_bare_source_name_into_local_env	9	23	
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_catalog_scope.rs	43	composition_producer_and_body_share_catalog_scope	3	32	
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_producer_cardinality.rs	50	ordered_producer_lifts_sequence_cardinality	4	36	
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_producer_cardinality.rs	90	bag_producer_lifts_bag_cardinality	2	22	
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs	44	composition_body_types_against_producer_output_row	3	14	
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs	62	composition_body_rejects_missing_producer_column	3	10	
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs	84	composition_empty_projection_does_not_overbind	1	13	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs	101	composition_body_accepts_valid_producer_column	1	11	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs	126	sample_producer_issues_exact_path_relation_and_types_body_v1	1	14	
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs	142	sample_producer_rejects_noncontract_body_field_v1	3	8	
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs	152	graph_find_producers_issue_one_exact_function_relation_v1	4	28	
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs	182	unsupported_find_producer_does_not_gain_a_relation_schema_v1	1	9	
+crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs	193	relational_producer_without_source_schema_does_not_gain_a_guessed_output_v1	1	9	
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs	19	stage_tags_are_stable_and_display_matches_as_str	5	19	
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs	42	parse_diagnostic_displays_with_stage_prefix_and_inner_span	4	12	
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs	58	type_diagnostic_exposes_inner_code_and_displays	5	11	
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs	75	span_is_inner_source_offsets_not_default_placeholder	3	12	
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs	91	logic_diagnostic_exposes_code_and_message_display	5	13	
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs	109	bind_diagnostic_displays_with_inner_primary_span	5	10	
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs	123	algebra_diagnostic_exposes_code_and_message_display	5	13	
+crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs	140	modules_diagnostic_displays_with_paired_span	4	12	
+crates/quanta-gqlang-v2-pipeline/tests/v3_frontend_context.rs	28	context_first_compile_closes_alias_typing_explicitly	4	21	
+crates/quanta-gqlang-v2-pipeline/tests/v3_frontend_context.rs	55	module_graph_accessor_returns_the_stored_graph	3	20	
+crates/quanta-gqlang-v2-pipeline/tests/v3_normalize_item_decl_rule.rs	21	decl_compiles_through_algebra_seam	5	32	
+crates/quanta-gqlang-v2-pipeline/tests/v3_normalize_item_decl_rule.rs	58	decl_closed_body_type_error_rejects_at_type	3	6	
+crates/quanta-gqlang-v2-pipeline/tests/v3_normalize_item_decl_rule.rs	69	decl_free_symbol_rejects_at_bind_not_type_skip	3	7	
+crates/quanta-gqlang-v2-pipeline/tests/v3_normalize_item_decl_rule.rs	79	rule_compiles_through_algebra_seam	5	29	
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_compile.rs	23	e2e_success_full_stack_to_plan	8	35	
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_compile.rs	62	e2e_determinism_same_source_twice	1	6	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_hellgate.rs	27	fail_at_parse_tagged_parse	6	17	
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_hellgate.rs	48	fail_at_type_tagged_type	6	16	
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_hellgate.rs	72	fail_at_algebra_tagged_algebra	6	24	
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_hellgate.rs	100	short_circuits_on_first_stage	2	11	
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs	180	totality_structural_never_panics	1	9	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs	193	totality_with_empty_schema_never_panics	1	12	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs	209	determinism_structural	2	13	NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs	225	determinism_with_empty_schema	2	12	NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-pipeline/tests/v3_quantifier_body_type_check.rs	30	quantifier_body_type_error_rejects_at_type	5	14	
+crates/quanta-gqlang-v2-pipeline/tests/v3_quantifier_body_type_check.rs	50	well_typed_quantifier_body_still_compiles	0	5	NO_ASSERTION,NO_ASSERTION,LET_UNDERSCORE,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs	31	schema_context_issues_exact_named_relation_identity_v1	2	24	
+crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs	57	schema_context_rejects_relation_absent_from_explicit_authority_v1	4	27	
+crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs	86	composition_binding_identity_is_independent_of_optional_row_schema_v1	4	34	
+crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs	122	canonical_query_context_resolves_builtin_and_composition_sources_once_v1	5	32	
+crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs	156	canonical_query_context_rejects_unknown_relation_while_structural_stays_open_v1	7	30	
+crates/quanta-gqlang-v2-pipeline/tests/v3_surface_to_algebra_group_by.rs	27	group_by_lowers_to_explicit_group_with_carried_key	10	50	
+crates/quanta-gqlang-v2-pipeline/tests/v3_surface_to_algebra_order_by.rs	29	order_by_lowers_to_explicit_sort_with_carried_key	9	41	
+crates/quanta-gqlang-v2-pipeline/tests/v3_surface_to_algebra_order_by.rs	74	order_by_decodes_directions_and_preserves_key_order	8	39	
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	54	no_serve_reason_keywords_are_stable	2	7	
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	65	compiled_program_exposes_surface_item_and_outcome	2	13	MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	88	binding_outputs_is_some_only_for_composition	4	28	
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	123	compile_item_with_schema_types_alias_dependent_projection	4	12	MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	140	compile_item_structural_compiles_value_decl	3	15	
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	160	compile_document_registers_distinct_catalog_decls	2	11	MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	176	compile_document_rejects_cross_item_duplicate_asset	4	13	
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	194	compile_document_with_schema_short_circuits_on_first_type_error	4	18	
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	218	record_result_shape_type_checks_and_compiles	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	229	list_result_shape_type_checks_and_compiles	1	8	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	242	leaf_result_shape_type_error_rejects_at_type	3	6	
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	252	nested_record_result_shape_type_error_rejects_at_type	3	6	
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	264	filter_and_or_predicate_type_checks_and_compiles	1	12	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	282	filter_not_predicate_with_bad_arithmetic_rejects_at_type	3	10	
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	296	filter_not_predicate_well_typed_compiles	1	12	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	316	decl_nested_literal_body_walks_all_value_arms_and_types	4	15	MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	337	rule_with_non_symbol_head_rejects_at_logic	3	6	
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	348	rule_body_connectives_and_value_forms_lower_to_dedup_literals	8	45	
+crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs	397	rule_body_paren_symbol_resolves_predicate	3	13	
+crates/quanta-gqlang-v2-pipeline/tests/v3_use_pack_authority.rs	56	use_pack_resolves_against_context_pack_graph_authority	1	12	MATCHES_IGNORE_PAYLOAD,UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-pipeline/tests/v3_use_pack_authority.rs	74	use_pack_without_pack_authority_fails_closed_unknown_manifest	3	17	
+crates/quanta-gqlang-v2-pipeline/tests/v3_use_pack_authority.rs	98	use_pack_with_bad_lockfile_path_fails_closed_before_manifest_resolution	3	16	
+crates/quanta-gqlang-v2-pipeline/tests/v3_use_pack_authority.rs	123	pack_authority_survives_context_rebuild	2	32	MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	77	scan_derives_relation_scan_only	2	5	
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	85	project_recurses_without_adding_capability	2	12	
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	100	filter_derives_filtering_and_scan	3	13	
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	116	join_derives_join_and_both_arms	3	14	
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	133	apply_derives_correlated_apply	2	13	
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	149	group_derives_grouping	2	12	
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	164	aggregate_derives_aggregation_and_grouping	3	25	
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	192	sort_derives_ordering	2	15	
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	210	limit_derives_limiting	2	13	
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	226	union_derives_set_union	2	13	
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	242	semijoin_derives_existence_check	2	13	
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	258	antijoin_derives_negation_check	2	13	
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	275	nested_mix_accumulates_all_present_capabilities	5	32	
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	310	capability_keywords_are_stable_verbatim	13	21	
+crates/quanta-gqlang-v2-planning/tests/v3_capability_derivation.rs	335	capability_set_iterates_in_stable_declaration_order	1	17	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	119	project_forwards_input_class	1	20	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	143	union_takes_multiplicative_over_bounded	1	31	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	180	alert_result_kind_maps_to_source_location	3	8	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	192	proof_explain_result_kind_maps_to_provenance_tree	3	8	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	203	scan_root_is_linear_in_input	1	7	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	213	limit_root_is_bounded	1	15	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	231	filter_forwards_input_class	1	14	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	248	join_root_is_multiplicative	1	15	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	266	apply_root_is_multiplicative	1	15	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	284	semijoin_forwards_left_class	1	24	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	311	antijoin_forwards_left_class	1	22	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	337	union_takes_worst_arm_class	1	23	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	364	union_of_equal_arms_stays_linear	1	15	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	383	union_with_heavier_right_arm_takes_right	1	24	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	410	fixpoint_recursion_is_closure_class	2	10	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	425	no_recursion_is_risk_none	1	4	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	433	fixpoint_without_witness_is_bounded_fixpoint	1	9	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	446	fixpoint_with_witness_is_bound_dependent	1	10	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	461	no_witness_is_explosion_none	1	7	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	471	acyclic_canonical_one_is_single_witness	1	10	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	484	acyclic_topk_is_bounded_set	2	14	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	501	acyclic_all_witness_is_bounded_set	1	10	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	515	cyclic_witness_is_cap_bounded	1	22	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	542	bag_result_is_unordered	2	5	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	551	cardinality_class_keywords_are_stable	5	16	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	569	recursion_risk_keywords_are_stable	3	11	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	582	witness_explosion_keywords_are_stable	4	15	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	599	ordering_contract_keywords_are_stable	2	4	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	605	truth_lane_keywords_are_stable	3	5	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	612	evidence_requirement_keywords_are_stable	4	12	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	626	effect_class_keywords_are_stable	4	12	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	640	result_kind_keywords_are_stable	4	6	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	648	witness_selection_keywords_are_stable	3	11	
+crates/quanta-gqlang-v2-planning/tests/v3_cost_classification.rs	661	render_requirement_keywords_are_stable	4	15	
+crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs	108	from_root_scan_is_single_family_at_root_span	3	15	
+crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs	126	from_root_unary_chain_is_root_first	1	25	
+crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs	154	from_root_group_aggregate_chain	1	31	
+crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs	188	from_root_limit_sort_chain	1	29	
+crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs	221	from_root_join_is_preorder_left_then_right	1	19	
+crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs	243	from_root_apply_lists_both_sides	1	19	
+crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs	265	from_root_union_lists_both_arms	1	19	
+crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs	287	from_root_semijoin_lists_both_arms	1	19	
+crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs	309	from_root_antijoin_lists_both_arms	1	19	
+crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs	331	from_root_fixpoint_sets_recursive_flag	2	5	
+crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs	340	for_item_has_empty_families_and_carries_recursive_flag	5	10	
+crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs	355	produced_plan_carries_recursive_explain_note	3	16	
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	67	find_taint_classifies_to_path_witness_evidence_only	9	38	
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	109	find_missing_endpoint_rejects_fail_closed	5	27	MATCHES_IGNORE_PAYLOAD
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	139	check_classifies_to_alert_read_only	3	16	
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	158	explain_classifies_to_proof_explain_read_only	3	15	
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	176	show_classifies_to_table_read_only	2	12	
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	191	describe_classifies_to_alert	2	13	
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	207	sample_classifies_to_table	2	15	
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	225	compare_classifies_to_path_witness	2	14	
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	242	export_classifies_to_export_only	2	14	
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	259	view_declaration_is_no_plan_marker	2	15	
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	277	gate_declaration_is_no_plan_marker	2	18	
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	298	use_pack_is_no_plan_marker	2	17	
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	319	require_certified_is_proof_confirmed_truth_gate	4	8	
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	331	select_query_defers_to_relational_pipeline	2	20	
+crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs	356	no_plan_reason_keywords_are_stable_verbatim	3	11	
+crates/quanta-gqlang-v2-planning/tests/v3_planning_cost_schema.rs	18	fixed_cost_field_names_are_stable_verbatim	1	12	
+crates/quanta-gqlang-v2-planning/tests/v3_planning_cost_schema.rs	32	there_are_exactly_five_cost_fields	1	3	
+crates/quanta-gqlang-v2-planning/tests/v3_planning_hellgate.rs	107	explain_with_export_rejects	5	24	
+crates/quanta-gqlang-v2-planning/tests/v3_planning_hellgate.rs	134	export_with_proof_only_lane_rejects	4	20	
+crates/quanta-gqlang-v2-planning/tests/v3_planning_hellgate.rs	157	mutation_with_witness_rejects	4	18	
+crates/quanta-gqlang-v2-planning/tests/v3_planning_hellgate.rs	179	ordered_recursive_closure_rejects	4	34	
+crates/quanta-gqlang-v2-planning/tests/v3_planning_hellgate.rs	219	ordered_recursive_closure_under_project_rejects	3	43	
+crates/quanta-gqlang-v2-planning/tests/v3_planning_hellgate.rs	266	pathwitness_without_witness_rejects	4	24	
+crates/quanta-gqlang-v2-planning/tests/v3_planning_truth.rs	77	group_aggregate_sort_populates_all_five_cost_fields	12	77	
+crates/quanta-gqlang-v2-planning/tests/v3_planning_truth.rs	161	scalar_aggregate_with_no_grouping_keys_is_scalar_or_singleton	1	44	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-planning/tests/v3_planning_truth.rs	209	recursive_witness_shape_is_path_witness_with_explicit_selection	9	68	
+crates/quanta-gqlang-v2-planning/tests/v3_planning_truth.rs	281	proof_confirmed_lane_requires_proof_tree_and_is_final_capable	4	15	
+crates/quanta-gqlang-v2-planning/tests/v3_planning_truth.rs	300	unordered_result_stays_unordered	3	14	
+crates/quanta-gqlang-v2-surface/src/family.rs	1503	family_keyword_discriminates	6	10	
+crates/quanta-gqlang-v2-surface/tests/v3_document_hellgate.rs	29	three_ordered_items_with_unique_ids	5	24	
+crates/quanta-gqlang-v2-surface/tests/v3_document_hellgate.rs	55	composition_groups_as_one_item	2	13	
+crates/quanta-gqlang-v2-surface/tests/v3_document_hellgate.rs	70	malformed_middle_item_rejects_with_exact_span	3	16	
+crates/quanta-gqlang-v2-surface/tests/v3_document_hellgate.rs	88	empty_statement_rejects	2	6	
+crates/quanta-gqlang-v2-surface/tests/v3_document_hellgate.rs	96	leading_separator_rejects	2	5	
+crates/quanta-gqlang-v2-surface/tests/v3_document_hellgate.rs	103	trailing_separator_is_tolerated	1	5	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-surface/tests/v3_document_hellgate.rs	110	missing_separator_between_items_rejects	2	6	
+crates/quanta-gqlang-v2-surface/tests/v3_document_hellgate.rs	118	single_item_document_matches_program	2	9	
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	44	find_unsupported_clause_rejects	0	6	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	53	find_through_and_sanitizers_empty_reject	0	10	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	68	check_unsupported_mode_keywords_reject	0	14	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	85	check_unsupported_clause_rejects	0	6	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	95	explain_unsupported_modes_and_clause_reject	0	14	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	113	show_unsupported_category_rejects	0	3	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	119	describe_missing_double_colon_rejects	1	4	
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	127	sample_unsupported_mode_and_clause_reject	0	10	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	140	sample_wrong_first_key_rejects	0	6	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	149	sample_non_integer_limit_rejects	1	4	
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	157	compare_rejects	0	14	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	173	export_rejects	0	15	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	192	view_unsupported_body_rejects	0	6	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	200	model_unsupported_clause_and_missing_reject	0	8	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	210	pack_unsupported_clause_and_missing_reject	0	8	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	220	profile_admission_and_clause_reject	0	14	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	236	gate_binding_and_clause_reject	0	11	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	249	ruledef_wrong_key_rejects	0	6	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	259	use_pack_rejects	0	22	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	286	reference_missing_ident_rejects	1	5	
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	295	reference_dangling_hyphen_rejects	1	4	
+crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs	303	find_depth_overflow_rejects	0	6	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	60	find_taint_parses_to_graph_query	10	19	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	81	find_reachability_subkind_parses	2	8	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	91	find_missing_arrow_rejects	1	5	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	98	find_unknown_subkind_rejects	2	6	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	108	check_parses_to_legality	8	15	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	125	check_owns_explicit_semantic_confirm_query	6	23	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	150	check_using_requires_a_find_query	2	6	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	158	check_missing_confirm_rejects	2	6	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	168	explain_parses_to_presentation	5	20	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	192	show_parses_to_presentation	3	13	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	209	describe_parses_to_presentation	4	14	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	227	sample_parses_to_presentation	6	22	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	251	sample_zero_limit_rejects	1	4	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	257	sample_empty_query_rejects	1	4	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	265	compare_parses_to_presentation	5	20	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	287	compare_missing_candidate_rejects	2	5	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	296	export_parses_to_presentation	5	20	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	320	view_query_ref_parses_to_catalog_decl	4	14	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	336	view_inline_select_parses_to_catalog_decl	2	11	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	349	model_parses_to_catalog_decl	4	14	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	365	pack_parses_to_catalog_decl	4	14	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	381	profile_parses_to_catalog_decl	5	19	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	402	profile_missing_capabilities_rejects	2	11	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	415	gate_parses_to_catalog_decl	4	14	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	431	gate_missing_checks_rejects	2	7	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	440	rule_binding_parses_to_catalog_decl	3	15	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	459	use_pack_parses_to_meta	5	20	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	481	use_pack_without_lockfile_rejects	2	5	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	488	require_certified_parses_to_meta	2	8	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	500	composition_let_with_parses	6	17	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	519	composition_unconsumed_let_rejects	2	12	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	533	composition_duplicate_binding_rejects	2	8	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	550	check_duplicate_confirm_clause_rejects	2	10	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	562	explain_duplicate_evidence_clause_rejects	2	9	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	573	sample_duplicate_mode_clause_rejects	2	9	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	584	compare_duplicate_metric_clause_rejects	2	9	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	595	export_duplicate_kind_clause_rejects	2	9	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	606	model_duplicate_provider_clause_rejects	2	9	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	617	pack_duplicate_source_clause_rejects	2	9	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	628	profile_duplicate_admission_clause_rejects	2	9	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	639	gate_duplicate_binding_clause_rejects	2	9	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	650	use_pack_duplicate_activation_clause_rejects	2	10	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	662	find_duplicate_depth_clause_rejects	3	14	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	678	find_duplicate_endpoint_clause_rejects	2	6	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	686	find_duplicate_list_clause_rejects	2	6	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	694	find_empty_list_clauses_reject	0	9	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	705	find_empty_list_clauses_before_next_clause_reject	0	9	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	716	find_depth_zero_rejects	3	16	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	734	find_depth_one_is_accepted	2	9	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	745	find_direction_unknown_keyword_rejects	4	21	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	768	find_direction_known_keywords_parse	2	20	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	790	find_summary_empty_facets_rejects	2	9	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	801	find_summary_facets_list_parses	2	16	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	819	find_via_list_preserves_written_order	5	11	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	832	find_slice_seed_endpoints_are_not_dropped	4	15	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	860	composition_find_producer_check_body_is_accepted	5	18	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	887	composition_admitted_body_families_parse	4	20	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	909	composition_non_body_family_rejects	1	19	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	930	composition_explain_producer_rejects	1	11	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	943	composition_binding_names_may_shadow_family_keywords	6	19	
+crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs	964	find_seed_and_clause_endpoints_coexist_unvalidated	9	48	
+crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs	57	value_kinds_render_canonically	0	8	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs	68	literal_kinds_render_canonically	0	7	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs	78	string_escapes_round_trip	0	6	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs	90	bool_connectives_render_canonically	0	13	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs	108	find_all_subkinds_round_trip	0	9	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs	121	find_constraint_clauses_round_trip	0	7	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs	133	check_modes_render	0	5	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs	141	explain_modes_render	0	5	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs	149	show_categories_render	0	13	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs	165	sample_and_compare_modes_render	0	6	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs	174	export_formats_render	0	5	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs	185	catalog_enum_modes_render	0	11	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs	202	query_compose_shapes_render	0	6	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_hellgate.rs	69	query_roundtrips	0	9	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_hellgate.rs	80	decl_and_rule_roundtrip	0	6	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_hellgate.rs	88	find_roundtrips	0	6	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_hellgate.rs	96	check_roundtrips	0	7	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_hellgate.rs	105	presentation_roundtrips	0	8	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_hellgate.rs	115	catalog_decl_roundtrips	0	11	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_hellgate.rs	128	composition_roundtrips	0	6	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_hellgate.rs	136	meta_roundtrips	0	4	NO_ASSERTION
+crates/quanta-gqlang-v2-surface/tests/v3_format_hellgate.rs	142	document_roundtrips	2	36	
+crates/quanta-gqlang-v2-surface/tests/v3_lexer_symbol_rails.rs	23	two_byte_comparison_operators_lex_as_single_op_token	4	20	
+crates/quanta-gqlang-v2-surface/tests/v3_lexer_symbol_rails.rs	50	projection_relation_span_covers_the_clause_not_default	3	20	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	31	space_separates_two_idents	2	19	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	57	line_comment_is_skipped	3	14	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	75	string_span_covers_both_quotes	3	8	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	89	dot_without_following_digit_is_not_a_float	3	25	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	119	float_scan_stops_at_first_nondigit	1	10	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	147	nested_value_paren_keeps_value_kind	1	3	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	158	doubly_nested_compare_is_rejected	2	5	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	170	bool_token_after_nested_paren_opens_bool_paren	1	8	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	185	diagnostic_display_is_exact	6	19	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	223	relation_and_projection_render_exactly	1	6	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	236	join_on_renders_canonically	2	5	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	245	keyed_compose_renders_canonically	2	4	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	254	string_escape_renders_exactly	1	7	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	268	unknown_compose_tag_uses_fallback_render	1	11	
+crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs	283	optional_ref_clause_is_emitted	2	12	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	42	float_literal_keeps_raw_text	4	9	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	54	keyword_literals_lower_to_their_literal_kinds	3	14	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	71	bare_identifier_lowers_to_symbol	2	6	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	83	unary_minus_then_plus_nest_right	6	16	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	104	call_with_multiple_args	6	19	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	127	call_star_arg_and_trailing_star_comma	4	13	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	143	call_with_no_args	2	6	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	154	list_literal_elements_and_empty	4	10	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	169	record_literal_multiple_fields_in_order	2	9	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	183	bare_comparison_lowers_to_compare	2	8	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	196	quantifier_no_binders	3	11	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	210	quantifier_multiple_binders_with_in	3	11	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	224	quantifier_missing_body_paren_rejects	2	5	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	237	parenthesized_bool_or_lowers_to_paren_node	4	12	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	253	parenthesized_bool_overrides_and_precedence	3	12	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	269	parenthesized_value_in_comparison_stays_value_paren	2	9	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	282	parenthesized_bare_comparison_is_bool_paren	2	8	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	293	unclosed_parenthesized_bool_rejects	2	5	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	304	primary_on_non_value_token_rejects	3	6	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	313	primary_at_eof_rejects_as_eof	1	4	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs	320	unclosed_paren_rejects	1	4	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_kernel.rs	40	precedence_nests_mul_over_add_compare_over_and	11	35	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_kernel.rs	79	parens_override_precedence_with_exact_span	6	20	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_kernel.rs	102	not_and_or_precedence	3	15	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_kernel.rs	121	path_access_segments_have_exact_spans	8	19	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_hellgate.rs	23	rejects_v2_select_isms_explicitly	5	12	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_hellgate.rs	40	malformed_query_unclosed_paren_rejects_with_span	4	10	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_hellgate.rs	54	unknown_pipeline_stage_rejects	3	8	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_hellgate.rs	66	trailing_tokens_reject	2	7	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_hellgate.rs	76	unexpected_char_rejects_with_span	4	9	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_hellgate.rs	88	unterminated_string_rejects	3	8	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_hellgate.rs	99	parse_expr_rejects_trailing	2	5	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_hellgate.rs	109	record_literal_duplicate_field_rejects	6	15	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	253	deeply_nested_input_fails_closed_not_abort	5	37	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	293	deeply_nested_not_fails_closed	1	5	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	301	deeply_nested_unary_fails_closed	1	5	ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	314	lex_never_panics_any	1	4	TAUT_OK_OR_ERR,ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	320	lex_never_panics_structured	1	4	TAUT_OK_OR_ERR,ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	326	lex_never_panics_deep	1	4	TAUT_OK_OR_ERR,ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	333	parse_program_never_panics	1	5	TAUT_OK_OR_ERR,ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	340	parse_program_never_panics_any	1	5	TAUT_OK_OR_ERR,ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	347	parse_program_never_panics_deep	1	5	TAUT_OK_OR_ERR,ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	355	parse_document_never_panics	1	5	TAUT_OK_OR_ERR,ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	362	parse_document_never_panics_any	1	5	TAUT_OK_OR_ERR,ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	370	parse_expr_never_panics	1	5	TAUT_OK_OR_ERR,ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	377	parse_predicate_never_panics	1	5	TAUT_OK_OR_ERR,ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	384	parse_expr_never_panics_any	1	5	TAUT_OK_OR_ERR,ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	391	parse_predicate_never_panics_any	1	5	TAUT_OK_OR_ERR,ONLY_WEAK_PREDICATE,NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	405	parse_program_is_deterministic	1	5	NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	412	parse_program_is_deterministic_any	1	5	NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	419	parse_document_is_deterministic	1	5	NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	427	lex_is_deterministic	1	3	NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	441	parse_program_round_trips_and_is_idempotent	3	23	NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs	468	parse_document_round_trips_and_is_idempotent	2	19	NO_EXACT_ORACLE,NO_ASSERTION,PROPTEST
+crates/quanta-gqlang-v2-surface/tests/v3_surface_query.rs	24	empty_result_shape_record_is_rejected	4	13	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_query.rs	39	duplicate_result_shape_field_is_rejected	6	18	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_query.rs	59	aliased_projection_with_nested_shape	17	56	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_query.rs	117	where_filter_and_join_compose	6	26	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_query.rs	145	group_by_with_aggregate_call_projection	6	26	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_unit.rs	22	declaration_embeds_shared_value_expr	7	21	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_unit.rs	45	rule_embeds_shared_value_head_and_bool_body	6	22	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_unit.rs	71	decl_missing_equals_rejects	3	6	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_unit.rs	80	rule_missing_colon_rejects	2	5	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_unit.rs	88	rule_missing_if_rejects	2	5	
+crates/quanta-gqlang-v2-surface/tests/v3_surface_unit.rs	95	rule_body_supports_quantifier_placeholder	4	17	
+crates/quanta-gqlang-v2-types/src/builtin.rs	385	count_is_aggregate_over_any_single_arg	4	8	
+crates/quanta-gqlang-v2-types/src/builtin.rs	395	numeric_aggregates_have_int_and_float_overloads	2	6	
+crates/quanta-gqlang-v2-types/src/builtin.rs	403	now_is_impure_nondeterministic	3	7	
+crates/quanta-gqlang-v2-types/src/builtin.rs	412	unknown_builtin_absent	2	5	
+crates/quanta-gqlang-v2-types/src/builtin.rs	419	scalar_builtin_is_not_aggregate	2	8	
+crates/quanta-gqlang-v2-types/src/builtin.rs	429	is_pure_deterministic_requires_both_pure_and_deterministic	4	25	
+crates/quanta-gqlang-v2-types/src/builtin.rs	456	max_arity_reflects_signature_shape	3	24	
+crates/quanta-gqlang-v2-types/src/builtin.rs	482	entries_exposes_real_registry_contents	4	22	
+crates/quanta-gqlang-v2-types/src/check.rs	400	match_signature_accepts_correct_arity_and_rejects_wrong_arity	3	26	
+crates/quanta-gqlang-v2-types/src/check.rs	428	match_signature_checks_variadic_argument_types	3	40	
+crates/quanta-gqlang-v2-types/src/check.rs	470	signature_accepts_arity_boundaries	6	13	
+crates/quanta-gqlang-v2-types/src/env.rs	72	new_env_is_empty_and_misses_lookups	3	6	
+crates/quanta-gqlang-v2-types/src/env.rs	81	insert_binds_in_place	5	11	
+crates/quanta-gqlang-v2-types/src/env.rs	96	rebinding_same_name_overwrites	4	13	
+crates/quanta-gqlang-v2-types/src/env.rs	112	iter_yields_bindings_in_key_order	2	10	
+crates/quanta-gqlang-v2-types/src/op.rs	184	arithmetic_plus_has_int_overload	2	8	
+crates/quanta-gqlang-v2-types/src/op.rs	194	unknown_operator_has_no_overloads	2	5	
+crates/quanta-gqlang-v2-types/src/op.rs	201	ordering_is_bool_typed	1	5	
+crates/quanta-gqlang-v2-types/src/op.rs	208	repo_path_allows_exact_equality_but_not_ordering_or_arithmetic_v1	2	15	
+crates/quanta-gqlang-v2-types/src/op.rs	225	unary_negation_has_int_float_duration_overloads	8	21	
+crates/quanta-gqlang-v2-types/src/op.rs	248	unknown_unary_operator_is_absent_and_empty	4	8	
+crates/quanta-gqlang-v2-types/src/op.rs	258	default_matches_closed	4	15	
+crates/quanta-gqlang-v2-types/src/ty.rs	409	scalar_keywords_are_stable_unique_and_display_match	3	23	
+crates/quanta-gqlang-v2-types/src/ty.rs	435	is_numeric_only_for_int_and_float	7	9	
+crates/quanta-gqlang-v2-types/src/ty.rs	447	is_proof_family_membership	7	9	
+crates/quanta-gqlang-v2-types/src/ty.rs	458	repo_path_is_distinct_from_broad_path_and_only_self_assignable_v1	4	8	
+crates/quanta-gqlang-v2-types/src/ty.rs	470	cardinality_keywords_distinguish_name_from_collection_spelling	6	9	
+crates/quanta-gqlang-v2-types/src/ty.rs	482	union_variant_and_record_field_constructors	4	9	
+crates/quanta-gqlang-v2-types/src/ty.rs	495	optional_wrapping_is_idempotent	3	7	
+crates/quanta-gqlang-v2-types/src/ty.rs	506	unwrap_optional_strips_one_layer	3	8	
+crates/quanta-gqlang-v2-types/src/ty.rs	517	is_null_only_for_null	3	5	
+crates/quanta-gqlang-v2-types/src/ty.rs	525	set_and_list_helpers_carry_cardinality	4	21	
+crates/quanta-gqlang-v2-types/src/ty.rs	550	display_renders_every_structural_variant	10	47	
+crates/quanta-gqlang-v2-types/src/ty.rs	601	record_equality_is_order_sensitive	1	11	
+crates/quanta-gqlang-v2-types/src/ty.rs	616	assignability_through_optional_and_collection_elements	6	14	
+crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs	27	unary_negation_types_to_operand_type	2	16	
+crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs	45	unary_on_wrong_operand_rejects_bad_overload	8	31	
+crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs	78	unknown_unary_operator_rejects	5	16	
+crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs	96	parenthesized_expression_types_to_inner_type	1	13	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs	111	malformed_float_literal_rejects	5	16	
+crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs	129	null_and_bool_literals_type_directly	2	15	
+crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs	146	scalar_free_helper_matches_typev1_scalar	2	5	
+crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs	153	checker_exposes_operator_and_builtin_registries	4	8	
+crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs	163	path_projection_through_optional_record_wraps_result_in_optional	1	26	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs	191	path_projection_on_scalar_base_rejects_bad_projection	6	25	
+crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs	218	path_projection_through_optional_non_record_rejects	4	22	
+crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs	242	path_projection_unknown_field_on_record_rejects	4	24	
+crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs	268	size_builtin_matches_fixed_collection_param	1	13	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs	283	size_builtin_on_wrong_element_type_rejects_bad_overload	5	30	
+crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs	30	scenario_2_string_plus_int_rejects_bad_overload	7	28	
+crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs	60	scenario_3_ordering_on_bool_rejects_bad_overload	3	18	
+crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs	80	explicit_context_mismatch_rejects_mismatch	3	18	
+crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs	100	unknown_symbol_rejects	3	14	
+crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs	116	unknown_binary_operator_rejects	3	14	
+crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs	132	unknown_builtin_rejects	3	13	
+crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs	147	builtin_arity_mismatch_rejects	3	14	
+crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs	163	aggregate_on_non_aggregable_argument_rejects_illegal_aggregate	6	29	
+crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs	194	aggregate_bad_arity_rejects_illegal_aggregate	3	13	
+crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs	209	bad_path_projection_rejects	3	27	
+crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs	238	malformed_int_literal_rejects	3	12	
+crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs	252	unsupported_proof_arithmetic_rejects_bad_overload	3	18	
+crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs	272	repo_path_exact_equality_is_typed_bool_v1	1	14	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs	288	repo_path_does_not_coerce_to_broad_path_v1	4	19	
+crates/quanta-gqlang-v2-types/tests/v3_types_universe.rs	27	scenario_1_int_addition_types_to_int	1	13	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-types/tests/v3_types_universe.rs	42	float_addition_types_to_float	1	11	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-types/tests/v3_types_universe.rs	55	comparison_types_to_bool	1	11	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-types/tests/v3_types_universe.rs	68	scenario_4_nested_record_with_list_field_types	2	38	
+crates/quanta-gqlang-v2-types/tests/v3_types_universe.rs	108	list_unifies_to_most_general_element_type	1	23	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-types/tests/v3_types_universe.rs	133	scenario_5_path_and_proof_payloads_type_under_registry	3	34	
+crates/quanta-gqlang-v2-types/tests/v3_types_universe.rs	169	path_access_projects_record_field_type	1	22	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-types/tests/v3_types_universe.rs	193	scenario_6_aggregate_metadata_reports_class_and_flags	5	25	
+crates/quanta-gqlang-v2-types/tests/v3_types_universe.rs	220	sum_overload_picks_float_for_float_argument	1	8	UNWRAP_AS_ONLY_CHECK
+crates/quanta-gqlang-v2-types/tests/v3_types_universe.rs	230	null_is_assignable_into_optional	3	5	
+crates/quanta-gqlang-v2-types/tests/v3_types_universe.rs	237	empty_list_is_assignable_into_concrete_list	7	20	

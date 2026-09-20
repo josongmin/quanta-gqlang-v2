@@ -1,0 +1,19 @@
+[package]
+categories.workspace   = true
+description            = "QGLang v2 document-scoped semantic transaction"
+edition.workspace      = true
+keywords.workspace     = true
+license.workspace      = true
+name                   = "quanta-gqlang-v2-sema"
+readme.workspace       = true
+rust-version.workspace = true
+version.workspace      = true
+
+[lib]
+name = "quanta_gqlang_v2_sema"
+path = "src/lib.rs"
+
+[dependencies]
+
+[lints]
+workspace = true

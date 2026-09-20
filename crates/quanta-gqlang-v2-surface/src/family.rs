@@ -34,10 +34,12 @@ use crate::lexer::TokenKindV1;
 use crate::query::parse_query;
 use quanta_gqlang_v2_hir::SpanV1;
 use quanta_gqlang_v2_hir::{
-    ActivationV1, AdmissionV1, CatalogPayloadV1, CompareMetricV1, ConfirmModeV1, DetectionModeV1,
-    EmitModeV1, EvidenceModeV1, ExportFormatV1, GateBindingV1, GraphConstraintsV1,
-    GraphDirectionV1, GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, MetaKindV1,
-    PresentationKindV1, ProgramItemHirV1, SampleModeV1, ShowCategoryV1, TruthModeV1, ViewBodyV1,
+    ActivationV1, AdmissionV1, CatalogPayloadV1, CompareMetricV1, CompositionBodyV1,
+    CompositionProducerV1, ConfirmModeV1, DetectionModeV1, EmitModeV1, EvidenceModeV1,
+    ExplainHirV1, ExportFormatV1, GateBindingV1, GraphConstraintsV1, GraphDirectionV1,
+    GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, MetaKindV1,
+    PresentationKindV1, ProgramItemHirV1, SampleHirV1, SampleModeV1, ShowCategoryV1, TruthModeV1,
+    UsePackActivationV1, UsePackHirV1, ViewBodyV1,
 };
 
 /// Whether `word` is a leading keyword owned by a v3 family parser here.
@@ -168,6 +170,8 @@ pub(crate) fn parse_composition(
             &TokenKindV1::Op("=".to_string()),
             "'=' after a binding name",
         )?;
+        cur.budget
+            .charge_collection_element(bindings.len() + 1, name_span)?;
         let producer = parse_producer(cur, source)?;
         bindings.push(cur.builder.composition_binding(name, name_span, producer));
     }
@@ -227,33 +231,55 @@ pub(crate) fn parse_composition(
 fn parse_producer(
     cur: &mut CursorV1<'_>,
     source: &str,
-) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
+) -> Result<CompositionProducerV1, ParseDiagnosticV1> {
     if cur.is_keyword("from") {
-        return Ok(ProgramItemHirV1::from(parse_query(cur)?));
+        return Ok(CompositionProducerV1::Query(Box::new(parse_query(cur)?)));
     }
     if cur.is_keyword("sample") {
-        return parse_sample(cur, source);
+        let ProgramItemHirV1::Presentation(presentation) = parse_sample(cur, source)? else {
+            unreachable!("sample parser returns presentation")
+        };
+        let sample = SampleHirV1::try_from(*presentation)
+            .map_err(|_wrong_kind| cur.unexpected("a SAMPLE composition producer"))?;
+        return Ok(CompositionProducerV1::Sample(Box::new(sample)));
     }
     if cur.is_keyword("find") {
-        return parse_find(cur, source);
+        let ProgramItemHirV1::GraphQuery(graph) = parse_find(cur, source)? else {
+            unreachable!("find parser returns graph query")
+        };
+        return Ok(CompositionProducerV1::GraphQuery(graph));
     }
     Err(cur.unexpected("a composition producer (from / sample / find)"))
 }
 
 /// Parse a composition BODY (FIND / SELECT / CHECK / EXPLAIN). Other forms
 /// reject. The body stops before a trailing `with`.
-fn parse_body(cur: &mut CursorV1<'_>, source: &str) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
+fn parse_body(
+    cur: &mut CursorV1<'_>,
+    source: &str,
+) -> Result<CompositionBodyV1, ParseDiagnosticV1> {
     if cur.is_keyword("from") {
-        return Ok(ProgramItemHirV1::from(parse_query(cur)?));
+        return Ok(CompositionBodyV1::Query(Box::new(parse_query(cur)?)));
     }
     if cur.is_keyword("find") {
-        return parse_find(cur, source);
+        let ProgramItemHirV1::GraphQuery(graph) = parse_find(cur, source)? else {
+            unreachable!("find parser returns graph query")
+        };
+        return Ok(CompositionBodyV1::GraphQuery(graph));
     }
     if cur.is_keyword("check") {
-        return parse_check(cur, source);
+        let ProgramItemHirV1::Legality(legality) = parse_check(cur, source)? else {
+            unreachable!("check parser returns legality")
+        };
+        return Ok(CompositionBodyV1::Legality(legality));
     }
     if cur.is_keyword("explain") {
-        return parse_explain(cur, source);
+        let ProgramItemHirV1::Presentation(presentation) = parse_explain(cur, source)? else {
+            unreachable!("explain parser returns presentation")
+        };
+        let explain = ExplainHirV1::try_from(*presentation)
+            .map_err(|_wrong_kind| cur.unexpected("an EXPLAIN composition body"))?;
+        return Ok(CompositionBodyV1::Explain(Box::new(explain)));
     }
     Err(cur.unexpected("a composition body (find / from / check / explain)"))
 }
@@ -317,6 +343,8 @@ fn parse_ref_list(
 ) -> Result<Vec<GraphRefV1>, ParseDiagnosticV1> {
     let mut refs = Vec::new();
     loop {
+        cur.budget
+            .charge_collection_element(refs.len() + 1, cur.here_span())?;
         refs.push(parse_ref(cur, source, what)?);
         if cur.eat(&TokenKindV1::Comma).is_some() {
             continue;
@@ -562,6 +590,8 @@ fn parse_find_body(
                 }
                 let mut facets = Vec::new();
                 loop {
+                    cur.budget
+                        .charge_collection_element(facets.len() + 1, cur.here_span())?;
                     let (f, sp) = cur.expect_ident("a summary facet")?;
                     end = sp.end;
                     facets.push(f);
@@ -1410,11 +1440,21 @@ fn parse_use_pack(
         .ok_or_else(|| reject(cur, pack_word.span, "USE PACK requires a '.lock' lockfile"))?;
     let span = kw.span.merge(&SpanV1::point(end));
     let meta = cur.builder.meta(
-        MetaKindV1::UsePack {
+        MetaKindV1::UsePack(UsePackHirV1 {
             pack_id: pack_ref.name,
-            activation,
-            lockfile: Some(lockfile),
-        },
+            activation: match activation {
+                ActivationV1::Session => UsePackActivationV1::Session,
+                ActivationV1::Workspace => UsePackActivationV1::Workspace,
+                ActivationV1::Manual => {
+                    return Err(reject(
+                        cur,
+                        pack_word.span,
+                        "USE PACK activation must be 'session' or 'workspace'",
+                    ));
+                }
+            },
+            lockfile,
+        }),
         span,
     );
     Ok(ProgramItemHirV1::from(meta))

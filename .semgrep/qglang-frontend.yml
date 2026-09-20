@@ -23,28 +23,6 @@ rules:
         - /crates/**/*.rs
     pattern-regex: '\bquanta_gqlang_(?!v2_)\w+'
 
-  - id: qglang-v2-no-runtime-sdk-index-dependencies
-    message: QGLang v2 frontend workspace must not depend on runtime, SDK, or index crates.
-    severity: ERROR
-    languages:
-      - generic
-    paths:
-      include:
-        - /Cargo.toml
-        - /crates/**/Cargo.toml
-    pattern-regex: '\b(quanta-runtime|quanta-sdk|quanta-index)(-[A-Za-z0-9_-]+)?\b'
-
-  - id: qglang-v2-no-legacy-gqlang-dependencies
-    message: QGLang v2 frontend workspace must not depend on legacy quanta-gqlang-* crates.
-    severity: ERROR
-    languages:
-      - generic
-    paths:
-      include:
-        - /Cargo.toml
-        - /crates/**/Cargo.toml
-    pattern-regex: '\bquanta-gqlang-(?!v2-)[A-Za-z0-9_-]+\b'
-
   - id: qglang-v2-no-host-coupling-tokens
     message: Frontend crates must remain host-agnostic and must not embed backend carrier names.
     severity: ERROR
@@ -54,6 +32,27 @@ rules:
       include:
         - /crates/**/*.rs
     pattern-regex: '\b(SearchHost|IdeReadHost|ServingQueryRequestV1|ServingQueryResultV1|native_runtime_provider_registry_v1)\b'
+
+  - id: qglang-v2-no-frontend-hub-bypass
+    message: Frontend adapters must not bypass the transition facade for semantic-owner types.
+    severity: ERROR
+    languages:
+      - generic
+    paths:
+      include:
+        - /crates/quanta-gqlang-v2-cli/src/**/*.rs
+        - /crates/quanta-gqlang-v2-diagnostics-stdio/src/**/*.rs
+    pattern-regex: '\buse\s+quanta_gqlang_v2_(?:algebra|binder|logic|modules|sema)::'
+
+  - id: qglang-v2-no-runtime-truth-tokens
+    message: Frontend source must not claim runtime execution results or backend routing truth.
+    severity: ERROR
+    languages:
+      - generic
+    paths:
+      include:
+        - /crates/**/src/**/*.rs
+    pattern-regex: '(?i)(?:\b(result_count|row_count|rows_returned|match_count|matches_found|results_found|num_results|execution_time|elapsed_ms|executed_at|ran_at|provider_response|provider_endpoint|routed_to|host_dto|host_response|backend_result|edit_applied|applied_edit|workspace_edit_applied|materialized_result|result_materialized|runtime_truth|confirmed_true|actual_result)\b|\b(rows|verdict)=)'
 
   - id: qglang-v2-no-silent-err-discard
     message: >-
@@ -71,7 +70,7 @@ rules:
 
   - id: qglang-v2-no-string-typed-error-results-in-core
     message: >-
-      Core crates (syntax/sema/ir) must fail with typed, code-bearing error
+      Core frontend owners must fail with typed, code-bearing error
       structs. `Result<_, String>` erases the error code/span and forces
       downstream layers to string-parse diagnostics.
     severity: ERROR
@@ -79,7 +78,14 @@ rules:
       - generic
     paths:
       include:
-        - /crates/quanta-gqlang-v2-syntax/src/**/*.rs
+        - /crates/quanta-gqlang-v2-algebra/src/**/*.rs
+        - /crates/quanta-gqlang-v2-binder/src/**/*.rs
+        - /crates/quanta-gqlang-v2-hir/src/**/*.rs
+        - /crates/quanta-gqlang-v2-logic/src/**/*.rs
+        - /crates/quanta-gqlang-v2-modules/src/**/*.rs
+        - /crates/quanta-gqlang-v2-pipeline/src/**/*.rs
+        - /crates/quanta-gqlang-v2-planning/src/**/*.rs
         - /crates/quanta-gqlang-v2-sema/src/**/*.rs
-        - /crates/quanta-gqlang-v2-ir/src/**/*.rs
+        - /crates/quanta-gqlang-v2-surface/src/**/*.rs
+        - /crates/quanta-gqlang-v2-types/src/**/*.rs
     pattern-regex: 'Result<(?:[^<>]|<[^<>]*>){0,80},\s*String\s*>'

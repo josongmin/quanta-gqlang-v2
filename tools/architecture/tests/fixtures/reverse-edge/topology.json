@@ -1,0 +1,6 @@
+{
+  "base": "../valid/topology.json",
+  "add_normal_edges": [
+    ["quanta-gqlang-v2-sema", "quanta-gqlang-v2-planning"]
+  ]
+}

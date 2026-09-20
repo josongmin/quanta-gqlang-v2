@@ -6,47 +6,32 @@
 //! token past EOF returns the EOF token (never panics), and `expect_*` helpers
 //! return typed [`ParseDiagnosticV1`] on mismatch.
 
+use crate::budget::ParseBudgetCounterV2;
 use crate::diag::{ParseDiagnosticV1, ParseErrorCodeV1};
 use crate::lexer::{TokenKindV1, TokenV1};
 use quanta_gqlang_v2_hir::{HirBuilderV1, SpanV1};
-use std::cell::Cell;
-
-/// Maximum recursive-descent nesting depth.
-///
-/// The expression grammar is recursive (`(`, `[`, `{` each recurse into the
-/// value/bool grammar), so adversarial input with thousands of nested brackets
-/// would otherwise overflow the native stack and ABORT the process — a
-/// fail-open totality violation. Every recursion entry checks this budget and
-/// fails CLOSED with a typed [`ParseErrorCodeV1::UnsupportedConstruct`]
-/// diagnostic instead, so the public API stays total (`Ok` or typed `Err`,
-/// never an unwind/abort). The bound is far above any hand-written program yet
-/// well under the stack frames available, so legal input is unaffected.
-///
-/// Each nesting level expands into a chain of precedence-climbing frames
-/// (`parse_bool -> parse_or -> ... -> parse_primary -> parse_value`), so the
-/// effective native stack cost per level is a multiple of this counter; the
-/// bound is chosen conservatively so even that multiplied frame chain stays well
-/// inside the default thread stack while still admitting any realistic program.
-const MAX_RECURSION_DEPTH: usize = 64;
 
 /// Shared parsing state: token stream + position + the id-allocating builder.
 pub(crate) struct CursorV1<'b> {
     tokens: Vec<TokenV1>,
     pos: usize,
-    /// Current recursive-descent nesting depth (fail-closed against stack
-    /// exhaustion on adversarially-nested input).
-    depth: Cell<usize>,
+    /// One shared non-resetting parse counter for the whole document.
+    pub(crate) budget: ParseBudgetCounterV2,
     /// The single builder for the whole parse; borrowed by every sub-parser.
     pub(crate) builder: &'b HirBuilderV1,
 }
 
 impl<'b> CursorV1<'b> {
     /// Construct over a non-empty token stream (must end in `Eof`).
-    pub(crate) fn new(tokens: Vec<TokenV1>, builder: &'b HirBuilderV1) -> Self {
+    pub(crate) fn new(
+        tokens: Vec<TokenV1>,
+        builder: &'b HirBuilderV1,
+        budget: ParseBudgetCounterV2,
+    ) -> Self {
         Self {
             tokens,
             pos: 0,
-            depth: Cell::new(0),
+            budget,
             builder,
         }
     }
@@ -67,21 +52,15 @@ impl<'b> CursorV1<'b> {
         &mut self,
         body: impl FnOnce(&mut Self) -> Result<T, ParseDiagnosticV1>,
     ) -> Result<T, ParseDiagnosticV1> {
-        let next = self.depth.get().saturating_add(1);
-        if next > MAX_RECURSION_DEPTH {
-            return Err(ParseDiagnosticV1::new(
-                ParseErrorCodeV1::UnsupportedConstruct,
-                self.here_span(),
-                format!(
-                    "expression nesting exceeds the maximum supported depth of \
-                     {MAX_RECURSION_DEPTH}"
-                ),
-            ));
-        }
-        self.depth.set(next);
+        self.budget.enter_expression_depth(self.here_span())?;
         let out = body(self);
-        self.depth.set(self.depth.get().saturating_sub(1));
+        self.budget.leave_expression_depth();
         out
+    }
+
+    /// Charge one value/Bool node immediately before minting it.
+    pub(crate) fn charge_expression_node(&self, span: SpanV1) -> Result<(), ParseDiagnosticV1> {
+        self.budget.charge_expression_node(span)
     }
 
     /// The current token (EOF token if past the end).

@@ -44,18 +44,20 @@ mod visit;
 
 pub use build::HirBuilderV1;
 pub use id::{HirNodeIdGen, HirNodeIdV1};
-pub use span::SpanV1;
+pub use span::{LocatedSpanErrorV2, LocatedSpanV2, SourceIdV2, SpanV1};
 
 pub use expr::{
-    BinaryBoolV1, BinaryExprV1, BinaryOpV1, BoolExprHirV1, BoolExprKindV1, CallExprV1, CalleeRefV1,
-    CompareExprV1, CompareOpV1, ListExprV1, LiteralV1, PathAccessV1, PathSegmentV1,
-    QuantifierExprV1, QuantifierKindV1, RecordExprV1, RecordFieldV1, SymbolRefV1, UnaryExprV1,
-    UnaryOpV1, ValueExprHirV1, ValueExprKindV1,
+    BinaryBoolV1, BinaryExprV1, BinaryOpV1, BoolExprHirV1, BoolExprKindV1, CallArgHirV1,
+    CallArgsHirV1, CallExprV1, CalleeRefV1, CompareExprV1, CompareOpV1, ListExprV1, LiteralV1,
+    LogicalBinderV1, LogicalQuantifierHirV1, LogicalQuantifierKindV1, NonEmptyBindersV1,
+    PathAccessV1, PathSegmentV1, RecordExprV1, RecordFieldV1, RelationExistsHirV1,
+    RelationExistsPolarityV1, SymbolRefV1, UnaryExprV1, UnaryOpV1, ValueExprHirV1, ValueExprKindV1,
 };
 
 pub use relation::{
-    AliasV1, CompositionOpV1, CompositionV1, ProjectionItemV1, ProjectionV1, RelationExprHirV1,
-    RelationExprKindV1, RelationFilterV1, RelationSourceV1,
+    AliasV1, GroupByHirV1, JoinHirV1, NonEmptyRelationKeysV1, OrderByHirV1, OrderKeyHirV1,
+    ProjectionItemV1, ProjectionV1, RelationExprHirV1, RelationExprKindV1, RelationFilterV1,
+    RelationSourceV1, SortDirectionHirV1,
 };
 
 pub use shape::{ResultShapeHirV1, ResultShapeKindV1, ShapeFieldV1, ShapeListV1, ShapeRecordV1};
@@ -64,17 +66,21 @@ pub use unit::{DeclHirV1, QueryHirV1, RuleHirV1};
 
 pub use item::{
     ActivationV1, AdmissionV1, CatalogDeclHirV1, CatalogPayloadV1, CompareMetricV1,
-    CompositionBindingV1, CompositionHirV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
-    EvidenceModeV1, ExportFormatV1, GateBindingV1, GraphConstraintsV1, GraphDirectionV1,
-    GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, LegalityHirV1, MetaHirV1,
-    MetaKindV1, PresentationHirV1, PresentationKindV1, ProgramItemHirV1, SampleModeV1,
-    ShowCategoryV1, TruthModeV1, ViewBodyV1,
+    CompositionBindingV1, CompositionBodyV1, CompositionHirV1, CompositionProducerV1,
+    ConfirmModeV1, DetectionModeV1, EmitModeV1, EvidenceModeV1, ExplainHirV1, ExportFormatV1,
+    GateBindingV1, GraphConstraintsV1, GraphDirectionV1, GraphEndpointsV1, GraphQueryHirV1,
+    GraphQueryKindV1, GraphRefV1, LegalityHirV1, MetaHirV1, MetaKindV1, PresentationHirV1,
+    PresentationKindV1, ProgramItemHirV1, SampleHirV1, SampleModeV1, ShowCategoryV1, TruthModeV1,
+    UsePackActivationV1, UsePackHirV1, ViewBodyV1,
 };
 
 pub use visit::{
-    walk_bool, walk_catalog_decl, walk_composition, walk_decl, walk_graph_query, walk_item,
-    walk_legality, walk_meta, walk_presentation, walk_query, walk_relation, walk_rule, walk_shape,
-    walk_value, HirVisitorV1,
+    walk_bool, walk_catalog_decl, walk_composition, walk_decl, walk_explain, walk_graph_query,
+    walk_item, walk_legality, walk_meta, walk_presentation, walk_query, walk_relation, walk_rule,
+    walk_sample, walk_shape, walk_value, HirVisitorV1,
 };
 
-pub use integrity::{check_tree, CheckedHirV1, HirIntegrityErrorV1, HirRootRefV1};
+pub use integrity::{
+    check_document_v2, check_tree, CheckedHirDocumentV2, CheckedHirV1, HirDocumentV1,
+    HirIntegrityDiagnosticV2, HirIntegrityErrorV1, HirRootRefV1,
+};

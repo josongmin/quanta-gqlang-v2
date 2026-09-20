@@ -376,6 +376,92 @@ pub struct PresentationHirV1 {
     pub kind: PresentationKindV1,
 }
 
+/// Variant-specific SAMPLE node used where only SAMPLE is legal.
+#[derive(Clone, Debug, PartialEq)]
+pub struct SampleHirV1 {
+    /// Unique identity within the owning tree.
+    pub id: HirNodeIdV1,
+    /// Source byte range.
+    pub span: SpanV1,
+    /// Retrieval query text.
+    pub query_text: String,
+    /// Retrieval mode.
+    pub mode: SampleModeV1,
+    /// Positive result limit.
+    pub limit: u32,
+    /// Optional scope.
+    pub scope: Option<GraphRefV1>,
+}
+
+/// Variant-specific EXPLAIN node used where only EXPLAIN is legal.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ExplainHirV1 {
+    /// Unique identity within the owning tree.
+    pub id: HirNodeIdV1,
+    /// Source byte range.
+    pub span: SpanV1,
+    /// Explained target.
+    pub target_ref: GraphRefV1,
+    /// Evidence mode.
+    pub evidence: EvidenceModeV1,
+    /// Truth mode.
+    pub truth: TruthModeV1,
+}
+
+impl TryFrom<PresentationHirV1> for SampleHirV1 {
+    type Error = PresentationHirV1;
+
+    fn try_from(node: PresentationHirV1) -> Result<Self, Self::Error> {
+        match node {
+            PresentationHirV1 {
+                id,
+                span,
+                kind:
+                    PresentationKindV1::Sample {
+                        query_text,
+                        mode,
+                        limit,
+                        scope,
+                    },
+            } => Ok(Self {
+                id,
+                span,
+                query_text,
+                mode,
+                limit,
+                scope,
+            }),
+            other => Err(other),
+        }
+    }
+}
+
+impl TryFrom<PresentationHirV1> for ExplainHirV1 {
+    type Error = PresentationHirV1;
+
+    fn try_from(node: PresentationHirV1) -> Result<Self, Self::Error> {
+        match node {
+            PresentationHirV1 {
+                id,
+                span,
+                kind:
+                    PresentationKindV1::Explain {
+                        target_ref,
+                        evidence,
+                        truth,
+                    },
+            } => Ok(Self {
+                id,
+                span,
+                target_ref,
+                evidence,
+                truth,
+            }),
+            other => Err(other),
+        }
+    }
+}
+
 impl PresentationHirV1 {
     /// Construct a presentation carrier.
     #[must_use]
@@ -649,10 +735,9 @@ pub enum GateBindingV1 {
 
 /// A composition (`[LET <name> = <producer>]* <body> WITH <name>`).
 ///
-/// Producers and the body are full [`ProgramItemHirV1`] values, proving the
-/// item model nests. Fail-closed legality (invalid producer/body kind, undefined
-/// binding, unconsumed LET, duplicate name) is the binder's / logic's concern;
-/// here it is structure only.
+/// Producer and body carriers are closed enums, so an invalid family cannot be
+/// represented. Name resolution and duplicate-name checks remain parser/binder
+/// responsibilities.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CompositionHirV1 {
     /// Unique identity within the owning tree.
@@ -666,7 +751,7 @@ pub struct CompositionHirV1 {
     /// Span of the `WITH` name.
     pub with_name_span: SpanV1,
     /// The composition body (FIND / SELECT / CHECK / EXPLAIN by legality).
-    pub body: Box<ProgramItemHirV1>,
+    pub body: CompositionBodyV1,
 }
 
 impl CompositionHirV1 {
@@ -678,7 +763,7 @@ impl CompositionHirV1 {
         bindings: Vec<CompositionBindingV1>,
         with_name: impl Into<String>,
         with_name_span: SpanV1,
-        body: ProgramItemHirV1,
+        body: CompositionBodyV1,
     ) -> Self {
         Self {
             id,
@@ -686,7 +771,7 @@ impl CompositionHirV1 {
             bindings,
             with_name: with_name.into(),
             with_name_span,
-            body: Box::new(body),
+            body,
         }
     }
 }
@@ -699,18 +784,83 @@ pub struct CompositionBindingV1 {
     /// Span of the bound name.
     pub name_span: SpanV1,
     /// The producer (SAMPLE / SELECT / FIND by legality).
-    pub producer: Box<ProgramItemHirV1>,
+    pub producer: CompositionProducerV1,
 }
 
 impl CompositionBindingV1 {
     /// Construct a composition binding.
     #[must_use]
-    pub fn new(name: impl Into<String>, name_span: SpanV1, producer: ProgramItemHirV1) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        name_span: SpanV1,
+        producer: CompositionProducerV1,
+    ) -> Self {
         Self {
             name: name.into(),
             name_span,
-            producer: Box::new(producer),
+            producer,
         }
+    }
+}
+
+/// Closed set of composition producer families.
+///
+/// Invalid producer families do not type-check:
+/// ```compile_fail
+/// use quanta_gqlang_v2_hir::{CompositionBindingV1, MetaKindV1, MetaHirV1, HirNodeIdV1, ProgramItemHirV1, SpanV1};
+/// let meta = MetaHirV1::new(HirNodeIdV1::from_raw(1), SpanV1::new(0, 1), MetaKindV1::RequireCertified);
+/// let _ = CompositionBindingV1::new("x", SpanV1::new(0, 1), ProgramItemHirV1::from(meta));
+/// ```
+#[derive(Clone, Debug, PartialEq)]
+pub enum CompositionProducerV1 {
+    /// Relational SELECT/query producer.
+    Query(Box<QueryHirV1>),
+    /// SAMPLE producer.
+    Sample(Box<SampleHirV1>),
+    /// FIND producer.
+    GraphQuery(Box<GraphQueryHirV1>),
+}
+
+/// Closed set of composition body families.
+#[derive(Clone, Debug, PartialEq)]
+pub enum CompositionBodyV1 {
+    /// Relational SELECT/query body.
+    Query(Box<QueryHirV1>),
+    /// FIND body.
+    GraphQuery(Box<GraphQueryHirV1>),
+    /// CHECK body.
+    Legality(Box<LegalityHirV1>),
+    /// EXPLAIN body.
+    Explain(Box<ExplainHirV1>),
+}
+
+impl From<QueryHirV1> for CompositionProducerV1 {
+    fn from(value: QueryHirV1) -> Self {
+        Self::Query(Box::new(value))
+    }
+}
+
+impl From<GraphQueryHirV1> for CompositionProducerV1 {
+    fn from(value: GraphQueryHirV1) -> Self {
+        Self::GraphQuery(Box::new(value))
+    }
+}
+
+impl From<QueryHirV1> for CompositionBodyV1 {
+    fn from(value: QueryHirV1) -> Self {
+        Self::Query(Box::new(value))
+    }
+}
+
+impl From<GraphQueryHirV1> for CompositionBodyV1 {
+    fn from(value: GraphQueryHirV1) -> Self {
+        Self::GraphQuery(Box::new(value))
+    }
+}
+
+impl From<LegalityHirV1> for CompositionBodyV1 {
+    fn from(value: LegalityHirV1) -> Self {
+        Self::Legality(Box::new(value))
     }
 }
 
@@ -741,14 +891,37 @@ impl MetaHirV1 {
 #[derive(Clone, Debug, PartialEq)]
 pub enum MetaKindV1 {
     /// `USE PACK <id> activation(session|workspace) lockfile(*.lock)`.
-    UsePack {
-        /// The pack id as written.
-        pack_id: String,
-        /// The activation policy.
-        activation: ActivationV1,
-        /// Optional lockfile path (`*.lock`).
-        lockfile: Option<String>,
-    },
+    UsePack(UsePackHirV1),
     /// `REQUIRE CERTIFIED` (no args): forces all profiles to certified-only.
     RequireCertified,
+}
+
+/// USE PACK activation excludes the catalog PACK-only manual policy.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum UsePackActivationV1 {
+    /// Session-scoped activation.
+    Session,
+    /// Workspace-scoped activation.
+    Workspace,
+}
+
+/// Valid-by-construction USE PACK payload.
+///
+/// A lockfile is required by the type:
+/// ```compile_fail
+/// use quanta_gqlang_v2_hir::{UsePackActivationV1, UsePackHirV1};
+/// let _ = UsePackHirV1 {
+///     pack_id: "p".into(),
+///     activation: UsePackActivationV1::Session,
+///     lockfile: None,
+/// };
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UsePackHirV1 {
+    /// Pack id as written.
+    pub pack_id: String,
+    /// Restricted activation policy.
+    pub activation: UsePackActivationV1,
+    /// Required lockfile path.
+    pub lockfile: String,
 }

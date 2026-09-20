@@ -18,10 +18,8 @@
 //!    (`format(format(x)) == format(x)`). The same holds for `;`-joined
 //!    documents via [`format_document`].
 //!
-//! Structural equality is asserted on the CANONICAL TEXT (not the HIR value),
-//! because HIR nodes carry per-parse node ids and spans that legitimately differ
-//! between two parses; the canonical text is the stable structural witness the
-//! formatter contract guarantees.
+//! Structural equality uses an independent visitor projection that omits ids and
+//! spans; canonical text equality separately proves formatter fixed points.
 
 #![allow(
     clippy::unwrap_used,
@@ -30,6 +28,7 @@
 )]
 
 use proptest::prelude::*;
+mod support;
 use quanta_gqlang_v2_hir::HirBuilderV1;
 use quanta_gqlang_v2_surface::{
     format_document, format_item, lex, parse_document, parse_expr, parse_predicate, parse_program,
@@ -253,8 +252,7 @@ use quanta_gqlang_v2_surface::ParseErrorCodeV1;
 #[test]
 fn deeply_nested_input_fails_closed_not_abort() {
     // `(` and `[` are value/list openers that recurse per level, so the depth
-    // budget is the gate: the typed reject must be the fail-closed
-    // UnsupportedConstruct. (`{` is a record opener that needs `field:` after the
+    // budget is the gate: the typed reject must be ResourceExhausted. (`{` is a record opener that needs `field:` after the
     // brace, so it rejects shallowly with UnexpectedToken before recursing — also
     // fail-closed, asserted separately below.)
     for (open, close) in [('(', ')'), ('[', ']')] {
@@ -272,8 +270,8 @@ fn deeply_nested_input_fails_closed_not_abort() {
         let expr_err = parse_expr(&s, &HirBuilderV1::new()).expect_err("deep expr must reject");
         assert_eq!(
             expr_err.code,
-            ParseErrorCodeV1::UnsupportedConstruct,
-            "deep {open}..{close} nest is a fail-closed UnsupportedConstruct (depth budget)"
+            ParseErrorCodeV1::ResourceExhausted,
+            "deep {open}..{close} nest exhausts the depth budget"
         );
 
         let pred = parse_predicate(&s, &HirBuilderV1::new());
@@ -313,86 +311,74 @@ proptest! {
     /// `lex` never panics on arbitrary input.
     #[test]
     fn lex_never_panics_any(s in arb_any_string()) {
-        let r = lex(&s);
-        prop_assert!(r.is_ok() || r.is_err());
+        let _result = lex(&s);
     }
 
     #[test]
     fn lex_never_panics_structured(s in arb_structured_string()) {
-        let r = lex(&s);
-        prop_assert!(r.is_ok() || r.is_err());
+        let _result = lex(&s);
     }
 
     #[test]
     fn lex_never_panics_deep(s in arb_deep_nesting()) {
-        let r = lex(&s);
-        prop_assert!(r.is_ok() || r.is_err());
+        let _result = lex(&s);
     }
 
     /// `parse_program` never panics — every input is Ok or a typed diagnostic.
     #[test]
     fn parse_program_never_panics(s in arb_program_source()) {
         let builder = HirBuilderV1::new();
-        let r = parse_program(&s, &builder);
-        prop_assert!(r.is_ok() || r.is_err());
+        let _result = parse_program(&s, &builder);
     }
 
     #[test]
     fn parse_program_never_panics_any(s in arb_any_string()) {
         let builder = HirBuilderV1::new();
-        let r = parse_program(&s, &builder);
-        prop_assert!(r.is_ok() || r.is_err());
+        let _result = parse_program(&s, &builder);
     }
 
     #[test]
     fn parse_program_never_panics_deep(s in arb_deep_nesting()) {
         let builder = HirBuilderV1::new();
-        let r = parse_program(&s, &builder);
-        prop_assert!(r.is_ok() || r.is_err());
+        let _result = parse_program(&s, &builder);
     }
 
     /// `parse_document` never panics.
     #[test]
     fn parse_document_never_panics(s in arb_document_source()) {
         let builder = HirBuilderV1::new();
-        let r = parse_document(&s, &builder);
-        prop_assert!(r.is_ok() || r.is_err());
+        let _result = parse_document(&s, &builder);
     }
 
     #[test]
     fn parse_document_never_panics_any(s in arb_any_string()) {
         let builder = HirBuilderV1::new();
-        let r = parse_document(&s, &builder);
-        prop_assert!(r.is_ok() || r.is_err());
+        let _result = parse_document(&s, &builder);
     }
 
     /// The bare-expression entry points never panic either.
     #[test]
     fn parse_expr_never_panics(s in arb_program_source()) {
         let builder = HirBuilderV1::new();
-        let r = parse_expr(&s, &builder);
-        prop_assert!(r.is_ok() || r.is_err());
+        let _result = parse_expr(&s, &builder);
     }
 
     #[test]
     fn parse_predicate_never_panics(s in arb_program_source()) {
         let builder = HirBuilderV1::new();
-        let r = parse_predicate(&s, &builder);
-        prop_assert!(r.is_ok() || r.is_err());
+        let _result = parse_predicate(&s, &builder);
     }
 
     #[test]
     fn parse_expr_never_panics_any(s in arb_any_string()) {
         let builder = HirBuilderV1::new();
-        let r = parse_expr(&s, &builder);
-        prop_assert!(r.is_ok() || r.is_err());
+        let _result = parse_expr(&s, &builder);
     }
 
     #[test]
     fn parse_predicate_never_panics_any(s in arb_any_string()) {
         let builder = HirBuilderV1::new();
-        let r = parse_predicate(&s, &builder);
-        prop_assert!(r.is_ok() || r.is_err());
+        let _result = parse_predicate(&s, &builder);
     }
 }
 
@@ -423,11 +409,6 @@ proptest! {
         prop_assert_eq!(document_witness(&a), document_witness(&b));
     }
 
-    /// `lex` is deterministic for arbitrary input.
-    #[test]
-    fn lex_is_deterministic(s in arb_any_string()) {
-        prop_assert_eq!(lex(&s), lex(&s));
-    }
 }
 
 // ---- 3. ROUND-TRIP + IDEMPOTENCE -------------------------------------------
@@ -453,14 +434,13 @@ proptest! {
             reparsed.err()
         );
         let reparsed = reparsed.expect("checked Ok above");
+        prop_assert_eq!(
+            support::structural_witness(&parsed.item.to_program_item()),
+            support::structural_witness(&reparsed.item.to_program_item()),
+            "visitor-derived structure changed"
+        );
         let canon2 = format_item(&reparsed.item.to_program_item());
         prop_assert_eq!(&canon, &canon2, "format must be a fixed point (round-trip stable)");
-
-        // format(format(x)) == format(x) — a third pass changes nothing.
-        let third = parse_program(&canon2, &HirBuilderV1::new())
-            .expect("canonical text re-parses");
-        let canon3 = format_item(&third.item.to_program_item());
-        prop_assert_eq!(canon2, canon3, "format idempotence");
     }
 
     /// Document-level round-trip: `;`-joined items survive format -> re-parse
@@ -482,6 +462,9 @@ proptest! {
         let reparsed = reparsed.expect("checked Ok above");
         let items2: Vec<_> =
             reparsed.items.iter().map(SurfaceItemV1::to_program_item).collect();
+        let witnesses = items.iter().map(support::structural_witness).collect::<Vec<_>>();
+        let witnesses2 = items2.iter().map(support::structural_witness).collect::<Vec<_>>();
+        prop_assert_eq!(witnesses, witnesses2, "document structure changed");
         let canon2 = format_document(&items2);
         prop_assert_eq!(canon, canon2, "document format must be a fixed point");
     }

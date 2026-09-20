@@ -1,274 +1,59 @@
-//! The closed operator registry (ticket 03, decision `D4`).
-//!
-//! Operators in the HIR are open symbolic tags (ticket 01); this module is the
-//! single closed authority that decides which operator symbols exist and which
-//! operand-type combinations they admit. Lookup is pure and backend-free
-//! (`D4`): given an operator symbol and operand types, the registry either
-//! returns the result type of the unique matching overload or reports that no
-//! overload matched (`bad overload`) / the operator is unknown.
-//!
-//! The registry is data, built once. Each overload is an exact-match signature
-//! over the closed [`TypeV1`] universe; overload resolution (in [`crate::check`])
-//! is exact-match-first with a small set of explicit, total promotion rules so
-//! behavior is predictable for downstream planning.
+use crate::{TypeDiagnosticV2, TypeV1};
+use std::collections::{BTreeMap, BTreeSet};
 
-use crate::ty::{ScalarTyV1, TypeV1};
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct OperatorIdV2(u32);
+impl OperatorIdV2 { #[must_use] pub const fn from_raw(raw: u32) -> Self { Self(raw) } #[must_use] pub const fn raw(self) -> u32 { self.0 } }
 
-/// The kind of unary operator overload result.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct UnaryOverloadV1 {
-    /// Operand type this overload accepts.
-    pub operand: TypeV1,
-    /// Result type produced.
-    pub result: TypeV1,
-}
-
-/// A binary operator overload signature.
+pub struct UnaryOverloadV1 { pub id: OperatorIdV2, pub operand: TypeV1, pub result: TypeV1 }
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BinaryOverloadV1 {
-    /// Left operand type.
-    pub lhs: TypeV1,
-    /// Right operand type.
-    pub rhs: TypeV1,
-    /// Result type produced.
-    pub result: TypeV1,
-}
+pub struct BinaryOverloadV1 { pub id: OperatorIdV2, pub lhs: TypeV1, pub rhs: TypeV1, pub result: TypeV1 }
 
-/// The closed operator registry.
 #[derive(Clone, Debug)]
-pub struct OperatorRegistryV1 {
-    unary: Vec<(String, UnaryOverloadV1)>,
-    binary: Vec<(String, BinaryOverloadV1)>,
+pub struct OperatorRegistryV2 {
+    unary: BTreeMap<String, Vec<UnaryOverloadV1>>,
+    binary: BTreeMap<String, Vec<BinaryOverloadV1>>,
 }
 
-impl OperatorRegistryV1 {
-    /// Build the single closed operator registry.
+impl OperatorRegistryV2 {
+    pub fn try_closed(
+        unary: Vec<(String, UnaryOverloadV1)>, binary: Vec<(String, BinaryOverloadV1)>,
+    ) -> Result<Self, TypeDiagnosticV2> {
+        let mut ids = BTreeSet::new();
+        let mut unary_map: BTreeMap<String, Vec<UnaryOverloadV1>> = BTreeMap::new();
+        let mut binary_map: BTreeMap<String, Vec<BinaryOverloadV1>> = BTreeMap::new();
+        for (symbol, overload) in unary {
+            if !ids.insert(overload.id) { return Err(TypeDiagnosticV2::RegistryDuplicateId { registry: "operator", id: overload.id.raw() }); }
+            unary_map.entry(symbol).or_default().push(overload);
+        }
+        for (symbol, overload) in binary {
+            if !ids.insert(overload.id) { return Err(TypeDiagnosticV2::RegistryDuplicateId { registry: "operator", id: overload.id.raw() }); }
+            binary_map.entry(symbol).or_default().push(overload);
+        }
+        Ok(Self { unary: unary_map, binary: binary_map })
+    }
+
     #[must_use]
     pub fn closed() -> Self {
-        let mut registry = Self {
-            unary: Vec::new(),
-            binary: Vec::new(),
-        };
-        registry.install();
-        registry
-    }
-
-    /// All overloads for a unary operator symbol (possibly empty).
-    #[must_use]
-    pub fn unary_overloads(&self, symbol: &str) -> Vec<&UnaryOverloadV1> {
-        self.unary
-            .iter()
-            .filter(|(sym, _)| sym == symbol)
-            .map(|(_, ov)| ov)
-            .collect()
-    }
-
-    /// All overloads for a binary operator symbol (possibly empty).
-    #[must_use]
-    pub fn binary_overloads(&self, symbol: &str) -> Vec<&BinaryOverloadV1> {
-        self.binary
-            .iter()
-            .filter(|(sym, _)| sym == symbol)
-            .map(|(_, ov)| ov)
-            .collect()
-    }
-
-    /// Whether the registry knows this unary operator symbol at all.
-    #[must_use]
-    pub fn has_unary(&self, symbol: &str) -> bool {
-        self.unary.iter().any(|(sym, _)| sym == symbol)
-    }
-
-    /// Whether the registry knows this binary operator symbol at all.
-    #[must_use]
-    pub fn has_binary(&self, symbol: &str) -> bool {
-        self.binary.iter().any(|(sym, _)| sym == symbol)
-    }
-
-    fn add_unary(&mut self, symbol: &str, operand: TypeV1, result: TypeV1) {
-        self.unary
-            .push((symbol.to_owned(), UnaryOverloadV1 { operand, result }));
-    }
-
-    fn add_binary(&mut self, symbol: &str, lhs: TypeV1, rhs: TypeV1, result: TypeV1) {
-        self.binary
-            .push((symbol.to_owned(), BinaryOverloadV1 { lhs, rhs, result }));
-    }
-
-    fn install(&mut self) {
-        let int = || TypeV1::scalar(ScalarTyV1::Int);
-        let float = || TypeV1::scalar(ScalarTyV1::Float);
-        let boolean = || TypeV1::scalar(ScalarTyV1::Bool);
-        let string = || TypeV1::scalar(ScalarTyV1::String);
-        let duration = || TypeV1::scalar(ScalarTyV1::Duration);
-
-        // ---- arithmetic unary ------------------------------------------------
-        for sym in ["-", "+"] {
-            self.add_unary(sym, int(), int());
-            self.add_unary(sym, float(), float());
-            self.add_unary(sym, duration(), duration());
+        let mut next = 1;
+        let mut unary = Vec::new();
+        let mut binary = Vec::new();
+        let mut u = |symbol: &str, operand: TypeV1, result: TypeV1| { let id = OperatorIdV2(next); next += 1; unary.push((symbol.to_owned(), UnaryOverloadV1 { id, operand, result })); };
+        u("-", TypeV1::int(), TypeV1::int()); u("-", TypeV1::float(), TypeV1::float());
+        u("+", TypeV1::int(), TypeV1::int()); u("+", TypeV1::float(), TypeV1::float());
+        u("not", TypeV1::bool(), TypeV1::bool());
+        let mut b = |symbol: &str, lhs: TypeV1, rhs: TypeV1, result: TypeV1| { let id = OperatorIdV2(next); next += 1; binary.push((symbol.to_owned(), BinaryOverloadV1 { id, lhs, rhs, result })); };
+        for symbol in ["+", "-", "*", "/", "%"] { b(symbol, TypeV1::int(), TypeV1::int(), TypeV1::int()); }
+        for symbol in ["+", "-", "*", "/"] { b(symbol, TypeV1::float(), TypeV1::float(), TypeV1::float()); }
+        for symbol in ["<", "<=", ">", ">=", "=", "!="] {
+            b(symbol, TypeV1::int(), TypeV1::int(), TypeV1::bool());
+            b(symbol, TypeV1::float(), TypeV1::float(), TypeV1::bool());
+            b(symbol, TypeV1::string(), TypeV1::string(), TypeV1::bool());
         }
-
-        // ---- boolean unary ---------------------------------------------------
-        self.add_unary("not", boolean(), boolean());
-
-        // ---- arithmetic binary ----------------------------------------------
-        for sym in ["+", "-", "*"] {
-            self.add_binary(sym, int(), int(), int());
-            self.add_binary(sym, float(), float(), float());
-            self.add_binary(sym, duration(), duration(), duration());
-        }
-        // division promotes integer division result type to int, float to float.
-        self.add_binary("/", int(), int(), int());
-        self.add_binary("/", float(), float(), float());
-        // duration scaling by a number.
-        self.add_binary("*", duration(), int(), duration());
-        self.add_binary("/", duration(), int(), duration());
-        // modulo on integers only.
-        self.add_binary("%", int(), int(), int());
-
-        // ---- comparison (ordering) ------------------------------------------
-        for sym in ["<", "<=", ">", ">="] {
-            self.add_binary(sym, int(), int(), boolean());
-            self.add_binary(sym, float(), float(), boolean());
-            self.add_binary(sym, string(), string(), boolean());
-            self.add_binary(sym, duration(), duration(), boolean());
-        }
-        // ---- equality (closed scalar set) -----------------------------------
-        for sym in ["=", "!="] {
-            for scalar in [
-                ScalarTyV1::Bool,
-                ScalarTyV1::Int,
-                ScalarTyV1::Float,
-                ScalarTyV1::String,
-                ScalarTyV1::Duration,
-                ScalarTyV1::Location,
-                ScalarTyV1::Path,
-                ScalarTyV1::RepoPath,
-                ScalarTyV1::EntityRef,
-                ScalarTyV1::SymbolRef,
-                ScalarTyV1::RuleRef,
-                ScalarTyV1::SourceScope,
-                ScalarTyV1::ProofTree,
-            ] {
-                self.add_binary(
-                    sym,
-                    TypeV1::scalar(scalar.clone()),
-                    TypeV1::scalar(scalar),
-                    boolean(),
-                );
-            }
-        }
-
-        // ---- boolean binary -------------------------------------------------
-        for sym in ["and", "or", "xor"] {
-            self.add_binary(sym, boolean(), boolean(), boolean());
-        }
-
-        // ---- string concatenation -------------------------------------------
-        self.add_binary("++", string(), string(), string());
+        for symbol in ["and", "or", "xor"] { b(symbol, TypeV1::bool(), TypeV1::bool(), TypeV1::bool()); }
+        Self::try_closed(unary, binary).expect("closed operator IDs are statically unique")
     }
-}
-
-impl Default for OperatorRegistryV1 {
-    fn default() -> Self {
-        Self::closed()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #![allow(clippy::expect_used, reason = "unit tests assert on Option directly")]
-    use super::*;
-
-    #[test]
-    fn arithmetic_plus_has_int_overload() {
-        let registry = OperatorRegistryV1::closed();
-        assert!(registry.has_binary("+"));
-        let overloads = registry.binary_overloads("+");
-        assert!(overloads
-            .iter()
-            .any(|ov| ov.lhs == TypeV1::int() && ov.result == TypeV1::int()));
-    }
-
-    #[test]
-    fn unknown_operator_has_no_overloads() {
-        let registry = OperatorRegistryV1::closed();
-        assert!(!registry.has_binary("<=>"));
-        assert!(registry.binary_overloads("<=>").is_empty());
-    }
-
-    #[test]
-    fn ordering_is_bool_typed() {
-        let registry = OperatorRegistryV1::closed();
-        let lt = registry.binary_overloads("<");
-        assert!(lt.iter().all(|ov| ov.result == TypeV1::bool()));
-    }
-
-    #[test]
-    fn repo_path_allows_exact_equality_but_not_ordering_or_arithmetic_v1() {
-        let registry_v1 = OperatorRegistryV1::closed();
-        let repo_path_v1 = TypeV1::scalar(ScalarTyV1::RepoPath);
-        assert!(registry_v1
-            .binary_overloads("=")
-            .iter()
-            .any(|overload_v1| overload_v1.lhs == repo_path_v1 && overload_v1.rhs == repo_path_v1));
-        for operator_v1 in ["<", "<=", ">", ">=", "+", "-", "*", "/", "%"] {
-            assert!(!registry_v1
-                .binary_overloads(operator_v1)
-                .iter()
-                .any(|overload_v1| overload_v1.lhs == repo_path_v1
-                    || overload_v1.rhs == repo_path_v1));
-        }
-    }
-
-    #[test]
-    fn unary_negation_has_int_float_duration_overloads() {
-        let registry = OperatorRegistryV1::closed();
-        assert!(registry.has_unary("-"));
-        assert!(registry.has_unary("+"));
-        assert!(registry.has_unary("not"));
-        // `-` accepts int/float/duration, each mapping operand -> same result.
-        let neg = registry.unary_overloads("-");
-        assert_eq!(neg.len(), 3);
-        assert!(neg
-            .iter()
-            .any(|ov| ov.operand == TypeV1::int() && ov.result == TypeV1::int()));
-        assert!(neg
-            .iter()
-            .any(|ov| ov.operand == TypeV1::float() && ov.result == TypeV1::float()));
-        // `not` is bool -> bool.
-        let not = registry.unary_overloads("not");
-        assert_eq!(not.len(), 1);
-        assert!(not
-            .first()
-            .is_some_and(|ov| ov.operand == TypeV1::bool() && ov.result == TypeV1::bool()));
-    }
-
-    #[test]
-    fn unknown_unary_operator_is_absent_and_empty() {
-        let registry = OperatorRegistryV1::closed();
-        assert!(!registry.has_unary("~"));
-        assert!(registry.unary_overloads("~").is_empty());
-        // A binary symbol is not a unary symbol.
-        assert!(!registry.has_unary("++"));
-        assert!(registry.unary_overloads("++").is_empty());
-    }
-
-    #[test]
-    fn default_matches_closed() {
-        // `Default` must produce the same closed registry as `closed()`.
-        let def = OperatorRegistryV1::default();
-        let closed = OperatorRegistryV1::closed();
-        assert_eq!(
-            def.binary_overloads("+").len(),
-            closed.binary_overloads("+").len()
-        );
-        assert_eq!(
-            def.unary_overloads("-").len(),
-            closed.unary_overloads("-").len()
-        );
-        assert!(def.has_binary("="));
-        assert!(def.has_unary("not"));
-    }
+    #[must_use] pub fn unary_overloads(&self, symbol: &str) -> &[UnaryOverloadV1] { self.unary.get(symbol).map_or(&[], Vec::as_slice) }
+    #[must_use] pub fn binary_overloads(&self, symbol: &str) -> &[BinaryOverloadV1] { self.binary.get(symbol).map_or(&[], Vec::as_slice) }
 }

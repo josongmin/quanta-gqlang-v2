@@ -21,8 +21,11 @@
 use crate::cursor::CursorV1;
 use crate::diag::ParseDiagnosticV1;
 use crate::lexer::TokenKindV1;
+use crate::query::parse_query;
 use quanta_gqlang_v2_hir::{
-    BoolExprHirV1, PathSegmentV1, ProjectionItemV1, RecordFieldV1, SpanV1, ValueExprHirV1,
+    BoolExprHirV1, CallArgHirV1, CallArgsHirV1, LogicalBinderV1, LogicalQuantifierKindV1,
+    NonEmptyBindersV1, PathSegmentV1, ProjectionItemV1, RecordFieldV1, RelationExistsPolarityV1,
+    SpanV1, ValueExprHirV1,
 };
 
 /// Parse a full boolean expression (the predicate grammar entry point).
@@ -49,6 +52,7 @@ fn parse_or(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagnosticV1> 
         let _ = cur.bump();
         let rhs = parse_and(cur)?;
         let span = lhs.span.merge(&rhs.span);
+        cur.charge_expression_node(span)?;
         lhs = cur.builder.or(lhs, rhs, span);
     }
     Ok(lhs)
@@ -60,18 +64,28 @@ fn parse_and(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagnosticV1>
         let _ = cur.bump();
         let rhs = parse_not(cur)?;
         let span = lhs.span.merge(&rhs.span);
+        cur.charge_expression_node(span)?;
         lhs = cur.builder.and(lhs, rhs, span);
     }
     Ok(lhs)
 }
 
 fn parse_not(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagnosticV1> {
+    if cur.is_keyword("not")
+        && cur.is_keyword_ahead(1, "exists")
+        && matches!(cur.peek_ahead(2).kind, TokenKindV1::LParen)
+        && cur.is_keyword_ahead(3, "from")
+    {
+        let not = cur.bump();
+        return parse_relation_exists(cur, RelationExistsPolarityV1::NotExists, not.span);
+    }
     if cur.is_keyword("not") {
         // `not not not ...` self-recurses without re-entering parse_bool; guard.
         return cur.with_recursion_depth(|cur| {
             let kw = cur.bump();
             let inner = parse_not(cur)?;
             let span = kw.span.merge(&inner.span);
+            cur.charge_expression_node(span)?;
             Ok(cur.builder.not(inner, span))
         });
     }
@@ -80,8 +94,15 @@ fn parse_not(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagnosticV1>
 
 fn parse_comparison(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagnosticV1> {
     // quantifier / parenthesized-bool / value-or-compare
+    if cur.is_keyword("exists")
+        && matches!(cur.peek_ahead(1).kind, TokenKindV1::LParen)
+        && cur.is_keyword_ahead(2, "from")
+    {
+        let start = cur.here_span();
+        return parse_relation_exists(cur, RelationExistsPolarityV1::Exists, start);
+    }
     if cur.is_keyword("exists") || cur.is_keyword("forall") {
-        return parse_quantifier(cur);
+        return parse_logical_quantifier(cur);
     }
 
     // Parenthesized BOOLEAN grouping: `(a or b)`, `(not a)`, etc. A `(` here only
@@ -98,6 +119,7 @@ fn parse_comparison(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagno
             "')' to close parenthesized boolean expression",
         )?;
         let span = open.span.merge(&close.span);
+        cur.charge_expression_node(span)?;
         return Ok(cur.builder.paren_bool(inner, span));
     }
 
@@ -108,42 +130,66 @@ fn parse_comparison(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagno
             let _ = cur.bump();
             let rhs = parse_additive(cur)?;
             let span = lhs.span.merge(&rhs.span);
+            cur.charge_expression_node(span)?;
             return Ok(cur.builder.compare(sym, lhs, rhs, span));
         }
     }
     // bare value in boolean position
     let span = lhs.span;
+    cur.charge_expression_node(span)?;
     Ok(cur.builder.bool_value(lhs, span))
 }
 
-fn parse_quantifier(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagnosticV1> {
+fn parse_logical_quantifier(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagnosticV1> {
     let kw_tok = cur.bump();
     // Callers gate on `is_keyword`, so this is always an Ident; fall back to an
     // empty keyword rather than a wildcard match to stay fail-safe.
-    let keyword = if let TokenKindV1::Ident(s) = &kw_tok.kind {
-        s.clone()
+    let kind = if matches!(&kw_tok.kind, TokenKindV1::Ident(s) if s == "forall") {
+        LogicalQuantifierKindV1::Forall
     } else {
-        String::new()
+        LogicalQuantifierKindV1::Exists
     };
-    // optional binder list: exists x, y in ( body )  /  exists ( body )
     let mut binders = Vec::new();
-    if matches!(cur.peek().kind, TokenKindV1::Ident(_)) && !cur.is_keyword("in") {
-        loop {
-            let (name, _span) = cur.expect_ident("quantifier binder name")?;
-            binders.push(name);
-            if cur.eat(&TokenKindV1::Comma).is_some() {
-                continue;
-            }
-            break;
+    loop {
+        let observed = binders.len().saturating_add(1);
+        cur.budget
+            .charge_collection_element(observed, cur.here_span())?;
+        let (name, span) = cur.expect_ident("quantifier binder name")?;
+        binders.push(LogicalBinderV1 { name, span });
+        if cur.eat(&TokenKindV1::Comma).is_some() {
+            continue;
         }
-        // optional `in`
-        let _ = cur.eat_keyword("in");
+        break;
     }
+    cur.expect_keyword("in", "'in' after quantifier binders")?;
     cur.expect(&TokenKindV1::LParen, "'(' to open quantifier body")?;
     let body = parse_bool(cur)?;
     let close = cur.expect(&TokenKindV1::RParen, "')' to close quantifier body")?;
     let span = kw_tok.span.merge(&close.span);
-    Ok(cur.builder.quantifier(keyword, binders, body, span))
+    let binders = NonEmptyBindersV1::try_new(binders)
+        .map_err(|message| cur.unsupported(kw_tok.span, message))?;
+    cur.charge_expression_node(span)?;
+    Ok(cur.builder.logical_quantifier(kind, binders, body, span))
+}
+
+fn parse_relation_exists(
+    cur: &mut CursorV1<'_>,
+    polarity: RelationExistsPolarityV1,
+    start: SpanV1,
+) -> Result<BoolExprHirV1, ParseDiagnosticV1> {
+    cur.expect_keyword("exists", "'exists' after optional 'not'")?;
+    cur.expect(&TokenKindV1::LParen, "'(' to open relational existence")?;
+    let query = parse_query(cur)?;
+    if query.result_shape.is_some() {
+        return Err(cur.unsupported(
+            query.span,
+            "relational existence cannot carry a result shape",
+        ));
+    }
+    let close = cur.expect(&TokenKindV1::RParen, "')' to close relational existence")?;
+    let span = start.merge(&close.span);
+    cur.charge_expression_node(span)?;
+    Ok(cur.builder.relation_exists(polarity, query.body, span))
 }
 
 fn is_compare_op(sym: &str) -> bool {
@@ -201,6 +247,7 @@ fn parse_additive(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnos
         let _ = cur.bump();
         let rhs = parse_multiplicative(cur)?;
         let span = lhs.span.merge(&rhs.span);
+        cur.charge_expression_node(span)?;
         lhs = cur.builder.binary(sym, lhs, rhs, span);
     }
     Ok(lhs)
@@ -212,6 +259,7 @@ fn parse_multiplicative(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseD
         let _ = cur.bump();
         let rhs = parse_unary(cur)?;
         let span = lhs.span.merge(&rhs.span);
+        cur.charge_expression_node(span)?;
         lhs = cur.builder.binary(sym, lhs, rhs, span);
     }
     Ok(lhs)
@@ -230,6 +278,7 @@ fn parse_unary(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnostic
                 let op_tok = cur.bump();
                 let operand = parse_unary(cur)?;
                 let span = op_tok.span.merge(&operand.span);
+                cur.charge_expression_node(span)?;
                 Ok(cur.builder.unary(sym, operand, span))
             });
         }
@@ -245,11 +294,14 @@ fn parse_postfix(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnost
     }
     let mut segments = Vec::new();
     while cur.eat(&TokenKindV1::Dot).is_some() {
+        cur.budget
+            .charge_collection_element(segments.len().saturating_add(1), cur.here_span())?;
         let (name, span) = cur.expect_ident("path segment name")?;
         segments.push(PathSegmentV1 { name, span });
     }
     let last = segments.last().map(|s| s.span).unwrap_or(base.span);
     let span = base.span.merge(&last);
+    cur.charge_expression_node(span)?;
     Ok(cur.builder.path(base, segments, span))
 }
 
@@ -259,16 +311,19 @@ fn parse_primary(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnost
     if let TokenKindV1::Int(raw) = &cur.peek().kind {
         let raw = raw.clone();
         let tok = cur.bump();
+        cur.charge_expression_node(tok.span)?;
         return Ok(cur.builder.int(raw, tok.span));
     }
     if let TokenKindV1::Float(raw) = &cur.peek().kind {
         let raw = raw.clone();
         let tok = cur.bump();
+        cur.charge_expression_node(tok.span)?;
         return Ok(cur.builder.float(raw, tok.span));
     }
     if let TokenKindV1::Str(content) = &cur.peek().kind {
         let content = content.clone();
         let tok = cur.bump();
+        cur.charge_expression_node(tok.span)?;
         return Ok(cur.builder.string(content, tok.span));
     }
     if matches!(cur.peek().kind, TokenKindV1::LParen) {
@@ -279,6 +334,7 @@ fn parse_primary(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnost
             "')' to close parenthesized expression",
         )?;
         let span = open.span.merge(&close.span);
+        cur.charge_expression_node(span)?;
         return Ok(cur.builder.paren_value(inner, span));
     }
     if matches!(cur.peek().kind, TokenKindV1::LBrace) {
@@ -292,14 +348,17 @@ fn parse_primary(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnost
         // keyword literals first
         if name == "true" {
             let tok = cur.bump();
+            cur.charge_expression_node(tok.span)?;
             return Ok(cur.builder.bool_lit(true, tok.span));
         }
         if name == "false" {
             let tok = cur.bump();
+            cur.charge_expression_node(tok.span)?;
             return Ok(cur.builder.bool_lit(false, tok.span));
         }
         if name == "null" {
             let tok = cur.bump();
+            cur.charge_expression_node(tok.span)?;
             return Ok(cur.builder.null(tok.span));
         }
         // call vs bare symbol
@@ -307,6 +366,7 @@ fn parse_primary(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnost
         if matches!(cur.peek().kind, TokenKindV1::LParen) {
             return parse_call(cur, name, name_tok.span);
         }
+        cur.charge_expression_node(name_tok.span)?;
         return Ok(cur.builder.symbol(name, name_tok.span));
     }
     Err(cur.unexpected("a value expression"))
@@ -321,19 +381,22 @@ fn parse_call(
     let mut args = Vec::new();
     if !matches!(cur.peek().kind, TokenKindV1::RParen) {
         loop {
-            // `count(*)` aggregate-style argument lowers to a `*` symbol.
+            cur.budget
+                .charge_collection_element(args.len().saturating_add(1), cur.here_span())?;
             if let TokenKindV1::Op(sym) = &cur.peek().kind {
                 if sym == "*" {
                     let star = cur.bump();
-                    args.push(cur.builder.symbol("*", star.span));
-                    if cur.eat(&TokenKindV1::Comma).is_some() {
-                        continue;
+                    if !args.is_empty() || !matches!(cur.peek().kind, TokenKindV1::RParen) {
+                        return Err(
+                            cur.unsupported(star.span, "'*' must be the sole call argument")
+                        );
                     }
+                    args.push(CallArgHirV1::star(star.span));
                     break;
                 }
             }
             let arg = parse_value(cur)?;
-            args.push(arg);
+            args.push(CallArgHirV1::Expr(arg));
             if cur.eat(&TokenKindV1::Comma).is_some() {
                 continue;
             }
@@ -342,6 +405,8 @@ fn parse_call(
     }
     let close = cur.expect(&TokenKindV1::RParen, "')' to close call arguments")?;
     let span = callee_span.merge(&close.span);
+    cur.charge_expression_node(span)?;
+    let args = CallArgsHirV1::try_new(args).map_err(|message| cur.unsupported(span, message))?;
     Ok(cur.builder.call(callee, callee_span, args, span))
 }
 
@@ -350,6 +415,8 @@ fn parse_record(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosti
     let mut fields: Vec<RecordFieldV1> = Vec::new();
     if !matches!(cur.peek().kind, TokenKindV1::RBrace) {
         loop {
+            cur.budget
+                .charge_collection_element(fields.len().saturating_add(1), cur.here_span())?;
             let (name, name_span) = cur.expect_ident("record field name")?;
             // D10 fail-closed: a record literal must not declare the same field
             // name twice (silent last-wins would drop a field). Reject at the
@@ -373,6 +440,7 @@ fn parse_record(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosti
     }
     let close = cur.expect(&TokenKindV1::RBrace, "'}' to close record")?;
     let span = open.span.merge(&close.span);
+    cur.charge_expression_node(span)?;
     Ok(cur.builder.record(fields, span))
 }
 
@@ -381,6 +449,8 @@ fn parse_list(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosticV
     let mut elements = Vec::new();
     if !matches!(cur.peek().kind, TokenKindV1::RBracket) {
         loop {
+            cur.budget
+                .charge_collection_element(elements.len().saturating_add(1), cur.here_span())?;
             let elem = parse_value(cur)?;
             elements.push(elem);
             if cur.eat(&TokenKindV1::Comma).is_some() {
@@ -391,6 +461,7 @@ fn parse_list(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosticV
     }
     let close = cur.expect(&TokenKindV1::RBracket, "']' to close list")?;
     let span = open.span.merge(&close.span);
+    cur.charge_expression_node(span)?;
     Ok(cur.builder.list(elements, span))
 }
 

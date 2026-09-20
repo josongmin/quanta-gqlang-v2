@@ -17,11 +17,12 @@
 #![allow(clippy::indexing_slicing, reason = "tests index known-length vecs")]
 
 use quanta_gqlang_v2_hir::{
-    check_tree, ActivationV1, AdmissionV1, CatalogPayloadV1, CompareMetricV1, ConfirmModeV1,
-    DetectionModeV1, EmitModeV1, EvidenceModeV1, ExportFormatV1, GateBindingV1, GraphConstraintsV1,
-    GraphDirectionV1, GraphEndpointsV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1,
-    HirIntegrityErrorV1, HirNodeIdV1, HirRootRefV1, MetaKindV1, PresentationKindV1,
-    ProgramItemHirV1, SampleModeV1, ShowCategoryV1, SpanV1, TruthModeV1, ViewBodyV1,
+    check_tree, ActivationV1, AdmissionV1, CatalogPayloadV1, CompareMetricV1, CompositionBodyV1,
+    CompositionProducerV1, ConfirmModeV1, DetectionModeV1, EmitModeV1, EvidenceModeV1,
+    ExportFormatV1, GateBindingV1, GraphConstraintsV1, GraphDirectionV1, GraphEndpointsV1,
+    GraphQueryKindV1, GraphRefV1, HirBuilderV1, HirIntegrityErrorV1, HirNodeIdV1, HirRootRefV1,
+    MetaKindV1, PresentationKindV1, ProgramItemHirV1, SampleModeV1, ShowCategoryV1, SpanV1,
+    TruthModeV1, UsePackActivationV1, UsePackHirV1, ViewBodyV1,
 };
 
 /// Walk `item` through the shared integrity gate, asserting it is sound against
@@ -297,11 +298,11 @@ fn model_pack_profile_gate_rule_decls_are_sound() {
 fn meta_family_is_sound_program_item() {
     let b = HirBuilderV1::new();
     let use_pack = b.meta(
-        MetaKindV1::UsePack {
+        MetaKindV1::UsePack(UsePackHirV1 {
             pack_id: "owasp".into(),
-            activation: ActivationV1::Workspace,
-            lockfile: Some("owasp.lock".into()),
-        },
+            activation: UsePackActivationV1::Workspace,
+            lockfile: "owasp.lock".into(),
+        }),
         SpanV1::new(0, 30),
     );
     assert_sound(&use_pack.into(), 30, 1);
@@ -346,47 +347,14 @@ fn composition_nests_query_producer_and_find_body() {
 
     // The producer is a Query item; the body is a GraphQuery item.
     assert!(matches!(
-        comp.bindings[0].producer.as_ref(),
-        ProgramItemHirV1::Query(_)
+        &comp.bindings[0].producer,
+        CompositionProducerV1::Query(_)
     ));
-    assert!(matches!(
-        comp.body.as_ref(),
-        ProgramItemHirV1::GraphQuery(_)
-    ));
+    assert!(matches!(&comp.body, CompositionBodyV1::GraphQuery(_)));
 
     let item: ProgramItemHirV1 = comp.into();
     // composition + producer query unit + relation source + find body = 4.
     assert_sound(&item, 60, 4);
-}
-
-// ---- unique-id sweep across a heterogeneous nesting ------------------------
-
-#[test]
-fn nested_item_ids_are_globally_unique_through_one_builder() {
-    let b = HirBuilderV1::new();
-    let users = b.relation_source("users", None, SpanV1::new(18, 23));
-    let q = b.query(users, None, SpanV1::new(18, 23));
-    let binding = b.composition_binding("c", SpanV1::new(4, 5), q.into());
-    let body = b.legality(
-        gref("rules.x", 30, 37),
-        None,
-        None,
-        ConfirmModeV1::Skip,
-        EmitModeV1::Findings,
-        DetectionModeV1::PatternOnly,
-        SpanV1::new(25, 45),
-    );
-    let comp = b.composition(
-        vec![binding],
-        "c",
-        SpanV1::new(50, 51),
-        body.into(),
-        SpanV1::new(0, 60),
-    );
-    let item: ProgramItemHirV1 = comp.into();
-    // No DuplicateNodeId: builder mints unique ids across the whole nest.
-    let checked = check_tree(HirRootRefV1::Item(&item), 60).unwrap();
-    assert_eq!(checked.node_count(), 4);
 }
 
 // ---- fail-closed integrity reject on a malformed new node ------------------
@@ -478,7 +446,7 @@ fn reject_duplicate_id_across_composition_children() {
     let binding = CompositionBindingV1::new(
         "c",
         SpanV1::new(4, 5),
-        ProgramItemHirV1::Query(Box::new(producer)),
+        CompositionProducerV1::Query(Box::new(producer)),
     );
     let body = LegalityHirV1::new(
         HirNodeIdV1::from_raw(5),
@@ -496,7 +464,7 @@ fn reject_duplicate_id_across_composition_children() {
         vec![binding],
         "c",
         SpanV1::new(33, 34),
-        ProgramItemHirV1::Legality(Box::new(body)),
+        CompositionBodyV1::Legality(Box::new(body)),
     );
     let item = ProgramItemHirV1::Composition(Box::new(comp));
 

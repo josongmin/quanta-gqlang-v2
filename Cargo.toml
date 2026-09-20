@@ -4,13 +4,14 @@ members = [
     "crates/quanta-gqlang-v2-binder",
     "crates/quanta-gqlang-v2-cli",
     "crates/quanta-gqlang-v2-conformance",
+    "crates/quanta-gqlang-v2-diagnostics-stdio",
     "crates/quanta-gqlang-v2-frontend-contract",
     "crates/quanta-gqlang-v2-hir",
     "crates/quanta-gqlang-v2-logic",
-    "crates/quanta-gqlang-v2-lsp",
     "crates/quanta-gqlang-v2-modules",
     "crates/quanta-gqlang-v2-pipeline",
     "crates/quanta-gqlang-v2-planning",
+    "crates/quanta-gqlang-v2-sema",
     "crates/quanta-gqlang-v2-surface",
     "crates/quanta-gqlang-v2-types",
 ]
@@ -20,10 +21,10 @@ resolver = "2"
 authors      = ["Song Min"]
 categories   = ["compilers", "development-tools", "parser-implementations"]
 edition      = "2021"
-keywords     = ["compiler", "gqlang", "lsp", "query-language", "static-analysis"]
+keywords     = ["compiler", "diagnostics", "gqlang", "query-language", "static-analysis"]
 license      = "MIT OR Apache-2.0"
 readme       = "README.md"
-rust-version = "1.81"
+rust-version = "1.81.0"
 version      = "0.1.0"
 
 [workspace.lints.rust]
@@ -35,10 +36,11 @@ unused_imports   = "deny"
 [workspace.lints.clippy]
 all = { level = "warn", priority = -3 }
 # `allow_attributes` (prefer #[expect] over #[allow]) and `_without_reason` both
-# stay denied. The linted surface (`--lib --bins --examples`) carries no allow
-# attributes; the reasoned `#![allow(...)]` blocks in integration tests live in
-# `--tests` targets, which this lint gate does not compile, so the strict policy
-# holds without weakening test ergonomics.
+# stay denied for production targets. The all-target Clippy command carries a
+# temporary, explicit exception for the existing reasoned integration-test
+# attributes; ticket 09 removes that exception after normalizing test headers.
+# `unused_result_ok` is unavailable on the 1.81 MSRV and is therefore enforced
+# explicitly by the pinned 1.95 current-policy Clippy lane.
 allow_attributes                   = "deny"
 allow_attributes_without_reason    = "deny"
 as_conversions                     = "warn"
@@ -74,7 +76,6 @@ print_stdout                       = "allow"
 todo                               = "deny"
 too_many_arguments                 = "allow"
 unimplemented                      = "deny"
-unused_result_ok                   = "deny"
 unwrap_used                        = "deny"
 wildcard_enum_match_arm            = "deny"
 wildcard_imports                   = "deny"

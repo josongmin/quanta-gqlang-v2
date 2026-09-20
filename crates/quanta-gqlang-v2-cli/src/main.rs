@@ -30,7 +30,7 @@ use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::path::PathBuf;
-use std::process;
+use std::process::ExitCode;
 
 use quanta_gqlang_v2_cli::commands;
 
@@ -63,7 +63,7 @@ struct CliInvocationV1 {
 
 struct CliOutputV1 {
     stdout: String,
-    exit_code: i32,
+    exit_code: u8,
 }
 
 enum CliErrorClassV1 {
@@ -99,7 +99,7 @@ impl CliErrorV1 {
         }
     }
 
-    fn exit_code_v1(&self) -> i32 {
+    fn exit_code_v1(&self) -> u8 {
         match self.class {
             CliErrorClassV1::Usage => 2,
             CliErrorClassV1::Io | CliErrorClassV1::Command => 1,
@@ -120,11 +120,11 @@ impl CliErrorV1 {
     }
 }
 
-fn main() {
-    process::exit(run_cli_from_env_v1());
+fn main() -> ExitCode {
+    ExitCode::from(run_cli_from_env_v1())
 }
 
-fn run_cli_from_env_v1() -> i32 {
+fn run_cli_from_env_v1() -> u8 {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
 
     if args.len() == 1 && args.first().is_some_and(is_help_v1) {

@@ -25,7 +25,7 @@ quanta-gqlang-v2-surface  = { version = "0.1.0", path = "../quanta-gqlang-v2-sur
 quanta-gqlang-v2-types    = { version = "0.1.0", path = "../quanta-gqlang-v2-types" }
 
 [dev-dependencies]
-quanta-gqlang-v2-lsp = { version = "0.1.0", path = "../quanta-gqlang-v2-lsp" }
+quanta-gqlang-v2-diagnostics-stdio = { version = "0.1.0", path = "../quanta-gqlang-v2-diagnostics-stdio" }
 
 [lints]
 workspace = true

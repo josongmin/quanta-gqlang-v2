@@ -11,7 +11,7 @@
     reason = "mutation rail: assertion panics are intentional"
 )]
 
-use quanta_gqlang_v2_hir::{BoolExprKindV1, HirBuilderV1, ProgramItemHirV1, SpanV1};
+use quanta_gqlang_v2_hir::{BoolExprKindV1, HirBuilderV1, ProgramItemHirV1};
 use quanta_gqlang_v2_surface::{
     format_item, lex, parse_predicate, parse_program, ParseErrorCodeV1, SurfaceItemV1, TokenKindV1,
 };
@@ -84,7 +84,7 @@ fn string_span_covers_both_quotes() {
 
 /// A `.` is part of a float ONLY when a digit follows it; otherwise it is a
 /// `Dot` and the number is an integer. Kills lexer.rs:196 col 49 (`&&`->`||`)
-/// and col 69 (`+`->`-`): both mutations would mis-classify `1.x`/`1.` as a
+/// and col 69 (`+`->`-`): both mutations would misclassify `1.x`/`1.` as a
 /// float, eating the dot.
 #[test]
 fn dot_without_following_digit_is_not_a_float() {
@@ -165,7 +165,7 @@ fn doubly_nested_compare_is_rejected() {
 /// A boolean token at depth 1 AFTER a closed nested paren makes it a BOOL paren.
 /// Kills expr.rs:170 (`depth -= 1` -> `+=`) and expr.rs:171 (`== 0` -> `!= 0`):
 /// either mutation fails to return depth to 1 / returns false prematurely at the
-/// inner `)`, so the trailing `or` is missed and the paren is mis-read as a
+/// inner `)`, so the trailing `or` is missed and the paren is misread as a
 /// value paren (which then fails to parse).
 #[test]
 fn bool_token_after_nested_paren_opens_bool_paren() {
@@ -228,16 +228,11 @@ fn relation_and_projection_render_exactly() {
     );
 }
 
-/// A `join ... on ...` renders through the join-on recognizer, which gates on
-/// the compose symbol being exactly `join`. Kills format.rs:108 (`==`->`!=`):
-/// flipping the gate would drop the `on` form and render a `... | where ...`
-/// over a bare join compose instead. Also exercises format_source_only
-/// (format.rs:147 -> `"xyzzy"`).
+/// Inner and cross joins render from distinct closed variants.
 #[test]
 fn join_on_renders_canonically() {
     assert_eq!(fmt("from a | join b on a = b"), "from a | join b on a = b");
-    // plain join (no `on`) exercises format_source_only on the right operand.
-    assert_eq!(fmt("from a | join b"), "from a | join b");
+    assert_eq!(fmt("from a | cross join b"), "from a | cross join b");
 }
 
 /// `group by` / `order by` render through `format_keyed_compose`. Kills
@@ -265,19 +260,6 @@ fn string_escape_renders_exactly() {
 /// `format_item` is public and total, so we build one directly through the HIR
 /// builder. Kills format.rs:192 (`format_compose_fallback` -> `"xyzzy"` and
 /// -> `String::new()`).
-#[test]
-fn unknown_compose_tag_uses_fallback_render() {
-    let builder = HirBuilderV1::new();
-    let sp = SpanV1::new(0, 1);
-    let left = builder.relation_source("a", None, sp);
-    let right = builder.relation_source("b", None, sp);
-    // a compose tag the query grammar never produces -> hits the fallback arm.
-    let comp = builder.compose("merge", vec![left, right], sp);
-    let query = builder.query(comp, None, sp);
-    let item = ProgramItemHirV1::from(query);
-    assert_eq!(format_item(&item), "from merge a, b");
-}
-
 /// An optional reference clause renders only when present, with the exact key.
 /// Kills format.rs:414 (`push_ref_opt` -> `()`), which would drop the clause.
 #[test]

@@ -18,22 +18,18 @@
 //! clauses absent from the HIR (so defaulted-but-unwritten modes are omitted only
 //! when the parser also treats them as defaults — see the per-family notes).
 //!
-//! ## Group/order/join reconstruction
-//!
-//! The query grammar lowers `join` / `group by` / `order by` into open-tagged
-//! `Compose` nodes (with a synthetic `_keys` projection for group/order keys),
-//! and an `on` predicate into a `Filter` wrapping a `join` compose. The formatter
-//! recognizes these canonical shapes and renders the surface pipeline stage that
-//! produced them, so the rendered text re-parses to the identical HIR shape.
+//! Join, group, and order stages are rendered from their dedicated closed HIR
+//! variants; there is no open operator tag or synthetic relation operand.
 
 use quanta_gqlang_v2_hir::{
-    ActivationV1, AdmissionV1, BoolExprHirV1, BoolExprKindV1, CatalogPayloadV1, CompareMetricV1,
-    CompositionHirV1, ConfirmModeV1, DetectionModeV1, EmitModeV1, EvidenceModeV1, ExportFormatV1,
-    GateBindingV1, GraphConstraintsV1, GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1,
-    GraphRefV1, LegalityHirV1, LiteralV1, MetaKindV1, PresentationHirV1, PresentationKindV1,
-    ProgramItemHirV1, QueryHirV1, RelationExprHirV1, RelationExprKindV1, ResultShapeHirV1,
-    ResultShapeKindV1, SampleModeV1, ShowCategoryV1, TruthModeV1, ValueExprHirV1, ValueExprKindV1,
-    ViewBodyV1,
+    ActivationV1, AdmissionV1, BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CatalogPayloadV1,
+    CompareMetricV1, CompositionBodyV1, CompositionHirV1, CompositionProducerV1, ConfirmModeV1,
+    DetectionModeV1, EmitModeV1, EvidenceModeV1, ExportFormatV1, GateBindingV1, GraphConstraintsV1,
+    GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, JoinHirV1, LegalityHirV1,
+    LiteralV1, MetaKindV1, PresentationHirV1, PresentationKindV1, ProgramItemHirV1, QueryHirV1,
+    RelationExprHirV1, RelationExprKindV1, ResultShapeHirV1, ResultShapeKindV1, SampleModeV1,
+    ShowCategoryV1, SortDirectionHirV1, TruthModeV1, UsePackActivationV1, ValueExprHirV1,
+    ValueExprKindV1, ViewBodyV1,
 };
 
 /// Render an ordered list of top-level items to a canonical v3 document.
@@ -103,41 +99,50 @@ fn format_relation(rel: &RelationExprHirV1) -> String {
             format!("{} | project {items}", format_relation(&proj.input))
         }
         RelationExprKindV1::Filter(filter) => {
-            // An `on`-filter wrapping a `join` compose renders as `join ... on ...`.
-            if let RelationExprKindV1::Compose(comp) = &filter.input.kind {
-                if comp.op.symbol == "join" {
-                    if let [left, right] = comp.operands.as_slice() {
-                        return format!(
-                            "{} | join {} on {}",
-                            format_relation(left),
-                            format_source_only(right),
-                            format_bool(&filter.predicate)
-                        );
-                    }
-                }
-            }
             format!(
                 "{} | where {}",
                 format_relation(&filter.input),
                 format_bool(&filter.predicate)
             )
         }
-        RelationExprKindV1::Compose(comp) => match comp.op.symbol.as_str() {
-            "join" => {
-                if let [left, right] = comp.operands.as_slice() {
-                    format!(
-                        "{} | join {}",
-                        format_relation(left),
-                        format_source_only(right)
-                    )
-                } else {
-                    format_compose_fallback(comp)
-                }
-            }
-            "group_by" => format_keyed_compose(comp, "group by", false),
-            "order_by" => format_keyed_compose(comp, "order by", true),
-            _ => format_compose_fallback(comp),
-        },
+        RelationExprKindV1::Join(JoinHirV1::Inner { left, right, on }) => format!(
+            "{} | join {} on {}",
+            format_relation(left),
+            format_source_only(right),
+            format_bool(on)
+        ),
+        RelationExprKindV1::Join(JoinHirV1::Cross { left, right }) => format!(
+            "{} | cross join {}",
+            format_relation(left),
+            format_source_only(right)
+        ),
+        RelationExprKindV1::GroupBy(group) => format!(
+            "{} | group by {}",
+            format_relation(&group.input),
+            group
+                .keys()
+                .iter()
+                .map(format_value)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        RelationExprKindV1::OrderBy(order) => format!(
+            "{} | order by {}",
+            format_relation(&order.input),
+            order
+                .keys()
+                .iter()
+                .map(|key| format!(
+                    "{} {}",
+                    format_value(&key.value),
+                    match key.direction {
+                        SortDirectionHirV1::Asc => "asc",
+                        SortDirectionHirV1::Desc => "desc",
+                    }
+                ))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
     }
 }
 
@@ -151,51 +156,10 @@ fn format_source_only(rel: &RelationExprHirV1) -> String {
         },
         RelationExprKindV1::Project(_)
         | RelationExprKindV1::Filter(_)
-        | RelationExprKindV1::Compose(_) => format_relation(rel),
+        | RelationExprKindV1::Join(_)
+        | RelationExprKindV1::GroupBy(_)
+        | RelationExprKindV1::OrderBy(_) => format_relation(rel),
     }
-}
-
-/// Render a `group by` / `order by` compose. The second operand is the synthetic
-/// `_keys` projection carrying the key value exprs (and, for order, an `asc`/
-/// `desc` alias).
-fn format_keyed_compose(
-    comp: &quanta_gqlang_v2_hir::CompositionV1,
-    keyword: &str,
-    _is_order: bool,
-) -> String {
-    let [input, keys] = comp.operands.as_slice() else {
-        return format_compose_fallback(comp);
-    };
-    let RelationExprKindV1::Project(proj) = &keys.kind else {
-        return format_compose_fallback(comp);
-    };
-    let items = proj
-        .items
-        .iter()
-        .map(|item| {
-            // For order keys the alias is the sort direction (`asc`/`desc`),
-            // rendered bare; group keys carry no alias.
-            match &item.alias {
-                Some(a) => format!("{} {}", format_value(&item.value), a.name),
-                None => format_value(&item.value),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(", ");
-    format!("{} | {keyword} {items}", format_relation(input))
-}
-
-/// Last-resort render for an unrecognized compose tag. The v3 query grammar only
-/// produces `join`/`group_by`/`order_by`, so this stays unreachable in practice
-/// but keeps the formatter total.
-fn format_compose_fallback(comp: &quanta_gqlang_v2_hir::CompositionV1) -> String {
-    let operands = comp
-        .operands
-        .iter()
-        .map(format_relation)
-        .collect::<Vec<_>>()
-        .join(", ");
-    format!("{} {operands}", comp.op.symbol)
 }
 
 fn format_projection_item(item: &quanta_gqlang_v2_hir::ProjectionItemV1) -> String {
@@ -226,11 +190,34 @@ fn format_shape(shape: &ResultShapeHirV1) -> String {
 // ---- value / bool expressions ----------------------------------------------
 
 fn format_value(value: &ValueExprHirV1) -> String {
+    format_value_prec(value, 0, false)
+}
+
+fn value_precedence(value: &ValueExprHirV1) -> u8 {
+    match &value.kind {
+        ValueExprKindV1::Binary(binary) => match binary.op.symbol.as_str() {
+            "+" | "-" => 10,
+            "*" | "/" | "%" => 20,
+            _ => 5,
+        },
+        ValueExprKindV1::Unary(_) => 30,
+        ValueExprKindV1::Literal(_)
+        | ValueExprKindV1::Symbol(_)
+        | ValueExprKindV1::Path(_)
+        | ValueExprKindV1::Call(_)
+        | ValueExprKindV1::Paren(_)
+        | ValueExprKindV1::Record(_)
+        | ValueExprKindV1::List(_) => 40,
+    }
+}
+
+fn format_value_prec(value: &ValueExprHirV1, parent: u8, right_child: bool) -> String {
+    let precedence = value_precedence(value);
     match &value.kind {
         ValueExprKindV1::Literal(lit) => format_literal(lit),
         ValueExprKindV1::Symbol(sym) => sym.name.clone(),
         ValueExprKindV1::Path(path) => {
-            let mut out = format_value(&path.base);
+            let mut out = format_value_prec(&path.base, 40, false);
             for seg in &path.segments {
                 out.push('.');
                 out.push_str(&seg.name);
@@ -238,19 +225,34 @@ fn format_value(value: &ValueExprHirV1) -> String {
             out
         }
         ValueExprKindV1::Unary(unary) => {
-            format!("{}{}", unary.op.symbol, format_value(&unary.operand))
+            format!(
+                "{}{}",
+                unary.op.symbol,
+                format_value_prec(&unary.operand, precedence, false)
+            )
         }
-        ValueExprKindV1::Binary(bin) => format!(
-            "{} {} {}",
-            format_value(&bin.lhs),
-            bin.op.symbol,
-            format_value(&bin.rhs)
-        ),
+        ValueExprKindV1::Binary(bin) => {
+            let rendered = format!(
+                "{} {} {}",
+                format_value_prec(&bin.lhs, precedence, false),
+                bin.op.symbol,
+                format_value_prec(&bin.rhs, precedence, true)
+            );
+            if precedence < parent || (right_child && precedence == parent) {
+                format!("({rendered})")
+            } else {
+                rendered
+            }
+        }
         ValueExprKindV1::Call(call) => {
             let args = call
-                .args
+                .args()
+                .as_slice()
                 .iter()
-                .map(format_value)
+                .map(|arg| match arg {
+                    CallArgHirV1::Expr(value) => format_value(value),
+                    CallArgHirV1::Star { .. } => "*".to_string(),
+                })
                 .collect::<Vec<_>>()
                 .join(", ");
             format!("{}({args})", call.callee.name)
@@ -288,7 +290,26 @@ fn format_literal(lit: &LiteralV1) -> String {
 }
 
 fn format_bool(pred: &BoolExprHirV1) -> String {
-    match &pred.kind {
+    format_bool_prec(pred, 0, false)
+}
+
+fn bool_precedence(pred: &BoolExprHirV1) -> u8 {
+    match pred.kind {
+        BoolExprKindV1::Or(_) => 10,
+        BoolExprKindV1::And(_) => 20,
+        BoolExprKindV1::Not(_) => 30,
+        BoolExprKindV1::Literal(_)
+        | BoolExprKindV1::Value(_)
+        | BoolExprKindV1::Compare(_)
+        | BoolExprKindV1::Paren(_)
+        | BoolExprKindV1::LogicalQuantifier(_)
+        | BoolExprKindV1::RelationExists(_) => 40,
+    }
+}
+
+fn format_bool_prec(pred: &BoolExprHirV1, parent: u8, right_child: bool) -> String {
+    let precedence = bool_precedence(pred);
+    let rendered = match &pred.kind {
         BoolExprKindV1::Literal(true) => "true".to_string(),
         BoolExprKindV1::Literal(false) => "false".to_string(),
         BoolExprKindV1::Value(value) => format_value(value),
@@ -299,25 +320,48 @@ fn format_bool(pred: &BoolExprHirV1) -> String {
             format_value(&cmp.rhs)
         ),
         BoolExprKindV1::And(b) => {
-            format!("{} and {}", format_bool(&b.lhs), format_bool(&b.rhs))
+            format!(
+                "{} and {}",
+                format_bool_prec(&b.lhs, precedence, false),
+                format_bool_prec(&b.rhs, precedence, true)
+            )
         }
         BoolExprKindV1::Or(b) => {
-            format!("{} or {}", format_bool(&b.lhs), format_bool(&b.rhs))
+            format!(
+                "{} or {}",
+                format_bool_prec(&b.lhs, precedence, false),
+                format_bool_prec(&b.rhs, precedence, true)
+            )
         }
-        BoolExprKindV1::Not(inner) => format!("not {}", format_bool(inner)),
+        BoolExprKindV1::Not(inner) => format!("not {}", format_bool_prec(inner, precedence, false)),
         BoolExprKindV1::Paren(inner) => format!("({})", format_bool(inner)),
-        BoolExprKindV1::Quantifier(q) => {
-            let kw = &q.quantifier.keyword;
-            if q.binders.is_empty() {
-                format!("{kw} ({})", format_bool(&q.body))
-            } else {
-                format!(
-                    "{kw} {} in ({})",
-                    q.binders.join(", "),
-                    format_bool(&q.body)
-                )
-            }
-        }
+        BoolExprKindV1::LogicalQuantifier(q) => format!(
+            "{} {} in ({})",
+            match q.kind {
+                quanta_gqlang_v2_hir::LogicalQuantifierKindV1::Exists => "exists",
+                quanta_gqlang_v2_hir::LogicalQuantifierKindV1::Forall => "forall",
+            },
+            q.binders
+                .as_slice()
+                .iter()
+                .map(|binder| binder.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", "),
+            format_bool(&q.body)
+        ),
+        BoolExprKindV1::RelationExists(exists) => format!(
+            "{}(from {})",
+            match exists.polarity {
+                quanta_gqlang_v2_hir::RelationExistsPolarityV1::Exists => "exists ",
+                quanta_gqlang_v2_hir::RelationExistsPolarityV1::NotExists => "not exists ",
+            },
+            format_relation(&exists.relation)
+        ),
+    };
+    if precedence < parent || (right_child && precedence == parent) {
+        format!("({rendered})")
+    } else {
+        rendered
     }
 }
 
@@ -328,7 +372,13 @@ fn escape_str(content: &str) -> String {
             '"' => out.push_str("\\\""),
             '\\' => out.push_str("\\\\"),
             '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
             '\t' => out.push_str("\\t"),
+            '\u{0008}' => out.push_str("\\b"),
+            '\u{000c}' => out.push_str("\\f"),
+            control if control.is_control() => {
+                out.push_str(&format!("\\u{{{:x}}}", u32::from(control)))
+            }
             other => out.push(other),
         }
     }
@@ -649,32 +699,58 @@ fn format_composition(c: &CompositionHirV1) -> String {
         out.push_str(&format!(
             "let {} = {} ",
             binding.name,
-            format_item(&binding.producer)
+            format_composition_producer(&binding.producer)
         ));
     }
-    out.push_str(&format_item(&c.body));
+    out.push_str(&format_composition_body(&c.body));
     out.push_str(&format!(" with {}", c.with_name));
     out
+}
+
+fn format_composition_producer(producer: &CompositionProducerV1) -> String {
+    match producer {
+        CompositionProducerV1::Query(query) => format_query(query),
+        CompositionProducerV1::GraphQuery(graph) => format_find(graph),
+        CompositionProducerV1::Sample(sample) => {
+            let mut out = format!(
+                "sample query=\"{}\" | mode={} | limit={}",
+                escape_str(&sample.query_text),
+                sample_mode(sample.mode),
+                sample.limit
+            );
+            push_ref_opt(&mut out, "scope", &sample.scope);
+            out
+        }
+    }
+}
+
+fn format_composition_body(body: &CompositionBodyV1) -> String {
+    match body {
+        CompositionBodyV1::Query(query) => format_query(query),
+        CompositionBodyV1::GraphQuery(graph) => format_find(graph),
+        CompositionBodyV1::Legality(legality) => format_check(legality),
+        CompositionBodyV1::Explain(explain) => format!(
+            "explain {} | evidence={} | truth={}",
+            explain.target_ref.name,
+            evidence_mode(explain.evidence),
+            truth_mode(explain.truth)
+        ),
+    }
 }
 
 // ---- meta ------------------------------------------------------------------
 
 fn format_meta(m: &quanta_gqlang_v2_hir::MetaHirV1) -> String {
     match &m.kind {
-        MetaKindV1::UsePack {
-            pack_id,
-            activation,
-            lockfile,
-        } => {
-            let mut out = format!(
-                "use pack {pack_id} | activation={}",
-                activation_policy(*activation)
-            );
-            if let Some(lock) = lockfile {
-                out.push_str(&format!(" | lockfile={lock}"));
-            }
-            out
-        }
+        MetaKindV1::UsePack(use_pack) => format!(
+            "use pack {} | activation={} | lockfile={}",
+            use_pack.pack_id,
+            match use_pack.activation {
+                UsePackActivationV1::Session => "session",
+                UsePackActivationV1::Workspace => "workspace",
+            },
+            use_pack.lockfile
+        ),
         MetaKindV1::RequireCertified => "require certified".to_string(),
     }
 }

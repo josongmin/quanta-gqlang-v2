@@ -12,9 +12,11 @@
 #![allow(clippy::panic, reason = "tests panic on unexpected variants")]
 
 use quanta_gqlang_v2_hir::{
-    check_tree, ActivationV1, CatalogPayloadV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
-    GraphConstraintsV1, GraphEndpointsV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1, HirRootRefV1,
-    MetaKindV1, PresentationKindV1, ProgramItemHirV1, ShowCategoryV1, SpanV1, ViewBodyV1,
+    check_document_v2, check_tree, ActivationV1, CatalogPayloadV1, ConfirmModeV1, DetectionModeV1,
+    EmitModeV1, GraphConstraintsV1, GraphEndpointsV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1,
+    HirDocumentV1, HirIntegrityErrorV1, HirRootRefV1, LocatedSpanErrorV2, LocatedSpanV2,
+    MetaKindV1, PresentationKindV1, ProgramItemHirV1, ShowCategoryV1, SourceIdV2, SpanV1,
+    UsePackActivationV1, UsePackHirV1, ViewBodyV1,
 };
 
 fn gref(name: &str, start: usize, end: usize) -> GraphRefV1 {
@@ -22,6 +24,93 @@ fn gref(name: &str, start: usize, end: usize) -> GraphRefV1 {
         name: name.into(),
         span: SpanV1::new(start, end),
     }
+}
+
+#[test]
+fn document_integrity_rejects_duplicate_id_across_roots() {
+    let builder = HirBuilderV1::new();
+    let decl = ProgramItemHirV1::from(builder.decl(
+        "x",
+        SpanV1::new(4, 5),
+        builder.int("1", SpanV1::new(8, 9)),
+        SpanV1::new(0, 9),
+    ));
+    let document = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(3),
+        source_len: 9,
+        items: vec![decl.clone(), decl],
+    };
+    assert!(matches!(
+        check_document_v2(&document),
+        Err(HirIntegrityErrorV1::DuplicateNodeId { .. })
+    ));
+}
+
+#[test]
+fn document_integrity_rejects_out_of_bounds_root() {
+    let builder = HirBuilderV1::new();
+    let item = ProgramItemHirV1::from(builder.decl(
+        "x",
+        SpanV1::new(4, 5),
+        builder.int("1", SpanV1::new(8, 9)),
+        SpanV1::new(0, 10),
+    ));
+    let document = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(4),
+        source_len: 9,
+        items: vec![item],
+    };
+    assert!(matches!(
+        check_document_v2(&document),
+        Err(HirIntegrityErrorV1::SpanOutOfBounds { .. })
+    ));
+}
+
+#[test]
+fn document_integrity_accepts_valid_multi_root_with_one_authority() {
+    let builder = HirBuilderV1::new();
+    let first = ProgramItemHirV1::from(builder.decl(
+        "x",
+        SpanV1::new(4, 5),
+        builder.int("1", SpanV1::new(8, 9)),
+        SpanV1::new(0, 9),
+    ));
+    let second = ProgramItemHirV1::from(builder.decl(
+        "y",
+        SpanV1::new(14, 15),
+        builder.int("2", SpanV1::new(18, 19)),
+        SpanV1::new(10, 19),
+    ));
+    let document = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(42),
+        source_len: 19,
+        items: vec![first, second],
+    };
+    let checked = check_document_v2(&document).unwrap();
+    assert_eq!(checked.document().source_id, SourceIdV2::from_raw(42));
+    assert_eq!(checked.document().source_len, 19);
+    assert_eq!(checked.node_count(), 4);
+}
+
+#[test]
+fn located_span_rejects_wrong_source_and_out_of_range() {
+    let located = LocatedSpanV2 {
+        source_id: SourceIdV2::from_raw(2),
+        span: SpanV1::new(1, 3),
+    };
+    assert!(matches!(
+        located.validate(SourceIdV2::from_raw(1), 3),
+        Err(LocatedSpanErrorV2::WrongSource { .. })
+    ));
+
+    let out_of_range = LocatedSpanV2 {
+        source_id: SourceIdV2::from_raw(1),
+        span: SpanV1::new(1, 4),
+    };
+    assert!(matches!(
+        out_of_range.validate(SourceIdV2::from_raw(1), 3),
+        Err(LocatedSpanErrorV2::OutOfBounds { .. })
+    ));
 }
 
 /// `id()` and `span()` must return the payload node's own id and span.
@@ -128,11 +217,10 @@ fn id_and_span_accessors_report_the_carried_payload_for_every_variant() {
         SpanV1::new(10, 11),
     );
     let binding = b.composition_binding("c", SpanV1::new(4, 5), producer.into());
-    let body = b.presentation(
-        PresentationKindV1::Show {
-            category: ShowCategoryV1::Rules,
-        },
-        SpanV1::new(20, 30),
+    let body = b.query(
+        b.relation_source("rules", None, SpanV1::new(20, 25)),
+        None,
+        SpanV1::new(20, 25),
     );
     let comp = b.composition(
         vec![binding],
@@ -305,7 +393,11 @@ fn check_tree_validates_each_dedicated_item_root_variant() {
         1
     );
 
-    let inner = b.meta(MetaKindV1::RequireCertified, SpanV1::new(20, 30));
+    let inner = b.query(
+        b.relation_source("w", None, SpanV1::new(20, 21)),
+        None,
+        SpanV1::new(20, 21),
+    );
     let comp = b.composition(
         vec![],
         "w",
@@ -313,20 +405,20 @@ fn check_tree_validates_each_dedicated_item_root_variant() {
         inner.into(),
         SpanV1::new(0, 50),
     );
-    // composition + body meta = 2.
+    // composition + body query + relation = 3.
     assert_eq!(
         check_tree(HirRootRefV1::Composition(&comp), 50)
             .unwrap()
             .node_count(),
-        2
+        3
     );
 
     let m = b.meta(
-        MetaKindV1::UsePack {
+        MetaKindV1::UsePack(UsePackHirV1 {
             pack_id: "x".into(),
-            activation: ActivationV1::Session,
-            lockfile: None,
-        },
+            activation: UsePackActivationV1::Session,
+            lockfile: "x.lock".into(),
+        }),
         SpanV1::new(0, 16),
     );
     assert_eq!(

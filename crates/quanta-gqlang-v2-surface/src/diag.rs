@@ -7,6 +7,7 @@
 //! rejects with a typed diagnostic and an exact span, and the parser never
 //! silently downgrades to a narrower v2-style subset.
 
+use crate::budget::ParseBudgetDimensionV2;
 use quanta_gqlang_v2_hir::SpanV1;
 use std::fmt;
 
@@ -28,6 +29,8 @@ pub enum ParseErrorCodeV1 {
     /// recognized-but-rejected v2-ism. Used by the no-silent-downgrade guard so
     /// rejects are explicit rather than a lenient reparse.
     UnsupportedConstruct,
+    /// A configured parse resource limit was exceeded.
+    ResourceExhausted,
 }
 
 impl ParseErrorCodeV1 {
@@ -40,6 +43,7 @@ impl ParseErrorCodeV1 {
             Self::UnexpectedToken => "surface.parse.unexpected_token",
             Self::UnexpectedEof => "surface.parse.unexpected_eof",
             Self::UnsupportedConstruct => "surface.parse.unsupported_construct",
+            Self::ResourceExhausted => "surface.resource_exhausted",
         }
     }
 }
@@ -53,6 +57,19 @@ pub struct ParseDiagnosticV1 {
     pub span: SpanV1,
     /// Human-readable message (the code is the stable contract, not this text).
     pub message: String,
+    /// Structured resource details when `code` is `ResourceExhausted`.
+    pub resource: Option<ResourceExhaustionV2>,
+}
+
+/// Structured resource exhaustion details.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ResourceExhaustionV2 {
+    /// Exhausted dimension.
+    pub dimension: ParseBudgetDimensionV2,
+    /// Configured maximum.
+    pub limit: usize,
+    /// Rejected count/depth.
+    pub observed: usize,
 }
 
 impl ParseDiagnosticV1 {
@@ -63,6 +80,28 @@ impl ParseDiagnosticV1 {
             code,
             span,
             message: message.into(),
+            resource: None,
+        }
+    }
+
+    pub(crate) fn resource_exhausted(
+        dimension: ParseBudgetDimensionV2,
+        limit: usize,
+        observed: usize,
+        span: SpanV1,
+    ) -> Self {
+        Self {
+            code: ParseErrorCodeV1::ResourceExhausted,
+            span,
+            message: format!(
+                "{} budget exhausted: limit {limit}, observed {observed}",
+                dimension.as_str()
+            ),
+            resource: Some(ResourceExhaustionV2 {
+                dimension,
+                limit,
+                observed,
+            }),
         }
     }
 

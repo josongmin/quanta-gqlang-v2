@@ -102,9 +102,12 @@ fn rule_body_supports_quantifier_placeholder() {
         other => panic!("expected rule, got {other:?}"),
     };
     match &rule.body.kind {
-        BoolExprKindV1::Quantifier(q) => {
-            assert_eq!(q.quantifier.keyword, "exists");
-            assert_eq!(q.binders, vec!["t".to_string()]);
+        BoolExprKindV1::LogicalQuantifier(q) => {
+            assert_eq!(
+                q.kind,
+                quanta_gqlang_v2_hir::LogicalQuantifierKindV1::Exists
+            );
+            assert_eq!(q.binders.as_slice()[0].name, "t");
         }
         other => panic!("body should be Quantifier, got {other:?}"),
     }

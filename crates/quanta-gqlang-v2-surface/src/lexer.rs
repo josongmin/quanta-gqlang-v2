@@ -11,6 +11,7 @@
 //! and never a silent skip. This upholds D10 (no silent downgrade) at the
 //! lexical layer.
 
+use crate::budget::{ParseBudgetCounterV2, ParseBudgetV2};
 use crate::diag::{ParseDiagnosticV1, ParseErrorCodeV1};
 use quanta_gqlang_v2_hir::SpanV1;
 
@@ -80,6 +81,14 @@ pub type LexErrorV1 = ParseDiagnosticV1;
 /// string. Whitespace and `# line comments` are skipped; their spans never
 /// surface in tokens.
 pub fn lex(source: &str) -> Result<Vec<TokenV1>, LexErrorV1> {
+    let counter = ParseBudgetCounterV2::new(&ParseBudgetV2::standard_v2());
+    lex_with_budget(source, &counter)
+}
+
+pub(crate) fn lex_with_budget(
+    source: &str,
+    counter: &ParseBudgetCounterV2,
+) -> Result<Vec<TokenV1>, LexErrorV1> {
     let bytes = source.as_bytes();
     let len = bytes.len();
     let mut tokens = Vec::new();
@@ -101,27 +110,50 @@ pub fn lex(source: &str) -> Result<Vec<TokenV1>, LexErrorV1> {
         }
         // string literal
         if b == b'"' {
-            let (tok, next) = lex_string(bytes, i)?;
-            tokens.push(tok);
+            let next = scan_string(source, i)?;
+            let span = SpanV1::new(i, next);
+            counter.charge_token(span)?;
+            let content = decode_string(source, i, next);
+            tokens.push(TokenV1 {
+                kind: TokenKindV1::Str(content),
+                span,
+            });
             i = next;
             continue;
         }
         // number
         if b.is_ascii_digit() {
-            let (tok, next) = lex_number(source, bytes, i);
-            tokens.push(tok);
+            let (next, is_float) = scan_number(bytes, i);
+            let span = SpanV1::new(i, next);
+            counter.charge_token(span)?;
+            let text = copy_payload(source, i, next);
+            tokens.push(TokenV1 {
+                kind: if is_float {
+                    TokenKindV1::Float(text)
+                } else {
+                    TokenKindV1::Int(text)
+                },
+                span,
+            });
             i = next;
             continue;
         }
         // identifier / keyword
         if is_ident_start(b) {
-            let (tok, next) = lex_ident(source, bytes, i);
-            tokens.push(tok);
+            let next = scan_ident(bytes, i);
+            let span = SpanV1::new(i, next);
+            counter.charge_token(span)?;
+            let text = copy_payload(source, i, next);
+            tokens.push(TokenV1 {
+                kind: TokenKindV1::Ident(text),
+                span,
+            });
             i = next;
             continue;
         }
         // punctuation / operators
         if let Some((tok, next)) = lex_symbol(bytes, i) {
+            counter.charge_token(tok.span)?;
             tokens.push(tok);
             i = next;
             continue;
@@ -129,53 +161,110 @@ pub fn lex(source: &str) -> Result<Vec<TokenV1>, LexErrorV1> {
         // unknown byte: fail closed with exact span
         return Err(ParseDiagnosticV1::new(
             ParseErrorCodeV1::UnexpectedChar,
-            SpanV1::new(i, i + 1),
+            SpanV1::new(i, i + char_at(source, i).len_utf8()),
             format!("unexpected character '{}'", char_at(source, i)),
         ));
     }
 
-    tokens.push(TokenV1 {
+    let eof = TokenV1 {
         kind: TokenKindV1::Eof,
         span: SpanV1::point(len),
-    });
+    };
+    counter.charge_token(eof.span)?;
+    tokens.push(eof);
     Ok(tokens)
 }
 
-fn lex_string(bytes: &[u8], start: usize) -> Result<(TokenV1, usize), LexErrorV1> {
-    let len = bytes.len();
+fn scan_string(source: &str, start: usize) -> Result<usize, LexErrorV1> {
+    let len = source.len();
     let mut i = start + 1; // skip opening quote
-    let mut content = String::new();
     while i < len {
-        let b = byte_at(bytes, i);
-        if b == b'"' {
-            let span = SpanV1::new(start, i + 1);
-            return Ok((
-                TokenV1 {
-                    kind: TokenKindV1::Str(content),
-                    span,
-                },
-                i + 1,
-            ));
+        let Some(ch) = source.get(i..).and_then(|tail| tail.chars().next()) else {
+            break;
+        };
+        if ch == '"' {
+            return Ok(i + ch.len_utf8());
         }
-        if b == b'\\' {
-            // minimal escape handling: \" \\ \n \t
-            i += 1;
+        if ch == '\\' {
+            let escape_start = i;
+            i += ch.len_utf8();
             if i >= len {
                 break;
             }
-            let e = byte_at(bytes, i);
-            match e {
-                b'"' => content.push('"'),
-                b'\\' => content.push('\\'),
-                b'n' => content.push('\n'),
-                b't' => content.push('\t'),
-                other => content.push(char::from(other)),
+            let Some(escape) = source.get(i..).and_then(|tail| tail.chars().next()) else {
+                break;
+            };
+            match escape {
+                '"' | '\\' | 'n' | 'r' | 't' | 'b' | 'f' => {}
+                'u' => {
+                    i += escape.len_utf8();
+                    let open = source.get(i..).and_then(|tail| tail.chars().next());
+                    if open != Some('{') {
+                        return Err(invalid_escape(
+                            source,
+                            escape_start,
+                            i,
+                            "expected '{' after \\u",
+                        ));
+                    }
+                    i += 1;
+                    let digits_start = i;
+                    while i < len {
+                        let Some(digit) = source.get(i..).and_then(|tail| tail.chars().next())
+                        else {
+                            break;
+                        };
+                        if digit == '}' {
+                            break;
+                        }
+                        if !digit.is_ascii_hexdigit() || i.saturating_sub(digits_start) >= 6 {
+                            return Err(invalid_escape(
+                                source,
+                                escape_start,
+                                i + digit.len_utf8(),
+                                "invalid Unicode escape",
+                            ));
+                        }
+                        i += digit.len_utf8();
+                    }
+                    if i == digits_start
+                        || source.get(i..).and_then(|tail| tail.chars().next()) != Some('}')
+                    {
+                        return Err(invalid_escape(
+                            source,
+                            escape_start,
+                            i,
+                            "invalid Unicode escape",
+                        ));
+                    }
+                    let digits = source.get(digits_start..i).unwrap_or_default();
+                    let value = u32::from_str_radix(digits, 16).map_err(|_invalid_hex| {
+                        invalid_escape(source, escape_start, i + 1, "invalid Unicode escape")
+                    })?;
+                    let _scalar = char::from_u32(value).ok_or_else(|| {
+                        invalid_escape(
+                            source,
+                            escape_start,
+                            i + 1,
+                            "Unicode escape is not a scalar value",
+                        )
+                    })?;
+                    i += 1;
+                    continue;
+                }
+                _ => {
+                    return Err(invalid_escape(
+                        source,
+                        escape_start,
+                        i + escape.len_utf8(),
+                        "unknown string escape",
+                    ));
+                }
             }
-            i += 1;
+            i += escape.len_utf8();
             continue;
         }
-        content.push(char::from(b));
-        i += 1;
+        i += ch.len_utf8();
     }
     Err(ParseDiagnosticV1::new(
         ParseErrorCodeV1::UnterminatedString,
@@ -184,7 +273,55 @@ fn lex_string(bytes: &[u8], start: usize) -> Result<(TokenV1, usize), LexErrorV1
     ))
 }
 
-fn lex_number(source: &str, bytes: &[u8], start: usize) -> (TokenV1, usize) {
+fn decode_string(source: &str, start: usize, end: usize) -> String {
+    note_payload_allocation();
+    let raw = source.get(start + 1..end - 1).unwrap_or_default();
+    let mut content = String::with_capacity(raw.len());
+    let mut chars = raw.chars();
+    while let Some(ch) = chars.next() {
+        if ch != '\\' {
+            content.push(ch);
+            continue;
+        }
+        let Some(escape) = chars.next() else { break };
+        match escape {
+            '"' => content.push('"'),
+            '\\' => content.push('\\'),
+            'n' => content.push('\n'),
+            'r' => content.push('\r'),
+            't' => content.push('\t'),
+            'b' => content.push('\u{0008}'),
+            'f' => content.push('\u{000c}'),
+            'u' => {
+                let mut digits = String::new();
+                let _open = chars.next();
+                for digit in chars.by_ref() {
+                    if digit == '}' {
+                        break;
+                    }
+                    digits.push(digit);
+                }
+                if let Ok(value) = u32::from_str_radix(&digits, 16) {
+                    if let Some(scalar) = char::from_u32(value) {
+                        content.push(scalar);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    content
+}
+
+fn invalid_escape(source: &str, start: usize, end: usize, message: &str) -> LexErrorV1 {
+    ParseDiagnosticV1::new(
+        ParseErrorCodeV1::UnexpectedChar,
+        SpanV1::new(start, end.min(source.len())),
+        message,
+    )
+}
+
+fn scan_number(bytes: &[u8], start: usize) -> (usize, bool) {
     let len = bytes.len();
     let mut i = start;
     while i < len && byte_at(bytes, i).is_ascii_digit() {
@@ -200,35 +337,16 @@ fn lex_number(source: &str, bytes: &[u8], start: usize) -> (TokenV1, usize) {
             i += 1;
         }
     }
-    let text = slice(source, start, i);
-    let kind = if is_float {
-        TokenKindV1::Float(text)
-    } else {
-        TokenKindV1::Int(text)
-    };
-    (
-        TokenV1 {
-            kind,
-            span: SpanV1::new(start, i),
-        },
-        i,
-    )
+    (i, is_float)
 }
 
-fn lex_ident(source: &str, bytes: &[u8], start: usize) -> (TokenV1, usize) {
+fn scan_ident(bytes: &[u8], start: usize) -> usize {
     let len = bytes.len();
     let mut i = start;
     while i < len && is_ident_continue(byte_at(bytes, i)) {
         i += 1;
     }
-    let text = slice(source, start, i);
-    (
-        TokenV1 {
-            kind: TokenKindV1::Ident(text),
-            span: SpanV1::new(start, i),
-        },
-        i,
-    )
+    i
 }
 
 fn lex_symbol(bytes: &[u8], start: usize) -> Option<(TokenV1, usize)> {
@@ -267,9 +385,13 @@ fn lex_symbol(bytes: &[u8], start: usize) -> Option<(TokenV1, usize)> {
         b':' => TokenKindV1::Colon,
         b';' => TokenKindV1::Semicolon,
         b'|' => TokenKindV1::Pipe,
-        b'+' | b'-' | b'*' | b'/' | b'=' | b'<' | b'>' => {
-            TokenKindV1::Op(char::from(b).to_string())
-        }
+        b'+' => TokenKindV1::Op("+".to_string()),
+        b'-' => TokenKindV1::Op("-".to_string()),
+        b'*' => TokenKindV1::Op("*".to_string()),
+        b'/' => TokenKindV1::Op("/".to_string()),
+        b'=' => TokenKindV1::Op("=".to_string()),
+        b'<' => TokenKindV1::Op("<".to_string()),
+        b'>' => TokenKindV1::Op(">".to_string()),
         _ => return None,
     };
     Some(make(single, start, 1))
@@ -299,8 +421,22 @@ fn byte_at(bytes: &[u8], i: usize) -> u8 {
     bytes.get(i).copied().unwrap_or(0)
 }
 
-fn slice(source: &str, start: usize, end: usize) -> String {
+fn copy_payload(source: &str, start: usize, end: usize) -> String {
+    note_payload_allocation();
     source.get(start..end).unwrap_or_default().to_string()
+}
+
+#[cfg(not(test))]
+fn note_payload_allocation() {}
+
+#[cfg(test)]
+thread_local! {
+    static PAYLOAD_ALLOCATIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+fn note_payload_allocation() {
+    PAYLOAD_ALLOCATIONS.with(|count| count.set(count.get() + 1));
 }
 
 fn char_at(source: &str, i: usize) -> char {
@@ -308,4 +444,39 @@ fn char_at(source: &str, i: usize) -> char {
         .get(i..)
         .and_then(|s| s.chars().next())
         .unwrap_or('?')
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(
+        clippy::unwrap_used,
+        reason = "unit rail asserts exact budget construction and rejection"
+    )]
+
+    use super::{lex_with_budget, PAYLOAD_ALLOCATIONS};
+    use crate::budget::ParseBudgetCounterV2;
+    use crate::{ParseBudgetDimensionV2, ParseBudgetV2, ParseErrorCodeV1};
+
+    #[test]
+    fn token_limit_rejects_long_payload_before_copy_or_decode() {
+        let long = "x".repeat(32_768);
+        let cases = [
+            format!("({long}"),
+            format!("({}", "7".repeat(32_768)),
+            format!("({}.{}", "7".repeat(16_384), "8".repeat(16_384)),
+            format!("(\"{long}\""),
+        ];
+        for source in cases {
+            PAYLOAD_ALLOCATIONS.with(|count| count.set(0));
+            let budget = ParseBudgetV2::try_new(1, 1, 1, 1, 1, 1).unwrap();
+            let counter = ParseBudgetCounterV2::new(&budget);
+            let error = lex_with_budget(&source, &counter).unwrap_err();
+            assert_eq!(error.code, ParseErrorCodeV1::ResourceExhausted);
+            assert_eq!(
+                error.resource.map(|resource| resource.dimension),
+                Some(ParseBudgetDimensionV2::Tokens)
+            );
+            PAYLOAD_ALLOCATIONS.with(|count| assert_eq!(count.get(), 0));
+        }
+    }
 }

@@ -6,21 +6,25 @@
 //! one builder satisfy the id-uniqueness invariant by construction. Spans are
 //! always caller-supplied (the builder never invents source offsets).
 
-use crate::expr::{BinaryBoolV1, QuantifierExprV1, QuantifierKindV1};
 use crate::expr::{
-    BinaryExprV1, BinaryOpV1, BoolExprHirV1, BoolExprKindV1, CallExprV1, CalleeRefV1,
-    CompareExprV1, CompareOpV1, ListExprV1, LiteralV1, PathAccessV1, PathSegmentV1, RecordExprV1,
-    RecordFieldV1, SymbolRefV1, UnaryExprV1, UnaryOpV1, ValueExprHirV1, ValueExprKindV1,
+    BinaryBoolV1, LogicalQuantifierHirV1, LogicalQuantifierKindV1, NonEmptyBindersV1,
+    RelationExistsHirV1, RelationExistsPolarityV1,
+};
+use crate::expr::{
+    BinaryExprV1, BinaryOpV1, BoolExprHirV1, BoolExprKindV1, CallArgsHirV1, CallExprV1,
+    CalleeRefV1, CompareExprV1, CompareOpV1, ListExprV1, LiteralV1, PathAccessV1, PathSegmentV1,
+    RecordExprV1, RecordFieldV1, SymbolRefV1, UnaryExprV1, UnaryOpV1, ValueExprHirV1,
+    ValueExprKindV1,
 };
 use crate::id::{HirNodeIdGen, HirNodeIdV1};
 use crate::item::{
-    CatalogDeclHirV1, CatalogPayloadV1, CompositionBindingV1, CompositionHirV1, GraphConstraintsV1,
-    GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, LegalityHirV1, MetaHirV1, MetaKindV1,
-    PresentationHirV1, PresentationKindV1, ProgramItemHirV1,
+    CatalogDeclHirV1, CatalogPayloadV1, CompositionBindingV1, CompositionBodyV1, CompositionHirV1,
+    CompositionProducerV1, GraphConstraintsV1, GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1,
+    LegalityHirV1, MetaHirV1, MetaKindV1, PresentationHirV1, PresentationKindV1,
 };
 use crate::relation::{
-    AliasV1, CompositionOpV1, CompositionV1, ProjectionItemV1, ProjectionV1, RelationExprHirV1,
-    RelationExprKindV1, RelationFilterV1, RelationSourceV1,
+    AliasV1, GroupByHirV1, JoinHirV1, OrderByHirV1, OrderKeyHirV1, ProjectionItemV1, ProjectionV1,
+    RelationExprHirV1, RelationExprKindV1, RelationFilterV1, RelationSourceV1,
 };
 use crate::shape::{ResultShapeHirV1, ResultShapeKindV1, ShapeFieldV1, ShapeListV1, ShapeRecordV1};
 use crate::span::SpanV1;
@@ -153,18 +157,18 @@ impl HirBuilderV1 {
         &self,
         callee: impl Into<String>,
         callee_span: SpanV1,
-        args: Vec<ValueExprHirV1>,
+        args: CallArgsHirV1,
         span: SpanV1,
     ) -> ValueExprHirV1 {
         self.value(
             span,
-            ValueExprKindV1::Call(CallExprV1 {
-                callee: CalleeRefV1 {
+            ValueExprKindV1::Call(CallExprV1::new(
+                CalleeRefV1 {
                     name: callee.into(),
                     span: callee_span,
                 },
                 args,
-            }),
+            )),
         )
     }
 
@@ -251,22 +255,36 @@ impl HirBuilderV1 {
         self.boolean(span, BoolExprKindV1::Paren(Box::new(inner)))
     }
 
-    /// Quantifier-style placeholder node (no scoping applied).
-    pub fn quantifier(
+    /// Logical quantifier with a validated non-empty binder list.
+    pub fn logical_quantifier(
         &self,
-        keyword: impl Into<String>,
-        binders: Vec<String>,
+        kind: LogicalQuantifierKindV1,
+        binders: NonEmptyBindersV1,
         body: BoolExprHirV1,
         span: SpanV1,
     ) -> BoolExprHirV1 {
         self.boolean(
             span,
-            BoolExprKindV1::Quantifier(QuantifierExprV1 {
-                quantifier: QuantifierKindV1 {
-                    keyword: keyword.into(),
-                },
+            BoolExprKindV1::LogicalQuantifier(LogicalQuantifierHirV1 {
+                kind,
                 binders,
                 body: Box::new(body),
+            }),
+        )
+    }
+
+    /// Relational existence predicate.
+    pub fn relation_exists(
+        &self,
+        polarity: RelationExistsPolarityV1,
+        relation: RelationExprHirV1,
+        span: SpanV1,
+    ) -> BoolExprHirV1 {
+        self.boolean(
+            span,
+            BoolExprKindV1::RelationExists(RelationExistsHirV1 {
+                polarity,
+                relation: Box::new(relation),
             }),
         )
     }
@@ -325,22 +343,60 @@ impl HirBuilderV1 {
         )
     }
 
-    /// Structural composition over relation operands (no algebra applied).
-    pub fn compose(
+    /// Inner join with a required predicate.
+    pub fn inner_join(
         &self,
-        symbol: impl Into<String>,
-        operands: Vec<RelationExprHirV1>,
+        left: RelationExprHirV1,
+        right: RelationExprHirV1,
+        on: BoolExprHirV1,
         span: SpanV1,
     ) -> RelationExprHirV1 {
         self.relation(
             span,
-            RelationExprKindV1::Compose(CompositionV1 {
-                op: CompositionOpV1 {
-                    symbol: symbol.into(),
-                },
-                operands,
+            RelationExprKindV1::Join(JoinHirV1::Inner {
+                left: Box::new(left),
+                right: Box::new(right),
+                on,
             }),
         )
+    }
+
+    /// Predicate-free explicit cross join.
+    pub fn cross_join(
+        &self,
+        left: RelationExprHirV1,
+        right: RelationExprHirV1,
+        span: SpanV1,
+    ) -> RelationExprHirV1 {
+        self.relation(
+            span,
+            RelationExprKindV1::Join(JoinHirV1::Cross {
+                left: Box::new(left),
+                right: Box::new(right),
+            }),
+        )
+    }
+
+    /// Grouping over explicit keys.
+    pub fn group_by(
+        &self,
+        input: RelationExprHirV1,
+        keys: Vec<ValueExprHirV1>,
+        span: SpanV1,
+    ) -> Result<RelationExprHirV1, &'static str> {
+        let group = GroupByHirV1::try_new(input, keys)?;
+        Ok(self.relation(span, RelationExprKindV1::GroupBy(group)))
+    }
+
+    /// Ordering over explicit keys and directions.
+    pub fn order_by(
+        &self,
+        input: RelationExprHirV1,
+        keys: Vec<OrderKeyHirV1>,
+        span: SpanV1,
+    ) -> Result<RelationExprHirV1, &'static str> {
+        let order = OrderByHirV1::try_new(input, keys)?;
+        Ok(self.relation(span, RelationExprKindV1::OrderBy(order)))
     }
 
     fn relation(&self, span: SpanV1, kind: RelationExprKindV1) -> RelationExprHirV1 {
@@ -483,7 +539,7 @@ impl HirBuilderV1 {
         &self,
         name: impl Into<String>,
         name_span: SpanV1,
-        producer: ProgramItemHirV1,
+        producer: CompositionProducerV1,
     ) -> CompositionBindingV1 {
         CompositionBindingV1::new(name, name_span, producer)
     }
@@ -494,7 +550,7 @@ impl HirBuilderV1 {
         bindings: Vec<CompositionBindingV1>,
         with_name: impl Into<String>,
         with_name_span: SpanV1,
-        body: ProgramItemHirV1,
+        body: CompositionBodyV1,
         span: SpanV1,
     ) -> CompositionHirV1 {
         CompositionHirV1::new(

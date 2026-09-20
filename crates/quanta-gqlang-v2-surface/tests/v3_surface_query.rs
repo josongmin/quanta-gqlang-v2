@@ -123,22 +123,14 @@ fn where_filter_and_join_compose() {
         SurfaceItemV1::Query(q) => q,
         other => panic!("expected query, got {other:?}"),
     };
-    // outermost is the `on` filter wrapping the join compose.
-    let filter = match &query.body.kind {
-        RelationExprKindV1::Filter(f) => f,
-        other => panic!("outer should be join-on Filter, got {other:?}"),
+    let join = match &query.body.kind {
+        RelationExprKindV1::Join(j) => j,
+        other => panic!("outer should be Join, got {other:?}"),
     };
-    let compose = match &filter.input.kind {
-        RelationExprKindV1::Compose(c) => c,
-        other => panic!("filter input should be Compose, got {other:?}"),
+    let quanta_gqlang_v2_hir::JoinHirV1::Inner { left, .. } = join else {
+        panic!("inner join")
     };
-    assert_eq!(compose.op.symbol, "join");
-    assert_eq!(compose.operands.len(), 2);
-    // left operand is itself the `where` filter over the aliased source.
-    assert!(matches!(
-        compose.operands[0].kind,
-        RelationExprKindV1::Filter(_)
-    ));
+    assert!(matches!(left.kind, RelationExprKindV1::Filter(_)));
     check_tree(HirRootRefV1::Query(&query), src.len()).expect("sound tree");
 }
 
@@ -152,13 +144,12 @@ fn group_by_with_aggregate_call_projection() {
         SurfaceItemV1::Query(q) => q,
         other => panic!("expected query, got {other:?}"),
     };
-    let compose = match &query.body.kind {
-        RelationExprKindV1::Compose(c) => c,
-        other => panic!("outer should be group_by Compose, got {other:?}"),
+    let group = match &query.body.kind {
+        RelationExprKindV1::GroupBy(group) => group,
+        other => panic!("outer should be GroupBy, got {other:?}"),
     };
-    assert_eq!(compose.op.symbol, "group_by");
     // the aggregate call lives in the inner projection.
-    let project = match &compose.operands[0].kind {
+    let project = match &group.input.kind {
         RelationExprKindV1::Project(p) => p,
         other => panic!("group input should be Project, got {other:?}"),
     };

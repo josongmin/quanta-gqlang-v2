@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import subprocess
+import tempfile
+import unittest
+from collections import defaultdict
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[3]
+CHECKER = ROOT / "tools/architecture/check_architecture.py"
+FIXTURES = ROOT / "tools/architecture/tests/fixtures"
+MEMBERS = [
+    "quanta-gqlang-v2-algebra",
+    "quanta-gqlang-v2-binder",
+    "quanta-gqlang-v2-cli",
+    "quanta-gqlang-v2-conformance",
+    "quanta-gqlang-v2-diagnostics-stdio",
+    "quanta-gqlang-v2-frontend-contract",
+    "quanta-gqlang-v2-hir",
+    "quanta-gqlang-v2-logic",
+    "quanta-gqlang-v2-modules",
+    "quanta-gqlang-v2-pipeline",
+    "quanta-gqlang-v2-planning",
+    "quanta-gqlang-v2-sema",
+    "quanta-gqlang-v2-surface",
+    "quanta-gqlang-v2-types",
+]
+
+
+def read_topology(path: Path) -> dict:
+    topology = json.loads(path.read_text(encoding="utf-8"))
+    if "base" not in topology:
+        return topology
+    base = read_topology((path.parent / topology["base"]).resolve())
+    return {
+        "normal_edges": base["normal_edges"] + topology.get("add_normal_edges", []),
+        "dev_edges": base["dev_edges"] + topology.get("add_dev_edges", []),
+        "runtime_edge": topology.get("runtime_edge"),
+    }
+
+
+def materialize_fixture(destination: Path, fixture_name: str, *, omit: str | None = None) -> None:
+    topology = read_topology(FIXTURES / fixture_name / "topology.json")
+    members = [member for member in MEMBERS if member != omit]
+    member_entries = ",\n".join(f'    "crates/{member}"' for member in members)
+    excluded = ['"external/quanta-runtime"']
+    if omit is not None:
+        excluded.append(f'"crates/{omit}"')
+    exclude_entries = ", ".join(excluded)
+    (destination / "Cargo.toml").write_text(
+        f'[workspace]\nmembers = [\n{member_entries},\n]\n'
+        f"exclude = [{exclude_entries}]\nresolver = \"2\"\n",
+        encoding="utf-8",
+    )
+    shared = destination / "shared/lib.rs"
+    shared.parent.mkdir(parents=True)
+    shared.write_text("#![forbid(unsafe_code)]\n", encoding="utf-8")
+
+    normal_by_consumer: dict[str, list[str]] = defaultdict(list)
+    dev_by_consumer: dict[str, list[str]] = defaultdict(list)
+    for consumer, dependency in topology["normal_edges"]:
+        normal_by_consumer[consumer].append(dependency)
+    for consumer, dependency in topology["dev_edges"]:
+        dev_by_consumer[consumer].append(dependency)
+    runtime_edge = topology.get("runtime_edge")
+    if runtime_edge:
+        normal_by_consumer[runtime_edge[0]].append(runtime_edge[1])
+        runtime_dir = destination / "external/quanta-runtime"
+        runtime_dir.mkdir(parents=True)
+        (runtime_dir / "Cargo.toml").write_text(
+            '[package]\nname = "quanta-runtime"\nversion = "0.1.0"\nedition = "2021"\n'
+            '[lib]\npath = "../../shared/lib.rs"\n',
+            encoding="utf-8",
+        )
+
+    for member in MEMBERS:
+        crate = destination / "crates" / member
+        crate.mkdir(parents=True)
+        lines = [
+            "[package]",
+            f'name = "{member}"',
+            'version = "0.1.0"',
+            'edition = "2021"',
+            "",
+            "[lib]",
+            'path = "../../shared/lib.rs"',
+        ]
+        dependencies = normal_by_consumer[member]
+        if dependencies:
+            lines.extend(["", "[dependencies]"])
+            for dependency in sorted(dependencies):
+                path = (
+                    "../../external/quanta-runtime"
+                    if dependency == "quanta-runtime"
+                    else f"../{dependency}"
+                )
+                lines.append(f'{dependency} = {{ path = "{path}" }}')
+        dev_dependencies = dev_by_consumer[member]
+        if dev_dependencies:
+            lines.extend(["", "[dev-dependencies]"])
+            for dependency in sorted(dev_dependencies):
+                lines.append(f'{dependency} = {{ path = "../{dependency}" }}')
+        (crate / "Cargo.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def run_checker(root: Path, *extra: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["python3", str(CHECKER), "--root", str(root), *extra],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+class ArchitectureCheckerTest(unittest.TestCase):
+    def fixture(self, name: str, *, omit: str | None = None) -> tuple[tempfile.TemporaryDirectory[str], Path]:
+        temporary = tempfile.TemporaryDirectory(prefix="qglang-architecture-")
+        root = Path(temporary.name) / "workspace"
+        root.mkdir()
+        materialize_fixture(root, name, omit=omit)
+        return temporary, root
+
+    def test_valid_final_dag(self) -> None:
+        temporary, root = self.fixture("valid")
+        with temporary:
+            result = run_checker(root, "--require-final")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("workspace_members=14", result.stdout)
+        self.assertIn("normal_edges=28", result.stdout)
+        self.assertIn("transitional_present=0", result.stdout)
+
+    def test_transitional_edge_passes_default_and_fails_final_mode(self) -> None:
+        temporary, root = self.fixture("transitional-valid")
+        with temporary:
+            default = run_checker(root)
+            final = run_checker(root, "--require-final")
+        self.assertEqual(default.returncode, 0, default.stderr)
+        self.assertIn("transitional_present=1", default.stdout)
+        self.assertNotEqual(final.returncode, 0)
+        self.assertIn(
+            "quanta-gqlang-v2-algebra -> quanta-gqlang-v2-hir",
+            final.stderr,
+        )
+
+    def test_reverse_edge_rejects_with_exact_edge(self) -> None:
+        temporary, root = self.fixture("reverse-edge")
+        with temporary:
+            result = run_checker(root)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "quanta-gqlang-v2-sema -> quanta-gqlang-v2-planning",
+            result.stderr,
+        )
+
+    def test_forbidden_runtime_dependency_rejects(self) -> None:
+        temporary, root = self.fixture("runtime-edge")
+        with temporary:
+            result = run_checker(root)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("forbidden normal dependency quanta-runtime", result.stderr)
+
+    def test_workspace_member_drift_rejects(self) -> None:
+        temporary, root = self.fixture("valid", omit="quanta-gqlang-v2-types")
+        with temporary:
+            result = run_checker(root)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("workspace members drifted", result.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()

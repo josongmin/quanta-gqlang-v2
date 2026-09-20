@@ -19,8 +19,8 @@
 )]
 
 use quanta_gqlang_v2_hir::{
-    check_tree, BoolExprKindV1, HirBuilderV1, HirRootRefV1, LiteralV1, ValueExprHirV1,
-    ValueExprKindV1,
+    check_tree, BoolExprKindV1, CallArgHirV1, HirBuilderV1, HirRootRefV1, LiteralV1,
+    LogicalQuantifierKindV1, ValueExprHirV1, ValueExprKindV1,
 };
 use quanta_gqlang_v2_surface::{parse_expr, parse_predicate, ParseErrorCodeV1};
 
@@ -107,15 +107,17 @@ fn call_with_multiple_args() {
     match &v.kind {
         ValueExprKindV1::Call(c) => {
             assert_eq!(c.callee.name, "f");
-            assert_eq!(c.args.len(), 3);
-            assert!(matches!(c.args[0].kind, ValueExprKindV1::Symbol(_)));
+            assert_eq!(c.args().len(), 3);
+            assert!(
+                matches!(&c.args().as_slice()[0], CallArgHirV1::Expr(v) if matches!(v.kind, ValueExprKindV1::Symbol(_)))
+            );
             assert!(matches!(
-                c.args[1].kind,
-                ValueExprKindV1::Literal(LiteralV1::Int(_))
+                &c.args().as_slice()[1],
+                CallArgHirV1::Expr(v) if matches!(v.kind, ValueExprKindV1::Literal(LiteralV1::Int(_)))
             ));
             assert!(matches!(
-                c.args[2].kind,
-                ValueExprKindV1::Literal(LiteralV1::Str(_))
+                &c.args().as_slice()[2],
+                CallArgHirV1::Expr(v) if matches!(v.kind, ValueExprKindV1::Literal(LiteralV1::Str(_)))
             ));
         }
         other => panic!("expected call, got {other:?}"),
@@ -126,24 +128,15 @@ fn call_with_multiple_args() {
 /// continues the arg loop.
 #[test]
 fn call_star_arg_and_trailing_star_comma() {
-    let v = value("count(*, a)");
-    match &v.kind {
-        ValueExprKindV1::Call(c) => {
-            assert_eq!(c.args.len(), 2);
-            match &c.args[0].kind {
-                ValueExprKindV1::Symbol(s) => assert_eq!(s.name, "*"),
-                other => panic!("expected star symbol arg, got {other:?}"),
-            }
-        }
-        other => panic!("expected call, got {other:?}"),
-    }
+    let builder = HirBuilderV1::new();
+    assert!(parse_expr("count(*, a)", &builder).is_err());
 }
 
 /// An empty arg list `f()` lowers to a call with zero args.
 #[test]
 fn call_with_no_args() {
     match &value("now()").kind {
-        ValueExprKindV1::Call(c) => assert!(c.args.is_empty()),
+        ValueExprKindV1::Call(c) => assert!(c.args().is_empty()),
         other => panic!("expected call, got {other:?}"),
     }
 }
@@ -196,14 +189,7 @@ fn bare_comparison_lowers_to_compare() {
 #[test]
 fn quantifier_no_binders() {
     let builder = HirBuilderV1::new();
-    let p = parse_predicate("exists ( a > 1 )", &builder).expect("parses");
-    match &p.kind {
-        BoolExprKindV1::Quantifier(q) => {
-            assert_eq!(q.quantifier.keyword, "exists");
-            assert!(q.binders.is_empty());
-        }
-        other => panic!("expected quantifier, got {other:?}"),
-    }
+    assert!(parse_predicate("exists ( a > 1 )", &builder).is_err());
 }
 
 /// `forall x, y in ( body )` collects multiple binders and consumes the `in`.
@@ -212,9 +198,16 @@ fn quantifier_multiple_binders_with_in() {
     let builder = HirBuilderV1::new();
     let p = parse_predicate("forall x, y in ( x > y )", &builder).expect("parses");
     match &p.kind {
-        BoolExprKindV1::Quantifier(q) => {
-            assert_eq!(q.quantifier.keyword, "forall");
-            assert_eq!(q.binders, vec!["x".to_string(), "y".to_string()]);
+        BoolExprKindV1::LogicalQuantifier(q) => {
+            assert_eq!(q.kind, LogicalQuantifierKindV1::Forall);
+            assert_eq!(
+                q.binders
+                    .as_slice()
+                    .iter()
+                    .map(|b| b.name.as_str())
+                    .collect::<Vec<_>>(),
+                vec!["x", "y"]
+            );
         }
         other => panic!("expected quantifier, got {other:?}"),
     }

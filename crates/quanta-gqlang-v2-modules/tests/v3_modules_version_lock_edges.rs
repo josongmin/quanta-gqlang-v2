@@ -47,7 +47,7 @@ fn version_parse_accepts_canonical_and_rejects_malformed() {
     assert_eq!(VersionV1::parse(""), None);
     // Trailing data: a fourth dotted component must reject (line 45 branch).
     assert_eq!(VersionV1::parse("1.2.3.4"), None);
-    // Empty trailing component (text ends in a dot) -> unparseable patch.
+    // Empty trailing component (text ends in a dot) -> unparsable patch.
     assert_eq!(VersionV1::parse("1.2."), None);
 }
 
@@ -147,12 +147,12 @@ fn lockfile_parse_skips_blank_lines() {
     assert_eq!(lock.to_text(), "app 1.0.0\nlib 2.1.0\n");
 }
 
-// parse fails closed on a malformed line: extra fields and unparseable version.
+// parse fails closed on a malformed line: extra fields and unparsable version.
 #[test]
 fn lockfile_parse_rejects_malformed_lines() {
     // Extra third field (line 98 trailing-data branch).
     assert_eq!(LockfileV1::parse("app 1.0.0 extra"), None);
-    // Unparseable version.
+    // Unparsable version.
     assert_eq!(LockfileV1::parse("app notaversion"), None);
     // Missing version field entirely.
     assert_eq!(LockfileV1::parse("app"), None);

@@ -23,10 +23,9 @@
 //!
 //! ## Semantic boundary
 //!
-//! Operators, comparison symbols, callee names, composition tags (`join`,
-//! `group_by`, `order_by`), and quantifier keywords are passed through as the
-//! OPEN symbolic tags the HIR defines. Their legality (overloads, join algebra,
-//! recursion, sort/group discipline) is owned by tickets 02/03/04/05.
+//! Scalar operators and callee names retain authored symbols. Relation stages,
+//! quantifiers, relational existence, and composition slots lower to dedicated
+//! closed HIR variants. Binding and type legality remain downstream concerns.
 //!
 //! ## Public entry points
 //!
@@ -44,6 +43,7 @@
 //! Every error path returns a typed [`ParseDiagnosticV1`] carrying a stable
 //! [`ParseErrorCodeV1`] and an exact `hir::SpanV1`.
 
+mod budget;
 mod cursor;
 mod diag;
 mod expr;
@@ -55,10 +55,18 @@ mod query;
 mod shape;
 mod unit;
 
+pub use budget::{ParseBudgetDimensionV2, ParseBudgetV2};
+pub use diag::ResourceExhaustionV2;
 pub use diag::{ParseDiagnosticV1, ParseErrorCodeV1};
 pub use format::{format_document, format_item};
 pub use lexer::{lex, LexErrorV1, TokenKindV1, TokenV1};
-pub use parser::{parse_document, parse_program, ParsedDocumentV1, ParsedProgramV1, SurfaceItemV1};
+pub use parser::{
+    parse_document, parse_program, parse_source_document_v2, ParsedDocumentV1, ParsedDocumentV2,
+    ParsedProgramV1, SurfaceItemV1,
+};
+
+/// One surface diagnostic vocabulary for V2 entry points.
+pub type SurfaceDiagnosticV2 = ParseDiagnosticV1;
 
 use cursor::CursorV1;
 use quanta_gqlang_v2_hir::{BoolExprHirV1, HirBuilderV1, ValueExprHirV1};
@@ -71,8 +79,17 @@ pub fn parse_expr(
     source: &str,
     builder: &HirBuilderV1,
 ) -> Result<ValueExprHirV1, ParseDiagnosticV1> {
-    let tokens = lex(source)?;
-    let mut cur = CursorV1::new(tokens, builder);
+    parse_expr_with_budget(source, builder, &ParseBudgetV2::standard_v2())
+}
+
+fn parse_expr_with_budget(
+    source: &str,
+    builder: &HirBuilderV1,
+    budget: &ParseBudgetV2,
+) -> Result<ValueExprHirV1, ParseDiagnosticV1> {
+    let counter = budget::ParseBudgetCounterV2::new(budget);
+    let tokens = lexer::lex_with_budget(source, &counter)?;
+    let mut cur = CursorV1::new(tokens, builder, counter);
     let value = expr::parse_value(&mut cur)?;
     finish(&cur)?;
     Ok(value)
@@ -86,11 +103,28 @@ pub fn parse_predicate(
     source: &str,
     builder: &HirBuilderV1,
 ) -> Result<BoolExprHirV1, ParseDiagnosticV1> {
-    let tokens = lex(source)?;
-    let mut cur = CursorV1::new(tokens, builder);
+    let budget = ParseBudgetV2::standard_v2();
+    let counter = budget::ParseBudgetCounterV2::new(&budget);
+    let tokens = lexer::lex_with_budget(source, &counter)?;
+    let mut cur = CursorV1::new(tokens, builder, counter);
     let pred = expr::parse_bool(&mut cur)?;
     finish(&cur)?;
     Ok(pred)
+}
+
+/// Parse then canonically format a document with one explicit parse budget.
+pub fn format_source_document_with_parse_budget_v2(
+    source: &str,
+    budget: &ParseBudgetV2,
+) -> Result<String, SurfaceDiagnosticV2> {
+    let builder = HirBuilderV1::new();
+    let parsed = parser::parse_document_items_with_budget(source, &builder, budget)?;
+    let items = parsed
+        .items
+        .into_iter()
+        .map(SurfaceItemV1::into_program_item)
+        .collect::<Vec<_>>();
+    Ok(format_document(&items))
 }
 
 /// Assert the cursor is at EOF, else a typed trailing-token reject.

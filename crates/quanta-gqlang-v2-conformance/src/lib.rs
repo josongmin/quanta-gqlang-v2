@@ -21,8 +21,6 @@
 //! Construction is a `match` over [`RootFamilyV1`] in [`spec_for_v1`], so adding
 //! a family variant is a compile error until every field is supplied.
 
-pub mod leakage;
-
 use quanta_gqlang_v2_planning::{EffectClassV1, ResultKindV1};
 
 /// Declare the closed `RootFamilyV1` enum AND the canonical `ROOT_FAMILIES_V1`

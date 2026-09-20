@@ -8,7 +8,7 @@
 2. sema
 3. normalized IR
 4. CLI
-5. LSP
+5. diagnostics stdio transport
 
 비범위:
 
@@ -52,12 +52,14 @@ CLI front door:
 3. file-path input: `cargo run -p quanta-gqlang-v2-cli -- query --file examples/show/capabilities.qglang`
 4. malformed argv, unreadable files, and command errors fail closed with non-zero exit
 
-LSP front door:
+Diagnostics stdio front door:
 
 1. stdio JSON requests only
-2. supported read-only methods: `hover`, `completion`, `symbols`, `diagnostics`, `zero_query`, `quickfix`
+2. supported read-only method: `v3_diagnostics`
 3. mutating or unknown methods fail closed
-4. binary entry: `cargo run -p quanta-gqlang-v2-lsp`
+4. binary entry: `cargo run -p quanta-gqlang-v2-diagnostics-stdio`
+5. this is a private flat-JSON protocol, not JSON-RPC or LSP; it does not implement
+   `initialize` or document lifecycle methods
 
 Repo-owned front-door e2e:
 
@@ -65,7 +67,7 @@ Repo-owned front-door e2e:
    frontend-owned example corpus under `examples/`
 2. CLI bad argv, unreadable file, parse-error, and no-result shell behavior stay
    fail-closed
-3. LSP stdio methods stay read-only, mutating methods stay forbidden, malformed
+3. diagnostics stdio analysis stays read-only, mutating methods stay forbidden, malformed
    JSON stays fail-closed, and the same stdio session must recover after those
    failures
 4. these rails prove frontend determinism and fail-closed behavior only; they do
@@ -82,11 +84,11 @@ Repo-owned front-door e2e:
 ### Proof rails
 
 The repo-owned e2e boundary is proven by two kinds of rails. Binary-only rails
-spawn the real CLI/LSP binary and assert stdout/stderr/exit code (usage, empty
-input, transport parity, doctor classification, negative-DSL, and the LSP stdio
+spawn the real CLI/diagnostics-stdio binary and assert stdout/stderr/exit code (usage, empty
+input, transport parity, doctor classification, negative-DSL, and the diagnostics stdio
 framing / escape / multi-statement / command-plane / read-only-authority gates).
 Contract-only rails are in-crate library tests for syntax, sema, and IR shapes.
-The scope is syntax/sema/normalized-IR/CLI/LSP only; runtime execution, provider
+The scope is syntax/sema/normalized-IR/CLI/diagnostics stdio only; runtime execution, provider
 routing, result counts, host DTOs, and backend materialization are out of scope
 and are never asserted as real. The full surface-to-rail mapping is the coverage
 ledger at [docs/language/test_hellgate_ledger.md](docs/language/test_hellgate_ledger.md),

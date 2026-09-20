@@ -18,22 +18,18 @@
 )]
 
 use quanta_gqlang_v2_hir::{
-    check_tree, ActivationV1, AdmissionV1, CatalogPayloadV1, CompareMetricV1, ConfirmModeV1,
-    DetectionModeV1, EmitModeV1, EvidenceModeV1, ExportFormatV1, GateBindingV1, GraphQueryKindV1,
-    HirBuilderV1, HirRootRefV1, MetaKindV1, PresentationKindV1, ProgramItemHirV1, SampleModeV1,
-    ShowCategoryV1, TruthModeV1, ViewBodyV1,
+    check_tree, ActivationV1, AdmissionV1, CatalogPayloadV1, CompareMetricV1, CompositionBodyV1,
+    CompositionProducerV1, ConfirmModeV1, DetectionModeV1, EmitModeV1, EvidenceModeV1,
+    ExportFormatV1, GateBindingV1, GraphQueryKindV1, HirBuilderV1, HirRootRefV1, MetaKindV1,
+    PresentationKindV1, ProgramItemHirV1, SampleModeV1, ShowCategoryV1, TruthModeV1,
+    UsePackActivationV1, ViewBodyV1,
 };
-use quanta_gqlang_v2_surface::{parse_program, ParseErrorCodeV1, SurfaceItemV1};
+use quanta_gqlang_v2_surface::{parse_program, ParseErrorCodeV1};
 
 fn program(src: &str) -> ProgramItemHirV1 {
     let builder = HirBuilderV1::new();
     let parsed = parse_program(src, &builder).expect("must parse");
-    let item = match parsed.item {
-        SurfaceItemV1::Program(p) => p,
-        SurfaceItemV1::Query(q) => ProgramItemHirV1::from(q),
-        SurfaceItemV1::Decl(d) => ProgramItemHirV1::from(d),
-        SurfaceItemV1::Rule(r) => ProgramItemHirV1::from(r),
-    };
+    let item = parsed.item.into_program_item();
     // every parsed family must pass the shared HIR integrity check.
     check_tree(HirRootRefV1::Item(&item), parsed.source_len).expect("tree integrity");
     item
@@ -465,14 +461,10 @@ fn use_pack_parses_to_meta() {
         other => panic!("expected Meta, got {other:?}"),
     };
     match meta.kind {
-        MetaKindV1::UsePack {
-            pack_id,
-            activation,
-            lockfile,
-        } => {
-            assert_eq!(pack_id, "secure-pack");
-            assert_eq!(activation, ActivationV1::Session);
-            assert_eq!(lockfile.as_deref(), Some("packs.secure-pack.lock"));
+        MetaKindV1::UsePack(use_pack) => {
+            assert_eq!(use_pack.pack_id, "secure-pack");
+            assert_eq!(use_pack.activation, UsePackActivationV1::Session);
+            assert_eq!(use_pack.lockfile, "packs.secure-pack.lock");
         }
         other => panic!("expected UsePack, got {other:?}"),
     }
@@ -509,11 +501,11 @@ fn composition_let_with_parses() {
     assert_eq!(comp.bindings.len(), 1);
     assert_eq!(comp.bindings[0].name, "suspects");
     assert!(matches!(
-        *comp.bindings[0].producer,
-        ProgramItemHirV1::Presentation(_)
+        &comp.bindings[0].producer,
+        CompositionProducerV1::Sample(_)
     ));
     assert_eq!(comp.with_name, "suspects");
-    assert!(matches!(*comp.body, ProgramItemHirV1::GraphQuery(_)));
+    assert!(matches!(&comp.body, CompositionBodyV1::GraphQuery(_)));
 }
 
 #[test]
@@ -870,16 +862,16 @@ fn composition_find_producer_check_body_is_accepted() {
     };
     assert_eq!(comp.bindings.len(), 1);
     assert!(matches!(
-        *comp.bindings[0].producer,
-        ProgramItemHirV1::GraphQuery(_)
+        &comp.bindings[0].producer,
+        CompositionProducerV1::GraphQuery(_)
     ));
-    assert!(matches!(*comp.body, ProgramItemHirV1::Legality(_)));
+    assert!(matches!(&comp.body, CompositionBodyV1::Legality(_)));
     assert_eq!(comp.with_name, "q");
 }
 
-fn composition_body(src: &str) -> ProgramItemHirV1 {
+fn composition_body(src: &str) -> CompositionBodyV1 {
     match program(src) {
-        ProgramItemHirV1::Composition(c) => *c.body,
+        ProgramItemHirV1::Composition(c) => c.body,
         other => panic!("expected Composition for {src:?}, got {other:?}"),
     }
 }
@@ -890,19 +882,19 @@ fn composition_admitted_body_families_parse() {
     let prefix = "let q = sample query=\"x\" | mode=lexical | limit=1 ";
     assert!(matches!(
         composition_body(&format!("{prefix}from users u with q")),
-        ProgramItemHirV1::Query(_)
+        CompositionBodyV1::Query(_)
     ));
     assert!(matches!(
         composition_body(&format!("{prefix}find taint a -> b with q")),
-        ProgramItemHirV1::GraphQuery(_)
+        CompositionBodyV1::GraphQuery(_)
     ));
     assert!(matches!(
         composition_body(&format!("{prefix}check rule.x | confirm=skip with q")),
-        ProgramItemHirV1::Legality(_)
+        CompositionBodyV1::Legality(_)
     ));
     assert!(matches!(
         composition_body(&format!("{prefix}explain rule.x with q")),
-        ProgramItemHirV1::Presentation(_)
+        CompositionBodyV1::Explain(_)
     ));
 }
 
@@ -943,7 +935,7 @@ fn composition_explain_producer_rejects() {
 #[test]
 fn composition_binding_names_may_shadow_family_keywords() {
     // A composition binding name may equal a later family keyword. The parser
-    // must still preserve the composition structure instead of mis-tokenizing
+    // must still preserve the composition structure instead of mistokenizing
     // the body or rejecting on keyword shadowing.
     let src = "let find = sample query=\"auth\" | mode=semantic | limit=3 find taint api.entry -> db.write with find";
     let item = program(src);
@@ -954,10 +946,10 @@ fn composition_binding_names_may_shadow_family_keywords() {
     assert_eq!(comp.bindings.len(), 1);
     assert_eq!(comp.bindings[0].name, "find");
     assert!(matches!(
-        *comp.bindings[0].producer,
-        ProgramItemHirV1::Presentation(_)
+        &comp.bindings[0].producer,
+        CompositionProducerV1::Sample(_)
     ));
-    assert!(matches!(*comp.body, ProgramItemHirV1::GraphQuery(_)));
+    assert!(matches!(&comp.body, CompositionBodyV1::GraphQuery(_)));
     assert_eq!(comp.with_name, "find");
 }
 

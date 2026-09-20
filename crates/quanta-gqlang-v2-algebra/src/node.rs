@@ -197,7 +197,7 @@ impl AlgebraNodeV1 {
     /// direct input is always an [`AlgebraOpV1::Group`] node (see
     /// [`AggregateV1`]). The check is a `debug_assert`: a malformed
     /// `Aggregate(input=non-Group)` fails fast in debug/test builds rather than
-    /// being silently mis-classified downstream, while release builds pay no
+    /// being silently misclassified downstream, while release builds pay no
     /// runtime cost.
     #[must_use]
     pub fn new(
@@ -437,7 +437,7 @@ pub struct GroupV1 {
 /// `Aggregate(input=Group(keys=[]))`, NOT as an Aggregate over a Scan/Filter.
 /// This invariant is checked by a `debug_assert` in [`AlgebraNodeV1::new`], so a
 /// malformed `Aggregate(input=non-Group)` fails fast in debug/test builds rather
-/// than being silently mis-classified downstream.
+/// than being silently misclassified downstream.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AggregateV1 {
     /// The grouping input. MUST be a [`GroupV1`] node (`AlgebraOpV1::Group`); a

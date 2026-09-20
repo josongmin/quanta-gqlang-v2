@@ -11,11 +11,13 @@
 //! implementation that overrides only the leaf hooks still gets full traversal.
 
 use crate::expr::{
-    BoolExprHirV1, BoolExprKindV1, CallExprV1, CompareExprV1, ValueExprHirV1, ValueExprKindV1,
+    BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CallExprV1, CompareExprV1, ValueExprHirV1,
+    ValueExprKindV1,
 };
 use crate::item::{
-    CatalogDeclHirV1, CatalogPayloadV1, CompositionHirV1, GraphQueryHirV1, LegalityHirV1,
-    MetaHirV1, PresentationHirV1, ProgramItemHirV1, ViewBodyV1,
+    CatalogDeclHirV1, CatalogPayloadV1, CompositionBodyV1, CompositionHirV1, CompositionProducerV1,
+    ExplainHirV1, GraphQueryHirV1, LegalityHirV1, MetaHirV1, PresentationHirV1, ProgramItemHirV1,
+    SampleHirV1, ViewBodyV1,
 };
 use crate::relation::{RelationExprHirV1, RelationExprKindV1};
 use crate::shape::{ResultShapeHirV1, ResultShapeKindV1};
@@ -35,6 +37,10 @@ pub trait HirVisitorV1 {
     fn visit_bool(&mut self, node: &BoolExprHirV1) {
         walk_bool(self, node);
     }
+    /// Visit the auxiliary span of a call `*` argument.
+    fn visit_call_star(&mut self, _span: crate::span::SpanV1) {}
+    /// Visit the auxiliary span carried by a logical binder.
+    fn visit_logical_binder(&mut self, _span: crate::span::SpanV1) {}
     /// Visit a relation expression.
     fn visit_relation(&mut self, node: &RelationExprHirV1) {
         walk_relation(self, node);
@@ -70,6 +76,14 @@ pub trait HirVisitorV1 {
     /// Visit a presentation verb item.
     fn visit_presentation(&mut self, node: &PresentationHirV1) {
         walk_presentation(self, node);
+    }
+    /// Visit a composition-specific SAMPLE node.
+    fn visit_sample(&mut self, node: &SampleHirV1) {
+        walk_sample(self, node);
+    }
+    /// Visit a composition-specific EXPLAIN node.
+    fn visit_explain(&mut self, node: &ExplainHirV1) {
+        walk_explain(self, node);
     }
     /// Visit a catalog declaration item.
     fn visit_catalog_decl(&mut self, node: &CatalogDeclHirV1) {
@@ -119,8 +133,15 @@ pub fn walk_value<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &ValueExprHir
 }
 
 fn walk_call_args<V: HirVisitorV1 + ?Sized>(visitor: &mut V, call: &CallExprV1) {
-    for arg in &call.args {
-        visitor.visit_value(arg);
+    for arg in call.args().as_slice() {
+        match arg {
+            CallArgHirV1::Expr(value) => visitor.visit_value(value),
+            CallArgHirV1::Star { .. } => {
+                if let Some(span) = arg.star_span() {
+                    visitor.visit_call_star(span);
+                }
+            }
+        }
     }
 }
 
@@ -141,9 +162,13 @@ pub fn walk_bool<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &BoolExprHirV1
         BoolExprKindV1::Not(inner) | BoolExprKindV1::Paren(inner) => {
             visitor.visit_bool(inner);
         }
-        BoolExprKindV1::Quantifier(quant) => {
+        BoolExprKindV1::LogicalQuantifier(quant) => {
+            for binder in quant.binders.as_slice() {
+                visitor.visit_logical_binder(binder.span);
+            }
             visitor.visit_bool(&quant.body);
         }
+        BoolExprKindV1::RelationExists(exists) => visitor.visit_relation(&exists.relation),
     }
 }
 
@@ -166,9 +191,27 @@ pub fn walk_relation<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &RelationE
             visitor.visit_relation(&filter.input);
             visitor.visit_bool(&filter.predicate);
         }
-        RelationExprKindV1::Compose(compose) => {
-            for operand in &compose.operands {
-                visitor.visit_relation(operand);
+        RelationExprKindV1::Join(join) => match join {
+            crate::relation::JoinHirV1::Inner { left, right, on } => {
+                visitor.visit_relation(left);
+                visitor.visit_relation(right);
+                visitor.visit_bool(on);
+            }
+            crate::relation::JoinHirV1::Cross { left, right } => {
+                visitor.visit_relation(left);
+                visitor.visit_relation(right);
+            }
+        },
+        RelationExprKindV1::GroupBy(group) => {
+            visitor.visit_relation(&group.input);
+            for key in group.keys() {
+                visitor.visit_value(key);
+            }
+        }
+        RelationExprKindV1::OrderBy(order) => {
+            visitor.visit_relation(&order.input);
+            for key in order.keys() {
+                visitor.visit_value(&key.value);
             }
         }
     }
@@ -240,6 +283,12 @@ pub fn walk_legality<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &LegalityH
 /// so there are no id-bearing children here.
 pub fn walk_presentation<V: HirVisitorV1 + ?Sized>(_visitor: &mut V, _node: &PresentationHirV1) {}
 
+/// SAMPLE carries no id-bearing child expressions.
+pub fn walk_sample<V: HirVisitorV1 + ?Sized>(_visitor: &mut V, _node: &SampleHirV1) {}
+
+/// EXPLAIN carries no id-bearing child expressions.
+pub fn walk_explain<V: HirVisitorV1 + ?Sized>(_visitor: &mut V, _node: &ExplainHirV1) {}
+
 /// Recurse into the children of a catalog declaration. Only a VIEW with an
 /// inline SELECT embeds an id-bearing child (the inline query).
 pub fn walk_catalog_decl<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &CatalogDeclHirV1) {
@@ -258,9 +307,18 @@ pub fn walk_catalog_decl<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &Catal
 /// body item, all of which are id-bearing `ProgramItemHirV1` subtrees.
 pub fn walk_composition<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &CompositionHirV1) {
     for binding in &node.bindings {
-        visitor.visit_item(&binding.producer);
+        match &binding.producer {
+            CompositionProducerV1::Query(query) => visitor.visit_query(query),
+            CompositionProducerV1::Sample(sample) => visitor.visit_sample(sample),
+            CompositionProducerV1::GraphQuery(graph) => visitor.visit_graph_query(graph),
+        }
     }
-    visitor.visit_item(&node.body);
+    match &node.body {
+        CompositionBodyV1::Query(query) => visitor.visit_query(query),
+        CompositionBodyV1::GraphQuery(graph) => visitor.visit_graph_query(graph),
+        CompositionBodyV1::Legality(legality) => visitor.visit_legality(legality),
+        CompositionBodyV1::Explain(explain) => visitor.visit_explain(explain),
+    }
 }
 
 /// Recurse into the children of a meta directive. Payloads are open tags/strings,

@@ -35,6 +35,8 @@ fn parse_shape_record(cur: &mut CursorV1<'_>) -> Result<ResultShapeHirV1, ParseD
     let mut fields: Vec<ShapeFieldV1> = Vec::new();
     if !matches!(cur.peek().kind, TokenKindV1::RBrace) {
         loop {
+            cur.budget
+                .charge_collection_element(fields.len() + 1, cur.here_span())?;
             let (name, name_span) = cur.expect_ident("result-shape field name")?;
             // D10 fail-closed: a result-shape record must not declare the same
             // field name twice (silent last-wins would drop an output field).

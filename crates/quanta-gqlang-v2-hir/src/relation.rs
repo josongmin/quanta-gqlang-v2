@@ -41,9 +41,12 @@ pub enum RelationExprKindV1 {
     /// A filter over an input relation, e.g. `<input> | where x > 1`. Embeds the
     /// shared boolean kernel. No algebra is applied here.
     Filter(RelationFilterV1),
-    /// Composition of relations, recorded structurally as an open-tagged
-    /// operator over operands. Algebra/normalization of this is ticket 04.
-    Compose(CompositionV1),
+    /// Inner or explicit cross join.
+    Join(JoinHirV1),
+    /// Grouping keys over an input relation.
+    GroupBy(GroupByHirV1),
+    /// Ordered sort keys over an input relation.
+    OrderBy(OrderByHirV1),
 }
 
 /// A reference to a named relation source.
@@ -91,18 +94,119 @@ pub struct RelationFilterV1 {
     pub predicate: Box<BoolExprHirV1>,
 }
 
-/// Open symbolic composition operator tag (structure only).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CompositionOpV1 {
-    /// Composition keyword/symbol as written (e.g. `"join"`, `"union"`).
-    pub symbol: String,
+/// A source-reachable join. The enum payload makes an inner join without an
+/// `on` predicate, or a cross join with one, unrepresentable.
+#[derive(Clone, Debug, PartialEq)]
+pub enum JoinHirV1 {
+    /// `join <source> on <predicate>`.
+    Inner {
+        /// Left pipeline input.
+        left: Box<RelationExprHirV1>,
+        /// Right relation source.
+        right: Box<RelationExprHirV1>,
+        /// Required join predicate.
+        on: BoolExprHirV1,
+    },
+    /// `cross join <source>`.
+    Cross {
+        /// Left pipeline input.
+        left: Box<RelationExprHirV1>,
+        /// Right relation source.
+        right: Box<RelationExprHirV1>,
+    },
 }
 
-/// Structural composition of relation operands.
+/// Grouping keys over one relation input.
 #[derive(Clone, Debug, PartialEq)]
-pub struct CompositionV1 {
-    /// The open composition operator tag. No join algebra is applied here.
-    pub op: CompositionOpV1,
-    /// Operand relations, in written order.
-    pub operands: Vec<RelationExprHirV1>,
+pub struct GroupByHirV1 {
+    /// Input relation.
+    pub input: Box<RelationExprHirV1>,
+    /// Non-empty ordered key expressions as authored.
+    keys: NonEmptyRelationKeysV1<ValueExprHirV1>,
+}
+
+impl GroupByHirV1 {
+    /// Construct a grouping stage, rejecting an empty key set.
+    pub fn try_new(
+        input: RelationExprHirV1,
+        keys: Vec<ValueExprHirV1>,
+    ) -> Result<Self, &'static str> {
+        Ok(Self {
+            input: Box::new(input),
+            keys: NonEmptyRelationKeysV1::try_new(keys)?,
+        })
+    }
+
+    /// Ordered non-empty grouping keys.
+    #[must_use]
+    pub fn keys(&self) -> &[ValueExprHirV1] {
+        self.keys.as_slice()
+    }
+}
+
+/// Sort direction attached directly to an order key.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SortDirectionHirV1 {
+    /// Ascending order, including an omitted source direction.
+    Asc,
+    /// Descending order.
+    Desc,
+}
+
+/// One order key and its direction.
+#[derive(Clone, Debug, PartialEq)]
+pub struct OrderKeyHirV1 {
+    /// Key expression.
+    pub value: ValueExprHirV1,
+    /// Canonical direction.
+    pub direction: SortDirectionHirV1,
+}
+
+/// Ordered keys over one relation input.
+#[derive(Clone, Debug, PartialEq)]
+pub struct OrderByHirV1 {
+    /// Input relation.
+    pub input: Box<RelationExprHirV1>,
+    /// Non-empty ordered keys.
+    keys: NonEmptyRelationKeysV1<OrderKeyHirV1>,
+}
+
+impl OrderByHirV1 {
+    /// Construct an ordering stage, rejecting an empty key set.
+    pub fn try_new(
+        input: RelationExprHirV1,
+        keys: Vec<OrderKeyHirV1>,
+    ) -> Result<Self, &'static str> {
+        Ok(Self {
+            input: Box::new(input),
+            keys: NonEmptyRelationKeysV1::try_new(keys)?,
+        })
+    }
+
+    /// Ordered non-empty sort keys.
+    #[must_use]
+    pub fn keys(&self) -> &[OrderKeyHirV1] {
+        self.keys.as_slice()
+    }
+}
+
+/// Private-field, checked non-empty relation-key carrier.
+#[derive(Clone, Debug, PartialEq)]
+pub struct NonEmptyRelationKeysV1<T>(Vec<T>);
+
+impl<T> NonEmptyRelationKeysV1<T> {
+    /// Validate and construct a non-empty key list.
+    pub fn try_new(keys: Vec<T>) -> Result<Self, &'static str> {
+        if keys.is_empty() {
+            Err("relation stage requires at least one key")
+        } else {
+            Ok(Self(keys))
+        }
+    }
+
+    /// Borrow keys in authored order.
+    #[must_use]
+    pub fn as_slice(&self) -> &[T] {
+        &self.0
+    }
 }

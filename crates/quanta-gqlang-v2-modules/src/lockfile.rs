@@ -82,7 +82,7 @@ impl LockfileV1 {
     }
 
     /// Parse canonical lock text. Returns `None` on any malformed line (wrong
-    /// field count, unparseable version).
+    /// field count, unparsable version).
     #[must_use]
     pub fn parse(text: &str) -> Option<Self> {
         let mut lock = Self::new();

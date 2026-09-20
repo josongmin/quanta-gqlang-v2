@@ -20,7 +20,7 @@
 
 mod support;
 
-use quanta_gqlang_v2_lsp::handlers::v3_diagnostics::handle_v3_diagnostics_v1;
+use quanta_gqlang_v2_diagnostics_stdio::handlers::v3_diagnostics::handle_v3_diagnostics_v1;
 use support::{cli_stderr_v1, run_cli_argv_v1};
 
 /// Pull a `key=value` line's value out of the CLI stderr block.

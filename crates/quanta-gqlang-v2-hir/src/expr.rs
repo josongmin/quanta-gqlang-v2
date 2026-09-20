@@ -8,6 +8,7 @@
 //! references. This crate only fixes the SHAPE.
 
 use crate::id::HirNodeIdV1;
+use crate::relation::RelationExprHirV1;
 use crate::span::SpanV1;
 
 /// A scalar/value expression node.
@@ -147,7 +148,92 @@ pub struct CallExprV1 {
     /// The callee, an open reference. Overload resolution is ticket 03.
     pub callee: CalleeRefV1,
     /// Positional arguments.
-    pub args: Vec<ValueExprHirV1>,
+    args: CallArgsHirV1,
+}
+
+impl CallExprV1 {
+    pub(crate) fn new(callee: CalleeRefV1, args: CallArgsHirV1) -> Self {
+        Self { callee, args }
+    }
+
+    /// Borrow the valid-by-construction argument carrier.
+    #[must_use]
+    pub const fn args(&self) -> &CallArgsHirV1 {
+        &self.args
+    }
+}
+
+/// A syntactic call argument. `Star` is distinct from a symbol and is admitted
+/// only as the sole call argument by the surface parser.
+#[derive(Clone, Debug, PartialEq)]
+pub enum CallArgHirV1 {
+    /// Ordinary value argument.
+    Expr(ValueExprHirV1),
+    /// Authored `*` aggregate argument.
+    Star {
+        /// Exact source span of `*`.
+        span: SpanV1,
+    },
+}
+
+impl CallArgHirV1 {
+    /// Construct the closed `*` call-argument form.
+    #[must_use]
+    pub fn star(span: SpanV1) -> Self {
+        Self::Star { span }
+    }
+
+    /// Return the authored `*` span when this is a star argument.
+    #[must_use]
+    pub fn star_span(&self) -> Option<SpanV1> {
+        match self {
+            Self::Star { span } => Some(*span),
+            Self::Expr(_) => None,
+        }
+    }
+}
+
+/// Valid-by-construction call arguments: zero or more expressions, or one Star.
+/// The backing vector is private so mixed/multiple Star states cannot enter HIR.
+///
+/// The unchecked backing constructor is not public:
+/// ```compile_fail
+/// use quanta_gqlang_v2_hir::{CallArgHirV1, CallArgsHirV1, SpanV1};
+/// let _ = CallArgsHirV1(vec![
+///     CallArgHirV1::star(SpanV1::new(0, 1)),
+///     CallArgHirV1::star(SpanV1::new(2, 3)),
+/// ]);
+/// ```
+#[derive(Clone, Debug, PartialEq)]
+pub struct CallArgsHirV1(Vec<CallArgHirV1>);
+
+impl CallArgsHirV1 {
+    /// Validate and construct a call-argument list.
+    pub fn try_new(args: Vec<CallArgHirV1>) -> Result<Self, &'static str> {
+        let stars = args.iter().filter(|arg| arg.star_span().is_some()).count();
+        if stars > 1 || (stars == 1 && args.len() != 1) {
+            return Err("'*' must be the sole call argument");
+        }
+        Ok(Self(args))
+    }
+
+    /// Borrow arguments in authored order.
+    #[must_use]
+    pub fn as_slice(&self) -> &[CallArgHirV1] {
+        &self.0
+    }
+
+    /// Number of arguments.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Whether the call has no arguments.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 /// An open reference to a callable.
@@ -226,10 +312,10 @@ pub enum BoolExprKindV1 {
     /// Explicit parenthesized grouping. Preserved as a node so author grouping
     /// such as `(y = 2 or z)` is not flattened away by precedence.
     Paren(Box<BoolExprHirV1>),
-    /// Quantifier-style placeholder (e.g. `exists` / `forall`). Node-only:
-    /// binding and scope semantics are owned by ticket 02; here it merely holds
-    /// an open quantifier tag and a body predicate.
-    Quantifier(QuantifierExprV1),
+    /// Logical rule quantifier with at least one explicit binder.
+    LogicalQuantifier(LogicalQuantifierHirV1),
+    /// Relational existence subquery.
+    RelationExists(RelationExistsHirV1),
 }
 
 /// Open symbolic comparison operator tag. Legality is NOT decided here.
@@ -259,20 +345,71 @@ pub struct BinaryBoolV1 {
     pub rhs: Box<BoolExprHirV1>,
 }
 
-/// Open symbolic quantifier tag (placeholder only).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct QuantifierKindV1 {
-    /// Quantifier keyword as written (e.g. `"exists"`, `"forall"`).
-    pub keyword: String,
+/// Closed logical quantifier vocabulary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LogicalQuantifierKindV1 {
+    /// Existential quantification.
+    Exists,
+    /// Universal quantification.
+    Forall,
 }
 
-/// Quantifier-style placeholder node.
+/// A non-empty logical binder list.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NonEmptyBindersV1(Vec<LogicalBinderV1>);
+
+/// One explicitly authored logical binder.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LogicalBinderV1 {
+    /// Binder name.
+    pub name: String,
+    /// Exact name span.
+    pub span: SpanV1,
+}
+
+impl NonEmptyBindersV1 {
+    /// Validate and construct a non-empty binder list.
+    pub fn try_new(binders: Vec<LogicalBinderV1>) -> Result<Self, &'static str> {
+        if binders.is_empty() {
+            Err("logical quantifier requires at least one binder")
+        } else {
+            Ok(Self(binders))
+        }
+    }
+
+    /// Borrow the binders in authored order.
+    #[must_use]
+    pub fn as_slice(&self) -> &[LogicalBinderV1] {
+        &self.0
+    }
+}
+
+/// Logical rule quantifier.
 #[derive(Clone, Debug, PartialEq)]
-pub struct QuantifierExprV1 {
-    /// The open quantifier tag.
-    pub quantifier: QuantifierKindV1,
-    /// Bound-variable names as written. No scoping is applied here.
-    pub binders: Vec<String>,
-    /// The quantified body predicate.
+pub struct LogicalQuantifierHirV1 {
+    /// Closed quantifier kind.
+    pub kind: LogicalQuantifierKindV1,
+    /// Non-empty explicit binders.
+    pub binders: NonEmptyBindersV1,
+    /// Quantified Bool body.
     pub body: Box<BoolExprHirV1>,
+}
+
+/// Relational existence polarity.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RelationExistsPolarityV1 {
+    /// `exists (from ...)`.
+    Exists,
+    /// `not exists (from ...)`.
+    NotExists,
+}
+
+/// A relational existence subquery. It carries only a relation producer, so a
+/// result-shape clause cannot be represented.
+#[derive(Clone, Debug, PartialEq)]
+pub struct RelationExistsHirV1 {
+    /// Existence polarity.
+    pub polarity: RelationExistsPolarityV1,
+    /// Nested relation producer.
+    pub relation: Box<RelationExprHirV1>,
 }
