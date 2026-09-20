@@ -75,13 +75,15 @@ and normalized; blank lines reject as `transport.empty_frame`.
 Request:
 
 ```json
-{"id":1,"method":"v3_diagnostics","source":"where 1"}
+{"id":1,"method":"v3_diagnostics","source_id":7,"source":"where 1"}
 ```
 
 `id` is required and is either a nonnegative JSON integer within `u64` or a
 nonempty string of at most 128 UTF-8 bytes. `method` has exactly one accepted
-value. `source` is required. Unknown fields reject; duplicate JSON object keys
-reject rather than last-write-wins.
+value. `source_id` is a required JSON integer in `0..=u32::MAX`; `source` is
+required. Unknown fields reject; duplicate JSON object keys reject rather than
+last-write-wins. The transport passes the exact source ID through the facade and
+never derives or renumbers it.
 
 Response for a parsed ID:
 
@@ -95,6 +97,7 @@ object may echo its validated ID even when another request-field validation
 fails. Codes are `transport.empty_frame`,
 `transport.frame_too_large`, `transport.invalid_utf8`,
 `transport.malformed_json`, `transport.invalid_request_id`,
+`transport.invalid_source_id`,
 `transport.unknown_field`, `transport.duplicate_key`, and
 `transport.unknown_method`, plus `transport.incomplete_frame` for a nonempty
 EOF tail. Serialization uses a maintained JSON parser with
@@ -116,10 +119,13 @@ after JSON decode and reports `frontend.resource_limit_exceeded` with dimension
 ## Shared Front Door
 
 1. CLI `query` and diagnostics stdio call
-   `analyze_source_document_v2(source, OpenAnalysisAuthorityV2::standard_v2())`.
+   `analyze_source_document_v2(source_id, source,
+   OpenAnalysisAuthorityV2::standard_v2())`. The CLI is a single-document
+   standard-authority caller and uses explicit source ID `0`; stdio uses the
+   request's required `source_id`.
 2. CLI `fmt` calls only facade `format_source_document_v2` with the standard
-   frontend budget, which projects to the owner-local parse budget; it does not
-   analyze or compile.
+   frontend budget and explicit source ID `0`, which projects to the owner-local
+   parse budget; it does not analyze or compile.
 3. `compile_source_document_v2` remains the library seam for an embedding host
    that supplies `ClosedFrontendAuthorityV2`; CLI/service do not manufacture it.
 4. Analysis with unresolved authority returns `AnalysisDocumentV2` plus stable

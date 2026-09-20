@@ -20,6 +20,19 @@ Frozen on `2026-09-21` before product edits.
   authorizes commits. Receipts therefore identify the frozen base plus the
   scoped working-tree fingerprint until a commit SHA exists.
 
+### Re-freeze after external integration
+
+- Current base SHA: `96eab779bfce0a5178dbbd48e86bd457158db228`
+- Observed commit subject: `done`
+- Attribution: external actor committed the previously verified Ticket 01/02
+  stack plus packet/bugbash documentation while Ticket 03 was active.
+- Preservation: no reset, amend, or history rewrite was performed.
+- Active dirty ownership after re-freeze: Ticket 03 HIR/types work, generated
+  `Cargo.lock`, and Ticket 03/04 contract amendments by `/root`.
+- Evidence rule: receipts 01/02 retain their original frozen-base evidence;
+  receipt 03 and later must identify this re-frozen base and a fresh dirty-tree
+  fingerprint. The new commit is integration state, not proof that hosted CI ran.
+
 The external bugbash tree and root test-suite audit may inform verification, but
 no packet worker may edit, move, delete, stage, or claim ownership of them.
 
@@ -50,7 +63,7 @@ short scope is an additional collision check, not a substitute for that list.
 | 00 | `/root` | `ACCEPTED` | base frozen | packet decisions and this ledger only |
 | 01 | `/root/ticket01_impl` | `VERIFIED` | 00 satisfied; RR re-review found no remaining scope blocker | workspace manifests/lock, empty sema crate, architecture/Semgrep/CI gates, mechanical `lsp` to `diagnostics-stdio` move, receipt 01 |
 | 02 | `/root/ticket02_prep` | `VERIFIED` | RR re-review clean; owner-local proof green | surface and HIR owners/tests named in ticket 02, receipt 02 |
-| 03 | `/root/ticket03_prep` | `ACTIVE` | 02 verified | types and modules owners/tests named in ticket 03, receipt 03 |
+| 03 | `/root/ticket03_impl` | `ACTIVE` | 02 verified; contract under adversarial consumer audit | HIR source-registry extension, types and modules owners/tests named in ticket 03, receipt 03 |
 | 04 | `/root` | `QUEUED` | waits for 02 and 03 | sema, binder, integrator-owned pipeline seam, legacy API inventory, receipt 04 |
 | 05 | `/root/algebra_impl` | `QUEUED` | waits for 04 | algebra owner/tests plus integrator-owned pipeline seam, receipt 05 |
 | 06 | `/root/logic_impl` | `QUEUED` | waits for 04 | logic owner/tests plus integrator-owned pipeline seam, receipt 06 |

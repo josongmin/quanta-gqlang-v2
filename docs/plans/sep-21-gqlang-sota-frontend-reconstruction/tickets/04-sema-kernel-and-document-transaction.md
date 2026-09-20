@@ -32,7 +32,7 @@ registries; its document module owns ordering and atomicity.
 The exact wiring is:
 
 ```text
-ResolvedGraphV2::visible_bindings/current module/external catalog
+ResolvedGraphV2::visible_bindings/current module + ExternalCatalogV2
   -> sema-owned binder authority adapter
   -> Binder resolved binding IDs + capture edges by HirNodeId
   -> ResolvedTypeInputsV2 with binding types/call signatures by HirNodeId
@@ -187,16 +187,23 @@ Source entry points are pipeline-owned because pipeline may depend on both
 surface and sema:
 
 ```text
-resolve_source_to_semantics_v2(source: &str,
+resolve_source_to_semantics_v2(source_id: SourceIdV2, source: &str,
   authority: &ClosedFrontendAuthorityV2)
   -> Result<SemanticDocumentV2, FrontendFailureV2>
-analyze_source_to_semantics_v2(source: &str,
+analyze_source_to_semantics_v2(source_id: SourceIdV2, source: &str,
   authority: &OpenAnalysisAuthorityV2) -> SemanticAnalysisV2
 ```
 
 Pipeline parses to `ParsedDocumentV2`, extracts its owned `HirDocumentV1`, and
 immediately delegates to the checked-document transaction. Sema never depends
 on surface. Architecture fixtures and compile checks pin this direction.
+
+Every source entry point requires an explicit caller-owned `SourceIdV2`; no
+layer invents, hashes, increments, or silently renumbers one. The same ID is
+passed into ticket 02's parser and the resulting HIR document. A collision with
+host authority rejects deterministically before semantic work. Repeated or
+concurrent calls with the same `(authority, source_id, bytes)` produce identical
+identity and diagnostics because the authority is immutable.
 
 `SemanticAnalysisV2` is a closed state enum:
 
@@ -220,8 +227,8 @@ result is forbidden.
 Authority constructors are pinned:
 
 ```text
-ClosedFrontendAuthorityV2::try_new(resolved_imports, relation_catalog,
-  external_catalog, validated_pack_authority, budget)
+ClosedFrontendAuthorityV2::try_new(validated_module_authority_parts,
+  relation_catalog, budget)
 OpenAnalysisAuthorityV2::standard_v2()
 OpenAnalysisAuthorityV2::try_new(partial_authority, budget)
 ```
@@ -230,10 +237,22 @@ OpenAnalysisAuthorityV2::try_new(partial_authority, budget)
 `FrontendBudgetV2::standard_v2()` but no invented external relation, module,
 catalog, pack, or lock authority.
 
-`resolved_imports` owns current-module identity. The constructor rejects no
-cross-field identity by convention because no duplicate current-module field
-exists. `validated_pack_authority` is the ticket 03 bundle that proves its lock
-set was verified against its exact validated pack graph.
+`ValidatedModuleAuthorityPartsV2` owns one resolved graph (and therefore its
+current-module identity), one external catalog, one validated pack authority,
+and their exact host `SourceRegistryViewV2`; its private fields prevent mixing
+proofs from different budget sessions. The constructor compares the relation
+catalog's source-registry identity with that host registry and rejects a
+mismatch. For each checked document, sema builds a new registry from the
+retained host registry with `SourceRegistryViewV2::try_extend_document` and
+`HirDocumentV1::{source_id,source_len}`, rejecting duplicate source IDs before
+any binding/type/catalog work. It does not silently renumber either host or
+document sources.
+
+The resulting `ExtendedSourceRegistryViewV2` proves append-only ancestry. Host
+authority proofs must match its host-parent identity, while all newly minted
+document DTO locations must match its combined identity. Sema passes the sealed
+`ValidatedModuleAuthorityPartsV2` into `DocumentCatalogValidatorV2::try_new`;
+it does not compare opaque IDs itself or revalidate cached host catalogs.
 
 The atomic 08 cut removes these nine exact V1 seams after all callers migrate:
 
@@ -271,9 +290,13 @@ the stack becomes `INTEGRATED`.
    paths.
 3. Implement namespace predeclaration for document catalog assets, source rules,
    composition locals, module imports, relation sources, and builtins.
+   Mint every modules/types authority DTO location through the combined
+   `SourceRegistryViewV2::try_check_location`; never forward a bare
+   `LocatedSpanV2` as authority evidence.
 4. Implement typed reference resolution with expected/actual kind diagnostics.
 5. Convert Binder output to stable resolved IDs and explicit capture edges.
-6. Build node-ID-keyed type inputs from Binder/module resolution, invoke the
+6. Build node-ID-keyed type inputs from Binder/module resolution, including one
+   opaque relation-source/capture/effect input for each `RelationExists`; invoke the
    types-owned kernel once, and assemble typed expressions/resolved calls/effect
    summaries from its facts.
 7. Implement incremental relation frames and output contracts.
@@ -281,7 +304,11 @@ the stack becomes `INTEGRATED`.
 9. Implement the document typestate phases in the fixed order.
 10. Compile inline VIEW bodies during the same body-compilation phase as queries.
 11. Assemble all source rules before global logic validation.
-12. Run catalog cycle/certification checks once after all bodies and metadata.
+12. Build ticket 03's neutral `DocumentCatalogInputV2` from resolved typed
+    assets, dependency edges, profile admission, activations, and locations;
+    call `DocumentCatalogAuthorityV2::try_new` exactly once after all bodies and
+    metadata. Sema does not reimplement view-cycle, certification, unknown-pack,
+    or activation validation and never passes raw HIR bodies to modules.
 13. Add pipeline orchestration over `SemanticDocumentV2`.
 14. Add `FrontendBudgetV2` as the one public limit configuration carried by
     closed/open authority. Project it into ticket 02's `ParseBudgetV2`, ticket
@@ -350,6 +377,8 @@ max_semantic_steps
 max_module_graph_nodes
 max_module_graph_edges
 max_module_steps
+max_authority_bytes
+max_authority_string_bytes
 max_rule_graph_nodes
 max_rule_graph_edges
 max_rule_steps
@@ -373,6 +402,8 @@ The named CLI/service profile `FrontendBudgetV2::standard_v2()` is pinned to:
 | module graph nodes | 50,000 |
 | module graph edges | 200,000 |
 | module steps | 1,000,000 |
+| authority bytes | 16,777,216 |
+| authority string bytes | 65,536 |
 | rule graph nodes | 50,000 |
 | rule graph edges | 200,000 |
 | rule steps | 1,000,000 |

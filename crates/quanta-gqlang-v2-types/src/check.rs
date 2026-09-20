@@ -1,484 +1,385 @@
-//! The value-expression type checker (ticket 03, decisions `D4`/`D10`/`D29`).
-//!
-//! [`TypeCheckerV1`] assigns a closed [`TypeV1`] to a
-//! [`quanta_gqlang_v2_hir::ValueExprHirV1`] against a caller-provided
-//! [`TypeEnvV1`]. It owns the closed operator and builtin registries and runs
-//! overload resolution; on failure it returns a typed [`TypeErrorV1`] with a
-//! stable code and span (`D4`/`D10` — explicit reject, no runtime guessing).
-//!
-//! Per `D29` nested result-shape *structure* stays in ticket 01; here that
-//! structure is *typed* through the shared record/list value nodes, so a record
-//! `{ id: int, tags: list<string> }` types to the corresponding [`TypeV1`].
-//!
-//! Overload resolution is exact-match-first: a candidate overload matches when
-//! every operand/argument type is assignable (per [`TypeV1::is_assignable_to`])
-//! to the overload's declared type. The first matching overload in registry
-//! order wins, keeping resolution total and order-deterministic.
+use crate::builtin::{
+    BuiltinFamilyIdV2, BuiltinIdV2, BuiltinRegistryV2, CallableSignatureV2, ExpressionEffectsV2,
+};
+use crate::op::{OperatorIdV2, OperatorRegistryV2};
+use crate::ty::{FiniteF64V2, RecordFieldTypeV1, RecordTypeV1, TypedLiteralValueV2, TypeV1};
+use crate::TypeDiagnosticV2;
+use quanta_gqlang_v2_hir::{
+    BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CheckedHirDocumentV2, HirNodeIdV1,
+    HirVisitorV1, LocatedSpanV2, LiteralV1, SourceIdV2, ValueExprHirV1, ValueExprKindV1,
+};
+use std::collections::{BTreeMap, BTreeSet};
 
-use crate::builtin::{AggregationClassV1, BuiltinRegistryV1, BuiltinSignatureV1};
-use crate::diag::{IllegalAggregateReasonV1, TypeErrorV1};
-use crate::env::TypeEnvV1;
-use crate::op::OperatorRegistryV1;
-use crate::ty::{RecordFieldTyV1, ScalarTyV1, TypeV1};
-use quanta_gqlang_v2_hir::{LiteralV1, PathAccessV1, SpanV1, ValueExprHirV1, ValueExprKindV1};
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SourceQualifiedNodeIdV2 { pub source_id: SourceIdV2, pub node_id: HirNodeIdV1 }
 
-/// The closed type checker for value expressions.
-#[derive(Clone, Debug)]
-pub struct TypeCheckerV1 {
-    operators: OperatorRegistryV1,
-    builtins: BuiltinRegistryV1,
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum UnknownTypeCauseV2 { UnresolvedEditorBinding, UnresolvedEditorCallable, EmptyCollectionNeedsContext }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExpressionTypeStateV2 { Known(TypeV1), Unknown(UnknownTypeCauseV2) }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ResolvedTypeInputValueV2 {
+    Binding(ExpressionTypeStateV2),
+    Callable(ResolvedCallableInputV2),
 }
 
-impl TypeCheckerV1 {
-    /// Build a checker over the single closed operator and builtin registries.
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            operators: OperatorRegistryV1::closed(),
-            builtins: BuiltinRegistryV1::closed(),
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PredicateIdV2(String);
+impl PredicateIdV2 {
+    pub fn try_new(value: impl Into<String>) -> Result<Self, &'static str> {
+        let value = value.into();
+        if value.is_empty() || value.trim() != value { return Err("invalid predicate id"); }
+        Ok(Self(value))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ResolvedCallableInputV2 {
+    Builtin(BuiltinFamilyIdV2),
+    Predicate { id: PredicateIdV2, signature: PredicateCallableSignatureV2, effects: ExpressionEffectsV2 },
+    Unknown(UnknownTypeCauseV2),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PredicateCallableSignatureV2 { params: Vec<TypeV1>, result: TypeV1 }
+impl PredicateCallableSignatureV2 {
+    #[must_use] pub fn new(params: Vec<TypeV1>, result: TypeV1) -> Self { Self { params, result } }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ResolvedCallTargetV2 { Builtin(BuiltinIdV2), Predicate(PredicateIdV2) }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResolvedTypeInputEntryV2 { pub key: SourceQualifiedNodeIdV2, pub value: ResolvedTypeInputValueV2 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ContextualTypeReasonV2 { ExpectedArgument, ExpectedBinding, ExpectedResult }
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ContextualExpectedTypeInputV2 { pub key: SourceQualifiedNodeIdV2, pub expected_type: TypeV1, pub reason: ContextualTypeReasonV2 }
+
+#[derive(Clone, Debug)]
+pub struct ResolvedTypeInputsV2<'a> {
+    checked: CheckedHirDocumentV2<'a>,
+    values: BTreeMap<SourceQualifiedNodeIdV2, ResolvedTypeInputValueV2>,
+    contexts: BTreeMap<SourceQualifiedNodeIdV2, TypeV1>,
+}
+
+impl<'a> ResolvedTypeInputsV2<'a> {
+    pub fn try_new(
+        checked: CheckedHirDocumentV2<'a>, entries: Vec<ResolvedTypeInputEntryV2>, contexts: Vec<ContextualExpectedTypeInputV2>,
+    ) -> Result<Self, TypeDiagnosticV2> {
+        let source_id = checked.document().source_id;
+        let mut required = RequiredInputs::default();
+        for item in &checked.document().items { required.visit_item(item); }
+        let mut values = BTreeMap::new();
+        for entry in entries {
+            if entry.key.source_id != source_id {
+                return Err(TypeDiagnosticV2::ForeignDocumentFact { node_id: entry.key.node_id, location: LocatedSpanV2 { source_id: entry.key.source_id, span: quanta_gqlang_v2_hir::SpanV1::point(0) } });
+            }
+            let Some((span, expected_kind)) = required.nodes.get(&entry.key.node_id).copied() else {
+                return Err(TypeDiagnosticV2::ExtraNodeFact { node_id: entry.key.node_id });
+            };
+            let kind_matches = matches!((expected_kind, &entry.value),
+                (RequiredInputKind::Binding, ResolvedTypeInputValueV2::Binding(_))
+                | (RequiredInputKind::Callable, ResolvedTypeInputValueV2::Callable(_)));
+            if !kind_matches { return Err(TypeDiagnosticV2::WrongNodeFactKind { node_id: entry.key.node_id, location: LocatedSpanV2 { source_id, span } }); }
+            if values.insert(entry.key, entry.value).is_some() {
+                return Err(TypeDiagnosticV2::DuplicateNodeFact { node_id: entry.key.node_id, location: LocatedSpanV2 { source_id, span } });
+            }
+        }
+        for (node_id, (span, _)) in &required.nodes {
+            let key = SourceQualifiedNodeIdV2 { source_id, node_id: *node_id };
+            if !values.contains_key(&key) {
+                return Err(TypeDiagnosticV2::MissingNodeFact { node_id: *node_id, location: LocatedSpanV2 { source_id, span: *span } });
+            }
+        }
+        let mut checked_contexts = BTreeMap::new();
+        for context in contexts {
+            if context.key.source_id != source_id { return Err(TypeDiagnosticV2::ForeignDocumentFact { node_id: context.key.node_id, location: LocatedSpanV2 { source_id: context.key.source_id, span: quanta_gqlang_v2_hir::SpanV1::point(0) } }); }
+            if !required.context_nodes.contains(&context.key.node_id) { return Err(TypeDiagnosticV2::ExtraNodeFact { node_id: context.key.node_id }); }
+            if checked_contexts.insert(context.key, context.expected_type).is_some() { return Err(TypeDiagnosticV2::DuplicateNodeFact { node_id: context.key.node_id, location: LocatedSpanV2 { source_id, span: quanta_gqlang_v2_hir::SpanV1::point(0) } }); }
+        }
+        Ok(Self { checked, values, contexts: checked_contexts })
+    }
+}
+
+#[derive(Default)]
+struct RequiredInputs { nodes: BTreeMap<HirNodeIdV1, (quanta_gqlang_v2_hir::SpanV1, RequiredInputKind)>, context_nodes: BTreeSet<HirNodeIdV1> }
+#[derive(Clone, Copy)] enum RequiredInputKind { Binding, Callable }
+impl HirVisitorV1 for RequiredInputs {
+    fn visit_value(&mut self, node: &ValueExprHirV1) {
+        let kind = match node.kind { ValueExprKindV1::Symbol(_) => Some(RequiredInputKind::Binding), ValueExprKindV1::Call(_) => Some(RequiredInputKind::Callable), ValueExprKindV1::Literal(_) | ValueExprKindV1::Path(_) | ValueExprKindV1::Unary(_) | ValueExprKindV1::Binary(_) | ValueExprKindV1::Paren(_) | ValueExprKindV1::Record(_) | ValueExprKindV1::List(_) => None };
+        if let Some(kind) = kind {
+            let _ = self.nodes.insert(node.id, (node.span, kind));
+        }
+        if matches!(&node.kind, ValueExprKindV1::List(list) if list.elements.is_empty()) { let _ = self.context_nodes.insert(node.id); }
+        quanta_gqlang_v2_hir::walk_value(self, node);
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TypedLiteralFactV2 { Value(TypedLiteralValueV2), DeferredI128MinMagnitude }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TypedExpressionFactV2 {
+    pub state: ExpressionTypeStateV2,
+    pub operator_id: Option<OperatorIdV2>,
+    resolved_call: Option<ResolvedCallTargetV2>,
+    pub effects: ExpressionEffectsV2,
+    pub literal: Option<TypedLiteralFactV2>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TypedExpressionFactsV2 { facts: BTreeMap<SourceQualifiedNodeIdV2, TypedExpressionFactV2> }
+impl TypedExpressionFactsV2 {
+    #[must_use] pub fn get(&self, key: SourceQualifiedNodeIdV2) -> Option<&TypedExpressionFactV2> { self.facts.get(&key) }
+    #[must_use] pub fn len(&self) -> usize { self.facts.len() }
+    #[must_use] pub fn is_empty(&self) -> bool { self.facts.is_empty() }
+}
+impl TypedExpressionFactV2 {
+    #[must_use] pub fn resolved_call(&self) -> Option<&ResolvedCallTargetV2> { self.resolved_call.as_ref() }
+}
+
+#[derive(Clone, Debug)]
+pub struct ExpressionTypeKernelV2 { operators: OperatorRegistryV2, builtins: BuiltinRegistryV2 }
+impl ExpressionTypeKernelV2 {
+    pub fn try_new(operators: OperatorRegistryV2, builtins: BuiltinRegistryV2) -> Result<Self, TypeDiagnosticV2> { Ok(Self { operators, builtins }) }
+    pub fn try_closed() -> Result<Self, TypeDiagnosticV2> {
+        Ok(Self { operators: OperatorRegistryV2::try_closed()?, builtins: BuiltinRegistryV2::try_closed()? })
+    }
+
+    pub fn check_document(&self, inputs: &ResolvedTypeInputsV2<'_>) -> Result<TypedExpressionFactsV2, TypeDiagnosticV2> {
+        let mut checker = DocumentChecker { kernel: self, inputs, facts: BTreeMap::new(), visiting: BTreeSet::new(), error: None };
+        for item in &inputs.checked.document().items { checker.visit_item(item); if let Some(error) = checker.error.take() { return Err(error); } }
+        Ok(TypedExpressionFactsV2 { facts: checker.facts })
+    }
+}
+
+struct DocumentChecker<'a, 'b> {
+    kernel: &'a ExpressionTypeKernelV2,
+    inputs: &'a ResolvedTypeInputsV2<'b>,
+    facts: BTreeMap<SourceQualifiedNodeIdV2, TypedExpressionFactV2>,
+    visiting: BTreeSet<HirNodeIdV1>,
+    error: Option<TypeDiagnosticV2>,
+}
+
+impl HirVisitorV1 for DocumentChecker<'_, '_> {
+    fn visit_value(&mut self, node: &ValueExprHirV1) {
+        if self.error.is_none() {
+            if let Err(error) = self.type_expr(node, false) { self.error = Some(error); }
         }
     }
-
-    /// The closed operator registry this checker uses.
-    #[must_use]
-    pub fn operators(&self) -> &OperatorRegistryV1 {
-        &self.operators
+    fn visit_bool(&mut self, node: &BoolExprHirV1) {
+        if self.error.is_none() {
+            if let Err(error) = self.type_bool(node) { self.error = Some(error); }
+        }
     }
+}
 
-    /// The closed builtin registry this checker uses.
-    #[must_use]
-    pub fn builtins(&self) -> &BuiltinRegistryV1 {
-        &self.builtins
-    }
+impl DocumentChecker<'_, '_> {
+    fn location(&self, node: &ValueExprHirV1) -> LocatedSpanV2 { LocatedSpanV2 { source_id: self.inputs.checked.document().source_id, span: node.span } }
+    fn key(&self, node: &ValueExprHirV1) -> SourceQualifiedNodeIdV2 { SourceQualifiedNodeIdV2 { source_id: self.inputs.checked.document().source_id, node_id: node.id } }
+    fn key_id(&self, node_id: HirNodeIdV1) -> SourceQualifiedNodeIdV2 { SourceQualifiedNodeIdV2 { source_id: self.inputs.checked.document().source_id, node_id } }
+    fn bool_location(&self, node: &BoolExprHirV1) -> LocatedSpanV2 { LocatedSpanV2 { source_id: self.inputs.checked.document().source_id, span: node.span } }
 
-    /// Type a value expression against `env`.
-    pub fn type_value(
-        &self,
-        expr: &ValueExprHirV1,
-        env: &TypeEnvV1,
-    ) -> Result<TypeV1, TypeErrorV1> {
-        match &expr.kind {
-            ValueExprKindV1::Literal(lit) => self.type_literal(lit, expr.span),
-            ValueExprKindV1::Symbol(symbol) => {
-                env.lookup(&symbol.name)
-                    .cloned()
-                    .ok_or_else(|| TypeErrorV1::UnknownSymbol {
-                        span: expr.span,
-                        name: symbol.name.clone(),
-                    })
+    fn type_bool(&mut self, node: &BoolExprHirV1) -> Result<ExpressionTypeStateV2, TypeDiagnosticV2> {
+        let key = self.key_id(node.id);
+        if let Some(fact) = self.facts.get(&key) { return Ok(fact.state.clone()); }
+        let mut operator_id = None;
+        let mut literal = None;
+        let state = match &node.kind {
+            BoolExprKindV1::Literal(value) => { literal = Some(TypedLiteralFactV2::Value(TypedLiteralValueV2::Bool(*value))); ExpressionTypeStateV2::Known(TypeV1::bool()) }
+            BoolExprKindV1::Value(value) => {
+                let state = self.type_expr(value, false)?;
+                match state {
+                    ExpressionTypeStateV2::Known(actual) if actual == TypeV1::bool() => ExpressionTypeStateV2::Known(TypeV1::bool()),
+                    ExpressionTypeStateV2::Known(actual) => return Err(TypeDiagnosticV2::BadOverload { node_id: node.id, name: "bool-context".into(), operands: vec![actual], location: self.bool_location(node) }),
+                    unknown @ ExpressionTypeStateV2::Unknown(_) => unknown,
+                }
             }
-            ValueExprKindV1::Path(path) => self.type_path(path, env),
+            BoolExprKindV1::Compare(compare) => {
+                let lhs = self.type_expr(&compare.lhs, false)?; let rhs = self.type_expr(&compare.rhs, false)?;
+                self.resolve_binary_bool(node, &compare.op.symbol, lhs, rhs, &mut operator_id)?
+            }
+            BoolExprKindV1::And(binary) => {
+                let lhs = self.type_bool(&binary.lhs)?; let rhs = self.type_bool(&binary.rhs)?;
+                self.resolve_binary_bool(node, "and", lhs, rhs, &mut operator_id)?
+            }
+            BoolExprKindV1::Or(binary) => {
+                let lhs = self.type_bool(&binary.lhs)?; let rhs = self.type_bool(&binary.rhs)?;
+                self.resolve_binary_bool(node, "or", lhs, rhs, &mut operator_id)?
+            }
+            BoolExprKindV1::Not(inner) => {
+                let operand = self.type_bool(inner)?;
+                self.resolve_unary_bool(node, "not", operand, &mut operator_id)?
+            }
+            BoolExprKindV1::Paren(inner) => self.type_bool(inner)?,
+            BoolExprKindV1::LogicalQuantifier(quantifier) => {
+                let body = self.type_bool(&quantifier.body)?;
+                match body { ExpressionTypeStateV2::Known(_) => ExpressionTypeStateV2::Known(TypeV1::bool()), unknown @ ExpressionTypeStateV2::Unknown(_) => unknown }
+            }
+            BoolExprKindV1::RelationExists(_) => ExpressionTypeStateV2::Known(TypeV1::bool()),
+        };
+        let _ = self.facts.insert(key, TypedExpressionFactV2 { state: state.clone(), operator_id, resolved_call: None, effects: ExpressionEffectsV2::pure_scalar(), literal });
+        Ok(state)
+    }
+    fn type_expr(&mut self, node: &ValueExprHirV1, deferred_min_child: bool) -> Result<ExpressionTypeStateV2, TypeDiagnosticV2> {
+        let key = self.key(node);
+        if let Some(fact) = self.facts.get(&key) { return Ok(fact.state.clone()); }
+        let _ = self.visiting.insert(node.id);
+        let mut operator_id = None; let mut resolved_call = None; let mut literal = None;
+        let mut effects = ExpressionEffectsV2::pure_scalar();
+        let state = match &node.kind {
+            ValueExprKindV1::Literal(value) => {
+                let (ty, fact) = self.type_literal(node, value, deferred_min_child)?;
+                literal = Some(fact); ExpressionTypeStateV2::Known(ty)
+            }
+            ValueExprKindV1::Symbol(_) => match self.inputs.values.get(&key) {
+                Some(ResolvedTypeInputValueV2::Binding(state)) => state.clone(),
+                _ => return Err(TypeDiagnosticV2::MissingNodeFact { node_id: node.id, location: self.location(node) }),
+            },
+            ValueExprKindV1::Paren(inner) => self.type_expr(inner, false)?,
             ValueExprKindV1::Unary(unary) => {
-                let operand = self.type_value(&unary.operand, env)?;
-                self.resolve_unary(&unary.op.symbol, operand, expr.span)
+                let min_case = unary.op.symbol == "-" && matches!(&unary.operand.kind, ValueExprKindV1::Literal(LiteralV1::Int(text)) if text.trim() == "170141183460469231731687303715884105728");
+                let operand = self.type_expr(&unary.operand, min_case)?;
+                if min_case {
+                    literal = Some(TypedLiteralFactV2::Value(TypedLiteralValueV2::Int(i128::MIN)));
+                    ExpressionTypeStateV2::Known(TypeV1::int())
+                } else { self.resolve_unary(node, &unary.op.symbol, operand, &mut operator_id)? }
             }
             ValueExprKindV1::Binary(binary) => {
-                let lhs = self.type_value(&binary.lhs, env)?;
-                let rhs = self.type_value(&binary.rhs, env)?;
-                self.resolve_binary(&binary.op.symbol, lhs, rhs, expr.span)
+                let lhs = self.type_expr(&binary.lhs, false)?; let rhs = self.type_expr(&binary.rhs, false)?;
+                self.resolve_binary(node, &binary.op.symbol, lhs, rhs, &mut operator_id)?
             }
             ValueExprKindV1::Call(call) => {
-                let mut args = Vec::with_capacity(call.args.len());
-                for arg in &call.args {
-                    args.push(self.type_value(arg, env)?);
-                }
-                self.resolve_call(&call.callee.name, &args, expr.span)
+                let input = self.inputs.values.get(&key).ok_or(TypeDiagnosticV2::MissingNodeFact { node_id: node.id, location: self.location(node) })?.clone();
+                let args = call.args().as_slice();
+                let mut arg_types = Vec::new();
+                for arg in args { if let CallArgHirV1::Expr(expr) = arg { arg_types.push(self.type_expr(expr, false)?); } }
+                let (state, call_effects, call_target) = self.resolve_call(node, input, args, &arg_types)?;
+                effects = call_effects; resolved_call = call_target; state
             }
-            ValueExprKindV1::Paren(inner) => self.type_value(inner, env),
+            ValueExprKindV1::Path(path) => {
+                let mut current = self.type_expr(&path.base, false)?;
+                for segment in &path.segments {
+                    current = match current {
+                        ExpressionTypeStateV2::Unknown(cause) => ExpressionTypeStateV2::Unknown(cause),
+                        ExpressionTypeStateV2::Known(TypeV1::Record(record)) => record.field(&segment.name).map(|field| ExpressionTypeStateV2::Known(field.ty().clone())).ok_or_else(|| TypeDiagnosticV2::BadProjection { node_id: node.id, base: TypeV1::Record(record), field: segment.name.clone(), location: LocatedSpanV2 { source_id: key.source_id, span: segment.span } })?,
+                        ExpressionTypeStateV2::Known(base) => return Err(TypeDiagnosticV2::BadProjection { node_id: node.id, base, field: segment.name.clone(), location: LocatedSpanV2 { source_id: key.source_id, span: segment.span } }),
+                    };
+                }
+                current
+            }
             ValueExprKindV1::Record(record) => {
-                let mut fields = Vec::with_capacity(record.fields.len());
+                let mut fields = Vec::new();
+                let mut unknown = None;
                 for field in &record.fields {
-                    let ty = self.type_value(&field.value, env)?;
-                    fields.push(RecordFieldTyV1::new(field.name.clone(), ty));
-                }
-                Ok(TypeV1::record(fields))
-            }
-            ValueExprKindV1::List(list) => self.type_list(list, env, expr.span),
-        }
-    }
-
-    fn type_literal(&self, lit: &LiteralV1, span: SpanV1) -> Result<TypeV1, TypeErrorV1> {
-        match lit {
-            LiteralV1::Int(text) => {
-                if text.trim().parse::<i128>().is_ok() {
-                    Ok(TypeV1::int())
-                } else {
-                    Err(TypeErrorV1::MalformedLiteral {
-                        span,
-                        expected: TypeV1::int(),
-                        text: text.clone(),
-                    })
-                }
-            }
-            LiteralV1::Float(text) => {
-                if text.trim().parse::<f64>().is_ok() {
-                    Ok(TypeV1::float())
-                } else {
-                    Err(TypeErrorV1::MalformedLiteral {
-                        span,
-                        expected: TypeV1::float(),
-                        text: text.clone(),
-                    })
-                }
-            }
-            LiteralV1::Str(_) => Ok(TypeV1::string()),
-            LiteralV1::Bool(_) => Ok(TypeV1::bool()),
-            LiteralV1::Null => Ok(TypeV1::Null),
-        }
-    }
-
-    fn type_path(&self, path: &PathAccessV1, env: &TypeEnvV1) -> Result<TypeV1, TypeErrorV1> {
-        let mut current = self.type_value(&path.base, env)?;
-        for segment in &path.segments {
-            current = self.project_field(&current, &segment.name, segment.span)?;
-        }
-        Ok(current)
-    }
-
-    /// Project `segment` out of a record-typed base, looking through one
-    /// optional layer (`optional<{..}>` projects to `optional<field>`).
-    fn project_field(
-        &self,
-        base: &TypeV1,
-        segment: &str,
-        span: SpanV1,
-    ) -> Result<TypeV1, TypeErrorV1> {
-        let (record_fields, wrap_optional) = match base {
-            TypeV1::Record(fields) => (fields, false),
-            TypeV1::Optional(inner) => {
-                if let TypeV1::Record(fields) = inner.as_ref() {
-                    (fields, true)
-                } else {
-                    return Err(self.bad_projection(base, segment, span));
-                }
-            }
-            TypeV1::Scalar(_)
-            | TypeV1::Null
-            | TypeV1::Tuple(_)
-            | TypeV1::Collection { .. }
-            | TypeV1::Union(_)
-            | TypeV1::Relation { .. } => {
-                return Err(self.bad_projection(base, segment, span));
-            }
-        };
-        match record_fields.iter().find(|field| field.name == segment) {
-            Some(field) => {
-                if wrap_optional {
-                    Ok(TypeV1::optional(field.ty.clone()))
-                } else {
-                    Ok(field.ty.clone())
-                }
-            }
-            None => Err(self.bad_projection(base, segment, span)),
-        }
-    }
-
-    fn bad_projection(&self, base: &TypeV1, segment: &str, span: SpanV1) -> TypeErrorV1 {
-        TypeErrorV1::BadProjection {
-            span,
-            base: base.clone(),
-            segment: segment.to_owned(),
-        }
-    }
-
-    fn type_list(
-        &self,
-        list: &quanta_gqlang_v2_hir::ListExprV1,
-        env: &TypeEnvV1,
-        span: SpanV1,
-    ) -> Result<TypeV1, TypeErrorV1> {
-        let mut element_ty: Option<TypeV1> = None;
-        for element in &list.elements {
-            let ty = self.type_value(element, env)?;
-            match &element_ty {
-                None => element_ty = Some(ty),
-                Some(expected) => {
-                    if expected.is_assignable_to(&ty) && !ty.is_assignable_to(expected) {
-                        // `expected` widens into `ty` but not vice versa, so `ty`
-                        // is the more general member; generalize the element type
-                        // to keep the inferred `list<T>` assignable for every
-                        // element seen so far.
-                        element_ty = Some(ty);
-                    } else if !ty.is_assignable_to(expected) {
-                        return Err(TypeErrorV1::Mismatch {
-                            span,
-                            expected: expected.clone(),
-                            actual: ty,
-                        });
+                    match self.type_expr(&field.value, false)? {
+                        ExpressionTypeStateV2::Known(ty) => fields.push(RecordFieldTypeV1::try_new(field.name.clone(), ty, LocatedSpanV2 { source_id: key.source_id, span: field.name_span })?),
+                        ExpressionTypeStateV2::Unknown(cause) => unknown = Some(cause),
                     }
                 }
+                match unknown { Some(cause) => ExpressionTypeStateV2::Unknown(cause), None => ExpressionTypeStateV2::Known(TypeV1::record(RecordTypeV1::try_new(fields)?)) }
             }
-        }
-        // An empty list has an unknown element type; model it as a list of the
-        // null/absent type so it stays assignable into any concrete list via
-        // later context. Non-empty lists carry their element type.
-        let element = element_ty.unwrap_or(TypeV1::Null);
-        Ok(TypeV1::list(element))
-    }
-
-    fn resolve_unary(
-        &self,
-        symbol: &str,
-        operand: TypeV1,
-        span: SpanV1,
-    ) -> Result<TypeV1, TypeErrorV1> {
-        if !self.operators.has_unary(symbol) {
-            return Err(TypeErrorV1::UnknownUnaryOperator {
-                span,
-                operator: symbol.to_owned(),
-            });
-        }
-        for overload in self.operators.unary_overloads(symbol) {
-            if operand.is_assignable_to(&overload.operand) {
-                return Ok(overload.result.clone());
-            }
-        }
-        Err(TypeErrorV1::BadOverload {
-            span,
-            operator: symbol.to_owned(),
-            operands: vec![operand],
-        })
-    }
-
-    fn resolve_binary(
-        &self,
-        symbol: &str,
-        lhs: TypeV1,
-        rhs: TypeV1,
-        span: SpanV1,
-    ) -> Result<TypeV1, TypeErrorV1> {
-        if !self.operators.has_binary(symbol) {
-            return Err(TypeErrorV1::UnknownBinaryOperator {
-                span,
-                operator: symbol.to_owned(),
-            });
-        }
-        for overload in self.operators.binary_overloads(symbol) {
-            if lhs.is_assignable_to(&overload.lhs) && rhs.is_assignable_to(&overload.rhs) {
-                return Ok(overload.result.clone());
-            }
-        }
-        Err(TypeErrorV1::BadOverload {
-            span,
-            operator: symbol.to_owned(),
-            operands: vec![lhs, rhs],
-        })
-    }
-
-    fn resolve_call(
-        &self,
-        name: &str,
-        args: &[TypeV1],
-        span: SpanV1,
-    ) -> Result<TypeV1, TypeErrorV1> {
-        let overloads = self.builtins.lookup_all(name);
-        if overloads.is_empty() {
-            return Err(TypeErrorV1::UnknownBuiltin {
-                span,
-                name: name.to_owned(),
-            });
-        }
-        // Determine whether ANY overload could accept this arity. If none can,
-        // and the (first) entry is an aggregate, report illegal-aggregate arity;
-        // otherwise a generic arity mismatch.
-        let mut arity_ok = false;
-        for entry in &overloads {
-            if signature_accepts_arity(&entry.signature, args.len()) {
-                arity_ok = true;
-                if let Some(result) = match_signature(&entry.signature, args) {
-                    return Ok(result);
+            ValueExprKindV1::List(list) => {
+                let mut selected: Option<TypeV1> = None;
+                let mut unknown = None;
+                for value in &list.elements {
+                    match self.type_expr(value, false)? {
+                        ExpressionTypeStateV2::Unknown(cause) => unknown = Some(cause),
+                        ExpressionTypeStateV2::Known(ty) => match &selected {
+                            None => selected = Some(ty),
+                            Some(expected) if ty.is_assignable_to(expected) => {}
+                            Some(expected) if expected.is_assignable_to(&ty) => selected = Some(ty),
+                            Some(expected) => return Err(TypeDiagnosticV2::HeterogeneousCollection { node_id: node.id, expected: expected.clone(), actual: ty, location: self.location(node) }),
+                        },
+                    }
+                }
+                match (unknown, selected) {
+                    (Some(cause), _) => ExpressionTypeStateV2::Unknown(cause),
+                    (None, Some(element)) => ExpressionTypeStateV2::Known(TypeV1::list(element)),
+                    (None, None) => match self.inputs.contexts.get(&key) {
+                        Some(TypeV1::Collection { element, cardinality: crate::CardinalityV1::Sequence }) => ExpressionTypeStateV2::Known(TypeV1::list((**element).clone())),
+                        _ => ExpressionTypeStateV2::Unknown(UnknownTypeCauseV2::EmptyCollectionNeedsContext),
+                    },
                 }
             }
-        }
-        // No overload matched. Distinguish the reject class.
-        let first = overloads
-            .first()
-            .ok_or_else(|| TypeErrorV1::UnknownBuiltin {
-                span,
-                name: name.to_owned(),
-            })?;
-        if first.meta.aggregation == AggregationClassV1::Aggregate {
-            if !arity_ok {
-                let expected = first.signature.min_arity();
-                return Err(TypeErrorV1::IllegalAggregate {
-                    span,
-                    function: name.to_owned(),
-                    reason: IllegalAggregateReasonV1::BadArity {
-                        expected,
-                        actual: args.len(),
-                    },
-                });
-            }
-            let argument = args.first().cloned().unwrap_or(TypeV1::Null);
-            return Err(TypeErrorV1::IllegalAggregate {
-                span,
-                function: name.to_owned(),
-                reason: IllegalAggregateReasonV1::NonAggregableArgument { argument },
-            });
-        }
-        if !arity_ok {
-            let expected = first.signature.min_arity();
-            return Err(TypeErrorV1::ArityMismatch {
-                span,
-                function: name.to_owned(),
-                expected,
-                actual: args.len(),
-            });
-        }
-        Err(TypeErrorV1::BadOverload {
-            span,
-            operator: name.to_owned(),
-            operands: args.to_vec(),
-        })
-    }
-}
-
-impl Default for TypeCheckerV1 {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-fn signature_accepts_arity(signature: &BuiltinSignatureV1, arity: usize) -> bool {
-    if arity < signature.min_arity() {
-        return false;
-    }
-    match signature.max_arity() {
-        Some(max) => arity <= max,
-        None => true,
-    }
-}
-
-/// Try to match a fully-typed argument list against one signature, returning the
-/// result type when every argument is assignable. Returns `None` on any
-/// mismatch (arity or type).
-fn match_signature(signature: &BuiltinSignatureV1, args: &[TypeV1]) -> Option<TypeV1> {
-    if !signature_accepts_arity(signature, args.len()) {
-        return None;
-    }
-    if signature.accepts_any_single {
-        // Exactly one argument of any type; arity already checked.
-        return Some(signature.result.clone());
-    }
-    let fixed = signature.params.len();
-    for (idx, param) in signature.params.iter().enumerate() {
-        let arg = args.get(idx)?;
-        if !arg.is_assignable_to(param) {
-            return None;
-        }
-    }
-    if let Some(variadic) = &signature.variadic {
-        for arg in args.iter().skip(fixed) {
-            if !arg.is_assignable_to(variadic) {
-                return None;
-            }
-        }
-    }
-    Some(signature.result.clone())
-}
-
-/// A scalar convenience used by callers building simple environments and by
-/// path/proof fixtures: the closed scalar set is re-exported here so downstream
-/// tickets do not need to reach into [`crate::ty`] for the common case.
-#[must_use]
-pub fn scalar(scalar: ScalarTyV1) -> TypeV1 {
-    TypeV1::scalar(scalar)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn string() -> TypeV1 {
-        TypeV1::scalar(ScalarTyV1::String)
-    }
-
-    fn boolean() -> TypeV1 {
-        TypeV1::scalar(ScalarTyV1::Bool)
-    }
-
-    #[test]
-    fn match_signature_accepts_correct_arity_and_rejects_wrong_arity() {
-        // Pins check.rs:372 `if !signature_accepts_arity(..)`. The `!` must be
-        // present: with correct arity + assignable args the signature MATCHES
-        // (Some), and with wrong arity it REJECTS (None). Deleting `!` flips the
-        // first case to None, which this asserts against.
-        let sig = BuiltinSignatureV1::fixed(vec![string(), string()], boolean());
-
-        // Correct arity (2) with assignable args => Some(result).
-        let ok = match_signature(&sig, &[string(), string()]);
-        assert_eq!(
-            ok,
-            Some(boolean()),
-            "a 2-string signature must match exactly two string args"
-        );
-
-        // Wrong arity (1, below min 2) => None.
-        let too_few = match_signature(&sig, &[string()]);
-        assert_eq!(too_few, None, "one arg must not match a 2-arg signature");
-
-        // Wrong arity (3, above max 2) => None.
-        let too_many = match_signature(&sig, &[string(), string(), string()]);
-        assert_eq!(
-            too_many, None,
-            "three args must not match a 2-arg signature"
-        );
-    }
-
-    #[test]
-    fn match_signature_checks_variadic_argument_types() {
-        // Pins check.rs:372 `if !arg.is_assignable_to(variadic)` INSIDE the
-        // variadic loop (distinct from the arity `!` at :356). The closed
-        // registry has no variadic builtin, so this drives the variadic path
-        // directly. Signature: one fixed `string`, then any number of `int`s.
-        let int = TypeV1::scalar(ScalarTyV1::Int);
-        let sig = BuiltinSignatureV1 {
-            params: vec![string()],
-            variadic: Some(int.clone()),
-            accepts_any_single: false,
-            result: boolean(),
         };
-
-        // Fixed string + two assignable int variadic args => MATCHES. Deleting
-        // the `!` flips an assignable variadic arg to an early `None`, so this
-        // Some assertion kills that mutant.
-        let ok = match_signature(&sig, &[string(), int.clone(), int.clone()]);
-        assert_eq!(
-            ok,
-            Some(boolean()),
-            "int variadic args after the fixed string must be accepted"
-        );
-
-        // A variadic arg of the WRONG type (string where int is required) must
-        // REJECT. Without the `!` this wrongly accepts, so this None assertion
-        // also pins the variadic type gate.
-        let bad = match_signature(&sig, &[string(), string()]);
-        assert_eq!(
-            bad, None,
-            "a non-int variadic arg must be rejected by the variadic type gate"
-        );
-
-        // Zero variadic args (just the fixed param) still matches.
-        let none_variadic = match_signature(&sig, &[string()]);
-        assert_eq!(
-            none_variadic,
-            Some(boolean()),
-            "the fixed param alone, with no variadic args, must match"
-        );
+        let _ = self.visiting.remove(&node.id);
+        let _ = self.facts.insert(key, TypedExpressionFactV2 { state: state.clone(), operator_id, resolved_call, effects, literal });
+        Ok(state)
     }
 
-    #[test]
-    fn signature_accepts_arity_boundaries() {
-        // Backstops the arity gate used by match_signature: fixed-2 admits
-        // exactly 2, any_single admits exactly 1.
-        let fixed2 = BuiltinSignatureV1::fixed(vec![string(), string()], boolean());
-        assert!(!signature_accepts_arity(&fixed2, 1));
-        assert!(signature_accepts_arity(&fixed2, 2));
-        assert!(!signature_accepts_arity(&fixed2, 3));
-
-        let any1 = BuiltinSignatureV1::any_single(TypeV1::scalar(ScalarTyV1::Int));
-        assert!(!signature_accepts_arity(&any1, 0));
-        assert!(signature_accepts_arity(&any1, 1));
-        assert!(!signature_accepts_arity(&any1, 2));
+    fn type_literal(&self, node: &ValueExprHirV1, value: &LiteralV1, deferred: bool) -> Result<(TypeV1, TypedLiteralFactV2), TypeDiagnosticV2> {
+        let location = self.location(node);
+        match value {
+            LiteralV1::Int(text) if deferred && text == "170141183460469231731687303715884105728" => Ok((TypeV1::int(), TypedLiteralFactV2::DeferredI128MinMagnitude)),
+            LiteralV1::Int(text) => {
+                if text.is_empty() || !text.bytes().all(|byte| byte.is_ascii_digit()) { return Err(TypeDiagnosticV2::MalformedLiteral { node_id: node.id, location }); }
+                text.parse::<i128>().map(|value| (TypeV1::int(), TypedLiteralFactV2::Value(TypedLiteralValueV2::Int(value)))).map_err(|_parse_error| TypeDiagnosticV2::IntegerOutOfRange { node_id: node.id, location, text: text.clone() })
+            },
+            LiteralV1::Float(text) => {
+                let Some((whole,fraction)) = text.split_once('.') else { return Err(TypeDiagnosticV2::MalformedLiteral { node_id: node.id, location }); };
+                if whole.is_empty() || fraction.is_empty() || text.matches('.').count()!=1 || !whole.bytes().chain(fraction.bytes()).all(|byte| byte.is_ascii_digit()) { return Err(TypeDiagnosticV2::MalformedLiteral { node_id: node.id, location }); }
+                let value = text.parse::<f64>().map_err(|_parse_error| TypeDiagnosticV2::FloatNonFinite { location })?;
+                if !value.is_finite() { return Err(TypeDiagnosticV2::FloatNonFinite { location }); }
+                if value == 0.0 && lexical_nonzero(text) { return Err(TypeDiagnosticV2::FloatUnderflow { node_id: node.id, location, text: text.clone() }); }
+                Ok((TypeV1::float(), TypedLiteralFactV2::Value(TypedLiteralValueV2::Float(FiniteF64V2::try_new(value, location)?))))
+            }
+            LiteralV1::Str(value) => Ok((TypeV1::string(), TypedLiteralFactV2::Value(TypedLiteralValueV2::String(value.clone())))),
+            LiteralV1::Bool(value) => Ok((TypeV1::bool(), TypedLiteralFactV2::Value(TypedLiteralValueV2::Bool(*value)))),
+            LiteralV1::Null => Ok((TypeV1::Null, TypedLiteralFactV2::Value(TypedLiteralValueV2::Null))),
+        }
     }
+
+    fn resolve_unary(&self, node: &ValueExprHirV1, symbol: &str, operand: ExpressionTypeStateV2, selected: &mut Option<OperatorIdV2>) -> Result<ExpressionTypeStateV2, TypeDiagnosticV2> {
+        let ExpressionTypeStateV2::Known(operand) = operand else { return Ok(operand); };
+        let overloads=self.kernel.operators.unary_overloads(symbol);if overloads.is_empty(){return Err(TypeDiagnosticV2::UnknownOperator{node_id:node.id,symbol:symbol.into(),location:self.location(node)});}for overload in overloads { if operand.is_assignable_to(&overload.operand) { *selected = Some(overload.id); return Ok(ExpressionTypeStateV2::Known(overload.result.clone())); } }
+        Err(TypeDiagnosticV2::BadOverload { node_id: node.id, name: symbol.into(), operands: vec![operand], location: self.location(node) })
+    }
+    fn resolve_binary(&self, node: &ValueExprHirV1, symbol: &str, lhs: ExpressionTypeStateV2, rhs: ExpressionTypeStateV2, selected: &mut Option<OperatorIdV2>) -> Result<ExpressionTypeStateV2, TypeDiagnosticV2> {
+        let (ExpressionTypeStateV2::Known(lhs), ExpressionTypeStateV2::Known(rhs)) = (lhs, rhs) else { return Ok(ExpressionTypeStateV2::Unknown(UnknownTypeCauseV2::UnresolvedEditorBinding)); };
+        let overloads=self.kernel.operators.binary_overloads(symbol);if overloads.is_empty(){return Err(TypeDiagnosticV2::UnknownOperator{node_id:node.id,symbol:symbol.into(),location:self.location(node)});}for overload in overloads { if lhs.is_assignable_to(&overload.lhs) && rhs.is_assignable_to(&overload.rhs) { *selected = Some(overload.id); return Ok(ExpressionTypeStateV2::Known(overload.result.clone())); } }
+        Err(TypeDiagnosticV2::BadOverload { node_id: node.id, name: symbol.into(), operands: vec![lhs, rhs], location: self.location(node) })
+    }
+    fn resolve_binary_bool(&self, node: &BoolExprHirV1, symbol: &str, lhs: ExpressionTypeStateV2, rhs: ExpressionTypeStateV2, selected: &mut Option<OperatorIdV2>) -> Result<ExpressionTypeStateV2, TypeDiagnosticV2> {
+        let (ExpressionTypeStateV2::Known(lhs), ExpressionTypeStateV2::Known(rhs)) = (lhs, rhs) else { return Ok(ExpressionTypeStateV2::Unknown(UnknownTypeCauseV2::UnresolvedEditorBinding)); };
+        for overload in self.kernel.operators.binary_overloads(symbol) { if lhs.is_assignable_to(&overload.lhs) && rhs.is_assignable_to(&overload.rhs) { *selected = Some(overload.id); return Ok(ExpressionTypeStateV2::Known(overload.result.clone())); } }
+        Err(TypeDiagnosticV2::BadOverload { node_id: node.id, name: symbol.into(), operands: vec![lhs, rhs], location: self.bool_location(node) })
+    }
+    fn resolve_unary_bool(&self, node: &BoolExprHirV1, symbol: &str, operand: ExpressionTypeStateV2, selected: &mut Option<OperatorIdV2>) -> Result<ExpressionTypeStateV2, TypeDiagnosticV2> {
+        let ExpressionTypeStateV2::Known(operand) = operand else { return Ok(operand); };
+        for overload in self.kernel.operators.unary_overloads(symbol) { if operand.is_assignable_to(&overload.operand) { *selected = Some(overload.id); return Ok(ExpressionTypeStateV2::Known(overload.result.clone())); } }
+        Err(TypeDiagnosticV2::BadOverload { node_id: node.id, name: symbol.into(), operands: vec![operand], location: self.bool_location(node) })
+    }
+    fn resolve_call(&self, node: &ValueExprHirV1, input: ResolvedTypeInputValueV2, args: &[CallArgHirV1], arg_types: &[ExpressionTypeStateV2]) -> Result<(ExpressionTypeStateV2, ExpressionEffectsV2, Option<ResolvedCallTargetV2>), TypeDiagnosticV2> {
+        match input {
+            ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::Builtin(family)) => {
+                let has_star = matches!(args, [CallArgHirV1::Star { .. }]);
+                for entry in self.kernel.builtins.lookup_family(family) {
+                    let matches = match &entry.signature {
+                        CallableSignatureV2::AggregateStar { .. } => has_star,
+                        CallableSignatureV2::AnySingle { .. } => !has_star && arg_types.len() == 1,
+                        CallableSignatureV2::Fixed { params, .. } => !has_star && params.len() == arg_types.len() && params.iter().zip(arg_types).all(|(expected, actual)| matches!(actual, ExpressionTypeStateV2::Known(actual) if actual.is_assignable_to(expected))),
+                    };
+                    if matches { return Ok((ExpressionTypeStateV2::Known(entry.signature.result().clone()), entry.effects, Some(ResolvedCallTargetV2::Builtin(entry.id)))); }
+                }
+                if has_star { Err(TypeDiagnosticV2::InvalidStarArgument { node_id: node.id, location: self.location(node) }) } else { Err(TypeDiagnosticV2::BadOverload { node_id: node.id, name: format!("builtin-family-{}", family.raw()), operands: arg_types.iter().filter_map(|state| if let ExpressionTypeStateV2::Known(ty) = state { Some(ty.clone()) } else { None }).collect(), location: self.location(node) }) }
+            }
+            ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::Predicate { id, signature, effects }) => {
+                if args.iter().any(|arg| matches!(arg, CallArgHirV1::Star { .. })) { return Err(TypeDiagnosticV2::InvalidStarArgument { node_id: node.id, location: self.location(node) }); }
+                if signature.params.len() == arg_types.len() && signature.params.iter().zip(arg_types).all(|(expected, actual)| matches!(actual, ExpressionTypeStateV2::Known(actual) if actual.is_assignable_to(expected))) {
+                    Ok((ExpressionTypeStateV2::Known(signature.result), effects, Some(ResolvedCallTargetV2::Predicate(id))))
+                } else { Err(TypeDiagnosticV2::BadOverload { node_id: node.id, name: "predicate".into(), operands: arg_types.iter().filter_map(|state| if let ExpressionTypeStateV2::Known(ty) = state { Some(ty.clone()) } else { None }).collect(), location: self.location(node) }) }
+            }
+            ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::Unknown(cause)) => Ok((ExpressionTypeStateV2::Unknown(cause), ExpressionEffectsV2::pure_scalar(), None)),
+            ResolvedTypeInputValueV2::Binding(_) => Err(TypeDiagnosticV2::WrongNodeFactKind { node_id: node.id, location: self.location(node) }),
+        }
+    }
+}
+
+fn lexical_nonzero(text: &str) -> bool {
+    text.bytes().any(|byte| byte.is_ascii_digit() && byte != b'0')
 }

@@ -1,307 +1,75 @@
-//! Hellgate (fail-closed) rails for the v3 type checker (ticket 03).
-//!
-//! syntax -> sema(types) reject path: malformed value trees reject with TYPED
-//! diagnostics (`TypeErrorV1`) carrying a stable `code()` and source span. Each
-//! test asserts the ACTUAL code and Display text, per the hellgate protocol.
-//!
-//! Covers ticket scenarios:
-//!   2. type mismatch `"x" + 1` -> fail-closed mismatch/bad-overload diagnostic
-//!   3. bad overload (operator applied to unsupported types) -> diagnostic
-//! plus: unknown symbol/operator/builtin, arity, and illegal-aggregate rejects.
+#![allow(clippy::unwrap_used, reason = "owner assertions")]
 
-#![allow(clippy::unwrap_used, reason = "tests assert on Result directly")]
-#![allow(clippy::expect_used, reason = "tests assert on Result directly")]
-#![allow(clippy::indexing_slicing, reason = "tests index known-shape fixtures")]
-#![allow(clippy::panic, reason = "tests panic on unexpected error shapes")]
-#![allow(
-    clippy::wildcard_enum_match_arm,
-    reason = "tests match the one expected variant and panic otherwise"
-)]
+use quanta_gqlang_v2_hir::{check_document_v2, CallArgHirV1, CallArgsHirV1, DeclHirV1, HirBuilderV1, HirDocumentV1, HirNodeIdV1, ProgramItemHirV1, SourceIdV2, SpanV1};
+use quanta_gqlang_v2_types::*;
 
-use quanta_gqlang_v2_hir::{HirBuilderV1, SpanV1};
-use quanta_gqlang_v2_types::{
-    IllegalAggregateReasonV1, ScalarTyV1, TypeCheckerV1, TypeEnvV1, TypeErrorV1, TypeV1,
-};
-
-fn sp(start: usize, end: usize) -> SpanV1 {
-    SpanV1::new(start, end)
+fn checked_document(body: quanta_gqlang_v2_hir::ValueExprHirV1) -> HirDocumentV1 {
+    HirDocumentV1 { source_id: SourceIdV2::from_raw(9), source_len: 100, items: vec![ProgramItemHirV1::Decl(Box::new(DeclHirV1::new(HirNodeIdV1::from_raw(10_000), SpanV1::new(0, 90), "x".into(), SpanV1::new(0, 1), body)))] }
 }
 
 #[test]
-fn scenario_2_string_plus_int_rejects_bad_overload() {
-    // "x" + 1  has no `+` overload for (string, int) -> bad overload.
-    let b = HirBuilderV1::new();
-    let s = b.string("x", sp(0, 3));
-    let one = b.int("1", sp(6, 7));
-    let bad = b.binary("+", s, one, sp(0, 7));
+fn resolved_inputs_reject_missing_duplicate_foreign_and_extra_entries() {
+    let builder = HirBuilderV1::new();
+    let symbol = builder.symbol("name", SpanV1::new(1, 5));
+    let key = SourceQualifiedNodeIdV2 { source_id: SourceIdV2::from_raw(9), node_id: symbol.id };
+    let doc = checked_document(symbol);
+    let checked = check_document_v2(&doc).unwrap();
+    assert_eq!(ResolvedTypeInputsV2::try_new(checked, vec![], vec![]).unwrap_err().code(), "types.missing_resolved_input");
+    let entry = ResolvedTypeInputEntryV2 { key, value: ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(TypeV1::string())) };
+    assert_eq!(ResolvedTypeInputsV2::try_new(checked, vec![entry.clone(), entry], vec![]).unwrap_err().code(), "types.duplicate_resolved_input");
+    let foreign = ResolvedTypeInputEntryV2 { key: SourceQualifiedNodeIdV2 { source_id: SourceIdV2::from_raw(10), node_id: key.node_id }, value: ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(TypeV1::string())) };
+    assert_eq!(ResolvedTypeInputsV2::try_new(checked, vec![foreign], vec![]).unwrap_err().code(), "types.foreign_document_input");
+}
 
-    let checker = TypeCheckerV1::new();
-    let err = checker
-        .type_value(&bad, &TypeEnvV1::new())
-        .expect_err("string + int must reject");
+#[test]
+fn kernel_selects_stable_operator_and_builtin_ids() {
+    let builder = HirBuilderV1::new();
+    let lhs = builder.symbol("a", SpanV1::new(0, 1));
+    let lhs_id = lhs.id;
+    let rhs = builder.int("1", SpanV1::new(4, 5));
+    let sum = builder.binary("+", lhs, rhs, SpanV1::new(0, 5));
+    let sum_key = SourceQualifiedNodeIdV2 { source_id: SourceIdV2::from_raw(9), node_id: sum.id };
+    let doc = checked_document(sum);
+    let entry = ResolvedTypeInputEntryV2 { key: SourceQualifiedNodeIdV2 { source_id: SourceIdV2::from_raw(9), node_id: lhs_id }, value: ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(TypeV1::int())) };
+    let inputs = ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![entry], vec![]).unwrap();
+    let facts = ExpressionTypeKernelV2::try_closed().unwrap().check_document(&inputs).unwrap();
+    assert!(facts.get(sum_key).unwrap().operator_id.is_some());
 
-    assert_eq!(err.code(), "types.bad_overload");
-    match &err {
-        TypeErrorV1::BadOverload {
-            operator, operands, ..
-        } => {
-            assert_eq!(operator, "+");
-            assert_eq!(operands, &vec![TypeV1::string(), TypeV1::int()]);
-        }
-        other => panic!("expected BadOverload, got {other:?}"),
+    let builder = HirBuilderV1::new();
+    let arg = builder.int("1", SpanV1::new(6, 7));
+    let call = builder.call("count", SpanV1::new(0, 5), CallArgsHirV1::try_new(vec![CallArgHirV1::Expr(arg)]).unwrap(), SpanV1::new(0, 8));
+    let key = SourceQualifiedNodeIdV2 { source_id: SourceIdV2::from_raw(9), node_id: call.id };
+    let doc = checked_document(call);
+    let registry = BuiltinRegistryV2::try_closed().unwrap();
+    let input = ResolvedTypeInputEntryV2 { key, value: ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::Builtin(registry.family_id("count").unwrap())) };
+    let inputs = ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
+    let facts = ExpressionTypeKernelV2::try_closed().unwrap().check_document(&inputs).unwrap();
+    assert!(matches!(facts.get(key).unwrap().resolved_call(), Some(ResolvedCallTargetV2::Builtin(_))));
+}
+
+#[test]
+fn resolved_inputs_reject_extra_and_wrong_kind_before_kernel_walk() {
+    let builder=HirBuilderV1::new();let symbol=builder.symbol("x",SpanV1::new(0,1));let symbol_id=symbol.id;let doc=checked_document(symbol);let checked=check_document_v2(&doc).unwrap();
+    let registry=BuiltinRegistryV2::try_closed().unwrap();
+    let wrong=ResolvedTypeInputEntryV2{key:SourceQualifiedNodeIdV2{source_id:SourceIdV2::from_raw(9),node_id:symbol_id},value:ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::Builtin(registry.family_id("count").unwrap()))};
+    assert_eq!(ResolvedTypeInputsV2::try_new(checked,vec![wrong],vec![]).unwrap_err().code(),"types.wrong_resolved_input_kind");
+    let extra=ResolvedTypeInputEntryV2{key:SourceQualifiedNodeIdV2{source_id:SourceIdV2::from_raw(9),node_id:HirNodeIdV1::from_raw(777)},value:ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(TypeV1::int()))};
+    assert_eq!(ResolvedTypeInputsV2::try_new(checked,vec![extra],vec![]).unwrap_err().code(),"types.extra_resolved_input");
+}
+
+#[test]
+fn star_is_accepted_only_for_explicit_count_star_signature() {
+    let registry=BuiltinRegistryV2::try_closed().unwrap();
+    for (name,expected_ok) in [("count",true),("starts_with",false)] {
+        let builder=HirBuilderV1::new();let call=builder.call(name,SpanV1::new(0,name.len()),CallArgsHirV1::try_new(vec![CallArgHirV1::star(SpanV1::new(name.len()+1,name.len()+2))]).unwrap(),SpanV1::new(0,name.len()+3));let key=SourceQualifiedNodeIdV2{source_id:SourceIdV2::from_raw(9),node_id:call.id};let doc=checked_document(call);
+        let input=ResolvedTypeInputEntryV2{key,value:ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::Builtin(registry.family_id(name).unwrap()))};let inputs=ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(),vec![input],vec![]).unwrap();let result=ExpressionTypeKernelV2::try_closed().unwrap().check_document(&inputs);
+        if expected_ok { assert!(matches!(result.unwrap().get(key).unwrap().resolved_call(),Some(ResolvedCallTargetV2::Builtin(_)))); } else { assert_eq!(result.unwrap_err().code(),"types.invalid_star_argument"); }
     }
-    assert_eq!(
-        err.to_string(),
-        "types.bad_overload: operator `+` has no overload for (string, int)"
-    );
-    assert_eq!(err.span(), sp(0, 7));
 }
 
 #[test]
-fn scenario_3_ordering_on_bool_rejects_bad_overload() {
-    // true < false : `<` has no (bool, bool) overload -> bad overload.
-    let b = HirBuilderV1::new();
-    let t = b.bool_lit(true, sp(0, 4));
-    let f = b.bool_lit(false, sp(7, 12));
-    let bad = b.binary("<", t, f, sp(0, 12));
-
-    let checker = TypeCheckerV1::new();
-    let err = checker
-        .type_value(&bad, &TypeEnvV1::new())
-        .expect_err("bool < bool must reject");
-
-    assert_eq!(err.code(), "types.bad_overload");
-    assert_eq!(
-        err.to_string(),
-        "types.bad_overload: operator `<` has no overload for (bool, bool)"
-    );
-}
-
-#[test]
-fn explicit_context_mismatch_rejects_mismatch() {
-    // A list of mixed element types triggers a type mismatch.
-    let b = HirBuilderV1::new();
-    let i = b.int("1", sp(1, 2));
-    let s = b.string("a", sp(4, 7));
-    let list = b.list(vec![i, s], sp(0, 8));
-
-    let checker = TypeCheckerV1::new();
-    let err = checker
-        .type_value(&list, &TypeEnvV1::new())
-        .expect_err("heterogeneous list must reject");
-
-    assert_eq!(err.code(), "types.mismatch");
-    assert_eq!(
-        err.to_string(),
-        "types.mismatch: expected type `int`, found `string`"
-    );
-}
-
-#[test]
-fn unknown_symbol_rejects() {
-    let b = HirBuilderV1::new();
-    let sym = b.symbol("ghost", sp(0, 5));
-    let checker = TypeCheckerV1::new();
-    let err = checker
-        .type_value(&sym, &TypeEnvV1::new())
-        .expect_err("unbound symbol must reject");
-
-    assert_eq!(err.code(), "types.unknown_symbol");
-    assert_eq!(
-        err.to_string(),
-        "types.unknown_symbol: unknown symbol `ghost` in type environment"
-    );
-}
-
-#[test]
-fn unknown_binary_operator_rejects() {
-    let b = HirBuilderV1::new();
-    let a = b.int("1", sp(0, 1));
-    let c = b.int("2", sp(4, 5));
-    let bad = b.binary("<=>", a, c, sp(0, 5));
-    let checker = TypeCheckerV1::new();
-    let err = checker.type_value(&bad, &TypeEnvV1::new()).unwrap_err();
-
-    assert_eq!(err.code(), "types.unknown_binary_operator");
-    assert_eq!(
-        err.to_string(),
-        "types.unknown_binary_operator: unknown binary operator `<=>`"
-    );
-}
-
-#[test]
-fn unknown_builtin_rejects() {
-    let b = HirBuilderV1::new();
-    let arg = b.int("1", sp(7, 8));
-    let call = b.call("frobnicate", sp(0, 6), vec![arg], sp(0, 9));
-    let checker = TypeCheckerV1::new();
-    let err = checker.type_value(&call, &TypeEnvV1::new()).unwrap_err();
-
-    assert_eq!(err.code(), "types.unknown_builtin");
-    assert_eq!(
-        err.to_string(),
-        "types.unknown_builtin: unknown builtin function `frobnicate`"
-    );
-}
-
-#[test]
-fn builtin_arity_mismatch_rejects() {
-    // starts_with expects 2 args; supply 1.
-    let b = HirBuilderV1::new();
-    let s = b.string("src/", sp(12, 18));
-    let call = b.call("starts_with", sp(0, 11), vec![s], sp(0, 19));
-    let checker = TypeCheckerV1::new();
-    let err = checker.type_value(&call, &TypeEnvV1::new()).unwrap_err();
-
-    assert_eq!(err.code(), "types.arity_mismatch");
-    assert_eq!(
-        err.to_string(),
-        "types.arity_mismatch: builtin `starts_with` expects 2 argument(s), found 1"
-    );
-}
-
-#[test]
-fn aggregate_on_non_aggregable_argument_rejects_illegal_aggregate() {
-    // sum over a string is not aggregable: there is no string overload of sum.
-    let b = HirBuilderV1::new();
-    let s = b.symbol("name", sp(4, 8));
-    let call = b.call("sum", sp(0, 3), vec![s], sp(0, 9));
-    let env = TypeEnvV1::new().with("name", TypeV1::string());
-    let checker = TypeCheckerV1::new();
-    let err = checker.type_value(&call, &env).unwrap_err();
-
-    assert_eq!(err.code(), "types.illegal_aggregate");
-    match &err {
-        TypeErrorV1::IllegalAggregate {
-            function, reason, ..
-        } => {
-            assert_eq!(function, "sum");
-            assert_eq!(
-                reason,
-                &IllegalAggregateReasonV1::NonAggregableArgument {
-                    argument: TypeV1::string()
-                }
-            );
-        }
-        other => panic!("expected IllegalAggregate, got {other:?}"),
+fn unknown_and_bad_operator_reject_distinctly() {
+    for (operator,code) in [("~","types.unknown_operator"),("not","types.bad_overload")] {
+        let builder=HirBuilderV1::new();let operand=builder.string("x",SpanV1::new(1,4));let unary=builder.unary(operator,operand,SpanV1::new(0,4));let doc=checked_document(unary);let inputs=ResolvedTypeInputsV2::try_new(check_document_v2(&doc).unwrap(),vec![],vec![]).unwrap();assert_eq!(ExpressionTypeKernelV2::try_closed().unwrap().check_document(&inputs).unwrap_err().code(),code);
     }
-    assert_eq!(
-        err.to_string(),
-        "types.illegal_aggregate: aggregate `sum` cannot aggregate argument of type `string`"
-    );
-}
-
-#[test]
-fn aggregate_bad_arity_rejects_illegal_aggregate() {
-    // sum expects exactly 1 argument; supply 0.
-    let b = HirBuilderV1::new();
-    let call = b.call("sum", sp(0, 3), vec![], sp(0, 5));
-    let checker = TypeCheckerV1::new();
-    let err = checker.type_value(&call, &TypeEnvV1::new()).unwrap_err();
-
-    assert_eq!(err.code(), "types.illegal_aggregate");
-    assert_eq!(
-        err.to_string(),
-        "types.illegal_aggregate: aggregate `sum` expects 1 argument(s), found 0"
-    );
-}
-
-#[test]
-fn bad_path_projection_rejects() {
-    // u.missing where u is a record without `missing`.
-    use quanta_gqlang_v2_hir::PathSegmentV1;
-    use quanta_gqlang_v2_types::RecordFieldTyV1;
-    let b = HirBuilderV1::new();
-    let base = b.symbol("u", sp(0, 1));
-    let access = b.path(
-        base,
-        vec![PathSegmentV1 {
-            name: "missing".to_owned(),
-            span: sp(2, 9),
-        }],
-        sp(0, 9),
-    );
-    let env = TypeEnvV1::new().with(
-        "u",
-        TypeV1::record(vec![RecordFieldTyV1::new("id", TypeV1::int())]),
-    );
-    let checker = TypeCheckerV1::new();
-    let err = checker.type_value(&access, &env).unwrap_err();
-
-    assert_eq!(err.code(), "types.bad_projection");
-    assert_eq!(
-        err.to_string(),
-        "types.bad_projection: type `{ id: int }` has no field `missing`"
-    );
-}
-
-#[test]
-fn malformed_int_literal_rejects() {
-    let b = HirBuilderV1::new();
-    let bad = b.int("12x", sp(0, 3));
-    let checker = TypeCheckerV1::new();
-    let err = checker.type_value(&bad, &TypeEnvV1::new()).unwrap_err();
-
-    assert_eq!(err.code(), "types.malformed_literal");
-    assert_eq!(
-        err.to_string(),
-        "types.malformed_literal: malformed `int` literal `12x`"
-    );
-}
-
-#[test]
-fn unsupported_proof_arithmetic_rejects_bad_overload() {
-    // proof_tree + proof_tree has no arithmetic overload.
-    let b = HirBuilderV1::new();
-    let p1 = b.symbol("p", sp(0, 1));
-    let p2 = b.symbol("q", sp(4, 5));
-    let bad = b.binary("+", p1, p2, sp(0, 5));
-    let env = TypeEnvV1::new()
-        .with("p", TypeV1::scalar(ScalarTyV1::ProofTree))
-        .with("q", TypeV1::scalar(ScalarTyV1::ProofTree));
-    let checker = TypeCheckerV1::new();
-    let err = checker.type_value(&bad, &env).unwrap_err();
-
-    assert_eq!(err.code(), "types.bad_overload");
-    assert_eq!(
-        err.to_string(),
-        "types.bad_overload: operator `+` has no overload for (proof_tree, proof_tree)"
-    );
-}
-
-#[test]
-fn repo_path_exact_equality_is_typed_bool_v1() {
-    let b = HirBuilderV1::new();
-    let left = b.symbol("left", sp(0, 4));
-    let right = b.symbol("right", sp(7, 12));
-    let equality = b.binary("=", left, right, sp(0, 12));
-    let env = TypeEnvV1::new()
-        .with("left", TypeV1::scalar(ScalarTyV1::RepoPath))
-        .with("right", TypeV1::scalar(ScalarTyV1::RepoPath));
-
-    let actual = TypeCheckerV1::new()
-        .type_value(&equality, &env)
-        .expect("exact repo_path equality must be supported");
-    assert_eq!(actual, TypeV1::bool());
-}
-
-#[test]
-fn repo_path_does_not_coerce_to_broad_path_v1() {
-    let b = HirBuilderV1::new();
-    let repo = b.symbol("repo", sp(0, 4));
-    let broad = b.symbol("broad", sp(7, 12));
-    let equality = b.binary("=", repo, broad, sp(0, 12));
-    let env = TypeEnvV1::new()
-        .with("repo", TypeV1::scalar(ScalarTyV1::RepoPath))
-        .with("broad", TypeV1::scalar(ScalarTyV1::Path));
-
-    let error = TypeCheckerV1::new()
-        .type_value(&equality, &env)
-        .expect_err("repo_path and path must remain distinct scalar identities");
-    assert_eq!(error.code(), "types.bad_overload");
-    assert_eq!(
-        error.to_string(),
-        "types.bad_overload: operator `=` has no overload for (repo_path, path)"
-    );
-    assert_eq!(error.span(), sp(0, 12));
 }

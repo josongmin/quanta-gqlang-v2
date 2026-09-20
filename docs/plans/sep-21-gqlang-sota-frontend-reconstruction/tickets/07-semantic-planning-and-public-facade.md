@@ -107,17 +107,18 @@ may not inspect authored HIR options.
 DTO roots; nested DTO fields use curated explicit exports, never crate globs:
 
 ```rust
-compile_source_document_v2(&str, &ClosedFrontendAuthorityV2)
+compile_source_document_v2(SourceIdV2, &str, &ClosedFrontendAuthorityV2)
     -> Result<CompiledDocumentV2, FrontendFailureV2>
-analyze_source_document_v2(&str, &OpenAnalysisAuthorityV2)
+analyze_source_document_v2(SourceIdV2, &str, &OpenAnalysisAuthorityV2)
     -> AnalysisDocumentV2
-format_source_document_v2(&str, &FrontendBudgetV2)
+format_source_document_v2(SourceIdV2, &str, &FrontendBudgetV2)
     -> Result<String, FrontendFailureV2>
 ```
 
 Stable root types are `ClosedFrontendAuthorityV2`,
 `OpenAnalysisAuthorityV2`, `FrontendBudgetV2`, `CompiledDocumentV2`,
-`AnalysisDocumentV2`, `SemanticPlanV2`, and `FrontendDiagnosticV2`. The facade
+`AnalysisDocumentV2`, `SemanticPlanV2`, `FrontendDiagnosticV2`, and the curated
+host-assignable `SourceIdV2`. The facade
 also exports `FrontendFailureV2`. It does not expose owner constructors for HIR,
 types, algebra, logic, or planning.
 

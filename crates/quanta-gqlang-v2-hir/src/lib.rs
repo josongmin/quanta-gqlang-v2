@@ -44,7 +44,10 @@ mod visit;
 
 pub use build::HirBuilderV1;
 pub use id::{HirNodeIdGen, HirNodeIdV1};
-pub use span::{LocatedSpanErrorV2, LocatedSpanV2, SourceIdV2, SpanV1};
+pub use span::{
+    CheckedLocatedSpanV2, ExtendedSourceRegistryViewV2, LocatedSpanErrorV2, LocatedSpanV2, SourceIdV2, SourceRegistrationV2,
+    SourceRegistryDiagnosticV2, SourceRegistryIdentityV2, SourceRegistryViewV2, SpanV1,
+};
 
 pub use expr::{
     BinaryBoolV1, BinaryExprV1, BinaryOpV1, BoolExprHirV1, BoolExprKindV1, CallArgHirV1,

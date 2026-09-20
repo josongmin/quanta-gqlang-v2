@@ -1,32 +1,4 @@
-//! QGLang v3 type universe and operator/function registry (ticket 03).
-//!
-//! Owns the closed scalar/structural/domain type universe ([`ty`]), the closed
-//! operator registry ([`op`]) and closed builtin-function registry with metadata
-//! ([`builtin`]), overload resolution and value-expression type checking
-//! ([`check`]) against a caller-provided type environment ([`env`]), and typed
-//! mismatch diagnostics ([`diag`]).
-//!
-//! Packet decisions cited:
-//!
-//! - `D4`: type checking uses a closed operator/function registry with typed
-//!   errors; no backend/provider state participates in any lookup.
-//! - `D10`: unsupported constructs reject explicitly via typed diagnostics; no
-//!   silent downgrade.
-//! - `D20`: result kinds, source locations, witness/path payloads, and
-//!   explainability are semantic types here (`location`, `path`, `proof_tree`),
-//!   not CLI-only presentation.
-//! - `D21`/`D24`: builtin metadata (purity, determinism, monotonicity,
-//!   aggregation class, cost class) is frontend-owned and consumed downstream by
-//!   recursion legality (`05`) and planning/cost (`07`).
-//! - `D29`: nested result-shape STRUCTURE is owned by ticket 01; this crate
-//!   TYPES it through the shared record/list value nodes and introduces no
-//!   second shape tree.
-//!
-//! # Binder seam
-//!
-//! To stay parallel-safe with the binder (ticket 02), the checker consumes a
-//! caller-provided symbol -> type map ([`TypeEnvV1`]); it performs no scope or
-//! import resolution. Ticket 02 will produce that map from resolved bindings.
+//! Checked frontend types and the node-identity type kernel.
 
 mod builtin;
 mod check;
@@ -36,11 +8,26 @@ mod op;
 mod ty;
 
 pub use builtin::{
-    AggregationClassV1, BuiltinEntryV1, BuiltinMetaV1, BuiltinRegistryV1, BuiltinSignatureV1,
-    CostClassV1, DeterminismV1, MonotonicityV1, PurityV1,
+    AggregationClassV1, BuiltinEntryV2, BuiltinFamilyIdV2, BuiltinIdV2, BuiltinMetaV1, BuiltinRegistryV2,
+    CallableSignatureV2, CostClassV1, DeterminismV1, ExpressionEffectsV2, MonotonicityV1,
+    PurityV1,
 };
-pub use check::{scalar, TypeCheckerV1};
-pub use diag::{IllegalAggregateReasonV1, TypeErrorV1};
-pub use env::TypeEnvV1;
-pub use op::{BinaryOverloadV1, OperatorRegistryV1, UnaryOverloadV1};
-pub use ty::{CardinalityV1, RecordFieldTyV1, ScalarTyV1, TypeV1, UnionVariantTyV1};
+pub use check::{
+    ContextualExpectedTypeInputV2, ContextualTypeReasonV2, ExpressionTypeKernelV2,
+    ExpressionTypeStateV2, PredicateCallableSignatureV2, PredicateIdV2,
+    ResolvedCallableInputV2, ResolvedCallTargetV2, ResolvedTypeInputEntryV2,
+    ResolvedTypeInputValueV2, ResolvedTypeInputsV2, SourceQualifiedNodeIdV2,
+    TypedExpressionFactV2, TypedExpressionFactsV2, TypedLiteralFactV2, UnknownTypeCauseV2,
+};
+pub use diag::{TypeAuthorityDiagnosticV2, TypeDiagnosticV2};
+pub use env::{
+    ProvenanceNamespaceV2, RelationCatalogV2, RelationSourceIdV2, RelationSourceInputV2,
+    RelationSourceV2,
+};
+pub use op::{BinaryOverloadV1, OperatorIdV2, OperatorRegistryV2, UnaryOverloadV1};
+pub use ty::{
+    CardinalityV1, CollectionTypeV1, FiniteF64V2, OptionalTypeV1, RecordFieldTypeV1,
+    RecordFieldV1, RecordTypeV1, RelationTypeV1, ScalarTyV1, TupleTypeV1, TypeV1,
+    TypedLiteralValueV2, UnionTypeV1, UnionVariantTypeV1, UnionVariantV1, ValueTypeV1,
+    MAX_TYPE_DEPTH, MAX_TYPE_NODES,
+};
