@@ -259,6 +259,11 @@ pub enum SemanticPlanInputV2 {
 `AuthorityLaneV2` and `EvaluationDeterminismV2` are separate. A nondeterministic
 builtin must not be hidden behind a lane named deterministic.
 
+One document-wide `RuleProgramContractV2` produces one
+`CompiledRuleProgramV2` and one semantic plan. Source rule items retain checked
+member references; they do not duplicate that plan. Program member identity is
+validated as an exact set independently from per-item plan keys.
+
 ## Public API
 
 The facade exports source/document entry points and stable DTOs only:

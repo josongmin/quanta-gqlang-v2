@@ -122,9 +122,7 @@ impl ModuleDiagnosticV2 {
         Self {
             code: "modules.resource_exhausted",
             details: Box::new(ModuleDiagnosticDetailsV2 {
-                message: format!(
-                    "{dimension} limit {limit} exceeded by observed value {observed}"
-                ),
+                message: format!("{dimension} limit {limit} exceeded by observed value {observed}"),
                 resource_exhaustion: Some(ResourceExhaustionV2 {
                     dimension,
                     limit,

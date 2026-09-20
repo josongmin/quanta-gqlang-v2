@@ -333,8 +333,15 @@ the stack becomes `INTEGRATED`.
     commit its sorted output as `LEGACY_API_INVENTORY.txt`:
 
     ```bash
-    rg -n 'compile_(program_structural|program_with_schema|with_context|item_structural|item_with_schema|item_with_context|document_structural|document_with_schema|document_with_context)' crates README.md docs --glob '*.rs' --glob '*.md' | sort
+    {
+      rg -n 'compile_(program_structural|program_with_schema|with_context|item_structural|item_with_schema|item_with_context|document_structural|document_with_schema|document_with_context)' crates --glob '*.rs'
+      rg -n 'compile_(program_structural|program_with_schema|with_context|item_structural|item_with_schema|item_with_context|document_structural|document_with_schema|document_with_context)' README.md docs/language --glob '*.md'
+    } | sort
     ```
+
+    This inventory covers active source, tests, and current public docs only;
+    `docs/plans/**` is historical/audit evidence and is classified by ticket
+    09's truth-claim inventory instead of rewritten by ticket 08.
 
 17. Do not add, wrap, or reinterpret a V1 compile seam. Ticket 08 deletes every
     inventory entry after caller migration.
@@ -551,12 +558,12 @@ ticket 07 and listed, with their current failures, in receipt 04.
 6. two-diagnostic Binder order plus pipeline first-diagnostic selection
 7. `SemanticAnalysisV2` complete/incomplete/error state separation and absence
    of any conversion from incomplete/open analysis to compiled semantics
-6. forward, unknown, wrong-kind, and ambiguous reference tests
-7. REQUIRE/declaration order permutation test
-8. document atomicity test
-9. source and prechecked-syntax entrypoint parity
-10. exact-limit and one-over-limit semantic document/expression budget tests
-11. aggregate placement/nesting/star context matrix and rule
+8. forward, unknown, wrong-kind, and ambiguous reference tests
+9. REQUIRE/declaration order permutation test
+10. document atomicity test
+11. source and prechecked-syntax entrypoint parity
+12. exact-limit and one-over-limit semantic document/expression budget tests
+13. aggregate placement/nesting/star context matrix and rule
     binder/call/free-variable matrix
 
 ## Definition Of Done

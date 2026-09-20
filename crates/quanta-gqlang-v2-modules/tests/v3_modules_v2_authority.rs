@@ -78,6 +78,25 @@ fn empty_authority(registry: &SourceRegistryViewV2) -> ValidatedModuleAuthorityP
         .unwrap()
 }
 
+fn document_case_error(
+    make_input: impl FnOnce(&SourceRegistryViewV2, &ModuleIdV2) -> DocumentCatalogInputV2,
+) -> ModuleDiagnosticV2 {
+    let host = registry(&[(1, 128)]);
+    let parts = empty_authority(&host);
+    let app = module_id(&host, "app", 0);
+    let extended = host
+        .try_extend_document(SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(9),
+            source_len: 128,
+        })
+        .unwrap();
+    let input = make_input(extended.combined(), &app);
+    DocumentCatalogValidatorV2::try_new(extended, &parts)
+        .unwrap()
+        .validate(input)
+        .unwrap_err()
+}
+
 fn assert_resource(
     error: &ModuleDiagnosticV2,
     dimension: &'static str,
@@ -1301,19 +1320,16 @@ fn lock_parser_applies_per_field_string_limit_to_precharged_raw_text() {
             &lock,
         )
         .unwrap();
-    assert_eq!(
-        builder
-            .finish(
-                CurrentModuleSelectionInputV2 {
-                    module_id: app,
-                    location: checked(&sources, 1, 3),
-                },
-                VersionV2::new(1, 1, 0),
-            )
-            .unwrap_err()
-            .code(),
-        "modules.resource_exhausted"
-    );
+    let error = builder
+        .finish(
+            CurrentModuleSelectionInputV2 {
+                module_id: app,
+                location: checked(&sources, 1, 3),
+            },
+            VersionV2::new(1, 1, 0),
+        )
+        .unwrap_err();
+    assert_resource(&error, "authority_string_bytes", 63, 64);
 }
 
 fn hex_bytes(bytes: &[u8]) -> String {
@@ -2902,7 +2918,7 @@ fn authority_string_limit_is_enforced_at_public_ingress() {
             location: checked(&sources, 1, 1),
         })
         .unwrap_err();
-    assert_eq!(error.code(), "modules.resource_exhausted");
+    assert_resource(&error, "authority_string_bytes", 2, 3);
 }
 
 #[test]
@@ -2983,11 +2999,8 @@ fn fingerprint_mutation_matrix_covers_all_manifest_semantics() {
             let primary = PackManifestInputV2 {
                 pack_id: PackIdV2::try_new(name, checked(sources, 1, 10)).unwrap(),
                 version,
-                content_digest: ContentDigestV2::try_parse(
-                    digest_text,
-                    checked(sources, 1, 11),
-                )
-                .unwrap(),
+                content_digest: ContentDigestV2::try_parse(digest_text, checked(sources, 1, 11))
+                    .unwrap(),
                 language_range: VersionRangeV2::try_new(
                     VersionV2::new(1, 0, 0),
                     range_upper,
@@ -3134,7 +3147,7 @@ fn module_node_and_edge_budgets_accept_exact_limit_then_reject_one_over() {
             location: checked(&sources, 1, 7),
         })
         .unwrap_err();
-    assert_eq!(error.code(), "modules.resource_exhausted");
+    assert_resource(&error, "edges", 1, 2);
 }
 
 #[test]
@@ -3230,7 +3243,7 @@ fn aggregate_authority_bytes_accept_exact_name_then_reject_one_over() {
             location: checked(&sources, 1, 2),
         })
         .unwrap_err();
-    assert_eq!(error.code(), "modules.resource_exhausted");
+    assert_resource(&error, "authority_bytes", 2, 3);
 }
 
 #[test]
@@ -3254,13 +3267,8 @@ fn model_value_and_lock_bytes_have_exact_and_one_over_boundaries() {
     builder.try_set_model_schema(schema(&sources)).unwrap();
     let one_under = AuthorityBudgetProfileV2::try_new(2, 1, 8, 2, 2).unwrap();
     let mut builder = ModuleAuthorityBuilderV2::try_new(one_under, sources.clone()).unwrap();
-    assert_eq!(
-        builder
-            .try_set_model_schema(schema(&sources))
-            .unwrap_err()
-            .code(),
-        "modules.resource_exhausted"
-    );
+    let error = builder.try_set_model_schema(schema(&sources)).unwrap_err();
+    assert_resource(&error, "authority_bytes", 2, 3);
 
     let lock_input = |sources: &SourceRegistryViewV2| LockReferenceInputV2 {
         path: "l.lock".into(),
@@ -3273,13 +3281,10 @@ fn model_value_and_lock_bytes_have_exact_and_one_over_boundaries() {
         .unwrap();
     let one_under = AuthorityBudgetProfileV2::try_new(1, 1, 8, 6, 6).unwrap();
     let mut builder = ModuleAuthorityBuilderV2::try_new(one_under, sources.clone()).unwrap();
-    assert_eq!(
-        builder
-            .try_set_lockfile(lock_input(&sources), SourceIdV2::from_raw(2), "x")
-            .unwrap_err()
-            .code(),
-        "modules.resource_exhausted"
-    );
+    let error = builder
+        .try_set_lockfile(lock_input(&sources), SourceIdV2::from_raw(2), "x")
+        .unwrap_err();
+    assert_resource(&error, "authority_bytes", 6, 7);
 }
 
 #[test]
@@ -3312,13 +3317,10 @@ fn duplicate_model_schema_attempt_charges_nested_edges_and_strings_before_reject
     let one_under = AuthorityBudgetProfileV2::try_new(4, 2, 8, 3, 1).unwrap();
     let mut builder = ModuleAuthorityBuilderV2::try_new(one_under, sources.clone()).unwrap();
     builder.try_set_model_schema(schema(&sources, 1)).unwrap();
-    assert_eq!(
-        builder
-            .try_set_model_schema(schema(&sources, 10))
-            .unwrap_err()
-            .code(),
-        "modules.resource_exhausted"
-    );
+    let error = builder
+        .try_set_model_schema(schema(&sources, 10))
+        .unwrap_err();
+    assert_resource(&error, "authority_bytes", 3, 4);
 }
 
 #[test]
@@ -3394,10 +3396,8 @@ fn document_catalog_charges_repeated_owner_and_reference_module_ids() {
 
     // Two assets (8), one profile reference (4), and two dependency refs (8).
     validate_with_limit(20).unwrap();
-    assert_eq!(
-        validate_with_limit(19).unwrap_err().code(),
-        "modules.resource_exhausted"
-    );
+    let error = validate_with_limit(19).unwrap_err();
+    assert_resource(&error, "authority_bytes", 19, 20);
 }
 
 fn finish_model_facts(

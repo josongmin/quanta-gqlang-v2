@@ -153,16 +153,15 @@ impl ExternalCatalogPayloadInputV2 {
             Self::Value(value) => Ok(ExternalCatalogPayloadV2::Value(value)),
             Self::Relation(value) => Ok(ExternalCatalogPayloadV2::Relation(value)),
             Self::Predicate(input) => {
-                if input.callable_kind != CallableKindV2::Predicate {
+                let signature = SignatureV2::try_new(input, source_registry, session)?;
+                if signature.callable_kind() != CallableKindV2::Predicate {
                     return Err(ModuleDiagnosticV2::new(
                         "modules.catalog_payload_kind_mismatch",
                         "Predicate payload requires predicate callable kind",
                         location,
                     ));
                 }
-                Ok(ExternalCatalogPayloadV2::Predicate(
-                    SignatureV2::try_new(input, source_registry, session)?,
-                ))
+                Ok(ExternalCatalogPayloadV2::Predicate(signature))
             }
             Self::Type(value) => Ok(ExternalCatalogPayloadV2::Type(value)),
             Self::View(value) => Ok(ExternalCatalogPayloadV2::View(value)),
@@ -177,18 +176,15 @@ impl ExternalCatalogPayloadInputV2 {
             Self::Profile(value) => Ok(ExternalCatalogPayloadV2::Profile(value)),
             Self::Gate(value) => Ok(ExternalCatalogPayloadV2::Gate(value)),
             Self::Rule(input) => {
-                if input.callable_kind != CallableKindV2::Rule {
+                let signature = SignatureV2::try_new(input, source_registry, session)?;
+                if signature.callable_kind() != CallableKindV2::Rule {
                     return Err(ModuleDiagnosticV2::new(
                         "modules.catalog_payload_kind_mismatch",
                         "Rule payload requires rule callable kind",
                         location,
                     ));
                 }
-                Ok(ExternalCatalogPayloadV2::Rule(SignatureV2::try_new(
-                    input,
-                    source_registry,
-                    session,
-                )?))
+                Ok(ExternalCatalogPayloadV2::Rule(signature))
             }
         }
     }
@@ -635,10 +631,10 @@ impl DocumentCatalogAuthorityV2 {
             BTreeMap::new();
         for profile in input.profile_admissions {
             session.charge_edge()?;
-            ensure_registry(&profile.location, source_registry)?;
-            ensure_registry(&profile.profile.location, source_registry)?;
             session.charge_string(profile.profile.module_id.as_str())?;
             session.charge_string(&profile.profile.local_name)?;
+            ensure_registry(&profile.location, source_registry)?;
+            ensure_registry(&profile.profile.location, source_registry)?;
             let profile_asset_id = profile.profile.derive()?;
             match assets.get(&profile_asset_id) {
                 Some(NamespaceKindV2::Profile) => {}
@@ -689,13 +685,13 @@ impl DocumentCatalogAuthorityV2 {
         > = BTreeMap::new();
         for edge in input.dependency_edges {
             session.charge_edge()?;
-            ensure_registry(&edge.location, source_registry)?;
-            ensure_registry(&edge.source.location, source_registry)?;
-            ensure_registry(&edge.target.location, source_registry)?;
             session.charge_string(edge.source.module_id.as_str())?;
             session.charge_string(&edge.source.local_name)?;
             session.charge_string(edge.target.module_id.as_str())?;
             session.charge_string(&edge.target.local_name)?;
+            ensure_registry(&edge.location, source_registry)?;
+            ensure_registry(&edge.source.location, source_registry)?;
+            ensure_registry(&edge.target.location, source_registry)?;
             if edge.target.namespace_kind != edge.expected_target_kind {
                 return Err(ModuleDiagnosticV2::new(
                     "modules.catalog_reference_kind_mismatch",

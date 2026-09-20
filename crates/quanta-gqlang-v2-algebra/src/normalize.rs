@@ -8,30 +8,9 @@
 //! [`AlgebraOpV1::Apply`] is derived from VISIBLE outer columns, never a
 //! root-local side channel.
 //!
-//! ## Composition symbol convention
-//!
-//! HIR records composition as an open-tagged [`CompositionV1`] (a symbol over
-//! relation operands). This module is the closed authority that maps those
-//! symbols to algebra operators. Unknown symbols and wrong arities reject with a
-//! typed [`AlgebraDiagnosticV1`] — never a silent downgrade (`D10`).
-//!
-//! | symbol                       | operator   | operands |
-//! |------------------------------|------------|----------|
-//! | `join`                       | Join       | 2        |
-//! | `cross`                      | Join(none) | 2        |
-//! | `apply` / `lateral`          | Apply      | 2        |
-//! | `union` / `union_all`        | Union      | 2        |
-//! | `semijoin`                   | SemiJoin   | 2        |
-//! | `antijoin`                   | AntiJoin   | 2        |
-//! | `group_by`                   | Group      | 2        |
-//! | `order_by`                   | Sort       | 2        |
-//! | `sort`                       | Sort       | 1        |
-//! | `limit`                      | Limit      | 1        |
-//!
-//! Sort/limit are modelled as unary compositions because the shared HIR has no
-//! dedicated order/limit clause; their keys/counts are sidecar inputs supplied
-//! through [`NormalizeOptionsV1`]. This keeps sort/limit semantics in the
-//! algebra and independent of rendering (`D24`).
+//! Join, grouping, and ordering are closed HIR variants. The normalizer consumes
+//! those variants directly, so invalid operator names and arities cannot cross
+//! the HIR boundary.
 
 use crate::diagnostic::{AlgebraDiagnosticV1, IllFormedAggregateReasonV1};
 use crate::node::{
@@ -41,8 +20,9 @@ use crate::node::{
     SortV1, UnionV1,
 };
 use quanta_gqlang_v2_hir::{
-    CompositionV1, ProjectionItemV1, ProjectionV1, QueryHirV1, RelationExprHirV1,
-    RelationExprKindV1, RelationFilterV1, RelationSourceV1, ValueExprHirV1, ValueExprKindV1,
+    CallArgHirV1, GroupByHirV1, JoinHirV1, OrderByHirV1, ProjectionItemV1, ProjectionV1,
+    QueryHirV1, RelationExprHirV1, RelationExprKindV1, RelationFilterV1, RelationSourceV1,
+    SortDirectionHirV1, ValueExprHirV1, ValueExprKindV1,
 };
 use quanta_gqlang_v2_types::CardinalityV1;
 use std::collections::{BTreeMap, BTreeSet};
@@ -160,6 +140,20 @@ struct Ctx<'a> {
     aliases: &'a BTreeMap<String, String>,
 }
 
+// Transitional private carrier retained only for the legacy helper functions
+// below. It is not constructible from public HIR and therefore cannot reopen
+// the removed open-tagged composition state.
+#[allow(dead_code)]
+struct CompositionOpCompatV1 {
+    symbol: String,
+}
+
+#[allow(dead_code)]
+struct CompositionV1 {
+    op: CompositionOpCompatV1,
+    operands: Vec<RelationExprHirV1>,
+}
+
 impl Ctx<'_> {
     /// Resolve an alias (or relation name) to its underlying relation name.
     fn relation_of(&self, name: &str) -> String {
@@ -200,11 +194,14 @@ fn collect_aliases(relation: &RelationExprHirV1, acc: &mut BTreeMap<String, Stri
         }
         RelationExprKindV1::Project(project) => collect_aliases(&project.input, acc),
         RelationExprKindV1::Filter(filter) => collect_aliases(&filter.input, acc),
-        RelationExprKindV1::Compose(compose) => {
-            for operand in &compose.operands {
-                collect_aliases(operand, acc);
+        RelationExprKindV1::Join(join) => match join {
+            JoinHirV1::Inner { left, right, .. } | JoinHirV1::Cross { left, right } => {
+                collect_aliases(left, acc);
+                collect_aliases(right, acc);
             }
-        }
+        },
+        RelationExprKindV1::GroupBy(group) => collect_aliases(&group.input, acc),
+        RelationExprKindV1::OrderBy(order) => collect_aliases(&order.input, acc),
     }
 }
 
@@ -213,7 +210,9 @@ fn normalize_node(relation: &RelationExprHirV1, ctx: &Ctx<'_>) -> NormalizeResul
         RelationExprKindV1::Source(source) => normalize_source(relation, source, ctx),
         RelationExprKindV1::Filter(filter) => normalize_filter(relation, filter, ctx),
         RelationExprKindV1::Project(project) => normalize_project(relation, project, ctx),
-        RelationExprKindV1::Compose(compose) => normalize_compose(relation, compose, ctx),
+        RelationExprKindV1::Join(join) => normalize_join(relation, join, ctx),
+        RelationExprKindV1::GroupBy(group) => normalize_group_by(relation, group, ctx),
+        RelationExprKindV1::OrderBy(order) => normalize_order_by(relation, order, ctx),
     }
 }
 
@@ -279,7 +278,7 @@ fn normalize_project(
     // Split items into grouping keys (non-aggregate) and aggregate folds.
     let mut keys: Vec<ProjItem<'_>> = Vec::new();
     let mut aggregates: Vec<ProjItem<'_>> = Vec::new();
-    for item in &project.items {
+    for item in project.items() {
         match classify_item(item, ctx.options)? {
             ItemClass::Key => keys.push(ProjItem(item)),
             ItemClass::Aggregate => aggregates.push(ProjItem(item)),
@@ -292,7 +291,7 @@ fn normalize_project(
 
     // Grouped aggregation: produce an explicit Group over the keys feeding an
     // Aggregate over the folds. Keys and folds are kept STRICTLY separate.
-    if project.items.is_empty() {
+    if project.items().is_empty() {
         return Err(AlgebraDiagnosticV1::IllFormedAggregate {
             reason: IllFormedAggregateReasonV1::EmptyAggregateProjection,
             span: node.span,
@@ -345,7 +344,7 @@ fn plain_project(
     ctx: &Ctx<'_>,
 ) -> AlgebraNodeV1 {
     let columns: Vec<ColumnV1> = project
-        .items
+        .items()
         .iter()
         .map(|item| project_column(item, ctx))
         .collect();
@@ -358,11 +357,98 @@ fn plain_project(
         cardinality,
         AlgebraOpV1::Project(ProjectV1 {
             input: Box::new(input),
-            items: project.items.iter().map(|i| i.value.clone()).collect(),
+            items: project.items().iter().map(|i| i.value.clone()).collect(),
         }),
     )
 }
 
+fn normalize_join(node: &RelationExprHirV1, join: &JoinHirV1, ctx: &Ctx<'_>) -> NormalizeResultV1 {
+    let (left_hir, right_hir, predicate) = match join {
+        JoinHirV1::Inner { left, right, on } => {
+            (left.as_ref(), right.as_ref(), Some(Box::new(on.clone())))
+        }
+        JoinHirV1::Cross { left, right } => (left.as_ref(), right.as_ref(), None),
+    };
+    let left = normalize_node(left_hir, ctx)?;
+    let right = normalize_node(right_hir, ctx)?;
+    let mut columns = left.columns.clone();
+    columns.extend(right.columns.clone());
+    Ok(AlgebraNodeV1::new(
+        node.id,
+        node.span,
+        columns,
+        CardinalityV1::Bag,
+        AlgebraOpV1::Join(JoinV1 {
+            left: Box::new(left),
+            right: Box::new(right),
+            predicate,
+        }),
+    ))
+}
+
+fn normalize_group_by(
+    node: &RelationExprHirV1,
+    group: &GroupByHirV1,
+    ctx: &Ctx<'_>,
+) -> NormalizeResultV1 {
+    let input = normalize_node(&group.input, ctx)?;
+    let mut columns = Vec::with_capacity(group.keys().len());
+    for key in group.keys() {
+        if contains_aggregate(key, ctx.options) {
+            return Err(AlgebraDiagnosticV1::IllFormedAggregate {
+                reason: IllFormedAggregateReasonV1::NestedAggregate,
+                span: key.span,
+            });
+        }
+        let item = ProjectionItemV1 {
+            value: key.clone(),
+            alias: None,
+        };
+        columns.push(key_column(&item, ctx));
+    }
+    Ok(AlgebraNodeV1::new(
+        node.id,
+        node.span,
+        columns,
+        CardinalityV1::Set,
+        AlgebraOpV1::Group(GroupV1 {
+            input: Box::new(input),
+            keys: group.keys().to_vec(),
+        }),
+    ))
+}
+
+fn normalize_order_by(
+    node: &RelationExprHirV1,
+    order: &OrderByHirV1,
+    ctx: &Ctx<'_>,
+) -> NormalizeResultV1 {
+    let input = normalize_node(&order.input, ctx)?;
+    let columns = input.columns.clone();
+    let keys = order
+        .keys()
+        .iter()
+        .map(|key| SortKeyV1 {
+            expr: key.value.clone(),
+            direction: match key.direction {
+                SortDirectionHirV1::Asc => crate::node::SortDirectionV1::Ascending,
+                SortDirectionHirV1::Desc => crate::node::SortDirectionV1::Descending,
+            },
+        })
+        .collect();
+    Ok(AlgebraNodeV1::new(
+        node.id,
+        node.span,
+        columns,
+        CardinalityV1::Sequence,
+        AlgebraOpV1::Sort(SortV1 {
+            input: Box::new(input),
+            keys,
+        }),
+    ))
+}
+
+#[allow(dead_code)]
 fn normalize_compose(
     node: &RelationExprHirV1,
     compose: &CompositionV1,
@@ -717,7 +803,7 @@ fn binary_group(
         });
     };
     // A `group by` with no keys produces no partition tuple at all.
-    if keys_project.items.is_empty() {
+    if keys_project.items().is_empty() {
         return Err(AlgebraDiagnosticV1::IllFormedAggregate {
             reason: IllFormedAggregateReasonV1::EmptyAggregateProjection,
             span: node.span,
@@ -726,7 +812,7 @@ fn binary_group(
 
     // Grouping keys must be plain key expressions — an aggregate fold cannot be
     // a partition key (its value is per-partition, not per-row).
-    for item in &keys_project.items {
+    for item in keys_project.items() {
         if let ItemClass::Aggregate = classify_item(item, ctx.options)? {
             return Err(AlgebraDiagnosticV1::IllFormedAggregate {
                 reason: IllFormedAggregateReasonV1::NestedAggregate,
@@ -737,7 +823,7 @@ fn binary_group(
 
     // Output columns are exactly the keys, with alias-aware Source provenance.
     let columns: Vec<ColumnV1> = keys_project
-        .items
+        .items()
         .iter()
         .map(|item| key_column(item, ctx))
         .collect();
@@ -749,7 +835,7 @@ fn binary_group(
         AlgebraOpV1::Group(GroupV1 {
             input: Box::new(input),
             keys: keys_project
-                .items
+                .items()
                 .iter()
                 .map(|item| item.value.clone())
                 .collect(),
@@ -786,7 +872,7 @@ fn binary_order(
         });
     };
     // An `order by` with no keys imposes no order at all.
-    if keys_project.items.is_empty() {
+    if keys_project.items().is_empty() {
         return Err(AlgebraDiagnosticV1::UnsupportedComposition {
             symbol: compose.op.symbol.clone(),
             span: node.span,
@@ -796,7 +882,7 @@ fn binary_order(
     // Decode each key: the value expression is carried verbatim and the
     // direction is read off the item alias (`asc`/`desc`), ascending by default.
     let keys: Vec<SortKeyV1> = keys_project
-        .items
+        .items()
         .iter()
         .map(|item| SortKeyV1 {
             expr: item.value.clone(),
@@ -925,7 +1011,10 @@ fn contains_aggregate(value: &ValueExprHirV1, options: &NormalizeOptionsV1) -> b
         }
         ValueExprKindV1::Call(call) => {
             options.is_aggregate(&call.callee.name)
-                || call.args.iter().any(|a| contains_aggregate(a, options))
+                || call.args().as_slice().iter().any(|arg| match arg {
+                    CallArgHirV1::Expr(value) => contains_aggregate(value, options),
+                    CallArgHirV1::Star { .. } => false,
+                })
         }
         ValueExprKindV1::Paren(inner) => contains_aggregate(inner, options),
         ValueExprKindV1::Record(record) => record
@@ -949,17 +1038,22 @@ fn aggregate_expr(
     // Detect a `distinct(x)` marker arg to make duplicate-elimination explicit.
     let mut distinct = false;
     let mut args: Vec<ValueExprHirV1> = Vec::new();
-    for arg in &call.args {
-        if let (Some(marker), ValueExprKindV1::Call(inner)) =
-            (options.distinct_marker.as_deref(), &arg.kind)
-        {
-            if inner.callee.name == marker {
-                distinct = true;
-                args.extend(inner.args.iter().cloned());
-                continue;
+    for arg in call.args().as_slice() {
+        if let CallArgHirV1::Expr(value) = arg {
+            if let (Some(marker), ValueExprKindV1::Call(inner)) =
+                (options.distinct_marker.as_deref(), &value.kind)
+            {
+                if inner.callee.name == marker {
+                    distinct = true;
+                    args.extend(inner.args().as_slice().iter().filter_map(|arg| match arg {
+                        CallArgHirV1::Expr(value) => Some(value.clone()),
+                        CallArgHirV1::Star { .. } => None,
+                    }));
+                    continue;
+                }
             }
+            args.push(value.clone());
         }
-        args.push(arg.clone());
     }
     Ok(AggregateExprV1 {
         function: call.callee.name.clone(),
@@ -1061,15 +1155,17 @@ fn output_column_outer_refs(
         // Each projection item is one output column, in order. The column derives
         // from an outer symbol when its value references one.
         RelationExprKindV1::Project(project) => project
-            .items
+            .items()
             .iter()
             .map(|item| value_outer_ref(&item.value, referenced))
             .collect(),
-        // A composition's output schema is derived structurally elsewhere; without
-        // re-deriving it here, mark every output column as not-outer-referencing so
-        // we never fabricate a Correlated label. Direct outer references inside a
-        // nested compose still surface through the visible correlation columns.
-        RelationExprKindV1::Compose(_) => Vec::new(),
+        RelationExprKindV1::Join(_) => Vec::new(),
+        RelationExprKindV1::GroupBy(group) => group
+            .keys()
+            .iter()
+            .map(|key| value_outer_ref(key, referenced))
+            .collect(),
+        RelationExprKindV1::OrderBy(order) => output_column_outer_refs(&order.input, referenced),
     }
 }
 
@@ -1094,7 +1190,7 @@ fn collect_relation_symbols(relation: &RelationExprHirV1, acc: &mut BTreeSet<Str
         RelationExprKindV1::Source(_) => {}
         RelationExprKindV1::Project(project) => {
             collect_relation_symbols(&project.input, acc);
-            for item in &project.items {
+            for item in project.items() {
                 collect_value_symbols(&item.value, acc);
             }
         }
@@ -1102,9 +1198,27 @@ fn collect_relation_symbols(relation: &RelationExprHirV1, acc: &mut BTreeSet<Str
             collect_relation_symbols(&filter.input, acc);
             collect_bool_symbols(&filter.predicate, acc);
         }
-        RelationExprKindV1::Compose(compose) => {
-            for operand in &compose.operands {
-                collect_relation_symbols(operand, acc);
+        RelationExprKindV1::Join(join) => match join {
+            JoinHirV1::Inner { left, right, on } => {
+                collect_relation_symbols(left, acc);
+                collect_relation_symbols(right, acc);
+                collect_bool_symbols(on, acc);
+            }
+            JoinHirV1::Cross { left, right } => {
+                collect_relation_symbols(left, acc);
+                collect_relation_symbols(right, acc);
+            }
+        },
+        RelationExprKindV1::GroupBy(group) => {
+            collect_relation_symbols(&group.input, acc);
+            for key in group.keys() {
+                collect_value_symbols(key, acc);
+            }
+        }
+        RelationExprKindV1::OrderBy(order) => {
+            collect_relation_symbols(&order.input, acc);
+            for key in order.keys() {
+                collect_value_symbols(&key.value, acc);
             }
         }
     }
@@ -1126,7 +1240,7 @@ fn collect_bool_symbols(node: &quanta_gqlang_v2_hir::BoolExprHirV1, acc: &mut BT
         BoolExprKindV1::Not(inner) | BoolExprKindV1::Paren(inner) => {
             collect_bool_symbols(inner, acc);
         }
-        BoolExprKindV1::Quantifier(quant) => {
+        BoolExprKindV1::LogicalQuantifier(quant) => {
             // The quantifier binds its own variable names; references to them
             // inside the body resolve to those LOCAL binders, not to any outer
             // column of the same name. Collect the body's symbols into a scratch
@@ -1135,10 +1249,13 @@ fn collect_bool_symbols(node: &quanta_gqlang_v2_hir::BoolExprHirV1, acc: &mut BT
             // coincidental name collision fabricate a spurious Apply correlation.
             let mut body_symbols = BTreeSet::new();
             collect_bool_symbols(&quant.body, &mut body_symbols);
-            for binder in &quant.binders {
-                let _ = body_symbols.remove(binder);
+            for binder in quant.binders.as_slice() {
+                let _ = body_symbols.remove(&binder.name);
             }
             acc.extend(body_symbols);
+        }
+        BoolExprKindV1::RelationExists(exists) => {
+            collect_relation_symbols(&exists.relation, acc);
         }
     }
 }
@@ -1156,8 +1273,10 @@ fn collect_value_symbols(value: &ValueExprHirV1, acc: &mut BTreeSet<String>) {
             collect_value_symbols(&b.rhs, acc);
         }
         ValueExprKindV1::Call(call) => {
-            for arg in &call.args {
-                collect_value_symbols(arg, acc);
+            for arg in call.args().as_slice() {
+                if let CallArgHirV1::Expr(value) = arg {
+                    collect_value_symbols(value, acc);
+                }
             }
         }
         ValueExprKindV1::Paren(inner) => collect_value_symbols(inner, acc),

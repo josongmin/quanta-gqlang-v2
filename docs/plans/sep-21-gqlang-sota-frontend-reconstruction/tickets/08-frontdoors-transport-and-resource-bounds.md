@@ -318,9 +318,13 @@ cargo test -p quanta-gqlang-v2-conformance --test v3_cli_service_parity_v2
 cargo test -p quanta-gqlang-v2-pipeline --test v3_frontend_budget
 cargo clippy -p quanta-gqlang-v2-cli -p quanta-gqlang-v2-diagnostics-stdio --all-targets -- -D warnings
 python3 tools/architecture/check_architecture.py
-test -z "$(rg -l 'compile_(program_structural|program_with_schema|with_context|item_structural|item_with_schema|item_with_context|document_structural|document_with_schema|document_with_context)' crates README.md docs/language docs/plans/jun-24-dsl-advanced-v3 --glob '*.rs' --glob '*.md')"
+test -z "$({ rg -l 'compile_(program_structural|program_with_schema|with_context|item_structural|item_with_schema|item_with_context|document_structural|document_with_schema|document_with_context)' crates --glob '*.rs'; rg -l 'compile_(program_structural|program_with_schema|with_context|item_structural|item_with_schema|item_with_context|document_structural|document_with_schema|document_with_context)' README.md docs/language --glob '*.md'; } | sort -u)"
 git diff --check
 ```
+
+The legacy zero-match scope is active Rust source/tests plus current root and
+language docs. It intentionally excludes `docs/plans/**`; ticket 09 preserves
+and classifies historical plan mentions instead of falsifying old evidence.
 
 ## Forbidden Shortcuts
 

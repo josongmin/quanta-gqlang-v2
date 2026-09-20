@@ -206,9 +206,9 @@ impl PackManifestV2 {
         source_registry: &SourceRegistryViewV2,
         session: &mut ModuleBudgetSessionV2,
     ) -> Result<Self, ModuleDiagnosticV2> {
-        check_registry(&input.location, source_registry)?;
         session.charge_node()?;
         session.charge_string(input.pack_id.as_str())?;
+        check_registry(&input.location, source_registry)?;
         let mut dependencies: BTreeMap<PackIdV2, DependencyV2> = BTreeMap::new();
         for dependency in input.dependencies {
             session.charge_edge()?;

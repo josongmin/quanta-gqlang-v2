@@ -96,8 +96,8 @@ impl ModelSchemaV2 {
         registry: &SourceRegistryViewV2,
         session: &mut ModuleBudgetSessionV2,
     ) -> Result<(), ModuleDiagnosticV2> {
-        check_location(&input.location, registry)?;
         session.charge_node()?;
+        check_location(&input.location, registry)?;
         for attribute in &input.attributes {
             session.charge_node()?;
             session.charge_string(&attribute.attribute)?;
