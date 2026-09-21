@@ -1213,3 +1213,32 @@ W1 freeze and stays). Integrator decisions:
 - Both lanes re-dispatched fresh (W2-A bb90b3d2 with the full original
   mission + freeze-announcement duty; W2-D 6b7dcecc instructed to verify and
   continue from the partial edit). W2-B remains correctly gated.
+
+### W2 self-audit incident 2 — overlay file loss — 2026-09-21
+
+The new barrier self-audit (`/tmp/qg-selfaudit.sh`: frozen-input hashes,
+unauthorized-mutation scan, staging check, protected-file check) caught an
+out-of-lease rewrite of `algebra/tests/v3_algebra_normalization.rs`
+(freeze `1ab2bdd19d6a840e` -> a 58-line V2 smoke test; author under
+investigation — failed-lane leftover or an active lane's boundary error;
+both W2-A and W2-B were asked to claim or deny).
+
+Integrator error during restoration: `git checkout -- <path>` restores the
+INDEX (= HEAD) version, not the overlay worktree state, because overlay
+files were never staged. The file's overlay version (the W2 freeze content)
+is therefore LOST on disk. Impact is bounded: per lane W2-B's verified
+inventory the file held exactly one test (Filter positive: predicate + child
+Scan + output preservation) and its three sibling files are intact at their
+freeze hashes (`3d423bd9`/`016e036a`/`40833b9a`), so the pattern is fully
+recoverable. Recovery: lane W2-B reconstructs the original as its first
+post-gate write (its design already keeps the four originals), and the
+integrator verifies the reconstruction against the inventory description.
+
+Process fix (effective now): wave freezes copy frozen files into a content
+vault (`/tmp/qg-freeze-vault/<tag>/`) in addition to hashing, so any future
+restoration has a true source. The current W2 vault is created from the
+still-intact freeze set plus the HEAD fallback for the lost file.
+
+Cargo.lock staging was cleaned (`git restore --staged`); its worktree
+changes remain integrator-owned and unsettle until a manifest-finalizing
+wave.
