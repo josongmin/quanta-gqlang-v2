@@ -1386,3 +1386,22 @@ RETIRED_LAWS disposition reconciled (union/limit/composition-symbol permanent,
 8 correlation laws re-seated on the sealed predicate + W1 capture authority,
 predicate-less join structural); qualification groups sema(both modes) and
 algebra + architecture in parallel; Receipt 05 follows.
+
+## W2 Barrier Record — GREEN — 2026-09-21
+
+```text
+wave=W2
+entry_sha=4073b64 (post-commit; lanes worked on c7215eb..4073b64 working tree)
+lane_ids=W2-A (lowering), W2-B (adversarial matrix), W2-D (sema test-support minting), W2-C (early, sealed inventory)
+leased_paths_and_pre_hashes=algebra freeze /tmp/qg-freeze-w2.txt; all post-hashes verified vs lane reports (A: 29278f1a/9520d4e1/ae0c10d8; B: 18bd4d51/cf92d991/15973abd/eae65216; D: 39d97d87; integrator seam expr.rs 3986e3a2)
+lane_red_evidence=A: pre-edit failing-shape unit (residual Filter) + zero-match surface; B: 10 family filters select 0; D: predecessor-state compile RED; C: static compile-RED verification
+lane_acceptance_commands_and_counts=sema 102/102 + 121/121 features, clippy/fmt clean; algebra 59/59, clippy/fmt/diff clean; architecture normal-mode exit 1 == RR-09B baseline byte-identical (no new/regressed edges)
+mutation_ids_killed_and_reverted=W2-B 8 test-local mutations (byte-exact restores); W2-A DTO-level forged-document kills (T24/T39 + forged matrix); deliberate source-mutation builds still deferred (worktree lane)
+reserved_path_changes_applied_by_integrator=expr.rs test-feature seam + clippy expect; RETIRED_LAWS.md disposition reconciliation (both committed)
+exit_sha=4073b64
+receipt_paths=receipts/05.md (W2 closure section; prior banner superseded)
+deferred_failures=source-mutation kill builds; accumulation-side diagnostic/response charging (07/08)
+next_wave_gate=W3 OPEN: logic crate frozen with content vault (/tmp/qg-freeze-w3.txt + /tmp/qg-freeze-vault/w3); entrance = SS-05C green + sealed inventory; integrator pre-cuts diagnostic.rs (3 dying variants + SpanV1->CheckedLocatedSpanV2 sweep) BEFORE W3-A/B test freezes; G12 ticket amendment lands at dispatch
+```
+
+W2 verdict: `GREEN`. All lanes + barrier on one fingerprint. W3 opens next.
