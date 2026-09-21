@@ -1364,3 +1364,25 @@ in both modes. The integrator seam fix (#[expect wildcard_enum_match_arm])
 is applied; expr.rs final hash `3986e3a230ea3ccb`; sema clippy both modes
 verified clean by the integrator. Only W2-B phase-2 remains before the W2
 barrier.
+
+### W2-B lane COMPLETE — 2026-09-21
+
+Final acceptance: algebra all-targets 59/59 (lib 20/20, hellgate 9/9, mutants
+7/7, normalization 15/15, probe 8/8); clippy/fmt/diff-check all green.
+Post-edit hashes: normalization `18bd4d516f37a314`, hellgate
+`cf92d9917f667ad8`, mutants `15973abdffc4d6dc`, probe `eae6521600c619b3`.
+T-map: 35/41 implemented (incl. T34-T37 capture-mutation rails on the
+injection builder, T19/T20 real-source EXISTS-under-Or/Not rejections, four
+budget rails on both pinned charge models), 3 dropped (T28-T30 per
+integrator), 3 folded as proven invariants into the two-key group rail. Eight
+non-vacuity self-mutations with left/right evidence and byte-exact restores.
+All four originals intact. Three non-defect observations routed for the audit
+trail (demand-narrowed scan rows vs one-field coincidence in a W2-A internal
+oracle; alias sort keys sealing as Binding/Paren{Binding} facts; capture
+edges referencing the inner symbol fact).
+
+All four W2 lanes (A/B/D + early C) are now COMPLETE. W2 barrier running:
+RETIRED_LAWS disposition reconciled (union/limit/composition-symbol permanent,
+8 correlation laws re-seated on the sealed predicate + W1 capture authority,
+predicate-less join structural); qualification groups sema(both modes) and
+algebra + architecture in parallel; Receipt 05 follows.
