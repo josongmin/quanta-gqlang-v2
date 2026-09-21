@@ -1330,3 +1330,24 @@ found at the W2-D handoff hash (compile E0308 x2, leftover panic probes,
 wrong bool-tree formula, unusable forged bool-tree receipt, 18 clippy) — all
 subsequently observed fixed by W2-D live revisions. Deferrals unchanged
 (source-mutation kill builds). W2-A lane COMPLETE.
+
+### W2 convergence log — 2026-09-21
+
+- W2-D FINAL: complete export manifest delivered (24 fixture variants, 9
+  forged_* document/edge builders, small-budget constants with
+  limit-bisected charge models: document=1, chain 2d+3, bool tree 3d+6
+  steps / 3d+2 facts, walk 4d+3). Post-hash a24b15b1 (then 2aa60dcc while
+  landing the addendum). 38 pre-existing lints fixed in-lease; sema
+  120/120 with features; algebra consumer 26/26.
+- Integrator applied the T34-T37 seam directly on the reserved path
+  sema/src/expr.rs: feature-test-gated `pub(crate)
+  TypedExprV2::with_relation_exists_correlations` (compiles both modes;
+  public contract untouched). W2-D is landing the ~30-line
+  document-injection builder on top (Dropped/Swapped assemble; Duplicate/
+  Foreign surface the finalizer rejection).
+- W2-B partial-GO COMPLETE: all four gates green, leased targets 8/8
+  (T24 rejection rail validates W2-A's uniform-aggregate invariant with
+  full LocatedSpanV2 equality; T39 validates the pinned registry-exact
+  nested-root contract at (25,49)); hashes normalization 782ac7fc,
+  mutants 15c07484, hellgate/probe unchanged. Phase-2 GO relayed with the
+  full manifest (only T34-T37 held for the injection-builder addendum).
