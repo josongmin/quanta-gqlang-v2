@@ -1,182 +1,307 @@
-#![allow(
+#![expect(
     clippy::panic,
     clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::wildcard_enum_match_arm,
-    reason = "audit rails assert on fixed indices/variants and panic on unexpected shapes"
+    reason = "owner test builds a sealed semantic document and pins exact EXISTS-family trees"
 )]
-//! Punch-list audit rails for algebra normalization.
-//!
-//! These pin the contract for several self-audit findings: scalar-aggregate
-//! cardinality (a no-key aggregate is a Set, never a Bag); positional union name
-//! AGREEMENT (matching names merge cleanly, the mismatch is covered in hellgate);
-//! and Apply provenance distinctness under outer-name shadowing (an inner column
-//! that merely shares a NAME with an outer column, but references a local source,
-//! keeps its own Source provenance and is not mislabelled Correlated).
 
 use quanta_gqlang_v2_algebra::{
-    normalize_relation, AlgebraOpV1, ColumnProvenanceV1, NormalizeOptionsV1,
+    lower_relation_item, AlgebraFailureKindV2, AlgebraFamilyV2, CheckedAlgebraNodeV2,
 };
-use quanta_gqlang_v2_hir::{AliasV1, HirBuilderV1, PathSegmentV1, ProjectionItemV1, SpanV1};
-use quanta_gqlang_v2_types::CardinalityV1;
+use quanta_gqlang_v2_sema::{
+    test_support::{
+        reference_relation_document_v2, ReferenceRelationDocumentV2, ReferenceRelationFixtureV2,
+        REFERENCE_SOURCE_V2,
+    },
+    JoinModeV2, ResolvedBindingKindV2, ResolvedScanSourceV2, SemanticItemV2, TypedBoolExprV2,
+    TypedExprShapeV2, TypedRelationV2,
+};
 
-fn sp(a: usize, b: usize) -> SpanV1 {
-    SpanV1::new(a, b)
+#[test]
+fn explicit_cross_join_never_gains_a_synthetic_predicate() {
+    let reference = reference_relation_document_v2(ReferenceRelationFixtureV2::CrossJoin).unwrap();
+
+    let root = lower_relation_item(reference.document(), reference.item_id())
+        .unwrap()
+        .root()
+        .clone();
+    assert_eq!(root.family(), AlgebraFamilyV2::Join);
+    assert_eq!(root.join_mode(), Some(JoinModeV2::Cross));
+    assert!(root.predicate().is_none());
+    assert_eq!(root.children().len(), 2);
 }
-fn seg(name: &str, a: usize, z: usize) -> PathSegmentV1 {
-    PathSegmentV1 {
-        name: name.to_owned(),
-        span: sp(a, z),
-    }
+
+/// The relation item of a reference fixture, for sealed-shape reads.
+fn relation_of(reference: &ReferenceRelationDocumentV2) -> TypedRelationV2 {
+    let Some(SemanticItemV2::Relation(relation)) = reference.document().item(reference.item_id())
+    else {
+        panic!("reference fixture must hold a relation item");
+    };
+    relation.clone()
 }
-fn alias(name: &str, a: usize, z: usize) -> AliasV1 {
-    AliasV1 {
-        name: name.to_owned(),
-        span: sp(a, z),
-    }
+
+/// The single relational EXISTS expression fact of a fixture, keyed by the
+/// filter stage's sealed predicate.
+fn sole_exists_fact(reference: &ReferenceRelationDocumentV2) -> TypedBoolExprV2 {
+    let relation = relation_of(reference);
+    let Some(predicate) = relation.root().predicate() else {
+        panic!("EXISTS fixture root is a Filter stage with a predicate");
+    };
+    predicate.clone()
 }
 
 #[test]
-fn scalar_aggregate_with_no_group_keys_is_a_set_not_a_bag() {
-    // project { n: count(u.id) } over users u -- NO grouping keys (scalar agg).
-    // A scalar aggregate folds the whole input into a single row, so its
-    // cardinality is a Set (one row), NOT the input's Bag. The empty-key Group it
-    // builds is the legitimate scalar-aggregate path (distinct from an explicit
-    // `group_by` with no keys, which is rejected as ill-formed).
-    let b = HirBuilderV1::new();
-    let users = b.relation_source("users", Some(alias("u", 0, 1)), sp(0, 7));
-    let id = {
-        let base = b.symbol("u", sp(8, 9));
-        b.path(base, vec![seg("id", 10, 12)], sp(8, 12))
-    };
-    let count = b.call("count", sp(13, 18), vec![id], sp(13, 20));
-    let item = ProjectionItemV1 {
-        value: count,
-        alias: Some(alias("n", 21, 22)),
-    };
-    let proj = b.project(users, vec![item], sp(0, 30));
-    let opts = NormalizeOptionsV1::with_aggregates(["count"]);
-    let algebra = normalize_relation(&proj, &opts).expect("scalar agg must normalize");
+fn correlated_exists_retains_exact_captures_and_nested_root() {
+    let reference =
+        reference_relation_document_v2(ReferenceRelationFixtureV2::CorrelatedExists).unwrap();
+    let relation = relation_of(&reference);
+    let exists = sole_exists_fact(&reference);
 
+    let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+    let root = lowered.root();
+    assert_eq!(root.family(), AlgebraFamilyV2::SemiJoin);
+    assert_eq!(root.stage_key(), exists.expression().key());
+
+    // Tree: SemiJoin(outer Scan, nested Filter(nested Scan)); the nested
+    // right input is the exact sealed nested relation root.
+    let children = root.children();
+    assert_eq!(children.len(), 2);
     assert_eq!(
-        algebra.cardinality,
-        CardinalityV1::Set,
-        "scalar aggregate yields exactly one row: a Set, never a Bag"
+        children.first().map(|child| child.family()),
+        Some(AlgebraFamilyV2::Scan)
     );
-    let AlgebraOpV1::Aggregate(agg) = &algebra.op else {
-        panic!("expected Aggregate, got {:?}", algebra.family());
+    let nested = children.get(1).unwrap();
+    assert_eq!(nested.family(), AlgebraFamilyV2::Filter);
+    let TypedExprShapeV2::RelationExists { relation_root, .. } = reference
+        .document()
+        .expression(exists.expression().key())
+        .unwrap()
+        .shape()
+    else {
+        panic!("checked shape must still be a relational EXISTS");
     };
-    let AlgebraOpV1::Group(group) = &agg.input.op else {
-        panic!("aggregate input must be a Group (the scalar-agg path)");
-    };
-    assert_eq!(group.keys.len(), 0, "scalar aggregate has no grouping keys");
+    assert_eq!(nested.stage_key(), *relation_root);
     assert_eq!(
-        agg.input.cardinality,
-        CardinalityV1::Set,
-        "the no-key Group is a Set of one (empty) partition tuple"
+        nested.children().first().map(|child| child.family()),
+        Some(AlgebraFamilyV2::Scan)
+    );
+    assert_eq!(nested.filter_conjuncts().len(), 1);
+
+    // The one capture edge is the exact outer-alias binding captured at the
+    // inner reference site.
+    let correlations = root.correlations().unwrap();
+    let edges: Vec<_> = correlations.iter().collect();
+    assert_eq!(edges.len(), 1);
+    let edge = edges.first().unwrap();
+    assert_eq!(edge.binding().canonical_name(), "r");
+    assert_eq!(edge.binding().kind(), ResolvedBindingKindV2::Alias);
+    assert_eq!(edge.binding().ordinal(), 0);
+    assert_eq!(edge.binding().source_id(), REFERENCE_SOURCE_V2);
+    let captured = reference.document().expression(edge.reference()).unwrap();
+    let TypedExprShapeV2::Binding(binding) = captured.shape() else {
+        panic!("the capture reference is the inner r symbol fact");
+    };
+    assert_eq!(binding.canonical_name(), "r");
+    assert_eq!(
+        edge.location(),
+        captured.location(),
+        "the capture edge names the exact checked location of its reference"
+    );
+    assert_eq!(edge.location().location().span.start, 45);
+    assert_eq!(edge.location().location().span.end, 46);
+
+    // The SemiJoin retains the outer relation's exact output.
+    assert_eq!(root.output(), relation.output());
+}
+
+#[test]
+fn correlated_not_exists_keeps_the_same_exact_captures() {
+    let reference =
+        reference_relation_document_v2(ReferenceRelationFixtureV2::CorrelatedNotExists).unwrap();
+
+    let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+    let root = lowered.root();
+    assert_eq!(root.family(), AlgebraFamilyV2::AntiJoin);
+    let correlations = root.correlations().unwrap();
+    let edges: Vec<_> = correlations.iter().collect();
+    assert_eq!(edges.len(), 1);
+    let edge = edges.first().unwrap();
+    assert_eq!(edge.binding().canonical_name(), "r");
+    assert_eq!(edge.binding().kind(), ResolvedBindingKindV2::Alias);
+    assert_eq!(
+        root.children().get(1).map(|child| child.family()),
+        Some(AlgebraFamilyV2::Filter),
+        "the AntiJoin right input is the nested filtered relation"
     );
 }
 
 #[test]
-fn union_arms_agreeing_on_names_merge_with_unioned_provenance() {
-    // Both arms project a column NAMED `id`: names agree position-for-position, so
-    // the union is accepted and the merged column carries Unioned provenance.
-    let b = HirBuilderV1::new();
-    let l_src = b.relation_source("a", None, sp(0, 1));
-    let l_id = {
-        let base = b.symbol("a", sp(2, 3));
-        b.path(base, vec![seg("id", 4, 6)], sp(2, 6))
-    };
-    let left = b.project(
-        l_src,
-        vec![ProjectionItemV1 {
-            value: l_id,
-            alias: None,
-        }],
-        sp(0, 7),
-    );
-    let r_src = b.relation_source("c", None, sp(8, 9));
-    let r_id = {
-        let base = b.symbol("c", sp(10, 11));
-        b.path(base, vec![seg("id", 12, 14)], sp(10, 14))
-    };
-    let right = b.project(
-        r_src,
-        vec![ProjectionItemV1 {
-            value: r_id,
-            alias: None,
-        }],
-        sp(8, 15),
-    );
-    let union = b.compose("union", vec![left, right], sp(0, 30));
-    let algebra =
-        normalize_relation(&union, &NormalizeOptionsV1::default()).expect("name-agreeing union ok");
+fn conjunctive_exists_attach_left_to_right_in_authored_order() {
+    let reference =
+        reference_relation_document_v2(ReferenceRelationFixtureV2::ConjunctiveExistsPair).unwrap();
 
-    assert_eq!(algebra.columns.len(), 1);
-    assert_eq!(algebra.columns[0].name, "id");
-    assert!(
-        matches!(
-            algebra.columns[0].provenance,
-            ColumnProvenanceV1::Unioned { .. }
-        ),
-        "merged column records both arms via Unioned provenance"
+    let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+    let root = lowered.root();
+    assert_eq!(root.family(), AlgebraFamilyV2::SemiJoin);
+
+    // Two conjunctive EXISTS lower to exactly two SemiJoins; the FIRST
+    // authored conjunct attaches innermost.
+    let children = root.children();
+    let inner = children.first().unwrap();
+    assert_eq!(inner.family(), AlgebraFamilyV2::SemiJoin);
+    assert_eq!(
+        root.children().get(1).map(|child| child.family()),
+        Some(AlgebraFamilyV2::Scan)
     );
-    // `union` (distinct) is set semantics.
-    assert_eq!(algebra.cardinality, CardinalityV1::Set);
-}
-
-#[test]
-fn apply_inner_column_sharing_outer_name_keeps_distinct_local_provenance() {
-    // users u APPLY ( orders o WHERE o.user = u.id | project { u: o.amount } )
-    // The inner output column is NAMED `u` (same name as the outer column) but its
-    // VALUE references local `o.amount`. Provenance must keep the two `u` columns
-    // distinct: the outer stays Source(users), the inner stays Source(orders), and
-    // the inner is NOT mislabelled Correlated just because it shares the name `u`.
-    let b = HirBuilderV1::new();
-    let users = b.relation_source("users", Some(alias("u", 0, 1)), sp(0, 7));
-    let orders = b.relation_source("orders", Some(alias("o", 8, 9)), sp(8, 16));
-    let o_user = {
-        let base = b.symbol("o", sp(17, 18));
-        b.path(base, vec![seg("user", 19, 23)], sp(17, 23))
-    };
-    let u_id = {
-        let base = b.symbol("u", sp(24, 25));
-        b.path(base, vec![seg("id", 26, 28)], sp(24, 28))
-    };
-    let pred = b.compare("=", o_user, u_id, sp(17, 28));
-    let filtered = b.relation_filter(orders, pred, sp(8, 28));
-    let o_amount = {
-        let base = b.symbol("o", sp(29, 30));
-        b.path(base, vec![seg("amount", 31, 37)], sp(29, 37))
-    };
-    let item = ProjectionItemV1 {
-        value: o_amount,
-        alias: Some(alias("u", 38, 39)),
-    };
-    let inner = b.project(filtered, vec![item], sp(8, 40));
-    let apply = b.compose("apply", vec![users, inner], sp(0, 50));
-    let algebra = normalize_relation(&apply, &NormalizeOptionsV1::default())
-        .expect("correlated apply must normalize");
-
-    assert_eq!(algebra.columns.len(), 2, "outer `u` + inner `u`");
-    // Both columns are named `u`, yet provenance distinguishes them.
-    assert_eq!(algebra.columns[0].name, "u");
-    assert_eq!(algebra.columns[1].name, "u");
-    match &algebra.columns[0].provenance {
-        ColumnProvenanceV1::Source { relation, .. } => assert_eq!(relation, "users"),
-        other => panic!("outer column must stay Source(users), got {other:?}"),
-    }
-    match &algebra.columns[1].provenance {
-        ColumnProvenanceV1::Source {
-            relation, field, ..
-        } => {
-            assert_eq!(relation, "orders");
-            assert_eq!(field.as_deref(), Some("amount"));
+    assert_eq!(inner.children().len(), 2);
+    let scan_name = |node: &CheckedAlgebraNodeV2| match node.scan_source().unwrap() {
+        ResolvedScanSourceV2::Relation(source) => source.qualified_name().to_owned(),
+        ResolvedScanSourceV2::View(_) | ResolvedScanSourceV2::Composition(_) => {
+            panic!("reference fixtures scan host relations only")
         }
-        other => panic!(
-            "inner column references local `o.amount`, must stay Source(orders), not Correlated; \
-             got {other:?}"
-        ),
-    }
+    };
+    assert_eq!(
+        root.children().get(1).map(|child| scan_name(child)),
+        Some("app::records2".to_owned()),
+        "the SECOND authored EXISTS (records2) is the outer right input"
+    );
+    assert_eq!(
+        inner.children().get(1).map(|child| scan_name(child)),
+        Some("app::other".to_owned()),
+        "the FIRST authored EXISTS (other) attaches innermost"
+    );
+    assert_eq!(
+        inner.children().first().map(|child| scan_name(child)),
+        Some("app::records".to_owned()),
+        "the outer relation input is the leftmost input"
+    );
+    assert!(root.correlations().is_some_and(|set| set.is_empty()));
+    assert!(inner.correlations().is_some_and(|set| set.is_empty()));
+}
+
+#[test]
+fn ordinary_conjunct_survives_as_exactly_one_residual_filter() {
+    let reference =
+        reference_relation_document_v2(ReferenceRelationFixtureV2::ExistsWithBoolConjunct).unwrap();
+
+    let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+    let root = lowered.root();
+    assert_eq!(root.family(), AlgebraFamilyV2::Filter);
+
+    // Exactly ONE residual Filter holding the FULL ordinary conjunction
+    // (here one BoolValue leaf with its document-owned literal child).
+    let conjuncts = root.filter_conjuncts();
+    assert_eq!(conjuncts.len(), 1);
+    let TypedExprShapeV2::BoolValue { value } = conjuncts.first().unwrap().expression().shape()
+    else {
+        panic!("the residual conjunct is the authored ordinary Bool leaf");
+    };
+    let child = reference.document().expression(*value).unwrap();
+    assert!(matches!(child.shape(), TypedExprShapeV2::Literal(_)));
+
+    // Below it: exactly one SemiJoin over the outer scan and the nested
+    // scan, with no second Filter anywhere on the spine.
+    let children = root.children();
+    let semi = children.first().unwrap();
+    assert_eq!(semi.family(), AlgebraFamilyV2::SemiJoin);
+    assert_eq!(semi.children().len(), 2);
+    assert_eq!(
+        semi.children().first().map(|child| child.family()),
+        Some(AlgebraFamilyV2::Scan)
+    );
+    assert_eq!(
+        semi.children().get(1).map(|child| child.family()),
+        Some(AlgebraFamilyV2::Scan)
+    );
+    assert!(semi.filter_conjuncts().is_empty());
+    assert_eq!(root.output(), semi.output());
+}
+
+#[test]
+fn nested_exists_keeps_boundary_separated_capture_sets() {
+    let reference =
+        reference_relation_document_v2(ReferenceRelationFixtureV2::NestedExistsTwoLevels).unwrap();
+
+    let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+    let root = lowered.root();
+    assert_eq!(root.family(), AlgebraFamilyV2::SemiJoin);
+
+    // The outer EXISTS captures the outer binding at both reference sites;
+    // its own capture set is otherwise unrelated to the nested EXISTS's.
+    let outer_edges: Vec<_> = root.correlations().unwrap().iter().collect();
+    assert_eq!(outer_edges.len(), 2);
+    assert!(outer_edges
+        .iter()
+        .all(|edge| edge.binding().canonical_name() == "r"));
+    assert_ne!(
+        outer_edges.first().unwrap().reference(),
+        outer_edges.get(1).unwrap().reference(),
+        "the two outer captures are distinct reference sites"
+    );
+
+    // The middle relation keeps its own ordinary conjunct in exactly one
+    // Filter, and the nested EXISTS carries its own single-edge set.
+    let children = root.children();
+    let middle = children.get(1).unwrap();
+    assert_eq!(middle.family(), AlgebraFamilyV2::Filter);
+    assert_eq!(middle.filter_conjuncts().len(), 1);
+    let middle_children = middle.children();
+    let nested_semi = middle_children.first().unwrap();
+    assert_eq!(nested_semi.family(), AlgebraFamilyV2::SemiJoin);
+    assert_eq!(nested_semi.correlations().unwrap().iter().count(), 1);
+}
+
+#[test]
+fn exists_below_disjunction_rejects_as_a_conjunct_violation() {
+    let reference =
+        reference_relation_document_v2(ReferenceRelationFixtureV2::DisjunctiveExistsPair).unwrap();
+
+    let diagnostic = match lower_relation_item(reference.document(), reference.item_id()) {
+        Ok(_) => panic!("a relational EXISTS below a disjunction must not lower"),
+        Err(diagnostic) => diagnostic,
+    };
+    assert_eq!(
+        diagnostic.kind(),
+        AlgebraFailureKindV2::InvalidStageContract
+    );
+    assert_eq!(diagnostic.code(), "algebra.invalid_stage_contract");
+    assert_eq!(
+        diagnostic.message(),
+        "relational EXISTS must appear as a predicate conjunct"
+    );
+    // The rejection names the EXISTS expression found below the Or, at one
+    // of the two authored EXISTS spans.
+    assert!(
+        diagnostic.location().is_some_and(|location| {
+            let span = location.location().span;
+            (span.start == 16 && span.end == 29) || (span.start == 36 && span.end == 52)
+        }),
+        "the rejection is pinned at the nested EXISTS expression's checked span"
+    );
+}
+
+#[test]
+fn negated_exists_rejects_as_a_conjunct_violation() {
+    let reference =
+        reference_relation_document_v2(ReferenceRelationFixtureV2::NegatedExists).unwrap();
+
+    let diagnostic = match lower_relation_item(reference.document(), reference.item_id()) {
+        Ok(_) => panic!("a negated relational EXISTS must not lower"),
+        Err(diagnostic) => diagnostic,
+    };
+    assert_eq!(
+        diagnostic.kind(),
+        AlgebraFailureKindV2::InvalidStageContract
+    );
+    assert_eq!(diagnostic.code(), "algebra.invalid_stage_contract");
+    assert_eq!(
+        diagnostic.message(),
+        "relational EXISTS must appear as a predicate conjunct"
+    );
+    assert!(
+        diagnostic.location().is_some_and(|location| {
+            let span = location.location().span;
+            span.start == 18 && span.end == 31
+        }),
+        "the rejection is pinned at the EXISTS expression under the Not"
+    );
 }

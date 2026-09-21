@@ -1,205 +1,100 @@
-//! Typed, fail-closed diagnostics for unsupported / ill-formed algebra states
-//! (ticket 04, decision `D10`).
-//!
-//! Normalization NEVER silently downgrades an unsupported HIR composition into a
-//! narrower algebra shape. When it cannot produce a well-formed algebra node it
-//! emits one of these typed diagnostics. Each variant renders a STABLE
-//! `code()` and a human `message()` so CLI/LSP/tests assert exact text (`D22`).
+//! Fail-closed diagnostics for semantic-document algebra lowering.
 
-use quanta_gqlang_v2_hir::SpanV1;
+use quanta_gqlang_v2_sema::CheckedLocatedSpanV2;
 
-/// A typed algebra-normalization diagnostic.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum AlgebraDiagnosticV1 {
-    /// A closed relation catalog did not contain the authored source.
-    UnknownRelationSource { relation: String, span: SpanV1 },
-    /// A composition operator symbol has no algebra lowering.
-    UnsupportedComposition {
-        /// The unknown composition symbol as written (e.g. `"crossapply++"`).
-        symbol: String,
-        /// Span of the offending composition.
-        span: SpanV1,
-    },
-    /// A composition operator was applied with the wrong number of operands
-    /// (e.g. a binary `join` given three operands, or a `union` given one).
-    ArityMismatch {
-        /// The composition symbol.
-        symbol: String,
-        /// The number of operands the operator requires.
-        expected: usize,
-        /// The number of operands actually present.
-        found: usize,
-        /// Span of the offending composition.
-        span: SpanV1,
-    },
-    /// An aggregate projection mixed grouping keys and aggregate folds in a way
-    /// that cannot be split into separate Group/Aggregate nodes (e.g. an
-    /// aggregate call nested inside another expression alongside a bare key).
-    IllFormedAggregate {
-        /// Why the aggregate shape is ill-formed.
-        reason: IllFormedAggregateReasonV1,
-        /// Span of the offending projection.
-        span: SpanV1,
-    },
-    /// An `apply`/lateral composition was declared correlated but exposed no
-    /// visible correlation columns referencing the outer input — a hidden /
-    /// side-channel correlation, which is rejected (`D23`).
-    MissingCorrelation {
-        /// Span of the offending apply composition.
-        span: SpanV1,
-    },
-    /// A `join`/`semijoin`/`antijoin` (an inner join family operator, NOT an
-    /// explicit `cross`) resolved to no join predicate. A missing ON/where
-    /// condition must NOT be silently downgraded to a cartesian product:
-    /// `predicate = None` is reserved for the EXPLICIT `cross` operator. The
-    /// author must either supply a predicate or write `cross` to opt into a
-    /// cartesian product (`D10`, fail-closed).
-    EmptyJoinPredicate {
-        /// The join-family symbol as written (`join`, `semijoin`, `antijoin`).
-        symbol: String,
-        /// Span of the offending join composition.
-        span: SpanV1,
-    },
-    /// A `limit` or `top-k` shape was applied to an input whose order is not
-    /// semantic (a bag/set), so the kept rows would be non-deterministic.
-    UnorderedLimit {
-        /// Span of the offending limit composition.
-        span: SpanV1,
-    },
-    /// Two union arms are not union-compatible (different column counts).
-    UnionArity {
-        /// Column count of the left arm.
-        left: usize,
-        /// Column count of the right arm.
-        right: usize,
-        /// Span of the offending union.
-        span: SpanV1,
-    },
-    /// Two union arms have the same column COUNT but a positionally-aligned
-    /// column disagrees on its output NAME, so the merged schema would silently
-    /// pick one arm's name over the other. Union arms must agree on column names
-    /// position-for-position; a name disagreement rejects rather than letting the
-    /// left arm's name win unannounced (`D26`, fail-closed).
-    UnionColumnMismatch {
-        /// Zero-based index of the first column whose names disagree.
-        position: usize,
-        /// The left arm's name at that position.
-        left_name: String,
-        /// The right arm's name at that position.
-        right_name: String,
-        /// Span of the offending union.
-        span: SpanV1,
-    },
-}
-
-/// Why an aggregate projection is ill-formed.
+/// Closed failure categories emitted by [`AlgebraDiagnosticV2`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum IllFormedAggregateReasonV1 {
-    /// An aggregate call appeared nested inside a larger expression rather than
-    /// as a top-level projection item, so grouping keys and folds cannot be
-    /// cleanly separated.
+pub enum AlgebraFailureKindV2 {
+    /// The requested semantic item does not exist or is not relational.
+    NonRelationItem,
+    /// A stage refers to an expression absent from the same semantic document.
+    MissingExpression,
+    /// A relation stage or expression belongs to a different source document.
+    ForeignSemanticFact,
+    /// A stage payload disagrees with its source-reachable family contract.
+    InvalidStageContract,
+    /// An aggregate projection did not directly follow a checked Group stage.
+    AggregateWithoutGroup,
+    /// An aggregate was nested instead of being a projection expression itself.
     NestedAggregate,
-    /// A projection produced zero output columns while requesting aggregation.
-    EmptyAggregateProjection,
+    /// A relational EXISTS root is not present in the document's nested registry.
+    MissingNestedRelation,
+    /// A correlation set has duplicate reference identities.
+    DuplicateCorrelationReference,
+    /// A budgeted lowering traversal exceeded the document's sealed
+    /// downstream receipt (`max_semantic_steps` for relation stages,
+    /// `max_expression_nodes` for expression nodes).
+    TraversalBudgetExceeded,
 }
 
-impl IllFormedAggregateReasonV1 {
-    /// Stable code suffix for this reason.
+impl AlgebraFailureKindV2 {
+    /// Stable code suffix.
     #[must_use]
     pub const fn code(self) -> &'static str {
         match self {
+            Self::NonRelationItem => "non_relation_item",
+            Self::MissingExpression => "missing_expression",
+            Self::ForeignSemanticFact => "foreign_semantic_fact",
+            Self::InvalidStageContract => "invalid_stage_contract",
+            Self::AggregateWithoutGroup => "aggregate_without_group",
             Self::NestedAggregate => "nested_aggregate",
-            Self::EmptyAggregateProjection => "empty_aggregate_projection",
+            Self::MissingNestedRelation => "missing_nested_relation",
+            Self::DuplicateCorrelationReference => "duplicate_correlation_reference",
+            Self::TraversalBudgetExceeded => "traversal_budget_exceeded",
         }
     }
 }
 
-impl AlgebraDiagnosticV1 {
-    /// The stable diagnostic code, shared by CLI/LSP/tests. Codes are
-    /// dot-namespaced under `algebra.` and never change spelling.
+/// One typed lowering failure tied to a checked semantic source coordinate.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AlgebraDiagnosticV2 {
+    kind: AlgebraFailureKindV2,
+    location: Option<CheckedLocatedSpanV2>,
+    message: &'static str,
+}
+
+impl AlgebraDiagnosticV2 {
+    pub(crate) const fn new(
+        kind: AlgebraFailureKindV2,
+        location: Option<CheckedLocatedSpanV2>,
+        message: &'static str,
+    ) -> Self {
+        Self {
+            kind,
+            location,
+            message,
+        }
+    }
+
+    /// Stable diagnostic code.
     #[must_use]
     pub fn code(&self) -> String {
-        match self {
-            Self::UnknownRelationSource { .. } => "algebra.unknown_relation_source".to_owned(),
-            Self::UnsupportedComposition { .. } => "algebra.unsupported_composition".to_owned(),
-            Self::ArityMismatch { .. } => "algebra.arity_mismatch".to_owned(),
-            Self::IllFormedAggregate { reason, .. } => {
-                format!("algebra.ill_formed_aggregate.{}", reason.code())
-            }
-            Self::MissingCorrelation { .. } => "algebra.missing_correlation".to_owned(),
-            Self::EmptyJoinPredicate { .. } => "algebra.empty_join_predicate".to_owned(),
-            Self::UnorderedLimit { .. } => "algebra.unordered_limit".to_owned(),
-            Self::UnionArity { .. } => "algebra.union_arity".to_owned(),
-            Self::UnionColumnMismatch { .. } => "algebra.union_column_mismatch".to_owned(),
-        }
+        format!("algebra.{}", self.kind.code())
     }
 
-    /// The span the diagnostic points at.
+    /// Closed failure category.
     #[must_use]
-    pub fn span(&self) -> SpanV1 {
-        match self {
-            Self::UnknownRelationSource { span, .. }
-            | Self::UnsupportedComposition { span, .. }
-            | Self::ArityMismatch { span, .. }
-            | Self::IllFormedAggregate { span, .. }
-            | Self::MissingCorrelation { span }
-            | Self::EmptyJoinPredicate { span, .. }
-            | Self::UnorderedLimit { span }
-            | Self::UnionArity { span, .. }
-            | Self::UnionColumnMismatch { span, .. } => *span,
-        }
+    pub const fn kind(&self) -> AlgebraFailureKindV2 {
+        self.kind
     }
 
-    /// A stable human-readable message. Text is part of the contract: tests
-    /// assert it verbatim.
+    /// Exact semantic checked location.
     #[must_use]
-    pub fn message(&self) -> String {
-        match self {
-            Self::UnknownRelationSource { relation, .. } => {
-                format!("relation source `{relation}` is absent from the closed compile authority")
-            }
-            Self::UnsupportedComposition { symbol, .. } => {
-                format!("unsupported composition operator `{symbol}` has no algebra lowering")
-            }
-            Self::ArityMismatch {
-                symbol,
-                expected,
-                found,
-                ..
-            } => format!("composition `{symbol}` expects {expected} operand(s) but found {found}"),
-            Self::IllFormedAggregate { reason, .. } => match reason {
-                IllFormedAggregateReasonV1::NestedAggregate => {
-                    "aggregate call must be a top-level projection item, not nested in an \
-                     expression"
-                        .to_owned()
-                }
-                IllFormedAggregateReasonV1::EmptyAggregateProjection => {
-                    "aggregate projection produced no output columns".to_owned()
-                }
-            },
-            Self::MissingCorrelation { .. } => {
-                "correlated apply has no visible correlation columns referencing the outer input"
-                    .to_owned()
-            }
-            Self::EmptyJoinPredicate { .. } => {
-                "join requires an ON/where predicate; use `cross` for a cartesian product"
-                    .to_owned()
-            }
-            Self::UnorderedLimit { .. } => {
-                "limit requires an ordered input; sort before limiting".to_owned()
-            }
-            Self::UnionArity { left, right, .. } => format!(
-                "union arms are not compatible: left has {left} column(s), right has {right}"
-            ),
-            Self::UnionColumnMismatch {
-                position,
-                left_name,
-                right_name,
-                ..
-            } => format!(
-                "union arms disagree on column {position}: left names it `{left_name}`, right \
-                 names it `{right_name}`"
-            ),
-        }
+    pub const fn location(&self) -> Option<&CheckedLocatedSpanV2> {
+        self.location.as_ref()
+    }
+
+    /// Stable user-facing message.
+    #[must_use]
+    pub const fn message(&self) -> &'static str {
+        self.message
     }
 }
+
+impl std::fmt::Display for AlgebraDiagnosticV2 {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{}: {}", self.code(), self.message)
+    }
+}
+
+impl std::error::Error for AlgebraDiagnosticV2 {}

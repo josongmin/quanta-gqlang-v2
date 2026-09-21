@@ -1,359 +1,219 @@
-#![allow(
+#![expect(
     clippy::panic,
     clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::wildcard_enum_match_arm,
-    reason = "integration test rails assert on fixed indices/variants and panic on unexpected shapes"
+    reason = "owner test inspects exact lowerer diagnostics and sealed fixture rejections"
 )]
-//! Hellgate (fail-closed) rails for algebra normalization (ticket 04).
-//!
-//! syntax->sema->ir path pinned: shared HIR relation/query shapes -> algebra
-//! normalization. Each test asserts the ACTUAL typed diagnostic code+message
-//! emitted by [`quanta_gqlang_v2_algebra`], not merely that an error occurred.
-//! These rails fail RED before the normalization impl exists and prove the
-//! D10 "no silent downgrade" contract.
 
-use std::collections::BTreeMap;
-
-use quanta_gqlang_v2_algebra::{
-    normalize_relation, AlgebraDiagnosticV1, AlgebraOpV1, BuiltinRelationV1,
-    IllFormedAggregateReasonV1, NormalizeOptionsV1, RelationSourceAuthorityV1,
-    RelationSourceIdentityV1,
+use quanta_gqlang_v2_algebra::{lower_relation_item, AlgebraFailureKindV2, AlgebraFamilyV2};
+use quanta_gqlang_v2_sema::test_support::{
+    deep_bool_tree_document_v2, deep_relation_chain_document_v2,
+    forged_aggregate_without_group_document_v2, forged_cross_join_with_on_seal_v2,
+    forged_inner_join_without_on_seal_v2, forged_small_receipt_bool_tree_document_v2,
+    forged_small_receipt_relation_chain_document_v2, reference_absent_item_id_v2,
+    reference_relation_document_v2, second_source_relation_document_v2, ReferenceBudgetV2,
+    ReferenceRelationFixtureV2, SECONDARY_REFERENCE_SOURCE_V2, SMALL_BUDGET_BOOL_TREE_EXACT_DEPTH,
+    SMALL_BUDGET_BOOL_TREE_OVER_DEPTH, SMALL_BUDGET_MAX_EXPRESSION_NODES,
+    SMALL_BUDGET_MAX_SEMANTIC_STEPS, SMALL_BUDGET_RELATION_CHAIN_EXACT_DEPTH,
+    SMALL_BUDGET_RELATION_CHAIN_OVER_DEPTH,
 };
-use quanta_gqlang_v2_hir::{HirBuilderV1, SpanV1};
-
-fn sp(a: usize, b: usize) -> SpanV1 {
-    SpanV1::new(a, b)
-}
+use quanta_gqlang_v2_sema::{ResolvedScanSourceV2, SemanticItemV2};
 
 #[test]
-fn closed_relation_authority_preserves_exact_typed_scan_identity_v1() {
-    let b = HirBuilderV1::new();
-    let files = b.relation_source("files", None, sp(4, 9));
-    let options = NormalizeOptionsV1::default().with_relation_source_authority_v1(
-        RelationSourceAuthorityV1::closed_v1(BTreeMap::from([(
-            "files".to_owned(),
-            RelationSourceIdentityV1::Builtin(BuiltinRelationV1::WorkspaceFiles),
-        )])),
-    );
+fn absent_item_cannot_enter_the_algebra_boundary() {
+    let reference = reference_relation_document_v2(ReferenceRelationFixtureV2::Scan).unwrap();
 
-    let node = normalize_relation(&files, &options)
-        .expect("closed authority must admit its exact typed relation source");
-    let AlgebraOpV1::Scan(scan) = node.op else {
-        panic!("relation source must normalize to Scan")
+    let diagnostic = match lower_relation_item(reference.document(), reference_absent_item_id_v2())
+    {
+        Ok(_) => panic!("absent items are not algebra relation items"),
+        Err(diagnostic) => diagnostic,
     };
-    assert_eq!(scan.relation, "files");
+    assert_eq!(diagnostic.kind(), AlgebraFailureKindV2::NonRelationItem);
+    assert_eq!(diagnostic.code(), "algebra.non_relation_item");
     assert_eq!(
-        scan.source_identity_v1,
-        RelationSourceIdentityV1::Builtin(BuiltinRelationV1::WorkspaceFiles)
+        diagnostic.message(),
+        "requested semantic item is absent from the document"
     );
 }
 
 #[test]
-fn closed_relation_authority_rejects_unknown_with_exact_typed_diagnostic_v1() {
-    let b = HirBuilderV1::new();
-    let unknown = b.relation_source("unknown_relation", None, sp(7, 23));
-    let options = NormalizeOptionsV1::default()
-        .with_relation_source_authority_v1(RelationSourceAuthorityV1::closed_v1(BTreeMap::new()));
-
-    let error = normalize_relation(&unknown, &options)
-        .expect_err("closed authority must reject an absent relation source");
-    assert_eq!(error.code(), "algebra.unknown_relation_source");
+fn inner_join_without_on_cannot_be_sealed() {
     assert_eq!(
-        error.message(),
-        "relation source `unknown_relation` is absent from the closed compile authority"
+        forged_inner_join_without_on_seal_v2().err(),
+        Some("invalid typed relation stage arity or payload"),
+        "an Inner join missing its ON predicate can never become a sealed stage"
     );
-    assert_eq!(error.span(), sp(7, 23));
+}
+
+#[test]
+fn cross_join_with_on_cannot_be_sealed() {
+    assert_eq!(
+        forged_cross_join_with_on_seal_v2().err(),
+        Some("invalid typed relation stage arity or payload"),
+        "a Cross join carrying an ON predicate can never become a sealed stage"
+    );
+}
+
+#[test]
+fn aggregate_without_group_rejects_with_the_exact_diagnostic() {
+    let forged = forged_aggregate_without_group_document_v2().unwrap();
+    let Some(SemanticItemV2::Relation(relation)) = forged.document().item(forged.item_id()) else {
+        panic!("forged aggregate-without-group must hold a relation item");
+    };
+
+    let diagnostic = match lower_relation_item(forged.document(), forged.item_id()) {
+        Ok(_) => panic!("an aggregate projection over a non-Group input must not lower"),
+        Err(diagnostic) => diagnostic,
+    };
+    assert_eq!(
+        diagnostic.kind(),
+        AlgebraFailureKindV2::AggregateWithoutGroup
+    );
+    assert_eq!(diagnostic.code(), "algebra.aggregate_without_group");
+    assert_eq!(
+        diagnostic.message(),
+        "aggregate projection must directly follow a checked Group stage"
+    );
+    assert_eq!(
+        diagnostic.location().map(|location| location.location()),
+        Some(relation.root().location().location()),
+        "the rejection is pinned at the aggregate projection stage's checked location"
+    );
+}
+
+#[test]
+fn second_source_item_lowers_and_cross_source_lookup_stays_absent() {
+    // The boundary is host-agnostic: an item sealed under a second source
+    // identity lowers through exactly the same public cut.
+    let secondary = second_source_relation_document_v2().unwrap();
+    let lowered = lower_relation_item(secondary.document(), secondary.item_id()).unwrap();
+    let root = lowered.root();
+    assert_eq!(root.family(), AlgebraFamilyV2::Scan);
+    assert_eq!(root.stage_key().source_id, SECONDARY_REFERENCE_SOURCE_V2);
     assert!(matches!(
-        error,
-        AlgebraDiagnosticV1::UnknownRelationSource { relation, span }
-            if relation == "unknown_relation" && span == sp(7, 23)
+        root.scan_source(),
+        Some(ResolvedScanSourceV2::Relation(source)) if source.qualified_name() == "app::records"
     ));
+
+    // The same boundary stays closed to another document's item identity:
+    // the primary document holds no such item, so the lookup is absent.
+    let primary = reference_relation_document_v2(ReferenceRelationFixtureV2::Scan).unwrap();
+    assert!(primary.document().item(secondary.item_id()).is_none());
+    let diagnostic = match lower_relation_item(primary.document(), secondary.item_id()) {
+        Ok(_) => panic!("an item of another source document must not lower"),
+        Err(diagnostic) => diagnostic,
+    };
+    assert_eq!(diagnostic.kind(), AlgebraFailureKindV2::NonRelationItem);
+    assert_eq!(diagnostic.code(), "algebra.non_relation_item");
+    assert_eq!(
+        diagnostic.message(),
+        "requested semantic item is absent from the document"
+    );
 }
 
 #[test]
-fn closed_relation_authority_does_not_rewrite_authored_names_v1() {
-    let b = HirBuilderV1::new();
-    let case_variant = b.relation_source("Files", None, sp(2, 7));
-    let options = NormalizeOptionsV1::default().with_relation_source_authority_v1(
-        RelationSourceAuthorityV1::closed_v1(BTreeMap::from([(
-            "files".to_owned(),
-            RelationSourceIdentityV1::Builtin(BuiltinRelationV1::WorkspaceFiles),
-        )])),
+fn relation_chain_small_budget_resolves_exact_and_rejects_one_over() {
+    // Sema-side exact fit: depth SMALL_BUDGET_RELATION_CHAIN_EXACT_DEPTH
+    // consumes 2 * depth + 3 of the small receipt's semantic steps.
+    let exact = deep_relation_chain_document_v2(
+        SMALL_BUDGET_RELATION_CHAIN_EXACT_DEPTH,
+        ReferenceBudgetV2::Small,
+    )
+    .unwrap();
+    assert_eq!(
+        exact.document().budget_receipt().max_semantic_steps(),
+        SMALL_BUDGET_MAX_SEMANTIC_STEPS
     );
 
-    let error = normalize_relation(&case_variant, &options)
-        .expect_err("closed authority must not lowercase or rewrite authored relation names");
-    assert!(matches!(
-        error,
-        AlgebraDiagnosticV1::UnknownRelationSource { relation, span }
-            if relation == "Files" && span == sp(2, 7)
-    ));
+    let over = deep_relation_chain_document_v2(
+        SMALL_BUDGET_RELATION_CHAIN_OVER_DEPTH,
+        ReferenceBudgetV2::Small,
+    );
+    assert!(over
+        .err()
+        .is_some_and(|error| error.contains("semantic_steps exceeds frontend limit")));
 }
 
 #[test]
-fn structural_relation_authority_is_explicitly_schema_open_v1() {
-    let b = HirBuilderV1::new();
-    let users = b.relation_source("users", None, sp(0, 5));
+fn relation_walk_small_receipt_is_exact_and_rejects_one_stage_over() {
+    // The forged document carries the small receipt while its tree was
+    // resolved under the standard budget, so the algebra relation walk's
+    // own charging (one step per stage visit) is the only limit. A chain
+    // of depth d lowers d + 1 stages.
+    let exact_depth = SMALL_BUDGET_MAX_SEMANTIC_STEPS - 1;
+    let exact = forged_small_receipt_relation_chain_document_v2(exact_depth).unwrap();
+    let lowered = lower_relation_item(exact.document(), exact.item_id()).unwrap();
+    assert_eq!(lowered.root().family(), AlgebraFamilyV2::Filter);
 
-    let node = normalize_relation(&users, &NormalizeOptionsV1::default())
-        .expect("structural normalization keeps relation authority schema-open");
-    let AlgebraOpV1::Scan(scan) = node.op else {
-        panic!("relation source must normalize to Scan")
+    let over = forged_small_receipt_relation_chain_document_v2(exact_depth + 1).unwrap();
+    let diagnostic = match lower_relation_item(over.document(), over.item_id()) {
+        Ok(_) => panic!("one relation stage over the receipt must not lower"),
+        Err(diagnostic) => diagnostic,
     };
     assert_eq!(
-        scan.source_identity_v1,
-        RelationSourceIdentityV1::SchemaOpen
+        diagnostic.kind(),
+        AlgebraFailureKindV2::TraversalBudgetExceeded
     );
-}
-
-#[test]
-fn unsupported_composition_rejects_with_typed_code() {
-    let b = HirBuilderV1::new();
-    let users = b.relation_source("users", None, sp(0, 5));
-    let orders = b.relation_source("orders", None, sp(6, 12));
-    let bogus = b.compose("crossapply++", vec![users, orders], sp(0, 30));
-
-    let err = normalize_relation(&bogus, &NormalizeOptionsV1::default())
-        .expect_err("unknown composition must reject");
-    assert_eq!(err.code(), "algebra.unsupported_composition");
+    assert_eq!(diagnostic.code(), "algebra.traversal_budget_exceeded");
     assert_eq!(
-        err.message(),
-        "unsupported composition operator `crossapply++` has no algebra lowering"
+        diagnostic.message(),
+        "relation lowering exceeded the document's max_semantic_steps budget"
     );
-    assert_eq!(err.span(), sp(0, 30));
-}
-
-#[test]
-fn join_arity_mismatch_rejects() {
-    let b = HirBuilderV1::new();
-    let a = b.relation_source("a", None, sp(0, 1));
-    let c = b.relation_source("c", None, sp(2, 3));
-    let d = b.relation_source("d", None, sp(4, 5));
-    let three = b.compose("join", vec![a, c, d], sp(0, 10));
-
-    let err = normalize_relation(&three, &NormalizeOptionsV1::default())
-        .expect_err("ternary join must reject");
-    assert_eq!(err.code(), "algebra.arity_mismatch");
-    assert_eq!(
-        err.message(),
-        "composition `join` expects 2 operand(s) but found 3"
-    );
-}
-
-#[test]
-fn uncorrelated_apply_rejects_missing_correlation() {
-    let b = HirBuilderV1::new();
-    let outer = b.relation_source("users", None, sp(0, 5));
-    // Inner references nothing from the outer side -> not actually correlated.
-    let inner = b.relation_source("orders", None, sp(6, 12));
-    let apply = b.compose("apply", vec![outer, inner], sp(0, 20));
-
-    let err = normalize_relation(&apply, &NormalizeOptionsV1::default())
-        .expect_err("uncorrelated apply must reject");
-    assert_eq!(err.code(), "algebra.missing_correlation");
-    assert_eq!(
-        err.message(),
-        "correlated apply has no visible correlation columns referencing the outer input"
-    );
-    assert_eq!(err.span(), sp(0, 20));
-}
-
-#[test]
-fn limit_over_unordered_input_rejects() {
-    let b = HirBuilderV1::new();
-    // A bare source is a BAG; limiting it without a sort is non-deterministic.
-    let users = b.relation_source("users", None, sp(0, 5));
-    let limit = b.compose("limit", vec![users], sp(0, 12));
-
-    let err = normalize_relation(&limit, &NormalizeOptionsV1::default())
-        .expect_err("limit over a bag must reject");
-    assert_eq!(err.code(), "algebra.unordered_limit");
-    assert_eq!(
-        err.message(),
-        "limit requires an ordered input; sort before limiting"
-    );
-}
-
-#[test]
-fn nested_aggregate_rejects_ill_formed() {
-    // project { total: sum(x) + 1 } -- aggregate nested inside a binary expr.
-    let b = HirBuilderV1::new();
-    let users = b.relation_source("users", None, sp(0, 5));
-    let x = b.symbol("x", sp(10, 11));
-    let sum = b.call("sum", sp(6, 9), vec![x], sp(6, 12));
-    let one = b.int("1", sp(15, 16));
-    let nested = b.binary("+", sum, one, sp(6, 16));
-    let item = quanta_gqlang_v2_hir::ProjectionItemV1 {
-        value: nested,
-        alias: None,
-    };
-    let proj = b.project(users, vec![item], sp(0, 20));
-
-    let opts = NormalizeOptionsV1::with_aggregates(["sum"]);
-    let err = normalize_relation(&proj, &opts).expect_err("nested aggregate must reject");
-    assert_eq!(err.code(), "algebra.ill_formed_aggregate.nested_aggregate");
-    assert_eq!(
-        err.message(),
-        "aggregate call must be a top-level projection item, not nested in an expression"
-    );
-    match err {
-        AlgebraDiagnosticV1::IllFormedAggregate { reason, .. } => {
-            assert_eq!(reason, IllFormedAggregateReasonV1::NestedAggregate);
-        }
-        other => panic!("expected IllFormedAggregate, got {other:?}"),
-    }
-}
-
-#[test]
-fn union_arity_mismatch_rejects() {
-    let b = HirBuilderV1::new();
-    // left projects one column, right projects two -> union-incompatible.
-    let l_src = b.relation_source("a", None, sp(0, 1));
-    let l_id = {
-        let base = b.symbol("a", sp(2, 3));
-        b.path(base, vec![seg("id", &b, 4, 6)], sp(2, 6))
-    };
-    let left = b.project(
-        l_src,
-        vec![quanta_gqlang_v2_hir::ProjectionItemV1 {
-            value: l_id,
-            alias: None,
-        }],
-        sp(0, 7),
-    );
-    let r_src = b.relation_source("c", None, sp(8, 9));
-    let r_id = {
-        let base = b.symbol("c", sp(10, 11));
-        b.path(base, vec![seg("id", &b, 12, 14)], sp(10, 14))
-    };
-    let r_name = {
-        let base = b.symbol("c", sp(15, 16));
-        b.path(base, vec![seg("name", &b, 17, 21)], sp(15, 21))
-    };
-    let right = b.project(
-        r_src,
-        vec![
-            quanta_gqlang_v2_hir::ProjectionItemV1 {
-                value: r_id,
-                alias: None,
-            },
-            quanta_gqlang_v2_hir::ProjectionItemV1 {
-                value: r_name,
-                alias: None,
-            },
-        ],
-        sp(8, 22),
-    );
-    let union = b.compose("union", vec![left, right], sp(0, 30));
-
-    let err = normalize_relation(&union, &NormalizeOptionsV1::default())
-        .expect_err("union arity mismatch must reject");
-    assert_eq!(err.code(), "algebra.union_arity");
-    assert_eq!(
-        err.message(),
-        "union arms are not compatible: left has 1 column(s), right has 2"
-    );
-}
-
-#[test]
-fn union_column_name_mismatch_rejects() {
-    // Both arms project exactly ONE column (arity matches), but the left names it
-    // `id` and the right names it `name`. Same count, disagreeing names: the merged
-    // schema must not silently adopt the left name. Reject with a typed code that
-    // is DISTINCT from the arity diagnostic.
-    let b = HirBuilderV1::new();
-    let l_src = b.relation_source("a", None, sp(0, 1));
-    let l_id = {
-        let base = b.symbol("a", sp(2, 3));
-        b.path(base, vec![seg("id", &b, 4, 6)], sp(2, 6))
-    };
-    let left = b.project(
-        l_src,
-        vec![quanta_gqlang_v2_hir::ProjectionItemV1 {
-            value: l_id,
-            alias: None,
-        }],
-        sp(0, 7),
-    );
-    let r_src = b.relation_source("c", None, sp(8, 9));
-    let r_name = {
-        let base = b.symbol("c", sp(10, 11));
-        b.path(base, vec![seg("name", &b, 12, 16)], sp(10, 16))
-    };
-    let right = b.project(
-        r_src,
-        vec![quanta_gqlang_v2_hir::ProjectionItemV1 {
-            value: r_name,
-            alias: None,
-        }],
-        sp(8, 17),
-    );
-    let union = b.compose("union", vec![left, right], sp(0, 30));
-
-    let err = normalize_relation(&union, &NormalizeOptionsV1::default())
-        .expect_err("union with positionally-disagreeing column names must reject");
-    assert_eq!(err.code(), "algebra.union_column_mismatch");
-    assert_eq!(
-        err.message(),
-        "union arms disagree on column 0: left names it `id`, right names it `name`"
-    );
-    assert_eq!(err.span(), sp(0, 30));
-}
-
-#[test]
-fn join_without_predicate_rejects_empty_predicate() {
-    // `from users u | join orders o => { }` -- a `join` (NOT a `cross`) whose right
-    // operand is a bare source, so no ON/where filter wraps it. The author asked for
-    // a join but supplied no join condition. Fail-closed (D10): this must NOT be
-    // silently downgraded to a cross/cartesian product (which `predicate = None`
-    // would otherwise mean). Reject with a typed, DISTINCT diagnostic.
-    let b = HirBuilderV1::new();
-    let users = b.relation_source("users", None, sp(0, 5));
-    let orders = b.relation_source("orders", None, sp(6, 12));
-    let join = b.compose("join", vec![users, orders], sp(0, 20));
-
-    let err = normalize_relation(&join, &NormalizeOptionsV1::default())
-        .expect_err("join without a predicate must reject");
-    assert_eq!(err.code(), "algebra.empty_join_predicate");
-    assert_eq!(
-        err.message(),
-        "join requires an ON/where predicate; use `cross` for a cartesian product"
-    );
-    assert_eq!(err.span(), sp(0, 20));
-    match err {
-        AlgebraDiagnosticV1::EmptyJoinPredicate { symbol, .. } => assert_eq!(symbol, "join"),
-        other => panic!("expected EmptyJoinPredicate, got {other:?}"),
-    }
-}
-
-#[test]
-fn explicit_cross_join_still_accepted() {
-    // The DISTINCTION the fix must preserve: an EXPLICIT `cross` over two bare
-    // sources is a legitimate cartesian product and must still normalize to a Join
-    // with `predicate = None`. Only the predicate-less `join` is rejected.
-    use quanta_gqlang_v2_algebra::AlgebraOpV1;
-
-    let b = HirBuilderV1::new();
-    let users = b.relation_source("users", None, sp(0, 5));
-    let orders = b.relation_source("orders", None, sp(6, 12));
-    let cross = b.compose("cross", vec![users, orders], sp(0, 20));
-
-    let node = normalize_relation(&cross, &NormalizeOptionsV1::default())
-        .expect("explicit cross join must be accepted");
-    let AlgebraOpV1::Join(join) = &node.op else {
-        panic!("cross must lower to a Join node");
-    };
+    // The refused visit is the chain's deepest stage: the scan.
     assert!(
-        join.predicate.is_none(),
-        "an explicit cross is a cartesian product with no predicate"
+        diagnostic.location().is_some_and(|location| {
+            location.location().span.start == 5 && location.location().span.end == 12
+        }),
+        "the over-budget rejection names the refused stage's checked location"
     );
 }
 
-fn seg(name: &str, _b: &HirBuilderV1, a: usize, z: usize) -> quanta_gqlang_v2_hir::PathSegmentV1 {
-    quanta_gqlang_v2_hir::PathSegmentV1 {
-        name: name.to_owned(),
-        span: SpanV1::new(a, z),
-    }
+#[test]
+fn bool_tree_small_budget_resolves_exact_and_rejects_one_over() {
+    // Sema-side exact fit: depth SMALL_BUDGET_BOOL_TREE_EXACT_DEPTH
+    // consumes 3 * depth + 6 semantic steps, inside the small receipt.
+    let exact =
+        deep_bool_tree_document_v2(SMALL_BUDGET_BOOL_TREE_EXACT_DEPTH, ReferenceBudgetV2::Small)
+            .unwrap();
+    assert_eq!(
+        exact.document().budget_receipt().max_expression_nodes(),
+        SMALL_BUDGET_MAX_EXPRESSION_NODES
+    );
+
+    let over =
+        deep_bool_tree_document_v2(SMALL_BUDGET_BOOL_TREE_OVER_DEPTH, ReferenceBudgetV2::Small);
+    assert!(over
+        .err()
+        .is_some_and(|error| error.contains("semantic_steps exceeds frontend limit")));
+}
+
+#[test]
+fn expression_walk_small_receipt_is_exact_and_rejects_one_node_over() {
+    // Each authored leaf is a BoolValue wrapping one Bool literal: the
+    // decomposition walk charges 2 * d + 1 nodes and the per-leaf
+    // descendant search charges two more per leaf, 4 * d + 3 in total.
+    // Depth 1 charges seven of the eight small-receipt nodes; depth 2
+    // charges eleven and rejects one over.
+    let exact = forged_small_receipt_bool_tree_document_v2(1).unwrap();
+    let lowered = lower_relation_item(exact.document(), exact.item_id()).unwrap();
+    assert_eq!(lowered.root().family(), AlgebraFamilyV2::Filter);
+    assert_eq!(lowered.root().filter_conjuncts().len(), 2);
+
+    let over = forged_small_receipt_bool_tree_document_v2(2).unwrap();
+    let diagnostic = match lower_relation_item(over.document(), over.item_id()) {
+        Ok(_) => panic!("one expression node over the receipt must not lower"),
+        Err(diagnostic) => diagnostic,
+    };
+    assert_eq!(
+        diagnostic.kind(),
+        AlgebraFailureKindV2::TraversalBudgetExceeded
+    );
+    assert_eq!(diagnostic.code(), "algebra.traversal_budget_exceeded");
+    assert_eq!(
+        diagnostic.message(),
+        "predicate traversal exceeded the document's max_expression_nodes budget"
+    );
+    assert!(
+        diagnostic.location().is_some(),
+        "the over-budget rejection names the refused expression's checked location"
+    );
 }

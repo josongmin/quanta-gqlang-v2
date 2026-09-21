@@ -1,1314 +1,1367 @@
-//! Provenance-preserving normalization from shared HIR relation/query shapes
-//! into the explicit algebra (ticket 04, decisions `D3`/`D5`/`D23`/`D26`).
-//!
-//! The normalizer consumes the SAME shared HIR every other v3 surface consumes
-//! ([`RelationExprHirV1`] / [`QueryHirV1`]) and lowers each construct into an
-//! [`AlgebraNodeV1`] with explicit column provenance and cardinality. It runs
-//! AFTER binding (`D3`), so callers may hand it binder context; correlation in
-//! [`AlgebraOpV1::Apply`] is derived from VISIBLE outer columns, never a
-//! root-local side channel.
-//!
-//! Join, grouping, and ordering are closed HIR variants. The normalizer consumes
-//! those variants directly, so invalid operator names and arities cannot cross
-//! the HIR boundary.
+//! The sole semantic-document to algebra lowering cut.
 
-use crate::diagnostic::{AlgebraDiagnosticV1, IllFormedAggregateReasonV1};
-use crate::node::{
-    AggregateExprV1, AggregateV1, AlgebraNodeV1, AlgebraOpV1, AntiJoinV1, ApplyV1,
-    ColumnProvenanceV1, ColumnV1, CorrelationColumnV1, FilterV1, GroupV1, JoinV1, LimitV1,
-    ProjectV1, RelationSourceAuthorityV1, RelationSourceIdentityV1, ScanV1, SemiJoinV1, SortKeyV1,
-    SortV1, UnionV1,
+use crate::diagnostic::{AlgebraDiagnosticV2, AlgebraFailureKindV2};
+use crate::node::{AlgebraFamilyV2, CheckedAlgebraNodeV2, CorrelationSetV2, LoweredRelationItemV2};
+use quanta_gqlang_v2_sema::{
+    CheckedLocatedSpanV2, DownstreamBudgetReceiptV2, JoinModeV2, RelationExistsPolarityV2,
+    SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2, TypedBoolExprV2, TypedExprShapeV2,
+    TypedExprV2, TypedRelationExprV2,
 };
-use quanta_gqlang_v2_hir::{
-    CallArgHirV1, GroupByHirV1, JoinHirV1, OrderByHirV1, ProjectionItemV1, ProjectionV1,
-    QueryHirV1, RelationExprHirV1, RelationExprKindV1, RelationFilterV1, RelationSourceV1,
-    SortDirectionHirV1, ValueExprHirV1, ValueExprKindV1,
-};
-use quanta_gqlang_v2_types::CardinalityV1;
-use std::collections::{BTreeMap, BTreeSet};
+use quanta_gqlang_v2_types::{AggregationClassV1, SourceQualifiedNodeIdV2};
+use std::collections::BTreeSet;
 
-/// Caller-supplied normalization context.
+/// Lower exactly one sealed relation item from a semantic document.
 ///
-/// Two pieces of information cannot be recovered from the structure-only HIR and
-/// must be supplied by the caller (which has the binder/type context the
-/// normalizer deliberately does not re-derive):
-///
-/// - which callee names are AGGREGATES (so a projection over them lowers to
-///   Group+Aggregate). Defaulting this would re-implement the closed builtin
-///   registry from ticket 03, which is out of lane.
-/// - the sort keys / limit counts for the unary `sort`/`limit` compositions.
-#[derive(Clone, Debug, Default)]
-pub struct NormalizeOptionsV1 {
-    /// Callee names treated as aggregate folds.
-    pub aggregates: BTreeSet<String>,
-    /// Callee names whose `distinct` argument form eliminates duplicates before
-    /// folding. Modelled as a marker callee `distinct` wrapping the real arg.
-    pub distinct_marker: Option<String>,
-    /// The `(count, offset)` window for the unary `limit` composition. The
-    /// structure-only HIR has no limit clause, so the caller (which parsed the
-    /// surface count/offset) supplies it here. `None` means "keep everything"
-    /// (`count = u64::MAX`, `offset = 0`).
-    pub limit_window: Option<(u64, u64)>,
-    /// Exact relation identities and the missing-name contract issued by the
-    /// compile context.
-    pub relation_source_authority_v1: RelationSourceAuthorityV1,
-}
-
-impl NormalizeOptionsV1 {
-    /// A context whose aggregate set is the given names, with `distinct` as the
-    /// duplicate-elimination marker callee.
-    #[must_use]
-    pub fn with_aggregates<I, S>(aggregates: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        Self {
-            aggregates: aggregates.into_iter().map(Into::into).collect(),
-            distinct_marker: Some("distinct".to_owned()),
-            limit_window: None,
-            relation_source_authority_v1: RelationSourceAuthorityV1::schema_open_v1(),
-        }
-    }
-
-    #[must_use]
-    pub fn with_relation_source_authority_v1(
-        mut self,
-        authority_v1: RelationSourceAuthorityV1,
-    ) -> Self {
-        self.relation_source_authority_v1 = authority_v1;
-        self
-    }
-
-    /// Set the `(count, offset)` window threaded into the unary `limit`
-    /// composition. Consumes and returns `self` for builder-style chaining.
-    #[must_use]
-    pub fn with_limit_window(mut self, count: u64, offset: u64) -> Self {
-        self.limit_window = Some((count, offset));
-        self
-    }
-
-    fn is_aggregate(&self, name: &str) -> bool {
-        self.aggregates.contains(name)
-    }
-}
-
-/// The output of one normalization run: the algebra root or a typed diagnostic.
-///
-/// Fail-closed: any unsupported/ill-formed construct yields `Err` with a typed
-/// [`AlgebraDiagnosticV1`]; there is no partial/degraded success.
-pub type NormalizeResultV1 = Result<AlgebraNodeV1, AlgebraDiagnosticV1>;
-
-/// Normalize a whole query unit into algebra. The optional result shape is NOT
-/// re-shaped here (render semantics are ticket 07); only the relation body is
-/// lowered, preserving column provenance.
+/// This is the only public source ingress. It neither accepts HIR nor options
+/// nor a budget: source names, call identities, output contracts, aggregate
+/// classification, correlations, and the traversal caps are all sealed by
+/// Sema, and both lowering walks are charged from the document's immutable
+/// downstream budget receipt before every visit.
 ///
 /// # Errors
 ///
-/// Returns a typed [`AlgebraDiagnosticV1`] for any unsupported or ill-formed
-/// construct in `query.body`.
-pub fn normalize_query(query: &QueryHirV1, options: &NormalizeOptionsV1) -> NormalizeResultV1 {
-    normalize_relation(&query.body, options)
-}
-
-/// Normalize a single relation expression into algebra.
-///
-/// # Errors
-///
-/// Returns a typed [`AlgebraDiagnosticV1`] for any unsupported or ill-formed
-/// construct.
-pub fn normalize_relation(
-    relation: &RelationExprHirV1,
-    options: &NormalizeOptionsV1,
-) -> NormalizeResultV1 {
-    // Collect alias -> relation bindings once over the whole tree so projection
-    // provenance is ALIAS-AWARE: `u.id` over `users u` knows its source is
-    // `users`, not the alias `u`. Aliases are unique per the binder (D3).
-    let mut aliases: BTreeMap<String, String> = BTreeMap::new();
-    collect_aliases(relation, &mut aliases);
-    let ctx = Ctx {
-        options,
-        aliases: &aliases,
-    };
-    normalize_node(relation, &ctx)
-}
-
-/// Internal normalization context: the public options plus the alias->relation
-/// map derived from relation sources in scope.
-struct Ctx<'a> {
-    options: &'a NormalizeOptionsV1,
-    aliases: &'a BTreeMap<String, String>,
-}
-
-// Transitional private carrier retained only for the legacy helper functions
-// below. It is not constructible from public HIR and therefore cannot reopen
-// the removed open-tagged composition state.
-#[allow(dead_code)]
-struct CompositionOpCompatV1 {
-    symbol: String,
-}
-
-#[allow(dead_code)]
-struct CompositionV1 {
-    op: CompositionOpCompatV1,
-    operands: Vec<RelationExprHirV1>,
-}
-
-impl Ctx<'_> {
-    /// Resolve an alias (or relation name) to its underlying relation name.
-    fn relation_of(&self, name: &str) -> String {
-        self.aliases
-            .get(name)
-            .cloned()
-            .unwrap_or_else(|| name.to_owned())
-    }
-
-    fn source_identity_v1(
-        &self,
-        relation_v1: &str,
-        span_v1: quanta_gqlang_v2_hir::SpanV1,
-    ) -> Result<RelationSourceIdentityV1, AlgebraDiagnosticV1> {
-        if let Some(identity_v1) = self
-            .options
-            .relation_source_authority_v1
-            .exact_identity_v1(relation_v1)
-        {
-            return Ok(identity_v1.clone());
-        }
-        if self.options.relation_source_authority_v1.is_closed_v1() {
-            return Err(AlgebraDiagnosticV1::UnknownRelationSource {
-                relation: relation_v1.to_string(),
-                span: span_v1,
-            });
-        }
-        Ok(RelationSourceIdentityV1::SchemaOpen)
-    }
-}
-
-fn collect_aliases(relation: &RelationExprHirV1, acc: &mut BTreeMap<String, String>) {
-    match &relation.kind {
-        RelationExprKindV1::Source(source) => {
-            if let Some(alias) = &source.alias {
-                let _ = acc.insert(alias.name.clone(), source.name.clone());
-            }
-        }
-        RelationExprKindV1::Project(project) => collect_aliases(&project.input, acc),
-        RelationExprKindV1::Filter(filter) => collect_aliases(&filter.input, acc),
-        RelationExprKindV1::Join(join) => match join {
-            JoinHirV1::Inner { left, right, .. } | JoinHirV1::Cross { left, right } => {
-                collect_aliases(left, acc);
-                collect_aliases(right, acc);
-            }
-        },
-        RelationExprKindV1::GroupBy(group) => collect_aliases(&group.input, acc),
-        RelationExprKindV1::OrderBy(order) => collect_aliases(&order.input, acc),
-    }
-}
-
-fn normalize_node(relation: &RelationExprHirV1, ctx: &Ctx<'_>) -> NormalizeResultV1 {
-    match &relation.kind {
-        RelationExprKindV1::Source(source) => normalize_source(relation, source, ctx),
-        RelationExprKindV1::Filter(filter) => normalize_filter(relation, filter, ctx),
-        RelationExprKindV1::Project(project) => normalize_project(relation, project, ctx),
-        RelationExprKindV1::Join(join) => normalize_join(relation, join, ctx),
-        RelationExprKindV1::GroupBy(group) => normalize_group_by(relation, group, ctx),
-        RelationExprKindV1::OrderBy(order) => normalize_order_by(relation, order, ctx),
-    }
-}
-
-fn normalize_source(
-    node: &RelationExprHirV1,
-    source: &RelationSourceV1,
-    ctx: &Ctx<'_>,
-) -> NormalizeResultV1 {
-    let alias = source.alias.as_ref().map(|a| a.name.clone());
-    // A scan binds the whole row under the alias; the single output column is
-    // the row binding with Source provenance and no specific field.
-    let bind_name = alias.clone().unwrap_or_else(|| source.name.clone());
-    let column = ColumnV1::new(
-        bind_name,
-        ColumnProvenanceV1::Source {
-            relation: source.name.clone(),
-            alias: alias.clone(),
-            field: None,
-        },
-    );
-    // A raw source is a BAG: duplicate rows are not silently eliminated (D26).
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        vec![column],
-        CardinalityV1::Bag,
-        AlgebraOpV1::Scan(ScanV1 {
-            relation: source.name.clone(),
-            source_identity_v1: ctx.source_identity_v1(&source.name, node.span)?,
-            alias,
-        }),
-    ))
-}
-
-fn normalize_filter(
-    node: &RelationExprHirV1,
-    filter: &RelationFilterV1,
-    ctx: &Ctx<'_>,
-) -> NormalizeResultV1 {
-    let input = normalize_node(&filter.input, ctx)?;
-    // Filter preserves the input schema AND cardinality exactly.
-    let columns = input.columns.clone();
-    let cardinality = input.cardinality;
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        columns,
-        cardinality,
-        AlgebraOpV1::Filter(FilterV1 {
-            input: Box::new(input),
-            predicate: Box::new((*filter.predicate).clone()),
-        }),
-    ))
-}
-
-fn normalize_project(
-    node: &RelationExprHirV1,
-    project: &ProjectionV1,
-    ctx: &Ctx<'_>,
-) -> NormalizeResultV1 {
-    let input = normalize_node(&project.input, ctx)?;
-
-    // Split items into grouping keys (non-aggregate) and aggregate folds.
-    let mut keys: Vec<ProjItem<'_>> = Vec::new();
-    let mut aggregates: Vec<ProjItem<'_>> = Vec::new();
-    for item in project.items() {
-        match classify_item(item, ctx.options)? {
-            ItemClass::Key => keys.push(ProjItem(item)),
-            ItemClass::Aggregate => aggregates.push(ProjItem(item)),
-        }
-    }
-
-    if aggregates.is_empty() {
-        return Ok(plain_project(node, input, project, ctx));
-    }
-
-    // Grouped aggregation: produce an explicit Group over the keys feeding an
-    // Aggregate over the folds. Keys and folds are kept STRICTLY separate.
-    if project.items().is_empty() {
-        return Err(AlgebraDiagnosticV1::IllFormedAggregate {
-            reason: IllFormedAggregateReasonV1::EmptyAggregateProjection,
-            span: node.span,
-        });
-    }
-
-    let group_columns: Vec<ColumnV1> = keys.iter().map(|item| key_column(item.0, ctx)).collect();
-    // A Group's output is the DISTINCT key tuples: a Set over its keys.
-    let group = AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        group_columns,
-        CardinalityV1::Set,
-        AlgebraOpV1::Group(GroupV1 {
-            input: Box::new(input),
-            keys: keys.iter().map(|item| item.0.value.clone()).collect(),
-        }),
-    );
-
-    let mut out_columns: Vec<ColumnV1> = group.columns.clone();
-    let mut folds: Vec<AggregateExprV1> = Vec::new();
-    for item in &aggregates {
-        let fold = aggregate_expr(item.0, ctx.options)?;
-        out_columns.push(ColumnV1::new(
-            alias_or_default(item.0, &fold.function),
-            ColumnProvenanceV1::Derived {
-                origin: fold.origin,
-            },
+/// Returns a typed diagnostic when the requested item is absent/non-relational,
+/// or when a sealed document is internally inconsistent for algebra lowering.
+pub fn lower_relation_item(
+    document: &SemanticDocumentV2,
+    item_id: SemanticItemIdV2,
+) -> Result<LoweredRelationItemV2, AlgebraDiagnosticV2> {
+    let Some(item) = document.item(item_id) else {
+        return Err(AlgebraDiagnosticV2::new(
+            AlgebraFailureKindV2::NonRelationItem,
+            None,
+            "requested semantic item is absent from the document",
         ));
-        folds.push(fold);
-    }
-
-    // Aggregate output is a Set keyed by the grouping keys (one row per group).
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        out_columns,
-        CardinalityV1::Set,
-        AlgebraOpV1::Aggregate(AggregateV1 {
-            input: Box::new(group),
-            aggregates: folds,
-        }),
-    ))
-}
-
-fn plain_project(
-    node: &RelationExprHirV1,
-    input: AlgebraNodeV1,
-    project: &ProjectionV1,
-    ctx: &Ctx<'_>,
-) -> AlgebraNodeV1 {
-    let columns: Vec<ColumnV1> = project
-        .items()
-        .iter()
-        .map(|item| project_column(item, ctx))
-        .collect();
-    // Projection NEVER changes duplicate semantics: project over a bag is a bag.
-    let cardinality = input.cardinality;
-    AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        columns,
-        cardinality,
-        AlgebraOpV1::Project(ProjectV1 {
-            input: Box::new(input),
-            items: project.items().iter().map(|i| i.value.clone()).collect(),
-        }),
-    )
-}
-
-fn normalize_join(node: &RelationExprHirV1, join: &JoinHirV1, ctx: &Ctx<'_>) -> NormalizeResultV1 {
-    let (left_hir, right_hir, predicate) = match join {
-        JoinHirV1::Inner { left, right, on } => {
-            (left.as_ref(), right.as_ref(), Some(Box::new(on.clone())))
-        }
-        JoinHirV1::Cross { left, right } => (left.as_ref(), right.as_ref(), None),
     };
-    let left = normalize_node(left_hir, ctx)?;
-    let right = normalize_node(right_hir, ctx)?;
-    let mut columns = left.columns.clone();
-    columns.extend(right.columns.clone());
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        columns,
-        CardinalityV1::Bag,
-        AlgebraOpV1::Join(JoinV1 {
-            left: Box::new(left),
-            right: Box::new(right),
-            predicate,
-        }),
-    ))
-}
-
-fn normalize_group_by(
-    node: &RelationExprHirV1,
-    group: &GroupByHirV1,
-    ctx: &Ctx<'_>,
-) -> NormalizeResultV1 {
-    let input = normalize_node(&group.input, ctx)?;
-    let mut columns = Vec::with_capacity(group.keys().len());
-    for key in group.keys() {
-        if contains_aggregate(key, ctx.options) {
-            return Err(AlgebraDiagnosticV1::IllFormedAggregate {
-                reason: IllFormedAggregateReasonV1::NestedAggregate,
-                span: key.span,
-            });
-        }
-        let item = ProjectionItemV1 {
-            value: key.clone(),
-            alias: None,
-        };
-        columns.push(key_column(&item, ctx));
-    }
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        columns,
-        CardinalityV1::Set,
-        AlgebraOpV1::Group(GroupV1 {
-            input: Box::new(input),
-            keys: group.keys().to_vec(),
-        }),
-    ))
-}
-
-fn normalize_order_by(
-    node: &RelationExprHirV1,
-    order: &OrderByHirV1,
-    ctx: &Ctx<'_>,
-) -> NormalizeResultV1 {
-    let input = normalize_node(&order.input, ctx)?;
-    let columns = input.columns.clone();
-    let keys = order
-        .keys()
-        .iter()
-        .map(|key| SortKeyV1 {
-            expr: key.value.clone(),
-            direction: match key.direction {
-                SortDirectionHirV1::Asc => crate::node::SortDirectionV1::Ascending,
-                SortDirectionHirV1::Desc => crate::node::SortDirectionV1::Descending,
-            },
-        })
-        .collect();
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        columns,
-        CardinalityV1::Sequence,
-        AlgebraOpV1::Sort(SortV1 {
-            input: Box::new(input),
-            keys,
-        }),
-    ))
-}
-
-#[allow(dead_code)]
-fn normalize_compose(
-    node: &RelationExprHirV1,
-    compose: &CompositionV1,
-    ctx: &Ctx<'_>,
-) -> NormalizeResultV1 {
-    let symbol = compose.op.symbol.as_str();
-    match symbol {
-        "join" | "cross" => binary_join(node, compose, ctx, symbol == "cross"),
-        "apply" | "lateral" => binary_apply(node, compose, ctx),
-        "union" | "union_all" => binary_union(node, compose, ctx, symbol == "union"),
-        "semijoin" => binary_semi(node, compose, ctx),
-        "antijoin" => binary_anti(node, compose, ctx),
-        "group_by" => binary_group(node, compose, ctx),
-        "order_by" => binary_order(node, compose, ctx),
-        "sort" => unary_sort(node, compose, ctx),
-        "limit" => unary_limit(node, compose, ctx),
-        other => Err(AlgebraDiagnosticV1::UnsupportedComposition {
-            symbol: other.to_owned(),
-            span: node.span,
-        }),
-    }
-}
-
-fn two_operands<'c>(
-    node: &RelationExprHirV1,
-    compose: &'c CompositionV1,
-) -> Result<(&'c RelationExprHirV1, &'c RelationExprHirV1), AlgebraDiagnosticV1> {
-    match compose.operands.as_slice() {
-        [left, right] => Ok((left, right)),
-        other => Err(AlgebraDiagnosticV1::ArityMismatch {
-            symbol: compose.op.symbol.clone(),
-            expected: 2,
-            found: other.len(),
-            span: node.span,
-        }),
-    }
-}
-
-fn one_operand<'c>(
-    node: &RelationExprHirV1,
-    compose: &'c CompositionV1,
-) -> Result<&'c RelationExprHirV1, AlgebraDiagnosticV1> {
-    match compose.operands.as_slice() {
-        [only] => Ok(only),
-        other => Err(AlgebraDiagnosticV1::ArityMismatch {
-            symbol: compose.op.symbol.clone(),
-            expected: 1,
-            found: other.len(),
-            span: node.span,
-        }),
-    }
-}
-
-fn binary_join(
-    node: &RelationExprHirV1,
-    compose: &CompositionV1,
-    ctx: &Ctx<'_>,
-    cross: bool,
-) -> NormalizeResultV1 {
-    let (left_hir, right_hir) = two_operands(node, compose)?;
-    let left = normalize_node(left_hir, ctx)?;
-    let right = normalize_node(right_hir, ctx)?;
-    // A join's output columns are the concatenation of both inputs; output is a
-    // BAG (the cross multiplies multiplicities, no dedup).
-    let mut columns = left.columns.clone();
-    columns.extend(right.columns.clone());
-    // `predicate = None` is RESERVED for the explicit `cross` operator (an opt-in
-    // cartesian product). A plain `join` whose right operand carries no filter
-    // predicate has a MISSING join condition; we must not fabricate a cross join
-    // from it (D10, fail-closed). Validate post-extraction.
-    let predicate = if cross {
-        None
-    } else {
-        require_join_predicate(right_hir, &compose.op.symbol, node.span)?
+    let SemanticItemV2::Relation(relation) = item else {
+        return Err(AlgebraDiagnosticV2::new(
+            AlgebraFailureKindV2::NonRelationItem,
+            None,
+            "requested semantic item is not a relation",
+        ));
     };
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        columns,
-        CardinalityV1::Bag,
-        AlgebraOpV1::Join(JoinV1 {
-            left: Box::new(left),
-            right: Box::new(right),
-            predicate,
-        }),
-    ))
-}
-
-/// Pull a top-level filter predicate off the right operand of a join, if the
-/// author wrote the join condition as a filter wrapper. Structure-only, so this
-/// is the only place a join condition can come from in HIR.
-fn join_predicate(right: &RelationExprHirV1) -> Option<Box<quanta_gqlang_v2_hir::BoolExprHirV1>> {
-    if let RelationExprKindV1::Filter(filter) = &right.kind {
-        Some(Box::new((*filter.predicate).clone()))
-    } else {
-        None
+    if item_id.source_id() != document.source_id() {
+        return Err(AlgebraDiagnosticV2::new(
+            AlgebraFailureKindV2::ForeignSemanticFact,
+            Some(relation.location().clone()),
+            "requested item belongs to another semantic document",
+        ));
     }
-}
-
-/// Like [`join_predicate`] but fail-closed: a predicate is MANDATORY. Used for
-/// join-family operators that have no cartesian form (`join`, `semijoin`,
-/// `antijoin`). A missing predicate is never an implicit cross product — only
-/// the explicit `cross` operator carries `predicate = None` (`D10`).
-fn require_join_predicate(
-    right: &RelationExprHirV1,
-    symbol: &str,
-    span: quanta_gqlang_v2_hir::SpanV1,
-) -> Result<Option<Box<quanta_gqlang_v2_hir::BoolExprHirV1>>, AlgebraDiagnosticV1> {
-    match join_predicate(right) {
-        Some(p) => Ok(Some(p)),
-        None => Err(AlgebraDiagnosticV1::EmptyJoinPredicate {
-            symbol: symbol.to_owned(),
-            span,
-        }),
+    let root = lower_root(
+        document,
+        item_id,
+        relation.root(),
+        document.budget_receipt(),
+    )?;
+    if root.output() != relation.output() {
+        return Err(failure(
+            AlgebraFailureKindV2::InvalidStageContract,
+            relation.location(),
+            "lowered root output differs from the sealed relation output",
+        ));
     }
+    Ok(LoweredRelationItemV2::new(item_id, root))
 }
 
-fn binary_apply(
-    node: &RelationExprHirV1,
-    compose: &CompositionV1,
-    ctx: &Ctx<'_>,
-) -> NormalizeResultV1 {
-    let (left_hir, right_hir) = two_operands(node, compose)?;
-    let left = normalize_node(left_hir, ctx)?;
-    let right = normalize_node(right_hir, ctx)?;
+/// One relation stage awaiting its lowerable children.
+struct Visit<'a>(&'a TypedRelationExprV2);
 
-    // Derive VISIBLE correlation columns: which of the outer (left) columns the
-    // inner (right) subtree references by name. This is the explicit carrier for
-    // a correlated subquery (D23) — no side channel.
-    //
-    // A name that the inner subtree binds LOCALLY (its own source alias) shadows
-    // the outer column of the same name: a reference to it resolves to the inner
-    // binding, not the outer. Such names are therefore NOT outer references and
-    // must not fabricate a correlation (which would also mislabel the inner
-    // output column as Correlated when it is really local).
-    let outer_names: Vec<String> = left.columns.iter().map(|c| c.name.clone()).collect();
-    let mut local_bindings: BTreeMap<String, String> = BTreeMap::new();
-    collect_aliases(right_hir, &mut local_bindings);
-    let referenced: BTreeSet<String> = referenced_symbols(right_hir)
-        .into_iter()
-        .filter(|name| !local_bindings.contains_key(name))
-        .collect();
-    let mut correlation: Vec<CorrelationColumnV1> = Vec::new();
-    for (idx, name) in outer_names.iter().enumerate() {
-        if referenced.contains(name) {
-            correlation.push(CorrelationColumnV1 {
-                outer_column: idx,
-                outer_name: name.clone(),
-            });
-        }
-    }
-
-    if correlation.is_empty() {
-        // A degenerate apply with no correlation is a hidden side channel or a
-        // mislabelled join: reject rather than silently downgrade.
-        return Err(AlgebraDiagnosticV1::MissingCorrelation { span: node.span });
-    }
-
-    // Apply output cardinality (D26). Lateral expansion is order-preserving on the
-    // LEFT dimension (for each outer row, in order, the correlated inner is
-    // expanded), but a correlated inner may produce zero, one, or MANY rows per
-    // outer row. So:
-    //   - Sequence is PRESERVED: order does not change multiplicity.
-    //   - Bag is PRESERVED: already duplicate-permitting.
-    //   - Set DOWNGRADES to Bag: expanding each distinct outer row by a variable
-    //     number of inner rows lets the same outer key recur across output rows,
-    //     breaking the Set's distinctness guarantee. Preserving Set here would
-    //     wrongly claim duplicate-elimination the lateral expansion does not provide.
-    let cardinality = match left.cardinality {
-        CardinalityV1::Set | CardinalityV1::Bag => CardinalityV1::Bag,
-        CardinalityV1::Sequence => CardinalityV1::Sequence,
-    };
-    //
-    // Correlated provenance is keyed by the outer symbol each right output column
-    // DERIVES FROM, not by the column's output name. An inner projection may alias
-    // an outer reference to a different name (`project { x: u }`): the output column
-    // is named `x`, yet its value references outer `u`, so it must still carry
-    // Correlated provenance pointing at `u`. Matching on the output name alone
-    // would wrongly leave such a renamed column Derived (D23).
-    let right_outer_refs = output_column_outer_refs(right_hir, &referenced);
-    let mut columns = left.columns.clone();
-    for (idx, col) in right.columns.iter().enumerate() {
-        let outer_ref = right_outer_refs.get(idx).and_then(Option::as_ref);
-        let provenance = if let Some(outer_name) = outer_ref {
-            let outer = correlation
-                .iter()
-                .find(|c| &c.outer_name == outer_name)
-                .map_or(0, |c| c.outer_column);
-            ColumnProvenanceV1::Correlated {
-                outer_column: outer,
-                outer_name: outer_name.clone(),
-            }
-        } else {
-            col.provenance.clone()
-        };
-        columns.push(ColumnV1::new(col.name.clone(), provenance));
-    }
-
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        columns,
-        cardinality,
-        AlgebraOpV1::Apply(ApplyV1 {
-            left: Box::new(left),
-            right: Box::new(right),
-            correlation,
-        }),
-    ))
+/// One relation stage whose children are lowered and whose node must be
+/// assembled from the sealed stage contract plus the visit-time plan.
+struct Finish<'a> {
+    stage: &'a TypedRelationExprV2,
+    plan: StagePlan<'a>,
 }
 
-fn binary_union(
-    node: &RelationExprHirV1,
-    compose: &CompositionV1,
-    ctx: &Ctx<'_>,
-    distinct: bool,
-) -> NormalizeResultV1 {
-    let (left_hir, right_hir) = two_operands(node, compose)?;
-    let left = normalize_node(left_hir, ctx)?;
-    let right = normalize_node(right_hir, ctx)?;
-    if left.columns.len() != right.columns.len() {
-        return Err(AlgebraDiagnosticV1::UnionArity {
-            left: left.columns.len(),
-            right: right.columns.len(),
-            span: node.span,
-        });
-    }
-    // Same count is necessary but not sufficient: the arms must also AGREE on each
-    // positional output name. Otherwise the merged schema would silently adopt the
-    // left arm's name and hide a genuine schema disagreement. Reject the first
-    // mismatch rather than letting one arm's name win unannounced (D26).
-    for (position, (l, r)) in left.columns.iter().zip(right.columns.iter()).enumerate() {
-        if l.name != r.name {
-            return Err(AlgebraDiagnosticV1::UnionColumnMismatch {
-                position,
-                left_name: l.name.clone(),
-                right_name: r.name.clone(),
-                span: node.span,
-            });
-        }
-    }
-    // Output columns merge positionally; provenance records both arms.
-    let columns: Vec<ColumnV1> = left
-        .columns
-        .iter()
-        .zip(right.columns.iter())
-        .map(|(l, r)| {
-            ColumnV1::new(
-                l.name.clone(),
-                ColumnProvenanceV1::Unioned {
-                    left: Box::new(l.provenance.clone()),
-                    right: Box::new(r.provenance.clone()),
-                },
-            )
-        })
-        .collect();
-    // distinct => set semantics (dedup), else bag (multiplicity preserved). The
-    // choice is explicit; there is no implicit default (D26).
-    let cardinality = if distinct {
-        CardinalityV1::Set
-    } else {
-        CardinalityV1::Bag
-    };
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        columns,
-        cardinality,
-        AlgebraOpV1::Union(UnionV1 {
-            left: Box::new(left),
-            right: Box::new(right),
-            distinct,
-        }),
-    ))
+/// Visit-time lowering plan. Everything except the Filter decomposition is
+/// re-read from the sealed stage at assembly time.
+enum StagePlan<'a> {
+    Scan,
+    Filter {
+        /// Relational EXISTS conjunct leaves in stable authored order, with
+        /// their checked nested roots and correlation proofs.
+        exists: Vec<ExistsLeaf<'a>>,
+        /// The full ordinary conjunction in stable authored order.
+        ordinary: Vec<TypedBoolExprV2>,
+    },
+    Project,
+    Join,
+    Group,
+    Sort,
 }
 
-fn binary_semi(
-    node: &RelationExprHirV1,
-    compose: &CompositionV1,
-    ctx: &Ctx<'_>,
-) -> NormalizeResultV1 {
-    let (left_hir, right_hir) = two_operands(node, compose)?;
-    let left = normalize_node(left_hir, ctx)?;
-    let right = normalize_node(right_hir, ctx)?;
-    // Semi-join output is EXACTLY the left schema and cardinality.
-    let columns = left.columns.clone();
-    let cardinality = left.cardinality;
-    // A semi-join has no cartesian form: a missing predicate is always a defect,
-    // never an opt-in cross. Reject rather than fabricate `predicate = None`.
-    let predicate = require_join_predicate(right_hir, &compose.op.symbol, node.span)?;
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        columns,
-        cardinality,
-        AlgebraOpV1::SemiJoin(SemiJoinV1 {
-            left: Box::new(left),
-            right: Box::new(right),
-            predicate,
-        }),
-    ))
+/// One validated relational EXISTS conjunct awaiting its Semi/Anti assembly.
+struct ExistsLeaf<'a> {
+    expression: &'a TypedExprV2,
+    polarity: RelationExistsPolarityV2,
+    right: &'a TypedRelationExprV2,
+    correlations: CorrelationSetV2,
 }
 
-fn binary_anti(
-    node: &RelationExprHirV1,
-    compose: &CompositionV1,
-    ctx: &Ctx<'_>,
-) -> NormalizeResultV1 {
-    let (left_hir, right_hir) = two_operands(node, compose)?;
-    let left = normalize_node(left_hir, ctx)?;
-    let right = normalize_node(right_hir, ctx)?;
-    let columns = left.columns.clone();
-    let cardinality = left.cardinality;
-    // An anti-join, like a semi-join, has no cartesian form: a missing predicate
-    // is always a defect. Reject rather than fabricate `predicate = None`.
-    let predicate = require_join_predicate(right_hir, &compose.op.symbol, node.span)?;
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        columns,
-        cardinality,
-        AlgebraOpV1::AntiJoin(AntiJoinV1 {
-            left: Box::new(left),
-            right: Box::new(right),
-            predicate,
-        }),
-    ))
-}
-
-/// Lower a `group_by` composition into an explicit [`AlgebraOpV1::Group`].
-///
-/// The surface emits `Compose("group_by", [input, keys])` where `keys` is a
-/// `Project` whose items carry the group-key value expressions over a synthetic
-/// `_keys` placeholder source (the surface cannot bind the real producer). The
-/// algebra is the closed authority that turns that structure-only carrier into
-/// a Group: the placeholder is discarded and the keys are partitioned over the
-/// REAL `input`. Output columns are exactly the keys (alias-aware provenance),
-/// and a Group's output is the DISTINCT key tuples — a Set (`D26`).
-fn binary_group(
-    node: &RelationExprHirV1,
-    compose: &CompositionV1,
-    ctx: &Ctx<'_>,
-) -> NormalizeResultV1 {
-    let (input_hir, keys_hir) = two_operands(node, compose)?;
-    let input = normalize_node(input_hir, ctx)?;
-
-    // The keys operand is the synthetic Project carrying the group-key items.
-    let RelationExprKindV1::Project(keys_project) = &keys_hir.kind else {
-        return Err(AlgebraDiagnosticV1::IllFormedAggregate {
-            reason: IllFormedAggregateReasonV1::EmptyAggregateProjection,
-            span: node.span,
-        });
-    };
-    // A `group by` with no keys produces no partition tuple at all.
-    if keys_project.items().is_empty() {
-        return Err(AlgebraDiagnosticV1::IllFormedAggregate {
-            reason: IllFormedAggregateReasonV1::EmptyAggregateProjection,
-            span: node.span,
-        });
-    }
-
-    // Grouping keys must be plain key expressions — an aggregate fold cannot be
-    // a partition key (its value is per-partition, not per-row).
-    for item in keys_project.items() {
-        if let ItemClass::Aggregate = classify_item(item, ctx.options)? {
-            return Err(AlgebraDiagnosticV1::IllFormedAggregate {
-                reason: IllFormedAggregateReasonV1::NestedAggregate,
-                span: item.value.span,
-            });
-        }
-    }
-
-    // Output columns are exactly the keys, with alias-aware Source provenance.
-    let columns: Vec<ColumnV1> = keys_project
-        .items()
-        .iter()
-        .map(|item| key_column(item, ctx))
-        .collect();
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        columns,
-        CardinalityV1::Set,
-        AlgebraOpV1::Group(GroupV1 {
-            input: Box::new(input),
-            keys: keys_project
-                .items()
-                .iter()
-                .map(|item| item.value.clone())
-                .collect(),
-        }),
-    ))
-}
-
-/// Lower an `order_by` composition into an explicit [`AlgebraOpV1::Sort`].
-///
-/// The surface emits `Compose("order_by", [input, keys])` where `keys` is a
-/// `Project` whose items carry the sort-key value expressions over a synthetic
-/// `_keys` placeholder source (the surface cannot bind the real producer), and
-/// each item's ALIAS folds the sort direction as the open tag `asc`/`desc`.
-/// The algebra is the closed authority that decodes that structure-only carrier
-/// into a Sort: the placeholder is discarded, the keys order over the REAL
-/// `input`, and the direction tag is decoded (defaulting to ascending). Sort
-/// makes order semantic, so the output schema is the input's and the
-/// cardinality becomes a Sequence (`D24`). Mirrors [`binary_group`], but lowers
-/// to Sort rather than Group.
-fn binary_order(
-    node: &RelationExprHirV1,
-    compose: &CompositionV1,
-    ctx: &Ctx<'_>,
-) -> NormalizeResultV1 {
-    let (input_hir, keys_hir) = two_operands(node, compose)?;
-    let input = normalize_node(input_hir, ctx)?;
-
-    // The keys operand is the synthetic Project carrying the sort-key items;
-    // anything else is a malformed carrier with no algebra lowering.
-    let RelationExprKindV1::Project(keys_project) = &keys_hir.kind else {
-        return Err(AlgebraDiagnosticV1::UnsupportedComposition {
-            symbol: compose.op.symbol.clone(),
-            span: node.span,
-        });
-    };
-    // An `order by` with no keys imposes no order at all.
-    if keys_project.items().is_empty() {
-        return Err(AlgebraDiagnosticV1::UnsupportedComposition {
-            symbol: compose.op.symbol.clone(),
-            span: node.span,
-        });
-    }
-
-    // Decode each key: the value expression is carried verbatim and the
-    // direction is read off the item alias (`asc`/`desc`), ascending by default.
-    let keys: Vec<SortKeyV1> = keys_project
-        .items()
-        .iter()
-        .map(|item| SortKeyV1 {
-            expr: item.value.clone(),
-            direction: sort_direction_of(item),
-        })
-        .collect();
-
-    // Sort preserves the input schema exactly and makes order semantic.
-    let columns = input.columns.clone();
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        columns,
-        CardinalityV1::Sequence,
-        AlgebraOpV1::Sort(SortV1 {
-            input: Box::new(input),
-            keys,
-        }),
-    ))
-}
-
-/// Decode the sort direction folded into a key item's alias by the surface.
-/// The alias is an open tag: `desc` means descending, everything else (incl.
-/// the absent alias and `asc`) is ascending.
-fn sort_direction_of(item: &ProjectionItemV1) -> crate::node::SortDirectionV1 {
-    match item.alias.as_ref().map(|a| a.name.as_str()) {
-        Some("desc") => crate::node::SortDirectionV1::Descending,
-        _ => crate::node::SortDirectionV1::Ascending,
-    }
-}
-
-fn unary_sort(
-    node: &RelationExprHirV1,
-    compose: &CompositionV1,
-    ctx: &Ctx<'_>,
-) -> NormalizeResultV1 {
-    let only = one_operand(node, compose)?;
-    let input = normalize_node(only, ctx)?;
-    // Sort makes order semantic: output becomes a Sequence, multiplicity kept.
-    let columns = input.columns.clone();
-    // Sort keys: project items of an inner Project are reused as keys, else the
-    // input's columns are the keys. Direction defaults to ascending; descending
-    // is signalled by a unary `-` on the key (structure-only convention).
-    let keys: Vec<SortKeyV1> = sort_keys_from(&input);
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        columns,
-        CardinalityV1::Sequence,
-        AlgebraOpV1::Sort(SortV1 {
-            input: Box::new(input),
-            keys,
-        }),
-    ))
-}
-
-fn unary_limit(
-    node: &RelationExprHirV1,
-    compose: &CompositionV1,
-    ctx: &Ctx<'_>,
-) -> NormalizeResultV1 {
-    let only = one_operand(node, compose)?;
-    let input = normalize_node(only, ctx)?;
-    // Limit requires an ordered input for a deterministic kept-set; reject a
-    // bag/set limit rather than silently producing non-deterministic rows.
-    if input.cardinality != CardinalityV1::Sequence {
-        return Err(AlgebraDiagnosticV1::UnorderedLimit { span: node.span });
-    }
-    let columns = input.columns.clone();
-    // The window is a caller sidecar (`D24`): the structure-only HIR carries no
-    // count/offset. Absent a supplied window, keep everything from offset zero.
-    let (count, offset) = ctx.options.limit_window.unwrap_or((u64::MAX, 0));
-    Ok(AlgebraNodeV1::new(
-        node.id,
-        node.span,
-        columns,
-        CardinalityV1::Sequence,
-        AlgebraOpV1::Limit(LimitV1 {
-            input: Box::new(input),
-            count,
-            offset,
-        }),
-    ))
-}
-
-// ---- helpers --------------------------------------------------------------
-
-/// A borrowed projection item, kept distinct so key/aggregate vectors do not
-/// own clones until the column schema is built.
-struct ProjItem<'a>(&'a ProjectionItemV1);
-
-enum ItemClass {
-    Key,
-    Aggregate,
-}
-
-fn classify_item(
-    item: &ProjectionItemV1,
-    options: &NormalizeOptionsV1,
-) -> Result<ItemClass, AlgebraDiagnosticV1> {
-    if is_aggregate_call(&item.value, options) {
-        Ok(ItemClass::Aggregate)
-    } else if contains_aggregate(&item.value, options) {
-        // An aggregate nested inside a larger expression cannot be split into a
-        // clean Group/Aggregate boundary.
-        Err(AlgebraDiagnosticV1::IllFormedAggregate {
-            reason: IllFormedAggregateReasonV1::NestedAggregate,
-            span: item.value.span,
-        })
-    } else {
-        Ok(ItemClass::Key)
-    }
-}
-
-fn is_aggregate_call(value: &ValueExprHirV1, options: &NormalizeOptionsV1) -> bool {
-    matches!(&value.kind, ValueExprKindV1::Call(call) if options.is_aggregate(&call.callee.name))
-}
-
-fn contains_aggregate(value: &ValueExprHirV1, options: &NormalizeOptionsV1) -> bool {
-    match &value.kind {
-        ValueExprKindV1::Literal(_) | ValueExprKindV1::Symbol(_) => false,
-        ValueExprKindV1::Path(path) => contains_aggregate(&path.base, options),
-        ValueExprKindV1::Unary(u) => contains_aggregate(&u.operand, options),
-        ValueExprKindV1::Binary(b) => {
-            contains_aggregate(&b.lhs, options) || contains_aggregate(&b.rhs, options)
-        }
-        ValueExprKindV1::Call(call) => {
-            options.is_aggregate(&call.callee.name)
-                || call.args().as_slice().iter().any(|arg| match arg {
-                    CallArgHirV1::Expr(value) => contains_aggregate(value, options),
-                    CallArgHirV1::Star { .. } => false,
-                })
-        }
-        ValueExprKindV1::Paren(inner) => contains_aggregate(inner, options),
-        ValueExprKindV1::Record(record) => record
-            .fields
-            .iter()
-            .any(|f| contains_aggregate(&f.value, options)),
-        ValueExprKindV1::List(list) => list.elements.iter().any(|e| contains_aggregate(e, options)),
-    }
-}
-
-fn aggregate_expr(
-    item: &ProjectionItemV1,
-    options: &NormalizeOptionsV1,
-) -> Result<AggregateExprV1, AlgebraDiagnosticV1> {
-    let ValueExprKindV1::Call(call) = &item.value.kind else {
-        return Err(AlgebraDiagnosticV1::IllFormedAggregate {
-            reason: IllFormedAggregateReasonV1::NestedAggregate,
-            span: item.value.span,
-        });
-    };
-    // Detect a `distinct(x)` marker arg to make duplicate-elimination explicit.
-    let mut distinct = false;
-    let mut args: Vec<ValueExprHirV1> = Vec::new();
-    for arg in call.args().as_slice() {
-        if let CallArgHirV1::Expr(value) = arg {
-            if let (Some(marker), ValueExprKindV1::Call(inner)) =
-                (options.distinct_marker.as_deref(), &value.kind)
-            {
-                if inner.callee.name == marker {
-                    distinct = true;
-                    args.extend(inner.args().as_slice().iter().filter_map(|arg| match arg {
-                        CallArgHirV1::Expr(value) => Some(value.clone()),
-                        CallArgHirV1::Star { .. } => None,
-                    }));
-                    continue;
+/// Lower a relation root with iterative frames charged from the document's
+/// budget receipt: every relation stage visit charges one
+/// `max_semantic_steps` step before it is visited, and every expression node
+/// visited by the predicate walks charges one `max_expression_nodes` node
+/// before it is visited. Exact budgets succeed; one visit beyond the cap
+/// rejects at the checked location of the stage or expression being visited.
+fn lower_root(
+    document: &SemanticDocumentV2,
+    item_id: SemanticItemIdV2,
+    root: &TypedRelationExprV2,
+    receipt: DownstreamBudgetReceiptV2,
+) -> Result<CheckedAlgebraNodeV2, AlgebraDiagnosticV2> {
+    let mut steps = receipt.max_semantic_steps();
+    let mut expression_nodes = receipt.max_expression_nodes();
+    let mut stack: Vec<Frame<'_>> = vec![Frame::Visit(Visit(root))];
+    let mut results: Vec<CheckedAlgebraNodeV2> = Vec::new();
+    while let Some(frame) = stack.pop() {
+        match frame {
+            Frame::Visit(Visit(stage)) => {
+                if steps == 0 {
+                    return Err(failure(
+                        AlgebraFailureKindV2::TraversalBudgetExceeded,
+                        stage.location(),
+                        "relation lowering exceeded the document's max_semantic_steps budget",
+                    ));
+                }
+                steps -= 1;
+                let location = stage.location();
+                if stage.key().source_id != document.source_id()
+                    || location.location().source_id != document.source_id()
+                {
+                    return Err(failure(
+                        AlgebraFailureKindV2::ForeignSemanticFact,
+                        location,
+                        "relation stage belongs to another semantic document",
+                    ));
+                }
+                match stage {
+                    TypedRelationExprV2::Scan(_) => {
+                        stack.push(Frame::Finish(Finish {
+                            stage,
+                            plan: StagePlan::Scan,
+                        }));
+                    }
+                    TypedRelationExprV2::Filter(_) => {
+                        let input = one_input(stage)?;
+                        let Some(predicate) = stage.predicate().cloned() else {
+                            return Err(failure(
+                                AlgebraFailureKindV2::InvalidStageContract,
+                                location,
+                                "filter stage has no typed predicate",
+                            ));
+                        };
+                        let (exists, ordinary) =
+                            decompose_predicate(document, predicate, &mut expression_nodes)?;
+                        let mut nested: Vec<&TypedRelationExprV2> =
+                            exists.iter().map(|leaf| leaf.right).collect();
+                        stack.push(Frame::Finish(Finish {
+                            stage,
+                            plan: StagePlan::Filter { exists, ordinary },
+                        }));
+                        for right in nested.drain(..).rev() {
+                            stack.push(Frame::Visit(Visit(right)));
+                        }
+                        stack.push(Frame::Visit(Visit(input)));
+                    }
+                    TypedRelationExprV2::Project(_) => {
+                        let input = one_input(stage)?;
+                        stack.push(Frame::Finish(Finish {
+                            stage,
+                            plan: StagePlan::Project,
+                        }));
+                        stack.push(Frame::Visit(Visit(input)));
+                    }
+                    TypedRelationExprV2::Join(_) => {
+                        let (left, right) = two_inputs(stage)?;
+                        stack.push(Frame::Finish(Finish {
+                            stage,
+                            plan: StagePlan::Join,
+                        }));
+                        stack.push(Frame::Visit(Visit(right)));
+                        stack.push(Frame::Visit(Visit(left)));
+                    }
+                    TypedRelationExprV2::Group(_) => {
+                        let input = one_input(stage)?;
+                        stack.push(Frame::Finish(Finish {
+                            stage,
+                            plan: StagePlan::Group,
+                        }));
+                        stack.push(Frame::Visit(Visit(input)));
+                    }
+                    TypedRelationExprV2::Sort(_) => {
+                        let input = one_input(stage)?;
+                        stack.push(Frame::Finish(Finish {
+                            stage,
+                            plan: StagePlan::Sort,
+                        }));
+                        stack.push(Frame::Visit(Visit(input)));
+                    }
                 }
             }
-            args.push(value.clone());
+            Frame::Finish(Finish { stage, plan }) => {
+                let node = assemble(document, item_id, stage, plan, &mut results)?;
+                results.push(node);
+            }
         }
     }
-    Ok(AggregateExprV1 {
-        function: call.callee.name.clone(),
-        origin: item.value.id,
-        args,
-        distinct,
+    results.pop().ok_or_else(|| {
+        AlgebraDiagnosticV2::new(
+            AlgebraFailureKindV2::InvalidStageContract,
+            None,
+            "relation lowering did not produce exactly one root",
+        )
     })
 }
 
-fn key_column(item: &ProjectionItemV1, ctx: &Ctx<'_>) -> ColumnV1 {
-    let name = alias_or_value_name(item);
-    let provenance = source_provenance(&item.value, ctx).unwrap_or(ColumnProvenanceV1::Derived {
-        origin: item.value.id,
-    });
-    ColumnV1::new(name, provenance)
+enum Frame<'a> {
+    Visit(Visit<'a>),
+    Finish(Finish<'a>),
 }
 
-fn project_column(item: &ProjectionItemV1, ctx: &Ctx<'_>) -> ColumnV1 {
-    // A projection item whose value is a path off an alias carries Source
-    // provenance so alias-aware field resolution is preserved; everything else
-    // is Derived.
-    let name = alias_or_value_name(item);
-    let provenance = source_provenance(&item.value, ctx).unwrap_or(ColumnProvenanceV1::Derived {
-        origin: item.value.id,
-    });
-    ColumnV1::new(name, provenance)
-}
-
-/// If the value is `alias.field` (a path rooted at a bare symbol), produce
-/// Source provenance preserving the alias and resolving the alias back to its
-/// underlying RELATION through the alias scope (D3 alias-aware resolution), so
-/// the column knows which source it came from rather than just its alias.
-fn source_provenance(value: &ValueExprHirV1, ctx: &Ctx<'_>) -> Option<ColumnProvenanceV1> {
-    if let ValueExprKindV1::Path(path) = &value.kind {
-        if let ValueExprKindV1::Symbol(symbol) = &path.base.kind {
-            let field = path.segments.last().map(|s| s.name.clone());
-            let alias = ctx
-                .aliases
-                .contains_key(&symbol.name)
-                .then(|| symbol.name.clone());
-            return Some(ColumnProvenanceV1::Source {
-                relation: ctx.relation_of(&symbol.name),
-                alias,
-                field,
+/// Assemble one node from a finished stage, consuming exactly the child
+/// results this stage's plan lowered.
+fn assemble(
+    document: &SemanticDocumentV2,
+    item_id: SemanticItemIdV2,
+    stage: &TypedRelationExprV2,
+    plan: StagePlan<'_>,
+    results: &mut Vec<CheckedAlgebraNodeV2>,
+) -> Result<CheckedAlgebraNodeV2, AlgebraDiagnosticV2> {
+    let location = stage.location();
+    let output = stage.output().clone();
+    match plan {
+        StagePlan::Scan => {
+            let Some(source) = stage.source().cloned() else {
+                return Err(failure(
+                    AlgebraFailureKindV2::InvalidStageContract,
+                    location,
+                    "scan stage has no resolved source",
+                ));
+            };
+            CheckedAlgebraNodeV2::new(
+                item_id,
+                stage.key(),
+                location.clone(),
+                output,
+                CheckedAlgebraNodeV2::scan(source),
+            )
+            .map_err(|()| {
+                failure(
+                    AlgebraFailureKindV2::InvalidStageContract,
+                    location,
+                    "scan stage cannot form a checked algebra node",
+                )
+            })
+        }
+        StagePlan::Filter { exists, ordinary } => {
+            let take = 1 + exists.len();
+            if results.len() < take {
+                return Err(invalid_arity(location));
+            }
+            let mut drained: Vec<CheckedAlgebraNodeV2> =
+                results.drain(results.len() - take..).collect();
+            // The lowered children arrive in stable authored order: the
+            // filtered input first, then each EXISTS nested root.
+            let mut chain = drained.remove(0);
+            for (leaf, right) in exists.into_iter().zip(drained) {
+                let op = match leaf.polarity {
+                    RelationExistsPolarityV2::Exists => {
+                        CheckedAlgebraNodeV2::semi_join(chain, right, leaf.correlations)
+                    }
+                    RelationExistsPolarityV2::NotExists => {
+                        CheckedAlgebraNodeV2::anti_join(chain, right, leaf.correlations)
+                    }
+                };
+                chain = CheckedAlgebraNodeV2::new(
+                    item_id,
+                    leaf.expression.key(),
+                    leaf.expression.location().clone(),
+                    output.clone(),
+                    op,
+                )
+                .map_err(|()| {
+                    failure(
+                        AlgebraFailureKindV2::InvalidStageContract,
+                        leaf.expression.location(),
+                        "relational EXISTS cannot form a checked algebra join",
+                    )
+                })?;
+            }
+            if !ordinary.is_empty() {
+                let op = CheckedAlgebraNodeV2::filter(chain, ordinary);
+                return CheckedAlgebraNodeV2::new(
+                    item_id,
+                    stage.key(),
+                    location.clone(),
+                    output,
+                    op,
+                )
+                .map_err(|()| {
+                    failure(
+                        AlgebraFailureKindV2::InvalidStageContract,
+                        location,
+                        "filter stage cannot form a checked algebra node",
+                    )
+                });
+            }
+            // A pure relational EXISTS predicate: the deepest Semi/Anti join
+            // is the stage root and no residual Filter node exists.
+            Ok(chain)
+        }
+        StagePlan::Project => {
+            let expressions = checked_expressions(document, stage.expressions(), location)?;
+            let input = take_one(results, location)?;
+            let aggregate = expressions.iter().any(|expression| {
+                expression.aggregate_context().aggregation() == AggregationClassV1::Aggregate
             });
-        }
-    }
-    None
-}
-
-fn alias_or_value_name(item: &ProjectionItemV1) -> String {
-    if let Some(alias) = &item.alias {
-        return alias.name.clone();
-    }
-    value_default_name(&item.value)
-}
-
-fn alias_or_default(item: &ProjectionItemV1, default: &str) -> String {
-    item.alias
-        .as_ref()
-        .map_or_else(|| default.to_owned(), |a| a.name.clone())
-}
-
-fn value_default_name(value: &ValueExprHirV1) -> String {
-    match &value.kind {
-        ValueExprKindV1::Symbol(symbol) => symbol.name.clone(),
-        ValueExprKindV1::Path(path) => path
-            .segments
-            .last()
-            .map_or_else(|| "col".to_owned(), |s| s.name.clone()),
-        ValueExprKindV1::Literal(_)
-        | ValueExprKindV1::Unary(_)
-        | ValueExprKindV1::Binary(_)
-        | ValueExprKindV1::Call(_)
-        | ValueExprKindV1::Paren(_)
-        | ValueExprKindV1::Record(_)
-        | ValueExprKindV1::List(_) => "col".to_owned(),
-    }
-}
-
-/// For each OUTPUT column of `relation` (in output order), the outer symbol its
-/// defining value references, if any. The result aligns positionally with the
-/// normalized node's `columns`, so a renamed inner projection (`project { x: u }`)
-/// is recognised as deriving from outer `u` even though its output name is `x`.
-///
-/// `referenced` is the set of outer names that are genuine outer references
-/// (local source bindings already filtered out by the caller), so a value's
-/// reference only counts when it is in that set.
-fn output_column_outer_refs(
-    relation: &RelationExprHirV1,
-    referenced: &BTreeSet<String>,
-) -> Vec<Option<String>> {
-    match &relation.kind {
-        // A scan binds its own row locally; its single output column never
-        // references the outer side.
-        RelationExprKindV1::Source(_) => vec![None],
-        // Filter preserves the input schema and ordering exactly.
-        RelationExprKindV1::Filter(filter) => output_column_outer_refs(&filter.input, referenced),
-        // Each projection item is one output column, in order. The column derives
-        // from an outer symbol when its value references one.
-        RelationExprKindV1::Project(project) => project
-            .items()
-            .iter()
-            .map(|item| value_outer_ref(&item.value, referenced))
-            .collect(),
-        RelationExprKindV1::Join(_) => Vec::new(),
-        RelationExprKindV1::GroupBy(group) => group
-            .keys()
-            .iter()
-            .map(|key| value_outer_ref(key, referenced))
-            .collect(),
-        RelationExprKindV1::OrderBy(order) => output_column_outer_refs(&order.input, referenced),
-    }
-}
-
-/// The outer symbol a value expression references, if exactly one outer-referenced
-/// symbol appears in it. Returns the lexicographically-first match for stability.
-fn value_outer_ref(value: &ValueExprHirV1, referenced: &BTreeSet<String>) -> Option<String> {
-    let mut symbols = BTreeSet::new();
-    collect_value_symbols(value, &mut symbols);
-    symbols.into_iter().find(|name| referenced.contains(name))
-}
-
-/// Collect every bare symbol name referenced anywhere in a relation subtree.
-/// Used to derive visible correlation columns for an Apply.
-fn referenced_symbols(relation: &RelationExprHirV1) -> BTreeSet<String> {
-    let mut acc = BTreeSet::new();
-    collect_relation_symbols(relation, &mut acc);
-    acc
-}
-
-fn collect_relation_symbols(relation: &RelationExprHirV1, acc: &mut BTreeSet<String>) {
-    match &relation.kind {
-        RelationExprKindV1::Source(_) => {}
-        RelationExprKindV1::Project(project) => {
-            collect_relation_symbols(&project.input, acc);
-            for item in project.items() {
-                collect_value_symbols(&item.value, acc);
+            if aggregate {
+                if input.family() != AlgebraFamilyV2::Group {
+                    return Err(failure(
+                        AlgebraFailureKindV2::AggregateWithoutGroup,
+                        location,
+                        "aggregate projection must directly follow a checked Group stage",
+                    ));
+                }
+                CheckedAlgebraNodeV2::new(
+                    item_id,
+                    stage.key(),
+                    location.clone(),
+                    output,
+                    CheckedAlgebraNodeV2::aggregate(input, expressions),
+                )
+            } else {
+                CheckedAlgebraNodeV2::new(
+                    item_id,
+                    stage.key(),
+                    location.clone(),
+                    output,
+                    CheckedAlgebraNodeV2::project(input, expressions),
+                )
             }
+            .map_err(|()| {
+                failure(
+                    AlgebraFailureKindV2::InvalidStageContract,
+                    location,
+                    "projection stage cannot form a checked algebra node",
+                )
+            })
         }
-        RelationExprKindV1::Filter(filter) => {
-            collect_relation_symbols(&filter.input, acc);
-            collect_bool_symbols(&filter.predicate, acc);
-        }
-        RelationExprKindV1::Join(join) => match join {
-            JoinHirV1::Inner { left, right, on } => {
-                collect_relation_symbols(left, acc);
-                collect_relation_symbols(right, acc);
-                collect_bool_symbols(on, acc);
+        StagePlan::Join => {
+            if results.len() < 2 {
+                return Err(invalid_arity(location));
             }
-            JoinHirV1::Cross { left, right } => {
-                collect_relation_symbols(left, acc);
-                collect_relation_symbols(right, acc);
-            }
-        },
-        RelationExprKindV1::GroupBy(group) => {
-            collect_relation_symbols(&group.input, acc);
-            for key in group.keys() {
-                collect_value_symbols(key, acc);
-            }
-        }
-        RelationExprKindV1::OrderBy(order) => {
-            collect_relation_symbols(&order.input, acc);
-            for key in order.keys() {
-                collect_value_symbols(&key.value, acc);
-            }
-        }
-    }
-}
-
-fn collect_bool_symbols(node: &quanta_gqlang_v2_hir::BoolExprHirV1, acc: &mut BTreeSet<String>) {
-    use quanta_gqlang_v2_hir::BoolExprKindV1;
-    match &node.kind {
-        BoolExprKindV1::Literal(_) => {}
-        BoolExprKindV1::Value(value) => collect_value_symbols(value, acc),
-        BoolExprKindV1::Compare(compare) => {
-            collect_value_symbols(&compare.lhs, acc);
-            collect_value_symbols(&compare.rhs, acc);
-        }
-        BoolExprKindV1::And(bin) | BoolExprKindV1::Or(bin) => {
-            collect_bool_symbols(&bin.lhs, acc);
-            collect_bool_symbols(&bin.rhs, acc);
-        }
-        BoolExprKindV1::Not(inner) | BoolExprKindV1::Paren(inner) => {
-            collect_bool_symbols(inner, acc);
-        }
-        BoolExprKindV1::LogicalQuantifier(quant) => {
-            // The quantifier binds its own variable names; references to them
-            // inside the body resolve to those LOCAL binders, not to any outer
-            // column of the same name. Collect the body's symbols into a scratch
-            // set, drop the binder names, and only then merge the genuinely free
-            // symbols into `acc`. Folding the binders in directly would let a
-            // coincidental name collision fabricate a spurious Apply correlation.
-            let mut body_symbols = BTreeSet::new();
-            collect_bool_symbols(&quant.body, &mut body_symbols);
-            for binder in quant.binders.as_slice() {
-                let _ = body_symbols.remove(&binder.name);
-            }
-            acc.extend(body_symbols);
-        }
-        BoolExprKindV1::RelationExists(exists) => {
-            collect_relation_symbols(&exists.relation, acc);
-        }
-    }
-}
-
-fn collect_value_symbols(value: &ValueExprHirV1, acc: &mut BTreeSet<String>) {
-    match &value.kind {
-        ValueExprKindV1::Literal(_) => {}
-        ValueExprKindV1::Symbol(symbol) => {
-            let _ = acc.insert(symbol.name.clone());
-        }
-        ValueExprKindV1::Path(path) => collect_value_symbols(&path.base, acc),
-        ValueExprKindV1::Unary(u) => collect_value_symbols(&u.operand, acc),
-        ValueExprKindV1::Binary(b) => {
-            collect_value_symbols(&b.lhs, acc);
-            collect_value_symbols(&b.rhs, acc);
-        }
-        ValueExprKindV1::Call(call) => {
-            for arg in call.args().as_slice() {
-                if let CallArgHirV1::Expr(value) = arg {
-                    collect_value_symbols(value, acc);
+            let mut drained: Vec<CheckedAlgebraNodeV2> =
+                results.drain(results.len() - 2..).collect();
+            let Some(right) = drained.pop() else {
+                return Err(invalid_arity(location));
+            };
+            let Some(left) = drained.pop() else {
+                return Err(invalid_arity(location));
+            };
+            let Some(mode) = stage.join_mode() else {
+                return Err(failure(
+                    AlgebraFailureKindV2::InvalidStageContract,
+                    location,
+                    "join stage has no checked join mode",
+                ));
+            };
+            let predicate = stage.predicate().cloned();
+            match (mode, predicate.is_some()) {
+                (JoinModeV2::Inner, true) | (JoinModeV2::Cross, false) => {}
+                _ => {
+                    return Err(failure(
+                        AlgebraFailureKindV2::InvalidStageContract,
+                        location,
+                        "join mode and predicate disagree",
+                    ));
                 }
             }
+            CheckedAlgebraNodeV2::new(
+                item_id,
+                stage.key(),
+                location.clone(),
+                output,
+                CheckedAlgebraNodeV2::join(left, right, mode, predicate),
+            )
+            .map_err(|()| {
+                failure(
+                    AlgebraFailureKindV2::InvalidStageContract,
+                    location,
+                    "join stage cannot form a checked algebra node",
+                )
+            })
         }
-        ValueExprKindV1::Paren(inner) => collect_value_symbols(inner, acc),
-        ValueExprKindV1::Record(record) => {
-            for field in &record.fields {
-                collect_value_symbols(&field.value, acc);
-            }
+        StagePlan::Group => {
+            let keys = checked_expressions(document, stage.expressions(), location)?;
+            let input = take_one(results, location)?;
+            CheckedAlgebraNodeV2::new(
+                item_id,
+                stage.key(),
+                location.clone(),
+                output,
+                CheckedAlgebraNodeV2::group(input, keys, stage.partition_input().to_vec()),
+            )
+            .map_err(|()| {
+                failure(
+                    AlgebraFailureKindV2::InvalidStageContract,
+                    location,
+                    "group stage cannot form a checked algebra node",
+                )
+            })
         }
-        ValueExprKindV1::List(list) => {
-            for element in &list.elements {
-                collect_value_symbols(element, acc);
+        StagePlan::Sort => {
+            let expressions = checked_expressions(document, stage.expressions(), location)?;
+            let input = take_one(results, location)?;
+            let keys = output.ordering().to_vec();
+            if expressions.len() != keys.len()
+                || expressions
+                    .iter()
+                    .zip(&keys)
+                    .any(|(expression, key)| expression.key() != key.expression())
+            {
+                return Err(failure(
+                    AlgebraFailureKindV2::InvalidStageContract,
+                    location,
+                    "sort expressions differ from the sealed order contract",
+                ));
             }
+            CheckedAlgebraNodeV2::new(
+                item_id,
+                stage.key(),
+                location.clone(),
+                output,
+                CheckedAlgebraNodeV2::sort(input, keys),
+            )
+            .map_err(|()| {
+                failure(
+                    AlgebraFailureKindV2::InvalidStageContract,
+                    location,
+                    "sort stage cannot form a checked algebra node",
+                )
+            })
         }
     }
 }
 
-/// Build sort keys from an already-normalized input. Each output column becomes
-/// an ascending key; the algebra carries explicit keys rather than relying on a
-/// rendering layer to re-derive order (D24).
-fn sort_keys_from(input: &AlgebraNodeV1) -> Vec<SortKeyV1> {
-    input
-        .columns
-        .iter()
-        .map(|col| SortKeyV1 {
-            expr: ValueExprHirV1::new(
-                input.origin,
-                input.span,
-                ValueExprKindV1::Symbol(quanta_gqlang_v2_hir::SymbolRefV1 {
-                    name: col.name.clone(),
-                }),
-            ),
-            direction: crate::node::SortDirectionV1::Ascending,
+/// Decompose one checked Bool predicate into its top-level conjunction, in
+/// stable authored left-to-right order.
+///
+/// A relational EXISTS leaf becomes a validated Semi/Anti candidate; an
+/// ordinary leaf must be free of nested EXISTS below OR/NOT/call/record/
+/// list/quantifier shapes and is retained as the residual Filter's ordinary
+/// conjunction. Every visited expression node charges the shared
+/// `max_expression_nodes` ledger before it is visited, and every EXISTS-side
+/// fact (nested root, duplicate-free capture set, same-document references)
+/// is validated before any node is constructed.
+fn decompose_predicate<'a>(
+    document: &'a SemanticDocumentV2,
+    predicate: TypedBoolExprV2,
+    expression_nodes: &mut u32,
+) -> Result<(Vec<ExistsLeaf<'a>>, Vec<TypedBoolExprV2>), AlgebraDiagnosticV2> {
+    let root_key = predicate.expression().key();
+    let root =
+        required_expression_by_key(document, root_key, Some(predicate.expression().location()))?;
+    let mut work: Vec<&'a TypedExprV2> = vec![root];
+    let mut exists = Vec::new();
+    let mut ordinary = Vec::new();
+    while let Some(expression) = work.pop() {
+        if *expression_nodes == 0 {
+            return Err(failure(
+                AlgebraFailureKindV2::TraversalBudgetExceeded,
+                expression.location(),
+                "predicate traversal exceeded the document's max_expression_nodes budget",
+            ));
+        }
+        *expression_nodes -= 1;
+        match expression.shape() {
+            TypedExprShapeV2::And { lhs, rhs, .. } => {
+                let left = required_expression(document, *lhs, expression.location())?;
+                let right = required_expression(document, *rhs, expression.location())?;
+                work.push(right);
+                work.push(left);
+            }
+            TypedExprShapeV2::RelationExists { .. } => {
+                exists.push(exists_leaf(document, expression)?);
+            }
+            // Every other shape is an ordinary conjunct leaf; it may keep the
+            // residual Filter only when no relational EXISTS hides below it.
+            TypedExprShapeV2::Literal(_)
+            | TypedExprShapeV2::Binding(_)
+            | TypedExprShapeV2::Path { .. }
+            | TypedExprShapeV2::Unary { .. }
+            | TypedExprShapeV2::Binary { .. }
+            | TypedExprShapeV2::Call { .. }
+            | TypedExprShapeV2::Paren { .. }
+            | TypedExprShapeV2::Record(_)
+            | TypedExprShapeV2::List(_)
+            | TypedExprShapeV2::BoolValue { .. }
+            | TypedExprShapeV2::Compare { .. }
+            | TypedExprShapeV2::Or { .. }
+            | TypedExprShapeV2::Not { .. }
+            | TypedExprShapeV2::LogicalQuantifier { .. } => {
+                reject_nested_exists(document, expression, expression_nodes)?;
+                let carrier = if expression.key() == root_key {
+                    predicate.clone()
+                } else {
+                    TypedBoolExprV2::try_new(expression.clone(), expression.location().location())
+                        .map_err(|_failure| {
+                        failure(
+                            AlgebraFailureKindV2::InvalidStageContract,
+                            expression.location(),
+                            "filter conjunct is not a checked Bool fact",
+                        )
+                    })?
+                };
+                ordinary.push(carrier);
+            }
+        }
+    }
+    if exists.is_empty() && ordinary.is_empty() {
+        return Err(failure(
+            AlgebraFailureKindV2::InvalidStageContract,
+            root.location(),
+            "filter predicate decomposed into no conjuncts",
+        ));
+    }
+    Ok((exists, ordinary))
+}
+
+/// Validate one relational EXISTS leaf against the document before any node
+/// construction: the exact nested root must be present, the capture set must
+/// be duplicate-free, and every correlation reference and binding must
+/// belong to this document.
+fn exists_leaf<'a>(
+    document: &'a SemanticDocumentV2,
+    expression: &'a TypedExprV2,
+) -> Result<ExistsLeaf<'a>, AlgebraDiagnosticV2> {
+    let TypedExprShapeV2::RelationExists {
+        polarity,
+        relation_root,
+        correlations,
+    } = expression.shape()
+    else {
+        return Err(failure(
+            AlgebraFailureKindV2::InvalidStageContract,
+            expression.location(),
+            "relation-exists collector returned a non-EXISTS leaf",
+        ));
+    };
+    let Some(right) = document.nested_relation(*relation_root) else {
+        return Err(failure(
+            AlgebraFailureKindV2::MissingNestedRelation,
+            expression.location(),
+            "relational EXISTS root is absent from the semantic document",
+        ));
+    };
+    let correlations = CorrelationSetV2::try_new(correlations.clone()).map_err(|()| {
+        failure(
+            AlgebraFailureKindV2::DuplicateCorrelationReference,
+            expression.location(),
+            "relational EXISTS has a duplicate capture reference",
+        )
+    })?;
+    if correlations.iter().any(|edge| {
+        edge.reference().source_id != document.source_id()
+            || document.expression(edge.reference()).is_none()
+            || edge.binding().source_id() != document.source_id()
+    }) {
+        return Err(failure(
+            AlgebraFailureKindV2::ForeignSemanticFact,
+            expression.location(),
+            "relational EXISTS correlation is absent or foreign",
+        ));
+    }
+    Ok(ExistsLeaf {
+        expression,
+        polarity: *polarity,
+        right,
+        correlations,
+    })
+}
+
+/// Reject a relational EXISTS anywhere below one ordinary conjunct leaf.
+/// The descendant search is iterative and charges the shared
+/// `max_expression_nodes` ledger before every visited node.
+fn reject_nested_exists(
+    document: &SemanticDocumentV2,
+    leaf: &TypedExprV2,
+    expression_nodes: &mut u32,
+) -> Result<(), AlgebraDiagnosticV2> {
+    let mut stack = vec![leaf.key()];
+    let mut visited: BTreeSet<SourceQualifiedNodeIdV2> = BTreeSet::new();
+    while let Some(key) = stack.pop() {
+        if !visited.insert(key) {
+            continue;
+        }
+        let expression = required_expression_by_key(document, key, Some(leaf.location()))?;
+        if *expression_nodes == 0 {
+            return Err(failure(
+                AlgebraFailureKindV2::TraversalBudgetExceeded,
+                expression.location(),
+                "predicate traversal exceeded the document's max_expression_nodes budget",
+            ));
+        }
+        *expression_nodes -= 1;
+        if matches!(expression.shape(), TypedExprShapeV2::RelationExists { .. }) {
+            return Err(failure(
+                AlgebraFailureKindV2::InvalidStageContract,
+                expression.location(),
+                "relational EXISTS must appear as a predicate conjunct",
+            ));
+        }
+        stack.extend(expression_children(expression.shape()));
+    }
+    Ok(())
+}
+
+fn expression_children(shape: &TypedExprShapeV2) -> Vec<SourceQualifiedNodeIdV2> {
+    match shape {
+        TypedExprShapeV2::Literal(_)
+        | TypedExprShapeV2::Binding(_)
+        | TypedExprShapeV2::RelationExists { .. } => Vec::new(),
+        TypedExprShapeV2::Path { base, .. }
+        | TypedExprShapeV2::Unary { operand: base, .. }
+        | TypedExprShapeV2::Paren { inner: base }
+        | TypedExprShapeV2::BoolValue { value: base }
+        | TypedExprShapeV2::Not { operand: base, .. }
+        | TypedExprShapeV2::LogicalQuantifier { body: base, .. } => vec![*base],
+        TypedExprShapeV2::Binary { lhs, rhs, .. }
+        | TypedExprShapeV2::Compare { lhs, rhs, .. }
+        | TypedExprShapeV2::And { lhs, rhs, .. }
+        | TypedExprShapeV2::Or { lhs, rhs, .. } => vec![*lhs, *rhs],
+        TypedExprShapeV2::Call { arguments, .. } => arguments
+            .iter()
+            .filter_map(|argument| match argument {
+                quanta_gqlang_v2_sema::TypedCallArgumentV2::Expression(key) => Some(*key),
+                quanta_gqlang_v2_sema::TypedCallArgumentV2::Star => None,
+            })
+            .collect(),
+        TypedExprShapeV2::Record(fields) => fields.iter().map(|field| field.value()).collect(),
+        TypedExprShapeV2::List(items) => items.clone(),
+    }
+}
+
+fn take_one(
+    results: &mut Vec<CheckedAlgebraNodeV2>,
+    location: &CheckedLocatedSpanV2,
+) -> Result<CheckedAlgebraNodeV2, AlgebraDiagnosticV2> {
+    results.pop().ok_or_else(|| invalid_arity(location))
+}
+
+fn one_input(stage: &TypedRelationExprV2) -> Result<&TypedRelationExprV2, AlgebraDiagnosticV2> {
+    let mut inputs = stage.inputs();
+    let Some(input) = inputs.next() else {
+        return Err(invalid_arity(stage.location()));
+    };
+    if inputs.next().is_some() {
+        return Err(invalid_arity(stage.location()));
+    }
+    Ok(input)
+}
+
+fn two_inputs(
+    stage: &TypedRelationExprV2,
+) -> Result<(&TypedRelationExprV2, &TypedRelationExprV2), AlgebraDiagnosticV2> {
+    let mut inputs = stage.inputs();
+    let Some(left) = inputs.next() else {
+        return Err(invalid_arity(stage.location()));
+    };
+    let Some(right) = inputs.next() else {
+        return Err(invalid_arity(stage.location()));
+    };
+    if inputs.next().is_some() {
+        return Err(invalid_arity(stage.location()));
+    }
+    Ok((left, right))
+}
+
+fn checked_expressions(
+    document: &SemanticDocumentV2,
+    keys: &[SourceQualifiedNodeIdV2],
+    location: &CheckedLocatedSpanV2,
+) -> Result<Vec<TypedExprV2>, AlgebraDiagnosticV2> {
+    keys.iter()
+        .map(|key| {
+            if key.source_id != document.source_id() {
+                return Err(failure(
+                    AlgebraFailureKindV2::ForeignSemanticFact,
+                    location,
+                    "stage expression belongs to another semantic document",
+                ));
+            }
+            document.expression(*key).cloned().ok_or_else(|| {
+                failure(
+                    AlgebraFailureKindV2::MissingExpression,
+                    location,
+                    "stage expression is absent from the semantic document",
+                )
+            })
         })
         .collect()
+}
+
+fn required_expression<'a>(
+    document: &'a SemanticDocumentV2,
+    key: SourceQualifiedNodeIdV2,
+    location: &CheckedLocatedSpanV2,
+) -> Result<&'a TypedExprV2, AlgebraDiagnosticV2> {
+    required_expression_by_key(document, key, Some(location))
+}
+
+fn required_expression_by_key<'a>(
+    document: &'a SemanticDocumentV2,
+    key: SourceQualifiedNodeIdV2,
+    location: Option<&CheckedLocatedSpanV2>,
+) -> Result<&'a TypedExprV2, AlgebraDiagnosticV2> {
+    if key.source_id != document.source_id() {
+        return Err(AlgebraDiagnosticV2::new(
+            AlgebraFailureKindV2::ForeignSemanticFact,
+            location.cloned(),
+            "expression belongs to another semantic document",
+        ));
+    }
+    document.expression(key).ok_or_else(|| {
+        AlgebraDiagnosticV2::new(
+            AlgebraFailureKindV2::MissingExpression,
+            location.cloned(),
+            "expression is absent from the semantic document",
+        )
+    })
+}
+
+fn invalid_arity(location: &CheckedLocatedSpanV2) -> AlgebraDiagnosticV2 {
+    failure(
+        AlgebraFailureKindV2::InvalidStageContract,
+        location,
+        "relation stage has an invalid number of inputs",
+    )
+}
+
+fn failure(
+    kind: AlgebraFailureKindV2,
+    location: &CheckedLocatedSpanV2,
+    message: &'static str,
+) -> AlgebraDiagnosticV2 {
+    AlgebraDiagnosticV2::new(kind, Some(location.clone()), message)
+}
+
+#[cfg(test)]
+mod tests {
+    #![expect(
+        clippy::panic,
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        reason = "owner tests build sealed semantic documents and assert exact trees at fixed positions"
+    )]
+
+    use super::*;
+    use crate::node::AlgebraFamilyV2;
+    use quanta_gqlang_v2_sema::test_support::{
+        forged_mixed_scalar_aggregate_projection_document_v2,
+        forged_small_receipt_bool_tree_document_v2,
+        forged_small_receipt_relation_chain_document_v2, forged_wrong_nested_root_document_v2,
+        reference_relation_document_v2, ReferenceRelationFixtureV2,
+        SMALL_BUDGET_MAX_EXPRESSION_NODES, SMALL_BUDGET_MAX_SEMANTIC_STEPS,
+    };
+    use quanta_gqlang_v2_sema::{
+        DownstreamBudgetReceiptV2, FrontendBudgetV2, NullOrderV2, OutputColumnOriginV2,
+        SortDirectionV2, TypedCallArgumentV2,
+    };
+
+    /// Smallest legal budget: every dimension 1 except the two under test,
+    /// with frame bytes covering source bytes. The public entry always reads
+    /// the document receipt; this helper reaches the private frame machinery
+    /// only to prove exact-limit and one-over behavior.
+    fn tiny_receipt(
+        max_semantic_steps: u32,
+        max_expression_nodes: u32,
+    ) -> DownstreamBudgetReceiptV2 {
+        FrontendBudgetV2::try_new(
+            1,
+            2,
+            1,
+            1,
+            1,
+            max_expression_nodes,
+            1,
+            1,
+            max_semantic_steps,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            2,
+        )
+        .unwrap()
+        .downstream_receipt()
+    }
+
+    fn families_in_authoring_order(root: &CheckedAlgebraNodeV2) -> Vec<AlgebraFamilyV2> {
+        let mut stack = vec![root];
+        let mut families = Vec::new();
+        while let Some(node) = stack.pop() {
+            families.push(node.family());
+            let mut children = node.children();
+            stack.extend(children.drain(..).rev());
+        }
+        families
+    }
+
+    #[test]
+    fn pure_exists_predicate_leaves_no_residual_filter_node() {
+        let reference = reference_relation_document_v2(ReferenceRelationFixtureV2::Exists).unwrap();
+        let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+        let root = lowered.root();
+        assert_eq!(root.family(), AlgebraFamilyV2::SemiJoin);
+        assert_eq!(
+            families_in_authoring_order(root),
+            vec![
+                AlgebraFamilyV2::SemiJoin,
+                AlgebraFamilyV2::Scan,
+                AlgebraFamilyV2::Scan
+            ],
+            "a pure relational EXISTS predicate must not retain a Filter node"
+        );
+        assert!(root.filter_conjuncts().is_empty());
+        assert!(root.correlations().is_some_and(|set| set.is_empty()));
+        assert_eq!(root.output(), lowered.output());
+        assert_eq!(root.children()[1].family(), AlgebraFamilyV2::Scan);
+    }
+
+    #[test]
+    fn pure_not_exists_predicate_leaves_no_residual_filter_node() {
+        let reference =
+            reference_relation_document_v2(ReferenceRelationFixtureV2::NotExists).unwrap();
+        let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+        let root = lowered.root();
+        assert_eq!(root.family(), AlgebraFamilyV2::AntiJoin);
+        assert_eq!(
+            families_in_authoring_order(root),
+            vec![
+                AlgebraFamilyV2::AntiJoin,
+                AlgebraFamilyV2::Scan,
+                AlgebraFamilyV2::Scan
+            ],
+            "a pure relational NOT EXISTS predicate must not retain a Filter node"
+        );
+        assert!(root.filter_conjuncts().is_empty());
+        assert!(root.correlations().is_some_and(|set| set.is_empty()));
+    }
+
+    #[test]
+    fn ordinary_filter_keeps_one_filter_with_the_sealed_bool_fact() {
+        let reference = reference_relation_document_v2(ReferenceRelationFixtureV2::Filter).unwrap();
+        let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+        let root = lowered.root();
+        assert_eq!(root.family(), AlgebraFamilyV2::Filter);
+        let conjuncts = root.filter_conjuncts();
+        assert_eq!(
+            conjuncts.len(),
+            1,
+            "an ordinary predicate is retained as one full conjunction"
+        );
+        // The fixture authors `bool_value(bool_lit(true))`: the retained
+        // conjunct is the BoolValue fact, and its forwarded child is the
+        // document-owned Bool literal.
+        let TypedExprShapeV2::BoolValue { value } = conjuncts[0].expression().shape() else {
+            panic!("the retained conjunct must be the sealed typed Bool fact");
+        };
+        let child = reference
+            .document()
+            .expression(*value)
+            .expect("the BoolValue child is a document expression");
+        assert!(matches!(child.shape(), TypedExprShapeV2::Literal(_)));
+        let child = &root.children()[0];
+        assert_eq!(child.family(), AlgebraFamilyV2::Scan);
+        assert_eq!(root.output().row(), child.output().row());
+        assert_eq!(root.output().columns(), child.output().columns());
+        assert_eq!(root.output().cardinality(), child.output().cardinality());
+        assert_eq!(
+            root.output().partition_keys(),
+            child.output().partition_keys()
+        );
+        assert_eq!(root.output().ordering(), child.output().ordering());
+    }
+
+    #[test]
+    fn relation_walk_exact_budget_succeeds_and_one_over_rejects() {
+        let reference = reference_relation_document_v2(ReferenceRelationFixtureV2::Filter).unwrap();
+        let document = reference.document();
+        let relation = match document.item(reference.item_id()) {
+            Some(quanta_gqlang_v2_sema::SemanticItemV2::Relation(relation)) => relation,
+            other => panic!("filter fixture must hold a relation item: {other:?}"),
+        };
+        // The fixture lowers exactly two relation stages: Filter and Scan.
+        let exact = lower_root(
+            document,
+            reference.item_id(),
+            relation.root(),
+            tiny_receipt(2, 8),
+        );
+        assert!(exact.is_ok(), "exact max_semantic_steps must succeed");
+
+        let over = lower_root(
+            document,
+            reference.item_id(),
+            relation.root(),
+            tiny_receipt(1, 8),
+        )
+        .unwrap_err();
+        assert_eq!(over.kind(), AlgebraFailureKindV2::TraversalBudgetExceeded);
+        assert_eq!(over.code(), "algebra.traversal_budget_exceeded");
+        assert!(
+            over.location().is_some(),
+            "the over-budget rejection names a checked stage location"
+        );
+    }
+
+    #[test]
+    fn expression_walk_exact_budget_succeeds_and_one_over_rejects() {
+        let reference = reference_relation_document_v2(ReferenceRelationFixtureV2::Filter).unwrap();
+        let document = reference.document();
+        let relation = match document.item(reference.item_id()) {
+            Some(quanta_gqlang_v2_sema::SemanticItemV2::Relation(relation)) => relation,
+            other => panic!("filter fixture must hold a relation item: {other:?}"),
+        };
+        // The predicate is one BoolValue leaf forwarding one Bool literal:
+        // the decomposition walk visits the leaf, then the descendant search
+        // visits the leaf and its literal child — three charged nodes.
+        let exact = lower_root(
+            document,
+            reference.item_id(),
+            relation.root(),
+            tiny_receipt(4, 3),
+        );
+        assert!(exact.is_ok(), "exact max_expression_nodes must succeed");
+
+        let over = lower_root(
+            document,
+            reference.item_id(),
+            relation.root(),
+            tiny_receipt(4, 2),
+        )
+        .unwrap_err();
+        assert_eq!(over.kind(), AlgebraFailureKindV2::TraversalBudgetExceeded);
+        assert_eq!(over.code(), "algebra.traversal_budget_exceeded");
+        assert!(over.location().is_some());
+    }
+
+    #[test]
+    fn public_entry_reads_only_the_document_budget_receipt() {
+        let reference = reference_relation_document_v2(ReferenceRelationFixtureV2::Exists).unwrap();
+        let document = reference.document();
+        // Three relation stages (filter, input scan, nested scan) and one
+        // EXISTS leaf sit far below the standard receipt's caps; the public
+        // entry accepts no budget argument of its own.
+        assert!(document.budget_receipt().max_semantic_steps() >= 3);
+        let lowered = lower_relation_item(document, reference.item_id()).unwrap();
+        assert_eq!(lowered.root().family(), AlgebraFamilyV2::SemiJoin);
+    }
+
+    fn scan_qualified_name(node: &CheckedAlgebraNodeV2) -> &str {
+        match node.scan_source().expect("node must be a scan") {
+            quanta_gqlang_v2_sema::ResolvedScanSourceV2::Relation(id) => id.qualified_name(),
+            quanta_gqlang_v2_sema::ResolvedScanSourceV2::View(_)
+            | quanta_gqlang_v2_sema::ResolvedScanSourceV2::Composition(_) => {
+                panic!("reference fixtures scan host relations only")
+            }
+        }
+    }
+
+    #[test]
+    fn grouped_aggregate_preserves_the_sealed_partition_identity() {
+        let reference =
+            reference_relation_document_v2(ReferenceRelationFixtureV2::GroupedAggregateSum)
+                .unwrap();
+        let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+        let root = lowered.root();
+        assert_eq!(root.family(), AlgebraFamilyV2::Aggregate);
+        let group = &root.children()[0];
+        assert_eq!(group.family(), AlgebraFamilyV2::Group);
+        assert_eq!(group.children()[0].family(), AlgebraFamilyV2::Scan);
+        // Group: exactly one authored key, key-only row, partition proof
+        // aligned with the pre-group input width, Set output.
+        assert_eq!(group.expressions().len(), 1);
+        assert_eq!(group.output().row().fields().len(), 1);
+        assert_eq!(group.output().partition_keys().len(), 1);
+        assert_eq!(
+            group.partition_input().len(),
+            group.children()[0].output().row().fields().len()
+        );
+        assert_eq!(
+            group.output().cardinality(),
+            quanta_gqlang_v2_types::CardinalityV1::Set
+        );
+        // Aggregate: consumes exactly the one Group, retains its partition
+        // identity verbatim, and keeps the fold expression row-aligned with
+        // the output column origins (the ordering property that generalizes
+        // to multiple aggregates).
+        assert_eq!(
+            root.output().partition_keys(),
+            group.output().partition_keys(),
+            "aggregate output must retain its Group partition identity"
+        );
+        assert_eq!(root.expressions().len(), 1);
+        assert_eq!(
+            root.expressions()[0].aggregate_context().aggregation(),
+            AggregationClassV1::Aggregate
+        );
+        assert_eq!(root.output().columns().len(), 1);
+        assert!(matches!(
+            root.output().columns()[0].origin(),
+            OutputColumnOriginV2::Expression(origin)
+                if *origin == root.expressions()[0].key()
+        ));
+    }
+
+    #[test]
+    fn scalar_count_star_consumes_the_producer_sealed_empty_partition() {
+        let reference =
+            reference_relation_document_v2(ReferenceRelationFixtureV2::ScalarCountStar).unwrap();
+        let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+        let root = lowered.root();
+        assert_eq!(root.family(), AlgebraFamilyV2::Aggregate);
+        let group = &root.children()[0];
+        assert_eq!(group.family(), AlgebraFamilyV2::Group);
+        // The implicit Group(empty) is key-only: no keys, no row, no columns,
+        // no partition, Set cardinality.
+        assert!(group.expressions().is_empty());
+        assert!(group.partition_input().is_empty());
+        assert!(group.output().row().fields().is_empty());
+        assert!(group.output().columns().is_empty());
+        assert!(group.output().partition_keys().is_empty());
+        assert_eq!(
+            group.output().cardinality(),
+            quanta_gqlang_v2_types::CardinalityV1::Set
+        );
+        assert_eq!(group.children()[0].family(), AlgebraFamilyV2::Scan);
+        // count(*): the retained fold uses the authored star, never a
+        // zero-argument call spelling.
+        assert_eq!(root.expressions().len(), 1);
+        let fold = &root.expressions()[0];
+        assert!(fold.aggregate_context().uses_star());
+        assert_eq!(
+            fold.aggregate_context().aggregation(),
+            AggregationClassV1::Aggregate
+        );
+        assert!(matches!(
+            fold.shape(),
+            TypedExprShapeV2::Call { arguments, .. }
+                if matches!(arguments.as_slice(), [TypedCallArgumentV2::Star])
+        ));
+        assert!(root.output().partition_keys().is_empty());
+    }
+
+    #[test]
+    fn inner_join_retains_the_typed_on_and_ordered_child_schema() {
+        let reference =
+            reference_relation_document_v2(ReferenceRelationFixtureV2::InnerJoinOn).unwrap();
+        let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+        let root = lowered.root();
+        assert_eq!(root.family(), AlgebraFamilyV2::Join);
+        assert_eq!(
+            root.join_mode(),
+            Some(quanta_gqlang_v2_sema::JoinModeV2::Inner)
+        );
+        assert!(root.predicate().is_some());
+        let children = root.children();
+        assert_eq!(children.len(), 2);
+        // Ordered concatenation of the child columns and the union of the
+        // child provenance are checked at construction.
+        assert_eq!(
+            root.output().columns(),
+            children[0]
+                .output()
+                .columns()
+                .iter()
+                .chain(children[1].output().columns().iter())
+                .cloned()
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(root.output().provenance().iter().count(), 2);
+    }
+
+    #[test]
+    fn project_retains_exact_expressions_and_row_aligned_origins() {
+        let reference =
+            reference_relation_document_v2(ReferenceRelationFixtureV2::ProjectMultipleExpressions)
+                .unwrap();
+        let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+        let root = lowered.root();
+        assert_eq!(root.family(), AlgebraFamilyV2::Project);
+        assert_eq!(root.expressions().len(), 2);
+        assert_eq!(root.output().columns().len(), 2);
+        for (expression, column) in root.expressions().iter().zip(root.output().columns()) {
+            assert!(matches!(
+                column.origin(),
+                OutputColumnOriginV2::Expression(origin) if *origin == expression.key()
+            ));
+        }
+        assert_eq!(root.children()[0].family(), AlgebraFamilyV2::Scan);
+    }
+
+    #[test]
+    fn sort_retains_direction_null_order_and_sealed_key_identity() {
+        let reference =
+            reference_relation_document_v2(ReferenceRelationFixtureV2::SortDesc).unwrap();
+        let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+        let root = lowered.root();
+        assert_eq!(root.family(), AlgebraFamilyV2::Sort);
+        let keys = root.order_keys();
+        assert_eq!(keys.len(), 1);
+        assert_eq!(keys[0].direction(), SortDirectionV2::Desc);
+        assert_eq!(keys[0].null_order(), NullOrderV2::Last);
+        // The key's value type and identity stay sealed: the ordering equals
+        // the output ordering contract and the input frame is preserved.
+        let input = &root.children()[0];
+        assert_eq!(root.output().ordering(), keys);
+        assert_eq!(
+            keys[0].value_type(),
+            input.output().row().fields()[0].value_type()
+        );
+        assert_eq!(root.output().row(), input.output().row());
+    }
+
+    #[test]
+    fn correlated_exists_retains_the_authored_capture_edge_set() {
+        let reference =
+            reference_relation_document_v2(ReferenceRelationFixtureV2::CorrelatedExists).unwrap();
+        let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+        let root = lowered.root();
+        // The outer filter stage vanishes (pure EXISTS); the NESTED relation's
+        // own ordinary predicate keeps exactly its own Filter stage.
+        assert_eq!(
+            families_in_authoring_order(root),
+            vec![
+                AlgebraFamilyV2::SemiJoin,
+                AlgebraFamilyV2::Scan,
+                AlgebraFamilyV2::Filter,
+                AlgebraFamilyV2::Scan,
+            ]
+        );
+        assert_eq!(root.children()[0].family(), AlgebraFamilyV2::Scan);
+        assert!(root.children()[1].filter_conjuncts().len() == 1);
+        let correlations = root.correlations().expect("semi join retains correlations");
+        assert_eq!(correlations.iter().count(), 1);
+        let edge = &correlations.iter().collect::<Vec<_>>()[0];
+        // The correlation is a resolved outer binding identity plus the inner
+        // reference location, in authored stable order.
+        assert_eq!(edge.binding().canonical_name(), "r");
+        assert!(reference.document().expression(edge.reference()).is_some());
+    }
+
+    #[test]
+    fn correlated_not_exists_retains_the_authored_capture_edge_set() {
+        let reference =
+            reference_relation_document_v2(ReferenceRelationFixtureV2::CorrelatedNotExists)
+                .unwrap();
+        let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+        let root = lowered.root();
+        assert_eq!(root.family(), AlgebraFamilyV2::AntiJoin);
+        assert!(root
+            .correlations()
+            .is_some_and(|set| set.iter().count() == 1));
+    }
+
+    #[test]
+    fn conjunctive_exists_pair_lowers_each_leaf_exactly_once_in_stable_order() {
+        let reference =
+            reference_relation_document_v2(ReferenceRelationFixtureV2::ConjunctiveExistsPair)
+                .unwrap();
+        let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+        let root = lowered.root();
+        let families = families_in_authoring_order(root);
+        assert_eq!(
+            families,
+            vec![
+                AlgebraFamilyV2::SemiJoin,
+                AlgebraFamilyV2::SemiJoin,
+                AlgebraFamilyV2::Scan,
+                AlgebraFamilyV2::Scan,
+                AlgebraFamilyV2::Scan,
+            ],
+            "two conjunctive EXISTS lower to exactly two SemiJoins over the input scan"
+        );
+        // Stable authored order: the FIRST conjunct (`other`) attaches
+        // innermost; the SECOND (`records2`) is the outer right input.
+        let outer = root;
+        let inner = &outer.children()[0];
+        assert_eq!(scan_qualified_name(outer.children()[1]), "app::records2");
+        assert_eq!(scan_qualified_name(inner.children()[1]), "app::other");
+        assert_eq!(scan_qualified_name(inner.children()[0]), "app::records");
+        assert!(outer.correlations().is_some_and(|set| set.is_empty()));
+    }
+
+    #[test]
+    fn mixed_conjunction_keeps_exactly_one_residual_filter() {
+        let reference =
+            reference_relation_document_v2(ReferenceRelationFixtureV2::ExistsWithBoolConjunct)
+                .unwrap();
+        let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+        let root = lowered.root();
+        // The residual Filter is the stage root and holds the FULL ordinary
+        // conjunction; the EXISTS lowered exactly once below it. The ordinary
+        // conjunct is the authored BoolValue fact wrapping its Bool literal.
+        assert_eq!(root.family(), AlgebraFamilyV2::Filter);
+        let conjuncts = root.filter_conjuncts();
+        assert_eq!(conjuncts.len(), 1);
+        assert!(matches!(
+            conjuncts[0].expression().shape(),
+            TypedExprShapeV2::BoolValue { .. }
+        ));
+        assert_eq!(
+            families_in_authoring_order(root),
+            vec![
+                AlgebraFamilyV2::Filter,
+                AlgebraFamilyV2::SemiJoin,
+                AlgebraFamilyV2::Scan,
+                AlgebraFamilyV2::Scan,
+            ]
+        );
+        let semi = &root.children()[0];
+        assert_eq!(scan_qualified_name(semi.children()[1]), "app::other");
+        assert_eq!(scan_qualified_name(semi.children()[0]), "app::records");
+        // Filter and SemiJoin both retain the filter stage's exact output.
+        assert_eq!(root.output(), semi.output());
+        assert_eq!(root.output(), lowered.output());
+    }
+
+    #[test]
+    fn nested_exists_lowers_each_level_once_with_separate_capture_sets() {
+        let reference =
+            reference_relation_document_v2(ReferenceRelationFixtureV2::NestedExistsTwoLevels)
+                .unwrap();
+        let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+        let root = lowered.root();
+        let families = families_in_authoring_order(root);
+        assert_eq!(
+            families,
+            vec![
+                AlgebraFamilyV2::SemiJoin,
+                AlgebraFamilyV2::Scan,
+                AlgebraFamilyV2::Filter,
+                AlgebraFamilyV2::SemiJoin,
+                AlgebraFamilyV2::Scan,
+                AlgebraFamilyV2::Filter,
+                AlgebraFamilyV2::Scan,
+            ],
+            "each EXISTS level lowers to exactly one SemiJoin; ordinary conjuncts stay in exactly one residual Filter per stage"
+        );
+        // The outer EXISTS captures the outer binding at both reference
+        // sites; the nested EXISTS carries its own single-edge capture set.
+        assert!(root
+            .correlations()
+            .is_some_and(|set| set.iter().count() == 2));
+        let middle_filter = &root.children()[1];
+        assert_eq!(middle_filter.family(), AlgebraFamilyV2::Filter);
+        assert_eq!(middle_filter.filter_conjuncts().len(), 1);
+        let nested_semi = &middle_filter.children()[0];
+        assert!(nested_semi
+            .correlations()
+            .is_some_and(|set| set.iter().count() == 1));
+    }
+
+    #[test]
+    fn mixed_scalar_aggregate_projection_is_an_impossible_contract() {
+        // Forged at the document boundary: one scalar group key and one
+        // aggregate fold in the same projection over a real Group. Sema
+        // seals aggregate projections uniformly, so this shape can only be
+        // minted through the test seam and must die at the checked
+        // Aggregate constructor, not lower as a mixed Aggregate node.
+        let forged = forged_mixed_scalar_aggregate_projection_document_v2().unwrap();
+        let diagnostic = lower_relation_item(forged.document(), forged.item_id())
+            .expect_err("a mixed scalar/aggregate projection must not lower");
+        assert_eq!(
+            diagnostic.kind(),
+            AlgebraFailureKindV2::InvalidStageContract
+        );
+        assert_eq!(diagnostic.code(), "algebra.invalid_stage_contract");
+        assert!(
+            diagnostic.location().is_some(),
+            "the rejection names the forged projection stage"
+        );
+    }
+
+    #[test]
+    fn nested_registry_tree_with_a_swapped_inner_scan_rejects() {
+        // Forged nested registry entry: the EXISTS root key still resolves,
+        // but the registered tree's inner scan carries a minted stage
+        // identity while the nested Filter keeps its sealed output columns.
+        // The row-aligned frame check at the nested Filter constructor must
+        // reject the disagreement; the right tree is consumed exactly by
+        // registry key and never re-derived from the outer predicate.
+        let forged = forged_wrong_nested_root_document_v2().unwrap();
+        let diagnostic = lower_relation_item(forged.document(), forged.item_id())
+            .expect_err("a nested tree whose frame disagrees with its stages must not lower");
+        assert_eq!(
+            diagnostic.kind(),
+            AlgebraFailureKindV2::InvalidStageContract
+        );
+        assert_eq!(diagnostic.code(), "algebra.invalid_stage_contract");
+        assert!(
+            diagnostic.location().is_some(),
+            "the rejection names the inconsistent nested stage"
+        );
+    }
+
+    #[test]
+    fn public_relation_walk_small_receipt_exact_and_one_over() {
+        // A forged small-receipt chain: sema resolves it under the standard
+        // budget and the document carries the small receipt, so the relation
+        // walk's own charging is the only limit. A chain of depth d lowers
+        // d + 1 relation stages.
+        let exact_depth = SMALL_BUDGET_MAX_SEMANTIC_STEPS - 1;
+        let exact = forged_small_receipt_relation_chain_document_v2(exact_depth).unwrap();
+        let lowered =
+            lower_relation_item(exact.document(), exact.item_id()).expect("exact budget lowers");
+        assert_eq!(lowered.root().family(), AlgebraFamilyV2::Filter);
+
+        let over = forged_small_receipt_relation_chain_document_v2(exact_depth + 1).unwrap();
+        let diagnostic = lower_relation_item(over.document(), over.item_id())
+            .expect_err("one stage over the receipt must reject");
+        assert_eq!(
+            diagnostic.kind(),
+            AlgebraFailureKindV2::TraversalBudgetExceeded
+        );
+        assert_eq!(diagnostic.code(), "algebra.traversal_budget_exceeded");
+        assert!(diagnostic.location().is_some());
+    }
+
+    #[test]
+    fn public_expression_walk_small_receipt_exact_and_one_over() {
+        // A left-leaning conjunction of depth d has d And nodes and d + 1
+        // BoolValue leaves, each forwarding one Bool literal: the
+        // decomposition walk charges 2 * d + 1 nodes and the per-leaf
+        // descendant search charges two more per leaf, 4 * d + 3 charged
+        // nodes in total. Depth 1 charges seven of the eight small-receipt
+        // nodes; depth 2 charges eleven and rejects one over.
+        let exact = forged_small_receipt_bool_tree_document_v2(1).unwrap();
+        let lowered =
+            lower_relation_item(exact.document(), exact.item_id()).expect("exact budget lowers");
+        assert_eq!(lowered.root().family(), AlgebraFamilyV2::Filter);
+        assert_eq!(lowered.root().filter_conjuncts().len(), 2);
+
+        let over = forged_small_receipt_bool_tree_document_v2(2).unwrap();
+        assert_eq!(
+            over.document().budget_receipt().max_expression_nodes(),
+            SMALL_BUDGET_MAX_EXPRESSION_NODES
+        );
+        let diagnostic = lower_relation_item(over.document(), over.item_id())
+            .expect_err("one node over the receipt must reject");
+        assert_eq!(
+            diagnostic.kind(),
+            AlgebraFailureKindV2::TraversalBudgetExceeded
+        );
+        assert_eq!(diagnostic.code(), "algebra.traversal_budget_exceeded");
+        assert!(diagnostic.location().is_some());
+    }
 }
