@@ -1351,3 +1351,16 @@ subsequently observed fixed by W2-D live revisions. Deferrals unchanged
   nested-root contract at (25,49)); hashes normalization 782ac7fc,
   mutants 15c07484, hellgate/probe unchanged. Phase-2 GO relayed with the
   full manifest (only T34-T37 held for the injection-builder addendum).
+
+### W2-D lane CLOSED — 2026-09-21
+
+Final addendum landed: `forged_capture_mutation_document_v2` (two-capture
+correlated-EXISTS fixture, both carriers mutated via the integrator seam,
+re-sealed through the real finalizer; Dropped/Swapped assemble, Duplicate/
+Foreign surface the exact finalizer rejections; map/predicate agreement
+unit-tested). Final test_support hash `39d97d87cba71c27`; gates: sema
+102/102 and 121/121 with features, algebra consumer 28/28, clippy/fmt clean
+in both modes. The integrator seam fix (#[expect wildcard_enum_match_arm])
+is applied; expr.rs final hash `3986e3a230ea3ccb`; sema clippy both modes
+verified clean by the integrator. Only W2-B phase-2 remains before the W2
+barrier.

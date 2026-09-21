@@ -422,6 +422,39 @@ impl TypedExprV2 {
     pub const fn shape(&self) -> &TypedExprShapeV2 {
         &self.shape
     }
+    /// Test-only minting seam: replace the capture set of a RelationExists
+    /// expression so adversarial-document rails can assemble forged
+    /// correlation vectors against the real document finalizer. Compiled
+    /// only under the `test` feature; never part of the public contract.
+    #[cfg(feature = "test")]
+    #[expect(
+        clippy::wildcard_enum_match_arm,
+        reason = "future non-RelationExists shapes must take the same rejection"
+    )]
+    pub(crate) fn with_relation_exists_correlations(
+        self,
+        correlations: Vec<TypedCorrelationEdgeV2>,
+    ) -> Result<Self, FrontendFailureV2> {
+        match self.shape {
+            TypedExprShapeV2::RelationExists {
+                polarity,
+                relation_root,
+                ..
+            } => Ok(Self {
+                shape: TypedExprShapeV2::RelationExists {
+                    polarity,
+                    relation_root,
+                    correlations,
+                },
+                ..self
+            }),
+            _ => Err(expression_failure(
+                "sema.document_validation_failed",
+                self.location.location(),
+                "correlation reshape requires a RelationExists expression",
+            )),
+        }
+    }
 }
 
 /// Bool-proven expression. Construction rejects Unknown and non-Bool facts.
