@@ -1164,3 +1164,33 @@ test-support freeze. W2-C inventory was completed early and sealed
 (`tickets/06-migration-inventory-w2c.md`), so the third slot stays free for
 integrator use or W2 escalation. Cargo.lock remains staged-but-uncommitted by
 design; it settles at the wave whose manifest edges finalize it.
+
+### W2 lane D dispatch + gate coordination — 2026-09-21
+
+W2-B's pre-gate report proved the SS-05C owner-test matrix is inexpressible
+with the current 3-variant sema test-support fixture set, and that forged
+mutation rails are mintable only from inside the sema crate
+(`SemanticDocumentV2::try_assemble` is `pub(crate)`; that unforgeability is a
+W1 freeze and stays). Integrator decisions:
+
+- **Lane W2-D dispatched** (third slot, previously freed by the early W2-C
+  completion): exclusive lease `sema/src/test_support.rs`, additive-only,
+  everything behind the existing `test` feature + `#[doc(hidden)]`. Adds the
+  positive fixture variants W2-B designed (Project multi-expr, InnerJoin+ON
+  incl. self-join, Group->Aggregate grouped sum, scalar count(*), Sort family
+  incl. NULLS LAST on a new nullable field, EXISTS family x6, deep relation/
+  Bool chains, second-source-id), a small-budget authority (tiny
+  max_semantic_steps / max_expression_nodes for exact/+1 rails), and
+  `forged_*` DTO builders for the algebra mutation rails. Constraint: no
+  weakening of W1 seals — forged shapes exist only under the test feature;
+  any pub(crate) seam gap inside the frozen producer files comes back as an
+  amendment request, not an edit.
+- **EXISTS residual contract pinned by integrator** (per RR-05C): single
+  residual Filter holding the full ordinary conjunction when ordinary
+  conjuncts exist; no Filter for pure EXISTS; EXISTS leaves lower exactly
+  once in stable left-to-right order.
+- W2-B gate stays CLOSED with the 41-fixture design accepted; it opens when
+  W2-A's freeze announcement (now required to include charged budget
+  dimensions + over-budget diagnostic, Apply/Limit/Union disposition, and
+  the private constructor surface) is relayed together with W2-D's landed
+  builder surface.
