@@ -1,17 +1,12 @@
-//! Formatter edge rails: round-trips for the value/bool kinds, family modes,
-//! and compose shapes the main formatter hellgate leaves uncovered.
-//!
-//! Each rail asserts that the canonical render re-parses to the same independent
-//! visitor-derived structure and is idempotent. These lock the
-//! formatter's per-kind arms (unary, call, paren, list, escaped string, every
-//! literal kind, each bool connective, each find subkind, each enum-valued mode)
-//! as the exact inverse of the grammar.
-
 #![allow(
-    clippy::unwrap_used,
     clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    reason = "integration test rail: assertion panics are intentional"
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 mod support;

@@ -1,13 +1,13 @@
-//! v3 HIR expression-kernel rails (ticket 01).
-//!
-//! These rails build representative HIR trees directly (the v3 parser, ticket
-//! 06, does not exist yet) and assert tree shape, span coverage, unique node
-//! ids, and the cross-surface sharing invariant: query/decl/rule EMBED the same
-//! shared expr/relation/shape nodes rather than root-local clones.
-
-#![allow(clippy::unwrap_used, reason = "tests assert on Result/Option directly")]
-#![allow(clippy::indexing_slicing, reason = "tests index known-shape fixtures")]
-#![allow(clippy::panic, reason = "tests panic on unexpected shapes")]
+#![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
+)]
 
 use std::collections::HashSet;
 
@@ -208,6 +208,7 @@ fn relation_projection_with_aliases_and_nested_list() {
 
     let source = b.relation_source(
         "users",
+        SpanV1::new(0, 5),
         Some(AliasV1 {
             name: "u".into(),
             span: SpanV1::new(6, 7),
@@ -298,7 +299,7 @@ fn relation_projection_with_aliases_and_nested_list() {
 #[test]
 fn projection_requires_at_least_one_item_at_public_construction() {
     let builder = HirBuilderV1::new();
-    let source = builder.relation_source("users", None, SpanV1::new(0, 5));
+    let source = builder.relation_source("users", SpanV1::new(0, 5), None, SpanV1::new(0, 5));
     assert_eq!(
         builder
             .try_project(source, vec![], SpanV1::new(0, 15))
@@ -430,6 +431,7 @@ fn query_visitor_visits_every_node_exactly_once() {
 
     let source = b.relation_source(
         "users",
+        SpanV1::new(0, 5),
         Some(AliasV1 {
             name: "u".into(),
             span: SpanV1::new(6, 7),

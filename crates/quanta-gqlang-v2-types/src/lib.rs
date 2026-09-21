@@ -13,12 +13,15 @@ pub use builtin::{
     DeterminismV1, ExpressionEffectsV2, MonotonicityV1, PurityV1,
 };
 pub use check::{
-    ContextualExpectedTypeInputV2, ContextualTypeReasonV2, ExpressionTypeKernelV2,
-    ExpressionTypeStateV2, HostCallableNamespaceV2, ResolvedCallTargetV2, ResolvedCallableInputV2,
+    ContextualExpectedTypeInputV2, ContextualTypeReasonV2, DeferredRelationRowFieldInputV2,
+    DeferredRelationRowInputV2, DeferredRelationRowKindV2, ExpressionTypeKernelV2,
+    ExpressionTypeStateV2, HostCallableNamespaceV2, RelationPreEvaluationInputV2,
+    RelationRowFieldSourceV2, ResolvedCallTargetV2, ResolvedCallableInputV2,
     ResolvedHostPredicateCallableV2, ResolvedHostPredicateKeyV2, ResolvedPredicateCallableV2,
-    ResolvedPredicateIdV2, ResolvedRelationPredicateInputV2, ResolvedTypeInputEntryV2,
-    ResolvedTypeInputValueV2, ResolvedTypeInputsV2, SourceQualifiedNodeIdV2, TypedExpressionFactV2,
-    TypedExpressionFactsV2, TypedLiteralFactV2, UnknownTypeCauseV2,
+    ResolvedPredicateIdV2, ResolvedRelationCaptureInputV2, ResolvedRelationPredicateInputV2,
+    ResolvedTypeInputEntryV2, ResolvedTypeInputValueV2, ResolvedTypeInputsV2,
+    SourceQualifiedNodeIdV2, TypedExpressionFactV2, TypedExpressionFactsV2, TypedLiteralFactV2,
+    UnknownTypeCauseV2,
 };
 pub use diag::{TypeAuthorityDiagnosticV2, TypeDiagnosticV2};
 pub use env::{

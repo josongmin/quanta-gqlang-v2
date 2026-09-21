@@ -105,9 +105,21 @@ impl FrontendDiagnosticV2 {
         &self.message
     }
 
-    pub(crate) fn sort_key(&self) -> ((u32, usize, usize), FrontendStageV2, FrontendSeverityV2, &str, &str) {
+    pub(crate) fn sort_key(
+        &self,
+    ) -> (
+        (u32, usize, usize),
+        FrontendStageV2,
+        FrontendSeverityV2,
+        &str,
+        &str,
+    ) {
         (
-            (self.primary.source_id.raw(), self.primary.span.start, self.primary.span.end),
+            (
+                self.primary.source_id.raw(),
+                self.primary.span.start,
+                self.primary.span.end,
+            ),
             self.stage,
             self.severity,
             self.code,
@@ -124,9 +136,7 @@ pub struct FrontendFailureV2 {
 
 impl FrontendFailureV2 {
     /// Construct a non-empty deterministic failure.
-    pub fn try_new(
-        mut diagnostics: Vec<FrontendDiagnosticV2>,
-    ) -> Result<Self, &'static str> {
+    pub fn try_new(mut diagnostics: Vec<FrontendDiagnosticV2>) -> Result<Self, &'static str> {
         if diagnostics.is_empty() {
             return Err("frontend failure requires at least one diagnostic");
         }

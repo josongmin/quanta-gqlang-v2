@@ -62,6 +62,34 @@ pub enum BindDiagnosticV1 {
         /// deterministic sorted order the binder reports them.
         candidates: Vec<String>,
     },
+    /// An aggregate argument could name both a private pre-group input and a
+    /// top-level declaration/import. Neither authority may silently win.
+    PartitionAuthorityCollision {
+        /// Conflicting authored name.
+        name: String,
+        /// Exact reference in the post-group expression.
+        span: SpanV1,
+        /// Original pre-group binding location.
+        partition_span: SpanV1,
+    },
+    /// A relation source names a local value rather than a composition LET
+    /// working-set producer. A same-spelled host relation cannot override it.
+    WrongRelationSourceKind {
+        /// Authored source name.
+        name: String,
+        /// Exact source-name token span, excluding any alias.
+        span: SpanV1,
+        /// Location of the incompatible local binding.
+        binding_span: SpanV1,
+    },
+    /// Two resolved uses reuse the same node, span, and spelling. Node-only
+    /// lookup is insufficient for multi-reference graph items.
+    DuplicateReferenceUse {
+        /// Repeated authored spelling.
+        name: String,
+        /// Repeated exact use span.
+        span: SpanV1,
+    },
     /// A reference reaches across a non-capturing scope boundary without an
     /// explicit allowed capture edge. Per `D25` correlated capture must be an
     /// explicit scope edge, never an implicit hidden-scope success.
@@ -84,6 +112,9 @@ impl BindDiagnosticV1 {
             Self::Duplicate { .. } => "binder.duplicate_declaration",
             Self::Shadowed { .. } => "binder.shadowed_binding",
             Self::AmbiguousImport { .. } => "binder.ambiguous_import",
+            Self::PartitionAuthorityCollision { .. } => "binder.partition_authority_collision",
+            Self::WrongRelationSourceKind { .. } => "binder.wrong_relation_source_kind",
+            Self::DuplicateReferenceUse { .. } => "binder.duplicate_reference_use",
             Self::IllegalCapture { .. } => "binder.illegal_capture",
         }
     }
@@ -96,6 +127,9 @@ impl BindDiagnosticV1 {
             | Self::Duplicate { name, .. }
             | Self::Shadowed { name, .. }
             | Self::AmbiguousImport { name, .. }
+            | Self::PartitionAuthorityCollision { name, .. }
+            | Self::WrongRelationSourceKind { name, .. }
+            | Self::DuplicateReferenceUse { name, .. }
             | Self::IllegalCapture { name, .. } => name,
         }
     }
@@ -106,6 +140,9 @@ impl BindDiagnosticV1 {
         match self {
             Self::Unresolved { span, .. }
             | Self::AmbiguousImport { span, .. }
+            | Self::PartitionAuthorityCollision { span, .. }
+            | Self::WrongRelationSourceKind { span, .. }
+            | Self::DuplicateReferenceUse { span, .. }
             | Self::IllegalCapture { span, .. } => *span,
             Self::Duplicate { second_span, .. } => *second_span,
             Self::Shadowed { inner_span, .. } => *inner_span,
@@ -164,6 +201,39 @@ impl fmt::Display for BindDiagnosticV1 {
                 span.start,
                 span.end,
                 candidates.join(", "),
+            ),
+            Self::PartitionAuthorityCollision {
+                name,
+                span,
+                partition_span,
+            } => write!(
+                f,
+                "{}: `{}` at {}..{} also names a private pre-group binding at {}..{}",
+                self.code(),
+                name,
+                span.start,
+                span.end,
+                partition_span.start,
+                partition_span.end,
+            ),
+            Self::WrongRelationSourceKind {
+                name,
+                span,
+                binding_span,
+            } => {
+                write!(
+                f,
+                "{}: relation source `{}` at {}..{} names a non-relation local binding at {}..{}",
+                self.code(), name, span.start, span.end, binding_span.start, binding_span.end,
+            )
+            }
+            Self::DuplicateReferenceUse { name, span } => write!(
+                f,
+                "{}: duplicate reference use `{}` at {}..{}",
+                self.code(),
+                name,
+                span.start,
+                span.end,
             ),
             Self::IllegalCapture {
                 name,

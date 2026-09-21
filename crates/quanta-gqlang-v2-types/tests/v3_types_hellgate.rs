@@ -1,4 +1,13 @@
-#![allow(clippy::unwrap_used, reason = "owner assertions")]
+#![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
+)]
 
 use quanta_gqlang_v2_hir::{
     check_document_v2, CallArgHirV1, CallArgsHirV1, CheckedHirDocumentV2, DeclHirV1, HirBuilderV1,
@@ -20,7 +29,23 @@ fn resolved_type_inputs(
             source_len: checked.document().source_len,
         })
         .unwrap();
-    ResolvedTypeInputsV2::try_new(checked, &registry, entries, contexts)
+    ResolvedTypeInputsV2::try_new(checked, &registry, entries, contexts, Vec::new())
+}
+
+fn resolved_type_inputs_with_rows(
+    checked: CheckedHirDocumentV2<'_>,
+    entries: Vec<ResolvedTypeInputEntryV2>,
+    contexts: Vec<ContextualExpectedTypeInputV2>,
+    rows: Vec<DeferredRelationRowInputV2>,
+) -> Result<ResolvedTypeInputsV2<'_>, TypeDiagnosticV2> {
+    let registry = SourceRegistryViewV2::try_new(Vec::new())
+        .unwrap()
+        .try_extend_document(SourceRegistrationV2 {
+            source_id: checked.document().source_id,
+            source_len: checked.document().source_len,
+        })
+        .unwrap();
+    ResolvedTypeInputsV2::try_new(checked, &registry, entries, contexts, rows)
 }
 
 fn checked_document(body: quanta_gqlang_v2_hir::ValueExprHirV1) -> HirDocumentV1 {
@@ -768,11 +793,10 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
     let nested_symbol = builder.symbol("active", SpanV1::new(20, 26));
     let nested_id = nested_symbol.id;
     let predicate = builder.bool_value(nested_symbol, SpanV1::new(20, 26));
-    let relation = builder.relation_filter(
-        builder.relation_source("users", None, SpanV1::new(10, 15)),
-        predicate,
-        SpanV1::new(10, 26),
-    );
+    let source = builder.relation_source("users", SpanV1::new(10, 15), None, SpanV1::new(10, 15));
+    let source_root = source.id;
+    let relation = builder.relation_filter(source, predicate, SpanV1::new(10, 26));
+    let relation_root = relation.id;
     let exists = builder.relation_exists(
         RelationExistsPolarityV1::Exists,
         relation,
@@ -785,7 +809,7 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
     let doc = checked_rule(builder.int("1", SpanV1::new(0, 1)), exists);
     let checked = check_document_v2(&doc).unwrap();
     assert_eq!(
-        resolved_type_inputs(
+        resolved_type_inputs_with_rows(
             checked,
             vec![ResolvedTypeInputEntryV2 {
                 key: SourceQualifiedNodeIdV2 {
@@ -796,7 +820,15 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
                     ValueTypeV1::bool()
                 )),
             }],
-            vec![]
+            vec![],
+            vec![DeferredRelationRowInputV2::known_source(
+                SourceQualifiedNodeIdV2 {
+                    source_id: SourceIdV2::from_raw(9),
+                    node_id: source_root,
+                },
+                0,
+                Vec::new(),
+            )],
         )
         .unwrap_err()
         .code(),
@@ -837,14 +869,120 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
         AuthorityBudgetProfileV2::try_new(128, 256, 1024, 64 * 1024, 1024).unwrap(),
     )
     .unwrap();
-    let relation_id = catalog.get("users").unwrap().id().clone();
-    let base_effects = ExpressionEffectsV2 {
-        purity: PurityV1::Impure,
-        determinism: DeterminismV1::Deterministic,
-        monotonicity: MonotonicityV1::NonMonotone,
-        aggregation: AggregationClassV1::Scalar,
-        cost: CostClassV1::Linear,
+    let _relation_id = catalog.get("users").unwrap().id().clone();
+    let capture = ResolvedRelationCaptureInputV2::new(
+        SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(9),
+            node_id: nested_id,
+        },
+        SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(9),
+            node_id: HirNodeIdV1::from_raw(10_000),
+        },
+        0,
+    );
+    let duplicate_capture_error = ResolvedRelationPredicateInputV2::try_resolved(
+        SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(9),
+            node_id: relation_root,
+        },
+        vec![capture.clone(), capture.clone()],
+    )
+    .unwrap_err();
+    assert_eq!(
+        duplicate_capture_error.code(),
+        "types.invalid_relation_predicate_input"
+    );
+
+    let reject_predicate = |predicate| {
+        resolved_type_inputs_with_rows(
+            checked,
+            vec![
+                ResolvedTypeInputEntryV2 {
+                    key: SourceQualifiedNodeIdV2 {
+                        source_id: SourceIdV2::from_raw(9),
+                        node_id: nested_id,
+                    },
+                    value: ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(
+                        ValueTypeV1::bool(),
+                    )),
+                },
+                ResolvedTypeInputEntryV2 {
+                    key: exists_key,
+                    value: ResolvedTypeInputValueV2::RelationPredicate(predicate),
+                },
+            ],
+            vec![],
+            vec![DeferredRelationRowInputV2::known_source(
+                SourceQualifiedNodeIdV2 {
+                    source_id: SourceIdV2::from_raw(9),
+                    node_id: source_root,
+                },
+                0,
+                Vec::new(),
+            )],
+        )
+        .unwrap_err()
+        .code()
     };
+    assert_eq!(
+        reject_predicate(
+            ResolvedRelationPredicateInputV2::try_resolved(
+                SourceQualifiedNodeIdV2 {
+                    source_id: SourceIdV2::from_raw(9),
+                    node_id: source_root,
+                },
+                vec![capture.clone()],
+            )
+            .unwrap(),
+        ),
+        "types.invalid_relation_predicate_input"
+    );
+    assert_eq!(
+        reject_predicate(
+            ResolvedRelationPredicateInputV2::try_resolved(
+                SourceQualifiedNodeIdV2 {
+                    source_id: SourceIdV2::from_raw(9),
+                    node_id: relation_root,
+                },
+                vec![ResolvedRelationCaptureInputV2::new(
+                    SourceQualifiedNodeIdV2 {
+                        source_id: SourceIdV2::from_raw(9),
+                        node_id: nested_id,
+                    },
+                    SourceQualifiedNodeIdV2 {
+                        source_id: SourceIdV2::from_raw(9),
+                        node_id: nested_id,
+                    },
+                    0,
+                )],
+            )
+            .unwrap(),
+        ),
+        "types.invalid_relation_predicate_input"
+    );
+    assert_eq!(
+        ResolvedRelationPredicateInputV2::try_resolved(
+            SourceQualifiedNodeIdV2 {
+                source_id: SourceIdV2::from_raw(9),
+                node_id: relation_root,
+            },
+            vec![ResolvedRelationCaptureInputV2::new(
+                SourceQualifiedNodeIdV2 {
+                    source_id: SourceIdV2::from_raw(77),
+                    node_id: nested_id,
+                },
+                SourceQualifiedNodeIdV2 {
+                    source_id: SourceIdV2::from_raw(9),
+                    node_id: HirNodeIdV1::from_raw(10_000),
+                },
+                0,
+            )],
+        )
+        .unwrap_err()
+        .code(),
+        "types.invalid_relation_predicate_input"
+    );
     let entries = vec![
         ResolvedTypeInputEntryV2 {
             key: SourceQualifiedNodeIdV2 {
@@ -859,15 +997,30 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
             key: exists_key,
             value: ResolvedTypeInputValueV2::RelationPredicate(
                 ResolvedRelationPredicateInputV2::try_resolved(
-                    relation_id,
-                    "capture_0",
-                    base_effects,
+                    SourceQualifiedNodeIdV2 {
+                        source_id: SourceIdV2::from_raw(9),
+                        node_id: relation_root,
+                    },
+                    vec![capture],
                 )
                 .unwrap(),
             ),
         },
     ];
-    let inputs = resolved_type_inputs(checked, entries, vec![]).unwrap();
+    let inputs = resolved_type_inputs_with_rows(
+        checked,
+        entries,
+        vec![],
+        vec![DeferredRelationRowInputV2::known_source(
+            SourceQualifiedNodeIdV2 {
+                source_id: SourceIdV2::from_raw(9),
+                node_id: source_root,
+            },
+            0,
+            Vec::new(),
+        )],
+    )
+    .unwrap();
     let facts = ExpressionTypeKernelV2::try_closed()
         .unwrap()
         .check_document(&inputs)
@@ -889,9 +1042,12 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
         ExpressionTypeStateV2::Known(ValueTypeV1::bool())
     );
     assert_eq!(fact.effects.purity, PurityV1::Impure);
-    assert_eq!(fact.effects.cost, CostClassV1::Linear);
+    assert_eq!(fact.effects.determinism, DeterminismV1::NonDeterministic);
+    assert_eq!(fact.effects.monotonicity, MonotonicityV1::NonMonotone);
+    assert_eq!(fact.effects.aggregation, AggregationClassV1::Scalar);
+    assert_eq!(fact.effects.cost, CostClassV1::SuperLinear);
 
-    let unknown_inputs = resolved_type_inputs(
+    let unknown_inputs = resolved_type_inputs_with_rows(
         checked,
         vec![
             ResolvedTypeInputEntryV2 {
@@ -913,6 +1069,14 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
             },
         ],
         vec![],
+        vec![DeferredRelationRowInputV2::known_source(
+            SourceQualifiedNodeIdV2 {
+                source_id: SourceIdV2::from_raw(9),
+                node_id: source_root,
+            },
+            0,
+            Vec::new(),
+        )],
     )
     .unwrap();
     let unknown_facts = ExpressionTypeKernelV2::try_closed()
@@ -926,6 +1090,111 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
     assert_eq!(unknown.effects.monotonicity, MonotonicityV1::NonMonotone);
     assert_eq!(unknown.effects.aggregation, AggregationClassV1::Aggregate);
     assert_eq!(unknown.effects.cost, CostClassV1::SuperLinear);
+}
+
+#[test]
+fn relation_exists_captures_use_hir_order_and_types_owned_effects() {
+    let builder = HirBuilderV1::new();
+    let first = builder.symbol("outer_first", SpanV1::new(20, 31));
+    let first_id = first.id;
+    let second = builder.symbol("outer_second", SpanV1::new(34, 46));
+    let second_id = second.id;
+    let predicate = builder.compare("=", first, second, SpanV1::new(20, 46));
+    let source = builder.relation_source("users", SpanV1::new(10, 15), None, SpanV1::new(10, 15));
+    let source_root = source.id;
+    let relation = builder.relation_filter(source, predicate, SpanV1::new(10, 46));
+    let relation_root = relation.id;
+    let exists = builder.relation_exists(
+        RelationExistsPolarityV1::Exists,
+        relation,
+        SpanV1::new(5, 47),
+    );
+    let exists_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(9),
+        node_id: exists.id,
+    };
+    let doc = checked_rule(builder.int("1", SpanV1::new(0, 1)), exists);
+    let checked = check_document_v2(&doc).unwrap();
+    let owner = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(9),
+        node_id: HirNodeIdV1::from_raw(10_000),
+    };
+    let capture = |reference| {
+        ResolvedRelationCaptureInputV2::new(
+            SourceQualifiedNodeIdV2 {
+                source_id: SourceIdV2::from_raw(9),
+                node_id: reference,
+            },
+            owner,
+            0,
+        )
+    };
+    let entries = |captures| {
+        vec![
+            ResolvedTypeInputEntryV2 {
+                key: SourceQualifiedNodeIdV2 {
+                    source_id: SourceIdV2::from_raw(9),
+                    node_id: first_id,
+                },
+                value: ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(
+                    ValueTypeV1::bool(),
+                )),
+            },
+            ResolvedTypeInputEntryV2 {
+                key: SourceQualifiedNodeIdV2 {
+                    source_id: SourceIdV2::from_raw(9),
+                    node_id: second_id,
+                },
+                value: ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(
+                    ValueTypeV1::bool(),
+                )),
+            },
+            ResolvedTypeInputEntryV2 {
+                key: exists_key,
+                value: ResolvedTypeInputValueV2::RelationPredicate(
+                    ResolvedRelationPredicateInputV2::try_resolved(
+                        SourceQualifiedNodeIdV2 {
+                            source_id: SourceIdV2::from_raw(9),
+                            node_id: relation_root,
+                        },
+                        captures,
+                    )
+                    .unwrap(),
+                ),
+            },
+        ]
+    };
+    let rows = || {
+        vec![DeferredRelationRowInputV2::known_source(
+            SourceQualifiedNodeIdV2 {
+                source_id: SourceIdV2::from_raw(9),
+                node_id: source_root,
+            },
+            0,
+            Vec::new(),
+        )]
+    };
+
+    // Both captures are real relation-subtree references and are supplied in
+    // HIR traversal order. Types does not need Binder to reject a permutation.
+    assert!(resolved_type_inputs_with_rows(
+        checked,
+        entries(vec![capture(first_id), capture(second_id)]),
+        vec![],
+        rows(),
+    )
+    .is_ok());
+    assert_eq!(
+        resolved_type_inputs_with_rows(
+            checked,
+            entries(vec![capture(second_id), capture(first_id)]),
+            vec![],
+            rows(),
+        )
+        .unwrap_err()
+        .code(),
+        "types.invalid_relation_predicate_input"
+    );
 }
 
 #[test]

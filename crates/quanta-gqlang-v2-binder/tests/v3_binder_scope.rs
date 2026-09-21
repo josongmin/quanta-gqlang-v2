@@ -1,23 +1,20 @@
-//! v3 binder positive scope rail.
-//!
-//! syntax->HIR->binder path: a query HIR with a relation alias plus a local
-//! `let`-binding resolves every bare symbol reference to the right binder
-//! (`D3`, `D25`). Builds HIR directly with `HirBuilderV1` because the v3 parser
-//! (ticket 06) is not present yet.
-
-#![allow(clippy::unwrap_used, reason = "tests may unwrap")]
-#![allow(clippy::indexing_slicing, reason = "tests may index")]
-#![allow(clippy::panic, reason = "tests assert by panicking")]
 #![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
     clippy::wildcard_enum_match_arm,
-    reason = "tests match the expected variant and panic on the rest"
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 use quanta_gqlang_v2_binder::{
     Binder, BinderKindV1, CaptureV1, ModuleGraphV1, ParamV1, ResolvedTargetV1,
 };
 use quanta_gqlang_v2_hir::{
-    AliasV1, HirBuilderV1, OrderKeyHirV1, ProjectionItemV1, SortDirectionHirV1, SpanV1,
+    AliasV1, CallArgHirV1, CallArgsHirV1, HirBuilderV1, OrderKeyHirV1, ProjectionItemV1,
+    SortDirectionHirV1, SpanV1,
 };
 
 fn alias(name: &str, start: usize) -> AliasV1 {
@@ -30,50 +27,220 @@ fn alias(name: &str, start: usize) -> AliasV1 {
 #[test]
 fn group_output_exposes_only_ordered_key_bindings_and_retains_private_partition_input() {
     let b = HirBuilderV1::new();
-    let scan = b.relation_source("catalog.repos", Some(alias("u", 10)), SpanV1::new(0, 11));
+    let scan = b.relation_source(
+        "catalog.repos",
+        SpanV1::new(0, 10),
+        Some(alias("u", 10)),
+        SpanV1::new(0, 11),
+    );
     let scan_id = scan.id;
-    let first = b.try_path(b.symbol("u", SpanV1::new(20, 21)), vec![quanta_gqlang_v2_hir::PathSegmentV1 {
-        name: "id".into(), span: SpanV1::new(22, 24),
-    }], SpanV1::new(20, 24)).unwrap();
+    let first = b
+        .try_path(
+            b.symbol("u", SpanV1::new(20, 21)),
+            vec![quanta_gqlang_v2_hir::PathSegmentV1 {
+                name: "id".into(),
+                span: SpanV1::new(22, 24),
+            }],
+            SpanV1::new(20, 24),
+        )
+        .unwrap();
     let second = b.int("1", SpanV1::new(29, 30));
-    let group = b.group_by(scan, vec![first, second], SpanV1::new(0, 30)).unwrap();
+    let group = b
+        .group_by(scan, vec![first, second], SpanV1::new(0, 30))
+        .unwrap();
     let group_id = group.id;
     let order_ref = b.symbol("id", SpanV1::new(39, 41));
     let order_ref_id = order_ref.id;
-    let order = b.order_by(group, vec![OrderKeyHirV1 { value: order_ref, direction: SortDirectionHirV1::Asc }],
-        SpanV1::new(0, 41)).unwrap();
+    let order = b
+        .order_by(
+            group,
+            vec![OrderKeyHirV1 {
+                value: order_ref,
+                direction: SortDirectionHirV1::Asc,
+            }],
+            SpanV1::new(0, 41),
+        )
+        .unwrap();
     let graph = ModuleGraphV1::new();
     let mut binder = Binder::new(&graph);
     binder.resolve_query(&b.query(order, None, SpanV1::new(0, 41)));
     let result = binder.finish();
     assert!(result.is_ok(), "diags: {:?}", result.diagnostics());
     let output = result.relation_output(group_id).unwrap();
-    assert_eq!(output.iter().map(|binding| (binding.name.as_str(), binding.identity())).collect::<Vec<_>>(),
-        vec![("id", (group_id, 0)), ("col", (group_id, 1))]);
-    assert_eq!(result.partition_input(group_id).unwrap().iter().map(|binding| binding.identity()).collect::<Vec<_>>(),
-        vec![(scan_id, 0)]);
-    let ResolvedTargetV1::Local(binding) = result.target_of(order_ref_id).unwrap() else { panic!("key-only group frame required") };
+    assert_eq!(
+        output
+            .iter()
+            .map(|binding| (binding.name.as_str(), binding.identity()))
+            .collect::<Vec<_>>(),
+        vec![("id", (group_id, 0)), ("col", (group_id, 1))]
+    );
+    assert_eq!(
+        result
+            .partition_input(group_id)
+            .unwrap()
+            .iter()
+            .map(|binding| binding.identity())
+            .collect::<Vec<_>>(),
+        vec![(scan_id, 0)]
+    );
+    let ResolvedTargetV1::Local(binding) = result.target_of(order_ref_id).unwrap() else {
+        panic!("key-only group frame required")
+    };
     assert_eq!(binding.identity(), (group_id, 0));
 }
 
 #[test]
 fn duplicate_implicit_group_names_reject_at_second_key_span() {
     let b = HirBuilderV1::new();
-    let scan = b.relation_source("catalog.repos", Some(alias("u", 10)), SpanV1::new(0, 11));
-    let key = |base_span, segment_span, end| b.try_path(b.symbol("u", base_span),
-        vec![quanta_gqlang_v2_hir::PathSegmentV1 { name: "id".into(), span: segment_span }],
-        SpanV1::new(base_span.start, end)).unwrap();
-    let group = b.group_by(scan, vec![
-        key(SpanV1::new(20, 21), SpanV1::new(22, 24), 24),
-        key(SpanV1::new(30, 31), SpanV1::new(32, 34), 34),
-    ], SpanV1::new(0, 34)).unwrap();
+    let scan = b.relation_source(
+        "catalog.repos",
+        SpanV1::new(0, 10),
+        Some(alias("u", 10)),
+        SpanV1::new(0, 11),
+    );
+    let key = |base_span, segment_span, end| {
+        b.try_path(
+            b.symbol("u", base_span),
+            vec![quanta_gqlang_v2_hir::PathSegmentV1 {
+                name: "id".into(),
+                span: segment_span,
+            }],
+            SpanV1::new(base_span.start, end),
+        )
+        .unwrap()
+    };
+    let group = b
+        .group_by(
+            scan,
+            vec![
+                key(SpanV1::new(20, 21), SpanV1::new(22, 24), 24),
+                key(SpanV1::new(30, 31), SpanV1::new(32, 34), 34),
+            ],
+            SpanV1::new(0, 34),
+        )
+        .unwrap();
     let graph = ModuleGraphV1::new();
     let mut binder = Binder::new(&graph);
     binder.resolve_query(&b.query(group, None, SpanV1::new(0, 34)));
     let result = binder.finish();
     assert!(!result.is_ok());
-    assert_eq!(result.diagnostics()[0].code(), "binder.duplicate_declaration");
+    assert_eq!(
+        result.diagnostics()[0].code(),
+        "binder.duplicate_declaration"
+    );
     assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(32, 34));
+}
+
+#[test]
+fn duplicate_computed_group_keys_reject_at_second_col_span() {
+    let b = HirBuilderV1::new();
+    let scan = b.relation_source(
+        "catalog.repos",
+        SpanV1::new(0, 10),
+        None,
+        SpanV1::new(0, 11),
+    );
+    let group = b
+        .group_by(
+            scan,
+            vec![
+                b.int("1", SpanV1::new(20, 21)),
+                b.int("2", SpanV1::new(30, 31)),
+            ],
+            SpanV1::new(0, 31),
+        )
+        .unwrap();
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.resolve_query(&b.query(group, None, SpanV1::new(0, 31)));
+    let result = binder.finish();
+    assert!(!result.is_ok());
+    assert_eq!(
+        result.diagnostics()[0].code(),
+        "binder.duplicate_declaration"
+    );
+    assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(30, 31));
+}
+
+#[test]
+fn post_group_partition_alias_cannot_be_rebound_to_a_declaration_or_import() {
+    for collision in ["declaration", "import", "none"] {
+        let b = HirBuilderV1::new();
+        let scan = b.relation_source(
+            "catalog.repos",
+            SpanV1::new(0, 10),
+            Some(alias("r", 10)),
+            SpanV1::new(0, 11),
+        );
+        let group = b
+            .group_by(
+                scan,
+                vec![b.int("1", SpanV1::new(20, 21))],
+                SpanV1::new(0, 21),
+            )
+            .unwrap();
+        let reference = b.symbol("r", SpanV1::new(37, 38));
+        let reference_id = reference.id;
+        let arg = b
+            .try_path(
+                reference,
+                vec![quanta_gqlang_v2_hir::PathSegmentV1 {
+                    name: "value".into(),
+                    span: SpanV1::new(39, 44),
+                }],
+                SpanV1::new(37, 44),
+            )
+            .unwrap();
+        let sum = b.call(
+            "sum",
+            SpanV1::new(33, 36),
+            CallArgsHirV1::try_new(vec![CallArgHirV1::Expr(arg)]).unwrap(),
+            SpanV1::new(33, 45),
+        );
+        let project = b
+            .try_project(
+                group,
+                vec![ProjectionItemV1 {
+                    value: sum,
+                    alias: Some(alias("total", 46)),
+                }],
+                SpanV1::new(0, 47),
+            )
+            .unwrap();
+        let declaration = b.decl(
+            "r",
+            SpanV1::new(49, 50),
+            b.int("1", SpanV1::new(53, 54)),
+            SpanV1::new(49, 54),
+        );
+        let graph = if collision == "import" {
+            ModuleGraphV1::new().with_import("r", "lib.r")
+        } else {
+            ModuleGraphV1::new()
+        };
+        let mut binder = Binder::new(&graph);
+        if collision == "declaration" {
+            binder.declare_program(&[declaration], &[]);
+        }
+        binder.resolve_query(&b.query(project, None, SpanV1::new(0, 47)));
+        let result = binder.finish();
+        if collision == "none" {
+            assert!(result.is_ok(), "{collision}: {:?}", result.diagnostics());
+            let ResolvedTargetV1::Local(binding) = result.target_of(reference_id).unwrap() else {
+                panic!("pre-group alias required")
+            };
+            assert_eq!(binding.name, "r");
+            assert_eq!(result.partition_candidates().len(), 1);
+        } else {
+            assert_eq!(
+                result.diagnostics()[0].code(),
+                "binder.partition_authority_collision",
+                "{collision}"
+            );
+            assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(37, 38));
+            assert_eq!(result.partition_candidates().len(), 0);
+        }
+    }
 }
 
 // `SELECT u.id FROM catalog.users AS u WHERE u.active = true` (scenario 1):
@@ -85,7 +252,12 @@ fn alias_resolves_in_projection_and_filter() {
         name: "u".to_owned(),
         span: SpanV1::new(30, 31),
     };
-    let source = b.relation_source("catalog.users", Some(alias), SpanV1::new(15, 31));
+    let source = b.relation_source(
+        "catalog.users",
+        SpanV1::new(15, 28),
+        Some(alias),
+        SpanV1::new(15, 31),
+    );
 
     // projection: u.id
     let proj_base = b.symbol("u", SpanV1::new(7, 8));
@@ -287,14 +459,24 @@ fn declaration_reference_resolves() {
 #[test]
 fn join_rhs_alias_is_hidden_from_lhs_but_visible_to_on_and_later_stages() {
     let b = HirBuilderV1::new();
-    let lhs_source = b.relation_source("catalog.left", Some(alias("l", 10)), SpanV1::new(0, 11));
+    let lhs_source = b.relation_source(
+        "catalog.left",
+        SpanV1::new(0, 10),
+        Some(alias("l", 10)),
+        SpanV1::new(0, 11),
+    );
     let premature_rhs_ref = b.symbol("r", SpanV1::new(20, 21));
     let lhs = b.relation_filter(
         lhs_source,
         b.bool_value(premature_rhs_ref.clone(), SpanV1::new(20, 21)),
         SpanV1::new(0, 21),
     );
-    let rhs = b.relation_source("catalog.right", Some(alias("r", 40)), SpanV1::new(30, 41));
+    let rhs = b.relation_source(
+        "catalog.right",
+        SpanV1::new(30, 40),
+        Some(alias("r", 40)),
+        SpanV1::new(30, 41),
+    );
     let on_lhs_ref = b.symbol("l", SpanV1::new(48, 49));
     let on_rhs_ref = b.symbol("r", SpanV1::new(50, 51));
     let joined = b.inner_join(
@@ -356,7 +538,12 @@ fn join_rhs_alias_is_hidden_from_lhs_but_visible_to_on_and_later_stages() {
 #[test]
 fn projection_replaces_row_frame_and_exposes_only_named_outputs() {
     let b = HirBuilderV1::new();
-    let source = b.relation_source("catalog.users", Some(alias("u", 10)), SpanV1::new(0, 11));
+    let source = b.relation_source(
+        "catalog.users",
+        SpanV1::new(0, 10),
+        Some(alias("u", 10)),
+        SpanV1::new(0, 11),
+    );
     let source_id = source.id;
     let projected_input = b.symbol("u", SpanV1::new(20, 21));
     let projected = b
@@ -424,7 +611,12 @@ fn projection_replaces_row_frame_and_exposes_only_named_outputs() {
 #[test]
 fn aliasless_path_projection_exposes_final_segment_to_order_by() {
     let b = HirBuilderV1::new();
-    let source = b.relation_source("catalog.users", Some(alias("u", 10)), SpanV1::new(0, 11));
+    let source = b.relation_source(
+        "catalog.users",
+        SpanV1::new(0, 10),
+        Some(alias("u", 10)),
+        SpanV1::new(0, 11),
+    );
     let path = b
         .try_path(
             b.symbol("u", SpanV1::new(20, 21)),
@@ -476,7 +668,12 @@ fn aliasless_path_projection_exposes_final_segment_to_order_by() {
 #[test]
 fn aliasless_symbol_projection_exposes_its_symbol_name() {
     let b = HirBuilderV1::new();
-    let source = b.relation_source("catalog.users", Some(alias("u", 10)), SpanV1::new(0, 11));
+    let source = b.relation_source(
+        "catalog.users",
+        SpanV1::new(0, 10),
+        Some(alias("u", 10)),
+        SpanV1::new(0, 11),
+    );
     let projected = b
         .try_project(
             source,
@@ -506,7 +703,12 @@ fn aliasless_symbol_projection_exposes_its_symbol_name() {
 #[test]
 fn projection_drops_input_aliases_from_later_stages() {
     let b = HirBuilderV1::new();
-    let source = b.relation_source("catalog.users", Some(alias("u", 10)), SpanV1::new(0, 11));
+    let source = b.relation_source(
+        "catalog.users",
+        SpanV1::new(0, 10),
+        Some(alias("u", 10)),
+        SpanV1::new(0, 11),
+    );
     let projected_input = b.symbol("u", SpanV1::new(20, 21));
     let projected = b
         .try_project(
@@ -543,7 +745,12 @@ fn projection_drops_input_aliases_from_later_stages() {
 #[test]
 fn duplicate_projection_aliases_reject_without_last_wins_resolution() {
     let b = HirBuilderV1::new();
-    let source = b.relation_source("catalog.users", Some(alias("u", 10)), SpanV1::new(0, 11));
+    let source = b.relation_source(
+        "catalog.users",
+        SpanV1::new(0, 10),
+        Some(alias("u", 10)),
+        SpanV1::new(0, 11),
+    );
     let first_value = b.symbol("u", SpanV1::new(20, 21));
     let second_value = b.symbol("u", SpanV1::new(24, 25));
     let projected = b
@@ -585,9 +792,18 @@ fn relational_exists_records_exact_nonempty_and_explicit_empty_capture_sets() {
     use quanta_gqlang_v2_hir::RelationExistsPolarityV1;
 
     let b = HirBuilderV1::new();
-    let outer = b.relation_source("catalog.repos", Some(alias("r", 10)), SpanV1::new(0, 11));
-    let inner_source =
-        b.relation_source("catalog.files", Some(alias("f", 30)), SpanV1::new(20, 31));
+    let outer = b.relation_source(
+        "catalog.repos",
+        SpanV1::new(0, 10),
+        Some(alias("r", 10)),
+        SpanV1::new(0, 11),
+    );
+    let inner_source = b.relation_source(
+        "catalog.files",
+        SpanV1::new(20, 30),
+        Some(alias("f", 30)),
+        SpanV1::new(20, 31),
+    );
     let inner_local = b.symbol("f", SpanV1::new(40, 41));
     let outer_capture = b.symbol("r", SpanV1::new(44, 45));
     let inner_relation = b.relation_filter(
@@ -602,8 +818,12 @@ fn relational_exists_records_exact_nonempty_and_explicit_empty_capture_sets() {
     );
     let correlated_id = correlated.id;
 
-    let uncorrelated_relation =
-        b.relation_source("catalog.owners", Some(alias("o", 60)), SpanV1::new(50, 61));
+    let uncorrelated_relation = b.relation_source(
+        "catalog.owners",
+        SpanV1::new(50, 60),
+        Some(alias("o", 60)),
+        SpanV1::new(50, 61),
+    );
     let uncorrelated = b.relation_exists(
         RelationExistsPolarityV1::Exists,
         uncorrelated_relation,
@@ -639,11 +859,24 @@ fn nested_exists_attributes_capture_to_each_crossed_boundary() {
     use quanta_gqlang_v2_hir::RelationExistsPolarityV1;
 
     let b = HirBuilderV1::new();
-    let root = b.relation_source("catalog.root", Some(alias("r", 10)), SpanV1::new(0, 11));
-    let middle_source =
-        b.relation_source("catalog.middle", Some(alias("m", 30)), SpanV1::new(20, 31));
-    let inner_source =
-        b.relation_source("catalog.inner", Some(alias("i", 50)), SpanV1::new(40, 51));
+    let root = b.relation_source(
+        "catalog.root",
+        SpanV1::new(0, 10),
+        Some(alias("r", 10)),
+        SpanV1::new(0, 11),
+    );
+    let middle_source = b.relation_source(
+        "catalog.middle",
+        SpanV1::new(20, 30),
+        Some(alias("m", 30)),
+        SpanV1::new(20, 31),
+    );
+    let inner_source = b.relation_source(
+        "catalog.inner",
+        SpanV1::new(40, 50),
+        Some(alias("i", 50)),
+        SpanV1::new(40, 51),
+    );
     let root_ref = b.symbol("r", SpanV1::new(60, 61));
     let middle_ref = b.symbol("m", SpanV1::new(64, 65));
     let inner_relation = b.relation_filter(

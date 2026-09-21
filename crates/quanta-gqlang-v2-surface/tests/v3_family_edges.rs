@@ -1,17 +1,12 @@
-//! Family fail-closed edge rails: drives the per-family REJECT branches the
-//! family hellgate leaves uncovered — unsupported clause keys, unsupported mode
-//! keywords, malformed references, composition producer rejects, and the small
-//! value-parser rejects (`parse_u32`, `expect_string`, activation).
-//!
-//! Each rail asserts the EXACT typed `ParseErrorCodeV1` and that the diagnostic
-//! message names the offending construct, so a future silent-widen of any reject
-//! boundary fails this guard rather than passing quietly (D10 / D28 / D13).
-
 #![allow(
-    clippy::unwrap_used,
     clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    reason = "integration test rail: assertion panics are intentional"
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 use quanta_gqlang_v2_hir::HirBuilderV1;

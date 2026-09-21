@@ -1,17 +1,13 @@
-//! Traversal-contract rails for the [`HirVisitorV1`] walker.
-//!
-//! The integrity gate overrides EVERY `visit_*` hook, so the trait's default
-//! hooks (each delegating to its `walk_*`) and several `walk_*` recursion arms
-//! never run under the integrity tests. These rails drive a visitor that relies
-//! on the DEFAULT hooks: it overrides only the leaf observers and asserts the
-//! walker reaches every id-bearing node exactly once, in deterministic pre-order,
-//! across the value/bool/relation/shape/unit/item families. This is the contract
-//! `crate::integrity` relies on, so locking it guards against a silently-dropped
-//! recursion arm.
-
-#![allow(clippy::unwrap_used, reason = "tests assert on Result/Option directly")]
-#![allow(clippy::indexing_slicing, reason = "tests index known-length vecs")]
-#![allow(clippy::panic, reason = "tests panic on unexpected variants")]
+#![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
+)]
 
 use quanta_gqlang_v2_hir::{
     walk_item, CallArgHirV1, CallArgsHirV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
@@ -149,7 +145,7 @@ fn walk_bool_recurses_compare_and_or_not_paren_quantifier_value() {
 #[test]
 fn walk_relation_recurses_filter_project_compose_through_default_hooks() {
     let b = HirBuilderV1::new();
-    let src = b.relation_source("users", None, SpanV1::new(0, 5));
+    let src = b.relation_source("users", SpanV1::new(0, 5), None, SpanV1::new(0, 5));
     // filter users where active
     let pred = b.bool_value(b.symbol("active", SpanV1::new(12, 18)), SpanV1::new(12, 18));
     let filtered = b.relation_filter(src, pred, SpanV1::new(0, 18));
@@ -162,7 +158,7 @@ fn walk_relation_recurses_filter_project_compose_through_default_hooks() {
         .try_project(filtered, vec![proj_item], SpanV1::new(0, 27))
         .unwrap();
     // cross join the projected relation with another source.
-    let other = b.relation_source("roles", None, SpanV1::new(30, 35));
+    let other = b.relation_source("roles", SpanV1::new(30, 35), None, SpanV1::new(30, 35));
     let composed = b.cross_join(projected, other, SpanV1::new(0, 35));
 
     let mut trace = IdTrace::default();
@@ -315,7 +311,7 @@ fn default_item_hooks_delegate_into_their_walks() {
     // visit_query / visit_shape / visit_value / visit_bool / visit_meta hooks to
     // each run through their trait-default delegation.
     // producer: VIEW v = SELECT (users WHERE active) with a leaf result shape.
-    let users = b.relation_source("users", None, SpanV1::new(20, 25));
+    let users = b.relation_source("users", SpanV1::new(20, 25), None, SpanV1::new(20, 25));
     let pred = b.bool_value(b.symbol("active", SpanV1::new(32, 38)), SpanV1::new(32, 38));
     let filtered = b.relation_filter(users, pred, SpanV1::new(20, 38));
     let shape = b.shape_leaf(b.symbol("id", SpanV1::new(40, 42)), SpanV1::new(40, 42));
@@ -323,7 +319,7 @@ fn default_item_hooks_delegate_into_their_walks() {
     let binding = b.composition_binding("v", SpanV1::new(4, 5), inline.into());
 
     let body = b.query(
-        b.relation_source("results", None, SpanV1::new(45, 52)),
+        b.relation_source("results", SpanV1::new(45, 52), None, SpanV1::new(45, 52)),
         None,
         SpanV1::new(45, 52),
     );

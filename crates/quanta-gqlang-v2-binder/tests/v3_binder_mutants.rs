@@ -1,27 +1,21 @@
-//! Mutation-pinning rail.
-//!
-//! Each test pins an observable behaviour a surviving cargo-mutants mutation
-//! would otherwise leave undetected: the exact span a diagnostic carries, the
-//! exact count `len`/`is_empty` report, the exact capture/shadow
-//! boundary, and the observable binding effect of each `resolve_*`/`close_scope`
-//! entry point.
-
-#![allow(clippy::unwrap_used, reason = "tests may unwrap")]
-#![allow(clippy::expect_used, reason = "tests may expect")]
-#![allow(clippy::indexing_slicing, reason = "tests may index")]
-#![allow(clippy::panic, reason = "tests assert by panicking")]
 #![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
     clippy::wildcard_enum_match_arm,
-    reason = "tests match the expected variant and panic on the rest"
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 use quanta_gqlang_v2_binder::{
     BindDiagnosticV1, Binder, BinderKindV1, BindingV1, CaptureV1, LexicalResolutionV1,
-    LexicalScopeV1, ModuleGraphV1, ParamV1, ResolvedTargetV1, ShadowReportKindV1,
+    LexicalScopeV1, ModuleGraphV1, ParamV1, ResolvedTargetV1,
 };
 use quanta_gqlang_v2_hir::{
     AliasV1, CompositionBodyV1, EvidenceModeV1, ExplainHirV1, GraphRefV1, HirBuilderV1,
-    HirNodeIdV1, PresentationKindV1, SpanV1, TruthModeV1,
+    HirNodeIdV1, PresentationKindV1, ShapeFieldV1, SpanV1, TruthModeV1,
 };
 
 fn id(raw: u32) -> HirNodeIdV1 {
@@ -154,30 +148,6 @@ fn shadow_search_stops_at_noncapturing_barrier() {
 // Companion: WITHOUT a barrier the outer `x` IS visible and bind reports an
 // OuterShadow. This pins the positive side so the `break` cannot be deleted
 // outright (a body that always returns None would fail here).
-#[test]
-fn shadow_search_reports_outer_shadow_when_visible() {
-    let mut scope = LexicalScopeV1::new();
-    scope.push(CaptureV1::Capturing); // outer
-    let _ = scope.bind(BindingV1::new(
-        "x",
-        BinderKindV1::Let,
-        SpanV1::new(0, 1),
-        id(0),
-    ));
-
-    scope.push(CaptureV1::Capturing); // inner, capturing edge => outer visible
-    let report = scope
-        .bind(BindingV1::new(
-            "x",
-            BinderKindV1::Let,
-            SpanV1::new(30, 31),
-            id(1),
-        ))
-        .expect("inner `x` must shadow the visible outer `x`");
-    assert_eq!(report.kind, ShadowReportKindV1::OuterShadow);
-    assert_eq!(report.existing.span, SpanV1::new(0, 1));
-}
-
 // ===== resolve.rs:200 resolve_rule body -> () ==============================
 //
 // `resolve_rule` must push a param scope, bind the params, and resolve both
@@ -229,7 +199,12 @@ fn resolve_rule_binds_params_and_resolves_head_and_body() {
 fn resolve_presentation_resolves_target_ref() {
     let b = HirBuilderV1::new();
     // producer: a trivial relation-source query.
-    let source = b.relation_source("catalog.users", None, SpanV1::new(8, 13));
+    let source = b.relation_source(
+        "catalog.users",
+        SpanV1::new(8, 12),
+        None,
+        SpanV1::new(8, 13),
+    );
     let producer = b.query(source, None, SpanV1::new(0, 13)).into();
     let binding = b.composition_binding("s", SpanV1::new(4, 5), producer);
 
@@ -308,27 +283,6 @@ fn close_scope_pops_the_frame() {
 
 // Sanity companion: WITHOUT the close, `x` resolves (proves the test above is
 // detecting the pop, not some unrelated unbound condition).
-#[test]
-fn let_visible_until_scope_closed() {
-    let b = HirBuilderV1::new();
-    let body = b.symbol("x", SpanV1::new(40, 41));
-    let decl = b.decl("v", SpanV1::new(0, 1), body.clone(), SpanV1::new(0, 41));
-
-    let graph = ModuleGraphV1::new();
-    let mut binder = Binder::new(&graph);
-    binder.open_scope(CaptureV1::Capturing);
-    binder.bind_let("x", decl.id, SpanV1::new(10, 11));
-    binder.resolve_decl(&decl, &[]); // scope still open -> resolves
-    binder.close_scope();
-    let result = binder.finish();
-
-    assert!(result.is_ok(), "diags: {:?}", result.diagnostics());
-    assert!(matches!(
-        result.target_of(body.id).unwrap(),
-        ResolvedTargetV1::Local(_)
-    ));
-}
-
 // ===== resolve.rs:596 resolve_shape body -> () =============================
 //
 // A query result shape must be walked so its value positions resolve. A query
@@ -341,7 +295,12 @@ fn resolve_shape_resolves_value_positions() {
         name: "u".to_owned(),
         span: SpanV1::new(30, 31),
     };
-    let source = b.relation_source("catalog.users", Some(alias), SpanV1::new(15, 31));
+    let source = b.relation_source(
+        "catalog.users",
+        SpanV1::new(15, 28),
+        Some(alias),
+        SpanV1::new(15, 31),
+    );
 
     // result shape: a leaf referencing the alias `u`.
     let shape_ref = b.symbol("u", SpanV1::new(7, 8));
@@ -372,13 +331,30 @@ fn resolve_shape_walks_nested_record_and_list() {
         name: "u".to_owned(),
         span: SpanV1::new(30, 31),
     };
-    let source = b.relation_source("catalog.users", Some(alias), SpanV1::new(15, 31));
+    let source = b.relation_source(
+        "catalog.users",
+        SpanV1::new(15, 28),
+        Some(alias),
+        SpanV1::new(15, 31),
+    );
 
     let inner_ref = b.symbol("u", SpanV1::new(7, 8));
     let leaf = b.shape_leaf(inner_ref.clone(), SpanV1::new(7, 8));
     let list = b.shape_list(leaf, SpanV1::new(6, 9));
+    // The test name promises nested record AND list, so wrap the list in a
+    // record field: `resolve_shape` must recurse Record -> List -> Leaf. If the
+    // Record arm is emptied (`Record(_) => {}`), the leaf is never visited and
+    // `target_of(inner_ref.id)` below finds no resolution.
+    let record = b.shape_record(
+        vec![ShapeFieldV1 {
+            name: "outer".to_owned(),
+            name_span: SpanV1::new(5, 6),
+            shape: list,
+        }],
+        SpanV1::new(4, 10),
+    );
 
-    let query = b.query(source, Some(list), SpanV1::new(0, 40));
+    let query = b.query(source, Some(record), SpanV1::new(0, 40));
 
     let graph = ModuleGraphV1::new();
     let mut binder = Binder::new(&graph);

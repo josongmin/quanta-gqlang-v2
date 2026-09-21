@@ -1,21 +1,12 @@
-//! Expression-kernel edge rails: drives the precedence/literal/paren/call/
-//! record/list/quantifier branches that the structural-nesting rail leaves
-//! uncovered, asserting EXACT lowered HIR shape (not a smoke parse) and the
-//! EXACT typed diagnostic code+span for each fail-closed reject path.
-//!
-//! These lock the value/bool kernel's primary-parse and reject branches as
-//! regression guards: a literal kind, a unary tag, a call-arg comma, a `count(*)`
-//! star arg, each quantifier binder form, and the bare-symbol / unexpected-token
-//! terminal arms.
-
 #![allow(
-    clippy::unwrap_used,
     clippy::expect_used,
     clippy::indexing_slicing,
-    clippy::panic,
-    clippy::wildcard_enum_match_arm,
     clippy::match_wildcard_for_single_variants,
-    reason = "integration test rail: assertion panics and exhaustive match arms are intentional"
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 use quanta_gqlang_v2_hir::{

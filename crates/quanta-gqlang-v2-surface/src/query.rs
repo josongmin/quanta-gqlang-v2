@@ -76,7 +76,7 @@ fn parse_source(cur: &mut CursorV1<'_>) -> Result<RelationExprHirV1, ParseDiagno
         Some(a) => name_span.merge(&a.span),
         None => name_span,
     };
-    Ok(cur.builder.relation_source(name, alias, span))
+    Ok(cur.builder.relation_source(name, name_span, alias, span))
 }
 
 /// Parse an optional bare alias: a trailing identifier that is not a reserved

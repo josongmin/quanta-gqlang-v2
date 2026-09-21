@@ -1,14 +1,13 @@
-//! Builder rails for the literal value constructors and manual id minting.
-//!
-//! The `float` / `bool_lit` / `null` literal constructors and `next_id` (the
-//! escape hatch for hand-assembling nodes) are not exercised by the kernel /
-//! item rails. Each must produce exactly the documented `LiteralV1` payload, and
-//! `next_id` must mint fresh, monotonic, gap-free ids that stay unique against
-//! builder-minted nodes. These rails lock the literal vocabulary and the id
-//! contract that integrity uniqueness depends on.
-
-#![allow(clippy::unwrap_used, reason = "tests assert on Result directly")]
-#![allow(clippy::panic, reason = "tests panic on unexpected variants")]
+#![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
+)]
 
 use quanta_gqlang_v2_hir::{
     check_tree, HirBuilderV1, HirRootRefV1, LiteralV1, SpanV1, ValueExprKindV1,

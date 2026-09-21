@@ -1,15 +1,13 @@
-//! Identity / accessor rails for [`ProgramItemHirV1`] and the checked-root view.
-//!
-//! Every program-item variant must report the id and span of the payload it
-//! carries through the `id()`/`span()` accessors, every `From<_>` conversion must
-//! wrap the right variant, and the checked root produced by `check_tree` must
-//! expose the root view plus the validated source length. These accessor arms are
-//! the seam downstream crates key their side tables off, so a wrong arm (returning
-//! a sibling's id) would silently corrupt later passes; these rails lock each arm
-//! to its own payload.
-
-#![allow(clippy::unwrap_used, reason = "tests assert on Result directly")]
-#![allow(clippy::panic, reason = "tests panic on unexpected variants")]
+#![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
+)]
 
 use quanta_gqlang_v2_hir::{
     check_document_v2, check_tree, ActivationV1, CatalogPayloadV1, CheckedHirDocumentOwnedV2,
@@ -143,7 +141,7 @@ fn id_and_span_accessors_report_the_carried_payload_for_every_variant() {
 
     // Query
     let q = b.query(
-        b.relation_source("t", None, SpanV1::new(0, 1)),
+        b.relation_source("t", SpanV1::new(0, 1), None, SpanV1::new(0, 1)),
         None,
         SpanV1::new(0, 7),
     );
@@ -235,13 +233,13 @@ fn id_and_span_accessors_report_the_carried_payload_for_every_variant() {
 
     // Composition
     let producer = b.query(
-        b.relation_source("u", None, SpanV1::new(10, 11)),
+        b.relation_source("u", SpanV1::new(10, 11), None, SpanV1::new(10, 11)),
         None,
         SpanV1::new(10, 11),
     );
     let binding = b.composition_binding("c", SpanV1::new(4, 5), producer.into());
     let body = b.query(
-        b.relation_source("rules", None, SpanV1::new(20, 25)),
+        b.relation_source("rules", SpanV1::new(20, 25), None, SpanV1::new(20, 25)),
         None,
         SpanV1::new(20, 25),
     );
@@ -304,7 +302,7 @@ fn check_tree_validates_each_leaf_root_variant_directly() {
         1
     );
 
-    let relation = b.relation_source("t", None, SpanV1::new(0, 1));
+    let relation = b.relation_source("t", SpanV1::new(0, 1), None, SpanV1::new(0, 1));
     assert_eq!(
         check_tree(HirRootRefV1::Relation(&relation), 1)
             .unwrap()
@@ -417,7 +415,7 @@ fn check_tree_validates_each_dedicated_item_root_variant() {
     );
 
     let inner = b.query(
-        b.relation_source("w", None, SpanV1::new(20, 21)),
+        b.relation_source("w", SpanV1::new(20, 21), None, SpanV1::new(20, 21)),
         None,
         SpanV1::new(20, 21),
     );

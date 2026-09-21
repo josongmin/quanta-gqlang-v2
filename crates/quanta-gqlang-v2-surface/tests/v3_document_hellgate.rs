@@ -1,30 +1,19 @@
-//! Multi-root document hellgate (GAP 1).
-//!
-//! A document holds several `;`-separated top-level items in order, lowered
-//! through ONE shared builder so node ids stay globally unique. A composition
-//! (`let ... <body> with ...`) spans multiple lines and groups into ONE item.
-//! A malformed middle item rejects with an exact typed span/code.
-
 #![allow(
-    clippy::unwrap_used,
     clippy::expect_used,
     clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    reason = "integration test rail: assertion panics and indexing are intentional"
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
-use quanta_gqlang_v2_hir::{check_tree, HirBuilderV1, HirRootRefV1, ProgramItemHirV1};
+use quanta_gqlang_v2_hir::{
+    check_tree, HirBuilderV1, HirRootRefV1, ProgramItemHirV1, RelationExprKindV1, SpanV1,
+};
 use quanta_gqlang_v2_surface::{parse_document, ParseErrorCodeV1, SurfaceItemV1};
 use std::collections::HashSet;
-
-fn to_item(item: SurfaceItemV1) -> ProgramItemHirV1 {
-    match item {
-        SurfaceItemV1::Program(p) => p,
-        SurfaceItemV1::Query(q) => ProgramItemHirV1::from(q),
-        SurfaceItemV1::Decl(d) => ProgramItemHirV1::from(d),
-        SurfaceItemV1::Rule(r) => ProgramItemHirV1::from(r),
-    }
-}
 
 #[test]
 fn three_ordered_items_with_unique_ids() {
@@ -37,7 +26,11 @@ fn three_ordered_items_with_unique_ids() {
     let doc = parse_document(src, &builder).expect("must parse document");
     assert_eq!(doc.items.len(), 3, "expected 3 ordered items");
 
-    let items: Vec<ProgramItemHirV1> = doc.items.into_iter().map(to_item).collect();
+    let items: Vec<ProgramItemHirV1> = doc
+        .items
+        .into_iter()
+        .map(SurfaceItemV1::into_program_item)
+        .collect();
     // order is preserved: CatalogDecl, GraphQuery, Composition.
     assert!(matches!(items[0], ProgramItemHirV1::CatalogDecl(_)));
     assert!(matches!(items[1], ProgramItemHirV1::GraphQuery(_)));
@@ -62,7 +55,7 @@ fn composition_groups_as_one_item() {
     let doc = parse_document(src, &builder).expect("must parse");
     assert_eq!(doc.items.len(), 1);
     assert!(matches!(
-        to_item(doc.items.into_iter().next().unwrap()),
+        doc.items.into_iter().next().unwrap().into_program_item(),
         ProgramItemHirV1::Composition(_)
     ));
 }
@@ -121,7 +114,40 @@ fn single_item_document_matches_program() {
     let doc = parse_document("from users u | where u.active", &builder).expect("parse");
     assert_eq!(doc.items.len(), 1);
     assert!(matches!(
-        to_item(doc.items.into_iter().next().unwrap()),
+        doc.items.into_iter().next().unwrap().into_program_item(),
         ProgramItemHirV1::Query(_)
     ));
+}
+
+#[test]
+fn relation_source_name_span_is_exact_after_multibyte_prefix() {
+    let src = "let title = \"한글\"; from users u";
+    let builder = HirBuilderV1::new();
+    let document = parse_document(src, &builder).expect("multibyte declaration and query parse");
+    assert_eq!(document.items.len(), 2);
+    let item = document
+        .items
+        .into_iter()
+        .nth(1)
+        .expect("query item")
+        .into_program_item();
+    let ProgramItemHirV1::Query(query) = &item else {
+        panic!("expected query")
+    };
+    let RelationExprKindV1::Source(source) = &query.body.kind else {
+        panic!("expected source")
+    };
+    let start = src.find("users").expect("source name");
+    assert_eq!(source.name_span, SpanV1::new(start, start + "users".len()));
+    assert_eq!(
+        src.get(source.name_span.start..source.name_span.end),
+        Some("users")
+    );
+    assert_eq!(query.body.span.end, src.len());
+    assert!(
+        source.name_span.end < query.body.span.end,
+        "source name excludes alias"
+    );
+    check_tree(HirRootRefV1::Item(&item), document.source_len)
+        .expect("exact byte spans stay within source");
 }

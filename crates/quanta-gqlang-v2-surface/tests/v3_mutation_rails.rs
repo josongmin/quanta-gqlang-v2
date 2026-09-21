@@ -1,19 +1,17 @@
-//! Mutation-hardening rails: behavior-pinning tests that kill cargo-mutants
-//! survivors in the lexer, expression-paren disambiguator, diagnostic Display,
-//! and the canonical formatter. Each test asserts the EXACT observable behavior
-//! (token kinds/spans, parse acceptance + kind, rendered string) so the
-//! corresponding mutation flips a failing assertion.
-
 #![allow(
-    clippy::unwrap_used,
     clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    reason = "mutation rail: assertion panics are intentional"
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 use quanta_gqlang_v2_hir::{BoolExprKindV1, HirBuilderV1, ProgramItemHirV1};
 use quanta_gqlang_v2_surface::{
-    format_item, lex, parse_predicate, parse_program, ParseErrorCodeV1, SurfaceItemV1, TokenKindV1,
+    format_item, lex, parse_predicate, parse_program, ParseErrorCodeV1, TokenKindV1,
 };
 
 // ---- lexer rails -----------------------------------------------------------
@@ -208,12 +206,7 @@ fn diagnostic_display_is_exact() {
 fn fmt(src: &str) -> String {
     let builder = HirBuilderV1::new();
     let parsed = parse_program(src, &builder).unwrap_or_else(|e| panic!("parse {src:?}: {e}"));
-    let item: ProgramItemHirV1 = match parsed.item {
-        SurfaceItemV1::Program(p) => p,
-        SurfaceItemV1::Query(q) => ProgramItemHirV1::from(q),
-        SurfaceItemV1::Decl(d) => ProgramItemHirV1::from(d),
-        SurfaceItemV1::Rule(r) => ProgramItemHirV1::from(r),
-    };
+    let item: ProgramItemHirV1 = parsed.item.into_program_item();
     format_item(&item)
 }
 

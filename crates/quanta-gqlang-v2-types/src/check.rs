@@ -5,9 +5,9 @@ use crate::op::{OperatorIdV2, OperatorRegistryV2};
 use crate::ty::{FiniteF64V2, RecordFieldTypeV1, RecordTypeV1, TypedLiteralValueV2, ValueTypeV1};
 use crate::TypeDiagnosticV2;
 use quanta_gqlang_v2_hir::{
-    BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CheckedHirDocumentV2,
-    ExtendedSourceRegistryViewV2, HirNodeIdV1, HirVisitorV1, LiteralV1, LocatedSpanV2, SourceIdV2,
-    ValueExprHirV1, ValueExprKindV1,
+    BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CheckedHirDocumentV2, CheckedLocatedSpanV2,
+    ExtendedSourceRegistryViewV2, HirNodeIdV1, HirVisitorV1, LiteralV1, LocatedSpanV2,
+    RelationExprHirV1, RelationExprKindV1, SourceIdV2, ValueExprHirV1, ValueExprKindV1,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -39,8 +39,175 @@ pub enum ResolvedTypeInputValueV2 {
     /// relation-stage binding this may be evaluated forward, within the same
     /// document-kernel invocation.
     BindingFromDeclaration(SourceQualifiedNodeIdV2),
+    /// A record value copied from an exact relation root completed earlier in
+    /// the same document traversal.
+    BindingFromRelationRow(SourceQualifiedNodeIdV2),
     Callable(ResolvedCallableInputV2),
     RelationPredicate(ResolvedRelationPredicateInputV2),
+}
+
+/// Type authority for one deferred relation-row field. `PriorExpression`
+/// never triggers a second kernel pass: the referenced expression must already
+/// have been typed when its owning relation root completes traversal.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RelationRowFieldSourceV2 {
+    Known(ValueTypeV1),
+    PriorExpression(SourceQualifiedNodeIdV2),
+}
+
+/// One ordered field submitted for a relation root whose row is sealed by the
+/// types owner. Names and locations stay row-aligned with the resulting fact.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DeferredRelationRowFieldInputV2 {
+    ordinal: usize,
+    name: String,
+    name_location: CheckedLocatedSpanV2,
+    source: RelationRowFieldSourceV2,
+}
+
+impl DeferredRelationRowFieldInputV2 {
+    #[must_use]
+    pub fn new(
+        ordinal: usize,
+        name: impl Into<String>,
+        name_location: CheckedLocatedSpanV2,
+        source: RelationRowFieldSourceV2,
+    ) -> Self {
+        Self {
+            ordinal,
+            name: name.into(),
+            name_location,
+            source,
+        }
+    }
+}
+
+/// How the row for one relation stage is produced. Filter, sort, and join rows
+/// are inferred from their checked HIR children and therefore have no caller
+/// supplied row input.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DeferredRelationRowKindV2 {
+    /// Authoritative source fields with already sealed scalar/value types.
+    KnownSource {
+        expected_field_count: usize,
+        fields: Vec<DeferredRelationRowFieldInputV2>,
+    },
+    /// A Composition-local scan of a relation root completed earlier.
+    PriorRelation { target: SourceQualifiedNodeIdV2 },
+    /// Project/group fields whose types come from exact expressions in this
+    /// stage. The types owner constructs the record after those expressions.
+    ExpressionFields {
+        expected_field_count: usize,
+        fields: Vec<DeferredRelationRowFieldInputV2>,
+    },
+}
+
+/// Complete ordered row request for one exact checked-HIR relation root. Only
+/// field-producing variants carry an expected count; copying a prior sealed
+/// row has no caller-supplied schema assertion to ignore or forge.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DeferredRelationRowInputV2 {
+    root: SourceQualifiedNodeIdV2,
+    kind: DeferredRelationRowKindV2,
+}
+
+impl DeferredRelationRowInputV2 {
+    #[must_use]
+    pub fn known_source(
+        root: SourceQualifiedNodeIdV2,
+        expected_field_count: usize,
+        fields: Vec<DeferredRelationRowFieldInputV2>,
+    ) -> Self {
+        Self {
+            root,
+            kind: DeferredRelationRowKindV2::KnownSource {
+                expected_field_count,
+                fields,
+            },
+        }
+    }
+
+    #[must_use]
+    pub const fn prior_relation(
+        root: SourceQualifiedNodeIdV2,
+        target: SourceQualifiedNodeIdV2,
+    ) -> Self {
+        Self {
+            root,
+            kind: DeferredRelationRowKindV2::PriorRelation { target },
+        }
+    }
+
+    #[must_use]
+    pub fn expression_fields(
+        root: SourceQualifiedNodeIdV2,
+        expected_field_count: usize,
+        fields: Vec<DeferredRelationRowFieldInputV2>,
+    ) -> Self {
+        Self {
+            root,
+            kind: DeferredRelationRowKindV2::ExpressionFields {
+                expected_field_count,
+                fields,
+            },
+        }
+    }
+}
+
+/// Ordered relation roots that must be completed before the normal authored
+/// document traversal. This is an input, not a proof: `ResolvedTypeInputsV2`
+/// validates its source, membership, uniqueness, and every deferred-row
+/// dependency before the kernel can consume it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct RelationPreEvaluationInputV2 {
+    roots: Vec<SourceQualifiedNodeIdV2>,
+}
+
+impl RelationPreEvaluationInputV2 {
+    #[must_use]
+    pub fn new(roots: Vec<SourceQualifiedNodeIdV2>) -> Self {
+        Self { roots }
+    }
+
+    #[must_use]
+    pub fn roots(&self) -> &[SourceQualifiedNodeIdV2] {
+        &self.roots
+    }
+}
+
+/// One exact Binder capture edge retained without importing Binder types.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ResolvedRelationCaptureInputV2 {
+    reference: SourceQualifiedNodeIdV2,
+    target_owner: SourceQualifiedNodeIdV2,
+    target_ordinal: usize,
+}
+
+impl ResolvedRelationCaptureInputV2 {
+    #[must_use]
+    pub const fn new(
+        reference: SourceQualifiedNodeIdV2,
+        target_owner: SourceQualifiedNodeIdV2,
+        target_ordinal: usize,
+    ) -> Self {
+        Self {
+            reference,
+            target_owner,
+            target_ordinal,
+        }
+    }
+    #[must_use]
+    pub const fn reference(&self) -> SourceQualifiedNodeIdV2 {
+        self.reference
+    }
+    #[must_use]
+    pub const fn target_owner(&self) -> SourceQualifiedNodeIdV2 {
+        self.target_owner
+    }
+    #[must_use]
+    pub const fn target_ordinal(&self) -> usize {
+        self.target_ordinal
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -243,27 +410,36 @@ pub struct ResolvedRelationPredicateInputV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum ResolvedRelationPredicateKindV2 {
     Resolved {
-        relation_source_id: crate::RelationSourceIdV2,
-        capture_identity: String,
-        effects: ExpressionEffectsV2,
+        relation_root: SourceQualifiedNodeIdV2,
+        captures: Vec<ResolvedRelationCaptureInputV2>,
     },
     Unknown(UnknownTypeCauseV2),
 }
 
 impl ResolvedRelationPredicateInputV2 {
     pub fn try_resolved(
-        relation_source_id: crate::RelationSourceIdV2,
-        capture_identity: &str,
-        effects: ExpressionEffectsV2,
+        relation_root: SourceQualifiedNodeIdV2,
+        captures: Vec<ResolvedRelationCaptureInputV2>,
     ) -> Result<Self, TypeDiagnosticV2> {
-        if !canonical_identity(capture_identity) {
-            return Err(TypeDiagnosticV2::InvalidResolvedIdentity);
+        let mut seen_references = BTreeSet::new();
+        for capture in &captures {
+            if capture.reference.source_id != relation_root.source_id
+                || capture.target_owner.source_id != relation_root.source_id
+                || !seen_references.insert(capture.reference.node_id)
+            {
+                return Err(TypeDiagnosticV2::InvalidRelationPredicateInput {
+                    node_id: relation_root.node_id,
+                    location: LocatedSpanV2 {
+                        source_id: relation_root.source_id,
+                        span: quanta_gqlang_v2_hir::SpanV1::point(0),
+                    },
+                });
+            }
         }
         Ok(Self {
             kind: ResolvedRelationPredicateKindV2::Resolved {
-                relation_source_id,
-                capture_identity: capture_identity.to_owned(),
-                effects,
+                relation_root,
+                captures,
             },
         })
     }
@@ -272,20 +448,6 @@ impl ResolvedRelationPredicateInputV2 {
     pub const fn unknown(cause: UnknownTypeCauseV2) -> Self {
         Self {
             kind: ResolvedRelationPredicateKindV2::Unknown(cause),
-        }
-    }
-
-    #[must_use]
-    pub fn resolved_parts(
-        &self,
-    ) -> Option<(&crate::RelationSourceIdV2, &str, ExpressionEffectsV2)> {
-        match &self.kind {
-            ResolvedRelationPredicateKindV2::Resolved {
-                relation_source_id,
-                capture_identity,
-                effects,
-            } => Some((relation_source_id, capture_identity, *effects)),
-            ResolvedRelationPredicateKindV2::Unknown(_) => None,
         }
     }
 
@@ -332,6 +494,8 @@ pub struct ResolvedTypeInputsV2<'a> {
     context_locations: BTreeMap<SourceQualifiedNodeIdV2, quanta_gqlang_v2_hir::SpanV1>,
     source_registry: ExtendedSourceRegistryViewV2,
     declaration_bodies: BTreeMap<HirNodeIdV1, &'a ValueExprHirV1>,
+    relation_rows: BTreeMap<SourceQualifiedNodeIdV2, DeferredRelationRowInputV2>,
+    pre_evaluation_roots: Vec<RelationExprHirV1>,
 }
 
 impl<'a> ResolvedTypeInputsV2<'a> {
@@ -340,6 +504,28 @@ impl<'a> ResolvedTypeInputsV2<'a> {
         source_registry: &ExtendedSourceRegistryViewV2,
         entries: Vec<ResolvedTypeInputEntryV2>,
         contexts: Vec<ContextualExpectedTypeInputV2>,
+        relation_rows: Vec<DeferredRelationRowInputV2>,
+    ) -> Result<Self, TypeDiagnosticV2> {
+        Self::try_new_with_relation_pre_evaluation(
+            checked,
+            source_registry,
+            entries,
+            contexts,
+            relation_rows,
+            RelationPreEvaluationInputV2::default(),
+        )
+    }
+
+    /// Construct checked type inputs with an explicit dependency-first
+    /// relation pre-evaluation plan. The legacy constructor is deliberately a
+    /// no-plan shim so existing authored-order callers keep their contract.
+    pub fn try_new_with_relation_pre_evaluation(
+        checked: CheckedHirDocumentV2<'a>,
+        source_registry: &ExtendedSourceRegistryViewV2,
+        entries: Vec<ResolvedTypeInputEntryV2>,
+        contexts: Vec<ContextualExpectedTypeInputV2>,
+        relation_rows: Vec<DeferredRelationRowInputV2>,
+        pre_evaluation: RelationPreEvaluationInputV2,
     ) -> Result<Self, TypeDiagnosticV2> {
         let source_id = checked.document().source_id;
         if source_registry.source_len(source_id) != Some(checked.document().source_len) {
@@ -401,6 +587,9 @@ impl<'a> ResolvedTypeInputsV2<'a> {
                     RequiredInputKind::Binding,
                     ResolvedTypeInputValueV2::BindingFromDeclaration(_)
                 ) | (
+                    RequiredInputKind::Binding,
+                    ResolvedTypeInputValueV2::BindingFromRelationRow(_)
+                ) | (
                     RequiredInputKind::Callable,
                     ResolvedTypeInputValueV2::Callable(_)
                 ) | (
@@ -440,6 +629,21 @@ impl<'a> ResolvedTypeInputsV2<'a> {
                     });
                 }
             }
+            if let ResolvedTypeInputValueV2::BindingFromRelationRow(target) = &entry.value {
+                if target.source_id != source_id
+                    || !required.relations.contains_key(&target.node_id)
+                    || target.node_id == entry.key.node_id
+                {
+                    return Err(TypeDiagnosticV2::InvalidBindingDependency {
+                        node_id: entry.key.node_id,
+                        target_node_id: target.node_id,
+                        location: LocatedSpanV2 { source_id, span },
+                    });
+                }
+            }
+            if let ResolvedTypeInputValueV2::RelationPredicate(input) = &entry.value {
+                validate_relation_predicate_input(entry.key, span, input, &required)?;
+            }
             if values.insert(entry.key, entry.value).is_some() {
                 return Err(TypeDiagnosticV2::DuplicateNodeFact {
                     node_id: entry.key.node_id,
@@ -447,6 +651,15 @@ impl<'a> ResolvedTypeInputsV2<'a> {
                 });
             }
         }
+        let pre_evaluation_roots =
+            validate_relation_pre_evaluation(source_id, pre_evaluation, &required)?;
+        let relation_rows = validate_relation_rows(
+            source_id,
+            source_registry,
+            relation_rows,
+            &required,
+            &pre_evaluation_roots.positions,
+        )?;
         for (node_id, (span, _)) in &required.nodes {
             let key = SourceQualifiedNodeIdV2 {
                 source_id,
@@ -503,8 +716,300 @@ impl<'a> ResolvedTypeInputsV2<'a> {
             context_locations,
             source_registry: source_registry.clone(),
             declaration_bodies,
+            relation_rows,
+            pre_evaluation_roots: pre_evaluation_roots.roots,
         })
     }
+}
+
+struct ValidatedRelationPreEvaluationV2 {
+    positions: BTreeMap<HirNodeIdV1, usize>,
+    roots: Vec<RelationExprHirV1>,
+}
+
+fn validate_relation_pre_evaluation(
+    source_id: SourceIdV2,
+    input: RelationPreEvaluationInputV2,
+    required: &RequiredInputs,
+) -> Result<ValidatedRelationPreEvaluationV2, TypeDiagnosticV2> {
+    let mut positions = BTreeMap::new();
+    let mut roots = Vec::with_capacity(input.roots.len());
+    for (position, root) in input.roots.into_iter().enumerate() {
+        if root.source_id != source_id {
+            return Err(TypeDiagnosticV2::ForeignDocumentFact {
+                node_id: root.node_id,
+                location: LocatedSpanV2 {
+                    source_id: root.source_id,
+                    span: quanta_gqlang_v2_hir::SpanV1::point(0),
+                },
+            });
+        }
+        let Some(requirement) = required.relations.get(&root.node_id) else {
+            return Err(TypeDiagnosticV2::InvalidRelationPreEvaluationPlan {
+                root: root.node_id,
+                location: LocatedSpanV2 {
+                    source_id,
+                    span: quanta_gqlang_v2_hir::SpanV1::point(0),
+                },
+            });
+        };
+        if positions.insert(root.node_id, position).is_some() {
+            return Err(TypeDiagnosticV2::InvalidRelationPreEvaluationPlan {
+                root: root.node_id,
+                location: LocatedSpanV2 {
+                    source_id,
+                    span: requirement.span,
+                },
+            });
+        }
+        let relation = required.relation_nodes.get(&root.node_id).cloned().ok_or(
+            TypeDiagnosticV2::InvalidRelationPreEvaluationPlan {
+                root: root.node_id,
+                location: LocatedSpanV2 {
+                    source_id,
+                    span: requirement.span,
+                },
+            },
+        )?;
+        roots.push(relation);
+    }
+    Ok(ValidatedRelationPreEvaluationV2 { positions, roots })
+}
+
+fn validate_relation_predicate_input(
+    key: SourceQualifiedNodeIdV2,
+    span: quanta_gqlang_v2_hir::SpanV1,
+    input: &ResolvedRelationPredicateInputV2,
+    required: &RequiredInputs,
+) -> Result<(), TypeDiagnosticV2> {
+    let invalid = || TypeDiagnosticV2::InvalidRelationPredicateInput {
+        node_id: key.node_id,
+        location: LocatedSpanV2 {
+            source_id: key.source_id,
+            span,
+        },
+    };
+    let Some(requirement) = required.relation_predicates.get(&key.node_id) else {
+        return Err(invalid());
+    };
+    let ResolvedRelationPredicateKindV2::Resolved {
+        relation_root,
+        captures,
+        ..
+    } = &input.kind
+    else {
+        return Ok(());
+    };
+    if relation_root.source_id != key.source_id
+        || relation_root.node_id != requirement.relation_root
+    {
+        return Err(invalid());
+    }
+    let positions = requirement
+        .ordered_references
+        .iter()
+        .enumerate()
+        .map(|(position, node)| (*node, position))
+        .collect::<BTreeMap<_, _>>();
+    let mut prior_position = None;
+    let mut seen_references = BTreeSet::new();
+    for capture in captures {
+        let Some(position) = positions.get(&capture.reference.node_id).copied() else {
+            return Err(invalid());
+        };
+        if capture.reference.source_id != key.source_id
+            || capture.target_owner.source_id != key.source_id
+            || !required
+                .capture_owner_nodes
+                .contains(&capture.target_owner.node_id)
+            || !seen_references.insert(capture.reference.node_id)
+            || prior_position.is_some_and(|prior| prior >= position)
+        {
+            return Err(invalid());
+        }
+        prior_position = Some(position);
+    }
+    Ok(())
+}
+
+fn validate_relation_rows(
+    source_id: SourceIdV2,
+    source_registry: &ExtendedSourceRegistryViewV2,
+    inputs: Vec<DeferredRelationRowInputV2>,
+    required: &RequiredInputs,
+    pre_evaluation_positions: &BTreeMap<HirNodeIdV1, usize>,
+) -> Result<BTreeMap<SourceQualifiedNodeIdV2, DeferredRelationRowInputV2>, TypeDiagnosticV2> {
+    let mut rows = BTreeMap::new();
+    for input in inputs {
+        let Some(requirement) = required.relations.get(&input.root.node_id) else {
+            return Err(TypeDiagnosticV2::InvalidDeferredRelationRow {
+                root: input.root.node_id,
+                location: LocatedSpanV2 {
+                    source_id: input.root.source_id,
+                    span: quanta_gqlang_v2_hir::SpanV1::point(0),
+                },
+            });
+        };
+        let location = LocatedSpanV2 {
+            source_id,
+            span: requirement.span,
+        };
+        if input.root.source_id != source_id {
+            return Err(TypeDiagnosticV2::InvalidDeferredRelationRow {
+                root: input.root.node_id,
+                location,
+            });
+        }
+        let valid_kind = matches!(
+            (&requirement.kind, &input.kind),
+            (
+                RelationRequirementKindV2::Source,
+                DeferredRelationRowKindV2::KnownSource { .. }
+            ) | (
+                RelationRequirementKindV2::Source,
+                DeferredRelationRowKindV2::PriorRelation { .. }
+            ) | (
+                RelationRequirementKindV2::Project(_),
+                DeferredRelationRowKindV2::ExpressionFields { .. }
+            ) | (
+                RelationRequirementKindV2::Group(_),
+                DeferredRelationRowKindV2::ExpressionFields { .. }
+            )
+        );
+        if !valid_kind {
+            return Err(TypeDiagnosticV2::InvalidDeferredRelationRow {
+                root: input.root.node_id,
+                location,
+            });
+        }
+        match &input.kind {
+            DeferredRelationRowKindV2::KnownSource {
+                expected_field_count,
+                fields,
+            }
+            | DeferredRelationRowKindV2::ExpressionFields {
+                expected_field_count,
+                fields,
+            } => {
+                let expected_expressions = match &requirement.kind {
+                    RelationRequirementKindV2::Project(expressions)
+                    | RelationRequirementKindV2::Group(expressions) => Some(expressions.as_slice()),
+                    RelationRequirementKindV2::Source => None,
+                    RelationRequirementKindV2::Filter
+                    | RelationRequirementKindV2::Join
+                    | RelationRequirementKindV2::Sort => unreachable!("kind checked above"),
+                };
+                if fields.len() != *expected_field_count
+                    || expected_expressions.is_some_and(|expected| expected.len() != fields.len())
+                {
+                    return Err(TypeDiagnosticV2::InvalidDeferredRelationRow {
+                        root: input.root.node_id,
+                        location,
+                    });
+                }
+                let mut names = BTreeSet::new();
+                for (ordinal, field) in fields.iter().enumerate() {
+                    let field_location = field.name_location.location();
+                    let valid_source = match (&input.kind, &field.source, expected_expressions) {
+                        (
+                            DeferredRelationRowKindV2::KnownSource { .. },
+                            RelationRowFieldSourceV2::Known(_),
+                            None,
+                        ) => true,
+                        (
+                            DeferredRelationRowKindV2::ExpressionFields { .. },
+                            RelationRowFieldSourceV2::PriorExpression(target),
+                            Some(expected),
+                        ) => {
+                            target.source_id == source_id
+                                && expected.get(ordinal) == Some(&target.node_id)
+                        }
+                        _ => false,
+                    };
+                    if field.ordinal != ordinal
+                        || field.name.is_empty()
+                        || !names.insert(field.name.as_str())
+                        || field_location.source_id != source_id
+                        || field.name_location.registry_identity() != &source_registry.identity()
+                        || !valid_source
+                    {
+                        return Err(TypeDiagnosticV2::InvalidDeferredRelationRow {
+                            root: input.root.node_id,
+                            location: field_location,
+                        });
+                    }
+                }
+            }
+            DeferredRelationRowKindV2::PriorRelation { target } => {
+                let root_plan =
+                    required.pre_evaluation_scope(input.root.node_id, pre_evaluation_positions);
+                let target_plan =
+                    required.pre_evaluation_scope(target.node_id, pre_evaluation_positions);
+                let root_order = required.relation_order.get(&input.root.node_id).copied();
+                let target_order = required.relation_order.get(&target.node_id).copied();
+                let available = match root_plan {
+                    // A root prewalked ahead of authored traversal may only
+                    // depend on another exact prewalk root completed earlier.
+                    Some(root_position) => {
+                        matches!(target_plan, Some(target_position) if target_position < root_position)
+                    }
+                    // An unplanned root still uses the historical
+                    // authored-order proof unless the exact target belongs
+                    // to the validated pre-evaluation plan. The kernel
+                    // completes every plan root before the ordinary document
+                    // traversal, so a normal query may consume a View row
+                    // even when that View was authored later. It still cannot
+                    // rely on an arbitrary non-plan forward row.
+                    None => {
+                        target_plan.is_some()
+                            || matches!(
+                                (target_order, root_order),
+                                (Some(target), Some(root)) if target < root
+                            )
+                    }
+                };
+                if target.source_id != source_id
+                    || target.node_id == input.root.node_id
+                    || !available
+                {
+                    return Err(TypeDiagnosticV2::UnavailableRelationRowDependency {
+                        root: input.root.node_id,
+                        target: target.node_id,
+                        location,
+                    });
+                }
+            }
+        }
+        let root = input.root;
+        if rows.insert(root, input).is_some() {
+            return Err(TypeDiagnosticV2::InvalidDeferredRelationRow {
+                root: root.node_id,
+                location,
+            });
+        }
+    }
+    for (root, requirement) in &required.relations {
+        let requires_input = matches!(
+            requirement.kind,
+            RelationRequirementKindV2::Source
+                | RelationRequirementKindV2::Project(_)
+                | RelationRequirementKindV2::Group(_)
+        );
+        let key = SourceQualifiedNodeIdV2 {
+            source_id,
+            node_id: *root,
+        };
+        if requires_input && !rows.contains_key(&key) {
+            return Err(TypeDiagnosticV2::InvalidDeferredRelationRow {
+                root: *root,
+                location: LocatedSpanV2 {
+                    source_id,
+                    span: requirement.span,
+                },
+            });
+        }
+    }
+    Ok(rows)
 }
 
 #[derive(Default)]
@@ -513,6 +1018,35 @@ struct RequiredInputs {
     context_nodes: BTreeMap<HirNodeIdV1, quanta_gqlang_v2_hir::SpanV1>,
     value_nodes: BTreeMap<HirNodeIdV1, quanta_gqlang_v2_hir::SpanV1>,
     declaration_value_nodes: BTreeSet<HirNodeIdV1>,
+    relations: BTreeMap<HirNodeIdV1, RelationRequirementV2>,
+    relation_order: BTreeMap<HirNodeIdV1, usize>,
+    relation_nodes: BTreeMap<HirNodeIdV1, RelationExprHirV1>,
+    relation_ancestors: BTreeMap<HirNodeIdV1, Vec<HirNodeIdV1>>,
+    relation_stack: Vec<HirNodeIdV1>,
+    relation_predicates: BTreeMap<HirNodeIdV1, RelationPredicateRequirementV2>,
+    capture_owner_nodes: BTreeSet<HirNodeIdV1>,
+}
+
+#[derive(Clone)]
+struct RelationRequirementV2 {
+    span: quanta_gqlang_v2_hir::SpanV1,
+    kind: RelationRequirementKindV2,
+}
+
+#[derive(Clone)]
+enum RelationRequirementKindV2 {
+    Source,
+    Project(Vec<HirNodeIdV1>),
+    Filter,
+    Join,
+    Group(Vec<HirNodeIdV1>),
+    Sort,
+}
+
+#[derive(Clone)]
+struct RelationPredicateRequirementV2 {
+    relation_root: HirNodeIdV1,
+    ordered_references: Vec<HirNodeIdV1>,
 }
 #[derive(Clone, Copy)]
 enum RequiredInputKind {
@@ -520,8 +1054,37 @@ enum RequiredInputKind {
     Callable,
     RelationPredicate,
 }
+impl RequiredInputs {
+    fn pre_evaluation_scope(
+        &self,
+        node_id: HirNodeIdV1,
+        positions: &BTreeMap<HirNodeIdV1, usize>,
+    ) -> Option<usize> {
+        positions.get(&node_id).copied().or_else(|| {
+            self.relation_ancestors
+                .get(&node_id)
+                .into_iter()
+                .flatten()
+                .rev()
+                .find_map(|ancestor| positions.get(ancestor).copied())
+        })
+    }
+}
 impl HirVisitorV1 for RequiredInputs {
+    fn visit_item(&mut self, node: &quanta_gqlang_v2_hir::ProgramItemHirV1) {
+        let _ = self.capture_owner_nodes.insert(node.id());
+        quanta_gqlang_v2_hir::walk_item(self, node);
+    }
+    fn visit_query(&mut self, node: &quanta_gqlang_v2_hir::QueryHirV1) {
+        let _ = self.capture_owner_nodes.insert(node.id);
+        quanta_gqlang_v2_hir::walk_query(self, node);
+    }
+    fn visit_composition(&mut self, node: &quanta_gqlang_v2_hir::CompositionHirV1) {
+        let _ = self.capture_owner_nodes.insert(node.id);
+        quanta_gqlang_v2_hir::walk_composition(self, node);
+    }
     fn visit_decl(&mut self, node: &quanta_gqlang_v2_hir::DeclHirV1) {
+        let _ = self.capture_owner_nodes.insert(node.id);
         struct DeclValueCollector<'a>(&'a mut BTreeSet<HirNodeIdV1>);
         impl HirVisitorV1 for DeclValueCollector<'_> {
             fn visit_value(&mut self, value: &ValueExprHirV1) {
@@ -531,6 +1094,42 @@ impl HirVisitorV1 for RequiredInputs {
         }
         DeclValueCollector(&mut self.declaration_value_nodes).visit_value(&node.body);
         quanta_gqlang_v2_hir::walk_decl(self, node);
+    }
+    fn visit_rule(&mut self, node: &quanta_gqlang_v2_hir::RuleHirV1) {
+        let _ = self.capture_owner_nodes.insert(node.id);
+        quanta_gqlang_v2_hir::walk_rule(self, node);
+    }
+    fn visit_relation(&mut self, node: &RelationExprHirV1) {
+        let _ = self.capture_owner_nodes.insert(node.id);
+        let _ = self
+            .relation_ancestors
+            .insert(node.id, self.relation_stack.clone());
+        let _ = self.relation_nodes.insert(node.id, node.clone());
+        let kind = match &node.kind {
+            RelationExprKindV1::Source(_) => RelationRequirementKindV2::Source,
+            RelationExprKindV1::Project(project) => RelationRequirementKindV2::Project(
+                project.items().iter().map(|item| item.value.id).collect(),
+            ),
+            RelationExprKindV1::Filter(_) => RelationRequirementKindV2::Filter,
+            RelationExprKindV1::Join(_) => RelationRequirementKindV2::Join,
+            RelationExprKindV1::GroupBy(group) => {
+                RelationRequirementKindV2::Group(group.keys().iter().map(|key| key.id).collect())
+            }
+            RelationExprKindV1::OrderBy(_) => RelationRequirementKindV2::Sort,
+        };
+        let _ = self.relations.insert(
+            node.id,
+            RelationRequirementV2 {
+                span: node.span,
+                kind,
+            },
+        );
+        self.relation_stack.push(node.id);
+        quanta_gqlang_v2_hir::walk_relation(self, node);
+        let popped = self.relation_stack.pop();
+        debug_assert_eq!(popped, Some(node.id));
+        let order = self.relation_order.len();
+        let _ = self.relation_order.insert(node.id, order);
     }
     fn visit_value(&mut self, node: &ValueExprHirV1) {
         let _ = self.value_nodes.insert(node.id, node.span);
@@ -554,10 +1153,43 @@ impl HirVisitorV1 for RequiredInputs {
         quanta_gqlang_v2_hir::walk_value(self, node);
     }
     fn visit_bool(&mut self, node: &BoolExprHirV1) {
-        if matches!(node.kind, BoolExprKindV1::RelationExists(_)) {
+        if matches!(node.kind, BoolExprKindV1::LogicalQuantifier(_)) {
+            let _ = self.capture_owner_nodes.insert(node.id);
+        }
+        if let BoolExprKindV1::RelationExists(exists) = &node.kind {
             let _ = self
                 .nodes
                 .insert(node.id, (node.span, RequiredInputKind::RelationPredicate));
+            #[derive(Default)]
+            struct OrderedCaptureReferencesV2(Vec<HirNodeIdV1>);
+            impl HirVisitorV1 for OrderedCaptureReferencesV2 {
+                fn visit_relation(&mut self, relation: &RelationExprHirV1) {
+                    // Binder records an exact capture edge for a Composition
+                    // relation-source use at the relation node itself. Keep
+                    // that source reference in the same authored traversal as
+                    // scalar symbols, while Sema remains responsible for
+                    // proving which candidates are actually lexical captures.
+                    if matches!(relation.kind, RelationExprKindV1::Source(_)) {
+                        self.0.push(relation.id);
+                    }
+                    quanta_gqlang_v2_hir::walk_relation(self, relation);
+                }
+                fn visit_value(&mut self, value: &ValueExprHirV1) {
+                    if matches!(value.kind, ValueExprKindV1::Symbol(_)) {
+                        self.0.push(value.id);
+                    }
+                    quanta_gqlang_v2_hir::walk_value(self, value);
+                }
+            }
+            let mut references = OrderedCaptureReferencesV2::default();
+            references.visit_relation(&exists.relation);
+            let _ = self.relation_predicates.insert(
+                node.id,
+                RelationPredicateRequirementV2 {
+                    relation_root: exists.relation.id,
+                    ordered_references: references.0,
+                },
+            );
         }
         quanta_gqlang_v2_hir::walk_bool(self, node);
     }
@@ -581,6 +1213,7 @@ pub struct TypedExpressionFactV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TypedExpressionFactsV2 {
     facts: BTreeMap<SourceQualifiedNodeIdV2, TypedExpressionFactV2>,
+    relation_rows: BTreeMap<SourceQualifiedNodeIdV2, RecordTypeV1>,
 }
 impl TypedExpressionFactsV2 {
     #[must_use]
@@ -594,6 +1227,15 @@ impl TypedExpressionFactsV2 {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.facts.is_empty()
+    }
+    /// Types-owned row for one exact checked relation stage.
+    #[must_use]
+    pub fn relation_row(&self, root: SourceQualifiedNodeIdV2) -> Option<&RecordTypeV1> {
+        self.relation_rows.get(&root)
+    }
+    #[must_use]
+    pub fn relation_row_count(&self) -> usize {
+        self.relation_rows.len()
     }
 }
 impl TypedExpressionFactV2 {
@@ -633,11 +1275,18 @@ impl ExpressionTypeKernelV2 {
             kernel: self,
             inputs,
             facts: BTreeMap::new(),
+            relation_rows: BTreeMap::new(),
             visiting: BTreeSet::new(),
             used_contexts: BTreeSet::new(),
             callable_contexts: BTreeMap::new(),
             error: None,
         };
+        for root in &inputs.pre_evaluation_roots {
+            checker.visit_relation(root);
+            if let Some(error) = checker.error.take() {
+                return Err(error);
+            }
+        }
         for item in &inputs.checked.document().items {
             checker.visit_item(item);
             if let Some(error) = checker.error.take() {
@@ -664,14 +1313,26 @@ impl ExpressionTypeKernelV2 {
         }
         Ok(TypedExpressionFactsV2 {
             facts: checker.facts,
+            relation_rows: checker
+                .relation_rows
+                .into_iter()
+                .map(|(key, row)| (key, row.record))
+                .collect(),
         })
     }
+}
+
+#[derive(Clone)]
+struct CheckedRelationRowV2 {
+    record: RecordTypeV1,
+    locations: Vec<CheckedLocatedSpanV2>,
 }
 
 struct DocumentChecker<'a, 'b> {
     kernel: &'a ExpressionTypeKernelV2,
     inputs: &'a ResolvedTypeInputsV2<'b>,
     facts: BTreeMap<SourceQualifiedNodeIdV2, TypedExpressionFactV2>,
+    relation_rows: BTreeMap<SourceQualifiedNodeIdV2, CheckedRelationRowV2>,
     visiting: BTreeSet<HirNodeIdV1>,
     used_contexts: BTreeSet<SourceQualifiedNodeIdV2>,
     callable_contexts: BTreeMap<SourceQualifiedNodeIdV2, ValueTypeV1>,
@@ -679,6 +1340,17 @@ struct DocumentChecker<'a, 'b> {
 }
 
 impl HirVisitorV1 for DocumentChecker<'_, '_> {
+    fn visit_relation(&mut self, node: &RelationExprHirV1) {
+        if self.error.is_some() {
+            return;
+        }
+        quanta_gqlang_v2_hir::walk_relation(self, node);
+        if self.error.is_none() {
+            if let Err(error) = self.complete_relation_row(node) {
+                self.error = Some(error);
+            }
+        }
+    }
     fn visit_value(&mut self, node: &ValueExprHirV1) {
         if self.error.is_none() {
             if let Err(error) = self.type_expr(node, false) {
@@ -696,6 +1368,163 @@ impl HirVisitorV1 for DocumentChecker<'_, '_> {
 }
 
 impl DocumentChecker<'_, '_> {
+    fn complete_relation_row(&mut self, node: &RelationExprHirV1) -> Result<(), TypeDiagnosticV2> {
+        let key = self.key_id(node.id);
+        if self.relation_rows.contains_key(&key) {
+            return Ok(());
+        }
+        let location = LocatedSpanV2 {
+            source_id: key.source_id,
+            span: node.span,
+        };
+        let row = match &node.kind {
+            RelationExprKindV1::Source(_) => {
+                let input = self.inputs.relation_rows.get(&key).ok_or(
+                    TypeDiagnosticV2::InvalidDeferredRelationRow {
+                        root: node.id,
+                        location,
+                    },
+                )?;
+                match &input.kind {
+                    DeferredRelationRowKindV2::KnownSource { fields, .. } => {
+                        self.build_relation_row(node.id, fields)?
+                    }
+                    DeferredRelationRowKindV2::PriorRelation { target } => {
+                        self.relation_rows.get(target).cloned().ok_or(
+                            TypeDiagnosticV2::UnavailableRelationRowDependency {
+                                root: node.id,
+                                target: target.node_id,
+                                location,
+                            },
+                        )?
+                    }
+                    DeferredRelationRowKindV2::ExpressionFields { .. } => {
+                        return Err(TypeDiagnosticV2::InvalidDeferredRelationRow {
+                            root: node.id,
+                            location,
+                        });
+                    }
+                }
+            }
+            RelationExprKindV1::Project(_) | RelationExprKindV1::GroupBy(_) => {
+                let input = self.inputs.relation_rows.get(&key).ok_or(
+                    TypeDiagnosticV2::InvalidDeferredRelationRow {
+                        root: node.id,
+                        location,
+                    },
+                )?;
+                let DeferredRelationRowKindV2::ExpressionFields { fields, .. } = &input.kind else {
+                    return Err(TypeDiagnosticV2::InvalidDeferredRelationRow {
+                        root: node.id,
+                        location,
+                    });
+                };
+                self.build_relation_row(node.id, fields)?
+            }
+            RelationExprKindV1::Filter(filter) => self
+                .relation_rows
+                .get(&self.key_id(filter.input.id))
+                .cloned()
+                .ok_or(TypeDiagnosticV2::UnavailableRelationRowDependency {
+                    root: node.id,
+                    target: filter.input.id,
+                    location,
+                })?,
+            RelationExprKindV1::OrderBy(order) => self
+                .relation_rows
+                .get(&self.key_id(order.input.id))
+                .cloned()
+                .ok_or(TypeDiagnosticV2::UnavailableRelationRowDependency {
+                    root: node.id,
+                    target: order.input.id,
+                    location,
+                })?,
+            RelationExprKindV1::Join(join) => {
+                let (left, right) = match join {
+                    quanta_gqlang_v2_hir::JoinHirV1::Inner { left, right, .. }
+                    | quanta_gqlang_v2_hir::JoinHirV1::Cross { left, right } => (left.id, right.id),
+                };
+                let left_row = self.relation_rows.get(&self.key_id(left)).cloned().ok_or(
+                    TypeDiagnosticV2::UnavailableRelationRowDependency {
+                        root: node.id,
+                        target: left,
+                        location,
+                    },
+                )?;
+                let right_row = self.relation_rows.get(&self.key_id(right)).cloned().ok_or(
+                    TypeDiagnosticV2::UnavailableRelationRowDependency {
+                        root: node.id,
+                        target: right,
+                        location,
+                    },
+                )?;
+                let fields = left_row
+                    .record
+                    .fields()
+                    .iter()
+                    .zip(left_row.locations.iter())
+                    .chain(
+                        right_row
+                            .record
+                            .fields()
+                            .iter()
+                            .zip(right_row.locations.iter()),
+                    )
+                    .map(|(field, field_location)| {
+                        RecordFieldTypeV1::try_new(
+                            field.name(),
+                            field.value_type().clone(),
+                            field_location.clone(),
+                        )
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                let mut locations = left_row.locations;
+                locations.extend(right_row.locations);
+                CheckedRelationRowV2 {
+                    record: RecordTypeV1::try_new(fields)?,
+                    locations,
+                }
+            }
+        };
+        let _ = self.relation_rows.insert(key, row);
+        Ok(())
+    }
+
+    fn build_relation_row(
+        &self,
+        root: HirNodeIdV1,
+        fields: &[DeferredRelationRowFieldInputV2],
+    ) -> Result<CheckedRelationRowV2, TypeDiagnosticV2> {
+        let mut locations = Vec::with_capacity(fields.len());
+        let mut typed_fields = Vec::with_capacity(fields.len());
+        for field in fields {
+            let value_type = match &field.source {
+                RelationRowFieldSourceV2::Known(value_type) => value_type.clone(),
+                RelationRowFieldSourceV2::PriorExpression(target) => {
+                    match self.facts.get(target).map(|fact| &fact.state) {
+                        Some(ExpressionTypeStateV2::Known(value_type)) => value_type.clone(),
+                        _ => {
+                            return Err(TypeDiagnosticV2::UnavailableRelationRowDependency {
+                                root,
+                                target: target.node_id,
+                                location: field.name_location.location(),
+                            });
+                        }
+                    }
+                }
+            };
+            locations.push(field.name_location.clone());
+            typed_fields.push(RecordFieldTypeV1::try_new(
+                &field.name,
+                value_type,
+                field.name_location.clone(),
+            )?);
+        }
+        Ok(CheckedRelationRowV2 {
+            record: RecordTypeV1::try_new(typed_fields)?,
+            locations,
+        })
+    }
     fn location(&self, node: &ValueExprHirV1) -> LocatedSpanV2 {
         LocatedSpanV2 {
             source_id: self.inputs.checked.document().source_id,
@@ -827,7 +1656,7 @@ impl DocumentChecker<'_, '_> {
             }
             BoolExprKindV1::RelationExists(exists) => {
                 let before = self.facts.keys().copied().collect::<BTreeSet<_>>();
-                quanta_gqlang_v2_hir::walk_relation(self, &exists.relation);
+                self.visit_relation(&exists.relation);
                 if let Some(error) = self.error.take() {
                     return Err(error);
                 }
@@ -839,8 +1668,13 @@ impl DocumentChecker<'_, '_> {
                     .collect::<Vec<_>>();
                 match self.inputs.values.get(&key) {
                     Some(ResolvedTypeInputValueV2::RelationPredicate(input)) => match &input.kind {
-                        ResolvedRelationPredicateKindV2::Resolved { effects: base, .. } => {
-                            effects = base.compose(child_effects);
+                        ResolvedRelationPredicateKindV2::Resolved { .. } => {
+                            // A resolved EXISTS proves syntax/root/capture
+                            // identity, not a relation implementation's
+                            // effects. Types owns this conservative base so a
+                            // consumer cannot forge a pure/cheap predicate.
+                            effects = ExpressionEffectsV2::conservative_source_predicate()
+                                .compose(child_effects);
                             ExpressionTypeStateV2::Known(ValueTypeV1::bool())
                         }
                         ResolvedRelationPredicateKindV2::Unknown(cause) => {
@@ -919,6 +1753,16 @@ impl DocumentChecker<'_, '_> {
                             location: self.location(node),
                         })?;
                     self.type_expr(body, false)?
+                }
+                Some(ResolvedTypeInputValueV2::BindingFromRelationRow(target)) => {
+                    let row = self.relation_rows.get(target).ok_or(
+                        TypeDiagnosticV2::UnavailableRelationRowDependency {
+                            root: node.id,
+                            target: target.node_id,
+                            location: self.location(node),
+                        },
+                    )?;
+                    ExpressionTypeStateV2::Known(ValueTypeV1::try_record(row.record.clone())?)
                 }
                 _ => {
                     return Err(TypeDiagnosticV2::MissingNodeFact {
@@ -1216,6 +2060,7 @@ impl DocumentChecker<'_, '_> {
             | ResolvedTypeInputValueV2::Binding(_)
             | ResolvedTypeInputValueV2::BindingFromExpression(_)
             | ResolvedTypeInputValueV2::BindingFromDeclaration(_)
+            | ResolvedTypeInputValueV2::BindingFromRelationRow(_)
             | ResolvedTypeInputValueV2::RelationPredicate(_) => vec![None; args.len()],
         }
     }
@@ -1676,6 +2521,7 @@ impl DocumentChecker<'_, '_> {
             ResolvedTypeInputValueV2::Binding(_)
             | ResolvedTypeInputValueV2::BindingFromExpression(_)
             | ResolvedTypeInputValueV2::BindingFromDeclaration(_)
+            | ResolvedTypeInputValueV2::BindingFromRelationRow(_)
             | ResolvedTypeInputValueV2::RelationPredicate(_) => {
                 Err(TypeDiagnosticV2::WrongNodeFactKind {
                     node_id: node.id,

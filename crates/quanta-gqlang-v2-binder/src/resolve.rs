@@ -24,11 +24,12 @@ use crate::scope::{
     BinderKindV1, BindingV1, CaptureV1, LexicalResolutionV1, LexicalScopeV1, ShadowReportKindV1,
 };
 use quanta_gqlang_v2_hir::{
-    BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CompositionBodyV1, CompositionHirV1,
-    CompositionProducerV1, DeclHirV1, GraphRefV1, HirNodeIdV1, JoinHirV1, QueryHirV1,
-    RelationExprHirV1, RelationExprKindV1, RuleHirV1, SpanV1, ValueExprHirV1, ValueExprKindV1,
+    BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CatalogDeclHirV1, CatalogPayloadV1,
+    CompositionBodyV1, CompositionHirV1, CompositionProducerV1, DeclHirV1, GraphRefV1, HirNodeIdV1,
+    JoinHirV1, QueryHirV1, RelationExprHirV1, RelationExprKindV1, RuleHirV1, SpanV1,
+    ValueExprHirV1, ValueExprKindV1, ViewBodyV1,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Where a resolved value-namespace reference points.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -85,6 +86,8 @@ pub struct BindResultV1 {
     /// Exact correlation edges keyed by the relational-EXISTS boolean node.
     /// Every visited EXISTS owns an entry, including uncorrelated empty sets.
     capture_edges: BTreeMap<HirNodeIdV1, Vec<(HirNodeIdV1, HirNodeIdV1, usize)>>,
+    /// Every Composition LET introduced by the Binder, including unused LETs.
+    composition_bindings: BTreeMap<(HirNodeIdV1, usize), BindingV1>,
 }
 
 /// Exact source argument reference tentatively linked to a Group input.
@@ -100,11 +103,26 @@ pub struct PartitionCandidateV1 {
 }
 
 impl PartitionCandidateV1 {
-    #[must_use] pub const fn reference(&self) -> HirNodeIdV1 { self.reference }
-    #[must_use] pub const fn group(&self) -> HirNodeIdV1 { self.group }
-    #[must_use] pub const fn binding(&self) -> &BindingV1 { &self.binding }
-    #[must_use] pub fn call_stack(&self) -> &[HirNodeIdV1] { &self.call_stack }
-    #[must_use] pub const fn span(&self) -> SpanV1 { self.span }
+    #[must_use]
+    pub const fn reference(&self) -> HirNodeIdV1 {
+        self.reference
+    }
+    #[must_use]
+    pub const fn group(&self) -> HirNodeIdV1 {
+        self.group
+    }
+    #[must_use]
+    pub const fn binding(&self) -> &BindingV1 {
+        &self.binding
+    }
+    #[must_use]
+    pub fn call_stack(&self) -> &[HirNodeIdV1] {
+        &self.call_stack
+    }
+    #[must_use]
+    pub const fn span(&self) -> SpanV1 {
+        self.span
+    }
 }
 
 impl BindResultV1 {
@@ -134,6 +152,26 @@ impl BindResultV1 {
             .iter()
             .find(|r| r.reference == reference)
             .map(|r| &r.target)
+    }
+
+    /// Resolve one authored use exactly. Graph/CHECK references can share an
+    /// enclosing HIR node ID, so callers of those families must not use
+    /// [`Self::target_of`]. Duplicate exact keys fail closed.
+    #[must_use]
+    pub fn target_of_use(
+        &self,
+        reference: HirNodeIdV1,
+        span: SpanV1,
+        name: &str,
+    ) -> Option<&ResolvedTargetV1> {
+        if !self.is_ok() {
+            return None;
+        }
+        let mut matches = self.resolutions.iter().filter(|resolution| {
+            resolution.reference == reference && resolution.span == span && resolution.name == name
+        });
+        let first = matches.next()?;
+        matches.next().is_none().then_some(&first.target)
     }
 
     /// Ordered alias frame produced by one relation node.
@@ -193,6 +231,13 @@ impl BindResultV1 {
             .iter()
             .map(|(owner, edges)| (*owner, edges.as_slice()))
     }
+
+    /// Exact Binder-owned Composition LET identity. This is the only producer
+    /// authority for unused LETs; consumers must not remint owner/ordinal pairs.
+    #[must_use]
+    pub fn composition_binding(&self, owner: HirNodeIdV1, ordinal: usize) -> Option<&BindingV1> {
+        self.composition_bindings.get(&(owner, ordinal))
+    }
 }
 
 /// Drives resolution over a HIR unit against a frozen module graph.
@@ -213,6 +258,10 @@ pub struct Binder<'g, G: ModuleGraphViewV1> {
     relation_partition: BTreeMap<HirNodeIdV1, HirNodeIdV1>,
     active_partition: Option<HirNodeIdV1>,
     active_calls: Vec<HirNodeIdV1>,
+    /// Current/self and later Composition LET names while resolving one
+    /// producer. An unbound relation source matching this set is a forbidden
+    /// forward/self reference, never a host fallback candidate.
+    forbidden_composition_sources: BTreeMap<String, SpanV1>,
 }
 
 /// A top-level declaration symbol-table entry.
@@ -235,6 +284,7 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
             relation_partition: BTreeMap::new(),
             active_partition: None,
             active_calls: Vec::new(),
+            forbidden_composition_sources: BTreeMap::new(),
         }
     }
 
@@ -277,6 +327,22 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
     /// Finish and take the accumulated result.
     #[must_use]
     pub fn finish(mut self) -> BindResultV1 {
+        let mut seen_uses = BTreeSet::new();
+        for resolution in &self.result.resolutions {
+            if !seen_uses.insert((
+                resolution.reference,
+                resolution.span.start,
+                resolution.span.end,
+                resolution.name.clone(),
+            )) {
+                self.result
+                    .diagnostics
+                    .push(BindDiagnosticV1::DuplicateReferenceUse {
+                        name: resolution.name.clone(),
+                        span: resolution.span,
+                    });
+            }
+        }
         self.result.diagnostics.sort_by(|left, right| {
             let left_span = left.primary_span();
             let right_span = right.primary_span();
@@ -327,6 +393,20 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
         self.scope.pop();
     }
 
+    /// Resolve binder-owned references within a catalog declaration.
+    ///
+    /// An inline `VIEW` embeds the canonical [`QueryHirV1`] carrier and must
+    /// therefore use the same query resolver as a top-level query.  This keeps
+    /// alias frames, capture handling, and symbol diagnostics identical across
+    /// the two syntactic placements.  Query references and every non-view
+    /// catalog payload remain catalog/modules authority (`D30`), so this method
+    /// deliberately does not inspect or resolve their graph references.
+    pub fn resolve_catalog_decl(&mut self, decl: &CatalogDeclHirV1) {
+        if let CatalogPayloadV1::View(ViewBodyV1::Inline(query)) = &decl.payload {
+            self.resolve_query(query);
+        }
+    }
+
     /// Resolve a rule unit with formal parameters; head and body both resolve
     /// against the parameter scope.
     pub fn resolve_rule(&mut self, rule: &RuleHirV1, params: &[ParamV1]) {
@@ -369,17 +449,29 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
         // the barrier is inert.
         self.scope.push(CaptureV1::NonCapturing);
         for (ordinal, binding) in composition.bindings.iter().enumerate() {
+            self.forbidden_composition_sources = composition
+                .bindings
+                .iter()
+                .skip(ordinal)
+                .map(|candidate| (candidate.name.clone(), candidate.name_span))
+                .collect();
             // Resolve the producer in the scope established BEFORE this LET name
             // is visible (sequential LET semantics; no self-reference).
             self.resolve_composition_producer(&binding.producer);
-            self.introduce(BindingV1::new_indexed(
+            let introduced = BindingV1::new_indexed(
                 binding.name.clone(),
                 BinderKindV1::CompositionLet,
                 binding.name_span,
                 composition.id,
                 ordinal,
-            ));
+            );
+            let _ = self
+                .result
+                .composition_bindings
+                .insert((composition.id, ordinal), introduced.clone());
+            self.introduce(introduced);
         }
+        self.forbidden_composition_sources.clear();
         self.resolve_composition_body(&composition.body);
         // WITH must consume a defined LET. Resolve it against the composition
         // frame; an unresolved WITH is fail-closed.
@@ -429,37 +521,46 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
 
     fn resolve_graph_query(&mut self, graph: &quanta_gqlang_v2_hir::GraphQueryHirV1) {
         let endpoints = &graph.endpoints;
-        for endpoint in [
+        let singular = [
             endpoints.source.as_ref(),
             endpoints.sink.as_ref(),
             endpoints.anchor.as_ref(),
             endpoints.reference.as_ref(),
             endpoints.pointee.as_ref(),
             endpoints.callable.as_ref(),
-        ]
-        .into_iter()
-        .flatten()
-        {
-            self.resolve_local_ref(endpoint, graph.id);
-        }
+        ];
         let constraints = &graph.constraints;
-        for waypoint in constraints
+        let repeated = constraints
             .via
             .iter()
             .chain(constraints.through.iter())
-            .chain(constraints.sanitizers.iter())
-        {
-            self.resolve_local_ref(waypoint, graph.id);
-        }
-        for waypoint in [
+            .chain(constraints.sanitizers.iter());
+        let constrained = [
             constraints.scope.as_ref(),
             constraints.window.as_ref(),
             constraints.frontier.as_ref(),
-        ]
-        .into_iter()
-        .flatten()
+        ];
+        let mut seen = BTreeSet::new();
+        for reference in singular
+            .into_iter()
+            .flatten()
+            .chain(repeated)
+            .chain(constrained.into_iter().flatten())
         {
-            self.resolve_local_ref(waypoint, graph.id);
+            if !seen.insert((
+                reference.span.start,
+                reference.span.end,
+                reference.name.as_str(),
+            )) {
+                self.result
+                    .diagnostics
+                    .push(BindDiagnosticV1::DuplicateReferenceUse {
+                        name: reference.name.clone(),
+                        span: reference.span,
+                    });
+                continue;
+            }
+            self.resolve_local_ref(reference, graph.id);
         }
     }
 
@@ -587,6 +688,64 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
     fn resolve_relation(&mut self, relation: &RelationExprHirV1) -> Vec<BindingV1> {
         let output = match &relation.kind {
             RelationExprKindV1::Source(source) => {
+                // A FROM source is a relation-namespace use. Only a
+                // Composition LET may resolve lexically here; genuinely
+                // unbound names are left for the host/catalog authority.
+                // Record the exact name-token use before its alias enters
+                // the current relation frame.
+                let (resolution, binding_frame) = self.scope.resolve_with_capture(&source.name);
+                match resolution {
+                    LexicalResolutionV1::Bound(binding)
+                        if binding.kind == BinderKindV1::CompositionLet =>
+                    {
+                        if let Some(binding_frame) = binding_frame {
+                            for &(owner, owner_frame) in &self.capture_owners {
+                                if binding_frame < owner_frame {
+                                    self.result.capture_edges.entry(owner).or_default().push((
+                                        relation.id,
+                                        binding.node,
+                                        binding.identity().1,
+                                    ));
+                                }
+                            }
+                        }
+                        self.result.resolutions.push(ResolutionV1 {
+                            reference: relation.id,
+                            span: source.name_span,
+                            name: source.name.clone(),
+                            target: ResolvedTargetV1::Local(binding),
+                        });
+                    }
+                    LexicalResolutionV1::Bound(binding) => {
+                        self.result
+                            .diagnostics
+                            .push(BindDiagnosticV1::WrongRelationSourceKind {
+                                name: source.name.clone(),
+                                span: source.name_span,
+                                binding_span: binding.span,
+                            });
+                    }
+                    LexicalResolutionV1::IllegalCapture(binding) => {
+                        self.result
+                            .diagnostics
+                            .push(BindDiagnosticV1::IllegalCapture {
+                                name: source.name.clone(),
+                                span: source.name_span,
+                                binding_span: binding.span,
+                            });
+                    }
+                    LexicalResolutionV1::Unbound => {
+                        if self
+                            .forbidden_composition_sources
+                            .contains_key(&source.name)
+                        {
+                            self.result.diagnostics.push(BindDiagnosticV1::Unresolved {
+                                name: source.name.clone(),
+                                span: source.name_span,
+                            });
+                        }
+                    }
+                }
                 let bindings = source.alias.as_ref().map_or_else(Vec::new, |alias| {
                     vec![BindingV1::new_indexed(
                         alias.name.clone(),
@@ -900,6 +1059,21 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
         }
 
         if let Some(decl) = self.declarations.get(name) {
+            if let Some(binding) = self
+                .active_partition
+                .filter(|_| !self.active_calls.is_empty())
+                .and_then(|group| self.result.partition_inputs.get(&group))
+                .and_then(|frame| frame.iter().find(|binding| binding.name == name))
+            {
+                self.result
+                    .diagnostics
+                    .push(BindDiagnosticV1::PartitionAuthorityCollision {
+                        name: name.to_owned(),
+                        span,
+                        partition_span: binding.span,
+                    });
+                return;
+            }
             self.result.resolutions.push(ResolutionV1 {
                 reference,
                 span,
@@ -916,16 +1090,49 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
         let mut candidates = self.graph.imported_targets(name);
         candidates.sort();
         candidates.dedup();
+        if !candidates.is_empty() {
+            if let Some(binding) = self
+                .active_partition
+                .filter(|_| !self.active_calls.is_empty())
+                .and_then(|group| self.result.partition_inputs.get(&group))
+                .and_then(|frame| frame.iter().find(|binding| binding.name == name))
+            {
+                self.result
+                    .diagnostics
+                    .push(BindDiagnosticV1::PartitionAuthorityCollision {
+                        name: name.to_owned(),
+                        span,
+                        partition_span: binding.span,
+                    });
+                return;
+            }
+        }
         match candidates.len() {
             0 => {
-                if let (Some(group), false) = (self.active_partition, self.active_calls.is_empty()) {
-                    if let Some(binding) = self.result.partition_inputs.get(&group)
-                        .and_then(|frame| frame.iter().find(|binding| binding.name == name)).cloned() {
-                        self.result.partition_candidates.insert(reference, PartitionCandidateV1 {
-                            reference, group, binding: binding.clone(), call_stack: self.active_calls.clone(), span,
-                        });
+                if let (Some(group), false) = (self.active_partition, self.active_calls.is_empty())
+                {
+                    if let Some(binding) = self
+                        .result
+                        .partition_inputs
+                        .get(&group)
+                        .and_then(|frame| frame.iter().find(|binding| binding.name == name))
+                        .cloned()
+                    {
+                        self.result.partition_candidates.insert(
+                            reference,
+                            PartitionCandidateV1 {
+                                reference,
+                                group,
+                                binding: binding.clone(),
+                                call_stack: self.active_calls.clone(),
+                                span,
+                            },
+                        );
                         self.result.resolutions.push(ResolutionV1 {
-                            reference, span, name: name.to_owned(), target: ResolvedTargetV1::Local(binding),
+                            reference,
+                            span,
+                            name: name.to_owned(),
+                            target: ResolvedTargetV1::Local(binding),
                         });
                         return;
                     }

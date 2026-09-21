@@ -1,20 +1,12 @@
-//! v3 family hellgate: the 18 root families PARSE -> lower to the correct
-//! `hir::ProgramItemHirV1` variant with exact spans, AND fail closed on
-//! malformed/illegal input with the ACTUAL typed diagnostic code + span.
-//!
-//! These rails are written first (red) and drive the family grammar to green.
-//! Binding/typing/legality stay downstream (D13): the parser is STRUCTURAL only,
-//! so these rails assert structure + spans + fail-closed codes, never semantics.
-
 #![allow(
-    clippy::unwrap_used,
     clippy::expect_used,
     clippy::indexing_slicing,
-    clippy::panic,
-    clippy::wildcard_enum_match_arm,
     clippy::match_wildcard_for_single_variants,
+    clippy::panic,
     clippy::single_match,
-    reason = "integration test rail: assertion panics, exhaustive/diagnostic match arms are intentional"
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 use quanta_gqlang_v2_hir::{
@@ -82,6 +74,43 @@ fn find_reachability_subkind_parses() {
         other => panic!("expected GraphQuery, got {other:?}"),
     };
     assert_eq!(gq.kind, GraphQueryKindV1::Reachability);
+}
+
+/// Every admitted FIND subkind keyword lowers to its EXACT `GraphQueryKindV1`.
+///
+/// The parser owns the keyword→kind mapping; the format rails are
+/// stability-only (`format(parse(x)) == format(parse(format(parse(x))))`), so a
+/// mismapped arm such as `"flow" => GraphQueryKindV1::Taint` is self-consistent
+/// and survives them, and the pipeline rails assert only "is a GraphQuery".
+/// This rail pins the mapping itself, so drift on any single arm fails closed.
+#[test]
+fn find_subkind_keywords_map_to_exact_kinds() {
+    let cases = [
+        (
+            "find reachability a.b -> c.d",
+            GraphQueryKindV1::Reachability,
+        ),
+        ("find flow a.b -> c.d", GraphQueryKindV1::Flow),
+        ("find slice | anchor=var | depth=2", GraphQueryKindV1::Slice),
+        ("find taint a.b -> c.d", GraphQueryKindV1::Taint),
+        ("find path a.b -> c.d", GraphQueryKindV1::Path),
+        (
+            "find points_to | reference=ptr | pointee=obj | depth=2",
+            GraphQueryKindV1::PointsTo,
+        ),
+        ("find summary | facets=calls", GraphQueryKindV1::Summary),
+    ];
+    for (src, expected) in cases {
+        let item = program(src);
+        let gq = match item {
+            ProgramItemHirV1::GraphQuery(g) => g,
+            other => panic!("{src:?}: expected GraphQuery, got {other:?}"),
+        };
+        assert_eq!(
+            gq.kind, expected,
+            "src {src:?} lowered to the wrong GraphQueryKindV1"
+        );
+    }
 }
 
 #[test]

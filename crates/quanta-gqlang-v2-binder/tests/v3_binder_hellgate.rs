@@ -1,16 +1,12 @@
-//! v3 binder fail-closed hellgate rail.
-//!
-//! Each test asserts the ACTUAL typed diagnostic code and Display text, not
-//! just that an error occurred. Covers the five reject classes the binder owns
-//! (`D3`/`D25`/`D28`/`D30`): unresolved, duplicate, shadowed, illegal-capture,
-//! ambiguous-import. HIR is built directly (parser is ticket 06).
-
-#![allow(clippy::unwrap_used, reason = "tests may unwrap")]
-#![allow(clippy::indexing_slicing, reason = "tests may index")]
-#![allow(clippy::panic, reason = "tests assert by panicking")]
 #![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
     clippy::wildcard_enum_match_arm,
-    reason = "tests match the expected variant and panic on the rest"
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 use quanta_gqlang_v2_binder::{BindDiagnosticV1, Binder, CaptureV1, ModuleGraphV1};
@@ -254,6 +250,7 @@ fn relation_alias_shadowing_outer_row_binding_rejects() {
     let b = HirBuilderV1::new();
     let outer = b.relation_source(
         "catalog.outer",
+        SpanV1::new(0, 10),
         Some(AliasV1 {
             name: "x".to_owned(),
             span: SpanV1::new(10, 11),
@@ -262,6 +259,7 @@ fn relation_alias_shadowing_outer_row_binding_rejects() {
     );
     let inner = b.relation_source(
         "catalog.inner",
+        SpanV1::new(20, 30),
         Some(AliasV1 {
             name: "x".to_owned(),
             span: SpanV1::new(30, 31),
@@ -288,7 +286,12 @@ fn relation_alias_shadowing_outer_row_binding_rejects() {
 #[test]
 fn duplicate_default_path_names_reject_at_second_segment() {
     let b = HirBuilderV1::new();
-    let source = b.relation_source("catalog.users", Some(alias("u", 10)), SpanV1::new(0, 11));
+    let source = b.relation_source(
+        "catalog.users",
+        SpanV1::new(0, 10),
+        Some(alias("u", 10)),
+        SpanV1::new(0, 11),
+    );
     let first = b
         .try_path(
             b.symbol("u", SpanV1::new(20, 21)),
@@ -343,7 +346,12 @@ fn duplicate_default_path_names_reject_at_second_segment() {
 #[test]
 fn duplicate_canonical_col_names_reject_at_second_expression() {
     let b = HirBuilderV1::new();
-    let source = b.relation_source("catalog.users", Some(alias("u", 10)), SpanV1::new(0, 11));
+    let source = b.relation_source(
+        "catalog.users",
+        SpanV1::new(0, 10),
+        Some(alias("u", 10)),
+        SpanV1::new(0, 11),
+    );
     let projected = b
         .try_project(
             source,

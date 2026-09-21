@@ -1,17 +1,12 @@
-//! All-family formatter hellgate (GAP 2).
-//!
-//! For at least one representative source per family, assert:
-//!   - round-trip stability: `format(parse(src))` is stable under a second
-//!     parse + format (i.e. `format(parse(format(parse(src)))) == format(parse(src))`),
-//!   - the rendered text re-parses to the SAME family/structure (structural HIR
-//!     equality modulo ids/spans),
-//!   - idempotence: `format(format(...))` is a no-op at the text level.
-
 #![allow(
-    clippy::unwrap_used,
     clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    reason = "integration test rail: assertion panics are intentional"
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 mod support;

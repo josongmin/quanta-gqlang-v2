@@ -1,4 +1,13 @@
-#![allow(clippy::unwrap_used, reason = "owner-local authority assertions")]
+#![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
+)]
 
 use quanta_gqlang_v2_hir::{
     CheckedLocatedSpanV2, LocatedSpanV2, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2,
@@ -95,9 +104,16 @@ fn final_input() -> DocumentCatalogFinalInputV2 {
         profile_admissions: Vec::new(),
         activations: Vec::new(),
         require_certified_directives: Vec::new(),
-        dependency_edges: Vec::new(),
         family_references: Vec::new(),
     }
+}
+
+fn finalize(
+    validator: &mut DocumentCatalogValidatorV2<'_>,
+    input: DocumentCatalogFinalInputV2,
+) -> Result<DocumentCatalogAuthorityV2, ModuleDiagnosticV2> {
+    let topology = validator.validate_view_topology(Vec::new())?;
+    validator.validate_predeclared(topology, input)
 }
 
 fn host_signature(host: &SourceRegistryViewV2, kind: CallableKindV2) -> SignatureInputV2 {
@@ -220,7 +236,7 @@ fn all_six_family_references_resolve_exact_host_kinds_and_forward_paths() {
         admission: ProfileAdmissionV2::CertifiedOnly,
         location: checked(registry.combined(), 9, 70),
     });
-    let proof = validator.validate_predeclared(input).unwrap();
+    let proof = finalize(&mut validator, input).unwrap();
     assert_eq!(proof.assets().count(), 6);
     assert_eq!(proof.dependencies().len(), 6);
     assert!(proof
@@ -228,12 +244,54 @@ fn all_six_family_references_resolve_exact_host_kinds_and_forward_paths() {
         .iter()
         .all(|edge| edge.family().is_some()));
     assert_eq!(
-        validator
-            .validate_predeclared(final_input())
-            .unwrap_err()
-            .code(),
+        finalize(&mut validator, final_input()).unwrap_err().code(),
         "modules.document_catalog_phase_error"
     );
+}
+
+#[test]
+fn optional_catalog_probe_keeps_absent_host_names_open_but_rejects_wrong_kind() {
+    let host = registry();
+    let (parts, app, _) = authority(&host, profile(32, 128), &[]);
+    let registry = extended(&host);
+    let mut validator = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
+    validator
+        .predeclare_assets(vec![local(
+            registry.combined(),
+            &app,
+            NamespaceKindV2::View,
+            "view.local",
+            20,
+        )])
+        .unwrap();
+    assert!(validator
+        .resolve_reference_if_present(DocumentCatalogReferenceInputV2 {
+            module_id: None,
+            local_name: "host_relation".into(),
+            expected_kind: NamespaceKindV2::View,
+            location: checked(registry.combined(), 9, 30),
+        })
+        .unwrap()
+        .is_none());
+    let local = validator
+        .resolve_reference_if_present(DocumentCatalogReferenceInputV2 {
+            module_id: None,
+            local_name: "view.local".into(),
+            expected_kind: NamespaceKindV2::View,
+            location: checked(registry.combined(), 9, 31),
+        })
+        .unwrap()
+        .expect("local View must retain the modules proof");
+    assert_eq!(local.origin(), DocumentCatalogReferenceOriginV2::Local);
+    let error = validator
+        .resolve_reference_if_present(DocumentCatalogReferenceInputV2 {
+            module_id: None,
+            local_name: "view.local".into(),
+            expected_kind: NamespaceKindV2::Model,
+            location: checked(registry.combined(), 9, 32),
+        })
+        .unwrap_err();
+    assert_eq!(error.code(), "modules.catalog_reference_kind_mismatch");
 }
 
 #[test]
@@ -421,15 +479,14 @@ fn one_session_budget_charges_predeclaration_and_final_family_edge() {
             });
         match expected_error {
             None => assert_eq!(
-                validator
-                    .validate_predeclared(input)
+                finalize(&mut validator, input)
                     .unwrap()
                     .dependencies()
                     .len(),
                 1
             ),
             Some((dimension, observed)) => {
-                let error = validator.validate_predeclared(input).unwrap_err();
+                let error = finalize(&mut validator, input).unwrap_err();
                 let resource = error.resource_exhaustion().unwrap();
                 assert_eq!(resource.dimension(), dimension);
                 assert_eq!(resource.limit(), limit);
@@ -637,7 +694,7 @@ fn optional_rule_probe_preserves_session_on_absence_in_both_orders() {
                 .unwrap();
             assert_eq!(result.is_some(), name == "rule.present");
         }
-        validator.validate_predeclared(final_input()).unwrap();
+        finalize(&mut validator, final_input()).unwrap();
     }
     let mut validator = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
     validator.predeclare_assets(Vec::new()).unwrap();
@@ -651,10 +708,7 @@ fn optional_rule_probe_preserves_session_on_absence_in_both_orders() {
         .unwrap_err();
     assert_eq!(error.code(), "modules.catalog_reference_kind_mismatch");
     assert_eq!(
-        validator
-            .validate_predeclared(final_input())
-            .unwrap_err()
-            .code(),
+        finalize(&mut validator, final_input()).unwrap_err().code(),
         "modules.document_catalog_phase_error"
     );
 }
@@ -751,28 +805,26 @@ fn view_cycle_remains_view_only_and_foreign_registry_rejects() {
             ),
         ])
         .unwrap();
-    let mut input = final_input();
+    let mut edges = Vec::new();
     for (from, to, at) in [("view.a", "view.b", 30), ("view.b", "view.a", 31)] {
-        input
-            .dependency_edges
-            .push(DocumentCatalogDependencyInputV2 {
-                source: CatalogAssetRefInputV2 {
-                    module_id: app.clone(),
-                    namespace_kind: NamespaceKindV2::View,
-                    local_name: from.into(),
-                    location: checked(registry.combined(), 9, at),
-                },
-                target: CatalogAssetRefInputV2 {
-                    module_id: app.clone(),
-                    namespace_kind: NamespaceKindV2::View,
-                    local_name: to.into(),
-                    location: checked(registry.combined(), 9, at),
-                },
-                expected_target_kind: NamespaceKindV2::View,
+        edges.push(DocumentCatalogDependencyInputV2 {
+            source: CatalogAssetRefInputV2 {
+                module_id: app.clone(),
+                namespace_kind: NamespaceKindV2::View,
+                local_name: from.into(),
                 location: checked(registry.combined(), 9, at),
-            });
+            },
+            target: CatalogAssetRefInputV2 {
+                module_id: app.clone(),
+                namespace_kind: NamespaceKindV2::View,
+                local_name: to.into(),
+                location: checked(registry.combined(), 9, at),
+            },
+            expected_target_kind: NamespaceKindV2::View,
+            location: checked(registry.combined(), 9, at),
+        });
     }
-    let error = validator.validate_predeclared(input).unwrap_err();
+    let error = validator.validate_view_topology(edges).unwrap_err();
     assert_eq!(error.code(), "modules.view_inline_cycle");
     assert_eq!(error.edge_witness().len(), 2);
 
@@ -792,6 +844,116 @@ fn view_cycle_remains_view_only_and_foreign_registry_rejects() {
         }])
         .unwrap_err();
     assert_eq!(error.code(), "modules.source_registry_mismatch");
+}
+
+#[test]
+fn reverse_authored_views_materialize_in_stable_dependency_first_order() {
+    let host = registry();
+    let (parts, app, _) = authority(&host, profile(100, 100), &[]);
+    let registry = extended(&host);
+    for reverse in [false, true] {
+        let mut assets = vec![
+            local(registry.combined(), &app, NamespaceKindV2::View, "root", 20),
+            local(
+                registry.combined(),
+                &app,
+                NamespaceKindV2::View,
+                "middle",
+                21,
+            ),
+            local(registry.combined(), &app, NamespaceKindV2::View, "leaf", 22),
+        ];
+        let mut edges = [("root", "middle", 30), ("middle", "leaf", 31)]
+            .into_iter()
+            .map(|(source, target, at)| DocumentCatalogDependencyInputV2 {
+                source: CatalogAssetRefInputV2 {
+                    module_id: app.clone(),
+                    namespace_kind: NamespaceKindV2::View,
+                    local_name: source.into(),
+                    location: checked(registry.combined(), 9, at),
+                },
+                target: CatalogAssetRefInputV2 {
+                    module_id: app.clone(),
+                    namespace_kind: NamespaceKindV2::View,
+                    local_name: target.into(),
+                    location: checked(registry.combined(), 9, at),
+                },
+                expected_target_kind: NamespaceKindV2::View,
+                location: checked(registry.combined(), 9, at),
+            })
+            .collect::<Vec<_>>();
+        if reverse {
+            assets.reverse();
+            edges.reverse();
+        }
+        let mut validator = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
+        validator.predeclare_assets(assets).unwrap();
+        let topology = validator.validate_view_topology(edges).unwrap();
+        assert_eq!(
+            topology
+                .dependency_first_order()
+                .map(CatalogAssetIdV2::local_name)
+                .collect::<Vec<_>>(),
+            ["leaf", "middle", "root"]
+        );
+        let authority = validator
+            .validate_predeclared(topology, final_input())
+            .unwrap();
+        assert_eq!(authority.dependencies().len(), 2);
+    }
+}
+
+#[test]
+fn topology_phase_rejects_skip_repeat_and_foreign_session_proof() {
+    let host = registry();
+    let (parts, _, _) = authority(&host, profile(100, 100), &[]);
+    let registry = extended(&host);
+
+    let mut skipped = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
+    assert_eq!(
+        skipped
+            .validate_view_topology(Vec::new())
+            .unwrap_err()
+            .code(),
+        "modules.document_catalog_phase_error"
+    );
+    assert_eq!(
+        skipped.predeclare_assets(Vec::new()).unwrap_err().code(),
+        "modules.document_catalog_phase_error"
+    );
+
+    let mut repeated = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
+    repeated.predeclare_assets(Vec::new()).unwrap();
+    assert_eq!(
+        repeated.predeclare_assets(Vec::new()).unwrap_err().code(),
+        "modules.document_catalog_phase_error"
+    );
+    assert_eq!(
+        repeated
+            .validate_view_topology(Vec::new())
+            .unwrap_err()
+            .code(),
+        "modules.document_catalog_phase_error"
+    );
+
+    let mut first = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
+    first.predeclare_assets(Vec::new()).unwrap();
+    let foreign = first.validate_view_topology(Vec::new()).unwrap();
+    assert_eq!(
+        first.validate_view_topology(Vec::new()).unwrap_err().code(),
+        "modules.document_catalog_phase_error"
+    );
+
+    let mut second = DocumentCatalogValidatorV2::try_new(registry, &parts).unwrap();
+    second.predeclare_assets(Vec::new()).unwrap();
+    let _same_session = second.validate_view_topology(Vec::new()).unwrap();
+    assert_eq!(
+        second
+            .validate_predeclared(foreign, final_input())
+            .unwrap_err()
+            .code(),
+        "modules.catalog_reference_session_mismatch"
+    );
 }
 
 #[test]
@@ -882,7 +1044,7 @@ fn final_family_refs_must_come_from_the_same_validator_session() {
             location: checked(registry.combined(), 9, 40),
         });
     assert_eq!(
-        second.validate_predeclared(input).unwrap_err().code(),
+        finalize(&mut second, input).unwrap_err().code(),
         "modules.catalog_reference_session_mismatch"
     );
 
@@ -903,7 +1065,7 @@ fn final_family_refs_must_come_from_the_same_validator_session() {
             location: checked(registry.combined(), 9, 41),
         });
     assert_eq!(
-        third.validate_predeclared(input).unwrap_err().code(),
+        finalize(&mut third, input).unwrap_err().code(),
         "modules.catalog_reference_session_mismatch"
     );
     assert_eq!(second_assets.len(), 2);
@@ -957,7 +1119,7 @@ fn forward_local_query_reference_seals_after_predeclaration() {
             target,
             location: checked(registry.combined(), 9, 30),
         });
-    let proof = validator.validate_predeclared(input).unwrap();
+    let proof = finalize(&mut validator, input).unwrap();
     assert_eq!(proof.dependencies().len(), 1);
     assert_eq!(
         proof
@@ -1301,5 +1463,271 @@ fn long_host_predicate_key_charges_exact_encoded_bytes_before_allocation() {
             assert_eq!(exhaustion.limit(), limit);
             assert_eq!(exhaustion.observed(), exact);
         }
+    }
+}
+
+#[test]
+fn topology_diamond_with_unrelated_ready_view_is_permutation_stable() {
+    let host = registry();
+    let (parts, app, _) = authority(&host, profile(100, 100), &[]);
+    let registry = extended(&host);
+    let names = ["view.a", "view.b", "view.c", "view.d", "view.e"];
+    // Diamond A -> B -> C, A -> D -> C plus the unrelated already-ready
+    // `view.e`, which has no edge and is materialization-ready from step one.
+    let diamond = [
+        ("view.a", "view.b", 30usize),
+        ("view.a", "view.d", 31),
+        ("view.b", "view.c", 32),
+        ("view.d", "view.c", 33),
+    ];
+    let asset =
+        |name: &str, at: usize| local(registry.combined(), &app, NamespaceKindV2::View, name, at);
+    let edge = |from: &str, to: &str, at: usize| DocumentCatalogDependencyInputV2 {
+        source: CatalogAssetRefInputV2 {
+            module_id: app.clone(),
+            namespace_kind: NamespaceKindV2::View,
+            local_name: from.into(),
+            location: checked(registry.combined(), 9, at),
+        },
+        target: CatalogAssetRefInputV2 {
+            module_id: app.clone(),
+            namespace_kind: NamespaceKindV2::View,
+            local_name: to.into(),
+            location: checked(registry.combined(), 9, at),
+        },
+        expected_target_kind: NamespaceKindV2::View,
+        location: checked(registry.combined(), 9, at),
+    };
+    // `view.c` and `view.e` are simultaneously ready; then `view.b` and
+    // `view.d`; then `view.a` and `view.e`. Only sorted-ID tie-breaking among
+    // ready nodes yields this exact dependency-first order.
+    let expected = ["view.c", "view.b", "view.d", "view.a", "view.e"];
+    let asset_orders = [
+        [0usize, 1, 2, 3, 4],
+        [4, 3, 2, 1, 0],
+        [2, 0, 4, 1, 3],
+        [3, 4, 1, 0, 2],
+    ];
+    let edge_orders = [[0usize, 1, 2, 3], [3, 2, 1, 0], [1, 3, 0, 2], [2, 0, 3, 1]];
+    for asset_order in asset_orders {
+        for edge_order in edge_orders {
+            let assets = asset_order
+                .into_iter()
+                .map(|index| asset(names[index], 20 + index))
+                .collect();
+            let edges = edge_order
+                .into_iter()
+                .map(|index| {
+                    let (from, to, at) = diamond[index];
+                    edge(from, to, at)
+                })
+                .collect();
+            let mut validator =
+                DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
+            validator.predeclare_assets(assets).unwrap();
+            let topology = validator.validate_view_topology(edges).unwrap();
+            assert_eq!(
+                topology
+                    .dependency_first_order()
+                    .map(CatalogAssetIdV2::local_name)
+                    .collect::<Vec<_>>(),
+                expected,
+                "asset and edge permutation must not change the sealed order"
+            );
+            let proof = validator
+                .validate_predeclared(topology, final_input())
+                .unwrap();
+            assert_eq!(proof.dependencies().len(), 4);
+            assert!(proof
+                .dependencies()
+                .iter()
+                .all(|edge| edge.family().is_none()));
+        }
+    }
+
+    // An exact-duplicate diamond edge stays idempotent and retains the
+    // minimum location, so input order cannot move a sealed edge.
+    let mut validator = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
+    validator
+        .predeclare_assets(
+            names
+                .iter()
+                .enumerate()
+                .map(|(index, name)| asset(name, 20 + index))
+                .collect(),
+        )
+        .unwrap();
+    let mut edges: Vec<_> = diamond
+        .into_iter()
+        .map(|(from, to, at)| edge(from, to, at))
+        .collect();
+    edges.push(edge("view.a", "view.b", 45));
+    let topology = validator.validate_view_topology(edges).unwrap();
+    assert_eq!(
+        topology
+            .dependency_first_order()
+            .map(CatalogAssetIdV2::local_name)
+            .collect::<Vec<_>>(),
+        expected
+    );
+    let proof = validator
+        .validate_predeclared(topology, final_input())
+        .unwrap();
+    assert_eq!(
+        proof.dependencies().len(),
+        4,
+        "an exact-duplicate View edge must stay idempotent"
+    );
+    let mut sealed: Vec<String> = proof
+        .dependencies()
+        .iter()
+        .map(|edge| {
+            format!(
+                "{}->{}",
+                edge.source_asset_id().local_name(),
+                edge.target_asset_id().local_name()
+            )
+        })
+        .collect();
+    sealed.sort_unstable();
+    assert_eq!(
+        sealed,
+        [
+            "view.a->view.b",
+            "view.a->view.d",
+            "view.b->view.c",
+            "view.d->view.c"
+        ]
+    );
+    let retained = proof
+        .dependencies()
+        .iter()
+        .find(|edge| {
+            edge.source_asset_id().local_name() == "view.a"
+                && edge.target_asset_id().local_name() == "view.b"
+        })
+        .unwrap();
+    assert_eq!(
+        retained.location().location().span.start,
+        30,
+        "an idempotent duplicate edge must retain the minimum location"
+    );
+    assert_eq!(retained.location().location().span, SpanV1::new(30, 31));
+}
+
+#[test]
+fn diamond_cycle_selects_one_located_witness_under_edge_permutation() {
+    let host = registry();
+    let (parts, app, _) = authority(&host, profile(100, 100), &[]);
+    let registry = extended(&host);
+    // Closing the diamond with view.c -> view.a creates two distinct cycles
+    // (a->b->c and a->d->c). The a->b->c witness is selected deterministically.
+    let cyclic = [
+        ("view.a", "view.b", 30usize),
+        ("view.a", "view.d", 31),
+        ("view.b", "view.c", 32),
+        ("view.d", "view.c", 33),
+        ("view.c", "view.a", 34),
+    ];
+    let edge_orders = [
+        [0usize, 1, 2, 3, 4],
+        [4, 3, 2, 1, 0],
+        [2, 4, 1, 3, 0],
+        [3, 0, 4, 2, 1],
+    ];
+    for edge_order in edge_orders {
+        let mut validator = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
+        validator
+            .predeclare_assets(vec![
+                local(
+                    registry.combined(),
+                    &app,
+                    NamespaceKindV2::View,
+                    "view.a",
+                    20,
+                ),
+                local(
+                    registry.combined(),
+                    &app,
+                    NamespaceKindV2::View,
+                    "view.b",
+                    21,
+                ),
+                local(
+                    registry.combined(),
+                    &app,
+                    NamespaceKindV2::View,
+                    "view.c",
+                    22,
+                ),
+                local(
+                    registry.combined(),
+                    &app,
+                    NamespaceKindV2::View,
+                    "view.d",
+                    23,
+                ),
+                local(
+                    registry.combined(),
+                    &app,
+                    NamespaceKindV2::View,
+                    "view.e",
+                    24,
+                ),
+            ])
+            .unwrap();
+        let edges = edge_order
+            .into_iter()
+            .map(|index| {
+                let (from, to, at) = cyclic[index];
+                DocumentCatalogDependencyInputV2 {
+                    source: CatalogAssetRefInputV2 {
+                        module_id: app.clone(),
+                        namespace_kind: NamespaceKindV2::View,
+                        local_name: from.into(),
+                        location: checked(registry.combined(), 9, at),
+                    },
+                    target: CatalogAssetRefInputV2 {
+                        module_id: app.clone(),
+                        namespace_kind: NamespaceKindV2::View,
+                        local_name: to.into(),
+                        location: checked(registry.combined(), 9, at),
+                    },
+                    expected_target_kind: NamespaceKindV2::View,
+                    location: checked(registry.combined(), 9, at),
+                }
+            })
+            .collect();
+        let error = validator.validate_view_topology(edges).unwrap_err();
+        assert_eq!(
+            error.code(),
+            "modules.view_inline_cycle",
+            "edge permutation must not change the rejection"
+        );
+        assert_eq!(
+            error.primary().unwrap(),
+            LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(9),
+                span: SpanV1::new(34, 35),
+            }
+        );
+        let witness: Vec<SpanV1> = error
+            .edge_witness()
+            .iter()
+            .map(|located| located.span)
+            .collect();
+        assert_eq!(
+            witness,
+            [
+                SpanV1::new(34, 35),
+                SpanV1::new(30, 31),
+                SpanV1::new(32, 33)
+            ],
+            "the lexicographically smallest located witness is a->b->c"
+        );
+        assert!(error
+            .edge_witness()
+            .iter()
+            .all(|located| located.source_id == SourceIdV2::from_raw(9)));
     }
 }

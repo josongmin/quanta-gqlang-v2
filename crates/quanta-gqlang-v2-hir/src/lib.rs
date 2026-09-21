@@ -24,12 +24,16 @@
 //!
 //! # Building trees
 //!
-//! Because the v3 parser (ticket 06) does not exist yet, [`HirBuilderV1`] offers
-//! ergonomic id-allocating constructors. A tree built through one builder
-//! satisfies the id-uniqueness invariant by construction. Validate any tree
-//! (including ones assembled by hand) with [`check_tree`], the fail-closed
-//! checked constructor that enforces unique ids and in-bounds, well-formed
-//! spans and returns typed [`HirIntegrityErrorV1`] values.
+//! [`HirBuilderV1`] offers ergonomic id-allocating constructors; the v3 parser
+//! lowers surface text through one builder, so trees reached through a public
+//! compile entry point satisfy the id-uniqueness and span invariants by
+//! construction. [`check_tree`] is the fail-closed checked constructor for the
+//! other case — HIR assembled **by hand** by an embedder, a downstream frontend,
+//! or a test fixture. It enforces unique ids and in-bounds, well-formed spans
+//! and returns typed [`HirIntegrityErrorV1`] values (or a [`CheckedHirV1`] that
+//! witnesses them). The compiler does not call it on its own output, and nothing
+//! downstream re-validates a hand-built tree, so skipping it is a real
+//! correctness gap rather than a formality.
 
 mod build;
 mod expr;

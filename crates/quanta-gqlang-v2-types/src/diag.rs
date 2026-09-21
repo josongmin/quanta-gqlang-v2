@@ -80,6 +80,23 @@ pub enum TypeDiagnosticV2 {
         target_node_id: HirNodeIdV1,
         location: LocatedSpanV2,
     },
+    InvalidDeferredRelationRow {
+        root: HirNodeIdV1,
+        location: LocatedSpanV2,
+    },
+    InvalidRelationPreEvaluationPlan {
+        root: HirNodeIdV1,
+        location: LocatedSpanV2,
+    },
+    UnavailableRelationRowDependency {
+        root: HirNodeIdV1,
+        target: HirNodeIdV1,
+        location: LocatedSpanV2,
+    },
+    InvalidRelationPredicateInput {
+        node_id: HirNodeIdV1,
+        location: LocatedSpanV2,
+    },
     CyclicDeclarationDependency {
         node_id: HirNodeIdV1,
         location: LocatedSpanV2,
@@ -179,6 +196,10 @@ impl TypeDiagnosticV2 {
             | Self::WrongNodeFactKind { location, .. }
             | Self::InvalidBindingDependency { location, .. }
             | Self::UnavailableBindingDependency { location, .. }
+            | Self::InvalidDeferredRelationRow { location, .. }
+            | Self::InvalidRelationPreEvaluationPlan { location, .. }
+            | Self::UnavailableRelationRowDependency { location, .. }
+            | Self::InvalidRelationPredicateInput { location, .. }
             | Self::CyclicDeclarationDependency { location, .. }
             | Self::InvalidRuleInput { location }
             | Self::InvalidRuleHead { location, .. }
@@ -236,6 +257,14 @@ impl TypeDiagnosticV2 {
             Self::WrongNodeFactKind { .. } => "types.wrong_resolved_input_kind",
             Self::InvalidBindingDependency { .. } => "types.invalid_binding_dependency",
             Self::UnavailableBindingDependency { .. } => "types.unavailable_binding_dependency",
+            Self::InvalidDeferredRelationRow { .. } => "types.invalid_deferred_relation_row",
+            Self::InvalidRelationPreEvaluationPlan { .. } => {
+                "types.invalid_relation_pre_evaluation_plan"
+            }
+            Self::UnavailableRelationRowDependency { .. } => {
+                "types.unavailable_relation_row_dependency"
+            }
+            Self::InvalidRelationPredicateInput { .. } => "types.invalid_relation_predicate_input",
             Self::CyclicDeclarationDependency { .. } => "types.cyclic_declaration_dependency",
             Self::InvalidRuleTypeBudget => "types.invalid_rule_type_budget",
             Self::InvalidRuleInput { .. } => "types.invalid_rule_input",
@@ -322,6 +351,10 @@ impl fmt::Display for TypeDiagnosticV2 {
             | Self::WrongNodeFactKind { .. }
             | Self::InvalidBindingDependency { .. }
             | Self::UnavailableBindingDependency { .. }
+            | Self::InvalidDeferredRelationRow { .. }
+            | Self::InvalidRelationPreEvaluationPlan { .. }
+            | Self::UnavailableRelationRowDependency { .. }
+            | Self::InvalidRelationPredicateInput { .. }
             | Self::CyclicDeclarationDependency { .. }
             | Self::InvalidRuleTypeBudget
             | Self::InvalidRuleInput { .. }

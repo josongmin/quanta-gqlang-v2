@@ -1,4 +1,13 @@
-#![allow(clippy::unwrap_used, reason = "owner assertions")]
+#![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
+)]
 
 use quanta_gqlang_v2_hir::{
     check_document_v2, CallArgHirV1, CallArgsHirV1, HirBuilderV1, HirDocumentV1, LocatedSpanV2,
@@ -1211,7 +1220,7 @@ fn relation_existence_in_rule_has_exact_defense_in_depth_diagnostic() {
     let head_id = head.id;
     let body = b.relation_exists(
         RelationExistsPolarityV1::Exists,
-        b.relation_source("data", None, span(26, 30)),
+        b.relation_source("data", span(26, 30), None, span(26, 30)),
         span(13, 31),
     );
     let rule = b.rule("r", span(5, 6), head, body, span(0, 32));

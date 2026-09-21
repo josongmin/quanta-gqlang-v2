@@ -1,22 +1,12 @@
-//! v3 composition LET...WITH binder hellgate rail.
-//!
-//! Covers the composition scope the binder owns (per the task split):
-//! a `LET s = <producer>  <body> WITH s` resolves both the body's reference to
-//! `s` and the `WITH s` consumer to the LET binding; `WITH` naming an undefined
-//! binding rejects (unresolved); a duplicate `LET` name rejects (duplicate). It
-//! asserts the ACTUAL typed diagnostic codes and Display text. Ref legality of
-//! rule_ref/check_ref existence stays a catalog/modules concern (D30): the
-//! binder only resolves LOCAL composition scope.
-//!
-//! HIR is built directly with `HirBuilderV1` (the v3 parser is ticket 06).
-
-#![allow(clippy::unwrap_used, reason = "tests may unwrap")]
-#![allow(clippy::expect_used, reason = "tests may expect")]
-#![allow(clippy::indexing_slicing, reason = "tests may index")]
-#![allow(clippy::panic, reason = "tests assert by panicking")]
 #![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
     clippy::wildcard_enum_match_arm,
-    reason = "tests match the expected variant and panic on the rest"
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 use quanta_gqlang_v2_binder::{Binder, BinderKindV1, ModuleGraphV1, ResolvedTargetV1};
@@ -29,7 +19,12 @@ use quanta_gqlang_v2_hir::{
 // Build a SAMPLE-ish producer item: a relation source query is the simplest
 // producer that carries no free symbol references of its own.
 fn working_set_producer(b: &HirBuilderV1) -> CompositionProducerV1 {
-    let source = b.relation_source("catalog.users", None, SpanV1::new(8, 13));
+    let source = b.relation_source(
+        "catalog.users",
+        SpanV1::new(8, 12),
+        None,
+        SpanV1::new(8, 13),
+    );
     let query = b.query(source, None, SpanV1::new(0, 13));
     query.into()
 }

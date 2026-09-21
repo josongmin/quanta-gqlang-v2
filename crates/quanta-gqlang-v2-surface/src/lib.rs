@@ -42,6 +42,34 @@
 //!
 //! Every error path returns a typed [`ParseDiagnosticV1`] carrying a stable
 //! [`ParseErrorCodeV1`] and an exact `hir::SpanV1`.
+//!
+//! ## Example
+//!
+//! ```
+//! use quanta_gqlang_v2_hir::HirBuilderV1;
+//! use quanta_gqlang_v2_surface::{format_document, parse_document};
+//!
+//! let builder = HirBuilderV1::new();
+//! // One builder, two roots separated by the document `;` terminator, so the
+//! // lowered node ids stay globally unique across the whole document.
+//! let doc = parse_document("let total = base + tax * 2; from users u | project u.id as id", &builder)?;
+//! assert_eq!(doc.items.len(), 2);
+//!
+//! // `format_document` re-renders the lowered HIR as canonical v3 surface text.
+//! let items: Vec<_> = doc.items.iter().map(|item| item.to_program_item()).collect();
+//! let text = format_document(&items);
+//!
+//! // Fixed point: the canonical text PARSES again and re-renders identically.
+//! // (A fresh builder, because a new document mints its own node ids.)
+//! let reparsed = parse_document(&text, &HirBuilderV1::new())?;
+//! let items2: Vec<_> = reparsed.items.iter().map(|item| item.to_program_item()).collect();
+//! assert_eq!(
+//!     format_document(&items2),
+//!     text,
+//!     "format -> parse -> format must be a fixed point"
+//! );
+//! # Ok::<(), quanta_gqlang_v2_surface::ParseDiagnosticV1>(())
+//! ```
 
 mod budget;
 mod cursor;

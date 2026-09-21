@@ -10,10 +10,10 @@ use quanta_gqlang_v2_hir::{
 use crate::budget::ModuleBudgetSessionV2;
 use crate::catalog::{
     DocumentCatalogAuthorityV2, DocumentCatalogFinalInputV2, DocumentCatalogInputV2,
-    DocumentCatalogReferenceInputV2, DocumentCatalogReferenceOriginV2, ExternalCatalogAssetInputV2,
-    ExternalCatalogPayloadV2, ExternalCatalogV2, PrecheckedExternalCatalogAssetV2,
-    PredeclaredDocumentAssetV2, PredeclaredDocumentAssetsV2, ResolvedDocumentCatalogReferenceV2,
-    ResolvedHostPredicateProofV2,
+    DocumentCatalogReferenceInputV2, DocumentCatalogReferenceOriginV2, DocumentViewTopologyProofV2,
+    DocumentViewTopologyStateV2, ExternalCatalogAssetInputV2, ExternalCatalogPayloadV2,
+    ExternalCatalogV2, PrecheckedExternalCatalogAssetV2, PredeclaredDocumentAssetV2,
+    PredeclaredDocumentAssetsV2, ResolvedDocumentCatalogReferenceV2, ResolvedHostPredicateProofV2,
 };
 use crate::extension::{
     ComposedModelV2, ModelPackInputV2, ModelPackV2, ModelSchemaInputV2, ModelSchemaV2,
@@ -354,6 +354,7 @@ pub struct DocumentCatalogValidatorV2<'a> {
     parts: &'a ValidatedModuleAuthorityPartsV2,
     session: ModuleBudgetSessionV2,
     predeclared: Option<PredeclaredDocumentAssetsV2>,
+    topology_state: Option<DocumentViewTopologyStateV2>,
     phase: DocumentCatalogPhaseV2,
     session_key: Arc<()>,
 }
@@ -362,6 +363,7 @@ pub struct DocumentCatalogValidatorV2<'a> {
 enum DocumentCatalogPhaseV2 {
     Empty,
     Predeclared,
+    TopologyValidated,
     Finished,
     Failed,
 }
@@ -382,6 +384,7 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
             parts,
             session: ModuleBudgetV2::from_profile(parts.budget_profile.clone()).begin_session_v2(),
             predeclared: None,
+            topology_state: None,
             phase: DocumentCatalogPhaseV2::Empty,
             session_key: Arc::new(()),
         })
@@ -395,7 +398,7 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
         assets: Vec<crate::DocumentCatalogAssetInputV2>,
     ) -> Result<Vec<PredeclaredDocumentAssetV2>, ModuleDiagnosticV2> {
         if self.phase != DocumentCatalogPhaseV2::Empty {
-            return Err(document_phase_error());
+            return Err(self.reject_phase());
         }
         self.phase = DocumentCatalogPhaseV2::Failed;
         let predeclared = PredeclaredDocumentAssetsV2::try_new(
@@ -461,8 +464,8 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
         &mut self,
         input: DocumentCatalogReferenceInputV2,
     ) -> Result<ResolvedDocumentCatalogReferenceV2, ModuleDiagnosticV2> {
-        if self.phase != DocumentCatalogPhaseV2::Predeclared {
-            return Err(document_phase_error());
+        if !self.references_are_open() {
+            return Err(self.reject_phase());
         }
         let location = input.location.clone();
         let result = self.resolve_reference_inner(input).and_then(|reference| {
@@ -480,6 +483,26 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
         result
     }
 
+    /// Probe one exact catalog path without turning an absent name into a
+    /// terminal document-validator failure. Consumers that also admit a
+    /// disjoint host namespace (for example relation sources) use this to
+    /// distinguish "not a catalog asset" from an invalid/ambiguous catalog
+    /// reference. Any malformed, ambiguous, or wrong-kind candidate remains
+    /// terminal exactly as it is for [`Self::resolve_reference`].
+    pub fn resolve_reference_if_present(
+        &mut self,
+        input: DocumentCatalogReferenceInputV2,
+    ) -> Result<Option<ResolvedDocumentCatalogReferenceV2>, ModuleDiagnosticV2> {
+        if !self.references_are_open() {
+            return Err(self.reject_phase());
+        }
+        let result = self.resolve_reference_inner(input);
+        if result.is_err() {
+            self.phase = DocumentCatalogPhaseV2::Failed;
+        }
+        result
+    }
+
     /// Perform the same bounded typed lookup without terminalizing a truly
     /// absent catalog name. This supports source constructs that may also
     /// resolve against a separate graph selector authority. Wrong kind,
@@ -488,8 +511,8 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
         &mut self,
         input: DocumentCatalogReferenceInputV2,
     ) -> Result<Option<ResolvedDocumentCatalogReferenceV2>, ModuleDiagnosticV2> {
-        if self.phase != DocumentCatalogPhaseV2::Predeclared {
-            return Err(document_phase_error());
+        if !self.references_are_open() {
+            return Err(self.reject_phase());
         }
         let result = self.resolve_reference_inner(input);
         if result.is_err() {
@@ -506,8 +529,8 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
         &mut self,
         input: DocumentCatalogReferenceInputV2,
     ) -> Result<ResolvedHostPredicateProofV2, ModuleDiagnosticV2> {
-        if self.phase != DocumentCatalogPhaseV2::Predeclared {
-            return Err(document_phase_error());
+        if !self.references_are_open() {
+            return Err(self.reject_phase());
         }
         if input.expected_kind != NamespaceKindV2::Predicate {
             self.phase = DocumentCatalogPhaseV2::Failed;
@@ -597,8 +620,8 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
         expected_key: &ResolvedHostPredicateKeyV2,
         expected_location: &CheckedLocatedSpanV2,
     ) -> Result<(), ModuleDiagnosticV2> {
-        if self.phase != DocumentCatalogPhaseV2::Predeclared {
-            return Err(document_phase_error());
+        if !self.references_are_open() {
+            return Err(self.reject_phase());
         }
         self.session.charge_step()?;
         if !proof.belongs_to(&self.session_key)
@@ -664,7 +687,7 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
             ));
         }
         let Some(predeclared) = &self.predeclared else {
-            return Err(document_phase_error());
+            return Err(self.reject_phase());
         };
         let current_module = self.parts.resolved_graph.current_module();
         let selected = input.module_id.as_ref().unwrap_or(current_module);
@@ -789,22 +812,68 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
         Ok(None)
     }
 
-    /// Finish the predeclared document exactly once, without recharging or
-    /// re-deriving its local asset IDs.
-    pub fn validate_predeclared(
+    const fn references_are_open(&self) -> bool {
+        matches!(
+            self.phase,
+            DocumentCatalogPhaseV2::Predeclared | DocumentCatalogPhaseV2::TopologyValidated
+        )
+    }
+
+    fn reject_phase(&mut self) -> ModuleDiagnosticV2 {
+        self.phase = DocumentCatalogPhaseV2::Failed;
+        document_phase_error()
+    }
+
+    /// Resolve every direct document View dependency, reject cycles, and seal
+    /// the deterministic dependency-first materialization order in this exact
+    /// validator session.
+    pub fn validate_view_topology(
         &mut self,
-        input: DocumentCatalogFinalInputV2,
-    ) -> Result<DocumentCatalogAuthorityV2, ModuleDiagnosticV2> {
+        dependency_edges: Vec<crate::DocumentCatalogDependencyInputV2>,
+    ) -> Result<DocumentViewTopologyProofV2, ModuleDiagnosticV2> {
         if self.phase != DocumentCatalogPhaseV2::Predeclared {
-            return Err(document_phase_error());
+            return Err(self.reject_phase());
         }
         self.phase = DocumentCatalogPhaseV2::Failed;
         let Some(predeclared) = &self.predeclared else {
-            return Err(document_phase_error());
+            return Err(self.reject_phase());
         };
+        let proof = DocumentViewTopologyProofV2::try_new(
+            dependency_edges,
+            predeclared,
+            &self.parts.resolved_graph,
+            &self.parts.external_catalog,
+            self.extended_registry.combined(),
+            &mut self.session,
+            self.session_key.clone(),
+        )?;
+        self.topology_state = Some(proof.state().clone());
+        self.phase = DocumentCatalogPhaseV2::TopologyValidated;
+        Ok(proof)
+    }
+
+    /// Finish the predeclared document exactly once, without recharging or
+    /// re-deriving its local asset IDs or direct View dependency graph.
+    pub fn validate_predeclared(
+        &mut self,
+        topology: DocumentViewTopologyProofV2,
+        input: DocumentCatalogFinalInputV2,
+    ) -> Result<DocumentCatalogAuthorityV2, ModuleDiagnosticV2> {
+        if self.phase != DocumentCatalogPhaseV2::TopologyValidated {
+            return Err(self.reject_phase());
+        }
+        self.phase = DocumentCatalogPhaseV2::Failed;
+        let Some(predeclared) = &self.predeclared else {
+            return Err(self.reject_phase());
+        };
+        let Some(expected_topology) = &self.topology_state else {
+            return Err(self.reject_phase());
+        };
+        validate_view_topology_proof(expected_topology, &topology, &self.session_key)?;
         let result = DocumentCatalogAuthorityV2::try_new_predeclared(
             input,
             predeclared,
+            &topology,
             &self.parts.resolved_graph,
             &self.parts.external_catalog,
             &self.parts.pack_authority,
@@ -821,16 +890,26 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
         input: DocumentCatalogInputV2,
     ) -> Result<DocumentCatalogAuthorityV2, ModuleDiagnosticV2> {
         if self.phase != DocumentCatalogPhaseV2::Empty {
-            return Err(document_phase_error());
+            return Err(self.reject_phase());
         }
-        let _ = self.predeclare_assets(input.assets)?;
-        self.validate_predeclared(DocumentCatalogFinalInputV2 {
-            profile_admissions: input.profile_admissions,
-            activations: input.activations,
-            require_certified_directives: input.require_certified_directives,
-            dependency_edges: input.dependency_edges,
-            family_references: Vec::new(),
-        })
+        let DocumentCatalogInputV2 {
+            assets,
+            profile_admissions,
+            activations,
+            require_certified_directives,
+            dependency_edges,
+        } = input;
+        let _ = self.predeclare_assets(assets)?;
+        let topology = self.validate_view_topology(dependency_edges)?;
+        self.validate_predeclared(
+            topology,
+            DocumentCatalogFinalInputV2 {
+                profile_admissions,
+                activations,
+                require_certified_directives,
+                family_references: Vec::new(),
+            },
+        )
     }
 }
 
@@ -839,4 +918,98 @@ fn document_phase_error() -> ModuleDiagnosticV2 {
         "modules.document_catalog_phase_error",
         "document catalog validator cannot repeat or skip a phase",
     )
+}
+
+fn validate_view_topology_proof(
+    expected: &DocumentViewTopologyStateV2,
+    proof: &DocumentViewTopologyProofV2,
+    session_key: &Arc<()>,
+) -> Result<(), ModuleDiagnosticV2> {
+    if !proof.belongs_to(session_key) {
+        return Err(ModuleDiagnosticV2::without_location(
+            "modules.catalog_reference_session_mismatch",
+            "View topology proof belongs to another document validator",
+        ));
+    }
+    if expected != proof.state() {
+        return Err(ModuleDiagnosticV2::without_location(
+            "modules.view_topology_proof_mismatch",
+            "View topology proof was dropped, reordered, or substituted",
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "owner-local proof mutation assertions")]
+mod tests {
+    use super::*;
+    use quanta_gqlang_v2_hir::{LocatedSpanV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1};
+
+    fn topology_ids() -> (CatalogAssetIdV2, CatalogAssetIdV2) {
+        let registry = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(1),
+            source_len: 16,
+        }])
+        .unwrap();
+        let location = registry
+            .try_check_location(LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(1),
+                span: SpanV1::new(0, 1),
+            })
+            .unwrap();
+        let module = crate::ModuleIdV2::try_new("app", location.clone()).unwrap();
+        let first =
+            CatalogAssetIdV2::derive(module.clone(), NamespaceKindV2::View, "first", &location)
+                .unwrap();
+        let second =
+            CatalogAssetIdV2::derive(module, NamespaceKindV2::View, "second", &location).unwrap();
+        (first, second)
+    }
+
+    #[test]
+    fn topology_proof_rejects_dropped_reordered_and_foreign_state() {
+        let (first, second) = topology_ids();
+        let expected = DocumentViewTopologyStateV2 {
+            dependencies: Vec::new(),
+            dependency_first_order: vec![first.clone(), second.clone()],
+        };
+        let session = Arc::new(());
+
+        let dropped = DocumentViewTopologyProofV2::from_state(
+            DocumentViewTopologyStateV2 {
+                dependencies: Vec::new(),
+                dependency_first_order: vec![first.clone()],
+            },
+            session.clone(),
+        );
+        assert_eq!(
+            validate_view_topology_proof(&expected, &dropped, &session)
+                .unwrap_err()
+                .code(),
+            "modules.view_topology_proof_mismatch"
+        );
+
+        let reordered = DocumentViewTopologyProofV2::from_state(
+            DocumentViewTopologyStateV2 {
+                dependencies: Vec::new(),
+                dependency_first_order: vec![second, first],
+            },
+            session.clone(),
+        );
+        assert_eq!(
+            validate_view_topology_proof(&expected, &reordered, &session)
+                .unwrap_err()
+                .code(),
+            "modules.view_topology_proof_mismatch"
+        );
+
+        let foreign = DocumentViewTopologyProofV2::from_state(expected.clone(), Arc::new(()));
+        assert_eq!(
+            validate_view_topology_proof(&expected, &foreign, &session)
+                .unwrap_err()
+                .code(),
+            "modules.catalog_reference_session_mismatch"
+        );
+    }
 }

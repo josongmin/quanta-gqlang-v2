@@ -1,6 +1,8 @@
 //! Sealed typed-expression and aggregate-context contracts.
 
-use crate::diagnostic::{FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2, FrontendStageV2};
+use crate::diagnostic::{
+    FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2, FrontendStageV2,
+};
 use crate::ResolvedValueBindingV2;
 use quanta_gqlang_v2_hir::{
     CheckedLocatedSpanV2, LocatedSpanV2, LogicalQuantifierKindV1, RelationExistsPolarityV1,
@@ -26,6 +28,42 @@ pub enum AggregatePositionV2 {
     OrderKey,
     /// Rule body position; aggregate polarity is retained for logic.
     RuleBody,
+}
+
+/// Logical quantifier kind after semantic sealing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum LogicalQuantifierKindV2 {
+    /// Existential quantification.
+    Exists,
+    /// Universal quantification.
+    Forall,
+}
+
+impl From<LogicalQuantifierKindV1> for LogicalQuantifierKindV2 {
+    fn from(kind: LogicalQuantifierKindV1) -> Self {
+        match kind {
+            LogicalQuantifierKindV1::Exists => Self::Exists,
+            LogicalQuantifierKindV1::Forall => Self::Forall,
+        }
+    }
+}
+
+/// EXISTS polarity after semantic sealing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum RelationExistsPolarityV2 {
+    /// `exists (from ...)`.
+    Exists,
+    /// `not exists (from ...)`.
+    NotExists,
+}
+
+impl From<RelationExistsPolarityV1> for RelationExistsPolarityV2 {
+    fn from(polarity: RelationExistsPolarityV1) -> Self {
+        match polarity {
+            RelationExistsPolarityV1::Exists => Self::Exists,
+            RelationExistsPolarityV1::NotExists => Self::NotExists,
+        }
+    }
 }
 
 /// Checked aggregate placement retained for algebra and logic consumers.
@@ -55,17 +93,36 @@ pub struct TypedRecordFieldV2 {
 
 impl TypedRecordFieldV2 {
     /// Construct one field.
-    pub(crate) fn try_new(name: impl Into<String>, name_location: CheckedLocatedSpanV2, value: SourceQualifiedNodeIdV2) -> Result<Self, &'static str> {
+    pub(crate) fn try_new(
+        name: impl Into<String>,
+        name_location: CheckedLocatedSpanV2,
+        value: SourceQualifiedNodeIdV2,
+    ) -> Result<Self, &'static str> {
         let name = name.into();
-        if name.is_empty() { return Err("typed record field name cannot be empty"); }
-        Ok(Self { name, name_location, value })
+        if name.is_empty() {
+            return Err("typed record field name cannot be empty");
+        }
+        Ok(Self {
+            name,
+            name_location,
+            value,
+        })
     }
     /// Field name.
-    #[must_use] pub fn name(&self) -> &str { &self.name }
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
     /// Original checked field-name span.
-    #[must_use] pub const fn name_location(&self) -> &CheckedLocatedSpanV2 { &self.name_location }
+    #[must_use]
+    pub const fn name_location(&self) -> &CheckedLocatedSpanV2 {
+        &self.name_location
+    }
     /// Typed child identity.
-    #[must_use] pub const fn value(&self) -> SourceQualifiedNodeIdV2 { self.value }
+    #[must_use]
+    pub const fn value(&self) -> SourceQualifiedNodeIdV2 {
+        self.value
+    }
 }
 
 /// One authored path segment with its exact checked subspan.
@@ -76,11 +133,19 @@ pub struct TypedPathSegmentV2 {
 }
 
 impl TypedPathSegmentV2 {
-    pub(crate) fn new(name: String, location: CheckedLocatedSpanV2) -> Self { Self { name, location } }
+    pub(crate) fn new(name: String, location: CheckedLocatedSpanV2) -> Self {
+        Self { name, location }
+    }
     /// Exact authored segment name.
-    #[must_use] pub fn name(&self) -> &str { &self.name }
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
     /// Checked segment location.
-    #[must_use] pub const fn location(&self) -> &CheckedLocatedSpanV2 { &self.location }
+    #[must_use]
+    pub const fn location(&self) -> &CheckedLocatedSpanV2 {
+        &self.location
+    }
 }
 
 /// One explicit outer binding captured at an inner reference site. Multiple
@@ -93,15 +158,32 @@ pub struct TypedCorrelationEdgeV2 {
 }
 
 impl TypedCorrelationEdgeV2 {
-    pub(crate) fn new(binding: ResolvedValueBindingV2, reference: SourceQualifiedNodeIdV2, location: CheckedLocatedSpanV2) -> Self {
-        Self { binding, reference, location }
+    pub(crate) fn new(
+        binding: ResolvedValueBindingV2,
+        reference: SourceQualifiedNodeIdV2,
+        location: CheckedLocatedSpanV2,
+    ) -> Self {
+        Self {
+            binding,
+            reference,
+            location,
+        }
     }
     /// Exact binder owner and ordinal.
-    #[must_use] pub const fn binding(&self) -> &ResolvedValueBindingV2 { &self.binding }
+    #[must_use]
+    pub const fn binding(&self) -> &ResolvedValueBindingV2 {
+        &self.binding
+    }
     /// Inner symbol-reference node, not just the outer binding.
-    #[must_use] pub const fn reference(&self) -> SourceQualifiedNodeIdV2 { self.reference }
+    #[must_use]
+    pub const fn reference(&self) -> SourceQualifiedNodeIdV2 {
+        self.reference
+    }
     /// Inner checked reference span.
-    #[must_use] pub const fn location(&self) -> &CheckedLocatedSpanV2 { &self.location }
+    #[must_use]
+    pub const fn location(&self) -> &CheckedLocatedSpanV2 {
+        &self.location
+    }
 }
 
 /// Closed semantic expression shape. It retains only semantic identities and
@@ -113,13 +195,26 @@ pub enum TypedExprShapeV2 {
     /// Resolved value binding.
     Binding(ResolvedValueBindingV2),
     /// Checked field path.
-    Path { base: SourceQualifiedNodeIdV2, segments: Vec<TypedPathSegmentV2> },
+    Path {
+        base: SourceQualifiedNodeIdV2,
+        segments: Vec<TypedPathSegmentV2>,
+    },
     /// Checked unary operator.
-    Unary { operator: OperatorIdV2, operand: SourceQualifiedNodeIdV2 },
+    Unary {
+        operator: OperatorIdV2,
+        operand: SourceQualifiedNodeIdV2,
+    },
     /// Checked binary operator.
-    Binary { operator: OperatorIdV2, lhs: SourceQualifiedNodeIdV2, rhs: SourceQualifiedNodeIdV2 },
+    Binary {
+        operator: OperatorIdV2,
+        lhs: SourceQualifiedNodeIdV2,
+        rhs: SourceQualifiedNodeIdV2,
+    },
     /// Resolved call including the authored star distinction.
-    Call { target: ResolvedCallTargetV2, arguments: Vec<TypedCallArgumentV2> },
+    Call {
+        target: ResolvedCallTargetV2,
+        arguments: Vec<TypedCallArgumentV2>,
+    },
     /// Explicit grouping.
     Paren { inner: SourceQualifiedNodeIdV2 },
     /// Typed record construction.
@@ -129,22 +224,37 @@ pub enum TypedExprShapeV2 {
     /// Bool node forwarding one value child.
     BoolValue { value: SourceQualifiedNodeIdV2 },
     /// Checked comparison.
-    Compare { operator: OperatorIdV2, lhs: SourceQualifiedNodeIdV2, rhs: SourceQualifiedNodeIdV2 },
+    Compare {
+        operator: OperatorIdV2,
+        lhs: SourceQualifiedNodeIdV2,
+        rhs: SourceQualifiedNodeIdV2,
+    },
     /// Checked logical conjunction.
-    And { operator: OperatorIdV2, lhs: SourceQualifiedNodeIdV2, rhs: SourceQualifiedNodeIdV2 },
+    And {
+        operator: OperatorIdV2,
+        lhs: SourceQualifiedNodeIdV2,
+        rhs: SourceQualifiedNodeIdV2,
+    },
     /// Checked logical disjunction.
-    Or { operator: OperatorIdV2, lhs: SourceQualifiedNodeIdV2, rhs: SourceQualifiedNodeIdV2 },
+    Or {
+        operator: OperatorIdV2,
+        lhs: SourceQualifiedNodeIdV2,
+        rhs: SourceQualifiedNodeIdV2,
+    },
     /// Checked logical negation.
-    Not { operator: OperatorIdV2, operand: SourceQualifiedNodeIdV2 },
+    Not {
+        operator: OperatorIdV2,
+        operand: SourceQualifiedNodeIdV2,
+    },
     /// Rule-only logical quantifier.
     LogicalQuantifier {
-        kind: LogicalQuantifierKindV1,
+        kind: LogicalQuantifierKindV2,
         binders: Vec<ResolvedValueBindingV2>,
         body: SourceQualifiedNodeIdV2,
     },
     /// Relational existence with an explicit capture set, including empty.
     RelationExists {
-        polarity: RelationExistsPolarityV1,
+        polarity: RelationExistsPolarityV2,
         relation_root: SourceQualifiedNodeIdV2,
         correlations: Vec<TypedCorrelationEdgeV2>,
     },
@@ -160,7 +270,13 @@ impl AggregateContextV2 {
         location: LocatedSpanV2,
     ) -> Result<Self, FrontendFailureV2> {
         if aggregation == AggregationClassV1::Aggregate
-            && matches!(position, AggregatePositionV2::GroupKey | AggregatePositionV2::Predicate)
+            && matches!(
+                position,
+                AggregatePositionV2::Scalar
+                    | AggregatePositionV2::GroupKey
+                    | AggregatePositionV2::Predicate
+                    | AggregatePositionV2::OrderKey
+            )
         {
             return Err(expression_failure(
                 "sema.illegal_aggregate_context",
@@ -175,15 +291,28 @@ impl AggregateContextV2 {
                 "star is legal only for an aggregate call",
             ));
         }
-        Ok(Self { position, aggregation, star })
+        Ok(Self {
+            position,
+            aggregation,
+            star,
+        })
     }
 
     /// Checked position.
-    #[must_use] pub const fn position(&self) -> AggregatePositionV2 { self.position }
+    #[must_use]
+    pub const fn position(&self) -> AggregatePositionV2 {
+        self.position
+    }
     /// Aggregate/scalar classification from the types-owned effect fact.
-    #[must_use] pub const fn aggregation(&self) -> AggregationClassV1 { self.aggregation }
+    #[must_use]
+    pub const fn aggregation(&self) -> AggregationClassV1 {
+        self.aggregation
+    }
     /// Whether the authored call used star.
-    #[must_use] pub const fn uses_star(&self) -> bool { self.star }
+    #[must_use]
+    pub const fn uses_star(&self) -> bool {
+        self.star
+    }
 }
 
 /// One source-qualified expression with its complete types-owned result.
@@ -209,7 +338,11 @@ impl TypedExprV2 {
     ) -> Result<Self, FrontendFailureV2> {
         let raw_location = location.location();
         if raw_location.source_id != key.source_id {
-            return Err(expression_failure("sema.document_validation_failed", raw_location, "expression location belongs to another source"));
+            return Err(expression_failure(
+                "sema.document_validation_failed",
+                raw_location,
+                "expression location belongs to another source",
+            ));
         }
         if fact.effects.aggregation != aggregate_context.aggregation() {
             return Err(expression_failure(
@@ -255,19 +388,40 @@ impl TypedExprV2 {
     }
 
     /// Source-qualified HIR node identity.
-    #[must_use] pub const fn key(&self) -> SourceQualifiedNodeIdV2 { self.key }
+    #[must_use]
+    pub const fn key(&self) -> SourceQualifiedNodeIdV2 {
+        self.key
+    }
     /// Exact checked node span available to downstream consumers without HIR.
-    #[must_use] pub const fn location(&self) -> &CheckedLocatedSpanV2 { &self.location }
+    #[must_use]
+    pub const fn location(&self) -> &CheckedLocatedSpanV2 {
+        &self.location
+    }
     /// Known or explicitly unresolved editor type state.
-    #[must_use] pub const fn type_state(&self) -> &ExpressionTypeStateV2 { &self.type_state }
+    #[must_use]
+    pub const fn type_state(&self) -> &ExpressionTypeStateV2 {
+        &self.type_state
+    }
     /// Complete effects retained from the types kernel.
-    #[must_use] pub const fn effects(&self) -> ExpressionEffectsV2 { self.effects }
+    #[must_use]
+    pub const fn effects(&self) -> ExpressionEffectsV2 {
+        self.effects
+    }
     /// Resolved types-owned call identity, when this node is a call.
-    #[must_use] pub const fn resolved_call(&self) -> Option<&ResolvedCallTargetV2> { self.resolved_call.as_ref() }
+    #[must_use]
+    pub const fn resolved_call(&self) -> Option<&ResolvedCallTargetV2> {
+        self.resolved_call.as_ref()
+    }
     /// Checked aggregate placement.
-    #[must_use] pub const fn aggregate_context(&self) -> &AggregateContextV2 { &self.aggregate_context }
+    #[must_use]
+    pub const fn aggregate_context(&self) -> &AggregateContextV2 {
+        &self.aggregate_context
+    }
     /// Closed semantic shape.
-    #[must_use] pub const fn shape(&self) -> &TypedExprShapeV2 { &self.shape }
+    #[must_use]
+    pub const fn shape(&self) -> &TypedExprShapeV2 {
+        &self.shape
+    }
 }
 
 /// Bool-proven expression. Construction rejects Unknown and non-Bool facts.
@@ -298,7 +452,10 @@ impl TypedBoolExprV2 {
     }
 
     /// Borrow the underlying typed expression.
-    #[must_use] pub const fn expression(&self) -> &TypedExprV2 { &self.0 }
+    #[must_use]
+    pub const fn expression(&self) -> &TypedExprV2 {
+        &self.0
+    }
 }
 
 pub(crate) fn expression_failure(

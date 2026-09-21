@@ -234,6 +234,17 @@ impl<'a> CheckedHirV1<'a> {
 /// typed [`HirIntegrityErrorV1`] encountered in deterministic pre-order. The
 /// caller is fully fail-closed: no `CheckedHirV1` is produced for an unsound
 /// tree.
+///
+/// # Who must call this
+///
+/// HIR reached through a public compile entry point is sealed by construction:
+/// [`crate::HirBuilderV1`] mints ids and the compiler's own stages preserve the
+/// invariants, so the compiler does **not** call this on its own output. This is
+/// the public seal for the OTHER case — HIR assembled **by hand** by an
+/// embedder, a downstream frontend, or a test fixture — and it is the only thing
+/// that makes such a tree's ids and spans trustworthy. A caller that builds HIR
+/// directly and skips this call holds an unchecked tree; nothing downstream
+/// re-validates it.
 pub fn check_tree(
     root: HirRootRefV1<'_>,
     source_len: usize,

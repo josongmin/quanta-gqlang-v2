@@ -1,13 +1,12 @@
-//! v3 hellgate: the surface parser fails closed on malformed/illegal input and
-//! NEVER silently downgrades to a narrower v2-style subset (D10).
-//!
-//! Every test asserts the ACTUAL typed diagnostic code string AND the exact
-//! span, not merely that an error occurred.
-
 #![allow(
-    clippy::unwrap_used,
     clippy::expect_used,
-    reason = "integration test rail: assertion helpers use expect intentionally"
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 use quanta_gqlang_v2_hir::HirBuilderV1;

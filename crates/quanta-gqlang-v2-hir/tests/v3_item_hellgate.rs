@@ -1,20 +1,13 @@
-//! v3 unified program-item hellgate rails.
-//!
-//! Proves the unified [`ProgramItemHirV1`] model reaches structural parity with
-//! the 18 v2 root families through the ONE shared HIR pipeline: every family is
-//! built via [`HirBuilderV1`], wrapped as a `ProgramItemHirV1`, and validated by
-//! the shared `check_tree` integrity gate (unique ids, in-bounds spans). It also
-//! forces a fail-closed integrity reject on a malformed new node and proves
-//! `ProgramItemHirV1` nesting via a Composition embedding a Query producer plus a
-//! FIND body.
-
-#![allow(clippy::unwrap_used, reason = "tests assert on Result directly")]
-#![allow(clippy::panic, reason = "tests panic on unexpected variants")]
 #![allow(
     clippy::expect_used,
-    reason = "tests use expect for variant extraction"
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
-#![allow(clippy::indexing_slicing, reason = "tests index known-length vecs")]
 
 use quanta_gqlang_v2_hir::{
     check_tree, ActivationV1, AdmissionV1, CatalogPayloadV1, CompareMetricV1, CompositionBodyV1,
@@ -49,7 +42,7 @@ fn gref(name: &str, start: usize, end: usize) -> GraphRefV1 {
 #[test]
 fn select_family_is_sound_program_item() {
     let b = HirBuilderV1::new();
-    let users = b.relation_source("users", None, SpanV1::new(0, 5));
+    let users = b.relation_source("users", SpanV1::new(0, 5), None, SpanV1::new(0, 5));
     let query = b.query(users, None, SpanV1::new(0, 5));
     let item: ProgramItemHirV1 = query.into();
     assert!(matches!(item, ProgramItemHirV1::Query(_)));
@@ -205,7 +198,7 @@ fn export_family_is_sound_program_item() {
 #[test]
 fn view_inline_select_is_sound_and_nests_query() {
     let b = HirBuilderV1::new();
-    let users = b.relation_source("users", None, SpanV1::new(20, 25));
+    let users = b.relation_source("users", SpanV1::new(20, 25), None, SpanV1::new(20, 25));
     let inline = b.query(users, None, SpanV1::new(20, 25));
     let decl = b.catalog_decl(
         "active_users",
@@ -318,7 +311,7 @@ fn composition_nests_query_producer_and_find_body() {
     let b = HirBuilderV1::new();
 
     // LET candidates = SELECT users (a Query producer).
-    let users = b.relation_source("users", None, SpanV1::new(18, 23));
+    let users = b.relation_source("users", SpanV1::new(18, 23), None, SpanV1::new(18, 23));
     let producer_query = b.query(users, None, SpanV1::new(18, 23));
     let binding = b.composition_binding("candidates", SpanV1::new(4, 14), producer_query.into());
 
@@ -439,6 +432,7 @@ fn reject_duplicate_id_across_composition_children() {
         SpanV1::new(10, 15),
         RelationExprKindV1::Source(RelationSourceV1 {
             name: "users".into(),
+            name_span: SpanV1::new(10, 15),
             alias: None,
         }),
     );

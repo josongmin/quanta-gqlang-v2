@@ -1,9 +1,18 @@
-#![allow(clippy::unwrap_used, reason = "owner assertions")]
+#![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
+)]
 
 use quanta_gqlang_v2_hir::{
-    check_document_v2, CallArgHirV1, CallArgsHirV1, CheckedHirDocumentV2, DeclHirV1, HirBuilderV1,
-    HirDocumentV1, HirNodeIdV1, PathSegmentV1, ProgramItemHirV1, RecordFieldV1, SourceIdV2,
-    SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
+    check_document_v2, AliasV1, CallArgHirV1, CallArgsHirV1, CheckedHirDocumentV2, DeclHirV1,
+    HirBuilderV1, HirDocumentV1, HirNodeIdV1, PathSegmentV1, ProgramItemHirV1, ProjectionItemV1,
+    RecordFieldV1, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
 };
 use quanta_gqlang_v2_types::*;
 
@@ -19,7 +28,7 @@ fn resolved_type_inputs(
             source_len: checked.document().source_len,
         })
         .unwrap();
-    ResolvedTypeInputsV2::try_new(checked, &registry, entries, contexts)
+    ResolvedTypeInputsV2::try_new(checked, &registry, entries, contexts, Vec::new())
 }
 
 fn document(body: quanta_gqlang_v2_hir::ValueExprHirV1) -> HirDocumentV1 {
@@ -112,7 +121,7 @@ fn type_inputs_require_the_exact_extended_document_registry() {
             source_len: doc.source_len,
         })
         .unwrap();
-    ResolvedTypeInputsV2::try_new(checked, &exact, vec![], vec![]).unwrap();
+    ResolvedTypeInputsV2::try_new(checked, &exact, vec![], vec![], Vec::new()).unwrap();
 
     let wrong_length = host
         .try_extend_document(SourceRegistrationV2 {
@@ -120,7 +129,8 @@ fn type_inputs_require_the_exact_extended_document_registry() {
             source_len: doc.source_len - 1,
         })
         .unwrap();
-    let error = ResolvedTypeInputsV2::try_new(checked, &wrong_length, vec![], vec![]).unwrap_err();
+    let error = ResolvedTypeInputsV2::try_new(checked, &wrong_length, vec![], vec![], Vec::new())
+        .unwrap_err();
     assert_eq!(error.code(), "types.source_registry_mismatch");
 }
 
@@ -1099,4 +1109,871 @@ fn optional_record_projection_preserves_nullability() {
         check_value(path, vec![input]).get(key).unwrap().state,
         ExpressionTypeStateV2::Known(ValueTypeV1::try_optional(ValueTypeV1::int()).unwrap())
     );
+}
+
+#[test]
+fn deferred_relation_rows_are_owner_built_and_reject_identity_mutations() {
+    let builder = HirBuilderV1::new();
+    let source = builder.relation_source("users", SpanV1::new(0, 5), None, SpanV1::new(0, 5));
+    let source_root = source.id;
+    let copied = builder.symbol("users", SpanV1::new(10, 15));
+    let copied_id = copied.id;
+    let literal = builder.int("7", SpanV1::new(20, 21));
+    let literal_id = literal.id;
+    let project = builder
+        .try_project(
+            source,
+            vec![
+                ProjectionItemV1 {
+                    value: copied,
+                    alias: Some(AliasV1 {
+                        name: "copied".into(),
+                        span: SpanV1::new(30, 36),
+                    }),
+                },
+                ProjectionItemV1 {
+                    value: literal,
+                    alias: Some(AliasV1 {
+                        name: "n".into(),
+                        span: SpanV1::new(38, 39),
+                    }),
+                },
+            ],
+            SpanV1::new(0, 39),
+        )
+        .unwrap();
+    let project_root = project.id;
+    let query = builder.query(project, None, SpanV1::new(0, 40));
+    let document = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(7),
+        source_len: 64,
+        items: vec![ProgramItemHirV1::Query(Box::new(query))],
+    };
+    let checked = check_document_v2(&document).unwrap();
+    let registry = SourceRegistryViewV2::try_new(Vec::new())
+        .unwrap()
+        .try_extend_document(SourceRegistrationV2 {
+            source_id: document.source_id,
+            source_len: document.source_len,
+        })
+        .unwrap();
+    let checked_location = |span| {
+        registry
+            .combined()
+            .try_check_location(quanta_gqlang_v2_hir::LocatedSpanV2 {
+                source_id: document.source_id,
+                span,
+            })
+            .unwrap()
+    };
+    let source_key = SourceQualifiedNodeIdV2 {
+        source_id: document.source_id,
+        node_id: source_root,
+    };
+    let project_key = SourceQualifiedNodeIdV2 {
+        source_id: document.source_id,
+        node_id: project_root,
+    };
+    let copied_key = SourceQualifiedNodeIdV2 {
+        source_id: document.source_id,
+        node_id: copied_id,
+    };
+    let literal_key = SourceQualifiedNodeIdV2 {
+        source_id: document.source_id,
+        node_id: literal_id,
+    };
+    let source_fields = vec![DeferredRelationRowFieldInputV2::new(
+        0,
+        "base",
+        checked_location(SpanV1::new(0, 5)),
+        RelationRowFieldSourceV2::Known(ValueTypeV1::int()),
+    )];
+    let project_fields = vec![
+        DeferredRelationRowFieldInputV2::new(
+            0,
+            "copied",
+            checked_location(SpanV1::new(30, 36)),
+            RelationRowFieldSourceV2::PriorExpression(copied_key),
+        ),
+        DeferredRelationRowFieldInputV2::new(
+            1,
+            "n",
+            checked_location(SpanV1::new(38, 39)),
+            RelationRowFieldSourceV2::PriorExpression(literal_key),
+        ),
+    ];
+    let entries = vec![ResolvedTypeInputEntryV2 {
+        key: copied_key,
+        value: ResolvedTypeInputValueV2::BindingFromRelationRow(source_key),
+    }];
+    let rows = vec![
+        DeferredRelationRowInputV2::known_source(source_key, 1, source_fields.clone()),
+        DeferredRelationRowInputV2::expression_fields(project_key, 2, project_fields.clone()),
+    ];
+    let inputs =
+        ResolvedTypeInputsV2::try_new(checked, &registry, entries.clone(), Vec::new(), rows)
+            .unwrap();
+    let facts = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&inputs)
+        .unwrap();
+    assert_eq!(facts.relation_row_count(), 2);
+    let source_record = facts.relation_row(source_key).unwrap().clone();
+    let project_record = facts.relation_row(project_key).unwrap();
+    assert_eq!(project_record.fields().len(), 2);
+    let copied_field = project_record.fields().first().unwrap();
+    let integer_field = project_record.fields().get(1).unwrap();
+    assert_eq!(copied_field.name(), "copied");
+    assert_eq!(
+        copied_field.value_type(),
+        &ValueTypeV1::try_record(source_record).unwrap()
+    );
+    assert_eq!(integer_field.value_type(), &ValueTypeV1::int());
+
+    let reordered = project_fields.iter().rev().cloned().collect();
+    let error = ResolvedTypeInputsV2::try_new(
+        checked,
+        &registry,
+        entries.clone(),
+        Vec::new(),
+        vec![
+            DeferredRelationRowInputV2::known_source(source_key, 1, source_fields.clone()),
+            DeferredRelationRowInputV2::expression_fields(project_key, 2, reordered),
+        ],
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "types.invalid_deferred_relation_row");
+
+    let error = ResolvedTypeInputsV2::try_new(
+        checked,
+        &registry,
+        entries.clone(),
+        Vec::new(),
+        vec![
+            DeferredRelationRowInputV2::prior_relation(source_key, project_key),
+            DeferredRelationRowInputV2::expression_fields(project_key, 2, project_fields.clone()),
+        ],
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "types.unavailable_relation_row_dependency");
+
+    let reject = |rows| {
+        ResolvedTypeInputsV2::try_new(checked, &registry, entries.clone(), Vec::new(), rows)
+            .unwrap_err()
+            .code()
+    };
+    let valid_project =
+        || DeferredRelationRowInputV2::expression_fields(project_key, 2, project_fields.clone());
+
+    assert_eq!(
+        reject(vec![
+            DeferredRelationRowInputV2::known_source(source_key, 1, source_fields.clone(),),
+            DeferredRelationRowInputV2::known_source(source_key, 1, source_fields.clone(),),
+            valid_project(),
+        ]),
+        "types.invalid_deferred_relation_row"
+    );
+    assert_eq!(
+        reject(vec![
+            DeferredRelationRowInputV2::known_source(
+                SourceQualifiedNodeIdV2 {
+                    source_id: SourceIdV2::from_raw(77),
+                    node_id: source_root,
+                },
+                1,
+                source_fields.clone(),
+            ),
+            valid_project(),
+        ]),
+        "types.invalid_deferred_relation_row"
+    );
+    assert_eq!(
+        reject(vec![
+            DeferredRelationRowInputV2::prior_relation(source_key, source_key),
+            valid_project(),
+        ]),
+        "types.unavailable_relation_row_dependency"
+    );
+    assert_eq!(
+        reject(vec![
+            DeferredRelationRowInputV2::prior_relation(source_key, literal_key),
+            valid_project(),
+        ]),
+        "types.unavailable_relation_row_dependency"
+    );
+    assert_eq!(
+        reject(vec![
+            DeferredRelationRowInputV2::known_source(source_key, 2, source_fields,),
+            valid_project(),
+        ]),
+        "types.invalid_deferred_relation_row"
+    );
+}
+
+#[test]
+fn prior_relation_rows_require_the_exact_earlier_source_and_retain_its_row() {
+    let builder = HirBuilderV1::new();
+    let left = builder.relation_source("left", SpanV1::new(0, 4), None, SpanV1::new(0, 4));
+    let left_id = left.id;
+    let right = builder.relation_source("right", SpanV1::new(7, 12), None, SpanV1::new(7, 12));
+    let right_id = right.id;
+    let predicate = builder.relation_exists(
+        quanta_gqlang_v2_hir::RelationExistsPolarityV1::Exists,
+        right,
+        SpanV1::new(6, 12),
+    );
+    let predicate_id = predicate.id;
+    let filtered = builder.relation_filter(left, predicate, SpanV1::new(0, 12));
+    let document = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(73),
+        source_len: 64,
+        items: vec![ProgramItemHirV1::Query(Box::new(builder.query(
+            filtered,
+            None,
+            SpanV1::new(0, 12),
+        )))],
+    };
+    let checked = check_document_v2(&document).unwrap();
+    let registry = SourceRegistryViewV2::try_new(Vec::new())
+        .unwrap()
+        .try_extend_document(SourceRegistrationV2 {
+            source_id: document.source_id,
+            source_len: document.source_len,
+        })
+        .unwrap();
+    let checked_location = |span| {
+        registry
+            .combined()
+            .try_check_location(quanta_gqlang_v2_hir::LocatedSpanV2 {
+                source_id: document.source_id,
+                span,
+            })
+            .unwrap()
+    };
+    let left_key = SourceQualifiedNodeIdV2 {
+        source_id: document.source_id,
+        node_id: left_id,
+    };
+    let right_key = SourceQualifiedNodeIdV2 {
+        source_id: document.source_id,
+        node_id: right_id,
+    };
+    let predicate_key = SourceQualifiedNodeIdV2 {
+        source_id: document.source_id,
+        node_id: predicate_id,
+    };
+    let relation_predicate = || ResolvedTypeInputEntryV2 {
+        key: predicate_key,
+        value: ResolvedTypeInputValueV2::RelationPredicate(
+            ResolvedRelationPredicateInputV2::try_resolved(right_key, Vec::new()).unwrap(),
+        ),
+    };
+    let left_fields = vec![DeferredRelationRowFieldInputV2::new(
+        0,
+        "left_id",
+        checked_location(SpanV1::new(0, 4)),
+        RelationRowFieldSourceV2::Known(ValueTypeV1::int()),
+    )];
+    let inputs = ResolvedTypeInputsV2::try_new(
+        checked,
+        &registry,
+        vec![relation_predicate()],
+        Vec::new(),
+        vec![
+            DeferredRelationRowInputV2::known_source(left_key, 1, left_fields),
+            DeferredRelationRowInputV2::prior_relation(right_key, left_key),
+        ],
+    )
+    .unwrap();
+    let facts = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&inputs)
+        .unwrap();
+    assert_eq!(
+        facts.relation_row(right_key),
+        facts.relation_row(left_key),
+        "a Composition-local scan must reuse the exact earlier typed row"
+    );
+
+    let foreign = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(74),
+        node_id: left_id,
+    };
+    let error = ResolvedTypeInputsV2::try_new(
+        checked,
+        &registry,
+        vec![relation_predicate()],
+        Vec::new(),
+        vec![
+            DeferredRelationRowInputV2::known_source(
+                left_key,
+                1,
+                vec![DeferredRelationRowFieldInputV2::new(
+                    0,
+                    "left_id",
+                    checked_location(SpanV1::new(0, 4)),
+                    RelationRowFieldSourceV2::Known(ValueTypeV1::int()),
+                )],
+            ),
+            DeferredRelationRowInputV2::prior_relation(right_key, foreign),
+        ],
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "types.unavailable_relation_row_dependency");
+}
+
+#[test]
+fn relation_pre_evaluation_is_exact_dependency_first_and_fail_closed() {
+    let builder = HirBuilderV1::new();
+    // Authored order is deliberately the reverse of the dependency: the
+    // first query scans the later query's relation root.
+    let downstream =
+        builder.relation_source("downstream", SpanV1::new(0, 10), None, SpanV1::new(0, 10));
+    let downstream_id = downstream.id;
+    let downstream_query = builder.query(downstream, None, SpanV1::new(0, 10));
+    let non_relation_id = downstream_query.id;
+    // This ordinary query is intentionally outside the pre-evaluation plan.
+    // It models a top-level consumer of an inline View authored later.
+    let consumer =
+        builder.relation_source("consumer", SpanV1::new(12, 20), None, SpanV1::new(12, 20));
+    let consumer_id = consumer.id;
+    let consumer_query = builder.query(consumer, None, SpanV1::new(12, 20));
+    let upstream =
+        builder.relation_source("upstream", SpanV1::new(22, 30), None, SpanV1::new(22, 30));
+    let upstream_id = upstream.id;
+    let upstream_query = builder.query(upstream, None, SpanV1::new(22, 30));
+    let document = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(81),
+        source_len: 64,
+        items: vec![
+            ProgramItemHirV1::Query(Box::new(downstream_query)),
+            ProgramItemHirV1::Query(Box::new(consumer_query)),
+            ProgramItemHirV1::Query(Box::new(upstream_query)),
+        ],
+    };
+    let checked = check_document_v2(&document).unwrap();
+    let registry = SourceRegistryViewV2::try_new(Vec::new())
+        .unwrap()
+        .try_extend_document(SourceRegistrationV2 {
+            source_id: document.source_id,
+            source_len: document.source_len,
+        })
+        .unwrap();
+    let checked_location = |span| {
+        registry
+            .combined()
+            .try_check_location(quanta_gqlang_v2_hir::LocatedSpanV2 {
+                source_id: document.source_id,
+                span,
+            })
+            .unwrap()
+    };
+    let downstream_key = SourceQualifiedNodeIdV2 {
+        source_id: document.source_id,
+        node_id: downstream_id,
+    };
+    let upstream_key = SourceQualifiedNodeIdV2 {
+        source_id: document.source_id,
+        node_id: upstream_id,
+    };
+    let consumer_key = SourceQualifiedNodeIdV2 {
+        source_id: document.source_id,
+        node_id: consumer_id,
+    };
+    let rows = || {
+        vec![
+            DeferredRelationRowInputV2::prior_relation(downstream_key, upstream_key),
+            DeferredRelationRowInputV2::prior_relation(consumer_key, upstream_key),
+            DeferredRelationRowInputV2::known_source(
+                upstream_key,
+                1,
+                vec![DeferredRelationRowFieldInputV2::new(
+                    0,
+                    "id",
+                    checked_location(SpanV1::new(22, 30)),
+                    RelationRowFieldSourceV2::Known(ValueTypeV1::int()),
+                )],
+            ),
+        ]
+    };
+
+    let error = ResolvedTypeInputsV2::try_new(checked, &registry, Vec::new(), Vec::new(), rows())
+        .unwrap_err();
+    assert_eq!(error.code(), "types.unavailable_relation_row_dependency");
+
+    let inputs = ResolvedTypeInputsV2::try_new_with_relation_pre_evaluation(
+        checked,
+        &registry,
+        Vec::new(),
+        Vec::new(),
+        rows(),
+        RelationPreEvaluationInputV2::new(vec![upstream_key, downstream_key]),
+    )
+    .unwrap();
+    let facts = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&inputs)
+        .unwrap();
+    assert_eq!(facts.relation_row_count(), 3);
+    assert_eq!(
+        facts.relation_row(downstream_key),
+        facts.relation_row(upstream_key)
+    );
+    assert_eq!(
+        facts.relation_row(consumer_key),
+        facts.relation_row(upstream_key)
+    );
+
+    let error = ResolvedTypeInputsV2::try_new_with_relation_pre_evaluation(
+        checked,
+        &registry,
+        Vec::new(),
+        Vec::new(),
+        rows(),
+        RelationPreEvaluationInputV2::new(vec![downstream_key]),
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "types.unavailable_relation_row_dependency");
+
+    let error = ResolvedTypeInputsV2::try_new_with_relation_pre_evaluation(
+        checked,
+        &registry,
+        Vec::new(),
+        Vec::new(),
+        rows(),
+        RelationPreEvaluationInputV2::new(vec![downstream_key, upstream_key]),
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "types.unavailable_relation_row_dependency");
+
+    let foreign_upstream = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(82),
+        node_id: upstream_id,
+    };
+    let error = ResolvedTypeInputsV2::try_new_with_relation_pre_evaluation(
+        checked,
+        &registry,
+        Vec::new(),
+        Vec::new(),
+        rows(),
+        RelationPreEvaluationInputV2::new(vec![foreign_upstream, downstream_key]),
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "types.foreign_document_input");
+
+    let non_relation = SourceQualifiedNodeIdV2 {
+        source_id: document.source_id,
+        node_id: non_relation_id,
+    };
+    let error = ResolvedTypeInputsV2::try_new_with_relation_pre_evaluation(
+        checked,
+        &registry,
+        Vec::new(),
+        Vec::new(),
+        rows(),
+        RelationPreEvaluationInputV2::new(vec![non_relation]),
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "types.invalid_relation_pre_evaluation_plan");
+
+    let error = ResolvedTypeInputsV2::try_new_with_relation_pre_evaluation(
+        checked,
+        &registry,
+        Vec::new(),
+        Vec::new(),
+        rows(),
+        RelationPreEvaluationInputV2::new(vec![upstream_key, upstream_key, downstream_key]),
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "types.invalid_relation_pre_evaluation_plan");
+}
+
+#[test]
+fn three_producer_pre_evaluation_follows_the_exact_target_not_plan_or_authored_order() {
+    let builder = HirBuilderV1::new();
+    // Three independent producers carry three distinct row payloads, and two
+    // consumers copy exact producer rows. Authored order, plan order, and the
+    // dependency direction are all deliberately different, so neither a
+    // plan-neighborhood nor an authored-neighborhood copy can pass.
+    let alpha = builder.relation_source("alpha", SpanV1::new(0, 5), None, SpanV1::new(0, 5));
+    let alpha_id = alpha.id;
+    let beta = builder.relation_source("beta", SpanV1::new(7, 12), None, SpanV1::new(7, 12));
+    let beta_id = beta.id;
+    let gamma = builder.relation_source("gamma", SpanV1::new(14, 19), None, SpanV1::new(14, 19));
+    let gamma_id = gamma.id;
+    let left = builder.relation_source("left", SpanV1::new(21, 25), None, SpanV1::new(21, 25));
+    let left_id = left.id;
+    let right = builder.relation_source("right", SpanV1::new(27, 32), None, SpanV1::new(27, 32));
+    let right_id = right.id;
+    let document = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(91),
+        source_len: 64,
+        items: vec![
+            ProgramItemHirV1::Query(Box::new(builder.query(alpha, None, SpanV1::new(0, 5)))),
+            ProgramItemHirV1::Query(Box::new(builder.query(beta, None, SpanV1::new(7, 12)))),
+            ProgramItemHirV1::Query(Box::new(builder.query(gamma, None, SpanV1::new(14, 19)))),
+            ProgramItemHirV1::Query(Box::new(builder.query(left, None, SpanV1::new(21, 25)))),
+            ProgramItemHirV1::Query(Box::new(builder.query(right, None, SpanV1::new(27, 32)))),
+        ],
+    };
+    let checked = check_document_v2(&document).unwrap();
+    let registry = SourceRegistryViewV2::try_new(Vec::new())
+        .unwrap()
+        .try_extend_document(SourceRegistrationV2 {
+            source_id: document.source_id,
+            source_len: document.source_len,
+        })
+        .unwrap();
+    let checked_location = |span| {
+        registry
+            .combined()
+            .try_check_location(quanta_gqlang_v2_hir::LocatedSpanV2 {
+                source_id: document.source_id,
+                span,
+            })
+            .unwrap()
+    };
+    let key = |node_id| SourceQualifiedNodeIdV2 {
+        source_id: document.source_id,
+        node_id,
+    };
+    let alpha_key = key(alpha_id);
+    let beta_key = key(beta_id);
+    let gamma_key = key(gamma_id);
+    let left_key = key(left_id);
+    let right_key = key(right_id);
+    let alpha_fields = || {
+        vec![DeferredRelationRowFieldInputV2::new(
+            0,
+            "a",
+            checked_location(SpanV1::new(0, 5)),
+            RelationRowFieldSourceV2::Known(ValueTypeV1::int()),
+        )]
+    };
+    let beta_fields = || {
+        vec![DeferredRelationRowFieldInputV2::new(
+            0,
+            "b",
+            checked_location(SpanV1::new(7, 12)),
+            RelationRowFieldSourceV2::Known(ValueTypeV1::string()),
+        )]
+    };
+    let gamma_fields = || {
+        vec![DeferredRelationRowFieldInputV2::new(
+            0,
+            "c",
+            checked_location(SpanV1::new(14, 19)),
+            RelationRowFieldSourceV2::Known(ValueTypeV1::bool()),
+        )]
+    };
+    // The consumers keep plausible targets in every variant below: each target
+    // is a real relation root of this document positioned before both
+    // consumers in the plan and in authored order.
+    let rows = |left_target, right_target| {
+        vec![
+            DeferredRelationRowInputV2::known_source(alpha_key, 1, alpha_fields()),
+            DeferredRelationRowInputV2::known_source(beta_key, 1, beta_fields()),
+            DeferredRelationRowInputV2::known_source(gamma_key, 1, gamma_fields()),
+            DeferredRelationRowInputV2::prior_relation(left_key, left_target),
+            DeferredRelationRowInputV2::prior_relation(right_key, right_target),
+        ]
+    };
+    let plan = |roots: Vec<SourceQualifiedNodeIdV2>| RelationPreEvaluationInputV2::new(roots);
+    let check = |rows, plan| {
+        let inputs = ResolvedTypeInputsV2::try_new_with_relation_pre_evaluation(
+            checked,
+            &registry,
+            Vec::new(),
+            Vec::new(),
+            rows,
+            plan,
+        )
+        .unwrap();
+        ExpressionTypeKernelV2::try_closed()
+            .unwrap()
+            .check_document(&inputs)
+            .unwrap()
+    };
+
+    // Plan [gamma, beta, alpha, left, right]: the exact target of `left` is
+    // `beta`, its plan predecessor is `alpha`, and its authored predecessor is
+    // `gamma`. Only exact-target copying can satisfy all assertions.
+    let facts = check(
+        rows(beta_key, gamma_key),
+        plan(vec![gamma_key, beta_key, alpha_key, left_key, right_key]),
+    );
+    assert_eq!(facts.relation_row_count(), 5);
+    assert_eq!(
+        facts
+            .relation_row(alpha_key)
+            .unwrap()
+            .fields()
+            .first()
+            .unwrap()
+            .name(),
+        "a"
+    );
+    assert_eq!(
+        facts
+            .relation_row(alpha_key)
+            .unwrap()
+            .fields()
+            .first()
+            .unwrap()
+            .value_type(),
+        &ValueTypeV1::int()
+    );
+    let copied_left = facts.relation_row(left_key).unwrap();
+    assert_eq!(copied_left.fields().len(), 1);
+    assert_eq!(copied_left.fields().first().unwrap().name(), "b");
+    assert_eq!(
+        copied_left.fields().first().unwrap().value_type(),
+        &ValueTypeV1::string()
+    );
+    assert_eq!(facts.relation_row(left_key), facts.relation_row(beta_key));
+    assert_ne!(facts.relation_row(left_key), facts.relation_row(alpha_key));
+    assert_ne!(facts.relation_row(left_key), facts.relation_row(gamma_key));
+    let copied_right = facts.relation_row(right_key).unwrap();
+    assert_eq!(copied_right.fields().first().unwrap().name(), "c");
+    assert_eq!(
+        copied_right.fields().first().unwrap().value_type(),
+        &ValueTypeV1::bool()
+    );
+    assert_eq!(facts.relation_row(right_key), facts.relation_row(gamma_key));
+    assert_ne!(facts.relation_row(right_key), facts.relation_row(beta_key));
+
+    // Swapped targets with unchanged plausible ordinals: both consumers stay
+    // legal, and each copied row must follow its new exact target.
+    let swapped = check(
+        rows(alpha_key, beta_key),
+        plan(vec![gamma_key, beta_key, alpha_key, left_key, right_key]),
+    );
+    assert_eq!(swapped.relation_row_count(), 5);
+    assert_eq!(
+        swapped.relation_row(left_key),
+        swapped.relation_row(alpha_key)
+    );
+    assert_eq!(
+        swapped
+            .relation_row(left_key)
+            .unwrap()
+            .fields()
+            .first()
+            .unwrap()
+            .name(),
+        "a"
+    );
+    assert_eq!(
+        swapped
+            .relation_row(left_key)
+            .unwrap()
+            .fields()
+            .first()
+            .unwrap()
+            .value_type(),
+        &ValueTypeV1::int()
+    );
+    assert_eq!(
+        swapped.relation_row(right_key),
+        swapped.relation_row(beta_key)
+    );
+    assert_eq!(
+        swapped
+            .relation_row(right_key)
+            .unwrap()
+            .fields()
+            .first()
+            .unwrap()
+            .name(),
+        "b"
+    );
+
+    // Plan transplant between producers: moving `beta` after its consumer
+    // `left` must fail closed before the kernel walks any body.
+    let error = ResolvedTypeInputsV2::try_new_with_relation_pre_evaluation(
+        checked,
+        &registry,
+        Vec::new(),
+        Vec::new(),
+        rows(beta_key, gamma_key),
+        plan(vec![gamma_key, alpha_key, left_key, beta_key, right_key]),
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "types.unavailable_relation_row_dependency");
+    assert!(matches!(
+        &error,
+        TypeDiagnosticV2::UnavailableRelationRowDependency { .. }
+    ));
+    if let TypeDiagnosticV2::UnavailableRelationRowDependency {
+        root,
+        target,
+        location,
+    } = &error
+    {
+        assert_eq!(*root, left_id);
+        assert_eq!(*target, beta_id);
+        assert_eq!(location.source_id, document.source_id);
+        assert_eq!(location.span, SpanV1::new(21, 25));
+    }
+}
+
+#[test]
+fn pre_evaluation_transplant_between_chain_producers_fails_closed_with_exact_spans() {
+    let builder = HirBuilderV1::new();
+    // A three-producer chain: `beta` copies `alpha`'s pre-evaluation result
+    // and `gamma` copies `beta`'s. Swapping plan slots between two producers
+    // transplants a result to a consumer scheduled before its source.
+    let alpha = builder.relation_source("alpha", SpanV1::new(0, 5), None, SpanV1::new(0, 5));
+    let alpha_id = alpha.id;
+    let beta = builder.relation_source("beta", SpanV1::new(7, 12), None, SpanV1::new(7, 12));
+    let beta_id = beta.id;
+    let gamma = builder.relation_source("gamma", SpanV1::new(14, 19), None, SpanV1::new(14, 19));
+    let gamma_id = gamma.id;
+    let document = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(92),
+        source_len: 64,
+        items: vec![
+            ProgramItemHirV1::Query(Box::new(builder.query(alpha, None, SpanV1::new(0, 5)))),
+            ProgramItemHirV1::Query(Box::new(builder.query(beta, None, SpanV1::new(7, 12)))),
+            ProgramItemHirV1::Query(Box::new(builder.query(gamma, None, SpanV1::new(14, 19)))),
+        ],
+    };
+    let checked = check_document_v2(&document).unwrap();
+    let registry = SourceRegistryViewV2::try_new(Vec::new())
+        .unwrap()
+        .try_extend_document(SourceRegistrationV2 {
+            source_id: document.source_id,
+            source_len: document.source_len,
+        })
+        .unwrap();
+    let checked_location = |span| {
+        registry
+            .combined()
+            .try_check_location(quanta_gqlang_v2_hir::LocatedSpanV2 {
+                source_id: document.source_id,
+                span,
+            })
+            .unwrap()
+    };
+    let key = |node_id| SourceQualifiedNodeIdV2 {
+        source_id: document.source_id,
+        node_id,
+    };
+    let alpha_key = key(alpha_id);
+    let beta_key = key(beta_id);
+    let gamma_key = key(gamma_id);
+    let rows = || {
+        vec![
+            DeferredRelationRowInputV2::known_source(
+                alpha_key,
+                1,
+                vec![DeferredRelationRowFieldInputV2::new(
+                    0,
+                    "a",
+                    checked_location(SpanV1::new(0, 5)),
+                    RelationRowFieldSourceV2::Known(ValueTypeV1::int()),
+                )],
+            ),
+            DeferredRelationRowInputV2::prior_relation(beta_key, alpha_key),
+            DeferredRelationRowInputV2::prior_relation(gamma_key, beta_key),
+        ]
+    };
+
+    // Dependency-first plan: the exact row survives both copy hops.
+    let inputs = ResolvedTypeInputsV2::try_new_with_relation_pre_evaluation(
+        checked,
+        &registry,
+        Vec::new(),
+        Vec::new(),
+        rows(),
+        RelationPreEvaluationInputV2::new(vec![alpha_key, beta_key, gamma_key]),
+    )
+    .unwrap();
+    let facts = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&inputs)
+        .unwrap();
+    assert_eq!(facts.relation_row_count(), 3);
+    assert_eq!(
+        facts.relation_row(gamma_key),
+        facts.relation_row(beta_key),
+        "the second hop must copy beta's exact materialized row"
+    );
+    assert_eq!(facts.relation_row(beta_key), facts.relation_row(alpha_key));
+    assert_eq!(
+        facts
+            .relation_row(gamma_key)
+            .unwrap()
+            .fields()
+            .first()
+            .unwrap()
+            .name(),
+        "a"
+    );
+    assert_eq!(
+        facts
+            .relation_row(gamma_key)
+            .unwrap()
+            .fields()
+            .first()
+            .unwrap()
+            .value_type(),
+        &ValueTypeV1::int()
+    );
+
+    // Transplant 1: the source producer and its direct consumer swap plan
+    // slots, so `beta` is scheduled before `alpha`.
+    let error = ResolvedTypeInputsV2::try_new_with_relation_pre_evaluation(
+        checked,
+        &registry,
+        Vec::new(),
+        Vec::new(),
+        rows(),
+        RelationPreEvaluationInputV2::new(vec![beta_key, alpha_key, gamma_key]),
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "types.unavailable_relation_row_dependency");
+    assert!(matches!(
+        &error,
+        TypeDiagnosticV2::UnavailableRelationRowDependency { .. }
+    ));
+    if let TypeDiagnosticV2::UnavailableRelationRowDependency {
+        root,
+        target,
+        location,
+    } = &error
+    {
+        assert_eq!(*root, beta_id);
+        assert_eq!(*target, alpha_id);
+        assert_eq!(location.source_id, document.source_id);
+        assert_eq!(location.span, SpanV1::new(7, 12));
+    }
+
+    // Transplant 2: the two consumer producers swap plan slots, so `gamma` is
+    // scheduled before `beta` even though `alpha` stays first.
+    let error = ResolvedTypeInputsV2::try_new_with_relation_pre_evaluation(
+        checked,
+        &registry,
+        Vec::new(),
+        Vec::new(),
+        rows(),
+        RelationPreEvaluationInputV2::new(vec![alpha_key, gamma_key, beta_key]),
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "types.unavailable_relation_row_dependency");
+    assert!(matches!(
+        &error,
+        TypeDiagnosticV2::UnavailableRelationRowDependency { .. }
+    ));
+    if let TypeDiagnosticV2::UnavailableRelationRowDependency {
+        root,
+        target,
+        location,
+    } = &error
+    {
+        assert_eq!(*root, gamma_id);
+        assert_eq!(*target, beta_id);
+        assert_eq!(location.source_id, document.source_id);
+        assert_eq!(location.span, SpanV1::new(14, 19));
+    }
 }

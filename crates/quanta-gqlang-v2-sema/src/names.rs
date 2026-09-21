@@ -1,7 +1,9 @@
 //! Stable document-local identities and resolved reference carriers.
 
-use quanta_gqlang_v2_hir::{HirNodeIdV1, LocatedSpanV2, SourceIdV2};
-use quanta_gqlang_v2_modules::{CatalogAssetIdV2, NamespaceKindV2, ResolvedDocumentCatalogReferenceV2};
+use quanta_gqlang_v2_hir::{CheckedLocatedSpanV2, HirNodeIdV1, LocatedSpanV2, SourceIdV2};
+use quanta_gqlang_v2_modules::{
+    CatalogAssetIdV2, NamespaceKindV2, ResolvedDocumentCatalogReferenceV2,
+};
 use quanta_gqlang_v2_types::RelationSourceIdV2;
 
 /// Stable origin class for one resolved value binding.
@@ -46,18 +48,73 @@ impl ResolvedValueBindingV2 {
         if canonical_name.is_empty() {
             return Err("resolved binding name cannot be empty");
         }
-        Ok(Self { source_id, target_node, ordinal, kind, canonical_name })
+        Ok(Self {
+            source_id,
+            target_node,
+            ordinal,
+            kind,
+            canonical_name,
+        })
     }
     /// Source identity.
-    #[must_use] pub const fn source_id(&self) -> SourceIdV2 { self.source_id }
+    #[must_use]
+    pub const fn source_id(&self) -> SourceIdV2 {
+        self.source_id
+    }
     /// Binding-site HIR node.
-    #[must_use] pub const fn target_node(&self) -> HirNodeIdV1 { self.target_node }
+    #[must_use]
+    pub const fn target_node(&self) -> HirNodeIdV1 {
+        self.target_node
+    }
     /// Binder-owned ordinal for siblings sharing the same owner node.
-    #[must_use] pub const fn ordinal(&self) -> usize { self.ordinal }
+    #[must_use]
+    pub const fn ordinal(&self) -> usize {
+        self.ordinal
+    }
     /// Origin class.
-    #[must_use] pub const fn kind(&self) -> ResolvedBindingKindV2 { self.kind }
+    #[must_use]
+    pub const fn kind(&self) -> ResolvedBindingKindV2 {
+        self.kind
+    }
     /// Canonical resolved name/target.
-    #[must_use] pub fn canonical_name(&self) -> &str { &self.canonical_name }
+    #[must_use]
+    pub fn canonical_name(&self) -> &str {
+        &self.canonical_name
+    }
+}
+
+/// Binder-derived identity of one Composition working-set binding.
+///
+/// The fields deliberately remain private: a relation scan can retain this
+/// identity, but no public Sema API can remint a Composition source from a
+/// raw `(source, owner, ordinal)` tuple. The document transaction creates it
+/// only after preserving the Binder's exact resolved binding.
+///
+/// ```compile_fail
+/// let _ = quanta_gqlang_v2_sema::ResolvedCompositionSourceIdV2 {
+///     binding: unreachable!(),
+/// };
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ResolvedCompositionSourceIdV2 {
+    binding: ResolvedValueBindingV2,
+}
+
+impl ResolvedCompositionSourceIdV2 {
+    /// Seal one exact Binder-owned Composition binding for a relation source.
+    pub(crate) fn try_from_binding(binding: ResolvedValueBindingV2) -> Result<Self, &'static str> {
+        if binding.kind() != ResolvedBindingKindV2::Composition {
+            return Err("composition source requires a Binder Composition binding");
+        }
+        Ok(Self { binding })
+    }
+
+    /// Exact retained Binder binding; callers may inspect it but cannot
+    /// construct another composition source identity from its coordinates.
+    #[must_use]
+    pub const fn binding(&self) -> &ResolvedValueBindingV2 {
+        &self.binding
+    }
 }
 
 /// Sole downstream join key for one authored document item.
@@ -71,7 +128,10 @@ impl SemanticItemIdV2 {
     /// Derive an item identity from the checked source and HIR item identity.
     #[must_use]
     pub const fn new(source_id: SourceIdV2, hir_item_id: HirNodeIdV1) -> Self {
-        Self { source_id, hir_item_id }
+        Self {
+            source_id,
+            hir_item_id,
+        }
     }
 
     /// Source document identity.
@@ -119,11 +179,11 @@ impl ResolvedRelationSourceV2 {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ResolvedRelationSourceKindV2 {
     /// Host relation source.
-    Host(RelationSourceIdV2),
+    Relation(RelationSourceIdV2),
     /// Local/imported catalog View.
     View(CatalogAssetIdV2),
-    /// Composition local binding identified by owner node and ordinal.
-    Composition { source_id: SourceIdV2, owner: HirNodeIdV1, ordinal: usize },
+    /// Composition local binding with its sealed Binder identity.
+    Composition(ResolvedCompositionSourceIdV2),
 }
 
 /// Kind-checked catalog reference. The modules-owned asset ID remains the
@@ -132,7 +192,7 @@ pub enum ResolvedRelationSourceKindV2 {
 pub struct ResolvedCatalogReferenceV2 {
     id: CatalogAssetIdV2,
     kind: NamespaceKindV2,
-    location: LocatedSpanV2,
+    location: CheckedLocatedSpanV2,
 }
 
 impl ResolvedCatalogReferenceV2 {
@@ -140,7 +200,11 @@ impl ResolvedCatalogReferenceV2 {
     /// second ID or allowing callers to supply an unchecked ID/kind pair.
     #[must_use]
     pub fn from_proof(proof: &ResolvedDocumentCatalogReferenceV2) -> Self {
-        Self { id: proof.id().clone(), kind: proof.kind(), location: proof.location().location() }
+        Self {
+            id: proof.id().clone(),
+            kind: proof.kind(),
+            location: proof.location().clone(),
+        }
     }
 
     /// Modules-owned asset ID.
@@ -155,9 +219,47 @@ impl ResolvedCatalogReferenceV2 {
         self.kind
     }
 
-    /// Exact reference location.
+    /// Exact reference location and the registry session that checked it.
     #[must_use]
-    pub const fn location(&self) -> LocatedSpanV2 {
-        self.location
+    pub const fn location(&self) -> &CheckedLocatedSpanV2 {
+        &self.location
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![expect(
+        clippy::unwrap_used,
+        reason = "identity owner tests construct minimal Binder-carried inputs"
+    )]
+
+    use super::*;
+
+    #[test]
+    fn composition_source_identity_accepts_only_a_composition_binding() {
+        let source_id = SourceIdV2::from_raw(9);
+        let owner = HirNodeIdV1::from_raw(41);
+        let composition = ResolvedValueBindingV2::try_new(
+            source_id,
+            owner,
+            3,
+            ResolvedBindingKindV2::Composition,
+            "rows",
+        )
+        .unwrap();
+        let sealed = ResolvedCompositionSourceIdV2::try_from_binding(composition.clone()).unwrap();
+
+        assert_eq!(sealed.binding(), &composition);
+        assert!(ResolvedCompositionSourceIdV2::try_from_binding(
+            ResolvedValueBindingV2::try_new(
+                source_id,
+                owner,
+                3,
+                ResolvedBindingKindV2::Alias,
+                "rows",
+            )
+            .unwrap(),
+        )
+        .is_err());
     }
 }

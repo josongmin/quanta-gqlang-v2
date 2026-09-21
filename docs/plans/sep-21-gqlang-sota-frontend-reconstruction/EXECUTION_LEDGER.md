@@ -1125,3 +1125,26 @@ W1 barrier (unchanged-fingerprint scoped diff review).
   barrier start before A/B test freezes; (2) amend Ticket 06's
   `.negated_recursion` fixture wording (G12) instead of resurrecting a dead
   diagnostic arm.
+
+## W1 Barrier Record — GREEN — 2026-09-21
+
+```text
+wave=W1
+entry_sha=29d65356b37b6e16c65fe2d8dd9603279cfe78a3 (docs-only commits above product base ecc38f59)
+entry_status_hash=2e0bf1fc13f3c285e93e77eb235ac7e3dcc2d94fe714216982969d24a4175747 (177 entries)
+lane_ids=W1-A/SS-02G, W1-B/SS-03H, W1-C/SS-03H-S+SS-04W (+ early W2-C inventory on the recycled W1-A slot)
+leased_paths_and_pre_hashes=as issued at W0; all post-hashes verified by integrator against the live tree (10/10 match)
+producer_contract_hashes=HIR/Surface frozen per W1-A artifact (23-file manifest); Types/Modules/Binder frozen per W1-B/C manifests; unchanged across every lane command
+lane_red_evidence=W1-A: read-only (no RED). W1-B: fixture-absence filters select 0 (28/20 baselines). W1-C: baseline 87/87 + zero-match grep for budget_receipt/max_diagnostics/max_response_bytes/sealed aggregate constructors
+lane_acceptance_commands_and_counts=q02 HIR+Surface all targets ok / Clippy 0; q03 binder 48 + types 91 + modules 132 all ok / Clippy 0; q04 sema 102/102 / Clippy 0; scoped fmt 0; git diff --check 0; entry==exit fingerprint
+mutation_ids_killed_and_reverted=W1-B: 4 test-local mutations (row-target, FIFO order, wrong cycle witness, wrong transplant span) killed, restored byte-exact. W1-C: 8-mutation capture forgery matrix, forged aggregate matrix, receipt identity/value mutations as cfg(test) oracles; deliberate source-mutation builds deferred (shared-overlay rule) with kill map recorded in Receipt 04
+reserved_path_changes_applied_by_integrator=amendment 1 (v3_reference_resolution.rs single arity edit) executed by the lane under grant; verified via report-quoted before/after + post-hash match; no other reserved path changed
+exit_sha=see W1 checkpoint commit (this record precedes it)
+exit_status_hash=same as entry at qualification time
+receipt_paths=receipts/02.md (SS-02G refresh section), receipts/03.md (W1 closure), receipts/04.md (SS-04W owner receipt) + receipts/02-public-api-inventory.md artifact
+deferred_failures=semver-checks BLOCKED_TOOLING (rustc 1.81); accumulation-side diagnostic/response charging exact/+1 owned by Tickets 07/08; source-mutation kill builds need authorized worktree (now possible: checkpoint commit exists)
+next_wave_gate=W2 OPEN: aggregate-ready contract + 21-dimension budget receipt frozen (see Receipt 04 Downstream freeze); W2-A/B leases issued next; algebra-crate overlay freeze via /tmp/qg-freeze-crates.sh before dispatch
+```
+
+W1 verdict: `GREEN`. All three lanes and the serial barrier passed on one
+unchanged fingerprint. Wave status table updated; W2 dispatch follows.

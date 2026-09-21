@@ -300,6 +300,7 @@ impl HirBuilderV1 {
     pub fn relation_source(
         &self,
         name: impl Into<String>,
+        name_span: SpanV1,
         alias: Option<AliasV1>,
         span: SpanV1,
     ) -> RelationExprHirV1 {
@@ -307,6 +308,7 @@ impl HirBuilderV1 {
             span,
             RelationExprKindV1::Source(RelationSourceV1 {
                 name: name.into(),
+                name_span,
                 alias,
             }),
         )

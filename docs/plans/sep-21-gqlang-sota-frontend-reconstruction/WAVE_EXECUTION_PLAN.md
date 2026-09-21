@@ -97,8 +97,8 @@ isolated worktree per mutation lane; otherwise record the proof as deferred.
 | Wave | Scope | Current state | Maximum useful parallelism |
 |---|---|---|---|
 | W0 | freeze and lease | `GREEN` (see ledger W0 record) | integrator only |
-| W1 | 02 inventory + 03 authority proof + 04 Sema producer closure | `IN PROGRESS` | 3 workers + integrator barrier |
-| W2 | Algebra closure | `BLOCKED BY W1` | 2 workers after contract freeze |
+| W1 | 02 inventory + 03 authority proof + 04 Sema producer closure | `GREEN` (barrier record + checkpoint commit; receipts 02/03/04 closed) | 3 workers + integrator barrier |
+| W2 | Algebra closure | `READY` (entrance gate met: aggregate-ready contract + 21-dim budget receipt frozen) | 2 workers after contract freeze |
 | W3 | Logic closure | `BLOCKED BY W2` | 3 workers after Logic internal-interface freeze |
 | W4 | Planning + Pipeline + facade | `BLOCKED BY W3` | 2 workers, then serial facade |
 | W5 | CLI + diagnostics stdio | `BLOCKED BY W4` | 2 workers, then serial parity integration |

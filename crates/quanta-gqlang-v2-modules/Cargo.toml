@@ -16,7 +16,7 @@ path = "src/lib.rs"
 [dependencies]
 quanta-gqlang-v2-hir   = { version = "0.1.0", path = "../quanta-gqlang-v2-hir" }
 quanta-gqlang-v2-types = { version = "0.1.0", path = "../quanta-gqlang-v2-types" }
-sha2                    = "=0.10.9"
+sha2                   = "=0.10.9"
 
 [lints]
 workspace = true

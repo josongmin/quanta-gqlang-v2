@@ -54,6 +54,8 @@ pub enum RelationExprKindV1 {
 pub struct RelationSourceV1 {
     /// Source name as written.
     pub name: String,
+    /// Exact source byte range of the name, excluding any following alias.
+    pub name_span: SpanV1,
     /// Optional binding alias (the `u` in `users u`).
     pub alias: Option<AliasV1>,
 }

@@ -1,17 +1,12 @@
-//! v3 rail: declaration and rule grammar embedding shared expressions.
-//!
-//! syntax->sema->ir path pinned: surface `let ...` / `rule ... if ...` text ->
-//! `parse_program` -> `hir::DeclHirV1` / `hir::RuleHirV1`, each EMBEDDING the
-//! shared value/bool expression kernel (hellgate rail 3).
-
 #![allow(
-    clippy::unwrap_used,
     clippy::expect_used,
     clippy::indexing_slicing,
-    clippy::panic,
-    clippy::wildcard_enum_match_arm,
     clippy::match_wildcard_for_single_variants,
-    reason = "integration test rail: assertion panics and exhaustive match arms are intentional"
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 use quanta_gqlang_v2_hir::{

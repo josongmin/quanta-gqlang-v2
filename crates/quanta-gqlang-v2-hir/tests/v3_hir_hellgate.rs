@@ -1,12 +1,13 @@
-//! v3 HIR fail-closed integrity rails (ticket 01 scenario 5).
-//!
-//! Each test forces one integrity violation by assembling a deliberately
-//! unsound tree BY HAND (bypassing the id-allocating builder) and asserts the
-//! EXACT typed diagnostic code + Display text from `check_tree`, never just
-//! "an error occurred".
-
-#![allow(clippy::unwrap_used, reason = "tests assert on Result directly")]
-#![allow(clippy::panic, reason = "tests panic on unexpected Ok")]
+#![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
+)]
 
 use quanta_gqlang_v2_hir::{
     check_tree, BinaryExprV1, BinaryOpV1, CallArgsHirV1, HirBuilderV1, HirIntegrityErrorV1,

@@ -1,30 +1,12 @@
-//! Structural property rails for the v3 surface public string-entry API.
-//!
-//! These are PROPERTY tests (not examples): proptest generates arbitrary and
-//! adversarial inputs and asserts the three SOTA++ structural guarantees that
-//! the crate-level contract promises:
-//!
-//! 1. TOTALITY / panic-freedom — every public `&str`-entry API
-//!    ([`lex`], [`parse_program`], [`parse_document`], [`parse_expr`],
-//!    [`parse_predicate`]) returns `Ok(..)` or a typed [`ParseDiagnosticV1`] for
-//!    ARBITRARY input. It NEVER unwinds. The ~45 `expect`/indexing sites in the
-//!    surface lib are required to be panic-free on adversarial input; that is
-//!    exactly what these rails prove.
-//! 2. DETERMINISM — the same input parsed twice yields an identical result
-//!    (same `Ok` structure, or the same typed diagnostic).
-//! 3. ROUND-TRIP + IDEMPOTENCE — for any input that parses `Ok`, formatting the
-//!    lowered item then re-parsing must succeed and be FORMAT-STABLE
-//!    (`format(reparse) == format(item)`), and formatting is a fixed point
-//!    (`format(format(x)) == format(x)`). The same holds for `;`-joined
-//!    documents via [`format_document`].
-//!
-//! Structural equality uses an independent visitor projection that omits ids and
-//! spans; canonical text equality separately proves formatter fixed points.
-
 #![allow(
-    clippy::unwrap_used,
     clippy::expect_used,
-    reason = "integration test rail: assertion helpers use expect intentionally"
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 use proptest::prelude::*;

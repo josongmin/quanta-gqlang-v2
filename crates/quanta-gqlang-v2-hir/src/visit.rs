@@ -192,6 +192,7 @@ fn walk_compare<V: HirVisitorV1 + ?Sized>(visitor: &mut V, compare: &CompareExpr
 pub fn walk_relation<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &RelationExprHirV1) {
     match &node.kind {
         RelationExprKindV1::Source(source) => {
+            visitor.visit_auxiliary_span(source.name_span);
             if let Some(alias) = &source.alias {
                 visitor.visit_auxiliary_span(alias.span);
             }

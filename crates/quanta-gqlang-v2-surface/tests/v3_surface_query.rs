@@ -1,19 +1,12 @@
-//! v3 rail: query grammar (syntax -> hir relation/query/result-shape).
-//!
-//! syntax->sema->ir path pinned: surface `from ... | project ... => {shape}`
-//! text -> `parse_program` -> `hir::QueryHirV1` embedding `RelationExprHirV1`
-//! (project with aliases) and a nested `ResultShapeHirV1`. Asserts the relation
-//! producer structure, alias capture, nested record/list shape, and exact spans
-//! (hellgate rail 2).
-
 #![allow(
-    clippy::unwrap_used,
     clippy::expect_used,
     clippy::indexing_slicing,
-    clippy::panic,
-    clippy::wildcard_enum_match_arm,
     clippy::match_wildcard_for_single_variants,
-    reason = "integration test rail: assertion panics and exhaustive match arms are intentional"
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 use quanta_gqlang_v2_hir::{
@@ -159,4 +152,39 @@ fn group_by_with_aggregate_call_projection() {
         ValueExprKindV1::Call(_)
     ));
     check_tree(HirRootRefV1::Query(&query), src.len()).expect("sound tree");
+}
+
+#[test]
+fn relation_pipeline_stage_set_is_closed() {
+    // The relation pipeline accepts exactly `where | project | join | cross |
+    // group | order` (`surface/src/query.rs::parse_stage`). The retired
+    // open-tagged operators must NOT parse: silently accepting `union`,
+    // `limit`, `sort`, or `apply` would reopen capability the closed HIR can no
+    // longer represent, and their algebra handlers are already unreachable from
+    // public HIR (see algebra/tests/RETIRED_LAWS.md for the disposition).
+    let builder = HirBuilderV1::new();
+
+    for removed in ["union", "limit", "sort", "apply"] {
+        let src = format!("from users | {removed} 1");
+        let err =
+            parse_program(&src, &builder).expect_err("a retired relation operator must not parse");
+        assert_eq!(err.code, ParseErrorCodeV1::UnexpectedToken);
+        assert!(
+            err.message.contains("pipeline stage keyword"),
+            "`{removed}` must reject with the closed stage-set message, got: {}",
+            err.message
+        );
+    }
+
+    // The closed stage set itself still parses: one positive per stage.
+    for stage in [
+        "from findings f | where f.score > 1",
+        "from findings | project repo, count(*) as n",
+        "from a | join b on a = b",
+        "from a | cross join b",
+        "from a | group by k",
+        "from a | order by k desc",
+    ] {
+        parse_program(stage, &builder).expect(stage);
+    }
 }

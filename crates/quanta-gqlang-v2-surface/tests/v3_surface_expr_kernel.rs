@@ -1,18 +1,12 @@
-//! v3 rail: precedence-aware expression parsing (syntax -> hir value/bool).
-//!
-//! syntax->sema->ir path pinned: surface text -> `parse_expr`/`parse_predicate`
-//! -> shared `hir::ValueExprHirV1` / `hir::BoolExprHirV1`. Asserts the
-//! *structural nesting* the precedence grammar must produce (hellgate rail 1),
-//! plus exact spans, and that the whole tree passes `hir::check_tree`.
-
 #![allow(
-    clippy::unwrap_used,
     clippy::expect_used,
     clippy::indexing_slicing,
-    clippy::panic,
-    clippy::wildcard_enum_match_arm,
     clippy::match_wildcard_for_single_variants,
-    reason = "integration test rail: assertion panics and exhaustive match arms are intentional"
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 use quanta_gqlang_v2_hir::{
