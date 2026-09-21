@@ -1272,3 +1272,23 @@ after W2-D lands. W2-D is mid-flight on test_support (file at d9c93d12,
 temporarily non-compiling — W2-A's full acceptance rerun waits for it; W2-A
 may scope interim evidence to --lib + deferred entry, barrier runs
 all-targets on the final tree).
+
+### W2 triple lane failure and resume — 2026-09-21
+
+All three W2 lanes failed mid-flight in the same window (infrastructure
+failures during the convergence/build crunch; rustc had peaked at 56 parallel
+processes). On-disk state was preserved and verified before resume: W2-A
+normalize=0cb4a9d6/node=a2388059 (mid-oracle-fix), W2-B
+v3_algebra_normalization=9582cddb (iterated past 2dbb5dbc; other three test
+files still at freeze), W2-D test_support=36e36e10 (mid-application of its
+two fixture-side fixes). No unauthorized mutations (status diff clean beyond
+the known Cargo.lock staging note).
+
+Resumed with precise continuation prompts: W2-A (1f992cc4) finishes oracle
+expectations (BoolValue leaves, 4d+3 charge, correlated inner Filter,
+one-field grouped scan) then full all-targets acceptance; W2-D (b3501cee)
+completes the two fixture fixes, consumer-smokes algebra, publishes the
+complete export manifest; W2-B (f11bc517) runs phase-1 acceptance +
+non-vacuity, folds phase 2 (forged/new-fixture rails) when the manifest
+arrives. Cross-lane routing rule restated: no lane edits another's lease;
+failures route through the integrator.
