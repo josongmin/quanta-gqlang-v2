@@ -1308,3 +1308,25 @@ builder, Or/Not-EXISTS fixture, two-key group fixture) and two potential
 algebra defects relayed to W2-A for empirical pre-verification (mixed
 scalar/aggregate projection may lower OK; wrong-nested-root registry
 consumption semantics). W2-B yields until the W2-D manifest relay.
+
+### W2-A FINAL — GREEN with one in-lease defect fix — 2026-09-21
+
+Post-hashes: normalize.rs `29278f1afc6b6f29`, node.rs `9520d4e101b720ac`,
+diagnostic.rs unchanged (`ae0c10d8fd6df7a0`). All-target acceptance 26/26
+(20 owner units + W2-B's 6); fmt/diff green; clippy clean in src (3 residual
+denials are W2-B's expect_used in its normalization test — routed).
+
+Defect pre-verifications: (a) CONFIRMED and FIXED — forged mixed
+scalar/aggregate projection lowered OK; node.rs Aggregate arm now requires
+uniform aggregation class (`mixed_scalar_aggregate_projection_is_an_
+impossible_contract` owner rail; diagnostic stays
+algebra.invalid_stage_contract). (b) NOT a defect — forged wrong-nested-root
+already rejects via preserves_input_frame at (25,49); pinned contract:
+registry-exact nested-tree consumption, no second resolver.
+
+Charge model recalibrated end-to-end (BoolValue leaf + literal child = 3
+expression charges; small-receipt public rail 4d+3). Five sema-side defects
+found at the W2-D handoff hash (compile E0308 x2, leftover panic probes,
+wrong bool-tree formula, unusable forged bool-tree receipt, 18 clippy) — all
+subsequently observed fixed by W2-D live revisions. Deferrals unchanged
+(source-mutation kill builds). W2-A lane COMPLETE.
