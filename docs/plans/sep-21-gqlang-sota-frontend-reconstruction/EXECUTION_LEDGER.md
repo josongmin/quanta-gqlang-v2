@@ -1292,3 +1292,19 @@ complete export manifest; W2-B (f11bc517) runs phase-1 acceptance +
 non-vacuity, folds phase 2 (forged/new-fixture rails) when the manifest
 arrives. Cross-lane routing rule restated: no lane edits another's lease;
 failures route through the integrator.
+
+### W2-B phase-1 GREEN — 2026-09-21
+
+Leased targets 6/6 green (hellgate 1/1, mutants 1/1, normalization 3/3
+[reconstruction 9582cddb: Filter original + two EXISTS rails on the pinned
+contract], probe 1/1); W2-A internal lib 18/18 concurrently green; fmt and
+`git diff --check` pass. Non-vacuity: four wrong-value mutations with
+concrete left/right failures and byte-exact hash-verified restores. All four
+original tests intact. T28-T30 dropped (Apply/Limit/Union omitted from the
+W2-A claim). Clippy gate blocked solely by 18 errors in W2-D's
+test_support (16x map_err_ignore, 2x wildcard-match) — relayed with exact
+locations. Phase-2 surface gaps relayed to W2-D (capture-edge injection
+builder, Or/Not-EXISTS fixture, two-key group fixture) and two potential
+algebra defects relayed to W2-A for empirical pre-verification (mixed
+scalar/aggregate projection may lower OK; wrong-nested-root registry
+consumption semantics). W2-B yields until the W2-D manifest relay.
