@@ -1242,3 +1242,33 @@ still-intact freeze set plus the HEAD fallback for the lost file.
 Cargo.lock staging was cleaned (`git restore --staged`); its worktree
 changes remain integrator-owned and unsettle until a manifest-finalizing
 wave.
+
+### W2 freeze announcement sealed + gate opened (phased) — 2026-09-21
+
+W2-A delivered the freeze announcement (binding for W2-B): budget charging =
+iterative Visit/Finish relation walk, one max_semantic_steps charge per stage
+before visit; two iterative expression walks (And decomposition + descendant
+search) sharing one max_expression_nodes ledger charged before every node;
+source is SemanticDocumentV2::budget_receipt() only; over-budget diagnostic =
+algebra.traversal_budget_exceeded naming the dimension at the refused stage's
+checked location. Apply/Limit/Union OMITTED from the completion claim (no
+landed Ticket 07 consumer); variants stay unconstructed. Private surface:
+Filter payload = full ordinary conjunction (Vec<TypedBoolExprV2>, one Filter
+max, zero for pure EXISTS, Semi/Anti carry exact outer output, residual
+Filter above the Semi/Anti chain); predicate() is Join-ON-only with
+filter_conjuncts() on Filter; CheckedAlgebraNodeV2::new fail-closes on
+op<->output disagreement per operator family.
+
+Mystery edit resolved: the running W2-A denies writing under tests/ (writes
+verified within src lease); the 58-line test version predates the restart —
+it was the FAILED original W2-A's unreported leftover, and it was green at
+restart entry. The integrator's checkout then replaced it with the
+non-compiling pre-SS-05B V1 suite (3320cb3c = HEAD). Recovery authorized:
+lane W2-B rewrites v3_algebra_normalization.rs as its first phase-1 act
+(original Filter positive per its inventory + the two EXISTS-shape tests
+migrated to the pinned contract). W2-B gate OPENED PHASED: phase 1 =
+reconstruction + rails not needing W2-D; phase 2 = forged/new-fixture rails
+after W2-D lands. W2-D is mid-flight on test_support (file at d9c93d12,
+temporarily non-compiling — W2-A's full acceptance rerun waits for it; W2-A
+may scope interim evidence to --lib + deferred entry, barrier runs
+all-targets on the final tree).
