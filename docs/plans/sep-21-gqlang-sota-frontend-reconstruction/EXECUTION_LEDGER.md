@@ -1038,3 +1038,90 @@ inputs (HIR/Surface), and a named RED (W1-C inherits the recorded Sema
 owner-oracle REDs from Tickets 03/04; W1-A is inventory-only with
 `BLOCKED_TOOLING` fallback; W1-B's RED is the missing adversarial fixtures
 themselves). W1 dispatch follows.
+
+### W1 lease amendment 1 — 2026-09-21 (integrator-approved)
+
+W1-C reported that SS-04W's mandatory `max_diagnostics` +
+`max_response_bytes` on `FrontendBudgetV2::try_new` (19 -> 21 positional
+args) breaks compilation at exactly one unleased call site:
+`crates/quanta-gqlang-v2-sema/tests/v3_reference_resolution.rs`
+(`profile_and_registry_mismatch_reject_before_document_work`). All other
+callers use `standard_v2()`/`authority_profile()` and are source-compatible.
+
+Amendment: W1-C's write lease is extended to exactly that single mechanical
+arity update in that one test function — no other edit to that file. Any
+further unleased compile break stops the lane for a new amendment request
+instead of widening this one. The edit is mechanical fallout of the leased
+budget-authority change, not new semantic surface; it will be verified at the
+W1 barrier (unchanged-fingerprint scoped diff review).
+
+### W1 lane completions — running log
+
+- **Lane W2-C dispatched early (2026-09-21, integrator decision).** After W1-A
+  completed, the wave's third worker slot was free. The optional W2-C Logic
+  migration inventory (read-only, report-only, zero product writes, no build
+  commands) was dispatched onto the idle W1-A agent rather than left queued
+  behind the W1 barrier. Rationale: W2-C has no dependency on W1 output (it
+  maps existing V1 Logic cases to KEEP/MIGRATE/DELETE against Ticket 06's
+  already-frozen SS-06B sequence), cannot violate any lease, and its report
+  is a required input for the W3 lane split. Worker concurrency stayed within
+  the 3-worker cap (B, C, W2-C). Heavy builds were prohibited on this lane
+  while W1-B/C qualification builds run.
+
+- **W1-A / SS-02G COMPLETE** (first lane down). Artifact
+  `receipts/02-public-api-inventory.md` sha256-16 `bd2be881b0ff0c13`.
+  Manifest complete; live re-freeze recorded (HEAD `e9dd3e4`, status-list
+  sha256 `2e0bf1fc13f3c285...`, 177 entries). Key evidence: sole 4-arg
+  `relation_source` at `hir/src/build.rs:300-315`, sole production caller
+  `surface/src/query.rs:79`, one `cargo public-api` item (HIR 4621 / Surface
+  545 items listed), zero overloads/legacy constructors. Untracked name-span
+  test `hir/tests/v3_relation_source_name_span.rs` is already
+  Cargo-auto-enrolled and green (2/2) — integrator performs the `git add` at
+  the barrier checkpoint; no manifest change required. Deferred:
+  `cargo semver-checks` (rustc 1.81 < 1.93), two-sided public-api diff vs
+  `base_sha` (needs a baseline worktree, permitted only after a checkpoint
+  commit exists). Owner-call flag recorded for Ticket 02: pub fields on
+  `RelationSourceV1` permit test struct-literal construction (not an
+  overload); field-narrowing remains a Ticket 02 owner decision.
+
+- **W1-B / SS-03H Types/Modules COMPLETE** (second lane down; zero production
+  defects found). Post-hashes: `types/tests/v3_types_check_edges.rs`
+  `50e1049b058f9d8f...`, `modules/tests/v3_document_predeclaration.rs`
+  `fc3120659f2ed11d...` (full sha256 in lane report). RED proven pre-edit
+  (targeted filters select 0; baselines types 89/89, modules 130/130).
+  Acceptance on one fingerprint (isolated `/tmp/qg-w1-laneB`; frozen inputs
+  types/src `406ad1f32d9efd80`, modules/src `a1b8f817fec118ef`, hir/src
+  `31a4efee67045ae0` verified unchanged across every command): types 91/91,
+  modules 132/132, strict Clippy exit 0, scoped fmt exit 0, `git diff --check`
+  0. Four semantic-payload fixtures: three-producer pre-evaluation
+  target-following (plan/authored/dependency orders all distinct, swapped
+  targets assert new exact rows, plan transplant rejects with exact
+  root/target/span), chain-transplant fail-closed pair, permutation-stable
+  topology diamond (16 permutations, identical canonical order, duplicate-edge
+  idempotence with min-location retention), and two-cycle located-witness
+  canonicalization (exact primary + witness spans under all permutations).
+  Oracle non-vacuity via four test-local mutations killed then restored
+  byte-exact; deliberate-source-mutation proof remains deferred to a
+  checkpoint+worktree lane per wave plan. Public-API inventory draft verdict:
+  no public constructor in either crate can mint a topology proof, checked
+  authority, typed fact, or pre-evaluation result. SS-03G remaining items 2/3
+  now covered by owner tests; 1/4 sit with the Sema lane, 5/6 with the
+  integrator. Flagged discrepancies (live HEAD `e9dd3e4`, overlay hash
+  `648a985a91e00d20` vs dispatch values) are concurrent-lane drift; leased
+  inputs never changed.
+
+- **Lane W2-C COMPLETE** (read-only Logic migration inventory; zero writes,
+  message-only deliverable preserved verbatim by the integrator as
+  `tickets/06-migration-inventory-w2c.md`). Key results: SS-06B RED verified
+  statically; all Sema migration targets present (no W3 producer gap);
+  static census 44+1 supersedes historical 48/49; production dispositions
+  17 KEEP / 22 MIGRATE / 21 DELETE (source.rs + aggregate.rs wholesale);
+  test dispositions 14/15/15 (+4 policy flips: PointsTo-without-depth and
+  via-without-depth become rejects; both depth+waypoint conflict rails become
+  positives); W3 lane split adopted; 12 coverage gaps routed (largest: G3
+  membership-forgery class with zero V1 coverage, G11 source-level document
+  fixtures, G9 every-spelling aggregate rejection). Two integrator decisions
+  adopted and recorded in the sealed file: (1) pre-cut `diagnostic.rs` at W3
+  barrier start before A/B test freezes; (2) amend Ticket 06's
+  `.negated_recursion` fixture wording (G12) instead of resurrecting a dead
+  diagnostic arm.
