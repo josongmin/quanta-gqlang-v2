@@ -1194,3 +1194,22 @@ W1 freeze and stays). Integrator decisions:
   dimensions + over-budget diagnostic, Apply/Limit/Union disposition, and
   the private constructor surface) is relayed together with W2-D's landed
   builder surface.
+
+### W2 incident and restart record — 2026-09-21
+
+- Lanes W2-A and W2-D failed mid-flight before any announcement. Tree audit at
+  restart: W2-A left zero writes (all entry-freeze hashes intact). W2-D left a
+  partial additive edit to its leased `sema/src/test_support.rs`
+  (Exists/NotExists fixture variants, verified well-formed) — kept as the
+  restart baseline.
+- UNEXPLAINED MUTATIONS found and handled: (1) worktree deletion of
+  `logic/tests/v3_logic_source.rs` (outside every active lease; no lane
+  reported it) — RESTORED from index (`git checkout --`, sha256-16
+  `d7bf2b602168b5d4`); (2) `Cargo.lock` gained unstaged worktree changes on
+  top of the intentionally staged W1-era copy (some W2-era cargo run touched
+  it) — left as-is, integrator-reserved, settles at the wave that finalizes
+  manifest edges. If either recurs, the owning lane's qualification is
+  invalid per the Failure And Reopen rules.
+- Both lanes re-dispatched fresh (W2-A bb90b3d2 with the full original
+  mission + freeze-announcement duty; W2-D 6b7dcecc instructed to verify and
+  continue from the partial edit). W2-B remains correctly gated.
