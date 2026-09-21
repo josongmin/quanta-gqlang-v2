@@ -1148,3 +1148,19 @@ next_wave_gate=W2 OPEN: aggregate-ready contract + 21-dimension budget receipt f
 
 W1 verdict: `GREEN`. All three lanes and the serial barrier passed on one
 unchanged fingerprint. Wave status table updated; W2 dispatch follows.
+
+### W2 dispatch — 2026-09-21
+
+Entrance gate met (W1 GREEN, receipts closed, checkpoint `1a9ccad`). Algebra
+crate fully frozen per the W2+ process fix (`/tmp/qg-freeze-w2.txt`: Cargo.toml
+`808a3d12`, diagnostic `00f65f93`, lib `933d1f0f`, node `ed84e886`, normalize
+`50af5871`, four integration tests `3d423bd9`/`016e036a`/`1ab2bdd1`/`40833b9a`,
+RETIRED_LAWS `e2c7e6d9`). Frozen Sema producer hashes published to both lanes
+(authority/document/relation/lib as in the W1 barrier record). Lanes: W2-A
+(edc7dbfd, lowering implementation, lease src/{normalize,node,diagnostic}.rs)
+and W2-B (239cfd20, adversarial matrix, lease tests/*.rs) with the hard start
+gate: W2-B designs/inventories only until W2-A announces constructor/
+test-support freeze. W2-C inventory was completed early and sealed
+(`tickets/06-migration-inventory-w2c.md`), so the third slot stays free for
+integrator use or W2 escalation. Cargo.lock remains staged-but-uncommitted by
+design; it settles at the wave whose manifest edges finalize it.
