@@ -5,10 +5,11 @@ The gate proves the facade is a *sufficient and minimal* seam for a sibling
 repository. It never modifies tracked checkout files; the public-API probe
 reuses the checkout's gitignored Cargo target:
 
-1. copy ``tools/frontend_external_consumer/`` into a temp directory, rewrite its
-   single ``path = ...`` dependency to an absolute path into this repository,
-   copy the repository ``Cargo.lock`` for offline resolution, and point
-   ``CARGO_TARGET_DIR`` at the temp directory;
+1. materialize ``tools/frontend_external_consumer/`` at one locked, owned path
+   under this checkout's ignored ``target/`` directory, rewrite its single
+   ``path = ...`` dependency to an absolute path into this repository, copy
+   ``Cargo.lock`` for offline resolution, and reuse only that checkout's
+   fixture build cache;
 
 2. assert the manifest shapes (fixture normal deps == {facade}; facade normal
    deps == {pipeline}) and the facade source shape (zero ``^pub use .*::\\*``,
@@ -27,7 +28,7 @@ reuses the checkout's gitignored Cargo target:
 5. diff ``cargo public-api -p quanta-gqlang-v2-frontend-contract --simplified``
    against the pinned allowlist literal (extra/missing names). This invocation
    runs in the repository checkout and reuses only that checkout's Cargo target;
-   the fixture keeps its isolated temporary target;
+   the fixture keeps its separate target;
 
 6. assert the checkout is untouched: ``Cargo.lock`` sha256, the byte content of
    every path the gate owns, and ``git status --porcelain`` are compared
@@ -54,15 +55,15 @@ diagnostic codes would drift with the machine default toolchain.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import os
 import re
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, IO, List, Optional, Sequence, Tuple
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIR = REPOSITORY_ROOT / "tools" / "frontend_external_consumer"
@@ -71,6 +72,7 @@ FACADE_DIR = REPOSITORY_ROOT / "crates" / "quanta-gqlang-v2-frontend-contract"
 FACADE_MANIFEST = FACADE_DIR / "Cargo.toml"
 FACADE_SOURCE = FACADE_DIR / "src" / "lib.rs"
 LOCKFILE = REPOSITORY_ROOT / "Cargo.lock"
+CACHE_ROOT = REPOSITORY_ROOT / "target" / "external-consumer-gate"
 
 FIXTURE_PACKAGE = "quanta-gqlang-v2-frontend-external-consumer"
 FACADE_PACKAGE = "quanta-gqlang-v2-frontend-contract"
@@ -372,15 +374,68 @@ def tool_version(executable: str, cwd: Path, env: Dict[str, str]) -> str:
     return version[len(prefix):] if version.startswith(prefix) else version
 
 
-def materialize_fixture(temp_root: Path) -> Path:
-    fixture = temp_root / "fixture"
-    shutil.copytree(
-        str(FIXTURE_DIR),
-        str(fixture),
-        ignore=shutil.ignore_patterns("target", "Cargo.lock", ".git"),
+def lock_cache(cache_root: Path, repo_root: Path) -> IO[str]:
+    if cache_root.is_symlink():
+        raise InfrastructureError("external-consumer cache root must not be a symlink")
+    cache_root.mkdir(parents=True, exist_ok=True)
+    lock_path = cache_root / ".lock"
+    if lock_path.is_symlink():
+        raise InfrastructureError("external-consumer cache lock must not be a symlink")
+    lock = lock_path.open("a+")
+    try:
+        try:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as error:
+            raise InfrastructureError("another external-consumer gate owns the fixture cache") from error
+        marker = cache_root / ".owner"
+        expected = "%s\n%s\n" % (repo_root.resolve(), cache_root.resolve())
+        if marker.is_symlink():
+            raise InfrastructureError("external-consumer cache owner must not be a symlink")
+        if marker.exists():
+            if not marker.is_file() or marker.read_text() != expected:
+                raise InfrastructureError("external-consumer cache belongs to another checkout")
+        else:
+            foreign = sorted(path.name for path in cache_root.iterdir() if path.name != ".lock")
+            if foreign:
+                raise InfrastructureError("unowned external-consumer cache contains %s" % foreign)
+            marker.write_text(expected)
+        unexpected = sorted(
+            path.name for path in cache_root.iterdir()
+            if path.name not in {".lock", ".owner", "fixture", "build"}
+        )
+        if unexpected:
+            raise InfrastructureError("external-consumer cache contains unexpected paths %s" % unexpected)
+        build = cache_root / "build"
+        if build.is_symlink() or (build.exists() and not build.is_dir()):
+            raise InfrastructureError("external-consumer build cache is redirected")
+        return lock
+    except (OSError, InfrastructureError):
+        lock.close()
+        raise
+
+
+def materialize_fixture(cache_root: Path) -> Path:
+    fixture = cache_root / "fixture"
+    if fixture.is_symlink():
+        raise InfrastructureError("external-consumer fixture must not be a symlink")
+    fixture.mkdir(exist_ok=True)
+    unexpected = sorted(
+        path.name for path in fixture.iterdir()
+        if path.name not in {"Cargo.toml", "Cargo.lock", "src"}
     )
+    if unexpected:
+        raise InfrastructureError("external-consumer fixture contains unexpected paths %s" % unexpected)
+    src = fixture / "src"
+    if src.is_symlink():
+        raise InfrastructureError("external-consumer fixture src must not be a symlink")
+    src.mkdir(exist_ok=True)
+    if [path.name for path in src.iterdir() if path.name != "main.rs"]:
+        raise InfrastructureError("external-consumer fixture src contains unexpected paths")
+    for path in (fixture / "Cargo.toml", fixture / "Cargo.lock", src / "main.rs"):
+        if path.is_symlink() or (path.exists() and not path.is_file()):
+            raise InfrastructureError("external-consumer fixture file is redirected: %s" % path)
     manifest = fixture / "Cargo.toml"
-    text = manifest.read_text()
+    text = (FIXTURE_DIR / "Cargo.toml").read_text()
     if text.count(FACADE_DEP_LINE) != 1:
         raise InfrastructureError(
             "the fixture manifest must carry exactly one %r dependency line" % FACADE_DEP_LINE
@@ -389,13 +444,13 @@ def materialize_fixture(temp_root: Path) -> Path:
         text.replace(FACADE_DEP_LINE, 'path = "%s"' % (FACADE_DIR,))
     )
     shutil.copyfile(str(LOCKFILE), str(fixture / "Cargo.lock"))
+    (src / "main.rs").write_bytes((FIXTURE_DIR / "src" / "main.rs").read_bytes())
     return fixture
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--verbose", action="store_true", help="print every case and its verdict")
-    parser.add_argument("--keep-temp", action="store_true", help="keep and print the temp workspace")
     args = parser.parse_args(argv)
 
     def say(message: str) -> None:
@@ -429,7 +484,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "public_api_extra": 0,
         "public_api_missing": 0,
     }
-    temp_root: Optional[Path] = None
+    cache_lock: Optional[IO[str]] = None
+    fixture: Optional[Path] = None
+    positive_main: Optional[bytes] = None
     cargo_version = "unknown"
     rustc_version = "unknown"
     before_lock = ""
@@ -505,11 +562,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
         )
 
-        # ---- stage 1/2: isolated fixture in a temp workspace ---------------
+        # ---- stage 1/2: isolated fixture at a stable, owned path ----------
         channel = repo_toolchain_channel()
-        temp_root = Path(tempfile.mkdtemp(prefix="qg-w4h-external-consumer-"))
-        fixture = materialize_fixture(temp_root)
-        env = cargo_env(temp_root / "target", channel)
+        cache_lock = lock_cache(CACHE_ROOT, REPOSITORY_ROOT)
+        fixture = materialize_fixture(CACHE_ROOT)
+        env = cargo_env(CACHE_ROOT / "build", channel)
         # Stage 3 runs at this checkout's stable manifest path, so its Cargo
         # target can be reused without cross-checkout stale-path artifacts.
         # Pin its toolchain too: an inherited RUSTUP_TOOLCHAIN can otherwise
@@ -517,7 +574,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         public_api_env = cargo_env(REPOSITORY_ROOT / "target", channel)
         cargo_version = tool_version("cargo", fixture, env)
         rustc_version = tool_version("rustc", fixture, env)
-        trace("temp workspace: %s" % temp_root)
+        trace("locked fixture cache: %s" % CACHE_ROOT)
         trace("toolchain: %s / %s" % (cargo_version, rustc_version))
 
         positive_main = (fixture / "src" / "main.rs").read_bytes()
@@ -600,7 +657,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 )
             )
 
-        (fixture / "src" / "main.rs").write_bytes(positive_main)
         say(
             "stage 2: negative selected=%d executed=%d code_matched=%d needle_matched=%d mismatches=%d"
             % (
@@ -644,11 +700,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     except InfrastructureError as error:
         infrastructure.append(str(error))
         say("infrastructure failure: %s" % error)
+    except OSError as error:
+        infrastructure.append("external-consumer filesystem failure: %s" % error)
+        say("infrastructure failure: %s" % infrastructure[-1])
     finally:
-        if temp_root is not None and (args.keep_temp or infrastructure):
-            say("temp workspace kept: %s" % temp_root)
-        elif temp_root is not None:
-            shutil.rmtree(str(temp_root), ignore_errors=True)
+        if fixture is not None and positive_main is not None:
+            try:
+                (fixture / "src" / "main.rs").write_bytes(positive_main)
+            except OSError as error:
+                infrastructure.append("could not restore the cached positive fixture: %s" % error)
+        if cache_lock is not None:
+            cache_lock.close()
 
     # ---- stage 4: the checkout is untouched --------------------------------
     lock_unchanged = "unknown"
@@ -671,7 +733,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 if not delta_path(line).startswith(GATE_WRITABLE_PREFIXES)
             ]
             status_unchanged = "CHANGED(concurrent)" if concurrent_paths else "CHANGED"
-    except InfrastructureError as error:
+    except (InfrastructureError, OSError) as error:
         infrastructure.append("repository immutability check failed: %s" % error)
     if lock_unchanged == "CHANGED":
         violations.append("Cargo.lock changed during the gate run")
