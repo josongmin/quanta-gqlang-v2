@@ -310,7 +310,7 @@ fn validate_identity(
     // retains none, so it validates its members instead (see below).
     let anchor = attribution_anchor(input, document);
     let resolved = match input_item_id(input) {
-        Some(id) => document.item(id),
+        Some(id) => Some(document.item(id).ok_or_else(|| absent(&anchor))?),
         None => None,
     };
     match input {
@@ -318,10 +318,16 @@ fn validate_identity(
             let Some(SemanticItemV2::Relation(relation)) = resolved else {
                 return Err(wrong_kind(&anchor));
             };
-            if relation.root().location() != item.root().location()
-                || relation.output() != item.output()
-                || relation.item_id() != item.root().item_id()
-            {
+            // The carrier must be the sealed lowering of THIS document item and
+            // retain that item's exact output contract. The root stage KEY is
+            // deliberately NOT compared: canonical lowering legitimately
+            // re-anchors the root (a pure relational EXISTS conjunct is folded
+            // into a root Semi/Anti join, asserted by
+            // algebra::pure_exists_conjunct_lowers_to_semijoin_with_no_residual_filter),
+            // so the promoted root carries the EXISTS stage key while the sealed
+            // relation keeps the authored filter key. Comparing keys would make
+            // every EXISTS/AntiJoin relation unplannable.
+            if relation.item_id() != item.root().item_id() || item.output() != relation.output() {
                 return Err(identity_mismatch(&anchor));
             }
             Ok(())
@@ -898,10 +904,15 @@ impl<'a> ArmV2<'a> {
         }
     }
 
-    /// The checked location this arm's plan is attributed to.
+    /// The checked location this arm's plan is attributed to: the planned item's
+    /// own checked location where the document holds one, else the location the
+    /// carrier itself retains.
     fn root_location(self, document: &SemanticDocumentV2) -> CheckedLocatedSpanV2 {
         match self {
-            Self::Relational(root) => root.location().clone(),
+            Self::Relational(root) => document
+                .item(root.item_id())
+                .and_then(item_location)
+                .unwrap_or_else(|| root.location().clone()),
             Self::Graph(contract) => contract.location().clone(),
             Self::Check(contract) => contract.location().clone(),
             Self::Presentation(contract) => contract.location().clone(),
@@ -1274,10 +1285,16 @@ const fn witness_risk(
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::panic_in_result_fn,
+        reason = "these rails assert exact plan fields and return a typed fixture error, so every assertion is a deliberate crash on drift"
+    )]
+
     use quanta_gqlang_v2_algebra::lower_relation_item;
     use quanta_gqlang_v2_sema::test_support::{
-        deep_relation_chain_document_v2, forged_small_receipt_relation_chain_document_v2,
-        reference_graph_document_v2, reference_relation_document_v2, reference_rule_document_v2,
+        deep_relation_chain_document_v2, forged_cardinality_downgrade_document_v2,
+        forged_small_receipt_relation_chain_document_v2, reference_graph_document_v2,
+        reference_relation_document_v2, reference_rule_document_v2,
         second_source_relation_document_v2, ReferenceBudgetV2, ReferenceGraphDocumentV2,
         ReferenceGraphReferenceV2, ReferenceGraphRequestV2, ReferenceRelationDocumentV2,
         ReferenceRelationFixtureV2, ReferenceRuleFixtureV2, SMALL_BUDGET_MAX_SEMANTIC_STEPS,
@@ -1292,6 +1309,21 @@ mod tests {
         id: SemanticItemIdV2,
     ) -> Option<CheckedLocatedSpanV2> {
         document.item(id).and_then(item_location)
+    }
+
+    /// The visited checked algebra nodes and folded effects of a plan that must
+    /// carry the relational policy. Every other arm is a named failure, so the
+    /// match stays exhaustive over the closed policy vocabulary.
+    fn relational_policy(plan: &SemanticPlanV2) -> Result<(u32, EffectSummaryV2), String> {
+        match plan.policy() {
+            PlanPolicyV2::Relational { nodes, effects } => Ok((*nodes, *effects)),
+            PlanPolicyV2::Graph(_)
+            | PlanPolicyV2::Check(_)
+            | PlanPolicyV2::Presentation(_)
+            | PlanPolicyV2::Rule(_)
+            | PlanPolicyV2::MetaRequireCertified
+            | PlanPolicyV2::Composition(_) => Err("expected a relational policy".to_owned()),
+        }
     }
 
     /// One reference relation document plus the sealed planning input lowered
@@ -1377,13 +1409,9 @@ mod tests {
             Some(plan.explain().root_location()),
             expected_anchor(document, fixture.item_id()).as_ref()
         );
-        match plan.policy() {
-            PlanPolicyV2::Relational { nodes, effects } => {
-                assert_eq!(*nodes, 1);
-                assert_eq!(effects.determinism, DeterminismV1::Deterministic);
-            }
-            other => return Err(format!("expected a relational policy, got {other:?}")),
-        }
+        let (nodes, effects) = relational_policy(&plan)?;
+        assert_eq!(nodes, 1);
+        assert_eq!(effects.determinism, DeterminismV1::Deterministic);
         Ok(())
     }
 
@@ -1423,7 +1451,7 @@ mod tests {
     /// mismatch.
     #[test]
     fn a_carrier_must_belong_to_the_document() -> Result<(), String> {
-        let (foreign, foreign_input) = relational_fixture(ReferenceRelationFixtureV2::Scan)?;
+        let (_foreign, foreign_input) = relational_fixture(ReferenceRelationFixtureV2::Scan)?;
         let other = second_source_relation_document_v2()?;
         match plan(&foreign_input, other.document()) {
             Err(PlanningDiagnosticV1::InputDocumentMismatch { reason, .. }) => {
@@ -1436,8 +1464,10 @@ mod tests {
             }
         }
 
-        let (cross, cross_input) = relational_fixture(ReferenceRelationFixtureV2::CrossJoin)?;
-        match plan(&cross_input, foreign.document()) {
+        let (pristine, forged_input) =
+            relational_fixture(ReferenceRelationFixtureV2::GroupedAggregateSum)?;
+        let forged = forged_cardinality_downgrade_document_v2()?;
+        match plan(&forged_input, forged.document()) {
             Err(PlanningDiagnosticV1::InputDocumentMismatch { reason, .. }) => {
                 assert_eq!(reason, InputDocumentMismatchReasonV2::IdentityMismatch);
             }
@@ -1447,9 +1477,8 @@ mod tests {
                 ))
             }
         }
-        // The carrier is untouched by the rejection and still plans against its
-        // own document.
-        plan(&cross_input, cross.document()).map_err(|error| format!("{error:?}"))?;
+        // The untouched carrier still plans against its own document.
+        plan(&forged_input, pristine.document()).map_err(|error| format!("{error:?}"))?;
         Ok(())
     }
 
@@ -1541,7 +1570,14 @@ mod tests {
                     contract.witness().max_path_length()
                 );
             }
-            other => return Err(format!("expected a graph policy, got {other:?}")),
+            PlanPolicyV2::Relational { .. }
+            | PlanPolicyV2::Check(_)
+            | PlanPolicyV2::Presentation(_)
+            | PlanPolicyV2::Rule(_)
+            | PlanPolicyV2::MetaRequireCertified
+            | PlanPolicyV2::Composition(_) => {
+                return Err("expected a graph policy".to_owned());
+            }
         }
         Ok(())
     }
@@ -1577,8 +1613,41 @@ mod tests {
                 assert_eq!(policy.recursive_members().len(), 1);
                 assert!(policy.stratum_count() >= 1);
             }
-            other => return Err(format!("expected a rule-program policy, got {other:?}")),
+            PlanPolicyV2::Relational { .. }
+            | PlanPolicyV2::Graph(_)
+            | PlanPolicyV2::Check(_)
+            | PlanPolicyV2::Presentation(_)
+            | PlanPolicyV2::MetaRequireCertified
+            | PlanPolicyV2::Composition(_) => {
+                return Err("expected a rule-program policy".to_owned());
+            }
         }
+        Ok(())
+    }
+
+    /// The traversal is root-first and charges exactly one step per visited
+    /// node, and a checked sort makes the result order semantic (`D26`).
+    #[test]
+    fn the_traversal_is_root_first_and_prices_one_step_per_node() -> Result<(), String> {
+        let (fixture, input) = relational_fixture(ReferenceRelationFixtureV2::SortAsc)?;
+        let document = fixture.document();
+        let plan = plan(&input, document).map_err(|error| format!("{error:?}"))?;
+
+        assert_eq!(
+            plan.explain().families(),
+            &[AlgebraFamilyV2::Sort, AlgebraFamilyV2::Scan]
+        );
+        assert_eq!(
+            plan.semantic_cost().ordering_contract,
+            OrderingContractV2::Ordered
+        );
+        assert!(plan.result().multiplicity_order().is_ordered());
+        assert_eq!(
+            plan.semantic_cost().estimated_cardinality_class,
+            CardinalityClassV2::LinearInInput
+        );
+        let (nodes, _effects) = relational_policy(&plan)?;
+        assert_eq!(nodes, 2);
         Ok(())
     }
 }

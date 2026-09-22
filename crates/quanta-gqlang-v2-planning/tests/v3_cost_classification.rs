@@ -1,549 +1,405 @@
 #![allow(
-    clippy::panic,
-    clippy::unwrap_used,
     clippy::expect_used,
     clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
     clippy::wildcard_enum_match_arm,
-    reason = "integration test rails assert on fixed shapes and panic on unexpected variants"
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
+
 //! Cardinality-class / recursion-risk / witness-risk derivation edge cases
 //! (ticket 07, `D24`/`D26`/`D32`) plus the closed keyword sets of every cost,
-//! effect, truth-lane, and result-kind class. These drive the uncovered
-//! `classify_node` / `worst_class` / `recursion_risk` / `witness_risk` arms of
-//! `plan.rs` and the `keyword()` accessors of the typed cost vocabulary.
+//! effect, authority/determinism, evidence, and result-kind class.
+//!
+//! V2 cut: `PlanRequestV1` is DELETED, so every V1 rail that selected
+//! `result_kind` / `effect` / `truth_lane` / `recursion` / `witness` by hand now
+//! drives the SAME classes from a sealed carrier:
+//!
+//! - cardinality class comes from the one traversal's post-order fold over the
+//!   checked algebra tree (`plan.rs::exit_class`);
+//! - recursion risk comes from the document RULE PROGRAM's stratification proof
+//!   (a least-fixpoint closure) or from a sealed cyclic FIND/confirm witness
+//!   bound — never from a caller-requested `RecursionShapeV1`;
+//! - witness-selection policy comes from the SEALED max-witness cap, so the V1
+//!   `TopK`/canonical-one selection rails have no V2 caller spelling.
+//!
+//! Rails whose V2 shape needs a fixture that does not exist yet are listed in
+//! the lane report as INTEGRATOR-FIXTURE-PENDING and are marked inline below; the
+//! corresponding class/keyword vocabulary stays asserted verbatim.
 
-use quanta_gqlang_v2_algebra::{
-    AlgebraNodeV1, AlgebraOpV1, AntiJoinV1, ApplyV1, ColumnProvenanceV1, ColumnV1, FilterV1,
-    JoinV1, LimitV1, ScanV1, SemiJoinV1, UnionV1,
-};
-use quanta_gqlang_v2_hir::{BoolExprHirV1, BoolExprKindV1, HirNodeIdV1, SpanV1};
-use quanta_gqlang_v2_logic::{
-    BodyLiteralV1, DedupIdentityV1, RecursiveProgramV1, RelationShapeV1, RuleDefV1,
-    WitnessContractV1, WitnessRequestV1, WitnessTieBreakV1,
-};
 use quanta_gqlang_v2_planning::{
-    produce_plan, CapabilityV1, CardinalityClassV1, EffectClassV1, EvidenceRequirementV1,
-    OrderingContractV1, PlanRequestV1, RecursionRiskClassV1, RecursionShapeV1, RenderRequirementV1,
-    RequestedResultKindV1, ResultKindV1, TruthLaneV1, WitnessExplosionRiskClassV1,
-    WitnessSelectionPolicyV1, WitnessShapeV1,
+    plan, AuthorityLaneV2, CardinalityClassV2, EffectClassV2, EvaluationDeterminismV2,
+    EvidenceRequirementV2, OrderingContractV2, RecursionRiskClassV2, RenderRequirementV2,
+    ResultKindV2, WitnessExplosionRiskClassV2, WitnessSelectionPolicyV2,
 };
-use quanta_gqlang_v2_types::CardinalityV1;
+use quanta_gqlang_v2_sema::test_support::{ReferenceRelationFixtureV2, ReferenceRuleFixtureV2};
+use quanta_gqlang_v2_types::{CardinalityV1, ResolvedPredicateIdV2};
 
-fn id(n: u32) -> HirNodeIdV1 {
-    HirNodeIdV1::from_raw(n)
-}
+mod support;
 
-fn span() -> SpanV1 {
-    SpanV1::new(0, 10)
-}
-
-fn col(name: &str) -> ColumnV1 {
-    ColumnV1::new(
-        name,
-        ColumnProvenanceV1::Source {
-            relation: "rel".to_owned(),
-            alias: None,
-            field: Some(name.to_owned()),
-        },
-    )
-}
-
-fn pred() -> Box<BoolExprHirV1> {
-    Box::new(BoolExprHirV1::new(
-        id(99),
-        span(),
-        BoolExprKindV1::Literal(true),
-    ))
-}
-
-fn node(card: CardinalityV1, op: AlgebraOpV1) -> AlgebraNodeV1 {
-    AlgebraNodeV1::new(id(1), span(), vec![col("x")], card, op)
-}
-
-fn scan(name: &str, card: CardinalityV1) -> AlgebraNodeV1 {
-    node(
-        card,
-        AlgebraOpV1::Scan(ScanV1 {
-            relation: name.to_owned(),
-            source_identity_v1: quanta_gqlang_v2_algebra::RelationSourceIdentityV1::SchemaOpen,
-            alias: None,
-        }),
-    )
-}
-
-fn request(root: AlgebraNodeV1) -> PlanRequestV1 {
-    PlanRequestV1 {
-        root,
-        recursion: RecursionShapeV1::None,
-        witness: None,
-        result_kind: RequestedResultKindV1::Table,
-        effect: EffectClassV1::ReadOnly,
-        truth_lane: TruthLaneV1::Deterministic,
-    }
-}
-
-fn fixpoint_proof() -> quanta_gqlang_v2_logic::StratificationProofV1 {
-    let program = RecursiveProgramV1::from_rules(vec![
-        RuleDefV1::new("reach", vec![BodyLiteralV1::positive("edge")], span()),
-        RuleDefV1::new(
-            "reach",
-            vec![
-                BodyLiteralV1::positive("edge"),
-                BodyLiteralV1::positive("reach"),
-            ],
-            span(),
-        ),
-    ]);
-    program.stratify().expect("positive recursion admits")
-}
-
-fn acyclic_witness(selection: WitnessSelectionPolicyV1) -> WitnessShapeV1 {
-    let contract = WitnessContractV1::bind(&WitnessRequestV1 {
-        shape: RelationShapeV1::Acyclic,
-        dedup: DedupIdentityV1::Endpoints,
-        max_witnesses: Some(4),
-        max_path_length: None,
-        tie_break: WitnessTieBreakV1::Lexical,
-        span: span(),
-    })
-    .expect("bounded acyclic witness");
-    WitnessShapeV1 {
-        contract,
-        selection,
-    }
-}
+use support::{check_input, graph_input, planned_relation, rule_input};
 
 // ---- cardinality class -----------------------------------------------------
 
 /// A `project` root is transparent: it forwards the underlying input's class.
 #[test]
 fn project_forwards_input_class() {
-    use quanta_gqlang_v2_algebra::ProjectV1;
-    use quanta_gqlang_v2_hir::{LiteralV1, ValueExprHirV1, ValueExprKindV1};
-    let projected = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::Project(ProjectV1 {
-            input: Box::new(scan("users", CardinalityV1::Bag)),
-            items: vec![ValueExprHirV1::new(
-                id(2),
-                span(),
-                ValueExprKindV1::Literal(LiteralV1::Int("1".to_owned())),
-            )],
-        }),
-    );
-    let plan = produce_plan(&request(projected)).expect("project plans");
+    let (_document, planned) =
+        planned_relation(ReferenceRelationFixtureV2::ProjectMultipleExpressions).expect("project");
     assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::LinearInInput
+        planned.semantic_cost().estimated_cardinality_class,
+        CardinalityClassV2::LinearInInput
     );
-}
-
-/// A union whose right arm is a recursive-shaped closure-ranked multiplicative
-/// join keeps the worst rank. (This drives the upper `rank` arms.)
-#[test]
-fn union_takes_multiplicative_over_bounded() {
-    let bounded = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::Limit(LimitV1 {
-            input: Box::new(scan("a", CardinalityV1::Bag)),
-            count: 3,
-            offset: 0,
-        }),
-    );
-    let multiplicative = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::Join(JoinV1 {
-            left: Box::new(scan("b", CardinalityV1::Bag)),
-            right: Box::new(scan("c", CardinalityV1::Bag)),
-            predicate: None,
-        }),
-    );
-    let unioned = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::Union(UnionV1 {
-            left: Box::new(bounded),
-            right: Box::new(multiplicative),
-            distinct: false,
-        }),
-    );
-    let plan = produce_plan(&request(unioned)).expect("union plans");
-    assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::Multiplicative
-    );
-}
-
-// ---- result-kind / render / evidence arms via produce_plan -----------------
-
-/// An `Alert` result-kind maps to alert / source-location render and (under a
-/// non-final lane) a source-location evidence requirement.
-#[test]
-fn alert_result_kind_maps_to_source_location() {
-    let mut req = request(scan("findings", CardinalityV1::Set));
-    req.result_kind = RequestedResultKindV1::Alert;
-    let plan = produce_plan(&req).expect("alert plans");
-    assert_eq!(plan.result_kind, ResultKindV1::Alert);
-    assert_eq!(plan.render_requirement, RenderRequirementV1::SourceLocation);
-    assert_eq!(plan.evidence, EvidenceRequirementV1::SourceLocation);
-}
-
-/// A `ProofExplain` result-kind maps to proof-explain / provenance-tree render
-/// and a proof-tree evidence requirement even under a deterministic lane.
-#[test]
-fn proof_explain_result_kind_maps_to_provenance_tree() {
-    let mut req = request(scan("findings", CardinalityV1::Set));
-    req.result_kind = RequestedResultKindV1::ProofExplain;
-    let plan = produce_plan(&req).expect("proof-explain plans");
-    assert_eq!(plan.result_kind, ResultKindV1::ProofExplain);
-    assert_eq!(plan.render_requirement, RenderRequirementV1::ProvenanceTree);
-    assert_eq!(plan.evidence, EvidenceRequirementV1::ProofTree);
 }
 
 /// A bare scan is linear in its single input.
 #[test]
 fn scan_root_is_linear_in_input() {
-    let plan = produce_plan(&request(scan("users", CardinalityV1::Bag))).expect("scan plans");
+    let (_document, planned) = planned_relation(ReferenceRelationFixtureV2::Scan).expect("scan");
     assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::LinearInInput
-    );
-}
-
-/// A `limit` root bounds the result regardless of the input class beneath it.
-#[test]
-fn limit_root_is_bounded() {
-    let limited = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::Limit(LimitV1 {
-            input: Box::new(scan("users", CardinalityV1::Bag)),
-            count: 10,
-            offset: 0,
-        }),
-    );
-    let plan = produce_plan(&request(limited)).expect("limit plans");
-    assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::Bounded
+        planned.semantic_cost().estimated_cardinality_class,
+        CardinalityClassV2::LinearInInput
     );
 }
 
 /// A `filter` is transparent: it forwards the input's class (linear).
 #[test]
 fn filter_forwards_input_class() {
-    let filtered = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::Filter(FilterV1 {
-            input: Box::new(scan("users", CardinalityV1::Bag)),
-            predicate: pred(),
-        }),
-    );
-    let plan = produce_plan(&request(filtered)).expect("filter plans");
+    let (_document, planned) =
+        planned_relation(ReferenceRelationFixtureV2::Filter).expect("filter");
     assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::LinearInInput
+        planned.semantic_cost().estimated_cardinality_class,
+        CardinalityClassV2::LinearInInput
     );
 }
 
-/// A join can multiply input sizes.
+/// A join can multiply input sizes; an ON predicate does not change the class,
+/// only the folded monotonicity.
 #[test]
 fn join_root_is_multiplicative() {
-    let joined = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::Join(JoinV1 {
-            left: Box::new(scan("a", CardinalityV1::Bag)),
-            right: Box::new(scan("b", CardinalityV1::Bag)),
-            predicate: Some(pred()),
-        }),
-    );
-    let plan = produce_plan(&request(joined)).expect("join plans");
+    for fixture in [
+        ReferenceRelationFixtureV2::CrossJoin,
+        ReferenceRelationFixtureV2::InnerJoinOn,
+    ] {
+        let (_document, planned) = planned_relation(fixture).expect("join plans");
+        assert_eq!(
+            planned.semantic_cost().estimated_cardinality_class,
+            CardinalityClassV2::Multiplicative,
+            "{fixture:?} is multiplicative"
+        );
+    }
+}
+
+/// A self join multiplies two arms of one relation, so it is multiplicative too.
+#[test]
+fn self_join_root_is_multiplicative() {
+    let (_document, planned) =
+        planned_relation(ReferenceRelationFixtureV2::SelfJoinInner).expect("self join");
     assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::Multiplicative
+        planned.semantic_cost().estimated_cardinality_class,
+        CardinalityClassV2::Multiplicative
     );
 }
 
-/// An apply (correlated) is also multiplicative.
+/// A GROUPED aggregate forwards its partition's class (one row per distinct
+/// key), so it stays linear in its input.
 #[test]
-fn apply_root_is_multiplicative() {
-    let applied = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::Apply(ApplyV1 {
-            left: Box::new(scan("a", CardinalityV1::Bag)),
-            right: Box::new(scan("b", CardinalityV1::Bag)),
-            correlation: vec![],
-        }),
-    );
-    let plan = produce_plan(&request(applied)).expect("apply plans");
+fn grouped_aggregate_is_linear_in_input() {
+    for fixture in [
+        ReferenceRelationFixtureV2::GroupedAggregateSum,
+        ReferenceRelationFixtureV2::GroupedAggregateTwoPartitionKeys,
+    ] {
+        let (_document, planned) = planned_relation(fixture).expect("grouped aggregate plans");
+        assert_eq!(
+            planned.semantic_cost().estimated_cardinality_class,
+            CardinalityClassV2::LinearInInput,
+            "{fixture:?} keeps its partition class"
+        );
+    }
+}
+
+/// A SCALAR aggregate (`count(*)` with NO partition keys) collapses every input
+/// row to exactly one output row, so its class is `ScalarOrSingleton` — the fold
+/// reads the ABSENCE of a non-empty partition from the sealed operator rather
+/// than the class of the scan beneath it (`D24`).
+#[test]
+fn scalar_aggregate_is_scalar_or_singleton() {
+    let (_document, planned) =
+        planned_relation(ReferenceRelationFixtureV2::ScalarCountStar).expect("scalar aggregate");
     assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::Multiplicative
+        planned.semantic_cost().estimated_cardinality_class,
+        CardinalityClassV2::ScalarOrSingleton
     );
 }
 
-/// A semijoin's output is bounded by its LEFT arm: it forwards the left class.
+/// A relational EXISTS conjunct under a residual filter is bounded by its left
+/// arm: the nested existence scan contributes no multiplicity of its own.
 #[test]
-fn semijoin_forwards_left_class() {
-    let semi = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::SemiJoin(SemiJoinV1 {
-            left: Box::new(scan("a", CardinalityV1::Bag)),
-            // Right arm is a join (multiplicative) but contributes no columns,
-            // so the semijoin must NOT inherit the right arm's multiplicativity.
-            right: Box::new(node(
-                CardinalityV1::Bag,
-                AlgebraOpV1::Join(JoinV1 {
-                    left: Box::new(scan("b", CardinalityV1::Bag)),
-                    right: Box::new(scan("c", CardinalityV1::Bag)),
-                    predicate: None,
-                }),
-            )),
-            predicate: None,
-        }),
-    );
-    let plan = produce_plan(&request(semi)).expect("semijoin plans");
+fn a_filter_over_an_existence_conjunct_stays_linear_in_input() {
+    let (_document, planned) = planned_relation(ReferenceRelationFixtureV2::ExistsWithBoolConjunct)
+        .expect("exists filter");
     assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::LinearInInput
+        planned.semantic_cost().estimated_cardinality_class,
+        CardinalityClassV2::LinearInInput
     );
 }
 
-/// An antijoin's output is likewise bounded by its left arm.
+/// INTEGRATOR-FIXTURE-PENDING: `CardinalityClassV2::Bounded` is derived only from
+/// a sealed `Limit` algebra stage or a bounded `SAMPLE` presentation, and
+/// `ReferenceRelationFixtureV2` has neither a `Limit` nor a `Union` variant. The
+/// keyword is still asserted verbatim below.
 #[test]
-fn antijoin_forwards_left_class() {
-    let anti = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::AntiJoin(AntiJoinV1 {
-            left: Box::new(scan("a", CardinalityV1::Bag)),
-            right: Box::new(node(
-                CardinalityV1::Bag,
-                AlgebraOpV1::Join(JoinV1 {
-                    left: Box::new(scan("b", CardinalityV1::Bag)),
-                    right: Box::new(scan("c", CardinalityV1::Bag)),
-                    predicate: None,
-                }),
-            )),
-            predicate: None,
-        }),
-    );
-    let plan = produce_plan(&request(anti)).expect("antijoin plans");
+fn the_unreachable_cardinality_classes_render_stable_keywords() {
+    assert_eq!(CardinalityClassV2::Bounded.keyword(), "bounded");
     assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::LinearInInput
+        CardinalityClassV2::Multiplicative.keyword(),
+        "multiplicative"
     );
-}
-
-/// A union takes the WORST (largest-risk) class of its two arms: a linear arm
-/// unioned with a multiplicative arm is multiplicative.
-#[test]
-fn union_takes_worst_arm_class() {
-    let multiplicative_arm = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::Join(JoinV1 {
-            left: Box::new(scan("b", CardinalityV1::Bag)),
-            right: Box::new(scan("c", CardinalityV1::Bag)),
-            predicate: None,
-        }),
-    );
-    let unioned = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::Union(UnionV1 {
-            left: Box::new(scan("a", CardinalityV1::Bag)),
-            right: Box::new(multiplicative_arm),
-            distinct: false,
-        }),
-    );
-    let plan = produce_plan(&request(unioned)).expect("union plans");
-    assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::Multiplicative
-    );
-}
-
-/// A union of two linear arms stays linear: `worst_class` returns the LEFT arm
-/// when the ranks are equal (the `>=` branch).
-#[test]
-fn union_of_equal_arms_stays_linear() {
-    let unioned = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::Union(UnionV1 {
-            left: Box::new(scan("a", CardinalityV1::Bag)),
-            right: Box::new(scan("b", CardinalityV1::Bag)),
-            distinct: false,
-        }),
-    );
-    let plan = produce_plan(&request(unioned)).expect("union plans");
-    assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::LinearInInput
-    );
-}
-
-/// A union whose RIGHT arm is the larger-risk one exercises the `worst_class`
-/// `else` branch (right > left).
-#[test]
-fn union_with_heavier_right_arm_takes_right() {
-    let bounded_left = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::Limit(LimitV1 {
-            input: Box::new(scan("a", CardinalityV1::Bag)),
-            count: 5,
-            offset: 0,
-        }),
-    );
-    let unioned = node(
-        CardinalityV1::Bag,
-        AlgebraOpV1::Union(UnionV1 {
-            left: Box::new(bounded_left),
-            // linear ranks higher than bounded
-            right: Box::new(scan("b", CardinalityV1::Bag)),
-            distinct: false,
-        }),
-    );
-    let plan = produce_plan(&request(unioned)).expect("union plans");
-    assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::LinearInInput
-    );
-}
-
-/// A fixpoint recursion forces the `Closure` class regardless of the root op.
-#[test]
-fn fixpoint_recursion_is_closure_class() {
-    let mut req = request(scan("reach", CardinalityV1::Set));
-    req.recursion = RecursionShapeV1::Fixpoint(fixpoint_proof());
-    let plan = produce_plan(&req).expect("recursive plan");
-    assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::Closure
-    );
-    assert!(plan.capabilities.contains(&CapabilityV1::RecursiveClosure));
 }
 
 // ---- recursion risk --------------------------------------------------------
 
-/// No recursion -> recursion risk `None`.
+/// No recursion -> recursion risk `None`, for both a plain relation and a
+/// nonrecursive rule program.
 #[test]
 fn no_recursion_is_risk_none() {
-    let plan = produce_plan(&request(scan("users", CardinalityV1::Bag))).expect("plans");
-    assert_eq!(plan.cost.recursion_risk_class, RecursionRiskClassV1::None);
-}
-
-/// A fixpoint WITHOUT a witness is a bounded-fixpoint risk (terminates by
-/// stratification, no path bound needed).
-#[test]
-fn fixpoint_without_witness_is_bounded_fixpoint() {
-    let mut req = request(scan("reach", CardinalityV1::Set));
-    req.recursion = RecursionShapeV1::Fixpoint(fixpoint_proof());
-    let plan = produce_plan(&req).expect("recursive plan");
+    let (_document, planned) = planned_relation(ReferenceRelationFixtureV2::Scan).expect("scan");
     assert_eq!(
-        plan.cost.recursion_risk_class,
-        RecursionRiskClassV1::BoundedFixpoint
+        planned.semantic_cost().recursion_risk_class,
+        RecursionRiskClassV2::None
+    );
+
+    let (document, input) =
+        rule_input(ReferenceRuleFixtureV2::SingleRule).expect("the single-rule fixture");
+    let planned = plan(&input, document.document()).expect("a single rule plans");
+    assert_eq!(
+        planned.semantic_cost().recursion_risk_class,
+        RecursionRiskClassV2::None
     );
 }
 
-/// A fixpoint WITH a witness becomes bound-dependent: termination now leans on
-/// the explicit witness/path bound.
+/// A self-recursive document rule program is a least-fixpoint closure: it
+/// terminates by stratification (no path bound needed), so its class is
+/// `BoundedFixpoint` and its cardinality class is `Closure`.
 #[test]
-fn fixpoint_with_witness_is_bound_dependent() {
-    let mut req = request(scan("reach", CardinalityV1::Set));
-    req.recursion = RecursionShapeV1::Fixpoint(fixpoint_proof());
-    req.witness = Some(acyclic_witness(WitnessSelectionPolicyV1::AllWitness));
-    let plan = produce_plan(&req).expect("recursive witness plan");
+fn a_recursive_rule_program_is_a_bounded_fixpoint_closure() {
+    let (document, input) =
+        rule_input(ReferenceRuleFixtureV2::PositiveSelfRecursion).expect("recursive program");
+    let planned = plan(&input, document.document()).expect("positive recursion admits");
     assert_eq!(
-        plan.cost.recursion_risk_class,
-        RecursionRiskClassV1::BoundDependent
+        planned.semantic_cost().estimated_cardinality_class,
+        CardinalityClassV2::Closure
+    );
+    assert_eq!(
+        planned.semantic_cost().recursion_risk_class,
+        RecursionRiskClassV2::BoundedFixpoint
+    );
+    assert!(planned
+        .capabilities()
+        .contains(&quanta_gqlang_v2_planning::CapabilityV2::RecursiveClosure));
+    assert!(planned.explain().recursive());
+}
+
+/// A mutual-recursion pair is one closure stratum whose exact recursive member
+/// identities are retained by the plan policy.
+#[test]
+fn a_mutual_recursion_pair_retains_every_recursive_member() {
+    let (document, input) =
+        rule_input(ReferenceRuleFixtureV2::MutualRecursionPair).expect("mutual program");
+    let planned = plan(&input, document.document()).expect("mutual recursion admits");
+    assert_eq!(
+        planned.semantic_cost().recursion_risk_class,
+        RecursionRiskClassV2::BoundedFixpoint
+    );
+    let policy = support::rule_policy(&planned).expect("a rule program policy");
+    assert_eq!(policy.stratum_count(), 1);
+    assert_eq!(
+        policy.recursive_members(),
+        &[
+            ResolvedPredicateIdV2::try_new("r").expect("a stable predicate identity"),
+            ResolvedPredicateIdV2::try_new("s").expect("a stable predicate identity"),
+        ]
     );
 }
 
-// ---- witness explosion risk ------------------------------------------------
+/// A cyclic FIND closure terminates only because an explicit witness/path bound
+/// caps it, so its recursion risk is `BoundDependent` (never
+/// `BoundedFixpoint`).
+#[test]
+fn a_cyclic_witness_closure_is_bound_dependent() {
+    let (document, input) = graph_input(quanta_gqlang_v2_sema::GraphQueryKindV1::Taint, 4)
+        .expect("the reference taint FIND");
+    let planned = plan(&input, document.document()).expect("a bounded FIND plans");
+    assert_eq!(
+        planned.semantic_cost().estimated_cardinality_class,
+        CardinalityClassV2::Closure
+    );
+    assert_eq!(
+        planned.semantic_cost().recursion_risk_class,
+        RecursionRiskClassV2::BoundDependent
+    );
+}
 
-/// No witness -> witness explosion risk `None`.
+/// A CHECK whose nested semantic-confirm FIND is cyclic carries the same
+/// bound-dependent closure risk as the standalone FIND.
+#[test]
+fn a_nested_confirm_closure_is_bound_dependent() {
+    let (document, input) = check_input().expect("the nested CHECK fixture");
+    let planned = plan(&input, document.document()).expect("the CHECK plans");
+    assert_eq!(
+        planned.semantic_cost().estimated_cardinality_class,
+        CardinalityClassV2::Closure
+    );
+    assert_eq!(
+        planned.semantic_cost().recursion_risk_class,
+        RecursionRiskClassV2::BoundDependent
+    );
+}
+
+// ---- witness explosion risk / selection policy -----------------------------
+
+/// No witness family -> witness explosion risk `None`, for a relation and for a
+/// rule program.
 #[test]
 fn no_witness_is_explosion_none() {
-    let plan = produce_plan(&request(scan("users", CardinalityV1::Bag))).expect("plans");
+    let (_document, planned) = planned_relation(ReferenceRelationFixtureV2::Scan).expect("scan");
     assert_eq!(
-        plan.cost.witness_explosion_risk_class,
-        WitnessExplosionRiskClassV1::None
+        planned.semantic_cost().witness_explosion_risk_class,
+        WitnessExplosionRiskClassV2::None
+    );
+
+    let (document, input) =
+        rule_input(ReferenceRuleFixtureV2::SingleRule).expect("the single-rule fixture");
+    let planned = plan(&input, document.document()).expect("a single rule plans");
+    assert_eq!(
+        planned.semantic_cost().witness_explosion_risk_class,
+        WitnessExplosionRiskClassV2::None
     );
 }
 
-/// An acyclic witness with a canonical-one selection -> single-witness risk.
+/// A cyclic witness family is cap-bounded regardless of the sealed cap: its
+/// termination depends on the explicit path-length bound, and the sealed cap
+/// selects every witness up to that cap.
 #[test]
-fn acyclic_canonical_one_is_single_witness() {
-    let mut req = request(scan("paths", CardinalityV1::Set));
-    req.witness = Some(acyclic_witness(WitnessSelectionPolicyV1::CanonicalOne));
-    req.result_kind = RequestedResultKindV1::PathWitness;
-    let plan = produce_plan(&req).expect("witness plan");
+fn a_cyclic_find_witness_is_cap_bounded_and_admits_all_witnesses() {
+    let (document, input) = graph_input(quanta_gqlang_v2_sema::GraphQueryKindV1::Taint, 4)
+        .expect("the reference taint FIND");
+    let planned = plan(&input, document.document()).expect("a bounded FIND plans");
     assert_eq!(
-        plan.cost.witness_explosion_risk_class,
-        WitnessExplosionRiskClassV1::SingleWitness
+        planned.semantic_cost().witness_explosion_risk_class,
+        WitnessExplosionRiskClassV2::CapBounded
     );
+    assert_eq!(
+        planned.result().witness_selection(),
+        Some(WitnessSelectionPolicyV2::AllWitness)
+    );
+    // The selection is DERIVED from the sealed graph cap, not chosen by the
+    // caller: the plan carries the sealed witness provenance itself.
+    assert_eq!(planned.policy().keyword(), "graph");
 }
 
-/// An acyclic witness with a top-k selection -> bounded-set risk.
+/// The witness-selection policy is derived from the SEALED max-witness cap
+/// alone: a cap wider than one admits every witness. INTEGRATOR-FIXTURE-PENDING
+/// for the other reachable arm: `CanonicalOne` requires a sealed cap of exactly
+/// one, and every reference document seals the standard witness budget
+/// (`max_witnesses = 10000`), so no fixture reaches it; `TopK` has no V2 spelling
+/// at all because no caller may select a witness policy.
 #[test]
-fn acyclic_topk_is_bounded_set() {
-    let mut req = request(scan("paths", CardinalityV1::Set));
-    req.witness = Some(acyclic_witness(WitnessSelectionPolicyV1::TopK { k: 3 }));
-    req.result_kind = RequestedResultKindV1::PathWitness;
-    let plan = produce_plan(&req).expect("witness plan");
+fn witness_selection_is_derived_from_the_sealed_cap() {
+    let (document, input) = graph_input(quanta_gqlang_v2_sema::GraphQueryKindV1::Path, 4)
+        .expect("the reference path FIND");
+    let contract = match &input {
+        quanta_gqlang_v2_planning::SemanticPlanInputV2::Graph(contract) => contract,
+        other => panic!("the fixture seals a graph carrier, got {other:?}"),
+    };
+    assert_eq!(contract.max_witnesses(), 10_000);
+    let planned = plan(&input, document.document()).expect("a bounded FIND plans");
     assert_eq!(
-        plan.cost.witness_explosion_risk_class,
-        WitnessExplosionRiskClassV1::BoundedSet
-    );
-    assert_eq!(
-        plan.witness_selection,
-        Some(WitnessSelectionPolicyV1::TopK { k: 3 })
-    );
-}
-
-/// An acyclic witness with an all-witness selection -> bounded-set risk.
-#[test]
-fn acyclic_all_witness_is_bounded_set() {
-    let mut req = request(scan("paths", CardinalityV1::Set));
-    req.witness = Some(acyclic_witness(WitnessSelectionPolicyV1::AllWitness));
-    req.result_kind = RequestedResultKindV1::PathWitness;
-    let plan = produce_plan(&req).expect("witness plan");
-    assert_eq!(
-        plan.cost.witness_explosion_risk_class,
-        WitnessExplosionRiskClassV1::BoundedSet
-    );
-}
-
-/// A cyclic witness -> cap-bounded risk regardless of the selection policy
-/// (its termination is capped by the explicit path-length bound).
-#[test]
-fn cyclic_witness_is_cap_bounded() {
-    let contract = WitnessContractV1::bind(&WitnessRequestV1 {
-        shape: RelationShapeV1::Cyclic,
-        dedup: DedupIdentityV1::NodeSequence,
-        max_witnesses: Some(8),
-        max_path_length: Some(16),
-        tie_break: WitnessTieBreakV1::ShortestThenLexical,
-        span: span(),
-    })
-    .expect("bounded cyclic witness");
-    let mut req = request(scan("graph", CardinalityV1::Set));
-    req.witness = Some(WitnessShapeV1 {
-        contract,
-        selection: WitnessSelectionPolicyV1::CanonicalOne,
-    });
-    req.result_kind = RequestedResultKindV1::PathWitness;
-    let plan = produce_plan(&req).expect("cyclic witness plan");
-    assert_eq!(
-        plan.cost.witness_explosion_risk_class,
-        WitnessExplosionRiskClassV1::CapBounded
+        planned.result().witness_selection(),
+        Some(WitnessSelectionPolicyV2::AllWitness)
     );
 }
 
 // ---- ordering contract -----------------------------------------------------
 
-/// A bag result (no order) is unordered, like a set.
+/// A bag result (no order) is unordered, like a set, and preserves duplicates.
 #[test]
-fn bag_result_is_unordered() {
-    let plan = produce_plan(&request(scan("users", CardinalityV1::Bag))).expect("plans");
-    assert_eq!(plan.cost.ordering_contract, OrderingContractV1::Unordered);
-    assert!(!plan.multiplicity_order.eliminates_duplicates());
+fn bag_result_is_unordered_and_keeps_duplicates() {
+    let (_document, planned) = planned_relation(ReferenceRelationFixtureV2::Scan).expect("scan");
+    assert_eq!(
+        planned.semantic_cost().ordering_contract,
+        OrderingContractV2::Unordered
+    );
+    let multiplicity = planned.result().multiplicity_order();
+    assert!(!multiplicity.is_ordered());
+    assert!(!multiplicity.eliminates_duplicates());
+    assert_eq!(multiplicity.cardinality, CardinalityV1::Bag);
+}
+
+/// A set result is unordered but DOES eliminate duplicates (`D26`: an unordered
+/// result stays unordered; the language never invents an order).
+#[test]
+fn set_result_is_unordered_and_eliminates_duplicates() {
+    let (_document, planned) =
+        planned_relation(ReferenceRelationFixtureV2::GroupedAggregateSum).expect("grouped plan");
+    assert_eq!(
+        planned.semantic_cost().ordering_contract,
+        OrderingContractV2::Unordered
+    );
+    let multiplicity = planned.result().multiplicity_order();
+    assert!(!multiplicity.is_ordered());
+    assert!(multiplicity.eliminates_duplicates());
+    assert_eq!(multiplicity.cardinality, CardinalityV1::Set);
+}
+
+/// A checked sort makes ORDER semantic, so the ordering contract and the
+/// multiplicity/order contract both report `ordered` on a sequence result.
+#[test]
+fn a_checked_sort_is_ordered() {
+    for fixture in [
+        ReferenceRelationFixtureV2::SortAsc,
+        ReferenceRelationFixtureV2::SortDesc,
+        ReferenceRelationFixtureV2::SortAliasKeyed,
+        ReferenceRelationFixtureV2::SortByProjectedExpression,
+    ] {
+        let (_document, planned) = planned_relation(fixture).expect("sort plans");
+        assert_eq!(
+            planned.semantic_cost().ordering_contract,
+            OrderingContractV2::Ordered,
+            "{fixture:?} is ordered"
+        );
+        assert!(planned.result().multiplicity_order().is_ordered());
+        assert_eq!(
+            planned.result().multiplicity_order().cardinality,
+            CardinalityV1::Sequence
+        );
+        assert!(!planned
+            .result()
+            .multiplicity_order()
+            .eliminates_duplicates());
+    }
+}
+
+/// Every witness-bearing arm materializes witnesses under a SET outcome, so it
+/// is unordered and duplicate-eliminating — including the CHECK alert arm whose
+/// nested confirm FIND is bounded.
+#[test]
+fn witness_and_alert_results_are_unordered_sets() {
+    let (document, input) = graph_input(quanta_gqlang_v2_sema::GraphQueryKindV1::Slice, 2)
+        .expect("the reference slice FIND");
+    let planned = plan(&input, document.document()).expect("a bounded FIND plans");
+    assert!(!planned.result().multiplicity_order().is_ordered());
+    assert!(planned
+        .result()
+        .multiplicity_order()
+        .eliminates_duplicates());
+
+    let (document, input) = check_input().expect("the nested CHECK fixture");
+    let planned = plan(&input, document.document()).expect("the CHECK plans");
+    assert_eq!(planned.result().result_kind(), ResultKindV2::Alert);
+    assert!(!planned.result().multiplicity_order().is_ordered());
 }
 
 // ---- closed keyword sets ---------------------------------------------------
@@ -551,126 +407,154 @@ fn bag_result_is_unordered() {
 #[test]
 fn cardinality_class_keywords_are_stable() {
     assert_eq!(
-        CardinalityClassV1::ScalarOrSingleton.keyword(),
+        CardinalityClassV2::ScalarOrSingleton.keyword(),
         "scalar_or_singleton"
     );
-    assert_eq!(CardinalityClassV1::Bounded.keyword(), "bounded");
+    assert_eq!(CardinalityClassV2::Bounded.keyword(), "bounded");
     assert_eq!(
-        CardinalityClassV1::LinearInInput.keyword(),
+        CardinalityClassV2::LinearInInput.keyword(),
         "linear_in_input"
     );
     assert_eq!(
-        CardinalityClassV1::Multiplicative.keyword(),
+        CardinalityClassV2::Multiplicative.keyword(),
         "multiplicative"
     );
-    assert_eq!(CardinalityClassV1::Closure.keyword(), "closure");
+    assert_eq!(CardinalityClassV2::Closure.keyword(), "closure");
 }
 
 #[test]
 fn recursion_risk_keywords_are_stable() {
-    assert_eq!(RecursionRiskClassV1::None.keyword(), "none");
+    assert_eq!(RecursionRiskClassV2::None.keyword(), "none");
     assert_eq!(
-        RecursionRiskClassV1::BoundedFixpoint.keyword(),
+        RecursionRiskClassV2::BoundedFixpoint.keyword(),
         "bounded_fixpoint"
     );
     assert_eq!(
-        RecursionRiskClassV1::BoundDependent.keyword(),
+        RecursionRiskClassV2::BoundDependent.keyword(),
         "bound_dependent"
     );
 }
 
 #[test]
 fn witness_explosion_keywords_are_stable() {
-    assert_eq!(WitnessExplosionRiskClassV1::None.keyword(), "none");
+    assert_eq!(WitnessExplosionRiskClassV2::None.keyword(), "none");
     assert_eq!(
-        WitnessExplosionRiskClassV1::SingleWitness.keyword(),
+        WitnessExplosionRiskClassV2::SingleWitness.keyword(),
         "single_witness"
     );
     assert_eq!(
-        WitnessExplosionRiskClassV1::BoundedSet.keyword(),
+        WitnessExplosionRiskClassV2::BoundedSet.keyword(),
         "bounded_set"
     );
     assert_eq!(
-        WitnessExplosionRiskClassV1::CapBounded.keyword(),
+        WitnessExplosionRiskClassV2::CapBounded.keyword(),
         "cap_bounded"
     );
 }
 
 #[test]
 fn ordering_contract_keywords_are_stable() {
-    assert_eq!(OrderingContractV1::Unordered.keyword(), "unordered");
-    assert_eq!(OrderingContractV1::Ordered.keyword(), "ordered");
+    assert_eq!(OrderingContractV2::Unordered.keyword(), "unordered");
+    assert_eq!(OrderingContractV2::Ordered.keyword(), "ordered");
+}
+
+/// V2 replacement for the deleted `TruthLaneV1` keyword rail: the V1 lane
+/// conflated WHO checked the result with HOW deterministic it is, and the V2 cut
+/// split it into [`AuthorityLaneV2`] and [`EvaluationDeterminismV2`]. Both closed
+/// sets are asserted verbatim, and the deleted advisory/candidate lane has no
+/// spelling in either.
+#[test]
+fn authority_lane_keywords_are_stable() {
+    assert_eq!(
+        AuthorityLaneV2::FrontendChecked.keyword(),
+        "frontend_checked"
+    );
+    assert_eq!(
+        AuthorityLaneV2::CertifiedRequirementValidated.keyword(),
+        "certified_requirement_validated"
+    );
 }
 
 #[test]
-fn truth_lane_keywords_are_stable() {
-    assert_eq!(TruthLaneV1::Deterministic.keyword(), "deterministic");
-    assert_eq!(TruthLaneV1::Candidate.keyword(), "candidate");
-    assert_eq!(TruthLaneV1::ProofConfirmed.keyword(), "proof_confirmed");
+fn evaluation_determinism_keywords_are_stable() {
+    assert_eq!(
+        EvaluationDeterminismV2::Deterministic.keyword(),
+        "deterministic"
+    );
+    assert_eq!(
+        EvaluationDeterminismV2::NonDeterministic.keyword(),
+        "non_deterministic"
+    );
 }
 
 #[test]
 fn evidence_requirement_keywords_are_stable() {
-    assert_eq!(EvidenceRequirementV1::None.keyword(), "none");
+    assert_eq!(EvidenceRequirementV2::None.keyword(), "none");
     assert_eq!(
-        EvidenceRequirementV1::SourceLocation.keyword(),
+        EvidenceRequirementV2::SourceLocation.keyword(),
         "source_location"
     );
     assert_eq!(
-        EvidenceRequirementV1::WitnessPayload.keyword(),
+        EvidenceRequirementV2::WitnessPayload.keyword(),
         "witness_payload"
     );
-    assert_eq!(EvidenceRequirementV1::ProofTree.keyword(), "proof_tree");
+    assert_eq!(EvidenceRequirementV2::ProofTree.keyword(), "proof_tree");
 }
 
 #[test]
 fn effect_class_keywords_are_stable() {
-    assert_eq!(EffectClassV1::ReadOnly.keyword(), "read_only");
+    assert_eq!(EffectClassV2::ReadOnly.keyword(), "read_only");
     assert_eq!(
-        EffectClassV1::ProofEvidenceOnly.keyword(),
+        EffectClassV2::ProofEvidenceOnly.keyword(),
         "proof_evidence_only"
     );
-    assert_eq!(EffectClassV1::ExportOnly.keyword(), "export_only");
+    assert_eq!(EffectClassV2::ExportOnly.keyword(), "export_only");
     assert_eq!(
-        EffectClassV1::MutationForbidden.keyword(),
+        EffectClassV2::MutationForbidden.keyword(),
         "mutation_forbidden"
     );
 }
 
 #[test]
 fn result_kind_keywords_are_stable() {
-    assert_eq!(ResultKindV1::Table.keyword(), "table");
-    assert_eq!(ResultKindV1::Alert.keyword(), "alert");
-    assert_eq!(ResultKindV1::PathWitness.keyword(), "path_witness");
-    assert_eq!(ResultKindV1::ProofExplain.keyword(), "proof_explain");
+    assert_eq!(ResultKindV2::Table.keyword(), "table");
+    assert_eq!(ResultKindV2::Alert.keyword(), "alert");
+    assert_eq!(ResultKindV2::PathWitness.keyword(), "path_witness");
+    assert_eq!(ResultKindV2::ProofExplain.keyword(), "proof_explain");
 }
 
 #[test]
 fn witness_selection_keywords_are_stable() {
     assert_eq!(
-        WitnessSelectionPolicyV1::CanonicalOne.keyword(),
+        WitnessSelectionPolicyV2::CanonicalOne.keyword(),
         "canonical_one"
     );
-    assert_eq!(WitnessSelectionPolicyV1::TopK { k: 7 }.keyword(), "top_k");
+    assert_eq!(WitnessSelectionPolicyV2::TopK { k: 7 }.keyword(), "top_k");
     assert_eq!(
-        WitnessSelectionPolicyV1::AllWitness.keyword(),
+        WitnessSelectionPolicyV2::AllWitness.keyword(),
         "all_witness"
     );
 }
 
+/// V2 cut: `RenderRequirementV2::SarifFindings` is the CHECK/EXPORT SARIF arm
+/// that the V1 five-keyword rail did not carry.
 #[test]
 fn render_requirement_keywords_are_stable() {
-    assert_eq!(RenderRequirementV1::RowsOnly.keyword(), "rows_only");
+    assert_eq!(RenderRequirementV2::RowsOnly.keyword(), "rows_only");
     assert_eq!(
-        RenderRequirementV1::SourceLocation.keyword(),
+        RenderRequirementV2::SourceLocation.keyword(),
         "source_location"
     );
     assert_eq!(
-        RenderRequirementV1::WitnessPayload.keyword(),
+        RenderRequirementV2::SarifFindings.keyword(),
+        "sarif_findings"
+    );
+    assert_eq!(
+        RenderRequirementV2::WitnessPayload.keyword(),
         "witness_payload"
     );
     assert_eq!(
-        RenderRequirementV1::ProvenanceTree.keyword(),
+        RenderRequirementV2::ProvenanceTree.keyword(),
         "provenance_tree"
     );
 }

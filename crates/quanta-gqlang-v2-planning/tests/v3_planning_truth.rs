@@ -1,314 +1,488 @@
 #![allow(
-    clippy::panic,
-    clippy::unwrap_used,
     clippy::expect_used,
     clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
     clippy::wildcard_enum_match_arm,
-    reason = "integration test rails assert on fixed shapes and panic on unexpected variants"
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
-//! v3 planning truth/evidence/effect + result-kind + cost rails (ticket 07).
+
+//! v3 planning truth / evidence / effect / result-kind / cost rails (ticket 07).
 //!
-//! Pins the syntax->sema->ir path at the PLANNING seam: a NORMALIZED algebra
-//! (ticket 04) / logic (ticket 05) shape lowers into a host-agnostic
-//! [`PublicPlanV1`]. These rails assert the POSITIVE classifications — every one
-//! of the five fixed cost fields is populated with a typed class value, result
-//! kinds and witness-selection policies are explicit, and multiplicity/order is
-//! derived from the algebra cardinality (`D6`/`D20`/`D26`/`D32`).
+//! Pins the syntax->sema->algebra/logic->PLANNING seam for every assembled plan
+//! field: authority lane, evaluation-determinism lane, evidence requirement,
+//! effect class, result contract (kind, render payload, witness selection,
+//! multiplicity/order), the fixed semantic-cost schema, and the retained family
+//! policy.
+//!
+//! V2 cut: no field is caller-selected any more, so the V1 rails that requested a
+//! truth lane / result kind / effect are replaced by rails that assert the
+//! DERIVED value of each sealed arm, plus the determinism rails (two identical
+//! plans compare equal and every field is stable under repeated construction).
+//!
+//! INTEGRATOR-FIXTURE-PENDING (see the lane report): the certified
+//! `REQUIRE CERTIFIED` rail needs a resolved meta document fixture, the
+//! proof-explain / table-by-presentation rails need a resolved presentation
+//! fixture, and the SARIF/export effect rails need a resolved EXPORT or
+//! `emit=sarif` CHECK fixture. Their closed vocabulary is asserted here
+//! verbatim; the derive-side rails that CAN be driven from the sealed fixture
+//! matrix are all present.
 
-use quanta_gqlang_v2_algebra::{
-    AggregateExprV1, AggregateV1, AlgebraNodeV1, AlgebraOpV1, ColumnProvenanceV1, ColumnV1,
-    GroupV1, ScanV1, SortDirectionV1, SortKeyV1, SortV1,
-};
-use quanta_gqlang_v2_hir::{HirNodeIdV1, LiteralV1, SpanV1, ValueExprHirV1, ValueExprKindV1};
-use quanta_gqlang_v2_logic::{
-    DedupIdentityV1, RelationShapeV1, WitnessContractV1, WitnessRequestV1, WitnessTieBreakV1,
-};
+use std::collections::BTreeSet;
+
 use quanta_gqlang_v2_planning::{
-    produce_plan, CardinalityClassV1, EffectClassV1, EvidenceRequirementV1, OrderingContractV1,
-    PlanRequestV1, RecursionRiskClassV1, RecursionShapeV1, RenderRequirementV1,
-    RequestedResultKindV1, ResultKindV1, TruthLaneV1, WitnessExplosionRiskClassV1,
-    WitnessSelectionPolicyV1, WitnessShapeV1,
+    plan, plan_outcome, AuthorityLaneV2, CapabilityV2, CardinalityClassV2, EffectClassV2,
+    EvaluationDeterminismV2, EvidenceRequirementV2, NoPlanReasonV2, OrderingContractV2,
+    PlanOutcomeV2, RecursionRiskClassV2, RenderRequirementV2, ResultKindV2, SemanticPlanInputV2,
+    SemanticPlanV2, WitnessExplosionRiskClassV2,
 };
-use quanta_gqlang_v2_types::CardinalityV1;
+use quanta_gqlang_v2_sema::test_support::{ReferenceRelationFixtureV2, ReferenceRuleFixtureV2};
+use quanta_gqlang_v2_types::{
+    AggregationClassV1, CardinalityV1, DeterminismV1, MonotonicityV1, PurityV1,
+};
 
-fn id(n: u32) -> HirNodeIdV1 {
-    HirNodeIdV1::from_raw(n)
-}
+mod support;
 
-fn span() -> SpanV1 {
-    SpanV1::new(0, 10)
-}
+use support::{check_input, graph_input, planned_relation, relational_policy, rule_input};
 
-fn col(name: &str) -> ColumnV1 {
-    ColumnV1::new(
-        name,
-        ColumnProvenanceV1::Source {
-            relation: "rel".to_owned(),
-            alias: None,
-            field: Some(name.to_owned()),
-        },
-    )
-}
+// ---- derived lanes on a relation -------------------------------------------
 
-fn lit_expr(n: u32) -> ValueExprHirV1 {
-    ValueExprHirV1::new(
-        id(n),
-        span(),
-        ValueExprKindV1::Literal(LiteralV1::Int("1".to_owned())),
-    )
-}
-
-fn scan(name: &str, cardinality: CardinalityV1) -> AlgebraNodeV1 {
-    AlgebraNodeV1::new(
-        id(1),
-        span(),
-        vec![col("x")],
-        cardinality,
-        AlgebraOpV1::Scan(ScanV1 {
-            relation: name.to_owned(),
-            source_identity_v1: quanta_gqlang_v2_algebra::RelationSourceIdentityV1::SchemaOpen,
-            alias: None,
-        }),
-    )
-}
-
-/// group + aggregate + sort -> all five cost fields are populated with typed
-/// class values, result-kind table, ordering is semantic (sequence).
+/// group + aggregate: every derived plan field is populated with its exact
+/// sealed-derived value — authority lane, determinism lane, evidence, effect,
+/// result contract, capability set, cost schema, explain note, and the retained
+/// relational policy.
 #[test]
-fn group_aggregate_sort_populates_all_five_cost_fields() {
-    let base = scan("users", CardinalityV1::Bag);
-    let group = AlgebraNodeV1::new(
-        id(2),
-        span(),
-        vec![col("k")],
-        CardinalityV1::Set,
-        AlgebraOpV1::Group(GroupV1 {
-            input: Box::new(base),
-            keys: vec![lit_expr(10)],
-        }),
-    );
-    let aggregate = AlgebraNodeV1::new(
-        id(3),
-        span(),
-        vec![col("k"), col("n")],
-        CardinalityV1::Set,
-        AlgebraOpV1::Aggregate(AggregateV1 {
-            input: Box::new(group),
-            aggregates: vec![AggregateExprV1 {
-                function: "count".to_owned(),
-                origin: id(11),
-                args: vec![],
-                distinct: false,
-            }],
-        }),
-    );
-    let sort = AlgebraNodeV1::new(
-        id(4),
-        span(),
-        vec![col("k"), col("n")],
-        CardinalityV1::Sequence,
-        AlgebraOpV1::Sort(SortV1 {
-            input: Box::new(aggregate),
-            keys: vec![SortKeyV1 {
-                expr: lit_expr(12),
-                direction: SortDirectionV1::Descending,
-            }],
-        }),
-    );
+fn a_group_aggregate_plan_populates_every_derived_field() {
+    let (document, input) =
+        support::relation_input(ReferenceRelationFixtureV2::GroupedAggregateSum)
+            .expect("the grouped-aggregate fixture");
+    let planned = plan(&input, document.document()).expect("a grouped aggregate plans");
 
-    let request = PlanRequestV1 {
-        root: sort,
-        recursion: RecursionShapeV1::None,
-        witness: None,
-        result_kind: RequestedResultKindV1::Table,
-        effect: EffectClassV1::ReadOnly,
-        truth_lane: TruthLaneV1::Deterministic,
-    };
-
-    let plan = produce_plan(&request).expect("group+aggregate+sort plans");
-
-    // All five fixed cost fields carry typed class values.
+    assert_eq!(planned.authority_lane(), AuthorityLaneV2::FrontendChecked);
     assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::LinearInInput
+        planned.evaluation_determinism(),
+        EvaluationDeterminismV2::Deterministic
     );
-    assert_eq!(plan.cost.recursion_risk_class, RecursionRiskClassV1::None);
+    assert_eq!(planned.evidence(), EvidenceRequirementV2::None);
+    assert_eq!(planned.effect(), EffectClassV2::ReadOnly);
+
+    assert_eq!(planned.result().result_kind(), ResultKindV2::Table);
     assert_eq!(
-        plan.cost.witness_explosion_risk_class,
-        WitnessExplosionRiskClassV1::None
+        planned.result().render_requirement(),
+        RenderRequirementV2::RowsOnly
     );
-    assert_eq!(plan.cost.ordering_contract, OrderingContractV1::Ordered);
-    assert_eq!(plan.cost.unsupported_reason_code, None);
+    assert_eq!(planned.result().witness_selection(), None);
+    assert_eq!(
+        planned.result().multiplicity_order().cardinality,
+        CardinalityV1::Set
+    );
 
-    // Result kind + ordering contract.
-    assert_eq!(plan.result_kind, ResultKindV1::Table);
-    assert_eq!(plan.render_requirement, RenderRequirementV1::RowsOnly);
-    assert!(plan.multiplicity_order.is_ordered());
+    assert_eq!(
+        planned.capabilities(),
+        &BTreeSet::from([
+            CapabilityV2::RelationScan,
+            CapabilityV2::Grouping,
+            CapabilityV2::Aggregation,
+        ])
+    );
+    assert_eq!(
+        planned.semantic_cost().estimated_cardinality_class,
+        CardinalityClassV2::LinearInInput
+    );
+    assert_eq!(
+        planned.semantic_cost().recursion_risk_class,
+        RecursionRiskClassV2::None
+    );
+    assert_eq!(
+        planned.semantic_cost().witness_explosion_risk_class,
+        WitnessExplosionRiskClassV2::None
+    );
+    assert_eq!(
+        planned.semantic_cost().ordering_contract,
+        OrderingContractV2::Unordered
+    );
 
-    // Capabilities derived from the normalized shape.
-    use quanta_gqlang_v2_planning::CapabilityV1;
-    assert!(plan.capabilities.contains(&CapabilityV1::Grouping));
-    assert!(plan.capabilities.contains(&CapabilityV1::Aggregation));
-    assert!(plan.capabilities.contains(&CapabilityV1::Ordering));
-    assert!(plan.capabilities.contains(&CapabilityV1::RelationScan));
+    assert_eq!(
+        planned.explain().families(),
+        &[
+            quanta_gqlang_v2_algebra::AlgebraFamilyV2::Aggregate,
+            quanta_gqlang_v2_algebra::AlgebraFamilyV2::Group,
+            quanta_gqlang_v2_algebra::AlgebraFamilyV2::Scan,
+        ]
+    );
+    assert!(!planned.explain().recursive());
+
+    let (nodes, effects) = relational_policy(&planned).expect("a relational policy");
+    assert_eq!(nodes, 3);
+    assert_eq!(effects.purity, PurityV1::Pure);
+    assert_eq!(effects.determinism, DeterminismV1::Deterministic);
+    assert_eq!(effects.monotonicity, MonotonicityV1::Monotone);
+    assert_eq!(effects.aggregation, AggregationClassV1::Aggregate);
 }
 
-/// A SCALAR aggregate (`select count(*) from users` with NO grouping keys)
-/// collapses all input rows to exactly one output row. Its estimated cardinality
-/// class must be `ScalarOrSingleton`, NOT the `LinearInInput` of the underlying
-/// scan. The scalar shape is an `Aggregate` over a `Group` with EMPTY keys
-/// (`D24`: frontend-owned cost signals must be accurate).
+/// A checked sort makes order semantic, and its folded effects stay monotone and
+/// scalar: ordering is a result contract fact, not an effect class change.
 #[test]
-fn scalar_aggregate_with_no_grouping_keys_is_scalar_or_singleton() {
-    let base = scan("users", CardinalityV1::Bag);
-    let group = AlgebraNodeV1::new(
-        id(2),
-        span(),
-        vec![],
-        CardinalityV1::Set,
-        AlgebraOpV1::Group(GroupV1 {
-            input: Box::new(base),
-            keys: vec![],
-        }),
-    );
-    let aggregate = AlgebraNodeV1::new(
-        id(3),
-        span(),
-        vec![col("n")],
-        CardinalityV1::Set,
-        AlgebraOpV1::Aggregate(AggregateV1 {
-            input: Box::new(group),
-            aggregates: vec![AggregateExprV1 {
-                function: "count".to_owned(),
-                origin: id(11),
-                args: vec![],
-                distinct: false,
-            }],
-        }),
-    );
-
-    let request = PlanRequestV1 {
-        root: aggregate,
-        recursion: RecursionShapeV1::None,
-        witness: None,
-        result_kind: RequestedResultKindV1::Table,
-        effect: EffectClassV1::ReadOnly,
-        truth_lane: TruthLaneV1::Deterministic,
-    };
-
-    let plan = produce_plan(&request).expect("scalar aggregate plans");
-
+fn a_sort_plan_marks_order_semantic() {
+    let (_document, planned) =
+        planned_relation(ReferenceRelationFixtureV2::SortAsc).expect("the SortAsc fixture");
     assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::ScalarOrSingleton
+        planned.semantic_cost().ordering_contract,
+        OrderingContractV2::Ordered
+    );
+    assert!(planned.result().multiplicity_order().is_ordered());
+    assert!(planned.capabilities().contains(&CapabilityV2::Ordering));
+    let (nodes, effects) = relational_policy(&planned).expect("a relational policy");
+    assert_eq!(nodes, 2);
+    assert_eq!(effects.monotonicity, MonotonicityV1::Monotone);
+    assert_eq!(effects.aggregation, AggregationClassV1::Scalar);
+}
+
+/// A SCALAR aggregate collapses the whole input to one row: the class is
+/// `ScalarOrSingleton`, and the fold is visible in the retained effect summary.
+#[test]
+fn a_scalar_aggregate_collapses_to_one_row() {
+    let (_document, planned) =
+        planned_relation(ReferenceRelationFixtureV2::ScalarCountStar).expect("scalar count");
+    assert_eq!(
+        planned.semantic_cost().estimated_cardinality_class,
+        CardinalityClassV2::ScalarOrSingleton
+    );
+    let (_nodes, effects) = relational_policy(&planned).expect("a relational policy");
+    assert_eq!(effects.aggregation, AggregationClassV1::Aggregate);
+}
+
+/// The determinism LANE is folded from the sealed expression effects, never
+/// hardcoded: an ordinary relation is deterministic, while a relation whose
+/// predicate proves a relational EXISTS carries impure, non-deterministic,
+/// non-monotone effects.
+#[test]
+fn the_determinism_lane_is_folded_from_sealed_expression_effects() {
+    let (_document, plain) =
+        planned_relation(ReferenceRelationFixtureV2::Scan).expect("the Scan fixture");
+    assert_eq!(
+        plain.evaluation_determinism(),
+        EvaluationDeterminismV2::Deterministic
+    );
+    let (_nodes, effects) = relational_policy(&plain).expect("a relational policy");
+    assert_eq!(effects.purity, PurityV1::Pure);
+    assert_eq!(effects.monotonicity, MonotonicityV1::Monotone);
+
+    let (_document, exists) = planned_relation(ReferenceRelationFixtureV2::ExistsWithBoolConjunct)
+        .expect("the existence-conjunct fixture");
+    assert_eq!(
+        exists.evaluation_determinism(),
+        EvaluationDeterminismV2::NonDeterministic
+    );
+    let (_nodes, effects) = relational_policy(&exists).expect("a relational policy");
+    assert_eq!(effects.purity, PurityV1::Impure);
+    assert_eq!(effects.determinism, DeterminismV1::NonDeterministic);
+    assert_eq!(effects.monotonicity, MonotonicityV1::NonMonotone);
+    // Determinism is an independent lane: the join predicate makes the plan
+    // non-monotone without making evaluation non-deterministic.
+    let (_document, joined) =
+        planned_relation(ReferenceRelationFixtureV2::InnerJoinOn).expect("the ON-join fixture");
+    assert_eq!(
+        joined.evaluation_determinism(),
+        EvaluationDeterminismV2::Deterministic
+    );
+    let (_nodes, effects) = relational_policy(&joined).expect("a relational policy");
+    assert_eq!(effects.monotonicity, MonotonicityV1::NonMonotone);
+}
+
+/// Every positional algebra arm plans a read-only TABLE with rows-only rendering
+/// and NO standalone evidence requirement. V2 replacement for the V1
+/// caller-selected `result_kind = Table` / `effect = ReadOnly` rail.
+#[test]
+fn every_relational_arm_plans_a_table_read_only_result() {
+    for fixture in [
+        ReferenceRelationFixtureV2::Scan,
+        ReferenceRelationFixtureV2::Filter,
+        ReferenceRelationFixtureV2::CrossJoin,
+        ReferenceRelationFixtureV2::InnerJoinOn,
+        ReferenceRelationFixtureV2::SelfJoinInner,
+        ReferenceRelationFixtureV2::ProjectMultipleExpressions,
+        ReferenceRelationFixtureV2::GroupedAggregateSum,
+        ReferenceRelationFixtureV2::ScalarCountStar,
+        ReferenceRelationFixtureV2::SortAsc,
+        ReferenceRelationFixtureV2::SortMultiKeyMixedDirections,
+        ReferenceRelationFixtureV2::SortNullsLastNullableField,
+        ReferenceRelationFixtureV2::ExistsWithBoolConjunct,
+    ] {
+        let (_document, planned) = planned_relation(fixture).expect("the fixture plans");
+        assert_eq!(
+            planned.authority_lane(),
+            AuthorityLaneV2::FrontendChecked,
+            "{fixture:?}"
+        );
+        assert_eq!(
+            planned.evidence(),
+            EvidenceRequirementV2::None,
+            "{fixture:?}"
+        );
+        assert_eq!(planned.effect(), EffectClassV2::ReadOnly, "{fixture:?}");
+        assert_eq!(
+            planned.result().result_kind(),
+            ResultKindV2::Table,
+            "{fixture:?}"
+        );
+        assert_eq!(
+            planned.result().render_requirement(),
+            RenderRequirementV2::RowsOnly,
+            "{fixture:?}"
+        );
+        assert_eq!(planned.result().witness_selection(), None, "{fixture:?}");
+    }
+}
+
+// ---- derived lanes on the non-relational arms ------------------------------
+
+/// The graph arm is a proof/evidence-ONLY path result: V2 replacement for the V1
+/// "proof-confirmed lane requires a proof tree" rail. Planning can no longer be
+/// asked for a proof lane over an ordinary result; the graph arm's own sealed
+/// witness contract is what carries the evidence.
+#[test]
+fn a_graph_arm_carries_proof_evidence_only() {
+    let (document, input) = graph_input(quanta_gqlang_v2_sema::GraphQueryKindV1::Taint, 4)
+        .expect("the reference taint FIND");
+    let planned = plan(&input, document.document()).expect("a bounded FIND plans");
+    assert_eq!(planned.authority_lane(), AuthorityLaneV2::FrontendChecked);
+    assert_eq!(planned.evidence(), EvidenceRequirementV2::WitnessPayload);
+    assert_eq!(planned.effect(), EffectClassV2::ProofEvidenceOnly);
+    assert_eq!(planned.result().result_kind(), ResultKindV2::PathWitness);
+    assert_eq!(
+        planned.result().render_requirement(),
+        RenderRequirementV2::WitnessPayload
     );
 }
 
-/// A recursive/witness logic shape -> result-kind path/witness with an EXPLICIT
-/// witness-selection policy and a closure cardinality class.
+/// The CHECK arm is an alert with a source-location evidence requirement under
+/// the sealed `Skip` confirmation: the V1 caller-selected alert rail is replaced
+/// by the sealed CHECK policy the plan retains.
 #[test]
-fn recursive_witness_shape_is_path_witness_with_explicit_selection() {
-    // Build an admitted positive-recursion proof from the logic crate.
-    use quanta_gqlang_v2_logic::{BodyLiteralV1, RecursiveProgramV1, RuleDefV1};
-    let program = RecursiveProgramV1::from_rules(vec![
-        RuleDefV1::new("reach", vec![BodyLiteralV1::positive("edge")], span()),
-        RuleDefV1::new(
-            "reach",
-            vec![
-                BodyLiteralV1::positive("edge"),
-                BodyLiteralV1::positive("reach"),
-            ],
-            span(),
-        ),
-    ]);
-    let proof = program.stratify().expect("positive recursion admits");
-
-    let witness = WitnessContractV1::bind(&WitnessRequestV1 {
-        shape: RelationShapeV1::Cyclic,
-        dedup: DedupIdentityV1::NodeSequence,
-        max_witnesses: Some(8),
-        max_path_length: Some(16),
-        tie_break: WitnessTieBreakV1::ShortestThenLexical,
-        span: span(),
-    })
-    .expect("bounded witness contract");
-
-    let request = PlanRequestV1 {
-        root: scan("reach", CardinalityV1::Set),
-        recursion: RecursionShapeV1::Fixpoint(proof),
-        witness: Some(WitnessShapeV1 {
-            contract: witness,
-            selection: WitnessSelectionPolicyV1::CanonicalOne,
-        }),
-        result_kind: RequestedResultKindV1::PathWitness,
-        effect: EffectClassV1::ReadOnly,
-        truth_lane: TruthLaneV1::Deterministic,
-    };
-
-    let plan = produce_plan(&request).expect("recursive witness plans");
-
-    assert_eq!(plan.result_kind, ResultKindV1::PathWitness);
-    assert_eq!(plan.render_requirement, RenderRequirementV1::WitnessPayload);
-    assert_eq!(plan.evidence, EvidenceRequirementV1::WitnessPayload);
+fn a_check_arm_carries_source_location_evidence() {
+    let (document, input) = check_input().expect("the nested CHECK fixture");
+    let planned = plan(&input, document.document()).expect("the CHECK plans");
+    assert_eq!(planned.authority_lane(), AuthorityLaneV2::FrontendChecked);
+    assert_eq!(planned.evidence(), EvidenceRequirementV2::SourceLocation);
+    assert_eq!(planned.effect(), EffectClassV2::ReadOnly);
+    assert_eq!(planned.result().result_kind(), ResultKindV2::Alert);
     assert_eq!(
-        plan.witness_selection,
-        Some(WitnessSelectionPolicyV1::CanonicalOne)
+        planned.result().render_requirement(),
+        RenderRequirementV2::SourceLocation
     );
-
-    // Recursion + cyclic witness drive the risk classes.
+    let policy = support::check_policy(&planned).expect("a CHECK policy");
     assert_eq!(
-        plan.cost.estimated_cardinality_class,
-        CardinalityClassV1::Closure
+        policy.mode(),
+        quanta_gqlang_v2_sema::DetectionModeV1::SemanticOnly
     );
-    assert_eq!(
-        plan.cost.recursion_risk_class,
-        RecursionRiskClassV1::BoundDependent
-    );
-    assert_eq!(
-        plan.cost.witness_explosion_risk_class,
-        WitnessExplosionRiskClassV1::CapBounded
-    );
-
-    use quanta_gqlang_v2_planning::CapabilityV1;
-    assert!(plan.capabilities.contains(&CapabilityV1::RecursiveClosure));
-    assert!(plan
-        .capabilities
-        .contains(&CapabilityV1::WitnessMaterialization));
+    assert_eq!(policy.confirm(), quanta_gqlang_v2_sema::ConfirmModeV1::Skip);
+    assert_eq!(policy.emit(), quanta_gqlang_v2_sema::EmitModeV1::Findings);
+    assert_eq!(policy.nested_graph().map(|nested| nested.depth()), Some(4));
 }
 
-/// A proof-confirmed truth lane forces a proof-tree evidence requirement and is
-/// the ONLY lane that may carry final policy truth.
+/// A document rule program plans a read-only TABLE whose multiplicity/order
+/// contract is a SET: a least-fixpoint closure eliminates duplicates and carries
+/// no semantic order.
 #[test]
-fn proof_confirmed_lane_requires_proof_tree_and_is_final_capable() {
-    let request = PlanRequestV1 {
-        root: scan("findings", CardinalityV1::Set),
-        recursion: RecursionShapeV1::None,
-        witness: None,
-        result_kind: RequestedResultKindV1::ProofExplain,
-        effect: EffectClassV1::ProofEvidenceOnly,
-        truth_lane: TruthLaneV1::ProofConfirmed,
-    };
-    let plan = produce_plan(&request).expect("proof-confirmed plans");
-    assert_eq!(plan.evidence, EvidenceRequirementV1::ProofTree);
-    assert!(plan.truth_lane.is_final_policy_capable());
-    assert!(!TruthLaneV1::Candidate.is_final_policy_capable());
-    assert!(!TruthLaneV1::Deterministic.is_final_policy_capable());
+fn a_rule_program_plans_a_table_read_only_set_result() {
+    for fixture in [
+        ReferenceRuleFixtureV2::SingleRule,
+        ReferenceRuleFixtureV2::PositiveSelfRecursion,
+    ] {
+        let (document, input) = rule_input(fixture).expect("the rule fixture");
+        let planned = plan(&input, document.document()).expect("the program plans");
+        assert_eq!(
+            planned.authority_lane(),
+            AuthorityLaneV2::FrontendChecked,
+            "{fixture:?}"
+        );
+        assert_eq!(
+            planned.evidence(),
+            EvidenceRequirementV2::None,
+            "{fixture:?}"
+        );
+        assert_eq!(planned.effect(), EffectClassV2::ReadOnly, "{fixture:?}");
+        assert_eq!(
+            planned.result().result_kind(),
+            ResultKindV2::Table,
+            "{fixture:?}"
+        );
+        assert_eq!(
+            planned.result().multiplicity_order().cardinality,
+            CardinalityV1::Set,
+            "{fixture:?}"
+        );
+        assert!(planned
+            .result()
+            .multiplicity_order()
+            .eliminates_duplicates());
+    }
 }
 
-/// An unordered (set) result keeps an unordered contract: the language does not
-/// pretend an order exists (`D26`).
+/// The authority lane is `FrontendChecked` for every ordinary sealed arm. The
+/// certified lane is reserved for an exact `REQUIRE CERTIFIED` directive:
+/// INTEGRATOR-FIXTURE-PENDING for its entry rail (no resolved meta document
+/// fixture exists), while both lane spellings and the certified policy marker
+/// are asserted verbatim.
 #[test]
-fn unordered_result_stays_unordered() {
-    let request = PlanRequestV1 {
-        root: scan("users", CardinalityV1::Set),
-        recursion: RecursionShapeV1::None,
-        witness: None,
-        result_kind: RequestedResultKindV1::Table,
-        effect: EffectClassV1::ReadOnly,
-        truth_lane: TruthLaneV1::Deterministic,
-    };
-    let plan = produce_plan(&request).expect("set table plans");
-    assert_eq!(plan.cost.ordering_contract, OrderingContractV1::Unordered);
-    assert!(!plan.multiplicity_order.is_ordered());
-    assert!(plan.multiplicity_order.eliminates_duplicates());
+fn the_certified_lane_is_reserved_for_a_require_certified_directive() {
+    for fixture in [
+        ReferenceRelationFixtureV2::Scan,
+        ReferenceRelationFixtureV2::GroupedAggregateSum,
+    ] {
+        let (_document, planned) = planned_relation(fixture).expect("the fixture plans");
+        assert_eq!(planned.authority_lane(), AuthorityLaneV2::FrontendChecked);
+    }
+    let (document, input) = graph_input(quanta_gqlang_v2_sema::GraphQueryKindV1::Summary, 2)
+        .expect("the reference summary FIND");
+    let planned = plan(&input, document.document()).expect("a bounded FIND plans");
+    assert_eq!(planned.authority_lane(), AuthorityLaneV2::FrontendChecked);
+
+    let (document, input) =
+        rule_input(ReferenceRuleFixtureV2::SingleRule).expect("the single-rule fixture");
+    let planned = plan(&input, document.document()).expect("the program plans");
+    assert_eq!(planned.authority_lane(), AuthorityLaneV2::FrontendChecked);
+
+    assert_eq!(
+        AuthorityLaneV2::CertifiedRequirementValidated.keyword(),
+        "certified_requirement_validated"
+    );
+    assert_eq!(
+        quanta_gqlang_v2_planning::PlanPolicyV2::MetaRequireCertified.keyword(),
+        "meta_require_certified"
+    );
+}
+
+/// An unordered (set) result keeps an unordered contract, and a bag keeps its
+/// duplicates: the language does not pretend an order exists (`D26`).
+#[test]
+fn an_unordered_result_stays_unordered() {
+    let (_document, bag) =
+        planned_relation(ReferenceRelationFixtureV2::Scan).expect("the Scan fixture");
+    assert_eq!(
+        bag.semantic_cost().ordering_contract,
+        OrderingContractV2::Unordered
+    );
+    assert!(!bag.result().multiplicity_order().is_ordered());
+    assert!(!bag.result().multiplicity_order().eliminates_duplicates());
+
+    let (document, input) = graph_input(quanta_gqlang_v2_sema::GraphQueryKindV1::Slice, 2)
+        .expect("the reference slice FIND");
+    let set = plan(&input, document.document()).expect("a bounded FIND plans");
+    assert_eq!(
+        set.semantic_cost().ordering_contract,
+        OrderingContractV2::Unordered
+    );
+    assert!(set.result().multiplicity_order().eliminates_duplicates());
+}
+
+// ---- determinism -----------------------------------------------------------
+
+/// Two identical plans compare EQUAL, and every field is stable under repeated
+/// construction: the plan is a deterministic value, not an accumulator.
+#[test]
+fn two_identical_plans_are_equal_and_field_stable() {
+    let (document, input) =
+        support::relation_input(ReferenceRelationFixtureV2::GroupedAggregateSum)
+            .expect("the grouped-aggregate fixture");
+    let first = plan(&input, document.document()).expect("the fixture plans");
+    let second = plan(&input, document.document()).expect("the fixture plans again");
+    assert_eq!(first, second);
+
+    assert_eq!(
+        plan_outcome(&input, document.document()).expect("both calls agree"),
+        plan_outcome(&input, document.document()).expect("both calls agree")
+    );
+
+    assert_eq!(
+        first.semantic_cost().fields(),
+        second.semantic_cost().fields()
+    );
+    assert_eq!(first.explain().families(), second.explain().families());
+    assert_eq!(
+        first.explain().root_location(),
+        second.explain().root_location()
+    );
+    assert_eq!(first.policy(), second.policy());
+    assert_eq!(first.result(), second.result());
+    assert_eq!(first.capabilities(), second.capabilities());
+    assert_eq!(first.authority_lane(), second.authority_lane());
+    assert_eq!(
+        first.evaluation_determinism(),
+        second.evaluation_determinism()
+    );
+}
+
+/// The same stability holds for a non-relational arm and across the two entry
+/// points: `plan` and `plan_outcome` agree on the assembled plan.
+#[test]
+fn a_graph_plan_is_stable_across_entry_points() {
+    let (document, input) = graph_input(quanta_gqlang_v2_sema::GraphQueryKindV1::PointsTo, 3)
+        .expect("the reference points-to FIND");
+    let planned = plan(&input, document.document()).expect("a bounded FIND plans");
+    let outcome = plan_outcome(&input, document.document()).expect("the outcome agrees");
+    match outcome {
+        PlanOutcomeV2::Plan(same) => assert_eq!(planned, same),
+        PlanOutcomeV2::NoPlan(reason) => panic!("a FIND plans, got NoPlan({reason:?})"),
+    }
+    assert_eq!(
+        planned,
+        plan(&input, document.document()).expect("repeated construction agrees")
+    );
+}
+
+/// The same stability holds for a typed non-plan outcome: two identical
+/// refusals carry the same reason and span.
+#[test]
+fn a_typed_non_plan_outcome_is_stable() {
+    let (document, _input) =
+        support::relation_input(ReferenceRelationFixtureV2::Scan).expect("the Scan fixture");
+    let contract =
+        quanta_gqlang_v2_logic::RuleProgramContractV2::from_document(document.document())
+            .expect("the document seals an empty program");
+    let input = SemanticPlanInputV2::Rule(contract);
+    let first =
+        plan_outcome(&input, document.document()).expect("an empty program is not an error");
+    let second =
+        plan_outcome(&input, document.document()).expect("an empty program is not an error");
+    assert_eq!(first, second);
+    assert_eq!(
+        first,
+        PlanOutcomeV2::NoPlan(NoPlanReasonV2::EmptyRuleProgram)
+    );
+}
+
+/// The assembled plan's accessors are the whole read surface: a plan built from
+/// the same sealed carrier twice exposes identical values through every
+/// accessor, including the fixed cost field ORDER.
+#[test]
+fn every_plan_field_is_read_through_one_stable_accessor() {
+    let (document, input) = support::relation_input(ReferenceRelationFixtureV2::SortDesc)
+        .expect("the SortDesc fixture");
+    let planned: SemanticPlanV2 = plan(&input, document.document()).expect("a sort plans");
+    let repeated = plan(&input, document.document()).expect("a sort plans again");
+    assert_eq!(
+        planned.semantic_cost().fields(),
+        [
+            ("estimated_cardinality_class", "linear_in_input"),
+            ("recursion_risk_class", "none"),
+            ("witness_explosion_risk_class", "none"),
+            ("ordering_contract", "ordered"),
+        ]
+    );
+    assert_eq!(
+        repeated.semantic_cost().fields(),
+        planned.semantic_cost().fields()
+    );
+    assert_eq!(
+        planned.explain().recursive(),
+        repeated.explain().recursive()
+    );
+    assert_eq!(
+        planned.result().multiplicity_order(),
+        repeated.result().multiplicity_order()
+    );
 }
