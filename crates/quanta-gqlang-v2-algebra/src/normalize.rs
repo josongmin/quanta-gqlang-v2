@@ -63,6 +63,51 @@ pub fn lower_relation_item(
     Ok(LoweredRelationItemV2::new(item_id, root))
 }
 
+/// Lower one NESTED relation (a composition body or producer relation that is
+/// not itself a top-level document item) through the exact same canonical
+/// lowering path as [`lower_relation_item`].
+///
+/// The owning item identity is supplied by the caller (the composition item
+/// that owns the nested root) so every diagnostic, scan identity, and budget
+/// charge stays anchored on a real document item.
+///
+/// # Errors
+///
+/// Returns a typed diagnostic when the root does not belong to this document,
+/// is not one of the document's sealed nested relations, or when the sealed
+/// relation is internally inconsistent for algebra lowering.
+pub fn lower_nested_relation_v2(
+    document: &SemanticDocumentV2,
+    owner_item_id: SemanticItemIdV2,
+    root: &TypedRelationExprV2,
+) -> Result<CheckedAlgebraNodeV2, AlgebraDiagnosticV2> {
+    if owner_item_id.source_id() != document.source_id() {
+        return Err(AlgebraDiagnosticV2::new(
+            AlgebraFailureKindV2::ForeignSemanticFact,
+            Some(root.location().clone()),
+            "owning item belongs to another semantic document",
+        ));
+    }
+    if root.key().source_id != document.source_id() {
+        return Err(AlgebraDiagnosticV2::new(
+            AlgebraFailureKindV2::ForeignSemanticFact,
+            Some(root.location().clone()),
+            "nested relation root belongs to another semantic document",
+        ));
+    }
+    if !document
+        .nested_relations()
+        .any(|(key, _relation)| *key == root.key())
+    {
+        return Err(AlgebraDiagnosticV2::new(
+            AlgebraFailureKindV2::NonRelationItem,
+            Some(root.location().clone()),
+            "requested root is not a sealed nested relation of this document",
+        ));
+    }
+    lower_root(document, owner_item_id, root, document.budget_receipt())
+}
+
 /// One relation stage awaiting its lowerable children.
 struct Visit<'a>(&'a TypedRelationExprV2);
 
