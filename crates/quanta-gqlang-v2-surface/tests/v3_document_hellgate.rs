@@ -93,6 +93,7 @@ fn separator_branches_reject_with_exact_oracles() {
     struct RowV1 {
         name: &'static str,
         src: &'static str,
+        code: ParseErrorCodeV1,
         message: &'static str,
         start: usize,
         end: usize,
@@ -101,21 +102,24 @@ fn separator_branches_reject_with_exact_oracles() {
     // different spans; the missing separator is a DISTINCT branch. Spans are
     // derived from each row's own source, never copied magic numbers.
     let doubled = "show models ;; show views";
-    let doubled_at = doubled.find(";;").expect("doubled separator") + 1;
+    let doubled_at = doubled.find(";;").expect("doubled separator") + ";".len();
     let leading = " ; show models";
     let leading_at = leading.find(';').expect("leading separator");
     let missing = "show models show views";
+    let missing_at = missing.find("show views").expect("second item");
     let rows = [
         RowV1 {
             name: "doubled separator",
             src: doubled,
+            code: ParseErrorCodeV1::UnexpectedToken,
             message: "empty statement: a ';' must follow a top-level item",
             start: doubled_at,
-            end: doubled_at + 1,
+            end: doubled_at + ";".len(),
         },
         RowV1 {
             name: "leading separator",
             src: leading,
+            code: ParseErrorCodeV1::UnexpectedToken,
             message: "empty statement: a ';' must follow a top-level item",
             start: leading_at,
             end: leading_at + ";".len(),
@@ -123,20 +127,16 @@ fn separator_branches_reject_with_exact_oracles() {
         RowV1 {
             name: "missing separator",
             src: missing,
+            code: ParseErrorCodeV1::UnexpectedToken,
             message: "expected ';' to separate top-level items",
-            start: missing.find("show views").expect("second item"),
-            end: missing.find("show views").expect("second item") + "show".len(),
+            start: missing_at,
+            end: missing_at + "show".len(),
         },
     ];
     let builder = HirBuilderV1::new();
     for row in rows {
         let diag = parse_document(row.src, &builder).expect_err("must reject");
-        assert_eq!(
-            diag.code,
-            ParseErrorCodeV1::UnexpectedToken,
-            "row {}",
-            row.name
-        );
+        assert_eq!(diag.code, row.code, "row {}", row.name);
         assert_eq!(diag.message, row.message, "row {}", row.name);
         assert_eq!(diag.span.start, row.start, "row {}", row.name);
         assert_eq!(diag.span.end, row.end, "row {}", row.name);

@@ -313,9 +313,18 @@ fn parse_ref(
             // `::` is atomic: exactly two consecutive colons. A single colon
             // rejects at the token following it (REF-01); lenient recovery
             // would silently widen the reference grammar.
-            let _ = cur.bump();
-            if cur.eat(&TokenKindV1::Colon).is_none() {
+            if cur.here_span().start != end {
+                return Err(cur.unexpected("a contiguous '::' separator"));
+            }
+            let first_colon = cur.bump();
+            if cur.here_span().start != first_colon.span.end {
                 return Err(cur.unexpected("a second ':' in '::'"));
+            }
+            let Some(second_colon) = cur.eat(&TokenKindV1::Colon) else {
+                return Err(cur.unexpected("a second ':' in '::'"));
+            };
+            if cur.here_span().start != second_colon.span.end {
+                return Err(cur.unexpected("a path segment after '::'"));
             }
             let (_s, sp) = cur.expect_ident("a path segment after '::'")?;
             end = sp.end;

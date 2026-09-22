@@ -86,6 +86,11 @@ fn every_command_token_dispatches_at_the_binary_boundary_v1() {
         run_cli_argv_v1(&["query", "show capabilities"]),
         run_cli_argv_v1(&["v3-query", "show capabilities"]),
     ];
+    assert_eq!(query_pair[0].status.code(), Some(1));
+    assert!(cli_stderr_v1(&query_pair[0]).is_empty());
+    assert!(cli_stdout_v1(&query_pair[0])
+        .lines()
+        .any(|line| line == "analysis.status=incomplete"));
     assert_eq!(
         query_pair[0].status.code(),
         query_pair[1].status.code(),
@@ -111,6 +116,8 @@ fn every_command_token_dispatches_at_the_binary_boundary_v1() {
             output.status.code(),
             cli_stderr_v1(output)
         );
+        assert_eq!(cli_stdout_v1(output), "let x = 1\n");
+        assert!(cli_stderr_v1(output).is_empty());
     }
     assert_eq!(
         fmt_pair[0].stdout, fmt_pair[1].stdout,

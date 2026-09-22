@@ -203,6 +203,38 @@ fn check_ref_double_colon_separator_is_atomic() {
 }
 
 #[test]
+fn check_ref_double_colon_rejects_whitespace_at_each_boundary() {
+    for (src, message, token) in [
+        (
+            "check repo ::auth | confirm=skip",
+            "expected a contiguous '::' separator",
+            ":",
+        ),
+        (
+            "check repo: :auth | confirm=skip",
+            "expected a second ':' in '::'",
+            ":",
+        ),
+        (
+            "check repo:: auth | confirm=skip",
+            "expected a path segment after '::'",
+            "auth",
+        ),
+    ] {
+        let diag = err(src);
+        assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken, "{src}");
+        assert_eq!(diag.message, message, "{src}");
+        let start = match message {
+            "expected a contiguous '::' separator" => src.find("::").expect("separator"),
+            "expected a second ':' in '::'" => src.find(":auth").expect("second colon"),
+            _ => src.find(" auth").expect("spaced segment") + " ".len(),
+        };
+        assert_eq!(diag.span.start, start, "{src}");
+        assert_eq!(diag.span.end, start + token.len(), "{src}");
+    }
+}
+
+#[test]
 fn check_ref_single_colon_rejects_at_second_colon_expectation() {
     // REF-01: a single `:` is not a lenient `::`. The diagnostic points at the
     // token immediately following the first colon with the stable expectation.
