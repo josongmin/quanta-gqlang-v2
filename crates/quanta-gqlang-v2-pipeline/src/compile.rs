@@ -1,1534 +1,1418 @@
-//! The single end-to-end compile entry point (ticket 08, D22).
+//! The single shared frontend compiler service (ticket 07, lane W4-B).
 //!
-//! [`compile_program_structural`] runs the FULL v3 frontend stack against a source string
-//! and routes EVERY parsed root family through the one shared compiler. There is
-//! no second parser / binder / type / algebra / planner anywhere downstream
-//! (D22). Stages run in order and SHORT-CIRCUIT on the first failure, returning a
-//! stage-tagged [`PipelineDiagnosticV1`] that preserves the inner crate's typed
-//! code and span (D10 fail-closed).
+//! This module orchestrates exactly five owners and nothing else:
 //!
-//! ## Per-family routing
+//! ```text
+//! Surface parse -> Sema sealed document -> Algebra lowering
+//!   -> Logic rule/graph contracts -> Planning -> exact-key assembly
+//! ```
 //!
-//! `surface::parse_program` lowers a root to one of the [`SurfaceItemV1`]
-//! carriers; the unified [`ProgramItemHirV1`] payload (FIND / CHECK /
-//! presentation / catalog / composition / meta) joins the original
-//! Query/Decl/Rule carriers. Each family runs the right stages and lands in one
-//! [`CompiledItemV1`] variant:
+//! It owns NO parser, binder, type kernel, algebra node, logic rule, or planner
+//! rule. Every semantic fact is read from the sealed [`SemanticDocumentV2`]; the
+//! only values this module mints are the compiled/analysis DTOs, the exact-key
+//! assembly maps, and the pipeline-owned diagnostics in [`crate::diagnostic`].
 //!
-//! - relational `Query` (and a `SELECT`-pipe inside `Program`): surface -> bind
-//!   -> type -> algebra -> plan, the existing path, kept byte-for-byte.
-//! - value `Decl`: surface -> bind -> type -> explicit non-servable value
-//!   artifact.
-//! - `FIND`: surface -> bind -> the logic graph-query contract -> planning
-//!   classify. An unbounded / illegal FIND rejects tagged `logic`.
-//! - `CHECK` / presentation verbs: surface -> bind (local refs only) -> planning
-//!   classify.
-//! - horn `Rule`: surface -> type -> source-rule lowering -> recursive-program
-//!   artifact with explicit stratification proof.
-//! - catalog declarations: surface -> modules catalog register; produces NO plan
-//!   (a duplicate / cycle / certified violation rejects tagged `modules`).
-//! - composition (`LET..WITH`): binder scope first (undefined / duplicate
-//!   binding reject), then each producer + the body compile recursively.
-//! - meta (`USE PACK` / `REQUIRE CERTIFIED`): modules validates the directive,
-//!   then planning classifies its effect.
+//! ## Exact-key assembly
 //!
-//! ## Type-environment seam (schema-aware, no schema authority here)
+//! [`SemanticDocumentV2::order`] is the authored source order and
+//! [`SemanticDocumentV2::items`] is the produced item map. Assembly never zips
+//! positionally, never matches by display name, and never represents a missing
+//! plan as `None`:
 //!
-//! The semantic surface takes an explicit [`FrontendContextV1`] carrying a
-//! frozen module graph plus schema/type authority. The type stage still only
-//! checks expressions CLOSED under the available authority, but relation-source
-//! schemas now lift into local alias/source row bindings, so alias-dependent
-//! query expressions are typed rather than silently skipped when schema
-//! authority is supplied.
+//! - every authored id must resolve to exactly one item whose own
+//!   [`SemanticItemV2::item_id`] equals the key and whose source is this
+//!   document's source (the [`DocumentAssemblyCodeV2`] vocabulary rejects
+//!   missing, extra, duplicate, foreign, and wrong-kind results);
+//! - plan-required families (relation, graph, CHECK, presentation, composition,
+//!   and REQUIRE CERTIFIED) carry a [`SemanticPlanV2`];
+//! - catalog declarations, value declarations, and `USE PACK` carry a checked
+//!   [`NoPlanReasonV2`];
+//! - source rules carry one [`RuleProgramMemberV2`] and the document-wide
+//!   program carries the single plan.
+//!
+//! ## Budget
+//!
+//! No entry accepts a caller-selected traversal budget. `compile_*` and
+//! `analyze_*` read every cap from the closed/open authority; lowering, rule
+//! stratification, and planning then read the sealed document's immutable
+//! downstream budget receipt. `format_source_document_v2` is the one parse-only
+//! entry and takes the caller's checked [`FrontendBudgetV2`] because it performs
+//! no semantic traversal.
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use quanta_gqlang_v2_algebra::{
-    normalize_query, AlgebraNodeV1, BuiltinRelationV1, NormalizeOptionsV1,
-    RelationSourceAuthorityV1, RelationSourceIdentityV1,
-};
-use quanta_gqlang_v2_binder::{Binder, ModuleGraphV1};
-use quanta_gqlang_v2_hir::{
-    BoolExprHirV1, BoolExprKindV1, CatalogDeclHirV1, CompositionHirV1, DeclHirV1, GraphQueryHirV1,
-    HirBuilderV1, LegalityHirV1, MetaHirV1, MetaKindV1, PresentationHirV1, ProgramItemHirV1,
-    QueryHirV1, RelationExprHirV1, RelationExprKindV1, ResultShapeHirV1, ResultShapeKindV1,
-    RuleHirV1, ValueExprHirV1, ValueExprKindV1,
-};
+use quanta_gqlang_v2_algebra::{lower_nested_relation_v2, lower_relation_item};
 use quanta_gqlang_v2_logic::{
-    BodyLiteralV1, GraphQuerySemanticsV1, LogicDiagnosticV1, RecursiveProgramV1, RuleDefV1,
+    stratify, GraphQueryContractV2, RecursiveProgramV1, RuleProgramContractV2,
     StratificationProofV1,
 };
-use quanta_gqlang_v2_modules::{CatalogV1, PackGraphV1};
 use quanta_gqlang_v2_planning::{
-    classify_item, produce_plan, EffectClassV1, ItemClassificationV1, PlanRequestV1, PublicPlanV1,
-    RecursionShapeV1, RequestedResultKindV1, TruthLaneV1,
+    plan_outcome, CatalogDeclarationKindV2, CheckContractV2, CheckedCompositionPlanInputV2,
+    CompositionBodyPlanInputV2, CompositionRelationalBodyPlanInputV2, NoPlanReasonV2,
+    PlanOutcomeV2, PlanningDiagnosticV1, PresentationContractV2, SemanticPlanInputV2,
+    SemanticPlanV2,
 };
-use quanta_gqlang_v2_surface::{parse_program, SurfaceItemV1};
-use quanta_gqlang_v2_types::{
-    BuiltinRegistryV1, CardinalityV1, RecordFieldTyV1, ScalarTyV1, TypeCheckerV1, TypeEnvV1, TypeV1,
+use quanta_gqlang_v2_sema::{
+    resolve_checked_document_v2, CheckedSyntaxDocumentV2, ClosedFrontendAuthorityV2,
+    DeclaredDocumentV2, FrontendBudgetV2, FrontendDiagnosticV2, FrontendFailureV2,
+    FrontendSeverityV2, FrontendStageV2, FrontendTransactionErrorV2, LocatedSpanV2,
+    OpenAnalysisAuthorityV2, ResolvedCatalogItemV2, ResolvedCatalogPayloadV2, ResolvedCheckV2,
+    ResolvedCompositionBodyV2, ResolvedCompositionV2, ResolvedMetaKindV2, SemanticDocumentV2,
+    SemanticItemIdV2, SemanticItemV2, SourceIdV2, SourceRegistrationV2, SpanV1,
+};
+use quanta_gqlang_v2_surface::{format_document, parse_source_document_v2, ParseBudgetV2};
+
+use crate::diagnostic::{
+    algebra_transaction_error, assembly_transaction_error, canonicalize_diagnostics,
+    document_transaction_error, document_transaction_failure, logic_transaction_error,
+    planning_transaction_error, surface_failure, surface_transaction_error, DocumentAssemblyCodeV2,
 };
 
-use crate::diagnostic::PipelineDiagnosticV1;
+/// Pipeline-owned code for an open-analysis source whose authority is partial.
+pub const OPEN_AUTHORITY_INCOMPLETE_CODE: &str = "pipeline.analysis.open_authority_incomplete";
 
-/// Explicit frontend semantic authority bundle.
+/// Pipeline-owned code for a failed frontend-budget projection.
+pub const PARSE_BUDGET_PROJECTION_FAILED_CODE: &str = "pipeline.parse_budget_projection_failed";
+
+// ---------------------------------------------------------------------------
+// Public DTO roots
+// ---------------------------------------------------------------------------
+
+/// One fully compiled frontend document.
 ///
-/// Semantic compile now consumes a frozen module graph, a source-schema/type
-/// environment, AND a frozen pack-manifest authority ([`PackGraphV1`]) through
-/// one inspectable value rather than inventing empty defaults internally
-/// (GQW3-12/GQW3-18). This is the PRIMARY authority bundle, not a sidecar:
-/// `USE PACK` resolves against `pack_graph`, so any context rebuild that drops
-/// pack authority would silently turn a known-pack resolution into an
-/// `unknown_pack_manifest` fail-close.
-///
-/// Structural and schema-only helpers remain available, but they are named
-/// explicitly, fill an EMPTY [`PackGraphV1`], and are not semantic proof.
+/// Fields are private: a caller can read the source identity, the canonical
+/// (non-error) diagnostics, the source-ordered item list, and the optional
+/// document rule program, but cannot construct a compiled document from
+/// unverified parts. There is no `Option<SemanticPlanV2>` representation: a
+/// plan-required item always carries [`SemanticPlanV2`], and a non-executable
+/// declaration always carries [`NoPlanReasonV2`].
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FrontendContextV1 {
-    module_graph: ModuleGraphV1,
-    schema: TypeEnvV1,
-    pack_graph: PackGraphV1,
-    relation_source_authority_v1: RelationSourceAuthorityV1,
+pub struct CompiledDocumentV2 {
+    source_id: SourceIdV2,
+    diagnostics: Box<[FrontendDiagnosticV2]>,
+    items: Box<[CompiledItemV2]>,
+    rule_program: Option<CompiledRuleProgramV2>,
 }
 
-impl FrontendContextV1 {
-    /// Build a context from explicit semantic authority (module graph + schema +
-    /// pack-manifest authority). This is the primary constructor: all three
-    /// authorities are first-class and cannot be silently dropped.
-    #[must_use]
-    pub fn new(module_graph: ModuleGraphV1, schema: TypeEnvV1, pack_graph: PackGraphV1) -> Self {
-        let relation_source_identities_v1 = schema
+impl CompiledDocumentV2 {
+    /// Seal one compiled document.
+    ///
+    /// A closed compiled success carries no `Error` diagnostic; only
+    /// producer-sorted/deduplicated `Warning`/`Note` diagnostics are admitted.
+    fn try_new(
+        source_id: SourceIdV2,
+        diagnostics: Vec<FrontendDiagnosticV2>,
+        items: Vec<CompiledItemV2>,
+        rule_program: Option<CompiledRuleProgramV2>,
+    ) -> Result<Self, FrontendTransactionErrorV2> {
+        let diagnostics = canonicalize_diagnostics(diagnostics);
+        if diagnostics
             .iter()
-            .map(|(name_v1, _)| {
-                (
-                    name_v1.clone(),
-                    RelationSourceIdentityV1::Named(name_v1.clone()),
-                )
-            })
-            .collect();
-        Self {
-            module_graph,
-            schema,
-            pack_graph,
-            relation_source_authority_v1: RelationSourceAuthorityV1::closed_v1(
-                relation_source_identities_v1,
-            ),
+            .any(|diagnostic| diagnostic.severity() == FrontendSeverityV2::Error)
+        {
+            return Err(document_transaction_error(FrontendDiagnosticV2::new(
+                FrontendStageV2::Validation,
+                DocumentAssemblyCodeV2::ItemMembershipMismatch.as_str(),
+                FrontendSeverityV2::Error,
+                zero_location(source_id),
+                Vec::new(),
+                "a compiled document cannot carry an error diagnostic",
+            )));
         }
+        Ok(Self {
+            source_id,
+            diagnostics: diagnostics.into_boxed_slice(),
+            items: items.into_boxed_slice(),
+            rule_program,
+        })
     }
 
-    /// Closed public query relation catalog. Source membership is not carried
-    /// here; runtime source authority binds values after compilation.
+    /// Source identity.
     #[must_use]
-    pub fn canonical_query_serving_v1() -> Self {
-        let builtin_v1 = BuiltinRelationV1::WorkspaceFiles;
-        let name_v1 = builtin_v1.authored_name_v1();
-        let mut schema_v1 = TypeEnvV1::new();
-        schema_v1.insert(
-            name_v1,
-            TypeV1::Relation {
-                row: Box::new(TypeV1::Record(vec![RecordFieldTyV1::new(
-                    "path",
-                    TypeV1::Scalar(ScalarTyV1::RepoPath),
-                )])),
-                cardinality: CardinalityV1::Sequence,
-            },
-        );
-        Self {
-            module_graph: ModuleGraphV1::new(),
-            schema: schema_v1,
-            pack_graph: PackGraphV1::new(),
-            relation_source_authority_v1: RelationSourceAuthorityV1::closed_v1(BTreeMap::from([(
-                name_v1.to_string(),
-                RelationSourceIdentityV1::Builtin(builtin_v1),
-            )])),
-        }
+    pub const fn source_id(&self) -> SourceIdV2 {
+        self.source_id
     }
 
-    /// Structural-only default context: empty module graph, empty schema, and an
-    /// empty pack graph. `USE PACK` against this context stays fail-closed with
-    /// `modules.unknown_pack_manifest` (no pack authority present).
+    /// Canonical, producer-sorted, deduplicated non-error diagnostics.
     #[must_use]
-    pub fn structural_only() -> Self {
-        Self {
-            module_graph: ModuleGraphV1::new(),
-            schema: TypeEnvV1::new(),
-            pack_graph: PackGraphV1::new(),
-            relation_source_authority_v1: RelationSourceAuthorityV1::schema_open_v1(),
-        }
+    pub fn diagnostics(&self) -> &[FrontendDiagnosticV2] {
+        &self.diagnostics
     }
 
-    /// Explicit partial-authority constructor for callers that only have schema
-    /// authority. Pack graph is empty.
+    /// Source-ordered compiled items.
     #[must_use]
-    pub fn schema_only(schema: TypeEnvV1) -> Self {
-        Self::new(ModuleGraphV1::new(), schema, PackGraphV1::new())
+    pub fn items(&self) -> &[CompiledItemV2] {
+        &self.items
     }
 
-    /// Frozen module/import graph authority.
+    /// Exact compiled item by semantic identity.
     #[must_use]
-    pub fn module_graph(&self) -> &ModuleGraphV1 {
-        &self.module_graph
+    pub fn item(&self, id: SemanticItemIdV2) -> Option<&CompiledItemV2> {
+        self.items.iter().find(|item| item.item_id() == id)
     }
 
-    /// Frozen source-schema/type authority.
+    /// The single document-wide rule program, absent when the document has no
+    /// rules.
     #[must_use]
-    pub fn schema(&self) -> &TypeEnvV1 {
-        &self.schema
-    }
-
-    /// Frozen pack-manifest authority. `USE PACK` resolves a pack id against this
-    /// graph's typed manifest map; an unknown pack stays fail-closed.
-    #[must_use]
-    pub fn pack_graph(&self) -> &PackGraphV1 {
-        &self.pack_graph
-    }
-
-    fn normalization_options_v1(&self, builtins_v1: &BuiltinRegistryV1) -> NormalizeOptionsV1 {
-        aggregate_options(builtins_v1)
-            .with_relation_source_authority_v1(self.relation_source_authority_v1.clone())
-    }
-
-    fn install_composition_binding_v1(&mut self, name_v1: &str, relation_v1: Option<&TypeV1>) {
-        if let Some(relation_v1) = relation_v1 {
-            self.schema.insert(name_v1, relation_v1.clone());
-        }
-        self.relation_source_authority_v1.insert_exact_v1(
-            name_v1.to_string(),
-            RelationSourceIdentityV1::CompositionBinding(name_v1.to_string()),
-        );
+    pub const fn rule_program(&self) -> Option<&CompiledRuleProgramV2> {
+        self.rule_program.as_ref()
     }
 }
 
-/// Why a compiled frontend artifact is not servable at this seam.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum NoServeReasonV1 {
-    /// A value declaration compiled as a frontend-owned value artifact.
-    ValueDeclaration,
-    /// A horn rule compiled as a frontend-owned logic artifact.
-    RuleArtifact,
+/// One compiled top-level item. The closed enum encodes plan applicability
+/// structurally: a plan-required item cannot exist without a plan.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CompiledItemV2 {
+    /// The item ran every applicable stage and carries its semantic plan.
+    Planned(PlannedItemV2),
+    /// The item is a checked non-plan declaration.
+    NoPlan {
+        /// Canonical item identity.
+        item_id: SemanticItemIdV2,
+        /// Checked non-plan reason.
+        reason: NoPlanReasonV2,
+    },
 }
 
-impl NoServeReasonV1 {
-    /// Stable keyword for CLI/LSP/tests.
+impl CompiledItemV2 {
+    /// Canonical item identity.
     #[must_use]
-    pub const fn keyword(self) -> &'static str {
+    pub const fn item_id(&self) -> SemanticItemIdV2 {
         match self {
-            Self::ValueDeclaration => "value_declaration",
-            Self::RuleArtifact => "rule_artifact",
+            Self::Planned(item) => item.item_id(),
+            Self::NoPlan { item_id, .. } => *item_id,
+        }
+    }
+
+    /// The semantic plan, present only for plan-required families.
+    #[must_use]
+    pub const fn plan(&self) -> Option<&SemanticPlanV2> {
+        match self {
+            Self::Planned(item) => item.plan(),
+            Self::NoPlan { .. } => None,
+        }
+    }
+
+    /// The checked non-plan reason, present only for non-executable
+    /// declarations.
+    #[must_use]
+    pub const fn no_plan_reason(&self) -> Option<&NoPlanReasonV2> {
+        match self {
+            Self::Planned(_) => None,
+            Self::NoPlan { reason, .. } => Some(reason),
         }
     }
 }
 
-/// The per-family compiled outcome.
-///
-/// Each variant captures exactly the stages that family runs, so no outcome is
-/// flattened into a relational-only shape. The shared HIR is retained in every
-/// variant so callers recover the parsed tree without re-parsing.
-#[derive(Clone, Debug, PartialEq)]
-pub enum CompiledItemV1 {
-    /// A relational query (SELECT pipe): the full surface -> bind -> type ->
-    /// algebra -> plan path. `hir` is the relational query carrier.
-    RelationalQuery {
-        /// The query HIR.
-        hir: Box<QueryHirV1>,
-        /// The normalized algebra root the plan keys off.
-        algebra: Box<AlgebraNodeV1>,
-        /// The host-agnostic public plan.
-        plan: Box<PublicPlanV1>,
+/// A plan-required compiled item. Every variant except the rule member carries
+/// exactly one [`SemanticPlanV2`]; the rule member is a checked reference into
+/// the document rule program and never duplicates its plan.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PlannedItemV2 {
+    /// Relational query/relation item.
+    Relation {
+        /// Canonical item identity.
+        item_id: SemanticItemIdV2,
+        /// Derived semantic plan.
+        plan: SemanticPlanV2,
     },
-    /// A non-relational value declaration compiled into a host-agnostic
-    /// frontend artifact with no serving plan.
-    ValueArtifact {
-        /// The declaration HIR.
-        hir: Box<DeclHirV1>,
-        /// The inferred value type when the body closed under the supplied
-        /// authority; `None` when the body stayed authority-open.
-        value_type: Option<TypeV1>,
-        /// Explicit non-serve classification.
-        no_serve_reason: NoServeReasonV1,
+    /// FIND / graph-query item.
+    Graph {
+        /// Canonical item identity.
+        item_id: SemanticItemIdV2,
+        /// Derived semantic plan.
+        plan: SemanticPlanV2,
     },
-    /// A graph query (FIND): bind -> logic contract -> planning classify. The
-    /// plan's `result_kind` is `path_witness`.
-    GraphQuery {
-        /// The FIND HIR.
-        hir: Box<GraphQueryHirV1>,
-        /// The classified path-witness plan.
-        plan: Box<PublicPlanV1>,
+    /// CHECK item, including its identity-checked nested graph contract.
+    Check {
+        /// Canonical item identity.
+        item_id: SemanticItemIdV2,
+        /// Derived semantic plan.
+        plan: SemanticPlanV2,
     },
-    /// A horn rule compiled into a frontend-owned recursive-program artifact
-    /// with an explicit least-fixpoint/stratification proof and no serving plan.
-    RuleArtifact {
-        /// The rule HIR.
-        hir: Box<RuleHirV1>,
-        /// The lowered recursive program rooted at this rule.
-        program: Box<RecursiveProgramV1>,
-        /// The explicit recursion admission artifact.
-        proof: Box<StratificationProofV1>,
-        /// Explicit non-serve classification.
-        no_serve_reason: NoServeReasonV1,
-    },
-    /// A legality check (CHECK): bind -> planning classify. The plan's
-    /// `result_kind` is `alert`.
-    Legality {
-        /// The CHECK HIR.
-        hir: Box<LegalityHirV1>,
-        /// The classified alert plan.
-        plan: Box<PublicPlanV1>,
-    },
-    /// A presentation verb (EXPLAIN / SHOW / DESCRIBE / SAMPLE / COMPARE /
-    /// EXPORT): bind -> planning classify.
+    /// Presentation item (EXPLAIN / SHOW / DESCRIBE / SAMPLE / COMPARE /
+    /// EXPORT).
     Presentation {
-        /// The presentation HIR.
-        hir: Box<PresentationHirV1>,
-        /// The classified plan (result-kind / effect vary by verb).
-        plan: Box<PublicPlanV1>,
+        /// Canonical item identity.
+        item_id: SemanticItemIdV2,
+        /// Derived semantic plan.
+        plan: SemanticPlanV2,
     },
-    /// A catalog declaration (VIEW / MODEL / PACK / PROFILE / GATE / RULE):
-    /// registered in the modules catalog, producing NO plan.
-    CatalogRegistration {
-        /// The declaration HIR.
-        hir: Box<CatalogDeclHirV1>,
-        /// The minted stable `<kind>::<name>` asset id.
-        asset_id: String,
-    },
-    /// A composition (`LET..WITH`): each producer and the body compile
-    /// recursively after binder scope resolution.
+    /// Sequential `LET .. WITH` composition item.
     Composition {
-        /// The composition HIR.
-        hir: Box<CompositionHirV1>,
-        /// Each binding's compiled producer, in written order.
-        bindings: Vec<CompiledItemV1>,
-        /// The OUTPUT relation type each binding lifts into the local type
-        /// environment for later producers and the body (D34 capture lane),
-        /// positionally aligned with `bindings`. `None` when the producer
-        /// denotes no row schema (non-relational, or a projection that names no
-        /// columns), so the binding name stays schema-open. When present, the
-        /// relation's cardinality is the producer's ACTUAL compiled-algebra
-        /// cardinality (D26), not a hardcoded default.
-        binding_outputs: Vec<Option<TypeV1>>,
-        /// The compiled body.
-        body: Box<CompiledItemV1>,
+        /// Canonical item identity.
+        item_id: SemanticItemIdV2,
+        /// Derived semantic plan.
+        plan: SemanticPlanV2,
     },
-    /// A meta directive (USE PACK / REQUIRE CERTIFIED): validated in modules,
-    /// then classified for its effect. `USE PACK` produces no plan
-    /// (`plan = None`); `REQUIRE CERTIFIED` is a proof-confirmed gate.
-    Meta {
-        /// The meta HIR.
-        hir: Box<MetaHirV1>,
-        /// The classified gate plan, when the directive carries one.
-        plan: Option<Box<PublicPlanV1>>,
+    /// Exact `REQUIRE CERTIFIED` directive with its validated proof.
+    MetaRequireCertified {
+        /// Canonical item identity.
+        item_id: SemanticItemIdV2,
+        /// Derived semantic plan.
+        plan: SemanticPlanV2,
     },
+    /// One source rule, stored as a checked program member reference.
+    RuleMember(RuleProgramMemberV2),
 }
 
-/// The fully compiled program: the parsed [`SurfaceItemV1`] plus the per-family
-/// [`CompiledItemV1`] outcome.
-///
-/// Deterministic by construction: every contained type derives `PartialEq` and
-/// every stage is order-deterministic, so compiling the same source twice yields
-/// an equal value (see the determinism rail).
-#[derive(Clone, Debug, PartialEq)]
-pub struct CompiledProgramV1 {
-    item: SurfaceItemV1,
-    compiled: CompiledItemV1,
-}
-
-impl CompiledProgramV1 {
-    /// The shared HIR surface item as the parser produced it.
+impl PlannedItemV2 {
+    /// Canonical item identity.
     #[must_use]
-    pub fn item(&self) -> &SurfaceItemV1 {
-        &self.item
-    }
-
-    /// The per-family compiled outcome.
-    #[must_use]
-    pub fn compiled(&self) -> &CompiledItemV1 {
-        &self.compiled
-    }
-
-    /// The query HIR, if this program is a relational query unit.
-    #[must_use]
-    pub fn query(&self) -> Option<&QueryHirV1> {
-        match &self.compiled {
-            CompiledItemV1::RelationalQuery { hir, .. } => Some(hir),
-            CompiledItemV1::ValueArtifact { .. }
-            | CompiledItemV1::GraphQuery { .. }
-            | CompiledItemV1::Legality { .. }
-            | CompiledItemV1::Presentation { .. }
-            | CompiledItemV1::RuleArtifact { .. }
-            | CompiledItemV1::CatalogRegistration { .. }
-            | CompiledItemV1::Composition { .. }
-            | CompiledItemV1::Meta { .. } => None,
-        }
-    }
-
-    /// The normalized algebra root, if this program compiled a relational query.
-    /// Only the relational path produces an algebra root; other families key
-    /// their plan off the logic/item classification, not a relational tree.
-    #[must_use]
-    pub fn algebra(&self) -> Option<&AlgebraNodeV1> {
-        match &self.compiled {
-            CompiledItemV1::RelationalQuery { algebra, .. } => Some(algebra),
-            CompiledItemV1::ValueArtifact { .. }
-            | CompiledItemV1::GraphQuery { .. }
-            | CompiledItemV1::Legality { .. }
-            | CompiledItemV1::Presentation { .. }
-            | CompiledItemV1::RuleArtifact { .. }
-            | CompiledItemV1::CatalogRegistration { .. }
-            | CompiledItemV1::Composition { .. }
-            | CompiledItemV1::Meta { .. } => None,
-        }
-    }
-
-    /// The host-agnostic public plan, when this program produces one. Catalog
-    /// declarations and `USE PACK` register/activate but produce no plan.
-    #[must_use]
-    pub fn plan(&self) -> Option<&PublicPlanV1> {
-        self.compiled.plan()
-    }
-}
-
-impl CompiledItemV1 {
-    /// The host-agnostic public plan this outcome carries, if any.
-    #[must_use]
-    pub fn plan(&self) -> Option<&PublicPlanV1> {
+    pub const fn item_id(&self) -> SemanticItemIdV2 {
         match self {
-            Self::RelationalQuery { plan, .. }
-            | Self::GraphQuery { plan, .. }
-            | Self::Legality { plan, .. }
-            | Self::Presentation { plan, .. } => Some(plan),
-            Self::Meta { plan, .. } => plan.as_deref(),
-            Self::Composition { body, .. } => body.plan(),
-            Self::ValueArtifact { .. }
-            | Self::RuleArtifact { .. }
-            | Self::CatalogRegistration { .. } => None,
+            Self::Relation { item_id, .. }
+            | Self::Graph { item_id, .. }
+            | Self::Check { item_id, .. }
+            | Self::Presentation { item_id, .. }
+            | Self::Composition { item_id, .. }
+            | Self::MetaRequireCertified { item_id, .. } => *item_id,
+            Self::RuleMember(member) => member.member_item_id(),
         }
     }
 
-    /// The lifted OUTPUT relation types this outcome's composition bindings
-    /// expose to later producers and the body, positionally aligned with the
-    /// bindings; `None` for non-composition outcomes. Each present relation
-    /// carries the producer's actual compiled-algebra cardinality (D26).
+    /// The semantic plan; a rule member's plan lives once in the document rule
+    /// program.
     #[must_use]
-    pub fn binding_outputs(&self) -> Option<&[Option<TypeV1>]> {
+    pub const fn plan(&self) -> Option<&SemanticPlanV2> {
         match self {
-            Self::Composition {
-                binding_outputs, ..
-            } => Some(binding_outputs),
-            Self::RelationalQuery { .. }
-            | Self::GraphQuery { .. }
-            | Self::Legality { .. }
+            Self::Relation { plan, .. }
+            | Self::Graph { plan, .. }
+            | Self::Check { plan, .. }
+            | Self::Presentation { plan, .. }
+            | Self::Composition { plan, .. }
+            | Self::MetaRequireCertified { plan, .. } => Some(plan),
+            Self::RuleMember(_) => None,
+        }
+    }
+
+    /// The checked rule program member reference.
+    #[must_use]
+    pub const fn rule_member(&self) -> Option<&RuleProgramMemberV2> {
+        match self {
+            Self::RuleMember(member) => Some(member),
+            Self::Relation { .. }
+            | Self::Graph { .. }
+            | Self::Check { .. }
             | Self::Presentation { .. }
-            | Self::Meta { .. }
-            | Self::ValueArtifact { .. }
-            | Self::RuleArtifact { .. }
-            | Self::CatalogRegistration { .. } => None,
+            | Self::Composition { .. }
+            | Self::MetaRequireCertified { .. } => None,
         }
     }
 }
 
-/// Compile a source string through the full v3 frontend stack with explicit
-/// structural-only authority.
-///
-/// # Errors
-///
-/// Returns a stage-tagged [`PipelineDiagnosticV1`] on the first failing stage,
-/// preserving the inner stage diagnostic's stable code and span.
-pub fn compile_program_structural(source: &str) -> Result<CompiledProgramV1, PipelineDiagnosticV1> {
-    compile_with_context(source, &FrontendContextV1::structural_only())
+/// One checked source rule reference into the document-wide rule program.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RuleProgramMemberV2 {
+    program_id: SemanticItemIdV2,
+    member_item_id: SemanticItemIdV2,
 }
 
-/// Compile a source string through the full stack against a caller-supplied
-/// schema [`TypeEnvV1`] only.
+impl RuleProgramMemberV2 {
+    const fn new(program_id: SemanticItemIdV2, member_item_id: SemanticItemIdV2) -> Self {
+        Self {
+            program_id,
+            member_item_id,
+        }
+    }
+
+    /// Identity of the rule program this member belongs to: the first source
+    /// rule in document order, which anchors the program's stable identity.
+    #[must_use]
+    pub const fn program_id(self) -> SemanticItemIdV2 {
+        self.program_id
+    }
+
+    /// This member's source rule item.
+    #[must_use]
+    pub const fn member_item_id(self) -> SemanticItemIdV2 {
+        self.member_item_id
+    }
+}
+
+/// The single plan of one document-wide rule program, plus the logic
+/// stratification proof that admitted it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CompiledRuleProgramV2 {
+    program_id: SemanticItemIdV2,
+    members: Box<[RuleProgramMemberV2]>,
+    plan: SemanticPlanV2,
+    stratification: StratificationProofV1,
+}
+
+impl CompiledRuleProgramV2 {
+    /// Stable program identity (the first member in document order).
+    #[must_use]
+    pub const fn program_id(&self) -> SemanticItemIdV2 {
+        self.program_id
+    }
+
+    /// Exact member references in document order.
+    #[must_use]
+    pub fn members(&self) -> &[RuleProgramMemberV2] {
+        &self.members
+    }
+
+    /// The one document-wide semantic plan.
+    #[must_use]
+    pub const fn plan(&self) -> &SemanticPlanV2 {
+        &self.plan
+    }
+
+    /// The logic stratification proof that admitted this program.
+    #[must_use]
+    pub const fn stratification(&self) -> &StratificationProofV1 {
+        &self.stratification
+    }
+}
+
+/// One open-analysis document. Every item stage is an explicit, non-optional
+/// status; the document may retain unresolved facts and can never be converted
+/// into a [`CompiledDocumentV2`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AnalysisDocumentV2 {
+    source_id: SourceIdV2,
+    order: Box<[SemanticItemIdV2]>,
+    items: Box<[AnalysisItemV2]>,
+    rule_program: Option<CompiledRuleProgramV2>,
+    unresolved: Box<[UnresolvedAnalysisFactV2]>,
+}
+
+impl AnalysisDocumentV2 {
+    /// Source identity.
+    #[must_use]
+    pub const fn source_id(&self) -> SourceIdV2 {
+        self.source_id
+    }
+
+    /// Source-ordered analysis item identities.
+    #[must_use]
+    pub fn order(&self) -> &[SemanticItemIdV2] {
+        &self.order
+    }
+
+    /// Source-ordered analysis items; `order()` names the identity of each.
+    #[must_use]
+    pub fn items(&self) -> &[AnalysisItemV2] {
+        &self.items
+    }
+
+    /// The analysis stage status of one authored identity.
+    #[must_use]
+    pub fn item(&self, id: SemanticItemIdV2) -> Option<&AnalysisItemV2> {
+        self.order
+            .iter()
+            .position(|candidate| *candidate == id)
+            .and_then(|index| self.items.get(index))
+    }
+
+    /// The document-wide rule program when the rule stage completed.
+    #[must_use]
+    pub const fn rule_program(&self) -> Option<&CompiledRuleProgramV2> {
+        self.rule_program.as_ref()
+    }
+
+    /// Unresolved analysis facts, ordered by canonical location.
+    #[must_use]
+    pub fn unresolved(&self) -> &[UnresolvedAnalysisFactV2] {
+        &self.unresolved
+    }
+}
+
+/// One item-stage status inside an [`AnalysisDocumentV2`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AnalysisItemV2 {
+    /// Every applicable stage completed for this item.
+    Complete(PlannedItemV2),
+    /// The item is a checked non-plan declaration.
+    NotApplicable(NoPlanReasonV2),
+    /// A stage blocked this item; the ordered diagnostics are the reason.
+    BlockedByDiagnostics(Box<[FrontendDiagnosticV2]>),
+}
+
+/// One unresolved open-analysis fact.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct UnresolvedAnalysisFactV2 {
+    code: &'static str,
+    location: LocatedSpanV2,
+}
+
+impl UnresolvedAnalysisFactV2 {
+    const fn new(code: &'static str, location: LocatedSpanV2) -> Self {
+        Self { code, location }
+    }
+
+    /// Stable unresolved code.
+    #[must_use]
+    pub const fn code(self) -> &'static str {
+        self.code
+    }
+
+    /// Exact unresolved location.
+    #[must_use]
+    pub const fn location(self) -> LocatedSpanV2 {
+        self.location
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Public entries
+// ---------------------------------------------------------------------------
+
+/// Compile one source document against complete immutable authority.
 ///
 /// # Errors
 ///
-/// Returns a stage-tagged [`PipelineDiagnosticV1`] on the first failing stage.
-pub fn compile_program_with_schema(
+/// Returns the first failing stage: a source-anchored document failure
+/// (surface parse, HIR integrity, semantic transaction, algebra, logic,
+/// planning, or pipeline assembly) or a source-less authority failure.
+pub fn compile_source_document_v2(
+    source_id: SourceIdV2,
     source: &str,
-    schema: &TypeEnvV1,
-) -> Result<CompiledProgramV1, PipelineDiagnosticV1> {
-    compile_with_context(source, &FrontendContextV1::schema_only(schema.clone()))
+    authority: &ClosedFrontendAuthorityV2,
+) -> Result<CompiledDocumentV2, FrontendTransactionErrorV2> {
+    let parsed = parse_source(source_id, source, authority.budget())?;
+    let checked = CheckedSyntaxDocumentV2::try_from_hir(parsed.hir)
+        .map_err(FrontendTransactionErrorV2::from)?;
+    let document = resolve_checked_document_v2(checked, authority)?;
+    compile_resolved_document_v2(&document)
 }
 
-/// Compile a source string through the full stack against explicit semantic
-/// authority.
+/// Compile one already-sealed semantic document.
+///
+/// This is the checked-document pipeline entry point (ticket 07 step 9). The
+/// facade exports only the source entry points; tests and the integration gate
+/// use this one to drive forged documents through the exact-key assembler.
 ///
 /// # Errors
 ///
-/// Returns a stage-tagged [`PipelineDiagnosticV1`] on the first failing stage.
-pub fn compile_with_context(
+/// Returns a typed failure when the document's own membership is inconsistent
+/// (missing/extra/duplicate/foreign/wrong-kind), when any applicable owner stage
+/// rejects, or when the assembled key sets disagree.
+pub fn compile_resolved_document_v2(
+    document: &SemanticDocumentV2,
+) -> Result<CompiledDocumentV2, FrontendTransactionErrorV2> {
+    let (items, rule_program) = run_document(document)?.into_compiled()?;
+    CompiledDocumentV2::try_new(document.source_id(), Vec::new(), items, rule_program)
+}
+
+/// Analyze one source document against explicit open editor authority.
+///
+/// A fully resolved open analysis carries the same stage payloads as a closed
+/// compile but remains an [`AnalysisDocumentV2`]. Partial authority maps every
+/// item to `BlockedByDiagnostics` with explicit unresolved facts; absence of
+/// authority is never filled with a fabricated default.
+///
+/// # Errors
+///
+/// Returns a source-anchored hard semantic error or a source-less authority
+/// error. Unresolved (non-erroneous) analysis is not an error.
+pub fn analyze_source_document_v2(
+    source_id: SourceIdV2,
     source: &str,
-    context: &FrontendContextV1,
-) -> Result<CompiledProgramV1, PipelineDiagnosticV1> {
-    // ---- stage 1: parse ----------------------------------------------------
-    let builder = HirBuilderV1::new();
-    let parsed = parse_program(source, &builder).map_err(PipelineDiagnosticV1::Parse)?;
-    let item = parsed.item;
-
-    // The unified item view used for binding, logic, and classification. The
-    // original carriers map onto the same `ProgramItemHirV1` the new families
-    // already use, so one routine handles every family.
-    let program = item.to_program_item();
-
-    let compiled = compile_item_with_context(&program, context)?;
-    Ok(CompiledProgramV1 { item, compiled })
-}
-
-/// Compile one already-parsed program item through the stages its family runs.
-///
-/// This is the recursive core every entry point funnels through: top-level
-/// items, composition producers, and composition bodies all compile here, so the
-/// per-family stage routing is defined in exactly one place.
-///
-/// # Errors
-///
-/// Returns a stage-tagged [`PipelineDiagnosticV1`] on the first failing stage.
-pub fn compile_item_structural(
-    item: &ProgramItemHirV1,
-) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    compile_item_with_context(item, &FrontendContextV1::structural_only())
-}
-
-/// Compile one already-parsed program item through the stages its family runs
-/// against a caller-supplied schema [`TypeEnvV1`] only.
-///
-/// # Errors
-///
-/// Returns a stage-tagged [`PipelineDiagnosticV1`] on the first failing stage.
-pub fn compile_item_with_schema(
-    item: &ProgramItemHirV1,
-    schema: &TypeEnvV1,
-) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    compile_item_with_context(item, &FrontendContextV1::schema_only(schema.clone()))
-}
-
-/// Compile one already-parsed program item through explicit semantic authority.
-///
-/// # Errors
-///
-/// Returns a stage-tagged [`PipelineDiagnosticV1`] on the first failing stage.
-pub fn compile_item_with_context(
-    item: &ProgramItemHirV1,
-    context: &FrontendContextV1,
-) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    // A stand-alone item registers into its own throwaway catalog; cross-item
-    // duplicate / cycle / certified rejection needs a SHARED catalog, which is
-    // what the document entry points thread.
-    let mut catalog = CatalogV1::new();
-    compile_item_in(item, context, &mut catalog)
-}
-
-/// Compile a document of program items that share ONE catalog, so cross-item
-/// catalog rules fire: a second declaration colliding on `<kind>::<name>`, a
-/// VIEW inline-select cycle across declarations, or a REQUIRE CERTIFIED that a
-/// later PROFILE violates rejects tagged `modules`. Each item compiles in order
-/// and the first failing stage short-circuits the whole document (D10).
-///
-/// `parse_program` lowers a single root, so callers build the item list (one
-/// per parsed source) and feed it here; this is the multi-item path the
-/// single-root parser cannot express on its own.
-///
-/// # Errors
-///
-/// Returns the first failing item's stage-tagged [`PipelineDiagnosticV1`].
-pub fn compile_document_structural(
-    items: &[ProgramItemHirV1],
-) -> Result<Vec<CompiledItemV1>, PipelineDiagnosticV1> {
-    compile_document_with_context(items, &FrontendContextV1::structural_only())
-}
-
-/// Compile a document of program items that share ONE catalog against a
-/// caller-supplied schema [`TypeEnvV1`] only.
-///
-/// # Errors
-///
-/// Returns the first failing item's stage-tagged [`PipelineDiagnosticV1`].
-pub fn compile_document_with_schema(
-    items: &[ProgramItemHirV1],
-    schema: &TypeEnvV1,
-) -> Result<Vec<CompiledItemV1>, PipelineDiagnosticV1> {
-    compile_document_with_context(items, &FrontendContextV1::schema_only(schema.clone()))
-}
-
-/// Compile a document of items through explicit semantic authority.
-///
-/// # Errors
-///
-/// Returns the first failing item's stage-tagged [`PipelineDiagnosticV1`].
-pub fn compile_document_with_context(
-    items: &[ProgramItemHirV1],
-    context: &FrontendContextV1,
-) -> Result<Vec<CompiledItemV1>, PipelineDiagnosticV1> {
-    let mut catalog = CatalogV1::new();
-    let mut compiled = Vec::with_capacity(items.len());
-    for item in items {
-        compiled.push(compile_item_in(item, context, &mut catalog)?);
-    }
-    Ok(compiled)
-}
-
-/// The per-family routing core, threaded with the catalog the registration /
-/// meta stages register into.
-fn compile_item_in(
-    item: &ProgramItemHirV1,
-    context: &FrontendContextV1,
-    catalog: &mut CatalogV1,
-) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    match item {
-        ProgramItemHirV1::Query(query) => compile_relational(query, context),
-        ProgramItemHirV1::Decl(decl) => compile_decl(decl, context),
-        ProgramItemHirV1::Rule(rule) => compile_rule(rule, context),
-        ProgramItemHirV1::GraphQuery(find) => compile_find(context, item, find),
-        ProgramItemHirV1::Legality(check) => compile_legality(context, item, check),
-        ProgramItemHirV1::Presentation(pres) => compile_presentation(context, item, pres),
-        ProgramItemHirV1::CatalogDecl(decl) => compile_catalog_decl(decl, catalog),
-        ProgramItemHirV1::Composition(comp) => compile_composition(comp, context, catalog),
-        ProgramItemHirV1::Meta(meta) => compile_meta(meta, context, catalog),
-    }
-}
-
-// ---- relational path (unchanged stages) ------------------------------------
-
-/// The existing relational path: bind -> type -> algebra -> plan.
-fn compile_relational(
-    query: &QueryHirV1,
-    context: &FrontendContextV1,
-) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    // ---- bind --------------------------------------------------------------
-    let mut binder = Binder::new(context.module_graph());
-    binder.resolve_query(query);
-    finish_bind(binder)?;
-
-    // ---- type --------------------------------------------------------------
-    let checker = TypeCheckerV1::new();
-    let local_env = type_check_relation(&checker, &query.body, context.schema())?;
-    if let Some(shape) = &query.result_shape {
-        type_check_shape(&checker, shape, &merged_env(context.schema(), &local_env))?;
-    }
-
-    // ---- algebra -----------------------------------------------------------
-    let options = context.normalization_options_v1(checker.builtins());
-    let algebra = normalize_query(query, &options).map_err(PipelineDiagnosticV1::Algebra)?;
-
-    // ---- logic (relational queries carry no source-level recursion here) ----
-    let recursion = RecursionShapeV1::None;
-
-    // ---- planning ----------------------------------------------------------
-    let request = PlanRequestV1 {
-        root: algebra.clone(),
-        recursion,
-        witness: None,
-        result_kind: RequestedResultKindV1::Table,
-        effect: EffectClassV1::ReadOnly,
-        truth_lane: TruthLaneV1::Deterministic,
+    authority: &OpenAnalysisAuthorityV2,
+) -> Result<AnalysisDocumentV2, FrontendTransactionErrorV2> {
+    let parsed = parse_source(source_id, source, authority.budget())?;
+    let source_len = parsed.hir.source_len;
+    let checked = CheckedSyntaxDocumentV2::try_from_hir(parsed.hir)
+        .map_err(FrontendTransactionErrorV2::from)?;
+    let (Some(modules), Some(relations), Some(graph_references)) = (
+        authority.modules(),
+        authority.relations(),
+        authority.graph_references(),
+    ) else {
+        return incomplete_open_analysis(source_id, source_len, checked, authority);
     };
-    let plan = produce_plan(&request).map_err(PipelineDiagnosticV1::Planning)?;
-
-    Ok(CompiledItemV1::RelationalQuery {
-        hir: Box::new(query.clone()),
-        algebra: Box::new(algebra),
-        plan: Box::new(plan),
-    })
+    let closed = ClosedFrontendAuthorityV2::try_new(
+        modules.clone(),
+        relations.clone(),
+        graph_references.clone(),
+        authority.budget().clone(),
+    )?;
+    let document = resolve_checked_document_v2(checked, &closed)?;
+    analyze_resolved_document_v2(&document)
 }
 
-/// A `let` declaration: bind + type-check, then produce an explicit
-/// non-servable value artifact.
-fn compile_decl(
-    decl: &DeclHirV1,
-    context: &FrontendContextV1,
-) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    let mut binder = Binder::new(context.module_graph());
-    binder.resolve_decl(decl, &[]);
-    finish_bind(binder)?;
-
-    let checker = TypeCheckerV1::new();
-    let value_type = infer_value_type(&checker, &decl.body, context.schema())?;
-
-    Ok(CompiledItemV1::ValueArtifact {
-        hir: Box::new(decl.clone()),
-        value_type,
-        no_serve_reason: NoServeReasonV1::ValueDeclaration,
-    })
-}
-
-/// A horn `rule`: type-check what is closed under current authority, then lower
-/// into a recursive-program artifact with explicit stratification proof.
-fn compile_rule(
-    rule: &RuleHirV1,
-    context: &FrontendContextV1,
-) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    let checker = TypeCheckerV1::new();
-    type_check_value(&checker, &rule.head, context.schema())?;
-    type_check_bool(&checker, &rule.body, context.schema())?;
-
-    let program = lower_source_rule(rule)?;
-    let proof = program.stratify().map_err(PipelineDiagnosticV1::Logic)?;
-
-    Ok(CompiledItemV1::RuleArtifact {
-        hir: Box::new(rule.clone()),
-        program: Box::new(program),
-        proof: Box::new(proof),
-        no_serve_reason: NoServeReasonV1::RuleArtifact,
-    })
-}
-
-// ---- FIND ------------------------------------------------------------------
-
-/// FIND: bind (local endpoint refs) -> the logic graph-query contract -> the
-/// planning classification. An illegal endpoint shape or an unbounded witness
-/// family rejects tagged `logic`; the inner logic code/span is preserved.
-fn compile_find(
-    context: &FrontendContextV1,
-    item: &ProgramItemHirV1,
-    find: &GraphQueryHirV1,
-) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    bind_item(item, context.module_graph())?;
-
-    // Logic stage: the graph-query contract owns endpoint-presence + bounded
-    // witness legality. Run it explicitly so an unbounded FIND is tagged `logic`
-    // (rather than relayed through planning).
-    GraphQuerySemanticsV1::classify(find).map_err(PipelineDiagnosticV1::Logic)?;
-
-    let plan = classify_to_plan(item)?;
-    Ok(CompiledItemV1::GraphQuery {
-        hir: Box::new(find.clone()),
-        plan: Box::new(plan),
-    })
-}
-
-// ---- CHECK -----------------------------------------------------------------
-
-/// CHECK: bind (local refs) -> planning classify -> `alert` plan.
-fn compile_legality(
-    context: &FrontendContextV1,
-    item: &ProgramItemHirV1,
-    check: &LegalityHirV1,
-) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    bind_item(item, context.module_graph())?;
-    if let Some(confirm) = &check.semantic_confirm {
-        GraphQuerySemanticsV1::classify(confirm).map_err(PipelineDiagnosticV1::Logic)?;
-    }
-    let plan = classify_to_plan(item)?;
-    Ok(CompiledItemV1::Legality {
-        hir: Box::new(check.clone()),
-        plan: Box::new(plan),
-    })
-}
-
-// ---- presentation ----------------------------------------------------------
-
-/// Presentation verbs: bind (local refs) -> planning classify. The result-kind /
-/// effect vary per verb (EXPLAIN -> proof_explain, SHOW/SAMPLE -> table,
-/// DESCRIBE -> alert, COMPARE -> path_witness, EXPORT -> export-only).
-fn compile_presentation(
-    context: &FrontendContextV1,
-    item: &ProgramItemHirV1,
-    pres: &PresentationHirV1,
-) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    bind_item(item, context.module_graph())?;
-    let plan = classify_to_plan(item)?;
-    Ok(CompiledItemV1::Presentation {
-        hir: Box::new(pres.clone()),
-        plan: Box::new(plan),
-    })
-}
-
-// ---- catalog declarations --------------------------------------------------
-
-/// A catalog declaration: register it in a fresh modules [`CatalogV1`]. A
-/// duplicate `<kind>::<name>` (or a VIEW inline cycle / certified violation on
-/// resolve) rejects tagged `modules`, pairing the inner code with the decl span.
-fn compile_catalog_decl(
-    decl: &CatalogDeclHirV1,
-    catalog: &mut CatalogV1,
-) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    catalog
-        .register(decl.clone())
-        .map_err(|module| PipelineDiagnosticV1::Modules(Box::new(module), decl.span))?;
-    // Resolving the (possibly multi-decl) catalog enforces VIEW inline-select
-    // cycles and REQUIRE CERTIFIED admission forcing.
-    catalog
-        .resolve()
-        .map_err(|module| PipelineDiagnosticV1::Modules(Box::new(module), decl.span))?;
-
-    // The stable asset id is `<kind>::<name>`, matching the catalog's minting.
-    let kind = quanta_gqlang_v2_modules::CatalogKindV1::of_payload(&decl.payload);
-    let asset_id = format!("{}::{}", kind.tag(), decl.name);
-    Ok(CompiledItemV1::CatalogRegistration {
-        hir: Box::new(decl.clone()),
-        asset_id,
-    })
-}
-
-// ---- composition -----------------------------------------------------------
-
-/// A composition: the binder owns LET..WITH local scope (undefined / duplicate
-/// binding, illegal capture reject tagged `bind`); then each producer and the
-/// body compile recursively through [`compile_item_in`], threading the document
-/// catalog so cross-item catalog rules (a producer and the body declaring the
-/// same `<kind>::<name>` asset) fire across the composition's nested items.
-fn compile_composition(
-    comp: &CompositionHirV1,
-    context: &FrontendContextV1,
-    catalog: &mut CatalogV1,
-) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    // ---- bind: LET..WITH scope ---------------------------------------------
-    let mut binder = Binder::new(context.module_graph());
-    binder.resolve_composition(comp);
-    finish_bind(binder)?;
-
-    // ---- compile each producer + the body recursively ----------------------
-    // Producers and the body share the document catalog scope (D10): a duplicate
-    // catalog declaration across nested items rejects tagged `modules`, just as
-    // it does at the document top level.
-    //
-    // D34 (capture lane): each `LET <name> = <producer>` binding is binder-visible
-    // to later producers and the body. Its OUTPUT row type must therefore lift
-    // into the local type environment so a body/later-producer expression over a
-    // producer column (`from <name> x | where x.col ...`) is type-checked, not
-    // silently skipped because the source name stayed schema-open. Accumulate each
-    // producer's output relation type into a working schema and compile subsequent
-    // producers and the body against that augmented context.
-    let mut local_context = context.clone();
-    let mut bindings = Vec::with_capacity(comp.bindings.len());
-    let mut binding_outputs = Vec::with_capacity(comp.bindings.len());
-    for binding in &comp.bindings {
-        let compiled = compile_item_in(&binding.producer, &local_context, catalog)?;
-        // D26/D34: the sealed compiled producer owns both output shape and
-        // multiplicity. Do not reconstruct either from raw HIR or install a
-        // default cardinality for a non-relational family.
-        let relation = producer_output_relation(&compiled, &local_context);
-        // The binding identity exists independently of whether the producer's
-        // row schema is derivable. Install exact identity unconditionally, and
-        // install row typing only when the sealed producer exposes a contract.
-        local_context.install_composition_binding_v1(&binding.name, relation.as_ref());
-        binding_outputs.push(relation);
-        bindings.push(compiled);
-    }
-    let body = compile_item_in(&comp.body, &local_context, catalog)?;
-
-    Ok(CompiledItemV1::Composition {
-        hir: Box::new(comp.clone()),
-        bindings,
-        binding_outputs,
-        body: Box::new(body),
-    })
-}
-
-// ---- meta ------------------------------------------------------------------
-
-/// A meta directive: modules validates it (`USE PACK` lockfile / manifest;
-/// `REQUIRE CERTIFIED` flips the catalog flag), then planning classifies its
-/// effect. `USE PACK` produces no plan; `REQUIRE CERTIFIED` is a gate plan.
+/// Analyze one already-sealed semantic document.
 ///
-/// The `USE PACK` pack-manifest resolution runs against the caller's frozen
-/// [`PackGraphV1`] authority (`context.pack_graph()`), NOT a local empty graph
-/// (GQW3-18): a known pack in the context resolves; an unknown pack (or an empty
-/// structural-only context) stays fail-closed as `modules.unknown_pack_manifest`.
-/// `REQUIRE CERTIFIED` needs no manifest and is unaffected by the pack graph.
-fn compile_meta(
-    meta: &MetaHirV1,
-    context: &FrontendContextV1,
-    catalog: &mut CatalogV1,
-) -> Result<CompiledItemV1, PipelineDiagnosticV1> {
-    // Modules stage: validate the directive against the caller's real pack graph
-    // authority. A REQUIRE CERTIFIED needs no manifest; a USE PACK resolves its
-    // pack id against `context.pack_graph()`'s typed manifest map (never a string
-    // heuristic), and an unknown pack id (or a bad lockfile path) rejects tagged
-    // `modules`.
-    catalog
-        .apply_meta(meta, context.pack_graph())
-        .map_err(|module| PipelineDiagnosticV1::Modules(Box::new(module), meta.span))?;
+/// # Errors
+///
+/// Returns a typed failure only when the sealed document's own membership is
+/// inconsistent; blocked item stages stay inside the analysis document.
+pub fn analyze_resolved_document_v2(
+    document: &SemanticDocumentV2,
+) -> Result<AnalysisDocumentV2, FrontendTransactionErrorV2> {
+    Ok(run_document(document)?.into_analysis(document.source_id()))
+}
 
-    // Planning stage: classify the directive's effect.
-    let plan = match meta.kind {
-        // USE PACK is effect-style activation with no plan.
-        MetaKindV1::UsePack { .. } => None,
-        // REQUIRE CERTIFIED is a proof-confirmed truth gate.
-        MetaKindV1::RequireCertified => {
-            let item = ProgramItemHirV1::from(meta.clone());
-            Some(Box::new(classify_to_plan(&item)?))
-        }
-    };
+/// Format one source document from its checked parse, using only the caller's
+/// checked frontend budget. This entry performs no semantic traversal.
+///
+/// # Errors
+///
+/// Returns a bounded source-anchored failure when the source exceeds the
+/// budget's `max_source_bytes`, when the budget cannot be projected onto the
+/// parse stage, or when the surface parser rejects the source.
+pub fn format_source_document_v2(
+    source_id: SourceIdV2,
+    source: &str,
+    budget: &FrontendBudgetV2,
+) -> Result<String, FrontendFailureV2> {
+    let projected = project_parse_budget(budget)?;
+    if source.len() > usize::try_from(budget.max_source_bytes()).unwrap_or(usize::MAX) {
+        return Err(FrontendFailureV2::one(FrontendDiagnosticV2::new(
+            FrontendStageV2::Resource,
+            "frontend.resource_limit_exceeded",
+            FrontendSeverityV2::Error,
+            LocatedSpanV2 {
+                source_id,
+                span: SpanV1::new(0, source.len()),
+            },
+            Vec::new(),
+            "source exceeds the frontend budget's max_source_bytes",
+        )));
+    }
+    let parsed = parse_source_document_v2(source_id, source, &projected)
+        .map_err(|error| surface_failure(&error))?;
+    Ok(format_document(&parsed.hir.items))
+}
 
-    Ok(CompiledItemV1::Meta {
-        hir: Box::new(meta.clone()),
-        plan,
+// ---------------------------------------------------------------------------
+// Stage orchestration
+// ---------------------------------------------------------------------------
+
+/// Project the parse-stage budget from one checked frontend budget.
+fn project_parse_budget(budget: &FrontendBudgetV2) -> Result<ParseBudgetV2, FrontendFailureV2> {
+    ParseBudgetV2::try_new(
+        usize::try_from(budget.max_tokens()).unwrap_or(usize::MAX),
+        usize::try_from(budget.max_document_items()).unwrap_or(usize::MAX),
+        usize::try_from(budget.max_expression_nodes()).unwrap_or(usize::MAX),
+        usize::try_from(budget.max_expression_depth()).unwrap_or(usize::MAX),
+        usize::try_from(budget.max_collection_width()).unwrap_or(usize::MAX),
+        usize::try_from(budget.max_projection_width()).unwrap_or(usize::MAX),
+    )
+    .map_err(|message| {
+        FrontendFailureV2::one(FrontendDiagnosticV2::new(
+            FrontendStageV2::Resource,
+            PARSE_BUDGET_PROJECTION_FAILED_CODE,
+            FrontendSeverityV2::Error,
+            zero_location(SourceIdV2::from_raw(0)),
+            Vec::new(),
+            message,
+        ))
     })
 }
 
-// ---- composition producer output schema (D34 capture lane) -----------------
+/// Parse one source string with the authority's own parse budget.
+fn parse_source(
+    source_id: SourceIdV2,
+    source: &str,
+    budget: &FrontendBudgetV2,
+) -> Result<quanta_gqlang_v2_surface::ParsedDocumentV2, FrontendTransactionErrorV2> {
+    let projected = project_parse_budget(budget).map_err(FrontendTransactionErrorV2::from)?;
+    parse_source_document_v2(source_id, source, &projected)
+        .map_err(|error| surface_transaction_error(&error))
+}
 
-/// The output relation type a composition producer exposes to later producers
-/// and the body, when one is derivable under the supplied authority.
-///
-/// A relational producer exposes its typed top-level projection. The two
-/// non-relational producer families with a closed composition-row contract also
-/// expose an exact host-agnostic row: SAMPLE is `Set<{path: RepoPath}>`; bounded
-/// PATH/REACHABILITY FIND is `Set<{function: EntityRef}>`. Other FIND and
-/// presentation families remain schema-open until their own public row contract
-/// exists. No runtime/provider type participates in this authority.
-fn producer_output_relation(
-    producer: &CompiledItemV1,
-    context: &FrontendContextV1,
-) -> Option<TypeV1> {
-    match producer {
-        CompiledItemV1::RelationalQuery { hir, algebra, .. } => {
-            let checker = TypeCheckerV1::new();
-            let output_env = type_check_relation(&checker, &hir.body, context.schema()).ok()?;
-            let local_env = merged_env(context.schema(), &output_env);
-            let fields = projection_row_fields(&checker, &hir.body, &local_env)?;
-            Some(TypeV1::Relation {
-                row: Box::new(TypeV1::record(fields)),
-                cardinality: algebra.cardinality,
-            })
-        }
-        CompiledItemV1::Presentation { hir, plan }
-            if matches!(
-                hir.kind,
-                quanta_gqlang_v2_hir::PresentationKindV1::Sample { .. }
-            ) =>
-        {
-            Some(exact_non_relational_output_relation_v1(
-                "path",
-                ScalarTyV1::RepoPath,
-                plan.multiplicity_order.cardinality,
+/// Build the explicit incomplete-analysis document for partial open authority.
+fn incomplete_open_analysis(
+    source_id: SourceIdV2,
+    source_len: usize,
+    checked: CheckedSyntaxDocumentV2,
+    authority: &OpenAnalysisAuthorityV2,
+) -> Result<AnalysisDocumentV2, FrontendTransactionErrorV2> {
+    let extended = authority
+        .host_sources()
+        .try_extend_document(SourceRegistrationV2 {
+            source_id,
+            source_len,
+        })
+        .map_err(|error| {
+            document_transaction_error(FrontendDiagnosticV2::new(
+                FrontendStageV2::Integrity,
+                error.code(),
+                FrontendSeverityV2::Error,
+                zero_location(source_id),
+                Vec::new(),
+                error.to_string(),
             ))
+        })?;
+    let declared = DeclaredDocumentV2::try_new(checked, authority.budget(), &extended)
+        .map_err(FrontendTransactionErrorV2::from)?;
+    let spans: BTreeMap<SemanticItemIdV2, LocatedSpanV2> = declared
+        .expected()
+        .map(|(id, span)| {
+            (
+                id,
+                LocatedSpanV2 {
+                    source_id: id.source_id(),
+                    span,
+                },
+            )
+        })
+        .collect();
+    // Authored source order, not identity order: a blocked analysis must list
+    // items exactly where the closed compile lists them.
+    let known: Vec<(SemanticItemIdV2, LocatedSpanV2)> = declared
+        .order()
+        .iter()
+        .filter_map(|id| spans.get(id).map(|location| (*id, *location)))
+        .collect();
+    let mut missing_authority: Vec<FrontendDiagnosticV2> = Vec::new();
+    for (absent, code, message) in [
+        (
+            authority.modules().is_none(),
+            "pipeline.analysis.missing_module_authority",
+            "open analysis has no validated module authority",
+        ),
+        (
+            authority.relations().is_none(),
+            "pipeline.analysis.missing_relation_authority",
+            "open analysis has no relation catalog authority",
+        ),
+        (
+            authority.graph_references().is_none(),
+            "pipeline.analysis.missing_graph_authority",
+            "open analysis has no graph selector authority",
+        ),
+    ] {
+        if !absent {
+            continue;
         }
-        CompiledItemV1::GraphQuery { hir, plan }
-            if matches!(
-                hir.kind,
-                quanta_gqlang_v2_hir::GraphQueryKindV1::Path
-                    | quanta_gqlang_v2_hir::GraphQueryKindV1::Reachability
-            ) =>
-        {
-            Some(exact_non_relational_output_relation_v1(
-                "function",
-                ScalarTyV1::EntityRef,
-                plan.multiplicity_order.cardinality,
-            ))
-        }
-        CompiledItemV1::ValueArtifact { .. }
-        | CompiledItemV1::GraphQuery { .. }
-        | CompiledItemV1::RuleArtifact { .. }
-        | CompiledItemV1::Legality { .. }
-        | CompiledItemV1::Presentation { .. }
-        | CompiledItemV1::CatalogRegistration { .. }
-        | CompiledItemV1::Composition { .. }
-        | CompiledItemV1::Meta { .. } => None,
+        let Some((_, location)) = known.first() else {
+            continue;
+        };
+        missing_authority.push(FrontendDiagnosticV2::new(
+            FrontendStageV2::Declaration,
+            code,
+            FrontendSeverityV2::Warning,
+            *location,
+            Vec::new(),
+            message,
+        ));
     }
+    let diagnostics = canonicalize_diagnostics(missing_authority);
+    let items = known
+        .iter()
+        .map(|_item| AnalysisItemV2::BlockedByDiagnostics(diagnostics.clone().into_boxed_slice()))
+        .collect::<Vec<_>>();
+    let unresolved = known
+        .iter()
+        .map(|(_, location)| {
+            UnresolvedAnalysisFactV2::new(OPEN_AUTHORITY_INCOMPLETE_CODE, *location)
+        })
+        .collect::<Vec<_>>();
+    Ok(AnalysisDocumentV2 {
+        source_id,
+        order: known
+            .iter()
+            .map(|(id, _location)| *id)
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+        items: items.into_boxed_slice(),
+        rule_program: None,
+        unresolved: unresolved.into_boxed_slice(),
+    })
 }
 
-fn exact_non_relational_output_relation_v1(
-    field_name: &str,
-    field_type: ScalarTyV1,
-    cardinality: CardinalityV1,
-) -> TypeV1 {
-    TypeV1::Relation {
-        row: Box::new(TypeV1::record(vec![RecordFieldTyV1::new(
-            field_name,
-            TypeV1::scalar(field_type),
-        )])),
-        cardinality,
-    }
+/// The completed run of every applicable stage over one sealed document.
+struct DocumentRunV2 {
+    items: Vec<ItemRunV2>,
+    rule_program: Option<CompiledRuleProgramV2>,
+    rule_blocked: Option<Vec<FrontendDiagnosticV2>>,
 }
 
-/// The top-level projection's aliased output columns, typed under `env`. Returns
-/// `None` when the relation does not terminate in a projection (no nameable
-/// output columns to lift). A projection item without an alias, or one whose
-/// value type stays authority-open, contributes no field.
-fn projection_row_fields(
-    checker: &TypeCheckerV1,
-    relation: &RelationExprHirV1,
-    env: &TypeEnvV1,
-) -> Option<Vec<quanta_gqlang_v2_types::RecordFieldTyV1>> {
-    let RelationExprKindV1::Project(project) = &relation.kind else {
-        return None;
-    };
-    let mut fields = Vec::new();
-    for item in &project.items {
-        if let Some(alias) = &item.alias {
-            if let Ok(Some(ty)) = infer_value_type(checker, &item.value, env) {
-                fields.push(quanta_gqlang_v2_types::RecordFieldTyV1::new(
-                    alias.name.clone(),
-                    ty,
-                ));
+/// One item's stage outcome.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum ItemRunV2 {
+    /// Every applicable stage completed.
+    Planned(PlannedItemV2),
+    /// The item is a checked non-plan declaration.
+    NoPlan {
+        item_id: SemanticItemIdV2,
+        reason: NoPlanReasonV2,
+    },
+    /// A stage failed; the ordered diagnostics are the reason.
+    Blocked {
+        item_id: SemanticItemIdV2,
+        diagnostics: Vec<FrontendDiagnosticV2>,
+    },
+}
+
+impl DocumentRunV2 {
+    /// The exact compiled item list, failing closed on the first blocked stage.
+    fn into_compiled(
+        self,
+    ) -> Result<(Vec<CompiledItemV2>, Option<CompiledRuleProgramV2>), FrontendTransactionErrorV2>
+    {
+        if let Some(diagnostics) = self.rule_blocked {
+            return Err(document_transaction_failure(diagnostics));
+        }
+        let mut items = Vec::with_capacity(self.items.len());
+        for item in self.items {
+            match item {
+                ItemRunV2::Planned(planned) => items.push(CompiledItemV2::Planned(planned)),
+                ItemRunV2::NoPlan { item_id, reason } => {
+                    items.push(CompiledItemV2::NoPlan { item_id, reason });
+                }
+                ItemRunV2::Blocked { diagnostics, .. } => {
+                    return Err(document_transaction_failure(diagnostics));
+                }
             }
         }
+        Ok((items, self.rule_program))
     }
-    // A projection that contributes NO named columns (every item is alias-less, or
-    // every aliased item stays authority-open) denotes no nameable output row. Lift
-    // `None` rather than `Some(vec![])` so the binding is not created against a
-    // phantom empty-record relation: the name stays schema-open and a downstream
-    // reference stays env-open exactly as it would have without lifting (D34, the
-    // lifted row never over-binds).
-    if fields.is_empty() {
-        return None;
+
+    /// The exact analysis item list; blocked stages stay explicit.
+    fn into_analysis(self, source_id: SourceIdV2) -> AnalysisDocumentV2 {
+        let rule_blocked = self.rule_blocked;
+        let mut order = Vec::with_capacity(self.items.len());
+        let items = self
+            .items
+            .into_iter()
+            .map(|item| match item {
+                ItemRunV2::Planned(PlannedItemV2::RuleMember(member)) => {
+                    order.push(member.member_item_id());
+                    match &rule_blocked {
+                        Some(diagnostics) => AnalysisItemV2::BlockedByDiagnostics(
+                            diagnostics.clone().into_boxed_slice(),
+                        ),
+                        None => AnalysisItemV2::Complete(PlannedItemV2::RuleMember(member)),
+                    }
+                }
+                ItemRunV2::Planned(planned) => {
+                    order.push(planned.item_id());
+                    AnalysisItemV2::Complete(planned)
+                }
+                ItemRunV2::NoPlan { item_id, reason } => {
+                    order.push(item_id);
+                    AnalysisItemV2::NotApplicable(reason)
+                }
+                ItemRunV2::Blocked {
+                    item_id,
+                    diagnostics,
+                } => {
+                    order.push(item_id);
+                    AnalysisItemV2::BlockedByDiagnostics(diagnostics.into_boxed_slice())
+                }
+            })
+            .collect::<Vec<_>>();
+        AnalysisDocumentV2 {
+            source_id,
+            order: order.into_boxed_slice(),
+            items: items.into_boxed_slice(),
+            rule_program: self.rule_program,
+            unresolved: Box::new([]),
+        }
     }
-    Some(fields)
 }
 
-// ---- shared stage helpers --------------------------------------------------
+/// Run every applicable stage of one sealed document.
+///
+/// Only membership inconsistency is a hard error here; every owner stage
+/// failure is collected so the analysis path can report it per item while the
+/// compile path fails closed on the same collection.
+fn run_document(
+    document: &SemanticDocumentV2,
+) -> Result<DocumentRunV2, FrontendTransactionErrorV2> {
+    let membership = DocumentMembershipV2::of(document)?;
+    let rule_members = membership.rule_member_ids();
+    let rule_program_id = membership.rule_program_id();
 
-/// Bind one program item against the default (empty) frozen module graph,
-/// surfacing the first diagnostic in deterministic pre-order, fail-closed.
-fn bind_item(item: &ProgramItemHirV1, graph: &ModuleGraphV1) -> Result<(), PipelineDiagnosticV1> {
-    let mut binder = Binder::new(graph);
+    let (rule_program, rule_blocked) = match rule_program_id {
+        Some(program_id) => match compile_rule_program(document, program_id, &rule_members) {
+            Ok(program) => (Some(program), None),
+            Err(FrontendTransactionErrorV2::Document(failure)) => {
+                (None, Some(failure.diagnostics().to_vec()))
+            }
+            Err(error @ FrontendTransactionErrorV2::Authority(_)) => return Err(error),
+        },
+        None => (None, None),
+    };
+
+    let mut items = Vec::with_capacity(membership.order().len());
+    let mut produced_plan: BTreeSet<SemanticItemIdV2> = BTreeSet::new();
+    let mut produced_member: BTreeSet<SemanticItemIdV2> = BTreeSet::new();
+    let mut produced_no_plan: BTreeSet<SemanticItemIdV2> = BTreeSet::new();
+    let mut blocked_stage = false;
+    for id in membership.order() {
+        let location = membership.location(*id);
+        match run_item(document, &membership, *id) {
+            Ok(ItemRunV2::Planned(planned)) => {
+                let inserted = if matches!(planned, PlannedItemV2::RuleMember(_)) {
+                    produced_member.insert(*id)
+                } else {
+                    produced_plan.insert(*id)
+                };
+                if !inserted {
+                    return Err(assembly(
+                        location,
+                        DocumentAssemblyCodeV2::DuplicateItemResult,
+                        "one authored identity produced two results",
+                    ));
+                }
+                items.push(ItemRunV2::Planned(planned));
+            }
+            Ok(ItemRunV2::NoPlan { item_id, reason }) => {
+                if !produced_no_plan.insert(*id) {
+                    return Err(assembly(
+                        location,
+                        DocumentAssemblyCodeV2::DuplicateItemResult,
+                        "one authored identity produced two non-plan results",
+                    ));
+                }
+                items.push(ItemRunV2::NoPlan { item_id, reason });
+            }
+            Ok(ItemRunV2::Blocked {
+                item_id,
+                diagnostics,
+            }) => {
+                blocked_stage = true;
+                items.push(ItemRunV2::Blocked {
+                    item_id,
+                    diagnostics,
+                });
+            }
+            Err(FrontendTransactionErrorV2::Document(failure)) => {
+                blocked_stage = true;
+                items.push(ItemRunV2::Blocked {
+                    item_id: *id,
+                    diagnostics: failure.diagnostics().to_vec(),
+                });
+            }
+            Err(error @ FrontendTransactionErrorV2::Authority(_)) => return Err(error),
+        }
+    }
+
+    // A blocked owner stage is reported first: the produced key sets are
+    // incomplete by construction, so comparing them would mask the real stage
+    // failure with a pipeline membership code.
+    if blocked_stage || rule_blocked.is_some() {
+        return Ok(DocumentRunV2 {
+            items,
+            rule_program,
+            rule_blocked,
+        });
+    }
+
+    let expected_plan = membership.plan_required_ids();
+    let expected_member: BTreeSet<SemanticItemIdV2> = rule_members.iter().copied().collect();
+    let expected_no_plan = membership.no_plan_ids();
+    if produced_member != expected_member {
+        let anchor = expected_member
+            .iter()
+            .chain(produced_member.iter())
+            .find(|id| expected_member.contains(id) != produced_member.contains(id))
+            .copied();
+        let location = anchor.map_or_else(
+            || zero_location(document.source_id()),
+            |id| membership.location(id),
+        );
+        return Err(assembly(
+            location,
+            DocumentAssemblyCodeV2::RuleMembershipMismatch,
+            "the produced rule members disagree with the authored rule set",
+        ));
+    }
+    for id in &expected_plan {
+        if !produced_plan.contains(id) {
+            return Err(assembly(
+                membership.location(*id),
+                DocumentAssemblyCodeV2::MissingItemResult,
+                "an applicable authored item produced no plan result",
+            ));
+        }
+    }
+    for id in &produced_plan {
+        if !expected_plan.contains(id) {
+            return Err(assembly(
+                membership.location(*id),
+                DocumentAssemblyCodeV2::ExtraItemResult,
+                "a produced plan has no applicable authored identity",
+            ));
+        }
+    }
+    for id in &expected_no_plan {
+        if !produced_no_plan.contains(id) {
+            return Err(assembly(
+                membership.location(*id),
+                DocumentAssemblyCodeV2::MissingItemResult,
+                "a non-executable declaration produced no checked non-plan reason",
+            ));
+        }
+    }
+    for id in &produced_no_plan {
+        if !expected_no_plan.contains(id) {
+            return Err(assembly(
+                membership.location(*id),
+                DocumentAssemblyCodeV2::ExtraItemResult,
+                "a produced non-plan result has no authored declaration identity",
+            ));
+        }
+    }
+
+    Ok(DocumentRunV2 {
+        items,
+        rule_program,
+        rule_blocked,
+    })
+}
+
+/// Run the applicable stages for one authored item.
+fn run_item(
+    document: &SemanticDocumentV2,
+    membership: &DocumentMembershipV2<'_>,
+    id: SemanticItemIdV2,
+) -> Result<ItemRunV2, FrontendTransactionErrorV2> {
+    let Some(item) = membership.item(id) else {
+        return Err(assembly(
+            membership.location(id),
+            DocumentAssemblyCodeV2::MissingItemResult,
+            "an authored item has no produced semantic result",
+        ));
+    };
     match item {
-        ProgramItemHirV1::Query(query) => binder.resolve_query(query),
-        ProgramItemHirV1::Decl(decl) => binder.resolve_decl(decl, &[]),
-        ProgramItemHirV1::Rule(rule) => binder.resolve_rule(rule, &[]),
-        ProgramItemHirV1::Composition(comp) => binder.resolve_composition(comp),
-        // FIND / CHECK / presentation / catalog / meta resolve their LOCAL refs
-        // through the composition resolver's per-family arm; a stand-alone item
-        // has no enclosing LET scope, so only illegal-capture / unresolved local
-        // bindings can reject here (catalog refs stay modules' concern, D30).
-        other @ (ProgramItemHirV1::GraphQuery(_)
-        | ProgramItemHirV1::Legality(_)
-        | ProgramItemHirV1::Presentation(_)
-        | ProgramItemHirV1::CatalogDecl(_)
-        | ProgramItemHirV1::Meta(_)) => bind_standalone(&mut binder, other),
+        SemanticItemV2::Relation(_) => {
+            let lowered = lower_relation_item(document, id)
+                .map_err(|error| algebra_error(document, id, &error))?;
+            let plan = planning_plan(document, id, &SemanticPlanInputV2::Relational(lowered))?;
+            Ok(ItemRunV2::Planned(PlannedItemV2::Relation {
+                item_id: id,
+                plan,
+            }))
+        }
+        SemanticItemV2::Graph(graph) => {
+            let contract = GraphQueryContractV2::from_resolved(graph)
+                .map_err(|error| logic_transaction_error(&error))?;
+            let plan = planning_plan(document, id, &SemanticPlanInputV2::Graph(contract))?;
+            Ok(ItemRunV2::Planned(PlannedItemV2::Graph {
+                item_id: id,
+                plan,
+            }))
+        }
+        SemanticItemV2::Check(check) => {
+            let contract = check_contract(check)?;
+            let plan = planning_plan(document, id, &SemanticPlanInputV2::Check(contract))?;
+            Ok(ItemRunV2::Planned(PlannedItemV2::Check {
+                item_id: id,
+                plan,
+            }))
+        }
+        SemanticItemV2::Presentation(presentation) => {
+            let contract = PresentationContractV2::from_resolved(presentation)
+                .map_err(|error| planning_transaction_error(&error))?;
+            let plan = planning_plan(document, id, &SemanticPlanInputV2::Presentation(contract))?;
+            Ok(ItemRunV2::Planned(PlannedItemV2::Presentation {
+                item_id: id,
+                plan,
+            }))
+        }
+        SemanticItemV2::Composition(composition) => {
+            verify_composition(composition, membership.location(id))?;
+            let body = composition_body_input(document, composition)?;
+            let input = CheckedCompositionPlanInputV2::new(composition, body)
+                .map_err(|error| planning_transaction_error(&error))?;
+            let plan = planning_plan(document, id, &SemanticPlanInputV2::Composition(input))?;
+            Ok(ItemRunV2::Planned(PlannedItemV2::Composition {
+                item_id: id,
+                plan,
+            }))
+        }
+        SemanticItemV2::Meta(meta) => match meta.kind() {
+            ResolvedMetaKindV2::RequireCertified => {
+                let plan = planning_plan(
+                    document,
+                    id,
+                    &SemanticPlanInputV2::MetaRequireCertified(meta.clone()),
+                )?;
+                Ok(ItemRunV2::Planned(PlannedItemV2::MetaRequireCertified {
+                    item_id: id,
+                    plan,
+                }))
+            }
+            ResolvedMetaKindV2::UsePack { .. } => Ok(ItemRunV2::NoPlan {
+                item_id: id,
+                reason: NoPlanReasonV2::MetaActivation,
+            }),
+        },
+        SemanticItemV2::Rule(_) => match membership.rule_program_id() {
+            Some(program_id) => Ok(ItemRunV2::Planned(PlannedItemV2::RuleMember(
+                RuleProgramMemberV2::new(program_id, id),
+            ))),
+            None => Err(assembly(
+                membership.location(id),
+                DocumentAssemblyCodeV2::RuleMembershipMismatch,
+                "a source rule has no document rule program",
+            )),
+        },
+        SemanticItemV2::Catalog(catalog) => Ok(ItemRunV2::NoPlan {
+            item_id: id,
+            reason: NoPlanReasonV2::CatalogDeclaration {
+                kind: catalog_declaration_kind(catalog),
+            },
+        }),
+        SemanticItemV2::Declaration(_) => Ok(ItemRunV2::NoPlan {
+            item_id: id,
+            reason: NoPlanReasonV2::ValueDeclaration,
+        }),
     }
-    finish_bind(binder)
 }
 
-/// Resolve a stand-alone (non-composition) item's local references by wrapping it
-/// in a trivial composition frame the binder already knows how to walk. The frame
-/// introduces no bindings, so only genuine local-scope rejects surface.
-fn bind_standalone(binder: &mut Binder<'_, ModuleGraphV1>, item: &ProgramItemHirV1) {
-    binder.open_scope(quanta_gqlang_v2_binder::CaptureV1::Capturing);
-    resolve_local(binder, item);
-    binder.close_scope();
+/// Build and plan the one document-wide rule program.
+fn compile_rule_program(
+    document: &SemanticDocumentV2,
+    program_id: SemanticItemIdV2,
+    members: &[SemanticItemIdV2],
+) -> Result<CompiledRuleProgramV2, FrontendTransactionErrorV2> {
+    let contract = RuleProgramContractV2::from_document(document)
+        .map_err(|error| logic_transaction_error(&error))?;
+    let program = RecursiveProgramV1::from_rules(contract.to_program());
+    let stratification =
+        stratify(&program, &contract.budget()).map_err(|error| logic_transaction_error(&error))?;
+    let plan = planning_plan(document, program_id, &SemanticPlanInputV2::Rule(contract))?;
+    Ok(CompiledRuleProgramV2 {
+        program_id,
+        members: members
+            .iter()
+            .map(|member| RuleProgramMemberV2::new(program_id, *member))
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+        plan,
+        stratification,
+    })
 }
 
-/// Dispatch a single item's local-ref resolution. The binder exposes
-/// `resolve_query` / `resolve_decl` / `resolve_rule` directly; the new families
-/// only carry local refs that resolve to enclosing LET bindings, which a
-/// stand-alone item never has, so resolving them is a no-op that still asserts
-/// the family is handled (no silent skip).
-fn resolve_local(binder: &mut Binder<'_, ModuleGraphV1>, item: &ProgramItemHirV1) {
-    match item {
-        ProgramItemHirV1::Query(query) => binder.resolve_query(query),
-        ProgramItemHirV1::Decl(decl) => binder.resolve_decl(decl, &[]),
-        ProgramItemHirV1::Rule(rule) => binder.resolve_rule(rule, &[]),
-        ProgramItemHirV1::Composition(comp) => binder.resolve_composition(comp),
-        // FIND / CHECK / presentation / catalog / meta carry only refs whose
-        // legality is the catalog/modules seam's (D30); with no local scope to
-        // bind into there is nothing for the binder to resolve or reject.
-        ProgramItemHirV1::GraphQuery(_)
-        | ProgramItemHirV1::Legality(_)
-        | ProgramItemHirV1::Presentation(_)
-        | ProgramItemHirV1::CatalogDecl(_)
-        | ProgramItemHirV1::Meta(_) => {}
-    }
+/// Build one CHECK contract with its identity-checked nested graph contract.
+fn check_contract(check: &ResolvedCheckV2) -> Result<CheckContractV2, FrontendTransactionErrorV2> {
+    let graph = match check.nested_graph() {
+        Some(nested) => Some(
+            GraphQueryContractV2::from_resolved(nested)
+                .map_err(|error| logic_transaction_error(&error))?,
+        ),
+        None => None,
+    };
+    CheckContractV2::from_resolved(check, graph).map_err(|error| planning_transaction_error(&error))
 }
 
-/// Drain a binder's accumulated diagnostics, surfacing the first deterministic
-/// reject as a `bind`-stage failure (D10 fail-closed).
-fn finish_bind(binder: Binder<'_, ModuleGraphV1>) -> Result<(), PipelineDiagnosticV1> {
-    let result = binder.finish();
-    if let Some(first) = result.diagnostics().first() {
-        return Err(PipelineDiagnosticV1::Bind(first.clone()));
-    }
-    Ok(())
-}
-
-/// Run planning's per-item classification, mapping a NO-PLAN marker or a reject
-/// into a `planning`-stage failure. Only the families that DO produce a plan
-/// (FIND / CHECK / presentation / REQUIRE CERTIFIED) call this.
-fn classify_to_plan(item: &ProgramItemHirV1) -> Result<PublicPlanV1, PipelineDiagnosticV1> {
-    match classify_item(item) {
-        ItemClassificationV1::Plan(plan) => Ok(plan),
-        ItemClassificationV1::Reject(planning) => Err(PipelineDiagnosticV1::Planning(planning)),
-        // A family routed here is expected to plan; a NO-PLAN marker means the
-        // routing is wrong. Surface it as the planning reject for the relational
-        // deferral so there is no silent success.
-        ItemClassificationV1::NoPlan(_) => Err(PipelineDiagnosticV1::Algebra(
-            unsupported_non_query(item.span()),
+/// Build one composition body plan input.
+fn composition_body_input(
+    document: &SemanticDocumentV2,
+    composition: &ResolvedCompositionV2,
+) -> Result<CompositionBodyPlanInputV2, FrontendTransactionErrorV2> {
+    let owner = composition.item_id();
+    match composition.body() {
+        ResolvedCompositionBodyV2::Query(body) => {
+            let root = lower_nested_relation_v2(document, owner, body.root())
+                .map_err(|error| algebra_error(document, owner, &error))?;
+            let body = CompositionRelationalBodyPlanInputV2::try_new(body.item_id(), root)
+                .map_err(|reason| {
+                    planning_transaction_error(&PlanningDiagnosticV1::InvalidComposition {
+                        reason,
+                        span: composition.location().clone(),
+                    })
+                })?;
+            Ok(CompositionBodyPlanInputV2::Relational(body))
+        }
+        ResolvedCompositionBodyV2::Graph(graph) => Ok(CompositionBodyPlanInputV2::Graph(
+            GraphQueryContractV2::from_resolved(graph)
+                .map_err(|error| logic_transaction_error(&error))?,
+        )),
+        ResolvedCompositionBodyV2::Check(check) => {
+            Ok(CompositionBodyPlanInputV2::Check(check_contract(check)?))
+        }
+        ResolvedCompositionBodyV2::Explain(explain) => Ok(CompositionBodyPlanInputV2::Explain(
+            PresentationContractV2::from_resolved(explain)
+                .map_err(|error| planning_transaction_error(&error))?,
         )),
     }
 }
 
-/// Derive the aggregate-callee catalog from the closed builtin registry, so the
-/// normalizer does not re-implement aggregate identity (D12 / ticket 04 seam).
-fn aggregate_options(builtins: &BuiltinRegistryV1) -> NormalizeOptionsV1 {
-    let aggregates: BTreeSet<String> = builtins
-        .entries()
+/// Re-verify one sealed composition's ordered producer identities and WITH
+/// target before planning sees it.
+fn verify_composition(
+    composition: &ResolvedCompositionV2,
+    location: LocatedSpanV2,
+) -> Result<(), FrontendTransactionErrorV2> {
+    let bindings = composition.bindings();
+    if bindings.is_empty() {
+        return Err(assembly(
+            location,
+            DocumentAssemblyCodeV2::CompositionProducerMismatch,
+            "a composition must retain at least one ordered producer",
+        ));
+    }
+    for (ordinal, binding) in bindings.iter().enumerate() {
+        if binding.binding().ordinal() != ordinal
+            || binding.binding().source_id() != composition.item_id().source_id()
+            || binding.producer().item_id().source_id() != composition.item_id().source_id()
+        {
+            return Err(assembly(
+                binding.name_location().location(),
+                DocumentAssemblyCodeV2::CompositionProducerMismatch,
+                "a composition producer ordinal or identity does not match its authored order",
+            ));
+        }
+    }
+    if bindings
         .iter()
-        .filter(|entry| entry.meta.is_aggregate())
-        .map(|entry| entry.name.clone())
-        .collect();
-    NormalizeOptionsV1::with_aggregates(aggregates)
+        .filter(|binding| binding.binding() == composition.with_target())
+        .count()
+        != 1
+    {
+        return Err(assembly(
+            composition.with_location().location(),
+            DocumentAssemblyCodeV2::CompositionProducerMismatch,
+            "a composition WITH target does not select exactly one ordered producer",
+        ));
+    }
+    if composition.body().item_id().source_id() != composition.item_id().source_id() {
+        return Err(assembly(
+            location,
+            DocumentAssemblyCodeV2::CompositionBodyMismatch,
+            "a composition body identity belongs to another document",
+        ));
+    }
+    Ok(())
 }
 
-/// A typed algebra diagnostic for a non-relational unit reaching the relational
-/// plan path. Uses the existing `UnsupportedComposition` reject so no new
-/// diagnostic vocabulary is invented out of lane.
-fn unsupported_non_query(
-    span: quanta_gqlang_v2_hir::SpanV1,
-) -> quanta_gqlang_v2_algebra::AlgebraDiagnosticV1 {
-    quanta_gqlang_v2_algebra::AlgebraDiagnosticV1::UnsupportedComposition {
-        symbol: "<non-query-unit>".to_owned(),
-        span,
+/// Map one resolved catalog payload to its closed non-plan reason kind.
+fn catalog_declaration_kind(catalog: &ResolvedCatalogItemV2) -> CatalogDeclarationKindV2 {
+    match catalog.payload() {
+        ResolvedCatalogPayloadV2::View { .. } => CatalogDeclarationKindV2::View,
+        ResolvedCatalogPayloadV2::Model { .. } => CatalogDeclarationKindV2::Model,
+        ResolvedCatalogPayloadV2::Pack { .. } => CatalogDeclarationKindV2::Pack,
+        ResolvedCatalogPayloadV2::Profile { .. } => CatalogDeclarationKindV2::Profile,
+        ResolvedCatalogPayloadV2::Gate { .. } => CatalogDeclarationKindV2::Gate,
+        ResolvedCatalogPayloadV2::RuleBinding { .. } => CatalogDeclarationKindV2::RuleBinding,
     }
 }
 
-// ---- type stage helpers ----------------------------------------------------
+/// Plan one input and require the plan-required outcome.
+fn planning_plan(
+    document: &SemanticDocumentV2,
+    id: SemanticItemIdV2,
+    input: &SemanticPlanInputV2,
+) -> Result<SemanticPlanV2, FrontendTransactionErrorV2> {
+    match plan_outcome(input, document) {
+        Ok(PlanOutcomeV2::Plan(plan)) => Ok(plan),
+        Ok(PlanOutcomeV2::NoPlan(_reason)) => Err(assembly(
+            item_location_of(document, id),
+            DocumentAssemblyCodeV2::PlanOutcomeMismatch,
+            "a plan-required item returned a checked non-plan outcome",
+        )),
+        Err(error) => Err(planning_transaction_error(&error)),
+    }
+}
 
-fn type_check_relation(
-    checker: &TypeCheckerV1,
-    relation: &RelationExprHirV1,
-    schema: &TypeEnvV1,
-) -> Result<TypeEnvV1, PipelineDiagnosticV1> {
-    match &relation.kind {
-        RelationExprKindV1::Source(source) => Ok(lift_source_locals(source, schema)),
-        RelationExprKindV1::Project(project) => {
-            let input_env = type_check_relation(checker, &project.input, schema)?;
-            let local_env = merged_env(schema, &input_env);
-            let mut output_env = input_env.clone();
-            for item in &project.items {
-                let ty = infer_value_type(checker, &item.value, &local_env)?;
-                if let (Some(alias), Some(ty)) = (&item.alias, ty) {
-                    output_env.insert(alias.name.clone(), ty);
-                }
+/// Project one algebra diagnostic with an explicit same-document fallback.
+fn algebra_error(
+    document: &SemanticDocumentV2,
+    id: SemanticItemIdV2,
+    error: &quanta_gqlang_v2_algebra::AlgebraDiagnosticV2,
+) -> FrontendTransactionErrorV2 {
+    algebra_transaction_error(error, item_location_of(document, id))
+}
+
+/// Mint one pipeline-owned assembly failure.
+fn assembly(
+    location: LocatedSpanV2,
+    code: DocumentAssemblyCodeV2,
+    message: &'static str,
+) -> FrontendTransactionErrorV2 {
+    assembly_transaction_error(location, code, message)
+}
+
+/// The only location a fully empty document can offer.
+fn zero_location(source_id: SourceIdV2) -> LocatedSpanV2 {
+    LocatedSpanV2 {
+        source_id,
+        span: SpanV1::point(0),
+    }
+}
+
+/// The authored location of one semantic item.
+fn item_location(item: &SemanticItemV2) -> Option<LocatedSpanV2> {
+    match item {
+        SemanticItemV2::Relation(relation) => Some(relation.location().location()),
+        SemanticItemV2::Graph(graph) => Some(graph.location().location()),
+        SemanticItemV2::Check(check) => Some(check.rule().location().location()),
+        SemanticItemV2::Presentation(presentation) => Some(presentation.location().location()),
+        SemanticItemV2::Composition(composition) => Some(composition.location().location()),
+        SemanticItemV2::Meta(meta) => Some(meta.location().location()),
+        SemanticItemV2::Catalog(catalog) => {
+            catalog.inline_view().map(|view| view.location().location())
+        }
+        SemanticItemV2::Declaration(declaration) => Some(declaration.body().location().location()),
+        SemanticItemV2::Rule(rule) => Some(rule.body().expression().location().location()),
+    }
+}
+
+/// A located anchor for one authored identity.
+fn item_location_of(document: &SemanticDocumentV2, id: SemanticItemIdV2) -> LocatedSpanV2 {
+    document
+        .item(id)
+        .and_then(item_location)
+        .unwrap_or_else(|| zero_location(document.source_id()))
+}
+
+// ---------------------------------------------------------------------------
+// Exact-key membership
+// ---------------------------------------------------------------------------
+
+/// The authored membership of one sealed document, verified exactly once.
+struct DocumentMembershipV2<'a> {
+    items: BTreeMap<SemanticItemIdV2, &'a SemanticItemV2>,
+    order: Vec<SemanticItemIdV2>,
+    rule_program_id: Option<SemanticItemIdV2>,
+}
+
+impl<'a> DocumentMembershipV2<'a> {
+    /// Verify duplicate, missing, extra, foreign, and wrong-kind membership.
+    fn of(document: &'a SemanticDocumentV2) -> Result<Self, FrontendTransactionErrorV2> {
+        let mut items: BTreeMap<SemanticItemIdV2, &'a SemanticItemV2> = BTreeMap::new();
+        for (key, item) in document.items() {
+            if key.source_id() != document.source_id() || item.item_id() != *key {
+                return Err(assembly(
+                    item_location(item).unwrap_or_else(|| zero_location(document.source_id())),
+                    DocumentAssemblyCodeV2::WrongKindItemResult,
+                    "a produced item is registered under a foreign or mismatched identity",
+                ));
             }
-            Ok(output_env)
-        }
-        RelationExprKindV1::Filter(filter) => {
-            let input_env = type_check_relation(checker, &filter.input, schema)?;
-            let local_env = merged_env(schema, &input_env);
-            type_check_bool(checker, &filter.predicate, &local_env)?;
-            Ok(input_env)
-        }
-        RelationExprKindV1::Compose(compose) => {
-            let mut merged = TypeEnvV1::new();
-            for operand in &compose.operands {
-                let operand_env = type_check_relation(checker, operand, schema)?;
-                for (name, ty) in operand_env.iter() {
-                    merged.insert(name.clone(), ty.clone());
-                }
-            }
-            Ok(merged)
-        }
-    }
-}
-
-fn type_check_shape(
-    checker: &TypeCheckerV1,
-    shape: &ResultShapeHirV1,
-    env: &TypeEnvV1,
-) -> Result<(), PipelineDiagnosticV1> {
-    match &shape.kind {
-        ResultShapeKindV1::Leaf(value) => type_check_value(checker, value, env),
-        ResultShapeKindV1::Record(record) => {
-            for field in &record.fields {
-                type_check_shape(checker, &field.shape, env)?;
-            }
-            Ok(())
-        }
-        ResultShapeKindV1::List(list) => type_check_shape(checker, &list.element, env),
-    }
-}
-
-fn type_check_bool(
-    checker: &TypeCheckerV1,
-    node: &BoolExprHirV1,
-    env: &TypeEnvV1,
-) -> Result<(), PipelineDiagnosticV1> {
-    match &node.kind {
-        BoolExprKindV1::Literal(_) => Ok(()),
-        BoolExprKindV1::Value(value) => type_check_value(checker, value, env),
-        BoolExprKindV1::Compare(compare) => {
-            type_check_value(checker, &compare.lhs, env)?;
-            type_check_value(checker, &compare.rhs, env)
-        }
-        BoolExprKindV1::And(bin) | BoolExprKindV1::Or(bin) => {
-            type_check_bool(checker, &bin.lhs, env)?;
-            type_check_bool(checker, &bin.rhs, env)
-        }
-        BoolExprKindV1::Not(inner) | BoolExprKindV1::Paren(inner) => {
-            type_check_bool(checker, inner, env)
-        }
-        BoolExprKindV1::Quantifier(quant) => {
-            // The quantifier binders are in scope of the body. Without binding
-            // them, every body reference to a binder is a free, env-open symbol,
-            // so `type_check_value` would skip the whole body and a genuine type
-            // error inside it (e.g. `t + "string"`) would pass silently. Extend a
-            // child env binding each binder to the `null` placeholder so that a
-            // body closed under the binders gets type-checked. Schema-dependent
-            // binder element types remain out of this packet's lane; `null` is a
-            // sound placeholder because no operator/builtin accepts it except
-            // assignment into an optional, so it neither over-accepts arithmetic
-            // nor invents a spurious concrete type.
-            let mut body_env = env.clone();
-            for binder in &quant.binders {
-                body_env.insert(binder.clone(), TypeV1::Null);
-            }
-            type_check_bool(checker, &quant.body, &body_env)
-        }
-    }
-}
-
-/// Type-check a single value expression IF it is closed under `env` (every free
-/// symbol is bound). Schema-dependent expressions are skipped, not rejected.
-fn type_check_value(
-    checker: &TypeCheckerV1,
-    value: &ValueExprHirV1,
-    env: &TypeEnvV1,
-) -> Result<(), PipelineDiagnosticV1> {
-    infer_value_type(checker, value, env).map(|_| ())
-}
-
-fn infer_value_type(
-    checker: &TypeCheckerV1,
-    value: &ValueExprHirV1,
-    env: &TypeEnvV1,
-) -> Result<Option<TypeV1>, PipelineDiagnosticV1> {
-    if env_closed(value, env) {
-        checker
-            .type_value(value, env)
-            .map(Some)
-            .map_err(PipelineDiagnosticV1::Type)
-    } else {
-        Ok(None)
-    }
-}
-
-/// Whether every free symbol referenced by `value` is bound in `env`.
-fn env_closed(value: &ValueExprHirV1, env: &TypeEnvV1) -> bool {
-    let mut free = BTreeSet::new();
-    collect_free_symbols(value, &mut free);
-    free.iter().all(|name| env.lookup(name).is_some())
-}
-
-/// Collect the free symbol names a value expression references (path bases and
-/// bare symbols). Callee names are NOT symbols (they resolve against the builtin
-/// registry, not the env).
-fn collect_free_symbols(value: &ValueExprHirV1, acc: &mut BTreeSet<String>) {
-    match &value.kind {
-        ValueExprKindV1::Literal(_) => {}
-        ValueExprKindV1::Symbol(symbol) => {
-            let _ = acc.insert(symbol.name.clone());
-        }
-        ValueExprKindV1::Path(path) => collect_free_symbols(&path.base, acc),
-        ValueExprKindV1::Unary(unary) => collect_free_symbols(&unary.operand, acc),
-        ValueExprKindV1::Binary(binary) => {
-            collect_free_symbols(&binary.lhs, acc);
-            collect_free_symbols(&binary.rhs, acc);
-        }
-        ValueExprKindV1::Call(call) => {
-            for arg in &call.args {
-                collect_free_symbols(arg, acc);
+            if items.insert(*key, item).is_some() {
+                return Err(assembly(
+                    item_location(item).unwrap_or_else(|| zero_location(document.source_id())),
+                    DocumentAssemblyCodeV2::DuplicateItemResult,
+                    "a produced item identity was registered twice",
+                ));
             }
         }
-        ValueExprKindV1::Paren(inner) => collect_free_symbols(inner, acc),
-        ValueExprKindV1::Record(record) => {
-            for field in &record.fields {
-                collect_free_symbols(&field.value, acc);
+        let mut order = Vec::with_capacity(document.order().len());
+        let mut seen = BTreeSet::new();
+        for id in document.order() {
+            if id.source_id() != document.source_id() {
+                return Err(assembly(
+                    zero_location(document.source_id()),
+                    DocumentAssemblyCodeV2::ForeignItemResult,
+                    "the authored order names an item of another source",
+                ));
             }
-        }
-        ValueExprKindV1::List(list) => {
-            for element in &list.elements {
-                collect_free_symbols(element, acc);
+            if !seen.insert(*id) {
+                return Err(assembly(
+                    items
+                        .get(id)
+                        .and_then(|item| item_location(item))
+                        .unwrap_or_else(|| zero_location(document.source_id())),
+                    DocumentAssemblyCodeV2::DuplicateItemResult,
+                    "the authored order names one item twice",
+                ));
             }
-        }
-    }
-}
-
-fn merged_env(base: &TypeEnvV1, locals: &TypeEnvV1) -> TypeEnvV1 {
-    let mut merged = base.clone();
-    for (name, ty) in locals.iter() {
-        merged.insert(name.clone(), ty.clone());
-    }
-    merged
-}
-
-fn lift_source_locals(
-    source: &quanta_gqlang_v2_hir::RelationSourceV1,
-    schema: &TypeEnvV1,
-) -> TypeEnvV1 {
-    let mut locals = TypeEnvV1::new();
-    if let Some(row) = schema_row_type(schema, &source.name) {
-        if let Some(alias) = &source.alias {
-            locals.insert(alias.name.clone(), row.clone());
-        }
-        locals.insert(source.name.clone(), row);
-    }
-    locals
-}
-
-fn schema_row_type(schema: &TypeEnvV1, name: &str) -> Option<TypeV1> {
-    match schema.lookup(name) {
-        Some(TypeV1::Relation { row, .. }) => Some((**row).clone()),
-        _ => None,
-    }
-}
-
-fn lower_source_rule(rule: &RuleHirV1) -> Result<RecursiveProgramV1, PipelineDiagnosticV1> {
-    ensure_supported_rule_head(&rule.head, rule.span).map_err(PipelineDiagnosticV1::Logic)?;
-    let mut seen = BTreeSet::new();
-    let mut body = Vec::new();
-    collect_rule_body_literals(&rule.body, false, &mut seen, &mut body);
-    Ok(RecursiveProgramV1::from_rules(vec![RuleDefV1::from_rule(
-        rule, body,
-    )]))
-}
-
-fn ensure_supported_rule_head(
-    head: &ValueExprHirV1,
-    span: quanta_gqlang_v2_hir::SpanV1,
-) -> Result<(), LogicDiagnosticV1> {
-    if root_symbol_name(head).is_some() {
-        Ok(())
-    } else {
-        Err(LogicDiagnosticV1::UnsupportedRuleHead { span })
-    }
-}
-
-fn collect_rule_body_literals(
-    node: &BoolExprHirV1,
-    negated: bool,
-    seen: &mut BTreeSet<(String, bool)>,
-    out: &mut Vec<BodyLiteralV1>,
-) {
-    match &node.kind {
-        BoolExprKindV1::Literal(_) => {}
-        BoolExprKindV1::Value(value) => collect_rule_value_literal(value, negated, seen, out),
-        BoolExprKindV1::Compare(compare) => {
-            collect_rule_value_literal(&compare.lhs, negated, seen, out);
-            collect_rule_value_literal(&compare.rhs, negated, seen, out);
-        }
-        BoolExprKindV1::And(bin) | BoolExprKindV1::Or(bin) => {
-            collect_rule_body_literals(&bin.lhs, negated, seen, out);
-            collect_rule_body_literals(&bin.rhs, negated, seen, out);
-        }
-        BoolExprKindV1::Not(inner) => collect_rule_body_literals(inner, !negated, seen, out),
-        BoolExprKindV1::Paren(inner) => collect_rule_body_literals(inner, negated, seen, out),
-        BoolExprKindV1::Quantifier(quant) => {
-            collect_rule_body_literals(&quant.body, negated, seen, out);
-        }
-    }
-}
-
-fn collect_rule_value_literal(
-    value: &ValueExprHirV1,
-    negated: bool,
-    seen: &mut BTreeSet<(String, bool)>,
-    out: &mut Vec<BodyLiteralV1>,
-) {
-    if let Some(name) = root_symbol_name(value) {
-        let key = (name.clone(), negated);
-        if seen.insert(key) {
-            out.push(if negated {
-                BodyLiteralV1::negated(name)
-            } else {
-                BodyLiteralV1::positive(name)
-            });
-        }
-    }
-    match &value.kind {
-        ValueExprKindV1::Literal(_) | ValueExprKindV1::Symbol(_) | ValueExprKindV1::Path(_) => {}
-        ValueExprKindV1::Unary(unary) => {
-            collect_rule_value_literal(&unary.operand, negated, seen, out)
-        }
-        ValueExprKindV1::Binary(binary) => {
-            collect_rule_value_literal(&binary.lhs, negated, seen, out);
-            collect_rule_value_literal(&binary.rhs, negated, seen, out);
-        }
-        ValueExprKindV1::Call(call) => {
-            for arg in &call.args {
-                collect_rule_value_literal(arg, negated, seen, out);
+            if !items.contains_key(id) {
+                return Err(assembly(
+                    zero_location(document.source_id()),
+                    DocumentAssemblyCodeV2::MissingItemResult,
+                    "an authored item has no produced semantic result",
+                ));
             }
+            order.push(*id);
         }
-        ValueExprKindV1::Paren(inner) => collect_rule_value_literal(inner, negated, seen, out),
-        ValueExprKindV1::Record(record) => {
-            for field in &record.fields {
-                collect_rule_value_literal(&field.value, negated, seen, out);
-            }
+        if let Some(extra) = items.keys().find(|id| !seen.contains(id)) {
+            let location = items
+                .get(extra)
+                .and_then(|item| item_location(item))
+                .unwrap_or_else(|| zero_location(document.source_id()));
+            return Err(assembly(
+                location,
+                DocumentAssemblyCodeV2::ExtraItemResult,
+                "a produced semantic item was not authored in document order",
+            ));
         }
-        ValueExprKindV1::List(list) => {
-            for element in &list.elements {
-                collect_rule_value_literal(element, negated, seen, out);
-            }
-        }
-    }
-}
-
-fn root_symbol_name(value: &ValueExprHirV1) -> Option<String> {
-    match &value.kind {
-        ValueExprKindV1::Symbol(symbol) => Some(symbol.name.clone()),
-        ValueExprKindV1::Path(path) => root_symbol_name(&path.base),
-        ValueExprKindV1::Paren(inner) => root_symbol_name(inner),
-        ValueExprKindV1::Literal(_)
-        | ValueExprKindV1::Unary(_)
-        | ValueExprKindV1::Binary(_)
-        | ValueExprKindV1::Call(_)
-        | ValueExprKindV1::Record(_)
-        | ValueExprKindV1::List(_) => None,
-    }
-}
-
-#[cfg(test)]
-#[expect(
-    clippy::expect_used,
-    clippy::panic,
-    reason = "unit rail: assertion panics are intentional"
-)]
-mod tests {
-    use super::{
-        bind_item, bind_standalone, compile_program_with_schema, producer_output_relation,
-        resolve_local, Binder, FrontendContextV1, ModuleGraphV1,
-    };
-    use quanta_gqlang_v2_hir::HirBuilderV1;
-    use quanta_gqlang_v2_surface::parse_program;
-    use quanta_gqlang_v2_types::{CardinalityV1, RecordFieldTyV1, TypeEnvV1, TypeV1};
-
-    /// `users(id: int)` as the only frontend schema authority.
-    fn users_schema() -> TypeEnvV1 {
-        TypeEnvV1::new().with(
-            "users",
-            TypeV1::Relation {
-                row: Box::new(TypeV1::record(vec![RecordFieldTyV1::new(
-                    "id",
-                    TypeV1::int(),
-                )])),
-                cardinality: CardinalityV1::Bag,
-            },
-        )
+        let rule_program_id = order.iter().copied().find(|id| {
+            items
+                .get(id)
+                .is_some_and(|item| matches!(item, SemanticItemV2::Rule(_)))
+        });
+        Ok(Self {
+            items,
+            order,
+            rule_program_id,
+        })
     }
 
-    /// Parse `src` and return its single program item.
-    fn item(src: &str) -> quanta_gqlang_v2_hir::ProgramItemHirV1 {
-        let builder = HirBuilderV1::new();
-        parse_program(src, &builder)
-            .expect("producer parses")
-            .item
-            .to_program_item()
+    /// Authored source order.
+    fn order(&self) -> &[SemanticItemIdV2] {
+        &self.order
     }
 
-    /// The lifted cardinality this helper reads off the relation it returns.
-    fn lifted_cardinality(relation: &TypeV1) -> CardinalityV1 {
-        let TypeV1::Relation { cardinality, .. } = relation else {
-            panic!("producer output must lift a Relation, got {relation:?}")
-        };
-        *cardinality
+    /// Exact authored item by identity, present for every verified order id.
+    fn item(&self, id: SemanticItemIdV2) -> Option<&'a SemanticItemV2> {
+        self.items.get(&id).copied()
     }
 
-    /// D26 red rail: the lifted producer relation must carry the producer's ACTUAL
-    /// normalized output cardinality, not a hardcoded `Bag`. Before the fix
-    /// `producer_output_relation` always stamped `CardinalityV1::Bag` regardless of
-    /// the producer's real multiplicity, silently downgrading a `Set` (or
-    /// `Sequence`) producer and breaking the D26 guarantee that multiplicity /
-    /// duplicate-elimination / output-order semantics are explicit and testable.
-    #[test]
-    fn lifted_producer_relation_preserves_set_cardinality() {
-        let context = FrontendContextV1::schema_only(users_schema());
-        let producer = compile_program_with_schema(
-            "from users u | group by u.id | project u.id as id",
-            context.schema(),
-        )
-        .expect("producer compiles");
-        let relation = producer_output_relation(producer.compiled(), &context)
-            .expect("a relational producer with a named projection lifts a relation");
-        assert_eq!(
-            lifted_cardinality(&relation),
-            CardinalityV1::Set,
-            "a Set-cardinality producer must lift a Set relation, not a downgraded Bag (D26)"
-        );
+    /// A located anchor for one authored identity.
+    fn location(&self, id: SemanticItemIdV2) -> LocatedSpanV2 {
+        self.item(id)
+            .and_then(item_location)
+            .unwrap_or_else(|| zero_location(id.source_id()))
     }
 
-    /// The companion order-preserving case: a `Sequence` producer must lift a
-    /// `Sequence` relation, never a `Bag`.
-    #[test]
-    fn lifted_producer_relation_preserves_sequence_cardinality() {
-        let context = FrontendContextV1::schema_only(users_schema());
-        let producer = compile_program_with_schema(
-            "from users u | order by u.id asc | project u.id as id",
-            context.schema(),
-        )
-        .expect("producer compiles");
-        let relation = producer_output_relation(producer.compiled(), &context)
-            .expect("a relational producer with a named projection lifts a relation");
-        assert_eq!(
-            lifted_cardinality(&relation),
-            CardinalityV1::Sequence,
-            "a Sequence-cardinality producer must lift a Sequence relation (D26 order semantics)"
-        );
+    /// The stable document rule program identity (first rule in order).
+    fn rule_program_id(&self) -> Option<SemanticItemIdV2> {
+        self.rule_program_id
     }
 
-    /// Soundness: a genuine `Bag` producer still lifts a `Bag` relation, so the fix
-    /// threads the real cardinality rather than inverting the default.
-    #[test]
-    fn lifted_producer_relation_preserves_bag_cardinality() {
-        let context = FrontendContextV1::schema_only(users_schema());
-        let producer =
-            compile_program_with_schema("from users u | project u.id as id", context.schema())
-                .expect("producer compiles");
-        let relation = producer_output_relation(producer.compiled(), &context)
-            .expect("a relational producer with a named projection lifts a relation");
-        assert_eq!(lifted_cardinality(&relation), CardinalityV1::Bag);
+    /// Authored rule identities in source order.
+    fn rule_member_ids(&self) -> Vec<SemanticItemIdV2> {
+        self.order
+            .iter()
+            .copied()
+            .filter(|id| {
+                self.item(*id)
+                    .is_some_and(|item| matches!(item, SemanticItemV2::Rule(_)))
+            })
+            .collect()
     }
 
-    /// `bind_item` is fail-closed: a query item carrying an unresolved free symbol
-    /// must surface a `bind`-stage reject, NOT silently succeed. Pins that the
-    /// helper actually runs the binder and propagates its first diagnostic; a body
-    /// replaced with `Ok(())` would swallow the reject.
-    #[test]
-    fn bind_item_propagates_unresolved_symbol_reject() {
-        let query = item("from users u | where unknownvar > 1 | project u.id as id");
-        let graph = ModuleGraphV1::new();
-        let err = bind_item(&query, &graph)
-            .expect_err("an unresolved free symbol in a query body must reject at bind");
-        assert_eq!(err.code(), "binder.unresolved_symbol");
+    /// Identities that must carry one semantic plan.
+    fn plan_required_ids(&self) -> BTreeSet<SemanticItemIdV2> {
+        self.order
+            .iter()
+            .copied()
+            .filter(|id| {
+                self.item(*id).is_some_and(|item| {
+                    matches!(
+                        item,
+                        SemanticItemV2::Relation(_)
+                            | SemanticItemV2::Graph(_)
+                            | SemanticItemV2::Check(_)
+                            | SemanticItemV2::Presentation(_)
+                            | SemanticItemV2::Composition(_)
+                    ) || matches!(
+                        item,
+                        SemanticItemV2::Meta(meta)
+                            if matches!(meta.kind(), ResolvedMetaKindV2::RequireCertified)
+                    )
+                })
+            })
+            .collect()
     }
 
-    /// `bind_item` on a clean, fully-resolved query item returns `Ok(())`; pairs
-    /// with the reject case so the helper is pinned to BOTH outcomes (a body that
-    /// always errored would fail here).
-    #[test]
-    fn bind_item_accepts_a_resolved_query() {
-        let query = item("from users u | project u.id as id");
-        let graph = ModuleGraphV1::new();
-        assert!(
-            bind_item(&query, &graph).is_ok(),
-            "a fully-resolved query binds cleanly"
-        );
-    }
-
-    /// `resolve_local` dispatches a query item into the binder and records its
-    /// unresolved-symbol diagnostic. A body replaced with `()` would resolve
-    /// nothing, leaving the binder diagnostic-free.
-    #[test]
-    fn resolve_local_records_query_binder_diagnostic() {
-        let query = item("from users u | where unknownvar > 1 | project u.id as id");
-        let graph = ModuleGraphV1::new();
-        let mut binder = Binder::new(&graph);
-        resolve_local(&mut binder, &query);
-        let result = binder.finish();
-        assert!(
-            result
-                .diagnostics()
-                .iter()
-                .any(|d| d.code() == "binder.unresolved_symbol"),
-            "resolve_local must run the binder, surfacing the unresolved-symbol reject"
-        );
-    }
-
-    /// `bind_standalone` wraps `resolve_local` in a balanced scope frame and must
-    /// still surface the wrapped item's binder diagnostics. A body replaced with
-    /// `()` would record nothing.
-    #[test]
-    fn bind_standalone_surfaces_wrapped_binder_diagnostic() {
-        let query = item("from users u | where unknownvar > 1 | project u.id as id");
-        let graph = ModuleGraphV1::new();
-        let mut binder = Binder::new(&graph);
-        bind_standalone(&mut binder, &query);
-        let result = binder.finish();
-        assert!(
-            result
-                .diagnostics()
-                .iter()
-                .any(|d| d.code() == "binder.unresolved_symbol"),
-            "bind_standalone must resolve the wrapped item, surfacing its reject"
-        );
+    /// Identities that must carry one checked non-plan reason.
+    fn no_plan_ids(&self) -> BTreeSet<SemanticItemIdV2> {
+        self.order
+            .iter()
+            .copied()
+            .filter(|id| {
+                self.item(*id).is_some_and(|item| {
+                    matches!(
+                        item,
+                        SemanticItemV2::Catalog(_) | SemanticItemV2::Declaration(_)
+                    ) || matches!(
+                        item,
+                        SemanticItemV2::Meta(meta)
+                            if matches!(meta.kind(), ResolvedMetaKindV2::UsePack { .. })
+                    )
+                })
+            })
+            .collect()
     }
 }

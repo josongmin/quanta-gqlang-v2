@@ -1,58 +1,53 @@
-//! Capability requirement derivation from NORMALIZED query features (ticket 07,
-//! decision `D6`).
+//! Capability requirement vocabulary over checked algebra families (ticket 07).
 //!
-//! `D6`: planning attaches to the normalized query/program shape, not only the
-//! root kind. This module derives the set of host-agnostic CAPABILITY
-//! requirements a plan needs by inspecting which algebra operators and logic
-//! constructs are actually present — never by re-inspecting syntax or root labels
-//! (ticket 07 non-goal 3).
-//!
-//! A capability is a host-agnostic semantic requirement (e.g. "this plan needs
+//! A capability is a host-agnostic semantic requirement ("this plan needs
 //! grouping", "this plan needs recursive closure"). It is NOT a runtime/provider
-//! noun (`D7`).
+//! noun (`D7`). The V2 cut deletes the V1 recursive walk
+//! (`derive_algebra_capabilities`/`collect`): capabilities are now collected by
+//! the single iterative, deterministic, budgeted traversal run by
+//! [`crate::plan_outcome`], which keys every capability off the checked algebra
+//! family of a node it has actually charged a semantic step for.
 
-use std::collections::BTreeSet;
-
-use quanta_gqlang_v2_algebra::{AlgebraNodeV1, AlgebraOpV1};
+use quanta_gqlang_v2_algebra::AlgebraFamilyV2;
 
 /// A single host-agnostic capability the plan requires.
 ///
-/// Capabilities are derived purely from the presence of normalized constructs;
-/// the closed set below maps one-to-one onto algebra families and logic shapes
-/// the planner can classify.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum CapabilityV1 {
-    /// Reading a base relation (any [`AlgebraOpV1::Scan`]).
+/// Capabilities are derived purely from the presence of checked constructs; the
+/// closed set below maps one-to-one onto algebra families and sealed logic
+/// shapes the planner can classify.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CapabilityV2 {
+    /// Reading a base relation or a composition working set (a `Scan`).
     RelationScan,
-    /// Row-level filtering (a [`AlgebraOpV1::Filter`]).
+    /// Row-level filtering (a `Filter`).
     Filtering,
-    /// Joining independent inputs (a [`AlgebraOpV1::Join`]).
+    /// Joining independent inputs (a `Join`).
     Join,
-    /// Correlated/lateral evaluation (a [`AlgebraOpV1::Apply`]).
+    /// Correlated/lateral evaluation (an `Apply`).
     CorrelatedApply,
-    /// Grouping / partitioning (a [`AlgebraOpV1::Group`]).
+    /// Grouping / partitioning (a `Group`).
     Grouping,
-    /// Aggregate folds (a [`AlgebraOpV1::Aggregate`]).
+    /// Aggregate folds (an `Aggregate`).
     Aggregation,
-    /// Ordering output (a [`AlgebraOpV1::Sort`]).
+    /// Ordering output (a `Sort`).
     Ordering,
-    /// Bounded truncation (a [`AlgebraOpV1::Limit`]).
+    /// Bounded truncation (a `Limit`).
     Limiting,
-    /// Set/bag union (a [`AlgebraOpV1::Union`]).
+    /// Set/bag union (a `Union`).
     SetUnion,
-    /// Existence testing (a [`AlgebraOpV1::SemiJoin`]).
+    /// Existence testing (a `SemiJoin`).
     ExistenceCheck,
-    /// Non-existence testing (a [`AlgebraOpV1::AntiJoin`]).
+    /// Non-existence testing (an `AntiJoin`).
     NegationCheck,
-    /// Recursive closure (a recursive logic program). Derived from the logic
-    /// shape, attached by the producer rather than the algebra walk.
+    /// Recursive closure (a document rule program with a recursive member).
+    /// Derived from the sealed logic proof, never from the algebra walk.
     RecursiveClosure,
-    /// Witness/path materialization. Derived from a witness contract, attached by
-    /// the producer.
+    /// Witness/path materialization. Derived from a sealed witness contract
+    /// (FIND or a witness-bearing presentation), never from the algebra walk.
     WitnessMaterialization,
 }
 
-impl CapabilityV1 {
+impl CapabilityV2 {
     /// Stable keyword for explain/diagnostics and CLI/LSP rendering.
     #[must_use]
     pub const fn keyword(self) -> &'static str {
@@ -74,69 +69,84 @@ impl CapabilityV1 {
     }
 }
 
-/// Walk a normalized algebra tree and collect every capability its operators
-/// imply. Deterministic and ordered (a `BTreeSet`), so CLI/LSP/tests see a
-/// stable requirement set. Logic-derived capabilities (recursive closure,
-/// witness materialization) are added by the producer, not here.
-#[must_use]
-pub fn derive_algebra_capabilities(root: &AlgebraNodeV1) -> BTreeSet<CapabilityV1> {
-    let mut caps = BTreeSet::new();
-    collect(root, &mut caps);
-    caps
+/// The capability a checked algebra family requires, if any.
+///
+/// `Scan`, `Filter`, `Join`, `Apply`, `Group`, `Aggregate`, `Sort`, `Limit`,
+/// `Union`, `SemiJoin`, and `AntiJoin` each require exactly one capability;
+/// `Project` is a pure frame re-shape and requires none.
+pub(crate) const fn capability_for_family(family: AlgebraFamilyV2) -> Option<CapabilityV2> {
+    match family {
+        AlgebraFamilyV2::Scan => Some(CapabilityV2::RelationScan),
+        AlgebraFamilyV2::Filter => Some(CapabilityV2::Filtering),
+        AlgebraFamilyV2::Join => Some(CapabilityV2::Join),
+        AlgebraFamilyV2::Apply => Some(CapabilityV2::CorrelatedApply),
+        AlgebraFamilyV2::Group => Some(CapabilityV2::Grouping),
+        AlgebraFamilyV2::Aggregate => Some(CapabilityV2::Aggregation),
+        AlgebraFamilyV2::Sort => Some(CapabilityV2::Ordering),
+        AlgebraFamilyV2::Limit => Some(CapabilityV2::Limiting),
+        AlgebraFamilyV2::Union => Some(CapabilityV2::SetUnion),
+        AlgebraFamilyV2::SemiJoin => Some(CapabilityV2::ExistenceCheck),
+        AlgebraFamilyV2::AntiJoin => Some(CapabilityV2::NegationCheck),
+        AlgebraFamilyV2::Project => None,
+    }
 }
 
-fn collect(node: &AlgebraNodeV1, caps: &mut BTreeSet<CapabilityV1>) {
-    match &node.op {
-        AlgebraOpV1::Scan(_) => {
-            caps.insert(CapabilityV1::RelationScan);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const ALL_FAMILIES: [AlgebraFamilyV2; 12] = [
+        AlgebraFamilyV2::Scan,
+        AlgebraFamilyV2::Filter,
+        AlgebraFamilyV2::Project,
+        AlgebraFamilyV2::Join,
+        AlgebraFamilyV2::Apply,
+        AlgebraFamilyV2::Group,
+        AlgebraFamilyV2::Aggregate,
+        AlgebraFamilyV2::Sort,
+        AlgebraFamilyV2::Limit,
+        AlgebraFamilyV2::Union,
+        AlgebraFamilyV2::SemiJoin,
+        AlgebraFamilyV2::AntiJoin,
+    ];
+
+    #[test]
+    fn every_family_has_a_stable_capability_except_project() {
+        for family in ALL_FAMILIES {
+            let capability = capability_for_family(family);
+            if family == AlgebraFamilyV2::Project {
+                assert_eq!(capability, None, "Project is a pure frame re-shape");
+            } else {
+                assert!(
+                    capability.is_some(),
+                    "{family:?} must require one capability"
+                );
+            }
         }
-        AlgebraOpV1::Project(project) => {
-            collect(&project.input, caps);
-        }
-        AlgebraOpV1::Filter(filter) => {
-            caps.insert(CapabilityV1::Filtering);
-            collect(&filter.input, caps);
-        }
-        AlgebraOpV1::Join(join) => {
-            caps.insert(CapabilityV1::Join);
-            collect(&join.left, caps);
-            collect(&join.right, caps);
-        }
-        AlgebraOpV1::Apply(apply) => {
-            caps.insert(CapabilityV1::CorrelatedApply);
-            collect(&apply.left, caps);
-            collect(&apply.right, caps);
-        }
-        AlgebraOpV1::Group(group) => {
-            caps.insert(CapabilityV1::Grouping);
-            collect(&group.input, caps);
-        }
-        AlgebraOpV1::Aggregate(aggregate) => {
-            caps.insert(CapabilityV1::Aggregation);
-            collect(&aggregate.input, caps);
-        }
-        AlgebraOpV1::Sort(sort) => {
-            caps.insert(CapabilityV1::Ordering);
-            collect(&sort.input, caps);
-        }
-        AlgebraOpV1::Limit(limit) => {
-            caps.insert(CapabilityV1::Limiting);
-            collect(&limit.input, caps);
-        }
-        AlgebraOpV1::Union(union) => {
-            caps.insert(CapabilityV1::SetUnion);
-            collect(&union.left, caps);
-            collect(&union.right, caps);
-        }
-        AlgebraOpV1::SemiJoin(semi) => {
-            caps.insert(CapabilityV1::ExistenceCheck);
-            collect(&semi.left, caps);
-            collect(&semi.right, caps);
-        }
-        AlgebraOpV1::AntiJoin(anti) => {
-            caps.insert(CapabilityV1::NegationCheck);
-            collect(&anti.left, caps);
-            collect(&anti.right, caps);
+    }
+
+    #[test]
+    fn capability_keywords_are_stable_verbatim() {
+        let cases = [
+            (CapabilityV2::RelationScan, "relation_scan"),
+            (CapabilityV2::Filtering, "filtering"),
+            (CapabilityV2::Join, "join"),
+            (CapabilityV2::CorrelatedApply, "correlated_apply"),
+            (CapabilityV2::Grouping, "grouping"),
+            (CapabilityV2::Aggregation, "aggregation"),
+            (CapabilityV2::Ordering, "ordering"),
+            (CapabilityV2::Limiting, "limiting"),
+            (CapabilityV2::SetUnion, "set_union"),
+            (CapabilityV2::ExistenceCheck, "existence_check"),
+            (CapabilityV2::NegationCheck, "negation_check"),
+            (CapabilityV2::RecursiveClosure, "recursive_closure"),
+            (
+                CapabilityV2::WitnessMaterialization,
+                "witness_materialization",
+            ),
+        ];
+        for (capability, keyword) in cases {
+            assert_eq!(capability.keyword(), keyword);
         }
     }
 }

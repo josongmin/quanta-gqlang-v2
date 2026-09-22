@@ -57,11 +57,16 @@
 //! | EXPORT | `table` | `export_only` | none | exact sealed payload |
 //! | rule program | `table` | `read_only` | none | members + stratified proof |
 //! | `REQUIRE CERTIFIED` | `proof_explain` | `proof_evidence_only` | proof tree | certified directive |
-//! | composition | its body's plan | its body's plan | its body's plan | its body's policy |
+//! | composition | its body's plan, rooted on the composition item | its body's plan | its body's plan | the composition identity + its body's policy |
 //!
 //! The composition arm dispatches to the body's existing classification through
 //! the SAME [`classify`] function: it is not a second classifier and it never
-//! synthesizes a plan per `LET` producer.
+//! synthesizes a plan per `LET` producer. The classification runs under the
+//! composition's OWN root ([`PlanRootV2::Composition`]), so the assembled plan is
+//! attributed to the composition item and retains
+//! [`crate::CompositionPolicyV2`] — root identity, ordered producers, exact `WITH`
+//! binding, body identity, and the body's own policy — around the body policy
+//! that same call derived.
 //!
 //! # The nine retained fields
 //!
@@ -87,7 +92,7 @@ use quanta_gqlang_v2_types::{
 
 use crate::capability::{capability_for_family, CapabilityV2};
 use crate::check::CheckContractV2;
-use crate::composition::CompositionBodyPlanInputV2;
+use crate::composition::{CheckedCompositionPlanInputV2, CompositionBodyPlanInputV2};
 use crate::cost::{
     CardinalityClassV2, OrderingContractV2, RecursionRiskClassV2, SemanticCostV2,
     WitnessExplosionRiskClassV2,
@@ -260,8 +265,10 @@ pub fn plan_outcome(
     // 3. One budgeted traversal over the visited sealed inputs.
     let walk = walk(input, document.budget_receipt())?;
 
-    // 4. Per-arm classification from the sealed carriers alone.
-    let parts = classify(ArmV2::of(input), document, &walk, None)?;
+    // 4. Per-arm classification from the sealed carriers alone. A composition
+    //    input is classified under its own root, so the plan retains the
+    //    composition identity instead of the body's.
+    let parts = classify(ArmV2::of(input), document, &walk, PlanRootV2::of(input))?;
     Ok(PlanOutcomeV2::Plan(SemanticPlanV2::from_parts(parts)))
 }
 
@@ -462,23 +469,24 @@ fn nested_graph_matches(resolved: &ResolvedCheckV2, contract: &CheckContractV2) 
     }
 }
 
-/// The checked location an input-level outcome is attributed to: the carrier's
-/// own location where the arm retains one, else the document's own anchor.
+/// The checked location an input-level outcome is attributed to.
+///
+/// A relational carrier is anchored on its own lowered root and a composition on
+/// the composition item itself; every other arm shares the one arm-to-location
+/// mapping of [`ArmV2::root_location`], so the anchor vocabulary cannot drift
+/// from the attribution the assembled plan uses.
 fn attribution_anchor(
     input: &SemanticPlanInputV2,
     document: &SemanticDocumentV2,
 ) -> CheckedLocatedSpanV2 {
     match input {
         SemanticPlanInputV2::Relational(item) => item.root().location().clone(),
-        SemanticPlanInputV2::Graph(contract) => contract.location().clone(),
-        SemanticPlanInputV2::Check(contract) => contract.location().clone(),
-        SemanticPlanInputV2::Presentation(contract) => contract.location().clone(),
-        SemanticPlanInputV2::Rule(contract) => contract.rules().first().map_or_else(
-            || document_anchor(document),
-            |rule| rule_location(rule).clone(),
-        ),
-        SemanticPlanInputV2::MetaRequireCertified(meta) => meta.location().clone(),
         SemanticPlanInputV2::Composition(composition) => composition.location().clone(),
+        SemanticPlanInputV2::Graph(_)
+        | SemanticPlanInputV2::Check(_)
+        | SemanticPlanInputV2::Presentation(_)
+        | SemanticPlanInputV2::Rule(_)
+        | SemanticPlanInputV2::MetaRequireCertified(_) => ArmV2::of(input).root_location(document),
     }
 }
 
@@ -517,22 +525,30 @@ fn item_location(item: &SemanticItemV2) -> Option<CheckedLocatedSpanV2> {
 
 /// A registry-proven point location at the start of the document's own source.
 ///
-/// The mint is infallible: a single-registration view cannot conflict, and byte
-/// zero is in bounds of a zero-length source. It is only reached for a document
-/// with no item at all, whose outcomes have no item location to be attributed
-/// to.
+/// The anchor is MINTED THROUGH THE REGISTRY, not fabricated: the source
+/// registration and the byte-zero point span are validated by the same public
+/// registry API the document transaction uses, so an unregistered source or an
+/// out-of-bounds span is refused rather than asserted.
+///
+/// The mint is total for every input: a single-registration view cannot report a
+/// duplicate source, and byte zero is in bounds of a zero-length source. It is
+/// only reached for a document with no located item at all — an outcome whose
+/// public diagnostic still requires a checked span — so a mint that could not be
+/// validated would leave the entry points with nothing to anchor on.
 fn source_start_anchor(source_id: SourceIdV2) -> CheckedLocatedSpanV2 {
-    let registry = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
+    SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
         source_id,
         source_len: 0,
     }])
-    .unwrap_or_else(|_error| unreachable!("a single-registration source registry cannot conflict"));
-    registry
-        .try_check_location(LocatedSpanV2 {
+    .and_then(|registry| {
+        registry.try_check_location(LocatedSpanV2 {
             source_id,
             span: SpanV1::point(0),
         })
-        .unwrap_or_else(|_error| unreachable!("byte zero is in bounds of a zero-length source"))
+    })
+    .unwrap_or_else(|_error| {
+        unreachable!("a single-registration view cannot conflict and byte zero is in bounds")
+    })
 }
 
 /// The rule's own checked body location.
@@ -650,27 +666,25 @@ fn walk(
                     stack.push(WalkFrameV2::AlgebraEnter(item.root()));
                 }
                 SemanticPlanInputV2::Graph(contract) => {
-                    charge.charge(contract.location())?;
-                    capabilities.insert(CapabilityV2::WitnessMaterialization);
-                    if contract.shape() == RelationShapeV1::Cyclic {
-                        capabilities.insert(CapabilityV2::RecursiveClosure);
-                    }
-                    plan_class = Some(graph_class(contract));
+                    plan_class = Some(visit_leaf(
+                        LeafCarrierV2::Graph(contract),
+                        &mut charge,
+                        &mut capabilities,
+                    )?);
                 }
                 SemanticPlanInputV2::Check(contract) => {
-                    charge.charge(contract.location())?;
-                    if let Some(nested) = contract.nested_graph() {
-                        charge.charge(nested.location())?;
-                        capabilities.insert(CapabilityV2::WitnessMaterialization);
-                        if nested.shape() == RelationShapeV1::Cyclic {
-                            capabilities.insert(CapabilityV2::RecursiveClosure);
-                        }
-                    }
-                    plan_class = Some(check_class(contract));
+                    plan_class = Some(visit_leaf(
+                        LeafCarrierV2::Check(contract),
+                        &mut charge,
+                        &mut capabilities,
+                    )?);
                 }
                 SemanticPlanInputV2::Presentation(contract) => {
-                    charge.charge(contract.location())?;
-                    plan_class = Some(presentation_class(contract.kind()));
+                    plan_class = Some(visit_leaf(
+                        LeafCarrierV2::Presentation(contract),
+                        &mut charge,
+                        &mut capabilities,
+                    )?);
                 }
                 SemanticPlanInputV2::Rule(contract) => {
                     // The program node itself is anchored on its first member;
@@ -694,31 +708,29 @@ fn walk(
                         charge.charge(producer.name_location())?;
                     }
                     match composition.body() {
-                        CompositionBodyPlanInputV2::Relational { root, .. } => {
-                            stack.push(WalkFrameV2::AlgebraEnter(root));
+                        CompositionBodyPlanInputV2::Relational(body) => {
+                            stack.push(WalkFrameV2::AlgebraEnter(body.root()));
                         }
                         CompositionBodyPlanInputV2::Graph(contract) => {
-                            charge.charge(contract.location())?;
-                            capabilities.insert(CapabilityV2::WitnessMaterialization);
-                            if contract.shape() == RelationShapeV1::Cyclic {
-                                capabilities.insert(CapabilityV2::RecursiveClosure);
-                            }
-                            plan_class = Some(graph_class(contract));
+                            plan_class = Some(visit_leaf(
+                                LeafCarrierV2::Graph(contract),
+                                &mut charge,
+                                &mut capabilities,
+                            )?);
                         }
                         CompositionBodyPlanInputV2::Check(contract) => {
-                            charge.charge(contract.location())?;
-                            if let Some(nested) = contract.nested_graph() {
-                                charge.charge(nested.location())?;
-                                capabilities.insert(CapabilityV2::WitnessMaterialization);
-                                if nested.shape() == RelationShapeV1::Cyclic {
-                                    capabilities.insert(CapabilityV2::RecursiveClosure);
-                                }
-                            }
-                            plan_class = Some(check_class(contract));
+                            plan_class = Some(visit_leaf(
+                                LeafCarrierV2::Check(contract),
+                                &mut charge,
+                                &mut capabilities,
+                            )?);
                         }
                         CompositionBodyPlanInputV2::Explain(contract) => {
-                            charge.charge(contract.location())?;
-                            plan_class = Some(presentation_class(contract.kind()));
+                            plan_class = Some(visit_leaf(
+                                LeafCarrierV2::Presentation(contract),
+                                &mut charge,
+                                &mut capabilities,
+                            )?);
                         }
                     }
                 }
@@ -770,6 +782,61 @@ fn walk(
         ),
         algebra_nodes,
     })
+}
+
+/// One sealed leaf carrier the traversal charges a visit for: a FIND, a CHECK,
+/// or a presentation verb.
+///
+/// A top-level input arm and a composition body of the same family are the SAME
+/// carrier, so they are charged, capability-collected, and cardinality-classified
+/// in exactly one place.
+#[derive(Clone, Copy)]
+enum LeafCarrierV2<'a> {
+    /// A sealed FIND contract.
+    Graph(&'a GraphQueryContractV2),
+    /// A validated CHECK contract.
+    Check(&'a CheckContractV2),
+    /// A validated presentation contract.
+    Presentation(&'a PresentationContractV2),
+}
+
+/// Visit one sealed leaf carrier: charge every step it owns, record the
+/// capabilities its sealed facts imply, and derive its cardinality class.
+///
+/// # Errors
+///
+/// Returns [`PlanningDiagnosticV1::SemanticStepBudgetExceeded`] at the first
+/// charge the sealed limit refuses.
+fn visit_leaf(
+    carrier: LeafCarrierV2<'_>,
+    charge: &mut ChargeV2,
+    capabilities: &mut BTreeSet<CapabilityV2>,
+) -> Result<CardinalityClassV2, PlanningDiagnosticV1> {
+    match carrier {
+        LeafCarrierV2::Graph(contract) => {
+            charge.charge(contract.location())?;
+            capabilities.insert(CapabilityV2::WitnessMaterialization);
+            if contract.shape() == RelationShapeV1::Cyclic {
+                capabilities.insert(CapabilityV2::RecursiveClosure);
+            }
+            Ok(graph_class(contract))
+        }
+        LeafCarrierV2::Check(contract) => {
+            charge.charge(contract.location())?;
+            if let Some(nested) = contract.nested_graph() {
+                charge.charge(nested.location())?;
+                capabilities.insert(CapabilityV2::WitnessMaterialization);
+                if nested.shape() == RelationShapeV1::Cyclic {
+                    capabilities.insert(CapabilityV2::RecursiveClosure);
+                }
+            }
+            Ok(check_class(contract))
+        }
+        LeafCarrierV2::Presentation(contract) => {
+            charge.charge(contract.location())?;
+            Ok(presentation_class(contract.kind()))
+        }
+    }
 }
 
 /// The coarse cardinality class of one algebra node, folded from its children's
@@ -897,7 +964,7 @@ impl<'a> ArmV2<'a> {
     /// The arm one sealed composition body classifies.
     fn of_body(body: &'a CompositionBodyPlanInputV2) -> Self {
         match body {
-            CompositionBodyPlanInputV2::Relational { root, .. } => Self::Relational(root),
+            CompositionBodyPlanInputV2::Relational(body) => Self::Relational(body.root()),
             CompositionBodyPlanInputV2::Graph(contract) => Self::Graph(contract),
             CompositionBodyPlanInputV2::Check(contract) => Self::Check(contract),
             CompositionBodyPlanInputV2::Explain(contract) => Self::Presentation(contract),
@@ -907,6 +974,9 @@ impl<'a> ArmV2<'a> {
     /// The checked location this arm's plan is attributed to: the planned item's
     /// own checked location where the document holds one, else the location the
     /// carrier itself retains.
+    ///
+    /// The document-wide rule program retains no location of its own; it is
+    /// attributed to its first member, else to the document's own anchor.
     fn root_location(self, document: &SemanticDocumentV2) -> CheckedLocatedSpanV2 {
         match self {
             Self::Relational(root) => document
@@ -921,6 +991,36 @@ impl<'a> ArmV2<'a> {
                 |rule| rule_location(rule).clone(),
             ),
             Self::MetaRequireCertified(meta) => meta.location().clone(),
+        }
+    }
+}
+
+/// The root one classification is produced under.
+///
+/// It decides both the location the plan is attributed to and the policy the
+/// plan retains, so an arm can never be classified under one root and retain
+/// another's policy.
+#[derive(Clone, Copy)]
+enum PlanRootV2<'a> {
+    /// The input's own carrier is the plan's root.
+    Carrier,
+    /// One checked composition is the plan's root: the classified carrier is its
+    /// sealed body, and the plan retains the composition identity plus the body's
+    /// own policy.
+    Composition(&'a CheckedCompositionPlanInputV2),
+}
+
+impl<'a> PlanRootV2<'a> {
+    /// The root one sealed planning input is classified under.
+    fn of(input: &'a SemanticPlanInputV2) -> Self {
+        match input {
+            SemanticPlanInputV2::Composition(composition) => Self::Composition(composition),
+            SemanticPlanInputV2::Relational(_)
+            | SemanticPlanInputV2::Graph(_)
+            | SemanticPlanInputV2::Check(_)
+            | SemanticPlanInputV2::Presentation(_)
+            | SemanticPlanInputV2::Rule(_)
+            | SemanticPlanInputV2::MetaRequireCertified(_) => Self::Carrier,
         }
     }
 }
@@ -956,18 +1056,22 @@ struct ArmFactsV2 {
 
 /// Classify one sealed arm from its carrier plus the one traversal's folds.
 ///
-/// `root_override` is the location the assembled plan is attributed to when it
-/// is not the arm's own (a composition is attributed to the composition item).
+/// `root` is the one root the classification is produced under: a composition
+/// passes its OWN checked root, so the assembled plan is attributed to the
+/// composition item and retains the composition's policy around the body policy
+/// this same call derived.
 ///
 /// # Errors
 ///
 /// Returns [`PlanningDiagnosticV1::IllegalRuleProgram`] when the document rule
-/// program cannot be stratified under the document's own rule-graph budget.
+/// program cannot be stratified under the document's own rule-graph budget, and
+/// [`PlanningDiagnosticV1::InvalidComposition`] when a composition root's body
+/// policy cannot be retained by the composition it was classified for.
 fn classify(
     arm: ArmV2<'_>,
     document: &SemanticDocumentV2,
     walk: &WalkV2,
-    root_override: Option<&CheckedLocatedSpanV2>,
+    root: PlanRootV2<'_>,
 ) -> Result<PlanPartsV2, PlanningDiagnosticV1> {
     let mut capabilities = walk.capabilities.clone();
     let facts = match arm {
@@ -984,9 +1088,13 @@ fn classify(
         }
         ArmV2::MetaRequireCertified(_meta) => meta_facts(),
     };
-    let root_location = root_override
-        .cloned()
-        .unwrap_or_else(|| arm.root_location(document));
+    let (root_location, policy) = match root {
+        PlanRootV2::Carrier => (arm.root_location(document), facts.policy),
+        PlanRootV2::Composition(composition) => (
+            composition.location().clone(),
+            PlanPolicyV2::Composition(composition.policy(facts.policy)?),
+        ),
+    };
     let result = ResultContractV2::new(
         facts.result_kind,
         facts.render,
@@ -1008,7 +1116,7 @@ fn classify(
         capabilities,
         semantic_cost,
         explain: ExplainNoteV2::new(root_location, walk.families.clone(), facts.recursive),
-        policy: facts.policy,
+        policy,
     })
 }
 
@@ -1648,6 +1756,66 @@ mod tests {
         );
         let (nodes, _effects) = relational_policy(&plan)?;
         assert_eq!(nodes, 2);
+        Ok(())
+    }
+
+    /// The composition policy survives plan assembly unchanged: the assembled
+    /// plan's `policy()` IS the retained composition policy, so no stage can
+    /// substitute or drop the composition identity, its ordered producers, its
+    /// `WITH` binding, its body identity, or the body's own policy.
+    ///
+    /// INTEGRATOR-FIXTURE-PENDING: no resolved composition document fixture
+    /// exists at this layer, so this rail drives the exact assembly hop
+    /// ([`SemanticPlanV2::from_parts`]) and the exact checked policy landing
+    /// ([`crate::CompositionPolicyV2`]); the end-to-end dispatch through
+    /// [`classify`] is exercised by the pipeline's composition assembly rail.
+    #[test]
+    fn a_composition_policy_survives_plan_assembly_exactly() -> Result<(), String> {
+        let policy = crate::composition::tests::fixture_policy()?;
+        let parts = PlanPartsV2 {
+            authority_lane: AuthorityLaneV2::FrontendChecked,
+            evaluation_determinism: EvaluationDeterminismV2::Deterministic,
+            evidence: EvidenceRequirementV2::None,
+            effect: EffectClassV2::ReadOnly,
+            result: ResultContractV2::new(
+                ResultKindV2::Table,
+                RenderRequirementV2::RowsOnly,
+                None,
+                MultiplicityOrderContractV2::from_cardinality(CardinalityV1::Set),
+            ),
+            capabilities: BTreeSet::new(),
+            semantic_cost: SemanticCostV2 {
+                estimated_cardinality_class: CardinalityClassV2::LinearInInput,
+                recursion_risk_class: RecursionRiskClassV2::None,
+                witness_explosion_risk_class: WitnessExplosionRiskClassV2::None,
+                ordering_contract: OrderingContractV2::Unordered,
+            },
+            explain: ExplainNoteV2::new(policy.location().clone(), Vec::new(), false),
+            policy: PlanPolicyV2::Composition(policy.clone()),
+        };
+        let plan = SemanticPlanV2::from_parts(parts);
+
+        match plan.policy() {
+            PlanPolicyV2::Composition(retained) => {
+                assert_eq!(retained, &policy);
+                assert_eq!(retained.root_item_id(), policy.root_item_id());
+                assert_eq!(retained.location(), policy.location());
+                assert_eq!(retained.producers(), policy.producers());
+                assert_eq!(retained.with_binding(), policy.with_binding());
+                assert_eq!(retained.body_item_id(), policy.body_item_id());
+                assert_eq!(retained.body_family(), policy.body_family());
+                assert_eq!(retained.body(), policy.body());
+            }
+            PlanPolicyV2::Relational { .. }
+            | PlanPolicyV2::Graph(_)
+            | PlanPolicyV2::Check(_)
+            | PlanPolicyV2::Presentation(_)
+            | PlanPolicyV2::Rule(_)
+            | PlanPolicyV2::MetaRequireCertified => {
+                return Err("expected a composition policy".to_owned());
+            }
+        }
+        assert_eq!(plan.policy().keyword(), "composition");
         Ok(())
     }
 }

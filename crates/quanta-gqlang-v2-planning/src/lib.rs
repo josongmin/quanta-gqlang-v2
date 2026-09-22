@@ -7,29 +7,29 @@
 //! contracts. Cites packet decisions:
 //!
 //! - `D6`: planning attaches to the NORMALIZED query/program shape, not the root
-//!   kind. [`produce_plan`] keys every classification off the algebra/logic
-//!   shape supplied in a [`PlanRequestV1`]; it never re-inspects syntax/root
+//!   kind. [`plan_outcome`] keys every classification off the algebra/logic
+//!   shape supplied in a [`SemanticPlanInputV2`]; it never re-inspects syntax/root
 //!   labels (ticket 07 non-goal 3).
 //! - `D14`/`D7`: outputs are host-agnostic. No runtime/provider/backend noun
 //!   appears in any public type; mutation is not a frontend effect — the
-//!   strongest effect is [`EffectClassV1::ExportOnly`] and
-//!   [`EffectClassV1::MutationForbidden`] is the explicit reject marker.
+//!   strongest effect is [`EffectClassV2::ExportOnly`] and
+//!   [`EffectClassV2::MutationForbidden`] is the explicit reject marker.
 //! - `D20`: result kinds, source locations, and witness/path payloads are
-//!   SEMANTIC outputs ([`ResultKindV1`] / [`RenderRequirementV1`] /
-//!   [`EvidenceRequirementV1`]), not CLI-only presentation.
-//! - `D24`: logical explain/provenance ([`ExplainNoteV1`]) and the semantic-cost
+//!   SEMANTIC outputs ([`ResultKindV2`] / [`RenderRequirementV2`] /
+//!   [`EvidenceRequirementV2`]), not CLI-only presentation.
+//! - `D24`: logical explain/provenance ([`ExplainNoteV2`]) and the semantic-cost
 //!   signals are frontend-owned; runtime physical plans stay downstream.
 //! - `D26`: multiplicity/duplicate/order is explicit
-//!   ([`MultiplicityOrderContractV1`]) and an unordered result stays unordered.
+//!   ([`MultiplicityOrderContractV2`]) and an unordered result stays unordered.
 //! - `D32`: the semantic-cost output uses a FIXED schema with stable field names
-//!   ([`SemanticCostV1`] / [`SemanticCostV1::FIELD_NAMES`]).
+//!   ([`SemanticCostV2`] / [`SemanticCostV2::FIELD_NAMES`]).
 //! - `D10`/`D16`: an unsupported construct MIX fails closed with a typed
 //!   [`PlanningDiagnosticV1`] carrying a stable `unsupported_reason_code`; there
 //!   is no lossy downgrade.
 //!
 //! # Entry point
 //!
-//! [`produce_plan`] consumes a [`PlanRequestV1`] (the normalized algebra root,
+//! [`plan_outcome`] consumes a [`SemanticPlanInputV2`] (the normalized algebra root,
 //! optional recursion/witness shapes, and the requested result-kind/effect/truth
 //! lane) and returns a [`PublicPlanV1`] or a [`PlanningDiagnosticV1`].
 
@@ -49,9 +49,10 @@ mod result_kind;
 pub use capability::CapabilityV2;
 pub use check::{CheckContractV2, CheckPolicyV2};
 pub use composition::{
-    CheckedCompositionPlanInputV2, CheckedCompositionProducerV2, CompositionBodyPlanInputV2,
+    CheckedCompositionPlanInputV2, CheckedCompositionProducerV2, CompositionBodyFamilyV2,
+    CompositionBodyPlanInputV2, CompositionBodyPolicyV2, CompositionPolicyV2,
+    CompositionRelationalBodyPlanInputV2,
 };
-pub use composition::{CompositionBodyPolicyV2, CompositionPolicyV2};
 pub use cost::{
     CardinalityClassV2, OrderingContractV2, RecursionRiskClassV2, SemanticCostV2,
     WitnessExplosionRiskClassV2,

@@ -1,340 +1,184 @@
-//! Per-family ITEM classification (ticket 07, FRONTEND-CONTRACT parity).
+//! The sealed semantic planning input and the checked NON-PLAN vocabulary
+//! (ticket 07, RR-07B item 2).
 //!
-//! [`classify_item`] is the single entry point that takes ONE parsed program
-//! item ([`ProgramItemHirV1`]) and classifies it into the existing host-agnostic
-//! planning vocabulary: a [`PublicPlanV1`] (result-kind / effect / capabilities /
-//! truth lane / witness selection / fixed cost schema), a typed NO-PLAN marker
-//! for items that register but do not plan, or a fail-closed
-//! [`PlanningDiagnosticV1`].
+//! The V1 caller-selected input model (`PlanRequestV1`, `PublicPlanV1`,
+//! `produce_plan`, `item::classify_*`) is DELETED. Every classification now keys
+//! off one of the sealed carriers below, so a caller can no longer select the
+//! result kind, effect, or truth lane: those are derived from verified upstream
+//! contracts only.
 //!
-//! This is the SEAM that brings every non-relational v2 root family up to the
-//! same one pipeline as SELECT, without executing anything (no taint traversal,
-//! no SARIF bytes — that stays downstream, `D7`/`D14`):
-//!
-//! - FIND -> `path_witness` / `proof_evidence_only`, witness selection and
-//!   witness-explosion risk taken from logic's [`GraphQueryContractV1`]; illegal
-//!   FIND shapes fail closed with logic's diagnostic relayed unchanged.
-//! - CHECK -> `alert` / `read_only`. EXPLAIN -> `proof_explain` / `read_only`.
-//!   SHOW / SAMPLE -> `table` / `read_only`. DESCRIBE -> `alert`. COMPARE ->
-//!   `path_witness` (a delta). EXPORT -> `export_only`.
-//! - REQUIRE CERTIFIED -> a proof-confirmed truth gate. USE PACK -> no plan.
-//! - DECLARATIONS (VIEW / MODEL / PACK / PROFILE / GATE / RULE) -> no plan
-//!   (they register in the catalog; that is modules' concern, not planning's).
-//! - A relational `Query` / `Decl` / `Rule` carrier is DEFERRED to the algebra
-//!   pipeline ([`produce_plan`]): its fixed cost schema needs the NORMALIZED
-//!   algebra shape (`D6`), which item classification deliberately does not invent.
+//! [`NoPlanReasonV2`] is the checked spelling for a document item that
+//! legitimately has no executable plan. It is a TYPED, non-error outcome: the
+//! pipeline stores it in the compiled document's nonplan item variants, so
+//! absence is never represented by a skipped stage.
 
-use std::collections::BTreeSet;
+use quanta_gqlang_v2_algebra::LoweredRelationItemV2;
+use quanta_gqlang_v2_logic::{GraphQueryContractV2, RuleProgramContractV2};
+use quanta_gqlang_v2_sema::{ResolvedMetaV2, SemanticItemIdV2};
 
-use quanta_gqlang_v2_hir::{
-    CompositionBodyV1, GraphQueryHirV1, LegalityHirV1, MetaHirV1, MetaKindV1, PresentationHirV1,
-    PresentationKindV1, ProgramItemHirV1, SpanV1,
-};
-use quanta_gqlang_v2_logic::{GraphQueryContractV1, GraphQuerySemanticsV1, RelationShapeV1};
-use quanta_gqlang_v2_types::CardinalityV1;
+use crate::check::CheckContractV2;
+use crate::composition::CheckedCompositionPlanInputV2;
+use crate::presentation::PresentationContractV2;
 
-use crate::capability::CapabilityV1;
-use crate::cost::{
-    CardinalityClassV1, OrderingContractV1, RecursionRiskClassV1, SemanticCostV1,
-    WitnessExplosionRiskClassV1,
-};
-use crate::diagnostic::PlanningDiagnosticV1;
-use crate::effect::{EffectClassV1, EvidenceRequirementV1, TruthLaneV1};
-use crate::explain::ExplainNoteV1;
-use crate::plan::PublicPlanV1;
-use crate::result_kind::{
-    MultiplicityOrderContractV1, RenderRequirementV1, ResultKindV1, WitnessSelectionPolicyV1,
-};
-
-/// Why a program item produces NO host-agnostic plan. This is a TYPED marker,
-/// not an error: the item is well-formed, it simply does not lower to a
-/// servable plan at this seam.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum NoPlanReasonV1 {
-    /// A catalog declaration (VIEW / MODEL / PACK / PROFILE / GATE / RULE): it
-    /// registers in the catalog and produces no plan. Registration / duplicate
-    /// rejection / admission gating are modules' concern.
-    CatalogDeclaration,
-    /// A meta activation directive (USE PACK): effect-style pack activation with
-    /// no relational plan.
-    MetaActivation,
-    /// A relational carrier (SELECT `Query`, or a `Decl` / `Rule` body) whose
-    /// plan must be produced through the algebra pipeline ([`crate::produce_plan`])
-    /// from its NORMALIZED shape; item classification does not invent the algebra.
-    RelationalDeferred,
-}
-
-impl NoPlanReasonV1 {
-    /// Stable keyword for explain / diagnostics and CLI/LSP rendering.
-    #[must_use]
-    pub const fn keyword(self) -> &'static str {
-        match self {
-            Self::CatalogDeclaration => "catalog_declaration",
-            Self::MetaActivation => "meta_activation",
-            Self::RelationalDeferred => "relational_deferred",
-        }
-    }
-}
-
-/// The outcome of classifying a single program item.
-#[derive(Clone, Debug, PartialEq)]
-pub enum ItemClassificationV1 {
-    /// The item lowers to a host-agnostic public plan.
-    Plan(PublicPlanV1),
-    /// The item is well-formed but produces no plan at this seam.
-    NoPlan(NoPlanReasonV1),
-    /// The item is rejected fail-closed with a typed planning diagnostic.
-    Reject(PlanningDiagnosticV1),
-}
-
-/// Classify one program item into the host-agnostic planning vocabulary.
+/// One sealed semantic planning input.
 ///
-/// Never panics and never executes; FIND legality is delegated to logic and its
-/// rejection relayed unchanged (`D10`/`D12`).
-#[must_use]
-pub fn classify_item(item: &ProgramItemHirV1) -> ItemClassificationV1 {
-    match item {
-        // Relational carriers go through the algebra pipeline.
-        ProgramItemHirV1::Query(_) | ProgramItemHirV1::Decl(_) | ProgramItemHirV1::Rule(_) => {
-            ItemClassificationV1::NoPlan(NoPlanReasonV1::RelationalDeferred)
+/// There is no raw-HIR or caller-assembled variant: the relational arm is
+/// ticket 05's sealed lowering product, the graph and rule arms are ticket 06's
+/// sealed logic contracts, the CHECK/presentation/composition arms are this
+/// crate's validated wrappers over Sema contracts, and the meta arm is Sema's
+/// resolved directive.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SemanticPlanInputV2 {
+    /// A fully lowered, checked relational item (ticket 05).
+    Relational(LoweredRelationItemV2),
+    /// A sealed FIND graph contract (ticket 06).
+    Graph(GraphQueryContractV2),
+    /// A validated CHECK contract wrapping Sema's resolved CHECK.
+    Check(CheckContractV2),
+    /// A validated presentation contract wrapping Sema's resolved presentation.
+    Presentation(PresentationContractV2),
+    /// The document-wide sealed rule program (ticket 06).
+    Rule(RuleProgramContractV2),
+    /// A `REQUIRE CERTIFIED` document directive. A `USE PACK` directive reaching
+    /// this arm is a checked [`NoPlanReasonV2::MetaActivation`], never a plan.
+    MetaRequireCertified(ResolvedMetaV2),
+    /// A checked composition plan input (root, ordered producers, WITH identity,
+    /// one sealed body input).
+    Composition(CheckedCompositionPlanInputV2),
+}
+
+/// Why a document item produces NO host-agnostic plan.
+///
+/// This is a TYPED marker, not an error: the item is well-formed, it simply does
+/// not lower to a servable plan. The pipeline stores it verbatim in the compiled
+/// document's nonplan item variants.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum NoPlanReasonV2 {
+    /// A catalog declaration (VIEW / MODEL / PACK / PROFILE / GATE / RULE
+    /// binding): it registers in the catalog and produces no per-declaration
+    /// serving plan. An inline VIEW body is still lowered and checked for its
+    /// typed relation proof, but its Catalog declaration keeps this reason.
+    CatalogDeclaration {
+        /// Which catalog payload the declaration carries.
+        kind: CatalogDeclarationKindV2,
+    },
+    /// A typed value declaration: it binds a checked value, not a servable
+    /// relation.
+    ValueDeclaration,
+    /// A `USE PACK` metadata activation: effect-style pack activation with no
+    /// relational plan.
+    MetaActivation,
+    /// The document carries no Rule item, so there is no document rule program
+    /// to plan.
+    EmptyRuleProgram,
+}
+
+/// Closed catalog payload vocabulary, retained so a catalog declaration's
+/// nonplan outcome names the exact payload.
+///
+/// A MODEL declaration is NOT inferred to be an advisory serving plan from its
+/// name or provider bytes: the frontend has no advisory lane, and this variant
+/// is what the planner reports instead.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum CatalogDeclarationKindV2 {
+    /// VIEW alias or typed inline body.
+    View,
+    /// MODEL with opaque provider metadata.
+    Model,
+    /// PACK source and activation.
+    Pack,
+    /// PROFILE capabilities and admission.
+    Profile,
+    /// GATE checks and binding policy.
+    Gate,
+    /// RULE binding to an exact CHECK reference.
+    RuleBinding,
+}
+
+impl CatalogDeclarationKindV2 {
+    /// Stable code suffix for this catalog payload.
+    #[must_use]
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::View => "view",
+            Self::Model => "model",
+            Self::Pack => "pack",
+            Self::Profile => "profile",
+            Self::Gate => "gate",
+            Self::RuleBinding => "rule_binding",
         }
-        ProgramItemHirV1::GraphQuery(find) => classify_find(find),
-        ProgramItemHirV1::Legality(check) => classify_check(check),
-        ProgramItemHirV1::Presentation(p) => classify_presentation(p),
-        // Declarations register in the catalog and produce no plan.
-        ProgramItemHirV1::CatalogDecl(_) => {
-            ItemClassificationV1::NoPlan(NoPlanReasonV1::CatalogDeclaration)
+    }
+
+    /// Stable human name for this catalog payload.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::View => "VIEW",
+            Self::Model => "MODEL",
+            Self::Pack => "PACK",
+            Self::Profile => "PROFILE",
+            Self::Gate => "GATE",
+            Self::RuleBinding => "RULE",
         }
-        // A composition's servability is its BODY's: classify the body. Binding /
-        // producer legality is the binder's / logic's concern, not planning's.
-        ProgramItemHirV1::Composition(c) => classify_composition_body(&c.body),
-        ProgramItemHirV1::Meta(m) => classify_meta(m),
     }
 }
 
-fn classify_composition_body(body: &CompositionBodyV1) -> ItemClassificationV1 {
-    match body {
-        CompositionBodyV1::Query(_) => {
-            ItemClassificationV1::NoPlan(NoPlanReasonV1::RelationalDeferred)
-        }
-        CompositionBodyV1::GraphQuery(find) => classify_find(find),
-        CompositionBodyV1::Legality(check) => classify_check(check),
-        CompositionBodyV1::Explain(explain) => {
-            ItemClassificationV1::Plan(proof_explain_plan(explain.span))
+impl NoPlanReasonV2 {
+    /// The stable reason spelling (without the `planning.no_plan.` prefix).
+    #[must_use]
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::CatalogDeclaration { kind: _ } => "catalog_declaration",
+            Self::ValueDeclaration => "value_declaration",
+            Self::MetaActivation => "meta_activation",
+            Self::EmptyRuleProgram => "empty_rule_program",
         }
     }
-}
 
-/// FIND -> `path_witness` / `proof_evidence_only`, witness selection + explosion
-/// risk from logic's bounded contract. An illegal FIND fails closed with logic's
-/// diagnostic relayed unchanged.
-fn classify_find(find: &GraphQueryHirV1) -> ItemClassificationV1 {
-    let contract = match GraphQuerySemanticsV1::classify(find) {
-        Ok(contract) => contract,
-        Err(logic) => {
-            return ItemClassificationV1::Reject(PlanningDiagnosticV1::IllegalGraphQuery { logic });
+    /// The catalog payload this reason names, when it is a catalog declaration.
+    #[must_use]
+    pub const fn catalog_kind(self) -> Option<CatalogDeclarationKindV2> {
+        match self {
+            Self::CatalogDeclaration { kind } => Some(kind),
+            Self::ValueDeclaration | Self::MetaActivation | Self::EmptyRuleProgram => None,
         }
-    };
-
-    // FIND always materializes the full bounded witness set under the contract's
-    // tie-break; the selection is EXPLICIT rather than backend-accidental.
-    let selection = WitnessSelectionPolicyV1::AllWitness;
-    let witness_explosion = witness_risk_from_contract(&contract, selection);
-    // Reachability/flow/slice/taint/path/summary traverse a relation that can
-    // cycle, i.e. a bounded recursive closure; points_to is acyclic.
-    let recursive = contract.witness.shape == RelationShapeV1::Cyclic;
-
-    let mut capabilities = BTreeSet::new();
-    capabilities.insert(CapabilityV1::WitnessMaterialization);
-    if recursive {
-        capabilities.insert(CapabilityV1::RecursiveClosure);
     }
 
-    let recursion_risk = if recursive {
-        // Termination depends on the explicit path-length bound in the contract.
-        RecursionRiskClassV1::BoundDependent
-    } else {
-        RecursionRiskClassV1::None
-    };
-    let cardinality_class = if recursive {
-        CardinalityClassV1::Closure
-    } else {
-        CardinalityClassV1::LinearInInput
-    };
-
-    let cost = SemanticCostV1 {
-        estimated_cardinality_class: cardinality_class,
-        recursion_risk_class: recursion_risk,
-        witness_explosion_risk_class: witness_explosion,
-        // A witness/path result is a bag of evidence, not an ordered table.
-        ordering_contract: OrderingContractV1::Unordered,
-        unsupported_reason_code: None,
-    };
-
-    let plan = PublicPlanV1 {
-        capabilities,
-        truth_lane: TruthLaneV1::Deterministic,
-        evidence: EvidenceRequirementV1::WitnessPayload,
-        effect: EffectClassV1::ProofEvidenceOnly,
-        result_kind: ResultKindV1::PathWitness,
-        render_requirement: RenderRequirementV1::WitnessPayload,
-        witness_selection: Some(selection),
-        multiplicity_order: MultiplicityOrderContractV1::from_cardinality(CardinalityV1::Set),
-        cost,
-        explain: ExplainNoteV1::for_item(find.span, recursive),
-    };
-    ItemClassificationV1::Plan(plan)
-}
-
-/// Map a bounded witness contract + selection policy onto the witness-explosion
-/// risk class, mirroring [`crate::plan`]'s relational mapping so FIND and a
-/// witness-bearing SELECT classify a cyclic relation identically.
-fn witness_risk_from_contract(
-    contract: &GraphQueryContractV1,
-    selection: WitnessSelectionPolicyV1,
-) -> WitnessExplosionRiskClassV1 {
-    if contract.witness.shape == RelationShapeV1::Cyclic {
-        WitnessExplosionRiskClassV1::CapBounded
-    } else {
-        match selection {
-            WitnessSelectionPolicyV1::CanonicalOne => WitnessExplosionRiskClassV1::SingleWitness,
-            WitnessSelectionPolicyV1::TopK { .. } | WitnessSelectionPolicyV1::AllWitness => {
-                WitnessExplosionRiskClassV1::BoundedSet
+    /// A stable human-readable message. Text is part of the contract: tests
+    /// assert it verbatim.
+    #[must_use]
+    pub fn message(self) -> String {
+        match self {
+            Self::CatalogDeclaration { kind } => format!(
+                "{} declaration registers in the catalog and has no per-declaration serving plan",
+                kind.name()
+            ),
+            Self::ValueDeclaration => {
+                "value declaration binds a checked value and has no serving plan".to_owned()
+            }
+            Self::MetaActivation => {
+                "USE PACK activates a pack and has no relational serving plan".to_owned()
+            }
+            Self::EmptyRuleProgram => {
+                "the document has no Rule item, so it has no rule program plan".to_owned()
             }
         }
     }
 }
 
-/// CHECK -> `alert` / `read_only`. The check evaluates a rule reference and emits
-/// findings/SARIF downstream; here it is read-only alert classification.
-fn classify_check(check: &LegalityHirV1) -> ItemClassificationV1 {
-    ItemClassificationV1::Plan(alert_plan(check.span))
-}
-
-/// Presentation verbs map onto distinct result-kinds / effects.
-fn classify_presentation(p: &PresentationHirV1) -> ItemClassificationV1 {
-    let plan = match &p.kind {
-        // EXPLAIN: rule/path provenance without execution.
-        PresentationKindV1::Explain { .. } => proof_explain_plan(p.span),
-        // SHOW / SAMPLE: catalog introspection / retrieval -> a read-only table.
-        PresentationKindV1::Show { .. } | PresentationKindV1::Sample { .. } => {
-            table_plan(p.span, EffectClassV1::ReadOnly)
-        }
-        // DESCRIBE: entity metadata -> alert.
-        PresentationKindV1::Describe { .. } => alert_plan(p.span),
-        // COMPARE: a baseline/candidate delta -> a path/witness result.
-        PresentationKindV1::Compare { .. } => compare_plan(p.span),
-        // EXPORT: a bridge receipt -> export-only effect, no mutation.
-        PresentationKindV1::Export { .. } => table_plan(p.span, EffectClassV1::ExportOnly),
-    };
-    ItemClassificationV1::Plan(plan)
-}
-
-/// META: REQUIRE CERTIFIED is a proof-confirmed truth gate; USE PACK is an
-/// effect-style activation with no plan.
-fn classify_meta(meta: &MetaHirV1) -> ItemClassificationV1 {
-    match meta.kind {
-        MetaKindV1::UsePack { .. } => ItemClassificationV1::NoPlan(NoPlanReasonV1::MetaActivation),
-        MetaKindV1::RequireCertified => {
-            ItemClassificationV1::Plan(require_certified_plan(meta.span))
-        }
-    }
-}
-
-// ---- shared plan shapes ----------------------------------------------------
-
-/// A read-only `alert` plan (CHECK / DESCRIBE): rows must carry a source
-/// location.
-fn alert_plan(span: SpanV1) -> PublicPlanV1 {
-    PublicPlanV1 {
-        capabilities: BTreeSet::new(),
-        truth_lane: TruthLaneV1::Deterministic,
-        evidence: EvidenceRequirementV1::SourceLocation,
-        effect: EffectClassV1::ReadOnly,
-        result_kind: ResultKindV1::Alert,
-        render_requirement: RenderRequirementV1::SourceLocation,
-        witness_selection: None,
-        multiplicity_order: MultiplicityOrderContractV1::from_cardinality(CardinalityV1::Set),
-        cost: read_only_cost(),
-        explain: ExplainNoteV1::for_item(span, false),
-    }
-}
-
-/// A `proof_explain` plan (EXPLAIN): provenance, not rows.
-fn proof_explain_plan(span: SpanV1) -> PublicPlanV1 {
-    PublicPlanV1 {
-        capabilities: BTreeSet::new(),
-        truth_lane: TruthLaneV1::Deterministic,
-        evidence: EvidenceRequirementV1::ProofTree,
-        effect: EffectClassV1::ReadOnly,
-        result_kind: ResultKindV1::ProofExplain,
-        render_requirement: RenderRequirementV1::ProvenanceTree,
-        witness_selection: None,
-        multiplicity_order: MultiplicityOrderContractV1::from_cardinality(CardinalityV1::Set),
-        cost: read_only_cost(),
-        explain: ExplainNoteV1::for_item(span, false),
-    }
-}
-
-/// A `table` plan (SHOW / SAMPLE / EXPORT) with a caller-chosen effect.
-fn table_plan(span: SpanV1, effect: EffectClassV1) -> PublicPlanV1 {
-    PublicPlanV1 {
-        capabilities: BTreeSet::new(),
-        truth_lane: TruthLaneV1::Deterministic,
-        evidence: EvidenceRequirementV1::None,
-        effect,
-        result_kind: ResultKindV1::Table,
-        render_requirement: RenderRequirementV1::RowsOnly,
-        witness_selection: None,
-        multiplicity_order: MultiplicityOrderContractV1::from_cardinality(CardinalityV1::Set),
-        cost: read_only_cost(),
-        explain: ExplainNoteV1::for_item(span, false),
-    }
-}
-
-/// A `path_witness` plan for COMPARE: a baseline/candidate delta carries
-/// witness-style evidence but enumerates no recursive closure on its own.
-fn compare_plan(span: SpanV1) -> PublicPlanV1 {
-    PublicPlanV1 {
-        capabilities: BTreeSet::new(),
-        truth_lane: TruthLaneV1::Deterministic,
-        evidence: EvidenceRequirementV1::WitnessPayload,
-        effect: EffectClassV1::ReadOnly,
-        result_kind: ResultKindV1::PathWitness,
-        render_requirement: RenderRequirementV1::WitnessPayload,
-        witness_selection: None,
-        multiplicity_order: MultiplicityOrderContractV1::from_cardinality(CardinalityV1::Set),
-        cost: read_only_cost(),
-        explain: ExplainNoteV1::for_item(span, false),
-    }
-}
-
-/// REQUIRE CERTIFIED -> a proof-confirmed truth gate: the strongest lane, which
-/// forces a proof-tree evidence requirement (only this lane carries final policy
-/// truth). It is evidence-only — a gate certifies, it does not export.
-fn require_certified_plan(span: SpanV1) -> PublicPlanV1 {
-    PublicPlanV1 {
-        capabilities: BTreeSet::new(),
-        truth_lane: TruthLaneV1::ProofConfirmed,
-        evidence: EvidenceRequirementV1::ProofTree,
-        effect: EffectClassV1::ProofEvidenceOnly,
-        result_kind: ResultKindV1::ProofExplain,
-        render_requirement: RenderRequirementV1::ProvenanceTree,
-        witness_selection: None,
-        multiplicity_order: MultiplicityOrderContractV1::from_cardinality(CardinalityV1::Set),
-        cost: read_only_cost(),
-        explain: ExplainNoteV1::for_item(span, false),
-    }
-}
-
-/// The fixed cost schema for a non-relational, non-recursive, set-shaped item:
-/// linear-in-input, no recursion, no witness enumeration, unordered, servable.
-fn read_only_cost() -> SemanticCostV1 {
-    SemanticCostV1 {
-        estimated_cardinality_class: CardinalityClassV1::LinearInInput,
-        recursion_risk_class: RecursionRiskClassV1::None,
-        witness_explosion_risk_class: WitnessExplosionRiskClassV1::None,
-        ordering_contract: OrderingContractV1::Unordered,
-        unsupported_reason_code: None,
+/// The canonical item identity an input arm plans for, when the arm retains one.
+///
+/// Used by the entry points to anchor an input/document mismatch diagnostic; the
+/// per-arm membership validation itself lives in [`crate::plan`].
+#[must_use]
+pub(crate) const fn input_item_id(input: &SemanticPlanInputV2) -> Option<SemanticItemIdV2> {
+    match input {
+        SemanticPlanInputV2::Relational(item) => Some(item.item_id()),
+        SemanticPlanInputV2::Graph(contract) => Some(contract.item_id()),
+        SemanticPlanInputV2::Check(contract) => Some(contract.item_id()),
+        SemanticPlanInputV2::Presentation(contract) => Some(contract.item_id()),
+        SemanticPlanInputV2::Rule(_) => None,
+        SemanticPlanInputV2::MetaRequireCertified(meta) => Some(meta.item_id()),
+        SemanticPlanInputV2::Composition(composition) => Some(composition.root_item_id()),
     }
 }

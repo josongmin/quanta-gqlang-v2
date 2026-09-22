@@ -2,30 +2,30 @@
 //!
 //! `D32` requires semantic cost/profile output to use a fixed schema with stable
 //! field names for CLI/LSP/tests. This module is the single owner of that
-//! schema. The struct [`SemanticCostV1`] carries EXACTLY these five fields and no
-//! ad-hoc string cost knobs:
+//! schema. [`SemanticCostV2`] carries EXACTLY these four fields and no ad-hoc
+//! string cost knobs:
 //!
 //! - `estimated_cardinality_class`
 //! - `recursion_risk_class`
 //! - `witness_explosion_risk_class`
 //! - `ordering_contract`
-//! - `unsupported_reason_code`
 //!
-//! Each field is a TYPED class, not a free-form string (`D24`: cost signals are
-//! frontend-owned host-agnostic outputs; no runtime jargon). The field names are
-//! guarded against drift by [`SemanticCostV1::FIELD_NAMES`] and a stability rail
-//! in the crate tests.
+//! There is deliberately no `unsupported_reason_code` success field: a
+//! non-servable shape fails closed with a typed
+//! [`crate::PlanningDiagnosticV1`] instead, so a successful plan can never carry
+//! a dead `none` field. Each field is a TYPED class, not a free-form string
+//! (`D24`), and no physical estimate (`cpu`, `memory`, `io`, `network`,
+//! `coordination`) or numeric cardinality exists anywhere in the schema.
 
 /// How big the result is expected to get, as a coarse host-agnostic class.
 ///
-/// This is a SEMANTIC class derived from the normalized algebra shape (scans,
-/// joins, grouping), never a runtime row estimate. It does not pretend to be a
-/// physical cardinality number — that belongs downstream (`D24`).
+/// This is a SEMANTIC class derived from the checked shape (scans, joins,
+/// grouping, sealed limits), never a runtime row estimate.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum CardinalityClassV1 {
+pub enum CardinalityClassV2 {
     /// At most one row (a scalar aggregate with no grouping, or a `limit 1`).
     ScalarOrSingleton,
-    /// Bounded by an explicit `limit` clause.
+    /// Bounded by an explicit sealed limit.
     Bounded,
     /// Proportional to a single base relation (filters/projections of one scan).
     LinearInInput,
@@ -36,7 +36,7 @@ pub enum CardinalityClassV1 {
     Closure,
 }
 
-impl CardinalityClassV1 {
+impl CardinalityClassV2 {
     /// Stable keyword for explain/diagnostics and CLI/LSP rendering.
     #[must_use]
     pub const fn keyword(self) -> &'static str {
@@ -48,11 +48,22 @@ impl CardinalityClassV1 {
             Self::Closure => "closure",
         }
     }
+
+    /// Explicit risk rank, used to take the worst class of two union arms.
+    pub(crate) const fn rank(self) -> u8 {
+        match self {
+            Self::ScalarOrSingleton => 0,
+            Self::Bounded => 1,
+            Self::LinearInInput => 2,
+            Self::Multiplicative => 3,
+            Self::Closure => 4,
+        }
+    }
 }
 
 /// How much recursion risk the plan carries.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum RecursionRiskClassV1 {
+pub enum RecursionRiskClassV2 {
     /// No recursion in the plan.
     None,
     /// Positive recursion admitted under a least-fixpoint stratification proof:
@@ -63,7 +74,7 @@ pub enum RecursionRiskClassV1 {
     BoundDependent,
 }
 
-impl RecursionRiskClassV1 {
+impl RecursionRiskClassV2 {
     /// Stable keyword for explain/diagnostics and CLI/LSP rendering.
     #[must_use]
     pub const fn keyword(self) -> &'static str {
@@ -77,7 +88,7 @@ impl RecursionRiskClassV1 {
 
 /// How much witness/path enumeration could explode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum WitnessExplosionRiskClassV1 {
+pub enum WitnessExplosionRiskClassV2 {
     /// No witness/path materialization is requested.
     None,
     /// A single canonical witness is requested: enumeration is capped at one.
@@ -89,7 +100,7 @@ pub enum WitnessExplosionRiskClassV1 {
     CapBounded,
 }
 
-impl WitnessExplosionRiskClassV1 {
+impl WitnessExplosionRiskClassV2 {
     /// Stable keyword for explain/diagnostics and CLI/LSP rendering.
     #[must_use]
     pub const fn keyword(self) -> &'static str {
@@ -106,18 +117,18 @@ impl WitnessExplosionRiskClassV1 {
 ///
 /// Per `D26` and pinned-semantics 6, an unordered result stays semantically
 /// unordered; tooling may canonicalize rendering, but the language must not
-/// pretend an order exists. This class makes that distinction explicit.
+/// pretend an order exists.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum OrderingContractV1 {
+pub enum OrderingContractV2 {
     /// Output order is NOT semantic (a set or bag); any rendered order is a
     /// tooling canonicalization, not a language guarantee.
     Unordered,
-    /// Output order IS semantic: the plan ends in an explicit sort, so the row
-    /// order is part of the result's meaning.
+    /// Output order IS semantic: the plan ends in an explicit checked sort, so
+    /// the row order is part of the result's meaning.
     Ordered,
 }
 
-impl OrderingContractV1 {
+impl OrderingContractV2 {
     /// Stable keyword for explain/diagnostics and CLI/LSP rendering.
     #[must_use]
     pub const fn keyword(self) -> &'static str {
@@ -128,36 +139,110 @@ impl OrderingContractV1 {
     }
 }
 
-/// The FIXED semantic-cost schema (`D32`).
-///
-/// Exactly five typed fields, named verbatim. The `unsupported_reason_code` is
-/// `Some(code)` only when the plan is non-servable due to an unsupported
-/// construct mix (it carries the same stable code as the planning diagnostic);
-/// for a servable plan it is `None`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SemanticCostV1 {
+/// The FIXED semantic-cost schema (`D32`): exactly four typed fields.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SemanticCostV2 {
     /// Coarse expected-size class of the result.
-    pub estimated_cardinality_class: CardinalityClassV1,
+    pub estimated_cardinality_class: CardinalityClassV2,
     /// Recursion-risk class of the plan.
-    pub recursion_risk_class: RecursionRiskClassV1,
+    pub recursion_risk_class: RecursionRiskClassV2,
     /// Witness/path explosion-risk class.
-    pub witness_explosion_risk_class: WitnessExplosionRiskClassV1,
+    pub witness_explosion_risk_class: WitnessExplosionRiskClassV2,
     /// Order contract of the rendered result.
-    pub ordering_contract: OrderingContractV1,
-    /// `Some(code)` when the plan is non-servable due to an unsupported
-    /// construct, carrying the stable reason code; `None` when servable.
-    pub unsupported_reason_code: Option<String>,
+    pub ordering_contract: OrderingContractV2,
 }
 
-impl SemanticCostV1 {
-    /// The five stable field names, in declaration order. This is the drift
+impl SemanticCostV2 {
+    /// The four stable field names, in declaration order. This is the drift
     /// guard `D32` requires: a test asserts these verbatim so a rename cannot
     /// pass silently.
-    pub const FIELD_NAMES: [&'static str; 5] = [
+    pub const FIELD_NAMES: [&'static str; 4] = [
         "estimated_cardinality_class",
         "recursion_risk_class",
         "witness_explosion_risk_class",
         "ordering_contract",
-        "unsupported_reason_code",
     ];
+
+    /// The canonical ordered field iterator: `(field name, keyword)` pairs in
+    /// declaration order, for the CLI renderer to consume instead of hardcoding
+    /// a second field list.
+    #[must_use]
+    pub fn fields(&self) -> [(&'static str, &'static str); 4] {
+        [
+            (
+                "estimated_cardinality_class",
+                self.estimated_cardinality_class.keyword(),
+            ),
+            ("recursion_risk_class", self.recursion_risk_class.keyword()),
+            (
+                "witness_explosion_risk_class",
+                self.witness_explosion_risk_class.keyword(),
+            ),
+            ("ordering_contract", self.ordering_contract.keyword()),
+        ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn schema_field_names_are_stable_and_four() {
+        assert_eq!(
+            SemanticCostV2::FIELD_NAMES,
+            [
+                "estimated_cardinality_class",
+                "recursion_risk_class",
+                "witness_explosion_risk_class",
+                "ordering_contract",
+            ]
+        );
+        let cost = SemanticCostV2 {
+            estimated_cardinality_class: CardinalityClassV2::Bounded,
+            recursion_risk_class: RecursionRiskClassV2::None,
+            witness_explosion_risk_class: WitnessExplosionRiskClassV2::None,
+            ordering_contract: OrderingContractV2::Unordered,
+        };
+        let rendered = cost.fields();
+        assert_eq!(rendered.len(), SemanticCostV2::FIELD_NAMES.len());
+        for (index, (name, keyword)) in rendered.iter().enumerate() {
+            assert_eq!(Some(*name), SemanticCostV2::FIELD_NAMES.get(index).copied());
+            assert!(!keyword.is_empty());
+        }
+    }
+
+    #[test]
+    fn class_keywords_are_stable() {
+        for (class, keyword) in [
+            (CardinalityClassV2::ScalarOrSingleton, "scalar_or_singleton"),
+            (CardinalityClassV2::Bounded, "bounded"),
+            (CardinalityClassV2::LinearInInput, "linear_in_input"),
+            (CardinalityClassV2::Multiplicative, "multiplicative"),
+            (CardinalityClassV2::Closure, "closure"),
+        ] {
+            assert_eq!(class.keyword(), keyword);
+        }
+        for (class, keyword) in [
+            (RecursionRiskClassV2::None, "none"),
+            (RecursionRiskClassV2::BoundedFixpoint, "bounded_fixpoint"),
+            (RecursionRiskClassV2::BoundDependent, "bound_dependent"),
+        ] {
+            assert_eq!(class.keyword(), keyword);
+        }
+        for (class, keyword) in [
+            (WitnessExplosionRiskClassV2::None, "none"),
+            (WitnessExplosionRiskClassV2::SingleWitness, "single_witness"),
+            (WitnessExplosionRiskClassV2::BoundedSet, "bounded_set"),
+            (WitnessExplosionRiskClassV2::CapBounded, "cap_bounded"),
+        ] {
+            assert_eq!(class.keyword(), keyword);
+        }
+        for (class, keyword) in [
+            (OrderingContractV2::Unordered, "unordered"),
+            (OrderingContractV2::Ordered, "ordered"),
+        ] {
+            assert_eq!(class.keyword(), keyword);
+        }
+    }
 }

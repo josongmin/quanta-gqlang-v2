@@ -11,6 +11,33 @@
 //! downstream mutation test needs a shape no public constructor can produce.
 //! Nothing in this module is compiled without the `test` feature, and the
 //! module is `#[doc(hidden)]`; no fixture can leak into a non-test build.
+//!
+//! Beyond the relation/graph/nested-CHECK/rule families, the document families
+//! downstream planning and pipeline rails need are:
+//!
+//! - meta directives ([`reference_meta_document_v2`]): `REQUIRE CERTIFIED` mints
+//!   through the real transaction; `USE PACK` cannot, because the document
+//!   resolver's `Meta` arm accepts only `REQUIRE CERTIFIED` today (see
+//!   [`USE_PACK_TRANSACTION_REJECTION_V2`]), so
+//!   [`forged_use_pack_meta_document_v2`] seals that one directive through the
+//!   crate-local re-assembly seam;
+//! - presentations ([`reference_presentation_document_v2`]): all six verbs,
+//!   with every EXPLAIN evidence/truth permutation including the two planning
+//!   refuses;
+//! - compositions ([`reference_composition_document_v2`]): all four closed body
+//!   families over ordered LET producers;
+//! - small-receipt rule programs
+//!   ([`forged_small_receipt_rule_document_v2`] and
+//!   [`forged_small_receipt_rule_program_document_v2`]);
+//! - narrow-witness and alternate-identity FIND documents
+//!   ([`reference_narrow_witness_graph_document_v2`],
+//!   [`reference_alternate_graph_document_v2`]).
+//!
+//! Three algebra families have NO authorable document shape at all:
+//! `AlgebraFamilyV2::{Apply, Limit, Union}`. The closed HIR relation vocabulary
+//! (`RelationExprKindV1`) cannot express them and their `AlgebraOpV2` payloads
+//! have no sealed constructor, so the `ReferenceRelationFixtureV2` variants that
+//! name them return the exact surface rejection instead of a fake carrier.
 
 use crate::{
     resolve_checked_document_v2, CheckedLocatedSpanV2, CheckedSyntaxDocumentV2,
@@ -18,23 +45,27 @@ use crate::{
     GraphReferenceCatalogV2, GraphReferenceInputV2, GraphReferenceKindV2, GraphReferenceRoleV2,
     JoinModeV2, OutputColumnContractV2, OutputColumnOriginV2, OutputProvenanceV2,
     RelationOutputContractV2, ResolvedBindingKindV2, ResolvedCompositionSourceIdV2,
-    ResolvedGraphQueryV2, ResolvedScanSourceV2, ResolvedValueBindingV2, SemanticDocumentV2,
+    ResolvedCompositionV2, ResolvedGraphQueryV2, ResolvedMetaKindV2, ResolvedMetaV2,
+    ResolvedPresentationV2, ResolvedScanSourceV2, ResolvedValueBindingV2, SemanticDocumentV2,
     SemanticItemIdV2, SemanticItemV2, TypedBoolExprV2, TypedCorrelationEdgeV2, TypedExprShapeV2,
     TypedExprV2, TypedRelationExprV2, TypedRelationStageInputV2, TypedRelationStageKindV2,
     TypedRelationV2,
 };
 use quanta_gqlang_v2_hir::{
-    AliasV1, CallArgHirV1, CallArgsHirV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
-    GraphConstraintsV1, GraphDirectionV1, GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1,
-    GraphRefV1, HirBuilderV1, HirDocumentV1, HirNodeIdV1, LegalityHirV1, LocatedSpanV2,
-    OrderKeyHirV1, PathSegmentV1, ProgramItemHirV1, ProjectionItemV1, QueryHirV1,
-    RelationExistsPolarityV1, RelationExprHirV1, SortDirectionHirV1, SourceIdV2,
-    SourceRegistrationV2, SourceRegistryViewV2, SpanV1, ValueExprHirV1,
+    AliasV1, CallArgHirV1, CallArgsHirV1, CompareMetricV1, CompositionBindingV1, CompositionBodyV1,
+    CompositionHirV1, CompositionProducerV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
+    EvidenceModeV1, ExplainHirV1, ExportFormatV1, GraphConstraintsV1, GraphDirectionV1,
+    GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1, HirDocumentV1,
+    HirNodeIdV1, LegalityHirV1, LocatedSpanV2, MetaHirV1, MetaKindV1, OrderKeyHirV1, PathSegmentV1,
+    PresentationHirV1, PresentationKindV1, ProgramItemHirV1, ProjectionItemV1, QueryHirV1,
+    RelationExistsPolarityV1, RelationExprHirV1, SampleHirV1, SampleModeV1, ShowCategoryV1,
+    SortDirectionHirV1, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
+    TruthModeV1, UsePackActivationV1, UsePackHirV1, ValueExprHirV1,
 };
 use quanta_gqlang_v2_modules::{
     CallableKindV2, CurrentModuleSelectionInputV2, DocumentCatalogFinalInputV2,
     DocumentCatalogValidatorV2, ExternalCatalogAssetInputV2, ExternalCatalogPayloadInputV2,
-    LocatedParameterInputV2, ModuleAuthorityBuilderV2, ModuleIdV2, ModuleNodeInputV2,
+    LocatedParameterInputV2, ModuleAuthorityBuilderV2, ModuleIdV2, ModuleNodeInputV2, PackIdV2,
     SignatureInputV2, VersionV2,
 };
 use quanta_gqlang_v2_types::{
@@ -177,6 +208,32 @@ pub enum ReferenceRelationFixtureV2 {
     /// Relational EXISTS nested two levels deep, retaining separate outer and
     /// inner capture sets.
     NestedExistsTwoLevels,
+    /// Correlated/lateral `APPLY`.
+    ///
+    /// NOT authorable through the sealed HIR: [`quanta_gqlang_v2_hir::RelationExprKindV1`]
+    /// is closed over Source/Project/Filter/Join/GroupBy/OrderBy, so no document
+    /// can carry an APPLY node and no fixture can lower to
+    /// `AlgebraFamilyV2::Apply` (whose `AlgebraOpV2::Apply` payload is
+    /// `pub(crate)` and has no sealed constructor). The variant exists so a
+    /// consumer observes the exact rejection instead of inventing a carrier.
+    Apply,
+    /// `LIMIT` over an ordered input.
+    ///
+    /// NOT authorable through the sealed HIR for the same reason as
+    /// [`ReferenceRelationFixtureV2::Apply`]; no fixture can lower to
+    /// `AlgebraFamilyV2::Limit`.
+    Limit,
+    /// Two-arm `UNION`.
+    ///
+    /// NOT authorable through the sealed HIR for the same reason as
+    /// [`ReferenceRelationFixtureV2::Apply`]; no fixture can lower to
+    /// `AlgebraFamilyV2::Union`, so the equal-rank and heavier-right-arm
+    /// cardinality cases are unreachable too.
+    Union,
+    /// A relational EXISTS whose RIGHT semi input is MULTIPLICATIVE: the nested
+    /// arm cross-joins two host scans. The semi/anti classification must still
+    /// be its left arm's class, because the right arm only decides existence.
+    ExistsWithMultiplicativeRight,
 }
 
 /// A sealed reference transaction plus its one relation item identity.
@@ -1179,8 +1236,53 @@ fn reference_relation_hir(
             let (filter, len) = nested_exists_hir(builder)?;
             Ok((filter, len))
         }
+        ReferenceRelationFixtureV2::Apply => Err(format!(
+            "no sealed HIR relation shape can author a correlated/lateral APPLY: \
+             RelationExprKindV1 is closed over Source/Project/Filter/Join/GroupBy/OrderBy, and \
+             AlgebraOpV2::Apply is pub(crate) with no sealed constructor; the surface ingress \
+             rejects the authored form with `{RELATION_STAGE_KEYWORD_REJECTION_V2}`"
+        )),
+        ReferenceRelationFixtureV2::Limit => Err(format!(
+            "no sealed HIR relation shape can author a LIMIT: RelationExprKindV1 is closed over \
+             Source/Project/Filter/Join/GroupBy/OrderBy, and AlgebraOpV2::Limit is pub(crate) with \
+             no sealed constructor; the surface ingress rejects the authored form with \
+             `{RELATION_STAGE_KEYWORD_REJECTION_V2}`"
+        )),
+        ReferenceRelationFixtureV2::Union => Err(format!(
+            "no sealed HIR relation shape can author a two-arm UNION: RelationExprKindV1 is \
+             closed over Source/Project/Filter/Join/GroupBy/OrderBy, and AlgebraOpV2::Union is \
+             pub(crate) with no sealed constructor; the surface ingress rejects the authored form \
+             with `{RELATION_TOP_LEVEL_REJECTION_V2}`"
+        )),
+        ReferenceRelationFixtureV2::ExistsWithMultiplicativeRight => {
+            let outer =
+                builder.relation_source("records", SpanV1::new(5, 12), None, SpanV1::new(5, 12));
+            let left_inner =
+                builder.relation_source("other", SpanV1::new(23, 28), None, SpanV1::new(23, 28));
+            let right_inner =
+                builder.relation_source("records2", SpanV1::new(33, 41), None, SpanV1::new(33, 41));
+            let nested = builder.cross_join(left_inner, right_inner, SpanV1::new(23, 41));
+            let exists = builder.relation_exists(
+                RelationExistsPolarityV1::Exists,
+                nested,
+                SpanV1::new(16, 42),
+            );
+            Ok((
+                builder.relation_filter(outer, exists, SpanV1::new(5, 42)),
+                48,
+            ))
+        }
     }
 }
+
+/// Exact surface rejection observed for an authored pipeline stage keyword
+/// outside the closed stage set (`... | limit 3`, `... | offset 2 | limit 3`,
+/// `... | apply other o`).
+const RELATION_STAGE_KEYWORD_REJECTION_V2: &str =
+    "expected a pipeline stage keyword (where, project, join, group, order)";
+
+/// Exact surface rejection observed for an authored top-level `union` item.
+const RELATION_TOP_LEVEL_REJECTION_V2: &str = "expected ';' to separate top-level items";
 
 fn alias(name: &str, start: usize, end: usize) -> AliasV1 {
     AliasV1 {
@@ -2824,6 +2926,17 @@ fn graph_reference_kind(role: GraphReferenceRoleV2) -> GraphReferenceKindV2 {
 }
 
 fn graph_hir_query(request: &ReferenceGraphRequestV2) -> Result<GraphQueryHirV1, String> {
+    graph_hir_query_with_node_v2(request, HirNodeIdV1::from_raw(2))
+}
+
+/// Author one FIND query under a caller-chosen node identity. The reference
+/// fixtures use node 2; [`reference_alternate_graph_document_v2`] uses
+/// [`ALTERNATE_GRAPH_NODE_ID_V2`] so a nested-graph identity mismatch is
+/// reachable end to end.
+fn graph_hir_query_with_node_v2(
+    request: &ReferenceGraphRequestV2,
+    node: HirNodeIdV1,
+) -> Result<GraphQueryHirV1, String> {
     let mut endpoints = GraphEndpointsV1::default();
     let mut constraints = GraphConstraintsV1 {
         depth: request.depth,
@@ -2854,7 +2967,7 @@ fn graph_hir_query(request: &ReferenceGraphRequestV2) -> Result<GraphQueryHirV1,
         }
     }
     Ok(GraphQueryHirV1::new(
-        HirNodeIdV1::from_raw(2),
+        node,
         SpanV1::new(request.item_span.0, request.item_span.1),
         request.kind,
         endpoints,
@@ -2865,6 +2978,46 @@ fn graph_hir_query(request: &ReferenceGraphRequestV2) -> Result<GraphQueryHirV1,
 fn graph_authority_v2(
     references: &[ReferenceGraphReferenceV2],
     with_rule: bool,
+) -> Result<ClosedFrontendAuthorityV2, String> {
+    let budget = FrontendBudgetV2::standard_v2().map_err(|error| format!("{error:?}"))?;
+    graph_authority_with_budget_v2(references, with_rule, budget)
+}
+
+fn graph_authority_with_budget_v2(
+    references: &[ReferenceGraphReferenceV2],
+    with_rule: bool,
+    budget: FrontendBudgetV2,
+) -> Result<ClosedFrontendAuthorityV2, String> {
+    graph_authority_with_graph_inputs_v2(with_rule, budget, |host, _location| {
+        let mut inputs = Vec::<GraphReferenceInputV2>::new();
+        for (index, reference) in references.iter().enumerate() {
+            let span = SpanV1::new(1 + index, 2 + index);
+            let declaration = host
+                .try_check_location(LocatedSpanV2 {
+                    source_id: SourceIdV2::from_raw(1),
+                    span,
+                })
+                .map_err(|error| format!("{error:?}"))?;
+            inputs.push(GraphReferenceInputV2 {
+                spelling: reference.selector.to_owned(),
+                kind: graph_reference_kind(reference.role),
+                entity_subtype: None,
+                location: declaration,
+            });
+        }
+        Ok(inputs)
+    })
+}
+
+/// Seal one closed authority whose graph-selector inputs are derived from the
+/// already-checked host registry.
+fn graph_authority_with_graph_inputs_v2(
+    with_rule: bool,
+    budget: FrontendBudgetV2,
+    make_inputs: impl FnOnce(
+        &SourceRegistryViewV2,
+        &CheckedLocatedSpanV2,
+    ) -> Result<Vec<GraphReferenceInputV2>, String>,
 ) -> Result<ClosedFrontendAuthorityV2, String> {
     let host = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
         source_id: SourceIdV2::from_raw(1),
@@ -2879,7 +3032,6 @@ fn graph_authority_v2(
         .map_err(|error| format!("{error:?}"))?;
     let module =
         ModuleIdV2::try_new("app", location.clone()).map_err(|error| format!("{error:?}"))?;
-    let budget = FrontendBudgetV2::standard_v2().map_err(|error| format!("{error:?}"))?;
     let profile = budget
         .authority_profile()
         .map_err(|error| format!("{error:?}"))?;
@@ -2921,22 +3073,7 @@ fn graph_authority_v2(
         .map_err(|error| error.to_string())?;
     let relations = RelationCatalogV2::try_new(Vec::new(), &host, profile.clone())
         .map_err(|error| format!("{error:?}"))?;
-    let mut inputs = Vec::<GraphReferenceInputV2>::new();
-    for (index, reference) in references.iter().enumerate() {
-        let span = SpanV1::new(1 + index, 2 + index);
-        let declaration = host
-            .try_check_location(LocatedSpanV2 {
-                source_id: SourceIdV2::from_raw(1),
-                span,
-            })
-            .map_err(|error| format!("{error:?}"))?;
-        inputs.push(GraphReferenceInputV2 {
-            spelling: reference.selector.to_owned(),
-            kind: graph_reference_kind(reference.role),
-            entity_subtype: None,
-            location: declaration,
-        });
-    }
+    let inputs = make_inputs(&host, &location)?;
     let graphs = GraphReferenceCatalogV2::try_new(inputs, &host, profile)
         .map_err(|error| format!("{error:?}"))?;
     ClosedFrontendAuthorityV2::try_new(modules, relations, graphs, budget)
@@ -3182,6 +3319,19 @@ fn rule_item_v2(
 pub fn reference_rule_document_v2(
     fixture: ReferenceRuleFixtureV2,
 ) -> Result<ReferenceRuleDocumentV2, String> {
+    let checked = rule_checked_document_v2(fixture)?;
+    let document = resolve_checked_document_v2(checked, &reference_authority_v2()?)
+        .map_err(|error| format!("{error:?}"))?;
+    Ok(wrap_rule_document_v2(document))
+}
+
+/// Author the checked HIR of one rule-document fixture. Both the resolving path
+/// ([`reference_rule_document_v2`]) and the small-receipt re-sealing path
+/// ([`forged_small_receipt_rule_document_v2`]) must author the identical node
+/// sequence, so this is the one authoring site for the fixture family.
+fn rule_checked_document_v2(
+    fixture: ReferenceRuleFixtureV2,
+) -> Result<CheckedSyntaxDocumentV2, String> {
     use ReferenceRuleFixtureV2 as Fixture;
     let specs: &[(&str, RuleBodyShapeV2, usize)] = match fixture {
         Fixture::SingleRule => &[("r", RuleBodyShapeV2::AnchorOnly, 0)],
@@ -3202,6 +3352,18 @@ pub fn reference_rule_document_v2(
         ],
         Fixture::BuiltinCallOnly => &[("r", RuleBodyShapeV2::BuiltinOnly, 0)],
     };
+    let owned = specs
+        .iter()
+        .map(|(name, shape, start)| ((*name).to_owned(), *shape, *start))
+        .collect::<Vec<_>>();
+    rule_checked_document_from_specs_v2(&owned)
+}
+
+/// Author a checked rule document from ordered `(name, body shape, start)`
+/// specifications.
+fn rule_checked_document_from_specs_v2(
+    specs: &[(String, RuleBodyShapeV2, usize)],
+) -> Result<CheckedSyntaxDocumentV2, String> {
     let builder = HirBuilderV1::new();
     let mut items = Vec::new();
     for (name, shape, start) in specs {
@@ -3212,15 +3374,12 @@ pub fn reference_rule_document_v2(
         .map(|(_, _, start)| start + 50)
         .max()
         .unwrap_or(50);
-    let checked = CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+    CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
         source_id: REFERENCE_SOURCE_V2,
         source_len,
         items,
     })
-    .map_err(|error| format!("{error:?}"))?;
-    let document = resolve_checked_document_v2(checked, &reference_authority_v2()?)
-        .map_err(|error| format!("{error:?}"))?;
-    Ok(wrap_rule_document_v2(document))
+    .map_err(|error| format!("{error:?}"))
 }
 
 /// Membership mutations minted from the mutual-recursion pair.
@@ -3389,4 +3548,1367 @@ fn foreign_call_location_v2() -> Result<CheckedLocatedSpanV2, String> {
             span: SpanV1::new(0, 1),
         })
         .map_err(|error| format!("{error:?}"))
+}
+
+// ---- meta fixtures ---------------------------------------------------------
+
+/// Canonical source text of [`ReferenceMetaFixtureV2::UsePack`].
+pub const REFERENCE_USE_PACK_SOURCE_V2: &str =
+    "use pack acme.pack | activation=session | lockfile=acme.lock;";
+
+/// Pack identity authored by [`ReferenceMetaFixtureV2::UsePack`].
+pub const REFERENCE_USE_PACK_ID_V2: &str = "acme.pack";
+
+/// Lockfile authored by [`ReferenceMetaFixtureV2::UsePack`].
+pub const REFERENCE_USE_PACK_LOCKFILE_V2: &str = "acme.lock";
+
+/// Canonical source text of [`ReferenceMetaFixtureV2::RequireCertified`].
+pub const REFERENCE_REQUIRE_CERTIFIED_SOURCE_V2: &str = "require certified;";
+
+/// The exact transaction rejection an authored `USE PACK` document reaches
+/// today.
+///
+/// The document resolver seals a `REQUIRE CERTIFIED` directive and fails closed
+/// on every other [`MetaKindV1`] payload through its
+/// `ProgramItemHirV1::Meta(_)` arm, because the reference-owner resolution for
+/// pack activation is not implemented yet. `USE PACK` therefore cannot mint
+/// through [`resolve_checked_document_v2`]: the resolved kind
+/// [`ResolvedMetaKindV2::UsePack`] exists, and both planning and the pipeline
+/// already classify it, but no transaction path produces it.
+pub const USE_PACK_TRANSACTION_REJECTION_V2: &str =
+    "semantic body and reference owner resolution is not yet available";
+
+/// Payload family of one reference meta-directive document.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReferenceMetaFixtureV2 {
+    /// `USE PACK acme.pack | activation=session | lockfile=acme.lock`.
+    ///
+    /// Not mintable through the transaction today; see
+    /// [`USE_PACK_TRANSACTION_REJECTION_V2`] and
+    /// [`forged_use_pack_meta_document_v2`].
+    UsePack,
+    /// `REQUIRE CERTIFIED`.
+    RequireCertified,
+}
+
+/// A sealed meta-directive document plus its one Meta item identity.
+#[derive(Clone, Debug)]
+pub struct ReferenceMetaDocumentV2 {
+    document: SemanticDocumentV2,
+    item_id: SemanticItemIdV2,
+}
+
+impl ReferenceMetaDocumentV2 {
+    /// Borrow the complete semantic document.
+    #[must_use]
+    pub const fn document(&self) -> &SemanticDocumentV2 {
+        &self.document
+    }
+
+    /// Identity of the sole Meta item.
+    #[must_use]
+    pub const fn meta_item_id(&self) -> SemanticItemIdV2 {
+        self.item_id
+    }
+
+    /// The resolved directive payload of that item.
+    #[must_use]
+    #[expect(
+        clippy::panic,
+        reason = "the fixture seals this identity, so a non-Meta item is unreachable"
+    )]
+    pub fn kind(&self) -> &ResolvedMetaKindV2 {
+        match self.document.item(self.item_id) {
+            Some(SemanticItemV2::Meta(meta)) => meta.kind(),
+            _ => panic!("meta fixture item is a resolved meta directive"),
+        }
+    }
+}
+
+fn meta_hir_v2(builder: &HirBuilderV1, fixture: ReferenceMetaFixtureV2) -> (MetaHirV1, usize) {
+    match fixture {
+        ReferenceMetaFixtureV2::RequireCertified => (
+            builder.meta(MetaKindV1::RequireCertified, SpanV1::new(0, 17)),
+            18,
+        ),
+        ReferenceMetaFixtureV2::UsePack => {
+            let source_len = REFERENCE_USE_PACK_SOURCE_V2.len();
+            let meta = builder.meta(
+                MetaKindV1::UsePack(UsePackHirV1 {
+                    pack_id: REFERENCE_USE_PACK_ID_V2.to_owned(),
+                    activation: UsePackActivationV1::Session,
+                    lockfile: REFERENCE_USE_PACK_LOCKFILE_V2.to_owned(),
+                }),
+                SpanV1::new(0, source_len - 1),
+            );
+            (meta, source_len)
+        }
+    }
+}
+
+fn meta_checked_document_v2(
+    fixture: ReferenceMetaFixtureV2,
+) -> Result<(CheckedSyntaxDocumentV2, SemanticItemIdV2), String> {
+    let builder = HirBuilderV1::new();
+    let (meta, source_len) = meta_hir_v2(&builder, fixture);
+    let item_id = SemanticItemIdV2::new(REFERENCE_SOURCE_V2, meta.id);
+    let checked = CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+        source_id: REFERENCE_SOURCE_V2,
+        source_len,
+        items: vec![ProgramItemHirV1::Meta(Box::new(meta))],
+    })
+    .map_err(|error| format!("{error:?}"))?;
+    Ok((checked, item_id))
+}
+
+/// Resolve one reference meta-directive fixture through the real semantic
+/// transaction.
+///
+/// `RequireCertified` seals a document holding exactly one
+/// [`ResolvedMetaKindV2::RequireCertified`] item, whose directive is also the
+/// document catalog's validated certification requirement.
+///
+/// `UsePack` returns the exact transaction rejection
+/// [`USE_PACK_TRANSACTION_REJECTION_V2`]: no `USE PACK` document can be minted
+/// yet. Use [`forged_use_pack_meta_document_v2`] to drive the downstream
+/// `NoPlanReasonV2::MetaActivation` rail in the meantime.
+///
+/// # Errors
+///
+/// Returns a fixture-construction error if the fixed fixture no longer
+/// satisfies the semantic contract, or the transaction's exact `USE PACK`
+/// rejection for that arm.
+pub fn reference_meta_document_v2(
+    kind: ReferenceMetaFixtureV2,
+) -> Result<ReferenceMetaDocumentV2, String> {
+    let (checked, item_id) = meta_checked_document_v2(kind)?;
+    let document = resolve_checked_document_v2(checked, &reference_authority_v2()?)
+        .map_err(|error| format!("{error:?}"))?;
+    Ok(ReferenceMetaDocumentV2 { document, item_id })
+}
+
+/// The `USE PACK` document that the transaction cannot mint yet, sealed through
+/// the crate-local re-assembly seam.
+///
+/// The checked HIR is the real authored `USE PACK` directive, and the document
+/// is sealed by the real [`SemanticDocumentV2::try_assemble`] validation (item
+/// identity, item kind, expression set, catalog proof). What the seam bypasses
+/// is only the unimplemented `USE PACK` resolution path itself, so the
+/// downstream `NoPlanReasonV2::MetaActivation` rail becomes reachable without
+/// inventing a carrier. Replacing this builder with a plain
+/// [`reference_meta_document_v2`] call is the exact producer fix (out of this
+/// fixture file's scope).
+///
+/// # Errors
+///
+/// Returns a fixture-construction error if the reassembled document no longer
+/// satisfies the assembly contract.
+pub fn forged_use_pack_meta_document_v2() -> Result<ReferenceMetaDocumentV2, String> {
+    let (checked, item_id) = meta_checked_document_v2(ReferenceMetaFixtureV2::UsePack)?;
+    let authority = reference_authority_v2()?;
+    let location = reference_checked_span_v2(0, REFERENCE_USE_PACK_SOURCE_V2.len() - 1)?;
+    let pack = PackIdV2::try_new(REFERENCE_USE_PACK_ID_V2, location.clone())
+        .map_err(|error| format!("{error:?}"))?;
+    let resolved = ResolvedMetaV2::new(
+        item_id,
+        location,
+        ResolvedMetaKindV2::UsePack {
+            pack,
+            activation: UsePackActivationV1::Session,
+        },
+    );
+    let document = reassemble_document(
+        &checked,
+        &authority,
+        vec![SemanticItemV2::Meta(resolved)],
+        BTreeMap::new(),
+        BTreeMap::new(),
+        authority.budget().downstream_receipt(),
+    )?;
+    Ok(ReferenceMetaDocumentV2 { document, item_id })
+}
+
+// ---- presentation fixtures -------------------------------------------------
+
+/// Entity selector admitted for the reference presentation fixtures.
+pub const REFERENCE_PRESENTATION_ENTITY_SELECTOR_V2: &str = "input_a";
+
+/// DESCRIBE subtype admitted for the reference presentation fixtures.
+pub const REFERENCE_PRESENTATION_ENTITY_SUBTYPE_V2: &str = "entity";
+
+/// COMPARE baseline selector admitted for the reference presentation fixtures.
+pub const REFERENCE_PRESENTATION_BASELINE_SELECTOR_V2: &str = "baseline_a";
+
+/// COMPARE candidate selector admitted for the reference presentation fixtures.
+pub const REFERENCE_PRESENTATION_CANDIDATE_SELECTOR_V2: &str = "candidate_b";
+
+/// EXPORT source selector admitted for the reference presentation fixtures.
+pub const REFERENCE_PRESENTATION_EXPORT_SELECTOR_V2: &str = "export_source";
+
+/// Source length of every reference presentation fixture document.
+pub const REFERENCE_PRESENTATION_SOURCE_LEN_V2: usize = 64;
+
+/// Positive SAMPLE limit authored by the reference SAMPLE presentation.
+pub const REFERENCE_PRESENTATION_SAMPLE_LIMIT_V2: u32 = 5;
+
+/// One reference presentation verb.
+///
+/// `Explain` carries the exact evidence/truth pair, so all twelve permutations
+/// are reachable, including the two incoherent pairs planning refuses
+/// (`Counterexample` + `Confirm`, `Citation` + `Refute`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReferencePresentationFixtureV2 {
+    /// EXPLAIN one admitted entity selector.
+    Explain {
+        /// Authored evidence mode.
+        evidence: EvidenceModeV1,
+        /// Authored truth mode.
+        truth: TruthModeV1,
+    },
+    /// SHOW capabilities.
+    Show,
+    /// DESCRIBE the admitted `entity` subtype of the entity selector.
+    Describe,
+    /// SAMPLE with a positive limit and no scope.
+    Sample,
+    /// COMPARE two admitted snapshot selectors.
+    Compare,
+    /// EXPORT the admitted export source as SARIF.
+    Export,
+}
+
+/// A sealed presentation document plus its one Presentation item identity.
+#[derive(Clone, Debug)]
+pub struct ReferencePresentationDocumentV2 {
+    document: SemanticDocumentV2,
+    item_id: SemanticItemIdV2,
+}
+
+impl ReferencePresentationDocumentV2 {
+    /// Borrow the complete semantic document.
+    #[must_use]
+    pub const fn document(&self) -> &SemanticDocumentV2 {
+        &self.document
+    }
+
+    /// Identity of the sole Presentation item.
+    #[must_use]
+    pub const fn presentation_item_id(&self) -> SemanticItemIdV2 {
+        self.item_id
+    }
+
+    /// The resolved presentation contract.
+    #[must_use]
+    #[expect(
+        clippy::panic,
+        reason = "the fixture seals this identity, so a non-Presentation item is unreachable"
+    )]
+    pub fn presentation(&self) -> &ResolvedPresentationV2 {
+        match self.document.item(self.item_id) {
+            Some(SemanticItemV2::Presentation(presentation)) => presentation,
+            _ => panic!("presentation fixture item is a resolved presentation"),
+        }
+    }
+}
+
+fn reference_graph_selector_v2(name: &str, start: usize) -> GraphRefV1 {
+    GraphRefV1 {
+        name: name.to_owned(),
+        span: SpanV1::new(start, start + name.len()),
+    }
+}
+
+fn reference_presentation_hir(
+    builder: &HirBuilderV1,
+    fixture: ReferencePresentationFixtureV2,
+) -> (PresentationHirV1, usize) {
+    let source_len = REFERENCE_PRESENTATION_SOURCE_LEN_V2;
+    let item_span = |end: usize| SpanV1::new(0, end);
+    let kind = match fixture {
+        ReferencePresentationFixtureV2::Explain { evidence, truth } => {
+            PresentationKindV1::Explain {
+                target_ref: reference_graph_selector_v2(
+                    REFERENCE_PRESENTATION_ENTITY_SELECTOR_V2,
+                    8,
+                ),
+                evidence,
+                truth,
+            }
+        }
+        ReferencePresentationFixtureV2::Show => PresentationKindV1::Show {
+            category: ShowCategoryV1::Capabilities,
+        },
+        ReferencePresentationFixtureV2::Describe => PresentationKindV1::Describe {
+            kind: REFERENCE_PRESENTATION_ENTITY_SUBTYPE_V2.to_owned(),
+            path: reference_graph_selector_v2(REFERENCE_PRESENTATION_ENTITY_SELECTOR_V2, 17),
+        },
+        ReferencePresentationFixtureV2::Sample => PresentationKindV1::Sample {
+            query_text: "auth".to_owned(),
+            mode: SampleModeV1::Lexical,
+            limit: REFERENCE_PRESENTATION_SAMPLE_LIMIT_V2,
+            scope: None,
+        },
+        ReferencePresentationFixtureV2::Compare => PresentationKindV1::Compare {
+            baseline_ref: reference_graph_selector_v2(
+                REFERENCE_PRESENTATION_BASELINE_SELECTOR_V2,
+                17,
+            ),
+            candidate_ref: reference_graph_selector_v2(
+                REFERENCE_PRESENTATION_CANDIDATE_SELECTOR_V2,
+                30,
+            ),
+            metric: CompareMetricV1::Structural,
+        },
+        ReferencePresentationFixtureV2::Export => PresentationKindV1::Export {
+            source_ref: reference_graph_selector_v2(REFERENCE_PRESENTATION_EXPORT_SELECTOR_V2, 14),
+            format: ExportFormatV1::Sarif,
+            profile: None,
+        },
+    };
+    let end = match fixture {
+        ReferencePresentationFixtureV2::Explain { .. } => 24,
+        ReferencePresentationFixtureV2::Show => 16,
+        ReferencePresentationFixtureV2::Describe => 25,
+        ReferencePresentationFixtureV2::Sample => 40,
+        ReferencePresentationFixtureV2::Compare => 42,
+        ReferencePresentationFixtureV2::Export => 26,
+    };
+    (builder.presentation(kind, item_span(end)), source_len)
+}
+
+fn presentation_authority_v2() -> Result<ClosedFrontendAuthorityV2, String> {
+    let budget = FrontendBudgetV2::standard_v2().map_err(|error| format!("{error:?}"))?;
+    graph_authority_with_graph_inputs_v2(false, budget, |host, _location| {
+        let mut inputs = Vec::<GraphReferenceInputV2>::new();
+        for (index, (spelling, kind, subtype)) in [
+            (
+                REFERENCE_PRESENTATION_ENTITY_SELECTOR_V2,
+                GraphReferenceKindV2::Entity,
+                Some(REFERENCE_PRESENTATION_ENTITY_SUBTYPE_V2),
+            ),
+            (
+                REFERENCE_PRESENTATION_BASELINE_SELECTOR_V2,
+                GraphReferenceKindV2::Snapshot,
+                None,
+            ),
+            (
+                REFERENCE_PRESENTATION_CANDIDATE_SELECTOR_V2,
+                GraphReferenceKindV2::Snapshot,
+                None,
+            ),
+            (
+                REFERENCE_PRESENTATION_EXPORT_SELECTOR_V2,
+                GraphReferenceKindV2::ExportSource,
+                None,
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let span = SpanV1::new(32 + index, 33 + index);
+            let declaration = host
+                .try_check_location(LocatedSpanV2 {
+                    source_id: SourceIdV2::from_raw(1),
+                    span,
+                })
+                .map_err(|error| format!("{error:?}"))?;
+            inputs.push(GraphReferenceInputV2 {
+                spelling: spelling.to_owned(),
+                kind,
+                entity_subtype: subtype.map(str::to_owned),
+                location: declaration,
+            });
+        }
+        Ok(inputs)
+    })
+}
+
+/// Resolve one reference presentation fixture through the real semantic
+/// transaction.
+///
+/// # Errors
+///
+/// Returns a fixture-construction error if the fixed fixture no longer
+/// satisfies the semantic contract.
+pub fn reference_presentation_document_v2(
+    fixture: ReferencePresentationFixtureV2,
+) -> Result<ReferencePresentationDocumentV2, String> {
+    let builder = HirBuilderV1::new();
+    let (presentation, source_len) = reference_presentation_hir(&builder, fixture);
+    let item_id = SemanticItemIdV2::new(REFERENCE_SOURCE_V2, presentation.id);
+    let checked = CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+        source_id: REFERENCE_SOURCE_V2,
+        source_len,
+        items: vec![ProgramItemHirV1::Presentation(Box::new(presentation))],
+    })
+    .map_err(|error| format!("{error:?}"))?;
+    let document = resolve_checked_document_v2(checked, &presentation_authority_v2()?)
+        .map_err(|error| format!("{error:?}"))?;
+    Ok(ReferencePresentationDocumentV2 { document, item_id })
+}
+
+// ---- composition fixtures --------------------------------------------------
+
+/// Source length of every reference composition fixture document.
+pub const REFERENCE_COMPOSITION_SOURCE_LEN_V2: usize = 256;
+
+/// Entity selector admitted for the reference composition FIND producers.
+pub const REFERENCE_COMPOSITION_SOURCE_SELECTOR_V2: &str = "input_a";
+
+/// Sink selector admitted for the reference composition FIND producers.
+pub const REFERENCE_COMPOSITION_SINK_SELECTOR_V2: &str = "exec_b";
+
+/// Pattern selector admitted for the reference composition CHECK body.
+pub const REFERENCE_COMPOSITION_PATTERN_SELECTOR_V2: &str = "pattern_a";
+
+/// Rule identity admitted for the reference composition CHECK body.
+pub const REFERENCE_COMPOSITION_RULE_V2: &str = "rule1";
+
+/// Closed body family of one reference composition document.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReferenceCompositionBodyV2 {
+    /// A relational working-set body over the ordered LET producers.
+    Relational,
+    /// A FIND body.
+    Graph,
+    /// A CHECK body.
+    Check,
+    /// An EXPLAIN body over a prior FIND producer.
+    Explain,
+}
+
+/// A sealed composition document plus the facts the planner re-checks.
+#[derive(Clone, Debug)]
+pub struct ReferenceCompositionDocumentV2 {
+    document: SemanticDocumentV2,
+    composition_item_id: SemanticItemIdV2,
+    body_item_id: SemanticItemIdV2,
+    producer_item_ids: Vec<SemanticItemIdV2>,
+    with_binding: ResolvedValueBindingV2,
+}
+
+impl ReferenceCompositionDocumentV2 {
+    /// Borrow the complete semantic document.
+    #[must_use]
+    pub const fn document(&self) -> &SemanticDocumentV2 {
+        &self.document
+    }
+
+    /// Identity of the composition root item.
+    #[must_use]
+    pub const fn composition_item_id(&self) -> SemanticItemIdV2 {
+        self.composition_item_id
+    }
+
+    /// Identity of the sealed body item.
+    #[must_use]
+    pub const fn body_item_id(&self) -> SemanticItemIdV2 {
+        self.body_item_id
+    }
+
+    /// Ordered producer identities, in authored LET order.
+    #[must_use]
+    pub fn producer_item_ids(&self) -> &[SemanticItemIdV2] {
+        &self.producer_item_ids
+    }
+
+    /// The exact `WITH` binding identity, which equals exactly one producer's.
+    #[must_use]
+    pub const fn with_binding(&self) -> &ResolvedValueBindingV2 {
+        &self.with_binding
+    }
+
+    /// The resolved composition contract itself.
+    #[must_use]
+    #[expect(
+        clippy::panic,
+        reason = "the fixture seals this identity, so a non-Composition item is unreachable"
+    )]
+    pub fn composition(&self) -> &ResolvedCompositionV2 {
+        match self.document.item(self.composition_item_id) {
+            Some(SemanticItemV2::Composition(composition)) => composition,
+            _ => panic!("composition fixture item is a resolved composition"),
+        }
+    }
+}
+
+fn composition_sample_producer(
+    builder: &HirBuilderV1,
+    name: &str,
+    name_start: usize,
+    producer_start: usize,
+    query_text: &str,
+    limit: u32,
+) -> CompositionBindingV1 {
+    let sample = SampleHirV1 {
+        id: builder.next_id(),
+        span: SpanV1::new(producer_start, producer_start + 36),
+        query_text: query_text.to_owned(),
+        mode: SampleModeV1::Lexical,
+        limit,
+        scope: None,
+    };
+    builder.composition_binding(
+        name,
+        SpanV1::new(name_start, name_start + name.len()),
+        CompositionProducerV1::Sample(Box::new(sample)),
+    )
+}
+
+fn composition_find_query(
+    builder: &HirBuilderV1,
+    item_span: SpanV1,
+    source_span: SpanV1,
+    sink_span: SpanV1,
+) -> GraphQueryHirV1 {
+    let endpoints = GraphEndpointsV1 {
+        source: Some(GraphRefV1 {
+            name: REFERENCE_COMPOSITION_SOURCE_SELECTOR_V2.to_owned(),
+            span: source_span,
+        }),
+        sink: Some(GraphRefV1 {
+            name: REFERENCE_COMPOSITION_SINK_SELECTOR_V2.to_owned(),
+            span: sink_span,
+        }),
+        ..GraphEndpointsV1::default()
+    };
+    let constraints = GraphConstraintsV1 {
+        depth: Some(1),
+        ..GraphConstraintsV1::default()
+    };
+    builder.graph_query(GraphQueryKindV1::Path, endpoints, constraints, item_span)
+}
+
+fn composition_find_producer(
+    builder: &HirBuilderV1,
+    name: &str,
+    name_start: usize,
+    item_span: SpanV1,
+    source_span: SpanV1,
+    sink_span: SpanV1,
+) -> CompositionBindingV1 {
+    let query = composition_find_query(builder, item_span, source_span, sink_span);
+    builder.composition_binding(
+        name,
+        SpanV1::new(name_start, name_start + name.len()),
+        CompositionProducerV1::GraphQuery(Box::new(query)),
+    )
+}
+
+fn reference_composition_hir(
+    builder: &HirBuilderV1,
+    body: ReferenceCompositionBodyV2,
+) -> Result<CompositionHirV1, String> {
+    let composition = match body {
+        ReferenceCompositionBodyV2::Relational => {
+            let sampled = composition_sample_producer(builder, "sampled", 4, 14, "auth", 2);
+            let sampled_again = composition_sample_producer(builder, "sampled2", 61, 71, "docs", 3);
+            let scan = builder.relation_source(
+                "sampled",
+                SpanV1::new(125, 132),
+                Some(alias("s", 133, 134)),
+                SpanV1::new(125, 134),
+            );
+            let value = field_path(builder, "s", 152, "path", 154)?;
+            let project = builder
+                .try_project(
+                    scan,
+                    vec![ProjectionItemV1 {
+                        value,
+                        alias: Some(alias("path", 168, 172)),
+                    }],
+                    SpanV1::new(125, 172),
+                )
+                .map_err(|error| error.to_owned())?;
+            let query = builder.query(project, None, SpanV1::new(120, 172));
+            builder.composition(
+                vec![sampled, sampled_again],
+                "sampled",
+                SpanV1::new(240, 247),
+                CompositionBodyV1::Query(Box::new(query)),
+                SpanV1::new(0, 247),
+            )
+        }
+        ReferenceCompositionBodyV2::Graph => {
+            let paths = composition_find_producer(
+                builder,
+                "paths",
+                4,
+                SpanV1::new(12, 70),
+                SpanV1::new(24, 31),
+                SpanV1::new(36, 42),
+            );
+            let body = composition_find_query(
+                builder,
+                SpanV1::new(80, 140),
+                SpanV1::new(92, 99),
+                SpanV1::new(104, 110),
+            );
+            builder.composition(
+                vec![paths],
+                "paths",
+                SpanV1::new(240, 245),
+                CompositionBodyV1::GraphQuery(Box::new(body)),
+                SpanV1::new(0, 245),
+            )
+        }
+        ReferenceCompositionBodyV2::Check => {
+            let sampled = composition_sample_producer(builder, "sampled", 4, 14, "auth", 2);
+            let check = builder.legality(
+                GraphRefV1 {
+                    name: REFERENCE_COMPOSITION_RULE_V2.to_owned(),
+                    span: SpanV1::new(86, 91),
+                },
+                None,
+                Some(GraphRefV1 {
+                    name: REFERENCE_COMPOSITION_PATTERN_SELECTOR_V2.to_owned(),
+                    span: SpanV1::new(110, 119),
+                }),
+                ConfirmModeV1::Skip,
+                EmitModeV1::Findings,
+                DetectionModeV1::PatternOnly,
+                SpanV1::new(80, 200),
+            );
+            builder.composition(
+                vec![sampled],
+                "sampled",
+                SpanV1::new(240, 247),
+                CompositionBodyV1::Legality(Box::new(check)),
+                SpanV1::new(0, 247),
+            )
+        }
+        ReferenceCompositionBodyV2::Explain => {
+            let paths = composition_find_producer(
+                builder,
+                "paths",
+                4,
+                SpanV1::new(12, 70),
+                SpanV1::new(24, 31),
+                SpanV1::new(36, 42),
+            );
+            let explain = ExplainHirV1 {
+                id: builder.next_id(),
+                span: SpanV1::new(80, 140),
+                target_ref: GraphRefV1 {
+                    name: "paths".to_owned(),
+                    span: SpanV1::new(88, 93),
+                },
+                evidence: EvidenceModeV1::Auto,
+                truth: TruthModeV1::Inspect,
+            };
+            builder.composition(
+                vec![paths],
+                "paths",
+                SpanV1::new(240, 245),
+                CompositionBodyV1::Explain(Box::new(explain)),
+                SpanV1::new(0, 245),
+            )
+        }
+    };
+    Ok(composition)
+}
+
+fn composition_authority_v2(
+    body: ReferenceCompositionBodyV2,
+) -> Result<ClosedFrontendAuthorityV2, String> {
+    let budget = FrontendBudgetV2::standard_v2().map_err(|error| format!("{error:?}"))?;
+    let with_rule = body == ReferenceCompositionBodyV2::Check;
+    graph_authority_with_graph_inputs_v2(with_rule, budget, |host, _location| {
+        let mut admissions: Vec<(&str, GraphReferenceKindV2, Option<&str>)> = Vec::new();
+        if body != ReferenceCompositionBodyV2::Relational {
+            admissions.push((
+                REFERENCE_COMPOSITION_SOURCE_SELECTOR_V2,
+                GraphReferenceKindV2::Entity,
+                None,
+            ));
+            admissions.push((
+                REFERENCE_COMPOSITION_SINK_SELECTOR_V2,
+                GraphReferenceKindV2::Entity,
+                None,
+            ));
+        }
+        if body == ReferenceCompositionBodyV2::Check {
+            admissions.push((
+                REFERENCE_COMPOSITION_PATTERN_SELECTOR_V2,
+                GraphReferenceKindV2::Pattern,
+                None,
+            ));
+        }
+        let mut inputs = Vec::<GraphReferenceInputV2>::new();
+        for (index, (spelling, kind, subtype)) in admissions.into_iter().enumerate() {
+            let span = SpanV1::new(64 + index, 65 + index);
+            let declaration = host
+                .try_check_location(LocatedSpanV2 {
+                    source_id: SourceIdV2::from_raw(1),
+                    span,
+                })
+                .map_err(|error| format!("{error:?}"))?;
+            inputs.push(GraphReferenceInputV2 {
+                spelling: spelling.to_owned(),
+                kind,
+                entity_subtype: subtype.map(str::to_owned),
+                location: declaration,
+            });
+        }
+        Ok(inputs)
+    })
+}
+
+/// Resolve one reference composition fixture through the real semantic
+/// transaction.
+///
+/// The `Relational` body is the pipeline-proven working-set shape: an ordered
+/// SAMPLE producer named by `WITH`, consumed by a body query over that working
+/// set. Every body family also carries at least one ordered producer whose
+/// sealed relation output the planner retains.
+///
+/// # Errors
+///
+/// Returns a fixture-construction error if the fixed fixture no longer
+/// satisfies the semantic contract.
+pub fn reference_composition_document_v2(
+    body: ReferenceCompositionBodyV2,
+) -> Result<ReferenceCompositionDocumentV2, String> {
+    let builder = HirBuilderV1::new();
+    let composition = reference_composition_hir(&builder, body)?;
+    let composition_item_id = SemanticItemIdV2::new(REFERENCE_SOURCE_V2, composition.id);
+    let checked = CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+        source_id: REFERENCE_SOURCE_V2,
+        source_len: REFERENCE_COMPOSITION_SOURCE_LEN_V2,
+        items: vec![ProgramItemHirV1::Composition(Box::new(composition))],
+    })
+    .map_err(|error| format!("{error:?}"))?;
+    let document = resolve_checked_document_v2(checked, &composition_authority_v2(body)?)
+        .map_err(|error| format!("{error:?}"))?;
+    let (body_item_id, producer_item_ids, with_binding) = match document.item(composition_item_id) {
+        Some(SemanticItemV2::Composition(composition)) => (
+            composition.body().item_id(),
+            composition
+                .bindings()
+                .iter()
+                .map(|binding| binding.producer().item_id())
+                .collect::<Vec<_>>(),
+            composition.with_target().clone(),
+        ),
+        _ => return Err("composition fixture did not seal its composition item".to_owned()),
+    };
+    Ok(ReferenceCompositionDocumentV2 {
+        document,
+        composition_item_id,
+        body_item_id,
+        producer_item_ids,
+        with_binding,
+    })
+}
+
+// ---- small-receipt rule documents ------------------------------------------
+
+/// Exact `max_semantic_steps` charge of a document rule program with
+/// `member_count` members: one program charge plus one charge per member, so
+/// [`SMALL_BUDGET_MAX_SEMANTIC_STEPS`] admits exactly seven members and refuses
+/// the eighth.
+#[must_use]
+pub const fn reference_rule_program_charge_v2(member_count: u32) -> u32 {
+    member_count.saturating_add(1)
+}
+
+/// Member count whose program charge exactly equals
+/// [`SMALL_BUDGET_MAX_SEMANTIC_STEPS`].
+pub const SMALL_BUDGET_RULE_PROGRAM_EXACT_MEMBERS: u32 = SMALL_BUDGET_MAX_SEMANTIC_STEPS - 1;
+
+/// Member count whose program charge is exactly one step over
+/// [`SMALL_BUDGET_MAX_SEMANTIC_STEPS`].
+pub const SMALL_BUDGET_RULE_PROGRAM_OVER_MEMBERS: u32 = SMALL_BUDGET_MAX_SEMANTIC_STEPS;
+
+/// Re-seal an already-resolved rule document under the small step receipt.
+fn reseal_rule_document_with_receipt_v2(
+    checked: &CheckedSyntaxDocumentV2,
+    reference: &SemanticDocumentV2,
+    receipt: DownstreamBudgetReceiptV2,
+) -> Result<ReferenceRuleDocumentV2, String> {
+    let (items, expressions, nested) = document_parts(reference);
+    let document = reassemble_document(
+        checked,
+        &reference_authority_v2()?,
+        items,
+        expressions,
+        nested,
+        receipt,
+    )?;
+    Ok(wrap_rule_document_v2(document))
+}
+
+/// Seal one rule-document fixture under a receipt whose `max_semantic_steps` is
+/// exactly [`SMALL_BUDGET_MAX_SEMANTIC_STEPS`] while every other dimension stays
+/// standard.
+///
+/// The members, identities, and expression facts are the already-resolved
+/// fixture's, so the rule-program walk charges exactly
+/// [`reference_rule_program_charge_v2`] steps for the fixture's member count.
+/// The fixed fixtures carry at most two members (three steps), so use
+/// [`forged_small_receipt_rule_program_document_v2`] for the exact/over pair at
+/// the sealed limit.
+///
+/// # Errors
+///
+/// Returns a fixture-construction error if the backing fixture or the
+/// reassembled document no longer satisfies the assembly contract.
+pub fn forged_small_receipt_rule_document_v2(
+    fixture: ReferenceRuleFixtureV2,
+) -> Result<ReferenceRuleDocumentV2, String> {
+    let checked = rule_checked_document_v2(fixture)?;
+    let reference = reference_rule_document_v2(fixture)?;
+    reseal_rule_document_with_receipt_v2(&checked, reference.document(), small_steps_receipt()?)
+}
+
+/// Seal an `member_count`-member anchor-only rule program under the same small
+/// step receipt.
+///
+/// [`SMALL_BUDGET_RULE_PROGRAM_EXACT_MEMBERS`] members charge exactly
+/// [`SMALL_BUDGET_MAX_SEMANTIC_STEPS`] steps and plan;
+/// [`SMALL_BUDGET_RULE_PROGRAM_OVER_MEMBERS`] members charge one step more and
+/// are refused at the first uncharged member.
+///
+/// # Errors
+///
+/// Returns a fixture-construction error when `member_count` is zero or the
+/// reassembled document no longer satisfies the assembly contract.
+pub fn forged_small_receipt_rule_program_document_v2(
+    member_count: u32,
+) -> Result<ReferenceRuleDocumentV2, String> {
+    if member_count == 0 {
+        return Err("a rule program fixture names at least one rule".to_owned());
+    }
+    let specs = (0..member_count)
+        .map(|index| {
+            let ordinal = usize::try_from(index).map_err(|_error| "member overflow".to_owned())?;
+            Ok((
+                format!("r{index}"),
+                RuleBodyShapeV2::AnchorOnly,
+                ordinal * 60,
+            ))
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+    let checked = rule_checked_document_from_specs_v2(&specs)?;
+    let document = resolve_checked_document_v2(checked.clone(), &reference_authority_v2()?)
+        .map_err(|error| format!("{error:?}"))?;
+    reseal_rule_document_with_receipt_v2(&checked, &document, small_steps_receipt()?)
+}
+
+// ---- narrow-witness and alternate-identity graph documents -----------------
+
+/// `max_witnesses` of every narrow-witness graph fixture.
+pub const NARROW_WITNESS_MAX_WITNESSES_V2: u32 = 1;
+
+/// Node identity used by [`reference_alternate_graph_document_v2`]; distinct
+/// from the [`HirNodeIdV1::from_raw`]`(2)` every reference FIND fixture seals.
+pub const ALTERNATE_GRAPH_NODE_ID_V2: u32 = 5_001;
+
+/// The ordered reference set one FIND subkind legally requires, mirroring the
+/// consumer-side request builders so a narrow-witness document is a drop-in
+/// replacement for a standard-budget one.
+#[must_use]
+pub fn reference_witness_graph_references_v2(
+    kind: GraphQueryKindV1,
+) -> Vec<ReferenceGraphReferenceV2> {
+    use GraphReferenceRoleV2 as Role;
+    let reference =
+        |role: Role, selector: &'static str, span: (usize, usize)| ReferenceGraphReferenceV2 {
+            role,
+            selector,
+            span,
+        };
+    match kind {
+        GraphQueryKindV1::Reachability
+        | GraphQueryKindV1::Flow
+        | GraphQueryKindV1::Taint
+        | GraphQueryKindV1::Path => vec![
+            reference(Role::Source, "input_a", (20, 27)),
+            reference(Role::Sink, "exec_b", (30, 36)),
+        ],
+        GraphQueryKindV1::Slice => vec![reference(Role::Anchor, "input_a", (20, 27))],
+        GraphQueryKindV1::PointsTo => vec![
+            reference(Role::Reference, "input_a", (20, 27)),
+            reference(Role::Pointee, "exec_b", (30, 36)),
+        ],
+        GraphQueryKindV1::Summary => vec![reference(Role::Callable, "input_a", (20, 27))],
+    }
+}
+
+fn narrow_witness_budget_v2() -> Result<FrontendBudgetV2, String> {
+    let standard = FrontendBudgetV2::standard_v2().map_err(|error| format!("{error:?}"))?;
+    FrontendBudgetV2::try_new(
+        standard.max_source_bytes(),
+        standard.max_frame_bytes(),
+        standard.max_tokens(),
+        standard.max_document_items(),
+        standard.max_expression_depth(),
+        standard.max_expression_nodes(),
+        standard.max_collection_width(),
+        standard.max_projection_width(),
+        standard.max_semantic_steps(),
+        standard.max_module_graph_nodes(),
+        standard.max_module_graph_edges(),
+        standard.max_module_steps(),
+        standard.max_authority_bytes(),
+        standard.max_authority_string_bytes(),
+        standard.max_rule_graph_nodes(),
+        standard.max_rule_graph_edges(),
+        standard.max_rule_steps(),
+        standard.max_witness_depth(),
+        NARROW_WITNESS_MAX_WITNESSES_V2,
+        standard.max_diagnostics(),
+        standard.max_response_bytes(),
+    )
+    .map_err(|error| format!("{error:?}"))
+}
+
+/// Resolve one reference FIND fixture under a budget whose `max_witnesses` is
+/// exactly [`NARROW_WITNESS_MAX_WITNESSES_V2`]; every other dimension is the
+/// standard budget's. The sealed FIND retains those exact witness bounds, so a
+/// consumer derives the canonical-one witness selection from the document
+/// itself rather than choosing it.
+///
+/// # Errors
+///
+/// Returns a fixture-construction error if the fixture no longer satisfies the
+/// semantic contract.
+pub fn reference_narrow_witness_graph_document_v2(
+    kind: GraphQueryKindV1,
+    depth: u32,
+) -> Result<ReferenceGraphDocumentV2, String> {
+    let request = ReferenceGraphRequestV2 {
+        kind,
+        references: reference_witness_graph_references_v2(kind),
+        depth: Some(depth),
+        direction: None,
+        summary_facets: Vec::new(),
+        item_span: (0, 8),
+    };
+    let query = graph_hir_query(&request)?;
+    let item_id = SemanticItemIdV2::new(REFERENCE_SOURCE_V2, query.id);
+    let authority =
+        graph_authority_with_budget_v2(&request.references, false, narrow_witness_budget_v2()?)?;
+    let checked = CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+        source_id: REFERENCE_SOURCE_V2,
+        source_len: REFERENCE_GRAPH_SOURCE_LEN_V2,
+        items: vec![ProgramItemHirV1::GraphQuery(Box::new(query))],
+    })
+    .map_err(|error| format!("{error:?}"))?;
+    let document =
+        resolve_checked_document_v2(checked, &authority).map_err(|error| format!("{error:?}"))?;
+    Ok(ReferenceGraphDocumentV2 { document, item_id })
+}
+
+/// Resolve one reference FIND fixture whose graph item identity is
+/// [`ALTERNATE_GRAPH_NODE_ID_V2`] instead of the reference node `2`.
+///
+/// A consumer pairs this document's sealed graph contract with another
+/// document's resolved CHECK to reach
+/// `planning.invalid_check.nested_graph_identity_mismatch` end to end.
+///
+/// # Errors
+///
+/// Returns a fixture-construction error if the fixture no longer satisfies the
+/// semantic contract.
+pub fn reference_alternate_graph_document_v2(
+    request: ReferenceGraphRequestV2,
+) -> Result<ReferenceGraphDocumentV2, String> {
+    let query =
+        graph_hir_query_with_node_v2(&request, HirNodeIdV1::from_raw(ALTERNATE_GRAPH_NODE_ID_V2))?;
+    let item_id = SemanticItemIdV2::new(REFERENCE_SOURCE_V2, query.id);
+    let authority = graph_authority_v2(&request.references, false)?;
+    let checked = CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+        source_id: REFERENCE_SOURCE_V2,
+        source_len: REFERENCE_GRAPH_SOURCE_LEN_V2,
+        items: vec![ProgramItemHirV1::GraphQuery(Box::new(query))],
+    })
+    .map_err(|error| format!("{error:?}"))?;
+    let document =
+        resolve_checked_document_v2(checked, &authority).map_err(|error| format!("{error:?}"))?;
+    Ok(ReferenceGraphDocumentV2 { document, item_id })
+}
+
+// ---- W4-D fixture units ----------------------------------------------------
+
+#[cfg(test)]
+mod w4d_tests {
+    #![expect(
+        clippy::indexing_slicing,
+        clippy::panic_in_result_fn,
+        clippy::wildcard_enum_match_arm,
+        reason = "owner assertions pin exact fixture shapes, index pinned producer vectors, and \
+                  name the payload vocabulary they reject"
+    )]
+
+    use super::*;
+
+    // ---- meta ----------------------------------------------------------
+
+    #[test]
+    fn require_certified_meta_document_seals_exactly_one_directive() -> Result<(), String> {
+        let document = reference_meta_document_v2(ReferenceMetaFixtureV2::RequireCertified)?;
+        assert_eq!(document.document().items().count(), 1);
+        assert!(matches!(
+            document.kind(),
+            ResolvedMetaKindV2::RequireCertified
+        ));
+        assert!(matches!(
+            document.document().item(document.meta_item_id()),
+            Some(SemanticItemV2::Meta(_))
+        ));
+        assert_eq!(document.document().order(), [document.meta_item_id()]);
+        Ok(())
+    }
+
+    #[test]
+    fn use_pack_meta_document_reports_the_exact_transaction_rejection() {
+        let rejected = reference_meta_document_v2(ReferenceMetaFixtureV2::UsePack);
+        assert!(rejected
+            .err()
+            .is_some_and(|error| error.contains(USE_PACK_TRANSACTION_REJECTION_V2)));
+    }
+
+    #[test]
+    fn forged_use_pack_meta_document_seals_the_resolved_use_pack_kind() -> Result<(), String> {
+        let document = forged_use_pack_meta_document_v2()?;
+        match document.kind() {
+            ResolvedMetaKindV2::UsePack { pack, activation } => {
+                assert_eq!(pack.as_str(), REFERENCE_USE_PACK_ID_V2);
+                assert_eq!(*activation, UsePackActivationV1::Session);
+            }
+            ResolvedMetaKindV2::RequireCertified => {
+                return Err("the forged fixture seals a USE PACK payload".to_owned())
+            }
+        }
+        assert_eq!(document.document().items().count(), 1);
+        assert_eq!(document.document().order(), [document.meta_item_id()]);
+        Ok(())
+    }
+
+    // ---- presentation --------------------------------------------------
+
+    #[test]
+    fn every_presentation_fixture_resolves() -> Result<(), String> {
+        for fixture in [
+            ReferencePresentationFixtureV2::Show,
+            ReferencePresentationFixtureV2::Describe,
+            ReferencePresentationFixtureV2::Sample,
+            ReferencePresentationFixtureV2::Compare,
+            ReferencePresentationFixtureV2::Export,
+        ] {
+            let document = reference_presentation_document_v2(fixture)?;
+            assert_eq!(document.document().items().count(), 1);
+            assert_eq!(
+                document.presentation().item_id(),
+                document.presentation_item_id()
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn every_explain_evidence_truth_permutation_resolves() -> Result<(), String> {
+        const EVIDENCE: [EvidenceModeV1; 4] = [
+            EvidenceModeV1::Auto,
+            EvidenceModeV1::Trace,
+            EvidenceModeV1::Citation,
+            EvidenceModeV1::Counterexample,
+        ];
+        const TRUTH: [TruthModeV1; 3] = [
+            TruthModeV1::Inspect,
+            TruthModeV1::Confirm,
+            TruthModeV1::Refute,
+        ];
+        let mut seen = 0_u8;
+        for evidence in EVIDENCE {
+            for truth in TRUTH {
+                let document =
+                    reference_presentation_document_v2(ReferencePresentationFixtureV2::Explain {
+                        evidence,
+                        truth,
+                    })?;
+                match document.presentation().kind() {
+                    crate::ResolvedPresentationKindV2::Explain {
+                        evidence: sealed_evidence,
+                        truth: sealed_truth,
+                        ..
+                    } => {
+                        assert_eq!(*sealed_evidence, evidence);
+                        assert_eq!(*sealed_truth, truth);
+                    }
+                    other => return Err(format!("EXPLAIN payload expected, got {other:?}")),
+                }
+                seen += 1;
+            }
+        }
+        assert_eq!(seen, 12, "every evidence/truth permutation is reachable");
+        Ok(())
+    }
+
+    #[test]
+    fn presentation_payloads_retain_their_exact_facts() -> Result<(), String> {
+        let show = reference_presentation_document_v2(ReferencePresentationFixtureV2::Show)?;
+        assert!(matches!(
+            show.presentation().kind(),
+            crate::ResolvedPresentationKindV2::Show {
+                category: ShowCategoryV1::Capabilities
+            }
+        ));
+
+        let describe =
+            reference_presentation_document_v2(ReferencePresentationFixtureV2::Describe)?;
+        assert!(matches!(
+            describe.presentation().kind(),
+            crate::ResolvedPresentationKindV2::Describe { .. }
+        ));
+
+        let sample = reference_presentation_document_v2(ReferencePresentationFixtureV2::Sample)?;
+        assert!(matches!(
+            sample.presentation().kind(),
+            crate::ResolvedPresentationKindV2::Sample { limit, .. }
+                if *limit == REFERENCE_PRESENTATION_SAMPLE_LIMIT_V2
+        ));
+
+        let compare = reference_presentation_document_v2(ReferencePresentationFixtureV2::Compare)?;
+        assert!(matches!(
+            compare.presentation().kind(),
+            crate::ResolvedPresentationKindV2::Compare {
+                metric: CompareMetricV1::Structural,
+                ..
+            }
+        ));
+
+        let export = reference_presentation_document_v2(ReferencePresentationFixtureV2::Export)?;
+        assert!(matches!(
+            export.presentation().kind(),
+            crate::ResolvedPresentationKindV2::Export {
+                format: ExportFormatV1::Sarif,
+                ..
+            }
+        ));
+        Ok(())
+    }
+
+    // ---- composition ---------------------------------------------------
+
+    #[test]
+    fn every_composition_body_fixture_resolves_with_ordered_producers() -> Result<(), String> {
+        for body in [
+            ReferenceCompositionBodyV2::Relational,
+            ReferenceCompositionBodyV2::Graph,
+            ReferenceCompositionBodyV2::Check,
+            ReferenceCompositionBodyV2::Explain,
+        ] {
+            let document = reference_composition_document_v2(body)?;
+            assert_eq!(
+                document.document().order(),
+                [document.composition_item_id()]
+            );
+            assert!(!document.producer_item_ids().is_empty());
+            assert_ne!(document.body_item_id(), document.composition_item_id());
+            let composition = document.composition();
+            assert_eq!(composition.item_id(), document.composition_item_id());
+            assert_eq!(composition.body().item_id(), document.body_item_id());
+            assert_eq!(composition.with_target(), document.with_binding());
+            let selected = composition
+                .bindings()
+                .iter()
+                .filter(|binding| binding.binding() == document.with_binding())
+                .count();
+            assert_eq!(selected, 1, "WITH must select exactly one ordered producer");
+            for (ordinal, binding) in composition.bindings().iter().enumerate() {
+                assert_eq!(binding.binding().ordinal(), ordinal);
+                assert_eq!(
+                    binding.producer().item_id(),
+                    document.producer_item_ids()[ordinal]
+                );
+                assert!(binding.relation_output().is_some());
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn relational_composition_body_consumes_the_working_set() -> Result<(), String> {
+        let document = reference_composition_document_v2(ReferenceCompositionBodyV2::Relational)?;
+        assert_eq!(document.producer_item_ids().len(), 2);
+        let composition = document.composition();
+        let body = match composition.body() {
+            crate::ResolvedCompositionBodyV2::Query(query) => query,
+            other => {
+                return Err(format!(
+                    "relational composition body expected, got {other:?}"
+                ))
+            }
+        };
+        let scan = body
+            .root()
+            .inputs()
+            .next()
+            .ok_or("the body projection must consume a working set")?;
+        let source = scan
+            .source()
+            .ok_or("the working-set scan must retain its resolved source")?;
+        assert!(matches!(source, ResolvedScanSourceV2::Composition(_)));
+        assert_eq!(
+            composition.bindings()[0].name(),
+            composition.with_target().canonical_name()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn composition_bodies_keep_their_closed_family() -> Result<(), String> {
+        let graph = reference_composition_document_v2(ReferenceCompositionBodyV2::Graph)?;
+        assert!(matches!(
+            graph.composition().body(),
+            crate::ResolvedCompositionBodyV2::Graph(_)
+        ));
+        let check = reference_composition_document_v2(ReferenceCompositionBodyV2::Check)?;
+        assert!(matches!(
+            check.composition().body(),
+            crate::ResolvedCompositionBodyV2::Check(_)
+        ));
+        let explain = reference_composition_document_v2(ReferenceCompositionBodyV2::Explain)?;
+        match explain.composition().body() {
+            crate::ResolvedCompositionBodyV2::Explain(presentation) => {
+                assert!(matches!(
+                    presentation.kind(),
+                    crate::ResolvedPresentationKindV2::Explain { .. }
+                ));
+            }
+            other => return Err(format!("EXPLAIN composition body expected, got {other:?}")),
+        }
+        Ok(())
+    }
+
+    // ---- relation shapes -----------------------------------------------
+
+    #[test]
+    fn multiplicative_right_semi_input_fixture_resolves() -> Result<(), String> {
+        let reference = reference_relation_document_v2(
+            ReferenceRelationFixtureV2::ExistsWithMultiplicativeRight,
+        )?;
+        let root = exists_root(reference.document())?;
+        let nested = reference
+            .document()
+            .nested_relation(root)
+            .ok_or("the EXISTS fixture must register its nested relation")?;
+        assert!(matches!(nested, TypedRelationExprV2::Join(_)));
+        assert_eq!(nested.join_mode(), Some(JoinModeV2::Cross));
+        assert_eq!(nested.inputs().count(), 2);
+        Ok(())
+    }
+
+    #[test]
+    fn unrepresentable_relation_shapes_report_the_exact_rejection() {
+        for (fixture, needle) in [
+            (
+                ReferenceRelationFixtureV2::Apply,
+                RELATION_STAGE_KEYWORD_REJECTION_V2,
+            ),
+            (
+                ReferenceRelationFixtureV2::Limit,
+                RELATION_STAGE_KEYWORD_REJECTION_V2,
+            ),
+            (
+                ReferenceRelationFixtureV2::Union,
+                RELATION_TOP_LEVEL_REJECTION_V2,
+            ),
+        ] {
+            let rejected = reference_relation_document_v2(fixture);
+            assert!(rejected.err().is_some_and(|error| error.contains(needle)),);
+        }
+    }
+
+    // ---- small-receipt rule documents ----------------------------------
+
+    #[test]
+    fn forged_small_receipt_rule_document_carries_the_small_budget() -> Result<(), String> {
+        let document =
+            forged_small_receipt_rule_document_v2(ReferenceRuleFixtureV2::MutualRecursionPair)?;
+        assert_eq!(
+            document.budget().max_semantic_steps(),
+            SMALL_BUDGET_MAX_SEMANTIC_STEPS
+        );
+        assert_eq!(document.item_ids().len(), 2);
+        assert_eq!(
+            reference_rule_program_charge_v2(2),
+            3,
+            "two members charge one program plus two member steps"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn rule_program_receipt_is_exact_at_the_sealed_limit_and_one_over() -> Result<(), String> {
+        let exact =
+            forged_small_receipt_rule_program_document_v2(SMALL_BUDGET_RULE_PROGRAM_EXACT_MEMBERS)?;
+        assert_eq!(
+            exact.budget().max_semantic_steps(),
+            SMALL_BUDGET_MAX_SEMANTIC_STEPS
+        );
+        assert_eq!(
+            u32::try_from(exact.item_ids().len())
+                .map_err(|_error| "member count exceeds u32".to_owned())?,
+            SMALL_BUDGET_RULE_PROGRAM_EXACT_MEMBERS
+        );
+        assert_eq!(
+            reference_rule_program_charge_v2(SMALL_BUDGET_RULE_PROGRAM_EXACT_MEMBERS),
+            SMALL_BUDGET_MAX_SEMANTIC_STEPS
+        );
+
+        let over =
+            forged_small_receipt_rule_program_document_v2(SMALL_BUDGET_RULE_PROGRAM_OVER_MEMBERS)?;
+        assert_eq!(
+            reference_rule_program_charge_v2(SMALL_BUDGET_RULE_PROGRAM_OVER_MEMBERS),
+            SMALL_BUDGET_MAX_SEMANTIC_STEPS + 1
+        );
+        assert_eq!(
+            u32::try_from(over.item_ids().len())
+                .map_err(|_error| "member count exceeds u32".to_owned())?,
+            SMALL_BUDGET_RULE_PROGRAM_OVER_MEMBERS
+        );
+        assert!(forged_small_receipt_rule_program_document_v2(0).is_err());
+        Ok(())
+    }
+
+    // ---- narrow witness and alternate graph identity -------------------
+
+    #[test]
+    fn narrow_witness_document_seals_a_one_witness_cap() -> Result<(), String> {
+        let document = reference_narrow_witness_graph_document_v2(GraphQueryKindV1::Path, 4)?;
+        assert_eq!(
+            document.graph().witness_bounds().max_witnesses(),
+            NARROW_WITNESS_MAX_WITNESSES_V2
+        );
+        assert_eq!(document.graph().kind(), GraphQueryKindV1::Path);
+        assert_eq!(document.graph().depth(), Some(4));
+        Ok(())
+    }
+
+    #[test]
+    fn alternate_graph_document_seals_a_distinct_node_identity() -> Result<(), String> {
+        let request = |kind| ReferenceGraphRequestV2 {
+            kind,
+            references: reference_witness_graph_references_v2(kind),
+            depth: Some(4),
+            direction: None,
+            summary_facets: Vec::new(),
+            item_span: (0, 8),
+        };
+        let primary = reference_graph_document_v2(request(GraphQueryKindV1::Taint))?;
+        let alternate = reference_alternate_graph_document_v2(request(GraphQueryKindV1::Taint))?;
+        assert_ne!(alternate.graph_item_id(), primary.graph_item_id());
+        assert_eq!(
+            alternate.graph_item_id().hir_item_id(),
+            HirNodeIdV1::from_raw(ALTERNATE_GRAPH_NODE_ID_V2)
+        );
+        assert_eq!(
+            primary.graph_item_id().hir_item_id(),
+            HirNodeIdV1::from_raw(2)
+        );
+        Ok(())
+    }
 }
