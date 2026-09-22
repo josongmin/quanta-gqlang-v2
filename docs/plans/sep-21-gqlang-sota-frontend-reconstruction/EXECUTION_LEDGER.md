@@ -1603,3 +1603,25 @@ spelling when known, `<aggregate>` otherwise); the precedence rail asserts
 target compiles GREEN — all five rewritten source files (source, recursion,
 aggregate, graph, witness) type-check; remaining errors are confined to the
 test files being rewritten by lanes A/B/C.
+
+### W3 barrier cut executed early — logic->hir dependency removed — 2026-09-21
+
+Performed by the integrator as soon as lane rewrites made it safe (only
+doc-comment references remained in lib.rs):
+- `logic/Cargo.toml`: hir dependency removed. Final normal dependencies are
+  now Sema + Types only, exactly as SS-06B step 8 requires. The sema/test
+  dev-dependency remains (feature toggle on an existing normal edge).
+- `logic/src/lib.rs`: crate docs rewritten for the Sema-input model
+  (RuleProgramContractV2 ingress, RejectAllRecursiveAggregatesV2 policy, the
+  free `stratify` function, GraphQueryContractV2/WitnessContractV2).
+- `tools/architecture/check_architecture.py`: model corrections — removed the
+  stale `(logic, algebra)` FINAL normal edge (Logic never depends on Algebra
+  in the final DAG) and the `(logic, hir)` TRANSITIONAL normal edge.
+- Verified: logic lib compiles green after the cut; architecture census
+  `normal_edges=41 final_present=22 transitional_present=19` (down from 20 —
+  the logic->hir transition is gone), no new illegal edges; the sole illegal
+  dev edge remains the pre-existing `sema -> surface` baseline item owned by
+  a later wave.
+- Remaining transitional edges by owner: algebra x2, cli x5, conformance x4,
+  frontend-contract x5, diagnostics-stdio x1, pipeline x4, planning x1 — each
+  retired by its wave (W4/W5/W6).
