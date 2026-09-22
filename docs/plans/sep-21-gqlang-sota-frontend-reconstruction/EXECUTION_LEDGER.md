@@ -1678,3 +1678,31 @@ integrator's already-landed seams `ResolvedRuleV2::forged_with_calls` and
   rejecting. Also noted: `ResolvedRuleV2` retains no rule-level checked
   location, so rule-level rejections anchor at the body expression location.
   Both to be stated honestly in Receipt 06 rather than papered over.
+
+### W3-D intervention — stopped, verified scaffold landed, rule half re-dispatched — 2026-09-21
+
+Lane W3-D produced nothing after many rounds of design. Lane W3-B meanwhile
+built and TESTED the entire graph half of the same deliverable as a /tmp
+scaffold (documented gotchas: nested CHECK host Rule asset must use
+`CallableKindV2::Rule`; graph selector spans validate against the bare host
+registry while document locations come from the extended registry) and proved
+52/52 green for logic with it in a copied tree.
+
+Integrator action: W3-D was interrupted; B's scaffold was applied to
+`sema/src/test_support.rs` (3012 lines, sha256-16 `3d9cd3b7aa6506ef`) and
+independently re-verified: sema baseline 102/102 and --features test 121/121
+unchanged, and the logic crate now has exactly ONE remaining error class
+(W3-C's rule-fixture imports). The verified patch is committed.
+
+Also fixed in this window: the two minting seams were promoted from
+`pub(crate)` to test-feature `pub` — under `-D warnings` they were dead_code
+errors inside sema's `test` feature build (lane W3-A's clippy run caught it),
+and `#[allow]` is unavailable because the workspace denies
+`clippy::allow_attributes`. Sema clippy is clean in both feature modes after
+the promotion.
+
+Reduced lane W3-D2 (agent 6ce15239) re-dispatched with ONLY the rule family:
+`reference_rule_document_v2` (8 fixtures) + `forged_rule_membership_
+document_v2` (3 mutations) + `forged_rule_fact_document_v2` (7 mutations),
+exact names/semantics from lane W3-C's spec, lease test_support.rs only,
+additive-only.
