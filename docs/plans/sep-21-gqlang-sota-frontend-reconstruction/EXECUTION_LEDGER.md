@@ -2229,3 +2229,37 @@ UNPROVEN (fixtures would settle): U-01 catalog-edge sort uses a non-total key
 before a full-tuple compare (two same-pair edges in different families); U-02
 public `SourceIdV2::from_raw` + structural registry identity make same-id/
 same-length documents interchangeable.
+
+### W4-D interim — sema producer gaps found (USE PACK, Apply/Limit/Union) — 2026-09-22
+
+1. USE PACK IS NOT MINTABLE THROUGH THE REAL TRANSACTION (sema producer gap,
+   not a fixture gap): `sema/src/document.rs` accepts only
+   `MetaKindV1::RequireCertified` and fails closed on every other Meta payload
+   at the `ProgramItemHirV1::Meta(_)` arm with the exact message "semantic body
+   and reference owner resolution is not yet available"
+   (`sema.document_validation_failed`). Ticket 07 requires
+   `ResolvedMetaKindV2::UsePack -> NoPlanReasonV2::MetaActivation`, and Receipt
+   02 recorded USE PACK activation as restricted-and-lockfile-typed, so the
+   resolution half is simply unfinished. Disposition: recorded as a PRODUCER
+   GAP for the barrier ruling — either implement UsePack meta resolution in
+   sema (producer work on a W1-closed crate) or amend ticket 07 to scope
+   USE PACK out of the reachable meta path. In the meantime lane W4-D ships
+   BOTH the verbatim transaction rejection (`USE_PACK_TRANSACTION_REJECTION_V2`)
+   and a real `SemanticDocumentV2` sealed through the crate-local seam
+   (`forged_use_pack_meta_document_v2`) so the `MetaActivation` rail is
+   exercised today and labelled as seam-minted, not transaction-minted.
+2. Apply/Limit/Union are UNREPRESENTABLE by construction: HIR
+   `RelationExprKindV1` is closed over Source/Project/Filter/Join/GroupBy/
+   OrderBy, and `AlgebraOpV2::{Apply,Limit,Union}` are `pub(crate)` with no
+   sealed constructor (programmatic-only until their owning planner contracts
+   land). This is consistent with W2-A's "Apply/Limit/Union OMITTED from the
+   completion claim" decision — the fixtures now carry the variants plus the
+   verbatim surface rejections as evidence instead of pretending reachability.
+   The one authorable extra shape (`ExistsWithMultiplicativeRight`) resolves and
+   lowers to SemiJoin-over-Join and is covered.
+3. Lane-blocker note: `planning/src/composition.rs` was mid-rewrite by lane
+   W4-E (`CompositionBodyPolicyV2` becoming a struct with `family` + `policy`),
+   so the planning/pipeline acceptance counts could not be taken during that
+   edit; W4-D's own sema gates are green (baseline 102/102,
+   `--features test` 136, clippy `-D warnings` clean, rustfmt clean) with 46 new
+   additive public items and zero changed signatures.
