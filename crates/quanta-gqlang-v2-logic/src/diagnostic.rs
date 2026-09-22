@@ -89,20 +89,6 @@ pub enum LogicDiagnosticV1 {
         /// Checked location of the offending graph query.
         span: CheckedLocatedSpanV2,
     },
-    /// A least-fixpoint was requested over a rule body that is not monotone: it
-    /// AGGREGATES the recursive predicate inside its own recursion, so the
-    /// fixpoint is not guaranteed to exist / be unique.
-    ///
-    /// The sibling case — a rule that NEGATES the recursive predicate inside its
-    /// own recursion — is a negation cycle and rejects as
-    /// [`LogicDiagnosticV1::NegationCycle`] before this check runs (see
-    /// `recursion.rs`), so there is no negated arm here.
-    NonMonotoneRecursion {
-        /// The recursive predicate whose defining rule is non-monotone.
-        predicate: ResolvedPredicateIdV2,
-        /// Checked location of the offending rule.
-        span: CheckedLocatedSpanV2,
-    },
     /// The document-owned rule program could not be projected into a faithful
     /// contract: a member, call edge, target, polarity, source identity, or
     /// checked location disagreed with the sealed document. Logic validates
@@ -251,9 +237,6 @@ impl LogicDiagnosticV1 {
             }
             Self::GraphEndpointMissing { .. } => "logic.graph_endpoint_missing".to_owned(),
             Self::GraphEndpointUnexpected { .. } => "logic.graph_endpoint_unexpected".to_owned(),
-            Self::NonMonotoneRecursion { .. } => {
-                "logic.non_monotone_recursion.aggregated_recursion".to_owned()
-            }
             Self::RuleProgramInvalid { reason, .. } => {
                 format!("logic.rule_program.{}", reason.code())
             }
@@ -272,7 +255,6 @@ impl LogicDiagnosticV1 {
             | Self::UnboundedWitness { span, .. }
             | Self::GraphEndpointMissing { span, .. }
             | Self::GraphEndpointUnexpected { span, .. }
-            | Self::NonMonotoneRecursion { span, .. }
             | Self::RuleProgramInvalid { span, .. }
             | Self::RuleGraphBudgetExceeded { span, .. } => span,
         }
@@ -340,10 +322,6 @@ impl LogicDiagnosticV1 {
                     role.keyword()
                 )
             }
-            Self::NonMonotoneRecursion { predicate, .. } => format!(
-                "non-monotone recursion: predicate `{}` aggregates itself inside its own recursion",
-                predicate.as_str()
-            ),
             Self::RuleProgramInvalid { reason, .. } => match reason {
                 RuleProgramInvalidReasonV1::MissingMember => {
                     "rule program contract is incomplete: a document rule member was not enumerated"
