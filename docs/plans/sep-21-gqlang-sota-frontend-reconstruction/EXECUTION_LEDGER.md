@@ -1953,3 +1953,30 @@ budgeted traversal (charge-before-visit from the document receipt, exact/+1),
 per-arm classification delegating to the landed modules, and UsePack ->
 NoPlan(MetaActivation) semantics. The lib.rs V1 export replacement stays with
 the integrator. W4-A's other files remain on disk and are not reverted.
+
+## Current position and resume state — 2026-09-22 (W4 mid-flight)
+
+Completed and committed: W0, W1 (checkpoint `1a9ccad`), W2 (`4073b64`),
+W3 (`95b655f`: logic 104/104, deps Sema+Types only, Receipt 06 closed).
+W4 integrator work already landed: planning/pipeline manifests (sema edges;
+planning drops hir), sema additive re-exports (mode enums + authority DTOs),
+retained checked locations on ResolvedCheckV2/ResolvedPresentationV2 (sema
+re-qualified 102/121), algebra `lower_nested_relation_v2` +
+`lower_nested_relation_item_v2` (59/59), J1 junction refinement
+(`plan(input, &document)`), W4-C facade design + six decisions, producer
+freeze supplement (`/tmp/qg-w4-producer-freeze.txt`, re-take at the barrier).
+
+In flight: lane W4-A2 (agent c2dc46fc, lease `planning/src/plan.rs` only —
+W4-A landed 12 surrounding modules then stalled on the core file and was
+stopped); lane W4-B (agent 79ac99c2) is rewriting `pipeline/src/compile.rs`
+(now `add2cc9459ab83b6`).
+
+Remaining W4 work at the barrier: apply planning/lib.rs V2 export patch (from
+W4-A2's report), apply pipeline/lib.rs export deletions (from W4-B's report),
+re-freeze producer hashes after both writers stop, replace the four facade
+globs with the pinned three functions + curated allowlist (facade lib.rs
+`77c23331` is the single serial cut), build `tools/frontend_external_consumer/`
++ `tools/test_frontend_external_consumer.py` per W4-C's contract, delete the
+five transitional facade edges, run planning/pipeline/facade suites + doctests
++ strict Clippy + the external-consumer gate + architecture, write Receipt 07,
+commit, then open W5 with `/tmp/qg-w5-dispatch-draft.md`.
