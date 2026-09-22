@@ -1,121 +1,63 @@
-//! Recursive-aggregate legality: the explicit admit/reject matrix (ticket 05).
+//! The one fixed policy for recursive aggregates: every spelling rejects.
 //!
-//! Per `D27`, recursive aggregates are ILLEGAL unless their legality and
-//! fixpoint behaviour are explicitly specified here. A general recursive
-//! aggregate (e.g. `count`/`sum` folding a predicate that recurses through the
-//! aggregate) has no monotone least-fixpoint, so it rejects. A FIXED, explicit
-//! admit list carries the narrow shapes that DO have a well-defined recursive
-//! fixpoint (semiring-style monotone folds over a bounded lattice).
+//! `SS-06B` step 6 replaces the V1 name-keyed admit/reject matrix
+//! (`AggregateLegalityV1`, `RecursiveAggregateV1`, `RecursiveAggregateMatrixV1`,
+//! `with_admitted`, `admits`, `classify`) with a single policy carrier. This
+//! packet has no configurable recursive-aggregate exception: a spelling is never
+//! a legality proof, and the V1 default that admitted `min`/`max` over
+//! recursion is dead.
 //!
-//! The matrix is intentionally CLOSED: an aggregate is admitted only when it is
-//! on the admit list AND its recursion is positive (non-negated). Everything
-//! else rejects with [`LogicDiagnosticV1::RecursiveAggregate`].
+//! Nonrecursive aggregate legality remains the semantic contract's decision.
+//! Logic only ever consults this policy for an aggregate reference whose target
+//! sits in the same recursive SCC, so a nonrecursive aggregate never gains a
+//! second Logic-side legality decision.
 
-use std::collections::BTreeSet;
-
-use quanta_gqlang_v2_hir::SpanV1;
+use quanta_gqlang_v2_sema::CheckedLocatedSpanV2;
+use quanta_gqlang_v2_types::ResolvedPredicateIdV2;
 
 use crate::diagnostic::LogicDiagnosticV1;
 
-/// The outcome of consulting the recursive-aggregate matrix.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum AggregateLegalityV1 {
-    /// The aggregate is admitted over recursion (it has a monotone
-    /// least-fixpoint over a bounded lattice).
-    Admitted,
-    /// The aggregate is rejected over recursion.
-    Rejected,
-}
-
-/// A request to fold an aggregate over a (possibly recursive) predicate.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RecursiveAggregateV1 {
-    /// The aggregate function name as written (e.g. `min`, `max`, `count`).
-    pub function: String,
-    /// The predicate being folded over.
-    pub predicate: String,
-    /// Whether that predicate is recursive (sits in a recursive SCC). A
-    /// NON-recursive aggregate is always fine and is admitted trivially.
-    pub recursive: bool,
-    /// Span of the aggregate call.
-    pub span: SpanV1,
-}
-
-/// The closed admit/reject matrix for recursive aggregates.
+/// The fixed reject-all policy for recursive aggregates.
 ///
-/// The admit list defaults to the monotone lattice folds `min` and `max`, which
-/// have a least-fixpoint over a bounded value domain (each step is monotone and
-/// converges). `count` / `sum` / `avg` are NOT admitted by default because they
-/// are not monotone-convergent over an unbounded recursion. Callers may extend
-/// the admit list (e.g. a host that proves boundedness) but must do so
-/// explicitly — there is no implicit admission.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct RecursiveAggregateMatrixV1 {
-    admitted: BTreeSet<String>,
-}
+/// The carrier is deliberately not configurable: there is no admit list, no
+/// extension point, and no spelling-dependent branch. [`Self::check`] rejects
+/// every recursive aggregate with [`LogicDiagnosticV1::RecursiveAggregate`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct RejectAllRecursiveAggregatesV2;
 
-impl Default for RecursiveAggregateMatrixV1 {
-    fn default() -> Self {
-        let mut admitted = BTreeSet::new();
-        admitted.insert("min".to_owned());
-        admitted.insert("max".to_owned());
-        Self { admitted }
-    }
-}
+impl RejectAllRecursiveAggregatesV2 {
+    /// Stable rendering used when an aggregated reference was projected without
+    /// its aggregate-function spelling. The exact code, predicate identity, and
+    /// checked location remain the contract; only the human spelling is
+    /// unavailable, and it is never inferred from a name.
+    pub const UNSPECIFIED_FUNCTION: &'static str = "<aggregate>";
 
-impl RecursiveAggregateMatrixV1 {
-    /// The default matrix: `min` / `max` admitted, everything else rejected.
+    /// The one recursive-aggregate policy.
     #[must_use]
-    pub fn new() -> Self {
-        Self::default()
+    pub const fn new() -> Self {
+        Self
     }
 
-    /// An empty matrix that admits NO recursive aggregate (strictest closure).
-    #[must_use]
-    pub fn empty() -> Self {
-        Self {
-            admitted: BTreeSet::new(),
-        }
-    }
-
-    /// A matrix from an explicit admit list of aggregate function names.
-    #[must_use]
-    pub fn with_admitted(names: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        Self {
-            admitted: names.into_iter().map(Into::into).collect(),
-        }
-    }
-
-    /// Whether a function name is on the admit list.
-    #[must_use]
-    pub fn admits(&self, function: &str) -> bool {
-        self.admitted.contains(function)
-    }
-
-    /// Classify a recursive-aggregate request against the matrix.
+    /// Reject one recursive aggregate at its exact checked location.
     ///
-    /// A non-recursive aggregate is [`AggregateLegalityV1::Admitted`]. A
-    /// recursive aggregate is admitted only when its function is on the admit
-    /// list, else rejected.
-    #[must_use]
-    pub fn classify(&self, request: &RecursiveAggregateV1) -> AggregateLegalityV1 {
-        if !request.recursive || self.admits(&request.function) {
-            AggregateLegalityV1::Admitted
-        } else {
-            AggregateLegalityV1::Rejected
-        }
-    }
-
-    /// Check a recursive-aggregate request, returning the typed rejection
-    /// diagnostic when the matrix rejects it.
-    pub fn check(&self, request: &RecursiveAggregateV1) -> Result<(), LogicDiagnosticV1> {
-        match self.classify(request) {
-            AggregateLegalityV1::Admitted => Ok(()),
-            AggregateLegalityV1::Rejected => Err(LogicDiagnosticV1::RecursiveAggregate {
-                function: request.function.clone(),
-                predicate: request.predicate.clone(),
-                span: request.span,
-            }),
-        }
+    /// Always returns [`Err`]: there is no admitted spelling of a recursive
+    /// aggregate in this packet.
+    ///
+    /// # Errors
+    ///
+    /// Always returns [`LogicDiagnosticV1::RecursiveAggregate`] carrying the
+    /// aggregate function spelling, the folded recursive predicate identity, and
+    /// the offending aggregate call's checked location.
+    pub fn check(
+        &self,
+        function: &str,
+        predicate: &ResolvedPredicateIdV2,
+        span: &CheckedLocatedSpanV2,
+    ) -> Result<(), LogicDiagnosticV1> {
+        Err(LogicDiagnosticV1::RecursiveAggregate {
+            function: function.to_owned(),
+            predicate: predicate.clone(),
+            span: span.clone(),
+        })
     }
 }

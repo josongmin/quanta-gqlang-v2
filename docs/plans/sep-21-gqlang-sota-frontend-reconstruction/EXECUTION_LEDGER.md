@@ -1812,3 +1812,21 @@ kinds), `forged_rule_membership_document_v2` (3 mutations),
 `forged_with_calls`/`forged_membership` seams and the in-crate rule authoring
 recipe. Wave status: W3-A/B/C COMPLETE; only the rule-fixture family plus the
 barrier remain.
+
+## W3 Barrier Record — GREEN — 2026-09-21
+
+```text
+wave=W3
+entry_sha=494b118 (+ integrator pre-cut a606f12)
+lane_ids=W3-A (rule/SCC/aggregate), W3-B (graph/witness), W3-C (source adapter), W3-D/W3-D2 (fixtures; stopped, integrator landed the rule half from W3-B's verified graph scaffold + its own rule implementation)
+leased_paths_and_pre_hashes=logic freeze /tmp/qg-freeze-w3.txt + vault; post-hashes verified per lane report
+lane_red_evidence=A: 19-error entry + semantic RED (name-keyed, recursive, unbudgeted, min-admission); B: fixture-less graph documents; C: stale V1 suite
+lane_acceptance_commands_and_counts=logic all-targets 104/104; clippy 0; fmt 0; diff-check 0; tree depth-1 = Sema+Types; HIR/Algebra names 0; python architecture suite 7/7
+mutation_ids_killed_and_reverted=A 5 executed out-of-repo + 2 deferred; B 12 pairs documented, inject/revert deferred to an authorized worktree; C reachable-subset strip/restore hash-verified
+reserved_path_changes_applied_by_integrator=diagnostic.rs final surface (incl. NonMonotoneRecursion deletion, RuleProgramInvalid, RuleGraphBudgetExceeded, witness over-budget reasons), lib.rs exports, Cargo.toml (sema edge added, hir edge cut, sema/test dev-dep), architecture model + fixtures, expr/rule/document test seams, adapter order fix, rule fixtures
+exit_sha=PENDING (this record's checkpoint commit follows)
+exit_status_hash=to be recorded with the checkpoint
+receipt_paths=receipts/06.md (+ migration inventory tickets/06-migration-inventory-w2c.md)
+deferred_failures=source-mutation inject/revert proofs (authorized worktree); +1 witness bounds unreachable through the transaction (proven at the crate-private seam, stated in Receipt 06); the degenerate missing-member rail with no locatable item; Pipeline's deleted-API call is the W4 obligation
+next_wave_gate=W4 OPEN: ticket 07 Planning/Pipeline/facade; facade contract pinned in /tmp/qg-w4-dispatch-draft.md; entrance = Logic GREEN (met) + compiled-document DTO skeleton + diagnostic ordering + budget projections frozen
+```

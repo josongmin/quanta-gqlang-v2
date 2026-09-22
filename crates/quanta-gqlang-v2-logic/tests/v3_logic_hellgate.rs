@@ -1,144 +1,102 @@
 #![allow(
-    clippy::panic,
-    clippy::unwrap_used,
     clippy::expect_used,
     clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
+    clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
     clippy::wildcard_enum_match_arm,
-    reason = "integration test rails assert on fixed indices/variants and panic on unexpected shapes"
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
-//! Hellgate (fail-closed) rails for the logic / recursion layer (ticket 05).
-//!
-//! syntax->sema->ir path pinned: shared HIR rule shapes + binder-resolved body
-//! dependencies -> logic stratification / aggregate / witness legality. Each
-//! test asserts the ACTUAL typed [`quanta_gqlang_v2_logic::LogicDiagnosticV1`]
-//! code + message, not merely that an error occurred. These rails fail RED
-//! before the logic impl exists and prove the D10/D27/D31 "no silent downgrade"
-//! contract.
 
-use quanta_gqlang_v2_hir::SpanV1;
-use quanta_gqlang_v2_logic::{
-    BodyLiteralV1, DedupIdentityV1, LogicDiagnosticV1, RecursiveAggregateMatrixV1,
-    RecursiveAggregateV1, RecursiveProgramV1, RelationShapeV1, RuleDefV1, UnboundedWitnessReasonV1,
-    WitnessContractV1, WitnessRequestV1, WitnessTieBreakV1,
+//! Hellgate (fail-closed) rails for the WITNESS / CAP / DEPTH / ORDERING
+//! families (ticket 06, lane W3-B).
+//!
+//! Row ledger for the V1 twelve-row `v3_logic_hellgate.rs`:
+//!
+//! | V1 row | Disposition |
+//! |---|---|
+//! | 1 negation cycle, 2 mutual negation, 3 recursive aggregate, 11 aggregated self-recursion, 12 precedence | MOVED OUT to the W3-A rule/SCC owner file |
+//! | 4 unbounded witness (missing cap) | positive counter-rail `every_admitted_find_is_bounded_on_both_dimensions` here + unit rail `missing_and_zero_witness_cap_reject` |
+//! | 5 cyclic witness without path bound | `unbounded_find_without_depth_rejects` here |
+//! | 6 zero witness cap | unit rail `missing_and_zero_witness_cap_reject` |
+//! | 7 cyclic zero path-length bound | unit rail `missing_and_zero_path_length_reject_over_a_cyclic_relation` |
+//! | 8 acyclic zero path-length bound | unit rail `acyclic_relation_may_omit_the_path_bound` + the deterministic reject order |
+//! | 9/10 reject-order precedence | unit rail `rejection_order_is_deterministic` |
+//!
+//! Rows 4/6-10 are unreachable through the sealed transaction (Sema never emits
+//! a missing/zero cap, `depth = 0`, or an over-budget depth), and the V2 witness
+//! binding is crate-private precisely so no caller can supply one. Their exact
+//! `logic.unbounded_witness.*` codes, messages, and located spans are therefore
+//! proven by the owner-unit rails in `src/witness.rs`/`src/graph.rs`; this file
+//! proves everything the public sealed surface can still reach.
+
+use quanta_gqlang_v2_logic::{GraphQueryContractV2, LogicDiagnosticV1, UnboundedWitnessReasonV1};
+use quanta_gqlang_v2_sema::{CheckedLocatedSpanV2, GraphQueryKindV1};
+
+mod support;
+
+use support::{
+    bounded_query, graph_document, reference, unbounded_query, GraphReferenceRoleV2,
+    ReferenceGraphReferenceV2,
 };
 
-fn sp(a: usize, b: usize) -> SpanV1 {
-    SpanV1::new(a, b)
-}
-
-// Hellgate 3: recursion through negation (unstratifiable) rejects with a typed
-// diagnostic. `win(x) :- move(x, y), not win(y)` is the classic unstratifiable
-// game: `win` depends negatively on itself.
-#[test]
-fn negation_cycle_rejects_with_typed_code() {
-    let win = RuleDefV1::new(
-        "win",
-        vec![
-            BodyLiteralV1::positive("move"),
-            BodyLiteralV1::negated("win"),
+/// The legal, bounded reference set for one subkind.
+fn references(kind: GraphQueryKindV1) -> Vec<ReferenceGraphReferenceV2> {
+    match kind {
+        GraphQueryKindV1::Reachability
+        | GraphQueryKindV1::Flow
+        | GraphQueryKindV1::Taint
+        | GraphQueryKindV1::Path => vec![
+            reference(GraphReferenceRoleV2::Source, "a", 5, 6),
+            reference(GraphReferenceRoleV2::Sink, "b", 10, 11),
         ],
-        sp(0, 40),
-    );
-    let program = RecursiveProgramV1::from_rules(vec![win]);
-
-    let err = program.stratify().expect_err("negation cycle must reject");
-    assert_eq!(err.code(), "logic.negation_cycle");
-    assert_eq!(
-        err.message(),
-        "recursion through negation is not stratifiable: cycle [win]"
-    );
-    assert_eq!(err.span(), sp(0, 40));
-    match err {
-        LogicDiagnosticV1::NegationCycle { cycle, .. } => {
-            assert_eq!(cycle, vec!["win".to_owned()]);
+        GraphQueryKindV1::Slice => vec![reference(GraphReferenceRoleV2::Anchor, "anchor", 5, 6)],
+        GraphQueryKindV1::PointsTo => vec![
+            reference(GraphReferenceRoleV2::Reference, "p", 5, 6),
+            reference(GraphReferenceRoleV2::Pointee, "q", 10, 11),
+        ],
+        GraphQueryKindV1::Summary => {
+            vec![reference(GraphReferenceRoleV2::Callable, "callable", 5, 6)]
         }
-        other => panic!("expected NegationCycle, got {other:?}"),
     }
 }
 
-// Mutual negation cycle across two predicates also rejects, with a sorted cycle
-// witness for determinism.
-#[test]
-fn mutual_negation_cycle_rejects_with_sorted_cycle() {
-    let p = RuleDefV1::new("p", vec![BodyLiteralV1::negated("q")], sp(0, 10));
-    let q = RuleDefV1::new("q", vec![BodyLiteralV1::positive("p")], sp(11, 20));
-    let program = RecursiveProgramV1::from_rules(vec![p, q]);
+const ALL_KINDS: [GraphQueryKindV1; 7] = [
+    GraphQueryKindV1::Reachability,
+    GraphQueryKindV1::Flow,
+    GraphQueryKindV1::Slice,
+    GraphQueryKindV1::Taint,
+    GraphQueryKindV1::Path,
+    GraphQueryKindV1::PointsTo,
+    GraphQueryKindV1::Summary,
+];
 
-    let err = program
-        .stratify()
-        .expect_err("mutual negation cycle rejects");
-    assert_eq!(err.code(), "logic.negation_cycle");
-    match err {
-        LogicDiagnosticV1::NegationCycle { cycle, .. } => {
-            assert_eq!(cycle, vec!["p".to_owned(), "q".to_owned()]);
-        }
-        other => panic!("expected NegationCycle, got {other:?}"),
-    }
+/// The exact byte range of one checked location, without naming a HIR type.
+fn span_of(location: &CheckedLocatedSpanV2) -> (usize, usize) {
+    let span = location.location().span;
+    (span.start, span.end)
 }
 
-// Hellgate 4 (reject side): a recursive aggregate NOT on the admit matrix
-// rejects with a typed diagnostic.
+// V1 row 5: a FIND over a relation that can cycle with no explicit depth is an
+// unbounded witness family and rejects with the exact code, message, and the
+// FIND item's checked location.
 #[test]
-fn recursive_aggregate_count_rejects_with_typed_code() {
-    let matrix = RecursiveAggregateMatrixV1::new();
-    let request = RecursiveAggregateV1 {
-        function: "count".to_owned(),
-        predicate: "reaches".to_owned(),
-        recursive: true,
-        span: sp(5, 25),
-    };
-
-    let err = matrix.check(&request).expect_err("recursive count rejects");
-    assert_eq!(err.code(), "logic.recursive_aggregate");
-    assert_eq!(
-        err.message(),
-        "recursive aggregate `count` over recursive predicate `reaches` is not admitted"
+fn unbounded_find_without_depth_rejects() {
+    let request = unbounded_query(
+        GraphQueryKindV1::Flow,
+        vec![
+            reference(GraphReferenceRoleV2::Source, "a", 5, 6),
+            reference(GraphReferenceRoleV2::Sink, "b", 10, 11),
+        ],
+        0,
+        30,
     );
-    assert_eq!(err.span(), sp(5, 25));
-}
+    let document = graph_document(request).expect("flow fixture resolves");
+    let location = document.graph().location().clone();
 
-// Hellgate 2: an unbounded witness family (no max cap) rejects rather than
-// streaming infinitely.
-#[test]
-fn unbounded_witness_missing_cap_rejects_with_typed_code() {
-    let request = WitnessRequestV1 {
-        shape: RelationShapeV1::Cyclic,
-        dedup: DedupIdentityV1::NodeSequence,
-        max_witnesses: None,
-        max_path_length: Some(8),
-        tie_break: WitnessTieBreakV1::ShortestThenLexical,
-        span: sp(3, 30),
-    };
-
-    let err = WitnessContractV1::bind(&request).expect_err("unbounded witness rejects");
-    assert_eq!(err.code(), "logic.unbounded_witness.missing_max_witnesses");
-    assert_eq!(
-        err.message(),
-        "unbounded witness materialization: a finite max-witness cap is required"
-    );
-    assert_eq!(err.span(), sp(3, 30));
-    match err {
-        LogicDiagnosticV1::UnboundedWitness { reason, .. } => {
-            assert_eq!(reason, UnboundedWitnessReasonV1::MissingMaxWitnesses);
-        }
-        other => panic!("expected UnboundedWitness, got {other:?}"),
-    }
-}
-
-// A cyclic relation with a cap but NO path-length bound is still unbounded:
-// enumeration can revisit nodes forever. Rejects with the path-bound reason.
-#[test]
-fn cyclic_witness_without_path_bound_rejects() {
-    let request = WitnessRequestV1 {
-        shape: RelationShapeV1::Cyclic,
-        dedup: DedupIdentityV1::NodeSequence,
-        max_witnesses: Some(5),
-        max_path_length: None,
-        tie_break: WitnessTieBreakV1::ShortestThenLexical,
-        span: sp(0, 12),
-    };
-
-    let err = WitnessContractV1::bind(&request).expect_err("cyclic without path bound rejects");
+    let err =
+        GraphQueryContractV2::from_resolved(document.graph()).expect_err("depth-free flow rejects");
     assert_eq!(
         err.code(),
         "logic.unbounded_witness.missing_path_length_bound"
@@ -147,155 +105,89 @@ fn cyclic_witness_without_path_bound_rejects() {
         err.message(),
         "unbounded witness materialization: a cyclic relation requires a path-length bound"
     );
+    assert_eq!(err.span(), &location);
+    assert_eq!(span_of(err.span()), (0, 30));
+    match err {
+        LogicDiagnosticV1::UnboundedWitness { reason, span } => {
+            assert_eq!(reason, UnboundedWitnessReasonV1::MissingPathLengthBound);
+            assert_eq!(&span, &location);
+        }
+        other => panic!("expected UnboundedWitness, got {other:?}"),
+    }
 }
 
-// A zero max-witness cap is degenerate and rejects (it can never materialize a
-// witness).
+// V1 row 5 + policy flip: bounding waypoints do NOT substitute for a depth, so a
+// waypoint-only FIND is still unbounded.
 #[test]
-fn zero_witness_cap_rejects() {
-    let request = WitnessRequestV1 {
-        shape: RelationShapeV1::Acyclic,
-        dedup: DedupIdentityV1::Endpoints,
-        max_witnesses: Some(0),
-        max_path_length: None,
-        tie_break: WitnessTieBreakV1::Lexical,
-        span: sp(7, 9),
-    };
-
-    let err = WitnessContractV1::bind(&request).expect_err("zero cap rejects");
-    assert_eq!(err.code(), "logic.unbounded_witness.zero_max_witnesses");
-    assert_eq!(
-        err.message(),
-        "ill-formed witness bound: max-witness cap of zero can never materialize a witness"
+fn waypoint_count_is_not_a_path_bound() {
+    let request = unbounded_query(
+        GraphQueryKindV1::Taint,
+        vec![
+            reference(GraphReferenceRoleV2::Source, "a", 5, 6),
+            reference(GraphReferenceRoleV2::Sink, "b", 10, 11),
+            reference(GraphReferenceRoleV2::Via, "x", 14, 15),
+            reference(GraphReferenceRoleV2::Through, "z", 18, 19),
+        ],
+        0,
+        30,
     );
-}
+    let document = graph_document(request).expect("taint fixture resolves");
 
-// A zero PATH-LENGTH bound is degenerate and rejects on a CYCLIC relation: zero
-// edges can never traverse the cycle, so the supplied bound is ill-formed. The
-// zero-path check fires AFTER the missing-cap / zero-cap / missing-path checks,
-// so a cyclic relation with a present-but-zero path bound lands here.
-#[test]
-fn cyclic_zero_path_length_bound_rejects() {
-    let request = WitnessRequestV1 {
-        shape: RelationShapeV1::Cyclic,
-        dedup: DedupIdentityV1::NodeSequence,
-        max_witnesses: Some(5),
-        max_path_length: Some(0),
-        tie_break: WitnessTieBreakV1::ShortestThenLexical,
-        span: sp(3, 11),
-    };
-
-    let err = WitnessContractV1::bind(&request).expect_err("zero path-length bound rejects");
-    assert_eq!(err.code(), "logic.unbounded_witness.zero_path_length_bound");
-    assert_eq!(
-        err.message(),
-        "ill-formed witness bound: a path-length bound of zero can never traverse an edge"
-    );
-    assert_eq!(err.span(), sp(3, 11));
-    match err {
-        LogicDiagnosticV1::UnboundedWitness { reason, .. } => {
-            assert_eq!(reason, UnboundedWitnessReasonV1::ZeroPathLengthBound);
-            assert_eq!(reason.code(), "zero_path_length_bound");
-        }
-        other => panic!("expected UnboundedWitness, got {other:?}"),
-    }
-}
-
-// The zero-path-length reject fires "regardless of shape": even an ACYCLIC
-// relation (which does not require a path bound at all) rejects a supplied
-// zero bound, so `depth = 0` cannot silently admit a non-traversing contract.
-#[test]
-fn acyclic_zero_path_length_bound_still_rejects() {
-    let request = WitnessRequestV1 {
-        shape: RelationShapeV1::Acyclic,
-        dedup: DedupIdentityV1::Endpoints,
-        max_witnesses: Some(4),
-        max_path_length: Some(0),
-        tie_break: WitnessTieBreakV1::Lexical,
-        span: sp(1, 2),
-    };
-
-    let err =
-        WitnessContractV1::bind(&request).expect_err("acyclic zero path-length bound rejects");
-    assert_eq!(err.code(), "logic.unbounded_witness.zero_path_length_bound");
-    match err {
-        LogicDiagnosticV1::UnboundedWitness { reason, .. } => {
-            assert_eq!(reason, UnboundedWitnessReasonV1::ZeroPathLengthBound);
-        }
-        other => panic!("expected UnboundedWitness, got {other:?}"),
-    }
-}
-
-// Rejection order is deterministic: when BOTH the cap is missing AND the
-// (cyclic) path bound is missing, the MISSING-CAP reason wins (checked first),
-// not the missing-path-bound reason.
-#[test]
-fn missing_cap_beats_missing_path_bound_in_reject_order() {
-    let request = WitnessRequestV1 {
-        shape: RelationShapeV1::Cyclic,
-        dedup: DedupIdentityV1::NodeSet,
-        max_witnesses: None,
-        max_path_length: None,
-        tie_break: WitnessTieBreakV1::Lexical,
-        span: sp(0, 5),
-    };
-
-    let err = WitnessContractV1::bind(&request).expect_err("missing both rejects on cap first");
-    match err {
-        LogicDiagnosticV1::UnboundedWitness { reason, .. } => {
-            assert_eq!(reason, UnboundedWitnessReasonV1::MissingMaxWitnesses);
-        }
-        other => panic!("expected UnboundedWitness, got {other:?}"),
-    }
-}
-
-// Rejection order: a zero cap (present but degenerate) is checked BEFORE the
-// missing-path-bound rule, so a cyclic relation with a zero cap and no path
-// bound rejects on ZERO-CAP, not on missing-path-bound.
-#[test]
-fn zero_cap_beats_missing_path_bound_in_reject_order() {
-    let request = WitnessRequestV1 {
-        shape: RelationShapeV1::Cyclic,
-        dedup: DedupIdentityV1::NodeSequence,
-        max_witnesses: Some(0),
-        max_path_length: None,
-        tie_break: WitnessTieBreakV1::ShortestThenLexical,
-        span: sp(2, 6),
-    };
-
-    let err = WitnessContractV1::bind(&request).expect_err("zero cap beats missing path bound");
-    assert_eq!(err.code(), "logic.unbounded_witness.zero_max_witnesses");
-    match err {
-        LogicDiagnosticV1::UnboundedWitness { reason, .. } => {
-            assert_eq!(reason, UnboundedWitnessReasonV1::ZeroMaxWitnesses);
-        }
-        other => panic!("expected UnboundedWitness, got {other:?}"),
-    }
-}
-
-// An unknown source quantifier keyword rejects rather than silently lowering.
-#[test]
-fn unknown_quantifier_rejects() {
-    use quanta_gqlang_v2_logic::ExistencePolarityV1;
-    assert!(ExistencePolarityV1::from_keyword("some").is_none());
-}
-
-// A recursive aggregate inside its own recursion is non-monotone and rejects via
-// the stratifier (distinct from the matrix-level reject).
-#[test]
-fn aggregated_self_recursion_rejects_non_monotone() {
-    let rank = RuleDefV1::new("rank", vec![BodyLiteralV1::aggregated("rank")], sp(0, 33));
-    let program = RecursiveProgramV1::from_rules(vec![rank]);
-
-    let err = program
-        .stratify()
-        .expect_err("aggregated self-recursion rejects");
+    let err = GraphQueryContractV2::from_resolved(document.graph())
+        .expect_err("waypoints are not a path bound");
     assert_eq!(
         err.code(),
-        "logic.non_monotone_recursion.aggregated_recursion"
+        "logic.unbounded_witness.missing_path_length_bound"
     );
-    assert_eq!(
-        err.message(),
-        "non-monotone recursion: predicate `rank` aggregates itself inside its own recursion"
+}
+
+// V1 row 4 counter-rail: the sealed transaction never emits a missing or zero
+// cap, so every admitted FIND carries a genuinely finite, non-zero,
+// document-owned cap on BOTH witness dimensions.
+#[test]
+fn every_admitted_find_is_bounded_on_both_dimensions() {
+    let probe = graph_document(bounded_query(
+        GraphQueryKindV1::Reachability,
+        references(GraphQueryKindV1::Reachability),
+        1,
+        0,
+        30,
+    ))
+    .expect("probe fixture");
+    let sealed_cap = probe.document().budget_receipt().max_witnesses();
+
+    for kind in ALL_KINDS {
+        let document =
+            graph_document(bounded_query(kind, references(kind), 4, 0, 30)).expect("fixture");
+        let contract = GraphQueryContractV2::from_resolved(document.graph())
+            .unwrap_or_else(|error| panic!("{kind:?} must admit: {error:?}"));
+        assert_eq!(contract.max_witnesses(), sealed_cap, "{kind:?} cap");
+        assert!(contract.max_witnesses() > 0, "{kind:?} cap is non-zero");
+        assert_eq!(
+            contract.witness().max_path_length(),
+            Some(4),
+            "{kind:?} depth"
+        );
+    }
+}
+
+// The reject is anchored at the offending FIND item's OWN checked location, not
+// at a synthetic or neighbouring span.
+#[test]
+fn rejection_is_anchored_at_the_find_item() {
+    let request = unbounded_query(
+        GraphQueryKindV1::PointsTo,
+        vec![
+            reference(GraphReferenceRoleV2::Reference, "p", 20, 21),
+            reference(GraphReferenceRoleV2::Pointee, "q", 25, 26),
+        ],
+        12,
+        40,
     );
+    let document = graph_document(request).expect("points_to fixture resolves");
+    let item_location = document.graph().location().clone();
+
+    let err = GraphQueryContractV2::from_resolved(document.graph()).expect_err("missing depth");
+    assert_eq!(err.span(), &item_location);
+    assert_eq!(span_of(err.span()), (12, 40));
 }

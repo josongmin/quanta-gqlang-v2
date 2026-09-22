@@ -1,36 +1,44 @@
-//! FIND graph-query SOURCE semantics (ticket 05).
+//! FIND graph-query contract over the sealed resolved FIND input (ticket 06,
+//! lane W3-B).
 //!
 //! This module owns the SOURCE-LEVEL MEANING of the FIND family carried by
-//! [`quanta_gqlang_v2_hir::GraphQueryHirV1`]: each subkind
-//! (reachability / flow / slice / taint / path / points_to / summary) is a logic
-//! graph query whose FRONTEND CONTRACT this layer classifies. We do NOT execute
-//! traversal here — the FIND family's runtime (real taint propagation, concrete
-//! path enumeration) is downstream (semantica / D7 / D14). What this layer owns
-//! and proves, fail-closed:
+//! [`quanta_gqlang_v2_sema::ResolvedGraphQueryV2`]: each subkind (reachability /
+//! flow / slice / taint / path / points_to / summary) is a graph query whose
+//! FRONTEND CONTRACT this layer seals. Traversal is NOT executed here — the FIND
+//! family's runtime (concrete taint propagation, path enumeration) is
+//! downstream. What this layer owns and proves, fail-closed:
 //!
-//! 1. ENDPOINT-PRESENCE LEGALITY — each subkind REQUIRES a specific set of
-//!    endpoints (e.g. `taint` needs a `source` and a `sink`; `points_to` needs a
-//!    `reference` and a `pointee`). A missing required endpoint rejects with
-//!    [`LogicDiagnosticV1::GraphEndpointMissing`] (`D10`: no silent downgrade).
-//! 2. BOUNDED-WITNESS LEGALITY — a FIND materializes path witnesses
-//!    (`result_kind = path_witness`), so the bounded-witness contract this crate
-//!    already owns ([`crate::WitnessContractV1`]) applies. Subkinds whose
-//!    underlying relation can CYCLE (call/flow graphs) require a path-length
-//!    bound; without an explicit `depth` and without bounding waypoints
-//!    (`via` / `through`) the shape is UNBOUNDED and rejects with
-//!    [`LogicDiagnosticV1::UnboundedWitness`] (`D31`). A `points_to` query
-//!    resolves aliases over an acyclic treatment and needs no path bound.
+//! 1. ENDPOINT-ROLE LEGALITY — each subkind REQUIRES a specific set of resolved
+//!    endpoint roles (e.g. `taint` needs a `source` and a `sink`; `points_to`
+//!    needs a `reference` and a `pointee`). A missing required endpoint rejects
+//!    with [`LogicDiagnosticV1::GraphEndpointMissing`], and an endpoint the
+//!    subkind does not accept (e.g. a `slice` carrying a `source`/`sink`)
+//!    rejects with [`LogicDiagnosticV1::GraphEndpointUnexpected`], so one seed
+//!    cannot mean two traversals at once (`D10`: no silent downgrade).
+//! 2. EXPLICIT BOUNDED DEPTH — every FIND family traverses a relation that can
+//!    revisit nodes, so an explicit positive `depth` is mandatory. The retired
+//!    `points_to` acyclic exemption is gone and no other subkind inherits it:
+//!    this packet admits no unowned acyclic-proof shortcut. `via`/`through`
+//!    waypoints are ordered PATH PREDICATES; they are retained, `depth` plus
+//!    waypoints is VALID, and waypoints never substitute for `depth`.
+//! 3. SEALED WITNESS BOUNDS — the effective witness cap and depth come from the
+//!    document's immutable [`quanta_gqlang_v2_sema::GraphWitnessBoundsV2`]; this
+//!    layer has no independent default cap and validates the resolved bounds
+//!    against the sealed budget.
 //!
-//! The result is a [`GraphQueryContractV1`]: the validated, bounded contract
-//! whose mere existence proves the FIND shape is admissible at the frontend.
+//! The result is a [`GraphQueryContractV2`]: the validated, bounded contract
+//! whose mere existence proves the FIND shape is admissible at the frontend. It
+//! is produced ONLY from the exact resolved query; there is no raw-HIR or
+//! caller-built ingress.
 
-use quanta_gqlang_v2_hir::{
-    GraphConstraintsV1, GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, SpanV1,
+use quanta_gqlang_v2_sema::{
+    CheckedLocatedSpanV2, GraphDirectionV2, GraphQueryKindV1, GraphReferenceRoleV2,
+    ResolvedGraphQueryV2, ResolvedGraphReferenceV2, SemanticItemIdV2,
 };
 
-use crate::diagnostic::LogicDiagnosticV1;
+use crate::diagnostic::{LogicDiagnosticV1, UnboundedWitnessReasonV1};
 use crate::witness::{
-    DedupIdentityV1, RelationShapeV1, WitnessContractV1, WitnessRequestV1, WitnessTieBreakV1,
+    DedupIdentityV1, RelationShapeV1, WitnessBindingV2, WitnessContractV2, WitnessTieBreakV1,
 };
 
 /// Stable keyword for a FIND subkind, used in diagnostics and explain output.
@@ -51,8 +59,9 @@ pub(crate) const fn graph_query_keyword(kind: GraphQueryKindV1) -> &'static str 
     }
 }
 
-/// The endpoint roles a FIND subkind can require. Mirrors the open endpoint
-/// slots on [`GraphEndpointsV1`].
+/// The endpoint roles a FIND subkind can require. Mirrors the singular resolved
+/// FIND reference roles; `via`/`through`/`sanitizer`/`scope`/`window`/`frontier`
+/// are path predicates or metadata, never endpoints.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GraphEndpointRoleV1 {
     /// The flow / reachability source.
@@ -94,201 +103,558 @@ impl GraphEndpointRoleV1 {
         }
     }
 
-    /// Whether the endpoint of this role is present in `endpoints`.
-    #[must_use]
-    fn is_present(self, endpoints: &GraphEndpointsV1) -> bool {
+    /// The endpoint role a resolved FIND reference fills, if it is an endpoint
+    /// role at all.
+    const fn from_role(role: GraphReferenceRoleV2) -> Option<Self> {
+        match role {
+            GraphReferenceRoleV2::Source => Some(Self::Source),
+            GraphReferenceRoleV2::Sink => Some(Self::Sink),
+            GraphReferenceRoleV2::Anchor => Some(Self::Anchor),
+            GraphReferenceRoleV2::Reference => Some(Self::Reference),
+            GraphReferenceRoleV2::Pointee => Some(Self::Pointee),
+            GraphReferenceRoleV2::Callable => Some(Self::Callable),
+            GraphReferenceRoleV2::Via
+            | GraphReferenceRoleV2::Through
+            | GraphReferenceRoleV2::Sanitizer
+            | GraphReferenceRoleV2::Scope
+            | GraphReferenceRoleV2::Window
+            | GraphReferenceRoleV2::Frontier => None,
+        }
+    }
+}
+
+/// A role-legality violation before it is anchored at a checked location.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum EndpointViolationV2 {
+    /// A required endpoint role was absent.
+    Missing(GraphEndpointRoleV1),
+    /// An endpoint role the subkind does not accept was present.
+    Unexpected(GraphEndpointRoleV1),
+}
+
+impl EndpointViolationV2 {
+    /// Anchor the violation at the offending FIND item's checked location.
+    fn into_diagnostic(
+        self,
+        kind: GraphQueryKindV1,
+        span: CheckedLocatedSpanV2,
+    ) -> LogicDiagnosticV1 {
         match self {
-            Self::Source => endpoints.source.is_some(),
-            Self::Sink => endpoints.sink.is_some(),
-            Self::Anchor => endpoints.anchor.is_some(),
-            Self::Reference => endpoints.reference.is_some(),
-            Self::Pointee => endpoints.pointee.is_some(),
-            Self::Callable => endpoints.callable.is_some(),
+            Self::Missing(role) => LogicDiagnosticV1::GraphEndpointMissing { kind, role, span },
+            Self::Unexpected(role) => {
+                LogicDiagnosticV1::GraphEndpointUnexpected { kind, role, span }
+            }
         }
     }
 }
 
-/// The validated, BOUNDED contract for a classified FIND graph query.
+/// The endpoints a subkind REQUIRES, in deterministic check order. The first
+/// missing one rejects, so this order is part of the diagnostic contract.
+fn required_endpoints(kind: GraphQueryKindV1) -> &'static [GraphEndpointRoleV1] {
+    use GraphEndpointRoleV1::{Anchor, Callable, Pointee, Reference, Sink, Source};
+    match kind {
+        // Reachability / flow / taint / path are source -> sink traversals.
+        GraphQueryKindV1::Reachability
+        | GraphQueryKindV1::Flow
+        | GraphQueryKindV1::Taint
+        | GraphQueryKindV1::Path => &[Source, Sink],
+        // A slice is anchored at a program point.
+        GraphQueryKindV1::Slice => &[Anchor],
+        // Points-to relates a reference to its pointee.
+        GraphQueryKindV1::PointsTo => &[Reference, Pointee],
+        // A summary is over a callable.
+        GraphQueryKindV1::Summary => &[Callable],
+    }
+}
+
+/// Endpoint-presence and endpoint-conflict legality over the resolved singular
+/// endpoint roles, in authored order.
 ///
-/// Constructable only through [`GraphQuerySemanticsV1::classify`], which enforces
-/// endpoint-presence legality and binds the bounded-witness contract; its
-/// presence is the proof that the FIND shape is admissible at the frontend.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct GraphQueryContractV1 {
-    /// The FIND subkind this contract classifies.
-    pub kind: GraphQueryKindV1,
-    /// The bounded witness/path materialization contract.
-    pub witness: WitnessContractV1,
-    /// Span of the originating graph query.
-    pub span: SpanV1,
+/// Missing roles are checked first (in [`required_endpoints`] order), then
+/// unaccepted roles in [`GraphEndpointRoleV1::ALL`] order, so the reported role
+/// is deterministic when several endpoints are wrong at once.
+pub(crate) fn endpoint_legality(
+    kind: GraphQueryKindV1,
+    present: &[GraphEndpointRoleV1],
+) -> Result<(), EndpointViolationV2> {
+    let required = required_endpoints(kind);
+    for &role in required {
+        if !present.contains(&role) {
+            return Err(EndpointViolationV2::Missing(role));
+        }
+    }
+    for &role in &GraphEndpointRoleV1::ALL {
+        if present.contains(&role) && !required.contains(&role) {
+            return Err(EndpointViolationV2::Unexpected(role));
+        }
+    }
+    Ok(())
 }
 
-/// FIND graph-query source semantics: per-subkind endpoint legality + bounded
-/// witness classification.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct GraphQuerySemanticsV1;
-
-impl GraphQuerySemanticsV1 {
-    /// The endpoints a subkind REQUIRES, in deterministic check order. The first
-    /// missing one rejects, so the order is part of the diagnostic contract.
-    #[must_use]
-    fn required_endpoints(kind: GraphQueryKindV1) -> &'static [GraphEndpointRoleV1] {
-        use GraphEndpointRoleV1::{Anchor, Callable, Pointee, Reference, Sink, Source};
-        match kind {
-            // Reachability / flow / taint / path are source -> sink traversals.
-            GraphQueryKindV1::Reachability
-            | GraphQueryKindV1::Flow
-            | GraphQueryKindV1::Taint
-            | GraphQueryKindV1::Path => &[Source, Sink],
-            // A slice is anchored at a program point.
-            GraphQueryKindV1::Slice => &[Anchor],
-            // Points-to relates a reference to its pointee.
-            GraphQueryKindV1::PointsTo => &[Reference, Pointee],
-            // A summary is over a callable.
-            GraphQueryKindV1::Summary => &[Callable],
+/// The dedup identity for a subkind's witnesses.
+///
+/// `path` / `flow` / `taint` distinguish distinct ROUTES between the same
+/// endpoints (each concrete path is its own evidence), so they dedup by the
+/// full node sequence. Reachability collapses to its endpoint pair (the truth is
+/// "is there a path", one witness per pair). Slice / summary / points_to dedup by
+/// the node SET they touch.
+const fn dedup_identity(kind: GraphQueryKindV1) -> DedupIdentityV1 {
+    match kind {
+        GraphQueryKindV1::Path | GraphQueryKindV1::Flow | GraphQueryKindV1::Taint => {
+            DedupIdentityV1::NodeSequence
+        }
+        GraphQueryKindV1::Reachability => DedupIdentityV1::Endpoints,
+        GraphQueryKindV1::Slice | GraphQueryKindV1::Summary | GraphQueryKindV1::PointsTo => {
+            DedupIdentityV1::NodeSet
         }
     }
+}
 
-    /// Whether a subkind traverses a relation that can CYCLE (so witness
-    /// enumeration needs a path-length bound) or an acyclic treatment.
-    ///
-    /// Reachability / flow / slice / taint / path / summary all traverse the
-    /// program's call/flow graph, which can cycle (recursion, loops). Points-to
-    /// is alias resolution over an acyclic-by-treatment relation, so it needs no
-    /// path bound.
-    #[must_use]
-    const fn relation_shape(kind: GraphQueryKindV1) -> RelationShapeV1 {
-        match kind {
-            GraphQueryKindV1::PointsTo => RelationShapeV1::Acyclic,
-            GraphQueryKindV1::Reachability
-            | GraphQueryKindV1::Flow
-            | GraphQueryKindV1::Slice
-            | GraphQueryKindV1::Taint
-            | GraphQueryKindV1::Path
-            | GraphQueryKindV1::Summary => RelationShapeV1::Cyclic,
-        }
+/// Build the boundedness binding for a resolved FIND family.
+///
+/// Every family binds as [`RelationShapeV1::Cyclic`]: a FIND enumerates paths
+/// over a call/flow/alias relation that can revisit nodes, waypoints are path
+/// predicates rather than termination bounds, and this packet admits no
+/// acyclic-proof shortcut (the retired `points_to` exemption is not inherited by
+/// any subkind).
+pub(crate) fn witness_binding(
+    kind: GraphQueryKindV1,
+    depth: u32,
+    sealed_max_depth: u32,
+    sealed_max_witnesses: u32,
+) -> WitnessBindingV2 {
+    WitnessBindingV2 {
+        shape: RelationShapeV1::Cyclic,
+        dedup: dedup_identity(kind),
+        max_witnesses: Some(sealed_max_witnesses),
+        max_path_length: Some(depth),
+        tie_break: WitnessTieBreakV1::ShortestThenLexical,
+        sealed_max_witnesses,
+        sealed_max_depth,
     }
+}
 
-    /// The dedup identity for a subkind's witnesses.
+/// The validated, BOUNDED contract for one resolved FIND graph query.
+///
+/// Constructable only through [`GraphQueryContractV2::from_resolved`], which
+/// enforces endpoint-role legality, the explicit positive depth, and the sealed
+/// witness bounds; its presence is the proof that the FIND shape is admissible
+/// at the frontend.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GraphQueryContractV2 {
+    item_id: SemanticItemIdV2,
+    kind: GraphQueryKindV1,
+    location: CheckedLocatedSpanV2,
+    depth: u32,
+    direction: Option<GraphDirectionV2>,
+    summary_facets: Vec<String>,
+    references: Vec<ResolvedGraphReferenceV2>,
+    witness: WitnessContractV2,
+}
+
+impl GraphQueryContractV2 {
+    /// Seal the exact resolved FIND query into a bounded contract, rejecting
+    /// illegal endpoint roles, a missing depth, and any bound that is degenerate
+    /// or exceeds the document's sealed witness budget with a typed
+    /// [`LogicDiagnosticV1`].
     ///
-    /// `path` / `flow` / `taint` distinguish distinct ROUTES between the same
-    /// endpoints (each concrete path is its own evidence), so they dedup by the
-    /// full node sequence. Reachability collapses to its endpoint pair (the
-    /// truth is "is there a path", one witness per pair). Slice / summary /
-    /// points_to dedup by the node SET they touch.
-    #[must_use]
-    const fn dedup_identity(kind: GraphQueryKindV1) -> DedupIdentityV1 {
-        match kind {
-            GraphQueryKindV1::Path | GraphQueryKindV1::Flow | GraphQueryKindV1::Taint => {
-                DedupIdentityV1::NodeSequence
-            }
-            GraphQueryKindV1::Reachability => DedupIdentityV1::Endpoints,
-            GraphQueryKindV1::Slice | GraphQueryKindV1::Summary | GraphQueryKindV1::PointsTo => {
-                DedupIdentityV1::NodeSet
-            }
-        }
-    }
+    /// This is a FRONTEND contract: it proves legality + boundedness and does
+    /// NOT execute traversal.
+    pub fn from_resolved(query: &ResolvedGraphQueryV2) -> Result<Self, LogicDiagnosticV1> {
+        let location = query.location().clone();
 
-    /// Default max-witness cap when the query supplies no explicit one. A finite,
-    /// non-zero default keeps the frontend contract bounded; downstream may
-    /// tighten it.
-    const DEFAULT_MAX_WITNESSES: u64 = 64;
-
-    /// Classify a FIND graph query into a bounded [`GraphQueryContractV1`],
-    /// rejecting illegal endpoint shapes and unbounded witness families with a
-    /// typed [`LogicDiagnosticV1`].
-    ///
-    /// This is a FRONTEND classification: it proves legality + boundedness and
-    /// does NOT execute traversal.
-    pub fn classify(query: &GraphQueryHirV1) -> Result<GraphQueryContractV1, LogicDiagnosticV1> {
-        // 1. Endpoint-presence legality (deterministic order).
-        let allowed = Self::required_endpoints(query.kind);
-        for &role in allowed {
-            if !role.is_present(&query.endpoints) {
-                return Err(LogicDiagnosticV1::GraphEndpointMissing {
-                    kind: query.kind,
-                    role,
-                    span: query.span,
-                });
-            }
+        // 1. Endpoint-role legality over the resolved selectors (deterministic
+        //    order; missing before unexpected).
+        let present = query
+            .references()
+            .iter()
+            .filter_map(|reference| GraphEndpointRoleV1::from_role(reference.role()))
+            .collect::<Vec<_>>();
+        if let Err(violation) = endpoint_legality(query.kind(), &present) {
+            return Err(violation.into_diagnostic(query.kind(), location));
         }
 
-        // 1b. Endpoint-conflict legality: an endpoint the subkind does not
-        //     accept (e.g. a `slice` carrying a `source`/`sink`) fails closed so
-        //     the seed cannot encode two traversals at once (`D10`).
-        for &role in &GraphEndpointRoleV1::ALL {
-            if role.is_present(&query.endpoints) && !allowed.contains(&role) {
-                return Err(LogicDiagnosticV1::GraphEndpointUnexpected {
-                    kind: query.kind,
-                    role,
-                    span: query.span,
-                });
-            }
-        }
-
-        // 2. Bounded-witness legality. Derive the witness request from the
-        //    subkind's relation shape and the query's structural bounds, then
-        //    delegate to the witness contract this crate already owns so the
-        //    reject codes are shared.
-        let shape = Self::relation_shape(query.kind);
-        let max_path_length =
-            Self::path_length_bound(query.kind, query.span, shape, &query.constraints)?;
-        let request = WitnessRequestV1 {
-            shape,
-            dedup: Self::dedup_identity(query.kind),
-            max_witnesses: Some(Self::DEFAULT_MAX_WITNESSES),
-            max_path_length,
-            tie_break: WitnessTieBreakV1::ShortestThenLexical,
-            span: query.span,
+        // 2. An explicit POSITIVE depth for every transitive family. Waypoints
+        //    are path predicates, so they can never stand in for this bound.
+        let Some(depth) = query.depth() else {
+            return Err(LogicDiagnosticV1::UnboundedWitness {
+                reason: UnboundedWitnessReasonV1::MissingPathLengthBound,
+                span: location,
+            });
         };
-        let witness = WitnessContractV1::bind(&request)?;
 
-        Ok(GraphQueryContractV1 {
-            kind: query.kind,
+        // 3. Exact sealed bounds from the document; no independent default.
+        let bounds = query.witness_bounds();
+        let witness = WitnessContractV2::bind(
+            &witness_binding(
+                query.kind(),
+                depth,
+                bounds.max_depth(),
+                bounds.max_witnesses(),
+            ),
+            query.location(),
+        )?;
+
+        Ok(Self {
+            item_id: query.item_id(),
+            kind: query.kind(),
+            location,
+            depth,
+            direction: query.direction(),
+            summary_facets: query.summary_facets().to_vec(),
+            references: query.references().to_vec(),
             witness,
-            span: query.span,
         })
     }
 
-    /// The path-length bound a query supplies, if any.
-    ///
-    /// An explicit `depth` is the direct bound. Failing that, bounding waypoints
-    /// (`via` / `through`) constrain enumeration to pass through fixed points, so
-    /// the count of waypoint hops serves as a structural bound. An acyclic
-    /// relation needs no bound regardless. The returned `None` over a cyclic
-    /// relation is exactly what [`WitnessContractV1::bind`] rejects.
-    ///
-    /// `depth` and waypoints are TWO COMPETING binding strategies. Supplying both
-    /// over a cyclic relation is rejected with
-    /// [`LogicDiagnosticV1::GraphConflictingPathBound`] rather than silently
-    /// letting `depth` win and dropping the waypoint constraint: a silent
-    /// downgrade would violate `D10`, and accepting a seed that means two
-    /// different things at once would violate `D26`. (An ACYCLIC relation derives
-    /// no bound from waypoints, so there is no competing strategy to conflict
-    /// with and `depth` simply applies.)
-    fn path_length_bound(
-        kind: GraphQueryKindV1,
-        span: SpanV1,
-        shape: RelationShapeV1,
-        constraints: &GraphConstraintsV1,
-    ) -> Result<Option<u64>, LogicDiagnosticV1> {
-        let waypoints = constraints.via.len() + constraints.through.len();
-        if let Some(depth) = constraints.depth {
-            if shape == RelationShapeV1::Cyclic && waypoints > 0 {
-                return Err(LogicDiagnosticV1::GraphConflictingPathBound { kind, span });
+    /// Semantic item identity of the FIND item this contract seals.
+    #[must_use]
+    pub const fn item_id(&self) -> SemanticItemIdV2 {
+        self.item_id
+    }
+
+    /// The FIND subkind this contract classifies.
+    #[must_use]
+    pub const fn kind(&self) -> GraphQueryKindV1 {
+        self.kind
+    }
+
+    /// Checked location of the originating FIND item.
+    #[must_use]
+    pub const fn location(&self) -> &CheckedLocatedSpanV2 {
+        &self.location
+    }
+
+    /// The explicit positive traversal depth, exactly as resolved.
+    #[must_use]
+    pub const fn depth(&self) -> u32 {
+        self.depth
+    }
+
+    /// The authored traversal direction, when the source supplied one.
+    #[must_use]
+    pub const fn direction(&self) -> Option<GraphDirectionV2> {
+        self.direction
+    }
+
+    /// Summary facets retained from the resolved query.
+    #[must_use]
+    pub fn summary_facets(&self) -> &[String] {
+        &self.summary_facets
+    }
+
+    /// Every resolved reference in its authored, deterministic order, including
+    /// sanitizer/scope/window/frontier facts that are not endpoints.
+    #[must_use]
+    pub fn references(&self) -> &[ResolvedGraphReferenceV2] {
+        &self.references
+    }
+
+    /// The ordered singular endpoint references
+    /// (source/sink/anchor/reference/pointee/callable) the resolved query
+    /// supplied.
+    pub fn endpoints(&self) -> impl Iterator<Item = &ResolvedGraphReferenceV2> + '_ {
+        self.references
+            .iter()
+            .filter(|reference| GraphEndpointRoleV1::from_role(reference.role()).is_some())
+    }
+
+    /// The ordered `via`/`through` path constraints. They restrict WHICH paths
+    /// are witnesses; they never bound path length.
+    pub fn waypoints(&self) -> impl Iterator<Item = &ResolvedGraphReferenceV2> + '_ {
+        self.references.iter().filter(|reference| {
+            matches!(
+                reference.role(),
+                GraphReferenceRoleV2::Via | GraphReferenceRoleV2::Through
+            )
+        })
+    }
+
+    /// The bounded witness contract this FIND was sealed with.
+    #[must_use]
+    pub const fn witness(&self) -> &WitnessContractV2 {
+        &self.witness
+    }
+
+    /// The relation shape the witness contract was bound against. Every FIND
+    /// family in this packet binds as [`RelationShapeV1::Cyclic`].
+    #[must_use]
+    pub const fn shape(&self) -> RelationShapeV1 {
+        self.witness.shape()
+    }
+
+    /// The dedup identity for this subkind's witnesses.
+    #[must_use]
+    pub const fn dedup(&self) -> DedupIdentityV1 {
+        self.witness.dedup()
+    }
+
+    /// The canonical witness tie-break.
+    #[must_use]
+    pub const fn tie_break(&self) -> WitnessTieBreakV1 {
+        self.witness.tie_break()
+    }
+
+    /// The effective max-witness cap: the document's sealed `max_witnesses`.
+    #[must_use]
+    pub const fn max_witnesses(&self) -> u32 {
+        self.witness.max_witnesses()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "owner contract rails assert exact endpoint/witness rejects on fixed inputs"
+    )]
+
+    use super::*;
+    use crate::diagnostic::UnboundedWitnessReasonV1;
+
+    const SEALED_MAX_WITNESSES: u32 = 32;
+    const SEALED_MAX_DEPTH: u32 = 16;
+
+    const ALL_KINDS: [GraphQueryKindV1; 7] = [
+        GraphQueryKindV1::Reachability,
+        GraphQueryKindV1::Flow,
+        GraphQueryKindV1::Slice,
+        GraphQueryKindV1::Taint,
+        GraphQueryKindV1::Path,
+        GraphQueryKindV1::PointsTo,
+        GraphQueryKindV1::Summary,
+    ];
+
+    fn required(kind: GraphQueryKindV1) -> Vec<GraphEndpointRoleV1> {
+        required_endpoints(kind).to_vec()
+    }
+
+    // Every subkind admits exactly its required endpoint roles.
+    #[test]
+    fn every_subkind_admits_its_required_endpoints() {
+        for kind in ALL_KINDS {
+            let present = required(kind);
+            assert_eq!(
+                endpoint_legality(kind, &present),
+                Ok(()),
+                "{kind:?} must admit {present:?}"
+            );
+        }
+    }
+
+    // Every required role is genuinely required: dropping it reports exactly
+    // that role as missing.
+    #[test]
+    fn every_required_endpoint_is_enforced_by_exact_role() {
+        for kind in ALL_KINDS {
+            for (index, role) in required(kind).into_iter().enumerate() {
+                let mut present = required(kind);
+                present.remove(index);
+                assert_eq!(
+                    endpoint_legality(kind, &present),
+                    Err(EndpointViolationV2::Missing(role)),
+                    "{kind:?} must require {role:?}"
+                );
             }
-            return Ok(Some(u64::from(depth)));
         }
-        if shape == RelationShapeV1::Acyclic {
-            // No structural bound needed; acyclic enumeration is finite.
-            return Ok(None);
+    }
+
+    // The points_to acyclic exemption is dead policy: points_to without a path
+    // bound now rejects, and an endpoint its subkind does not accept rejects.
+    #[test]
+    fn points_to_rejects_a_callable_endpoint() {
+        assert_eq!(
+            endpoint_legality(
+                GraphQueryKindV1::PointsTo,
+                &[
+                    GraphEndpointRoleV1::Reference,
+                    GraphEndpointRoleV1::Pointee,
+                    GraphEndpointRoleV1::Callable,
+                ],
+            ),
+            Err(EndpointViolationV2::Unexpected(
+                GraphEndpointRoleV1::Callable
+            ))
+        );
+    }
+
+    // A slice anchors only; a source/sink is an unexpected endpoint. The scan
+    // order reports `source` before `sink`.
+    #[test]
+    fn slice_rejects_extraneous_endpoints_in_deterministic_order() {
+        assert_eq!(
+            endpoint_legality(
+                GraphQueryKindV1::Slice,
+                &[
+                    GraphEndpointRoleV1::Anchor,
+                    GraphEndpointRoleV1::Source,
+                    GraphEndpointRoleV1::Sink,
+                ],
+            ),
+            Err(EndpointViolationV2::Unexpected(GraphEndpointRoleV1::Source))
+        );
+    }
+
+    // A missing required role wins over an extraneous one, so the first defect
+    // in (missing, unexpected) order is stable.
+    #[test]
+    fn missing_required_endpoint_wins_over_extraneous_endpoint() {
+        assert_eq!(
+            endpoint_legality(GraphQueryKindV1::Slice, &[GraphEndpointRoleV1::Source],),
+            Err(EndpointViolationV2::Missing(GraphEndpointRoleV1::Anchor))
+        );
+    }
+
+    // Taint without a sink reports the exact missing role.
+    #[test]
+    fn taint_requires_a_sink() {
+        assert_eq!(
+            endpoint_legality(GraphQueryKindV1::Taint, &[GraphEndpointRoleV1::Source]),
+            Err(EndpointViolationV2::Missing(GraphEndpointRoleV1::Sink))
+        );
+    }
+
+    // Dedup identity is fixed per subkind.
+    #[test]
+    fn dedup_identity_is_fixed_per_subkind() {
+        assert_eq!(
+            dedup_identity(GraphQueryKindV1::Path),
+            DedupIdentityV1::NodeSequence
+        );
+        assert_eq!(
+            dedup_identity(GraphQueryKindV1::Flow),
+            DedupIdentityV1::NodeSequence
+        );
+        assert_eq!(
+            dedup_identity(GraphQueryKindV1::Taint),
+            DedupIdentityV1::NodeSequence
+        );
+        assert_eq!(
+            dedup_identity(GraphQueryKindV1::Reachability),
+            DedupIdentityV1::Endpoints
+        );
+        assert_eq!(
+            dedup_identity(GraphQueryKindV1::Slice),
+            DedupIdentityV1::NodeSet
+        );
+        assert_eq!(
+            dedup_identity(GraphQueryKindV1::Summary),
+            DedupIdentityV1::NodeSet
+        );
+        assert_eq!(
+            dedup_identity(GraphQueryKindV1::PointsTo),
+            DedupIdentityV1::NodeSet
+        );
+    }
+
+    // No subkind keeps an acyclic bypass: every family binds as Cyclic with the
+    // sealed cap and the exact resolved depth.
+    #[test]
+    fn every_subkind_binds_cyclic_with_sealed_cap_and_exact_depth() {
+        for kind in ALL_KINDS {
+            let binding = witness_binding(kind, 5, SEALED_MAX_DEPTH, SEALED_MAX_WITNESSES);
+            assert_eq!(binding.shape, RelationShapeV1::Cyclic, "{kind:?}");
+            assert_eq!(
+                binding.max_witnesses,
+                Some(SEALED_MAX_WITNESSES),
+                "{kind:?}"
+            );
+            assert_eq!(binding.max_path_length, Some(5), "{kind:?}");
+            assert_eq!(binding.tie_break, WitnessTieBreakV1::ShortestThenLexical);
+            let contract = WitnessContractV2::validate(&binding).expect("sealed binding admits");
+            assert_eq!(contract.max_witnesses(), SEALED_MAX_WITNESSES);
+            assert_eq!(contract.max_path_length(), Some(5));
         }
-        if waypoints > 0 {
-            // Each waypoint is a mandatory hop; the witness must pass through all
-            // of them, so the waypoint count bounds enumeration length. (Saturate
-            // the rare overflow into the cap rather than wrapping.)
-            return Ok(Some(u64::try_from(waypoints).unwrap_or(u64::MAX)));
+    }
+
+    // The binding carries the sealed budget through, so the binder can reject a
+    // bound that exceeds the document receipt (exact limit succeeds, +1 fails).
+    #[test]
+    fn binding_enforces_the_sealed_budget_at_exact_limit_and_one_over() {
+        let exact = witness_binding(
+            GraphQueryKindV1::Reachability,
+            SEALED_MAX_DEPTH,
+            SEALED_MAX_DEPTH,
+            SEALED_MAX_WITNESSES,
+        );
+        assert!(WitnessContractV2::validate(&exact).is_ok());
+
+        let mut over_depth = witness_binding(
+            GraphQueryKindV1::Reachability,
+            1,
+            SEALED_MAX_DEPTH,
+            SEALED_MAX_WITNESSES,
+        );
+        over_depth.max_path_length = Some(SEALED_MAX_DEPTH + 1);
+        assert_eq!(
+            WitnessContractV2::validate(&over_depth).expect_err("depth +1 rejects"),
+            UnboundedWitnessReasonV1::PathLengthBoundOverBudget
+        );
+
+        let mut over_cap = witness_binding(
+            GraphQueryKindV1::Reachability,
+            1,
+            SEALED_MAX_DEPTH,
+            SEALED_MAX_WITNESSES,
+        );
+        over_cap.max_witnesses = Some(SEALED_MAX_WITNESSES + 1);
+        assert_eq!(
+            WitnessContractV2::validate(&over_cap).expect_err("cap +1 rejects"),
+            UnboundedWitnessReasonV1::MaxWitnessesOverBudget
+        );
+    }
+
+    // A zero depth is a degenerate bound, and a missing depth over a transitive
+    // family is unbounded; both reject through the witness owner.
+    #[test]
+    fn zero_and_missing_depth_reject() {
+        let zero = witness_binding(
+            GraphQueryKindV1::Reachability,
+            0,
+            SEALED_MAX_DEPTH,
+            SEALED_MAX_WITNESSES,
+        );
+        assert_eq!(
+            WitnessContractV2::validate(&zero).expect_err("zero depth rejects"),
+            UnboundedWitnessReasonV1::ZeroPathLengthBound
+        );
+
+        let mut missing = witness_binding(
+            GraphQueryKindV1::Reachability,
+            1,
+            SEALED_MAX_DEPTH,
+            SEALED_MAX_WITNESSES,
+        );
+        missing.max_path_length = None;
+        assert_eq!(
+            WitnessContractV2::validate(&missing).expect_err("missing depth rejects"),
+            UnboundedWitnessReasonV1::MissingPathLengthBound
+        );
+    }
+
+    // Subkind keywords are stable (they render into diagnostics).
+    #[test]
+    fn subkind_keywords_are_stable() {
+        assert_eq!(graph_query_keyword(GraphQueryKindV1::PointsTo), "points_to");
+        assert_eq!(graph_query_keyword(GraphQueryKindV1::Taint), "taint");
+        assert_eq!(
+            graph_query_keyword(GraphQueryKindV1::Reachability),
+            "reachability"
+        );
+    }
+
+    // Endpoint-role keywords are stable (they render into diagnostics).
+    #[test]
+    fn endpoint_role_keywords_are_stable() {
+        for (role, keyword) in [
+            (GraphEndpointRoleV1::Source, "source"),
+            (GraphEndpointRoleV1::Sink, "sink"),
+            (GraphEndpointRoleV1::Anchor, "anchor"),
+            (GraphEndpointRoleV1::Reference, "reference"),
+            (GraphEndpointRoleV1::Pointee, "pointee"),
+            (GraphEndpointRoleV1::Callable, "callable"),
+        ] {
+            assert_eq!(role.keyword(), keyword);
         }
-        Ok(None)
     }
 }
