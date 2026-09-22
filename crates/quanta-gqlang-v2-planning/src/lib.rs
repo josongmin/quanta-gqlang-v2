@@ -45,7 +45,6 @@ mod plan;
 mod policy;
 mod presentation;
 mod result_kind;
-mod traversal;
 
 pub use check::{CheckContractV2, CheckPolicyV2};
 pub use composition::{
