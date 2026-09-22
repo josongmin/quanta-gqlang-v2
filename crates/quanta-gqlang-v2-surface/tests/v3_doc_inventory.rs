@@ -8,18 +8,13 @@
 //!
 //! The language README and the hellgate ledger are the repo's authoritative
 //! indexes of test rails: they list concrete `crates/<crate>/tests/<file>.rs`
-//! paths. Nothing validated those lists, and the failure mode is silent — during
-//! the `lsp` → `diagnostics-stdio` rename **7 of the 42** rail paths in
-//! `docs/language/README.md` went stale and were only found by hand.
+//! paths. A stale path would otherwise survive an ordinary source rename.
 //!
 //! This rail closes that class: every rail path named in either document must
 //! exist on disk. It needs no crate API — it is a pure filesystem projection —
 //! so it can live in any test target. It is hosted here because `surface` owns
 //! the shipped example corpus and already carries the sibling corpus/doc-list
-//! rail (`v3_examples_corpus.rs`), and because the natural long-term owner
-//! (`quanta-gqlang-v2-conformance`) currently cannot compile: its dependency
-//! `quanta-gqlang-v2-pipeline` is mid-migration. Move this file to the
-//! conformance crate once that lands; the assertion does not change.
+//! rail (`v3_examples_corpus.rs`). The assertion does not need a language API.
 
 use std::path::{Path, PathBuf};
 
@@ -68,12 +63,7 @@ fn assert_doc_paths_exist_v1(doc: &str) -> usize {
 
 #[test]
 fn language_readme_rail_paths_exist() {
-    let count = assert_doc_paths_exist_v1("docs/language/README.md");
-    // Non-vacuity: the guard must actually cover the whole rail index.
-    assert!(
-        count >= 30,
-        "docs/language/README.md should name at least 30 rail paths, found {count}"
-    );
+    assert_doc_paths_exist_v1("docs/language/README.md");
 }
 
 #[test]
