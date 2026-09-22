@@ -1996,3 +1996,24 @@ largest remaining artifact of wave W4. Lane W4-A2 (c2dc46fc) holds that lease
 and is working through the twelve landed modules before writing it; it is the
 wave's critical path. Anyone resuming: do not interrupt W4-A2 without first
 checking `planning/src/plan.rs`'s hash (V1 hash is `6909d6d40f3a33fd`).
+
+### W4 consolidation checkpoint — 2026-09-22
+
+Integrator commits this wave (main): `0738469` (algebra nested entry),
+`50d1c14` (W4-C design + six decisions + producer freeze supplement),
+`196fb45` (manifests/re-exports/J1/location retention), `51303db`
+(lower_nested_relation_item_v2 + guard removal), `3c8b25e` (algebra fixes +
+lane motion + W4-C deltas), `a905bdd`/`91f7ffa`/`f697c59` (W4-A interruption,
+W4-A2 dispatch, classifier note). Wave checkpoints so far: W0 `e9dd3e4`,
+W1 `1a9ccad`, W2 `4073b64`, W3 `95b655f`.
+
+Outstanding (not committed, pre-existing overlay, owned by the packet's paper
+trail and the W7 candidate prep): `docs/plans/.../{README,FINAL_AUDIT,
+IMPLEMENTATION_REUSE_AUDIT}.md`, `receipts/01.md`, `tickets/00..02*.md` and
+the remaining ticket-visible doc edits. They belong to the candidate-prep
+commit sweep (W6/W7), not to any wave receipt.
+
+In flight and blocking W4's barrier: lane W4-A2 (`planning/src/plan.rs`, the
+per-arm classifier — V1 hash `6909d6d40f3a33fd`) and lane W4-B
+(`pipeline/src/compile.rs`, iterating: `979d930664087f4e`). Everything else
+W4 needs from the integrator has landed and is committed.
