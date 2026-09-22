@@ -54,8 +54,9 @@ use quanta_gqlang_v2_sema::{
     DeclaredDocumentV2, FrontendBudgetV2, FrontendDiagnosticV2, FrontendFailureV2,
     FrontendSeverityV2, FrontendStageV2, FrontendTransactionErrorV2, LocatedSpanV2,
     OpenAnalysisAuthorityV2, ResolvedCatalogItemV2, ResolvedCatalogPayloadV2, ResolvedCheckV2,
-    ResolvedCompositionBodyV2, ResolvedCompositionV2, ResolvedMetaKindV2, SemanticDocumentV2,
-    SemanticItemIdV2, SemanticItemV2, SourceIdV2, SourceRegistrationV2, SpanV1,
+    ResolvedCompositionBodyV2, ResolvedCompositionProducerV2, ResolvedCompositionV2,
+    ResolvedMetaKindV2, SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2, SourceIdV2,
+    SourceRegistrationV2, SpanV1,
 };
 use quanta_gqlang_v2_surface::{format_document, parse_source_document_v2, ParseBudgetV2};
 
@@ -549,7 +550,9 @@ pub fn compile_source_document_v2(
     let checked = CheckedSyntaxDocumentV2::try_from_hir(parsed.hir)
         .map_err(FrontendTransactionErrorV2::from)?;
     let document = resolve_checked_document_v2(checked, authority)?;
-    compile_resolved_document_v2(&document)
+    let mut compiled = compile_resolved_document_v2(&document)?;
+    compiled.execution.bind_source_bytes(source.as_bytes());
+    Ok(compiled)
 }
 
 /// Compile one already-sealed semantic document.
@@ -1176,6 +1179,20 @@ fn run_item(
             }))
         }
         SemanticItemV2::Composition(composition) => {
+            let mut producer_relations = Vec::with_capacity(composition.bindings().len());
+            for binding in composition.bindings() {
+                let relation = match binding.producer() {
+                    ResolvedCompositionProducerV2::Query(query) => {
+                        let root = algebra
+                            .lower_nested_relation(composition.item_id(), query.root())
+                            .map_err(|error| algebra_error(document, id, &error))?;
+                        Some(project_relation_root(document, query.item_id(), &root))
+                    }
+                    ResolvedCompositionProducerV2::Sample { .. }
+                    | ResolvedCompositionProducerV2::Graph { .. } => None,
+                };
+                producer_relations.push(relation);
+            }
             let (body, body_relation) = composition_body_input(document, algebra, composition)?;
             let input = CheckedCompositionPlanInputV2::new(composition, body)
                 .map_err(|error| planning_transaction_error(&error))?;
@@ -1185,7 +1202,8 @@ fn run_item(
                 id,
                 &SemanticPlanInputV2::Composition(Box::new(input)),
             )?;
-            let execution = project_composition(document, composition, body_relation);
+            let execution =
+                project_composition(document, composition, body_relation, producer_relations);
             Ok(ItemRunV2::Planned {
                 planned: Box::new(PlannedItemV2::Composition { item_id: id, plan }),
                 relation: None,

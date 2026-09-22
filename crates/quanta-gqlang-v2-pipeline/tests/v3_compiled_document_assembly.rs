@@ -31,8 +31,8 @@ use quanta_gqlang_v2_modules::{
 };
 use quanta_gqlang_v2_pipeline::{
     compile_resolved_document_v2, compile_source_document_v2, format_source_document_v2,
-    AnalysisItemV2, CompiledItemV2, DocumentAssemblyCodeV2, FrontendTransactionErrorV2,
-    PlannedItemV2,
+    AnalysisItemV2, CompiledItemV2, DocumentAssemblyCodeV2, ExecutionAuthorityV2,
+    ExecutionExpressionShapeV2, ExecutionFamilyV2, FrontendTransactionErrorV2, PlannedItemV2,
 };
 use quanta_gqlang_v2_planning::{
     AuthorityLaneV2, CapabilityV2, CardinalityClassV2, CheckedCompositionPlanInputV2,
@@ -857,6 +857,13 @@ fn composition_producer_and_with_identity_are_assembled_exactly() {
     let compiled = compile_source_document_v2(DOC_SOURCE, &composition_source(2), &authority)
         .expect("the composition compiles");
     assert_eq!(compiled.items().len(), 1);
+    let execution = compiled.execution().items()[0]
+        .composition()
+        .expect("composition carries ordered execution DTO");
+    assert_eq!(execution.bindings().len(), 1);
+    assert_eq!(execution.bindings()[0].binding().ordinal(), 0);
+    assert_eq!(execution.with_binding(), execution.bindings()[0].binding());
+    assert!(execution.body_relation().is_some());
     let CompiledItemV2::Planned(planned) = &compiled.items()[0] else {
         panic!("a composition item must compile to a planned composition item");
     };
@@ -1012,6 +1019,92 @@ fn typed_relation_source_requires_and_retains_host_authority() {
     let error = compile_source_document_v2(DOC_SOURCE, RECORD_SOURCE, &minimal_authority())
         .expect_err("an absent host relation must reject");
     assert_eq!(failure_code(&error), "sema.unresolved_reference");
+}
+
+#[test]
+fn execution_contract_is_complete_deterministic_and_mutation_sensitive() {
+    let authority = authority_with_records();
+    let compiled = compile_source_document_v2(DOC_SOURCE, RECORD_SOURCE, &authority)
+        .expect("relation execution contract compiles");
+    let repeated = compile_source_document_v2(DOC_SOURCE, RECORD_SOURCE, &authority)
+        .expect("same source compiles deterministically");
+    assert_eq!(compiled.execution(), repeated.execution());
+    assert_eq!(compiled.execution().items().len(), 1);
+    let item = &compiled.execution().items()[0];
+    assert_eq!(item.family(), ExecutionFamilyV2::Relation);
+    assert_eq!(
+        item.plan().authority(),
+        ExecutionAuthorityV2::FrontendChecked
+    );
+    let relation = item
+        .relation()
+        .expect("relation item carries operator tree");
+    assert_eq!(relation.root().family(), "project");
+    assert_eq!(relation.root().children()[0].family(), "scan");
+    assert_eq!(relation.root().schema().fields()[0].name(), "id");
+    assert!(relation.expressions().iter().any(|expression| matches!(
+        expression.shape(),
+        ExecutionExpressionShapeV2::Path { .. } | ExecutionExpressionShapeV2::Binding(_)
+    )));
+    assert_ne!(
+        compiled.execution().source_digest().to_hex(),
+        "0".repeat(64)
+    );
+
+    let mutated = compile_source_document_v2(
+        DOC_SOURCE,
+        "from records r | project r.id as renamed",
+        &authority,
+    )
+    .expect("schema mutation remains valid source");
+    assert_ne!(compiled.execution().digest(), mutated.execution().digest());
+    assert_ne!(
+        compiled.execution().source_digest(),
+        mutated.execution().source_digest()
+    );
+
+    let byte_mutated = compile_source_document_v2(
+        DOC_SOURCE,
+        "from records r  | project r.id as id",
+        &authority,
+    )
+    .expect("whitespace-only byte mutation remains valid source");
+    assert_ne!(compiled.execution().source_digest(), byte_mutated.execution().source_digest());
+    assert_ne!(compiled.execution().digest(), byte_mutated.execution().digest());
+}
+
+#[test]
+fn execution_expressions_expose_operator_and_builtin_semantics_without_registries() {
+    let source = "let plus = 1 + 2; let minus = 3 - 1; let named = length(\"x\"); \
+                  rule local_rule : x if x = 1 and x != 2; \
+                  from records r | project r.id as id";
+    let compiled = compile_source_document_v2(DOC_SOURCE, source, &authority_with_records())
+        .expect("mixed expression document compiles");
+    let expressions = compiled.execution().items().last().and_then(|item| item.relation())
+        .expect("relation carries the document expression table").expressions();
+    let mut operators = BTreeSet::new();
+    let mut calls = BTreeSet::new();
+    for expression in expressions {
+        match expression.shape() {
+            ExecutionExpressionShapeV2::Unary { operator, .. }
+            | ExecutionExpressionShapeV2::Binary { operator, .. }
+            | ExecutionExpressionShapeV2::Compare { operator, .. }
+            | ExecutionExpressionShapeV2::And { operator, .. }
+            | ExecutionExpressionShapeV2::Or { operator, .. }
+            | ExecutionExpressionShapeV2::Not { operator, .. } => {
+                operators.insert(operator.symbol().to_owned());
+            }
+            ExecutionExpressionShapeV2::Call { target, .. } => { calls.insert(target.clone()); }
+            _ => {}
+        }
+    }
+    assert!(operators.contains("+"));
+    assert!(operators.contains("-"));
+    assert!(operators.contains("="));
+    assert!(operators.contains("!="));
+    assert!(operators.contains("and"));
+    assert!(calls.contains("builtin:length"));
+    assert!(!calls.iter().any(|target| target.starts_with("builtin:") && target[8..].chars().all(|c| c.is_ascii_digit())));
 }
 
 /// A composition body whose lowered root belongs to ANOTHER relation is

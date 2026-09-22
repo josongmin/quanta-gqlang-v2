@@ -37,10 +37,12 @@ pub use diagnostic::{
     DocumentAssemblyCodeV2, PipelineStageV2,
 };
 pub use execution::{
-    ExecutionBindingV2, ExecutionCompositionBindingV2, ExecutionCompositionV2,
-    ExecutionCorrelationV2, ExecutionDigestV2, ExecutionDocumentV2, ExecutionExpressionV2,
-    ExecutionFamilyV2, ExecutionFieldV2, ExecutionItemV2, ExecutionOrderKeyV2, ExecutionRelationV2,
-    ExecutionRelationalOperatorV2, ExecutionSchemaV2, ExecutionSourceV2,
+    ExecutionAuthorityV2, ExecutionBindingV2, ExecutionCompositionBindingV2,
+    ExecutionCompositionV2, ExecutionCorrelationV2, ExecutionDeterminismV2, ExecutionDigestV2,
+    ExecutionDocumentV2, ExecutionEffectV2, ExecutionEvidenceV2, ExecutionExpressionShapeV2,
+    ExecutionExpressionV2, ExecutionFamilyV2, ExecutionFieldV2, ExecutionItemV2,
+    ExecutionOperatorV2, ExecutionOrderKeyV2, ExecutionPlanV2, ExecutionPolicyFamilyV2,
+    ExecutionRelationV2, ExecutionRelationalOperatorV2, ExecutionSchemaV2, ExecutionSourceV2,
 };
 pub use quanta_gqlang_v2_algebra::AlgebraFamilyV2;
 pub use quanta_gqlang_v2_planning::{NoPlanReasonV2, SemanticPlanV2};
@@ -53,5 +55,5 @@ pub use quanta_gqlang_v2_sema::{
     FrontendPackInputV2, FrontendRelationCardinalityV2, FrontendRelationFieldInputV2,
     FrontendRelationInputV2, FrontendScalarTypeV2, FrontendSeverityV2, FrontendStageV2,
     FrontendTransactionErrorV2, GraphReferenceKindV2, LocatedSpanV2, OpenAnalysisAuthorityV2,
-    SemanticItemIdV2, SourceIdV2, SpanV1,
+    SemanticItemIdV2, SourceIdV2, SourceQualifiedNodeIdV2, SpanV1,
 };

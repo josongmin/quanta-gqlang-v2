@@ -2,9 +2,14 @@
 
 Audit base: `b6d52b9c49208cadb177e246fc72faf79f4e20cc`.
 
-This is the only action list for this bugbash. It contains only issues reproduced against the
-current V2 frontend. Historical blockers, completed work, deleted V1 seams, point-in-time counts,
-and speculative duplicate candidates are intentionally absent.
+This is the only action list for this bugbash. It contains only issues reproduced against this
+fixed V2 frontend snapshot. Historical blockers, completed work, deleted V1 seams, point-in-time
+counts, and speculative duplicate candidates are intentionally absent. Main advanced after the
+audit; re-run the baseline after the current pipeline work stabilizes before closing any item.
+
+Implementation authority: [`tickets/README.md`](./tickets/README.md). The ticket packet maps every
+ID below exactly once, defines non-overlapping writer leases, and reserves qualification for one
+immutable integrated candidate.
 
 ## Verification baseline
 
@@ -13,7 +18,6 @@ and speculative duplicate candidates are intentionally absent.
 - `cargo nextest run --workspace --no-tests pass` — 1,052 passed, 0 skipped.
 - `cargo test --workspace --doc` — 5 passed.
 - `python3 tools/test_frontdoor_parity.py` — pass, 2 cases.
-- `tools/lint/run_semgrep.sh` — pass, 7/7 rules over 99 production targets.
 
 The retired TSV is not a baseline. It contained 979 tests while nextest now lists 1,052. Its
 scanner missed macro-generated tests, invented a truncated function name through fixed-width
@@ -39,18 +43,15 @@ lookahead, and treated heuristic body hashes as duplicate verdicts.
 | CLI-02 | `crates/quanta-gqlang-v2-cli/src/main.rs:147-149`; `crates/quanta-gqlang-v2-cli/tests/open_analysis_contract.rs:41-62` | Valid and over-budget file ingress are covered; the shared trim-empty guard is not. | Add empty inline and empty-file cases with exit 2 and the exact usage error. | `cargo test -p quanta-gqlang-v2-cli --test open_analysis_contract` |
 | STAGE-01 | `crates/quanta-gqlang-v2-surface/src/query.rs:133-151`; `crates/quanta-gqlang-v2-surface/tests/v3_surface_query.rs:156-187` | `cross` is accepted but omitted from the closed-stage diagnostic. The test checks only a substring, so the drift is invisible. | Include `cross` in the message and assert the complete expected message for retired stages. | `cargo test -p quanta-gqlang-v2-surface --test v3_surface_query relation_pipeline_stage_set_is_closed` |
 
-## P3 — measured deletion and static-policy cleanup
+## P3 — measured deletion
 
 | ID | Evidence | Actual gap | Required change | Verification |
 |---|---|---|---|---|
 | DEDUPE-01 | `crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs:426-436,455-461`; `crates/quanta-gqlang-v2-surface/tests/v3_family_edges.rs:196-222` | The weak profile/gate missing-clause tests use the same inputs as stronger exact-message rails. They add executions without an independent oracle. | Delete `profile_missing_capabilities_rejects` and `gate_missing_checks_rejects`; keep the `family_edges` rails. | Run both surface test targets. |
-| STATIC-01 | `.semgrep/qglang-frontend.yml:57-62` | The rule message claims legacy sites carry `nosemgrep`; the tree has zero such markers and the production scan is green. | Remove the stale legacy-debt sentence or establish an explicit registered-debt mechanism. Do not add markers without a live exception. | `rg -n 'nosemgrep' crates .semgrep`; `tools/lint/run_semgrep.sh` |
-| STATIC-02 | `.semgrep/qglang-frontend.yml:36-45`; `tools/lint/run_semgrep.sh:151-166` | The hub-bypass rule is scoped to CLI/stdio, but the clean negative control is planted only under HIR. A CLI/stdio-path false positive is not exercised. | Plant a clean control in each distinct path scope and require zero findings. Keep one gate execution; do not add a second eight-run Semgrep suite. | `python3 tools/lint/tests/test_semgrep_non_vacuity.py`; `tools/lint/run_semgrep.sh` |
 
 ## Execution order
 
 1. Fix `REF-01` and `TEST-01`.
 2. Add the P2 oracles.
 3. Delete `DEDUPE-01` only after the stronger rails remain green.
-4. Apply the two static-policy cleanups.
-5. Re-run the verification baseline on one fixed commit.
+4. Re-run the verification baseline on one fixed commit.

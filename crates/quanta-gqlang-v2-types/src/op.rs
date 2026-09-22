@@ -11,6 +11,30 @@ impl OperatorIdV2 {
     pub const fn raw(self) -> u32 {
         self.0
     }
+
+    /// Stable semantic spelling of every ID admitted by the closed registry.
+    #[must_use]
+    pub const fn symbol(self) -> Option<&'static str> {
+        match self.0 {
+            1..=3 | 102 | 107 | 111 => Some("-"),
+            4..=6 | 101 | 106 | 110 => Some("+"),
+            7 => Some("not"),
+            103 | 108 | 112 | 113 => Some("*"),
+            104 | 109 | 114 => Some("/"),
+            105 => Some("%"),
+            115 => Some("and"),
+            116 => Some("or"),
+            117 => Some("xor"),
+            118 => Some("++"),
+            200..=203 => Some("<"),
+            210..=213 => Some("<="),
+            220..=223 => Some(">"),
+            230..=233 => Some(">="),
+            300..=312 => Some("="),
+            320..=332 => Some("!="),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -71,6 +95,9 @@ mod tests {
         let count = registry.binary.values().map(Vec::len).sum::<usize>()
             + registry.unary.values().map(Vec::len).sum::<usize>();
         assert_eq!(ids.len(), count);
+        for (symbol, overloads) in registry.binary.iter().chain(&registry.unary) {
+            assert!(overloads.iter().all(|entry| entry.id.symbol() == Some(symbol.as_str())));
+        }
     }
     #[test]
     fn duplicate_id_and_semantic_domain_reject() {

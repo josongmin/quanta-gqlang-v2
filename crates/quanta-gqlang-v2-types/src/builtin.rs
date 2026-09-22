@@ -104,6 +104,30 @@ impl BuiltinIdV2 {
     pub const fn raw(self) -> u32 {
         self.0
     }
+
+    /// Stable semantic name of every overload admitted by the closed registry.
+    #[must_use]
+    pub const fn name(self) -> Option<&'static str> {
+        match self.0 {
+            1 | 2 => Some("count"),
+            3 | 4 => Some("sum"),
+            5 | 6 => Some("min"),
+            7 | 8 => Some("max"),
+            9 | 10 => Some("avg"),
+            11 => Some("starts_with"),
+            12 => Some("ends_with"),
+            13 => Some("contains"),
+            14 => Some("length"),
+            15 => Some("is_null"),
+            16 => Some("size"),
+            17 => Some("path_length"),
+            18 => Some("path_locations"),
+            19 => Some("explain"),
+            20 => Some("proof_size"),
+            21 => Some("now"),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -513,6 +537,10 @@ mod tests {
             assert!(registry.family_id(name).is_some(), "missing {name}");
         }
         assert_eq!(registry.entries.len(), 21);
+        assert!(registry
+            .entries
+            .iter()
+            .all(|entry| entry.id.name() == Some(entry.name.as_str())));
         assert_eq!(
             registry
                 .entries
