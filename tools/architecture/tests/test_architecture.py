@@ -20,6 +20,71 @@ architecture_checker = importlib.util.module_from_spec(_checker_spec)
 _checker_spec.loader.exec_module(architecture_checker)
 MEMBERS = sorted(architecture_checker.EXPECTED_WORKSPACE_MEMBERS)
 
+# The nine named mutations. Each must make the checker exit 1. The entry is
+# (mutation name, fixture name, omit member, required stderr substrings).
+NAMED_MUTATIONS: tuple[tuple[str, str, str | None, tuple[str, ...]], ...] = (
+    (
+        "illegal-normal-edge",
+        "reverse-edge",
+        None,
+        ("illegal normal internal edges", "quanta-gqlang-v2-sema -> quanta-gqlang-v2-planning"),
+    ),
+    (
+        "illegal-dev-edge",
+        "dev-edge",
+        None,
+        ("illegal dev internal edges", "quanta-gqlang-v2-surface -> quanta-gqlang-v2-hir"),
+    ),
+    (
+        "illegal-build-edge",
+        "build-edge",
+        None,
+        ("illegal build internal edges", "quanta-gqlang-v2-surface -> quanta-gqlang-v2-hir"),
+    ),
+    (
+        "forbidden-runtime-dep",
+        "runtime-edge",
+        None,
+        ("forbidden normal dependency quanta-runtime",),
+    ),
+    (
+        "member-drift",
+        "valid",
+        "quanta-gqlang-v2-types",
+        ("workspace members drifted",),
+    ),
+    (
+        "undeclared-external-dep",
+        "external-drift",
+        None,
+        ("undeclared external normal dependency regex",),
+    ),
+    (
+        "custom-build-and-build-deny",
+        "custom-build",
+        None,
+        ("custom build script", "default-deny"),
+    ),
+    (
+        "lints-drift",
+        "lints-drift",
+        None,
+        ("[lints] workspace = true",),
+    ),
+    (
+        "dep-attribute-drift",
+        "dep-attr-drift",
+        None,
+        (
+            "rename",
+            "optional",
+            "target",
+            "feature drift",
+            "workspace-external path",
+        ),
+    ),
+)
+
 
 def final_topology() -> dict:
     """Materialize the checker's one authoritative final DAG for mutation tests."""
@@ -44,15 +109,47 @@ def read_topology(path: Path) -> dict:
         if base_name == "final"
         else read_topology((path.parent / base_name).resolve())
     )
-    return {
+    merged = {
         "normal_edges": base["normal_edges"] + topology.get("add_normal_edges", []),
         "dev_edges": base["dev_edges"] + topology.get("add_dev_edges", []),
         "build_edges": base.get("build_edges", []) + topology.get("add_build_edges", []),
         "runtime_edge": topology.get("runtime_edge"),
     }
+    for key in (
+        "add_external_deps",
+        "drop_lints",
+        "add_build_rs",
+        "add_build_deps",
+        "rename_dep",
+        "make_optional",
+        "add_target_section",
+        "add_internal_features",
+        "external_path_dep",
+    ):
+        if key in topology:
+            merged[key] = topology[key]
+    return merged
+
+
+def internal_dep_line(consumer: str, kind: str, dependency: str, topology: dict) -> str:
+    optional = [list(item) for item in topology.get("make_optional", [])]
+    features = {
+        (item[0], item[1], item[2]): item[3]
+        for item in topology.get("add_internal_features", [])
+    }
+    extra = ""
+    if (consumer, kind, dependency) in {tuple(item) for item in optional}:
+        extra += ", optional = true"
+    if (consumer, kind, dependency) in features:
+        rendered = ", ".join(f'"{feature}"' for feature in features[(consumer, kind, dependency)])
+        extra += f", features = [{rendered}]"
+    if extra:
+        return f'{dependency} = {{ path = "../{dependency}"{extra} }}'
+    return f'{dependency} = {{ path = "../{dependency}" }}'
 
 
 def materialize_fixture(destination: Path, fixture_name: str, *, omit: str | None = None) -> None:
+    destination = destination.resolve()
     topology = (
         final_topology()
         if fixture_name == "valid"
@@ -66,7 +163,8 @@ def materialize_fixture(destination: Path, fixture_name: str, *, omit: str | Non
     exclude_entries = ", ".join(excluded)
     (destination / "Cargo.toml").write_text(
         f'[workspace]\nmembers = [\n{member_entries},\n]\n'
-        f"exclude = [{exclude_entries}]\nresolver = \"2\"\n",
+        f"exclude = [{exclude_entries}]\nresolver = \"2\"\n"
+        "[workspace.lints.rust]\nunsafe_code = \"forbid\"\n",
         encoding="utf-8",
     )
     shared = destination / "shared/lib.rs"
@@ -93,6 +191,33 @@ def materialize_fixture(destination: Path, fixture_name: str, *, omit: str | Non
             encoding="utf-8",
         )
 
+    external_by_consumer: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
+    for consumer, kind, name, version in topology.get("add_external_deps", []):
+        external_by_consumer[(consumer, kind)].append((name, version))
+
+    rename = topology.get("rename_dep")
+    target_sections: dict[str, list[str]] = defaultdict(list)
+    for consumer, dependency in topology.get("add_target_section", []):
+        target_sections[consumer].append(dependency)
+
+    evil_crates: dict[str, Path] = {}
+    for consumer, kind, name in topology.get("external_path_dep", []):
+        evil_dir = destination.parent / f"evil-{name}"
+        evil_dir.mkdir(parents=True, exist_ok=True)
+        (evil_dir / "Cargo.toml").write_text(
+            f'[package]\nname = "{name}"\nversion = "0.1.0"\nedition = "2021"\n'
+            '[lib]\npath = "lib.rs"\n',
+            encoding="utf-8",
+        )
+        (evil_dir / "lib.rs").write_text("#![forbid(unsafe_code)]\n", encoding="utf-8")
+        evil_crates[name] = evil_dir
+
+    drop_lints = set(topology.get("drop_lints", []))
+    build_rs_members = set(topology.get("add_build_rs", []))
+    build_deps: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    for consumer, name, version in topology.get("add_build_deps", []):
+        build_deps[consumer].append((name, version))
+
     for member in MEMBERS:
         crate = destination / "crates" / member
         crate.mkdir(parents=True)
@@ -106,31 +231,56 @@ def materialize_fixture(destination: Path, fixture_name: str, *, omit: str | Non
             'path = "../../shared/lib.rs"',
         ]
         dependencies = normal_by_consumer[member]
-        if dependencies:
+        if member in target_sections:
+            dependencies = [dep for dep in dependencies if dep not in target_sections[member]]
+        if dependencies or external_by_consumer.get((member, "normal")) or (
+            rename and rename[0] == member and rename[1] == "normal"
+        ):
             lines.extend(["", "[dependencies]"])
             for dependency in sorted(dependencies):
-                path = (
-                    "../../external/quanta-runtime"
-                    if dependency == "quanta-runtime"
-                    else f"../{dependency}"
-                )
-                lines.append(f'{dependency} = {{ path = "{path}" }}')
+                if dependency == "quanta-runtime":
+                    lines.append(f'{dependency} = {{ path = "../../external/quanta-runtime" }}')
+                else:
+                    lines.append(internal_dep_line(member, "normal", dependency, topology))
+            for name, version in sorted(external_by_consumer.get((member, "normal"), [])):
+                lines.append(f'{name} = "{version}"')
+            if rename and rename[0] == member and rename[1] == "normal":
+                _, _, alias, package, version = rename
+                lines.append(f'{alias} = {{ package = "{package}", version = "{version}" }}')
+            for consumer, kind, name in topology.get("external_path_dep", []):
+                if consumer == member and kind == "normal":
+                    # Emit a path that escapes the workspace root.
+                    escape = Path(*([".."] * (len(crate.resolve().relative_to(destination).parts) + 1)))
+                    lines.append(f'{name} = {{ path = "{escape / evil_crates[name].name}" }}')
         dev_dependencies = dev_by_consumer[member]
-        if dev_dependencies:
+        if dev_dependencies or external_by_consumer.get((member, "dev")):
             lines.extend(["", "[dev-dependencies]"])
             for dependency in sorted(dev_dependencies):
-                lines.append(f'{dependency} = {{ path = "../{dependency}" }}')
-        build_dependencies = build_by_consumer[member]
-        if build_dependencies:
+                lines.append(internal_dep_line(member, "dev", dependency, topology))
+            for name, version in sorted(external_by_consumer.get((member, "dev"), [])):
+                lines.append(f'{name} = "{version}"')
+        internal_build_deps = build_by_consumer[member]
+        member_build_deps = sorted(build_deps.get(member, []))
+        if internal_build_deps or member_build_deps:
             lines.extend(["", "[build-dependencies]"])
-            for dependency in sorted(build_dependencies):
+            for dependency in sorted(internal_build_deps):
+                lines.append(internal_dep_line(member, "build", dependency, topology))
+            for name, version in member_build_deps:
+                lines.append(f'{name} = "{version}"')
+        if member in target_sections:
+            lines.extend(["", "[target.'cfg(unix)'.dependencies]"])
+            for dependency in sorted(target_sections[member]):
                 lines.append(f'{dependency} = {{ path = "../{dependency}" }}')
+        if member not in drop_lints:
+            lines.extend(["", "[lints]", "workspace = true"])
         (crate / "Cargo.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        if member in build_rs_members:
+            (crate / "build.rs").write_text('fn main() {}\n', encoding="utf-8")
 
 
-def run_checker(root: Path) -> subprocess.CompletedProcess[str]:
+def run_checker(root: Path, *extra: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["python3", str(CHECKER), "--root", str(root)],
+        ["python3", str(CHECKER), "--root", str(root), *extra],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -157,6 +307,36 @@ class ArchitectureCheckerTest(unittest.TestCase):
             result.stdout,
         )
         self.assertIn(f"dev_edges={len(architecture_checker.FINAL_DEV_EDGES)}", result.stdout)
+
+    def test_valid_final_dag_json_verdict(self) -> None:
+        temporary, root = self.fixture("valid")
+        with temporary:
+            result = run_checker(root, "--format", "json")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        verdict = json.loads(result.stdout)
+        self.assertEqual(verdict["verdict"], "passed")
+        self.assertEqual(verdict["workspace_members"], len(MEMBERS))
+        self.assertEqual(verdict["errors"], [])
+
+    def test_json_verdict_reports_failure(self) -> None:
+        temporary, root = self.fixture("reverse-edge")
+        with temporary:
+            result = run_checker(root, "--format", "json")
+        self.assertNotEqual(result.returncode, 0)
+        verdict = json.loads(result.stdout)
+        self.assertEqual(verdict["verdict"], "failed")
+        self.assertTrue(verdict["errors"])
+
+    def test_named_mutations_all_exit_1(self) -> None:
+        self.assertEqual(len(NAMED_MUTATIONS), 9)
+        for name, fixture, omit, markers in NAMED_MUTATIONS:
+            with self.subTest(mutation=name):
+                temporary, root = self.fixture(fixture, omit=omit)
+                with temporary:
+                    result = run_checker(root)
+                self.assertNotEqual(result.returncode, 0, f"mutation {name} must fail")
+                for marker in markers:
+                    self.assertIn(marker, result.stderr, f"mutation {name} missing {marker!r}")
 
     def test_retired_transitional_edge_is_illegal(self) -> None:
         temporary, root = self.fixture("transitional-valid")
