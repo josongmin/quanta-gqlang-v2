@@ -4,8 +4,10 @@ Status: `LANES FOCUSED_GREEN; INTEGRATED WITHOUT LOCAL_QUALIFIED (receipts/00.md
 
 Planning observation: `main@3a9ab271d7706c1c9266551df492f64f4bf68eea`.
 
-This packet closes the eleven findings in [`../open-items.md`](../open-items.md). The observation
-is not an implementation base: the shared worktree contains unrelated frontend-contract,
+This packet closes the eleven findings in `open-items.md` (deleted after W4
+verified all eleven against current `main`; see `receipts/07-08` and the W4
+close commit). The observation below is a frozen planning snapshot, not an
+implementation base: the shared worktree contains unrelated frontend-contract,
 pipeline, and sema changes. Ticket 00 must mint a clean current-source base before any RED or
 GREEN result is accepted.
 

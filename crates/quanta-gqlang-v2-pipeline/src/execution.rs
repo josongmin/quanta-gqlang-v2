@@ -1,7 +1,11 @@
 //! Host-agnostic, immutable execution contract projected from sealed V2 owners.
 //!
 //! This module copies only public semantic facts into a closed transport DTO.
-//! It does not expose HIR, Sema, or Algebra owner types.
+//! Closed vocabularies are execution-local enums. The only reused owner types
+//! are the inert identity closure (`SourceIdV2`, `SemanticItemIdV2`,
+//! `SourceQualifiedNodeIdV2`) and [`AlgebraFamilyV2`], all already part of the
+//! curated facade closure. Every other HIR, Sema, Algebra, Planning, and Types
+//! owner type stays unreachable.
 
 use quanta_gqlang_v2_algebra::{AlgebraFamilyV2, CheckedAlgebraNodeV2, LoweredRelationItemV2};
 use quanta_gqlang_v2_planning::{
@@ -338,8 +342,10 @@ pub enum ExecutionValueTypeV2 {
         cardinality: ExecutionCardinalityV2,
     },
     Union(Box<[ExecutionUnionVariantV2]>),
-    /// The checked expression carries no known type. Schemas never project
-    /// this variant: row and order types are always known.
+    /// The checked expression carries no known type. The unknown cause is
+    /// editor-specific, so it is excluded from the contract by design: two
+    /// unknowns are indistinguishable here however they arose. Schemas never
+    /// project this variant: row and order types are always known.
     Unknown,
 }
 
@@ -1512,9 +1518,12 @@ fn project_binding(binding: &quanta_gqlang_v2_sema::ResolvedValueBindingV2) -> E
 
 /// Canonical encoding rules (all three legs): domain-separated schema
 /// version first, big-endian integers, length-prefixed strings and sequences,
-/// one fixed tag byte per enum variant, every semantic field exactly once,
-/// and explicitly ordered collections (source order, identity order, or
-/// owner-stable order — never hash order).
+/// one fixed tag byte per enum variant, every DTO field exactly once, and
+/// explicitly ordered collections (source order, identity order, or
+/// owner-stable order — never hash order). Derived display witnesses (operator
+/// spellings) are encoded deliberately so the audit stays syntactic — one
+/// `put_*` call per field, no semantic filtering; cross-version drift is gated
+/// by the schema version instead.
 const CONTRACT_SCHEMA_VERSION_V2: u32 = 2;
 
 /// Digest of the raw UTF-8 source bytes only.
@@ -2117,6 +2126,144 @@ mod tests {
         );
     }
 
+    #[test]
+    fn canonical_digests_match_the_pinned_golden_vectors() {
+        let mut document = ExecutionDocumentV2::new(SourceIdV2::from_raw(0), vec![relation_item()]);
+        document.bind_source_bytes(b"show models");
+        // Golden pins: any canonical-encoding change (tag swap, field reorder,
+        // domain edit) must update these deliberately, never silently.
+        assert_eq!(
+            document.source_digest().to_hex(),
+            "c8b5afd3b89c8fed8d82c41761232bbbd3929a8f9b590ba18c5dea1633f82dac"
+        );
+        assert_eq!(
+            document.contract_digest().to_hex(),
+            "4306ff6c24b462c8b4a06152f1441cf5531cbb0c8c9268d383d4011b2d2058a3"
+        );
+        assert_eq!(
+            document.qualification_digest().to_hex(),
+            "f5fc6b4fb8223ea087c0cc2c5182cc3faea7225c49a00a97bd6152ca30ce20f2"
+        );
+    }
+
+    fn assert_distinct_tags<const N: usize>(tags: [u8; N]) {
+        let mut sorted = tags.to_vec();
+        sorted.sort_unstable();
+        sorted.dedup();
+        assert_eq!(sorted.len(), N, "duplicate canonical tag in {tags:?}");
+    }
+
+    #[test]
+    fn every_canonical_tag_set_is_duplicate_free() {
+        use ExecutionAuthorityV2 as Authority;
+        use ExecutionDeterminismV2 as Determinism;
+        use ExecutionEffectV2 as Effect;
+        use ExecutionEvidenceV2 as Evidence;
+        assert_distinct_tags([
+            family_tag(ExecutionFamilyV2::Relation),
+            family_tag(ExecutionFamilyV2::Graph),
+            family_tag(ExecutionFamilyV2::Check),
+            family_tag(ExecutionFamilyV2::Presentation),
+            family_tag(ExecutionFamilyV2::Composition),
+            family_tag(ExecutionFamilyV2::MetaRequireCertified),
+            family_tag(ExecutionFamilyV2::RuleProgram),
+        ]);
+        assert_distinct_tags([
+            authority_tag(Authority::FrontendChecked),
+            authority_tag(Authority::CertifiedRequirementValidated),
+        ]);
+        assert_distinct_tags([
+            determinism_tag(Determinism::Deterministic),
+            determinism_tag(Determinism::NonDeterministic),
+        ]);
+        assert_distinct_tags([
+            evidence_tag(Evidence::None),
+            evidence_tag(Evidence::SourceLocation),
+            evidence_tag(Evidence::WitnessPayload),
+            evidence_tag(Evidence::ProofTree),
+        ]);
+        assert_distinct_tags([
+            effect_tag(Effect::ReadOnly),
+            effect_tag(Effect::ProofEvidenceOnly),
+            effect_tag(Effect::ExportOnly),
+            effect_tag(Effect::MutationForbidden),
+        ]);
+        assert_distinct_tags([
+            policy_family_tag(ExecutionPolicyFamilyV2::Relational),
+            policy_family_tag(ExecutionPolicyFamilyV2::Graph),
+            policy_family_tag(ExecutionPolicyFamilyV2::Check),
+            policy_family_tag(ExecutionPolicyFamilyV2::Presentation),
+            policy_family_tag(ExecutionPolicyFamilyV2::RuleProgram),
+            policy_family_tag(ExecutionPolicyFamilyV2::MetaRequireCertified),
+            policy_family_tag(ExecutionPolicyFamilyV2::Composition),
+        ]);
+        assert_distinct_tags([
+            cardinality_tag(ExecutionCardinalityV2::Set),
+            cardinality_tag(ExecutionCardinalityV2::Bag),
+            cardinality_tag(ExecutionCardinalityV2::Sequence),
+        ]);
+        assert_distinct_tags([
+            sort_direction_tag(ExecutionSortDirectionV2::Asc),
+            sort_direction_tag(ExecutionSortDirectionV2::Desc),
+        ]);
+        assert_distinct_tags([
+            null_order_tag(ExecutionNullOrderV2::First),
+            null_order_tag(ExecutionNullOrderV2::Last),
+        ]);
+        assert_distinct_tags([
+            algebra_family_tag(AlgebraFamilyV2::Scan),
+            algebra_family_tag(AlgebraFamilyV2::Filter),
+            algebra_family_tag(AlgebraFamilyV2::Project),
+            algebra_family_tag(AlgebraFamilyV2::Join),
+            algebra_family_tag(AlgebraFamilyV2::Group),
+            algebra_family_tag(AlgebraFamilyV2::Aggregate),
+            algebra_family_tag(AlgebraFamilyV2::Sort),
+            algebra_family_tag(AlgebraFamilyV2::SemiJoin),
+            algebra_family_tag(AlgebraFamilyV2::AntiJoin),
+        ]);
+        assert_distinct_tags([
+            join_mode_tag(ExecutionJoinModeV2::Inner),
+            join_mode_tag(ExecutionJoinModeV2::Cross),
+        ]);
+        assert_distinct_tags([
+            source_kind_tag(ExecutionSourceKindV2::Relation),
+            source_kind_tag(ExecutionSourceKindV2::View),
+            source_kind_tag(ExecutionSourceKindV2::Composition),
+        ]);
+        assert_distinct_tags([
+            scalar_tag(ExecutionScalarTypeV2::Bool),
+            scalar_tag(ExecutionScalarTypeV2::Int),
+            scalar_tag(ExecutionScalarTypeV2::Float),
+            scalar_tag(ExecutionScalarTypeV2::String),
+            scalar_tag(ExecutionScalarTypeV2::Duration),
+            scalar_tag(ExecutionScalarTypeV2::Location),
+            scalar_tag(ExecutionScalarTypeV2::Path),
+            scalar_tag(ExecutionScalarTypeV2::RepoPath),
+            scalar_tag(ExecutionScalarTypeV2::EntityRef),
+            scalar_tag(ExecutionScalarTypeV2::SymbolRef),
+            scalar_tag(ExecutionScalarTypeV2::RuleRef),
+            scalar_tag(ExecutionScalarTypeV2::SourceScope),
+            scalar_tag(ExecutionScalarTypeV2::ProofTree),
+        ]);
+        assert_distinct_tags([
+            logical_quantifier_tag(ExecutionLogicalQuantifierV2::Exists),
+            logical_quantifier_tag(ExecutionLogicalQuantifierV2::Forall),
+        ]);
+        assert_distinct_tags([
+            exists_polarity_tag(ExecutionExistsPolarityV2::Exists),
+            exists_polarity_tag(ExecutionExistsPolarityV2::NotExists),
+        ]);
+        assert_distinct_tags([
+            graph_kind_tag(ExecutionGraphKindV2::Reachability),
+            graph_kind_tag(ExecutionGraphKindV2::Flow),
+            graph_kind_tag(ExecutionGraphKindV2::Slice),
+            graph_kind_tag(ExecutionGraphKindV2::Taint),
+            graph_kind_tag(ExecutionGraphKindV2::Path),
+            graph_kind_tag(ExecutionGraphKindV2::PointsTo),
+            graph_kind_tag(ExecutionGraphKindV2::Summary),
+        ]);
+    }
+
     fn key(source: u32, node: u32) -> SourceQualifiedNodeIdV2 {
         SourceQualifiedNodeIdV2 {
             source_id: SourceIdV2::from_raw(source),
@@ -2413,5 +2560,125 @@ mod tests {
             close_expression_ids(SourceIdV2::from_raw(0), &[key(1, 1)], &children),
             Err(ExecutionClosureFailureV2::Foreign)
         );
+    }
+
+    #[test]
+    fn value_type_projection_covers_every_constructible_arm() {
+        use quanta_gqlang_v2_sema::{
+            LocatedSpanV2, RecordFieldTypeV1, RecordTypeV1, SourceRegistrationV2,
+            SourceRegistryViewV2, SpanV1,
+        };
+        assert_eq!(
+            project_value_type(&ValueTypeV1::int()),
+            ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int)
+        );
+        assert_eq!(
+            project_value_type(&ValueTypeV1::null()),
+            ExecutionValueTypeV2::Null
+        );
+        let tuple = ValueTypeV1::try_tuple(vec![ValueTypeV1::int(), ValueTypeV1::string()])
+            .expect("tuple of scalars");
+        assert_eq!(
+            project_value_type(&tuple),
+            ExecutionValueTypeV2::Tuple(Box::new([
+                ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int),
+                ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::String),
+            ]))
+        );
+        let optional = ValueTypeV1::try_optional(ValueTypeV1::bool()).expect("optional scalar");
+        assert_eq!(
+            project_value_type(&optional),
+            ExecutionValueTypeV2::Optional(Box::new(ExecutionValueTypeV2::Scalar(
+                ExecutionScalarTypeV2::Bool
+            )))
+        );
+        let collection = ValueTypeV1::try_collection(ValueTypeV1::int(), CardinalityV1::Sequence)
+            .expect("sequence collection");
+        assert_eq!(
+            project_value_type(&collection),
+            ExecutionValueTypeV2::Collection {
+                element: Box::new(ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int)),
+                cardinality: ExecutionCardinalityV2::Sequence,
+            }
+        );
+        let registry = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(0),
+            source_len: 64,
+        }])
+        .expect("one registered source");
+        let location = registry
+            .try_check_location(LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(0),
+                span: SpanV1::new(0, 1),
+            })
+            .expect("checked location");
+        let field =
+            RecordFieldTypeV1::try_new("id", ValueTypeV1::int(), location).expect("record field");
+        let record =
+            ValueTypeV1::try_record(RecordTypeV1::try_new(vec![field]).expect("record row"))
+                .expect("record value");
+        assert_eq!(
+            project_value_type(&record),
+            ExecutionValueTypeV2::Record(Box::new([ExecutionRecordFieldV2 {
+                name: "id".to_owned(),
+                value_type: ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int),
+            }]))
+        );
+        // Union projection mirrors record arm-for-arm; its constructors are not
+        // re-exported for downstream (no producer path builds unions), so the
+        // union ENCODING is pinned by `composite_value_type_arms_encode_distinctly`
+        // instead of round-tripping through the owner here.
+    }
+
+    #[test]
+    fn composite_value_type_arms_encode_distinctly() {
+        let scalar = ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int);
+        let variants = [
+            ExecutionValueTypeV2::Null,
+            ExecutionValueTypeV2::Tuple(Box::new([scalar.clone()])),
+            ExecutionValueTypeV2::Record(Box::new([ExecutionRecordFieldV2 {
+                name: "id".to_owned(),
+                value_type: scalar.clone(),
+            }])),
+            ExecutionValueTypeV2::Optional(Box::new(scalar.clone())),
+            ExecutionValueTypeV2::Collection {
+                element: Box::new(scalar.clone()),
+                cardinality: ExecutionCardinalityV2::Sequence,
+            },
+            ExecutionValueTypeV2::Union(Box::new([ExecutionUnionVariantV2 {
+                tag: "ok".to_owned(),
+                value_type: scalar.clone(),
+            }])),
+            ExecutionValueTypeV2::Unknown,
+        ];
+        let mut digests = Vec::with_capacity(variants.len());
+        for value_type in &variants {
+            let mut item = relation_item();
+            item.relation.as_mut().expect("relation").root.schema.fields =
+                Box::new([ExecutionFieldV2 {
+                    name: "a".to_owned(),
+                    value_type: value_type.clone(),
+                }]);
+            digests.push(contract_of(vec![item]));
+        }
+        let mut deduped = digests.clone();
+        deduped.sort_by(|left, right| left.as_bytes().cmp(right.as_bytes()));
+        deduped.dedup();
+        assert_eq!(
+            deduped.len(),
+            variants.len(),
+            "two value-type arms share one encoding"
+        );
+    }
+
+    #[test]
+    fn plan_determinism_and_policy_family_mutations_move_contract() {
+        let base = contract_of(vec![relation_item()]);
+        let mut determinism = relation_item();
+        determinism.plan.determinism = ExecutionDeterminismV2::NonDeterministic;
+        assert_ne!(contract_of(vec![determinism]), base);
+        let mut policy = relation_item();
+        policy.plan.policy_family = ExecutionPolicyFamilyV2::Graph;
+        assert_ne!(contract_of(vec![policy]), base);
     }
 }

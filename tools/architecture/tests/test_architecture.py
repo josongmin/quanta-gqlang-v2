@@ -20,8 +20,8 @@ architecture_checker = importlib.util.module_from_spec(_checker_spec)
 _checker_spec.loader.exec_module(architecture_checker)
 MEMBERS = sorted(architecture_checker.EXPECTED_WORKSPACE_MEMBERS)
 
-# The nine named mutations. Each must make the checker exit 1. The entry is
-# (mutation name, fixture name, omit member, required stderr substrings).
+# The thirteen named mutations. Each must make the checker exit 1. The entry
+# is (mutation name, fixture name, omit member, required stderr substrings).
 NAMED_MUTATIONS: tuple[tuple[str, str, str | None, tuple[str, ...]], ...] = (
     (
         "illegal-normal-edge",
@@ -81,7 +81,32 @@ NAMED_MUTATIONS: tuple[tuple[str, str, str | None, tuple[str, ...]], ...] = (
             "target",
             "feature drift",
             "workspace-external path",
+            "default-features",
         ),
+    ),
+    (
+        "external-version-drift",
+        "external-version-drift",
+        None,
+        ("version drift on external normal dependency", "sha2"),
+    ),
+    (
+        "external-feature-drift",
+        "external-feature-drift",
+        None,
+        ("feature drift on external normal dependency", "serde"),
+    ),
+    (
+        "internal-version-drift",
+        "internal-version-drift",
+        None,
+        ("version drift on internal normal dependency", "quanta-gqlang-v2-sema"),
+    ),
+    (
+        "legacy-crate-dep",
+        "legacy-edge",
+        None,
+        ("forbidden legacy normal dependency", "quanta-gqlang-v1-legacy"),
     ),
 )
 
@@ -125,6 +150,9 @@ def read_topology(path: Path) -> dict:
         "add_target_section",
         "add_internal_features",
         "external_path_dep",
+        "legacy_edge",
+        "default_features_off",
+        "internal_version",
     ):
         if key in topology:
             merged[key] = topology[key]
@@ -137,15 +165,33 @@ def internal_dep_line(consumer: str, kind: str, dependency: str, topology: dict)
         (item[0], item[1], item[2]): item[3]
         for item in topology.get("add_internal_features", [])
     }
+    default_off = {
+        tuple(item) for item in topology.get("default_features_off", [])
+    }
+    versions = {
+        (item[0], item[1], item[2]): item[3]
+        for item in topology.get("internal_version", [])
+    }
     extra = ""
     if (consumer, kind, dependency) in {tuple(item) for item in optional}:
         extra += ", optional = true"
     if (consumer, kind, dependency) in features:
         rendered = ", ".join(f'"{feature}"' for feature in features[(consumer, kind, dependency)])
         extra += f", features = [{rendered}]"
+    if (consumer, kind, dependency) in default_off:
+        extra += ", default-features = false"
+    if (consumer, kind, dependency) in versions:
+        extra += f', version = "{versions[(consumer, kind, dependency)]}"'
     if extra:
         return f'{dependency} = {{ path = "../{dependency}"{extra} }}'
     return f'{dependency} = {{ path = "../{dependency}" }}'
+
+
+def external_dep_line(name: str, version: str, features: list[str] | None) -> str:
+    if features is None:
+        return f'{name} = "{version}"'
+    rendered = ", ".join(f'"{feature}"' for feature in features)
+    return f'{name} = {{ version = "{version}", features = [{rendered}] }}'
 
 
 def materialize_fixture(destination: Path, fixture_name: str, *, omit: str | None = None) -> None:
@@ -157,7 +203,7 @@ def materialize_fixture(destination: Path, fixture_name: str, *, omit: str | Non
     )
     members = [member for member in MEMBERS if member != omit]
     member_entries = ",\n".join(f'    "crates/{member}"' for member in members)
-    excluded = ['"external/quanta-runtime"']
+    excluded = ['"external/quanta-runtime"', '"external/quanta-gqlang-v1-legacy"']
     if omit is not None:
         excluded.append(f'"crates/{omit}"')
     exclude_entries = ", ".join(excluded)
@@ -190,10 +236,24 @@ def materialize_fixture(destination: Path, fixture_name: str, *, omit: str | Non
             '[lib]\npath = "../../shared/lib.rs"\n',
             encoding="utf-8",
         )
+    legacy_edge = topology.get("legacy_edge")
+    if legacy_edge:
+        normal_by_consumer[legacy_edge[0]].append(legacy_edge[1])
+        legacy_dir = destination / f"external/{legacy_edge[1]}"
+        legacy_dir.mkdir(parents=True)
+        (legacy_dir / "Cargo.toml").write_text(
+            f'[package]\nname = "{legacy_edge[1]}"\nversion = "0.1.0"\nedition = "2021"\n'
+            '[lib]\npath = "../../shared/lib.rs"\n',
+            encoding="utf-8",
+        )
 
-    external_by_consumer: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
-    for consumer, kind, name, version in topology.get("add_external_deps", []):
-        external_by_consumer[(consumer, kind)].append((name, version))
+    external_by_consumer: dict[
+        tuple[str, str], list[tuple[str, str, list[str] | None]]
+    ] = defaultdict(list)
+    for entry in topology.get("add_external_deps", []):
+        consumer, kind, name, version = entry[:4]
+        features = list(entry[4]) if len(entry) > 4 else None
+        external_by_consumer[(consumer, kind)].append((name, version, features))
 
     rename = topology.get("rename_dep")
     target_sections: dict[str, list[str]] = defaultdict(list)
@@ -238,12 +298,12 @@ def materialize_fixture(destination: Path, fixture_name: str, *, omit: str | Non
         ):
             lines.extend(["", "[dependencies]"])
             for dependency in sorted(dependencies):
-                if dependency == "quanta-runtime":
-                    lines.append(f'{dependency} = {{ path = "../../external/quanta-runtime" }}')
+                if dependency in ("quanta-runtime", "quanta-gqlang-v1-legacy"):
+                    lines.append(f'{dependency} = {{ path = "../../external/{dependency}" }}')
                 else:
                     lines.append(internal_dep_line(member, "normal", dependency, topology))
-            for name, version in sorted(external_by_consumer.get((member, "normal"), [])):
-                lines.append(f'{name} = "{version}"')
+            for name, version, features in sorted(external_by_consumer.get((member, "normal"), [])):
+                lines.append(external_dep_line(name, version, features))
             if rename and rename[0] == member and rename[1] == "normal":
                 _, _, alias, package, version = rename
                 lines.append(f'{alias} = {{ package = "{package}", version = "{version}" }}')
@@ -257,8 +317,8 @@ def materialize_fixture(destination: Path, fixture_name: str, *, omit: str | Non
             lines.extend(["", "[dev-dependencies]"])
             for dependency in sorted(dev_dependencies):
                 lines.append(internal_dep_line(member, "dev", dependency, topology))
-            for name, version in sorted(external_by_consumer.get((member, "dev"), [])):
-                lines.append(f'{name} = "{version}"')
+            for name, version, features in sorted(external_by_consumer.get((member, "dev"), [])):
+                lines.append(external_dep_line(name, version, features))
         internal_build_deps = build_by_consumer[member]
         member_build_deps = sorted(build_deps.get(member, []))
         if internal_build_deps or member_build_deps:
@@ -328,7 +388,7 @@ class ArchitectureCheckerTest(unittest.TestCase):
         self.assertTrue(verdict["errors"])
 
     def test_named_mutations_all_exit_1(self) -> None:
-        self.assertEqual(len(NAMED_MUTATIONS), 9)
+        self.assertEqual(len(NAMED_MUTATIONS), 13)
         for name, fixture, omit, markers in NAMED_MUTATIONS:
             with self.subTest(mutation=name):
                 temporary, root = self.fixture(fixture, omit=omit)

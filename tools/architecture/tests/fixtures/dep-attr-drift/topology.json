@@ -1,16 +1,47 @@
 {
   "base": "final",
-  "rename_dep": ["quanta-gqlang-v2-diagnostics-stdio", "normal", "serde_alias", "serde", "1.0"],
+  "rename_dep": [
+    "quanta-gqlang-v2-diagnostics-stdio",
+    "normal",
+    "serde_alias",
+    "serde",
+    "1.0"
+  ],
   "make_optional": [
-    ["quanta-gqlang-v2-surface", "normal", "quanta-gqlang-v2-hir"]
+    [
+      "quanta-gqlang-v2-surface",
+      "normal",
+      "quanta-gqlang-v2-hir"
+    ]
   ],
   "add_target_section": [
-    ["quanta-gqlang-v2-binder", "quanta-gqlang-v2-hir"]
+    [
+      "quanta-gqlang-v2-binder",
+      "quanta-gqlang-v2-hir"
+    ]
   ],
   "add_internal_features": [
-    ["quanta-gqlang-v2-pipeline", "normal", "quanta-gqlang-v2-sema", ["test"]]
+    [
+      "quanta-gqlang-v2-pipeline",
+      "normal",
+      "quanta-gqlang-v2-sema",
+      [
+        "test"
+      ]
+    ]
   ],
   "external_path_dep": [
-    ["quanta-gqlang-v2-types", "normal", "evil-ext"]
+    [
+      "quanta-gqlang-v2-types",
+      "normal",
+      "evil-ext"
+    ]
+  ],
+  "default_features_off": [
+    [
+      "quanta-gqlang-v2-types",
+      "normal",
+      "quanta-gqlang-v2-hir"
+    ]
   ]
 }

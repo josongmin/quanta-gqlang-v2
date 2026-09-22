@@ -34,10 +34,11 @@ use quanta_gqlang_v2_pipeline::{
     AnalysisItemV2, CompiledItemV2, DocumentAssemblyCodeV2, ExecutionAuthorityV2,
     ExecutionCallTargetV2, ExecutionCardinalityV2, ExecutionCompositionBodyV2,
     ExecutionCompositionProducerV2, ExecutionExpressionShapeV2, ExecutionFamilyV2,
-    ExecutionRelationAuthorityV2, ExecutionSampleModeV2, ExecutionScalarTypeV2,
-    ExecutionSourceKindV2, ExecutionValueTypeV2, FrontendAuthorityLocationV2,
-    FrontendAuthoritySourceV2, FrontendLanguageVersionV2, FrontendRelationAuthorityV2,
-    FrontendRelationInputV2, FrontendTransactionErrorV2, PlannedItemV2,
+    ExecutionRelationAuthorityV2, ExecutionRelationV2, ExecutionRelationalOperatorV2,
+    ExecutionSampleModeV2, ExecutionScalarTypeV2, ExecutionSchemaV2, ExecutionSourceKindV2,
+    ExecutionValueTypeV2, FrontendAuthorityLocationV2, FrontendAuthoritySourceV2,
+    FrontendLanguageVersionV2, FrontendRelationAuthorityV2, FrontendRelationInputV2,
+    FrontendTransactionErrorV2, PlannedItemV2,
 };
 use quanta_gqlang_v2_planning::{
     AuthorityLaneV2, CapabilityV2, CardinalityClassV2, CheckedCompositionPlanInputV2,
@@ -61,7 +62,7 @@ use quanta_gqlang_v2_sema::{
     GraphQueryKindV1, GraphReferenceCatalogV2, GraphReferenceInputV2, GraphReferenceKindV2,
     GraphReferenceRoleV2, LocatedSpanV2, ProvenanceNamespaceV2, RecordFieldTypeV1, RecordTypeV1,
     RelationCatalogV2, RelationSourceInputV2, SemanticItemIdV2, SemanticItemV2, SourceIdV2,
-    SourceRegistrationV2, SourceRegistryViewV2, SpanV1, ValueTypeV1,
+    SourceQualifiedNodeIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1, ValueTypeV1,
 };
 
 /// The host registry source identity used by the minimal authority.
@@ -1344,6 +1345,161 @@ fn unrelated_sibling_expressions_do_not_move_an_item_contract() {
             .expect("sibling")
             .expressions()
             .len()
+    );
+}
+
+/// Every expression identity referenced anywhere in a projected relation —
+/// operator roots and transitive shape children alike — resolves to a row of
+/// that relation's own closed table. Binding schemas whose producer carries no
+/// table (SAMPLE/Graph) must contribute no dangling order/partition references.
+#[test]
+fn every_projected_expression_reference_resolves_within_its_own_table() {
+    fn schema_keys(schema: &ExecutionSchemaV2, out: &mut Vec<SourceQualifiedNodeIdV2>) {
+        out.extend_from_slice(schema.partition_keys());
+        out.extend(schema.order().iter().map(|key| key.expression()));
+    }
+    fn operator_keys(node: &ExecutionRelationalOperatorV2, out: &mut Vec<SourceQualifiedNodeIdV2>) {
+        out.extend_from_slice(node.predicates());
+        out.extend_from_slice(node.expressions());
+        out.extend(node.correlations().iter().map(|edge| edge.reference()));
+        schema_keys(node.schema(), out);
+        for child in node.children() {
+            operator_keys(child, out);
+        }
+    }
+    fn shape_keys(shape: &ExecutionExpressionShapeV2) -> Vec<SourceQualifiedNodeIdV2> {
+        match shape {
+            ExecutionExpressionShapeV2::Literal(_) | ExecutionExpressionShapeV2::Binding(_) => {
+                Vec::new()
+            }
+            ExecutionExpressionShapeV2::Path { base, .. } => vec![*base],
+            ExecutionExpressionShapeV2::Unary { operand, .. }
+            | ExecutionExpressionShapeV2::Not { operand, .. } => vec![*operand],
+            ExecutionExpressionShapeV2::Binary { lhs, rhs, .. }
+            | ExecutionExpressionShapeV2::Compare { lhs, rhs, .. }
+            | ExecutionExpressionShapeV2::And { lhs, rhs, .. }
+            | ExecutionExpressionShapeV2::Or { lhs, rhs, .. } => vec![*lhs, *rhs],
+            ExecutionExpressionShapeV2::Call { arguments, .. } => {
+                arguments.iter().filter_map(|argument| *argument).collect()
+            }
+            ExecutionExpressionShapeV2::Paren(inner)
+            | ExecutionExpressionShapeV2::BoolValue(inner) => vec![*inner],
+            ExecutionExpressionShapeV2::Record(fields) => {
+                fields.iter().map(|(_, id)| *id).collect()
+            }
+            ExecutionExpressionShapeV2::List(items) => items.to_vec(),
+            ExecutionExpressionShapeV2::LogicalQuantifier { body, .. } => vec![*body],
+            ExecutionExpressionShapeV2::RelationExists { correlations, .. } => {
+                correlations.iter().map(|edge| edge.reference()).collect()
+            }
+        }
+    }
+    fn assert_relation_closed(
+        label: &str,
+        relation: &ExecutionRelationV2,
+        expect_references: bool,
+    ) {
+        let table: BTreeSet<SourceQualifiedNodeIdV2> = relation
+            .expressions()
+            .iter()
+            .map(|entry| entry.id())
+            .collect();
+        let mut referenced = Vec::new();
+        operator_keys(relation.root(), &mut referenced);
+        for entry in relation.expressions() {
+            referenced.extend(shape_keys(entry.shape()));
+        }
+        if expect_references {
+            assert!(
+                !referenced.is_empty(),
+                "{label}: the positive control must reference expressions"
+            );
+        }
+        for key in referenced {
+            assert!(
+                table.contains(&key),
+                "{label}: {key:?} is referenced but absent from the closed table"
+            );
+        }
+    }
+    let where_source =
+        "from records r | where r.id + 1 > 2 and r.id - 1 != 0 | project count(*) as n";
+    let where_compiled =
+        compile_source_document_v2(DOC_SOURCE, where_source, &authority_with_records())
+            .expect("where/count relation compiles");
+    for item in where_compiled.execution().items() {
+        if let Some(relation) = item.relation() {
+            assert_relation_closed("where/count relation", relation, true);
+        }
+    }
+    let sample =
+        compile_source_document_v2(DOC_SOURCE, &composition_source(2), &minimal_authority())
+            .expect("SAMPLE composition compiles");
+    let query_composition =
+        "let rows = from records r | where r.id + 1 > 2 from rows x | project x.id as id with rows";
+    let query =
+        compile_source_document_v2(DOC_SOURCE, query_composition, &authority_with_records())
+            .expect("Query composition compiles");
+    for (label, compiled) in [("SAMPLE", sample), ("Query", query)] {
+        let item = compiled.execution().items().first().expect("one item");
+        let composition = item.composition().expect("composition payload");
+        for binding in composition.bindings() {
+            if let Some(schema) = binding.schema() {
+                let mut keys = Vec::new();
+                schema_keys(schema, &mut keys);
+                match binding.relation() {
+                    Some(producer) => {
+                        let table: BTreeSet<SourceQualifiedNodeIdV2> = producer
+                            .expressions()
+                            .iter()
+                            .map(|entry| entry.id())
+                            .collect();
+                        for key in keys {
+                            assert!(
+                                table.contains(&key),
+                                "{label}: binding schema {key:?} is absent from the producer table"
+                            );
+                        }
+                        assert_relation_closed(label, producer, true);
+                    }
+                    None => assert!(
+                        keys.is_empty(),
+                        "{label}: table-less producer schema must not reference expressions: {keys:?}"
+                    ),
+                }
+            }
+        }
+        if let Some(body) = composition.body_relation() {
+            assert_relation_closed(label, body, true);
+        }
+    }
+}
+
+/// The resolved entry point shares the source entry's contract exactly but
+/// binds the empty source leg: it never sees raw bytes, so its source and
+/// qualification digests must differ while items and contract match.
+#[test]
+fn resolved_entry_shares_contract_but_not_source_digest() {
+    let authority = authority_with_records();
+    let via_source = compile_source_document_v2(DOC_SOURCE, RECORD_SOURCE, &authority)
+        .expect("source entry compiles");
+    let document = resolve_source(&authority, RECORD_SOURCE);
+    let via_resolved = compile_resolved_document_v2(&document).expect("resolved entry compiles");
+    assert_eq!(
+        via_source.execution().items(),
+        via_resolved.execution().items()
+    );
+    assert_eq!(
+        via_source.execution().contract_digest(),
+        via_resolved.execution().contract_digest()
+    );
+    assert_ne!(
+        via_source.execution().source_digest(),
+        via_resolved.execution().source_digest()
+    );
+    assert_ne!(
+        via_source.execution().qualification_digest(),
+        via_resolved.execution().qualification_digest()
     );
 }
 
