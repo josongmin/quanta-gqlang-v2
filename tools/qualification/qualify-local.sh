@@ -39,6 +39,10 @@ cleanup() {
 }
 trap cleanup EXIT
 git worktree add --detach "$checkout" "$sha" >&2
+mkdir -p "$repo_root/target"
+# Frontdoor parity resolves the binary below the checkout's target directory.
+# Keep that path valid while sharing the ignored build cache across worktrees.
+ln -s "$repo_root/target" "$checkout/target"
 
 # 3. Toolchain record (stdout only; never added to receipt.json).
 echo "qualify-local: pinned toolchain:"
@@ -49,11 +53,11 @@ cargo --version
 command -v just >/dev/null 2>&1 || { echo "qualify-local: just is required but not installed" >&2; exit 1; }
 just --version
 
-# 4. Run the single composition entry point against the pinned source. Shared
-# Cargo outputs are outside the checkout; they cannot change its source tree.
+# 4. Run the single composition entry point against the pinned source. The
+# checkout's ignored target symlink points to build outputs outside its tree.
 start="$(date +%s)"
 set +e
-(cd "$checkout" && CARGO_TARGET_DIR="$repo_root/target" just ci)
+(cd "$checkout" && just ci)
 exit_code=$?
 set -e
 end="$(date +%s)"
