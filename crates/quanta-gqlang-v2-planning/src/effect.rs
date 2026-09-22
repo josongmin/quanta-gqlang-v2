@@ -1,70 +1,93 @@
-//! Truth-lane, evidence, and effect models (ticket 07).
+//! Authority-lane, determinism-lane, evidence, and effect vocabulary (ticket 07).
 //!
-//! These are the host-agnostic policy classifications the planner derives from
-//! the normalized algebra/logic shape. They are SEMANTIC requirements, not
-//! runtime DTOs (`D14`): they say what TRUTH lane a result lives in, what
-//! EVIDENCE it requires, and what EFFECT it is permitted to have — never how a
-//! runtime would execute it.
+//! The V2 cut separates two classifications the V1 `TruthLaneV1` conflated:
 //!
-//! Pinned-semantics 2/3 require that AI/candidate/proof lanes stay explicit and
-//! typed, and that final policy truth remains impossible without the right proof
-//! semantics. The [`TruthLaneV1`] / [`EvidenceRequirementV1`] split encodes that
-//! directly.
+//! - [`AuthorityLaneV2`]: WHO checked the result — ordinary frontend-checked
+//!   semantics, or an exact `REQUIRE CERTIFIED` item matched to the modules
+//!   admission proof. There is deliberately NO advisory/candidate lane: no
+//!   accepted source producer carries a certified/advisory truth lane for
+//!   arbitrary relations, so a planner guess cannot manufacture one.
+//! - [`EvaluationDeterminismV2`]: HOW deterministic the retained expression
+//!   effects make the result. It is folded from sealed effects only, never
+//!   hardcoded.
+//!
+//! These are host-agnostic semantic requirements, not runtime DTOs (`D14`): they
+//! say what evidence a result must carry and what effect it may have — never how
+//! a runtime would execute it. Mutation is not a frontend effect, so the
+//! strongest class below is [`EffectClassV2::ExportOnly`]; the
+//! [`EffectClassV2::MutationForbidden`] guard marker is retained as the explicit
+//! reject spelling and is unreachable from any sealed input.
 
-/// The TRUTH lane a result lives in: how authoritative its truth value is.
+/// WHO checked a plan's result.
 ///
-/// `D7`/`D14`: these are host-agnostic policy lanes, not runtime/provider nouns.
+/// Mapping (ticket 07 vocabulary table):
+///
+/// | Sealed input | `AuthorityLaneV2` |
+/// |---|---|
+/// | ordinary typed relation, graph, CHECK, or presentation | [`Self::FrontendChecked`] |
+/// | exact `REQUIRE CERTIFIED` item matched to the modules admission proof | [`Self::CertifiedRequirementValidated`] |
+/// | catalog declaration / unresolved open analysis | no plan at all |
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum TruthLaneV1 {
-    /// Deterministic relational/logic truth: the result is true by the closed
-    /// semantics of the normalized algebra/logic (a plain query/closure result).
-    Deterministic,
-    /// A candidate lane: the result is a proposed candidate set that has NOT yet
-    /// been reconfirmed; its truth is provisional pending proof.
-    Candidate,
-    /// A proof-confirmed lane: the result's truth is backed by an explicit
-    /// proof/witness, so it may carry final policy weight.
-    ProofConfirmed,
+pub enum AuthorityLaneV2 {
+    /// Ordinary frontend-checked semantics: the result is true by the closed
+    /// semantics of the sealed document.
+    FrontendChecked,
+    /// The exact `REQUIRE CERTIFIED` directive validated against the modules
+    /// admission proof. This certifies only that directive, never an unrelated
+    /// output.
+    CertifiedRequirementValidated,
 }
 
-impl TruthLaneV1 {
+impl AuthorityLaneV2 {
+    /// Stable keyword for explain/diagnostics and CLI/LSP rendering.
+    #[must_use]
+    pub const fn keyword(self) -> &'static str {
+        match self {
+            Self::FrontendChecked => "frontend_checked",
+            Self::CertifiedRequirementValidated => "certified_requirement_validated",
+        }
+    }
+}
+
+/// HOW deterministic the sealed expression effects make a plan's evaluation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum EvaluationDeterminismV2 {
+    /// Every retained expression effect says deterministic, so the same sealed
+    /// document always evaluates to the same result.
+    Deterministic,
+    /// At least one retained expression effect is nondeterministic (e.g. a
+    /// `now()` call), so evaluation is not reproducible from the document alone.
+    NonDeterministic,
+}
+
+impl EvaluationDeterminismV2 {
     /// Stable keyword for explain/diagnostics and CLI/LSP rendering.
     #[must_use]
     pub const fn keyword(self) -> &'static str {
         match self {
             Self::Deterministic => "deterministic",
-            Self::Candidate => "candidate",
-            Self::ProofConfirmed => "proof_confirmed",
+            Self::NonDeterministic => "non_deterministic",
         }
-    }
-
-    /// Whether a result in this lane may carry FINAL policy truth.
-    ///
-    /// Pinned-semantics 3: final policy truth remains impossible without the
-    /// right proof semantics; only [`Self::ProofConfirmed`] qualifies.
-    #[must_use]
-    pub const fn is_final_policy_capable(self) -> bool {
-        matches!(self, Self::ProofConfirmed)
     }
 }
 
-/// What evidence a result must carry to be admissible in its truth lane.
+/// What evidence a result must carry to be admissible in its authority lane.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum EvidenceRequirementV1 {
+pub enum EvidenceRequirementV2 {
     /// No standalone evidence beyond the relational/logic result itself.
     None,
-    /// A source location (file/span) must accompany each result row, e.g. for an
-    /// alert that must point at code (`D20`).
+    /// A source location must accompany each result row, e.g. for an alert that
+    /// must point at code (`D20`).
     SourceLocation,
-    /// A concrete witness/path payload must accompany the result (e.g. a
-    /// reachability path), per the witness contract.
+    /// A concrete witness/path payload must accompany the result, per the sealed
+    /// witness contract.
     WitnessPayload,
     /// A full proof/explain tree must back the result (the strongest evidence;
-    /// required for the proof-confirmed lane).
+    /// required by a required confirmation and by the certified lane).
     ProofTree,
 }
 
-impl EvidenceRequirementV1 {
+impl EvidenceRequirementV2 {
     /// Stable keyword for explain/diagnostics and CLI/LSP rendering.
     #[must_use]
     pub const fn keyword(self) -> &'static str {
@@ -79,27 +102,26 @@ impl EvidenceRequirementV1 {
 
 /// The EFFECT class a plan is permitted to have.
 ///
-/// `D7`/`D14`: mutation is NOT a frontend effect; the strongest permitted class
-/// here is `ExportOnly`, and `MutationForbidden` is the explicit guard that
-/// mutation may never be requested through this host-agnostic frontend.
+/// `D7`/`D14`: mutation is NOT a frontend effect. No sealed input can request it,
+/// so [`Self::MutationForbidden`] is a guard spelling rather than a reachable
+/// outcome; the strongest reachable class is [`Self::ExportOnly`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum EffectClassV1 {
+pub enum EffectClassV2 {
     /// Read-only: the plan reads relations and produces a result; no side
     /// effects of any kind.
     ReadOnly,
     /// Proof/evidence-only: the plan produces proof/evidence artifacts and must
     /// NOT export or materialize candidates beyond that evidence.
     ProofEvidenceOnly,
-    /// Export-only: the plan may export a candidate set (e.g. for downstream
-    /// reconfirmation), but performs no mutation.
+    /// Export-only: the plan may export a candidate set, but performs no
+    /// mutation.
     ExportOnly,
-    /// Mutation-forbidden: an explicit marker that mutation was requested and is
-    /// rejected by this frontend. Carried so the rejection is visible rather
-    /// than silent.
+    /// Mutation-forbidden guard marker. Unreachable from a sealed input; kept so
+    /// the frontend's explicit mutation prohibition has one stable spelling.
     MutationForbidden,
 }
 
-impl EffectClassV1 {
+impl EffectClassV2 {
     /// Stable keyword for explain/diagnostics and CLI/LSP rendering.
     #[must_use]
     pub const fn keyword(self) -> &'static str {
@@ -108,6 +130,58 @@ impl EffectClassV1 {
             Self::ProofEvidenceOnly => "proof_evidence_only",
             Self::ExportOnly => "export_only",
             Self::MutationForbidden => "mutation_forbidden",
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn authority_lane_keywords_are_stable() {
+        for (lane, keyword) in [
+            (AuthorityLaneV2::FrontendChecked, "frontend_checked"),
+            (
+                AuthorityLaneV2::CertifiedRequirementValidated,
+                "certified_requirement_validated",
+            ),
+        ] {
+            assert_eq!(lane.keyword(), keyword);
+        }
+    }
+
+    #[test]
+    fn determinism_and_evidence_keywords_are_stable() {
+        for (lane, keyword) in [
+            (EvaluationDeterminismV2::Deterministic, "deterministic"),
+            (
+                EvaluationDeterminismV2::NonDeterministic,
+                "non_deterministic",
+            ),
+        ] {
+            assert_eq!(lane.keyword(), keyword);
+        }
+        for (evidence, keyword) in [
+            (EvidenceRequirementV2::None, "none"),
+            (EvidenceRequirementV2::SourceLocation, "source_location"),
+            (EvidenceRequirementV2::WitnessPayload, "witness_payload"),
+            (EvidenceRequirementV2::ProofTree, "proof_tree"),
+        ] {
+            assert_eq!(evidence.keyword(), keyword);
+        }
+    }
+
+    #[test]
+    fn effect_class_keywords_are_stable() {
+        for (effect, keyword) in [
+            (EffectClassV2::ReadOnly, "read_only"),
+            (EffectClassV2::ProofEvidenceOnly, "proof_evidence_only"),
+            (EffectClassV2::ExportOnly, "export_only"),
+            (EffectClassV2::MutationForbidden, "mutation_forbidden"),
+        ] {
+            assert_eq!(effect.keyword(), keyword);
         }
     }
 }

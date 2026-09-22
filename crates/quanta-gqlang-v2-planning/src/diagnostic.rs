@@ -349,10 +349,6 @@ impl PlanningDiagnosticV1 {
 
 #[cfg(test)]
 mod tests {
-    #![expect(
-        clippy::panic,
-        reason = "owner code rails fail closed on a drifted diagnostic spelling"
-    )]
 
     use super::*;
 
@@ -568,6 +564,10 @@ mod tests {
         assert_eq!(NoPlanReasonV2::ValueDeclaration.catalog_kind(), None);
     }
 
+    #[expect(
+        clippy::expect_used,
+        reason = "owner rail asserts on one fixture span it minted in bounds"
+    )]
     fn span() -> CheckedLocatedSpanV2 {
         quanta_gqlang_v2_sema::test_support::reference_checked_span_v2(3, 11)
             .expect("fixture checked location is in bounds")
