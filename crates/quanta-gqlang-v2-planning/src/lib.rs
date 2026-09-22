@@ -46,14 +46,27 @@ mod policy;
 mod presentation;
 mod result_kind;
 
+pub use capability::CapabilityV2;
 pub use check::{CheckContractV2, CheckPolicyV2};
 pub use composition::{
     CheckedCompositionPlanInputV2, CheckedCompositionProducerV2, CompositionBodyPlanInputV2,
+};
+pub use composition::{CompositionBodyPolicyV2, CompositionPolicyV2};
+pub use cost::{
+    CardinalityClassV2, OrderingContractV2, RecursionRiskClassV2, SemanticCostV2,
+    WitnessExplosionRiskClassV2,
 };
 pub use diagnostic::{
     CheckInvalidReasonV2, CompositionInvalidReasonV2, InputDocumentMismatchReasonV2,
     PlanningDiagnosticV1, PresentationInvalidReasonV2,
 };
+pub use effect::{AuthorityLaneV2, EffectClassV2, EvaluationDeterminismV2, EvidenceRequirementV2};
+pub use explain::ExplainNoteV2;
 pub use item::{CatalogDeclarationKindV2, NoPlanReasonV2, SemanticPlanInputV2};
 pub use plan::{plan, plan_outcome, PlanOutcomeV2, SemanticPlanV2};
+pub use policy::{EffectSummaryV2, GraphWitnessRetentionV2, PlanPolicyV2, RuleProgramPolicyV2};
 pub use presentation::PresentationContractV2;
+pub use result_kind::{
+    MultiplicityOrderContractV2, RenderRequirementV2, ResultContractV2, ResultKindV2,
+    WitnessSelectionPolicyV2,
+};
