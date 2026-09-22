@@ -1512,3 +1512,29 @@ post-hashes; binder test clean). All three W3 lanes were notified: no
 workspace-wide mutating tools; fmt/clippy must be scoped by package or
 explicit path; lanes asked to disclose any `--fix` run so the full footprint
 can be audited. Dirty count 96 -> 93.
+
+### W3 integrator decisions — 2026-09-21 (reserved-path rulings)
+
+1. **Dev-dependency for document-backed lanes**: REJECTED the
+   logic->modules dev edge (would be a new illegal dev edge). APPROVED the
+   algebra precedent verbatim: `[dev-dependencies] quanta-gqlang-v2-sema =
+   { path, features = ["test"] }` — a feature toggle on an already-normal
+   dependency, zero new DAG edge. Applied and committed. Checked locations
+   are EXTRACTED from fixture documents; no hir dev-dep (hir dies at this
+   barrier).
+2. **Lane W3-A lib.rs patch**: applied (aggregate export ->
+   `RejectAllRecursiveAggregatesV2`; recursion export gains `stratify`).
+3. **Aggregate spelling carrier**: `BodyLiteralV1::aggregated(predicate,
+   function, location)` + `<aggregate>` placeholder when the document path
+   cannot supply a spelling — approved.
+4. **`NonMonotoneRecursion`**: variant retained; if lane W3-A's reject-all
+   policy collapses the aggregated-self-recursion case into
+   `RecursiveAggregate`, the rail/code mapping decision is deferred to the
+   barrier with the exact affected rail named.
+5. **W3-D (sema test-support rule/graph fixtures)**: remains queued for the
+   first free worker slot; lanes B and C are compiling their exact fixture
+   request lists. Worker cap respected (A/B/C running).
+
+Incident follow-up: lanes A and B explicitly deny any `--fix`/workspace-wide
+mutating run (both confirm scoped commands only); lane C has not yet replied.
+The reverted footprint is contained and W1 fingerprints are restored.
