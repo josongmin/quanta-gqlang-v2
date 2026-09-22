@@ -49,6 +49,7 @@ pub use graph::{GraphEndpointRoleV1, GraphQueryContractV1, GraphQuerySemanticsV1
 pub use recursion::{
     stratify, BodyLiteralV1, BodyPolarityV1, RecursiveProgramV1, RuleDefV1, StratificationProofV1,
 };
+pub use source::RuleProgramContractV2;
 pub use witness::{
     DedupIdentityV1, RelationShapeV1, WitnessContractV1, WitnessRequestV1, WitnessTieBreakV1,
 };

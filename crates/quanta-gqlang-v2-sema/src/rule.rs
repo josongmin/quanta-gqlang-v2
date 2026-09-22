@@ -149,4 +149,18 @@ impl ResolvedRuleV2 {
     pub fn calls(&self) -> &[ResolvedRuleCallV2] {
         &self.calls
     }
+
+    /// Test-only minting seam: replace the resolved call vector WITHOUT
+    /// revalidation so adversarial-document rails can forge rule facts
+    /// (nonlocal/transplanted target, polarity flip, unknown call id,
+    /// foreign location, dropped/extra call) against the real Logic
+    /// validator. Compiled only under the `test` feature; never part of the
+    /// public contract and never reachable from a normal build.
+    #[cfg(feature = "test")]
+    #[doc(hidden)]
+    #[must_use]
+    pub(crate) fn forged_with_calls(mut self, calls: Vec<ResolvedRuleCallV2>) -> Self {
+        self.calls = calls;
+        self
+    }
 }

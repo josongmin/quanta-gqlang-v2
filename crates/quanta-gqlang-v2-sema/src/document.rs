@@ -437,6 +437,21 @@ fn graph_target_is_admitted(
 }
 
 impl SemanticDocumentV2 {
+    /// Test-only minting seam: mutate the item map and document order of an
+    /// already-sealed document so adversarial-document rails can forge
+    /// membership mismatches (dropped item, orphan item, duplicate order id)
+    /// against the real Logic validator. Compiled only under the `test`
+    /// feature; never part of the public contract.
+    #[cfg(feature = "test")]
+    #[doc(hidden)]
+    pub(crate) fn forged_membership<F>(mut self, mutate: F) -> Self
+    where
+        F: FnOnce(&mut Vec<SemanticItemIdV2>, &mut BTreeMap<SemanticItemIdV2, SemanticItemV2>),
+    {
+        mutate(&mut self.order, &mut self.items);
+        self
+    }
+
     /// Assemble exact-key semantic outputs; no positional zip or partial
     /// success path is available.
     pub(crate) fn try_assemble(
