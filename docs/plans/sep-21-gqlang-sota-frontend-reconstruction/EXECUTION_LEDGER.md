@@ -1856,3 +1856,35 @@ Barrier W4 will: apply Planning/Pipeline manifests + lib.rs export deletions,
 replace the four facade globs serially with the pinned three functions + DTO
 allowlist, run planning/pipeline/facade suites + doctests + strict Clippy +
 the external-consumer script + architecture, and write Receipt 07.
+
+### W4 integrator decisions + upstream fixes — 2026-09-21/22
+
+- W4-A decision set ruled: (1) planning manifest final = algebra+logic+sema+types
+  (hir dropped) + sema/test dev-dep — APPLIED; (2) sema additive re-exports
+  `ConfirmModeV1, EmitModeV1, DetectionModeV1, EvidenceModeV1, TruthModeV1,
+  ShowCategoryV1, SampleModeV1, CompareMetricV1, ExportFormatV1` (+ for W4-B
+  `SourceRegistryViewV2`, `SourceRegistrationV2`, `RelationCatalogV2`) —
+  APPLIED, so no lane needs a dying hir edge; (3) lib.rs content comes as a
+  W4-A patch, integrator applies; (4) test-support lease EXTENDED to W4-A for
+  the presentation/meta/catalog/declaration/composition fixtures (additive
+  only), since planning tests may not take a hir/surface dev edge.
+- UPSTREAM GAP CLOSED (4a/4b): `ResolvedCheckV2`/`ResolvedPresentationV2`
+  retained no checked location, so no CHECK/presentation rejection or
+  `ExplainNoteV2.root_location` could be anchored without a hir edge.
+  Integrator added a retained `location` field + `location()` accessor at
+  resolution (four construction sites) — sema re-qualified UNCHANGED
+  (baseline 102/102, features 121/121), proving behavioral equivalence.
+- JUNCTION AMENDMENT J1 approved as refined: planning entries are
+  `plan(&SemanticPlanInputV2, &SemanticDocumentV2)` and
+  `plan_outcome(&SemanticPlanInputV2, &SemanticDocumentV2)`; the planner reads
+  `document.budget_receipt()` itself and must validate each arm's identity
+  against the document (fail closed), preserving the W1 rule that no consumer
+  accepts an independent budget argument while making the deep-walk cases
+  (Relational/Graph/Meta) chargeable. W4-A's fallback (one-arg plan failing
+  closed for three arms) rejected as planner-unusable.
+- W4-B MANIFEST: pipeline gains sema (normal) + sema/test (dev) — APPLIED.
+  Dev hir/binder/types edges rejected (dev edges follow the final set);
+  everything HIR-owned comes through sema re-exports. Pipeline carries
+  `CompiledRuleProgramV2`/`RuleProgramMemberV2` as assembly-owned types; the
+  surface→FrontendTransactionErrorV2 mapping is written in
+  pipeline/diagnostic.rs and reported field-by-field.
