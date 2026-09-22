@@ -312,7 +312,7 @@ impl ModuleAuthorityBuilderV2 {
 }
 
 /// Sealed, registry-consistent output of one authority transaction.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ValidatedModuleAuthorityPartsV2 {
     resolved_graph: ResolvedGraphV2,
     external_catalog: ExternalCatalogV2,
