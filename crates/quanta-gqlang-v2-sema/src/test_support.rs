@@ -2745,6 +2745,10 @@ impl ReferenceGraphDocumentV2 {
     }
     /// The resolved FIND item.
     #[must_use]
+    #[expect(
+        clippy::panic,
+        reason = "the fixture seals this identity, so a non-Graph item is unreachable"
+    )]
     pub fn graph(&self) -> &ResolvedGraphQueryV2 {
         match self.document.item(self.item_id) {
             Some(SemanticItemV2::Graph(graph)) => graph,
