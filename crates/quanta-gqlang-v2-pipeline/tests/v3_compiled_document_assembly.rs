@@ -32,11 +32,12 @@ use quanta_gqlang_v2_modules::{
 use quanta_gqlang_v2_pipeline::{
     compile_resolved_document_v2, compile_source_document_v2, format_source_document_v2,
     AnalysisItemV2, CompiledItemV2, DocumentAssemblyCodeV2, ExecutionAuthorityV2,
-    ExecutionCompositionBodyV2, ExecutionCompositionProducerV2, ExecutionExpressionShapeV2,
-    ExecutionFamilyV2, ExecutionRelationAuthorityV2, ExecutionSampleModeV2,
-    FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendLanguageVersionV2,
-    FrontendRelationAuthorityV2, FrontendRelationInputV2, FrontendTransactionErrorV2,
-    PlannedItemV2,
+    ExecutionCallTargetV2, ExecutionCardinalityV2, ExecutionCompositionBodyV2,
+    ExecutionCompositionProducerV2, ExecutionExpressionShapeV2, ExecutionFamilyV2,
+    ExecutionRelationAuthorityV2, ExecutionSampleModeV2, ExecutionScalarTypeV2,
+    ExecutionSourceKindV2, ExecutionValueTypeV2, FrontendAuthorityLocationV2,
+    FrontendAuthoritySourceV2, FrontendLanguageVersionV2, FrontendRelationAuthorityV2,
+    FrontendRelationInputV2, FrontendTransactionErrorV2, PlannedItemV2,
 };
 use quanta_gqlang_v2_planning::{
     AuthorityLaneV2, CapabilityV2, CardinalityClassV2, CheckedCompositionPlanInputV2,
@@ -921,7 +922,10 @@ fn composition_producer_and_with_identity_are_assembled_exactly() {
             ..
         }
     ));
-    assert_ne!(compiled.execution().digest(), semantic.execution().digest());
+    assert_ne!(
+        compiled.execution().contract_digest(),
+        semantic.execution().contract_digest()
+    );
     let CompiledItemV2::Planned(planned) = &compiled.items()[0] else {
         panic!("a composition item must compile to a planned composition item");
     };
@@ -1097,9 +1101,21 @@ fn execution_contract_is_complete_deterministic_and_mutation_sensitive() {
     let relation = item
         .relation()
         .expect("relation item carries operator tree");
-    assert_eq!(relation.root().family(), "project");
-    assert_eq!(relation.root().children()[0].family(), "scan");
+    assert_eq!(relation.root().family(), AlgebraFamilyV2::Project);
+    assert_eq!(relation.root().join_mode(), None);
+    assert_eq!(
+        relation.root().children()[0].family(),
+        AlgebraFamilyV2::Scan
+    );
     assert_eq!(relation.root().schema().fields()[0].name(), "id");
+    assert_eq!(
+        relation.root().schema().fields()[0].value_type(),
+        &ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int)
+    );
+    assert_eq!(
+        relation.root().schema().cardinality(),
+        ExecutionCardinalityV2::Bag
+    );
     assert!(relation.expressions().iter().any(|expression| matches!(
         expression.shape(),
         ExecutionExpressionShapeV2::Path { .. } | ExecutionExpressionShapeV2::Binding(_)
@@ -1115,7 +1131,14 @@ fn execution_contract_is_complete_deterministic_and_mutation_sensitive() {
         &authority,
     )
     .expect("schema mutation remains valid source");
-    assert_ne!(compiled.execution().digest(), mutated.execution().digest());
+    assert_ne!(
+        compiled.execution().contract_digest(),
+        mutated.execution().contract_digest()
+    );
+    assert_ne!(
+        compiled.execution().qualification_digest(),
+        mutated.execution().qualification_digest()
+    );
     assert_ne!(
         compiled.execution().source_digest(),
         mutated.execution().source_digest()
@@ -1132,8 +1155,18 @@ fn execution_contract_is_complete_deterministic_and_mutation_sensitive() {
         byte_mutated.execution().source_digest()
     );
     assert_ne!(
-        compiled.execution().digest(),
-        byte_mutated.execution().digest()
+        compiled.execution().qualification_digest(),
+        byte_mutated.execution().qualification_digest()
+    );
+    // The DTO is whitespace-insensitive: identical contracts share one digest
+    // (the source and qualification legs still move, asserted above).
+    assert_eq!(
+        compiled.execution().contract_digest(),
+        byte_mutated.execution().contract_digest()
+    );
+    assert_eq!(
+        compiled.execution().items(),
+        byte_mutated.execution().items()
     );
 }
 
@@ -1164,6 +1197,7 @@ fn workspace_files_authority_is_closed_and_digest_bound() {
         source.authority(),
         ExecutionRelationAuthorityV2::CanonicalWorkspaceFiles
     );
+    assert_eq!(source.kind(), ExecutionSourceKindV2::Relation);
     assert_eq!(source.namespace(), Some("builtin"));
     assert_eq!(source.name(), "workspace_files");
 
@@ -1181,14 +1215,22 @@ fn workspace_files_authority_is_closed_and_digest_bound() {
         .source()
         .expect("scan carries source identity");
     assert_eq!(host_source.authority(), ExecutionRelationAuthorityV2::Host);
-    assert_ne!(canonical.execution().digest(), host.execution().digest());
+    assert_ne!(
+        canonical.execution().contract_digest(),
+        host.execution().contract_digest()
+    );
+    assert_ne!(
+        canonical.execution().qualification_digest(),
+        host.execution().qualification_digest()
+    );
 }
 
 #[test]
 fn execution_expressions_expose_operator_and_builtin_semantics_without_registries() {
-    let source = "let plus = 1 + 2; let minus = 3 - 1; let named = length(\"x\"); \
-                  rule local_rule : x if x = 1 and x != 2; \
-                  from records r | project r.id as id";
+    // The `let` noise item must NOT leak into the relation's closed table: the
+    // census below observes only the relation item's own expressions.
+    let source = "let noise = 6 * 7; \
+                  from records r | where r.id + 1 > 2 and r.id - 1 != 0 | project count(*) as n";
     let compiled = compile_source_document_v2(DOC_SOURCE, source, &authority_with_records())
         .expect("mixed expression document compiles");
     let expressions = compiled
@@ -1196,10 +1238,10 @@ fn execution_expressions_expose_operator_and_builtin_semantics_without_registrie
         .items()
         .last()
         .and_then(|item| item.relation())
-        .expect("relation carries the document expression table")
+        .expect("relation carries its closed expression table")
         .expressions();
     let mut operators = BTreeSet::new();
-    let mut calls = BTreeSet::new();
+    let mut builtins = Vec::new();
     for expression in expressions {
         match expression.shape() {
             ExecutionExpressionShapeV2::Unary { operator, .. }
@@ -1211,7 +1253,10 @@ fn execution_expressions_expose_operator_and_builtin_semantics_without_registrie
                 operators.insert(operator.symbol().to_owned());
             }
             ExecutionExpressionShapeV2::Call { target, .. } => {
-                calls.insert(target.clone());
+                let ExecutionCallTargetV2::Builtin { name } = target else {
+                    panic!("expected a builtin call target, got {target:?}");
+                };
+                builtins.push(name.clone());
             }
             // Exhaustive by construction: a future shape variant fails compilation
             // here instead of silently evading the operator/call census.
@@ -1228,14 +1273,78 @@ fn execution_expressions_expose_operator_and_builtin_semantics_without_registrie
     }
     assert!(operators.contains("+"));
     assert!(operators.contains("-"));
-    assert!(operators.contains("="));
+    assert!(operators.contains(">"));
     assert!(operators.contains("!="));
-    assert!(operators.contains("and"));
-    assert!(calls.contains("builtin:length"));
-    assert!(!calls
+    // The `and` combines the two conjuncts, which the operator tree references
+    // directly: the filter carries both conjunct keys, so the unreferenced
+    // `And` parent is correctly absent from the closed table.
+    assert!(!operators.contains("and"));
+    let relation = compiled
+        .execution()
+        .items()
+        .last()
+        .and_then(|item| item.relation())
+        .expect("relation");
+    let mut stack = vec![relation.root()];
+    let mut filter_predicates = None;
+    while let Some(node) = stack.pop() {
+        if node.family() == AlgebraFamilyV2::Filter {
+            filter_predicates = Some(node.predicates().len());
+        }
+        stack.extend(node.children().iter());
+    }
+    assert_eq!(filter_predicates, Some(2));
+    assert!(
+        !operators.contains("*"),
+        "the noise item's `*` must not leak into the relation table: {operators:?}"
+    );
+    assert!(builtins.iter().any(|name| name == "count"));
+    assert!(!builtins
         .iter()
-        .any(|target| target.starts_with("builtin:")
-            && target[8..].chars().all(|c| c.is_ascii_digit())));
+        .any(|name| name.chars().all(|c| c.is_ascii_digit())));
+}
+
+/// Adding unrelated expressions to a sibling relation leaves this item's
+/// contract byte-identical: each relation carries only its own transitive
+/// expression closure, never the document-wide table.
+#[test]
+fn unrelated_sibling_expressions_do_not_move_an_item_contract() {
+    let authority = authority_with_records();
+    let head = "from records r | project r.id as id";
+    let base = compile_source_document_v2(
+        DOC_SOURCE,
+        &format!("{head} ;\nfrom records s | project s.id as sid"),
+        &authority,
+    )
+    .expect("two-relation document compiles");
+    let grown = compile_source_document_v2(
+        DOC_SOURCE,
+        &format!(
+            "{head} ;\nfrom records s | where s.id + 1 > 2 and s.id - 1 != 0 | project count(*) as n"
+        ),
+        &authority,
+    )
+    .expect("sibling with more expressions compiles");
+    let head_base = base.execution().items()[0]
+        .relation()
+        .expect("head relation");
+    let head_grown = grown.execution().items()[0]
+        .relation()
+        .expect("head relation");
+    assert_eq!(head_base, head_grown);
+    // Sanity: the sibling really did grow, so the equality above is not vacuous.
+    assert_ne!(
+        base.execution().items()[1]
+            .relation()
+            .expect("sibling")
+            .expressions()
+            .len(),
+        grown.execution().items()[1]
+            .relation()
+            .expect("sibling")
+            .expressions()
+            .len()
+    );
 }
 
 /// A composition body whose lowered root belongs to ANOTHER relation is

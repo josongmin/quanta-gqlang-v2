@@ -66,8 +66,9 @@ use crate::diagnostic::{
     planning_transaction_error, surface_failure, surface_transaction_error, DocumentAssemblyCodeV2,
 };
 use crate::execution::{
-    project_composition, project_relation, project_relation_root, ExecutionCompositionV2,
-    ExecutionDocumentV2, ExecutionFamilyV2, ExecutionItemV2, ExecutionRelationV2,
+    project_composition, project_relation, project_relation_root, ExecutionClosureFailureV2,
+    ExecutionCompositionV2, ExecutionDocumentV2, ExecutionFamilyV2, ExecutionItemV2,
+    ExecutionRelationV2,
 };
 
 /// Pipeline-owned code for an open-analysis source whose authority is partial.
@@ -1124,7 +1125,8 @@ fn run_item(
             let lowered = algebra
                 .lower_relation_item(id)
                 .map_err(|error| algebra_error(document, id, &error))?;
-            let relation = project_relation(document, &lowered);
+            let relation = project_relation(document, &lowered)
+                .map_err(|failure| closure_error(document, id, failure))?;
             let plan = planning_plan(
                 document,
                 planning,
@@ -1180,7 +1182,10 @@ fn run_item(
                         let root = algebra
                             .lower_nested_relation(composition.item_id(), query.root())
                             .map_err(|error| algebra_error(document, id, &error))?;
-                        Some(project_relation_root(document, query.item_id(), &root))
+                        Some(
+                            project_relation_root(document, query.item_id(), &root)
+                                .map_err(|failure| closure_error(document, id, failure))?,
+                        )
                     }
                     ResolvedCompositionProducerV2::Sample { .. }
                     | ResolvedCompositionProducerV2::Graph { .. } => None,
@@ -1309,7 +1314,8 @@ fn composition_body_input(
             let root = algebra
                 .lower_nested_relation(owner, body.root())
                 .map_err(|error| algebra_error(document, owner, &error))?;
-            let execution = project_relation_root(document, body.item_id(), &root);
+            let execution = project_relation_root(document, body.item_id(), &root)
+                .map_err(|failure| closure_error(document, owner, failure))?;
             let body = CompositionRelationalBodyPlanInputV2::try_new(body.item_id(), root)
                 .map_err(|reason| {
                     planning_transaction_error(&PlanningDiagnosticV1::InvalidComposition {
@@ -1402,6 +1408,27 @@ fn algebra_error(
     error: &quanta_gqlang_v2_algebra::AlgebraDiagnosticV2,
 ) -> FrontendTransactionErrorV2 {
     algebra_transaction_error(error, item_location_of(document, id))
+}
+
+/// Map an execution expression-closure failure to a stable assembly error.
+fn closure_error(
+    document: &SemanticDocumentV2,
+    id: SemanticItemIdV2,
+    failure: ExecutionClosureFailureV2,
+) -> FrontendTransactionErrorV2 {
+    let location = item_location_of(document, id);
+    match failure {
+        ExecutionClosureFailureV2::Dangling => assembly(
+            location,
+            DocumentAssemblyCodeV2::DanglingExecutionReference,
+            "an executable item references an expression the sealed document does not carry",
+        ),
+        ExecutionClosureFailureV2::Foreign => assembly(
+            location,
+            DocumentAssemblyCodeV2::ForeignItemResult,
+            "an executable item references an expression from another source",
+        ),
+    }
 }
 
 /// Mint one pipeline-owned assembly failure.

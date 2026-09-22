@@ -3,7 +3,7 @@
 //! This module copies only public semantic facts into a closed transport DTO.
 //! It does not expose HIR, Sema, or Algebra owner types.
 
-use quanta_gqlang_v2_algebra::{CheckedAlgebraNodeV2, LoweredRelationItemV2};
+use quanta_gqlang_v2_algebra::{AlgebraFamilyV2, CheckedAlgebraNodeV2, LoweredRelationItemV2};
 use quanta_gqlang_v2_planning::{
     AuthorityLaneV2, EffectClassV2, EvaluationDeterminismV2, EvidenceRequirementV2, PlanPolicyV2,
     SemanticPlanV2,
@@ -13,9 +13,11 @@ use quanta_gqlang_v2_sema::{
     NullOrderV2, RelationAuthorityV2, RelationExistsPolarityV2, RelationOutputContractV2,
     ResolvedCallTargetV2, ResolvedCompositionBodyV2, ResolvedCompositionProducerV2,
     ResolvedCompositionV2, ResolvedPresentationKindV2, ResolvedRelationSourceKindV2, SampleModeV1,
-    SemanticDocumentV2, SemanticItemIdV2, SortDirectionV2, SourceIdV2, SourceQualifiedNodeIdV2,
-    TypedCallArgumentV2, TypedExprShapeV2, TypedExprV2, TypedLiteralFactV2, TypedLiteralValueV2,
+    ScalarTyV1, SemanticDocumentV2, SemanticItemIdV2, SortDirectionV2, SourceIdV2,
+    SourceQualifiedNodeIdV2, TypedCallArgumentV2, TypedExprShapeV2, TypedExprV2,
+    TypedLiteralFactV2, TypedLiteralValueV2, ValueTypeV1,
 };
+use sha2::{Digest as _, Sha256};
 
 /// SHA-256 digest of the canonical execution-contract encoding.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -49,23 +51,35 @@ fn hex_lower(bytes: &[u8]) -> String {
 }
 
 /// One immutable, source-ordered execution document.
+///
+/// Three digests separate three concerns: [`ExecutionDocumentV2::source_digest`]
+/// covers the raw UTF-8 source bytes only, [`ExecutionDocumentV2::contract_digest`]
+/// covers the canonical DTO encoding only, and
+/// [`ExecutionDocumentV2::qualification_digest`] binds the two together under the
+/// contract domain and schema version.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionDocumentV2 {
     source_id: SourceIdV2,
     items: Box<[ExecutionItemV2]>,
     source_digest: ExecutionDigestV2,
-    digest: ExecutionDigestV2,
+    contract_digest: ExecutionDigestV2,
+    qualification_digest: ExecutionDigestV2,
 }
 
 impl ExecutionDocumentV2 {
     pub(crate) fn new(source_id: SourceIdV2, items: Vec<ExecutionItemV2>) -> Self {
-        let source_digest = digest_source(source_id, &items);
-        let digest = digest_document(source_id, source_digest, &items);
+        let contract_digest = digest_contract(source_id, &items);
+        // Source bytes arrive later through `bind_source_bytes` (the resolved
+        // entry point has no bytes at all); until then the source leg binds the
+        // empty input so every digest is always defined.
+        let source_digest = digest_source_bytes(&[]);
+        let qualification_digest = digest_qualification(source_id, source_digest, contract_digest);
         Self {
             source_id,
             items: items.into_boxed_slice(),
             source_digest,
-            digest,
+            contract_digest,
+            qualification_digest,
         }
     }
 
@@ -87,25 +101,30 @@ impl ExecutionDocumentV2 {
         self.items.iter().find(|item| item.item_id == item_id)
     }
 
-    /// Digest of the complete canonical DTO encoding.
-    #[must_use]
-    pub const fn digest(&self) -> ExecutionDigestV2 {
-        self.digest
-    }
-
-    /// Digest of source-derived identities, expression trees, and relation trees.
+    /// Digest of the raw UTF-8 source bytes only. DTO changes never move it.
     #[must_use]
     pub const fn source_digest(&self) -> ExecutionDigestV2 {
         self.source_digest
     }
 
+    /// Digest of the canonical DTO encoding only. Source-byte changes that do
+    /// not alter the projected contract never move it.
+    #[must_use]
+    pub const fn contract_digest(&self) -> ExecutionDigestV2 {
+        self.contract_digest
+    }
+
+    /// Digest binding the contract domain, the schema version, and both legs
+    /// above. Any DTO or source-byte change moves it.
+    #[must_use]
+    pub const fn qualification_digest(&self) -> ExecutionDigestV2 {
+        self.qualification_digest
+    }
+
     pub(crate) fn bind_source_bytes(&mut self, source: &[u8]) {
-        let mut bytes = Vec::new();
-        put_str(&mut bytes, "qglang.execution.source-bytes.v2");
-        put_usize(&mut bytes, source.len());
-        bytes.extend_from_slice(source);
-        self.source_digest = ExecutionDigestV2(sha256(&bytes));
-        self.digest = digest_document(self.source_id, self.source_digest, &self.items);
+        self.source_digest = digest_source_bytes(source);
+        self.qualification_digest =
+            digest_qualification(self.source_id, self.source_digest, self.contract_digest);
     }
 }
 
@@ -187,7 +206,8 @@ impl ExecutionItemV2 {
     }
 }
 
-/// Runtime-relevant policy copied from the sealed semantic plan.
+/// Frontend-checked policy copied from the sealed semantic plan. This is pure
+/// frontend vocabulary: no runtime, provider, or backend routing appears here.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionPlanV2 {
     authority: ExecutionAuthorityV2,
@@ -268,6 +288,271 @@ impl ExecutionPolicyFamilyV2 {
     }
 }
 
+/// Closed scalar vocabulary projected from the sealed type owner.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionScalarTypeV2 {
+    Bool,
+    Int,
+    Float,
+    String,
+    Duration,
+    Location,
+    Path,
+    RepoPath,
+    EntityRef,
+    SymbolRef,
+    RuleRef,
+    SourceScope,
+    ProofTree,
+}
+
+const fn project_scalar(scalar: &ScalarTyV1) -> ExecutionScalarTypeV2 {
+    match scalar {
+        ScalarTyV1::Bool => ExecutionScalarTypeV2::Bool,
+        ScalarTyV1::Int => ExecutionScalarTypeV2::Int,
+        ScalarTyV1::Float => ExecutionScalarTypeV2::Float,
+        ScalarTyV1::String => ExecutionScalarTypeV2::String,
+        ScalarTyV1::Duration => ExecutionScalarTypeV2::Duration,
+        ScalarTyV1::Location => ExecutionScalarTypeV2::Location,
+        ScalarTyV1::Path => ExecutionScalarTypeV2::Path,
+        ScalarTyV1::RepoPath => ExecutionScalarTypeV2::RepoPath,
+        ScalarTyV1::EntityRef => ExecutionScalarTypeV2::EntityRef,
+        ScalarTyV1::SymbolRef => ExecutionScalarTypeV2::SymbolRef,
+        ScalarTyV1::RuleRef => ExecutionScalarTypeV2::RuleRef,
+        ScalarTyV1::SourceScope => ExecutionScalarTypeV2::SourceScope,
+        ScalarTyV1::ProofTree => ExecutionScalarTypeV2::ProofTree,
+    }
+}
+
+/// Closed value-type vocabulary. Only record field names and union tags are
+/// open strings; every structural kind is an enum variant.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExecutionValueTypeV2 {
+    Scalar(ExecutionScalarTypeV2),
+    Null,
+    Tuple(Box<[ExecutionValueTypeV2]>),
+    Record(Box<[ExecutionRecordFieldV2]>),
+    Optional(Box<ExecutionValueTypeV2>),
+    Collection {
+        element: Box<ExecutionValueTypeV2>,
+        cardinality: ExecutionCardinalityV2,
+    },
+    Union(Box<[ExecutionUnionVariantV2]>),
+    /// The checked expression carries no known type. Schemas never project
+    /// this variant: row and order types are always known.
+    Unknown,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExecutionRecordFieldV2 {
+    name: String,
+    value_type: ExecutionValueTypeV2,
+}
+impl ExecutionRecordFieldV2 {
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    #[must_use]
+    pub const fn value_type(&self) -> &ExecutionValueTypeV2 {
+        &self.value_type
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExecutionUnionVariantV2 {
+    tag: String,
+    value_type: ExecutionValueTypeV2,
+}
+impl ExecutionUnionVariantV2 {
+    #[must_use]
+    pub fn tag(&self) -> &str {
+        &self.tag
+    }
+    #[must_use]
+    pub const fn value_type(&self) -> &ExecutionValueTypeV2 {
+        &self.value_type
+    }
+}
+
+fn project_value_type(value: &ValueTypeV1) -> ExecutionValueTypeV2 {
+    if let Some(scalar) = value.as_type().as_scalar() {
+        return ExecutionValueTypeV2::Scalar(project_scalar(scalar));
+    }
+    if value.is_null() {
+        return ExecutionValueTypeV2::Null;
+    }
+    if let Some(tuple) = value.as_tuple() {
+        return ExecutionValueTypeV2::Tuple(
+            tuple
+                .items()
+                .iter()
+                .map(project_value_type)
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+        );
+    }
+    if let Some(record) = value.as_record() {
+        return ExecutionValueTypeV2::Record(
+            record
+                .fields()
+                .iter()
+                .map(|field| ExecutionRecordFieldV2 {
+                    name: field.name().to_owned(),
+                    value_type: project_value_type(field.value_type()),
+                })
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+        );
+    }
+    if let Some(optional) = value.as_optional() {
+        return ExecutionValueTypeV2::Optional(Box::new(project_value_type(optional.inner())));
+    }
+    if let Some(collection) = value.as_collection() {
+        return ExecutionValueTypeV2::Collection {
+            element: Box::new(project_value_type(collection.element())),
+            cardinality: project_cardinality(collection.cardinality()),
+        };
+    }
+    if let Some(union) = value.as_union() {
+        return ExecutionValueTypeV2::Union(
+            union
+                .variants()
+                .iter()
+                .map(|variant| ExecutionUnionVariantV2 {
+                    tag: variant.tag().to_owned(),
+                    value_type: project_value_type(variant.value_type()),
+                })
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+        );
+    }
+    // `ValueTypeV1` construction rejects relation kinds, and every other kind
+    // is matched above; the unreachable remainder fails closed as Unknown so
+    // the projection stays total even if the owner grows a kind.
+    ExecutionValueTypeV2::Unknown
+}
+
+/// Closed row/collection cardinality vocabulary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionCardinalityV2 {
+    Set,
+    Bag,
+    Sequence,
+}
+
+const fn project_cardinality(value: CardinalityV1) -> ExecutionCardinalityV2 {
+    match value {
+        CardinalityV1::Set => ExecutionCardinalityV2::Set,
+        CardinalityV1::Bag => ExecutionCardinalityV2::Bag,
+        CardinalityV1::Sequence => ExecutionCardinalityV2::Sequence,
+    }
+}
+
+/// Closed sort-direction vocabulary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionSortDirectionV2 {
+    Asc,
+    Desc,
+}
+
+const fn project_sort_direction(value: SortDirectionV2) -> ExecutionSortDirectionV2 {
+    match value {
+        SortDirectionV2::Asc => ExecutionSortDirectionV2::Asc,
+        SortDirectionV2::Desc => ExecutionSortDirectionV2::Desc,
+    }
+}
+
+/// Closed null-ordering vocabulary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionNullOrderV2 {
+    First,
+    Last,
+}
+
+const fn project_null_order(value: NullOrderV2) -> ExecutionNullOrderV2 {
+    match value {
+        NullOrderV2::First => ExecutionNullOrderV2::First,
+        NullOrderV2::Last => ExecutionNullOrderV2::Last,
+    }
+}
+
+/// Closed join-mode vocabulary. Only `Join` operators carry a mode.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionJoinModeV2 {
+    Inner,
+    Cross,
+}
+
+const fn project_join_mode(value: JoinModeV2) -> ExecutionJoinModeV2 {
+    match value {
+        JoinModeV2::Inner => ExecutionJoinModeV2::Inner,
+        JoinModeV2::Cross => ExecutionJoinModeV2::Cross,
+    }
+}
+
+/// Closed scan-source-kind vocabulary. Names and namespaces stay open strings
+/// on [`ExecutionSourceV2`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionSourceKindV2 {
+    Relation,
+    View,
+    Composition,
+}
+
+/// Closed call-target vocabulary. Only the callee identity is an open string;
+/// the target class is an enum variant.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExecutionCallTargetV2 {
+    Builtin { name: String },
+    Predicate { name: String },
+    HostPredicate { fingerprint: String },
+}
+
+fn project_call_target(target: &ResolvedCallTargetV2) -> ExecutionCallTargetV2 {
+    match target {
+        ResolvedCallTargetV2::Builtin(id) => ExecutionCallTargetV2::Builtin {
+            name: id.name().unwrap_or("invalid_closed_builtin").to_owned(),
+        },
+        ResolvedCallTargetV2::Predicate(id) => ExecutionCallTargetV2::Predicate {
+            name: id.as_str().to_owned(),
+        },
+        ResolvedCallTargetV2::HostPredicate(id) => ExecutionCallTargetV2::HostPredicate {
+            fingerprint: hex_lower(id.canonical_bytes()),
+        },
+    }
+}
+
+/// Closed logical-quantifier vocabulary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionLogicalQuantifierV2 {
+    Exists,
+    Forall,
+}
+
+const fn project_logical_quantifier(
+    value: LogicalQuantifierKindV2,
+) -> ExecutionLogicalQuantifierV2 {
+    match value {
+        LogicalQuantifierKindV2::Exists => ExecutionLogicalQuantifierV2::Exists,
+        LogicalQuantifierKindV2::Forall => ExecutionLogicalQuantifierV2::Forall,
+    }
+}
+
+/// Closed relational-existence polarity vocabulary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionExistsPolarityV2 {
+    Exists,
+    NotExists,
+}
+
+const fn project_exists_polarity(value: RelationExistsPolarityV2) -> ExecutionExistsPolarityV2 {
+    match value {
+        RelationExistsPolarityV2::Exists => ExecutionExistsPolarityV2::Exists,
+        RelationExistsPolarityV2::NotExists => ExecutionExistsPolarityV2::NotExists,
+    }
+}
+
 fn project_plan(plan: &SemanticPlanV2) -> ExecutionPlanV2 {
     let authority = match plan.authority_lane() {
         AuthorityLaneV2::FrontendChecked => ExecutionAuthorityV2::FrontendChecked,
@@ -309,35 +594,6 @@ fn project_plan(plan: &SemanticPlanV2) -> ExecutionPlanV2 {
     }
 }
 
-const fn authority_keyword(value: ExecutionAuthorityV2) -> &'static str {
-    match value {
-        ExecutionAuthorityV2::FrontendChecked => "frontend_checked",
-        ExecutionAuthorityV2::CertifiedRequirementValidated => "certified_requirement_validated",
-    }
-}
-const fn determinism_keyword(value: ExecutionDeterminismV2) -> &'static str {
-    match value {
-        ExecutionDeterminismV2::Deterministic => "deterministic",
-        ExecutionDeterminismV2::NonDeterministic => "non_deterministic",
-    }
-}
-const fn evidence_keyword(value: ExecutionEvidenceV2) -> &'static str {
-    match value {
-        ExecutionEvidenceV2::None => "none",
-        ExecutionEvidenceV2::SourceLocation => "source_location",
-        ExecutionEvidenceV2::WitnessPayload => "witness_payload",
-        ExecutionEvidenceV2::ProofTree => "proof_tree",
-    }
-}
-const fn effect_keyword(value: ExecutionEffectV2) -> &'static str {
-    match value {
-        ExecutionEffectV2::ReadOnly => "read_only",
-        ExecutionEffectV2::ProofEvidenceOnly => "proof_evidence_only",
-        ExecutionEffectV2::ExportOnly => "export_only",
-        ExecutionEffectV2::MutationForbidden => "mutation_forbidden",
-    }
-}
-
 /// A sealed relational operator tree and its typed expression table.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionRelationV2 {
@@ -364,7 +620,8 @@ impl ExecutionRelationV2 {
 /// One closed relational operator node.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionRelationalOperatorV2 {
-    family: String,
+    family: AlgebraFamilyV2,
+    join_mode: Option<ExecutionJoinModeV2>,
     stage: SourceQualifiedNodeIdV2,
     source: Option<ExecutionSourceV2>,
     schema: ExecutionSchemaV2,
@@ -377,8 +634,13 @@ pub struct ExecutionRelationalOperatorV2 {
 
 impl ExecutionRelationalOperatorV2 {
     #[must_use]
-    pub fn family(&self) -> &str {
-        &self.family
+    pub const fn family(&self) -> AlgebraFamilyV2 {
+        self.family
+    }
+    /// Join mode for `Join` operators; `None` for every other family.
+    #[must_use]
+    pub const fn join_mode(&self) -> Option<ExecutionJoinModeV2> {
+        self.join_mode
     }
     #[must_use]
     pub const fn stage(&self) -> SourceQualifiedNodeIdV2 {
@@ -418,7 +680,7 @@ impl ExecutionRelationalOperatorV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionSchemaV2 {
     fields: Box<[ExecutionFieldV2]>,
-    cardinality: String,
+    cardinality: ExecutionCardinalityV2,
     partition_keys: Box<[SourceQualifiedNodeIdV2]>,
     order: Box<[ExecutionOrderKeyV2]>,
 }
@@ -428,8 +690,8 @@ impl ExecutionSchemaV2 {
         &self.fields
     }
     #[must_use]
-    pub fn cardinality(&self) -> &str {
-        &self.cardinality
+    pub const fn cardinality(&self) -> ExecutionCardinalityV2 {
+        self.cardinality
     }
     #[must_use]
     pub fn partition_keys(&self) -> &[SourceQualifiedNodeIdV2] {
@@ -444,7 +706,7 @@ impl ExecutionSchemaV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionFieldV2 {
     name: String,
-    value_type: String,
+    value_type: ExecutionValueTypeV2,
 }
 impl ExecutionFieldV2 {
     #[must_use]
@@ -452,7 +714,7 @@ impl ExecutionFieldV2 {
         &self.name
     }
     #[must_use]
-    pub fn value_type(&self) -> &str {
+    pub const fn value_type(&self) -> &ExecutionValueTypeV2 {
         &self.value_type
     }
 }
@@ -460,9 +722,9 @@ impl ExecutionFieldV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionOrderKeyV2 {
     expression: SourceQualifiedNodeIdV2,
-    direction: String,
-    null_order: String,
-    value_type: String,
+    direction: ExecutionSortDirectionV2,
+    null_order: ExecutionNullOrderV2,
+    value_type: ExecutionValueTypeV2,
 }
 impl ExecutionOrderKeyV2 {
     #[must_use]
@@ -470,15 +732,15 @@ impl ExecutionOrderKeyV2 {
         self.expression
     }
     #[must_use]
-    pub fn direction(&self) -> &str {
-        &self.direction
+    pub const fn direction(&self) -> ExecutionSortDirectionV2 {
+        self.direction
     }
     #[must_use]
-    pub fn null_order(&self) -> &str {
-        &self.null_order
+    pub const fn null_order(&self) -> ExecutionNullOrderV2 {
+        self.null_order
     }
     #[must_use]
-    pub fn value_type(&self) -> &str {
+    pub const fn value_type(&self) -> &ExecutionValueTypeV2 {
         &self.value_type
     }
 }
@@ -486,7 +748,7 @@ impl ExecutionOrderKeyV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionExpressionV2 {
     id: SourceQualifiedNodeIdV2,
-    value_type: String,
+    value_type: ExecutionValueTypeV2,
     shape: ExecutionExpressionShapeV2,
 }
 impl ExecutionExpressionV2 {
@@ -495,7 +757,7 @@ impl ExecutionExpressionV2 {
         self.id
     }
     #[must_use]
-    pub fn value_type(&self) -> &str {
+    pub const fn value_type(&self) -> &ExecutionValueTypeV2 {
         &self.value_type
     }
     #[must_use]
@@ -524,7 +786,7 @@ pub enum ExecutionExpressionShapeV2 {
         rhs: SourceQualifiedNodeIdV2,
     },
     Call {
-        target: String,
+        target: ExecutionCallTargetV2,
         arguments: Box<[Option<SourceQualifiedNodeIdV2>]>,
     },
     Paren(SourceQualifiedNodeIdV2),
@@ -551,18 +813,20 @@ pub enum ExecutionExpressionShapeV2 {
         operand: SourceQualifiedNodeIdV2,
     },
     LogicalQuantifier {
-        kind: String,
+        kind: ExecutionLogicalQuantifierV2,
         binders: Box<[ExecutionBindingV2]>,
         body: SourceQualifiedNodeIdV2,
     },
     RelationExists {
-        polarity: String,
+        polarity: ExecutionExistsPolarityV2,
         relation_root: SourceQualifiedNodeIdV2,
         correlations: Box<[ExecutionCorrelationV2]>,
     },
 }
 
-/// Public semantic operator plus the exact checked overload identity.
+/// Public semantic operator: the canonical overload identity from the closed
+/// registry plus its stable spelling witness. The `overload_id` is the stable
+/// identity; `symbol` renders it and is never parsed back.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionOperatorV2 {
     symbol: String,
@@ -600,7 +864,7 @@ pub enum ExecutionRelationAuthorityV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionSourceV2 {
     authority: ExecutionRelationAuthorityV2,
-    kind: String,
+    kind: ExecutionSourceKindV2,
     namespace: Option<String>,
     name: String,
 }
@@ -610,8 +874,8 @@ impl ExecutionSourceV2 {
         self.authority
     }
     #[must_use]
-    pub fn kind(&self) -> &str {
-        &self.kind
+    pub const fn kind(&self) -> ExecutionSourceKindV2 {
+        self.kind
     }
     #[must_use]
     pub fn namespace(&self) -> Option<&str> {
@@ -775,10 +1039,20 @@ pub enum ExecutionGraphKindV2 {
     Summary,
 }
 
+/// Expression-closure failure: the item root references an expression the
+/// document table cannot supply from the item's own source.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ExecutionClosureFailureV2 {
+    /// A referenced expression identity is absent from the document table.
+    Dangling,
+    /// A referenced expression identity belongs to another source.
+    Foreign,
+}
+
 pub(crate) fn project_relation(
     document: &SemanticDocumentV2,
     lowered: &LoweredRelationItemV2,
-) -> ExecutionRelationV2 {
+) -> Result<ExecutionRelationV2, ExecutionClosureFailureV2> {
     project_relation_root(document, lowered.item_id(), lowered.root())
 }
 
@@ -786,16 +1060,108 @@ pub(crate) fn project_relation_root(
     document: &SemanticDocumentV2,
     item_id: SemanticItemIdV2,
     root: &CheckedAlgebraNodeV2,
-) -> ExecutionRelationV2 {
-    ExecutionRelationV2 {
-        item_id,
-        root: project_node(root),
-        expressions: document
-            .expressions()
-            .map(|(_, expr)| project_expression(expr))
-            .collect::<Vec<_>>()
-            .into_boxed_slice(),
+) -> Result<ExecutionRelationV2, ExecutionClosureFailureV2> {
+    let projected = project_node(root);
+    let mut roots = Vec::new();
+    collect_operator_roots(&projected, &mut roots);
+    let closed = close_expression_ids(item_id.source_id(), &roots, &|key| {
+        document
+            .expression(key)
+            .map(|expr| shape_children(expr.shape()))
+    })?;
+    let mut table = Vec::with_capacity(closed.len());
+    for key in closed {
+        // `close_expression_ids` resolved every key through this same table.
+        let Some(expr) = document.expression(key) else {
+            return Err(ExecutionClosureFailureV2::Dangling);
+        };
+        table.push(project_expression(expr));
     }
+    Ok(ExecutionRelationV2 {
+        item_id,
+        root: projected,
+        expressions: table.into_boxed_slice(),
+    })
+}
+
+/// Every expression identity the operator tree references directly: predicate
+/// and projection keys, correlation references, schema partition keys, and
+/// order-key expressions, recursively through children.
+fn collect_operator_roots(
+    node: &ExecutionRelationalOperatorV2,
+    roots: &mut Vec<SourceQualifiedNodeIdV2>,
+) {
+    roots.extend_from_slice(&node.predicates);
+    roots.extend_from_slice(&node.expressions);
+    for edge in &node.correlations {
+        roots.push(edge.reference);
+    }
+    roots.extend_from_slice(&node.schema.partition_keys);
+    for key in &node.schema.order {
+        roots.push(key.expression);
+    }
+    for child in &node.children {
+        collect_operator_roots(child, roots);
+    }
+}
+
+/// Child expression identities of one checked shape. Binding shapes carry no
+/// expression children; the `RelationExists` relation root is a relation key,
+/// not an expression identity, so only its correlation references close.
+fn shape_children(shape: &TypedExprShapeV2) -> Vec<SourceQualifiedNodeIdV2> {
+    match shape {
+        TypedExprShapeV2::Literal(_) | TypedExprShapeV2::Binding(_) => Vec::new(),
+        TypedExprShapeV2::Path { base, .. } => vec![*base],
+        TypedExprShapeV2::Unary { operand, .. } | TypedExprShapeV2::Not { operand, .. } => {
+            vec![*operand]
+        }
+        TypedExprShapeV2::Binary { lhs, rhs, .. }
+        | TypedExprShapeV2::Compare { lhs, rhs, .. }
+        | TypedExprShapeV2::And { lhs, rhs, .. }
+        | TypedExprShapeV2::Or { lhs, rhs, .. } => vec![*lhs, *rhs],
+        TypedExprShapeV2::Call { arguments, .. } => arguments
+            .iter()
+            .filter_map(|argument| match argument {
+                TypedCallArgumentV2::Expression(id) => Some(*id),
+                TypedCallArgumentV2::Star => None,
+            })
+            .collect(),
+        TypedExprShapeV2::Paren { inner } | TypedExprShapeV2::BoolValue { value: inner } => {
+            vec![*inner]
+        }
+        TypedExprShapeV2::Record(fields) => fields.iter().map(|field| field.value()).collect(),
+        TypedExprShapeV2::List(items) => items.to_vec(),
+        TypedExprShapeV2::LogicalQuantifier { body, .. } => vec![*body],
+        TypedExprShapeV2::RelationExists { correlations, .. } => {
+            correlations.iter().map(|edge| edge.reference()).collect()
+        }
+    }
+}
+
+/// Transitively close expression identities over a caller-supplied child
+/// lookup. The result is deduplicated and sorted in stable identity order, so
+/// unrelated table rows never affect an item's contract. A dangling identity
+/// or an identity from another source fails closed.
+fn close_expression_ids(
+    source_id: SourceIdV2,
+    roots: &[SourceQualifiedNodeIdV2],
+    children_of: &dyn Fn(SourceQualifiedNodeIdV2) -> Option<Vec<SourceQualifiedNodeIdV2>>,
+) -> Result<Vec<SourceQualifiedNodeIdV2>, ExecutionClosureFailureV2> {
+    let mut closed = std::collections::BTreeSet::new();
+    let mut stack: Vec<SourceQualifiedNodeIdV2> = roots.to_vec();
+    while let Some(key) = stack.pop() {
+        if key.source_id != source_id {
+            return Err(ExecutionClosureFailureV2::Foreign);
+        }
+        if !closed.insert(key) {
+            continue;
+        }
+        let Some(children) = children_of(key) else {
+            return Err(ExecutionClosureFailureV2::Dangling);
+        };
+        stack.extend(children);
+    }
+    Ok(closed.into_iter().collect())
 }
 
 pub(crate) fn project_composition(
@@ -940,14 +1306,9 @@ fn project_node(node: &CheckedAlgebraNodeV2) -> ExecutionRelationalOperatorV2 {
         .map(project_node)
         .collect::<Vec<_>>()
         .into_boxed_slice();
-    let family = match node.join_mode() {
-        Some(JoinModeV2::Inner) => "join_inner",
-        Some(JoinModeV2::Cross) => "join_cross",
-        None => node.family().keyword(),
-    }
-    .to_owned();
     ExecutionRelationalOperatorV2 {
-        family,
+        family: node.family(),
+        join_mode: node.join_mode().map(project_join_mode),
         stage: node.stage_key(),
         source,
         schema: project_schema(node.output()),
@@ -961,8 +1322,8 @@ fn project_node(node: &CheckedAlgebraNodeV2) -> ExecutionRelationalOperatorV2 {
 
 fn project_expression(expr: &TypedExprV2) -> ExecutionExpressionV2 {
     let value_type = match expr.type_state() {
-        ExpressionTypeStateV2::Known(value) => value.to_string(),
-        ExpressionTypeStateV2::Unknown(_) => "unknown".to_owned(),
+        ExpressionTypeStateV2::Known(value) => project_value_type(value),
+        ExpressionTypeStateV2::Unknown(_) => ExecutionValueTypeV2::Unknown,
     };
     ExecutionExpressionV2 {
         id: expr.key(),
@@ -1008,13 +1369,7 @@ fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShap
             rhs: *rhs,
         },
         TypedExprShapeV2::Call { target, arguments } => ExecutionExpressionShapeV2::Call {
-            target: match target {
-                ResolvedCallTargetV2::Builtin(id) => {
-                    format!("builtin:{}", id.name().unwrap_or("invalid_closed_builtin"))
-                }
-                ResolvedCallTargetV2::Predicate(id) => format!("predicate:{}", id.as_str()),
-                ResolvedCallTargetV2::HostPredicate(id) => hex_lower(id.canonical_bytes()),
-            },
+            target: project_call_target(target),
             arguments: arguments
                 .iter()
                 .map(|arg| match arg {
@@ -1060,11 +1415,7 @@ fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShap
             binders,
             body,
         } => ExecutionExpressionShapeV2::LogicalQuantifier {
-            kind: match kind {
-                LogicalQuantifierKindV2::Exists => "exists",
-                LogicalQuantifierKindV2::Forall => "forall",
-            }
-            .to_owned(),
+            kind: project_logical_quantifier(*kind),
             binders: binders
                 .iter()
                 .map(project_binding)
@@ -1077,11 +1428,7 @@ fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShap
             relation_root,
             correlations,
         } => ExecutionExpressionShapeV2::RelationExists {
-            polarity: match polarity {
-                RelationExistsPolarityV2::Exists => "exists",
-                RelationExistsPolarityV2::NotExists => "not_exists",
-            }
-            .to_owned(),
+            polarity: project_exists_polarity(*polarity),
             relation_root: *relation_root,
             correlations: correlations
                 .iter()
@@ -1102,32 +1449,19 @@ fn project_schema(output: &RelationOutputContractV2) -> ExecutionSchemaV2 {
         .iter()
         .map(|field| ExecutionFieldV2 {
             name: field.name().to_owned(),
-            value_type: field.value_type().to_string(),
+            value_type: project_value_type(field.value_type()),
         })
         .collect::<Vec<_>>()
         .into_boxed_slice();
-    let cardinality = match output.cardinality() {
-        CardinalityV1::Set => "set",
-        CardinalityV1::Bag => "bag",
-        CardinalityV1::Sequence => "sequence",
-    }
-    .to_owned();
+    let cardinality = project_cardinality(output.cardinality());
     let order = output
         .ordering()
         .iter()
         .map(|key| ExecutionOrderKeyV2 {
             expression: key.expression(),
-            direction: match key.direction() {
-                SortDirectionV2::Asc => "asc",
-                SortDirectionV2::Desc => "desc",
-            }
-            .to_owned(),
-            null_order: match key.null_order() {
-                NullOrderV2::First => "first",
-                NullOrderV2::Last => "last",
-            }
-            .to_owned(),
-            value_type: key.value_type().to_string(),
+            direction: project_sort_direction(key.direction()),
+            null_order: project_null_order(key.null_order()),
+            value_type: project_value_type(key.value_type()),
         })
         .collect::<Vec<_>>()
         .into_boxed_slice();
@@ -1148,19 +1482,19 @@ fn project_source(source: &ResolvedRelationSourceKindV2) -> ExecutionSourceV2 {
                     ExecutionRelationAuthorityV2::CanonicalWorkspaceFiles
                 }
             },
-            kind: "relation".to_owned(),
+            kind: ExecutionSourceKindV2::Relation,
             namespace: Some(id.namespace().as_str().to_owned()),
             name: id.qualified_name().to_owned(),
         },
         ResolvedRelationSourceKindV2::View(id) => ExecutionSourceV2 {
             authority: ExecutionRelationAuthorityV2::CatalogView,
-            kind: "view".to_owned(),
+            kind: ExecutionSourceKindV2::View,
             namespace: Some(id.module_id().as_str().to_owned()),
             name: id.local_name().to_owned(),
         },
         ResolvedRelationSourceKindV2::Composition(id) => ExecutionSourceV2 {
             authority: ExecutionRelationAuthorityV2::CompositionBinding,
-            kind: "composition".to_owned(),
+            kind: ExecutionSourceKindV2::Composition,
             namespace: None,
             name: id.binding().canonical_name().to_owned(),
         },
@@ -1176,13 +1510,37 @@ fn project_binding(binding: &quanta_gqlang_v2_sema::ResolvedValueBindingV2) -> E
     }
 }
 
-fn digest_source(source_id: SourceIdV2, items: &[ExecutionItemV2]) -> ExecutionDigestV2 {
+/// Canonical encoding rules (all three legs): domain-separated schema
+/// version first, big-endian integers, length-prefixed strings and sequences,
+/// one fixed tag byte per enum variant, every semantic field exactly once,
+/// and explicitly ordered collections (source order, identity order, or
+/// owner-stable order — never hash order).
+const CONTRACT_SCHEMA_VERSION_V2: u32 = 2;
+
+/// Digest of the raw UTF-8 source bytes only.
+fn digest_source_bytes(source: &[u8]) -> ExecutionDigestV2 {
     let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.source.v2");
+    put_str(&mut bytes, "qglang.execution.source-bytes.v2");
+    put_usize(&mut bytes, source.len());
+    bytes.extend_from_slice(source);
+    ExecutionDigestV2(sha256(&bytes))
+}
+
+/// Digest of the canonical DTO encoding only.
+fn digest_contract(source_id: SourceIdV2, items: &[ExecutionItemV2]) -> ExecutionDigestV2 {
+    let mut bytes = Vec::new();
+    put_str(&mut bytes, "qglang.execution.contract.v2");
+    put_u32(&mut bytes, CONTRACT_SCHEMA_VERSION_V2);
     put_u32(&mut bytes, source_id.raw());
+    put_usize(&mut bytes, items.len());
     for item in items {
         put_item_id(&mut bytes, item.item_id);
-        put_str(&mut bytes, item.family.keyword());
+        put_u8(&mut bytes, family_tag(item.family));
+        put_u8(&mut bytes, authority_tag(item.plan.authority));
+        put_u8(&mut bytes, determinism_tag(item.plan.determinism));
+        put_u8(&mut bytes, evidence_tag(item.plan.evidence));
+        put_u8(&mut bytes, effect_tag(item.plan.effect));
+        put_u8(&mut bytes, policy_family_tag(item.plan.policy_family));
         if let Some(relation) = &item.relation {
             put_relation(&mut bytes, relation);
         } else {
@@ -1197,36 +1555,75 @@ fn digest_source(source_id: SourceIdV2, items: &[ExecutionItemV2]) -> ExecutionD
     ExecutionDigestV2(sha256(&bytes))
 }
 
-fn digest_document(
+/// Digest binding the contract domain, the schema version, and both legs.
+fn digest_qualification(
     source_id: SourceIdV2,
     source_digest: ExecutionDigestV2,
-    items: &[ExecutionItemV2],
+    contract_digest: ExecutionDigestV2,
 ) -> ExecutionDigestV2 {
     let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.v2");
+    put_str(&mut bytes, "qglang.execution.qualification.v2");
+    put_u32(&mut bytes, CONTRACT_SCHEMA_VERSION_V2);
     put_u32(&mut bytes, source_id.raw());
     bytes.extend_from_slice(source_digest.as_bytes());
-    put_usize(&mut bytes, items.len());
-    for item in items {
-        put_item_id(&mut bytes, item.item_id);
-        put_str(&mut bytes, item.family.keyword());
-        put_str(&mut bytes, authority_keyword(item.plan.authority));
-        put_str(&mut bytes, determinism_keyword(item.plan.determinism));
-        put_str(&mut bytes, evidence_keyword(item.plan.evidence));
-        put_str(&mut bytes, effect_keyword(item.plan.effect));
-        put_str(&mut bytes, item.plan.policy_family.keyword());
-        if let Some(relation) = &item.relation {
-            put_relation(&mut bytes, relation);
-        } else {
-            put_u8(&mut bytes, 0);
-        }
-        if let Some(composition) = &item.composition {
-            put_composition(&mut bytes, composition);
-        } else {
-            put_u8(&mut bytes, 0);
-        }
-    }
+    bytes.extend_from_slice(contract_digest.as_bytes());
     ExecutionDigestV2(sha256(&bytes))
+}
+
+const fn family_tag(value: ExecutionFamilyV2) -> u8 {
+    match value {
+        ExecutionFamilyV2::Relation => 0,
+        ExecutionFamilyV2::Graph => 1,
+        ExecutionFamilyV2::Check => 2,
+        ExecutionFamilyV2::Presentation => 3,
+        ExecutionFamilyV2::Composition => 4,
+        ExecutionFamilyV2::MetaRequireCertified => 5,
+        ExecutionFamilyV2::RuleProgram => 6,
+    }
+}
+
+const fn authority_tag(value: ExecutionAuthorityV2) -> u8 {
+    match value {
+        ExecutionAuthorityV2::FrontendChecked => 0,
+        ExecutionAuthorityV2::CertifiedRequirementValidated => 1,
+    }
+}
+
+const fn determinism_tag(value: ExecutionDeterminismV2) -> u8 {
+    match value {
+        ExecutionDeterminismV2::Deterministic => 0,
+        ExecutionDeterminismV2::NonDeterministic => 1,
+    }
+}
+
+const fn evidence_tag(value: ExecutionEvidenceV2) -> u8 {
+    match value {
+        ExecutionEvidenceV2::None => 0,
+        ExecutionEvidenceV2::SourceLocation => 1,
+        ExecutionEvidenceV2::WitnessPayload => 2,
+        ExecutionEvidenceV2::ProofTree => 3,
+    }
+}
+
+const fn effect_tag(value: ExecutionEffectV2) -> u8 {
+    match value {
+        ExecutionEffectV2::ReadOnly => 0,
+        ExecutionEffectV2::ProofEvidenceOnly => 1,
+        ExecutionEffectV2::ExportOnly => 2,
+        ExecutionEffectV2::MutationForbidden => 3,
+    }
+}
+
+const fn policy_family_tag(value: ExecutionPolicyFamilyV2) -> u8 {
+    match value {
+        ExecutionPolicyFamilyV2::Relational => 0,
+        ExecutionPolicyFamilyV2::Graph => 1,
+        ExecutionPolicyFamilyV2::Check => 2,
+        ExecutionPolicyFamilyV2::Presentation => 3,
+        ExecutionPolicyFamilyV2::RuleProgram => 4,
+        ExecutionPolicyFamilyV2::MetaRequireCertified => 5,
+        ExecutionPolicyFamilyV2::Composition => 6,
+    }
 }
 
 fn put_composition(out: &mut Vec<u8>, composition: &ExecutionCompositionV2) {
@@ -1316,18 +1713,31 @@ fn put_relation(out: &mut Vec<u8>, relation: &ExecutionRelationV2) {
     put_usize(out, relation.expressions.len());
     for expr in &relation.expressions {
         put_key(out, expr.id);
-        put_str(out, &expr.value_type);
+        put_value_type(out, &expr.value_type);
         put_expression_shape(out, &expr.shape);
     }
 }
 fn put_node(out: &mut Vec<u8>, node: &ExecutionRelationalOperatorV2) {
-    put_str(out, &node.family);
+    put_u8(out, algebra_family_tag(node.family));
+    match node.join_mode {
+        Some(mode) => {
+            put_u8(out, 1);
+            put_u8(out, join_mode_tag(mode));
+        }
+        None => put_u8(out, 0),
+    }
     put_key(out, node.stage);
     if let Some(source) = &node.source {
         put_u8(out, 1);
         put_u8(out, relation_authority_tag(source.authority));
-        put_str(out, &source.kind);
-        put_str(out, source.namespace.as_deref().unwrap_or(""));
+        put_u8(out, source_kind_tag(source.kind));
+        match &source.namespace {
+            Some(namespace) => {
+                put_u8(out, 1);
+                put_str(out, namespace);
+            }
+            None => put_u8(out, 0),
+        }
         put_str(out, &source.name);
     } else {
         put_u8(out, 0);
@@ -1396,7 +1806,7 @@ fn put_expression_shape(out: &mut Vec<u8>, shape: &ExecutionExpressionShapeV2) {
         }
         ExecutionExpressionShapeV2::Call { target, arguments } => {
             put_u8(out, 5);
-            put_str(out, target);
+            put_call_target(out, target);
             put_usize(out, arguments.len());
             for argument in arguments {
                 if let Some(id) = argument {
@@ -1459,7 +1869,7 @@ fn put_expression_shape(out: &mut Vec<u8>, shape: &ExecutionExpressionShapeV2) {
             body,
         } => {
             put_u8(out, 14);
-            put_str(out, kind);
+            put_u8(out, logical_quantifier_tag(*kind));
             put_usize(out, binders.len());
             for binding in binders {
                 put_binding(out, binding);
@@ -1472,7 +1882,7 @@ fn put_expression_shape(out: &mut Vec<u8>, shape: &ExecutionExpressionShapeV2) {
             correlations,
         } => {
             put_u8(out, 15);
-            put_str(out, polarity);
+            put_u8(out, exists_polarity_tag(*polarity));
             put_key(out, *relation_root);
             put_usize(out, correlations.len());
             for edge in correlations {
@@ -1486,9 +1896,9 @@ fn put_schema(out: &mut Vec<u8>, schema: &ExecutionSchemaV2) {
     put_usize(out, schema.fields.len());
     for field in &schema.fields {
         put_str(out, &field.name);
-        put_str(out, &field.value_type);
+        put_value_type(out, &field.value_type);
     }
-    put_str(out, &schema.cardinality);
+    put_u8(out, cardinality_tag(schema.cardinality));
     put_usize(out, schema.partition_keys.len());
     for key in &schema.partition_keys {
         put_key(out, *key);
@@ -1496,9 +1906,155 @@ fn put_schema(out: &mut Vec<u8>, schema: &ExecutionSchemaV2) {
     put_usize(out, schema.order.len());
     for key in &schema.order {
         put_key(out, key.expression);
-        put_str(out, &key.direction);
-        put_str(out, &key.null_order);
-        put_str(out, &key.value_type);
+        put_u8(out, sort_direction_tag(key.direction));
+        put_u8(out, null_order_tag(key.null_order));
+        put_value_type(out, &key.value_type);
+    }
+}
+
+fn put_value_type(out: &mut Vec<u8>, value: &ExecutionValueTypeV2) {
+    match value {
+        ExecutionValueTypeV2::Scalar(scalar) => {
+            put_u8(out, 0);
+            put_u8(out, scalar_tag(*scalar));
+        }
+        ExecutionValueTypeV2::Null => put_u8(out, 1),
+        ExecutionValueTypeV2::Tuple(items) => {
+            put_u8(out, 2);
+            put_usize(out, items.len());
+            for item in items {
+                put_value_type(out, item);
+            }
+        }
+        ExecutionValueTypeV2::Record(fields) => {
+            put_u8(out, 3);
+            put_usize(out, fields.len());
+            for field in fields {
+                put_str(out, &field.name);
+                put_value_type(out, &field.value_type);
+            }
+        }
+        ExecutionValueTypeV2::Optional(inner) => {
+            put_u8(out, 4);
+            put_value_type(out, inner);
+        }
+        ExecutionValueTypeV2::Collection {
+            element,
+            cardinality,
+        } => {
+            put_u8(out, 5);
+            put_value_type(out, element);
+            put_u8(out, cardinality_tag(*cardinality));
+        }
+        ExecutionValueTypeV2::Union(variants) => {
+            put_u8(out, 6);
+            put_usize(out, variants.len());
+            for variant in variants {
+                put_str(out, &variant.tag);
+                put_value_type(out, &variant.value_type);
+            }
+        }
+        ExecutionValueTypeV2::Unknown => put_u8(out, 7),
+    }
+}
+
+const fn scalar_tag(value: ExecutionScalarTypeV2) -> u8 {
+    match value {
+        ExecutionScalarTypeV2::Bool => 0,
+        ExecutionScalarTypeV2::Int => 1,
+        ExecutionScalarTypeV2::Float => 2,
+        ExecutionScalarTypeV2::String => 3,
+        ExecutionScalarTypeV2::Duration => 4,
+        ExecutionScalarTypeV2::Location => 5,
+        ExecutionScalarTypeV2::Path => 6,
+        ExecutionScalarTypeV2::RepoPath => 7,
+        ExecutionScalarTypeV2::EntityRef => 8,
+        ExecutionScalarTypeV2::SymbolRef => 9,
+        ExecutionScalarTypeV2::RuleRef => 10,
+        ExecutionScalarTypeV2::SourceScope => 11,
+        ExecutionScalarTypeV2::ProofTree => 12,
+    }
+}
+
+const fn cardinality_tag(value: ExecutionCardinalityV2) -> u8 {
+    match value {
+        ExecutionCardinalityV2::Set => 0,
+        ExecutionCardinalityV2::Bag => 1,
+        ExecutionCardinalityV2::Sequence => 2,
+    }
+}
+
+const fn sort_direction_tag(value: ExecutionSortDirectionV2) -> u8 {
+    match value {
+        ExecutionSortDirectionV2::Asc => 0,
+        ExecutionSortDirectionV2::Desc => 1,
+    }
+}
+
+const fn null_order_tag(value: ExecutionNullOrderV2) -> u8 {
+    match value {
+        ExecutionNullOrderV2::First => 0,
+        ExecutionNullOrderV2::Last => 1,
+    }
+}
+
+const fn algebra_family_tag(value: AlgebraFamilyV2) -> u8 {
+    match value {
+        AlgebraFamilyV2::Scan => 0,
+        AlgebraFamilyV2::Filter => 1,
+        AlgebraFamilyV2::Project => 2,
+        AlgebraFamilyV2::Join => 3,
+        AlgebraFamilyV2::Group => 4,
+        AlgebraFamilyV2::Aggregate => 5,
+        AlgebraFamilyV2::Sort => 6,
+        AlgebraFamilyV2::SemiJoin => 7,
+        AlgebraFamilyV2::AntiJoin => 8,
+    }
+}
+
+const fn join_mode_tag(value: ExecutionJoinModeV2) -> u8 {
+    match value {
+        ExecutionJoinModeV2::Inner => 0,
+        ExecutionJoinModeV2::Cross => 1,
+    }
+}
+
+const fn source_kind_tag(value: ExecutionSourceKindV2) -> u8 {
+    match value {
+        ExecutionSourceKindV2::Relation => 0,
+        ExecutionSourceKindV2::View => 1,
+        ExecutionSourceKindV2::Composition => 2,
+    }
+}
+
+fn put_call_target(out: &mut Vec<u8>, target: &ExecutionCallTargetV2) {
+    match target {
+        ExecutionCallTargetV2::Builtin { name } => {
+            put_u8(out, 0);
+            put_str(out, name);
+        }
+        ExecutionCallTargetV2::Predicate { name } => {
+            put_u8(out, 1);
+            put_str(out, name);
+        }
+        ExecutionCallTargetV2::HostPredicate { fingerprint } => {
+            put_u8(out, 2);
+            put_str(out, fingerprint);
+        }
+    }
+}
+
+const fn logical_quantifier_tag(value: ExecutionLogicalQuantifierV2) -> u8 {
+    match value {
+        ExecutionLogicalQuantifierV2::Exists => 0,
+        ExecutionLogicalQuantifierV2::Forall => 1,
+    }
+}
+
+const fn exists_polarity_tag(value: ExecutionExistsPolarityV2) -> u8 {
+    match value {
+        ExecutionExistsPolarityV2::Exists => 0,
+        ExecutionExistsPolarityV2::NotExists => 1,
     }
 }
 fn put_binding(out: &mut Vec<u8>, binding: &ExecutionBindingV2) {
@@ -1535,103 +2091,324 @@ fn put_u8(out: &mut Vec<u8>, value: u8) {
     out.push(value);
 }
 
-// Small dependency-free SHA-256 keeps this DTO owner from adding a workspace or lockfile edge.
+/// SHA-256 over the canonical encoding via the audited `sha2` crate. No
+/// hand-rolled cryptography lives in this module.
 fn sha256(input: &[u8]) -> [u8; 32] {
-    const K: [u32; 64] = [
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
-        0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe,
-        0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f,
-        0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
-        0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
-        0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
-        0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116,
-        0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
-        0xc67178f2,
-    ];
-    let mut data = input.to_vec();
-    let bit_len = u64::try_from(data.len())
-        .unwrap_or(u64::MAX)
-        .saturating_mul(8);
-    data.push(0x80);
-    while data.len() % 64 != 56 {
-        data.push(0);
-    }
-    data.extend_from_slice(&bit_len.to_be_bytes());
-    let mut h = [
-        0x6a09e667u32,
-        0xbb67ae85,
-        0x3c6ef372,
-        0xa54ff53a,
-        0x510e527f,
-        0x9b05688c,
-        0x1f83d9ab,
-        0x5be0cd19,
-    ];
-    for chunk in data.chunks_exact(64) {
-        let mut w = [0u32; 64];
-        // `chunks_exact(4)` yields exactly 16 groups per 64-byte chunk; the zip
-        // below pairs each with one schedule word, so no indexing is needed.
-        for (word, bytes) in w.iter_mut().take(16).zip(chunk.chunks_exact(4)) {
-            let mut arr = [0u8; 4];
-            arr.copy_from_slice(bytes);
-            *word = u32::from_be_bytes(arr);
-        }
-        // Message schedule. Loop bounds keep every read inside `w`
-        // (`i - 16 >= 0`, `i <= 63`); `.get()` makes that total by construction
-        // and the fallbacks are unreachable.
-        for i in 16..64 {
-            let x15 = w.get(i - 15).copied().unwrap_or(0);
-            let x2 = w.get(i - 2).copied().unwrap_or(0);
-            let x16 = w.get(i - 16).copied().unwrap_or(0);
-            let x7 = w.get(i - 7).copied().unwrap_or(0);
-            let s0 = x15.rotate_right(7) ^ x15.rotate_right(18) ^ (x15 >> 3);
-            let s1 = x2.rotate_right(17) ^ x2.rotate_right(19) ^ (x2 >> 10);
-            let scheduled = x16.wrapping_add(s0).wrapping_add(x7).wrapping_add(s1);
-            if let Some(slot) = w.get_mut(i) {
-                *slot = scheduled;
-            }
-        }
-        let [mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut hh] = h;
-        for (word, key) in w.iter().zip(K.iter()) {
-            let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
-            let ch = (e & f) ^ (!e & g);
-            let t1 = hh
-                .wrapping_add(s1)
-                .wrapping_add(ch)
-                .wrapping_add(*key)
-                .wrapping_add(*word);
-            let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
-            let maj = (a & b) ^ (a & c) ^ (b & c);
-            let t2 = s0.wrapping_add(maj);
-            hh = g;
-            g = f;
-            f = e;
-            e = d.wrapping_add(t1);
-            d = c;
-            c = b;
-            b = a;
-            a = t1.wrapping_add(t2);
-        }
-        for (state, value) in h.iter_mut().zip([a, b, c, d, e, f, g, hh]) {
-            *state = state.wrapping_add(value);
-        }
-    }
+    let digest = Sha256::digest(input);
     let mut out = [0u8; 32];
-    for (slot, value) in out.chunks_mut(4).zip(h.iter()) {
-        slot.copy_from_slice(&value.to_be_bytes());
-    }
+    out.copy_from_slice(&digest);
     out
 }
 
 #[cfg(test)]
+#[expect(clippy::expect_used, reason = "contract digest mutation rails assert exact fixture shapes")]
 mod tests {
     use super::*;
+    use quanta_gqlang_v2_sema::HirNodeIdV1;
+
     #[test]
     fn sha256_matches_published_empty_vector() {
         assert_eq!(
             ExecutionDigestV2(sha256(b"")).to_hex(),
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+    }
+
+    fn key(source: u32, node: u32) -> SourceQualifiedNodeIdV2 {
+        SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(source),
+            node_id: HirNodeIdV1::from_raw(node),
+        }
+    }
+
+    fn item(source: u32, node: u32) -> SemanticItemIdV2 {
+        SemanticItemIdV2::new(SourceIdV2::from_raw(source), HirNodeIdV1::from_raw(node))
+    }
+
+    fn binding(name: &str) -> ExecutionBindingV2 {
+        ExecutionBindingV2 {
+            source_id: SourceIdV2::from_raw(0),
+            owner_node: 7,
+            ordinal: 0,
+            name: name.to_owned(),
+        }
+    }
+
+    fn schema() -> ExecutionSchemaV2 {
+        ExecutionSchemaV2 {
+            fields: Box::new([ExecutionFieldV2 {
+                name: "a".to_owned(),
+                value_type: ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int),
+            }]),
+            cardinality: ExecutionCardinalityV2::Set,
+            partition_keys: Box::new([]),
+            order: Box::new([]),
+        }
+    }
+
+    fn root() -> ExecutionRelationalOperatorV2 {
+        ExecutionRelationalOperatorV2 {
+            family: AlgebraFamilyV2::Scan,
+            join_mode: None,
+            stage: key(0, 1),
+            source: None,
+            schema: schema(),
+            predicates: Box::new([]),
+            expressions: Box::new([]),
+            correlations: Box::new([]),
+            partition_input: Box::new([]),
+            children: Box::new([]),
+        }
+    }
+
+    fn literal_expression(id: SourceQualifiedNodeIdV2, body: &str) -> ExecutionExpressionV2 {
+        ExecutionExpressionV2 {
+            id,
+            value_type: ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int),
+            shape: ExecutionExpressionShapeV2::Literal(body.to_owned()),
+        }
+    }
+
+    fn relation() -> ExecutionRelationV2 {
+        ExecutionRelationV2 {
+            item_id: item(0, 1),
+            root: root(),
+            expressions: Box::new([literal_expression(key(0, 2), "int:1")]),
+        }
+    }
+
+    fn plan() -> ExecutionPlanV2 {
+        ExecutionPlanV2 {
+            authority: ExecutionAuthorityV2::FrontendChecked,
+            determinism: ExecutionDeterminismV2::Deterministic,
+            evidence: ExecutionEvidenceV2::None,
+            effect: ExecutionEffectV2::ReadOnly,
+            policy_family: ExecutionPolicyFamilyV2::Relational,
+        }
+    }
+
+    fn relation_item() -> ExecutionItemV2 {
+        ExecutionItemV2 {
+            item_id: item(0, 1),
+            family: ExecutionFamilyV2::Relation,
+            relation: Some(relation()),
+            composition: None,
+            plan: plan(),
+        }
+    }
+
+    fn composition_item(binding_schema: Option<ExecutionSchemaV2>) -> ExecutionItemV2 {
+        ExecutionItemV2 {
+            item_id: item(0, 9),
+            family: ExecutionFamilyV2::Composition,
+            relation: None,
+            composition: Some(ExecutionCompositionV2 {
+                bindings: Box::new([ExecutionCompositionBindingV2 {
+                    binding: binding("q"),
+                    producer_item_id: item(0, 1),
+                    producer_family: ExecutionFamilyV2::Relation,
+                    schema: binding_schema,
+                    relation: None,
+                    producer: ExecutionCompositionProducerV2::Relation,
+                }]),
+                with_binding: binding("q"),
+                body_item_id: item(0, 1),
+                body_family: ExecutionFamilyV2::Relation,
+                body_relation: None,
+                body: ExecutionCompositionBodyV2::Relation,
+            }),
+            plan: plan(),
+        }
+    }
+
+    fn contract_of(items: Vec<ExecutionItemV2>) -> ExecutionDigestV2 {
+        ExecutionDocumentV2::new(SourceIdV2::from_raw(0), items).contract_digest()
+    }
+
+    fn qualification_of(items: Vec<ExecutionItemV2>) -> ExecutionDigestV2 {
+        ExecutionDocumentV2::new(SourceIdV2::from_raw(0), items).qualification_digest()
+    }
+
+    #[test]
+    fn predicate_mutation_moves_contract_and_qualification() {
+        let base = contract_of(vec![relation_item()]);
+        let mut mutated = relation_item();
+        mutated.relation.as_mut().expect("relation").root.predicates = Box::new([key(0, 2)]);
+        assert_ne!(contract_of(vec![mutated.clone()]), base);
+        assert_ne!(
+            qualification_of(vec![mutated]),
+            qualification_of(vec![relation_item()])
+        );
+    }
+
+    #[test]
+    fn partition_input_mutation_moves_contract_and_qualification() {
+        let base = contract_of(vec![relation_item()]);
+        let mut mutated = relation_item();
+        mutated
+            .relation
+            .as_mut()
+            .expect("relation")
+            .root
+            .partition_input = Box::new([binding("p")]);
+        assert_ne!(contract_of(vec![mutated.clone()]), base);
+        assert_ne!(
+            qualification_of(vec![mutated]),
+            qualification_of(vec![relation_item()])
+        );
+    }
+
+    #[test]
+    fn correlation_mutation_moves_contract_and_qualification() {
+        let base = contract_of(vec![relation_item()]);
+        let mut mutated = relation_item();
+        mutated
+            .relation
+            .as_mut()
+            .expect("relation")
+            .root
+            .correlations = Box::new([ExecutionCorrelationV2 {
+            binding: binding("c"),
+            reference: key(0, 2),
+        }]);
+        assert_ne!(contract_of(vec![mutated.clone()]), base);
+        assert_ne!(
+            qualification_of(vec![mutated]),
+            qualification_of(vec![relation_item()])
+        );
+    }
+
+    #[test]
+    fn schema_mutation_moves_contract_and_qualification() {
+        let base = contract_of(vec![relation_item()]);
+        let mut mutated = relation_item();
+        mutated.relation.as_mut().expect("relation").root.schema = ExecutionSchemaV2 {
+            fields: Box::new([ExecutionFieldV2 {
+                name: "b".to_owned(),
+                value_type: ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::String),
+            }]),
+            cardinality: ExecutionCardinalityV2::Bag,
+            partition_keys: Box::new([key(0, 2)]),
+            order: Box::new([ExecutionOrderKeyV2 {
+                expression: key(0, 2),
+                direction: ExecutionSortDirectionV2::Desc,
+                null_order: ExecutionNullOrderV2::Last,
+                value_type: ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::String),
+            }]),
+        };
+        assert_ne!(contract_of(vec![mutated.clone()]), base);
+        assert_ne!(
+            qualification_of(vec![mutated]),
+            qualification_of(vec![relation_item()])
+        );
+    }
+
+    #[test]
+    fn expression_shape_mutation_moves_contract_and_qualification() {
+        let base = contract_of(vec![relation_item()]);
+        let mut mutated = relation_item();
+        mutated.relation.as_mut().expect("relation").expressions =
+            Box::new([literal_expression(key(0, 2), "int:2")]);
+        assert_ne!(contract_of(vec![mutated.clone()]), base);
+        assert_ne!(
+            qualification_of(vec![mutated]),
+            qualification_of(vec![relation_item()])
+        );
+    }
+
+    #[test]
+    fn composition_binding_schema_mutation_moves_contract_and_qualification() {
+        let base = contract_of(vec![composition_item(None)]);
+        assert_ne!(contract_of(vec![composition_item(Some(schema()))]), base);
+        assert_ne!(
+            qualification_of(vec![composition_item(Some(schema()))]),
+            qualification_of(vec![composition_item(None)])
+        );
+    }
+
+    #[test]
+    fn body_relation_mutation_moves_contract_and_qualification() {
+        let base = contract_of(vec![composition_item(None)]);
+        let mut mutated = composition_item(None);
+        mutated
+            .composition
+            .as_mut()
+            .expect("composition")
+            .body_relation = Some(relation());
+        assert_ne!(contract_of(vec![mutated.clone()]), base);
+        assert_ne!(
+            qualification_of(vec![mutated]),
+            qualification_of(vec![composition_item(None)])
+        );
+    }
+
+    #[test]
+    fn plan_authority_effect_evidence_mutations_move_contract_and_qualification() {
+        let base_contract = contract_of(vec![relation_item()]);
+        let base_qualification = qualification_of(vec![relation_item()]);
+        let mut authority = relation_item();
+        authority.plan.authority = ExecutionAuthorityV2::CertifiedRequirementValidated;
+        assert_ne!(contract_of(vec![authority.clone()]), base_contract);
+        assert_ne!(qualification_of(vec![authority]), base_qualification);
+        let mut effect = relation_item();
+        effect.plan.effect = ExecutionEffectV2::ExportOnly;
+        assert_ne!(contract_of(vec![effect.clone()]), base_contract);
+        assert_ne!(qualification_of(vec![effect]), base_qualification);
+        let mut evidence = relation_item();
+        evidence.plan.evidence = ExecutionEvidenceV2::ProofTree;
+        assert_ne!(contract_of(vec![evidence.clone()]), base_contract);
+        assert_ne!(qualification_of(vec![evidence]), base_qualification);
+    }
+
+    #[test]
+    fn source_byte_mutation_moves_qualification_but_not_contract() {
+        let mut base = ExecutionDocumentV2::new(SourceIdV2::from_raw(0), vec![relation_item()]);
+        base.bind_source_bytes(b"show models");
+        let mut mutated = ExecutionDocumentV2::new(SourceIdV2::from_raw(0), vec![relation_item()]);
+        mutated.bind_source_bytes(b"show models ");
+        assert_eq!(base.contract_digest(), mutated.contract_digest());
+        assert_ne!(base.source_digest(), mutated.source_digest());
+        assert_ne!(base.qualification_digest(), mutated.qualification_digest());
+    }
+
+    #[test]
+    fn closure_collects_transitively_in_stable_identity_order() {
+        let root_key = key(0, 9);
+        let left = key(0, 3);
+        let right = key(0, 5);
+        let leaf = key(0, 1);
+        let children = |id: SourceQualifiedNodeIdV2| {
+            if id == root_key {
+                Some(vec![right, left])
+            } else if id == left || id == right {
+                Some(vec![leaf])
+            } else if id == leaf {
+                Some(Vec::new())
+            } else {
+                None
+            }
+        };
+        let closed =
+            close_expression_ids(SourceIdV2::from_raw(0), &[root_key], &children).expect("closed");
+        assert_eq!(closed, vec![leaf, left, right, root_key]);
+    }
+
+    #[test]
+    fn closure_dangling_reference_fails_closed() {
+        let children =
+            |_: SourceQualifiedNodeIdV2| -> Option<Vec<SourceQualifiedNodeIdV2>> { None };
+        assert_eq!(
+            close_expression_ids(SourceIdV2::from_raw(0), &[key(0, 1)], &children),
+            Err(ExecutionClosureFailureV2::Dangling)
+        );
+    }
+
+    #[test]
+    fn closure_cross_source_reference_fails_closed() {
+        let children = |_: SourceQualifiedNodeIdV2| Some(Vec::new());
+        assert_eq!(
+            close_expression_ids(SourceIdV2::from_raw(0), &[key(1, 1)], &children),
+            Err(ExecutionClosureFailureV2::Foreign)
         );
     }
 }

@@ -277,6 +277,7 @@ dependencies = [
  "quanta-gqlang-v2-planning",
  "quanta-gqlang-v2-sema",
  "quanta-gqlang-v2-surface",
+ "sha2",
 ]
 
 [[package]]

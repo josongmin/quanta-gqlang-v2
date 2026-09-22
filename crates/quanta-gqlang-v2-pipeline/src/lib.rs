@@ -37,14 +37,17 @@ pub use diagnostic::{
     DocumentAssemblyCodeV2, PipelineStageV2,
 };
 pub use execution::{
-    ExecutionAuthorityV2, ExecutionBindingV2, ExecutionCompositionBindingV2,
-    ExecutionCompositionBodyV2, ExecutionCompositionProducerV2, ExecutionCompositionV2,
-    ExecutionCorrelationV2, ExecutionDeterminismV2, ExecutionDigestV2, ExecutionDocumentV2,
-    ExecutionEffectV2, ExecutionEvidenceV2, ExecutionExpressionShapeV2, ExecutionExpressionV2,
-    ExecutionFamilyV2, ExecutionFieldV2, ExecutionGraphKindV2, ExecutionItemV2,
-    ExecutionOperatorV2, ExecutionOrderKeyV2, ExecutionPlanV2, ExecutionPolicyFamilyV2,
-    ExecutionRelationAuthorityV2, ExecutionRelationV2, ExecutionRelationalOperatorV2,
-    ExecutionSampleModeV2, ExecutionSchemaV2, ExecutionSourceV2,
+    ExecutionAuthorityV2, ExecutionBindingV2, ExecutionCallTargetV2, ExecutionCardinalityV2,
+    ExecutionCompositionBindingV2, ExecutionCompositionBodyV2, ExecutionCompositionProducerV2,
+    ExecutionCompositionV2, ExecutionCorrelationV2, ExecutionDeterminismV2, ExecutionDigestV2,
+    ExecutionDocumentV2, ExecutionEffectV2, ExecutionEvidenceV2, ExecutionExistsPolarityV2,
+    ExecutionExpressionShapeV2, ExecutionExpressionV2, ExecutionFamilyV2, ExecutionFieldV2,
+    ExecutionGraphKindV2, ExecutionItemV2, ExecutionJoinModeV2, ExecutionLogicalQuantifierV2,
+    ExecutionNullOrderV2, ExecutionOperatorV2, ExecutionOrderKeyV2, ExecutionPlanV2,
+    ExecutionPolicyFamilyV2, ExecutionRecordFieldV2, ExecutionRelationAuthorityV2,
+    ExecutionRelationV2, ExecutionRelationalOperatorV2, ExecutionSampleModeV2,
+    ExecutionScalarTypeV2, ExecutionSchemaV2, ExecutionSortDirectionV2, ExecutionSourceKindV2,
+    ExecutionSourceV2, ExecutionUnionVariantV2, ExecutionValueTypeV2,
 };
 pub use quanta_gqlang_v2_algebra::AlgebraFamilyV2;
 pub use quanta_gqlang_v2_planning::{NoPlanReasonV2, SemanticPlanV2};

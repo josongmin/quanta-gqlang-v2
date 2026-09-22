@@ -73,6 +73,9 @@ pub enum DocumentAssemblyCodeV2 {
     CheckGraphMismatch,
     /// A catalog or declaration item was planned without an applicable input.
     InapplicableItemResult,
+    /// An executable item references an expression identity the sealed
+    /// document table does not carry.
+    DanglingExecutionReference,
 }
 
 impl DocumentAssemblyCodeV2 {
@@ -92,6 +95,7 @@ impl DocumentAssemblyCodeV2 {
             Self::CompositionBodyMismatch => "pipeline.document.composition_body_mismatch",
             Self::CheckGraphMismatch => "pipeline.document.check_graph_mismatch",
             Self::InapplicableItemResult => "pipeline.document.inapplicable_item_result",
+            Self::DanglingExecutionReference => "pipeline.document.dangling_execution_reference",
         }
     }
 }

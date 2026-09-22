@@ -449,8 +449,16 @@ impl ValueTypeV1 {
         self.0.is_assignable_to(&expected.0)
     }
     #[must_use]
+    pub const fn as_tuple(&self) -> Option<&TupleTypeV1> {
+        self.0.as_tuple()
+    }
+    #[must_use]
     pub const fn as_record(&self) -> Option<&RecordTypeV1> {
         self.0.as_record()
+    }
+    #[must_use]
+    pub const fn as_union(&self) -> Option<&UnionTypeV1> {
+        self.0.as_union()
     }
     #[must_use]
     pub const fn as_optional(&self) -> Option<&OptionalTypeV1> {
@@ -572,8 +580,24 @@ impl TypeV1 {
         matches!(self.kind, TypeKindV1::Null)
     }
     #[must_use]
+    pub const fn as_tuple(&self) -> Option<&TupleTypeV1> {
+        if let TypeKindV1::Tuple(value) = &self.kind {
+            Some(value)
+        } else {
+            None
+        }
+    }
+    #[must_use]
     pub const fn as_record(&self) -> Option<&RecordTypeV1> {
         if let TypeKindV1::Record(value) = &self.kind {
+            Some(value)
+        } else {
+            None
+        }
+    }
+    #[must_use]
+    pub const fn as_union(&self) -> Option<&UnionTypeV1> {
+        if let TypeKindV1::Union(value) = &self.kind {
             Some(value)
         } else {
             None
