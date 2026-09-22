@@ -1980,3 +1980,19 @@ globs with the pinned three functions + curated allowlist (facade lib.rs
 five transitional facade edges, run planning/pipeline/facade suites + doctests
 + strict Clippy + the external-consumer gate + architecture, write Receipt 07,
 commit, then open W5 with `/tmp/qg-w5-dispatch-draft.md`.
+
+### W4 note for continuation — plan.rs owns the classifier — 2026-09-22
+
+Surface survey of the landed planning modules shows the types and helpers are
+in place (item.rs junction + NoPlanReasonV2, policy.rs PlanPolicyV2 +
+GraphWitnessRetentionV2 + RuleProgramPolicyV2, cost.rs four classes +
+SemanticCostV2, effect.rs lanes, result_kind.rs ResultContractV2, capability.rs
+CapabilityV2, explain.rs ExplainNoteV2, check.rs/presentation.rs/composition.rs
+contract constructors, diagnostic.rs codes) but the PER-ARM CLASSIFICATION
+(capability/cost/effect/evidence/result/explain derivation from each sealed
+carrier) lives in `planning/src/plan.rs`, which is still the V1 file. So
+plan.rs is not thin glue: it is ticket 07's core classifier and the single
+largest remaining artifact of wave W4. Lane W4-A2 (c2dc46fc) holds that lease
+and is working through the twelve landed modules before writing it; it is the
+wave's critical path. Anyone resuming: do not interrupt W4-A2 without first
+checking `planning/src/plan.rs`'s hash (V1 hash is `6909d6d40f3a33fd`).
