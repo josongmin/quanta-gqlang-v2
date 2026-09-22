@@ -2,33 +2,40 @@
 
 //! Canonical downstream seam for external qglang-v3 consumers.
 //!
-//! Sibling repos must depend on this crate rather than scattering direct owner
-//! crate edges across `surface` / `hir` / `algebra` / `planning` / `pipeline`.
-//! The owner crates remain authoritative, but this facade is the stable
-//! frontend-only bundle consumed outside the repo boundary.
+//! Sibling repos depend on this crate — never on an owner crate. The facade
+//! exposes exactly the three pinned source-document entry points plus a curated
+//! allowlist of host-agnostic DTO roots; owner internals (HIR, Binder, Types,
+//! Modules, Algebra, Logic, Planning, Pipeline) stay unreachable, and no
+//! crate-wide glob is used.
+//!
+//! The public closed-authority builder path is intentionally absent until
+//! Ticket 07's builder DTOs land; hosts construct authorities only through the
+//! allowlisted authority types below.
 
-pub use quanta_gqlang_v2_algebra::*;
-pub use quanta_gqlang_v2_hir::*;
+/// Analyze one source document under the open authority.
+pub use quanta_gqlang_v2_pipeline::analyze_source_document_v2;
+/// Compile one closed source document into a fully assembled document.
+pub use quanta_gqlang_v2_pipeline::compile_source_document_v2;
+/// Format one source document under the canonical budget.
+pub use quanta_gqlang_v2_pipeline::format_source_document_v2;
+
+// ---- assembled document DTOs ----------------------------------------------
 pub use quanta_gqlang_v2_pipeline::{
-    compile_document_structural, compile_document_with_context, compile_document_with_schema,
-    compile_item_structural, compile_item_with_context, compile_item_with_schema,
-    compile_program_structural, compile_program_with_schema, compile_with_context, CompiledItemV1,
-    CompiledProgramV1, FrontendContextV1, ModuleGraphV1, NoServeReasonV1, PackGraphV1, PackIdV1,
-    PackManifestV1, PipelineDiagnosticV1, PipelineStageV1, VersionRangeV1, VersionV1,
+    AnalysisDocumentV2, AnalysisItemV2, CompiledDocumentV2, CompiledItemV2, CompiledRuleProgramV2,
+    PlannedItemV2, RuleProgramMemberV2, UnresolvedAnalysisFactV2,
 };
-pub use quanta_gqlang_v2_planning::*;
-pub use quanta_gqlang_v2_surface::{
-    format_document, format_item, parse_document, parse_expr, parse_predicate, parse_program,
-    LexErrorV1, ParseDiagnosticV1, ParseErrorCodeV1, ParsedDocumentV1, ParsedProgramV1,
-    SurfaceItemV1, TokenKindV1, TokenV1,
-};
-pub use quanta_gqlang_v2_types::*;
 
-/// Unified item view helper for downstream family inspection.
-///
-/// External consumers often need the one canonical `ProgramItemHirV1` without
-/// depending on `SurfaceItemV1::to_program_item()` directly.
-#[must_use]
-pub fn compiled_program_item_v1(program: &CompiledProgramV1) -> ProgramItemHirV1 {
-    program.item().to_program_item()
-}
+// ---- planning DTOs reachable from the assembled documents ------------------
+pub use quanta_gqlang_v2_pipeline::{NoPlanReasonV2, SemanticPlanV2};
+
+// ---- authorities, diagnostics, and transaction vocabulary ------------------
+pub use quanta_gqlang_v2_pipeline::{
+    ClosedFrontendAuthorityV2, FrontendAuthorityErrorV2, FrontendBudgetV2, FrontendDiagnosticV2,
+    FrontendFailureV2, FrontendSeverityV2, FrontendStageV2, FrontendTransactionErrorV2,
+    OpenAnalysisAuthorityV2,
+};
+
+// ---- inert value/location closure types ------------------------------------
+pub use quanta_gqlang_v2_pipeline::{
+    AlgebraFamilyV2, CheckedLocatedSpanV2, LocatedSpanV2, SourceIdV2, SpanV1,
+};

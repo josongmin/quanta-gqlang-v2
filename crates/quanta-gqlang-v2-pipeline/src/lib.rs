@@ -38,7 +38,10 @@ pub use diagnostic::{
     algebra_code, diagnostic_sort_key, logic_code, no_plan_code, planning_code,
     DocumentAssemblyCodeV2, PipelineStageV2,
 };
+pub use quanta_gqlang_v2_algebra::AlgebraFamilyV2;
+pub use quanta_gqlang_v2_planning::{NoPlanReasonV2, SemanticPlanV2};
 pub use quanta_gqlang_v2_sema::{
-    FrontendAuthorityErrorV2, FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2,
-    FrontendStageV2, FrontendTransactionErrorV2,
+    CheckedLocatedSpanV2, ClosedFrontendAuthorityV2, FrontendAuthorityErrorV2, FrontendBudgetV2,
+    FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2, FrontendStageV2,
+    FrontendTransactionErrorV2, LocatedSpanV2, OpenAnalysisAuthorityV2, SourceIdV2, SpanV1,
 };
