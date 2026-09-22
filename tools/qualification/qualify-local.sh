@@ -37,12 +37,12 @@ command -v just >/dev/null 2>&1 || { echo "qualify-local: just is required but n
 just --version
 
 # 4. Run the single composition entry point.
-start="$EPOCHSECONDS"
+start="$(date +%s)"
 set +e
 just ci
 exit_code=$?
 set -e
-end="$EPOCHSECONDS"
+end="$(date +%s)"
 duration_s=$((end - start))
 
 # 5. Receipt with exactly the keys sha/tree/cmds/exit/duration_s.
