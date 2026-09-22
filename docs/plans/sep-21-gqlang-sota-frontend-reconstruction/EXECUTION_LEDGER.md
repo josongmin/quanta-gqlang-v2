@@ -1451,3 +1451,29 @@ Lanes: W3-A 6a856533, W3-B a48267dd, W3-C 1835981d. Barrier will cut the
 Logic->hir edge, update architecture expectations, run Logic all-targets +
 strict Clippy + the 50k/budget cases + final dependency scan, and write
 Receipt 06.
+
+### W3 pre-emptive gap plugs — 2026-09-21 (integrator audit)
+
+Two holes found by integrator audit of the frozen surface against the sealed
+lane worklists, both closed before the lanes could block on them:
+
+1. Lane W3-A's iterative frames need a rule-graph over-budget rejection, and
+   the pre-cut had none. Added `RuleGraphBudgetExceeded { dimension:
+   RuleGraphBudgetDimensionV1::{Nodes,Edges,Steps}, limit, span }` with codes
+   `logic.rule_graph_budget.{nodes|edges|steps}` (charge-before-work; exact
+   limit succeeds, +1 rejects at the refused step's checked location).
+2. Lane W3-B's per-subkind exact/+1 witness rails need an over-budget
+   rejection for bounds exceeding the sealed receipt. Added
+   `UnboundedWitnessReasonV1::{MaxWitnessesOverBudget,
+   PathLengthBoundOverBudget}` with stable codes/messages.
+
+Both lanes were notified with exact shapes. Post-addition compile check
+confirms the integrator-owned surface is clean; every remaining error in the
+crate is inside lane files and maps to that lane's inventory rows.
+
+Known open risk (tracked, not yet actionable): lane W3-C's membership-forgery
+matrix may be unmintable from the current sema test-support surface (no rule
+document fixtures). W3-C is instructed to implement the positive path plus
+whatever negatives are reachable and to report each unreachable rail with the
+exact fixture shape required; the integrator will then authorize a
+test-support extension (free worker slot) rather than accept a vacuous rail.

@@ -114,6 +114,52 @@ pub enum LogicDiagnosticV1 {
         /// Checked location of the offending fact.
         span: CheckedLocatedSpanV2,
     },
+    /// A rule-graph traversal refused to exceed one immutable dimension of the
+    /// document's downstream budget receipt. Charging happens before the work;
+    /// exact limit succeeds and limit+1 rejects here at the refused step's
+    /// checked location.
+    RuleGraphBudgetExceeded {
+        /// Which sealed dimension was exhausted.
+        dimension: RuleGraphBudgetDimensionV1,
+        /// The exact sealed limit that would have been exceeded.
+        limit: u32,
+        /// Checked location of the step whose charge was refused.
+        span: CheckedLocatedSpanV2,
+    },
+}
+
+/// Which immutable rule-graph budget dimension was exhausted.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RuleGraphBudgetDimensionV1 {
+    /// `max_rule_graph_nodes`.
+    Nodes,
+    /// `max_rule_graph_edges`.
+    Edges,
+    /// `max_rule_steps` (frame pushes, SCC emission, witness search,
+    /// relaxation).
+    Steps,
+}
+
+impl RuleGraphBudgetDimensionV1 {
+    /// Stable code suffix for this dimension.
+    #[must_use]
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::Nodes => "nodes",
+            Self::Edges => "edges",
+            Self::Steps => "steps",
+        }
+    }
+
+    /// Stable human name for this dimension.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Nodes => "rule graph node",
+            Self::Edges => "rule graph edge",
+            Self::Steps => "rule graph step",
+        }
+    }
 }
 
 /// Why a projected rule program was not a faithful contract.
@@ -169,6 +215,12 @@ pub enum UnboundedWitnessReasonV1 {
     /// edge (so it cannot connect two distinct endpoints) and is therefore an
     /// ill-formed (degenerate) bound, just like a zero max-witness cap.
     ZeroPathLengthBound,
+    /// The requested max-witness cap exceeds the document's sealed
+    /// `max_witnesses` budget dimension.
+    MaxWitnessesOverBudget,
+    /// The requested path-length bound exceeds the document's sealed
+    /// `max_witness_depth` budget dimension.
+    PathLengthBoundOverBudget,
 }
 
 impl UnboundedWitnessReasonV1 {
@@ -180,6 +232,8 @@ impl UnboundedWitnessReasonV1 {
             Self::MissingPathLengthBound => "missing_path_length_bound",
             Self::ZeroMaxWitnesses => "zero_max_witnesses",
             Self::ZeroPathLengthBound => "zero_path_length_bound",
+            Self::MaxWitnessesOverBudget => "max_witnesses_over_budget",
+            Self::PathLengthBoundOverBudget => "path_length_bound_over_budget",
         }
     }
 }
@@ -203,6 +257,9 @@ impl LogicDiagnosticV1 {
             Self::RuleProgramInvalid { reason, .. } => {
                 format!("logic.rule_program.{}", reason.code())
             }
+            Self::RuleGraphBudgetExceeded { dimension, .. } => {
+                format!("logic.rule_graph_budget.{}", dimension.code())
+            }
         }
     }
 
@@ -216,7 +273,8 @@ impl LogicDiagnosticV1 {
             | Self::GraphEndpointMissing { span, .. }
             | Self::GraphEndpointUnexpected { span, .. }
             | Self::NonMonotoneRecursion { span, .. }
-            | Self::RuleProgramInvalid { span, .. } => span,
+            | Self::RuleProgramInvalid { span, .. }
+            | Self::RuleGraphBudgetExceeded { span, .. } => span,
         }
     }
 
@@ -258,6 +316,13 @@ impl LogicDiagnosticV1 {
                 UnboundedWitnessReasonV1::ZeroPathLengthBound => {
                     "ill-formed witness bound: a path-length bound of zero can never traverse an \
                      edge"
+                        .to_owned()
+                }
+                UnboundedWitnessReasonV1::MaxWitnessesOverBudget => {
+                    "witness bound exceeds the document's sealed max-witnesses budget".to_owned()
+                }
+                UnboundedWitnessReasonV1::PathLengthBoundOverBudget => {
+                    "path-length bound exceeds the document's sealed witness-depth budget"
                         .to_owned()
                 }
             },
@@ -306,6 +371,12 @@ impl LogicDiagnosticV1 {
                     "rule membership disagrees with the document's own item set".to_owned()
                 }
             },
+            Self::RuleGraphBudgetExceeded {
+                dimension, limit, ..
+            } => format!(
+                "{} budget of {limit} exceeded",
+                dimension.name()
+            ),
         }
     }
 }
