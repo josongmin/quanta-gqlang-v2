@@ -1477,3 +1477,20 @@ document fixtures). W3-C is instructed to implement the positive path plus
 whatever negatives are reachable and to report each unreachable rail with the
 exact fixture shape required; the integrator will then authorize a
 test-support extension (free worker slot) rather than accept a vacuous rail.
+
+### W3 gap audit — rule-document fixtures missing (W3-D queued) — 2026-09-21
+
+Integrator audit confirmed a critical-path gap: `sema::test_support` mints
+relation-only documents; there is NO public rule-document fixture, so out-of-
+crate Logic tests cannot exercise `RuleProgramContractV2::from_document`'s
+positive path or the membership-forgery matrix, and W3-B's graph rails cannot
+reach documents carrying resolved graph queries. The in-crate minting pattern
+exists (`sema/tests/v3_document_transaction.rs`: `builder.rule(...)` +
+`ProgramItemHirV1::Rule` + `resolve_checked_document_v2`), so the fix is a
+test-support promotion, not new research.
+
+Decision: a W3-D lane (lease `sema/src/test_support.rs`, additive-only,
+feature-test-gated) opens on the first free worker slot with the exact fixture
+list W3-C and W3-B report. No vacuous rail is accepted in the interim: W3-C
+implements the reachable subset + reports its required builders; W3-B does the
+same for graph-query documents. Worker cap respected (A/B/C running).
