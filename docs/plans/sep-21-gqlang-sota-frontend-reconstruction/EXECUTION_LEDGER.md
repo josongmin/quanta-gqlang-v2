@@ -1758,3 +1758,42 @@ Upstream findings: nested CHECK host Rule asset must use CallableKindV2::Rule
 (else modules.catalog_payload_kind_mismatch); over-budget reasons are
 forgery-defense only; fixture `graph()` panic arm fixed by the integrator with
 a reasoned expect.
+
+### W3-A FINAL — rule/SCC/aggregate GREEN — 2026-09-21
+
+Surface: BodyLiteralV1 (frozen `new` + `aggregated` + accessors incl.
+aggregate_function), RuleDefV1 (frozen `new` + accessors), RecursiveProgramV1
+(from_rules/rules), StratificationProofV1 (stratum_of, is_recursive, strata,
+recursive, components, stratum_count), free `stratify(&program, &receipt)`,
+RejectAllRecursiveAggregatesV2 (+UNSPECIFIED_FUNCTION "<aggregate>", check()
+always Err). DELETED: AggregateLegalityV1, RecursiveAggregateV1,
+RecursiveAggregateMatrixV1 (admits/classify/with_admitted), RuleDefV1::from_rule,
+RecursiveProgramV1::{new, add_rule, Default, stratify-method}, sorted_cycle,
+name-keyed vertices. Post-hashes: recursion.rs `083bdbe7`, aggregate.rs
+`5aa45653`, three test files (3c7bf37b / 650f77b8 / 1a425adf).
+
+Rails: 29/29 green — v3_logic_recursion 15, v3_rule_scc_hellgate 9,
+v3_rule_aggregate_policy 5. Fifty-thousand-node chain proven without process
+stack on a 512 KiB worker stack (exactly 50,000 nodes / 49,999 edges /
+199,998 steps at standard limits). Canonical cycle witness is a proven BFS
+return path (rail proves cycle [a,c,b] for component {a,b,c} — not a sorted
+member list). Precedence is polarity-owned: negation beats aggregation
+regardless of edge order; aggregated recursion yields
+`logic.recursive_aggregate` under the reject-all policy (the G12 rail is
+re-expressed as `aggregated_self_recursion_rejects_with_fixed_policy`, per the
+integrator's NonMonotoneRecursion deletion).
+
+Mutations: five executed in an out-of-repo /tmp copy (never the shared
+workspace) with exact kill mappings (precedence swap, sorted-member witness,
+node-charge removal, NonLocalTarget removal, min-admission policy restored);
+two deferred to an authorized isolated worktree (recursive strong_connect
+reintroduction; charge off-by-one) with their killing rails named. Budget
+accounting documented and pinned: nodes = distinct members in ascending ID
+order; edges in canonical order; steps = frame pushes + SCC emissions + edge
+scans + witness BFS + stratum relaxations, all charged before the work.
+Clippy --lib clean, fmt clean, git diff --check clean.
+
+Note: W3-A's snapshot listed the sema test_support `panic` lint — the
+integrator fixed that before this report (reasoned expect). Pipeline's call to
+deleted `RuleDefV1::from_rule`/`RecursiveProgramV1::from_rules` (compile.rs)
+is the known W4 obligation, not a W3 defect.
