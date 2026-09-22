@@ -1,6 +1,6 @@
 # 07 — Semantic Planning And Public Facade
 
-Status: `PLANNED — BLOCKED BY 06; V1 CONSUMER CUT NOT STARTED`
+Status: `IMPLEMENTED — LOCAL W4 + POST-AUDIT REMEDIATION GREEN; HOSTED/W7 OPEN`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
@@ -132,15 +132,15 @@ Catalog declaration still has no per-declaration serving plan.
 
 ## Required Public Facade
 
-**2026-09-22 external-consumer gap:** this section names
-`ClosedFrontendAuthorityBuilderV2`, but the facade at
-`9a23f937c8d83dfc83cb6ae59e531037d83c5072` does not export or implement
-it. Its external positive fixture only pins the closed compile signature and
-cannot construct an authority through facade-only types. Do not mark the
-builder requirement closed from that fixture. The producer-owned constructor
-and any additional host-agnostic serving view must be designed and verified
-under [Ticket 10](./10-downstream-serving-interop.md); neither the missing
-builder nor Semantica's deleted V1 imports is repaired by V1 re-exports.
+**2026-09-22 post-audit closure:** `ClosedFrontendAuthorityBuilderV2` is now a
+curated facade root. It accepts raw source registrations, selected module,
+budget, relation schemas, graph selectors, and dependency-free pack/lockfile
+inputs; checked locations and owner proofs are minted only inside Sema. The
+isolated positive fixture constructs this authority and invokes
+`compile_source_document_v2` for both an ordinary document and a real
+source-level `USE PACK` document. This closes the Ticket 07 construction gap;
+it does not close Ticket 10's separate logical-serving-view or Semantica
+consumer migration work.
 
 `quanta-gqlang-v2-frontend-contract` exports exactly these functions and stable
 DTO roots; nested DTO fields use curated explicit exports, never crate globs:
@@ -799,3 +799,55 @@ write sets are disjoint, but they must integrate against one frozen DTO
 contract. Facade implementation waits for both. External-consumer and final-DAG
 integration are serial final steps. Ticket 08 remains blocked until the facade
 source entry points and diagnostic ordering are frozen.
+
+## 2026-09-22 Post-W4 Remediation — Current Worktree
+
+Base: `main@d1206801bc7b4dd7ec6c2a8ecbfaee5c2d6c0364` plus the
+uncommitted remediation patch. This is not a candidate SHA or hosted
+qualification receipt.
+
+### Closed defects
+
+1. **Document-scoped downstream budgets.** `AlgebraSessionV2` and
+   `PlanningSessionV2` own non-resettable counters for the whole compiled
+   document. Pipeline creates one session of each and reuses it for inline
+   VIEW bodies, composition bodies, top-level relations, and all plans.
+   Exact-limit reuse tests prove that a second call cannot reacquire the full
+   allowance.
+2. **Inline VIEW stage completeness.** A typed inline VIEW relation is lowered
+   through Algebra before its checked `CatalogDeclaration::View` no-plan
+   outcome. Algebra failure can no longer be skipped because the top-level item
+   is non-executable.
+3. **Real `USE PACK` source path.** Sema converts authored HIR activation into
+   a Modules `PackActivationInputV2`, validates the pack and canonical lock
+   against the combined registry, and emits `ResolvedMetaKindV2::UsePack`.
+   The old forged/reassembly-only fixture no longer owns the positive result.
+4. **Curated external authority construction.** The facade exports one
+   `ClosedFrontendAuthorityBuilderV2` transaction. It internally mints checked
+   locations and owner proofs from host-agnostic DTOs and rejects duplicate or
+   out-of-bounds sources. The positive external crate constructs relation,
+   graph, dependency-free pack, and lock authority and invokes the compiler.
+5. **Single composition validator.** Pipeline's narrower duplicate
+   `verify_composition` path was deleted. Planning's
+   `CheckedCompositionPlanInputV2` is the sole complete validator.
+6. **Architecture owner fix.** The Surface-to-Sema composition query is a
+   Pipeline integration test; its raw-HIR mutation half remains in Sema and
+   its source-level half is isolated in Pipeline. The illegal
+   `sema -> surface` dev edge and Pipeline's unused Binder/HIR/Modules/Types production
+   edges were removed. Default architecture mode is green. Final mode remains
+   a W5/W6 obligation while declared CLI/conformance/stdio edges exist.
+7. **Static/doc gates.** Semgrep now targets production Rust public string
+   errors instead of counting cfg(test)-only fixtures. Wildcard error drops in
+   touched production collectors were replaced with explicit error retention.
+   Stale language-doc test paths and V1 rustdoc links were repaired.
+
+### Ticket 07 remaining work
+
+- No known W4 semantic implementation blocker remains in this patch set.
+- Commit/checkpoint publication, hosted CI, and W7 candidate/attestation are
+  open; local success must not be reported as those states.
+- `--require-final` architecture closure belongs to W5/W6 and requires removal
+  of the remaining declared transitional edges, not allowlist edits.
+- The runtime-neutral logical serving view, canonical compiled identity, and
+  Semantica consumer migration remain Ticket 10. They are not planner/facade
+  summary work and must not be approximated by exposing Algebra owner nodes.

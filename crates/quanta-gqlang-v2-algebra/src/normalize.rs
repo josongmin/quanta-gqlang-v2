@@ -26,41 +26,77 @@ pub fn lower_relation_item(
     document: &SemanticDocumentV2,
     item_id: SemanticItemIdV2,
 ) -> Result<LoweredRelationItemV2, AlgebraDiagnosticV2> {
-    let Some(item) = document.item(item_id) else {
-        return Err(AlgebraDiagnosticV2::new(
-            AlgebraFailureKindV2::NonRelationItem,
-            None,
-            "requested semantic item is absent from the document",
-        ));
-    };
-    let SemanticItemV2::Relation(relation) = item else {
-        return Err(AlgebraDiagnosticV2::new(
-            AlgebraFailureKindV2::NonRelationItem,
-            None,
-            "requested semantic item is not a relation",
-        ));
-    };
-    if item_id.source_id() != document.source_id() {
-        return Err(AlgebraDiagnosticV2::new(
-            AlgebraFailureKindV2::ForeignSemanticFact,
-            Some(relation.location().clone()),
-            "requested item belongs to another semantic document",
-        ));
+    AlgebraSessionV2::new(document).lower_relation_item(item_id)
+}
+
+/// One document-scoped Algebra lowering transaction.
+///
+/// Top-level relations, inline Views, and composition relations consume the
+/// same semantic-step and expression-node ledgers. The borrowed document makes
+/// the remaining allowance non-transferable to another semantic transaction.
+pub struct AlgebraSessionV2<'a> {
+    document: &'a SemanticDocumentV2,
+    budget: LoweringBudgetV2,
+}
+
+impl<'a> AlgebraSessionV2<'a> {
+    /// Start one lowering transaction from the document's immutable receipt.
+    #[must_use]
+    pub fn new(document: &'a SemanticDocumentV2) -> Self {
+        Self {
+            document,
+            budget: LoweringBudgetV2::new(document.budget_receipt()),
+        }
     }
-    let root = lower_root(
-        document,
-        item_id,
-        relation.root(),
-        document.budget_receipt(),
-    )?;
-    if root.output() != relation.output() {
-        return Err(failure(
-            AlgebraFailureKindV2::InvalidStageContract,
-            relation.location(),
-            "lowered root output differs from the sealed relation output",
-        ));
+
+    /// Lower one top-level relation and charge the shared document ledgers.
+    pub fn lower_relation_item(
+        &mut self,
+        item_id: SemanticItemIdV2,
+    ) -> Result<LoweredRelationItemV2, AlgebraDiagnosticV2> {
+        let document = self.document;
+        let Some(item) = document.item(item_id) else {
+            return Err(AlgebraDiagnosticV2::new(
+                AlgebraFailureKindV2::NonRelationItem,
+                None,
+                "requested semantic item is absent from the document",
+            ));
+        };
+        let SemanticItemV2::Relation(relation) = item else {
+            return Err(AlgebraDiagnosticV2::new(
+                AlgebraFailureKindV2::NonRelationItem,
+                None,
+                "requested semantic item is not a relation",
+            ));
+        };
+        if item_id.source_id() != document.source_id() {
+            return Err(AlgebraDiagnosticV2::new(
+                AlgebraFailureKindV2::ForeignSemanticFact,
+                Some(relation.location().clone()),
+                "requested item belongs to another semantic document",
+            ));
+        }
+        let root = lower_root_with_budget(document, item_id, relation.root(), &mut self.budget)?;
+        if root.output() != relation.output() {
+            return Err(failure(
+                AlgebraFailureKindV2::InvalidStageContract,
+                relation.location(),
+                "lowered root output differs from the sealed relation output",
+            ));
+        }
+        Ok(LoweredRelationItemV2::new(item_id, root))
     }
-    Ok(LoweredRelationItemV2::new(item_id, root))
+
+    /// Lower one nested relation and charge the shared document ledgers.
+    pub fn lower_nested_relation(
+        &mut self,
+        owner_item_id: SemanticItemIdV2,
+        root: &TypedRelationExprV2,
+    ) -> Result<CheckedAlgebraNodeV2, AlgebraDiagnosticV2> {
+        let document = self.document;
+        validate_nested_owner(document, owner_item_id, root)?;
+        lower_root_with_budget(document, owner_item_id, root, &mut self.budget)
+    }
 }
 
 /// Lower one NESTED relation (a composition body or producer relation that is
@@ -81,6 +117,14 @@ pub fn lower_nested_relation_v2(
     owner_item_id: SemanticItemIdV2,
     root: &TypedRelationExprV2,
 ) -> Result<CheckedAlgebraNodeV2, AlgebraDiagnosticV2> {
+    AlgebraSessionV2::new(document).lower_nested_relation(owner_item_id, root)
+}
+
+fn validate_nested_owner(
+    document: &SemanticDocumentV2,
+    owner_item_id: SemanticItemIdV2,
+    root: &TypedRelationExprV2,
+) -> Result<(), AlgebraDiagnosticV2> {
     if owner_item_id.source_id() != document.source_id() {
         return Err(AlgebraDiagnosticV2::new(
             AlgebraFailureKindV2::ForeignSemanticFact,
@@ -95,7 +139,21 @@ pub fn lower_nested_relation_v2(
             "nested relation root belongs to another semantic document",
         ));
     }
-    lower_root(document, owner_item_id, root, document.budget_receipt())
+    Ok(())
+}
+
+struct LoweringBudgetV2 {
+    semantic_steps: u32,
+    expression_nodes: u32,
+}
+
+impl LoweringBudgetV2 {
+    const fn new(receipt: DownstreamBudgetReceiptV2) -> Self {
+        Self {
+            semantic_steps: receipt.max_semantic_steps(),
+            expression_nodes: receipt.max_expression_nodes(),
+        }
+    }
 }
 
 /// One relation stage awaiting its lowerable children.
@@ -139,27 +197,36 @@ struct ExistsLeaf<'a> {
 /// visited by the predicate walks charges one `max_expression_nodes` node
 /// before it is visited. Exact budgets succeed; one visit beyond the cap
 /// rejects at the checked location of the stage or expression being visited.
+#[cfg(test)]
 fn lower_root(
     document: &SemanticDocumentV2,
     item_id: SemanticItemIdV2,
     root: &TypedRelationExprV2,
     receipt: DownstreamBudgetReceiptV2,
 ) -> Result<CheckedAlgebraNodeV2, AlgebraDiagnosticV2> {
-    let mut steps = receipt.max_semantic_steps();
-    let mut expression_nodes = receipt.max_expression_nodes();
+    let mut budget = LoweringBudgetV2::new(receipt);
+    lower_root_with_budget(document, item_id, root, &mut budget)
+}
+
+fn lower_root_with_budget(
+    document: &SemanticDocumentV2,
+    item_id: SemanticItemIdV2,
+    root: &TypedRelationExprV2,
+    budget: &mut LoweringBudgetV2,
+) -> Result<CheckedAlgebraNodeV2, AlgebraDiagnosticV2> {
     let mut stack: Vec<Frame<'_>> = vec![Frame::Visit(Visit(root))];
     let mut results: Vec<CheckedAlgebraNodeV2> = Vec::new();
     while let Some(frame) = stack.pop() {
         match frame {
             Frame::Visit(Visit(stage)) => {
-                if steps == 0 {
+                if budget.semantic_steps == 0 {
                     return Err(failure(
                         AlgebraFailureKindV2::TraversalBudgetExceeded,
                         stage.location(),
                         "relation lowering exceeded the document's max_semantic_steps budget",
                     ));
                 }
-                steps -= 1;
+                budget.semantic_steps -= 1;
                 let location = stage.location();
                 if stage.key().source_id != document.source_id()
                     || location.location().source_id != document.source_id()
@@ -187,7 +254,7 @@ fn lower_root(
                             ));
                         };
                         let (exists, ordinary) =
-                            decompose_predicate(document, predicate, &mut expression_nodes)?;
+                            decompose_predicate(document, predicate, &mut budget.expression_nodes)?;
                         let mut nested: Vec<&TypedRelationExprV2> =
                             exists.iter().map(|leaf| leaf.right).collect();
                         stack.push(Frame::Finish(Finish {
@@ -957,6 +1024,21 @@ mod tests {
             over.location().is_some(),
             "the over-budget rejection names a checked stage location"
         );
+    }
+
+    #[test]
+    fn document_lowering_session_does_not_reset_between_items() {
+        let reference =
+            forged_small_receipt_relation_chain_document_v2(SMALL_BUDGET_MAX_SEMANTIC_STEPS - 1)
+                .expect("exact small-receipt chain");
+        let mut session = AlgebraSessionV2::new(reference.document());
+        session
+            .lower_relation_item(reference.item_id())
+            .expect("first traversal consumes the exact document allowance");
+        let error = session
+            .lower_relation_item(reference.item_id())
+            .expect_err("a second traversal cannot reuse the consumed allowance");
+        assert_eq!(error.kind(), AlgebraFailureKindV2::TraversalBudgetExceeded);
     }
 
     #[test]

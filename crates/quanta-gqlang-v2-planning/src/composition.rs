@@ -819,6 +819,7 @@ pub(crate) mod tests {
     /// above plus the fixture query body policy. It is `pub(crate)` for the
     /// plan-assembly rail in [`crate::plan`], which proves the policy reaches
     /// [`crate::SemanticPlanV2::policy`] unchanged.
+    // nosemgrep: qglang-v2-no-string-typed-error-results-in-core -- cfg(test)-only fixture
     pub(crate) fn fixture_policy() -> Result<CompositionPolicyV2, String> {
         let body = CompositionBodyPolicyV2::try_new(query_body_policy())
             .map_err(|reason| format!("{reason:?}"))?;

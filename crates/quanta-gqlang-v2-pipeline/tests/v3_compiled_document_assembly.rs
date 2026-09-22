@@ -762,6 +762,20 @@ fn closed_source_entry_assembles_the_exact_item_dispositions() {
 }
 
 #[test]
+fn inline_view_is_algebra_checked_before_its_catalog_no_plan_outcome() {
+    let source = "view active | select=from records r | project r.id as id";
+    let compiled = compile_source_document_v2(DOC_SOURCE, source, &authority_with_records())
+        .expect("inline View traverses Sema and Algebra before catalog disposition");
+    assert!(matches!(
+        compiled.items(),
+        [CompiledItemV2::NoPlan {
+            reason: NoPlanReasonV2::CatalogDeclaration { .. },
+            ..
+        }]
+    ));
+}
+
+#[test]
 fn analyze_and_compile_share_the_same_stage_payloads() {
     let authority = minimal_authority();
     let document = resolve_minimal_document(&authority);

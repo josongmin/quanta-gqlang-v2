@@ -79,8 +79,8 @@ use std::collections::BTreeSet;
 use quanta_gqlang_v2_algebra::{AlgebraFamilyV2, CheckedAlgebraNodeV2};
 use quanta_gqlang_v2_logic::{GraphQueryContractV2, RelationShapeV1, RuleProgramContractV2};
 use quanta_gqlang_v2_sema::{
-    CheckedLocatedSpanV2, ConfirmModeV1, DownstreamBudgetReceiptV2, EmitModeV1, ExportFormatV1,
-    LocatedSpanV2, ResolvedCheckV2, ResolvedMetaKindV2, ResolvedMetaV2, ResolvedPresentationKindV2,
+    CheckedLocatedSpanV2, ConfirmModeV1, EmitModeV1, ExportFormatV1, LocatedSpanV2,
+    ResolvedCheckV2, ResolvedMetaKindV2, ResolvedMetaV2, ResolvedPresentationKindV2,
     ResolvedRuleV2, SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2, SourceIdV2,
     SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
 };
@@ -253,24 +253,60 @@ pub fn plan_outcome(
     input: &SemanticPlanInputV2,
     document: &SemanticDocumentV2,
 ) -> Result<PlanOutcomeV2, PlanningDiagnosticV1> {
-    // 1. Identity first: an input that does not belong to this document is
-    //    rejected before any classification or budget work.
-    validate_identity(input, document)?;
+    PlanningSessionV2::new(document).plan_outcome(input)
+}
 
-    // 2. Typed non-plan outcomes. They consume no semantic step: nothing is
-    //    walked, and nothing is silently skipped.
-    if let Some(reason) = non_plan_reason(input) {
-        return Ok(PlanOutcomeV2::NoPlan(reason));
+/// One document-scoped planning transaction.
+///
+/// All plan-required items in a document share this counter. Constructing a
+/// session borrows the sealed document, so a caller cannot transplant the
+/// remaining allowance to another document or reset it between items without
+/// starting a distinct planning transaction.
+pub struct PlanningSessionV2<'a> {
+    document: &'a SemanticDocumentV2,
+    charge: ChargeV2,
+}
+
+impl<'a> PlanningSessionV2<'a> {
+    /// Start the sole planning traversal session for `document`.
+    #[must_use]
+    pub fn new(document: &'a SemanticDocumentV2) -> Self {
+        Self {
+            document,
+            charge: ChargeV2::new(document.budget_receipt().max_semantic_steps()),
+        }
     }
 
-    // 3. One budgeted traversal over the visited sealed inputs.
-    let walk = walk(input, document.budget_receipt())?;
+    /// Plan one sealed input while charging the shared document allowance.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same typed identity, policy, and budget diagnostics as
+    /// [`plan_outcome`]. A refused charge does not reset the session.
+    pub fn plan_outcome(
+        &mut self,
+        input: &SemanticPlanInputV2,
+    ) -> Result<PlanOutcomeV2, PlanningDiagnosticV1> {
+        let document = self.document;
+        // 1. Identity first: an input that does not belong to this document is
+        //    rejected before any classification or budget work.
+        validate_identity(input, document)?;
 
-    // 4. Per-arm classification from the sealed carriers alone. A composition
-    //    input is classified under its own root, so the plan retains the
-    //    composition identity instead of the body's.
-    let parts = classify(ArmV2::of(input), document, &walk, PlanRootV2::of(input))?;
-    Ok(PlanOutcomeV2::Plan(SemanticPlanV2::from_parts(parts)))
+        // 2. Typed non-plan outcomes. They consume no semantic step: nothing is
+        //    walked, and nothing is silently skipped.
+        if let Some(reason) = non_plan_reason(input) {
+            return Ok(PlanOutcomeV2::NoPlan(reason));
+        }
+
+        // 3. One budgeted traversal over the visited sealed inputs.
+        let walk = walk(input, &mut self.charge)?;
+
+        // 4. Per-arm classification from the sealed carriers alone. A composition
+        //    input is classified under its own root, so the plan retains the
+        //    composition identity instead of the body's.
+        let parts = classify(ArmV2::of(input), document, &walk, PlanRootV2::of(input))?;
+        Ok(PlanOutcomeV2::Plan(SemanticPlanV2::from_parts(parts)))
+    }
 }
 
 /// The checked non-plan reason of an input, if it has one.
@@ -350,7 +386,8 @@ fn validate_identity(
             // semantic step.
             match GraphQueryContractV2::from_resolved(resolved) {
                 Ok(sealed) if sealed == *contract => Ok(()),
-                Ok(_) | Err(_) => Err(identity_mismatch(&anchor)),
+                Ok(_) => Err(identity_mismatch(&anchor)),
+                Err(_reseal_error) => Err(identity_mismatch(&anchor)),
             }
         }
         SemanticPlanInputV2::Check(contract) => {
@@ -648,9 +685,8 @@ impl ChargeV2 {
 /// node whose charge would exceed the sealed limit.
 fn walk(
     input: &SemanticPlanInputV2,
-    budget: DownstreamBudgetReceiptV2,
+    charge: &mut ChargeV2,
 ) -> Result<WalkV2, PlanningDiagnosticV1> {
-    let mut charge = ChargeV2::new(budget.max_semantic_steps());
     let mut capabilities = BTreeSet::new();
     let mut families = Vec::new();
     let mut effects = ExpressionEffectsV2::pure_scalar();
@@ -669,21 +705,21 @@ fn walk(
                 SemanticPlanInputV2::Graph(contract) => {
                     plan_class = Some(visit_leaf(
                         LeafCarrierV2::Graph(contract),
-                        &mut charge,
+                        charge,
                         &mut capabilities,
                     )?);
                 }
                 SemanticPlanInputV2::Check(contract) => {
                     plan_class = Some(visit_leaf(
                         LeafCarrierV2::Check(contract),
-                        &mut charge,
+                        charge,
                         &mut capabilities,
                     )?);
                 }
                 SemanticPlanInputV2::Presentation(contract) => {
                     plan_class = Some(visit_leaf(
                         LeafCarrierV2::Presentation(contract),
-                        &mut charge,
+                        charge,
                         &mut capabilities,
                     )?);
                 }
@@ -715,21 +751,21 @@ fn walk(
                         CompositionBodyPlanInputV2::Graph(contract) => {
                             plan_class = Some(visit_leaf(
                                 LeafCarrierV2::Graph(contract),
-                                &mut charge,
+                                charge,
                                 &mut capabilities,
                             )?);
                         }
                         CompositionBodyPlanInputV2::Check(contract) => {
                             plan_class = Some(visit_leaf(
                                 LeafCarrierV2::Check(contract),
-                                &mut charge,
+                                charge,
                                 &mut capabilities,
                             )?);
                         }
                         CompositionBodyPlanInputV2::Explain(contract) => {
                             plan_class = Some(visit_leaf(
                                 LeafCarrierV2::Presentation(contract),
-                                &mut charge,
+                                charge,
                                 &mut capabilities,
                             )?);
                         }
@@ -1534,7 +1570,14 @@ mod tests {
             .map(SemanticPlanInputV2::Relational)
             .map_err(|error| format!("{error:?}"))?;
         let exact_document = forged_small_receipt_relation_chain_document_v2(exact_depth)?;
-        plan(&exact_input, exact_document.document()).map_err(|error| format!("{error:?}"))?;
+        let mut session = PlanningSessionV2::new(exact_document.document());
+        session
+            .plan_outcome(&exact_input)
+            .map_err(|error| format!("{error:?}"))?;
+        assert!(matches!(
+            session.plan_outcome(&exact_input),
+            Err(PlanningDiagnosticV1::SemanticStepBudgetExceeded { .. })
+        ));
 
         let over_carrier = deep_relation_chain_document_v2(
             SMALL_BUDGET_MAX_SEMANTIC_STEPS,

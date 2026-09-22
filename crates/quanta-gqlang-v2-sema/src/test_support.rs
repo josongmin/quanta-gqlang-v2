@@ -15,12 +15,8 @@
 //! Beyond the relation/graph/nested-CHECK/rule families, the document families
 //! downstream planning and pipeline rails need are:
 //!
-//! - meta directives ([`reference_meta_document_v2`]): `REQUIRE CERTIFIED` mints
-//!   through the real transaction; `USE PACK` cannot, because the document
-//!   resolver's `Meta` arm accepts only `REQUIRE CERTIFIED` today (see
-//!   [`USE_PACK_TRANSACTION_REJECTION_V2`]), so
-//!   [`forged_use_pack_meta_document_v2`] seals that one directive through the
-//!   crate-local re-assembly seam;
+//! - meta directives ([`reference_meta_document_v2`]): `REQUIRE CERTIFIED` and
+//!   `USE PACK` both mint through the real document transaction;
 //! - presentations ([`reference_presentation_document_v2`]): all six verbs,
 //!   with every EXPLAIN evidence/truth permutation including the two planning
 //!   refuses;
@@ -45,11 +41,10 @@ use crate::{
     GraphReferenceCatalogV2, GraphReferenceInputV2, GraphReferenceKindV2, GraphReferenceRoleV2,
     JoinModeV2, OutputColumnContractV2, OutputColumnOriginV2, OutputProvenanceV2,
     RelationOutputContractV2, ResolvedBindingKindV2, ResolvedCompositionSourceIdV2,
-    ResolvedCompositionV2, ResolvedGraphQueryV2, ResolvedMetaKindV2, ResolvedMetaV2,
-    ResolvedPresentationV2, ResolvedScanSourceV2, ResolvedValueBindingV2, SemanticDocumentV2,
-    SemanticItemIdV2, SemanticItemV2, TypedBoolExprV2, TypedCorrelationEdgeV2, TypedExprShapeV2,
-    TypedExprV2, TypedRelationExprV2, TypedRelationStageInputV2, TypedRelationStageKindV2,
-    TypedRelationV2,
+    ResolvedCompositionV2, ResolvedGraphQueryV2, ResolvedMetaKindV2, ResolvedPresentationV2,
+    ResolvedScanSourceV2, ResolvedValueBindingV2, SemanticDocumentV2, SemanticItemIdV2,
+    SemanticItemV2, TypedBoolExprV2, TypedCorrelationEdgeV2, TypedExprShapeV2, TypedExprV2,
+    TypedRelationExprV2, TypedRelationStageInputV2, TypedRelationStageKindV2, TypedRelationV2,
 };
 use quanta_gqlang_v2_hir::{
     AliasV1, CallArgHirV1, CallArgsHirV1, CompareMetricV1, CompositionBindingV1, CompositionBodyV1,
@@ -63,10 +58,10 @@ use quanta_gqlang_v2_hir::{
     TruthModeV1, UsePackActivationV1, UsePackHirV1, ValueExprHirV1,
 };
 use quanta_gqlang_v2_modules::{
-    CallableKindV2, CurrentModuleSelectionInputV2, DocumentCatalogFinalInputV2,
+    CallableKindV2, ContentDigestV2, CurrentModuleSelectionInputV2, DocumentCatalogFinalInputV2,
     DocumentCatalogValidatorV2, ExternalCatalogAssetInputV2, ExternalCatalogPayloadInputV2,
-    LocatedParameterInputV2, ModuleAuthorityBuilderV2, ModuleIdV2, ModuleNodeInputV2, PackIdV2,
-    SignatureInputV2, VersionV2,
+    LocatedParameterInputV2, LockReferenceInputV2, ModuleAuthorityBuilderV2, ModuleIdV2,
+    ModuleNodeInputV2, PackIdV2, PackManifestInputV2, SignatureInputV2, VersionRangeV2, VersionV2,
 };
 use quanta_gqlang_v2_types::{
     AggregationClassV1, CardinalityV1, ExpressionEffectsV2, ProvenanceNamespaceV2,
@@ -2122,10 +2117,18 @@ fn authority_with_registry_len(
     host_source_len: usize,
     budget: FrontendBudgetV2,
 ) -> Result<ClosedFrontendAuthorityV2, String> {
-    let host = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
-        source_id: SourceIdV2::from_raw(1),
-        source_len: host_source_len,
-    }])
+    let digest_text = "0".repeat(64);
+    let lock_text = format!("{REFERENCE_USE_PACK_ID_V2} 1.0.0 {digest_text}\n");
+    let host = SourceRegistryViewV2::try_new(vec![
+        SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(1),
+            source_len: host_source_len,
+        },
+        SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(2),
+            source_len: lock_text.len(),
+        },
+    ])
     .map_err(|error| error.to_string())?;
     let location = host
         .try_check_location(LocatedSpanV2 {
@@ -2145,6 +2148,36 @@ fn authority_with_registry_len(
             module_id: module.clone(),
             location: location.clone(),
         })
+        .map_err(|error| format!("{error:?}"))?;
+    let pack = PackIdV2::try_new(REFERENCE_USE_PACK_ID_V2, location.clone())
+        .map_err(|error| format!("{error:?}"))?;
+    modules
+        .try_add_manifest(PackManifestInputV2 {
+            pack_id: pack,
+            version: VersionV2::new(1, 0, 0),
+            content_digest: ContentDigestV2::try_parse(&digest_text, location.clone())
+                .map_err(|error| format!("{error:?}"))?,
+            language_range: VersionRangeV2::try_new(
+                VersionV2::new(1, 0, 0),
+                VersionV2::new(2, 0, 0),
+                location.clone(),
+            )
+            .map_err(|error| format!("{error:?}"))?,
+            dependencies: Vec::new(),
+            exports: Vec::new(),
+            suites: Vec::new(),
+            location: location.clone(),
+        })
+        .map_err(|error| format!("{error:?}"))?;
+    modules
+        .try_set_lockfile(
+            LockReferenceInputV2 {
+                path: REFERENCE_USE_PACK_LOCKFILE_V2.to_owned(),
+                location: location.clone(),
+            },
+            SourceIdV2::from_raw(2),
+            &lock_text,
+        )
         .map_err(|error| format!("{error:?}"))?;
     let modules = modules
         .finish(
@@ -3474,7 +3507,7 @@ pub fn forged_rule_fact_document_v2(
                             )
                         })
                         .collect(),
-                    Err(_) => original.clone(),
+                    Err(_mutation_error) => original.clone(),
                 }
             }
             ForgedRuleFactMutationV2::TargetTransplanted => {
@@ -3565,27 +3598,10 @@ pub const REFERENCE_USE_PACK_LOCKFILE_V2: &str = "acme.lock";
 /// Canonical source text of [`ReferenceMetaFixtureV2::RequireCertified`].
 pub const REFERENCE_REQUIRE_CERTIFIED_SOURCE_V2: &str = "require certified;";
 
-/// The exact transaction rejection an authored `USE PACK` document reaches
-/// today.
-///
-/// The document resolver seals a `REQUIRE CERTIFIED` directive and fails closed
-/// on every other [`MetaKindV1`] payload through its
-/// `ProgramItemHirV1::Meta(_)` arm, because the reference-owner resolution for
-/// pack activation is not implemented yet. `USE PACK` therefore cannot mint
-/// through [`resolve_checked_document_v2`]: the resolved kind
-/// [`ResolvedMetaKindV2::UsePack`] exists, and both planning and the pipeline
-/// already classify it, but no transaction path produces it.
-pub const USE_PACK_TRANSACTION_REJECTION_V2: &str =
-    "semantic body and reference owner resolution is not yet available";
-
 /// Payload family of one reference meta-directive document.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReferenceMetaFixtureV2 {
     /// `USE PACK acme.pack | activation=session | lockfile=acme.lock`.
-    ///
-    /// Not mintable through the transaction today; see
-    /// [`USE_PACK_TRANSACTION_REJECTION_V2`] and
-    /// [`forged_use_pack_meta_document_v2`].
     UsePack,
     /// `REQUIRE CERTIFIED`.
     RequireCertified,
@@ -3668,16 +3684,10 @@ fn meta_checked_document_v2(
 /// [`ResolvedMetaKindV2::RequireCertified`] item, whose directive is also the
 /// document catalog's validated certification requirement.
 ///
-/// `UsePack` returns the exact transaction rejection
-/// [`USE_PACK_TRANSACTION_REJECTION_V2`]: no `USE PACK` document can be minted
-/// yet. Use [`forged_use_pack_meta_document_v2`] to drive the downstream
-/// `NoPlanReasonV2::MetaActivation` rail in the meantime.
-///
 /// # Errors
 ///
 /// Returns a fixture-construction error if the fixed fixture no longer
-/// satisfies the semantic contract, or the transaction's exact `USE PACK`
-/// rejection for that arm.
+/// satisfies the semantic contract.
 pub fn reference_meta_document_v2(
     kind: ReferenceMetaFixtureV2,
 ) -> Result<ReferenceMetaDocumentV2, String> {
@@ -3687,45 +3697,17 @@ pub fn reference_meta_document_v2(
     Ok(ReferenceMetaDocumentV2 { document, item_id })
 }
 
-/// The `USE PACK` document that the transaction cannot mint yet, sealed through
-/// the crate-local re-assembly seam.
+/// Compatibility test helper for the former forged USE PACK fixture.
 ///
-/// The checked HIR is the real authored `USE PACK` directive, and the document
-/// is sealed by the real [`SemanticDocumentV2::try_assemble`] validation (item
-/// identity, item kind, expression set, catalog proof). What the seam bypasses
-/// is only the unimplemented `USE PACK` resolution path itself, so the
-/// downstream `NoPlanReasonV2::MetaActivation` rail becomes reachable without
-/// inventing a carrier. Replacing this builder with a plain
-/// [`reference_meta_document_v2`] call is the exact producer fix (out of this
-/// fixture file's scope).
+/// The producer path is now implemented, so this helper deliberately delegates
+/// to the real transaction instead of bypassing Modules validation.
 ///
 /// # Errors
 ///
 /// Returns a fixture-construction error if the reassembled document no longer
 /// satisfies the assembly contract.
 pub fn forged_use_pack_meta_document_v2() -> Result<ReferenceMetaDocumentV2, String> {
-    let (checked, item_id) = meta_checked_document_v2(ReferenceMetaFixtureV2::UsePack)?;
-    let authority = reference_authority_v2()?;
-    let location = reference_checked_span_v2(0, REFERENCE_USE_PACK_SOURCE_V2.len() - 1)?;
-    let pack = PackIdV2::try_new(REFERENCE_USE_PACK_ID_V2, location.clone())
-        .map_err(|error| format!("{error:?}"))?;
-    let resolved = ResolvedMetaV2::new(
-        item_id,
-        location,
-        ResolvedMetaKindV2::UsePack {
-            pack,
-            activation: UsePackActivationV1::Session,
-        },
-    );
-    let document = reassemble_document(
-        &checked,
-        &authority,
-        vec![SemanticItemV2::Meta(resolved)],
-        BTreeMap::new(),
-        BTreeMap::new(),
-        authority.budget().downstream_receipt(),
-    )?;
-    Ok(ReferenceMetaDocumentV2 { document, item_id })
+    reference_meta_document_v2(ReferenceMetaFixtureV2::UsePack)
 }
 
 // ---- presentation fixtures -------------------------------------------------
@@ -4562,11 +4544,18 @@ mod w4d_tests {
     }
 
     #[test]
-    fn use_pack_meta_document_reports_the_exact_transaction_rejection() {
-        let rejected = reference_meta_document_v2(ReferenceMetaFixtureV2::UsePack);
-        assert!(rejected
-            .err()
-            .is_some_and(|error| error.contains(USE_PACK_TRANSACTION_REJECTION_V2)));
+    fn use_pack_meta_document_seals_through_the_real_transaction() -> Result<(), String> {
+        let document = reference_meta_document_v2(ReferenceMetaFixtureV2::UsePack)?;
+        match document.kind() {
+            ResolvedMetaKindV2::UsePack { pack, activation } => {
+                assert_eq!(pack.as_str(), REFERENCE_USE_PACK_ID_V2);
+                assert_eq!(*activation, UsePackActivationV1::Session);
+            }
+            ResolvedMetaKindV2::RequireCertified => {
+                return Err("the fixture must retain USE PACK".to_owned())
+            }
+        }
+        Ok(())
     }
 
     #[test]

@@ -22,8 +22,5 @@ quanta-gqlang-v2-hir     = { version = "0.1.0", path = "../quanta-gqlang-v2-hir"
 quanta-gqlang-v2-modules = { version = "0.1.0", path = "../quanta-gqlang-v2-modules" }
 quanta-gqlang-v2-types   = { version = "0.1.0", path = "../quanta-gqlang-v2-types" }
 
-[dev-dependencies]
-quanta-gqlang-v2-surface = { version = "0.1.0", path = "../quanta-gqlang-v2-surface" }
-
 [lints]
 workspace = true

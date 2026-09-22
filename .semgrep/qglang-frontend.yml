@@ -75,7 +75,7 @@ rules:
       downstream layers to string-parse diagnostics.
     severity: ERROR
     languages:
-      - generic
+      - rust
     paths:
       include:
         - /crates/quanta-gqlang-v2-algebra/src/**/*.rs
@@ -88,4 +88,7 @@ rules:
         - /crates/quanta-gqlang-v2-sema/src/**/*.rs
         - /crates/quanta-gqlang-v2-surface/src/**/*.rs
         - /crates/quanta-gqlang-v2-types/src/**/*.rs
-    pattern-regex: 'Result<(?:[^<>]|<[^<>]*>){0,80},\s*String\s*>'
+      exclude:
+        - /crates/quanta-gqlang-v2-sema/src/test_support.rs
+    patterns:
+      - pattern-regex: '(?m)^\s*pub(?:\(crate\))?\s+fn\s+\w+[\s\S]{0,500}?->\s*Result<(?:[^<>]|<[^<>]*>){0,80},\s*String\s*>'

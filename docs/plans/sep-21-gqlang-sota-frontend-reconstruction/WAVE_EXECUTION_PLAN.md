@@ -100,8 +100,7 @@ isolated worktree per mutation lane; otherwise record the proof as deferred.
 | W1 | 02 inventory + 03 authority proof + 04 Sema producer closure | `GREEN` (barrier record + checkpoint commit; receipts 02/03/04 closed) | 3 workers + integrator barrier |
 | W2 | Algebra closure | `GREEN` (barrier record + checkpoint `4073b64`; Receipt 05 closed) | 2 workers after contract freeze |
 | W3 | Logic closure | `GREEN` (barrier record; Receipt 06 closed; deps cut to Sema+Types) | 3 workers after Logic internal-interface freeze |
-| W4 | Planning + Pipeline + facade | `GREEN` (barrier record; Receipt 07 closed; planning 137, pipeline 30, facade gate PASS) | 2 workers, then serial facade |
-| W4 | Planning + Pipeline + facade | `BLOCKED BY W3` | 2 workers, then serial facade |
+| W4 | Planning + Pipeline + facade | `GREEN + POST-AUDIT REMEDIATED LOCALLY` (current dirty tree is not W7 candidate/hosted-qualified) | 2 workers, then serial facade |
 | W5 | CLI + diagnostics stdio | `READY` (entrance met: Receipt 07 GREEN; F-02 deleted-API imports are W5's first task) | 2 workers, then serial parity integration |
 | W6 | conformance + hygiene + static debt | `PARTIAL PREP ALLOWED` | 3 workers; semantic execution waits for W5 |
 | W7 | candidate qualification and attestation | `BLOCKED BY W1-W6` | strictly serial |
@@ -118,6 +117,26 @@ W0
  -> W6 SS-09B implementation gates
  -> W7 candidate A -> attestation B
 ```
+
+### Post-W4 remediation state — 2026-09-22
+
+The current patch is based on
+`main@d1206801bc7b4dd7ec6c2a8ecbfaee5c2d6c0364` and is not a W7
+candidate. It closes W4 audit defects in one integrator-owned patch:
+
+- document-scoped Algebra/Planning sessions instead of per-item budget reset;
+- inline VIEW Algebra validation before the catalog no-plan result;
+- real Sema/Modules `USE PACK` activation plus facade pack/lock construction;
+- actual facade-only closed compilation and 41-root public API pin;
+- duplicate Pipeline composition validation removed;
+- cross-layer composition tests split by owner, removing the illegal
+  `sema -> surface` dev edge and unused Pipeline Binder/HIR/Modules/Types normal edges;
+- Semgrep production scope, stale docs, and strict rustdoc repaired.
+
+The scheduler must not reopen W4 for Ticket 10's logical serving view. The
+remaining ordered work is W5 front doors, W6 final architecture/static and
+conformance barriers, then W7 exact-SHA/hosted attestation. Ticket 10 producer
+schema design may proceed separately but cannot be called W7 closure.
 
 W6 schema/generator work may run early, but no generated truth output or
 closure receipt is valid before W5 freezes the public facade and front doors.

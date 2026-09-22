@@ -6,26 +6,22 @@
 //! disappears, is renamed, or loses a public accessor or signature, this
 //! program stops compiling — that is the point of the gate.
 //!
-//! Closed-authority status (recorded, not worked around): the facade exposes
-//! `compile_source_document_v2` and `ClosedFrontendAuthorityV2`, but no
-//! allowlisted type can build a closed authority yet — `try_new` takes
-//! `ValidatedModuleAuthorityPartsV2` / `RelationCatalogV2` /
-//! `GraphReferenceCatalogV2`, which are owner types the allowlist does not
-//! carry (the facade documents this as pending Ticket 07 builder DTOs). The
-//! closed entry point is therefore pinned at the exact external *signature*
-//! level (`CLOSED_COMPILE_ENTRY_V2`) rather than called with a fabricated
-//! authority. Nothing here reaches into an owner crate.
+//! The positive rail constructs a closed authority through facade-only DTOs and
+//! calls the closed compiler. Nothing here reaches into an owner crate.
 
 #![forbid(unsafe_code)]
 
 use quanta_gqlang_v2_frontend_contract::{
     analyze_source_document_v2, compile_source_document_v2, format_source_document_v2,
     AlgebraFamilyV2, AnalysisDocumentV2, AnalysisItemV2, CheckedLocatedSpanV2,
-    ClosedFrontendAuthorityV2, CompiledDocumentV2, CompiledItemV2, CompiledRuleProgramV2,
-    FrontendAuthorityErrorV2, FrontendBudgetV2, FrontendDiagnosticV2, FrontendFailureV2,
-    FrontendSeverityV2, FrontendStageV2, FrontendTransactionErrorV2, LocatedSpanV2, NoPlanReasonV2,
-    OpenAnalysisAuthorityV2, PlannedItemV2, RuleProgramMemberV2, SemanticPlanV2, SourceIdV2,
-    SpanV1, UnresolvedAnalysisFactV2,
+    ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledDocumentV2,
+    CompiledItemV2, CompiledRuleProgramV2, FrontendAuthorityErrorV2,
+    FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
+    FrontendDiagnosticV2, FrontendFailureV2, FrontendLanguageVersionV2, FrontendSeverityV2,
+    FrontendLockfileInputV2, FrontendPackInputV2, FrontendStageV2,
+    FrontendTransactionErrorV2, LocatedSpanV2, NoPlanReasonV2, OpenAnalysisAuthorityV2,
+    PlannedItemV2, RuleProgramMemberV2, SemanticPlanV2, SourceIdV2, SpanV1,
+    UnresolvedAnalysisFactV2,
 };
 
 /// Document identity of the probe source.
@@ -33,6 +29,12 @@ const DOCUMENT_SOURCE: SourceIdV2 = SourceIdV2::from_raw(9);
 
 /// A source document that needs no relation, module, or graph authority.
 const DOCUMENT_TEXT: &str = "let answer = 1; rule local_rule : x if x = 1; show capabilities;";
+
+const PACK_DOCUMENT_TEXT: &str =
+    "use pack acme.pack | activation=session | lockfile=acme.lock;";
+
+const PACK_DIGEST: &str =
+    "0000000000000000000000000000000000000000000000000000000000000000";
 
 /// Code every unresolved fact carries while the open authority is partial.
 ///
@@ -46,19 +48,6 @@ const MISSING_AUTHORITY_CODES_V2: [&str; 3] = [
     "pipeline.analysis.missing_relation_authority",
     "pipeline.analysis.missing_graph_authority",
 ];
-
-/// Exact external signature of the closed-source entry point.
-///
-/// The facade must keep exporting `compile_source_document_v2` with this shape
-/// even while no allowlisted builder can mint a `ClosedFrontendAuthorityV2`.
-type ClosedCompileEntryV2 = fn(
-    SourceIdV2,
-    &str,
-    &ClosedFrontendAuthorityV2,
-) -> Result<CompiledDocumentV2, FrontendTransactionErrorV2>;
-
-/// Signature pin: the closed-source entry point, named but never called.
-const CLOSED_COMPILE_ENTRY_V2: ClosedCompileEntryV2 = compile_source_document_v2;
 
 /// Name a facade item in a monomorphic position without invoking it.
 ///
@@ -184,8 +173,8 @@ fn no_plan_reason_label(reason: NoPlanReasonV2) -> &'static str {
     }
 }
 
-/// Pin every curated root that no allowlisted constructor can yet mint.
-fn pin_unconstructible_roots() {
+/// Pin every curated root and accessor used by sibling repositories.
+fn pin_curated_roots() {
     pin(compiled_item_label as fn(&CompiledItemV2) -> &'static str);
     pin(compiled_item_invariants_hold as fn(&CompiledItemV2) -> bool);
     pin(compiled_document_probe as fn(&CompiledDocumentV2) -> (SourceIdV2, usize, usize, bool));
@@ -196,7 +185,6 @@ fn pin_unconstructible_roots() {
     pin(checked_span_probe as fn(&CheckedLocatedSpanV2) -> (LocatedSpanV2, usize));
     pin(closed_authority_probe as fn(&ClosedFrontendAuthorityV2) -> &FrontendBudgetV2);
     pin(unresolved_fact_probe as fn(&UnresolvedAnalysisFactV2) -> (&'static str, LocatedSpanV2));
-    pin(CLOSED_COMPILE_ENTRY_V2);
 }
 
 fn main() {
@@ -205,6 +193,89 @@ fn main() {
         budget.max_source_bytes() > 0,
         "the canonical budget is non-degenerate"
     );
+
+    // ---- facade-only closed authority and compilation --------------------
+    let lock_text = format!("acme.pack 1.0.0 {PACK_DIGEST}\n");
+    let mut closed_builder = ClosedFrontendAuthorityBuilderV2::try_new(
+        budget.clone(),
+        vec![
+            FrontendAuthoritySourceV2 {
+                source_id: SourceIdV2::from_raw(1),
+                source_len: 8,
+            },
+            FrontendAuthoritySourceV2 {
+                source_id: SourceIdV2::from_raw(2),
+                source_len: lock_text.len(),
+            },
+        ],
+        "app".to_owned(),
+        FrontendAuthorityLocationV2 {
+            source_id: SourceIdV2::from_raw(1),
+            start: 0,
+            end: 1,
+        },
+        FrontendLanguageVersionV2 {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        },
+    )
+    .expect("facade-only authority builder starts");
+    closed_builder.add_pack(FrontendPackInputV2 {
+        pack_id: "acme.pack".to_owned(),
+        version: FrontendLanguageVersionV2 {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        },
+        content_digest: PACK_DIGEST.to_owned(),
+        language_lower: FrontendLanguageVersionV2 {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        },
+        language_upper: FrontendLanguageVersionV2 {
+            major: 2,
+            minor: 0,
+            patch: 0,
+        },
+        location: FrontendAuthorityLocationV2 {
+            source_id: SourceIdV2::from_raw(1),
+            start: 1,
+            end: 2,
+        },
+    });
+    closed_builder.add_lockfile(FrontendLockfileInputV2 {
+        path: "acme.lock".to_owned(),
+        source_id: SourceIdV2::from_raw(2),
+        text: lock_text,
+        location: FrontendAuthorityLocationV2 {
+            source_id: SourceIdV2::from_raw(1),
+            start: 2,
+            end: 3,
+        },
+    });
+    let closed = closed_builder
+        .finish()
+        .expect("facade-only authority builder seals");
+    let compiled = compile_source_document_v2(DOCUMENT_SOURCE, DOCUMENT_TEXT, &closed)
+        .expect("facade-only closed authority compiles the probe source");
+    assert_eq!(compiled.source_id(), DOCUMENT_SOURCE);
+    assert_eq!(compiled.items().len(), 3);
+    let pack_compiled = compile_source_document_v2(
+        SourceIdV2::from_raw(10),
+        PACK_DOCUMENT_TEXT,
+        &closed,
+    )
+    .expect("facade-only pack authority compiles USE PACK");
+    assert_eq!(pack_compiled.items().len(), 1);
+    assert!(matches!(
+        pack_compiled.items().first(),
+        Some(CompiledItemV2::NoPlan {
+            reason: NoPlanReasonV2::MetaActivation,
+            ..
+        })
+    ));
 
     // ---- format_source_document_v2: twice, deterministic, idempotent -------
     let first: Result<String, FrontendFailureV2> =
@@ -379,8 +450,8 @@ fn main() {
     assert_eq!(algebra_family_label(AlgebraFamilyV2::Scan), "scan");
     assert_eq!(algebra_family_label(AlgebraFamilyV2::AntiJoin), "anti-join");
 
-    // ---- roots that stay type-reachable until the builder DTOs land -------
-    pin_unconstructible_roots();
+    // ---- curated roots remain type-reachable ------------------------------
+    pin_curated_roots();
 
     println!("external-consumer positive: ok");
 }

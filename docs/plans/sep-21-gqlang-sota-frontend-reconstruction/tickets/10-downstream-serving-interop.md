@@ -1,6 +1,6 @@
 # Ticket 10 — Downstream serving interop after the V2 facade cut
 
-Status: `RED AUDITED; NO IMPLEMENTATION OR QUALIFICATION`
+Status: `PARTIAL — CLOSED AUTHORITY BUILDER GREEN; LOGICAL SERVING VIEW, CONSUMER CUTOVER, AND QUALIFICATION OPEN`
 Snapshot: GQLang `9a23f937c8d83dfc83cb6ae59e531037d83c5072`, clean isolated worktree, 2026-09-22.
 Consumer snapshot: Semantica qualification worktree `e850efb71a8` (re-freeze before work); its pre-existing `Cargo.lock` is dirty. This ticket is a cross-repository handoff, **not** a change to the frontend-only ownership rule in Ticket 00. It does not make runtime execution, physical planning, or provider wiring GQLang responsibilities.
 
@@ -9,7 +9,12 @@ Consumer snapshot: Semantica qualification worktree `e850efb71a8` (re-freeze bef
 - Semantica's `packages/analysis/quanta-v2/crates/quanta-gqlang-v2-exec-contract/src/program_request.rs:30-34` imports deleted V1 facade symbols, including `CompiledProgramV1`, `AlgebraNodeV1`, raw HIR, `PublicPlanV1`, and `format_item`. The same V1 dependency spans its composition and host-adapter lowering owners. The immutable AG7 qualification receipt at `~/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-0a0cfdc87cc4/lanes/suite-registry-runtime-envelope-digest-canonicality-owner/verification-results/20260922T084502.222703Z-c82b6c0ff710/receipt.json` records exit 101; sibling `stderr.log` records 27 unresolved-import/path errors and the `quanta-gqlang-v2-exec-contract` compile failure. This is an observed dependency mismatch, not evidence that AG7 product behavior failed at runtime.
 - The V2 facade (`crates/quanta-gqlang-v2-frontend-contract/src/lib.rs:3-41`) intentionally exposes three source-document functions and a curated result allowlist. `tools/test_frontend_external_consumer.py:121-154` explicitly rejects the missing V1 names. Re-exporting V1 to silence the errors would violate that gate and create two language authorities.
 - `CompiledDocumentV2`/`PlannedItemV2` (`pipeline/src/compile.rs:84-98,165-260`) carry source-ordered items and semantic plans, not a host-lowerable logical operator tree. `SemanticPlanV2` (`planning/src/plan.rs:126-215`) is a policy/result/cost/explain summary. Renaming V1 consumer types to these V2 names is not an implementation.
-- The facade exports `ClosedFrontendAuthorityV2` but no external-only path to build one. Its `try_new` needs `ValidatedModuleAuthorityPartsV2`, `RelationCatalogV2`, and `GraphReferenceCatalogV2` (`sema/src/authority.rs:770-811`); the external fixture explicitly pins only the compile signature. Ticket 07's Required Public Facade section names `ClosedFrontendAuthorityBuilderV2`, but no such root is implemented. This is a Ticket 07 contract/acceptance gap independent of Semantica.
+- Historical gap, now closed locally: the facade exports
+  `ClosedFrontendAuthorityBuilderV2` plus host-agnostic source/location,
+  relation, graph, dependency-free pack, and lockfile DTOs. The external
+  fixture builds a non-default closed authority and actually compiles ordinary
+  and `USE PACK` source. This does not provide the sealed logical serving view,
+  canonical compiled identity, Semantica cutover, or hosted/service proof.
 
 ## Two separate outcomes; do not conflate them
 
@@ -56,3 +61,70 @@ rg -n 'CompiledProgramV1|AlgebraNodeV1|PublicPlanV1|compile_program_structural|f
 ```
 
 Record actual exits and selected/executed tests. The second scan is a migration inventory, not a semantic acceptance test.
+
+## 2026-09-22 Producer Progress And Exact Remaining Backlog
+
+Base: GQLang `main@d1206801bc7b4dd7ec6c2a8ecbfaee5c2d6c0364` plus an
+uncommitted remediation patch. Re-freeze before any Semantica edit.
+
+### Implemented producer slice
+
+- `ClosedFrontendAuthorityBuilderV2` is exported only through the curated
+  facade chain. External callers submit raw source lengths and locations;
+  HIR/Modules/Types proof constructors remain hidden.
+- Current-module selection, relation schemas/provenance, graph selectors,
+  dependency-free pack manifests, canonical lockfile bytes, and the one
+  frontend budget are sealed in one source-registry/budget transaction.
+- The facade-only positive fixture performs two real closed compilations,
+  including source-level `USE PACK`; it no longer pins an unusable function
+  pointer. The public API allowlist contains 41 exact roots and all 51 negative
+  imports/privacy probes still reject.
+
+### Remaining producer work before Route B can start downstream
+
+1. **Freeze the consumer-required logical schema.** Inventory every Semantica
+   V1 field actually read by exec-contract and host-adapter. Define exhaustive,
+   immutable facade DTOs for relational expressions/operators, graph witness
+   bounds, CHECK/presentation policy, composition identity, and rule-program
+   membership/stratification. Each DTO must be derived in the same checked
+   Pipeline transaction and expose no constructor that remints proofs.
+2. **Add bounded logical-view assembly.** Attach exactly one typed logical view
+   to every plan-required `CompiledItemV2`; retain `NoPlanReasonV2` for catalog,
+   value, and meta items. Enforce missing/extra/duplicate/foreign/wrong-kind
+   rejection and charge the existing document receipt across all items.
+3. **Define identity only after the view freezes.** Specify a versioned,
+   domain-separated, length-delimited descriptor covering semantic payload,
+   relation/graph/module authority origins, composition bindings, and rule
+   membership. Test formatting invariance and authority/schema mutation.
+4. **Decide multi-module authority requirements from consumer evidence.** The
+   current builder intentionally supports one selected module and
+   dependency-free pack manifests. If Semantica requires imports/reexports or
+   pack dependencies/exports/suites, add explicit host-agnostic DTOs and owner
+   conversions with duplicate/foreign-location/exact-budget negatives. Do not
+   expose `ModuleIdV2`, `CatalogAssetRefInputV2`, or manifest proof types.
+5. **Amend facade gate atomically.** Add the frozen logical DTO roots to the
+   41-name allowlist, positive fixture, privacy negatives, strict rustdoc, and
+   public-api comparison in the same change. An allowlist-only patch is RED.
+
+### Remaining consumer and qualification work
+
+1. Re-freeze Semantica HEAD, dirty lockfile hash, selected service features,
+   and the exact sibling GQLang source. Decide Route A versus Route B from the
+   actual feature graph; do not disable V3 serving if the selected service uses
+   it.
+2. For Route B, replace all deleted V1 imports and both compilation entry paths
+   in exec-contract/ingress/host-adapter. Exhaustively lower the new facade view
+   into Semantica-owned physical/runtime requests; unsupported families fail
+   closed with typed reasons.
+3. Run owner tests, source-to-service corpus, exact AG7/serving builds, and
+   immutable receipts at the exact producer/consumer SHA pair. Hosted/service
+   execution and activation are separate evidence from local package tests.
+
+### Stop conditions
+
+- Any need for raw HIR/Algebra/Planning owner types reopens the producer DTO
+  design; it does not justify a direct dependency or V1 re-export.
+- Any logical-view field sourced from reparsing text or `Debug` output rejects
+  the patch.
+- Any source or manifest change after qualification begins invalidates the
+  receipt and requires a fresh candidate.

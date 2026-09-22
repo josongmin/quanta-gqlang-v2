@@ -36,8 +36,9 @@ use quanta_gqlang_v2_modules::{
     DocumentCatalogFamilyReferenceInputV2, DocumentCatalogFinalInputV2,
     DocumentCatalogReferenceFamilyV2, DocumentCatalogReferenceInputV2,
     DocumentCatalogReferenceOriginV2, DocumentCatalogValidatorV2, DocumentViewTopologyProofV2,
-    ExternalCatalogPayloadV2, NamespaceKindV2, PredeclaredDocumentAssetV2, ProfileAdmissionInputV2,
-    ProfileAdmissionV2, RequireCertifiedInputV2, ResolvedGraphV2,
+    ExternalCatalogPayloadV2, LockReferenceInputV2, NamespaceKindV2, PackActivationInputV2,
+    PackIdV2, PredeclaredDocumentAssetV2, ProfileAdmissionInputV2, ProfileAdmissionV2,
+    RequireCertifiedInputV2, ResolvedGraphV2, UsePackActivationV2,
 };
 use quanta_gqlang_v2_types::{
     AggregationClassV1, BuiltinRegistryV2, DeferredRelationRowFieldInputV2,
@@ -2007,15 +2008,16 @@ impl HirVisitorV1 for QueryTypeInputsV2<'_> {
                                 node_id: item.value.id,
                             }),
                         )),
-                        Err(error) if self.error.is_none() => {
-                            self.error = Some(document_failure(
-                                "sema.document_validation_failed",
-                                self.source_id,
-                                name_span,
-                                error.to_string(),
-                            ))
+                        Err(error) => {
+                            if self.error.is_none() {
+                                self.error = Some(document_failure(
+                                    "sema.document_validation_failed",
+                                    self.source_id,
+                                    name_span,
+                                    error.to_string(),
+                                ));
+                            }
                         }
-                        Err(_) => {}
                     }
                 }
                 self.rows
@@ -2063,15 +2065,16 @@ impl HirVisitorV1 for QueryTypeInputsV2<'_> {
                                 node_id: key.id,
                             }),
                         )),
-                        Err(error) if self.error.is_none() => {
-                            self.error = Some(document_failure(
-                                "sema.document_validation_failed",
-                                self.source_id,
-                                binding.span,
-                                error.to_string(),
-                            ))
+                        Err(error) => {
+                            if self.error.is_none() {
+                                self.error = Some(document_failure(
+                                    "sema.document_validation_failed",
+                                    self.source_id,
+                                    binding.span,
+                                    error.to_string(),
+                                ));
+                            }
                         }
-                        Err(_) => {}
                     }
                 }
                 self.rows
@@ -2255,15 +2258,16 @@ impl HirVisitorV1 for QueryTypeInputsV2<'_> {
                     },
                     value: ResolvedTypeInputValueV2::RelationPredicate(input),
                 }),
-                Err(error) if self.error.is_none() => {
-                    self.error = Some(document_failure(
-                        error.code(),
-                        self.source_id,
-                        node.span,
-                        error.to_string(),
-                    ))
+                Err(error) => {
+                    if self.error.is_none() {
+                        self.error = Some(document_failure(
+                            error.code(),
+                            self.source_id,
+                            node.span,
+                            error.to_string(),
+                        ));
+                    }
                 }
-                Err(_) => {}
             }
         }
         quanta_gqlang_v2_hir::walk_bool(self, node);
@@ -2485,15 +2489,16 @@ impl HirVisitorV1 for RuleDependencyCollectorV2<'_> {
                         .try_check_location(location(self.source_id, node.span))
                     {
                         Ok(checked) => self.edges.push((key, target, polarity, checked)),
-                        Err(error) if self.error.is_none() => {
-                            self.error = Some(document_failure(
-                                "sema.document_validation_failed",
-                                self.source_id,
-                                node.span,
-                                error.to_string(),
-                            ))
+                        Err(error) => {
+                            if self.error.is_none() {
+                                self.error = Some(document_failure(
+                                    "sema.document_validation_failed",
+                                    self.source_id,
+                                    node.span,
+                                    error.to_string(),
+                                ));
+                            }
                         }
-                        Err(_) => {}
                     }
                 }
                 Some(RuleCallableTargetV2::Builtin(_)) => {
@@ -5986,6 +5991,7 @@ fn resolve_document_bodies(
     let mut expressions = BTreeMap::new();
     let mut nested_relations = BTreeMap::new();
     let mut certified = Vec::new();
+    let mut activations = Vec::new();
     let mut family_references = Vec::new();
     let mut profile_admissions = Vec::new();
     let mut materialized_inline_views = BTreeMap::new();
@@ -6414,6 +6420,49 @@ fn resolve_document_bodies(
                     ResolvedMetaKindV2::RequireCertified,
                 )));
             }
+            ProgramItemHirV1::Meta(meta) => {
+                let quanta_gqlang_v2_hir::MetaKindV1::UsePack(use_pack) = &meta.kind else {
+                    unreachable!("REQUIRE CERTIFIED is handled by the preceding arm");
+                };
+                let checked_location = extended
+                    .combined()
+                    .try_check_location(location(checked.source_id(), meta.span))
+                    .map_err(|error| {
+                        document_failure(
+                            "sema.document_validation_failed",
+                            checked.source_id(),
+                            meta.span,
+                            error.to_string(),
+                        )
+                    })?;
+                let pack = PackIdV2::try_new(&use_pack.pack_id, checked_location.clone())
+                    .map_err(module_failure)?;
+                let activation = match use_pack.activation {
+                    quanta_gqlang_v2_hir::UsePackActivationV1::Session => {
+                        UsePackActivationV2::Session
+                    }
+                    quanta_gqlang_v2_hir::UsePackActivationV1::Workspace => {
+                        UsePackActivationV2::Workspace
+                    }
+                };
+                activations.push(PackActivationInputV2 {
+                    pack_id: pack.clone(),
+                    activation,
+                    lock_reference: LockReferenceInputV2 {
+                        path: use_pack.lockfile.clone(),
+                        location: checked_location.clone(),
+                    },
+                    location: checked_location.clone(),
+                });
+                items.push(SemanticItemV2::Meta(ResolvedMetaV2::new(
+                    SemanticItemIdV2::new(checked.source_id(), meta.id),
+                    checked_location,
+                    ResolvedMetaKindV2::UsePack {
+                        pack,
+                        activation: use_pack.activation,
+                    },
+                )));
+            }
             ProgramItemHirV1::Composition(composition) => {
                 let composition = materialize_query_composition(
                     composition,
@@ -6430,15 +6479,6 @@ fn resolve_document_bodies(
                 )?;
                 items.push(SemanticItemV2::Composition(composition));
             }
-            ProgramItemHirV1::Meta(_) => {
-                return Err(document_failure(
-                    "sema.document_validation_failed",
-                    checked.source_id(),
-                    item.span(),
-                    "semantic body and reference owner resolution is not yet available",
-                )
-                .into())
-            }
         }
     }
     Ok(BodyResolutionV2 {
@@ -6448,7 +6488,7 @@ fn resolve_document_bodies(
         type_fact_count: facts.len(),
         catalog_input: DocumentCatalogFinalInputV2 {
             profile_admissions,
-            activations: Vec::new(),
+            activations,
             require_certified_directives: certified,
             family_references,
         },

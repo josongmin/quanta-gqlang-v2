@@ -42,10 +42,8 @@ not compatibility promises.
 
 | Surface | Primary rails | Contract pinned |
 |---|---|---|
-| All root families | `crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_compile.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_hellgate.rs` | Frontend transaction across the complete declared root-family set |
-| Context, catalog, and composition | `crates/quanta-gqlang-v2-pipeline/tests/v3_frontend_context.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_composition_catalog_scope.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_composition_type_env.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_use_pack_authority.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_relation_source_authority.rs` | Shared authority, catalog scope, type environment, pack lock, relation-source closure |
-| Stage-shape gaps and normalization | `crates/quanta-gqlang-v2-pipeline/tests/v3_alias_type_closure_gap.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_normalize_item_decl_rule.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_surface_to_algebra_group_by.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_surface_to_algebra_order_by.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_quantifier_body_type_check.rs` | Alias/type closure, item lowering, group/order preservation, quantified body checking |
-| Adversarial and generated coverage | `crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_uncovered_branches.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_proptest.rs`, `crates/quanta-gqlang-v2-pipeline/tests/v3_diagnostic_surface.rs` | Edge branches, property behavior, stable diagnostics |
+| Compiled document assembly | `crates/quanta-gqlang-v2-pipeline/tests/v3_compiled_document_assembly.rs` | Closed source transaction, exact membership, planning and typed non-plan outcomes |
+| Analysis document assembly | `crates/quanta-gqlang-v2-pipeline/tests/v3_analysis_document_assembly.rs` | Open analysis, blocked-stage retention, deterministic diagnostics and parity with compilation |
 
 ## Shipped front doors
 
@@ -60,7 +58,7 @@ not compatibility promises.
 
 | Gate | Rail | What it proves |
 |---|---|---|
-| Public downstream boundary | `crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs` | Host-agnostic frontend contract remains consumable without runtime substrate types |
+| Public downstream boundary | `tools/test_frontend_external_consumer.py` | Host-agnostic facade allowlist and external positive/negative compile fixtures |
 | Registry and artifact integrity | `crates/quanta-gqlang-v2-conformance/tests/registry_non_vacuous.rs`, `crates/quanta-gqlang-v2-conformance/tests/self_validation.rs`, `crates/quanta-gqlang-v2-conformance/tests/current_head_artifact_hygiene.rs` | Conformance targets are non-vacuous, registered, and current-source artifacts are clean |
 | Full local composition | `just ci` | Repository-configured format, lint, architecture, Semgrep, test, and conformance composition; it is local proof, not hosted-CI evidence |
 

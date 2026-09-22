@@ -266,14 +266,11 @@ version = "0.1.0"
 dependencies = [
  "proptest",
  "quanta-gqlang-v2-algebra",
- "quanta-gqlang-v2-binder",
- "quanta-gqlang-v2-hir",
  "quanta-gqlang-v2-logic",
  "quanta-gqlang-v2-modules",
  "quanta-gqlang-v2-planning",
  "quanta-gqlang-v2-sema",
  "quanta-gqlang-v2-surface",
- "quanta-gqlang-v2-types",
 ]
 
 [[package]]
@@ -293,7 +290,6 @@ dependencies = [
  "quanta-gqlang-v2-binder",
  "quanta-gqlang-v2-hir",
  "quanta-gqlang-v2-modules",
- "quanta-gqlang-v2-surface",
  "quanta-gqlang-v2-types",
 ]
 

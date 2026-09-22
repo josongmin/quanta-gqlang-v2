@@ -44,7 +44,7 @@ use quanta_gqlang_v2_surface::SurfaceDiagnosticV2;
 
 /// Pipeline-owned stable exact-key assembly codes.
 ///
-/// Each code is minted only by the assembler in [`crate::compile`]; the
+/// Each code is minted only by this crate's document assembler; the
 /// vocabulary is closed so a caller can match every pipeline failure without
 /// parsing diagnostic text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

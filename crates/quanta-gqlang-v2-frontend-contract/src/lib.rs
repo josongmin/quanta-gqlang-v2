@@ -8,9 +8,9 @@
 //! Modules, Algebra, Logic, Planning, Pipeline) stay unreachable, and no
 //! crate-wide glob is used.
 //!
-//! The public closed-authority builder path is intentionally absent until
-//! Ticket 07's builder DTOs land; hosts construct authorities only through the
-//! allowlisted authority types below.
+//! Closed compilation authority is constructed through the curated
+//! [`ClosedFrontendAuthorityBuilderV2`] DTO transaction; owner proof types stay
+//! outside this facade.
 
 /// Analyze one source document under the open authority.
 pub use quanta_gqlang_v2_pipeline::analyze_source_document_v2;
@@ -30,8 +30,12 @@ pub use quanta_gqlang_v2_pipeline::{NoPlanReasonV2, SemanticPlanV2};
 
 // ---- authorities, diagnostics, and transaction vocabulary ------------------
 pub use quanta_gqlang_v2_pipeline::{
-    ClosedFrontendAuthorityV2, FrontendAuthorityErrorV2, FrontendBudgetV2, FrontendDiagnosticV2,
-    FrontendFailureV2, FrontendSeverityV2, FrontendStageV2, FrontendTransactionErrorV2,
+    ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, FrontendAuthorityErrorV2,
+    FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2, FrontendDiagnosticV2,
+    FrontendFailureV2, FrontendGraphReferenceInputV2, FrontendLanguageVersionV2,
+    FrontendLockfileInputV2, FrontendPackInputV2, FrontendRelationCardinalityV2,
+    FrontendRelationFieldInputV2, FrontendRelationInputV2, FrontendScalarTypeV2,
+    FrontendSeverityV2, FrontendStageV2, FrontendTransactionErrorV2, GraphReferenceKindV2,
     OpenAnalysisAuthorityV2,
 };
 

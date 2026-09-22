@@ -153,19 +153,12 @@ Surface / pipeline / planning rails:
 3. `crates/quanta-gqlang-v2-surface/tests/v3_surface_unit.rs`
 4. `crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs`
 5. `crates/quanta-gqlang-v2-surface/tests/v3_format_hellgate.rs`
-6. `crates/quanta-gqlang-v2-pipeline/tests/audit_18_families.rs`
-7. `crates/quanta-gqlang-v2-pipeline/tests/audit_edge_cases.rs`
-8. `crates/quanta-gqlang-v2-pipeline/tests/v3_frontend_context.rs`
-9. `crates/quanta-gqlang-v2-pipeline/tests/v3_alias_type_closure_gap.rs`
-10. `crates/quanta-gqlang-v2-pipeline/tests/v3_normalize_item_decl_rule.rs`
-11. `crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_compile.rs`
-12. `crates/quanta-gqlang-v2-pipeline/tests/v3_pipeline_hellgate.rs`
-13. `crates/quanta-gqlang-v2-pipeline/tests/v3_surface_to_algebra_group_by.rs`
-14. `crates/quanta-gqlang-v2-pipeline/tests/v3_surface_to_algebra_order_by.rs`
-15. `crates/quanta-gqlang-v2-planning/tests/v3_planning_truth.rs`
-16. `crates/quanta-gqlang-v2-planning/tests/v3_planning_hellgate.rs`
-17. `crates/quanta-gqlang-v2-planning/tests/v3_planning_cost_schema.rs`
-18. `crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs`
+6. `crates/quanta-gqlang-v2-pipeline/tests/v3_analysis_document_assembly.rs`
+7. `crates/quanta-gqlang-v2-pipeline/tests/v3_compiled_document_assembly.rs`
+8. `crates/quanta-gqlang-v2-planning/tests/v3_planning_truth.rs`
+9. `crates/quanta-gqlang-v2-planning/tests/v3_planning_hellgate.rs`
+10. `crates/quanta-gqlang-v2-planning/tests/v3_planning_cost_schema.rs`
+11. `crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs`
 
 Logic / modules rails:
 
@@ -181,7 +174,7 @@ Conformance rails:
 1. `crates/quanta-gqlang-v2-conformance/tests/self_validation.rs`
 2. `crates/quanta-gqlang-v2-conformance/tests/registry_non_vacuous.rs`
 3. `crates/quanta-gqlang-v2-conformance/tests/current_head_artifact_hygiene.rs`
-4. `crates/quanta-gqlang-v2-frontend-contract/tests/downstream_contract.rs`
+4. `tools/test_frontend_external_consumer.py`
 
 ## Boundary
 

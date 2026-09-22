@@ -6,10 +6,18 @@ use crate::diagnostic::{
 };
 use quanta_gqlang_v2_hir::{
     CheckedLocatedSpanV2, ExtendedSourceRegistryViewV2, LocatedSpanV2, SourceIdV2,
-    SourceRegistrationV2, SourceRegistryIdentityV2, SourceRegistryViewV2,
+    SourceRegistrationV2, SourceRegistryIdentityV2, SourceRegistryViewV2, SpanV1,
 };
-use quanta_gqlang_v2_modules::ValidatedModuleAuthorityPartsV2;
-use quanta_gqlang_v2_types::{AuthorityBudgetProfileV2, ExpressionTypeKernelV2, RelationCatalogV2};
+use quanta_gqlang_v2_modules::{
+    ContentDigestV2, CurrentModuleSelectionInputV2, LockReferenceInputV2, ModuleAuthorityBuilderV2,
+    ModuleIdV2, ModuleNodeInputV2, PackIdV2, PackManifestInputV2, ValidatedModuleAuthorityPartsV2,
+    VersionRangeV2, VersionV2,
+};
+use quanta_gqlang_v2_types::{
+    AuthorityBudgetProfileV2, CardinalityV1, ExpressionTypeKernelV2, ProvenanceNamespaceV2,
+    RecordFieldTypeV1, RecordTypeV1, RelationCatalogV2, RelationSourceInputV2, ScalarTyV1,
+    ValueTypeV1,
+};
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::sync::Arc;
@@ -772,6 +780,361 @@ pub struct ClosedFrontendAuthorityV2 {
     relations: RelationCatalogV2,
     graph_references: GraphReferenceCatalogV2,
     budget: FrontendBudgetV2,
+}
+
+/// Raw host source registration accepted by the curated authority builder.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontendAuthoritySourceV2 {
+    /// Stable source identity.
+    pub source_id: SourceIdV2,
+    /// Exact byte length of the registered host source.
+    pub source_len: usize,
+}
+
+/// Raw host location checked against the builder's source registry at finish.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontendAuthorityLocationV2 {
+    /// Registered host source identity.
+    pub source_id: SourceIdV2,
+    /// Inclusive byte start.
+    pub start: usize,
+    /// Exclusive byte end.
+    pub end: usize,
+}
+
+impl FrontendAuthorityLocationV2 {
+    fn check(
+        self,
+        sources: &SourceRegistryViewV2,
+    ) -> Result<CheckedLocatedSpanV2, FrontendAuthorityErrorV2> {
+        sources
+            .try_check_location(LocatedSpanV2 {
+                source_id: self.source_id,
+                span: SpanV1::new(self.start, self.end),
+            })
+            .map_err(|error| configuration_failure(error.code(), error.to_string()))
+    }
+}
+
+/// Host-agnostic scalar field vocabulary admitted by relation authority.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FrontendScalarTypeV2 {
+    Bool,
+    Int,
+    Float,
+    String,
+    Duration,
+    Location,
+    Path,
+    RepoPath,
+    EntityRef,
+    SymbolRef,
+    RuleRef,
+    SourceScope,
+    ProofTree,
+}
+
+impl FrontendScalarTypeV2 {
+    const fn owner(self) -> ScalarTyV1 {
+        match self {
+            Self::Bool => ScalarTyV1::Bool,
+            Self::Int => ScalarTyV1::Int,
+            Self::Float => ScalarTyV1::Float,
+            Self::String => ScalarTyV1::String,
+            Self::Duration => ScalarTyV1::Duration,
+            Self::Location => ScalarTyV1::Location,
+            Self::Path => ScalarTyV1::Path,
+            Self::RepoPath => ScalarTyV1::RepoPath,
+            Self::EntityRef => ScalarTyV1::EntityRef,
+            Self::SymbolRef => ScalarTyV1::SymbolRef,
+            Self::RuleRef => ScalarTyV1::RuleRef,
+            Self::SourceScope => ScalarTyV1::SourceScope,
+            Self::ProofTree => ScalarTyV1::ProofTree,
+        }
+    }
+}
+
+/// Relation multiplicity admitted by the curated authority builder.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FrontendRelationCardinalityV2 {
+    Set,
+    Bag,
+    Sequence,
+}
+
+impl FrontendRelationCardinalityV2 {
+    const fn owner(self) -> CardinalityV1 {
+        match self {
+            Self::Set => CardinalityV1::Set,
+            Self::Bag => CardinalityV1::Bag,
+            Self::Sequence => CardinalityV1::Sequence,
+        }
+    }
+}
+
+/// One relation field supplied through the public authority boundary.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FrontendRelationFieldInputV2 {
+    pub name: String,
+    pub scalar_type: FrontendScalarTypeV2,
+    pub optional: bool,
+    pub location: FrontendAuthorityLocationV2,
+}
+
+/// One host relation supplied through the public authority boundary.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FrontendRelationInputV2 {
+    pub provenance_namespace: String,
+    pub qualified_name: String,
+    pub lookup_name: String,
+    pub fields: Vec<FrontendRelationFieldInputV2>,
+    pub cardinality: FrontendRelationCardinalityV2,
+    pub provenance: String,
+    pub location: FrontendAuthorityLocationV2,
+}
+
+/// One graph selector supplied through the public authority boundary.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FrontendGraphReferenceInputV2 {
+    pub spelling: String,
+    pub kind: GraphReferenceKindV2,
+    pub entity_subtype: Option<String>,
+    pub location: FrontendAuthorityLocationV2,
+}
+
+/// Semantic language version selected by the host authority.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrontendLanguageVersionV2 {
+    pub major: u64,
+    pub minor: u64,
+    pub patch: u64,
+}
+
+/// One dependency-free pack manifest supplied through the public authority
+/// boundary. Dependency/export/suite authoring remains an owner-level concern;
+/// this DTO is the minimal closed input required for source-level `USE PACK`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FrontendPackInputV2 {
+    pub pack_id: String,
+    pub version: FrontendLanguageVersionV2,
+    pub content_digest: String,
+    pub language_lower: FrontendLanguageVersionV2,
+    pub language_upper: FrontendLanguageVersionV2,
+    pub location: FrontendAuthorityLocationV2,
+}
+
+/// One canonical lockfile and the checked host declaration that names it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FrontendLockfileInputV2 {
+    pub path: String,
+    pub source_id: SourceIdV2,
+    pub text: String,
+    pub location: FrontendAuthorityLocationV2,
+}
+
+/// Curated external transaction for constructing closed frontend authority.
+///
+/// It accepts only host-agnostic declarations. Owner proofs and checked
+/// locations are minted internally in one registry/budget session and cannot
+/// be supplied or forged by an external caller.
+pub struct ClosedFrontendAuthorityBuilderV2 {
+    budget: FrontendBudgetV2,
+    sources: Vec<FrontendAuthoritySourceV2>,
+    current_module: String,
+    current_module_location: FrontendAuthorityLocationV2,
+    language_version: FrontendLanguageVersionV2,
+    packs: Vec<FrontendPackInputV2>,
+    lockfiles: Vec<FrontendLockfileInputV2>,
+    relations: Vec<FrontendRelationInputV2>,
+    graph_references: Vec<FrontendGraphReferenceInputV2>,
+}
+
+impl ClosedFrontendAuthorityBuilderV2 {
+    /// Start an explicit authority transaction. No empty/default source or
+    /// module identity is invented.
+    pub fn try_new(
+        budget: FrontendBudgetV2,
+        sources: Vec<FrontendAuthoritySourceV2>,
+        current_module: String,
+        current_module_location: FrontendAuthorityLocationV2,
+        language_version: FrontendLanguageVersionV2,
+    ) -> Result<Self, FrontendAuthorityErrorV2> {
+        if sources.is_empty() {
+            return Err(configuration_failure(
+                "sema.empty_authority_sources",
+                "closed authority requires at least one registered host source",
+            ));
+        }
+        if current_module.is_empty() {
+            return Err(configuration_failure(
+                "sema.invalid_current_module",
+                "current module cannot be empty",
+            ));
+        }
+        Ok(Self {
+            budget,
+            sources,
+            current_module,
+            current_module_location,
+            language_version,
+            packs: Vec::new(),
+            lockfiles: Vec::new(),
+            relations: Vec::new(),
+            graph_references: Vec::new(),
+        })
+    }
+
+    /// Add one relation declaration. Validation remains atomic until finish.
+    pub fn add_relation(&mut self, relation: FrontendRelationInputV2) {
+        self.relations.push(relation);
+    }
+
+    /// Add one graph selector declaration. Validation remains atomic until finish.
+    pub fn add_graph_reference(&mut self, reference: FrontendGraphReferenceInputV2) {
+        self.graph_references.push(reference);
+    }
+
+    /// Add one dependency-free pack manifest. Validation remains atomic until finish.
+    pub fn add_pack(&mut self, pack: FrontendPackInputV2) {
+        self.packs.push(pack);
+    }
+
+    /// Add one canonical lockfile. Exactly one is required for a nonempty pack graph.
+    pub fn add_lockfile(&mut self, lockfile: FrontendLockfileInputV2) {
+        self.lockfiles.push(lockfile);
+    }
+
+    /// Validate every input and seal one closed authority.
+    pub fn finish(self) -> Result<ClosedFrontendAuthorityV2, FrontendAuthorityErrorV2> {
+        let host_sources = SourceRegistryViewV2::try_new(
+            self.sources
+                .into_iter()
+                .map(|source| SourceRegistrationV2 {
+                    source_id: source.source_id,
+                    source_len: source.source_len,
+                })
+                .collect(),
+        )
+        .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+        let module_location = self.current_module_location.check(&host_sources)?;
+        let profile = self.budget.authority_profile()?;
+        let module = ModuleIdV2::try_new(&self.current_module, module_location.clone())
+            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+        let mut modules = ModuleAuthorityBuilderV2::try_new(profile.clone(), host_sources.clone())
+            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+        modules
+            .try_add_module(ModuleNodeInputV2 {
+                module_id: module.clone(),
+                location: module_location.clone(),
+            })
+            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+        for pack in self.packs {
+            let location = pack.location.check(&host_sources)?;
+            let pack_id = PackIdV2::try_new(&pack.pack_id, location.clone())
+                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+            let content_digest = ContentDigestV2::try_parse(&pack.content_digest, location.clone())
+                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+            let language_range = VersionRangeV2::try_new(
+                pack.language_lower.owner(),
+                pack.language_upper.owner(),
+                location.clone(),
+            )
+            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+            modules
+                .try_add_manifest(PackManifestInputV2 {
+                    pack_id,
+                    version: pack.version.owner(),
+                    content_digest,
+                    language_range,
+                    dependencies: Vec::new(),
+                    exports: Vec::new(),
+                    suites: Vec::new(),
+                    location,
+                })
+                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+        }
+        for lockfile in self.lockfiles {
+            modules
+                .try_set_lockfile(
+                    LockReferenceInputV2 {
+                        path: lockfile.path,
+                        location: lockfile.location.check(&host_sources)?,
+                    },
+                    lockfile.source_id,
+                    &lockfile.text,
+                )
+                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+        }
+        let modules = modules
+            .finish(
+                CurrentModuleSelectionInputV2 {
+                    module_id: module,
+                    location: module_location,
+                },
+                VersionV2::new(
+                    self.language_version.major,
+                    self.language_version.minor,
+                    self.language_version.patch,
+                ),
+            )
+            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+
+        let mut relation_inputs = Vec::with_capacity(self.relations.len());
+        for relation in self.relations {
+            let location = relation.location.check(&host_sources)?;
+            let namespace =
+                ProvenanceNamespaceV2::try_new(&relation.provenance_namespace, location.clone())
+                    .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+            let mut fields = Vec::with_capacity(relation.fields.len());
+            for field in relation.fields {
+                let field_location = field.location.check(&host_sources)?;
+                let mut value_type = ValueTypeV1::scalar(field.scalar_type.owner());
+                if field.optional {
+                    value_type = ValueTypeV1::try_optional(value_type)
+                        .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+                }
+                fields.push(
+                    RecordFieldTypeV1::try_new(&field.name, value_type, field_location)
+                        .map_err(|error| configuration_failure(error.code(), error.to_string()))?,
+                );
+            }
+            let row = RecordTypeV1::try_new(fields)
+                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+            relation_inputs.push(RelationSourceInputV2 {
+                provenance_namespace: namespace,
+                qualified_name: relation.qualified_name,
+                lookup_name: relation.lookup_name,
+                row,
+                cardinality: relation.cardinality.owner(),
+                provenance: relation.provenance,
+                location,
+            });
+        }
+        let relations = RelationCatalogV2::try_new(relation_inputs, &host_sources, profile.clone())
+            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+
+        let graph_inputs = self
+            .graph_references
+            .into_iter()
+            .map(|reference| {
+                Ok(GraphReferenceInputV2 {
+                    spelling: reference.spelling,
+                    kind: reference.kind,
+                    entity_subtype: reference.entity_subtype,
+                    location: reference.location.check(&host_sources)?,
+                })
+            })
+            .collect::<Result<Vec<_>, FrontendAuthorityErrorV2>>()?;
+        let graph_references =
+            GraphReferenceCatalogV2::try_new(graph_inputs, &host_sources, profile)?;
+        ClosedFrontendAuthorityV2::try_new(modules, relations, graph_references, self.budget)
+    }
+}
+
+impl FrontendLanguageVersionV2 {
+    const fn owner(self) -> VersionV2 {
+        VersionV2::new(self.major, self.minor, self.patch)
+    }
 }
 
 impl ClosedFrontendAuthorityV2 {

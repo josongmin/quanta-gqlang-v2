@@ -41,13 +41,13 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use quanta_gqlang_v2_algebra::{lower_nested_relation_v2, lower_relation_item};
+use quanta_gqlang_v2_algebra::AlgebraSessionV2;
 use quanta_gqlang_v2_logic::{GraphQueryContractV2, RuleProgramContractV2, StratificationProofV1};
 use quanta_gqlang_v2_planning::{
-    plan_outcome, CatalogDeclarationKindV2, CheckContractV2, CheckedCompositionPlanInputV2,
+    CatalogDeclarationKindV2, CheckContractV2, CheckedCompositionPlanInputV2,
     CompositionBodyPlanInputV2, CompositionRelationalBodyPlanInputV2, NoPlanReasonV2,
-    PlanOutcomeV2, PlanningDiagnosticV1, PresentationContractV2, SemanticPlanInputV2,
-    SemanticPlanV2,
+    PlanOutcomeV2, PlanningDiagnosticV1, PlanningSessionV2, PresentationContractV2,
+    SemanticPlanInputV2, SemanticPlanV2,
 };
 use quanta_gqlang_v2_sema::{
     resolve_checked_document_v2, CheckedSyntaxDocumentV2, ClosedFrontendAuthorityV2,
@@ -835,15 +835,19 @@ fn run_document(
     let membership = DocumentMembershipV2::of(document)?;
     let rule_members = membership.rule_member_ids();
     let rule_program_id = membership.rule_program_id();
+    let mut algebra = AlgebraSessionV2::new(document);
+    let mut planning = PlanningSessionV2::new(document);
 
     let (rule_program, rule_blocked) = match rule_program_id {
-        Some(program_id) => match compile_rule_program(document, program_id, &rule_members) {
-            Ok(program) => (Some(program), None),
-            Err(FrontendTransactionErrorV2::Document(failure)) => {
-                (None, Some(failure.diagnostics().to_vec()))
+        Some(program_id) => {
+            match compile_rule_program(document, &mut planning, program_id, &rule_members) {
+                Ok(program) => (Some(program), None),
+                Err(FrontendTransactionErrorV2::Document(failure)) => {
+                    (None, Some(failure.diagnostics().to_vec()))
+                }
+                Err(error @ FrontendTransactionErrorV2::Authority(_)) => return Err(error),
             }
-            Err(error @ FrontendTransactionErrorV2::Authority(_)) => return Err(error),
-        },
+        }
         None => (None, None),
     };
 
@@ -854,7 +858,7 @@ fn run_document(
     let mut blocked_stage = false;
     for id in membership.order() {
         let location = membership.location(*id);
-        match run_item(document, &membership, *id) {
+        match run_item(document, &membership, &mut algebra, &mut planning, *id) {
             Ok(ItemRunV2::Planned(planned)) => {
                 let inserted = if matches!(planned, PlannedItemV2::RuleMember(_)) {
                     produced_member.insert(*id)
@@ -979,6 +983,8 @@ fn run_document(
 fn run_item(
     document: &SemanticDocumentV2,
     membership: &DocumentMembershipV2<'_>,
+    algebra: &mut AlgebraSessionV2<'_>,
+    planning: &mut PlanningSessionV2<'_>,
     id: SemanticItemIdV2,
 ) -> Result<ItemRunV2, FrontendTransactionErrorV2> {
     let Some(item) = membership.item(id) else {
@@ -990,9 +996,15 @@ fn run_item(
     };
     match item {
         SemanticItemV2::Relation(_) => {
-            let lowered = lower_relation_item(document, id)
+            let lowered = algebra
+                .lower_relation_item(id)
                 .map_err(|error| algebra_error(document, id, &error))?;
-            let plan = planning_plan(document, id, &SemanticPlanInputV2::Relational(lowered))?;
+            let plan = planning_plan(
+                document,
+                planning,
+                id,
+                &SemanticPlanInputV2::Relational(lowered),
+            )?;
             Ok(ItemRunV2::Planned(PlannedItemV2::Relation {
                 item_id: id,
                 plan,
@@ -1001,7 +1013,12 @@ fn run_item(
         SemanticItemV2::Graph(graph) => {
             let contract = GraphQueryContractV2::from_resolved(graph)
                 .map_err(|error| logic_transaction_error(&error))?;
-            let plan = planning_plan(document, id, &SemanticPlanInputV2::Graph(contract))?;
+            let plan = planning_plan(
+                document,
+                planning,
+                id,
+                &SemanticPlanInputV2::Graph(contract),
+            )?;
             Ok(ItemRunV2::Planned(PlannedItemV2::Graph {
                 item_id: id,
                 plan,
@@ -1009,7 +1026,12 @@ fn run_item(
         }
         SemanticItemV2::Check(check) => {
             let contract = check_contract(check)?;
-            let plan = planning_plan(document, id, &SemanticPlanInputV2::Check(contract))?;
+            let plan = planning_plan(
+                document,
+                planning,
+                id,
+                &SemanticPlanInputV2::Check(contract),
+            )?;
             Ok(ItemRunV2::Planned(PlannedItemV2::Check {
                 item_id: id,
                 plan,
@@ -1018,18 +1040,27 @@ fn run_item(
         SemanticItemV2::Presentation(presentation) => {
             let contract = PresentationContractV2::from_resolved(presentation)
                 .map_err(|error| planning_transaction_error(&error))?;
-            let plan = planning_plan(document, id, &SemanticPlanInputV2::Presentation(contract))?;
+            let plan = planning_plan(
+                document,
+                planning,
+                id,
+                &SemanticPlanInputV2::Presentation(contract),
+            )?;
             Ok(ItemRunV2::Planned(PlannedItemV2::Presentation {
                 item_id: id,
                 plan,
             }))
         }
         SemanticItemV2::Composition(composition) => {
-            verify_composition(composition, membership.location(id))?;
-            let body = composition_body_input(document, composition)?;
+            let body = composition_body_input(document, algebra, composition)?;
             let input = CheckedCompositionPlanInputV2::new(composition, body)
                 .map_err(|error| planning_transaction_error(&error))?;
-            let plan = planning_plan(document, id, &SemanticPlanInputV2::Composition(input))?;
+            let plan = planning_plan(
+                document,
+                planning,
+                id,
+                &SemanticPlanInputV2::Composition(input),
+            )?;
             Ok(ItemRunV2::Planned(PlannedItemV2::Composition {
                 item_id: id,
                 plan,
@@ -1039,6 +1070,7 @@ fn run_item(
             ResolvedMetaKindV2::RequireCertified => {
                 let plan = planning_plan(
                     document,
+                    planning,
                     id,
                     &SemanticPlanInputV2::MetaRequireCertified(meta.clone()),
                 )?;
@@ -1062,12 +1094,19 @@ fn run_item(
                 "a source rule has no document rule program",
             )),
         },
-        SemanticItemV2::Catalog(catalog) => Ok(ItemRunV2::NoPlan {
-            item_id: id,
-            reason: NoPlanReasonV2::CatalogDeclaration {
-                kind: catalog_declaration_kind(catalog),
-            },
-        }),
+        SemanticItemV2::Catalog(catalog) => {
+            if let Some(view) = catalog.inline_view() {
+                algebra
+                    .lower_nested_relation(id, view.root())
+                    .map_err(|error| algebra_error(document, id, &error))?;
+            }
+            Ok(ItemRunV2::NoPlan {
+                item_id: id,
+                reason: NoPlanReasonV2::CatalogDeclaration {
+                    kind: catalog_declaration_kind(catalog),
+                },
+            })
+        }
         SemanticItemV2::Declaration(_) => Ok(ItemRunV2::NoPlan {
             item_id: id,
             reason: NoPlanReasonV2::ValueDeclaration,
@@ -1083,13 +1122,19 @@ fn run_item(
 /// exact proof.
 fn compile_rule_program(
     document: &SemanticDocumentV2,
+    planning: &mut PlanningSessionV2<'_>,
     program_id: SemanticItemIdV2,
     members: &[SemanticItemIdV2],
 ) -> Result<CompiledRuleProgramV2, FrontendTransactionErrorV2> {
     let contract = RuleProgramContractV2::from_document(document)
         .map_err(|error| logic_transaction_error(&error))?;
     let stratification = contract.stratification().clone();
-    let plan = planning_plan(document, program_id, &SemanticPlanInputV2::Rule(contract))?;
+    let plan = planning_plan(
+        document,
+        planning,
+        program_id,
+        &SemanticPlanInputV2::Rule(contract),
+    )?;
     Ok(CompiledRuleProgramV2 {
         program_id,
         members: members
@@ -1117,12 +1162,14 @@ fn check_contract(check: &ResolvedCheckV2) -> Result<CheckContractV2, FrontendTr
 /// Build one composition body plan input.
 fn composition_body_input(
     document: &SemanticDocumentV2,
+    algebra: &mut AlgebraSessionV2<'_>,
     composition: &ResolvedCompositionV2,
 ) -> Result<CompositionBodyPlanInputV2, FrontendTransactionErrorV2> {
     let owner = composition.item_id();
     match composition.body() {
         ResolvedCompositionBodyV2::Query(body) => {
-            let root = lower_nested_relation_v2(document, owner, body.root())
+            let root = algebra
+                .lower_nested_relation(owner, body.root())
                 .map_err(|error| algebra_error(document, owner, &error))?;
             let body = CompositionRelationalBodyPlanInputV2::try_new(body.item_id(), root)
                 .map_err(|reason| {
@@ -1147,54 +1194,6 @@ fn composition_body_input(
     }
 }
 
-/// Re-verify one sealed composition's ordered producer identities and WITH
-/// target before planning sees it.
-fn verify_composition(
-    composition: &ResolvedCompositionV2,
-    location: LocatedSpanV2,
-) -> Result<(), FrontendTransactionErrorV2> {
-    let bindings = composition.bindings();
-    if bindings.is_empty() {
-        return Err(assembly(
-            location,
-            DocumentAssemblyCodeV2::CompositionProducerMismatch,
-            "a composition must retain at least one ordered producer",
-        ));
-    }
-    for (ordinal, binding) in bindings.iter().enumerate() {
-        if binding.binding().ordinal() != ordinal
-            || binding.binding().source_id() != composition.item_id().source_id()
-            || binding.producer().item_id().source_id() != composition.item_id().source_id()
-        {
-            return Err(assembly(
-                binding.name_location().location(),
-                DocumentAssemblyCodeV2::CompositionProducerMismatch,
-                "a composition producer ordinal or identity does not match its authored order",
-            ));
-        }
-    }
-    if bindings
-        .iter()
-        .filter(|binding| binding.binding() == composition.with_target())
-        .count()
-        != 1
-    {
-        return Err(assembly(
-            composition.with_location().location(),
-            DocumentAssemblyCodeV2::CompositionProducerMismatch,
-            "a composition WITH target does not select exactly one ordered producer",
-        ));
-    }
-    if composition.body().item_id().source_id() != composition.item_id().source_id() {
-        return Err(assembly(
-            location,
-            DocumentAssemblyCodeV2::CompositionBodyMismatch,
-            "a composition body identity belongs to another document",
-        ));
-    }
-    Ok(())
-}
-
 /// Map one resolved catalog payload to its closed non-plan reason kind.
 fn catalog_declaration_kind(catalog: &ResolvedCatalogItemV2) -> CatalogDeclarationKindV2 {
     match catalog.payload() {
@@ -1210,10 +1209,11 @@ fn catalog_declaration_kind(catalog: &ResolvedCatalogItemV2) -> CatalogDeclarati
 /// Plan one input and require the plan-required outcome.
 fn planning_plan(
     document: &SemanticDocumentV2,
+    planning: &mut PlanningSessionV2<'_>,
     id: SemanticItemIdV2,
     input: &SemanticPlanInputV2,
 ) -> Result<SemanticPlanV2, FrontendTransactionErrorV2> {
-    match plan_outcome(input, document) {
+    match planning.plan_outcome(input) {
         Ok(PlanOutcomeV2::Plan(plan)) => Ok(plan),
         Ok(PlanOutcomeV2::NoPlan(_reason)) => Err(assembly(
             item_location_of(document, id),

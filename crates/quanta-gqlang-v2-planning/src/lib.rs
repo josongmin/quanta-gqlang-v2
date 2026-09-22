@@ -31,7 +31,7 @@
 //!
 //! [`plan_outcome`] consumes a [`SemanticPlanInputV2`] (the normalized algebra root,
 //! optional recursion/witness shapes, and the requested result-kind/effect/truth
-//! lane) and returns a [`PublicPlanV1`] or a [`PlanningDiagnosticV1`].
+//! lane) and returns a [`SemanticPlanV2`] or a [`PlanningDiagnosticV1`].
 
 mod capability;
 mod check;
@@ -64,7 +64,7 @@ pub use diagnostic::{
 pub use effect::{AuthorityLaneV2, EffectClassV2, EvaluationDeterminismV2, EvidenceRequirementV2};
 pub use explain::ExplainNoteV2;
 pub use item::{CatalogDeclarationKindV2, NoPlanReasonV2, SemanticPlanInputV2};
-pub use plan::{plan, plan_outcome, PlanOutcomeV2, SemanticPlanV2};
+pub use plan::{plan, plan_outcome, PlanOutcomeV2, PlanningSessionV2, SemanticPlanV2};
 pub use policy::{EffectSummaryV2, GraphWitnessRetentionV2, PlanPolicyV2, RuleProgramPolicyV2};
 pub use presentation::PresentationContractV2;
 pub use result_kind::{
