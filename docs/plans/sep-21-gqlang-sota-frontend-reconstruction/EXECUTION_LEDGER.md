@@ -1649,3 +1649,32 @@ rule fixtures (8 kinds) + forged membership (3 mutations) + forged rule facts
 small-budget variants + `reference_checked_span_v2`, and may use the
 integrator's already-landed seams `ResolvedRuleV2::forged_with_calls` and
 `SemanticDocumentV2::forged_membership`.
+
+### W3-C FINAL — source adapter landed, 18 rails staged on W3-D — 2026-09-21
+
+- Public surface: `RuleProgramContractV2 { from_document, rules, budget,
+  to_program }` (private fields; no HIR/Algebra names; no unwrap/expect/panic/
+  allow). Post-hashes: source.rs `149b7da7338c3574`, v3_logic_source.rs
+  `12847ac4c655b5f6`.
+- Validation: membership (DuplicateMember / MembershipMismatch / MissingMember
+  with surviving-rule anchors), ForeignLocation, WrongCallId (absent/duplicate/
+  dropped/extra call), TargetTransplanted, NonLocalTarget, PolarityFlip — plus
+  an independent explicit-stack re-derivation of the sealed typed body
+  (Not toggles, aggregate propagation, nested relational EXISTS) so a hidden
+  flipped/dropped/extra edge is impossible.
+- Tests: 23 total; 5 reachable GREEN now (empty program + receipt equality;
+  9 EXISTS fixtures project zero rules — the retired V1 EXISTS producer has no
+  successor; small/foreign receipts), 18 staged to light up with W3-D.
+- Reachable-subset proof used a temporary leased-file variant restored
+  byte-exact (hash verified) — no shared-fingerprint mutation.
+- Acceptance: lib green; `clippy --lib` has ONE error outside the lease
+  (`recursion.rs:643 needless_lifetimes`, W3-A); `fmt --check` reports 51
+  diffs across 14 files, ALL outside this lane's two files (barrier will
+  format after writers stop); `git diff --check` clean.
+- Documented model limitation (non-blocking, forged-only): an authored order
+  ID with no item AND no located item anywhere cannot anchor MissingMember
+  (no uniform `SemanticItemV2::location()` for Check/Presentation/Catalog/
+  Declaration), so that degenerate forged case projects empty instead of
+  rejecting. Also noted: `ResolvedRuleV2` retains no rule-level checked
+  location, so rule-level rejections anchor at the body expression location.
+  Both to be stated honestly in Receipt 06 rather than papered over.
