@@ -9,7 +9,11 @@
 # content fingerprints and public-API hash tables (e.g. `40ded6a4b596ca41`),
 # and every new receipt adds more, so spell-checking them re-breaks the gate on
 # each regeneration. Plan prose outside `receipts/` stays checked.
-extend-exclude = ["docs/bugbash/**/*.tsv", "docs/plans/**/receipts/**", "target/**"]
+#
+# `docs/bugbash/**/receipts/**` is the same class again: bugbash receipts embed
+# SHA prefixes and mutation markers (e.g. `ede0c5459adb`, `clausX`), so the same
+# exclusion applies. Ticket prose and findings outside `receipts/` stay checked.
+extend-exclude = ["docs/bugbash/**/*.tsv", "docs/plans/**/receipts/**", "docs/bugbash/**/receipts/**", "target/**"]
 
 [default.extend-words]
 gqlang = "gqlang"
