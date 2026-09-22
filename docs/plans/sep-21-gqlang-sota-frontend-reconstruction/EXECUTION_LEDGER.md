@@ -1494,3 +1494,21 @@ feature-test-gated) opens on the first free worker slot with the exact fixture
 list W3-C and W3-B report. No vacuous rail is accepted in the interim: W3-C
 implements the reachable subset + reports its required builders; W3-B does the
 same for graph-query documents. Worker cap respected (A/B/C running).
+
+### W3 audit incident — out-of-lease mechanical edits reverted — 2026-09-21
+
+The dirty-state diff audit caught three files modified outside every active
+lease: `sema/src/authority.rs` (2x `checked_add(...).unwrap_or(usize::MAX)` ->
+`saturating_add`), `sema/src/document.rs` (same idiom), and
+`binder/tests/v3_binder_hellgate.rs` (one line) — the footprint of a
+workspace-wide `cargo clippy --fix`/`cargo fmt --all` run. All three are
+W1-closed producer fingerprints whose hashes are quoted in Receipts 02/03/04;
+keeping gratuitous mechanically-neutral edits would have invalidated that
+qualification for no semantic gain.
+
+Action: reverted to the committed fingerprints (`authority.rs`
+`2137b2328b737af7`, `document.rs` `84525e379da8df59` — exact Receipt 04
+post-hashes; binder test clean). All three W3 lanes were notified: no
+workspace-wide mutating tools; fmt/clippy must be scoped by package or
+explicit path; lanes asked to disclose any `--fix` run so the full footprint
+can be audited. Dirty count 96 -> 93.
