@@ -1830,3 +1830,29 @@ receipt_paths=receipts/06.md (+ migration inventory tickets/06-migration-invento
 deferred_failures=source-mutation inject/revert proofs (authorized worktree); +1 witness bounds unreachable through the transaction (proven at the crate-private seam, stated in Receipt 06); the degenerate missing-member rail with no locatable item; Pipeline's deleted-API call is the W4 obligation
 next_wave_gate=W4 OPEN: ticket 07 Planning/Pipeline/facade; facade contract pinned in /tmp/qg-w4-dispatch-draft.md; entrance = Logic GREEN (met) + compiled-document DTO skeleton + diagnostic ordering + budget projections frozen
 ```
+
+### W4 dispatch — 2026-09-21
+
+Entry: W3 GREEN, checkpoint `95b655f`. Crates frozen with content vault
+(`/tmp/qg-freeze-w4.txt`, `/tmp/qg-freeze-vault/w4`): planning (8 files),
+pipeline (compile.rs `520d5648` + 12 test files), frontend-contract. Entrance
+gate met: Logic GREEN, facade contract pinned from ticket 07, budget receipt
+19+2 dimensions fixed by W1, diagnostic ordering owned by each lane's typed
+family.
+
+Frozen Planning junction (ticket 07 "Required Planning Input", verbatim):
+`SemanticPlanInputV2::{Relational(LoweredRelationItemV2), Graph(
+GraphQueryContractV2), Check(..), Presentation(..), Rule(RuleProgramContractV2),
+MetaRequireCertified(..), Composition(CheckedCompositionPlanInputV2)}` ->
+`SemanticPlanV2` (authority lane, evaluation determinism, evidence, effect,
+result incl. witness policy + multiplicity/order, capabilities, semantic cost,
+explain), single entry `plan(&SemanticPlanInputV2)`.
+
+Lanes: W4-A 13089277 (Planning, lease src/* except lib.rs + tests),
+W4-B 79ac99c2 (Pipeline, lease compile.rs/diagnostic.rs + tests; its entry RED
+is the deleted-API call in compile.rs), W4-C d6e94b6b (read-only facade
+consumer + external-consumer crate + parity script design; zero writes).
+Barrier W4 will: apply Planning/Pipeline manifests + lib.rs export deletions,
+replace the four facade globs serially with the pinned three functions + DTO
+allowlist, run planning/pipeline/facade suites + doctests + strict Clippy +
+the external-consumer script + architecture, and write Receipt 07.
