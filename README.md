@@ -81,13 +81,16 @@ Repo-owned front-door e2e:
 4. these rails prove frontend determinism and fail-closed behavior only; they do
    not prove runtime execution or backend materialization
 
-검증 진입점:
+로컬 전체 검증은 `just ci` 하나다. 앞선 focused 검증을 모두 다시
+실행하므로 `just nextest`, `just lint`, `just semgrep`를 순서대로 실행한 뒤
+`just ci`를 실행하지 않는다.
 
-1. `just nextest`
-2. `just doc-test`
-3. `just lint`
-4. `just semgrep`
-5. `just ci`
+Focused 진입점은 원인 확인용이다:
+
+1. `just lint` — format, TOML, MSRV/current Clippy
+2. `just test` — workspace 및 rustdoc tests
+3. `just boundary` — shipped front doors, architecture, external facade consumer
+4. `just policy` — supply-chain, typos, Semgrep
 
 ### Proof rails
 

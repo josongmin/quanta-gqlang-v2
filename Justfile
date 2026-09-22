@@ -43,6 +43,10 @@ semgrep:
     python3 tools/lint/tests/test_semgrep_non_vacuity.py
     tools/lint/run_semgrep.sh
 
-lint: fmt taplo clippy clippy-current-policy test frontdoor-parity arch-lint external-consumer deny typos
+lint: fmt taplo clippy clippy-current-policy
 
-ci: lint semgrep
+boundary: frontdoor-parity arch-lint external-consumer
+
+policy: deny typos semgrep
+
+ci: lint test boundary policy
