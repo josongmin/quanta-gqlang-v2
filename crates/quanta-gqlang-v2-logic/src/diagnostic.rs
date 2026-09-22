@@ -351,10 +351,7 @@ impl LogicDiagnosticV1 {
             },
             Self::RuleGraphBudgetExceeded {
                 dimension, limit, ..
-            } => format!(
-                "{} budget of {limit} exceeded",
-                dimension.name()
-            ),
+            } => format!("{} budget of {limit} exceeded", dimension.name()),
         }
     }
 }
