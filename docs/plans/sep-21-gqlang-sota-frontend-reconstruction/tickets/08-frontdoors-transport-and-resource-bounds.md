@@ -136,8 +136,9 @@ after JSON decode and reports `frontend.resource_limit_exceeded` with dimension
 2. CLI `fmt` calls only facade `format_source_document_v2` with the standard
    frontend budget and explicit source ID `0`, which projects to the owner-local
    parse budget; it does not analyze or compile.
-3. `compile_source_document_v2` remains the library seam for an embedding host
-   that supplies `ClosedFrontendAuthorityV2`; CLI/service do not manufacture it.
+3. `compile_source_document_v3` is the source-bound library seam for an embedding
+   host that supplies `ClosedFrontendAuthorityV2`; it returns
+   `CompiledSourceDocumentV3`. CLI/service do not manufacture closed authority.
 4. Analysis with unresolved authority returns `AnalysisDocumentV2` plus stable
    diagnostics and never a compiled plan/artifact.
 5. CLI exits 1 when analysis is incomplete or erroneous; diagnostics stdio

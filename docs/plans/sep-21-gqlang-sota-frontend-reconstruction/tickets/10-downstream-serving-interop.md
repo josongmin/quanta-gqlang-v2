@@ -30,7 +30,7 @@ Consumer snapshot: Semantica qualification worktree `e850efb71a8` (re-freeze bef
 
 **Accept A:** fresh AG7 artifact build succeeds on the intended service feature graph, while a positive feature-selection test proves V3 serving was isolated, not silently removed. This says nothing about V3 serving migration.
 
-### B. Migrate the full V3 serving seam
+### B. Historical V2 serving proposal (superseded by Ticket 10a)
 
 **Producer owner: GQLang Pipeline/Planning/Algebra/Logic/Modules/Sema via facade. Consumer owner: Semantica exec-contract/ingress/host-adapter.** This is a new public-contract expansion requiring a Ticket 00/07 allowlist amendment before code work. Keep it separate from AG7-only isolation.
 

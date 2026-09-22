@@ -276,14 +276,16 @@ validated as an exact set independently from per-item plan keys.
 The facade exports source/document entry points and stable DTOs only:
 
 ```rust
-compile_source_document_v2
+compile_source_document_v3
 analyze_source_document_v2
 format_source_document_v2
 ClosedFrontendAuthorityV2
 ClosedFrontendAuthorityBuilderV2
 OpenAnalysisAuthorityV2
 FrontendBudgetV2
-CompiledDocumentV2
+CompiledSourceDocumentV3
+ExecutionDocumentV3
+ExecutionItemV3
 AnalysisDocumentV2
 SemanticPlanV2
 FrontendDiagnosticV2

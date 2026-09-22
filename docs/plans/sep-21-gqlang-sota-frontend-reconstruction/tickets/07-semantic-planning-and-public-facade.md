@@ -132,7 +132,7 @@ Declaration produce checked `NoPlanReasonV2` outcomes. An inline VIEW body
 is lowered through Ticket 05 for its typed relation/schema proof but its
 Catalog declaration still has no per-declaration serving plan.
 
-## Required Public Facade
+## Historical Ticket 07 Public Facade (superseded by Ticket 10a)
 
 **2026-09-22 post-audit closure:** `ClosedFrontendAuthorityBuilderV2` is now a
 curated facade root. It accepts raw source registrations, selected module,
