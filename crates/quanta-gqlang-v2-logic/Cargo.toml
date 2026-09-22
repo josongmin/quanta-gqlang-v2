@@ -18,5 +18,12 @@ quanta-gqlang-v2-hir   = { version = "0.1.0", path = "../quanta-gqlang-v2-hir" }
 quanta-gqlang-v2-sema  = { version = "0.1.0", path = "../quanta-gqlang-v2-sema" }
 quanta-gqlang-v2-types = { version = "0.1.0", path = "../quanta-gqlang-v2-types" }
 
+[dev-dependencies]
+# Mirrors the algebra precedent: test-only feature toggle on an already-normal
+# dependency, so the final dependency DAG gains no edge.
+quanta-gqlang-v2-sema = { version = "0.1.0", path = "../quanta-gqlang-v2-sema", features = [
+    "test",
+] }
+
 [lints]
 workspace = true

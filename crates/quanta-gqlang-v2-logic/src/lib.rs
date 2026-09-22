@@ -40,14 +40,14 @@ mod recursion;
 mod source;
 mod witness;
 
-pub use aggregate::{AggregateLegalityV1, RecursiveAggregateMatrixV1, RecursiveAggregateV1};
+pub use aggregate::RejectAllRecursiveAggregatesV2;
 pub use diagnostic::{
     LogicDiagnosticV1, RuleGraphBudgetDimensionV1, RuleProgramInvalidReasonV1,
     UnboundedWitnessReasonV1,
 };
 pub use graph::{GraphEndpointRoleV1, GraphQueryContractV1, GraphQuerySemanticsV1};
 pub use recursion::{
-    BodyLiteralV1, BodyPolarityV1, RecursiveProgramV1, RuleDefV1, StratificationProofV1,
+    stratify, BodyLiteralV1, BodyPolarityV1, RecursiveProgramV1, RuleDefV1, StratificationProofV1,
 };
 pub use witness::{
     DedupIdentityV1, RelationShapeV1, WitnessContractV1, WitnessRequestV1, WitnessTieBreakV1,
