@@ -63,9 +63,13 @@ set -e
 end="$(date +%s)"
 duration_s=$((end - start))
 
+# The generated target symlink is not a directory for Git's /target/ ignore
+# rule. Verify its destination explicitly and exclude only that path from the
+# source-status check.
 if [ "$(git -C "$checkout" rev-parse HEAD)" != "$sha" ] || \
    [ "$(git -C "$checkout" rev-parse HEAD^{tree})" != "$tree" ] || \
-   [ -n "$(git -C "$checkout" status --porcelain --untracked-files=all)" ]; then
+   [ "$(readlink "$checkout/target")" != "$repo_root/target" ] || \
+   [ -n "$(git -C "$checkout" status --porcelain --untracked-files=all -- . ':!target')" ]; then
     echo "qualify-local: pinned checkout changed during qualification" >&2
     exit_code=1
 fi
