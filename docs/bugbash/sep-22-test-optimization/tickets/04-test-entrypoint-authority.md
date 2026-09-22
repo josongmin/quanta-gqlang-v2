@@ -6,16 +6,15 @@ Finding owned: `TEST-01`.
 
 ## Goal
 
-Make `just test` mean all repository test layers that currently define the GitHub Actions
-`rust-test` job: nextest, doctests, and shipped CLI↔stdio front-door parity.
+Make `just test` own all repository test layers locally: nextest, doctests, and shipped
+CLI↔stdio front-door parity.
 
 ## Write Set
 
 - `Justfile`
 
-`.github/workflows/lint.yml` and `tools/test_frontdoor_parity.py` are frozen. CI intentionally
-keeps explicit commands because its runner does not install `just`; the local recipe must compose
-the same three layers without creating a CI tooling dependency.
+`tools/test_frontdoor_parity.py` is frozen. GitHub Actions is intentionally absent; the local
+recipe is the only composition authority for these three layers.
 
 ## Required Change
 
@@ -31,7 +30,6 @@ Resulting composition:
 ```text
 just test -> nextest + doctest + frontdoor-parity
 just ci -> static + test + policy (one parity invocation through test)
-GitHub rust-test -> same three commands explicitly
 ```
 
 ## Non-Vacuity Proof
@@ -60,7 +58,7 @@ is qualified separately; the focused dry-run contract and `just test` remain req
 
 ## Definition Of Done
 
-- Local `test` and hosted `rust-test` contain the same three semantic layers.
+- Local `test` contains all three semantic layers.
 - `ci` reaches parity through exactly one composition path.
 - The cross-binary parity script remains independently runnable.
-- No workflow/toolchain churn is introduced for a one-line authority repair.
+- No hosted workflow is required or retained.

@@ -64,11 +64,11 @@ similarity as duplicate proof.
 | 01 Surface | `crates/quanta-gqlang-v2-surface/src/family.rs`, `src/query.rs`, `tests/v3_document_hellgate.rs`, `tests/v3_family_hellgate.rs`, `tests/v3_family_edges.rs`, `tests/v3_surface_query.rs` | HIR/public facade outside Surface |
 | 02 Planning | `crates/quanta-gqlang-v2-planning/tests/v3_explain_provenance.rs`, `crates/quanta-gqlang-v2-sema/src/test_support.rs` | Sema production, Algebra implementation, and planner traversal source; `planning/src/plan.rs` is mutation-only and must return to its frozen hash |
 | 03 CLI | `crates/quanta-gqlang-v2-cli/src/lib.rs`, `src/main.rs`, `tests/command_doc_gate.rs`, `tests/v3_cli_fmt_idempotence.rs`, `tests/open_analysis_contract.rs` | frontend-contract and command implementation crates |
-| 04 Test authority | `Justfile` | workflow and test implementation files |
+| 04 Test authority | `Justfile` | test implementation files |
 | 05 Integrator | this packet, receipts, and any explicitly approved cross-lane reconciliation | all product paths while qualifying |
 
-`.github/workflows/lint.yml` is read-only for this packet: hosted CI already runs all three test
-layers directly. Ticket 04 changes local composition only and verifies CI parity structurally.
+GitHub Actions is intentionally disabled and `.github/workflows/` is absent. Ticket 04 owns the
+local test composition and verifies parity through `just test` and `just ci`.
 
 ## State Model
 
@@ -80,7 +80,7 @@ PLANNED -> ADMITTED -> RED_CAPTURED -> IMPLEMENTED -> FOCUSED_GREEN
 - `FOCUSED_GREEN` belongs to one ticket and one source digest.
 - `INTEGRATED` requires all lane commits on one candidate.
 - Only Ticket 05 may declare `LOCAL_QUALIFIED`.
-- Hosted CI, review, merge, deploy, and activation are separate states and are not claimed here.
+- Review, publication, deploy, and activation are separate states and are not claimed here.
 
 ## Required Worker Contract
 

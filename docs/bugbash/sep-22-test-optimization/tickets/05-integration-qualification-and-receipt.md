@@ -105,6 +105,5 @@ The final receipt binds every result to the committed candidate SHA and includes
 - All eleven findings are closed once, with owner evidence.
 - Focused and workspace gates are green on one immutable clean candidate.
 - Test-count changes are explained from `cargo nextest list`, not the retired TSV.
-- Local qualification is reported separately from hosted CI, review, merge, deploy, and activation.
-- Any unavailable hosted evidence remains explicitly `OPEN`; it does not block an accurate local
-  qualification claim.
+- Local qualification is reported separately from review, publication, deploy, and activation.
+- GitHub Actions is intentionally disabled; hosted CI is not a closeout requirement.
