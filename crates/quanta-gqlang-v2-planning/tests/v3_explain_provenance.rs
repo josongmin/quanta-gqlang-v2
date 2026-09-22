@@ -172,6 +172,28 @@ fn an_asymmetric_join_walks_left_subtree_before_right() {
     assert_eq!(planned.explain().families(), families.as_slice());
 }
 
+/// An EXISTS whose nested arm is itself a join proves LEFT-before-RIGHT
+/// order with asymmetric subtrees: the semi-join's left arm is a bare scan
+/// while its right arm is a two-scan join. A traversal that visits the right
+/// arm first (or swaps the arms) produces a different family sequence and
+/// fails here; the symmetric join rails above cannot catch that swap.
+#[test]
+fn a_multiplicative_right_arm_walks_left_scan_before_right_join() {
+    let (families, nodes, _planned) =
+        families(ReferenceRelationFixtureV2::ExistsWithMultiplicativeRight);
+    assert_eq!(nodes, 5);
+    assert_eq!(
+        families,
+        vec![
+            AlgebraFamilyV2::SemiJoin,
+            AlgebraFamilyV2::Scan,
+            AlgebraFamilyV2::Join,
+            AlgebraFamilyV2::Scan,
+            AlgebraFamilyV2::Scan,
+        ]
+    );
+}
+
 /// A relational EXISTS conjunct is lowered into the traversal as a Semi/Anti
 /// join, so the note lists the residual filter first and then BOTH semi-join
 /// arms.

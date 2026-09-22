@@ -80,6 +80,39 @@ fn v3_fmt_is_a_fixed_point_on_messy_advanced_inputs_v1() {
     }
 }
 
+/// The bare `fmt` alias (not only `v3-fmt`) dispatches to the formatter at
+/// the REAL binary boundary: it exits 0, reaches the same fixed point as
+/// `v3-fmt` on identical input, and re-feeding its output is stable.
+#[test]
+fn bare_fmt_alias_matches_v3_fmt_fixed_point_v1() {
+    let source = "from   users   u  |  where  u.id>1  | project u.id  as  id";
+    let output = run_cli_argv_v1(&["fmt", source]);
+    assert!(
+        output.status.success(),
+        "bare `fmt` failed (status={:?})\nstderr={}",
+        output.status.code(),
+        cli_stderr_v1(&output)
+    );
+    let bare = cli_stdout_v1(&output).trim_end_matches('\n').to_owned();
+    assert!(!bare.trim().is_empty(), "bare `fmt` produced empty output");
+    assert_eq!(
+        bare,
+        v3_fmt_inline_v1(source),
+        "bare `fmt` and `v3-fmt` disagree:\n--- fmt ---\n{bare}"
+    );
+    let output = run_cli_argv_v1(&["fmt", &bare]);
+    assert!(
+        output.status.success(),
+        "re-fed bare `fmt` failed: {}",
+        cli_stderr_v1(&output)
+    );
+    assert_eq!(
+        cli_stdout_v1(&output).trim_end_matches('\n'),
+        bare,
+        "bare `fmt` is not a fixed point"
+    );
+}
+
 /// String literals re-quote so the formatted output re-lexes to the same content
 /// and stays a fixed point even with embedded quote/escape characters.
 #[test]
