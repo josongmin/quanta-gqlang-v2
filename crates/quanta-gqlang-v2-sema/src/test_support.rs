@@ -15,22 +15,28 @@
 use crate::{
     resolve_checked_document_v2, CheckedLocatedSpanV2, CheckedSyntaxDocumentV2,
     ClosedFrontendAuthorityV2, DeclaredDocumentV2, DownstreamBudgetReceiptV2, FrontendBudgetV2,
-    GraphReferenceCatalogV2, JoinModeV2, OutputColumnContractV2, OutputColumnOriginV2,
+    GraphReferenceCatalogV2, GraphReferenceInputV2, GraphReferenceKindV2,
+    GraphReferenceRoleV2, JoinModeV2, OutputColumnContractV2, OutputColumnOriginV2,
     OutputProvenanceV2, RelationOutputContractV2, ResolvedBindingKindV2,
-    ResolvedCompositionSourceIdV2, ResolvedScanSourceV2, ResolvedValueBindingV2,
+    ResolvedCompositionSourceIdV2, ResolvedGraphQueryV2, ResolvedScanSourceV2,
+    ResolvedValueBindingV2,
     SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2, TypedBoolExprV2, TypedCorrelationEdgeV2,
     TypedExprShapeV2, TypedExprV2, TypedRelationExprV2, TypedRelationStageInputV2,
     TypedRelationStageKindV2, TypedRelationV2,
 };
 use quanta_gqlang_v2_hir::{
-    AliasV1, CallArgHirV1, CallArgsHirV1, HirBuilderV1, HirDocumentV1, HirNodeIdV1, LocatedSpanV2,
+    AliasV1, CallArgHirV1, CallArgsHirV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
+    GraphConstraintsV1, GraphDirectionV1, GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1,
+    GraphRefV1, HirBuilderV1, HirDocumentV1, HirNodeIdV1, LegalityHirV1, LocatedSpanV2,
     OrderKeyHirV1, PathSegmentV1, ProgramItemHirV1, ProjectionItemV1, QueryHirV1,
     RelationExistsPolarityV1, RelationExprHirV1, SortDirectionHirV1, SourceIdV2,
     SourceRegistrationV2, SourceRegistryViewV2, SpanV1, ValueExprHirV1,
 };
 use quanta_gqlang_v2_modules::{
-    CurrentModuleSelectionInputV2, DocumentCatalogFinalInputV2, DocumentCatalogValidatorV2,
-    ModuleAuthorityBuilderV2, ModuleIdV2, ModuleNodeInputV2, VersionV2,
+    CallableKindV2, CurrentModuleSelectionInputV2, DocumentCatalogFinalInputV2,
+    DocumentCatalogValidatorV2, ExternalCatalogAssetInputV2, ExternalCatalogPayloadInputV2,
+    LocatedParameterInputV2, ModuleAuthorityBuilderV2, ModuleIdV2, ModuleNodeInputV2,
+    SignatureInputV2, VersionV2,
 };
 use quanta_gqlang_v2_types::{
     AggregationClassV1, CardinalityV1, ExpressionEffectsV2, ProvenanceNamespaceV2,
@@ -2683,4 +2689,324 @@ mod tests {
         assert_eq!(tree.document().expressions().count(), 14);
         Ok(())
     }
+}
+
+
+// ---- graph fixtures (W3-B verification scaffold) ---------------------------
+
+/// Fixed source length of every reference graph fixture document.
+pub const REFERENCE_GRAPH_SOURCE_LEN_V2: usize = 4_096;
+
+/// One requested resolved FIND reference.
+#[derive(Clone, Debug)]
+pub struct ReferenceGraphReferenceV2 {
+    /// Semantic FIND role.
+    pub role: GraphReferenceRoleV2,
+    /// Host selector spelling registered for the role's required kind.
+    pub selector: &'static str,
+    /// Authored byte span of the reference.
+    pub span: (usize, usize),
+}
+
+/// One requested resolved FIND document.
+#[derive(Clone, Debug)]
+pub struct ReferenceGraphRequestV2 {
+    /// FIND subkind.
+    pub kind: GraphQueryKindV1,
+    /// Ordered references.
+    pub references: Vec<ReferenceGraphReferenceV2>,
+    /// Optional authored depth.
+    pub depth: Option<u32>,
+    /// Optional direction keyword.
+    pub direction: Option<&'static str>,
+    /// Summary facets.
+    pub summary_facets: Vec<String>,
+    /// Authored span of the FIND item.
+    pub item_span: (usize, usize),
+}
+
+/// A sealed graph fixture document plus its FIND item identity.
+#[derive(Clone, Debug)]
+pub struct ReferenceGraphDocumentV2 {
+    document: SemanticDocumentV2,
+    item_id: SemanticItemIdV2,
+}
+
+impl ReferenceGraphDocumentV2 {
+    /// Borrow the complete semantic document.
+    #[must_use]
+    pub const fn document(&self) -> &SemanticDocumentV2 {
+        &self.document
+    }
+    /// Identity of the FIND item.
+    #[must_use]
+    pub const fn graph_item_id(&self) -> SemanticItemIdV2 {
+        self.item_id
+    }
+    /// The resolved FIND item.
+    #[must_use]
+    pub fn graph(&self) -> &ResolvedGraphQueryV2 {
+        match self.document.item(self.item_id) {
+            Some(SemanticItemV2::Graph(graph)) => graph,
+            _ => panic!("graph fixture item is a resolved FIND"),
+        }
+    }
+}
+
+/// A sealed nested CHECK/FIND fixture document plus both item identities.
+#[derive(Clone, Debug)]
+pub struct ReferenceNestedCheckDocumentV2 {
+    document: SemanticDocumentV2,
+    check_item_id: SemanticItemIdV2,
+    nested_graph_item_id: SemanticItemIdV2,
+}
+
+impl ReferenceNestedCheckDocumentV2 {
+    /// Borrow the complete semantic document.
+    #[must_use]
+    pub const fn document(&self) -> &SemanticDocumentV2 {
+        &self.document
+    }
+    /// Identity of the CHECK item.
+    #[must_use]
+    pub const fn check_item_id(&self) -> SemanticItemIdV2 {
+        self.check_item_id
+    }
+    /// Identity of the nested FIND item.
+    #[must_use]
+    pub const fn nested_graph_item_id(&self) -> SemanticItemIdV2 {
+        self.nested_graph_item_id
+    }
+}
+
+/// Mint one checked location against the reference graph fixture registry.
+///
+/// # Errors
+///
+/// Returns a fixture error when the byte range is out of bounds.
+pub fn reference_checked_span_v2(start: usize, end: usize) -> Result<CheckedLocatedSpanV2, String> {
+    let registry = SourceRegistryViewV2::try_new(vec![
+        SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(1),
+            source_len: 256,
+        },
+        SourceRegistrationV2 {
+            source_id: REFERENCE_SOURCE_V2,
+            source_len: REFERENCE_GRAPH_SOURCE_LEN_V2,
+        },
+    ])
+    .map_err(|error| error.to_string())?;
+    registry
+        .try_check_location(LocatedSpanV2 {
+            source_id: REFERENCE_SOURCE_V2,
+            span: SpanV1::new(start, end),
+        })
+        .map_err(|error| format!("{error:?}"))
+}
+
+fn graph_reference_kind(role: GraphReferenceRoleV2) -> GraphReferenceKindV2 {
+    match role {
+        GraphReferenceRoleV2::Source
+        | GraphReferenceRoleV2::Sink
+        | GraphReferenceRoleV2::Anchor
+        | GraphReferenceRoleV2::Reference
+        | GraphReferenceRoleV2::Pointee
+        | GraphReferenceRoleV2::Via
+        | GraphReferenceRoleV2::Through => GraphReferenceKindV2::Entity,
+        GraphReferenceRoleV2::Callable => GraphReferenceKindV2::Callable,
+        GraphReferenceRoleV2::Sanitizer => GraphReferenceKindV2::Sanitizer,
+        GraphReferenceRoleV2::Scope => GraphReferenceKindV2::Scope,
+        GraphReferenceRoleV2::Window => GraphReferenceKindV2::Window,
+        GraphReferenceRoleV2::Frontier => GraphReferenceKindV2::Frontier,
+    }
+}
+
+fn graph_hir_query(request: &ReferenceGraphRequestV2) -> Result<GraphQueryHirV1, String> {
+    let mut endpoints = GraphEndpointsV1::default();
+    let mut constraints = GraphConstraintsV1 {
+        depth: request.depth,
+        direction: request.direction.map(|keyword| GraphDirectionV1 {
+            keyword: keyword.to_owned(),
+        }),
+        summary_facets: request.summary_facets.clone(),
+        ..GraphConstraintsV1::default()
+    };
+    for reference in &request.references {
+        let graph_ref = GraphRefV1 {
+            name: reference.selector.to_owned(),
+            span: SpanV1::new(reference.span.0, reference.span.1),
+        };
+        match reference.role {
+            GraphReferenceRoleV2::Source => endpoints.source = Some(graph_ref),
+            GraphReferenceRoleV2::Sink => endpoints.sink = Some(graph_ref),
+            GraphReferenceRoleV2::Anchor => endpoints.anchor = Some(graph_ref),
+            GraphReferenceRoleV2::Reference => endpoints.reference = Some(graph_ref),
+            GraphReferenceRoleV2::Pointee => endpoints.pointee = Some(graph_ref),
+            GraphReferenceRoleV2::Callable => endpoints.callable = Some(graph_ref),
+            GraphReferenceRoleV2::Via => constraints.via.push(graph_ref),
+            GraphReferenceRoleV2::Through => constraints.through.push(graph_ref),
+            GraphReferenceRoleV2::Sanitizer => constraints.sanitizers.push(graph_ref),
+            GraphReferenceRoleV2::Scope => constraints.scope = Some(graph_ref),
+            GraphReferenceRoleV2::Window => constraints.window = Some(graph_ref),
+            GraphReferenceRoleV2::Frontier => constraints.frontier = Some(graph_ref),
+        }
+    }
+    Ok(GraphQueryHirV1::new(
+        HirNodeIdV1::from_raw(2),
+        SpanV1::new(request.item_span.0, request.item_span.1),
+        request.kind,
+        endpoints,
+        constraints,
+    ))
+}
+
+fn graph_authority_v2(
+    references: &[ReferenceGraphReferenceV2],
+    with_rule: bool,
+) -> Result<ClosedFrontendAuthorityV2, String> {
+    let host = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
+        source_id: SourceIdV2::from_raw(1),
+        source_len: 256,
+    }])
+    .map_err(|error| error.to_string())?;
+    let location = host
+        .try_check_location(LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(1),
+            span: SpanV1::new(0, 1),
+        })
+        .map_err(|error| format!("{error:?}"))?;
+    let module =
+        ModuleIdV2::try_new("app", location.clone()).map_err(|error| format!("{error:?}"))?;
+    let budget = FrontendBudgetV2::standard_v2().map_err(|error| format!("{error:?}"))?;
+    let profile = budget
+        .authority_profile()
+        .map_err(|error| format!("{error:?}"))?;
+    let mut modules = ModuleAuthorityBuilderV2::try_new(profile.clone(), host.clone())
+        .map_err(|error| format!("{error:?}"))?;
+    modules
+        .try_add_module(ModuleNodeInputV2 {
+            module_id: module.clone(),
+            location: location.clone(),
+        })
+        .map_err(|error| format!("{error:?}"))?;
+    if with_rule {
+        modules
+            .try_add_external(ExternalCatalogAssetInputV2 {
+                module_name: "app".to_owned(),
+                local_name: "rule1".to_owned(),
+                kind_token: "rule".to_owned(),
+                typed_payload: ExternalCatalogPayloadInputV2::Rule(SignatureInputV2 {
+                    parameters: Vec::<LocatedParameterInputV2>::new(),
+                    result: ValueTypeV1::bool(),
+                    callable_kind: CallableKindV2::Rule,
+                    effects: ExpressionEffectsV2::pure_scalar(),
+                    location: location.clone(),
+                }),
+                provenance: "host".to_owned(),
+                location: location.clone(),
+                dependencies: Vec::new(),
+            })
+            .map_err(|error| format!("{error:?}"))?;
+    }
+    let modules = modules
+        .finish(
+            CurrentModuleSelectionInputV2 {
+                module_id: module,
+                location: location.clone(),
+            },
+            VersionV2::new(1, 0, 0),
+        )
+        .map_err(|error| error.to_string())?;
+    let relations = RelationCatalogV2::try_new(Vec::new(), &host, profile.clone())
+        .map_err(|error| format!("{error:?}"))?;
+    let mut inputs = Vec::<GraphReferenceInputV2>::new();
+    for (index, reference) in references.iter().enumerate() {
+        let span = SpanV1::new(1 + index, 2 + index);
+        let declaration = host
+            .try_check_location(LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(1),
+                span,
+            })
+            .map_err(|error| format!("{error:?}"))?;
+        inputs.push(GraphReferenceInputV2 {
+            spelling: reference.selector.to_owned(),
+            kind: graph_reference_kind(reference.role),
+            entity_subtype: None,
+            location: declaration,
+        });
+    }
+    let graphs = GraphReferenceCatalogV2::try_new(inputs, &host, profile)
+        .map_err(|error| format!("{error:?}"))?;
+    ClosedFrontendAuthorityV2::try_new(modules, relations, graphs, budget)
+        .map_err(|error| format!("{error:?}"))
+}
+
+/// Resolve one reference FIND fixture through the real semantic transaction.
+///
+/// # Errors
+///
+/// Returns a fixture-construction error if the fixed fixture no longer
+/// satisfies the semantic contract.
+pub fn reference_graph_document_v2(
+    request: ReferenceGraphRequestV2,
+) -> Result<ReferenceGraphDocumentV2, String> {
+    let query = graph_hir_query(&request)?;
+    let item_id = SemanticItemIdV2::new(REFERENCE_SOURCE_V2, query.id);
+    let authority = graph_authority_v2(&request.references, false)?;
+    let document = resolve_checked_document_v2(
+        CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+            source_id: REFERENCE_SOURCE_V2,
+            source_len: REFERENCE_GRAPH_SOURCE_LEN_V2,
+            items: vec![ProgramItemHirV1::GraphQuery(Box::new(query))],
+        })
+        .map_err(|error| format!("{error:?}"))?,
+        &authority,
+    )
+    .map_err(|error| format!("{error:?}"))?;
+    Ok(ReferenceGraphDocumentV2 { document, item_id })
+}
+
+/// Resolve one reference nested CHECK/FIND fixture through the real semantic
+/// transaction.
+///
+/// # Errors
+///
+/// Returns a fixture-construction error if the fixed fixture no longer
+/// satisfies the semantic contract.
+pub fn reference_nested_check_document_v2(
+    request: ReferenceGraphRequestV2,
+) -> Result<ReferenceNestedCheckDocumentV2, String> {
+    let query = graph_hir_query(&request)?;
+    let nested_graph_item_id = SemanticItemIdV2::new(REFERENCE_SOURCE_V2, query.id);
+    let check = LegalityHirV1::new(
+        HirNodeIdV1::from_raw(3),
+        SpanV1::new(request.item_span.0, request.item_span.1),
+        GraphRefV1 {
+            name: "rule1".to_owned(),
+            span: SpanV1::new(100, 105),
+        },
+        None,
+        None,
+        ConfirmModeV1::Skip,
+        EmitModeV1::Findings,
+        DetectionModeV1::SemanticOnly,
+    )
+    .with_semantic_confirm(query);
+    let check_item_id = SemanticItemIdV2::new(REFERENCE_SOURCE_V2, check.id);
+    let authority = graph_authority_v2(&request.references, true)?;
+    let document = resolve_checked_document_v2(
+        CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+            source_id: REFERENCE_SOURCE_V2,
+            source_len: REFERENCE_GRAPH_SOURCE_LEN_V2,
+            items: vec![ProgramItemHirV1::Legality(Box::new(check))],
+        })
+        .map_err(|error| format!("{error:?}"))?,
+        &authority,
+    )
+    .map_err(|error| format!("{error:?}"))?;
+    Ok(ReferenceNestedCheckDocumentV2 {
+        document,
+        check_item_id,
+        nested_graph_item_id,
+    })
 }
