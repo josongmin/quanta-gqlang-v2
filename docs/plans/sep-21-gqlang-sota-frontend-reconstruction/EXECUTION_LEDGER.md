@@ -2129,3 +2129,38 @@ REMAINING before the barrier (recorded for continuation):
 - Still open for the barrier after W4-A3: `CompositionPolicyV2` constructor +
   Composition-arm retention, sema meta/composition fixtures, and the lib.rs
   V2 module docs, then the facade cut + external-consumer gate + Receipt 07.
+
+### W4-A3 DONE + planning src defect fixed — 2026-09-22
+
+Lane W4-A3 migrated all seven V1-era planning suites and expanded
+owner-local edge coverage: `cargo test -p quanta-gqlang-v2-planning
+--all-targets --no-fail-fast` = 130/130 (lib 22 + 108 integration),
+`clippy --all-targets -D warnings` clean (non-vacuity proved by injecting a
+`todo!()` into tests/support and watching 7 targets fail, then reverting
+byte-identically), fmt/diff clean. Per-target growth: capability 5->13,
+cost_classification 15->32, explain 14->11, item_hellgate 7->10,
+cost_schema 1->5, hellgate 14->23, truth 8->14.
+
+SRC DEFECT FOUND AND FIXED (integrator, from W4-A3's measured report): the
+relational identity predicate required
+`carrier.root().stage_key() == relation.root().key()`, but canonical algebra
+lowering legitimately re-anchors the root — a pure relational EXISTS conjunct
+is folded into a root Semi/Anti join (algebra's own
+`pure_exists_conjunct_lowers_to_semijoin_with_no_residual_filter` asserts it),
+so the promoted root carries the EXISTS stage key while the sealed relation
+keeps the authored filter key. Every EXISTS/AntiJoin relation was therefore
+unplannable (5 reference fixtures + all whole-predicate-EXISTS relations).
+Fix: the predicate now compares item identity + sealed output only, with the
+reason documented in place. Planning re-qualified 130/130 after the change;
+W4-A3's canary rail (`relational_root_re_anchoring_src_defect_canary`) still
+pins the underlying crate disagreement as a fact.
+
+FIXTURE-PENDING (7 requests recorded in the lane report, none faked): resolved
+meta (UsePack/RequireCertified), presentation (EXPLAIN permutations incl. the
+incoherent pair, SHOW/DESCRIBE/SAMPLE/COMPARE/EXPORT), composition (ordered
+LET producer + WITH + SAMPLE-producer/working-set body, plus Graph/Check/
+Explain bodies), relation shapes Apply/Limit/Union + multiplicative right
+semi/anti input, small-receipt RULE document, `max_witnesses = 1` FIND,
+alternate graph node id. Every pending rail is marked inline and its code/
+message/keyword vocabulary is still asserted verbatim, so no spelling lost
+coverage.
