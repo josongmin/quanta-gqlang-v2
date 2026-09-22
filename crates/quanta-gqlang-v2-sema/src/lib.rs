@@ -21,7 +21,12 @@ pub mod test_support;
 
 // Host-agnostic checked coordinates remain the canonical HIR primitive. Semantic
 // direction and expression tags below prevent downstream direct HIR dependency.
-pub use quanta_gqlang_v2_hir::{CheckedLocatedSpanV2, GraphQueryKindV1, LocatedSpanV2, SourceIdV2};
+pub use quanta_gqlang_v2_hir::{
+    CheckedLocatedSpanV2, CompareMetricV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
+    EvidenceModeV1, ExportFormatV1, GraphQueryKindV1, LocatedSpanV2, SampleModeV1, ShowCategoryV1,
+    SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, TruthModeV1,
+};
+pub use quanta_gqlang_v2_types::RelationCatalogV2;
 
 pub use authority::{
     ClosedFrontendAuthorityV2, DownstreamBudgetReceiptV2, FrontendAuthorityErrorV2,

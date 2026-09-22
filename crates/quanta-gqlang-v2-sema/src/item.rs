@@ -358,6 +358,7 @@ impl ResolvedGraphQueryV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolvedCheckV2 {
     item_id: SemanticItemIdV2,
+    location: CheckedLocatedSpanV2,
     rule: ResolvedCatalogReferenceV2,
     scope: Option<ResolvedGraphUseV2>,
     pattern: Option<ResolvedGraphUseV2>,
@@ -371,6 +372,7 @@ impl ResolvedCheckV2 {
     /// Construct a CHECK and reject a nested graph from another document.
     pub(crate) fn try_new(
         item_id: SemanticItemIdV2,
+        location: CheckedLocatedSpanV2,
         expected_nested_id: Option<SemanticItemIdV2>,
         rule: ResolvedCatalogReferenceV2,
         scope: Option<ResolvedGraphUseV2>,
@@ -398,6 +400,7 @@ impl ResolvedCheckV2 {
         }
         Ok(Self {
             item_id,
+            location,
             rule,
             scope,
             pattern,
@@ -411,6 +414,11 @@ impl ResolvedCheckV2 {
     #[must_use]
     pub const fn item_id(&self) -> SemanticItemIdV2 {
         self.item_id
+    }
+    /// Registry-proven location of this CHECK item.
+    #[must_use]
+    pub const fn location(&self) -> &CheckedLocatedSpanV2 {
+        &self.location
     }
     /// Resolved rule catalog reference.
     #[must_use]
@@ -498,6 +506,7 @@ pub enum ResolvedExplainTargetV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolvedPresentationV2 {
     item_id: SemanticItemIdV2,
+    location: CheckedLocatedSpanV2,
     kind: ResolvedPresentationKindV2,
 }
 
@@ -505,17 +514,27 @@ impl ResolvedPresentationV2 {
     /// Construct a presentation contract. SAMPLE must retain a positive limit.
     pub(crate) fn try_new(
         item_id: SemanticItemIdV2,
+        location: CheckedLocatedSpanV2,
         kind: ResolvedPresentationKindV2,
     ) -> Result<Self, &'static str> {
         if matches!(&kind, ResolvedPresentationKindV2::Sample { limit: 0, .. }) {
             return Err("sample limit must be positive");
         }
-        Ok(Self { item_id, kind })
+        Ok(Self {
+            item_id,
+            location,
+            kind,
+        })
     }
     /// Item identity.
     #[must_use]
     pub const fn item_id(&self) -> SemanticItemIdV2 {
         self.item_id
+    }
+    /// Registry-proven location of this presentation item.
+    #[must_use]
+    pub const fn location(&self) -> &CheckedLocatedSpanV2 {
+        &self.location
     }
     /// Resolved payload.
     #[must_use]
@@ -1190,6 +1209,7 @@ mod tests {
     fn sample(source_id: SourceIdV2, node: u32) -> ResolvedPresentationV2 {
         ResolvedPresentationV2::try_new(
             SemanticItemIdV2::new(source_id, HirNodeIdV1::from_raw(node)),
+            checked(source_id, SpanV1::new(60, 70)),
             ResolvedPresentationKindV2::Sample {
                 query_text: "needle".to_owned(),
                 mode: quanta_gqlang_v2_hir::SampleModeV1::Semantic,

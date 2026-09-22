@@ -4277,16 +4277,6 @@ fn materialize_composition_sample(
             .map(|(target, location)| ResolvedGraphUseV2::new(target, location))
         })
         .transpose()?;
-    let presentation = ResolvedPresentationV2::try_new(
-        SemanticItemIdV2::new(source_id, sample.id),
-        ResolvedPresentationKindV2::Sample {
-            query_text: sample.query_text.clone(),
-            mode: sample.mode,
-            limit: sample.limit,
-            scope,
-        },
-    )
-    .map_err(|error| document_failure("sema.invalid_item_shape", source_id, sample.span, error))?;
     let location = extended
         .combined()
         .try_check_location(location(source_id, sample.span))
@@ -4298,6 +4288,17 @@ fn materialize_composition_sample(
                 error.to_string(),
             )
         })?;
+    let presentation = ResolvedPresentationV2::try_new(
+        SemanticItemIdV2::new(source_id, sample.id),
+        location.clone(),
+        ResolvedPresentationKindV2::Sample {
+            query_text: sample.query_text.clone(),
+            mode: sample.mode,
+            limit: sample.limit,
+            scope,
+        },
+    )
+    .map_err(|error| document_failure("sema.invalid_item_shape", source_id, sample.span, error))?;
     let field = quanta_gqlang_v2_types::RecordFieldTypeV1::try_new(
         "path",
         ValueTypeV1::scalar(ScalarTyV1::RepoPath),
@@ -5155,16 +5156,30 @@ fn resolve_presentation_item(
             }
         }
     };
-    ResolvedPresentationV2::try_new(SemanticItemIdV2::new(source_id, presentation.id), kind)
-        .map_err(|error| {
-            document_failure(
-                "sema.invalid_item_shape",
-                source_id,
-                presentation.span,
-                error,
-            )
-            .into()
-        })
+    ResolvedPresentationV2::try_new(
+        SemanticItemIdV2::new(source_id, presentation.id),
+        extended
+            .combined()
+            .try_check_location(location(source_id, presentation.span))
+            .map_err(|error| {
+                document_failure(
+                    "sema.document_validation_failed",
+                    source_id,
+                    presentation.span,
+                    error.to_string(),
+                )
+            })?,
+        kind,
+    )
+    .map_err(|error| {
+        document_failure(
+            "sema.invalid_item_shape",
+            source_id,
+            presentation.span,
+            error,
+        )
+        .into()
+    })
 }
 
 fn resolve_composition_explain(
@@ -5259,6 +5274,17 @@ fn resolve_composition_explain(
     };
     ResolvedPresentationV2::try_new(
         SemanticItemIdV2::new(source_id, explain.id),
+        extended
+            .combined()
+            .try_check_location(location(source_id, explain.span))
+            .map_err(|error| {
+                document_failure(
+                    "sema.document_validation_failed",
+                    source_id,
+                    explain.span,
+                    error.to_string(),
+                )
+            })?,
         ResolvedPresentationKindV2::Explain {
             target,
             evidence: explain.evidence,
@@ -5352,6 +5378,17 @@ fn resolve_check_item(
         .map(|graph| SemanticItemIdV2::new(source_id, graph.id));
     ResolvedCheckV2::try_new(
         SemanticItemIdV2::new(source_id, check.id),
+        extended
+            .combined()
+            .try_check_location(location(source_id, check.span))
+            .map_err(|error| {
+                document_failure(
+                    "sema.document_validation_failed",
+                    source_id,
+                    check.span,
+                    error.to_string(),
+                )
+            })?,
         expected_nested,
         ResolvedCatalogReferenceV2::from_proof(&rule),
         scope,
