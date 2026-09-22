@@ -1405,3 +1405,49 @@ next_wave_gate=W3 OPEN: logic crate frozen with content vault (/tmp/qg-freeze-w3
 ```
 
 W2 verdict: `GREEN`. All lanes + barrier on one fingerprint. W3 opens next.
+
+## W3 dispatch — 2026-09-21
+
+Entry: W2 GREEN, checkpoint `4073b64` + handoff `494b118`. Logic crate frozen
+with content vault (`/tmp/qg-freeze-w3.txt`, `/tmp/qg-freeze-vault/w3`).
+
+### Integrator pre-cut (diagnostic.rs final surface, applied BEFORE lane
+### test freezes — the W2-C inventory's sequencing recommendation)
+
+- `logic/src/diagnostic.rs`: deleted the dead `UnsupportedRuleHead` and the
+  `GraphConflictingPathBound` variant (its policy flips to valid); every span
+  is now the registry-proven `CheckedLocatedSpanV2`; predicate identity is
+  `ResolvedPredicateIdV2` (no caller strings). `NegationCycle` gained
+  `offending_edge` (canonical edge's checked location) beside the canonical
+  `cycle`; NEW `RuleProgramInvalid { reason: RuleProgramInvalidReasonV1 }`
+  with eight reasons + codes `logic.rule_program.*` for the adapter's
+  membership/edge-forgery class (G3). Stable codes and message texts for the
+  surviving families unchanged.
+- `logic/Cargo.toml`: sema edge added (final dependency direction). hir edge
+  remains until the W3 barrier (source.rs still imports it; the barrier
+  removes it once W3-C lands). Cargo.lock follows the manifest.
+- `logic/src/lib.rs`: exports `RuleProgramInvalidReasonV1`.
+- Ticket 06 G12 amendment landed: the `.negated_recursion` fixture wording is
+  superseded by the precedence rail (negated self-recursion is a negation
+  cycle; no `.negated_recursion` code exists or will be added).
+- Pre-cut compile state: the crate stays RED by design; every remaining error
+  is confined to lane files (aggregate.rs/graph.rs/recursion.rs/witness.rs)
+  and maps to that lane's inventory rows.
+
+### Frozen junctions
+
+- C->A: `RuleProgramContractV2::{from_document, rules, budget, to_program}`
+  plus `RuleDefV1::new/head/body/location`, `BodyLiteralV1::new/predicate/
+  polarity/location`, `BodyPolarityV1::{Positive,Negated,Aggregated}`,
+  `stratify(&RecursiveProgramV1, &DownstreamBudgetReceiptV2)`.
+- B consumes `ResolvedGraphQueryV2`/`GraphWitnessBoundsV2` + the document
+  budget receipt directly; no cross-lane seam.
+- Test-file ownership resolved (W2-C had flagged the hellgate straddle):
+  `v3_logic_hellgate.rs` is W3-B's file; W3-A re-expresses its five cases in
+  NEW `v3_rule_scc_hellgate.rs`/`v3_rule_aggregate_policy.rs`;
+  `tests/support/mod.rs` is W3-B's (A/C read-only).
+
+Lanes: W3-A 6a856533, W3-B a48267dd, W3-C 1835981d. Barrier will cut the
+Logic->hir edge, update architecture expectations, run Logic all-targets +
+strict Clippy + the 50k/budget cases + final dependency scan, and write
+Receipt 06.

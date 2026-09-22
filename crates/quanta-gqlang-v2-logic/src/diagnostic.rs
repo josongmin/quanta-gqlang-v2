@@ -1,4 +1,4 @@
-//! Typed, fail-closed diagnostics for the logic / recursion layer (ticket 05).
+//! Typed, fail-closed diagnostics for the logic / recursion layer.
 //!
 //! Per packet decisions `D10` (no silent downgrade), `D27` (positive recursion
 //! uses explicit least-fixpoint; recursive aggregates / unbounded witness reject
@@ -8,57 +8,51 @@
 //! typed diagnostics rather than degrading silently.
 //!
 //! Each variant renders a STABLE `code()` (dot-namespaced under `logic.`) and a
-//! stable human `message()` so CLI/LSP/tests assert exact text (`D22`). The
-//! `span()` points back at the originating HIR construct (`D20`).
+//! stable human `message()` so CLI/LSP/tests assert exact text (`D22`). Every
+//! span is a registry-proven [`CheckedLocatedSpanV2`] pointing back at the
+//! originating document construct (`D20`); predicate identity is the sealed
+//! [`ResolvedPredicateIdV2`], never a caller-supplied string.
+//!
+//! W3 pre-cut (integrator-owned): the dead `UnsupportedRuleHead` variant and the
+//! `GraphConflictingPathBound` variant died with their policies. Depth plus
+//! waypoints is now valid (waypoints never substitute for depth), and rule-head
+//! legality is owned by Sema/Types before Logic ever sees a rule.
 
-use quanta_gqlang_v2_hir::{GraphQueryKindV1, SpanV1};
+use quanta_gqlang_v2_sema::{CheckedLocatedSpanV2, GraphQueryKindV1};
+use quanta_gqlang_v2_types::ResolvedPredicateIdV2;
 
 use crate::graph::GraphEndpointRoleV1;
 
 /// A typed logic-semantics diagnostic.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LogicDiagnosticV1 {
-    /// A source-level `exists` / `not exists` quantifier carried an unknown
-    /// keyword that has no logic lowering (only `exists` / `not exists` /
-    /// `forall` are recognized source quantifiers here).
-    UnknownQuantifier {
-        /// The quantifier keyword as written (e.g. `"some"`).
-        keyword: String,
-        /// Span of the offending quantifier.
-        span: SpanV1,
-    },
-    /// A source horn rule head was not expressible as a predicate-rooted head
-    /// under the current frontend contract. The public lowering accepts only a
-    /// bare symbol or a path rooted at a symbol, so arbitrary scalar heads
-    /// reject explicitly rather than pretending to be recursive predicates.
-    UnsupportedRuleHead {
-        /// Span of the offending rule head.
-        span: SpanV1,
-    },
     /// A recursion went through negation in a way that cannot be stratified:
     /// a predicate depends, transitively and through at least one negated
     /// edge, on itself. Stratified negation requires every negated dependency
     /// to sit in a strictly lower stratum, which a negation cycle makes
     /// impossible (`D27`).
     NegationCycle {
-        /// The predicate names participating in the unstratifiable cycle, in
-        /// deterministic (sorted) order for stable diagnostics.
-        cycle: Vec<String>,
-        /// Span of the rule whose body closed the negation cycle.
-        span: SpanV1,
+        /// The canonical offending cycle as stable predicate identities, in
+        /// deterministic order invariant under rule/edge insertion
+        /// permutation.
+        cycle: Vec<ResolvedPredicateIdV2>,
+        /// The canonical offending edge's checked location (the negated call
+        /// that closes the cycle).
+        offending_edge: CheckedLocatedSpanV2,
+        /// Checked location of the rule whose body closed the cycle.
+        span: CheckedLocatedSpanV2,
     },
     /// An aggregate was applied over a predicate that recurses (transitively)
-    /// through itself, and the aggregate is NOT on the explicit admit list.
-    /// Recursive aggregates have no monotone least-fixpoint meaning in general,
-    /// so they reject unless this ticket's matrix admits the specific shape
-    /// (`D27`).
+    /// through itself. Recursive aggregates have no monotone least-fixpoint
+    /// meaning in general, so every spelling rejects (`D27`); the policy is
+    /// reject-all and Sema owns nonrecursive aggregate legality.
     RecursiveAggregate {
         /// The aggregate function name as written (e.g. `sum`, `count`).
         function: String,
         /// The recursive predicate the aggregate folded over.
-        predicate: String,
-        /// Span of the offending aggregate call.
-        span: SpanV1,
+        predicate: ResolvedPredicateIdV2,
+        /// Checked location of the offending aggregate call.
+        span: CheckedLocatedSpanV2,
     },
     /// A witness / path materialization over a recursive relation was requested
     /// without a complete boundedness contract (a finite max-witness cap is
@@ -68,8 +62,8 @@ pub enum LogicDiagnosticV1 {
     UnboundedWitness {
         /// Why the witness contract is not bounded.
         reason: UnboundedWitnessReasonV1,
-        /// Span of the offending witness/path request.
-        span: SpanV1,
+        /// Checked location of the offending witness/path request.
+        span: CheckedLocatedSpanV2,
     },
     /// A FIND graph query of a given subkind was missing an endpoint that the
     /// subkind REQUIRES (e.g. `taint` without a `sink`). Endpoint presence is a
@@ -80,8 +74,8 @@ pub enum LogicDiagnosticV1 {
         kind: GraphQueryKindV1,
         /// The missing endpoint role.
         role: GraphEndpointRoleV1,
-        /// Span of the offending graph query.
-        span: SpanV1,
+        /// Checked location of the offending graph query.
+        span: CheckedLocatedSpanV2,
     },
     /// A FIND graph query supplied an endpoint its subkind does NOT accept
     /// (e.g. a `slice` carrying a `source`/`sink` when it only anchors). A
@@ -92,32 +86,72 @@ pub enum LogicDiagnosticV1 {
         kind: GraphQueryKindV1,
         /// The unexpected endpoint role that was present.
         role: GraphEndpointRoleV1,
-        /// Span of the offending graph query.
-        span: SpanV1,
+        /// Checked location of the offending graph query.
+        span: CheckedLocatedSpanV2,
     },
-    /// A FIND graph query over a CYCLIC relation supplied BOTH an explicit
-    /// `depth` bound AND bounding waypoints (`via` / `through`). These are two
-    /// competing path-length binding strategies; silently letting `depth` win
-    /// would drop the waypoint constraint (a silent downgrade, `D10`) and accept
-    /// a seed that means two different things at once (`D26`). The query fails
-    /// closed so the user explicitly picks ONE binding strategy.
-    GraphConflictingPathBound {
-        /// The FIND subkind that carried the conflicting bounds.
-        kind: GraphQueryKindV1,
-        /// Span of the offending graph query.
-        span: SpanV1,
-    },
-    /// A least-fixpoint was requested over a rule body that is not monotone
-    /// (it negates or aggregates the recursive predicate inside its own
-    /// recursion), so the fixpoint is not guaranteed to exist / be unique.
+    /// A least-fixpoint was requested over a rule body that is not monotone: it
+    /// AGGREGATES the recursive predicate inside its own recursion, so the
+    /// fixpoint is not guaranteed to exist / be unique.
+    ///
+    /// The sibling case — a rule that NEGATES the recursive predicate inside its
+    /// own recursion — is a negation cycle and rejects as
+    /// [`LogicDiagnosticV1::NegationCycle`] before this check runs (see
+    /// `recursion.rs`), so there is no negated arm here.
     NonMonotoneRecursion {
         /// The recursive predicate whose defining rule is non-monotone.
-        predicate: String,
-        /// Why monotonicity fails.
-        reason: NonMonotoneReasonV1,
-        /// Span of the offending rule.
-        span: SpanV1,
+        predicate: ResolvedPredicateIdV2,
+        /// Checked location of the offending rule.
+        span: CheckedLocatedSpanV2,
     },
+    /// The document-owned rule program could not be projected into a faithful
+    /// contract: a member, call edge, target, polarity, source identity, or
+    /// checked location disagreed with the sealed document. Logic validates
+    /// before allocating any graph and fails closed rather than inventing a
+    /// second resolver (`D10`); the reason names the exact disagreement.
+    RuleProgramInvalid {
+        /// Which part of the projected contract was not faithful.
+        reason: RuleProgramInvalidReasonV1,
+        /// Checked location of the offending fact.
+        span: CheckedLocatedSpanV2,
+    },
+}
+
+/// Why a projected rule program was not a faithful contract.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RuleProgramInvalidReasonV1 {
+    /// A rule member present in the document was not enumerated.
+    MissingMember,
+    /// The projection enumerated one member more than once.
+    DuplicateMember,
+    /// A call edge did not resolve to a member predicate of this document.
+    NonLocalTarget,
+    /// A call edge disagreed with the document's resolved call identity.
+    WrongCallId,
+    /// A call edge's target disagreed with the document's resolved target.
+    TargetTransplanted,
+    /// A call edge's polarity disagreed with the document's resolved polarity.
+    PolarityFlip,
+    /// A checked location or registry identity belonged to another document.
+    ForeignLocation,
+    /// The document's rule set was inconsistent with its own item set.
+    MembershipMismatch,
+}
+
+impl RuleProgramInvalidReasonV1 {
+    /// Stable code suffix for this reason.
+    #[must_use]
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::MissingMember => "missing_member",
+            Self::DuplicateMember => "duplicate_member",
+            Self::NonLocalTarget => "nonlocal_target",
+            Self::WrongCallId => "wrong_call_id",
+            Self::TargetTransplanted => "target_transplanted",
+            Self::PolarityFlip => "polarity_flip",
+            Self::ForeignLocation => "foreign_location",
+            Self::MembershipMismatch => "membership_mismatch",
+        }
+    }
 }
 
 /// Why a witness/path contract is not bounded.
@@ -150,34 +184,12 @@ impl UnboundedWitnessReasonV1 {
     }
 }
 
-/// Why a recursive rule fails monotonicity.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum NonMonotoneReasonV1 {
-    /// The rule negates the recursive predicate inside its own recursion.
-    NegatedRecursion,
-    /// The rule aggregates the recursive predicate inside its own recursion.
-    AggregatedRecursion,
-}
-
-impl NonMonotoneReasonV1 {
-    /// Stable code suffix for this reason.
-    #[must_use]
-    pub const fn code(self) -> &'static str {
-        match self {
-            Self::NegatedRecursion => "negated_recursion",
-            Self::AggregatedRecursion => "aggregated_recursion",
-        }
-    }
-}
-
 impl LogicDiagnosticV1 {
     /// The stable diagnostic code, shared by CLI/LSP/tests. Codes are
     /// dot-namespaced under `logic.` and never change spelling.
     #[must_use]
     pub fn code(&self) -> String {
         match self {
-            Self::UnknownQuantifier { .. } => "logic.unknown_quantifier".to_owned(),
-            Self::UnsupportedRuleHead { .. } => "logic.unsupported_rule_head".to_owned(),
             Self::NegationCycle { .. } => "logic.negation_cycle".to_owned(),
             Self::RecursiveAggregate { .. } => "logic.recursive_aggregate".to_owned(),
             Self::UnboundedWitness { reason, .. } => {
@@ -185,28 +197,26 @@ impl LogicDiagnosticV1 {
             }
             Self::GraphEndpointMissing { .. } => "logic.graph_endpoint_missing".to_owned(),
             Self::GraphEndpointUnexpected { .. } => "logic.graph_endpoint_unexpected".to_owned(),
-            Self::GraphConflictingPathBound { .. } => {
-                "logic.graph_conflicting_path_bound".to_owned()
+            Self::NonMonotoneRecursion { .. } => {
+                "logic.non_monotone_recursion.aggregated_recursion".to_owned()
             }
-            Self::NonMonotoneRecursion { reason, .. } => {
-                format!("logic.non_monotone_recursion.{}", reason.code())
+            Self::RuleProgramInvalid { reason, .. } => {
+                format!("logic.rule_program.{}", reason.code())
             }
         }
     }
 
-    /// The span the diagnostic points at.
+    /// The registry-proven location the diagnostic points at.
     #[must_use]
-    pub fn span(&self) -> SpanV1 {
+    pub const fn span(&self) -> &CheckedLocatedSpanV2 {
         match self {
-            Self::UnknownQuantifier { span, .. }
-            | Self::UnsupportedRuleHead { span }
-            | Self::NegationCycle { span, .. }
+            Self::NegationCycle { span, .. }
             | Self::RecursiveAggregate { span, .. }
             | Self::UnboundedWitness { span, .. }
             | Self::GraphEndpointMissing { span, .. }
             | Self::GraphEndpointUnexpected { span, .. }
-            | Self::GraphConflictingPathBound { span, .. }
-            | Self::NonMonotoneRecursion { span, .. } => *span,
+            | Self::NonMonotoneRecursion { span, .. }
+            | Self::RuleProgramInvalid { span, .. } => span,
         }
     }
 
@@ -215,16 +225,11 @@ impl LogicDiagnosticV1 {
     #[must_use]
     pub fn message(&self) -> String {
         match self {
-            Self::UnknownQuantifier { keyword, .. } => {
-                format!("unknown source quantifier `{keyword}`; expected `exists` or `not exists`")
-            }
-            Self::UnsupportedRuleHead { .. } => {
-                "source horn rule head must be a symbol or a path rooted at a symbol".to_owned()
-            }
             Self::NegationCycle { cycle, .. } => {
+                let names: Vec<&str> = cycle.iter().map(ResolvedPredicateIdV2::as_str).collect();
                 format!(
                     "recursion through negation is not stratifiable: cycle [{}]",
-                    cycle.join(" -> ")
+                    names.join(" -> ")
                 )
             }
             Self::RecursiveAggregate {
@@ -232,8 +237,8 @@ impl LogicDiagnosticV1 {
                 predicate,
                 ..
             } => format!(
-                "recursive aggregate `{function}` over recursive predicate `{predicate}` is not \
-                 admitted"
+                "recursive aggregate `{function}` over recursive predicate `{}` is not admitted",
+                predicate.as_str()
             ),
             Self::UnboundedWitness { reason, .. } => match reason {
                 UnboundedWitnessReasonV1::MissingMaxWitnesses => {
@@ -270,24 +275,36 @@ impl LogicDiagnosticV1 {
                     role.keyword()
                 )
             }
-            Self::GraphConflictingPathBound { kind, .. } => {
-                format!(
-                    "FIND `{}` supplies both an explicit `depth` bound and bounding waypoints \
-                     (`via`/`through`); choose one path-length binding strategy",
-                    crate::graph::graph_query_keyword(*kind)
-                )
-            }
-            Self::NonMonotoneRecursion {
-                predicate, reason, ..
-            } => match reason {
-                NonMonotoneReasonV1::NegatedRecursion => format!(
-                    "non-monotone recursion: predicate `{predicate}` negates itself inside its own \
-                     recursion"
-                ),
-                NonMonotoneReasonV1::AggregatedRecursion => format!(
-                    "non-monotone recursion: predicate `{predicate}` aggregates itself inside its \
-                     own recursion"
-                ),
+            Self::NonMonotoneRecursion { predicate, .. } => format!(
+                "non-monotone recursion: predicate `{}` aggregates itself inside its own recursion",
+                predicate.as_str()
+            ),
+            Self::RuleProgramInvalid { reason, .. } => match reason {
+                RuleProgramInvalidReasonV1::MissingMember => {
+                    "rule program contract is incomplete: a document rule member was not enumerated"
+                        .to_owned()
+                }
+                RuleProgramInvalidReasonV1::DuplicateMember => {
+                    "rule program contract enumerated the same member more than once".to_owned()
+                }
+                RuleProgramInvalidReasonV1::NonLocalTarget => {
+                    "rule call target is not a predicate of this document".to_owned()
+                }
+                RuleProgramInvalidReasonV1::WrongCallId => {
+                    "rule call identity disagrees with the document's resolved call".to_owned()
+                }
+                RuleProgramInvalidReasonV1::TargetTransplanted => {
+                    "rule call target disagrees with the document's resolved target".to_owned()
+                }
+                RuleProgramInvalidReasonV1::PolarityFlip => {
+                    "rule call polarity disagrees with the document's resolved polarity".to_owned()
+                }
+                RuleProgramInvalidReasonV1::ForeignLocation => {
+                    "rule fact location or registry identity belongs to another document".to_owned()
+                }
+                RuleProgramInvalidReasonV1::MembershipMismatch => {
+                    "rule membership disagrees with the document's own item set".to_owned()
+                }
             },
         }
     }
