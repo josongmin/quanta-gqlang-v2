@@ -1625,3 +1625,27 @@ doc-comment references remained in lib.rs):
 - Remaining transitional edges by owner: algebra x2, cli x5, conformance x4,
   frontend-contract x5, diagnostics-stdio x1, pipeline x4, planning x1 — each
   retired by its wave (W4/W5/W6).
+
+### W3-D dispatched — documented cap deviation — 2026-09-21
+
+The wave plan says to queue additional work rather than add a fourth
+concurrent writer. That rule was followed until it became the direct cause of
+a hard three-lane stall: W3-A's test target cannot compile at all because it
+imports W3-D's `support::graph_document`/`nested_check_document` wrappers,
+W3-B's document-level rails and W3-C's positive-path assertions have the same
+dependency, and no lane can complete acceptance without the fixtures.
+
+Integrator decision: dispatch W3-D now (agent 71e90652) with an exclusive,
+disjoint lease (`sema/src/test_support.rs`, additive-only, feature-test
+gated). Rationale recorded: the cap exists to prevent conflicting writers on
+shared paths; this lease conflicts with nothing, three lanes are blocked on
+it, and the only alternative (integrator implementing ~600 lines of fixture
+code) trades verifiable ownership for speed. If a conflicting need appears,
+W3-D stops and reports rather than widening.
+
+W3-D carries every spec item accumulated in `/tmp/qg-w3d-dispatch-draft.md`:
+rule fixtures (8 kinds) + forged membership (3 mutations) + forged rule facts
+(7 mutations) + graph request/document fixtures + nested CHECK fixture +
+small-budget variants + `reference_checked_span_v2`, and may use the
+integrator's already-landed seams `ResolvedRuleV2::forged_with_calls` and
+`SemanticDocumentV2::forged_membership`.
