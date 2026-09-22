@@ -1,6 +1,8 @@
 # 05 — Integration Qualification And Receipt
 
-Status: `INTEGRATED (LOCAL_QUALIFIED blocked by base breakage, see receipts/05.md)`
+Status at the original integration: `INTEGRATED` with `LOCAL_QUALIFIED` blocked
+by base breakage (see receipts/05.md). Current review remediation and its
+clean-source gate results are in receipts/09-review-remediation.md.
 
 Findings owned: none. This ticket is the only local closeout authority for Tickets 01–04.
 

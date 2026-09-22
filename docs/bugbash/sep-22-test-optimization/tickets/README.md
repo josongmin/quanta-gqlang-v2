@@ -1,6 +1,8 @@
 # Sep 22 Test Optimization — Execution Tickets
 
-Status: `LANES FOCUSED_GREEN; INTEGRATED WITHOUT LOCAL_QUALIFIED (receipts/00.md-05.md)`
+Status: historical lanes in `receipts/00.md-08-leftover-resolution.md`;
+clean current-source review fix and local gate results in
+[`receipts/09-review-remediation.md`](../receipts/09-review-remediation.md).
 
 Planning observation: `main@3a9ab271d7706c1c9266551df492f64f4bf68eea`.
 
@@ -10,6 +12,10 @@ close commit). The observation below is a frozen planning snapshot, not an
 implementation base: the shared worktree contains unrelated frontend-contract,
 pipeline, and sema changes. Ticket 00 must mint a clean current-source base before any RED or
 GREEN result is accepted.
+
+The 12-file lane patch and the later 46-path `d353c45a` mixed commit have
+different scope. Receipt 09 records that distinction and the later clean
+review-fix SHA. The lease table below describes the original lane plan.
 
 ## Objective
 
