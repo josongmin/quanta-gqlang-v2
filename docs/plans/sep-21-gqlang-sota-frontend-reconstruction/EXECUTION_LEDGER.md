@@ -1720,3 +1720,41 @@ with the scaffold: logic lib 21/21, endpoint 2/2, waypoint-flip 2/2, graph
 hellgate 8/8, logic hellgate 4/4, mutation rails 9/9, witness retention 6/6
 = 52/52, scoped strict Clippy clean. Crate-wide the only remaining compile
 blocker is lane W3-C's staged rule-fixture imports, owned by lane W3-D2.
+
+### W3-B FINAL — graph contract + witnesses GREEN — 2026-09-21
+
+Surface: `GraphEndpointRoleV1` + `GraphQueryContractV2` (from_resolved,
+item_id, kind, location, depth, direction, summary_facets, references,
+endpoints, waypoints, witness, shape, dedup, tie_break, max_witnesses) and
+`WitnessContractV2` (read-only, private fields, crate-private ctor). Deleted:
+GraphQuerySemanticsV1, WitnessRequestV1, unconsumed keyword() pins (only
+GraphEndpointRoleV1::keyword survives, consumed by diagnostics).
+Post-hashes recorded (graph.rs `38f1c945`, witness.rs `31f87eb9`, seven test
+files + support; `v3_logic_punchlist.rs` renamed to `v3_logic_mutation_rails.rs`).
+
+Four policy flips PROVEN: (1) PointsTo-without-depth REJECTS
+(logic.unbounded_witness.missing_path_length_bound, checked location = item
+location; no subkind binds Acyclic any more); (2) via/waypoint-without-depth
+REJECTS (waypoint count is never a path bound); (3+4) BOTH depth+waypoint
+rails are now VALID with ordered retention (depth=5 retained; waypoint facts
+== [(Via,"x",(14,15)),(Via,"y",(18,19)),(Through,"z",(22,23))]); nested
+CHECK/FIND retains the sealed contract (nested id, depth=6, ordered
+[Via,Through]); endpoint-conflict rails strengthened with exact code + role +
+subkind + message + checked location.
+
+Exact/+1 honesty: document-level EXACT is proven for all 7 subkinds (depth ==
+receipt max_witness_depth, cap == receipt max_witnesses); +1 is UNREACHABLE
+through the transaction (sema rejects at frontend.resource_limit_exceeded), so
+it is proven at the crate-private seam with full codes/messages/spans —
+explicitly NOT claimed end-to-end for Receipt 06.
+
+Acceptance: 52/52 across the lane's 8 test-bearing files (lib 21, endpoint 2,
+waypoint 2, graph hellgate 8, logic hellgate 4, mutation rails 9, witness 6),
+scoped strict Clippy exit 0, rustfmt clean on all 9 leased files. Twelve
+mutation→killing-oracle pairs documented; source-mutation inject/revert
+deferred to an authorized isolated worktree per the wave plan.
+
+Upstream findings: nested CHECK host Rule asset must use CallableKindV2::Rule
+(else modules.catalog_payload_kind_mismatch); over-budget reasons are
+forgery-defense only; fixture `graph()` panic arm fixed by the integrator with
+a reasoned expect.
