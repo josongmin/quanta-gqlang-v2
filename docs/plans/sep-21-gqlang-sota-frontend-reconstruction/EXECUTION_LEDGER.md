@@ -1888,3 +1888,32 @@ the external-consumer script + architecture, and write Receipt 07.
   `CompiledRuleProgramV2`/`RuleProgramMemberV2` as assembly-owned types; the
   surface→FrontendTransactionErrorV2 mapping is written in
   pipeline/diagnostic.rs and reported field-by-field.
+
+### W4-C facade design received; decisions pinned; freeze gap closed — 2026-09-22
+
+W4-C (read-only) delivered the facade consumer design with zero writes: the
+exact three-function contract, the 13 stable DTO roots (11 of 13 unreachable
+today because the facade has no sema edge and only pipes/binder/modules reach
+it), the nested-DTO closure that must be curated, the 26-case leak matrix
+(classes A/B/C/D with exact expected compiler codes), the isolated consumer
+crate layout, and the `tools/test_frontend_external_consumer.py` contract
+(temp copy, absolute path rewrite, isolated CARGO_TARGET_DIR, per-case expected
+code map, infrastructure exit 2, repo-immutability assertions, and the exact
+counts Receipt 07 must carry). Key structural finding: cutting the four globs
+is NOT sufficient — Pipeline must re-export every curated name, and the five
+transitional facade edges must be deleted in the same cut.
+
+Integrator decisions issued: (a) builder owned by Pipeline + facade re-export;
+(b) curate CompiledItemV2/NoPlanReasonV2/RuleProgramMemberV2/CompiledRuleProgramV2;
+(c) curate the inert CheckedLocatedSpanV2/AlgebraFamilyV2 through Pipeline
+re-exports (no owner ctors); (d) stage-status/payload names from W4-B, cost
+type names from W4-A at the barrier; (e) fixture path tools/frontend_external_consumer/;
+(f) public-API inventory = second stage of the same script against an in-script
+allowlist; over-claiming forbidden.
+
+Freeze gap 4.6 CLOSED: `/tmp/qg-w4-producer-freeze.txt` records 25
+producer/consumer hashes (facade lib.rs `77c23331`, its Cargo.toml
+`a47df2c6`, every planning/pipeline src file, sema lib/item/document/authority,
+algebra node+lib, logic lib, hir span, types env, architecture tool) and the
+facade crate is vaulted. The facade lib.rs and its four globs remain unchanged
+and are the single serial cut at Barrier W4.
