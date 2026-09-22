@@ -2305,3 +2305,38 @@ Limit -> Limiting, Union -> SetUnion — because `RelationExprKindV1` is closed
 and `AlgebraOpV2::{Apply,Limit,Union}` have no sealed constructor; their
 fixtures return the verbatim surface rejections. This matches W2-A's decision
 to omit those families from the completion claim.
+
+### F-01 facade cut LANDED + barrier close-out lanes dispatched — 2026-09-22
+
+F-01 (BLOCKS-WAVE) FIXED by the integrator (commit `2bc88e3`):
+`frontend-contract/src/lib.rs` is now the pinned three entry points
+(`compile_/analyze_/format_source_document_v2`) plus a curated allowlist —
+assembled-document DTOs, `SemanticPlanV2`/`NoPlanReasonV2`, authority/budget/
+diagnostic vocabulary, and the inert closure types — with ZERO crate-wide globs
+and ZERO V1 symbols. The DTO closure is wired THROUGH pipeline (the sole owner
+edge the architecture pins), so the facade gained no new dependency; the
+obsolete V1 `tests/downstream_contract.rs` was deleted (its semantic coverage
+lives in pipeline's assembly suites and planning's 137 rails, and the new
+external-consumer gate replaces its leak assertions). `cargo check -p
+frontend-contract --all-targets` finishes GREEN.
+
+Remaining barrier work dispatched as two lanes:
+- W4-G (agent 54e01b27): F-06 seam `RuleProgramContractV2::stratification()`
+  computed once at the Logic ingress and consumed by planning + pipeline
+  (removing the double stratification and double charge), F-12 vacuous
+  assertions replaced with exact field assertions + the composition
+  forged-root negative, N-01/N-03 fabricated-anchor and dead-error-path
+  cleanup. Lease: logic/source.rs, planning/plan.rs, pipeline/compile.rs.
+- W4-H (agent b98b092b): the isolated external-consumer gate exactly per
+  W4-C's verified contract — `tools/frontend_external_consumer/` (standalone
+  crate whose sole dependency is the facade) + `tools/test_frontend_external_
+  consumer.py` (positive run with marker, class A/B/C/D compile-fail matrix
+  including every deleted V1 name, expected-code map, infrastructure exit 2,
+  repo-immutability assertions, and the `cargo public-api` allowlist diff as
+  its second stage).
+
+Still integrator-owned after those two land: rulings F-07 (budget ownership:
+algebra/planning reset the full allowance per call while pipeline invokes them
+per item) and F-10 (pipeline `verify_composition` vs planning's composition
+legality), F-09 sema dead public API, F-13 rustdoc gate, then Receipt 07 and
+the W4 checkpoint commit, then W5.
