@@ -2017,3 +2017,25 @@ In flight and blocking W4's barrier: lane W4-A2 (`planning/src/plan.rs`, the
 per-arm classifier — V1 hash `6909d6d40f3a33fd`) and lane W4-B
 (`pipeline/src/compile.rs`, iterating: `979d930664087f4e`). Everything else
 W4 needs from the integrator has landed and is committed.
+
+### Session segment close — 2026-09-22 (round budget boundary)
+
+State at this boundary: main HEAD `204f86c`. Completed waves W0-W3 with
+checkpoints `e9dd3e4`/`1a9ccad`/`4073b64`/`95b655f`; W4 integrator work fully
+committed (manifests, sema re-exports incl. `SpanV1`, retained
+check/presentation locations, `ValidatedModuleAuthorityPartsV2: Clone`,
+algebra nested-lowering entries, planning production code de-testified, J1
+junction, W4-C design + six decisions, producer freeze supplement, barrier and
+W5 dispatch drafts in /tmp). In flight: lane W4-A2 (`planning/src/plan.rs`,
+V1 hash `6909d6d40f3a33fd` — the ticket-07 per-arm classifier, the wave's
+critical path) and lane W4-B (`pipeline/src/compile.rs`
+`d954b24ade5afd8e`, iterating toward green against the frozen junction).
+
+Resume recipe: wait for/collect both lane reports; then run
+`/tmp/qg-w4-barrier.sh` after applying the planning/pipeline lib.rs patches,
+re-taking the producer freeze (`/tmp/qg-w4-producer-freeze.txt`), cutting the
+four facade globs (`frontend-contract/src/lib.rs` `77c23331`) to the pinned
+three functions + curated allowlist, building
+`tools/frontend_external_consumer/` + `tools/test_frontend_external_consumer.py`
+from the W4-C contract, deleting the five transitional facade edges, and
+writing Receipt 07. W5 follows with `/tmp/qg-w5-dispatch-draft.md`.
