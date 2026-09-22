@@ -1564,3 +1564,28 @@ over-cap, endpoint legality). W3-B reports its witness.rs/graph.rs V2 rewrite
 in progress with a pure owner-unit core (endpoint-legality function over kind
 + present roles, per-kind dedup table, sealed-bounds binder) so exact/+1 and
 the role matrix are provable before documents land.
+
+### W3 wiring + seams landed (integrator) — 2026-09-21
+
+- Lane W3-A reports recursion.rs rewrite landed (iterative Tarjan frames,
+  pre-work node/edge/step charging, canonical offending edge + return path,
+  reject-all wiring); aggregate.rs + three test files next.
+- Wiring requests from lane W3-C resolved by the integrator:
+  1. `logic/src/lib.rs` exports `RuleProgramContractV2` (frozen C->A junction
+     is now reachable from tests and W4 consumers).
+  2. The sema/test dev-dependency was already present (round-87 commit); the
+     lane's `cargo tree -e features -i` observation was lib-target-only.
+  3. Two test-feature-gated minting seams added at the lane's request:
+     `ResolvedRuleV2::forged_with_calls` (rule.rs) and
+     `SemanticDocumentV2::forged_membership` (document.rs) — `cfg(feature =
+     "test")` + `#[doc(hidden)]`, compiled out of normal builds, mirroring
+     the W2 `expr.rs` precedent.
+- FINGERPRINT NOTE: document.rs/rule.rs hashes changed (now
+  `bf62c15bc39ada23` / `8821df4bc5fce1e9`). Receipt 04's document.rs hash is
+  therefore superseded for the test-feature build only; behavioral
+  equivalence was re-verified immediately after the change: sema baseline
+  102/102 and `--features test` 121/121, unchanged. No normal-build behavior,
+  diagnostic, or public contract changed.
+- Lane W3-C's complete fixture spec (rule fixtures + three forged mutation
+  families with exact expected rejection codes + span contract) merged
+  verbatim into the queued W3-D dispatch spec.
