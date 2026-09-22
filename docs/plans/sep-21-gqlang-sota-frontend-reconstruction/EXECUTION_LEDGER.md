@@ -1589,3 +1589,17 @@ the role matrix are provable before documents land.
 - Lane W3-C's complete fixture spec (rule fixtures + three forged mutation
   families with exact expected rejection codes + span contract) merged
   verbatim into the queued W3-D dispatch spec.
+
+### W3 contract decision — NonMonotoneRecursion deleted — 2026-09-21
+
+Integrator decision (no dead variants): `LogicDiagnosticV1::NonMonotoneRecursion`
+is deleted from the frozen surface. SS-06B's reject-all policy makes
+aggregated recursion a `RecursiveAggregate` rejection; a distinct
+non-monotone variant was unreachable duplication (the V1 name for the same
+case). Consequences relayed to lanes A and B: the migrated
+aggregated-self-recursion rail asserts `logic.recursive_aggregate` (function
+spelling when known, `<aggregate>` otherwise); the precedence rail asserts
+`logic.negation_cycle` only. MILESTONE: after this deletion the logic LIB
+target compiles GREEN — all five rewritten source files (source, recursion,
+aggregate, graph, witness) type-check; remaining errors are confined to the
+test files being rewritten by lanes A/B/C.
