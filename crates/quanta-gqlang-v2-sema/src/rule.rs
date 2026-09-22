@@ -159,7 +159,7 @@ impl ResolvedRuleV2 {
     #[cfg(feature = "test")]
     #[doc(hidden)]
     #[must_use]
-    pub(crate) fn forged_with_calls(mut self, calls: Vec<ResolvedRuleCallV2>) -> Self {
+    pub fn forged_with_calls(mut self, calls: Vec<ResolvedRuleCallV2>) -> Self {
         self.calls = calls;
         self
     }
