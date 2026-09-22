@@ -64,6 +64,10 @@ use crate::diagnostic::{
     document_transaction_error, document_transaction_failure, logic_transaction_error,
     planning_transaction_error, surface_failure, surface_transaction_error, DocumentAssemblyCodeV2,
 };
+use crate::execution::{
+    project_composition, project_relation, project_relation_root, ExecutionCompositionV2,
+    ExecutionDocumentV2, ExecutionFamilyV2, ExecutionItemV2, ExecutionRelationV2,
+};
 
 /// Pipeline-owned code for an open-analysis source whose authority is partial.
 pub const OPEN_AUTHORITY_INCOMPLETE_CODE: &str = "pipeline.analysis.open_authority_incomplete";
@@ -95,6 +99,7 @@ pub struct CompiledDocumentV2 {
     diagnostics: Box<[FrontendDiagnosticV2]>,
     items: Box<[CompiledItemV2]>,
     rule_program: Option<CompiledRuleProgramV2>,
+    execution: ExecutionDocumentV2,
 }
 
 impl CompiledDocumentV2 {
@@ -107,6 +112,7 @@ impl CompiledDocumentV2 {
         diagnostics: Vec<FrontendDiagnosticV2>,
         items: Vec<CompiledItemV2>,
         rule_program: Option<CompiledRuleProgramV2>,
+        execution: ExecutionDocumentV2,
     ) -> Result<Self, FrontendTransactionErrorV2> {
         let diagnostics = canonicalize_diagnostics(diagnostics);
         if diagnostics
@@ -127,6 +133,7 @@ impl CompiledDocumentV2 {
             diagnostics: diagnostics.into_boxed_slice(),
             items: items.into_boxed_slice(),
             rule_program,
+            execution,
         })
     }
 
@@ -159,6 +166,12 @@ impl CompiledDocumentV2 {
     #[must_use]
     pub const fn rule_program(&self) -> Option<&CompiledRuleProgramV2> {
         self.rule_program.as_ref()
+    }
+
+    /// Immutable host-agnostic execution contract derived in the same pipeline run.
+    #[must_use]
+    pub const fn execution(&self) -> &ExecutionDocumentV2 {
+        &self.execution
     }
 }
 
@@ -553,8 +566,15 @@ pub fn compile_source_document_v2(
 pub fn compile_resolved_document_v2(
     document: &SemanticDocumentV2,
 ) -> Result<CompiledDocumentV2, FrontendTransactionErrorV2> {
-    let (items, rule_program) = run_document(document)?.into_compiled()?;
-    CompiledDocumentV2::try_new(document.source_id(), Vec::new(), items, rule_program)
+    let (items, rule_program, execution) =
+        run_document(document)?.into_compiled(document.source_id())?;
+    CompiledDocumentV2::try_new(
+        document.source_id(),
+        Vec::new(),
+        items,
+        rule_program,
+        execution,
+    )
 }
 
 /// Analyze one source document against explicit open editor authority.
@@ -811,7 +831,11 @@ struct DocumentRunV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum ItemRunV2 {
     /// Every applicable stage completed.
-    Planned(Box<PlannedItemV2>),
+    Planned {
+        planned: Box<PlannedItemV2>,
+        relation: Option<ExecutionRelationV2>,
+        composition: Option<ExecutionCompositionV2>,
+    },
     /// The item is a checked non-plan declaration.
     NoPlan {
         item_id: SemanticItemIdV2,
@@ -828,15 +852,38 @@ impl DocumentRunV2 {
     /// The exact compiled item list, failing closed on the first blocked stage.
     fn into_compiled(
         self,
-    ) -> Result<(Vec<CompiledItemV2>, Option<CompiledRuleProgramV2>), FrontendTransactionErrorV2>
-    {
+        source_id: SourceIdV2,
+    ) -> Result<
+        (
+            Vec<CompiledItemV2>,
+            Option<CompiledRuleProgramV2>,
+            ExecutionDocumentV2,
+        ),
+        FrontendTransactionErrorV2,
+    > {
         if let Some(diagnostics) = self.rule_blocked {
             return Err(document_transaction_failure(diagnostics));
         }
         let mut items = Vec::with_capacity(self.items.len());
+        let mut execution_items = Vec::new();
         for item in self.items {
             match item {
-                ItemRunV2::Planned(planned) => items.push(CompiledItemV2::Planned(planned)),
+                ItemRunV2::Planned {
+                    planned,
+                    relation,
+                    composition,
+                } => {
+                    if let Some((family, plan)) = execution_identity(planned.as_ref()) {
+                        execution_items.push(ExecutionItemV2::new(
+                            planned.item_id(),
+                            family,
+                            relation,
+                            composition,
+                            plan,
+                        ));
+                    }
+                    items.push(CompiledItemV2::Planned(planned));
+                }
                 ItemRunV2::NoPlan { item_id, reason } => {
                     items.push(CompiledItemV2::NoPlan { item_id, reason });
                 }
@@ -845,7 +892,11 @@ impl DocumentRunV2 {
                 }
             }
         }
-        Ok((items, self.rule_program))
+        Ok((
+            items,
+            self.rule_program,
+            ExecutionDocumentV2::new(source_id, execution_items),
+        ))
     }
 
     /// The exact analysis item list; blocked stages stay explicit.
@@ -856,7 +907,7 @@ impl DocumentRunV2 {
             .items
             .into_iter()
             .map(|item| match item {
-                ItemRunV2::Planned(planned) => {
+                ItemRunV2::Planned { planned, .. } => {
                     if let PlannedItemV2::RuleMember(member) = planned.as_ref() {
                         order.push(member.member_item_id());
                         match &rule_blocked {
@@ -928,7 +979,11 @@ fn run_document(
     for id in membership.order() {
         let location = membership.location(*id);
         match run_item(document, &membership, &mut algebra, &mut planning, *id) {
-            Ok(ItemRunV2::Planned(planned)) => {
+            Ok(ItemRunV2::Planned {
+                planned,
+                relation,
+                composition,
+            }) => {
                 let inserted = if matches!(planned.as_ref(), PlannedItemV2::RuleMember(_)) {
                     produced_member.insert(*id)
                 } else {
@@ -941,7 +996,11 @@ fn run_document(
                         "one authored identity produced two results",
                     ));
                 }
-                items.push(ItemRunV2::Planned(planned));
+                items.push(ItemRunV2::Planned {
+                    planned,
+                    relation,
+                    composition,
+                });
             }
             Ok(ItemRunV2::NoPlan { item_id, reason }) => {
                 if !produced_no_plan.insert(*id) {
@@ -1068,16 +1127,18 @@ fn run_item(
             let lowered = algebra
                 .lower_relation_item(id)
                 .map_err(|error| algebra_error(document, id, &error))?;
+            let relation = project_relation(document, &lowered);
             let plan = planning_plan(
                 document,
                 planning,
                 id,
                 &SemanticPlanInputV2::Relational(Box::new(lowered)),
             )?;
-            Ok(ItemRunV2::Planned(Box::new(PlannedItemV2::Relation {
-                item_id: id,
-                plan,
-            })))
+            Ok(ItemRunV2::Planned {
+                planned: Box::new(PlannedItemV2::Relation { item_id: id, plan }),
+                relation: Some(relation),
+                composition: None,
+            })
         }
         SemanticItemV2::Graph(graph) => {
             let contract = GraphQueryContractV2::from_resolved(graph)
@@ -1088,10 +1149,7 @@ fn run_item(
                 id,
                 &SemanticPlanInputV2::Graph(contract),
             )?;
-            Ok(ItemRunV2::Planned(Box::new(PlannedItemV2::Graph {
-                item_id: id,
-                plan,
-            })))
+            Ok(planned_run(PlannedItemV2::Graph { item_id: id, plan }))
         }
         SemanticItemV2::Check(check) => {
             let contract = check_contract(check)?;
@@ -1101,10 +1159,7 @@ fn run_item(
                 id,
                 &SemanticPlanInputV2::Check(contract),
             )?;
-            Ok(ItemRunV2::Planned(Box::new(PlannedItemV2::Check {
-                item_id: id,
-                plan,
-            })))
+            Ok(planned_run(PlannedItemV2::Check { item_id: id, plan }))
         }
         SemanticItemV2::Presentation(presentation) => {
             let contract = PresentationContractV2::from_resolved(presentation)
@@ -1115,13 +1170,13 @@ fn run_item(
                 id,
                 &SemanticPlanInputV2::Presentation(contract),
             )?;
-            Ok(ItemRunV2::Planned(Box::new(PlannedItemV2::Presentation {
+            Ok(planned_run(PlannedItemV2::Presentation {
                 item_id: id,
                 plan,
-            })))
+            }))
         }
         SemanticItemV2::Composition(composition) => {
-            let body = composition_body_input(document, algebra, composition)?;
+            let (body, body_relation) = composition_body_input(document, algebra, composition)?;
             let input = CheckedCompositionPlanInputV2::new(composition, body)
                 .map_err(|error| planning_transaction_error(&error))?;
             let plan = planning_plan(
@@ -1130,10 +1185,12 @@ fn run_item(
                 id,
                 &SemanticPlanInputV2::Composition(Box::new(input)),
             )?;
-            Ok(ItemRunV2::Planned(Box::new(PlannedItemV2::Composition {
-                item_id: id,
-                plan,
-            })))
+            let execution = project_composition(document, composition, body_relation);
+            Ok(ItemRunV2::Planned {
+                planned: Box::new(PlannedItemV2::Composition { item_id: id, plan }),
+                relation: None,
+                composition: Some(execution),
+            })
         }
         SemanticItemV2::Meta(meta) => match meta.kind() {
             ResolvedMetaKindV2::RequireCertified => {
@@ -1143,9 +1200,10 @@ fn run_item(
                     id,
                     &SemanticPlanInputV2::MetaRequireCertified(meta.clone()),
                 )?;
-                Ok(ItemRunV2::Planned(Box::new(
-                    PlannedItemV2::MetaRequireCertified { item_id: id, plan },
-                )))
+                Ok(planned_run(PlannedItemV2::MetaRequireCertified {
+                    item_id: id,
+                    plan,
+                }))
             }
             ResolvedMetaKindV2::UsePack { .. } => Ok(ItemRunV2::NoPlan {
                 item_id: id,
@@ -1153,9 +1211,9 @@ fn run_item(
             }),
         },
         SemanticItemV2::Rule(_) => match membership.rule_program_id() {
-            Some(program_id) => Ok(ItemRunV2::Planned(Box::new(PlannedItemV2::RuleMember(
+            Some(program_id) => Ok(planned_run(PlannedItemV2::RuleMember(
                 RuleProgramMemberV2::new(program_id, id),
-            )))),
+            ))),
             None => Err(assembly(
                 membership.location(id),
                 DocumentAssemblyCodeV2::RuleMembershipMismatch,
@@ -1232,13 +1290,14 @@ fn composition_body_input(
     document: &SemanticDocumentV2,
     algebra: &mut AlgebraSessionV2<'_>,
     composition: &ResolvedCompositionV2,
-) -> Result<CompositionBodyPlanInputV2, FrontendTransactionErrorV2> {
+) -> Result<(CompositionBodyPlanInputV2, Option<ExecutionRelationV2>), FrontendTransactionErrorV2> {
     let owner = composition.item_id();
     match composition.body() {
         ResolvedCompositionBodyV2::Query(body) => {
             let root = algebra
                 .lower_nested_relation(owner, body.root())
                 .map_err(|error| algebra_error(document, owner, &error))?;
+            let execution = project_relation_root(document, body.item_id(), &root);
             let body = CompositionRelationalBodyPlanInputV2::try_new(body.item_id(), root)
                 .map_err(|reason| {
                     planning_transaction_error(&PlanningDiagnosticV1::InvalidComposition {
@@ -1246,19 +1305,51 @@ fn composition_body_input(
                         span: composition.location().clone(),
                     })
                 })?;
-            Ok(CompositionBodyPlanInputV2::Relational(body))
+            Ok((
+                CompositionBodyPlanInputV2::Relational(body),
+                Some(execution),
+            ))
         }
-        ResolvedCompositionBodyV2::Graph(graph) => Ok(CompositionBodyPlanInputV2::Graph(
-            GraphQueryContractV2::from_resolved(graph)
-                .map_err(|error| logic_transaction_error(&error))?,
+        ResolvedCompositionBodyV2::Graph(graph) => Ok((
+            CompositionBodyPlanInputV2::Graph(
+                GraphQueryContractV2::from_resolved(graph)
+                    .map_err(|error| logic_transaction_error(&error))?,
+            ),
+            None,
         )),
-        ResolvedCompositionBodyV2::Check(check) => {
-            Ok(CompositionBodyPlanInputV2::Check(check_contract(check)?))
+        ResolvedCompositionBodyV2::Check(check) => Ok((
+            CompositionBodyPlanInputV2::Check(check_contract(check)?),
+            None,
+        )),
+        ResolvedCompositionBodyV2::Explain(explain) => Ok((
+            CompositionBodyPlanInputV2::Explain(
+                PresentationContractV2::from_resolved(explain)
+                    .map_err(|error| planning_transaction_error(&error))?,
+            ),
+            None,
+        )),
+    }
+}
+
+fn planned_run(planned: PlannedItemV2) -> ItemRunV2 {
+    ItemRunV2::Planned {
+        planned: Box::new(planned),
+        relation: None,
+        composition: None,
+    }
+}
+
+fn execution_identity(planned: &PlannedItemV2) -> Option<(ExecutionFamilyV2, &SemanticPlanV2)> {
+    match planned {
+        PlannedItemV2::Relation { plan, .. } => Some((ExecutionFamilyV2::Relation, plan)),
+        PlannedItemV2::Graph { plan, .. } => Some((ExecutionFamilyV2::Graph, plan)),
+        PlannedItemV2::Check { plan, .. } => Some((ExecutionFamilyV2::Check, plan)),
+        PlannedItemV2::Presentation { plan, .. } => Some((ExecutionFamilyV2::Presentation, plan)),
+        PlannedItemV2::Composition { plan, .. } => Some((ExecutionFamilyV2::Composition, plan)),
+        PlannedItemV2::MetaRequireCertified { plan, .. } => {
+            Some((ExecutionFamilyV2::MetaRequireCertified, plan))
         }
-        ResolvedCompositionBodyV2::Explain(explain) => Ok(CompositionBodyPlanInputV2::Explain(
-            PresentationContractV2::from_resolved(explain)
-                .map_err(|error| planning_transaction_error(&error))?,
-        )),
+        PlannedItemV2::RuleMember(_) => None,
     }
 }
 

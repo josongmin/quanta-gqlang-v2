@@ -23,6 +23,7 @@
 
 mod compile;
 mod diagnostic;
+mod execution;
 
 pub use compile::{
     analyze_resolved_document_v2, analyze_source_document_v2, compile_resolved_document_v2,
@@ -34,6 +35,12 @@ pub use compile::{
 pub use diagnostic::{
     algebra_code, diagnostic_sort_key, logic_code, no_plan_code, planning_code,
     DocumentAssemblyCodeV2, PipelineStageV2,
+};
+pub use execution::{
+    ExecutionBindingV2, ExecutionCompositionBindingV2, ExecutionCompositionV2,
+    ExecutionCorrelationV2, ExecutionDigestV2, ExecutionDocumentV2, ExecutionExpressionV2,
+    ExecutionFamilyV2, ExecutionFieldV2, ExecutionItemV2, ExecutionOrderKeyV2, ExecutionRelationV2,
+    ExecutionRelationalOperatorV2, ExecutionSchemaV2, ExecutionSourceV2,
 };
 pub use quanta_gqlang_v2_algebra::AlgebraFamilyV2;
 pub use quanta_gqlang_v2_planning::{NoPlanReasonV2, SemanticPlanV2};

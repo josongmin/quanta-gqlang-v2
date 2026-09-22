@@ -22,7 +22,11 @@ pub use quanta_gqlang_v2_pipeline::format_source_document_v2;
 // ---- assembled document DTOs ----------------------------------------------
 pub use quanta_gqlang_v2_pipeline::{
     AnalysisDocumentV2, AnalysisItemV2, AnalysisStatusV2, CompiledDocumentV2, CompiledItemV2,
-    CompiledRuleProgramV2, PlannedItemV2, RuleProgramMemberV2, UnresolvedAnalysisFactV2,
+    CompiledRuleProgramV2, ExecutionBindingV2, ExecutionCompositionBindingV2,
+    ExecutionCompositionV2, ExecutionCorrelationV2, ExecutionDigestV2, ExecutionDocumentV2,
+    ExecutionExpressionV2, ExecutionFamilyV2, ExecutionFieldV2, ExecutionItemV2,
+    ExecutionOrderKeyV2, ExecutionRelationV2, ExecutionRelationalOperatorV2, ExecutionSchemaV2,
+    ExecutionSourceV2, PlannedItemV2, RuleProgramMemberV2, UnresolvedAnalysisFactV2,
     OPEN_AUTHORITY_INCOMPLETE_CODE,
 };
 
