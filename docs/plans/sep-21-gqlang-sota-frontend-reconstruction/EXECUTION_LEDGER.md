@@ -2039,3 +2039,33 @@ three functions + curated allowlist, building
 `tools/frontend_external_consumer/` + `tools/test_frontend_external_consumer.py`
 from the W4-C contract, deleting the five transitional facade edges, and
 writing Receipt 07. W5 follows with `/tmp/qg-w5-dispatch-draft.md`.
+
+### W4-B lane CLOSED + shared-tree pipeline acceptance GREEN — 2026-09-22
+
+Pipeline lane complete and accepted IN THE SHARED TREE
+(`CARGO_TARGET_DIR=/tmp/qg-w4-laneB`): `cargo test -p quanta-gqlang-v2-pipeline
+--all-targets` 28/28 (v3_compiled_document_assembly 20, v3_analysis_document_
+assembly 8), `cargo fmt --check` exit 0, `git diff --check` exit 0, and
+`cargo clippy -p quanta-gqlang-v2-pipeline --all-targets -- -D warnings` GREEN
+(after the integrator deleted the unreferenced duplicate
+`planning/src/traversal.rs`, whose 13 dead-code warnings were the only
+obstruction; the budgeted traversal actually in force is `plan.rs::walk` +
+`ChargeV2`, so ticket 07's single-iterative-traversal rule now has exactly one
+implementation). Post-hashes: compile.rs `ab991a9a322193b9`, diagnostic.rs
+`15d4266c90726142`, suites `9aac6edb47a3924a` / `f83c2c91fe93690b`.
+
+V1 pipeline surface fully deleted (nine compile_* routes, FrontendContextV1,
+CompiledItemV1/ProgramV1, PipelineDiagnosticV1/StageV1, frontend-contract
+owner re-exports, HIR/Binder/Types/Modules authority imports, 18 V1 suites).
+New DTOs and the closed `pipeline.document.*`/`pipeline.analysis.*` code
+vocabulary are in the lane report; owner diagnostic codes are bridged
+verbatim. Five mutation kills proven in an isolated mirror and reverted.
+
+Remaining W4 work before the barrier: (1) planning's TEST files still carry
+W4-A-era references (58 errors) — lane W4-A2 owns that migration; (2) the
+barrier itself: re-take the producer freeze, cut the four facade globs to the
+pinned three functions + curated allowlist, build
+`tools/frontend_external_consumer/` + `tools/test_frontend_external_consumer.py`
+from W4-C's contract, delete the five transitional facade edges, run
+planning/pipeline/facade suites + the external-consumer gate + architecture,
+write Receipt 07, commit.
