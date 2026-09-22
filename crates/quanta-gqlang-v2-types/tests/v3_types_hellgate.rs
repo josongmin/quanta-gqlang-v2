@@ -846,6 +846,7 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
     .unwrap();
     let catalog = RelationCatalogV2::try_new(
         vec![RelationSourceInputV2 {
+            authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
             provenance_namespace: namespace,
             qualified_name: "pkg::users".into(),
             lookup_name: "users".into(),

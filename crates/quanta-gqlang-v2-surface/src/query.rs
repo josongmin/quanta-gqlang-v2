@@ -125,30 +125,47 @@ fn is_reserved(word: &str) -> bool {
     )
 }
 
+/// Closed relation-stage vocabulary (STAGE-01): the single authority that owns
+/// both stage recognition and the expected-token diagnostic. Dispatch still
+/// calls the existing stage parsers; no generic AST or second parser exists.
+type StageParserV1 =
+    fn(&mut CursorV1<'_>, RelationExprHirV1) -> Result<RelationExprHirV1, ParseDiagnosticV1>;
+
+/// Ordered closed stage table: every accepted keyword appears exactly once.
+const RELATION_STAGE_TABLE_V1: [(&str, StageParserV1); 6] = [
+    ("where", parse_where),
+    ("project", parse_project),
+    ("join", parse_join),
+    ("cross", parse_cross_join),
+    ("group", parse_group),
+    ("order", parse_order),
+];
+
+/// Render the complete expected-token message from the closed table, so the
+/// diagnostic can never drift behind the accepted vocabulary again.
+fn expected_stage_message_v1() -> String {
+    let mut message = String::from("a pipeline stage keyword (");
+    for (index, (keyword, _)) in RELATION_STAGE_TABLE_V1.iter().enumerate() {
+        if index > 0 {
+            message.push_str(", ");
+        }
+        message.push_str(keyword);
+    }
+    message.push(')');
+    message
+}
+
 /// Parse one `| stage` body, wrapping `input`.
 fn parse_stage(
     cur: &mut CursorV1<'_>,
     input: RelationExprHirV1,
 ) -> Result<RelationExprHirV1, ParseDiagnosticV1> {
-    if cur.eat_keyword("where").is_some() {
-        return parse_where(cur, input);
+    for (keyword, parse) in RELATION_STAGE_TABLE_V1 {
+        if cur.eat_keyword(keyword).is_some() {
+            return parse(cur, input);
+        }
     }
-    if cur.eat_keyword("project").is_some() {
-        return parse_project(cur, input);
-    }
-    if cur.eat_keyword("join").is_some() {
-        return parse_join(cur, input);
-    }
-    if cur.eat_keyword("cross").is_some() {
-        return parse_cross_join(cur, input);
-    }
-    if cur.eat_keyword("group").is_some() {
-        return parse_group(cur, input);
-    }
-    if cur.eat_keyword("order").is_some() {
-        return parse_order(cur, input);
-    }
-    Err(cur.unexpected("a pipeline stage keyword (where, project, join, group, order)"))
+    Err(cur.unexpected(&expected_stage_message_v1()))
 }
 
 fn parse_where(

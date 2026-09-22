@@ -72,6 +72,7 @@ fn authority() -> ClosedFrontendAuthorityV2 {
     let relation_inputs = ["records", "later", "graph_rows"]
         .into_iter()
         .map(|name| RelationSourceInputV2 {
+            authority: quanta_gqlang_v2_sema::RelationAuthorityV2::Host,
             provenance_namespace: ProvenanceNamespaceV2::try_new("host", location.clone()).unwrap(),
             qualified_name: format!("app::{name}"),
             lookup_name: name.into(),

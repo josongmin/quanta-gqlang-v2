@@ -165,6 +165,7 @@ fn host() -> (SourceRegistryViewV2, ClosedFrontendAuthorityV2) {
     let relations = RelationCatalogV2::try_new(
         vec![
             RelationSourceInputV2 {
+                authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
                 provenance_namespace: ProvenanceNamespaceV2::try_new(
                     "host",
                     relation_location.clone(),
@@ -184,6 +185,7 @@ fn host() -> (SourceRegistryViewV2, ClosedFrontendAuthorityV2) {
                 location: relation_location.clone(),
             },
             RelationSourceInputV2 {
+                authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
                 provenance_namespace: ProvenanceNamespaceV2::try_new(
                     "host",
                     relation_location.clone(),

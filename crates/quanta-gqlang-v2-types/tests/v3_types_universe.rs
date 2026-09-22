@@ -96,6 +96,7 @@ fn relation_catalog_rejects_duplicate_name_and_structured_id() {
     .unwrap();
     let namespace = ProvenanceNamespaceV2::try_new("host", checked(&registry, 1, 0)).unwrap();
     let source = RelationSourceInputV2 {
+        authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
         provenance_namespace: namespace.clone(),
         qualified_name: "pkg::users".into(),
         lookup_name: "users".into(),
@@ -105,6 +106,7 @@ fn relation_catalog_rejects_duplicate_name_and_structured_id() {
         location: checked(&registry, 1, 0),
     };
     let duplicate = RelationSourceInputV2 {
+        authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
         provenance_namespace: namespace,
         qualified_name: "pkg::users".into(),
         lookup_name: "users".into(),
@@ -121,6 +123,84 @@ fn relation_catalog_rejects_duplicate_name_and_structured_id() {
     );
 }
 
+fn workspace_files_input(
+    registry: &SourceRegistryViewV2,
+    authority: RelationAuthorityV2,
+) -> RelationSourceInputV2 {
+    let location = checked(registry, 1, 0);
+    RelationSourceInputV2 {
+        authority,
+        provenance_namespace: ProvenanceNamespaceV2::try_new(
+            CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2,
+            location.clone(),
+        )
+        .unwrap(),
+        qualified_name: CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2.into(),
+        lookup_name: CANONICAL_WORKSPACE_FILES_LOOKUP_NAME_V2.into(),
+        row: RecordTypeV1::try_new(vec![RecordFieldTypeV1::try_new(
+            CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2,
+            ValueTypeV1::scalar(ScalarTyV1::RepoPath),
+            location.clone(),
+        )
+        .unwrap()])
+        .unwrap(),
+        cardinality: CardinalityV1::Set,
+        provenance: CANONICAL_WORKSPACE_FILES_PROVENANCE_V2.into(),
+        location,
+    }
+}
+
+#[test]
+fn workspace_files_authority_is_validated_and_part_of_relation_identity() {
+    let registry = type_registry();
+    let canonical = RelationCatalogV2::try_new(
+        vec![workspace_files_input(
+            &registry,
+            RelationAuthorityV2::CanonicalWorkspaceFiles,
+        )],
+        &registry,
+        authority_budget(),
+    )
+    .unwrap();
+    let host = RelationCatalogV2::try_new(
+        vec![workspace_files_input(&registry, RelationAuthorityV2::Host)],
+        &registry,
+        authority_budget(),
+    )
+    .unwrap();
+    let canonical_id = canonical
+        .get(CANONICAL_WORKSPACE_FILES_LOOKUP_NAME_V2)
+        .unwrap()
+        .id();
+    let host_id = host
+        .get(CANONICAL_WORKSPACE_FILES_LOOKUP_NAME_V2)
+        .unwrap()
+        .id();
+    assert_eq!(
+        canonical_id.authority(),
+        RelationAuthorityV2::CanonicalWorkspaceFiles
+    );
+    assert_ne!(canonical_id, host_id);
+}
+
+#[test]
+fn workspace_files_authority_rejects_name_and_shape_mismatch() {
+    let registry = type_registry();
+    let mut wrong_name =
+        workspace_files_input(&registry, RelationAuthorityV2::CanonicalWorkspaceFiles);
+    wrong_name.lookup_name = "workspace_files".into();
+    let error =
+        RelationCatalogV2::try_new(vec![wrong_name], &registry, authority_budget()).unwrap_err();
+    assert_eq!(error.code(), "types.invalid_relation_authority");
+
+    let mut wrong_shape =
+        workspace_files_input(&registry, RelationAuthorityV2::CanonicalWorkspaceFiles);
+    wrong_shape.cardinality = CardinalityV1::Bag;
+    let error =
+        RelationCatalogV2::try_new(vec![wrong_shape], &registry, authority_budget()).unwrap_err();
+    assert_eq!(error.code(), "types.invalid_relation_authority");
+}
+
 #[test]
 fn relation_identity_and_diagnostic_rendering_are_globally_bounded() {
     let registry = type_registry();
@@ -128,6 +208,7 @@ fn relation_identity_and_diagnostic_rendering_are_globally_bounded() {
     let namespace = ProvenanceNamespaceV2::try_new("host", location.clone()).unwrap();
     let error = RelationCatalogV2::try_new(
         vec![RelationSourceInputV2 {
+            authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
             provenance_namespace: namespace,
             qualified_name: format!("{}tail", "segment::".repeat(40)),
             lookup_name: "users".into(),
@@ -174,6 +255,7 @@ fn relation_catalog_retains_exact_source_registry_identity_and_rejects_oob() {
     .unwrap();
     let row = RecordTypeV1::try_new(vec![]).unwrap();
     let input = RelationSourceInputV2 {
+        authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
         provenance_namespace: ProvenanceNamespaceV2::try_new("Host", checked(&registry, 1, 0))
             .unwrap(),
         qualified_name: "Pkg::Users".into(),
@@ -194,6 +276,7 @@ fn relation_catalog_retains_exact_source_registry_identity_and_rejects_oob() {
     .unwrap();
     let row = RecordTypeV1::try_new(vec![]).unwrap();
     let invalid = RelationSourceInputV2 {
+        authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
         provenance_namespace: ProvenanceNamespaceV2::try_new("Host", checked(&substitute, 1, 5))
             .unwrap(),
         qualified_name: "Pkg::Other".into(),
@@ -215,6 +298,7 @@ fn relation_catalog_retains_exact_source_registry_identity_and_rejects_oob() {
 fn relation_catalog_enforces_profile_string_and_aggregate_byte_limits() {
     let registry = type_registry();
     let make_input = || RelationSourceInputV2 {
+        authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
         provenance_namespace: ProvenanceNamespaceV2::try_new("host", checked(&registry, 1, 0))
             .unwrap(),
         qualified_name: "pkg::users".into(),
@@ -384,6 +468,7 @@ fn relation_catalog_distinguishes_duplicate_id_from_duplicate_lookup_name() {
     let namespace = ProvenanceNamespaceV2::try_new("host", checked(&registry, 1, 0)).unwrap();
     let row = RecordTypeV1::try_new(vec![]).unwrap();
     let first = RelationSourceInputV2 {
+        authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
         provenance_namespace: namespace.clone(),
         qualified_name: "pkg::users".into(),
         lookup_name: "users".into(),
@@ -393,6 +478,7 @@ fn relation_catalog_distinguishes_duplicate_id_from_duplicate_lookup_name() {
         location: checked(&registry, 1, 0),
     };
     let same_id = RelationSourceInputV2 {
+        authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
         provenance_namespace: namespace,
         qualified_name: "pkg::users".into(),
         lookup_name: "people".into(),

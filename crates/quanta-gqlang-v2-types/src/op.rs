@@ -95,8 +95,15 @@ mod tests {
         let count = registry.binary.values().map(Vec::len).sum::<usize>()
             + registry.unary.values().map(Vec::len).sum::<usize>();
         assert_eq!(ids.len(), count);
-        for (symbol, overloads) in registry.binary.iter().chain(&registry.unary) {
-            assert!(overloads.iter().all(|entry| entry.id.symbol() == Some(symbol.as_str())));
+        for (symbol, overloads) in &registry.binary {
+            assert!(overloads
+                .iter()
+                .all(|entry| entry.id.symbol() == Some(symbol.as_str())));
+        }
+        for (symbol, overloads) in &registry.unary {
+            assert!(overloads
+                .iter()
+                .all(|entry| entry.id.symbol() == Some(symbol.as_str())));
         }
     }
     #[test]

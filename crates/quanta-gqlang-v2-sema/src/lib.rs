@@ -28,8 +28,9 @@ pub use quanta_gqlang_v2_hir::{
 };
 pub use quanta_gqlang_v2_types::{
     CardinalityV1, ExpressionTypeStateV2, OperatorIdV2, ProvenanceNamespaceV2, RecordFieldTypeV1,
-    RecordTypeV1, RelationCatalogV2, RelationSourceInputV2, ResolvedCallTargetV2, ScalarTyV1,
-    SourceQualifiedNodeIdV2, TypedLiteralFactV2, TypedLiteralValueV2, ValueTypeV1,
+    RecordTypeV1, RelationAuthorityV2, RelationCatalogV2, RelationSourceInputV2,
+    ResolvedCallTargetV2, ScalarTyV1, SourceQualifiedNodeIdV2, TypedLiteralFactV2,
+    TypedLiteralValueV2, ValueTypeV1,
 };
 
 pub use authority::{
@@ -37,10 +38,10 @@ pub use authority::{
     FrontendAuthorityErrorV2, FrontendAuthorityLocationV2, FrontendAuthoritySourceV2,
     FrontendBudgetV2, FrontendCallableParameterInputV2, FrontendCatalogAssetInputV2,
     FrontendCatalogPayloadV2, FrontendGraphReferenceInputV2, FrontendLanguageVersionV2,
-    FrontendLockfileInputV2, FrontendPackInputV2, FrontendRelationCardinalityV2,
-    FrontendRelationFieldInputV2, FrontendRelationInputV2, FrontendScalarTypeV2,
-    GraphReferenceCatalogV2, GraphReferenceIdV2, GraphReferenceInputV2, GraphReferenceKindV2,
-    OpenAnalysisAuthorityInputV2, OpenAnalysisAuthorityV2,
+    FrontendLockfileInputV2, FrontendPackInputV2, FrontendRelationAuthorityV2,
+    FrontendRelationCardinalityV2, FrontendRelationFieldInputV2, FrontendRelationInputV2,
+    FrontendScalarTypeV2, GraphReferenceCatalogV2, GraphReferenceIdV2, GraphReferenceInputV2,
+    GraphReferenceKindV2, OpenAnalysisAuthorityInputV2, OpenAnalysisAuthorityV2,
 };
 pub use diagnostic::{
     FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2, FrontendStageV2,

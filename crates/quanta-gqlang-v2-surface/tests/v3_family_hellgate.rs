@@ -9,11 +9,11 @@
 )]
 
 use quanta_gqlang_v2_hir::{
-    check_tree, ActivationV1, AdmissionV1, CatalogPayloadV1, CompareMetricV1, CompositionBodyV1,
-    CompositionProducerV1, ConfirmModeV1, DetectionModeV1, EmitModeV1, EvidenceModeV1,
-    ExportFormatV1, GateBindingV1, GraphQueryKindV1, HirBuilderV1, HirRootRefV1, MetaKindV1,
-    PresentationKindV1, ProgramItemHirV1, SampleModeV1, ShowCategoryV1, TruthModeV1,
-    UsePackActivationV1, ViewBodyV1,
+    check_tree, ActivationV1, AdmissionV1, BoolExprKindV1, CatalogPayloadV1, CompareMetricV1,
+    CompositionBodyV1, CompositionProducerV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
+    EvidenceModeV1, ExportFormatV1, GateBindingV1, GraphQueryKindV1, HirBuilderV1, HirRootRefV1,
+    MetaKindV1, PresentationKindV1, ProgramItemHirV1, RelationExprKindV1, SampleModeV1,
+    ShowCategoryV1, TruthModeV1, UsePackActivationV1, ValueExprKindV1, ViewBodyV1,
 };
 use quanta_gqlang_v2_surface::{parse_program, ParseErrorCodeV1};
 
@@ -185,6 +185,46 @@ fn check_missing_confirm_rejects() {
     let diag = err("check rule.hybrid | scope=repo | emit=findings");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert!(diag.message.contains("confirm"), "msg: {}", diag.message);
+}
+
+#[test]
+fn check_ref_double_colon_separator_is_atomic() {
+    // REF-01: `::` is exactly two colons. The positive case retains the full ref.
+    let src = "check repo::auth | confirm=skip";
+    let item = program(src);
+    let chk = match item {
+        ProgramItemHirV1::Legality(c) => c,
+        other => panic!("expected Legality, got {other:?}"),
+    };
+    assert_eq!(chk.rule_ref.name, "repo::auth");
+    let ref_at = src.find("repo::auth").expect("ref in source");
+    assert_eq!(chk.rule_ref.span.start, ref_at);
+    assert_eq!(chk.rule_ref.span.end, ref_at + "repo::auth".len());
+}
+
+#[test]
+fn check_ref_single_colon_rejects_at_second_colon_expectation() {
+    // REF-01: a single `:` is not a lenient `::`. The diagnostic points at the
+    // token immediately following the first colon with the stable expectation.
+    let src = "check repo:auth | confirm=skip";
+    let diag = err(src);
+    assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+    assert_eq!(diag.message, "expected a second ':' in '::'");
+    let ident_at = src.find(":auth").expect("single-colon input") + 1;
+    assert_eq!(diag.span.start, ident_at);
+    assert_eq!(diag.span.end, ident_at + "auth".len());
+}
+
+#[test]
+fn check_ref_missing_segment_after_double_colon_rejects() {
+    // REF-01: `::` with no following segment rejects at the missing segment.
+    let src = "check repo:: | confirm=skip";
+    let diag = err(src);
+    assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+    assert_eq!(diag.message, "expected a path segment after '::'");
+    let pipe_at = src.find('|').expect("pipe input");
+    assert_eq!(diag.span.start, pipe_at);
+    assert_eq!(diag.span.end, pipe_at + 1);
 }
 
 // ---- EXPLAIN ---------------------------------------------------------------
@@ -359,15 +399,53 @@ fn view_query_ref_parses_to_catalog_decl() {
 
 #[test]
 fn view_inline_select_parses_to_catalog_decl() {
-    let item = program("view active | select=from users u | where u.active");
+    // VIEW-01: the inline query body must survive structurally — root filter,
+    // scan/source identity, alias, and the `u.active` predicate path. Matching
+    // `Inline(_)` alone would let a parser that drops the `where` stage pass.
+    let src = "view active | select=from users u | where u.active";
+    let item = program(src);
     let decl = match item {
         ProgramItemHirV1::CatalogDecl(d) => d,
         other => panic!("expected CatalogDecl, got {other:?}"),
     };
-    match decl.payload {
-        CatalogPayloadV1::View(ViewBodyV1::Inline(_)) => {}
+    let query = match decl.payload {
+        CatalogPayloadV1::View(ViewBodyV1::Inline(query)) => *query,
         other => panic!("expected View Inline, got {other:?}"),
-    }
+    };
+    let filter = match query.body.kind {
+        RelationExprKindV1::Filter(filter) => filter,
+        other => panic!("expected root Filter, got {other:?}"),
+    };
+    let source = match filter.input.kind {
+        RelationExprKindV1::Source(source) => source,
+        other => panic!("expected Source input, got {other:?}"),
+    };
+    assert_eq!(source.name, "users");
+    assert_eq!(
+        source.alias.as_ref().expect("alias u").name,
+        "u",
+        "binding alias must survive"
+    );
+    let predicate = match filter.predicate.kind {
+        BoolExprKindV1::Value(value) => value,
+        other => panic!("expected Value predicate, got {other:?}"),
+    };
+    let path = match predicate.kind {
+        ValueExprKindV1::Path(path) => path,
+        other => panic!("expected Path predicate, got {other:?}"),
+    };
+    let base = match path.base.kind {
+        ValueExprKindV1::Symbol(symbol) => symbol,
+        other => panic!("expected Symbol base, got {other:?}"),
+    };
+    assert_eq!(base.name, "u");
+    let segments = path.segments.as_slice();
+    assert_eq!(segments.len(), 1, "exactly one path segment");
+    assert_eq!(segments[0].name, "active");
+    // span proof: the predicate covers `u.active` in the source text.
+    let pred_at = src.find("u.active").expect("predicate in source");
+    assert_eq!(predicate.span.start, pred_at);
+    assert_eq!(predicate.span.end, pred_at + "u.active".len());
 }
 
 #[test]
@@ -423,18 +501,10 @@ fn profile_parses_to_catalog_decl() {
     }
 }
 
-#[test]
-fn profile_missing_capabilities_rejects() {
-    // PROFILE must name at least one capability: an empty allowlist fails open
-    // (admits everything), so reject fail-closed when 'capabilities' is omitted.
-    let diag = err("profile p | admission=allowlist");
-    assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("capabilities"),
-        "msg: {}",
-        diag.message
-    );
-}
+// DEDUPE-01: `profile_missing_capabilities_rejects` removed. The
+// `v3_family_edges::profile_admission_and_clause_reject` rail asserts the same
+// input with the exact message; the weaker `contains` oracle added executions
+// without an independent oracle.
 
 #[test]
 fn gate_parses_to_catalog_decl() {
@@ -452,14 +522,10 @@ fn gate_parses_to_catalog_decl() {
     }
 }
 
-#[test]
-fn gate_missing_checks_rejects() {
-    // GATE must name at least one check: an empty checks list binds over nothing
-    // (vacuously passes), so reject fail-closed when 'checks' is omitted.
-    let diag = err("gate g | binding=all");
-    assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(diag.message.contains("checks"), "msg: {}", diag.message);
-}
+// DEDUPE-01: `gate_missing_checks_rejects` removed. The
+// `v3_family_edges::gate_binding_and_clause_reject` rail asserts the same input
+// with the exact message; the weaker `contains` oracle added executions without
+// an independent oracle.
 
 #[test]
 fn rule_binding_parses_to_catalog_decl() {
@@ -949,15 +1015,40 @@ fn composition_non_body_family_rejects() {
 
 #[test]
 fn composition_explain_producer_rejects() {
-    // EXPLAIN is an admitted BODY but NOT an admitted PRODUCER. Using it on the
-    // right of `let <name> =` must reject fail-closed at the producer position,
-    // pinning the asymmetry between the producer and body columns of the matrix.
-    let src = "let q = explain rule.x find taint a -> b with q";
-    let diag = err(src);
-    // `at_composition` only fires for from/sample/find producers, so `explain`
-    // here is not recognized as a composition at all and the standalone `let`
-    // value/decl path rejects it. Either way it must FAIL (not parse as a comp).
+    // PRODUCER-01: EXPLAIN is an admitted BODY but NOT an admitted PRODUCER.
+    // A valid first binding forces composition recognition, so the invalid
+    // second `let bad = explain ...` reaches `parse_producer` itself (the old
+    // source was rejected by composition lookahead and never pinned the
+    // producer-column allowlist it named).
+    let prefix = "let q = sample query=\"x\" | mode=lexical | limit=1 ";
+    let src = format!("{prefix}let bad = explain rule.x find taint a -> b with q");
+    let diag = err(&src);
     assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+    assert_eq!(
+        diag.message,
+        "expected a composition producer (from / sample / find)"
+    );
+    let explain_at = src.find("explain rule.x").expect("explain producer");
+    assert_eq!(diag.span.start, explain_at);
+    assert_eq!(diag.span.end, explain_at + "explain".len());
+}
+
+#[test]
+fn composition_second_producer_from_parses() {
+    // PRODUCER-01 positive neighbor: a valid second `from` producer parses, so
+    // the reject above pins the producer allowlist rather than second bindings.
+    let prefix = "let q = sample query=\"x\" | mode=lexical | limit=1 ";
+    let src = format!("{prefix}let bad = from users u find taint a -> b with q");
+    let item = program(&src);
+    let comp = match item {
+        ProgramItemHirV1::Composition(c) => c,
+        other => panic!("expected Composition, got {other:?}"),
+    };
+    assert_eq!(comp.bindings.len(), 2);
+    assert!(matches!(
+        &comp.bindings[1].producer,
+        CompositionProducerV1::Query(_)
+    ));
 }
 
 #[test]

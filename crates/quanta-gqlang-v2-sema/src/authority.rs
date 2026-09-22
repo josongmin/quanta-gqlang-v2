@@ -16,8 +16,10 @@ use quanta_gqlang_v2_modules::{
 };
 use quanta_gqlang_v2_types::{
     AuthorityBudgetProfileV2, CardinalityV1, ExpressionEffectsV2, ExpressionTypeKernelV2,
-    ProvenanceNamespaceV2, RecordFieldTypeV1, RecordTypeV1, RelationCatalogV2,
-    RelationSourceInputV2, ScalarTyV1, ValueTypeV1,
+    ProvenanceNamespaceV2, RecordFieldTypeV1, RecordTypeV1, RelationAuthorityV2, RelationCatalogV2,
+    RelationSourceInputV2, ScalarTyV1, ValueTypeV1, CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2,
+    CANONICAL_WORKSPACE_FILES_LOOKUP_NAME_V2, CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2,
+    CANONICAL_WORKSPACE_FILES_PROVENANCE_V2, CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2,
 };
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
@@ -861,6 +863,24 @@ pub enum FrontendRelationCardinalityV2 {
     Sequence,
 }
 
+/// Closed relation provenance admitted at the public frontend boundary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FrontendRelationAuthorityV2 {
+    /// An application-hosted relation with host-defined identity and schema.
+    Host,
+    /// The canonical workspace-file inventory relation.
+    CanonicalWorkspaceFiles,
+}
+
+impl FrontendRelationAuthorityV2 {
+    const fn owner(self) -> RelationAuthorityV2 {
+        match self {
+            Self::Host => RelationAuthorityV2::Host,
+            Self::CanonicalWorkspaceFiles => RelationAuthorityV2::CanonicalWorkspaceFiles,
+        }
+    }
+}
+
 impl FrontendRelationCardinalityV2 {
     const fn owner(self) -> CardinalityV1 {
         match self {
@@ -883,6 +903,7 @@ pub struct FrontendRelationFieldInputV2 {
 /// One host relation supplied through the public authority boundary.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FrontendRelationInputV2 {
+    pub authority: FrontendRelationAuthorityV2,
     pub provenance_namespace: String,
     pub qualified_name: String,
     pub lookup_name: String,
@@ -890,6 +911,32 @@ pub struct FrontendRelationInputV2 {
     pub cardinality: FrontendRelationCardinalityV2,
     pub provenance: String,
     pub location: FrontendAuthorityLocationV2,
+}
+
+impl FrontendRelationInputV2 {
+    /// Construct the exact canonical workspace-file authority contract without
+    /// requiring hosts to duplicate or infer its identity and row schema.
+    #[must_use]
+    pub fn canonical_workspace_files(
+        location: FrontendAuthorityLocationV2,
+        field_location: FrontendAuthorityLocationV2,
+    ) -> Self {
+        Self {
+            authority: FrontendRelationAuthorityV2::CanonicalWorkspaceFiles,
+            provenance_namespace: CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2.to_owned(),
+            qualified_name: CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2.to_owned(),
+            lookup_name: CANONICAL_WORKSPACE_FILES_LOOKUP_NAME_V2.to_owned(),
+            fields: vec![FrontendRelationFieldInputV2 {
+                name: CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2.to_owned(),
+                scalar_type: FrontendScalarTypeV2::RepoPath,
+                optional: false,
+                location: field_location,
+            }],
+            cardinality: FrontendRelationCardinalityV2::Set,
+            provenance: CANONICAL_WORKSPACE_FILES_PROVENANCE_V2.to_owned(),
+            location,
+        }
+    }
 }
 
 /// One graph selector supplied through the public authority boundary.
@@ -1214,6 +1261,7 @@ impl ClosedFrontendAuthorityBuilderV2 {
             let row = RecordTypeV1::try_new(fields)
                 .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
             relation_inputs.push(RelationSourceInputV2 {
+                authority: relation.authority.owner(),
                 provenance_namespace: namespace,
                 qualified_name: relation.qualified_name,
                 lookup_name: relation.lookup_name,

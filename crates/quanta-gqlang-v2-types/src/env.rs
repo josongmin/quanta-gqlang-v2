@@ -1,4 +1,6 @@
-use crate::{CardinalityV1, RecordTypeV1, RelationTypeV1, TypeAuthorityDiagnosticV2};
+use crate::{
+    CardinalityV1, RecordTypeV1, RelationTypeV1, ScalarTyV1, TypeAuthorityDiagnosticV2, ValueTypeV1,
+};
 use quanta_gqlang_v2_hir::{CheckedLocatedSpanV2, SourceRegistryIdentityV2, SourceRegistryViewV2};
 use std::collections::BTreeMap;
 
@@ -84,11 +86,13 @@ impl ProvenanceNamespaceV2 {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RelationSourceIdV2 {
+    authority: RelationAuthorityV2,
     namespace: ProvenanceNamespaceV2,
     qualified_name: String,
 }
 impl RelationSourceIdV2 {
     fn derive(
+        authority: RelationAuthorityV2,
         namespace: ProvenanceNamespaceV2,
         qualified_name: &str,
     ) -> Result<Self, &'static str> {
@@ -100,9 +104,14 @@ impl RelationSourceIdV2 {
             return Err("invalid qualified relation name");
         }
         Ok(Self {
+            authority,
             namespace,
             qualified_name: qualified_name.to_owned(),
         })
+    }
+    #[must_use]
+    pub const fn authority(&self) -> RelationAuthorityV2 {
+        self.authority
     }
     #[must_use]
     pub fn namespace(&self) -> &ProvenanceNamespaceV2 {
@@ -114,8 +123,21 @@ impl RelationSourceIdV2 {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum RelationAuthorityV2 {
+    Host,
+    CanonicalWorkspaceFiles,
+}
+
+pub const CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2: &str = "builtin";
+pub const CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2: &str = "workspace_files";
+pub const CANONICAL_WORKSPACE_FILES_LOOKUP_NAME_V2: &str = "files";
+pub const CANONICAL_WORKSPACE_FILES_PROVENANCE_V2: &str = "builtin:workspace-files";
+pub const CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2: &str = "path";
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RelationSourceInputV2 {
+    pub authority: RelationAuthorityV2,
     pub provenance_namespace: ProvenanceNamespaceV2,
     pub qualified_name: String,
     pub lookup_name: String,
@@ -134,6 +156,10 @@ pub struct RelationSourceV2 {
     location: CheckedLocatedSpanV2,
 }
 impl RelationSourceV2 {
+    #[must_use]
+    pub const fn authority(&self) -> RelationAuthorityV2 {
+        self.id.authority()
+    }
     #[must_use]
     pub fn id(&self) -> &RelationSourceIdV2 {
         &self.id
@@ -201,13 +227,18 @@ impl RelationCatalogV2 {
                 });
             }
             let raw_location = input.location.location();
-            let id = RelationSourceIdV2::derive(input.provenance_namespace, &input.qualified_name)
-                .map_err(
-                    |_name_error| TypeAuthorityDiagnosticV2::InvalidCanonicalName {
-                        name: diagnostic_name(&input.qualified_name),
-                        location: raw_location,
-                    },
-                )?;
+            validate_relation_authority(&input)?;
+            let id = RelationSourceIdV2::derive(
+                input.authority,
+                input.provenance_namespace,
+                &input.qualified_name,
+            )
+            .map_err(|_name_error| {
+                TypeAuthorityDiagnosticV2::InvalidCanonicalName {
+                    name: diagnostic_name(&input.qualified_name),
+                    location: raw_location,
+                }
+            })?;
             if !canonical_segment(&input.lookup_name) {
                 return Err(TypeAuthorityDiagnosticV2::InvalidCanonicalName {
                     name: input.lookup_name,
@@ -263,6 +294,30 @@ impl RelationCatalogV2 {
     pub const fn budget_profile(&self) -> &AuthorityBudgetProfileV2 {
         &self.budget_profile
     }
+}
+
+fn validate_relation_authority(
+    input: &RelationSourceInputV2,
+) -> Result<(), TypeAuthorityDiagnosticV2> {
+    if input.authority == RelationAuthorityV2::Host {
+        return Ok(());
+    }
+    let exact_identity = input.provenance_namespace.as_str()
+        == CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2
+        && input.qualified_name == CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2
+        && input.lookup_name == CANONICAL_WORKSPACE_FILES_LOOKUP_NAME_V2
+        && input.provenance == CANONICAL_WORKSPACE_FILES_PROVENANCE_V2;
+    let exact_shape = input.cardinality == CardinalityV1::Set
+        && input.row.fields().len() == 1
+        && input.row.fields()[0].name() == CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2
+        && input.row.fields()[0].value_type() == &ValueTypeV1::scalar(ScalarTyV1::RepoPath);
+    if exact_identity && exact_shape {
+        return Ok(());
+    }
+    Err(TypeAuthorityDiagnosticV2::InvalidRelationAuthority {
+        authority: "canonical_workspace_files",
+        location: input.location.location(),
+    })
 }
 
 fn canonical_segment(value: &str) -> bool {

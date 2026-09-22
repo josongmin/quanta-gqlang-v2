@@ -310,10 +310,12 @@ fn parse_ref(
             continue;
         }
         if matches!(cur.peek().kind, TokenKindV1::Colon) {
-            // accept `::` (two colons) as a path separator.
+            // `::` is atomic: exactly two consecutive colons. A single colon
+            // rejects at the token following it (REF-01); lenient recovery
+            // would silently widen the reference grammar.
             let _ = cur.bump();
-            if matches!(cur.peek().kind, TokenKindV1::Colon) {
-                let _ = cur.bump();
+            if cur.eat(&TokenKindV1::Colon).is_none() {
+                return Err(cur.unexpected("a second ':' in '::'"));
             }
             let (_s, sp) = cur.expect_ident("a path segment after '::'")?;
             end = sp.end;

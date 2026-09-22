@@ -248,6 +248,7 @@ fn scalar_authority(budget: &FrontendBudgetV2) -> ClosedFrontendAuthorityV2 {
     let row = RecordTypeV1::try_new(vec![field]).unwrap();
     let relations = RelationCatalogV2::try_new(
         vec![RelationSourceInputV2 {
+            authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
             provenance_namespace: ProvenanceNamespaceV2::try_new("host", location.clone()).unwrap(),
             qualified_name: "records".into(),
             lookup_name: "records".into(),

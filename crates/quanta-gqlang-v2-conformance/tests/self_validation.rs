@@ -69,6 +69,7 @@ fn closed_authority_with_lock_digest(
     {
         let base = 10 + index * 16;
         builder.add_relation(FrontendRelationInputV2 {
+            authority: quanta_gqlang_v2_frontend_contract::FrontendRelationAuthorityV2::Host,
             provenance_namespace: "host".to_owned(),
             qualified_name: format!("app::{name}"),
             lookup_name: name.to_owned(),

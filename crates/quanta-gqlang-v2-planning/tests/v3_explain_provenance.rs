@@ -148,6 +148,30 @@ fn a_self_join_walks_every_arm_in_preorder() {
     );
 }
 
+/// EXPLAIN-01: an asymmetric join discriminates child order where symmetric
+/// fixtures cannot. Left (`Project -> Filter -> Scan`) and right (`Sort ->
+/// Scan`) have different family shapes, so swapping sibling traversal changes
+/// the vector. Driven through the public `plan` entry point like its
+/// neighbors — never a hand-written provenance list.
+#[test]
+fn an_asymmetric_join_walks_left_subtree_before_right() {
+    let (families, nodes, planned) = families(ReferenceRelationFixtureV2::AsymmetricJoinPreorder);
+    assert_eq!(nodes, 6);
+    assert_eq!(
+        families,
+        vec![
+            AlgebraFamilyV2::Join,
+            AlgebraFamilyV2::Project,
+            AlgebraFamilyV2::Filter,
+            AlgebraFamilyV2::Scan,
+            AlgebraFamilyV2::Sort,
+            AlgebraFamilyV2::Scan,
+        ]
+    );
+    // the oracle observes the normal planner/explain entry point product.
+    assert_eq!(planned.explain().families(), families.as_slice());
+}
+
 /// A relational EXISTS conjunct is lowered into the traversal as a Semi/Anti
 /// join, so the note lists the residual filter first and then BOTH semi-join
 /// arms.

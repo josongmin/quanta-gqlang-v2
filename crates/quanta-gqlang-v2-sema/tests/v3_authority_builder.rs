@@ -45,6 +45,7 @@ fn builder() -> ClosedFrontendAuthorityBuilderV2 {
 fn facade_builder_seals_relation_and_graph_authority_in_one_registry() {
     let mut builder = builder();
     builder.add_relation(FrontendRelationInputV2 {
+        authority: quanta_gqlang_v2_sema::FrontendRelationAuthorityV2::Host,
         provenance_namespace: "host".to_owned(),
         qualified_name: "app::records".to_owned(),
         lookup_name: "records".to_owned(),
@@ -67,6 +68,47 @@ fn facade_builder_seals_relation_and_graph_authority_in_one_registry() {
     let authority = builder.finish().expect("authority seals");
     assert!(authority.relations().get("records").is_some());
     assert_eq!(authority.graph_references().len(), 1);
+}
+
+#[test]
+fn facade_builder_seals_canonical_workspace_files_without_name_inference() {
+    let mut builder = builder();
+    builder.add_relation(FrontendRelationInputV2::canonical_workspace_files(
+        location(1, 4),
+        location(2, 3),
+    ));
+    let authority = builder.finish().expect("workspace-files authority seals");
+    let source = authority
+        .relations()
+        .get("files")
+        .expect("canonical lookup is owner supplied");
+    assert_eq!(
+        source.id().authority(),
+        quanta_gqlang_v2_sema::RelationAuthorityV2::CanonicalWorkspaceFiles
+    );
+}
+
+#[test]
+fn facade_builder_rejects_workspace_files_name_and_shape_mutations() {
+    let mut wrong_name =
+        FrontendRelationInputV2::canonical_workspace_files(location(1, 4), location(2, 3));
+    wrong_name.lookup_name = "workspace_files".to_owned();
+    let mut wrong_name_builder = builder();
+    wrong_name_builder.add_relation(wrong_name);
+    let error = wrong_name_builder
+        .finish()
+        .expect_err("name mutation rejects");
+    assert_eq!(error.code(), "types.invalid_relation_authority");
+
+    let mut wrong_shape =
+        FrontendRelationInputV2::canonical_workspace_files(location(1, 4), location(2, 3));
+    wrong_shape.fields[0].scalar_type = FrontendScalarTypeV2::String;
+    let mut wrong_shape_builder = builder();
+    wrong_shape_builder.add_relation(wrong_shape);
+    let error = wrong_shape_builder
+        .finish()
+        .expect_err("shape mutation rejects");
+    assert_eq!(error.code(), "types.invalid_relation_authority");
 }
 
 #[test]

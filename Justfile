@@ -25,6 +25,7 @@ frontdoor-parity:
 test:
     just nextest
     just doc-test
+    just frontdoor-parity
 
 deny:
     cargo deny check bans licenses sources advisories
@@ -45,7 +46,7 @@ semgrep:
 
 lint: fmt taplo clippy clippy-current-policy
 
-boundary: frontdoor-parity arch-lint external-consumer
+boundary: arch-lint external-consumer
 
 policy: deny typos semgrep
 

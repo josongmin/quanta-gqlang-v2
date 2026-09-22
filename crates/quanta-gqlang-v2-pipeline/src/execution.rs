@@ -9,12 +9,12 @@ use quanta_gqlang_v2_planning::{
     SemanticPlanV2,
 };
 use quanta_gqlang_v2_sema::{
-    CardinalityV1, ExpressionTypeStateV2, JoinModeV2, LogicalQuantifierKindV2, NullOrderV2,
-    RelationExistsPolarityV2, RelationOutputContractV2, ResolvedCallTargetV2,
-    ResolvedCompositionBodyV2, ResolvedCompositionProducerV2, ResolvedCompositionV2,
-    ResolvedRelationSourceKindV2, SemanticDocumentV2, SemanticItemIdV2, SortDirectionV2,
-    SourceIdV2, SourceQualifiedNodeIdV2, TypedCallArgumentV2, TypedExprShapeV2, TypedExprV2,
-    TypedLiteralFactV2, TypedLiteralValueV2,
+    CardinalityV1, ExpressionTypeStateV2, GraphQueryKindV1, JoinModeV2, LogicalQuantifierKindV2,
+    NullOrderV2, RelationAuthorityV2, RelationExistsPolarityV2, RelationOutputContractV2,
+    ResolvedCallTargetV2, ResolvedCompositionBodyV2, ResolvedCompositionProducerV2,
+    ResolvedCompositionV2, ResolvedPresentationKindV2, ResolvedRelationSourceKindV2, SampleModeV1,
+    SemanticDocumentV2, SemanticItemIdV2, SortDirectionV2, SourceIdV2, SourceQualifiedNodeIdV2,
+    TypedCallArgumentV2, TypedExprShapeV2, TypedExprV2, TypedLiteralFactV2, TypedLiteralValueV2,
 };
 
 /// SHA-256 digest of the canonical execution-contract encoding.
@@ -556,26 +556,51 @@ pub enum ExecutionExpressionShapeV2 {
 
 /// Public semantic operator plus the exact checked overload identity.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionOperatorV2 { symbol: String, overload_id: u32 }
+pub struct ExecutionOperatorV2 {
+    symbol: String,
+    overload_id: u32,
+}
 impl ExecutionOperatorV2 {
-    #[must_use] pub fn symbol(&self) -> &str { &self.symbol }
-    #[must_use] pub const fn overload_id(&self) -> u32 { self.overload_id }
+    #[must_use]
+    pub fn symbol(&self) -> &str {
+        &self.symbol
+    }
+    #[must_use]
+    pub const fn overload_id(&self) -> u32 {
+        self.overload_id
+    }
 }
 
 fn project_operator(operator: quanta_gqlang_v2_sema::OperatorIdV2) -> ExecutionOperatorV2 {
     ExecutionOperatorV2 {
-        symbol: operator.symbol().unwrap_or("invalid_closed_operator").to_owned(),
+        symbol: operator
+            .symbol()
+            .unwrap_or("invalid_closed_operator")
+            .to_owned(),
         overload_id: operator.raw(),
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExecutionRelationAuthorityV2 {
+    Host,
+    CanonicalWorkspaceFiles,
+    CatalogView,
+    CompositionBinding,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionSourceV2 {
+    authority: ExecutionRelationAuthorityV2,
     kind: String,
     namespace: Option<String>,
     name: String,
 }
 impl ExecutionSourceV2 {
+    #[must_use]
+    pub const fn authority(&self) -> ExecutionRelationAuthorityV2 {
+        self.authority
+    }
     #[must_use]
     pub fn kind(&self) -> &str {
         &self.kind
@@ -640,6 +665,7 @@ pub struct ExecutionCompositionV2 {
     body_item_id: SemanticItemIdV2,
     body_family: ExecutionFamilyV2,
     body_relation: Option<ExecutionRelationV2>,
+    body: ExecutionCompositionBodyV2,
 }
 impl ExecutionCompositionV2 {
     #[must_use]
@@ -662,6 +688,18 @@ impl ExecutionCompositionV2 {
     pub const fn body_relation(&self) -> Option<&ExecutionRelationV2> {
         self.body_relation.as_ref()
     }
+    #[must_use]
+    pub const fn body(&self) -> &ExecutionCompositionBodyV2 {
+        &self.body
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExecutionCompositionBodyV2 {
+    Relation,
+    Graph(ExecutionGraphKindV2),
+    Check,
+    Explain,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -671,6 +709,7 @@ pub struct ExecutionCompositionBindingV2 {
     producer_family: ExecutionFamilyV2,
     schema: Option<ExecutionSchemaV2>,
     relation: Option<ExecutionRelationV2>,
+    producer: ExecutionCompositionProducerV2,
 }
 impl ExecutionCompositionBindingV2 {
     #[must_use]
@@ -693,6 +732,39 @@ impl ExecutionCompositionBindingV2 {
     pub const fn relation(&self) -> Option<&ExecutionRelationV2> {
         self.relation.as_ref()
     }
+    #[must_use]
+    pub const fn producer(&self) -> &ExecutionCompositionProducerV2 {
+        &self.producer
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExecutionCompositionProducerV2 {
+    Relation,
+    Sample {
+        query_text: String,
+        mode: ExecutionSampleModeV2,
+        limit: u32,
+    },
+    Graph {
+        kind: ExecutionGraphKindV2,
+    },
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionSampleModeV2 {
+    Lexical,
+    Semantic,
+    Hybrid,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionGraphKindV2 {
+    Reachability,
+    Flow,
+    Slice,
+    Taint,
+    Path,
+    PointsTo,
+    Summary,
 }
 
 pub(crate) fn project_relation(
@@ -729,10 +801,36 @@ pub(crate) fn project_composition(
         .iter()
         .zip(producer_relations)
         .map(|(entry, relation)| {
-            let family = match entry.producer() {
-                ResolvedCompositionProducerV2::Query(_) => ExecutionFamilyV2::Relation,
-                ResolvedCompositionProducerV2::Sample { .. } => ExecutionFamilyV2::Presentation,
-                ResolvedCompositionProducerV2::Graph { .. } => ExecutionFamilyV2::Graph,
+            let (family, producer) = match entry.producer() {
+                ResolvedCompositionProducerV2::Query(_) => (
+                    ExecutionFamilyV2::Relation,
+                    ExecutionCompositionProducerV2::Relation,
+                ),
+                ResolvedCompositionProducerV2::Sample { presentation, .. } => {
+                    let ResolvedPresentationKindV2::Sample {
+                        query_text,
+                        mode,
+                        limit,
+                        ..
+                    } = presentation.kind()
+                    else {
+                        unreachable!("sealed composition SAMPLE producer")
+                    };
+                    (
+                        ExecutionFamilyV2::Presentation,
+                        ExecutionCompositionProducerV2::Sample {
+                            query_text: query_text.clone(),
+                            mode: project_sample_mode(*mode),
+                            limit: *limit,
+                        },
+                    )
+                }
+                ResolvedCompositionProducerV2::Graph { graph, .. } => (
+                    ExecutionFamilyV2::Graph,
+                    ExecutionCompositionProducerV2::Graph {
+                        kind: project_graph_kind(graph.kind()),
+                    },
+                ),
             };
             ExecutionCompositionBindingV2 {
                 binding: project_binding(entry.binding()),
@@ -740,17 +838,32 @@ pub(crate) fn project_composition(
                 producer_family: family,
                 schema: entry.relation_output().map(project_schema),
                 relation,
+                producer,
             }
         })
         .collect::<Vec<_>>()
         .into_boxed_slice();
-    let (body_item_id, body_family) = match composition.body() {
-        ResolvedCompositionBodyV2::Query(body) => (body.item_id(), ExecutionFamilyV2::Relation),
-        ResolvedCompositionBodyV2::Graph(body) => (body.item_id(), ExecutionFamilyV2::Graph),
-        ResolvedCompositionBodyV2::Check(body) => (body.item_id(), ExecutionFamilyV2::Check),
-        ResolvedCompositionBodyV2::Explain(body) => {
-            (body.item_id(), ExecutionFamilyV2::Presentation)
-        }
+    let (body_item_id, body_family, body) = match composition.body() {
+        ResolvedCompositionBodyV2::Query(body) => (
+            body.item_id(),
+            ExecutionFamilyV2::Relation,
+            ExecutionCompositionBodyV2::Relation,
+        ),
+        ResolvedCompositionBodyV2::Graph(body) => (
+            body.item_id(),
+            ExecutionFamilyV2::Graph,
+            ExecutionCompositionBodyV2::Graph(project_graph_kind(body.kind())),
+        ),
+        ResolvedCompositionBodyV2::Check(body) => (
+            body.item_id(),
+            ExecutionFamilyV2::Check,
+            ExecutionCompositionBodyV2::Check,
+        ),
+        ResolvedCompositionBodyV2::Explain(body) => (
+            body.item_id(),
+            ExecutionFamilyV2::Presentation,
+            ExecutionCompositionBodyV2::Explain,
+        ),
     };
     let _ = document;
     ExecutionCompositionV2 {
@@ -759,6 +872,26 @@ pub(crate) fn project_composition(
         body_item_id,
         body_family,
         body_relation,
+        body,
+    }
+}
+
+const fn project_sample_mode(mode: SampleModeV1) -> ExecutionSampleModeV2 {
+    match mode {
+        SampleModeV1::Lexical => ExecutionSampleModeV2::Lexical,
+        SampleModeV1::Semantic => ExecutionSampleModeV2::Semantic,
+        SampleModeV1::Hybrid => ExecutionSampleModeV2::Hybrid,
+    }
+}
+const fn project_graph_kind(kind: GraphQueryKindV1) -> ExecutionGraphKindV2 {
+    match kind {
+        GraphQueryKindV1::Reachability => ExecutionGraphKindV2::Reachability,
+        GraphQueryKindV1::Flow => ExecutionGraphKindV2::Flow,
+        GraphQueryKindV1::Slice => ExecutionGraphKindV2::Slice,
+        GraphQueryKindV1::Taint => ExecutionGraphKindV2::Taint,
+        GraphQueryKindV1::Path => ExecutionGraphKindV2::Path,
+        GraphQueryKindV1::PointsTo => ExecutionGraphKindV2::PointsTo,
+        GraphQueryKindV1::Summary => ExecutionGraphKindV2::Summary,
     }
 }
 
@@ -868,10 +1001,9 @@ fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShap
         },
         TypedExprShapeV2::Call { target, arguments } => ExecutionExpressionShapeV2::Call {
             target: match target {
-                ResolvedCallTargetV2::Builtin(id) => format!(
-                    "builtin:{}",
-                    id.name().unwrap_or("invalid_closed_builtin")
-                ),
+                ResolvedCallTargetV2::Builtin(id) => {
+                    format!("builtin:{}", id.name().unwrap_or("invalid_closed_builtin"))
+                }
                 ResolvedCallTargetV2::Predicate(id) => format!("predicate:{}", id.as_str()),
                 ResolvedCallTargetV2::HostPredicate(id) => id
                     .canonical_bytes()
@@ -1006,16 +1138,24 @@ fn project_schema(output: &RelationOutputContractV2) -> ExecutionSchemaV2 {
 fn project_source(source: &ResolvedRelationSourceKindV2) -> ExecutionSourceV2 {
     match source {
         ResolvedRelationSourceKindV2::Relation(id) => ExecutionSourceV2 {
+            authority: match id.authority() {
+                RelationAuthorityV2::Host => ExecutionRelationAuthorityV2::Host,
+                RelationAuthorityV2::CanonicalWorkspaceFiles => {
+                    ExecutionRelationAuthorityV2::CanonicalWorkspaceFiles
+                }
+            },
             kind: "relation".to_owned(),
             namespace: Some(id.namespace().as_str().to_owned()),
             name: id.qualified_name().to_owned(),
         },
         ResolvedRelationSourceKindV2::View(id) => ExecutionSourceV2 {
+            authority: ExecutionRelationAuthorityV2::CatalogView,
             kind: "view".to_owned(),
             namespace: Some(id.module_id().as_str().to_owned()),
             name: id.local_name().to_owned(),
         },
         ResolvedRelationSourceKindV2::Composition(id) => ExecutionSourceV2 {
+            authority: ExecutionRelationAuthorityV2::CompositionBinding,
             kind: "composition".to_owned(),
             namespace: None,
             name: id.binding().canonical_name().to_owned(),
@@ -1103,6 +1243,7 @@ fn put_composition(out: &mut Vec<u8>, composition: &ExecutionCompositionV2) {
         } else {
             put_u8(out, 0);
         }
+        put_composition_producer(out, &binding.producer);
     }
     put_binding(out, &composition.with_binding);
     put_item_id(out, composition.body_item_id);
@@ -1111,6 +1252,56 @@ fn put_composition(out: &mut Vec<u8>, composition: &ExecutionCompositionV2) {
         put_relation(out, relation);
     } else {
         put_u8(out, 0);
+    }
+    put_composition_body(out, &composition.body);
+}
+
+fn put_composition_producer(out: &mut Vec<u8>, producer: &ExecutionCompositionProducerV2) {
+    match producer {
+        ExecutionCompositionProducerV2::Relation => put_u8(out, 0),
+        ExecutionCompositionProducerV2::Sample {
+            query_text,
+            mode,
+            limit,
+        } => {
+            put_u8(out, 1);
+            put_str(out, query_text);
+            put_u8(
+                out,
+                match mode {
+                    ExecutionSampleModeV2::Lexical => 0,
+                    ExecutionSampleModeV2::Semantic => 1,
+                    ExecutionSampleModeV2::Hybrid => 2,
+                },
+            );
+            put_u32(out, *limit);
+        }
+        ExecutionCompositionProducerV2::Graph { kind } => {
+            put_u8(out, 2);
+            put_u8(out, graph_kind_tag(*kind));
+        }
+    }
+}
+fn put_composition_body(out: &mut Vec<u8>, body: &ExecutionCompositionBodyV2) {
+    match body {
+        ExecutionCompositionBodyV2::Relation => put_u8(out, 0),
+        ExecutionCompositionBodyV2::Graph(kind) => {
+            put_u8(out, 1);
+            put_u8(out, graph_kind_tag(*kind));
+        }
+        ExecutionCompositionBodyV2::Check => put_u8(out, 2),
+        ExecutionCompositionBodyV2::Explain => put_u8(out, 3),
+    }
+}
+const fn graph_kind_tag(kind: ExecutionGraphKindV2) -> u8 {
+    match kind {
+        ExecutionGraphKindV2::Reachability => 0,
+        ExecutionGraphKindV2::Flow => 1,
+        ExecutionGraphKindV2::Slice => 2,
+        ExecutionGraphKindV2::Taint => 3,
+        ExecutionGraphKindV2::Path => 4,
+        ExecutionGraphKindV2::PointsTo => 5,
+        ExecutionGraphKindV2::Summary => 6,
     }
 }
 
@@ -1130,6 +1321,7 @@ fn put_node(out: &mut Vec<u8>, node: &ExecutionRelationalOperatorV2) {
     put_key(out, node.stage);
     if let Some(source) = &node.source {
         put_u8(out, 1);
+        put_u8(out, relation_authority_tag(source.authority));
         put_str(out, &source.kind);
         put_str(out, source.namespace.as_deref().unwrap_or(""));
         put_str(out, &source.name);
@@ -1157,6 +1349,15 @@ fn put_node(out: &mut Vec<u8>, node: &ExecutionRelationalOperatorV2) {
     put_usize(out, node.children.len());
     for child in &node.children {
         put_node(out, child);
+    }
+}
+
+const fn relation_authority_tag(authority: ExecutionRelationAuthorityV2) -> u8 {
+    match authority {
+        ExecutionRelationAuthorityV2::Host => 0,
+        ExecutionRelationAuthorityV2::CanonicalWorkspaceFiles => 1,
+        ExecutionRelationAuthorityV2::CatalogView => 2,
+        ExecutionRelationAuthorityV2::CompositionBinding => 3,
     }
 }
 

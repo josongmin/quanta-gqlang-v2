@@ -28,6 +28,7 @@ fn host_source() -> quanta_gqlang_v2_types::RelationSourceIdV2 {
     let budget = AuthorityBudgetProfileV2::try_new(10, 10, 10, 1024, 128).unwrap();
     let catalog = RelationCatalogV2::try_new(
         vec![RelationSourceInputV2 {
+            authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
             provenance_namespace: namespace,
             qualified_name: "records".into(),
             lookup_name: "records".into(),

@@ -59,35 +59,22 @@ fn composition_groups_as_one_item() {
 
 #[test]
 fn malformed_middle_item_rejects_with_exact_span() {
-    // The middle FIND has no `->` between source and sink: fail closed.
+    // DOC-01: the middle FIND has no `->` between source and sink. The
+    // diagnostic is the exact missing-arrow branch at the exact `db` span — a
+    // later token or the third item must not satisfy this oracle.
     let prefix = "show capabilities ;\n";
     let bad = "find taint api.entry db.write";
     let src = format!("{prefix}{bad} ;\nshow models");
     let builder = HirBuilderV1::new();
     let diag = parse_document(&src, &builder).expect_err("must reject");
     assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
-    // span points inside the offending (middle) item, after the first `;`.
-    assert!(
-        diag.span.start >= prefix.len(),
-        "span {} should be within the middle item (>= {})",
-        diag.span.start,
-        prefix.len()
+    assert_eq!(
+        diag.message,
+        "expected '->' between the FIND source and sink"
     );
-}
-
-#[test]
-fn empty_statement_rejects() {
-    // a doubled separator yields an empty statement -> fail closed.
-    let builder = HirBuilderV1::new();
-    let diag = parse_document("show models ;; show views", &builder).expect_err("must reject");
-    assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
-}
-
-#[test]
-fn leading_separator_rejects() {
-    let builder = HirBuilderV1::new();
-    let diag = parse_document(" ; show models", &builder).expect_err("must reject");
-    assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+    let db_at = prefix.len() + bad.find("db.write").expect("bad item carries db.write");
+    assert_eq!(diag.span.start, db_at);
+    assert_eq!(diag.span.end, db_at + "db".len());
 }
 
 #[test]
@@ -97,12 +84,62 @@ fn trailing_separator_is_tolerated() {
     assert_eq!(doc.items.len(), 1);
 }
 
+/// DOC-02: one row per separator diagnostic branch. Each row specifies the
+/// complete source, exact code, exact message, and exact primary span; rows
+/// share no oracle, so one generic reject cannot satisfy all three. Trailing
+/// `;` stays the positive counterexample above.
 #[test]
-fn missing_separator_between_items_rejects() {
-    // two items with no `;` between them: trailing garbage on the first item.
+fn separator_branches_reject_with_exact_oracles() {
+    struct RowV1 {
+        name: &'static str,
+        src: &'static str,
+        message: &'static str,
+        start: usize,
+        end: usize,
+    }
+    // Doubled `;` and leading `;` are the SAME empty-statement branch at
+    // different spans; the missing separator is a DISTINCT branch. Spans are
+    // derived from each row's own source, never copied magic numbers.
+    let doubled = "show models ;; show views";
+    let doubled_at = doubled.find(";;").expect("doubled separator") + 1;
+    let leading = " ; show models";
+    let missing = "show models show views";
+    let rows = [
+        RowV1 {
+            name: "doubled separator",
+            src: doubled,
+            message: "empty statement: a ';' must follow a top-level item",
+            start: doubled_at,
+            end: doubled_at + 1,
+        },
+        RowV1 {
+            name: "leading separator",
+            src: leading,
+            message: "empty statement: a ';' must follow a top-level item",
+            start: 1,
+            end: 2,
+        },
+        RowV1 {
+            name: "missing separator",
+            src: missing,
+            message: "expected ';' to separate top-level items",
+            start: missing.find("show views").expect("second item"),
+            end: missing.find("show views").expect("second item") + "show".len(),
+        },
+    ];
     let builder = HirBuilderV1::new();
-    let diag = parse_document("show models show views", &builder).expect_err("must reject");
-    assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+    for row in rows {
+        let diag = parse_document(row.src, &builder).expect_err("must reject");
+        assert_eq!(
+            diag.code,
+            ParseErrorCodeV1::UnexpectedToken,
+            "row {}",
+            row.name
+        );
+        assert_eq!(diag.message, row.message, "row {}", row.name);
+        assert_eq!(diag.span.start, row.start, "row {}", row.name);
+        assert_eq!(diag.span.end, row.end, "row {}", row.name);
+    }
 }
 
 #[test]

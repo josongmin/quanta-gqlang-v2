@@ -38,11 +38,13 @@ pub use diagnostic::{
 };
 pub use execution::{
     ExecutionAuthorityV2, ExecutionBindingV2, ExecutionCompositionBindingV2,
-    ExecutionCompositionV2, ExecutionCorrelationV2, ExecutionDeterminismV2, ExecutionDigestV2,
-    ExecutionDocumentV2, ExecutionEffectV2, ExecutionEvidenceV2, ExecutionExpressionShapeV2,
-    ExecutionExpressionV2, ExecutionFamilyV2, ExecutionFieldV2, ExecutionItemV2,
+    ExecutionCompositionBodyV2, ExecutionCompositionProducerV2, ExecutionCompositionV2,
+    ExecutionCorrelationV2, ExecutionDeterminismV2, ExecutionDigestV2, ExecutionDocumentV2,
+    ExecutionEffectV2, ExecutionEvidenceV2, ExecutionExpressionShapeV2, ExecutionExpressionV2,
+    ExecutionFamilyV2, ExecutionFieldV2, ExecutionGraphKindV2, ExecutionItemV2,
     ExecutionOperatorV2, ExecutionOrderKeyV2, ExecutionPlanV2, ExecutionPolicyFamilyV2,
-    ExecutionRelationV2, ExecutionRelationalOperatorV2, ExecutionSchemaV2, ExecutionSourceV2,
+    ExecutionRelationAuthorityV2, ExecutionRelationV2, ExecutionRelationalOperatorV2,
+    ExecutionSampleModeV2, ExecutionSchemaV2, ExecutionSourceV2,
 };
 pub use quanta_gqlang_v2_algebra::AlgebraFamilyV2;
 pub use quanta_gqlang_v2_planning::{NoPlanReasonV2, SemanticPlanV2};
@@ -52,8 +54,9 @@ pub use quanta_gqlang_v2_sema::{
     FrontendBudgetV2, FrontendCallableParameterInputV2, FrontendCatalogAssetInputV2,
     FrontendCatalogPayloadV2, FrontendDiagnosticV2, FrontendFailureV2,
     FrontendGraphReferenceInputV2, FrontendLanguageVersionV2, FrontendLockfileInputV2,
-    FrontendPackInputV2, FrontendRelationCardinalityV2, FrontendRelationFieldInputV2,
-    FrontendRelationInputV2, FrontendScalarTypeV2, FrontendSeverityV2, FrontendStageV2,
-    FrontendTransactionErrorV2, GraphReferenceKindV2, LocatedSpanV2, OpenAnalysisAuthorityV2,
-    SemanticItemIdV2, SourceIdV2, SourceQualifiedNodeIdV2, SpanV1,
+    FrontendPackInputV2, FrontendRelationAuthorityV2, FrontendRelationCardinalityV2,
+    FrontendRelationFieldInputV2, FrontendRelationInputV2, FrontendScalarTypeV2,
+    FrontendSeverityV2, FrontendStageV2, FrontendTransactionErrorV2, GraphReferenceKindV2,
+    LocatedSpanV2, OpenAnalysisAuthorityV2, SemanticItemIdV2, SourceIdV2, SourceQualifiedNodeIdV2,
+    SpanV1,
 };

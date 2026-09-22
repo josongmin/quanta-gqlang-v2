@@ -162,16 +162,16 @@ fn relation_pipeline_stage_set_is_closed() {
     // public HIR (see algebra/tests/RETIRED_LAWS.md for the disposition).
     let builder = HirBuilderV1::new();
 
+    // STAGE-01: the closed six-token vocabulary owns both parsing and the
+    // diagnostic. Every retired stage asserts the COMPLETE expected message.
+    const CLOSED_STAGE_MESSAGE_V1: &str =
+        "expected a pipeline stage keyword (where, project, join, cross, group, order)";
     for removed in ["union", "limit", "sort", "apply"] {
         let src = format!("from users | {removed} 1");
         let err =
             parse_program(&src, &builder).expect_err("a retired relation operator must not parse");
         assert_eq!(err.code, ParseErrorCodeV1::UnexpectedToken);
-        assert!(
-            err.message.contains("pipeline stage keyword"),
-            "`{removed}` must reject with the closed stage-set message, got: {}",
-            err.message
-        );
+        assert_eq!(err.message, CLOSED_STAGE_MESSAGE_V1, "`{removed}` drift");
     }
 
     // The closed stage set itself still parses: one positive per stage.

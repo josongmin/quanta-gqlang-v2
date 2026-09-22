@@ -25,8 +25,11 @@ pub use check::{
 };
 pub use diag::{TypeAuthorityDiagnosticV2, TypeDiagnosticV2};
 pub use env::{
-    AuthorityBudgetProfileV2, ProvenanceNamespaceV2, RelationCatalogV2, RelationSourceIdV2,
-    RelationSourceInputV2, RelationSourceV2,
+    AuthorityBudgetProfileV2, ProvenanceNamespaceV2, RelationAuthorityV2, RelationCatalogV2,
+    RelationSourceIdV2, RelationSourceInputV2, RelationSourceV2,
+    CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2, CANONICAL_WORKSPACE_FILES_LOOKUP_NAME_V2,
+    CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2, CANONICAL_WORKSPACE_FILES_PROVENANCE_V2,
+    CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2,
 };
 pub use op::{OperatorIdV2, OperatorRegistryV2};
 pub use solver::{

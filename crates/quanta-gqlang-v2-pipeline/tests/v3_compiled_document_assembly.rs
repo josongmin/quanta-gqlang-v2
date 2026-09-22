@@ -32,7 +32,11 @@ use quanta_gqlang_v2_modules::{
 use quanta_gqlang_v2_pipeline::{
     compile_resolved_document_v2, compile_source_document_v2, format_source_document_v2,
     AnalysisItemV2, CompiledItemV2, DocumentAssemblyCodeV2, ExecutionAuthorityV2,
-    ExecutionExpressionShapeV2, ExecutionFamilyV2, FrontendTransactionErrorV2, PlannedItemV2,
+    ExecutionCompositionBodyV2, ExecutionCompositionProducerV2, ExecutionExpressionShapeV2,
+    ExecutionFamilyV2, ExecutionRelationAuthorityV2, ExecutionSampleModeV2,
+    FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendLanguageVersionV2,
+    FrontendRelationAuthorityV2, FrontendRelationInputV2, FrontendTransactionErrorV2,
+    PlannedItemV2,
 };
 use quanta_gqlang_v2_planning::{
     AuthorityLaneV2, CapabilityV2, CardinalityClassV2, CheckedCompositionPlanInputV2,
@@ -80,6 +84,7 @@ fn composition_source(limit: u32) -> String {
 
 /// One typed relation query over the host relation `records`.
 const RECORD_SOURCE: &str = "from records r | project r.id as id";
+const WORKSPACE_FILES_SOURCE: &str = "from files f | project f.path as path";
 
 /// The stable code of one transaction failure.
 fn failure_code(error: &FrontendTransactionErrorV2) -> String {
@@ -130,6 +135,7 @@ fn authority_with_records() -> ClosedFrontendAuthorityV2 {
         .expect("module authority seals");
     let relations = RelationCatalogV2::try_new(
         vec![RelationSourceInputV2 {
+            authority: quanta_gqlang_v2_sema::RelationAuthorityV2::Host,
             provenance_namespace: ProvenanceNamespaceV2::try_new("host", location.clone())
                 .expect("provenance namespace"),
             qualified_name: "app::records".to_owned(),
@@ -176,6 +182,35 @@ fn authority_with_records() -> ClosedFrontendAuthorityV2 {
     .expect("graph catalog");
     ClosedFrontendAuthorityV2::try_new(modules, relations, graph_references, budget)
         .expect("closed authority seals")
+}
+
+fn authority_with_workspace_files(
+    authority: FrontendRelationAuthorityV2,
+) -> ClosedFrontendAuthorityV2 {
+    let location = FrontendAuthorityLocationV2 {
+        source_id: HOST_SOURCE,
+        start: 0,
+        end: 1,
+    };
+    let mut builder = quanta_gqlang_v2_pipeline::ClosedFrontendAuthorityBuilderV2::try_new(
+        FrontendBudgetV2::standard_v2().expect("standard budget"),
+        vec![FrontendAuthoritySourceV2 {
+            source_id: HOST_SOURCE,
+            source_len: 64,
+        }],
+        "app".to_owned(),
+        location,
+        FrontendLanguageVersionV2 {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        },
+    )
+    .expect("workspace authority builder starts");
+    let mut relation = FrontendRelationInputV2::canonical_workspace_files(location, location);
+    relation.authority = authority;
+    builder.add_relation(relation);
+    builder.finish().expect("workspace authority seals")
 }
 
 /// Build one closed authority with a module graph and no relation/graph
@@ -864,6 +899,29 @@ fn composition_producer_and_with_identity_are_assembled_exactly() {
     assert_eq!(execution.bindings()[0].binding().ordinal(), 0);
     assert_eq!(execution.with_binding(), execution.bindings()[0].binding());
     assert!(execution.body_relation().is_some());
+    assert!(matches!(
+        execution.bindings()[0].producer(),
+        ExecutionCompositionProducerV2::Sample {
+            mode: ExecutionSampleModeV2::Lexical,
+            limit: 2,
+            ..
+        }
+    ));
+    assert_eq!(execution.body(), &ExecutionCompositionBodyV2::Relation);
+    let semantic_source = composition_source(2).replace("mode=lexical", "mode=semantic");
+    let semantic = compile_source_document_v2(DOC_SOURCE, &semantic_source, &authority)
+        .expect("semantic SAMPLE composition compiles");
+    let semantic_execution = semantic.execution().items()[0]
+        .composition()
+        .expect("semantic SAMPLE carries composition DTO");
+    assert!(matches!(
+        semantic_execution.bindings()[0].producer(),
+        ExecutionCompositionProducerV2::Sample {
+            mode: ExecutionSampleModeV2::Semantic,
+            ..
+        }
+    ));
+    assert_ne!(compiled.execution().digest(), semantic.execution().digest());
     let CompiledItemV2::Planned(planned) = &compiled.items()[0] else {
         panic!("a composition item must compile to a planned composition item");
     };
@@ -1069,8 +1127,61 @@ fn execution_contract_is_complete_deterministic_and_mutation_sensitive() {
         &authority,
     )
     .expect("whitespace-only byte mutation remains valid source");
-    assert_ne!(compiled.execution().source_digest(), byte_mutated.execution().source_digest());
-    assert_ne!(compiled.execution().digest(), byte_mutated.execution().digest());
+    assert_ne!(
+        compiled.execution().source_digest(),
+        byte_mutated.execution().source_digest()
+    );
+    assert_ne!(
+        compiled.execution().digest(),
+        byte_mutated.execution().digest()
+    );
+}
+
+#[test]
+fn workspace_files_authority_is_closed_and_digest_bound() {
+    let canonical = compile_source_document_v2(
+        DOC_SOURCE,
+        WORKSPACE_FILES_SOURCE,
+        &authority_with_workspace_files(FrontendRelationAuthorityV2::CanonicalWorkspaceFiles),
+    )
+    .expect("canonical workspace-files source compiles");
+    let repeated = compile_source_document_v2(
+        DOC_SOURCE,
+        WORKSPACE_FILES_SOURCE,
+        &authority_with_workspace_files(FrontendRelationAuthorityV2::CanonicalWorkspaceFiles),
+    )
+    .expect("same workspace-files source compiles deterministically");
+    assert_eq!(canonical.execution(), repeated.execution());
+
+    let source = canonical.execution().items()[0]
+        .relation()
+        .expect("relation execution contract")
+        .root()
+        .children()[0]
+        .source()
+        .expect("scan carries source identity");
+    assert_eq!(
+        source.authority(),
+        ExecutionRelationAuthorityV2::CanonicalWorkspaceFiles
+    );
+    assert_eq!(source.namespace(), Some("builtin"));
+    assert_eq!(source.name(), "workspace_files");
+
+    let host = compile_source_document_v2(
+        DOC_SOURCE,
+        WORKSPACE_FILES_SOURCE,
+        &authority_with_workspace_files(FrontendRelationAuthorityV2::Host),
+    )
+    .expect("same shape remains a valid host relation");
+    let host_source = host.execution().items()[0]
+        .relation()
+        .expect("relation execution contract")
+        .root()
+        .children()[0]
+        .source()
+        .expect("scan carries source identity");
+    assert_eq!(host_source.authority(), ExecutionRelationAuthorityV2::Host);
+    assert_ne!(canonical.execution().digest(), host.execution().digest());
 }
 
 #[test]
@@ -1080,8 +1191,13 @@ fn execution_expressions_expose_operator_and_builtin_semantics_without_registrie
                   from records r | project r.id as id";
     let compiled = compile_source_document_v2(DOC_SOURCE, source, &authority_with_records())
         .expect("mixed expression document compiles");
-    let expressions = compiled.execution().items().last().and_then(|item| item.relation())
-        .expect("relation carries the document expression table").expressions();
+    let expressions = compiled
+        .execution()
+        .items()
+        .last()
+        .and_then(|item| item.relation())
+        .expect("relation carries the document expression table")
+        .expressions();
     let mut operators = BTreeSet::new();
     let mut calls = BTreeSet::new();
     for expression in expressions {
@@ -1094,7 +1210,9 @@ fn execution_expressions_expose_operator_and_builtin_semantics_without_registrie
             | ExecutionExpressionShapeV2::Not { operator, .. } => {
                 operators.insert(operator.symbol().to_owned());
             }
-            ExecutionExpressionShapeV2::Call { target, .. } => { calls.insert(target.clone()); }
+            ExecutionExpressionShapeV2::Call { target, .. } => {
+                calls.insert(target.clone());
+            }
             _ => {}
         }
     }
@@ -1104,7 +1222,10 @@ fn execution_expressions_expose_operator_and_builtin_semantics_without_registrie
     assert!(operators.contains("!="));
     assert!(operators.contains("and"));
     assert!(calls.contains("builtin:length"));
-    assert!(!calls.iter().any(|target| target.starts_with("builtin:") && target[8..].chars().all(|c| c.is_ascii_digit())));
+    assert!(!calls
+        .iter()
+        .any(|target| target.starts_with("builtin:")
+            && target[8..].chars().all(|c| c.is_ascii_digit())));
 }
 
 /// A composition body whose lowered root belongs to ANOTHER relation is

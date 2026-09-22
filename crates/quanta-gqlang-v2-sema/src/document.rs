@@ -6731,6 +6731,7 @@ mod tests {
         let row = RecordTypeV1::try_new(vec![field]).map_err(|error| format!("{error:?}"))?;
         let relations = RelationCatalogV2::try_new(
             vec![RelationSourceInputV2 {
+                authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
                 provenance_namespace: ProvenanceNamespaceV2::try_new("host", location.clone())
                     .map_err(|error| format!("{error:?}"))?,
                 qualified_name: "records".into(),

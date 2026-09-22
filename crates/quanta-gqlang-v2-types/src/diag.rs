@@ -441,6 +441,10 @@ pub enum TypeAuthorityDiagnosticV2 {
         name: String,
         location: LocatedSpanV2,
     },
+    InvalidRelationAuthority {
+        authority: &'static str,
+        location: LocatedSpanV2,
+    },
     InvalidRelationType(TypeDiagnosticV2),
 }
 
@@ -455,6 +459,7 @@ impl TypeAuthorityDiagnosticV2 {
             Self::InvalidSourceLocation { .. } => "types.invalid_source_location",
             Self::SourceRegistryMismatch { .. } => "types.source_registry_mismatch",
             Self::InvalidCanonicalName { .. } => "types.invalid_canonical_name",
+            Self::InvalidRelationAuthority { .. } => "types.invalid_relation_authority",
             Self::InvalidRelationType(error) => error.code(),
         }
     }
@@ -495,6 +500,11 @@ impl fmt::Display for TypeAuthorityDiagnosticV2 {
                     diagnostic_excerpt(name)
                 )
             }
+            Self::InvalidRelationAuthority { authority, .. } => write!(
+                f,
+                "{}: invalid `{authority}` identity or shape",
+                self.code()
+            ),
             Self::InvalidSourceLocation { .. } | Self::SourceRegistryMismatch { .. } => {
                 f.write_str(self.code())
             }

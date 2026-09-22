@@ -7,23 +7,23 @@ use std::io::Read;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use quanta_gqlang_v2_cli::commands;
+use quanta_gqlang_v2_cli::CliCommandKindV2;
+use quanta_gqlang_v2_cli::{cli_command_alternation_v1, cli_command_kind_v1, commands};
 use quanta_gqlang_v2_frontend_contract::FrontendBudgetV2;
 
-const USAGE_V2: &str = concat!(
-    "cli.usage=quanta-gqlang-v2-cli <query|fmt|v3-query|v3-fmt> (--file <path> | <input...>)\n",
-    "cli.read_only=true\n",
-    "cli.command_plane=forbidden"
-);
-
-#[derive(Copy, Clone)]
-enum CliCommandV2 {
-    Query,
-    Fmt,
+/// Render the stable usage block from the single CLI command authority, so
+/// the emitted alternation is the dispatched token set verbatim.
+fn usage_v2() -> String {
+    format!(
+        "cli.usage=quanta-gqlang-v2-cli {} (--file <path> | <input...>)\n\
+         cli.read_only=true\n\
+         cli.command_plane=forbidden",
+        cli_command_alternation_v1()
+    )
 }
 
 struct CliInvocationV2 {
-    command: CliCommandV2,
+    command: CliCommandKindV2,
     input: String,
 }
 
@@ -57,7 +57,7 @@ impl CliErrorV2 {
         );
         if self.class == "usage" {
             rendered.push('\n');
-            rendered.push_str(USAGE_V2);
+            rendered.push_str(&usage_v2());
         }
         rendered
     }
@@ -70,7 +70,7 @@ fn main() -> ExitCode {
 fn run_cli() -> u8 {
     let mut probe = env::args_os().skip(1);
     if matches!(probe.size_hint(), (1, Some(1))) && probe.next().as_ref().is_some_and(is_help) {
-        println!("{USAGE_V2}");
+        println!("{}", usage_v2());
         return 0;
     }
     let budget = match FrontendBudgetV2::standard_v2() {
@@ -91,7 +91,7 @@ fn run_cli() -> u8 {
         }
     };
     match invocation.command {
-        CliCommandV2::Query => match commands::v3_query::run(&invocation.input) {
+        CliCommandKindV2::Query => match commands::v3_query::run(&invocation.input) {
             Ok(output) => {
                 println!("{}", output.body);
                 output.exit_code
@@ -101,7 +101,7 @@ fn run_cli() -> u8 {
                 1
             }
         },
-        CliCommandV2::Fmt => match commands::v3_format::run(&invocation.input) {
+        CliCommandKindV2::Fmt => match commands::v3_format::run(&invocation.input) {
             Ok(output) => {
                 println!("{output}");
                 0
@@ -118,15 +118,21 @@ fn parse_invocation(
     mut args: impl Iterator<Item = OsString>,
     max_source_bytes: u32,
 ) -> Result<CliInvocationV2, CliErrorV2> {
-    let command = match args
-        .next()
-        .and_then(|arg| arg.into_string().ok())
-        .as_deref()
+    // CLI-01: dispatch resolves through the single library spec table. No
+    // second handwritten token match may exist beside `CLI_COMMAND_SPECS_V1`.
+    let raw = args.next();
+    let command = match raw
+        .as_ref()
+        .and_then(|arg| arg.to_str())
+        .and_then(cli_command_kind_v1)
     {
-        Some("query" | "v3-query") => CliCommandV2::Query,
-        Some("fmt" | "v3-fmt") => CliCommandV2::Fmt,
-        Some(other) => return Err(CliErrorV2::usage(format!("unsupported command `{other}`"))),
-        None => return Err(CliErrorV2::usage("missing command")),
+        Some(kind) => kind,
+        None => {
+            return Err(match raw.and_then(|arg| arg.into_string().ok()) {
+                Some(other) => CliErrorV2::usage(format!("unsupported command `{other}`")),
+                None => CliErrorV2::usage("missing command"),
+            });
+        }
     };
     let first = args
         .next()

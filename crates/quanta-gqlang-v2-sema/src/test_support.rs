@@ -204,6 +204,11 @@ pub enum ReferenceRelationFixtureV2 {
     /// arm cross-joins two host scans. The semi/anti classification must still
     /// be its left arm's class, because the right arm only decides existence.
     ExistsWithMultiplicativeRight,
+    /// Cross join with structurally DISTINGUISHABLE arms for preorder proof:
+    /// left is `Project -> Filter -> Scan`, right is `Sort -> Scan`
+    /// (EXPLAIN-01). Symmetric join fixtures cannot discriminate a
+    /// left/right traversal swap; this one can.
+    AsymmetricJoinPreorder,
 }
 
 /// A sealed reference transaction plus its one relation item identity.
@@ -1018,6 +1023,10 @@ fn reference_relation_hir(
             let (join, len) = self_join_hir(builder)?;
             Ok((join, len))
         }
+        ReferenceRelationFixtureV2::AsymmetricJoinPreorder => {
+            let (join, len) = asymmetric_join_hir(builder)?;
+            Ok((join, len))
+        }
         ReferenceRelationFixtureV2::GroupedAggregateSum => {
             let (project, len) = grouped_aggregate_hir(builder)?;
             Ok((project, len))
@@ -1327,6 +1336,47 @@ fn self_join_hir(builder: &HirBuilderV1) -> Result<(RelationExprHirV1, usize), S
         SpanV1::new(75, 93),
     );
     Ok((builder.inner_join(left, right, on, SpanV1::new(5, 93)), 96))
+}
+
+/// Cross join whose arms are structurally distinguishable (EXPLAIN-01):
+/// left `Project -> Filter -> Scan` over `records`/`l`, right `Sort -> Scan`
+/// over `records`/`s`. Preorder families are
+/// `Join, Project, Filter, Scan, Sort, Scan`; swapping child traversal yields
+/// `Join, Sort, Scan, Project, Filter, Scan`.
+fn asymmetric_join_hir(builder: &HirBuilderV1) -> Result<(RelationExprHirV1, usize), String> {
+    let left_scan = aliased_scan(builder, "records", "l", 5, 12, 13);
+    let left_filtered = builder.relation_filter(
+        left_scan,
+        builder.bool_value(
+            builder.bool_lit(true, SpanV1::new(20, 24)),
+            SpanV1::new(19, 24),
+        ),
+        SpanV1::new(5, 24),
+    );
+    let left_value = field_path(builder, "l", 30, "id", 32)?;
+    let left = builder
+        .try_project(
+            left_filtered,
+            vec![ProjectionItemV1 {
+                value: left_value,
+                alias: Some(alias("left_id", 36, 43)),
+            }],
+            SpanV1::new(5, 43),
+        )
+        .map_err(|error| error.to_owned())?;
+    let right_scan = aliased_scan(builder, "records", "s", 50, 57, 58);
+    let right_key = field_path(builder, "s", 65, "id", 67)?;
+    let right = builder
+        .order_by(
+            right_scan,
+            vec![OrderKeyHirV1 {
+                value: right_key,
+                direction: SortDirectionHirV1::Asc,
+            }],
+            SpanV1::new(50, 72),
+        )
+        .map_err(|error| error.to_owned())?;
+    Ok((builder.cross_join(left, right, SpanV1::new(5, 72)), 76))
 }
 
 fn grouped_aggregate_hir(builder: &HirBuilderV1) -> Result<(RelationExprHirV1, usize), String> {
@@ -2184,6 +2234,7 @@ fn host_relation(
     )
     .map_err(|error| format!("{error:?}"))?;
     Ok(RelationSourceInputV2 {
+        authority: quanta_gqlang_v2_types::RelationAuthorityV2::Host,
         provenance_namespace,
         qualified_name: format!("app::{lookup_name}"),
         lookup_name: lookup_name.to_owned(),
@@ -2232,6 +2283,8 @@ mod tests {
             ReferenceRelationFixtureV2::NegatedExists,
             ReferenceRelationFixtureV2::ExistsWithBoolConjunct,
             ReferenceRelationFixtureV2::NestedExistsTwoLevels,
+            ReferenceRelationFixtureV2::ExistsWithMultiplicativeRight,
+            ReferenceRelationFixtureV2::AsymmetricJoinPreorder,
         ];
         for fixture in variants {
             let reference = reference_relation_document_v2(fixture)?;
