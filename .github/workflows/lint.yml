@@ -55,7 +55,7 @@ jobs:
         with:
           tool: cargo-public-api@0.51.0
       - name: Architecture metadata gate
-        run: python3 tools/architecture/tests/test_architecture.py && python3 tools/architecture/check_architecture.py --require-final
+        run: python3 tools/architecture/tests/test_architecture.py && python3 tools/architecture/check_architecture.py
       - name: External facade consumer
         run: python3 tools/test_frontend_external_consumer.py
 
@@ -104,8 +104,6 @@ jobs:
       - uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
         with:
           tool: cargo-nextest@0.9.104
-      - name: Workspace compile
-        run: cargo check --workspace
       - name: Current-only Clippy policy
         run: cargo clippy --workspace --all-targets -- -D clippy::unused_result_ok -D warnings
       - name: Workspace tests

@@ -121,9 +121,9 @@ def materialize_fixture(destination: Path, fixture_name: str, *, omit: str | Non
         (crate / "Cargo.toml").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def run_checker(root: Path, *extra: str) -> subprocess.CompletedProcess[str]:
+def run_checker(root: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["python3", str(CHECKER), "--root", str(root), *extra],
+        ["python3", str(CHECKER), "--root", str(root)],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -142,7 +142,7 @@ class ArchitectureCheckerTest(unittest.TestCase):
     def test_valid_final_dag(self) -> None:
         temporary, root = self.fixture("valid")
         with temporary:
-            result = run_checker(root, "--require-final")
+            result = run_checker(root)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("workspace_members=14", result.stdout)
         self.assertIn("normal_edges=27", result.stdout)

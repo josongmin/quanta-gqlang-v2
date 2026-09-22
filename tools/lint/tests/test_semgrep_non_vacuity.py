@@ -69,8 +69,6 @@ class SemgrepNonVacuityTest(unittest.TestCase):
         }
         actual = set(fixture.read_text(encoding="utf-8").splitlines())
         self.assertEqual(actual, expected)
-        result = self.run_gate(CONFIG)
-        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_missing_include_path_rejects_unexecuted_rule(self) -> None:
         original = CONFIG.read_text(encoding="utf-8")

@@ -34,7 +34,7 @@ typos:
 
 arch-lint:
     python3 tools/architecture/tests/test_architecture.py
-    python3 tools/architecture/check_architecture.py --require-final
+    python3 tools/architecture/check_architecture.py
 
 external-consumer:
     python3 tools/test_frontend_external_consumer.py

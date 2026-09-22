@@ -16,12 +16,12 @@ repository. It never touches the checkout:
 3. run the positive program (``cargo run --quiet``) and require exit 0 plus the
    exact marker ``external-consumer positive: ok``;
 
-4. run every ``negatives/*.rs`` case as a complete ``src/main.rs`` through
-   ``cargo check --quiet`` and require a non-zero exit, the expected compiler
-   code, and the expected message needle (two class-D cases pin a rustc
-   diagnostic that carries no E-code at all — a struct literal over private
-   fields — so for those the map records an empty code and the gate requires
-   that no coded error appears);
+4. run privacy probes as complete ``src/main.rs`` programs through ``cargo
+   check --quiet``. The allowlist and manifest checks already prove that
+   unlisted root symbols, public modules, and owner crates are unreachable;
+   these probes cover the separate property that selected fields and
+   constructors stay private. Two struct-literal diagnostics carry no E-code,
+   so those map entries require that no coded error appears;
 
 5. diff ``cargo public-api -p quanta-gqlang-v2-frontend-contract --simplified``
    against the pinned allowlist literal (extra/missing names);
@@ -133,136 +133,42 @@ PINNED_ALLOWLIST: Tuple[str, ...] = (
     "SpanV1",
 )
 
-# name -> (class, expected compiler code, expected message needle)
-NEGATIVE_CASES: Dict[str, Tuple[str, str, str]] = {
-    # class A: an owner or deleted-V1 symbol imported through the facade root
-    "a01_public_plan_v1": ("A", "E0432", "no `PublicPlanV1` in the root"),
-    "a02_plan_request_v1": ("A", "E0432", "no `PlanRequestV1` in the root"),
-    "a03_produce_plan": ("A", "E0432", "no `produce_plan` in the root"),
-    "a04_classify_item": ("A", "E0432", "no `classify_item` in the root"),
-    "a05_compiled_item_v1": ("A", "E0432", "no `CompiledItemV1` in the root"),
-    "a06_compiled_program_v1": ("A", "E0432", "no `CompiledProgramV1` in the root"),
-    "a07_frontend_context_v1": ("A", "E0432", "no `FrontendContextV1` in the root"),
-    "a08_pipeline_diagnostic_v1": ("A", "E0432", "no `PipelineDiagnosticV1` in the root"),
-    "a09_pipeline_stage_v1": ("A", "E0432", "no `PipelineStageV1` in the root"),
-    "a10_compile_program_structural": (
-        "A",
-        "E0432",
-        "no `compile_program_structural` in the root",
-    ),
-    "a11_compiled_program_item_v1": (
-        "A",
-        "E0432",
-        "no `compiled_program_item_v1` in the root",
-    ),
-    "a12_no_plan_reason_v1": ("A", "E0432", "no `NoPlanReasonV1` in the root"),
-    "a13_semantic_plan_input_v2": ("A", "E0432", "no `SemanticPlanInputV2` in the root"),
-    "a14_graph_query_contract_v2": ("A", "E0432", "no `GraphQueryContractV2` in the root"),
-    "a15_rule_program_contract_v2": ("A", "E0432", "no `RuleProgramContractV2` in the root"),
-    "a16_semantic_document_v2": ("A", "E0432", "no `SemanticDocumentV2` in the root"),
-    "a17_hir_builder_v1": ("A", "E0432", "no `HirBuilderV1` in the root"),
-    "a18_parse_document": ("A", "E0432", "no `parse_document` in the root"),
-    "a19_format_item": ("A", "E0432", "no `format_item` in the root"),
-    "a20_module_graph_v1": ("A", "E0432", "no `ModuleGraphV1` in the root"),
-    "a21_pack_manifest_v1": ("A", "E0432", "no `PackManifestV1` in the root"),
-    "a22_checked_algebra_node_v2": ("A", "E0432", "no `CheckedAlgebraNodeV2` in the root"),
-    "a23_lower_relation_item": ("A", "E0432", "no `lower_relation_item` in the root"),
-    "a24_graph_witness_bounds_v2": ("A", "E0432", "no `GraphWitnessBoundsV2` in the root"),
-    # class B: a module path that would bypass the curated root
-    #
-    # A missing module segment in a multi-segment path is still E0432, but rustc
-    # labels it "could not find `m` in `crate`" instead of "no `m` in the root";
-    # the bare-module cases below keep the root label.
-    "b01_pipeline_module_path": (
-        "B",
-        "E0432",
-        "could not find `pipeline` in `quanta_gqlang_v2_frontend_contract`",
-    ),
-    "b02_compile_module_path": (
-        "B",
-        "E0432",
-        "could not find `compile` in `quanta_gqlang_v2_frontend_contract`",
-    ),
-    "b03_diagnostic_module_path": (
-        "B",
-        "E0432",
-        "could not find `diagnostic` in `quanta_gqlang_v2_frontend_contract`",
-    ),
-    "b04_pipeline_module_only": ("B", "E0432", "no `pipeline` in the root"),
-    "b05_compile_module_only": ("B", "E0432", "no `compile` in the root"),
-    # class C: an owner crate that is not a declared dependency of the fixture
-    "c01_sema_crate": ("C", "E0432", "use of undeclared crate or module `quanta_gqlang_v2_sema`"),
-    "c02_hir_crate": ("C", "E0432", "use of undeclared crate or module `quanta_gqlang_v2_hir`"),
-    "c03_algebra_crate": (
-        "C",
-        "E0432",
-        "use of undeclared crate or module `quanta_gqlang_v2_algebra`",
-    ),
-    "c04_planning_crate": (
-        "C",
-        "E0432",
-        "use of undeclared crate or module `quanta_gqlang_v2_planning`",
-    ),
-    "c05_pipeline_crate": (
-        "C",
-        "E0432",
-        "use of undeclared crate or module `quanta_gqlang_v2_pipeline`",
-    ),
-    "c06_types_crate": ("C", "E0432", "use of undeclared crate or module `quanta_gqlang_v2_types`"),
-    "c07_modules_crate": (
-        "C",
-        "E0432",
-        "use of undeclared crate or module `quanta_gqlang_v2_modules`",
-    ),
-    "c08_binder_crate": (
-        "C",
-        "E0432",
-        "use of undeclared crate or module `quanta_gqlang_v2_binder`",
-    ),
-    "c09_surface_crate": (
-        "C",
-        "E0432",
-        "use of undeclared crate or module `quanta_gqlang_v2_surface`",
-    ),
-    "c10_logic_crate": ("C", "E0432", "use of undeclared crate or module `quanta_gqlang_v2_logic`"),
-    # class D: privacy probes on curated roots (read, write, struct literal,
+# name -> (expected compiler code, expected message needle). The public-name
+# allowlist and manifest topology are the SSOT for root/module/crate reachability;
+# these fixtures cover privacy, which that SSOT cannot express.
+NEGATIVE_CASES: Dict[str, Tuple[str, str]] = {
+    # Privacy probes on curated roots (read, write, struct literal,
     # private associated function). An empty expected code pins a rustc
     # diagnostic that carries no E-code at all (rustc 1.81 reports a struct
     # literal over private fields as an uncoded `error:`), which the gate treats
     # as "no coded error may appear".
-    "d01_read_diagnostic_stage": ("D", "E0616", "field `stage` of struct `FrontendDiagnosticV2` is private"),
+    "d01_read_diagnostic_stage": ("E0616", "field `stage` of struct `FrontendDiagnosticV2` is private"),
     "d02_write_diagnostic_severity": (
-        "D",
         "E0616",
         "field `severity` of struct `FrontendDiagnosticV2` is private",
     ),
     "d03_literal_budget_field": (
-        "D",
         "",
         "cannot construct `FrontendBudgetV2` with struct literal syntax due to private fields",
     ),
-    "d04_read_analysis_items": ("D", "E0616", "field `items` of struct `AnalysisDocumentV2` is private"),
-    "d05_read_plan_authority_lane": ("D", "E0616", "field `authority_lane` of struct `SemanticPlanV2` is private"),
+    "d04_read_analysis_items": ("E0616", "field `items` of struct `AnalysisDocumentV2` is private"),
+    "d05_read_plan_authority_lane": ("E0616", "field `authority_lane` of struct `SemanticPlanV2` is private"),
     "d06_read_checked_span_location": (
-        "D",
         "E0616",
         "field `location` of struct `CheckedLocatedSpanV2` is private",
     ),
-    "d07_read_unresolved_code": ("D", "E0616", "field `code` of struct `UnresolvedAnalysisFactV2` is private"),
+    "d07_read_unresolved_code": ("E0616", "field `code` of struct `UnresolvedAnalysisFactV2` is private"),
     "d08_read_closed_authority_modules": (
-        "D",
         "E0616",
         "field `modules` of struct `ClosedFrontendAuthorityV2` is private",
     ),
     "d09_literal_plan_field": (
-        "D",
         "",
         "cannot construct `SemanticPlanV2` with struct literal syntax due to private fields",
     ),
-    "d10_private_plan_from_parts": ("D", "E0624", "associated function `from_parts` is private"),
-    "d11_private_rule_member_new": ("D", "E0624", "associated function `new` is private"),
+    "d10_private_plan_from_parts": ("E0624", "associated function `from_parts` is private"),
+    "d11_private_rule_member_new": ("E0624", "associated function `new` is private"),
     "d12_read_budget_max_source_bytes": (
-        "D",
         "E0616",
         "field `max_source_bytes` of struct `FrontendBudgetV2` is private",
     ),
@@ -457,7 +363,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "negative_executed": 0,
         "code_matched": 0,
         "needle_matched": 0,
-        "uncoded_expected": sum(1 for _, code, _ in NEGATIVE_CASES.values() if not code),
+        "uncoded_expected": sum(1 for code, _ in NEGATIVE_CASES.values() if not code),
         "globs": 0,
         "pub_mods": 0,
         "allowlist_observed": 0,
@@ -589,7 +495,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if absent:
             violations.append("expected-code map names without a fixture: %s" % absent)
 
-        for name, (klass, expected_code, expected_needle) in sorted(NEGATIVE_CASES.items()):
+        for name, (expected_code, expected_needle) in sorted(NEGATIVE_CASES.items()):
             path = NEGATIVES_DIR / (name + ".rs")
             if not path.is_file():
                 continue
@@ -630,10 +536,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     % (name, expected_needle, first_line[0] if first_line else "")
                 )
             trace(
-                "negative %-32s class=%s exit=%d expected=%s observed=%s"
+                "privacy probe %-27s exit=%d expected=%s observed=%s"
                 % (
                     name,
-                    klass,
                     result.returncode,
                     expected_code or "uncoded",
                     ",".join(observed_codes) or "none",

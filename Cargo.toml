@@ -35,10 +35,6 @@ unused_imports   = "deny"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -3 }
-# `allow_attributes` (prefer #[expect] over #[allow]) and `_without_reason` both
-# stay denied for production targets. The all-target Clippy command carries a
-# temporary, explicit exception for the existing reasoned integration-test
-# attributes; ticket 09 removes that exception after normalizing test headers.
 # `unused_result_ok` is unavailable on the 1.81 MSRV and is therefore enforced
 # explicitly by the pinned 1.95 current-policy Clippy lane.
 allow_attributes                   = "deny"

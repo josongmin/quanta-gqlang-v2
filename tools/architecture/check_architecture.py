@@ -89,11 +89,6 @@ def parse_args() -> argparse.Namespace:
         default=REPOSITORY_ROOT,
         help="workspace root containing Cargo.toml",
     )
-    parser.add_argument(
-        "--require-final",
-        action="store_true",
-        help="compatibility spelling; the checker always enforces the final DAG",
-    )
     return parser.parse_args()
 
 
