@@ -98,27 +98,6 @@ pub fn lower_nested_relation_v2(
     lower_root(document, owner_item_id, root, document.budget_receipt())
 }
 
-/// Lower one NESTED relation into the item carrier the composition plan input
-/// expects. The owning item identity stays sealed on the returned carrier; the
-/// output proof is copied verbatim from the lowered root.
-///
-/// This is the composition-body/producer entry: such relations are
-/// materialized inside the sealed composition carrier rather than registered as
-/// standalone document nested relations, so the root's own source identity plus
-/// the lowering's internal identity checks are the authority here.
-///
-/// # Errors
-///
-/// Same rejection families as [`lower_nested_relation_v2`].
-pub fn lower_nested_relation_item_v2(
-    document: &SemanticDocumentV2,
-    owner_item_id: SemanticItemIdV2,
-    root: &TypedRelationExprV2,
-) -> Result<LoweredRelationItemV2, AlgebraDiagnosticV2> {
-    let node = lower_nested_relation_v2(document, owner_item_id, root)?;
-    Ok(LoweredRelationItemV2::new(owner_item_id, node))
-}
-
 /// One relation stage awaiting its lowerable children.
 struct Visit<'a>(&'a TypedRelationExprV2);
 

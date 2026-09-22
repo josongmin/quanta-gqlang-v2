@@ -16,4 +16,4 @@ mod normalize;
 
 pub use diagnostic::{AlgebraDiagnosticV2, AlgebraFailureKindV2};
 pub use node::{AlgebraFamilyV2, CheckedAlgebraNodeV2, CorrelationSetV2, LoweredRelationItemV2};
-pub use normalize::{lower_nested_relation_item_v2, lower_nested_relation_v2, lower_relation_item};
+pub use normalize::{lower_nested_relation_v2, lower_relation_item};
