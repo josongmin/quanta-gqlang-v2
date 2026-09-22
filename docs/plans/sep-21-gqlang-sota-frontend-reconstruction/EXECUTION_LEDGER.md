@@ -2263,3 +2263,45 @@ same-length documents interchangeable.
    edit; W4-D's own sema gates are green (baseline 102/102,
    `--features test` 136, clippy `-D warnings` clean, rustfmt clean) with 46 new
    additive public items and zero changed signatures.
+
+### W4-D COMPLETE — sema fixture family + end-to-end probe — 2026-09-22
+
+Lease respected (`sema/src/test_support.rs` only, strictly additive: 46 new
+public items, ZERO changed signatures; hash `8c2d817fa71a6933`). Gates: sema
+`--all-targets` 102/102 unchanged, `--features test` 136 (121 + 15 new units),
+clippy `-D warnings` clean, rustfmt clean; planning 137/137 and pipeline 28/28
+after the composition rewrite landed.
+
+Fixtures landed: META (RequireCertified real-transaction; UsePack via the
+documented crate-local sealing seam + the verbatim transaction rejection as a
+constant), PRESENTATION (all 12 Explain permutations + Show/Describe/Sample/
+Compare/Export), COMPOSITION (Relational two-producer working-set shape,
+Graph, Check, Explain bodies), 4 relation variants
+(Apply/Limit/Union/ExistsWithMultiplicativeRight), small-receipt rule documents
+(7 members = exact fit at limit 8, 8 = one over), narrow-witness FIND
+(`max_witnesses = 1`), alternate graph node 5001.
+
+End-to-end probe (out-of-tree, live crates): certified lane, UsePack ->
+NoPlan(MetaActivation) through both entries, the incoherent Explain pairs
+rejected by planning, Sample -> Bounded cardinality, Export -> sarif +
+ExportEffectOnly, Describe -> Alert, Compare -> PathWitness, all four
+composition bodies planning with `composition` policy, EXISTS with a
+multiplicative right arm -> SemiJoin over Join (LinearInInput), rule-program
+exact/over at the sealed limit, narrow witness -> CanonicalOne, alternate node
+-> NestedGraphIdentityMismatch — ALL PASSED.
+
+BONUS (from the probe, worth recording): after the integrator's relational
+identity relaxation, `ReferenceRelationFixtureV2::{NotExists,
+CorrelatedNotExists}` now lower to AntiJoin roots and PLAN, so the
+`AntiJoin -> NegationCheck` capability rail can light up from existing fixtures
+(its "refused by identity_mismatch" comment is stale). `NegatedExists` still
+fails lowering with algebra's exact rejection (InvalidStageContract, span
+18..31, "relational EXISTS must appear as a predicate conjunct"), which is the
+pinned contract, not a defect.
+
+STILL UNREACHABLE BY CONSTRUCTION (recorded, not faked): only the three algebra
+families with no authorable document shape — Apply -> CorrelatedApply,
+Limit -> Limiting, Union -> SetUnion — because `RelationExprKindV1` is closed
+and `AlgebraOpV2::{Apply,Limit,Union}` have no sealed constructor; their
+fixtures return the verbatim surface rejections. This matches W2-A's decision
+to omit those families from the completion claim.
