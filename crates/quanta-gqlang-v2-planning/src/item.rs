@@ -30,7 +30,7 @@ use crate::presentation::PresentationContractV2;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SemanticPlanInputV2 {
     /// A fully lowered, checked relational item (ticket 05).
-    Relational(LoweredRelationItemV2),
+    Relational(Box<LoweredRelationItemV2>),
     /// A sealed FIND graph contract (ticket 06).
     Graph(GraphQueryContractV2),
     /// A validated CHECK contract wrapping Sema's resolved CHECK.
@@ -44,7 +44,7 @@ pub enum SemanticPlanInputV2 {
     MetaRequireCertified(ResolvedMetaV2),
     /// A checked composition plan input (root, ordered producers, WITH identity,
     /// one sealed body input).
-    Composition(CheckedCompositionPlanInputV2),
+    Composition(Box<CheckedCompositionPlanInputV2>),
 }
 
 /// Why a document item produces NO host-agnostic plan.

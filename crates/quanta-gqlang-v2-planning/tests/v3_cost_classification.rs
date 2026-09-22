@@ -1,10 +1,6 @@
-#![allow(
+#![expect(
     clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    clippy::single_match,
-    clippy::unwrap_used,
     clippy::wildcard_enum_match_arm,
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
@@ -146,10 +142,8 @@ fn a_filter_over_an_existence_conjunct_stays_linear_in_input() {
     );
 }
 
-/// INTEGRATOR-FIXTURE-PENDING: `CardinalityClassV2::Bounded` is derived only from
-/// a sealed `Limit` algebra stage or a bounded `SAMPLE` presentation, and
-/// `ReferenceRelationFixtureV2` has neither a `Limit` nor a `Union` variant. The
-/// keyword is still asserted verbatim below.
+/// `CardinalityClassV2::Bounded` remains a public semantic class for bounded
+/// presentation plans.
 #[test]
 fn the_unreachable_cardinality_classes_render_stable_keywords() {
     assert_eq!(CardinalityClassV2::Bounded.keyword(), "bounded");

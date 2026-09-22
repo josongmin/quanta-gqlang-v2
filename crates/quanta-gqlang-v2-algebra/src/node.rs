@@ -18,22 +18,34 @@ pub enum AlgebraFamilyV2 {
     Project,
     /// Inner or explicit cross join.
     Join,
-    /// Programmatic correlated/lateral operator.
-    Apply,
     /// Source grouping stage.
     Group,
     /// Aggregate folds over a Group.
     Aggregate,
     /// Source ordering stage.
     Sort,
-    /// Programmatic ordered window.
-    Limit,
-    /// Programmatic compatible-arm union.
-    Union,
     /// Positive relational existence.
     SemiJoin,
     /// Negative relational existence.
     AntiJoin,
+}
+
+impl AlgebraFamilyV2 {
+    /// Stable public spelling.
+    #[must_use]
+    pub const fn keyword(self) -> &'static str {
+        match self {
+            Self::Scan => "scan",
+            Self::Filter => "filter",
+            Self::Project => "project",
+            Self::Join => "join",
+            Self::Group => "group",
+            Self::Aggregate => "aggregate",
+            Self::Sort => "sort",
+            Self::SemiJoin => "semi_join",
+            Self::AntiJoin => "anti_join",
+        }
+    }
 }
 
 /// Exact, duplicate-free correlations retained by a Semi/Anti join.
@@ -112,10 +124,6 @@ pub struct CheckedAlgebraNodeV2 {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[expect(
-    dead_code,
-    reason = "Apply, Limit, and Union are intentionally programmatic-only; their sealed constructors land with their owning planner contracts"
-)]
 pub(crate) enum AlgebraOpV2 {
     Scan {
         source: ResolvedScanSourceV2,
@@ -156,20 +164,6 @@ pub(crate) enum AlgebraOpV2 {
         left: Box<CheckedAlgebraNodeV2>,
         right: Box<CheckedAlgebraNodeV2>,
         correlations: CorrelationSetV2,
-    },
-    Apply {
-        left: Box<CheckedAlgebraNodeV2>,
-        right: Box<CheckedAlgebraNodeV2>,
-        correlations: CorrelationSetV2,
-    },
-    Limit {
-        input: Box<CheckedAlgebraNodeV2>,
-        count: u64,
-        offset: u64,
-    },
-    Union {
-        left: Box<CheckedAlgebraNodeV2>,
-        right: Box<CheckedAlgebraNodeV2>,
     },
 }
 
@@ -217,9 +211,6 @@ impl CheckedAlgebraNodeV2 {
             AlgebraOpV2::Sort { .. } => AlgebraFamilyV2::Sort,
             AlgebraOpV2::SemiJoin { .. } => AlgebraFamilyV2::SemiJoin,
             AlgebraOpV2::AntiJoin { .. } => AlgebraFamilyV2::AntiJoin,
-            AlgebraOpV2::Apply { .. } => AlgebraFamilyV2::Apply,
-            AlgebraOpV2::Limit { .. } => AlgebraFamilyV2::Limit,
-            AlgebraOpV2::Union { .. } => AlgebraFamilyV2::Union,
         }
     }
 
@@ -256,13 +247,10 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Project { input, .. }
             | AlgebraOpV2::Group { input, .. }
             | AlgebraOpV2::Aggregate { input, .. }
-            | AlgebraOpV2::Sort { input, .. }
-            | AlgebraOpV2::Limit { input, .. } => vec![input],
+            | AlgebraOpV2::Sort { input, .. } => vec![input],
             AlgebraOpV2::Join { left, right, .. }
             | AlgebraOpV2::SemiJoin { left, right, .. }
-            | AlgebraOpV2::AntiJoin { left, right, .. }
-            | AlgebraOpV2::Apply { left, right, .. }
-            | AlgebraOpV2::Union { left, right } => vec![left, right],
+            | AlgebraOpV2::AntiJoin { left, right, .. } => vec![left, right],
         }
     }
 
@@ -278,10 +266,7 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
             | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. }
-            | AlgebraOpV2::Apply { .. }
-            | AlgebraOpV2::Limit { .. }
-            | AlgebraOpV2::Union { .. } => None,
+            | AlgebraOpV2::AntiJoin { .. } => None,
         }
     }
 
@@ -299,10 +284,7 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
             | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. }
-            | AlgebraOpV2::Apply { .. }
-            | AlgebraOpV2::Limit { .. }
-            | AlgebraOpV2::Union { .. } => None,
+            | AlgebraOpV2::AntiJoin { .. } => None,
         }
     }
 
@@ -319,10 +301,7 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
             | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. }
-            | AlgebraOpV2::Apply { .. }
-            | AlgebraOpV2::Limit { .. }
-            | AlgebraOpV2::Union { .. } => &[],
+            | AlgebraOpV2::AntiJoin { .. } => &[],
         }
     }
 
@@ -338,10 +317,7 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
             | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. }
-            | AlgebraOpV2::Apply { .. }
-            | AlgebraOpV2::Limit { .. }
-            | AlgebraOpV2::Union { .. } => None,
+            | AlgebraOpV2::AntiJoin { .. } => None,
         }
     }
 
@@ -356,10 +332,7 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Join { .. }
             | AlgebraOpV2::Sort { .. }
             | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. }
-            | AlgebraOpV2::Apply { .. }
-            | AlgebraOpV2::Limit { .. }
-            | AlgebraOpV2::Union { .. } => &[],
+            | AlgebraOpV2::AntiJoin { .. } => &[],
         }
     }
 
@@ -374,10 +347,7 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Group { .. }
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. }
-            | AlgebraOpV2::Apply { .. }
-            | AlgebraOpV2::Limit { .. }
-            | AlgebraOpV2::Union { .. } => &[],
+            | AlgebraOpV2::AntiJoin { .. } => &[],
         }
     }
 
@@ -394,48 +364,23 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
             | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. }
-            | AlgebraOpV2::Apply { .. }
-            | AlgebraOpV2::Limit { .. }
-            | AlgebraOpV2::Union { .. } => &[],
+            | AlgebraOpV2::AntiJoin { .. } => &[],
         }
     }
 
-    /// Correlation proof owned by Apply, SemiJoin, or AntiJoin.
+    /// Correlation proof owned by SemiJoin or AntiJoin.
     #[must_use]
     pub const fn correlations(&self) -> Option<&CorrelationSetV2> {
         match &self.op {
             AlgebraOpV2::SemiJoin { correlations, .. }
-            | AlgebraOpV2::AntiJoin { correlations, .. }
-            | AlgebraOpV2::Apply { correlations, .. } => Some(correlations),
+            | AlgebraOpV2::AntiJoin { correlations, .. } => Some(correlations),
             AlgebraOpV2::Scan { .. }
             | AlgebraOpV2::Filter { .. }
             | AlgebraOpV2::Project { .. }
             | AlgebraOpV2::Join { .. }
             | AlgebraOpV2::Group { .. }
             | AlgebraOpV2::Aggregate { .. }
-            | AlgebraOpV2::Sort { .. }
-            | AlgebraOpV2::Limit { .. }
-            | AlgebraOpV2::Union { .. } => None,
-        }
-    }
-
-    /// Programmatic Limit window, when applicable.
-    #[must_use]
-    pub const fn limit_window(&self) -> Option<(u64, u64)> {
-        match &self.op {
-            AlgebraOpV2::Limit { count, offset, .. } => Some((*count, *offset)),
-            AlgebraOpV2::Scan { .. }
-            | AlgebraOpV2::Filter { .. }
-            | AlgebraOpV2::Project { .. }
-            | AlgebraOpV2::Join { .. }
-            | AlgebraOpV2::Group { .. }
-            | AlgebraOpV2::Aggregate { .. }
-            | AlgebraOpV2::Sort { .. }
-            | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. }
-            | AlgebraOpV2::Apply { .. }
-            | AlgebraOpV2::Union { .. } => None,
+            | AlgebraOpV2::Sort { .. } => None,
         }
     }
 
@@ -649,12 +594,6 @@ fn op_agrees_with_output(
         }
         AlgebraOpV2::SemiJoin { left, .. } | AlgebraOpV2::AntiJoin { left, .. } => {
             preserves_input_frame(output, left.output())
-        }
-        AlgebraOpV2::Apply { left, .. } => preserves_input_frame(output, left.output()),
-        AlgebraOpV2::Limit { input, .. } => preserves_input_frame(output, input.output()),
-        AlgebraOpV2::Union { left, right } => {
-            preserves_input_frame(output, left.output())
-                && preserves_input_frame(output, right.output())
         }
     }
 }

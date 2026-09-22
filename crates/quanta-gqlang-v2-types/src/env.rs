@@ -186,9 +186,7 @@ impl RelationCatalogV2 {
                         observed: value.len(),
                     });
                 }
-                authority_bytes = authority_bytes
-                    .checked_add(value.len())
-                    .unwrap_or(usize::MAX);
+                authority_bytes = authority_bytes.saturating_add(value.len());
                 if authority_bytes > budget_profile.authority_bytes {
                     return Err(TypeAuthorityDiagnosticV2::ResourceExhausted {
                         dimension: "authority_bytes",

@@ -1,8 +1,7 @@
-#![allow(
+#![expect(
     clippy::expect_used,
     clippy::indexing_slicing,
     clippy::panic,
-    clippy::unwrap_used,
     reason = "document-assembly rails assert exact sealed payloads with unwrap/expect/indexing/panic; allowed for test targets only"
 )]
 
@@ -266,8 +265,11 @@ fn relation_scan_compiles_to_one_exact_planned_item() {
         .item(fixture.item_id())
         .expect("the authored relation identity is compiled");
     assert_eq!(item.item_id(), fixture.item_id());
-    let CompiledItemV2::Planned(PlannedItemV2::Relation { plan, .. }) = item else {
+    let CompiledItemV2::Planned(planned) = item else {
         panic!("a relational item must compile to a planned relation item");
+    };
+    let PlannedItemV2::Relation { plan, .. } = planned.as_ref() else {
+        panic!("a relational item retains its relation plan");
     };
     assert!(item.plan().is_some());
     assert!(item.no_plan_reason().is_none());
@@ -333,9 +335,11 @@ fn find_witness_retention_changes_the_assembled_plan() {
         deep_plan.items(),
         "a lost FIND witness cap/path-length bound must change the assembled plan"
     );
-    let CompiledItemV2::Planned(PlannedItemV2::Graph { item_id, .. }) = &shallow_plan.items()[0]
-    else {
+    let CompiledItemV2::Planned(planned) = &shallow_plan.items()[0] else {
         panic!("a FIND item must compile to a planned graph item");
+    };
+    let PlannedItemV2::Graph { item_id, .. } = planned.as_ref() else {
+        panic!("a FIND item retains its graph plan");
     };
     assert_eq!(*item_id, shallow.graph_item_id());
 }
@@ -346,9 +350,11 @@ fn nested_check_retains_its_own_graph_identity() {
         .expect("nested CHECK fixture resolves");
     let compiled = compile_resolved_document_v2(fixture.document()).expect("CHECK compiles");
     assert_eq!(compiled.items().len(), 1);
-    let CompiledItemV2::Planned(PlannedItemV2::Check { item_id, plan }) = &compiled.items()[0]
-    else {
+    let CompiledItemV2::Planned(planned) = &compiled.items()[0] else {
         panic!("a CHECK item must compile to a planned CHECK item");
+    };
+    let PlannedItemV2::Check { item_id, plan } = planned.as_ref() else {
+        panic!("a CHECK item retains its CHECK plan");
     };
     assert_eq!(*item_id, fixture.check_item_id());
     assert_ne!(*item_id, fixture.nested_graph_item_id());
@@ -467,8 +473,11 @@ fn rule_program_receives_one_plan_and_exact_members() {
         assert_eq!(member.program_id(), program.program_id());
     }
     for item in compiled.items() {
-        let CompiledItemV2::Planned(PlannedItemV2::RuleMember(member)) = item else {
+        let CompiledItemV2::Planned(planned) = item else {
             panic!("every source rule compiles to a rule-program member reference");
+        };
+        let PlannedItemV2::RuleMember(member) = planned.as_ref() else {
+            panic!("every source rule retains its member reference");
         };
         assert!(item.plan().is_none());
         assert_eq!(member.program_id(), program.program_id());
@@ -747,9 +756,15 @@ fn closed_source_entry_assembles_the_exact_item_dispositions() {
         .iter()
         .map(|item| match item {
             CompiledItemV2::NoPlan { .. } => "no_plan",
-            CompiledItemV2::Planned(PlannedItemV2::RuleMember(_)) => "rule_member",
-            CompiledItemV2::Planned(PlannedItemV2::Presentation { .. }) => "presentation",
-            CompiledItemV2::Planned(_) => "planned",
+            CompiledItemV2::Planned(planned) => match planned.as_ref() {
+                PlannedItemV2::RuleMember(_) => "rule_member",
+                PlannedItemV2::Presentation { .. } => "presentation",
+                PlannedItemV2::Relation { .. }
+                | PlannedItemV2::Graph { .. }
+                | PlannedItemV2::Check { .. }
+                | PlannedItemV2::Composition { .. }
+                | PlannedItemV2::MetaRequireCertified { .. } => "planned",
+            },
         })
         .collect();
     assert_eq!(dispositions, ["no_plan", "rule_member", "presentation"]);
@@ -842,10 +857,11 @@ fn composition_producer_and_with_identity_are_assembled_exactly() {
     let compiled = compile_source_document_v2(DOC_SOURCE, &composition_source(2), &authority)
         .expect("the composition compiles");
     assert_eq!(compiled.items().len(), 1);
-    let CompiledItemV2::Planned(PlannedItemV2::Composition { item_id, plan }) =
-        &compiled.items()[0]
-    else {
+    let CompiledItemV2::Planned(planned) = &compiled.items()[0] else {
         panic!("a composition item must compile to a planned composition item");
+    };
+    let PlannedItemV2::Composition { item_id, plan } = planned.as_ref() else {
+        panic!("a composition item retains its composition plan");
     };
     let document = resolve_source(&authority, &composition_source(2));
     let SemanticItemV2::Composition(composition) = document
@@ -946,8 +962,11 @@ fn typed_relation_source_requires_and_retains_host_authority() {
     let compiled = compile_source_document_v2(DOC_SOURCE, RECORD_SOURCE, &authority_with_records())
         .expect("an admitted host relation compiles");
     assert_eq!(compiled.items().len(), 1);
-    let CompiledItemV2::Planned(PlannedItemV2::Relation { plan, .. }) = &compiled.items()[0] else {
+    let CompiledItemV2::Planned(planned) = &compiled.items()[0] else {
         panic!("a typed relation compiles to a planned relation item");
+    };
+    let PlannedItemV2::Relation { plan, .. } = planned.as_ref() else {
+        panic!("a typed relation retains its relation plan");
     };
 
     // FIELD assertions over the host `records` scan + one projection: the

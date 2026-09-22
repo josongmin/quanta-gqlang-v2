@@ -24,6 +24,22 @@ pub enum FrontendStageV2 {
     Resource,
 }
 
+impl FrontendStageV2 {
+    /// Stable wire/CLI spelling.
+    #[must_use]
+    pub const fn keyword(self) -> &'static str {
+        match self {
+            Self::Integrity => "integrity",
+            Self::Declaration => "declaration",
+            Self::Resolution => "resolution",
+            Self::Binding => "binding",
+            Self::Typing => "typing",
+            Self::Validation => "validation",
+            Self::Resource => "resource",
+        }
+    }
+}
+
 /// Ordered diagnostic severity. Errors sort before warnings and notes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum FrontendSeverityV2 {
@@ -33,6 +49,18 @@ pub enum FrontendSeverityV2 {
     Warning,
     /// Additional explanatory information.
     Note,
+}
+
+impl FrontendSeverityV2 {
+    /// Stable wire/CLI spelling.
+    #[must_use]
+    pub const fn keyword(self) -> &'static str {
+        match self {
+            Self::Error => "error",
+            Self::Warning => "warning",
+            Self::Note => "note",
+        }
+    }
 }
 
 /// One deterministic diagnostic with source-rich edges.

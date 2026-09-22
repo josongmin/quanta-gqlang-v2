@@ -1,8 +1,7 @@
-#![allow(
+#![expect(
     clippy::expect_used,
     clippy::indexing_slicing,
     clippy::panic,
-    clippy::unwrap_used,
     reason = "analysis-assembly rails assert exact stage statuses with unwrap/expect/indexing/panic; allowed for test targets only"
 )]
 
@@ -125,9 +124,11 @@ fn resolved_relation_analysis_is_complete() {
     assert_eq!(analyzed.order(), [fixture.item_id()]);
     assert!(analyzed.unresolved().is_empty());
     assert!(analyzed.rule_program().is_none());
-    let AnalysisItemV2::Complete(PlannedItemV2::Relation { item_id, .. }) = &analyzed.items()[0]
-    else {
+    let AnalysisItemV2::Complete(planned) = &analyzed.items()[0] else {
         panic!("a resolved relation is Complete with a planned payload");
+    };
+    let PlannedItemV2::Relation { item_id, .. } = planned.as_ref() else {
+        panic!("a resolved relation retains its relation plan");
     };
     assert_eq!(*item_id, fixture.item_id());
     assert!(analyzed.item(fixture.item_id()).is_some());
@@ -183,9 +184,15 @@ fn complete_open_authority_carries_complete_payloads() {
         .items()
         .iter()
         .map(|item| match item {
-            AnalysisItemV2::Complete(PlannedItemV2::RuleMember(_)) => "rule_member",
-            AnalysisItemV2::Complete(PlannedItemV2::Presentation { .. }) => "presentation",
-            AnalysisItemV2::Complete(_) => "planned",
+            AnalysisItemV2::Complete(planned) => match planned.as_ref() {
+                PlannedItemV2::RuleMember(_) => "rule_member",
+                PlannedItemV2::Presentation { .. } => "presentation",
+                PlannedItemV2::Relation { .. }
+                | PlannedItemV2::Graph { .. }
+                | PlannedItemV2::Check { .. }
+                | PlannedItemV2::Composition { .. }
+                | PlannedItemV2::MetaRequireCertified { .. } => "planned",
+            },
             AnalysisItemV2::NotApplicable(_) => "not_applicable",
             AnalysisItemV2::BlockedByDiagnostics(_) => "blocked",
         })
@@ -280,9 +287,11 @@ fn sealed_analysis_reads_the_document_budget_receipt() {
     let fixture =
         reference_relation_document_v2(ReferenceRelationFixtureV2::Scan).expect("scan resolves");
     let analyzed = analyze_resolved_document_v2(fixture.document()).expect("analysis resolves");
-    let AnalysisItemV2::Complete(PlannedItemV2::Relation { item_id, .. }) = &analyzed.items()[0]
-    else {
+    let AnalysisItemV2::Complete(planned) = &analyzed.items()[0] else {
         panic!("the sealed relation resolves");
+    };
+    let PlannedItemV2::Relation { item_id, .. } = planned.as_ref() else {
+        panic!("the sealed relation retains its relation plan");
     };
     assert_eq!(*item_id, fixture.item_id());
     let parsed = quanta_gqlang_v2_surface::parse_source_document_v2(

@@ -73,34 +73,6 @@ FINAL_DEV_EDGES = FINAL_NORMAL_EDGES
 # here with an architecture review.
 FINAL_BUILD_EDGES: set[tuple[str, str]] = set()
 
-TRANSITIONAL_NORMAL_EDGES = {
-    ("quanta-gqlang-v2-algebra", "quanta-gqlang-v2-hir"),
-    ("quanta-gqlang-v2-algebra", "quanta-gqlang-v2-binder"),
-    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-hir"),
-    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-pipeline"),
-    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-planning"),
-    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-surface"),
-    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-types"),
-    ("quanta-gqlang-v2-conformance", "quanta-gqlang-v2-hir"),
-    ("quanta-gqlang-v2-conformance", "quanta-gqlang-v2-pipeline"),
-    ("quanta-gqlang-v2-conformance", "quanta-gqlang-v2-planning"),
-    ("quanta-gqlang-v2-conformance", "quanta-gqlang-v2-surface"),
-    ("quanta-gqlang-v2-frontend-contract", "quanta-gqlang-v2-algebra"),
-    ("quanta-gqlang-v2-frontend-contract", "quanta-gqlang-v2-hir"),
-    ("quanta-gqlang-v2-frontend-contract", "quanta-gqlang-v2-planning"),
-    ("quanta-gqlang-v2-frontend-contract", "quanta-gqlang-v2-surface"),
-    ("quanta-gqlang-v2-frontend-contract", "quanta-gqlang-v2-types"),
-    ("quanta-gqlang-v2-diagnostics-stdio", "quanta-gqlang-v2-pipeline"),
-    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-hir"),
-    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-binder"),
-    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-types"),
-    ("quanta-gqlang-v2-planning", "quanta-gqlang-v2-hir"),
-}
-TRANSITIONAL_DEV_EDGES = {
-    ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-diagnostics-stdio"),
-}
-TRANSITIONAL_BUILD_EDGES: set[tuple[str, str]] = set()
-
 FORBIDDEN_DEPENDENCY_PREFIXES = (
     "quanta-runtime",
     "quanta-sdk",
@@ -120,7 +92,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--require-final",
         action="store_true",
-        help="reject every still-present declared transitional edge",
+        help="compatibility spelling; the checker always enforces the final DAG",
     )
     return parser.parse_args()
 
@@ -220,9 +192,9 @@ def main() -> int:
                     "build": build_edges,
                 }[kind].add(edge)
 
-    illegal_normal = normal_edges - FINAL_NORMAL_EDGES - TRANSITIONAL_NORMAL_EDGES
-    illegal_dev = dev_edges - FINAL_DEV_EDGES - TRANSITIONAL_DEV_EDGES
-    illegal_build = build_edges - FINAL_BUILD_EDGES - TRANSITIONAL_BUILD_EDGES
+    illegal_normal = normal_edges - FINAL_NORMAL_EDGES
+    illegal_dev = dev_edges - FINAL_DEV_EDGES
+    illegal_build = build_edges - FINAL_BUILD_EDGES
     if illegal_normal:
         errors.append(f"illegal normal internal edges: {render_edges(illegal_normal)}")
     if illegal_dev:
@@ -230,50 +202,25 @@ def main() -> int:
     if illegal_build:
         errors.append(f"illegal build internal edges: {render_edges(illegal_build)}")
 
-    transitional_normal_present = normal_edges & TRANSITIONAL_NORMAL_EDGES
-    transitional_dev_present = dev_edges & TRANSITIONAL_DEV_EDGES
-    transitional_build_present = build_edges & TRANSITIONAL_BUILD_EDGES
-    if args.require_final and (
-        transitional_normal_present or transitional_dev_present or transitional_build_present
-    ):
-        errors.append(
-            "final architecture required but transitional edges remain: "
-            f"normal=[{render_edges(transitional_normal_present)}], "
-            f"dev=[{render_edges(transitional_dev_present)}], "
-            f"build=[{render_edges(transitional_build_present)}]"
-        )
-
     verdict = "failed" if errors else "passed"
     stream = sys.stderr if errors else sys.stdout
     print(f"architecture lint {verdict}", file=stream)
     print(f"workspace_members={len(package_names)}", file=stream)
     print(
         f"normal_edges={len(normal_edges)} "
-        f"final_present={len(normal_edges & FINAL_NORMAL_EDGES)} "
-        f"transitional_present={len(transitional_normal_present)} "
-        f"transitional_declared={len(TRANSITIONAL_NORMAL_EDGES)}",
+        f"final_present={len(normal_edges & FINAL_NORMAL_EDGES)}",
         file=stream,
     )
     print(
         f"dev_edges={len(dev_edges)} "
-        f"final_dev_present={len(dev_edges & FINAL_DEV_EDGES)} "
-        f"transitional_dev_present={len(transitional_dev_present)} "
-        f"transitional_dev_declared={len(TRANSITIONAL_DEV_EDGES)}",
+        f"final_dev_present={len(dev_edges & FINAL_DEV_EDGES)}",
         file=stream,
     )
     print(
         f"build_edges={len(build_edges)} "
-        f"final_build_present={len(build_edges & FINAL_BUILD_EDGES)} "
-        f"transitional_build_present={len(transitional_build_present)} "
-        f"transitional_build_declared={len(TRANSITIONAL_BUILD_EDGES)}",
+        f"final_build_present={len(build_edges & FINAL_BUILD_EDGES)}",
         file=stream,
     )
-    for edge in sorted(transitional_normal_present):
-        print(f"transitional normal {render_edge(edge)}", file=stream)
-    for edge in sorted(transitional_dev_present):
-        print(f"transitional dev {render_edge(edge)}", file=stream)
-    for edge in sorted(transitional_build_present):
-        print(f"transitional build {render_edge(edge)}", file=stream)
     for error in errors:
         print(f"- {error}", file=sys.stderr)
     return 1 if errors else 0

@@ -118,7 +118,7 @@ use crate::result_kind::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PlanOutcomeV2 {
     /// The input plans.
-    Plan(SemanticPlanV2),
+    Plan(Box<SemanticPlanV2>),
     /// The input has a checked, non-error non-plan outcome.
     NoPlan(NoPlanReasonV2),
 }
@@ -233,7 +233,7 @@ pub fn plan(
     document: &SemanticDocumentV2,
 ) -> Result<SemanticPlanV2, PlanningDiagnosticV1> {
     match plan_outcome(input, document)? {
-        PlanOutcomeV2::Plan(plan) => Ok(plan),
+        PlanOutcomeV2::Plan(plan) => Ok(*plan),
         PlanOutcomeV2::NoPlan(reason) => Err(PlanningDiagnosticV1::NoPlan {
             reason,
             span: attribution_anchor(input, document),
@@ -305,7 +305,9 @@ impl<'a> PlanningSessionV2<'a> {
         //    input is classified under its own root, so the plan retains the
         //    composition identity instead of the body's.
         let parts = classify(ArmV2::of(input), document, &walk, PlanRootV2::of(input))?;
-        Ok(PlanOutcomeV2::Plan(SemanticPlanV2::from_parts(parts)))
+        Ok(PlanOutcomeV2::Plan(Box::new(SemanticPlanV2::from_parts(
+            parts,
+        ))))
     }
 }
 
@@ -884,8 +886,7 @@ fn exit_class(
 ) -> CardinalityClassV2 {
     match node.family() {
         AlgebraFamilyV2::Scan => CardinalityClassV2::LinearInInput,
-        AlgebraFamilyV2::Limit => CardinalityClassV2::Bounded,
-        AlgebraFamilyV2::Join | AlgebraFamilyV2::Apply => CardinalityClassV2::Multiplicative,
+        AlgebraFamilyV2::Join => CardinalityClassV2::Multiplicative,
         AlgebraFamilyV2::Aggregate => {
             // An aggregate's output cardinality is governed by its GROUPING
             // partition, not by the size of the input it folds: a GROUPED
@@ -914,15 +915,6 @@ fn exit_class(
             // decides existence.
             let _right = values.pop();
             values.pop().unwrap_or(CardinalityClassV2::LinearInInput)
-        }
-        AlgebraFamilyV2::Union => {
-            let right = values.pop().unwrap_or(CardinalityClassV2::LinearInInput);
-            let left = values.pop().unwrap_or(CardinalityClassV2::LinearInInput);
-            if left.rank() >= right.rank() {
-                left
-            } else {
-                right
-            }
         }
     }
 }
@@ -1477,7 +1469,7 @@ mod tests {
     ) -> Result<(ReferenceRelationDocumentV2, SemanticPlanInputV2), String> {
         let document = reference_relation_document_v2(fixture)?;
         let input = lower_relation_item(document.document(), document.item_id())
-            .map(SemanticPlanInputV2::Relational)
+            .map(|item| SemanticPlanInputV2::Relational(Box::new(item)))
             .map_err(|error| format!("{error:?}"))?;
         Ok((document, input))
     }
@@ -1567,7 +1559,7 @@ mod tests {
         let exact_carrier =
             deep_relation_chain_document_v2(exact_depth, ReferenceBudgetV2::Standard)?;
         let exact_input = lower_relation_item(exact_carrier.document(), exact_carrier.item_id())
-            .map(SemanticPlanInputV2::Relational)
+            .map(|item| SemanticPlanInputV2::Relational(Box::new(item)))
             .map_err(|error| format!("{error:?}"))?;
         let exact_document = forged_small_receipt_relation_chain_document_v2(exact_depth)?;
         let mut session = PlanningSessionV2::new(exact_document.document());
@@ -1584,7 +1576,7 @@ mod tests {
             ReferenceBudgetV2::Standard,
         )?;
         let over_input = lower_relation_item(over_carrier.document(), over_carrier.item_id())
-            .map(SemanticPlanInputV2::Relational)
+            .map(|item| SemanticPlanInputV2::Relational(Box::new(item)))
             .map_err(|error| format!("{error:?}"))?;
         let over_document =
             forged_small_receipt_relation_chain_document_v2(SMALL_BUDGET_MAX_SEMANTIC_STEPS)?;

@@ -1,11 +1,5 @@
-#![allow(
+#![expect(
     clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::match_wildcard_for_single_variants,
-    clippy::panic,
-    clippy::single_match,
-    clippy::unwrap_used,
-    clippy::wildcard_enum_match_arm,
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
@@ -19,18 +13,7 @@
 //! real entry point (`plan`) over a sealed ticket-05 lowering product and asserts
 //! the plan's EXACT capability set — never a caller-built algebra node.
 //!
-//! # Rails that cannot be exercised from the current fixture matrix
-//!
-//! INTEGRATOR-FIXTURE-PENDING (see the lane report; no fake carrier is built
-//! here, and the family -> capability mapping itself stays covered by the
-//! `src/capability.rs` owner unit rail):
-//!
-//! - `Apply` -> `CorrelatedApply`: no `ReferenceRelationFixtureV2` lowers to
-//!   `AlgebraFamilyV2::Apply` (every correlated reference shape lowers to a
-//!   Semi/Anti join).
-//! - `Limit` -> `Limiting` and `Union` -> `SetUnion`: `ReferenceRelationFixtureV2`
-//!   has no `Limit` and no `Union` variant.
-//! - `AntiJoin` -> `NegationCheck`: every reference fixture whose lowering
+//! `AntiJoin` -> `NegationCheck` is not directly exercised: every reference fixture whose lowering
 //!   contains an `AntiJoin` has it as the ROOT (`NotExists`,
 //!   `CorrelatedNotExists`) and is refused by
 //!   `planning.input_document_mismatch.identity_mismatch`; `NegatedExists` fails
@@ -218,12 +201,9 @@ fn capability_keywords_are_stable_verbatim() {
     assert_eq!(CapabilityV2::RelationScan.keyword(), "relation_scan");
     assert_eq!(CapabilityV2::Filtering.keyword(), "filtering");
     assert_eq!(CapabilityV2::Join.keyword(), "join");
-    assert_eq!(CapabilityV2::CorrelatedApply.keyword(), "correlated_apply");
     assert_eq!(CapabilityV2::Grouping.keyword(), "grouping");
     assert_eq!(CapabilityV2::Aggregation.keyword(), "aggregation");
     assert_eq!(CapabilityV2::Ordering.keyword(), "ordering");
-    assert_eq!(CapabilityV2::Limiting.keyword(), "limiting");
-    assert_eq!(CapabilityV2::SetUnion.keyword(), "set_union");
     assert_eq!(CapabilityV2::ExistenceCheck.keyword(), "existence_check");
     assert_eq!(CapabilityV2::NegationCheck.keyword(), "negation_check");
     assert_eq!(

@@ -1,230 +1,198 @@
-#![cfg_attr(
-    test,
-    allow(
-        clippy::expect_used,
-        clippy::unwrap_used,
-        clippy::indexing_slicing,
-        clippy::panic,
-        reason = "unit-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
-    )
-)]
-
-//! QGLang CLI front door (v3-ONLY).
-//!
-//! HARD CUTOVER: the CLI now drives EXACTLY the one shared v3 compiler pipeline
-//! (`quanta-gqlang-v2-pipeline`) over the one shared v3 surface parser/formatter
-//! (`quanta-gqlang-v2-surface`). The legacy v2 `syntax -> sema -> ir` direct
-//! verbs (`parse`, `sema`, `explain`, `doctor`, `headless`, `zero-query`) are
-//! gone; `query` and `fmt` are now the v3 path and `v3-query` / `v3-fmt` are
-//! retained as explicit aliases for the same behavior.
-//!
-//! - `query` / `v3-query`: compile the input through
-//!   `pipeline::compile_program_structural` (single item) or
-//!   `pipeline::compile_document_structural` over `surface::parse_document`
-//!   (multi-item, `;`-separated) and render the per-family plan + cost summary.
-//! - `fmt` / `v3-fmt`: parse through `surface::parse_program` /
-//!   `surface::parse_document` and render canonical surface via
-//!   `surface::format_item` / `surface::format_document`. Idempotent.
+//! Bounded read-only QGLang CLI.
 
 use std::env;
 use std::ffi::OsString;
-use std::fs;
+use std::fs::File;
+use std::io::Read;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use quanta_gqlang_v2_cli::commands;
+use quanta_gqlang_v2_frontend_contract::FrontendBudgetV2;
 
-const USAGE_V1: &str = concat!(
+const USAGE_V2: &str = concat!(
     "cli.usage=quanta-gqlang-v2-cli <query|fmt|v3-query|v3-fmt> (--file <path> | <input...>)\n",
     "cli.read_only=true\n",
     "cli.command_plane=forbidden"
 );
 
 #[derive(Copy, Clone)]
-enum CliCommandV1 {
+enum CliCommandV2 {
     Query,
     Fmt,
 }
 
-impl CliCommandV1 {
-    fn parse_v1(raw: &str) -> Result<Self, CliErrorV1> {
-        match raw {
-            "query" | "v3-query" => Ok(Self::Query),
-            "fmt" | "v3-fmt" => Ok(Self::Fmt),
-            _ => Err(CliErrorV1::usage_v1(format!("unsupported command `{raw}`"))),
-        }
-    }
-}
-
-struct CliInvocationV1 {
-    command: CliCommandV1,
+struct CliInvocationV2 {
+    command: CliCommandV2,
     input: String,
 }
 
-struct CliOutputV1 {
-    stdout: String,
+struct CliErrorV2 {
+    class: &'static str,
+    message: String,
     exit_code: u8,
 }
 
-enum CliErrorClassV1 {
-    Usage,
-    Io,
-    Command,
-}
-
-struct CliErrorV1 {
-    class: CliErrorClassV1,
-    message: String,
-}
-
-impl CliErrorV1 {
-    fn usage_v1(message: String) -> Self {
+impl CliErrorV2 {
+    fn usage(message: impl Into<String>) -> Self {
         Self {
-            class: CliErrorClassV1::Usage,
-            message,
+            class: "usage",
+            message: message.into(),
+            exit_code: 2,
         }
     }
 
-    fn io_v1(message: String) -> Self {
+    fn io(message: impl Into<String>) -> Self {
         Self {
-            class: CliErrorClassV1::Io,
-            message,
+            class: "io",
+            message: message.into(),
+            exit_code: 1,
         }
     }
 
-    fn command_v1(message: String) -> Self {
-        Self {
-            class: CliErrorClassV1::Command,
-            message,
+    fn render(&self) -> String {
+        let mut rendered = format!(
+            "cli.error.class={}\ncli.error.message={}",
+            self.class, self.message
+        );
+        if self.class == "usage" {
+            rendered.push('\n');
+            rendered.push_str(USAGE_V2);
         }
-    }
-
-    fn exit_code_v1(&self) -> u8 {
-        match self.class {
-            CliErrorClassV1::Usage => 2,
-            CliErrorClassV1::Io | CliErrorClassV1::Command => 1,
-        }
-    }
-
-    fn render_v1(&self) -> String {
-        match self.class {
-            CliErrorClassV1::Usage => format!(
-                "cli.error.class=usage\ncli.error.message={}\n{}",
-                self.message, USAGE_V1
-            ),
-            CliErrorClassV1::Io => {
-                format!("cli.error.class=io\ncli.error.message={}", self.message)
-            }
-            CliErrorClassV1::Command => format!("cli.error.class=command\n{}", self.message),
-        }
+        rendered
     }
 }
 
 fn main() -> ExitCode {
-    ExitCode::from(run_cli_from_env_v1())
+    ExitCode::from(run_cli())
 }
 
-fn run_cli_from_env_v1() -> u8 {
-    let args = env::args_os().skip(1).collect::<Vec<_>>();
-
-    if args.len() == 1 && args.first().is_some_and(is_help_v1) {
-        println!("{USAGE_V1}");
+fn run_cli() -> u8 {
+    let mut probe = env::args_os().skip(1);
+    if matches!(probe.size_hint(), (1, Some(1))) && probe.next().as_ref().is_some_and(is_help) {
+        println!("{USAGE_V2}");
         return 0;
     }
-
-    let invocation = match parse_invocation_v1(args) {
+    let budget = match FrontendBudgetV2::standard_v2() {
+        Ok(budget) => budget,
+        Err(error) => {
+            eprintln!(
+                "cli.error.class=configuration\ncli.error.message={}",
+                error.message()
+            );
+            return 1;
+        }
+    };
+    let invocation = match parse_invocation(env::args_os().skip(1), budget.max_source_bytes()) {
         Ok(invocation) => invocation,
-        Err(err) => {
-            eprintln!("{}", err.render_v1());
-            return err.exit_code_v1();
+        Err(error) => {
+            eprintln!("{}", error.render());
+            return error.exit_code;
         }
     };
-
-    match execute_invocation_v1(invocation) {
-        Ok(output) => {
-            println!("{}", output.stdout);
-            output.exit_code
-        }
-        Err(err) => {
-            eprintln!("{}", err.render_v1());
-            err.exit_code_v1()
-        }
-    }
-}
-
-fn is_help_v1(arg: &OsString) -> bool {
-    matches!(arg.to_str(), Some("help" | "--help"))
-}
-
-fn parse_invocation_v1(args: Vec<OsString>) -> Result<CliInvocationV1, CliErrorV1> {
-    let (command_raw, input_args) = args
-        .split_first()
-        .ok_or_else(|| CliErrorV1::usage_v1("missing command".to_string()))?;
-    let command = CliCommandV1::parse_v1(
-        command_raw
-            .to_str()
-            .ok_or_else(|| CliErrorV1::usage_v1("command must be valid UTF-8".to_string()))?,
-    )?;
-
-    let input = match input_args {
-        [] => {
-            return Err(CliErrorV1::usage_v1(
-                "missing input or --file <path>".to_string(),
-            ));
-        }
-        [flag] if is_help_v1(flag) => {
-            return Err(CliErrorV1::usage_v1(
-                "missing input or --file <path>".to_string(),
-            ));
-        }
-        [flag, path] if flag == "--file" => read_input_file_v1(PathBuf::from(path))?,
-        [flag, ..] if flag == "--file" => {
-            return Err(CliErrorV1::usage_v1(
-                "--file requires exactly one path argument".to_string(),
-            ));
-        }
-        inline => inline_input_v1(inline)?,
-    };
-
-    if input.trim().is_empty() {
-        return Err(CliErrorV1::usage_v1("input cannot be empty".to_string()));
-    }
-
-    Ok(CliInvocationV1 { command, input })
-}
-
-fn read_input_file_v1(path: PathBuf) -> Result<String, CliErrorV1> {
-    fs::read_to_string(&path)
-        .map_err(|err| CliErrorV1::io_v1(format!("failed to read {}: {err}", path.display())))
-}
-
-fn inline_input_v1(args: &[OsString]) -> Result<String, CliErrorV1> {
-    let mut parts = Vec::with_capacity(args.len());
-    for arg in args {
-        let value = arg.clone().into_string().map_err(|raw| {
-            CliErrorV1::usage_v1(format!(
-                "input must be valid UTF-8, got `{}`",
-                raw.to_string_lossy()
-            ))
-        })?;
-        parts.push(value);
-    }
-    Ok(parts.join(" "))
-}
-
-fn execute_invocation_v1(invocation: CliInvocationV1) -> Result<CliOutputV1, CliErrorV1> {
     match invocation.command {
-        CliCommandV1::Query => commands::v3_query::run(&invocation.input)
-            .map(|stdout| CliOutputV1 {
-                stdout,
-                exit_code: 0,
-            })
-            .map_err(CliErrorV1::command_v1),
-        CliCommandV1::Fmt => commands::v3_format::run(&invocation.input)
-            .map(|stdout| CliOutputV1 {
-                stdout,
-                exit_code: 0,
-            })
-            .map_err(CliErrorV1::command_v1),
+        CliCommandV2::Query => match commands::v3_query::run(&invocation.input) {
+            Ok(output) => {
+                println!("{}", output.body);
+                output.exit_code
+            }
+            Err(error) => {
+                eprintln!("cli.error.class=command\n{error}");
+                1
+            }
+        },
+        CliCommandV2::Fmt => match commands::v3_format::run(&invocation.input) {
+            Ok(output) => {
+                println!("{output}");
+                0
+            }
+            Err(error) => {
+                eprintln!("cli.error.class=command\n{error}");
+                1
+            }
+        },
     }
+}
+
+fn parse_invocation(
+    mut args: impl Iterator<Item = OsString>,
+    max_source_bytes: u32,
+) -> Result<CliInvocationV2, CliErrorV2> {
+    let command = match args
+        .next()
+        .and_then(|arg| arg.into_string().ok())
+        .as_deref()
+    {
+        Some("query" | "v3-query") => CliCommandV2::Query,
+        Some("fmt" | "v3-fmt") => CliCommandV2::Fmt,
+        Some(other) => return Err(CliErrorV2::usage(format!("unsupported command `{other}`"))),
+        None => return Err(CliErrorV2::usage("missing command")),
+    };
+    let first = args
+        .next()
+        .ok_or_else(|| CliErrorV2::usage("missing input or --file <path>"))?;
+    let input = if first == "--file" {
+        let path = args
+            .next()
+            .ok_or_else(|| CliErrorV2::usage("--file requires exactly one path argument"))?;
+        if args.next().is_some() {
+            return Err(CliErrorV2::usage(
+                "--file requires exactly one path argument",
+            ));
+        }
+        read_input_file(PathBuf::from(path), max_source_bytes)?
+    } else {
+        inline_input(first, args, max_source_bytes)?
+    };
+    if input.trim().is_empty() {
+        return Err(CliErrorV2::usage("input cannot be empty"));
+    }
+    Ok(CliInvocationV2 { command, input })
+}
+
+fn read_input_file(path: PathBuf, max_source_bytes: u32) -> Result<String, CliErrorV2> {
+    let file = File::open(&path)
+        .map_err(|error| CliErrorV2::io(format!("failed to open {}: {error}", path.display())))?;
+    let limit = u64::from(max_source_bytes) + 1;
+    let mut bytes = Vec::new();
+    file.take(limit)
+        .read_to_end(&mut bytes)
+        .map_err(|error| CliErrorV2::io(format!("failed to read {}: {error}", path.display())))?;
+    if bytes.len() > usize::try_from(max_source_bytes).unwrap_or(usize::MAX) {
+        return Err(CliErrorV2::usage("input exceeds max_source_bytes"));
+    }
+    String::from_utf8(bytes)
+        .map_err(|_invalid_utf8| CliErrorV2::usage("input file must be valid UTF-8"))
+}
+
+fn inline_input(
+    first: OsString,
+    rest: impl Iterator<Item = OsString>,
+    max_source_bytes: u32,
+) -> Result<String, CliErrorV2> {
+    let limit = usize::try_from(max_source_bytes).unwrap_or(usize::MAX);
+    let mut output = String::new();
+    for raw in std::iter::once(first).chain(rest) {
+        let part = raw
+            .into_string()
+            .map_err(|_invalid_utf8| CliErrorV2::usage("input must be valid UTF-8"))?;
+        let separator = usize::from(!output.is_empty());
+        if output
+            .len()
+            .saturating_add(separator)
+            .saturating_add(part.len())
+            > limit
+        {
+            return Err(CliErrorV2::usage("input exceeds max_source_bytes"));
+        }
+        if separator == 1 {
+            output.push(' ');
+        }
+        output.push_str(&part);
+    }
+    Ok(output)
+}
+
+fn is_help(arg: &OsString) -> bool {
+    matches!(arg.to_str(), Some("help" | "--help"))
 }

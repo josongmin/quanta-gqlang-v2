@@ -1,11 +1,6 @@
-#![allow(
+#![expect(
     clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    clippy::single_match,
-    clippy::unwrap_used,
-    clippy::wildcard_enum_match_arm,
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
@@ -425,7 +420,7 @@ fn a_graph_plan_is_stable_across_entry_points() {
     let planned = plan(&input, document.document()).expect("a bounded FIND plans");
     let outcome = plan_outcome(&input, document.document()).expect("the outcome agrees");
     match outcome {
-        PlanOutcomeV2::Plan(same) => assert_eq!(planned, same),
+        PlanOutcomeV2::Plan(same) => assert_eq!(planned, *same),
         PlanOutcomeV2::NoPlan(reason) => panic!("a FIND plans, got NoPlan({reason:?})"),
     }
     assert_eq!(

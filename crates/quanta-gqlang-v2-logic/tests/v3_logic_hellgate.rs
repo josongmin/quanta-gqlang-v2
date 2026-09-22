@@ -1,10 +1,6 @@
-#![allow(
+#![expect(
     clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    clippy::single_match,
-    clippy::unwrap_used,
     clippy::wildcard_enum_match_arm,
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]

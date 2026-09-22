@@ -8,16 +8,19 @@ taplo:
     taplo fmt --check
 
 clippy:
-    cargo clippy --workspace --all-targets -- -A clippy::allow_attributes -A clippy::duplicated_attributes -D warnings
+    cargo clippy --workspace --all-targets -- -D warnings
 
 clippy-current-policy:
-    cargo +1.95.0 clippy --workspace --all-targets -- -A clippy::allow_attributes -A clippy::duplicated_attributes -D clippy::unused_result_ok -D warnings
+    cargo +1.95.0 clippy --workspace --all-targets -- -D clippy::unused_result_ok -D warnings
 
 nextest:
     cargo nextest run --workspace --no-tests pass
 
 doc-test:
-    cargo test --workspace --doc
+    RUSTDOCFLAGS="-D warnings" cargo test --workspace --doc
+
+frontdoor-parity:
+    python3 tools/test_frontdoor_parity.py
 
 test:
     just nextest
@@ -31,12 +34,15 @@ typos:
 
 arch-lint:
     python3 tools/architecture/tests/test_architecture.py
-    python3 tools/architecture/check_architecture.py
+    python3 tools/architecture/check_architecture.py --require-final
+
+external-consumer:
+    python3 tools/test_frontend_external_consumer.py
 
 semgrep:
     python3 tools/lint/tests/test_semgrep_non_vacuity.py
     tools/lint/run_semgrep.sh
 
-lint: fmt taplo clippy clippy-current-policy test arch-lint deny typos
+lint: fmt taplo clippy clippy-current-policy test frontdoor-parity arch-lint external-consumer deny typos
 
 ci: lint semgrep

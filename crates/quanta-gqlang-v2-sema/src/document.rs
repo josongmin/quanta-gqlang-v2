@@ -1472,7 +1472,7 @@ impl SemanticStepCounterV2 {
         source_id: SourceIdV2,
         span: SpanV1,
     ) -> Result<(), FrontendFailureV2> {
-        self.used = self.used.checked_add(1).unwrap_or(u32::MAX);
+        self.used = self.used.saturating_add(1);
         if self.used > self.limit {
             return Err(document_failure(
                 "frontend.resource_limit_exceeded",
@@ -3696,9 +3696,7 @@ fn materialize_relation(
             // expression vector, via each expression's sealed
             // `AggregateContextV2`. Mixed and illegal shapes reject here,
             // before any aggregate-ready stage is constructed.
-            let aggregate = aggregate_classes
-                .iter()
-                .any(|class| *class == AggregationClassV1::Aggregate);
+            let aggregate = aggregate_classes.contains(&AggregationClassV1::Aggregate);
             if !aggregate {
                 let output = RelationOutputContractV2::try_new(
                     row,
@@ -4627,7 +4625,10 @@ fn materialize_query_composition(
                 steps,
             )?;
             let expected_body_id = body.item_id();
-            (ResolvedCompositionBodyV2::Query(body), expected_body_id)
+            (
+                ResolvedCompositionBodyV2::Query(Box::new(body)),
+                expected_body_id,
+            )
         }
         quanta_gqlang_v2_hir::CompositionBodyV1::GraphQuery(graph) => {
             let body = resolve_graph_item(
@@ -7445,7 +7446,7 @@ mod tests {
             binding_source: source,
             registry: identity.clone(),
         };
-        check_correlation_witnesses(source, &identity, &keys, &[real.clone()])
+        check_correlation_witnesses(source, &identity, &keys, std::slice::from_ref(&real))
             .map_err(str::to_owned)?;
         let foreign = CorrelationWitnessV2 {
             reference: quanta_gqlang_v2_types::SourceQualifiedNodeIdV2 {

@@ -22,11 +22,10 @@ large-error-threshold = 256
 # and matched once by the consumer — so the default 200-byte heuristic fires on
 # the design rather than on an accident.
 #
-# ROUTED, NOT HIDDEN: `ResolvedCompositionBodyV2` already boxes its large
-# `Check(Box<ResolvedCheckV2>)` variant while leaving `Query`/`Graph`/`Explain`
-# by value, so the crate is internally inconsistent. Boxing the `Query` variants
-# would change a producer contract that Wave 1 froze and Wave 2 consumed
-# (`lower_relation_item` + the 59-case algebra matrix), so it is routed to the
-# owning wave instead of being applied from here. Re-lower this threshold back
-# to the default in the same change that unboxes/boxes those variants.
+# The final facade cut boxes the variants whose size gap exceeds this bound
+# (`SemanticPlanInputV2`, plan outcomes, compiled/analysis items, and the large
+# composition query body). The remaining inline semantic carriers stay below
+# 384 bytes of variant-size difference and are move-once owner IR rather than
+# public transport DTOs. Keep this explicit bound so later growth becomes a
+# failing lint instead of silently expanding stack movement.
 enum-variant-size-threshold = 384

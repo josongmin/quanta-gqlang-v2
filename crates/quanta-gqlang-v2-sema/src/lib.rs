@@ -34,7 +34,8 @@ pub use quanta_gqlang_v2_types::{
 pub use authority::{
     ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, DownstreamBudgetReceiptV2,
     FrontendAuthorityErrorV2, FrontendAuthorityLocationV2, FrontendAuthoritySourceV2,
-    FrontendBudgetV2, FrontendGraphReferenceInputV2, FrontendLanguageVersionV2,
+    FrontendBudgetV2, FrontendCallableParameterInputV2, FrontendCatalogAssetInputV2,
+    FrontendCatalogPayloadV2, FrontendGraphReferenceInputV2, FrontendLanguageVersionV2,
     FrontendLockfileInputV2, FrontendPackInputV2, FrontendRelationCardinalityV2,
     FrontendRelationFieldInputV2, FrontendRelationInputV2, FrontendScalarTypeV2,
     GraphReferenceCatalogV2, GraphReferenceIdV2, GraphReferenceInputV2, GraphReferenceKindV2,

@@ -1,14 +1,3 @@
-#![allow(
-    clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::match_wildcard_for_single_variants,
-    clippy::panic,
-    clippy::single_match,
-    clippy::unwrap_used,
-    clippy::wildcard_enum_match_arm,
-    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
-)]
-
 //! v3 `v3-fmt` front-door idempotence rail (ticket 08, D22).
 //!
 //! Mirrors the `fmt_idempotence_frontdoor` pattern but for the v3 surface: the
@@ -22,7 +11,7 @@
 
 mod support;
 
-use support::{cli_stdout_v1, run_cli_argv_v1};
+use support::{cli_stderr_v1, cli_stdout_v1, run_cli_argv_v1};
 
 /// Run `v3-fmt <inline>` through the real binary; assert exit 0; return stdout
 /// with the single trailing newline `println!` appends trimmed off, so the
@@ -33,7 +22,7 @@ fn v3_fmt_inline_v1(inline: &str) -> String {
         output.status.success(),
         "v3-fmt `{inline}` failed (status={:?})\nstderr={}",
         output.status.code(),
-        String::from_utf8_lossy(&output.stderr)
+        cli_stderr_v1(&output)
     );
     cli_stdout_v1(&output).trim_end_matches('\n').to_owned()
 }

@@ -9,14 +9,15 @@ use quanta_gqlang_v2_hir::{
     SourceRegistrationV2, SourceRegistryIdentityV2, SourceRegistryViewV2, SpanV1,
 };
 use quanta_gqlang_v2_modules::{
-    ContentDigestV2, CurrentModuleSelectionInputV2, LockReferenceInputV2, ModuleAuthorityBuilderV2,
-    ModuleIdV2, ModuleNodeInputV2, PackIdV2, PackManifestInputV2, ValidatedModuleAuthorityPartsV2,
-    VersionRangeV2, VersionV2,
+    CallableKindV2, ContentDigestV2, CurrentModuleSelectionInputV2, ExternalCatalogAssetInputV2,
+    ExternalCatalogPayloadInputV2, LocatedParameterInputV2, LockReferenceInputV2,
+    ModuleAuthorityBuilderV2, ModuleIdV2, ModuleNodeInputV2, PackIdV2, PackManifestInputV2,
+    SignatureInputV2, ValidatedModuleAuthorityPartsV2, VersionRangeV2, VersionV2,
 };
 use quanta_gqlang_v2_types::{
-    AuthorityBudgetProfileV2, CardinalityV1, ExpressionTypeKernelV2, ProvenanceNamespaceV2,
-    RecordFieldTypeV1, RecordTypeV1, RelationCatalogV2, RelationSourceInputV2, ScalarTyV1,
-    ValueTypeV1,
+    AuthorityBudgetProfileV2, CardinalityV1, ExpressionEffectsV2, ExpressionTypeKernelV2,
+    ProvenanceNamespaceV2, RecordFieldTypeV1, RecordTypeV1, RelationCatalogV2,
+    RelationSourceInputV2, ScalarTyV1, ValueTypeV1,
 };
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
@@ -198,9 +199,7 @@ impl GraphReferenceCatalogV2 {
                     None,
                 ));
             }
-            bytes = bytes
-                .checked_add(input.spelling.len())
-                .unwrap_or(usize::MAX);
+            bytes = bytes.saturating_add(input.spelling.len());
             if let Some(subtype) = &input.entity_subtype {
                 if subtype.len() > budget_profile.authority_string_bytes() {
                     return Err(authority_failure_at(
@@ -210,7 +209,7 @@ impl GraphReferenceCatalogV2 {
                         None,
                     ));
                 }
-                bytes = bytes.checked_add(subtype.len()).unwrap_or(usize::MAX);
+                bytes = bytes.saturating_add(subtype.len());
             }
             if bytes > budget_profile.authority_bytes() {
                 return Err(authority_failure_at(
@@ -902,6 +901,96 @@ pub struct FrontendGraphReferenceInputV2 {
     pub location: FrontendAuthorityLocationV2,
 }
 
+/// Simple host catalog kinds admitted through the public authority builder.
+/// Payload-bearing relation/predicate/model contracts remain owner-internal;
+/// this vocabulary covers the opaque reference families authored by source.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FrontendCatalogPayloadV2 {
+    Query,
+    Check,
+    Capability,
+    ModelSource,
+    PackSource,
+    Rule {
+        parameters: Vec<FrontendCallableParameterInputV2>,
+        result: FrontendScalarTypeV2,
+    },
+}
+
+impl FrontendCatalogPayloadV2 {
+    const fn tag(&self) -> &'static str {
+        match self {
+            Self::Query => "query",
+            Self::Check => "check",
+            Self::Capability => "capability",
+            Self::ModelSource => "model_source",
+            Self::PackSource => "pack_source",
+            Self::Rule { .. } => "rule",
+        }
+    }
+
+    fn owner_payload(
+        self,
+        sources: &SourceRegistryViewV2,
+        location: &CheckedLocatedSpanV2,
+    ) -> Result<ExternalCatalogPayloadInputV2, FrontendAuthorityErrorV2> {
+        match self {
+            Self::Query => Ok(ExternalCatalogPayloadInputV2::Query),
+            Self::Check => Ok(ExternalCatalogPayloadInputV2::Check),
+            Self::Capability => Ok(ExternalCatalogPayloadInputV2::Capability),
+            Self::ModelSource => Ok(ExternalCatalogPayloadInputV2::ModelSource),
+            Self::PackSource => Ok(ExternalCatalogPayloadInputV2::PackSource),
+            Self::Rule { parameters, result } => {
+                Ok(ExternalCatalogPayloadInputV2::Rule(SignatureInputV2 {
+                    parameters: parameters
+                        .into_iter()
+                        .map(|parameter| {
+                            let mut value_type = ValueTypeV1::scalar(parameter.scalar_type.owner());
+                            if parameter.optional {
+                                value_type =
+                                    ValueTypeV1::try_optional(value_type).map_err(|error| {
+                                        configuration_failure(
+                                            "sema.invalid_catalog_signature",
+                                            error.to_string(),
+                                        )
+                                    })?;
+                            }
+                            Ok(LocatedParameterInputV2 {
+                                name: parameter.name,
+                                value_type,
+                                location: parameter.location.check(sources)?,
+                            })
+                        })
+                        .collect::<Result<Vec<_>, FrontendAuthorityErrorV2>>()?,
+                    result: ValueTypeV1::scalar(result.owner()),
+                    callable_kind: CallableKindV2::Rule,
+                    effects: ExpressionEffectsV2::pure_scalar(),
+                    location: location.clone(),
+                }))
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FrontendCallableParameterInputV2 {
+    pub name: String,
+    pub scalar_type: FrontendScalarTypeV2,
+    pub optional: bool,
+    pub location: FrontendAuthorityLocationV2,
+}
+
+/// One opaque external catalog asset supplied through the public authority
+/// transaction.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FrontendCatalogAssetInputV2 {
+    pub module_name: String,
+    pub local_name: String,
+    pub payload: FrontendCatalogPayloadV2,
+    pub provenance: String,
+    pub location: FrontendAuthorityLocationV2,
+}
+
 /// Semantic language version selected by the host authority.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FrontendLanguageVersionV2 {
@@ -947,6 +1036,7 @@ pub struct ClosedFrontendAuthorityBuilderV2 {
     lockfiles: Vec<FrontendLockfileInputV2>,
     relations: Vec<FrontendRelationInputV2>,
     graph_references: Vec<FrontendGraphReferenceInputV2>,
+    catalog_assets: Vec<FrontendCatalogAssetInputV2>,
 }
 
 impl ClosedFrontendAuthorityBuilderV2 {
@@ -981,6 +1071,7 @@ impl ClosedFrontendAuthorityBuilderV2 {
             lockfiles: Vec::new(),
             relations: Vec::new(),
             graph_references: Vec::new(),
+            catalog_assets: Vec::new(),
         })
     }
 
@@ -992,6 +1083,12 @@ impl ClosedFrontendAuthorityBuilderV2 {
     /// Add one graph selector declaration. Validation remains atomic until finish.
     pub fn add_graph_reference(&mut self, reference: FrontendGraphReferenceInputV2) {
         self.graph_references.push(reference);
+    }
+
+    /// Add one opaque external catalog asset. Validation remains atomic until
+    /// `finish`; no caller can mint owner proof types.
+    pub fn add_catalog_asset(&mut self, asset: FrontendCatalogAssetInputV2) {
+        self.catalog_assets.push(asset);
     }
 
     /// Add one dependency-free pack manifest. Validation remains atomic until finish.
@@ -1063,6 +1160,22 @@ impl ClosedFrontendAuthorityBuilderV2 {
                     lockfile.source_id,
                     &lockfile.text,
                 )
+                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+        }
+        for asset in self.catalog_assets {
+            let location = asset.location.check(&host_sources)?;
+            let kind_token = asset.payload.tag().to_owned();
+            let typed_payload = asset.payload.owner_payload(&host_sources, &location)?;
+            modules
+                .try_add_external(ExternalCatalogAssetInputV2 {
+                    module_name: asset.module_name,
+                    local_name: asset.local_name,
+                    kind_token,
+                    typed_payload,
+                    provenance: asset.provenance,
+                    location,
+                    dependencies: Vec::new(),
+                })
                 .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
         }
         let modules = modules
@@ -1288,6 +1401,12 @@ impl OpenAnalysisAuthorityV2 {
     /// Construct the standard open editor authority without inventing module,
     /// relation, catalog, pack, or lock authority.
     pub fn try_standard_v2() -> Result<Self, FrontendAuthorityErrorV2> {
+        Self::try_empty_v2(FrontendBudgetV2::standard_v2()?)
+    }
+
+    /// Construct an open editor authority with an explicit checked budget and
+    /// no fabricated host authority.
+    pub fn try_empty_v2(budget: FrontendBudgetV2) -> Result<Self, FrontendAuthorityErrorV2> {
         let _kernel = ExpressionTypeKernelV2::try_closed()
             .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
         let host_sources = SourceRegistryViewV2::try_new(Vec::new())
@@ -1297,7 +1416,7 @@ impl OpenAnalysisAuthorityV2 {
             None,
             None,
             host_sources,
-            FrontendBudgetV2::standard_v2()?,
+            budget,
         ))
     }
 

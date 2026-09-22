@@ -48,17 +48,6 @@ impl CardinalityClassV2 {
             Self::Closure => "closure",
         }
     }
-
-    /// Explicit risk rank, used to take the worst class of two union arms.
-    pub(crate) const fn rank(self) -> u8 {
-        match self {
-            Self::ScalarOrSingleton => 0,
-            Self::Bounded => 1,
-            Self::LinearInInput => 2,
-            Self::Multiplicative => 3,
-            Self::Closure => 4,
-        }
-    }
 }
 
 /// How much recursion risk the plan carries.

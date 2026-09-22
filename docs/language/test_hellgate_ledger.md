@@ -49,10 +49,9 @@ not compatibility promises.
 
 | Front door | Binary rails | Contract pinned |
 |---|---|---|
-| CLI | `crates/quanta-gqlang-v2-cli/tests/v3_cli_front_door_contract.rs`, `crates/quanta-gqlang-v2-cli/tests/v3_cli_pipeline_hellgate.rs`, `crates/quanta-gqlang-v2-cli/tests/v3_cli_fmt_idempotence.rs`, `crates/quanta-gqlang-v2-cli/tests/v3_cli_item_surfacing.rs`, `crates/quanta-gqlang-v2-cli/tests/v3_cli_plan_summary.rs`, `crates/quanta-gqlang-v2-cli/tests/command_doc_gate.rs` | Command allowlist, source/file parity, exit/channel contract, formatting fixed point, item and plan surfacing |
-| CLI/diagnostics parity | `crates/quanta-gqlang-v2-cli/tests/v3_cli_lsp_parity.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_parity_hellgate.rs` | Historical filename retained; assertions target the current diagnostics-stdio binary and shared compiler result |
-| Diagnostics stdio | `crates/quanta-gqlang-v2-diagnostics-stdio/tests/v3_diagnostics_determinism.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_edges.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_frame_extractor_edges.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_json_escape_negative.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_json_object_negative.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_byte_robustness_hellgate.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/stdio_command_plane_hellgate.rs` | Private flat-JSON framing, deterministic diagnostics, malformed-byte/JSON recovery, closed read-only command plane |
-| Documentation/allowlist drift | `crates/quanta-gqlang-v2-diagnostics-stdio/tests/method_allowlist_doc_gate.rs` | Only `v3_diagnostics` is advertised and dispatched; transport is explicitly not JSON-RPC or LSP; ledger paths must exist |
+| CLI | `crates/quanta-gqlang-v2-cli/tests/open_analysis_contract.rs`, `crates/quanta-gqlang-v2-cli/tests/v3_cli_fmt_idempotence.rs`, `crates/quanta-gqlang-v2-cli/tests/command_doc_gate.rs` | Open-authority incomplete/error semantics, exact source-size boundary, exit/channel contract, formatting fixed point, command/documentation allowlist |
+| Diagnostics stdio | `crates/quanta-gqlang-v2-diagnostics-stdio/tests/ndjson_contract.rs`, `crates/quanta-gqlang-v2-diagnostics-stdio/tests/resource_boundaries.rs` | Strict NDJSON schema, deterministic canonical diagnostics, malformed-byte/JSON recovery, frame/source/diagnostic/response bounds, closed read-only command plane |
+| Front-door parity | `tools/test_frontdoor_parity.py` | Black-box CLI/diagnostics agreement without a Cargo dependency between shipped adapters |
 
 ## Architecture and composition gates
 
@@ -64,9 +63,7 @@ not compatibility promises.
 
 ## Maintenance rule
 
-When a rail is renamed or deleted, update this ledger and its owning ticket in
-the same change. `method_allowlist_doc_gate.rs` scans every backticked Rust test
-path under the crates directory in this file and fails if the target does not
-exist. A
-test filename containing legacy terminology is not authority for a retired
-protocol; its table entry must state the actual current boundary.
+When a rail is renamed or deleted, update this ledger in the same change.
+`command_doc_gate.rs` pins the shipped CLI allowlist and diagnostics method
+documentation. Test filenames are not authority for a retired protocol; each
+table entry must state the actual current boundary.

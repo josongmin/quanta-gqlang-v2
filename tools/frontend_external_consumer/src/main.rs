@@ -13,10 +13,11 @@
 
 use quanta_gqlang_v2_frontend_contract::{
     analyze_source_document_v2, compile_source_document_v2, format_source_document_v2,
-    AlgebraFamilyV2, AnalysisDocumentV2, AnalysisItemV2, CheckedLocatedSpanV2,
+    AlgebraFamilyV2, AnalysisDocumentV2, AnalysisItemV2, AnalysisStatusV2, CheckedLocatedSpanV2,
     ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledDocumentV2,
     CompiledItemV2, CompiledRuleProgramV2, FrontendAuthorityErrorV2,
     FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
+    FrontendCallableParameterInputV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
     FrontendDiagnosticV2, FrontendFailureV2, FrontendLanguageVersionV2, FrontendSeverityV2,
     FrontendLockfileInputV2, FrontendPackInputV2, FrontendStageV2,
     FrontendTransactionErrorV2, LocatedSpanV2, NoPlanReasonV2, OpenAnalysisAuthorityV2,
@@ -59,7 +60,7 @@ fn pin<T>(_item: T) {}
 /// Exhaustive read of the closed compiled-item vocabulary.
 fn compiled_item_label(item: &CompiledItemV2) -> &'static str {
     match item {
-        CompiledItemV2::Planned(planned) => match planned {
+        CompiledItemV2::Planned(planned) => match planned.as_ref() {
             PlannedItemV2::Relation { .. } => "planned-relation",
             PlannedItemV2::Graph { .. } => "planned-graph",
             PlannedItemV2::Check { .. } => "planned-check",
@@ -152,12 +153,9 @@ fn algebra_family_label(family: AlgebraFamilyV2) -> &'static str {
         AlgebraFamilyV2::Filter => "filter",
         AlgebraFamilyV2::Project => "project",
         AlgebraFamilyV2::Join => "join",
-        AlgebraFamilyV2::Apply => "apply",
         AlgebraFamilyV2::Group => "group",
         AlgebraFamilyV2::Aggregate => "aggregate",
         AlgebraFamilyV2::Sort => "sort",
-        AlgebraFamilyV2::Limit => "limit",
-        AlgebraFamilyV2::Union => "union",
         AlgebraFamilyV2::SemiJoin => "semi-join",
         AlgebraFamilyV2::AntiJoin => "anti-join",
     }
@@ -245,6 +243,18 @@ fn main() {
             end: 2,
         },
     });
+    closed_builder.add_catalog_asset(FrontendCatalogAssetInputV2 {
+        module_name: "app".to_owned(),
+        local_name: "queries.probe".to_owned(),
+        payload: FrontendCatalogPayloadV2::Query,
+        provenance: "host".to_owned(),
+        location: FrontendAuthorityLocationV2 {
+            source_id: SourceIdV2::from_raw(1),
+            start: 3,
+            end: 4,
+        },
+    });
+    pin(std::mem::size_of::<FrontendCallableParameterInputV2>());
     closed_builder.add_lockfile(FrontendLockfileInputV2 {
         path: "acme.lock".to_owned(),
         source_id: SourceIdV2::from_raw(2),
@@ -303,6 +313,7 @@ fn main() {
         DOCUMENT_SOURCE,
         "analysis keeps the source identity"
     );
+    assert_eq!(analyzed.status(), AnalysisStatusV2::Incomplete);
     assert_eq!(
         analyzed.order().len(),
         3,

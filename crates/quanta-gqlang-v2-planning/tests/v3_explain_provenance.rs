@@ -1,11 +1,6 @@
-#![allow(
+#![expect(
     clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    clippy::single_match,
-    clippy::unwrap_used,
-    clippy::wildcard_enum_match_arm,
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
@@ -23,10 +18,6 @@
 //! family sequence and checked anchor — never a note assembled outside the
 //! planner.
 //!
-//! Rails whose family arm needs a fixture that does not exist yet are listed in
-//! the lane report as INTEGRATOR-FIXTURE-PENDING and marked inline
-//! (`Apply`, `Union`, `Limit` chain arms: `ReferenceRelationFixtureV2` has no such
-//! variant).
 
 use quanta_gqlang_v2_algebra::AlgebraFamilyV2;
 use quanta_gqlang_v2_planning::{plan, SemanticPlanV2};
@@ -236,7 +227,7 @@ fn families_are_charged_one_step_per_visited_node() {
     .expect("the chain authors");
     let input =
         quanta_gqlang_v2_algebra::lower_relation_item(carrier.document(), carrier.item_id())
-            .map(quanta_gqlang_v2_planning::SemanticPlanInputV2::Relational)
+            .map(|item| quanta_gqlang_v2_planning::SemanticPlanInputV2::Relational(Box::new(item)))
             .expect("the chain lowers");
     let over =
         quanta_gqlang_v2_sema::test_support::forged_small_receipt_relation_chain_document_v2(
@@ -268,7 +259,7 @@ fn a_deep_filter_chain_lists_every_filter_before_its_scan() {
     .expect("the chain authors");
     let input =
         quanta_gqlang_v2_algebra::lower_relation_item(carrier.document(), carrier.item_id())
-            .map(quanta_gqlang_v2_planning::SemanticPlanInputV2::Relational)
+            .map(|item| quanta_gqlang_v2_planning::SemanticPlanInputV2::Relational(Box::new(item)))
             .expect("the chain lowers");
     let document =
         quanta_gqlang_v2_sema::test_support::forged_small_receipt_relation_chain_document_v2(depth)

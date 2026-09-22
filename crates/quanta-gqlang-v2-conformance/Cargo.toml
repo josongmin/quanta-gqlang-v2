@@ -15,10 +15,7 @@ name = "quanta_gqlang_v2_conformance"
 path = "src/lib.rs"
 
 [dependencies]
-quanta-gqlang-v2-hir      = { version = "0.1.0", path = "../quanta-gqlang-v2-hir" }
-quanta-gqlang-v2-pipeline = { version = "0.1.0", path = "../quanta-gqlang-v2-pipeline" }
-quanta-gqlang-v2-planning = { version = "0.1.0", path = "../quanta-gqlang-v2-planning" }
-quanta-gqlang-v2-surface  = { version = "0.1.0", path = "../quanta-gqlang-v2-surface" }
+quanta-gqlang-v2-frontend-contract = { version = "0.1.0", path = "../quanta-gqlang-v2-frontend-contract" }
 
 [lints]
 workspace = true

@@ -21,8 +21,9 @@ pub use quanta_gqlang_v2_pipeline::format_source_document_v2;
 
 // ---- assembled document DTOs ----------------------------------------------
 pub use quanta_gqlang_v2_pipeline::{
-    AnalysisDocumentV2, AnalysisItemV2, CompiledDocumentV2, CompiledItemV2, CompiledRuleProgramV2,
-    PlannedItemV2, RuleProgramMemberV2, UnresolvedAnalysisFactV2, OPEN_AUTHORITY_INCOMPLETE_CODE,
+    AnalysisDocumentV2, AnalysisItemV2, AnalysisStatusV2, CompiledDocumentV2, CompiledItemV2,
+    CompiledRuleProgramV2, PlannedItemV2, RuleProgramMemberV2, UnresolvedAnalysisFactV2,
+    OPEN_AUTHORITY_INCOMPLETE_CODE,
 };
 
 // ---- planning DTOs reachable from the assembled documents ------------------
@@ -31,12 +32,13 @@ pub use quanta_gqlang_v2_pipeline::{NoPlanReasonV2, SemanticPlanV2};
 // ---- authorities, diagnostics, and transaction vocabulary ------------------
 pub use quanta_gqlang_v2_pipeline::{
     ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, FrontendAuthorityErrorV2,
-    FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2, FrontendDiagnosticV2,
-    FrontendFailureV2, FrontendGraphReferenceInputV2, FrontendLanguageVersionV2,
-    FrontendLockfileInputV2, FrontendPackInputV2, FrontendRelationCardinalityV2,
-    FrontendRelationFieldInputV2, FrontendRelationInputV2, FrontendScalarTypeV2,
-    FrontendSeverityV2, FrontendStageV2, FrontendTransactionErrorV2, GraphReferenceKindV2,
-    OpenAnalysisAuthorityV2,
+    FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
+    FrontendCallableParameterInputV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
+    FrontendDiagnosticV2, FrontendFailureV2, FrontendGraphReferenceInputV2,
+    FrontendLanguageVersionV2, FrontendLockfileInputV2, FrontendPackInputV2,
+    FrontendRelationCardinalityV2, FrontendRelationFieldInputV2, FrontendRelationInputV2,
+    FrontendScalarTypeV2, FrontendSeverityV2, FrontendStageV2, FrontendTransactionErrorV2,
+    GraphReferenceKindV2, OpenAnalysisAuthorityV2,
 };
 
 // ---- inert value/location closure types ------------------------------------

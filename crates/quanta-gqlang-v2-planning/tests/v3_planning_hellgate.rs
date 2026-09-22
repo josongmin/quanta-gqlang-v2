@@ -1,11 +1,6 @@
-#![allow(
+#![expect(
     clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    clippy::single_match,
-    clippy::unwrap_used,
-    clippy::wildcard_enum_match_arm,
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
@@ -240,7 +235,7 @@ fn the_exact_step_limit_plans_and_limit_plus_one_is_refused_at_the_refused_node(
     .expect("the exact-depth chain authors");
     let input =
         quanta_gqlang_v2_algebra::lower_relation_item(carrier.document(), carrier.item_id())
-            .map(SemanticPlanInputV2::Relational)
+            .map(|item| SemanticPlanInputV2::Relational(Box::new(item)))
             .expect("the chain lowers");
     let document = forged_small_receipt_relation_chain_document_v2(exact_depth)
         .expect("the exact-depth small-receipt document");
@@ -260,7 +255,7 @@ fn the_exact_step_limit_plans_and_limit_plus_one_is_refused_at_the_refused_node(
     .expect("the over-depth chain authors");
     let over_input =
         quanta_gqlang_v2_algebra::lower_relation_item(carrier.document(), carrier.item_id())
-            .map(SemanticPlanInputV2::Relational)
+            .map(|item| SemanticPlanInputV2::Relational(Box::new(item)))
             .expect("the chain lowers");
     let over_document = forged_small_receipt_relation_chain_document_v2(over_depth)
         .expect("the over-depth small-receipt document");
@@ -309,7 +304,7 @@ fn a_single_stage_plan_charges_exactly_one_step() {
     .expect("the single-stage chain authors");
     let input =
         quanta_gqlang_v2_algebra::lower_relation_item(carrier.document(), carrier.item_id())
-            .map(SemanticPlanInputV2::Relational)
+            .map(|item| SemanticPlanInputV2::Relational(Box::new(item)))
             .expect("the stage lowers");
     let planned = plan(&input, document.document()).expect("one charge fits the limit");
     let (nodes, _effects) = support::relational_policy(&planned).expect("relational policy");

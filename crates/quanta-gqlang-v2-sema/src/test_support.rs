@@ -29,11 +29,8 @@
 //!   ([`reference_narrow_witness_graph_document_v2`],
 //!   [`reference_alternate_graph_document_v2`]).
 //!
-//! Three algebra families have NO authorable document shape at all:
-//! `AlgebraFamilyV2::{Apply, Limit, Union}`. The closed HIR relation vocabulary
-//! (`RelationExprKindV1`) cannot express them and their `AlgebraOpV2` payloads
-//! have no sealed constructor, so the `ReferenceRelationFixtureV2` variants that
-//! name them return the exact surface rejection instead of a fake carrier.
+//! Fixtures exist only for authorable source shapes. Retired algebra variants
+//! are not represented by synthetic semantic carriers.
 
 use crate::{
     resolve_checked_document_v2, CheckedLocatedSpanV2, CheckedSyntaxDocumentV2,
@@ -203,28 +200,6 @@ pub enum ReferenceRelationFixtureV2 {
     /// Relational EXISTS nested two levels deep, retaining separate outer and
     /// inner capture sets.
     NestedExistsTwoLevels,
-    /// Correlated/lateral `APPLY`.
-    ///
-    /// NOT authorable through the sealed HIR: [`quanta_gqlang_v2_hir::RelationExprKindV1`]
-    /// is closed over Source/Project/Filter/Join/GroupBy/OrderBy, so no document
-    /// can carry an APPLY node and no fixture can lower to
-    /// `AlgebraFamilyV2::Apply` (whose `AlgebraOpV2::Apply` payload is
-    /// `pub(crate)` and has no sealed constructor). The variant exists so a
-    /// consumer observes the exact rejection instead of inventing a carrier.
-    Apply,
-    /// `LIMIT` over an ordered input.
-    ///
-    /// NOT authorable through the sealed HIR for the same reason as
-    /// [`ReferenceRelationFixtureV2::Apply`]; no fixture can lower to
-    /// `AlgebraFamilyV2::Limit`.
-    Limit,
-    /// Two-arm `UNION`.
-    ///
-    /// NOT authorable through the sealed HIR for the same reason as
-    /// [`ReferenceRelationFixtureV2::Apply`]; no fixture can lower to
-    /// `AlgebraFamilyV2::Union`, so the equal-rank and heavier-right-arm
-    /// cardinality cases are unreachable too.
-    Union,
     /// A relational EXISTS whose RIGHT semi input is MULTIPLICATIVE: the nested
     /// arm cross-joins two host scans. The semi/anti classification must still
     /// be its left arm's class, because the right arm only decides existence.
@@ -1231,24 +1206,6 @@ fn reference_relation_hir(
             let (filter, len) = nested_exists_hir(builder)?;
             Ok((filter, len))
         }
-        ReferenceRelationFixtureV2::Apply => Err(format!(
-            "no sealed HIR relation shape can author a correlated/lateral APPLY: \
-             RelationExprKindV1 is closed over Source/Project/Filter/Join/GroupBy/OrderBy, and \
-             AlgebraOpV2::Apply is pub(crate) with no sealed constructor; the surface ingress \
-             rejects the authored form with `{RELATION_STAGE_KEYWORD_REJECTION_V2}`"
-        )),
-        ReferenceRelationFixtureV2::Limit => Err(format!(
-            "no sealed HIR relation shape can author a LIMIT: RelationExprKindV1 is closed over \
-             Source/Project/Filter/Join/GroupBy/OrderBy, and AlgebraOpV2::Limit is pub(crate) with \
-             no sealed constructor; the surface ingress rejects the authored form with \
-             `{RELATION_STAGE_KEYWORD_REJECTION_V2}`"
-        )),
-        ReferenceRelationFixtureV2::Union => Err(format!(
-            "no sealed HIR relation shape can author a two-arm UNION: RelationExprKindV1 is \
-             closed over Source/Project/Filter/Join/GroupBy/OrderBy, and AlgebraOpV2::Union is \
-             pub(crate) with no sealed constructor; the surface ingress rejects the authored form \
-             with `{RELATION_TOP_LEVEL_REJECTION_V2}`"
-        )),
         ReferenceRelationFixtureV2::ExistsWithMultiplicativeRight => {
             let outer =
                 builder.relation_source("records", SpanV1::new(5, 12), None, SpanV1::new(5, 12));
@@ -1269,15 +1226,6 @@ fn reference_relation_hir(
         }
     }
 }
-
-/// Exact surface rejection observed for an authored pipeline stage keyword
-/// outside the closed stage set (`... | limit 3`, `... | offset 2 | limit 3`,
-/// `... | apply other o`).
-const RELATION_STAGE_KEYWORD_REJECTION_V2: &str =
-    "expected a pipeline stage keyword (where, project, join, group, order)";
-
-/// Exact surface rejection observed for an authored top-level `union` item.
-const RELATION_TOP_LEVEL_REJECTION_V2: &str = "expected ';' to separate top-level items";
 
 fn alias(name: &str, start: usize, end: usize) -> AliasV1 {
     AliasV1 {
@@ -4788,27 +4736,6 @@ mod w4d_tests {
         assert_eq!(nested.join_mode(), Some(JoinModeV2::Cross));
         assert_eq!(nested.inputs().count(), 2);
         Ok(())
-    }
-
-    #[test]
-    fn unrepresentable_relation_shapes_report_the_exact_rejection() {
-        for (fixture, needle) in [
-            (
-                ReferenceRelationFixtureV2::Apply,
-                RELATION_STAGE_KEYWORD_REJECTION_V2,
-            ),
-            (
-                ReferenceRelationFixtureV2::Limit,
-                RELATION_STAGE_KEYWORD_REJECTION_V2,
-            ),
-            (
-                ReferenceRelationFixtureV2::Union,
-                RELATION_TOP_LEVEL_REJECTION_V2,
-            ),
-        ] {
-            let rejected = reference_relation_document_v2(fixture);
-            assert!(rejected.err().is_some_and(|error| error.contains(needle)),);
-        }
     }
 
     // ---- small-receipt rule documents ----------------------------------

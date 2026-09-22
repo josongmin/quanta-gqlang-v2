@@ -146,19 +146,15 @@ class ArchitectureCheckerTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("workspace_members=14", result.stdout)
         self.assertIn("normal_edges=27", result.stdout)
-        self.assertIn("transitional_present=0", result.stdout)
 
-    def test_transitional_edge_passes_default_and_fails_final_mode(self) -> None:
+    def test_retired_transitional_edge_is_illegal(self) -> None:
         temporary, root = self.fixture("transitional-valid")
         with temporary:
-            default = run_checker(root)
-            final = run_checker(root, "--require-final")
-        self.assertEqual(default.returncode, 0, default.stderr)
-        self.assertIn("transitional_present=1", default.stdout)
-        self.assertNotEqual(final.returncode, 0)
+            result = run_checker(root)
+        self.assertNotEqual(result.returncode, 0)
         self.assertIn(
             "quanta-gqlang-v2-algebra -> quanta-gqlang-v2-hir",
-            final.stderr,
+            result.stderr,
         )
 
     def test_reverse_edge_rejects_with_exact_edge(self) -> None:

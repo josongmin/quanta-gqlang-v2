@@ -820,7 +820,7 @@ impl ResolvedCompositionProducerV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ResolvedCompositionBodyV2 {
     /// SELECT/query body.
-    Query(TypedRelationV2),
+    Query(Box<TypedRelationV2>),
     /// FIND body.
     Graph(ResolvedGraphQueryV2),
     /// CHECK body.

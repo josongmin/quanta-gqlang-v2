@@ -167,7 +167,7 @@ impl CompiledDocumentV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CompiledItemV2 {
     /// The item ran every applicable stage and carries its semantic plan.
-    Planned(PlannedItemV2),
+    Planned(Box<PlannedItemV2>),
     /// The item is a checked non-plan declaration.
     NoPlan {
         /// Canonical item identity.
@@ -381,6 +381,29 @@ pub struct AnalysisDocumentV2 {
     unresolved: Box<[UnresolvedAnalysisFactV2]>,
 }
 
+/// Canonical status of one open-analysis transaction.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AnalysisStatusV2 {
+    /// Every item reached its applicable terminal stage.
+    Complete,
+    /// Missing host authority prevented a closed answer.
+    Incomplete,
+    /// At least one item was rejected by a frontend stage.
+    Error,
+}
+
+impl AnalysisStatusV2 {
+    /// Stable wire/CLI spelling.
+    #[must_use]
+    pub const fn keyword(self) -> &'static str {
+        match self {
+            Self::Complete => "complete",
+            Self::Incomplete => "incomplete",
+            Self::Error => "error",
+        }
+    }
+}
+
 impl AnalysisDocumentV2 {
     /// Source identity.
     #[must_use]
@@ -420,13 +443,48 @@ impl AnalysisDocumentV2 {
     pub fn unresolved(&self) -> &[UnresolvedAnalysisFactV2] {
         &self.unresolved
     }
+
+    /// Canonical transaction status. Unresolved authority takes precedence
+    /// over item-local warning carriers; otherwise any blocked item is an
+    /// error. Front doors consume this classification instead of re-deriving
+    /// their own success policy.
+    #[must_use]
+    pub fn status(&self) -> AnalysisStatusV2 {
+        if !self.unresolved.is_empty() {
+            AnalysisStatusV2::Incomplete
+        } else if self
+            .items
+            .iter()
+            .any(|item| matches!(item, AnalysisItemV2::BlockedByDiagnostics(_)))
+        {
+            AnalysisStatusV2::Error
+        } else {
+            AnalysisStatusV2::Complete
+        }
+    }
+
+    /// Canonical sorted and deduplicated diagnostics across all blocked items.
+    #[must_use]
+    pub fn diagnostics(&self) -> Box<[FrontendDiagnosticV2]> {
+        let diagnostics = self
+            .items
+            .iter()
+            .filter_map(|item| match item {
+                AnalysisItemV2::BlockedByDiagnostics(diagnostics) => Some(diagnostics.as_ref()),
+                AnalysisItemV2::Complete(_) | AnalysisItemV2::NotApplicable(_) => None,
+            })
+            .flatten()
+            .cloned()
+            .collect::<Vec<_>>();
+        canonicalize_diagnostics(diagnostics).into_boxed_slice()
+    }
 }
 
 /// One item-stage status inside an [`AnalysisDocumentV2`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AnalysisItemV2 {
     /// Every applicable stage completed for this item.
-    Complete(PlannedItemV2),
+    Complete(Box<PlannedItemV2>),
     /// The item is a checked non-plan declaration.
     NotApplicable(NoPlanReasonV2),
     /// A stage blocked this item; the ordered diagnostics are the reason.
@@ -560,20 +618,8 @@ pub fn format_source_document_v2(
     source: &str,
     budget: &FrontendBudgetV2,
 ) -> Result<String, FrontendFailureV2> {
+    enforce_source_budget(source_id, source, budget)?;
     let projected = project_parse_budget(source_id, source, budget)?;
-    if source.len() > usize::try_from(budget.max_source_bytes()).unwrap_or(usize::MAX) {
-        return Err(FrontendFailureV2::one(FrontendDiagnosticV2::new(
-            FrontendStageV2::Resource,
-            "frontend.resource_limit_exceeded",
-            FrontendSeverityV2::Error,
-            LocatedSpanV2 {
-                source_id,
-                span: SpanV1::new(0, source.len()),
-            },
-            Vec::new(),
-            "source exceeds the frontend budget's max_source_bytes",
-        )));
-    }
     let parsed = parse_source_document_v2(source_id, source, &projected)
         .map_err(|error| surface_failure(&error))?;
     Ok(format_document(&parsed.hir.items))
@@ -625,10 +671,32 @@ fn parse_source(
     source: &str,
     budget: &FrontendBudgetV2,
 ) -> Result<quanta_gqlang_v2_surface::ParsedDocumentV2, FrontendTransactionErrorV2> {
+    enforce_source_budget(source_id, source, budget).map_err(FrontendTransactionErrorV2::from)?;
     let projected = project_parse_budget(source_id, source, budget)
         .map_err(FrontendTransactionErrorV2::from)?;
     parse_source_document_v2(source_id, source, &projected)
         .map_err(|error| surface_transaction_error(&error))
+}
+
+fn enforce_source_budget(
+    source_id: SourceIdV2,
+    source: &str,
+    budget: &FrontendBudgetV2,
+) -> Result<(), FrontendFailureV2> {
+    if source.len() <= usize::try_from(budget.max_source_bytes()).unwrap_or(usize::MAX) {
+        return Ok(());
+    }
+    Err(FrontendFailureV2::one(FrontendDiagnosticV2::new(
+        FrontendStageV2::Resource,
+        "frontend.resource_limit_exceeded",
+        FrontendSeverityV2::Error,
+        LocatedSpanV2 {
+            source_id,
+            span: SpanV1::new(0, source.len()),
+        },
+        Vec::new(),
+        "source exceeds the frontend budget's max_source_bytes",
+    )))
 }
 
 /// Build the explicit incomplete-analysis document for partial open authority.
@@ -743,7 +811,7 @@ struct DocumentRunV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum ItemRunV2 {
     /// Every applicable stage completed.
-    Planned(PlannedItemV2),
+    Planned(Box<PlannedItemV2>),
     /// The item is a checked non-plan declaration.
     NoPlan {
         item_id: SemanticItemIdV2,
@@ -788,18 +856,19 @@ impl DocumentRunV2 {
             .items
             .into_iter()
             .map(|item| match item {
-                ItemRunV2::Planned(PlannedItemV2::RuleMember(member)) => {
-                    order.push(member.member_item_id());
-                    match &rule_blocked {
-                        Some(diagnostics) => AnalysisItemV2::BlockedByDiagnostics(
-                            diagnostics.clone().into_boxed_slice(),
-                        ),
-                        None => AnalysisItemV2::Complete(PlannedItemV2::RuleMember(member)),
-                    }
-                }
                 ItemRunV2::Planned(planned) => {
-                    order.push(planned.item_id());
-                    AnalysisItemV2::Complete(planned)
+                    if let PlannedItemV2::RuleMember(member) = planned.as_ref() {
+                        order.push(member.member_item_id());
+                        match &rule_blocked {
+                            Some(diagnostics) => AnalysisItemV2::BlockedByDiagnostics(
+                                diagnostics.clone().into_boxed_slice(),
+                            ),
+                            None => AnalysisItemV2::Complete(planned),
+                        }
+                    } else {
+                        order.push(planned.item_id());
+                        AnalysisItemV2::Complete(planned)
+                    }
                 }
                 ItemRunV2::NoPlan { item_id, reason } => {
                     order.push(item_id);
@@ -860,7 +929,7 @@ fn run_document(
         let location = membership.location(*id);
         match run_item(document, &membership, &mut algebra, &mut planning, *id) {
             Ok(ItemRunV2::Planned(planned)) => {
-                let inserted = if matches!(planned, PlannedItemV2::RuleMember(_)) {
+                let inserted = if matches!(planned.as_ref(), PlannedItemV2::RuleMember(_)) {
                     produced_member.insert(*id)
                 } else {
                     produced_plan.insert(*id)
@@ -1003,12 +1072,12 @@ fn run_item(
                 document,
                 planning,
                 id,
-                &SemanticPlanInputV2::Relational(lowered),
+                &SemanticPlanInputV2::Relational(Box::new(lowered)),
             )?;
-            Ok(ItemRunV2::Planned(PlannedItemV2::Relation {
+            Ok(ItemRunV2::Planned(Box::new(PlannedItemV2::Relation {
                 item_id: id,
                 plan,
-            }))
+            })))
         }
         SemanticItemV2::Graph(graph) => {
             let contract = GraphQueryContractV2::from_resolved(graph)
@@ -1019,10 +1088,10 @@ fn run_item(
                 id,
                 &SemanticPlanInputV2::Graph(contract),
             )?;
-            Ok(ItemRunV2::Planned(PlannedItemV2::Graph {
+            Ok(ItemRunV2::Planned(Box::new(PlannedItemV2::Graph {
                 item_id: id,
                 plan,
-            }))
+            })))
         }
         SemanticItemV2::Check(check) => {
             let contract = check_contract(check)?;
@@ -1032,10 +1101,10 @@ fn run_item(
                 id,
                 &SemanticPlanInputV2::Check(contract),
             )?;
-            Ok(ItemRunV2::Planned(PlannedItemV2::Check {
+            Ok(ItemRunV2::Planned(Box::new(PlannedItemV2::Check {
                 item_id: id,
                 plan,
-            }))
+            })))
         }
         SemanticItemV2::Presentation(presentation) => {
             let contract = PresentationContractV2::from_resolved(presentation)
@@ -1046,10 +1115,10 @@ fn run_item(
                 id,
                 &SemanticPlanInputV2::Presentation(contract),
             )?;
-            Ok(ItemRunV2::Planned(PlannedItemV2::Presentation {
+            Ok(ItemRunV2::Planned(Box::new(PlannedItemV2::Presentation {
                 item_id: id,
                 plan,
-            }))
+            })))
         }
         SemanticItemV2::Composition(composition) => {
             let body = composition_body_input(document, algebra, composition)?;
@@ -1059,12 +1128,12 @@ fn run_item(
                 document,
                 planning,
                 id,
-                &SemanticPlanInputV2::Composition(input),
+                &SemanticPlanInputV2::Composition(Box::new(input)),
             )?;
-            Ok(ItemRunV2::Planned(PlannedItemV2::Composition {
+            Ok(ItemRunV2::Planned(Box::new(PlannedItemV2::Composition {
                 item_id: id,
                 plan,
-            }))
+            })))
         }
         SemanticItemV2::Meta(meta) => match meta.kind() {
             ResolvedMetaKindV2::RequireCertified => {
@@ -1074,10 +1143,9 @@ fn run_item(
                     id,
                     &SemanticPlanInputV2::MetaRequireCertified(meta.clone()),
                 )?;
-                Ok(ItemRunV2::Planned(PlannedItemV2::MetaRequireCertified {
-                    item_id: id,
-                    plan,
-                }))
+                Ok(ItemRunV2::Planned(Box::new(
+                    PlannedItemV2::MetaRequireCertified { item_id: id, plan },
+                )))
             }
             ResolvedMetaKindV2::UsePack { .. } => Ok(ItemRunV2::NoPlan {
                 item_id: id,
@@ -1085,9 +1153,9 @@ fn run_item(
             }),
         },
         SemanticItemV2::Rule(_) => match membership.rule_program_id() {
-            Some(program_id) => Ok(ItemRunV2::Planned(PlannedItemV2::RuleMember(
+            Some(program_id) => Ok(ItemRunV2::Planned(Box::new(PlannedItemV2::RuleMember(
                 RuleProgramMemberV2::new(program_id, id),
-            ))),
+            )))),
             None => Err(assembly(
                 membership.location(id),
                 DocumentAssemblyCodeV2::RuleMembershipMismatch,
@@ -1214,7 +1282,7 @@ fn planning_plan(
     input: &SemanticPlanInputV2,
 ) -> Result<SemanticPlanV2, FrontendTransactionErrorV2> {
     match planning.plan_outcome(input) {
-        Ok(PlanOutcomeV2::Plan(plan)) => Ok(plan),
+        Ok(PlanOutcomeV2::Plan(plan)) => Ok(*plan),
         Ok(PlanOutcomeV2::NoPlan(_reason)) => Err(assembly(
             item_location_of(document, id),
             DocumentAssemblyCodeV2::PlanOutcomeMismatch,

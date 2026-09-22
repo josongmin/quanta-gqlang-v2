@@ -23,18 +23,12 @@ pub enum CapabilityV2 {
     Filtering,
     /// Joining independent inputs (a `Join`).
     Join,
-    /// Correlated/lateral evaluation (an `Apply`).
-    CorrelatedApply,
     /// Grouping / partitioning (a `Group`).
     Grouping,
     /// Aggregate folds (an `Aggregate`).
     Aggregation,
     /// Ordering output (a `Sort`).
     Ordering,
-    /// Bounded truncation (a `Limit`).
-    Limiting,
-    /// Set/bag union (a `Union`).
-    SetUnion,
     /// Existence testing (a `SemiJoin`).
     ExistenceCheck,
     /// Non-existence testing (an `AntiJoin`).
@@ -55,12 +49,9 @@ impl CapabilityV2 {
             Self::RelationScan => "relation_scan",
             Self::Filtering => "filtering",
             Self::Join => "join",
-            Self::CorrelatedApply => "correlated_apply",
             Self::Grouping => "grouping",
             Self::Aggregation => "aggregation",
             Self::Ordering => "ordering",
-            Self::Limiting => "limiting",
-            Self::SetUnion => "set_union",
             Self::ExistenceCheck => "existence_check",
             Self::NegationCheck => "negation_check",
             Self::RecursiveClosure => "recursive_closure",
@@ -71,20 +62,17 @@ impl CapabilityV2 {
 
 /// The capability a checked algebra family requires, if any.
 ///
-/// `Scan`, `Filter`, `Join`, `Apply`, `Group`, `Aggregate`, `Sort`, `Limit`,
-/// `Union`, `SemiJoin`, and `AntiJoin` each require exactly one capability;
+/// `Scan`, `Filter`, `Join`, `Group`, `Aggregate`, `Sort`, `SemiJoin`, and
+/// `AntiJoin` each require exactly one capability;
 /// `Project` is a pure frame re-shape and requires none.
 pub(crate) const fn capability_for_family(family: AlgebraFamilyV2) -> Option<CapabilityV2> {
     match family {
         AlgebraFamilyV2::Scan => Some(CapabilityV2::RelationScan),
         AlgebraFamilyV2::Filter => Some(CapabilityV2::Filtering),
         AlgebraFamilyV2::Join => Some(CapabilityV2::Join),
-        AlgebraFamilyV2::Apply => Some(CapabilityV2::CorrelatedApply),
         AlgebraFamilyV2::Group => Some(CapabilityV2::Grouping),
         AlgebraFamilyV2::Aggregate => Some(CapabilityV2::Aggregation),
         AlgebraFamilyV2::Sort => Some(CapabilityV2::Ordering),
-        AlgebraFamilyV2::Limit => Some(CapabilityV2::Limiting),
-        AlgebraFamilyV2::Union => Some(CapabilityV2::SetUnion),
         AlgebraFamilyV2::SemiJoin => Some(CapabilityV2::ExistenceCheck),
         AlgebraFamilyV2::AntiJoin => Some(CapabilityV2::NegationCheck),
         AlgebraFamilyV2::Project => None,
@@ -95,17 +83,14 @@ pub(crate) const fn capability_for_family(family: AlgebraFamilyV2) -> Option<Cap
 mod tests {
     use super::*;
 
-    const ALL_FAMILIES: [AlgebraFamilyV2; 12] = [
+    const ALL_FAMILIES: [AlgebraFamilyV2; 9] = [
         AlgebraFamilyV2::Scan,
         AlgebraFamilyV2::Filter,
         AlgebraFamilyV2::Project,
         AlgebraFamilyV2::Join,
-        AlgebraFamilyV2::Apply,
         AlgebraFamilyV2::Group,
         AlgebraFamilyV2::Aggregate,
         AlgebraFamilyV2::Sort,
-        AlgebraFamilyV2::Limit,
-        AlgebraFamilyV2::Union,
         AlgebraFamilyV2::SemiJoin,
         AlgebraFamilyV2::AntiJoin,
     ];
@@ -131,12 +116,9 @@ mod tests {
             (CapabilityV2::RelationScan, "relation_scan"),
             (CapabilityV2::Filtering, "filtering"),
             (CapabilityV2::Join, "join"),
-            (CapabilityV2::CorrelatedApply, "correlated_apply"),
             (CapabilityV2::Grouping, "grouping"),
             (CapabilityV2::Aggregation, "aggregation"),
             (CapabilityV2::Ordering, "ordering"),
-            (CapabilityV2::Limiting, "limiting"),
-            (CapabilityV2::SetUnion, "set_union"),
             (CapabilityV2::ExistenceCheck, "existence_check"),
             (CapabilityV2::NegationCheck, "negation_check"),
             (CapabilityV2::RecursiveClosure, "recursive_closure"),

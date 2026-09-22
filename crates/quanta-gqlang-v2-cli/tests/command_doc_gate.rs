@@ -1,11 +1,5 @@
-#![allow(
-    clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::match_wildcard_for_single_variants,
+#![expect(
     clippy::panic,
-    clippy::single_match,
-    clippy::unwrap_used,
-    clippy::wildcard_enum_match_arm,
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
@@ -19,7 +13,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use quanta_gqlang_v2_cli::CLI_COMMAND_TOKENS_V1;
-use support::{cli_stderr_v1, run_cli_argv_v1};
+use support::{cli_stderr_v1, cli_stdout_v1, run_cli_argv_v1};
 
 fn language_readme_v1() -> String {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -34,7 +28,9 @@ fn every_command_token_is_in_usage_and_documented_v1() {
     // No-args invocation fails closed with the usage string on stderr; that
     // string is the binary's own command list, so it ties the const to the
     // shipped binary.
-    let usage = cli_stderr_v1(&run_cli_argv_v1(&[]));
+    let output = run_cli_argv_v1(&[]);
+    assert!(cli_stdout_v1(&output).is_empty());
+    let usage = cli_stderr_v1(&output);
 
     for token in CLI_COMMAND_TOKENS_V1 {
         assert!(

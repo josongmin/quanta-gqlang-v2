@@ -1,9 +1,6 @@
-#![allow(
-    clippy::expect_used,
+#![expect(
     clippy::indexing_slicing,
-    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    clippy::single_match,
     clippy::unwrap_used,
     clippy::wildcard_enum_match_arm,
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
@@ -398,7 +395,7 @@ fn bare_rule_name_is_not_a_value_binding() {
 
     let graph = ModuleGraphV1::new();
     let mut binder = Binder::new(&graph);
-    binder.declare_program(&[decl.clone()], &[rule]);
+    binder.declare_program(std::slice::from_ref(&decl), &[rule]);
     binder.resolve_decl(&decl, &[]);
     let result = binder.finish();
 

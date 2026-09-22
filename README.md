@@ -55,7 +55,7 @@ CLI front door:
 
 Diagnostics stdio front door:
 
-1. stdio JSON requests only
+1. one UTF-8 JSON object per newline (NDJSON)
 2. supported read-only methods are declared by this exact-set block:
 
 <!-- supported-diagnostics-methods:start -->
@@ -64,7 +64,9 @@ Diagnostics stdio front door:
 
 3. mutating or unknown methods fail closed
 4. binary entry: `cargo run -p quanta-gqlang-v2-diagnostics-stdio`
-5. this is a private flat-JSON protocol, not JSON-RPC or LSP; it does not implement
+5. request fields are exactly `id`, `method`, `source_id`, and `source`; duplicate
+   or unknown fields fail closed
+6. this is a private NDJSON protocol, not JSON-RPC or LSP; it does not implement
    `initialize` or document lifecycle methods
 
 Repo-owned front-door e2e:
@@ -90,10 +92,9 @@ Repo-owned front-door e2e:
 ### Proof rails
 
 The repo-owned e2e boundary is proven by two kinds of rails. Binary-only rails
-spawn the real CLI/diagnostics-stdio binary and assert stdout/stderr/exit code (usage, empty
-input, transport parity, doctor classification, negative-DSL, and the diagnostics stdio
-framing / escape / multi-statement / command-plane / read-only-authority gates).
-Contract-only rails are in-crate library tests for syntax, sema, and IR shapes.
+spawn the real CLI/diagnostics-stdio binaries and assert stdout/stderr/exit code,
+open-analysis status, NDJSON recovery, and bounded-input behavior. Contract-only
+rails are in-crate library tests for syntax, sema, and IR shapes.
 The scope is syntax/sema/normalized-IR/CLI/diagnostics stdio only; runtime execution, provider
 routing, result counts, host DTOs, and backend materialization are out of scope
 and are never asserted as real. The full surface-to-rail mapping is the coverage

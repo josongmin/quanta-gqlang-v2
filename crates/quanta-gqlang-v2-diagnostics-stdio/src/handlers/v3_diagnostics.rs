@@ -1,69 +1,78 @@
-//! v3 read-only diagnostics over the ONE shared compiler pipeline (ticket 08).
-//!
-//! D22: CLI, diagnostics stdio, formatter, and tests consume one compiler pipeline;
-//! shadow parser/sema implementations are forbidden. This handler is a thin,
-//! read-only adapter over
-//! [`quanta_gqlang_v2_pipeline::compile_program_structural`]. It does NOT
-//! re-parse, re-bind, or re-type anything: it asks the shared pipeline to
-//! compile the source under explicit structural-only authority and, on the
-//! first failing stage, surfaces that stage's already-typed diagnostic verbatim
-//! — stage tag, stable code, exact byte span.
-//!
-//! Because the pipeline short-circuits on the FIRST failing stage (D10
-//! fail-closed; no silent downgrade), at most one diagnostic is produced per
-//! source. The surface is still modeled as an ordered list so it stays a proper
-//! diagnostics channel and so determinism is asserted over the list, not a
-//! special-cased single value. A clean compile yields an empty list.
-//!
-//! Parity (ticket 08 required rail 7): the `code` and `span` carried here are the
-//! exact strings/offsets the pipeline diagnostic exposes, so the SAME failing
-//! advanced query produces the SAME diagnostic code the CLI surfaces from the
-//! other side of the same pipeline — there is no transport-local rewrite to drift.
+//! Facade-only diagnostics analysis handler.
 
-use quanta_gqlang_v2_pipeline::{compile_program_structural, PipelineDiagnosticV1};
+use quanta_gqlang_v2_frontend_contract::{
+    analyze_source_document_v2, AnalysisStatusV2, FrontendDiagnosticV2, FrontendTransactionErrorV2,
+    OpenAnalysisAuthorityV2, SourceIdV2,
+};
+use serde::Serialize;
 
-/// A single stage-tagged pipeline diagnostic, flattened for the read-only stdio
-/// wire surface. Every field is copied verbatim from the typed pipeline
-/// diagnostic; nothing is synthesized here.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct V3DiagnosticItemV1 {
-    /// The pipeline stage that short-circuited: one of
-    /// `parse` | `bind` | `type` | `algebra` | `logic` | `planning`.
-    pub stage: String,
-    /// The inner stage's stable, machine-readable code, verbatim.
-    pub code: String,
-    /// The human-readable rendered diagnostic (stage-prefixed `Display`).
-    pub message: String,
-    /// Inclusive start byte offset of the primary source span.
-    pub span_start: usize,
-    /// Exclusive end byte offset of the primary source span.
-    pub span_end: usize,
+use crate::server::{ProtocolErrorV2, WireDiagnosticV2};
+
+/// Bounded analysis payload returned to the transport.
+#[derive(Debug, Serialize)]
+pub struct AnalysisPayloadV2 {
+    pub analysis_status: &'static str,
+    pub diagnostics: Vec<WireDiagnosticV2>,
 }
 
-impl V3DiagnosticItemV1 {
-    fn from_pipeline_v1(diagnostic: &PipelineDiagnosticV1) -> Self {
-        let span = diagnostic.span();
-        Self {
-            stage: diagnostic.stage().as_str().to_owned(),
-            code: diagnostic.code(),
-            message: diagnostic.to_string(),
-            span_start: span.start,
-            span_end: span.end,
+/// Analyze one source under the server's explicit open authority.
+pub fn handle_v3_diagnostics_v2(
+    source_id: u32,
+    source: &str,
+    authority: &OpenAnalysisAuthorityV2,
+) -> Result<AnalysisPayloadV2, ProtocolErrorV2> {
+    match analyze_source_document_v2(SourceIdV2::from_raw(source_id), source, authority) {
+        Ok(document) => {
+            let diagnostics = document.diagnostics();
+            enforce_diagnostic_cap(diagnostics.len(), authority)?;
+            Ok(AnalysisPayloadV2 {
+                analysis_status: document.status().keyword(),
+                diagnostics: diagnostics.iter().map(WireDiagnosticV2::from).collect(),
+            })
         }
+        Err(FrontendTransactionErrorV2::Document(failure)) => {
+            enforce_diagnostic_cap(failure.diagnostics().len(), authority)?;
+            Ok(AnalysisPayloadV2 {
+                analysis_status: AnalysisStatusV2::Error.keyword(),
+                diagnostics: failure
+                    .diagnostics()
+                    .iter()
+                    .map(WireDiagnosticV2::from)
+                    .collect(),
+            })
+        }
+        Err(FrontendTransactionErrorV2::Authority(error)) => Err(ProtocolErrorV2::new(
+            "authority_error",
+            format!("{}: {}", error.code(), error.message()),
+        )),
     }
 }
 
-/// Run the shared pipeline over `source` and return its diagnostics.
-///
-/// Deterministic by construction: the pipeline is a pure function of the source,
-/// short-circuits on the first failing stage, and we copy that one typed
-/// diagnostic without reordering. A clean compile returns an empty list. This is
-/// `Result::Ok` for any well-formed request: a compile FAILURE is data on the
-/// read-only surface (a diagnostic), not a transport error.
-#[must_use]
-pub fn handle_v3_diagnostics_v1(source: &str) -> Vec<V3DiagnosticItemV1> {
-    match compile_program_structural(source) {
-        Ok(_) => Vec::new(),
-        Err(diagnostic) => vec![V3DiagnosticItemV1::from_pipeline_v1(&diagnostic)],
+fn enforce_diagnostic_cap(
+    count: usize,
+    authority: &OpenAnalysisAuthorityV2,
+) -> Result<(), ProtocolErrorV2> {
+    let limit = usize::try_from(authority.budget().max_diagnostics()).unwrap_or(usize::MAX);
+    if count > limit {
+        return Err(ProtocolErrorV2::new(
+            "diagnostic_limit_exceeded",
+            format!("diagnostic count {count} exceeds max_diagnostics {limit}"),
+        ));
+    }
+    Ok(())
+}
+
+impl From<&FrontendDiagnosticV2> for WireDiagnosticV2 {
+    fn from(diagnostic: &FrontendDiagnosticV2) -> Self {
+        let primary = diagnostic.primary();
+        Self {
+            stage: diagnostic.stage().keyword(),
+            code: diagnostic.code(),
+            severity: diagnostic.severity().keyword(),
+            message: diagnostic.message().to_owned(),
+            source_id: primary.source_id.raw(),
+            span_start: primary.span.start,
+            span_end: primary.span.end,
+        }
     }
 }

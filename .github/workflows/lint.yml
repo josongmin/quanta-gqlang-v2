@@ -22,7 +22,7 @@ jobs:
       - name: TOML format
         run: taplo fmt --check
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -A clippy::allow_attributes -A clippy::duplicated_attributes -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
   rust-test:
     runs-on: ubuntu-latest
@@ -39,6 +39,10 @@ jobs:
         run: cargo nextest run --workspace --no-tests pass
       - name: Documentation tests
         run: cargo test --workspace --doc
+        env:
+          RUSTDOCFLAGS: -D warnings
+      - name: Shipped front-door parity
+        run: python3 tools/test_frontdoor_parity.py
 
   architecture:
     runs-on: ubuntu-latest
@@ -47,8 +51,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable snapshot
         with:
           toolchain: 1.81.0
+      - uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
+        with:
+          tool: cargo-public-api@0.51.0
       - name: Architecture metadata gate
-        run: python3 tools/architecture/tests/test_architecture.py && python3 tools/architecture/check_architecture.py
+        run: python3 tools/architecture/tests/test_architecture.py && python3 tools/architecture/check_architecture.py --require-final
+      - name: External facade consumer
+        run: python3 tools/test_frontend_external_consumer.py
 
   rust-supply-chain:
     runs-on: ubuntu-latest
@@ -98,8 +107,10 @@ jobs:
       - name: Workspace compile
         run: cargo check --workspace
       - name: Current-only Clippy policy
-        run: cargo clippy --workspace --all-targets -- -A clippy::allow_attributes -A clippy::duplicated_attributes -D clippy::unused_result_ok -D warnings
+        run: cargo clippy --workspace --all-targets -- -D clippy::unused_result_ok -D warnings
       - name: Workspace tests
         run: cargo nextest run --workspace --no-tests pass
       - name: Documentation tests
         run: cargo test --workspace --doc
+        env:
+          RUSTDOCFLAGS: -D warnings

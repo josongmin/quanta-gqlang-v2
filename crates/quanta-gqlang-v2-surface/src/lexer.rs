@@ -448,7 +448,7 @@ fn char_at(source: &str, i: usize) -> char {
 
 #[cfg(test)]
 mod tests {
-    #![allow(
+    #![expect(
         clippy::unwrap_used,
         reason = "unit rail asserts exact budget construction and rejection"
     )]

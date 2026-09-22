@@ -27,8 +27,9 @@ mod diagnostic;
 pub use compile::{
     analyze_resolved_document_v2, analyze_source_document_v2, compile_resolved_document_v2,
     compile_source_document_v2, format_source_document_v2, AnalysisDocumentV2, AnalysisItemV2,
-    CompiledDocumentV2, CompiledItemV2, CompiledRuleProgramV2, PlannedItemV2, RuleProgramMemberV2,
-    UnresolvedAnalysisFactV2, OPEN_AUTHORITY_INCOMPLETE_CODE, PARSE_BUDGET_PROJECTION_FAILED_CODE,
+    AnalysisStatusV2, CompiledDocumentV2, CompiledItemV2, CompiledRuleProgramV2, PlannedItemV2,
+    RuleProgramMemberV2, UnresolvedAnalysisFactV2, OPEN_AUTHORITY_INCOMPLETE_CODE,
+    PARSE_BUDGET_PROJECTION_FAILED_CODE,
 };
 pub use diagnostic::{
     algebra_code, diagnostic_sort_key, logic_code, no_plan_code, planning_code,
@@ -39,10 +40,11 @@ pub use quanta_gqlang_v2_planning::{NoPlanReasonV2, SemanticPlanV2};
 pub use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2,
     FrontendAuthorityErrorV2, FrontendAuthorityLocationV2, FrontendAuthoritySourceV2,
-    FrontendBudgetV2, FrontendDiagnosticV2, FrontendFailureV2, FrontendGraphReferenceInputV2,
-    FrontendLanguageVersionV2, FrontendLockfileInputV2, FrontendPackInputV2,
-    FrontendRelationCardinalityV2, FrontendRelationFieldInputV2, FrontendRelationInputV2,
-    FrontendScalarTypeV2, FrontendSeverityV2, FrontendStageV2, FrontendTransactionErrorV2,
-    GraphReferenceKindV2, LocatedSpanV2, OpenAnalysisAuthorityV2, SemanticItemIdV2, SourceIdV2,
-    SpanV1,
+    FrontendBudgetV2, FrontendCallableParameterInputV2, FrontendCatalogAssetInputV2,
+    FrontendCatalogPayloadV2, FrontendDiagnosticV2, FrontendFailureV2,
+    FrontendGraphReferenceInputV2, FrontendLanguageVersionV2, FrontendLockfileInputV2,
+    FrontendPackInputV2, FrontendRelationCardinalityV2, FrontendRelationFieldInputV2,
+    FrontendRelationInputV2, FrontendScalarTypeV2, FrontendSeverityV2, FrontendStageV2,
+    FrontendTransactionErrorV2, GraphReferenceKindV2, LocatedSpanV2, OpenAnalysisAuthorityV2,
+    SemanticItemIdV2, SourceIdV2, SpanV1,
 };

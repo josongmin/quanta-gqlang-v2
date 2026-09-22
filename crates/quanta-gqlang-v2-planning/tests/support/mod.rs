@@ -1,14 +1,4 @@
-#![allow(
-    clippy::expect_used,
-    clippy::indexing_slicing,
-    clippy::match_wildcard_for_single_variants,
-    clippy::panic,
-    clippy::single_match,
-    clippy::unwrap_used,
-    clippy::wildcard_enum_match_arm,
-    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
-)]
-#![allow(
+#![expect(
     dead_code,
     reason = "shared test helpers are used by a subset of the integration-test crates that include this module"
 )]
@@ -59,7 +49,7 @@ pub(crate) fn relation_input(
 ) -> Result<(ReferenceRelationDocumentV2, SemanticPlanInputV2), String> {
     let document = reference_relation_document_v2(fixture)?;
     let input = lower_relation_item(document.document(), document.item_id())
-        .map(SemanticPlanInputV2::Relational)
+        .map(|item| SemanticPlanInputV2::Relational(Box::new(item)))
         .map_err(|error| format!("{error:?}"))?;
     Ok((document, input))
 }
