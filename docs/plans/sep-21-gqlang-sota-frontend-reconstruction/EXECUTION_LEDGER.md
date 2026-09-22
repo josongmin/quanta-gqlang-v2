@@ -1706,3 +1706,17 @@ Reduced lane W3-D2 (agent 6ce15239) re-dispatched with ONLY the rule family:
 document_v2` (3 mutations) + `forged_rule_fact_document_v2` (7 mutations),
 exact names/semantics from lane W3-C's spec, lease test_support.rs only,
 additive-only.
+
+### W3 fixture patch clippy fix — 2026-09-21
+
+Lane W3-B caught that the applied graph-fixture scaffold used `panic!` in
+`ReferenceGraphDocumentV2::graph()`, which the workspace denies
+(`clippy::panic = deny`), failing strict sema Clippy. Integrator fixed it with
+a reasoned `#[expect(clippy::panic, reason = "...")]` on the accessor (the
+sanctioned route: `#[allow]` is unavailable under the workspace's
+`clippy::allow_attributes` posture, and `.expect()` is separately denied).
+Sema Clippy now exits 0 in BOTH feature modes. Lane W3-B's verified counts
+with the scaffold: logic lib 21/21, endpoint 2/2, waypoint-flip 2/2, graph
+hellgate 8/8, logic hellgate 4/4, mutation rails 9/9, witness retention 6/6
+= 52/52, scoped strict Clippy clean. Crate-wide the only remaining compile
+blocker is lane W3-C's staged rule-fixture imports, owned by lane W3-D2.
