@@ -15,14 +15,15 @@ use quanta_gqlang_v2_frontend_contract::{
     analyze_source_document_v2, compile_source_document_v2, format_source_document_v2,
     AlgebraFamilyV2, AnalysisDocumentV2, AnalysisItemV2, AnalysisStatusV2, CheckedLocatedSpanV2,
     ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledDocumentV2,
-    CompiledItemV2, CompiledRuleProgramV2, FrontendAuthorityErrorV2,
-    FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
-    FrontendCallableParameterInputV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
-    FrontendDiagnosticV2, FrontendFailureV2, FrontendLanguageVersionV2, FrontendSeverityV2,
-    FrontendLockfileInputV2, FrontendPackInputV2, FrontendStageV2,
-    FrontendTransactionErrorV2, LocatedSpanV2, NoPlanReasonV2, OpenAnalysisAuthorityV2,
-    PlannedItemV2, RuleProgramMemberV2, SemanticPlanV2, SourceIdV2, SpanV1,
-    UnresolvedAnalysisFactV2,
+    CompiledItemV2, CompiledRuleProgramV2, ExecutionCompositionBodyV2,
+    ExecutionCompositionProducerV2, ExecutionFamilyV2, ExecutionRelationAuthorityV2,
+    ExecutionSampleModeV2, FrontendAuthorityErrorV2, FrontendAuthorityLocationV2,
+    FrontendAuthoritySourceV2, FrontendBudgetV2, FrontendCallableParameterInputV2,
+    FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2, FrontendDiagnosticV2, FrontendFailureV2,
+    FrontendLanguageVersionV2, FrontendLockfileInputV2, FrontendPackInputV2, FrontendSeverityV2,
+    FrontendStageV2, FrontendTransactionErrorV2, LocatedSpanV2, NoPlanReasonV2,
+    OpenAnalysisAuthorityV2, PlannedItemV2, RuleProgramMemberV2, SemanticPlanV2, SourceIdV2,
+    SpanV1, UnresolvedAnalysisFactV2,
 };
 
 /// Document identity of the probe source.
@@ -31,11 +32,19 @@ const DOCUMENT_SOURCE: SourceIdV2 = SourceIdV2::from_raw(9);
 /// A source document that needs no relation, module, or graph authority.
 const DOCUMENT_TEXT: &str = "let answer = 1; rule local_rule : x if x = 1; show capabilities;";
 
-const PACK_DOCUMENT_TEXT: &str =
-    "use pack acme.pack | activation=session | lockfile=acme.lock;";
+const PACK_DOCUMENT_TEXT: &str = "use pack acme.pack | activation=session | lockfile=acme.lock;";
 
-const PACK_DIGEST: &str =
-    "0000000000000000000000000000000000000000000000000000000000000000";
+/// A composition whose generated producer is also the exact relational body input.
+const COMPOSITION_DOCUMENT_TEXT: &str =
+    "let sampled = sample query=\"auth\" | mode=lexical | limit=2 from sampled s | project s.path as path with sampled";
+
+/// The binding deliberately shadows a plausible host-relation name. No host
+/// relation is supplied to this fixture, so successful compilation proves that
+/// the sealed composition binding remains the selected source authority.
+const COLLIDING_COMPOSITION_DOCUMENT_TEXT: &str =
+    "let records = sample query=\"auth\" | mode=semantic | limit=3 from records r | project r.path as path with records";
+
+const PACK_DIGEST: &str = "0000000000000000000000000000000000000000000000000000000000000000";
 
 /// Code every unresolved fact carries while the open authority is partial.
 ///
@@ -171,6 +180,67 @@ fn no_plan_reason_label(reason: NoPlanReasonV2) -> &'static str {
     }
 }
 
+/// Read the complete V2 composition handoff through facade-only accessors.
+///
+/// Semantica must consume this immutable projection rather than restoring V1
+/// HIR or recompiling a name-based producer/body relation.
+fn assert_exact_composition_handoff(document: &CompiledDocumentV2, binding_name: &str) {
+    let execution = document.execution();
+    assert_eq!(execution.source_id(), document.source_id());
+    assert_eq!(execution.items().len(), 1);
+    let item = execution.items().first().expect("one composition item");
+    assert_eq!(item.family(), ExecutionFamilyV2::Composition);
+    assert!(
+        item.relation().is_none(),
+        "composition is not a top-level relation"
+    );
+    let composition = item.composition().expect("composition execution payload");
+    assert_eq!(composition.bindings().len(), 1);
+    let binding = composition.bindings().first().expect("one ordered binding");
+    assert_eq!(binding.binding().ordinal(), 0);
+    assert_eq!(binding.binding().name(), binding_name);
+    assert_eq!(composition.with_binding(), binding.binding());
+    assert_ne!(binding.producer_item_id(), composition.body_item_id());
+    assert_eq!(binding.producer_family(), ExecutionFamilyV2::Presentation);
+    let binding_schema = binding
+        .schema()
+        .expect("SAMPLE producer retains its output schema");
+    let binding_field = binding_schema
+        .fields()
+        .first()
+        .expect("SAMPLE schema retains its path field");
+    assert_eq!(binding_field.name(), "path");
+    assert!(!binding_field.value_type().is_empty());
+    assert!(
+        binding.relation().is_none(),
+        "SAMPLE is not a relation producer"
+    );
+    assert_eq!(composition.body_family(), ExecutionFamilyV2::Relation);
+    assert_eq!(composition.body(), &ExecutionCompositionBodyV2::Relation);
+    assert!(matches!(
+        binding.producer(),
+        ExecutionCompositionProducerV2::Sample {
+            mode: ExecutionSampleModeV2::Lexical | ExecutionSampleModeV2::Semantic,
+            ..
+        }
+    ));
+
+    let body = composition
+        .body_relation()
+        .expect("a relational body retains its sealed relation tree");
+    let scan = body
+        .root()
+        .children()
+        .first()
+        .expect("project body has one scan child");
+    let source = scan.source().expect("body scan carries source authority");
+    assert_eq!(
+        source.authority(),
+        ExecutionRelationAuthorityV2::CompositionBinding
+    );
+    assert_eq!(source.name(), binding_name);
+}
+
 /// Pin every curated root and accessor used by sibling repositories.
 fn pin_curated_roots() {
     pin(compiled_item_label as fn(&CompiledItemV2) -> &'static str);
@@ -272,12 +342,9 @@ fn main() {
         .expect("facade-only closed authority compiles the probe source");
     assert_eq!(compiled.source_id(), DOCUMENT_SOURCE);
     assert_eq!(compiled.items().len(), 3);
-    let pack_compiled = compile_source_document_v2(
-        SourceIdV2::from_raw(10),
-        PACK_DOCUMENT_TEXT,
-        &closed,
-    )
-    .expect("facade-only pack authority compiles USE PACK");
+    let pack_compiled =
+        compile_source_document_v2(SourceIdV2::from_raw(10), PACK_DOCUMENT_TEXT, &closed)
+            .expect("facade-only pack authority compiles USE PACK");
     assert_eq!(pack_compiled.items().len(), 1);
     assert!(matches!(
         pack_compiled.items().first(),
@@ -286,6 +353,38 @@ fn main() {
             ..
         })
     ));
+
+    // ---- V2 execution/composition handoff --------------------------------
+    let composition =
+        compile_source_document_v2(SourceIdV2::from_raw(11), COMPOSITION_DOCUMENT_TEXT, &closed)
+            .expect("facade-only SAMPLE composition compiles");
+    let repeated_composition =
+        compile_source_document_v2(SourceIdV2::from_raw(11), COMPOSITION_DOCUMENT_TEXT, &closed)
+            .expect("same V2 composition compiles deterministically");
+    assert_eq!(composition.execution(), repeated_composition.execution());
+    assert_exact_composition_handoff(&composition, "sampled");
+
+    let foreign_source_identity =
+        compile_source_document_v2(SourceIdV2::from_raw(12), COMPOSITION_DOCUMENT_TEXT, &closed)
+            .expect("the same source under another source identity compiles");
+    assert_eq!(
+        composition.execution().source_digest(),
+        foreign_source_identity.execution().source_digest(),
+        "source bytes retain their stable digest"
+    );
+    assert_ne!(
+        composition.execution().digest(),
+        foreign_source_identity.execution().digest(),
+        "a foreign source identity cannot reuse the complete execution digest"
+    );
+
+    let collision = compile_source_document_v2(
+        SourceIdV2::from_raw(13),
+        COLLIDING_COMPOSITION_DOCUMENT_TEXT,
+        &closed,
+    )
+    .expect("a composition binding wins over an absent same-named host relation");
+    assert_exact_composition_handoff(&collision, "records");
 
     // ---- format_source_document_v2: twice, deterministic, idempotent -------
     let first: Result<String, FrontendFailureV2> =
