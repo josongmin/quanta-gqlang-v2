@@ -58,7 +58,7 @@ not compatibility promises.
 | Gate | Rail | What it proves |
 |---|---|---|
 | Public downstream boundary | `tools/test_frontend_external_consumer.py` | Host-agnostic facade allowlist, external positive compile, and private-boundary probes |
-| Registry integrity | `crates/quanta-gqlang-v2-conformance/tests/registry_non_vacuous.rs`, `crates/quanta-gqlang-v2-conformance/tests/self_validation.rs` | Conformance targets are non-vacuous and registered |
+| Registry integrity | `crates/quanta-gqlang-v2-conformance/tests/self_validation.rs` | Every registered root/supplemental source compiles through the facade with an exact disposition |
 | Full local composition | `just ci` | Repository-configured format, lint, architecture, Semgrep, test, and conformance composition; it is local proof, not hosted-CI evidence |
 
 ## Maintenance rule

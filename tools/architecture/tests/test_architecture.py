@@ -13,34 +13,37 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 CHECKER = ROOT / "tools/architecture/check_architecture.py"
 FIXTURES = ROOT / "tools/architecture/tests/fixtures"
-MEMBERS = [
-    "quanta-gqlang-v2-algebra",
-    "quanta-gqlang-v2-binder",
-    "quanta-gqlang-v2-cli",
-    "quanta-gqlang-v2-conformance",
-    "quanta-gqlang-v2-diagnostics-stdio",
-    "quanta-gqlang-v2-frontend-contract",
-    "quanta-gqlang-v2-hir",
-    "quanta-gqlang-v2-logic",
-    "quanta-gqlang-v2-modules",
-    "quanta-gqlang-v2-pipeline",
-    "quanta-gqlang-v2-planning",
-    "quanta-gqlang-v2-sema",
-    "quanta-gqlang-v2-surface",
-    "quanta-gqlang-v2-types",
-]
 
 _checker_spec = importlib.util.spec_from_file_location("architecture_checker", CHECKER)
 assert _checker_spec and _checker_spec.loader
 architecture_checker = importlib.util.module_from_spec(_checker_spec)
 _checker_spec.loader.exec_module(architecture_checker)
+MEMBERS = sorted(architecture_checker.EXPECTED_WORKSPACE_MEMBERS)
+
+
+def final_topology() -> dict:
+    """Materialize the checker's one authoritative final DAG for mutation tests."""
+    return {
+        "normal_edges": [
+            list(edge) for edge in sorted(architecture_checker.FINAL_NORMAL_EDGES)
+        ],
+        "dev_edges": [list(edge) for edge in sorted(architecture_checker.FINAL_DEV_EDGES)],
+        "build_edges": [
+            list(edge) for edge in sorted(architecture_checker.FINAL_BUILD_EDGES)
+        ],
+    }
 
 
 def read_topology(path: Path) -> dict:
     topology = json.loads(path.read_text(encoding="utf-8"))
     if "base" not in topology:
         return topology
-    base = read_topology((path.parent / topology["base"]).resolve())
+    base_name = topology["base"]
+    base = (
+        final_topology()
+        if base_name == "final"
+        else read_topology((path.parent / base_name).resolve())
+    )
     return {
         "normal_edges": base["normal_edges"] + topology.get("add_normal_edges", []),
         "dev_edges": base["dev_edges"] + topology.get("add_dev_edges", []),
@@ -50,7 +53,11 @@ def read_topology(path: Path) -> dict:
 
 
 def materialize_fixture(destination: Path, fixture_name: str, *, omit: str | None = None) -> None:
-    topology = read_topology(FIXTURES / fixture_name / "topology.json")
+    topology = (
+        final_topology()
+        if fixture_name == "valid"
+        else read_topology(FIXTURES / fixture_name / "topology.json")
+    )
     members = [member for member in MEMBERS if member != omit]
     member_entries = ",\n".join(f'    "crates/{member}"' for member in members)
     excluded = ['"external/quanta-runtime"']
@@ -144,9 +151,12 @@ class ArchitectureCheckerTest(unittest.TestCase):
         with temporary:
             result = run_checker(root)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("workspace_members=14", result.stdout)
-        self.assertIn("normal_edges=26", result.stdout)
-        self.assertIn("dev_edges=5", result.stdout)
+        self.assertIn(f"workspace_members={len(MEMBERS)}", result.stdout)
+        self.assertIn(
+            f"normal_edges={len(architecture_checker.FINAL_NORMAL_EDGES)}",
+            result.stdout,
+        )
+        self.assertIn(f"dev_edges={len(architecture_checker.FINAL_DEV_EDGES)}", result.stdout)
 
     def test_retired_transitional_edge_is_illegal(self) -> None:
         temporary, root = self.fixture("transitional-valid")

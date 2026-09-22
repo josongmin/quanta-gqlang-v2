@@ -1,5 +1,5 @@
 {
-  "base": "../valid/topology.json",
+  "base": "final",
   "add_normal_edges": [
     ["quanta-gqlang-v2-algebra", "quanta-gqlang-v2-hir"]
   ]
