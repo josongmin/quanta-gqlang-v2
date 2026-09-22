@@ -1,4 +1,5 @@
 #![expect(
+    clippy::expect_used,
     clippy::panic,
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
