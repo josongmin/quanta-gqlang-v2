@@ -22,8 +22,8 @@
 //! never introduces a logic-side document DTO.
 
 use quanta_gqlang_v2_logic::{
-    BodyLiteralV1, BodyPolarityV1, LogicDiagnosticV1, RuleDefV1, RuleProgramContractV2,
-    RuleProgramInvalidReasonV1,
+    stratify, BodyLiteralV1, BodyPolarityV1, LogicDiagnosticV1, RecursiveProgramV1, RuleDefV1,
+    RuleProgramContractV2, RuleProgramInvalidReasonV1, StratificationProofV1,
 };
 use quanta_gqlang_v2_sema::test_support::{
     deep_relation_chain_document_v2, forged_rule_fact_document_v2,
@@ -309,6 +309,25 @@ fn single_rule_document_projects_its_exact_member_and_locations() {
     assert!(projected.body().is_empty());
     assert_eq!(projected.location(), rule.body().expression().location());
     assert_eq!(contract.budget(), document.budget_receipt());
+
+    // The contract retains the ONE stratification proof of exactly this member
+    // set under the document's own receipt: recomputing it over the contract's
+    // own projection reproduces the retained proof, and a rule with no predicate
+    // call admits with no recursive member. This is the F-06 seam: the ingress
+    // charges the rule-graph dimensions once and downstream consumers read THIS
+    // proof instead of re-stratifying.
+    let recomputed: StratificationProofV1 = stratify(
+        &RecursiveProgramV1::from_rules(contract.to_program()),
+        &contract.budget(),
+    )
+    .expect("the admitted member set re-stratifies identically");
+    assert_eq!(contract.stratification(), &recomputed);
+    assert!(contract.stratification().recursive().is_empty());
+    assert_eq!(
+        contract.stratification().stratum_of(&predicate("r")),
+        Some(0),
+        "every member of the admitted program carries an explicit stratum"
+    );
 }
 
 #[test]
@@ -342,58 +361,84 @@ fn positive_self_recursion_projects_one_positive_edge() {
     assert_eq!(literal.polarity(), BodyPolarityV1::Positive);
     assert_eq!(literal.location(), call.location());
     assert_eq!(literal.aggregate_function(), None);
+
+    // The retained proof admits THIS program: the recomputation over the
+    // contract's own projection is identical, `r` is its one recursive member,
+    // and the positive self-edge lands in a single stratum whose least-fixpoint
+    // evaluation is the admitted semantics.
+    let recomputed = stratify(
+        &RecursiveProgramV1::from_rules(contract.to_program()),
+        &contract.budget(),
+    )
+    .expect("positive recursion admits under the document's own receipt");
+    assert_eq!(contract.stratification(), &recomputed);
+    assert!(contract.stratification().is_recursive(&predicate("r")));
+    assert_eq!(contract.stratification().stratum_count(), 1);
+    assert_eq!(contract.stratification().components().len(), 1);
 }
 
 #[test]
-fn negated_self_recursion_projects_one_negated_edge() {
+fn negated_self_recursion_is_refused_at_the_sole_ingress() {
+    // A negated self-recursion is stratifiable by no proof, so the SOLE ingress
+    // refuses it before any contract — and therefore any projected program —
+    // exists. The `BodyPolarityV1::Negated` projection of an admitted document is
+    // covered by `negated_nonrecursive_dependency_projects_one_negated_edge`; the
+    // negation-cycle rejection is logic's own, reported at the rule that closed
+    // the cycle.
     let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::NegatedSelfRecursion)
         .expect("negated self-recursion fixture resolves");
     let document = fixture.document();
-    let contract = accepted(document);
-
-    let rule = contract.rules().first().expect("one projected member");
+    let rule = document.rules().next().expect("one document member");
     let call = only_call(rule);
     assert_eq!(
-        call.target(),
-        &ResolvedCallTargetV2::Predicate(predicate("r"))
-    );
-    assert_eq!(
         call.polarity(),
-        quanta_gqlang_v2_sema::RuleCallPolarityV2::Negated
+        quanta_gqlang_v2_sema::RuleCallPolarityV2::Negated,
+        "the fixture document really retains a negated call edge"
     );
 
-    let program = contract.to_program();
-    let literal = body_literal(program_rule(&program, "r"), "r");
-    assert_eq!(literal.polarity(), BodyPolarityV1::Negated);
-    assert_eq!(literal.location(), call.location());
+    let error = match RuleProgramContractV2::from_document(document) {
+        Ok(contract) => panic!("a negated cycle has no stratification proof: {contract:?}"),
+        Err(error) => error,
+    };
+    assert_eq!(error.code(), "logic.negation_cycle");
+    assert_eq!(
+        error.message(),
+        "recursion through negation is not stratifiable: cycle [r]"
+    );
+    assert_eq!(error.span(), rule.body().expression().location());
 }
 
 #[test]
-fn aggregated_self_recursion_projects_one_aggregated_edge() {
+fn aggregated_self_recursion_is_refused_at_the_sole_ingress() {
+    // Aggregated recursion is refused by the same ingress, under lane W3-A's
+    // fixed reject-all policy: the diagnostic names the folded predicate and is
+    // anchored on the aggregate CALL, not on the rule body. The
+    // `BodyPolarityV1::Aggregated` projection of an admitted document is
+    // FIXTURE-PENDING: the only aggregated-call fixture is recursive (and
+    // therefore now correctly unreachable through the ingress), so this rail
+    // asserts the refusal verbatim instead of projecting an unadmitted graph.
     let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::AggregatedSelfRecursion)
         .expect("aggregated self-recursion fixture resolves");
     let document = fixture.document();
-    let contract = accepted(document);
-
-    let rule = contract.rules().first().expect("one projected member");
+    let rule = document.rules().next().expect("one document member");
     let call = only_call(rule);
     assert_eq!(
-        call.target(),
-        &ResolvedCallTargetV2::Predicate(predicate("r"))
-    );
-    assert_eq!(
         call.polarity(),
-        quanta_gqlang_v2_sema::RuleCallPolarityV2::Aggregated
+        quanta_gqlang_v2_sema::RuleCallPolarityV2::Aggregated,
+        "the fixture document really retains an aggregated call edge"
     );
+    assert_ne!(call.location(), rule.body().expression().location());
 
-    let program = contract.to_program();
-    let literal = body_literal(program_rule(&program, "r"), "r");
-    assert_eq!(literal.polarity(), BodyPolarityV1::Aggregated);
-    assert_eq!(literal.location(), call.location());
-    // The frozen C->A projection uses `BodyLiteralV1::new`, so the aggregate
-    // function spelling stays unspecified; lane W3-A renders its fixed
-    // reject-all placeholder rather than inventing a function name here.
-    assert_eq!(literal.aggregate_function(), None);
+    let error = match RuleProgramContractV2::from_document(document) {
+        Ok(contract) => panic!("recursive aggregate has no proof: {contract:?}"),
+        Err(error) => error,
+    };
+    assert_eq!(error.code(), "logic.recursive_aggregate");
+    assert_eq!(
+        error.message(),
+        "recursive aggregate `<aggregate>` over recursive predicate `r` is not admitted"
+    );
+    assert_eq!(error.span(), call.location());
 }
 
 #[test]

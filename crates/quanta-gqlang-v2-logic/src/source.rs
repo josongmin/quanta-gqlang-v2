@@ -10,6 +10,14 @@
 //! source/registry identity, and checked location against the document's own
 //! resolved facts, and fails closed with
 //! [`LogicDiagnosticV1::RuleProgramInvalid`] before any graph is allocated.
+//!
+//! The SAME ingress then stratifies the validated member set exactly ONCE under
+//! the document's own rule-graph budget and retains the resulting
+//! [`StratificationProofV1`]; [`RuleProgramContractV2::stratification`] is the
+//! one read surface for it. Downstream consumers (planning, the pipeline
+//! assembly) read that retained proof, so one document owns one rule-graph
+//! charge and one proof instead of re-running the stratification per stage with
+//! a fresh full allowance each time.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -23,30 +31,44 @@ use quanta_gqlang_v2_types::{
 };
 
 use crate::diagnostic::{LogicDiagnosticV1, RuleProgramInvalidReasonV1};
-use crate::recursion::{BodyLiteralV1, BodyPolarityV1, RuleDefV1};
+use crate::recursion::{
+    stratify, BodyLiteralV1, BodyPolarityV1, RecursiveProgramV1, RuleDefV1, StratificationProofV1,
+};
 
-/// The validated rule program of one sealed semantic document.
+/// The validated, stratified rule program of one sealed semantic document.
 ///
 /// Construction is the fallible owner operation [`Self::from_document`]; every
 /// member and every call edge retained here already agreed with the document's
-/// resolved facts. The rule-graph budget is the document's immutable receipt and
-/// is never supplied by a caller.
+/// resolved facts, and the retained [`StratificationProofV1`] is the one
+/// admission proof of the whole member set under the document's own rule-graph
+/// budget. The budget is the document's immutable receipt and is never supplied
+/// by a caller.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RuleProgramContractV2 {
     rules: Vec<ResolvedRuleV2>,
     budget: DownstreamBudgetReceiptV2,
+    stratification: StratificationProofV1,
 }
 
 impl RuleProgramContractV2 {
-    /// Sole ingress: enumerate the complete document Rule item set and validate
-    /// every projected fact before any graph is allocated.
+    /// Sole ingress: enumerate the complete document Rule item set, validate
+    /// every projected fact, then stratify the validated member set once under
+    /// the document's own rule-graph budget.
+    ///
+    /// The returned contract retains that one proof; no consumer recomputes it,
+    /// so `max_rule_graph_nodes`, `max_rule_graph_edges`, and `max_rule_steps`
+    /// are charged exactly once per document.
     ///
     /// # Errors
     ///
     /// Returns [`LogicDiagnosticV1::RuleProgramInvalid`] naming the exact
     /// disagreement when the document's Rule membership, a call identity, a call
     /// target, a call polarity, a source/registry identity, or a checked location
-    /// is not a faithful, self-consistent document fact.
+    /// is not a faithful, self-consistent document fact, and otherwise relays the
+    /// [`stratify`] rejection verbatim ([`LogicDiagnosticV1::NegationCycle`],
+    /// the fixed recursive-aggregate policy, a non-local target, or an exhausted
+    /// rule-graph dimension) for a validated member set that is not stratifiable
+    /// under this document's own receipt.
     pub fn from_document(document: &SemanticDocumentV2) -> Result<Self, LogicDiagnosticV1> {
         // The document's complete Rule item set, by canonical identity. This is
         // the only membership authority; no caller enumerates it for us.
@@ -104,10 +126,19 @@ impl RuleProgramContractV2 {
             .filter_map(|(id, rule)| positions.get(&id).map(|index| (*index, rule)))
             .collect();
         ordered.sort_by_key(|(index, _rule)| *index);
+        let rules: Vec<ResolvedRuleV2> = ordered.into_iter().map(|(_index, rule)| rule).collect();
+
+        // The ONE stratification of this document's member set, under this
+        // document's own rule-graph budget. Charging happens here and nowhere
+        // else: the proof below is the single allowance spend for this document.
+        let budget = document.budget_receipt();
+        let program = RecursiveProgramV1::from_rules(project_rules(&rules));
+        let stratification = stratify(&program, &budget)?;
 
         Ok(Self {
-            rules: ordered.into_iter().map(|(_index, rule)| rule).collect(),
-            budget: document.budget_receipt(),
+            rules,
+            budget,
+            stratification,
         })
     }
 
@@ -123,35 +154,58 @@ impl RuleProgramContractV2 {
         self.budget
     }
 
+    /// The admitted stratification proof of this exact member set under the
+    /// document's own rule-graph budget, computed once at ingress.
+    ///
+    /// Planning and pipeline assembly read this proof instead of re-deriving it,
+    /// so the rule-graph charge is taken exactly once per document and every
+    /// consumer observes the same admission decision.
+    #[must_use]
+    pub const fn stratification(&self) -> &StratificationProofV1 {
+        &self.stratification
+    }
+
     /// Project into lane W3-A's program carrier (frozen C->A junction).
     ///
     /// Builtin/host calls are typed body facts and never become local graph
     /// nodes, so only resolved source-predicate calls become
     /// [`BodyLiteralV1`] edges; every projected target was already proven to be a
     /// member predicate of this document.
+    ///
+    /// This is the exact program [`Self::stratification`] admitted: both are
+    /// projections of the same validated member set.
     #[must_use]
     pub fn to_program(&self) -> Vec<RuleDefV1> {
-        self.rules
-            .iter()
-            .map(|rule| {
-                let body = rule
-                    .calls()
-                    .iter()
-                    .filter_map(|call| {
-                        let ResolvedCallTargetV2::Predicate(predicate) = call.target() else {
-                            return None;
-                        };
-                        Some(BodyLiteralV1::new(
-                            predicate.clone(),
-                            body_polarity(call.polarity()),
-                            call.location().clone(),
-                        ))
-                    })
-                    .collect();
-                RuleDefV1::new(rule.predicate_id().clone(), body, rule_location(rule))
-            })
-            .collect()
+        project_rules(&self.rules)
     }
+}
+
+/// Project one validated member set into lane W3-A's program carrier.
+///
+/// The sole projection: [`RuleProgramContractV2::to_program`] exposes it and the
+/// ingress stratifies it, so the admitted proof and the projected program can
+/// never describe different member sets.
+fn project_rules(rules: &[ResolvedRuleV2]) -> Vec<RuleDefV1> {
+    rules
+        .iter()
+        .map(|rule| {
+            let body = rule
+                .calls()
+                .iter()
+                .filter_map(|call| {
+                    let ResolvedCallTargetV2::Predicate(predicate) = call.target() else {
+                        return None;
+                    };
+                    Some(BodyLiteralV1::new(
+                        predicate.clone(),
+                        body_polarity(call.polarity()),
+                        call.location().clone(),
+                    ))
+                })
+                .collect();
+            RuleDefV1::new(rule.predicate_id().clone(), body, rule_location(rule))
+        })
+        .collect()
 }
 
 /// Validate one member rule and every resolved call it retained.

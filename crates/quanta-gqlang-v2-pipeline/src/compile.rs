@@ -42,10 +42,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use quanta_gqlang_v2_algebra::{lower_nested_relation_v2, lower_relation_item};
-use quanta_gqlang_v2_logic::{
-    stratify, GraphQueryContractV2, RecursiveProgramV1, RuleProgramContractV2,
-    StratificationProofV1,
-};
+use quanta_gqlang_v2_logic::{GraphQueryContractV2, RuleProgramContractV2, StratificationProofV1};
 use quanta_gqlang_v2_planning::{
     plan_outcome, CatalogDeclarationKindV2, CheckContractV2, CheckedCompositionPlanInputV2,
     CompositionBodyPlanInputV2, CompositionRelationalBodyPlanInputV2, NoPlanReasonV2,
@@ -72,6 +69,12 @@ use crate::diagnostic::{
 pub const OPEN_AUTHORITY_INCOMPLETE_CODE: &str = "pipeline.analysis.open_authority_incomplete";
 
 /// Pipeline-owned code for a failed frontend-budget projection.
+///
+/// Every dimension of a checked [`FrontendBudgetV2`] is a `NonZeroU32`, and the
+/// parse budget rejects only zero, so no checked budget can reach this code.
+/// The vocabulary is retained for the wire-code inventory; its one construction
+/// site anchors on the caller's own source and exact span, never on a fabricated
+/// source identity.
 pub const PARSE_BUDGET_PROJECTION_FAILED_CODE: &str = "pipeline.parse_budget_projection_failed";
 
 // ---------------------------------------------------------------------------
@@ -551,14 +554,13 @@ pub fn analyze_resolved_document_v2(
 /// # Errors
 ///
 /// Returns a bounded source-anchored failure when the source exceeds the
-/// budget's `max_source_bytes`, when the budget cannot be projected onto the
-/// parse stage, or when the surface parser rejects the source.
+/// budget's `max_source_bytes` or when the surface parser rejects the source.
 pub fn format_source_document_v2(
     source_id: SourceIdV2,
     source: &str,
     budget: &FrontendBudgetV2,
 ) -> Result<String, FrontendFailureV2> {
-    let projected = project_parse_budget(budget)?;
+    let projected = project_parse_budget(source_id, source, budget)?;
     if source.len() > usize::try_from(budget.max_source_bytes()).unwrap_or(usize::MAX) {
         return Err(FrontendFailureV2::one(FrontendDiagnosticV2::new(
             FrontendStageV2::Resource,
@@ -582,7 +584,18 @@ pub fn format_source_document_v2(
 // ---------------------------------------------------------------------------
 
 /// Project the parse-stage budget from one checked frontend budget.
-fn project_parse_budget(budget: &FrontendBudgetV2) -> Result<ParseBudgetV2, FrontendFailureV2> {
+///
+/// Every dimension of a checked [`FrontendBudgetV2`] is a `NonZeroU32` widened
+/// to `usize`, and [`ParseBudgetV2::try_new`] rejects only zero, so this
+/// projection has no reachable rejection. The rejection is therefore surfaced
+/// with the CALLER's real source identity and the source's own exact span — the
+/// same anchor the sibling resource-limit failure uses — instead of a fabricated
+/// source or a byte-0 point that belongs to no document.
+fn project_parse_budget(
+    source_id: SourceIdV2,
+    source: &str,
+    budget: &FrontendBudgetV2,
+) -> Result<ParseBudgetV2, FrontendFailureV2> {
     ParseBudgetV2::try_new(
         usize::try_from(budget.max_tokens()).unwrap_or(usize::MAX),
         usize::try_from(budget.max_document_items()).unwrap_or(usize::MAX),
@@ -596,7 +609,10 @@ fn project_parse_budget(budget: &FrontendBudgetV2) -> Result<ParseBudgetV2, Fron
             FrontendStageV2::Resource,
             PARSE_BUDGET_PROJECTION_FAILED_CODE,
             FrontendSeverityV2::Error,
-            zero_location(SourceIdV2::from_raw(0)),
+            LocatedSpanV2 {
+                source_id,
+                span: SpanV1::new(0, source.len()),
+            },
             Vec::new(),
             message,
         ))
@@ -609,7 +625,8 @@ fn parse_source(
     source: &str,
     budget: &FrontendBudgetV2,
 ) -> Result<quanta_gqlang_v2_surface::ParsedDocumentV2, FrontendTransactionErrorV2> {
-    let projected = project_parse_budget(budget).map_err(FrontendTransactionErrorV2::from)?;
+    let projected = project_parse_budget(source_id, source, budget)
+        .map_err(FrontendTransactionErrorV2::from)?;
     parse_source_document_v2(source_id, source, &projected)
         .map_err(|error| surface_transaction_error(&error))
 }
@@ -1059,6 +1076,11 @@ fn run_item(
 }
 
 /// Build and plan the one document-wide rule program.
+///
+/// Stratification is NOT repeated here: the program's sole ingress
+/// ([`RuleProgramContractV2::from_document`]) already charged the document's
+/// rule-graph allowance once and retained the proof, and this DTO carries that
+/// exact proof.
 fn compile_rule_program(
     document: &SemanticDocumentV2,
     program_id: SemanticItemIdV2,
@@ -1066,9 +1088,7 @@ fn compile_rule_program(
 ) -> Result<CompiledRuleProgramV2, FrontendTransactionErrorV2> {
     let contract = RuleProgramContractV2::from_document(document)
         .map_err(|error| logic_transaction_error(&error))?;
-    let program = RecursiveProgramV1::from_rules(contract.to_program());
-    let stratification =
-        stratify(&program, &contract.budget()).map_err(|error| logic_transaction_error(&error))?;
+    let stratification = contract.stratification().clone();
     let plan = planning_plan(document, program_id, &SemanticPlanInputV2::Rule(contract))?;
     Ok(CompiledRuleProgramV2 {
         program_id,
@@ -1231,6 +1251,12 @@ fn zero_location(source_id: SourceIdV2) -> LocatedSpanV2 {
 }
 
 /// The authored location of one semantic item.
+///
+/// A catalog declaration retains its checked location through its inline VIEW
+/// where it has one, and otherwise through the checked
+/// [`quanta_gqlang_v2_sema::ResolvedCatalogReferenceV2`] its payload resolved;
+/// both are document-owned facts, so a declaration is never anchored on a
+/// fabricated byte 0.
 fn item_location(item: &SemanticItemV2) -> Option<LocatedSpanV2> {
     match item {
         SemanticItemV2::Relation(relation) => Some(relation.location().location()),
@@ -1239,12 +1265,34 @@ fn item_location(item: &SemanticItemV2) -> Option<LocatedSpanV2> {
         SemanticItemV2::Presentation(presentation) => Some(presentation.location().location()),
         SemanticItemV2::Composition(composition) => Some(composition.location().location()),
         SemanticItemV2::Meta(meta) => Some(meta.location().location()),
-        SemanticItemV2::Catalog(catalog) => {
-            catalog.inline_view().map(|view| view.location().location())
-        }
+        SemanticItemV2::Catalog(catalog) => catalog_location(catalog),
         SemanticItemV2::Declaration(declaration) => Some(declaration.body().location().location()),
         SemanticItemV2::Rule(rule) => Some(rule.body().expression().location().location()),
     }
+}
+
+/// The checked location of one catalog declaration, from the facts it retains.
+///
+/// A View alias/inline body anchors on the inline VIEW's own typed relation; a
+/// declaration without one anchors on its payload's exact checked reference (the
+/// queried/source/check reference the declaration resolved), falling back to the
+/// first canonical inline-View dependency. Only a catalog item that resolves no
+/// reference at all has no location of its own.
+fn catalog_location(catalog: &ResolvedCatalogItemV2) -> Option<LocatedSpanV2> {
+    if let Some(view) = catalog.inline_view() {
+        return Some(view.location().location());
+    }
+    let payload_reference = match catalog.payload() {
+        ResolvedCatalogPayloadV2::View { query_ref } => query_ref.as_ref(),
+        ResolvedCatalogPayloadV2::Model { source } => Some(source),
+        ResolvedCatalogPayloadV2::Pack { source, .. } => Some(source),
+        ResolvedCatalogPayloadV2::Profile { capabilities, .. } => capabilities.first(),
+        ResolvedCatalogPayloadV2::Gate { checks, .. } => checks.first(),
+        ResolvedCatalogPayloadV2::RuleBinding { check_ref } => Some(check_ref),
+    };
+    payload_reference
+        .or_else(|| catalog.inline_view_dependencies().first())
+        .map(|reference| reference.location().location())
 }
 
 /// A located anchor for one authored identity.

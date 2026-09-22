@@ -1,0 +1,787 @@
+#!/usr/bin/env python3
+"""External-consumer gate for the pinned qglang-v3 frontend facade (lane W4-H).
+
+The gate proves the facade is a *sufficient and minimal* seam for a sibling
+repository. It never touches the checkout:
+
+1. copy ``tools/frontend_external_consumer/`` into a temp directory, rewrite its
+   single ``path = ...`` dependency to an absolute path into this repository,
+   copy the repository ``Cargo.lock`` for offline resolution, and point
+   ``CARGO_TARGET_DIR`` at the temp directory;
+
+2. assert the manifest shapes (fixture normal deps == {facade}; facade normal
+   deps == {pipeline}) and the facade source shape (zero ``^pub use .*::\\*``,
+   zero ``^pub mod``, curated allowlist == the pinned literal);
+
+3. run the positive program (``cargo run --quiet``) and require exit 0 plus the
+   exact marker ``external-consumer positive: ok``;
+
+4. run every ``negatives/*.rs`` case as a complete ``src/main.rs`` through
+   ``cargo check --quiet`` and require a non-zero exit, the expected compiler
+   code, and the expected message needle (two class-D cases pin a rustc
+   diagnostic that carries no E-code at all — a struct literal over private
+   fields — so for those the map records an empty code and the gate requires
+   that no coded error appears);
+
+5. diff ``cargo public-api -p quanta-gqlang-v2-frontend-contract --simplified``
+   against the pinned allowlist literal (extra/missing names);
+
+6. assert the checkout is untouched: ``Cargo.lock`` sha256, the byte content of
+   every path the gate owns, and ``git status --porcelain`` are compared
+   before/after. A delta under a gate-owned path is a contract violation; a
+   delta that only touches foreign paths is reported as a concurrent writer and
+   makes the run unjudgeable (exit 2) instead of being blamed on the gate.
+
+Exit codes: 0 = every expectation matched; 1 = the gate found a contract or
+case violation; 2 = the gate could not judge (infrastructure failure: the
+repository tree does not compile, a case failed for a non-fixture reason, or a
+required tool is missing). Exit 2 is never a pass.
+
+Standard library only: the repository python is 3.9, which has no ``tomllib``,
+so the small manifest reader below handles exactly the subset of TOML the
+repository manifests use (``[section]`` headers, ``key = value`` entries,
+inline tables).
+
+The cargo toolchain is pinned to the repository's ``rust-toolchain.toml``
+channel via ``RUSTUP_TOOLCHAIN`` because the fixture lives outside the
+checkout, where that file would otherwise not apply and the expected
+diagnostic codes would drift with the machine default toolchain.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+from typing import Dict, List, Optional, Sequence, Tuple
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+FIXTURE_DIR = REPOSITORY_ROOT / "tools" / "frontend_external_consumer"
+NEGATIVES_DIR = FIXTURE_DIR / "negatives"
+FACADE_DIR = REPOSITORY_ROOT / "crates" / "quanta-gqlang-v2-frontend-contract"
+FACADE_MANIFEST = FACADE_DIR / "Cargo.toml"
+FACADE_SOURCE = FACADE_DIR / "src" / "lib.rs"
+LOCKFILE = REPOSITORY_ROOT / "Cargo.lock"
+
+FIXTURE_PACKAGE = "quanta-gqlang-v2-frontend-external-consumer"
+FACADE_PACKAGE = "quanta-gqlang-v2-frontend-contract"
+PIPELINE_PACKAGE = "quanta-gqlang-v2-pipeline"
+FACADE_DEP_LINE = 'path = "../../crates/quanta-gqlang-v2-frontend-contract"'
+FACADE_OWNER_CRATE = "quanta_gqlang_v2_pipeline"
+
+POSITIVE_MARKER = "external-consumer positive: ok"
+
+EXIT_OK = 0
+EXIT_GATE_FAILED = 1
+EXIT_INFRASTRUCTURE = 2
+
+# The pinned curated surface (W4-C / F-01): three entry points, the
+# assembled-document DTOs, the planning DTOs, the authority/budget/diagnostic
+# vocabulary, and the inert closure types. Public-API over-claiming is a
+# violation in both directions (extra and missing).
+PINNED_ALLOWLIST: Tuple[str, ...] = (
+    "analyze_source_document_v2",
+    "compile_source_document_v2",
+    "format_source_document_v2",
+    "AnalysisDocumentV2",
+    "AnalysisItemV2",
+    "CompiledDocumentV2",
+    "CompiledItemV2",
+    "CompiledRuleProgramV2",
+    "PlannedItemV2",
+    "RuleProgramMemberV2",
+    "UnresolvedAnalysisFactV2",
+    "OPEN_AUTHORITY_INCOMPLETE_CODE",
+    "NoPlanReasonV2",
+    "SemanticPlanV2",
+    "ClosedFrontendAuthorityV2",
+    "FrontendAuthorityErrorV2",
+    "FrontendBudgetV2",
+    "FrontendDiagnosticV2",
+    "FrontendFailureV2",
+    "FrontendSeverityV2",
+    "FrontendStageV2",
+    "FrontendTransactionErrorV2",
+    "OpenAnalysisAuthorityV2",
+    "SemanticItemIdV2",
+    "AlgebraFamilyV2",
+    "CheckedLocatedSpanV2",
+    "LocatedSpanV2",
+    "SourceIdV2",
+    "SpanV1",
+)
+
+# name -> (class, expected compiler code, expected message needle)
+NEGATIVE_CASES: Dict[str, Tuple[str, str, str]] = {
+    # class A: an owner or deleted-V1 symbol imported through the facade root
+    "a01_public_plan_v1": ("A", "E0432", "no `PublicPlanV1` in the root"),
+    "a02_plan_request_v1": ("A", "E0432", "no `PlanRequestV1` in the root"),
+    "a03_produce_plan": ("A", "E0432", "no `produce_plan` in the root"),
+    "a04_classify_item": ("A", "E0432", "no `classify_item` in the root"),
+    "a05_compiled_item_v1": ("A", "E0432", "no `CompiledItemV1` in the root"),
+    "a06_compiled_program_v1": ("A", "E0432", "no `CompiledProgramV1` in the root"),
+    "a07_frontend_context_v1": ("A", "E0432", "no `FrontendContextV1` in the root"),
+    "a08_pipeline_diagnostic_v1": ("A", "E0432", "no `PipelineDiagnosticV1` in the root"),
+    "a09_pipeline_stage_v1": ("A", "E0432", "no `PipelineStageV1` in the root"),
+    "a10_compile_program_structural": (
+        "A",
+        "E0432",
+        "no `compile_program_structural` in the root",
+    ),
+    "a11_compiled_program_item_v1": (
+        "A",
+        "E0432",
+        "no `compiled_program_item_v1` in the root",
+    ),
+    "a12_no_plan_reason_v1": ("A", "E0432", "no `NoPlanReasonV1` in the root"),
+    "a13_semantic_plan_input_v2": ("A", "E0432", "no `SemanticPlanInputV2` in the root"),
+    "a14_graph_query_contract_v2": ("A", "E0432", "no `GraphQueryContractV2` in the root"),
+    "a15_rule_program_contract_v2": ("A", "E0432", "no `RuleProgramContractV2` in the root"),
+    "a16_semantic_document_v2": ("A", "E0432", "no `SemanticDocumentV2` in the root"),
+    "a17_hir_builder_v1": ("A", "E0432", "no `HirBuilderV1` in the root"),
+    "a18_parse_document": ("A", "E0432", "no `parse_document` in the root"),
+    "a19_format_item": ("A", "E0432", "no `format_item` in the root"),
+    "a20_module_graph_v1": ("A", "E0432", "no `ModuleGraphV1` in the root"),
+    "a21_pack_manifest_v1": ("A", "E0432", "no `PackManifestV1` in the root"),
+    "a22_checked_algebra_node_v2": ("A", "E0432", "no `CheckedAlgebraNodeV2` in the root"),
+    "a23_lower_relation_item": ("A", "E0432", "no `lower_relation_item` in the root"),
+    "a24_graph_witness_bounds_v2": ("A", "E0432", "no `GraphWitnessBoundsV2` in the root"),
+    # class B: a module path that would bypass the curated root
+    #
+    # A missing module segment in a multi-segment path is still E0432, but rustc
+    # labels it "could not find `m` in `crate`" instead of "no `m` in the root";
+    # the bare-module cases below keep the root label.
+    "b01_pipeline_module_path": (
+        "B",
+        "E0432",
+        "could not find `pipeline` in `quanta_gqlang_v2_frontend_contract`",
+    ),
+    "b02_compile_module_path": (
+        "B",
+        "E0432",
+        "could not find `compile` in `quanta_gqlang_v2_frontend_contract`",
+    ),
+    "b03_diagnostic_module_path": (
+        "B",
+        "E0432",
+        "could not find `diagnostic` in `quanta_gqlang_v2_frontend_contract`",
+    ),
+    "b04_pipeline_module_only": ("B", "E0432", "no `pipeline` in the root"),
+    "b05_compile_module_only": ("B", "E0432", "no `compile` in the root"),
+    # class C: an owner crate that is not a declared dependency of the fixture
+    "c01_sema_crate": ("C", "E0432", "use of undeclared crate or module `quanta_gqlang_v2_sema`"),
+    "c02_hir_crate": ("C", "E0432", "use of undeclared crate or module `quanta_gqlang_v2_hir`"),
+    "c03_algebra_crate": (
+        "C",
+        "E0432",
+        "use of undeclared crate or module `quanta_gqlang_v2_algebra`",
+    ),
+    "c04_planning_crate": (
+        "C",
+        "E0432",
+        "use of undeclared crate or module `quanta_gqlang_v2_planning`",
+    ),
+    "c05_pipeline_crate": (
+        "C",
+        "E0432",
+        "use of undeclared crate or module `quanta_gqlang_v2_pipeline`",
+    ),
+    "c06_types_crate": ("C", "E0432", "use of undeclared crate or module `quanta_gqlang_v2_types`"),
+    "c07_modules_crate": (
+        "C",
+        "E0432",
+        "use of undeclared crate or module `quanta_gqlang_v2_modules`",
+    ),
+    "c08_binder_crate": (
+        "C",
+        "E0432",
+        "use of undeclared crate or module `quanta_gqlang_v2_binder`",
+    ),
+    "c09_surface_crate": (
+        "C",
+        "E0432",
+        "use of undeclared crate or module `quanta_gqlang_v2_surface`",
+    ),
+    "c10_logic_crate": ("C", "E0432", "use of undeclared crate or module `quanta_gqlang_v2_logic`"),
+    # class D: privacy probes on curated roots (read, write, struct literal,
+    # private associated function). An empty expected code pins a rustc
+    # diagnostic that carries no E-code at all (rustc 1.81 reports a struct
+    # literal over private fields as an uncoded `error:`), which the gate treats
+    # as "no coded error may appear".
+    "d01_read_diagnostic_stage": ("D", "E0616", "field `stage` of struct `FrontendDiagnosticV2` is private"),
+    "d02_write_diagnostic_severity": (
+        "D",
+        "E0616",
+        "field `severity` of struct `FrontendDiagnosticV2` is private",
+    ),
+    "d03_literal_budget_field": (
+        "D",
+        "",
+        "cannot construct `FrontendBudgetV2` with struct literal syntax due to private fields",
+    ),
+    "d04_read_analysis_items": ("D", "E0616", "field `items` of struct `AnalysisDocumentV2` is private"),
+    "d05_read_plan_authority_lane": ("D", "E0616", "field `authority_lane` of struct `SemanticPlanV2` is private"),
+    "d06_read_checked_span_location": (
+        "D",
+        "E0616",
+        "field `location` of struct `CheckedLocatedSpanV2` is private",
+    ),
+    "d07_read_unresolved_code": ("D", "E0616", "field `code` of struct `UnresolvedAnalysisFactV2` is private"),
+    "d08_read_closed_authority_modules": (
+        "D",
+        "E0616",
+        "field `modules` of struct `ClosedFrontendAuthorityV2` is private",
+    ),
+    "d09_literal_plan_field": (
+        "D",
+        "",
+        "cannot construct `SemanticPlanV2` with struct literal syntax due to private fields",
+    ),
+    "d10_private_plan_from_parts": ("D", "E0624", "associated function `from_parts` is private"),
+    "d11_private_rule_member_new": ("D", "E0624", "associated function `new` is private"),
+    "d12_read_budget_max_source_bytes": (
+        "D",
+        "E0616",
+        "field `max_source_bytes` of struct `FrontendBudgetV2` is private",
+    ),
+}
+
+ERROR_CODE_RE = re.compile(r"error\[(E\d{4})\]")
+PUB_USE_RE = re.compile(r"pub use\s+([A-Za-z0-9_]+)::(?:\{([^}]*)\}|([A-Za-z0-9_]+))\s*;", re.DOTALL)
+GLOB_RE = re.compile(r"^pub use .*::\*", re.MULTILINE)
+MODULE_RE = re.compile(r"^pub mod", re.MULTILINE)
+FIXTURE_ANCHOR = "--> src/main.rs:"
+
+
+class InfrastructureError(RuntimeError):
+    """The gate cannot judge: the failure is not the fixture's own surface."""
+
+
+def sha256_of(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def run(command: Sequence[str], cwd: Path, env: Dict[str, str]) -> subprocess.CompletedProcess:
+    try:
+        return subprocess.run(
+            list(command),
+            cwd=str(cwd),
+            env=env,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as error:
+        raise InfrastructureError("%s is not runnable: %s" % (command[0], error))
+
+
+def git_status_bytes() -> bytes:
+    result = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=str(REPOSITORY_ROOT),
+        check=False,
+        capture_output=True,
+    )
+    if result.returncode != 0:
+        raise InfrastructureError("git status --porcelain failed in the checkout")
+    return result.stdout
+
+
+# Paths this gate is allowed to exist in: a change to any of them is the gate's
+# own doing (or cargo's, through the lock file or the target directory) and is a
+# contract violation. Anything else that moves during a run is a concurrent
+# writer in a shared checkout: reported, never attributed to the gate.
+GATE_WRITABLE_PREFIXES = (
+    "Cargo.lock",
+    "target/",
+    "tools/frontend_external_consumer/",
+    "tools/test_frontend_external_consumer.py",
+)
+
+
+def gate_writable_fingerprint() -> Dict[str, str]:
+    """Content hash of every path this gate owns or must not change."""
+    paths = [LOCKFILE, REPOSITORY_ROOT / "tools" / "test_frontend_external_consumer.py"]
+    paths.extend(sorted(path for path in FIXTURE_DIR.rglob("*") if path.is_file()))
+    return {
+        str(path.relative_to(REPOSITORY_ROOT)): sha256_of(path)
+        for path in paths
+        if path.is_file()
+    }
+
+
+def status_delta(before: bytes, after: bytes) -> List[str]:
+    before_lines = set(before.decode("utf-8", "replace").splitlines())
+    after_lines = set(after.decode("utf-8", "replace").splitlines())
+    return sorted(before_lines.symmetric_difference(after_lines))
+
+
+def delta_path(status_line: str) -> str:
+    rest = status_line[3:].strip() if len(status_line) > 3 else status_line.strip()
+    if " -> " in rest:
+        rest = rest.split(" -> ")[-1]
+    return rest.strip().strip('"')
+
+
+def manifest_dependencies(text: str, section: str) -> List[str]:
+    """Return the dependency key order of one manifest section."""
+    names: List[str] = []
+    current: Optional[str] = None
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            current = line[1:-1].strip()
+            continue
+        if current != section:
+            continue
+        if "=" not in line:
+            continue
+        key = line.split("=", 1)[0].strip().strip('"')
+        if key:
+            names.append(key)
+    return names
+
+
+def facade_allowlist(text: str) -> List[str]:
+    """Names re-exported from the facade's sole owner crate, in source order."""
+    names: List[str] = []
+    for match in PUB_USE_RE.finditer(text):
+        if match.group(1) != FACADE_OWNER_CRATE:
+            continue
+        if match.group(2) is not None:
+            for part in match.group(2).split(","):
+                part = part.strip()
+                if part:
+                    names.append(part)
+        elif match.group(3) is not None:
+            names.append(match.group(3))
+    return names
+
+
+def facade_owner_crates(text: str) -> List[str]:
+    return sorted({match.group(1) for match in PUB_USE_RE.finditer(text)})
+
+
+def repo_toolchain_channel() -> Optional[str]:
+    manifest = REPOSITORY_ROOT / "rust-toolchain.toml"
+    if not manifest.is_file():
+        return None
+    match = re.search(r'^\s*channel\s*=\s*"([^"]+)"', manifest.read_text(), re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def cargo_env(target_dir: Path, channel: Optional[str]) -> Dict[str, str]:
+    env = dict(os.environ)
+    env["CARGO_TARGET_DIR"] = str(target_dir)
+    env["CARGO_NET_OFFLINE"] = "true"
+    env["CARGO_TERM_COLOR"] = "never"
+    if channel:
+        env["RUSTUP_TOOLCHAIN"] = channel
+    return env
+
+
+def tool_version(executable: str, cwd: Path, env: Dict[str, str]) -> str:
+    result = run([executable, "--version"], cwd=cwd, env=env)
+    if result.returncode != 0:
+        raise InfrastructureError("%s --version failed: %s" % (executable, result.stderr.strip()))
+    version = result.stdout.strip()
+    prefix = executable + " "
+    return version[len(prefix):] if version.startswith(prefix) else version
+
+
+def materialize_fixture(temp_root: Path) -> Path:
+    fixture = temp_root / "fixture"
+    shutil.copytree(
+        str(FIXTURE_DIR),
+        str(fixture),
+        ignore=shutil.ignore_patterns("target", "Cargo.lock", ".git"),
+    )
+    manifest = fixture / "Cargo.toml"
+    text = manifest.read_text()
+    if text.count(FACADE_DEP_LINE) != 1:
+        raise InfrastructureError(
+            "the fixture manifest must carry exactly one %r dependency line" % FACADE_DEP_LINE
+        )
+    manifest.write_text(
+        text.replace(FACADE_DEP_LINE, 'path = "%s"' % (FACADE_DIR,))
+    )
+    shutil.copyfile(str(LOCKFILE), str(fixture / "Cargo.lock"))
+    return fixture
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--verbose", action="store_true", help="print every case and its verdict")
+    parser.add_argument("--keep-temp", action="store_true", help="keep and print the temp workspace")
+    args = parser.parse_args(argv)
+
+    def say(message: str) -> None:
+        print(message, flush=True)
+
+    def trace(message: str) -> None:
+        if args.verbose:
+            say(message)
+
+    violations: List[str] = []
+    mismatches: List[str] = []
+    infrastructure: List[str] = []
+    counts: Dict[str, int] = {
+        "positive_selected": 1,
+        "positive_executed": 0,
+        "positive_marker": 0,
+        "negative_selected": len(NEGATIVE_CASES),
+        "negative_executed": 0,
+        "code_matched": 0,
+        "needle_matched": 0,
+        "uncoded_expected": sum(1 for _, code, _ in NEGATIVE_CASES.values() if not code),
+        "globs": 0,
+        "pub_mods": 0,
+        "allowlist_observed": 0,
+        "allowlist_pinned": len(PINNED_ALLOWLIST),
+        "fixture_deps": 0,
+        "facade_normal_deps": 0,
+        "facade_extra_deps": 0,
+        "facade_missing_deps": 0,
+        "public_api_observed": 0,
+        "public_api_extra": 0,
+        "public_api_missing": 0,
+    }
+    temp_root: Optional[Path] = None
+    cargo_version = "unknown"
+    rustc_version = "unknown"
+    before_lock = ""
+    before_status = b""
+    before_fingerprint: Dict[str, str] = {}
+
+    try:
+        # ---- stage 0: repository shape ------------------------------------
+        before_lock = sha256_of(LOCKFILE)
+        before_status = git_status_bytes()
+        before_fingerprint = gate_writable_fingerprint()
+
+        fixture_text = (FIXTURE_DIR / "Cargo.toml").read_text()
+        fixture_deps = manifest_dependencies(fixture_text, "dependencies")
+        counts["fixture_deps"] = len(fixture_deps)
+        if fixture_deps != [FACADE_PACKAGE]:
+            violations.append(
+                "fixture normal deps must be exactly [%s], got %s" % (FACADE_PACKAGE, fixture_deps)
+            )
+        for extra_section in ("dev-dependencies", "build-dependencies"):
+            if manifest_dependencies(fixture_text, extra_section):
+                violations.append("fixture must declare no [%s]" % extra_section)
+
+        facade_text = FACADE_MANIFEST.read_text()
+        facade_deps = manifest_dependencies(facade_text, "dependencies")
+        counts["facade_normal_deps"] = len(facade_deps)
+        facade_extra = sorted(set(facade_deps) - {PIPELINE_PACKAGE})
+        facade_missing = sorted({PIPELINE_PACKAGE} - set(facade_deps))
+        counts["facade_extra_deps"] = len(facade_extra)
+        counts["facade_missing_deps"] = len(facade_missing)
+        if facade_extra or facade_missing:
+            violations.append(
+                "facade normal deps must be exactly [%s]: extra=%s missing=%s "
+                "(the five transitional owner edges must be deleted in the facade cut)"
+                % (PIPELINE_PACKAGE, facade_extra, facade_missing)
+            )
+
+        source_text = FACADE_SOURCE.read_text()
+        globs = GLOB_RE.findall(source_text)
+        modules = MODULE_RE.findall(source_text)
+        counts["globs"] = len(globs)
+        counts["pub_mods"] = len(modules)
+        if globs:
+            violations.append("facade source keeps %d crate-wide glob re-export(s)" % len(globs))
+        if modules:
+            violations.append("facade source declares %d public module(s)" % len(modules))
+
+        observed_allowlist = facade_allowlist(source_text)
+        counts["allowlist_observed"] = len(observed_allowlist)
+        if sorted(observed_allowlist) != sorted(PINNED_ALLOWLIST):
+            extra = sorted(set(observed_allowlist) - set(PINNED_ALLOWLIST))
+            missing = sorted(set(PINNED_ALLOWLIST) - set(observed_allowlist))
+            violations.append(
+                "facade source allowlist drifted from the pinned surface: extra=%s missing=%s"
+                % (extra, missing)
+            )
+        owner_crates = facade_owner_crates(source_text)
+        if owner_crates != [FACADE_OWNER_CRATE]:
+            violations.append("facade source re-exports owner crates %s" % owner_crates)
+
+        if violations:
+            for violation in violations:
+                say("contract violation: %s" % violation)
+        say(
+            "stage 0: fixture_deps=%d facade_normal_deps=%d globs=%d pub_mods=%d allowlist=%d violations=%d"
+            % (
+                counts["fixture_deps"],
+                counts["facade_normal_deps"],
+                counts["globs"],
+                counts["pub_mods"],
+                counts["allowlist_observed"],
+                len(violations),
+            )
+        )
+
+        # ---- stage 1/2: isolated fixture in a temp workspace ---------------
+        channel = repo_toolchain_channel()
+        temp_root = Path(tempfile.mkdtemp(prefix="qg-w4h-external-consumer-"))
+        fixture = materialize_fixture(temp_root)
+        env = cargo_env(temp_root / "target", channel)
+        # Stage 3 runs inside the checkout, where rust-toolchain.toml applies;
+        # no override is needed there.
+        public_api_env = cargo_env(temp_root / "target-public-api", None)
+        cargo_version = tool_version("cargo", fixture, env)
+        rustc_version = tool_version("rustc", fixture, env)
+        trace("temp workspace: %s" % temp_root)
+        trace("toolchain: %s / %s" % (cargo_version, rustc_version))
+
+        positive_main = (fixture / "src" / "main.rs").read_bytes()
+
+        result = run(["cargo", "run", "--quiet"], cwd=fixture, env=env)
+        counts["positive_executed"] = 1
+        if result.returncode != 0:
+            if FIXTURE_ANCHOR not in result.stderr:
+                raise InfrastructureError(
+                    "the repository tree does not compile for the fixture:\n%s"
+                    % result.stderr.strip()
+                )
+            violations.append("positive program failed to compile")
+            say("positive: exit=%d" % result.returncode)
+            say(result.stderr.strip())
+        elif result.stdout.strip() != POSITIVE_MARKER:
+            violations.append(
+                "positive program printed %r, expected %r" % (result.stdout.strip(), POSITIVE_MARKER)
+            )
+        else:
+            counts["positive_marker"] = 1
+        say("stage 1: positive exit=%d marker=%d" % (result.returncode, counts["positive_marker"]))
+
+        unregistered = sorted(
+            path.stem for path in NEGATIVES_DIR.glob("*.rs") if path.stem not in NEGATIVE_CASES
+        )
+        absent = sorted(name for name in NEGATIVE_CASES if not (NEGATIVES_DIR / (name + ".rs")).is_file())
+        if unregistered:
+            violations.append("negative fixtures missing from the expected-code map: %s" % unregistered)
+        if absent:
+            violations.append("expected-code map names without a fixture: %s" % absent)
+
+        for name, (klass, expected_code, expected_needle) in sorted(NEGATIVE_CASES.items()):
+            path = NEGATIVES_DIR / (name + ".rs")
+            if not path.is_file():
+                continue
+            (fixture / "src" / "main.rs").write_bytes(path.read_bytes())
+            result = run(["cargo", "check", "--quiet"], cwd=fixture, env=env)
+            counts["negative_executed"] += 1
+            observed_codes = sorted(set(ERROR_CODE_RE.findall(result.stderr)))
+            if expected_code:
+                code_ok = result.returncode != 0 and expected_code in observed_codes
+            else:
+                # No E-code is expected for this diagnostic: any coded error is
+                # a mismatch, and the needle below carries the assertion.
+                code_ok = result.returncode != 0 and not observed_codes
+            needle_ok = result.returncode != 0 and expected_needle in result.stderr
+            if result.returncode == 0:
+                violations.append("negative %s compiled: the leak is reachable" % name)
+            elif FIXTURE_ANCHOR not in result.stderr:
+                raise InfrastructureError(
+                    "negative %s failed for a non-fixture reason:\n%s" % (name, result.stderr.strip())
+                )
+            if code_ok:
+                counts["code_matched"] += 1
+            else:
+                mismatches.append(
+                    "%s: expected %s, observed %s"
+                    % (
+                        name,
+                        expected_code or "no error code",
+                        ",".join(observed_codes) or "none",
+                    )
+                )
+            if needle_ok:
+                counts["needle_matched"] += 1
+            else:
+                first_line = result.stderr.strip().splitlines()
+                mismatches.append(
+                    "%s: expected message %r, observed %r"
+                    % (name, expected_needle, first_line[0] if first_line else "")
+                )
+            trace(
+                "negative %-32s class=%s exit=%d expected=%s observed=%s"
+                % (
+                    name,
+                    klass,
+                    result.returncode,
+                    expected_code or "uncoded",
+                    ",".join(observed_codes) or "none",
+                )
+            )
+
+        (fixture / "src" / "main.rs").write_bytes(positive_main)
+        say(
+            "stage 2: negative selected=%d executed=%d code_matched=%d needle_matched=%d mismatches=%d"
+            % (
+                counts["negative_selected"],
+                counts["negative_executed"],
+                counts["code_matched"],
+                counts["needle_matched"],
+                len(mismatches),
+            )
+        )
+
+        # ---- stage 3: public-API allowlist diff ----------------------------
+        result = run(
+            ["cargo", "public-api", "-p", FACADE_PACKAGE, "--simplified"],
+            cwd=REPOSITORY_ROOT,
+            env=public_api_env,
+        )
+        if result.returncode != 0:
+            raise InfrastructureError(
+                "cargo public-api failed (exit %d):\n%s" % (result.returncode, result.stderr.strip())
+            )
+        observed_public: List[str] = []
+        for line in result.stdout.splitlines():
+            line = line.strip()
+            prefix = "pub use %s::" % FACADE_PACKAGE.replace("-", "_")
+            if line.startswith(prefix):
+                observed_public.append(line[len(prefix):].strip())
+        counts["public_api_observed"] = len(observed_public)
+        public_extra = sorted(set(observed_public) - set(PINNED_ALLOWLIST))
+        public_missing = sorted(set(PINNED_ALLOWLIST) - set(observed_public))
+        counts["public_api_extra"] = len(public_extra)
+        counts["public_api_missing"] = len(public_missing)
+        if public_extra:
+            violations.append("public API over-claims names outside the allowlist: %s" % public_extra)
+        if public_missing:
+            violations.append("public API is missing allowlisted names: %s" % public_missing)
+        say(
+            "stage 3: public_api observed=%d pinned=%d extra=%d missing=%d"
+            % (counts["public_api_observed"], counts["allowlist_pinned"], len(public_extra), len(public_missing))
+        )
+    except InfrastructureError as error:
+        infrastructure.append(str(error))
+        say("infrastructure failure: %s" % error)
+    finally:
+        if temp_root is not None and (args.keep_temp or infrastructure):
+            say("temp workspace kept: %s" % temp_root)
+        elif temp_root is not None:
+            shutil.rmtree(str(temp_root), ignore_errors=True)
+
+    # ---- stage 4: the checkout is untouched --------------------------------
+    lock_unchanged = "unknown"
+    status_unchanged = "unknown"
+    gate_files_unchanged = "unknown"
+    concurrent_paths: List[str] = []
+    try:
+        lock_unchanged = "unchanged" if sha256_of(LOCKFILE) == before_lock else "CHANGED"
+        gate_files_unchanged = (
+            "unchanged" if gate_writable_fingerprint() == before_fingerprint else "CHANGED"
+        )
+        after_status = git_status_bytes()
+        if after_status == before_status:
+            status_unchanged = "unchanged"
+        else:
+            delta = status_delta(before_status, after_status)
+            concurrent_paths = [
+                line
+                for line in delta
+                if not delta_path(line).startswith(GATE_WRITABLE_PREFIXES)
+            ]
+            status_unchanged = "CHANGED(concurrent)" if concurrent_paths else "CHANGED"
+    except InfrastructureError as error:
+        infrastructure.append("repository immutability check failed: %s" % error)
+    if lock_unchanged == "CHANGED":
+        violations.append("Cargo.lock changed during the gate run")
+    if gate_files_unchanged == "CHANGED":
+        violations.append("the gate modified its own fixture or script during the run")
+    if status_unchanged == "CHANGED":
+        violations.append("git status --porcelain changed under a path the gate owns")
+    elif concurrent_paths:
+        infrastructure.append(
+            "a concurrent writer changed the shared checkout while the gate ran; "
+            "immutability of the run cannot be judged: %s" % concurrent_paths
+        )
+
+    # ---- count block -------------------------------------------------------
+    say("")
+    say("external-consumer gate count block (W4-C contract, lane W4-H)")
+    say(
+        "positive        selected=%d executed=%d marker=%d"
+        % (counts["positive_selected"], counts["positive_executed"], counts["positive_marker"])
+    )
+    say(
+        "negative        selected=%d executed=%d"
+        % (counts["negative_selected"], counts["negative_executed"])
+    )
+    say(
+        "compile_fail    selected=%d executed=%d code_matched=%d needle_matched=%d uncoded_expected=%d"
+        % (
+            counts["negative_selected"],
+            counts["negative_executed"],
+            counts["code_matched"],
+            counts["needle_matched"],
+            counts["uncoded_expected"],
+        )
+    )
+    say(
+        "facade_source   globs=%d pub_mods=%d allowlist_observed=%d allowlist_pinned=%d"
+        % (counts["globs"], counts["pub_mods"], counts["allowlist_observed"], counts["allowlist_pinned"])
+    )
+    say(
+        "facade_manifest fixture_deps=%d facade_normal_deps=%d extra=%d missing=%d"
+        % (
+            counts["fixture_deps"],
+            counts["facade_normal_deps"],
+            counts["facade_extra_deps"],
+            counts["facade_missing_deps"],
+        )
+    )
+    say(
+        "public_api      observed=%d pinned=%d extra=%d missing=%d"
+        % (
+            counts["public_api_observed"],
+            counts["allowlist_pinned"],
+            counts["public_api_extra"],
+            counts["public_api_missing"],
+        )
+    )
+    say(
+        "repo_immutability cargo_lock=%s gate_files=%s git_status=%s"
+        % (lock_unchanged, gate_files_unchanged, status_unchanged)
+    )
+    if concurrent_paths:
+        say("concurrent writer delta: %s" % concurrent_paths)
+    say("toolchain       cargo=%s rustc=%s channel=%s" % (cargo_version, rustc_version, repo_toolchain_channel()))
+
+    for mismatch in mismatches:
+        say("case mismatch: %s" % mismatch)
+    for violation in violations:
+        say("contract violation: %s" % violation)
+    for failure in infrastructure:
+        say("infrastructure failure: %s" % failure)
+
+    if infrastructure:
+        say(
+            "verdict=INFRASTRUCTURE exit=%d contract_violations=%d case_mismatches=%d"
+            % (EXIT_INFRASTRUCTURE, len(violations), len(mismatches))
+        )
+        return EXIT_INFRASTRUCTURE
+    if violations or mismatches:
+        say(
+            "verdict=FAIL exit=%d contract_violations=%d case_mismatches=%d"
+            % (EXIT_GATE_FAILED, len(violations), len(mismatches))
+        )
+        return EXIT_GATE_FAILED
+    say("verdict=PASS exit=%d contract_violations=0 case_mismatches=0" % EXIT_OK)
+    return EXIT_OK
+
+
+if __name__ == "__main__":
+    sys.exit(main())

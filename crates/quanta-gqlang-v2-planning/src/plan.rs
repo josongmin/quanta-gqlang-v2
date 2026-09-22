@@ -77,9 +77,7 @@
 use std::collections::BTreeSet;
 
 use quanta_gqlang_v2_algebra::{AlgebraFamilyV2, CheckedAlgebraNodeV2};
-use quanta_gqlang_v2_logic::{
-    stratify, GraphQueryContractV2, RecursiveProgramV1, RelationShapeV1, RuleProgramContractV2,
-};
+use quanta_gqlang_v2_logic::{GraphQueryContractV2, RelationShapeV1, RuleProgramContractV2};
 use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, ConfirmModeV1, DownstreamBudgetReceiptV2, EmitModeV1, ExportFormatV1,
     LocatedSpanV2, ResolvedCheckV2, ResolvedMetaKindV2, ResolvedMetaV2, ResolvedPresentationKindV2,
@@ -226,8 +224,10 @@ impl SemanticPlanV2 {
 /// # Errors
 ///
 /// Returns [`PlanningDiagnosticV1`] for an input that does not belong to the
-/// document, for a refused semantic-step charge, for an unstratifiable document
-/// rule program, and for a typed non-plan outcome.
+/// document, for a refused semantic-step charge, and for a typed non-plan
+/// outcome. An unstratifiable document rule program is rejected earlier, at the
+/// program's sole ingress (`RuleProgramContractV2::from_document`), so planning
+/// never sees one and never relays [`PlanningDiagnosticV1::IllegalRuleProgram`].
 pub fn plan(
     input: &SemanticPlanInputV2,
     document: &SemanticDocumentV2,
@@ -246,8 +246,9 @@ pub fn plan(
 /// # Errors
 ///
 /// Returns [`PlanningDiagnosticV1`] for an input that does not belong to the
-/// document, for a refused semantic-step charge, and for an unstratifiable
-/// document rule program.
+/// document and for a refused semantic-step charge. Rule-program legality is
+/// owned by the program's sole ingress, whose retained stratification proof this
+/// entry reads.
 pub fn plan_outcome(
     input: &SemanticPlanInputV2,
     document: &SemanticDocumentV2,
@@ -1063,10 +1064,9 @@ struct ArmFactsV2 {
 ///
 /// # Errors
 ///
-/// Returns [`PlanningDiagnosticV1::IllegalRuleProgram`] when the document rule
-/// program cannot be stratified under the document's own rule-graph budget, and
-/// [`PlanningDiagnosticV1::InvalidComposition`] when a composition root's body
-/// policy cannot be retained by the composition it was classified for.
+/// Returns [`PlanningDiagnosticV1::InvalidComposition`] when a composition
+/// root's body policy cannot be retained by the composition it was classified
+/// for.
 fn classify(
     arm: ArmV2<'_>,
     document: &SemanticDocumentV2,
@@ -1080,7 +1080,7 @@ fn classify(
         ArmV2::Check(contract) => check_facts(contract),
         ArmV2::Presentation(contract) => presentation_facts(contract),
         ArmV2::Rule(contract) => {
-            let facts = rule_facts(contract, document)?;
+            let facts = rule_facts(contract);
             if facts.recursive {
                 capabilities.insert(CapabilityV2::RecursiveClosure);
             }
@@ -1285,18 +1285,18 @@ fn presentation_facts(contract: &PresentationContractV2) -> ArmFactsV2 {
     }
 }
 
-/// The document rule program arm: its policy is the stratified proof of the
-/// program's own members under the document's rule-graph budget.
-fn rule_facts(
-    contract: &RuleProgramContractV2,
-    document: &SemanticDocumentV2,
-) -> Result<ArmFactsV2, PlanningDiagnosticV1> {
-    let program = RecursiveProgramV1::from_rules(contract.to_program());
-    let proof = stratify(&program, &document.budget_receipt())
-        .map_err(|logic| PlanningDiagnosticV1::IllegalRuleProgram { logic })?;
+/// The document rule program arm: its policy is the stratification proof the
+/// program's SOLE ingress ([`RuleProgramContractV2::from_document`]) already
+/// computed for these exact members under the document's own rule-graph budget.
+///
+/// This arm never re-stratifies: the contract carries the one proof, so the
+/// rule-graph dimensions are charged exactly once per document and planning can
+/// not reach a different admission decision than the ingress did.
+fn rule_facts(contract: &RuleProgramContractV2) -> ArmFactsV2 {
+    let proof = contract.stratification();
     let recursive_members: Vec<ResolvedPredicateIdV2> = proof.recursive().iter().cloned().collect();
     let recursive = !recursive_members.is_empty();
-    Ok(ArmFactsV2 {
+    ArmFactsV2 {
         authority_lane: AuthorityLaneV2::FrontendChecked,
         evidence: EvidenceRequirementV2::None,
         effect: EffectClassV2::ReadOnly,
@@ -1322,7 +1322,7 @@ fn rule_facts(
             proof.stratum_count(),
             recursive_members,
         )),
-    })
+    }
 }
 
 /// The `REQUIRE CERTIFIED` arm: the one lane whose authority is the certified

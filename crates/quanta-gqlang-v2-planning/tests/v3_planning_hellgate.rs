@@ -49,8 +49,9 @@ use quanta_gqlang_v2_planning::{
 };
 use quanta_gqlang_v2_sema::test_support::{
     forged_cardinality_downgrade_document_v2, forged_small_receipt_relation_chain_document_v2,
-    reference_checked_span_v2, reference_relation_document_v2, ReferenceBudgetV2,
-    ReferenceRelationFixtureV2, ReferenceRuleFixtureV2, SMALL_BUDGET_MAX_SEMANTIC_STEPS,
+    reference_checked_span_v2, reference_relation_document_v2, reference_rule_document_v2,
+    ReferenceBudgetV2, ReferenceRelationFixtureV2, ReferenceRuleFixtureV2,
+    SMALL_BUDGET_MAX_SEMANTIC_STEPS,
 };
 use quanta_gqlang_v2_sema::{CheckedLocatedSpanV2, GraphQueryKindV1};
 
@@ -465,74 +466,57 @@ fn the_non_plan_vocabulary_names_every_reason_and_catalog_payload() {
     }
 }
 
-// ---- rule-program legality relay -------------------------------------------
+// ---- rule-program legality: owned by the sole ingress ----------------------
 
-/// An unstratifiable rule program relays logic's typed diagnostic verbatim: the
-/// code, the message, and the span are logic's, never a parallel planning
-/// spelling.
+/// An unstratifiable rule program is refused at the program's SOLE INGRESS with
+/// logic's typed diagnostic verbatim — code, message, and span. No contract (and
+/// therefore no `SemanticPlanInputV2::Rule`) can exist for it, so planning can no
+/// longer be reached with one: `PlanningDiagnosticV1::IllegalRuleProgram` is
+/// structurally unreachable from the pipeline path, while its spelling stays
+/// pinned by `no_deleted_mix_code_survives_in_the_diagnostic_surface`.
 #[test]
-fn an_unstratifiable_rule_program_relays_logic_verbatim() {
-    let (_document, input) = rule_input(ReferenceRuleFixtureV2::NegatedSelfRecursion)
+fn an_unstratifiable_rule_program_is_refused_at_the_sole_ingress() {
+    let document = reference_rule_document_v2(ReferenceRuleFixtureV2::NegatedSelfRecursion)
         .expect("the negated self-recursion fixture");
-    let SemanticPlanInputV2::Rule(contract) = &input else {
-        panic!("the fixture seals a rule program carrier");
-    };
-    let member = contract.rules().first().expect("one member");
+    let member = document
+        .document()
+        .rules()
+        .next()
+        .expect("the fixture carries one member");
 
-    match plan(&input, _document.document()) {
-        Err(PlanningDiagnosticV1::IllegalRuleProgram { logic }) => {
-            assert_eq!(logic.code(), "logic.negation_cycle");
-            assert_eq!(
-                logic.message(),
-                "recursion through negation is not stratifiable: cycle [r]"
-            );
-            assert_eq!(logic.span(), member.body().expression().location());
-            assert_eq!(logic.span(), &fixture_member_location(&input));
-        }
-        other => panic!("expected the rule-program rejection, got {other:?}"),
-    }
+    let logic = quanta_gqlang_v2_logic::RuleProgramContractV2::from_document(document.document())
+        .expect_err("a negated recursion cycle is not stratifiable");
+    assert_eq!(logic.code(), "logic.negation_cycle");
+    assert_eq!(
+        logic.message(),
+        "recursion through negation is not stratifiable: cycle [r]"
+    );
+    assert_eq!(logic.span(), member.body().expression().location());
 }
 
-/// The recursive-aggregate policy is reject-all, and planning relays logic's
+/// The recursive-aggregate policy is reject-all, and the ingress relays logic's
 /// exact reason for it: the diagnostic points at the AGGREGATE CALL that folds
 /// the recursive predicate, not at the rule body.
 #[test]
-fn a_recursive_aggregate_rule_program_relays_logic_verbatim() {
-    let (document, input) = rule_input(ReferenceRuleFixtureV2::AggregatedSelfRecursion)
+fn a_recursive_aggregate_rule_program_is_refused_at_the_sole_ingress() {
+    let document = reference_rule_document_v2(ReferenceRuleFixtureV2::AggregatedSelfRecursion)
         .expect("the aggregated self-recursion fixture");
-    let SemanticPlanInputV2::Rule(contract) = &input else {
-        panic!("the fixture seals a rule program carrier");
-    };
-    let member = contract.rules().first().expect("one member");
+    let member = document
+        .document()
+        .rules()
+        .next()
+        .expect("the fixture carries one member");
     let call = member.calls().first().expect("one aggregated call");
     assert_ne!(call.location(), member.body().expression().location());
 
-    match plan(&input, document.document()) {
-        Err(PlanningDiagnosticV1::IllegalRuleProgram { logic }) => {
-            assert_eq!(logic.code(), "logic.recursive_aggregate");
-            assert_eq!(
-                logic.message(),
-                "recursive aggregate `<aggregate>` over recursive predicate `r` is not admitted"
-            );
-            assert_eq!(logic.span(), call.location());
-        }
-        other => panic!("expected the rule-program rejection, got {other:?}"),
-    }
-}
-
-/// The first member's body location of a rule-program carrier.
-fn fixture_member_location(input: &SemanticPlanInputV2) -> CheckedLocatedSpanV2 {
-    let SemanticPlanInputV2::Rule(contract) = input else {
-        panic!("the fixture seals a rule program carrier");
-    };
-    contract
-        .rules()
-        .first()
-        .expect("one member")
-        .body()
-        .expression()
-        .location()
-        .clone()
+    let logic = quanta_gqlang_v2_logic::RuleProgramContractV2::from_document(document.document())
+        .expect_err("aggregated recursion is not stratifiable");
+    assert_eq!(logic.code(), "logic.recursive_aggregate");
+    assert_eq!(
+        logic.message(),
+        "recursive aggregate `<aggregate>` over recursive predicate `r` is not admitted"
+    );
+    assert_eq!(logic.span(), call.location());
 }
 
 /// The graph-legality relay surfaces logic's missing-endpoint diagnostic

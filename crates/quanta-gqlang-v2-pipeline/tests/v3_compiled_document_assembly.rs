@@ -22,6 +22,10 @@
 //!   membership, and FIND witness retention all change the assembled payload,
 //!   so a hardcoded or dropped contract cannot stay green.
 
+use std::collections::BTreeSet;
+
+use quanta_gqlang_v2_algebra::{lower_relation_item, AlgebraFamilyV2};
+use quanta_gqlang_v2_logic::RelationShapeV1;
 use quanta_gqlang_v2_modules::{
     CurrentModuleSelectionInputV2, ModuleAuthorityBuilderV2, ModuleIdV2, ModuleNodeInputV2,
     VersionV2,
@@ -31,13 +35,22 @@ use quanta_gqlang_v2_pipeline::{
     AnalysisItemV2, CompiledItemV2, DocumentAssemblyCodeV2, FrontendTransactionErrorV2,
     PlannedItemV2,
 };
+use quanta_gqlang_v2_planning::{
+    AuthorityLaneV2, CapabilityV2, CardinalityClassV2, CheckedCompositionPlanInputV2,
+    CompositionBodyFamilyV2, CompositionBodyPlanInputV2, CompositionInvalidReasonV2,
+    CompositionRelationalBodyPlanInputV2, EffectClassV2, EvaluationDeterminismV2,
+    EvidenceRequirementV2, NoPlanReasonV2, OrderingContractV2, PlanPolicyV2, PlanningDiagnosticV1,
+    RecursionRiskClassV2, RenderRequirementV2, ResultKindV2, SemanticCostV2,
+    WitnessExplosionRiskClassV2, WitnessSelectionPolicyV2,
+};
 use quanta_gqlang_v2_sema::test_support::{
     deep_relation_chain_document_v2, forged_rule_membership_document_v2,
     forged_small_receipt_bool_tree_document_v2, forged_small_receipt_relation_chain_document_v2,
     reference_graph_document_v2, reference_nested_check_document_v2,
     reference_relation_document_v2, reference_rule_document_v2, ForgedRuleMembershipMutationV2,
     ReferenceBudgetV2, ReferenceGraphDocumentV2, ReferenceGraphReferenceV2,
-    ReferenceGraphRequestV2, ReferenceRelationFixtureV2, SMALL_BUDGET_MAX_SEMANTIC_STEPS,
+    ReferenceGraphRequestV2, ReferenceRelationFixtureV2, ReferenceRuleFixtureV2,
+    SMALL_BUDGET_MAX_SEMANTIC_STEPS,
 };
 use quanta_gqlang_v2_sema::{
     CardinalityV1, CheckedSyntaxDocumentV2, ClosedFrontendAuthorityV2, FrontendBudgetV2,
@@ -339,15 +352,105 @@ fn nested_check_retains_its_own_graph_identity() {
     };
     assert_eq!(*item_id, fixture.check_item_id());
     assert_ne!(*item_id, fixture.nested_graph_item_id());
-    assert_eq!(plan, &compiled.items()[0].plan().expect("plan").clone());
+
+    // The document's OWN sealed CHECK and the nested FIND it retains. Every
+    // assertion below reads one of those facts (or an exact class derived from
+    // them), never the plan against a payload destructured out of that same
+    // plan.
+    let Some(SemanticItemV2::Check(check)) = fixture.document().item(*item_id) else {
+        panic!("the CHECK identity is the document's own item");
+    };
+    let nested = check
+        .nested_graph()
+        .expect("the sealed CHECK retains its nested confirm FIND");
+    assert_eq!(nested.item_id(), fixture.nested_graph_item_id());
+
+    // Derived lanes: `confirm=skip` keeps the source-location evidence and
+    // `emit=findings` keeps the read-only effect and the alert render.
+    assert_eq!(plan.authority_lane(), AuthorityLaneV2::FrontendChecked);
+    assert_eq!(
+        plan.evaluation_determinism(),
+        EvaluationDeterminismV2::Deterministic
+    );
+    assert_eq!(plan.evidence(), EvidenceRequirementV2::SourceLocation);
+    assert_eq!(plan.effect(), EffectClassV2::ReadOnly);
+    assert_eq!(plan.result().result_kind(), ResultKindV2::Alert);
+    assert_eq!(
+        plan.result().render_requirement(),
+        RenderRequirementV2::SourceLocation
+    );
+    assert_eq!(
+        plan.result().witness_selection(),
+        Some(WitnessSelectionPolicyV2::AllWitness),
+        "the standard witness cap is wider than one, so every witness is materialized"
+    );
+    assert!(plan.result().multiplicity_order().eliminates_duplicates());
+    assert!(!plan.result().multiplicity_order().is_ordered());
+
+    // The visited nested FIND is a cyclic witness contract: witness
+    // materialization and recursive closure, and the bound-dependent cost.
+    assert_eq!(
+        plan.capabilities(),
+        &BTreeSet::from([
+            CapabilityV2::WitnessMaterialization,
+            CapabilityV2::RecursiveClosure,
+        ])
+    );
+    assert_eq!(
+        plan.semantic_cost(),
+        &SemanticCostV2 {
+            estimated_cardinality_class: CardinalityClassV2::Closure,
+            recursion_risk_class: RecursionRiskClassV2::BoundDependent,
+            witness_explosion_risk_class: WitnessExplosionRiskClassV2::CapBounded,
+            ordering_contract: OrderingContractV2::Unordered,
+        }
+    );
+
+    // Attribution is the CHECK item itself; a CHECK plan carries no algebra
+    // family, but it IS recursive through its nested confirm FIND.
+    assert_eq!(plan.explain().root_location(), check.location());
+    assert!(plan.explain().families().is_empty());
+    assert!(plan.explain().recursive());
+
+    // The retained CHECK policy is the sealed CHECK's own payload, field for
+    // field, plus the nested witness provenance of the sealed FIND.
+    let PlanPolicyV2::Check(policy) = plan.policy() else {
+        panic!("a CHECK plan must retain the CHECK policy");
+    };
+    assert_eq!(policy.mode(), check.mode());
+    assert_eq!(policy.confirm(), check.confirm());
+    assert_eq!(policy.emit(), check.emit());
+    assert_eq!(policy.rule(), check.rule());
+    assert_eq!(policy.scope(), check.scope());
+    assert_eq!(policy.pattern(), check.pattern());
+    assert_eq!(
+        policy.rule().location().location(),
+        LocatedSpanV2 {
+            source_id: fixture.check_item_id().source_id(),
+            span: SpanV1::new(100, 105),
+        },
+        "the retained rule reference keeps its authored `rule1` span"
+    );
+    let retention = policy
+        .nested_graph()
+        .expect("the nested semantic-confirm FIND is retained");
+    assert_eq!(retention.item_id(), fixture.nested_graph_item_id());
+    assert_ne!(retention.item_id(), *item_id);
+    assert_eq!(retention.location(), nested.location());
+    assert_eq!(retention.kind(), nested.kind());
+    assert_eq!(retention.depth(), 2);
+    assert_eq!(retention.shape(), RelationShapeV1::Cyclic);
+    assert_eq!(
+        retention.max_witnesses(),
+        nested.witness_bounds().max_witnesses()
+    );
+    assert_eq!(retention.max_path_length(), Some(2));
 }
 
 #[test]
 fn rule_program_receives_one_plan_and_exact_members() {
-    let fixture = reference_rule_document_v2(
-        quanta_gqlang_v2_sema::test_support::ReferenceRuleFixtureV2::MutualRecursionPair,
-    )
-    .expect("rule fixture resolves");
+    let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::MutualRecursionPair)
+        .expect("rule fixture resolves");
     let compiled = compile_resolved_document_v2(fixture.document()).expect("rules compile");
     let program = compiled
         .rule_program()
@@ -370,6 +473,72 @@ fn rule_program_receives_one_plan_and_exact_members() {
         assert!(item.plan().is_none());
         assert_eq!(member.program_id(), program.program_id());
     }
+}
+
+/// F-06: the document rule graph is stratified exactly ONCE, at the program's
+/// sole ingress, and every consumer reads THAT proof.
+///
+/// Before this rail's subject change the pipeline stratified the program itself
+/// (charging the document's rule-graph allowance) and planning stratified it
+/// again from the same receipt with a fresh counter, producing two independent
+/// proofs of one member set. The assertions below pin the seam: the compiled
+/// program's proof, the plan's retained rule policy, and the ingress contract's
+/// proof are one and the same admission of the FULL projected program under the
+/// document's own receipt (a re-derived proof over a subset, or under a
+/// different budget, would not compare equal).
+#[test]
+fn the_rule_program_proof_is_the_single_ingress_stratification() {
+    let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::MutualRecursionPair)
+        .expect("rule fixture resolves");
+    let document = fixture.document();
+    let compiled = compile_resolved_document_v2(document).expect("rules compile");
+    let program = compiled.rule_program().expect("one program");
+
+    // The ONE admitted proof: `from_document` charged this document's own
+    // rule-graph receipt, and the mutual pair is one recursive SCC.
+    let contract = quanta_gqlang_v2_logic::RuleProgramContractV2::from_document(document)
+        .expect("the mutual pair is stratifiable");
+    assert_eq!(contract.budget(), document.budget_receipt());
+    assert_eq!(contract.budget().max_rule_graph_nodes(), 50_000);
+    assert_eq!(contract.stratification().stratum_count(), 1);
+    assert_eq!(contract.stratification().recursive().len(), 2);
+
+    // The compiled DTO carries THAT proof, byte for byte.
+    assert_eq!(program.stratification(), contract.stratification());
+
+    // The plan's rule policy retains the same proof summary: the ordered member
+    // identities, the stratum count, and the recursive member set of the ONE
+    // ingress proof — not a second classifier's.
+    let PlanPolicyV2::Rule(policy) = program.plan().policy() else {
+        panic!("a rule program must retain the rule-program policy");
+    };
+    assert_eq!(policy.item_ids(), fixture.item_ids());
+    assert_eq!(
+        policy.stratum_count(),
+        contract.stratification().stratum_count()
+    );
+    assert_eq!(
+        policy.recursive_members(),
+        contract
+            .stratification()
+            .recursive()
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>()
+            .as_slice()
+    );
+
+    // Non-vacuity: recomputing the stratification over the program the contract
+    // projects, under the DOCUMENT's own receipt, reproduces the retained proof
+    // exactly. The retained proof is therefore the full-program proof under the
+    // document's single allowance.
+    let recomputed = quanta_gqlang_v2_logic::stratify(
+        &quanta_gqlang_v2_logic::RecursiveProgramV1::from_rules(contract.to_program()),
+        &document.budget_receipt(),
+    )
+    .expect("the admitted member set re-stratifies identically");
+    assert_eq!(contract.stratification(), &recomputed);
+    assert_eq!(program.stratification(), &recomputed);
 }
 
 // ---------------------------------------------------------------------------
@@ -442,10 +611,8 @@ fn missing_produced_item_rejects() {
 
 #[test]
 fn extra_produced_item_rejects() {
-    let fixture = reference_rule_document_v2(
-        quanta_gqlang_v2_sema::test_support::ReferenceRuleFixtureV2::MutualRecursionPair,
-    )
-    .expect("rule fixture resolves");
+    let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::MutualRecursionPair)
+        .expect("rule fixture resolves");
     let forged = fixture
         .document()
         .clone()
@@ -479,10 +646,8 @@ fn foreign_authored_identity_rejects() {
 
 #[test]
 fn same_name_wrong_id_substitution_rejects() {
-    let fixture = reference_rule_document_v2(
-        quanta_gqlang_v2_sema::test_support::ReferenceRuleFixtureV2::MutualRecursionPair,
-    )
-    .expect("rule fixture resolves");
+    let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::MutualRecursionPair)
+        .expect("rule fixture resolves");
     let forged = fixture
         .document()
         .clone()
@@ -591,7 +756,7 @@ fn closed_source_entry_assembles_the_exact_item_dispositions() {
     let first = &compiled.items()[0];
     assert_eq!(
         first.no_plan_reason(),
-        Some(&quanta_gqlang_v2_planning::NoPlanReasonV2::ValueDeclaration)
+        Some(&NoPlanReasonV2::ValueDeclaration)
     );
     assert!(first.plan().is_none());
 }
@@ -675,13 +840,20 @@ fn composition_producer_and_with_identity_are_assembled_exactly() {
     else {
         panic!("the authored item is a composition");
     };
-    assert_eq!(plan, compiled.items()[0].plan().expect("plan"));
+    // The plan's retained composition policy is the sealed composition's own
+    // payload: root identity, ordered producer facts, exact WITH binding, and
+    // the sealed body identity — every one asserted against the DOCUMENT, never
+    // against the plan's own accessor.
+    let PlanPolicyV2::Composition(retained) = plan.policy() else {
+        panic!("a composition plan must retain the composition policy");
+    };
     assert_eq!(composition.bindings().len(), 1);
-    assert_eq!(composition.bindings()[0].binding().ordinal(), 0);
-    assert_eq!(composition.bindings()[0].name(), "sampled");
+    let binding = composition.bindings().first().expect("one sealed binding");
+    assert_eq!(binding.binding().ordinal(), 0);
+    assert_eq!(binding.name(), "sampled");
     assert_eq!(
         composition.with_target(),
-        composition.bindings()[0].binding(),
+        binding.binding(),
         "the WITH target must be exactly one ordered producer"
     );
     assert_ne!(
@@ -689,6 +861,56 @@ fn composition_producer_and_with_identity_are_assembled_exactly() {
         composition.item_id(),
         "the body keeps its own identity and is never a second top-level plan key"
     );
+    assert_eq!(retained.root_item_id(), *item_id);
+    assert_eq!(retained.location(), composition.location());
+    assert_eq!(retained.producers().len(), 1);
+    let producer = retained.producers().first().expect("one ordered producer");
+    assert_eq!(producer.ordinal(), 0);
+    assert_eq!(producer.item_id(), binding.producer().item_id());
+    assert_eq!(producer.name_location(), binding.name_location());
+    assert_eq!(producer.relation_output(), binding.relation_output());
+    assert_eq!(retained.with_binding(), composition.with_target());
+    assert_eq!(retained.body_item_id(), composition.body().item_id());
+    assert_eq!(retained.body_family(), CompositionBodyFamilyV2::Query);
+    assert_ne!(retained.body_item_id(), retained.root_item_id());
+
+    // The plan is attributed to the COMPOSITION root and carries the body's own
+    // relational policy (a working-set scan plus one projection), never a plan
+    // per `LET` producer.
+    assert_eq!(plan.authority_lane(), AuthorityLaneV2::FrontendChecked);
+    assert_eq!(plan.evidence(), EvidenceRequirementV2::None);
+    assert_eq!(plan.effect(), EffectClassV2::ReadOnly);
+    assert_eq!(plan.result().result_kind(), ResultKindV2::Table);
+    assert_eq!(
+        plan.result().render_requirement(),
+        RenderRequirementV2::RowsOnly
+    );
+    assert_eq!(plan.result().witness_selection(), None);
+    assert_eq!(
+        plan.capabilities(),
+        &BTreeSet::from([CapabilityV2::RelationScan])
+    );
+    assert_eq!(
+        plan.semantic_cost(),
+        &SemanticCostV2 {
+            estimated_cardinality_class: CardinalityClassV2::LinearInInput,
+            recursion_risk_class: RecursionRiskClassV2::None,
+            witness_explosion_risk_class: WitnessExplosionRiskClassV2::None,
+            ordering_contract: OrderingContractV2::Unordered,
+        }
+    );
+    assert_eq!(plan.explain().root_location(), composition.location());
+    assert_eq!(
+        plan.explain().families(),
+        [AlgebraFamilyV2::Project, AlgebraFamilyV2::Scan],
+        "root-first visit order: the projection over its `records` scan"
+    );
+    assert!(!plan.explain().recursive());
+    let PlanPolicyV2::Relational { nodes, .. } = retained.body().policy() else {
+        panic!("a relational composition body keeps the body's own relational policy");
+    };
+    assert_eq!(*nodes, 2, "the working-set scan and its projection");
+    assert_eq!(retained.body().family(), CompositionBodyFamilyV2::Query);
     assert_eq!(document.items().count(), 1);
 
     // The body contract reaches the plan: a composition whose body is a FIND
@@ -713,11 +935,92 @@ fn typed_relation_source_requires_and_retains_host_authority() {
     let CompiledItemV2::Planned(PlannedItemV2::Relation { plan, .. }) = &compiled.items()[0] else {
         panic!("a typed relation compiles to a planned relation item");
     };
-    assert_eq!(plan, compiled.items()[0].plan().expect("plan"));
+
+    // FIELD assertions over the host `records` scan + one projection: the
+    // retained policy names the two visited algebra nodes, and every derived
+    // lane is the exact class that shape implies.
+    assert_eq!(plan.authority_lane(), AuthorityLaneV2::FrontendChecked);
+    assert_eq!(
+        plan.evaluation_determinism(),
+        EvaluationDeterminismV2::Deterministic
+    );
+    assert_eq!(plan.evidence(), EvidenceRequirementV2::None);
+    assert_eq!(plan.effect(), EffectClassV2::ReadOnly);
+    assert_eq!(plan.result().result_kind(), ResultKindV2::Table);
+    assert_eq!(
+        plan.result().render_requirement(),
+        RenderRequirementV2::RowsOnly
+    );
+    assert_eq!(plan.result().witness_selection(), None);
+    assert_eq!(
+        plan.capabilities(),
+        &BTreeSet::from([CapabilityV2::RelationScan])
+    );
+    assert_eq!(
+        plan.semantic_cost(),
+        &SemanticCostV2 {
+            estimated_cardinality_class: CardinalityClassV2::LinearInInput,
+            recursion_risk_class: RecursionRiskClassV2::None,
+            witness_explosion_risk_class: WitnessExplosionRiskClassV2::None,
+            ordering_contract: OrderingContractV2::Unordered,
+        }
+    );
+    assert_eq!(
+        plan.explain().families(),
+        [AlgebraFamilyV2::Project, AlgebraFamilyV2::Scan],
+        "root-first visit order: the projection over its `records` scan"
+    );
+    assert!(!plan.explain().recursive());
+    let PlanPolicyV2::Relational { nodes, .. } = plan.policy() else {
+        panic!("a relational item must retain the relational policy");
+    };
+    assert_eq!(*nodes, 2, "the `records` scan and its projection");
 
     let error = compile_source_document_v2(DOC_SOURCE, RECORD_SOURCE, &minimal_authority())
         .expect_err("an absent host relation must reject");
     assert_eq!(failure_code(&error), "sema.unresolved_reference");
+}
+
+/// A composition body whose lowered root belongs to ANOTHER relation is
+/// rejected with the exact planning reason: the sealed body identity is checked
+/// against the canonical lowering of the SEALED body, so a transplanted subtree
+/// that reuses the body identity cannot be planned.
+#[test]
+fn a_composition_body_from_another_relation_is_rejected() {
+    let authority = minimal_authority();
+    let document = resolve_source(&authority, &composition_source(2));
+    let composition_id = *document.order().first().expect("one composition item");
+    let Some(SemanticItemV2::Composition(composition)) = document.item(composition_id) else {
+        panic!("the authored item is a composition");
+    };
+    let sealed_body_id = composition.body().item_id();
+    assert_ne!(sealed_body_id, composition.item_id());
+
+    // Another relation's canonical lowering: same source, different owner.
+    let record_document = resolve_source(&authority_with_records(), RECORD_SOURCE);
+    let relation_id = *record_document
+        .order()
+        .first()
+        .expect("one relation item in the record document");
+    let lowered = lower_relation_item(&record_document, relation_id)
+        .expect("the host relation lowering admits");
+    assert_eq!(lowered.item_id(), relation_id);
+    assert_ne!(lowered.root().item_id(), composition.item_id());
+
+    let body =
+        CompositionRelationalBodyPlanInputV2::try_new(sealed_body_id, lowered.root().clone())
+            .expect("both the sealed body and the transplanted root are this source's");
+    let PlanningDiagnosticV1::InvalidComposition { reason, span } =
+        CheckedCompositionPlanInputV2::new(
+            composition,
+            CompositionBodyPlanInputV2::Relational(body),
+        )
+        .expect_err("a body root from another relation must reject")
+    else {
+        panic!("a transplanted body root is the InvalidComposition rejection");
+    };
+    assert_eq!(reason, CompositionInvalidReasonV2::BodyIdentityMismatch);
+    assert_eq!(span, *composition.location());
 }
 
 #[test]

@@ -12,12 +12,8 @@ name = "quanta_gqlang_v2_frontend_contract"
 path = "src/lib.rs"
 
 [dependencies]
-quanta-gqlang-v2-algebra  = { version = "0.1.0", path = "../quanta-gqlang-v2-algebra" }
-quanta-gqlang-v2-hir      = { version = "0.1.0", path = "../quanta-gqlang-v2-hir" }
+# Sole owner edge: the facade may reach the frontend only through the pipeline.
 quanta-gqlang-v2-pipeline = { version = "0.1.0", path = "../quanta-gqlang-v2-pipeline" }
-quanta-gqlang-v2-planning = { version = "0.1.0", path = "../quanta-gqlang-v2-planning" }
-quanta-gqlang-v2-surface  = { version = "0.1.0", path = "../quanta-gqlang-v2-surface" }
-quanta-gqlang-v2-types    = { version = "0.1.0", path = "../quanta-gqlang-v2-types" }
 
 [lints]
 workspace = true
