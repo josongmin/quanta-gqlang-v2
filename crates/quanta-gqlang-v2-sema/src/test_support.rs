@@ -15,14 +15,13 @@
 use crate::{
     resolve_checked_document_v2, CheckedLocatedSpanV2, CheckedSyntaxDocumentV2,
     ClosedFrontendAuthorityV2, DeclaredDocumentV2, DownstreamBudgetReceiptV2, FrontendBudgetV2,
-    GraphReferenceCatalogV2, GraphReferenceInputV2, GraphReferenceKindV2,
-    GraphReferenceRoleV2, JoinModeV2, OutputColumnContractV2, OutputColumnOriginV2,
-    OutputProvenanceV2, RelationOutputContractV2, ResolvedBindingKindV2,
-    ResolvedCompositionSourceIdV2, ResolvedGraphQueryV2, ResolvedScanSourceV2,
-    ResolvedValueBindingV2,
-    SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2, TypedBoolExprV2, TypedCorrelationEdgeV2,
-    TypedExprShapeV2, TypedExprV2, TypedRelationExprV2, TypedRelationStageInputV2,
-    TypedRelationStageKindV2, TypedRelationV2,
+    GraphReferenceCatalogV2, GraphReferenceInputV2, GraphReferenceKindV2, GraphReferenceRoleV2,
+    JoinModeV2, OutputColumnContractV2, OutputColumnOriginV2, OutputProvenanceV2,
+    RelationOutputContractV2, ResolvedBindingKindV2, ResolvedCompositionSourceIdV2,
+    ResolvedGraphQueryV2, ResolvedScanSourceV2, ResolvedValueBindingV2, SemanticDocumentV2,
+    SemanticItemIdV2, SemanticItemV2, TypedBoolExprV2, TypedCorrelationEdgeV2, TypedExprShapeV2,
+    TypedExprV2, TypedRelationExprV2, TypedRelationStageInputV2, TypedRelationStageKindV2,
+    TypedRelationV2,
 };
 use quanta_gqlang_v2_hir::{
     AliasV1, CallArgHirV1, CallArgsHirV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
@@ -2691,7 +2690,6 @@ mod tests {
     }
 }
 
-
 // ---- graph fixtures (W3-B verification scaffold) ---------------------------
 
 /// Fixed source length of every reference graph fixture document.
@@ -3013,4 +3011,382 @@ pub fn reference_nested_check_document_v2(
         check_item_id,
         nested_graph_item_id,
     })
+}
+
+// ---- rule documents --------------------------------------------------------
+
+/// Authored body shape of one fixture rule.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum RuleBodyShapeV2 {
+    /// Only the anchor comparison; the body proves no call at all.
+    AnchorOnly,
+    /// `r(x)` — one positive source-predicate dependency.
+    Positive(&'static str),
+    /// `not r(x)` — one negated source-predicate dependency.
+    Negated(&'static str),
+    /// `count(r(x)) > 0` — a source-predicate call under an aggregate call.
+    Aggregated(&'static str),
+    /// `count(x) > 0` — a builtin call with no source-predicate target.
+    BuiltinOnly,
+}
+
+/// Rule-document fixtures consumed by the Logic owner rails.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReferenceRuleFixtureV2 {
+    /// One rule whose body calls nothing.
+    SingleRule,
+    /// One rule that positively depends on itself.
+    PositiveSelfRecursion,
+    /// One rule that negated-depends on itself.
+    NegatedSelfRecursion,
+    /// One rule that folds itself through an aggregate call.
+    AggregatedSelfRecursion,
+    /// Two rules with a mutual (r -> s, s -> r) dependency.
+    MutualRecursionPair,
+    /// Two rules with a single nonrecursive edge (r -> s).
+    NonRecursiveDependency,
+    /// Two rules with a single negated nonrecursive edge (r -> not s).
+    NegatedNonRecursiveDependency,
+    /// One rule whose only call is a builtin, never a graph vertex.
+    BuiltinCallOnly,
+}
+
+/// A sealed rule document plus its Rule item identities in document order.
+#[derive(Clone, Debug)]
+pub struct ReferenceRuleDocumentV2 {
+    document: SemanticDocumentV2,
+    item_ids: Vec<SemanticItemIdV2>,
+}
+
+impl ReferenceRuleDocumentV2 {
+    /// The sealed semantic document.
+    #[must_use]
+    pub const fn document(&self) -> &SemanticDocumentV2 {
+        &self.document
+    }
+
+    /// The Rule item identities in document order.
+    #[must_use]
+    pub fn item_ids(&self) -> &[SemanticItemIdV2] {
+        &self.item_ids
+    }
+
+    /// The document's own immutable downstream budget receipt.
+    #[must_use]
+    pub const fn budget(&self) -> DownstreamBudgetReceiptV2 {
+        self.document.budget_receipt()
+    }
+}
+
+fn wrap_rule_document_v2(document: SemanticDocumentV2) -> ReferenceRuleDocumentV2 {
+    let item_ids = document
+        .order()
+        .iter()
+        .copied()
+        .filter(|id| matches!(document.item(*id), Some(SemanticItemV2::Rule(_))))
+        .collect();
+    ReferenceRuleDocumentV2 { document, item_ids }
+}
+
+fn rule_item_v2(
+    builder: &HirBuilderV1,
+    name: &str,
+    shape: RuleBodyShapeV2,
+    start: usize,
+) -> Result<ProgramItemHirV1, String> {
+    let head = builder.symbol("x", SpanV1::new(start + 9, start + 10));
+    let anchor = builder.compare(
+        "=",
+        builder.symbol("x", SpanV1::new(start + 14, start + 15)),
+        builder.int("1", SpanV1::new(start + 18, start + 19)),
+        SpanV1::new(start + 14, start + 19),
+    );
+    let source_call = |callee: &str, at: usize| -> Result<_, String> {
+        Ok(builder.call(
+            callee,
+            SpanV1::new(at, at + 1),
+            CallArgsHirV1::try_new(vec![CallArgHirV1::Expr(
+                builder.symbol("x", SpanV1::new(at + 2, at + 3)),
+            )])
+            .map_err(|error| format!("{error:?}"))?,
+            SpanV1::new(at, at + 4),
+        ))
+    };
+    let body = match shape {
+        RuleBodyShapeV2::AnchorOnly => anchor,
+        RuleBodyShapeV2::Positive(callee) => {
+            let call = source_call(callee, start + 24)?;
+            builder.and(
+                anchor,
+                builder.bool_value(call, SpanV1::new(start + 24, start + 28)),
+                SpanV1::new(start + 14, start + 28),
+            )
+        }
+        RuleBodyShapeV2::Negated(callee) => {
+            let call = source_call(callee, start + 24)?;
+            builder.and(
+                anchor,
+                builder.not(
+                    builder.bool_value(call, SpanV1::new(start + 24, start + 28)),
+                    SpanV1::new(start + 24, start + 28),
+                ),
+                SpanV1::new(start + 14, start + 28),
+            )
+        }
+        RuleBodyShapeV2::Aggregated(callee) => {
+            let inner = source_call(callee, start + 40)?;
+            let count = builder.call(
+                "count",
+                SpanV1::new(start + 34, start + 39),
+                CallArgsHirV1::try_new(vec![CallArgHirV1::Expr(inner)])
+                    .map_err(|error| format!("{error:?}"))?,
+                SpanV1::new(start + 34, start + 45),
+            );
+            let predicate = builder.compare(
+                ">",
+                count,
+                builder.int("0", SpanV1::new(start + 48, start + 49)),
+                SpanV1::new(start + 34, start + 49),
+            );
+            builder.and(anchor, predicate, SpanV1::new(start + 14, start + 49))
+        }
+        RuleBodyShapeV2::BuiltinOnly => {
+            let builtin = builder.call(
+                "count",
+                SpanV1::new(start + 24, start + 29),
+                CallArgsHirV1::try_new(vec![CallArgHirV1::Expr(
+                    builder.int("1", SpanV1::new(start + 30, start + 31)),
+                )])
+                .map_err(|error| format!("{error:?}"))?,
+                SpanV1::new(start + 24, start + 32),
+            );
+            let predicate = builder.compare(
+                ">",
+                builtin,
+                builder.int("0", SpanV1::new(start + 34, start + 35)),
+                SpanV1::new(start + 24, start + 35),
+            );
+            builder.and(anchor, predicate, SpanV1::new(start + 14, start + 35))
+        }
+    };
+    Ok(ProgramItemHirV1::Rule(Box::new(builder.rule(
+        name,
+        SpanV1::new(start + 5, start + 6),
+        head,
+        body,
+        SpanV1::new(start, start + 50),
+    ))))
+}
+
+/// Seal one rule-document fixture through the real transaction.
+pub fn reference_rule_document_v2(
+    fixture: ReferenceRuleFixtureV2,
+) -> Result<ReferenceRuleDocumentV2, String> {
+    use ReferenceRuleFixtureV2 as Fixture;
+    let specs: &[(&str, RuleBodyShapeV2, usize)] = match fixture {
+        Fixture::SingleRule => &[("r", RuleBodyShapeV2::AnchorOnly, 0)],
+        Fixture::PositiveSelfRecursion => &[("r", RuleBodyShapeV2::Positive("r"), 0)],
+        Fixture::NegatedSelfRecursion => &[("r", RuleBodyShapeV2::Negated("r"), 0)],
+        Fixture::AggregatedSelfRecursion => &[("r", RuleBodyShapeV2::Aggregated("r"), 0)],
+        Fixture::MutualRecursionPair => &[
+            ("r", RuleBodyShapeV2::Positive("s"), 0),
+            ("s", RuleBodyShapeV2::Positive("r"), 60),
+        ],
+        Fixture::NonRecursiveDependency => &[
+            ("r", RuleBodyShapeV2::Positive("s"), 0),
+            ("s", RuleBodyShapeV2::AnchorOnly, 60),
+        ],
+        Fixture::NegatedNonRecursiveDependency => &[
+            ("r", RuleBodyShapeV2::Negated("s"), 0),
+            ("s", RuleBodyShapeV2::AnchorOnly, 60),
+        ],
+        Fixture::BuiltinCallOnly => &[("r", RuleBodyShapeV2::BuiltinOnly, 0)],
+    };
+    let builder = HirBuilderV1::new();
+    let mut items = Vec::new();
+    for (name, shape, start) in specs {
+        items.push(rule_item_v2(&builder, name, *shape, *start)?);
+    }
+    let source_len = specs
+        .iter()
+        .map(|(_, _, start)| start + 50)
+        .max()
+        .unwrap_or(50);
+    let checked = CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+        source_id: REFERENCE_SOURCE_V2,
+        source_len,
+        items,
+    })
+    .map_err(|error| format!("{error:?}"))?;
+    let document = resolve_checked_document_v2(checked, &reference_authority_v2()?)
+        .map_err(|error| format!("{error:?}"))?;
+    Ok(wrap_rule_document_v2(document))
+}
+
+/// Membership mutations minted from the mutual-recursion pair.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ForgedRuleMembershipMutationV2 {
+    /// The second Rule item is removed while its identity stays in `order`.
+    DroppedItem,
+    /// The second Rule item is kept while its identity leaves `order`.
+    OrphanItem,
+    /// The second Rule identity is authored twice in `order`.
+    DuplicateOrderId,
+}
+
+/// Seal one membership-forged rule document.
+pub fn forged_rule_membership_document_v2(
+    mutation: ForgedRuleMembershipMutationV2,
+) -> Result<ReferenceRuleDocumentV2, String> {
+    let base = reference_rule_document_v2(ReferenceRuleFixtureV2::MutualRecursionPair)?;
+    let second = *base
+        .item_ids
+        .get(1)
+        .ok_or("the mutual-recursion fixture names two rules")?;
+    let document = base
+        .document
+        .forged_membership(move |order, items| match mutation {
+            ForgedRuleMembershipMutationV2::DroppedItem => {
+                items.remove(&second);
+            }
+            ForgedRuleMembershipMutationV2::OrphanItem => {
+                order.retain(|id| *id != second);
+            }
+            ForgedRuleMembershipMutationV2::DuplicateOrderId => {
+                order.push(second);
+            }
+        });
+    Ok(wrap_rule_document_v2(document))
+}
+
+/// Resolved-call mutations forged through the in-crate seam.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ForgedRuleFactMutationV2 {
+    /// The first call's target is a predicate no document member defines.
+    NonLocalTarget,
+    /// The first call's target disagrees with its own expression fact.
+    TargetTransplanted,
+    /// The first call's polarity disagrees with the proven body polarity.
+    PolarityFlipped,
+    /// The first call's node identity is absent from the expression facts.
+    UnknownCallId,
+    /// The first call's location comes from another registry identity.
+    ForeignCallLocation,
+    /// The rule loses the call edge its body still proves.
+    DroppedCall,
+    /// The rule duplicates the call edge it already carries.
+    ExtraCall,
+}
+
+/// Seal one rule-fact-forged document.
+pub fn forged_rule_fact_document_v2(
+    fixture: ReferenceRuleFixtureV2,
+    mutation: ForgedRuleFactMutationV2,
+) -> Result<ReferenceRuleDocumentV2, String> {
+    let base = reference_rule_document_v2(fixture)?;
+    let target_item = *base
+        .item_ids
+        .first()
+        .ok_or("a rule-fact fixture names at least one rule")?;
+    let foreign_location = foreign_call_location_v2()?;
+    let document = base.document.forged_membership(move |_order, items| {
+        let Some(SemanticItemV2::Rule(rule)) = items.remove(&target_item) else {
+            return;
+        };
+        let original = rule.calls().to_vec();
+        let Some(first) = original.first() else {
+            items.insert(target_item, SemanticItemV2::Rule(rule));
+            return;
+        };
+        let rewritten = match mutation {
+            ForgedRuleFactMutationV2::NonLocalTarget => {
+                let ghost = quanta_gqlang_v2_types::ResolvedPredicateIdV2::try_new("ghost");
+                match ghost {
+                    Ok(ghost) => original
+                        .iter()
+                        .map(|call| {
+                            replace_call_v2(
+                                call,
+                                quanta_gqlang_v2_types::ResolvedCallTargetV2::Predicate(
+                                    ghost.clone(),
+                                ),
+                                call.polarity(),
+                                call.location().clone(),
+                            )
+                        })
+                        .collect(),
+                    Err(_) => original.clone(),
+                }
+            }
+            ForgedRuleFactMutationV2::TargetTransplanted => {
+                let own = crate::ResolvedRuleV2::predicate_id(&rule).clone();
+                vec![replace_call_v2(
+                    first,
+                    quanta_gqlang_v2_types::ResolvedCallTargetV2::Predicate(own),
+                    first.polarity(),
+                    first.location().clone(),
+                )]
+            }
+            ForgedRuleFactMutationV2::PolarityFlipped => vec![replace_call_v2(
+                first,
+                first.target().clone(),
+                crate::RuleCallPolarityV2::Negated,
+                first.location().clone(),
+            )],
+            ForgedRuleFactMutationV2::UnknownCallId => vec![replace_call_v2(
+                first,
+                first.target().clone(),
+                first.polarity(),
+                first.location().clone(),
+            )
+            .with_call_node_v2(SourceQualifiedNodeIdV2 {
+                source_id: REFERENCE_SOURCE_V2,
+                node_id: HirNodeIdV1::from_raw(u32::MAX),
+            })],
+            ForgedRuleFactMutationV2::ForeignCallLocation => vec![replace_call_v2(
+                first,
+                first.target().clone(),
+                first.polarity(),
+                foreign_location.clone(),
+            )],
+            ForgedRuleFactMutationV2::DroppedCall => Vec::new(),
+            ForgedRuleFactMutationV2::ExtraCall => vec![first.clone(), first.clone()],
+        };
+        items.insert(
+            target_item,
+            SemanticItemV2::Rule(rule.forged_with_calls(rewritten)),
+        );
+    });
+    Ok(wrap_rule_document_v2(document))
+}
+
+fn replace_call_v2(
+    call: &crate::ResolvedRuleCallV2,
+    target: quanta_gqlang_v2_types::ResolvedCallTargetV2,
+    polarity: crate::RuleCallPolarityV2,
+    location: CheckedLocatedSpanV2,
+) -> crate::ResolvedRuleCallV2 {
+    crate::ResolvedRuleCallV2::new(call.call(), target, polarity, location)
+}
+
+trait WithCallNodeV2 {
+    fn with_call_node_v2(self, node: SourceQualifiedNodeIdV2) -> Self;
+}
+
+impl WithCallNodeV2 for crate::ResolvedRuleCallV2 {
+    fn with_call_node_v2(self, node: SourceQualifiedNodeIdV2) -> Self {
+        let target = self.target().clone();
+        let polarity = self.polarity();
+        let location = self.location().clone();
+        crate::ResolvedRuleCallV2::new(node, target, polarity, location)
+    }
+}
+
+fn foreign_call_location_v2() -> Result<CheckedLocatedSpanV2, String> {
+    capture_edge_registry()?
+        .try_check_location(LocatedSpanV2 {
+            source_id: REFERENCE_SOURCE_V2,
+            span: SpanV1::new(0, 1),
+        })
+        .map_err(|error| format!("{error:?}"))
 }
