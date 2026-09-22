@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import os
+import json
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -9,42 +10,55 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[3]
-RUNNER = ROOT / "tools/lint/run_semgrep.sh"
 CONFIG = ROOT / ".semgrep/qglang-frontend.yml"
+FIXTURES = ROOT / "tools/lint/tests/fixtures/semgrep"
+RULE = "qglang-v2-no-string-typed-error-results-in-core"
 
 
 class SemgrepNonVacuityTest(unittest.TestCase):
-    def run_gate(self, config: Path) -> subprocess.CompletedProcess[str]:
-        environment = os.environ.copy()
-        environment["QGLANG_SEMGREP_CONFIG"] = str(config)
-        environment["QGLANG_SEMGREP_SKIP_PRODUCTION"] = "1"
-        return subprocess.run(
-            [str(RUNNER)],
-            cwd=ROOT,
-            env=environment,
+    def semgrep(self) -> list[str]:
+        if shutil.which("semgrep"):
+            return ["semgrep"]
+        return ["python3", "-m", "semgrep"]
+
+    def scan(self, config: Path, root: Path) -> list[dict]:
+        result = subprocess.run(
+            self.semgrep()
+            + [
+                "--config",
+                str(config),
+                "--json",
+                "--metrics=off",
+                "--disable-version-check",
+                ".",
+            ],
+            cwd=root,
             capture_output=True,
             text=True,
             check=False,
         )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)["results"]
 
-    def test_missing_include_path_rejects_unexecuted_rule(self) -> None:
-        original = CONFIG.read_text(encoding="utf-8")
-        mutated = original.replace(
-            "/crates/quanta-gqlang-v2-hir/src/**/*.rs",
-            "/crates/quanta-gqlang-v2-missing/src/**/*.rs",
-            1,
-        )
-        self.assertNotEqual(original, mutated)
-        with tempfile.TemporaryDirectory(prefix="qglang-semgrep-config-") as temporary:
-            config = Path(temporary) / "qglang-frontend.yml"
-            config.write_text(mutated, encoding="utf-8")
-            result = self.run_gate(config)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn(
-            "qglang-v2-no-string-typed-error-results-in-core",
-            result.stderr,
-        )
+    def fixture_root(self, temporary: Path, *names: str) -> Path:
+        root = temporary / "workspace"
+        source = root / "crates/quanta-gqlang-v2-hir/src"
+        source.mkdir(parents=True)
+        for name in names:
+            shutil.copyfile(FIXTURES / name, source / name)
+        return root
 
+    def test_rule_matches_only_the_positive_fixture(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="qglang-semgrep-") as temporary:
+            root = self.fixture_root(
+                Path(temporary),
+                f"{RULE}.rs",
+                "clean.rs",
+            )
+            findings = self.scan(CONFIG, root)
+        self.assertEqual(len(findings), 1)
+        self.assertTrue(findings[0]["check_id"].endswith(RULE))
+        self.assertEqual(Path(findings[0]["path"]).name, f"{RULE}.rs")
 
 if __name__ == "__main__":
     unittest.main()
