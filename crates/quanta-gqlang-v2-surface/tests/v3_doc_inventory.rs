@@ -43,7 +43,7 @@ fn rail_paths_v1(doc: &str) -> Vec<String> {
     out
 }
 
-fn assert_doc_paths_exist_v1(doc: &str) -> usize {
+fn assert_doc_paths_exist_v1(doc: &str) {
     let root = repo_root();
     let paths = rail_paths_v1(doc);
     assert!(
@@ -58,7 +58,6 @@ fn assert_doc_paths_exist_v1(doc: &str) -> usize {
         missing.is_empty(),
         "{doc}: these rail paths no longer exist on disk (rename or delete them here too): {missing:?}"
     );
-    paths.len()
 }
 
 #[test]
