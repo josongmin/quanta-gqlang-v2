@@ -1,5 +1,7 @@
 # Ticket Index
 
+Post-V2 downstream serving handoff: [Ticket 10 — Downstream serving interop](./10-downstream-serving-interop.md). It separates an AG7-only Semantica feature-graph repair from a full V2 producer/consumer migration. Neither route is qualified by the frontend V2 closeout receipts.
+
 Status: `EXECUTION ACTIVE — 03/04 UPSTREAM CLOSURE OPEN; 05 NARROW OWNER GREEN; 06-09 OPEN`
 
 ## Current Routing Override — `ecc38f59` + Shared Dirty Overlay

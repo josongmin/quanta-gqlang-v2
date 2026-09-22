@@ -132,6 +132,16 @@ Catalog declaration still has no per-declaration serving plan.
 
 ## Required Public Facade
 
+**2026-09-22 external-consumer gap:** this section names
+`ClosedFrontendAuthorityBuilderV2`, but the facade at
+`9a23f937c8d83dfc83cb6ae59e531037d83c5072` does not export or implement
+it. Its external positive fixture only pins the closed compile signature and
+cannot construct an authority through facade-only types. Do not mark the
+builder requirement closed from that fixture. The producer-owned constructor
+and any additional host-agnostic serving view must be designed and verified
+under [Ticket 10](./10-downstream-serving-interop.md); neither the missing
+builder nor Semantica's deleted V1 imports is repaired by V1 re-exports.
+
 `quanta-gqlang-v2-frontend-contract` exports exactly these functions and stable
 DTO roots; nested DTO fields use curated explicit exports, never crate globs:
 
