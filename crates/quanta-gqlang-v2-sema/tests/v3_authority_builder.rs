@@ -102,7 +102,11 @@ fn facade_builder_rejects_workspace_files_name_and_shape_mutations() {
 
     let mut wrong_shape =
         FrontendRelationInputV2::canonical_workspace_files(location(1, 4), location(2, 3));
-    wrong_shape.fields[0].scalar_type = FrontendScalarTypeV2::String;
+    wrong_shape
+        .fields
+        .first_mut()
+        .expect("canonical fixture carries exactly one field")
+        .scalar_type = FrontendScalarTypeV2::String;
     let mut wrong_shape_builder = builder();
     wrong_shape_builder.add_relation(wrong_shape);
     let error = wrong_shape_builder

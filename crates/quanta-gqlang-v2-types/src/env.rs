@@ -307,10 +307,14 @@ fn validate_relation_authority(
         && input.qualified_name == CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2
         && input.lookup_name == CANONICAL_WORKSPACE_FILES_LOOKUP_NAME_V2
         && input.provenance == CANONICAL_WORKSPACE_FILES_PROVENANCE_V2;
+    // Single-element slice pattern: the length check and the element access are
+    // one irrefutable shape, so no indexing lint or bounds reasoning is needed.
     let exact_shape = input.cardinality == CardinalityV1::Set
-        && input.row.fields().len() == 1
-        && input.row.fields()[0].name() == CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2
-        && input.row.fields()[0].value_type() == &ValueTypeV1::scalar(ScalarTyV1::RepoPath);
+        && matches!(
+            input.row.fields(),
+            [only] if only.name() == CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2
+                && only.value_type() == &ValueTypeV1::scalar(ScalarTyV1::RepoPath)
+        );
     if exact_identity && exact_shape {
         return Ok(());
     }

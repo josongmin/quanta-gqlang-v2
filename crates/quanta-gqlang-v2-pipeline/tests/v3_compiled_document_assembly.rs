@@ -1213,7 +1213,17 @@ fn execution_expressions_expose_operator_and_builtin_semantics_without_registrie
             ExecutionExpressionShapeV2::Call { target, .. } => {
                 calls.insert(target.clone());
             }
-            _ => {}
+            // Exhaustive by construction: a future shape variant fails compilation
+            // here instead of silently evading the operator/call census.
+            ExecutionExpressionShapeV2::Literal(_)
+            | ExecutionExpressionShapeV2::Binding(_)
+            | ExecutionExpressionShapeV2::Path { .. }
+            | ExecutionExpressionShapeV2::Paren(_)
+            | ExecutionExpressionShapeV2::Record(_)
+            | ExecutionExpressionShapeV2::List(_)
+            | ExecutionExpressionShapeV2::BoolValue(_)
+            | ExecutionExpressionShapeV2::LogicalQuantifier { .. }
+            | ExecutionExpressionShapeV2::RelationExists { .. } => {}
         }
     }
     assert!(operators.contains("+"));

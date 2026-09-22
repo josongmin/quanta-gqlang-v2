@@ -830,15 +830,20 @@ struct DocumentRunV2 {
     rule_blocked: Option<Vec<FrontendDiagnosticV2>>,
 }
 
+/// Boxed planned payload: the plan plus its two execution projections dwarf the
+/// other outcomes, so the box keeps every `ItemRunV2` variant pointer-sized.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct PlannedRunV2 {
+    planned: Box<PlannedItemV2>,
+    relation: Option<ExecutionRelationV2>,
+    composition: Option<ExecutionCompositionV2>,
+}
+
 /// One item's stage outcome.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum ItemRunV2 {
     /// Every applicable stage completed.
-    Planned {
-        planned: Box<PlannedItemV2>,
-        relation: Option<ExecutionRelationV2>,
-        composition: Option<ExecutionCompositionV2>,
-    },
+    Planned(Box<PlannedRunV2>),
     /// The item is a checked non-plan declaration.
     NoPlan {
         item_id: SemanticItemIdV2,
@@ -871,21 +876,17 @@ impl DocumentRunV2 {
         let mut execution_items = Vec::new();
         for item in self.items {
             match item {
-                ItemRunV2::Planned {
-                    planned,
-                    relation,
-                    composition,
-                } => {
-                    if let Some((family, plan)) = execution_identity(planned.as_ref()) {
+                ItemRunV2::Planned(run) => {
+                    if let Some((family, plan)) = execution_identity(run.planned.as_ref()) {
                         execution_items.push(ExecutionItemV2::new(
-                            planned.item_id(),
+                            run.planned.item_id(),
                             family,
-                            relation,
-                            composition,
+                            run.relation,
+                            run.composition,
                             plan,
                         ));
                     }
-                    items.push(CompiledItemV2::Planned(planned));
+                    items.push(CompiledItemV2::Planned(run.planned));
                 }
                 ItemRunV2::NoPlan { item_id, reason } => {
                     items.push(CompiledItemV2::NoPlan { item_id, reason });
@@ -910,7 +911,8 @@ impl DocumentRunV2 {
             .items
             .into_iter()
             .map(|item| match item {
-                ItemRunV2::Planned { planned, .. } => {
+                ItemRunV2::Planned(run) => {
+                    let planned = run.planned;
                     if let PlannedItemV2::RuleMember(member) = planned.as_ref() {
                         order.push(member.member_item_id());
                         match &rule_blocked {
@@ -982,12 +984,8 @@ fn run_document(
     for id in membership.order() {
         let location = membership.location(*id);
         match run_item(document, &membership, &mut algebra, &mut planning, *id) {
-            Ok(ItemRunV2::Planned {
-                planned,
-                relation,
-                composition,
-            }) => {
-                let inserted = if matches!(planned.as_ref(), PlannedItemV2::RuleMember(_)) {
+            Ok(ItemRunV2::Planned(run)) => {
+                let inserted = if matches!(run.planned.as_ref(), PlannedItemV2::RuleMember(_)) {
                     produced_member.insert(*id)
                 } else {
                     produced_plan.insert(*id)
@@ -999,11 +997,7 @@ fn run_document(
                         "one authored identity produced two results",
                     ));
                 }
-                items.push(ItemRunV2::Planned {
-                    planned,
-                    relation,
-                    composition,
-                });
+                items.push(ItemRunV2::Planned(run));
             }
             Ok(ItemRunV2::NoPlan { item_id, reason }) => {
                 if !produced_no_plan.insert(*id) {
@@ -1137,11 +1131,11 @@ fn run_item(
                 id,
                 &SemanticPlanInputV2::Relational(Box::new(lowered)),
             )?;
-            Ok(ItemRunV2::Planned {
+            Ok(ItemRunV2::Planned(Box::new(PlannedRunV2 {
                 planned: Box::new(PlannedItemV2::Relation { item_id: id, plan }),
                 relation: Some(relation),
                 composition: None,
-            })
+            })))
         }
         SemanticItemV2::Graph(graph) => {
             let contract = GraphQueryContractV2::from_resolved(graph)
@@ -1204,11 +1198,11 @@ fn run_item(
             )?;
             let execution =
                 project_composition(document, composition, body_relation, producer_relations);
-            Ok(ItemRunV2::Planned {
+            Ok(ItemRunV2::Planned(Box::new(PlannedRunV2 {
                 planned: Box::new(PlannedItemV2::Composition { item_id: id, plan }),
                 relation: None,
                 composition: Some(execution),
-            })
+            })))
         }
         SemanticItemV2::Meta(meta) => match meta.kind() {
             ResolvedMetaKindV2::RequireCertified => {
@@ -1350,11 +1344,11 @@ fn composition_body_input(
 }
 
 fn planned_run(planned: PlannedItemV2) -> ItemRunV2 {
-    ItemRunV2::Planned {
+    ItemRunV2::Planned(Box::new(PlannedRunV2 {
         planned: Box::new(planned),
         relation: None,
         composition: None,
-    }
+    }))
 }
 
 fn execution_identity(planned: &PlannedItemV2) -> Option<(ExecutionFamilyV2, &SemanticPlanV2)> {

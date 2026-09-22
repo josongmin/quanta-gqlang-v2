@@ -31,13 +31,21 @@ impl ExecutionDigestV2 {
     /// Lower-case hexadecimal form.
     #[must_use]
     pub fn to_hex(self) -> String {
-        let mut result = String::with_capacity(64);
-        for byte in self.0 {
-            use std::fmt::Write as _;
-            write!(&mut result, "{byte:02x}").expect("writing to String cannot fail");
-        }
-        result
+        hex_lower(&self.0)
     }
+}
+
+/// Lower-case hex encoding shared by digest display and predicate identity:
+/// total, allocation-once, and free of per-byte `format!`.
+fn hex_lower(bytes: &[u8]) -> String {
+    let mut hex = String::with_capacity(bytes.len() * 2);
+    for byte in bytes.iter() {
+        for shift in [4, 0] {
+            let nibble = (byte >> shift) & 0x0f;
+            hex.push(char::from_digit(u32::from(nibble), 16).unwrap_or('?'));
+        }
+    }
+    hex
 }
 
 /// One immutable, source-ordered execution document.
@@ -1005,11 +1013,7 @@ fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShap
                     format!("builtin:{}", id.name().unwrap_or("invalid_closed_builtin"))
                 }
                 ResolvedCallTargetV2::Predicate(id) => format!("predicate:{}", id.as_str()),
-                ResolvedCallTargetV2::HostPredicate(id) => id
-                    .canonical_bytes()
-                    .iter()
-                    .map(|b| format!("{b:02x}"))
-                    .collect::<String>(),
+                ResolvedCallTargetV2::HostPredicate(id) => hex_lower(id.canonical_bytes()),
             },
             arguments: arguments
                 .iter()
@@ -1520,7 +1524,9 @@ fn put_str(out: &mut Vec<u8>, value: &str) {
     out.extend_from_slice(value.as_bytes());
 }
 fn put_usize(out: &mut Vec<u8>, value: usize) {
-    out.extend_from_slice(&(value as u64).to_be_bytes());
+    // Total conversion: lengths beyond `u64::MAX` saturate (unreachable on any
+    // real target; the digest writer must stay total regardless of platform).
+    out.extend_from_slice(&u64::try_from(value).unwrap_or(u64::MAX).to_be_bytes());
 }
 fn put_u32(out: &mut Vec<u8>, value: u32) {
     out.extend_from_slice(&value.to_be_bytes());
@@ -1544,7 +1550,9 @@ fn sha256(input: &[u8]) -> [u8; 32] {
         0xc67178f2,
     ];
     let mut data = input.to_vec();
-    let bit_len = (data.len() as u64) * 8;
+    let bit_len = u64::try_from(data.len())
+        .unwrap_or(u64::MAX)
+        .saturating_mul(8);
     data.push(0x80);
     while data.len() % 64 != 56 {
         data.push(0);
@@ -1562,27 +1570,37 @@ fn sha256(input: &[u8]) -> [u8; 32] {
     ];
     for chunk in data.chunks_exact(64) {
         let mut w = [0u32; 64];
-        for (i, word) in w[..16].iter_mut().enumerate() {
-            *word = u32::from_be_bytes(chunk[i * 4..i * 4 + 4].try_into().expect("four bytes"));
+        // `chunks_exact(4)` yields exactly 16 groups per 64-byte chunk; the zip
+        // below pairs each with one schedule word, so no indexing is needed.
+        for (word, bytes) in w.iter_mut().take(16).zip(chunk.chunks_exact(4)) {
+            let mut arr = [0u8; 4];
+            arr.copy_from_slice(bytes);
+            *word = u32::from_be_bytes(arr);
         }
+        // Message schedule. Loop bounds keep every read inside `w`
+        // (`i - 16 >= 0`, `i <= 63`); `.get()` makes that total by construction
+        // and the fallbacks are unreachable.
         for i in 16..64 {
-            let s0 = w[i - 15].rotate_right(7) ^ w[i - 15].rotate_right(18) ^ (w[i - 15] >> 3);
-            let s1 = w[i - 2].rotate_right(17) ^ w[i - 2].rotate_right(19) ^ (w[i - 2] >> 10);
-            w[i] = w[i - 16]
-                .wrapping_add(s0)
-                .wrapping_add(w[i - 7])
-                .wrapping_add(s1);
+            let x15 = w.get(i - 15).copied().unwrap_or(0);
+            let x2 = w.get(i - 2).copied().unwrap_or(0);
+            let x16 = w.get(i - 16).copied().unwrap_or(0);
+            let x7 = w.get(i - 7).copied().unwrap_or(0);
+            let s0 = x15.rotate_right(7) ^ x15.rotate_right(18) ^ (x15 >> 3);
+            let s1 = x2.rotate_right(17) ^ x2.rotate_right(19) ^ (x2 >> 10);
+            let scheduled = x16.wrapping_add(s0).wrapping_add(x7).wrapping_add(s1);
+            if let Some(slot) = w.get_mut(i) {
+                *slot = scheduled;
+            }
         }
-        let (mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut hh) =
-            (h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7]);
-        for i in 0..64 {
+        let [mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut hh] = h;
+        for (word, key) in w.iter().zip(K.iter()) {
             let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
             let ch = (e & f) ^ (!e & g);
             let t1 = hh
                 .wrapping_add(s1)
                 .wrapping_add(ch)
-                .wrapping_add(K[i])
-                .wrapping_add(w[i]);
+                .wrapping_add(*key)
+                .wrapping_add(*word);
             let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
             let maj = (a & b) ^ (a & c) ^ (b & c);
             let t2 = s0.wrapping_add(maj);
@@ -1600,8 +1618,8 @@ fn sha256(input: &[u8]) -> [u8; 32] {
         }
     }
     let mut out = [0u8; 32];
-    for (i, value) in h.iter().enumerate() {
-        out[i * 4..i * 4 + 4].copy_from_slice(&value.to_be_bytes());
+    for (slot, value) in out.chunks_mut(4).zip(h.iter()) {
+        slot.copy_from_slice(&value.to_be_bytes());
     }
     out
 }
