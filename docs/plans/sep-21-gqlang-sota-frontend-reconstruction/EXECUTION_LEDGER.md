@@ -2108,3 +2108,24 @@ REMAINING before the barrier (recorded for continuation):
    unfulfilled — the `--all-targets` strict clippy gate needs these resolved.
 5. lib.rs module docs still describe the V1 entry point (broken intra-doc links
    under `cargo doc`).
+
+### W4 cleanup round — lint debt cleared, migration lane dispatched — 2026-09-22
+
+- cfg(test) lint debt CLEARED (integrator): removed the two now-unfulfilled
+  module-level `#![expect(clippy::panic)]` in `planning/src/diagnostic.rs` and
+  `effect.rs`, and scoped `#[expect(clippy::expect_used)]` to the single
+  fixture-span rail in diagnostic.rs. The `--lib --tests` strict clippy now
+  reports zero planning-src findings; the only remaining errors in that command
+  are the seven V1 integration suites' deleted-API imports.
+- Lane W4-A3 (agent 50ff16ad) dispatched for the ticket-07 item-7 migration of
+  those seven suites plus an explicit owner-local EDGE-CASE expansion (identity
+  absent/wrong-kind/forged + carrier-owns-document positive; budget exact/+1 on
+  a multi-stage chain and on a rule program; EmptyRuleProgram through both
+  entries; UsePack -> NoPlan/Err; recursive + nonrecursive stratification;
+  FIND retention exact values + mutated rejection; composition body dispatch;
+  SemanticCostV2 four-field order + values; ExplainNoteV2 exact values;
+  capability membership per arm; determinism/PartialEq). Lease:
+  `planning/tests/**` only; src defects come back as reports with repros.
+- Still open for the barrier after W4-A3: `CompositionPolicyV2` constructor +
+  Composition-arm retention, sema meta/composition fixtures, and the lib.rs
+  V2 module docs, then the facade cut + external-consumer gate + Receipt 07.
