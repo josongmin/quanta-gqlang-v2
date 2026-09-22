@@ -23,8 +23,8 @@ use std::collections::BTreeSet;
 use quanta_gqlang_v2_algebra::{AlgebraFamilyV2, CheckedAlgebraNodeV2};
 use quanta_gqlang_v2_logic::{GraphQueryContractV2, RelationShapeV1};
 use quanta_gqlang_v2_sema::{
-    CheckedLocatedSpanV2, DownstreamBudgetReceiptV2, LocatedSpanV2, ResolvedRuleV2, SemanticItemV2,
-    SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
+    CheckedLocatedSpanV2, DownstreamBudgetReceiptV2, LocatedSpanV2, ResolvedRuleV2, SourceIdV2,
+    SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
 };
 use quanta_gqlang_v2_types::ExpressionEffectsV2;
 

@@ -34,27 +34,27 @@
 //! lane) and returns a [`PublicPlanV1`] or a [`PlanningDiagnosticV1`].
 
 mod capability;
+mod check;
+mod composition;
 mod cost;
 mod diagnostic;
 mod effect;
 mod explain;
 mod item;
 mod plan;
+mod policy;
+mod presentation;
 mod result_kind;
+mod traversal;
 
-pub use capability::{derive_algebra_capabilities, CapabilityV1};
-pub use cost::{
-    CardinalityClassV1, OrderingContractV1, RecursionRiskClassV1, SemanticCostV1,
-    WitnessExplosionRiskClassV1,
+pub use check::{CheckContractV2, CheckPolicyV2};
+pub use composition::{
+    CheckedCompositionPlanInputV2, CheckedCompositionProducerV2, CompositionBodyPlanInputV2,
 };
-pub use diagnostic::{PlanningDiagnosticV1, UnsupportedMixReasonV1};
-pub use effect::{EffectClassV1, EvidenceRequirementV1, TruthLaneV1};
-pub use explain::ExplainNoteV1;
-pub use item::{classify_item, ItemClassificationV1, NoPlanReasonV1};
-pub use plan::{
-    produce_plan, PlanRequestV1, PublicPlanV1, RecursionShapeV1, RequestedResultKindV1,
-    WitnessShapeV1,
+pub use diagnostic::{
+    CheckInvalidReasonV2, CompositionInvalidReasonV2, InputDocumentMismatchReasonV2,
+    PlanningDiagnosticV1, PresentationInvalidReasonV2,
 };
-pub use result_kind::{
-    MultiplicityOrderContractV1, RenderRequirementV1, ResultKindV1, WitnessSelectionPolicyV1,
-};
+pub use item::{CatalogDeclarationKindV2, NoPlanReasonV2, SemanticPlanInputV2};
+pub use plan::{plan, plan_outcome, PlanOutcomeV2, SemanticPlanV2};
+pub use presentation::PresentationContractV2;
