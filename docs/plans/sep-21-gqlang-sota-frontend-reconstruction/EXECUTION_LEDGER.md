@@ -1538,3 +1538,17 @@ can be audited. Dirty count 96 -> 93.
 Incident follow-up: lanes A and B explicitly deny any `--fix`/workspace-wide
 mutating run (both confirm scoped commands only); lane C has not yet replied.
 The reverted footprint is contained and W1 fingerprints are restored.
+
+### W3-D fixture spec merged (queued, not yet dispatched) — 2026-09-21
+
+Lane W3-B delivered the precise graph/nested-check fixture request (struct
+shapes, selector registration, required buildable cases, and the exact facts
+callers assert); lane W3-C's rule-fixture list is queued with it. Both merged
+into the W3-D dispatch spec. Reachability finding recorded: depth=0, depth >
+max_witness_depth, and over-cap are rejected by SEMA at
+`frontend.resource_limit_exceeded`, so Logic's over-budget witness reasons are
+provable only against the crate-private seam — to be stated honestly in the
+Receipt 06 evidence rather than claimed as end-to-end rails. W3-D stays
+queued per the wave plan ("queue it behind the same lease rather than adding
+a fourth concurrent writer"); it opens on the first free worker slot with the
+verbatim spec. Existing test_support items stay additive-only.
