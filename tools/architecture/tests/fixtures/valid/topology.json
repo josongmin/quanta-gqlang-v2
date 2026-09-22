@@ -12,7 +12,6 @@
     ["quanta-gqlang-v2-algebra", "quanta-gqlang-v2-sema"],
     ["quanta-gqlang-v2-algebra", "quanta-gqlang-v2-types"],
     ["quanta-gqlang-v2-logic", "quanta-gqlang-v2-sema"],
-    ["quanta-gqlang-v2-logic", "quanta-gqlang-v2-algebra"],
     ["quanta-gqlang-v2-logic", "quanta-gqlang-v2-types"],
     ["quanta-gqlang-v2-planning", "quanta-gqlang-v2-sema"],
     ["quanta-gqlang-v2-planning", "quanta-gqlang-v2-algebra"],

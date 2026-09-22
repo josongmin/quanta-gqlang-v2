@@ -129,9 +129,9 @@ fn body_literal<'a>(rule: &'a RuleDefV1, target: &str) -> &'a BodyLiteralV1 {
 }
 
 /// The registry-proven call fact of a rule's only resolved call.
-fn only_call<'a>(
-    rule: &'a quanta_gqlang_v2_sema::ResolvedRuleV2,
-) -> &'a quanta_gqlang_v2_sema::ResolvedRuleCallV2 {
+fn only_call(
+    rule: &quanta_gqlang_v2_sema::ResolvedRuleV2,
+) -> &quanta_gqlang_v2_sema::ResolvedRuleCallV2 {
     assert_eq!(rule.calls().len(), 1, "fixture rule carries one call edge");
     rule.calls()
         .first()

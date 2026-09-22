@@ -145,7 +145,7 @@ class ArchitectureCheckerTest(unittest.TestCase):
             result = run_checker(root, "--require-final")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("workspace_members=14", result.stdout)
-        self.assertIn("normal_edges=28", result.stdout)
+        self.assertIn("normal_edges=27", result.stdout)
         self.assertIn("transitional_present=0", result.stdout)
 
     def test_transitional_edge_passes_default_and_fails_final_mode(self) -> None:
