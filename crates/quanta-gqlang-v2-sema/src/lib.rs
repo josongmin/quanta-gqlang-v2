@@ -26,7 +26,10 @@ pub use quanta_gqlang_v2_hir::{
     EvidenceModeV1, ExportFormatV1, GraphQueryKindV1, LocatedSpanV2, SampleModeV1, ShowCategoryV1,
     SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1, TruthModeV1,
 };
-pub use quanta_gqlang_v2_types::RelationCatalogV2;
+pub use quanta_gqlang_v2_types::{
+    CardinalityV1, ProvenanceNamespaceV2, RecordFieldTypeV1, RecordTypeV1, RelationCatalogV2,
+    RelationSourceInputV2, ScalarTyV1, ValueTypeV1,
+};
 
 pub use authority::{
     ClosedFrontendAuthorityV2, DownstreamBudgetReceiptV2, FrontendAuthorityErrorV2,
