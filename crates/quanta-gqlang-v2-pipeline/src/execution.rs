@@ -2101,7 +2101,10 @@ fn sha256(input: &[u8]) -> [u8; 32] {
 }
 
 #[cfg(test)]
-#[expect(clippy::expect_used, reason = "contract digest mutation rails assert exact fixture shapes")]
+#[expect(
+    clippy::expect_used,
+    reason = "contract digest mutation rails assert exact fixture shapes"
+)]
 mod tests {
     use super::*;
     use quanta_gqlang_v2_sema::HirNodeIdV1;
