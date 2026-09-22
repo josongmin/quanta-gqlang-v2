@@ -1938,3 +1938,18 @@ and are the single serial cut at Barrier W4.
   writers stop (Wn-R) and before the facade cut. Facade inputs confirmed stable
   (`src/lib.rs 77c23331`, `Cargo.toml a47df2c6`) and remain the single serial
   cut.
+
+### W4-A stalled on the core file; W4-A2 dispatched — 2026-09-22
+
+Lane W4-A landed the entire surrounding V2 surface (new check.rs,
+composition.rs, policy.rs, presentation.rs; updated capability/cost/diagnostic/
+effect/explain/item/result_kind + tests/support/) but never wrote
+`planning/src/plan.rs` (still the 364-line V1 file) across ~11 rounds, and did
+not answer the handoff question. Integrator interrupted W4-A and dispatched a
+narrow successor lane W4-A2 (agent c2dc46fc) whose lease is `plan.rs` ONLY:
+define `SemanticPlanV2` (9 private fields + accessors + derives), the two
+entries `plan`/`plan_outcome` per the frozen note, the single iterative
+budgeted traversal (charge-before-visit from the document receipt, exact/+1),
+per-arm classification delegating to the landed modules, and UsePack ->
+NoPlan(MetaActivation) semantics. The lib.rs V1 export replacement stays with
+the integrator. W4-A's other files remain on disk and are not reverted.
