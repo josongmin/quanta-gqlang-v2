@@ -2164,3 +2164,68 @@ semi/anti input, small-receipt RULE document, `max_witnesses = 1` FIND,
 alternate graph node id. Every pending rail is marked inline and its code/
 message/keyword vocabulary is still asserted verbatim, so no spelling lost
 coverage.
+
+### W4-F adversarial audit — findings and dispositions — 2026-09-22
+
+BLOCKS-WAVE
+- F-01 facade does not compile: nine deleted V1 pipeline symbols still
+  re-exported + `ambiguous_glob_reexports` (lib.rs:11 vs :25). DISPOSITION:
+  barrier task — the four-glob cut to the pinned allowlist is exactly the W4
+  barrier's serial step; no workspace/facade green claim may be made before it.
+- F-02 CLI / diagnostics-stdio / conformance still import deleted V1
+  (`v3_plan.rs`, `v3_diagnostics.rs`, `conformance/src/lib.rs`). DISPOSITION:
+  W5 (CLI + stdio) and W6 (conformance) own the migration; recorded so no wave
+  claims workspace green.
+- F-03 `docs/language/README.md` still routes consumers to the deleted API.
+  DISPOSITION: W5/W6 doc migration.
+
+OWNER-DEFECT (routed)
+- F-04 composition body carrier not identity-checked (forged root plans the
+  wrong subtree) -> RELAYED to lane W4-E with the exact fix and negative rail.
+- F-05 `CompositionPolicyV2` dead / composition identity dropped -> RELAYED to
+  W4-E (its task 1).
+- F-06 rule program stratified twice per compile with fresh charges -> RELAYED
+  to W4-E for the planning half; the proof-projection seam it needs is
+  integrator work.
+- F-08 unsealed `lower_nested_relation_item_v2` -> FIXED by integrator
+  (export + function deleted; it had no consumer).
+- F-09 `ResolvedRelationSourceV2` dead public API with unchecked ctor
+  (FINAL_AUDIT P1 row) -> barrier cleanup item for sema.
+- F-10 pipeline `verify_composition` duplicates planning's legality ->
+  integrator ruling at the barrier (candidate: keep planning as owner, reduce
+  pipeline to the piece planning cannot see).
+- F-07 budget ownership: algebra + planning each reset the full
+  `max_semantic_steps`/`max_expression_nodes` per call and pipeline invokes
+  them per authored item, while TARGET_ARCHITECTURE pins sema as the sole
+  owner. Per-walk arithmetic is exact/+1 correct; the defect is ownership and
+  multiplicity. RULING REQUIRED at the barrier: one document-owned counter
+  threaded through the stages, or per-stage receipt dimensions documented as
+  such.
+
+TEST-GAP / NIT (recorded, fix at or after the barrier)
+- F-11 planning has no composition-entry rail; three reason rails pass with
+  the constructor stubbed (this is how F-04/F-05 survived) — W4-E/W4-D close it.
+- F-12 three self-referential pipeline assembly assertions
+  (`v3_compiled_document_assembly.rs:342,678,716`) must become field
+  assertions.
+- F-13 no rustdoc gate: stale V1 module docs in planning/lib.rs, capability.rs,
+  pipeline/lib.rs; add `RUSTDOCFLAGS=-D warnings cargo doc --workspace
+  --no-deps` to `just lint` and rewrite the headers.
+- N-01 fabricated byte-0 diagnostic anchors (pipeline:1221-1226, plan.rs:492-536,
+  ~24 sema sites) should fall back to the payload's checked location.
+- N-02 `unreachable!` panic paths at plan.rs:529/535 in a host-visible
+  diagnostic helper.
+- N-03 dead error path with `SourceIdV2::from_raw(0)` at compile.rs:598.
+
+VERIFIED SOUND by the audit: all test-feature seams gated and never enabled by
+a normal dependency; every sema resolved carrier has a `pub(crate)` ctor;
+`DownstreamBudgetReceiptV2` has no public ctor; single owners for EXISTS
+lowering, aggregate legality, correlation resolution, and Tarjan/stratification;
+all traversals iterative with charge-before-work and exact/+1 arithmetic;
+strict clippy green and `check --all-targets` green for sema/algebra/logic/
+planning/pipeline.
+
+UNPROVEN (fixtures would settle): U-01 catalog-edge sort uses a non-total key
+before a full-tuple compare (two same-pair edges in different families); U-02
+public `SourceIdV2::from_raw` + structural registry identity make same-id/
+same-length documents interchangeable.
