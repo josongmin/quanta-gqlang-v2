@@ -2,7 +2,8 @@
 """External-consumer gate for the pinned qglang-v3 frontend facade (lane W4-H).
 
 The gate proves the facade is a *sufficient and minimal* seam for a sibling
-repository. It never touches the checkout:
+repository. It never modifies tracked checkout files; the public-API probe
+reuses the checkout's gitignored Cargo target:
 
 1. copy ``tools/frontend_external_consumer/`` into a temp directory, rewrite its
    single ``path = ...`` dependency to an absolute path into this repository,
@@ -24,7 +25,9 @@ repository. It never touches the checkout:
    so those map entries require that no coded error appears;
 
 5. diff ``cargo public-api -p quanta-gqlang-v2-frontend-contract --simplified``
-   against the pinned allowlist literal (extra/missing names);
+   against the pinned allowlist literal (extra/missing names). This invocation
+   runs in the repository checkout and reuses only that checkout's Cargo target;
+   the fixture keeps its isolated temporary target;
 
 6. assert the checkout is untouched: ``Cargo.lock`` sha256, the byte content of
    every path the gate owns, and ``git status --porcelain`` are compared
@@ -507,9 +510,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         temp_root = Path(tempfile.mkdtemp(prefix="qg-w4h-external-consumer-"))
         fixture = materialize_fixture(temp_root)
         env = cargo_env(temp_root / "target", channel)
-        # Stage 3 runs inside the checkout, where rust-toolchain.toml applies;
-        # no override is needed there.
-        public_api_env = cargo_env(temp_root / "target-public-api", None)
+        # Stage 3 runs at this checkout's stable manifest path, so its Cargo
+        # target can be reused without cross-checkout stale-path artifacts.
+        # Pin its toolchain too: an inherited RUSTUP_TOOLCHAIN can otherwise
+        # override rust-toolchain.toml and change the observed public API.
+        public_api_env = cargo_env(REPOSITORY_ROOT / "target", channel)
         cargo_version = tool_version("cargo", fixture, env)
         rustc_version = tool_version("rustc", fixture, env)
         trace("temp workspace: %s" % temp_root)

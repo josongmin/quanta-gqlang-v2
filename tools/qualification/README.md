@@ -29,8 +29,9 @@ It is excluded from routine `just ci` because it performs two real Rust builds.
 Observed on the implementation commit `ee8a4b6ee5204b0cf227974baa6624c7bb6c6969`
 with `JUST_TIME=true` on 2026-09-23: the first empty-cache `just ci` took 231 s;
 the same-SHA warm run took 137 s (both exit 0). Clippy and nextest reused
-artifacts; the external-consumer fixture deliberately creates separate
-temporary targets, and front-door/Cargo lock contention varied between runs.
+artifacts; the external-consumer fixture deliberately creates a temporary
+target, while its public-API probe now reuses the same checkout's stable
+target. Front-door/Cargo lock contention varied between runs.
 These two samples are evidence of reuse, not a guaranteed runtime or a reason
 to skip any gate. The small Cargo smoke separately proves that switching a
 source commit at the stable checkout path rebuilds a changed Rust crate.
