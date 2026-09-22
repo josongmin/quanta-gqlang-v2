@@ -1917,3 +1917,24 @@ producer/consumer hashes (facade lib.rs `77c23331`, its Cargo.toml
 algebra node+lib, logic lib, hir span, types env, architecture tool) and the
 facade crate is vaulted. The facade lib.rs and its four globs remain unchanged
 and are the single serial cut at Barrier W4.
+
+### W4 late-round motion and leftovers — 2026-09-22
+
+- Algebra entry fixes (integrator): `lower_nested_relation_item_v2` added (sealed
+  `LoweredRelationItemV2` carrier for composition bodies; W4-B's blocker 1) and
+  the bogus registry-membership guard dropped (composition body/producer roots
+  are materialized inside the sealed composition carrier, not registered as
+  standalone nested relations; W4-B's blocker 2). Source-identity checks and the
+  lowering's internal identity/output checks remain. Algebra re-qualified
+  59/59. Both entries exported from the algebra root.
+- Lanes are WRITING now: planning cost.rs/item.rs/result_kind.rs moved (W4-A
+  landing the 4.4d/e V2 DTO names), planning/src/{capability,effect}.rs +
+  pipeline/src/diagnostic.rs newly dirty, planning/tests/support/ created.
+- W4-C deltas accepted for the barrier: drop negative A09 (AlgebraFamilyV2 is
+  curated), extend the positive program with the curated closure types + the
+  four 4.4b names, D02 expected code E0432 unless GraphWitnessBoundsV2 is
+  curated (then E0624), Class B stays E0432 (facade keeps a single lib.rs).
+- Producer freeze supplement is PROVISIONAL: it must be re-taken after both
+  writers stop (Wn-R) and before the facade cut. Facade inputs confirmed stable
+  (`src/lib.rs 77c23331`, `Cargo.toml a47df2c6`) and remain the single serial
+  cut.
