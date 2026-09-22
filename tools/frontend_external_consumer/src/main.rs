@@ -15,9 +15,10 @@ use quanta_gqlang_v2_frontend_contract::{
     analyze_source_document_v2, compile_source_document_v2, format_source_document_v2,
     AlgebraFamilyV2, AnalysisDocumentV2, AnalysisItemV2, AnalysisStatusV2, CheckedLocatedSpanV2,
     ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledDocumentV2,
-    CompiledItemV2, CompiledRuleProgramV2, ExecutionCompositionBodyV2,
-    ExecutionCompositionProducerV2, ExecutionFamilyV2, ExecutionRelationAuthorityV2,
-    ExecutionSampleModeV2, FrontendAuthorityErrorV2, FrontendAuthorityLocationV2,
+    CompiledItemV2, CompiledRuleProgramV2, ExecutionCardinalityV2,
+    ExecutionCompositionBodyV2, ExecutionCompositionProducerV2, ExecutionFamilyV2,
+    ExecutionRelationAuthorityV2, ExecutionSampleModeV2, ExecutionScalarTypeV2,
+    ExecutionValueTypeV2, FrontendAuthorityErrorV2, FrontendAuthorityLocationV2,
     FrontendAuthoritySourceV2, FrontendBudgetV2, FrontendCallableParameterInputV2,
     FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2, FrontendDiagnosticV2, FrontendFailureV2,
     FrontendLanguageVersionV2, FrontendLockfileInputV2, FrontendPackInputV2, FrontendSeverityV2,
@@ -210,7 +211,14 @@ fn assert_exact_composition_handoff(document: &CompiledDocumentV2, binding_name:
         .first()
         .expect("SAMPLE schema retains its path field");
     assert_eq!(binding_field.name(), "path");
-    assert!(!binding_field.value_type().is_empty());
+    assert_eq!(
+        binding_field.value_type(),
+        &ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::RepoPath)
+    );
+    assert_eq!(
+        binding_schema.cardinality(),
+        ExecutionCardinalityV2::Set
+    );
     assert!(
         binding.relation().is_none(),
         "SAMPLE is not a relation producer"
@@ -373,9 +381,14 @@ fn main() {
         "source bytes retain their stable digest"
     );
     assert_ne!(
-        composition.execution().digest(),
-        foreign_source_identity.execution().digest(),
-        "a foreign source identity cannot reuse the complete execution digest"
+        composition.execution().contract_digest(),
+        foreign_source_identity.execution().contract_digest(),
+        "a foreign source identity cannot reuse the contract digest"
+    );
+    assert_ne!(
+        composition.execution().qualification_digest(),
+        foreign_source_identity.execution().qualification_digest(),
+        "a foreign source identity cannot reuse the qualification digest"
     );
 
     let collision = compile_source_document_v2(
