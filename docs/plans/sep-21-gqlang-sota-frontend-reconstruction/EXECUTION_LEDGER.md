@@ -1797,3 +1797,18 @@ Note: W3-A's snapshot listed the sema test_support `panic` lint — the
 integrator fixed that before this report (reasoned expect). Pipeline's call to
 deleted `RuleDefV1::from_rule`/`RecursiveProgramV1::from_rules` (compile.rs)
 is the known W4 obligation, not a W3 defect.
+
+### W3-D2 stopped; rule fixtures re-routed to the proven lane — 2026-09-21
+
+Lane W3-D2 showed the same stall signature as the original W3-D (no
+substantive output after several rounds). Integrator action: W3-D2 stopped and
+the rule-fixture mission re-routed to lane W3-B — the lane that already
+delivered the graph half successfully as a /tmp-verified scaffold. Same
+pattern: B builds and tests the rule fixtures in a /tmp copy (no repo writes),
+reports per-target counts and any unmintable case, and the integrator applies
+plus re-verifies. Exact scope unchanged: `reference_rule_document_v2` (8
+kinds), `forged_rule_membership_document_v2` (3 mutations),
+`forged_rule_fact_document_v2` (7 mutations), using the landed
+`forged_with_calls`/`forged_membership` seams and the in-crate rule authoring
+recipe. Wave status: W3-A/B/C COMPLETE; only the rule-fixture family plus the
+barrier remain.
