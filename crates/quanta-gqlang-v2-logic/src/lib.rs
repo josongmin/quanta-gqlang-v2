@@ -18,19 +18,20 @@
 //!
 //! # What lives here
 //!
-//! - [`RecursiveProgramV1`] / [`RuleDefV1`] / [`BodyLiteralV1`]: recursive
-//!   closure over the shared [`quanta_gqlang_v2_hir::RuleHirV1`] carrier, with
-//!   [`RecursiveProgramV1::stratify`] producing a [`StratificationProofV1`] for
-//!   admitted positive recursion or a typed rejection for negation cycles.
-//! - [`RecursiveAggregateMatrixV1`]: the explicit admit/reject matrix for
-//!   recursive aggregates.
-//! - [`WitnessContractV1`] / [`WitnessRequestV1`]: the bounded witness/path
+//! - [`RuleProgramContractV2`]: the sole document ingress; it enumerates and
+//!   validates the complete rule set of a sealed semantic document.
+//! - [`RuleDefV1`] / [`BodyLiteralV1`] / [`RecursiveProgramV1`]: stable-ID rule
+//!   carriers with the free function [`stratify`] producing a
+//!   [`StratificationProofV1`] for admitted positive recursion or a typed
+//!   rejection for negation cycles.
+//! - [`RejectAllRecursiveAggregatesV2`]: the fixed reject-all policy for
+//!   recursive aggregates (Sema owns nonrecursive aggregate legality).
+//! - [`WitnessContractV2`]: the bounded witness/path
 //!   materialization contract (dedup identity, max count, path-length bound,
 //!   canonical tie-break).
-//! - [`GraphQuerySemanticsV1`] / [`GraphQueryContractV1`]: FIND graph-query
-//!   source semantics over [`quanta_gqlang_v2_hir::GraphQueryHirV1`] —
-//!   per-subkind endpoint-presence legality plus the bounded-witness contract,
-//!   classifying (not executing) the FIND family.
+//! - [`GraphQueryContractV2`]: FIND graph-query semantics over the resolved
+//!   document query — per-subkind endpoint-presence legality plus the
+//!   bounded-witness contract, classifying (not executing) the FIND family.
 //! - [`LogicDiagnosticV1`]: the closed, typed diagnostic family.
 
 mod aggregate;

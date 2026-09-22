@@ -14,7 +14,6 @@ name = "quanta_gqlang_v2_logic"
 path = "src/lib.rs"
 
 [dependencies]
-quanta-gqlang-v2-hir   = { version = "0.1.0", path = "../quanta-gqlang-v2-hir" }
 quanta-gqlang-v2-sema  = { version = "0.1.0", path = "../quanta-gqlang-v2-sema" }
 quanta-gqlang-v2-types = { version = "0.1.0", path = "../quanta-gqlang-v2-types" }
 
