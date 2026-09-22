@@ -1552,3 +1552,15 @@ Receipt 06 evidence rather than claimed as end-to-end rails. W3-D stays
 queued per the wave plan ("queue it behind the same lease rather than adding
 a fourth concurrent writer"); it opens on the first free worker slot with the
 verbatim spec. Existing test_support items stay additive-only.
+
+### W3-D spec addendum — checked-location minter approved — 2026-09-21
+
+Lane W3-B's REQUEST 3 appended verbatim to the queued W3-D spec:
+`reference_checked_span_v2(start, end) -> Result<CheckedLocatedSpanV2, String>`,
+minting a registry-proven location from the fixture's own source registry so
+Logic owner-unit rails can pin the exact full codes, messages, and located
+spans for the sema-unreachable cases (depth=0, depth>max_witness_depth,
+over-cap, endpoint legality). W3-B reports its witness.rs/graph.rs V2 rewrite
+in progress with a pure owner-unit core (endpoint-legality function over kind
++ present roles, per-kind dedup table, sealed-bounds binder) so exact/+1 and
+the role matrix are provable before documents land.
