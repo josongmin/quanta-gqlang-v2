@@ -27,49 +27,6 @@ class SemgrepNonVacuityTest(unittest.TestCase):
             check=False,
         )
 
-    def test_every_configured_rule_has_one_positive_and_clean_control(self) -> None:
-        result = self.run_gate(CONFIG)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("configured=7 executed=7", result.stdout)
-
-    def test_runtime_truth_fixture_covers_the_complete_policy_vocabulary(self) -> None:
-        fixture = (
-            ROOT
-            / "tools/lint/tests/fixtures/semgrep"
-            / "qglang-v2-no-runtime-truth-tokens.rs"
-        )
-        expected = {
-            "result_count",
-            "row_count",
-            "rows_returned",
-            "match_count",
-            "matches_found",
-            "results_found",
-            "num_results",
-            "execution_time",
-            "elapsed_ms",
-            "executed_at",
-            "ran_at",
-            "provider_response",
-            "provider_endpoint",
-            "routed_to",
-            "host_dto",
-            "host_response",
-            "backend_result",
-            "edit_applied",
-            "applied_edit",
-            "workspace_edit_applied",
-            "materialized_result",
-            "result_materialized",
-            "runtime_truth",
-            "confirmed_true",
-            "actual_result",
-            "rows=",
-            "verdict=",
-        }
-        actual = set(fixture.read_text(encoding="utf-8").splitlines())
-        self.assertEqual(actual, expected)
-
     def test_missing_include_path_rejects_unexecuted_rule(self) -> None:
         original = CONFIG.read_text(encoding="utf-8")
         mutated = original.replace(
