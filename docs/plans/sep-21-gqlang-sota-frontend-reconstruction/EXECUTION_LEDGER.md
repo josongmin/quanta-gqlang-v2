@@ -2069,3 +2069,42 @@ pinned three functions + curated allowlist, build
 from W4-C's contract, delete the five transitional facade edges, run
 planning/pipeline/facade suites + the external-consumer gate + architecture,
 write Receipt 07, commit.
+
+### W4-A2 delivered plan.rs; export list completed — 2026-09-22
+
+`planning/src/plan.rs` LANDED (`9a998c4e8cc360e3`, 1649 lines): the two entries
+`plan(&SemanticPlanInputV2, &SemanticDocumentV2)` /
+`plan_outcome(...)`, `PlanOutcomeV2`, and `SemanticPlanV2` (9 private fields +
+9 accessors, Clone/Debug/PartialEq/Eq). V1 deleted with no aliases. Identity
+validation first (Absent/WrongKind/IdentityMismatch, carrier-anchored); ONE
+iterative budgeted traversal (explicit frames, charge-before-visit against the
+document receipt, root-first, exact limit succeeds, limit+1 rejects at the
+refused node); per-arm classification from sealed carriers only, rule program
+through `logic::stratify(program, &document.budget_receipt())`; UsePack ->
+NoPlan(MetaActivation); Composition dispatches into the SAME `classify`.
+Verification: `cargo test -p planning --lib` 22/22 (7 new plan rails incl.
+budget exact/+1, identity mismatch, empty rule program, FIND retention,
+recursive fixpoint, root-first order), `clippy --lib -D warnings` exit 0.
+
+Integrator completed the planning export list (capability/cost/effect/explain/
+policy/result_kind vocabulary + composition policy types) — lib green, strict
+clippy clean.
+
+REMAINING before the barrier (recorded for continuation):
+1. planning's seven V1-era TEST files still fail to compile (v3_planning_hellgate
+   14, v3_explain_provenance 14, v3_cost_classification 15, v3_planning_truth 8,
+   v3_item_hellgate 7, v3_capability_derivation 5, v3_planning_cost_schema 1) —
+   ticket 07 item 7 migration, W4-A-era suites.
+2. `CompositionPolicyV2` is unconstructable outside composition.rs (private
+   fields, no ctor): the Composition arm currently retains the body's own
+   policy and drops root/producers/WITH/body identity. Fix = add
+   `CheckedCompositionPlanInputV2::policy(body)` + a `CompositionBodyPolicyV2`
+   constructor in composition.rs, then wrap the derived body policy in plan.rs
+   (~20 lines, one classifier).
+3. Missing sema fixtures: meta (MetaActivation/CertifiedRequirementValidated) and
+   composition — provide fixture builders or cover in the migrated suites.
+4. cfg(test) lint debt: `diagnostic.rs:572` uses `.expect()`, and the module
+   `#![expect(clippy::panic)]` at diagnostic.rs:353 / effect.rs:140 are now
+   unfulfilled — the `--all-targets` strict clippy gate needs these resolved.
+5. lib.rs module docs still describe the V1 entry point (broken intra-doc links
+   under `cargo doc`).
