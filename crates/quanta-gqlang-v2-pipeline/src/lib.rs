@@ -29,17 +29,16 @@ mod compile;
 mod diagnostic;
 
 pub use compile::{
-    compile_document_structural, compile_document_with_context, compile_document_with_schema,
-    compile_item_structural, compile_item_with_context, compile_item_with_schema,
-    compile_program_structural, compile_program_with_schema, compile_with_context, CompiledItemV1,
-    CompiledProgramV1, FrontendContextV1, NoServeReasonV1,
+    analyze_resolved_document_v2, analyze_source_document_v2, compile_resolved_document_v2,
+    compile_source_document_v2, format_source_document_v2, AnalysisDocumentV2, AnalysisItemV2,
+    CompiledDocumentV2, CompiledItemV2, CompiledRuleProgramV2, PlannedItemV2, RuleProgramMemberV2,
+    UnresolvedAnalysisFactV2, OPEN_AUTHORITY_INCOMPLETE_CODE, PARSE_BUDGET_PROJECTION_FAILED_CODE,
 };
-pub use diagnostic::{PipelineDiagnosticV1, PipelineStageV1};
-
-// The `FrontendContextV1` primary bundle authority types (GQW3-18): re-export
-// the module-graph and pack-manifest authorities so downstream consumers can
-// build a fully-authoritative context without a second owner-crate edge.
-pub use quanta_gqlang_v2_binder::ModuleGraphV1;
-pub use quanta_gqlang_v2_modules::{
-    PackGraphV1, PackIdV1, PackManifestV1, VersionRangeV1, VersionV1,
+pub use diagnostic::{
+    algebra_code, diagnostic_sort_key, logic_code, no_plan_code, planning_code,
+    DocumentAssemblyCodeV2, PipelineStageV2,
+};
+pub use quanta_gqlang_v2_sema::{
+    FrontendAuthorityErrorV2, FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2,
+    FrontendStageV2, FrontendTransactionErrorV2,
 };

@@ -370,8 +370,6 @@ fn rule_location(rule: &ResolvedRuleV2) -> &CheckedLocatedSpanV2 {
 /// No reference implementation can build a located span from nothing, so an
 /// empty rule program is rejected by the plan entry before any projection runs.
 fn unreachable_program_anchor() -> &'static CheckedLocatedSpanV2 {
-    // `SemanticItemV2` is imported to keep this module's sema surface explicit.
-    let _ = core::mem::size_of::<SemanticItemV2>();
     static ANCHOR: std::sync::OnceLock<CheckedLocatedSpanV2> = std::sync::OnceLock::new();
     ANCHOR.get_or_init(|| {
         // A registry-proven point span from a private synthetic registry: no
