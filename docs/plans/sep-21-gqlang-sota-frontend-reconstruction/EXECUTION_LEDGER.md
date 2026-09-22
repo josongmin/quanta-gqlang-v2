@@ -2340,3 +2340,17 @@ algebra/planning reset the full allowance per call while pipeline invokes them
 per item) and F-10 (pipeline `verify_composition` vs planning's composition
 legality), F-09 sema dead public API, F-13 rustdoc gate, then Receipt 07 and
 the W4 checkpoint commit, then W5.
+
+## W4 Barrier Record — GREEN — 2026-09-22
+
+```text
+wave=W4
+entry_sha=95b655f (W3 GREEN) / pre-cut a606f12
+lane_ids=W4-A (stalled, superseded), W4-A2 (plan.rs classifier), W4-A3 (test migration 137 + edge rails), W4-B (pipeline replacement), W4-C (facade design), W4-D (sema fixture family), W4-E (composition retention + SOLID), W4-F (adversarial audit), W4-G (F-06 seam + cleanup), W4-H (external-consumer gate)
+lane_acceptance=sema 102 (features 136) · algebra 59 · logic 104 · planning 137 · pipeline 30 · facade gate PASS (exit 0, 51 negatives, allowlist 29/29)
+reserved_path_changes_applied_by_integrator=facade lib.rs cut + manifest single-edge, planning/pipeline lib.rs export lists, sema re-exports (mode enums, authority/relation DTOs, SpanV1, SemanticItemIdV2), location retention on CHECK/presentation, ValidatedModuleAuthorityPartsV2 Clone, algebra nested entries, identity-predicate relaxation, traversal deletion, gate allowlist pin
+audit_outcomes=13 findings + 3 nits triaged: F-01 fixed here; F-04/F-05/F-06/F-08/F-12/N-01/N-03 fixed; F-02/F-03 owned by W5/W6; F-07/F-10 recorded as rulings for the next wave; F-09/F-13 recorded
+receipt_paths=receipts/07.md (+ migration inventory, W4-C design report)
+deferred_failures=source-mutation proofs; USE PACK producer gap; two fixture requests; N-03 full deletion; F-07/F-10 rulings
+next_wave_gate=W5 OPEN (CLI + diagnostics-stdio + parity; F-02 is its first task) — dispatch draft at /tmp/qg-w5-dispatch-draft.md
+```
