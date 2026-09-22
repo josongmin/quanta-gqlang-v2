@@ -15,7 +15,7 @@ mod names;
 mod relation;
 mod rule;
 
-#[cfg(feature = "test")]
+#[cfg(any(test, feature = "test"))]
 #[doc(hidden)]
 pub mod test_support;
 

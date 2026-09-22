@@ -425,8 +425,8 @@ impl TypedExprV2 {
     /// Test-only minting seam: replace the capture set of a RelationExists
     /// expression so adversarial-document rails can assemble forged
     /// correlation vectors against the real document finalizer. Compiled
-    /// only under the `test` feature; never part of the public contract.
-    #[cfg(feature = "test")]
+    /// for unit tests or under the `test` feature; never part of a normal build.
+    #[cfg(any(test, feature = "test"))]
     #[expect(
         clippy::wildcard_enum_match_arm,
         reason = "future non-RelationExists shapes must take the same rejection"

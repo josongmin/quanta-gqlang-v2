@@ -55,7 +55,9 @@ python3 tools/test_frontend_external_consumer.py
 typos docs/bugbash/sep-22-test-optimization
 ```
 
-Run `just test` and `just lint` as composition proofs after their individual commands are green.
+Run `just test` and `just static` as composition proofs after their individual commands are green.
+Use `just --dry-run ci` to prove that parity appears once through the current gate graph;
+qualify `just policy` and `just ci` separately from the Rust test packet.
 Record selected/executed counts and compare them with Ticket 00. Explain all deltas: new oracle
 rows, the two deliberate deletions, or unrelated base movement are not interchangeable.
 
@@ -69,7 +71,7 @@ Inspect the integrated diff for:
 - producer tests that fail before `parse_producer`;
 - symmetric provenance fixtures claimed as order proof;
 - duplicate command-token authorities;
-- parity invoked zero or twice through `just lint`;
+- parity invoked zero or twice through `just ci`;
 - reintroduced scanner/TSV inventories;
 - runtime/provider/SDK leakage.
 

@@ -154,9 +154,9 @@ impl ResolvedRuleV2 {
     /// revalidation so adversarial-document rails can forge rule facts
     /// (nonlocal/transplanted target, polarity flip, unknown call id,
     /// foreign location, dropped/extra call) against the real Logic
-    /// validator. Compiled only under the `test` feature; never part of the
-    /// public contract and never reachable from a normal build.
-    #[cfg(feature = "test")]
+    /// validator. Compiled for unit tests or under the `test` feature; never
+    /// part of a normal build.
+    #[cfg(any(test, feature = "test"))]
     #[doc(hidden)]
     #[must_use]
     pub fn forged_with_calls(mut self, calls: Vec<ResolvedRuleCallV2>) -> Self {

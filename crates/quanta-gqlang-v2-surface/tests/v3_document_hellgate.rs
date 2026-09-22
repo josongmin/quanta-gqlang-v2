@@ -103,6 +103,7 @@ fn separator_branches_reject_with_exact_oracles() {
     let doubled = "show models ;; show views";
     let doubled_at = doubled.find(";;").expect("doubled separator") + 1;
     let leading = " ; show models";
+    let leading_at = leading.find(';').expect("leading separator");
     let missing = "show models show views";
     let rows = [
         RowV1 {
@@ -116,8 +117,8 @@ fn separator_branches_reject_with_exact_oracles() {
             name: "leading separator",
             src: leading,
             message: "empty statement: a ';' must follow a top-level item",
-            start: 1,
-            end: 2,
+            start: leading_at,
+            end: leading_at + ";".len(),
         },
         RowV1 {
             name: "missing separator",

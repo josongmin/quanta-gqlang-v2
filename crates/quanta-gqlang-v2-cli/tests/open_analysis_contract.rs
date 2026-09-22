@@ -144,7 +144,10 @@ fn empty_inputs_reject_at_the_shared_ingress_guard() {
 fn non_empty_inputs_pass_the_shared_ingress_guard() {
     let inline = run_cli_argv_v1(&["query", "show capabilities"]);
     assert_eq!(inline.status.code(), Some(1));
-    assert!(!cli_stdout_v1(&inline).contains("cli.error.class=usage"));
+    assert!(cli_stderr_v1(&inline).is_empty());
+    assert!(cli_stdout_v1(&inline)
+        .lines()
+        .any(|line| line == "analysis.status=incomplete"));
 
     let file = TempFileV1::new("non-empty", b"show capabilities");
     let filed = run_cli_argv_v1(&["query", "--file", file.text()]);

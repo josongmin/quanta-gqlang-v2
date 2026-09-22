@@ -63,8 +63,13 @@ cargo test -p quanta-gqlang-v2-planning --test v3_explain_provenance
 cargo test -p quanta-gqlang-v2-planning --all-targets
 cargo clippy -p quanta-gqlang-v2-planning --all-targets -- -D warnings
 cargo test -p quanta-gqlang-v2-sema --lib test_support
-cargo clippy -p quanta-gqlang-v2-sema --lib -- -D warnings
+cargo clippy -p quanta-gqlang-v2-sema --all-targets -- -D warnings
 ```
+
+The `test_support` module is compiled for Sema unit tests and remains available
+to downstream fixtures through the `test` feature. Use an exact selector for
+`test_support::tests::every_positive_fixture_variant_resolves` when checking
+the fixture inventory alone; a zero-test result is a failed gate.
 
 ## Definition Of Done
 

@@ -441,9 +441,9 @@ impl SemanticDocumentV2 {
     /// Test-only minting seam: mutate the item map and document order of an
     /// already-sealed document so adversarial-document rails can forge
     /// membership mismatches (dropped item, orphan item, duplicate order id)
-    /// against the real Logic validator. Compiled only under the `test`
-    /// feature; never part of the public contract.
-    #[cfg(feature = "test")]
+    /// against the real Logic validator. Compiled for unit tests or under
+    /// the `test` feature; never part of a normal build.
+    #[cfg(any(test, feature = "test"))]
     #[doc(hidden)]
     pub fn forged_membership<F>(mut self, mutate: F) -> Self
     where
