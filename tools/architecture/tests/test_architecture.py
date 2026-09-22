@@ -145,7 +145,8 @@ class ArchitectureCheckerTest(unittest.TestCase):
             result = run_checker(root)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("workspace_members=14", result.stdout)
-        self.assertIn("normal_edges=27", result.stdout)
+        self.assertIn("normal_edges=26", result.stdout)
+        self.assertIn("dev_edges=5", result.stdout)
 
     def test_retired_transitional_edge_is_illegal(self) -> None:
         temporary, root = self.fixture("transitional-valid")
@@ -188,6 +189,16 @@ class ArchitectureCheckerTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(
             "illegal build internal edges: quanta-gqlang-v2-surface -> quanta-gqlang-v2-hir",
+            result.stderr,
+        )
+
+    def test_dev_dependency_does_not_inherit_normal_edge_permission(self) -> None:
+        temporary, root = self.fixture("dev-edge")
+        with temporary:
+            result = run_checker(root)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "illegal dev internal edges: quanta-gqlang-v2-surface -> quanta-gqlang-v2-hir",
             result.stderr,
         )
 

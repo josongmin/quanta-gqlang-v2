@@ -52,7 +52,6 @@ FINAL_NORMAL_EDGES = {
     ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-algebra"),
     ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-logic"),
     ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-planning"),
-    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-modules"),
     ("quanta-gqlang-v2-frontend-contract", "quanta-gqlang-v2-pipeline"),
     ("quanta-gqlang-v2-cli", "quanta-gqlang-v2-frontend-contract"),
     (
@@ -62,10 +61,15 @@ FINAL_NORMAL_EDGES = {
     ("quanta-gqlang-v2-conformance", "quanta-gqlang-v2-frontend-contract"),
 }
 
-# Development dependencies may follow an edge in the final DAG. Any additional
-# test-only exception must be declared independently instead of weakening the
-# normal graph.
-FINAL_DEV_EDGES = FINAL_NORMAL_EDGES
+# Test-only dependencies are independently allowlisted. They must not inherit
+# the broader normal-DAG permission, or a new dev edge can bypass review.
+FINAL_DEV_EDGES = {
+    ("quanta-gqlang-v2-algebra", "quanta-gqlang-v2-sema"),
+    ("quanta-gqlang-v2-logic", "quanta-gqlang-v2-sema"),
+    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-modules"),
+    ("quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-sema"),
+    ("quanta-gqlang-v2-planning", "quanta-gqlang-v2-sema"),
+}
 
 # Build scripts execute code during compilation and therefore do not inherit
 # either normal-link or test-only dependency authority.  The current frontend

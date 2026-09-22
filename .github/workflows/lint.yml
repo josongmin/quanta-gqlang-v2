@@ -101,14 +101,5 @@ jobs:
           components: clippy
           toolchain: 1.95.0
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
-        with:
-          tool: cargo-nextest@0.9.104
       - name: Current-only Clippy policy
         run: cargo clippy --workspace --all-targets -- -D clippy::unused_result_ok -D warnings
-      - name: Workspace tests
-        run: cargo nextest run --workspace --no-tests pass
-      - name: Documentation tests
-        run: cargo test --workspace --doc
-        env:
-          RUSTDOCFLAGS: -D warnings

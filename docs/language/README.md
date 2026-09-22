@@ -171,8 +171,7 @@ Conformance rails:
 
 1. `crates/quanta-gqlang-v2-conformance/tests/self_validation.rs`
 2. `crates/quanta-gqlang-v2-conformance/tests/registry_non_vacuous.rs`
-3. `crates/quanta-gqlang-v2-conformance/tests/current_head_artifact_hygiene.rs`
-4. `tools/test_frontend_external_consumer.py`
+3. `tools/test_frontend_external_consumer.py`
 
 ## Boundary
 

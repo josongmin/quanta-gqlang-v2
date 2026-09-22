@@ -22,12 +22,17 @@
     ["quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-algebra"],
     ["quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-logic"],
     ["quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-planning"],
-    ["quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-modules"],
     ["quanta-gqlang-v2-frontend-contract", "quanta-gqlang-v2-pipeline"],
     ["quanta-gqlang-v2-cli", "quanta-gqlang-v2-frontend-contract"],
     ["quanta-gqlang-v2-diagnostics-stdio", "quanta-gqlang-v2-frontend-contract"],
     ["quanta-gqlang-v2-conformance", "quanta-gqlang-v2-frontend-contract"]
   ],
-  "dev_edges": [],
+  "dev_edges": [
+    ["quanta-gqlang-v2-algebra", "quanta-gqlang-v2-sema"],
+    ["quanta-gqlang-v2-logic", "quanta-gqlang-v2-sema"],
+    ["quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-modules"],
+    ["quanta-gqlang-v2-pipeline", "quanta-gqlang-v2-sema"],
+    ["quanta-gqlang-v2-planning", "quanta-gqlang-v2-sema"]
+  ],
   "build_edges": []
 }
