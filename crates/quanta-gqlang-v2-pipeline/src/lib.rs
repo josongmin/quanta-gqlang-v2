@@ -5,7 +5,7 @@
 //!
 //! ## Entry point
 //!
-//! [`compile_source_document_v2`] is the closed semantic entry point.
+//! [`compile_source_document_v3`] is the source-bound closed execution entry point.
 //! [`analyze_source_document_v2`] is the explicitly incomplete editor path;
 //! it never promotes unresolved analysis into closed compilation.
 //!
@@ -27,27 +27,27 @@ mod execution;
 
 pub use compile::{
     analyze_resolved_document_v2, analyze_source_document_v2, compile_resolved_document_v2,
-    compile_source_document_v2, format_source_document_v2, AnalysisDocumentV2, AnalysisItemV2,
-    AnalysisStatusV2, CompiledDocumentV2, CompiledItemV2, CompiledRuleProgramV2, PlannedItemV2,
-    RuleProgramMemberV2, UnresolvedAnalysisFactV2, OPEN_AUTHORITY_INCOMPLETE_CODE,
-    PARSE_BUDGET_PROJECTION_FAILED_CODE,
+    compile_source_document_v3, format_source_document_v2, AnalysisDocumentV2, AnalysisItemV2,
+    AnalysisStatusV2, CompiledDocumentV2, CompiledItemV2, CompiledRuleProgramV2,
+    CompiledSourceDocumentV3, PlannedItemV2, RuleProgramMemberV2, UnresolvedAnalysisFactV2,
+    OPEN_AUTHORITY_INCOMPLETE_CODE, PARSE_BUDGET_PROJECTION_FAILED_CODE,
 };
 pub use diagnostic::{
     algebra_code, diagnostic_sort_key, logic_code, no_plan_code, planning_code,
     DocumentAssemblyCodeV2, PipelineStageV2,
 };
 pub use execution::{
-    ExecutionAuthorityV2, ExecutionBindingV2, ExecutionCallTargetV2, ExecutionCardinalityV2,
-    ExecutionCompositionBindingV2, ExecutionCompositionBodyV2, ExecutionCompositionProducerV2,
-    ExecutionCompositionV2, ExecutionCorrelationV2, ExecutionDeterminismV2, ExecutionDigestV2,
-    ExecutionDocumentV2, ExecutionEffectV2, ExecutionEvidenceV2, ExecutionExistsPolarityV2,
-    ExecutionExpressionShapeV2, ExecutionExpressionV2, ExecutionFamilyV2, ExecutionFieldV2,
-    ExecutionGraphKindV2, ExecutionItemV2, ExecutionJoinModeV2, ExecutionLogicalQuantifierV2,
-    ExecutionNullOrderV2, ExecutionOperatorV2, ExecutionOrderKeyV2, ExecutionPlanV2,
-    ExecutionPolicyFamilyV2, ExecutionRecordFieldV2, ExecutionRelationAuthorityV2,
-    ExecutionRelationV2, ExecutionRelationalOperatorV2, ExecutionSampleModeV2,
-    ExecutionScalarTypeV2, ExecutionSchemaV2, ExecutionSortDirectionV2, ExecutionSourceKindV2,
-    ExecutionSourceV2, ExecutionUnionVariantV2, ExecutionValueTypeV2,
+    ExecutionAuthorityV3, ExecutionBindingV3, ExecutionCallTargetV3, ExecutionCardinalityV3,
+    ExecutionCompositionBindingV3, ExecutionCompositionBodyV3, ExecutionCompositionProducerV3,
+    ExecutionCompositionV3, ExecutionCorrelationV3, ExecutionDeterminismV3, ExecutionDigestV3,
+    ExecutionDocumentV3, ExecutionEffectV3, ExecutionEvidenceV3, ExecutionExistsPolarityV3,
+    ExecutionExpressionShapeV3, ExecutionExpressionV3, ExecutionFamilyV3, ExecutionFieldV3,
+    ExecutionFiniteFloatV3, ExecutionGraphKindV3, ExecutionItemV3, ExecutionJoinModeV3,
+    ExecutionLiteralV3, ExecutionLogicalQuantifierV3, ExecutionNullOrderV3, ExecutionOperatorV3,
+    ExecutionOrderKeyV3, ExecutionPlanV3, ExecutionPolicyFamilyV3, ExecutionRecordFieldV3,
+    ExecutionRelationAuthorityV3, ExecutionRelationV3, ExecutionRelationalOperatorV3,
+    ExecutionSampleModeV3, ExecutionScalarTypeV3, ExecutionSchemaV3, ExecutionSortDirectionV3,
+    ExecutionSourceKindV3, ExecutionSourceV3, ExecutionUnionVariantV3, ExecutionValueTypeV3,
 };
 pub use quanta_gqlang_v2_algebra::AlgebraFamilyV2;
 pub use quanta_gqlang_v2_planning::{NoPlanReasonV2, SemanticPlanV2};

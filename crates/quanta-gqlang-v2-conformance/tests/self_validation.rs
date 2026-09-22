@@ -11,7 +11,7 @@ use quanta_gqlang_v2_conformance::{
     SUPPLEMENTAL_SOURCES_V2, UNSUPPORTED_SOURCE_V2,
 };
 use quanta_gqlang_v2_frontend_contract::{
-    analyze_source_document_v2, compile_source_document_v2, AnalysisItemV2, AnalysisStatusV2,
+    analyze_source_document_v2, compile_source_document_v3, AnalysisItemV2, AnalysisStatusV2,
     ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledItemV2,
     FrontendAuthorityErrorV2, FrontendAuthorityLocationV2, FrontendAuthoritySourceV2,
     FrontendBudgetV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
@@ -232,7 +232,7 @@ fn every_family_compiles_through_the_facade_with_declared_disposition() {
     let authority = closed_authority();
     for (index, spec) in root_family_specs_v2().enumerate() {
         assert!(spec.source.trim_start().starts_with(spec.keyword));
-        let document = compile_source_document_v2(
+        let document = compile_source_document_v3(
             SourceIdV2::from_raw(100 + u32::try_from(index).expect("small registry")),
             spec.source,
             &authority,
@@ -369,7 +369,7 @@ fn facade_budget_and_pack_lock_failures_are_explicit() {
 #[test]
 fn supplemental_units_are_explicit_and_unsupported_source_fails_closed() {
     let authority = closed_authority();
-    let value = compile_source_document_v2(
+    let value = compile_source_document_v3(
         SourceIdV2::from_raw(300),
         SUPPLEMENTAL_SOURCES_V2[0],
         &authority,
@@ -380,7 +380,7 @@ fn supplemental_units_are_explicit_and_unsupported_source_fails_closed() {
         CompiledItemV2::NoPlan { .. }
     ));
 
-    let rule = compile_source_document_v2(
+    let rule = compile_source_document_v3(
         SourceIdV2::from_raw(301),
         SUPPLEMENTAL_SOURCES_V2[1],
         &authority,
@@ -393,7 +393,7 @@ fn supplemental_units_are_explicit_and_unsupported_source_fails_closed() {
     ));
     assert!(rule.rule_program().is_some());
 
-    assert!(compile_source_document_v2(
+    assert!(compile_source_document_v3(
         SourceIdV2::from_raw(302),
         UNSUPPORTED_SOURCE_V2,
         &authority

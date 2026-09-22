@@ -25,7 +25,7 @@ use quanta_gqlang_v2_modules::{
     VersionV2,
 };
 use quanta_gqlang_v2_pipeline::{
-    analyze_resolved_document_v2, analyze_source_document_v2, compile_source_document_v2,
+    analyze_resolved_document_v2, analyze_source_document_v2, compile_source_document_v3,
     AnalysisItemV2, CompiledItemV2, FrontendTransactionErrorV2, PlannedItemV2,
     OPEN_AUTHORITY_INCOMPLETE_CODE,
 };
@@ -143,7 +143,7 @@ fn partial_open_authority_blocks_every_item_with_unresolved_facts() {
     assert_eq!(analyzed.order().len(), 3);
     assert_eq!(analyzed.items().len(), 3);
     assert!(analyzed.rule_program().is_none());
-    let compiled = compile_source_document_v2(DOC_SOURCE, MINIMAL_SOURCE, &minimal_authority())
+    let compiled = compile_source_document_v3(DOC_SOURCE, MINIMAL_SOURCE, &minimal_authority())
         .expect("the same source compiles");
     assert_eq!(
         analyzed.order(),
@@ -263,7 +263,7 @@ fn blocked_analysis_is_not_compilable() {
 #[test]
 fn closed_and_open_entries_agree_on_the_same_source() {
     let closed = minimal_authority();
-    let compiled = compile_source_document_v2(DOC_SOURCE, MINIMAL_SOURCE, &closed)
+    let compiled = compile_source_document_v3(DOC_SOURCE, MINIMAL_SOURCE, &closed)
         .expect("the minimal document compiles");
     let analyzed =
         analyze_source_document_v2(DOC_SOURCE, MINIMAL_SOURCE, &complete_open_authority())

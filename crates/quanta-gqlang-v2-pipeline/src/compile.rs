@@ -66,9 +66,9 @@ use crate::diagnostic::{
     planning_transaction_error, surface_failure, surface_transaction_error, DocumentAssemblyCodeV2,
 };
 use crate::execution::{
-    project_composition, project_relation, project_relation_root, ExecutionClosureFailureV2,
-    ExecutionCompositionV2, ExecutionDocumentV2, ExecutionFamilyV2, ExecutionItemV2,
-    ExecutionRelationV2,
+    project_composition, project_relation, project_relation_root, ExecutionClosureFailureV3,
+    ExecutionCompositionV3, ExecutionDocumentV3, ExecutionFamilyV3, ExecutionItemV3,
+    ExecutionRelationV3,
 };
 
 /// Pipeline-owned code for an open-analysis source whose authority is partial.
@@ -101,7 +101,6 @@ pub struct CompiledDocumentV2 {
     diagnostics: Box<[FrontendDiagnosticV2]>,
     items: Box<[CompiledItemV2]>,
     rule_program: Option<CompiledRuleProgramV2>,
-    execution: ExecutionDocumentV2,
 }
 
 impl CompiledDocumentV2 {
@@ -114,7 +113,6 @@ impl CompiledDocumentV2 {
         diagnostics: Vec<FrontendDiagnosticV2>,
         items: Vec<CompiledItemV2>,
         rule_program: Option<CompiledRuleProgramV2>,
-        execution: ExecutionDocumentV2,
     ) -> Result<Self, FrontendTransactionErrorV2> {
         let diagnostics = canonicalize_diagnostics(diagnostics);
         if diagnostics
@@ -135,7 +133,6 @@ impl CompiledDocumentV2 {
             diagnostics: diagnostics.into_boxed_slice(),
             items: items.into_boxed_slice(),
             rule_program,
-            execution,
         })
     }
 
@@ -169,10 +166,46 @@ impl CompiledDocumentV2 {
     pub const fn rule_program(&self) -> Option<&CompiledRuleProgramV2> {
         self.rule_program.as_ref()
     }
+}
 
-    /// Immutable host-agnostic execution contract derived in the same pipeline run.
+/// Source-bound closed compile result. Only the source entry can construct it;
+/// resolved-document compilation lacks original bytes and returns
+/// [`CompiledDocumentV2`] without an execution document instead.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CompiledSourceDocumentV3 {
+    compiled: CompiledDocumentV2,
+    execution: ExecutionDocumentV3,
+}
+
+impl CompiledSourceDocumentV3 {
     #[must_use]
-    pub const fn execution(&self) -> &ExecutionDocumentV2 {
+    pub const fn source_id(&self) -> SourceIdV2 {
+        self.compiled.source_id()
+    }
+
+    #[must_use]
+    pub fn diagnostics(&self) -> &[FrontendDiagnosticV2] {
+        self.compiled.diagnostics()
+    }
+
+    #[must_use]
+    pub fn items(&self) -> &[CompiledItemV2] {
+        self.compiled.items()
+    }
+
+    #[must_use]
+    pub fn item(&self, id: SemanticItemIdV2) -> Option<&CompiledItemV2> {
+        self.compiled.item(id)
+    }
+
+    #[must_use]
+    pub const fn rule_program(&self) -> Option<&CompiledRuleProgramV2> {
+        self.compiled.rule_program()
+    }
+
+    /// Immutable, source-qualified host-agnostic execution document.
+    #[must_use]
+    pub const fn execution(&self) -> &ExecutionDocumentV3 {
         &self.execution
     }
 }
@@ -542,18 +575,20 @@ impl UnresolvedAnalysisFactV2 {
 /// Returns the first failing stage: a source-anchored document failure
 /// (surface parse, HIR integrity, semantic transaction, algebra, logic,
 /// planning, or pipeline assembly) or a source-less authority failure.
-pub fn compile_source_document_v2(
+pub fn compile_source_document_v3(
     source_id: SourceIdV2,
     source: &str,
     authority: &ClosedFrontendAuthorityV2,
-) -> Result<CompiledDocumentV2, FrontendTransactionErrorV2> {
+) -> Result<CompiledSourceDocumentV3, FrontendTransactionErrorV2> {
     let parsed = parse_source(source_id, source, authority.budget())?;
     let checked = CheckedSyntaxDocumentV2::try_from_hir(parsed.hir)
         .map_err(FrontendTransactionErrorV2::from)?;
     let document = resolve_checked_document_v2(checked, authority)?;
-    let mut compiled = compile_resolved_document_v2(&document)?;
-    compiled.execution.bind_source_bytes(source.as_bytes());
-    Ok(compiled)
+    let (compiled, execution_items) = compile_resolved_parts(&document)?;
+    Ok(CompiledSourceDocumentV3 {
+        compiled,
+        execution: ExecutionDocumentV3::new(source_id, source.as_bytes(), execution_items),
+    })
 }
 
 /// Compile one already-sealed semantic document.
@@ -570,15 +605,17 @@ pub fn compile_source_document_v2(
 pub fn compile_resolved_document_v2(
     document: &SemanticDocumentV2,
 ) -> Result<CompiledDocumentV2, FrontendTransactionErrorV2> {
-    let (items, rule_program, execution) =
-        run_document(document)?.into_compiled(document.source_id())?;
-    CompiledDocumentV2::try_new(
-        document.source_id(),
-        Vec::new(),
-        items,
-        rule_program,
-        execution,
-    )
+    let (compiled, _execution_items) = compile_resolved_parts(document)?;
+    Ok(compiled)
+}
+
+fn compile_resolved_parts(
+    document: &SemanticDocumentV2,
+) -> Result<(CompiledDocumentV2, Vec<ExecutionItemV3>), FrontendTransactionErrorV2> {
+    let (items, rule_program, execution_items) = run_document(document)?.into_compiled()?;
+    let compiled =
+        CompiledDocumentV2::try_new(document.source_id(), Vec::new(), items, rule_program)?;
+    Ok((compiled, execution_items))
 }
 
 /// Analyze one source document against explicit open editor authority.
@@ -831,13 +868,19 @@ struct DocumentRunV2 {
     rule_blocked: Option<Vec<FrontendDiagnosticV2>>,
 }
 
+type CompiledPartsV2 = (
+    Vec<CompiledItemV2>,
+    Option<CompiledRuleProgramV2>,
+    Vec<ExecutionItemV3>,
+);
+
 /// Boxed planned payload: the plan plus its two execution projections dwarf the
 /// other outcomes, so the box keeps every `ItemRunV2` variant pointer-sized.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct PlannedRunV2 {
     planned: Box<PlannedItemV2>,
-    relation: Option<ExecutionRelationV2>,
-    composition: Option<ExecutionCompositionV2>,
+    relation: Option<ExecutionRelationV3>,
+    composition: Option<ExecutionCompositionV3>,
 }
 
 /// One item's stage outcome.
@@ -859,17 +902,7 @@ enum ItemRunV2 {
 
 impl DocumentRunV2 {
     /// The exact compiled item list, failing closed on the first blocked stage.
-    fn into_compiled(
-        self,
-        source_id: SourceIdV2,
-    ) -> Result<
-        (
-            Vec<CompiledItemV2>,
-            Option<CompiledRuleProgramV2>,
-            ExecutionDocumentV2,
-        ),
-        FrontendTransactionErrorV2,
-    > {
+    fn into_compiled(self) -> Result<CompiledPartsV2, FrontendTransactionErrorV2> {
         if let Some(diagnostics) = self.rule_blocked {
             return Err(document_transaction_failure(diagnostics));
         }
@@ -879,7 +912,7 @@ impl DocumentRunV2 {
             match item {
                 ItemRunV2::Planned(run) => {
                     if let Some((family, plan)) = execution_identity(run.planned.as_ref()) {
-                        execution_items.push(ExecutionItemV2::new(
+                        execution_items.push(ExecutionItemV3::new(
                             run.planned.item_id(),
                             family,
                             run.relation,
@@ -897,11 +930,7 @@ impl DocumentRunV2 {
                 }
             }
         }
-        Ok((
-            items,
-            self.rule_program,
-            ExecutionDocumentV2::new(source_id, execution_items),
-        ))
+        Ok((items, self.rule_program, execution_items))
     }
 
     /// The exact analysis item list; blocked stages stay explicit.
@@ -1307,7 +1336,7 @@ fn composition_body_input(
     document: &SemanticDocumentV2,
     algebra: &mut AlgebraSessionV2<'_>,
     composition: &ResolvedCompositionV2,
-) -> Result<(CompositionBodyPlanInputV2, Option<ExecutionRelationV2>), FrontendTransactionErrorV2> {
+) -> Result<(CompositionBodyPlanInputV2, Option<ExecutionRelationV3>), FrontendTransactionErrorV2> {
     let owner = composition.item_id();
     match composition.body() {
         ResolvedCompositionBodyV2::Query(body) => {
@@ -1357,15 +1386,15 @@ fn planned_run(planned: PlannedItemV2) -> ItemRunV2 {
     }))
 }
 
-fn execution_identity(planned: &PlannedItemV2) -> Option<(ExecutionFamilyV2, &SemanticPlanV2)> {
+fn execution_identity(planned: &PlannedItemV2) -> Option<(ExecutionFamilyV3, &SemanticPlanV2)> {
     match planned {
-        PlannedItemV2::Relation { plan, .. } => Some((ExecutionFamilyV2::Relation, plan)),
-        PlannedItemV2::Graph { plan, .. } => Some((ExecutionFamilyV2::Graph, plan)),
-        PlannedItemV2::Check { plan, .. } => Some((ExecutionFamilyV2::Check, plan)),
-        PlannedItemV2::Presentation { plan, .. } => Some((ExecutionFamilyV2::Presentation, plan)),
-        PlannedItemV2::Composition { plan, .. } => Some((ExecutionFamilyV2::Composition, plan)),
+        PlannedItemV2::Relation { plan, .. } => Some((ExecutionFamilyV3::Relation, plan)),
+        PlannedItemV2::Graph { plan, .. } => Some((ExecutionFamilyV3::Graph, plan)),
+        PlannedItemV2::Check { plan, .. } => Some((ExecutionFamilyV3::Check, plan)),
+        PlannedItemV2::Presentation { plan, .. } => Some((ExecutionFamilyV3::Presentation, plan)),
+        PlannedItemV2::Composition { plan, .. } => Some((ExecutionFamilyV3::Composition, plan)),
         PlannedItemV2::MetaRequireCertified { plan, .. } => {
-            Some((ExecutionFamilyV2::MetaRequireCertified, plan))
+            Some((ExecutionFamilyV3::MetaRequireCertified, plan))
         }
         PlannedItemV2::RuleMember(_) => None,
     }
@@ -1414,16 +1443,16 @@ fn algebra_error(
 fn closure_error(
     document: &SemanticDocumentV2,
     id: SemanticItemIdV2,
-    failure: ExecutionClosureFailureV2,
+    failure: ExecutionClosureFailureV3,
 ) -> FrontendTransactionErrorV2 {
     let location = item_location_of(document, id);
     match failure {
-        ExecutionClosureFailureV2::Dangling => assembly(
+        ExecutionClosureFailureV3::Dangling => assembly(
             location,
             DocumentAssemblyCodeV2::DanglingExecutionReference,
             "an executable item references an expression the sealed document does not carry",
         ),
-        ExecutionClosureFailureV2::Foreign => assembly(
+        ExecutionClosureFailureV3::Foreign => assembly(
             location,
             DocumentAssemblyCodeV2::ForeignItemResult,
             "an executable item references an expression from another source",

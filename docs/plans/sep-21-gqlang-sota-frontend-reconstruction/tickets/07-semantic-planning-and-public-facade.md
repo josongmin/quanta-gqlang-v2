@@ -1,5 +1,7 @@
 # 07 — Semantic Planning And Public Facade
 
+> 2026-09-23 public API supersession: the historical V2 source-compile signature and root allowlist below describe Ticket 07's completed cut. The current execution entry is `compile_source_document_v3(...) -> CompiledSourceDocumentV3`, which seals `ExecutionDocumentV3` only with actual source bytes. `compile_resolved_document_v2` remains a Pipeline-only checked semantic entry and returns no execution digest. The normative byte/DTO contract is [`frontend-execution-v3.md`](../../../contracts/frontend-execution-v3.md); [Ticket 10a](./10a-v3-frontend-execution-contract.md) owns this post-W4 producer change.
+
 Status: `IMPLEMENTED — LOCAL W4 + POST-AUDIT REMEDIATION GREEN; HOSTED/W7 OPEN`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)

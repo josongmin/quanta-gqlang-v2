@@ -5,13 +5,13 @@
 //! `bindings()` and `with_binding()`; it cannot replace or reorder the backing
 //! array.
 //!
-//! Expected: E0616, "field `bindings` of struct `ExecutionCompositionV2` is private".
-use quanta_gqlang_v2_frontend_contract::ExecutionCompositionV2;
+//! Expected: E0616, "field `bindings` of struct `ExecutionCompositionV3` is private".
+use quanta_gqlang_v2_frontend_contract::ExecutionCompositionV3;
 
-fn probe(composition: &ExecutionCompositionV2) {
+fn probe(composition: &ExecutionCompositionV3) {
     let _ = &composition.bindings;
 }
 
 fn main() {
-    let _ = probe as fn(&ExecutionCompositionV2);
+    let _ = probe as fn(&ExecutionCompositionV3);
 }

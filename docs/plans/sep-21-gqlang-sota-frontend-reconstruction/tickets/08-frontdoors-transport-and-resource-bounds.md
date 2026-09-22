@@ -1,5 +1,7 @@
 # 08 — Front Doors, Transport, And Resource Bounds
 
+> 2026-09-23 embedding-host API supersession: historical `compile_source_document_v2`/`CompiledDocumentV2` references below are not the current execution facade. The source-bound execution entry is `compile_source_document_v3` returning `CompiledSourceDocumentV3`; analyze/format retain their V2 names. See [Ticket 10a](./10a-v3-frontend-execution-contract.md). This API change does not itself change CLI/stdio protocol ownership or prove a front-door qualification receipt.
+
 Status: `PLANNED — BLOCKED BY 07; CURRENT WIRE IS UNBOUNDED V1`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)

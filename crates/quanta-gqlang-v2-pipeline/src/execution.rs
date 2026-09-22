@@ -25,9 +25,9 @@ use sha2::{Digest as _, Sha256};
 
 /// SHA-256 digest of the canonical execution-contract encoding.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ExecutionDigestV2([u8; 32]);
+pub struct ExecutionDigestV3([u8; 32]);
 
-impl ExecutionDigestV2 {
+impl ExecutionDigestV3 {
     /// Raw digest bytes.
     #[must_use]
     pub const fn as_bytes(&self) -> &[u8; 32] {
@@ -56,27 +56,24 @@ fn hex_lower(bytes: &[u8]) -> String {
 
 /// One immutable, source-ordered execution document.
 ///
-/// Three digests separate three concerns: [`ExecutionDocumentV2::source_digest`]
-/// covers the raw UTF-8 source bytes only, [`ExecutionDocumentV2::contract_digest`]
+/// Three digests separate three concerns: [`ExecutionDocumentV3::source_digest`]
+/// covers the raw UTF-8 source bytes only, [`ExecutionDocumentV3::contract_digest`]
 /// covers the canonical DTO encoding only, and
-/// [`ExecutionDocumentV2::qualification_digest`] binds the two together under the
+/// [`ExecutionDocumentV3::qualification_digest`] binds the two together under the
 /// contract domain and schema version.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionDocumentV2 {
+pub struct ExecutionDocumentV3 {
     source_id: SourceIdV2,
-    items: Box<[ExecutionItemV2]>,
-    source_digest: ExecutionDigestV2,
-    contract_digest: ExecutionDigestV2,
-    qualification_digest: ExecutionDigestV2,
+    items: Box<[ExecutionItemV3]>,
+    source_digest: ExecutionDigestV3,
+    contract_digest: ExecutionDigestV3,
+    qualification_digest: ExecutionDigestV3,
 }
 
-impl ExecutionDocumentV2 {
-    pub(crate) fn new(source_id: SourceIdV2, items: Vec<ExecutionItemV2>) -> Self {
+impl ExecutionDocumentV3 {
+    pub(crate) fn new(source_id: SourceIdV2, source: &[u8], items: Vec<ExecutionItemV3>) -> Self {
         let contract_digest = digest_contract(source_id, &items);
-        // Source bytes arrive later through `bind_source_bytes` (the resolved
-        // entry point has no bytes at all); until then the source leg binds the
-        // empty input so every digest is always defined.
-        let source_digest = digest_source_bytes(&[]);
+        let source_digest = digest_source_bytes(source);
         let qualification_digest = digest_qualification(source_id, source_digest, contract_digest);
         Self {
             source_id,
@@ -95,46 +92,40 @@ impl ExecutionDocumentV2 {
 
     /// Source-ordered executable items. Non-executable declarations are absent.
     #[must_use]
-    pub fn items(&self) -> &[ExecutionItemV2] {
+    pub fn items(&self) -> &[ExecutionItemV3] {
         &self.items
     }
 
     /// Exact executable item by semantic identity.
     #[must_use]
-    pub fn item(&self, item_id: SemanticItemIdV2) -> Option<&ExecutionItemV2> {
+    pub fn item(&self, item_id: SemanticItemIdV2) -> Option<&ExecutionItemV3> {
         self.items.iter().find(|item| item.item_id == item_id)
     }
 
     /// Digest of the raw UTF-8 source bytes only. DTO changes never move it.
     #[must_use]
-    pub const fn source_digest(&self) -> ExecutionDigestV2 {
+    pub const fn source_digest(&self) -> ExecutionDigestV3 {
         self.source_digest
     }
 
     /// Digest of the canonical DTO encoding only. Source-byte changes that do
     /// not alter the projected contract never move it.
     #[must_use]
-    pub const fn contract_digest(&self) -> ExecutionDigestV2 {
+    pub const fn contract_digest(&self) -> ExecutionDigestV3 {
         self.contract_digest
     }
 
     /// Digest binding the contract domain, the schema version, and both legs
     /// above. Any DTO or source-byte change moves it.
     #[must_use]
-    pub const fn qualification_digest(&self) -> ExecutionDigestV2 {
+    pub const fn qualification_digest(&self) -> ExecutionDigestV3 {
         self.qualification_digest
-    }
-
-    pub(crate) fn bind_source_bytes(&mut self, source: &[u8]) {
-        self.source_digest = digest_source_bytes(source);
-        self.qualification_digest =
-            digest_qualification(self.source_id, self.source_digest, self.contract_digest);
     }
 }
 
 /// Closed top-level execution family.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionFamilyV2 {
+pub enum ExecutionFamilyV3 {
     Relation,
     Graph,
     Check,
@@ -144,7 +135,7 @@ pub enum ExecutionFamilyV2 {
     RuleProgram,
 }
 
-impl ExecutionFamilyV2 {
+impl ExecutionFamilyV3 {
     /// Stable wire keyword.
     #[must_use]
     pub const fn keyword(self) -> &'static str {
@@ -162,20 +153,20 @@ impl ExecutionFamilyV2 {
 
 /// One executable item with its immutable planning authority.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionItemV2 {
+pub struct ExecutionItemV3 {
     item_id: SemanticItemIdV2,
-    family: ExecutionFamilyV2,
-    relation: Option<ExecutionRelationV2>,
-    composition: Option<ExecutionCompositionV2>,
-    plan: ExecutionPlanV2,
+    family: ExecutionFamilyV3,
+    relation: Option<ExecutionRelationV3>,
+    composition: Option<ExecutionCompositionV3>,
+    plan: ExecutionPlanV3,
 }
 
-impl ExecutionItemV2 {
+impl ExecutionItemV3 {
     pub(crate) fn new(
         item_id: SemanticItemIdV2,
-        family: ExecutionFamilyV2,
-        relation: Option<ExecutionRelationV2>,
-        composition: Option<ExecutionCompositionV2>,
+        family: ExecutionFamilyV3,
+        relation: Option<ExecutionRelationV3>,
+        composition: Option<ExecutionCompositionV3>,
         plan: &SemanticPlanV2,
     ) -> Self {
         Self {
@@ -192,20 +183,20 @@ impl ExecutionItemV2 {
         self.item_id
     }
     #[must_use]
-    pub const fn family(&self) -> ExecutionFamilyV2 {
+    pub const fn family(&self) -> ExecutionFamilyV3 {
         self.family
     }
     #[must_use]
-    pub const fn relation(&self) -> Option<&ExecutionRelationV2> {
+    pub const fn relation(&self) -> Option<&ExecutionRelationV3> {
         self.relation.as_ref()
     }
     #[must_use]
-    pub const fn composition(&self) -> Option<&ExecutionCompositionV2> {
+    pub const fn composition(&self) -> Option<&ExecutionCompositionV3> {
         self.composition.as_ref()
     }
     /// Producer-derived policy and authority; callers cannot replace it.
     #[must_use]
-    pub const fn plan(&self) -> &ExecutionPlanV2 {
+    pub const fn plan(&self) -> &ExecutionPlanV3 {
         &self.plan
     }
 }
@@ -213,62 +204,62 @@ impl ExecutionItemV2 {
 /// Frontend-checked policy copied from the sealed semantic plan. This is pure
 /// frontend vocabulary: no runtime, provider, or backend routing appears here.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionPlanV2 {
-    authority: ExecutionAuthorityV2,
-    determinism: ExecutionDeterminismV2,
-    evidence: ExecutionEvidenceV2,
-    effect: ExecutionEffectV2,
-    policy_family: ExecutionPolicyFamilyV2,
+pub struct ExecutionPlanV3 {
+    authority: ExecutionAuthorityV3,
+    determinism: ExecutionDeterminismV3,
+    evidence: ExecutionEvidenceV3,
+    effect: ExecutionEffectV3,
+    policy_family: ExecutionPolicyFamilyV3,
 }
-impl ExecutionPlanV2 {
+impl ExecutionPlanV3 {
     #[must_use]
-    pub const fn authority(&self) -> ExecutionAuthorityV2 {
+    pub const fn authority(&self) -> ExecutionAuthorityV3 {
         self.authority
     }
     #[must_use]
-    pub const fn determinism(&self) -> ExecutionDeterminismV2 {
+    pub const fn determinism(&self) -> ExecutionDeterminismV3 {
         self.determinism
     }
     #[must_use]
-    pub const fn evidence(&self) -> ExecutionEvidenceV2 {
+    pub const fn evidence(&self) -> ExecutionEvidenceV3 {
         self.evidence
     }
     #[must_use]
-    pub const fn effect(&self) -> ExecutionEffectV2 {
+    pub const fn effect(&self) -> ExecutionEffectV3 {
         self.effect
     }
     #[must_use]
-    pub const fn policy_family(&self) -> ExecutionPolicyFamilyV2 {
+    pub const fn policy_family(&self) -> ExecutionPolicyFamilyV3 {
         self.policy_family
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionAuthorityV2 {
+pub enum ExecutionAuthorityV3 {
     FrontendChecked,
     CertifiedRequirementValidated,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionDeterminismV2 {
+pub enum ExecutionDeterminismV3 {
     Deterministic,
     NonDeterministic,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionEvidenceV2 {
+pub enum ExecutionEvidenceV3 {
     None,
     SourceLocation,
     WitnessPayload,
     ProofTree,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionEffectV2 {
+pub enum ExecutionEffectV3 {
     ReadOnly,
     ProofEvidenceOnly,
     ExportOnly,
     MutationForbidden,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionPolicyFamilyV2 {
+pub enum ExecutionPolicyFamilyV3 {
     Relational,
     Graph,
     Check,
@@ -277,7 +268,7 @@ pub enum ExecutionPolicyFamilyV2 {
     MetaRequireCertified,
     Composition,
 }
-impl ExecutionPolicyFamilyV2 {
+impl ExecutionPolicyFamilyV3 {
     #[must_use]
     pub const fn keyword(self) -> &'static str {
         match self {
@@ -294,7 +285,7 @@ impl ExecutionPolicyFamilyV2 {
 
 /// Closed scalar vocabulary projected from the sealed type owner.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionScalarTypeV2 {
+pub enum ExecutionScalarTypeV3 {
     Bool,
     Int,
     Float,
@@ -310,38 +301,38 @@ pub enum ExecutionScalarTypeV2 {
     ProofTree,
 }
 
-const fn project_scalar(scalar: &ScalarTyV1) -> ExecutionScalarTypeV2 {
+const fn project_scalar(scalar: &ScalarTyV1) -> ExecutionScalarTypeV3 {
     match scalar {
-        ScalarTyV1::Bool => ExecutionScalarTypeV2::Bool,
-        ScalarTyV1::Int => ExecutionScalarTypeV2::Int,
-        ScalarTyV1::Float => ExecutionScalarTypeV2::Float,
-        ScalarTyV1::String => ExecutionScalarTypeV2::String,
-        ScalarTyV1::Duration => ExecutionScalarTypeV2::Duration,
-        ScalarTyV1::Location => ExecutionScalarTypeV2::Location,
-        ScalarTyV1::Path => ExecutionScalarTypeV2::Path,
-        ScalarTyV1::RepoPath => ExecutionScalarTypeV2::RepoPath,
-        ScalarTyV1::EntityRef => ExecutionScalarTypeV2::EntityRef,
-        ScalarTyV1::SymbolRef => ExecutionScalarTypeV2::SymbolRef,
-        ScalarTyV1::RuleRef => ExecutionScalarTypeV2::RuleRef,
-        ScalarTyV1::SourceScope => ExecutionScalarTypeV2::SourceScope,
-        ScalarTyV1::ProofTree => ExecutionScalarTypeV2::ProofTree,
+        ScalarTyV1::Bool => ExecutionScalarTypeV3::Bool,
+        ScalarTyV1::Int => ExecutionScalarTypeV3::Int,
+        ScalarTyV1::Float => ExecutionScalarTypeV3::Float,
+        ScalarTyV1::String => ExecutionScalarTypeV3::String,
+        ScalarTyV1::Duration => ExecutionScalarTypeV3::Duration,
+        ScalarTyV1::Location => ExecutionScalarTypeV3::Location,
+        ScalarTyV1::Path => ExecutionScalarTypeV3::Path,
+        ScalarTyV1::RepoPath => ExecutionScalarTypeV3::RepoPath,
+        ScalarTyV1::EntityRef => ExecutionScalarTypeV3::EntityRef,
+        ScalarTyV1::SymbolRef => ExecutionScalarTypeV3::SymbolRef,
+        ScalarTyV1::RuleRef => ExecutionScalarTypeV3::RuleRef,
+        ScalarTyV1::SourceScope => ExecutionScalarTypeV3::SourceScope,
+        ScalarTyV1::ProofTree => ExecutionScalarTypeV3::ProofTree,
     }
 }
 
 /// Closed value-type vocabulary. Only record field names and union tags are
 /// open strings; every structural kind is an enum variant.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ExecutionValueTypeV2 {
-    Scalar(ExecutionScalarTypeV2),
+pub enum ExecutionValueTypeV3 {
+    Scalar(ExecutionScalarTypeV3),
     Null,
-    Tuple(Box<[ExecutionValueTypeV2]>),
-    Record(Box<[ExecutionRecordFieldV2]>),
-    Optional(Box<ExecutionValueTypeV2>),
+    Tuple(Box<[ExecutionValueTypeV3]>),
+    Record(Box<[ExecutionRecordFieldV3]>),
+    Optional(Box<ExecutionValueTypeV3>),
     Collection {
-        element: Box<ExecutionValueTypeV2>,
-        cardinality: ExecutionCardinalityV2,
+        element: Box<ExecutionValueTypeV3>,
+        cardinality: ExecutionCardinalityV3,
     },
-    Union(Box<[ExecutionUnionVariantV2]>),
+    Union(Box<[ExecutionUnionVariantV3]>),
     /// The checked expression carries no known type. The unknown cause is
     /// editor-specific, so it is excluded from the contract by design: two
     /// unknowns are indistinguishable here however they arose. Schemas never
@@ -350,46 +341,46 @@ pub enum ExecutionValueTypeV2 {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionRecordFieldV2 {
+pub struct ExecutionRecordFieldV3 {
     name: String,
-    value_type: ExecutionValueTypeV2,
+    value_type: ExecutionValueTypeV3,
 }
-impl ExecutionRecordFieldV2 {
+impl ExecutionRecordFieldV3 {
     #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
     #[must_use]
-    pub const fn value_type(&self) -> &ExecutionValueTypeV2 {
+    pub const fn value_type(&self) -> &ExecutionValueTypeV3 {
         &self.value_type
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionUnionVariantV2 {
+pub struct ExecutionUnionVariantV3 {
     tag: String,
-    value_type: ExecutionValueTypeV2,
+    value_type: ExecutionValueTypeV3,
 }
-impl ExecutionUnionVariantV2 {
+impl ExecutionUnionVariantV3 {
     #[must_use]
     pub fn tag(&self) -> &str {
         &self.tag
     }
     #[must_use]
-    pub const fn value_type(&self) -> &ExecutionValueTypeV2 {
+    pub const fn value_type(&self) -> &ExecutionValueTypeV3 {
         &self.value_type
     }
 }
 
-fn project_value_type(value: &ValueTypeV1) -> ExecutionValueTypeV2 {
+fn project_value_type(value: &ValueTypeV1) -> ExecutionValueTypeV3 {
     if let Some(scalar) = value.as_type().as_scalar() {
-        return ExecutionValueTypeV2::Scalar(project_scalar(scalar));
+        return ExecutionValueTypeV3::Scalar(project_scalar(scalar));
     }
     if value.is_null() {
-        return ExecutionValueTypeV2::Null;
+        return ExecutionValueTypeV3::Null;
     }
     if let Some(tuple) = value.as_tuple() {
-        return ExecutionValueTypeV2::Tuple(
+        return ExecutionValueTypeV3::Tuple(
             tuple
                 .items()
                 .iter()
@@ -399,11 +390,11 @@ fn project_value_type(value: &ValueTypeV1) -> ExecutionValueTypeV2 {
         );
     }
     if let Some(record) = value.as_record() {
-        return ExecutionValueTypeV2::Record(
+        return ExecutionValueTypeV3::Record(
             record
                 .fields()
                 .iter()
-                .map(|field| ExecutionRecordFieldV2 {
+                .map(|field| ExecutionRecordFieldV3 {
                     name: field.name().to_owned(),
                     value_type: project_value_type(field.value_type()),
                 })
@@ -412,20 +403,20 @@ fn project_value_type(value: &ValueTypeV1) -> ExecutionValueTypeV2 {
         );
     }
     if let Some(optional) = value.as_optional() {
-        return ExecutionValueTypeV2::Optional(Box::new(project_value_type(optional.inner())));
+        return ExecutionValueTypeV3::Optional(Box::new(project_value_type(optional.inner())));
     }
     if let Some(collection) = value.as_collection() {
-        return ExecutionValueTypeV2::Collection {
+        return ExecutionValueTypeV3::Collection {
             element: Box::new(project_value_type(collection.element())),
             cardinality: project_cardinality(collection.cardinality()),
         };
     }
     if let Some(union) = value.as_union() {
-        return ExecutionValueTypeV2::Union(
+        return ExecutionValueTypeV3::Union(
             union
                 .variants()
                 .iter()
-                .map(|variant| ExecutionUnionVariantV2 {
+                .map(|variant| ExecutionUnionVariantV3 {
                     tag: variant.tag().to_owned(),
                     value_type: project_value_type(variant.value_type()),
                 })
@@ -436,71 +427,71 @@ fn project_value_type(value: &ValueTypeV1) -> ExecutionValueTypeV2 {
     // `ValueTypeV1` construction rejects relation kinds, and every other kind
     // is matched above; the unreachable remainder fails closed as Unknown so
     // the projection stays total even if the owner grows a kind.
-    ExecutionValueTypeV2::Unknown
+    ExecutionValueTypeV3::Unknown
 }
 
 /// Closed row/collection cardinality vocabulary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionCardinalityV2 {
+pub enum ExecutionCardinalityV3 {
     Set,
     Bag,
     Sequence,
 }
 
-const fn project_cardinality(value: CardinalityV1) -> ExecutionCardinalityV2 {
+const fn project_cardinality(value: CardinalityV1) -> ExecutionCardinalityV3 {
     match value {
-        CardinalityV1::Set => ExecutionCardinalityV2::Set,
-        CardinalityV1::Bag => ExecutionCardinalityV2::Bag,
-        CardinalityV1::Sequence => ExecutionCardinalityV2::Sequence,
+        CardinalityV1::Set => ExecutionCardinalityV3::Set,
+        CardinalityV1::Bag => ExecutionCardinalityV3::Bag,
+        CardinalityV1::Sequence => ExecutionCardinalityV3::Sequence,
     }
 }
 
 /// Closed sort-direction vocabulary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionSortDirectionV2 {
+pub enum ExecutionSortDirectionV3 {
     Asc,
     Desc,
 }
 
-const fn project_sort_direction(value: SortDirectionV2) -> ExecutionSortDirectionV2 {
+const fn project_sort_direction(value: SortDirectionV2) -> ExecutionSortDirectionV3 {
     match value {
-        SortDirectionV2::Asc => ExecutionSortDirectionV2::Asc,
-        SortDirectionV2::Desc => ExecutionSortDirectionV2::Desc,
+        SortDirectionV2::Asc => ExecutionSortDirectionV3::Asc,
+        SortDirectionV2::Desc => ExecutionSortDirectionV3::Desc,
     }
 }
 
 /// Closed null-ordering vocabulary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionNullOrderV2 {
+pub enum ExecutionNullOrderV3 {
     First,
     Last,
 }
 
-const fn project_null_order(value: NullOrderV2) -> ExecutionNullOrderV2 {
+const fn project_null_order(value: NullOrderV2) -> ExecutionNullOrderV3 {
     match value {
-        NullOrderV2::First => ExecutionNullOrderV2::First,
-        NullOrderV2::Last => ExecutionNullOrderV2::Last,
+        NullOrderV2::First => ExecutionNullOrderV3::First,
+        NullOrderV2::Last => ExecutionNullOrderV3::Last,
     }
 }
 
 /// Closed join-mode vocabulary. Only `Join` operators carry a mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionJoinModeV2 {
+pub enum ExecutionJoinModeV3 {
     Inner,
     Cross,
 }
 
-const fn project_join_mode(value: JoinModeV2) -> ExecutionJoinModeV2 {
+const fn project_join_mode(value: JoinModeV2) -> ExecutionJoinModeV3 {
     match value {
-        JoinModeV2::Inner => ExecutionJoinModeV2::Inner,
-        JoinModeV2::Cross => ExecutionJoinModeV2::Cross,
+        JoinModeV2::Inner => ExecutionJoinModeV3::Inner,
+        JoinModeV2::Cross => ExecutionJoinModeV3::Cross,
     }
 }
 
 /// Closed scan-source-kind vocabulary. Names and namespaces stay open strings
-/// on [`ExecutionSourceV2`].
+/// on [`ExecutionSourceV3`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionSourceKindV2 {
+pub enum ExecutionSourceKindV3 {
     Relation,
     View,
     Composition,
@@ -509,21 +500,21 @@ pub enum ExecutionSourceKindV2 {
 /// Closed call-target vocabulary. Only the callee identity is an open string;
 /// the target class is an enum variant.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ExecutionCallTargetV2 {
+pub enum ExecutionCallTargetV3 {
     Builtin { name: String },
     Predicate { name: String },
     HostPredicate { fingerprint: String },
 }
 
-fn project_call_target(target: &ResolvedCallTargetV2) -> ExecutionCallTargetV2 {
+fn project_call_target(target: &ResolvedCallTargetV2) -> ExecutionCallTargetV3 {
     match target {
-        ResolvedCallTargetV2::Builtin(id) => ExecutionCallTargetV2::Builtin {
+        ResolvedCallTargetV2::Builtin(id) => ExecutionCallTargetV3::Builtin {
             name: id.name().unwrap_or("invalid_closed_builtin").to_owned(),
         },
-        ResolvedCallTargetV2::Predicate(id) => ExecutionCallTargetV2::Predicate {
+        ResolvedCallTargetV2::Predicate(id) => ExecutionCallTargetV3::Predicate {
             name: id.as_str().to_owned(),
         },
-        ResolvedCallTargetV2::HostPredicate(id) => ExecutionCallTargetV2::HostPredicate {
+        ResolvedCallTargetV2::HostPredicate(id) => ExecutionCallTargetV3::HostPredicate {
             fingerprint: hex_lower(id.canonical_bytes()),
         },
     }
@@ -531,67 +522,67 @@ fn project_call_target(target: &ResolvedCallTargetV2) -> ExecutionCallTargetV2 {
 
 /// Closed logical-quantifier vocabulary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionLogicalQuantifierV2 {
+pub enum ExecutionLogicalQuantifierV3 {
     Exists,
     Forall,
 }
 
 const fn project_logical_quantifier(
     value: LogicalQuantifierKindV2,
-) -> ExecutionLogicalQuantifierV2 {
+) -> ExecutionLogicalQuantifierV3 {
     match value {
-        LogicalQuantifierKindV2::Exists => ExecutionLogicalQuantifierV2::Exists,
-        LogicalQuantifierKindV2::Forall => ExecutionLogicalQuantifierV2::Forall,
+        LogicalQuantifierKindV2::Exists => ExecutionLogicalQuantifierV3::Exists,
+        LogicalQuantifierKindV2::Forall => ExecutionLogicalQuantifierV3::Forall,
     }
 }
 
 /// Closed relational-existence polarity vocabulary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionExistsPolarityV2 {
+pub enum ExecutionExistsPolarityV3 {
     Exists,
     NotExists,
 }
 
-const fn project_exists_polarity(value: RelationExistsPolarityV2) -> ExecutionExistsPolarityV2 {
+const fn project_exists_polarity(value: RelationExistsPolarityV2) -> ExecutionExistsPolarityV3 {
     match value {
-        RelationExistsPolarityV2::Exists => ExecutionExistsPolarityV2::Exists,
-        RelationExistsPolarityV2::NotExists => ExecutionExistsPolarityV2::NotExists,
+        RelationExistsPolarityV2::Exists => ExecutionExistsPolarityV3::Exists,
+        RelationExistsPolarityV2::NotExists => ExecutionExistsPolarityV3::NotExists,
     }
 }
 
-fn project_plan(plan: &SemanticPlanV2) -> ExecutionPlanV2 {
+fn project_plan(plan: &SemanticPlanV2) -> ExecutionPlanV3 {
     let authority = match plan.authority_lane() {
-        AuthorityLaneV2::FrontendChecked => ExecutionAuthorityV2::FrontendChecked,
+        AuthorityLaneV2::FrontendChecked => ExecutionAuthorityV3::FrontendChecked,
         AuthorityLaneV2::CertifiedRequirementValidated => {
-            ExecutionAuthorityV2::CertifiedRequirementValidated
+            ExecutionAuthorityV3::CertifiedRequirementValidated
         }
     };
     let determinism = match plan.evaluation_determinism() {
-        EvaluationDeterminismV2::Deterministic => ExecutionDeterminismV2::Deterministic,
-        EvaluationDeterminismV2::NonDeterministic => ExecutionDeterminismV2::NonDeterministic,
+        EvaluationDeterminismV2::Deterministic => ExecutionDeterminismV3::Deterministic,
+        EvaluationDeterminismV2::NonDeterministic => ExecutionDeterminismV3::NonDeterministic,
     };
     let evidence = match plan.evidence() {
-        EvidenceRequirementV2::None => ExecutionEvidenceV2::None,
-        EvidenceRequirementV2::SourceLocation => ExecutionEvidenceV2::SourceLocation,
-        EvidenceRequirementV2::WitnessPayload => ExecutionEvidenceV2::WitnessPayload,
-        EvidenceRequirementV2::ProofTree => ExecutionEvidenceV2::ProofTree,
+        EvidenceRequirementV2::None => ExecutionEvidenceV3::None,
+        EvidenceRequirementV2::SourceLocation => ExecutionEvidenceV3::SourceLocation,
+        EvidenceRequirementV2::WitnessPayload => ExecutionEvidenceV3::WitnessPayload,
+        EvidenceRequirementV2::ProofTree => ExecutionEvidenceV3::ProofTree,
     };
     let effect = match plan.effect() {
-        EffectClassV2::ReadOnly => ExecutionEffectV2::ReadOnly,
-        EffectClassV2::ProofEvidenceOnly => ExecutionEffectV2::ProofEvidenceOnly,
-        EffectClassV2::ExportOnly => ExecutionEffectV2::ExportOnly,
-        EffectClassV2::MutationForbidden => ExecutionEffectV2::MutationForbidden,
+        EffectClassV2::ReadOnly => ExecutionEffectV3::ReadOnly,
+        EffectClassV2::ProofEvidenceOnly => ExecutionEffectV3::ProofEvidenceOnly,
+        EffectClassV2::ExportOnly => ExecutionEffectV3::ExportOnly,
+        EffectClassV2::MutationForbidden => ExecutionEffectV3::MutationForbidden,
     };
     let policy_family = match plan.policy() {
-        PlanPolicyV2::Relational { .. } => ExecutionPolicyFamilyV2::Relational,
-        PlanPolicyV2::Graph(_) => ExecutionPolicyFamilyV2::Graph,
-        PlanPolicyV2::Check(_) => ExecutionPolicyFamilyV2::Check,
-        PlanPolicyV2::Presentation(_) => ExecutionPolicyFamilyV2::Presentation,
-        PlanPolicyV2::Rule(_) => ExecutionPolicyFamilyV2::RuleProgram,
-        PlanPolicyV2::MetaRequireCertified => ExecutionPolicyFamilyV2::MetaRequireCertified,
-        PlanPolicyV2::Composition(_) => ExecutionPolicyFamilyV2::Composition,
+        PlanPolicyV2::Relational { .. } => ExecutionPolicyFamilyV3::Relational,
+        PlanPolicyV2::Graph(_) => ExecutionPolicyFamilyV3::Graph,
+        PlanPolicyV2::Check(_) => ExecutionPolicyFamilyV3::Check,
+        PlanPolicyV2::Presentation(_) => ExecutionPolicyFamilyV3::Presentation,
+        PlanPolicyV2::Rule(_) => ExecutionPolicyFamilyV3::RuleProgram,
+        PlanPolicyV2::MetaRequireCertified => ExecutionPolicyFamilyV3::MetaRequireCertified,
+        PlanPolicyV2::Composition(_) => ExecutionPolicyFamilyV3::Composition,
     };
-    ExecutionPlanV2 {
+    ExecutionPlanV3 {
         authority,
         determinism,
         evidence,
@@ -602,50 +593,50 @@ fn project_plan(plan: &SemanticPlanV2) -> ExecutionPlanV2 {
 
 /// A sealed relational operator tree and its typed expression table.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionRelationV2 {
+pub struct ExecutionRelationV3 {
     item_id: SemanticItemIdV2,
-    root: ExecutionRelationalOperatorV2,
-    expressions: Box<[ExecutionExpressionV2]>,
+    root: ExecutionRelationalOperatorV3,
+    expressions: Box<[ExecutionExpressionV3]>,
 }
 
-impl ExecutionRelationV2 {
+impl ExecutionRelationV3 {
     #[must_use]
     pub const fn item_id(&self) -> SemanticItemIdV2 {
         self.item_id
     }
     #[must_use]
-    pub const fn root(&self) -> &ExecutionRelationalOperatorV2 {
+    pub const fn root(&self) -> &ExecutionRelationalOperatorV3 {
         &self.root
     }
     #[must_use]
-    pub fn expressions(&self) -> &[ExecutionExpressionV2] {
+    pub fn expressions(&self) -> &[ExecutionExpressionV3] {
         &self.expressions
     }
 }
 
 /// One closed relational operator node.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionRelationalOperatorV2 {
+pub struct ExecutionRelationalOperatorV3 {
     family: AlgebraFamilyV2,
-    join_mode: Option<ExecutionJoinModeV2>,
+    join_mode: Option<ExecutionJoinModeV3>,
     stage: SourceQualifiedNodeIdV2,
-    source: Option<ExecutionSourceV2>,
-    schema: ExecutionSchemaV2,
+    source: Option<ExecutionSourceV3>,
+    schema: ExecutionSchemaV3,
     predicates: Box<[SourceQualifiedNodeIdV2]>,
     expressions: Box<[SourceQualifiedNodeIdV2]>,
-    correlations: Box<[ExecutionCorrelationV2]>,
-    partition_input: Box<[ExecutionBindingV2]>,
-    children: Box<[ExecutionRelationalOperatorV2]>,
+    correlations: Box<[ExecutionCorrelationV3]>,
+    partition_input: Box<[ExecutionBindingV3]>,
+    children: Box<[ExecutionRelationalOperatorV3]>,
 }
 
-impl ExecutionRelationalOperatorV2 {
+impl ExecutionRelationalOperatorV3 {
     #[must_use]
     pub const fn family(&self) -> AlgebraFamilyV2 {
         self.family
     }
     /// Join mode for `Join` operators; `None` for every other family.
     #[must_use]
-    pub const fn join_mode(&self) -> Option<ExecutionJoinModeV2> {
+    pub const fn join_mode(&self) -> Option<ExecutionJoinModeV3> {
         self.join_mode
     }
     #[must_use]
@@ -653,11 +644,11 @@ impl ExecutionRelationalOperatorV2 {
         self.stage
     }
     #[must_use]
-    pub const fn source(&self) -> Option<&ExecutionSourceV2> {
+    pub const fn source(&self) -> Option<&ExecutionSourceV3> {
         self.source.as_ref()
     }
     #[must_use]
-    pub const fn schema(&self) -> &ExecutionSchemaV2 {
+    pub const fn schema(&self) -> &ExecutionSchemaV3 {
         &self.schema
     }
     #[must_use]
@@ -669,34 +660,34 @@ impl ExecutionRelationalOperatorV2 {
         &self.expressions
     }
     #[must_use]
-    pub fn correlations(&self) -> &[ExecutionCorrelationV2] {
+    pub fn correlations(&self) -> &[ExecutionCorrelationV3] {
         &self.correlations
     }
     #[must_use]
-    pub fn partition_input(&self) -> &[ExecutionBindingV2] {
+    pub fn partition_input(&self) -> &[ExecutionBindingV3] {
         &self.partition_input
     }
     #[must_use]
-    pub fn children(&self) -> &[ExecutionRelationalOperatorV2] {
+    pub fn children(&self) -> &[ExecutionRelationalOperatorV3] {
         &self.children
     }
 }
 
 /// Typed relation output contract.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionSchemaV2 {
-    fields: Box<[ExecutionFieldV2]>,
-    cardinality: ExecutionCardinalityV2,
+pub struct ExecutionSchemaV3 {
+    fields: Box<[ExecutionFieldV3]>,
+    cardinality: ExecutionCardinalityV3,
     partition_keys: Box<[SourceQualifiedNodeIdV2]>,
-    order: Box<[ExecutionOrderKeyV2]>,
+    order: Box<[ExecutionOrderKeyV3]>,
 }
-impl ExecutionSchemaV2 {
+impl ExecutionSchemaV3 {
     #[must_use]
-    pub fn fields(&self) -> &[ExecutionFieldV2] {
+    pub fn fields(&self) -> &[ExecutionFieldV3] {
         &self.fields
     }
     #[must_use]
-    pub const fn cardinality(&self) -> ExecutionCardinalityV2 {
+    pub const fn cardinality(&self) -> ExecutionCardinalityV3 {
         self.cardinality
     }
     #[must_use]
@@ -704,70 +695,70 @@ impl ExecutionSchemaV2 {
         &self.partition_keys
     }
     #[must_use]
-    pub fn order(&self) -> &[ExecutionOrderKeyV2] {
+    pub fn order(&self) -> &[ExecutionOrderKeyV3] {
         &self.order
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionFieldV2 {
+pub struct ExecutionFieldV3 {
     name: String,
-    value_type: ExecutionValueTypeV2,
+    value_type: ExecutionValueTypeV3,
 }
-impl ExecutionFieldV2 {
+impl ExecutionFieldV3 {
     #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
     #[must_use]
-    pub const fn value_type(&self) -> &ExecutionValueTypeV2 {
+    pub const fn value_type(&self) -> &ExecutionValueTypeV3 {
         &self.value_type
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionOrderKeyV2 {
+pub struct ExecutionOrderKeyV3 {
     expression: SourceQualifiedNodeIdV2,
-    direction: ExecutionSortDirectionV2,
-    null_order: ExecutionNullOrderV2,
-    value_type: ExecutionValueTypeV2,
+    direction: ExecutionSortDirectionV3,
+    null_order: ExecutionNullOrderV3,
+    value_type: ExecutionValueTypeV3,
 }
-impl ExecutionOrderKeyV2 {
+impl ExecutionOrderKeyV3 {
     #[must_use]
     pub const fn expression(&self) -> SourceQualifiedNodeIdV2 {
         self.expression
     }
     #[must_use]
-    pub const fn direction(&self) -> ExecutionSortDirectionV2 {
+    pub const fn direction(&self) -> ExecutionSortDirectionV3 {
         self.direction
     }
     #[must_use]
-    pub const fn null_order(&self) -> ExecutionNullOrderV2 {
+    pub const fn null_order(&self) -> ExecutionNullOrderV3 {
         self.null_order
     }
     #[must_use]
-    pub const fn value_type(&self) -> &ExecutionValueTypeV2 {
+    pub const fn value_type(&self) -> &ExecutionValueTypeV3 {
         &self.value_type
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionExpressionV2 {
+pub struct ExecutionExpressionV3 {
     id: SourceQualifiedNodeIdV2,
-    value_type: ExecutionValueTypeV2,
-    shape: ExecutionExpressionShapeV2,
+    value_type: ExecutionValueTypeV3,
+    shape: ExecutionExpressionShapeV3,
 }
-impl ExecutionExpressionV2 {
+impl ExecutionExpressionV3 {
     #[must_use]
     pub const fn id(&self) -> SourceQualifiedNodeIdV2 {
         self.id
     }
     #[must_use]
-    pub const fn value_type(&self) -> &ExecutionValueTypeV2 {
+    pub const fn value_type(&self) -> &ExecutionValueTypeV3 {
         &self.value_type
     }
     #[must_use]
-    pub const fn shape(&self) -> &ExecutionExpressionShapeV2 {
+    pub const fn shape(&self) -> &ExecutionExpressionShapeV3 {
         &self.shape
     }
 }
@@ -775,24 +766,24 @@ impl ExecutionExpressionV2 {
 /// Closed executable expression vocabulary. Child identities address entries
 /// in the document expression table.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ExecutionExpressionShapeV2 {
-    Literal(String),
-    Binding(ExecutionBindingV2),
+pub enum ExecutionExpressionShapeV3 {
+    Literal(ExecutionLiteralV3),
+    Binding(ExecutionBindingV3),
     Path {
         base: SourceQualifiedNodeIdV2,
         segments: Box<[String]>,
     },
     Unary {
-        operator: ExecutionOperatorV2,
+        operator: ExecutionOperatorV3,
         operand: SourceQualifiedNodeIdV2,
     },
     Binary {
-        operator: ExecutionOperatorV2,
+        operator: ExecutionOperatorV3,
         lhs: SourceQualifiedNodeIdV2,
         rhs: SourceQualifiedNodeIdV2,
     },
     Call {
-        target: ExecutionCallTargetV2,
+        target: ExecutionCallTargetV3,
         arguments: Box<[Option<SourceQualifiedNodeIdV2>]>,
     },
     Paren(SourceQualifiedNodeIdV2),
@@ -800,45 +791,72 @@ pub enum ExecutionExpressionShapeV2 {
     List(Box<[SourceQualifiedNodeIdV2]>),
     BoolValue(SourceQualifiedNodeIdV2),
     Compare {
-        operator: ExecutionOperatorV2,
+        operator: ExecutionOperatorV3,
         lhs: SourceQualifiedNodeIdV2,
         rhs: SourceQualifiedNodeIdV2,
     },
     And {
-        operator: ExecutionOperatorV2,
+        operator: ExecutionOperatorV3,
         lhs: SourceQualifiedNodeIdV2,
         rhs: SourceQualifiedNodeIdV2,
     },
     Or {
-        operator: ExecutionOperatorV2,
+        operator: ExecutionOperatorV3,
         lhs: SourceQualifiedNodeIdV2,
         rhs: SourceQualifiedNodeIdV2,
     },
     Not {
-        operator: ExecutionOperatorV2,
+        operator: ExecutionOperatorV3,
         operand: SourceQualifiedNodeIdV2,
     },
     LogicalQuantifier {
-        kind: ExecutionLogicalQuantifierV2,
-        binders: Box<[ExecutionBindingV2]>,
+        kind: ExecutionLogicalQuantifierV3,
+        binders: Box<[ExecutionBindingV3]>,
         body: SourceQualifiedNodeIdV2,
     },
     RelationExists {
-        polarity: ExecutionExistsPolarityV2,
+        polarity: ExecutionExistsPolarityV3,
         relation_root: SourceQualifiedNodeIdV2,
-        correlations: Box<[ExecutionCorrelationV2]>,
+        correlations: Box<[ExecutionCorrelationV3]>,
     },
+}
+
+/// Typed literal projected from the checked type owner, never parsed from a
+/// display witness. The containing execution document has no public mint path.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExecutionLiteralV3 {
+    Int(i128),
+    Float(ExecutionFiniteFloatV3),
+    Bool(bool),
+    String(String),
+    Null,
+}
+
+/// Canonical finite IEEE-754 bits. The type owner normalizes negative zero.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ExecutionFiniteFloatV3(u64);
+
+impl ExecutionFiniteFloatV3 {
+    #[must_use]
+    pub const fn bits(self) -> u64 {
+        self.0
+    }
+
+    #[must_use]
+    pub fn get(self) -> f64 {
+        f64::from_bits(self.0)
+    }
 }
 
 /// Public semantic operator: the canonical overload identity from the closed
 /// registry plus its stable spelling witness. The `overload_id` is the stable
 /// identity; `symbol` renders it and is never parsed back.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionOperatorV2 {
+pub struct ExecutionOperatorV3 {
     symbol: String,
     overload_id: u32,
 }
-impl ExecutionOperatorV2 {
+impl ExecutionOperatorV3 {
     #[must_use]
     pub fn symbol(&self) -> &str {
         &self.symbol
@@ -849,8 +867,8 @@ impl ExecutionOperatorV2 {
     }
 }
 
-fn project_operator(operator: quanta_gqlang_v2_sema::OperatorIdV2) -> ExecutionOperatorV2 {
-    ExecutionOperatorV2 {
+fn project_operator(operator: quanta_gqlang_v2_sema::OperatorIdV2) -> ExecutionOperatorV3 {
+    ExecutionOperatorV3 {
         symbol: operator
             .symbol()
             .unwrap_or("invalid_closed_operator")
@@ -860,7 +878,7 @@ fn project_operator(operator: quanta_gqlang_v2_sema::OperatorIdV2) -> ExecutionO
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ExecutionRelationAuthorityV2 {
+pub enum ExecutionRelationAuthorityV3 {
     Host,
     CanonicalWorkspaceFiles,
     CatalogView,
@@ -868,19 +886,19 @@ pub enum ExecutionRelationAuthorityV2 {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionSourceV2 {
-    authority: ExecutionRelationAuthorityV2,
-    kind: ExecutionSourceKindV2,
+pub struct ExecutionSourceV3 {
+    authority: ExecutionRelationAuthorityV3,
+    kind: ExecutionSourceKindV3,
     namespace: Option<String>,
     name: String,
 }
-impl ExecutionSourceV2 {
+impl ExecutionSourceV3 {
     #[must_use]
-    pub const fn authority(&self) -> ExecutionRelationAuthorityV2 {
+    pub const fn authority(&self) -> ExecutionRelationAuthorityV3 {
         self.authority
     }
     #[must_use]
-    pub const fn kind(&self) -> ExecutionSourceKindV2 {
+    pub const fn kind(&self) -> ExecutionSourceKindV3 {
         self.kind
     }
     #[must_use]
@@ -894,13 +912,13 @@ impl ExecutionSourceV2 {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionBindingV2 {
+pub struct ExecutionBindingV3 {
     source_id: SourceIdV2,
     owner_node: u32,
     ordinal: usize,
     name: String,
 }
-impl ExecutionBindingV2 {
+impl ExecutionBindingV3 {
     #[must_use]
     pub const fn source_id(&self) -> SourceIdV2 {
         self.source_id
@@ -920,13 +938,13 @@ impl ExecutionBindingV2 {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionCorrelationV2 {
-    binding: ExecutionBindingV2,
+pub struct ExecutionCorrelationV3 {
+    binding: ExecutionBindingV3,
     reference: SourceQualifiedNodeIdV2,
 }
-impl ExecutionCorrelationV2 {
+impl ExecutionCorrelationV3 {
     #[must_use]
-    pub const fn binding(&self) -> &ExecutionBindingV2 {
+    pub const fn binding(&self) -> &ExecutionBindingV3 {
         &self.binding
     }
     #[must_use]
@@ -937,21 +955,21 @@ impl ExecutionCorrelationV2 {
 
 /// Ordered composition producer/binding contract plus exact WITH and body.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionCompositionV2 {
-    bindings: Box<[ExecutionCompositionBindingV2]>,
-    with_binding: ExecutionBindingV2,
+pub struct ExecutionCompositionV3 {
+    bindings: Box<[ExecutionCompositionBindingV3]>,
+    with_binding: ExecutionBindingV3,
     body_item_id: SemanticItemIdV2,
-    body_family: ExecutionFamilyV2,
-    body_relation: Option<ExecutionRelationV2>,
-    body: ExecutionCompositionBodyV2,
+    body_family: ExecutionFamilyV3,
+    body_relation: Option<ExecutionRelationV3>,
+    body: ExecutionCompositionBodyV3,
 }
-impl ExecutionCompositionV2 {
+impl ExecutionCompositionV3 {
     #[must_use]
-    pub fn bindings(&self) -> &[ExecutionCompositionBindingV2] {
+    pub fn bindings(&self) -> &[ExecutionCompositionBindingV3] {
         &self.bindings
     }
     #[must_use]
-    pub const fn with_binding(&self) -> &ExecutionBindingV2 {
+    pub const fn with_binding(&self) -> &ExecutionBindingV3 {
         &self.with_binding
     }
     #[must_use]
@@ -959,39 +977,39 @@ impl ExecutionCompositionV2 {
         self.body_item_id
     }
     #[must_use]
-    pub const fn body_family(&self) -> ExecutionFamilyV2 {
+    pub const fn body_family(&self) -> ExecutionFamilyV3 {
         self.body_family
     }
     #[must_use]
-    pub const fn body_relation(&self) -> Option<&ExecutionRelationV2> {
+    pub const fn body_relation(&self) -> Option<&ExecutionRelationV3> {
         self.body_relation.as_ref()
     }
     #[must_use]
-    pub const fn body(&self) -> &ExecutionCompositionBodyV2 {
+    pub const fn body(&self) -> &ExecutionCompositionBodyV3 {
         &self.body
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ExecutionCompositionBodyV2 {
+pub enum ExecutionCompositionBodyV3 {
     Relation,
-    Graph(ExecutionGraphKindV2),
+    Graph(ExecutionGraphKindV3),
     Check,
     Explain,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ExecutionCompositionBindingV2 {
-    binding: ExecutionBindingV2,
+pub struct ExecutionCompositionBindingV3 {
+    binding: ExecutionBindingV3,
     producer_item_id: SemanticItemIdV2,
-    producer_family: ExecutionFamilyV2,
-    schema: Option<ExecutionSchemaV2>,
-    relation: Option<ExecutionRelationV2>,
-    producer: ExecutionCompositionProducerV2,
+    producer_family: ExecutionFamilyV3,
+    schema: Option<ExecutionSchemaV3>,
+    relation: Option<ExecutionRelationV3>,
+    producer: ExecutionCompositionProducerV3,
 }
-impl ExecutionCompositionBindingV2 {
+impl ExecutionCompositionBindingV3 {
     #[must_use]
-    pub const fn binding(&self) -> &ExecutionBindingV2 {
+    pub const fn binding(&self) -> &ExecutionBindingV3 {
         &self.binding
     }
     #[must_use]
@@ -999,43 +1017,43 @@ impl ExecutionCompositionBindingV2 {
         self.producer_item_id
     }
     #[must_use]
-    pub const fn producer_family(&self) -> ExecutionFamilyV2 {
+    pub const fn producer_family(&self) -> ExecutionFamilyV3 {
         self.producer_family
     }
     #[must_use]
-    pub const fn schema(&self) -> Option<&ExecutionSchemaV2> {
+    pub const fn schema(&self) -> Option<&ExecutionSchemaV3> {
         self.schema.as_ref()
     }
     #[must_use]
-    pub const fn relation(&self) -> Option<&ExecutionRelationV2> {
+    pub const fn relation(&self) -> Option<&ExecutionRelationV3> {
         self.relation.as_ref()
     }
     #[must_use]
-    pub const fn producer(&self) -> &ExecutionCompositionProducerV2 {
+    pub const fn producer(&self) -> &ExecutionCompositionProducerV3 {
         &self.producer
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ExecutionCompositionProducerV2 {
+pub enum ExecutionCompositionProducerV3 {
     Relation,
     Sample {
         query_text: String,
-        mode: ExecutionSampleModeV2,
+        mode: ExecutionSampleModeV3,
         limit: u32,
     },
     Graph {
-        kind: ExecutionGraphKindV2,
+        kind: ExecutionGraphKindV3,
     },
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionSampleModeV2 {
+pub enum ExecutionSampleModeV3 {
     Lexical,
     Semantic,
     Hybrid,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ExecutionGraphKindV2 {
+pub enum ExecutionGraphKindV3 {
     Reachability,
     Flow,
     Slice,
@@ -1048,7 +1066,7 @@ pub enum ExecutionGraphKindV2 {
 /// Expression-closure failure: the item root references an expression the
 /// document table cannot supply from the item's own source.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ExecutionClosureFailureV2 {
+pub(crate) enum ExecutionClosureFailureV3 {
     /// A referenced expression identity is absent from the document table.
     Dangling,
     /// A referenced expression identity belongs to another source.
@@ -1058,7 +1076,7 @@ pub(crate) enum ExecutionClosureFailureV2 {
 pub(crate) fn project_relation(
     document: &SemanticDocumentV2,
     lowered: &LoweredRelationItemV2,
-) -> Result<ExecutionRelationV2, ExecutionClosureFailureV2> {
+) -> Result<ExecutionRelationV3, ExecutionClosureFailureV3> {
     project_relation_root(document, lowered.item_id(), lowered.root())
 }
 
@@ -1066,7 +1084,7 @@ pub(crate) fn project_relation_root(
     document: &SemanticDocumentV2,
     item_id: SemanticItemIdV2,
     root: &CheckedAlgebraNodeV2,
-) -> Result<ExecutionRelationV2, ExecutionClosureFailureV2> {
+) -> Result<ExecutionRelationV3, ExecutionClosureFailureV3> {
     let projected = project_node(root);
     let mut roots = Vec::new();
     collect_operator_roots(&projected, &mut roots);
@@ -1079,11 +1097,11 @@ pub(crate) fn project_relation_root(
     for key in closed {
         // `close_expression_ids` resolved every key through this same table.
         let Some(expr) = document.expression(key) else {
-            return Err(ExecutionClosureFailureV2::Dangling);
+            return Err(ExecutionClosureFailureV3::Dangling);
         };
         table.push(project_expression(expr));
     }
-    Ok(ExecutionRelationV2 {
+    Ok(ExecutionRelationV3 {
         item_id,
         root: projected,
         expressions: table.into_boxed_slice(),
@@ -1094,7 +1112,7 @@ pub(crate) fn project_relation_root(
 /// and projection keys, correlation references, schema partition keys, and
 /// order-key expressions, recursively through children.
 fn collect_operator_roots(
-    node: &ExecutionRelationalOperatorV2,
+    node: &ExecutionRelationalOperatorV3,
     roots: &mut Vec<SourceQualifiedNodeIdV2>,
 ) {
     roots.extend_from_slice(&node.predicates);
@@ -1152,18 +1170,18 @@ fn close_expression_ids(
     source_id: SourceIdV2,
     roots: &[SourceQualifiedNodeIdV2],
     children_of: &dyn Fn(SourceQualifiedNodeIdV2) -> Option<Vec<SourceQualifiedNodeIdV2>>,
-) -> Result<Vec<SourceQualifiedNodeIdV2>, ExecutionClosureFailureV2> {
+) -> Result<Vec<SourceQualifiedNodeIdV2>, ExecutionClosureFailureV3> {
     let mut closed = std::collections::BTreeSet::new();
     let mut stack: Vec<SourceQualifiedNodeIdV2> = roots.to_vec();
     while let Some(key) = stack.pop() {
         if key.source_id != source_id {
-            return Err(ExecutionClosureFailureV2::Foreign);
+            return Err(ExecutionClosureFailureV3::Foreign);
         }
         if !closed.insert(key) {
             continue;
         }
         let Some(children) = children_of(key) else {
-            return Err(ExecutionClosureFailureV2::Dangling);
+            return Err(ExecutionClosureFailureV3::Dangling);
         };
         stack.extend(children);
     }
@@ -1173,9 +1191,9 @@ fn close_expression_ids(
 pub(crate) fn project_composition(
     document: &SemanticDocumentV2,
     composition: &ResolvedCompositionV2,
-    body_relation: Option<ExecutionRelationV2>,
-    producer_relations: Vec<Option<ExecutionRelationV2>>,
-) -> ExecutionCompositionV2 {
+    body_relation: Option<ExecutionRelationV3>,
+    producer_relations: Vec<Option<ExecutionRelationV3>>,
+) -> ExecutionCompositionV3 {
     let bindings = composition
         .bindings()
         .iter()
@@ -1183,8 +1201,8 @@ pub(crate) fn project_composition(
         .map(|(entry, relation)| {
             let (family, producer) = match entry.producer() {
                 ResolvedCompositionProducerV2::Query(_) => (
-                    ExecutionFamilyV2::Relation,
-                    ExecutionCompositionProducerV2::Relation,
+                    ExecutionFamilyV3::Relation,
+                    ExecutionCompositionProducerV3::Relation,
                 ),
                 ResolvedCompositionProducerV2::Sample { presentation, .. } => {
                     let ResolvedPresentationKindV2::Sample {
@@ -1197,8 +1215,8 @@ pub(crate) fn project_composition(
                         unreachable!("sealed composition SAMPLE producer")
                     };
                     (
-                        ExecutionFamilyV2::Presentation,
-                        ExecutionCompositionProducerV2::Sample {
+                        ExecutionFamilyV3::Presentation,
+                        ExecutionCompositionProducerV3::Sample {
                             query_text: query_text.clone(),
                             mode: project_sample_mode(*mode),
                             limit: *limit,
@@ -1206,13 +1224,13 @@ pub(crate) fn project_composition(
                     )
                 }
                 ResolvedCompositionProducerV2::Graph { graph, .. } => (
-                    ExecutionFamilyV2::Graph,
-                    ExecutionCompositionProducerV2::Graph {
+                    ExecutionFamilyV3::Graph,
+                    ExecutionCompositionProducerV3::Graph {
                         kind: project_graph_kind(graph.kind()),
                     },
                 ),
             };
-            ExecutionCompositionBindingV2 {
+            ExecutionCompositionBindingV3 {
                 binding: project_binding(entry.binding()),
                 producer_item_id: entry.producer().item_id(),
                 producer_family: family,
@@ -1226,27 +1244,27 @@ pub(crate) fn project_composition(
     let (body_item_id, body_family, body) = match composition.body() {
         ResolvedCompositionBodyV2::Query(body) => (
             body.item_id(),
-            ExecutionFamilyV2::Relation,
-            ExecutionCompositionBodyV2::Relation,
+            ExecutionFamilyV3::Relation,
+            ExecutionCompositionBodyV3::Relation,
         ),
         ResolvedCompositionBodyV2::Graph(body) => (
             body.item_id(),
-            ExecutionFamilyV2::Graph,
-            ExecutionCompositionBodyV2::Graph(project_graph_kind(body.kind())),
+            ExecutionFamilyV3::Graph,
+            ExecutionCompositionBodyV3::Graph(project_graph_kind(body.kind())),
         ),
         ResolvedCompositionBodyV2::Check(body) => (
             body.item_id(),
-            ExecutionFamilyV2::Check,
-            ExecutionCompositionBodyV2::Check,
+            ExecutionFamilyV3::Check,
+            ExecutionCompositionBodyV3::Check,
         ),
         ResolvedCompositionBodyV2::Explain(body) => (
             body.item_id(),
-            ExecutionFamilyV2::Presentation,
-            ExecutionCompositionBodyV2::Explain,
+            ExecutionFamilyV3::Presentation,
+            ExecutionCompositionBodyV3::Explain,
         ),
     };
     let _ = document;
-    ExecutionCompositionV2 {
+    ExecutionCompositionV3 {
         bindings,
         with_binding: project_binding(composition.with_target()),
         body_item_id,
@@ -1256,26 +1274,26 @@ pub(crate) fn project_composition(
     }
 }
 
-const fn project_sample_mode(mode: SampleModeV1) -> ExecutionSampleModeV2 {
+const fn project_sample_mode(mode: SampleModeV1) -> ExecutionSampleModeV3 {
     match mode {
-        SampleModeV1::Lexical => ExecutionSampleModeV2::Lexical,
-        SampleModeV1::Semantic => ExecutionSampleModeV2::Semantic,
-        SampleModeV1::Hybrid => ExecutionSampleModeV2::Hybrid,
+        SampleModeV1::Lexical => ExecutionSampleModeV3::Lexical,
+        SampleModeV1::Semantic => ExecutionSampleModeV3::Semantic,
+        SampleModeV1::Hybrid => ExecutionSampleModeV3::Hybrid,
     }
 }
-const fn project_graph_kind(kind: GraphQueryKindV1) -> ExecutionGraphKindV2 {
+const fn project_graph_kind(kind: GraphQueryKindV1) -> ExecutionGraphKindV3 {
     match kind {
-        GraphQueryKindV1::Reachability => ExecutionGraphKindV2::Reachability,
-        GraphQueryKindV1::Flow => ExecutionGraphKindV2::Flow,
-        GraphQueryKindV1::Slice => ExecutionGraphKindV2::Slice,
-        GraphQueryKindV1::Taint => ExecutionGraphKindV2::Taint,
-        GraphQueryKindV1::Path => ExecutionGraphKindV2::Path,
-        GraphQueryKindV1::PointsTo => ExecutionGraphKindV2::PointsTo,
-        GraphQueryKindV1::Summary => ExecutionGraphKindV2::Summary,
+        GraphQueryKindV1::Reachability => ExecutionGraphKindV3::Reachability,
+        GraphQueryKindV1::Flow => ExecutionGraphKindV3::Flow,
+        GraphQueryKindV1::Slice => ExecutionGraphKindV3::Slice,
+        GraphQueryKindV1::Taint => ExecutionGraphKindV3::Taint,
+        GraphQueryKindV1::Path => ExecutionGraphKindV3::Path,
+        GraphQueryKindV1::PointsTo => ExecutionGraphKindV3::PointsTo,
+        GraphQueryKindV1::Summary => ExecutionGraphKindV3::Summary,
     }
 }
 
-fn project_node(node: &CheckedAlgebraNodeV2) -> ExecutionRelationalOperatorV2 {
+fn project_node(node: &CheckedAlgebraNodeV2) -> ExecutionRelationalOperatorV3 {
     let source = node.scan_source().map(project_source);
     let predicates = node
         .predicate()
@@ -1294,7 +1312,7 @@ fn project_node(node: &CheckedAlgebraNodeV2) -> ExecutionRelationalOperatorV2 {
         .correlations()
         .into_iter()
         .flat_map(|set| set.iter())
-        .map(|edge| ExecutionCorrelationV2 {
+        .map(|edge| ExecutionCorrelationV3 {
             binding: project_binding(edge.binding()),
             reference: edge.reference(),
         })
@@ -1312,7 +1330,7 @@ fn project_node(node: &CheckedAlgebraNodeV2) -> ExecutionRelationalOperatorV2 {
         .map(project_node)
         .collect::<Vec<_>>()
         .into_boxed_slice();
-    ExecutionRelationalOperatorV2 {
+    ExecutionRelationalOperatorV3 {
         family: node.family(),
         join_mode: node.join_mode().map(project_join_mode),
         stage: node.stage_key(),
@@ -1326,38 +1344,36 @@ fn project_node(node: &CheckedAlgebraNodeV2) -> ExecutionRelationalOperatorV2 {
     }
 }
 
-fn project_expression(expr: &TypedExprV2) -> ExecutionExpressionV2 {
+fn project_expression(expr: &TypedExprV2) -> ExecutionExpressionV3 {
     let value_type = match expr.type_state() {
         ExpressionTypeStateV2::Known(value) => project_value_type(value),
-        ExpressionTypeStateV2::Unknown(_) => ExecutionValueTypeV2::Unknown,
+        ExpressionTypeStateV2::Unknown(_) => ExecutionValueTypeV3::Unknown,
     };
-    ExecutionExpressionV2 {
+    ExecutionExpressionV3 {
         id: expr.key(),
         value_type,
         shape: project_expression_shape(expr.shape()),
     }
 }
 
-fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShapeV2 {
+fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShapeV3 {
     match shape {
-        TypedExprShapeV2::Literal(fact) => ExecutionExpressionShapeV2::Literal(match fact {
-            TypedLiteralFactV2::DeferredI128MinMagnitude => {
-                "int:-170141183460469231731687303715884105728".to_owned()
-            }
+        TypedExprShapeV2::Literal(fact) => ExecutionExpressionShapeV3::Literal(match fact {
+            TypedLiteralFactV2::DeferredI128MinMagnitude => ExecutionLiteralV3::Int(i128::MIN),
             TypedLiteralFactV2::Value(value) => match value {
-                TypedLiteralValueV2::Int(value) => format!("int:{value}"),
+                TypedLiteralValueV2::Int(value) => ExecutionLiteralV3::Int(*value),
                 TypedLiteralValueV2::Float(value) => {
-                    format!("float:{:016x}", value.get().to_bits())
+                    ExecutionLiteralV3::Float(ExecutionFiniteFloatV3(value.get().to_bits()))
                 }
-                TypedLiteralValueV2::Bool(value) => format!("bool:{value}"),
-                TypedLiteralValueV2::String(value) => format!("string:{value}"),
-                TypedLiteralValueV2::Null => "null".to_owned(),
+                TypedLiteralValueV2::Bool(value) => ExecutionLiteralV3::Bool(*value),
+                TypedLiteralValueV2::String(value) => ExecutionLiteralV3::String(value.clone()),
+                TypedLiteralValueV2::Null => ExecutionLiteralV3::Null,
             },
         }),
         TypedExprShapeV2::Binding(binding) => {
-            ExecutionExpressionShapeV2::Binding(project_binding(binding))
+            ExecutionExpressionShapeV3::Binding(project_binding(binding))
         }
-        TypedExprShapeV2::Path { base, segments } => ExecutionExpressionShapeV2::Path {
+        TypedExprShapeV2::Path { base, segments } => ExecutionExpressionShapeV3::Path {
             base: *base,
             segments: segments
                 .iter()
@@ -1365,16 +1381,16 @@ fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShap
                 .collect::<Vec<_>>()
                 .into_boxed_slice(),
         },
-        TypedExprShapeV2::Unary { operator, operand } => ExecutionExpressionShapeV2::Unary {
+        TypedExprShapeV2::Unary { operator, operand } => ExecutionExpressionShapeV3::Unary {
             operator: project_operator(*operator),
             operand: *operand,
         },
-        TypedExprShapeV2::Binary { operator, lhs, rhs } => ExecutionExpressionShapeV2::Binary {
+        TypedExprShapeV2::Binary { operator, lhs, rhs } => ExecutionExpressionShapeV3::Binary {
             operator: project_operator(*operator),
             lhs: *lhs,
             rhs: *rhs,
         },
-        TypedExprShapeV2::Call { target, arguments } => ExecutionExpressionShapeV2::Call {
+        TypedExprShapeV2::Call { target, arguments } => ExecutionExpressionShapeV3::Call {
             target: project_call_target(target),
             arguments: arguments
                 .iter()
@@ -1385,8 +1401,8 @@ fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShap
                 .collect::<Vec<_>>()
                 .into_boxed_slice(),
         },
-        TypedExprShapeV2::Paren { inner } => ExecutionExpressionShapeV2::Paren(*inner),
-        TypedExprShapeV2::Record(fields) => ExecutionExpressionShapeV2::Record(
+        TypedExprShapeV2::Paren { inner } => ExecutionExpressionShapeV3::Paren(*inner),
+        TypedExprShapeV2::Record(fields) => ExecutionExpressionShapeV3::Record(
             fields
                 .iter()
                 .map(|field| (field.name().to_owned(), field.value()))
@@ -1394,25 +1410,25 @@ fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShap
                 .into_boxed_slice(),
         ),
         TypedExprShapeV2::List(items) => {
-            ExecutionExpressionShapeV2::List(items.clone().into_boxed_slice())
+            ExecutionExpressionShapeV3::List(items.clone().into_boxed_slice())
         }
-        TypedExprShapeV2::BoolValue { value } => ExecutionExpressionShapeV2::BoolValue(*value),
-        TypedExprShapeV2::Compare { operator, lhs, rhs } => ExecutionExpressionShapeV2::Compare {
+        TypedExprShapeV2::BoolValue { value } => ExecutionExpressionShapeV3::BoolValue(*value),
+        TypedExprShapeV2::Compare { operator, lhs, rhs } => ExecutionExpressionShapeV3::Compare {
             operator: project_operator(*operator),
             lhs: *lhs,
             rhs: *rhs,
         },
-        TypedExprShapeV2::And { operator, lhs, rhs } => ExecutionExpressionShapeV2::And {
+        TypedExprShapeV2::And { operator, lhs, rhs } => ExecutionExpressionShapeV3::And {
             operator: project_operator(*operator),
             lhs: *lhs,
             rhs: *rhs,
         },
-        TypedExprShapeV2::Or { operator, lhs, rhs } => ExecutionExpressionShapeV2::Or {
+        TypedExprShapeV2::Or { operator, lhs, rhs } => ExecutionExpressionShapeV3::Or {
             operator: project_operator(*operator),
             lhs: *lhs,
             rhs: *rhs,
         },
-        TypedExprShapeV2::Not { operator, operand } => ExecutionExpressionShapeV2::Not {
+        TypedExprShapeV2::Not { operator, operand } => ExecutionExpressionShapeV3::Not {
             operator: project_operator(*operator),
             operand: *operand,
         },
@@ -1420,7 +1436,7 @@ fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShap
             kind,
             binders,
             body,
-        } => ExecutionExpressionShapeV2::LogicalQuantifier {
+        } => ExecutionExpressionShapeV3::LogicalQuantifier {
             kind: project_logical_quantifier(*kind),
             binders: binders
                 .iter()
@@ -1433,12 +1449,12 @@ fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShap
             polarity,
             relation_root,
             correlations,
-        } => ExecutionExpressionShapeV2::RelationExists {
+        } => ExecutionExpressionShapeV3::RelationExists {
             polarity: project_exists_polarity(*polarity),
             relation_root: *relation_root,
             correlations: correlations
                 .iter()
-                .map(|edge| ExecutionCorrelationV2 {
+                .map(|edge| ExecutionCorrelationV3 {
                     binding: project_binding(edge.binding()),
                     reference: edge.reference(),
                 })
@@ -1448,12 +1464,12 @@ fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShap
     }
 }
 
-fn project_schema(output: &RelationOutputContractV2) -> ExecutionSchemaV2 {
+fn project_schema(output: &RelationOutputContractV2) -> ExecutionSchemaV3 {
     let fields = output
         .row()
         .fields()
         .iter()
-        .map(|field| ExecutionFieldV2 {
+        .map(|field| ExecutionFieldV3 {
             name: field.name().to_owned(),
             value_type: project_value_type(field.value_type()),
         })
@@ -1463,7 +1479,7 @@ fn project_schema(output: &RelationOutputContractV2) -> ExecutionSchemaV2 {
     let order = output
         .ordering()
         .iter()
-        .map(|key| ExecutionOrderKeyV2 {
+        .map(|key| ExecutionOrderKeyV3 {
             expression: key.expression(),
             direction: project_sort_direction(key.direction()),
             null_order: project_null_order(key.null_order()),
@@ -1471,7 +1487,7 @@ fn project_schema(output: &RelationOutputContractV2) -> ExecutionSchemaV2 {
         })
         .collect::<Vec<_>>()
         .into_boxed_slice();
-    ExecutionSchemaV2 {
+    ExecutionSchemaV3 {
         fields,
         cardinality,
         partition_keys: output.partition_keys().to_vec().into_boxed_slice(),
@@ -1479,36 +1495,36 @@ fn project_schema(output: &RelationOutputContractV2) -> ExecutionSchemaV2 {
     }
 }
 
-fn project_source(source: &ResolvedRelationSourceKindV2) -> ExecutionSourceV2 {
+fn project_source(source: &ResolvedRelationSourceKindV2) -> ExecutionSourceV3 {
     match source {
-        ResolvedRelationSourceKindV2::Relation(id) => ExecutionSourceV2 {
+        ResolvedRelationSourceKindV2::Relation(id) => ExecutionSourceV3 {
             authority: match id.authority() {
-                RelationAuthorityV2::Host => ExecutionRelationAuthorityV2::Host,
+                RelationAuthorityV2::Host => ExecutionRelationAuthorityV3::Host,
                 RelationAuthorityV2::CanonicalWorkspaceFiles => {
-                    ExecutionRelationAuthorityV2::CanonicalWorkspaceFiles
+                    ExecutionRelationAuthorityV3::CanonicalWorkspaceFiles
                 }
             },
-            kind: ExecutionSourceKindV2::Relation,
+            kind: ExecutionSourceKindV3::Relation,
             namespace: Some(id.namespace().as_str().to_owned()),
             name: id.qualified_name().to_owned(),
         },
-        ResolvedRelationSourceKindV2::View(id) => ExecutionSourceV2 {
-            authority: ExecutionRelationAuthorityV2::CatalogView,
-            kind: ExecutionSourceKindV2::View,
+        ResolvedRelationSourceKindV2::View(id) => ExecutionSourceV3 {
+            authority: ExecutionRelationAuthorityV3::CatalogView,
+            kind: ExecutionSourceKindV3::View,
             namespace: Some(id.module_id().as_str().to_owned()),
             name: id.local_name().to_owned(),
         },
-        ResolvedRelationSourceKindV2::Composition(id) => ExecutionSourceV2 {
-            authority: ExecutionRelationAuthorityV2::CompositionBinding,
-            kind: ExecutionSourceKindV2::Composition,
+        ResolvedRelationSourceKindV2::Composition(id) => ExecutionSourceV3 {
+            authority: ExecutionRelationAuthorityV3::CompositionBinding,
+            kind: ExecutionSourceKindV3::Composition,
             namespace: None,
             name: id.binding().canonical_name().to_owned(),
         },
     }
 }
 
-fn project_binding(binding: &quanta_gqlang_v2_sema::ResolvedValueBindingV2) -> ExecutionBindingV2 {
-    ExecutionBindingV2 {
+fn project_binding(binding: &quanta_gqlang_v2_sema::ResolvedValueBindingV2) -> ExecutionBindingV3 {
+    ExecutionBindingV3 {
         source_id: binding.source_id(),
         owner_node: binding.target_node().raw(),
         ordinal: binding.ordinal(),
@@ -1524,22 +1540,23 @@ fn project_binding(binding: &quanta_gqlang_v2_sema::ResolvedValueBindingV2) -> E
 /// spellings) are encoded deliberately so the audit stays syntactic — one
 /// `put_*` call per field, no semantic filtering; cross-version drift is gated
 /// by the schema version instead.
-const CONTRACT_SCHEMA_VERSION_V2: u32 = 2;
+const CONTRACT_SCHEMA_VERSION_V3: u32 = 3;
 
 /// Digest of the raw UTF-8 source bytes only.
-fn digest_source_bytes(source: &[u8]) -> ExecutionDigestV2 {
+fn digest_source_bytes(source: &[u8]) -> ExecutionDigestV3 {
     let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.source-bytes.v2");
+    put_str(&mut bytes, "qglang.execution.source-bytes.v3");
+    put_u32(&mut bytes, CONTRACT_SCHEMA_VERSION_V3);
     put_usize(&mut bytes, source.len());
     bytes.extend_from_slice(source);
-    ExecutionDigestV2(sha256(&bytes))
+    ExecutionDigestV3(sha256(&bytes))
 }
 
 /// Digest of the canonical DTO encoding only.
-fn digest_contract(source_id: SourceIdV2, items: &[ExecutionItemV2]) -> ExecutionDigestV2 {
+fn digest_contract(source_id: SourceIdV2, items: &[ExecutionItemV3]) -> ExecutionDigestV3 {
     let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.contract.v2");
-    put_u32(&mut bytes, CONTRACT_SCHEMA_VERSION_V2);
+    put_str(&mut bytes, "qglang.execution.contract.v3");
+    put_u32(&mut bytes, CONTRACT_SCHEMA_VERSION_V3);
     put_u32(&mut bytes, source_id.raw());
     put_usize(&mut bytes, items.len());
     for item in items {
@@ -1561,81 +1578,81 @@ fn digest_contract(source_id: SourceIdV2, items: &[ExecutionItemV2]) -> Executio
             put_u8(&mut bytes, 0);
         }
     }
-    ExecutionDigestV2(sha256(&bytes))
+    ExecutionDigestV3(sha256(&bytes))
 }
 
 /// Digest binding the contract domain, the schema version, and both legs.
 fn digest_qualification(
     source_id: SourceIdV2,
-    source_digest: ExecutionDigestV2,
-    contract_digest: ExecutionDigestV2,
-) -> ExecutionDigestV2 {
+    source_digest: ExecutionDigestV3,
+    contract_digest: ExecutionDigestV3,
+) -> ExecutionDigestV3 {
     let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.qualification.v2");
-    put_u32(&mut bytes, CONTRACT_SCHEMA_VERSION_V2);
+    put_str(&mut bytes, "qglang.execution.qualification.v3");
+    put_u32(&mut bytes, CONTRACT_SCHEMA_VERSION_V3);
     put_u32(&mut bytes, source_id.raw());
     bytes.extend_from_slice(source_digest.as_bytes());
     bytes.extend_from_slice(contract_digest.as_bytes());
-    ExecutionDigestV2(sha256(&bytes))
+    ExecutionDigestV3(sha256(&bytes))
 }
 
-const fn family_tag(value: ExecutionFamilyV2) -> u8 {
+const fn family_tag(value: ExecutionFamilyV3) -> u8 {
     match value {
-        ExecutionFamilyV2::Relation => 0,
-        ExecutionFamilyV2::Graph => 1,
-        ExecutionFamilyV2::Check => 2,
-        ExecutionFamilyV2::Presentation => 3,
-        ExecutionFamilyV2::Composition => 4,
-        ExecutionFamilyV2::MetaRequireCertified => 5,
-        ExecutionFamilyV2::RuleProgram => 6,
+        ExecutionFamilyV3::Relation => 0,
+        ExecutionFamilyV3::Graph => 1,
+        ExecutionFamilyV3::Check => 2,
+        ExecutionFamilyV3::Presentation => 3,
+        ExecutionFamilyV3::Composition => 4,
+        ExecutionFamilyV3::MetaRequireCertified => 5,
+        ExecutionFamilyV3::RuleProgram => 6,
     }
 }
 
-const fn authority_tag(value: ExecutionAuthorityV2) -> u8 {
+const fn authority_tag(value: ExecutionAuthorityV3) -> u8 {
     match value {
-        ExecutionAuthorityV2::FrontendChecked => 0,
-        ExecutionAuthorityV2::CertifiedRequirementValidated => 1,
+        ExecutionAuthorityV3::FrontendChecked => 0,
+        ExecutionAuthorityV3::CertifiedRequirementValidated => 1,
     }
 }
 
-const fn determinism_tag(value: ExecutionDeterminismV2) -> u8 {
+const fn determinism_tag(value: ExecutionDeterminismV3) -> u8 {
     match value {
-        ExecutionDeterminismV2::Deterministic => 0,
-        ExecutionDeterminismV2::NonDeterministic => 1,
+        ExecutionDeterminismV3::Deterministic => 0,
+        ExecutionDeterminismV3::NonDeterministic => 1,
     }
 }
 
-const fn evidence_tag(value: ExecutionEvidenceV2) -> u8 {
+const fn evidence_tag(value: ExecutionEvidenceV3) -> u8 {
     match value {
-        ExecutionEvidenceV2::None => 0,
-        ExecutionEvidenceV2::SourceLocation => 1,
-        ExecutionEvidenceV2::WitnessPayload => 2,
-        ExecutionEvidenceV2::ProofTree => 3,
+        ExecutionEvidenceV3::None => 0,
+        ExecutionEvidenceV3::SourceLocation => 1,
+        ExecutionEvidenceV3::WitnessPayload => 2,
+        ExecutionEvidenceV3::ProofTree => 3,
     }
 }
 
-const fn effect_tag(value: ExecutionEffectV2) -> u8 {
+const fn effect_tag(value: ExecutionEffectV3) -> u8 {
     match value {
-        ExecutionEffectV2::ReadOnly => 0,
-        ExecutionEffectV2::ProofEvidenceOnly => 1,
-        ExecutionEffectV2::ExportOnly => 2,
-        ExecutionEffectV2::MutationForbidden => 3,
+        ExecutionEffectV3::ReadOnly => 0,
+        ExecutionEffectV3::ProofEvidenceOnly => 1,
+        ExecutionEffectV3::ExportOnly => 2,
+        ExecutionEffectV3::MutationForbidden => 3,
     }
 }
 
-const fn policy_family_tag(value: ExecutionPolicyFamilyV2) -> u8 {
+const fn policy_family_tag(value: ExecutionPolicyFamilyV3) -> u8 {
     match value {
-        ExecutionPolicyFamilyV2::Relational => 0,
-        ExecutionPolicyFamilyV2::Graph => 1,
-        ExecutionPolicyFamilyV2::Check => 2,
-        ExecutionPolicyFamilyV2::Presentation => 3,
-        ExecutionPolicyFamilyV2::RuleProgram => 4,
-        ExecutionPolicyFamilyV2::MetaRequireCertified => 5,
-        ExecutionPolicyFamilyV2::Composition => 6,
+        ExecutionPolicyFamilyV3::Relational => 0,
+        ExecutionPolicyFamilyV3::Graph => 1,
+        ExecutionPolicyFamilyV3::Check => 2,
+        ExecutionPolicyFamilyV3::Presentation => 3,
+        ExecutionPolicyFamilyV3::RuleProgram => 4,
+        ExecutionPolicyFamilyV3::MetaRequireCertified => 5,
+        ExecutionPolicyFamilyV3::Composition => 6,
     }
 }
 
-fn put_composition(out: &mut Vec<u8>, composition: &ExecutionCompositionV2) {
+fn put_composition(out: &mut Vec<u8>, composition: &ExecutionCompositionV3) {
     put_u8(out, 1);
     put_usize(out, composition.bindings.len());
     for binding in &composition.bindings {
@@ -1666,10 +1683,10 @@ fn put_composition(out: &mut Vec<u8>, composition: &ExecutionCompositionV2) {
     put_composition_body(out, &composition.body);
 }
 
-fn put_composition_producer(out: &mut Vec<u8>, producer: &ExecutionCompositionProducerV2) {
+fn put_composition_producer(out: &mut Vec<u8>, producer: &ExecutionCompositionProducerV3) {
     match producer {
-        ExecutionCompositionProducerV2::Relation => put_u8(out, 0),
-        ExecutionCompositionProducerV2::Sample {
+        ExecutionCompositionProducerV3::Relation => put_u8(out, 0),
+        ExecutionCompositionProducerV3::Sample {
             query_text,
             mode,
             limit,
@@ -1679,43 +1696,43 @@ fn put_composition_producer(out: &mut Vec<u8>, producer: &ExecutionCompositionPr
             put_u8(
                 out,
                 match mode {
-                    ExecutionSampleModeV2::Lexical => 0,
-                    ExecutionSampleModeV2::Semantic => 1,
-                    ExecutionSampleModeV2::Hybrid => 2,
+                    ExecutionSampleModeV3::Lexical => 0,
+                    ExecutionSampleModeV3::Semantic => 1,
+                    ExecutionSampleModeV3::Hybrid => 2,
                 },
             );
             put_u32(out, *limit);
         }
-        ExecutionCompositionProducerV2::Graph { kind } => {
+        ExecutionCompositionProducerV3::Graph { kind } => {
             put_u8(out, 2);
             put_u8(out, graph_kind_tag(*kind));
         }
     }
 }
-fn put_composition_body(out: &mut Vec<u8>, body: &ExecutionCompositionBodyV2) {
+fn put_composition_body(out: &mut Vec<u8>, body: &ExecutionCompositionBodyV3) {
     match body {
-        ExecutionCompositionBodyV2::Relation => put_u8(out, 0),
-        ExecutionCompositionBodyV2::Graph(kind) => {
+        ExecutionCompositionBodyV3::Relation => put_u8(out, 0),
+        ExecutionCompositionBodyV3::Graph(kind) => {
             put_u8(out, 1);
             put_u8(out, graph_kind_tag(*kind));
         }
-        ExecutionCompositionBodyV2::Check => put_u8(out, 2),
-        ExecutionCompositionBodyV2::Explain => put_u8(out, 3),
+        ExecutionCompositionBodyV3::Check => put_u8(out, 2),
+        ExecutionCompositionBodyV3::Explain => put_u8(out, 3),
     }
 }
-const fn graph_kind_tag(kind: ExecutionGraphKindV2) -> u8 {
+const fn graph_kind_tag(kind: ExecutionGraphKindV3) -> u8 {
     match kind {
-        ExecutionGraphKindV2::Reachability => 0,
-        ExecutionGraphKindV2::Flow => 1,
-        ExecutionGraphKindV2::Slice => 2,
-        ExecutionGraphKindV2::Taint => 3,
-        ExecutionGraphKindV2::Path => 4,
-        ExecutionGraphKindV2::PointsTo => 5,
-        ExecutionGraphKindV2::Summary => 6,
+        ExecutionGraphKindV3::Reachability => 0,
+        ExecutionGraphKindV3::Flow => 1,
+        ExecutionGraphKindV3::Slice => 2,
+        ExecutionGraphKindV3::Taint => 3,
+        ExecutionGraphKindV3::Path => 4,
+        ExecutionGraphKindV3::PointsTo => 5,
+        ExecutionGraphKindV3::Summary => 6,
     }
 }
 
-fn put_relation(out: &mut Vec<u8>, relation: &ExecutionRelationV2) {
+fn put_relation(out: &mut Vec<u8>, relation: &ExecutionRelationV3) {
     put_u8(out, 1);
     put_item_id(out, relation.item_id);
     put_node(out, &relation.root);
@@ -1726,7 +1743,7 @@ fn put_relation(out: &mut Vec<u8>, relation: &ExecutionRelationV2) {
         put_expression_shape(out, &expr.shape);
     }
 }
-fn put_node(out: &mut Vec<u8>, node: &ExecutionRelationalOperatorV2) {
+fn put_node(out: &mut Vec<u8>, node: &ExecutionRelationalOperatorV3) {
     put_u8(out, algebra_family_tag(node.family));
     match node.join_mode {
         Some(mode) => {
@@ -1775,26 +1792,26 @@ fn put_node(out: &mut Vec<u8>, node: &ExecutionRelationalOperatorV2) {
     }
 }
 
-const fn relation_authority_tag(authority: ExecutionRelationAuthorityV2) -> u8 {
+const fn relation_authority_tag(authority: ExecutionRelationAuthorityV3) -> u8 {
     match authority {
-        ExecutionRelationAuthorityV2::Host => 0,
-        ExecutionRelationAuthorityV2::CanonicalWorkspaceFiles => 1,
-        ExecutionRelationAuthorityV2::CatalogView => 2,
-        ExecutionRelationAuthorityV2::CompositionBinding => 3,
+        ExecutionRelationAuthorityV3::Host => 0,
+        ExecutionRelationAuthorityV3::CanonicalWorkspaceFiles => 1,
+        ExecutionRelationAuthorityV3::CatalogView => 2,
+        ExecutionRelationAuthorityV3::CompositionBinding => 3,
     }
 }
 
-fn put_expression_shape(out: &mut Vec<u8>, shape: &ExecutionExpressionShapeV2) {
+fn put_expression_shape(out: &mut Vec<u8>, shape: &ExecutionExpressionShapeV3) {
     match shape {
-        ExecutionExpressionShapeV2::Literal(value) => {
+        ExecutionExpressionShapeV3::Literal(value) => {
             put_u8(out, 0);
-            put_str(out, value);
+            put_literal(out, value);
         }
-        ExecutionExpressionShapeV2::Binding(binding) => {
+        ExecutionExpressionShapeV3::Binding(binding) => {
             put_u8(out, 1);
             put_binding(out, binding);
         }
-        ExecutionExpressionShapeV2::Path { base, segments } => {
+        ExecutionExpressionShapeV3::Path { base, segments } => {
             put_u8(out, 2);
             put_key(out, *base);
             put_usize(out, segments.len());
@@ -1802,18 +1819,18 @@ fn put_expression_shape(out: &mut Vec<u8>, shape: &ExecutionExpressionShapeV2) {
                 put_str(out, segment);
             }
         }
-        ExecutionExpressionShapeV2::Unary { operator, operand } => {
+        ExecutionExpressionShapeV3::Unary { operator, operand } => {
             put_u8(out, 3);
             put_operator(out, operator);
             put_key(out, *operand);
         }
-        ExecutionExpressionShapeV2::Binary { operator, lhs, rhs } => {
+        ExecutionExpressionShapeV3::Binary { operator, lhs, rhs } => {
             put_u8(out, 4);
             put_operator(out, operator);
             put_key(out, *lhs);
             put_key(out, *rhs);
         }
-        ExecutionExpressionShapeV2::Call { target, arguments } => {
+        ExecutionExpressionShapeV3::Call { target, arguments } => {
             put_u8(out, 5);
             put_call_target(out, target);
             put_usize(out, arguments.len());
@@ -1826,11 +1843,11 @@ fn put_expression_shape(out: &mut Vec<u8>, shape: &ExecutionExpressionShapeV2) {
                 }
             }
         }
-        ExecutionExpressionShapeV2::Paren(id) => {
+        ExecutionExpressionShapeV3::Paren(id) => {
             put_u8(out, 6);
             put_key(out, *id);
         }
-        ExecutionExpressionShapeV2::Record(fields) => {
+        ExecutionExpressionShapeV3::Record(fields) => {
             put_u8(out, 7);
             put_usize(out, fields.len());
             for (name, id) in fields {
@@ -1838,41 +1855,41 @@ fn put_expression_shape(out: &mut Vec<u8>, shape: &ExecutionExpressionShapeV2) {
                 put_key(out, *id);
             }
         }
-        ExecutionExpressionShapeV2::List(items) => {
+        ExecutionExpressionShapeV3::List(items) => {
             put_u8(out, 8);
             put_usize(out, items.len());
             for id in items {
                 put_key(out, *id);
             }
         }
-        ExecutionExpressionShapeV2::BoolValue(id) => {
+        ExecutionExpressionShapeV3::BoolValue(id) => {
             put_u8(out, 9);
             put_key(out, *id);
         }
-        ExecutionExpressionShapeV2::Compare { operator, lhs, rhs } => {
+        ExecutionExpressionShapeV3::Compare { operator, lhs, rhs } => {
             put_u8(out, 10);
             put_operator(out, operator);
             put_key(out, *lhs);
             put_key(out, *rhs);
         }
-        ExecutionExpressionShapeV2::And { operator, lhs, rhs } => {
+        ExecutionExpressionShapeV3::And { operator, lhs, rhs } => {
             put_u8(out, 11);
             put_operator(out, operator);
             put_key(out, *lhs);
             put_key(out, *rhs);
         }
-        ExecutionExpressionShapeV2::Or { operator, lhs, rhs } => {
+        ExecutionExpressionShapeV3::Or { operator, lhs, rhs } => {
             put_u8(out, 12);
             put_operator(out, operator);
             put_key(out, *lhs);
             put_key(out, *rhs);
         }
-        ExecutionExpressionShapeV2::Not { operator, operand } => {
+        ExecutionExpressionShapeV3::Not { operator, operand } => {
             put_u8(out, 13);
             put_operator(out, operator);
             put_key(out, *operand);
         }
-        ExecutionExpressionShapeV2::LogicalQuantifier {
+        ExecutionExpressionShapeV3::LogicalQuantifier {
             kind,
             binders,
             body,
@@ -1885,7 +1902,7 @@ fn put_expression_shape(out: &mut Vec<u8>, shape: &ExecutionExpressionShapeV2) {
             }
             put_key(out, *body);
         }
-        ExecutionExpressionShapeV2::RelationExists {
+        ExecutionExpressionShapeV3::RelationExists {
             polarity,
             relation_root,
             correlations,
@@ -1901,7 +1918,28 @@ fn put_expression_shape(out: &mut Vec<u8>, shape: &ExecutionExpressionShapeV2) {
         }
     }
 }
-fn put_schema(out: &mut Vec<u8>, schema: &ExecutionSchemaV2) {
+fn put_literal(out: &mut Vec<u8>, literal: &ExecutionLiteralV3) {
+    match literal {
+        ExecutionLiteralV3::Int(value) => {
+            put_u8(out, 0);
+            out.extend_from_slice(&value.to_be_bytes());
+        }
+        ExecutionLiteralV3::Float(value) => {
+            put_u8(out, 1);
+            out.extend_from_slice(&value.bits().to_be_bytes());
+        }
+        ExecutionLiteralV3::Bool(value) => {
+            put_u8(out, 2);
+            put_u8(out, u8::from(*value));
+        }
+        ExecutionLiteralV3::String(value) => {
+            put_u8(out, 3);
+            put_str(out, value);
+        }
+        ExecutionLiteralV3::Null => put_u8(out, 4),
+    }
+}
+fn put_schema(out: &mut Vec<u8>, schema: &ExecutionSchemaV3) {
     put_usize(out, schema.fields.len());
     for field in &schema.fields {
         put_str(out, &field.name);
@@ -1921,21 +1959,21 @@ fn put_schema(out: &mut Vec<u8>, schema: &ExecutionSchemaV2) {
     }
 }
 
-fn put_value_type(out: &mut Vec<u8>, value: &ExecutionValueTypeV2) {
+fn put_value_type(out: &mut Vec<u8>, value: &ExecutionValueTypeV3) {
     match value {
-        ExecutionValueTypeV2::Scalar(scalar) => {
+        ExecutionValueTypeV3::Scalar(scalar) => {
             put_u8(out, 0);
             put_u8(out, scalar_tag(*scalar));
         }
-        ExecutionValueTypeV2::Null => put_u8(out, 1),
-        ExecutionValueTypeV2::Tuple(items) => {
+        ExecutionValueTypeV3::Null => put_u8(out, 1),
+        ExecutionValueTypeV3::Tuple(items) => {
             put_u8(out, 2);
             put_usize(out, items.len());
             for item in items {
                 put_value_type(out, item);
             }
         }
-        ExecutionValueTypeV2::Record(fields) => {
+        ExecutionValueTypeV3::Record(fields) => {
             put_u8(out, 3);
             put_usize(out, fields.len());
             for field in fields {
@@ -1943,11 +1981,11 @@ fn put_value_type(out: &mut Vec<u8>, value: &ExecutionValueTypeV2) {
                 put_value_type(out, &field.value_type);
             }
         }
-        ExecutionValueTypeV2::Optional(inner) => {
+        ExecutionValueTypeV3::Optional(inner) => {
             put_u8(out, 4);
             put_value_type(out, inner);
         }
-        ExecutionValueTypeV2::Collection {
+        ExecutionValueTypeV3::Collection {
             element,
             cardinality,
         } => {
@@ -1955,7 +1993,7 @@ fn put_value_type(out: &mut Vec<u8>, value: &ExecutionValueTypeV2) {
             put_value_type(out, element);
             put_u8(out, cardinality_tag(*cardinality));
         }
-        ExecutionValueTypeV2::Union(variants) => {
+        ExecutionValueTypeV3::Union(variants) => {
             put_u8(out, 6);
             put_usize(out, variants.len());
             for variant in variants {
@@ -1963,47 +2001,47 @@ fn put_value_type(out: &mut Vec<u8>, value: &ExecutionValueTypeV2) {
                 put_value_type(out, &variant.value_type);
             }
         }
-        ExecutionValueTypeV2::Unknown => put_u8(out, 7),
+        ExecutionValueTypeV3::Unknown => put_u8(out, 7),
     }
 }
 
-const fn scalar_tag(value: ExecutionScalarTypeV2) -> u8 {
+const fn scalar_tag(value: ExecutionScalarTypeV3) -> u8 {
     match value {
-        ExecutionScalarTypeV2::Bool => 0,
-        ExecutionScalarTypeV2::Int => 1,
-        ExecutionScalarTypeV2::Float => 2,
-        ExecutionScalarTypeV2::String => 3,
-        ExecutionScalarTypeV2::Duration => 4,
-        ExecutionScalarTypeV2::Location => 5,
-        ExecutionScalarTypeV2::Path => 6,
-        ExecutionScalarTypeV2::RepoPath => 7,
-        ExecutionScalarTypeV2::EntityRef => 8,
-        ExecutionScalarTypeV2::SymbolRef => 9,
-        ExecutionScalarTypeV2::RuleRef => 10,
-        ExecutionScalarTypeV2::SourceScope => 11,
-        ExecutionScalarTypeV2::ProofTree => 12,
+        ExecutionScalarTypeV3::Bool => 0,
+        ExecutionScalarTypeV3::Int => 1,
+        ExecutionScalarTypeV3::Float => 2,
+        ExecutionScalarTypeV3::String => 3,
+        ExecutionScalarTypeV3::Duration => 4,
+        ExecutionScalarTypeV3::Location => 5,
+        ExecutionScalarTypeV3::Path => 6,
+        ExecutionScalarTypeV3::RepoPath => 7,
+        ExecutionScalarTypeV3::EntityRef => 8,
+        ExecutionScalarTypeV3::SymbolRef => 9,
+        ExecutionScalarTypeV3::RuleRef => 10,
+        ExecutionScalarTypeV3::SourceScope => 11,
+        ExecutionScalarTypeV3::ProofTree => 12,
     }
 }
 
-const fn cardinality_tag(value: ExecutionCardinalityV2) -> u8 {
+const fn cardinality_tag(value: ExecutionCardinalityV3) -> u8 {
     match value {
-        ExecutionCardinalityV2::Set => 0,
-        ExecutionCardinalityV2::Bag => 1,
-        ExecutionCardinalityV2::Sequence => 2,
+        ExecutionCardinalityV3::Set => 0,
+        ExecutionCardinalityV3::Bag => 1,
+        ExecutionCardinalityV3::Sequence => 2,
     }
 }
 
-const fn sort_direction_tag(value: ExecutionSortDirectionV2) -> u8 {
+const fn sort_direction_tag(value: ExecutionSortDirectionV3) -> u8 {
     match value {
-        ExecutionSortDirectionV2::Asc => 0,
-        ExecutionSortDirectionV2::Desc => 1,
+        ExecutionSortDirectionV3::Asc => 0,
+        ExecutionSortDirectionV3::Desc => 1,
     }
 }
 
-const fn null_order_tag(value: ExecutionNullOrderV2) -> u8 {
+const fn null_order_tag(value: ExecutionNullOrderV3) -> u8 {
     match value {
-        ExecutionNullOrderV2::First => 0,
-        ExecutionNullOrderV2::Last => 1,
+        ExecutionNullOrderV3::First => 0,
+        ExecutionNullOrderV3::Last => 1,
     }
 }
 
@@ -2021,58 +2059,58 @@ const fn algebra_family_tag(value: AlgebraFamilyV2) -> u8 {
     }
 }
 
-const fn join_mode_tag(value: ExecutionJoinModeV2) -> u8 {
+const fn join_mode_tag(value: ExecutionJoinModeV3) -> u8 {
     match value {
-        ExecutionJoinModeV2::Inner => 0,
-        ExecutionJoinModeV2::Cross => 1,
+        ExecutionJoinModeV3::Inner => 0,
+        ExecutionJoinModeV3::Cross => 1,
     }
 }
 
-const fn source_kind_tag(value: ExecutionSourceKindV2) -> u8 {
+const fn source_kind_tag(value: ExecutionSourceKindV3) -> u8 {
     match value {
-        ExecutionSourceKindV2::Relation => 0,
-        ExecutionSourceKindV2::View => 1,
-        ExecutionSourceKindV2::Composition => 2,
+        ExecutionSourceKindV3::Relation => 0,
+        ExecutionSourceKindV3::View => 1,
+        ExecutionSourceKindV3::Composition => 2,
     }
 }
 
-fn put_call_target(out: &mut Vec<u8>, target: &ExecutionCallTargetV2) {
+fn put_call_target(out: &mut Vec<u8>, target: &ExecutionCallTargetV3) {
     match target {
-        ExecutionCallTargetV2::Builtin { name } => {
+        ExecutionCallTargetV3::Builtin { name } => {
             put_u8(out, 0);
             put_str(out, name);
         }
-        ExecutionCallTargetV2::Predicate { name } => {
+        ExecutionCallTargetV3::Predicate { name } => {
             put_u8(out, 1);
             put_str(out, name);
         }
-        ExecutionCallTargetV2::HostPredicate { fingerprint } => {
+        ExecutionCallTargetV3::HostPredicate { fingerprint } => {
             put_u8(out, 2);
             put_str(out, fingerprint);
         }
     }
 }
 
-const fn logical_quantifier_tag(value: ExecutionLogicalQuantifierV2) -> u8 {
+const fn logical_quantifier_tag(value: ExecutionLogicalQuantifierV3) -> u8 {
     match value {
-        ExecutionLogicalQuantifierV2::Exists => 0,
-        ExecutionLogicalQuantifierV2::Forall => 1,
+        ExecutionLogicalQuantifierV3::Exists => 0,
+        ExecutionLogicalQuantifierV3::Forall => 1,
     }
 }
 
-const fn exists_polarity_tag(value: ExecutionExistsPolarityV2) -> u8 {
+const fn exists_polarity_tag(value: ExecutionExistsPolarityV3) -> u8 {
     match value {
-        ExecutionExistsPolarityV2::Exists => 0,
-        ExecutionExistsPolarityV2::NotExists => 1,
+        ExecutionExistsPolarityV3::Exists => 0,
+        ExecutionExistsPolarityV3::NotExists => 1,
     }
 }
-fn put_binding(out: &mut Vec<u8>, binding: &ExecutionBindingV2) {
+fn put_binding(out: &mut Vec<u8>, binding: &ExecutionBindingV3) {
     put_u32(out, binding.source_id.raw());
     put_u32(out, binding.owner_node);
     put_usize(out, binding.ordinal);
     put_str(out, &binding.name);
 }
-fn put_operator(out: &mut Vec<u8>, operator: &ExecutionOperatorV2) {
+fn put_operator(out: &mut Vec<u8>, operator: &ExecutionOperatorV3) {
     put_str(out, &operator.symbol);
     put_u32(out, operator.overload_id);
 }
@@ -2121,28 +2159,66 @@ mod tests {
     #[test]
     fn sha256_matches_published_empty_vector() {
         assert_eq!(
-            ExecutionDigestV2(sha256(b"")).to_hex(),
+            ExecutionDigestV3(sha256(b"")).to_hex(),
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         );
     }
 
     #[test]
+    fn typed_literal_bytes_match_the_v3_contract() {
+        let mut encoded = Vec::new();
+        put_literal(&mut encoded, &ExecutionLiteralV3::Int(i128::MIN));
+        assert_eq!(encoded, [vec![0, 0x80], vec![0; 15]].concat());
+
+        encoded.clear();
+        put_literal(
+            &mut encoded,
+            &ExecutionLiteralV3::Float(ExecutionFiniteFloatV3(1.5f64.to_bits())),
+        );
+        assert_eq!(
+            encoded,
+            [vec![1], 1.5f64.to_bits().to_be_bytes().to_vec()].concat()
+        );
+
+        encoded.clear();
+        put_literal(&mut encoded, &ExecutionLiteralV3::Bool(false));
+        assert_eq!(encoded, [2, 0]);
+        encoded.clear();
+        put_literal(&mut encoded, &ExecutionLiteralV3::Bool(true));
+        assert_eq!(encoded, [2, 1]);
+
+        encoded.clear();
+        put_literal(&mut encoded, &ExecutionLiteralV3::String("é".to_owned()));
+        assert_eq!(
+            encoded,
+            [vec![3], 2u64.to_be_bytes().to_vec(), vec![0xc3, 0xa9]].concat()
+        );
+
+        encoded.clear();
+        put_literal(&mut encoded, &ExecutionLiteralV3::Null);
+        assert_eq!(encoded, [4]);
+    }
+
+    #[test]
     fn canonical_digests_match_the_pinned_golden_vectors() {
-        let mut document = ExecutionDocumentV2::new(SourceIdV2::from_raw(0), vec![relation_item()]);
-        document.bind_source_bytes(b"show models");
+        let document = ExecutionDocumentV3::new(
+            SourceIdV2::from_raw(0),
+            b"show models",
+            vec![relation_item()],
+        );
         // Golden pins: any canonical-encoding change (tag swap, field reorder,
         // domain edit) must update these deliberately, never silently.
         assert_eq!(
             document.source_digest().to_hex(),
-            "c8b5afd3b89c8fed8d82c41761232bbbd3929a8f9b590ba18c5dea1633f82dac"
+            "a8b69361d9c0d24e3022914bf1fba6386643164dc53911d34f1115dbc6102480"
         );
         assert_eq!(
             document.contract_digest().to_hex(),
-            "4306ff6c24b462c8b4a06152f1441cf5531cbb0c8c9268d383d4011b2d2058a3"
+            "572f6156cc71d5a1f344832a3ed3a16ddfac8541219d838d0129da82844bc1f1"
         );
         assert_eq!(
             document.qualification_digest().to_hex(),
-            "f5fc6b4fb8223ea087c0cc2c5182cc3faea7225c49a00a97bd6152ca30ce20f2"
+            "2f012948c36a5a807d5ec5498e9e6498560c37c428446d6a5ebd3d89e7641a54"
         );
     }
 
@@ -2155,18 +2231,18 @@ mod tests {
 
     #[test]
     fn every_canonical_tag_set_is_duplicate_free() {
-        use ExecutionAuthorityV2 as Authority;
-        use ExecutionDeterminismV2 as Determinism;
-        use ExecutionEffectV2 as Effect;
-        use ExecutionEvidenceV2 as Evidence;
+        use ExecutionAuthorityV3 as Authority;
+        use ExecutionDeterminismV3 as Determinism;
+        use ExecutionEffectV3 as Effect;
+        use ExecutionEvidenceV3 as Evidence;
         assert_distinct_tags([
-            family_tag(ExecutionFamilyV2::Relation),
-            family_tag(ExecutionFamilyV2::Graph),
-            family_tag(ExecutionFamilyV2::Check),
-            family_tag(ExecutionFamilyV2::Presentation),
-            family_tag(ExecutionFamilyV2::Composition),
-            family_tag(ExecutionFamilyV2::MetaRequireCertified),
-            family_tag(ExecutionFamilyV2::RuleProgram),
+            family_tag(ExecutionFamilyV3::Relation),
+            family_tag(ExecutionFamilyV3::Graph),
+            family_tag(ExecutionFamilyV3::Check),
+            family_tag(ExecutionFamilyV3::Presentation),
+            family_tag(ExecutionFamilyV3::Composition),
+            family_tag(ExecutionFamilyV3::MetaRequireCertified),
+            family_tag(ExecutionFamilyV3::RuleProgram),
         ]);
         assert_distinct_tags([
             authority_tag(Authority::FrontendChecked),
@@ -2189,26 +2265,26 @@ mod tests {
             effect_tag(Effect::MutationForbidden),
         ]);
         assert_distinct_tags([
-            policy_family_tag(ExecutionPolicyFamilyV2::Relational),
-            policy_family_tag(ExecutionPolicyFamilyV2::Graph),
-            policy_family_tag(ExecutionPolicyFamilyV2::Check),
-            policy_family_tag(ExecutionPolicyFamilyV2::Presentation),
-            policy_family_tag(ExecutionPolicyFamilyV2::RuleProgram),
-            policy_family_tag(ExecutionPolicyFamilyV2::MetaRequireCertified),
-            policy_family_tag(ExecutionPolicyFamilyV2::Composition),
+            policy_family_tag(ExecutionPolicyFamilyV3::Relational),
+            policy_family_tag(ExecutionPolicyFamilyV3::Graph),
+            policy_family_tag(ExecutionPolicyFamilyV3::Check),
+            policy_family_tag(ExecutionPolicyFamilyV3::Presentation),
+            policy_family_tag(ExecutionPolicyFamilyV3::RuleProgram),
+            policy_family_tag(ExecutionPolicyFamilyV3::MetaRequireCertified),
+            policy_family_tag(ExecutionPolicyFamilyV3::Composition),
         ]);
         assert_distinct_tags([
-            cardinality_tag(ExecutionCardinalityV2::Set),
-            cardinality_tag(ExecutionCardinalityV2::Bag),
-            cardinality_tag(ExecutionCardinalityV2::Sequence),
+            cardinality_tag(ExecutionCardinalityV3::Set),
+            cardinality_tag(ExecutionCardinalityV3::Bag),
+            cardinality_tag(ExecutionCardinalityV3::Sequence),
         ]);
         assert_distinct_tags([
-            sort_direction_tag(ExecutionSortDirectionV2::Asc),
-            sort_direction_tag(ExecutionSortDirectionV2::Desc),
+            sort_direction_tag(ExecutionSortDirectionV3::Asc),
+            sort_direction_tag(ExecutionSortDirectionV3::Desc),
         ]);
         assert_distinct_tags([
-            null_order_tag(ExecutionNullOrderV2::First),
-            null_order_tag(ExecutionNullOrderV2::Last),
+            null_order_tag(ExecutionNullOrderV3::First),
+            null_order_tag(ExecutionNullOrderV3::Last),
         ]);
         assert_distinct_tags([
             algebra_family_tag(AlgebraFamilyV2::Scan),
@@ -2222,45 +2298,45 @@ mod tests {
             algebra_family_tag(AlgebraFamilyV2::AntiJoin),
         ]);
         assert_distinct_tags([
-            join_mode_tag(ExecutionJoinModeV2::Inner),
-            join_mode_tag(ExecutionJoinModeV2::Cross),
+            join_mode_tag(ExecutionJoinModeV3::Inner),
+            join_mode_tag(ExecutionJoinModeV3::Cross),
         ]);
         assert_distinct_tags([
-            source_kind_tag(ExecutionSourceKindV2::Relation),
-            source_kind_tag(ExecutionSourceKindV2::View),
-            source_kind_tag(ExecutionSourceKindV2::Composition),
+            source_kind_tag(ExecutionSourceKindV3::Relation),
+            source_kind_tag(ExecutionSourceKindV3::View),
+            source_kind_tag(ExecutionSourceKindV3::Composition),
         ]);
         assert_distinct_tags([
-            scalar_tag(ExecutionScalarTypeV2::Bool),
-            scalar_tag(ExecutionScalarTypeV2::Int),
-            scalar_tag(ExecutionScalarTypeV2::Float),
-            scalar_tag(ExecutionScalarTypeV2::String),
-            scalar_tag(ExecutionScalarTypeV2::Duration),
-            scalar_tag(ExecutionScalarTypeV2::Location),
-            scalar_tag(ExecutionScalarTypeV2::Path),
-            scalar_tag(ExecutionScalarTypeV2::RepoPath),
-            scalar_tag(ExecutionScalarTypeV2::EntityRef),
-            scalar_tag(ExecutionScalarTypeV2::SymbolRef),
-            scalar_tag(ExecutionScalarTypeV2::RuleRef),
-            scalar_tag(ExecutionScalarTypeV2::SourceScope),
-            scalar_tag(ExecutionScalarTypeV2::ProofTree),
+            scalar_tag(ExecutionScalarTypeV3::Bool),
+            scalar_tag(ExecutionScalarTypeV3::Int),
+            scalar_tag(ExecutionScalarTypeV3::Float),
+            scalar_tag(ExecutionScalarTypeV3::String),
+            scalar_tag(ExecutionScalarTypeV3::Duration),
+            scalar_tag(ExecutionScalarTypeV3::Location),
+            scalar_tag(ExecutionScalarTypeV3::Path),
+            scalar_tag(ExecutionScalarTypeV3::RepoPath),
+            scalar_tag(ExecutionScalarTypeV3::EntityRef),
+            scalar_tag(ExecutionScalarTypeV3::SymbolRef),
+            scalar_tag(ExecutionScalarTypeV3::RuleRef),
+            scalar_tag(ExecutionScalarTypeV3::SourceScope),
+            scalar_tag(ExecutionScalarTypeV3::ProofTree),
         ]);
         assert_distinct_tags([
-            logical_quantifier_tag(ExecutionLogicalQuantifierV2::Exists),
-            logical_quantifier_tag(ExecutionLogicalQuantifierV2::Forall),
+            logical_quantifier_tag(ExecutionLogicalQuantifierV3::Exists),
+            logical_quantifier_tag(ExecutionLogicalQuantifierV3::Forall),
         ]);
         assert_distinct_tags([
-            exists_polarity_tag(ExecutionExistsPolarityV2::Exists),
-            exists_polarity_tag(ExecutionExistsPolarityV2::NotExists),
+            exists_polarity_tag(ExecutionExistsPolarityV3::Exists),
+            exists_polarity_tag(ExecutionExistsPolarityV3::NotExists),
         ]);
         assert_distinct_tags([
-            graph_kind_tag(ExecutionGraphKindV2::Reachability),
-            graph_kind_tag(ExecutionGraphKindV2::Flow),
-            graph_kind_tag(ExecutionGraphKindV2::Slice),
-            graph_kind_tag(ExecutionGraphKindV2::Taint),
-            graph_kind_tag(ExecutionGraphKindV2::Path),
-            graph_kind_tag(ExecutionGraphKindV2::PointsTo),
-            graph_kind_tag(ExecutionGraphKindV2::Summary),
+            graph_kind_tag(ExecutionGraphKindV3::Reachability),
+            graph_kind_tag(ExecutionGraphKindV3::Flow),
+            graph_kind_tag(ExecutionGraphKindV3::Slice),
+            graph_kind_tag(ExecutionGraphKindV3::Taint),
+            graph_kind_tag(ExecutionGraphKindV3::Path),
+            graph_kind_tag(ExecutionGraphKindV3::PointsTo),
+            graph_kind_tag(ExecutionGraphKindV3::Summary),
         ]);
     }
 
@@ -2275,8 +2351,8 @@ mod tests {
         SemanticItemIdV2::new(SourceIdV2::from_raw(source), HirNodeIdV1::from_raw(node))
     }
 
-    fn binding(name: &str) -> ExecutionBindingV2 {
-        ExecutionBindingV2 {
+    fn binding(name: &str) -> ExecutionBindingV3 {
+        ExecutionBindingV3 {
             source_id: SourceIdV2::from_raw(0),
             owner_node: 7,
             ordinal: 0,
@@ -2284,20 +2360,20 @@ mod tests {
         }
     }
 
-    fn schema() -> ExecutionSchemaV2 {
-        ExecutionSchemaV2 {
-            fields: Box::new([ExecutionFieldV2 {
+    fn schema() -> ExecutionSchemaV3 {
+        ExecutionSchemaV3 {
+            fields: Box::new([ExecutionFieldV3 {
                 name: "a".to_owned(),
-                value_type: ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int),
+                value_type: ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Int),
             }]),
-            cardinality: ExecutionCardinalityV2::Set,
+            cardinality: ExecutionCardinalityV3::Set,
             partition_keys: Box::new([]),
             order: Box::new([]),
         }
     }
 
-    fn root() -> ExecutionRelationalOperatorV2 {
-        ExecutionRelationalOperatorV2 {
+    fn root() -> ExecutionRelationalOperatorV3 {
+        ExecutionRelationalOperatorV3 {
             family: AlgebraFamilyV2::Scan,
             join_mode: None,
             stage: key(0, 1),
@@ -2311,72 +2387,73 @@ mod tests {
         }
     }
 
-    fn literal_expression(id: SourceQualifiedNodeIdV2, body: &str) -> ExecutionExpressionV2 {
-        ExecutionExpressionV2 {
+    fn literal_expression(id: SourceQualifiedNodeIdV2, value: i128) -> ExecutionExpressionV3 {
+        ExecutionExpressionV3 {
             id,
-            value_type: ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int),
-            shape: ExecutionExpressionShapeV2::Literal(body.to_owned()),
+            value_type: ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Int),
+            shape: ExecutionExpressionShapeV3::Literal(ExecutionLiteralV3::Int(value)),
         }
     }
 
-    fn relation() -> ExecutionRelationV2 {
-        ExecutionRelationV2 {
+    fn relation() -> ExecutionRelationV3 {
+        ExecutionRelationV3 {
             item_id: item(0, 1),
             root: root(),
-            expressions: Box::new([literal_expression(key(0, 2), "int:1")]),
+            expressions: Box::new([literal_expression(key(0, 2), 1)]),
         }
     }
 
-    fn plan() -> ExecutionPlanV2 {
-        ExecutionPlanV2 {
-            authority: ExecutionAuthorityV2::FrontendChecked,
-            determinism: ExecutionDeterminismV2::Deterministic,
-            evidence: ExecutionEvidenceV2::None,
-            effect: ExecutionEffectV2::ReadOnly,
-            policy_family: ExecutionPolicyFamilyV2::Relational,
+    fn plan() -> ExecutionPlanV3 {
+        ExecutionPlanV3 {
+            authority: ExecutionAuthorityV3::FrontendChecked,
+            determinism: ExecutionDeterminismV3::Deterministic,
+            evidence: ExecutionEvidenceV3::None,
+            effect: ExecutionEffectV3::ReadOnly,
+            policy_family: ExecutionPolicyFamilyV3::Relational,
         }
     }
 
-    fn relation_item() -> ExecutionItemV2 {
-        ExecutionItemV2 {
+    fn relation_item() -> ExecutionItemV3 {
+        ExecutionItemV3 {
             item_id: item(0, 1),
-            family: ExecutionFamilyV2::Relation,
+            family: ExecutionFamilyV3::Relation,
             relation: Some(relation()),
             composition: None,
             plan: plan(),
         }
     }
 
-    fn composition_item(binding_schema: Option<ExecutionSchemaV2>) -> ExecutionItemV2 {
-        ExecutionItemV2 {
+    fn composition_item(binding_schema: Option<ExecutionSchemaV3>) -> ExecutionItemV3 {
+        ExecutionItemV3 {
             item_id: item(0, 9),
-            family: ExecutionFamilyV2::Composition,
+            family: ExecutionFamilyV3::Composition,
             relation: None,
-            composition: Some(ExecutionCompositionV2 {
-                bindings: Box::new([ExecutionCompositionBindingV2 {
+            composition: Some(ExecutionCompositionV3 {
+                bindings: Box::new([ExecutionCompositionBindingV3 {
                     binding: binding("q"),
                     producer_item_id: item(0, 1),
-                    producer_family: ExecutionFamilyV2::Relation,
+                    producer_family: ExecutionFamilyV3::Relation,
                     schema: binding_schema,
                     relation: None,
-                    producer: ExecutionCompositionProducerV2::Relation,
+                    producer: ExecutionCompositionProducerV3::Relation,
                 }]),
                 with_binding: binding("q"),
                 body_item_id: item(0, 1),
-                body_family: ExecutionFamilyV2::Relation,
+                body_family: ExecutionFamilyV3::Relation,
                 body_relation: None,
-                body: ExecutionCompositionBodyV2::Relation,
+                body: ExecutionCompositionBodyV3::Relation,
             }),
             plan: plan(),
         }
     }
 
-    fn contract_of(items: Vec<ExecutionItemV2>) -> ExecutionDigestV2 {
-        ExecutionDocumentV2::new(SourceIdV2::from_raw(0), items).contract_digest()
+    fn contract_of(items: Vec<ExecutionItemV3>) -> ExecutionDigestV3 {
+        ExecutionDocumentV3::new(SourceIdV2::from_raw(0), b"show models", items).contract_digest()
     }
 
-    fn qualification_of(items: Vec<ExecutionItemV2>) -> ExecutionDigestV2 {
-        ExecutionDocumentV2::new(SourceIdV2::from_raw(0), items).qualification_digest()
+    fn qualification_of(items: Vec<ExecutionItemV3>) -> ExecutionDigestV3 {
+        ExecutionDocumentV3::new(SourceIdV2::from_raw(0), b"show models", items)
+            .qualification_digest()
     }
 
     #[test]
@@ -2417,7 +2494,7 @@ mod tests {
             .as_mut()
             .expect("relation")
             .root
-            .correlations = Box::new([ExecutionCorrelationV2 {
+            .correlations = Box::new([ExecutionCorrelationV3 {
             binding: binding("c"),
             reference: key(0, 2),
         }]);
@@ -2432,18 +2509,18 @@ mod tests {
     fn schema_mutation_moves_contract_and_qualification() {
         let base = contract_of(vec![relation_item()]);
         let mut mutated = relation_item();
-        mutated.relation.as_mut().expect("relation").root.schema = ExecutionSchemaV2 {
-            fields: Box::new([ExecutionFieldV2 {
+        mutated.relation.as_mut().expect("relation").root.schema = ExecutionSchemaV3 {
+            fields: Box::new([ExecutionFieldV3 {
                 name: "b".to_owned(),
-                value_type: ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::String),
+                value_type: ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::String),
             }]),
-            cardinality: ExecutionCardinalityV2::Bag,
+            cardinality: ExecutionCardinalityV3::Bag,
             partition_keys: Box::new([key(0, 2)]),
-            order: Box::new([ExecutionOrderKeyV2 {
+            order: Box::new([ExecutionOrderKeyV3 {
                 expression: key(0, 2),
-                direction: ExecutionSortDirectionV2::Desc,
-                null_order: ExecutionNullOrderV2::Last,
-                value_type: ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::String),
+                direction: ExecutionSortDirectionV3::Desc,
+                null_order: ExecutionNullOrderV3::Last,
+                value_type: ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::String),
             }]),
         };
         assert_ne!(contract_of(vec![mutated.clone()]), base);
@@ -2458,7 +2535,7 @@ mod tests {
         let base = contract_of(vec![relation_item()]);
         let mut mutated = relation_item();
         mutated.relation.as_mut().expect("relation").expressions =
-            Box::new([literal_expression(key(0, 2), "int:2")]);
+            Box::new([literal_expression(key(0, 2), 2)]);
         assert_ne!(contract_of(vec![mutated.clone()]), base);
         assert_ne!(
             qualification_of(vec![mutated]),
@@ -2474,6 +2551,40 @@ mod tests {
             qualification_of(vec![composition_item(Some(schema()))]),
             qualification_of(vec![composition_item(None)])
         );
+    }
+
+    #[test]
+    fn composition_binding_identity_and_order_move_contract() {
+        let mut renamed = composition_item(None);
+        let composition = renamed.composition.as_mut().expect("composition");
+        composition
+            .bindings
+            .first_mut()
+            .expect("one binding")
+            .binding
+            .name = "renamed".to_owned();
+        composition.with_binding.name = "renamed".to_owned();
+        assert_ne!(
+            contract_of(vec![renamed]),
+            contract_of(vec![composition_item(None)])
+        );
+
+        let mut ordered = composition_item(None);
+        let composition = ordered.composition.as_mut().expect("composition");
+        let first = composition.bindings.first().expect("one binding").clone();
+        let mut second = first.clone();
+        second.binding.ordinal = 1;
+        second.binding.name = "second".to_owned();
+        second.producer_item_id = item(0, 3);
+        composition.bindings = vec![first, second].into_boxed_slice();
+        let ordered_digest = contract_of(vec![ordered.clone()]);
+        ordered
+            .composition
+            .as_mut()
+            .expect("composition")
+            .bindings
+            .swap(0, 1);
+        assert_ne!(ordered_digest, contract_of(vec![ordered]));
     }
 
     #[test]
@@ -2497,25 +2608,31 @@ mod tests {
         let base_contract = contract_of(vec![relation_item()]);
         let base_qualification = qualification_of(vec![relation_item()]);
         let mut authority = relation_item();
-        authority.plan.authority = ExecutionAuthorityV2::CertifiedRequirementValidated;
+        authority.plan.authority = ExecutionAuthorityV3::CertifiedRequirementValidated;
         assert_ne!(contract_of(vec![authority.clone()]), base_contract);
         assert_ne!(qualification_of(vec![authority]), base_qualification);
         let mut effect = relation_item();
-        effect.plan.effect = ExecutionEffectV2::ExportOnly;
+        effect.plan.effect = ExecutionEffectV3::ExportOnly;
         assert_ne!(contract_of(vec![effect.clone()]), base_contract);
         assert_ne!(qualification_of(vec![effect]), base_qualification);
         let mut evidence = relation_item();
-        evidence.plan.evidence = ExecutionEvidenceV2::ProofTree;
+        evidence.plan.evidence = ExecutionEvidenceV3::ProofTree;
         assert_ne!(contract_of(vec![evidence.clone()]), base_contract);
         assert_ne!(qualification_of(vec![evidence]), base_qualification);
     }
 
     #[test]
     fn source_byte_mutation_moves_qualification_but_not_contract() {
-        let mut base = ExecutionDocumentV2::new(SourceIdV2::from_raw(0), vec![relation_item()]);
-        base.bind_source_bytes(b"show models");
-        let mut mutated = ExecutionDocumentV2::new(SourceIdV2::from_raw(0), vec![relation_item()]);
-        mutated.bind_source_bytes(b"show models ");
+        let base = ExecutionDocumentV3::new(
+            SourceIdV2::from_raw(0),
+            b"show models",
+            vec![relation_item()],
+        );
+        let mutated = ExecutionDocumentV3::new(
+            SourceIdV2::from_raw(0),
+            b"show models ",
+            vec![relation_item()],
+        );
         assert_eq!(base.contract_digest(), mutated.contract_digest());
         assert_ne!(base.source_digest(), mutated.source_digest());
         assert_ne!(base.qualification_digest(), mutated.qualification_digest());
@@ -2549,7 +2666,7 @@ mod tests {
             |_: SourceQualifiedNodeIdV2| -> Option<Vec<SourceQualifiedNodeIdV2>> { None };
         assert_eq!(
             close_expression_ids(SourceIdV2::from_raw(0), &[key(0, 1)], &children),
-            Err(ExecutionClosureFailureV2::Dangling)
+            Err(ExecutionClosureFailureV3::Dangling)
         );
     }
 
@@ -2558,7 +2675,7 @@ mod tests {
         let children = |_: SourceQualifiedNodeIdV2| Some(Vec::new());
         assert_eq!(
             close_expression_ids(SourceIdV2::from_raw(0), &[key(1, 1)], &children),
-            Err(ExecutionClosureFailureV2::Foreign)
+            Err(ExecutionClosureFailureV3::Foreign)
         );
     }
 
@@ -2570,35 +2687,35 @@ mod tests {
         };
         assert_eq!(
             project_value_type(&ValueTypeV1::int()),
-            ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int)
+            ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Int)
         );
         assert_eq!(
             project_value_type(&ValueTypeV1::null()),
-            ExecutionValueTypeV2::Null
+            ExecutionValueTypeV3::Null
         );
         let tuple = ValueTypeV1::try_tuple(vec![ValueTypeV1::int(), ValueTypeV1::string()])
             .expect("tuple of scalars");
         assert_eq!(
             project_value_type(&tuple),
-            ExecutionValueTypeV2::Tuple(Box::new([
-                ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int),
-                ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::String),
+            ExecutionValueTypeV3::Tuple(Box::new([
+                ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Int),
+                ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::String),
             ]))
         );
         let optional = ValueTypeV1::try_optional(ValueTypeV1::bool()).expect("optional scalar");
         assert_eq!(
             project_value_type(&optional),
-            ExecutionValueTypeV2::Optional(Box::new(ExecutionValueTypeV2::Scalar(
-                ExecutionScalarTypeV2::Bool
+            ExecutionValueTypeV3::Optional(Box::new(ExecutionValueTypeV3::Scalar(
+                ExecutionScalarTypeV3::Bool
             )))
         );
         let collection = ValueTypeV1::try_collection(ValueTypeV1::int(), CardinalityV1::Sequence)
             .expect("sequence collection");
         assert_eq!(
             project_value_type(&collection),
-            ExecutionValueTypeV2::Collection {
-                element: Box::new(ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int)),
-                cardinality: ExecutionCardinalityV2::Sequence,
+            ExecutionValueTypeV3::Collection {
+                element: Box::new(ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Int)),
+                cardinality: ExecutionCardinalityV3::Sequence,
             }
         );
         let registry = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
@@ -2619,9 +2736,9 @@ mod tests {
                 .expect("record value");
         assert_eq!(
             project_value_type(&record),
-            ExecutionValueTypeV2::Record(Box::new([ExecutionRecordFieldV2 {
+            ExecutionValueTypeV3::Record(Box::new([ExecutionRecordFieldV3 {
                 name: "id".to_owned(),
-                value_type: ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int),
+                value_type: ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Int),
             }]))
         );
         // Union projection mirrors record arm-for-arm; its constructors are not
@@ -2632,30 +2749,30 @@ mod tests {
 
     #[test]
     fn composite_value_type_arms_encode_distinctly() {
-        let scalar = ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int);
+        let scalar = ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Int);
         let variants = [
-            ExecutionValueTypeV2::Null,
-            ExecutionValueTypeV2::Tuple(Box::new([scalar.clone()])),
-            ExecutionValueTypeV2::Record(Box::new([ExecutionRecordFieldV2 {
+            ExecutionValueTypeV3::Null,
+            ExecutionValueTypeV3::Tuple(Box::new([scalar.clone()])),
+            ExecutionValueTypeV3::Record(Box::new([ExecutionRecordFieldV3 {
                 name: "id".to_owned(),
                 value_type: scalar.clone(),
             }])),
-            ExecutionValueTypeV2::Optional(Box::new(scalar.clone())),
-            ExecutionValueTypeV2::Collection {
+            ExecutionValueTypeV3::Optional(Box::new(scalar.clone())),
+            ExecutionValueTypeV3::Collection {
                 element: Box::new(scalar.clone()),
-                cardinality: ExecutionCardinalityV2::Sequence,
+                cardinality: ExecutionCardinalityV3::Sequence,
             },
-            ExecutionValueTypeV2::Union(Box::new([ExecutionUnionVariantV2 {
+            ExecutionValueTypeV3::Union(Box::new([ExecutionUnionVariantV3 {
                 tag: "ok".to_owned(),
                 value_type: scalar.clone(),
             }])),
-            ExecutionValueTypeV2::Unknown,
+            ExecutionValueTypeV3::Unknown,
         ];
         let mut digests = Vec::with_capacity(variants.len());
         for value_type in &variants {
             let mut item = relation_item();
             item.relation.as_mut().expect("relation").root.schema.fields =
-                Box::new([ExecutionFieldV2 {
+                Box::new([ExecutionFieldV3 {
                     name: "a".to_owned(),
                     value_type: value_type.clone(),
                 }]);
@@ -2675,10 +2792,10 @@ mod tests {
     fn plan_determinism_and_policy_family_mutations_move_contract() {
         let base = contract_of(vec![relation_item()]);
         let mut determinism = relation_item();
-        determinism.plan.determinism = ExecutionDeterminismV2::NonDeterministic;
+        determinism.plan.determinism = ExecutionDeterminismV3::NonDeterministic;
         assert_ne!(contract_of(vec![determinism]), base);
         let mut policy = relation_item();
-        policy.plan.policy_family = ExecutionPolicyFamilyV2::Graph;
+        policy.plan.policy_family = ExecutionPolicyFamilyV3::Graph;
         assert_ne!(contract_of(vec![policy]), base);
     }
 }

@@ -1,5 +1,7 @@
 # Target Architecture
 
+> 2026-09-23 execution facade supersession: the V2 compiler/analysis architecture below remains the semantic owner map, but its source execution API listing is historical. Current producer contract: [`docs/contracts/frontend-execution-v3.md`](../../contracts/frontend-execution-v3.md), implemented under [Ticket 10a](./tickets/10a-v3-frontend-execution-contract.md). The source entry alone seals `ExecutionDocumentV3`; resolved compilation has no executable digest.
+
 Status: `PINNED FOR IMPLEMENTATION`
 
 ## Ownership Rules

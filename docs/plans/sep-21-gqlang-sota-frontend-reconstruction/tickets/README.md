@@ -1,6 +1,6 @@
 # Ticket Index
 
-Post-V2 downstream serving handoff: [Ticket 10 — Downstream serving interop](./10-downstream-serving-interop.md). It separates an AG7-only Semantica feature-graph repair from a full V2 producer/consumer migration. Neither route is qualified by the frontend V2 closeout receipts.
+Breaking V3 frontend producer inventory and implementation: [Ticket 10a — V3 frontend execution contract](./10a-v3-frontend-execution-contract.md). [Ticket 10 — Downstream serving interop](./10-downstream-serving-interop.md) is historical cross-repository background; its V2 migration and old source pins are not the current producer contract. Neither ticket is qualified by the frontend V2 closeout receipts.
 
 Status: `EXECUTION ACTIVE — 03/04 UPSTREAM CLOSURE OPEN; 05 NARROW OWNER GREEN; 06-09 OPEN`
 

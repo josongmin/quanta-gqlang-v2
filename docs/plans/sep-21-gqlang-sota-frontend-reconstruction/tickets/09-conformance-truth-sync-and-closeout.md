@@ -1,5 +1,7 @@
 # 09 — Conformance, Truth Sync, And Closeout
 
+> 2026-09-23 V3 producer extension: [Ticket 10a](./10a-v3-frontend-execution-contract.md) adds source-bound digest/literal golden vectors, facade-only positive and compile-fail proof, and exact-source local qualification. Older Ticket 09 receipts do not qualify the new execution API. A Semantica consumer build and two-repo E2E require separate paired source pins; producer-local GREEN is not product GREEN.
+
 Status: `PLANNED — CLOSEOUT BLOCKED; ONLY TICKET AUTHORIZED TO CLOSE PACKET`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)

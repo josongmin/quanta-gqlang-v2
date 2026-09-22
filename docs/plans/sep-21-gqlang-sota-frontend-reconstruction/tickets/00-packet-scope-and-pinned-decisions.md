@@ -1,5 +1,7 @@
 # 00 — Packet Scope And Pinned Decisions
 
+> 2026-09-23 execution-contract addendum: the frontend-only ownership rules below remain in force. The subsequent breaking V3 **execution** facade contract is specified in [`docs/contracts/frontend-execution-v3.md`](../../../contracts/frontend-execution-v3.md) and implemented under [Ticket 10a](./10a-v3-frontend-execution-contract.md). This does not reopen the V2 syntax/sema/planning cut or authorize runtime/provider/SDK ownership here.
+
 Status: `ACCEPTED — EXECUTION ACTIVE`
 
 ## Goal

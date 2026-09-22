@@ -30,15 +30,15 @@ use quanta_gqlang_v2_modules::{
     VersionV2,
 };
 use quanta_gqlang_v2_pipeline::{
-    compile_resolved_document_v2, compile_source_document_v2, format_source_document_v2,
-    AnalysisItemV2, CompiledItemV2, DocumentAssemblyCodeV2, ExecutionAuthorityV2,
-    ExecutionCallTargetV2, ExecutionCardinalityV2, ExecutionCompositionBodyV2,
-    ExecutionCompositionProducerV2, ExecutionExpressionShapeV2, ExecutionFamilyV2,
-    ExecutionRelationAuthorityV2, ExecutionRelationV2, ExecutionRelationalOperatorV2,
-    ExecutionSampleModeV2, ExecutionScalarTypeV2, ExecutionSchemaV2, ExecutionSourceKindV2,
-    ExecutionValueTypeV2, FrontendAuthorityLocationV2, FrontendAuthoritySourceV2,
-    FrontendLanguageVersionV2, FrontendRelationAuthorityV2, FrontendRelationInputV2,
-    FrontendTransactionErrorV2, PlannedItemV2,
+    compile_resolved_document_v2, compile_source_document_v3, format_source_document_v2,
+    AnalysisItemV2, CompiledItemV2, DocumentAssemblyCodeV2, ExecutionAuthorityV3,
+    ExecutionCallTargetV3, ExecutionCardinalityV3, ExecutionCompositionBodyV3,
+    ExecutionCompositionProducerV3, ExecutionExpressionShapeV3, ExecutionFamilyV3,
+    ExecutionLiteralV3, ExecutionRelationAuthorityV3, ExecutionRelationV3,
+    ExecutionRelationalOperatorV3, ExecutionSampleModeV3, ExecutionScalarTypeV3, ExecutionSchemaV3,
+    ExecutionSourceKindV3, ExecutionValueTypeV3, FrontendAuthorityLocationV2,
+    FrontendAuthoritySourceV2, FrontendLanguageVersionV2, FrontendRelationAuthorityV2,
+    FrontendRelationInputV2, FrontendTransactionErrorV2, PlannedItemV2,
 };
 use quanta_gqlang_v2_planning::{
     AuthorityLaneV2, CapabilityV2, CardinalityClassV2, CheckedCompositionPlanInputV2,
@@ -782,7 +782,7 @@ fn sealed_expression_node_receipt_governs_the_expression_walk() {
 #[test]
 fn closed_source_entry_assembles_the_exact_item_dispositions() {
     let authority = minimal_authority();
-    let compiled = compile_source_document_v2(DOC_SOURCE, MINIMAL_SOURCE, &authority)
+    let compiled = compile_source_document_v3(DOC_SOURCE, MINIMAL_SOURCE, &authority)
         .expect("the minimal document compiles");
     assert_eq!(compiled.source_id(), DOC_SOURCE);
     assert_eq!(compiled.items().len(), 3);
@@ -816,7 +816,7 @@ fn closed_source_entry_assembles_the_exact_item_dispositions() {
 #[test]
 fn inline_view_is_algebra_checked_before_its_catalog_no_plan_outcome() {
     let source = "view active | select=from records r | project r.id as id";
-    let compiled = compile_source_document_v2(DOC_SOURCE, source, &authority_with_records())
+    let compiled = compile_source_document_v3(DOC_SOURCE, source, &authority_with_records())
         .expect("inline View traverses Sema and Algebra before catalog disposition");
     assert!(matches!(
         compiled.items(),
@@ -891,7 +891,7 @@ fn resolve_minimal_document(
 #[test]
 fn composition_producer_and_with_identity_are_assembled_exactly() {
     let authority = minimal_authority();
-    let compiled = compile_source_document_v2(DOC_SOURCE, &composition_source(2), &authority)
+    let compiled = compile_source_document_v3(DOC_SOURCE, &composition_source(2), &authority)
         .expect("the composition compiles");
     assert_eq!(compiled.items().len(), 1);
     let execution = compiled.execution().items()[0]
@@ -903,23 +903,23 @@ fn composition_producer_and_with_identity_are_assembled_exactly() {
     assert!(execution.body_relation().is_some());
     assert!(matches!(
         execution.bindings()[0].producer(),
-        ExecutionCompositionProducerV2::Sample {
-            mode: ExecutionSampleModeV2::Lexical,
+        ExecutionCompositionProducerV3::Sample {
+            mode: ExecutionSampleModeV3::Lexical,
             limit: 2,
             ..
         }
     ));
-    assert_eq!(execution.body(), &ExecutionCompositionBodyV2::Relation);
+    assert_eq!(execution.body(), &ExecutionCompositionBodyV3::Relation);
     let semantic_source = composition_source(2).replace("mode=lexical", "mode=semantic");
-    let semantic = compile_source_document_v2(DOC_SOURCE, &semantic_source, &authority)
+    let semantic = compile_source_document_v3(DOC_SOURCE, &semantic_source, &authority)
         .expect("semantic SAMPLE composition compiles");
     let semantic_execution = semantic.execution().items()[0]
         .composition()
         .expect("semantic SAMPLE carries composition DTO");
     assert!(matches!(
         semantic_execution.bindings()[0].producer(),
-        ExecutionCompositionProducerV2::Sample {
-            mode: ExecutionSampleModeV2::Semantic,
+        ExecutionCompositionProducerV3::Sample {
+            mode: ExecutionSampleModeV3::Semantic,
             ..
         }
     ));
@@ -1018,7 +1018,7 @@ fn composition_producer_and_with_identity_are_assembled_exactly() {
     // payload cannot stay identical to a relational body's.
     let explain_body = "let paths = find path a -> b | depth=1 \
                         explain paths | evidence=auto | truth=inspect with paths";
-    let other = compile_source_document_v2(DOC_SOURCE, explain_body, &authority_with_records())
+    let other = compile_source_document_v3(DOC_SOURCE, explain_body, &authority_with_records())
         .expect("the EXPLAIN-body composition compiles");
     assert_ne!(
         compiled.items(),
@@ -1029,7 +1029,7 @@ fn composition_producer_and_with_identity_are_assembled_exactly() {
 
 #[test]
 fn typed_relation_source_requires_and_retains_host_authority() {
-    let compiled = compile_source_document_v2(DOC_SOURCE, RECORD_SOURCE, &authority_with_records())
+    let compiled = compile_source_document_v3(DOC_SOURCE, RECORD_SOURCE, &authority_with_records())
         .expect("an admitted host relation compiles");
     assert_eq!(compiled.items().len(), 1);
     let CompiledItemV2::Planned(planned) = &compiled.items()[0] else {
@@ -1079,7 +1079,7 @@ fn typed_relation_source_requires_and_retains_host_authority() {
     };
     assert_eq!(*nodes, 2, "the `records` scan and its projection");
 
-    let error = compile_source_document_v2(DOC_SOURCE, RECORD_SOURCE, &minimal_authority())
+    let error = compile_source_document_v3(DOC_SOURCE, RECORD_SOURCE, &minimal_authority())
         .expect_err("an absent host relation must reject");
     assert_eq!(failure_code(&error), "sema.unresolved_reference");
 }
@@ -1087,17 +1087,17 @@ fn typed_relation_source_requires_and_retains_host_authority() {
 #[test]
 fn execution_contract_is_complete_deterministic_and_mutation_sensitive() {
     let authority = authority_with_records();
-    let compiled = compile_source_document_v2(DOC_SOURCE, RECORD_SOURCE, &authority)
+    let compiled = compile_source_document_v3(DOC_SOURCE, RECORD_SOURCE, &authority)
         .expect("relation execution contract compiles");
-    let repeated = compile_source_document_v2(DOC_SOURCE, RECORD_SOURCE, &authority)
+    let repeated = compile_source_document_v3(DOC_SOURCE, RECORD_SOURCE, &authority)
         .expect("same source compiles deterministically");
     assert_eq!(compiled.execution(), repeated.execution());
     assert_eq!(compiled.execution().items().len(), 1);
     let item = &compiled.execution().items()[0];
-    assert_eq!(item.family(), ExecutionFamilyV2::Relation);
+    assert_eq!(item.family(), ExecutionFamilyV3::Relation);
     assert_eq!(
         item.plan().authority(),
-        ExecutionAuthorityV2::FrontendChecked
+        ExecutionAuthorityV3::FrontendChecked
     );
     let relation = item
         .relation()
@@ -1111,22 +1111,22 @@ fn execution_contract_is_complete_deterministic_and_mutation_sensitive() {
     assert_eq!(relation.root().schema().fields()[0].name(), "id");
     assert_eq!(
         relation.root().schema().fields()[0].value_type(),
-        &ExecutionValueTypeV2::Scalar(ExecutionScalarTypeV2::Int)
+        &ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Int)
     );
     assert_eq!(
         relation.root().schema().cardinality(),
-        ExecutionCardinalityV2::Bag
+        ExecutionCardinalityV3::Bag
     );
     assert!(relation.expressions().iter().any(|expression| matches!(
         expression.shape(),
-        ExecutionExpressionShapeV2::Path { .. } | ExecutionExpressionShapeV2::Binding(_)
+        ExecutionExpressionShapeV3::Path { .. } | ExecutionExpressionShapeV3::Binding(_)
     )));
     assert_ne!(
         compiled.execution().source_digest().to_hex(),
         "0".repeat(64)
     );
 
-    let mutated = compile_source_document_v2(
+    let mutated = compile_source_document_v3(
         DOC_SOURCE,
         "from records r | project r.id as renamed",
         &authority,
@@ -1145,7 +1145,7 @@ fn execution_contract_is_complete_deterministic_and_mutation_sensitive() {
         mutated.execution().source_digest()
     );
 
-    let byte_mutated = compile_source_document_v2(
+    let byte_mutated = compile_source_document_v3(
         DOC_SOURCE,
         "from records r  | project r.id as id",
         &authority,
@@ -1171,15 +1171,145 @@ fn execution_contract_is_complete_deterministic_and_mutation_sensitive() {
     );
 }
 
+fn projected_literal(source: &str) -> ExecutionLiteralV3 {
+    let compiled = compile_source_document_v3(DOC_SOURCE, source, &authority_with_records())
+        .expect("checked literal source compiles");
+    let relation = compiled.execution().items()[0]
+        .relation()
+        .expect("one top-level relation");
+    relation
+        .expressions()
+        .iter()
+        .find_map(|expression| {
+            if let ExecutionExpressionShapeV3::Literal(literal) = expression.shape() {
+                Some(literal.clone())
+            } else {
+                None
+            }
+        })
+        .expect("the checked literal is projected into the execution table")
+}
+
+#[test]
+fn source_literals_reach_the_v3_contract_as_checked_typed_values() {
+    assert_eq!(
+        projected_literal("from records r | project 42 as x"),
+        ExecutionLiteralV3::Int(42)
+    );
+    assert_eq!(
+        projected_literal("from records r | project -170141183460469231731687303715884105728 as x"),
+        ExecutionLiteralV3::Int(i128::MIN)
+    );
+    let float = projected_literal("from records r | project 1.5 as x");
+    assert!(matches!(
+        float,
+        ExecutionLiteralV3::Float(value) if value.bits() == 1.5f64.to_bits()
+    ));
+    let negative_zero = projected_literal("from records r | project -0.0 as x");
+    assert!(matches!(
+        negative_zero,
+        ExecutionLiteralV3::Float(value) if value.bits() == 0.0f64.to_bits()
+    ));
+    assert_eq!(
+        projected_literal("from records r | project true as x"),
+        ExecutionLiteralV3::Bool(true)
+    );
+    assert_eq!(
+        projected_literal("from records r | project \"é\" as x"),
+        ExecutionLiteralV3::String("é".to_owned())
+    );
+    assert_eq!(
+        projected_literal("from records r | project null as x"),
+        ExecutionLiteralV3::Null
+    );
+}
+
+#[test]
+fn source_id_is_transaction_local_and_foreign_item_lookup_is_empty() {
+    let authority = authority_with_records();
+    let first = compile_source_document_v3(DOC_SOURCE, RECORD_SOURCE, &authority)
+        .expect("first source identity compiles");
+    let second = compile_source_document_v3(SourceIdV2::from_raw(10), RECORD_SOURCE, &authority)
+        .expect("second source identity compiles");
+    assert_eq!(
+        first.execution().source_digest(),
+        second.execution().source_digest()
+    );
+    assert_ne!(
+        first.execution().contract_digest(),
+        second.execution().contract_digest()
+    );
+    assert_ne!(
+        first.execution().qualification_digest(),
+        second.execution().qualification_digest()
+    );
+    let foreign_item = second.execution().items()[0].item_id();
+    assert!(first.execution().item(foreign_item).is_none());
+    assert!(first
+        .execution()
+        .item(first.execution().items()[0].item_id())
+        .is_some());
+}
+
+#[test]
+fn source_bound_v3_digests_match_the_shared_golden_vectors() {
+    let mut selected = 0;
+    for row in include_str!("fixtures/execution-v3-vectors.tsv")
+        .lines()
+        .skip(1)
+    {
+        let fields = row.split('\t').collect::<Vec<_>>();
+        assert_eq!(fields.len(), 7, "malformed vector row: {row}");
+        let [case, profile, raw_source_id, source, source_hex, contract_hex, qualification_hex] =
+            fields.as_slice()
+        else {
+            panic!("malformed vector row: {row}");
+        };
+        let authority = match *profile {
+            "records_host" => authority_with_records(),
+            "minimal" => minimal_authority(),
+            "workspace_files_canonical" => {
+                authority_with_workspace_files(FrontendRelationAuthorityV2::CanonicalWorkspaceFiles)
+            }
+            "workspace_files_host" => {
+                authority_with_workspace_files(FrontendRelationAuthorityV2::Host)
+            }
+            other => panic!("unknown vector authority profile: {other}"),
+        };
+        let source_id = SourceIdV2::from_raw(raw_source_id.parse().expect("u32 source id"));
+        let compiled = compile_source_document_v3(source_id, source, &authority)
+            .unwrap_or_else(|error| panic!("{case}: {error:?}"));
+        let execution = compiled.execution();
+        let actual = [
+            execution.source_digest().to_hex(),
+            execution.contract_digest().to_hex(),
+            execution.qualification_digest().to_hex(),
+        ];
+        for digest in [source_hex, contract_hex, qualification_hex] {
+            assert_eq!(digest.len(), 64, "{case}: malformed hex digest");
+            assert!(digest
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase()));
+        }
+        assert_eq!(
+            actual,
+            [*source_hex, *contract_hex, *qualification_hex],
+            "{case}"
+        );
+        selected += 1;
+    }
+    assert_eq!(selected, 14, "the shared V3 corpus must not be vacuous");
+}
+
 #[test]
 fn workspace_files_authority_is_closed_and_digest_bound() {
-    let canonical = compile_source_document_v2(
+    let canonical = compile_source_document_v3(
         DOC_SOURCE,
         WORKSPACE_FILES_SOURCE,
         &authority_with_workspace_files(FrontendRelationAuthorityV2::CanonicalWorkspaceFiles),
     )
     .expect("canonical workspace-files source compiles");
-    let repeated = compile_source_document_v2(
+    let repeated = compile_source_document_v3(
         DOC_SOURCE,
         WORKSPACE_FILES_SOURCE,
         &authority_with_workspace_files(FrontendRelationAuthorityV2::CanonicalWorkspaceFiles),
@@ -1196,13 +1326,13 @@ fn workspace_files_authority_is_closed_and_digest_bound() {
         .expect("scan carries source identity");
     assert_eq!(
         source.authority(),
-        ExecutionRelationAuthorityV2::CanonicalWorkspaceFiles
+        ExecutionRelationAuthorityV3::CanonicalWorkspaceFiles
     );
-    assert_eq!(source.kind(), ExecutionSourceKindV2::Relation);
+    assert_eq!(source.kind(), ExecutionSourceKindV3::Relation);
     assert_eq!(source.namespace(), Some("builtin"));
     assert_eq!(source.name(), "workspace_files");
 
-    let host = compile_source_document_v2(
+    let host = compile_source_document_v3(
         DOC_SOURCE,
         WORKSPACE_FILES_SOURCE,
         &authority_with_workspace_files(FrontendRelationAuthorityV2::Host),
@@ -1215,7 +1345,7 @@ fn workspace_files_authority_is_closed_and_digest_bound() {
         .children()[0]
         .source()
         .expect("scan carries source identity");
-    assert_eq!(host_source.authority(), ExecutionRelationAuthorityV2::Host);
+    assert_eq!(host_source.authority(), ExecutionRelationAuthorityV3::Host);
     assert_ne!(
         canonical.execution().contract_digest(),
         host.execution().contract_digest()
@@ -1232,7 +1362,7 @@ fn execution_expressions_expose_operator_and_builtin_semantics_without_registrie
     // census below observes only the relation item's own expressions.
     let source = "let noise = 6 * 7; \
                   from records r | where r.id + 1 > 2 and r.id - 1 != 0 | project count(*) as n";
-    let compiled = compile_source_document_v2(DOC_SOURCE, source, &authority_with_records())
+    let compiled = compile_source_document_v3(DOC_SOURCE, source, &authority_with_records())
         .expect("mixed expression document compiles");
     let expressions = compiled
         .execution()
@@ -1245,31 +1375,31 @@ fn execution_expressions_expose_operator_and_builtin_semantics_without_registrie
     let mut builtins = Vec::new();
     for expression in expressions {
         match expression.shape() {
-            ExecutionExpressionShapeV2::Unary { operator, .. }
-            | ExecutionExpressionShapeV2::Binary { operator, .. }
-            | ExecutionExpressionShapeV2::Compare { operator, .. }
-            | ExecutionExpressionShapeV2::And { operator, .. }
-            | ExecutionExpressionShapeV2::Or { operator, .. }
-            | ExecutionExpressionShapeV2::Not { operator, .. } => {
+            ExecutionExpressionShapeV3::Unary { operator, .. }
+            | ExecutionExpressionShapeV3::Binary { operator, .. }
+            | ExecutionExpressionShapeV3::Compare { operator, .. }
+            | ExecutionExpressionShapeV3::And { operator, .. }
+            | ExecutionExpressionShapeV3::Or { operator, .. }
+            | ExecutionExpressionShapeV3::Not { operator, .. } => {
                 operators.insert(operator.symbol().to_owned());
             }
-            ExecutionExpressionShapeV2::Call { target, .. } => {
-                let ExecutionCallTargetV2::Builtin { name } = target else {
+            ExecutionExpressionShapeV3::Call { target, .. } => {
+                let ExecutionCallTargetV3::Builtin { name } = target else {
                     panic!("expected a builtin call target, got {target:?}");
                 };
                 builtins.push(name.clone());
             }
             // Exhaustive by construction: a future shape variant fails compilation
             // here instead of silently evading the operator/call census.
-            ExecutionExpressionShapeV2::Literal(_)
-            | ExecutionExpressionShapeV2::Binding(_)
-            | ExecutionExpressionShapeV2::Path { .. }
-            | ExecutionExpressionShapeV2::Paren(_)
-            | ExecutionExpressionShapeV2::Record(_)
-            | ExecutionExpressionShapeV2::List(_)
-            | ExecutionExpressionShapeV2::BoolValue(_)
-            | ExecutionExpressionShapeV2::LogicalQuantifier { .. }
-            | ExecutionExpressionShapeV2::RelationExists { .. } => {}
+            ExecutionExpressionShapeV3::Literal(_)
+            | ExecutionExpressionShapeV3::Binding(_)
+            | ExecutionExpressionShapeV3::Path { .. }
+            | ExecutionExpressionShapeV3::Paren(_)
+            | ExecutionExpressionShapeV3::Record(_)
+            | ExecutionExpressionShapeV3::List(_)
+            | ExecutionExpressionShapeV3::BoolValue(_)
+            | ExecutionExpressionShapeV3::LogicalQuantifier { .. }
+            | ExecutionExpressionShapeV3::RelationExists { .. } => {}
         }
     }
     assert!(operators.contains("+"));
@@ -1312,13 +1442,13 @@ fn execution_expressions_expose_operator_and_builtin_semantics_without_registrie
 fn unrelated_sibling_expressions_do_not_move_an_item_contract() {
     let authority = authority_with_records();
     let head = "from records r | project r.id as id";
-    let base = compile_source_document_v2(
+    let base = compile_source_document_v3(
         DOC_SOURCE,
         &format!("{head} ;\nfrom records s | project s.id as sid"),
         &authority,
     )
     .expect("two-relation document compiles");
-    let grown = compile_source_document_v2(
+    let grown = compile_source_document_v3(
         DOC_SOURCE,
         &format!(
             "{head} ;\nfrom records s | where s.id + 1 > 2 and s.id - 1 != 0 | project count(*) as n"
@@ -1354,11 +1484,11 @@ fn unrelated_sibling_expressions_do_not_move_an_item_contract() {
 /// table (SAMPLE/Graph) must contribute no dangling order/partition references.
 #[test]
 fn every_projected_expression_reference_resolves_within_its_own_table() {
-    fn schema_keys(schema: &ExecutionSchemaV2, out: &mut Vec<SourceQualifiedNodeIdV2>) {
+    fn schema_keys(schema: &ExecutionSchemaV3, out: &mut Vec<SourceQualifiedNodeIdV2>) {
         out.extend_from_slice(schema.partition_keys());
         out.extend(schema.order().iter().map(|key| key.expression()));
     }
-    fn operator_keys(node: &ExecutionRelationalOperatorV2, out: &mut Vec<SourceQualifiedNodeIdV2>) {
+    fn operator_keys(node: &ExecutionRelationalOperatorV3, out: &mut Vec<SourceQualifiedNodeIdV2>) {
         out.extend_from_slice(node.predicates());
         out.extend_from_slice(node.expressions());
         out.extend(node.correlations().iter().map(|edge| edge.reference()));
@@ -1367,36 +1497,36 @@ fn every_projected_expression_reference_resolves_within_its_own_table() {
             operator_keys(child, out);
         }
     }
-    fn shape_keys(shape: &ExecutionExpressionShapeV2) -> Vec<SourceQualifiedNodeIdV2> {
+    fn shape_keys(shape: &ExecutionExpressionShapeV3) -> Vec<SourceQualifiedNodeIdV2> {
         match shape {
-            ExecutionExpressionShapeV2::Literal(_) | ExecutionExpressionShapeV2::Binding(_) => {
+            ExecutionExpressionShapeV3::Literal(_) | ExecutionExpressionShapeV3::Binding(_) => {
                 Vec::new()
             }
-            ExecutionExpressionShapeV2::Path { base, .. } => vec![*base],
-            ExecutionExpressionShapeV2::Unary { operand, .. }
-            | ExecutionExpressionShapeV2::Not { operand, .. } => vec![*operand],
-            ExecutionExpressionShapeV2::Binary { lhs, rhs, .. }
-            | ExecutionExpressionShapeV2::Compare { lhs, rhs, .. }
-            | ExecutionExpressionShapeV2::And { lhs, rhs, .. }
-            | ExecutionExpressionShapeV2::Or { lhs, rhs, .. } => vec![*lhs, *rhs],
-            ExecutionExpressionShapeV2::Call { arguments, .. } => {
+            ExecutionExpressionShapeV3::Path { base, .. } => vec![*base],
+            ExecutionExpressionShapeV3::Unary { operand, .. }
+            | ExecutionExpressionShapeV3::Not { operand, .. } => vec![*operand],
+            ExecutionExpressionShapeV3::Binary { lhs, rhs, .. }
+            | ExecutionExpressionShapeV3::Compare { lhs, rhs, .. }
+            | ExecutionExpressionShapeV3::And { lhs, rhs, .. }
+            | ExecutionExpressionShapeV3::Or { lhs, rhs, .. } => vec![*lhs, *rhs],
+            ExecutionExpressionShapeV3::Call { arguments, .. } => {
                 arguments.iter().filter_map(|argument| *argument).collect()
             }
-            ExecutionExpressionShapeV2::Paren(inner)
-            | ExecutionExpressionShapeV2::BoolValue(inner) => vec![*inner],
-            ExecutionExpressionShapeV2::Record(fields) => {
+            ExecutionExpressionShapeV3::Paren(inner)
+            | ExecutionExpressionShapeV3::BoolValue(inner) => vec![*inner],
+            ExecutionExpressionShapeV3::Record(fields) => {
                 fields.iter().map(|(_, id)| *id).collect()
             }
-            ExecutionExpressionShapeV2::List(items) => items.to_vec(),
-            ExecutionExpressionShapeV2::LogicalQuantifier { body, .. } => vec![*body],
-            ExecutionExpressionShapeV2::RelationExists { correlations, .. } => {
+            ExecutionExpressionShapeV3::List(items) => items.to_vec(),
+            ExecutionExpressionShapeV3::LogicalQuantifier { body, .. } => vec![*body],
+            ExecutionExpressionShapeV3::RelationExists { correlations, .. } => {
                 correlations.iter().map(|edge| edge.reference()).collect()
             }
         }
     }
     fn assert_relation_closed(
         label: &str,
-        relation: &ExecutionRelationV2,
+        relation: &ExecutionRelationV3,
         expect_references: bool,
     ) {
         let table: BTreeSet<SourceQualifiedNodeIdV2> = relation
@@ -1425,7 +1555,7 @@ fn every_projected_expression_reference_resolves_within_its_own_table() {
     let where_source =
         "from records r | where r.id + 1 > 2 and r.id - 1 != 0 | project count(*) as n";
     let where_compiled =
-        compile_source_document_v2(DOC_SOURCE, where_source, &authority_with_records())
+        compile_source_document_v3(DOC_SOURCE, where_source, &authority_with_records())
             .expect("where/count relation compiles");
     for item in where_compiled.execution().items() {
         if let Some(relation) = item.relation() {
@@ -1433,12 +1563,12 @@ fn every_projected_expression_reference_resolves_within_its_own_table() {
         }
     }
     let sample =
-        compile_source_document_v2(DOC_SOURCE, &composition_source(2), &minimal_authority())
+        compile_source_document_v3(DOC_SOURCE, &composition_source(2), &minimal_authority())
             .expect("SAMPLE composition compiles");
     let query_composition =
         "let rows = from records r | where r.id + 1 > 2 from rows x | project x.id as id with rows";
     let query =
-        compile_source_document_v2(DOC_SOURCE, query_composition, &authority_with_records())
+        compile_source_document_v3(DOC_SOURCE, query_composition, &authority_with_records())
             .expect("Query composition compiles");
     for (label, compiled) in [("SAMPLE", sample), ("Query", query)] {
         let item = compiled.execution().items().first().expect("one item");
@@ -1475,32 +1605,19 @@ fn every_projected_expression_reference_resolves_within_its_own_table() {
     }
 }
 
-/// The resolved entry point shares the source entry's contract exactly but
-/// binds the empty source leg: it never sees raw bytes, so its source and
-/// qualification digests must differ while items and contract match.
+/// The resolved entry shares checked semantic items with the source entry,
+/// but cannot issue an execution document because it has no source bytes.
 #[test]
-fn resolved_entry_shares_contract_but_not_source_digest() {
+fn resolved_entry_preserves_semantics_without_execution_identity() {
     let authority = authority_with_records();
-    let via_source = compile_source_document_v2(DOC_SOURCE, RECORD_SOURCE, &authority)
+    let via_source = compile_source_document_v3(DOC_SOURCE, RECORD_SOURCE, &authority)
         .expect("source entry compiles");
     let document = resolve_source(&authority, RECORD_SOURCE);
     let via_resolved = compile_resolved_document_v2(&document).expect("resolved entry compiles");
-    assert_eq!(
-        via_source.execution().items(),
-        via_resolved.execution().items()
-    );
-    assert_eq!(
-        via_source.execution().contract_digest(),
-        via_resolved.execution().contract_digest()
-    );
-    assert_ne!(
-        via_source.execution().source_digest(),
-        via_resolved.execution().source_digest()
-    );
-    assert_ne!(
-        via_source.execution().qualification_digest(),
-        via_resolved.execution().qualification_digest()
-    );
+    assert_eq!(via_source.source_id(), via_resolved.source_id());
+    assert_eq!(via_source.items(), via_resolved.items());
+    assert_eq!(via_source.rule_program(), via_resolved.rule_program());
+    assert_eq!(via_source.execution().items().len(), 1);
 }
 
 /// A composition body whose lowered root belongs to ANOTHER relation is

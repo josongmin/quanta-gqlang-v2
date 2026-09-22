@@ -1,5 +1,7 @@
 # Sep 21 — QGLang SOTA++ Frontend Reconstruction
 
+> 2026-09-23 addendum: the prior V2 reconstruction checkpoints below are historical source-bound observations, not proof of the subsequent V3 execution seam. [Ticket 10a](./tickets/10a-v3-frontend-execution-contract.md) and the [V3 contract](../../contracts/frontend-execution-v3.md) own the current producer cutover; its local and paired-repo qualification must be recorded separately.
+
 Status: `EXECUTION ACTIVE — OWNER CUTS ADVANCED; INTEGRATION AND CLOSEOUT RED`
 
 ## Authoritative Current Checkpoint — 2026-09-21

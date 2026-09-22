@@ -1,7 +1,7 @@
 //! Negative case D14_import_retired_compiled_item_v1 (class D: retired boundary).
 //!
 //! V1 HIR and compiled-item DTOs are not a compatibility surface. Downstream
-//! serving must consume `CompiledDocumentV2::execution()` and its sealed V2
+//! serving must consume `CompiledSourceDocumentV3::execution()` and its sealed V3
 //! execution DTOs instead.
 //!
 //! Expected: E0432, "no `CompiledItemV1` in the root".
