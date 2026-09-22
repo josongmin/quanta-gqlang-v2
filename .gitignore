@@ -16,3 +16,4 @@ lcov.info
 coverage.txt
 mutants-*.txt
 /.audit/
+/test_*.txt

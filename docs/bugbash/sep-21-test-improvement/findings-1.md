@@ -22,6 +22,23 @@ see the cross-reference table in §7 before acting on anything here.
 - **Relevance warning:** the overlap with findings-2 is deliberate and bounded — §7 lists every
   item that findings-2 already owns so it is fixed once, in one place.
 
+> ### ⚠️ SUPERSEDED AS AN ACTION LIST — historical narrative only
+>
+> The tree moved again after this was written (HEAD is now `ecc38f5` + dirty; the concurrent
+> modules-v2 session also committed this file). Do **not** execute from this document.
+>
+> - **Execute from `findings-1-duplicated.md`** — it carries the re-baseline banner (978 test fns
+>   / 110 files at `ecc38f5`, versus 810 / 101 below), marks the items the concurrent session
+>   already actioned (the 12 tautologies, `lex(&s)==lex(&s)`, the proptest trim, **I2**) and the
+>   items whose target code the modules-v2 rewrite deleted (**M7, M9, M10, M11**), and re-anchors
+>   the drifted lines (A1, B2, M4, M6).
+> - `test-suite-inventory.tsv` has been **regenerated at `ecc38f5`** and now includes a `bodyhash`
+>   column; regenerate with `python3 inventory_scan.py <repo-root> out.tsv`. The counts in §0 below
+>   are the **snapshot** figures, retained deliberately as the audit's evidence.
+> - Citations in this file that name a bare filename (`parser.rs`, `graph.rs`, `plan.rs`,
+>   `capability.rs`, `main.rs`, `lint.yml`) are prose abbreviations; the crate context is given in
+>   the same row. The action list resolves them to full paths.
+
 ---
 
 ## §0 Exhaustive accounting — the measurement no other report has

@@ -1,0 +1,373 @@
+error: used `expect()` on a `Result` value
+   --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/diagnostic.rs:572:9
+    |
+572 | /         quanta_gqlang_v2_sema::test_support::reference_checked_span_v2(3, 11)
+573 | |             .expect("fixture checked location is in bounds")
+    | |____________________________________________________________^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#expect_used
+    = note: requested on the command line with `-D clippy::expect-used`
+
+error: used `panic!()` or assertion in a function that returns `Result`
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1346:5
+     |
+1346 | /     fn a_relational_scan_plans_a_read_only_table() -> Result<(), String> {
+1347 | |         let (fixture, input) = relational_fixture(ReferenceRelationFixtureV2::Scan)?;
+1348 | |         let document = fixture.document();
+1349 | |         let plan = plan(&input, document).map_err(|error| format!("{error:?}"))?;
+...    |
+1395 | |         Ok(())
+1396 | |     }
+     | |_____^
+     |
+     = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1351:9
+     |
+1351 |           assert_eq!(plan.authority_lane(), AuthorityLaneV2::FrontendChecked);
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1352 | /         assert_eq!(
+1353 | |             plan.evaluation_determinism(),
+1354 | |             EvaluationDeterminismV2::Deterministic
+1355 | |         );
+     | |_________^
+1356 |           assert_eq!(plan.evidence(), EvidenceRequirementV2::None);
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1357 |           assert_eq!(plan.effect(), EffectClassV2::ReadOnly);
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1358 |           assert_eq!(plan.result().result_kind(), ResultKindV2::Table);
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1359 | /         assert_eq!(
+1360 | |             plan.result().render_requirement(),
+1361 | |             RenderRequirementV2::RowsOnly
+1362 | |         );
+     | |_________^
+1363 |           assert_eq!(plan.result().witness_selection(), None);
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1364 |           assert!(!plan.result().multiplicity_order().is_ordered());
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1365 |           assert!(plan.capabilities().contains(&CapabilityV2::RelationScan));
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1366 | /         assert_eq!(
+1367 | |             plan.semantic_cost().estimated_cardinality_class,
+1368 | |             CardinalityClassV2::LinearInInput
+1369 | |         );
+     | |_________^
+1370 | /         assert_eq!(
+1371 | |             plan.semantic_cost().recursion_risk_class,
+1372 | |             RecursionRiskClassV2::None
+1373 | |         );
+     | |_________^
+1374 | /         assert_eq!(
+1375 | |             plan.semantic_cost().witness_explosion_risk_class,
+1376 | |             WitnessExplosionRiskClassV2::None
+1377 | |         );
+     | |_________^
+1378 | /         assert_eq!(
+1379 | |             plan.semantic_cost().ordering_contract,
+1380 | |             OrderingContractV2::Unordered
+1381 | |         );
+     | |_________^
+1382 |           assert_eq!(plan.explain().families(), &[AlgebraFamilyV2::Scan]);
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1383 |           assert!(!plan.explain().recursive());
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1384 | /         assert_eq!(
+1385 | |             Some(plan.explain().root_location()),
+1386 | |             expected_anchor(document, fixture.item_id()).as_ref()
+1387 | |         );
+     | |_________^
+...
+1390 |                   assert_eq!(*nodes, 1);
+     |                   ^^^^^^^^^^^^^^^^^^^^^
+1391 |                   assert_eq!(effects.determinism, DeterminismV1::Deterministic);
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+     = note: requested on the command line with `-D clippy::panic-in-result-fn`
+
+error: wildcard match will also match any future added variants
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1393:13
+     |
+1393 |             other => return Err(format!("expected a relational policy, got {other:?}")),
+     |             ^^^^^ help: try: `other @ PlanPolicyV2::Graph(_) | other @ PlanPolicyV2::Check(_) | other @ PlanPolicyV2::Presentation(_) | other @ PlanPolicyV2::Rule(_) | other @ PlanPolicyV2::MetaRequireCertified | other @ PlanPolicyV2::Composition(_)`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_enum_match_arm
+     = note: requested on the command line with `-D clippy::wildcard-enum-match-arm`
+
+error: used `panic!()` or assertion in a function that returns `Result`
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1401:5
+     |
+1401 | /     fn the_exact_step_limit_plans_and_one_more_is_refused() -> Result<(), String> {
+1402 | |         let exact_depth = SMALL_BUDGET_MAX_SEMANTIC_STEPS - 1;
+1403 | |         let exact_carrier =
+1404 | |             deep_relation_chain_document_v2(exact_depth, ReferenceBudgetV2::Standard)?;
+...    |
+1426 | |         Ok(())
+1427 | |     }
+     | |_____^
+     |
+     = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1422:17
+     |
+1422 |                 assert_eq!(limit, SMALL_BUDGET_MAX_SEMANTIC_STEPS);
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1433:5
+     |
+1433 | /     fn a_carrier_must_belong_to_the_document() -> Result<(), String> {
+1434 | |         let (_foreign, foreign_input) = relational_fixture(ReferenceRelationFixtureV2::Scan)?;
+1435 | |         let other = second_source_relation_document_v2()?;
+1436 | |         match plan(&foreign_input, other.document()) {
+...    |
+1462 | |         Ok(())
+1463 | |     }
+     | |_____^
+     |
+     = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1438:17
+     |
+1438 |                 assert_eq!(reason, InputDocumentMismatchReasonV2::Absent);
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1452 |                 assert_eq!(reason, InputDocumentMismatchReasonV2::IdentityMismatch);
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1468:5
+     |
+1468 | /     fn an_empty_rule_program_is_a_typed_non_plan() -> Result<(), String> {
+1469 | |         let (fixture, _input) = relational_fixture(ReferenceRelationFixtureV2::Scan)?;
+1470 | |         let document = fixture.document();
+1471 | |         let contract =
+...    |
+1495 | |         Ok(())
+1496 | |     }
+     | |_____^
+     |
+     = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1476:46
+     |
+1476 |               PlanOutcomeV2::NoPlan(reason) => assert_eq!(reason, NoPlanReasonV2::EmptyRuleProgram),
+     |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1483 |                   assert_eq!(reason, NoPlanReasonV2::EmptyRuleProgram);
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1484 | /                 assert_eq!(
+1485 | |                     Some(&span),
+1486 | |                     expected_anchor(document, fixture.item_id()).as_ref()
+1487 | |                 );
+     | |_________________^
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: used `panic!()` or assertion in a function that returns `Result`
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1501:5
+     |
+1501 | /     fn a_find_plan_retains_the_sealed_witness_provenance() -> Result<(), String> {
+1502 | |         let (document, input) = graph_fixture()?;
+1503 | |         let plan = plan(&input, document.document()).map_err(|error| format!("{error:?}"))?;
+...    |
+1555 | |         Ok(())
+1556 | |     }
+     | |_____^
+     |
+     = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1505:9
+     |
+1505 |           assert_eq!(plan.authority_lane(), AuthorityLaneV2::FrontendChecked);
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1506 |           assert_eq!(plan.evidence(), EvidenceRequirementV2::WitnessPayload);
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1507 |           assert_eq!(plan.effect(), EffectClassV2::ProofEvidenceOnly);
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1508 |           assert_eq!(plan.result().result_kind(), ResultKindV2::PathWitness);
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1509 | /         assert_eq!(
+1510 | |             plan.result().render_requirement(),
+1511 | |             RenderRequirementV2::WitnessPayload
+1512 | |         );
+     | |_________^
+1513 | /         assert_eq!(
+1514 | |             plan.result().witness_selection(),
+1515 | |             Some(WitnessSelectionPolicyV2::AllWitness)
+1516 | |         );
+     | |_________^
+1517 | /         assert_eq!(
+1518 | |             plan.semantic_cost().estimated_cardinality_class,
+1519 | |             CardinalityClassV2::Closure
+1520 | |         );
+     | |_________^
+1521 | /         assert_eq!(
+1522 | |             plan.semantic_cost().recursion_risk_class,
+1523 | |             RecursionRiskClassV2::BoundDependent
+1524 | |         );
+     | |_________^
+1525 | /         assert_eq!(
+1526 | |             plan.semantic_cost().witness_explosion_risk_class,
+1527 | |             WitnessExplosionRiskClassV2::CapBounded
+1528 | |         );
+     | |_________^
+1529 | /         assert!(plan
+1530 | |             .capabilities()
+1531 | |             .contains(&CapabilityV2::WitnessMaterialization));
+     | |_____________________________________________________________^
+1532 | /         assert!(plan
+1533 | |             .capabilities()
+1534 | |             .contains(&CapabilityV2::RecursiveClosure));
+     | |_______________________________________________________^
+1535 |           assert!(plan.explain().recursive());
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1536 |           assert!(plan.explain().families().is_empty());
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1543 |                   assert_eq!(retention.item_id(), contract.item_id());
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1544 |                   assert_eq!(retention.depth(), 4);
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1545 |                   assert_eq!(retention.max_witnesses(), contract.max_witnesses());
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1546 |                   assert_eq!(retention.dedup(), contract.dedup());
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1547 |                   assert_eq!(retention.tie_break(), contract.tie_break());
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1548 | /                 assert_eq!(
+1549 | |                     retention.max_path_length(),
+1550 | |                     contract.witness().max_path_length()
+1551 | |                 );
+     | |_________________^
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: wildcard match will also match any future added variants
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1553:13
+     |
+1553 |             other => return Err(format!("expected a graph policy, got {other:?}")),
+     |             ^^^^^ help: try: `other @ PlanPolicyV2::Relational{ .. } | other @ PlanPolicyV2::Check(_) | other @ PlanPolicyV2::Presentation(_) | other @ PlanPolicyV2::Rule(_) | other @ PlanPolicyV2::MetaRequireCertified | other @ PlanPolicyV2::Composition(_)`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_enum_match_arm
+
+error: used `panic!()` or assertion in a function that returns `Result`
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1561:5
+     |
+1561 | /     fn a_recursive_rule_program_plans_a_bounded_fixpoint() -> Result<(), String> {
+1562 | |         let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::PositiveSelfRecursion)?;
+1563 | |         let document = fixture.document();
+1564 | |         let contract =
+...    |
+1591 | |         Ok(())
+1592 | |     }
+     | |_____^
+     |
+     = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1569:9
+     |
+1569 |           assert_eq!(plan.authority_lane(), AuthorityLaneV2::FrontendChecked);
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1570 |           assert_eq!(plan.effect(), EffectClassV2::ReadOnly);
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1571 | /         assert_eq!(
+1572 | |             plan.semantic_cost().estimated_cardinality_class,
+1573 | |             CardinalityClassV2::Closure
+1574 | |         );
+     | |_________^
+1575 | /         assert_eq!(
+1576 | |             plan.semantic_cost().recursion_risk_class,
+1577 | |             RecursionRiskClassV2::BoundedFixpoint
+1578 | |         );
+     | |_________^
+1579 | /         assert!(plan
+1580 | |             .capabilities()
+1581 | |             .contains(&CapabilityV2::RecursiveClosure));
+     | |_______________________________________________________^
+1582 |           assert!(plan.explain().recursive());
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+1585 |                   assert_eq!(policy.item_ids().len(), fixture.item_ids().len());
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1586 |                   assert_eq!(policy.recursive_members().len(), 1);
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1587 |                   assert!(policy.stratum_count() >= 1);
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: wildcard match will also match any future added variants
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1589:13
+     |
+1589 |             other => return Err(format!("expected a rule-program policy, got {other:?}")),
+     |             ^^^^^ help: try: `other @ PlanPolicyV2::Relational{ .. } | other @ PlanPolicyV2::Graph(_) | other @ PlanPolicyV2::Check(_) | other @ PlanPolicyV2::Presentation(_) | other @ PlanPolicyV2::MetaRequireCertified | other @ PlanPolicyV2::Composition(_)`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_enum_match_arm
+
+error: used `panic!()` or assertion in a function that returns `Result`
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1597:5
+     |
+1597 | /     fn the_traversal_is_root_first_and_prices_one_step_per_node() -> Result<(), String> {
+1598 | |         let (fixture, input) = relational_fixture(ReferenceRelationFixtureV2::SortAsc)?;
+1599 | |         let document = fixture.document();
+1600 | |         let plan = plan(&input, document).map_err(|error| format!("{error:?}"))?;
+...    |
+1619 | |         Ok(())
+1620 | |     }
+     | |_____^
+     |
+     = help: `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing
+note: return Err() instead of panicking
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1602:9
+     |
+1602 | /         assert_eq!(
+1603 | |             plan.explain().families(),
+1604 | |             &[AlgebraFamilyV2::Sort, AlgebraFamilyV2::Scan]
+1605 | |         );
+     | |_________^
+1606 | /         assert_eq!(
+1607 | |             plan.semantic_cost().ordering_contract,
+1608 | |             OrderingContractV2::Ordered
+1609 | |         );
+     | |_________^
+1610 |           assert!(plan.result().multiplicity_order().is_ordered());
+     |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1611 | /         assert_eq!(
+1612 | |             plan.semantic_cost().estimated_cardinality_class,
+1613 | |             CardinalityClassV2::LinearInInput
+1614 | |         );
+     | |_________^
+1615 |           match plan.policy() {
+1616 |               PlanPolicyV2::Relational { nodes, .. } => assert_eq!(*nodes, 2),
+     |                                                         ^^^^^^^^^^^^^^^^^^^^^
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#panic_in_result_fn
+
+error: wildcard match will also match any future added variants
+    --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/plan.rs:1617:13
+     |
+1617 |             other => return Err(format!("expected a relational policy, got {other:?}")),
+     |             ^^^^^ help: try: `other @ PlanPolicyV2::Graph(_) | other @ PlanPolicyV2::Check(_) | other @ PlanPolicyV2::Presentation(_) | other @ PlanPolicyV2::Rule(_) | other @ PlanPolicyV2::MetaRequireCertified | other @ PlanPolicyV2::Composition(_)`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_enum_match_arm
+
+error: this lint expectation is unfulfilled
+   --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/diagnostic.rs:353:9
+    |
+353 |         clippy::panic,
+    |         ^^^^^^^^^^^^^
+    |
+    = note: owner code rails fail closed on a drifted diagnostic spelling
+    = note: `-D unfulfilled-lint-expectations` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(unfulfilled_lint_expectations)]`
+
+error: this lint expectation is unfulfilled
+   --> /Users/songmin/Documents/code-new/quanta-gqlang-v2/crates/quanta-gqlang-v2-planning/src/effect.rs:140:9
+    |
+140 |         clippy::panic,
+    |         ^^^^^^^^^^^^^
+    |
+    = note: owner keyword rails fail closed on a drifted spelling
+
+error: aborting due to 14 previous errors
+

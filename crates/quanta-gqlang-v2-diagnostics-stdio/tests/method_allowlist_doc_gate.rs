@@ -1,9 +1,12 @@
 #![allow(
     clippy::expect_used,
-    clippy::unwrap_used,
     clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    reason = "doc gate panics with rich context on method-allowlist / README drift"
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 //! Doc gate: the language README's diagnostics method list, the

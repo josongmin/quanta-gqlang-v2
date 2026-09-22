@@ -1,6 +1,6 @@
 # 01 — Proof Rail And Final DAG
 
-Status: `VERIFIED ON RECEIPT FINGERPRINT — POST-RECEIPT DOC-GATE DELTA UNQUALIFIED`
+Status: `CURRENT TREE RED — HISTORICAL RECEIPT ONLY`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
@@ -399,3 +399,153 @@ remove that transition entry. Update the valid/transition fixtures and rerun
 the architecture unit suite plus both checker modes. The 21-final-edge
 Ticket 01 receipt is historical; only a post-change receipt can establish the
 revised 20-edge final allowlist.
+
+## Final Execution Audit — `main@ecc38f59` + Dirty Overlay
+
+Verdict: historical owner receipt retained; current tree is
+`POST-RECEIPT DELTA UNQUALIFIED`. Do not rebuild the diagnostics crate rename,
+Semgrep runner, architecture checker, or transition ratchet.
+
+Current observed architecture proof:
+
+```text
+workspace_members=14
+normal_edges=43 final_present=21 transitional_present=22
+dev_edges=1 final_dev_present=0 transitional_dev_present=1
+```
+
+The checker exits 0 because every live non-final edge is ratcheted. This is not
+final-DAG proof. Exact remaining work:
+
+1. Ticket 06 removes `logic -> algebra` and its HIR-facing logic adapters, then
+   changes the final normal allowlist from 21 to 20 and updates positive,
+   transition, and invalid architecture fixtures in the same patch.
+2. Ticket 07 removes pipeline/planning raw-HIR and direct owner edges.
+3. Ticket 08 removes executable direct internal edges, including the CLI dev
+   edge to diagnostics-stdio.
+4. Ticket 09 requires `transitional_present=0` and
+   `transitional_dev_present=0`; deleting an exception before its Cargo edge or
+   leaving an unused exception both fail.
+5. Re-run `method_allowlist_doc_gate` only after Ticket 07 restores pipeline
+   compilation. Its post-receipt source change remains unqualified until then.
+
+Stop condition: do not edit Ticket 01 production assets merely to make a later
+consumer compile. Later tickets own their actual edges and consumers.
+
+Current global formatting gate: `cargo fmt --all --check` exits 1 and reports
+23 Binder/HIR/Sema/Surface source or test files. The integrator must format each
+owned ticket write set after reconciling shared changes, then rerun tests and
+Clippy because formatting changes the receipt fingerprint. Do not run a blind
+workspace rewrite over a moving shared tree or treat historical Ticket 01
+format evidence as current-tree proof.
+
+### Current format supersession
+
+The later integrated `cargo fmt --all --check` exits 0. This supersedes the
+earlier 23/27-file format RED observation, but does not change this ticket's
+architecture verdict: transition mode is GREEN and `--require-final` remains
+RED on 22 normal plus one dev transition edge.
+
+## Final Independent RR — No Duplicate Work
+
+Classification remains unchanged: transition architecture is currently green
+with 21 final normal edges, 22 transitional normal edges, and one transitional
+dev edge; `--require-final` is red on those 23 exceptions. Do not add another
+architecture checker or transport. Ticket 06 removes Logic's obsolete edge,
+Tickets 07–08 remove their consumer edges, and Ticket 09 alone flips CI to
+final mode and refreshes the post-receipt doc-gate proof.
+## 2026-09-21 Final Current-Tree Audit
+
+Status remains receipt-scoped. On `main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a`
+plus the current dirty overlay:
+
+- architecture checker unit tests: 7/7 GREEN;
+- transition-mode architecture lint: GREEN at 14 members, 43 normal edges,
+  22 declared transitional normal edges, and one transitional dev edge;
+- `--require-final`: RED on those same 22 normal plus one dev edge;
+- `taplo fmt --check`: GREEN;
+- `git diff --check`: GREEN;
+- `cargo fmt --all --check`: RED on 27 unique files.
+
+Do not reopen the architecture algorithm or add a second dependency checker.
+The remaining work is mechanical consumer cutover: Tickets 05-08 remove the
+declared transitional edges, then Ticket 09 runs final mode. File-scoped
+formatting must be done by each active owner; a workspace-wide formatter over
+the shared dirty tree is prohibited.
+
+Receipt 01 is historical proof for its frozen fingerprint. It must not be
+rewritten to claim current-tree final DAG or format closure.
+
+## SS-01F Current Architecture Re-Audit — 2026-09-21
+
+Audit snapshot: `main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a`,
+174 short-status entries. This supersedes the older 43-edge/22-transition
+current-tree counts above; those paragraphs remain historical observations.
+
+### Current execution evidence
+
+Executed during this audit:
+
+```text
+python3 tools/architecture/tests/test_architecture.py
+  7/7 GREEN
+
+python3 tools/architecture/check_architecture.py
+  RED
+  workspace_members=14
+  normal_edges=42 final_present=22 transitional_present=20 transitional_declared=22
+  dev_edges=3 final_dev_present=1 transitional_dev_present=1 transitional_dev_declared=1
+  illegal dev edge: sema -> surface
+
+python3 tools/architecture/check_architecture.py --require-final
+  RED on the same illegal dev edge plus 20 normal and one dev transition
+
+cargo fmt --all --check
+  GREEN
+```
+
+The two declared Algebra transitions are absent because Algebra production now
+depends on Sema and Types. Default mode is genuinely RED, not transition-mode
+GREEN: `crates/quanta-gqlang-v2-sema/Cargo.toml` has a test-support
+`quanta-gqlang-v2-surface` dev edge that is neither final nor transitional.
+
+Historical receipt 01 remains evidence for its recorded fingerprint only. No
+Semgrep, deny, typos, workspace compile, hosted CI, or clean-candidate run was
+performed by this audit.
+
+### Exact remaining work
+
+1. Ticket 04/05 test-fixture ownership removes `sema -> surface` without
+   weakening the graph. Move source-to-Sema fixture composition to a lawful
+   consumer/test-support owner, or feed Sema a checked HIR document. Do not add
+   the reverse edge to an allowlist merely to make default mode pass.
+2. Ticket 06 removes `logic -> hir`; if Logic no longer consumes Algebra after
+   its document adapter lands, update the final edge set and all fixtures in the
+   same cut rather than preserving a fictional edge.
+3. Ticket 07 migrates Pipeline, Planning, Frontend Contract, and Conformance;
+   remove each corresponding transitional Cargo edge with its consumer.
+4. Ticket 08 migrates CLI and diagnostics-stdio frontdoors and removes the CLI
+   test-only diagnostics edge.
+5. Ticket 09 deletes all unused transition declarations, requires both checker
+   modes to report zero transition/illegal edges, then runs Semgrep non-vacuity,
+   Taplo, deny, typos, workspace checks/tests/Clippy, and exact-SHA hosted CI.
+
+### Owner boundary
+
+`tools/architecture/check_architecture.py` remains the sole Cargo-edge oracle;
+`tools/lint/run_semgrep.sh` remains the source-policy oracle. Consumers remove
+their actual dependencies. Ticket 01 must not gain consumer adapters, a second
+checker, an exception for `sema -> surface`, or false final edges.
+
+### Next SS / RR checklist
+
+`SS-01G` freezes the post-consumer Cargo manifests and records all three edge
+kinds plus exact checker output. RR requires:
+
+- the seven architecture fixtures still pass;
+- default and `--require-final` both exit 0;
+- every declared final edge is justified by a live consumer;
+- transition sets are empty, not merely absent from the current graph;
+- the illegal Sema dev edge is removed at its fixture owner;
+- current Semgrep configured/executed counts and non-vacuity are captured;
+- results are bound to a clean candidate SHA rather than this dirty overlay.

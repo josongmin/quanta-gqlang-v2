@@ -1,13 +1,16 @@
 #![allow(
     clippy::expect_used,
-    clippy::unwrap_used,
     clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    reason = "integration-test assertions intentionally use expect/unwrap/indexing and exercise fail-closed panics"
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 #![allow(
     dead_code,
-    reason = "shared stdio helpers are used by a subset of the integration-test crates that include this module"
+    reason = "shared test helpers are used by a subset of the integration-test crates that include this module"
 )]
 
 use std::io::{Cursor, Write};

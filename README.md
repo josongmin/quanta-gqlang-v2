@@ -44,6 +44,7 @@ Sibling consumer seam:
 2. interactive roots: `examples/show/capabilities.qglang`, `examples/describe/rule_detail.qglang`, `examples/sample/retrieval.qglang`, `examples/export/sarif.qglang`, `examples/compare/semantic_delta.qglang`
 3. declaration roots: `examples/view/catalog_users.qglang`, `examples/rule/shell_exec.qglang`, `examples/model/embeddings_code.qglang`, `examples/pack/security_default.qglang`, `examples/profile/strict_review.qglang`, `examples/gate/release_gate.qglang`
 4. meta roots: `examples/use_pack/secure_pack.qglang`, `examples/require_certified/strict_only.qglang`
+5. composition family (`LET`/`WITH`, root들의 조합): `examples/composition/let_with_find.qglang`
 
 CLI front door:
 

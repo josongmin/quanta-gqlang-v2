@@ -1,6 +1,6 @@
 # 03 — Authority, Types, Modules, And Invalid States
 
-Status: `REPAIR — TICKET 04 PRODUCER-SEAM REOPEN`
+Status: `OWNER GREEN CHECKPOINT — CROSS-OWNER RECEIPT OPEN`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
@@ -37,6 +37,9 @@ Types lane:
 5. `crates/quanta-gqlang-v2-types/src/builtin.rs`
 6. `crates/quanta-gqlang-v2-types/src/op.rs`
 7. `crates/quanta-gqlang-v2-types/src/diag.rs`
+8. `crates/quanta-gqlang-v2-types/src/solver.rs`
+9. `crates/quanta-gqlang-v2-types/tests/v3_rule_type_solver.rs`
+10. `crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs`
 
 Modules lane:
 
@@ -57,10 +60,14 @@ Modules lane:
 13. `crates/quanta-gqlang-v2-modules/src/visibility.rs`
 14. `crates/quanta-gqlang-v2-modules/src/extension.rs` when typed external
     signatures replace opaque extension tags
+15. `crates/quanta-gqlang-v2-modules/src/authority.rs`
+16. `crates/quanta-gqlang-v2-modules/tests/v3_document_predeclaration.rs`
 
 Receipt:
 
 1. `docs/plans/sep-21-gqlang-sota-frontend-reconstruction/receipts/03.md`
+2. `docs/plans/sep-21-gqlang-sota-frontend-reconstruction/receipts/03-public-api-inventory.md`
+3. `docs/plans/sep-21-gqlang-sota-frontend-reconstruction/receipts/03-test-disposition.md`
 
 Shared source-bounds carrier extension:
 
@@ -202,14 +209,18 @@ SignatureV2::try_new(input: SignatureInputV2,
                      source_registry: &SourceRegistryViewV2,
                      session: &mut ModuleBudgetSessionV2)
     -> Result<SignatureV2, ModuleDiagnosticV2>
-SignatureV2::try_as_resolved_predicate(ResolvedPredicateIdV2)
-    -> Result<ResolvedPredicateCallableV2, ModuleDiagnosticV2>
+SignatureV2::try_as_resolved_host_predicate(ResolvedHostPredicateKeyV2,
+                                            CheckedLocatedSpanV2)
+    -> Result<ResolvedHostPredicateCallableV2, ModuleDiagnosticV2>
 PackManifestV2::try_new(input: PackManifestInputV2,
                         source_registry: &SourceRegistryViewV2,
                         session: &mut ModuleBudgetSessionV2)
     -> Result<PackManifestV2, ModuleDiagnosticV2>
 ExpressionTypeKernelV2::check_document(inputs: &ResolvedTypeInputsV2)
     -> Result<TypedExpressionFactsV2, TypeDiagnosticV2>
+ResolvedTypeInputsV2 accepts checked deferred relation-row inputs whose ordered
+fields are `Known(ValueTypeV1)` or exact prior expression dependencies; the
+kernel returns owner-built row facts without a second traversal.
 AuthorityBudgetProfileV2::try_new(module_nodes, module_edges, module_steps,
                                   authority_bytes, authority_string_bytes)
     -> Result<AuthorityBudgetProfileV2, TypeAuthorityDiagnosticV2>
@@ -1078,9 +1089,13 @@ integer fold; it prevents an accidental language range of
 ## Exact Verification
 
 ```bash
-cargo test -p quanta-gqlang-v2-types
-cargo test -p quanta-gqlang-v2-modules
+cargo test -p quanta-gqlang-v2-types --all-targets
+cargo test -p quanta-gqlang-v2-modules --all-targets
+cargo test -p quanta-gqlang-v2-hir --all-targets
+cargo test -p quanta-gqlang-v2-sema --all-targets
 cargo clippy -p quanta-gqlang-v2-types -p quanta-gqlang-v2-modules --all-targets -- -D warnings
+cargo clippy -p quanta-gqlang-v2-hir -p quanta-gqlang-v2-sema --all-targets -- -D warnings
+cargo fmt --all --check
 git diff --check
 ```
 
@@ -1149,6 +1164,14 @@ git diff --check
 4. all module and catalog reference diagnostics carry exact source locations
 5. one types-owned kernel selects every operator/builtin overload; sema only
    supplies resolved node inputs and consumes typed facts
+6. one Types-owned bounded solver seals source Rule variables and host/source/
+   builtin calls remain disjoint
+7. deferred Composition Query rows and RelationExists captures are owner-built,
+   exact, source-ordered, and proven in one whole-document kernel call
+8. Modules host proofs and View topology are consumed by Sema without a second
+   validator or reminted identity
+9. final owner/consumer mutation, API inventory, format, strict Clippy, and
+   frozen hashes are recorded in receipt 03
 
 ## Dependencies
 
@@ -1652,7 +1675,8 @@ integration positive are required before this gate closes.
 
 The 81/81 types and 122/122 modules counts above are prior fingerprints.
 Types' distinct host/source identity and injective length-prefixed key passed
-83/83 all-target tests and strict Clippy. Modules' same-session exact
+83/83 all-target tests, then exact intrinsic builtin effects passed 85/85;
+both owner-local runs passed strict Clippy. Modules' same-session exact
 Predicate/signature proof passed 126/126 all-target tests and strict Clippy.
 Full owner file hashes and source/test counts are in `receipts/03.md`.
 These changes reuse the existing type kernel and catalog validator; they do
@@ -1662,8 +1686,8 @@ Ticket 03 stays `REPAIR`. Ticket 04 has a source host-call positive and one
 source/host same-spelling collision negative in a later 43/43 sema owner run,
 but still needs builtin/host collision, legal punctuation names, imported
 alias origin, proof-key/location transplants, and host exclusion from local
-SCC edges. Then run a combined
-owner/consumer command set on one frozen dirty fingerprint, plus the required
+SCC edges. Then run a combined owner/consumer command set on one frozen dirty
+fingerprint, plus the required
 mutation and public API diff. An owner-local count must not be reported as a
 cross-owner or pipeline result.
 
@@ -1675,6 +1699,396 @@ aggregate effects from its child. Types owns a read-only intrinsic-effects
 lookup keyed by the exact chosen `BuiltinIdV2` from
 `ResolvedCallTargetV2::Builtin`, with absent IDs rejecting. Do not expose a
 family-name/string classifier or duplicate the builtin registry in Binder or
-sema. The owner test must distinguish a scalar wrapper's intrinsic Scalar
-class from its aggregate-composed expression class, then rerun types all-
-target tests and strict Clippy with new hashes in `receipts/03.md`.
+sema. That API and its owner tests now pass 85/85 all-target tests and strict
+Clippy on the `builtin.rs` hash in `receipts/03.md`. The tests distinguish
+scalar wrapper intrinsic effects from aggregate-composed effects and two
+overload IDs in one family. Sema's later 52/52 owner suite uses this exact
+ID for Group partition admission and Rule edge polarity; candidate
+forgery/transplant mutation, sema strict Clippy, and combined frozen
+producer/consumer proof remain open. The types result alone is not closure.
+
+## Final Execution Audit — `main@ecc38f59` + Dirty Overlay
+
+Verdict: canonical Types and Modules owners are implemented and current
+owner-local suites are green, but Ticket 03 remains `REPAIR` because its
+consumer seam and mutation receipt are incomplete. Do not add another solver,
+builtin registry, catalog resolver, or host-key codec.
+
+Reuse exactly:
+
+- Types 85/85: closed overload resolution, iterative/budgeted rule constraint
+  proof, distinct source/host callable identity, injective host key, and exact
+  builtin-ID intrinsic-effects lookup;
+- Modules 126/126: one admission/lock/catalog validator, same-session
+  predeclaration/finalization, ten-kind external payload matrix, and checked
+  host Predicate proof;
+- strict all-target Clippy for both owners, included in the latest combined
+  owner command, exits 0.
+
+Required remaining work, in order:
+
+1. Add Ticket 04 source integration fixtures for legal punctuation-heavy host
+   Predicate names and imported alias origin; assert exact catalog asset ID,
+   callable signature, use location, and host/source target kind.
+2. Add negative transplants for foreign validator session, same key with wrong
+   location, same display spelling with wrong asset ID, and swapped host-call
+   proof. Each must fail before expression materialization.
+3. Prove builtin/source/host same-spelling collision and that host/builtin calls
+   never enter the local Rule dependency set consumed by Ticket 06.
+4. Run one frozen producer/consumer command set covering Types, Modules, Sema,
+   strict Clippy, and the exact mutation. Record hashes and counts in
+   `receipts/03.md`; do not replace owner receipts with a Sema-only pass.
+5. Remove no public API merely to obtain zero warnings. Temporary Sema
+   `#[expect(dead_code)]` constructors disappear only when Ticket 04 makes
+   their source paths reachable.
+
+Stop condition: punctuation replacement, truncation, or hash-only catalog-name
+identity is invalid and must not proceed.
+
+## Final Independent RR — Composition Row/EXISTS Authority Corrections
+
+Ticket 03 remains `REPAIR`. Do not duplicate the existing solver, registries,
+host proof, validator, or key codec. The missing owner contract is a
+Types-owned deferred relation-row dependency for Composition Query producers.
+
+### One whole-document kernel call
+
+`BindingFromExpression` copies one prior scalar fact and cannot by itself
+represent an ordered multi-field Query output row. Add one closed deferred row
+carrier keyed by exact producer/root identity whose ordered fields retain name,
+expression key, and checked location. Types owns record construction during the
+same authored-order document traversal. Admission rejects duplicate fields,
+missing/non-expression targets, foreign source/registry, self/forward producer,
+wrong field order, and a caller-precollapsed record. Sema supplies Binder/HIR
+identity only; it does not construct `ValueTypeV1` for the row.
+
+Required owner tests: one- and multi-field prior Query producers; missing,
+duplicate, reordered, nonprojection, self, forward, cyclic, and foreign
+dependencies; and an invocation counter proving exactly one
+`check_document`. Per-LET kernel calls, a second Sema type checker, or
+Sema-synthesized producer record types are stop conditions.
+
+Concrete non-Query fields remain direct known bindings: host/View authority,
+SAMPLE `path: RepoPath`, and PATH/REACHABILITY FIND `function: EntityRef`.
+Filter/Sort pass the exact deferred frame; Join concatenates exact frames;
+Project/Group create deferred fields from exact expression nodes.
+
+### Relation EXISTS input
+
+Current `ResolvedRelationPredicateInputV2` stores one relation source plus an
+opaque capture string. It cannot represent join/multi-source input or prove
+Binder capture identity. Replace it with a Types-neutral carrier containing the
+exact relation root and an ordered, duplicate-free list of exact capture
+reference plus target owner/ordinal, with conservative base effects. Validate
+same-document membership, subtree membership, uniqueness, and wrong-kind facts
+without importing Binder/Sema/Algebra/Modules. Mutations: dropped, duplicate,
+swapped, foreign, wrong-root, same-name/wrong-owner, and multi-source captures.
+
+### Modules/receipt reconciliation
+
+Inline View order is: one validator session predeclares all assets, resolves
+View edges, rejects cycles and seals deterministic topological order, then Sema
+materializes inline queries and finalizes that same session. No second
+validator or pre-cycle materialization.
+
+Expand the authoritative write set for live `types/src/solver.rs`, rule-solver
+tests, `modules/src/authority.rs`, document-predeclaration tests, API inventory,
+and receipt appendices. Supersede stale Required APIs/prose with live
+`BindingFromExpression`, `BindingFromDeclaration`, HostPredicate proof/key,
+rule solver, and deferred-row API. Regenerate the public API inventory; the
+`f9ec954` 52/76 list and two Types test hashes are stale.
+
+Final receipt proof includes Types/Modules all-target tests, HIR producer and
+Sema consumer/mutation tests, owned-file format, strict Clippy, public API diff,
+deliberate failure injection, frozen hashes, and selected/executed counts. Mark
+the old “Sema has not consumed host proof” receipt paragraph historical: live
+Sema now consumes and revalidates that proof.
+## 2026-09-21 Final Current-Tree Audit — Implemented Versus Still Required
+
+Status remains `REPAIR`, but the final RR producer gaps are no longer all RED.
+Reuse the current implementations; do not create parallel carriers or another
+kernel/validator.
+
+Implemented and owner-green on the current dirty overlay:
+
+- Types owns deferred relation rows through
+  `DeferredRelationRowInputV2`/`DeferredRelationRowKindV2`, including known
+  fields, prior-expression fields, and an exact prior-relation dependency.
+- Types owns exact relational-EXISTS inputs through relation root plus ordered
+  `(reference,target owner,target ordinal)` captures; the opaque capture string
+  is gone.
+- `TypedExpressionFactsV2` retains owner-built relation rows; Sema invokes
+  `ExpressionTypeKernelV2::check_document` once for the document.
+- Types all-target tests are 86/86 GREEN and strict Clippy is GREEN.
+- Modules all-target tests are 126/126 GREEN and strict Clippy is GREEN.
+
+Remaining owner defects/gates:
+
+1. `PriorRelation` currently ignores `expected_field_count`. Replace the
+   meaningless caller-supplied `0` with a structurally count-free variant, or
+   verify a count derived by Types after resolving the prior row. Do not make
+   Sema precompute the record.
+2. Add the missing deferred-row mutations: duplicate input root, wrong source,
+   non-relation target, reordered projected fields, and exact self/forward
+   boundary cases in one table-driven owner suite.
+3. Add the full EXISTS mutation matrix: dropped, duplicate, reordered/swapped,
+   foreign, wrong root, same-name/wrong-owner, and multi-source captures.
+4. Modules needs a same-session phase between predeclaration and finalization:
+   resolve direct View edges, reject cycles, and return an opaque deterministic
+   topological-order proof. Current `validate_predeclared` performs final
+   validation immediately; Sema cannot materialize inline Views in proved
+   dependency order with that API.
+5. Regenerate the public API inventory and append fresh hashes/counts to
+   receipt 03. The old 85-test Types fingerprint is superseded but remains
+   historical.
+
+Consumer closure belongs to Ticket 04: source-reachable Composition, inline
+View, and Query EXISTS. Their absence must not trigger another Types checker or
+another Modules validator.
+
+## SS-03C Owner Checkpoint And Final RR Corrections — 2026-09-21
+
+Status remains `REPAIR`. The current dirty overlay has two additional owner
+implementations that must be reused:
+
+- Types replaced the overloaded deferred-row constructor with
+  `known_source`, count-free `prior_relation`, and `expression_fields`.
+  Duplicate roots, foreign roots, self/forward targets, non-relation targets,
+  and field-count/order failures reject in the Types owner.
+- Modules now enforces
+  `Empty -> Predeclared -> TopologyValidated -> Finished`, terminalizes phase
+  misuse as `Failed`, returns an opaque same-session
+  `DocumentViewTopologyProofV2`, and finalizes only with the exact proof.
+  The proof retains deterministic dependency-first View IDs.
+
+Observed on one overlay:
+
+```text
+Types all-target: 86/86, exit 0
+Types strict all-target Clippy: exit 0
+Modules all-target: 129/129, exit 0
+Modules strict all-target Clippy: exit 0
+owned package rustfmt check: exit 0
+git diff --check: exit 0
+Modules deliberate order.reverse() mutation: order oracle failed, then recovery GREEN
+```
+
+This does not close Ticket 03. RR found these exact remaining obligations:
+
+1. `ResolvedRelationPredicateInputV2` must not advertise more authority than
+   it proves. Types currently validates source/root/reference order and global
+   owner membership, but does not validate `target_ordinal`, exact
+   owner/ordinal substitution, or capture-set completeness. Binder is the
+   lexical authority: Sema must compare the complete ordered capture vector
+   to Binder's exact set before constructing the Types-neutral carrier. Types
+   then validates HIR membership, uniqueness, source and deterministic order.
+   Do not add a Types-to-Binder dependency or infer captures from names.
+2. Remove caller-controlled relation-predicate base effects. Types derives the
+   base effect policy and composes nested expression effects; Sema does not
+   pass `pure_scalar()` as an authority claim.
+3. Align capture ordering. Binder's tuple sort and Types' nested-HIR order
+   currently disagree for programmatic non-monotonic IDs. Pin one canonical
+   authored traversal order and add a reversed-ID two-capture fixture.
+4. Add a positive direct `PriorRelation` owner test, swapped expression
+   targets with unchanged ordinals, foreign prior target, and a three-producer
+   earlier-unrelated-row transplant. Add an invocation oracle that fails if a
+   second document type-kernel call is introduced.
+5. Add a diamond plus unrelated View under multiple asset/edge permutations.
+   The current linear chain proves dependency direction but not stable
+   tie-breaking among multiple ready nodes.
+6. Refresh the public API inventory and record the combined producer/consumer
+   mutation set on a frozen fingerprint. The hashes below are dirty-overlay
+   checkpoints, not an immutable receipt.
+
+Stop conditions remain: no second type checker, no second catalog validator,
+no name-keyed dependency graph, and no Sema-created record type.
+
+## SS-03D Relation EXISTS Effect Authority — 2026-09-21
+
+Status remains `REPAIR`, but one RR P0 is now closed at its true owner.
+`ResolvedRelationPredicateInputV2::try_resolved` accepts only `(relation root,
+captures)`; it cannot receive a caller-supplied effect tuple. Types derives the
+resolved EXISTS base effects with `conservative_source_predicate()` and composes
+the nested relation effects. Sema no longer supplies `pure_scalar()`.
+
+The Types input owner also rejects duplicate reference captures at construction,
+collects relation-source HIR nodes for Composition-local captures, and checks
+root/source/HIR membership/duplicate/authored traversal order. The two-capture
+swapped-order oracle fails. This is not a claim that Types can prove Binder's
+lexical owner/ordinal substitution: Sema must compare the full capture vector
+with Binder proof before Types ingress.
+
+```text
+Types all-target: 87/87, exit 0
+Types strict all-target Clippy: exit 0
+Sema all-target: 64/64, exit 0
+Sema strict all-target Clippy: exit 0
+cargo fmt --all --check: exit 0
+git diff --check: exit 0
+```
+
+Remaining Ticket 03 work is exact cross-owner capture-vector equality,
+PriorRelation/topology mutation expansion, public API inventory, and a frozen
+producer/consumer receipt. Do not restore a caller effect parameter to make a
+consumer test convenient.
+
+## SS-03E Prior-Relation Source Authority Oracle — 2026-09-21
+
+Types now has a direct positive `PriorRelation` owner oracle. A nested EXISTS
+relation source reuses the exact earlier source root's sealed typed row; a
+foreign-source target rejects as `types.unavailable_relation_row_dependency`.
+The fixture supplies the real resolved EXISTS input, so it proves the deferred
+row path rather than bypassing relation-predicate validation.
+
+```text
+Types all-target: 88/88, exit 0
+Types strict all-target Clippy: exit 0
+cargo fmt --all --check: exit 0
+git diff --check: exit 0
+types/tests/v3_types_check_edges.rs=dc1441f237ed8957c18f053340335bc7c91ba5acd46d9df9506b9a9b49d8d7f0
+```
+
+This oracle intentionally covers the existing authored-order contract only.
+Inline View requires Modules dependency-first evaluation order, which can be
+reverse-authored; Ticket 04 must introduce a Types-validated pre-evaluation
+order before relaxing any `PriorRelation` order guard. Deleting the guard would
+admit forged/cyclic rows and is forbidden.
+
+## SS-03F Validated Relation Pre-Evaluation — 2026-09-21
+
+The former Ticket 04 prerequisite is now implemented at the Types owner.
+`RelationPreEvaluationInputV2` is validated against the checked document before
+the kernel walks any body: every root must have the document source identity,
+be an exact relation root, be unique, and place every planned
+`PriorRelation` target earlier in the supplied sequence. The prewalk happens
+once before normal authored traversal. Existing `ResolvedTypeInputsV2::try_new`
+remains the no-plan/authored-order constructor.
+
+An RR repair closed the consumer boundary: an unplanned ordinary relation may
+read a target in the validated plan because all plan roots have already been
+completed. It may not read any other forward row. The owner fixture proves a
+reverse-authored dependency, a normal consumer outside the plan, omitted and
+swapped order rejection, foreign/non-relation/duplicate root rejection, and
+exact copied-row equality.
+
+This input is deliberately not a second topology graph. Modules remains the
+only View graph/proof authority; Sema may project its opaque order into this
+validated Types input. The remaining Ticket 03 work is unchanged: exact Binder
+capture-vector equality, topology diamond permutation coverage, public API
+inventory, and frozen cross-owner receipt.
+
+## SS-03G Final Current-State Re-Audit — 2026-09-21
+
+Audit snapshot: `main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a`,
+174 short-status entries. The original receipt and SS-03C through SS-03F remain
+historical checkpoints. This section is authoritative for current status.
+
+### Implemented owner contracts
+
+- Binder records exact relation-source use targets and explicit empty/nonempty
+  relational-EXISTS capture sets. `BindResultV1::capture_edges` carries
+  `(reference, owner, ordinal)` and `target_of(reference)` supplies the exact
+  local binding proof.
+- Types owns checked deferred relation rows, count-free `PriorRelation`, exact
+  relation-predicate root/capture membership and authored HIR order, owner-built
+  effects, and validated `RelationPreEvaluationInputV2`.
+- Modules enforces `Empty -> Predeclared -> TopologyValidated -> Finished`,
+  returns same-session opaque `DocumentViewTopologyProofV2`, rejects phase/proof
+  substitution, and supplies deterministic dependency-first View IDs.
+- Sema consumes these proofs. In `sema/src/document.rs`, relation EXISTS checks
+  every Binder capture against its exact local `(owner, ordinal)` before Types
+  input construction and before sealing `TypedCorrelationEdgeV2`. Inline Views
+  consume Modules topology and project its order into Types pre-evaluation.
+- The former prior-relation and linear-topology producer gaps are implemented.
+  Do not reopen them or create parallel carriers.
+
+### Current execution evidence
+
+Executed on the audit overlay:
+
+```text
+cargo test -p quanta-gqlang-v2-binder --all-targets   # 54/54 GREEN
+cargo test -p quanta-gqlang-v2-types --all-targets    # 89/89 GREEN
+cargo test -p quanta-gqlang-v2-modules --all-targets  # 130/130 GREEN
+cargo clippy -p quanta-gqlang-v2-binder --all-targets -- -D warnings   # GREEN
+cargo clippy -p quanta-gqlang-v2-types --all-targets -- -D warnings    # GREEN
+cargo clippy -p quanta-gqlang-v2-modules --all-targets -- -D warnings  # GREEN
+cargo fmt --all --check                               # GREEN
+```
+
+The current Binder/Types/Modules/Sema binary diff hash was
+`83bf674a0da29ddc767ae2d2ccb908169270b8e664725e97224cf286ffef41ac`;
+the status-list hash was
+`d75d5b14abd9dde08571d6fda7758ec828eba176098fc0e2ca4078c52c3000ec`.
+These include concurrent Sema work and do not create a clean Ticket 03 receipt.
+Sema's separately observed 87/87 belongs to Ticket 04 and is consumer evidence,
+not part of this audit's executed owner command set.
+
+### Remaining concrete work
+
+1. Add a Sema negative capture-vector mutation table in
+   `sema/tests/v3_document_transaction.rs`: dropped edge, duplicate reference,
+   reversed two-capture order, correct reference with wrong owner, correct owner
+   with wrong ordinal, foreign reference, same-name/wrong-owner, wrong nested
+   relation root, and explicit empty-set omission. Assert exact code/location;
+   positive shape assertions are insufficient. Because `BindResultV1` is
+   intentionally opaque, factor the existing comparison into a private Sema
+   validator and mutate its read-only witness inputs in a unit test; do not add
+   a public Binder forgery constructor or expose mutable capture storage.
+2. Add a Modules topology diamond plus unrelated ready View under multiple
+   asset and edge permutations in
+   `modules/tests/v3_document_predeclaration.rs`. Assert identical exact
+   `dependency_first_order`, not only a linear reverse-authored chain. Retain
+   the same-session dropped/reordered/foreign proof tests.
+3. Strengthen Types pre-evaluation mutation in
+   `types/tests/v3_types_check_edges.rs` with a three-producer transplant and
+   swapped targets that retain plausible ordinals. Assert exact copied row and
+   fail-closed code.
+4. Add an observable one-document invocation oracle at the Types/Sema seam.
+   `ExpressionTypeKernelV2::check_document` must be called exactly once; a
+   second pass for Views, Composition, or EXISTS must fail the test. Keep any
+   counter/injection private under `cfg(test)`; do not put execution counters in
+   the public semantic document contract.
+5. Regenerate `receipts/03-public-api-inventory.md` for Types and Modules and
+   verify no public constructor can mint a topology proof, checked authority,
+   typed fact, or pre-evaluation result.
+6. Freeze Binder/Types/Modules plus exact Sema consumer tests on one fingerprint;
+   rerun owner tests, strict Clippy, scoped format/diff, deliberate mutations,
+   and record selected/executed counts and file hashes in receipt 03.
+
+### Owner boundary and duplicate-work prohibition
+
+- Binder alone determines lexical capture identity and order. Types validates
+  source/HIR membership and effects; it must not depend on Binder.
+- Modules alone computes the View dependency graph and topology proof. Sema may
+  project opaque order, never rebuild or sort a name-keyed graph.
+- Types alone builds relation rows and expression facts. Sema may not precompute
+  a record or pass caller-controlled effects.
+- Sema alone performs cross-owner equality. Do not add a second checker to
+  Algebra, Logic, or Pipeline.
+
+### Next SS / RR checklist
+
+`SS-03H` is the frozen cross-owner mutation checkpoint. RR requires all six
+remaining actions above, unchanged owner hashes across every command, proof
+that deliberate mutations fail then recovery passes, public API diff review,
+and no new Binder<->Types, Sema topology, or caller-effect authority edge.
+
+## SS-03H Execution Routing
+
+This section clarifies scheduling only; the final re-audit above remains the
+semantic worklist. Under `WAVE_EXECUTION_PLAN.md`, SS-03H is not one unrestricted
+writer:
+
+- the Types/Modules lane owns only the named owner-test mutations and inventory
+  drafts;
+- the combined `SS-03H-S + SS-04W` lane is the sole Sema writer and owns the
+  capture-vector validator, mutation table, and exactly-once Types-kernel
+  invocation oracle;
+- Binder production remains read-only unless a new owner defect is reproduced;
+- Receipts 03, shared Sema manifests, packet indexes, and wave qualification
+  are integrator-only.
+
+Do not dispatch an independent Ticket 03 Sema agent beside Ticket 04. Both
+require `sema/src/document.rs` and `sema/tests/v3_document_transaction.rs`; a
+split would create two competing patches over the same authority boundary.

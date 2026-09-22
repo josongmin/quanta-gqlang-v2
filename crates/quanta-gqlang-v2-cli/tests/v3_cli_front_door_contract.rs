@@ -1,9 +1,12 @@
 #![allow(
     clippy::expect_used,
-    clippy::unwrap_used,
     clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    reason = "front-door contract assertions intentionally use expect/unwrap/indexing and exercise fail-closed behavior"
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 //! Front-door argv contract for the real CLI binary (mutation hardening).

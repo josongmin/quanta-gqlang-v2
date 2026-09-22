@@ -1,10 +1,12 @@
 #![allow(
     clippy::expect_used,
-    clippy::unwrap_used,
     clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
     clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
     clippy::wildcard_enum_match_arm,
-    reason = "conformance parity guard intentionally panics with rich context on any registry/pipeline drift"
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 //! v3 PARITY GUARD hellgate for the family registry.

@@ -1,6 +1,6 @@
 # 08 — Front Doors, Transport, And Resource Bounds
 
-Status: `PLANNED`
+Status: `PLANNED — BLOCKED BY 07; CURRENT WIRE IS UNBOUNDED V1`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
@@ -39,8 +39,8 @@ are similarly migrated, not duplicated.
 7. `crates/quanta-gqlang-v2-pipeline/src/lib.rs` — integrator only
 8. `crates/quanta-gqlang-v2-frontend-contract/src/lib.rs` — integrator only
 9. existing `crates/quanta-gqlang-v2-diagnostics-stdio/`
-10. every crate path recorded in `LEGACY_API_INVENTORY.txt`; no path outside that
-   inventory is implied
+10. every active path in the regenerated candidate-scoped legacy inventory;
+    the frozen `f9ec954` `LEGACY_API_INVENTORY.txt` is historical input only
 11. `/Cargo.toml` and `/Cargo.lock` — integrator only if dependency edges change
 12. `/README.md` and `/docs/language/README.md`
 13. the exact CLI/service/pipeline tests listed below
@@ -187,7 +187,10 @@ truncate silently, or clear unrelated buffered requests.
 5. Every cumulative field is charged once by the canonical owner table in
    `TARGET_ARCHITECTURE.md`. Pipeline passes identical immutable configuration
    and creates one counter per owner; it does not pass remaining counters across
-   stages. CLI/service may repeat an absolute byte-cap check before allocation.
+   stages. CLI/file ingress repeats an absolute byte-cap check before a second
+   frontend allocation. Service ingress bounds the raw frame first and enforces
+   decoded source during a bounded visitor or immediately after bounded decode,
+   as pinned below.
 
 ## Framing Recovery
 
@@ -219,12 +222,13 @@ EOF emits one `transport.incomplete_frame`; an empty tail emits nothing.
    and service frame-accumulation prechecks in this ticket.
 8. Implement typed budget diagnostics without truncating later frames.
 9. Replace whole-buffer clear recovery with bounded prefix/frame consumption.
-10. Migrate every code, test, and comment entry in
-    `LEGACY_API_INVENTORY.txt` to V2 or delete obsolete V1-only coverage.
+10. Regenerate the inventory on the exact candidate scope, then migrate every
+    code, test, and current-doc entry to V2 or delete obsolete V1-only coverage.
 11. Delete every V1 compile-seam definition/re-export recorded in
-    `LEGACY_API_INVENTORY.txt`, plus
+    the candidate-scoped inventory, plus
     `crates/quanta-gqlang-v2-pipeline/tests/v3_legacy_api_ratchet.rs` and
-    `LEGACY_API_INVENTORY.txt` after the final zero-match scan passes.
+    its current inventory after the final zero-match scan passes. Retain the
+    `f9ec954` snapshot only as historical receipt evidence.
 12. Mark tickets 02-08 `INTEGRATED` only after the whole workspace compiles with
     no V1 seam.
 
@@ -487,3 +491,269 @@ internal frontend dependencies removed from CLI, the cost-schema accessor
 used by CLI, every tracked test move, and the frozen 244-line V1 seam
 inventory reduced to zero active definitions/usages before deleting that
 temporary inventory.
+
+## Final Execution Audit — `main@ecc38f59` + Dirty Overlay
+
+Verdict: `PLANNED`, blocked by 07. The crate rename already happened; current
+`LspServerV1`/`StdioLspErrorV1` names, direct Pipeline dependency, custom flat
+JSON parser, and CLI parity dev edge are active V1 seams, not a reason to add a
+second transport.
+
+Single implementation path:
+
+1. Rename in place to transport-neutral server/error types and expose exact
+   UTF-8 NDJSON request/response structs with unknown fields denied. Do not add
+   JSON-RPC envelopes or `initialize`.
+2. Implement one streaming decoder: bound bytes through LF, handle one-byte CR
+   lookbehind, decode UTF-8, reject duplicate JSON keys during deserialization,
+   then validate decoded source bytes. Over-limit frames discard only through
+   their LF and recovery continues.
+3. Enforce the frame limit before decode/allocation growth; enforce decoded
+   source during a bounded visitor or immediately after the already bounded
+   frame decode; enforce diagnostic count/response bytes before accumulation or
+   serialization. CLI joined argv, regular files, stdin/non-regular streams,
+   and stdio frames each need exact-limit/+1 tests.
+4. Route CLI and diagnostics only through the Ticket 07 facade and standard
+   open authority. Remove direct HIR/Surface/Types/Planning/Pipeline imports
+   from executable paths and remove the CLI dev edge to diagnostics-stdio.
+5. Move parity to `tools/test_frontdoor_parity.py`. Discover exact binary
+   artifacts from Cargo JSON, run both as black boxes, and compare canonical
+   stage/code/source-byte-span/status. Delete the old cross-package parity test
+   only after fixture equivalence is recorded.
+6. Update README and doc-gate wording to `UTF-8 NDJSON, not JSON-RPC/LSP`, then
+   run the previously blocked `method_allowlist_doc_gate`.
+
+Acceptance includes split/coalesced frames, CRLF boundary cases, invalid UTF-8,
+duplicate keys, incomplete EOF, over-limit recovery, bounded error excerpts,
+CLI/stdio parity, strict Clippy, and workspace compile. The frozen V1 seam
+inventory must reach zero before it is deleted.
+
+## Final Independent RR — Wire, CLI, And Inventory Corrections
+
+### Refresh the migration authority first
+
+`LEGACY_API_INVENTORY.txt` is historical (`f9ec954`, 244 lines), not an
+authority for `ecc38f59` plus the dirty overlay. Regenerate a candidate-scoped
+inventory from active source/tests/docs, retain the old snapshot as historical
+or add base/current columns, hash it, and require final set-difference zero.
+Do not delete an unlisted live consumer merely because the stale list omitted
+it.
+
+### Allocation and amplification bounds
+
+- `max_frame_bytes` is the pre-decode boundary. Ordinary `String`
+  deserialization may allocate up to that cap, then rejects decoded source over
+  `max_source_bytes`. If source must be bounded during construction, use a
+  custom bounded Serde visitor; do not claim this with derive decoding.
+- Pin whether JSON escaping/envelope may make a CLI-admissible source fail the
+  service frame limit, or validate a conservative worst-case encoded size plus
+  envelope. `frame >= source` alone is not parity.
+- Add canonical `max_diagnostics` and `max_response_bytes` (or a proven
+  streaming serializer with a derived hard bound) to `FrontendBudgetV2` and
+  authority-profile equality. Charge before push/serialization and emit one
+  bounded resource failure without echoing discarded payload. These are shared
+  frontend caps, not hidden transport defaults.
+- List exact maintained JSON dependencies and the duplicate-key visitor in
+  `diagnostics-stdio/Cargo.toml`.
+- Rewrite CLI inline argv handling to append into one checked bounded buffer,
+  charging separators and stopping at limit+1. Cap lossy invalid-UTF8 and path
+  excerpts on UTF-8 boundaries. Test many empty/one-byte args,
+  separator-only overflow, huge invalid OS arg, and huge file-path errors.
+
+### Total request/response schema
+
+Validation precedence is frame/UTF-8; duplicate keys before trusting ID;
+top-level object; unknown fields; required fields; field types/ranges; method;
+decoded source size; facade call. Define stable codes and ID echo/null behavior
+for every branch. Cover `{}`, array/scalar roots, duplicate ID, each missing
+field, every wrong field type, negative/fractional/overflow integer IDs,
+empty/oversize string IDs, unknown+valid request, invalid method, and invalid
+source value. `malformed_json` is syntax-only.
+
+Wire diagnostics are discriminated:
+
+- transport diagnostics carry raw frame/line byte range and no fabricated
+  source identity;
+- frontend diagnostics carry stage, code, severity, bounded message, primary
+  `{source_id,start,end}`, and ordered secondary locations;
+- canonical field order and omission versus `null` are pinned;
+- multi-source and CLI projection parity are fixtures.
+
+Raw-payload span rules: empty `0..0`; UTF-8 offending bytes; parser token/key/
+value range; missing field at end-of-object; incomplete tail `0..tail_len`;
+duplicate at the second key; validation error at the field value. Multibyte and
+escape tests prove transport ranges use raw bytes while frontend spans use
+decoded source bytes.
+
+### Session status
+
+Process exit is 1 iff any transport/request/I/O failure occurred. Semantic
+incomplete/error for a well-formed request is response data and does not set
+process failure. Bad+good frames continue processing and exit 1; a new process
+starts with a clear latch. Add mixed-frame latch/reset mutations.
+
+Receipt 08 records refreshed inventory hash, dependency versions, exact
+byte/request/response/budget case counts, selected/executed tests, and
+CLI/service parity.
+## 2026-09-21 Final Current-Tree Audit
+
+Status remains `PLANNED`. No Ticket 08 receipt exists. Current front doors still
+depend on the compiler-RED Pipeline, so their local tests cannot establish
+semantic parity.
+
+Required implementation sequence:
+
+1. Wait for the Ticket 07 explicit facade; CLI and diagnostics-stdio import
+   only that facade.
+2. Keep the service named diagnostics-stdio. Do not reintroduce LSP naming or
+   methods unless real JSON-RPC initialization, framing, lifecycle, and UTF-16
+   coordinates are implemented as a separately accepted scope change.
+3. Implement the pinned bounded NDJSON request/response schema, stable status
+   mapping, one-response-per-frame recovery, EOF/truncation behavior, and
+   canonical diagnostics ordering.
+4. Charge source bytes, frame bytes, item/expression/semantic steps,
+   diagnostics count, response bytes, and recursive traversal before growth.
+   Exact-limit and +1 tests are required at owner and front-door layers.
+5. Run the same semantic corpus through facade, CLI, and diagnostics-stdio and
+   compare canonical results, diagnostics, and exit/status codes.
+6. Remove legacy binaries/modules/docs and their final-DAG edges only after
+   parity is green; record receipt 08 with bounded malformed-input tests.
+
+No runtime substrate, provider registry, network server, or SDK wiring belongs
+in this ticket.
+
+## SS-08A Current-Tree Frontdoor Audit — 2026-09-21
+
+Status remains `PLANNED`; no Receipt 08 exists. Current executable paths are
+the prohibited V1 path: CLI directly parses/compiles with Pipeline, and
+diagnostics-stdio calls `compile_program_structural`. The frontend-contract is
+also a V1 re-export surface, so no final facade exists for either consumer.
+
+The transport is not an incomplete NDJSON implementation; it is a different,
+unbounded protocol and must be replaced in place:
+
+- buffered reads append to an unbounded `Vec`;
+- framing is brace balancing rather than CRLF-aware NDJSON;
+- malformed frames clear the whole buffer and can lose a valid suffix;
+- JSON is handcrafted and flat-string-only;
+- wire request/response lack request ID, source identity/text, analysis status,
+  and typed source/secondary ranges.
+
+Current tests pin glued objects and whole-buffer-clear recovery, so they are
+negative migration inputs, not reusable acceptance coverage. The one-byte
+reader, invalid UTF-8 recovery technique, and process-status harness are the
+only reusable test assets.
+
+`FrontendBudgetV2` has no diagnostic-count or response-byte caps. Add those
+canonical caps and authority-profile equality before allocating transport
+buffers or serializing output. The required sequence is: Ticket 07 facade and
+Pipeline repair; budget extension; one bounded NDJSON state machine and typed
+schema; CLI bounded ingress/facade migration; docs/tests/parity; then
+candidate-scoped inventory and architecture proof. No LSP/JSON-RPC claim or
+runtime/network substrate is authorized.
+
+## RR-08B Authoritative Current-State Reconciliation — 2026-09-21
+
+Frozen observation: `main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a`
+plus the 178-entry dirty overlay. Receipt 08 created with this audit is
+**audit-only**; it is not an implementation or qualification receipt.
+
+### Actual current front doors
+
+| Path | Current implementation | Required disposition |
+|---|---|---|
+| CLI query | `commands/v3_query.rs::{parse_items_v1,run}` directly uses HIR + Surface + Pipeline V1 | replace with facade `analyze_source_document_v2` |
+| CLI fmt | `commands/v3_format.rs::format_source_v1` directly uses HIR + Surface | replace with facade `format_source_document_v2` |
+| CLI file ingress | `main.rs::read_input_file_v1` calls unbounded `fs::read_to_string` | bounded `limit + 1` streaming read |
+| CLI argv ingress | `main.rs::inline_input_v1` clones every argument, echoes invalid bytes lossily, then unbounded `join` | checked byte sum before allocation; bounded/non-echoing error |
+| stdio accumulation | `lib.rs::run_stdio_session_v1` appends every read to an unbounded `Vec` | bounded line state machine |
+| stdio framing | `server.rs::extract_next_request_frame_v1` balances braces and accepts glued objects | replace with CRLF-aware NDJSON |
+| recovery | `drain_request_frames_v1` clears the whole buffer on extractor error | discard only offending line/prefix; preserve suffix |
+| JSON | `json.rs::JsonCursorV1` is a handwritten flat string-only parser | maintained JSON parser plus duplicate-key visitor |
+| request schema | `{method, query}` strings only | required `id`, `method`, `source_id`, `source`; reject unknown/duplicate fields |
+| response schema | `{ok,method,result}` with no request ID/status | pinned ID + `ok` + `analysis_status` + ordered diagnostics |
+| naming | `LspServerV1`, `StdioLspErrorV1`, test file/symbol/comment LSP names remain | remove active LSP identity in the cut |
+| dependencies | CLI has five internal normal edges; stdio depends directly on Pipeline | both normal-depend only on frontend-contract |
+
+The root and language READMEs now honestly say the protocol is not JSON-RPC or
+LSP, but `docs/language/release_discipline.md:18` still calls it LSP and active
+Rust/test identifiers retain LSP terminology. Documentation is therefore only
+partially corrected.
+
+`FrontendBudgetV2` currently has 19 fields, including source/frame bytes and
+owner traversal limits. It has no `max_diagnostics` or `max_response_bytes`.
+Those two caps must be added by the Sema budget owner (Ticket 04 amendment) and
+then consumed here; Ticket 08 must not define a parallel transport budget.
+
+### Exact implementation worklist
+
+1. **Freeze Ticket 07 facade first.** CLI and service consume the same
+   `AnalysisDocumentV2` and canonical diagnostic DTO/order. Do not temporarily
+   depend on Sema, Algebra, Planning, or repaired Pipeline internals.
+2. **Amend canonical resource authority.** Add positive, checked
+   `max_diagnostics` and `max_response_bytes` to `FrontendBudgetV2`, standard
+   profiles, equality/profile conversion, and exact-limit/+1 owner tests. Every
+   emitted diagnostic and response byte is charged before growth. Under the
+   canonical wave schedule this is W1's SS-04W producer obligation. W5 must
+   reopen W1 if it is missing; the Ticket 08 worker must not patch Sema.
+3. **Bound CLI ingress in `main.rs`.** Replace `read_input_file_v1` with a
+   `Read::take(limit + 1)`-style checked stream for regular files, pipes, and
+   special files; metadata is only a precheck. Replace `inline_input_v1` with
+   checked UTF-8 byte accumulation including join spaces before any clone/join.
+   Errors expose dimension/limit, never source bytes.
+4. **Replace transport state.** Replace `run_stdio_session_v1`,
+   `drain_request_frames_v1`, and `extract_next_request_frame_v1` with one
+   byte-oriented NDJSON state that tracks payload length, pending CR,
+   discard-through-LF, request-local failure, and process failure latch. Never
+   retain bytes after `limit + 1`.
+5. **Replace request parsing.** Remove `JsonCursorV1` and the handwritten JSON
+   emitters. Parse exactly the pinned object with duplicate-key detection,
+   integer range checks, bounded string ID, unknown-field reject, required
+   source ID, and exact source text. Malformed input has `id:null`; parsed IDs
+   may be echoed on other validation failures.
+6. **Unify semantic status.** Query and stdio call the facade with one standard
+   open authority. CLI exit 1 on incomplete/error analysis. A valid stdio frame
+   remains `ok:true` even when analysis is incomplete/error; transport/request
+   errors set the process latch while later frames continue.
+7. **Migrate tests in place.** Rewrite the nine current stdio suites into the
+   pinned NDJSON/request/recovery/budget suites. Rename
+   `v3_cli_lsp_parity.rs` and all active LSP symbols/comments. Glued-object and
+   whole-buffer-clear expectations become negative mutations, not preserved
+   compatibility behavior.
+8. **Truth and dependency cleanup.** Update README/language/release docs from
+   the final schema, generate method/command gates from source, remove direct
+   Pipeline/internal Cargo edges, and implement
+   `tools/test_frontdoor_parity.py`. Wire it into `just ci` and hosted CI.
+
+### Required byte, request, and mutation proof
+
+In addition to the existing exact byte-stream table, the owner suite must cover
+exact limit and `+1` for payload/source/diagnostics/response; CRLF split at
+every byte; pending CR at EOF; blank line; invalid UTF-8; duplicate/unknown
+field; numeric/string ID bounds; source ID bounds; malformed+valid and
+oversize+valid suffix recovery; one-byte reader; short writer; I/O failure;
+mixed failure latch and fresh-process reset.
+
+```bash
+cargo test -p quanta-gqlang-v2-cli --all-targets
+cargo test -p quanta-gqlang-v2-diagnostics-stdio --all-targets
+cargo test -p quanta-gqlang-v2-conformance --test v3_frontdoor_parity
+cargo clippy -p quanta-gqlang-v2-cli -p quanta-gqlang-v2-diagnostics-stdio --all-targets -- -D warnings
+python3 tools/test_frontdoor_parity.py
+test -z "$(rg -l '\b(Lsp|lsp)\b|Lsp[A-Z]|_[Ll][Ss][Pp]_' crates --glob '*.rs' --glob 'Cargo.toml')"
+```
+
+Kill mutations that remove each `+1` check, count LF/CR as payload
+incorrectly, clear the complete suffix, reset the process latch per frame,
+last-write-win a duplicate key, renumber `source_id`, echo malformed payload,
+convert fully resolved open analysis into compiled output, or let CLI and stdio
+sort diagnostics differently.
+
+### Parallelization constraint
+
+After Ticket 07 freezes facade DTOs, the bounded CLI ingress/adapter and NDJSON
+transport can be implemented in parallel in disjoint crates. The canonical
+budget extension is an upstream owner change and must land first. Shared parity
+fixtures, Cargo-edge deletion, docs, inventory, and receipt generation are one
+serial integration step. Ticket 09 cannot generate final truth until that step
+is complete.

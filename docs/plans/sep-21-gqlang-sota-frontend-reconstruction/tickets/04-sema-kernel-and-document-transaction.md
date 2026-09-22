@@ -1313,6 +1313,12 @@ part of step 3 below; steps 2, 4, and full owner proof remain open:
    Pin a negative where a scalar wrapper cannot gain partition access merely
    from an aggregate child, and a same-family different-overload fixture if
    the builtin registry supports one.
+5. If an aggregate argument after Group names a private pre-group alias and
+   the same spelling also resolves to a declaration or import, Binder rejects
+   `binder.partition_authority_collision` at that reference span. It must
+   neither silently prefer the declaration/import nor promote the private
+   alias into the public lexical frame. Test both collision sources and a
+   no-collision non-key aggregate positive.
 
 ### Sort and host-call decisions
 
@@ -1382,4 +1388,1105 @@ checks Binder output/partition identity, and emits a key-only Set row.
 Binder 2/2 and sema 2/2 focused tests passed, including `group by r.id |
 order by id` and rejection of post-group `r`. This is not a post-edit
 all-target or Clippy result. Aggregate-only partition candidate authorization
-is still RED; Ticket 05 may not yet consume Group as a complete sealed stage.
+was still RED at that 2+2 snapshot; Ticket 05 may not consume Group merely
+from that focused evidence.
+
+A later full owner-local run on `ecc38f5`+dirty passed Binder 46/46 and sema
+51/51, including `group by r.id | project sum(r.value)` and plain/scalar,
+nested, scalar-over-aggregate, post-group Filter/Order negatives. Combined
+strict Clippy remains RED (21 sema lib and 43 sema lib-test errors);
+candidate forgery/outer-call transplant and the declaration/import collision
+rails in step 5 remain open. Exact hashes and the scoped result are in
+`receipts/04.md`; this does not authorize Ticket 05 integration yet.
+
+### Rule edge polarity must use intrinsic ancestor effects
+
+The same composed/intrinsic distinction affects
+`RuleDependencyCollectorV2::visit_value` (`sema/src/document.rs:674-721`):
+the earlier 43/43 snapshot set its `aggregated` traversal state from
+`fact.effects.aggregation`, which includes descendants. A scalar call with
+an aggregate child can therefore mark a source Rule call in a sibling
+argument as an aggregated dependency although the scalar ancestor is not an
+aggregate operator. For each ancestor Call, compare its exact types-resolved
+target to the source/modules proof, then use the chosen builtin overload's
+intrinsic effects (or sealed host callable's intrinsic effects); source
+predicates are intrinsically Scalar. Push/pop that intrinsic context through
+the actual call tree. The call's own SCC edge polarity reflects ancestors,
+not the composed effects of its arguments. Add exact call-node/edge/polarity
+oracles for scalar-over-aggregate, aggregate-over-source-call,
+aggregate-sibling/source-call under the *same scalar Call ancestor*, nested
+aggregate reject, and negation plus aggregation reject. A test with two
+separate `is_null(...)` siblings does not kill the old defect: the source
+call needs to be a sibling descendant of an aggregate under the same
+scalar wrapper, e.g. a record argument `{a: count(1), b: r(x)}` if the
+closed grammar/type proof admits it. Re-enable the old composed-effect line
+as a mutation and require the expected Positive edge oracle to fail.
+Ticket 06 must not repair wrong polarity after the fact. The 51/51 source
+changed this to exact builtin/host intrinsic effects, but its first focused
+source oracle used separate scalar-call siblings and is not yet a
+mutation-killing proof.
+
+Latest bounded owner snapshot supersedes that first oracle: Binder 47/47
+all-target tests and strict Clippy pass; sema 52/52 all-target tests pass but
+strict Clippy fails with 21 library and 43 library-test errors. The source
+polarity fixture now uses one scalar `is_null({aggregate: count(1),
+recursive: r(x)})` wrapper, so the Positive `r(x)` edge discriminates the
+old composed-effect collector; `count(r(x))` remains Aggregated. The
+declaration/import partition collision negatives also pass at the exact
+reference span. `receipts/04.md` holds checked file hashes. This closes
+those *owner-local source oracles only*: candidate forgery/outer-call
+transplant, Composition, Inline VIEW, relational EXISTS, broad subvariant
+matrix, sema strict Clippy, and integrated document pipeline remain RED.
+
+### Final adversarial delta — exact Group witness, Composition uses, placement
+
+This is a work specification, not an additional GREEN claim. The current
+`BindResultV1::partition_candidates` side table and
+`sema/src/document.rs:1536-1566` check exact partition binding, Binder target,
+nonempty call stack, and types-resolved intrinsic builtin effects. They do
+**not yet independently prove** that each recorded call-stack ID is an
+ancestor of the exact symbol in the authored HIR or that the candidate came
+from the Project immediately consuming the named Group. A private Binder
+field makes arbitrary public forgery impossible, but does not substitute for
+the cross-owner invariant or its mutation oracle. Complete this before
+Ticket 05 consumes `PartitionInputBindingV2`:
+
+1. Sema walks the already checked six-stage HIR once to index each source
+   symbol by `(source ID, reference node ID)` with exact span, containing
+   relation stage, predecessor Group identity, and outer-to-inner **Call
+   argument** ancestor IDs. This is structural containment only; Binder
+   still exclusively owns lexical resolution. Compare that witness to each
+   Binder candidate's reference, group, span, and entire ordered call stack,
+   then to the exact Binder partition/target identity and types-owned
+   resolved overload effects. Reject missing, extra, duplicated, stale,
+   sibling-call, wrong-Group, and non-Project candidates before materializing
+   any semantic item. Do not infer containment from overlapping spans.
+2. Use an owner-internal candidate-tamper test hook (not a public constructor)
+   to replace the group ID, binding ordinal, reference ID, and outer-call ID
+   independently on an otherwise valid Group→aggregate Project. Each must
+   fail atomically at the authored reference span. A second Group and two
+   same-family Call nodes make transplant/same-name substitutions observable.
+   Remove each comparison in a mutation run and require at least one test to
+   fail. Positive `sum(scalar(path))` must retain only the one outer aggregate
+   and scalar inner call; `scalar(sum(path))`, nested aggregate, Filter/Join
+   predicate, and OrderBy remain negative.
+3. `AggregateContextV2::try_new` currently rejects aggregate effects only in
+   `GroupKey` and `Predicate` (`sema/src/expr.rs:153-177`). A root Decl is
+   materialized at `Scalar` (`document.rs:1656`), so a standalone aggregate
+   declaration has no placement reject in that function. Add an exact-source
+   `Decl = sum(1)` negative before changing policy; if types admits it, reject
+   at the aggregate call through the central position contract. Keep RuleBody
+   aggregate polarity legal only under its separately specified rule semantics.
+   OrderBy's root-level aggregate guard exists, but add a nested-expression
+   oracle so no child/path bypass is mistaken for a central guarantee.
+
+Composition requires an additional Binder/HIR ingress before the local table
+described above can work. The parser/HIR already preserve the closed
+Query/Sample/FIND producer and Query/FIND/CHECK/EXPLAIN body kinds; do not
+create a second Composition syntax tree. Execute this owner sequence:
+
+1. Ticket 02 threads the existing parsed source-name token span into
+   `RelationSourceV1` (see its producer delta). Binder's Source branch
+   (`binder/src/resolve.rs:587-600`) must then emit one exact source-use
+   resolution at relation ID/name span before it creates the alias frame.
+   A same-spelled host is fallback **only** for genuinely unbound local uses;
+   a wrong-kind local LET rejects and cannot fall through to host lookup.
+2. Binder graph references currently record multiple uses under one enclosing
+   node ID (`resolve.rs:430-463`), while `target_of` returns the first match
+   by node (`:130-137`). Add an exact per-use accessor keyed by node, checked
+   span, and spelling (or a deliberate HIR-wide unique-use-ID migration),
+   reject duplicate keys, and make Sema consume that proof for every FIND,
+   CHECK, EXPLAIN, and graph/scope reference. Test two differently bound refs
+   with the same enclosing node ID, including one wrong-kind/local-vs-host
+   collision. Do not use `target_of` for these multi-use nodes.
+3. In the one document transaction, visit LET producers in order, seal each
+   output under `(composition.id, ordinal)`, then type/materialize the body and
+   exact WITH use. Extend the existing type-input traversal to nested producer
+   and body Queries; keep the root item set as one Composition, but include
+   *all* nested expression IDs in assembly equality. Query uses its existing
+   typed output; Sample and bounded PATH/REACHABILITY FIND use the exact V1
+   frontend row contracts already listed above; other FIND kinds have no
+   relation row. A missing row/field rejects closed typing, not schema-open
+   acceptance.
+4. Extend `ResolvedScanSourceV2` with a sealed local Composition producer ID
+   and checked use location, not a fake host/View asset. Graph uses need a
+   typed local-vs-host target retaining role/kind and provenance. Strengthen
+   `ResolvedCompositionBindingV2`/`ResolvedCompositionV2` from strings and
+   boxed items to exact producer kind/output, Binder owner+ordinal, ordered
+   body identity, and checked WITH target. The document assembler recursively
+   verifies nested item kind/ID/source/session/catalog authority; root-only
+   equality is insufficient.
+5. Migrate `pipeline/tests/v3_composition_type_env.rs` and
+   `v3_composition_producer_cardinality.rs` to owner-level and later facade
+   oracles. Replace the old schema-open empty-projection success with V2
+   rejection. Test sequential LET→LET, self/forward, duplicate/missing WITH,
+   same-spelling host shadow, wrong kind, Query/Sample/FIND row and field
+   typing, body four-kind dispatch, exact graph multi-ref, foreign session,
+   and one-under/over budget. The old
+   `v3_composition_catalog_scope.rs` invalid-HIR fixture uses the retired
+   unrestricted constructor; replace it with a compile-fail closed-enum
+   assertion and a valid same-document catalog case. Outer-Composition
+   capture is Binder-frame-only because nested Composition is not in the
+   current closed source grammar; do not expand language scope for the test.
+
+After source wiring, remove only the now-fulfilled narrow `expect(dead_code)`
+annotations on private Composition/EXISTS constructors; strict Clippy passing
+with future-only suppressions is not source-family coverage. Record selected
+and executed counts, exact owner-file hashes, mutation outcome, and the
+still-red pipeline consumer compile separately in receipt 04.
+
+The subsequent post-recovery owner checkpoint passed sema 52/52 all-target
+tests and strict all-target Clippy on the exact seven-file fingerprints in
+`receipts/04.md`. This supersedes the earlier 21+43 lint-error statement as
+current owner status, not the semantic RED inventory. The three private
+future-only `expect(dead_code)` sites and function-local test panic expects
+are enumerated in that receipt. Composition/EXISTS reachability and the
+Group candidate/Scalar placement oracles above remain unimplemented, so
+Ticket 04 is still `IMPLEMENTING`, not `FOCUSED_GREEN`.
+
+The next scoped owner delta **does** close the Scalar placement item above:
+`Decl total = sum(1)` was first observed to succeed with
+`AggregateContext(position=Scalar, aggregation=Aggregate)`, then the central
+constructor was changed to reject Scalar and OrderKey aggregate effects.
+The exact-call-span declaration and nested OrderBy negatives pass; sema
+all-target 54/54 and strict Clippy pass on the receipt 04 fingerprints.
+Binder now records a Composition `FROM` use at the new Ticket 02 name span,
+rejects a wrong-kind local without host fallback, and exposes an exact
+`target_of_use(node, span, spelling)` for multi-use graph references with
+duplicate-key rejects. Five new Binder oracles pass within 52/52 all-target
+plus strict Clippy. This is **not** a Composition source semantic positive:
+Sema still must consume the Binder target and sealed local producer, and
+the Group candidate HIR-ancestry/tamper work remains open.
+
+The checked-HIR candidate work is now owner-green as the next checkpoint:
+Sema independently reconstructs direct Group→Project, exact reference/span,
+and outer-to-inner Call-argument ancestry before accepting any Binder
+candidate. Primitive tamper oracles cover wrong reference, span, Group,
+outer/inner Call and dropped path; a source negative rejects an aggregate
+Project separated from Group by Sort. Sema all-target tests pass 56/56 and
+strict Clippy passes on the latest `receipts/04.md` hashes. This closes the
+forgery/outer-call transplant and direct-stage items at owner scope, without
+claiming a separate deliberate mutation build. Composition, Inline VIEW,
+relational EXISTS, broad family coverage, pipeline integration, and removal
+of the three future-only constructor expects remain RED.
+
+## Final Execution Audit — `main@ecc38f59` + Dirty Overlay
+
+Verdict: `IMPLEMENTING`. Binder 52/52 and Sema 56/56 all-target suites pass;
+the combined owner strict Clippy lane exits 0. These are owner-local results,
+not a complete nine-family semantic transaction.
+
+`cargo fmt --all --check` is RED on Binder and Sema production/tests (and three
+HIR/Surface test files), so the current behavior/lint checkpoint is not a
+format-complete receipt. Reconcile the shared write sets, run rustfmt on the
+owned files, and rerun tests/Clippy before recording the next hashes. Do not
+bulk-format unrelated dirty owners merely to clear this gate.
+
+Implemented; reuse without duplication:
+
+- Binder sequential frames, capture barriers, key-only Group output, private
+  partition input, exact Composition source-use resolution, exact per-use graph
+  resolution, and duplicate-use rejection;
+- Sema's one checked document transaction, closed authority, nine-variant item
+  vocabulary, six-stage typed relation DTO, host-call proof consumption,
+  central aggregate-placement rejection, Rule polarity, and independent
+  checked-HIR Group candidate ancestry/tamper oracle;
+- direct Query paths for Scan/Filter/Project/Join/Group/Sort, declaration and
+  Rule typing, graph/check/presentation/catalog/meta paths already covered by
+  current owner fixtures.
+
+Open work must be executed in this order:
+
+1. **Composition Binder/type ingress.** In `sema/src/document.rs`, call
+   `Binder::resolve_composition`; traverse every producer and body in query
+   type-input and expected-expression collection. Inline VIEW query bodies need
+   the same Binder/type traversal. Key working-set outputs by exact composition
+   item ID plus LET ordinal, not display name.
+2. **Composition source materialization.** In the Source branch, inspect
+   `bound.target_of_use(relation.id, source.name_span, &source.name)` before
+   host authority. A `CompositionLet` target must load its prior sealed row;
+   a wrong local kind rejects and an unbound name alone may try host lookup.
+3. **Producer rows.** Query producers use their sealed relation output; Sample
+   yields only `path: RepoPath`; PATH/REACHABILITY FIND yields only
+   `function: EntityRef`; other FIND kinds have no row and reject relational
+   use. Materialize Query/FIND/CHECK/EXPLAIN bodies without a second item tree.
+4. **Inline VIEW.** Route `VIEW ... AS <query>` through the same query
+   materializer and populate `ResolvedCatalogItemV2::inline_view`. Keep the
+   query-ref XOR inline invariant and add wrong-session/foreign-output tests.
+5. **Query relational EXISTS.** Extend query boolean type-input traversal and
+   materialization to recurse into the nested relation, retain exact Binder
+   captures, and emit `TypedExprShapeV2::RelationExists`. Preserve the existing
+   rule-body `sema.invalid_item_shape` negative.
+6. **Full family transaction.** Add one multi-item source document covering all
+   nine root variants plus Composition subforms and Inline VIEW. Inject missing,
+   duplicate, foreign-source, wrong-kind, and same-name/wrong-identity facts.
+7. Remove the future-only constructor expects only after their positive source
+   path executes; rerun Binder/Sema all-target tests and strict Clippy, then
+   update `receipts/04.md` with current hashes and selected/executed counts.
+
+Composition carrier correction found by the final audit:
+
+- The current `ResolvedCompositionBindingV2 { item: SemanticItemV2 }` is not a
+  valid closed producer contract. SAMPLE has no top-level `SemanticItemV2`
+  variant, while unrelated Rule/Catalog/Meta items can be stored. Replace it
+  with `ResolvedCompositionProducerV2::{Query, Sample, Graph}` matching the HIR
+  enum exactly. Do not add SAMPLE as a new document-root item.
+- Likewise replace the arbitrary `SemanticItemV2` body with
+  `ResolvedCompositionBodyV2::{Query, Graph, Check, Explain}`. This preserves
+  the grammar's legal subfamilies without a second syntax representation.
+- Each binding retains the exact Binder-owned Composition identity
+  `(source_id, composition_node_id, ordinal)`, checked name location, producer,
+  and optional sealed relational output. `WITH` retains the resolved binding
+  identity and use location, not only `with_name: String`; constructor checks
+  exact membership and same document.
+- Extend `ResolvedScanSourceV2` with a Composition-local variant keyed by that
+  identity. Host Relation, catalog View, and Composition-local sources remain
+  disjoint. Provenance and scan occurrence must retain the local identity.
+- `resolve_graph_item` must accept the Binder result and use exact
+  `(node, span, spelling)` resolution before graph authority. A local
+  Composition target uses its producer contract; an unbound reference alone
+  may use host graph authority. Wrong local producer kind must not fall back.
+- Replace the host-only `ResolvedGraphReferenceV2.target: GraphReferenceIdV2`
+  assumption with a closed target such as
+  `ResolvedGraphTargetV2::{Host, Composition}`. Use the same disjoint target in
+  CHECK/EXPLAIN/presentation references that are legal inside a Composition.
+  Validate each local producer's capability for the authored role before
+  construction; never mint a fake `GraphReferenceIdV2` from a LET name.
+
+Required carrier negatives: Rule inserted as producer, Sample inserted as body,
+same name/wrong ordinal, foreign composition ID, foreign source, WITH name with
+wrong resolved target, producer/output kind mismatch, and local graph target
+falling back to a host selector. These reject in Sema construction/assembly,
+not later in Planning.
+
+Required source regressions: forward/self Composition LET reject; local name
+must not fall back to host; two graph refs in one node retain distinct targets;
+duplicate exact refs reject; direct Group aggregate succeeds but a Sort between
+Group and Project rejects; Scalar/GroupKey/Predicate/OrderKey aggregate calls
+reject at the exact inner call span.
+
+Stop condition: do not expose public unchecked constructors, remint Binder IDs,
+or add a Sema-local resolver/type checker. Any missing owner fact is a hard
+diagnostic, not a fallback walk.
+
+## Final Independent RR — Carrier Checkpoint And Remaining Source Work
+
+Implemented in the current dirty overlay, but not yet source-reachable:
+
+- closed Composition producer/body families replaced arbitrary
+  `SemanticItemV2` payloads;
+- binding/body constructors compare expected nested HIR IDs, Binder
+  owner/ordinal/kind, one exact WITH target, and same-source identity;
+- non-row FIND cannot carry any output; PATH/REACHABILITY require the canonical
+  field shape;
+- Inline VIEW compares against its distinct expected nested Query ID, not the
+  CatalogDecl ID;
+- Sema all-target tests pass 59/59 (8+42+1+4+3+1) and strict all-target Clippy
+  passes on the current dirty files; receipt 04 still records the prior
+  56-test fingerprint.
+
+This is a carrier checkpoint only. Execute these blockers in order:
+
+Checkpoint hashes (dirty overlay, not receipt):
+
+```text
+sema/src/item.rs=cc1e53fa67cee10ffccd526e022d851924d7fbe4a1370e1c5778a3b436cfe71d
+sema/src/names.rs=6e10412aaf4699c8e720cf81f03fa01feeddc6ae7d933e3a26ce6ce7b8e82a2d
+sema/src/relation.rs=8c73d7616f7955030cc228a185ef4e91b744270c1a50d67c214c6aa96683ae7a
+sema/src/lib.rs=3b6aa61d9af21eb50cb4c76e8a199a5f834403f329ba1eae3bb807f8c02736bd
+sema/src/document.rs=7be4276861b5272d171a31202ea888bb0c8a60667339f146ede650dd52b82c25
+```
+
+Observed commands: `cargo test -p quanta-gqlang-v2-sema --all-targets`
+selected/executed 59/59, exit 0; strict all-target Clippy exit 0;
+`git diff --check` exit 0. `cargo fmt --all --check` remains exit 1 on 23
+shared dirty files.
+
+1. Add a private-field `ResolvedCompositionBindingIdV2` minted only from the
+   exact Binder proof. Reuse it in Composition bindings, scan provenance,
+   generated outputs, and graph targets. Delete public raw
+   `Composition { source_id, owner, ordinal }` reminting.
+2. Add a sealed generated-column origin for Composition producer output.
+   SAMPLE `path` and PATH/REACHABILITY FIND `function` are not authored
+   expressions and must not use fabricated expression keys or pretend to be a
+   scan. Producer constructors mint canonical rows internally; callers do not
+   supply arbitrary `RelationOutputContractV2` values.
+3. Collapse the bare `ResolvedScanSourceV2` alias and unused raw-location
+   `ResolvedRelationSourceV2` into one checked scan-use carrier: disjoint
+   host Relation/catalog View/Composition identity plus exact checked authored
+   source-name location. Preserve it in provenance and output origins.
+4. Replace host-only graph references/uses with
+   `ResolvedGraphTargetV2::{Host,Composition}`. Validate capability for FIND,
+   SAMPLE scope, CHECK scope/pattern/nested FIND, and EXPLAIN. A bound local of
+   the wrong capability fails without host fallback.
+5. Add a checked item location to `ResolvedPresentationV2`; retain checked
+   registry/session proof in catalog references instead of raw locations.
+   Composition constructors compare the registry identity of every nested
+   producer/body/use. Wrap public Sample/Graph/Explain payloads in private-field
+   checked structs so public enum construction cannot bypass invariants.
+6. Consume Ticket 03's deferred row/capture carriers in the single whole-
+   document Types call. Wire Binder `target_of_use(node,name_span,spelling)`
+   before host authority and seal each producer frame only after success.
+7. Materialize Inline VIEW through the canonical relation path with the exact
+   nested ID after Modules cycle/topological proof.
+8. Materialize Query EXISTS once, preserving its exact relation root and all
+   Binder capture edges. Keep Rule-body EXISTS rejected.
+9. Tighten `IncompleteSemanticDocumentV2`: nonempty reasons where required,
+   deterministic ordering, and duplicate rejection happen at the producer;
+   Ticket 07 does not repair them later.
+
+Required new tests:
+
+- local graph target with same-named host selector, two local ordinals in one
+  FIND, and each SAMPLE/CHECK/EXPLAIN local-target capability;
+- same-source/different-registry producer/body/catalog proof transplants;
+- wrong generated origin/provenance/effects/session, duplicate producer IDs,
+  producer=root/body collisions, and exact source-name span;
+- full `ResolvedCatalogItemV2::try_new` Inline VIEW positive/foreign-session
+  negative, not only a helper comparison;
+- public downstream compile-fail for raw Composition identity and unchecked
+  Sample/Graph/Explain construction;
+- Query EXISTS uncorrelated, correlated, multi-capture, multi-source, and every
+  dropped/swapped/duplicate/foreign capture mutation;
+- incomplete-analysis empty/duplicate/permutation mutations.
+
+Only after source positives execute may future-only dead-code expectations be
+removed. Acceptance remains full Binder/Sema all-target tests, strict Clippy,
+owned-file format, deliberate mutation, nine-root source matrix, and refreshed
+receipt 04 hashes/counts.
+
+Resource-bound addendum: Ticket 04 authority and semantic producers add and
+charge canonical `max_diagnostics` and `max_response_bytes` (or the equivalent
+proved streaming-output bound) before accumulating output. Exact-limit/+1 and
+diagnostic-amplification tests belong here and in Ticket 08; neither owner may
+invent a private default.
+## 2026-09-21 Final Current-Tree Audit — Partial Integration, No Closure
+
+Status remains `RED_CAPTURED — IMPLEMENTING`. Current owner evidence is Binder
+53/53 and Sema 59/59 all-target tests, both strict Clippy GREEN. This supersedes
+the counts in receipt 04 only as a dirty-overlay checkpoint; it is not a receipt.
+
+Implemented and reusable:
+
+- Binder exposes exact Composition bindings by `(owner, ordinal)`, records
+  exact source uses, and rejects self/forward LET names before host fallback.
+- Sema's query type-input traversal consumes Binder targets and Types deferred
+  rows for Composition Query producers.
+- Query EXISTS type-input traversal consumes the exact Binder capture edges and
+  passes the Types-neutral capture carrier into the one document kernel call.
+- closed Composition producer/body DTOs, Inline View identity checks, and the
+  prior Group/aggregate/host-predicate work remain owner-green.
+
+The implemented carriers are not yet source-reachable end to end:
+
+1. `resolve_document_bodies` still rejects every root Composition at
+   `sema/src/document.rs:2069`; add a single canonical Composition materializer.
+2. `materialize_relation` still has no Composition output environment and its
+   Source branch remains host-oriented. Resolve exact Binder use first, then
+   load the already-sealed prior producer row; only truly unbound names may use
+   host authority.
+3. Query EXISTS is typed but `materialize_bool` still rejects the variant at
+   `sema/src/document.rs:1261`. Materialize its nested relation once and retain
+   an owned nested-relation registry in `SemanticDocumentV2`; a root ID without
+   the typed subtree is not sufficient.
+4. Inline View still hard-rejects at `sema/src/document.rs:1984`. Consume the
+   Ticket 03 topology proof and the same query materializer before Modules
+   finalization.
+5. Replace the public raw
+   `ResolvedRelationSourceKindV2::Composition { source_id, owner, ordinal }`
+   with a private-field ID minted from Binder proof. Collapse the unused raw
+   `ResolvedRelationSourceV2` plus `ResolvedScanSourceV2` alias into one checked
+   scan-use carrier with exact authored name location.
+6. Add generated-column origins for SAMPLE/FIND; do not fabricate expression
+   keys or scan fields.
+7. Graph/CHECK/EXPLAIN local targets require a closed Host/Composition target
+   and per-role capability validation. Presentation needs an item location;
+   catalog references must retain validator/session authority.
+8. After source positives exist, add one nine-root document, all Composition
+   subforms, Inline View, correlated/uncorrelated/multi-source EXISTS, and every
+   identity/session/capture mutation. Then remove only the now-obsolete
+   `dead_code` expectations.
+
+Stop conditions: no name-keyed working set, no per-LET type-kernel call, no
+second resolver, no Sema-built `RecordTypeV1`, and no host fallback for a bound
+wrong-kind local.
+
+## SS-04A Query-Only Composition Checkpoint — 2026-09-21
+
+Status remains `RED_CAPTURED — IMPLEMENTING`. The root Composition path is no
+longer universally rejected: the Query-producer/Query-body slice is now
+source-reachable through one canonical query materializer.
+
+Implemented and independently rerun:
+
+- producer LETs are visited in source order;
+- exact Binder `composition_binding(owner, ordinal)` identities are consumed;
+- sealed outputs are stored by `(composition item ID, ordinal)`, never name;
+- `target_of_use(node, name_span, spelling)` is checked before host authority;
+- a bound self/forward/wrong-kind local cannot fall back to a same-named host;
+- each prior Types row fact is compared with the producer's sealed row;
+- Query body and exact WITH target are retained in
+  `ResolvedCompositionV2`;
+- Sample/Graph producers and Graph/CHECK/EXPLAIN bodies fail explicitly until
+  their authority carriers exist.
+
+Evidence on the same dirty overlay:
+
+```text
+focused Composition tests: 4/4, exit 0
+Sema all-target: 63/63 (8+4+42+1+4+3+1), exit 0
+Sema strict all-target Clippy: exit 0
+Binder all-target: 53/53, exit 0
+Binder strict all-target Clippy: exit 0
+owned package rustfmt check: exit 0
+git diff --check: exit 0
+forced-local-ordinal-zero mutation: sequential chain oracle failed, then recovery GREEN
+```
+
+RR disposition: this is a Query slice, not Composition closure. Execute the
+remaining work in this order:
+
+1. Replace publicly remintable raw Composition tuples with one private-field
+   Binder-derived identity shared by binding, checked scan use, provenance,
+   generated output and graph target. Collapse the duplicate scan-source APIs.
+2. Add honest generated-column origins for Sample `path: RepoPath` and bounded
+   PATH/REACHABILITY FIND `function: EntityRef`; producer constructors mint
+   the complete row/provenance/effects contract. Do not fabricate expression
+   IDs or accept arbitrary caller-supplied rows.
+3. Add `Host | Composition` graph targets with per-role capability checks for
+   FIND, Sample scope, CHECK scope/pattern/nested FIND and EXPLAIN. Bound local
+   wrong-kind targets reject before host lookup.
+4. Preserve checked registry/session identity on every nested producer/body,
+   presentation location and catalog reference. Wrap publicly constructible
+   Sample/Graph/Explain payloads in private-field checked carriers.
+5. Integrate Inline View correctly: collect exact direct View edges, obtain the
+   Modules topology proof, materialize inline queries in
+   `dependency_first_order()`, then finalize the same validator/proof. The
+   current `validate_view_topology(Vec::new())` plus hard reject is a stub.
+6. Materialize Query relational EXISTS exactly once, retain nested typed
+   relations in `SemanticDocumentV2`, emit correlation edges from the exact
+   Binder capture set, and keep Rule-body relational EXISTS rejected.
+7. Tighten incomplete-document diagnostics at the producer: nonempty reasons,
+   duplicate rejection and canonical ordering. Ticket 07 must not repair this.
+8. Add Surface -> HIR -> Sema fixtures for all Composition subforms, Inline
+   View chain/diamond/cycle, uncorrelated/correlated/multi-source EXISTS, one
+   mixed nine-root document, and every identity/session/capture mutation.
+
+Do not remove the remaining correlation dead-code gate until the EXISTS source
+positive executes. Query carrier reachability justified removal only of the two
+Composition constructor gates.
+
+## SS-04B Incomplete Analysis And Inline View Execution Boundary — 2026-09-21
+
+The incomplete-analysis producer now rejects empty codes, foreign facts,
+duplicate unresolved facts, foreign/Error diagnostics, and duplicate
+diagnostics; accepted facts and diagnostics are canonically sorted. This is
+Sema owner work, not a facade repair. Its unit oracle is included in the
+current 64/64 Sema all-target run.
+
+Inline View remains a P0 integration boundary. RR established that replacing
+the existing reject branch alone is invalid. Implement one coherent slice:
+
+1. While the Modules validator is `Predeclared`, Binder resolves every inline
+   query and Sema creates a private View pre-resolution plan. It resolves every
+   direct `FROM` use through the same validator and retains canonical direct
+   dependency inputs; a local inline View is the source asset, while its target
+   may be local or external.
+2. Pass those inputs once to `validate_view_topology`, then materialize local
+   inline query bodies only in `dependency_first_order()`. Cache output under
+   the exact `CatalogAssetIdV2`, never a name. A local query-ref-only View has
+   no relation row and rejects rather than falling back to a host relation.
+3. Extend one document Types traversal and one relation materializer to consume
+   the preplan/cache. Local scan rows are `PriorRelation`; external View rows
+   come only from a Modules-owned typed View payload. Sema does not create a
+   row type.
+4. Retain canonical direct View use facts (including `family=None` edges and
+   exact source-name location) in the sealed catalog semantic item so final
+   semantic-edge equality agrees with the Modules topology proof.
+5. Finalize the same validator with the same opaque topology proof. Test
+   inline-host positive, reversed local chain, diamond plus independent View,
+   cycle, duplicate direct use, local query-ref reject/no host fallback,
+   foreign cache/Types-row mismatch, and Surface-to-HIR-to-Sema path.
+
+Do not introduce another resolver, topology graph, type-kernel pass, or
+name-keyed view output map.
+
+## SS-04C Binder Inline-View Reachability Checkpoint — 2026-09-21
+
+`Binder::resolve_catalog_decl` is now the only Binder entry point for catalog
+payloads. It resolves only `VIEW ... Inline(Query)` through the canonical query
+resolver; QueryRef and every non-View catalog payload remain outside Binder
+authority. Sema and Pipeline now dispatch `CatalogDecl` through that entry
+point, so an inline query's aliases and unresolved symbols are no longer
+silently skipped before the Modules/Sema ownership boundary.
+
+This is deliberately not Inline View semantic support: Sema still has the
+empty topology proof and the explicit inline materialization reject. Do not
+turn either into a compatibility fallback. SS-04B's predeclare -> direct-edge
+plan -> topology proof -> dependency-first cache -> same-session finalization
+sequence remains required.
+
+Binder owner evidence on the shared dirty overlay:
+
+```text
+Binder all-target: 54/54 (0+12+10+19+3+4+6), exit 0
+Binder focused catalog-inline-view: 3/3, exit 0
+Binder strict all-target Clippy: exit 0
+cargo fmt --all --check: exit 0
+git diff --check: exit 0
+```
+
+The focused oracle covers query alias binding, unresolved projection symbol
+with exact authored span, and non-inline no-op authority. Required next source
+tests remain: full Sema inline-host positive, local chain/diamond/cycle,
+query-ref no-host-fallback, validator-session/cache transplant, and complete
+Surface -> HIR -> Sema path.
+
+## SS-04D Inline View Dependency-Order RCA — 2026-09-21
+
+Inline View remains RED for a second structural reason: Modules correctly
+returns dependency-first order independently of authored item order, but Types
+currently validates and materializes `PriorRelation` rows in authored HIR
+traversal order. A reverse-authored acyclic View chain would therefore fail
+before Sema can consume its inline cache. Removing the Types order guard is
+not a repair; it would admit forged and cyclic deferred rows.
+
+The coherent implementation order is now mandatory:
+
+1. Sema collects direct View source uses through the single Modules session and
+   validates topology once.
+2. It derives a private, exact inline query-root pre-evaluation sequence from
+   the opaque dependency-first proof.
+3. Types validates source, root identity, uniqueness, and that every
+   `PriorRelation` dependency is earlier in that supplied sequence; it prewalks
+   those roots before normal document traversal.
+4. Sema materializes/caches the same roots in that proof order, retains their
+   canonical `family=None` dependency facts on the catalog semantic item, then
+   finalizes that same Modules proof.
+
+No Sema-side DFS, second type pass, relaxed raw ordering rule, or name-keyed
+view cache is permitted. The required mutations are dropped/swapped/foreign
+pre-evaluation roots, cache asset/root substitution, omitted `family=None`
+semantic edge, and reverse-authored chain/diamond stability.
+
+## SS-04E Query Relational EXISTS Semantic Registry — 2026-09-21
+
+Query relational EXISTS is now source-reachable semantic IR. One
+document-local registry maps the exact nested relation root to its sealed
+`TypedRelationExprV2`; it is threaded through top-level queries and
+Query-only Composition materialization. `SemanticDocumentV2::try_assemble`
+requires exact equality between that registry's keys and every
+`TypedExprShapeV2::RelationExists.relation_root`, plus source/registry/key
+identity of each stored relation. A root-only placeholder cannot pass.
+
+The semantic materializer consumes Binder's explicit capture set exactly as
+recorded. Each edge must retain a matching resolved local reference, owner,
+ordinal, canonical binding kind/name, and exact reference span before it is
+sealed as `TypedCorrelationEdgeV2`. An empty Binder set is retained as an
+explicit empty correlation vector. Rule-body relational EXISTS remains
+rejected before semantic materialization.
+
+Source-level owner oracles cover:
+
+- correlated `EXISTS`: outer alias owner/ordinal, inner reference node/span,
+  exact nested Filter -> Scan -> predicate tree, and exactly one registry root;
+- uncorrelated `NOT EXISTS`: explicit empty capture vector and exact nested
+  source root;
+- existing Rule-body exact-span reject regression.
+
+```text
+Sema all-target: 66/66 (9+4+44+1+4+3+1), exit 0
+Sema strict all-target Clippy: exit 0
+cargo fmt --all --check: exit 0
+git diff --check: exit 0
+sema/src/document.rs=5b8d5234af13d3809dd0c7e715c277b77107324a754eab4c40a068c9574b5926
+sema/src/expr.rs=36e961b2f12956e0398555a29b1f10aa18fd51a42f2a54776992a350f24e8952
+sema/tests/v3_document_transaction.rs=adaf686416014dc4fc21afd893a8f4804c1303731bac9fea48df129471aa73d8
+```
+
+RR remains open for nested/multi-source/multi-capture EXISTS and private
+registry wrong-key/extra/missing mutation oracles. This completes the Query
+EXISTS materialization slice, not Ticket 04 or Inline View.
+
+## SS-04F Inline View Same-Session Materialization — 2026-09-21
+
+Inline View is no longer an empty-topology stub. The only implemented path is:
+
+```text
+predeclare -> exact View source probe -> Modules topology proof
+-> Types validated pre-evaluation -> proof-order cache -> same-session finalization
+```
+
+Sema's private plan contains only exact source-use node IDs, Modules-owned
+asset IDs, HIR relation roots, and `DocumentCatalogDependencyInputV2` facts. It
+does not derive a second graph. `resolve_reference_if_present` is a Modules
+owner API: an absent catalog name remains available for host-relation lookup;
+wrong-kind and ambiguous catalog candidates still terminally reject. A source
+that resolves to a local QueryRef-only View or an external View has no
+Modules-owned typed row payload and rejects as `sema.unmaterialized_view_source`;
+it cannot fall back to a same-named host relation.
+
+After Modules returns its opaque `dependency_first_order`, Sema projects only
+inline query body roots into `RelationPreEvaluationInputV2`, materializes each
+View under exact `CatalogAssetIdV2`, and gives normal queries the fully sealed
+cache. A View scan compares the Types row with the cached output row before
+constructing `ResolvedScanSourceV2::View`. `ResolvedCatalogItemV2` retains
+canonical direct View references; assembly includes them as `family=None`
+edges and requires exact equality with the Modules-finalized dependency set.
+Repeated direct uses are canonicalized by `(target asset, earliest use span)`
+to match Modules deduplication.
+
+Owner tests execute inline-host materialization, a reverse-authored local
+chain, no-family direct edge retention, cycle rejection, and the optional
+Modules probe's absent/local/wrong-kind matrix. This is an Inline View slice,
+not Ticket 04 closure. Still open: diamond/independent-order and repeated-use
+source tests, private cache/registry mutation tests, Surface-to-HIR-to-Sema
+e2e, external typed View payloads, non-Query Composition, and the remaining
+EXISTS mutation matrix.
+
+## SS-04G Composition Source Identity Sealing — 2026-09-21
+
+The public raw Composition source variant
+`Composition { source_id, owner, ordinal }` is removed. It allowed any
+downstream caller to re-create a relation-source identity from coordinates
+that are only meaningful after Binder resolution. The replacement is one
+private-field carrier:
+
+```text
+ResolvedValueBindingV2 (Binder-derived) -> ResolvedCompositionSourceIdV2
+-> ResolvedRelationSourceKindV2::Composition(carrier)
+```
+
+`ResolvedCompositionSourceIdV2` exposes only inspect-only retained binding
+data. Its field and sealing constructor are not public. The document
+transaction constructs it only after the existing exact Binder local target
+and `CompositionLet` kind checks; it retains the resolved name, owner node,
+ordinal, and source identity. There is no tuple constructor, no compatibility
+variant, and no name lookup/fallback added by this repair.
+
+Negative rails are compile-time private-field construction and runtime
+non-Composition-binding rejection. The external Composition query oracle now
+checks the exposed retained Binder binding rather than manufacturing raw
+coordinates. Source scans confirm zero raw struct-variant matches.
+
+This closes only the Composition relation-source identity P0. It does not
+materialize Sample/FIND producers, accept graph/CHECK/EXPLAIN Composition
+bodies, synthesize their rows, or complete the Ticket 04 transaction.
+
+## SS-04H Generated Composition Row Origin — 2026-09-21
+
+SAMPLE and row-capable FIND must not claim an authored typed expression as the
+origin of their closed frontend rows. `OutputColumnOriginV2` now has
+`Generated(SemanticItemIdV2)`, which retains the exact nested producer item
+instead of inventing a `SourceQualifiedNodeIdV2` expression fact. The shared
+output constructor rejects a generated origin from another source.
+
+`ResolvedCompositionProducerV2::try_sample` and `try_graph` now require all
+of the following in addition to the closed one-field schema: empty source
+provenance, `pure_scalar` effects, empty partition/order state, one aligned
+column, and that column's exact generated producer identity. Cross-producer
+schema transplants therefore reject before a later relation scan can consume
+them.
+
+This is the producer contract prerequisite, not non-Query reachability.
+`materialize_query_composition` still rejects non-Query HIR forms until the
+single Binder-first `Host | Composition` graph-target carrier and Types input
+path land. Do not activate Sample/FIND with an expression-origin workaround.
+
+## SS-04I Graph Target Domain Migration — 2026-09-21
+
+Graph IR now distinguishes `ResolvedGraphTargetV2::Host` from opaque
+`Composition`. Composition retains the existing Binder-derived source plus a
+closed `Entity` or `Scope` capability; it is never coerced into a host catalog
+selector. Existing host FIND, presentation, and CHECK callers construct the
+Host branch through this domain. Owner mutation rejects Entity-as-Scope.
+
+This is domain migration only: the mandatory Binder-first resolver is not
+connected, so no local graph use or non-Query Composition form is enabled.
+The next patch must use `target_of_use(owner, span, spelling)` before any host
+lookup, sharing that resolver across FIND, SAMPLE scope, CHECK, and EXPLAIN.
+
+## SS-04J Binder-First FIND Resolver — 2026-09-21
+
+`resolve_graph_target_use` is now the single FIND/nested-CHECK-FIND resolver.
+It charges the exact use once, checks the source registry once, consults
+`BindResultV1::target_of_use(owner, span, spelling)` before host authority,
+and treats any exact local target as terminal: it must be a prior sealed
+Composition binding with the required capability or rejects. Only no Binder
+target may consult the host catalog. Top-level callers supply an empty local
+environment; Composition materialization must supply a prior-only map before
+it enables any graph body or producer.
+
+## SS-04K Graph Body Source Reachability — 2026-09-21
+
+Composition now materializes an authored Graph body after all Query LETs have
+been sealed. It derives a read-only map keyed by the exact Binder
+owner/ordinal, passes it to the same Binder-first resolver, and retains the
+exact Graph item ID in `ResolvedCompositionBodyV2::Graph`. A Query LET has no
+graph capability, so a local graph use of it remains terminally rejected.
+
+The source oracle constructs Composition HIR with a Query LET and a host-only
+Graph body, then asserts the retained Graph body ID and exact WITH binding.
+This is only Graph-body reachability. Graph/Sample producers, local Entity or
+Scope positives, CHECK, and EXPLAIN remain separate work.
+
+## SS-04L Canonical SAMPLE and FIND Producer Reachability — 2026-09-21
+
+`materialize_query_composition` now admits all three closed producer families
+through one ordered, Binder-proven assembly loop. Query and SAMPLE always
+provide a relation output; FIND provides one only for `PATH` and
+`REACHABILITY`. A non-row FIND stays sealed as `Graph { output: None }`, so a
+later `FROM` use deterministically emits `sema.non_relation_composition_source`
+instead of getting a fabricated row or falling back to a same-named host
+relation.
+
+The producer owns the generated row at the only materialization seam:
+
+```text
+SAMPLE        -> Set<{path: RepoPath}>       -> Generated(sample item ID)
+FIND PATH/REACHABILITY
+              -> Set<{function: EntityRef}>  -> Generated(graph item ID)
+```
+
+Both rows have empty provenance, pure scalar effects, and no partition/order
+keys; `try_sample` / `try_graph` independently seal those conditions. Types
+receives the same producer row under the actual consuming relation root, not a
+synthetic HIR key. Consequently a Composition Query body can project `path`
+from SAMPLE or `function` from PATH, but SAMPLE's `function` rejects at the
+exact field span as `types.bad_projection`.
+
+The prior-only local graph environment now has a source-positive Entity case:
+a PATH LET is usable as the source of a later Graph body, resolves to the
+opaque Composition target, and cannot mint a host selector. The negative
+Flow-as-relation test remains: non-row FIND bindings never become relation
+sources.
+
+Owner evidence: `v3_composition_query` 8/8, Sema all-target 75/75, strict
+all-target Clippy, package fmt, and scoped diff check green on the shared
+overlay. This does **not** close local SAMPLE Scope, CHECK, EXPLAIN, same-name
+host collision for local graph capability mismatch, Surface-to-HIR-to-Sema e2e,
+or Ticket 04's full transaction/frozen-candidate gates.
+
+## SS-04M Composition Scope and EXPLAIN Binder-First Closure — 2026-09-21
+
+SAMPLE scope and Composition EXPLAIN now consume the same prior-only
+Binder-derived target environment as FIND. A later SAMPLE can scope to a prior
+SAMPLE (the only local `Scope` capability), and EXPLAIN can resolve a prior
+PATH/REACHABILITY LET as an opaque local `Entity`. A local Binder target is
+terminal: EXPLAIN does not probe Rule or host Entity namespaces in that case.
+No host selector is minted from a Composition target.
+
+Composition CHECK now passes its scope, pattern, and nested semantic FIND
+through `resolve_check_item`, whose optional graph references were converted
+to the shared resolver. Its rule reference remains a Modules validator
+responsibility. To preserve the distinction between source-anchored document
+diagnostics and source-less authority failures, the Composition materializer
+now returns `FrontendTransactionErrorV2` rather than coercing validator
+failures into fabricated document locations.
+
+The current source oracle is 10/10 and Sema all-target is 77/77. It proves
+prior SAMPLE Scope and local-Entity EXPLAIN with an empty host graph registry.
+Required before CHECK may be marked closed: a source-positive local
+scope/pattern/nested-FIND case with a Modules-proven Rule and the corresponding
+capability-mismatch/same-name-host mutations. Surface-to-HIR integration and
+Ticket 04 transaction closure remain open.
+
+## SS-04N Composition CHECK Rule/Scope/Nested-FIND Oracle — 2026-09-21
+
+CHECK is now source-proven across its three separate authorities without a
+second resolver or a name-only test fixture:
+
+```text
+Catalog RuleBinding(rule1 -> external Check check1)  [Modules]
+Composition LET scoped = SAMPLE                      [local Scope]
+Composition LET paths  = FIND PATH                   [local Entity]
+CHECK rule1 SCOPE scoped SEMANTIC_CONFIRM FIND source=paths
+```
+
+The oracle checks the sealed CHECK item ID, exact Modules `Rule` asset identity
+instead of its spelling, the local-only Scope target, and the nested FIND's
+local-only Entity target. A sibling negative changes only `SCOPE paths` and
+must reject as `sema.invalid_composition_graph_target` at that authored use.
+The authoritative host graph fixture now admits a same-named `scope` selector
+with the correct Scope kind; a local PATH LET named `scope` remains terminally
+wrong and rejects at its authored CHECK use. This proves local capability
+failure cannot fall through to a matching host spelling.
+
+`Pattern` is deliberately not given a synthetic positive: no Composition
+producer owns the `Pattern` capability. A future positive requires a real
+producer contract; a PATH result in CHECK pattern remains a mismatch case.
+Owner evidence: composition source oracle 13/13; Sema all-target 80/80;
+strict all-target Clippy, fmt, and scoped diff check green. Still open:
+Surface→HIR→Sema Composition e2e, remaining transaction-wide mutations, and
+the immutable-candidate/whole-workspace gates.
+
+## SS-04P Surface → HIR → Sema Composition Front-Door Matrix — 2026-09-21
+
+Sema now has an owner test dependency on Surface only in `dev-dependencies`;
+the production semantic crate still depends on Binder/HIR/Modules/Types only.
+The front-door matrix parses real public source through
+`parse_source_document_v2`, passes the produced one-document HIR through the
+sole integrity checker, then invokes the same semantic transaction used by
+hosts. It covers:
+
+```text
+Query producer -> Query body
+SAMPLE producer -> Query body
+PATH FIND producer -> FIND body
+SAMPLE producer -> CHECK body (with a parsed RuleBinding document item)
+PATH FIND producer -> EXPLAIN body
+```
+
+Each vector asserts the retained closed semantic body variant; the dedicated
+SAMPLE e2e additionally asserts the body row is the exact producer row. The
+CHECK vector includes public `ruledef ... check-ref=...` source, proving the
+catalog declaration and Composition share one parsed HIR document/session.
+The fixture admits only the required host Entity/Scope selectors, so local
+Composition targets remain observable rather than being hidden by broad host
+fixtures.
+
+Owner evidence: source suite 15/15, Sema all-target 82/82, strict all-target
+Clippy, package fmt, and scoped diff check green. This closes the Composition
+front-door gap, not mixed-nine-root, Inline View diamond/external-payload, or
+whole-workspace qualification.
+
+## SS-04Q Mixed All-Variant Public Transaction — 2026-09-21
+
+One public source document now crosses Surface parse, checked HIR, Modules,
+Binder, Types, and Sema with every `SemanticItemV2` family present:
+
+```text
+Declaration, Rule, Relation, Graph, Check, Presentation,
+Catalog RuleBinding, Catalog certified Profile, Composition, Meta
+```
+
+The source has ten authored items because `CHECK` requires a `RuleBinding`
+Catalog item while `require certified` needs the certified `Profile` catalog
+contract to be exercised. These are two distinct Catalog payloads, not a
+duplicated semantic variant. The Rule is type-anchored as `x = 1`; an initial
+literal rule head was rejected by the real `sema.invalid_item_shape` rail and
+an unanchored symbol head was rejected as `types.ambiguous_rule_type`. The
+final fixture keeps both constraints visible and proves the positive only with
+the valid public form.
+
+The host fixture grants exactly `records.id`, graph Entities `a`/`b`, external
+`check1`, and external `capability1`. The assertion counts every final semantic
+variant and requires `(1, 1, 1, 1, 1, 1, 2, 1, 1)` in that order; it cannot
+pass by parsing an item that fails to enter the sealed document.
+
+Owner evidence: composition source suite 16/16, Sema all-target 83/83,
+strict all-target Clippy, package fmt, and scoped diff check green. This closes
+the mixed-root front-door oracle only. Inline View external-payload/diamond,
+cross-session/cache/capture mutation matrix, frozen-candidate, and
+whole-workspace qualification remain Ticket 04 gates.
+
+## SS-04R Typed External View And Inline Diamond Closure — 2026-09-21
+
+`ExternalCatalogPayloadV2::View(RelationTypeV1)` is now a usable closed
+relation source. This is not a host-relation fallback: the source must first
+resolve through the Modules View namespace, retain that exact external asset
+ID, and consume its immutable row/cardinality contract. Types receives that
+row as a known source; Sema rejects any fact that disagrees with the payload
+row, then creates `ResolvedScanSourceV2::View` with source-field origins tied
+to the exact scan stage. External Views remain frontend authority data; no
+runtime/provider path is introduced.
+
+Local inline Views still use only the Modules-owned topology proof. An
+authored-order-reversed four-View diamond (`top -> {left,right} -> base`) now
+proves that Sema materializes in `dependency_first_order()` without rebuilding
+the graph. The oracle asserts direct dependency cardinalities (2, 1, 1), exact
+base/left View asset targets in sealed relation stages, four final no-family
+catalog edges, and the retained top Filter body. The pre-existing cycle and
+repeat-use oracles remain separate rails.
+
+Owner evidence: document transaction suite 49/49, Sema all-target 85/85,
+strict all-target Clippy, package fmt, and scoped diff check green. This closes
+the externally typed View and diamond source gaps. Remaining Ticket 04 gates:
+cross-session/cache/capture mutation matrix, frozen candidate, and
+whole-workspace qualification.
+
+## SS-04S Multi-Reference Correlation Capture Oracle — 2026-09-21
+
+The relational EXISTS owner suite now has a true multi-capture case. Its inner
+filter compares both `f.id = r.id` and `f.value = r.value`; the same outer
+alias is captured at two distinct authored reference nodes. The final
+`TypedExprShapeV2::RelationExists` must retain two edges, each with the exact
+outer owner/ordinal and its own inner reference node/span. It cannot collapse
+captures to one binding-level summary or deduplicate by binding identity.
+
+The nested relation registry is also checked by its exact inner root and scan
+identity. Existing correlated-single, uncorrelated-empty, and Rule-body reject
+tests retain their distinct contracts. Owner evidence: document transaction
+50/50, Sema all-target 86/86, strict all-target Clippy, package fmt, and
+scoped diff check green. Nested multi-EXISTS and private cache/session mutation
+tests remain before Ticket 04 qualification.
+
+## SS-04T Nested Relational EXISTS Boundary Oracle — 2026-09-21
+
+A two-level correlated EXISTS now proves capture propagation across every
+crossed boundary. The outer EXISTS sees its direct outer reference and the
+deeper reference; the nested EXISTS sees only the deeper reference. Every edge
+retains the same outer alias owner/ordinal/name, while the semantic document
+retains two distinct nested relation roots. Root iteration is asserted in its
+actual stable BTree identity order rather than an incidental authored order.
+
+This prevents both failure directions: losing a transitive outer capture, and
+incorrectly copying a direct outer capture into an inner EXISTS. Owner
+evidence: document transaction 51/51, Sema all-target 87/87, strict all-target
+Clippy, package fmt, and scoped diff check green. Private cache/session and
+forged-input mutation rails, frozen candidate, and whole-workspace
+qualification remain.
+
+## SS-04U Sealed Downstream Tags — 2026-09-21
+
+Ticket 05 audit found that an otherwise sealed Sema relation contract still
+published three HIR-owned tags: `SortDirectionHirV1`,
+`LogicalQuantifierKindV1`, and `RelationExistsPolarityV1`. That made removal
+of Algebra's direct HIR dependency impossible without a consumer-side shim.
+
+The Sema producer now converts those values at materialization into
+`SortDirectionV2`, `LogicalQuantifierKindV2`, and
+`RelationExistsPolarityV2`. `OrderKeyContractV2` and `TypedExprShapeV2` expose
+only those semantic carriers. The conversion remains at the HIR-to-Sema
+boundary; no downstream crate needs to import HIR to inspect a sealed relation
+or EXISTS expression. Existing transaction assertions now consume the public
+Sema types for order and EXISTS semantics.
+
+Owner evidence: Sema all-target 87/87, strict all-target Clippy, package fmt,
+and scoped diff check green. This is a Ticket 04 producer repair enabling the
+Ticket 05 algebra cutover; cache/session/forged-input mutations, frozen
+candidate, and whole-workspace qualification remain open.
+
+## SS-04V Catalog Reference Session Retention — 2026-09-21
+
+`ResolvedCatalogReferenceV2` previously copied the raw `LocatedSpanV2` out of
+the Modules-owned reference proof. That lost the source-registry identity at
+the Sema boundary, allowing later consumers to compare catalog references only
+by source ID/span. The carrier now retains `CheckedLocatedSpanV2` directly and
+exposes it unchanged. Document dependency comparison explicitly projects the
+raw span only where it compares against Modules' final dependency ledger.
+
+This is a producer repair, not a consumer-side session check. Inline View,
+CHECK, EXPLAIN, and every catalog-family reference retain one checked location
+whose registry identity can be compared against the document transaction.
+
+Owner evidence: Sema all-target 87/87, strict all-target Clippy, package fmt,
+and scoped diff check green. Frozen candidate and whole-workspace
+qualification remain open.
+
+## SS-04W Final Current-State Supersession — 2026-09-21
+
+This section supersedes every older current-state/count statement in this
+ticket. Older checkpoints remain historical evidence only. The audited tree is
+`main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a` plus a 178-entry shared dirty
+overlay; no clean-candidate or workspace qualification is implied.
+
+### Current disposition
+
+| Area | Disposition | Current evidence / gap |
+|---|---|---|
+| Atomic Sema document transaction | `IMPLEMENTED, OWNER-GREEN` | one checked document owns item order, exact item set, typed expressions, nested relations, catalog proof, and stable diagnostics |
+| Source item reachability | `IMPLEMENTED, OWNER-GREEN` | mixed transaction and 16-case Composition suite reach all current semantic item/body variants |
+| Six relation stages | `IMPLEMENTED, OWNER-GREEN` | Scan/Filter/Project/Join/Group/Sort are private-constructor typed stages with checked output contracts |
+| Group authority | `IMPLEMENTED, OWNER-GREEN` | key-only public Group row, Binder-owned partition input, Set cardinality, exact key IDs, and intervening-Sort rejection |
+| Query relational EXISTS | `IMPLEMENTED, OWNER-GREEN` | nested relation registry, EXISTS/NOT EXISTS polarity, empty/single/multiple/nested capture boundaries, and Rule-body rejection |
+| Composition/View/catalog session identity | `IMPLEMENTED, OWNER-GREEN` | Binder-first Composition source identity, external typed View, dependency-first inline View diamond, and checked catalog locations |
+| Aggregate-to-relation contract | `PARTIAL — BLOCKING` | explicit Group legality exists, but aggregate Project materialization does not seal the final Group/Aggregate contract required by Algebra |
+| Downstream resource-budget receipt | `MISSING — BLOCKING 05/06` | the transaction consumes `FrontendBudgetV2`, but `SemanticDocumentV2` retains no immutable algebra/rule-graph budget projection |
+| Package qualification | `GREEN FOR CURRENT OVERLAY` | fresh 87/87 all-target tests and strict all-target Clippy passed |
+| Workspace/product qualification | `NOT PROVEN` | Logic/Pipeline consumers are RED; architecture and clean-SHA/hosted-CI gates remain open |
+
+### Aggregate producer RCA
+
+The remaining Ticket 04 code defect is localized but semantic:
+
+1. `materialize_relation` materializes every Project the same way. The output
+   copies `previous.cardinality()` and resets partition and ordering to empty.
+   It does not branch on the sealed aggregate effect.
+2. A grouped aggregate therefore has a real Group child, but its Project output
+   drops the Group partition keys. Ticket 05 cannot reconstruct them from the
+   aggregate spelling or the prior row.
+3. A scalar aggregate Project over Scan/Filter has no empty-partition Group at
+   all and inherits Bag/Sequence cardinality. Ticket 05 correctly rejects that
+   shape with `algebra.aggregate_without_group`.
+4. `TypedRelationExprV2::try_group` currently requires nonempty key
+   expressions, so scalar aggregation cannot be repaired by calling the
+   existing explicit-Group constructor with an empty vector. The semantic
+   carrier must distinguish an authored nonempty Group from a producer-sealed
+   scalar aggregate partition without exposing a forgeable public constructor.
+
+Do not repair this in Algebra. The producer cut is:
+
+1. Inspect the complete projection expression vector once using each
+   expression's `AggregateContextV2`; reject a mixed/illegal shape before
+   constructing any relation stage.
+2. For an explicit Group child, preserve its exact partition-key IDs and
+   partition-input proof into the aggregate-ready output. Do not synthesize a
+   second Group.
+3. For a legal scalar aggregate, materialize one private empty-partition Group
+   owned by Sema, with Set cardinality, no public keys, and the exact pre-fold
+   input contract. The aggregate Project must directly consume it.
+4. Preserve the resolved call target and `TypedCallArgumentV2::Star`; only the
+   Sema/types legality owner may admit `count(*)`. `sum(*)`, `min(*)`,
+   `max(*)`, mixed star/argument calls, and bare star must fail before Algebra.
+5. Seal the aggregate output cardinality, partition identity, row-aligned
+   origins, effects, and checked locations in one constructor. Algebra may only
+   verify and copy this contract.
+
+The same producer cut must retain a read-only downstream budget receipt on the
+sealed document. Today `FrontendBudgetV2` is consumed while declaring and
+materializing the document, but the final `SemanticDocumentV2` stores only
+source/items/expressions/nested relations/catalog. Ticket 05 and Ticket 06
+therefore cannot implement exact-limit/+1 traversal without accepting a new
+caller-selected budget or inventing a default. Retain one immutable projection
+covering expression/relation walk limits; rule nodes/edges/steps; graph witness
+depth/count; Planning traversal; source/frame bytes; diagnostic count; and
+response bytes. The canonical positive caps include `max_diagnostics` and
+`max_response_bytes`, so Ticket 08 consumes rather than amends the authority.
+Consumers read the receipt from the document; no consumer accepts an
+independent budget argument.
+
+### Exact remaining owner work
+
+Add or strengthen these Sema-owner oracles before SS-04W can advance:
+
+- scalar `count(*)`: exact `Group(empty) -> Project(aggregate)` shape, Set
+  cardinality, empty partition keys, star retained, and no caller option;
+- grouped `sum(field)`: exactly one authored Group, exact Binder partition
+  input, aggregate output retains the Group partition identity;
+- multiple aggregates and group-key-plus-aggregate projection: stable authored
+  expression order and exact row-aligned expression origins;
+- negative star matrix: `sum(*)`, `min(*)`, `max(*)`, `count(*, x)`, and bare
+  `*`, each at the exact authored call/star span;
+- forged aggregate mutation matrix: missing/extra/swapped partition keys,
+  wrong Group child, wrong scan occurrence, transplanted expression ID,
+  cardinality downgrade, and foreign registry identity;
+- exact-limit/+1 semantic-step cases covering the implicit Group path;
+- budget-receipt identity/value mutation: dropped projection, zero dimension,
+  value transplant from another authority profile, and consumer exact/+1,
+  including diagnostic-count and response-byte boundaries;
+- finalizer mutations for dropped/extra nested root and dropped/duplicate/
+  swapped correlation reference, including a cross-registry checked location.
+
+Existing Composition, View, catalog, and nested-EXISTS positives are complete
+for owner-local scope; do not recreate them under new test files. Only add a
+case when it kills one of the mutations above.
+
+### Next SS/RR acceptance
+
+SS-04W is accepted only when the aggregate producer change and its owner
+mutations are present and all commands below pass against one unchanged source
+fingerprint:
+
+```bash
+cargo test -p quanta-gqlang-v2-sema --all-targets
+cargo clippy -p quanta-gqlang-v2-sema --all-targets -- -D warnings
+cargo fmt --check -p quanta-gqlang-v2-sema
+git diff --check -- crates/quanta-gqlang-v2-sema \
+  docs/plans/sep-21-gqlang-sota-frontend-reconstruction/tickets/04-sema-kernel-and-document-transaction.md \
+  docs/plans/sep-21-gqlang-sota-frontend-reconstruction/receipts/04.md
+```
+
+RR-04W then inspects the concrete relation tree and output contract; a passing
+test count alone is insufficient. Workspace, architecture, hosted CI, and
+clean-candidate closure remain Ticket 09 evidence, not Ticket 04 GREEN.

@@ -1,7 +1,12 @@
 #![allow(
     clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
     clippy::panic,
-    reason = "artifact-hygiene guard intentionally fails hard, listing every offending repo-root artifact"
+    clippy::single_match,
+    clippy::unwrap_used,
+    clippy::wildcard_enum_match_arm,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 //! Ticket 16 hellgate: current-main artifact hygiene.
@@ -9,10 +14,10 @@
 //! A clean v3 workspace keeps Rust sources under `crates/<crate>/src` (or
 //! `tests`) and compiled artifacts under `target/`. The repo ROOT must therefore
 //! carry NO loose `.rs` source files and NO `.rlib` (or other compiled object)
-//! artifacts. Scratch repro files (`test_*.rs`) and stray `libfoo.rlib` blobs
-//! committed at the root are exactly the hygiene drift ticket 16 closes; this
-//! rail fails closed if any reappear, so the boundary stays enforced rather than
-//! relying on a one-time manual sweep.
+//! artifacts. Scratch repro files (`test_*.rs`, `test_*.txt`) and stray
+//! `libfoo.rlib` blobs committed at the root are exactly the hygiene drift
+//! ticket 16 closes; this rail fails closed if any reappear, so the boundary
+//! stays enforced rather than relying on a one-time manual sweep.
 
 use std::path::{Path, PathBuf};
 
@@ -46,9 +51,18 @@ fn repo_root_carries_no_loose_source_or_compiled_artifacts() {
             || name.ends_with(".d");
         // loose shell/scratch scripts at the root are repro debris too.
         let is_loose_script = name.ends_with(".sh") || name.ends_with(".bash");
+        // scratch repro NOTES (`test_*.txt`) are the same debris class as
+        // `test_*.rs`: the extension differs, the intent does not. Scoped to the
+        // `test_` prefix so legitimate root text files stay allowed.
+        let is_scratch_note = name.starts_with("test_") && name.ends_with(".txt");
         // editor / agent backup files never belong in the tree, anywhere.
         let is_backup = name.ends_with(".bak") || name.ends_with(".orig") || name.ends_with('~');
-        if is_loose_source || is_compiled_artifact || is_loose_script || is_backup {
+        if is_loose_source
+            || is_compiled_artifact
+            || is_loose_script
+            || is_scratch_note
+            || is_backup
+        {
             offenders.push(name);
         }
     }

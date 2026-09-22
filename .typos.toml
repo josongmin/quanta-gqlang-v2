@@ -1,5 +1,15 @@
 [files]
-extend-exclude = ["target/**"]
+# `target/**` is build output. `docs/bugbash/**/*.tsv` is generated audit
+# INVENTORY data: it embeds raw test names and source snippets, so token-level
+# spell-checking it yields only false positives on identifiers/fragments
+# (e.g. `ede`, `ba`, `ded` sliced out of longer names). Prose in that directory
+# (the `*.md` findings) stays checked.
+#
+# `docs/plans/**/receipts/**` is the same class of data: plan receipts embed
+# content fingerprints and public-API hash tables (e.g. `40ded6a4b596ca41`),
+# and every new receipt adds more, so spell-checking them re-breaks the gate on
+# each regeneration. Plan prose outside `receipts/` stays checked.
+extend-exclude = ["docs/bugbash/**/*.tsv", "docs/plans/**/receipts/**", "target/**"]
 
 [default.extend-words]
 gqlang = "gqlang"

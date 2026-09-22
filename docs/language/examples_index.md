@@ -31,6 +31,11 @@ Meta roots:
 1. `examples/use_pack/secure_pack.qglang`
 2. `examples/require_certified/strict_only.qglang`
 
+Composition family (the clause-level `LET`/`WITH` family; a composition of roots,
+not one of the 17 root families):
+
+1. `examples/composition/let_with_find.qglang`
+
 Notes:
 
 1. all examples are read-only

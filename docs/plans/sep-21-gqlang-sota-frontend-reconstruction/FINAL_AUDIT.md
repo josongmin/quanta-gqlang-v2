@@ -2,6 +2,90 @@
 
 Status: `AUDIT COMPLETE — REPAIR ACTIVE; PACKET NOT COMPLETE`
 
+## 2026-09-21 Current-State Supersession
+
+The current coordinated freeze is
+`main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a` plus a 178-entry shared dirty
+overlay. It is not an immutable candidate. All older line numbers, counts, and
+full-workspace receipts in this document describe their named historical
+snapshot only.
+
+Resolved or materially advanced since the original audit:
+
+- a document-scoped Sema owner exists and its latest scoped suite is `87/87`;
+- Algebra production ingress is now the sealed Sema document/item only;
+- direct Algebra dependencies on HIR/Binder and public forgeable Algebra V1
+  nodes were removed;
+- the architecture audit no longer reports Algebra illegal edges;
+- Query EXISTS, nested/multiple correlations, inline/external View, all root
+  families, and catalog-session retention have scoped producer coverage.
+
+Current P0 integration blockers:
+
+1. An implicit global aggregate Project does not emit the explicit
+   Group/empty-partition contract required by Algebra. Algebra correctly
+   rejects rather than infers.
+2. The sealed document does not yet carry the downstream budget receipt.
+   Algebra currently accepts no canonical budget, recursively lowers deep
+   trees, and leaves the original EXISTS-bearing Filter predicate after adding
+   Semi/Anti, duplicating that semantic condition.
+3. Logic still imports deleted Algebra V1 node/operator types; therefore
+   Pipeline library compilation is RED and all downstream workspace claims are
+   invalid.
+4. Logic still owns raw-HIR/name adapters, one-rule assembly, a duplicate
+   EXISTS lowerer, recursive DFS Tarjan without the frontend budget, and graph
+   defaults that are not derived from the sealed document.
+5. Planning/Pipeline/facade have not completed the semantic-only cut. Recursive
+   planner walks, optional-plan invalid states, an undefined authority
+   fingerprint, and incomplete facade export enforcement remain.
+6. Frontdoors still lack a closed bounded wire-diagnostic model, response and
+   diagnostic caps, exact transport/session exit policy, and bounded argv
+   handling.
+7. No single authoritative semantic manifest, base-to-head inventory,
+   external-consumer final gate, exact-SHA hosted receipt, or clean immutable
+   candidate exists.
+
+Current P1 producer/authority risks that remain after the latest repairs:
+
+- Sema already compares each EXISTS witness against Binder's exact
+  `(reference, owner, ordinal)` before Types input construction; the remaining
+  gap is a discriminating mutation suite for dropped/duplicate/wrong-valid-
+  owner/wrong-ordinal captures and a reversed-node-ID oracle. Do not duplicate
+  Binder authority inside Types;
+- the public `ResolvedRelationSourceV2` occurrence wrapper and the
+  `ResolvedScanSourceV2` identity alias remain overlapping contracts; converge
+  them or explicitly make the occurrence proof document-only;
+- add foreign-registry/session and sibling-valid-owner/ordinal transplants that
+  discriminate the sealed identities rather than only malformed identities;
+- add external compile-fail proof that private Composition identities and
+  invalid closed producer/body payloads cannot be minted.
+
+The following earlier findings are now implemented and must not be rebuilt:
+private Composition source identity, disjoint host/local graph targets,
+generated SAMPLE/FIND origins, checked catalog locations, dependency-first
+Inline View topology, nested Query EXISTS registry, and canonical incomplete
+analysis diagnostics.
+
+Current proof boundary:
+
+| Scope | Result |
+|---|---|
+| Types / Modules / Binder owners | `89/89`, `130/130`, `54/54` GREEN; strict Clippy GREEN |
+| Sema owner | `87/87` GREEN; strict Clippy GREEN |
+| Algebra owner | `4/4` GREEN; strict Clippy GREEN |
+| format / diff | `cargo fmt --all --check` and `git diff --check` GREEN |
+| architecture | RED with 20 normal transitions, one dev transition, and illegal `sema -> surface` dev edge |
+| Pipeline | RED at Logic imports of deleted Algebra V1 API |
+| workspace / conformance / frontdoors / hosted CI | unqualified |
+
+No older GREEN row may be used to upgrade one of the unqualified rows above.
+
+Latest shared HEAD observed during execution: `ecc38f59e9fdcd62b5e030445188ffa8b01e100a`
+(`main=origin/main`), one mixed external commit after the scoped `f9ec954`
+audit. The remaining dirty sema/docs overlay is not covered by that commit.
+See `EXECUTION_LEDGER.md`; none of the historical owner receipts is
+retroactively upgraded to integrated green.
+
 Base: `main@e896a11024bd5a1e1ef03c094a70032f4e6c765f`
 
 Worktree at audit start: clean.
@@ -274,8 +358,8 @@ explicit dirty follow-up recorded by receipts 02 and 03.
 |---|---|---|
 | 01 | `VERIFIED` | proof rail, crate rename, architecture transition gate; no packet closure |
 | 02 | `VERIFIED OWNER SCOPE` | direct semantic HIR, UTF-8/format/integrity repairs; stale source module docs corrected |
-| 03 | `REPAIR` | earlier 438-test owner receipt is historical; latest modules 126/126 and types 83/83 owner suites plus strict Clippy pass, but sema host ingress/collision and combined final proof are missing |
-| 04 | `RED_CAPTURED — IMPLEMENTING` | Binder 43/43 plus strict Clippy on earlier scope; latest sema 43/43 owner-local suite includes Filter/Project/Join/Sort and host Predicate calls over 8/9 named roots. Group public-frame leak, Composition, Inline VIEW, EXISTS, strict Clippy (45 errors), and all-family transaction remain open |
+| 03 | `REPAIR` | earlier 438-test owner receipt is historical; latest modules 126/126 and types 85/85 owner suites plus strict Clippy pass, but sema host/Group ingress and combined final proof are missing |
+| 04 | `RED_CAPTURED — IMPLEMENTING` | latest Binder 47/47 plus strict Clippy and sema 52/52 owner-local suites include non-key Group aggregate/collision, exact-tree Rule polarity, Filter/Project/Join/Sort and host Predicate over 8/9 named roots; candidate forgery/transplant, Composition, Inline VIEW, EXISTS, sema strict Clippy (21 lib + 43 lib-test), and all-family transaction remain open |
 | 05 | `PLANNED` | algebra library-only check passes, but four owner suites have 74 compiler errors and raw-HIR compatibility remains |
 | 06 | `PLANNED` | no current implementation claim |
 | 07 | `PLANNED` | 89 planning V1 tests do not prove semantic-only planning; pipeline has 25 compiler errors |
@@ -327,8 +411,8 @@ workspace suite or create a closure receipt.
 | Ticket | Already present; do not duplicate | Current gate |
 |---|---|---|
 | 00-02 | frozen decisions; proof rails; parser/HIR semantic shape and owner receipts | retain historical scope; HIR owned-proof delta needs Ticket 03 fresh proof |
-| 03 | one types kernel/registries and one modules validator; latest modules owner-local 126/126 and types 83/83, both strict Clippy | sema host-call ingress/collision/SCC exclusion, remaining allocation/contextual negatives, mutation, fresh combined receipt |
-| 04 | Binder lexical/capture owner; sema DTO/authority and eight-root source paths; latest 43/43 suite covers Filter/Project/Join/Sort and host Rule | Group key-only frame plus aggregate-only partition input, Composition, Inline VIEW, EXISTS and other subforms; strict Clippy RED and no all-family transaction receipt |
+| 03 | one types kernel/registries and one modules validator; latest modules owner-local 126/126 and types 85/85, both strict Clippy | sema host-call and Group aggregate ingress, remaining allocation/contextual negatives, mutation, fresh combined receipt |
+| 04 | Binder lexical/capture owner; sema DTO/authority and eight-root source paths; latest 47/47 Binder + 52/52 sema suites cover Group aggregate/collision, Rule polarity, Filter/Project/Join/Sort and host Rule | Group candidate forgery/transplant, Composition, Inline VIEW, EXISTS and other subforms; sema strict Clippy RED and no all-family transaction receipt |
 | 05 | one 12-op algebra and existing owner suites | raw-HIR normalizer and 74 test compilation errors; requires sealed six-stage sema input |
 | 06 | Tarjan/stratification and graph/witness algorithms | still consumes old HIR/name contracts; source-document reachability and boundedness unproved |
 | 07 | planning cost/capability/effect vocabulary and 89 V1 tests | raw-HIR/caller-truth input; exact-key assembly and facade-only external build absent |
@@ -398,12 +482,14 @@ fixture update, actual dependency removal, and fresh architecture proof.
 ## Latest Final-Ticket Audit Supersession
 
 The 81/81 types and 122/122 modules counts elsewhere in this historical audit
-are superseded by exact-hash owner-local 83/83 and 126/126 results in
+are superseded by exact-hash owner-local 85/85 and 126/126 results in
 `receipts/03.md`. Types/modules now produce distinct host Predicate identity
 and a same-session exact catalog proof. Sema has a later host-call source
 positive, but no combined Ticket 03 receipt. The sema 36/36 full result is
-historical; a later 43/43 all-target suite covered Filter/Project/Join/Sort
-and host Predicate, while strict Clippy exited 101 with 45 lib-test errors.
+historical; the latest Binder 47/47 and sema 52/52 all-target owner suites
+cover non-key Group aggregate/collision, Rule polarity, Filter/Project/Join/
+Sort and host Predicate. Binder strict Clippy passes; sema exits 101 with
+21 library and 43 library-test errors.
 This is owner-local, not an all-family or pipeline proof.
 
 The final read-only cross-owner audit found Binder GroupBy returning the
@@ -415,11 +501,23 @@ directions; sema seals it and algebra retains it. Composition's existing
 Binder sequential LET/capture behavior is reused, with a sema-local typed
 working set rather than host-text substitution. Source/builtin/host Rule
 call collisions reject, while host-only success avoids duplicate probe and
-resolve charges. Sort and host-call source paths now have owner-local proof;
-Group has only a later key-only focused 2+2 milestone, with aggregate-only
-partition access RED; Composition has no source path. None is integrated
-into the public pipeline.
+resolve charges. Sort, host-call, and non-key Group aggregate source paths now
+have owner-local positive/negative proof, but candidate forgery/transplant
+rails and complete Group cross-consumer proof remain RED. Composition has no
+source path. None is integrated into the public pipeline.
 Tickets 04-09 and final-DAG qualification remain open.
+
+One further source inspection found `RuleDependencyCollectorV2` deriving
+ancestor aggregate state from *composed* expression effects, which can mark
+a source-call sibling under a scalar wrapper as an aggregate dependency.
+Tickets 03/04/06 now require the exact resolved builtin overload's intrinsic
+effect, preserved call-tree context, and a polarity oracle. The types-owned
+exact-ID intrinsic lookup passed 85/85 owner tests; the sema collector code
+and a discriminating same-scalar-ancestor source polarity oracle now pass
+owner tests. A separate deliberate mutation run is not recorded. Fresh
+local `cargo check -p quanta-gqlang-v2-pipeline`
+on `ecc38f5`+dirty exited 101 with 25 library errors from retired V1
+imports/shape accesses. It remains Ticket 07's atomic consumer migration.
 
 ## Final 07-09 Consumer And Front-Door Audit Delta
 
@@ -436,3 +534,357 @@ These are plan corrections, not implementation or verification of Tickets
 07-09. The current architecture checker still reports its historical
 transition graph; the corrected final target and checker migration are
 separate Ticket 06 work.
+
+## Composition And Group Final Adversarial Delta — 2026-09-21
+
+The earlier key-only Group frame and aggregate-positive source tests do not
+close the Group contract: the deferred Binder call stack still lacks an
+independent checked-HIR ancestry/stage witness and tamper oracle. Ticket 04
+now requires exact reference/group/span/call-path comparison against the
+authored Project and a mutation matrix before Ticket 05 may lower the sealed
+partition. The placement constructor also does not centrally reject
+aggregate effects at a Scalar declaration position; this is a static gap
+requiring a source-negative before policy repair, not a demonstrated
+acceptance claim.
+
+Composition's parser/HIR closed producer and body variants and Binder's
+sequential LET frame are reusable. Three missing ingress proofs prevent a
+working local table alone from closing it: `FROM` Source currently receives
+no Binder source-use resolution; HIR drops the parser's exact source-name
+span; and GraphRef resolutions keyed only by enclosing node ID are ambiguous
+when several refs share that node. Ticket 02 owns the narrow name-span carrier
+delta; Ticket 04 owns exact Binder per-use resolution, local-vs-host sealed
+source/graph carriers, nested type-input traversal, and recursive document
+assembly checks. The V1 schema-open Composition positive must invert to a
+closed V2 negative. Nested Composition is not source-representable in the
+current closed grammar, so its capture negative belongs at Binder frame
+level unless language scope is explicitly changed.
+
+No ticket state advanced from this read-only audit. The subsequent accidental
+test-file truncation during Clippy cleanup was recovered: the 1,047-line
+document-transaction test independently matches receipt 04's pre-incident
+SHA-256, the kernel test has its full 56 lines, and `git diff --check` passes.
+This is recovery only; owner tests/Clippy after subsequent changes are still
+required. The pipeline's 25-error compile boundary and final-DAG transition
+exceptions remain RED.
+
+Those post-recovery owner commands have since run on the recorded dirty
+seven-file fingerprint: sema all-target tests 52/52 and strict all-target
+Clippy both exit 0 (`receipts/04.md`). This supersedes the earlier 21+43
+Clippy failure, not the missing Composition/EXISTS/Group-tamper/Scalar
+placement or full transaction gates. Ticket 04 remains `IMPLEMENTING`.
+
+The next owner delta narrowed two of those gaps. Ticket 02 now retains the
+exact parsed `FROM` name span in the existing HIR Source (HIR 72/72, surface
+206/206, strict Clippy); no fallback builder synthesizes it. Binder then
+records a local Composition LET source-use proof and rejects wrong-kind local
+names before host lookup, while exact graph multi-use lookup distinguishes
+same-node references and rejects duplicate keys (Binder 52/52 plus strict
+Clippy). A demonstrated `sum(1)` Scalar declaration acceptance was repaired
+in the central aggregate-context constructor; a nested OrderBy negative also
+passes (sema 54/54 plus strict Clippy). Receipts 02/04 contain the exact
+dirty fingerprints. Sema still has no Composition source-positive path, and
+candidate HIR-ancestry/tamper, Inline VIEW, relational EXISTS, Algebra,
+pipeline, and final DAG remain open.
+
+## Final Execution Supersession — `main@ecc38f59` + Dirty Overlay
+
+This section supersedes earlier current-state counts in this audit; historical
+fingerprints remain evidence only for the source they name.
+
+| Scope | Result | Proves | Does not prove |
+|---|---:|---|---|
+| HIR | 72/72 GREEN | exact source-name span carrier/integrity | downstream integration |
+| Surface | 206/206 GREEN | parser/formatter byte spans | semantic authority |
+| Binder | 52/52 GREEN | exact source/graph uses, scope/capture/Group frames | Sema Composition |
+| Types | 85/85 GREEN | closed types, rule solver, host key, intrinsic effects | consumer proof |
+| Modules | 126/126 GREEN | catalog/lock/admission and host proof | Sema transplants |
+| Sema | 59/59 GREEN on current dirty overlay | direct paths, Group ancestry/tamper, and carrier invariants | Composition, Inline VIEW, query EXISTS, all-family transaction; receipt still names prior 56 fingerprint |
+| Logic | 49/49 GREEN | reusable V1 algorithms | sealed semantic input |
+| Planning | 89/89 GREEN | reusable V1 vocabulary | V2 assembly/facade |
+| Algebra | compile RED | retired raw-HIR contract exposed | Ticket 05 receipt |
+| Pipeline | 25 compile errors | exact Ticket 07 cutover boundary | public integration |
+
+The combined HIR/Surface/Binder/Types/Modules/Sema all-target and strict
+Clippy commands exit 0. Logic/Planning all-target tests exit 0. Architecture
+transition lint exits 0 at 21 final + 22 transitional normal edges and one
+transitional dev edge; this is not final mode. `git diff --check` and the
+unfinished-marker scan pass. Receipts 05–08 are absent.
+
+The global format gate is independently RED: `cargo fmt --all --check` exits 1
+and identifies 23 Binder/HIR/Sema/Surface files. No formatting rewrite was
+applied during this audit because the shared tree contains overlapping owner
+changes. Owner test/Clippy GREEN therefore remains valid as behavior/lint
+evidence but is not a format-complete receipt. Final architecture mode also
+exits 1 on the 22 normal plus one dev transition edges.
+
+The Group deferred-candidate gap described above is now owner-closed: Sema
+independently walks checked HIR, requires a direct Project-over-Group route,
+compares exact reference/span/Group/call-stack identity to Binder's candidate,
+and has primitive tamper oracles for reference, span, Group, outer/inner call,
+and dropped path. The source negative with intervening Sort passes. This was
+not a separate deliberate mutation build and does not close Ticket 05.
+
+The definitive remaining critical path is:
+
+```text
+04 Composition + Inline VIEW + query EXISTS + all-family transaction
+  -> 05 sealed Sema-to-algebra lowering
+  -> 06 sealed rule/graph input and logic-to-algebra edge removal
+  -> 07 exact assembly, pipeline cutover, curated facade
+  -> 08 bounded NDJSON/CLI front doors
+  -> 09 immutable-candidate conformance and truth sync
+```
+
+Each ticket now ends with a worker-ready execution block containing exact
+reuse boundaries, implementation order, tests, and stop conditions. Those
+final blocks are normative when older historical prose reports a different
+test count or open item.
+
+One additional invalid-state seam was found after that matrix: the draft Sema
+Composition DTO stores each producer and body as arbitrary `SemanticItemV2` and
+stores WITH as a string. That cannot represent legal SAMPLE without inventing
+a document-root variant, permits illegal producer/body families, and loses the
+Binder-owned LET ordinal. Ticket 04 now requires closed producer/body enums,
+exact `(source, composition node, ordinal)` identities, a Composition-local
+scan-source variant, exact WITH identity/location, and Binder-aware local graph
+resolution. Ticket 07 consumes those carriers and may not repair them by name.
+
+## Superseded Multi-Angle RR Checkpoint — 2026-09-21
+
+The closed Composition enums are now present, and two defects found during RR
+were repaired in the dirty overlay: nested producer/body IDs are compared to
+the expected HIR IDs; Inline VIEW compares a distinct nested Query ID rather
+than its CatalogDecl ID; non-row FIND rejects every `Some(output)` shape. Sema
+all-target tests pass 59/59 (8+42+1+4+3+1) and strict all-target Clippy passes
+for that checkpoint.
+This does not advance Ticket 04.
+
+At that checkpoint, the source contract was blocked by the following. The later
+`Final Current-Tree Supersession` records which producer carriers now exist:
+
+- Ticket 03: one Types-owned deferred multi-field Query-row dependency is
+  required to retain the single whole-document kernel call; the current scalar
+  `BindingFromExpression` is insufficient. Relation EXISTS also needs exact
+  neutral root/capture identities instead of one source plus an opaque string.
+- Ticket 04: local graph targets, canonical generated SAMPLE/FIND origins,
+  checked scan-use locations, registry-complete nested carriers, Inline View
+  source wiring, and full EXISTS materialization are absent.
+- Ticket 07: three recursive algebra walks can overflow; compiled plan
+  applicability is optional instead of structural; the public authority hash
+  is undefined; facade proof must cover the whole external API.
+- Ticket 08: the migration inventory is stale; request validation/diagnostic
+  schema/span/exit policy are incomplete; CLI copies unbounded argv; diagnostic
+  count and response bytes are uncapped.
+- Ticket 09: example and test inventories risk duplicate or empty authorities;
+  facade scripts are absent from `just ci`; hygiene is not recursively tracked;
+  final evidence needs tested SHA A plus attestation B (or an external
+  attestation), not a self-referential one-SHA receipt.
+
+The normative critical path is:
+
+```text
+03 deferred Query-row + exact EXISTS capture producer contract
+  -> 04 complete semantic source transaction
+  -> 05 sealed relational lowering
+  -> 06 sealed Rule/Graph logic and final edge
+  -> 07 iterative planning + structural facade
+  -> 08 bounded CLI/NDJSON
+  -> 09 conformance, exact-SHA CI, two-phase attestation
+```
+
+No V1 green count, carrier-only unit test, transition architecture pass, or
+dirty receipt hash closes a downstream ticket.
+## Final Current-Tree Supersession — 2026-09-21
+
+Audit boundary: `main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a`
+plus the shared dirty overlay. This section supersedes older current-state
+counts in this document; older receipt statements remain historical.
+
+| Area | Current observation | Meaning |
+|---|---|---|
+| HIR | 72/72 GREEN | owner behavior only; name-span test remains untracked |
+| Surface | 206/206 GREEN | parser/formatter owner behavior only |
+| Types | 86/86 + strict Clippy GREEN | deferred rows and exact EXISTS captures implemented |
+| Modules | 126/126 + strict Clippy GREEN | current validator green; View topology phase still absent |
+| Binder | 53/53 + strict Clippy GREEN | exact Composition binding/use and no-fallback guards implemented |
+| Sema | 59/59 + strict Clippy GREEN | direct families green; Composition/Inline View/Query EXISTS materialization still absent |
+| Algebra | RED, 74 test compile errors | retired HIR test contract; Ticket 05 cutover not started |
+| Logic | 49/49 GREEN | algorithm owner only; source document adapter absent |
+| Planning | 89/89 GREEN | classifier owner only; facade assembler absent |
+| Pipeline | RED, 25 lib / 29 lib-test compile errors | structural V1 consumer cutover, not independent fixes |
+| Conformance | RED | blocked by Pipeline compilation |
+| architecture transition | GREEN | 22 normal + 1 dev exceptions are declared |
+| architecture final | RED | the same 22 normal + 1 dev exceptions remain |
+| Taplo | GREEN | supersedes the old six-manifest failure |
+| Rustfmt | RED, 27 unique files | shared-owner format debt; no bulk format performed |
+| diff check | GREEN | no whitespace-error proof only |
+
+### Duplicate implementation audit
+
+The following owner implementations now exist and must be consumed, not
+recreated:
+
+- Binder: exact lexical targets, capture edges, relation frames, Composition
+  `(owner, ordinal)` proof, self/forward no-host-fallback guard;
+- Types: one document kernel, deferred relation rows, exact relation-predicate
+  capture inputs, operator/builtin registries and effects;
+- Modules: one document catalog validator/session and checked catalog/host-call
+  proofs;
+- Sema: one document transaction, checked relation outputs and closed item
+  vocabulary;
+- Logic: Tarjan SCC, stratification, recursive legality and graph contracts;
+- Planning: semantic capability/cost-class/result/explain vocabulary.
+
+Compatibility builders, a second Sema type checker, a second catalog resolver,
+name-keyed Composition tables, and Pipeline-local semantic compilation are
+explicitly prohibited.
+
+### Missing integration found after implementation
+
+1. Sema collects Composition Query rows but rejects the root item during final
+   assembly. Producer facts exist without a consumer path.
+2. Sema supplies exact Query EXISTS inputs to Types, but its bool materializer
+   still rejects the variant and the semantic document has no owned nested
+   relation registry.
+3. Inline View carrier checks exist, but Sema hard-rejects the source form and
+   Modules exposes no pre-finalization topology proof/order phase.
+4. Composition identity remains publicly remintable; scan identity and checked
+   use location are split; SAMPLE/FIND generated column origins are absent.
+5. Graph/CHECK/EXPLAIN local Composition targets are host-only, and catalog
+   references discard the validator session proof.
+6. Tickets 05-08 remain structural migrations; passing Logic/Planning direct
+   suites does not close source or public-facade reachability.
+
+The definitive critical path remains:
+
+```text
+03 View-topology phase + carrier mutation receipt
+-> 04 Composition + Inline View + Query EXISTS source closure
+-> 05 sealed Sema-to-Algebra lowering
+-> 06 document-wide Logic adapter
+-> 07 semantic plan assembler + explicit facade + Pipeline cutover
+-> 08 bounded front-door parity
+-> 09 clean-candidate conformance and truth sync
+```
+
+## Final RR Supersession After SS-03C / SS-04A — 2026-09-21
+
+Audit boundary remains
+`main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a` plus a shared dirty
+overlay. The previous table is superseded only for Types, Modules and Sema:
+
+| Scope | Current evidence | Correct interpretation |
+|---|---:|---|
+| Types | 87/87 + strict Clippy GREEN | deferred rows and Types-owned EXISTS effect/order are owner-green; exact Binder owner/ordinal/completeness is still open |
+| Modules | 129/129 + strict Clippy GREEN | topology proof/order is implemented; Sema currently submits an empty graph |
+| Binder | 53/53 + strict Clippy GREEN | exact relation-source local identity remains reusable |
+| Sema | 64/64 + strict Clippy GREEN | Query-only Composition is source-reachable; incomplete analysis is sealed; remaining subfamilies are explicit rejects |
+
+The same-overlay owner runs, package-scoped rustfmt, the later global
+`cargo fmt --all --check`, and `git diff --check` all exited 0. This
+supersedes the earlier current-state format RED counts; those remain historical
+for their named snapshots. Modules order reversal and Composition ordinal-zero mutations
+both killed their intended oracles and were reverted before recovery. This is
+stronger than static inspection but weaker than an immutable integrated
+receipt.
+
+Structural findings that now govern execution:
+
+1. Ticket 03 is not closed by an opaque capture-shaped DTO. Binder owns exact
+   lexical captures; Sema must verify complete ordered equality, while Types
+   validates HIR membership/source/order and owns base effect policy.
+2. Ticket 03's Modules producer is ready. Ticket 04 must replace
+   `validate_view_topology(Vec::new())` with exact direct View edges, consume
+   dependency-first IDs for inline-query materialization, and finalize the
+   same session/proof.
+3. Ticket 04's Query LET path is real and must be extended, not duplicated.
+   Raw public Composition tuples, host-only graph targets, fabricated
+   Sample/FIND expression origins, and dropped registry/session proof remain
+   invalid-state seams.
+4. Query relational EXISTS still stops between Types and semantic IR. The
+   document needs one owned nested-relation registry and exact correlation
+   edges; Rule-body relational EXISTS remains a hard reject.
+5. Tickets 07-09 retain their final RR corrections: iterative planner walks,
+   structural plan applicability, complete facade API allowlist, total bounded
+   wire schema and exit policy, one semantic-manifest SSOT, base-to-candidate
+   test inventory, recursive hygiene, exact-SHA hosted evidence and two-phase
+   attestation.
+
+No downstream ticket status advanced. The critical path is now more precise:
+
+```text
+03 capture authority/mutations + frozen receipt
+-> 04 private local identity + generated rows + graph capabilities
+      + Inline View + Query EXISTS + nine-root source transaction
+-> 05 sealed lowering
+-> 06 sealed logic adapter
+-> 07 iterative planning/facade/pipeline cutover
+-> 08 bounded front doors
+-> 09 immutable candidate and attestation
+```
+
+The downstream RED boundaries were re-executed after this checkpoint: Algebra
+all-target test compilation still has 74 retired-HIR errors, Pipeline library
+check still has 25 V1/API-cutover errors, and final architecture still rejects
+22 normal plus one dev transition edge. No downstream closure is inferred from
+the global formatting recovery.
+
+## Final RR Supersession After SS-03E / SS-04E — 2026-09-21
+
+The latest owner checkpoints supersede only the Types/Sema rows below. They
+remain dirty-overlay evidence, not an immutable integrated receipt.
+
+| Scope | Current evidence | Correct interpretation |
+|---|---:|---|
+| Types | 88/88 + strict Clippy GREEN | exact earlier `PriorRelation` row reuse and foreign-target reject are owner-green; reverse-authored Inline View still requires validated pre-evaluation order |
+| Sema | 66/66 + strict Clippy GREEN | Query relational EXISTS now seals exact nested relations and Binder correlations; Inline View, non-Query Composition and nine-root transaction remain open |
+
+Query EXISTS is no longer a Types-to-Sema reachability gap. Its semantic root
+is backed by a transaction-owned exact registry, and Rule-body EXISTS remains
+rejected. The next Ticket 04 P0 is Inline View's Modules-proof-derived Types
+pre-evaluation order; no downstream Algebra/Pipeline work is authorized until
+that source closure is complete.
+
+## Final RR Supersession After SS-03F / SS-04F — 2026-09-21
+
+The earlier Inline View P0 is no longer an empty-topology/hard-reject path.
+Current code has one same-session chain from direct source use through Modules
+proof, Types pre-evaluation, asset-keyed materialization, `family=None` edge
+retention, and final validation. RR found and repaired the one ordering hole
+where an ordinary non-plan consumer could not use an already pre-evaluated View.
+
+Do not mark Ticket 04 complete. Evidence is owner-local/shared-overlay only:
+Types 89/89, Modules 130/130, Sema 69/69, strict Clippy and scoped format/diff
+GREEN. Missing closure evidence is explicit: diamond/repeated-edge/cache
+mutation, Surface-to-HIR route, external typed Views, Composition completion,
+EXISTS mutation completeness, Ticket 05 sealed lowering, and immutable
+candidate/hosted CI. The global diff check is not green because of an unrelated
+bugbash trailing-whitespace line.
+
+## Final RR Supersession After SS-04G — 2026-09-21
+
+The Composition relation-source raw-identity P0 is no longer open. The source
+enum now retains a private, Binding-derived carrier and the transaction seals
+it after exact Binder target/kind validation. RR confirmed zero residual raw
+struct variants, public-field construction rejection through doctest, and
+wrong-binding-kind rejection. Owner evidence is Sema 70/70 plus 1/1 doctest,
+strict Clippy, package fmt, and scoped diff GREEN on the moving overlay.
+
+Do not infer broader Composition completion: only Query producers and a Query
+body are currently materialized. Sample/FIND generated output, graph/CHECK/
+EXPLAIN targets, cache/transplant mutations, full front-door integration, and
+the immutable candidate remain required Ticket 04 evidence.
+
+## Final RR Supersession After SS-04H — 2026-09-21
+
+Generated Composition row provenance is now structurally honest: a SAMPLE or
+row-capable FIND schema cannot be accepted with a fabricated expression key or
+another producer's generated ID. RR verified the checks are in the canonical
+output/producer constructors, not in a downstream consumer. This removes a
+P0 prerequisite only; no non-Query HIR path is enabled yet.
+
+The remaining P0 is explicit: add one Binder-first disjoint Host|Composition
+graph-target carrier and reuse it for FIND, SAMPLE scope, CHECK, and EXPLAIN;
+then add Types input and transaction materialization in source order. Host
+fallback after an exact local Binder target is forbidden.

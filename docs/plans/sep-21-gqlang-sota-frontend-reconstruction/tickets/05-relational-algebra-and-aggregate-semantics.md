@@ -1,6 +1,6 @@
 # 05 — Relational Algebra And Aggregate Semantics
 
-Status: `PLANNED`
+Status: `IN PROGRESS — SS-05B PACKAGE CUT COMPLETE; RR-05C BLOCKERS OPEN`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
@@ -470,3 +470,291 @@ null placement, extend its canonical node once; do not drop the policy or add
 an algebra-only default. Exact-tree tests cover ASC/DESC on nullable keys,
 multi-key order, order after Project alias, and failure when a dropped
 pre-Project/Group field is referenced.
+
+## Final Execution Audit — `main@ecc38f59` + Dirty Overlay
+
+Verdict: `PLANNED`, start gate not met. The 12 algebra node variants and their
+vocabulary tests are reusable, but the current production entry points still
+consume raw `QueryHirV1`/`RelationExprHirV1` plus caller-supplied aggregate
+names. All four integration test binaries fail to compile against retired HIR
+builders: 13 + 14 + 19 + 28 = 74 compile errors. This is not a test migration
+task alone; the producer contract is wrong.
+
+Single implementation path:
+
+1. Wait for Ticket 04 to freeze `TypedRelationV2`, exact output contracts,
+   partition input, RelationExists capture facts, and source identities.
+2. Change `normalize_query`/`normalize_relation` into one checked lowering entry
+   over the sealed Sema relation. Delete raw-HIR alias collection, string
+   aggregate classification, and caller-selected source authority.
+3. Map the six authored stages one-for-one: Scan, Filter, Project, Inner/Cross
+   Join, Group, Sort. Preserve source-qualified stage identity, columns,
+   provenance, cardinality, effects, partition keys, direction, and null order.
+4. Emit Aggregate and Semi/Anti join only from the sealed Group/EXISTS facts.
+   Emit Apply only if the checked correlation contract requires an explicit
+   intermediate. Limit and Union remain checked target vocabulary with direct
+   constructor tests but have no authored source producer in this packet. Do
+   not invent a generic semantic request or new syntax to claim reachability.
+5. Lower query `EXISTS`/`NOT EXISTS` here to Semi/Anti join using Ticket 04's
+   exact inner relation and capture set. Delete Logic's old lowering and the
+   `logic -> algebra` dependency in Ticket 06.
+6. Make algebra node fields private where callers currently forge outputs;
+   provide checked accessors and fallible constructors that compare exact
+   input/output identities.
+7. Rewrite the four existing algebra test files in place to construct sealed
+   Sema fixtures. Do not restore removed HIR builders. Add forged output,
+   partition swap, dropped correlation, wrong scan occurrence, and null-order
+   mutation cases.
+
+Acceptance commands:
+
+```bash
+cargo test -p quanta-gqlang-v2-algebra --all-targets
+cargo clippy -p quanta-gqlang-v2-algebra --all-targets -- -D warnings
+```
+
+Both must compile and execute nonzero tests. `cargo test --lib` with zero tests
+does not advance state. Receipt 05 must record the old raw-HIR public symbol
+scan at zero and list every migrated test, not just a passing count.
+
+Stop condition: do not begin while Ticket 04's Composition/Inline VIEW/EXISTS
+contract is still changing; otherwise this becomes another patch-on-patch API.
+
+## Final Independent RR — No-Duplicate Lowering Gate
+
+The start gate includes Ticket 03's deferred row and exact relation capture
+carrier plus Ticket 04's checked scan-use/generated-output carriers. The
+current opaque single-source relation-predicate input is not sufficient for
+Semi/Anti lowering.
+
+Before Algebra edits, verify immutable inputs for exact nested relation root,
+complete ordered capture set, disjoint host/View/Composition scans with checked
+use sites, canonical SAMPLE/FIND origin, output/partition/order/effects, and
+source-qualified stage identity. Then:
+
+- lower EXISTS/NOT EXISTS from the sealed predicate only;
+- preserve every capture exactly; introduce Apply only when the sealed
+  correlation contract requires it;
+- reject dropped/extra/swapped captures and wrong roots before node creation;
+- do not create another resolver, capture DTO, aggregate classifier, or generic
+  request to make Limit/Union source-reachable.
+
+Receipt 05 maps all 74 old compile errors to migrated/deleted callsites and
+records zero raw-HIR/string-aggregate production imports. Removing old
+integration binaries and passing a new smoke suite is not acceptance.
+## 2026-09-21 Final Current-Tree Audit
+
+Status remains `PLANNED`. `cargo check -p quanta-gqlang-v2-algebra
+--all-targets` is RED with exactly 74 test compile errors across the four
+integration suites. The failures are concentrated retired `HirBuilderV1`
+helpers (`path`, `compose`, `project`, `quantifier`) and old type shapes; they
+are not 74 independent semantic defects.
+
+Do not restore those helpers or add a HIR-to-HIR compatibility layer. Execute:
+
+1. Freeze Ticket 04's sealed typed relation/document input.
+2. Change Algebra's public lowering seam to accept only that Sema contract.
+3. Port existing normalization laws to typed relation fixtures produced by the
+   real frontend transaction or minimal sealed test builders owned by Sema.
+4. Implement aggregate, Join, EXISTS semi/anti, ordering, and provenance
+   lowering exhaustively over the six typed stages.
+5. Prove idempotence, deterministic ordering, exact output schema/effects, and
+   bounded iterative traversal. Add deep exact-limit/+1 tests.
+6. Remove Algebra's normal dependencies on Binder and HIR, then delete the two
+   transitional architecture edges.
+
+Ticket 05 may not start semantic lowering from the partially reachable
+Composition/EXISTS carriers alone; Ticket 04 source positives and receipt are
+the admission gate.
+
+## SS-05A Current-Tree Re-Audit — 2026-09-21
+
+The old statement that all four Algebra suites have 74 compile errors is
+stale. At the current dirty overlay, `cargo test -p quanta-gqlang-v2-algebra
+--all-targets` is green with 13 integration tests (6 hellgate, 5 mutants, 1
+normalization, 1 probe). This is **not** Ticket 05 progress: all 13 still
+exercise the raw HIR normalizer and a caller-supplied string aggregate/source
+authority.
+
+The real start blockers are structural:
+
+1. `algebra/src/normalize.rs` receives `QueryHirV1`/`RelationExprHirV1`, builds
+   alias authority itself, and classifies aggregates from strings.
+2. `algebra/src/node.rs` exposes HIR ids/spans/expressions and mutable public
+   node payloads; its Aggregate→Group invariant is debug-only.
+3. Pipeline is the only production normalizer caller, but it cannot compile:
+   25 errors show it still imports removed V1 Modules/Types APIs and matches
+   retired HIR variants. Fixing those imports would preserve a second Binder/
+   Types/authority path, so is prohibited.
+4. Planning, Logic's manual `ExistenceCheckV1`, and the facade are public
+   Algebra consumers. Their fixture constructors are an alternate malformed
+   algebra ingress and must be cut over atomically with opaque checked nodes.
+
+Ticket 04 supplied the missing semantic direction/quantifier/EXISTS-polarity
+carriers in SS-04U. The remaining authorized sequence is now: freeze Ticket
+04's document contract; replace the raw Algebra ingress in one cut; migrate
+Pipeline/Planning/Logic/facade in Ticket 07; only then claim workspace GREEN.
+No V1 import compatibility aliases, HIR adapters, or dual normalizers are
+allowed.
+
+## SS-05B Single Semantic-Document Cut — 2026-09-21
+
+Implemented the source boundary replacement in `quanta-gqlang-v2-algebra`:
+
+1. Production dependencies are now only Sema and Types. The direct Binder and
+   HIR edges, raw `normalize_query`/`normalize_relation`, caller aggregate
+   options, alias collection, source-name dispatch, and public V1 node DTOs
+   are deleted.
+2. `lower_relation_item(&SemanticDocumentV2, SemanticItemIdV2)` is the sole
+   source ingress. It accepts only a document-owned `SemanticItemV2::Relation`.
+3. `CheckedAlgebraNodeV2` has private item/stage/location/output/operator
+   fields. Read-only accessors expose the exact Sema output contract, typed
+   predicate/expressions/order keys, scan identity, child tree and correlation
+   proof. There is no public constructor or later `validate()` convention.
+4. Scan, Filter, Project, Join, Group and Sort lower exhaustively from their
+   Sema stage carriers. Inner-vs-Cross predicate consistency and sort-key/order
+   identity are checked again at the private lowering boundary. Predicate
+   conjunct EXISTS/NOT EXISTS lower to checked SemiJoin/AntiJoin with the full
+   exact capture set; a non-conjunctive EXISTS rejects rather than changing OR
+   semantics.
+5. Downstream algebra owner tests now consume Sema's feature-gated real
+   reference transaction fixture. This removes the test-only Algebra→HIR and
+   Algebra→Modules edges too; the fixture cannot mint semantic carriers.
+
+Verified:
+
+```text
+cargo test -p quanta-gqlang-v2-algebra --all-targets: 4/4 integration tests GREEN
+cargo clippy -p quanta-gqlang-v2-algebra --all-targets -- -D warnings: GREEN
+cargo clippy -p quanta-gqlang-v2-sema --all-features --lib -- -D warnings: GREEN
+cargo fmt --check -p quanta-gqlang-v2-sema -p quanta-gqlang-v2-algebra: GREEN
+```
+
+RR-05B found a blocking producer defect, so this is not ticket closure:
+`materialize_relation` currently emits an aggregate Project directly over its
+previous input and preserves the previous cardinality
+(`sema/src/document.rs:3449-3487`). It does not emit the required empty or
+explicit Group stage. Algebra therefore rejects that impossible-in-contract
+aggregate shape with `algebra.aggregate_without_group`; it must not invent an
+implicit Group or reclassify aggregates. Ticket 04 must change the producer to
+emit the exact Group/Aggregate-ready stage/output contract and add its owner
+matrix before aggregate lowering can qualify.
+
+`python3 tools/architecture/check_architecture.py` now reports no Algebra
+illegal edge. It remains RED only for the pre-existing
+`quanta-gqlang-v2-sema -> quanta-gqlang-v2-surface` dev edge; that gate is not
+claimed green here.
+
+## RR-05C Final Current-State Audit — 2026-09-21
+
+This section supersedes the pre-SS-05B `PLANNED`, `74 compile errors`, and
+legacy `13 tests` accounts. Audited tree: `main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a`
+plus the shared dirty overlay.
+
+### Current disposition
+
+| Area | Disposition | Evidence / blocker |
+|---|---|---|
+| Raw-HIR Algebra ingress deletion | `COMPLETE` | production and test manifest edges are Sema + Types only; no live Rust `normalize_query`, `normalize_relation`, `AlgebraNodeV1`, or `AlgebraOpV1` remains in the Algebra crate |
+| Sealed lowering entry | `COMPLETE` | `lower_relation_item(document, item_id)` is the sole public source ingress |
+| Opaque node carrier | `COMPLETE` | `CheckedAlgebraNodeV2` fields and constructors are private; read-only semantic accessors remain |
+| Basic stage lowering | `PARTIAL, PACKAGE-GREEN` | Scan, Filter, and Cross have direct tests; Project, Inner Join, Group, Aggregate, Sort, SemiJoin, and AntiJoin lack owner coverage |
+| Aggregate lowering | `BLOCKED ON TICKET 04 + UNTESTED` | lowerer correctly requires a direct Group, but Sema does not yet produce the scalar empty partition or preserve grouped partition identity |
+| EXISTS lowering | `IMPLEMENTED SHAPE, SEMANTIC RR FAILED` | Semi/Anti nodes are attached, but the original Filter predicate containing EXISTS is retained unchanged above them |
+| Traversal/resource bound | `NOT IMPLEMENTED` | relation and expression walks are recursive and have no Algebra-owned exact-limit/+1 counter |
+| Programmatic Apply/Limit/Union | `DECLARED ONLY` | private enum variants exist under `dead_code`; no checked planner constructor or owner law has landed |
+| Owner package verification | `GREEN, NARROW` | fresh 4/4 integration tests and strict all-target Clippy pass |
+| Workspace/product verification | `RED / NOT PROVEN` | Logic and other consumers still import the deleted V1 surface |
+
+### Newly confirmed EXISTS semantic blocker
+
+`lower_stage` currently handles a Filter as follows:
+
+1. recursively lower the input;
+2. `attach_conjunctive_exists` converts every conjunctive relational EXISTS to
+   SemiJoin/AntiJoin;
+3. construct a Filter with the **original** `TypedBoolExprV2` predicate.
+
+The resulting tree is `Filter(original EXISTS predicate, Semi/AntiJoin(...))`.
+This is not a completed EXISTS lowering: a downstream executor/planner must
+either understand the relational EXISTS again or risks evaluating the same
+condition twice. It also leaves the semantic operator in a predicate after the
+ticket claims it was lowered.
+
+Repair at the authority boundary, without fabricating expressions:
+
+- decompose only top-level checked conjunctions in stable left-to-right order;
+- lower an EXISTS leaf to Semi/AntiJoin exactly once;
+- lower an ordinary Bool leaf to a Filter using that existing typed Bool fact;
+- omit the Filter when the predicate contains only EXISTS leaves;
+- reject EXISTS below OR/NOT/call/record/list/quantifier before constructing
+  any node unless a future decision defines an equivalent rewrite;
+- retain the exact outer output on Semi/Anti, exact nested root on the right,
+  and every correlation reference in authored stable order.
+
+If Sema does not expose a checked Bool carrier for an ordinary conjunct, amend
+Ticket 04 once. Do not clone a private Sema constructor or synthesize a Bool
+fact in Algebra.
+
+### Other exact remaining implementation work
+
+1. Consume SS-04W aggregate-ready contracts. Prove scalar empty partition,
+   grouped partition retention, multiple aggregate ordering, and `count(*)`.
+2. Replace recursive `lower_stage`, conjunct collection, and expression
+   descendant search with iterative frames plus the budget receipt retained by
+   `SemanticDocumentV2` in SS-04W. Charge before visit/allocation; exact limit
+   succeeds and limit+1 rejects at a checked location. Do not add a budget
+   parameter to `lower_relation_item` or use a package default.
+3. Strengthen private construction checks so every node output agrees with its
+   operator: Filter/Semi/Anti preserve left output; Join matches ordered child
+   schema/provenance; Group matches keys/partition proof; Aggregate consumes a
+   Group and preserves its partition identity; Sort matches key IDs, direction,
+   null order, and value type.
+4. Migrate the distinct laws archived in `tests/RETIRED_LAWS.md`. The Markdown
+   archive is not executable proof. Keep only laws that map to the sealed V2
+   contract; do not restore retired APIs.
+5. Land checked programmatic constructors for Apply/Limit/Union with their
+   Ticket 07 planner consumer, or explicitly remove those families from this
+   ticket's completion claim. A dormant enum variant is not implementation.
+
+### Required owner-test matrix
+
+- Project exact expressions/output origins;
+- Inner Join ON identity plus Cross-with-predicate and Inner-without-predicate
+  mutations;
+- Group key/order/partition identity and missing/extra/swapped mutations;
+- grouped/scalar Aggregate, aggregate Star, mixed scalar/aggregate negative,
+  aggregate-without-Group negative;
+- Sort ASC/DESC, NULLS LAST, value type, multi-key order, and swapped-key
+  mutation;
+- uncorrelated EXISTS, correlated EXISTS, NOT EXISTS, multiple conjunctive
+  EXISTS, ordinary residual conjunct, and nested EXISTS;
+- dropped/extra/duplicate/swapped capture, wrong nested root, foreign source,
+  wrong scan occurrence, and output/cardinality mutation;
+- deep relation and Bool trees at the exact budget and one over;
+- Apply/Limit/Union release-mode invariant failures when their checked
+  constructors land.
+
+The existing four tests cover only absent item, Scan, Filter, and Cross. They
+must remain, but they do not qualify the families listed above.
+
+### Next SS/RR acceptance
+
+SS-05C begins only after SS-04W publishes the aggregate-ready Sema contract.
+RR-05C requires one unchanged source fingerprint and:
+
+```bash
+cargo test -p quanta-gqlang-v2-sema --all-targets
+cargo test -p quanta-gqlang-v2-algebra --all-targets
+cargo clippy -p quanta-gqlang-v2-algebra --all-targets -- -D warnings
+cargo fmt --check -p quanta-gqlang-v2-sema -p quanta-gqlang-v2-algebra
+python3 tools/architecture/check_architecture.py
+git diff --check -- crates/quanta-gqlang-v2-sema crates/quanta-gqlang-v2-algebra \
+  docs/plans/sep-21-gqlang-sota-frontend-reconstruction/tickets/05-relational-algebra-and-aggregate-semantics.md \
+  docs/plans/sep-21-gqlang-sota-frontend-reconstruction/receipts/05.md
+```
+
+Acceptance additionally inspects exact trees for `Group -> Aggregate`, pure
+EXISTS with no residual Filter, mixed ordinary/EXISTS conjunctions, and
+Semi/Anti correlation retention. Package-local GREEN must not be reported as
+workspace or consumer GREEN.

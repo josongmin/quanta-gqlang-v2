@@ -1,6 +1,6 @@
 # 09 — Conformance, Truth Sync, And Closeout
 
-Status: `PLANNED — ONLY TICKET AUTHORIZED TO CLOSE PACKET`
+Status: `PLANNED — CLOSEOUT BLOCKED; ONLY TICKET AUTHORIZED TO CLOSE PACKET`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
@@ -207,8 +207,10 @@ examples into a second registry.
    manifest ↔ root README ↔ example index equality, parse every file, check
    format idempotence, execute the declared closed compile/analyze outcome, and
    run the CLI query/fmt smoke. The composition example is included explicitly.
-3. Delete tracked `test_repro_cases.txt`, add `/test_*.txt` to `.gitignore`, and
-   extend `current_head_artifact_hygiene.rs` to reject root `test_*.txt` files.
+3. `[IMPLEMENTED IN DIRTY OVERLAY — UNQUALIFIED]` tracked
+   `test_repro_cases.txt` is deleted, `/test_*.txt` is ignored, and root
+   hygiene coverage exists. Do not repeat these edits. Qualify and extend the
+   implementation with the recursive tracked-path work in the final RR section.
 4. Reduce `audit_18_families.rs` to an explicitly named routing smoke retaining
    exactly the six mandatory rails: flow, slice, points-to, summary, and both
    CHECK-with-FIND cases. Move f01/f11/f13/f15 variant/value assertions to
@@ -233,7 +235,9 @@ examples into a second registry.
 10. Generate `TEST_PATH_INVENTORY.tsv` with path, owner ticket, disposition,
     base existence, final existence, and test-target boolean. Its row set must
     equal the unique test/support paths referenced by tickets plus every actual
-    added/deleted test path in `git diff --name-status`.
+    added/deleted/renamed test path in
+    `git diff --name-status --find-renames "$PACKET_BASE_SHA".."$HEAD_SHA"`.
+    Plain `git diff` is forbidden on the clean candidate because it is empty.
 
 ## Traceability Row Schema
 
@@ -317,6 +321,7 @@ python3 tools/architecture/check_architecture.py --require-final
 cargo deny check bans licenses sources advisories
 typos .
 tools/lint/run_semgrep.sh
+python3 tools/test_frontend_external_consumer.py
 python3 tools/test_frontdoor_parity.py
 just ci
 ```
@@ -333,6 +338,7 @@ stop and amend this packet before implementation:
 cargo test -p quanta-gqlang-v2-conformance --test v3_semantic_family_matrix
 cargo test -p quanta-gqlang-v2-conformance --test v3_registry_non_vacuity_v2
 cargo test -p quanta-gqlang-v2-conformance --test v3_public_api_inventory
+python3 tools/test_frontend_external_consumer.py
 python3 tools/test_frontdoor_parity.py
 find examples -type f -name '*.qglang' -print | sort
 rg -n 'Status:.*(CLOSED|Implemented|green)|repo-local proof is green' README.md docs
@@ -380,7 +386,8 @@ Do not close when:
 7. the worktree contains unrelated or unexplained changes
 8. remote state is inferred from cached refs
 9. any transitional normal or dev dependency edge remains
-10. tickets 01-08 are not contained in one clean committed candidate SHA
+10. tickets 01-08 receipts plus Ticket 09's pre-attestation implementation are
+    not contained in one clean committed candidate SHA
 11. hosted CI was queried for that SHA and is `failed`
 
 ## Definition Of Done
@@ -422,7 +429,9 @@ representative cross-boundary mutations rather than copied per-family tests.
 ### Immutable closeout precondition
 
 Packet closure requires a clean committed candidate SHA containing tickets
-01-08. The ledger's no-commit policy means the user must authorize that commit;
+01-08 plus Ticket 09's conformance/CI implementation and unclaimed receipt
+template. The ledger's no-commit policy means the user must authorize that
+commit;
 without authorization ticket 09 stops before closure. If the work remains dirty
 or the candidate commit lacks any receipt, a dirty fingerprint is evidence, not
 `repair_commit` or closure SHA.
@@ -441,7 +450,10 @@ Requires 01-08. Runs serially after all implementation merges.
 
 ## 2026-09-21 Live-Tree Final Reconciliation (HEAD `f9ec954`)
 
-This ticket has no implementation or closure receipt. The inherited
+This ticket has no closure receipt. The dirty overlay already contains the
+root repro-file deletion/ignore/hygiene edits and Composition README/example
+index entries; classify them as `IMPLEMENTED IN DIRTY OVERLAY — UNQUALIFIED`
+and do not schedule duplicate edits. The inherited
 `self_validation.rs` drives V1 `compile_program_structural` and checks mostly
 family kind/result/effect; it is routing evidence, not the semantic matrix.
 Keep one representative routing smoke and migrate existing source fixtures
@@ -453,8 +465,9 @@ are machine checked; a table in Markdown alone does not count.
 Before claiming final status, reconcile every actual test path in the landed
 diff against `TEST_PATH_INVENTORY.tsv`, every F01-F37 against `TRACEABILITY.md`,
 and every current public method/example/proof claim against its generated
-inventory. Then freeze one *clean committed* candidate containing 01-08 and
-run the full command list without changing that SHA. The existing dirty
+inventory. Then freeze one *clean committed* candidate containing Tickets
+01-08 plus Ticket 09's pre-attestation implementation, and run the full command
+list without changing that SHA. The existing dirty
 `f9ec954` overlay and prior 822-test base result are not that candidate.
 Record hosted CI as independently verified green/failed/unavailable; do not
 promote a local pass or a cached remote ref. The no-commit policy leaves this
@@ -483,3 +496,287 @@ without cloning the underlying owner suites:
 Each fixture must assert the exact semantic payload, diagnostic code/span or
 typed result, and CLI/stdio parity where applicable. Running a route-only
 V1 family label test does not satisfy these rows.
+
+## Final Execution Audit — `main@ecc38f59` + Dirty Overlay
+
+Verdict: `PLANNED — NO CLOSEOUT RECEIPT`. Receipts 01–04 exist; 05–08 are
+absent. The tree is dirty, Algebra and Pipeline are red, transition edges remain,
+and hosted CI is unverified. Ticket 09 must not paper over any of those facts.
+
+Exact closeout procedure:
+
+1. Require completed receipts 01–08 and verify every receipt fingerprint
+   against the candidate content. Historical owner-green hashes remain valid
+   only for the exact files they name.
+2. Build the semantic manifest as 18 root-family rows plus separate Decl and
+   HornRule supplemental rows. Each row has fixture, applicability, authority,
+   expected semantic payload or exact diagnostic/span, owner receipt, and
+   selected/executed count. Do not clone owner test matrices.
+3. Generate/reconcile `TEST_PATH_INVENTORY.tsv`, `TRACEABILITY.md`, README
+   method/examples claims, and F01–F37 from the landed tree. Migrate the useful
+   ledger rows before deleting the old ledger; zero dangling path references.
+4. Run representative cross-owner fixtures for Group/Sort/self-Join,
+   Rule/builtin/host separation, Composition working-set rows, Inline VIEW,
+   query EXISTS, closed-authority failure, and front-door parity.
+5. Require final architecture mode with zero transition edges/exceptions, zero
+   active V1 seam definitions/usages, zero `_punchlist` artifacts, and no
+   runtime/provider/SDK dependency or public noun.
+6. Freeze a clean committed candidate SHA only after user authorization. Run
+   the complete final command list without changing that SHA; any source change
+   invalidates the run and requires a new candidate.
+7. Record hosted CI independently as green, failed, or unavailable. Failed
+   blocks closure; unavailable permits only `REPO_LOCAL_CLOSED` with the gap
+   stated. Local tests never imply hosted green.
+
+Current hard blockers are therefore 05 contract migration, 06 sealed logic
+input/final edge, 07 pipeline/facade cutover, 08 bounded front doors, missing
+05–08 receipts, and the immutable candidate. Only this ticket may advance the
+packet to closeout.
+
+The latest global format check also exits 1 on 23 files. Ticket 09 requires a
+zero-diff `cargo fmt --all --check` on the immutable candidate; passing Clippy
+does not substitute for it. The formatting repair belongs to the ticket owners
+whose files are listed by the check and must precede candidate freeze.
+
+## Final Independent RR — Closeout Authority Corrections
+
+1. **One semantic manifest SSOT.** Expand `examples-v2.tsv` (or its final
+   replacement) with all 18 root-family semantic matrix fields and load it from
+   conformance. Keep a separate two-row Decl/HornRule supplemental manifest.
+   Generate README/example-index views and delete the parallel hardcoded Rust
+   example/outcome table. Enforce
+   `filesystem == root manifest == selected == executed`.
+2. **Recursive tracked hygiene.** Replace one-directory `src`/`tests` walking
+   with recursive tracked-path authority, preferably a `git ls-files`-derived
+   fixture with explicit historical allowlists. Reject root repro patterns,
+   backup suffixes, and `_punchlist` anywhere under source, tests, docs, or
+   tools. Add nested mutations and remove stale “Ticket 16” labels.
+3. **Immutable test inventory.** Pin `PACKET_BASE_SHA` before candidate freeze
+   and derive landed paths from `PACKET_BASE_SHA..HEAD_SHA`, including rename
+   source/destination, additions, deletions, support modules, and test-target
+   classification. Preserve the separate pre-commit dirty ownership snapshot.
+4. **Facade/frontdoor CI.** Add both external-consumer and frontdoor-parity
+   scripts to named local and hosted CI recipes. Record selected/executed counts
+   and exit codes; green Rust tests do not replace either script.
+5. **Allow-attribute migration.** After Tickets 02–08 delete old seams,
+   regenerate the complete `#[allow]`/`#![allow]` path inventory. Assign
+   semantic cases to their owner; convert justified survivors to
+   `#[expect(..., reason=...)]` and delete obsolete ones. Final proof requires
+   zero `rg '#!?\[allow\(' crates --glob '*.rs'` plus MSRV and current strict
+   Clippy. The current audit found 119 occurrences. Removing a CI `-A` flag
+   alone is not a migration plan.
+6. **Exact-SHA hosted evidence.** Record remote URL and `gh auth status`; query
+   required workflow jobs by candidate SHA and store URLs, conclusions, and
+   timestamps. Auth/network/no-pushed-SHA failures are `unavailable` only with
+   the attempted command/error. Queued or in-progress remains `OPEN`. Push/PR
+   is separate user authorization.
+
+### Two-phase immutable evidence
+
+A commit cannot contain evidence produced after testing itself. Default
+closeout is:
+
+1. User-authorized candidate commit A contains Tickets 01–09 implementation,
+   generated inventories, and an unclaimed receipt template. Run the complete
+   command set on SHA A.
+2. Create attestation commit B containing only keyed results/receipts/docs.
+   Verify `A..B` is receipt/docs-only and rerun diff, format, doc, inventory,
+   and claim validators on B. Record `tested_sha=A` and
+   `attestation_sha=B`.
+
+Alternatively keep the attestation external and state that A does not contain
+its post-run receipt. Do not claim one SHA both contains and predates its
+post-run evidence. The candidate includes Ticket 09 conformance/CI
+implementation, not only Tickets 01–08.
+## 2026-09-21 Final Current-Tree Audit
+
+Status remains `PLANNED — ONLY TICKET AUTHORIZED TO CLOSE PACKET`. Current
+closeout is impossible:
+
+- receipts 05-08 are absent;
+- Algebra is test-compile RED with 74 errors;
+- Pipeline is compile RED with 25 library/29 library-test errors;
+- Conformance fails at Pipeline compilation;
+- final architecture is RED on 22 normal plus one dev transition;
+- workspace format is RED on 27 unique files;
+- the worktree is dirty and includes an externally owned staged deletion of
+  `test_repro_cases.txt`.
+
+Closeout must use one authorized clean candidate and two source identities:
+the exact base commit and the exact candidate tree/commit. Required order:
+
+1. Validate receipts 00-08 against their frozen hashes and selected/executed
+   counts; stale dirty-overlay checkpoints are not receipts.
+2. Load one authoritative 18-root semantic manifest plus the two supplemental
+   Decl/Rule units. Generate docs/index/test expectations from it; do not keep
+   independent hardcoded lists.
+3. Run owner suites, facade/front-door parity, deliberate mutations, public API
+   inventory, recursive artifact hygiene, `just ci`, final architecture,
+   formatting, and clean-tree checks on the same candidate.
+4. Compare base-to-candidate tracked and untracked inventories, including
+   deleted/renamed files. Fail on orphaned crates, stale paths, duplicated
+   manifests, compatibility shims, and missing receipts.
+5. Update truth documents only from observed results. Distinguish historical
+   receipt proof from current candidate proof and never infer remote CI or
+   deployment/activation.
+
+Only after every command is green may this ticket change the packet status to
+closed.
+
+### Latest closeout-gate recheck
+
+`cargo fmt --all --check` now exits 0 and supersedes the earlier 27-file RED
+observation. Closeout remains impossible: Algebra still exits 101 with 74
+test-compilation errors, Pipeline library check still exits 101 with 25
+errors, final architecture still has 22 normal plus one dev transition edge,
+receipts 05-08 are absent, and the tree is not an authorized immutable
+candidate. Formatting recovery must not be promoted to packet closure.
+
+## SS-09A Current-Tree Conformance/Closeout Audit — 2026-09-21
+
+Status remains `PLANNED — ONLY TICKET AUTHORIZED TO CLOSE PACKET`. Correct two
+stale observations before using this ticket as authority: Receipt 05 now
+exists, and Algebra's current 13 integration tests compile and pass. They are
+still raw-HIR legacy coverage, not Ticket 05 semantic evidence. Pipeline
+remains the actual workspace blocker (`cargo check -p quanta-gqlang-v2-pipeline
+--lib`: 25 compile errors), so conformance cannot run.
+
+Current conformance is a V1 routing guard: it directly depends on HIR,
+Pipeline, Planning, and Surface and checks only family/plan summaries. It has
+no sealed authority fixture, retained semantic payload matrix, mutation
+receipt, selected=executed accounting, or CLI/stdio parity. Replace it only
+after Tickets 05–08 expose their sealed public path; do not build a parallel
+manifest/test registry while V1 remains active.
+
+Already useful work to preserve: Semgrep is no longer the original zero-match
+corruption. Its runner creates a positive fixture for each of seven configured
+rules and enforces configured=executed. Surface example/doc rails are also
+useful inputs, but must be migrated into one conformance-owned manifest rather
+than copied. Current hygiene is too shallow for candidate closure.
+
+Final closeout remains ordered behind 05–08: one authoritative semantic
+manifest plus two supplemental Decl/Rule rows; migrated conformance and
+frontdoor/facade parity; candidate-scoped base..candidate inventory; final CI
+and architecture edge removal; then the two-commit tested-SHA/attestation-SHA
+procedure already specified above. The dirty overlay and staged external
+`test_repro_cases.txt` deletion cannot be treated as a candidate.
+
+## RR-09B Authoritative Current-State Reconciliation — 2026-09-21
+
+This is the current closeout authority for `main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a`
+plus the 178-entry dirty overlay. It supersedes earlier claims that Algebra had
+13 legacy tests/74 compile errors, that 22 normal transition edges remain, that
+119 allow attributes remain, or that Receipts 05-07 are absent.
+
+### Current gate ledger
+
+| Gate | Current observed evidence | State |
+|---|---|---|
+| Receipts | 01-07 exist; 07 is blocker-only; 08/09 were absent before this audit and the newly created 08/09 files are audit-only | OPEN |
+| Algebra | all-target owner suite: 4/4 integration tests pass | owner slice GREEN, packet not closed |
+| Logic/consumer compile | Logic fails on four deleted Algebra V1 symbols; Planning and Pipeline checks exit 101 at that dependency | RED |
+| Format | `cargo fmt --all --check`: exit 0 | GREEN for current dirty bytes only |
+| Architecture | 42 normal edges = 22 final + 20 transitional; three dev edges = one final + one transitional + illegal `sema -> surface`; final mode exits 1 | RED |
+| Semgrep | seven rules execute over 95 targets; 13 blocking findings, all in current Sema paths | non-vacuous but RED |
+| Allow attributes | current Rust scan finds 95 `#[allow]`/`#![allow]` occurrences | migration OPEN |
+| Conformance | hardcoded V1 `root_family_specs_v1`; route/kind/result/effect assertions only | insufficient |
+| Examples | 18 tracked `.qglang` files; no authoritative `examples-v2.tsv` exists | registry OPEN |
+| Required V2 tests | `v3_semantic_family_matrix`, `v3_registry_non_vacuity_v2`, and `v3_public_api_inventory` do not exist | OPEN |
+| External scripts | `tools/test_frontend_external_consumer.py` and `tools/test_frontdoor_parity.py` do not exist | OPEN |
+| CI recipes | neither script is in `just ci` or `.github/workflows/lint.yml`; architecture CI does not request final mode | OPEN |
+| Hygiene | test scans only root files and one non-recursive `src/tests` level; staged external deletion `test_repro_cases.txt` remains | RED for candidate closure |
+| Hosted CI | no exact-candidate SHA, URL, job conclusion, or authenticated query | UNVERIFIED |
+
+The Semgrep infrastructure is not the original zero-match corruption: its
+configured/executed rule count is meaningful. Its current result is still RED,
+not “fixed,” because it reports four silent error discards and nine string-typed
+error results in Sema. Ticket owners must disposition those exact findings;
+Ticket 09 only verifies zero current findings.
+
+### Exact remaining work
+
+1. **Finish Tickets 05-08 first.** Require final owner receipts for aggregate
+   Algebra, sealed document Logic, Planning/Pipeline/facade, and bounded
+   frontdoors. Audit-only receipts do not satisfy this precondition.
+2. **Create one semantic manifest authority.** Add
+   `conformance/tests/fixtures/examples-v2.tsv` with exactly the 18 filesystem
+   examples and all required authority/applicability/expected-payload/
+   diagnostic/resource/mutation/owner-receipt fields. Keep Decl and HornRule as
+   the separate two-row supplemental manifest. Delete the hardcoded Rust table
+   only after generated consumers pass equality.
+3. **Implement V2 conformance owners.** Add the three pinned test targets and
+   make them execute the sealed facade path. Record declared, selected, and
+   executed counts; assert exact semantic payload or diagnostic/span, not only
+   family labels.
+4. **Generate truth inventories.** Create `TRACEABILITY.md`,
+   `TEST_PATH_INVENTORY.tsv`, final public API inventory, examples index, method
+   allowlist, and closeout template from current tracked inputs. Validate both
+   directions and every referenced path/anchor. Migrate live ledger rows before
+   deleting the legacy ledger.
+5. **Make hygiene recursive and candidate-scoped.** Derive tracked paths from
+   `git ls-files` and `PACKET_BASE_SHA..candidate`, including adds, deletes, and
+   both sides of renames. Reject nested backup/repro/`_punchlist` artifacts,
+   orphaned crates, stale paths, duplicate manifests, and unexplained dirty or
+   untracked files.
+6. **Close static-policy debt.** Resolve the 13 observed Semgrep findings,
+   migrate all 95 allow attributes to owner-scoped code or justified
+   `#[expect(..., reason=...)]`, remove CI `-A` suppressions, and require both
+   MSRV and current strict Clippy. Re-run counts; do not pin today's numbers as
+   the desired result.
+7. **Wire missing integration gates.** Implement the facade consumer and
+   frontdoor parity scripts in Tickets 07/08. Add both to `just ci` and hosted
+   CI. Change the closure architecture job to `--require-final` only when all
+   transition edges and exceptions are actually removed.
+8. **Freeze evidence in two phases.** After user authorization, commit candidate
+   A containing implementation, generated inventories, and an unclaimed receipt
+   template. Run all commands without changing A. Then create docs/receipt-only
+   attestation B, prove `A..B` contains no source/config change, and rerun the
+   claim/diff/format/doc/inventory validators. Record `tested_sha=A` and
+   `attestation_sha=B`.
+9. **Query hosted evidence independently.** Record remote URL, auth result,
+   candidate SHA, required job URLs/conclusions, and timestamp. `failed` blocks;
+   `unavailable` permits only `REPO_LOCAL_CLOSED`; queued/running remains OPEN.
+
+### Final proof order
+
+The following order is mandatory because a source change invalidates all later
+evidence:
+
+```bash
+git status --short
+git rev-parse HEAD
+git diff --check
+cargo fmt --all --check
+taplo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo +1.95.0 clippy --workspace --all-targets -- -D clippy::unused_result_ok -D warnings
+cargo nextest run --workspace --no-tests pass
+cargo test --workspace --doc
+cargo test -p quanta-gqlang-v2-conformance --test v3_semantic_family_matrix
+cargo test -p quanta-gqlang-v2-conformance --test v3_registry_non_vacuity_v2
+cargo test -p quanta-gqlang-v2-conformance --test v3_public_api_inventory
+python3 tools/test_frontend_external_consumer.py
+python3 tools/test_frontdoor_parity.py
+python3 tools/architecture/check_architecture.py --require-final
+cargo deny check bans licenses sources advisories
+typos .
+tools/lint/run_semgrep.sh
+just ci
+git status --short
+git rev-parse HEAD
+```
+
+Every command records exit code, selected/executed count, and the unchanged
+tested SHA. A focused owner pass, current dirty-tree format pass, non-vacuous but
+failing Semgrep run, or transitional architecture pass cannot substitute for
+this sequence.
+
+### Parallelization constraint
+
+Before 07/08 close, Ticket 09 may only implement/read-review manifest schemas,
+generators, and candidate-independent validators. After the public facade is
+frozen, semantic manifest/conformance work and recursive hygiene/inventory work
+may proceed in parallel on disjoint files. CI recipe integration, truth-doc
+generation, candidate freeze, full commands, hosted query, and attestation are
+strictly serial. No parallel writer may modify candidate A after qualification
+starts.

@@ -1,6 +1,6 @@
 # 07 — Semantic Planning And Public Facade
 
-Status: `PLANNED`
+Status: `PLANNED — BLOCKED BY 06; V1 CONSUMER CUT NOT STARTED`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
@@ -278,6 +278,41 @@ git diff --check
 
 The `rg` command must return no matches.
 
+## SS-07A Current-Tree Compile Blocker RCA — 2026-09-21
+
+The first workspace compile failure is the legacy Pipeline, not Planning:
+
+```text
+cargo check -p quanta-gqlang-v2-pipeline --lib: exit 101
+25 compile errors
+```
+
+`pipeline/src/compile.rs` directly imports removed `CatalogV1`, `PackGraphV1`,
+`BuiltinRegistryV1`, `TypeCheckerV1`, `TypeEnvV1`, and obsolete relation/type
+variants. It also owns composition recursion over retired HIR wrapper types.
+`pipeline/src/diagnostic.rs` and `pipeline/src/lib.rs` export matching deleted
+V1 diagnostic/pack APIs. The compile errors are one causal legacy seam, not
+25 independent fixes.
+
+Required replacement cut:
+
+1. Pipeline accepts source plus `ClosedFrontendAuthorityV2`, calls the single
+   Surface → checked HIR → `SemanticDocumentV2` transaction, and never invokes
+   Binder, Types, Modules, or raw HIR classifiers itself.
+2. Relational semantic items lower only through Ticket 05's sealed Algebra
+   entry; Rules only through Ticket 06's sealed logic entry; all other item
+   families map from their retained Sema contracts to an explicit plan or a
+   `NoPlanReasonV2`.
+3. Planning accepts only those sealed contracts. Old public V1 compile/context
+   exports, raw HIR diagnostics, and facade glob re-exports are deleted in the
+   same cut.
+4. CLI and stdio move only after the facade source entry points exist; they
+   must not acquire direct Sema/Algebra/Planning imports as a bridge.
+
+Do not fix individual imports or reintroduce compatibility aliases. That would
+make workspace compilation superficially green while retaining the invalid
+dual semantic authority this ticket exists to remove.
+
 ## Forbidden Shortcuts
 
 1. adding a nondeterministic truth-lane alias while leaving hardcoded behavior
@@ -388,10 +423,12 @@ successful `AnalysisDocumentV2` has only `Complete`, `BlockedByDiagnostics`, or
 not a fourth internal status.
 
 `CompiledDocumentV2` has private fields and accessors for source identity,
-canonical diagnostics, source-ordered `CompiledItemV2` entries, and authority
-fingerprint. Each item is a closed enum whose variants carry the relevant
-checked contract and `Option<SemanticPlanV2>`; `None` is legal only for the
-explicit `NotApplicable` variants. No parallel arrays are public.
+canonical diagnostics and source-ordered `CompiledItemV2` entries. Checked
+authority provenance remains private; no whole-authority fingerprint is public.
+Each item is a closed enum: plan-required variants carry `SemanticPlanV2`,
+nonplan variants carry `NoPlanReasonV2`, and Rule members carry
+`RuleProgramMemberV2`. A universal `Option<SemanticPlanV2>` and parallel public
+arrays are forbidden.
 
 The document-wide `RuleProgramContractV2` receives exactly one plan stored in
 `CompiledRuleProgramV2`. Each source rule item stores a checked
@@ -504,6 +541,17 @@ algebra field access after Ticket 05 makes node fields private; the earlier
 89 V1 tests do not cover that cut. Do not silently delete either rail to
 obtain a workspace compile.
 
+Fresh after the mixed external `ecc38f5` commit,
+`cargo check -p quanta-gqlang-v2-pipeline` still exits 101 with 25 library
+errors. The first failures are removed `CatalogV1`/`PackGraphV1`,
+`BuiltinRegistryV1`/`TypeCheckerV1`/`TypeEnvV1` and old diagnostic imports;
+later errors are closed Composition enum inputs, retired `Compose`/
+`Quantifier` variants, and private projection/call fields. Replace the
+one-item V1 compile path with the checked semantic-document orchestrator
+and exact-key assembly; do not restore V1 aliases or make downstream
+runtime/host consumers mask this frontend dependency failure. A clean commit
+containing the producer work is not a pipeline-green receipt.
+
 ## Composition And Group Consumer Audit Delta
 
 Ticket 04's Binder already owns sequential LET visibility and the
@@ -532,3 +580,212 @@ from a string. Explain retains the checked Group/Sort stages, including both
 sort directions' sealed `NULLS LAST` policy. Add a planner→facade negative
 that swaps Group output and partition-input identities while keeping the
 same display names.
+
+## Final Execution Audit — `main@ecc38f59` + Dirty Overlay
+
+Verdict: `PLANNED`, blocked by 05/06. Planning 89/89 is green only for its V1
+vocabulary. Pipeline `cargo check` exits 101 with 25 errors from removed
+Modules/Types imports, private HIR fields, retired Compose/Quantifier variants,
+and obsolete type construction. No compatibility alias is authorized.
+
+Single implementation path:
+
+1. Introduce one exact-key assembler over Ticket 04 semantic items, Ticket 05
+   algebra results, and Ticket 06 document logic results. Reject missing,
+   extra, duplicate, foreign, wrong-kind, and nested-identity-swapped outputs.
+2. Replace `PlanRequestV1` caller-selected truth/result/effect inputs with a
+   sealed semantic request. Retain reusable cost/capability/evidence/explain
+   vocabulary and its four-field success schema; physical plan trees and
+   numeric cardinality estimation remain out of scope.
+3. Replace `classify_item` and raw-HIR composition classifiers with exhaustive
+   nine-variant `SemanticItemV2` dispatch. Declaration and inline VIEW get
+   checked `NoPlanReasonV2`; Rules contribute to one document program plan;
+   Composition retains exact LET ordinal/body identity and one WITH-selected
+   result.
+4. Rewrite `pipeline/src/compile.rs` around the checked semantic document.
+   Delete V1 Modules/Types/HIR fallbacks and the free-symbol type-check skip.
+   The pipeline must not re-resolve or reconstruct owner facts.
+5. Make `frontend-contract` the curated external facade: explicit exports only,
+   no glob re-exports of HIR/Surface/Types/Algebra/Planning, and no direct
+   internal construction APIs.
+6. Migrate every pipeline/planning integration test, including relation source
+   authority and Composition type-env tests. Invert schema-open historical
+   positives to closed-authority negatives where required; do not delete them
+   to make compilation pass.
+7. Add an isolated downstream fixture whose only dependency is
+   `frontend-contract`; prove public positive use and that internal roots cannot
+   be imported.
+
+Acceptance: Planning, Pipeline, Frontend-contract all-target suites and strict
+Clippy pass; `cargo check -p quanta-gqlang-v2-pipeline` exits 0; raw-HIR/V1
+public symbol scans are empty; exact result/explain schema fixtures pass. Only
+then may Ticket 08 start.
+
+Composition integration consumes Ticket 04's closed
+`ResolvedCompositionProducerV2`/`ResolvedCompositionBodyV2` carriers and exact
+resolved WITH identity. Planning must not accept arbitrary nested
+`SemanticItemV2`, select a LET by string, synthesize a SAMPLE root item, or
+recompute whether a FIND producer has a relation row.
+
+## Final Independent RR — Planner/Facade Invalid-State Closure
+
+1. Replace the three recursive algebra walks in capability, explain, and
+   cardinality code with one shared deterministic iterative traversal/fold over
+   private V2 nodes. Preserve root-first/left-before-right order and reuse the
+   upstream bounded node set; do not add a planner-local budget. Test a
+   near-limit linear chain, branching order, and a mutation that restores a
+   recursive fallback.
+2. Remove the public `CompiledDocumentV2` authority fingerprint requirement.
+   Existing pack graph/lock hashes omit relation catalog, graph selectors,
+   budgets, and source registry. Keep checked provenance internal. A future
+   cache key must be a separately versioned domain-separated contract.
+3. Encode plan applicability structurally: plan-required compiled variants
+   carry `SemanticPlanV2`; nonplan variants carry `NoPlanReasonV2`; rule members
+   carry `RuleProgramMemberV2`. Do not use a universal
+   `Option<SemanticPlanV2>`. Prove relation/graph/CHECK/presentation cannot
+   exist without a plan and Declaration cannot carry one.
+4. Closed compiled success contains no Error diagnostic. It may expose only
+   producer-sorted/deduped Warning/Note diagnostics, or no diagnostics until
+   such producers exist. Blocked analysis has a nonempty diagnostic/unresolved
+   reason. Add Error-in-success, empty-blocked, duplicate, and permutation
+   mutations; facade code does not sort or synthesize them.
+5. The external negative fixture imports each forbidden item through
+   `quanta_gqlang_v2_frontend_contract::<symbol-or-module>` with only that crate
+   as a dependency. Assert the expected unresolved/private-item compiler error,
+   not a missing direct dependency. The positive fixture exercises every
+   curated root and builder API.
+6. Public API inventory covers the full externally reachable API—local public
+   functions/types/modules/constants/macros, methods, fields, re-exports, and
+   feature configurations—using rustdoc/public-api or AST evidence against an
+   exact allowlist. A `pub use` grep is only a subcheck. Mutations adding a local
+   `pub fn` and `pub mod` must fail the gate.
+
+Record selected/executed compile-fail counts and compiler status in receipt 07.
+These gates do not expand scope into physical plans or numeric estimation.
+## 2026-09-21 Final Current-Tree Audit
+
+Status remains `PLANNED`. Planning's direct suite is 89/89 GREEN. Pipeline is
+compiler-RED with 25 library and 29 library-test errors caused by retired V1
+Modules/Types imports, private/removed HIR fields, and generic Composition
+compilation. Conformance is blocked at this same Pipeline boundary.
+
+The 89 Planning tests prove the current semantic classifier in isolation; they
+do not prove a public frontend plan. Execute one cutover, not per-error shims:
+
+1. Build an exhaustive assembler from sealed Sema items plus Algebra/Logic
+   outputs. Every `SemanticItemV2` variant has an explicit plan or non-plan
+   disposition; Composition recursively retains exact producer/body keys and
+   Inline View remains a catalog payload rather than an extra root plan.
+2. Replace recursive algebra/plan walkers with one budgeted iterative traversal
+   shared by capability, cost-class, and explain derivation.
+3. Delete Pipeline's direct HIR/Binder/Types/Modules semantic compilation and
+   its old re-exports. Pipeline orchestrates owners; it does not reimplement
+   them.
+4. Replace `frontend-contract` glob re-exports with an explicit facade manifest
+   and one compile entrypoint/DTO surface. Generate API and dependency checks
+   from that manifest.
+5. Preserve the frontend-only boundary: no physical join ordering, numeric
+   cardinality estimator, runtime operator, provider, or SDK backend.
+6. Add exhaustive item-dispatch, deep-limit, deterministic plan/explain, and
+   downstream compile-pass/compile-fail tests; then record receipt 07.
+
+Delete the relevant final-DAG exceptions only in the same change that removes
+the imports; do not edit the allowlist ahead of the code.
+
+## RR-07B Authoritative Current-State Reconciliation — 2026-09-21
+
+This section supersedes earlier numeric compile-error and transition-edge
+counts. The frozen observation is `main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a`
+with 178 dirty-status entries. It is a shared dirty overlay, not an immutable
+candidate.
+
+### Observed state
+
+| Obligation | Current evidence | Disposition |
+|---|---|---|
+| Ticket 05 Algebra boundary | `cargo test -p quanta-gqlang-v2-algebra --all-targets`: 4/4 integration tests pass | implemented owner slice; aggregate/coverage work remains in 05 |
+| Ticket 06 prerequisite | `logic/src/source.rs:14` imports deleted `AlgebraNodeV1`, `AlgebraOpV1`, `AntiJoinV1`, and `SemiJoinV1` | hard prerequisite RED |
+| Planning compile | `cargo check -p quanta-gqlang-v2-planning --all-targets`: exit 101 at the Logic dependency | no Ticket 07 compile receipt |
+| Pipeline compile | `cargo check -p quanta-gqlang-v2-pipeline --all-targets`: exit 101 at the same Logic dependency | no Ticket 07 compile receipt |
+| Planning authority | normal dependencies remain Algebra + HIR + Logic + Types; there is no Sema dependency | V1 input model remains active |
+| Planning public API | `PlanRequestV1`, `PublicPlanV1`, `produce_plan`, `classify_item`, and caller-selected truth/result/effect remain exported | not migrated |
+| Planning traversal | `capability::collect`, `explain::collect_families`, and `plan::classify_node` recurse without a semantic-step budget | unbounded/deep-stack risk remains |
+| Pipeline authority | `compile.rs` still imports raw HIR, Binder, Types, Modules, old Algebra normalizers, Logic V1, and Planning V1 | duplicate semantic authority remains |
+| Facade | four crate-wide globs remain at `frontend-contract/src/lib.rs:10,11,19,25` | public owner internals still exposed |
+| Final DAG | 20 transitional normal edges, one transitional dev edge, and illegal `sema -> surface` dev edge | architecture RED |
+| Formatting | `cargo fmt --all --check`: exit 0 | formatting only; not qualification |
+
+The earlier “25 Pipeline errors” observation described the pre-Algebra-cut
+tree. It must not be reused as the current first failure. Once Ticket 06 is
+repaired, Pipeline's own retired imports are expected to fail next, but their
+post-06 error count must be measured rather than inferred.
+
+### Exact implementation worklist
+
+1. **Prerequisite handoff to 06.** Replace `logic/src/source.rs`'s Algebra V1
+   producer with the one document-owned `RuleProgramContractV2`/graph contract,
+   remove Logic's Algebra/HIR normal edges, and obtain a strict Logic receipt.
+   Ticket 07 must not add Algebra V1 aliases to unblock itself.
+2. **Planning input cut.** In `planning/Cargo.toml`, remove the direct HIR edge
+   and add the sealed Sema input required by the final design. Replace
+   `plan::{PlanRequestV1, PublicPlanV1, produce_plan}` and
+   `item::{classify_item, classify_composition_body, classify_find,
+   classify_check, classify_presentation, classify_meta}` with exhaustive
+   sealed-input dispatch. Caller-provided truth/result/effect values disappear.
+3. **One budgeted traversal.** Replace recursive walks in
+   `capability.rs::collect`, `explain.rs::collect_families`, and
+   `plan.rs::classify_node` with one iterative, deterministic traversal over
+   checked Algebra nodes. Charge the canonical semantic-step budget once per
+   visited node and preserve stable root-first ordering.
+4. **Pipeline replacement, not repair-by-import.** Replace the V1 body of
+   `pipeline/src/compile.rs`, including `FrontendContextV1`, the nine
+   `compile_*` routes, `classify_to_plan`, `aggregate_options`, the local type
+   walkers, free-symbol skip, and one-rule lowering. Pipeline may orchestrate
+   Surface/Sema/Algebra/Logic/Planning and exact-key assembly only. Delete the
+   matching V1 exports from `pipeline/src/lib.rs` and rewrite
+   `pipeline/src/diagnostic.rs` around `FrontendTransactionErrorV2`.
+5. **Exact-key document assembly.** Match every applicable
+   `SemanticItemIdV2`, nested View relation, Composition producer ordinal/body,
+   CHECK graph identity, and Rule program member. Reject missing, extra,
+   duplicate, foreign, wrong-kind, and same-name/wrong-ID substitutions. Do not
+   use positional `zip`, string names, or `Option<SemanticPlanV2>`.
+6. **Curated facade.** Replace all globs and `compiled_program_item_v1` in
+   `frontend-contract/src/lib.rs`. The facade exports only the three pinned
+   source-document functions and explicitly allowlisted DTO roots. Its normal
+   dependency becomes Pipeline only; owner constructors remain unreachable.
+7. **Consumer/test migration.** Rewrite Planning's seven V1 suites, Pipeline's
+   relation-source, group/order, Composition, Rule and graph suites, and
+   `frontend-contract/tests/downstream_contract.rs`. Add the two document
+   assembly suites and an isolated external crate whose sole dependency is the
+   facade. Deleting a legacy assertion is allowed only after its semantic
+   mutation is covered by the new owner.
+
+### Required owner and mutation proof
+
+Run, after 06 is green:
+
+```bash
+cargo test -p quanta-gqlang-v2-planning --all-targets
+cargo test -p quanta-gqlang-v2-pipeline --all-targets
+cargo test -p quanta-gqlang-v2-frontend-contract --all-targets
+cargo test -p quanta-gqlang-v2-frontend-contract --doc
+cargo clippy -p quanta-gqlang-v2-planning -p quanta-gqlang-v2-pipeline -p quanta-gqlang-v2-frontend-contract --all-targets -- -D warnings
+python3 tools/test_frontend_external_consumer.py
+python3 tools/architecture/check_architecture.py --require-final
+```
+
+The test set must kill: missing/extra/duplicate/wrong-kind item results; swapped
+Composition producer ordinal/body; swapped Group output/partition identity;
+missing or foreign Rule member; hardcoded determinism; lost CHECK emit mode;
+lost FIND witness cap/tie-break; one recursive traversal reintroduced; one
+facade glob/local public module/internal type re-export reintroduced.
+
+### Parallelization constraint
+
+Before Ticket 06 closes, only read-only fixture inventory and API allowlist
+design may proceed. After 06, Planning's sealed projection and Pipeline's
+exact-key assembler may be implemented in parallel because their production
+write sets are disjoint, but they must integrate against one frozen DTO
+contract. Facade implementation waits for both. External-consumer and final-DAG
+integration are serial final steps. Ticket 08 remains blocked until the facade
+source entry points and diagnostic ordering are frozen.

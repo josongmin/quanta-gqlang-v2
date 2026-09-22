@@ -1,6 +1,6 @@
 # 02 — Surface And HIR Semantic Shapes
 
-Status: `VERIFIED`
+Status: `OWNER GREEN ON DIRTY OVERLAY — RECEIPT REFRESH REQUIRED`
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
@@ -56,6 +56,7 @@ V1-shape assertions are deleted in the same change.
 24. `crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs`
 25. owner-local `hir/tests/support/mod.rs` or `surface/tests/support/mod.rs`
     only when at least two touched tests consume the extracted helper
+26. `crates/quanta-gqlang-v2-hir/tests/v3_relation_source_name_span.rs`
 
 ## Implementation
 
@@ -323,6 +324,7 @@ Create or update:
 11. `[UPDATE]` `crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs` — migrated USE PACK/composition plus exact FIND kind assertions
 12. `[UPDATE]` `crates/quanta-gqlang-v2-surface/tests/v3_surface_unit.rs` — remove zero-binder optional-`in` quantifier assumptions
 13. `[UPDATE]` `crates/quanta-gqlang-v2-surface/tests/v3_document_hellgate.rs` — bounded document API and single source-length authority
+14. `[ADD]` `crates/quanta-gqlang-v2-hir/tests/v3_relation_source_name_span.rs` — exact source-name span plus out-of-bounds integrity reject
 
 Delete superseded assertions from `v3_mutation_rails.rs` only after their
 stronger semantic oracle is present. Record every moved/deleted test function
@@ -496,8 +498,202 @@ work was added by this reconciliation.
 
 ## Dependencies
 
+### Composition source-use location delta (2026-09-21 re-audit)
+
+`surface/src/query.rs:71-79` parses a distinct source-name token span, but
+`RelationSourceV1` in `hir/src/relation.rs:52-59` retains only `name` and
+`alias`; the enclosing relation span also contains the alias. Ticket 04's
+Binder cannot emit an exact `FROM p` use-site proof or diagnostic from that
+carrier when `p` is a Composition LET. This is a narrow Ticket 02 producer
+delta, **not** a reason to rebuild the six-stage HIR or reopen syntax design:
+
+1. Add a checked `name_span` to the existing `RelationSourceV1`, thread it
+   from `parse_source` through the one HIR builder, and include it in the
+   existing integrity visitor. Programmatic builders must provide an exact
+   source-name span or derive it only when the supplied relation span is
+   exactly the name token; never silently use an alias-inclusive span.
+2. Migrate every existing builder/fixture call site in one atomic change.
+   Preserve relation node IDs, stage order, and formatter output. Identifiers
+   are ASCII in the current lexer; use an earlier valid multibyte string
+   literal in the same document to prove byte-accurate source-name offsets, plus
+   an alias-bearing `FROM` and an out-of-bounds name-span integrity negative.
+3. Rerun HIR and surface all-target suites and strict Clippy on the changed
+   file hashes. Receipt 02's earlier 69/204 results remain historical; do
+   not promote them to proof of this later producer delta. Ticket 04 consumes
+   the new span and records the resulting Binder/sema proof.
+
+The Composition grammar already has closed LET producer/body enums; nested
+Composition as a LET/body is *not source-representable*. Do not add a new
+grammar branch merely to satisfy a purported source-level outer-composition
+capture test. Keep that negative at Binder frame/API level unless this packet
+explicitly changes the language scope.
+
+The narrow producer delta above is implemented on `ecc38f5` plus dirty
+overlay and owner-local green (HIR 72/72, surface 206/206, strict Clippy).
+`receipts/02.md` records exact file hashes and the migrated downstream
+builder-call inventory. Algebra integration and pipeline compilation remain
+RED on other retired HIR/V1 consumers; this producer checkpoint does not
+revise Ticket 02's historical immutable receipt or claim workspace closure.
+
 Requires 01. Tickets 02-08 are one unreleasable atomic cutover stack because
 the canonical HIR carrier changes every downstream exhaustive consumer. Ticket
 03's types work may be prepared independently, but its modules implementation
 starts after 02; no intermediate 02-07 revision is a releasable workspace
 contract.
+
+## Final Execution Audit — `main@ecc38f59` + Dirty Overlay
+
+Verdict: the narrow producer delta is implemented and owner-green; no second
+syntax or HIR representation is authorized.
+
+Reuse exactly:
+
+- `RelationSourceV1::name_span`, populated from the lexer token, required by
+  the breaking four-argument `HirBuilderV1::relation_source` API, and visited
+  by the existing integrity traversal;
+- the existing six relation-stage enum and one checked owned HIR document;
+- byte-oriented spans, including the multibyte-prefix parser fixture and the
+  alias-bearing source-name fixture.
+
+Latest proof on this dirty fingerprint is HIR 72/72 and Surface 206/206, with
+the combined core strict Clippy command exiting 0. Downstream builder calls in
+Binder, Types, Sema, Algebra tests, Planning tests, and Logic tests were
+migrated to the explicit span parameter. This does not make Algebra or
+Pipeline green.
+
+Formatting is still RED: the workspace formatter reports the new HIR
+name-span test and Surface byte-span test, plus downstream Binder/Sema files.
+Apply rustfmt only after reconciling those shared owners, then rerun the exact
+72/206 suites and strict Clippy on the new hashes. Until that happens,
+"owner-green" here means behavior/lint checkpoint, not a complete ticket gate.
+
+Remaining integration actions are consumer-owned:
+
+1. Ticket 04 uses `name_span` with Binder's exact `target_of_use` proof for
+   Composition local scans; it must not infer the name span from the enclosing
+   relation span.
+2. Ticket 05 replaces raw-HIR algebra normalization rather than reviving
+   removed `path`, `project`, `compose`, or `quantifier` builders.
+3. Ticket 07 removes remaining raw-HIR public consumers.
+
+Regression rule: every new HIR carrier with an auxiliary source location must
+add an exact constructor input and out-of-bounds integrity negative. No
+deprecated overload or alias-inclusive fallback may be introduced.
+
+## Final Independent RR — Name-Span Checkpoint, Not Receipt Closure
+
+`RelationSourceV1.name_span` and its HIR traversal/integrity support are already
+implemented in the dirty overlay. Do not add a second source-name carrier.
+Reclassify the ledger wording from “VERIFIED owner delta” to “behavior/lint
+checkpoint; format RED”. CI treats rustfmt as blocking.
+
+Before refreshing receipt 02:
+
+1. add `crates/quanta-gqlang-v2-hir/tests/v3_relation_source_name_span.rs` to
+   the authoritative write set, test inventory, and hash table (the current
+   receipt hashes the wrong existing hellgate file instead);
+2. track and format that file plus the exact owned HIR/Surface files;
+3. rerun HIR 72/72, Surface 206/206, strict owner Clippy, integrity one-over,
+   formatter idempotence, and `cargo fmt --all --check` on frozen hashes;
+4. retain the old receipt as historical and append the delta fingerprint.
+
+### Current format supersession
+
+The later integrated `cargo fmt --all --check` exits 0. Ticket 02's remaining
+delta is inventory/hash/receipt reconciliation for the existing name-span
+producer and its test, not Rust formatting or a second implementation.
+
+The current untracked test and format-red tree are not current `VERIFIED`
+evidence even though behavior and lint checks passed.
+## 2026-09-21 Final Current-Tree Audit
+
+The semantic shapes needed by later tickets exist and must be reused. Current
+owner runs are HIR 72/72 and Surface 206/206 GREEN. The parsed `FROM` name span
+is carried into HIR and Binder consumes it for exact use resolution.
+
+This is not a clean receipt:
+
+- the new `v3_relation_source_name_span.rs` remains untracked;
+- owner files are included in the 27-file workspace format failure;
+- Algebra still has 74 test compile errors against retired HIR builders;
+- Pipeline still has 25 library and 29 library-test compile errors against
+  retired HIR/Types/Modules APIs.
+
+No second syntax/HIR representation is required. Ticket 05 migrates Algebra
+tests to sealed Sema input instead of restoring `path`, `compose`, `project`,
+or `quantifier` builder compatibility. Ticket 07 deletes Pipeline's direct HIR
+semantic compilation instead of adapting each retired call one by one.
+
+Before closing the post-receipt delta: track the name-span test, format only
+owned HIR/Surface files, rerun both owner suites and strict Clippy, regenerate
+the public API inventory, and append a new frozen hash block to receipt 02.
+
+## SS-02F Current Owner Re-Audit — 2026-09-21
+
+Audit snapshot: `main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a`,
+174 short-status entries. The earlier format-RED and Algebra-74-error statements
+above are superseded. They describe prior checkpoints, not the current tree.
+
+### Implemented and reused
+
+- `surface/src/query.rs` captures the exact lexer token span for a relation
+  source name and passes it to the four-argument HIR builder.
+- `hir/src/relation.rs::RelationSourceV1::name_span` is the single carrier.
+  `hir/src/build.rs`, `hir/src/visit.rs`, and `hir/src/integrity.rs` construct,
+  traverse, and fail closed on its bounds.
+- The closed six-stage relation grammar, checked call arguments, logical versus
+  relational quantifiers, exact byte spans, and owned checked HIR document are
+  present. No legacy builder overload is needed.
+- Binder and Sema consume exact `name_span`; Algebra now consumes Sema and no
+  longer has the previously reported retired-builder compile failure.
+
+### Current execution evidence
+
+Executed on this dirty overlay:
+
+```text
+cargo test -p quanta-gqlang-v2-surface --all-targets   # 212/212 GREEN
+cargo test -p quanta-gqlang-v2-hir --all-targets       # 72/72 GREEN
+cargo clippy -p quanta-gqlang-v2-surface --all-targets -- -D warnings  # GREEN
+cargo clippy -p quanta-gqlang-v2-hir --all-targets -- -D warnings      # GREEN
+cargo fmt --all --check                                # GREEN
+```
+
+`crates/quanta-gqlang-v2-hir/tests/v3_relation_source_name_span.rs` remains
+untracked, so this is owner behavior/lint evidence, not an immutable receipt.
+The current Surface/HIR binary diff hash was
+`db8fce5b46100942aa81cc3a93da28b279a7a169e2109eec904d909ef728ee73`;
+the status-list hash was
+`7b8025c1103621aa1cadaed54107565f4745c177ee72c9464a0c1181567a3f48`.
+No workspace, hosted-CI, or clean-candidate claim is made.
+
+### Exact remaining work
+
+1. Add `hir/tests/v3_relation_source_name_span.rs` and every modified owned
+   Surface/HIR path to the receipt inventory; record file hashes after the
+   overlay is frozen.
+2. Regenerate the Surface/HIR public API inventory and verify there is exactly
+   one `relation_source(name, name_span, alias, span)` constructor path and no
+   compatibility overload.
+3. Run the exact 212/72 suites, strict Clippy, owner rustfmt, and integrity
+   exact-limit/+1 mutations on one unchanged fingerprint.
+4. Run downstream compile consumers only after Tickets 06-08 complete. Repair
+   any failure at that consumer, not by restoring raw-HIR convenience APIs.
+5. Append a receipt block that names a clean candidate or explicitly remains
+   dirty-overlay-only. Never rewrite historical proof into a stronger claim.
+
+### Owner boundary
+
+Surface owns source tokenization/parsing; HIR owns source-shaped identity and
+integrity only. Binder owns name resolution, Types owns semantic type/effect
+facts, Sema owns the checked document, and Algebra owns lowering. Ticket 02 must
+not add semantic resolution, inferred source spans, an alias-inclusive fallback
+span, or a second syntax/HIR representation.
+
+### Next SS / RR checklist
+
+`SS-02G` freezes only the owned Surface/HIR paths and records tracked-file
+inventory, hashes, selected/executed counts, and public API diff. RR checks the
+multibyte-prefix and alias-bearing span oracles, out-of-bounds/inverted
+`name_span` failures, formatter idempotence, absence of compatibility
+constructors, and downstream use of the exact span without re-inference.

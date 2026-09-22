@@ -1,0 +1,32 @@
+# Clippy policy for quanta-gqlang-v2.
+#
+# `large-error-threshold`: the frontend deliberately returns rich, fully typed
+# diagnostics BY VALUE. Each stage's diagnostic carries its stable code, node
+# identity, payload types and exact spans so a caller can route on the stage tag
+# and still recover the inner diagnostic verbatim (D10 "no silent downgrade",
+# D22 "one shared compiler pipeline"). `TypeDiagnosticV2` variants such as
+# `BadProjection` / `HeterogeneousCollection` are therefore 150-240 bytes by
+# design, and clippy's default 128-byte heuristic (tuned for lean app errors)
+# misjudges every owner function that returns them.
+#
+# 256 covers the largest diagnostic variant with headroom, so the lint keeps
+# guarding genuinely accidental large `Result` errors elsewhere while stopping
+# the per-function noise across `types/src/{ty,check,env,op,solver,builtin}.rs`.
+large-error-threshold = 256
+
+# `enum-variant-size-threshold`: the same reasoning applies to the sealed
+# semantic carriers. `SemanticAnalysisV2::Complete(SemanticDocumentV2)` is 328
+# bytes, and `ResolvedCompositionProducerV2::Query` /
+# `ResolvedCompositionBodyV2::Query` carry a `TypedRelationV2` by value. These
+# are move-once, read-many, closed vocabularies — one is built per semantic item
+# and matched once by the consumer — so the default 200-byte heuristic fires on
+# the design rather than on an accident.
+#
+# ROUTED, NOT HIDDEN: `ResolvedCompositionBodyV2` already boxes its large
+# `Check(Box<ResolvedCheckV2>)` variant while leaving `Query`/`Graph`/`Explain`
+# by value, so the crate is internally inconsistent. Boxing the `Query` variants
+# would change a producer contract that Wave 1 froze and Wave 2 consumed
+# (`lower_relation_item` + the 59-case algebra matrix), so it is routed to the
+# owning wave instead of being applied from here. Re-lower this threshold back
+# to the default in the same change that unboxes/boxes those variants.
+enum-variant-size-threshold = 384

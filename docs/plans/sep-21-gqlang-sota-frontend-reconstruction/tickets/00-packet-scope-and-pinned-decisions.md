@@ -204,3 +204,107 @@ remaining-work sections.
 1. all later tickets link to these decisions
 2. no later ticket contains a contradictory owner or public API
 3. any changed product decision updates this ticket before implementation
+
+## Final Execution Audit — `main@ecc38f59` + Dirty Overlay
+
+Verdict: `ACCEPTED`, with no new product decision and no implementation work in
+this ticket. The latest source audit found no reason to widen the repository
+beyond syntax, semantic authority, HIR, algebra/logic, planning metadata, CLI,
+and diagnostics transport. Runtime plans, optimizer rewrites, provider
+registries, SDK backends, JSON-RPC, and LSP remain out of scope.
+
+Executor actions:
+
+1. Preserve the six authored relation stages and exact 12 algebra target
+   operators. Do not add syntax merely to make a target operator reachable.
+2. Keep query relational `EXISTS` in scope and rule-body relational `EXISTS`
+   rejected. Ticket 04 owns both source oracles; Ticket 05 owns Semi/Anti
+   lowering; Ticket 06 must not reimplement either policy.
+3. Preserve `NULLS LAST` for both sort directions, unary source rules,
+   finite-`f64`/`i128`, and host-agnostic public contracts.
+4. If an executor needs a different decision, stop before code changes and
+   amend this ticket plus every affected downstream contract. A compatibility
+   shim is not an amendment.
+
+The unfinished-marker scan returned zero matches and `git diff --check`
+exited 0. Ticket 09 must repeat both on an immutable candidate; a dirty-tree
+result is not closeout evidence.
+
+## Final Independent RR — Decision Ledger Action
+
+No new product implementation is authorized here. The ten owner/consumer audit
+decisions in this ticket are accepted as packet decisions 21–30. Update
+`EXECUTION_LEDGER.md` to version and enumerate decisions 1–30; its current
+“twenty decisions” acceptance text is stale and must not silently omit these
+addenda. Ticket 09 verifies the exact decision count on the immutable candidate.
+## 2026-09-21 Final Implementation-Overlap Audit
+
+State remains `ACCEPTED`; this ticket owns decisions, not another compiler
+implementation. Current-source review did not invalidate the frontend-only
+boundary. In particular, numeric cardinality estimation, join-order search,
+physical operators, provider wiring, and runtime execution remain explicitly
+out of scope.
+
+Workers must preserve these non-duplication rules:
+
+1. Types owns expression/type/effect truth; Sema may only seal owner facts.
+2. Modules owns catalog/session/topology authority; Sema may not resolve names
+   with a second table.
+3. Binder owns lexical identity/capture/order; Sema may not remint binding IDs.
+4. Sema owns the checked document transaction and is the only input to Algebra.
+5. Planning remains semantic policy/result classification, not a physical query
+   optimizer.
+
+No status advance is authorized until Tickets 03-09 produce their own receipts.
+
+## SS-00F Current-State Contract Audit — 2026-09-21
+
+This is the authoritative current-state addendum for Ticket 00. Audit start was
+`main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a` with 174 short-status entries.
+The worktree was not clean, immutable, or attributable to one writer. No test
+result in this packet may therefore be promoted to release or CI closure.
+
+### Decision status
+
+- The frontend-only boundary remains valid. Current source does not justify
+  runtime execution, provider registry, physical operators, cardinality
+  estimation, join-order search, JSON-RPC, or LSP ownership here.
+- The single semantic path remains
+  `Surface -> HIR -> Binder/Types/Modules -> Sema -> Algebra -> Logic -> Planning`.
+  Algebra's new Sema-only production ingress confirms this direction; it does
+  not authorize a second raw-HIR normalizer in Logic, Planning, or Pipeline.
+- `SemanticDocumentV2` remains the only cross-item semantic document authority.
+  Binder owns lexical identity/captures, Types owns type/effect/row truth,
+  Modules owns catalog session/topology, and Sema only composes their proofs.
+- The source grammar remains six relation stages. Algebra may expose the pinned
+  twelve-family target vocabulary without inventing syntax to reach it.
+- Historical receipt evidence remains historical; dirty-overlay results are
+  checkpoints rather than release qualification.
+
+### Remaining Ticket 00 work
+
+Ticket 00 owns no production edit. Its only remaining closeout actions are:
+
+1. After Tickets 03-08 stop changing public boundaries, compare every final
+   public crate edge and API against these decisions; record a real decision
+   change here before implementing it.
+2. Ticket 09 freezes a clean candidate SHA and verifies that no public DTO can
+   forge Binder, Types, Modules, Sema, or Algebra authority.
+3. Reconcile the decision count and wording in `EXECUTION_LEDGER.md`; no worker
+   may silently redefine a decision in a downstream ticket.
+
+### Owner boundary and duplicate-work prohibition
+
+- Do not add a compatibility API beside a retired API.
+- Do not reconstruct Types rows/effects in Sema or Algebra.
+- Do not rebuild Modules View topology in Sema.
+- Do not infer Binder captures from names or Types traversal order.
+- Do not put physical planning or runtime substrate behind the Planning name.
+
+### Next SS / RR
+
+`SS-00G` occurs only when the last public consumer cut is complete. It records
+the candidate SHA, exact dirty state, final public edge set, and decision-ledger
+hash. RR then checks every decision against actual source and rejects closure on
+any compatibility shim, duplicated authority, undocumented scope change, or
+dirty-tree-only proof.

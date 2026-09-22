@@ -1,10 +1,12 @@
 #![allow(
     clippy::expect_used,
-    clippy::unwrap_used,
     clippy::indexing_slicing,
+    clippy::match_wildcard_for_single_variants,
     clippy::panic,
+    clippy::single_match,
+    clippy::unwrap_used,
     clippy::wildcard_enum_match_arm,
-    reason = "integration hellgate rail: assertion panics and intentional indexing"
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
 //! CLI/LSP parity hellgate over the ONE shared pipeline (ticket 08, D22, D10).

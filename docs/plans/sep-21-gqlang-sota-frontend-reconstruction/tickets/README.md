@@ -1,6 +1,39 @@
 # Ticket Index
 
-Status: `EXECUTION ACTIVE — 01-02 FROZEN OWNER RECEIPTS, 01 DOC-GATE DELTA OPEN, 03 REPAIR, 04 IMPLEMENTING, 05-09 OPEN`
+Status: `EXECUTION ACTIVE — 03/04 UPSTREAM CLOSURE OPEN; 05 NARROW OWNER GREEN; 06-09 OPEN`
+
+## Current Routing Override — `ecc38f59` + Shared Dirty Overlay
+
+This table overrides older live-work-order tables below. Older tables are
+provenance, not current status.
+
+| Ticket | State | Next executable work package | Dependency / stop condition |
+|---|---|---|---|
+| 00 | accepted | documentation consistency only | no runtime/provider/SDK scope expansion |
+| 01 | receipt-scoped | `RR-01F`: remove final Sema dev edge and rerun final-mode architecture/non-vacuity on candidate | do not rewrite the historical receipt |
+| 02 | owner-present | `SS-02G`: tracked-file/public-API inventory and frozen owner receipt; then RR span/integrity review | stop if a second syntax tree/formatter is proposed |
+| 03 | owner-present, delta open | `SS-03H`: cross-owner capture/topology/row mutation proof, public API inventory, one-kernel invocation oracle, frozen combined receipt | Types 89, Modules 130, Binder 54 and strict Clippy are current scoped evidence |
+| 04 | in progress, 87-test owner checkpoint | `SS-04W`: emit explicit Group/empty partition for implicit global aggregate Project, seal the downstream budget receipt, then finish transplant/public compile-fail matrix | Composition/View/EXISTS carriers are implemented; do not rebuild them or make Algebra infer missing producer semantics |
+| 05 | SS-05B package-green | `SS-05C`: remove consumed EXISTS conjunct after Semi/Anti; use sealed budget/iterative traversal; Group/Aggregate/Sort/EXISTS mutation matrix | begins after `SS-04W`; no caller budget/default and no V1 alias/shim |
+| 06 | planned/current compile RED | `SS-06B`: document-wide resolved rule program + iterative budgeted Tarjan; resolved graph adapter; delete `source.rs` EXISTS lowerer | begins after 04/05 contracts freeze |
+| 07 | planned/current compile RED | `SS-07B`: one compiled-document variant model, pipeline semantic-only cut, iterative planner walks, facade allowlist and external compile-fail | requires 05 and 06 focused GREEN |
+| 08 | planned | `SS-08B`: bounded NDJSON/wire diagnostics/exit policy, bounded CLI argv, facade-only consumers, atomic legacy deletion | requires 07 integrated |
+| 09 | closeout-only | `SS-09B`: one semantic manifest, `PACKET_BASE_SHA..HEAD_SHA` inventories, 13 current Semgrep findings/95 allow attributes disposition, external-consumer gate, exact-SHA hosted jobs, two-step attestation | requires committed 01-08 candidate |
+
+### Work remaining by acceptance layer
+
+1. **Code:** Ticket 03 capture-proof closure, Ticket 04 aggregate producer;
+   Ticket 05 test closure; all
+   implementation in 06-08; Ticket 09 closeout tooling.
+2. **Owner verification:** current Sema 87 and Algebra 4 are scoped GREEN only.
+   Logic/Pipeline/Planning/frontdoors need current V2 runs.
+3. **Integration verification:** Pipeline currently stops in Logic at one
+   import site for deleted Algebra V1 types; workspace and conformance are
+   therefore not qualified.
+4. **Candidate verification:** no clean immutable SHA exists. Receipts must bind
+   hashes, commands, test selection, and known deferred failures.
+5. **Remote closure:** exact required hosted jobs must be GREEN for the tested
+   SHA; queued/running is not unavailable and local GREEN is not remote GREEN.
 
 ## Canonical Order
 
@@ -16,6 +49,8 @@ Status: `EXECUTION ACTIVE — 01-02 FROZEN OWNER RECEIPTS, 01 DOC-GATE DELTA OPE
 10. [09-conformance-truth-sync-and-closeout](./09-conformance-truth-sync-and-closeout.md)
 
 Worker protocol: [WORKER_START_HERE.md](./WORKER_START_HERE.md)
+
+Canonical wave scheduler: [WAVE_EXECUTION_PLAN.md](../WAVE_EXECUTION_PLAN.md)
 
 The final live-tree reconciliation is in the last section of Tickets 03-09 and
 in [FINAL_AUDIT.md](../FINAL_AUDIT.md). It distinguishes existing owner
@@ -56,19 +91,21 @@ repository root.
 | 08 | 07 focused green on cutover stack | shared front door, bounded source/framing/graphs, deterministic recovery, V1 deletion | CLI/diagnostics/pipeline budget suites plus workspace compile |
 | 09 | immutable candidate contains 01-08 receipts | traceability, semantic family matrix, truth sync, exact-head receipt | complete final command list on one SHA |
 
-## Latest Live Work Order — `main@f9ec954` Plus Dirty Overlay
+## Latest Live Work Order — audited `main@f9ec954`, advanced to `main@ecc38f5` Plus Dirty Overlay
 
 Read each ticket's final live-audit section for file-level steps. This table is
 an ownership and no-duplicate-work index, not a replacement for its tests or
 receipt. A dirty implementation is never an accepted landed output by itself.
+The external mixed 64-path `ecc38f5` commit is recorded in the execution
+ledger; it does not turn any owner-local checkpoint into Ticket 03/04 closure.
 
 | Ticket | Reuse; do not rebuild | Next unproved acceptance |
 |---|---|---|
 | 00 | frozen frontend/runtime and six-stage/12-op scope | keep the rule-body relational EXISTS semantic exclusion synchronized with 03/04 source and direct-solver tests |
 | 01 | diagnostics-stdio rename, 14-member transition architecture gate and non-vacuous lint owner | retain historical receipt; execute the later doc-gate test on integrated source; final exception removal belongs to 09 |
-| 02 | parser, formatter, direct six-stage HIR and integrity traversal | retain its scoped receipt; the later owned-document proof delta is 03/04 work, not a new syntax tree |
-| 03 | one types kernel/registries and one modules validator/session; host key/proof owner code | prove sema host-call ingress/collision/SCC exclusion, remaining allocation/contextual negatives, mutation and fresh combined receipt; latest types 83/83 and modules 126/126 owner tests are scoped |
-| 04 | Binder sequential frames/captures and sema checked DTO skeleton; latest sema 43/43 owner suite includes Source/Filter/Project/Join/Sort and host Rule call; later Group key-only Binder/sema focused 2+2 | produce all nine root families from source in one checked transaction; Group aggregate-only partition authorization, Composition, Inline VIEW, EXISTS/graph subqueries, and strict Clippy (45 errors at prior snapshot) remain RED |
+| 02 | parser, formatter, direct six-stage HIR and integrity traversal; exact `FROM` name-span delta now owner-green at HIR 72/72, surface 206/206 plus strict Clippy | retain the historical receipt and new dirty fingerprint separately; complete downstream integration without adding a second syntax tree |
+| 03 | one types kernel/registries and one modules validator/session; host key/proof, intrinsic effects, deferred rows, and exact EXISTS capture inputs | add cross-owner capture-vector proof, remaining owner mutations, public API inventory, and frozen combined receipt; latest Types 87/87 and Modules 129/129 owner tests are scoped |
+| 04 | Binder sequential frames/captures and sema checked DTO skeleton; Binder 53/53; current sema 59/59 plus strict Clippy (receipt remains at prior 56 fingerprint); exact `FROM`/graph ingress, Scalar aggregate reject, Group checked-HIR ancestry/tamper, non-key aggregate/collision, Rule polarity, and partial Composition/EXISTS type ingress have owner oracles | Sema must materialize all nine roots, Composition, Inline View, Query EXISTS/graph subforms, generated origins, and sealed identities; remove future-only dead-code expects when wired; refresh receipt |
 | 05 | one 12-op algebra and existing owner suites | migrate raw-HIR normalizer to sealed six-stage relation input, preserve group/correlation, compile all four owner suites |
 | 06 | existing Tarjan/stratifier and graph/witness checks | consume full typed rule set and sealed graph IDs; prove SCC/polarity and explicit transitive bounds from source |
 | 07 | planning vocabulary/traversals | cover all nine semantic item kinds including Meta/Composition, preserve result/explain contracts, cut pipeline HIR/Binder/types edges, expose only curated facade; 89 V1 tests are not proof |
@@ -190,3 +227,118 @@ must include a source-symbol and test-file inventory demonstrating that a
 migrated algorithm or suite has one active owner after the ticket. A statement
 such as `no duplicates observed` without the command and inspected paths is not
 a receipt.
+
+## Final Audit Checkpoint — `main@ecc38f59` + Dirty Overlay
+
+The final section of every Ticket 00–09 is the authoritative worker handoff for
+current source. It records what to reuse, the implementation order, acceptance
+commands, and stop conditions. Older sections remain historical rationale and
+must not override a later count or gate.
+
+- owner GREEN: HIR 72, Surface 206, Binder 53, Types 87, Modules 129, current Sema 64;
+  their combined strict all-target Clippy lane exits 0;
+- reusable V1 algorithm GREEN only: Logic 49, Planning 89;
+- integration RED: Algebra four-suite compilation with 74 retired-HIR errors,
+  and Pipeline compilation with 25 library/29 library-test V1 errors;
+- proof rail GREEN only in transition mode: 21 final + 22 transitional normal
+  edges and one transitional dev edge;
+- closeout absent: receipts 05–08 and an immutable clean candidate do not exist.
+
+The latest `cargo fmt --all --check` exits 0 and supersedes the earlier
+23/27-file dirty-overlay format failures. This is current-tree format evidence,
+not an immutable receipt. Final architecture mode remains RED on all 22 normal
+and one dev transition edges.
+
+Required serial critical path is `03 capture receipt -> 04 -> 05 -> 06 -> 07 -> 08 -> 09`. Tickets
+05/06 may overlap only after Ticket 04 freezes the complete semantic contracts.
+No worker may use a passing V1 owner count to skip the typed consumer cutover.
+
+## Final Multi-Angle RR — Newly Pinned Blockers
+
+The detailed owner work is in each ticket's final RR section. This index pins
+the dependency-impacting deltas so executors do not rediscover or duplicate
+them:
+
+| Ticket | Newly pinned work | Duplicate work forbidden |
+|---|---|---|
+| 00 | ledger accepts decisions 1–30 | new scope registry |
+| 01 | retain transition checker; later flip existing gate to final | second architecture checker |
+| 02 | fingerprint/format the existing name-span delta and untracked test | second source-name span |
+| 03 | Types-owned deferred multi-field Query row; exact neutral EXISTS captures; View topology-before-materialization | per-LET Types calls, Sema-created row types, second validator |
+| 04 | sealed generated producer origins, checked scan uses, local graph targets, registry-complete closed carriers | raw Composition IDs, fake expression origins, host fallback |
+| 05 | lower only frozen Sema relations/captures; account for all 74 retired-HIR errors | resolver/aggregate/capture DTO clones |
+| 06 | adapt existing Tarjan/stratification/witness algorithms and delete final Logic→Algebra edge | second SCC/graph resolver |
+| 07 | iterative shared algebra fold; structural compiled variants; full public API allowlist | recursive walkers, universal optional plan, undefined authority hash |
+| 08 | current-head inventory; total bounded request/response/span/exit contract; output amplification caps | stale 244-line inventory, hidden transport caps |
+| 09 | one manifest SSOT; recursive tracked hygiene; base-to-head inventory; both facade scripts in CI; two-SHA evidence | duplicate example registries, self-referential receipt SHA |
+
+Critical path remains `03 producer delta -> 04 -> 05 -> 06 -> 07 -> 08 -> 09`.
+Ticket 04 must not fake the missing Ticket 03 row/capture authority to preserve
+the older `04 -> ...` diagram.
+## 2026-09-21 Final Audit Routing
+
+Current dirty-overlay checkpoint:
+
+- 00 accepted;
+- 01-02 receipt-scoped verified with unqualified deltas;
+- 03 repair: Types 87/87, Modules 129/129, topology producer and Types-owned
+  EXISTS effect/order implemented;
+  exact capture authority, topology permutation/public-API mutations, Sema
+  consumption, and frozen receipt remain open;
+- 04 implementing: Binder 53/53, Sema 64/64, Query-only Composition source
+  path implemented; non-Query Composition, Inline View, Query EXISTS and
+  nine-root receipt remain open;
+- 05 Algebra cutover open and currently 74 test compile errors;
+- 06 Logic adapter open despite 49/49 direct tests;
+- 07 public assembler/facade/Pipeline cutover open despite 89/89 Planning tests;
+- 08 bounded front-door parity open;
+- 09 final conformance/clean-candidate closeout open.
+
+Read the last `Final Current-Tree Audit` section in the assigned ticket before
+editing. It identifies existing owner implementations, duplicate-work stop
+conditions, exact next work, and required proof. Historical green counts do not
+override a later integration RED.
+
+## SS-03E / SS-04E Routing Supersession — 2026-09-21
+
+- Ticket 03 Types owner checkpoint is 88/88 plus strict Clippy GREEN. It proves
+  exact earlier-row reuse, not topology-derived Inline View ordering.
+- Ticket 04 Sema owner checkpoint is 66/66 plus strict Clippy GREEN. Query
+  relational EXISTS now has sealed nested relation/correlation semantics.
+- The next worker must take Inline View's single Modules-proof ->
+  Types-pre-evaluation-order -> Sema-cache sequence; do not reopen Query EXISTS
+  with a second relation materializer or start Tickets 05–09 early.
+
+## SS-03F / SS-04F Routing Supersession — 2026-09-21
+
+- Ticket 03 now has a validated relation pre-evaluation input/kernel checkpoint:
+  89/89 Types tests and strict Clippy GREEN. It validates a projected order; it
+  does not replace Modules topology authority.
+- Ticket 04 now has a same-session Inline View checkpoint: 130/130 Modules and
+  69/69 Sema tests, strict Clippy GREEN. The completed slice is direct View
+  edge -> opaque Modules proof -> Types prewalk -> asset-keyed cache ->
+  `family=None` semantic-edge equality -> finalization.
+- Do not start Ticket 05 from this checkpoint. Ticket 04 remains implementing
+  until the documented mutation/e2e/external-View/Composition obligations have
+  a frozen receipt. Global diff check has one externally owned trailing-space
+  failure; scoped changed-path diff check is GREEN.
+
+## SS-04G Routing Supersession — 2026-09-21
+
+- The raw Composition source tuple is retired. Any worker must consume the
+  opaque `ResolvedCompositionSourceIdV2` carried by an exact Binder-derived
+  binding; do not restore a coordinate constructor or name-keyed workaround.
+- The next Ticket 04 worker owns non-Query Composition source producers/bodies
+  and their authoritative row/capability contracts. It must extend the sealed
+  transaction rather than branch around it.
+- Ticket 05 remains blocked on the still-incomplete Ticket 04 semantic output
+  and its required frozen receipt.
+
+## SS-04H Routing Supersession — 2026-09-21
+
+- Generated SAMPLE/FIND output must use `OutputColumnOriginV2::Generated` with
+  its exact producer item. Do not restore a fake expression key to satisfy a
+  relation-output constructor.
+- The next implementation unit is the single Binder-first graph-target resolver
+  and `Host | Composition` carrier. It must be shared by FIND, SAMPLE scope,
+  CHECK, and EXPLAIN; separate local graph resolvers are prohibited.
