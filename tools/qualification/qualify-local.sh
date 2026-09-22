@@ -39,10 +39,12 @@ cleanup() {
 }
 trap cleanup EXIT
 git worktree add --detach "$checkout" "$sha" >&2
-mkdir -p "$repo_root/target"
+receipt_dir="$repo_root/target/qualification/$sha"
+build_dir="$receipt_dir/build"
+mkdir -p "$build_dir"
 # Frontdoor parity resolves the binary below the checkout's target directory.
-# Keep that path valid while sharing the ignored build cache across worktrees.
-ln -s "$repo_root/target" "$checkout/target"
+# Keep that path valid with a build cache isolated by source commit.
+ln -s "$build_dir" "$checkout/target"
 
 # 3. Toolchain record (stdout only; never added to receipt.json).
 echo "qualify-local: pinned toolchain:"
@@ -54,7 +56,7 @@ command -v just >/dev/null 2>&1 || { echo "qualify-local: just is required but n
 just --version
 
 # 4. Run the single composition entry point against the pinned source. The
-# checkout's ignored target symlink points to build outputs outside its tree.
+# checkout's ignored target symlink points to source-pinned build outputs.
 start="$(date +%s)"
 set +e
 (cd "$checkout" && just ci)
@@ -68,7 +70,7 @@ duration_s=$((end - start))
 # source-status check.
 if [ "$(git -C "$checkout" rev-parse HEAD)" != "$sha" ] || \
    [ "$(git -C "$checkout" rev-parse HEAD^{tree})" != "$tree" ] || \
-   [ "$(readlink "$checkout/target")" != "$repo_root/target" ] || \
+   [ "$(readlink "$checkout/target")" != "$build_dir" ] || \
    [ -n "$(git -C "$checkout" status --porcelain --untracked-files=all -- . ':!target')" ]; then
     echo "qualify-local: pinned checkout changed during qualification" >&2
     exit_code=1
@@ -80,8 +82,6 @@ if [ "$(git -C "$repo_root" rev-parse HEAD)" != "$sha" ] || \
 fi
 
 # 5. Receipt with exactly the keys sha/tree/cmds/exit/duration_s.
-receipt_dir="$repo_root/target/qualification/$sha"
-mkdir -p "$receipt_dir"
 python3 - "$receipt_dir/receipt.json" "$sha" "$tree" "$duration_s" "$exit_code" <<'PY'
 import json
 import os
