@@ -10,6 +10,25 @@ use quanta_gqlang_v2_hir::{
     SpanV1,
 };
 
+fn assert_exact_child_passes(test_name: &str, env_name: &str, mode: &str) {
+    let output = std::process::Command::new(std::env::current_exe().expect("test binary"))
+        .args(["--exact", test_name, "--nocapture"])
+        .env(env_name, mode)
+        .output()
+        .expect("child process");
+    assert!(
+        output.status.success(),
+        "{test_name} {mode} child status: {}; stderr: {}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured;"),
+        "{test_name} {mode} selected zero or multiple tests: {stdout}"
+    );
+}
+
 #[test]
 fn raw_deep_drop_child() {
     let Some(mode) = std::env::var_os("QGLANG_RAW_HIR_DROP_CHILD") else {
@@ -76,12 +95,7 @@ fn raw_deep_drop_child() {
 #[test]
 fn direct_raw_hir_roots_drop_without_stack_abort() {
     for mode in ["relation", "document", "value", "bool", "shape", "mixed"] {
-        let status = std::process::Command::new(std::env::current_exe().expect("test binary"))
-            .args(["--exact", "raw_deep_drop_child", "--nocapture"])
-            .env("QGLANG_RAW_HIR_DROP_CHILD", mode)
-            .status()
-            .expect("child process");
-        assert!(status.success(), "raw HIR {mode} child status: {status}");
+        assert_exact_child_passes("raw_deep_drop_child", "QGLANG_RAW_HIR_DROP_CHILD", mode);
     }
 }
 
@@ -199,12 +213,7 @@ fn extreme_owned_hir_child() {
 
 #[test]
 fn extreme_owned_hir_rejects_without_abort() {
-    let status = std::process::Command::new(std::env::current_exe().expect("test binary"))
-        .args(["--exact", "extreme_owned_hir_child", "--nocapture"])
-        .env("QGLANG_DEEP_HIR_CHILD", "1")
-        .status()
-        .expect("child process");
-    assert!(status.success(), "deep HIR child status: {status}");
+    assert_exact_child_passes("extreme_owned_hir_child", "QGLANG_DEEP_HIR_CHILD", "1");
 }
 
 #[test]

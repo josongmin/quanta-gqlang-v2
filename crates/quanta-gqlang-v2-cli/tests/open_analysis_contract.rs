@@ -75,25 +75,18 @@ fn hard_source_error_is_deterministic_and_source_anchored() {
 #[test]
 fn file_ingress_enforces_exact_utf8_source_budget() {
     const LIMIT: usize = 1_048_576;
-    let path = std::env::temp_dir().join(format!(
-        "qglang-cli-boundary-{}-{}.gql",
-        std::process::id(),
-        std::thread::current().name().unwrap_or("test")
-    ));
     let suffix = "show capabilities";
     let mut exact = " ".repeat(LIMIT - suffix.len());
     exact.push_str(suffix);
-    fs::write(&path, exact).expect("write exact fixture");
-    let path_text = path.to_str().expect("temp path UTF-8");
-    let exact_output = run_cli_argv_v1(&["query", "--file", path_text]);
+    let file = TempFileV1::new("source-budget", exact.as_bytes());
+    let exact_output = run_cli_argv_v1(&["query", "--file", file.text()]);
     assert_eq!(exact_output.status.code(), Some(1));
     assert!(cli_stdout_v1(&exact_output).contains("analysis.status=incomplete"));
 
-    fs::write(&path, "x".repeat(LIMIT + 1)).expect("write over-limit fixture");
-    let over_output = run_cli_argv_v1(&["query", "--file", path_text]);
+    fs::write(&file.path, "x".repeat(LIMIT + 1)).expect("write over-limit fixture");
+    let over_output = run_cli_argv_v1(&["query", "--file", file.text()]);
     assert_eq!(over_output.status.code(), Some(2));
     assert!(cli_stderr_v1(&over_output).contains("input exceeds max_source_bytes"));
-    fs::remove_file(path).expect("remove fixture");
 }
 
 /// CLI-02: the shared trim-empty guard fails closed through BOTH ingress
@@ -137,18 +130,11 @@ fn empty_inputs_reject_at_the_shared_ingress_guard() {
     }
 }
 
-/// CLI-02 positive neighbors: non-empty inline and file inputs continue past
-/// usage validation into analysis (exit 1 incomplete), proving the guard
-/// rejects emptiness rather than the ingress mode.
+/// CLI-02 file positive neighbor: a non-empty file continues past usage
+/// validation into analysis. The inline positive is covered by
+/// `query_reports_incomplete_without_fabricating_a_plan`.
 #[test]
-fn non_empty_inputs_pass_the_shared_ingress_guard() {
-    let inline = run_cli_argv_v1(&["query", "show capabilities"]);
-    assert_eq!(inline.status.code(), Some(1));
-    assert!(cli_stderr_v1(&inline).is_empty());
-    assert!(cli_stdout_v1(&inline)
-        .lines()
-        .any(|line| line == "analysis.status=incomplete"));
-
+fn non_empty_file_input_passes_the_shared_ingress_guard() {
     let file = TempFileV1::new("non-empty", b"show capabilities");
     let filed = run_cli_argv_v1(&["query", "--file", file.text()]);
     assert_eq!(filed.status.code(), Some(1));

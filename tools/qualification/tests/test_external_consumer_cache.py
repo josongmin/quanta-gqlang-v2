@@ -1,6 +1,7 @@
 """Custody and semantic-contract checks for the external-consumer gate."""
 
 import json
+import os
 import subprocess
 import tempfile
 import unittest
@@ -255,10 +256,24 @@ pub fn semantic_receipt(_: Used) {}
             root = Path(directory) / "cache"
             with lock_cache(root, REPOSITORY_ROOT):
                 fixture = materialize_fixture(root)
+                files = [
+                    fixture / "Cargo.toml",
+                    fixture / "Cargo.lock",
+                    fixture / "src" / "main.rs",
+                ]
+                stable_mtime = 1_700_000_000_000_000_000
+                for path in files:
+                    os.utime(path, ns=(stable_mtime, stable_mtime))
+                self.assertEqual(materialize_fixture(root), fixture)
+                self.assertTrue(all(path.stat().st_mtime_ns == stable_mtime for path in files))
+                expected_contents = {path: path.read_bytes() for path in files}
+                (fixture / "Cargo.toml").write_text("[package]\nname = 'tampered'\n")
+                (fixture / "Cargo.lock").write_text("tampered\n")
                 (fixture / "src" / "main.rs").write_text("fn main() { panic!() }\n")
             with lock_cache(root, REPOSITORY_ROOT):
                 replay = materialize_fixture(root)
                 self.assertEqual(replay, fixture)
+                self.assertEqual({path: path.read_bytes() for path in files}, expected_contents)
                 self.assertEqual(
                     (replay / "src" / "main.rs").read_bytes(),
                     (FIXTURE_DIR / "src" / "main.rs").read_bytes(),

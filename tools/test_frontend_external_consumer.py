@@ -62,7 +62,6 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -253,6 +252,12 @@ class InfrastructureError(RuntimeError):
 
 def sha256_of(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def write_bytes_if_changed(path: Path, content: bytes) -> None:
+    """Keep a warm Cargo fixture stable when its checked source is unchanged."""
+    if not path.is_file() or path.read_bytes() != content:
+        path.write_bytes(content)
 
 
 def run(command: Sequence[str], cwd: Path, env: Dict[str, str]) -> subprocess.CompletedProcess:
@@ -567,11 +572,12 @@ def materialize_fixture(cache_root: Path) -> Path:
         raise InfrastructureError(
             "the fixture manifest must carry exactly one %r dependency line" % FACADE_DEP_LINE
         )
-    manifest.write_text(
-        text.replace(FACADE_DEP_LINE, 'path = "%s"' % (FACADE_DIR,))
+    write_bytes_if_changed(
+        manifest,
+        text.replace(FACADE_DEP_LINE, 'path = "%s"' % FACADE_DIR).encode(),
     )
-    shutil.copyfile(str(FIXTURE_LOCKFILE), str(fixture / "Cargo.lock"))
-    (src / "main.rs").write_bytes((FIXTURE_DIR / "src" / "main.rs").read_bytes())
+    write_bytes_if_changed(fixture / "Cargo.lock", FIXTURE_LOCKFILE.read_bytes())
+    write_bytes_if_changed(src / "main.rs", (FIXTURE_DIR / "src" / "main.rs").read_bytes())
     return fixture
 
 
@@ -855,7 +861,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     finally:
         if fixture is not None and positive_main is not None:
             try:
-                (fixture / "src" / "main.rs").write_bytes(positive_main)
+                write_bytes_if_changed(fixture / "src" / "main.rs", positive_main)
             except OSError as error:
                 infrastructure.append("could not restore the cached positive fixture: %s" % error)
         if cache_lock is not None:

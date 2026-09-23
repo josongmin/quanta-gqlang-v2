@@ -8,7 +8,7 @@ Loading model:
 - `CLAUDE.md`: compact Claude bootstrap importing `@AGENTS.md` once.
 - `.cursor/rules/*.mdc`: Cursor rules attached by file glob.
 - `.claude/rules/*.md`: Claude rules attached by `paths` frontmatter.
-- `docs/`, plans, receipts, and detailed contracts: on demand through the routes in `AGENTS.md`.
+- `docs/` and detailed contracts: on demand through the routes in `AGENTS.md`.
 
 Edit only `sources/`, `targets.json`, or the manager itself. The root instruction files and scoped rules are generated outputs.
 

@@ -306,16 +306,26 @@ fn deep_module_catalog_pack_graphs_are_stack_safe() {
         return;
     }
 
-    let status = std::process::Command::new(std::env::current_exe().expect("test binary"))
+    let output = std::process::Command::new(std::env::current_exe().expect("test binary"))
         .args([
             "--exact",
             "deep_module_catalog_pack_graphs_are_stack_safe",
             "--nocapture",
         ])
         .env(STACK_SAFETY_CHILD, "1")
-        .status()
+        .output()
         .expect("deep modules child process starts");
-    assert!(status.success(), "deep modules child status: {status}");
+    assert!(
+        output.status.success(),
+        "deep modules child status: {}; stderr: {}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured;"),
+        "deep modules child selected zero or multiple tests: {stdout}"
+    );
 }
 
 use std::fmt::Write as _;

@@ -32,8 +32,9 @@ the same-SHA warm run took 137 s (both exit 0). Clippy and nextest reused
 artifacts; front-door/Cargo lock contention varied between runs. The external
 consumer gate now keeps a separate fixture and build cache at the fixed
 `target/external-consumer-gate/` path. It locks this path, checks an owner
-marker, restores the positive fixture before each run, and refuses redirected
-or unowned cache state. The locked build executes only the exact absolute
+marker, restores drifted fixture bytes without rewriting unchanged files, and
+refuses redirected or unowned cache state. Preserving unchanged mtimes keeps
+warm Cargo artifacts reusable. The locked build executes only the exact absolute
 binary path emitted by Cargo for that fixture and rejects missing, redirected,
 duplicate, relative, or cache-external artifacts. Cargo parses the complete
 dependency tables before the gate accepts the facade-only path seam; the

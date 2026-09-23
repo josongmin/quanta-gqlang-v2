@@ -55,14 +55,21 @@ fn deep_shape_formatter_child() {
 
 #[test]
 fn deep_shape_formatter_is_stack_safe() {
-    let status = std::process::Command::new(std::env::current_exe().expect("test binary"))
+    let output = std::process::Command::new(std::env::current_exe().expect("test binary"))
         .args(["--exact", "deep_shape_formatter_child", "--nocapture"])
         .env("QGLANG_DEEP_SHAPE_FORMAT_CHILD", "1")
-        .status()
+        .output()
         .expect("child process");
     assert!(
-        status.success(),
-        "deep shape formatter child status: {status}"
+        output.status.success(),
+        "deep shape formatter child status: {}; stderr: {}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured;"),
+        "deep shape formatter child selected zero or multiple tests: {stdout}"
     );
 }
 
