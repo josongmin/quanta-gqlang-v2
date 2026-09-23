@@ -2,22 +2,27 @@
 
 > 2026-09-23 addendum: the prior V2 reconstruction checkpoints below are historical source-bound observations, not proof of the subsequent V3 execution seam. [Ticket 10a](./tickets/10a-v3-frontend-execution-contract.md) and the [V3 contract](../../contracts/frontend-execution-v3.md) own the current producer cutover; its local and paired-repo qualification must be recorded separately.
 
-Status: `REPO_LOCAL_CLOSED ON QGLANG TESTED SOURCE 08e5ce5; HOSTED CI UNAVAILABLE; SEMANTICA CONSUMER OPEN`
+Status: `FRONTEND LOCAL QUALIFICATION GREEN AT 08e5ce5; TICKET 09 FORMAL CLOSEOUT OPEN; HOSTED CI UNAVAILABLE; SEMANTICA CONSUMER OPEN`
 
-## Current closeout — 2026-09-24
+## Current local qualification — 2026-09-24
 
-Tickets 01–09 are integrated for this repository's frontend-only scope. The
-clean source pin `08e5ce5ab05e8af141985d3b5f54bbff4a67e97f` passed
+Tickets 01–08 and the Ticket 09 source-policy oracles are integrated for this
+repository's frontend-only scope. The clean source pin
+`08e5ce5ab05e8af141985d3b5f54bbff4a67e97f` passed
 `just qualify-local` (`just ci`, 1,177/1,177 nextest; exact SHA/tree and all
 gate counts in [Receipt 09](./receipts/09.md)). Ticket 09 records the 18-family
 owner audit and F01–F37 disposition. This attestation is docs-only relative to
 the tested source; the old `d9d0f28` checkpoint below is historical.
 
-`REPO_LOCAL_CLOSED` means qglang syntax, Sema, normalized IR, facade, CLI,
-and private diagnostics stdio passed the local gate. GitHub Actions is not
-configured. Semantica V3 admission/consumer execution, provider/generation,
-result/receipt, deployment, and activation remain outside this packet and
-are **not** product-complete claims.
+The local gate qualifies qglang syntax, Sema, normalized IR, facade, CLI,
+and private diagnostics stdio at the tested source. It does not establish
+Ticket 09's original formal closeout requirements: the executable 18-root +
+two-supplemental semantic manifest, current-source mutation/traceability
+inventory, and source-current 01–08 receipts have not been demonstrated by
+Receipt 09. Do not promote the passing gate or prose F01–F37 index to that
+separate status. GitHub Actions is not configured. Semantica V3 admission,
+provider/generation, result/receipt, deployment, and activation are outside
+this repository's proof.
 
 ## Historical checkpoint — 2026-09-23
 

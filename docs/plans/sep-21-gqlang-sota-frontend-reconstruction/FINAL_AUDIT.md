@@ -2,10 +2,12 @@
 
 Status: `HISTORICAL 2026-09-21 FINDING LEDGER; CURRENT ROUTING IN README/TICKET 09`
 
-Current override (2026-09-24): Ticket 09 maps F01–F37 to present owner rails
+Current override (2026-09-24): Ticket 09 indexes F01–F37 against present owner rails
 and intentional scope exclusions; clean source
 `08e5ce5ab05e8af141985d3b5f54bbff4a67e97f` passed local exact-SHA
-qualification (Receipt 09). The original finding rows below describe the
+qualification (Receipt 09). This prose index is not the executable/formal
+traceability inventory required by the original Ticket 09 Definition of Done;
+formal closeout remains open. The original finding rows below describe the
 original audit base, not current open defects. Semantica consumer proof is
 separate. The following 2026-09-23 override is historical.
 

@@ -2,18 +2,22 @@
 
 > 2026-09-23 V3 producer extension: [Ticket 10a](./10a-v3-frontend-execution-contract.md) adds source-bound digest/literal golden vectors, facade-only positive and compile-fail proof, and exact-source local qualification. Older Ticket 09 receipts do not qualify the new execution API. A Semantica consumer build and two-repo E2E require separate paired source pins; producer-local GREEN is not product GREEN.
 
-Status: `REPO_LOCAL_CLOSED AT TESTED SOURCE 08e5ce5; HOSTED CI UNAVAILABLE; SEMANTICA CONSUMER/PRODUCT E2E OPEN`
+Status: `SOURCE/OWNER AUDIT AND LOCAL GATE GREEN AT 08e5ce5; ORIGINAL FORMAL CLOSEOUT OPEN; HOSTED CI UNAVAILABLE; SEMANTICA CONSUMER/PRODUCT E2E OPEN`
 
-Current closeout (2026-09-24): `tested_sha=08e5ce5ab05e8af141985d3b5f54bbff4a67e97f`,
+Current local qualification (2026-09-24): `tested_sha=08e5ce5ab05e8af141985d3b5f54bbff4a67e97f`,
 tree `4acb1c548ebbc1399655a5a65b33f1425622f37c`, clean exact-SHA
 `just qualify-local` receipt `exit=0`, 1,177/1,177 nextest, 5/5 doctests,
 frontdoor parity 8/8, facade positive 1/1, privacy 15/15, public/semantic
 roots 89/89, final architecture and non-vacuous policy gates green. F01–F37
-disposition and the 18-family/owner audit are indexed below. This is the
-frontend packet's **repo-local** closeout only; GitHub Actions is not
-configured, and the Semantica V3 consumer and runtime result/receipt remain
-separate. The post-test attestation changes docs/receipts only; validate its
-diff against `tested_sha`, not by claiming the docs commit was the tested SHA.
+disposition and the 18-family/owner audit are indexed below. This qualifies
+the frontend source and scoped owner-oracle audit, not the packet's original
+formal Definition of Done. The executable 18-root + two-supplemental semantic
+manifest, mutation/traceability inventory, and source-current 01–08 receipt
+reconciliation are not established by the local gate or prose index below.
+GitHub Actions is not configured, and the Semantica V3 consumer and runtime
+result/receipt remain separate. The post-test attestation changes
+docs/receipts only; validate its diff against `tested_sha`, not by claiming
+the docs commit was the tested SHA.
 
 ### Current 18-family/owner audit — 2026-09-24
 
@@ -51,10 +55,10 @@ Modules/Sema owner rail, add one targeted owner
 assertion, not another broad source matrix. The older status and commands
 below are historical source-pinned packet notes.
 
-### F01–F37 current-source disposition
+### F01–F37 current-source owner-oracle index (not formal traceability)
 
 The finding descriptions and original owners remain in
-[`FINAL_AUDIT.md`](../FINAL_AUDIT.md). This closure index points to existing
+[`FINAL_AUDIT.md`](../FINAL_AUDIT.md). This owner-oracle index points to existing
 owner assertions, not a second test registry or a claim that historical
 mutation receipts were rerun. The owner rails and added F06 source assertion
 are together in the clean `08e5ce5` source tree qualified by Receipt 09
@@ -103,6 +107,8 @@ are together in the clean `08e5ce5` source tree qualified by Receipt 09
 This table does not promise physical query optimization, a JSON-RPC LSP,
 runtime execution of unsupported V3 families, hosted CI, or the Semantica
 consumer cutover.
+
+### Historical checkpoint and superseded implementation instructions
 
 Current source checkpoint (2026-09-23): `main@d9d0f28a8365e6918dc8c7d0c552a8e277a838f0`,
 tree `9a2bcb4f9f64226d6539339c437922465f5fe483`, was clean and equal
@@ -195,8 +201,9 @@ remaining P1/P2 and family-level semantic disposition is still open.
 The legacy “Files To Add Or Move,” exact test filenames, and forced per-family
 matrix below are frozen planning hypotheses. They are **not** an instruction
 to duplicate the current Surface corpus, executable facade gate, or proof
-ledger. A current behavioral gap still blocks this ticket; the clean `just ci`
-receipt alone does not close it.
+ledger. At this historical checkpoint a behavioral gap still blocked this
+ticket; the later local gate and source-policy oracles do not by themselves
+complete the original formal closeout criteria.
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 

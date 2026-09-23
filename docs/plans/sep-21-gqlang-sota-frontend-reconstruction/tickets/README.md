@@ -2,15 +2,17 @@
 
 Breaking V3 frontend producer inventory and implementation: [Ticket 10a — V3 frontend execution contract](./10a-v3-frontend-execution-contract.md). [Ticket 10 — Downstream serving interop](./10-downstream-serving-interop.md) is historical cross-repository background; its V2 migration and old source pins are not the current producer contract. Neither ticket is qualified by the frontend V2 closeout receipts.
 
-Status: `01-09 REPO_LOCAL_CLOSED ON TESTED SOURCE 08e5ce5; HOSTED CI UNAVAILABLE; SEMANTICA CONSUMER OPEN`
+Status: `01-08 SOURCE INTEGRATED; 08e5ce5 LOCAL GATE GREEN; TICKET 09 FORMAL CLOSEOUT OPEN; SEMANTICA CONSUMER OPEN`
 
 Current override (2026-09-24): Ticket 09's 18-family/owner audit and F01–F37
-disposition are complete for the qglang frontend scope. The clean source
+prose disposition are recorded for the qglang frontend scope. The clean source
 `08e5ce5ab05e8af141985d3b5f54bbff4a67e97f` passed exact-SHA
 `just qualify-local`; [Receipt 09](../receipts/09.md) pins the tree and all
 selected/executed counts. The post-test status/receipt edits are docs-only.
-The earlier `d9d0f28` routing below is historical. No hosted CI or Semantica
-runtime/product closure is implied.
+The earlier `d9d0f28` routing below is historical. The original Ticket 09
+manifest, mutation/traceability, and source-current receipt closeout criteria
+remain unproven; local gate GREEN is not formal packet closure. No hosted CI
+or Semantica runtime/product closure is implied.
 
 ## Historical routing — source `d9d0f28` (2026-09-23)
 

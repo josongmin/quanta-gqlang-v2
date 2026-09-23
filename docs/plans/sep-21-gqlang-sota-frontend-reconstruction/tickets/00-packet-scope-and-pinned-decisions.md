@@ -2,7 +2,7 @@
 
 > 2026-09-23 execution-contract addendum: the frontend-only ownership rules below remain in force. The subsequent breaking V3 **execution** facade contract is specified in [`docs/contracts/frontend-execution-v3.md`](../../../contracts/frontend-execution-v3.md) and implemented under [Ticket 10a](./10a-v3-frontend-execution-contract.md). This does not reopen the V2 syntax/sema/planning cut or authorize runtime/provider/SDK ownership here.
 
-Status: `SCOPE ACCEPTED; 01-09 REPO_LOCAL_CLOSED ON TESTED SOURCE 08e5ce5; SEMANTICA CONSUMER OPEN`
+Status: `SCOPE ACCEPTED; 08e5ce5 FRONTEND LOCAL GATE GREEN; TICKET 09 FORMAL CLOSEOUT OPEN; SEMANTICA CONSUMER OPEN`
 
 Current override (2026-09-24): the frontend-only pinned decisions below are
 unchanged. [Receipt 09](../receipts/09.md) qualifies clean source
