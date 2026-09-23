@@ -607,16 +607,24 @@ fn two_authored_mutual_rules_reach_one_checked_program() {
 #[test]
 fn supplemental_units_are_explicit_and_unsupported_source_fails_closed() {
     let authority = closed_authority();
+    assert_eq!(SUPPLEMENTAL_SOURCES_V2.len(), 2);
     let value = compile_source_document_v3(
         SourceIdV2::from_raw(300),
         SUPPLEMENTAL_SOURCES_V2[0],
         &authority,
     )
     .expect("value declaration compiles");
-    assert!(matches!(
-        value.items().first().expect("one value declaration"),
-        CompiledItemV2::NoPlan { .. }
-    ));
+    let [CompiledItemV2::NoPlan {
+        item_id: value_id,
+        reason: value_reason,
+    }] = value.items()
+    else {
+        panic!("value declaration must have exactly one checked no-plan item");
+    };
+    assert_eq!(value_reason.code(), "value_declaration");
+    assert_eq!(value.item(*value_id), value.items().first());
+    assert!(value.rule_program().is_none());
+    assert!(value.execution().items().is_empty());
 
     let rule = compile_source_document_v3(
         SourceIdV2::from_raw(301),
@@ -624,17 +632,30 @@ fn supplemental_units_are_explicit_and_unsupported_source_fails_closed() {
         &authority,
     )
     .expect("rule compiles");
-    assert!(matches!(
-        rule.items().first().expect("one rule declaration"),
-        CompiledItemV2::Planned(planned)
-            if matches!(planned.as_ref(), PlannedItemV2::RuleMember(_))
-    ));
-    assert!(rule.rule_program().is_some());
+    let [CompiledItemV2::Planned(planned)] = rule.items() else {
+        panic!("rule declaration must have exactly one checked member item");
+    };
+    let PlannedItemV2::RuleMember(member) = planned.as_ref() else {
+        panic!("rule declaration must retain its program member reference");
+    };
+    let program = rule.rule_program().expect("one document-wide rule program");
+    assert_eq!(program.members(), [*member]);
+    assert_eq!(member.member_item_id(), planned.item_id());
+    assert_eq!(member.program_id(), program.program_id());
+    assert!(rule.execution().items().is_empty());
 
-    assert!(compile_source_document_v3(
-        SourceIdV2::from_raw(302),
-        UNSUPPORTED_SOURCE_V2,
-        &authority
-    )
-    .is_err());
+    let error =
+        compile_source_document_v3(SourceIdV2::from_raw(302), UNSUPPORTED_SOURCE_V2, &authority)
+            .expect_err("unsupported root must fail before a compiled document exists");
+    let quanta_gqlang_v2_frontend_contract::FrontendTransactionErrorV2::Document(failure) = error
+    else {
+        panic!("unsupported source must fail in the document transaction");
+    };
+    let [diagnostic] = failure.diagnostics() else {
+        panic!("unsupported source must emit exactly one diagnostic");
+    };
+    assert_eq!(diagnostic.code(), "surface.parse.unexpected_token");
+    assert_eq!(diagnostic.primary().source_id, SourceIdV2::from_raw(302));
+    assert_eq!(diagnostic.primary().span.start, 0);
+    assert_eq!(diagnostic.primary().span.end, 7);
 }

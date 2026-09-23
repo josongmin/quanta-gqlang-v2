@@ -59,7 +59,7 @@ not compatibility promises.
 | Gate | Rail | What it proves |
 |---|---|---|
 | Public downstream boundary | `tools/test_frontend_external_consumer.py` | Host-agnostic facade allowlist, real external compile/run, curated accessor return types and closed-enum variants, compile-fail private-boundary probes, and zero direct or globbed public leakage |
-| Registry integrity | `crates/quanta-gqlang-v2-conformance/tests/self_validation.rs` | Every registered root/supplemental source compiles through the facade with an exact disposition; closed-source predicates and aggregate contexts retain exact positive/negative semantics; authored inner/CROSS joins retain mode, ON, inputs, and prior filter in the V3 relation tree; two authored mutually recursive rules form one checked program with two ordered members while remaining outside the V3 execution DTO |
+| Registry integrity | `crates/quanta-gqlang-v2-conformance/tests/self_validation.rs` | All 18 registered roots execute through the facade with an exact disposition; both supplemental sources retain exact no-plan or document-program membership and stay outside the V3 execution DTO; unsupported roots reject with an exact diagnostic/span; closed-source predicates and aggregate contexts retain exact positive/negative semantics; authored inner/CROSS joins retain mode, ON, inputs, and prior filter in the V3 relation tree; two authored mutually recursive rules form one checked program with two ordered members |
 | Full local composition | `just ci` | Repository-configured format, lint, architecture, Semgrep, test, and conformance composition; it is local proof, not hosted-CI evidence |
 
 ## Maintenance rule
