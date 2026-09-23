@@ -1,5 +1,11 @@
 # Jun 24 DSL Advanced v3 Ticket Pack
 
+> Historical ticket snapshot from 2026-06-25/26. "Current main" and open/closed
+> status claims below refer to that dated snapshot. For current frontend
+> authority, use the [language reference](../../../language/README.md),
+> [frontend contract](../../../contracts/frontend-execution-v3.md), and
+> [test ledger](../../../language/test_hellgate_ledger.md).
+
 Status: `Current Main Re-Audited` + `11-16 Implemented With Fresh Proof` + `10 Downstream Umbrella` + `17 Packet Sync CLOSED (synced to landed D5 receipt …77d2f34983; only an ambient test-closure residual remains)`
 
 ## Current Main Receipt

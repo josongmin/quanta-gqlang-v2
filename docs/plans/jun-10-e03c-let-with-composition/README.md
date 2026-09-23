@@ -1,6 +1,12 @@
 # Jun 10 — E03C `LET` / `WITH` Working-Set Composition
 
-Original ticket: [E03C](../../../../semantica-codegraph-v2/docs/rfcs/2026-06-05-rfc-qglang-v2-semantic-host-dx-platform/tickets-v2/external/E03C-let-with-composition.md)
+> Historical 2026-06-10 proposal, superseded by the current v3 frontend. The
+> crate, IR, LSP, and verification claims below describe that proposal, not
+> current repository state. Use the [language reference](../../language/README.md),
+> [frontend contract](../../contracts/frontend-execution-v3.md), and
+> [test ledger](../../language/test_hellgate_ledger.md) for current authority.
+
+Original ticket: E03C in a historical sibling RFC; no local target is maintained.
 Design authority: RFC-002 §Session Composition (line 624, 742-760), §WorkingSetV1 (line 1302-1317).
 
 ## What this initiative ships

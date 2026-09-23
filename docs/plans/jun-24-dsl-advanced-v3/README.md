@@ -1,5 +1,11 @@
 # Jun 24 — DSL Advanced v3
 
+> Historical packet snapshot from 2026-06-25/26. "Current main" and downstream
+> status claims below refer to that dated snapshot. For the current frontend,
+> use the [language reference](../../language/README.md),
+> [frontend contract](../../contracts/frontend-execution-v3.md), and
+> [test ledger](../../language/test_hellgate_ledger.md).
+
 Status: `Current Main Re-Audited` + `Tickets 09, 11-16 Implemented` +
 `Ticket 17 CLOSED (2026-06-26)` + `Ticket 10 downstream cutover LANDED`
 

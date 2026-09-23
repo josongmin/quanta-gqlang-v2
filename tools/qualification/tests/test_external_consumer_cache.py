@@ -11,13 +11,61 @@ from tools.test_frontend_external_consumer import (
     MODULE_RE,
     REPOSITORY_ROOT,
     InfrastructureError,
+    exact_path_dependency,
     lock_cache,
+    manifest_dependencies,
     materialize_fixture,
+    positive_outcome,
     public_api_roots,
 )
 
 
 class ExternalConsumerCacheTest(unittest.TestCase):
+    def test_cargo_manifest_detects_every_dependency_form(self):
+        extras = [
+            '[dependencies.extra]\nversion = "1"\n',
+            '[build-dependencies.extra]\nversion = "1"\n',
+            '[dev-dependencies.extra]\nversion = "1"\n',
+            '[target.\'cfg(unix)\'.dependencies]\nextra = "1"\n',
+        ]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            facade = root / "facade"
+            manifest = root / "Cargo.toml"
+            (root / "src").mkdir()
+            (root / "src" / "main.rs").write_text("fn main() {}\n")
+            baseline = (
+                '[package]\nname = "external-probe"\nversion = "0.1.0"\n'
+                'edition = "2021"\n[dependencies]\n'
+                'quanta-gqlang-v2-frontend-contract = { path = "facade" }\n'
+            )
+            manifest.write_text(baseline)
+            self.assertTrue(
+                exact_path_dependency(
+                    manifest_dependencies(manifest),
+                    "quanta-gqlang-v2-frontend-contract",
+                    facade,
+                )
+            )
+            for extra in extras:
+                with self.subTest(extra=extra):
+                    manifest.write_text(baseline + extra)
+                    self.assertFalse(
+                        exact_path_dependency(
+                            manifest_dependencies(manifest),
+                            "quanta-gqlang-v2-frontend-contract",
+                            facade,
+                        )
+                    )
+
+    def test_positive_panic_is_a_contract_violation(self):
+        built = subprocess.CompletedProcess(["cargo", "build"], 0, "", "")
+        panicked = subprocess.CompletedProcess(["consumer"], 101, "", "thread 'main' panicked")
+        self.assertEqual(
+            positive_outcome(built, panicked),
+            ("violation", "positive consumer program failed during execution"),
+        )
+
     @staticmethod
     def compile_rust_contract(source: str) -> subprocess.CompletedProcess:
         with tempfile.TemporaryDirectory() as directory:

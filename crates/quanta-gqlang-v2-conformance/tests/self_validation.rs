@@ -13,7 +13,7 @@ use quanta_gqlang_v2_conformance::{
 use quanta_gqlang_v2_frontend_contract::{
     analyze_source_document_v2, compile_source_document_v3, AlgebraFamilyV2, AnalysisItemV2,
     AnalysisStatusV2, ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledItemV2,
-    ExecutionExpressionShapeV3, ExecutionJoinModeV3, FrontendAuthorityErrorV2,
+    ExecutionExpressionShapeV3, ExecutionFamilyV3, ExecutionJoinModeV3, FrontendAuthorityErrorV2,
     FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
     FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2, FrontendGraphReferenceInputV2,
     FrontendLanguageVersionV2, FrontendLockfileInputV2, FrontendPackInputV2,
@@ -244,6 +244,56 @@ fn every_family_compiles_through_the_facade_with_declared_disposition() {
             spec,
             document.items().first().expect("exactly one compiled item"),
         );
+        match (
+            spec.expected,
+            document.items().first().expect("one compiled item"),
+        ) {
+            (ExpectedDispositionV2::NoPlan { .. }, _) => {
+                assert!(document.execution().items().is_empty(), "{:?}", spec.family);
+            }
+            (ExpectedDispositionV2::Planned { kind, .. }, CompiledItemV2::Planned(planned)) => {
+                let [execution_item] = document.execution().items() else {
+                    panic!("{:?}: one V3 plan-required item", spec.family);
+                };
+                let expected_family = match kind {
+                    "relation" => ExecutionFamilyV3::Relation,
+                    "graph" => ExecutionFamilyV3::Graph,
+                    "check" => ExecutionFamilyV3::Check,
+                    "presentation" => ExecutionFamilyV3::Presentation,
+                    "composition" => ExecutionFamilyV3::Composition,
+                    "meta_require_certified" => ExecutionFamilyV3::MetaRequireCertified,
+                    other => panic!("unmapped V3 family: {other}"),
+                };
+                assert_eq!(
+                    execution_item.item_id(),
+                    planned.item_id(),
+                    "{:?}",
+                    spec.family
+                );
+                assert_eq!(
+                    execution_item.family(),
+                    expected_family,
+                    "{:?}",
+                    spec.family
+                );
+                assert_eq!(
+                    execution_item.relation().is_some(),
+                    expected_family == ExecutionFamilyV3::Relation,
+                    "{:?}",
+                    spec.family,
+                );
+                assert_eq!(
+                    execution_item.composition().is_some(),
+                    expected_family == ExecutionFamilyV3::Composition,
+                    "{:?}",
+                    spec.family,
+                );
+            }
+            _ => panic!(
+                "{:?}: V2 disposition mismatch before V3 mapping",
+                spec.family
+            ),
+        }
     }
 }
 

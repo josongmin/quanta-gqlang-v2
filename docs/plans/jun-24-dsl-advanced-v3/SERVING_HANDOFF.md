@@ -1,5 +1,12 @@
 # Semantica Serving Contract Handoff (Ticket 10)
 
+> Historical downstream handoff snapshot from 2026-06-26. Status and
+> "current-head" claims below refer to that dated snapshot; verify current
+> downstream state in the downstream owner repository. Current local frontend
+> authority: [language reference](../../language/README.md),
+> [frontend contract](../../contracts/frontend-execution-v3.md), and
+> [test ledger](../../language/test_hellgate_ledger.md).
+
 Status: downstream cutover LANDED on semantica `main` (D5 receipt `…77d2f34983`,
 head `…f189330b16`); serving-correctness closed, only an ambient test-closure
 residual remains (see ticket `17`). `ServingQueryRequestV1` / `RootSpecV1` and the

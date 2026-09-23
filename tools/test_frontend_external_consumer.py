@@ -11,13 +11,14 @@ reuses the checkout's gitignored Cargo target:
    ``Cargo.lock`` for offline resolution, and reuse only that checkout's
    fixture build cache;
 
-2. assert the manifest shapes (fixture normal deps == {facade}; facade normal
-   deps == {pipeline}) and the facade source shape (zero ``^pub use .*::\\*``,
-   zero ``^pub mod``, curated allowlist == the pinned literal);
+2. ask Cargo to parse the complete dependency tables, require exactly one
+   unconditional path edge in each manifest (fixture -> facade -> pipeline),
+   and assert the facade source shape (zero glob re-exports, zero public
+   modules, curated allowlist == the pinned literal);
 
-3. compile and run the positive semantic receipt once with ``cargo run
-   --quiet``. Its ``#![deny(unused_imports)]`` plus typed method signatures and
-   exhaustive enum matches make rustc own all 89 curated roots; require exit 0
+3. build and run the positive consumer program separately. Its
+   ``#![deny(unused_imports)]`` plus typed method signatures and exhaustive
+   enum matches make rustc type-check its curated API uses; require exit 0
    plus the exact marker ``external-consumer positive: ok``;
 
 4. run privacy probes as complete ``src/main.rs`` programs through ``cargo
@@ -32,21 +33,19 @@ reuses the checkout's gitignored Cargo target:
    runs in the repository checkout and reuses only that checkout's Cargo target;
    the fixture keeps its separate target;
 
-6. assert the checkout is untouched: ``Cargo.lock`` sha256, the byte content of
-   every path the gate owns, and ``git status --porcelain`` are compared
-   before/after. A delta under a gate-owned path is a contract violation; a
-   delta that only touches foreign paths is reported as a concurrent writer and
-   makes the run unjudgeable (exit 2) instead of being blamed on the gate.
+6. compare ``Cargo.lock`` sha256, gate-owned source bytes, and
+   ``git status --porcelain`` before/after. This detects gate-owned writes and
+   status-shape changes, not content edits to an already-dirty foreign path;
+   clean committed-HEAD qualification attests an exact source snapshot.
 
 Exit codes: 0 = every expectation matched; 1 = the gate found a contract or
 case violation; 2 = the gate could not judge (infrastructure failure: the
 repository tree does not compile, a case failed for a non-fixture reason, or a
 required tool is missing). Exit 2 is never a pass.
 
-Standard library only: the repository python is 3.9, which has no ``tomllib``,
-so the small manifest reader below handles exactly the subset of TOML the
-repository manifests use (``[section]`` headers, ``key = value`` entries,
-inline tables).
+Standard library only: the repository Python is 3.9, which has no ``tomllib``.
+Cargo's ``read-manifest`` parses the full TOML dependency grammar without
+writing a lockfile or requiring a second TOML implementation here.
 
 The cargo toolchain is pinned to the repository's ``rust-toolchain.toml``
 channel via ``RUSTUP_TOOLCHAIN`` because the fixture lives outside the
@@ -59,6 +58,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -75,8 +75,16 @@ FACADE_MANIFEST = FACADE_DIR / "Cargo.toml"
 FACADE_SOURCE = FACADE_DIR / "src" / "lib.rs"
 LOCKFILE = REPOSITORY_ROOT / "Cargo.lock"
 CACHE_ROOT = REPOSITORY_ROOT / "target" / "external-consumer-gate"
+VECTOR_PATH = (
+    REPOSITORY_ROOT
+    / "crates"
+    / "quanta-gqlang-v2-pipeline"
+    / "tests"
+    / "fixtures"
+    / "execution-v3-vectors.tsv"
+)
+FIXTURE_BINARY = "quanta-gqlang-v2-frontend-external-consumer"
 
-FIXTURE_PACKAGE = "quanta-gqlang-v2-frontend-external-consumer"
 FACADE_PACKAGE = "quanta-gqlang-v2-frontend-contract"
 PIPELINE_PACKAGE = "quanta-gqlang-v2-pipeline"
 FACADE_DEP_LINE = 'path = "../../crates/quanta-gqlang-v2-frontend-contract"'
@@ -308,25 +316,61 @@ def delta_path(status_line: str) -> str:
     return rest.strip().strip('"')
 
 
-def manifest_dependencies(text: str, section: str) -> List[str]:
-    """Return the dependency key order of one manifest section."""
-    names: List[str] = []
-    current: Optional[str] = None
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("[") and line.endswith("]"):
-            current = line[1:-1].strip()
-            continue
-        if current != section:
-            continue
-        if "=" not in line:
-            continue
-        key = line.split("=", 1)[0].strip().strip('"')
-        if key:
-            names.append(key)
-    return names
+def manifest_dependencies(manifest: Path) -> List[Dict[str, object]]:
+    """Return every Cargo-parsed dependency, including table and target forms."""
+    result = run(
+        ["cargo", "read-manifest", "--manifest-path", str(manifest)],
+        manifest.parent,
+        os.environ.copy(),
+    )
+    if result.returncode != 0:
+        raise InfrastructureError("Cargo could not parse %s:\n%s" % (manifest, result.stderr.strip()))
+    package = json.loads(result.stdout)
+    dependencies = package.get("dependencies")
+    if not isinstance(dependencies, list):
+        raise InfrastructureError("Cargo returned no dependency list for %s" % manifest)
+    return dependencies
+
+
+def exact_path_dependency(dependencies: List[Dict[str, object]], name: str, path: Path) -> bool:
+    """One default-feature path edge, with no alias, target, or optional form."""
+    if len(dependencies) != 1:
+        return False
+    dependency = dependencies[0]
+    raw_path = dependency.get("path")
+    return (
+        dependency.get("name") == name
+        and dependency.get("kind") is None
+        and dependency.get("target") is None
+        and dependency.get("rename") is None
+        and dependency.get("source") is None
+        and dependency.get("optional") is False
+        and dependency.get("uses_default_features") is True
+        and dependency.get("features") == []
+        and isinstance(raw_path, str)
+        and Path(raw_path).resolve() == path.resolve()
+    )
+
+
+def positive_outcome(
+    build: subprocess.CompletedProcess,
+    execution: Optional[subprocess.CompletedProcess],
+) -> Tuple[str, str]:
+    """Classify a fixture build separately from its runtime behavior."""
+    if build.returncode != 0:
+        if FIXTURE_ANCHOR not in build.stderr:
+            return "infrastructure", "the repository tree does not compile for the fixture:\n%s" % build.stderr.strip()
+        return "violation", "positive program failed to compile"
+    if execution is None:
+        return "infrastructure", "the positive program was built but not executed"
+    if execution.returncode != 0:
+        return "violation", "positive consumer program failed during execution"
+    if execution.stdout.strip() != POSITIVE_MARKER:
+        return "violation", "positive program printed %r, expected %r" % (
+            execution.stdout.strip(),
+            POSITIVE_MARKER,
+        )
+    return "pass", ""
 
 
 def facade_allowlist(text: str) -> List[str]:
@@ -504,14 +548,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "allowlist_pinned": len(PINNED_ALLOWLIST),
         "fixture_deps": 0,
         "facade_normal_deps": 0,
-        "facade_extra_deps": 0,
-        "facade_missing_deps": 0,
+        "fixture_exact_dep": 0,
+        "facade_exact_dep": 0,
         "public_api_observed": 0,
         "public_api_extra": 0,
         "public_api_missing": 0,
         "public_api_direct": 0,
-        "semantic_roots_covered": 0,
-        "semantic_roots_missing": 0,
     }
     cache_lock: Optional[IO[str]] = None
     fixture: Optional[Path] = None
@@ -519,38 +561,41 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     cargo_version = "unknown"
     rustc_version = "unknown"
     before_lock = ""
+    before_vector = ""
     before_status = b""
     before_fingerprint: Dict[str, str] = {}
 
     try:
         # ---- stage 0: repository shape ------------------------------------
         before_lock = sha256_of(LOCKFILE)
+        before_vector = sha256_of(VECTOR_PATH)
         before_status = git_status_bytes()
         before_fingerprint = gate_writable_fingerprint()
 
-        fixture_text = (FIXTURE_DIR / "Cargo.toml").read_text()
-        fixture_deps = manifest_dependencies(fixture_text, "dependencies")
+        fixture_deps = manifest_dependencies(FIXTURE_DIR / "Cargo.toml")
         counts["fixture_deps"] = len(fixture_deps)
-        if fixture_deps != [FACADE_PACKAGE]:
+        counts["fixture_exact_dep"] = int(
+            exact_path_dependency(fixture_deps, FACADE_PACKAGE, FACADE_DIR)
+        )
+        if not counts["fixture_exact_dep"]:
             violations.append(
-                "fixture normal deps must be exactly [%s], got %s" % (FACADE_PACKAGE, fixture_deps)
+                "fixture must have exactly one unconditional facade path dependency, got %s"
+                % fixture_deps
             )
-        for extra_section in ("dev-dependencies", "build-dependencies"):
-            if manifest_dependencies(fixture_text, extra_section):
-                violations.append("fixture must declare no [%s]" % extra_section)
 
-        facade_text = FACADE_MANIFEST.read_text()
-        facade_deps = manifest_dependencies(facade_text, "dependencies")
+        facade_deps = manifest_dependencies(FACADE_MANIFEST)
         counts["facade_normal_deps"] = len(facade_deps)
-        facade_extra = sorted(set(facade_deps) - {PIPELINE_PACKAGE})
-        facade_missing = sorted({PIPELINE_PACKAGE} - set(facade_deps))
-        counts["facade_extra_deps"] = len(facade_extra)
-        counts["facade_missing_deps"] = len(facade_missing)
-        if facade_extra or facade_missing:
+        counts["facade_exact_dep"] = int(
+            exact_path_dependency(
+                facade_deps,
+                PIPELINE_PACKAGE,
+                REPOSITORY_ROOT / "crates" / PIPELINE_PACKAGE,
+            )
+        )
+        if not counts["facade_exact_dep"]:
             violations.append(
-                "facade normal deps must be exactly [%s]: extra=%s missing=%s "
-                "(the five transitional owner edges must be deleted in the facade cut)"
-                % (PIPELINE_PACKAGE, facade_extra, facade_missing)
+                "facade must have exactly one unconditional pipeline path dependency, got %s"
+                % facade_deps
             )
 
         source_text = FACADE_SOURCE.read_text()
@@ -596,6 +641,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         cache_lock = lock_cache(CACHE_ROOT, REPOSITORY_ROOT)
         fixture = materialize_fixture(CACHE_ROOT)
         env = cargo_env(CACHE_ROOT / "build", channel)
+        env["QGLANG_V3_VECTOR_PATH"] = str(VECTOR_PATH)
         # Stage 3 runs at this checkout's stable manifest path, so its Cargo
         # target can be reused without cross-checkout stale-path artifacts.
         # Pin its toolchain too: an inherited RUSTUP_TOOLCHAIN can otherwise
@@ -608,32 +654,24 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
         positive_main = (fixture / "src" / "main.rs").read_bytes()
 
-        result = run(["cargo", "run", "--quiet"], cwd=fixture, env=env)
-        if result.returncode != 0:
-            counts["semantic_roots_missing"] = counts["allowlist_pinned"]
-            if FIXTURE_ANCHOR not in result.stderr:
-                raise InfrastructureError(
-                    "the repository tree does not compile for the fixture:\n%s"
-                    % result.stderr.strip()
-                )
-            violations.append("positive program failed to compile or run")
-            say(result.stderr.strip())
-        else:
-            counts["semantic_roots_covered"] = counts["allowlist_pinned"]
+        build = run(["cargo", "build", "--quiet"], cwd=fixture, env=env)
+        execution = None
+        if build.returncode == 0:
+            executable = CACHE_ROOT / "build" / "debug" / FIXTURE_BINARY
+            execution = run([str(executable)], cwd=fixture, env=env)
             counts["positive_executed"] = 1
-            if result.stdout.strip() != POSITIVE_MARKER:
-                violations.append(
-                    "positive program printed %r, expected %r"
-                    % (result.stdout.strip(), POSITIVE_MARKER)
-                )
-            else:
-                counts["positive_marker"] = 1
+        outcome, message = positive_outcome(build, execution)
+        if outcome == "infrastructure":
+            raise InfrastructureError(message)
+        if outcome == "violation":
+            violations.append(message)
+            say(build.stderr.strip() if execution is None else execution.stderr.strip())
+        else:
+            counts["positive_marker"] = 1
         say(
-            "stage 1: compiler/runtime exit=%d semantic=%d/%d runtime_executed=%d marker=%d"
+            "stage 1: build_exit=%d consumer_program_executed=%d marker=%d"
             % (
-                result.returncode,
-                counts["semantic_roots_covered"],
-                counts["allowlist_pinned"],
+                build.returncode,
                 counts["positive_executed"],
                 counts["positive_marker"],
             )
@@ -762,11 +800,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     # ---- stage 4: the checkout is untouched --------------------------------
     lock_unchanged = "unknown"
+    vector_unchanged = "unknown"
     status_unchanged = "unknown"
     gate_files_unchanged = "unknown"
     concurrent_paths: List[str] = []
     try:
         lock_unchanged = "unchanged" if sha256_of(LOCKFILE) == before_lock else "CHANGED"
+        vector_unchanged = "unchanged" if sha256_of(VECTOR_PATH) == before_vector else "CHANGED"
         gate_files_unchanged = (
             "unchanged" if gate_writable_fingerprint() == before_fingerprint else "CHANGED"
         )
@@ -785,6 +825,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         infrastructure.append("repository immutability check failed: %s" % error)
     if lock_unchanged == "CHANGED":
         violations.append("Cargo.lock changed during the gate run")
+    if vector_unchanged == "CHANGED":
+        infrastructure.append("the shared V3 vector input changed during the gate run")
     if gate_files_unchanged == "CHANGED":
         violations.append("the gate modified its own fixture or script during the run")
     if status_unchanged == "CHANGED":
@@ -821,12 +863,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         % (counts["globs"], counts["pub_mods"], counts["allowlist_observed"], counts["allowlist_pinned"])
     )
     say(
-        "facade_manifest fixture_deps=%d facade_normal_deps=%d extra=%d missing=%d"
+        "facade_manifest fixture_deps=%d fixture_exact=%d facade_deps=%d facade_exact=%d"
         % (
             counts["fixture_deps"],
+            counts["fixture_exact_dep"],
             counts["facade_normal_deps"],
-            counts["facade_extra_deps"],
-            counts["facade_missing_deps"],
+            counts["facade_exact_dep"],
         )
     )
     say(
@@ -840,16 +882,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
     )
     say(
-        "semantic_api    covered=%d pinned=%d missing=%d compiler=external_fixture"
-        % (
-            counts["semantic_roots_covered"],
-            counts["allowlist_pinned"],
-            counts["semantic_roots_missing"],
-        )
+        "consumer_api   curated_roots=%d positive_programs=%d compiler=external_fixture"
+        % (counts["allowlist_pinned"], counts["positive_executed"])
     )
     say(
-        "repo_immutability cargo_lock=%s gate_files=%s git_status=%s"
-        % (lock_unchanged, gate_files_unchanged, status_unchanged)
+        "repo_immutability cargo_lock=%s vector_input=%s gate_files=%s git_status=%s"
+        % (lock_unchanged, vector_unchanged, gate_files_unchanged, status_unchanged)
     )
     if concurrent_paths:
         say("concurrent writer delta: %s" % concurrent_paths)

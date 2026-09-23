@@ -144,25 +144,6 @@ fn composition(
 }
 
 #[test]
-fn surface_to_hir_to_sema_materializes_a_sample_composition_body() {
-    let document = resolve(
-        "let sampled = sample query=\"auth\" | mode=lexical | limit=2 \
-         from sampled s | project s.path as path with sampled",
-    );
-    let composition = composition(&document);
-    let ResolvedCompositionProducerV2::Sample { output, .. } =
-        composition.bindings().first().unwrap().producer()
-    else {
-        panic!("Surface SAMPLE must retain the closed producer contract");
-    };
-    assert_eq!(output.row().fields().first().unwrap().name(), "path");
-    let ResolvedCompositionBodyV2::Query(body) = composition.body() else {
-        panic!("Surface Composition body must reach typed Query materialization");
-    };
-    assert_eq!(body.output().row(), output.row());
-}
-
-#[test]
 fn surface_to_hir_to_sema_reaches_every_composition_body_family() {
     for (source, expected) in [
         (
@@ -187,13 +168,24 @@ fn surface_to_hir_to_sema_reaches_every_composition_body_family() {
         ),
     ] {
         let document = resolve(source);
-        let body = composition(&document).body();
-        match expected {
-            "query" | "sample-query" => assert!(matches!(body, ResolvedCompositionBodyV2::Query(_))),
-            "graph" => assert!(matches!(body, ResolvedCompositionBodyV2::Graph(_))),
-            "check" => assert!(matches!(body, ResolvedCompositionBodyV2::Check(_))),
-            "explain" => assert!(matches!(body, ResolvedCompositionBodyV2::Explain(_))),
-            _ => panic!("test vector has an unknown expected Composition body"),
+        let composition = composition(&document);
+        match (expected, composition.body()) {
+            ("query", ResolvedCompositionBodyV2::Query(_)) => {}
+            ("sample-query", ResolvedCompositionBodyV2::Query(body)) => {
+                let ResolvedCompositionProducerV2::Sample { output, .. } =
+                    composition.bindings().first().unwrap().producer()
+                else {
+                    panic!("Surface SAMPLE must retain the closed producer contract");
+                };
+                assert_eq!(output.row().fields().first().unwrap().name(), "path");
+                assert_eq!(body.output().row(), output.row());
+            }
+            ("graph", ResolvedCompositionBodyV2::Graph(_))
+            | ("check", ResolvedCompositionBodyV2::Check(_))
+            | ("explain", ResolvedCompositionBodyV2::Explain(_)) => {}
+            (expected, body) => {
+                panic!("test vector expected {expected} Composition body, got {body:?}")
+            }
         }
     }
 }

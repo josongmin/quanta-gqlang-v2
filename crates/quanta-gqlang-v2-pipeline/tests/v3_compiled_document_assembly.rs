@@ -109,6 +109,10 @@ fn failure_code(error: &FrontendTransactionErrorV2) -> String {
 /// Build one closed authority admitting a single host relation `records` with
 /// one `id` field, solely from sema/modules re-exports.
 fn authority_with_records() -> ClosedFrontendAuthorityV2 {
+    authority_with_records_type(ValueTypeV1::int())
+}
+
+fn authority_with_records_type(id_type: ValueTypeV1) -> ClosedFrontendAuthorityV2 {
     let host = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
         source_id: HOST_SOURCE,
         source_len: 64,
@@ -149,7 +153,7 @@ fn authority_with_records() -> ClosedFrontendAuthorityV2 {
             lookup_name: "records".to_owned(),
             row: RecordTypeV1::try_new(vec![RecordFieldTypeV1::try_new(
                 "id",
-                ValueTypeV1::int(),
+                id_type,
                 location.clone(),
             )
             .expect("id field")])
@@ -895,6 +899,25 @@ fn authored_presentation_options_reach_the_exact_planned_policy() {
     let compiled = compile_source_document_v3(DOC_SOURCE, source, &source_policy_authority())
         .expect("all five authored presentation requests compile");
     assert_eq!(compiled.items().len(), 5);
+    assert_eq!(
+        compiled
+            .execution()
+            .items()
+            .iter()
+            .map(|item| item.item_id())
+            .collect::<Vec<_>>(),
+        compiled
+            .items()
+            .iter()
+            .map(CompiledItemV2::item_id)
+            .collect::<Vec<_>>(),
+        "V3 items keep the authored multi-item order",
+    );
+    assert!(compiled.execution().items().iter().all(|item| {
+        item.family() == ExecutionFamilyV3::Presentation
+            && item.relation().is_none()
+            && item.composition().is_none()
+    }));
 
     let policies: Vec<&ResolvedPresentationKindV2> = compiled
         .items()
@@ -1531,6 +1554,50 @@ fn source_id_is_transaction_local_and_foreign_item_lookup_is_empty() {
 }
 
 #[test]
+fn same_source_under_changed_host_field_type_changes_the_v3_contract() {
+    let int_document =
+        compile_source_document_v3(DOC_SOURCE, RECORD_SOURCE, &authority_with_records())
+            .expect("integer host field compiles");
+    let string_document = compile_source_document_v3(
+        DOC_SOURCE,
+        RECORD_SOURCE,
+        &authority_with_records_type(ValueTypeV1::string()),
+    )
+    .expect("string host field compiles");
+    let int_execution = int_document.execution();
+    let string_execution = string_document.execution();
+    assert_eq!(
+        int_execution.source_digest(),
+        string_execution.source_digest()
+    );
+    assert_eq!(
+        int_execution.items()[0].item_id(),
+        string_execution.items()[0].item_id()
+    );
+    assert_ne!(
+        int_execution.contract_digest(),
+        string_execution.contract_digest()
+    );
+    assert_ne!(
+        int_execution.qualification_digest(),
+        string_execution.qualification_digest()
+    );
+    let string_relation = string_execution.items()[0]
+        .relation()
+        .expect("relation payload");
+    assert_eq!(
+        string_relation.root().schema().fields()[0].value_type(),
+        &ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::String),
+    );
+    assert!(
+        int_execution
+            .item(string_execution.items()[0].item_id())
+            .is_some(),
+        "item lookup compares a document-local raw key, not transaction provenance",
+    );
+}
+
+#[test]
 fn source_bound_relation_depth_admits_exact_limit_and_rejects_without_abort() {
     let authority = authority_with_records();
     let exact = format!(
@@ -1641,6 +1708,7 @@ fn source_bound_v3_digests_match_the_shared_golden_vectors() {
         };
         let authority = match *profile {
             "records_host" => authority_with_records(),
+            "records_host_string_id" => authority_with_records_type(ValueTypeV1::string()),
             "minimal" => minimal_authority(),
             "workspace_files_canonical" => {
                 authority_with_workspace_files(FrontendRelationAuthorityV2::CanonicalWorkspaceFiles)
@@ -1672,7 +1740,7 @@ fn source_bound_v3_digests_match_the_shared_golden_vectors() {
         );
         selected += 1;
     }
-    assert_eq!(selected, 14, "the shared V3 corpus must not be vacuous");
+    assert_eq!(selected, 15, "the shared V3 corpus must not be vacuous");
 }
 
 #[test]

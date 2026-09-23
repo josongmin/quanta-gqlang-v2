@@ -12,6 +12,8 @@
 #![forbid(unsafe_code)]
 #![deny(unused_imports)]
 
+use std::path::{Path, PathBuf};
+
 use quanta_gqlang_v2_frontend_contract::{
     analyze_source_document_v2, compile_source_document_v3, format_source_document_v2,
     AlgebraFamilyV2, AnalysisDocumentV2, AnalysisItemV2, AnalysisStatusV2, CheckedLocatedSpanV2,
@@ -52,13 +54,15 @@ const PACK_DOCUMENT_TEXT: &str = "use pack acme.pack | activation=session | lock
 const COMPOSITION_DOCUMENT_TEXT: &str =
     "let sampled = sample query=\"auth\" | mode=lexical | limit=2 from sampled s | project s.path as path with sampled";
 
+const CHANGED_COMPOSITION_DOCUMENT_TEXT: &str =
+    "let sampled = sample query=\"auth\" | mode=lexical | limit=3 from sampled s | project s.path as path with sampled";
+
 const LITERAL_COMPOSITION_DOCUMENT_TEXT: &str =
     "let sampled = sample query=\"auth\" | mode=lexical | limit=2 from sampled s | project 42 as answer with sampled";
 
-/// The binding deliberately shadows a plausible host-relation name. No host
-/// relation is supplied to this fixture, so successful compilation proves that
-/// the sealed composition binding remains the selected source authority.
-const COLLIDING_COMPOSITION_DOCUMENT_TEXT: &str =
+/// No same-named host relation is supplied: this checks local binding
+/// resolution, not a real host-name collision.
+const LOCAL_BINDING_DOCUMENT_TEXT: &str =
     "let records = sample query=\"auth\" | mode=semantic | limit=3 from records r | project r.path as path with records";
 
 const PACK_DIGEST: &str = "0000000000000000000000000000000000000000000000000000000000000000";
@@ -199,11 +203,16 @@ fn no_plan_reason_label(reason: NoPlanReasonV2) -> &'static str {
     }
 }
 
-/// Read the complete V2 composition handoff through facade-only accessors.
+/// Read the V3 composition handoff through facade-only accessors.
 ///
 /// Semantica must consume this immutable projection rather than restoring V1
 /// HIR or recompiling a name-based producer/body relation.
-fn assert_exact_composition_handoff(document: &CompiledSourceDocumentV3, binding_name: &str) {
+fn assert_exact_composition_handoff(
+    document: &CompiledSourceDocumentV3,
+    binding_name: &str,
+    expected_mode: ExecutionSampleModeV3,
+    expected_limit: u32,
+) {
     let execution = document.execution();
     assert_eq!(execution.source_id(), document.source_id());
     assert_eq!(execution.items().len(), 1);
@@ -224,10 +233,9 @@ fn assert_exact_composition_handoff(document: &CompiledSourceDocumentV3, binding
     let binding_schema = binding
         .schema()
         .expect("SAMPLE producer retains its output schema");
-    let binding_field = binding_schema
-        .fields()
-        .first()
-        .expect("SAMPLE schema retains its path field");
+    let [binding_field] = binding_schema.fields() else {
+        panic!("SAMPLE schema retains exactly its path field");
+    };
     assert_eq!(binding_field.name(), "path");
     assert_eq!(
         binding_field.value_type(),
@@ -240,13 +248,17 @@ fn assert_exact_composition_handoff(document: &CompiledSourceDocumentV3, binding
     );
     assert_eq!(composition.body_family(), ExecutionFamilyV3::Relation);
     assert_eq!(composition.body(), &ExecutionCompositionBodyV3::Relation);
-    assert!(matches!(
-        binding.producer(),
-        ExecutionCompositionProducerV3::Sample {
-            mode: ExecutionSampleModeV3::Lexical | ExecutionSampleModeV3::Semantic,
-            ..
-        }
-    ));
+    let ExecutionCompositionProducerV3::Sample {
+        query_text,
+        mode,
+        limit,
+    } = binding.producer()
+    else {
+        panic!("SAMPLE binding keeps its exact producer payload");
+    };
+    assert_eq!(query_text, "auth");
+    assert_eq!(*mode, expected_mode);
+    assert_eq!(*limit, expected_limit);
 
     let body = composition
         .body_relation()
@@ -262,6 +274,99 @@ fn assert_exact_composition_handoff(document: &CompiledSourceDocumentV3, binding
         ExecutionRelationAuthorityV3::CompositionBinding
     );
     assert_eq!(source.name(), binding_name);
+}
+
+/// Replay only the two shared SAMPLE vectors needed at the external boundary.
+/// The pipeline owner owns the TSV and its complete corpus; this fixture never
+/// implements a digest encoder or maintains a second expected-value file.
+fn assert_shared_composition_vectors() {
+    let vector_path = std::env::var_os("QGLANG_V3_VECTOR_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            Path::new(env!("CARGO_MANIFEST_DIR")).join(
+                "../../crates/quanta-gqlang-v2-pipeline/tests/fixtures/execution-v3-vectors.tsv",
+            )
+        });
+    let vectors = std::fs::read_to_string(vector_path).expect("shared V3 vectors are readable");
+    let location = FrontendAuthorityLocationV2 {
+        source_id: SourceIdV2::from_raw(1),
+        start: 0,
+        end: 1,
+    };
+    let authority = ClosedFrontendAuthorityBuilderV2::try_new(
+        FrontendBudgetV2::standard_v2().expect("standard budget"),
+        vec![FrontendAuthoritySourceV2 {
+            source_id: SourceIdV2::from_raw(1),
+            source_len: 64,
+        }],
+        "app".to_owned(),
+        location,
+        FrontendLanguageVersionV2 {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        },
+    )
+    .expect("minimal vector authority starts")
+    .finish()
+    .expect("minimal vector authority seals");
+
+    let mut selected = Vec::new();
+    for (case_name, expected_source, expected_limit) in [
+        ("composition_limit_2", COMPOSITION_DOCUMENT_TEXT, 2),
+        ("composition_limit_3", CHANGED_COMPOSITION_DOCUMENT_TEXT, 3),
+    ] {
+        let row = vectors
+            .lines()
+            .skip(1)
+            .find(|row| row.split('\t').next() == Some(case_name))
+            .unwrap_or_else(|| panic!("missing shared vector: {case_name}"));
+        let fields = row.split('\t').collect::<Vec<_>>();
+        let [case, profile, raw_source_id, source, source_hex, contract_hex, qualification_hex] =
+            fields.as_slice()
+        else {
+            panic!("malformed shared vector: {case_name}");
+        };
+        assert_eq!(*case, case_name);
+        assert_eq!(*profile, "minimal");
+        assert_eq!(*raw_source_id, "9");
+        assert_eq!(*source, expected_source);
+        let compiled = compile_source_document_v3(
+            SourceIdV2::from_raw(raw_source_id.parse().expect("u32 source ID")),
+            source,
+            &authority,
+        )
+        .expect("shared SAMPLE vector compiles through facade");
+        assert_exact_composition_handoff(
+            &compiled,
+            "sampled",
+            ExecutionSampleModeV3::Lexical,
+            expected_limit,
+        );
+        assert_eq!(compiled.execution().source_digest().to_hex(), *source_hex);
+        assert_eq!(
+            compiled.execution().contract_digest().to_hex(),
+            *contract_hex
+        );
+        assert_eq!(
+            compiled.execution().qualification_digest().to_hex(),
+            *qualification_hex
+        );
+        selected.push(compiled);
+    }
+    let [first, second] = selected.as_slice() else {
+        panic!("exactly two shared composition vectors");
+    };
+    let reused_item = second.execution().items()[0].item_id();
+    assert_eq!(first.execution().items()[0].item_id(), reused_item);
+    assert_ne!(
+        first.execution().qualification_digest(),
+        second.execution().qualification_digest()
+    );
+    assert!(
+        first.execution().item(reused_item).is_some(),
+        "raw item ID lookup is not cross-document provenance admission"
+    );
 }
 
 /// Compile-time semantic API receipt for the facade's immutable execution DTOs.
@@ -894,7 +999,12 @@ fn main() {
         compile_source_document_v3(SourceIdV2::from_raw(11), COMPOSITION_DOCUMENT_TEXT, &closed)
             .expect("same V3 composition compiles deterministically");
     assert_eq!(composition.execution(), repeated_composition.execution());
-    assert_exact_composition_handoff(&composition, "sampled");
+    assert_exact_composition_handoff(&composition, "sampled", ExecutionSampleModeV3::Lexical, 2);
+    let selected_item = composition.execution().items()[0].item_id();
+    assert_eq!(
+        composition.execution().item(selected_item),
+        composition.execution().items().first()
+    );
 
     let foreign_source_identity =
         compile_source_document_v3(SourceIdV2::from_raw(12), COMPOSITION_DOCUMENT_TEXT, &closed)
@@ -914,14 +1024,23 @@ fn main() {
         foreign_source_identity.execution().qualification_digest(),
         "a foreign source identity cannot reuse the qualification digest"
     );
+    let foreign_item = foreign_source_identity.execution().items()[0].item_id();
+    assert!(composition.execution().item(foreign_item).is_none());
 
-    let collision = compile_source_document_v3(
+    assert_shared_composition_vectors();
+
+    let local_binding = compile_source_document_v3(
         SourceIdV2::from_raw(13),
-        COLLIDING_COMPOSITION_DOCUMENT_TEXT,
+        LOCAL_BINDING_DOCUMENT_TEXT,
         &closed,
     )
-    .expect("a composition binding wins over an absent same-named host relation");
-    assert_exact_composition_handoff(&collision, "records");
+    .expect("a local composition binding is selected without host relation fallback");
+    assert_exact_composition_handoff(
+        &local_binding,
+        "records",
+        ExecutionSampleModeV3::Semantic,
+        3,
+    );
 
     let typed_literal = compile_source_document_v3(
         SourceIdV2::from_raw(14),

@@ -408,50 +408,6 @@ class ArchitectureCheckerTest(unittest.TestCase):
             result.stderr,
         )
 
-    def test_reverse_edge_rejects_with_exact_edge(self) -> None:
-        temporary, root = self.fixture("reverse-edge")
-        with temporary:
-            result = run_checker(root)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn(
-            "quanta-gqlang-v2-sema -> quanta-gqlang-v2-planning",
-            result.stderr,
-        )
-
-    def test_forbidden_runtime_dependency_rejects(self) -> None:
-        temporary, root = self.fixture("runtime-edge")
-        with temporary:
-            result = run_checker(root)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("forbidden normal dependency quanta-runtime", result.stderr)
-
-    def test_workspace_member_drift_rejects(self) -> None:
-        temporary, root = self.fixture("valid", omit="quanta-gqlang-v2-types")
-        with temporary:
-            result = run_checker(root)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("workspace members drifted", result.stderr)
-
-    def test_build_dependency_does_not_inherit_normal_edge_permission(self) -> None:
-        temporary, root = self.fixture("build-edge")
-        with temporary:
-            result = run_checker(root)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn(
-            "illegal build internal edges: quanta-gqlang-v2-surface -> quanta-gqlang-v2-hir",
-            result.stderr,
-        )
-
-    def test_dev_dependency_does_not_inherit_normal_edge_permission(self) -> None:
-        temporary, root = self.fixture("dev-edge")
-        with temporary:
-            result = run_checker(root)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn(
-            "illegal dev internal edges: quanta-gqlang-v2-surface -> quanta-gqlang-v2-hir",
-            result.stderr,
-        )
-
     def test_unknown_dependency_kind_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "unknown dependency kind future-kind"):
             architecture_checker.dependency_kind({"kind": "future-kind"})

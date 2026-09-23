@@ -90,13 +90,14 @@ impl ExecutionDocumentV3 {
         self.source_id
     }
 
-    /// Source-ordered executable items. Non-executable declarations are absent.
+    /// Source-ordered plan-required items. Non-plan declarations are absent;
+    /// only payload-bearing families are candidates for downstream execution.
     #[must_use]
     pub fn items(&self) -> &[ExecutionItemV3] {
         &self.items
     }
 
-    /// Exact executable item by semantic identity.
+    /// Document-local exact-key lookup; the ID alone is not provenance proof.
     #[must_use]
     pub fn item(&self, item_id: SemanticItemIdV2) -> Option<&ExecutionItemV3> {
         self.items.iter().find(|item| item.item_id == item_id)
@@ -151,7 +152,7 @@ impl ExecutionFamilyV3 {
     }
 }
 
-/// One executable item with its immutable planning authority.
+/// One plan-required item with its immutable planning authority.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionItemV3 {
     item_id: SemanticItemIdV2,
