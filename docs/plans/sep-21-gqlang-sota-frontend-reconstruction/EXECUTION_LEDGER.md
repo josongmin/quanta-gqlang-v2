@@ -1,5 +1,20 @@
 # Sep-21 Frontend Reconstruction Execution Ledger
 
+## Current source-state override — 2026-09-23
+
+This ledger's historical transitions below are immutable provenance, not a
+current task queue. Before this documentation update, `main == origin/main`
+was clean at `d9d0f28a8365e6918dc8c7d0c552a8e277a838f0` (tree
+`9a2bcb4f9f64226d6539339c437922465f5fe483`). Ticket 01-08 product code
+is integrated; F04 nested aggregate and F26 raw-HIR drop repairs plus F08
+authored-order certification oracle are committed. The immediately preceding
+source/test/tool overlay passed `just ci` 1,168/1,168; this is not a clean
+exact-SHA qualification receipt. Ticket 09 semantic coverage accounting,
+current-SHA qualification, and docs-only attestation remain open. Ticket 10a
+V3 producer code is integrated; Semantica consumer qualification is separate.
+Do not reopen a historical `PLANNED`/`RED_CAPTURED` row without a current
+reproducer. Current routing is in `tickets/README.md` and Ticket 09.
+
 Frozen on `2026-09-21` before product edits.
 
 ## Source Freeze

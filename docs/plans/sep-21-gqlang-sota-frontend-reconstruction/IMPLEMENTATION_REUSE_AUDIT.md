@@ -1,6 +1,12 @@
 # Current-Head Implementation Reuse Audit
 
-Status: `AUDITED — REQUIRED INPUT TO TICKETS 01-09`
+Status: `HISTORICAL REUSE/MIGRATION AUDIT; NOT A CURRENT CODE BACKLOG`
+
+Current override (2026-09-23): `main@d9d0f28` has integrated the W1-W6
+producer cut and V3 source-bound facade. The `MIGRATE`/`DELETE` imperatives
+below are source-bound 2026-09-21 decisions, not instructions to reimplement
+already integrated owners. Check Ticket 09 for current coverage and proof
+work; require a fresh reproducer for any new production-code task.
 
 ## Current Reuse Supersession — 2026-09-21
 

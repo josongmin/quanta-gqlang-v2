@@ -1,6 +1,13 @@
 # Ticket 10a — V3 frontend execution contract producer
 
-Status: `V3 PRODUCER IMPLEMENTED AND LOCALLY QUALIFIED; SEMANTICA CONSUMER OPEN`
+Status: `V3 PRODUCER CODE INTEGRATED AT d9d0f28; CURRENT-SHA QUALIFICATION AND SEMANTICA CONSUMER OPEN`
+
+Current source checkpoint (2026-09-23): `main@d9d0f28a8365e6918dc8c7d0c552a8e277a838f0`
+contains the V3 producer and later hardening. The pre-commit local `just ci`
+passed 1,168/1,168, but the clean exact-SHA qualification below belongs to
+earlier `3c8acbe`; it does not certify `d9d0f28`. Requalify the current clean
+committed source after any test-code repair. The V3 contract's unsupported
+families do not authorize a duplicate GQLang runtime payload.
 
 Inventory baseline: qglang `main@1a0761b007751de4f1811081d246326ccc4ce017`, clean worktree, 2026-09-23. This SHA is an audit input, **not** an implementation or qualification receipt. Recheck HEAD, status, and the inventories below before editing.
 
@@ -22,7 +29,7 @@ The `V2` suffix on existing HIR/Sema/Types and analysis owners does not imply th
 
 - Producer-local `just ci` passed on the working tree on 2026-09-23: 1,090/1,090 nextest tests, doc tests, frontdoor parity, architecture lint, external facade consumer (1 positive, 15/15 negative compile-fail, 89/89 public roots), cargo deny, and non-vacuous semgrep. The first run's five surface doc failures were caused by a stale binary compiled against an old temporary checkout; `cargo clean -p quanta-gqlang-v2-surface` and a focused rerun proved the source tests pass, then the entire `just ci` passed. No surface source or test was altered for this cache incident.
 - The 14-row shared TSV corpus covers source-ID, byte-only, schema, source-authority, composition-limit, and typed-literal cases. Pipeline owner tests additionally cover deterministic projection, binding/body mutations, foreign item lookup, and the resolved/source result split. The external privacy gate includes the V3 document-constructor negative.
-- **Producer pin closure:** the original V3 implementation commit `a5c2f8c5c5c50f2d30e400facdc0737e2f59a369` passed clean detached-worktree `just qualify-local` with tree `5d3e215a6d6011af74ef06a3f3043b5664478ecd`, `exit=0`, duration 329 seconds. The later current code candidate `3c8acbe21a1ce48022c12642881d1fafc190ddb1` / tree `173b19e1f5b3aabd23fa22a6d09e509c723316dd` separately passed clean `just qualify-local` (`just ci`, exit 0, 1,102/1,102 nextest, 257 seconds, pinned Rust 1.81.0). Its ignored receipt is `target/qualification/3c8acbe21a1ce48022c12642881d1fafc190ddb1/receipt.json`. Later source, manifest, or tool changes need a new exact-SHA run; a docs/receipt-only attestation commit may instead record `tested_sha=3c8acbe` and prove its diff contains no executable change.
+- **Earlier producer pins only:** the original V3 implementation commit `a5c2f8c5c5c50f2d30e400facdc0737e2f59a369` passed clean detached-worktree `just qualify-local` with tree `5d3e215a6d6011af74ef06a3f3043b5664478ecd`, `exit=0`, duration 329 seconds. Later candidate `3c8acbe21a1ce48022c12642881d1fafc190ddb1` / tree `173b19e1f5b3aabd23fa22a6d09e509c723316dd` separately passed clean `just qualify-local` (`just ci`, exit 0, 1,102/1,102 nextest, 257 seconds, pinned Rust 1.81.0). Neither receipt certifies current `d9d0f28`, which includes later source/test/tool changes. A future docs-only attestation must name the **new** clean tested SHA and prove that its own diff contains no executable change.
 - **Still required outside this repo:** Semantica approval and consumer cutover against the exact qglang SHA, with its own SHA/dependency pin and source-text-to-result/receipt proof. No Semantica build, admission, provider, generation, or product execution is claimed here.
 
 ## Exhaustive current-source file inventory

@@ -17,13 +17,8 @@
 //! DERIVED value of each sealed arm, plus the determinism rails (two identical
 //! plans compare equal and every field is stable under repeated construction).
 //!
-//! INTEGRATOR-FIXTURE-PENDING (see the lane report): the certified
-//! `REQUIRE CERTIFIED` rail needs a resolved meta document fixture, the
-//! proof-explain / table-by-presentation rails need a resolved presentation
-//! fixture, and the SARIF/export effect rails need a resolved EXPORT or
-//! `emit=sarif` CHECK fixture. Their closed vocabulary is asserted here
-//! verbatim; the derive-side rails that CAN be driven from the sealed fixture
-//! matrix are all present.
+//! Meta and presentation fixtures are routed through the same sealed owner
+//! entry as relations, graphs, checks, and rule programs.
 
 use std::collections::BTreeSet;
 
@@ -33,7 +28,9 @@ use quanta_gqlang_v2_planning::{
     PlanOutcomeV2, RecursionRiskClassV2, RenderRequirementV2, ResultKindV2, SemanticPlanInputV2,
     SemanticPlanV2, WitnessExplosionRiskClassV2,
 };
-use quanta_gqlang_v2_sema::test_support::{ReferenceRelationFixtureV2, ReferenceRuleFixtureV2};
+use quanta_gqlang_v2_sema::test_support::{
+    ReferenceMetaFixtureV2, ReferenceRelationFixtureV2, ReferenceRuleFixtureV2,
+};
 use quanta_gqlang_v2_types::{
     AggregationClassV1, CardinalityV1, DeterminismV1, MonotonicityV1, PurityV1,
 };
@@ -317,11 +314,9 @@ fn a_rule_program_plans_a_table_read_only_set_result() {
     }
 }
 
-/// The authority lane is `FrontendChecked` for every ordinary sealed arm. The
-/// certified lane is reserved for an exact `REQUIRE CERTIFIED` directive:
-/// INTEGRATOR-FIXTURE-PENDING for its entry rail (no resolved meta document
-/// fixture exists), while both lane spellings and the certified policy marker
-/// are asserted verbatim.
+/// The authority lane is `FrontendChecked` for ordinary sealed arms and the
+/// certified lane is reachable only through an exact `REQUIRE CERTIFIED`
+/// directive, whose proof/effect/result policy is retained end to end.
 #[test]
 fn the_certified_lane_is_reserved_for_a_require_certified_directive() {
     for fixture in [
@@ -341,13 +336,24 @@ fn the_certified_lane_is_reserved_for_a_require_certified_directive() {
     let planned = plan(&input, document.document()).expect("the program plans");
     assert_eq!(planned.authority_lane(), AuthorityLaneV2::FrontendChecked);
 
+    let (document, input) = support::meta_input(ReferenceMetaFixtureV2::RequireCertified)
+        .expect("the REQUIRE CERTIFIED fixture seals");
+    let planned = plan(&input, document.document()).expect("REQUIRE CERTIFIED plans");
     assert_eq!(
-        AuthorityLaneV2::CertifiedRequirementValidated.keyword(),
-        "certified_requirement_validated"
+        planned.authority_lane(),
+        AuthorityLaneV2::CertifiedRequirementValidated
     );
+    assert_eq!(planned.evidence(), EvidenceRequirementV2::ProofTree);
+    assert_eq!(planned.effect(), EffectClassV2::ProofEvidenceOnly);
+    assert_eq!(planned.result().result_kind(), ResultKindV2::ProofExplain);
     assert_eq!(
-        quanta_gqlang_v2_planning::PlanPolicyV2::MetaRequireCertified.keyword(),
-        "meta_require_certified"
+        planned.result().render_requirement(),
+        RenderRequirementV2::ProvenanceTree
+    );
+    assert_eq!(planned.policy().keyword(), "meta_require_certified");
+    assert_eq!(
+        planned.authority_lane().keyword(),
+        "certified_requirement_validated"
     );
 }
 

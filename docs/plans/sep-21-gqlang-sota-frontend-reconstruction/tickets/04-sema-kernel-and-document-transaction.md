@@ -1,6 +1,12 @@
 # 04 — Semantic Kernel And Document Transaction
 
-Status: `RED_CAPTURED — IMPLEMENTING`
+Status: `CODE INTEGRATED AT d9d0f28; CURRENT-SHA QUALIFICATION OPEN`
+
+This header supersedes older RED/implementing checkpoints. Checked document
+resolution, source rule membership, composition, and aggregate legality are
+reachable. The committed F04 nested-aggregate fix and F08 authored-order
+certification oracle passed the pre-commit 1,168/1,168 workspace gate; a
+clean `d9d0f28` qualification receipt is still pending.
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 

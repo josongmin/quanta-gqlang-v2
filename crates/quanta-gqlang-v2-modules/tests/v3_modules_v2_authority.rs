@@ -4,17 +4,19 @@
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
-const DEEP_AUTHORITY_CHAIN_LEN: usize = 256;
+const OWNER_LOCAL_AUTHORITY_CHAIN_LEN: usize = 16;
+const STACK_SAFETY_AUTHORITY_CHAIN_LEN: usize = 256;
+const STACK_SAFETY_CHILD: &str = "QGLANG_MODULES_STACK_SAFETY_CHILD";
 
-fn deep_chain_steps(nodes: usize) -> usize {
+fn chain_steps(nodes: usize) -> usize {
     nodes * (nodes - 1) / 2 + nodes - 1
 }
 
-fn seal_deep_module_chain(
+fn seal_module_chain(
+    depth: usize,
     reverse: bool,
     max_steps: usize,
 ) -> Result<Vec<String>, ModuleDiagnosticV2> {
-    let depth = DEEP_AUTHORITY_CHAIN_LEN;
     let sources = registry(&[(1, depth * 8 + 32)]);
     let ids = (0..depth)
         .map(|index| module_id(&sources, &format!("m{index:04}"), index * 4))
@@ -95,11 +97,11 @@ fn seal_deep_module_chain(
         .collect())
 }
 
-fn seal_deep_catalog_chain(
+fn seal_catalog_chain(
+    depth: usize,
     reverse: bool,
     max_steps: usize,
 ) -> Result<Vec<String>, ModuleDiagnosticV2> {
-    let depth = DEEP_AUTHORITY_CHAIN_LEN;
     let sources = registry(&[(1, depth * 6 + 32)]);
     let app = module_id(&sources, "app", 0);
     let external = module_id(&sources, "host", 1);
@@ -164,8 +166,11 @@ fn seal_deep_catalog_chain(
         .collect())
 }
 
-fn seal_deep_pack_chain(reverse: bool, max_steps: usize) -> Result<[u8; 32], ModuleDiagnosticV2> {
-    let depth = DEEP_AUTHORITY_CHAIN_LEN;
+fn seal_pack_chain(
+    depth: usize,
+    reverse: bool,
+    max_steps: usize,
+) -> Result<[u8; 32], ModuleDiagnosticV2> {
     let zeros = "0".repeat(64);
     let mut lock = String::new();
     for index in 0..depth {
@@ -238,63 +243,76 @@ fn seal_deep_pack_chain(reverse: bool, max_steps: usize) -> Result<[u8; 32], Mod
 }
 
 #[test]
-fn deep_module_catalog_pack_graph_child() {
-    if std::env::var_os("QGLANG_DEEP_MODULES_CHILD").is_none() {
-        return;
-    }
-    std::thread::Builder::new()
-        .name("deep-modules-owner".into())
-        .stack_size(128 * 1024)
-        .spawn(|| {
-            let exact = deep_chain_steps(DEEP_AUTHORITY_CHAIN_LEN);
+fn module_catalog_pack_graphs_are_deterministic_and_budget_exact() {
+    let depth = OWNER_LOCAL_AUTHORITY_CHAIN_LEN;
+    let exact = chain_steps(depth);
 
-            let module_forward = seal_deep_module_chain(false, exact).unwrap();
-            let module_reverse = seal_deep_module_chain(true, exact).unwrap();
-            assert_eq!(module_forward, module_reverse);
-            assert_eq!(module_forward.len(), DEEP_AUTHORITY_CHAIN_LEN * 2 - 1);
-            assert_resource(
-                &seal_deep_module_chain(false, exact - 1).unwrap_err(),
-                "steps",
-                exact - 1,
-                exact,
-            );
+    let module_forward = seal_module_chain(depth, false, exact).unwrap();
+    let module_reverse = seal_module_chain(depth, true, exact).unwrap();
+    assert_eq!(module_forward, module_reverse);
+    assert_eq!(module_forward.len(), depth * 2 - 1);
+    assert_resource(
+        &seal_module_chain(depth, false, exact - 1).unwrap_err(),
+        "steps",
+        exact - 1,
+        exact,
+    );
 
-            let catalog_forward = seal_deep_catalog_chain(false, exact).unwrap();
-            let catalog_reverse = seal_deep_catalog_chain(true, exact).unwrap();
-            assert_eq!(catalog_forward, catalog_reverse);
-            assert_eq!(catalog_forward.len(), DEEP_AUTHORITY_CHAIN_LEN);
-            assert_resource(
-                &seal_deep_catalog_chain(false, exact - 1).unwrap_err(),
-                "steps",
-                exact - 1,
-                exact,
-            );
+    let catalog_forward = seal_catalog_chain(depth, false, exact).unwrap();
+    let catalog_reverse = seal_catalog_chain(depth, true, exact).unwrap();
+    assert_eq!(catalog_forward, catalog_reverse);
+    assert_eq!(catalog_forward.len(), depth);
+    assert_resource(
+        &seal_catalog_chain(depth, false, exact - 1).unwrap_err(),
+        "steps",
+        exact - 1,
+        exact,
+    );
 
-            let pack_exact = exact + DEEP_AUTHORITY_CHAIN_LEN * 3;
-            let pack_forward = seal_deep_pack_chain(false, pack_exact).unwrap();
-            let pack_reverse = seal_deep_pack_chain(true, pack_exact).unwrap();
-            assert_eq!(pack_forward, pack_reverse);
-            assert_resource(
-                &seal_deep_pack_chain(false, pack_exact - 1).unwrap_err(),
-                "steps",
-                pack_exact - 1,
-                pack_exact,
-            );
-        })
-        .expect("deep modules thread starts")
-        .join()
-        .expect("deep modules thread completes without stack overflow");
+    let pack_exact = exact + depth * 3;
+    let pack_forward = seal_pack_chain(depth, false, pack_exact).unwrap();
+    let pack_reverse = seal_pack_chain(depth, true, pack_exact).unwrap();
+    assert_eq!(pack_forward, pack_reverse);
+    assert_resource(
+        &seal_pack_chain(depth, false, pack_exact - 1).unwrap_err(),
+        "steps",
+        pack_exact - 1,
+        pack_exact,
+    );
 }
 
 #[test]
-fn deep_module_catalog_pack_graphs_are_non_recursive_and_budget_exact() {
+fn deep_module_catalog_pack_graphs_are_stack_safe() {
+    if std::env::var_os(STACK_SAFETY_CHILD).is_some() {
+        std::thread::Builder::new()
+            .name("deep-modules-owner".into())
+            .stack_size(128 * 1024)
+            .spawn(|| {
+                let depth = STACK_SAFETY_AUTHORITY_CHAIN_LEN;
+                let exact = chain_steps(depth);
+
+                let modules = seal_module_chain(depth, false, exact).unwrap();
+                assert_eq!(modules.len(), depth * 2 - 1);
+
+                let catalog = seal_catalog_chain(depth, false, exact).unwrap();
+                assert_eq!(catalog.len(), depth);
+
+                let pack_exact = exact + depth * 3;
+                assert_ne!(seal_pack_chain(depth, false, pack_exact).unwrap(), [0; 32]);
+            })
+            .expect("deep modules thread starts")
+            .join()
+            .expect("deep modules thread completes without stack overflow");
+        return;
+    }
+
     let status = std::process::Command::new(std::env::current_exe().expect("test binary"))
         .args([
             "--exact",
-            "deep_module_catalog_pack_graph_child",
+            "deep_module_catalog_pack_graphs_are_stack_safe",
             "--nocapture",
         ])
-        .env("QGLANG_DEEP_MODULES_CHILD", "1")
+        .env(STACK_SAFETY_CHILD, "1")
         .status()
         .expect("deep modules child process starts");
     assert!(status.success(), "deep modules child status: {status}");

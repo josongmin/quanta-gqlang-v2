@@ -2,18 +2,20 @@
 
 ## Authority And Snapshot
 
-This file is the canonical scheduler for the reconstruction packet. It owns
-only wave order, path leases, barriers, and handoff rules. The final
-current-state section in each ticket remains the implementation authority;
-receipts own executed evidence; `EXECUTION_LEDGER.md` owns state transitions.
+This file records the reconstruction packet's original scheduler: wave order,
+path leases, barriers, and handoff rules. W0-W6 are integrated; current work
+routing is in the packet README and Ticket 09. Receipts own executed evidence,
+while `EXECUTION_LEDGER.md` preserves historical state transitions.
 
 The original lane-planning snapshot was `ecc38f59` plus a dirty overlay on
-2026-09-21. The current repository-local candidate is the clean, qualified
-`3c8acbe21a1ce48022c12642881d1fafc190ddb1` (tree
-`173b19e1f5b3aabd23fa22a6d09e509c723316dd`); its ignored
-`target/qualification/<sha>/receipt.json` records `just ci`, exit 0. The main
-checkout separately has prompt-manager changes and packet-document edits. Re-freeze HEAD and
-status before any further dispatch; the old overlay is not a current base.
+2026-09-21. Before this documentation update, `main == origin/main` was clean
+at `d9d0f28a8365e6918dc8c7d0c552a8e277a838f0` (tree
+`9a2bcb4f9f64226d6539339c437922465f5fe483`). W0-W6 product code is
+integrated there. Its pre-commit source/test/tool overlay passed `just ci`
+1,168/1,168; no clean exact-SHA qualification receipt exists for `d9d0f28`.
+The `3c8acbe` receipt is a historical candidate and excludes later fixes.
+Re-freeze HEAD and status before a new dispatch; no historical W1-W6 lane is
+open without a current reproducer.
 
 ## Scheduling Model
 
@@ -23,11 +25,11 @@ path but must not edit outside their lease. The integrator owns shared seams,
 manifests, locks, architecture fixtures, receipts, packet indexes, and wave
 barriers.
 
-Until the dirty overlay is captured in a user-authorized checkpoint commit,
-all workers operate in the shared workspace with non-overlapping path leases.
-An isolated worktree created from `HEAD` does not contain the overlay and is not
-an equivalent base. After a checkpoint commit, worktrees are allowed only when
-every lane starts from the same exact SHA and records it.
+The old dirty overlay was committed in `d9d0f28`. New work, if a current
+semantic/test gap is proved, should start from one recorded source SHA with
+exclusive path leases. Do not use a historical dirty-overlay fingerprint as
+the current worker base. An isolated worktree is allowed when it starts from
+the exact selected SHA and records it.
 
 Every implementation wave has four phases:
 
@@ -105,9 +107,9 @@ isolated worktree per mutation lane; otherwise record the proof as deferred.
 | W2 | Algebra closure | `GREEN` (barrier record + checkpoint `4073b64`; Receipt 05 closed) | 2 workers after contract freeze |
 | W3 | Logic closure | `GREEN` (barrier record; Receipt 06 closed; deps cut to Sema+Types) | 3 workers after Logic internal-interface freeze |
 | W4 | Planning + Pipeline + facade | `IMPLEMENTED; CURRENT LOCAL GATE GREEN` | historical lane schedule only |
-| W5 | CLI + diagnostics stdio | `IMPLEMENTED; FRONTDOOR PARITY 2/2 ON 3c8acbe` | historical lane schedule only |
-| W6 | conformance + hygiene + static debt | `STATIC/EXTERNAL-CONSUMER GREEN AT 3c8acbe; SEMANTIC/EXAMPLE COVERAGE CLOSEOUT OPEN` | existing rails need a coverage audit, not duplicate manifests |
-| W7 | candidate qualification and attestation | `CANDIDATE A LOCAL-QUALIFIED AT 3c8acbe; CONFORMANCE/PACKET ATTESTATION OPEN` | strictly serial |
+| W5 | CLI + diagnostics stdio | `CODE INTEGRATED AT d9d0f28; PRE-COMMIT PARITY 8/8` | historical lane schedule only |
+| W6 | conformance + hygiene + static debt | `CODE/POLICY INTEGRATED AT d9d0f28; SEMANTIC COVERAGE ACCOUNTING OPEN` | audit owner oracles; add only a proven missing assertion |
+| W7 | candidate qualification and attestation | `d9d0f28 CURRENT-SHA QUALIFICATION OPEN; PACKET ATTESTATION OPEN` | strictly serial; old `3c8acbe` receipt is source-bound |
 
 Critical path:
 
@@ -118,8 +120,8 @@ W0
  -> W3 SS-06B
  -> W4 SS-07B
  -> W5 SS-08B
- -> W6 SS-09B implementation gates
- -> W7 candidate A -> attestation B
+ -> W6 current semantic coverage audit and proven-gap repair, if any
+ -> W7 clean current-source qualification -> docs-only attestation B
 ```
 
 ### Post-W4 remediation state — 2026-09-22

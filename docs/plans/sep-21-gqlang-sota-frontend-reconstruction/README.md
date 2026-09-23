@@ -2,51 +2,64 @@
 
 > 2026-09-23 addendum: the prior V2 reconstruction checkpoints below are historical source-bound observations, not proof of the subsequent V3 execution seam. [Ticket 10a](./tickets/10a-v3-frontend-execution-contract.md) and the [V3 contract](../../contracts/frontend-execution-v3.md) own the current producer cutover; its local and paired-repo qualification must be recorded separately.
 
-Status: `REPO-LOCAL CANDIDATE QUALIFIED; CONFORMANCE/PACKET CLOSEOUT AND SEMANTICA CONSUMER OPEN`
+Status: `01-08 CODE INTEGRATED AT d9d0f28; CURRENT-SHA QUALIFICATION, 09 CLOSEOUT, AND SEMANTICA CONSUMER OPEN`
 
 ## Authoritative Current Checkpoint — 2026-09-23
 
 This section supersedes every older status sentence and test count below it.
-Those sections remain only as audit provenance.
+Those sections remain audit provenance, not dispatch instructions.
 
-- tested candidate A: `3c8acbe21a1ce48022c12642881d1fafc190ddb1`,
-  tree `173b19e1f5b3aabd23fa22a6d09e509c723316dd`
-- clean detached-worktree `just qualify-local`: `just ci`, exit 0,
-  nextest 1,102/1,102 across 90 binaries, duration 257 seconds; ignored
-  receipt `target/qualification/<candidate-sha>/receipt.json`
-- main checkout: prompt-manager overlay and packet-document edits, excluded from candidate
-- packet status: conformance coverage audit, traceability and attestation OPEN; Semantica consumer
-  and source-text-to-result/receipt proof OPEN; no deploy/activation claim
+- source pin before this documentation update: `main@d9d0f28a8365e6918dc8c7d0c552a8e277a838f0`,
+  tree `9a2bcb4f9f64226d6539339c437922465f5fe483`, clean and equal to `origin/main`;
+  it includes the former dirty-overlay code, tests, and tooling
+- current-source local gate: pre-commit overlay fingerprint
+  `069cbb1d74d612e282702e308ba2d9a105efbd7c8c8994f052995377c71e25d0`
+  passed `just ci` (exit 0, nextest 1,168/1,168, skipped 0, frontdoor
+  parity 8/8); this is not a clean-HEAD qualification receipt for `d9d0f28`
+- latest clean exact-SHA qualification remains historical candidate A
+  `3c8acbe21a1ce48022c12642881d1fafc190ddb1`, 1,102/1,102; it does
+  not cover F04/F08/F26 and later changes in `d9d0f28`
+- packet status: 01-08 product code integrated, no newly reproduced P0/P1
+  producer defect in the current audit; Ticket 09 semantic conformance
+  accounting, exact-SHA qualification, and attestation remain OPEN
+- Semantica consumer and source-text-to-result/receipt proof remain separate
+  and OPEN; no deployment or activation claim
+- during this documentation update, another writer began uncommitted owner-test
+  edits in Logic, Modules, Planning, and Sema test support; they are not part
+  of the `d9d0f28` baseline or its pre-commit 1,168-test gate. Re-freeze the
+  final source/test/tool tree before accepting an updated test-code verdict
+  or running qualification
 
 | Ticket | Current state | Current proof | Exact remaining owner work |
 |---|---|---|---|
 | 00 | accepted scope | frontend-only boundary and source-reachability decisions remain authoritative | keep later tickets inside syntax/sema/IR/CLI/stdio ownership |
 | 01 | integrated local GREEN | final architecture 14 members, 26/26 normal and 5/5 dev edges; Semgrep GREEN | retain historical receipt scope; no stale RED dispatch |
 | 02 | integrated local GREEN | source and direct-HIR depth/identity rails; current candidate includes stack-overflow repair | maintain one HIR/Surface authority |
-| 03 | integrated local GREEN | Types/Modules/Binder in 1,102-test gate | historical owner mutations are not re-executed by this receipt |
-| 04 | integrated local GREEN | Sema checked document, composition, aggregate, and budget rails | retain semantic negative oracles |
+| 03 | code integrated | Types/Modules/Binder in the 1,168-test pre-commit gate | historical owner mutations are not re-executed by this gate |
+| 04 | code integrated | Sema checked document, composition, F04 aggregate fix, F08 authored-order oracle | retain semantic negative oracles; current-SHA qualification open |
 | 05 | integrated local GREEN | Algebra normalization and EXISTS rails | no V1 fallback |
 | 06 | integrated local GREEN | Logic SCC/rule program and negation rails | no duplicate source lowerer |
 | 07 | integrated local GREEN | Planning/Pipeline/facade and external consumer 1 positive, 15/15 negatives, 89/89 roots | no runtime serving claim |
-| 08 | integrated local GREEN | CLI/diagnostics stdio and frontdoor parity 2/2 | private NDJSON is not LSP |
-| 09 | candidate A qualified; packet OPEN | clean `3c8acbe` exact-SHA local gate | assess existing family/example rails against semantic coverage, fill only proven gaps, then traceability/status reconciliation and attestation B |
+| 08 | code integrated | CLI/diagnostics stdio and frontdoor parity 8/8 on the pre-commit gate | private NDJSON is not LSP |
+| 09 | packet OPEN | 18-family facade routing/disposition, owner oracles, and earlier candidate A receipt exist | audit missing source-to-checked semantic assertions, fix only proven gaps, qualify `d9d0f28` or later clean source, then attestation |
+| 10a | V3 producer code integrated | source-bound DTO, typed literals, three digests, golden vectors at `d9d0f28` | current-SHA qualification and paired Semantica consumer proof open |
 
 Current observed gates:
 
 | Gate | Result | Meaning |
 |---|---|---|
-| clean `just qualify-local` at `3c8acbe` | GREEN, `just ci` exit 0 | exact repo-local candidate, not later commits |
-| nextest / doctests / frontdoor parity | GREEN, 1,102/1,102; 5; 2/2 | integrated code and transport rails |
-| architecture / external consumer | GREEN, final edges; 1 positive, 15/15 negative, 89/89 public roots | curated frontend boundary only |
-| strict Clippy, deny, Semgrep/non-vacuity | GREEN | current candidate policy, not hosted proof |
+| clean `just qualify-local` at `3c8acbe` | GREEN, `just ci` exit 0 | exact historical candidate; not `d9d0f28` |
+| pre-commit overlay `just ci` for code now in `d9d0f28` | GREEN, 1,168/1,168; doctests 5; frontdoor parity 8/8 | current code/test/tool content, not an exact committed-SHA receipt |
+| architecture / external consumer in that gate | GREEN, final edges; 1 positive, 15/15 negative, 89/89 public and semantic roots | curated frontend boundary only |
+| strict Clippy, deny, Semgrep/non-vacuity in that gate | GREEN | pre-commit local policy, not clean-SHA qualification |
 | GitHub Actions | not configured | intentionally excluded from local-only development-stage closure |
 
 Current critical path is:
 
 ```text
-09 conformance coverage audit and proven-gap repair
-  -> traceability/status reconciliation
-  -> docs/receipt-only attestation B against tested SHA A
+09 owner-oracle versus 18-family semantic coverage audit; repair only a proven gap
+  -> clean committed-source qualification for d9d0f28 or a later code SHA
+  -> traceability/status reconciliation and docs-only attestation B
   -> independent Semantica V3 consumer/source-pin qualification
 ```
 

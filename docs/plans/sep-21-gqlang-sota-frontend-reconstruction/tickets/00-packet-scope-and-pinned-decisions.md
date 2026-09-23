@@ -2,7 +2,13 @@
 
 > 2026-09-23 execution-contract addendum: the frontend-only ownership rules below remain in force. The subsequent breaking V3 **execution** facade contract is specified in [`docs/contracts/frontend-execution-v3.md`](../../../contracts/frontend-execution-v3.md) and implemented under [Ticket 10a](./10a-v3-frontend-execution-contract.md). This does not reopen the V2 syntax/sema/planning cut or authorize runtime/provider/SDK ownership here.
 
-Status: `ACCEPTED — EXECUTION ACTIVE`
+Status: `SCOPE ACCEPTED; 01-08 CODE INTEGRATED AT d9d0f28; 09 CLOSEOUT OPEN`
+
+Current source checkpoint: `main@d9d0f28a8365e6918dc8c7d0c552a8e277a838f0`.
+The older execution order below is historical; do not redispatch it without a
+new source-level reproducer. Ticket 09 owns remaining conformance/proof work,
+and Ticket 10a owns the V3 producer contract. Semantica runtime remains outside
+this repository.
 
 ## Goal
 

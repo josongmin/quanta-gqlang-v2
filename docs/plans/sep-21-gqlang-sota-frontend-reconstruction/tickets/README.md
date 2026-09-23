@@ -2,38 +2,52 @@
 
 Breaking V3 frontend producer inventory and implementation: [Ticket 10a — V3 frontend execution contract](./10a-v3-frontend-execution-contract.md). [Ticket 10 — Downstream serving interop](./10-downstream-serving-interop.md) is historical cross-repository background; its V2 migration and old source pins are not the current producer contract. Neither ticket is qualified by the frontend V2 closeout receipts.
 
-Status: `01-08 IMPLEMENTED AND INTEGRATED; 3c8acbe LOCAL-QUALIFIED; 09 CONFORMANCE/PACKET CLOSEOUT OPEN; SEMANTICA CONSUMER OPEN`
+Status: `01-08 CODE INTEGRATED AT d9d0f28; CURRENT-SHA QUALIFICATION AND 09 CLOSEOUT OPEN; SEMANTICA CONSUMER OPEN`
 
-## Current Routing — qualified candidate `3c8acbe` (2026-09-23)
+## Current Routing — source `d9d0f28` (2026-09-23)
 
-This table supersedes the old `ecc38f59` dirty-overlay dispatch instructions
-below. Candidate SHA `3c8acbe21a1ce48022c12642881d1fafc190ddb1`, tree
-`173b19e1f5b3aabd23fa22a6d09e509c723316dd`, passed clean
-`just qualify-local` (`just ci`, exit 0; nextest 1,102/1,102). The main
-checkout's prompt-manager overlay and packet-document edits were excluded. This proves repo-local gates,
-not downstream execution or packet-closeout attestation.
+This table supersedes old `ecc38f59` and `3c8acbe` dispatch instructions
+below. Before this documentation update, `main` and `origin/main` were clean at
+`d9d0f28a8365e6918dc8c7d0c552a8e277a838f0` (tree
+`9a2bcb4f9f64226d6539339c437922465f5fe483`). The matching pre-commit
+source/test/tool overlay passed `just ci`, exit 0, nextest 1,168/1,168,
+frontdoor parity 8/8. The latest clean exact-SHA receipt still belongs to
+`3c8acbe` (1,102/1,102), not `d9d0f28`. None of this proves downstream
+execution or packet-closeout attestation.
+During this documentation update, another writer started uncommitted
+Logic/Modules/Planning/Sema owner-test edits. They are in flight and excluded
+from the `d9d0f28` gate. Re-freeze their final content before test-code
+disposition or qualification; do not stage or overwrite them from this packet.
 
 | Ticket | Current code/proof state | Remaining boundary |
 |---|---|---|
 | 00 | frontend-only boundary retained | no runtime/provider/SDK expansion |
 | 01 | final architecture: 14 members, 26/26 normal and 5/5 dev edges; Semgrep and non-vacuity GREEN | historical ticket receipt remains source-bound |
-| 02 | Surface/HIR implemented; direct HIR depth crash fixed in `3c8acbe` | no second syntax/formatter authority |
-| 03 | Types/Modules/Binder integrated in the 1,102-test gate | historical owner mutation receipts are not new exact-SHA runs |
-| 04 | Sema checked-document, aggregate, composition, and budget paths integrated | keep current semantic regression rails; do not resurrect old RED dispatch |
+| 02 | Surface/HIR implemented; source-depth and direct raw-HIR drop defenses committed | no second syntax/formatter authority |
+| 03 | Types/Modules/Binder integrated in the 1,168-test pre-commit gate | historical owner mutation receipts are not new exact-SHA runs |
+| 04 | Sema checked-document, F04 nested-aggregate rejection, F08 authored-order certification, composition, and budget paths committed | retain current semantic regression rails; do not resurrect old RED dispatch |
 | 05 | Algebra normalization integrated | retain owner operator/EXISTS tests; no V1 fallback |
 | 06 | Logic rule graph/stratification integrated | retain SCC, negation, and rule-program regression rails |
 | 07 | Planning/Pipeline/facade integrated; external facade gate 1 positive, 15/15 negatives, 89/89 public roots | no runtime serving claim |
-| 08 | CLI and diagnostics stdio integrated; frontdoor parity 2/2 | NDJSON is private diagnostics transport, not LSP |
-| 09 | clean candidate A local qualification GREEN | audit existing semantic/example coverage, fill proven gaps, reconcile traceability and packet state, then docs/receipt-only attestation B; no hosted CI configured |
+| 08 | CLI and diagnostics stdio integrated; frontdoor parity 8/8 in pre-commit gate | NDJSON is private diagnostics transport, not LSP |
+| 09 | pre-commit full local gate GREEN; current clean-SHA qualification OPEN | audit existing semantic/example coverage, fill only proven gaps, then qualify current source and reconcile traceability/attestation; no hosted CI configured |
+| 10a | V3 producer DTO/digests/typed literals and facade code integrated | qualify current source SHA; Semantica consumer is separate |
 
 ### Work remaining by acceptance layer
 
-1. **Code:** no previously listed W1-W6 implementation task remains open on
-   current source. A new bug requires a current reproducer and its owning
-   ticket; historical RED prose is not a work order.
-2. **Local proof:** candidate A `3c8acbe` has an exact SHA/tree `just ci`
-   receipt; it does not qualify later source commits or the dirty main overlay.
-3. **Packet closeout:** Ticket 09 must first test its semantic/example claims
+1. **Production code:** no previously listed W1-W6 implementation task remains
+   open on `d9d0f28`. A new fix requires a current reproducer and its owner;
+   historical RED prose is not a work order. V3 unsupported families remain
+   an explicit admission boundary, not implicit executable payload.
+2. **Test code:** `self_validation.rs` selects all 18 public roots, but the
+   common loop checks broad kind/result/effect only. Compare retained option,
+   reference, identity, and diagnostic assertions against existing owner
+   tests; add only a demonstrated missing source-to-checked oracle. Do not
+   fabricate an 18×11 matrix or second registry.
+3. **Local proof:** candidate A `3c8acbe` has an exact SHA/tree receipt;
+   `d9d0f28` has a passing pre-commit `just ci` on its source/test/tool
+   content but no clean committed-HEAD `just qualify-local` receipt.
+4. **Packet closeout:** Ticket 09 must first test its semantic/example claims
    against existing rails: `self_validation.rs` exercises all 18 registered
    families through the facade but checks broad disposition; Surface's
    `v3_examples_corpus.rs` already checks every shipped example against three
@@ -42,7 +56,7 @@ not downstream execution or packet-closeout attestation.
    finds one. Then reconcile traceability/status without pretending old owner
    mutations were rerun; a docs-only attestation B records `tested_sha=A`,
    `attestation_sha=B` and its diff.
-4. **Downstream:** Ticket 10a producer is local GREEN; Semantica V3 admission,
+5. **Downstream:** Ticket 10a producer is integrated; Semantica V3 admission,
    consumer, provider/generation, and result/receipt require a paired-repo
    proof. GitHub Actions is not configured and is not a local completion gate.
 

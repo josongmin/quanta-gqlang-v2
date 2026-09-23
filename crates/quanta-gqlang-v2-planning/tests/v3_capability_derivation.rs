@@ -13,12 +13,8 @@
 //! real entry point (`plan`) over a sealed ticket-05 lowering product and asserts
 //! the plan's EXACT capability set — never a caller-built algebra node.
 //!
-//! `AntiJoin` -> `NegationCheck` is not directly exercised: every reference fixture whose lowering
-//!   contains an `AntiJoin` has it as the ROOT (`NotExists`,
-//!   `CorrelatedNotExists`) and is refused by
-//!   `planning.input_document_mismatch.identity_mismatch`; `NegatedExists` fails
-//!   algebra lowering instead. See the src-defect canary in
-//!   `v3_item_hellgate.rs`.
+//! Root-reanchored Semi/Anti joins are driven directly, so both
+//! `ExistenceCheck` and `NegationCheck` are owner-local behavioral proofs.
 
 use std::collections::BTreeSet;
 
@@ -193,6 +189,50 @@ fn semijoin_derives_existence_check_under_a_filter_root() {
             quanta_gqlang_v2_algebra::AlgebraFamilyV2::Scan,
         ]
     );
+}
+
+/// Pure EXISTS/NOT EXISTS roots and their correlated/nested forms derive the
+/// exact capability set from the promoted Semi/Anti join; correlated/nested
+/// fixtures additionally retain the real nested Filter they lower.
+#[test]
+fn every_reanchored_exists_family_derives_its_exact_capabilities() {
+    for (fixture, expected) in [
+        (
+            ReferenceRelationFixtureV2::Exists,
+            BTreeSet::from([CapabilityV2::RelationScan, CapabilityV2::ExistenceCheck]),
+        ),
+        (
+            ReferenceRelationFixtureV2::NotExists,
+            BTreeSet::from([CapabilityV2::RelationScan, CapabilityV2::NegationCheck]),
+        ),
+        (
+            ReferenceRelationFixtureV2::CorrelatedExists,
+            BTreeSet::from([
+                CapabilityV2::RelationScan,
+                CapabilityV2::Filtering,
+                CapabilityV2::ExistenceCheck,
+            ]),
+        ),
+        (
+            ReferenceRelationFixtureV2::CorrelatedNotExists,
+            BTreeSet::from([
+                CapabilityV2::RelationScan,
+                CapabilityV2::Filtering,
+                CapabilityV2::NegationCheck,
+            ]),
+        ),
+        (
+            ReferenceRelationFixtureV2::NestedExistsTwoLevels,
+            BTreeSet::from([
+                CapabilityV2::RelationScan,
+                CapabilityV2::Filtering,
+                CapabilityV2::ExistenceCheck,
+            ]),
+        ),
+    ] {
+        let (_nodes, planned) = nodes(fixture);
+        assert_eq!(planned.capabilities(), &expected, "{fixture:?}");
+    }
 }
 
 /// Every `CapabilityV2` variant renders its stable keyword verbatim.

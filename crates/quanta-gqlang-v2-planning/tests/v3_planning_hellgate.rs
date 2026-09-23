@@ -28,37 +28,38 @@
 //! Every rail asserts the ACTUAL typed variant, code, message, and checked span
 //! — never merely that an error occurred.
 //!
-//! INTEGRATOR-FIXTURE-PENDING (see the lane report): the
-//! `planning.invalid_composition.*` entry rails need a resolved composition
-//! document fixture, and the `NoPlanReasonV2::{MetaActivation}` entry rail needs
-//! a resolved `USE PACK` meta document. Their closed code/message vocabulary is
-//! asserted below by direct diagnostic construction, so no spelling loses
-//! coverage while the fixtures are missing.
+//! Resolved meta and composition fixtures drive their real public constructors
+//! and owner entry points; direct vocabulary assertions remain separate because
+//! stable codes/messages are a public diagnostic contract.
 
 use quanta_gqlang_v2_logic::{GraphEndpointRoleV1, GraphQueryContractV2, LogicDiagnosticV1};
 use quanta_gqlang_v2_planning::{
-    plan, plan_outcome, CheckContractV2, CheckInvalidReasonV2, CompositionInvalidReasonV2,
-    InputDocumentMismatchReasonV2, NoPlanReasonV2, PlanOutcomeV2, PlanningDiagnosticV1,
-    PresentationContractV2, PresentationInvalidReasonV2, SemanticPlanInputV2,
+    plan, plan_outcome, CheckContractV2, CheckInvalidReasonV2, CheckedCompositionPlanInputV2,
+    CompositionBodyFamilyV2, CompositionBodyPlanInputV2, CompositionInvalidReasonV2, EffectClassV2,
+    InputDocumentMismatchReasonV2, NoPlanReasonV2, PlanOutcomeV2, PlanPolicyV2,
+    PlanningDiagnosticV1, PresentationContractV2, PresentationInvalidReasonV2, ResultKindV2,
+    SemanticPlanInputV2,
 };
 use quanta_gqlang_v2_sema::test_support::{
     forged_cardinality_downgrade_document_v2, forged_small_receipt_relation_chain_document_v2,
-    reference_check_document_v2, reference_checked_span_v2, reference_presentation_document_v2,
-    reference_relation_document_v2, reference_rule_document_v2, second_source_graph_document_v2,
-    ReferenceBudgetV2, ReferenceCheckFixtureV2, ReferenceGraphRequestV2,
+    reference_alternate_graph_document_v2, reference_check_document_v2, reference_checked_span_v2,
+    reference_presentation_document_v2, reference_relation_document_v2, reference_rule_document_v2,
+    second_source_graph_document_v2, ReferenceBudgetV2, ReferenceCheckFixtureV2,
+    ReferenceCompositionBodyV2, ReferenceGraphRequestV2, ReferenceMetaFixtureV2,
     ReferencePresentationFixtureV2, ReferenceRelationFixtureV2, ReferenceRuleFixtureV2,
     SMALL_BUDGET_MAX_SEMANTIC_STEPS,
 };
 use quanta_gqlang_v2_sema::{
-    CheckedLocatedSpanV2, DetectionModeV1, EvidenceModeV1, GraphQueryKindV1, TruthModeV1,
+    CheckedLocatedSpanV2, DetectionModeV1, EvidenceModeV1, GraphQueryKindV1, SemanticItemV2,
+    TruthModeV1,
 };
 
 mod support;
 
 use support::{
-    check_document, check_input, deepest_node, document_item_location, graph_document, graph_input,
-    graph_references, relation_input, resolved_check, rule_input, FIXTURE_GRAPH_DEPTH_V2,
-    FIXTURE_GRAPH_ITEM_SPAN_V2,
+    check_document, check_input, composition_input, deepest_node, document_item_location,
+    graph_document, graph_input, graph_references, meta_input, relation_input, resolved_check,
+    rule_input, FIXTURE_GRAPH_DEPTH_V2, FIXTURE_GRAPH_ITEM_SPAN_V2,
 };
 
 /// One checked fixture location, for the diagnostic rails that construct a
@@ -361,16 +362,27 @@ fn an_empty_rule_program_is_a_typed_non_plan_from_both_entries() {
     }
 }
 
-/// INTEGRATOR-FIXTURE-PENDING: a resolved `USE PACK` meta document does not exist
-/// in Sema's fixture matrix, so the entry-point rail
-/// (`plan_outcome` -> `NoPlan(MetaActivation)`, `plan` -> `Err(NoPlan)`) cannot be
-/// driven yet. The closed reason vocabulary is asserted here meanwhile.
+/// A resolved `USE PACK` is a typed non-plan through both public entries, with
+/// the authored directive span preserved in the refusal diagnostic.
 #[test]
-fn the_meta_activation_reason_vocabulary_is_stable() {
-    let diagnostic = PlanningDiagnosticV1::NoPlan {
-        reason: NoPlanReasonV2::MetaActivation,
-        span: fixture_span(),
+fn a_use_pack_is_a_typed_meta_activation_non_plan() {
+    let (document, input) =
+        meta_input(ReferenceMetaFixtureV2::UsePack).expect("the USE PACK fixture seals");
+    assert_eq!(
+        plan_outcome(&input, document.document()).expect("USE PACK is not an owner error"),
+        PlanOutcomeV2::NoPlan(NoPlanReasonV2::MetaActivation)
+    );
+    let Some(SemanticItemV2::Meta(meta)) = document.document().item(document.meta_item_id()) else {
+        panic!("the fixture item is a resolved meta directive");
     };
+    let diagnostic = plan(&input, document.document()).expect_err("USE PACK has no serving plan");
+    assert_eq!(
+        diagnostic,
+        PlanningDiagnosticV1::NoPlan {
+            reason: NoPlanReasonV2::MetaActivation,
+            span: meta.location().clone(),
+        }
+    );
     assert_eq!(diagnostic.code(), "planning.no_plan.meta_activation");
     assert_eq!(
         diagnostic.message(),
@@ -709,6 +721,36 @@ fn a_check_rejects_a_nested_contract_from_another_source() {
     }
 }
 
+/// A same-source graph with a distinct semantic item identity cannot be
+/// transplanted into CHECK even when its complete payload otherwise matches.
+#[test]
+fn a_check_rejects_a_same_source_different_item_identity() {
+    let fixture = reference_check_document_v2(
+        check_request(),
+        ReferenceCheckFixtureV2 {
+            mode: DetectionModeV1::SemanticOnly,
+            with_pattern: false,
+            with_nested_graph: true,
+        },
+    )
+    .expect("semantic CHECK resolves");
+    let alternate = reference_alternate_graph_document_v2(check_request())
+        .expect("same-source alternate graph resolves");
+    let nested = GraphQueryContractV2::from_resolved(alternate.graph())
+        .expect("alternate graph contract seals");
+    let sealed = fixture.check().nested_graph().expect("nested graph");
+    assert_eq!(sealed.item_id().source_id(), nested.item_id().source_id());
+    assert_ne!(sealed.item_id(), nested.item_id());
+
+    match CheckContractV2::from_resolved(fixture.check(), Some(nested)) {
+        Err(PlanningDiagnosticV1::InvalidCheck { reason, span }) => {
+            assert_eq!(reason, CheckInvalidReasonV2::NestedGraphIdentityMismatch);
+            assert_eq!(span, *fixture.check().location());
+        }
+        other => panic!("expected same-source identity rejection, got {other:?}"),
+    }
+}
+
 #[test]
 fn a_check_rejects_a_same_identity_nested_payload_transplant() {
     let fixture = reference_check_document_v2(
@@ -898,9 +940,130 @@ fn invalid_presentation_reasons_render_a_stable_code() {
     );
 }
 
-/// INTEGRATOR-FIXTURE-PENDING: no resolved composition document fixture exists,
-/// so the composition entry rail cannot be driven. Every closed reason code and
-/// message is asserted verbatim.
+/// All four closed composition body families cross the public constructor and
+/// real planner. The composition root, ordered producers, WITH identity, body
+/// identity/family, and body-derived result/effect are retained together.
+#[test]
+fn every_composition_body_family_plans_with_exact_retention() {
+    for (body, family, result, effect, body_policy) in [
+        (
+            ReferenceCompositionBodyV2::Relational,
+            CompositionBodyFamilyV2::Query,
+            ResultKindV2::Table,
+            EffectClassV2::ReadOnly,
+            "relational",
+        ),
+        (
+            ReferenceCompositionBodyV2::Graph,
+            CompositionBodyFamilyV2::Graph,
+            ResultKindV2::PathWitness,
+            EffectClassV2::ProofEvidenceOnly,
+            "graph",
+        ),
+        (
+            ReferenceCompositionBodyV2::Check,
+            CompositionBodyFamilyV2::Check,
+            ResultKindV2::Alert,
+            EffectClassV2::ReadOnly,
+            "check",
+        ),
+        (
+            ReferenceCompositionBodyV2::Explain,
+            CompositionBodyFamilyV2::Explain,
+            ResultKindV2::ProofExplain,
+            EffectClassV2::ReadOnly,
+            "presentation",
+        ),
+    ] {
+        let (document, input) = composition_input(body).expect("the composition carrier seals");
+        let planned = plan(&input, document.document()).expect("the composition plans");
+        assert_eq!(planned.result().result_kind(), result, "{body:?}");
+        assert_eq!(planned.effect(), effect, "{body:?}");
+        assert_eq!(
+            planned.explain().root_location(),
+            document.composition().location(),
+            "{body:?}"
+        );
+        let PlanPolicyV2::Composition(policy) = planned.policy() else {
+            panic!("expected composition policy for {body:?}");
+        };
+        assert_eq!(policy.root_item_id(), document.composition_item_id());
+        assert_eq!(policy.location(), document.composition().location());
+        assert_eq!(policy.body_item_id(), document.body_item_id());
+        assert_eq!(policy.body_family(), family);
+        assert_eq!(policy.with_binding(), document.with_binding());
+        assert_eq!(policy.body().policy().keyword(), body_policy);
+        assert_eq!(
+            policy
+                .producers()
+                .iter()
+                .map(quanta_gqlang_v2_planning::CheckedCompositionProducerV2::item_id)
+                .collect::<Vec<_>>(),
+            document.producer_item_ids(),
+            "{body:?}"
+        );
+        assert!(
+            policy
+                .producers()
+                .iter()
+                .enumerate()
+                .all(|(ordinal, producer)| producer.ordinal() == ordinal),
+            "{body:?}"
+        );
+    }
+}
+
+/// Public construction rejects both body-family and same-family identity
+/// transplants before a composition can reach `plan`.
+#[test]
+fn composition_body_transplants_fail_closed_at_the_public_constructor() {
+    let (composition_document, graph_input) =
+        composition_input(ReferenceCompositionBodyV2::Graph).expect("graph composition seals");
+    let SemanticPlanInputV2::Composition(graph_input) = graph_input else {
+        panic!("the fixture seals a composition carrier");
+    };
+    let graph_body = graph_input.body().clone();
+
+    let (explain_document, _input) =
+        composition_input(ReferenceCompositionBodyV2::Explain).expect("explain composition seals");
+    let rejection = CheckedCompositionPlanInputV2::new(explain_document.composition(), graph_body)
+        .expect_err("a graph body cannot replace an EXPLAIN body");
+    assert_eq!(
+        rejection,
+        PlanningDiagnosticV1::InvalidComposition {
+            reason: CompositionInvalidReasonV2::BodyKindMismatch,
+            span: explain_document.composition().location().clone(),
+        }
+    );
+
+    let standalone =
+        graph_document(GraphQueryKindV1::Path, 1).expect("same-source standalone graph resolves");
+    let standalone_body = CompositionBodyPlanInputV2::Graph(
+        GraphQueryContractV2::from_resolved(standalone.graph())
+            .expect("standalone graph contract seals"),
+    );
+    assert_eq!(
+        standalone.graph().item_id().source_id(),
+        composition_document.body_item_id().source_id()
+    );
+    assert_ne!(
+        standalone.graph().item_id(),
+        composition_document.body_item_id()
+    );
+    let rejection =
+        CheckedCompositionPlanInputV2::new(composition_document.composition(), standalone_body)
+            .expect_err("a same-family body identity transplant must reject");
+    assert_eq!(
+        rejection,
+        PlanningDiagnosticV1::InvalidComposition {
+            reason: CompositionInvalidReasonV2::BodyIdentityMismatch,
+            span: composition_document.composition().location().clone(),
+        }
+    );
+}
+
+/// Every closed composition reason code and message remains byte-stable,
+/// independently of the behavioral entry rails above.
 #[test]
 fn invalid_composition_reasons_all_render_stable_codes() {
     let span = fixture_span();

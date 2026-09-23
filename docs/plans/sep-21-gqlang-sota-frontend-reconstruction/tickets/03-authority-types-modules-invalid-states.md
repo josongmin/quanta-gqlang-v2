@@ -1,6 +1,11 @@
 # 03 — Authority, Types, Modules, And Invalid States
 
-Status: `OWNER GREEN CHECKPOINT — CROSS-OWNER RECEIPT OPEN`
+Status: `CODE INTEGRATED AT d9d0f28; CURRENT-SHA QUALIFICATION OPEN`
+
+This header supersedes older owner-only checkpoints. Types, Modules, and
+Binder participate in the current compiled source path; their owner tests and
+the pre-commit 1,168/1,168 workspace gate passed. Historical mutation
+receipts were not rerun on `d9d0f28`.
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 

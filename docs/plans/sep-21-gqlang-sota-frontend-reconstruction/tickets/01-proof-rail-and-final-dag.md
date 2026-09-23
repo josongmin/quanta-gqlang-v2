@@ -1,6 +1,12 @@
 # 01 — Proof Rail And Final DAG
 
-Status: `CURRENT TREE RED — HISTORICAL RECEIPT ONLY`
+Status: `CODE/POLICY INTEGRATED AT d9d0f28; CURRENT-SHA QUALIFICATION OPEN`
+
+This header supersedes older RED checkpoints below. The final 14-member
+architecture graph, Semgrep gate, and local policy recipe passed on the
+pre-commit source overlay (1,168/1,168 workspace tests); no clean
+`d9d0f28` qualification receipt has been recorded. Preserve historical
+mutation/receipt scope rather than treating it as a new run.
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 

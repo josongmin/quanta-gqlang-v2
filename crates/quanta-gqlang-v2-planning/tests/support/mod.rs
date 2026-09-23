@@ -18,22 +18,27 @@
 //! algebra node, so those helpers have no remaining call site; the raw-HIR
 //! `quanta-gqlang-v2-hir` crate is not a dependency of this crate either.
 
-use quanta_gqlang_v2_algebra::lower_relation_item;
+use quanta_gqlang_v2_algebra::{lower_nested_relation_v2, lower_relation_item};
 use quanta_gqlang_v2_logic::{GraphQueryContractV2, RuleProgramContractV2};
 use quanta_gqlang_v2_planning::{
-    plan, CheckContractV2, CheckPolicyV2, EffectSummaryV2, GraphWitnessRetentionV2, PlanPolicyV2,
-    RuleProgramPolicyV2, SemanticPlanInputV2, SemanticPlanV2,
+    plan, CheckContractV2, CheckPolicyV2, CheckedCompositionPlanInputV2,
+    CompositionBodyPlanInputV2, CompositionRelationalBodyPlanInputV2, EffectSummaryV2,
+    GraphWitnessRetentionV2, PlanPolicyV2, PresentationContractV2, RuleProgramPolicyV2,
+    SemanticPlanInputV2, SemanticPlanV2,
 };
 use quanta_gqlang_v2_sema::test_support::{
-    reference_graph_document_v2, reference_nested_check_document_v2,
-    reference_relation_document_v2, reference_rule_document_v2, ReferenceGraphDocumentV2,
-    ReferenceGraphReferenceV2, ReferenceGraphRequestV2, ReferenceNestedCheckDocumentV2,
-    ReferenceRelationDocumentV2, ReferenceRelationFixtureV2, ReferenceRuleDocumentV2,
-    ReferenceRuleFixtureV2,
+    reference_composition_document_v2, reference_graph_document_v2, reference_meta_document_v2,
+    reference_narrow_witness_graph_document_v2, reference_nested_check_document_v2,
+    reference_presentation_document_v2, reference_relation_document_v2, reference_rule_document_v2,
+    ReferenceCompositionBodyV2, ReferenceCompositionDocumentV2, ReferenceGraphDocumentV2,
+    ReferenceGraphReferenceV2, ReferenceGraphRequestV2, ReferenceMetaDocumentV2,
+    ReferenceMetaFixtureV2, ReferenceNestedCheckDocumentV2, ReferencePresentationDocumentV2,
+    ReferencePresentationFixtureV2, ReferenceRelationDocumentV2, ReferenceRelationFixtureV2,
+    ReferenceRuleDocumentV2, ReferenceRuleFixtureV2,
 };
 use quanta_gqlang_v2_sema::{
-    CheckedLocatedSpanV2, GraphQueryKindV1, GraphReferenceRoleV2, SemanticDocumentV2,
-    SemanticItemIdV2, SemanticItemV2,
+    CheckedLocatedSpanV2, GraphQueryKindV1, GraphReferenceRoleV2, ResolvedCompositionBodyV2,
+    SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2,
 };
 
 /// The explicit positive depth every shared FIND/CHECK fixture seals.
@@ -121,6 +126,23 @@ pub(crate) fn graph_contract(
     GraphQueryContractV2::from_resolved(document.graph()).map_err(|error| format!("{error:?}"))
 }
 
+/// Seal the graph carrier already resolved by one reference graph document.
+pub(crate) fn graph_input_from_document(
+    document: &ReferenceGraphDocumentV2,
+) -> Result<SemanticPlanInputV2, String> {
+    graph_contract(document).map(SemanticPlanInputV2::Graph)
+}
+
+/// One FIND fixture whose sealed witness cap is exactly one.
+pub(crate) fn narrow_graph_input(
+    kind: GraphQueryKindV1,
+    depth: u32,
+) -> Result<(ReferenceGraphDocumentV2, SemanticPlanInputV2), String> {
+    let document = reference_narrow_witness_graph_document_v2(kind, depth)?;
+    let input = graph_input_from_document(&document)?;
+    Ok((document, input))
+}
+
 /// The one shared nested CHECK/FIND fixture document (a `taint` semantic
 /// confirm input, `SemanticOnly` detection, `Skip` confirmation, `Findings`
 /// emission).
@@ -174,6 +196,67 @@ pub(crate) fn rule_input(
     let contract = RuleProgramContractV2::from_document(document.document())
         .map_err(|error| format!("{error:?}"))?;
     Ok((document, SemanticPlanInputV2::Rule(contract)))
+}
+
+/// One resolved meta directive plus its sealed planning carrier.
+pub(crate) fn meta_input(
+    fixture: ReferenceMetaFixtureV2,
+) -> Result<(ReferenceMetaDocumentV2, SemanticPlanInputV2), String> {
+    let document = reference_meta_document_v2(fixture)?;
+    let Some(SemanticItemV2::Meta(meta)) = document.document().item(document.meta_item_id()) else {
+        return Err("the meta fixture item is a resolved meta directive".to_owned());
+    };
+    let meta = meta.clone();
+    Ok((document, SemanticPlanInputV2::MetaRequireCertified(meta)))
+}
+
+/// One resolved presentation plus its validated planning carrier.
+pub(crate) fn presentation_input(
+    fixture: ReferencePresentationFixtureV2,
+) -> Result<(ReferencePresentationDocumentV2, SemanticPlanInputV2), String> {
+    let document = reference_presentation_document_v2(fixture)?;
+    let contract = PresentationContractV2::from_resolved(document.presentation())
+        .map_err(|error| format!("{error:?}"))?;
+    Ok((document, SemanticPlanInputV2::Presentation(contract)))
+}
+
+/// Build the one public planning input for a sealed composition document.
+pub(crate) fn composition_input(
+    body: ReferenceCompositionBodyV2,
+) -> Result<(ReferenceCompositionDocumentV2, SemanticPlanInputV2), String> {
+    let document = reference_composition_document_v2(body)?;
+    let composition = document.composition();
+    let body = match composition.body() {
+        ResolvedCompositionBodyV2::Query(query) => {
+            let root =
+                lower_nested_relation_v2(document.document(), composition.item_id(), query.root())
+                    .map_err(|error| format!("{error:?}"))?;
+            let input = CompositionRelationalBodyPlanInputV2::try_new(query.item_id(), root)
+                .map_err(|error| format!("{error:?}"))?;
+            CompositionBodyPlanInputV2::Relational(input)
+        }
+        ResolvedCompositionBodyV2::Graph(graph) => CompositionBodyPlanInputV2::Graph(
+            GraphQueryContractV2::from_resolved(graph).map_err(|error| format!("{error:?}"))?,
+        ),
+        ResolvedCompositionBodyV2::Check(check) => {
+            let nested = check
+                .nested_graph()
+                .map(GraphQueryContractV2::from_resolved)
+                .transpose()
+                .map_err(|error| format!("{error:?}"))?;
+            let contract = CheckContractV2::from_resolved(check, nested)
+                .map_err(|error| format!("{error:?}"))?;
+            CompositionBodyPlanInputV2::Check(contract)
+        }
+        ResolvedCompositionBodyV2::Explain(explain) => {
+            let contract = PresentationContractV2::from_resolved(explain)
+                .map_err(|error| format!("{error:?}"))?;
+            CompositionBodyPlanInputV2::Explain(contract)
+        }
+    };
+    let input = CheckedCompositionPlanInputV2::new(composition, body)
+        .map_err(|error| format!("{error:?}"))?;
+    Ok((document, SemanticPlanInputV2::Composition(Box::new(input))))
 }
 
 /// The checked location a sealed item is anchored on, mirroring the anchor the

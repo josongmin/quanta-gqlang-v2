@@ -1799,11 +1799,10 @@ mod tests {
     /// substitute or drop the composition identity, its ordered producers, its
     /// `WITH` binding, its body identity, or the body's own policy.
     ///
-    /// INTEGRATOR-FIXTURE-PENDING: no resolved composition document fixture
-    /// exists at this layer, so this rail drives the exact assembly hop
-    /// ([`SemanticPlanV2::from_parts`]) and the exact checked policy landing
-    /// ([`crate::CompositionPolicyV2`]); the end-to-end dispatch through
-    /// [`classify`] is exercised by the pipeline's composition assembly rail.
+    /// This private unit rail isolates the exact assembly hop
+    /// ([`SemanticPlanV2::from_parts`]) and checked policy landing
+    /// ([`crate::CompositionPolicyV2`]). Resolved composition fixtures exercise
+    /// public construction and [`classify`] in the owner integration suite.
     #[test]
     fn a_composition_policy_survives_plan_assembly_exactly() -> Result<(), String> {
         let policy = crate::composition::tests::fixture_policy()?;

@@ -3347,6 +3347,8 @@ pub enum ReferenceRuleFixtureV2 {
     NonRecursiveDependency,
     /// Two rules with a single negated nonrecursive edge (r -> not s).
     NegatedNonRecursiveDependency,
+    /// Two rules with a single aggregated nonrecursive edge (r -> aggregate s).
+    AggregatedNonRecursiveDependency,
     /// One rule whose only call is a builtin, never a graph vertex.
     BuiltinCallOnly,
 }
@@ -3613,6 +3615,10 @@ fn rule_checked_document_v2(
         ],
         Fixture::NegatedNonRecursiveDependency => &[
             ("r", RuleBodyShapeV2::Negated("s"), 0),
+            ("s", RuleBodyShapeV2::AnchorOnly, 60),
+        ],
+        Fixture::AggregatedNonRecursiveDependency => &[
+            ("r", RuleBodyShapeV2::Aggregated("s"), 0),
             ("s", RuleBodyShapeV2::AnchorOnly, 60),
         ],
         Fixture::BuiltinCallOnly => &[("r", RuleBodyShapeV2::BuiltinOnly, 0)],

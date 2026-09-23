@@ -1,6 +1,15 @@
 # Final Current-Head Audit
 
-Status: `AUDIT COMPLETE — REPAIR ACTIVE; PACKET NOT COMPLETE`
+Status: `HISTORICAL 2026-09-21 FINDING LEDGER; CURRENT ROUTING IN README/TICKET 09`
+
+Current override (2026-09-23): `main@d9d0f28` integrated W1-W6 producer
+code, including F04/F26 repairs and the F08 owner oracle. The pre-commit
+source/test/tool gate passed 1,168/1,168; clean current-SHA qualification and
+Ticket 09 semantic coverage accounting remain open. The F01-F37 rows below
+describe failures at their original audit source pin, not automatically open
+bugs at the current source. Use Ticket 09's current-source disposition before
+authorizing a code edit; another writer's in-flight owner tests are not part
+of this baseline.
 
 ## 2026-09-21 Current-State Supersession
 

@@ -2,7 +2,12 @@
 
 > Current routing, 2026-09-23: this ticket's V2 producer backlog and source pins are historical. The breaking V3 frontend producer implementation and exact file inventory are owned by [Ticket 10a](./10a-v3-frontend-execution-contract.md). This ticket remains cross-repository background; its older V2 acceptance text does not supersede Ticket 10a or current source.
 
-Status: `PARTIAL — CLOSED AUTHORITY BUILDER GREEN; LOGICAL SERVING VIEW, CONSUMER CUTOVER, AND QUALIFICATION OPEN`
+Status: `HISTORICAL V2 PROPOSAL; V3 PRODUCER OWNED BY 10a; SEMANTICA CONSUMER SEPARATE`
+
+The V2 implementation proposal below is not a current GQLang code backlog.
+At `main@d9d0f28`, use Ticket 10a and the V3 contract for producer decisions.
+Semantica owns selected-item admission and runtime execution; its paired-source
+proof remains separate. Do not implement the older V2 logical-view plan.
 Snapshot: GQLang `9a23f937c8d83dfc83cb6ae59e531037d83c5072`, clean isolated worktree, 2026-09-22.
 Consumer snapshot: Semantica qualification worktree `e850efb71a8` (re-freeze before work); its pre-existing `Cargo.lock` is dirty. This ticket is a cross-repository handoff, **not** a change to the frontend-only ownership rule in Ticket 00. It does not make runtime execution, physical planning, or provider wiring GQLang responsibilities.
 

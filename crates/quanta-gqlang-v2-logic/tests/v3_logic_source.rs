@@ -31,11 +31,11 @@ use quanta_gqlang_v2_sema::test_support::{
     forged_small_receipt_relation_chain_document_v2, reference_relation_document_v2,
     reference_rule_document_v2, second_source_relation_document_v2, ForgedRuleCallWrapperV2,
     ForgedRuleFactMutationV2, ForgedRuleMembershipMutationV2, ReferenceBudgetV2,
-    ReferenceRelationFixtureV2, ReferenceRuleFixtureV2, SECONDARY_REFERENCE_SOURCE_V2,
-    SMALL_BUDGET_MAX_SEMANTIC_STEPS,
+    ReferenceRelationFixtureV2, ReferenceRuleFixtureV2, REFERENCE_SOURCE_V2,
+    SECONDARY_REFERENCE_SOURCE_V2, SMALL_BUDGET_MAX_SEMANTIC_STEPS,
 };
 use quanta_gqlang_v2_sema::{
-    CheckedLocatedSpanV2, FrontendBudgetV2, SemanticDocumentV2, TypedExprV2,
+    CheckedLocatedSpanV2, FrontendBudgetV2, SemanticDocumentV2, SpanV1, TypedExprV2,
 };
 use quanta_gqlang_v2_types::ResolvedCallTargetV2;
 
@@ -413,11 +413,9 @@ fn negated_self_recursion_is_refused_at_the_sole_ingress() {
 fn aggregated_self_recursion_is_refused_at_the_sole_ingress() {
     // Aggregated recursion is refused by the same ingress, under lane W3-A's
     // fixed reject-all policy: the diagnostic names the folded predicate and is
-    // anchored on the aggregate CALL, not on the rule body. The
-    // `BodyPolarityV1::Aggregated` projection of an admitted document is
-    // FIXTURE-PENDING: the only aggregated-call fixture is recursive (and
-    // therefore now correctly unreachable through the ingress), so this rail
-    // asserts the refusal verbatim instead of projecting an unadmitted graph.
+    // anchored on the aggregate CALL, not on the rule body. The admitted
+    // nonrecursive projection is covered separately below, so this rail retains
+    // the recursive rejection contract verbatim.
     let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::AggregatedSelfRecursion)
         .expect("aggregated self-recursion fixture resolves");
     let document = fixture.document();
@@ -513,6 +511,78 @@ fn negated_nonrecursive_dependency_projects_one_negated_edge() {
     let literal = body_literal(program_rule(&program, "r"), "s");
     assert_eq!(literal.polarity(), BodyPolarityV1::Negated);
     assert!(program_rule(&program, "s").body().is_empty());
+}
+
+#[test]
+fn aggregated_nonrecursive_dependency_projects_exact_edge_and_stratification() {
+    let fixture =
+        reference_rule_document_v2(ReferenceRuleFixtureV2::AggregatedNonRecursiveDependency)
+            .expect("aggregated nonrecursive dependency fixture resolves");
+    let document = fixture.document();
+    let contract = accepted(document);
+
+    assert_eq!(fixture.item_ids().len(), 2);
+    assert_eq!(
+        contract
+            .rules()
+            .iter()
+            .map(quanta_gqlang_v2_sema::ResolvedRuleV2::item_id)
+            .collect::<Vec<_>>(),
+        fixture.item_ids(),
+        "the admitted carrier preserves the canonical document member order"
+    );
+
+    let caller = contract
+        .rules()
+        .iter()
+        .find(|rule| rule.predicate_id() == &predicate("r"))
+        .expect("r is the aggregate caller");
+    let callee = contract
+        .rules()
+        .iter()
+        .find(|rule| rule.predicate_id() == &predicate("s"))
+        .expect("s is the aggregate callee");
+    let call = only_call(caller);
+    assert_eq!(
+        call.target(),
+        &ResolvedCallTargetV2::Predicate(predicate("s"))
+    );
+    assert_eq!(
+        call.polarity(),
+        quanta_gqlang_v2_sema::RuleCallPolarityV2::Aggregated
+    );
+    assert_eq!(call.location().location().source_id, REFERENCE_SOURCE_V2);
+    assert_eq!(call.location().location().span, SpanV1::new(40, 44));
+    assert!(callee.calls().is_empty());
+
+    let program = contract.to_program();
+    assert_eq!(program.len(), 2);
+    let literal = body_literal(program_rule(&program, "r"), "s");
+    assert_eq!(literal.predicate(), &predicate("s"));
+    assert_eq!(literal.polarity(), BodyPolarityV1::Aggregated);
+    assert_eq!(literal.location(), call.location());
+    assert_eq!(literal.aggregate_function(), None);
+    assert!(program_rule(&program, "s").body().is_empty());
+
+    let recomputed = stratify(
+        &RecursiveProgramV1::from_rules(contract.to_program()),
+        &contract.budget(),
+    )
+    .expect("a nonrecursive aggregate edge is stratifiable");
+    assert_eq!(contract.stratification(), &recomputed);
+    assert!(contract.stratification().recursive().is_empty());
+    assert!(!contract.stratification().is_recursive(&predicate("r")));
+    assert!(!contract.stratification().is_recursive(&predicate("s")));
+    assert_eq!(contract.stratification().components().len(), 2);
+    assert_eq!(contract.stratification().stratum_count(), 2);
+    assert_eq!(
+        contract.stratification().stratum_of(&predicate("r")),
+        Some(1)
+    );
+    assert_eq!(
+        contract.stratification().stratum_of(&predicate("s")),
+        Some(0)
+    );
 }
 
 #[test]

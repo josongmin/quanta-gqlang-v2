@@ -1,5 +1,15 @@
 # Live Goal Backlog — 2026-09-22
 
+Status: `HISTORICAL SNAPSHOT; DO NOT DISPATCH BG-01..BG-13 FROM THIS FILE`
+
+Current override (2026-09-23): W1-W6 product code is integrated at
+`main@d9d0f28`; this file's `ba42419899cfd8c347ff80627cf1da96bb83768e`
+dirty-tree build failures and BG work
+order are no longer current. Ticket 09 owns owner-oracle/semantic-family
+accounting, repair of a demonstrated gap, clean current-source qualification,
+and packet attestation. Semantica consumer execution remains separate. Use
+the packet README and Ticket 09 for current routing.
+
 ## Scope, snapshot, and proof boundary
 
 This is a current-state backlog, not a new language decision or a completion

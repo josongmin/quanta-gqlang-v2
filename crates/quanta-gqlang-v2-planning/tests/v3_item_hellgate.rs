@@ -27,23 +27,10 @@
 //! - declarations / `USE PACK` / an empty program -> the TYPED no-plan marker,
 //!   never an error.
 //!
-//! # Rails that cannot be exercised from the current fixture matrix
-//!
-//! INTEGRATOR-FIXTURE-PENDING (exact fixture requests are in the lane report; no
-//! fake carrier is built here):
-//!
-//! - EXPLAIN -> `proof_explain` / `read_only`, SHOW / SAMPLE -> `table`,
-//!   DESCRIBE -> `alert`, COMPARE -> `path_witness`, EXPORT -> `export_only`: no
-//!   resolved PRESENTATION document fixture exists, so the presentation arm
-//!   cannot be driven from these tests.
-//! - `USE PACK` -> `NoPlanReasonV2::MetaActivation` and `REQUIRE CERTIFIED` ->
-//!   the certified authority lane: no resolved META document fixture exists.
-//! - a presentation-level no-plan / catalog-declaration carrier: no resolved
-//!   CATALOG/DECLARATION document fixture exists (the typed reason vocabulary is
-//!   asserted in `v3_planning_hellgate.rs` meanwhile).
-//! - the ANTI-join family: its only reference fixtures lower an `AntiJoin` to the
-//!   relation ROOT, which the src defect documented at the bottom of this file
-//!   refuses.
+//! The reference matrix now drives all six presentation verbs, both meta
+//! directives, and re-anchored Semi/Anti joins through the real owner entry.
+//! Catalog/declaration non-plan carriers remain covered by their closed typed
+//! vocabulary until Sema exposes resolved declaration fixtures.
 
 use std::collections::BTreeSet;
 
@@ -54,8 +41,9 @@ use quanta_gqlang_v2_planning::{
     PlanPolicyV2, RecursionRiskClassV2, RenderRequirementV2, ResultKindV2, SemanticPlanInputV2,
     WitnessExplosionRiskClassV2, WitnessSelectionPolicyV2,
 };
+use quanta_gqlang_v2_sema::test_support::ReferencePresentationFixtureV2;
 use quanta_gqlang_v2_sema::test_support::{ReferenceRelationFixtureV2, ReferenceRuleFixtureV2};
-use quanta_gqlang_v2_sema::{GraphQueryKindV1, SemanticItemV2};
+use quanta_gqlang_v2_sema::{EvidenceModeV1, GraphQueryKindV1, SemanticItemV2, TruthModeV1};
 use quanta_gqlang_v2_types::ResolvedPredicateIdV2;
 
 mod support;
@@ -348,9 +336,76 @@ fn a_rule_program_retains_its_exact_stratified_policy() {
     }
 }
 
-/// The plan policy vocabulary is closed per arm: every reachable carrier reports
-/// its own arm keyword, and the three arms whose fixtures are pending keep their
-/// stable spellings.
+/// Every presentation verb reaches the real planner and retains its complete
+/// sealed payload while deriving the verb-specific result/evidence/effect.
+#[test]
+fn every_presentation_verb_retains_its_sealed_payload_and_plan_shape() {
+    for (fixture, result, render, evidence, effect) in [
+        (
+            ReferencePresentationFixtureV2::Explain {
+                evidence: EvidenceModeV1::Trace,
+                truth: TruthModeV1::Confirm,
+            },
+            ResultKindV2::ProofExplain,
+            RenderRequirementV2::ProvenanceTree,
+            EvidenceRequirementV2::ProofTree,
+            EffectClassV2::ReadOnly,
+        ),
+        (
+            ReferencePresentationFixtureV2::Show,
+            ResultKindV2::Table,
+            RenderRequirementV2::RowsOnly,
+            EvidenceRequirementV2::None,
+            EffectClassV2::ReadOnly,
+        ),
+        (
+            ReferencePresentationFixtureV2::Describe,
+            ResultKindV2::Alert,
+            RenderRequirementV2::SourceLocation,
+            EvidenceRequirementV2::SourceLocation,
+            EffectClassV2::ReadOnly,
+        ),
+        (
+            ReferencePresentationFixtureV2::Sample,
+            ResultKindV2::Table,
+            RenderRequirementV2::RowsOnly,
+            EvidenceRequirementV2::None,
+            EffectClassV2::ReadOnly,
+        ),
+        (
+            ReferencePresentationFixtureV2::Compare,
+            ResultKindV2::PathWitness,
+            RenderRequirementV2::WitnessPayload,
+            EvidenceRequirementV2::WitnessPayload,
+            EffectClassV2::ReadOnly,
+        ),
+        (
+            ReferencePresentationFixtureV2::Export,
+            ResultKindV2::Table,
+            RenderRequirementV2::SarifFindings,
+            EvidenceRequirementV2::None,
+            EffectClassV2::ExportOnly,
+        ),
+    ] {
+        let (document, input) =
+            support::presentation_input(fixture).expect("the presentation fixture seals");
+        let planned = plan(&input, document.document()).expect("the presentation plans");
+        assert_eq!(planned.result().result_kind(), result, "{fixture:?}");
+        assert_eq!(planned.result().render_requirement(), render, "{fixture:?}");
+        assert_eq!(planned.evidence(), evidence, "{fixture:?}");
+        assert_eq!(planned.effect(), effect, "{fixture:?}");
+        assert_eq!(planned.authority_lane(), AuthorityLaneV2::FrontendChecked);
+        match planned.policy() {
+            PlanPolicyV2::Presentation(kind) => {
+                assert_eq!(kind, document.presentation().kind(), "{fixture:?}");
+            }
+            other => panic!("expected presentation policy for {fixture:?}, got {other:?}"),
+        }
+    }
+}
+
+/// The plan policy vocabulary is closed per arm: every carrier family reports
+/// its own stable keyword.
 #[test]
 fn the_plan_policy_vocabulary_is_closed_per_arm() {
     let (_document, relation) =
@@ -420,34 +475,12 @@ fn a_relational_carrier_is_the_sealed_lowering_product() {
     assert_eq!(carrier.root().location(), relation.root().location());
 }
 
-/// SRC-DEFECT canary (reported, not fixed: this lane owns `tests/**` only).
-///
-/// For a relation whose authored root predicate is EXACTLY a relational
-/// `EXISTS` / `NOT EXISTS`, ticket 05's canonical lowering folds the residual
-/// filter away and promotes the Semi/Anti join to the root — deliberately, as
-/// `crates/quanta-gqlang-v2-algebra/tests/v3_algebra_normalization.rs::pure_exists_conjunct_lowers_to_semijoin_with_no_residual_filter`
-/// asserts. The promoted root therefore carries the EXISTS stage's key and
-/// location, not the authored filter root's.
-///
-/// `crates/quanta-gqlang-v2-planning/src/plan.rs:324` nevertheless requires
-/// `carrier.root().stage_key() == relation.root().key()`, so `plan` refuses
-/// every such relation with
-/// `planning.input_document_mismatch.identity_mismatch` even though the item
-/// identity and the sealed output contract both agree. Exact repro:
-///
-/// ```text
-/// let document = reference_relation_document_v2(ReferenceRelationFixtureV2::Exists)?;
-/// let input = lower_relation_item(document.document(), document.item_id())?;
-/// plan(&SemanticPlanInputV2::Relational(input), document.document())
-///   == Err(InputDocumentMismatch { reason: IdentityMismatch, .. })
-/// ```
-///
-/// The same refusal hits `NotExists`, `CorrelatedExists`,
-/// `CorrelatedNotExists`, and `NestedExistsTwoLevels`. This rail pins the
-/// FACT the two crates disagree on, so a future reconciliation of either side
-/// surfaces here.
+/// Canonical lowering may promote a pure EXISTS/NOT EXISTS stage to the root.
+/// Planning accepts that re-anchoring because item identity and the complete
+/// output contract remain sealed, while the plan stays anchored on the authored
+/// relation item location.
 #[test]
-fn relational_root_re_anchoring_src_defect_canary() {
+fn every_reanchored_exists_family_plans_from_its_sealed_owner() {
     for fixture in [
         ReferenceRelationFixtureV2::Exists,
         ReferenceRelationFixtureV2::NotExists,
@@ -463,27 +496,33 @@ fn relational_root_re_anchoring_src_defect_canary() {
         else {
             panic!("the fixture item is a resolved relation");
         };
-        // The identity the planner actually needs still agrees.
         assert_eq!(carrier.item_id(), relation.item_id(), "{fixture:?}");
         assert_eq!(carrier.root().item_id(), relation.item_id(), "{fixture:?}");
         assert_eq!(carrier.output(), relation.output(), "{fixture:?}");
-        // The two crates disagree on the ROOT stage key.
         assert_ne!(
             carrier.root().stage_key(),
             relation.root().key(),
-            "{fixture:?}: revisit the src defect note above if this now agrees"
+            "{fixture:?}: this fixture must exercise root re-anchoring"
         );
         assert_ne!(
             carrier.root().location(),
             relation.root().location(),
             "{fixture:?}"
         );
+        let planned = plan(&input, document.document()).expect("the re-anchored relation plans");
+        assert_eq!(planned.result().result_kind(), ResultKindV2::Table);
+        assert_eq!(
+            planned.explain().root_location(),
+            relation.location(),
+            "{fixture:?}"
+        );
+        assert_eq!(planned.policy().keyword(), "relational");
     }
 }
 
 /// The relational arms that are NOT re-anchored by lowering keep full identity
-/// agreement, so the canary above isolates the EXISTS family rather than a
-/// blanket identity relaxation.
+/// agreement, so the re-anchored rail above does not weaken ordinary root
+/// identity.
 #[test]
 fn an_unreanchored_relational_carrier_keeps_stage_key_identity() {
     for fixture in [

@@ -21,9 +21,8 @@
 //! - witness-selection policy comes from the SEALED max-witness cap, so the V1
 //!   `TopK`/canonical-one selection rails have no V2 caller spelling.
 //!
-//! Rails whose V2 shape needs a fixture that does not exist yet are listed in
-//! the lane report as INTEGRATOR-FIXTURE-PENDING and are marked inline below; the
-//! corresponding class/keyword vocabulary stays asserted verbatim.
+//! Standard and narrow-witness fixtures prove both reachable witness-selection
+//! branches; unreachable caller-selected `TopK` remains vocabulary-only.
 
 use quanta_gqlang_v2_planning::{
     plan, AuthorityLaneV2, CardinalityClassV2, EffectClassV2, EvaluationDeterminismV2,
@@ -294,12 +293,9 @@ fn a_cyclic_find_witness_is_cap_bounded_and_admits_all_witnesses() {
     assert_eq!(planned.policy().keyword(), "graph");
 }
 
-/// The witness-selection policy is derived from the SEALED max-witness cap
-/// alone: a cap wider than one admits every witness. INTEGRATOR-FIXTURE-PENDING
-/// for the other reachable arm: `CanonicalOne` requires a sealed cap of exactly
-/// one, and every reference document seals the standard witness budget
-/// (`max_witnesses = 10000`), so no fixture reaches it; `TopK` has no V2 spelling
-/// at all because no caller may select a witness policy.
+/// The witness-selection policy and explosion class are derived from the SEALED
+/// cap alone: a standard cap admits all witnesses, while cap=1 selects the
+/// canonical witness. `TopK` has no V2 caller spelling.
 #[test]
 fn witness_selection_is_derived_from_the_sealed_cap() {
     let (document, input) = graph_input(quanta_gqlang_v2_sema::GraphQueryKindV1::Path, 4)
@@ -313,6 +309,32 @@ fn witness_selection_is_derived_from_the_sealed_cap() {
     assert_eq!(
         planned.result().witness_selection(),
         Some(WitnessSelectionPolicyV2::AllWitness)
+    );
+
+    let (narrow_document, narrow_input) =
+        support::narrow_graph_input(quanta_gqlang_v2_sema::GraphQueryKindV1::Path, 4)
+            .expect("the narrow-witness path fixture");
+    let contract = match &narrow_input {
+        quanta_gqlang_v2_planning::SemanticPlanInputV2::Graph(contract) => contract,
+        other => panic!("the fixture seals a graph carrier, got {other:?}"),
+    };
+    assert_eq!(contract.max_witnesses(), 1);
+    let narrow =
+        plan(&narrow_input, narrow_document.document()).expect("the narrow-witness FIND plans");
+    assert_eq!(
+        narrow.result().witness_selection(),
+        Some(WitnessSelectionPolicyV2::CanonicalOne)
+    );
+    assert_eq!(
+        narrow.semantic_cost().witness_explosion_risk_class,
+        WitnessExplosionRiskClassV2::CapBounded,
+        "cyclic graph closure remains path-bound even with one witness"
+    );
+    assert_eq!(
+        support::graph_policy(&narrow)
+            .expect("narrow graph policy")
+            .max_witnesses(),
+        1
     );
 }
 

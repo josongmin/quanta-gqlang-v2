@@ -1,6 +1,11 @@
 # 05 — Relational Algebra And Aggregate Semantics
 
-Status: `IN PROGRESS — SS-05B PACKAGE CUT COMPLETE; RR-05C BLOCKERS OPEN`
+Status: `CODE INTEGRATED AT d9d0f28; CURRENT-SHA QUALIFICATION OPEN`
+
+This header supersedes older package-cut and compile-RED checkpoints. The
+checked relational lowering, GROUP/aggregate partition identity, and EXISTS
+paths are integrated; owner and pre-commit 1,168/1,168 workspace tests passed.
+No V1 compatibility path is a current work order.
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 

@@ -1,14 +1,31 @@
 # Worker Start Here
 
-## Current Override — 2026-09-21
+## Current Override — 2026-09-23
 
-Freeze before every work package. The last coordinated observation was
-`main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a` with a 178-entry shared dirty
-overlay; it is not a clean candidate. Re-read the final current-state section
-of the assigned ticket because earlier test counts and error counts are
-historical.
+Freeze before every work package. Before this documentation update, `main`
+and `origin/main` were clean at
+`d9d0f28a8365e6918dc8c7d0c552a8e277a838f0`. W1-W6 code is integrated;
+the `ecc38f59` dirty-overlay order below is historical and **must not be
+redispatched**. The pre-commit `just ci` passed 1,168/1,168, but no clean
+`d9d0f28` qualification receipt exists. Read Ticket 09's current-source
+section for the remaining owner-oracle audit and source-pin qualification.
 
-Current implementation order:
+Current work order:
+
+```text
+Audit 18-root source-to-checked semantics against existing owner tests
+  -> add only a demonstrated missing assertion or source-level fix
+  -> just ci once on final source/test/tool content
+  -> clean committed-HEAD just qualify-local
+  -> docs/receipt-only attestation and separate Semantica paired proof
+```
+
+### Historical worker dispatch below — 2026-09-21
+
+The following SS-02G through SS-09B lane plan records how the original
+reconstruction was executed. It is not current implementation authority.
+
+Historical implementation order:
 
 ```text
 SS-02G inventory/receipt prep || SS-03H owner tests || SS-03H-S + SS-04W Sema owner
