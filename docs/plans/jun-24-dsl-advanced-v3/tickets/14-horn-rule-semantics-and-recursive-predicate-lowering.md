@@ -1,5 +1,8 @@
 # 14 Horn Rule Semantics And Recursive Predicate Lowering
 
+> Historical 2026-06-24 snapshot. “Current Main” below refers to that dated
+> source, not today's repository. Use the [current language authority](../../../language/README.md).
+
 Status: `Implemented On Current Main`
 
 ## Current Main Receipt

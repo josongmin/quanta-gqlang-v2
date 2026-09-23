@@ -1,5 +1,8 @@
 # 16 Current Main Proof and Artifact Hygiene
 
+> Historical 2026-06-25/26 snapshot. “Current head” below refers to that dated
+> source, not today's repository. Use the [current language authority](../../../language/README.md).
+
 Status: materially closed on current head; proof refreshed and worktree clean
 
 ## Goal

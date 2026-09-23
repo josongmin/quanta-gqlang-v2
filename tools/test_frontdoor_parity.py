@@ -10,9 +10,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGET = ROOT / "target" / "debug"
-CLI = TARGET / "quanta-gqlang-v2-cli"
-STDIO = TARGET / "quanta-gqlang-v2-diagnostics-stdio"
+CLI_BINARY = "quanta-gqlang-v2-cli"
+STDIO_BINARY = "quanta-gqlang-v2-diagnostics-stdio"
 
 
 def run(command: list[str], *, stdin: bytes | None = None) -> subprocess.CompletedProcess[bytes]:
@@ -25,8 +24,29 @@ def run(command: list[str], *, stdin: bytes | None = None) -> subprocess.Complet
     )
 
 
-def parse_cli(source: str) -> dict[str, object]:
-    result = run([str(CLI), "query", source])
+def built_binaries(output: bytes) -> dict[str, Path]:
+    """Return exact executable paths emitted by this Cargo build."""
+    binaries: dict[str, Path] = {}
+    for raw_line in output.splitlines():
+        event = json.loads(raw_line)
+        if not isinstance(event, dict):
+            continue
+        target = event.get("target", {})
+        if not isinstance(target, dict):
+            continue
+        executable = event.get("executable")
+        if (
+            event.get("reason") == "compiler-artifact"
+            and "bin" in target.get("kind", [])
+            and isinstance(target.get("name"), str)
+            and isinstance(executable, str)
+        ):
+            binaries[target["name"]] = Path(executable)
+    return binaries
+
+
+def parse_cli(executable: Path, source: str) -> dict[str, object]:
+    result = run([str(executable), "query", source])
     payload = result.stdout if result.stdout else result.stderr
     fields: dict[str, str] = {}
     for raw_line in payload.decode("utf-8").splitlines():
@@ -56,7 +76,7 @@ def parse_cli(source: str) -> dict[str, object]:
     }
 
 
-def parse_stdio(source: str) -> dict[str, object]:
+def parse_stdio(executable: Path, source: str) -> dict[str, object]:
     request = {
         "id": "parity",
         "method": "v3_diagnostics",
@@ -64,7 +84,7 @@ def parse_stdio(source: str) -> dict[str, object]:
         "source": source,
     }
     result = run(
-        [str(STDIO)],
+        [str(executable)],
         stdin=(json.dumps(request, separators=(",", ":")) + "\n").encode("utf-8"),
     )
     lines = result.stdout.splitlines()
@@ -93,11 +113,32 @@ def main() -> int:
             "-p",
             "quanta-gqlang-v2-diagnostics-stdio",
             "--bins",
+            "--message-format=json-render-diagnostics",
         ]
     )
     if build.returncode != 0:
+        sys.stderr.buffer.write(build.stdout)
         sys.stderr.buffer.write(build.stderr)
         return build.returncode
+
+    try:
+        binaries = built_binaries(build.stdout)
+    except (KeyError, TypeError, ValueError) as error:
+        print(f"front-door parity could not parse Cargo artifacts: {error}", file=sys.stderr)
+        return 1
+    missing = sorted({CLI_BINARY, STDIO_BINARY} - binaries.keys())
+    if missing:
+        print(f"front-door parity build omitted binaries: {missing}", file=sys.stderr)
+        return 1
+    cli_binary = binaries[CLI_BINARY]
+    stdio_binary = binaries[STDIO_BINARY]
+    if not cli_binary.is_file() or not stdio_binary.is_file():
+        print(
+            "front-door parity Cargo artifact path is absent: "
+            f"cli={cli_binary} stdio={stdio_binary}",
+            file=sys.stderr,
+        )
+        return 1
 
     deep = "let x = " + ("(" * 70) + "1" + (")" * 70)
     cases = {
@@ -118,8 +159,8 @@ def main() -> int:
     }
     failures: list[str] = []
     for name, (source, expected_status, minimum_diagnostics) in cases.items():
-        cli = parse_cli(source)
-        stdio = parse_stdio(source)
+        cli = parse_cli(cli_binary, source)
+        stdio = parse_stdio(stdio_binary, source)
         cli_status = cli.pop("process_status")
         if cli_status == 0:
             failures.append(f"{name}: CLI must exit non-zero for non-complete analysis")

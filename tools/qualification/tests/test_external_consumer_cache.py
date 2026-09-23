@@ -15,12 +15,16 @@ from tools.test_frontend_external_consumer import (
     lock_cache,
     manifest_dependencies,
     materialize_fixture,
+    positive_execution_command,
     positive_outcome,
     public_api_roots,
 )
 
 
 class ExternalConsumerCacheTest(unittest.TestCase):
+    def test_positive_execution_delegates_active_target_selection_to_cargo(self):
+        self.assertEqual(positive_execution_command(), ["cargo", "run", "--quiet"])
+
     def test_cargo_manifest_detects_every_dependency_form(self):
         extras = [
             '[dependencies.extra]\nversion = "1"\n',

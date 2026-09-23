@@ -83,8 +83,6 @@ VECTOR_PATH = (
     / "fixtures"
     / "execution-v3-vectors.tsv"
 )
-FIXTURE_BINARY = "quanta-gqlang-v2-frontend-external-consumer"
-
 FACADE_PACKAGE = "quanta-gqlang-v2-frontend-contract"
 PIPELINE_PACKAGE = "quanta-gqlang-v2-pipeline"
 FACADE_DEP_LINE = 'path = "../../crates/quanta-gqlang-v2-frontend-contract"'
@@ -373,6 +371,11 @@ def positive_outcome(
     return "pass", ""
 
 
+def positive_execution_command() -> List[str]:
+    """Run through Cargo so the active target/config selects the built binary."""
+    return ["cargo", "run", "--quiet"]
+
+
 def facade_allowlist(text: str) -> List[str]:
     """Names re-exported from the facade's sole owner crate, in source order."""
     names: List[str] = []
@@ -657,8 +660,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         build = run(["cargo", "build", "--quiet"], cwd=fixture, env=env)
         execution = None
         if build.returncode == 0:
-            executable = CACHE_ROOT / "build" / "debug" / FIXTURE_BINARY
-            execution = run([str(executable)], cwd=fixture, env=env)
+            # Cargo owns the artifact path. A fixed ``build/debug/<name>``
+            # path can execute a stale native binary when CARGO_BUILD_TARGET
+            # or Cargo config placed the successful build under a target
+            # subdirectory.
+            execution = run(positive_execution_command(), cwd=fixture, env=env)
             counts["positive_executed"] = 1
         outcome, message = positive_outcome(build, execution)
         if outcome == "infrastructure":

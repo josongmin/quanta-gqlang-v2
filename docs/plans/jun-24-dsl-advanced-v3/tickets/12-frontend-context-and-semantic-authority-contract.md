@@ -1,5 +1,8 @@
 # 12 Frontend Context And Semantic Authority Contract
 
+> Historical 2026-06-24 snapshot. “Current Main” below refers to that dated
+> source, not today's repository. Use the [current language authority](../../../language/README.md).
+
 Status: `Materially Implemented On Current Main`
 
 ## Current Main Receipt
