@@ -31,11 +31,13 @@
 //! other case — HIR assembled **by hand** by an embedder, a downstream frontend,
 //! or a test fixture. It enforces unique ids and in-bounds, well-formed spans
 //! and returns typed [`HirIntegrityErrorV1`] values (or a [`CheckedHirV1`] that
-//! witnesses them). The compiler does not call it on its own output, and nothing
-//! downstream re-validates a hand-built tree, so skipping it is a real
-//! correctness gap rather than a formality.
+//! witnesses them). Both borrowed and owned seals first apply the shared,
+//! iterative expression/relation/shape depth ceiling before recursive integrity
+//! traversal. Pipeline checks the complete parsed document again for shared
+//! identity; embedders constructing HIR directly must use a checked seal.
 
 mod build;
+mod depth;
 mod expr;
 mod id;
 mod integrity;
@@ -50,8 +52,13 @@ mod visit;
 pub const MAX_SAFE_RELATION_DEPTH_V2: usize = 128;
 /// Shared safety ceiling for source and semantic expression-depth budgets.
 pub const MAX_SAFE_EXPRESSION_DEPTH_V2: usize = 64;
+/// Physical ceiling for the recursive HIR integrity visitor. This is higher
+/// than the frontend expression budget so type-owner resource diagnostics can
+/// still classify one-over-budget programmatic HIR.
+pub const MAX_SAFE_HIR_EXPRESSION_DEPTH_V2: usize = 128;
 
 pub use build::HirBuilderV1;
+pub use depth::{check_depths_v2, HirDepthDiagnosticV2, HirDepthDimensionV2};
 pub use id::{HirNodeIdGen, HirNodeIdV1};
 pub use span::{
     CheckedLocatedSpanV2, ExtendedSourceRegistryViewV2, LocatedSpanErrorV2, LocatedSpanV2,

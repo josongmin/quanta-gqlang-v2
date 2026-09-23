@@ -1,8 +1,9 @@
 //! Fail-closed integrity checking for HIR trees.
 //!
-//! This is the crate's integrity gate (ticket 01 scenario 5). It walks any HIR
-//! root via the [`crate::visit`] visitor and enforces three load-bearing
-//! invariants that downstream tickets rely on:
+//! This is the crate's integrity gate (ticket 01 scenario 5). Before the
+//! recursive visitor runs, a stack-safe shared depth pass rejects excessive
+//! expression, relation, or result-shape nesting. It then enforces three
+//! load-bearing invariants that downstream tickets rely on:
 //!
 //! 1. every node id is unique within the tree,
 //! 2. every span is well formed (`start <= end`),
@@ -13,14 +14,16 @@
 //! checked constructor: it returns `Ok(CheckedHirV1)` only when all invariants
 //! hold, so a `CheckedHirV1` is a proof token that the embedded tree is sound.
 
-use crate::expr::{BoolExprHirV1, ValueExprHirV1};
+use crate::depth::{check_depths_v2, HirDepthDimensionV2};
+use crate::expr::{BoolExprHirV1, BoolExprKindV1, CallArgHirV1, ValueExprHirV1, ValueExprKindV1};
 use crate::id::HirNodeIdV1;
 use crate::item::{
-    CatalogDeclHirV1, CompositionHirV1, ExplainHirV1, GraphQueryHirV1, LegalityHirV1, MetaHirV1,
-    PresentationHirV1, ProgramItemHirV1, SampleHirV1,
+    CatalogDeclHirV1, CatalogPayloadV1, CompositionBodyV1, CompositionHirV1, CompositionProducerV1,
+    ExplainHirV1, GraphQueryHirV1, LegalityHirV1, MetaHirV1, PresentationHirV1, ProgramItemHirV1,
+    SampleHirV1, ViewBodyV1,
 };
-use crate::relation::RelationExprHirV1;
-use crate::shape::ResultShapeHirV1;
+use crate::relation::{JoinHirV1, RelationExprHirV1, RelationExprKindV1};
+use crate::shape::{ResultShapeHirV1, ResultShapeKindV1};
 use crate::span::{SourceIdV2, SpanV1};
 use crate::unit::{DeclHirV1, QueryHirV1, RuleHirV1};
 use crate::visit::HirVisitorV1;
@@ -123,6 +126,13 @@ pub enum HirIntegrityErrorV1 {
         /// Registered source length.
         source_len: usize,
     },
+    /// A programmatically supplied tree exceeds a recursive traversal ceiling.
+    ExcessiveDepth {
+        dimension: HirDepthDimensionV2,
+        span: SpanV1,
+        limit: usize,
+        observed: usize,
+    },
 }
 
 impl HirIntegrityErrorV1 {
@@ -135,6 +145,7 @@ impl HirIntegrityErrorV1 {
             Self::SpanOutOfBounds { .. } => "hir.integrity.span_out_of_bounds",
             Self::InvertedAuxiliarySpan { .. } => "hir.integrity.inverted_auxiliary_span",
             Self::AuxiliarySpanOutOfBounds { .. } => "hir.integrity.auxiliary_span_out_of_bounds",
+            Self::ExcessiveDepth { .. } => "hir.resource_limit_exceeded",
         }
     }
 }
@@ -192,6 +203,19 @@ impl fmt::Display for HirIntegrityErrorV1 {
                 span.end,
                 source_len,
             ),
+            Self::ExcessiveDepth {
+                dimension,
+                limit,
+                observed,
+                ..
+            } => write!(
+                f,
+                "{}: {} exceeds safe limit {} (observed {})",
+                self.code(),
+                dimension.as_str(),
+                limit,
+                observed,
+            ),
         }
     }
 }
@@ -229,26 +253,24 @@ impl<'a> CheckedHirV1<'a> {
 
 /// Checked constructor: validate every invariant on `root` against `source_len`.
 ///
-/// Returns `Ok(CheckedHirV1)` when all ids are unique, all spans are well
-/// formed, and all spans fit within `source_len`. Otherwise returns the first
-/// typed [`HirIntegrityErrorV1`] encountered in deterministic pre-order. The
-/// caller is fully fail-closed: no `CheckedHirV1` is produced for an unsound
-/// tree.
+/// Returns `Ok(CheckedHirV1)` when depth is safe, all ids are unique, all
+/// spans are well formed, and all spans fit within `source_len`. Resource
+/// admission runs first; within admitted trees integrity returns the first
+/// typed [`HirIntegrityErrorV1`] in deterministic pre-order. No proof is
+/// produced for a rejected tree.
 ///
 /// # Who must call this
 ///
-/// HIR reached through a public compile entry point is sealed by construction:
-/// [`crate::HirBuilderV1`] mints ids and the compiler's own stages preserve the
-/// invariants, so the compiler does **not** call this on its own output. This is
-/// the public seal for the OTHER case — HIR assembled **by hand** by an
-/// embedder, a downstream frontend, or a test fixture — and it is the only thing
-/// that makes such a tree's ids and spans trustworthy. A caller that builds HIR
-/// directly and skips this call holds an unchecked tree; nothing downstream
-/// re-validates it.
+/// The source parser uses [`crate::HirBuilderV1`] and bounds depth before
+/// returning HIR. Pipeline additionally checks the complete parsed document
+/// for shared identity. This borrowed seal is for hand-built HIR roots used by
+/// an embedder, downstream frontend, or test fixture; skipping it leaves a raw
+/// tree unchecked.
 pub fn check_tree(
     root: HirRootRefV1<'_>,
     source_len: usize,
 ) -> Result<CheckedHirV1<'_>, HirIntegrityErrorV1> {
+    check_safe_depth(root)?;
     let mut collector = IntegrityCollector::new(source_len);
     root.accept(&mut collector);
     match collector.error {
@@ -299,7 +321,13 @@ pub struct CheckedHirDocumentOwnedV2 {
 impl CheckedHirDocumentOwnedV2 {
     /// Consume and validate one document, retaining the validated document.
     pub fn try_new(document: HirDocumentV1) -> Result<Self, HirIntegrityDiagnosticV2> {
-        let node_count = check_document_v2(&document)?.node_count();
+        let node_count = match check_document_v2(&document).map(|checked| checked.node_count()) {
+            Ok(count) => count,
+            Err(error) => {
+                drop_document_iterative(document);
+                return Err(error);
+            }
+        };
         Ok(Self {
             document,
             node_count,
@@ -348,6 +376,7 @@ pub fn check_document_v2(
 ) -> Result<CheckedHirDocumentV2<'_>, HirIntegrityDiagnosticV2> {
     let mut collector = IntegrityCollector::new(document.source_len);
     for item in &document.items {
+        check_safe_depth(HirRootRefV1::Item(item))?;
         HirRootRefV1::Item(item).accept(&mut collector);
         if collector.error.is_some() {
             break;
@@ -359,6 +388,168 @@ pub fn check_document_v2(
             document,
             node_count: collector.seen.len(),
         }),
+    }
+}
+
+fn check_safe_depth(root: HirRootRefV1<'_>) -> Result<(), HirIntegrityErrorV1> {
+    check_depths_v2(
+        root,
+        crate::MAX_SAFE_HIR_EXPRESSION_DEPTH_V2,
+        crate::MAX_SAFE_RELATION_DEPTH_V2,
+        crate::MAX_SAFE_EXPRESSION_DEPTH_V2,
+    )
+    .map_err(|error| HirIntegrityErrorV1::ExcessiveDepth {
+        dimension: error.dimension,
+        span: error.span,
+        limit: error.limit,
+        observed: error.observed,
+    })
+}
+
+/// A rejected document can contain a deep subtree even when its first error
+/// occurs in an earlier root. Drain every recursive child with an explicit
+/// worklist so error return itself cannot overflow during destruction.
+fn drop_document_iterative(document: HirDocumentV1) {
+    enum Owned {
+        Item(ProgramItemHirV1),
+        Query(QueryHirV1),
+        Value(ValueExprHirV1),
+        Bool(BoolExprHirV1),
+        Relation(RelationExprHirV1),
+        Shape(ResultShapeHirV1),
+    }
+
+    let mut stack: Vec<Owned> = document.items.into_iter().map(Owned::Item).collect();
+    while let Some(node) = stack.pop() {
+        match node {
+            Owned::Item(item) => match item {
+                ProgramItemHirV1::Query(query) => stack.push(Owned::Query(*query)),
+                ProgramItemHirV1::Decl(decl) => stack.push(Owned::Value(decl.body)),
+                ProgramItemHirV1::Rule(rule) => {
+                    stack.push(Owned::Bool(rule.body));
+                    stack.push(Owned::Value(rule.head));
+                }
+                ProgramItemHirV1::CatalogDecl(decl) => {
+                    if let CatalogPayloadV1::View(ViewBodyV1::Inline(query)) = decl.payload {
+                        stack.push(Owned::Query(*query));
+                    }
+                }
+                ProgramItemHirV1::Composition(composition) => {
+                    for binding in composition.bindings {
+                        if let CompositionProducerV1::Query(query) = binding.producer {
+                            stack.push(Owned::Query(*query));
+                        }
+                    }
+                    if let CompositionBodyV1::Query(query) = composition.body {
+                        stack.push(Owned::Query(*query));
+                    }
+                }
+                ProgramItemHirV1::GraphQuery(_)
+                | ProgramItemHirV1::Legality(_)
+                | ProgramItemHirV1::Presentation(_)
+                | ProgramItemHirV1::Meta(_) => {}
+            },
+            Owned::Query(query) => {
+                if let Some(shape) = query.result_shape {
+                    stack.push(Owned::Shape(shape));
+                }
+                stack.push(Owned::Relation(query.body));
+            }
+            Owned::Value(value) => match value.kind {
+                ValueExprKindV1::Literal(_) | ValueExprKindV1::Symbol(_) => {}
+                ValueExprKindV1::Path(path) => stack.push(Owned::Value(*path.base)),
+                ValueExprKindV1::Unary(unary) => stack.push(Owned::Value(*unary.operand)),
+                ValueExprKindV1::Binary(binary) => {
+                    stack.push(Owned::Value(*binary.rhs));
+                    stack.push(Owned::Value(*binary.lhs));
+                }
+                ValueExprKindV1::Call(call) => {
+                    for arg in call.into_args() {
+                        if let CallArgHirV1::Expr(value) = arg {
+                            stack.push(Owned::Value(value));
+                        }
+                    }
+                }
+                ValueExprKindV1::Paren(inner) => stack.push(Owned::Value(*inner)),
+                ValueExprKindV1::Record(record) => {
+                    stack.extend(
+                        record
+                            .fields
+                            .into_iter()
+                            .map(|field| Owned::Value(field.value)),
+                    );
+                }
+                ValueExprKindV1::List(list) => {
+                    stack.extend(list.elements.into_iter().map(Owned::Value));
+                }
+            },
+            Owned::Bool(boolean) => match boolean.kind {
+                BoolExprKindV1::Literal(_) => {}
+                BoolExprKindV1::Value(value) => stack.push(Owned::Value(*value)),
+                BoolExprKindV1::Compare(compare) => {
+                    stack.push(Owned::Value(*compare.rhs));
+                    stack.push(Owned::Value(*compare.lhs));
+                }
+                BoolExprKindV1::And(binary) | BoolExprKindV1::Or(binary) => {
+                    stack.push(Owned::Bool(*binary.rhs));
+                    stack.push(Owned::Bool(*binary.lhs));
+                }
+                BoolExprKindV1::Not(inner) | BoolExprKindV1::Paren(inner) => {
+                    stack.push(Owned::Bool(*inner));
+                }
+                BoolExprKindV1::LogicalQuantifier(quantifier) => {
+                    stack.push(Owned::Bool(*quantifier.body));
+                }
+                BoolExprKindV1::RelationExists(exists) => {
+                    stack.push(Owned::Relation(*exists.relation));
+                }
+            },
+            Owned::Relation(relation) => match relation.kind {
+                RelationExprKindV1::Source(_) => {}
+                RelationExprKindV1::Project(project) => {
+                    let (input, items) = project.into_parts();
+                    stack.extend(items.into_iter().map(|item| Owned::Value(item.value)));
+                    stack.push(Owned::Relation(input));
+                }
+                RelationExprKindV1::Filter(filter) => {
+                    stack.push(Owned::Bool(*filter.predicate));
+                    stack.push(Owned::Relation(*filter.input));
+                }
+                RelationExprKindV1::Join(join) => match join {
+                    JoinHirV1::Inner { left, right, on } => {
+                        stack.push(Owned::Bool(on));
+                        stack.push(Owned::Relation(*right));
+                        stack.push(Owned::Relation(*left));
+                    }
+                    JoinHirV1::Cross { left, right } => {
+                        stack.push(Owned::Relation(*right));
+                        stack.push(Owned::Relation(*left));
+                    }
+                },
+                RelationExprKindV1::GroupBy(group) => {
+                    let (input, keys) = group.into_parts();
+                    stack.extend(keys.into_iter().map(Owned::Value));
+                    stack.push(Owned::Relation(input));
+                }
+                RelationExprKindV1::OrderBy(order) => {
+                    let (input, keys) = order.into_parts();
+                    stack.extend(keys.into_iter().map(|key| Owned::Value(key.value)));
+                    stack.push(Owned::Relation(input));
+                }
+            },
+            Owned::Shape(shape) => match shape.kind {
+                ResultShapeKindV1::Leaf(value) => stack.push(Owned::Value(*value)),
+                ResultShapeKindV1::Record(record) => {
+                    stack.extend(
+                        record
+                            .fields
+                            .into_iter()
+                            .map(|field| Owned::Shape(field.shape)),
+                    );
+                }
+                ResultShapeKindV1::List(list) => stack.push(Owned::Shape(*list.element)),
+            },
+        }
     }
 }
 

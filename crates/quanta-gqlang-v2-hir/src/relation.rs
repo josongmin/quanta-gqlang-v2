@@ -102,6 +102,10 @@ impl ProjectionV1 {
     pub fn items(&self) -> &[ProjectionItemV1] {
         self.items.as_slice()
     }
+
+    pub(crate) fn into_parts(self) -> (RelationExprHirV1, Vec<ProjectionItemV1>) {
+        (*self.input, self.items.0)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -179,6 +183,10 @@ impl GroupByHirV1 {
     pub fn keys(&self) -> &[ValueExprHirV1] {
         self.keys.as_slice()
     }
+
+    pub(crate) fn into_parts(self) -> (RelationExprHirV1, Vec<ValueExprHirV1>) {
+        (*self.input, self.keys.0)
+    }
 }
 
 /// Sort direction attached directly to an order key.
@@ -224,6 +232,10 @@ impl OrderByHirV1 {
     #[must_use]
     pub fn keys(&self) -> &[OrderKeyHirV1] {
         self.keys.as_slice()
+    }
+
+    pub(crate) fn into_parts(self) -> (RelationExprHirV1, Vec<OrderKeyHirV1>) {
+        (*self.input, self.keys.0)
     }
 }
 

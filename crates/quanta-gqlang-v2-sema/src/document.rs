@@ -76,10 +76,20 @@ impl CheckedSyntaxDocumentV2 {
                 | quanta_gqlang_v2_hir::HirIntegrityErrorV1::AuxiliarySpanOutOfBounds {
                     span,
                     ..
-                } => (*span, Vec::new()),
+                }
+                | quanta_gqlang_v2_hir::HirIntegrityErrorV1::ExcessiveDepth { span, .. } => {
+                    (*span, Vec::new())
+                }
             };
             FrontendFailureV2::one(FrontendDiagnosticV2::new(
-                FrontendStageV2::Integrity,
+                if matches!(
+                    error,
+                    quanta_gqlang_v2_hir::HirIntegrityErrorV1::ExcessiveDepth { .. }
+                ) {
+                    FrontendStageV2::Resource
+                } else {
+                    FrontendStageV2::Integrity
+                },
                 error.code(),
                 FrontendSeverityV2::Error,
                 location(source_id, span),

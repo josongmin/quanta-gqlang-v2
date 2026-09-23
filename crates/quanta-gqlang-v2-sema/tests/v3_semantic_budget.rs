@@ -14,7 +14,7 @@ use quanta_gqlang_v2_modules::{
 };
 use quanta_gqlang_v2_sema::{
     resolve_checked_document_v2, CheckedSyntaxDocumentV2, ClosedFrontendAuthorityV2,
-    DownstreamBudgetReceiptV2, FrontendBudgetV2, FrontendTransactionErrorV2,
+    DownstreamBudgetReceiptV2, FrontendBudgetV2, FrontendStageV2, FrontendTransactionErrorV2,
     GraphReferenceCatalogV2,
 };
 use quanta_gqlang_v2_types::{
@@ -339,6 +339,27 @@ fn resolve_scalar(
         CheckedSyntaxDocumentV2::try_from_hir(scalar_count_star_document()).unwrap(),
         &scalar_authority(budget),
     )
+}
+
+#[test]
+fn hand_built_hir_depth_rejects_at_the_seal_as_a_resource_error() {
+    let builder = HirBuilderV1::new();
+    let span = SpanV1::new(0, 1);
+    let mut relation = builder.relation_source("r", span, None, span);
+    for _ in 0..128 {
+        relation = builder.relation_filter(relation, builder.bool_literal(true, span), span);
+    }
+    let document = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(1),
+        source_len: 1,
+        items: vec![ProgramItemHirV1::from(builder.query(relation, None, span))],
+    };
+    let error = CheckedSyntaxDocumentV2::try_from_hir(document).unwrap_err();
+    assert_eq!(error.diagnostics().len(), 1);
+    let diagnostic = error.diagnostics().first().unwrap();
+    assert_eq!(diagnostic.stage(), FrontendStageV2::Resource);
+    assert_eq!(diagnostic.code(), "hir.resource_limit_exceeded");
+    assert_eq!(diagnostic.primary().span, span);
 }
 
 #[test]

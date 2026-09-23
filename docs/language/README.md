@@ -42,12 +42,13 @@ Interpretation rules:
    the frontend contract; pipeline internals are not a public seam
 5. source parsing rejects relation paths deeper than the checked
    `FrontendBudgetV2::max_relation_depth` before HIR integrity traversal;
-   Sema checks programmatically assembled HIR before semantic traversal.
-   The standard and maximum configurable value is 128
+   the HIR owner also checks programmatically assembled trees before its
+   recursive integrity walk, and Sema checks the configured budget before
+   semantic traversal. The standard and maximum configurable value is 128
 6. source parsing rejects expression trees deeper than
    `FrontendBudgetV2::max_expression_depth`, including left-associated operator
    chains, before formatting or semantic traversal; the maximum configurable
-   value is 64
+   value is 64; programmatic HIR also bounds nested result shapes to 64
 
 ## Surface Families
 

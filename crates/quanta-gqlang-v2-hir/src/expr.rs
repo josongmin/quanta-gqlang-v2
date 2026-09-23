@@ -193,6 +193,10 @@ impl CallExprV1 {
     pub const fn args(&self) -> &CallArgsHirV1 {
         &self.args
     }
+
+    pub(crate) fn into_args(self) -> Vec<CallArgHirV1> {
+        self.args.0
+    }
 }
 
 /// A syntactic call argument. `Star` is distinct from a symbol and is admitted
