@@ -2,7 +2,50 @@
 
 > 2026-09-23 V3 producer extension: [Ticket 10a](./10a-v3-frontend-execution-contract.md) adds source-bound digest/literal golden vectors, facade-only positive and compile-fail proof, and exact-source local qualification. Older Ticket 09 receipts do not qualify the new execution API. A Semantica consumer build and two-repo E2E require separate paired source pins; producer-local GREEN is not product GREEN.
 
-Status: `SOURCE/OWNER AUDIT AND LOCAL GATE GREEN AT 08e5ce5; ORIGINAL FORMAL CLOSEOUT OPEN; HOSTED CI UNAVAILABLE; SEMANTICA CONSUMER/PRODUCT E2E OPEN`
+Status: `REPO_LOCAL_CLOSED AT TESTED SOURCE b805cef UNDER CURRENT NON-DUPLICATION CRITERIA; SEMANTICA CONSUMER/PRODUCT E2E OUT OF SCOPE`
+
+## Current local acceptance — 2026-09-24
+
+The user-directed closeout boundary is checked qglang frontend behavior on a
+clean, locally qualified source pin. Hosted CI is not used, and Semantica's
+consumer/runtime result is not a qglang completion condition. The historical
+18×11 matrix, generated TSV/Markdown inventories, and test-file renames below
+were proposed implementation shapes, not additional language semantics. They
+are retired where the same fact already has one executable authority. Do not
+redispatch them by filename.
+
+`tested_sha=b805cef03f96d7f87a7ba8942c499c940e9432a0`, tree
+`c25fffcefd2a7c007f88a59ce4aa646a941973df`, passed clean
+`JUST_TIME=true CARGO_BUILD_JOBS=2 just qualify-local`: receipt JSON
+`cmds=["just ci"]`, `exit=0`, `duration_s=253`. Nextest selected/executed
+1,177/1,177 across 93 binaries, skipped 0; doctests 5/5; frontdoor parity
+8/8; external facade positive 1/1, privacy 15/15, public/semantic API
+89/89; final architecture 14 members, 26 normal and 5 dev edges; both strict
+Clippy toolchains, deny, and non-vacuous Semgrep passed. A same-source focused
+run selected/executed 143/143 across seven owner/conformance binaries:
+`v3_algebra_mutants`, `v3_binder_mutants`, `v3_logic_source`,
+`v3_planning_hellgate`, `v3_document_predeclaration`,
+`v3_compiled_document_assembly`, and `self_validation`. This is existing
+negative/mutant-fixture execution, **not** a claim that historical injected
+production-code mutations were rerun.
+
+| Original closeout intent | One current authority and tested outcome | Decision |
+|---|---|---|
+| 18 root families plus two supplemental units; reject unknown syntax | `conformance/src/lib.rs` owns one 18-root registry and two supplemental sources. `self_validation.rs` executes every root with exact disposition, pins supplemental no-plan/program identity and V3 non-execution, and checks typed code/span for an unsupported root. Pipeline and stage owners assert detailed fields and negatives; the F01–F37 index below routes to them. | Keep these owner tests. A second 18×11 source registry or renamed test target would duplicate coverage. The 18 shipped example files are a different corpus, not the 18 family fixtures. |
+| F01–F37 semantic traceability and mutation sensitivity | The current finding index below identifies the primary owner/test boundary. The clean full gate executes those owner tests; the 143-case focused run explicitly includes existing mutant and negative suites. | Keep the index and existing owner rails. Do not call prose an injected-code mutation receipt or create a parallel `TRACEABILITY.md`/TSV with the same rows. Reopen a finding only with a current-source counterexample. |
+| Examples, methods, proof paths, and public API truth | Surface `v3_examples_corpus.rs` enforces on-disk examples ↔ three public lists and parse/format fixed points; CLI `command_doc_gate.rs` checks commands; Surface `v3_doc_inventory.rs` checks ledger paths; external-consumer gate checks 89 curated roots and 15 privacy negatives. | Keep the four existing authorities. No `examples-v2.tsv`, `TEST_PATH_INVENTORY.tsv`, `TRUTH_CLAIM_INVENTORY.tsv`, or second public-API test. The path gate proves referenced paths exist, not exhaustive base-to-head test-history inventory. |
+| Tickets 01–08 at one current source | Their owner checkpoints remain historical. The `b805cef` full gate runs integrated owner, policy, facade, CLI, and stdio paths together; `08e5ce5..b805cef` changes only this conformance test, the test ledger, and packet docs. | One integrated exact-SHA Receipt 09 is the current-source reconciliation; do not rewrite eight historical owner receipts as fresh independent runs. |
+| Immutable closeout receipt | [Receipt 09](../receipts/09.md) pins the actual candidate SHA/tree, command, exit, counts, and remaining boundary. The later attestation must differ from `b805cef` only in docs/receipts. | Local qglang closure only. No hosted-CI, deployment, activation, or Semantica claim. |
+
+No new producer-code defect was reproduced in this audit. The only new test
+gap was the supplemental-unit facade oracle, repaired in `self_validation.rs`:
+exact `value_declaration` reason and item identity, one Rule program member
+bound to the item/program IDs, empty V3 execution items for both, and exact
+unsupported-root diagnostic/span. Owner semantics remain at their existing
+canonical stages. Any future code work requires a reachable failing source
+case, not a missing historical filename.
+
+### Prior local qualification and audit — 08e5ce5
 
 Current local qualification (2026-09-24): `tested_sha=08e5ce5ab05e8af141985d3b5f54bbff4a67e97f`,
 tree `4acb1c548ebbc1399655a5a65b33f1425622f37c`, clean exact-SHA
@@ -55,14 +98,14 @@ Modules/Sema owner rail, add one targeted owner
 assertion, not another broad source matrix. The older status and commands
 below are historical source-pinned packet notes.
 
-### F01–F37 current-source owner-oracle index (not formal traceability)
+### F01–F37 current-source owner-oracle index
 
 The finding descriptions and original owners remain in
 [`FINAL_AUDIT.md`](../FINAL_AUDIT.md). This owner-oracle index points to existing
 owner assertions, not a second test registry or a claim that historical
-mutation receipts were rerun. The owner rails and added F06 source assertion
-are together in the clean `08e5ce5` source tree qualified by Receipt 09
-(1,177/1,177 nextest).
+mutation receipts were rerun. The owner rails, F06 source assertion, and
+strengthened supplemental conformance are together in clean `b805cef`
+qualified by Receipt 09 (1,177/1,177 nextest).
 
 | Finding | Current disposition and primary proof boundary |
 |---|---|
@@ -202,8 +245,8 @@ The legacy “Files To Add Or Move,” exact test filenames, and forced per-fami
 matrix below are frozen planning hypotheses. They are **not** an instruction
 to duplicate the current Surface corpus, executable facade gate, or proof
 ledger. At this historical checkpoint a behavioral gap still blocked this
-ticket; the later local gate and source-policy oracles do not by themselves
-complete the original formal closeout criteria.
+ticket. The original procedural closeout list was later reconciled against
+current owner rails and superseded by the acceptance table at the top.
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 

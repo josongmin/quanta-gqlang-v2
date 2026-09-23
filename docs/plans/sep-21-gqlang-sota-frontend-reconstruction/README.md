@@ -2,31 +2,32 @@
 
 > 2026-09-23 addendum: the prior V2 reconstruction checkpoints below are historical source-bound observations, not proof of the subsequent V3 execution seam. [Ticket 10a](./tickets/10a-v3-frontend-execution-contract.md) and the [V3 contract](../../contracts/frontend-execution-v3.md) own the current producer cutover; its local and paired-repo qualification must be recorded separately.
 
-Status: `FRONTEND LOCAL QUALIFICATION GREEN AT 08e5ce5; TICKET 09 FORMAL CLOSEOUT OPEN; HOSTED CI UNAVAILABLE; SEMANTICA CONSUMER OPEN`
+Status: `REPO_LOCAL_CLOSED AT TESTED SOURCE b805cef UNDER CURRENT NON-DUPLICATION CRITERIA; SEMANTICA CONSUMER OUT OF SCOPE`
 
 ## Current local qualification — 2026-09-24
 
-Tickets 01–08 and the Ticket 09 source-policy oracles are integrated for this
-repository's frontend-only scope. The clean source pin
-`08e5ce5ab05e8af141985d3b5f54bbff4a67e97f` passed
+Tickets 01–08 and the Ticket 09 source-policy/supplemental oracles are
+integrated for this repository's frontend-only scope. Clean source pin
+`b805cef03f96d7f87a7ba8942c499c940e9432a0` passed
 `just qualify-local` (`just ci`, 1,177/1,177 nextest; exact SHA/tree and all
 gate counts in [Receipt 09](./receipts/09.md)). Ticket 09 records the 18-family
-owner audit and F01–F37 disposition. This attestation is docs-only relative to
-the tested source; the old `d9d0f28` checkpoint below is historical.
+owner audit, F01–F37 disposition, and explicit replacements for historical
+duplicate manifest/inventory requirements. This attestation is docs-only
+relative to the tested source; the old `d9d0f28` checkpoint below is
+historical.
 
 The local gate qualifies qglang syntax, Sema, normalized IR, facade, CLI,
-and private diagnostics stdio at the tested source. It does not establish
-Ticket 09's original formal closeout requirements: the executable 18-root +
-two-supplemental semantic manifest, current-source mutation/traceability
-inventory, and source-current 01–08 receipts have not been demonstrated by
-Receipt 09. Do not promote the passing gate or prose F01–F37 index to that
-separate status. GitHub Actions is not configured. Semantica V3 admission,
-provider/generation, result/receipt, deployment, and activation are outside
-this repository's proof.
+and private diagnostics stdio at the tested source. Ticket 09's current
+acceptance table names each canonical registry, owner oracle, proof-path
+ledger, and exact-source gate; it retires only duplicated procedural artifacts,
+not semantic behavior. Historical injected-code mutation receipts were not
+rerun and are not claimed as fresh proof. Hosted CI is intentionally unused.
+Semantica V3 admission, provider/generation, result/receipt, deployment, and
+activation are outside this repository's proof.
 
 ## Historical checkpoint — 2026-09-23
 
-The 2026-09-24 closeout above supersedes this section and every older status
+The current local closeout above supersedes this section and every older status
 sentence or test count below it. They remain audit provenance, not dispatch
 instructions.
 

@@ -4,10 +4,11 @@ Status: `HISTORICAL 2026-09-21 FINDING LEDGER; CURRENT ROUTING IN README/TICKET 
 
 Current override (2026-09-24): Ticket 09 indexes F01–F37 against present owner rails
 and intentional scope exclusions; clean source
-`08e5ce5ab05e8af141985d3b5f54bbff4a67e97f` passed local exact-SHA
-qualification (Receipt 09). This prose index is not the executable/formal
-traceability inventory required by the original Ticket 09 Definition of Done;
-formal closeout remains open. The original finding rows below describe the
+`b805cef03f96d7f87a7ba8942c499c940e9432a0` passed local exact-SHA
+qualification (Receipt 09). Ticket 09's current acceptance table maps the
+older standalone traceability-inventory requirement to this owner index,
+existing executable rails, and one integrated source receipt. It does not
+claim fresh injected-code mutations. The original finding rows below describe the
 original audit base, not current open defects. Semantica consumer proof is
 separate. The following 2026-09-23 override is historical.
 
