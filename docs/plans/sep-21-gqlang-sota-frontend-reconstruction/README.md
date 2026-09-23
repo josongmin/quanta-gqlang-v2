@@ -2,12 +2,28 @@
 
 > 2026-09-23 addendum: the prior V2 reconstruction checkpoints below are historical source-bound observations, not proof of the subsequent V3 execution seam. [Ticket 10a](./tickets/10a-v3-frontend-execution-contract.md) and the [V3 contract](../../contracts/frontend-execution-v3.md) own the current producer cutover; its local and paired-repo qualification must be recorded separately.
 
-Status: `01-08 CODE INTEGRATED AT d9d0f28; CURRENT-SHA QUALIFICATION, 09 CLOSEOUT, AND SEMANTICA CONSUMER OPEN`
+Status: `REPO_LOCAL_CLOSED ON QGLANG TESTED SOURCE 08e5ce5; HOSTED CI UNAVAILABLE; SEMANTICA CONSUMER OPEN`
 
-## Authoritative Current Checkpoint — 2026-09-23
+## Current closeout — 2026-09-24
 
-This section supersedes every older status sentence and test count below it.
-Those sections remain audit provenance, not dispatch instructions.
+Tickets 01–09 are integrated for this repository's frontend-only scope. The
+clean source pin `08e5ce5ab05e8af141985d3b5f54bbff4a67e97f` passed
+`just qualify-local` (`just ci`, 1,177/1,177 nextest; exact SHA/tree and all
+gate counts in [Receipt 09](./receipts/09.md)). Ticket 09 records the 18-family
+owner audit and F01–F37 disposition. This attestation is docs-only relative to
+the tested source; the old `d9d0f28` checkpoint below is historical.
+
+`REPO_LOCAL_CLOSED` means qglang syntax, Sema, normalized IR, facade, CLI,
+and private diagnostics stdio passed the local gate. GitHub Actions is not
+configured. Semantica V3 admission/consumer execution, provider/generation,
+result/receipt, deployment, and activation remain outside this packet and
+are **not** product-complete claims.
+
+## Historical checkpoint — 2026-09-23
+
+The 2026-09-24 closeout above supersedes this section and every older status
+sentence or test count below it. They remain audit provenance, not dispatch
+instructions.
 
 - source pin before this documentation update: `main@d9d0f28a8365e6918dc8c7d0c552a8e277a838f0`,
   tree `9a2bcb4f9f64226d6539339c437922465f5fe483`, clean and equal to `origin/main`;

@@ -2,7 +2,13 @@
 
 Status: `HISTORICAL SNAPSHOT; DO NOT DISPATCH BG-01..BG-13 FROM THIS FILE`
 
-Current override (2026-09-23): W1-W6 product code is integrated at
+Current override (2026-09-24): qglang frontend source
+`08e5ce5ab05e8af141985d3b5f54bbff4a67e97f` is `REPO_LOCAL_CLOSED`
+with exact-SHA local qualification; Ticket 09/Receipt 09 own the evidence.
+Semantica consumer/product execution remains separate. The following
+2026-09-23 override is historical.
+
+Historical override (2026-09-23): W1-W6 product code is integrated at
 `main@d9d0f28`; this file's `ba42419899cfd8c347ff80627cf1da96bb83768e`
 dirty-tree build failures and BG work
 order are no longer current. Ticket 09 owns owner-oracle/semantic-family

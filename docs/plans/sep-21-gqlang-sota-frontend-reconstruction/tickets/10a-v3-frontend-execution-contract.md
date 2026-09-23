@@ -1,6 +1,13 @@
 # Ticket 10a — V3 frontend execution contract producer
 
-Status: `V3 PRODUCER CODE INTEGRATED AT d9d0f28; CURRENT-SHA QUALIFICATION AND SEMANTICA CONSUMER OPEN`
+Status: `V3 PRODUCER LOCALLY QUALIFIED AT SOURCE 08e5ce5; SEMANTICA CONSUMER OPEN`
+
+Current override (2026-09-24): source
+`08e5ce5ab05e8af141985d3b5f54bbff4a67e97f` passed exact-SHA
+`just qualify-local`; see [Receipt 09](../receipts/09.md) for the tree and
+gate counts. This qualifies the qglang V3 producer only. Semantica's paired
+dependency pin, admission, provider/generation, and result/receipt E2E are
+not proved here. The `d9d0f28` checkpoint below is historical.
 
 Current source checkpoint (2026-09-23): `main@d9d0f28a8365e6918dc8c7d0c552a8e277a838f0`
 contains the V3 producer and later hardening. The pre-commit local `just ci`

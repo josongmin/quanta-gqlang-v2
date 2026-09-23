@@ -2,7 +2,14 @@
 
 Status: `HISTORICAL 2026-09-21 FINDING LEDGER; CURRENT ROUTING IN README/TICKET 09`
 
-Current override (2026-09-23): `main@d9d0f28` integrated W1-W6 producer
+Current override (2026-09-24): Ticket 09 maps F01–F37 to present owner rails
+and intentional scope exclusions; clean source
+`08e5ce5ab05e8af141985d3b5f54bbff4a67e97f` passed local exact-SHA
+qualification (Receipt 09). The original finding rows below describe the
+original audit base, not current open defects. Semantica consumer proof is
+separate. The following 2026-09-23 override is historical.
+
+Historical override (2026-09-23): `main@d9d0f28` integrated W1-W6 producer
 code, including F04/F26 repairs and the F08 owner oracle. The pre-commit
 source/test/tool gate passed 1,168/1,168; clean current-SHA qualification and
 Ticket 09 semantic coverage accounting remain open. The F01-F37 rows below

@@ -2,7 +2,13 @@
 
 > 2026-09-23 execution-contract addendum: the frontend-only ownership rules below remain in force. The subsequent breaking V3 **execution** facade contract is specified in [`docs/contracts/frontend-execution-v3.md`](../../../contracts/frontend-execution-v3.md) and implemented under [Ticket 10a](./10a-v3-frontend-execution-contract.md). This does not reopen the V2 syntax/sema/planning cut or authorize runtime/provider/SDK ownership here.
 
-Status: `SCOPE ACCEPTED; 01-08 CODE INTEGRATED AT d9d0f28; 09 CLOSEOUT OPEN`
+Status: `SCOPE ACCEPTED; 01-09 REPO_LOCAL_CLOSED ON TESTED SOURCE 08e5ce5; SEMANTICA CONSUMER OPEN`
+
+Current override (2026-09-24): the frontend-only pinned decisions below are
+unchanged. [Receipt 09](../receipts/09.md) qualifies clean source
+`08e5ce5ab05e8af141985d3b5f54bbff4a67e97f` locally; hosted CI is
+unavailable and Semantica runtime remains downstream-owned. The following
+`d9d0f28` checkpoint is historical.
 
 Current source checkpoint: `main@d9d0f28a8365e6918dc8c7d0c552a8e277a838f0`.
 The older execution order below is historical; do not redispatch it without a

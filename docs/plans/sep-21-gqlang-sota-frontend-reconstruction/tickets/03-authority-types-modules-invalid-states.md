@@ -1,11 +1,11 @@
 # 03 — Authority, Types, Modules, And Invalid States
 
-Status: `CODE INTEGRATED AT d9d0f28; CURRENT-SHA QUALIFICATION OPEN`
+Status: `CODE INTEGRATED; EXACT-SHA REPO-LOCAL QUALIFICATION AT 08e5ce5 (RECEIPT 09)`
 
 This header supersedes older owner-only checkpoints. Types, Modules, and
-Binder participate in the current compiled source path; their owner tests and
-the pre-commit 1,168/1,168 workspace gate passed. Historical mutation
-receipts were not rerun on `d9d0f28`.
+Binder participate in the compiled source path and clean `08e5ce5`
+qualification (Receipt 09). Historical mutation receipts were not rerun;
+their original source pins remain in the owner receipt.
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 

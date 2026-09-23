@@ -1,10 +1,10 @@
 # 06 — Rule And Graph Logic Contracts
 
-Status: `CODE INTEGRATED AT d9d0f28; CURRENT-SHA QUALIFICATION OPEN`
+Status: `CODE INTEGRATED; EXACT-SHA REPO-LOCAL QUALIFICATION AT 08e5ce5 (RECEIPT 09)`
 
 This header supersedes the older Logic compile-RED checkpoint. Source-authored
 multi-rule SCC and graph/witness legality reach the checked pipeline and pass
-owner and pre-commit workspace tests. Rule execution payload remains outside
+clean `08e5ce5` qualification (Receipt 09). Rule execution payload remains outside
 the current V3 frontend DTO by explicit contract, not an unfinished Logic cut.
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)

@@ -2,7 +2,18 @@
 
 > 2026-09-23 V3 producer extension: [Ticket 10a](./10a-v3-frontend-execution-contract.md) adds source-bound digest/literal golden vectors, facade-only positive and compile-fail proof, and exact-source local qualification. Older Ticket 09 receipts do not qualify the new execution API. A Semantica consumer build and two-repo E2E require separate paired source pins; producer-local GREEN is not product GREEN.
 
-Status: `18-FAMILY OWNER AUDIT AND SOURCE-TO-PLAN ORACLES INTEGRATED; 5843233 AND 5929af1 EXACT-SHA LOCAL QUALIFICATION GREEN; PACKET/SEMANTICA CLOSEOUT SEPARATE`
+Status: `REPO_LOCAL_CLOSED AT TESTED SOURCE 08e5ce5; HOSTED CI UNAVAILABLE; SEMANTICA CONSUMER/PRODUCT E2E OPEN`
+
+Current closeout (2026-09-24): `tested_sha=08e5ce5ab05e8af141985d3b5f54bbff4a67e97f`,
+tree `4acb1c548ebbc1399655a5a65b33f1425622f37c`, clean exact-SHA
+`just qualify-local` receipt `exit=0`, 1,177/1,177 nextest, 5/5 doctests,
+frontdoor parity 8/8, facade positive 1/1, privacy 15/15, public/semantic
+roots 89/89, final architecture and non-vacuous policy gates green. F01–F37
+disposition and the 18-family/owner audit are indexed below. This is the
+frontend packet's **repo-local** closeout only; GitHub Actions is not
+configured, and the Semantica V3 consumer and runtime result/receipt remain
+separate. The post-test attestation changes docs/receipts only; validate its
+diff against `tested_sha`, not by claiming the docs commit was the tested SHA.
 
 ### Current 18-family/owner audit — 2026-09-24
 
@@ -45,9 +56,9 @@ below are historical source-pinned packet notes.
 The finding descriptions and original owners remain in
 [`FINAL_AUDIT.md`](../FINAL_AUDIT.md). This closure index points to existing
 owner assertions, not a second test registry or a claim that historical
-mutation receipts were rerun. The prior owner rails were qualified in the
-clean `5929af1` source tree by Receipt 09 (1,176/1,176 nextest). The newly
-added F06 source assertion needs its own fresh source-SHA qualification.
+mutation receipts were rerun. The owner rails and added F06 source assertion
+are together in the clean `08e5ce5` source tree qualified by Receipt 09
+(1,177/1,177 nextest).
 
 | Finding | Current disposition and primary proof boundary |
 |---|---|

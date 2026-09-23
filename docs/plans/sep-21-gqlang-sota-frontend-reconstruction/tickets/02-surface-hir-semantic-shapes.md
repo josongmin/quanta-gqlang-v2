@@ -1,11 +1,11 @@
 # 02 — Surface And HIR Semantic Shapes
 
-Status: `CODE INTEGRATED AT d9d0f28; CURRENT-SHA QUALIFICATION OPEN`
+Status: `CODE INTEGRATED; EXACT-SHA REPO-LOCAL QUALIFICATION AT 08e5ce5 (RECEIPT 09)`
 
 This header supersedes older dirty-overlay checkpoints. Source-depth and
-direct raw-HIR drop defenses, with their owner tests, are committed at the
-current source pin. The pre-commit `just ci` passed 1,168/1,168; exact
-`d9d0f28` clean-HEAD qualification is still unrecorded.
+direct raw-HIR drop defenses, with their owner tests, are committed and
+included in clean `08e5ce5` qualification (Receipt 09). The old pre-commit
+`d9d0f28` proof remains historical.
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 
