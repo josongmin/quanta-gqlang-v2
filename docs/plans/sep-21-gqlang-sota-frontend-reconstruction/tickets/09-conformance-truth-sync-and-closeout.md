@@ -40,6 +40,59 @@ Modules/Sema owner rail, add one targeted owner
 assertion, not another broad source matrix. The older status and commands
 below are historical source-pinned packet notes.
 
+### F01–F37 current-source disposition
+
+The finding descriptions and original owners remain in
+[`FINAL_AUDIT.md`](../FINAL_AUDIT.md). This closure index points to existing
+owner assertions, not a second test registry or a claim that historical
+mutation receipts were rerun. The prior owner rails were qualified in the
+clean `5929af1` source tree by Receipt 09 (1,176/1,176 nextest). The newly
+added F06 source assertion needs its own fresh source-SHA qualification.
+
+| Finding | Current disposition and primary proof boundary |
+|---|---|
+| F01 | JOIN/ON versus CROSS source semantics: conformance `authored_join_on_and_cross_join_retain_distinct_v3_semantics`. |
+| F02 | Predicate typing and invalid comparison rejection: conformance `closed_source_predicates_reject_non_boolean_and_invalid_comparison`. |
+| F03 | Local gate: exact-SHA `just ci` receipts, architecture 14 members/26 normal/5 dev edges, deny, non-vacuous Semgrep. Hosted CI unavailable. |
+| F04 | Aggregate placement/nesting: Sema `global_nested_aggregate_is_rejected_at_the_inner_call` and conformance aggregate source matrix. |
+| F05 | Ordered relation frames: Binder `v3_binder_scope.rs` and Sema `v3_incremental_relation_frames.rs`. |
+| F06 | Duplicate authored projection alias rejects at the Binder boundary (`binder.duplicate_declaration`): Pipeline `duplicate_authored_projection_alias_rejects_before_a_plan_is_issued`; Types `v3_types_universe.rs` separately rejects duplicate record fields. |
+| F07 | Group partition/aggregate identity: Algebra `v3_algebra_normalization.rs` and Pipeline `group_partition_identity_and_sort_policy_change_the_assembled_plan`. |
+| F08 | Authored-order-independent certification: Sema `certification_checks_the_complete_profile_set_in_both_authored_orders`. |
+| F09 | Mandatory HIR integrity before closed compile: HIR `v3_hir_hellgate.rs`, Sema `v3_document_transaction.rs`, Pipeline membership negatives. |
+| F10 | One source-authored multi-rule program: conformance `two_authored_mutual_rules_reach_one_checked_program`; Logic SCC owner tests. |
+| F11 | UTF-8 lexer/formatter round-trip: Surface `v3_format_edges.rs` and `v3_surface_proptest.rs`. |
+| F12 | Actual LSP removed from scope: diagnostics stdio is private NDJSON; README and binary contract do not claim JSON-RPC/LSP. |
+| F13 | Curated facade: external consumer 89/89 public/semantic API inventory and 15/15 private-boundary negatives. |
+| F14 | Public claim truth: CLI `command_doc_gate.rs`, Surface `v3_examples_corpus.rs`, language test ledger, current packet override. |
+| F15 | Kind-checked catalog/graph references: Modules `v3_document_predeclaration.rs`, Sema `v3_reference_resolution.rs`. |
+| F16 | Inline VIEW canonical relation path: Sema `inline_view_materializes_through_the_canonical_relation_path`, Pipeline `inline_view_is_algebra_checked_before_its_catalog_no_plan_outcome`. |
+| F17 | Waypoint is not a path bound: Logic `v3_logic_hellgate.rs` and `v3_graph_query_hellgate.rs` bounded-witness negatives. |
+| F18 | CHECK options/nested identity: Planning `resolved_check_contract_enforces_the_complete_option_matrix`, Pipeline authored source-policy and nested-identity rails. |
+| F19 | One Modules authority session: Modules `v3_document_predeclaration.rs`, Sema `catalog_reference_families_use_one_modules_predeclaration_and_validation_session`. |
+| F20 | FIND witness retention: Logic `v3_logic_witness.rs`, Planning `the_sealed_find_provenance_follows_the_subkind`, Pipeline authored source-policy rail. |
+| F21 | EXPLAIN evidence/truth retention: Planning `resolved_explain_contract_enforces_the_complete_evidence_truth_matrix`, Pipeline authored source-policy rail. |
+| F22 | Pack/lock validation authority-owned: Modules `pack_lock_digest_version_and_reference_are_sealed` and activation/unknown-pack negatives. |
+| F23 | Invalid type/algebra shapes reject: Types `v3_types_universe.rs`, Algebra `v3_algebra_hellgate.rs`/`v3_algebra_mutants.rs`, Planning sealed-carrier negatives. |
+| F24 | CLI/diagnostics source truth: `tools/test_frontdoor_parity.py` (8/8) plus CLI/stdio binary tests. |
+| F25 | Checked authority/use locations and typed diagnostics: Modules `v3_document_predeclaration.rs`, Sema `v3_reference_resolution.rs`, stdio `server_rejection_matrix.rs`. |
+| F26 | Bounded source/frame/semantic/graph and raw-HIR destruction: Surface `v3_surface_budget.rs`, Sema `v3_semantic_budget.rs`, Logic `v3_graph_query_hellgate.rs`, HIR deep direct-drop, stdio `resource_boundaries.rs`. |
+| F27 | Duplicate authority inputs fail closed: Modules `v3_modules_v2_authority.rs` duplicate declaration/pack/lock/suite matrix. |
+| F28 | One predeclaration/dependency ordering: Modules `v3_document_predeclaration.rs`, Sema reverse-authored inline-VIEW tests. |
+| F29 | One 18-family source registry; owner semantic matrices plus two source-to-policy Pipeline oracles close the demonstrated assertion gap. Unsupported runtime families remain explicit. |
+| F30 | Rule call edges/polarity/SCC: Sema `negated_source_dependency_retains_exact_polarity_for_logic_cycle_rejection`, Logic `v3_logic_source.rs`. |
+| F31 | Builtin effects reach typed/planned truth: Types `v3_types_hellgate.rs`, Planning `v3_capability_derivation.rs` and `v3_planning_truth.rs`. |
+| F32 | Relation authority requires a relation-typed source: Binder `v3_binder_mutants.rs` rejects a non-relation local binding; Pipeline `typed_relation_source_requires_and_retains_host_authority`. |
+| F33 | Direct HIR/parsed source checked legality: HIR `v3_hir_hellgate.rs`, Sema `v3_document_transaction.rs`, Pipeline checked transaction. |
+| F34 | Precedence-safe formatting: Surface `v3_format_hellgate.rs` and `v3_surface_proptest.rs`. |
+| F35 | Unknown escapes reject: Surface `v3_format_edges.rs::invalid_escape_forms_reject`. |
+| F36 | Buffered suffix after interrupted input: diagnostics-stdio `ndjson_contract.rs::interrupted_read_preserves_partial_frame_and_following_request`; binary/framing negatives remain in the same owner suite. |
+| F37 | Explicit finite `i128`/`f64` and typed V3 literals: Types `v3_types_universe.rs`/`v3_types_check_edges.rs`, Pipeline literal/vector rails. |
+
+This table does not promise physical query optimization, a JSON-RPC LSP,
+runtime execution of unsupported V3 families, hosted CI, or the Semantica
+consumer cutover.
+
 Current source checkpoint (2026-09-23): `main@d9d0f28a8365e6918dc8c7d0c552a8e277a838f0`,
 tree `9a2bcb4f9f64226d6539339c437922465f5fe483`, was clean and equal
 to `origin/main` before this documentation edit. The source/test/tool patch

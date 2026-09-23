@@ -1099,6 +1099,14 @@ fn inline_view_is_algebra_checked_before_its_catalog_no_plan_outcome() {
 }
 
 #[test]
+fn duplicate_authored_projection_alias_rejects_before_a_plan_is_issued() {
+    let source = "from records r | project r.id as id, r.id as id";
+    let error = compile_source_document_v3(DOC_SOURCE, source, &authority_with_records())
+        .expect_err("duplicate authored projection names cannot produce a checked plan");
+    assert_eq!(failure_code(&error), "binder.duplicate_declaration");
+}
+
+#[test]
 fn analyze_and_compile_share_the_same_stage_payloads() {
     let authority = minimal_authority();
     let document = resolve_minimal_document(&authority);

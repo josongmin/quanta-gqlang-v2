@@ -43,7 +43,7 @@ not compatibility promises.
 
 | Surface | Primary rails | Contract pinned |
 |---|---|---|
-| Compiled document assembly | `crates/quanta-gqlang-v2-pipeline/tests/v3_compiled_document_assembly.rs` | Closed source transaction, exact membership, authored FIND/CHECK/EXPLAIN and six presentation-verb fields retained in final plan policy, planning and typed non-plan outcomes, exact/over-limit source relation depth including nested EXISTS, admitted-depth formatting, typed rejection of overdeep expression trees |
+| Compiled document assembly | `crates/quanta-gqlang-v2-pipeline/tests/v3_compiled_document_assembly.rs` | Closed source transaction, exact membership, duplicate authored projection alias rejection, authored FIND/CHECK/EXPLAIN and six presentation-verb fields retained in final plan policy, planning and typed non-plan outcomes, exact/over-limit source relation depth including nested EXISTS, admitted-depth formatting, typed rejection of overdeep expression trees |
 | Analysis document assembly | `crates/quanta-gqlang-v2-pipeline/tests/v3_analysis_document_assembly.rs` | Open analysis, blocked-stage retention, deterministic diagnostics and parity with compilation, over-limit relation rejection without closed authority |
 
 ## Shipped front doors
