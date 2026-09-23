@@ -1,10 +1,7 @@
 [files]
 # `target/**` is build output.
 #
-# `docs/bugbash/**/receipts/**` is the same class again: bugbash receipts embed
-# SHA prefixes and mutation markers (e.g. `ede0c5459adb`, `clausX`), so the same
-# exclusion applies. Ticket prose and findings outside `receipts/` stay checked.
-extend-exclude = ["docs/bugbash/**/receipts/**", "target/**"]
+extend-exclude = ["target/**"]
 
 [default.extend-words]
 gqlang = "gqlang"

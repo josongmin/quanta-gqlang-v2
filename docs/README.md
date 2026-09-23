@@ -14,7 +14,9 @@
 - [아키텍처 결정 기록](adr/README.md): 폐기된 캠페인에서 보존한 현재 결정과
   권위 경계
 
-`bugbash/`는 감사 시점의 기록이며 현재 구현 증거는 아니다. 현재 구현·지원 범위는
-위 문서와 코드에서 확인하고, clean committed HEAD 검증 방법은
-[local qualification 안내](../tools/qualification/README.md)를 따른다. 폐기된 실행
-캠페인의 종합 결과는 [ADR-0001](adr/0001-frontend-campaign-consolidation.md)에 있다.
+현재 구현·지원 범위는 위 문서와 코드에서 확인하고, clean committed HEAD 검증
+방법은 [local qualification 안내](../tools/qualification/README.md)를 따른다. 폐기된
+실행 캠페인의 종합 결과는
+[ADR-0001](adr/0001-frontend-campaign-consolidation.md), 테스트 감사에서 확정된
+oracle·gate 결정은
+[ADR-0002](adr/0002-test-authority-and-adversarial-oracles.md)에 있다.
