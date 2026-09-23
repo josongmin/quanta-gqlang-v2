@@ -2,7 +2,7 @@
 
 > 2026-09-23 V3 producer extension: [Ticket 10a](./10a-v3-frontend-execution-contract.md) adds source-bound digest/literal golden vectors, facade-only positive and compile-fail proof, and exact-source local qualification. Older Ticket 09 receipts do not qualify the new execution API. A Semantica consumer build and two-repo E2E require separate paired source pins; producer-local GREEN is not product GREEN.
 
-Status: `18-FAMILY OWNER AUDIT PERFORMED AT 5843233; SOURCE-TO-PLAN ORACLE PATCH UNDER REVIEW; EXACT-SHA QUALIFICATION AND PACKET CLOSEOUT OPEN`
+Status: `18-FAMILY OWNER AUDIT AND SOURCE-TO-PLAN ORACLES INTEGRATED; 5843233 AND 5929af1 EXACT-SHA LOCAL QUALIFICATION GREEN; PACKET/SEMANTICA CLOSEOUT SEPARATE`
 
 ### Current 18-family/owner audit — 2026-09-24
 
@@ -31,9 +31,12 @@ below. The current audit distinguishes these layers rather than treating
 This audit found a **test oracle gap**, not a reproduced producer-code defect.
 The two new Pipeline source-to-policy tests are focused integration assertions,
 not a duplicate 18-family registry. They passed with the 38-test Pipeline file;
-the existing conformance file passed 9/9. Full local gate, exact-SHA receipt,
-and downstream runtime proof are separate. If a later mutation of a declaration
-field is shown to survive its Modules/Sema owner rail, add one targeted owner
+the existing conformance file passed 9/9. Clean exact-SHA local receipts for
+both the baseline `5843233` and the integrated-oracle commit `5929af1` are
+recorded in [Receipt 09](../receipts/09.md). Neither receipt proves downstream
+runtime behavior or closes the older packet's unrelated traceability claims.
+If a later mutation of a declaration field is shown to survive its
+Modules/Sema owner rail, add one targeted owner
 assertion, not another broad source matrix. The older status and commands
 below are historical source-pinned packet notes.
 
