@@ -2,7 +2,40 @@
 
 > 2026-09-23 V3 producer extension: [Ticket 10a](./10a-v3-frontend-execution-contract.md) adds source-bound digest/literal golden vectors, facade-only positive and compile-fail proof, and exact-source local qualification. Older Ticket 09 receipts do not qualify the new execution API. A Semantica consumer build and two-repo E2E require separate paired source pins; producer-local GREEN is not product GREEN.
 
-Status: `PRODUCTION CODE INTEGRATED AT d9d0f28; SEMANTIC COVERAGE ACCOUNTING, CURRENT-SHA QUALIFICATION, AND PACKET CLOSEOUT OPEN`
+Status: `18-FAMILY OWNER AUDIT PERFORMED AT 5843233; SOURCE-TO-PLAN ORACLE PATCH UNDER REVIEW; EXACT-SHA QUALIFICATION AND PACKET CLOSEOUT OPEN`
+
+### Current 18-family/owner audit — 2026-09-24
+
+Baseline was clean `main == origin/main` at
+`58432336e5dc16346243c7e3d5bcd96f8381bdc2` (tree
+`be40fb73033e0a74303ea56ab43380c31e9f6641`). The 18-family facade
+loop in `conformance/tests/self_validation.rs` proves reachability and
+kind/result/effect or typed no-plan disposition; it does **not** inspect
+every retained option. The owner tests added at `5843233` are committed,
+not the in-flight work described in the historical `d9d0f28` checkpoint
+below. The current audit distinguishes these layers rather than treating
+18/18 routing as 18/18 semantic coverage.
+
+| Families | Existing independent semantic oracle | Audit decision |
+|---|---|---|
+| SELECT | Conformance's authored JOIN/ON, predicate-typing, aggregate-positive/negative tests; Algebra normalization and Pipeline source relation/digest tests | Covered for the current checked frontend contract; no duplicate SELECT matrix. |
+| FIND | Logic witness and graph-query legality; Planning `v3_item_hellgate`; Pipeline sealed FIND assembly | Source depth/subkind to final policy was not directly asserted. Added `authored_find_check_and_explain_options_reach_the_exact_planned_policy`. |
+| CHECK | Planning complete option and nested-identity negative matrices; Pipeline sealed nested-CHECK assembly; Sema exact catalog rule reference | Source mode/confirm/emit/rule/scope/pattern/nested depth to final policy was not directly asserted. Added the same source-policy rail. |
+| EXPLAIN | Planning complete evidence/truth matrix and six-verb policy retention; Sema composition EXPLAIN target tests | Source evidence/truth/entity target to final policy was not directly asserted. Added the same source-policy rail. |
+| SHOW, DESCRIBE, SAMPLE, COMPARE, EXPORT | Surface verb grammar; Planning six-verb sealed-payload and result/effect matrix | Source category/entity/query/mode/limit/scope/baseline/candidate/metric/export source/format to final policy was not directly asserted. Added `authored_presentation_options_reach_the_exact_planned_policy`. |
+| VIEW, RULE binding, MODEL, PACK, PROFILE, GATE | Modules `v3_document_predeclaration` exact reference-kind and wrong-kind/unknown negatives; Sema catalog predeclaration/one-session tests; Pipeline inline-VIEW algebra check | Existing owner tests cover semantic authority; the facade loop owns source reachability/no-plan. No second no-plan registry or production fix. |
+| USE PACK | Modules activation/lockfile and unknown-pack negatives; Planning typed meta-activation no-plan; facade no-plan | Covered within the frontend boundary. |
+| REQUIRE CERTIFIED | Modules combined-registry admission; Sema both authored orders and rejection span; Planning certified lane; facade planned disposition | Covered within the frontend boundary. |
+| Composition | Sema source-local resolution and negatives; Pipeline source body/producer/binding identities; Planning all body-family retention/transplant negatives; facade root | Covered within the frontend representation boundary; runtime support remains Semantica-owned. |
+
+This audit found a **test oracle gap**, not a reproduced producer-code defect.
+The two new Pipeline source-to-policy tests are focused integration assertions,
+not a duplicate 18-family registry. They passed with the 38-test Pipeline file;
+the existing conformance file passed 9/9. Full local gate, exact-SHA receipt,
+and downstream runtime proof are separate. If a later mutation of a declaration
+field is shown to survive its Modules/Sema owner rail, add one targeted owner
+assertion, not another broad source matrix. The older status and commands
+below are historical source-pinned packet notes.
 
 Current source checkpoint (2026-09-23): `main@d9d0f28a8365e6918dc8c7d0c552a8e277a838f0`,
 tree `9a2bcb4f9f64226d6539339c437922465f5fe483`, was clean and equal

@@ -37,8 +37,10 @@ use quanta_gqlang_v2_pipeline::{
     ExecutionLiteralV3, ExecutionRelationAuthorityV3, ExecutionRelationV3,
     ExecutionRelationalOperatorV3, ExecutionSampleModeV3, ExecutionScalarTypeV3, ExecutionSchemaV3,
     ExecutionSourceKindV3, ExecutionValueTypeV3, FrontendAuthorityLocationV2,
-    FrontendAuthoritySourceV2, FrontendLanguageVersionV2, FrontendRelationAuthorityV2,
-    FrontendRelationInputV2, FrontendStageV2, FrontendTransactionErrorV2, PlannedItemV2,
+    FrontendAuthoritySourceV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
+    FrontendGraphReferenceInputV2, FrontendLanguageVersionV2, FrontendRelationAuthorityV2,
+    FrontendRelationInputV2, FrontendScalarTypeV2, FrontendStageV2, FrontendTransactionErrorV2,
+    PlannedItemV2,
 };
 use quanta_gqlang_v2_planning::{
     AuthorityLaneV2, CapabilityV2, CardinalityClassV2, CheckedCompositionPlanInputV2,
@@ -58,11 +60,14 @@ use quanta_gqlang_v2_sema::test_support::{
     SMALL_BUDGET_MAX_SEMANTIC_STEPS,
 };
 use quanta_gqlang_v2_sema::{
-    CardinalityV1, CheckedSyntaxDocumentV2, ClosedFrontendAuthorityV2, FrontendBudgetV2,
+    CardinalityV1, CheckedSyntaxDocumentV2, ClosedFrontendAuthorityV2, CompareMetricV1,
+    ConfirmModeV1, DetectionModeV1, EmitModeV1, EvidenceModeV1, ExportFormatV1, FrontendBudgetV2,
     GraphQueryKindV1, GraphReferenceCatalogV2, GraphReferenceInputV2, GraphReferenceKindV2,
     GraphReferenceRoleV2, LocatedSpanV2, ProvenanceNamespaceV2, RecordFieldTypeV1, RecordTypeV1,
-    RelationCatalogV2, RelationSourceInputV2, SemanticItemIdV2, SemanticItemV2, SourceIdV2,
-    SourceQualifiedNodeIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1, ValueTypeV1,
+    RelationCatalogV2, RelationSourceInputV2, ResolvedExplainTargetV2, ResolvedPresentationKindV2,
+    SampleModeV1, SemanticItemIdV2, SemanticItemV2, ShowCategoryV1, SourceIdV2,
+    SourceQualifiedNodeIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1, TruthModeV1,
+    ValueTypeV1,
 };
 
 /// The host registry source identity used by the minimal authority.
@@ -255,6 +260,71 @@ fn minimal_authority() -> ClosedFrontendAuthorityV2 {
         GraphReferenceCatalogV2::try_new(Vec::new(), &host, profile).expect("graph catalog");
     ClosedFrontendAuthorityV2::try_new(modules, relations, graph_references, budget)
         .expect("closed authority seals")
+}
+
+fn source_policy_authority() -> ClosedFrontendAuthorityV2 {
+    let location = FrontendAuthorityLocationV2 {
+        source_id: HOST_SOURCE,
+        start: 0,
+        end: 1,
+    };
+    let mut builder = quanta_gqlang_v2_pipeline::ClosedFrontendAuthorityBuilderV2::try_new(
+        FrontendBudgetV2::standard_v2().expect("standard budget"),
+        vec![FrontendAuthoritySourceV2 {
+            source_id: HOST_SOURCE,
+            source_len: 64,
+        }],
+        "app".to_owned(),
+        location,
+        FrontendLanguageVersionV2 {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        },
+    )
+    .expect("presentation authority builder starts");
+    for (spelling, kind) in [
+        ("api.entry", GraphReferenceKindV2::Entity),
+        ("db.write", GraphReferenceKindV2::Entity),
+        ("authz.clean", GraphReferenceKindV2::Sanitizer),
+        ("repo", GraphReferenceKindV2::Scope),
+        ("pattern.hybrid", GraphReferenceKindV2::Pattern),
+        ("src.entry", GraphReferenceKindV2::Entity),
+        ("sink.write", GraphReferenceKindV2::Entity),
+        ("run.a", GraphReferenceKindV2::Snapshot),
+        ("run.b", GraphReferenceKindV2::Snapshot),
+        ("result.latest", GraphReferenceKindV2::ExportSource),
+    ] {
+        builder.add_graph_reference(FrontendGraphReferenceInputV2 {
+            spelling: spelling.to_owned(),
+            kind,
+            entity_subtype: None,
+            location,
+        });
+    }
+    builder.add_graph_reference(FrontendGraphReferenceInputV2 {
+        spelling: "rule.sqli".to_owned(),
+        kind: GraphReferenceKindV2::Entity,
+        entity_subtype: Some("rule".to_owned()),
+        location,
+    });
+    builder.add_graph_reference(FrontendGraphReferenceInputV2 {
+        spelling: "owasp.sqli".to_owned(),
+        kind: GraphReferenceKindV2::Entity,
+        entity_subtype: Some("rule".to_owned()),
+        location,
+    });
+    builder.add_catalog_asset(FrontendCatalogAssetInputV2 {
+        module_name: "app".to_owned(),
+        local_name: "rule.hybrid".to_owned(),
+        payload: FrontendCatalogPayloadV2::Rule {
+            parameters: Vec::new(),
+            result: FrontendScalarTypeV2::Bool,
+        },
+        provenance: "host".to_owned(),
+        location,
+    });
+    builder.finish().expect("source policy authority seals")
 }
 
 /// One bounded FIND request with the exact authored depth.
@@ -811,6 +881,207 @@ fn closed_source_entry_assembles_the_exact_item_dispositions() {
         Some(&NoPlanReasonV2::ValueDeclaration)
     );
     assert!(first.plan().is_none());
+}
+
+#[test]
+fn authored_presentation_options_reach_the_exact_planned_policy() {
+    let source = concat!(
+        "sample query=\"callgraph\" | mode=semantic | limit=5 | scope=repo; ",
+        "compare baseline=run.a | candidate=run.b | metric=semantic; ",
+        "export source=result.latest | kind=sarif; ",
+        "show capabilities; ",
+        "describe rule::owasp.sqli;",
+    );
+    let compiled = compile_source_document_v3(DOC_SOURCE, source, &source_policy_authority())
+        .expect("all five authored presentation requests compile");
+    assert_eq!(compiled.items().len(), 5);
+
+    let policies: Vec<&ResolvedPresentationKindV2> = compiled
+        .items()
+        .iter()
+        .map(|item| {
+            let CompiledItemV2::Planned(planned) = item else {
+                panic!("presentation source became a no-plan item: {item:?}");
+            };
+            let PlannedItemV2::Presentation { plan, .. } = planned.as_ref() else {
+                panic!("presentation source became a different plan: {planned:?}");
+            };
+            let PlanPolicyV2::Presentation(kind) = plan.policy() else {
+                panic!("presentation plan lost its policy: {:?}", plan.policy());
+            };
+            kind
+        })
+        .collect();
+
+    let ResolvedPresentationKindV2::Sample {
+        query_text,
+        mode,
+        limit,
+        scope: Some(scope),
+    } = policies[0]
+    else {
+        panic!(
+            "authored SAMPLE fields were not retained: {:?}",
+            policies[0]
+        );
+    };
+    assert_eq!(query_text, "callgraph");
+    assert_eq!(*mode, SampleModeV1::Semantic);
+    assert_eq!(*limit, 5);
+    assert_eq!(
+        scope
+            .target()
+            .host_selector()
+            .map(|target| target.spelling()),
+        Some("repo")
+    );
+    let ResolvedPresentationKindV2::Compare {
+        baseline,
+        candidate,
+        metric,
+    } = policies[1]
+    else {
+        panic!(
+            "authored COMPARE fields were not retained: {:?}",
+            policies[1]
+        );
+    };
+    assert_eq!(
+        baseline
+            .target()
+            .host_selector()
+            .map(|target| target.spelling()),
+        Some("run.a")
+    );
+    assert_eq!(
+        candidate
+            .target()
+            .host_selector()
+            .map(|target| target.spelling()),
+        Some("run.b")
+    );
+    assert_eq!(*metric, CompareMetricV1::Semantic);
+    let ResolvedPresentationKindV2::Export {
+        source,
+        format,
+        profile,
+    } = policies[2]
+    else {
+        panic!(
+            "authored EXPORT fields were not retained: {:?}",
+            policies[2]
+        );
+    };
+    assert_eq!(
+        source
+            .target()
+            .host_selector()
+            .map(|target| target.spelling()),
+        Some("result.latest")
+    );
+    assert_eq!(*format, ExportFormatV1::Sarif);
+    assert!(profile.is_none());
+    assert!(matches!(
+        policies[3],
+        ResolvedPresentationKindV2::Show {
+            category: ShowCategoryV1::Capabilities
+        }
+    ));
+    let ResolvedPresentationKindV2::Describe { target } = policies[4] else {
+        panic!("authored DESCRIBE target was not retained");
+    };
+    assert_eq!(
+        target
+            .target()
+            .host_selector()
+            .map(|target| target.spelling()),
+        Some("owasp.sqli")
+    );
+}
+
+#[test]
+fn authored_find_check_and_explain_options_reach_the_exact_planned_policy() {
+    let source = concat!(
+        "find taint api.entry -> db.write | sanitizers=authz.clean | depth=3; ",
+        "check rule.hybrid | scope=repo | pattern=pattern.hybrid | confirm=require ",
+        "| emit=sarif | mode=hybrid using find reachability src.entry -> sink.write | depth=8; ",
+        "explain rule.sqli | evidence=trace | truth=confirm;",
+    );
+    let compiled = compile_source_document_v3(DOC_SOURCE, source, &source_policy_authority())
+        .expect("authored graph, check, and explain requests compile");
+    assert_eq!(compiled.items().len(), 3);
+
+    let CompiledItemV2::Planned(find) = &compiled.items()[0] else {
+        panic!("FIND must be planned");
+    };
+    let PlannedItemV2::Graph { plan, .. } = find.as_ref() else {
+        panic!("FIND must keep its graph plan");
+    };
+    let PlanPolicyV2::Graph(witness) = plan.policy() else {
+        panic!("FIND must keep its graph witness policy");
+    };
+    assert_eq!(witness.kind(), GraphQueryKindV1::Taint);
+    assert_eq!(witness.depth(), 3);
+
+    let CompiledItemV2::Planned(check) = &compiled.items()[1] else {
+        panic!("CHECK must be planned");
+    };
+    let PlannedItemV2::Check { plan, .. } = check.as_ref() else {
+        panic!("CHECK must keep its check plan");
+    };
+    let PlanPolicyV2::Check(policy) = plan.policy() else {
+        panic!("CHECK must keep its option policy");
+    };
+    assert_eq!(policy.mode(), DetectionModeV1::Hybrid);
+    assert_eq!(policy.confirm(), ConfirmModeV1::Require);
+    assert_eq!(policy.emit(), EmitModeV1::Sarif);
+    assert_eq!(policy.rule().id().local_name(), "rule.hybrid");
+    assert_eq!(
+        policy
+            .scope()
+            .and_then(|use_site| use_site.target().host_selector())
+            .map(|target| target.spelling()),
+        Some("repo")
+    );
+    assert_eq!(
+        policy
+            .pattern()
+            .and_then(|use_site| use_site.target().host_selector())
+            .map(|target| target.spelling()),
+        Some("pattern.hybrid")
+    );
+    let nested = policy
+        .nested_graph()
+        .expect("semantic confirm FIND retained");
+    assert_eq!(nested.kind(), GraphQueryKindV1::Reachability);
+    assert_eq!(nested.depth(), 8);
+
+    let CompiledItemV2::Planned(explain) = &compiled.items()[2] else {
+        panic!("EXPLAIN must be planned");
+    };
+    let PlannedItemV2::Presentation { plan, .. } = explain.as_ref() else {
+        panic!("EXPLAIN must keep its presentation plan");
+    };
+    let PlanPolicyV2::Presentation(ResolvedPresentationKindV2::Explain {
+        target,
+        evidence,
+        truth,
+    }) = plan.policy()
+    else {
+        panic!("EXPLAIN must keep its evidence/truth policy");
+    };
+    assert_eq!(*evidence, EvidenceModeV1::Trace);
+    assert_eq!(*truth, TruthModeV1::Confirm);
+    let ResolvedExplainTargetV2::Entity(target) = target else {
+        panic!("EXPLAIN must keep its resolved entity target");
+    };
+    assert_eq!(
+        target
+            .target()
+            .host_selector()
+            .map(|target| target.spelling()),
+        Some("rule.sqli")
+    );
 }
 
 #[test]
