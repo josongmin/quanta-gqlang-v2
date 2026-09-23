@@ -1,4 +1,5 @@
 /target/
+/.idea/
 .DS_Store
 
 # compiled artifacts must never be committed (only under target/)

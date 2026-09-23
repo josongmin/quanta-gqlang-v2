@@ -70,6 +70,12 @@ static, test, qualification-custody, architecture, external-consumer, deny, and
 Semgrep rails. A new gate must be attached to the owning composition instead of
 being duplicated across unrelated recipes.
 
+Process gates execute the exact binary artifact emitted by the successful Cargo
+build they are evaluating. They reject missing, relative, redirected,
+duplicate, or cache-external artifact paths; a second `cargo run` is not proof
+of the first build. Fixture builds and negative checks use the copied lockfile
+in locked mode.
+
 ### Tests must prove reachability and mutation sensitivity
 
 - A selector that executes zero tests is a failed gate.

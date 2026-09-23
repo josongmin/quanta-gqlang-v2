@@ -1,5 +1,6 @@
 """Custody and semantic-contract checks for the external-consumer gate."""
 
+import json
 import subprocess
 import tempfile
 import unittest
@@ -7,6 +8,7 @@ from pathlib import Path
 
 from tools.test_frontend_external_consumer import (
     FIXTURE_DIR,
+    FIXTURE_LOCKFILE,
     GLOB_RE,
     MODULE_RE,
     REPOSITORY_ROOT,
@@ -15,15 +17,79 @@ from tools.test_frontend_external_consumer import (
     lock_cache,
     manifest_dependencies,
     materialize_fixture,
-    positive_execution_command,
+    positive_executable,
     positive_outcome,
     public_api_roots,
 )
 
 
 class ExternalConsumerCacheTest(unittest.TestCase):
-    def test_positive_execution_delegates_active_target_selection_to_cargo(self):
-        self.assertEqual(positive_execution_command(), ["cargo", "run", "--quiet"])
+    def test_positive_artifact_uses_cargo_emitted_exact_binary_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture = root / "fixture"
+            target = root / "build"
+            (fixture / "src").mkdir(parents=True)
+            (fixture / "src" / "main.rs").write_text("fn main() {}\n")
+            binary = target / "custom-target" / "debug" / "consumer"
+            binary.parent.mkdir(parents=True)
+            binary.write_bytes(b"built artifact")
+            artifact = {
+                "reason": "compiler-artifact",
+                "target": {
+                    "name": "quanta-gqlang-v2-frontend-external-consumer",
+                    "kind": ["bin"],
+                    "src_path": str(fixture / "src" / "main.rs"),
+                },
+                "executable": str(binary.resolve()),
+            }
+            unrelated = dict(artifact, target=dict(artifact["target"], name="dependency"))
+            build = subprocess.CompletedProcess(
+                ["cargo", "build"], 0, json.dumps(unrelated) + "\n" + json.dumps(artifact), ""
+            )
+            self.assertEqual(positive_executable(build, fixture, target), binary.resolve())
+
+            foreign = root / "foreign" / "consumer"
+            foreign.parent.mkdir()
+            foreign.write_bytes(b"stale artifact")
+            relative = dict(artifact, executable="debug/consumer")
+            missing = dict(artifact, executable=str(target / "debug" / "missing"))
+            redirected = target / "debug" / "redirected"
+            redirected.parent.mkdir(exist_ok=True)
+            redirected.symlink_to(binary)
+            symlink = dict(artifact, executable=str(redirected))
+            wrong_source = dict(
+                artifact,
+                target=dict(artifact["target"], src_path=str(fixture / "src" / "other.rs")),
+            )
+            without_executable = dict(artifact, executable=None)
+            cases = {
+                "absent": (json.dumps(unrelated), "0 fixture binary artifacts"),
+                "duplicate": (
+                    json.dumps(artifact) + "\n" + json.dumps(artifact),
+                    "2 fixture binary artifacts",
+                ),
+                "foreign": (
+                    json.dumps(dict(artifact, executable=str(foreign))),
+                    "outside the owned build cache",
+                ),
+                "relative": (json.dumps(relative), "relative fixture binary path"),
+                "missing": (json.dumps(missing), "missing or redirected"),
+                "symlink": (json.dumps(symlink), "missing or redirected"),
+                "wrong-source": (json.dumps(wrong_source), "wrong source path"),
+                "no-executable": (
+                    json.dumps(without_executable),
+                    "without an executable path",
+                ),
+                "invalid-json": ("not-json", "invalid JSON"),
+            }
+            for name, (stdout, expected) in cases.items():
+                with self.subTest(name=name):
+                    rejected = subprocess.CompletedProcess(
+                        ["cargo", "build"], 0, stdout, ""
+                    )
+                    with self.assertRaisesRegex(InfrastructureError, expected):
+                        positive_executable(rejected, fixture, target)
 
     def test_cargo_manifest_detects_every_dependency_form(self):
         extras = [
@@ -179,6 +245,10 @@ pub fn semantic_receipt(_: Used) {}
                 self.assertEqual(
                     (replay / "src" / "main.rs").read_bytes(),
                     (FIXTURE_DIR / "src" / "main.rs").read_bytes(),
+                )
+                self.assertEqual(
+                    (replay / "Cargo.lock").read_bytes(),
+                    FIXTURE_LOCKFILE.read_bytes(),
                 )
 
     def test_unowned_or_foreign_cache_is_rejected(self):

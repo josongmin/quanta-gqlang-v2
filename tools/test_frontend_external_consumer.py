@@ -8,15 +8,16 @@ reuses the checkout's gitignored Cargo target:
 1. materialize ``tools/frontend_external_consumer/`` at one locked, owned path
    under this checkout's ignored ``target/`` directory, rewrite its single
    ``path = ...`` dependency to an absolute path into this repository, copy
-   ``Cargo.lock`` for offline resolution, and reuse only that checkout's
-   fixture build cache;
+   the fixture-owned ``Cargo.lock`` for offline locked resolution, and reuse
+   only that checkout's fixture build cache;
 
 2. ask Cargo to parse the complete dependency tables, require exactly one
    unconditional path edge in each manifest (fixture -> facade -> pipeline),
    and assert the facade source shape (zero glob re-exports, zero public
    modules, curated allowlist == the pinned literal);
 
-3. build and run the positive consumer program separately. Its
+3. build the positive consumer with Cargo JSON diagnostics, select the binary
+   artifact Cargo just reported, and execute that artifact separately. Its
    ``#![deny(unused_imports)]`` plus typed method signatures and exhaustive
    enum matches make rustc type-check its curated API uses; require exit 0
    plus the exact marker ``external-consumer positive: ok``;
@@ -74,6 +75,7 @@ FACADE_DIR = REPOSITORY_ROOT / "crates" / "quanta-gqlang-v2-frontend-contract"
 FACADE_MANIFEST = FACADE_DIR / "Cargo.toml"
 FACADE_SOURCE = FACADE_DIR / "src" / "lib.rs"
 LOCKFILE = REPOSITORY_ROOT / "Cargo.lock"
+FIXTURE_LOCKFILE = FIXTURE_DIR / "Cargo.lock"
 CACHE_ROOT = REPOSITORY_ROOT / "target" / "external-consumer-gate"
 VECTOR_PATH = (
     REPOSITORY_ROOT
@@ -84,6 +86,7 @@ VECTOR_PATH = (
     / "execution-v3-vectors.tsv"
 )
 FACADE_PACKAGE = "quanta-gqlang-v2-frontend-contract"
+FIXTURE_PACKAGE = "quanta-gqlang-v2-frontend-external-consumer"
 PIPELINE_PACKAGE = "quanta-gqlang-v2-pipeline"
 FACADE_DEP_LINE = 'path = "../../crates/quanta-gqlang-v2-frontend-contract"'
 FACADE_OWNER_CRATE = "quanta_gqlang_v2_pipeline"
@@ -371,9 +374,47 @@ def positive_outcome(
     return "pass", ""
 
 
-def positive_execution_command() -> List[str]:
-    """Run through Cargo so the active target/config selects the built binary."""
-    return ["cargo", "run", "--quiet"]
+def positive_executable(build: subprocess.CompletedProcess, fixture: Path, target_dir: Path) -> Path:
+    """Select the one fixture binary from this successful Cargo build's artifacts."""
+    candidates: List[Path] = []
+    expected_source = (fixture / "src" / "main.rs").resolve()
+    owned_target = target_dir.resolve()
+    for line in build.stdout.splitlines():
+        try:
+            message = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise InfrastructureError("Cargo build emitted invalid JSON: %s" % error) from error
+        if not isinstance(message, dict) or message.get("reason") != "compiler-artifact":
+            continue
+        target = message.get("target")
+        if not isinstance(target, dict) or target.get("name") != FIXTURE_PACKAGE or target.get("kind") != ["bin"]:
+            continue
+        source = target.get("src_path")
+        executable = message.get("executable")
+        if not isinstance(source, str) or Path(source).resolve() != expected_source:
+            raise InfrastructureError("Cargo reported a fixture binary with the wrong source path")
+        if not isinstance(executable, str):
+            raise InfrastructureError("Cargo reported a fixture binary without an executable path")
+        candidate = Path(executable)
+        if not candidate.is_absolute():
+            raise InfrastructureError("Cargo reported a relative fixture binary path")
+        try:
+            resolved_candidate = candidate.resolve(strict=True)
+            resolved_candidate.relative_to(owned_target)
+        except ValueError as error:
+            raise InfrastructureError("Cargo fixture binary is outside the owned build cache") from error
+        except (OSError, RuntimeError) as error:
+            raise InfrastructureError("Cargo fixture binary is missing or redirected") from error
+        if (
+            candidate != resolved_candidate
+            or candidate.is_symlink()
+            or not resolved_candidate.is_file()
+        ):
+            raise InfrastructureError("Cargo fixture binary is missing or redirected")
+        candidates.append(resolved_candidate)
+    if len(candidates) != 1:
+        raise InfrastructureError("Cargo reported %d fixture binary artifacts, expected one" % len(candidates))
+    return candidates[0]
 
 
 def facade_allowlist(text: str) -> List[str]:
@@ -516,7 +557,7 @@ def materialize_fixture(cache_root: Path) -> Path:
     manifest.write_text(
         text.replace(FACADE_DEP_LINE, 'path = "%s"' % (FACADE_DIR,))
     )
-    shutil.copyfile(str(LOCKFILE), str(fixture / "Cargo.lock"))
+    shutil.copyfile(str(FIXTURE_LOCKFILE), str(fixture / "Cargo.lock"))
     (src / "main.rs").write_bytes((FIXTURE_DIR / "src" / "main.rs").read_bytes())
     return fixture
 
@@ -657,14 +698,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
         positive_main = (fixture / "src" / "main.rs").read_bytes()
 
-        build = run(["cargo", "build", "--quiet"], cwd=fixture, env=env)
+        build = run(
+            ["cargo", "build", "--locked", "--message-format=json"],
+            cwd=fixture,
+            env=env,
+        )
         execution = None
         if build.returncode == 0:
-            # Cargo owns the artifact path. A fixed ``build/debug/<name>``
-            # path can execute a stale native binary when CARGO_BUILD_TARGET
-            # or Cargo config placed the successful build under a target
-            # subdirectory.
-            execution = run(positive_execution_command(), cwd=fixture, env=env)
+            # The JSON artifact path follows Cargo's selected target/config;
+            # a fixed build/debug path can run a stale binary instead.
+            executable = positive_executable(build, fixture, CACHE_ROOT / "build")
+            execution = run([str(executable)], cwd=fixture, env=env)
             counts["positive_executed"] = 1
         outcome, message = positive_outcome(build, execution)
         if outcome == "infrastructure":
@@ -697,7 +741,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             if not path.is_file():
                 continue
             (fixture / "src" / "main.rs").write_bytes(path.read_bytes())
-            result = run(["cargo", "check", "--quiet"], cwd=fixture, env=env)
+            result = run(["cargo", "check", "--locked", "--quiet"], cwd=fixture, env=env)
             counts["negative_executed"] += 1
             observed_codes = sorted(set(ERROR_CODE_RE.findall(result.stderr)))
             if expected_code:
