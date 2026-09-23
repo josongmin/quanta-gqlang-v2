@@ -99,17 +99,39 @@ def main() -> int:
         sys.stderr.buffer.write(build.stderr)
         return build.returncode
 
+    deep = "let x = " + ("(" * 70) + "1" + (")" * 70)
     cases = {
-        "incomplete": "show capabilities",
-        "error": "totally not a qglang root",
+        # name: (source, expected shared status, minimum diagnostic count)
+        "multi-diagnostic-incomplete": ("show capabilities", "incomplete", 3),
+        "invalid-root": ("totally not a qglang root", "error", 1),
+        "unicode-byte-span": ("let 이름 = 1", "error", 1),
+        "multi-item": ("let x = 1; show capabilities", "incomplete", 3),
+        "mixed-valid-invalid": ("let x = 1; totally not a qglang root", "error", 1),
+        "expression-depth-resource": (deep, "error", 1),
+        "composition": (
+            "let suspects = find taint a.b -> c.d | depth=2 "
+            "find taint api.entry -> db.write | depth=3 with suspects",
+            "incomplete",
+            3,
+        ),
+        "rule": ("rule adult : x if x = 1", "incomplete", 3),
     }
     failures: list[str] = []
-    for name, source in cases.items():
+    for name, (source, expected_status, minimum_diagnostics) in cases.items():
         cli = parse_cli(source)
         stdio = parse_stdio(source)
         cli_status = cli.pop("process_status")
         if cli_status == 0:
             failures.append(f"{name}: CLI must exit non-zero for non-complete analysis")
+        if cli["analysis_status"] != expected_status:
+            failures.append(
+                f"{name}: expected shared status {expected_status!r}, got {cli['analysis_status']!r}"
+            )
+        if len(cli["diagnostics"]) < minimum_diagnostics:
+            failures.append(
+                f"{name}: expected at least {minimum_diagnostics} diagnostics, "
+                f"got {len(cli['diagnostics'])}"
+            )
         if cli != stdio:
             failures.append(f"{name}: CLI/stdio semantic payload drift: cli={cli!r} stdio={stdio!r}")
 

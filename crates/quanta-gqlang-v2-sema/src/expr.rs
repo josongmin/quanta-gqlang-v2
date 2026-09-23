@@ -422,6 +422,13 @@ impl TypedExprV2 {
     pub const fn shape(&self) -> &TypedExprShapeV2 {
         &self.shape
     }
+    /// Test-support-only shape substitution used to assemble complete forged
+    /// documents without exposing a public expression constructor.
+    #[cfg(any(test, feature = "test"))]
+    pub(crate) fn forged_with_shape(mut self, shape: TypedExprShapeV2) -> Self {
+        self.shape = shape;
+        self
+    }
     /// Test-only minting seam: replace the capture set of a RelationExists
     /// expression so adversarial-document rails can assemble forged
     /// correlation vectors against the real document finalizer. Compiled

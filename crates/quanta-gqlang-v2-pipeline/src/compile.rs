@@ -1016,28 +1016,30 @@ fn run_document(
         let location = membership.location(*id);
         match run_item(document, &membership, &mut algebra, &mut planning, *id) {
             Ok(ItemRunV2::Planned(run)) => {
-                let inserted = if matches!(run.planned.as_ref(), PlannedItemV2::RuleMember(_)) {
-                    produced_member.insert(*id)
-                } else {
-                    produced_plan.insert(*id)
-                };
-                if !inserted {
-                    return Err(assembly(
+                if matches!(run.planned.as_ref(), PlannedItemV2::RuleMember(_)) {
+                    record_produced_identity(
+                        &mut produced_member,
+                        *id,
                         location,
-                        DocumentAssemblyCodeV2::DuplicateItemResult,
                         "one authored identity produced two results",
-                    ));
+                    )?;
+                } else {
+                    record_produced_identity(
+                        &mut produced_plan,
+                        *id,
+                        location,
+                        "one authored identity produced two results",
+                    )?;
                 }
                 items.push(ItemRunV2::Planned(run));
             }
             Ok(ItemRunV2::NoPlan { item_id, reason }) => {
-                if !produced_no_plan.insert(*id) {
-                    return Err(assembly(
-                        location,
-                        DocumentAssemblyCodeV2::DuplicateItemResult,
-                        "one authored identity produced two non-plan results",
-                    ));
-                }
+                record_produced_identity(
+                    &mut produced_no_plan,
+                    *id,
+                    location,
+                    "one authored identity produced two non-plan results",
+                )?;
                 items.push(ItemRunV2::NoPlan { item_id, reason });
             }
             Ok(ItemRunV2::Blocked {
@@ -1072,19 +1074,57 @@ fn run_document(
         });
     }
 
+    validate_produced_membership(
+        document.source_id(),
+        &membership,
+        &produced_plan,
+        &produced_member,
+        &produced_no_plan,
+    )?;
+
+    Ok(DocumentRunV2 {
+        items,
+        rule_program,
+        rule_blocked,
+    })
+}
+
+fn record_produced_identity(
+    produced: &mut BTreeSet<SemanticItemIdV2>,
+    id: SemanticItemIdV2,
+    location: LocatedSpanV2,
+    message: &'static str,
+) -> Result<(), FrontendTransactionErrorV2> {
+    if produced.insert(id) {
+        Ok(())
+    } else {
+        Err(assembly(
+            location,
+            DocumentAssemblyCodeV2::DuplicateItemResult,
+            message,
+        ))
+    }
+}
+
+fn validate_produced_membership(
+    source_id: SourceIdV2,
+    membership: &DocumentMembershipV2<'_>,
+    produced_plan: &BTreeSet<SemanticItemIdV2>,
+    produced_member: &BTreeSet<SemanticItemIdV2>,
+    produced_no_plan: &BTreeSet<SemanticItemIdV2>,
+) -> Result<(), FrontendTransactionErrorV2> {
     let expected_plan = membership.plan_required_ids();
-    let expected_member: BTreeSet<SemanticItemIdV2> = rule_members.iter().copied().collect();
+    let expected_member: BTreeSet<SemanticItemIdV2> =
+        membership.rule_member_ids().into_iter().collect();
     let expected_no_plan = membership.no_plan_ids();
-    if produced_member != expected_member {
+    if produced_member != &expected_member {
         let anchor = expected_member
             .iter()
             .chain(produced_member.iter())
             .find(|id| expected_member.contains(id) != produced_member.contains(id))
             .copied();
-        let location = anchor.map_or_else(
-            || zero_location(document.source_id()),
-            |id| membership.location(id),
-        );
+        let location =
+            anchor.map_or_else(|| zero_location(source_id), |id| membership.location(id));
         return Err(assembly(
             location,
             DocumentAssemblyCodeV2::RuleMembershipMismatch,
@@ -1100,7 +1140,7 @@ fn run_document(
             ));
         }
     }
-    for id in &produced_plan {
+    for id in produced_plan {
         if !expected_plan.contains(id) {
             return Err(assembly(
                 membership.location(*id),
@@ -1118,7 +1158,7 @@ fn run_document(
             ));
         }
     }
-    for id in &produced_no_plan {
+    for id in produced_no_plan {
         if !expected_no_plan.contains(id) {
             return Err(assembly(
                 membership.location(*id),
@@ -1127,12 +1167,7 @@ fn run_document(
             ));
         }
     }
-
-    Ok(DocumentRunV2 {
-        items,
-        rule_program,
-        rule_blocked,
-    })
+    Ok(())
 }
 
 /// Run the applicable stages for one authored item.
@@ -1690,5 +1725,169 @@ impl<'a> DocumentMembershipV2<'a> {
                 })
             })
             .collect()
+    }
+}
+
+#[cfg(test)]
+#[expect(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "owner-local assembly tests inspect exact sealed fixture results"
+)]
+mod tests {
+    use super::*;
+    use quanta_gqlang_v2_sema::test_support::{
+        reference_meta_document_v2, reference_relation_document_v2, ReferenceMetaFixtureV2,
+        ReferenceRelationFixtureV2,
+    };
+    use quanta_gqlang_v2_sema::HirNodeIdV1;
+
+    fn failure_code(error: &FrontendTransactionErrorV2) -> &str {
+        match error {
+            FrontendTransactionErrorV2::Document(failure) => failure
+                .diagnostics()
+                .first()
+                .expect("one assembly diagnostic")
+                .code(),
+            FrontendTransactionErrorV2::Authority(_) => {
+                panic!("assembly test unexpectedly returned an authority error")
+            }
+        }
+    }
+
+    #[test]
+    fn duplicate_producer_identity_fails_closed_at_the_second_insert() {
+        let fixture = reference_relation_document_v2(ReferenceRelationFixtureV2::Scan)
+            .expect("reference relation");
+        let id = fixture.item_id();
+        let location = item_location_of(fixture.document(), id);
+        let mut produced = BTreeSet::new();
+        record_produced_identity(&mut produced, id, location, "duplicate")
+            .expect("first identity is admitted");
+        let error = record_produced_identity(&mut produced, id, location, "duplicate")
+            .expect_err("second identity rejects");
+        assert_eq!(
+            failure_code(&error),
+            "pipeline.document.duplicate_item_result"
+        );
+    }
+
+    #[test]
+    fn plan_membership_missing_extra_and_rule_mismatch_are_exact() {
+        let fixture = reference_relation_document_v2(ReferenceRelationFixtureV2::Scan)
+            .expect("reference relation");
+        let membership = DocumentMembershipV2::of(fixture.document()).expect("membership");
+        let id = fixture.item_id();
+        let expected_plan = BTreeSet::from([id]);
+        validate_produced_membership(
+            fixture.document().source_id(),
+            &membership,
+            &expected_plan,
+            &BTreeSet::new(),
+            &BTreeSet::new(),
+        )
+        .expect("exact plan membership");
+
+        let missing = validate_produced_membership(
+            fixture.document().source_id(),
+            &membership,
+            &BTreeSet::new(),
+            &BTreeSet::new(),
+            &BTreeSet::new(),
+        )
+        .expect_err("missing plan rejects");
+        assert_eq!(
+            failure_code(&missing),
+            "pipeline.document.missing_item_result"
+        );
+
+        let extra_id = SemanticItemIdV2::new(
+            fixture.document().source_id(),
+            HirNodeIdV1::from_raw(id.hir_item_id().raw() + 100),
+        );
+        let extra = validate_produced_membership(
+            fixture.document().source_id(),
+            &membership,
+            &BTreeSet::from([id, extra_id]),
+            &BTreeSet::new(),
+            &BTreeSet::new(),
+        )
+        .expect_err("extra plan rejects");
+        assert_eq!(failure_code(&extra), "pipeline.document.extra_item_result");
+
+        let rule_mismatch = validate_produced_membership(
+            fixture.document().source_id(),
+            &membership,
+            &expected_plan,
+            &BTreeSet::from([extra_id]),
+            &BTreeSet::new(),
+        )
+        .expect_err("unexpected rule member rejects first");
+        assert_eq!(
+            failure_code(&rule_mismatch),
+            "pipeline.document.rule_membership_mismatch"
+        );
+    }
+
+    #[test]
+    fn checked_non_plan_membership_missing_and_extra_are_exact() {
+        let fixture = reference_meta_document_v2(ReferenceMetaFixtureV2::UsePack)
+            .expect("reference USE PACK");
+        let membership = DocumentMembershipV2::of(fixture.document()).expect("membership");
+        let id = fixture.meta_item_id();
+        validate_produced_membership(
+            fixture.document().source_id(),
+            &membership,
+            &BTreeSet::new(),
+            &BTreeSet::new(),
+            &BTreeSet::from([id]),
+        )
+        .expect("exact non-plan membership");
+
+        let missing = validate_produced_membership(
+            fixture.document().source_id(),
+            &membership,
+            &BTreeSet::new(),
+            &BTreeSet::new(),
+            &BTreeSet::new(),
+        )
+        .expect_err("missing non-plan rejects");
+        assert_eq!(
+            failure_code(&missing),
+            "pipeline.document.missing_item_result"
+        );
+
+        let extra_id = SemanticItemIdV2::new(
+            fixture.document().source_id(),
+            HirNodeIdV1::from_raw(id.hir_item_id().raw() + 100),
+        );
+        let extra = validate_produced_membership(
+            fixture.document().source_id(),
+            &membership,
+            &BTreeSet::new(),
+            &BTreeSet::new(),
+            &BTreeSet::from([id, extra_id]),
+        )
+        .expect_err("extra non-plan rejects");
+        assert_eq!(failure_code(&extra), "pipeline.document.extra_item_result");
+    }
+
+    #[test]
+    fn execution_closure_failures_project_to_independent_pipeline_codes() {
+        let fixture = reference_relation_document_v2(ReferenceRelationFixtureV2::Scan)
+            .expect("reference relation");
+        for (failure, expected) in [
+            (
+                ExecutionClosureFailureV3::Dangling,
+                "pipeline.document.dangling_execution_reference",
+            ),
+            (
+                ExecutionClosureFailureV3::Foreign,
+                "pipeline.document.foreign_item_result",
+            ),
+        ] {
+            let error = closure_error(fixture.document(), fixture.item_id(), failure);
+            assert_eq!(failure_code(&error), expected);
+        }
     }
 }

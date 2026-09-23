@@ -2902,6 +2902,55 @@ pub struct ReferenceNestedCheckDocumentV2 {
     nested_graph_item_id: SemanticItemIdV2,
 }
 
+/// Caller-selected CHECK shape resolved through the real semantic transaction.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ReferenceCheckFixtureV2 {
+    /// Authored detection mode.
+    pub mode: DetectionModeV1,
+    /// Whether the CHECK carries a resolved pattern selector.
+    pub with_pattern: bool,
+    /// Whether the CHECK carries an explicit nested semantic-confirm FIND.
+    pub with_nested_graph: bool,
+}
+
+/// A configurable sealed CHECK fixture and its optional nested FIND identity.
+#[derive(Clone, Debug)]
+pub struct ReferenceCheckDocumentV2 {
+    document: SemanticDocumentV2,
+    check_item_id: SemanticItemIdV2,
+    nested_graph_item_id: Option<SemanticItemIdV2>,
+}
+
+impl ReferenceCheckDocumentV2 {
+    /// Borrow the complete semantic document.
+    #[must_use]
+    pub const fn document(&self) -> &SemanticDocumentV2 {
+        &self.document
+    }
+    /// Identity of the CHECK item.
+    #[must_use]
+    pub const fn check_item_id(&self) -> SemanticItemIdV2 {
+        self.check_item_id
+    }
+    /// Identity of the nested FIND when the fixture requested one.
+    #[must_use]
+    pub const fn nested_graph_item_id(&self) -> Option<SemanticItemIdV2> {
+        self.nested_graph_item_id
+    }
+    /// The resolved CHECK item.
+    #[must_use]
+    #[expect(
+        clippy::panic,
+        reason = "the fixture seals this identity, so a non-Check item is unreachable"
+    )]
+    pub fn check(&self) -> &crate::ResolvedCheckV2 {
+        match self.document.item(self.check_item_id) {
+            Some(SemanticItemV2::Check(check)) => check,
+            _ => panic!("check fixture item is a resolved CHECK"),
+        }
+    }
+}
+
 impl ReferenceNestedCheckDocumentV2 {
     /// Borrow the complete semantic document.
     #[must_use]
@@ -3152,9 +3201,52 @@ pub fn reference_graph_document_v2(
 pub fn reference_nested_check_document_v2(
     request: ReferenceGraphRequestV2,
 ) -> Result<ReferenceNestedCheckDocumentV2, String> {
-    let query = graph_hir_query(&request)?;
-    let nested_graph_item_id = SemanticItemIdV2::new(REFERENCE_SOURCE_V2, query.id);
-    let check = LegalityHirV1::new(
+    let fixture = reference_check_document_v2(
+        request,
+        ReferenceCheckFixtureV2 {
+            mode: DetectionModeV1::SemanticOnly,
+            with_pattern: false,
+            with_nested_graph: true,
+        },
+    )?;
+    let nested_graph_item_id = fixture
+        .nested_graph_item_id
+        .ok_or("nested CHECK fixture must carry a nested graph")?;
+    Ok(ReferenceNestedCheckDocumentV2 {
+        document: fixture.document,
+        check_item_id: fixture.check_item_id,
+        nested_graph_item_id,
+    })
+}
+
+/// Resolve a caller-selected CHECK mode and pattern/nested-FIND combination.
+///
+/// The options are intentionally not normalized: tests can author both the
+/// coherent combinations and forged policy combinations while every retained
+/// identity/reference still comes from the real semantic transaction.
+///
+/// # Errors
+///
+/// Returns a fixture-construction error if the selected shape cannot seal.
+pub fn reference_check_document_v2(
+    request: ReferenceGraphRequestV2,
+    fixture: ReferenceCheckFixtureV2,
+) -> Result<ReferenceCheckDocumentV2, String> {
+    const PATTERN_NAME: &str = "pattern1";
+    const PATTERN_SPAN: SpanV1 = SpanV1::new(106, 114);
+
+    let query = fixture
+        .with_nested_graph
+        .then(|| graph_hir_query(&request))
+        .transpose()?;
+    let nested_graph_item_id = query
+        .as_ref()
+        .map(|query| SemanticItemIdV2::new(REFERENCE_SOURCE_V2, query.id));
+    let pattern = fixture.with_pattern.then(|| GraphRefV1 {
+        name: PATTERN_NAME.to_owned(),
+        span: PATTERN_SPAN,
+    });
+    let mut check = LegalityHirV1::new(
         HirNodeIdV1::from_raw(3),
         SpanV1::new(request.item_span.0, request.item_span.1),
         GraphRefV1 {
@@ -3162,14 +3254,48 @@ pub fn reference_nested_check_document_v2(
             span: SpanV1::new(100, 105),
         },
         None,
-        None,
+        pattern,
         ConfirmModeV1::Skip,
         EmitModeV1::Findings,
-        DetectionModeV1::SemanticOnly,
-    )
-    .with_semantic_confirm(query);
+        fixture.mode,
+    );
+    if let Some(query) = query {
+        check = check.with_semantic_confirm(query);
+    }
     let check_item_id = SemanticItemIdV2::new(REFERENCE_SOURCE_V2, check.id);
-    let authority = graph_authority_v2(&request.references, true)?;
+    let budget = FrontendBudgetV2::standard_v2().map_err(|error| format!("{error:?}"))?;
+    let authority = graph_authority_with_graph_inputs_v2(true, budget, |host, _location| {
+        let mut inputs = Vec::new();
+        for (index, reference) in request.references.iter().enumerate() {
+            let declaration = host
+                .try_check_location(LocatedSpanV2 {
+                    source_id: SourceIdV2::from_raw(1),
+                    span: SpanV1::new(1 + index, 2 + index),
+                })
+                .map_err(|error| format!("{error:?}"))?;
+            inputs.push(GraphReferenceInputV2 {
+                spelling: reference.selector.to_owned(),
+                kind: graph_reference_kind(reference.role),
+                entity_subtype: None,
+                location: declaration,
+            });
+        }
+        if fixture.with_pattern {
+            let declaration = host
+                .try_check_location(LocatedSpanV2 {
+                    source_id: SourceIdV2::from_raw(1),
+                    span: SpanV1::new(200, 201),
+                })
+                .map_err(|error| format!("{error:?}"))?;
+            inputs.push(GraphReferenceInputV2 {
+                spelling: PATTERN_NAME.to_owned(),
+                kind: GraphReferenceKindV2::Pattern,
+                entity_subtype: None,
+                location: declaration,
+            });
+        }
+        Ok(inputs)
+    })?;
     let document = resolve_checked_document_v2(
         CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
             source_id: REFERENCE_SOURCE_V2,
@@ -3180,7 +3306,7 @@ pub fn reference_nested_check_document_v2(
         &authority,
     )
     .map_err(|error| format!("{error:?}"))?;
-    Ok(ReferenceNestedCheckDocumentV2 {
+    Ok(ReferenceCheckDocumentV2 {
         document,
         check_item_id,
         nested_graph_item_id,
@@ -3223,6 +3349,31 @@ pub enum ReferenceRuleFixtureV2 {
     NegatedNonRecursiveDependency,
     /// One rule whose only call is a builtin, never a graph vertex.
     BuiltinCallOnly,
+}
+
+/// Expression wrappers forged around one otherwise real nonrecursive rule
+/// call. These fixtures exercise downstream closed-tree walkers over shapes
+/// that cannot all be authored around a Bool-returning rule call.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ForgedRuleCallWrapperV2 {
+    /// Unary expression wrapper.
+    Unary,
+    /// Binary expression wrapper, with the same call on both edges.
+    Binary,
+    /// Comparison expression wrapper.
+    Compare,
+    /// Logical disjunction wrapper.
+    Or,
+    /// Parenthesized expression wrapper.
+    Paren,
+    /// Path-base expression wrapper.
+    Path,
+    /// Record-field expression wrapper.
+    Record,
+    /// List-item expression wrapper.
+    List,
+    /// Logical-quantifier body wrapper.
+    LogicalQuantifier,
 }
 
 /// A sealed rule document plus its Rule item identities in document order.
@@ -3359,6 +3510,83 @@ pub fn reference_rule_document_v2(
     let checked = rule_checked_document_v2(fixture)?;
     let document = resolve_checked_document_v2(checked, &reference_authority_v2()?)
         .map_err(|error| format!("{error:?}"))?;
+    Ok(wrap_rule_document_v2(document))
+}
+
+/// Forge one wrapper around the real `r -> s` call while preserving the real
+/// source-qualified call identity, target, polarity, and checked location.
+pub fn forged_rule_call_wrapper_document_v2(
+    wrapper: ForgedRuleCallWrapperV2,
+) -> Result<ReferenceRuleDocumentV2, String> {
+    let base = reference_rule_document_v2(ReferenceRuleFixtureV2::NonRecursiveDependency)?;
+    let first = *base
+        .item_ids
+        .first()
+        .ok_or("the nonrecursive rule fixture names its caller")?;
+    let (root, call) = match base.document.item(first) {
+        Some(SemanticItemV2::Rule(rule)) => (
+            rule.body().expression().key(),
+            rule.calls()
+                .first()
+                .ok_or("the nonrecursive rule fixture retains its call")?
+                .call(),
+        ),
+        _ => return Err("the nonrecursive fixture caller is a rule".to_owned()),
+    };
+    let document = base.document.forged_expressions(move |expressions| {
+        let Some(expression) = expressions.remove(&root) else {
+            return;
+        };
+        let location = expression.location().clone();
+        let TypedExprShapeV2::And { operator, .. } = expression.shape() else {
+            expressions.insert(root, expression);
+            return;
+        };
+        let operator = *operator;
+        let shape = match wrapper {
+            ForgedRuleCallWrapperV2::Unary => TypedExprShapeV2::Unary {
+                operator,
+                operand: call,
+            },
+            ForgedRuleCallWrapperV2::Binary => TypedExprShapeV2::Binary {
+                operator,
+                lhs: call,
+                rhs: call,
+            },
+            ForgedRuleCallWrapperV2::Compare => TypedExprShapeV2::Compare {
+                operator,
+                lhs: call,
+                rhs: call,
+            },
+            ForgedRuleCallWrapperV2::Or => TypedExprShapeV2::Or {
+                operator,
+                lhs: call,
+                rhs: call,
+            },
+            ForgedRuleCallWrapperV2::Paren => TypedExprShapeV2::Paren { inner: call },
+            ForgedRuleCallWrapperV2::Path => TypedExprShapeV2::Path {
+                base: call,
+                segments: vec![crate::TypedPathSegmentV2::new(
+                    "field".to_owned(),
+                    location.clone(),
+                )],
+            },
+            ForgedRuleCallWrapperV2::Record => {
+                let Ok(field) = crate::TypedRecordFieldV2::try_new("field", location, call) else {
+                    expressions.insert(root, expression);
+                    return;
+                };
+                TypedExprShapeV2::Record(vec![field])
+            }
+            ForgedRuleCallWrapperV2::List => TypedExprShapeV2::List(vec![call]),
+            ForgedRuleCallWrapperV2::LogicalQuantifier => TypedExprShapeV2::LogicalQuantifier {
+                kind: crate::LogicalQuantifierKindV2::Exists,
+                binders: Vec::new(),
+                body: call,
+            },
+        };
+        expressions.insert(root, expression.forged_with_shape(shape));
+    });
     Ok(wrap_rule_document_v2(document))
 }
 
@@ -4516,6 +4744,38 @@ pub fn reference_alternate_graph_document_v2(
     Ok(ReferenceGraphDocumentV2 { document, item_id })
 }
 
+/// Resolve the standard Taint FIND under
+/// [`SECONDARY_REFERENCE_SOURCE_V2`]. Its graph shape matches the primary
+/// reference fixture while every semantic identity is source-qualified by the
+/// second document.
+///
+/// # Errors
+///
+/// Returns a fixture-construction error if the fixed FIND no longer seals.
+pub fn second_source_graph_document_v2() -> Result<ReferenceGraphDocumentV2, String> {
+    let kind = GraphQueryKindV1::Taint;
+    let request = ReferenceGraphRequestV2 {
+        kind,
+        references: reference_witness_graph_references_v2(kind),
+        depth: Some(4),
+        direction: None,
+        summary_facets: Vec::new(),
+        item_span: (0, 8),
+    };
+    let query = graph_hir_query(&request)?;
+    let item_id = SemanticItemIdV2::new(SECONDARY_REFERENCE_SOURCE_V2, query.id);
+    let authority = graph_authority_v2(&request.references, false)?;
+    let checked = CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+        source_id: SECONDARY_REFERENCE_SOURCE_V2,
+        source_len: REFERENCE_GRAPH_SOURCE_LEN_V2,
+        items: vec![ProgramItemHirV1::GraphQuery(Box::new(query))],
+    })
+    .map_err(|error| format!("{error:?}"))?;
+    let document =
+        resolve_checked_document_v2(checked, &authority).map_err(|error| format!("{error:?}"))?;
+    Ok(ReferenceGraphDocumentV2 { document, item_id })
+}
+
 // ---- W4-D fixture units ----------------------------------------------------
 
 #[cfg(test)]
@@ -4882,6 +5142,78 @@ mod w4d_tests {
             primary.graph_item_id().hir_item_id(),
             HirNodeIdV1::from_raw(2)
         );
+        Ok(())
+    }
+
+    #[test]
+    fn second_source_graph_document_has_a_foreign_source_qualified_identity() -> Result<(), String>
+    {
+        let primary = reference_graph_document_v2(ReferenceGraphRequestV2 {
+            kind: GraphQueryKindV1::Taint,
+            references: reference_witness_graph_references_v2(GraphQueryKindV1::Taint),
+            depth: Some(4),
+            direction: None,
+            summary_facets: Vec::new(),
+            item_span: (0, 8),
+        })?;
+        let secondary = second_source_graph_document_v2()?;
+        assert_eq!(
+            secondary.document().source_id(),
+            SECONDARY_REFERENCE_SOURCE_V2
+        );
+        assert_eq!(
+            secondary.graph_item_id().source_id(),
+            SECONDARY_REFERENCE_SOURCE_V2
+        );
+        assert_ne!(secondary.graph_item_id(), primary.graph_item_id());
+        assert_eq!(
+            secondary.graph_item_id().hir_item_id(),
+            primary.graph_item_id().hir_item_id()
+        );
+        assert_eq!(secondary.graph().kind(), primary.graph().kind());
+        assert_eq!(secondary.graph().depth(), primary.graph().depth());
+        Ok(())
+    }
+
+    #[test]
+    fn configurable_check_fixture_seals_the_full_mode_option_matrix() -> Result<(), String> {
+        for mode in [
+            DetectionModeV1::PatternOnly,
+            DetectionModeV1::SemanticOnly,
+            DetectionModeV1::Hybrid,
+        ] {
+            for with_pattern in [false, true] {
+                for with_nested_graph in [false, true] {
+                    let request = ReferenceGraphRequestV2 {
+                        kind: GraphQueryKindV1::Taint,
+                        references: reference_witness_graph_references_v2(GraphQueryKindV1::Taint),
+                        depth: Some(4),
+                        direction: None,
+                        summary_facets: Vec::new(),
+                        item_span: (0, 80),
+                    };
+                    let fixture = reference_check_document_v2(
+                        request,
+                        ReferenceCheckFixtureV2 {
+                            mode,
+                            with_pattern,
+                            with_nested_graph,
+                        },
+                    )?;
+                    let check = fixture.check();
+                    assert_eq!(check.mode(), mode);
+                    assert_eq!(check.pattern().is_some(), with_pattern);
+                    assert_eq!(check.nested_graph().is_some(), with_nested_graph);
+                    assert_eq!(
+                        check
+                            .nested_graph()
+                            .map(crate::ResolvedGraphQueryV2::item_id),
+                        fixture.nested_graph_item_id()
+                    );
+                    assert_eq!(check.item_id(), fixture.check_item_id());
+                }
+            }
+        }
         Ok(())
     }
 }

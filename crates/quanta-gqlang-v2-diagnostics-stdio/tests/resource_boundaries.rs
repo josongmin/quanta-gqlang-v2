@@ -4,7 +4,7 @@
     reason = "boundary tests inspect exact response positions"
 )]
 
-use std::io::Cursor;
+use std::io::{Cursor, Read};
 
 use quanta_gqlang_v2_diagnostics_stdio::{
     run_stdio_session_with_budget_v2, server::DiagnosticsServerV2,
@@ -61,6 +61,22 @@ fn padded_object(bytes: usize) -> Vec<u8> {
     output.resize(bytes - suffix.len(), b'a');
     output.extend_from_slice(suffix);
     output
+}
+
+struct OneByteReader {
+    bytes: Vec<u8>,
+    cursor: usize,
+}
+
+impl Read for OneByteReader {
+    fn read(&mut self, output: &mut [u8]) -> std::io::Result<usize> {
+        if self.cursor == self.bytes.len() {
+            return Ok(0);
+        }
+        output[0] = self.bytes[self.cursor];
+        self.cursor += 1;
+        Ok(1)
+    }
 }
 
 #[test]
@@ -151,4 +167,64 @@ fn diagnostic_and_response_caps_fail_closed() {
     let invalid = DiagnosticsServerV2::try_with_budget(budget(64, 256, 16, 110))
         .expect_err("transport must reserve space for its bounded fallback");
     assert_eq!(invalid.code, "configuration_error");
+}
+
+#[test]
+fn overflow_spanning_many_reads_discards_only_that_frame_and_recovers() {
+    let mut input = padded_object(257);
+    input.push(b'\n');
+    input.extend_from_slice(br#"{"id":9,"method":"v3_diagnostics","source_id":1,"source":"x"}"#);
+    let mut reader = OneByteReader {
+        bytes: input,
+        cursor: 0,
+    };
+    let mut writer = Vec::new();
+    let status =
+        run_stdio_session_with_budget_v2(&mut reader, &mut writer, budget(64, 256, 16, 4_096))
+            .expect("bounded session");
+    let responses: Vec<Value> = writer
+        .split(|byte| *byte == b'\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| serde_json::from_slice(line).expect("response json"))
+        .collect();
+    assert_eq!(status, 1);
+    assert_eq!(responses.len(), 2);
+    assert_eq!(responses[0]["error"]["code"], "frame_limit_exceeded");
+    assert_eq!(responses[1]["id"], 9);
+    assert_eq!(responses[1]["ok"], true);
+}
+
+#[test]
+fn response_fallback_has_an_exact_admission_boundary_and_is_emitted() {
+    const FALLBACK: &[u8] = br#"{"id":null,"ok":false,"error":{"code":"response_limit_exceeded","message":"response exceeds configured limit"}}"#;
+    let exact = u32::try_from(FALLBACK.len()).expect("small fallback");
+    let server = DiagnosticsServerV2::try_with_budget(budget(64, 256, 16, exact))
+        .expect("exact fallback budget");
+    let detailed = server.render_transport_error(
+        quanta_gqlang_v2_diagnostics_stdio::server::ProtocolErrorV2::new(
+            "response_limit_exceeded",
+            "a deliberately verbose response-limit error that cannot fit in the fallback budget",
+        ),
+    );
+    assert_eq!(detailed, FALLBACK);
+    assert_eq!(
+        detailed.len(),
+        usize::try_from(exact).expect("usize fallback")
+    );
+
+    let request =
+        br#"{"id":1,"method":"v3_diagnostics","source_id":1,"source":"show capabilities"}"#;
+    let mut input = Cursor::new(request);
+    let mut output = Vec::new();
+    let status =
+        run_stdio_session_with_budget_v2(&mut input, &mut output, budget(64, 256, 16, exact))
+            .expect("fallback session");
+    assert_eq!(status, 1);
+    let mut expected = FALLBACK.to_vec();
+    expected.push(b'\n');
+    assert_eq!(output, expected);
+
+    let below = DiagnosticsServerV2::try_with_budget(budget(64, 256, 16, exact - 1))
+        .expect_err("one byte below fallback must reject");
+    assert_eq!(below.code, "configuration_error");
 }

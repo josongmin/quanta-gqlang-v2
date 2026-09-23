@@ -19,6 +19,105 @@ fn id(raw: u32) -> HirNodeIdV1 {
     HirNodeIdV1::from_raw(raw)
 }
 
+#[test]
+fn diagnostic_vocabulary_is_exhaustive_and_literal() {
+    let cases = [
+        (
+            BindDiagnosticV1::Unresolved {
+                name: "missing".into(),
+                span: SpanV1::new(1, 8),
+            },
+            "binder.unresolved_symbol",
+            "missing",
+            SpanV1::new(1, 8),
+            "binder.unresolved_symbol: unresolved symbol `missing` at 1..8",
+        ),
+        (
+            BindDiagnosticV1::Duplicate {
+                name: "dup".into(),
+                first_span: SpanV1::new(2, 5),
+                second_span: SpanV1::new(9, 12),
+            },
+            "binder.duplicate_declaration",
+            "dup",
+            SpanV1::new(9, 12),
+            "binder.duplicate_declaration: duplicate declaration `dup` (first at 2..5, again at 9..12)",
+        ),
+        (
+            BindDiagnosticV1::Shadowed {
+                name: "shadow".into(),
+                outer_span: SpanV1::new(3, 9),
+                inner_span: SpanV1::new(14, 20),
+            },
+            "binder.shadowed_binding",
+            "shadow",
+            SpanV1::new(14, 20),
+            "binder.shadowed_binding: binding `shadow` at 14..20 shadows outer binding at 3..9",
+        ),
+        (
+            BindDiagnosticV1::AmbiguousImport {
+                name: "item".into(),
+                span: SpanV1::new(21, 25),
+                candidates: vec!["a::item".into(), "b::item".into()],
+            },
+            "binder.ambiguous_import",
+            "item",
+            SpanV1::new(21, 25),
+            "binder.ambiguous_import: imported symbol `item` at 21..25 is ambiguous between a::item, b::item",
+        ),
+        (
+            BindDiagnosticV1::PartitionAuthorityCollision {
+                name: "grouped".into(),
+                span: SpanV1::new(30, 37),
+                partition_span: SpanV1::new(10, 17),
+            },
+            "binder.partition_authority_collision",
+            "grouped",
+            SpanV1::new(30, 37),
+            "binder.partition_authority_collision: `grouped` at 30..37 also names a private pre-group binding at 10..17",
+        ),
+        (
+            BindDiagnosticV1::WrongRelationSourceKind {
+                name: "scalar".into(),
+                span: SpanV1::new(40, 46),
+                binding_span: SpanV1::new(4, 10),
+            },
+            "binder.wrong_relation_source_kind",
+            "scalar",
+            SpanV1::new(40, 46),
+            "binder.wrong_relation_source_kind: relation source `scalar` at 40..46 names a non-relation local binding at 4..10",
+        ),
+        (
+            BindDiagnosticV1::DuplicateReferenceUse {
+                name: "endpoint".into(),
+                span: SpanV1::new(50, 58),
+            },
+            "binder.duplicate_reference_use",
+            "endpoint",
+            SpanV1::new(50, 58),
+            "binder.duplicate_reference_use: duplicate reference use `endpoint` at 50..58",
+        ),
+        (
+            BindDiagnosticV1::IllegalCapture {
+                name: "outer".into(),
+                span: SpanV1::new(60, 65),
+                binding_span: SpanV1::new(6, 11),
+            },
+            "binder.illegal_capture",
+            "outer",
+            SpanV1::new(60, 65),
+            "binder.illegal_capture: reference `outer` at 60..65 illegally captures binding at 6..11 across a non-capturing boundary",
+        ),
+    ];
+
+    for (diagnostic, code, name, primary, rendered) in cases {
+        assert_eq!(diagnostic.code(), code);
+        assert_eq!(diagnostic.name(), name);
+        assert_eq!(diagnostic.primary_span(), primary);
+        assert_eq!(diagnostic.to_string(), rendered);
+    }
+}
+
 // ===== diagnostic.rs:106 primary_span -> Default::default() ================
 //
 // `primary_span` must return the REAL offending span for every variant, not a

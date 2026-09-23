@@ -1,7 +1,304 @@
 #![expect(
+    clippy::expect_used,
     clippy::unwrap_used,
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
+
+const DEEP_AUTHORITY_CHAIN_LEN: usize = 256;
+
+fn deep_chain_steps(nodes: usize) -> usize {
+    nodes * (nodes - 1) / 2 + nodes - 1
+}
+
+fn seal_deep_module_chain(
+    reverse: bool,
+    max_steps: usize,
+) -> Result<Vec<String>, ModuleDiagnosticV2> {
+    let depth = DEEP_AUTHORITY_CHAIN_LEN;
+    let sources = registry(&[(1, depth * 8 + 32)]);
+    let ids = (0..depth)
+        .map(|index| module_id(&sources, &format!("m{index:04}"), index * 4))
+        .collect::<Vec<_>>();
+    let mut order = (0..depth).collect::<Vec<_>>();
+    if reverse {
+        order.reverse();
+    }
+    let mut builder = ModuleAuthorityBuilderV2::try_new(
+        AuthorityBudgetProfileV2::try_new(
+            depth * 2,
+            depth - 1,
+            max_steps,
+            16 * 1024 * 1024,
+            64 * 1024,
+        )
+        .unwrap(),
+        sources.clone(),
+    )?;
+    for &index in &order {
+        builder.try_add_module(ModuleNodeInputV2 {
+            module_id: ids.get(index).expect("generated module index").clone(),
+            location: checked(&sources, 1, index * 4),
+        })?;
+    }
+    for &index in &order {
+        builder.try_declare(ModuleDeclarationInputV2 {
+            owner_module_id: ids.get(index).expect("generated module index").clone(),
+            local_name: format!("v{index:04}"),
+            namespace_kind: NamespaceKindV2::Value,
+            visibility: VisibilityV2::Public,
+            location: checked(&sources, 1, index * 4 + 1),
+        })?;
+    }
+    let mut edges = (0..depth - 1).collect::<Vec<_>>();
+    if reverse {
+        edges.reverse();
+    }
+    for index in edges {
+        builder.try_import(ModuleImportInputV2 {
+            owner_module_id: ids.get(index).expect("generated module index").clone(),
+            local_name: format!("v{:04}", index + 1),
+            target: asset_ref(
+                &sources,
+                ids.get(index + 1).expect("generated target module index"),
+                NamespaceKindV2::Value,
+                &format!("v{:04}", index + 1),
+                index * 4 + 2,
+            ),
+            location: checked(&sources, 1, index * 4 + 3),
+        })?;
+    }
+    let parts = builder.finish(
+        CurrentModuleSelectionInputV2 {
+            module_id: ids.first().expect("non-empty deep chain").clone(),
+            location: checked(&sources, 1, depth * 4),
+        },
+        VersionV2::new(1, 0, 0),
+    )?;
+    Ok(ids
+        .iter()
+        .flat_map(|id| {
+            parts
+                .resolved_graph()
+                .module_bindings(id)
+                .into_iter()
+                .flatten()
+                .map(|binding| {
+                    format!(
+                        "{}:{}:{}:{}",
+                        id.as_str(),
+                        binding.local_name(),
+                        binding.resolved_asset_id().local_name(),
+                        binding.edge_witness().len()
+                    )
+                })
+        })
+        .collect())
+}
+
+fn seal_deep_catalog_chain(
+    reverse: bool,
+    max_steps: usize,
+) -> Result<Vec<String>, ModuleDiagnosticV2> {
+    let depth = DEEP_AUTHORITY_CHAIN_LEN;
+    let sources = registry(&[(1, depth * 6 + 32)]);
+    let app = module_id(&sources, "app", 0);
+    let external = module_id(&sources, "host", 1);
+    let relation =
+        RelationTypeV1::try_new(RecordTypeV1::try_new(vec![]).unwrap(), CardinalityV1::Set)
+            .unwrap();
+    let mut builder = ModuleAuthorityBuilderV2::try_new(
+        AuthorityBudgetProfileV2::try_new(
+            depth + 1,
+            depth - 1,
+            max_steps,
+            16 * 1024 * 1024,
+            64 * 1024,
+        )
+        .unwrap(),
+        sources.clone(),
+    )?;
+    builder.try_add_module(ModuleNodeInputV2 {
+        module_id: app.clone(),
+        location: checked(&sources, 1, 2),
+    })?;
+    let mut order = (0..depth).collect::<Vec<_>>();
+    if reverse {
+        order.reverse();
+    }
+    for index in order {
+        let dependencies = (index + 1 < depth)
+            .then(|| ExternalCatalogDependencyInputV2 {
+                target: asset_ref(
+                    &sources,
+                    &external,
+                    NamespaceKindV2::View,
+                    &format!("a{:04}", index + 1),
+                    index * 6 + 3,
+                ),
+                expected_kind: NamespaceKindV2::View,
+                location: checked(&sources, 1, index * 6 + 4),
+            })
+            .into_iter()
+            .collect();
+        builder.try_add_external(ExternalCatalogAssetInputV2 {
+            module_name: "host".into(),
+            local_name: format!("a{index:04}"),
+            kind_token: "view".into(),
+            typed_payload: ExternalCatalogPayloadInputV2::View(relation.clone()),
+            provenance: "host".into(),
+            location: checked(&sources, 1, index * 6 + 5),
+            dependencies,
+        })?;
+    }
+    let parts = builder.finish(
+        CurrentModuleSelectionInputV2 {
+            module_id: app,
+            location: checked(&sources, 1, depth * 6),
+        },
+        VersionV2::new(1, 0, 0),
+    )?;
+    Ok(parts
+        .external_catalog()
+        .iter()
+        .map(|asset| format!("{}:{}", asset.id().local_name(), asset.dependencies().len()))
+        .collect())
+}
+
+fn seal_deep_pack_chain(reverse: bool, max_steps: usize) -> Result<[u8; 32], ModuleDiagnosticV2> {
+    let depth = DEEP_AUTHORITY_CHAIN_LEN;
+    let zeros = "0".repeat(64);
+    let mut lock = String::new();
+    for index in 0..depth {
+        writeln!(&mut lock, "p{index:04} 1.0.0 {zeros}").unwrap();
+    }
+    let sources = registry(&[(1, depth * 6 + 32), (2, lock.len())]);
+    let app = module_id(&sources, "app", 0);
+    let mut builder = ModuleAuthorityBuilderV2::try_new(
+        AuthorityBudgetProfileV2::try_new(
+            depth * 3 + 1,
+            depth - 1,
+            max_steps,
+            16 * 1024 * 1024,
+            64 * 1024,
+        )
+        .unwrap(),
+        sources.clone(),
+    )?;
+    builder.try_add_module(ModuleNodeInputV2 {
+        module_id: app.clone(),
+        location: checked(&sources, 1, 1),
+    })?;
+    let mut order = (0..depth).collect::<Vec<_>>();
+    if reverse {
+        order.reverse();
+    }
+    for index in order {
+        let dependencies = if index + 1 < depth {
+            let dependency_name = format!("p{:04}", index + 1);
+            vec![LocatedDependencyInputV2 {
+                pack_id: PackIdV2::try_new(&dependency_name, checked(&sources, 1, index * 6 + 2))
+                    .unwrap(),
+                version_range: VersionRangeV2::try_new(
+                    VersionV2::new(1, 0, 0),
+                    VersionV2::new(2, 0, 0),
+                    checked(&sources, 1, index * 6 + 3),
+                )
+                .unwrap(),
+                location: checked(&sources, 1, index * 6 + 4),
+            }]
+        } else {
+            vec![]
+        };
+        builder.try_add_manifest(manifest_input(
+            &sources,
+            &format!("p{index:04}"),
+            VersionV2::new(1, 0, 0),
+            dependencies,
+            vec![],
+            vec![],
+            index * 6 + 2,
+        ))?;
+    }
+    builder.try_set_lockfile(
+        LockReferenceInputV2 {
+            path: "packs.lock".into(),
+            location: checked(&sources, 1, depth * 6),
+        },
+        SourceIdV2::from_raw(2),
+        &lock,
+    )?;
+    let parts = builder.finish(
+        CurrentModuleSelectionInputV2 {
+            module_id: app,
+            location: checked(&sources, 1, depth * 6 + 1),
+        },
+        VersionV2::new(1, 0, 0),
+    )?;
+    Ok(*parts.pack_authority().graph_fingerprint())
+}
+
+#[test]
+fn deep_module_catalog_pack_graph_child() {
+    if std::env::var_os("QGLANG_DEEP_MODULES_CHILD").is_none() {
+        return;
+    }
+    std::thread::Builder::new()
+        .name("deep-modules-owner".into())
+        .stack_size(128 * 1024)
+        .spawn(|| {
+            let exact = deep_chain_steps(DEEP_AUTHORITY_CHAIN_LEN);
+
+            let module_forward = seal_deep_module_chain(false, exact).unwrap();
+            let module_reverse = seal_deep_module_chain(true, exact).unwrap();
+            assert_eq!(module_forward, module_reverse);
+            assert_eq!(module_forward.len(), DEEP_AUTHORITY_CHAIN_LEN * 2 - 1);
+            assert_resource(
+                &seal_deep_module_chain(false, exact - 1).unwrap_err(),
+                "steps",
+                exact - 1,
+                exact,
+            );
+
+            let catalog_forward = seal_deep_catalog_chain(false, exact).unwrap();
+            let catalog_reverse = seal_deep_catalog_chain(true, exact).unwrap();
+            assert_eq!(catalog_forward, catalog_reverse);
+            assert_eq!(catalog_forward.len(), DEEP_AUTHORITY_CHAIN_LEN);
+            assert_resource(
+                &seal_deep_catalog_chain(false, exact - 1).unwrap_err(),
+                "steps",
+                exact - 1,
+                exact,
+            );
+
+            let pack_exact = exact + DEEP_AUTHORITY_CHAIN_LEN * 3;
+            let pack_forward = seal_deep_pack_chain(false, pack_exact).unwrap();
+            let pack_reverse = seal_deep_pack_chain(true, pack_exact).unwrap();
+            assert_eq!(pack_forward, pack_reverse);
+            assert_resource(
+                &seal_deep_pack_chain(false, pack_exact - 1).unwrap_err(),
+                "steps",
+                pack_exact - 1,
+                pack_exact,
+            );
+        })
+        .expect("deep modules thread starts")
+        .join()
+        .expect("deep modules thread completes without stack overflow");
+}
+
+#[test]
+fn deep_module_catalog_pack_graphs_are_non_recursive_and_budget_exact() {
+    let status = std::process::Command::new(std::env::current_exe().expect("test binary"))
+        .args([
+            "--exact",
+            "deep_module_catalog_pack_graph_child",
+            "--nocapture",
+        ])
+        .env("QGLANG_DEEP_MODULES_CHILD", "1")
+        .status()
+        .expect("deep modules child process starts");
+    assert!(status.success(), "deep modules child status: {status}");
+}
 
 use std::fmt::Write as _;
 
@@ -12,7 +309,7 @@ use quanta_gqlang_v2_hir::{
 use quanta_gqlang_v2_modules::*;
 use quanta_gqlang_v2_types::{
     AuthorityBudgetProfileV2, CardinalityV1, ExpressionEffectsV2, RecordTypeV1, RelationTypeV1,
-    ValueTypeV1,
+    ResolvedPredicateIdV2, ValueTypeV1,
 };
 
 fn profile() -> AuthorityBudgetProfileV2 {
@@ -1650,6 +1947,25 @@ version_parse_rail!(version_sign_rejects, "+1.0.0", false);
 version_parse_rail!(version_whitespace_rejects, "1.0.0 ", false);
 
 #[test]
+fn version_overflow_rejects_in_every_component() {
+    let sources = registry(&[(1, 64)]);
+    let overflow = "18446744073709551616";
+    for text in [
+        format!("{overflow}.0.0"),
+        format!("0.{overflow}.0"),
+        format!("0.0.{overflow}"),
+    ] {
+        let error = VersionV2::try_parse(&text, checked(&sources, 1, 7)).unwrap_err();
+        assert_eq!(error.code(), "modules.invalid_version", "{text}");
+        assert_eq!(error.primary().unwrap().span, SpanV1::new(7, 8));
+        assert_eq!(
+            error.to_string(),
+            "modules.invalid_version: version component exceeds u64"
+        );
+    }
+}
+
+#[test]
 fn version_numeric_order_and_display_are_canonical() {
     let sources = registry(&[(1, 8)]);
     let one_ten = VersionV2::try_parse("1.10.0", checked(&sources, 1, 0)).unwrap();
@@ -2647,6 +2963,80 @@ fn lock_without_final_newline_rejects_canonicality() {
 }
 
 #[test]
+fn lock_reference_path_reject_matrix_is_closed() {
+    let invalid = [
+        "",
+        "packs/security",
+        "/packs/security.lock",
+        "packs\\security.lock",
+        "packs/../security.lock",
+        "./security.lock",
+        "packs/./security.lock",
+        "packs//security.lock",
+        "packs/security.lock\0suffix.lock",
+    ];
+    for path in invalid {
+        let sources = registry(&[(1, 64), (2, 0)]);
+        let mut builder = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+        let error = builder
+            .try_set_lockfile(
+                LockReferenceInputV2 {
+                    path: path.to_owned(),
+                    location: checked(&sources, 1, 4),
+                },
+                SourceIdV2::from_raw(2),
+                "",
+            )
+            .unwrap_err();
+        assert_eq!(error.code(), "modules.invalid_lockfile_path", "{path:?}");
+        assert_eq!(error.primary().unwrap().span, SpanV1::new(4, 5));
+    }
+
+    let sources = registry(&[(1, 64), (2, 0)]);
+    let mut builder = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+    builder
+        .try_set_lockfile(
+            LockReferenceInputV2 {
+                path: "packs/nested/security.lock".into(),
+                location: checked(&sources, 1, 5),
+            },
+            SourceIdV2::from_raw(2),
+            "",
+        )
+        .unwrap();
+}
+
+#[test]
+fn lock_line_grammar_rejects_every_noncanonical_separator_and_field_shape() {
+    let zeros = "0".repeat(64);
+    let cases = [
+        format!("a 1.0.0 {zeros}\r\n"),
+        format!("a\t1.0.0\t{zeros}\n"),
+        format!(" a 1.0.0 {zeros}\n"),
+        format!("a 1.0.0 {zeros} \n"),
+        format!("a 1.0.0  {zeros}\n"),
+        "a 1.0.0\n".to_owned(),
+        format!("a extra 1.0.0 {zeros}\n"),
+    ];
+    for lock in cases {
+        let error = finish_pack_inputs(Some(&lock), |sources| {
+            vec![manifest_input(
+                sources,
+                "a",
+                VersionV2::new(1, 0, 0),
+                vec![],
+                vec![],
+                vec![],
+                10,
+            )]
+        })
+        .unwrap_err();
+        assert_eq!(error.code(), "modules.invalid_lock_syntax", "{lock:?}");
+        assert_eq!(error.primary().unwrap().source_id, SourceIdV2::from_raw(2));
+    }
+}
+
+#[test]
 fn lock_source_length_mismatch_has_checked_source_span() {
     let zeros = "0".repeat(64);
     let lock = format!("a 1.0.0 {zeros}\n");
@@ -2847,6 +3237,115 @@ fn duplicate_signature_parameter_rejects_with_both_locations() {
         .unwrap_err();
     assert_eq!(error.code(), "modules.duplicate_signature_parameter");
     assert!(error.secondary().is_some());
+}
+
+#[test]
+fn signature_parameter_names_use_the_closed_identifier_grammar() {
+    for name in ["", "a.b", "a/b", "1arg", "arg name", "δ"] {
+        let sources = registry(&[(1, 256)]);
+        let mut builder = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+        let error = builder
+            .try_add_external(ExternalCatalogAssetInputV2 {
+                module_name: "host".into(),
+                local_name: "pred".into(),
+                kind_token: "predicate".into(),
+                typed_payload: ExternalCatalogPayloadInputV2::Predicate(SignatureInputV2 {
+                    parameters: vec![LocatedParameterInputV2 {
+                        name: name.into(),
+                        value_type: ValueTypeV1::int(),
+                        location: checked(&sources, 1, 12),
+                    }],
+                    result: ValueTypeV1::bool(),
+                    callable_kind: CallableKindV2::Predicate,
+                    effects: ExpressionEffectsV2::pure_scalar(),
+                    location: checked(&sources, 1, 11),
+                }),
+                provenance: "host".into(),
+                location: checked(&sources, 1, 10),
+                dependencies: vec![],
+            })
+            .unwrap_err();
+        assert_eq!(
+            error.code(),
+            "modules.invalid_signature_parameter",
+            "{name:?}"
+        );
+        assert_eq!(error.primary().unwrap().span, SpanV1::new(12, 13));
+    }
+}
+
+#[test]
+fn public_signature_projection_preserves_every_callable_fact() {
+    let sources = registry(&[(1, 256)]);
+    let app = module_id(&sources, "app", 0);
+    let mut builder = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+    builder
+        .try_add_module(ModuleNodeInputV2 {
+            module_id: app.clone(),
+            location: checked(&sources, 1, 2),
+        })
+        .unwrap();
+    builder
+        .try_add_external(ExternalCatalogAssetInputV2 {
+            module_name: "host".into(),
+            local_name: "pred".into(),
+            kind_token: "predicate".into(),
+            typed_payload: ExternalCatalogPayloadInputV2::Predicate(SignatureInputV2 {
+                parameters: vec![
+                    LocatedParameterInputV2 {
+                        name: "left-hand".into(),
+                        value_type: ValueTypeV1::int(),
+                        location: checked(&sources, 1, 3),
+                    },
+                    LocatedParameterInputV2 {
+                        name: "_right2".into(),
+                        value_type: ValueTypeV1::string(),
+                        location: checked(&sources, 1, 4),
+                    },
+                ],
+                result: ValueTypeV1::bool(),
+                callable_kind: CallableKindV2::Predicate,
+                effects: ExpressionEffectsV2::pure_scalar(),
+                location: checked(&sources, 1, 5),
+            }),
+            provenance: "host".into(),
+            location: checked(&sources, 1, 6),
+            dependencies: vec![],
+        })
+        .unwrap();
+    let parts = builder
+        .finish(
+            CurrentModuleSelectionInputV2 {
+                module_id: app,
+                location: checked(&sources, 1, 7),
+            },
+            VersionV2::new(1, 0, 0),
+        )
+        .unwrap();
+    let ExternalCatalogPayloadV2::Predicate(signature) =
+        parts.external_catalog().iter().next().unwrap().payload()
+    else {
+        return;
+    };
+    assert_eq!(
+        signature
+            .parameters()
+            .iter()
+            .map(SignatureParameterV2::name)
+            .collect::<Vec<_>>(),
+        ["left-hand", "_right2"]
+    );
+    let predicate = ResolvedPredicateIdV2::try_new("projected").unwrap();
+    let projected = signature
+        .try_as_resolved_predicate(predicate.clone())
+        .unwrap();
+    assert_eq!(projected.id(), &predicate);
+    assert_eq!(
+        projected.params(),
+        &[ValueTypeV1::int(), ValueTypeV1::string()]
+    );
+    assert_eq!(projected.result(), &ValueTypeV1::bool());
+    assert_eq!(projected.effects(), ExpressionEffectsV2::pure_scalar());
 }
 
 #[test]

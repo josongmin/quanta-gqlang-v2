@@ -385,7 +385,8 @@ impl std::error::Error for TypeDiagnosticV2 {}
 #[cfg(test)]
 mod tests {
     use super::TypeDiagnosticV2;
-    use quanta_gqlang_v2_hir::{LocatedSpanV2, SourceIdV2, SpanV1};
+    use crate::ValueTypeV1;
+    use quanta_gqlang_v2_hir::{HirNodeIdV1, LocatedSpanV2, SourceIdV2, SpanV1};
 
     #[test]
     fn source_locations_are_projected_by_the_diagnostic_owner() {
@@ -410,6 +411,440 @@ mod tests {
         let locationless = TypeDiagnosticV2::InvalidRuleTypeBudget;
         assert_eq!(locationless.primary(), None);
         assert_eq!(locationless.secondary(), None);
+    }
+
+    #[test]
+    fn every_type_diagnostic_pins_code_locations_and_display() {
+        let primary = LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(7),
+            span: SpanV1::new(3, 5),
+        };
+        let secondary = LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(7),
+            span: SpanV1::new(12, 14),
+        };
+        let node_id = HirNodeIdV1::from_raw(11);
+        let target_node_id = HirNodeIdV1::from_raw(12);
+
+        let located = Some(primary);
+        let cases = vec![
+            (
+                TypeDiagnosticV2::InvalidTypeName { location: primary },
+                "types.invalid_type_name",
+                located,
+                None,
+                "types.invalid_type_name",
+            ),
+            (
+                TypeDiagnosticV2::DuplicateRecordField {
+                    name: "field".into(),
+                    primary,
+                    secondary,
+                },
+                "types.duplicate_record_field",
+                located,
+                Some(secondary),
+                "types.duplicate_record_field: duplicate record field `field`",
+            ),
+            (
+                TypeDiagnosticV2::DuplicateUnionTag {
+                    tag: "variant".into(),
+                    primary,
+                    secondary,
+                },
+                "types.duplicate_union_tag",
+                located,
+                Some(secondary),
+                "types.duplicate_union_tag: duplicate union tag `variant`",
+            ),
+            (
+                TypeDiagnosticV2::IntegerOutOfRange {
+                    node_id,
+                    location: primary,
+                    text: "999".into(),
+                },
+                "types.integer_out_of_range",
+                located,
+                None,
+                "types.integer_out_of_range: integer literal is outside i128",
+            ),
+            (
+                TypeDiagnosticV2::FloatNonFinite { location: primary },
+                "types.float_non_finite",
+                located,
+                None,
+                "types.float_non_finite: float literal is non-finite",
+            ),
+            (
+                TypeDiagnosticV2::FloatUnderflow {
+                    node_id,
+                    location: primary,
+                    text: "1e-999".into(),
+                },
+                "types.float_underflow",
+                located,
+                None,
+                "types.float_underflow: nonzero float literal underflowed to zero",
+            ),
+            (
+                TypeDiagnosticV2::MalformedLiteral {
+                    node_id,
+                    location: primary,
+                },
+                "types.malformed_literal",
+                located,
+                None,
+                "types.malformed_literal: malformed numeric literal",
+            ),
+            (
+                TypeDiagnosticV2::MissingNodeFact {
+                    node_id,
+                    location: primary,
+                },
+                "types.missing_resolved_input",
+                located,
+                None,
+                "types.missing_resolved_input",
+            ),
+            (
+                TypeDiagnosticV2::DuplicateNodeFact {
+                    node_id,
+                    location: primary,
+                },
+                "types.duplicate_resolved_input",
+                located,
+                None,
+                "types.duplicate_resolved_input",
+            ),
+            (
+                TypeDiagnosticV2::ForeignDocumentFact {
+                    node_id,
+                    location: primary,
+                },
+                "types.foreign_document_input",
+                located,
+                None,
+                "types.foreign_document_input",
+            ),
+            (
+                TypeDiagnosticV2::ExtraNodeFact { node_id },
+                "types.extra_resolved_input",
+                None,
+                None,
+                "types.extra_resolved_input",
+            ),
+            (
+                TypeDiagnosticV2::UnusedContextualInput {
+                    node_id,
+                    location: primary,
+                },
+                "types.unused_contextual_input",
+                located,
+                None,
+                "types.unused_contextual_input",
+            ),
+            (
+                TypeDiagnosticV2::WrongNodeFactKind {
+                    node_id,
+                    location: primary,
+                },
+                "types.wrong_resolved_input_kind",
+                located,
+                None,
+                "types.wrong_resolved_input_kind",
+            ),
+            (
+                TypeDiagnosticV2::InvalidBindingDependency {
+                    node_id,
+                    target_node_id,
+                    location: primary,
+                },
+                "types.invalid_binding_dependency",
+                located,
+                None,
+                "types.invalid_binding_dependency",
+            ),
+            (
+                TypeDiagnosticV2::UnavailableBindingDependency {
+                    node_id,
+                    target_node_id,
+                    location: primary,
+                },
+                "types.unavailable_binding_dependency",
+                located,
+                None,
+                "types.unavailable_binding_dependency",
+            ),
+            (
+                TypeDiagnosticV2::InvalidDeferredRelationRow {
+                    root: node_id,
+                    location: primary,
+                },
+                "types.invalid_deferred_relation_row",
+                located,
+                None,
+                "types.invalid_deferred_relation_row",
+            ),
+            (
+                TypeDiagnosticV2::InvalidRelationPreEvaluationPlan {
+                    root: node_id,
+                    location: primary,
+                },
+                "types.invalid_relation_pre_evaluation_plan",
+                located,
+                None,
+                "types.invalid_relation_pre_evaluation_plan",
+            ),
+            (
+                TypeDiagnosticV2::UnavailableRelationRowDependency {
+                    root: node_id,
+                    target: target_node_id,
+                    location: primary,
+                },
+                "types.unavailable_relation_row_dependency",
+                located,
+                None,
+                "types.unavailable_relation_row_dependency",
+            ),
+            (
+                TypeDiagnosticV2::InvalidRelationPredicateInput {
+                    node_id,
+                    location: primary,
+                },
+                "types.invalid_relation_predicate_input",
+                located,
+                None,
+                "types.invalid_relation_predicate_input",
+            ),
+            (
+                TypeDiagnosticV2::CyclicDeclarationDependency {
+                    node_id,
+                    location: primary,
+                },
+                "types.cyclic_declaration_dependency",
+                located,
+                None,
+                "types.cyclic_declaration_dependency",
+            ),
+            (
+                TypeDiagnosticV2::InvalidRuleTypeBudget,
+                "types.invalid_rule_type_budget",
+                None,
+                None,
+                "types.invalid_rule_type_budget",
+            ),
+            (
+                TypeDiagnosticV2::InvalidRuleInput { location: primary },
+                "types.invalid_rule_input",
+                located,
+                None,
+                "types.invalid_rule_input",
+            ),
+            (
+                TypeDiagnosticV2::InvalidRuleHead {
+                    node_id,
+                    location: primary,
+                },
+                "types.invalid_rule_head",
+                located,
+                None,
+                "types.invalid_rule_head",
+            ),
+            (
+                TypeDiagnosticV2::UnknownRuleCallable { location: primary },
+                "types.unknown_rule_callable",
+                located,
+                None,
+                "types.unknown_rule_callable",
+            ),
+            (
+                TypeDiagnosticV2::RuleTypeResourceLimit {
+                    dimension: "steps",
+                    location: primary,
+                },
+                "types.rule_type_resource_limit",
+                located,
+                None,
+                "types.rule_type_resource_limit",
+            ),
+            (
+                TypeDiagnosticV2::ContradictoryRuleType { location: primary },
+                "types.contradictory_rule_type",
+                located,
+                None,
+                "types.contradictory_rule_type",
+            ),
+            (
+                TypeDiagnosticV2::AmbiguousRuleType {
+                    location: primary,
+                    candidates: 2,
+                },
+                "types.ambiguous_rule_type",
+                located,
+                None,
+                "types.ambiguous_rule_type",
+            ),
+            (
+                TypeDiagnosticV2::UnanchoredRecursiveRule { location: primary },
+                "types.unanchored_recursive_rule",
+                located,
+                None,
+                "types.unanchored_recursive_rule",
+            ),
+            (
+                TypeDiagnosticV2::RulePredicateArity { location: primary },
+                "types.rule_predicate_arity",
+                located,
+                None,
+                "types.rule_predicate_arity",
+            ),
+            (
+                TypeDiagnosticV2::RelationExistsInRule { location: primary },
+                "types.relation_exists_in_rule",
+                located,
+                None,
+                "types.relation_exists_in_rule",
+            ),
+            (
+                TypeDiagnosticV2::SourceRegistryMismatch { location: primary },
+                "types.source_registry_mismatch",
+                located,
+                None,
+                "types.source_registry_mismatch",
+            ),
+            (
+                TypeDiagnosticV2::InvalidResolvedIdentity,
+                "types.invalid_resolved_identity",
+                None,
+                None,
+                "types.invalid_resolved_identity",
+            ),
+            (
+                TypeDiagnosticV2::HostPredicateIdentityLimit,
+                "types.host_predicate_identity_limit",
+                None,
+                None,
+                "types.host_predicate_identity_limit",
+            ),
+            (
+                TypeDiagnosticV2::UnknownOperator {
+                    node_id,
+                    symbol: "??".into(),
+                    location: primary,
+                },
+                "types.unknown_operator",
+                located,
+                None,
+                "types.unknown_operator",
+            ),
+            (
+                TypeDiagnosticV2::UnknownBuiltin {
+                    node_id,
+                    name: "missing".into(),
+                    location: primary,
+                },
+                "types.unknown_builtin",
+                located,
+                None,
+                "types.unknown_builtin",
+            ),
+            (
+                TypeDiagnosticV2::BadOverload {
+                    node_id,
+                    name: "call".into(),
+                    operands: vec![ValueTypeV1::int()],
+                    location: primary,
+                },
+                "types.bad_overload",
+                located,
+                None,
+                "types.bad_overload: no overload for `call`",
+            ),
+            (
+                TypeDiagnosticV2::BadProjection {
+                    node_id,
+                    base: ValueTypeV1::int(),
+                    field: "field".into(),
+                    location: primary,
+                },
+                "types.bad_projection",
+                located,
+                None,
+                "types.bad_projection: cannot project field `field`",
+            ),
+            (
+                TypeDiagnosticV2::HeterogeneousCollection {
+                    node_id,
+                    expected: ValueTypeV1::int(),
+                    actual: ValueTypeV1::string(),
+                    location: primary,
+                },
+                "types.heterogeneous_collection",
+                located,
+                None,
+                "types.heterogeneous_collection",
+            ),
+            (
+                TypeDiagnosticV2::InvalidStarArgument {
+                    node_id,
+                    location: primary,
+                },
+                "types.invalid_star_argument",
+                located,
+                None,
+                "types.invalid_star_argument",
+            ),
+            (
+                TypeDiagnosticV2::RegistryDuplicateId {
+                    registry: "operator",
+                    id: 4,
+                },
+                "types.registry_duplicate_id",
+                None,
+                None,
+                "types.registry_duplicate_id",
+            ),
+            (
+                TypeDiagnosticV2::RelationUsedAsValue,
+                "types.relation_used_as_value",
+                None,
+                None,
+                "types.relation_used_as_value",
+            ),
+            (
+                TypeDiagnosticV2::TypeShapeLimit,
+                "types.type_shape_limit",
+                None,
+                None,
+                "types.type_shape_limit",
+            ),
+            (
+                TypeDiagnosticV2::RedundantOptional,
+                "types.redundant_optional",
+                None,
+                None,
+                "types.redundant_optional",
+            ),
+        ];
+
+        for (diagnostic, code, expected_primary, expected_secondary, display) in cases {
+            assert_eq!(diagnostic.code(), code, "wrong code for {diagnostic:?}");
+            assert_eq!(
+                diagnostic.primary(),
+                expected_primary,
+                "wrong primary location for {diagnostic:?}"
+            );
+            assert_eq!(
+                diagnostic.secondary(),
+                expected_secondary,
+                "wrong secondary location for {diagnostic:?}"
+            );
+            assert_eq!(
+                diagnostic.to_string(),
+                display,
+                "wrong display for {diagnostic:?}"
+            );
+        }
     }
 }
 

@@ -22,11 +22,13 @@ fn usage_v2() -> String {
     )
 }
 
+#[derive(Debug)]
 struct CliInvocationV2 {
     command: CliCommandKindV2,
     input: String,
 }
 
+#[derive(Debug)]
 struct CliErrorV2 {
     class: &'static str,
     message: String,
@@ -201,4 +203,57 @@ fn inline_input(
 
 fn is_help(arg: &OsString) -> bool {
     matches!(arg.to_str(), Some("help" | "--help"))
+}
+
+#[cfg(test)]
+#[expect(
+    clippy::expect_used,
+    reason = "private parser unit tests assert exact success and error results"
+)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn inline_budget_counts_inserted_argument_separators() {
+        let exact = parse_invocation(
+            [
+                OsString::from("query"),
+                OsString::from("ab"),
+                OsString::from("cd"),
+            ]
+            .into_iter(),
+            5,
+        )
+        .expect("two arguments plus separator fit exactly");
+        assert_eq!(exact.input, "ab cd");
+
+        let error = parse_invocation(
+            [
+                OsString::from("query"),
+                OsString::from("ab"),
+                OsString::from("cd"),
+            ]
+            .into_iter(),
+            4,
+        )
+        .expect_err("inserted separator exceeds the limit");
+        assert_eq!(error.class, "usage");
+        assert_eq!(error.message, "input exceeds max_source_bytes");
+        assert_eq!(error.exit_code, 2);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn invalid_utf8_inline_argument_is_rejected_before_analysis() {
+        use std::os::unix::ffi::OsStringExt;
+
+        let error = parse_invocation(
+            [OsString::from("query"), OsString::from_vec(vec![0xff])].into_iter(),
+            32,
+        )
+        .expect_err("invalid UTF-8 argv");
+        assert_eq!(error.class, "usage");
+        assert_eq!(error.message, "input must be valid UTF-8");
+        assert_eq!(error.exit_code, 2);
+    }
 }

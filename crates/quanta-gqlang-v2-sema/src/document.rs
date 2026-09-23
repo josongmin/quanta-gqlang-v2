@@ -464,6 +464,18 @@ impl SemanticDocumentV2 {
         self
     }
 
+    /// Test-only minting seam for high-level forged expression-tree fixtures.
+    /// The seam stays crate-private; downstream tests receive only a complete
+    /// fixture document from `test_support`.
+    #[cfg(any(test, feature = "test"))]
+    pub(crate) fn forged_expressions<F>(mut self, mutate: F) -> Self
+    where
+        F: FnOnce(&mut BTreeMap<SourceQualifiedNodeIdV2, TypedExprV2>),
+    {
+        mutate(&mut self.expressions);
+        self
+    }
+
     /// Assemble exact-key semantic outputs; no positional zip or partial
     /// success path is available.
     pub(crate) fn try_assemble(
@@ -2520,6 +2532,77 @@ fn collect_partition_candidate_shapes(
         ));
     }
     Ok(collector.witnesses)
+}
+
+struct NestedAggregateCallGuardV2<'a> {
+    source_id: SourceIdV2,
+    facts: &'a TypedExpressionFactsV2,
+    builtins: &'a BuiltinRegistryV2,
+    aggregate_depth: u32,
+    violation: Option<SpanV1>,
+}
+
+impl HirVisitorV1 for NestedAggregateCallGuardV2<'_> {
+    fn visit_value(&mut self, node: &ValueExprHirV1) {
+        if self.violation.is_some() {
+            return;
+        }
+        let aggregate_call = if matches!(node.kind, ValueExprKindV1::Call(_)) {
+            let key = SourceQualifiedNodeIdV2 {
+                source_id: self.source_id,
+                node_id: node.id,
+            };
+            self.facts
+                .get(key)
+                .and_then(quanta_gqlang_v2_types::TypedExpressionFactV2::resolved_call)
+                .and_then(|target| match target {
+                    ResolvedCallTargetV2::Builtin(id) => self.builtins.effects_of_resolved(*id),
+                    ResolvedCallTargetV2::Predicate(_) | ResolvedCallTargetV2::HostPredicate(_) => {
+                        None
+                    }
+                })
+                .is_some_and(|effects| effects.aggregation == AggregationClassV1::Aggregate)
+        } else {
+            false
+        };
+        if aggregate_call && self.aggregate_depth > 0 {
+            self.violation = Some(node.span);
+            return;
+        }
+        if aggregate_call {
+            self.aggregate_depth += 1;
+        }
+        quanta_gqlang_v2_hir::walk_value(self, node);
+        if aggregate_call {
+            self.aggregate_depth -= 1;
+        }
+    }
+}
+
+fn reject_nested_aggregate_calls(
+    checked: &CheckedSyntaxDocumentV2,
+    facts: &TypedExpressionFactsV2,
+    builtins: &BuiltinRegistryV2,
+) -> Result<(), FrontendFailureV2> {
+    let mut guard = NestedAggregateCallGuardV2 {
+        source_id: checked.source_id(),
+        facts,
+        builtins,
+        aggregate_depth: 0,
+        violation: None,
+    };
+    for item in &checked.checked().document().items {
+        guard.visit_item(item);
+        if let Some(span) = guard.violation {
+            return Err(document_failure(
+                "sema.illegal_aggregate_context",
+                checked.source_id(),
+                span,
+                "aggregate call cannot be nested inside another aggregate call",
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn check_partition_candidate_shape(
@@ -6103,6 +6186,7 @@ fn resolve_document_bodies(
             }
         }
     }
+    reject_nested_aggregate_calls(checked, &facts, &builtins)?;
     for (call, proof) in &host_call_proofs {
         let target = facts
             .get(*call)

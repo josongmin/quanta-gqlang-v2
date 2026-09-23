@@ -18,6 +18,18 @@ clippy-current:
 typos:
     typos .
 
+pm-check:
+    python3 tools/prompt-manager/pm.py check
+
+pm-test:
+    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/prompt-manager/tests -p 'test_*.py'
+
+pm-sync:
+    python3 tools/prompt-manager/pm.py sync
+
+pm-status:
+    python3 tools/prompt-manager/pm.py status
+
 # ---- test leaves (each runs exactly one test command) ----
 
 nextest:
@@ -53,7 +65,7 @@ qualifier-custody:
 # dependency of exactly `ci`. The old `lint` recipe (which nested
 # test + frontdoor-parity inside lint) is removed.
 
-static: fmt taplo clippy-msrv clippy-current typos
+static: fmt taplo clippy-msrv clippy-current typos pm-check pm-test
 
 test: nextest doctest frontdoor-parity
 

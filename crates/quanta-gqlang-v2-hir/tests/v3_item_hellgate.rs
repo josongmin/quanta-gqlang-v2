@@ -281,6 +281,76 @@ fn model_pack_profile_gate_rule_decls_are_sound() {
     assert_sound(&rule.into(), 13, 1);
 }
 
+fn catalog_reference_payloads(span: SpanV1) -> Vec<CatalogPayloadV1> {
+    vec![
+        CatalogPayloadV1::View(ViewBodyV1::QueryRef(gref("query", span.start, span.end))),
+        CatalogPayloadV1::Model {
+            provider: "provider".into(),
+            source: gref("model-source", span.start, span.end),
+        },
+        CatalogPayloadV1::Pack {
+            source: gref("pack-source", span.start, span.end),
+            activation: ActivationV1::Manual,
+        },
+        CatalogPayloadV1::Profile {
+            capabilities: vec![gref("capability", span.start, span.end)],
+            admission: AdmissionV1::Allowlist,
+        },
+        CatalogPayloadV1::Gate {
+            checks: vec![gref("check", span.start, span.end)],
+            binding: GateBindingV1::Any,
+        },
+        CatalogPayloadV1::RuleBinding {
+            check_ref: gref("rule-check", span.start, span.end),
+        },
+    ]
+}
+
+#[test]
+fn catalog_reference_spans_are_checked_at_exact_inverted_and_oob_boundaries() {
+    const SOURCE_LEN: usize = 10;
+    for payload in catalog_reference_payloads(SpanV1::new(2, 3)) {
+        let b = HirBuilderV1::new();
+        let decl = b.catalog_decl("x", SpanV1::new(0, 1), payload, SpanV1::new(0, SOURCE_LEN));
+        assert!(
+            check_tree(HirRootRefV1::CatalogDecl(&decl), SOURCE_LEN).is_ok(),
+            "valid catalog reference rejected: {decl:?}"
+        );
+    }
+
+    for payload in catalog_reference_payloads(SpanV1::new(9, SOURCE_LEN)) {
+        let b = HirBuilderV1::new();
+        let decl = b.catalog_decl("x", SpanV1::new(0, 1), payload, SpanV1::new(0, SOURCE_LEN));
+        assert!(
+            check_tree(HirRootRefV1::CatalogDecl(&decl), SOURCE_LEN).is_ok(),
+            "exact-boundary catalog reference rejected: {decl:?}"
+        );
+    }
+
+    for payload in catalog_reference_payloads(SpanV1::new(9, 8)) {
+        let b = HirBuilderV1::new();
+        let decl = b.catalog_decl("x", SpanV1::new(0, 1), payload, SpanV1::new(0, SOURCE_LEN));
+        assert!(matches!(
+            check_tree(HirRootRefV1::CatalogDecl(&decl), SOURCE_LEN),
+            Err(HirIntegrityErrorV1::InvertedAuxiliarySpan {
+                span: SpanV1 { start: 9, end: 8 }
+            })
+        ));
+    }
+
+    for payload in catalog_reference_payloads(SpanV1::new(SOURCE_LEN, SOURCE_LEN + 1)) {
+        let b = HirBuilderV1::new();
+        let decl = b.catalog_decl("x", SpanV1::new(0, 1), payload, SpanV1::new(0, SOURCE_LEN));
+        assert!(matches!(
+            check_tree(HirRootRefV1::CatalogDecl(&decl), SOURCE_LEN),
+            Err(HirIntegrityErrorV1::AuxiliarySpanOutOfBounds {
+                span: SpanV1 { start: 10, end: 11 },
+                source_len: SOURCE_LEN,
+            })
+        ));
+    }
+}
+
 // ---- META (USE PACK / REQUIRE CERTIFIED) -----------------------------------
 
 #[test]

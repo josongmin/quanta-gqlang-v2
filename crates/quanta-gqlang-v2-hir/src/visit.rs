@@ -382,12 +382,25 @@ pub fn walk_catalog_decl<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &Catal
     visitor.visit_auxiliary_span(node.name_span);
     match &node.payload {
         CatalogPayloadV1::View(ViewBodyV1::Inline(query)) => visitor.visit_query(query),
-        CatalogPayloadV1::View(ViewBodyV1::QueryRef(_))
-        | CatalogPayloadV1::Model { .. }
-        | CatalogPayloadV1::Pack { .. }
-        | CatalogPayloadV1::Profile { .. }
-        | CatalogPayloadV1::Gate { .. }
-        | CatalogPayloadV1::RuleBinding { .. } => {}
+        CatalogPayloadV1::View(ViewBodyV1::QueryRef(reference)) => {
+            visitor.visit_auxiliary_span(reference.span);
+        }
+        CatalogPayloadV1::Model { source, .. } | CatalogPayloadV1::Pack { source, .. } => {
+            visitor.visit_auxiliary_span(source.span);
+        }
+        CatalogPayloadV1::Profile { capabilities, .. } => {
+            for capability in capabilities {
+                visitor.visit_auxiliary_span(capability.span);
+            }
+        }
+        CatalogPayloadV1::Gate { checks, .. } => {
+            for check in checks {
+                visitor.visit_auxiliary_span(check.span);
+            }
+        }
+        CatalogPayloadV1::RuleBinding { check_ref } => {
+            visitor.visit_auxiliary_span(check_ref.span);
+        }
     }
 }
 

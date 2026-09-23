@@ -7,9 +7,13 @@ only wave order, path leases, barriers, and handoff rules. The final
 current-state section in each ticket remains the implementation authority;
 receipts own executed evidence; `EXECUTION_LEDGER.md` owns state transitions.
 
-Planning snapshot: `main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a`
-plus the shared 178-entry dirty overlay observed on 2026-09-21. This is not a
-candidate SHA. Re-freeze HEAD, status, and owned-path hashes at every dispatch.
+The original lane-planning snapshot was `ecc38f59` plus a dirty overlay on
+2026-09-21. The current repository-local candidate is the clean, qualified
+`3c8acbe21a1ce48022c12642881d1fafc190ddb1` (tree
+`173b19e1f5b3aabd23fa22a6d09e509c723316dd`); its ignored
+`target/qualification/<sha>/receipt.json` records `just ci`, exit 0. The main
+checkout separately has prompt-manager changes and packet-document edits. Re-freeze HEAD and
+status before any further dispatch; the old overlay is not a current base.
 
 ## Scheduling Model
 
@@ -100,10 +104,10 @@ isolated worktree per mutation lane; otherwise record the proof as deferred.
 | W1 | 02 inventory + 03 authority proof + 04 Sema producer closure | `GREEN` (barrier record + checkpoint commit; receipts 02/03/04 closed) | 3 workers + integrator barrier |
 | W2 | Algebra closure | `GREEN` (barrier record + checkpoint `4073b64`; Receipt 05 closed) | 2 workers after contract freeze |
 | W3 | Logic closure | `GREEN` (barrier record; Receipt 06 closed; deps cut to Sema+Types) | 3 workers after Logic internal-interface freeze |
-| W4 | Planning + Pipeline + facade | `GREEN + POST-AUDIT REMEDIATED LOCALLY` (current dirty tree is not W7 candidate/hosted-qualified) | 2 workers, then serial facade |
-| W5 | CLI + diagnostics stdio | `READY` (entrance met: Receipt 07 GREEN; F-02 deleted-API imports are W5's first task) | 2 workers, then serial parity integration |
-| W6 | conformance + hygiene + static debt | `PARTIAL PREP ALLOWED` | 3 workers; semantic execution waits for W5 |
-| W7 | candidate qualification and attestation | `BLOCKED BY W1-W6` | strictly serial |
+| W4 | Planning + Pipeline + facade | `IMPLEMENTED; CURRENT LOCAL GATE GREEN` | historical lane schedule only |
+| W5 | CLI + diagnostics stdio | `IMPLEMENTED; FRONTDOOR PARITY 2/2 ON 3c8acbe` | historical lane schedule only |
+| W6 | conformance + hygiene + static debt | `STATIC/EXTERNAL-CONSUMER GREEN AT 3c8acbe; SEMANTIC/EXAMPLE COVERAGE CLOSEOUT OPEN` | existing rails need a coverage audit, not duplicate manifests |
+| W7 | candidate qualification and attestation | `CANDIDATE A LOCAL-QUALIFIED AT 3c8acbe; CONFORMANCE/PACKET ATTESTATION OPEN` | strictly serial |
 
 Critical path:
 
@@ -133,10 +137,9 @@ candidate. It closes W4 audit defects in one integrator-owned patch:
   `sema -> surface` dev edge and unused Pipeline Binder/HIR/Modules/Types normal edges;
 - Semgrep production scope, stale docs, and strict rustdoc repaired.
 
-The scheduler must not reopen W4 for Ticket 10's logical serving view. The
-remaining ordered work is W5 front doors, W6 final architecture/static and
-conformance barriers, then W7 exact-SHA/hosted attestation. Ticket 10 producer
-schema design may proceed separately but cannot be called W7 closure.
+This 2026-09-22 paragraph is historical. W5/W6 later landed and passed the
+clean `3c8acbe` local gate. Ticket 10's V2 serving proposal was superseded by
+the V3 producer contract in Ticket 10a; Semantica consumer work is separate.
 
 W6 schema/generator work may run early, but no generated truth output or
 closure receipt is valid before W5 freezes the public facade and front doors.
@@ -455,8 +458,10 @@ W7 is strictly serial and requires explicit user authorization before commits.
 3. Run Ticket 09's mandatory command sequence on exact SHA A without any source
    or config mutation. Record exit code and selected/executed count for every
    command.
-4. Query hosted CI independently for exact SHA A. `failed` blocks; queued or
-   running remains open; unavailable permits only `REPO_LOCAL_CLOSED`.
+4. GitHub Actions is intentionally absent for this development-stage repo.
+   Record hosted status as `not configured`; do not invent a hosted receipt or
+   require a paid hosted run. A local-only closeout cannot claim deployment or
+   downstream activation.
 5. Create docs/receipt-only attestation B and prove `A..B` contains no source,
    manifest, workflow, tool, or generated-truth change.
 6. Rerun claim/diff/format/doc/inventory validators on B. Record

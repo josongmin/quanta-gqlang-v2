@@ -444,11 +444,11 @@ fn view_inline_select_parses_to_catalog_decl() {
         CatalogPayloadV1::View(ViewBodyV1::Inline(query)) => *query,
         other => panic!("expected View Inline, got {other:?}"),
     };
-    let filter = match query.body.kind {
+    let filter = match &query.body.kind {
         RelationExprKindV1::Filter(filter) => filter,
         other => panic!("expected root Filter, got {other:?}"),
     };
-    let source = match filter.input.kind {
+    let source = match &filter.input.kind {
         RelationExprKindV1::Source(source) => source,
         other => panic!("expected Source input, got {other:?}"),
     };
@@ -458,15 +458,15 @@ fn view_inline_select_parses_to_catalog_decl() {
         "u",
         "binding alias must survive"
     );
-    let predicate = match filter.predicate.kind {
+    let predicate = match &filter.predicate.kind {
         BoolExprKindV1::Value(value) => value,
         other => panic!("expected Value predicate, got {other:?}"),
     };
-    let path = match predicate.kind {
+    let path = match &predicate.kind {
         ValueExprKindV1::Path(path) => path,
         other => panic!("expected Path predicate, got {other:?}"),
     };
-    let base = match path.base.kind {
+    let base = match &path.base.kind {
         ValueExprKindV1::Symbol(symbol) => symbol,
         other => panic!("expected Symbol base, got {other:?}"),
     };

@@ -193,19 +193,39 @@ fn format_projection_item(item: &quanta_gqlang_v2_hir::ProjectionItemV1) -> Stri
 // ---- result shape ----------------------------------------------------------
 
 fn format_shape(shape: &ResultShapeHirV1) -> String {
-    match &shape.kind {
-        ResultShapeKindV1::Leaf(value) => format_value(value),
-        ResultShapeKindV1::Record(rec) => {
-            let fields = rec
-                .fields
-                .iter()
-                .map(|f| format!("{}: {}", f.name, format_shape(&f.shape)))
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!("{{ {fields} }}")
-        }
-        ResultShapeKindV1::List(list) => format!("[ {} ]", format_shape(&list.element)),
+    enum Frame<'a> {
+        Shape(&'a ResultShapeHirV1),
+        Text(&'a str),
     }
+
+    let mut out = String::new();
+    let mut stack = vec![Frame::Shape(shape)];
+    while let Some(frame) = stack.pop() {
+        match frame {
+            Frame::Text(text) => out.push_str(text),
+            Frame::Shape(node) => match &node.kind {
+                ResultShapeKindV1::Leaf(value) => out.push_str(&format_value(value)),
+                ResultShapeKindV1::Record(record) => {
+                    out.push_str("{ ");
+                    stack.push(Frame::Text(" }"));
+                    for (index, field) in record.fields.iter().enumerate().rev() {
+                        if index + 1 < record.fields.len() {
+                            stack.push(Frame::Text(", "));
+                        }
+                        stack.push(Frame::Shape(&field.shape));
+                        stack.push(Frame::Text(": "));
+                        stack.push(Frame::Text(&field.name));
+                    }
+                }
+                ResultShapeKindV1::List(list) => {
+                    out.push_str("[ ");
+                    stack.push(Frame::Text(" ]"));
+                    stack.push(Frame::Shape(&list.element));
+                }
+            },
+        }
+    }
+    out
 }
 
 // ---- value / bool expressions ----------------------------------------------

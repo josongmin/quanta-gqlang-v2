@@ -487,3 +487,430 @@ fn empty_blocked_failure() -> FrontendTransactionErrorV2 {
         "a blocked stage reported no diagnostic",
     )))
 }
+
+#[cfg(test)]
+#[expect(
+    clippy::expect_used,
+    reason = "owner-local bridge tests mint checked fixture locations and predicate ids"
+)]
+mod tests {
+    use super::*;
+    use quanta_gqlang_v2_logic::GraphEndpointRoleV1;
+    use quanta_gqlang_v2_sema::GraphQueryKindV1;
+
+    fn span() -> CheckedLocatedSpanV2 {
+        quanta_gqlang_v2_sema::test_support::reference_checked_span_v2(3, 11)
+            .expect("checked fixture span")
+    }
+
+    #[test]
+    fn every_pipeline_owned_code_is_an_independent_literal() {
+        for (code, expected) in [
+            (
+                DocumentAssemblyCodeV2::MissingItemResult,
+                "pipeline.document.missing_item_result",
+            ),
+            (
+                DocumentAssemblyCodeV2::ExtraItemResult,
+                "pipeline.document.extra_item_result",
+            ),
+            (
+                DocumentAssemblyCodeV2::DuplicateItemResult,
+                "pipeline.document.duplicate_item_result",
+            ),
+            (
+                DocumentAssemblyCodeV2::ForeignItemResult,
+                "pipeline.document.foreign_item_result",
+            ),
+            (
+                DocumentAssemblyCodeV2::WrongKindItemResult,
+                "pipeline.document.wrong_kind_item_result",
+            ),
+            (
+                DocumentAssemblyCodeV2::ItemMembershipMismatch,
+                "pipeline.document.item_membership_mismatch",
+            ),
+            (
+                DocumentAssemblyCodeV2::RuleMembershipMismatch,
+                "pipeline.document.rule_membership_mismatch",
+            ),
+            (
+                DocumentAssemblyCodeV2::PlanOutcomeMismatch,
+                "pipeline.document.plan_outcome_mismatch",
+            ),
+            (
+                DocumentAssemblyCodeV2::CompositionProducerMismatch,
+                "pipeline.document.composition_producer_mismatch",
+            ),
+            (
+                DocumentAssemblyCodeV2::CompositionBodyMismatch,
+                "pipeline.document.composition_body_mismatch",
+            ),
+            (
+                DocumentAssemblyCodeV2::CheckGraphMismatch,
+                "pipeline.document.check_graph_mismatch",
+            ),
+            (
+                DocumentAssemblyCodeV2::InapplicableItemResult,
+                "pipeline.document.inapplicable_item_result",
+            ),
+            (
+                DocumentAssemblyCodeV2::DanglingExecutionReference,
+                "pipeline.document.dangling_execution_reference",
+            ),
+        ] {
+            assert_eq!(code.as_str(), expected);
+        }
+        for (stage, expected) in [
+            (PipelineStageV2::Parse, "parse"),
+            (PipelineStageV2::Sema, "sema"),
+            (PipelineStageV2::Algebra, "algebra"),
+            (PipelineStageV2::Logic, "logic"),
+            (PipelineStageV2::Planning, "planning"),
+            (PipelineStageV2::Assembly, "assembly"),
+        ] {
+            assert_eq!(stage.as_str(), expected);
+        }
+    }
+
+    #[test]
+    fn every_algebra_bridge_code_is_an_independent_literal() {
+        for (kind, expected) in [
+            (
+                AlgebraFailureKindV2::NonRelationItem,
+                "algebra.non_relation_item",
+            ),
+            (
+                AlgebraFailureKindV2::MissingExpression,
+                "algebra.missing_expression",
+            ),
+            (
+                AlgebraFailureKindV2::ForeignSemanticFact,
+                "algebra.foreign_semantic_fact",
+            ),
+            (
+                AlgebraFailureKindV2::InvalidStageContract,
+                "algebra.invalid_stage_contract",
+            ),
+            (
+                AlgebraFailureKindV2::AggregateWithoutGroup,
+                "algebra.aggregate_without_group",
+            ),
+            (
+                AlgebraFailureKindV2::NestedAggregate,
+                "algebra.nested_aggregate",
+            ),
+            (
+                AlgebraFailureKindV2::MissingNestedRelation,
+                "algebra.missing_nested_relation",
+            ),
+            (
+                AlgebraFailureKindV2::DuplicateCorrelationReference,
+                "algebra.duplicate_correlation_reference",
+            ),
+            (
+                AlgebraFailureKindV2::TraversalBudgetExceeded,
+                "algebra.traversal_budget_exceeded",
+            ),
+        ] {
+            assert_eq!(algebra_code(kind), expected);
+        }
+    }
+
+    #[test]
+    fn every_logic_bridge_code_matches_an_independent_literal() {
+        let base = [
+            (
+                LogicDiagnosticV1::GraphEndpointMissing {
+                    kind: GraphQueryKindV1::Taint,
+                    role: GraphEndpointRoleV1::Sink,
+                    span: span(),
+                },
+                "logic.graph_endpoint_missing",
+            ),
+            (
+                LogicDiagnosticV1::GraphEndpointUnexpected {
+                    kind: GraphQueryKindV1::Slice,
+                    role: GraphEndpointRoleV1::Source,
+                    span: span(),
+                },
+                "logic.graph_endpoint_unexpected",
+            ),
+        ];
+        for (diagnostic, expected) in base {
+            assert_eq!(logic_code(&diagnostic), expected);
+            assert_eq!(diagnostic.code(), expected);
+        }
+
+        for (reason, expected) in [
+            (
+                UnboundedWitnessReasonV1::MissingMaxWitnesses,
+                "logic.unbounded_witness.missing_max_witnesses",
+            ),
+            (
+                UnboundedWitnessReasonV1::MissingPathLengthBound,
+                "logic.unbounded_witness.missing_path_length_bound",
+            ),
+            (
+                UnboundedWitnessReasonV1::ZeroMaxWitnesses,
+                "logic.unbounded_witness.zero_max_witnesses",
+            ),
+            (
+                UnboundedWitnessReasonV1::ZeroPathLengthBound,
+                "logic.unbounded_witness.zero_path_length_bound",
+            ),
+            (
+                UnboundedWitnessReasonV1::MaxWitnessesOverBudget,
+                "logic.unbounded_witness.max_witnesses_over_budget",
+            ),
+            (
+                UnboundedWitnessReasonV1::PathLengthBoundOverBudget,
+                "logic.unbounded_witness.path_length_bound_over_budget",
+            ),
+        ] {
+            let diagnostic = LogicDiagnosticV1::UnboundedWitness {
+                reason,
+                span: span(),
+            };
+            assert_eq!(logic_code(&diagnostic), expected);
+            assert_eq!(diagnostic.code(), expected);
+        }
+
+        for (reason, expected) in [
+            (
+                RuleProgramInvalidReasonV1::MissingMember,
+                "logic.rule_program.missing_member",
+            ),
+            (
+                RuleProgramInvalidReasonV1::DuplicateMember,
+                "logic.rule_program.duplicate_member",
+            ),
+            (
+                RuleProgramInvalidReasonV1::NonLocalTarget,
+                "logic.rule_program.nonlocal_target",
+            ),
+            (
+                RuleProgramInvalidReasonV1::WrongCallId,
+                "logic.rule_program.wrong_call_id",
+            ),
+            (
+                RuleProgramInvalidReasonV1::TargetTransplanted,
+                "logic.rule_program.target_transplanted",
+            ),
+            (
+                RuleProgramInvalidReasonV1::PolarityFlip,
+                "logic.rule_program.polarity_flip",
+            ),
+            (
+                RuleProgramInvalidReasonV1::ForeignLocation,
+                "logic.rule_program.foreign_location",
+            ),
+            (
+                RuleProgramInvalidReasonV1::MembershipMismatch,
+                "logic.rule_program.membership_mismatch",
+            ),
+        ] {
+            let diagnostic = LogicDiagnosticV1::RuleProgramInvalid {
+                reason,
+                span: span(),
+            };
+            assert_eq!(logic_code(&diagnostic), expected);
+            assert_eq!(diagnostic.code(), expected);
+        }
+
+        for (dimension, expected) in [
+            (
+                RuleGraphBudgetDimensionV1::Nodes,
+                "logic.rule_graph_budget.nodes",
+            ),
+            (
+                RuleGraphBudgetDimensionV1::Edges,
+                "logic.rule_graph_budget.edges",
+            ),
+            (
+                RuleGraphBudgetDimensionV1::Steps,
+                "logic.rule_graph_budget.steps",
+            ),
+        ] {
+            let diagnostic = LogicDiagnosticV1::RuleGraphBudgetExceeded {
+                dimension,
+                limit: 7,
+                span: span(),
+            };
+            assert_eq!(logic_code(&diagnostic), expected);
+            assert_eq!(diagnostic.code(), expected);
+        }
+    }
+
+    #[test]
+    fn every_planning_bridge_code_matches_an_independent_literal() {
+        for (reason, expected) in [
+            (
+                InputDocumentMismatchReasonV2::Absent,
+                "planning.input_document_mismatch.absent",
+            ),
+            (
+                InputDocumentMismatchReasonV2::WrongKind,
+                "planning.input_document_mismatch.wrong_kind",
+            ),
+            (
+                InputDocumentMismatchReasonV2::IdentityMismatch,
+                "planning.input_document_mismatch.identity_mismatch",
+            ),
+        ] {
+            let diagnostic = PlanningDiagnosticV1::InputDocumentMismatch {
+                reason,
+                span: span(),
+            };
+            assert_eq!(planning_code(&diagnostic), expected);
+        }
+        for (reason, expected) in [
+            (
+                CheckInvalidReasonV2::NestedGraphIdentityMismatch,
+                "planning.invalid_check.nested_graph_identity_mismatch",
+            ),
+            (
+                CheckInvalidReasonV2::UnexpectedNestedGraph,
+                "planning.invalid_check.unexpected_nested_graph",
+            ),
+            (
+                CheckInvalidReasonV2::MissingNestedGraph,
+                "planning.invalid_check.missing_nested_graph",
+            ),
+            (
+                CheckInvalidReasonV2::SemanticConfirmInPatternMode,
+                "planning.invalid_check.semantic_confirm_in_pattern_mode",
+            ),
+            (
+                CheckInvalidReasonV2::MissingSemanticConfirm,
+                "planning.invalid_check.missing_semantic_confirm",
+            ),
+            (
+                CheckInvalidReasonV2::PatternInputInSemanticMode,
+                "planning.invalid_check.pattern_input_in_semantic_mode",
+            ),
+            (
+                CheckInvalidReasonV2::MissingHybridPatternInput,
+                "planning.invalid_check.missing_hybrid_pattern_input",
+            ),
+            (
+                CheckInvalidReasonV2::MissingHybridSemanticInput,
+                "planning.invalid_check.missing_hybrid_semantic_input",
+            ),
+        ] {
+            let diagnostic = PlanningDiagnosticV1::InvalidCheck {
+                reason,
+                span: span(),
+            };
+            assert_eq!(planning_code(&diagnostic), expected);
+        }
+        for (reason, expected) in [
+            (
+                CompositionInvalidReasonV2::EmptyProducers,
+                "planning.invalid_composition.empty_producers",
+            ),
+            (
+                CompositionInvalidReasonV2::ProducerOrdinalMismatch,
+                "planning.invalid_composition.producer_ordinal_mismatch",
+            ),
+            (
+                CompositionInvalidReasonV2::ProducerIdentityMismatch,
+                "planning.invalid_composition.producer_identity_mismatch",
+            ),
+            (
+                CompositionInvalidReasonV2::DuplicateProducer,
+                "planning.invalid_composition.duplicate_producer",
+            ),
+            (
+                CompositionInvalidReasonV2::WithTargetNotAProducer,
+                "planning.invalid_composition.with_target_not_a_producer",
+            ),
+            (
+                CompositionInvalidReasonV2::BodyIdentityMismatch,
+                "planning.invalid_composition.body_identity_mismatch",
+            ),
+            (
+                CompositionInvalidReasonV2::BodyKindMismatch,
+                "planning.invalid_composition.body_kind_mismatch",
+            ),
+        ] {
+            let diagnostic = PlanningDiagnosticV1::InvalidComposition {
+                reason,
+                span: span(),
+            };
+            assert_eq!(planning_code(&diagnostic), expected);
+        }
+        let presentation = PlanningDiagnosticV1::InvalidPresentation {
+            reason: PresentationInvalidReasonV2::UnsupportedExplainEvidenceTruth,
+            span: span(),
+        };
+        assert_eq!(
+            planning_code(&presentation),
+            "planning.invalid_presentation.unsupported_explain_evidence_truth"
+        );
+        let budget = PlanningDiagnosticV1::SemanticStepBudgetExceeded {
+            limit: 7,
+            span: span(),
+        };
+        assert_eq!(
+            planning_code(&budget),
+            "planning.budget.semantic_steps_exceeded"
+        );
+
+        for (reason, expected) in [
+            (
+                NoPlanReasonV2::ValueDeclaration,
+                "planning.no_plan.value_declaration",
+            ),
+            (
+                NoPlanReasonV2::MetaActivation,
+                "planning.no_plan.meta_activation",
+            ),
+            (
+                NoPlanReasonV2::EmptyRuleProgram,
+                "planning.no_plan.empty_rule_program",
+            ),
+        ] {
+            assert_eq!(no_plan_code(reason), expected);
+            let diagnostic = PlanningDiagnosticV1::NoPlan {
+                reason,
+                span: span(),
+            };
+            assert_eq!(planning_code(&diagnostic), expected);
+        }
+        for (kind, expected) in [
+            (
+                CatalogDeclarationKindV2::View,
+                "planning.no_plan.catalog_declaration.view",
+            ),
+            (
+                CatalogDeclarationKindV2::Model,
+                "planning.no_plan.catalog_declaration.model",
+            ),
+            (
+                CatalogDeclarationKindV2::Pack,
+                "planning.no_plan.catalog_declaration.pack",
+            ),
+            (
+                CatalogDeclarationKindV2::Profile,
+                "planning.no_plan.catalog_declaration.profile",
+            ),
+            (
+                CatalogDeclarationKindV2::Gate,
+                "planning.no_plan.catalog_declaration.gate",
+            ),
+            (
+                CatalogDeclarationKindV2::RuleBinding,
+                "planning.no_plan.catalog_declaration.rule_binding",
+            ),
+        ] {
+            let reason = NoPlanReasonV2::CatalogDeclaration { kind };
+            assert_eq!(no_plan_code(reason), "planning.no_plan.catalog_declaration");
+            let diagnostic = PlanningDiagnosticV1::NoPlan {
+                reason,
+                span: span(),
+            };
+            assert_eq!(planning_code(&diagnostic), expected);
+        }
+    }
+}

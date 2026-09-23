@@ -15,5 +15,5 @@ Operator discipline:
 2. docs must describe frontend-only ownership, not backend availability
 3. release smoke covers examples, docs, and CLI wiring together
 4. CLI ships a file-path and inline-query front door; malformed argv must fail closed with non-zero exit
-5. LSP ships a stdio JSON front door; unknown or mutating methods must fail closed
+5. the diagnostics stdio front door uses bounded private NDJSON, not LSP or JSON-RPC; unknown or mutating methods must fail closed
 6. docs and README must enumerate the shipped example families that actually exist in `examples/`

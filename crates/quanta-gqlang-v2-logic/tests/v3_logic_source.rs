@@ -26,9 +26,10 @@ use quanta_gqlang_v2_logic::{
     RuleProgramContractV2, RuleProgramInvalidReasonV1, StratificationProofV1,
 };
 use quanta_gqlang_v2_sema::test_support::{
-    deep_relation_chain_document_v2, forged_rule_fact_document_v2,
-    forged_rule_membership_document_v2, forged_small_receipt_relation_chain_document_v2,
-    reference_relation_document_v2, reference_rule_document_v2, second_source_relation_document_v2,
+    deep_relation_chain_document_v2, forged_rule_call_wrapper_document_v2,
+    forged_rule_fact_document_v2, forged_rule_membership_document_v2,
+    forged_small_receipt_relation_chain_document_v2, reference_relation_document_v2,
+    reference_rule_document_v2, second_source_relation_document_v2, ForgedRuleCallWrapperV2,
     ForgedRuleFactMutationV2, ForgedRuleMembershipMutationV2, ReferenceBudgetV2,
     ReferenceRelationFixtureV2, ReferenceRuleFixtureV2, SECONDARY_REFERENCE_SOURCE_V2,
     SMALL_BUDGET_MAX_SEMANTIC_STEPS,
@@ -538,6 +539,44 @@ fn builtin_call_body_never_becomes_a_local_graph_node() {
     let program = contract.to_program();
     assert_eq!(program.len(), 1);
     assert!(program_rule(&program, "r").body().is_empty());
+}
+
+#[test]
+fn every_value_wrapper_preserves_exact_call_polarity_location_and_scc_membership() {
+    for wrapper in [
+        ForgedRuleCallWrapperV2::Unary,
+        ForgedRuleCallWrapperV2::Binary,
+        ForgedRuleCallWrapperV2::Compare,
+        ForgedRuleCallWrapperV2::Or,
+        ForgedRuleCallWrapperV2::Paren,
+        ForgedRuleCallWrapperV2::Path,
+        ForgedRuleCallWrapperV2::Record,
+        ForgedRuleCallWrapperV2::List,
+        ForgedRuleCallWrapperV2::LogicalQuantifier,
+    ] {
+        let fixture = forged_rule_call_wrapper_document_v2(wrapper)
+            .expect("wrapper fixture retains the real nonrecursive call");
+        let contract = accepted(fixture.document());
+        let caller = contract
+            .rules()
+            .iter()
+            .find(|rule| rule.predicate_id().as_str() == "r")
+            .expect("the caller remains a projected member");
+        let call = only_call(caller);
+        let program = contract.to_program();
+        let literal = body_literal(program_rule(&program, "r"), "s");
+
+        assert_eq!(
+            call.target(),
+            &ResolvedCallTargetV2::Predicate(predicate("s"))
+        );
+        assert_eq!(literal.polarity(), BodyPolarityV1::Positive, "{wrapper:?}");
+        assert_eq!(literal.location(), call.location(), "{wrapper:?}");
+        assert!(program_rule(&program, "s").body().is_empty(), "{wrapper:?}");
+        assert!(!contract.stratification().is_recursive(&predicate("r")));
+        assert!(!contract.stratification().is_recursive(&predicate("s")));
+        assert!(contract.stratification().recursive().is_empty());
+    }
 }
 
 // ---- forged document membership --------------------------------------------

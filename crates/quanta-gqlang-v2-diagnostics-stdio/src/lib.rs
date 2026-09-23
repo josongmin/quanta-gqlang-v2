@@ -46,7 +46,11 @@ fn run_with_server<R: Read, W: Write>(
     let mut status = 0_u8;
     let mut chunk = [0_u8; 4096];
     loop {
-        let read = reader.read(&mut chunk)?;
+        let read = match reader.read(&mut chunk) {
+            Ok(read) => read,
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error),
+        };
         if read == 0 {
             break;
         }
@@ -123,5 +127,10 @@ fn process_line<W: Write>(
         }
     };
     writer.write_all(&payload)?;
-    writer.write_all(b"\n")
+    writer.write_all(b"\n")?;
+    // One request/response exchange must make progress before the reader asks
+    // for another frame. Without an explicit flush, a generic buffered writer
+    // can retain the response while a client waits for it, deadlocking a
+    // long-lived NDJSON session.
+    writer.flush()
 }

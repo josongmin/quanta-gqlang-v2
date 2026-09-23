@@ -11,14 +11,14 @@ use quanta_gqlang_v2_conformance::{
     SUPPLEMENTAL_SOURCES_V2, UNSUPPORTED_SOURCE_V2,
 };
 use quanta_gqlang_v2_frontend_contract::{
-    analyze_source_document_v2, compile_source_document_v3, AnalysisItemV2, AnalysisStatusV2,
-    ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledItemV2,
-    FrontendAuthorityErrorV2, FrontendAuthorityLocationV2, FrontendAuthoritySourceV2,
-    FrontendBudgetV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
-    FrontendGraphReferenceInputV2, FrontendLanguageVersionV2, FrontendLockfileInputV2,
-    FrontendPackInputV2, FrontendRelationCardinalityV2, FrontendRelationFieldInputV2,
-    FrontendRelationInputV2, FrontendScalarTypeV2, GraphReferenceKindV2, OpenAnalysisAuthorityV2,
-    PlannedItemV2, SourceIdV2,
+    analyze_source_document_v2, compile_source_document_v3, AlgebraFamilyV2, AnalysisItemV2,
+    AnalysisStatusV2, ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledItemV2,
+    ExecutionExpressionShapeV3, ExecutionJoinModeV3, FrontendAuthorityErrorV2,
+    FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
+    FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2, FrontendGraphReferenceInputV2,
+    FrontendLanguageVersionV2, FrontendLockfileInputV2, FrontendPackInputV2,
+    FrontendRelationCardinalityV2, FrontendRelationFieldInputV2, FrontendRelationInputV2,
+    FrontendScalarTypeV2, GraphReferenceKindV2, OpenAnalysisAuthorityV2, PlannedItemV2, SourceIdV2,
 };
 
 const HOST: SourceIdV2 = SourceIdV2::from_raw(1);
@@ -365,6 +365,243 @@ fn facade_budget_and_pack_lock_failures_are_explicit() {
     )
     .expect_err("pack/lock digest mismatch must reject");
     assert_eq!(error.code(), "modules.lock_mismatch");
+}
+
+#[test]
+fn closed_source_predicates_reject_non_boolean_and_invalid_comparison() {
+    let authority = closed_authority();
+    for source in [
+        "from users u | where u.active",
+        "from users u | where u.age > 1",
+    ] {
+        let document = compile_source_document_v3(SourceIdV2::from_raw(401), source, &authority)
+            .expect("boolean predicate must compile");
+        let [CompiledItemV2::Planned(planned)] = document.items() else {
+            panic!("{source}: expected exactly one planned relation");
+        };
+        assert!(matches!(planned.as_ref(), PlannedItemV2::Relation { .. }));
+        assert_eq!(document.execution().items().len(), 1);
+    }
+
+    for (source, span) in [
+        ("from users u | where 1", (21, 22)),
+        ("from users u | where u.age", (21, 26)),
+        ("from users u | where u.name > 1", (21, 31)),
+    ] {
+        let error = compile_source_document_v3(SourceIdV2::from_raw(401), source, &authority)
+            .expect_err("invalid predicate must not produce an execution document");
+        let quanta_gqlang_v2_frontend_contract::FrontendTransactionErrorV2::Document(failure) =
+            error
+        else {
+            panic!("invalid predicate must fail in the document transaction");
+        };
+        let [diagnostic] = failure.diagnostics() else {
+            panic!("{source}: expected one typed diagnostic");
+        };
+        assert_eq!(diagnostic.code(), "types.bad_overload", "{source}");
+        assert_eq!(diagnostic.primary().source_id, SourceIdV2::from_raw(401));
+        assert_eq!(
+            (
+                diagnostic.primary().span.start,
+                diagnostic.primary().span.end
+            ),
+            span,
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn authored_join_on_and_cross_join_retain_distinct_v3_semantics() {
+    let authority = closed_authority();
+    for (source, mode, filtered_left, predicate_count) in [
+        (
+            "from findings f | project f.repo as finding_repo | join repos r on finding_repo = r.id",
+            ExecutionJoinModeV3::Inner,
+            false,
+            1,
+        ),
+        (
+            "from findings f | where f.score > 1 | project f.repo as finding_repo | join repos r on finding_repo = r.id",
+            ExecutionJoinModeV3::Inner,
+            true,
+            1,
+        ),
+        (
+            "from findings f | project f.repo as finding_repo | cross join repos r",
+            ExecutionJoinModeV3::Cross,
+            false,
+            0,
+        ),
+    ] {
+        let document = compile_source_document_v3(SourceIdV2::from_raw(402), source, &authority)
+            .expect("authored join must compile through the facade");
+        let [item] = document.execution().items() else {
+            panic!("{source}: expected one executable item");
+        };
+        let relation = item.relation().expect("joined relation");
+        let root = relation.root();
+        assert_eq!(root.family(), AlgebraFamilyV2::Join, "{source}");
+        assert_eq!(root.join_mode(), Some(mode), "{source}");
+        assert_eq!(root.predicates().len(), predicate_count, "{source}");
+        let [left, right] = root.children() else {
+            panic!("{source}: join must retain exactly two inputs");
+        };
+        assert_eq!(left.family(), AlgebraFamilyV2::Project, "{source}");
+        assert_eq!(right.family(), AlgebraFamilyV2::Scan, "{source}");
+        assert_ne!(left.stage(), right.stage(), "{source}");
+        assert_eq!(right.source().expect("right host source").name(), "app::repos");
+        let [upstream] = left.children() else {
+            panic!("{source}: projection must retain one input");
+        };
+        assert_eq!(
+            upstream.family(),
+            if filtered_left {
+                AlgebraFamilyV2::Filter
+            } else {
+                AlgebraFamilyV2::Scan
+            },
+            "{source}"
+        );
+        assert_eq!(upstream.predicates().len(), usize::from(filtered_left));
+        let scan = if filtered_left {
+            let [scan] = upstream.children() else {
+                panic!("{source}: filter must retain one scan");
+            };
+            scan
+        } else {
+            upstream
+        };
+        assert_eq!(scan.source().expect("left host source").name(), "app::findings");
+        if mode == ExecutionJoinModeV3::Inner {
+            let [predicate] = root.predicates() else {
+                panic!("{source}: inner join must retain one ON predicate");
+            };
+            assert!(relation.expressions().iter().any(|expression| {
+                expression.id() == *predicate
+                    && matches!(
+                        expression.shape(),
+                        ExecutionExpressionShapeV3::Compare { .. }
+                    )
+            }));
+        } else {
+            assert!(root.predicates().is_empty(), "CROSS cannot gain ON");
+        }
+    }
+}
+
+#[test]
+fn authored_aggregates_retain_partition_truth_and_reject_illegal_contexts() {
+    let authority = closed_authority();
+
+    for (source, expected_partition_keys) in [
+        (
+            "from findings f | group by f.repo | project sum(f.score) as total",
+            1,
+        ),
+        ("from findings f | project sum(f.score) as total", 0),
+    ] {
+        let document = compile_source_document_v3(SourceIdV2::from_raw(403), source, &authority)
+            .expect("legal aggregate must compile through the facade");
+        let [item] = document.execution().items() else {
+            panic!("{source}: expected one executable item");
+        };
+        let relation = item.relation().expect("aggregate relation");
+        let aggregate = relation.root();
+        assert_eq!(aggregate.family(), AlgebraFamilyV2::Aggregate, "{source}");
+        let [group] = aggregate.children() else {
+            panic!("{source}: aggregate must consume exactly one group");
+        };
+        assert_eq!(group.family(), AlgebraFamilyV2::Group, "{source}");
+        assert_eq!(
+            group.schema().partition_keys().len(),
+            expected_partition_keys
+        );
+        assert_eq!(
+            aggregate.schema().partition_keys(),
+            group.schema().partition_keys(),
+            "{source}: aggregate must preserve group partition identity"
+        );
+        assert_eq!(aggregate.expressions().len(), 1, "{source}");
+        let [field] = aggregate.schema().fields() else {
+            panic!("{source}: aggregate must expose exactly one field");
+        };
+        assert_eq!(field.name(), "total", "{source}");
+    }
+
+    for (source, expected_span) in [
+        ("from findings f | where sum(f.score) > 1", (24, 36)),
+        (
+            "from findings f | project sum(sum(f.score)) as total",
+            (30, 42),
+        ),
+        (
+            "from findings f | project count(is_null(sum(f.score))) as total",
+            (40, 52),
+        ),
+    ] {
+        let error = compile_source_document_v3(SourceIdV2::from_raw(403), source, &authority)
+            .expect_err("illegal aggregate context must fail before execution projection");
+        let quanta_gqlang_v2_frontend_contract::FrontendTransactionErrorV2::Document(failure) =
+            error
+        else {
+            panic!("{source}: expected document transaction failure");
+        };
+        let [diagnostic] = failure.diagnostics() else {
+            panic!("{source}: expected one exact semantic diagnostic");
+        };
+        assert_eq!(
+            diagnostic.code(),
+            "sema.illegal_aggregate_context",
+            "{source}"
+        );
+        assert_eq!(diagnostic.primary().source_id, SourceIdV2::from_raw(403));
+        assert_eq!(
+            (
+                diagnostic.primary().span.start,
+                diagnostic.primary().span.end
+            ),
+            expected_span,
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn two_authored_mutual_rules_reach_one_checked_program() {
+    let authority = closed_authority();
+    let source = "rule r : x if x = 1 and s(x); rule s : x if x = 1 and r(x)";
+    let document = compile_source_document_v3(SourceIdV2::from_raw(406), source, &authority)
+        .expect("mutual source rules must form one checked program");
+    assert_eq!(document.items().len(), 2);
+    let program = document
+        .rule_program()
+        .expect("one document-wide rule program");
+    assert_eq!(program.members().len(), 2);
+    assert_eq!(program.stratification().recursive().len(), 2);
+    assert_ne!(
+        program
+            .members()
+            .first()
+            .expect("first member")
+            .member_item_id(),
+        program
+            .members()
+            .get(1)
+            .expect("second member")
+            .member_item_id()
+    );
+    for (item, member) in document.items().iter().zip(program.members()) {
+        let CompiledItemV2::Planned(planned) = item else {
+            panic!("each authored rule must retain a checked member reference");
+        };
+        let PlannedItemV2::RuleMember(reference) = planned.as_ref() else {
+            panic!("each authored rule must be a rule-program member");
+        };
+        assert_eq!(*reference, *member);
+        assert_eq!(reference.program_id(), program.program_id());
+    }
+    assert_eq!(document.execution().items().len(), 0);
 }
 
 #[test]

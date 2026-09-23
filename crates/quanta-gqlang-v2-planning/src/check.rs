@@ -102,9 +102,10 @@ impl CheckContractV2 {
     ///
     /// `nested` is Logic's sealed contract for the resolved inline FIND the
     /// CHECK carries as its semantic confirm input; the caller builds it with
-    /// [`GraphQueryContractV2::from_resolved`]. A nested contract that names a
-    /// different identity than the resolved CHECK rejects, so a same-document
-    /// wrong-body transplant cannot silently plan.
+    /// [`GraphQueryContractV2::from_resolved`]. A nested contract must equal the
+    /// complete contract derived from that resolved FIND (identity, kind,
+    /// location, references, depth, and witness policy), so a same-identity
+    /// payload transplant cannot silently plan.
     ///
     /// # Errors
     ///
@@ -121,10 +122,12 @@ impl CheckContractV2 {
         };
 
         // 1. The nested contract must be present exactly when the resolved CHECK
-        //    carries a semantic confirm input, and must name that exact item.
+        //    carries a semantic confirm input, and must equal the exact sealed
+        //    contract derived from that item rather than merely sharing its ID.
         match (check.nested_graph(), &nested) {
             (Some(resolved), Some(contract)) => {
-                if contract.item_id() != resolved.item_id() {
+                let expected = GraphQueryContractV2::from_resolved(resolved);
+                if expected.as_ref().ok() != Some(contract) {
                     return Err(reject(CheckInvalidReasonV2::NestedGraphIdentityMismatch));
                 }
             }

@@ -5,10 +5,11 @@
 )]
 
 use quanta_gqlang_v2_hir::{
-    walk_item, CallArgHirV1, CallArgsHirV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
-    GraphConstraintsV1, GraphEndpointsV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1, HirNodeIdV1,
-    HirVisitorV1, LogicalBinderV1, LogicalQuantifierKindV1, NonEmptyBindersV1, ProgramItemHirV1,
-    SpanV1, ValueExprHirV1,
+    walk_item, ActivationV1, AdmissionV1, CallArgHirV1, CallArgsHirV1, CatalogPayloadV1,
+    ConfirmModeV1, DetectionModeV1, EmitModeV1, GateBindingV1, GraphConstraintsV1,
+    GraphEndpointsV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1, HirNodeIdV1, HirVisitorV1,
+    LogicalBinderV1, LogicalQuantifierKindV1, NonEmptyBindersV1, ProgramItemHirV1, SpanV1,
+    ValueExprHirV1, ViewBodyV1,
 };
 
 /// Records, in visit order, the id of every value and bool node the DEFAULT
@@ -35,6 +36,73 @@ fn gref(name: &str, start: usize, end: usize) -> GraphRefV1 {
     GraphRefV1 {
         name: name.into(),
         span: SpanV1::new(start, end),
+    }
+}
+
+#[derive(Default)]
+struct AuxiliarySpanTrace(Vec<SpanV1>);
+
+impl HirVisitorV1 for AuxiliarySpanTrace {
+    fn visit_auxiliary_span(&mut self, span: SpanV1) {
+        self.0.push(span);
+    }
+}
+
+#[test]
+fn catalog_payload_references_visit_auxiliary_spans_in_authored_order() {
+    let b = HirBuilderV1::new();
+    let name_span = SpanV1::new(0, 1);
+    let payloads = vec![
+        (
+            CatalogPayloadV1::View(ViewBodyV1::QueryRef(gref("query", 2, 3))),
+            vec![SpanV1::new(2, 3)],
+        ),
+        (
+            CatalogPayloadV1::Model {
+                provider: "p".into(),
+                source: gref("source", 4, 5),
+            },
+            vec![SpanV1::new(4, 5)],
+        ),
+        (
+            CatalogPayloadV1::Pack {
+                source: gref("pack", 6, 7),
+                activation: ActivationV1::Session,
+            },
+            vec![SpanV1::new(6, 7)],
+        ),
+        (
+            CatalogPayloadV1::Profile {
+                capabilities: vec![gref("first", 8, 9), gref("second", 10, 11)],
+                admission: AdmissionV1::ReviewRequired,
+            },
+            vec![SpanV1::new(8, 9), SpanV1::new(10, 11)],
+        ),
+        (
+            CatalogPayloadV1::Gate {
+                checks: vec![gref("first", 12, 13), gref("second", 14, 15)],
+                binding: GateBindingV1::All,
+            },
+            vec![SpanV1::new(12, 13), SpanV1::new(14, 15)],
+        ),
+        (
+            CatalogPayloadV1::RuleBinding {
+                check_ref: gref("check", 16, 17),
+            },
+            vec![SpanV1::new(16, 17)],
+        ),
+    ];
+
+    for (payload, references) in payloads {
+        let declaration = b.catalog_decl("x", name_span, payload, SpanV1::new(0, 20));
+        let mut expected = vec![name_span];
+        expected.extend(references);
+        let mut trace = AuxiliarySpanTrace::default();
+        trace.visit_catalog_decl(&declaration);
+        assert_eq!(
+            trace.0, expected,
+            "wrong catalog span order: {declaration:?}"
+        );
     }
 }
 

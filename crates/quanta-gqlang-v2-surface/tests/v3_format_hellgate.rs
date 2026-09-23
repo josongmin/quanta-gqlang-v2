@@ -25,6 +25,48 @@ fn same_structure(a: &ProgramItemHirV1, b: &ProgramItemHirV1) -> bool {
 }
 
 #[test]
+fn deep_shape_formatter_child() {
+    if std::env::var_os("QGLANG_DEEP_SHAPE_FORMAT_CHILD").is_none() {
+        return;
+    }
+
+    let builder = HirBuilderV1::new();
+    let span = SpanV1::new(0, 1);
+    let mut shape = builder.shape_leaf(builder.int("1", span), span);
+    const DEPTH: usize = 100_000;
+    for _ in 0..DEPTH {
+        shape = builder.shape_list(shape, span);
+    }
+    let item = ProgramItemHirV1::from(builder.query(
+        builder.relation_source("r", span, None, span),
+        Some(shape),
+        span,
+    ));
+
+    let rendered = format_item(&item);
+    assert_eq!(rendered.len(), "from r => ".len() + DEPTH * 4 + 1);
+    assert!(rendered.starts_with("from r => [ [ [ "));
+    assert!(rendered.ends_with(" ] ] ]"));
+
+    // Keep this rail scoped to formatter stack behavior: recursively dropping
+    // an adversarial raw-HIR shape is a separate ownership concern.
+    std::mem::forget(item);
+}
+
+#[test]
+fn deep_shape_formatter_is_stack_safe() {
+    let status = std::process::Command::new(std::env::current_exe().expect("test binary"))
+        .args(["--exact", "deep_shape_formatter_child", "--nocapture"])
+        .env("QGLANG_DEEP_SHAPE_FORMAT_CHILD", "1")
+        .status()
+        .expect("child process");
+    assert!(
+        status.success(),
+        "deep shape formatter child status: {status}"
+    );
+}
+
+#[test]
 fn programmatic_precedence_is_preserved_by_reparse() {
     let builder = HirBuilderV1::new();
     let span = SpanV1::new(0, 1);

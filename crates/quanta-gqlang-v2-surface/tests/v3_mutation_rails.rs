@@ -126,9 +126,9 @@ fn float_scan_stops_at_first_nondigit() {
 
 fn predicate_kind(src: &str) -> BoolExprKindV1 {
     let builder = HirBuilderV1::new();
-    parse_predicate(src, &builder)
-        .unwrap_or_else(|e| panic!("parse_predicate {src:?}: {e}"))
-        .kind
+    let mut predicate =
+        parse_predicate(src, &builder).unwrap_or_else(|e| panic!("parse_predicate {src:?}: {e}"));
+    std::mem::replace(&mut predicate.kind, BoolExprKindV1::Literal(false))
 }
 
 /// The depth counter must increment on a nested `(`. Kills expr.rs:168

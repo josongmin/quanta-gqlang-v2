@@ -15,8 +15,10 @@ reuses the checkout's gitignored Cargo target:
    deps == {pipeline}) and the facade source shape (zero ``^pub use .*::\\*``,
    zero ``^pub mod``, curated allowlist == the pinned literal);
 
-3. run the positive program (``cargo run --quiet``) and require exit 0 plus the
-   exact marker ``external-consumer positive: ok``;
+3. compile and run the positive semantic receipt once with ``cargo run
+   --quiet``. Its ``#![deny(unused_imports)]`` plus typed method signatures and
+   exhaustive enum matches make rustc own all 89 curated roots; require exit 0
+   plus the exact marker ``external-consumer positive: ok``;
 
 4. run privacy probes as complete ``src/main.rs`` programs through ``cargo
    check --quiet``. The allowlist and manifest checks already prove that
@@ -231,8 +233,8 @@ NEGATIVE_CASES: Dict[str, Tuple[str, str]] = {
 
 ERROR_CODE_RE = re.compile(r"error\[(E\d{4})\]")
 PUB_USE_RE = re.compile(r"pub use\s+([A-Za-z0-9_]+)::(?:\{([^}]*)\}|([A-Za-z0-9_]+))\s*;", re.DOTALL)
-GLOB_RE = re.compile(r"^pub use .*::\*", re.MULTILINE)
-MODULE_RE = re.compile(r"^pub mod", re.MULTILINE)
+GLOB_RE = re.compile(r"^[ \t]*pub use .*::\*", re.MULTILINE)
+MODULE_RE = re.compile(r"^[ \t]*pub mod", re.MULTILINE)
 FIXTURE_ANCHOR = "--> src/main.rs:"
 
 
@@ -345,6 +347,30 @@ def facade_allowlist(text: str) -> List[str]:
 
 def facade_owner_crates(text: str) -> List[str]:
     return sorted({match.group(1) for match in PUB_USE_RE.finditer(text)})
+
+
+def public_api_roots(output: str) -> Tuple[List[str], List[str]]:
+    """Split the simplified API into curated re-export roots and forbidden items."""
+    crate_name = FACADE_PACKAGE.replace("-", "_")
+    crate_root = "pub mod %s" % crate_name
+    prefix = "pub use %s::" % crate_name
+    observed: List[str] = []
+    unexpected: List[str] = []
+    for raw_line in output.splitlines():
+        line = raw_line.strip()
+        if not line or line == crate_root:
+            continue
+        if line.startswith(prefix):
+            name = line[len(prefix):].strip()
+            if name:
+                observed.append(name)
+            else:
+                unexpected.append(line)
+        else:
+            # A direct public fn/type/module/constant is outside the curated
+            # re-export-only facade even when all pinned roots remain present.
+            unexpected.append(line)
+    return observed, unexpected
 
 
 def repo_toolchain_channel() -> Optional[str]:
@@ -483,6 +509,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "public_api_observed": 0,
         "public_api_extra": 0,
         "public_api_missing": 0,
+        "public_api_direct": 0,
+        "semantic_roots_covered": 0,
+        "semantic_roots_missing": 0,
     }
     cache_lock: Optional[IO[str]] = None
     fixture: Optional[Path] = None
@@ -580,23 +609,35 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         positive_main = (fixture / "src" / "main.rs").read_bytes()
 
         result = run(["cargo", "run", "--quiet"], cwd=fixture, env=env)
-        counts["positive_executed"] = 1
         if result.returncode != 0:
+            counts["semantic_roots_missing"] = counts["allowlist_pinned"]
             if FIXTURE_ANCHOR not in result.stderr:
                 raise InfrastructureError(
                     "the repository tree does not compile for the fixture:\n%s"
                     % result.stderr.strip()
                 )
-            violations.append("positive program failed to compile")
-            say("positive: exit=%d" % result.returncode)
+            violations.append("positive program failed to compile or run")
             say(result.stderr.strip())
-        elif result.stdout.strip() != POSITIVE_MARKER:
-            violations.append(
-                "positive program printed %r, expected %r" % (result.stdout.strip(), POSITIVE_MARKER)
-            )
         else:
-            counts["positive_marker"] = 1
-        say("stage 1: positive exit=%d marker=%d" % (result.returncode, counts["positive_marker"]))
+            counts["semantic_roots_covered"] = counts["allowlist_pinned"]
+            counts["positive_executed"] = 1
+            if result.stdout.strip() != POSITIVE_MARKER:
+                violations.append(
+                    "positive program printed %r, expected %r"
+                    % (result.stdout.strip(), POSITIVE_MARKER)
+                )
+            else:
+                counts["positive_marker"] = 1
+        say(
+            "stage 1: compiler/runtime exit=%d semantic=%d/%d runtime_executed=%d marker=%d"
+            % (
+                result.returncode,
+                counts["semantic_roots_covered"],
+                counts["allowlist_pinned"],
+                counts["positive_executed"],
+                counts["positive_marker"],
+            )
+        )
 
         unregistered = sorted(
             path.stem for path in NEGATIVES_DIR.glob("*.rs") if path.stem not in NEGATIVE_CASES
@@ -678,13 +719,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             raise InfrastructureError(
                 "cargo public-api failed (exit %d):\n%s" % (result.returncode, result.stderr.strip())
             )
-        observed_public: List[str] = []
-        for line in result.stdout.splitlines():
-            line = line.strip()
-            prefix = "pub use %s::" % FACADE_PACKAGE.replace("-", "_")
-            if line.startswith(prefix):
-                observed_public.append(line[len(prefix):].strip())
+        observed_public, direct_public = public_api_roots(result.stdout)
         counts["public_api_observed"] = len(observed_public)
+        counts["public_api_direct"] = len(direct_public)
         public_extra = sorted(set(observed_public) - set(PINNED_ALLOWLIST))
         public_missing = sorted(set(PINNED_ALLOWLIST) - set(observed_public))
         counts["public_api_extra"] = len(public_extra)
@@ -693,9 +730,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             violations.append("public API over-claims names outside the allowlist: %s" % public_extra)
         if public_missing:
             violations.append("public API is missing allowlisted names: %s" % public_missing)
+        if direct_public:
+            violations.append(
+                "public API exposes direct items outside the re-export allowlist: %s"
+                % direct_public
+            )
         say(
-            "stage 3: public_api observed=%d pinned=%d extra=%d missing=%d"
-            % (counts["public_api_observed"], counts["allowlist_pinned"], len(public_extra), len(public_missing))
+            "stage 3: public_api observed=%d pinned=%d extra=%d missing=%d direct=%d"
+            % (
+                counts["public_api_observed"],
+                counts["allowlist_pinned"],
+                len(public_extra),
+                len(public_missing),
+                len(direct_public),
+            )
         )
     except InfrastructureError as error:
         infrastructure.append(str(error))
@@ -782,12 +830,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
     )
     say(
-        "public_api      observed=%d pinned=%d extra=%d missing=%d"
+        "public_api      observed=%d pinned=%d extra=%d missing=%d direct=%d"
         % (
             counts["public_api_observed"],
             counts["allowlist_pinned"],
             counts["public_api_extra"],
             counts["public_api_missing"],
+            counts["public_api_direct"],
+        )
+    )
+    say(
+        "semantic_api    covered=%d pinned=%d missing=%d compiler=external_fixture"
+        % (
+            counts["semantic_roots_covered"],
+            counts["allowlist_pinned"],
+            counts["semantic_roots_missing"],
         )
     )
     say(

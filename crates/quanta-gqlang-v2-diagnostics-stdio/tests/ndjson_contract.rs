@@ -4,7 +4,7 @@
     reason = "wire contract tests inspect exact response positions"
 )]
 
-use std::io::Cursor;
+use std::io::{self, Cursor, Read, Write};
 
 use quanta_gqlang_v2_diagnostics_stdio::run_stdio_session_v2;
 use serde_json::Value;
@@ -23,6 +23,117 @@ fn run(bytes: &[u8]) -> (u8, Vec<Value>) {
 
 fn valid(id: u32) -> String {
     format!(r#"{{"id":{id},"method":"v3_diagnostics","source_id":7,"source":"show capabilities"}}"#)
+}
+
+struct ScriptedReader {
+    bytes: Vec<u8>,
+    cursor: usize,
+    chunks: Vec<usize>,
+    reads: usize,
+    fail_at: Option<usize>,
+}
+
+impl ScriptedReader {
+    fn new(bytes: &[u8], chunks: Vec<usize>) -> Self {
+        Self {
+            bytes: bytes.to_vec(),
+            cursor: 0,
+            chunks,
+            reads: 0,
+            fail_at: None,
+        }
+    }
+
+    fn failing(bytes: &[u8], fail_at: usize) -> Self {
+        Self {
+            bytes: bytes.to_vec(),
+            cursor: 0,
+            chunks: vec![1],
+            reads: 0,
+            fail_at: Some(fail_at),
+        }
+    }
+}
+
+impl Read for ScriptedReader {
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        if self.fail_at == Some(self.reads) {
+            return Err(io::Error::other("scripted read failure"));
+        }
+        if self.cursor == self.bytes.len() {
+            return Ok(0);
+        }
+        let requested = self.chunks[self.reads % self.chunks.len()];
+        self.reads += 1;
+        let count = requested
+            .min(buffer.len())
+            .min(self.bytes.len() - self.cursor);
+        buffer[..count].copy_from_slice(&self.bytes[self.cursor..self.cursor + count]);
+        self.cursor += count;
+        Ok(count)
+    }
+}
+
+struct InvalidLengthReader;
+
+impl Read for InvalidLengthReader {
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        Ok(buffer.len() + 1)
+    }
+}
+
+struct InterruptingReader<'a> {
+    inner: Cursor<&'a [u8]>,
+    interrupt_at: u64,
+    interrupted: bool,
+}
+
+impl Read for InterruptingReader<'_> {
+    fn read(&mut self, output: &mut [u8]) -> io::Result<usize> {
+        if self.inner.position() == self.interrupt_at && !self.interrupted {
+            self.interrupted = true;
+            return Err(io::ErrorKind::Interrupted.into());
+        }
+        let limit = if self.inner.position() == 0 {
+            usize::try_from(self.interrupt_at)
+                .expect("test request fits usize")
+                .min(output.len())
+        } else {
+            output.len()
+        };
+        self.inner.read(&mut output[..limit])
+    }
+}
+
+struct FailingWriter {
+    calls: usize,
+    fail_at: usize,
+    fail_flush: bool,
+    flushes: usize,
+}
+
+impl Write for FailingWriter {
+    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
+        if self.calls == self.fail_at {
+            return Err(io::Error::new(
+                io::ErrorKind::BrokenPipe,
+                "scripted write failure",
+            ));
+        }
+        self.calls += 1;
+        Ok(buffer.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.flushes += 1;
+        if self.fail_flush {
+            return Err(io::Error::new(
+                io::ErrorKind::BrokenPipe,
+                "scripted flush failure",
+            ));
+        }
+        Ok(())
+    }
 }
 
 #[test]
@@ -90,4 +201,130 @@ fn response_is_byte_deterministic() {
         0
     );
     assert_eq!(first, second);
+}
+
+#[test]
+fn arbitrary_short_reads_and_eof_without_newline_preserve_framing() {
+    let unicode = r#"{"id":3,"method":"v3_diagnostics","source_id":7,"source":"let 이름 = 1"}"#;
+    let stream = format!("{}\n{}\n{unicode}", valid(1), valid(2));
+    let mut baseline_input = Cursor::new(stream.as_bytes());
+    let mut baseline = Vec::new();
+    let baseline_status =
+        run_stdio_session_v2(&mut baseline_input, &mut baseline).expect("baseline session");
+
+    for chunks in [
+        vec![1],
+        vec![2, 1, 3],
+        vec![4095],
+        vec![4096],
+        vec![stream.find('\n').expect("newline")],
+        vec![stream.find('\n').expect("newline") + 1],
+    ] {
+        let mut input = ScriptedReader::new(stream.as_bytes(), chunks.clone());
+        let mut output = Vec::new();
+        let status = run_stdio_session_v2(&mut input, &mut output).expect("chunked session");
+        assert_eq!(
+            status, baseline_status,
+            "status drift for chunks {chunks:?}"
+        );
+        assert_eq!(output, baseline, "response drift for chunks {chunks:?}");
+    }
+}
+
+#[test]
+fn interrupted_read_preserves_partial_frame_and_following_request() {
+    let first = format!("{}\n", valid(1));
+    let stream = format!("{first}{}\n", valid(2));
+    for interrupt_at in [first.len() / 2, first.len()] {
+        let mut input = InterruptingReader {
+            inner: Cursor::new(stream.as_bytes()),
+            interrupt_at: u64::try_from(interrupt_at).expect("test request fits u64"),
+            interrupted: false,
+        };
+        let mut output = Vec::new();
+        let status =
+            run_stdio_session_v2(&mut input, &mut output).expect("interrupted read must retry");
+        let responses: Vec<Value> = output
+            .split(|byte| *byte == b'\n')
+            .filter(|line| !line.is_empty())
+            .map(|line| serde_json::from_slice(line).expect("response json"))
+            .collect();
+        assert_eq!(status, 0, "interrupt_at={interrupt_at}");
+        assert_eq!(responses.len(), 2, "interrupt_at={interrupt_at}");
+        assert_eq!(responses[0]["id"], 1);
+        assert_eq!(responses[1]["id"], 2);
+        assert!(input.interrupted, "reader must inject Interrupted");
+    }
+}
+
+#[test]
+fn whitespace_lines_split_across_reads_are_ignored() {
+    let stream = format!(" \t\r\n\n{}\n   ", valid(7));
+    let mut input = ScriptedReader::new(stream.as_bytes(), vec![1, 2]);
+    let mut output = Vec::new();
+    let status = run_stdio_session_v2(&mut input, &mut output).expect("whitespace session");
+    assert_eq!(status, 0);
+    let lines: Vec<&[u8]> = output
+        .split(|byte| *byte == b'\n')
+        .filter(|line| !line.is_empty())
+        .collect();
+    assert_eq!(lines.len(), 1);
+    let response: Value = serde_json::from_slice(lines[0]).expect("response json");
+    assert_eq!(response["id"], 7);
+}
+
+#[test]
+fn reader_and_writer_failures_are_returned_without_being_reclassified() {
+    let request = format!("{}\n", valid(1));
+    let mut reader = ScriptedReader::failing(request.as_bytes(), 1);
+    let mut output = Vec::new();
+    let error = run_stdio_session_v2(&mut reader, &mut output).expect_err("read must fail");
+    assert_eq!(error.kind(), io::ErrorKind::Other);
+
+    for fail_at in [0, 1] {
+        let mut input = Cursor::new(request.as_bytes());
+        let mut writer = FailingWriter {
+            calls: 0,
+            fail_at,
+            fail_flush: false,
+            flushes: 0,
+        };
+        let error = run_stdio_session_v2(&mut input, &mut writer).expect_err("write must fail");
+        assert_eq!(error.kind(), io::ErrorKind::BrokenPipe);
+    }
+
+    let mut input = Cursor::new(request.as_bytes());
+    let mut writer = FailingWriter {
+        calls: 0,
+        fail_at: usize::MAX,
+        fail_flush: true,
+        flushes: 0,
+    };
+    let error = run_stdio_session_v2(&mut input, &mut writer).expect_err("flush must fail");
+    assert_eq!(error.kind(), io::ErrorKind::BrokenPipe);
+    assert_eq!(writer.flushes, 1);
+}
+
+#[test]
+fn every_response_is_flushed_before_the_next_request() {
+    let stream = format!("{}\n{}\n", valid(1), valid(2));
+    let mut input = Cursor::new(stream.as_bytes());
+    let mut writer = FailingWriter {
+        calls: 0,
+        fail_at: usize::MAX,
+        fail_flush: false,
+        flushes: 0,
+    };
+    let status = run_stdio_session_v2(&mut input, &mut writer).expect("flushed session");
+    assert_eq!(status, 0);
+    assert_eq!(writer.flushes, 2, "one flush per emitted NDJSON response");
+}
+
+#[test]
+fn reader_reporting_more_than_the_supplied_buffer_fails_closed() {
+    let mut reader = InvalidLengthReader;
+    let mut output = Vec::new();
+    let error = run_stdio_session_v2(&mut reader, &mut output).expect_err("invalid length");
+    assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+    assert!(output.is_empty());
 }

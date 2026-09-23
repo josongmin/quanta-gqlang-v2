@@ -1,12 +1,89 @@
 #![expect(
     clippy::expect_used,
+    clippy::panic,
     reason = "depth-boundary tests require exact rejected outcomes and a launched child process"
 )]
 
 use quanta_gqlang_v2_hir::{
     check_tree, CheckedHirDocumentOwnedV2, HirBuilderV1, HirDepthDimensionV2, HirDocumentV1,
-    HirIntegrityErrorV1, HirRootRefV1, ProgramItemHirV1, SourceIdV2, SpanV1,
+    HirIntegrityErrorV1, HirRootRefV1, ProgramItemHirV1, RelationExistsPolarityV1, SourceIdV2,
+    SpanV1,
 };
+
+#[test]
+fn raw_deep_drop_child() {
+    let Some(mode) = std::env::var_os("QGLANG_RAW_HIR_DROP_CHILD") else {
+        return;
+    };
+    let builder = HirBuilderV1::new();
+    let span = SpanV1::new(0, 1);
+    match mode.to_str().expect("known child mode") {
+        "relation" | "document" => {
+            let mut relation = builder.relation_source("r", span, None, span);
+            for _ in 0..100_000 {
+                relation =
+                    builder.relation_filter(relation, builder.bool_literal(true, span), span);
+            }
+            if mode == "document" {
+                let document = HirDocumentV1 {
+                    source_id: SourceIdV2::from_raw(1),
+                    source_len: 1,
+                    items: vec![ProgramItemHirV1::from(builder.query(relation, None, span))],
+                };
+                drop(document);
+            } else {
+                drop(relation);
+            }
+        }
+        "value" => {
+            let mut value = builder.int("1", span);
+            for _ in 0..100_000 {
+                value = builder.paren_value(value, span);
+            }
+            drop(value);
+        }
+        "bool" => {
+            let mut boolean = builder.bool_literal(true, span);
+            for _ in 0..100_000 {
+                boolean = builder.not(boolean, span);
+            }
+            drop(boolean);
+        }
+        "shape" => {
+            let mut shape = builder.shape_leaf(builder.int("1", span), span);
+            for _ in 0..100_000 {
+                shape = builder.shape_list(shape, span);
+            }
+            drop(shape);
+        }
+        "mixed" => {
+            let mut relation = builder.relation_source("r", span, None, span);
+            for _ in 0..20_000 {
+                let predicate =
+                    builder.relation_exists(RelationExistsPolarityV1::Exists, relation, span);
+                relation = builder.relation_filter(
+                    builder.relation_source("r", span, None, span),
+                    predicate,
+                    span,
+                );
+            }
+            drop(relation);
+        }
+        other => panic!("unknown raw HIR drop mode: {other}"),
+    }
+}
+
+#[test]
+fn direct_raw_hir_roots_drop_without_stack_abort() {
+    for mode in ["relation", "document", "value", "bool", "shape", "mixed"] {
+        let status = std::process::Command::new(std::env::current_exe().expect("test binary"))
+            .args(["--exact", "raw_deep_drop_child", "--nocapture"])
+            .env("QGLANG_RAW_HIR_DROP_CHILD", mode)
+            .status()
+            .expect("child process");
+        assert!(status.success(), "raw HIR {mode} child status: {status}");
+    }
+}
 
 #[test]
 fn extreme_owned_hir_child() {

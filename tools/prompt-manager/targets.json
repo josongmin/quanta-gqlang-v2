@@ -1,0 +1,82 @@
+{
+  "context_groups": {
+    "claude_startup": {
+      "max_bytes": 5500,
+      "max_lines": 120,
+      "targets": ["agents", "claude"]
+    },
+    "cursor_root_startup": {
+      "max_bytes": 4000,
+      "max_lines": 90,
+      "targets": ["agents"]
+    }
+  },
+  "retired_outputs": [
+    ".cursorrules",
+    ".cursor/rules/project-rules.md"
+  ],
+  "targets": {
+    "agents": {
+      "kind": "plain",
+      "max_bytes": 4000,
+      "max_lines": 90,
+      "output": "AGENTS.md",
+      "source": "sources/agent-router.md"
+    },
+    "claude": {
+      "kind": "plain",
+      "max_bytes": 1500,
+      "max_lines": 30,
+      "output": "CLAUDE.md",
+      "source": "sources/claude-bootstrap.md"
+    },
+    "claude_docs": {
+      "kind": "claude_rule",
+      "max_bytes": 1800,
+      "max_lines": 45,
+      "output": ".claude/rules/documentation.md",
+      "paths": [
+        "README.md",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "docs/**/*.md",
+        ".cursor/rules/**/*.mdc",
+        ".claude/rules/**/*.md",
+        "tools/prompt-manager/**/*"
+      ],
+      "source": "sources/documentation.md"
+    },
+    "claude_rust": {
+      "kind": "claude_rule",
+      "max_bytes": 2000,
+      "max_lines": 45,
+      "output": ".claude/rules/rust-frontend.md",
+      "paths": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "Justfile",
+        "crates/**/*.rs",
+        "crates/**/Cargo.toml"
+      ],
+      "source": "sources/rust-frontend.md"
+    },
+    "cursor_docs": {
+      "description": "Documentation truth and prompt-management authority",
+      "globs": "README.md,AGENTS.md,CLAUDE.md,docs/**/*.md,.cursor/rules/**/*.mdc,.claude/rules/**/*.md,tools/prompt-manager/**",
+      "kind": "cursor_rule",
+      "max_bytes": 1800,
+      "max_lines": 45,
+      "output": ".cursor/rules/documentation.mdc",
+      "source": "sources/documentation.md"
+    },
+    "cursor_rust": {
+      "description": "Rust frontend architecture and verification boundaries",
+      "globs": "**/*.rs,**/Cargo.toml,Cargo.lock,Justfile",
+      "kind": "cursor_rule",
+      "max_bytes": 2000,
+      "max_lines": 45,
+      "output": ".cursor/rules/rust-frontend.mdc",
+      "source": "sources/rust-frontend.md"
+    }
+  }
+}

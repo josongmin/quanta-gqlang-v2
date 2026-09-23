@@ -29,32 +29,36 @@
 //! — never merely that an error occurred.
 //!
 //! INTEGRATOR-FIXTURE-PENDING (see the lane report): the
-//! `planning.invalid_presentation.*` and `planning.invalid_composition.*` entry
-//! rails need a resolved presentation / composition document fixture, and the
-//! `NoPlanReasonV2::{MetaActivation}` entry rail needs a resolved `USE PACK`
-//! meta document. Their closed code/message vocabulary is asserted below by
-//! direct diagnostic construction, so no spelling loses coverage while the
-//! fixtures are missing.
+//! `planning.invalid_composition.*` entry rails need a resolved composition
+//! document fixture, and the `NoPlanReasonV2::{MetaActivation}` entry rail needs
+//! a resolved `USE PACK` meta document. Their closed code/message vocabulary is
+//! asserted below by direct diagnostic construction, so no spelling loses
+//! coverage while the fixtures are missing.
 
-use quanta_gqlang_v2_logic::{GraphEndpointRoleV1, LogicDiagnosticV1};
+use quanta_gqlang_v2_logic::{GraphEndpointRoleV1, GraphQueryContractV2, LogicDiagnosticV1};
 use quanta_gqlang_v2_planning::{
     plan, plan_outcome, CheckContractV2, CheckInvalidReasonV2, CompositionInvalidReasonV2,
     InputDocumentMismatchReasonV2, NoPlanReasonV2, PlanOutcomeV2, PlanningDiagnosticV1,
-    PresentationInvalidReasonV2, SemanticPlanInputV2,
+    PresentationContractV2, PresentationInvalidReasonV2, SemanticPlanInputV2,
 };
 use quanta_gqlang_v2_sema::test_support::{
     forged_cardinality_downgrade_document_v2, forged_small_receipt_relation_chain_document_v2,
-    reference_checked_span_v2, reference_relation_document_v2, reference_rule_document_v2,
-    ReferenceBudgetV2, ReferenceRelationFixtureV2, ReferenceRuleFixtureV2,
+    reference_check_document_v2, reference_checked_span_v2, reference_presentation_document_v2,
+    reference_relation_document_v2, reference_rule_document_v2, second_source_graph_document_v2,
+    ReferenceBudgetV2, ReferenceCheckFixtureV2, ReferenceGraphRequestV2,
+    ReferencePresentationFixtureV2, ReferenceRelationFixtureV2, ReferenceRuleFixtureV2,
     SMALL_BUDGET_MAX_SEMANTIC_STEPS,
 };
-use quanta_gqlang_v2_sema::{CheckedLocatedSpanV2, GraphQueryKindV1};
+use quanta_gqlang_v2_sema::{
+    CheckedLocatedSpanV2, DetectionModeV1, EvidenceModeV1, GraphQueryKindV1, TruthModeV1,
+};
 
 mod support;
 
 use support::{
     check_document, check_input, deepest_node, document_item_location, graph_document, graph_input,
-    relation_input, resolved_check, rule_input,
+    graph_references, relation_input, resolved_check, rule_input, FIXTURE_GRAPH_DEPTH_V2,
+    FIXTURE_GRAPH_ITEM_SPAN_V2,
 };
 
 /// One checked fixture location, for the diagnostic rails that construct a
@@ -562,35 +566,199 @@ fn a_check_contract_rejects_a_missing_nested_confirm_graph() {
     }
 }
 
-/// A CHECK with no semantic confirm input must NOT receive a nested graph
-/// contract; the standalone FIND fixture's contract cannot be transplanted onto
-/// it (the identity is not the CHECK's nested identity).
+fn check_request() -> ReferenceGraphRequestV2 {
+    ReferenceGraphRequestV2 {
+        kind: GraphQueryKindV1::Taint,
+        references: graph_references(GraphQueryKindV1::Taint),
+        depth: Some(FIXTURE_GRAPH_DEPTH_V2),
+        direction: None,
+        summary_facets: Vec::new(),
+        item_span: FIXTURE_GRAPH_ITEM_SPAN_V2,
+    }
+}
+
+/// Every constructible mode/pattern/semantic-confirm combination is driven
+/// through the real Sema transaction and then through the planning wrapper.
+/// This pins both first-defect precedence and the CHECK's exact checked span.
 #[test]
-fn a_check_contract_rejects_an_unexpected_nested_graph() {
-    let document = check_document().expect("the nested CHECK fixture");
-    let check = resolved_check(&document).expect("the resolved CHECK item");
-    let standalone = graph_input(GraphQueryKindV1::Taint, 4).expect("the standalone taint FIND");
-    let SemanticPlanInputV2::Graph(nested) = &standalone.1 else {
-        panic!("the fixture seals a graph carrier");
-    };
-    // The standalone FIND shares the nested identity in this fixture matrix, so
-    // the transplant rejection is exercised through the identity rule instead:
-    // a contract for the same identity is accepted by the wrapper and only
-    // rejects at plan time against the wrong document.
-    if nested.item_id() == check.nested_graph().expect("nested").item_id() {
-        let contract = CheckContractV2::from_resolved(check, Some(nested.clone()))
-            .expect("the same sealed nested identity is admissible");
-        assert_eq!(contract.nested_graph_item_id(), Some(nested.item_id()));
-        match plan(
-            &SemanticPlanInputV2::Check(contract),
-            standalone.0.document(),
-        ) {
-            Err(PlanningDiagnosticV1::InputDocumentMismatch { reason, span }) => {
-                assert_eq!(reason, InputDocumentMismatchReasonV2::Absent);
-                assert_eq!(span, *check.location());
+fn resolved_check_contract_enforces_the_complete_option_matrix() {
+    for mode in [
+        DetectionModeV1::PatternOnly,
+        DetectionModeV1::SemanticOnly,
+        DetectionModeV1::Hybrid,
+    ] {
+        for with_pattern in [false, true] {
+            for with_nested_graph in [false, true] {
+                let fixture = reference_check_document_v2(
+                    check_request(),
+                    ReferenceCheckFixtureV2 {
+                        mode,
+                        with_pattern,
+                        with_nested_graph,
+                    },
+                )
+                .expect("the configurable CHECK fixture resolves");
+                let check = fixture.check();
+                let nested = check
+                    .nested_graph()
+                    .map(GraphQueryContractV2::from_resolved)
+                    .transpose()
+                    .expect("the nested graph contract seals");
+                let expected = match mode {
+                    DetectionModeV1::PatternOnly if with_nested_graph => {
+                        Some(CheckInvalidReasonV2::SemanticConfirmInPatternMode)
+                    }
+                    DetectionModeV1::SemanticOnly if !with_nested_graph => {
+                        Some(CheckInvalidReasonV2::MissingSemanticConfirm)
+                    }
+                    DetectionModeV1::SemanticOnly if with_pattern => {
+                        Some(CheckInvalidReasonV2::PatternInputInSemanticMode)
+                    }
+                    DetectionModeV1::Hybrid if !with_pattern => {
+                        Some(CheckInvalidReasonV2::MissingHybridPatternInput)
+                    }
+                    DetectionModeV1::Hybrid if !with_nested_graph => {
+                        Some(CheckInvalidReasonV2::MissingHybridSemanticInput)
+                    }
+                    DetectionModeV1::PatternOnly
+                    | DetectionModeV1::SemanticOnly
+                    | DetectionModeV1::Hybrid => None,
+                };
+
+                match (CheckContractV2::from_resolved(check, nested), expected) {
+                    (
+                        Err(PlanningDiagnosticV1::InvalidCheck { reason, span }),
+                        Some(expected_reason),
+                    ) => {
+                        assert_eq!(reason, expected_reason);
+                        assert_eq!(span, *check.location());
+                        assert_eq!(
+                            PlanningDiagnosticV1::InvalidCheck { reason, span }.code(),
+                            format!("planning.invalid_check.{}", expected_reason.code())
+                        );
+                    }
+                    (Ok(contract), None) => {
+                        assert_eq!(contract.item_id(), check.item_id());
+                        assert_eq!(contract.location(), check.location());
+                        assert_eq!(contract.mode(), mode);
+                        assert_eq!(contract.pattern().is_some(), with_pattern);
+                        assert_eq!(contract.nested_graph().is_some(), with_nested_graph);
+                    }
+                    (actual, expected) => panic!(
+                        "CHECK option matrix mismatch: mode={mode:?} pattern={with_pattern} \
+                         nested={with_nested_graph} expected={expected:?} actual={actual:?}"
+                    ),
+                }
             }
-            other => panic!("expected an absent-identity rejection, got {other:?}"),
         }
+    }
+}
+
+#[test]
+fn a_check_without_semantic_confirm_rejects_an_unexpected_nested_contract() {
+    let fixture = reference_check_document_v2(
+        check_request(),
+        ReferenceCheckFixtureV2 {
+            mode: DetectionModeV1::PatternOnly,
+            with_pattern: true,
+            with_nested_graph: false,
+        },
+    )
+    .expect("pattern-only CHECK resolves");
+    let standalone = graph_document(GraphQueryKindV1::Taint, FIXTURE_GRAPH_DEPTH_V2)
+        .expect("standalone graph resolves");
+    let nested =
+        GraphQueryContractV2::from_resolved(standalone.graph()).expect("standalone graph contract");
+    match CheckContractV2::from_resolved(fixture.check(), Some(nested)) {
+        Err(PlanningDiagnosticV1::InvalidCheck { reason, span }) => {
+            assert_eq!(reason, CheckInvalidReasonV2::UnexpectedNestedGraph);
+            assert_eq!(span, *fixture.check().location());
+        }
+        other => panic!("expected unexpected-nested-graph rejection, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_check_rejects_a_nested_contract_from_another_source() {
+    let fixture = reference_check_document_v2(
+        check_request(),
+        ReferenceCheckFixtureV2 {
+            mode: DetectionModeV1::SemanticOnly,
+            with_pattern: false,
+            with_nested_graph: true,
+        },
+    )
+    .expect("semantic CHECK resolves");
+    let foreign = second_source_graph_document_v2().expect("second-source graph resolves");
+    let nested =
+        GraphQueryContractV2::from_resolved(foreign.graph()).expect("second-source graph contract");
+    assert_ne!(
+        fixture
+            .check()
+            .nested_graph()
+            .expect("nested graph")
+            .item_id(),
+        nested.item_id()
+    );
+    match CheckContractV2::from_resolved(fixture.check(), Some(nested)) {
+        Err(PlanningDiagnosticV1::InvalidCheck { reason, span }) => {
+            assert_eq!(reason, CheckInvalidReasonV2::NestedGraphIdentityMismatch);
+            assert_eq!(span, *fixture.check().location());
+        }
+        other => panic!("expected nested-identity rejection, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_check_rejects_a_same_identity_nested_payload_transplant() {
+    let fixture = reference_check_document_v2(
+        check_request(),
+        ReferenceCheckFixtureV2 {
+            mode: DetectionModeV1::SemanticOnly,
+            with_pattern: false,
+            with_nested_graph: true,
+        },
+    )
+    .expect("semantic CHECK resolves");
+    let transplanted = graph_document(GraphQueryKindV1::Taint, FIXTURE_GRAPH_DEPTH_V2 + 1)
+        .expect("same-identity deeper graph resolves");
+    let nested = GraphQueryContractV2::from_resolved(transplanted.graph())
+        .expect("transplanted graph contract");
+    assert_eq!(
+        fixture
+            .check()
+            .nested_graph()
+            .expect("nested graph")
+            .item_id(),
+        nested.item_id(),
+        "the adversarial contract keeps the same source-qualified item identity"
+    );
+    assert_ne!(
+        fixture
+            .check()
+            .nested_graph()
+            .expect("nested graph")
+            .depth(),
+        Some(nested.depth()),
+        "only the sealed payload is transplanted"
+    );
+
+    match CheckContractV2::from_resolved(fixture.check(), Some(nested)) {
+        Err(PlanningDiagnosticV1::InvalidCheck { reason, span }) => {
+            assert_eq!(reason, CheckInvalidReasonV2::NestedGraphIdentityMismatch);
+            assert_eq!(span, *fixture.check().location());
+            let diagnostic = PlanningDiagnosticV1::InvalidCheck { reason, span };
+            assert_eq!(
+                diagnostic.code(),
+                "planning.invalid_check.nested_graph_identity_mismatch"
+            );
+            assert_eq!(
+                diagnostic.message(),
+                "CHECK nested graph contract differs from the resolved CHECK's sealed nested \
+                 graph identity or payload"
+            );
+        }
+        other => panic!("expected nested-payload rejection, got {other:?}"),
     }
 }
 
@@ -602,7 +770,8 @@ fn invalid_check_reasons_all_render_stable_codes() {
         (
             CheckInvalidReasonV2::NestedGraphIdentityMismatch,
             "nested_graph_identity_mismatch",
-            "CHECK nested graph contract names an item the resolved CHECK does not",
+            "CHECK nested graph contract differs from the resolved CHECK's sealed nested graph \
+             identity or payload",
         ),
         (
             CheckInvalidReasonV2::UnexpectedNestedGraph,
@@ -653,9 +822,65 @@ fn invalid_check_reasons_all_render_stable_codes() {
     }
 }
 
-/// INTEGRATOR-FIXTURE-PENDING: no resolved presentation document fixture exists,
-/// so the presentation entry rail cannot be driven. Its closed reason vocabulary
-/// is asserted verbatim.
+/// Every evidence/truth pair is routed through the real resolved-presentation
+/// carrier. The two incoherent pairs reject at the authored presentation span;
+/// all ten other pairs retain their exact sealed payload.
+#[test]
+fn resolved_explain_contract_enforces_the_complete_evidence_truth_matrix() {
+    const EVIDENCE: [EvidenceModeV1; 4] = [
+        EvidenceModeV1::Auto,
+        EvidenceModeV1::Trace,
+        EvidenceModeV1::Citation,
+        EvidenceModeV1::Counterexample,
+    ];
+    const TRUTH: [TruthModeV1; 3] = [
+        TruthModeV1::Inspect,
+        TruthModeV1::Confirm,
+        TruthModeV1::Refute,
+    ];
+
+    for evidence in EVIDENCE {
+        for truth in TRUTH {
+            let document =
+                reference_presentation_document_v2(ReferencePresentationFixtureV2::Explain {
+                    evidence,
+                    truth,
+                })
+                .expect("the reference EXPLAIN fixture resolves");
+            let presentation = document.presentation();
+            let incoherent = matches!(
+                (evidence, truth),
+                (EvidenceModeV1::Counterexample, TruthModeV1::Confirm)
+                    | (EvidenceModeV1::Citation, TruthModeV1::Refute)
+            );
+
+            match PresentationContractV2::from_resolved(presentation) {
+                Err(PlanningDiagnosticV1::InvalidPresentation { reason, span }) if incoherent => {
+                    assert_eq!(
+                        reason,
+                        PresentationInvalidReasonV2::UnsupportedExplainEvidenceTruth
+                    );
+                    assert_eq!(span, *presentation.location());
+                    assert_eq!(
+                        PlanningDiagnosticV1::InvalidPresentation { reason, span }.code(),
+                        "planning.invalid_presentation.unsupported_explain_evidence_truth"
+                    );
+                }
+                Ok(contract) if !incoherent => {
+                    assert_eq!(contract.item_id(), presentation.item_id());
+                    assert_eq!(contract.location(), presentation.location());
+                    assert_eq!(contract.kind(), presentation.kind());
+                }
+                other => panic!(
+                    "unexpected EXPLAIN result for evidence={evidence:?} truth={truth:?}: {other:?}"
+                ),
+            }
+        }
+    }
+}
+
+/// The closed presentation reason vocabulary remains byte-stable independently
+/// of the entry-point matrix above.
 #[test]
 fn invalid_presentation_reasons_render_a_stable_code() {
     let diagnostic = PlanningDiagnosticV1::InvalidPresentation {

@@ -2,40 +2,49 @@
 
 Breaking V3 frontend producer inventory and implementation: [Ticket 10a — V3 frontend execution contract](./10a-v3-frontend-execution-contract.md). [Ticket 10 — Downstream serving interop](./10-downstream-serving-interop.md) is historical cross-repository background; its V2 migration and old source pins are not the current producer contract. Neither ticket is qualified by the frontend V2 closeout receipts.
 
-Status: `EXECUTION ACTIVE — 03/04 UPSTREAM CLOSURE OPEN; 05 NARROW OWNER GREEN; 06-09 OPEN`
+Status: `01-08 IMPLEMENTED AND INTEGRATED; 3c8acbe LOCAL-QUALIFIED; 09 CONFORMANCE/PACKET CLOSEOUT OPEN; SEMANTICA CONSUMER OPEN`
 
-## Current Routing Override — `ecc38f59` + Shared Dirty Overlay
+## Current Routing — qualified candidate `3c8acbe` (2026-09-23)
 
-This table overrides older live-work-order tables below. Older tables are
-provenance, not current status.
+This table supersedes the old `ecc38f59` dirty-overlay dispatch instructions
+below. Candidate SHA `3c8acbe21a1ce48022c12642881d1fafc190ddb1`, tree
+`173b19e1f5b3aabd23fa22a6d09e509c723316dd`, passed clean
+`just qualify-local` (`just ci`, exit 0; nextest 1,102/1,102). The main
+checkout's prompt-manager overlay and packet-document edits were excluded. This proves repo-local gates,
+not downstream execution or packet-closeout attestation.
 
-| Ticket | State | Next executable work package | Dependency / stop condition |
-|---|---|---|---|
-| 00 | accepted | documentation consistency only | no runtime/provider/SDK scope expansion |
-| 01 | receipt-scoped | `RR-01F`: remove final Sema dev edge and rerun final-mode architecture/non-vacuity on candidate | do not rewrite the historical receipt |
-| 02 | owner-present | `SS-02G`: tracked-file/public-API inventory and frozen owner receipt; then RR span/integrity review | stop if a second syntax tree/formatter is proposed |
-| 03 | owner-present, delta open | `SS-03H`: cross-owner capture/topology/row mutation proof, public API inventory, one-kernel invocation oracle, frozen combined receipt | Types 89, Modules 130, Binder 54 and strict Clippy are current scoped evidence |
-| 04 | in progress, 87-test owner checkpoint | `SS-04W`: emit explicit Group/empty partition for implicit global aggregate Project, seal the downstream budget receipt, then finish transplant/public compile-fail matrix | Composition/View/EXISTS carriers are implemented; do not rebuild them or make Algebra infer missing producer semantics |
-| 05 | SS-05B package-green | `SS-05C`: remove consumed EXISTS conjunct after Semi/Anti; use sealed budget/iterative traversal; Group/Aggregate/Sort/EXISTS mutation matrix | begins after `SS-04W`; no caller budget/default and no V1 alias/shim |
-| 06 | planned/current compile RED | `SS-06B`: document-wide resolved rule program + iterative budgeted Tarjan; resolved graph adapter; delete `source.rs` EXISTS lowerer | begins after 04/05 contracts freeze |
-| 07 | planned/current compile RED | `SS-07B`: one compiled-document variant model, pipeline semantic-only cut, iterative planner walks, facade allowlist and external compile-fail | requires 05 and 06 focused GREEN |
-| 08 | planned | `SS-08B`: bounded NDJSON/wire diagnostics/exit policy, bounded CLI argv, facade-only consumers, atomic legacy deletion | requires 07 integrated |
-| 09 | closeout-only | `SS-09B`: one semantic manifest, `PACKET_BASE_SHA..HEAD_SHA` inventories, 13 current Semgrep findings/95 allow attributes disposition, external-consumer gate, exact-SHA hosted jobs, two-step attestation | requires committed 01-08 candidate |
+| Ticket | Current code/proof state | Remaining boundary |
+|---|---|---|
+| 00 | frontend-only boundary retained | no runtime/provider/SDK expansion |
+| 01 | final architecture: 14 members, 26/26 normal and 5/5 dev edges; Semgrep and non-vacuity GREEN | historical ticket receipt remains source-bound |
+| 02 | Surface/HIR implemented; direct HIR depth crash fixed in `3c8acbe` | no second syntax/formatter authority |
+| 03 | Types/Modules/Binder integrated in the 1,102-test gate | historical owner mutation receipts are not new exact-SHA runs |
+| 04 | Sema checked-document, aggregate, composition, and budget paths integrated | keep current semantic regression rails; do not resurrect old RED dispatch |
+| 05 | Algebra normalization integrated | retain owner operator/EXISTS tests; no V1 fallback |
+| 06 | Logic rule graph/stratification integrated | retain SCC, negation, and rule-program regression rails |
+| 07 | Planning/Pipeline/facade integrated; external facade gate 1 positive, 15/15 negatives, 89/89 public roots | no runtime serving claim |
+| 08 | CLI and diagnostics stdio integrated; frontdoor parity 2/2 | NDJSON is private diagnostics transport, not LSP |
+| 09 | clean candidate A local qualification GREEN | audit existing semantic/example coverage, fill proven gaps, reconcile traceability and packet state, then docs/receipt-only attestation B; no hosted CI configured |
 
 ### Work remaining by acceptance layer
 
-1. **Code:** Ticket 03 capture-proof closure, Ticket 04 aggregate producer;
-   Ticket 05 test closure; all
-   implementation in 06-08; Ticket 09 closeout tooling.
-2. **Owner verification:** current Sema 87 and Algebra 4 are scoped GREEN only.
-   Logic/Pipeline/Planning/frontdoors need current V2 runs.
-3. **Integration verification:** Pipeline currently stops in Logic at one
-   import site for deleted Algebra V1 types; workspace and conformance are
-   therefore not qualified.
-4. **Candidate verification:** no clean immutable SHA exists. Receipts must bind
-   hashes, commands, test selection, and known deferred failures.
-5. **Remote closure:** exact required hosted jobs must be GREEN for the tested
-   SHA; queued/running is not unavailable and local GREEN is not remote GREEN.
+1. **Code:** no previously listed W1-W6 implementation task remains open on
+   current source. A new bug requires a current reproducer and its owning
+   ticket; historical RED prose is not a work order.
+2. **Local proof:** candidate A `3c8acbe` has an exact SHA/tree `just ci`
+   receipt; it does not qualify later source commits or the dirty main overlay.
+3. **Packet closeout:** Ticket 09 must first test its semantic/example claims
+   against existing rails: `self_validation.rs` exercises all 18 registered
+   families through the facade but checks broad disposition; Surface's
+   `v3_examples_corpus.rs` already checks every shipped example against three
+   docs and parse/format fixed points. Do not create a second manifest or
+   inventory for the same facts. Fill a behavioral gap only when this audit
+   finds one. Then reconcile traceability/status without pretending old owner
+   mutations were rerun; a docs-only attestation B records `tested_sha=A`,
+   `attestation_sha=B` and its diff.
+4. **Downstream:** Ticket 10a producer is local GREEN; Semantica V3 admission,
+   consumer, provider/generation, and result/receipt require a paired-repo
+   proof. GitHub Actions is not configured and is not a local completion gate.
 
 ## Canonical Order
 

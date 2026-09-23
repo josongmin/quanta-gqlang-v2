@@ -359,6 +359,77 @@ fn nonempty_certification_directive_is_validated_by_modules_in_one_transaction()
 }
 
 #[test]
+fn certification_checks_the_complete_profile_set_in_both_authored_orders() {
+    let (_host, authority) = host();
+    let source_id = SourceIdV2::from_raw(9);
+    for profile_first in [true, false] {
+        for (admission, should_accept) in [
+            (AdmissionV1::CertifiedOnly, true),
+            (AdmissionV1::Allowlist, false),
+        ] {
+            let profile_start = if profile_first { 0 } else { 40 };
+            let meta_start = if profile_first { 40 } else { 0 };
+            let profile = ProgramItemHirV1::CatalogDecl(Box::new(CatalogDeclHirV1::new(
+                HirNodeIdV1::from_raw(if profile_first { 1 } else { 2 }),
+                SpanV1::new(profile_start, profile_start + 35),
+                "strict",
+                SpanV1::new(profile_start + 8, profile_start + 14),
+                CatalogPayloadV1::Profile {
+                    capabilities: vec![GraphRefV1 {
+                        name: "capability1".into(),
+                        span: SpanV1::new(profile_start + 16, profile_start + 27),
+                    }],
+                    admission,
+                },
+            )));
+            let require = ProgramItemHirV1::Meta(Box::new(MetaHirV1::new(
+                HirNodeIdV1::from_raw(if profile_first { 2 } else { 1 }),
+                SpanV1::new(meta_start, meta_start + 17),
+                MetaKindV1::RequireCertified,
+            )));
+            let items = if profile_first {
+                vec![profile, require]
+            } else {
+                vec![require, profile]
+            };
+            let checked = CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+                source_id,
+                source_len: 80,
+                items,
+            })
+            .expect("both authored orders are valid syntax documents");
+            let result = resolve_checked_document_v2(checked, &authority);
+            if should_accept {
+                let document = result.expect("certified-only profile must satisfy directive");
+                assert_eq!(document.order().len(), 2);
+                assert_eq!(
+                    document.catalog().require_certified_location(),
+                    Some(LocatedSpanV2 {
+                        source_id,
+                        span: SpanV1::new(meta_start, meta_start + 17),
+                    })
+                );
+            } else {
+                let FrontendTransactionErrorV2::Document(failure) =
+                    result.expect_err("allowlist profile must fail certification")
+                else {
+                    panic!("certification must fail in the document transaction");
+                };
+                let [diagnostic] = failure.diagnostics() else {
+                    panic!("certification must produce one exact diagnostic");
+                };
+                assert_eq!(diagnostic.code(), "modules.certified_required_violation");
+                assert_eq!(diagnostic.primary().source_id, source_id);
+                assert_eq!(
+                    diagnostic.primary().span,
+                    SpanV1::new(meta_start, meta_start + 17)
+                );
+            }
+        }
+    }
+}
+
+#[test]
 #[expect(
     clippy::panic,
     reason = "wrong semantic variant must fail this owner test"
@@ -4528,4 +4599,143 @@ fn global_aggregate_projection_cannot_retain_a_plain_column() {
                 && diagnostic.primary().span == SpanV1::new(20, 24))),
         "{result:?}"
     );
+}
+
+#[test]
+#[expect(
+    clippy::panic,
+    reason = "wrong semantic variant must fail this owner test"
+)]
+fn global_nested_aggregate_is_rejected_at_the_inner_call() {
+    let (_host, authority) = host();
+    let builder = HirBuilderV1::new();
+    let scan = builder.relation_source(
+        "records2",
+        SpanV1::new(5, 13),
+        Some(AliasV1 {
+            name: "r".into(),
+            span: SpanV1::new(14, 15),
+        }),
+        SpanV1::new(5, 15),
+    );
+    let argument = builder
+        .try_path(
+            builder.symbol("r", SpanV1::new(32, 33)),
+            vec![PathSegmentV1 {
+                name: "value".into(),
+                span: SpanV1::new(34, 39),
+            }],
+            SpanV1::new(32, 39),
+        )
+        .unwrap();
+    let inner_span = SpanV1::new(28, 40);
+    let inner = builder.call(
+        "sum",
+        SpanV1::new(28, 31),
+        CallArgsHirV1::try_new(vec![CallArgHirV1::Expr(argument)]).unwrap(),
+        inner_span,
+    );
+    let outer = builder.call(
+        "sum",
+        SpanV1::new(24, 27),
+        CallArgsHirV1::try_new(vec![CallArgHirV1::Expr(inner)]).unwrap(),
+        SpanV1::new(24, 41),
+    );
+    let project = builder
+        .try_project(
+            scan,
+            vec![ProjectionItemV1 {
+                value: outer,
+                alias: Some(AliasV1 {
+                    name: "total".into(),
+                    span: SpanV1::new(45, 50),
+                }),
+            }],
+            SpanV1::new(16, 50),
+        )
+        .unwrap();
+    let query = builder.query(project, None, SpanV1::new(0, 50));
+    let FrontendTransactionErrorV2::Document(error) = resolve_checked_document_v2(
+        CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+            source_id: SourceIdV2::from_raw(9),
+            source_len: 64,
+            items: vec![ProgramItemHirV1::Query(Box::new(query))],
+        })
+        .unwrap(),
+        &authority,
+    )
+    .unwrap_err() else {
+        panic!("nested global aggregate must fail in sema")
+    };
+    let diagnostic = error.diagnostics().first().unwrap();
+    assert_eq!(diagnostic.code(), "sema.illegal_aggregate_context");
+    assert_eq!(diagnostic.primary().span, inner_span);
+}
+
+#[test]
+fn global_single_sum_remains_admitted() {
+    let (_host, authority) = host();
+    let builder = HirBuilderV1::new();
+    let scan = builder.relation_source(
+        "records2",
+        SpanV1::new(5, 13),
+        Some(AliasV1 {
+            name: "r".into(),
+            span: SpanV1::new(14, 15),
+        }),
+        SpanV1::new(5, 15),
+    );
+    let argument = builder
+        .try_path(
+            builder.symbol("r", SpanV1::new(28, 29)),
+            vec![PathSegmentV1 {
+                name: "value".into(),
+                span: SpanV1::new(30, 35),
+            }],
+            SpanV1::new(28, 35),
+        )
+        .unwrap();
+    let sum = builder.call(
+        "sum",
+        SpanV1::new(24, 27),
+        CallArgsHirV1::try_new(vec![CallArgHirV1::Expr(argument)]).unwrap(),
+        SpanV1::new(24, 36),
+    );
+    let project = builder
+        .try_project(
+            scan,
+            vec![ProjectionItemV1 {
+                value: sum,
+                alias: Some(AliasV1 {
+                    name: "total".into(),
+                    span: SpanV1::new(40, 45),
+                }),
+            }],
+            SpanV1::new(16, 45),
+        )
+        .unwrap();
+    let query = builder.query(project, None, SpanV1::new(0, 45));
+    let document = resolve_checked_document_v2(
+        CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+            source_id: SourceIdV2::from_raw(9),
+            source_len: 64,
+            items: vec![ProgramItemHirV1::Query(Box::new(query))],
+        })
+        .unwrap(),
+        &authority,
+    )
+    .unwrap();
+    let quanta_gqlang_v2_sema::SemanticItemV2::Relation(relation) =
+        document.items().next().unwrap().1
+    else {
+        panic!("global SUM must remain a relation")
+    };
+    assert!(matches!(
+        relation.root(),
+        quanta_gqlang_v2_sema::TypedRelationExprV2::Project(_)
+    ));
+    assert!(matches!(
+        relation.root().inputs().next(),
+        Some(quanta_gqlang_v2_sema::TypedRelationExprV2::Group(_))
+    ));
 }

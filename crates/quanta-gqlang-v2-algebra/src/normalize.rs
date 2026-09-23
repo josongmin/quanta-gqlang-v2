@@ -4,8 +4,9 @@ use crate::diagnostic::{AlgebraDiagnosticV2, AlgebraFailureKindV2};
 use crate::node::{AlgebraFamilyV2, CheckedAlgebraNodeV2, CorrelationSetV2, LoweredRelationItemV2};
 use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, DownstreamBudgetReceiptV2, JoinModeV2, RelationExistsPolarityV2,
-    SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2, TypedBoolExprV2, TypedExprShapeV2,
-    TypedExprV2, TypedRelationExprV2,
+    ResolvedCompositionBodyV2, ResolvedCompositionProducerV2, SemanticDocumentV2, SemanticItemIdV2,
+    SemanticItemV2, TypedBoolExprV2, TypedCallArgumentV2, TypedExprShapeV2, TypedExprV2,
+    TypedRelationExprV2,
 };
 use quanta_gqlang_v2_types::{AggregationClassV1, SourceQualifiedNodeIdV2};
 use std::collections::BTreeSet;
@@ -139,7 +140,128 @@ fn validate_nested_owner(
             "nested relation root belongs to another semantic document",
         ));
     }
+    if !item_owns_nested_relation(document, owner_item_id, root) {
+        return Err(failure(
+            AlgebraFailureKindV2::ForeignSemanticFact,
+            root.location(),
+            "nested relation root is not owned by the requested semantic item",
+        ));
+    }
     Ok(())
+}
+
+/// Whether `root` is one of the exact relation trees sealed under `owner`.
+///
+/// Top-level relations own only their relational-EXISTS trees; Catalog Views
+/// and Compositions additionally own their direct inline/producer/body roots.
+/// Descendant discovery follows the document's sealed expression identities,
+/// so another same-source item's structurally compatible relation cannot be
+/// relabeled with this owner's identity.
+fn item_owns_nested_relation(
+    document: &SemanticDocumentV2,
+    owner: SemanticItemIdV2,
+    root: &TypedRelationExprV2,
+) -> bool {
+    let Some(item) = document.item(owner) else {
+        return false;
+    };
+    match item {
+        SemanticItemV2::Relation(relation) => {
+            relation_references_nested(document, relation.root(), root)
+        }
+        SemanticItemV2::Catalog(catalog) => catalog.inline_view().is_some_and(|view| {
+            view.root() == root || relation_references_nested(document, view.root(), root)
+        }),
+        SemanticItemV2::Composition(composition) => {
+            composition.bindings().iter().any(|binding| {
+                matches!(binding.producer(), ResolvedCompositionProducerV2::Query(query)
+                    if query.root() == root
+                        || relation_references_nested(document, query.root(), root))
+            }) || matches!(composition.body(), ResolvedCompositionBodyV2::Query(query)
+                if query.root() == root
+                    || relation_references_nested(document, query.root(), root))
+        }
+        SemanticItemV2::Graph(_)
+        | SemanticItemV2::Check(_)
+        | SemanticItemV2::Presentation(_)
+        | SemanticItemV2::Declaration(_)
+        | SemanticItemV2::Meta(_)
+        | SemanticItemV2::Rule(_) => false,
+    }
+}
+
+/// Whether `candidate` contains a relational-EXISTS expression whose sealed
+/// registry root is exactly `nested`.
+fn relation_references_nested(
+    document: &SemanticDocumentV2,
+    candidate: &TypedRelationExprV2,
+    nested: &TypedRelationExprV2,
+) -> bool {
+    let mut relations = vec![candidate];
+    let mut expressions = Vec::new();
+    let mut visited_relations = BTreeSet::new();
+    let mut visited_expressions = BTreeSet::new();
+    while !relations.is_empty() || !expressions.is_empty() {
+        while let Some(relation) = relations.pop() {
+            if !visited_relations.insert(relation.key()) {
+                continue;
+            }
+            relations.extend(relation.inputs());
+            expressions.extend(relation.expressions().iter().copied());
+            if let Some(predicate) = relation.predicate() {
+                expressions.push(predicate.expression().key());
+            }
+        }
+
+        while let Some(key) = expressions.pop() {
+            if !visited_expressions.insert(key) {
+                continue;
+            }
+            let Some(expression) = document.expression(key) else {
+                continue;
+            };
+            match expression.shape() {
+                TypedExprShapeV2::RelationExists { relation_root, .. } => {
+                    let Some(sealed) = document.nested_relation(*relation_root) else {
+                        continue;
+                    };
+                    if *relation_root == nested.key() && sealed == nested {
+                        return true;
+                    }
+                    // Nested EXISTS trees remain owned transitively by the
+                    // same top-level item. Continue through the sealed root so
+                    // a second-level relation can neither be rejected as
+                    // foreign nor relabeled under a sibling item.
+                    relations.push(sealed);
+                }
+                TypedExprShapeV2::Path { base, .. }
+                | TypedExprShapeV2::Unary { operand: base, .. }
+                | TypedExprShapeV2::Paren { inner: base }
+                | TypedExprShapeV2::BoolValue { value: base }
+                | TypedExprShapeV2::Not { operand: base, .. } => expressions.push(*base),
+                TypedExprShapeV2::Binary { lhs, rhs, .. }
+                | TypedExprShapeV2::Compare { lhs, rhs, .. }
+                | TypedExprShapeV2::And { lhs, rhs, .. }
+                | TypedExprShapeV2::Or { lhs, rhs, .. } => {
+                    expressions.push(*rhs);
+                    expressions.push(*lhs);
+                }
+                TypedExprShapeV2::Call { arguments, .. } => {
+                    expressions.extend(arguments.iter().filter_map(|argument| match argument {
+                        TypedCallArgumentV2::Expression(key) => Some(*key),
+                        TypedCallArgumentV2::Star => None,
+                    }))
+                }
+                TypedExprShapeV2::Record(fields) => {
+                    expressions.extend(fields.iter().map(|field| field.value()));
+                }
+                TypedExprShapeV2::List(items) => expressions.extend(items.iter().copied()),
+                TypedExprShapeV2::LogicalQuantifier { body, .. } => expressions.push(*body),
+                TypedExprShapeV2::Literal(_) | TypedExprShapeV2::Binding(_) => {}
+            }
+        }
+    }
+    false
 }
 
 struct LoweringBudgetV2 {

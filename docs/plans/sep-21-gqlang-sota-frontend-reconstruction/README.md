@@ -2,60 +2,57 @@
 
 > 2026-09-23 addendum: the prior V2 reconstruction checkpoints below are historical source-bound observations, not proof of the subsequent V3 execution seam. [Ticket 10a](./tickets/10a-v3-frontend-execution-contract.md) and the [V3 contract](../../contracts/frontend-execution-v3.md) own the current producer cutover; its local and paired-repo qualification must be recorded separately.
 
-Status: `EXECUTION ACTIVE — OWNER CUTS ADVANCED; INTEGRATION AND CLOSEOUT RED`
+Status: `REPO-LOCAL CANDIDATE QUALIFIED; CONFORMANCE/PACKET CLOSEOUT AND SEMANTICA CONSUMER OPEN`
 
-## Authoritative Current Checkpoint — 2026-09-21
+## Authoritative Current Checkpoint — 2026-09-23
 
 This section supersedes every older status sentence and test count below it.
 Those sections remain only as audit provenance.
 
-- frozen observation: `main@ecc38f59e9fdcd62b5e030445188ffa8b01e100a`
-- worktree: shared dirty overlay, 178 status entries at the final audit freeze
-- immutable candidate: none
-- packet status: not closed; no workspace, hosted-CI, or activation claim
+- tested candidate A: `3c8acbe21a1ce48022c12642881d1fafc190ddb1`,
+  tree `173b19e1f5b3aabd23fa22a6d09e509c723316dd`
+- clean detached-worktree `just qualify-local`: `just ci`, exit 0,
+  nextest 1,102/1,102 across 90 binaries, duration 257 seconds; ignored
+  receipt `target/qualification/<candidate-sha>/receipt.json`
+- main checkout: prompt-manager overlay and packet-document edits, excluded from candidate
+- packet status: conformance coverage audit, traceability and attestation OPEN; Semantica consumer
+  and source-text-to-result/receipt proof OPEN; no deploy/activation claim
 
 | Ticket | Current state | Current proof | Exact remaining owner work |
 |---|---|---|---|
 | 00 | accepted scope | frontend-only boundary and source-reachability decisions remain authoritative | keep later tickets inside syntax/sema/IR/CLI/stdio ownership |
-| 01 | receipt-scoped, not final | historical proof/DAG receipt; later architecture runs are RED | remove the remaining `sema -> surface` dev edge, refresh non-vacuous gates on the immutable candidate |
-| 02 | owner implementation present | HIR/Surface historical owner suites; no current integrated receipt | preserve typed six-stage grammar and exact locations through the final pipeline/frontdoors; rerun on candidate |
-| 03 | owner implementation present, delta unqualified | Types `89/89`, Modules `130/130`, Binder `54/54`; all three strict Clippy GREEN | add discriminating cross-owner capture/topology/row mutations, prove capture order independent of numeric node IDs, refresh public API inventories/hashes and combined frozen receipt |
-| 04 | in progress | Sema all-target `87/87` GREEN; strict Sema Clippy GREEN; all root/Composition body families, Inline View topology, nested EXISTS, private local identity, local graph targets, and generated origins are implemented | repair implicit global aggregate Project and seal the downstream budget receipt; finish remaining transplant/public compile-fail rails and integrated receipt |
-| 05 | in progress; SS-05B package-green | Algebra all-target `4/4` GREEN; strict Algebra Clippy GREEN; one sealed Sema ingress | remove the original EXISTS conjunct after Semi/Anti lowering; use sealed budget and iterative traversal; add Group/Aggregate/Sort/EXISTS operator and mutation matrix |
-| 06 | planned/currently RED | reusable Tarjan/stratification code only; current Logic compile is broken by deleted Algebra V1 imports | add one Sema-document rule/graph adapter, iterative budgeted SCC, fixed aggregate policy, and delete the duplicate EXISTS producer |
-| 07 | planned/currently RED | no current Pipeline/Planning/facade qualification | assemble one document artifact; make planning iterative and semantic-only; make facade a full API allowlist |
-| 08 | planned | audit only | bounded wire DTO/framing/diagnostics/argv, shared facade consumer, deterministic exit/recovery policy, V1 deletion |
-| 09 | closeout-only | audit receipt only; Semgrep is non-vacuous but RED at 7 rules / 95 targets / 13 findings | single manifest authority, base-to-head inventories, static-policy cleanup, exact-SHA local/hosted gates, separate tested SHA from attestation commit |
+| 01 | integrated local GREEN | final architecture 14 members, 26/26 normal and 5/5 dev edges; Semgrep GREEN | retain historical receipt scope; no stale RED dispatch |
+| 02 | integrated local GREEN | source and direct-HIR depth/identity rails; current candidate includes stack-overflow repair | maintain one HIR/Surface authority |
+| 03 | integrated local GREEN | Types/Modules/Binder in 1,102-test gate | historical owner mutations are not re-executed by this receipt |
+| 04 | integrated local GREEN | Sema checked document, composition, aggregate, and budget rails | retain semantic negative oracles |
+| 05 | integrated local GREEN | Algebra normalization and EXISTS rails | no V1 fallback |
+| 06 | integrated local GREEN | Logic SCC/rule program and negation rails | no duplicate source lowerer |
+| 07 | integrated local GREEN | Planning/Pipeline/facade and external consumer 1 positive, 15/15 negatives, 89/89 roots | no runtime serving claim |
+| 08 | integrated local GREEN | CLI/diagnostics stdio and frontdoor parity 2/2 | private NDJSON is not LSP |
+| 09 | candidate A qualified; packet OPEN | clean `3c8acbe` exact-SHA local gate | assess existing family/example rails against semantic coverage, fill only proven gaps, then traceability/status reconciliation and attestation B |
 
 Current observed gates:
 
 | Gate | Result | Meaning |
 |---|---|---|
-| `cargo test -p quanta-gqlang-v2-sema --all-targets` | GREEN, 87 tests | Ticket 04 owner behavior only |
-| `cargo test -p quanta-gqlang-v2-algebra --all-targets` | GREEN, 4 tests | SS-05B boundary only; matrix incomplete |
-| Types / Modules / Binder all-target | GREEN, 89 / 130 / 54 | current owner behavior; no combined immutable receipt |
-| strict Types, Modules, Binder, Sema, Algebra Clippy | GREEN | scoped lint evidence only |
-| `cargo fmt --all --check`; `git diff --check` | GREEN | current dirty-tree formatting only |
-| architecture checker | RED: 20 normal transitions, one dev transition, plus illegal `sema -> surface` dev edge | transition and final DAG not closed |
-| `cargo check -p quanta-gqlang-v2-pipeline --lib` | RED at Logic imports of deleted Algebra V1 types | consumer cutover not started/complete |
-| workspace/final CI | unqualified | no immutable candidate or complete 01-09 receipt set |
+| clean `just qualify-local` at `3c8acbe` | GREEN, `just ci` exit 0 | exact repo-local candidate, not later commits |
+| nextest / doctests / frontdoor parity | GREEN, 1,102/1,102; 5; 2/2 | integrated code and transport rails |
+| architecture / external consumer | GREEN, final edges; 1 positive, 15/15 negative, 89/89 public roots | curated frontend boundary only |
+| strict Clippy, deny, Semgrep/non-vacuity | GREEN | current candidate policy, not hosted proof |
+| GitHub Actions | not configured | intentionally excluded from local-only development-stage closure |
 
 Current critical path is:
 
 ```text
-03 capture-proof and 04 aggregate-producer repairs
-  -> 05 algebra owner matrix
-  -> 06 logic semantic adapter
-  -> 07 pipeline + planning + facade cut
-  -> 08 frontdoors and resource bounds
-  -> 09 immutable closeout
+09 conformance coverage audit and proven-gap repair
+  -> traceability/status reconciliation
+  -> docs/receipt-only attestation B against tested SHA A
+  -> independent Semantica V3 consumer/source-pin qualification
 ```
 
-Consumer waves remain ordered, but each wave now has explicit disjoint writer
-lanes and a serial integration barrier. See
-[`WAVE_EXECUTION_PLAN.md`](./WAVE_EXECUTION_PLAN.md). Ticket 03 capture work and
-Ticket 04 aggregate/budget work share one Sema writer; splitting those paths
-would create patch-on-patch conflicts.
+The original wave schedule is retained as historical execution provenance in
+[`WAVE_EXECUTION_PLAN.md`](./WAVE_EXECUTION_PLAN.md). Do not redispatch W1-W6
+from their old RED tickets without a fresh current-source reproducer.
 
 ### Historical audit material below
 

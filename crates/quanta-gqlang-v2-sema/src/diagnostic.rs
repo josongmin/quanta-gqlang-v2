@@ -213,3 +213,75 @@ fn location_key(location: &LocatedSpanV2) -> (u32, usize, usize) {
         location.span.end,
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn diagnostic(message: &str) -> FrontendDiagnosticV2 {
+        FrontendDiagnosticV2::new(
+            FrontendStageV2::Integrity,
+            "sema.test",
+            FrontendSeverityV2::Error,
+            LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(7),
+                span: SpanV1::new(11, 13),
+            },
+            Vec::new(),
+            message,
+        )
+    }
+
+    #[test]
+    fn stage_and_severity_keywords_are_exhaustive_and_literal() {
+        let stages = [
+            (FrontendStageV2::Integrity, "integrity"),
+            (FrontendStageV2::Declaration, "declaration"),
+            (FrontendStageV2::Resolution, "resolution"),
+            (FrontendStageV2::Binding, "binding"),
+            (FrontendStageV2::Typing, "typing"),
+            (FrontendStageV2::Validation, "validation"),
+            (FrontendStageV2::Resource, "resource"),
+        ];
+        for (stage, expected) in stages {
+            assert_eq!(stage.keyword(), expected);
+        }
+
+        let severities = [
+            (FrontendSeverityV2::Error, "error"),
+            (FrontendSeverityV2::Warning, "warning"),
+            (FrontendSeverityV2::Note, "note"),
+        ];
+        for (severity, expected) in severities {
+            assert_eq!(severity.keyword(), expected);
+        }
+    }
+
+    #[test]
+    fn diagnostic_message_boundary_is_exact_for_ascii_and_utf8() {
+        for length in [1_023, 1_024, 1_025] {
+            let input = "a".repeat(length);
+            let expected = "a".repeat(length.min(MAX_MESSAGE_BYTES));
+            let actual = diagnostic(&input);
+            assert_eq!(actual.message(), expected);
+            assert_eq!(actual.message().len(), length.min(MAX_MESSAGE_BYTES));
+        }
+
+        let utf8_cases = [
+            (
+                format!("{}é", "a".repeat(1_021)),
+                format!("{}é", "a".repeat(1_021)),
+            ),
+            (
+                format!("{}é", "a".repeat(1_022)),
+                format!("{}é", "a".repeat(1_022)),
+            ),
+            (format!("{}é", "a".repeat(1_023)), "a".repeat(1_023)),
+        ];
+        for (input, expected) in utf8_cases {
+            let actual = diagnostic(&input);
+            assert_eq!(actual.message(), expected);
+            assert_eq!(actual.message().len(), expected.len());
+        }
+    }
+}

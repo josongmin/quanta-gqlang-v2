@@ -1,0 +1,38 @@
+{
+  "groups": {
+    "claude_startup": {
+      "bytes": 2190,
+      "lines": 34
+    },
+    "cursor_root_startup": {
+      "bytes": 1691,
+      "lines": 26
+    }
+  },
+  "targets": {
+    "agents": {
+      "bytes": 1691,
+      "lines": 26
+    },
+    "claude": {
+      "bytes": 499,
+      "lines": 8
+    },
+    "claude_docs": {
+      "bytes": 918,
+      "lines": 18
+    },
+    "claude_rust": {
+      "bytes": 1032,
+      "lines": 17
+    },
+    "cursor_docs": {
+      "bytes": 962,
+      "lines": 13
+    },
+    "cursor_rust": {
+      "bytes": 1068,
+      "lines": 14
+    }
+  }
+}

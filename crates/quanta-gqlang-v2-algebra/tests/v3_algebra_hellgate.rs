@@ -4,19 +4,24 @@
     reason = "owner test inspects exact lowerer diagnostics and sealed fixture rejections"
 )]
 
-use quanta_gqlang_v2_algebra::{lower_relation_item, AlgebraFailureKindV2, AlgebraFamilyV2};
+use quanta_gqlang_v2_algebra::{
+    lower_nested_relation_v2, lower_relation_item, AlgebraFailureKindV2, AlgebraFamilyV2,
+};
 use quanta_gqlang_v2_sema::test_support::{
     deep_bool_tree_document_v2, deep_relation_chain_document_v2,
     forged_aggregate_without_group_document_v2, forged_cross_join_with_on_seal_v2,
     forged_inner_join_without_on_seal_v2, forged_small_receipt_bool_tree_document_v2,
     forged_small_receipt_relation_chain_document_v2, reference_absent_item_id_v2,
-    reference_relation_document_v2, second_source_relation_document_v2, ReferenceBudgetV2,
+    reference_composition_document_v2, reference_relation_document_v2,
+    second_source_relation_document_v2, ReferenceBudgetV2, ReferenceCompositionBodyV2,
     ReferenceRelationFixtureV2, SECONDARY_REFERENCE_SOURCE_V2, SMALL_BUDGET_BOOL_TREE_EXACT_DEPTH,
     SMALL_BUDGET_BOOL_TREE_OVER_DEPTH, SMALL_BUDGET_MAX_EXPRESSION_NODES,
     SMALL_BUDGET_MAX_SEMANTIC_STEPS, SMALL_BUDGET_RELATION_CHAIN_EXACT_DEPTH,
     SMALL_BUDGET_RELATION_CHAIN_OVER_DEPTH,
 };
-use quanta_gqlang_v2_sema::{ResolvedScanSourceV2, SemanticItemV2};
+use quanta_gqlang_v2_sema::{
+    ResolvedCompositionBodyV2, ResolvedScanSourceV2, SemanticItemV2, TypedExprShapeV2,
+};
 
 #[test]
 fn absent_item_cannot_enter_the_algebra_boundary() {
@@ -33,6 +38,107 @@ fn absent_item_cannot_enter_the_algebra_boundary() {
         diagnostic.message(),
         "requested semantic item is absent from the document"
     );
+}
+
+#[test]
+fn nested_relation_rejects_a_same_source_non_owner_identity() {
+    let reference =
+        reference_composition_document_v2(ReferenceCompositionBodyV2::Relational).unwrap();
+    let ResolvedCompositionBodyV2::Query(body) = reference.composition().body() else {
+        panic!("the relational composition fixture must retain a query body");
+    };
+
+    let diagnostic =
+        match lower_nested_relation_v2(reference.document(), body.item_id(), body.root()) {
+            Ok(_) => panic!("a nested body identity is not the composition item that owns it"),
+            Err(diagnostic) => diagnostic,
+        };
+
+    assert_eq!(diagnostic.kind(), AlgebraFailureKindV2::ForeignSemanticFact);
+    assert_eq!(diagnostic.code(), "algebra.foreign_semantic_fact");
+    assert_eq!(
+        diagnostic.message(),
+        "nested relation root is not owned by the requested semantic item"
+    );
+    assert_eq!(
+        diagnostic.location().map(|location| location.location()),
+        Some(body.root().location().location())
+    );
+
+    let transplanted = reference_relation_document_v2(ReferenceRelationFixtureV2::Scan).unwrap();
+    let Some(SemanticItemV2::Relation(transplanted_relation)) =
+        transplanted.document().item(transplanted.item_id())
+    else {
+        panic!("the scan fixture must retain a relation item");
+    };
+    let diagnostic = match lower_nested_relation_v2(
+        reference.document(),
+        reference.composition_item_id(),
+        transplanted_relation.root(),
+    ) {
+        Ok(_) => panic!("another same-source document's root is not owned by this composition"),
+        Err(diagnostic) => diagnostic,
+    };
+    assert_eq!(diagnostic.kind(), AlgebraFailureKindV2::ForeignSemanticFact);
+    assert_eq!(diagnostic.code(), "algebra.foreign_semantic_fact");
+    assert_eq!(
+        diagnostic.message(),
+        "nested relation root is not owned by the requested semantic item"
+    );
+    assert_eq!(
+        diagnostic.location().map(|location| location.location()),
+        Some(transplanted_relation.root().location().location())
+    );
+}
+
+#[test]
+fn nested_relation_accepts_only_the_exact_sealed_owner_paths() {
+    let composition =
+        reference_composition_document_v2(ReferenceCompositionBodyV2::Relational).unwrap();
+    let ResolvedCompositionBodyV2::Query(body) = composition.composition().body() else {
+        panic!("the relational composition fixture must retain a query body");
+    };
+    let lowered_body = lower_nested_relation_v2(
+        composition.document(),
+        composition.composition_item_id(),
+        body.root(),
+    )
+    .unwrap();
+    assert_eq!(lowered_body.item_id(), composition.composition_item_id());
+    assert_eq!(lowered_body.stage_key(), body.root().key());
+
+    let relation = reference_relation_document_v2(ReferenceRelationFixtureV2::Exists).unwrap();
+    let Some(SemanticItemV2::Relation(outer)) = relation.document().item(relation.item_id()) else {
+        panic!("the EXISTS fixture must retain a relation item");
+    };
+    let predicate = outer.root().predicate().unwrap().expression();
+    let TypedExprShapeV2::RelationExists { relation_root, .. } = predicate.shape() else {
+        panic!("the EXISTS fixture predicate must retain a nested relation identity");
+    };
+    let nested = relation.document().nested_relation(*relation_root).unwrap();
+    let lowered_nested =
+        lower_nested_relation_v2(relation.document(), relation.item_id(), nested).unwrap();
+    assert_eq!(lowered_nested.item_id(), relation.item_id());
+    assert_eq!(lowered_nested.stage_key(), nested.key());
+
+    let nested_two_levels =
+        reference_relation_document_v2(ReferenceRelationFixtureV2::NestedExistsTwoLevels).unwrap();
+    let owned = nested_two_levels
+        .document()
+        .nested_relations()
+        .map(|(_, relation)| relation)
+        .collect::<Vec<_>>();
+    assert_eq!(owned.len(), 2, "the fixture seals outer and inner roots");
+    for root in owned {
+        let lowered = lower_nested_relation_v2(
+            nested_two_levels.document(),
+            nested_two_levels.item_id(),
+            root,
+        )
+        .unwrap();
+        assert_eq!(lowered.item_id(), nested_two_levels.item_id());
+        assert_eq!(lowered.stage_key(), root.key());
+    }
 }
 
 #[test]

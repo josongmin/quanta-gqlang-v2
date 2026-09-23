@@ -2,7 +2,69 @@
 
 > 2026-09-23 V3 producer extension: [Ticket 10a](./10a-v3-frontend-execution-contract.md) adds source-bound digest/literal golden vectors, facade-only positive and compile-fail proof, and exact-source local qualification. Older Ticket 09 receipts do not qualify the new execution API. A Semantica consumer build and two-repo E2E require separate paired source pins; producer-local GREEN is not product GREEN.
 
-Status: `PLANNED — CLOSEOUT BLOCKED; ONLY TICKET AUTHORIZED TO CLOSE PACKET`
+Status: `IMPLEMENTATION/POLICY LOCAL GREEN AT 3c8acbe; CONFORMANCE/PACKET CLOSEOUT OPEN`
+
+Current checkpoint (2026-09-23): clean candidate A
+`3c8acbe21a1ce48022c12642881d1fafc190ddb1` / tree
+`173b19e1f5b3aabd23fa22a6d09e509c723316dd` passed
+`just qualify-local` (`just ci`, exit 0, 1,102/1,102 nextest, 257 seconds).
+The ignored exact-SHA receipt is `target/qualification/<candidate-sha>/receipt.json`.
+The older RED counts and hosted-CI closeout commands below are historical
+snapshot instructions, not current work orders: GitHub Actions is intentionally
+not configured. `self_validation.rs` already selects and executes all 18
+registered families at the facade boundary; `surface/tests/v3_examples_corpus.rs`
+already checks the shipped example filesystem against three docs and verifies
+parse/format fixed points. Those rails do not by themselves establish the
+ticket's full semantic matrix or shipped-CLI example smoke. Reuse their
+authority, audit owner tests for the remaining behavioral claims, and add only
+proven missing oracles. Then reconcile current traceability/status and create
+docs/receipt-only attestation B with `tested_sha=A` and `attestation_sha=B`;
+Semantica consumer qualification remains separate.
+
+### Current-source reuse audit (2026-09-23)
+
+| Claim | Existing owner proof | Disposition |
+|---|---|---|
+| 18 registered root families and two supplemental units | `conformance/tests/self_validation.rs`: registry uniqueness, facade closed/open paths, exact broad disposition, explicit declaration/rule/unsupported cases; focused run 5/5 | Keep this one registry. It is routing/disposition proof, not the full semantic option/reference matrix. Do not rename it merely to satisfy the old file list. |
+| shipped example filesystem, three public lists, parse/format fixed point | `surface/tests/v3_examples_corpus.rs`: focused run 3/3 and dynamic filesystem enumeration | Keep Surface as grammar/example authority. Do not add `examples-v2.tsv` with the same 18 paths. |
+| shipped CLI example file paths and interrupted stdio reads | `codex/gqlang-closeout-hardening@c869076` has all-example CLI file smoke and interrupted-read repair; its clean isolated `just qualify-local` passed 1,107/1,107. Both behaviors are integrated into dirty main, whose latest `just ci` passed 1,167/1,167. | The branch receipt does not qualify dirty main. The final source needs a clean committed-SHA qualification; do not cherry-pick duplicate behavior. |
+| F01 authored JOIN and CROSS | `conformance/tests/self_validation.rs` on `c869076` compiles source inner JOIN with ON, explicit CROSS, and preceding filter through the facade; its V3 relation tree retains distinct mode, predicate, inputs, and prior stage. The same semantic oracle is present in dirty main. | Cross-boundary oracle gap closed on a qualified branch, but dirty main still needs final-source proof. No new production defect reproduced. The closed row contract requires distinct output field names, so the fixture projects the overlapping left schema first. |
+| F02 public source predicate typing | `conformance/tests/self_validation.rs` on `c869076` compiles valid Bool-field/int-comparison neighbors and rejects integer/Int-field/String-vs-Int predicates before V3 execution document creation, with exact `types.bad_overload` code and byte spans; owner bool-fact test remains in `sema/tests/v3_semantic_kernel.rs`. The same semantic oracle is present in dirty main. | This closes a proved cross-boundary oracle gap on the qualified branch, not a production code defect. Dirty main and the rest of the F01-F37 disposition remain OPEN. |
+| F10 authored multi-rule reachability | `conformance/tests/self_validation.rs` on `c869076` compiles two source-authored mutually recursive rules through the facade; one checked program has two distinct source-ordered members and a two-member recursive SCC. The V3 execution DTO correctly has zero rule items under its explicit unsupported boundary. The same semantic oracle is present in dirty main. | Source-to-program oracle gap closed on a qualified branch, but dirty main still needs final-source proof. No new production defect reproduced. This does not authorize a runtime to execute rule items. |
+| F04 global nested aggregate | Clean `3c8acbe` allowed `sum(sum(f.score))` and `count(is_null(sum(f.score)))` through the facade. Dirty main now has producer-owned `NestedAggregateCallGuardV2`, Sema owner positives/negatives, and exact facade negatives while preserving legal global/grouped sums. The latest overlay `just ci` passed 1,167/1,167. | **Code fix integrated into dirty overlay; clean-SHA proof OPEN.** The old RED branch proves the defect, not the repair. Commit the final source and rerun `just qualify-local`; do not reuse candidate A or `c869076` receipts. |
+| F08 certification independent of document order | `sema/tests/v3_document_transaction.rs::certification_checks_the_complete_profile_set_in_both_authored_orders` exercises profile-before-directive and directive-before-profile, each with certified-only positive and allowlist negative; the negative checks the exact code and directive span. Sema owner nextest 145/145 and owner Clippy passed on the post-gate patch. | Owner behavioral gap now has an exact source-order oracle. It postdates the 1,167/1,167 whole-workspace gate; full current-source and clean-SHA proof remain OPEN. |
+| F26 direct raw-HIR destruction boundary | Clean `3c8acbe` aborted when dropping a 100,000-level public raw relation/document. `codex/gqlang-hir-iterative-drop@3cbd327` repaired the four recursive HIR owners, then the same implementation and direct-drop child matrix were integrated into dirty main. The latest overlay `just ci` passed 1,167/1,167, including relation/document/value/bool/shape 100,000-depth and mixed-kind 20,000-depth rails. The curated facade does not export HIR. | **Code fix integrated into dirty overlay; clean-SHA proof OPEN.** The direct-HIR move-out API change was reviewed against workspace consumers; external HIR-crate consumers may need `mem::replace`/borrow migration. Explicit Clone/Debug/PartialEq on pathological raw depth is not claimed as an ingress guarantee. |
+| public facade inventory and privacy | Candidate A proved 89/89 exported roots, one positive, and 15/15 negatives. Dirty main additionally compiles actual external accessor/enum contracts for 89/89 roots, denies direct public leakage, and passes the same privacy negatives in `just ci`. | Keep the compiler-owned executable gate; a second `v3_public_api_inventory.rs` would duplicate it. Re-run it in clean committed-SHA qualification. |
+| test path ledger | `docs/language/test_hellgate_ledger.md` plus Surface `v3_doc_inventory.rs` path existence | Keep and correct the existing ledger. The old instruction to delete it for `TEST_PATH_INVENTORY.tsv` is not a current defect by itself. |
+| owner semantic negatives and F01-F37 disposition | owner tests and receipts exist, but the old 11-columns-per-family requirement has not been proven one-to-one against current tests | Audit reachable behavior and owner oracles; add a test only for a demonstrated coverage hole. Record a concise source-bound disposition instead of copying every test name into a second inventory. OPEN. |
+
+### Current-source P0 finding disposition — dirty overlay `42d47b9c…237401d`
+
+This is a test-to-finding audit of the current patch, not a second test registry
+or a clean-SHA qualification. The patch fingerprint is defined in Receipt 09.
+The overlay `just ci` passed 1,167/1,167; a later source edit invalidates that
+gate. The remaining P1/P2 and family-level semantic disposition is still open.
+
+| Finding | Current producer/cross-boundary oracle | Disposition |
+|---|---|---|
+| F01 JOIN/ON reachability | `conformance/tests/self_validation.rs::authored_join_on_and_cross_join_retain_distinct_v3_semantics` checks the authored source through the facade and distinct V3 join modes, inputs, and ON predicate. | Code path and cross-boundary oracle present; clean-SHA proof pending. |
+| F02 predicate typing | `conformance/tests/self_validation.rs::closed_source_predicates_reject_non_boolean_and_invalid_comparison` checks positive neighbors and exact typed negative codes/spans before execution projection. | Code path and cross-boundary oracle present; clean-SHA proof pending. |
+| F03 locally red proof rail | `just ci` at the recorded patch fingerprint exited 0, including architecture, deny, typos, Taplo, Semgrep non-vacuity, and both strict Clippy toolchains. | Local dirty-overlay rail GREEN only; clean-SHA receipt pending. |
+| F04 aggregate placement/nesting | `sema/tests/v3_document_transaction.rs::global_nested_aggregate_is_rejected_at_the_inner_call` plus the exact legal/illegal source matrix in `conformance/tests/self_validation.rs`. | Former P0 reproduced on clean base and fixed in dirty overlay; clean-SHA proof pending. |
+| F10 document-wide rule program | `conformance/tests/self_validation.rs::two_authored_mutual_rules_reach_one_checked_program` checks two source-authored members and one recursive SCC; Logic owns SCC negatives. | Cross-boundary oracle present; V3 execution intentionally excludes rule items. |
+| F15 catalog/graph reference kind | `modules/tests/v3_document_predeclaration.rs::all_six_family_references_resolve_exact_host_kinds_and_forward_paths` and `each_family_rejects_wrong_kind_and_unknown_target`; Sema checks graph use locations. | Owner authority and source-document consumer oracles present. |
+| F16 inline VIEW compilation | `pipeline/tests/v3_compiled_document_assembly.rs::inline_view_is_algebra_checked_before_its_catalog_no_plan_outcome` plus Sema's dependency-order/cycle tests. | Canonical relation path is exercised; clean-SHA proof pending. |
+| F17 waypoint as false bound | `logic/tests/v3_graph_query_hellgate.rs::reachability_with_via_waypoint_but_no_depth_rejects` and `v3_logic_hellgate.rs::waypoint_count_is_not_a_path_bound`. | Explicit depth/witness legality owner oracle present. |
+| F18 CHECK mode/confirm/emit loss | `planning/tests/v3_planning_hellgate.rs::resolved_check_contract_enforces_the_complete_option_matrix` and `pipeline/tests/v3_compiled_document_assembly.rs::nested_check_retains_its_own_graph_identity` retain the sealed policy. | Owner and assembly oracles present; runtime CHECK remains downstream/unsupported in V3 execution. |
+| F19 module graph authority split | `modules/tests/v3_document_predeclaration.rs::final_family_refs_must_come_from_the_same_validator_session` and Sema's `forward_declaration_dependency_uses_types_owned_lazy_path_and_preserves_binding_id`. | Same-session authority oracles present; clean-SHA proof pending. |
+| F30 rule call edge loss | `logic/tests/v3_logic_source.rs` rejects dropped/extra/wrong call edges; Sema's source-rule dependency-polarity test checks overload ancestry. | Producer and SCC ingress oracles present. |
+| F31 dead builtin effects | `types/tests/v3_types_hellgate.rs::parent_nodes_conservatively_compose_call_effects` and `unresolved_callable_effects_are_fail_closed` check propagation; `planning/tests/v3_capability_derivation.rs::an_on_join_derives_join_and_folds_its_effect` and `v3_planning_truth.rs` check planned effect classes. | Owner-to-planning effect path present; the semantic cost is qualitative, not a runtime-cost estimate. |
+
+The legacy “Files To Add Or Move,” exact test filenames, and forced per-family
+matrix below are frozen planning hypotheses. They are **not** an instruction
+to duplicate the current Surface corpus, executable facade gate, or proof
+ledger. A current behavioral gap still blocks this ticket; the clean `just ci`
+receipt alone does not close it.
 
 Decision authority: [00 — Packet Scope And Pinned Decisions](./00-packet-scope-and-pinned-decisions.md)
 

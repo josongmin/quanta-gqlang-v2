@@ -2395,6 +2395,34 @@ mod tests {
         }
     }
 
+    fn operator(symbol: &str, overload_id: u32) -> ExecutionOperatorV3 {
+        ExecutionOperatorV3 {
+            symbol: symbol.to_owned(),
+            overload_id,
+        }
+    }
+
+    fn contract_with_shape(shape: ExecutionExpressionShapeV3) -> ExecutionDigestV3 {
+        let mut item = relation_item();
+        item.relation.as_mut().expect("relation").expressions = Box::new([ExecutionExpressionV3 {
+            id: key(0, 2),
+            value_type: ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Int),
+            shape,
+        }]);
+        contract_of(vec![item])
+    }
+
+    fn assert_all_digests_distinct(digests: &[ExecutionDigestV3]) {
+        let mut deduped = digests.to_vec();
+        deduped.sort_by(|left, right| left.as_bytes().cmp(right.as_bytes()));
+        deduped.dedup();
+        assert_eq!(
+            deduped.len(),
+            digests.len(),
+            "two DTO arms share one encoding"
+        );
+    }
+
     fn relation() -> ExecutionRelationV3 {
         ExecutionRelationV3 {
             item_id: item(0, 1),
@@ -2797,5 +2825,253 @@ mod tests {
         let mut policy = relation_item();
         policy.plan.policy_family = ExecutionPolicyFamilyV3::Graph;
         assert_ne!(contract_of(vec![policy]), base);
+    }
+
+    #[test]
+    fn every_expression_shape_and_call_target_has_a_distinct_encoding() {
+        let lhs = key(0, 3);
+        let rhs = key(0, 4);
+        let op = operator("+", 7);
+        let shapes = vec![
+            ExecutionExpressionShapeV3::Literal(ExecutionLiteralV3::Int(1)),
+            ExecutionExpressionShapeV3::Binding(binding("value")),
+            ExecutionExpressionShapeV3::Path {
+                base: lhs,
+                segments: Box::new(["field".to_owned()]),
+            },
+            ExecutionExpressionShapeV3::Unary {
+                operator: op.clone(),
+                operand: lhs,
+            },
+            ExecutionExpressionShapeV3::Binary {
+                operator: op.clone(),
+                lhs,
+                rhs,
+            },
+            ExecutionExpressionShapeV3::Call {
+                target: ExecutionCallTargetV3::Builtin {
+                    name: "len".to_owned(),
+                },
+                arguments: Box::new([Some(lhs), None]),
+            },
+            ExecutionExpressionShapeV3::Call {
+                target: ExecutionCallTargetV3::Predicate {
+                    name: "p".to_owned(),
+                },
+                arguments: Box::new([Some(lhs)]),
+            },
+            ExecutionExpressionShapeV3::Call {
+                target: ExecutionCallTargetV3::HostPredicate {
+                    fingerprint: "00ff".to_owned(),
+                },
+                arguments: Box::new([Some(lhs)]),
+            },
+            ExecutionExpressionShapeV3::Paren(lhs),
+            ExecutionExpressionShapeV3::Record(Box::new([("field".to_owned(), lhs)])),
+            ExecutionExpressionShapeV3::List(Box::new([lhs, rhs])),
+            ExecutionExpressionShapeV3::BoolValue(lhs),
+            ExecutionExpressionShapeV3::Compare {
+                operator: op.clone(),
+                lhs,
+                rhs,
+            },
+            ExecutionExpressionShapeV3::And {
+                operator: op.clone(),
+                lhs,
+                rhs,
+            },
+            ExecutionExpressionShapeV3::Or {
+                operator: op.clone(),
+                lhs,
+                rhs,
+            },
+            ExecutionExpressionShapeV3::Not {
+                operator: op,
+                operand: lhs,
+            },
+            ExecutionExpressionShapeV3::LogicalQuantifier {
+                kind: ExecutionLogicalQuantifierV3::Exists,
+                binders: Box::new([binding("x")]),
+                body: lhs,
+            },
+            ExecutionExpressionShapeV3::RelationExists {
+                polarity: ExecutionExistsPolarityV3::Exists,
+                relation_root: lhs,
+                correlations: Box::new([ExecutionCorrelationV3 {
+                    binding: binding("outer"),
+                    reference: rhs,
+                }]),
+            },
+        ];
+        let digests: Vec<_> = shapes.into_iter().map(contract_with_shape).collect();
+        assert_all_digests_distinct(&digests);
+    }
+
+    #[test]
+    fn expression_payload_fields_move_the_contract_digest() {
+        let lhs = key(0, 3);
+        let rhs = key(0, 4);
+        let changed = key(0, 5);
+        let base_call = contract_with_shape(ExecutionExpressionShapeV3::Call {
+            target: ExecutionCallTargetV3::Predicate {
+                name: "p".to_owned(),
+            },
+            arguments: Box::new([Some(lhs), None]),
+        });
+        for shape in [
+            ExecutionExpressionShapeV3::Call {
+                target: ExecutionCallTargetV3::Predicate {
+                    name: "q".to_owned(),
+                },
+                arguments: Box::new([Some(lhs), None]),
+            },
+            ExecutionExpressionShapeV3::Call {
+                target: ExecutionCallTargetV3::Predicate {
+                    name: "p".to_owned(),
+                },
+                arguments: Box::new([Some(changed), None]),
+            },
+            ExecutionExpressionShapeV3::Call {
+                target: ExecutionCallTargetV3::Predicate {
+                    name: "p".to_owned(),
+                },
+                arguments: Box::new([Some(lhs), Some(rhs)]),
+            },
+        ] {
+            assert_ne!(contract_with_shape(shape), base_call);
+        }
+
+        let base_quantifier = contract_with_shape(ExecutionExpressionShapeV3::LogicalQuantifier {
+            kind: ExecutionLogicalQuantifierV3::Exists,
+            binders: Box::new([binding("x")]),
+            body: lhs,
+        });
+        for shape in [
+            ExecutionExpressionShapeV3::LogicalQuantifier {
+                kind: ExecutionLogicalQuantifierV3::Forall,
+                binders: Box::new([binding("x")]),
+                body: lhs,
+            },
+            ExecutionExpressionShapeV3::LogicalQuantifier {
+                kind: ExecutionLogicalQuantifierV3::Exists,
+                binders: Box::new([binding("y")]),
+                body: lhs,
+            },
+            ExecutionExpressionShapeV3::LogicalQuantifier {
+                kind: ExecutionLogicalQuantifierV3::Exists,
+                binders: Box::new([binding("x")]),
+                body: changed,
+            },
+        ] {
+            assert_ne!(contract_with_shape(shape), base_quantifier);
+        }
+
+        let base_exists = contract_with_shape(ExecutionExpressionShapeV3::RelationExists {
+            polarity: ExecutionExistsPolarityV3::Exists,
+            relation_root: lhs,
+            correlations: Box::new([ExecutionCorrelationV3 {
+                binding: binding("outer"),
+                reference: rhs,
+            }]),
+        });
+        for shape in [
+            ExecutionExpressionShapeV3::RelationExists {
+                polarity: ExecutionExistsPolarityV3::NotExists,
+                relation_root: lhs,
+                correlations: Box::new([ExecutionCorrelationV3 {
+                    binding: binding("outer"),
+                    reference: rhs,
+                }]),
+            },
+            ExecutionExpressionShapeV3::RelationExists {
+                polarity: ExecutionExistsPolarityV3::Exists,
+                relation_root: changed,
+                correlations: Box::new([ExecutionCorrelationV3 {
+                    binding: binding("outer"),
+                    reference: rhs,
+                }]),
+            },
+            ExecutionExpressionShapeV3::RelationExists {
+                polarity: ExecutionExistsPolarityV3::Exists,
+                relation_root: lhs,
+                correlations: Box::new([ExecutionCorrelationV3 {
+                    binding: binding("changed"),
+                    reference: rhs,
+                }]),
+            },
+        ] {
+            assert_ne!(contract_with_shape(shape), base_exists);
+        }
+    }
+
+    #[test]
+    fn join_source_composition_body_and_sample_mode_arms_are_digest_bound() {
+        let mut join_digests = Vec::new();
+        for mode in [
+            None,
+            Some(ExecutionJoinModeV3::Inner),
+            Some(ExecutionJoinModeV3::Cross),
+        ] {
+            let mut candidate = relation_item();
+            let root = &mut candidate.relation.as_mut().expect("relation").root;
+            root.family = AlgebraFamilyV2::Join;
+            root.join_mode = mode;
+            join_digests.push(contract_of(vec![candidate]));
+        }
+        assert_all_digests_distinct(&join_digests);
+
+        let mut source_digests = Vec::new();
+        for authority in [
+            ExecutionRelationAuthorityV3::Host,
+            ExecutionRelationAuthorityV3::CanonicalWorkspaceFiles,
+            ExecutionRelationAuthorityV3::CatalogView,
+            ExecutionRelationAuthorityV3::CompositionBinding,
+        ] {
+            let mut candidate = relation_item();
+            candidate.relation.as_mut().expect("relation").root.source = Some(ExecutionSourceV3 {
+                authority,
+                kind: ExecutionSourceKindV3::Relation,
+                namespace: Some("ns".to_owned()),
+                name: "items".to_owned(),
+            });
+            source_digests.push(contract_of(vec![candidate]));
+        }
+        assert_all_digests_distinct(&source_digests);
+
+        let mut body_digests = Vec::new();
+        for body in [
+            ExecutionCompositionBodyV3::Relation,
+            ExecutionCompositionBodyV3::Graph(ExecutionGraphKindV3::Taint),
+            ExecutionCompositionBodyV3::Check,
+            ExecutionCompositionBodyV3::Explain,
+        ] {
+            let mut candidate = composition_item(None);
+            candidate.composition.as_mut().expect("composition").body = body;
+            body_digests.push(contract_of(vec![candidate]));
+        }
+        assert_all_digests_distinct(&body_digests);
+
+        let mut sample_digests = Vec::new();
+        for mode in [
+            ExecutionSampleModeV3::Lexical,
+            ExecutionSampleModeV3::Semantic,
+            ExecutionSampleModeV3::Hybrid,
+        ] {
+            let mut candidate = composition_item(None);
+            let binding = candidate
+                .composition
+                .as_mut()
+                .expect("composition")
+                .bindings
+                .first_mut()
+                .expect("one binding");
+            binding.producer = ExecutionCompositionProducerV3::Sample {
+                query_text: "auth".to_owned(),
+                mode,
+                limit: 7,
+            };
+            sample_digests.push(contract_of(vec![candidate]));
+        }
+        assert_all_digests_distinct(&sample_digests);
     }
 }

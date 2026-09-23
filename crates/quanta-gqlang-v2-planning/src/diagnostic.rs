@@ -59,8 +59,9 @@ impl InputDocumentMismatchReasonV2 {
 /// Why a sealed CHECK contract has no coherent planning policy.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CheckInvalidReasonV2 {
-    /// The supplied nested graph contract names an item the resolved CHECK does
-    /// not.
+    /// The supplied nested graph contract differs from the exact contract
+    /// derived from the resolved CHECK's nested FIND, either in identity or in
+    /// a sealed payload field.
     NestedGraphIdentityMismatch,
     /// A nested graph contract was supplied, but the resolved CHECK carries no
     /// semantic confirm input.
@@ -283,7 +284,8 @@ impl PlanningDiagnosticV1 {
             ),
             Self::InvalidCheck { reason, .. } => match reason {
                 CheckInvalidReasonV2::NestedGraphIdentityMismatch => {
-                    "CHECK nested graph contract names an item the resolved CHECK does not"
+                    "CHECK nested graph contract differs from the resolved CHECK's sealed nested \
+                     graph identity or payload"
                         .to_owned()
                 }
                 CheckInvalidReasonV2::UnexpectedNestedGraph => {

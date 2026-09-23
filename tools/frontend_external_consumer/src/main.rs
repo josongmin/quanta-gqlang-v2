@@ -10,22 +10,34 @@
 //! calls the closed compiler. Nothing here reaches into an owner crate.
 
 #![forbid(unsafe_code)]
+#![deny(unused_imports)]
 
 use quanta_gqlang_v2_frontend_contract::{
     analyze_source_document_v2, compile_source_document_v3, format_source_document_v2,
     AlgebraFamilyV2, AnalysisDocumentV2, AnalysisItemV2, AnalysisStatusV2, CheckedLocatedSpanV2,
-    ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledSourceDocumentV3,
-    CompiledItemV2, CompiledRuleProgramV2, ExecutionCardinalityV3,
-    ExecutionCompositionBodyV3, ExecutionCompositionProducerV3, ExecutionExpressionShapeV3,
-    ExecutionFamilyV3, ExecutionLiteralV3,
-    ExecutionRelationAuthorityV3, ExecutionSampleModeV3, ExecutionScalarTypeV3,
-    ExecutionValueTypeV3, FrontendAuthorityErrorV2, FrontendAuthorityLocationV2,
-    FrontendAuthoritySourceV2, FrontendBudgetV2, FrontendCallableParameterInputV2,
-    FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2, FrontendDiagnosticV2, FrontendFailureV2,
-    FrontendLanguageVersionV2, FrontendLockfileInputV2, FrontendPackInputV2, FrontendSeverityV2,
-    FrontendStageV2, FrontendTransactionErrorV2, LocatedSpanV2, NoPlanReasonV2,
-    OpenAnalysisAuthorityV2, PlannedItemV2, RuleProgramMemberV2, SemanticPlanV2, SourceIdV2,
-    SpanV1, UnresolvedAnalysisFactV2,
+    ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledItemV2,
+    CompiledRuleProgramV2, CompiledSourceDocumentV3, ExecutionAuthorityV3, ExecutionBindingV3,
+    ExecutionCallTargetV3, ExecutionCardinalityV3, ExecutionCompositionBindingV3,
+    ExecutionCompositionBodyV3, ExecutionCompositionProducerV3, ExecutionCompositionV3,
+    ExecutionCorrelationV3, ExecutionDeterminismV3, ExecutionDigestV3, ExecutionDocumentV3,
+    ExecutionEffectV3, ExecutionEvidenceV3, ExecutionExistsPolarityV3, ExecutionExpressionShapeV3,
+    ExecutionExpressionV3, ExecutionFamilyV3, ExecutionFieldV3, ExecutionFiniteFloatV3,
+    ExecutionGraphKindV3, ExecutionItemV3, ExecutionJoinModeV3, ExecutionLiteralV3,
+    ExecutionLogicalQuantifierV3, ExecutionNullOrderV3, ExecutionOperatorV3, ExecutionOrderKeyV3,
+    ExecutionPlanV3, ExecutionPolicyFamilyV3, ExecutionRecordFieldV3, ExecutionRelationAuthorityV3,
+    ExecutionRelationV3, ExecutionRelationalOperatorV3, ExecutionSampleModeV3,
+    ExecutionScalarTypeV3, ExecutionSchemaV3, ExecutionSortDirectionV3, ExecutionSourceKindV3,
+    ExecutionSourceV3, ExecutionUnionVariantV3, ExecutionValueTypeV3, FrontendAuthorityErrorV2,
+    FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
+    FrontendCallableParameterInputV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
+    FrontendDiagnosticV2, FrontendFailureV2, FrontendGraphReferenceInputV2,
+    FrontendLanguageVersionV2, FrontendLockfileInputV2, FrontendPackInputV2,
+    FrontendRelationAuthorityV2, FrontendRelationCardinalityV2, FrontendRelationFieldInputV2,
+    FrontendRelationInputV2, FrontendScalarTypeV2, FrontendSeverityV2, FrontendStageV2,
+    FrontendTransactionErrorV2, GraphReferenceKindV2, LocatedSpanV2, NoPlanReasonV2,
+    OpenAnalysisAuthorityV2, PlannedItemV2, RuleProgramMemberV2, SemanticItemIdV2, SemanticPlanV2,
+    SourceIdV2, SourceQualifiedNodeIdV2, SpanV1, UnresolvedAnalysisFactV2,
+    OPEN_AUTHORITY_INCOMPLETE_CODE,
 };
 
 /// Document identity of the probe source.
@@ -94,7 +106,9 @@ fn compiled_item_invariants_hold(item: &CompiledItemV2) -> bool {
 }
 
 /// Every compiled-source accessor the facade exposes to a sibling repository.
-fn compiled_document_probe(document: &CompiledSourceDocumentV3) -> (SourceIdV2, usize, usize, bool) {
+fn compiled_document_probe(
+    document: &CompiledSourceDocumentV3,
+) -> (SourceIdV2, usize, usize, bool) {
     (
         document.source_id(),
         document.diagnostics().len(),
@@ -219,10 +233,7 @@ fn assert_exact_composition_handoff(document: &CompiledSourceDocumentV3, binding
         binding_field.value_type(),
         &ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::RepoPath)
     );
-    assert_eq!(
-        binding_schema.cardinality(),
-        ExecutionCardinalityV3::Set
-    );
+    assert_eq!(binding_schema.cardinality(), ExecutionCardinalityV3::Set);
     assert!(
         binding.relation().is_none(),
         "SAMPLE is not a relation producer"
@@ -253,11 +264,450 @@ fn assert_exact_composition_handoff(document: &CompiledSourceDocumentV3, binding
     assert_eq!(source.name(), binding_name);
 }
 
+/// Compile-time semantic API receipt for the facade's immutable execution DTOs.
+///
+/// The root allowlist gate only sees re-exported names. These typed reads make
+/// rustc reject an accessor removal or return-type drift in the owner types.
+/// The functions are intentionally never fed synthetic values: the real
+/// closed-compiler transactions below exercise the same methods at runtime.
+fn execution_document_api(document: &ExecutionDocumentV3) -> usize {
+    let _: SourceIdV2 = document.source_id();
+    let _: &[ExecutionItemV3] = document.items();
+    let _: Option<&ExecutionItemV3> = document.item(SemanticItemIdV2::new(
+        document.source_id(),
+        document.items()[0].item_id().hir_item_id(),
+    ));
+    let _: ExecutionDigestV3 = document.source_digest();
+    let _: ExecutionDigestV3 = document.contract_digest();
+    let _: ExecutionDigestV3 = document.qualification_digest();
+    document.items().len()
+}
+
+fn execution_item_api(item: &ExecutionItemV3) -> usize {
+    let _: SemanticItemIdV2 = item.item_id();
+    let _: ExecutionFamilyV3 = item.family();
+    let _: Option<&ExecutionRelationV3> = item.relation();
+    let _: Option<&ExecutionCompositionV3> = item.composition();
+    let _: &ExecutionPlanV3 = item.plan();
+    std::mem::size_of_val(item.plan())
+}
+
+fn execution_plan_api(plan: &ExecutionPlanV3) -> usize {
+    let _: ExecutionAuthorityV3 = plan.authority();
+    let _: ExecutionDeterminismV3 = plan.determinism();
+    let _: ExecutionEvidenceV3 = plan.evidence();
+    let _: ExecutionEffectV3 = plan.effect();
+    let _: ExecutionPolicyFamilyV3 = plan.policy_family();
+    std::mem::size_of_val(plan)
+}
+
+fn execution_relation_api(relation: &ExecutionRelationV3) -> usize {
+    let _: SemanticItemIdV2 = relation.item_id();
+    let _: &ExecutionRelationalOperatorV3 = relation.root();
+    let _: &[ExecutionExpressionV3] = relation.expressions();
+    relation.expressions().len()
+}
+
+fn execution_operator_node_api(node: &ExecutionRelationalOperatorV3) -> usize {
+    let _: AlgebraFamilyV2 = node.family();
+    let _: Option<ExecutionJoinModeV3> = node.join_mode();
+    let _: SourceQualifiedNodeIdV2 = node.stage();
+    let _: Option<&ExecutionSourceV3> = node.source();
+    let _: &ExecutionSchemaV3 = node.schema();
+    let _: &[SourceQualifiedNodeIdV2] = node.predicates();
+    let _: &[SourceQualifiedNodeIdV2] = node.expressions();
+    let _: &[ExecutionCorrelationV3] = node.correlations();
+    let _: &[ExecutionBindingV3] = node.partition_input();
+    let _: &[ExecutionRelationalOperatorV3] = node.children();
+    node.children().len()
+}
+
+fn execution_schema_api(schema: &ExecutionSchemaV3) -> usize {
+    let _: &[ExecutionFieldV3] = schema.fields();
+    let _: ExecutionCardinalityV3 = schema.cardinality();
+    let _: &[SourceQualifiedNodeIdV2] = schema.partition_keys();
+    let _: &[ExecutionOrderKeyV3] = schema.order();
+    schema.fields().len()
+}
+
+fn execution_field_api(field: &ExecutionFieldV3) -> usize {
+    let _: &str = field.name();
+    let _: &ExecutionValueTypeV3 = field.value_type();
+    field.name().len()
+}
+
+fn execution_order_key_api(key: &ExecutionOrderKeyV3) -> usize {
+    let _: SourceQualifiedNodeIdV2 = key.expression();
+    let _: ExecutionSortDirectionV3 = key.direction();
+    let _: ExecutionNullOrderV3 = key.null_order();
+    let _: &ExecutionValueTypeV3 = key.value_type();
+    std::mem::size_of_val(key.value_type())
+}
+
+fn execution_expression_api(expression: &ExecutionExpressionV3) -> usize {
+    let _: SourceQualifiedNodeIdV2 = expression.id();
+    let _: &ExecutionValueTypeV3 = expression.value_type();
+    let _: &ExecutionExpressionShapeV3 = expression.shape();
+    std::mem::size_of_val(expression.shape())
+}
+
+fn execution_source_api(source: &ExecutionSourceV3) -> usize {
+    let _: ExecutionRelationAuthorityV3 = source.authority();
+    let _: ExecutionSourceKindV3 = source.kind();
+    let _: Option<&str> = source.namespace();
+    let _: &str = source.name();
+    source.name().len()
+}
+
+fn execution_binding_api(binding: &ExecutionBindingV3) -> usize {
+    let _: SourceIdV2 = binding.source_id();
+    let _: u32 = binding.owner_node();
+    let _: usize = binding.ordinal();
+    let _: &str = binding.name();
+    binding.ordinal()
+}
+
+fn execution_correlation_api(correlation: &ExecutionCorrelationV3) -> usize {
+    let _: &ExecutionBindingV3 = correlation.binding();
+    let _: SourceQualifiedNodeIdV2 = correlation.reference();
+    std::mem::size_of_val(correlation.binding())
+}
+
+fn execution_composition_api(composition: &ExecutionCompositionV3) -> usize {
+    let _: &[ExecutionCompositionBindingV3] = composition.bindings();
+    let _: &ExecutionBindingV3 = composition.with_binding();
+    let _: SemanticItemIdV2 = composition.body_item_id();
+    let _: ExecutionFamilyV3 = composition.body_family();
+    let _: Option<&ExecutionRelationV3> = composition.body_relation();
+    let _: &ExecutionCompositionBodyV3 = composition.body();
+    composition.bindings().len()
+}
+
+fn execution_composition_binding_api(binding: &ExecutionCompositionBindingV3) -> usize {
+    let _: &ExecutionBindingV3 = binding.binding();
+    let _: SemanticItemIdV2 = binding.producer_item_id();
+    let _: ExecutionFamilyV3 = binding.producer_family();
+    let _: Option<&ExecutionSchemaV3> = binding.schema();
+    let _: Option<&ExecutionRelationV3> = binding.relation();
+    let _: &ExecutionCompositionProducerV3 = binding.producer();
+    std::mem::size_of_val(binding.producer())
+}
+
+fn execution_leaf_api(
+    digest: ExecutionDigestV3,
+    record: &ExecutionRecordFieldV3,
+    union: &ExecutionUnionVariantV3,
+    float: ExecutionFiniteFloatV3,
+    operator: &ExecutionOperatorV3,
+) -> usize {
+    let _: &[u8; 32] = digest.as_bytes();
+    let _: String = digest.to_hex();
+    let _: &str = record.name();
+    let _: &ExecutionValueTypeV3 = record.value_type();
+    let _: &str = union.tag();
+    let _: &ExecutionValueTypeV3 = union.value_type();
+    let _: u64 = float.bits();
+    let _: f64 = float.get();
+    let _: &str = operator.symbol();
+    let _: u32 = operator.overload_id();
+    record.name().len() + union.tag().len() + operator.symbol().len()
+}
+
+macro_rules! exhaustive_unit_enum {
+    ($value:expr; $($pattern:pat_param),+ $(,)?) => {
+        match $value {
+            $($pattern => ()),+
+        }
+    };
+}
+
+/// Exhaustive matches make variant addition and removal compile failures. This
+/// is stronger than a debug-string or discriminant snapshot and stays scoped
+/// to facade-exported closed vocabularies.
+fn execution_closed_vocabulary_api(
+    family: ExecutionFamilyV3,
+    authority: ExecutionAuthorityV3,
+    determinism: ExecutionDeterminismV3,
+    evidence: ExecutionEvidenceV3,
+    effect: ExecutionEffectV3,
+    policy: ExecutionPolicyFamilyV3,
+) {
+    exhaustive_unit_enum!(family;
+        ExecutionFamilyV3::Relation, ExecutionFamilyV3::Graph, ExecutionFamilyV3::Check,
+        ExecutionFamilyV3::Presentation, ExecutionFamilyV3::Composition,
+        ExecutionFamilyV3::MetaRequireCertified, ExecutionFamilyV3::RuleProgram);
+    exhaustive_unit_enum!(authority;
+        ExecutionAuthorityV3::FrontendChecked,
+        ExecutionAuthorityV3::CertifiedRequirementValidated);
+    exhaustive_unit_enum!(determinism;
+        ExecutionDeterminismV3::Deterministic, ExecutionDeterminismV3::NonDeterministic);
+    exhaustive_unit_enum!(evidence;
+        ExecutionEvidenceV3::None, ExecutionEvidenceV3::SourceLocation,
+        ExecutionEvidenceV3::WitnessPayload, ExecutionEvidenceV3::ProofTree);
+    exhaustive_unit_enum!(effect;
+        ExecutionEffectV3::ReadOnly, ExecutionEffectV3::ProofEvidenceOnly,
+        ExecutionEffectV3::ExportOnly, ExecutionEffectV3::MutationForbidden);
+    exhaustive_unit_enum!(policy;
+        ExecutionPolicyFamilyV3::Relational, ExecutionPolicyFamilyV3::Graph,
+        ExecutionPolicyFamilyV3::Check, ExecutionPolicyFamilyV3::Presentation,
+        ExecutionPolicyFamilyV3::RuleProgram, ExecutionPolicyFamilyV3::MetaRequireCertified,
+        ExecutionPolicyFamilyV3::Composition);
+}
+
+fn execution_closed_type_vocabulary_api(
+    scalar: ExecutionScalarTypeV3,
+    cardinality: ExecutionCardinalityV3,
+    direction: ExecutionSortDirectionV3,
+    null_order: ExecutionNullOrderV3,
+    join: ExecutionJoinModeV3,
+    source_kind: ExecutionSourceKindV3,
+) {
+    exhaustive_unit_enum!(scalar;
+        ExecutionScalarTypeV3::Bool, ExecutionScalarTypeV3::Int, ExecutionScalarTypeV3::Float,
+        ExecutionScalarTypeV3::String, ExecutionScalarTypeV3::Duration,
+        ExecutionScalarTypeV3::Location, ExecutionScalarTypeV3::Path,
+        ExecutionScalarTypeV3::RepoPath, ExecutionScalarTypeV3::EntityRef,
+        ExecutionScalarTypeV3::SymbolRef, ExecutionScalarTypeV3::RuleRef,
+        ExecutionScalarTypeV3::SourceScope, ExecutionScalarTypeV3::ProofTree);
+    exhaustive_unit_enum!(cardinality;
+        ExecutionCardinalityV3::Set, ExecutionCardinalityV3::Bag,
+        ExecutionCardinalityV3::Sequence);
+    exhaustive_unit_enum!(direction; ExecutionSortDirectionV3::Asc, ExecutionSortDirectionV3::Desc);
+    exhaustive_unit_enum!(null_order; ExecutionNullOrderV3::First, ExecutionNullOrderV3::Last);
+    exhaustive_unit_enum!(join; ExecutionJoinModeV3::Inner, ExecutionJoinModeV3::Cross);
+    exhaustive_unit_enum!(source_kind;
+        ExecutionSourceKindV3::Relation, ExecutionSourceKindV3::View,
+        ExecutionSourceKindV3::Composition);
+}
+
+fn execution_closed_logic_vocabulary_api(
+    quantifier: ExecutionLogicalQuantifierV3,
+    exists: ExecutionExistsPolarityV3,
+    relation_authority: ExecutionRelationAuthorityV3,
+    sample: ExecutionSampleModeV3,
+    graph: ExecutionGraphKindV3,
+) {
+    exhaustive_unit_enum!(quantifier;
+        ExecutionLogicalQuantifierV3::Exists, ExecutionLogicalQuantifierV3::Forall);
+    exhaustive_unit_enum!(exists;
+        ExecutionExistsPolarityV3::Exists, ExecutionExistsPolarityV3::NotExists);
+    exhaustive_unit_enum!(relation_authority;
+        ExecutionRelationAuthorityV3::Host,
+        ExecutionRelationAuthorityV3::CanonicalWorkspaceFiles,
+        ExecutionRelationAuthorityV3::CatalogView,
+        ExecutionRelationAuthorityV3::CompositionBinding);
+    exhaustive_unit_enum!(sample;
+        ExecutionSampleModeV3::Lexical, ExecutionSampleModeV3::Semantic,
+        ExecutionSampleModeV3::Hybrid);
+    exhaustive_unit_enum!(graph;
+        ExecutionGraphKindV3::Reachability, ExecutionGraphKindV3::Flow,
+        ExecutionGraphKindV3::Slice, ExecutionGraphKindV3::Taint,
+        ExecutionGraphKindV3::Path, ExecutionGraphKindV3::PointsTo,
+        ExecutionGraphKindV3::Summary);
+}
+
+fn execution_value_type_api(value: &ExecutionValueTypeV3) {
+    match value {
+        ExecutionValueTypeV3::Scalar(value) => pin(*value),
+        ExecutionValueTypeV3::Null | ExecutionValueTypeV3::Unknown => {}
+        ExecutionValueTypeV3::Tuple(values) => pin(values.as_ref()),
+        ExecutionValueTypeV3::Record(fields) => pin(fields.as_ref()),
+        ExecutionValueTypeV3::Optional(value) => pin(value.as_ref()),
+        ExecutionValueTypeV3::Collection {
+            element,
+            cardinality,
+        } => {
+            pin(element.as_ref());
+            pin(*cardinality);
+        }
+        ExecutionValueTypeV3::Union(variants) => pin(variants.as_ref()),
+    }
+}
+
+fn execution_call_target_api(target: &ExecutionCallTargetV3) {
+    match target {
+        ExecutionCallTargetV3::Builtin { name } | ExecutionCallTargetV3::Predicate { name } => {
+            pin(name.as_str())
+        }
+        ExecutionCallTargetV3::HostPredicate { fingerprint } => pin(fingerprint.as_str()),
+    }
+}
+
+fn execution_expression_shape_api(shape: &ExecutionExpressionShapeV3) {
+    match shape {
+        ExecutionExpressionShapeV3::Literal(value) => pin(value),
+        ExecutionExpressionShapeV3::Binding(value) => pin(value),
+        ExecutionExpressionShapeV3::Path { base, segments } => {
+            pin(*base);
+            pin(segments.as_ref());
+        }
+        ExecutionExpressionShapeV3::Unary { operator, operand }
+        | ExecutionExpressionShapeV3::Not { operator, operand } => {
+            pin(operator);
+            pin(*operand);
+        }
+        ExecutionExpressionShapeV3::Binary { operator, lhs, rhs }
+        | ExecutionExpressionShapeV3::Compare { operator, lhs, rhs }
+        | ExecutionExpressionShapeV3::And { operator, lhs, rhs }
+        | ExecutionExpressionShapeV3::Or { operator, lhs, rhs } => {
+            pin(operator);
+            pin(*lhs);
+            pin(*rhs);
+        }
+        ExecutionExpressionShapeV3::Call { target, arguments } => {
+            pin(target);
+            pin(arguments.as_ref());
+        }
+        ExecutionExpressionShapeV3::Paren(value) | ExecutionExpressionShapeV3::BoolValue(value) => {
+            pin(*value)
+        }
+        ExecutionExpressionShapeV3::Record(fields) => pin(fields.as_ref()),
+        ExecutionExpressionShapeV3::List(values) => pin(values.as_ref()),
+        ExecutionExpressionShapeV3::LogicalQuantifier {
+            kind,
+            binders,
+            body,
+        } => {
+            pin(*kind);
+            pin(binders.as_ref());
+            pin(*body);
+        }
+        ExecutionExpressionShapeV3::RelationExists {
+            polarity,
+            relation_root,
+            correlations,
+        } => {
+            pin(*polarity);
+            pin(*relation_root);
+            pin(correlations.as_ref());
+        }
+    }
+}
+
+fn execution_literal_api(literal: &ExecutionLiteralV3) {
+    match literal {
+        ExecutionLiteralV3::Int(value) => pin(*value),
+        ExecutionLiteralV3::Float(value) => pin(*value),
+        ExecutionLiteralV3::Bool(value) => pin(*value),
+        ExecutionLiteralV3::String(value) => pin(value.as_str()),
+        ExecutionLiteralV3::Null => {}
+    }
+}
+
+fn execution_composition_body_api(body: &ExecutionCompositionBodyV3) {
+    match body {
+        ExecutionCompositionBodyV3::Relation
+        | ExecutionCompositionBodyV3::Check
+        | ExecutionCompositionBodyV3::Explain => {}
+        ExecutionCompositionBodyV3::Graph(kind) => pin(*kind),
+    }
+}
+
+fn execution_composition_producer_api(producer: &ExecutionCompositionProducerV3) {
+    match producer {
+        ExecutionCompositionProducerV3::Relation => {}
+        ExecutionCompositionProducerV3::Sample {
+            query_text,
+            mode,
+            limit,
+        } => {
+            pin(query_text.as_str());
+            pin(*mode);
+            pin(*limit);
+        }
+        ExecutionCompositionProducerV3::Graph { kind } => pin(*kind),
+    }
+}
+
+fn facade_authority_vocabulary_api(
+    graph: GraphReferenceKindV2,
+    scalar: FrontendScalarTypeV2,
+    cardinality: FrontendRelationCardinalityV2,
+    authority: FrontendRelationAuthorityV2,
+) {
+    exhaustive_unit_enum!(graph;
+        GraphReferenceKindV2::Entity, GraphReferenceKindV2::Callable,
+        GraphReferenceKindV2::Scope, GraphReferenceKindV2::Window,
+        GraphReferenceKindV2::Frontier, GraphReferenceKindV2::Sanitizer,
+        GraphReferenceKindV2::Pattern, GraphReferenceKindV2::Snapshot,
+        GraphReferenceKindV2::ExportSource);
+    exhaustive_unit_enum!(scalar;
+        FrontendScalarTypeV2::Bool, FrontendScalarTypeV2::Int,
+        FrontendScalarTypeV2::Float, FrontendScalarTypeV2::String,
+        FrontendScalarTypeV2::Duration, FrontendScalarTypeV2::Location,
+        FrontendScalarTypeV2::Path, FrontendScalarTypeV2::RepoPath,
+        FrontendScalarTypeV2::EntityRef, FrontendScalarTypeV2::SymbolRef,
+        FrontendScalarTypeV2::RuleRef, FrontendScalarTypeV2::SourceScope,
+        FrontendScalarTypeV2::ProofTree);
+    exhaustive_unit_enum!(cardinality;
+        FrontendRelationCardinalityV2::Set, FrontendRelationCardinalityV2::Bag,
+        FrontendRelationCardinalityV2::Sequence);
+    exhaustive_unit_enum!(authority;
+        FrontendRelationAuthorityV2::Host,
+        FrontendRelationAuthorityV2::CanonicalWorkspaceFiles);
+}
+
+fn facade_status_vocabulary_api(
+    status: AnalysisStatusV2,
+    stage: FrontendStageV2,
+    severity: FrontendSeverityV2,
+    payload: &FrontendCatalogPayloadV2,
+) {
+    let _: &'static str = status.keyword();
+    let _: &'static str = stage.keyword();
+    let _: &'static str = severity.keyword();
+    exhaustive_unit_enum!(status;
+        AnalysisStatusV2::Complete, AnalysisStatusV2::Incomplete, AnalysisStatusV2::Error);
+    exhaustive_unit_enum!(stage;
+        FrontendStageV2::Integrity, FrontendStageV2::Declaration,
+        FrontendStageV2::Resolution, FrontendStageV2::Binding,
+        FrontendStageV2::Typing, FrontendStageV2::Validation,
+        FrontendStageV2::Resource);
+    exhaustive_unit_enum!(severity;
+        FrontendSeverityV2::Error, FrontendSeverityV2::Warning, FrontendSeverityV2::Note);
+    match payload {
+        FrontendCatalogPayloadV2::Query
+        | FrontendCatalogPayloadV2::Check
+        | FrontendCatalogPayloadV2::Capability
+        | FrontendCatalogPayloadV2::ModelSource
+        | FrontendCatalogPayloadV2::PackSource => {}
+        FrontendCatalogPayloadV2::Rule { parameters, result } => {
+            let _: &Vec<FrontendCallableParameterInputV2> = parameters;
+            let _: &FrontendScalarTypeV2 = result;
+        }
+    }
+}
+
+fn facade_authority_input_api(
+    field: &FrontendRelationFieldInputV2,
+    relation: &FrontendRelationInputV2,
+    graph: &FrontendGraphReferenceInputV2,
+) -> usize {
+    let _: &String = &field.name;
+    let _: FrontendScalarTypeV2 = field.scalar_type;
+    let _: bool = field.optional;
+    let _: FrontendAuthorityLocationV2 = field.location;
+    let _: FrontendRelationAuthorityV2 = relation.authority;
+    let _: &String = &relation.provenance_namespace;
+    let _: &String = &relation.qualified_name;
+    let _: &String = &relation.lookup_name;
+    let _: &Vec<FrontendRelationFieldInputV2> = &relation.fields;
+    let _: FrontendRelationCardinalityV2 = relation.cardinality;
+    let _: &String = &relation.provenance;
+    let _: FrontendAuthorityLocationV2 = relation.location;
+    let _: &String = &graph.spelling;
+    let _: GraphReferenceKindV2 = graph.kind;
+    let _: &Option<String> = &graph.entity_subtype;
+    let _: FrontendAuthorityLocationV2 = graph.location;
+    field.name.len() + relation.lookup_name.len() + graph.spelling.len()
+}
+
 /// Pin every curated root and accessor used by sibling repositories.
 fn pin_curated_roots() {
     pin(compiled_item_label as fn(&CompiledItemV2) -> &'static str);
     pin(compiled_item_invariants_hold as fn(&CompiledItemV2) -> bool);
-    pin(compiled_document_probe as fn(&CompiledSourceDocumentV3) -> (SourceIdV2, usize, usize, bool));
+    pin(compiled_document_probe
+        as fn(&CompiledSourceDocumentV3) -> (SourceIdV2, usize, usize, bool));
     pin(compiled_rule_program_probe as fn(&CompiledRuleProgramV2) -> (usize, bool));
     pin(rule_member_probe as fn(&RuleProgramMemberV2) -> bool);
     pin(planned_item_probe as fn(&PlannedItemV2) -> (bool, bool));
@@ -265,6 +715,76 @@ fn pin_curated_roots() {
     pin(checked_span_probe as fn(&CheckedLocatedSpanV2) -> (LocatedSpanV2, usize));
     pin(closed_authority_probe as fn(&ClosedFrontendAuthorityV2) -> &FrontendBudgetV2);
     pin(unresolved_fact_probe as fn(&UnresolvedAnalysisFactV2) -> (&'static str, LocatedSpanV2));
+    pin(execution_document_api as fn(&ExecutionDocumentV3) -> usize);
+    pin(execution_item_api as fn(&ExecutionItemV3) -> usize);
+    pin(execution_plan_api as fn(&ExecutionPlanV3) -> usize);
+    pin(execution_relation_api as fn(&ExecutionRelationV3) -> usize);
+    pin(execution_operator_node_api as fn(&ExecutionRelationalOperatorV3) -> usize);
+    pin(execution_schema_api as fn(&ExecutionSchemaV3) -> usize);
+    pin(execution_field_api as fn(&ExecutionFieldV3) -> usize);
+    pin(execution_order_key_api as fn(&ExecutionOrderKeyV3) -> usize);
+    pin(execution_expression_api as fn(&ExecutionExpressionV3) -> usize);
+    pin(execution_source_api as fn(&ExecutionSourceV3) -> usize);
+    pin(execution_binding_api as fn(&ExecutionBindingV3) -> usize);
+    pin(execution_correlation_api as fn(&ExecutionCorrelationV3) -> usize);
+    pin(execution_composition_api as fn(&ExecutionCompositionV3) -> usize);
+    pin(execution_composition_binding_api as fn(&ExecutionCompositionBindingV3) -> usize);
+    pin(execution_leaf_api
+        as fn(
+            ExecutionDigestV3,
+            &ExecutionRecordFieldV3,
+            &ExecutionUnionVariantV3,
+            ExecutionFiniteFloatV3,
+            &ExecutionOperatorV3,
+        ) -> usize);
+    pin(execution_closed_vocabulary_api
+        as fn(
+            ExecutionFamilyV3,
+            ExecutionAuthorityV3,
+            ExecutionDeterminismV3,
+            ExecutionEvidenceV3,
+            ExecutionEffectV3,
+            ExecutionPolicyFamilyV3,
+        ));
+    pin(execution_closed_type_vocabulary_api
+        as fn(
+            ExecutionScalarTypeV3,
+            ExecutionCardinalityV3,
+            ExecutionSortDirectionV3,
+            ExecutionNullOrderV3,
+            ExecutionJoinModeV3,
+            ExecutionSourceKindV3,
+        ));
+    pin(execution_closed_logic_vocabulary_api
+        as fn(
+            ExecutionLogicalQuantifierV3,
+            ExecutionExistsPolarityV3,
+            ExecutionRelationAuthorityV3,
+            ExecutionSampleModeV3,
+            ExecutionGraphKindV3,
+        ));
+    pin(execution_value_type_api as fn(&ExecutionValueTypeV3));
+    pin(execution_call_target_api as fn(&ExecutionCallTargetV3));
+    pin(execution_expression_shape_api as fn(&ExecutionExpressionShapeV3));
+    pin(execution_literal_api as fn(&ExecutionLiteralV3));
+    pin(execution_composition_body_api as fn(&ExecutionCompositionBodyV3));
+    pin(execution_composition_producer_api as fn(&ExecutionCompositionProducerV3));
+    pin(facade_authority_vocabulary_api
+        as fn(
+            GraphReferenceKindV2,
+            FrontendScalarTypeV2,
+            FrontendRelationCardinalityV2,
+            FrontendRelationAuthorityV2,
+        ));
+    pin(facade_authority_input_api
+        as fn(
+            &FrontendRelationFieldInputV2,
+            &FrontendRelationInputV2,
+            &FrontendGraphReferenceInputV2,
+        ) -> usize);
+    pin(facade_status_vocabulary_api
+        as fn(AnalysisStatusV2, FrontendStageV2, FrontendSeverityV2, &FrontendCatalogPayloadV2));
+    pin(OPEN_AUTHORITY_INCOMPLETE_CODE);
 }
 
 fn main() {

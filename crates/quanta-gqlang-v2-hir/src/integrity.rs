@@ -15,15 +15,16 @@
 //! hold, so a `CheckedHirV1` is a proof token that the embedded tree is sound.
 
 use crate::depth::{check_depths_v2, HirDepthDimensionV2};
-use crate::expr::{BoolExprHirV1, BoolExprKindV1, CallArgHirV1, ValueExprHirV1, ValueExprKindV1};
+use crate::expr::{
+    BoolExprHirV1, BoolExprKindV1, CallArgHirV1, LiteralV1, ValueExprHirV1, ValueExprKindV1,
+};
 use crate::id::HirNodeIdV1;
 use crate::item::{
-    CatalogDeclHirV1, CatalogPayloadV1, CompositionBodyV1, CompositionHirV1, CompositionProducerV1,
-    ExplainHirV1, GraphQueryHirV1, LegalityHirV1, MetaHirV1, PresentationHirV1, ProgramItemHirV1,
-    SampleHirV1, ViewBodyV1,
+    CatalogDeclHirV1, CompositionHirV1, ExplainHirV1, GraphQueryHirV1, LegalityHirV1, MetaHirV1,
+    PresentationHirV1, ProgramItemHirV1, SampleHirV1,
 };
-use crate::relation::{JoinHirV1, RelationExprHirV1, RelationExprKindV1};
-use crate::shape::{ResultShapeHirV1, ResultShapeKindV1};
+use crate::relation::{JoinHirV1, RelationExprHirV1, RelationExprKindV1, RelationSourceV1};
+use crate::shape::{ResultShapeHirV1, ResultShapeKindV1, ShapeRecordV1};
 use crate::span::{SourceIdV2, SpanV1};
 use crate::unit::{DeclHirV1, QueryHirV1, RuleHirV1};
 use crate::visit::HirVisitorV1;
@@ -324,7 +325,7 @@ impl CheckedHirDocumentOwnedV2 {
         let node_count = match check_document_v2(&document).map(|checked| checked.node_count()) {
             Ok(count) => count,
             Err(error) => {
-                drop_document_iterative(document);
+                drop(document);
                 return Err(error);
             }
         };
@@ -406,56 +407,42 @@ fn check_safe_depth(root: HirRootRefV1<'_>) -> Result<(), HirIntegrityErrorV1> {
     })
 }
 
-/// A rejected document can contain a deep subtree even when its first error
-/// occurs in an earlier root. Drain every recursive child with an explicit
-/// worklist so error return itself cannot overflow during destruction.
-fn drop_document_iterative(document: HirDocumentV1) {
-    enum Owned {
-        Item(ProgramItemHirV1),
-        Query(QueryHirV1),
-        Value(ValueExprHirV1),
-        Bool(BoolExprHirV1),
-        Relation(RelationExprHirV1),
-        Shape(ResultShapeHirV1),
-    }
+/// The four mutually recursive public HIR roots share one iterative destructor.
+/// A node's kind is first replaced with a leaf placeholder, so dropping the
+/// owned node after extraction cannot descend again through its children.
+enum OwnedHirDropPart {
+    Value(ValueExprHirV1),
+    Bool(BoolExprHirV1),
+    Relation(RelationExprHirV1),
+    Shape(ResultShapeHirV1),
+    ValueKind(ValueExprKindV1),
+    BoolKind(BoolExprKindV1),
+    RelationKind(RelationExprKindV1),
+    ShapeKind(ResultShapeKindV1),
+}
 
-    let mut stack: Vec<Owned> = document.items.into_iter().map(Owned::Item).collect();
+fn drain_hir(mut stack: Vec<OwnedHirDropPart>) {
+    use OwnedHirDropPart as Owned;
     while let Some(node) = stack.pop() {
         match node {
-            Owned::Item(item) => match item {
-                ProgramItemHirV1::Query(query) => stack.push(Owned::Query(*query)),
-                ProgramItemHirV1::Decl(decl) => stack.push(Owned::Value(decl.body)),
-                ProgramItemHirV1::Rule(rule) => {
-                    stack.push(Owned::Bool(rule.body));
-                    stack.push(Owned::Value(rule.head));
-                }
-                ProgramItemHirV1::CatalogDecl(decl) => {
-                    if let CatalogPayloadV1::View(ViewBodyV1::Inline(query)) = decl.payload {
-                        stack.push(Owned::Query(*query));
-                    }
-                }
-                ProgramItemHirV1::Composition(composition) => {
-                    for binding in composition.bindings {
-                        if let CompositionProducerV1::Query(query) = binding.producer {
-                            stack.push(Owned::Query(*query));
-                        }
-                    }
-                    if let CompositionBodyV1::Query(query) = composition.body {
-                        stack.push(Owned::Query(*query));
-                    }
-                }
-                ProgramItemHirV1::GraphQuery(_)
-                | ProgramItemHirV1::Legality(_)
-                | ProgramItemHirV1::Presentation(_)
-                | ProgramItemHirV1::Meta(_) => {}
-            },
-            Owned::Query(query) => {
-                if let Some(shape) = query.result_shape {
-                    stack.push(Owned::Shape(shape));
-                }
-                stack.push(Owned::Relation(query.body));
+            Owned::Value(mut value) => {
+                let kind =
+                    std::mem::replace(&mut value.kind, ValueExprKindV1::Literal(LiteralV1::Null));
+                stack.push(Owned::ValueKind(kind));
             }
-            Owned::Value(value) => match value.kind {
+            Owned::Bool(mut boolean) => {
+                let kind = std::mem::replace(&mut boolean.kind, BoolExprKindV1::Literal(false));
+                stack.push(Owned::BoolKind(kind));
+            }
+            Owned::Relation(mut relation) => {
+                let kind = std::mem::replace(&mut relation.kind, empty_relation_kind());
+                stack.push(Owned::RelationKind(kind));
+            }
+            Owned::Shape(mut shape) => {
+                let kind = std::mem::replace(&mut shape.kind, empty_shape_kind());
+                stack.push(Owned::ShapeKind(kind));
+            }
+            Owned::ValueKind(kind) => match kind {
                 ValueExprKindV1::Literal(_) | ValueExprKindV1::Symbol(_) => {}
                 ValueExprKindV1::Path(path) => stack.push(Owned::Value(*path.base)),
                 ValueExprKindV1::Unary(unary) => stack.push(Owned::Value(*unary.operand)),
@@ -483,7 +470,7 @@ fn drop_document_iterative(document: HirDocumentV1) {
                     stack.extend(list.elements.into_iter().map(Owned::Value));
                 }
             },
-            Owned::Bool(boolean) => match boolean.kind {
+            Owned::BoolKind(kind) => match kind {
                 BoolExprKindV1::Literal(_) => {}
                 BoolExprKindV1::Value(value) => stack.push(Owned::Value(*value)),
                 BoolExprKindV1::Compare(compare) => {
@@ -504,7 +491,7 @@ fn drop_document_iterative(document: HirDocumentV1) {
                     stack.push(Owned::Relation(*exists.relation));
                 }
             },
-            Owned::Relation(relation) => match relation.kind {
+            Owned::RelationKind(kind) => match kind {
                 RelationExprKindV1::Source(_) => {}
                 RelationExprKindV1::Project(project) => {
                     let (input, items) = project.into_parts();
@@ -537,7 +524,7 @@ fn drop_document_iterative(document: HirDocumentV1) {
                     stack.push(Owned::Relation(input));
                 }
             },
-            Owned::Shape(shape) => match shape.kind {
+            Owned::ShapeKind(kind) => match kind {
                 ResultShapeKindV1::Leaf(value) => stack.push(Owned::Value(*value)),
                 ResultShapeKindV1::Record(record) => {
                     stack.extend(
@@ -550,6 +537,61 @@ fn drop_document_iterative(document: HirDocumentV1) {
                 ResultShapeKindV1::List(list) => stack.push(Owned::Shape(*list.element)),
             },
         }
+    }
+}
+
+fn empty_relation_kind() -> RelationExprKindV1 {
+    RelationExprKindV1::Source(RelationSourceV1 {
+        name: String::new(),
+        name_span: SpanV1::new(0, 0),
+        alias: None,
+    })
+}
+
+fn empty_shape_kind() -> ResultShapeKindV1 {
+    ResultShapeKindV1::Record(ShapeRecordV1 { fields: Vec::new() })
+}
+
+impl Drop for ValueExprHirV1 {
+    fn drop(&mut self) {
+        if matches!(
+            self.kind,
+            ValueExprKindV1::Literal(_) | ValueExprKindV1::Symbol(_)
+        ) {
+            return;
+        }
+        let kind = std::mem::replace(&mut self.kind, ValueExprKindV1::Literal(LiteralV1::Null));
+        drain_hir(vec![OwnedHirDropPart::ValueKind(kind)]);
+    }
+}
+
+impl Drop for BoolExprHirV1 {
+    fn drop(&mut self) {
+        if matches!(self.kind, BoolExprKindV1::Literal(_)) {
+            return;
+        }
+        let kind = std::mem::replace(&mut self.kind, BoolExprKindV1::Literal(false));
+        drain_hir(vec![OwnedHirDropPart::BoolKind(kind)]);
+    }
+}
+
+impl Drop for RelationExprHirV1 {
+    fn drop(&mut self) {
+        if matches!(self.kind, RelationExprKindV1::Source(_)) {
+            return;
+        }
+        let kind = std::mem::replace(&mut self.kind, empty_relation_kind());
+        drain_hir(vec![OwnedHirDropPart::RelationKind(kind)]);
+    }
+}
+
+impl Drop for ResultShapeHirV1 {
+    fn drop(&mut self) {
+        if matches!(&self.kind, ResultShapeKindV1::Record(record) if record.fields.is_empty()) {
+            return;
+        }
+        let kind = std::mem::replace(&mut self.kind, empty_shape_kind());
+        drain_hir(vec![OwnedHirDropPart::ShapeKind(kind)]);
     }
 }
 

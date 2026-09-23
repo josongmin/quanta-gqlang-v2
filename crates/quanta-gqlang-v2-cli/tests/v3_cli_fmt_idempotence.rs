@@ -1,3 +1,8 @@
+#![expect(
+    clippy::expect_used,
+    reason = "integration tests fail with exact shipped-example path context"
+)]
+
 //! v3 `v3-fmt` front-door idempotence rail (ticket 08, D22).
 //!
 //! Mirrors the `fmt_idempotence_frontdoor` pattern but for the v3 surface: the
@@ -11,7 +16,81 @@
 
 mod support;
 
+use std::path::{Path, PathBuf};
+
 use support::{cli_stderr_v1, cli_stdout_v1, run_cli_argv_v1};
+
+fn shipped_examples_v1() -> Vec<PathBuf> {
+    let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("CLI crate lives at <repo>/crates/<crate>");
+    let mut pending = vec![repo_root.join("examples")];
+    let mut examples = Vec::new();
+    while let Some(dir) = pending.pop() {
+        for entry in std::fs::read_dir(&dir).expect("read shipped examples directory") {
+            let path = entry.expect("read shipped example entry").path();
+            if path.is_dir() {
+                pending.push(path);
+            } else if path
+                .extension()
+                .is_some_and(|extension| extension == "qglang")
+            {
+                examples.push(path);
+            }
+        }
+    }
+    examples.sort();
+    assert!(
+        !examples.is_empty(),
+        "shipped example corpus must not be empty"
+    );
+    examples
+}
+
+#[test]
+fn shipped_examples_pass_cli_file_frontdoors_v1() {
+    for path in shipped_examples_v1() {
+        let source_path = path.to_str().expect("shipped path is UTF-8");
+        let formatted = run_cli_argv_v1(&["fmt", "--file", source_path]);
+        assert!(
+            formatted.status.success(),
+            "fmt --file failed for {source_path}: {}",
+            cli_stderr_v1(&formatted)
+        );
+        assert!(
+            !cli_stdout_v1(&formatted).trim().is_empty(),
+            "fmt --file returned empty text for {source_path}"
+        );
+        assert!(
+            formatted.stderr.is_empty(),
+            "fmt --file wrote stderr for {source_path}: {}",
+            cli_stderr_v1(&formatted)
+        );
+
+        let queried = run_cli_argv_v1(&["query", "--file", source_path]);
+        assert_eq!(
+            queried.status.code(),
+            Some(1),
+            "open-authority query must be incomplete for {source_path}: {}",
+            cli_stderr_v1(&queried)
+        );
+        let stdout = cli_stdout_v1(&queried);
+        assert!(
+            stdout.starts_with("analysis.status=incomplete\n"),
+            "query --file did not report incomplete analysis for {source_path}: {stdout}"
+        );
+        assert!(
+            stdout.contains("analysis.item_count=1\n"),
+            "query --file lost the example item for {source_path}: {stdout}"
+        );
+        assert!(
+            queried.stderr.is_empty(),
+            "query --file wrote stderr for {source_path}: {}",
+            cli_stderr_v1(&queried)
+        );
+    }
+}
 
 /// Run `v3-fmt <inline>` through the real binary; assert exit 0; return stdout
 /// with the single trailing newline `println!` appends trimmed off, so the

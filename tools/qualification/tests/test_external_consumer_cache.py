@@ -1,19 +1,120 @@
-"""Custody checks for the stable-path external-consumer fixture cache."""
+"""Custody and semantic-contract checks for the external-consumer gate."""
 
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 from tools.test_frontend_external_consumer import (
     FIXTURE_DIR,
+    GLOB_RE,
+    MODULE_RE,
     REPOSITORY_ROOT,
     InfrastructureError,
     lock_cache,
     materialize_fixture,
+    public_api_roots,
 )
 
 
 class ExternalConsumerCacheTest(unittest.TestCase):
+    @staticmethod
+    def compile_rust_contract(source: str) -> subprocess.CompletedProcess:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_path = root / "probe.rs"
+            output_path = root / "probe.rlib"
+            source_path.write_text(source)
+            return subprocess.run(
+                [
+                    "rustc",
+                    "--crate-name",
+                    "semantic_contract_probe",
+                    "--crate-type",
+                    "lib",
+                    "--edition",
+                    "2021",
+                    "-o",
+                    str(output_path),
+                    str(source_path),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+    def test_public_api_parser_accepts_only_curated_root_reexports(self):
+        output = "\n".join(
+            [
+                "pub mod quanta_gqlang_v2_frontend_contract",
+                "pub use quanta_gqlang_v2_frontend_contract::AnalysisDocumentV2",
+                "pub use quanta_gqlang_v2_frontend_contract::compile_source_document_v3",
+            ]
+        )
+        roots, direct = public_api_roots(output)
+        self.assertEqual(roots, ["AnalysisDocumentV2", "compile_source_document_v3"])
+        self.assertEqual(direct, [])
+
+    def test_public_api_parser_rejects_direct_public_item_mutations(self):
+        prefix = "pub mod quanta_gqlang_v2_frontend_contract\n"
+        for mutation in [
+            "pub fn rogue()",
+            "pub struct Rogue",
+            "pub const ROGUE: u8",
+            "pub mod leak",
+        ]:
+            roots, direct = public_api_roots(prefix + mutation + "\n")
+            self.assertEqual(roots, [], mutation)
+            self.assertEqual(direct, [mutation], mutation)
+
+    def test_source_shape_rejects_indented_glob_and_module_mutations(self):
+        source = "  pub use owner::*;\n\tpub mod leak;\n"
+        self.assertEqual(len(GLOB_RE.findall(source)), 1)
+        self.assertEqual(len(MODULE_RE.findall(source)), 1)
+
+    def test_rust_semantic_probe_kills_method_variant_and_return_mutations(self):
+        baseline = """
+pub struct Document;
+impl Document {
+    pub fn count(&self) -> u32 { 0 }
+}
+pub enum Mode { A, B }
+pub fn method_signature(document: &Document) -> u32 {
+    let method: fn(&Document) -> u32 = Document::count;
+    method(document)
+}
+pub fn exhaustive_variant(mode: Mode) {
+    match mode { Mode::A | Mode::B => () }
+}
+"""
+        baseline_result = self.compile_rust_contract(baseline)
+        self.assertEqual(baseline_result.returncode, 0, baseline_result.stderr)
+
+        mutations = {
+            "method removed": baseline.replace("pub fn count(&self) -> u32 { 0 }", ""),
+            "return type drifted": baseline.replace(
+                "pub fn count(&self) -> u32 { 0 }",
+                "pub fn count(&self) -> u64 { 0 }",
+            ),
+            "variant removed": baseline.replace("pub enum Mode { A, B }", "pub enum Mode { A }"),
+            "variant added": baseline.replace("pub enum Mode { A, B }", "pub enum Mode { A, B, C }"),
+        }
+        for name, source in mutations.items():
+            with self.subTest(name=name):
+                result = self.compile_rust_contract(source)
+                self.assertNotEqual(result.returncode, 0, result.stderr)
+
+    def test_rust_denies_a_curated_root_that_is_only_imported(self):
+        source = """
+#![deny(unused_imports)]
+mod facade { pub struct Used; pub struct ImportOnly; }
+use facade::{ImportOnly, Used};
+pub fn semantic_receipt(_: Used) {}
+"""
+        result = self.compile_rust_contract(source)
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertIn("unused import: `ImportOnly`", result.stderr)
+
     def test_replay_restores_source_at_the_same_path(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "cache"
