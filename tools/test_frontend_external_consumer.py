@@ -405,11 +405,24 @@ def positive_executable(build: subprocess.CompletedProcess, fixture: Path, targe
             raise InfrastructureError("Cargo fixture binary is outside the owned build cache") from error
         except (OSError, RuntimeError) as error:
             raise InfrastructureError("Cargo fixture binary is missing or redirected") from error
-        if (
-            candidate != resolved_candidate
-            or candidate.is_symlink()
-            or not resolved_candidate.is_file()
-        ):
+        relative = None
+        relative_root = None
+        for root in (target_dir, owned_target):
+            try:
+                relative = candidate.relative_to(root)
+                relative_root = root
+                break
+            except ValueError:
+                continue
+        redirected = relative is None or ".." in relative.parts
+        current = relative_root
+        if relative is not None and current is not None:
+            for part in relative.parts:
+                current = current / part
+                if current.is_symlink():
+                    redirected = True
+                    break
+        if redirected or not resolved_candidate.is_file():
             raise InfrastructureError("Cargo fixture binary is missing or redirected")
         candidates.append(resolved_candidate)
     if len(candidates) != 1:

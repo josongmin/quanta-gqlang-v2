@@ -49,6 +49,23 @@ class ExternalConsumerCacheTest(unittest.TestCase):
             )
             self.assertEqual(positive_executable(build, fixture, target), binary.resolve())
 
+            physical_target = root / "managed-build-cache"
+            physical_target.mkdir()
+            linked_target = root / "managed-checkout-target"
+            linked_target.symlink_to(physical_target, target_is_directory=True)
+            linked_cache = linked_target / "external-consumer"
+            linked_binary = linked_cache / "debug" / "consumer"
+            linked_binary.parent.mkdir(parents=True)
+            linked_binary.write_bytes(b"managed artifact")
+            linked_artifact = dict(artifact, executable=str(linked_binary))
+            linked_build = subprocess.CompletedProcess(
+                ["cargo", "build"], 0, json.dumps(linked_artifact), ""
+            )
+            self.assertEqual(
+                positive_executable(linked_build, fixture, linked_cache),
+                linked_binary.resolve(),
+            )
+
             foreign = root / "foreign" / "consumer"
             foreign.parent.mkdir()
             foreign.write_bytes(b"stale artifact")
