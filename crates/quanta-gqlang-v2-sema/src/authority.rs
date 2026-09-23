@@ -369,6 +369,7 @@ pub struct FrontendBudgetV2 {
     max_tokens: NonZeroU32,
     max_document_items: NonZeroU32,
     max_expression_depth: NonZeroU32,
+    max_relation_depth: NonZeroU32,
     max_expression_nodes: NonZeroU32,
     max_collection_width: NonZeroU32,
     max_projection_width: NonZeroU32,
@@ -401,6 +402,7 @@ pub struct DownstreamBudgetReceiptV2 {
     max_tokens: NonZeroU32,
     max_document_items: NonZeroU32,
     max_expression_depth: NonZeroU32,
+    max_relation_depth: NonZeroU32,
     max_expression_nodes: NonZeroU32,
     max_collection_width: NonZeroU32,
     max_projection_width: NonZeroU32,
@@ -444,6 +446,11 @@ impl DownstreamBudgetReceiptV2 {
     #[must_use]
     pub const fn max_expression_depth(&self) -> u32 {
         self.max_expression_depth.get()
+    }
+    /// Maximum nested relation stages on one execution path.
+    #[must_use]
+    pub const fn max_relation_depth(&self) -> u32 {
+        self.max_relation_depth.get()
     }
     /// Expression walk limit shared by every downstream expression traversal.
     #[must_use]
@@ -528,14 +535,16 @@ impl DownstreamBudgetReceiptV2 {
 }
 
 impl FrontendBudgetV2 {
-    /// Construct one checked frontend budget. Every limit must be positive and
-    /// the transport frame must be able to contain the admitted source.
+    /// Construct one checked frontend budget. Every limit must be positive,
+    /// depths must fit the shared HIR safety caps, and the transport frame must
+    /// be able to contain the admitted source.
     pub fn try_new(
         max_source_bytes: u32,
         max_frame_bytes: u32,
         max_tokens: u32,
         max_document_items: u32,
         max_expression_depth: u32,
+        max_relation_depth: u32,
         max_expression_nodes: u32,
         max_collection_width: u32,
         max_projection_width: u32,
@@ -559,6 +568,7 @@ impl FrontendBudgetV2 {
             max_tokens,
             max_document_items,
             max_expression_depth,
+            max_relation_depth,
             max_expression_nodes,
             max_collection_width,
             max_projection_width,
@@ -576,10 +586,16 @@ impl FrontendBudgetV2 {
             max_diagnostics,
             max_response_bytes,
         ];
-        if raw.contains(&0) || max_frame_bytes < max_source_bytes {
+        if raw.contains(&0)
+            || max_frame_bytes < max_source_bytes
+            || usize::try_from(max_expression_depth).unwrap_or(usize::MAX)
+                > quanta_gqlang_v2_hir::MAX_SAFE_EXPRESSION_DEPTH_V2
+            || usize::try_from(max_relation_depth).unwrap_or(usize::MAX)
+                > quanta_gqlang_v2_hir::MAX_SAFE_RELATION_DEPTH_V2
+        {
             return Err(configuration_failure(
                 "frontend.invalid_budget",
-                "all frontend limits must be positive and frame bytes must cover source bytes",
+                "all frontend limits must be positive, frame bytes must cover source bytes, and expression/relation depths must stay within their safe maxima",
             ));
         }
         let mut values = raw.into_iter().map(NonZeroU32::new);
@@ -595,6 +611,7 @@ impl FrontendBudgetV2 {
             max_tokens: field()?,
             max_document_items: field()?,
             max_expression_depth: field()?,
+            max_relation_depth: field()?,
             max_expression_nodes: field()?,
             max_collection_width: field()?,
             max_projection_width: field()?,
@@ -617,9 +634,28 @@ impl FrontendBudgetV2 {
     /// Pinned CLI/service profile.
     pub fn standard_v2() -> Result<Self, FrontendAuthorityErrorV2> {
         Self::try_new(
-            1_048_576, 4_194_304, 131_072, 4_096, 64, 262_144, 4_096, 4_096, 1_000_000, 50_000,
-            200_000, 1_000_000, 16_777_216, 65_536, 50_000, 200_000, 1_000_000, 1_024, 10_000,
-            1_024, 8_388_608,
+            1_048_576,
+            4_194_304,
+            131_072,
+            4_096,
+            u32::try_from(quanta_gqlang_v2_hir::MAX_SAFE_EXPRESSION_DEPTH_V2).unwrap_or(u32::MAX),
+            u32::try_from(quanta_gqlang_v2_hir::MAX_SAFE_RELATION_DEPTH_V2).unwrap_or(u32::MAX),
+            262_144,
+            4_096,
+            4_096,
+            1_000_000,
+            50_000,
+            200_000,
+            1_000_000,
+            16_777_216,
+            65_536,
+            50_000,
+            200_000,
+            1_000_000,
+            1_024,
+            10_000,
+            1_024,
+            8_388_608,
         )
     }
 
@@ -635,6 +671,7 @@ impl FrontendBudgetV2 {
             max_tokens: self.max_tokens,
             max_document_items: self.max_document_items,
             max_expression_depth: self.max_expression_depth,
+            max_relation_depth: self.max_relation_depth,
             max_expression_nodes: self.max_expression_nodes,
             max_collection_width: self.max_collection_width,
             max_projection_width: self.max_projection_width,
@@ -691,6 +728,11 @@ impl FrontendBudgetV2 {
     #[must_use]
     pub const fn max_expression_depth(&self) -> u32 {
         self.max_expression_depth.get()
+    }
+    /// Maximum nested relation stages on one execution path.
+    #[must_use]
+    pub const fn max_relation_depth(&self) -> u32 {
+        self.max_relation_depth.get()
     }
     /// Maximum expression nodes.
     #[must_use]

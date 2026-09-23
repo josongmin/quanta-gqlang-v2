@@ -49,6 +49,21 @@ const DOC_SOURCE: SourceIdV2 = SourceIdV2::from_raw(9);
 /// A source document that needs no relation or graph authority.
 const MINIMAL_SOURCE: &str = "let answer = 1; rule local_rule : x if x = 1; show capabilities;";
 
+#[test]
+fn incomplete_open_analysis_rejects_overdeep_relation_before_declaration() {
+    let authority = OpenAnalysisAuthorityV2::try_standard_v2().expect("standard open authority");
+    let source = format!("from records r{}", " | where true".repeat(4_096));
+    let error = analyze_source_document_v2(DOC_SOURCE, &source, &authority)
+        .expect_err("relation depth must be bounded even without closed authority");
+    let FrontendTransactionErrorV2::Document(failure) = error else {
+        panic!("relation depth must have a source-anchored diagnostic");
+    };
+    assert_eq!(
+        failure.diagnostics()[0].code(),
+        "surface.resource_exhausted"
+    );
+}
+
 /// Build one closed authority with a module graph and no relation/graph
 /// authority, solely from sema/modules re-exports.
 fn minimal_authority() -> ClosedFrontendAuthorityV2 {

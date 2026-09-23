@@ -29,12 +29,24 @@ fn budget(
     diagnostics: u32,
     response: u32,
 ) -> Result<FrontendBudgetV2, quanta_gqlang_v2_sema::FrontendAuthorityErrorV2> {
+    budget_with_relation_depth(source, frame, semantic, diagnostics, response, 3)
+}
+
+fn budget_with_relation_depth(
+    source: u32,
+    frame: u32,
+    semantic: u32,
+    diagnostics: u32,
+    response: u32,
+    relation_depth: u32,
+) -> Result<FrontendBudgetV2, quanta_gqlang_v2_sema::FrontendAuthorityErrorV2> {
     FrontendBudgetV2::try_new(
         source,
         frame,
         3,
         3,
         3,
+        relation_depth,
         3,
         3,
         3,
@@ -65,6 +77,7 @@ fn document_budget(
         64,
         64,
         64,
+        8,
         8,
         8,
         64,
@@ -100,6 +113,19 @@ fn zero_dimensions_and_smaller_frame_reject_without_fabricating_source_span() {
     assert_eq!(error.code(), "frontend.invalid_budget");
     let error = budget(2, 2, 2, 2, 0).unwrap_err();
     assert_eq!(error.code(), "frontend.invalid_budget");
+    let error = budget_with_relation_depth(2, 2, 2, 2, 2, 129).unwrap_err();
+    assert_eq!(error.code(), "frontend.invalid_budget");
+    assert_eq!(
+        budget_with_relation_depth(2, 2, 2, 2, 2, 128)
+            .unwrap()
+            .max_relation_depth(),
+        128
+    );
+    let error = FrontendBudgetV2::try_new(
+        2, 2, 3, 3, 65, 3, 3, 3, 3, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2,
+    )
+    .unwrap_err();
+    assert_eq!(error.code(), "frontend.invalid_budget");
 }
 
 #[test]
@@ -126,6 +152,7 @@ fn pinned_standard_limits_have_no_zero_or_unbounded_dimensions() {
     assert_eq!(budget.max_tokens(), 131_072);
     assert_eq!(budget.max_document_items(), 4_096);
     assert_eq!(budget.max_expression_depth(), 64);
+    assert_eq!(budget.max_relation_depth(), 128);
     assert_eq!(budget.max_expression_nodes(), 262_144);
     assert_eq!(budget.max_collection_width(), 4_096);
     assert_eq!(budget.max_projection_width(), 4_096);
@@ -157,6 +184,7 @@ fn downstream_receipt_projects_every_dimension_without_extension_or_loss() {
         receipt.max_expression_depth(),
         budget.max_expression_depth()
     );
+    assert_eq!(receipt.max_relation_depth(), budget.max_relation_depth());
     assert_eq!(
         receipt.max_expression_nodes(),
         budget.max_expression_nodes()

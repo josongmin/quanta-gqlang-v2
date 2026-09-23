@@ -192,6 +192,7 @@ impl DeclaredDocumentV2 {
                 "document_items exceeds frontend limit",
             ));
         }
+        check_relation_depth(&checked, budget)?;
         let mut expected = BTreeMap::new();
         let mut order = Vec::new();
         #[derive(Default)]
@@ -1309,6 +1310,96 @@ fn collect_inline_view_plan(
         references.dedup_by(|left, right| left.id() == right.id());
     }
     Ok(plan)
+}
+
+/// Reject relation trees before recursive Binder and type-owner traversal can
+/// exceed the transaction's checked stack-depth budget.
+fn check_relation_depth(
+    checked: &CheckedSyntaxDocumentV2,
+    budget: &FrontendBudgetV2,
+) -> Result<(), FrontendFailureV2> {
+    struct Guard {
+        current_depth: u32,
+        limit: u32,
+        exceeded: Option<SpanV1>,
+    }
+    impl HirVisitorV1 for Guard {
+        fn visit_relation(&mut self, root: &quanta_gqlang_v2_hir::RelationExprHirV1) {
+            use quanta_gqlang_v2_hir::{JoinHirV1, RelationExprKindV1};
+
+            if self.exceeded.is_some() {
+                return;
+            }
+            let previous = self.current_depth;
+            let mut stack = vec![(root, previous.saturating_add(1))];
+            while let Some((node, depth)) = stack.pop() {
+                if depth > self.limit {
+                    self.exceeded = Some(node.span);
+                    break;
+                }
+                self.current_depth = depth;
+                match &node.kind {
+                    RelationExprKindV1::Source(_) => {}
+                    RelationExprKindV1::Project(project) => {
+                        for item in project.items() {
+                            self.visit_value(&item.value);
+                        }
+                        stack.push((&project.input, depth.saturating_add(1)));
+                    }
+                    RelationExprKindV1::Filter(filter) => {
+                        self.visit_bool(&filter.predicate);
+                        stack.push((&filter.input, depth.saturating_add(1)));
+                    }
+                    RelationExprKindV1::Join(join) => {
+                        let (left, right) = match join {
+                            JoinHirV1::Inner { left, right, on } => {
+                                self.visit_bool(on);
+                                (left, right)
+                            }
+                            JoinHirV1::Cross { left, right } => (left, right),
+                        };
+                        stack.push((right, depth.saturating_add(1)));
+                        stack.push((left, depth.saturating_add(1)));
+                    }
+                    RelationExprKindV1::GroupBy(group) => {
+                        for key in group.keys() {
+                            self.visit_value(key);
+                        }
+                        stack.push((&group.input, depth.saturating_add(1)));
+                    }
+                    RelationExprKindV1::OrderBy(order) => {
+                        for key in order.keys() {
+                            self.visit_value(&key.value);
+                        }
+                        stack.push((&order.input, depth.saturating_add(1)));
+                    }
+                }
+                if self.exceeded.is_some() {
+                    break;
+                }
+            }
+            self.current_depth = previous;
+        }
+    }
+    let mut guard = Guard {
+        current_depth: 0,
+        limit: budget.max_relation_depth(),
+        exceeded: None,
+    };
+    for item in &checked.checked().document().items {
+        guard.visit_item(item);
+        if let Some(span) = guard.exceeded {
+            return Err(FrontendFailureV2::one(FrontendDiagnosticV2::new(
+                FrontendStageV2::Resource,
+                "frontend.resource_limit_exceeded",
+                FrontendSeverityV2::Error,
+                location(checked.source_id(), span),
+                Vec::new(),
+                "relation_depth exceeds frontend limit",
+            )));
+        }
+    }
+    Ok(())
 }
 
 /// Resolve one checked document against complete immutable authority. Every
@@ -3240,30 +3331,137 @@ fn materialize_relation(
     nested_relations: &mut BTreeMap<SourceQualifiedNodeIdV2, TypedRelationExprV2>,
     steps: &mut SemanticStepCounterV2,
 ) -> Result<TypedRelationExprV2, FrontendFailureV2> {
-    steps.charge(source_id, relation.span)?;
+    use quanta_gqlang_v2_hir::{JoinHirV1, RelationExprHirV1, RelationExprKindV1};
+
+    enum Frame<'a> {
+        Visit(&'a RelationExprHirV1),
+        Finish(
+            &'a RelationExprHirV1,
+            quanta_gqlang_v2_hir::CheckedLocatedSpanV2,
+        ),
+    }
+
+    let mut stack = vec![Frame::Visit(relation)];
+    let mut completed = BTreeMap::new();
+    while let Some(frame) = stack.pop() {
+        match frame {
+            Frame::Visit(node) => {
+                steps.charge(source_id, node.span)?;
+                let checked = extended
+                    .combined()
+                    .try_check_location(location(source_id, node.span))
+                    .map_err(|error| {
+                        document_failure(
+                            "sema.document_validation_failed",
+                            source_id,
+                            node.span,
+                            error.to_string(),
+                        )
+                    })?;
+                if bound.relation_output(node.id).is_none() {
+                    return Err(document_failure(
+                        "sema.document_validation_failed",
+                        source_id,
+                        node.span,
+                        "binder omitted relation output frame",
+                    ));
+                }
+                stack.push(Frame::Finish(node, checked));
+                match &node.kind {
+                    RelationExprKindV1::Source(_) => {}
+                    RelationExprKindV1::Project(project) => {
+                        stack.push(Frame::Visit(&project.input));
+                    }
+                    RelationExprKindV1::Filter(filter) => {
+                        stack.push(Frame::Visit(&filter.input));
+                    }
+                    RelationExprKindV1::Join(join) => {
+                        let (left, right) = match join {
+                            JoinHirV1::Inner { left, right, .. }
+                            | JoinHirV1::Cross { left, right } => (left, right),
+                        };
+                        stack.push(Frame::Visit(right));
+                        stack.push(Frame::Visit(left));
+                    }
+                    RelationExprKindV1::GroupBy(group) => {
+                        stack.push(Frame::Visit(&group.input));
+                    }
+                    RelationExprKindV1::OrderBy(order) => {
+                        stack.push(Frame::Visit(&order.input));
+                    }
+                }
+            }
+            Frame::Finish(node, checked) => {
+                let typed = materialize_relation_node(
+                    node,
+                    checked,
+                    source_id,
+                    authority,
+                    bound,
+                    facts,
+                    extended,
+                    composition_outputs,
+                    views,
+                    expressions,
+                    nested_relations,
+                    steps,
+                    &mut completed,
+                )?;
+                if completed.insert(node.id, typed).is_some() {
+                    return Err(document_failure(
+                        "sema.document_validation_failed",
+                        source_id,
+                        node.span,
+                        "duplicate materialized relation identity",
+                    ));
+                }
+            }
+        }
+    }
+    completed.remove(&relation.id).ok_or_else(|| {
+        document_failure(
+            "sema.document_validation_failed",
+            source_id,
+            relation.span,
+            "materialized relation root is missing",
+        )
+    })
+}
+
+fn take_materialized_relation(
+    completed: &mut BTreeMap<HirNodeIdV1, TypedRelationExprV2>,
+    child: &quanta_gqlang_v2_hir::RelationExprHirV1,
+    source_id: SourceIdV2,
+) -> Result<TypedRelationExprV2, FrontendFailureV2> {
+    completed.remove(&child.id).ok_or_else(|| {
+        document_failure(
+            "sema.document_validation_failed",
+            source_id,
+            child.span,
+            "materialized relation child is missing",
+        )
+    })
+}
+
+fn materialize_relation_node(
+    relation: &quanta_gqlang_v2_hir::RelationExprHirV1,
+    checked: quanta_gqlang_v2_hir::CheckedLocatedSpanV2,
+    source_id: SourceIdV2,
+    authority: &ClosedFrontendAuthorityV2,
+    bound: &BindResultV1,
+    facts: &TypedExpressionFactsV2,
+    extended: &ExtendedSourceRegistryViewV2,
+    composition_outputs: &BTreeMap<(HirNodeIdV1, usize), RelationOutputContractV2>,
+    views: &ViewMaterializationInputsV2<'_>,
+    expressions: &mut BTreeMap<SourceQualifiedNodeIdV2, TypedExprV2>,
+    nested_relations: &mut BTreeMap<SourceQualifiedNodeIdV2, TypedRelationExprV2>,
+    steps: &mut SemanticStepCounterV2,
+    completed: &mut BTreeMap<HirNodeIdV1, TypedRelationExprV2>,
+) -> Result<TypedRelationExprV2, FrontendFailureV2> {
     let key = SourceQualifiedNodeIdV2 {
         source_id,
         node_id: relation.id,
     };
-    let checked = extended
-        .combined()
-        .try_check_location(location(source_id, relation.span))
-        .map_err(|error| {
-            document_failure(
-                "sema.document_validation_failed",
-                source_id,
-                relation.span,
-                error.to_string(),
-            )
-        })?;
-    if bound.relation_output(relation.id).is_none() {
-        return Err(document_failure(
-            "sema.document_validation_failed",
-            source_id,
-            relation.span,
-            "binder omitted relation output frame",
-        ));
-    }
     match &relation.kind {
         quanta_gqlang_v2_hir::RelationExprKindV1::Source(source) => {
             if let Some(view) = views.source_targets.get(&relation.id) {
@@ -3542,19 +3740,7 @@ fn materialize_relation(
             })
         }
         quanta_gqlang_v2_hir::RelationExprKindV1::Filter(filter) => {
-            let input = materialize_relation(
-                &filter.input,
-                source_id,
-                authority,
-                bound,
-                facts,
-                extended,
-                composition_outputs,
-                views,
-                expressions,
-                nested_relations,
-                steps,
-            )?;
+            let input = take_materialized_relation(completed, &filter.input, source_id)?;
             let predicate = materialize_bool(
                 &filter.predicate,
                 source_id,
@@ -3599,19 +3785,7 @@ fn materialize_relation(
             })
         }
         quanta_gqlang_v2_hir::RelationExprKindV1::Project(project) => {
-            let input = materialize_relation(
-                &project.input,
-                source_id,
-                authority,
-                bound,
-                facts,
-                extended,
-                composition_outputs,
-                views,
-                expressions,
-                nested_relations,
-                steps,
-            )?;
+            let input = take_materialized_relation(completed, &project.input, source_id)?;
             let frame = bound.relation_output(relation.id).ok_or_else(|| {
                 document_failure(
                     "sema.document_validation_failed",
@@ -3823,32 +3997,8 @@ fn materialize_relation(
                 }
                 quanta_gqlang_v2_hir::JoinHirV1::Cross { left, right } => (left, right, None),
             };
-            let left = materialize_relation(
-                left_node,
-                source_id,
-                authority,
-                bound,
-                facts,
-                extended,
-                composition_outputs,
-                views,
-                expressions,
-                nested_relations,
-                steps,
-            )?;
-            let right = materialize_relation(
-                right_node,
-                source_id,
-                authority,
-                bound,
-                facts,
-                extended,
-                composition_outputs,
-                views,
-                expressions,
-                nested_relations,
-                steps,
-            )?;
+            let left = take_materialized_relation(completed, left_node, source_id)?;
+            let right = take_materialized_relation(completed, right_node, source_id)?;
             let predicate = predicate_node
                 .map(|node| {
                     materialize_bool(
@@ -3941,19 +4091,7 @@ fn materialize_relation(
             })
         }
         quanta_gqlang_v2_hir::RelationExprKindV1::OrderBy(order) => {
-            let input = materialize_relation(
-                &order.input,
-                source_id,
-                authority,
-                bound,
-                facts,
-                extended,
-                composition_outputs,
-                views,
-                expressions,
-                nested_relations,
-                steps,
-            )?;
+            let input = take_materialized_relation(completed, &order.input, source_id)?;
             let mut keys = Vec::new();
             let mut ordering = Vec::new();
             let mut effects = Vec::new();
@@ -4021,19 +4159,7 @@ fn materialize_relation(
             })
         }
         quanta_gqlang_v2_hir::RelationExprKindV1::GroupBy(group) => {
-            let input = materialize_relation(
-                &group.input,
-                source_id,
-                authority,
-                bound,
-                facts,
-                extended,
-                composition_outputs,
-                views,
-                expressions,
-                nested_relations,
-                steps,
-            )?;
+            let input = take_materialized_relation(completed, &group.input, source_id)?;
             let frame = bound.relation_output(relation.id).ok_or_else(|| {
                 document_failure(
                     "sema.document_validation_failed",
@@ -6571,7 +6697,7 @@ mod tests {
     )]
     fn semantic_steps_fail_at_exact_bound_with_source_location() -> Result<(), String> {
         let budget = FrontendBudgetV2::try_new(
-            10, 10, 10, 10, 10, 10, 10, 10, 2, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+            10, 10, 10, 10, 10, 10, 10, 10, 10, 2, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
         )
         .map_err(|error| format!("{error:?}"))?;
         let mut steps = SemanticStepCounterV2::new(&budget);

@@ -886,6 +886,7 @@ mod tests {
             1,
             1,
             1,
+            1,
             max_expression_nodes,
             1,
             1,

@@ -84,82 +84,103 @@ fn format_query(q: &QueryHirV1) -> String {
 
 /// Render a relation as `<source> [| stage]*` WITHOUT the leading `from `.
 fn format_relation(rel: &RelationExprHirV1) -> String {
-    match &rel.kind {
-        RelationExprKindV1::Source(src) => match &src.alias {
-            Some(a) => format!("{} {}", src.name, a.name),
-            None => src.name.clone(),
-        },
-        RelationExprKindV1::Project(proj) => {
-            let items = proj
-                .items()
-                .iter()
-                .map(format_projection_item)
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!("{} | project {items}", format_relation(&proj.input))
-        }
-        RelationExprKindV1::Filter(filter) => {
-            format!(
-                "{} | where {}",
-                format_relation(&filter.input),
-                format_bool(&filter.predicate)
-            )
-        }
-        RelationExprKindV1::Join(JoinHirV1::Inner { left, right, on }) => format!(
-            "{} | join {} on {}",
-            format_relation(left),
-            format_source_only(right),
-            format_bool(on)
-        ),
-        RelationExprKindV1::Join(JoinHirV1::Cross { left, right }) => format!(
-            "{} | cross join {}",
-            format_relation(left),
-            format_source_only(right)
-        ),
-        RelationExprKindV1::GroupBy(group) => format!(
-            "{} | group by {}",
-            format_relation(&group.input),
-            group
-                .keys()
-                .iter()
-                .map(format_value)
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-        RelationExprKindV1::OrderBy(order) => format!(
-            "{} | order by {}",
-            format_relation(&order.input),
-            order
-                .keys()
-                .iter()
-                .map(|key| format!(
-                    "{} {}",
-                    format_value(&key.value),
-                    match key.direction {
-                        SortDirectionHirV1::Asc => "asc",
-                        SortDirectionHirV1::Desc => "desc",
-                    }
-                ))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
+    enum Frame<'a> {
+        Relation(&'a RelationExprHirV1),
+        Stage(&'a RelationExprHirV1),
+        JoinPredicate(&'a BoolExprHirV1),
     }
-}
 
-/// Render a join right-hand source: `<name> [<alias>]`. The right operand of a
-/// join compose is always a relation source by the grammar.
-fn format_source_only(rel: &RelationExprHirV1) -> String {
-    match &rel.kind {
-        RelationExprKindV1::Source(src) => match &src.alias {
-            Some(a) => format!("{} {}", src.name, a.name),
-            None => src.name.clone(),
-        },
-        RelationExprKindV1::Project(_)
-        | RelationExprKindV1::Filter(_)
-        | RelationExprKindV1::Join(_)
-        | RelationExprKindV1::GroupBy(_)
-        | RelationExprKindV1::OrderBy(_) => format_relation(rel),
+    let mut out = String::new();
+    let mut stack = vec![Frame::Relation(rel)];
+    while let Some(frame) = stack.pop() {
+        match frame {
+            Frame::Relation(node) => match &node.kind {
+                RelationExprKindV1::Source(source) => {
+                    out.push_str(&source.name);
+                    if let Some(alias) = &source.alias {
+                        out.push(' ');
+                        out.push_str(&alias.name);
+                    }
+                }
+                RelationExprKindV1::Project(project) => {
+                    stack.push(Frame::Stage(node));
+                    stack.push(Frame::Relation(&project.input));
+                }
+                RelationExprKindV1::Filter(filter) => {
+                    stack.push(Frame::Stage(node));
+                    stack.push(Frame::Relation(&filter.input));
+                }
+                RelationExprKindV1::Join(join) => {
+                    stack.push(Frame::Stage(node));
+                    let left = match join {
+                        JoinHirV1::Inner { left, .. } | JoinHirV1::Cross { left, .. } => left,
+                    };
+                    stack.push(Frame::Relation(left));
+                }
+                RelationExprKindV1::GroupBy(group) => {
+                    stack.push(Frame::Stage(node));
+                    stack.push(Frame::Relation(&group.input));
+                }
+                RelationExprKindV1::OrderBy(order) => {
+                    stack.push(Frame::Stage(node));
+                    stack.push(Frame::Relation(&order.input));
+                }
+            },
+            Frame::Stage(node) => match &node.kind {
+                RelationExprKindV1::Source(_) => {}
+                RelationExprKindV1::Project(project) => {
+                    out.push_str(" | project ");
+                    for (index, item) in project.items().iter().enumerate() {
+                        if index > 0 {
+                            out.push_str(", ");
+                        }
+                        out.push_str(&format_projection_item(item));
+                    }
+                }
+                RelationExprKindV1::Filter(filter) => {
+                    out.push_str(" | where ");
+                    out.push_str(&format_bool(&filter.predicate));
+                }
+                RelationExprKindV1::Join(JoinHirV1::Inner { right, on, .. }) => {
+                    out.push_str(" | join ");
+                    stack.push(Frame::JoinPredicate(on));
+                    stack.push(Frame::Relation(right));
+                }
+                RelationExprKindV1::Join(JoinHirV1::Cross { right, .. }) => {
+                    out.push_str(" | cross join ");
+                    stack.push(Frame::Relation(right));
+                }
+                RelationExprKindV1::GroupBy(group) => {
+                    out.push_str(" | group by ");
+                    for (index, key) in group.keys().iter().enumerate() {
+                        if index > 0 {
+                            out.push_str(", ");
+                        }
+                        out.push_str(&format_value(key));
+                    }
+                }
+                RelationExprKindV1::OrderBy(order) => {
+                    out.push_str(" | order by ");
+                    for (index, key) in order.keys().iter().enumerate() {
+                        if index > 0 {
+                            out.push_str(", ");
+                        }
+                        out.push_str(&format_value(&key.value));
+                        out.push(' ');
+                        out.push_str(match key.direction {
+                            SortDirectionHirV1::Asc => "asc",
+                            SortDirectionHirV1::Desc => "desc",
+                        });
+                    }
+                }
+            },
+            Frame::JoinPredicate(predicate) => {
+                out.push_str(" on ");
+                out.push_str(&format_bool(predicate));
+            }
+        }
     }
+    out
 }
 
 fn format_projection_item(item: &quanta_gqlang_v2_hir::ProjectionItemV1) -> String {
@@ -212,71 +233,91 @@ fn value_precedence(value: &ValueExprHirV1) -> u8 {
 }
 
 fn format_value_prec(value: &ValueExprHirV1, parent: u8, right_child: bool) -> String {
-    let precedence = value_precedence(value);
-    match &value.kind {
-        ValueExprKindV1::Literal(lit) => format_literal(lit),
-        ValueExprKindV1::Symbol(sym) => sym.name.clone(),
-        ValueExprKindV1::Path(path) => {
-            let mut out = format_value_prec(&path.base, 40, false);
-            for seg in path.segments.as_slice() {
-                out.push('.');
-                out.push_str(&seg.name);
+    enum Frame<'a> {
+        Value(&'a ValueExprHirV1, u8, bool),
+        Text(&'a str),
+    }
+
+    let mut out = String::new();
+    let mut stack = vec![Frame::Value(value, parent, right_child)];
+    while let Some(frame) = stack.pop() {
+        match frame {
+            Frame::Text(text) => out.push_str(text),
+            Frame::Value(node, parent, right_child) => {
+                let precedence = value_precedence(node);
+                match &node.kind {
+                    ValueExprKindV1::Literal(literal) => out.push_str(&format_literal(literal)),
+                    ValueExprKindV1::Symbol(symbol) => out.push_str(&symbol.name),
+                    ValueExprKindV1::Path(path) => {
+                        for segment in path.segments.as_slice().iter().rev() {
+                            stack.push(Frame::Text(&segment.name));
+                            stack.push(Frame::Text("."));
+                        }
+                        stack.push(Frame::Value(&path.base, 40, false));
+                    }
+                    ValueExprKindV1::Unary(unary) => {
+                        out.push_str(&unary.op.symbol);
+                        stack.push(Frame::Value(&unary.operand, precedence, false));
+                    }
+                    ValueExprKindV1::Binary(binary) => {
+                        if precedence < parent || (right_child && precedence == parent) {
+                            out.push('(');
+                            stack.push(Frame::Text(")"));
+                        }
+                        stack.push(Frame::Value(&binary.rhs, precedence, true));
+                        stack.push(Frame::Text(" "));
+                        stack.push(Frame::Text(&binary.op.symbol));
+                        stack.push(Frame::Text(" "));
+                        stack.push(Frame::Value(&binary.lhs, precedence, false));
+                    }
+                    ValueExprKindV1::Call(call) => {
+                        out.push_str(&call.callee.name);
+                        out.push('(');
+                        stack.push(Frame::Text(")"));
+                        for (index, argument) in call.args().as_slice().iter().enumerate().rev() {
+                            if index + 1 < call.args().len() {
+                                stack.push(Frame::Text(", "));
+                            }
+                            match argument {
+                                CallArgHirV1::Expr(value) => {
+                                    stack.push(Frame::Value(value, 0, false));
+                                }
+                                CallArgHirV1::Star { .. } => stack.push(Frame::Text("*")),
+                            }
+                        }
+                    }
+                    ValueExprKindV1::Paren(inner) => {
+                        out.push('(');
+                        stack.push(Frame::Text(")"));
+                        stack.push(Frame::Value(inner, 0, false));
+                    }
+                    ValueExprKindV1::Record(record) => {
+                        out.push_str("{ ");
+                        stack.push(Frame::Text(" }"));
+                        for (index, field) in record.fields.iter().enumerate().rev() {
+                            if index + 1 < record.fields.len() {
+                                stack.push(Frame::Text(", "));
+                            }
+                            stack.push(Frame::Value(&field.value, 0, false));
+                            stack.push(Frame::Text(": "));
+                            stack.push(Frame::Text(&field.name));
+                        }
+                    }
+                    ValueExprKindV1::List(list) => {
+                        out.push('[');
+                        stack.push(Frame::Text("]"));
+                        for (index, element) in list.elements.iter().enumerate().rev() {
+                            if index + 1 < list.elements.len() {
+                                stack.push(Frame::Text(", "));
+                            }
+                            stack.push(Frame::Value(element, 0, false));
+                        }
+                    }
+                }
             }
-            out
-        }
-        ValueExprKindV1::Unary(unary) => {
-            format!(
-                "{}{}",
-                unary.op.symbol,
-                format_value_prec(&unary.operand, precedence, false)
-            )
-        }
-        ValueExprKindV1::Binary(bin) => {
-            let rendered = format!(
-                "{} {} {}",
-                format_value_prec(&bin.lhs, precedence, false),
-                bin.op.symbol,
-                format_value_prec(&bin.rhs, precedence, true)
-            );
-            if precedence < parent || (right_child && precedence == parent) {
-                format!("({rendered})")
-            } else {
-                rendered
-            }
-        }
-        ValueExprKindV1::Call(call) => {
-            let args = call
-                .args()
-                .as_slice()
-                .iter()
-                .map(|arg| match arg {
-                    CallArgHirV1::Expr(value) => format_value(value),
-                    CallArgHirV1::Star { .. } => "*".to_string(),
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!("{}({args})", call.callee.name)
-        }
-        ValueExprKindV1::Paren(inner) => format!("({})", format_value(inner)),
-        ValueExprKindV1::Record(rec) => {
-            let fields = rec
-                .fields
-                .iter()
-                .map(|f| format!("{}: {}", f.name, format_value(&f.value)))
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!("{{ {fields} }}")
-        }
-        ValueExprKindV1::List(list) => {
-            let elems = list
-                .elements
-                .iter()
-                .map(format_value)
-                .collect::<Vec<_>>()
-                .join(", ");
-            format!("[{elems}]")
         }
     }
+    out
 }
 
 fn format_literal(lit: &LiteralV1) -> String {
@@ -308,61 +349,84 @@ fn bool_precedence(pred: &BoolExprHirV1) -> u8 {
 }
 
 fn format_bool_prec(pred: &BoolExprHirV1, parent: u8, right_child: bool) -> String {
-    let precedence = bool_precedence(pred);
-    let rendered = match &pred.kind {
-        BoolExprKindV1::Literal(true) => "true".to_string(),
-        BoolExprKindV1::Literal(false) => "false".to_string(),
-        BoolExprKindV1::Value(value) => format_value(value),
-        BoolExprKindV1::Compare(cmp) => format!(
-            "{} {} {}",
-            format_value(&cmp.lhs),
-            cmp.op.symbol,
-            format_value(&cmp.rhs)
-        ),
-        BoolExprKindV1::And(b) => {
-            format!(
-                "{} and {}",
-                format_bool_prec(&b.lhs, precedence, false),
-                format_bool_prec(&b.rhs, precedence, true)
-            )
-        }
-        BoolExprKindV1::Or(b) => {
-            format!(
-                "{} or {}",
-                format_bool_prec(&b.lhs, precedence, false),
-                format_bool_prec(&b.rhs, precedence, true)
-            )
-        }
-        BoolExprKindV1::Not(inner) => format!("not {}", format_bool_prec(inner, precedence, false)),
-        BoolExprKindV1::Paren(inner) => format!("({})", format_bool(inner)),
-        BoolExprKindV1::LogicalQuantifier(q) => format!(
-            "{} {} in ({})",
-            match q.kind {
-                quanta_gqlang_v2_hir::LogicalQuantifierKindV1::Exists => "exists",
-                quanta_gqlang_v2_hir::LogicalQuantifierKindV1::Forall => "forall",
-            },
-            q.binders
-                .as_slice()
-                .iter()
-                .map(|binder| binder.name.as_str())
-                .collect::<Vec<_>>()
-                .join(", "),
-            format_bool(&q.body)
-        ),
-        BoolExprKindV1::RelationExists(exists) => format!(
-            "{}(from {})",
-            match exists.polarity {
-                quanta_gqlang_v2_hir::RelationExistsPolarityV1::Exists => "exists ",
-                quanta_gqlang_v2_hir::RelationExistsPolarityV1::NotExists => "not exists ",
-            },
-            format_relation(&exists.relation)
-        ),
-    };
-    if precedence < parent || (right_child && precedence == parent) {
-        format!("({rendered})")
-    } else {
-        rendered
+    enum Frame<'a> {
+        Bool(&'a BoolExprHirV1, u8, bool),
+        Text(&'a str),
     }
+
+    let mut out = String::new();
+    let mut stack = vec![Frame::Bool(pred, parent, right_child)];
+    while let Some(frame) = stack.pop() {
+        match frame {
+            Frame::Text(text) => out.push_str(text),
+            Frame::Bool(node, parent, right_child) => {
+                let precedence = bool_precedence(node);
+                if precedence < parent || (right_child && precedence == parent) {
+                    out.push('(');
+                    stack.push(Frame::Text(")"));
+                }
+                match &node.kind {
+                    BoolExprKindV1::Literal(true) => out.push_str("true"),
+                    BoolExprKindV1::Literal(false) => out.push_str("false"),
+                    BoolExprKindV1::Value(value) => out.push_str(&format_value(value)),
+                    BoolExprKindV1::Compare(compare) => {
+                        out.push_str(&format_value(&compare.lhs));
+                        out.push(' ');
+                        out.push_str(&compare.op.symbol);
+                        out.push(' ');
+                        out.push_str(&format_value(&compare.rhs));
+                    }
+                    BoolExprKindV1::And(binary) => {
+                        stack.push(Frame::Bool(&binary.rhs, precedence, true));
+                        stack.push(Frame::Text(" and "));
+                        stack.push(Frame::Bool(&binary.lhs, precedence, false));
+                    }
+                    BoolExprKindV1::Or(binary) => {
+                        stack.push(Frame::Bool(&binary.rhs, precedence, true));
+                        stack.push(Frame::Text(" or "));
+                        stack.push(Frame::Bool(&binary.lhs, precedence, false));
+                    }
+                    BoolExprKindV1::Not(inner) => {
+                        out.push_str("not ");
+                        stack.push(Frame::Bool(inner, precedence, false));
+                    }
+                    BoolExprKindV1::Paren(inner) => {
+                        out.push('(');
+                        stack.push(Frame::Text(")"));
+                        stack.push(Frame::Bool(inner, 0, false));
+                    }
+                    BoolExprKindV1::LogicalQuantifier(quantifier) => {
+                        out.push_str(match quantifier.kind {
+                            quanta_gqlang_v2_hir::LogicalQuantifierKindV1::Exists => "exists ",
+                            quanta_gqlang_v2_hir::LogicalQuantifierKindV1::Forall => "forall ",
+                        });
+                        for (index, binder) in quantifier.binders.as_slice().iter().enumerate() {
+                            if index > 0 {
+                                out.push_str(", ");
+                            }
+                            out.push_str(&binder.name);
+                        }
+                        out.push_str(" in (");
+                        stack.push(Frame::Text(")"));
+                        stack.push(Frame::Bool(&quantifier.body, 0, false));
+                    }
+                    BoolExprKindV1::RelationExists(exists) => {
+                        out.push_str(match exists.polarity {
+                            quanta_gqlang_v2_hir::RelationExistsPolarityV1::Exists => {
+                                "exists (from "
+                            }
+                            quanta_gqlang_v2_hir::RelationExistsPolarityV1::NotExists => {
+                                "not exists (from "
+                            }
+                        });
+                        out.push_str(&format_relation(&exists.relation));
+                        out.push(')');
+                    }
+                }
+            }
+        }
+    }
+    out
 }
 
 fn escape_str(content: &str) -> String {

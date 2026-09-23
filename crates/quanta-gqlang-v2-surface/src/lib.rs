@@ -73,6 +73,7 @@
 
 mod budget;
 mod cursor;
+mod depth;
 mod diag;
 mod expr;
 mod family;
@@ -116,6 +117,7 @@ fn parse_expr_with_budget(
     let mut cur = CursorV1::new(tokens, builder, counter);
     let value = expr::parse_value(&mut cur)?;
     finish(&cur)?;
+    depth::check_value(&value, budget.max_expression_depth())?;
     Ok(value)
 }
 
@@ -133,6 +135,7 @@ pub fn parse_predicate(
     let mut cur = CursorV1::new(tokens, builder, counter);
     let pred = expr::parse_bool(&mut cur)?;
     finish(&cur)?;
+    depth::check_bool(&pred, budget.max_expression_depth())?;
     Ok(pred)
 }
 

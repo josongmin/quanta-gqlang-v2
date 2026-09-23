@@ -193,6 +193,7 @@ fn source_limited_budget(max_source_bytes: u32) -> FrontendBudgetV2 {
         standard.max_tokens(),
         standard.max_document_items(),
         standard.max_expression_depth(),
+        standard.max_relation_depth(),
         standard.max_expression_nodes(),
         standard.max_collection_width(),
         standard.max_projection_width(),

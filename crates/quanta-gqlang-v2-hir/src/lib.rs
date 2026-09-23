@@ -46,6 +46,11 @@ mod span;
 mod unit;
 mod visit;
 
+/// Shared safety ceiling for source and semantic relation-depth budgets.
+pub const MAX_SAFE_RELATION_DEPTH_V2: usize = 128;
+/// Shared safety ceiling for source and semantic expression-depth budgets.
+pub const MAX_SAFE_EXPRESSION_DEPTH_V2: usize = 64;
+
 pub use build::HirBuilderV1;
 pub use id::{HirNodeIdGen, HirNodeIdV1};
 pub use span::{

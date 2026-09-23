@@ -45,27 +45,34 @@ use quanta_gqlang_v2_hir::{
 
 /// Parse a full query unit starting at `from`.
 pub(crate) fn parse_query(cur: &mut CursorV1<'_>) -> Result<QueryHirV1, ParseDiagnosticV1> {
-    let from_kw = cur.expect_keyword("from", "'from' to start a query")?;
-    let mut relation = parse_source(cur)?;
-    let mut end_span = relation.span;
+    let base_depth = cur.budget.relation_depth();
+    let result = (|| {
+        let from_kw = cur.expect_keyword("from", "'from' to start a query")?;
+        cur.budget.enter_relation_depth(from_kw.span)?;
+        let mut relation = parse_source(cur)?;
+        let mut end_span = relation.span;
 
-    while matches!(cur.peek().kind, TokenKindV1::Pipe) {
-        let _pipe = cur.bump();
-        relation = parse_stage(cur, relation)?;
-        end_span = relation.span;
-    }
+        while matches!(cur.peek().kind, TokenKindV1::Pipe) {
+            let pipe = cur.bump();
+            cur.budget.enter_relation_depth(pipe.span)?;
+            relation = parse_stage(cur, relation)?;
+            end_span = relation.span;
+        }
 
-    // optional result shape after `=>`
-    let mut result_shape = None;
-    if matches!(cur.peek().kind, TokenKindV1::Arrow) {
-        let _arrow = cur.bump();
-        let shape = parse_result_shape(cur)?;
-        end_span = shape.span;
-        result_shape = Some(shape);
-    }
+        // optional result shape after `=>`
+        let mut result_shape = None;
+        if matches!(cur.peek().kind, TokenKindV1::Arrow) {
+            let _arrow = cur.bump();
+            let shape = parse_result_shape(cur)?;
+            end_span = shape.span;
+            result_shape = Some(shape);
+        }
 
-    let span = from_kw.span.merge(&end_span);
-    Ok(cur.builder.query(relation, result_shape, span))
+        let span = from_kw.span.merge(&end_span);
+        Ok(cur.builder.query(relation, result_shape, span))
+    })();
+    cur.budget.restore_relation_depth(base_depth);
+    result
 }
 
 /// Parse a relation source: `<name> [<alias>]`.

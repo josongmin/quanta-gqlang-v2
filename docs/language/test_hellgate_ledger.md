@@ -23,7 +23,7 @@ not compatibility promises.
 | Surface grammar and item families | `crates/quanta-gqlang-v2-surface/tests/v3_surface_query.rs`, `crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs`, `crates/quanta-gqlang-v2-surface/tests/v3_document_hellgate.rs` | Typed query stages, all root families, document/source identity, fail-closed grammar |
 | Expression grammar | `crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_kernel.rs`, `crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_edges.rs`, `crates/quanta-gqlang-v2-surface/tests/v3_mutation_rails.rs` | Precedence, path/call/quantifier/existence shapes, mutation-sensitive branches |
 | UTF-8 and formatting | `crates/quanta-gqlang-v2-surface/tests/v3_format_edges.rs`, `crates/quanta-gqlang-v2-surface/tests/v3_format_hellgate.rs`, `crates/quanta-gqlang-v2-surface/tests/v3_surface_proptest.rs`, `crates/quanta-gqlang-v2-surface/tests/v3_lexer_symbol_rails.rs` | Unicode and escape correctness, precedence-aware canonicalization, independent structural witness, property rails |
-| Parse resource budgets | `crates/quanta-gqlang-v2-surface/tests/v3_surface_budget.rs` | Exact-limit/one-over-limit token, item, expression, collection, and projection dimensions |
+| Parse resource budgets | `crates/quanta-gqlang-v2-surface/tests/v3_surface_budget.rs` | Exact-limit/one-over-limit token, item, recursive and structural expression depth, nested relation depth, collection, and projection dimensions |
 | HIR identity and integrity | `crates/quanta-gqlang-v2-hir/tests/v3_item_identity.rs`, `crates/quanta-gqlang-v2-hir/tests/v3_hir_hellgate.rs`, `crates/quanta-gqlang-v2-hir/tests/v3_span_semantics.rs` | Unique IDs, source-qualified document integrity, node and auxiliary span bounds, invalid-state rejection |
 | HIR semantic carriers and traversal | `crates/quanta-gqlang-v2-hir/tests/v3_hir_expr_kernel.rs`, `crates/quanta-gqlang-v2-hir/tests/v3_item_hellgate.rs`, `crates/quanta-gqlang-v2-hir/tests/v3_visit_traversal.rs` | Closed join/group/order/call/path/composition shapes and exhaustive traversal |
 | Closed type universe and checking | `crates/quanta-gqlang-v2-types/tests/v3_types_universe.rs`, `crates/quanta-gqlang-v2-types/tests/v3_types_check_edges.rs`, `crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs` | Non-forgeable type states, overload resolution, record projection, complete effects/facts, type budgets |
@@ -42,8 +42,8 @@ not compatibility promises.
 
 | Surface | Primary rails | Contract pinned |
 |---|---|---|
-| Compiled document assembly | `crates/quanta-gqlang-v2-pipeline/tests/v3_compiled_document_assembly.rs` | Closed source transaction, exact membership, planning and typed non-plan outcomes |
-| Analysis document assembly | `crates/quanta-gqlang-v2-pipeline/tests/v3_analysis_document_assembly.rs` | Open analysis, blocked-stage retention, deterministic diagnostics and parity with compilation |
+| Compiled document assembly | `crates/quanta-gqlang-v2-pipeline/tests/v3_compiled_document_assembly.rs` | Closed source transaction, exact membership, planning and typed non-plan outcomes, exact/over-limit source relation depth including nested EXISTS, admitted-depth formatting, typed rejection of overdeep expression trees |
+| Analysis document assembly | `crates/quanta-gqlang-v2-pipeline/tests/v3_analysis_document_assembly.rs` | Open analysis, blocked-stage retention, deterministic diagnostics and parity with compilation, over-limit relation rejection without closed authority |
 
 ## Shipped front doors
 

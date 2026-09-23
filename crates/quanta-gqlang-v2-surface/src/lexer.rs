@@ -468,7 +468,7 @@ mod tests {
         ];
         for source in cases {
             PAYLOAD_ALLOCATIONS.with(|count| count.set(0));
-            let budget = ParseBudgetV2::try_new(1, 1, 1, 1, 1, 1).unwrap();
+            let budget = ParseBudgetV2::try_new(1, 1, 1, 1, 1, 1, 1).unwrap();
             let counter = ParseBudgetCounterV2::new(&budget);
             let error = lex_with_budget(&source, &counter).unwrap_err();
             assert_eq!(error.code, ParseErrorCodeV1::ResourceExhausted);

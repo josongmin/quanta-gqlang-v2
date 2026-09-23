@@ -127,6 +127,12 @@ pub(crate) fn parse_program_with_budget(
         ));
     }
 
+    crate::depth::check_item(
+        &item,
+        cur.budget.max_expression_depth(),
+        cur.budget.max_relation_depth(),
+    )?;
+
     Ok(ParsedProgramV1 {
         item,
         source_len: source.len(),
@@ -202,6 +208,11 @@ pub(crate) fn parse_document_items_with_budget(
         cur.budget.charge_document_item(cur.here_span())?;
         reject_v2_isms(&cur)?;
         let item = parse_one_item(&mut cur, source)?;
+        crate::depth::check_item(
+            &item,
+            cur.budget.max_expression_depth(),
+            cur.budget.max_relation_depth(),
+        )?;
         items.push(item);
 
         // Each item is terminated by `;` or EOF. A non-separator, non-EOF token

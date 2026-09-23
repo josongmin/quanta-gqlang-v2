@@ -45,8 +45,8 @@ fn checked_locations(count: usize) -> Vec<CheckedLocatedSpanV2> {
 /// A rule-graph budget with explicit rule dimensions and generous neighbours.
 fn receipt(nodes: u32, edges: u32, steps: u32) -> DownstreamBudgetReceiptV2 {
     FrontendBudgetV2::try_new(
-        1_024, 4_096, 1_024, 256, 8, 256, 64, 64, 1_000, 64, 128, 1_000, 4_096, 256, nodes, edges,
-        steps, 64, 64, 64, 65_536,
+        1_024, 4_096, 1_024, 256, 8, 128, 256, 64, 64, 1_000, 64, 128, 1_000, 4_096, 256, nodes,
+        edges, steps, 64, 64, 64, 65_536,
     )
     .expect("explicit budget is well formed")
     .downstream_receipt()

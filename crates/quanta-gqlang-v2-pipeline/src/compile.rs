@@ -693,7 +693,7 @@ pub fn format_source_document_v2(
 /// Project the parse-stage budget from one checked frontend budget.
 ///
 /// Every dimension of a checked [`FrontendBudgetV2`] is a `NonZeroU32` widened
-/// to `usize`, and [`ParseBudgetV2::try_new`] rejects only zero, so this
+/// to `usize`, and [`ParseBudgetV2::try_new`] applies the same HIR safety caps, so this
 /// projection has no reachable rejection. The rejection is therefore surfaced
 /// with the CALLER's real source identity and the source's own exact span — the
 /// same anchor the sibling resource-limit failure uses — instead of a fabricated
@@ -708,6 +708,7 @@ fn project_parse_budget(
         usize::try_from(budget.max_document_items()).unwrap_or(usize::MAX),
         usize::try_from(budget.max_expression_nodes()).unwrap_or(usize::MAX),
         usize::try_from(budget.max_expression_depth()).unwrap_or(usize::MAX),
+        usize::try_from(budget.max_relation_depth()).unwrap_or(usize::MAX),
         usize::try_from(budget.max_collection_width()).unwrap_or(usize::MAX),
         usize::try_from(budget.max_projection_width()).unwrap_or(usize::MAX),
     )

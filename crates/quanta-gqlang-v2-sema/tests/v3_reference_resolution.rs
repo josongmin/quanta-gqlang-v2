@@ -112,7 +112,7 @@ fn profile_and_registry_mismatch_reject_before_document_work() {
     .unwrap_err();
     assert_eq!(error.code(), "sema.open_authority_mismatch");
     let smaller = FrontendBudgetV2::try_new(
-        1_048_576, 4_194_304, 131_072, 4_096, 64, 262_144, 4_096, 4_096, 1_000_000, 50_000,
+        1_048_576, 4_194_304, 131_072, 4_096, 64, 128, 262_144, 4_096, 4_096, 1_000_000, 50_000,
         200_000, 1_000_000, 16_777_215, 65_536, 50_000, 200_000, 1_000_000, 1_024, 10_000, 1_024,
         8_388_608,
     )

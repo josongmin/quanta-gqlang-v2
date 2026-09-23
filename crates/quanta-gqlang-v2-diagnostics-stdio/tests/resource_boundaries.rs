@@ -19,6 +19,7 @@ fn budget(source: u32, frame: u32, diagnostics: u32, response: u32) -> FrontendB
         1_024,
         64,
         32,
+        32,
         2_048,
         64,
         64,

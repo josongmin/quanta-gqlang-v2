@@ -1,7 +1,7 @@
 //! Parse-owned resource budgets and one non-resetting document counter.
 
 use crate::diag::ParseDiagnosticV1;
-use quanta_gqlang_v2_hir::SpanV1;
+use quanta_gqlang_v2_hir::{SpanV1, MAX_SAFE_EXPRESSION_DEPTH_V2, MAX_SAFE_RELATION_DEPTH_V2};
 use std::cell::Cell;
 
 /// Stable parse-budget dimension names.
@@ -13,8 +13,10 @@ pub enum ParseBudgetDimensionV2 {
     DocumentItems,
     /// Value and Bool HIR nodes.
     ExpressionNodes,
-    /// Recursive expression/shape descent.
+    /// Recursive parser descent and the resulting expression-tree depth.
     ExpressionDepth,
+    /// Nested relation stages on one execution path.
+    RelationDepth,
     /// Elements in one collection.
     CollectionWidth,
     /// Items in one projection/group/order key list.
@@ -30,6 +32,7 @@ impl ParseBudgetDimensionV2 {
             Self::DocumentItems => "document_items",
             Self::ExpressionNodes => "expression_nodes",
             Self::ExpressionDepth => "expression_depth",
+            Self::RelationDepth => "relation_depth",
             Self::CollectionWidth => "collection_width",
             Self::ProjectionWidth => "projection_width",
         }
@@ -43,18 +46,20 @@ pub struct ParseBudgetV2 {
     document_items: usize,
     expression_nodes: usize,
     expression_depth: usize,
+    relation_depth: usize,
     collection_width: usize,
     projection_width: usize,
 }
 
 impl ParseBudgetV2 {
-    /// Construct a positive budget. Zero is rejected because it cannot even
-    /// admit the mandatory EOF token.
+    /// Construct a positive budget below the shared HIR traversal safety caps.
+    /// Zero is rejected because it cannot even admit the mandatory EOF token.
     pub fn try_new(
         tokens: usize,
         document_items: usize,
         expression_nodes: usize,
         expression_depth: usize,
+        relation_depth: usize,
         collection_width: usize,
         projection_width: usize,
     ) -> Result<Self, &'static str> {
@@ -63,18 +68,22 @@ impl ParseBudgetV2 {
             document_items,
             expression_nodes,
             expression_depth,
+            relation_depth,
             collection_width,
             projection_width,
         ]
         .contains(&0)
+            || expression_depth > MAX_SAFE_EXPRESSION_DEPTH_V2
+            || relation_depth > MAX_SAFE_RELATION_DEPTH_V2
         {
-            return Err("parse budget dimensions must be positive");
+            return Err("parse budget dimensions must be positive and depths must stay within their safe maxima");
         }
         Ok(Self {
             tokens,
             document_items,
             expression_nodes,
             expression_depth,
+            relation_depth,
             collection_width,
             projection_width,
         })
@@ -87,10 +96,19 @@ impl ParseBudgetV2 {
             tokens: 65_536,
             document_items: 4_096,
             expression_nodes: 131_072,
-            expression_depth: 64,
+            expression_depth: MAX_SAFE_EXPRESSION_DEPTH_V2,
+            relation_depth: MAX_SAFE_RELATION_DEPTH_V2,
             collection_width: 4_096,
             projection_width: 1_024,
         }
+    }
+
+    pub(crate) const fn max_expression_depth(&self) -> usize {
+        self.expression_depth
+    }
+
+    pub(crate) const fn max_relation_depth(&self) -> usize {
+        self.relation_depth
     }
 }
 
@@ -103,6 +121,7 @@ pub(crate) struct ParseBudgetCounterV2 {
     document_items: Cell<usize>,
     expression_nodes: Cell<usize>,
     expression_depth: Cell<usize>,
+    relation_depth: Cell<usize>,
 }
 
 impl ParseBudgetCounterV2 {
@@ -113,7 +132,33 @@ impl ParseBudgetCounterV2 {
             document_items: Cell::new(0),
             expression_nodes: Cell::new(0),
             expression_depth: Cell::new(0),
+            relation_depth: Cell::new(0),
         }
+    }
+
+    pub(crate) fn max_expression_depth(&self) -> usize {
+        self.budget.max_expression_depth()
+    }
+
+    pub(crate) fn max_relation_depth(&self) -> usize {
+        self.budget.max_relation_depth()
+    }
+
+    pub(crate) fn relation_depth(&self) -> usize {
+        self.relation_depth.get()
+    }
+
+    pub(crate) fn restore_relation_depth(&self, depth: usize) {
+        self.relation_depth.set(depth);
+    }
+
+    pub(crate) fn enter_relation_depth(&self, span: SpanV1) -> Result<(), ParseDiagnosticV1> {
+        self.cumulative(
+            ParseBudgetDimensionV2::RelationDepth,
+            &self.relation_depth,
+            self.budget.relation_depth,
+            span,
+        )
     }
 
     fn cumulative(

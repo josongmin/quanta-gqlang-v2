@@ -40,7 +40,7 @@ use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2,
     FrontendStageV2, FrontendTransactionErrorV2, LocatedSpanV2, SourceIdV2, SpanV1,
 };
-use quanta_gqlang_v2_surface::SurfaceDiagnosticV2;
+use quanta_gqlang_v2_surface::{ParseErrorCodeV1, SurfaceDiagnosticV2};
 
 /// Pipeline-owned stable exact-key assembly codes.
 ///
@@ -360,8 +360,13 @@ pub fn no_plan_code(reason: NoPlanReasonV2) -> &'static str {
 /// synthesizes one, and it never rewrites the surface code.
 #[must_use]
 pub(crate) fn surface_failure(error: &SurfaceDiagnosticV2) -> FrontendFailureV2 {
+    let stage = if error.code == ParseErrorCodeV1::ResourceExhausted {
+        FrontendStageV2::Resource
+    } else {
+        FrontendStageV2::Integrity
+    };
     FrontendFailureV2::one(FrontendDiagnosticV2::new(
-        FrontendStageV2::Integrity,
+        stage,
         error.code_str(),
         FrontendSeverityV2::Error,
         LocatedSpanV2 {

@@ -38,7 +38,7 @@ use quanta_gqlang_v2_pipeline::{
     ExecutionRelationalOperatorV3, ExecutionSampleModeV3, ExecutionScalarTypeV3, ExecutionSchemaV3,
     ExecutionSourceKindV3, ExecutionValueTypeV3, FrontendAuthorityLocationV2,
     FrontendAuthoritySourceV2, FrontendLanguageVersionV2, FrontendRelationAuthorityV2,
-    FrontendRelationInputV2, FrontendTransactionErrorV2, PlannedItemV2,
+    FrontendRelationInputV2, FrontendStageV2, FrontendTransactionErrorV2, PlannedItemV2,
 };
 use quanta_gqlang_v2_planning::{
     AuthorityLaneV2, CapabilityV2, CardinalityClassV2, CheckedCompositionPlanInputV2,
@@ -1252,6 +1252,101 @@ fn source_id_is_transaction_local_and_foreign_item_lookup_is_empty() {
 }
 
 #[test]
+fn source_bound_relation_depth_admits_exact_limit_and_rejects_without_abort() {
+    let authority = authority_with_records();
+    let exact = format!(
+        "from records r{} | project r.id as id",
+        " | where true".repeat(126)
+    );
+    let compiled = compile_source_document_v3(DOC_SOURCE, &exact, &authority)
+        .expect("the exact relation-depth limit admits");
+    assert_eq!(compiled.execution().items().len(), 1);
+
+    for depth in [127, 4_096] {
+        let over = format!(
+            "from records r{} | project r.id as id",
+            " | where true".repeat(depth)
+        );
+        let error = compile_source_document_v3(DOC_SOURCE, &over, &authority)
+            .expect_err("relation depth past the checked limit must reject before recursion");
+        assert_eq!(failure_code(&error), "surface.resource_exhausted");
+        let FrontendTransactionErrorV2::Document(failure) = error else {
+            panic!("source resource failure must be source-anchored");
+        };
+        assert_eq!(failure.diagnostics()[0].stage(), FrontendStageV2::Resource);
+    }
+
+    for (nested_filters, admitted) in [(125, true), (126, false)] {
+        let nested = format!(
+            "from records r | where exists (from records s{}) | project r.id as id",
+            " | where true".repeat(nested_filters)
+        );
+        let result = compile_source_document_v3(DOC_SOURCE, &nested, &authority);
+        if admitted {
+            assert!(
+                result.is_ok(),
+                "nested relation at the exact limit must admit"
+            );
+        } else {
+            assert_eq!(
+                failure_code(&result.expect_err("nested relation past the limit must reject")),
+                "surface.resource_exhausted"
+            );
+        }
+    }
+
+    let colliding = format!(
+        "from records r{} | project r.id as id",
+        " | where true".repeat(126)
+    );
+    let error = compile_source_document_v3(HOST_SOURCE, &colliding, &authority)
+        .expect_err("a valid-depth source must reject a registry identity collision");
+    assert_eq!(
+        failure_code(&error),
+        "hir.source_registry.duplicate_source_id"
+    );
+}
+
+#[test]
+fn formatting_relation_pipeline_respects_source_depth_admission() {
+    let source = format!("from records r{}", " | where true".repeat(127));
+    let budget = FrontendBudgetV2::standard_v2().expect("standard budget");
+    let formatted = format_source_document_v2(DOC_SOURCE, &source, &budget)
+        .expect("the exact admitted relation depth must format");
+    assert_eq!(formatted, source);
+
+    let over = format!("from records r{}", " | where true".repeat(4_096));
+    let error = format_source_document_v2(DOC_SOURCE, &over, &budget)
+        .expect_err("overdeep relations must reject before formatter traversal");
+    assert_eq!(error.diagnostics()[0].code(), "surface.resource_exhausted");
+}
+
+#[test]
+fn formatting_long_flat_boolean_chain_rejects_at_structural_depth_budget() {
+    let source = format!("from records r | where true{}", " and true".repeat(4_096));
+    let budget = FrontendBudgetV2::standard_v2().expect("standard budget");
+    let failure = format_source_document_v2(DOC_SOURCE, &source, &budget)
+        .expect_err("overdeep boolean HIR must reject before formatting");
+    assert_eq!(
+        failure.diagnostics()[0].code(),
+        "surface.resource_exhausted"
+    );
+}
+
+#[test]
+fn compiling_long_flat_boolean_chain_rejects_at_structural_depth_budget() {
+    let source = format!(
+        "from records r | where true{} | project r.id as id",
+        " and true".repeat(4_096)
+    );
+    let result = compile_source_document_v3(DOC_SOURCE, &source, &authority_with_records());
+    assert_eq!(
+        failure_code(&result.expect_err("overdeep boolean HIR must reject before compilation")),
+        "surface.resource_exhausted"
+    );
+}
+
+#[test]
 fn source_bound_v3_digests_match_the_shared_golden_vectors() {
     let mut selected = 0;
     for row in include_str!("fixtures/execution-v3-vectors.tsv")
@@ -1671,7 +1766,7 @@ fn format_entry_emits_canonical_text_and_enforces_the_source_budget() {
     assert!(formatted.contains("show capabilities"));
 
     let tiny = FrontendBudgetV2::try_new(
-        8, 4_194_304, 131_072, 4_096, 64, 262_144, 4_096, 4_096, 1_000_000, 50_000, 200_000,
+        8, 4_194_304, 131_072, 4_096, 64, 128, 262_144, 4_096, 4_096, 1_000_000, 50_000, 200_000,
         1_000_000, 16_777_216, 65_536, 50_000, 200_000, 1_000_000, 1_024, 10_000, 1_024, 8_388_608,
     )
     .expect("tiny source budget admits");
@@ -1685,4 +1780,8 @@ fn format_entry_emits_canonical_text_and_enforces_the_source_budget() {
             .code(),
         "frontend.resource_limit_exceeded"
     );
+
+    let syntax = format_source_document_v2(DOC_SOURCE, "from records r | bogus", &budget)
+        .expect_err("unknown stage must retain syntax/integrity classification");
+    assert_eq!(syntax.diagnostics()[0].stage(), FrontendStageV2::Integrity);
 }
