@@ -15,5 +15,6 @@ cannot compile, do not specify current behavior, and must not be used as test
 templates. Current behavior is specified by the executable V2 algebra and
 surface conformance suites.
 
-Historical migration records remain under `docs/plans/`; they are not a
-current API or test contract.
+The retired campaign outcome is summarized in
+`docs/adr/0001-frontend-campaign-consolidation.md`; it is not a current API or
+test contract.

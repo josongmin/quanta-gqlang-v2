@@ -36,9 +36,9 @@ supplement this audit required.
 
 ## Supplement applied by this audit (uncommitted, for owner review)
 
-- `.typos.toml`: added `docs/bugbash/**/receipts/**` to `extend-exclude` (same
-  data class as the already-excluded `docs/plans/**/receipts/**`: receipts embed
-  SHA prefixes/mutation markers; ticket prose stays checked), formatted to
+- `.typos.toml`: added `docs/bugbash/**/receipts/**` to `extend-exclude`
+  because receipts embed SHA prefixes/mutation markers while ticket prose stays
+  checked; it was formatted to
   taplo-canonical form (4-space indent, sorted). Without it `just lint` fails at
   `typos`; with only the exclusion but single-line form it fails at `taplo`.
 
