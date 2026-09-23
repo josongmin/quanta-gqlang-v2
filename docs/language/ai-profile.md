@@ -1,25 +1,16 @@
-# AI Exploration Profile
+# AI Exploration Profile Status
 
-The AI surface in `quanta-gqlang-v2` is a typed **profile over the same DSL**, not a
-separate runtime contract. It is frontend metadata only: read-only, presentation
-and planning vocabulary, never a backend availability or truth claim.
+The current v3 frontend does **not** ship a separate AI exploration profile,
+provider integration, or AI execution lane. The old `AiExplorationPlanV1`,
+`AiObjectiveV1`, `ExplorationBudgetV1`, and `WorkingSetV1` carriers are not in
+the current workspace or the public frontend facade. The former
+`quanta-gqlang-v2-ir --test ai_profile_contract` command is not a valid proof
+rail and must not be used as a support claim.
 
-## Public carriers
-
-1. `AiExplorationPlanV1` — the explicit plan shape
-2. `AiObjectiveV1` — the declared objective (diagnose, find, narrow, prove, export)
-3. `ExplorationBudgetV1` — explicit candidate / round-trip / reconfirmation budgets
-4. `WorkingSetV1` — typed working-set carriers (kind, basis, reasons)
-
-## Rules
-
-1. AI remains a profile on the same language surface, not a new execution lane
-2. reconfirmation is explicit as **same-intent replay** through `ci_gate` or `lint`
-3. final policy truth cannot be emitted directly from the AI lane
-4. provider-local or runtime-local IDs do not leak into the public carriers
-5. degraded reasons are presentation-only and use the shared degraded-reason
-   authority enum, not duplicated strings
-
-## Proof rail
-
-`cargo test -p quanta-gqlang-v2-ir --test ai_profile_contract`
+`FIND`, `EXPLAIN`, `SAMPLE`, `COMPARE`, and `EXPORT` are language/presentation
+families handled by the shared checked frontend pipeline. Their presence in
+syntax, examples, or planning IR does not imply an AI provider, data-generation
+binding, executed result, or runtime availability. For current behavior and
+proof boundaries, use the [language surface](README.md),
+[V3 frontend contract](../contracts/frontend-execution-v3.md), and
+[test contract map](test_hellgate_ledger.md).

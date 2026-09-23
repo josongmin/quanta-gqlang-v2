@@ -1,6 +1,7 @@
 # Examples Index
 
-This index lists parser-stable read-only examples that ship with the public frontend.
+This index lists the current read-only v3 frontend example sources. Inclusion
+proves syntax/format and documented open-analysis behavior, not runtime support.
 
 Query roots:
 
@@ -41,3 +42,5 @@ Notes:
 1. all examples are read-only
 2. no runtime truth is implied by example inclusion
 3. experimental catalog/detail surfaces remain typed frontend examples only
+4. CLI `fmt --file` succeeds for these sources; CLI `query --file` uses open
+   authority and reports `incomplete` with exit code 1 rather than executing

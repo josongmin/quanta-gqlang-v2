@@ -14,6 +14,64 @@ Composition bindings retain source order, exact binding identity, producer item/
 
 The literal field of `ExecutionExpressionShapeV3::Literal` is `ExecutionLiteralV3`, projected only from `TypedLiteralFactV2`. Its variants are signed `Int(i128)`, normalized finite `Float(ExecutionFiniteFloatV3)`, `Bool(bool)`, UTF-8 `String`, and `Null`. The checked finite-float owner normalizes negative zero to positive zero and rejects non-finite values. `DeferredI128MinMagnitude` projects to `i128::MIN`. The public float wrapper exposes bits but cannot be constructed from arbitrary non-finite bits by a downstream caller. No literal text is reparsed or used as an execution value.
 
+## Minimal facade use
+
+A host supplies real, checked authority before source compilation. This example
+registers the canonical workspace-files relation; it does not read files or
+execute the query. All imported types come from the facade:
+
+```rust
+use quanta_gqlang_v2_frontend_contract::{
+    compile_source_document_v3, ClosedFrontendAuthorityBuilderV2,
+    FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
+    FrontendLanguageVersionV2, FrontendRelationInputV2, SourceIdV2,
+};
+
+fn main() {
+    let host = SourceIdV2::from_raw(1);
+    let location = FrontendAuthorityLocationV2 {
+        source_id: host,
+        start: 0,
+        end: 1,
+    };
+    let mut builder = ClosedFrontendAuthorityBuilderV2::try_new(
+        FrontendBudgetV2::standard_v2().expect("standard budget"),
+        vec![FrontendAuthoritySourceV2 {
+            source_id: host,
+            source_len: 64,
+        }],
+        "app".to_owned(),
+        location,
+        FrontendLanguageVersionV2 {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        },
+    ).expect("builder starts");
+    builder.add_relation(FrontendRelationInputV2::canonical_workspace_files(
+        location, location,
+    ));
+    let authority = builder.finish().expect("authority seals");
+    let compiled = compile_source_document_v3(
+        SourceIdV2::from_raw(9),
+        "from files f | project f.path as path",
+        &authority,
+    ).expect("source compiles");
+    let execution = compiled.execution();
+    let selected = execution.items().first().expect("one executable item");
+    assert!(execution.item(selected.item_id()).is_some());
+    assert!(selected.relation().is_some());
+    let _frontend_identity = execution.qualification_digest();
+}
+```
+
+The host selects by exact item identity, not a second name lookup, and must
+not reimplement the digest encoder. The facade-only external-consumer program
+at `tools/frontend_external_consumer/src/main.rs` is the compiled integration
+reference. Selecting an item is not runtime admission: the downstream owner
+must bind its own generation/provider/budget and reject unsupported payloads
+before effects.
+
 ## Canonical digest encoding
 
 All three digests are SHA-256 over distinct canonical byte streams. `STR(x)` means `U64BE(length of UTF-8 bytes) || UTF-8 bytes`; `SEQ(xs)` means `U64BE(count) || each element in declared order`; `OPT(x)` means one byte `0` if absent or `1 || x` if present. `U8`, `U32BE`, `U64BE`, and `I128BE` have fixed widths; signed integers use two's-complement big-endian bytes. Lengths come from the frontend's bounded checked transaction and are encoded as `U64BE`. No display/debug formatting, hash-map order, host pointer width, runtime ID, provider, generation, lease, or budget enters these streams.

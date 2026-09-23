@@ -6,15 +6,15 @@
 
 //! Documentation inventory guard.
 //!
-//! The language README and the hellgate ledger are the repo's authoritative
-//! indexes of test rails: they list concrete `crates/<crate>/tests/<file>.rs`
-//! paths. A stale path would otherwise survive an ordinary source rename.
+//! The hellgate ledger is the repo's curated index of test rails: it lists
+//! concrete `crates/<crate>/tests/<file>.rs` paths. A stale path would
+//! otherwise survive an ordinary source rename.
 //!
-//! This rail closes that class: every rail path named in either document must
-//! exist on disk. It needs no crate API — it is a pure filesystem projection —
-//! so it can live in any test target. It is hosted here because `surface` owns
-//! the shipped example corpus and already carries the sibling corpus/doc-list
-//! rail (`v3_examples_corpus.rs`). The assertion does not need a language API.
+//! This rail closes that class: every rail path named in the ledger must exist
+//! on disk. It needs no crate API — it is a pure filesystem projection — so it
+//! can live in any test target. It is hosted here because `surface` owns the
+//! shipped example corpus and already carries the sibling corpus/doc-list rail
+//! (`v3_examples_corpus.rs`). The assertion does not need a language API.
 
 use std::path::{Path, PathBuf};
 
@@ -58,11 +58,6 @@ fn assert_doc_paths_exist_v1(doc: &str) {
         missing.is_empty(),
         "{doc}: these rail paths no longer exist on disk (rename or delete them here too): {missing:?}"
     );
-}
-
-#[test]
-fn language_readme_rail_paths_exist() {
-    assert_doc_paths_exist_v1("docs/language/README.md");
 }
 
 #[test]

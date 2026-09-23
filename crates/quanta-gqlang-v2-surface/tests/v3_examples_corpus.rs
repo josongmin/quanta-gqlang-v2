@@ -7,13 +7,10 @@
 
 //! Shipped example corpus rail.
 //!
-//! `examples/**/*.qglang` is the frontend-owned corpus the docs call
-//! "parser-stable". Before this rail it was referenced by **no test and no
-//! `src` file at all**, and the three docs that list it had already drifted
-//! (17 of 18 entries). This is the smallest owner-local rail that closes both
-//! holes: `surface` owns the grammar, so it owns the guarantee that every
-//! shipped example parses and formats to a fixed point, and that the corpus on
-//! disk is exactly what the docs advertise.
+//! `examples/**/*.qglang` is the frontend-owned corpus. `surface` owns the
+//! guarantee that each shipped example parses and formats to a fixed point.
+//! `docs/language/examples_index.md` is the only maintained file list; the
+//! README entrypoints link to it instead of copying the corpus.
 //!
 //! Scope is deliberately parse+format only. Whether an example compiles end to
 //! end is a different claim owned by the pipeline/conformance rails, and one
@@ -98,32 +95,42 @@ fn every_shipped_example_parses_and_round_trips() {
 }
 
 #[test]
-fn every_example_is_listed_in_all_three_docs() {
+fn every_example_is_listed_in_one_index_and_readmes_link_it() {
     let on_disk: BTreeSet<String> = corpus_paths().into_iter().collect();
-    let docs = [
-        "README.md",
-        "docs/language/README.md",
-        "docs/language/examples_index.md",
-    ];
-    for doc in docs {
-        let root = repo_root();
-        let text = std::fs::read_to_string(root.join(doc))
-            .unwrap_or_else(|err| panic!("read {doc}: {err}"));
-        let listed: BTreeSet<String> = text
-            .split(|c: char| c.is_whitespace() || c == '`' || c == ',' || c == '(' || c == ')')
-            .filter(|tok| tok.starts_with("examples/") && tok.ends_with(".qglang"))
-            .map(str::to_owned)
-            .collect();
+    let doc = "docs/language/examples_index.md";
+    let text = std::fs::read_to_string(repo_root().join(doc))
+        .unwrap_or_else(|err| panic!("read {doc}: {err}"));
+    let listed: Vec<String> = text
+        .split(|c: char| c.is_whitespace() || c == '`' || c == ',' || c == '(' || c == ')')
+        .filter(|tok| tok.starts_with("examples/") && tok.ends_with(".qglang"))
+        .map(str::to_owned)
+        .collect();
+    let listed_set: BTreeSet<String> = listed.iter().cloned().collect();
+    assert_eq!(
+        listed.len(),
+        listed_set.len(),
+        "{doc}: duplicate example path"
+    );
+    let missing: Vec<&String> = on_disk.difference(&listed_set).collect();
+    let dangling: Vec<&String> = listed_set.difference(&on_disk).collect();
+    assert!(
+        missing.is_empty(),
+        "{doc}: shipped examples missing from this list: {missing:?}"
+    );
+    assert!(
+        dangling.is_empty(),
+        "{doc}: this list names examples that do not exist: {dangling:?}"
+    );
 
-        let missing: Vec<&String> = on_disk.difference(&listed).collect();
-        let dangling: Vec<&String> = listed.difference(&on_disk).collect();
+    for (readme, link) in [
+        ("README.md", "(docs/language/examples_index.md)"),
+        ("docs/language/README.md", "(examples_index.md)"),
+    ] {
+        let text = std::fs::read_to_string(repo_root().join(readme))
+            .unwrap_or_else(|err| panic!("read {readme}: {err}"));
         assert!(
-            missing.is_empty(),
-            "{doc}: shipped examples missing from this list: {missing:?}"
-        );
-        assert!(
-            dangling.is_empty(),
-            "{doc}: this list names examples that do not exist: {dangling:?}"
+            text.contains(link),
+            "{readme}: link to the single example index is missing"
         );
     }
 }

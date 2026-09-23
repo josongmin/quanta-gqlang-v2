@@ -27,16 +27,26 @@ The live owner stack is:
 `quanta-gqlang-v2-frontend-contract` is the only public downstream boundary.
 It exposes two explicit authorities:
 
-1. `FrontendAuthorityV2`: closed compilation with caller-supplied schema,
-   catalog, module, pack, and lockfile authority
+1. `ClosedFrontendAuthorityV2`, built through
+   `ClosedFrontendAuthorityBuilderV2`: closed compilation with caller-supplied
+   schema, catalog, module, pack, and lockfile authority
 2. `OpenAnalysisAuthorityV2`: syntax-preserving analysis without fabricated
    external authority
 
+The facade's `compile_source_document_v3` binds original source bytes and
+checked authority into `CompiledSourceDocumentV3` and its immutable
+`ExecutionDocumentV3`. Open analysis does not issue that document. The exact
+producer contract and unsupported payloads are in
+[frontend execution V3](../contracts/frontend-execution-v3.md); runtime
+admission and execution stay downstream-owned.
+
 Interpretation rules:
 
-1. only closed authority can produce `AnalysisStatusV2::Complete`
-2. unresolved external names under open authority produce
-   `AnalysisStatusV2::Incomplete`, never a fabricated plan
+1. `AnalysisStatusV2::Complete` means the analysis has all required authority
+   proofs; a fully populated `OpenAnalysisAuthorityV2` can produce it too
+2. missing external authority under open analysis produces
+   `AnalysisStatusV2::Incomplete`, never a fabricated plan; even complete open
+   analysis does not issue an `ExecutionDocumentV3`
 3. parse or semantic rejection produces `AnalysisStatusV2::Error`
 4. CLI, diagnostics stdio, conformance, and downstream consumers import only
    the frontend contract; pipeline internals are not a public seam
@@ -84,9 +94,11 @@ CLI:
 
 1. `query` and `v3-query` are the same command
 2. `fmt` and `v3-fmt` are the same command
-3. `query` parses multi-item documents through open analysis
-4. complete analysis renders plan/artifact detail; incomplete or rejected
-   analysis emits canonical diagnostics and exits non-zero
+3. `query` parses multi-item documents through open analysis, without a host
+   catalog or execution; unresolved external authority reports `incomplete`
+   with exit code 1
+4. rejected analysis emits canonical diagnostics and exits non-zero; a
+   successful `fmt` command is not evidence of closed compilation
 
 Diagnostics stdio:
 
@@ -105,81 +117,16 @@ Diagnostics stdio:
 
 ## Examples
 
-Repo-owned examples:
-
-1. `examples/select/basic.qglang`
-2. `examples/find/taint.qglang`
-3. `examples/check/hybrid_rule.qglang`
-4. `examples/explain/why_no_result.qglang`
-5. `examples/show/capabilities.qglang`
-6. `examples/describe/rule_detail.qglang`
-7. `examples/sample/retrieval.qglang`
-8. `examples/compare/semantic_delta.qglang`
-9. `examples/export/sarif.qglang`
-10. `examples/view/catalog_users.qglang`
-11. `examples/rule/shell_exec.qglang`
-12. `examples/model/embeddings_code.qglang`
-13. `examples/pack/security_default.qglang`
-14. `examples/profile/strict_review.qglang`
-15. `examples/gate/release_gate.qglang`
-16. `examples/use_pack/secure_pack.qglang`
-17. `examples/require_certified/strict_only.qglang`
-18. `examples/composition/let_with_find.qglang`
+The [examples index](examples_index.md) is the single maintained list of
+repo-owned example paths. It separates query, presentation, declaration, meta,
+and composition examples without claiming runtime execution.
 
 ## Proof Rails
 
-Front-door and compiler proof is pinned by current `v3` rails, not deleted v2
-tests.
-
-CLI rails:
-
-1. `crates/quanta-gqlang-v2-cli/tests/v3_cli_fmt_idempotence.rs`
-2. `crates/quanta-gqlang-v2-cli/tests/open_analysis_contract.rs`
-3. `crates/quanta-gqlang-v2-cli/tests/command_doc_gate.rs`
-
-Diagnostics stdio rails:
-
-1. `crates/quanta-gqlang-v2-diagnostics-stdio/tests/ndjson_contract.rs`
-2. `crates/quanta-gqlang-v2-diagnostics-stdio/tests/resource_boundaries.rs`
-
-Surface / pipeline / planning rails:
-
-1. `crates/quanta-gqlang-v2-surface/tests/v3_surface_query.rs`
-2. `crates/quanta-gqlang-v2-surface/tests/v3_surface_expr_kernel.rs`
-3. `crates/quanta-gqlang-v2-surface/tests/v3_surface_unit.rs`
-4. `crates/quanta-gqlang-v2-surface/tests/v3_family_hellgate.rs`
-5. `crates/quanta-gqlang-v2-surface/tests/v3_format_hellgate.rs`
-6. `crates/quanta-gqlang-v2-pipeline/tests/v3_analysis_document_assembly.rs`
-7. `crates/quanta-gqlang-v2-pipeline/tests/v3_compiled_document_assembly.rs`
-8. `crates/quanta-gqlang-v2-planning/tests/v3_planning_truth.rs`
-9. `crates/quanta-gqlang-v2-planning/tests/v3_planning_hellgate.rs`
-10. `crates/quanta-gqlang-v2-planning/tests/v3_planning_cost_schema.rs`
-11. `crates/quanta-gqlang-v2-planning/tests/v3_item_hellgate.rs`
-
-Binder / types / sema / algebra rails:
-
-1. `crates/quanta-gqlang-v2-binder/tests/v3_binder_scope.rs`
-2. `crates/quanta-gqlang-v2-binder/tests/v3_composition_hellgate.rs`
-3. `crates/quanta-gqlang-v2-types/tests/v3_rule_type_solver.rs`
-4. `crates/quanta-gqlang-v2-types/tests/v3_types_hellgate.rs`
-5. `crates/quanta-gqlang-v2-sema/tests/v3_authority_builder.rs`
-6. `crates/quanta-gqlang-v2-sema/tests/v3_semantic_budget.rs`
-7. `crates/quanta-gqlang-v2-algebra/tests/v3_algebra_normalization.rs`
-8. `crates/quanta-gqlang-v2-algebra/tests/v3_algebra_hellgate.rs`
-
-Logic / modules rails:
-
-1. `crates/quanta-gqlang-v2-logic/tests/v3_logic_recursion.rs`
-2. `crates/quanta-gqlang-v2-logic/tests/v3_logic_source.rs`
-3. `crates/quanta-gqlang-v2-logic/tests/v3_logic_witness.rs`
-4. `crates/quanta-gqlang-v2-logic/tests/v3_logic_hellgate.rs`
-5. `crates/quanta-gqlang-v2-logic/tests/v3_graph_query_hellgate.rs`
-6. `crates/quanta-gqlang-v2-modules/tests/v3_modules_v2_authority.rs`
-
-Conformance rails:
-
-1. `crates/quanta-gqlang-v2-conformance/tests/self_validation.rs`
-2. `tools/test_frontend_external_consumer.py`
+The [test hellgate ledger](test_hellgate_ledger.md) maps current frontend
+contracts to their primary owner, process, conformance, and policy rails. Cargo
+and nextest discover the Rust test inventory; this README does not keep
+a second file list.
 
 ## Boundary
 
