@@ -415,6 +415,59 @@ class ArchitectureCheckerTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unknown dependency kind future-kind"):
             architecture_checker.dependency_kind({"kind": "future-kind"})
 
+    def test_internal_manifest_dependency_must_use_exact_member_path(self) -> None:
+        temporary, root = self.fixture("valid")
+        with temporary:
+            root = root.resolve()
+            consumer = "quanta-gqlang-v2-cli"
+            dependency = "quanta-gqlang-v2-frontend-contract"
+            manifest_path = root / "crates" / consumer / "Cargo.toml"
+            original = manifest_path.read_text(encoding="utf-8")
+            member_dirs = {name: root / "crates" / name for name in MEMBERS}
+            for replacement in (
+                f'{dependency} = "0.1.0"',
+                f'{dependency} = {{ path = "../quanta-gqlang-v2-hir" }}',
+            ):
+                with self.subTest(replacement=replacement):
+                    manifest_path.write_text(
+                        original.replace(
+                            f'{dependency} = {{ path = "../{dependency}" }}', replacement
+                        ),
+                        encoding="utf-8",
+                    )
+                    errors: list[str] = []
+                    architecture_checker.check_member_manifest(
+                        root, consumer, manifest_path, member_dirs, errors
+                    )
+                    self.assertTrue(
+                        any("internal edges require the exact member path" in error for error in errors),
+                        errors,
+                    )
+
+    def test_internal_metadata_dependency_rejects_registry_source(self) -> None:
+        temporary, root = self.fixture("valid")
+        with temporary:
+            metadata = architecture_checker.cargo_metadata(root)
+            workspace_ids = set(metadata["workspace_members"])
+            packages = {
+                package["name"]: package
+                for package in metadata["packages"]
+                if package["id"] in workspace_ids
+            }
+            dependency = next(
+                item
+                for item in packages["quanta-gqlang-v2-cli"]["dependencies"]
+                if item["name"] == "quanta-gqlang-v2-frontend-contract"
+            )
+            dependency["path"] = None
+            dependency["source"] = "registry+https://github.com/rust-lang/crates.io-index"
+            errors: list[str] = []
+            architecture_checker.check_metadata_edges(packages, errors)
+            self.assertTrue(
+                any("internal edges require the member path" in error for error in errors),
+                errors,
+            )
+
     def test_cargo_metadata_timeout_fails_closed(self) -> None:
         stderr = io.StringIO()
         with patch.object(

@@ -213,6 +213,23 @@ def check_metadata_edges(
                         f"{consumer} has undeclared frontend {kind} dependency {dependency_name}"
                     )
                     continue
+                member = workspace_packages.get(dependency_name)
+                expected_dir = (
+                    Path(member["manifest_path"]).parent.resolve() if member else None
+                )
+                raw_path = dependency.get("path")
+                if (
+                    dependency.get("source") is not None
+                    or not isinstance(raw_path, str)
+                    or expected_dir is None
+                    or Path(raw_path).resolve() != expected_dir
+                ):
+                    errors.append(
+                        f"{consumer} has non-workspace {kind} dependency "
+                        f"{dependency_name} (internal edges require the member path "
+                        "and no registry source)"
+                    )
+                    continue
                 edge = (consumer, dependency_name)
                 {
                     "normal": normal_edges,
@@ -248,7 +265,11 @@ def check_metadata_edges(
 
 
 def check_member_manifest(
-    root: Path, consumer: str, manifest_path: Path, errors: list[str]
+    root: Path,
+    consumer: str,
+    manifest_path: Path,
+    member_dirs: dict[str, Path],
+    errors: list[str],
 ) -> None:
     try:
         with open(manifest_path, "rb") as handle:
@@ -331,6 +352,16 @@ def check_member_manifest(
                     )
                     continue
             if name in EXPECTED_WORKSPACE_MEMBERS:
+                expected_dir = member_dirs.get(name)
+                if (
+                    not isinstance(raw_path, str)
+                    or expected_dir is None
+                    or (crate_dir / raw_path).resolve() != expected_dir
+                ):
+                    errors.append(
+                        f"{consumer} has non-workspace {kind} dependency {name} "
+                        "(internal edges require the exact member path)"
+                    )
                 version = spec.get("version")
                 if version is not None and version != INTERNAL_VERSION:
                     errors.append(
@@ -385,6 +416,10 @@ def run_check(root: Path) -> tuple[dict, list[str]]:
         for package in metadata["packages"]
         if package["id"] in workspace_ids
     }
+    member_dirs = {
+        name: Path(package["manifest_path"]).parent.resolve()
+        for name, package in workspace_packages.items()
+    }
     errors: list[str] = []
 
     package_names = set(workspace_packages)
@@ -403,7 +438,9 @@ def run_check(root: Path) -> tuple[dict, list[str]]:
                     f"{consumer} has a custom build script {target.get('src_path')} "
                     "(custom builds are denied)"
                 )
-        check_member_manifest(root, consumer, Path(package["manifest_path"]), errors)
+        check_member_manifest(
+            root, consumer, Path(package["manifest_path"]), member_dirs, errors
+        )
 
     illegal_normal = normal_edges - FINAL_NORMAL_EDGES
     illegal_dev = dev_edges - FINAL_DEV_EDGES

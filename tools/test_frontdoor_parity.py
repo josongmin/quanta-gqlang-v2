@@ -59,29 +59,143 @@ def usable_binary(path: Path) -> bool:
     return path.is_file() and not path.is_symlink()
 
 
+def decode_line_value(value: str) -> str:
+    """Independently decode the CLI's one-line value contract."""
+    decoded: list[str] = []
+    index = 0
+    while index < len(value):
+        character = value[index]
+        if character != "\\":
+            codepoint = ord(character)
+            if codepoint < 32 or 127 <= codepoint <= 159 or codepoint in (0x2028, 0x2029):
+                raise ValueError("raw control character in CLI line value")
+            decoded.append(character)
+            index += 1
+            continue
+        index += 1
+        if index >= len(value):
+            raise ValueError("trailing backslash in CLI line value")
+        escape = value[index]
+        if escape in ("\\", "n", "r", "t"):
+            decoded.append({"\\": "\\", "n": "\n", "r": "\r", "t": "\t"}[escape])
+            index += 1
+            continue
+        if escape == "x":
+            digits = value[index + 1 : index + 3]
+            index += 3
+        elif escape == "u" and value[index + 1 : index + 2] == "{":
+            close = value.find("}", index + 2)
+            if close == -1:
+                raise ValueError("unterminated Unicode escape in CLI line value")
+            digits = value[index + 2 : close]
+            index = close + 1
+        else:
+            raise ValueError(f"unknown CLI line-value escape \\{escape}")
+        if not digits or not all(digit in "0123456789abcdefABCDEF" for digit in digits):
+            raise ValueError("invalid hexadecimal CLI line-value escape")
+        codepoint = int(digits, 16)
+        if codepoint > 0x10FFFF or 0xD800 <= codepoint <= 0xDFFF:
+            raise ValueError("invalid Unicode scalar in CLI line value")
+        decoded.append(chr(codepoint))
+    return "".join(decoded)
+
+
+def physical_lines(payload: bytes) -> list[str]:
+    if not payload.endswith(b"\n"):
+        raise ValueError("front-door output is not LF-terminated")
+    lines = payload.decode("utf-8").split("\n")
+    if lines.pop() != "" or not lines or any(not line or "\r" in line for line in lines):
+        raise ValueError("front-door output has an empty or nonphysical line")
+    return lines
+
+
+def nonnegative_int(value: str, key: str) -> int:
+    if not value.isascii() or not value.isdecimal():
+        raise ValueError(f"invalid nonnegative integer in {key}: {value!r}")
+    return int(value)
+
+
 def parse_cli(executable: Path, source: str) -> dict[str, object]:
     result = run([str(executable), "query", source])
-    payload = result.stdout if result.stdout else result.stderr
+    if bool(result.stdout) == bool(result.stderr):
+        raise RuntimeError(
+            f"CLI must use exactly one output channel: stdout={result.stdout!r} "
+            f"stderr={result.stderr!r}"
+        )
+    is_failure = bool(result.stderr)
+    payload = result.stderr if is_failure else result.stdout
     fields: dict[str, str] = {}
-    for raw_line in payload.decode("utf-8").splitlines():
-        if "=" in raw_line:
-            key, value = raw_line.split("=", 1)
-            fields[key] = value
-    count = int(fields["analysis.diagnostic_count"])
+    for raw_line in physical_lines(payload):
+        if "=" not in raw_line:
+            raise ValueError(f"non-field CLI output row: {raw_line!r}")
+        key, value = raw_line.split("=", 1)
+        if not key or key in fields:
+            raise ValueError(f"empty or duplicate CLI output key: {key!r}")
+        fields[key] = value
+    expected = {"analysis.status", "analysis.diagnostic_count"}
+    if is_failure:
+        expected.add("cli.error.class")
+        if fields.get("cli.error.class") != "command" or fields.get("analysis.status") != "error":
+            raise ValueError("unexpected CLI failure envelope")
+    else:
+        expected.update(("analysis.source_id", "analysis.item_count", "analysis.unresolved_count"))
+        nonnegative_int(fields["analysis.source_id"], "analysis.source_id")
+        nonnegative_int(fields["analysis.unresolved_count"], "analysis.unresolved_count")
+        item_count = nonnegative_int(fields["analysis.item_count"], "analysis.item_count")
+        for index in range(item_count):
+            prefix = f"item[{index}]"
+            status_key = f"{prefix}.status"
+            expected.add(status_key)
+            status = fields[status_key]
+            if status == "blocked":
+                count_key = f"{prefix}.diagnostic_count"
+                expected.add(count_key)
+                nonnegative_int(fields[count_key], count_key)
+            elif status == "not_applicable":
+                expected.add(f"{prefix}.no_plan_reason")
+            elif status == "complete":
+                expected.add(f"{prefix}.kind")
+                plan_keys = {
+                    f"{prefix}.plan.{name}"
+                    for name in (
+                        "authority_lane", "determinism", "evidence", "effect",
+                        "result_kind", "capabilities",
+                    )
+                }
+                plan_keys.update(
+                    f"{prefix}.cost.{name}"
+                    for name in (
+                        "estimated_cardinality_class", "recursion_risk_class",
+                        "witness_explosion_risk_class", "ordering_contract",
+                    )
+                )
+                if set(fields) & plan_keys:
+                    expected.update(plan_keys)
+            else:
+                raise ValueError(f"unknown CLI item status: {status!r}")
+    count = nonnegative_int(fields["analysis.diagnostic_count"], "analysis.diagnostic_count")
     diagnostics = []
     for index in range(count):
         prefix = f"diagnostic[{index}]"
+        expected.update(f"{prefix}.{name}" for name in (
+            "stage", "code", "severity", "message", "source_id", "span",
+        ))
         start, end = fields[f"{prefix}.span"].split("..", 1)
         diagnostics.append(
             {
                 "stage": fields[f"{prefix}.stage"],
                 "code": fields[f"{prefix}.code"],
                 "severity": fields[f"{prefix}.severity"],
-                "message": fields[f"{prefix}.message"],
-                "source_id": int(fields[f"{prefix}.source_id"]),
-                "span_start": int(start),
-                "span_end": int(end),
+                "message": decode_line_value(fields[f"{prefix}.message"]),
+                "source_id": nonnegative_int(fields[f"{prefix}.source_id"], f"{prefix}.source_id"),
+                "span_start": nonnegative_int(start, f"{prefix}.span.start"),
+                "span_end": nonnegative_int(end, f"{prefix}.span.end"),
             }
+        )
+    if set(fields) != expected:
+        raise ValueError(
+            f"CLI output schema drift: missing={sorted(expected - fields.keys())} "
+            f"extra={sorted(fields.keys() - expected)}"
         )
     return {
         "process_status": result.returncode,
@@ -101,15 +215,49 @@ def parse_stdio(executable: Path, source: str) -> dict[str, object]:
         [str(executable)],
         stdin=(json.dumps(request, separators=(",", ":")) + "\n").encode("utf-8"),
     )
-    lines = result.stdout.splitlines()
-    if result.returncode != 0 or len(lines) != 1:
+    if result.returncode != 0 or result.stderr:
         raise RuntimeError(
             f"diagnostics stdio transport failed: status={result.returncode} "
             f"stdout={result.stdout!r} stderr={result.stderr!r}"
         )
-    response = json.loads(lines[0])
-    if response.get("id") != "parity" or response.get("ok") is not True:
+    lines = physical_lines(result.stdout)
+    if len(lines) != 1:
+        raise RuntimeError(f"diagnostics stdio emitted {len(lines)} frames")
+
+    def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        result: dict[str, object] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"duplicate diagnostics stdio JSON key: {key}")
+            result[key] = value
+        return result
+
+    response = json.loads(lines[0], object_pairs_hook=unique_object)
+    if (
+        not isinstance(response, dict)
+        or set(response) != {"id", "ok", "method", "analysis_status", "diagnostics"}
+        or response.get("id") != "parity"
+        or response.get("ok") is not True
+        or response.get("method") != "v3_diagnostics"
+    ):
         raise RuntimeError(f"diagnostics stdio rejected parity request: {response!r}")
+    if not isinstance(response["diagnostics"], list):
+        raise ValueError("diagnostics stdio diagnostics is not a list")
+    expected_diagnostic = {
+        "stage", "code", "severity", "message", "source_id", "span_start", "span_end"
+    }
+    for diagnostic in response["diagnostics"]:
+        if (
+            not isinstance(diagnostic, dict)
+            or set(diagnostic) != expected_diagnostic
+            or any(not isinstance(diagnostic[key], str) for key in (
+                "stage", "code", "severity", "message"
+            ))
+            or any(type(diagnostic[key]) is not int or diagnostic[key] < 0 for key in (
+                "source_id", "span_start", "span_end"
+            ))
+        ):
+            raise ValueError(f"invalid diagnostics stdio diagnostic: {diagnostic!r}")
     return {
         "analysis_status": response["analysis_status"],
         "diagnostics": response["diagnostics"],
@@ -171,6 +319,8 @@ def main() -> int:
             3,
         ),
         "rule": ("rule adult : x if x = 1", "incomplete", 3),
+        "unicode-line-separator-message": ("let x = 1;\u2028", "error", 1),
+        "esc-message": ("let x = 1;\u001b", "error", 1),
     }
     failures: list[str] = []
     for name, (source, expected_status, minimum_diagnostics) in cases.items():
