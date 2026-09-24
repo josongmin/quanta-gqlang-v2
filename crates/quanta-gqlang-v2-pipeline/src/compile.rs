@@ -58,7 +58,11 @@ use quanta_gqlang_v2_sema::{
     ResolvedMetaKindV2, SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2, SourceIdV2,
     SourceRegistrationV2, SpanV1,
 };
-use quanta_gqlang_v2_surface::{format_document, parse_source_document_v2, ParseBudgetV2};
+use quanta_gqlang_v2_surface::{
+    classify_parsed_root_v3, format_document, parse_source_document_v2, ParseBudgetV2,
+};
+
+pub use quanta_gqlang_v2_surface::SourceRootFamilyV3 as FrontendSourceRootFamilyV3;
 
 use crate::diagnostic::{
     algebra_transaction_error, assembly_transaction_error, canonicalize_diagnostics,
@@ -82,6 +86,14 @@ pub const OPEN_AUTHORITY_INCOMPLETE_CODE: &str = "pipeline.analysis.open_authori
 /// site anchors on the caller's own source and exact span, never on a fabricated
 /// source identity.
 pub const PARSE_BUDGET_PROJECTION_FAILED_CODE: &str = "pipeline.parse_budget_projection_failed";
+
+/// Failure to classify exactly one parsed source root.
+#[derive(Debug)]
+pub enum FrontendSourceRootClassificationErrorV3 {
+    Frontend(FrontendTransactionErrorV2),
+    NoItem,
+    MultipleItems { observed: usize },
+}
 
 // ---------------------------------------------------------------------------
 // Public DTO roots
@@ -567,6 +579,30 @@ impl UnresolvedAnalysisFactV2 {
 // ---------------------------------------------------------------------------
 // Public entries
 // ---------------------------------------------------------------------------
+
+/// Parse one source with the canonical frontend and classify exactly one root
+/// before host catalogs are consulted.
+///
+/// The result is suitable for fail-closed route selection only. It does not
+/// prove that referenced relations, graph entities, rules, or providers exist.
+pub fn classify_single_source_root_v3(
+    source_id: SourceIdV2,
+    source: &str,
+    budget: &FrontendBudgetV2,
+) -> Result<FrontendSourceRootFamilyV3, FrontendSourceRootClassificationErrorV3> {
+    let parsed = parse_source(source_id, source, budget)
+        .map_err(FrontendSourceRootClassificationErrorV3::Frontend)?;
+    let [item] = parsed.hir.items.as_slice() else {
+        return Err(if parsed.hir.items.is_empty() {
+            FrontendSourceRootClassificationErrorV3::NoItem
+        } else {
+            FrontendSourceRootClassificationErrorV3::MultipleItems {
+                observed: parsed.hir.items.len(),
+            }
+        });
+    };
+    Ok(classify_parsed_root_v3(item))
+}
 
 /// Compile one source document against complete immutable authority.
 ///
@@ -1753,6 +1789,62 @@ mod tests {
                 panic!("assembly test unexpectedly returned an authority error")
             }
         }
+    }
+
+    fn standard_budget_v2() -> FrontendBudgetV2 {
+        FrontendBudgetV2::standard_v2().expect("standard frontend budget")
+    }
+
+    #[test]
+    fn source_root_classifier_maps_supported_and_refused_families_without_authority() {
+        for (source_v1, expected_v1) in [
+            (
+                "find path src.marker -> src.marker | depth=8",
+                FrontendSourceRootFamilyV3::Graph,
+            ),
+            (
+                "show capabilities",
+                FrontendSourceRootFamilyV3::Presentation,
+            ),
+            (
+                "let q = sample query=\"x\" | mode=lexical | limit=1 from users u with q",
+                FrontendSourceRootFamilyV3::Composition,
+            ),
+        ] {
+            assert_eq!(
+                classify_single_source_root_v3(
+                    SourceIdV2::from_raw(1),
+                    source_v1,
+                    &standard_budget_v2(),
+                )
+                .expect("valid root must classify"),
+                expected_v1,
+            );
+        }
+    }
+
+    #[test]
+    fn source_root_classifier_rejects_zero_multiple_and_malformed_documents() {
+        assert!(matches!(
+            classify_single_source_root_v3(SourceIdV2::from_raw(1), "", &standard_budget_v2(),),
+            Err(FrontendSourceRootClassificationErrorV3::NoItem)
+        ));
+        assert!(matches!(
+            classify_single_source_root_v3(
+                SourceIdV2::from_raw(1),
+                "show capabilities; show models",
+                &standard_budget_v2(),
+            ),
+            Err(FrontendSourceRootClassificationErrorV3::MultipleItems { observed: 2 })
+        ));
+        assert!(matches!(
+            classify_single_source_root_v3(
+                SourceIdV2::from_raw(1),
+                "find path src.marker src.marker",
+                &standard_budget_v2(),
+            ),
+            Err(FrontendSourceRootClassificationErrorV3::Frontend(_))
+        ));
     }
 
     #[test]

@@ -26,10 +26,11 @@ mod diagnostic;
 mod execution;
 
 pub use compile::{
-    analyze_resolved_document_v2, analyze_source_document_v2, compile_resolved_document_v2,
-    compile_source_document_v3, format_source_document_v2, AnalysisDocumentV2, AnalysisItemV2,
-    AnalysisStatusV2, CompiledDocumentV2, CompiledItemV2, CompiledRuleProgramV2,
-    CompiledSourceDocumentV3, PlannedItemV2, RuleProgramMemberV2, UnresolvedAnalysisFactV2,
+    analyze_resolved_document_v2, analyze_source_document_v2, classify_single_source_root_v3,
+    compile_resolved_document_v2, compile_source_document_v3, format_source_document_v2,
+    AnalysisDocumentV2, AnalysisItemV2, AnalysisStatusV2, CompiledDocumentV2, CompiledItemV2,
+    CompiledRuleProgramV2, CompiledSourceDocumentV3, FrontendSourceRootClassificationErrorV3,
+    FrontendSourceRootFamilyV3, PlannedItemV2, RuleProgramMemberV2, UnresolvedAnalysisFactV2,
     OPEN_AUTHORITY_INCOMPLETE_CODE, PARSE_BUDGET_PROJECTION_FAILED_CODE,
 };
 pub use diagnostic::{

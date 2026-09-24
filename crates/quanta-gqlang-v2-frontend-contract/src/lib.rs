@@ -14,6 +14,8 @@
 
 /// Analyze one source document under the open authority.
 pub use quanta_gqlang_v2_pipeline::analyze_source_document_v2;
+/// Parse and classify exactly one source root without minting host authority.
+pub use quanta_gqlang_v2_pipeline::classify_single_source_root_v3;
 /// Compile one closed source document into a source-bound V3 execution document.
 pub use quanta_gqlang_v2_pipeline::compile_source_document_v3;
 /// Format one source document under the canonical budget.
@@ -50,6 +52,9 @@ pub use quanta_gqlang_v2_pipeline::{
     FrontendRelationAuthorityV2, FrontendRelationCardinalityV2, FrontendRelationFieldInputV2,
     FrontendRelationInputV2, FrontendScalarTypeV2, FrontendSeverityV2, FrontendStageV2,
     FrontendTransactionErrorV2, GraphReferenceKindV2, OpenAnalysisAuthorityV2,
+};
+pub use quanta_gqlang_v2_pipeline::{
+    FrontendSourceRootClassificationErrorV3, FrontendSourceRootFamilyV3,
 };
 
 // ---- inert value/location closure types ------------------------------------

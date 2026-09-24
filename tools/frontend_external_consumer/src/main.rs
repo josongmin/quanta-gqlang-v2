@@ -15,7 +15,8 @@
 use std::path::{Path, PathBuf};
 
 use quanta_gqlang_v2_frontend_contract::{
-    analyze_source_document_v2, compile_source_document_v3, format_source_document_v2,
+    analyze_source_document_v2, classify_single_source_root_v3, compile_source_document_v3,
+    format_source_document_v2,
     AlgebraFamilyV2, AnalysisDocumentV2, AnalysisItemV2, AnalysisStatusV2, CheckedLocatedSpanV2,
     ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledItemV2,
     CompiledRuleProgramV2, CompiledSourceDocumentV3, ExecutionAuthorityV3, ExecutionBindingV3,
@@ -35,7 +36,8 @@ use quanta_gqlang_v2_frontend_contract::{
     FrontendDiagnosticV2, FrontendFailureV2, FrontendGraphReferenceInputV2,
     FrontendLanguageVersionV2, FrontendLockfileInputV2, FrontendPackInputV2,
     FrontendRelationAuthorityV2, FrontendRelationCardinalityV2, FrontendRelationFieldInputV2,
-    FrontendRelationInputV2, FrontendScalarTypeV2, FrontendSeverityV2, FrontendStageV2,
+    FrontendRelationInputV2, FrontendScalarTypeV2, FrontendSeverityV2,
+    FrontendSourceRootClassificationErrorV3, FrontendSourceRootFamilyV3, FrontendStageV2,
     FrontendTransactionErrorV2, GraphReferenceKindV2, LocatedSpanV2, NoPlanReasonV2,
     OpenAnalysisAuthorityV2, PlannedItemV2, RuleProgramMemberV2, SemanticItemIdV2, SemanticPlanV2,
     SourceIdV2, SourceQualifiedNodeIdV2, SpanV1, UnresolvedAnalysisFactV2,
@@ -898,6 +900,34 @@ fn main() {
         budget.max_source_bytes() > 0,
         "the canonical budget is non-degenerate"
     );
+
+    // The public parse-only route classifier has no closed authority input.
+    assert_eq!(
+        classify_single_source_root_v3(
+            DOCUMENT_SOURCE,
+            "find path src.marker -> src.marker | depth=8",
+            &budget,
+        )
+        .expect("one graph root"),
+        FrontendSourceRootFamilyV3::Graph,
+    );
+    assert_eq!(
+        classify_single_source_root_v3(DOCUMENT_SOURCE, COMPOSITION_DOCUMENT_TEXT, &budget)
+            .expect("one composition root"),
+        FrontendSourceRootFamilyV3::Composition,
+    );
+    assert!(matches!(
+        classify_single_source_root_v3(DOCUMENT_SOURCE, "", &budget),
+        Err(FrontendSourceRootClassificationErrorV3::NoItem),
+    ));
+    assert!(matches!(
+        classify_single_source_root_v3(
+            DOCUMENT_SOURCE,
+            "show capabilities; show models",
+            &budget,
+        ),
+        Err(FrontendSourceRootClassificationErrorV3::MultipleItems { observed: 2 }),
+    ));
 
     // ---- facade-only closed authority and compilation --------------------
     let lock_text = format!("acme.pack 1.0.0 {PACK_DIGEST}\n");

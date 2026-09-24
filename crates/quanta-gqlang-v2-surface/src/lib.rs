@@ -89,8 +89,8 @@ pub use diag::{ParseDiagnosticV1, ParseErrorCodeV1, ResourceExhaustionV2, Surfac
 pub use format::{format_document, format_item};
 pub use lexer::{lex, LexErrorV1, TokenKindV1, TokenV1};
 pub use parser::{
-    parse_document, parse_program, parse_source_document_v2, ParsedDocumentV1, ParsedDocumentV2,
-    ParsedProgramV1, SurfaceItemV1,
+    classify_parsed_root_v3, parse_document, parse_program, parse_source_document_v2,
+    ParsedDocumentV1, ParsedDocumentV2, ParsedProgramV1, SourceRootFamilyV3, SurfaceItemV1,
 };
 
 use cursor::CursorV1;

@@ -150,6 +150,39 @@ pub struct ParsedDocumentV2 {
     pub hir: HirDocumentV1,
 }
 
+/// Parse-derived top-level family, without semantic or execution authority.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SourceRootFamilyV3 {
+    Relation,
+    Declaration,
+    Rule,
+    Graph,
+    Check,
+    Presentation,
+    Catalog,
+    Composition,
+    Meta,
+}
+
+/// Classify one already-parsed HIR root at the parser-owner boundary.
+///
+/// The pipeline owns document cardinality and source-budget checks; this
+/// function only maps canonical closed HIR variants.
+#[must_use]
+pub fn classify_parsed_root_v3(item: &ProgramItemHirV1) -> SourceRootFamilyV3 {
+    match item {
+        ProgramItemHirV1::Query(_) => SourceRootFamilyV3::Relation,
+        ProgramItemHirV1::Decl(_) => SourceRootFamilyV3::Declaration,
+        ProgramItemHirV1::Rule(_) => SourceRootFamilyV3::Rule,
+        ProgramItemHirV1::GraphQuery(_) => SourceRootFamilyV3::Graph,
+        ProgramItemHirV1::Legality(_) => SourceRootFamilyV3::Check,
+        ProgramItemHirV1::Presentation(_) => SourceRootFamilyV3::Presentation,
+        ProgramItemHirV1::CatalogDecl(_) => SourceRootFamilyV3::Catalog,
+        ProgramItemHirV1::Composition(_) => SourceRootFamilyV3::Composition,
+        ProgramItemHirV1::Meta(_) => SourceRootFamilyV3::Meta,
+    }
+}
+
 /// Legacy single-source document result. It intentionally does not expose a
 /// document identity; callers needing cross-document identity must use
 /// [`parse_source_document_v2`].

@@ -99,12 +99,14 @@ EXIT_OK = 0
 EXIT_GATE_FAILED = 1
 EXIT_INFRASTRUCTURE = 2
 
-# The pinned curated surface (W4-C / F-01): three entry points, the
+# The pinned curated surface (W4-C / F-01): closed/open entries plus the
+# parse-only source-root classifier, the
 # assembled-document DTOs, the planning DTOs, the authority/budget/diagnostic
 # vocabulary, and the inert closure types. Public-API over-claiming is a
 # violation in both directions (extra and missing).
 PINNED_ALLOWLIST: Tuple[str, ...] = (
     "analyze_source_document_v2",
+    "classify_single_source_root_v3",
     "compile_source_document_v3",
     "format_source_document_v2",
     "AnalysisDocumentV2",
@@ -182,6 +184,8 @@ PINNED_ALLOWLIST: Tuple[str, ...] = (
     "FrontendRelationInputV2",
     "FrontendScalarTypeV2",
     "FrontendSeverityV2",
+    "FrontendSourceRootClassificationErrorV3",
+    "FrontendSourceRootFamilyV3",
     "FrontendStageV2",
     "FrontendTransactionErrorV2",
     "GraphReferenceKindV2",
