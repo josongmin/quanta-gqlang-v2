@@ -59,6 +59,12 @@ Interpretation rules:
    `FrontendBudgetV2::max_expression_depth`, including left-associated operator
    chains, before formatting or semantic traversal; the maximum configurable
    value is 64; programmatic HIR also bounds nested result shapes to 64
+7. parser-produced HIR uses the infallible canonical formatter; caller-built
+   raw HIR should use `try_format_item` for surface representability. It does
+   not replace HIR integrity checks or downstream semantic validation
+8. direct Logic callers can tune `max_rule_program_rules` independently of
+   graph nodes, edges, and steps before sealing authority; raw programs over
+   the rule or literal cap reject before graph construction
 
 ## Surface Families
 
