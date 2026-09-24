@@ -235,6 +235,61 @@ fn check_ref_double_colon_rejects_whitespace_at_each_boundary() {
 }
 
 #[test]
+fn check_ref_path_separators_reject_gaps_and_comments() {
+    for (src, message, token) in [
+        (
+            "check repo .auth | confirm=skip",
+            "expected a contiguous '.' separator",
+            ".",
+        ),
+        (
+            "check repo. auth | confirm=skip",
+            "expected a path segment after '.'",
+            "auth",
+        ),
+        (
+            "check repo#note\n.auth | confirm=skip",
+            "expected a contiguous '.' separator",
+            ".",
+        ),
+        (
+            "check repo - auth | confirm=skip",
+            "expected a contiguous path separator",
+            "-",
+        ),
+        (
+            "check repo- auth | confirm=skip",
+            "expected a path segment after separator",
+            "auth",
+        ),
+        (
+            "check repo / auth | confirm=skip",
+            "expected a contiguous path separator",
+            "/",
+        ),
+        (
+            "check repo/ auth | confirm=skip",
+            "expected a path segment after separator",
+            "auth",
+        ),
+    ] {
+        let diagnostic = err(src);
+        assert_eq!(diagnostic.code, ParseErrorCodeV1::UnexpectedToken, "{src}");
+        assert_eq!(diagnostic.message, message, "{src}");
+        let start = src.find(token).expect("ref fragment in source");
+        assert_eq!(diagnostic.span.start, start, "{src}");
+        assert_eq!(diagnostic.span.end, start + token.len(), "{src}");
+    }
+    for name in ["repo.auth", "repo-auth", "repo/auth"] {
+        let src = format!("check {name} | confirm=skip");
+        let ProgramItemHirV1::Legality(check) = program(&src) else {
+            panic!("check source must parse to a legality item");
+        };
+        assert_eq!(check.rule_ref.name, name);
+    }
+}
+
+#[test]
 fn check_ref_single_colon_rejects_at_second_colon_expectation() {
     // REF-01: a single `:` is not a lenient `::`. The diagnostic points at the
     // token immediately following the first colon with the stable expectation.

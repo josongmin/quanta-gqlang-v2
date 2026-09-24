@@ -304,7 +304,13 @@ fn parse_ref(
     // continuation: `.`, `-`, `/`, `::`, ident/int segments.
     loop {
         if matches!(cur.peek().kind, TokenKindV1::Dot) {
-            let _ = cur.bump();
+            if cur.here_span().start != end {
+                return Err(cur.unexpected("a contiguous '.' separator"));
+            }
+            let separator = cur.bump();
+            if cur.here_span().start != separator.span.end {
+                return Err(cur.unexpected("a path segment after '.'"));
+            }
             let (_s, sp) = cur.expect_ident("a path segment after '.'")?;
             end = sp.end;
             continue;
@@ -331,7 +337,13 @@ fn parse_ref(
             continue;
         }
         if matches!(&cur.peek().kind, TokenKindV1::Op(sym) if sym == "-" || sym == "/") {
-            let _ = cur.bump();
+            if cur.here_span().start != end {
+                return Err(cur.unexpected("a contiguous path separator"));
+            }
+            let separator = cur.bump();
+            if cur.here_span().start != separator.span.end {
+                return Err(cur.unexpected("a path segment after separator"));
+            }
             if matches!(cur.peek().kind, TokenKindV1::Ident(_) | TokenKindV1::Int(_)) {
                 end = cur.here_span().end;
                 let _ = cur.bump();

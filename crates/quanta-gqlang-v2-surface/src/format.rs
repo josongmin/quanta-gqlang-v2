@@ -1,7 +1,7 @@
 //! Canonical v3 surface formatter: the exact inverse of the grammar.
 //!
 //! This crate owns the v3 surface grammar, so it owns the canonical renderer.
-//! [`format_item`] re-renders EVERY top-level family
+//! [`format_item`] re-renders EVERY parser-produced top-level family
 //! ([`ProgramItemHirV1`]) back to v3 surface text, and [`format_document`]
 //! renders an ordered list of items joined by the document `;` separator.
 //!
@@ -13,10 +13,12 @@
 //!   fixed point, because re-parsing canonical text yields the same structure
 //!   which renders to the same text.
 //!
-//! The renderer is STRUCTURE-faithful: it emits exactly the clauses/forms the
-//! parser accepts, never a lossy `#[unformatted]` marker, and never invents
-//! clauses absent from the HIR (so defaulted-but-unwritten modes are omitted only
-//! when the parser also treats them as defaults — see the per-family notes).
+//! For parser-produced HIR the renderer is structure-faithful: it emits exactly
+//! the clauses/forms the parser accepts, never a lossy `#[unformatted]` marker,
+//! and never invents clauses absent from the HIR. Public builders can construct
+//! states the grammar cannot express (for example, a staged join RHS or an
+//! empty result-shape record). This infallible API does not validate those raw
+//! states and must not be treated as a general raw-HIR serialization boundary.
 //!
 //! Join, group, and order stages are rendered from their dedicated closed HIR
 //! variants; there is no open operator tag or synthetic relation operand.
@@ -214,7 +216,15 @@ fn render_relation_bool(initial: RenderFrame<'_>, out: &mut String) {
                     }
                     BoolExprKindV1::Not(inner) => {
                         out.push_str("not ");
-                        stack.push(RenderFrame::Bool(inner, precedence, false));
+                        if matches!(&inner.kind, BoolExprKindV1::RelationExists(_)) {
+                            // `not exists (from ...)` parses as the distinct
+                            // NotExists polarity. Preserve an authored Not node.
+                            out.push('(');
+                            stack.push(RenderFrame::Text(")"));
+                            stack.push(RenderFrame::Bool(inner, 0, false));
+                        } else {
+                            stack.push(RenderFrame::Bool(inner, precedence, false));
+                        }
                     }
                     BoolExprKindV1::Paren(inner) => {
                         out.push('(');
@@ -347,6 +357,10 @@ fn format_value_prec(value: &ValueExprHirV1, parent: u8, right_child: bool) -> S
                         stack.push(Frame::Value(&path.base, 40, false));
                     }
                     ValueExprKindV1::Unary(unary) => {
+                        if precedence < parent || (right_child && precedence == parent) {
+                            out.push('(');
+                            stack.push(Frame::Text(")"));
+                        }
                         out.push_str(&unary.op.symbol);
                         stack.push(Frame::Value(&unary.operand, precedence, false));
                     }

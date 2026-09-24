@@ -6,7 +6,10 @@
 
 mod support;
 
-use quanta_gqlang_v2_hir::{HirBuilderV1, ProgramItemHirV1, RelationExistsPolarityV1, SpanV1};
+use quanta_gqlang_v2_hir::{
+    BoolExprKindV1, HirBuilderV1, PathSegmentV1, ProgramItemHirV1, RelationExistsPolarityV1,
+    SpanV1, ValueExprKindV1,
+};
 use quanta_gqlang_v2_surface::{
     format_document, format_item, parse_document, parse_program, SurfaceItemV1,
 };
@@ -288,8 +291,72 @@ fn relation_exists_precedence_and_polarity_are_exact() {
     ));
     assert_eq!(
         format_item(&item),
-        "from a | where exists (from b | where true) and x or not not exists (from c)"
+        "from a | where exists (from b | where true) and x or not (not exists (from c))"
     );
+}
+
+#[test]
+fn raw_unary_path_base_keeps_the_unary_inside_the_path() {
+    let builder = HirBuilderV1::new();
+    let span = SpanV1::new(0, 1);
+    let base = builder.unary("-", builder.symbol("a", span), span);
+    let path = builder
+        .try_path(
+            base,
+            vec![PathSegmentV1 {
+                name: "b".into(),
+                span,
+            }],
+            span,
+        )
+        .expect("one path segment");
+    let item = ProgramItemHirV1::from(builder.decl("x", span, path, span));
+    let formatted = format_item(&item);
+    assert_eq!(formatted, "let x = (-a).b");
+    let ProgramItemHirV1::Decl(reparsed) = parse(&formatted) else {
+        panic!("declaration must reparse");
+    };
+    let ValueExprKindV1::Path(path) = &reparsed.body.kind else {
+        panic!("path must remain the outer value node");
+    };
+    let ValueExprKindV1::Paren(inner) = &path.base.kind else {
+        panic!("path base must carry protective parentheses");
+    };
+    assert!(matches!(&inner.kind, ValueExprKindV1::Unary(_)));
+}
+
+#[test]
+fn raw_not_exists_keeps_not_distinct_from_not_exists_polarity() {
+    let builder = HirBuilderV1::new();
+    let span = SpanV1::new(0, 1);
+    let exists = builder.relation_exists(
+        RelationExistsPolarityV1::Exists,
+        builder.relation_source("r", span, None, span),
+        span,
+    );
+    let item = ProgramItemHirV1::from(builder.rule(
+        "x",
+        span,
+        builder.symbol("x", span),
+        builder.not(exists, span),
+        span,
+    ));
+    let formatted = format_item(&item);
+    assert_eq!(formatted, "rule x : x if not (exists (from r))");
+    let ProgramItemHirV1::Rule(reparsed) = parse(&formatted) else {
+        panic!("rule must reparse");
+    };
+    let BoolExprKindV1::Not(inner) = &reparsed.body.kind else {
+        panic!("outer Not must survive parsing");
+    };
+    let BoolExprKindV1::Paren(inner) = &inner.kind else {
+        panic!("inner Exists must have protective parentheses");
+    };
+    assert!(matches!(
+        &inner.kind,
+        BoolExprKindV1::RelationExists(exists)
+            if exists.polarity == RelationExistsPolarityV1::Exists
+    ));
 }
 
 #[test]
