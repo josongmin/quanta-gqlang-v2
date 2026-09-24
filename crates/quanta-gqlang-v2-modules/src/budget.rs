@@ -57,12 +57,26 @@ impl ModuleBudgetSessionV2 {
     }
 
     pub(crate) fn charge_step(&mut self) -> Result<(), ModuleDiagnosticV2> {
-        Self::charge(
-            &mut self.steps,
-            1,
-            self.budget.profile.module_steps(),
-            "steps",
-        )
+        self.charge_steps(1)
+    }
+
+    /// Charges several logical authority steps without making the accounting
+    /// operation itself linear in `amount`.
+    ///
+    /// The failure payload reports the first rejected step (`limit + 1`),
+    /// exactly as repeated calls to [`Self::charge_step`] would. The counter is
+    /// left unchanged on failure.
+    pub(crate) fn charge_steps(&mut self, amount: usize) -> Result<(), ModuleDiagnosticV2> {
+        let limit = self.budget.profile.module_steps();
+        let remaining = limit.saturating_sub(self.steps);
+        if amount > remaining {
+            let observed = limit.saturating_add(1);
+            return Err(ModuleDiagnosticV2::resource_exhausted(
+                "steps", limit, observed,
+            ));
+        }
+        self.steps += amount;
+        Ok(())
     }
 
     pub(crate) fn charge_bytes(&mut self, bytes: usize) -> Result<(), ModuleDiagnosticV2> {
@@ -107,5 +121,38 @@ impl ModuleBudgetSessionV2 {
         }
         *current = observed;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+#[expect(clippy::unwrap_used, reason = "owner-local budget boundary assertions")]
+mod tests {
+    use super::*;
+
+    fn session(step_limit: usize) -> ModuleBudgetSessionV2 {
+        ModuleBudgetV2::from_profile(
+            AuthorityBudgetProfileV2::try_new(1, 1, step_limit, 1, 1).unwrap(),
+        )
+        .begin_session_v2()
+    }
+
+    #[test]
+    fn bulk_step_charge_accepts_exact_limit() {
+        let mut session = session(3);
+        session.charge_steps(3).unwrap();
+        assert_eq!(session.steps, 3);
+    }
+
+    #[test]
+    fn bulk_step_charge_reports_first_rejected_step_without_mutating() {
+        let mut session = session(3);
+        session.charge_step().unwrap();
+
+        let error = session.charge_steps(usize::MAX).unwrap_err();
+        let exhaustion = error.resource_exhaustion().unwrap();
+        assert_eq!(exhaustion.dimension(), "steps");
+        assert_eq!(exhaustion.limit(), 3);
+        assert_eq!(exhaustion.observed(), 4);
+        assert_eq!(session.steps, 1);
     }
 }

@@ -11,7 +11,7 @@ import os
 import signal
 import subprocess
 from pathlib import Path
-from typing import Mapping, Optional, Sequence, Union
+from typing import IO, Mapping, Optional, Sequence, Union
 
 
 class ProcessTimeoutError(RuntimeError):
@@ -30,16 +30,19 @@ def run_bounded(
     input_data: Optional[Union[bytes, str]] = None,
     capture_output: bool = False,
     text: bool = False,
+    output_file: Optional[IO[bytes]] = None,
 ) -> subprocess.CompletedProcess:
     if timeout_s <= 0:
         raise ValueError("timeout_s must be positive")
+    if capture_output and output_file is not None:
+        raise ValueError("capture_output and output_file are mutually exclusive")
     process = subprocess.Popen(
         list(command),
         cwd=str(cwd),
         env=env,
         stdin=subprocess.PIPE if input_data is not None else None,
-        stdout=subprocess.PIPE if capture_output else None,
-        stderr=subprocess.PIPE if capture_output else None,
+        stdout=subprocess.PIPE if capture_output else output_file,
+        stderr=subprocess.PIPE if capture_output else subprocess.STDOUT if output_file else None,
         text=text,
         start_new_session=True,
     )

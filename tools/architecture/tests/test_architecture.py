@@ -351,11 +351,69 @@ def run_checker(root: Path, *extra: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def fixture_metadata(root: Path) -> dict:
+    """Project the deliberately simple mutation manifests without invoking Cargo."""
+    with (root / "Cargo.toml").open("rb") as handle:
+        workspace = architecture_checker.tomllib.load(handle)
+    member_paths = [root / path for path in workspace["workspace"]["members"]]
+    packages = []
+    workspace_members = []
+    for crate_dir in member_paths:
+        manifest_path = crate_dir / "Cargo.toml"
+        with manifest_path.open("rb") as handle:
+            manifest = architecture_checker.tomllib.load(handle)
+        package = manifest["package"]
+        package_id = str(manifest_path.resolve())
+        workspace_members.append(package_id)
+        dependencies = []
+
+        def add_dependencies(table: dict, kind: str | None, target: str | None = None) -> None:
+            for alias, raw in table.items():
+                spec = {"version": raw} if isinstance(raw, str) else dict(raw)
+                name = spec.get("package", alias)
+                raw_path = spec.get("path")
+                version = spec.get("version", "*")
+                dependencies.append({
+                    "name": name,
+                    "kind": kind,
+                    "target": target,
+                    "rename": alias if name != alias else None,
+                    "optional": spec.get("optional", False),
+                    "uses_default_features": spec.get("default-features", True),
+                    "features": list(spec.get("features", [])),
+                    "req": architecture_checker.cargo_normalized_req(version),
+                    "path": str((crate_dir / raw_path).resolve()) if raw_path else None,
+                    "source": None if raw_path else "registry+fixture",
+                })
+
+        for section, kind in architecture_checker.DEP_SECTION_KINDS:
+            add_dependencies(manifest.get(section, {}), None if kind == "normal" else kind)
+        for target, target_table in manifest.get("target", {}).items():
+            for section, kind in architecture_checker.DEP_SECTION_KINDS:
+                add_dependencies(
+                    target_table.get(section, {}),
+                    None if kind == "normal" else kind,
+                    target,
+                )
+        targets = [{"kind": ["lib"], "src_path": str((crate_dir / "../../shared/lib.rs").resolve())}]
+        if (crate_dir / "build.rs").is_file() or package.get("build") not in (None, False):
+            targets.append({"kind": ["custom-build"], "src_path": str(crate_dir / "build.rs")})
+        packages.append({
+            "id": package_id,
+            "name": package["name"],
+            "manifest_path": str(manifest_path.resolve()),
+            "dependencies": dependencies,
+            "targets": targets,
+        })
+    return {"workspace_members": workspace_members, "packages": packages}
+
+
 class ArchitectureCheckerTest(unittest.TestCase):
     def fixture(self, name: str, *, omit: str | None = None) -> tuple[tempfile.TemporaryDirectory[str], Path]:
         temporary = tempfile.TemporaryDirectory(prefix="qglang-architecture-")
         root = Path(temporary.name) / "workspace"
         root.mkdir()
+        root = root.resolve()
         materialize_fixture(root, name, omit=omit)
         return temporary, root
 
@@ -396,19 +454,27 @@ class ArchitectureCheckerTest(unittest.TestCase):
             with self.subTest(mutation=name):
                 temporary, root = self.fixture(fixture, omit=omit)
                 with temporary:
-                    result = run_checker(root)
-                self.assertNotEqual(result.returncode, 0, f"mutation {name} must fail")
+                    with patch.object(
+                        architecture_checker, "cargo_metadata", return_value=fixture_metadata(root)
+                    ):
+                        _summary, errors = architecture_checker.run_check(root)
+                rendered = "\n".join(errors)
+                self.assertTrue(errors, f"mutation {name} must fail")
                 for marker in markers:
-                    self.assertIn(marker, result.stderr, f"mutation {name} missing {marker!r}")
+                    self.assertIn(marker, rendered, f"mutation {name} missing {marker!r}")
 
     def test_retired_transitional_edge_is_illegal(self) -> None:
         temporary, root = self.fixture("transitional-valid")
         with temporary:
-            result = run_checker(root)
-        self.assertNotEqual(result.returncode, 0)
+            with patch.object(
+                architecture_checker, "cargo_metadata", return_value=fixture_metadata(root)
+            ):
+                _summary, errors = architecture_checker.run_check(root)
+        rendered = "\n".join(errors)
+        self.assertTrue(errors)
         self.assertIn(
             "quanta-gqlang-v2-algebra -> quanta-gqlang-v2-hir",
-            result.stderr,
+            rendered,
         )
 
     def test_unknown_dependency_kind_is_rejected(self) -> None:
@@ -447,7 +513,7 @@ class ArchitectureCheckerTest(unittest.TestCase):
     def test_internal_metadata_dependency_rejects_registry_source(self) -> None:
         temporary, root = self.fixture("valid")
         with temporary:
-            metadata = architecture_checker.cargo_metadata(root)
+            metadata = fixture_metadata(root)
             workspace_ids = set(metadata["workspace_members"])
             packages = {
                 package["name"]: package
@@ -480,6 +546,27 @@ class ArchitectureCheckerTest(unittest.TestCase):
         self.assertEqual(failure.exception.code, 1)
         self.assertIn("cargo metadata timed out after 60 s", stderr.getvalue())
         self.assertEqual(runner.call_args.kwargs["timeout"], 60)
+
+    def test_cargo_metadata_freezes_workspaces_with_a_lockfile(self) -> None:
+        completed = subprocess.CompletedProcess(
+            ["cargo", "metadata"], 0, '{"packages": [], "workspace_members": []}', ""
+        )
+        with tempfile.TemporaryDirectory(prefix="qglang-metadata-lock-") as directory:
+            root = Path(directory)
+            (root / "Cargo.toml").write_text("[workspace]\n", encoding="utf-8")
+            with patch.object(
+                architecture_checker.subprocess, "run", return_value=completed
+            ) as run:
+                architecture_checker.cargo_metadata(root)
+                command = run.call_args.args[0]
+                self.assertNotIn("--locked", command)
+                self.assertNotIn("--offline", command)
+
+                (root / "Cargo.lock").write_text("version = 3\n", encoding="utf-8")
+                architecture_checker.cargo_metadata(root)
+                command = run.call_args.args[0]
+                self.assertIn("--locked", command)
+                self.assertIn("--offline", command)
 
 
 if __name__ == "__main__":

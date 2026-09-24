@@ -9,8 +9,11 @@ different checkout path. Git/Cargo still recheck changed source and toolchains.
 The driver takes a non-blocking OS file lock, pins HEAD and tree, refuses a
 dirty caller or managed checkout, and checks both again after `just ci`. It
 refuses an unknown worktree, marker, or redirected cache; it never resets or
-deletes a dirty checkout. The per-SHA `receipt.json` keeps the existing
-`sha`, `tree`, `cmds`, `exit`, and `duration_s` schema. A warm cache is build
+deletes a dirty checkout. The per-SHA `receipt.json` is schema 2: it retains
+`sha`, `tree`, `cmds`, `exit`, and `duration_s`, and records tool versions, input
+hashes, an explicit `dirty: false` source state, per-recipe durations,
+current-run nextest counts, advisory DB revision
+and fetch time, and a hash of the streamed `ci.log`. A warm cache is build
 acceleration, **not** proof from a prior SHA: `just ci` still executes on every
 qualification. Old `target/qualification/<sha>/build` directories from the
 former cold-cache driver are not automatically removed.
@@ -25,15 +28,27 @@ targets or a substitute for recording actual gate durations.
 An interrupted gate also terminates and reaps its process group before the
 interrupt is propagated.
 
-`just ci` runs the external-consumer Cargo offline dependency preflight before
-the build and test groups. It checks both the external-consumer fixture and
+`just ci` runs doctor, external-consumer preflight, static, test, and policy
+groups serially, and each group's leaves are an explicit serial waterfall.
+It hashes every tracked and non-ignored untracked source path before the first
+group and rejects any between-group source drift. The preflight checks both the external-consumer fixture and
 repository workspace locked dependency graphs against the pinned toolchain;
 it does not compile or execute either graph. A missing crate exits before the
 expensive gates. Populate the local Cargo cache for the missing graph with
 `CARGO_NET_OFFLINE=false cargo fetch --locked --manifest-path tools/frontend_external_consumer/Cargo.toml`
-or `CARGO_NET_OFFLINE=false cargo fetch --locked --manifest-path Cargo.toml`,
-then run `just ci` again. The preflight is not evidence that the external
-consumer gate passed; the full gate still runs in `just policy`.
+or `CARGO_NET_OFFLINE=false cargo fetch --locked --manifest-path Cargo.toml`. If the
+dated public-API toolchain alone is missing sources, use
+`CARGO_NET_OFFLINE=false RUSTUP_TOOLCHAIN=nightly-2026-09-23 cargo fetch --locked --manifest-path Cargo.toml`,
+then run `just ci` again. The full external gate consumes a single-use stamp
+bound to that CI run ID, both Cargo.lock hashes, the toolchain, and gate source;
+standalone `just external-consumer` performs its own preflight. The preflight
+is not evidence that the external consumer gate passed.
+
+`just advisory-refresh` explicitly refreshes cargo-deny's active RustSec DB.
+The routine `just deny` gate requires a fetch within seven days and runs with
+network disabled. The checked revision and fetch time are in the qualification
+receipt. `~/.cargo/advisory-dbs` (plural) is cargo-deny 0.19.7's active DB
+directory; the older singular `advisory-db` directory is not this gate's DB.
 
 `qualify-local` always emits Just recipe timestamps and durations in its log.
 For the same trail from a direct local gate, use
@@ -68,7 +83,10 @@ binary path emitted by Cargo for that fixture and rejects missing, redirected,
 duplicate, relative, or cache-external artifacts. Cargo parses the complete
 dependency tables before the gate accepts the facade-only path seam; the
 positive program reads selected digests from the producer-owned V3 vector TSV.
-Its public-API probe reuses the same checkout's Cargo target. The standalone
+All 15 negative probes are stable Cargo bins checked in one `--keep-going`
+JSON run, then reconciled by exact target source, error code, and diagnostic
+text. Its public-API probe uses a target directory isolated by the pinned dated
+nightly. The standalone
 gate compares its own input bytes and Git status shape, but cannot detect an
 in-place content edit to every already-dirty foreign file. Only
 `just qualify-local` attests a clean exact committed source snapshot. Both

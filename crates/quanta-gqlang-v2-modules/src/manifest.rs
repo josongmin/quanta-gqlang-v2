@@ -483,60 +483,204 @@ fn pack_cycle(
     manifests: &BTreeMap<PackIdV2, PackManifestV2>,
     session: &mut ModuleBudgetSessionV2,
 ) -> Result<Option<Vec<PackCycleEdgeV2>>, ModuleDiagnosticV2> {
-    let mut cycles = Vec::new();
-    for root in manifests.keys() {
-        let mut stack = vec![(root.clone(), Vec::new(), BTreeSet::from([root.clone()]))];
-        while let Some((node, path, seen)) = stack.pop() {
-            let Some(manifest) = manifests.get(&node) else {
+    let roots = manifests.keys().cloned().collect::<Vec<_>>();
+    let edges = manifests
+        .iter()
+        .flat_map(|(source, manifest)| {
+            manifest.dependencies.values().map(move |dependency| {
+                (
+                    source.clone(),
+                    dependency.pack_id.clone(),
+                    (
+                        source.clone(),
+                        dependency.pack_id.clone(),
+                        loc_key(dependency.location.location()),
+                    ),
+                    dependency.location.clone(),
+                )
+            })
+        })
+        .collect::<Vec<_>>();
+    let keyed = edges
+        .iter()
+        .map(|(source, target, key, _)| (source.clone(), target.clone(), key.clone()))
+        .collect::<Vec<_>>();
+    let Some(indices) = cycle_with_legacy_steps(&keyed, &roots, session)? else {
+        return Ok(None);
+    };
+    let mut witness = Vec::with_capacity(indices.len());
+    for index in indices {
+        let Some((source, target, _, location)) = edges.get(index) else {
+            return Err(ModuleDiagnosticV2::without_location(
+                "modules.internal_cycle_witness_mismatch",
+                "pack cycle witness index is outside the validated edge set",
+            ));
+        };
+        witness.push((source.clone(), target.clone(), location.clone()));
+    }
+    Ok(Some(witness))
+}
+
+/// Preserves the former per-simple-path edge charge, then obtains the minimum
+/// canonical witness through the graph's polynomial SCC/path search.
+#[expect(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    reason = "node and edge indices are derived from the complete local ID set above"
+)]
+pub(crate) fn cycle_with_legacy_steps<Id: Ord + Clone, Key: Ord + Clone>(
+    edges: &[(Id, Id, Key)],
+    roots: &[Id],
+    session: &mut ModuleBudgetSessionV2,
+) -> Result<Option<Vec<usize>>, ModuleDiagnosticV2> {
+    let nodes = roots
+        .iter()
+        .cloned()
+        .chain(
+            edges
+                .iter()
+                .flat_map(|(source, target, _)| [source.clone(), target.clone()]),
+        )
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+    let node_index = nodes
+        .iter()
+        .cloned()
+        .enumerate()
+        .map(|(index, id)| (id, index))
+        .collect::<BTreeMap<_, _>>();
+    let mut adjacency = vec![Vec::<(usize, CycleEdgeLabel<Key>)>::new(); nodes.len()];
+    let mut adjacency_ids = nodes
+        .iter()
+        .cloned()
+        .map(|id| (id, Vec::new()))
+        .collect::<BTreeMap<_, _>>();
+    for (index, (source, target, key)) in edges.iter().enumerate() {
+        adjacency[node_index[source]].push((
+            node_index[target],
+            CycleEdgeLabel {
+                key: key.clone(),
+                index,
+            },
+        ));
+        adjacency_ids
+            .get_mut(source)
+            .expect("source was indexed")
+            .push(target.clone());
+    }
+    if let Some((steps, overflowed)) = acyclic_cycle_walk_steps(&adjacency_ids, roots) {
+        session.charge_steps(steps)?;
+        if overflowed {
+            session.charge_step()?;
+        }
+        return Ok(None);
+    }
+
+    // The charge-only walk uses one active bit per node and one frame per
+    // path vertex. No cycle path is copied for a charged edge.
+    let mut active = vec![false; nodes.len()];
+    for root in roots {
+        let root_index = node_index[root];
+        active[root_index] = true;
+        let mut stack = vec![(root_index, 0_usize)];
+        while let Some((node, next_index)) = stack.last_mut() {
+            let Some((target, _)) = adjacency[*node].get(*next_index) else {
+                active[*node] = false;
+                stack.pop();
                 continue;
             };
-            for dependency in manifest.dependencies.values().rev() {
-                session.charge_step()?;
-                let edge = (
-                    node.clone(),
-                    dependency.pack_id.clone(),
-                    dependency.location.clone(),
-                );
-                if seen.contains(&dependency.pack_id) {
-                    let position = path
-                        .iter()
-                        .position(|item: &PackCycleEdgeV2| item.0 == dependency.pack_id)
-                        .unwrap_or(0);
-                    let mut cycle = path.get(position..).map_or_else(Vec::new, <[_]>::to_vec);
-                    cycle.push(edge);
-                    cycles.push(canonical_pack_cycle(cycle));
-                } else if !seen.contains(&dependency.pack_id) {
-                    let mut next_path = path.clone();
-                    next_path.push(edge);
-                    let mut next_seen = seen.clone();
-                    next_seen.insert(dependency.pack_id.clone());
-                    stack.push((dependency.pack_id.clone(), next_path, next_seen));
+            let target = *target;
+            *next_index += 1;
+            session.charge_step()?;
+            if !active[target] {
+                active[target] = true;
+                stack.push((target, 0));
+            }
+        }
+    }
+    Ok(crate::graph::minimal_cycle_witness(&adjacency)
+        .map(|witness| witness.into_iter().map(|label| label.index).collect()))
+}
+
+#[derive(Clone)]
+struct CycleEdgeLabel<Key> {
+    key: Key,
+    index: usize,
+}
+
+impl<Key: Ord> PartialEq for CycleEdgeLabel<Key> {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+impl<Key: Ord> Eq for CycleEdgeLabel<Key> {}
+impl<Key: Ord> PartialOrd for CycleEdgeLabel<Key> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl<Key: Ord> Ord for CycleEdgeLabel<Key> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.key.cmp(&other.key)
+    }
+}
+
+/// Counts the edge visits of the legacy all-root simple-path walk on a DAG.
+/// This keeps the public step budget exact without enumerating its paths.
+pub(crate) fn acyclic_cycle_walk_steps<Id: Ord + Clone>(
+    adjacency: &BTreeMap<Id, Vec<Id>>,
+    roots: &[Id],
+) -> Option<(usize, bool)> {
+    let mut indegree = BTreeMap::<Id, usize>::new();
+    for (source, targets) in adjacency {
+        indegree.entry(source.clone()).or_default();
+        for target in targets {
+            *indegree.entry(target.clone()).or_default() += 1;
+        }
+    }
+    let mut ways = indegree
+        .keys()
+        .cloned()
+        .map(|id| (id, 0_usize))
+        .collect::<BTreeMap<_, _>>();
+    for root in roots {
+        *ways.entry(root.clone()).or_default() += 1;
+    }
+    let mut ready = indegree
+        .iter()
+        .filter_map(|(id, count)| (*count == 0).then_some(id.clone()))
+        .collect::<BTreeSet<_>>();
+    let mut steps = 0_usize;
+    let mut overflowed = false;
+    let mut visited = 0_usize;
+    while let Some(node) = ready.pop_first() {
+        visited += 1;
+        let visits = *ways.get(&node)?;
+        if let Some(targets) = adjacency.get(&node) {
+            let edge_visits = visits.checked_mul(targets.len()).unwrap_or_else(|| {
+                overflowed = true;
+                usize::MAX
+            });
+            steps = steps.checked_add(edge_visits).unwrap_or_else(|| {
+                overflowed = true;
+                usize::MAX
+            });
+            for target in targets {
+                let target_ways = ways.get_mut(target)?;
+                *target_ways = target_ways.checked_add(visits).unwrap_or_else(|| {
+                    overflowed = true;
+                    usize::MAX
+                });
+                let count = indegree.get_mut(target)?;
+                *count -= 1;
+                if *count == 0 {
+                    ready.insert(target.clone());
                 }
             }
         }
     }
-    cycles.sort_by_key(|left| pack_cycle_key(left));
-    Ok(cycles.into_iter().next())
-}
-fn canonical_pack_cycle(cycle: Vec<PackCycleEdgeV2>) -> Vec<PackCycleEdgeV2> {
-    (0..cycle.len())
-        .map(|offset| {
-            cycle
-                .iter()
-                .cycle()
-                .skip(offset)
-                .take(cycle.len())
-                .cloned()
-                .collect::<Vec<_>>()
-        })
-        .min_by_key(|candidate| pack_cycle_key(candidate))
-        .unwrap_or_default()
-}
-fn pack_cycle_key(cycle: &[PackCycleEdgeV2]) -> Vec<(PackIdV2, PackIdV2, (u32, usize, usize))> {
-    cycle
-        .iter()
-        .map(|(a, b, l)| (a.clone(), b.clone(), loc_key(l.location())))
-        .collect()
+    (visited == indegree.len()).then_some((steps, overflowed))
 }
 
 fn graph_fingerprint(
@@ -599,6 +743,214 @@ fn put_version(hasher: &mut Sha256, value: VersionV2) {
     put_u64(hasher, value.major());
     put_u64(hasher, value.minor());
     put_u64(hasher, value.patch());
+}
+
+#[cfg(test)]
+#[expect(
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    reason = "bounded exhaustive oracle and exact-budget assertions"
+)]
+mod cycle_walk_tests {
+    use super::{acyclic_cycle_walk_steps, cycle_with_legacy_steps};
+    use crate::budget::ModuleBudgetV2;
+    use quanta_gqlang_v2_types::AuthorityBudgetProfileV2;
+    use std::collections::{BTreeMap, BTreeSet};
+
+    fn session(step_limit: usize) -> crate::budget::ModuleBudgetSessionV2 {
+        ModuleBudgetV2::from_profile(
+            AuthorityBudgetProfileV2::try_new(100, 100, step_limit, 1_024, 128).unwrap(),
+        )
+        .begin_session_v2()
+    }
+
+    fn legacy_steps(adjacency: &BTreeMap<usize, Vec<usize>>, roots: &[usize]) -> usize {
+        let mut steps = 0;
+        for root in roots {
+            let mut stack = vec![(*root, BTreeSet::from([*root]))];
+            while let Some((node, seen)) = stack.pop() {
+                for target in adjacency.get(&node).into_iter().flatten() {
+                    steps += 1;
+                    if !seen.contains(target) {
+                        let mut next_seen = seen.clone();
+                        next_seen.insert(*target);
+                        stack.push((*target, next_seen));
+                    }
+                }
+            }
+        }
+        steps
+    }
+
+    #[test]
+    fn dag_fast_path_matches_legacy_steps_for_all_five_node_forward_graphs() {
+        let pairs = (0..5)
+            .flat_map(|source| ((source + 1)..5).map(move |target| (source, target)))
+            .collect::<Vec<_>>();
+        for mask in 0..(1_usize << pairs.len()) {
+            let mut adjacency = (0..5)
+                .map(|node| (node, Vec::new()))
+                .collect::<BTreeMap<_, _>>();
+            for (index, &(source, target)) in pairs.iter().enumerate() {
+                if mask & (1 << index) != 0 {
+                    adjacency.get_mut(&source).unwrap().push(target);
+                }
+            }
+            for roots in [&[0, 1, 2, 3, 4][..], &[0, 2][..]] {
+                assert_eq!(
+                    acyclic_cycle_walk_steps(&adjacency, roots),
+                    Some((legacy_steps(&adjacency, roots), false)),
+                    "mask={mask}, roots={roots:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn dag_fast_path_is_bounded_on_long_chain_and_branching_graph() {
+        let chain = (0..5_000)
+            .map(|node| {
+                (
+                    node,
+                    (node + 1 < 5_000).then_some(node + 1).into_iter().collect(),
+                )
+            })
+            .collect::<BTreeMap<_, Vec<_>>>();
+        let roots = (0..5_000).collect::<Vec<_>>();
+        assert_eq!(
+            acyclic_cycle_walk_steps(&chain, &roots),
+            Some((12_497_500, false))
+        );
+
+        let branching = (0..90)
+            .map(|node| {
+                (
+                    node,
+                    [node + 1, node + 2]
+                        .into_iter()
+                        .filter(|target| *target < 90)
+                        .collect(),
+                )
+            })
+            .collect::<BTreeMap<_, Vec<_>>>();
+        assert_eq!(
+            acyclic_cycle_walk_steps(&branching, &(0..90).collect::<Vec<_>>()),
+            Some((usize::MAX, true))
+        );
+        let keyed = branching
+            .iter()
+            .flat_map(|(&source, targets)| {
+                targets
+                    .iter()
+                    .map(move |&target| (source, target, (source, target)))
+            })
+            .collect::<Vec<_>>();
+        assert!(cycle_with_legacy_steps(
+            &keyed,
+            &(0..90).collect::<Vec<_>>(),
+            &mut session(usize::MAX)
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn cycle_fast_path_defers_to_witness_search() {
+        let adjacency = BTreeMap::from([(0, vec![1]), (1, vec![2]), (2, vec![0])]);
+        assert_eq!(acyclic_cycle_walk_steps(&adjacency, &[0, 1, 2]), None);
+    }
+
+    #[test]
+    fn cyclic_legacy_budget_is_exact_and_tail_does_not_enter_self_cycle() {
+        let edges = vec![(0, 1, (1, 10)), (1, 1, (1, 20))];
+        assert_eq!(
+            cycle_with_legacy_steps(&edges, &[0, 1], &mut session(3)).unwrap(),
+            Some(vec![1])
+        );
+        let error = cycle_with_legacy_steps(&edges, &[0, 1], &mut session(2)).unwrap_err();
+        let payload = error.resource_exhaustion().unwrap();
+        assert_eq!(
+            (payload.dimension(), payload.limit(), payload.observed()),
+            ("steps", 2, 3)
+        );
+    }
+
+    #[test]
+    fn tied_catalog_first_label_uses_smallest_suffix() {
+        // Both closing edges have the same catalog key (target, location).
+        // The edge from vertex 2 is deliberately listed first.
+        let edges = vec![
+            (2, 0, (0, 0)),
+            (0, 2, (2, 1)),
+            (1, 0, (0, 0)),
+            (0, 1, (1, 1)),
+        ];
+        assert_eq!(
+            cycle_with_legacy_steps(&edges, &[0, 1, 2], &mut session(100)).unwrap(),
+            Some(vec![2, 3])
+        );
+    }
+
+    #[test]
+    fn cyclic_witness_matches_exhaustive_reference_on_all_three_node_graphs() {
+        fn reference(edges: &[(usize, usize, (usize, usize))]) -> Option<Vec<(usize, usize)>> {
+            let mut best: Option<Vec<(usize, usize)>> = None;
+            for root in 0..3 {
+                let mut stack = vec![(root, Vec::<usize>::new(), BTreeSet::from([root]))];
+                while let Some((node, path, seen)) = stack.pop() {
+                    for (index, edge) in edges.iter().enumerate() {
+                        if edge.0 != node {
+                            continue;
+                        }
+                        if seen.contains(&edge.1) {
+                            let start = path
+                                .iter()
+                                .position(|&index| edges[index].0 == edge.1)
+                                .unwrap_or(path.len());
+                            let mut cycle = path[start..]
+                                .iter()
+                                .map(|&index| edges[index].2)
+                                .collect::<Vec<_>>();
+                            cycle.push(edge.2);
+                            let offset = cycle
+                                .iter()
+                                .enumerate()
+                                .min_by_key(|(_, key)| *key)
+                                .unwrap()
+                                .0;
+                            cycle.rotate_left(offset);
+                            if best.as_ref().map_or(true, |current| cycle < *current) {
+                                best = Some(cycle);
+                            }
+                        } else {
+                            let mut next_path = path.clone();
+                            next_path.push(index);
+                            let mut next_seen = seen.clone();
+                            next_seen.insert(edge.1);
+                            stack.push((edge.1, next_path, next_seen));
+                        }
+                    }
+                }
+            }
+            best
+        }
+
+        let pairs = (0..3)
+            .flat_map(|source| (0..3).map(move |target| (source, target)))
+            .collect::<Vec<_>>();
+        for mask in 0..(1_usize << pairs.len()) {
+            let edges = pairs
+                .iter()
+                .enumerate()
+                .filter_map(|(index, &(source, target))| {
+                    (mask & (1 << index) != 0).then_some((source, target, (source, target)))
+                })
+                .collect::<Vec<_>>();
+            let observed = cycle_with_legacy_steps(&edges, &[0, 1, 2], &mut session(100))
+                .unwrap()
+                .map(|indices| indices.into_iter().map(|index| edges[index].2).collect());
+            assert_eq!(observed, reference(&edges), "mask={mask}");
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

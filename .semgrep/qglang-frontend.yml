@@ -19,6 +19,7 @@ rules:
         - /crates/quanta-gqlang-v2-sema/src/**/*.rs
         - /crates/quanta-gqlang-v2-surface/src/**/*.rs
         - /crates/quanta-gqlang-v2-types/src/**/*.rs
+        - /tools/lint/tests/fixtures/semgrep/**/*.rs
       exclude:
         - /crates/quanta-gqlang-v2-sema/src/test_support.rs
     patterns:

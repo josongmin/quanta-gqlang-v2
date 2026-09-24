@@ -69,11 +69,13 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Dict, IO, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
+from tools.ci.doctor import DoctorError, read_lock  # noqa: E402
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIR = REPOSITORY_ROOT / "tools" / "frontend_external_consumer"
@@ -84,6 +86,7 @@ FACADE_SOURCE = FACADE_DIR / "src" / "lib.rs"
 LOCKFILE = REPOSITORY_ROOT / "Cargo.lock"
 FIXTURE_LOCKFILE = FIXTURE_DIR / "Cargo.lock"
 CACHE_ROOT = REPOSITORY_ROOT / "target" / "external-consumer-gate"
+PREFLIGHT_STAMP = REPOSITORY_ROOT / "target" / "ci" / "external-preflight.json"
 VECTOR_PATH = (
     REPOSITORY_ROOT
     / "crates"
@@ -251,7 +254,6 @@ NEGATIVE_CASES: Dict[str, Tuple[str, str]] = {
     "d15_private_execution_document_new": ("E0624", "associated function `new` is private"),
 }
 
-ERROR_CODE_RE = re.compile(r"error\[(E\d{4})\]")
 PUB_USE_RE = re.compile(r"pub use\s+([A-Za-z0-9_]+)::(?:\{([^}]*)\}|([A-Za-z0-9_]+))\s*;", re.DOTALL)
 GLOB_RE = re.compile(r"^[ \t]*pub use .*::\*", re.MULTILINE)
 MODULE_RE = re.compile(r"^[ \t]*pub mod", re.MULTILINE)
@@ -578,8 +580,11 @@ def materialize_fixture(cache_root: Path) -> Path:
     if src.is_symlink():
         raise InfrastructureError("external-consumer fixture src must not be a symlink")
     src.mkdir(exist_ok=True)
-    if [path.name for path in src.iterdir() if path.name != "main.rs"]:
+    if [path.name for path in src.iterdir() if path.name not in {"main.rs", "bin"}]:
         raise InfrastructureError("external-consumer fixture src contains unexpected paths")
+    bin_dir = src / "bin"
+    if bin_dir.exists() and (bin_dir.is_symlink() or not bin_dir.is_dir()):
+        raise InfrastructureError("external-consumer negative bin directory is redirected")
     for path in (fixture / "Cargo.toml", fixture / "Cargo.lock", src / "main.rs"):
         if path.is_symlink() or (path.exists() and not path.is_file()):
             raise InfrastructureError("external-consumer fixture file is redirected: %s" % path)
@@ -598,20 +603,122 @@ def materialize_fixture(cache_root: Path) -> Path:
     return fixture
 
 
+def materialize_negative_bins(fixture: Path) -> Path:
+    """Create the exact registered probe inventory without invalidating warm files."""
+    bin_dir = fixture / "src" / "bin"
+    if bin_dir.is_symlink() or (bin_dir.exists() and not bin_dir.is_dir()):
+        raise InfrastructureError("external-consumer negative bin directory is redirected")
+    bin_dir.mkdir(exist_ok=True)
+    expected = {name + ".rs" for name in NEGATIVE_CASES}
+    observed = {path.name for path in bin_dir.iterdir()}
+    if observed - expected:
+        raise InfrastructureError(
+            "external-consumer negative bin cache contains unexpected paths: %s"
+            % sorted(observed - expected)
+        )
+    for name in sorted(NEGATIVE_CASES):
+        source = NEGATIVES_DIR / (name + ".rs")
+        destination = bin_dir / (name + ".rs")
+        if destination.is_symlink() or (destination.exists() and not destination.is_file()):
+            raise InfrastructureError("external-consumer negative bin is redirected: " + name)
+        write_bytes_if_changed(destination, source.read_bytes())
+    return bin_dir
+
+
+def negative_observations(
+    result: subprocess.CompletedProcess,
+    fixture: Path,
+) -> Dict[str, Dict[str, object]]:
+    """Attribute Cargo JSON terminal evidence to each exact privacy probe bin."""
+    observations: Dict[str, Dict[str, object]] = {
+        name: {"attempted": False, "compiled": False, "codes": set(), "rendered": []}
+        for name in NEGATIVE_CASES
+    }
+    for line in result.stdout.splitlines():
+        try:
+            message = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise InfrastructureError("Cargo negative check emitted invalid JSON: %s" % error) from error
+        if not isinstance(message, dict):
+            raise InfrastructureError("Cargo negative check emitted a non-object JSON event")
+        reason = message.get("reason")
+        if reason not in {"compiler-message", "compiler-artifact"}:
+            continue
+        target = message.get("target")
+        if not isinstance(target, dict):
+            raise InfrastructureError("Cargo negative event has no target object")
+        name = target.get("name")
+        if name not in observations:
+            continue
+        expected_source = (fixture / "src" / "bin" / (name + ".rs")).resolve()
+        source = target.get("src_path")
+        if not isinstance(source, str) or Path(source).resolve() != expected_source:
+            raise InfrastructureError("Cargo negative target %s has the wrong source path" % name)
+        observation = observations[name]
+        observation["attempted"] = True
+        if reason == "compiler-artifact":
+            observation["compiled"] = True
+            continue
+        diagnostic = message.get("message")
+        if not isinstance(diagnostic, dict) or diagnostic.get("level") != "error":
+            continue
+        spans = diagnostic.get("spans")
+        if not isinstance(spans, list):
+            raise InfrastructureError("Cargo negative diagnostic has no span array")
+        # rustc emits an unspanned `aborting due to ...` terminal summary after
+        # the source-anchored diagnostic. It is not independent case evidence.
+        if not spans:
+            continue
+        if not any(
+            isinstance(span, dict)
+            and span.get("is_primary") is True
+            and isinstance(span.get("file_name"), str)
+            and (
+                Path(span["file_name"])
+                if Path(span["file_name"]).is_absolute()
+                else fixture / span["file_name"]
+            ).resolve() == expected_source
+            for span in spans
+        ):
+            raise InfrastructureError(
+                "Cargo negative diagnostic for %s is not anchored to its probe source" % name
+            )
+        code = diagnostic.get("code")
+        if isinstance(code, dict) and isinstance(code.get("code"), str):
+            observation["codes"].add(code["code"])
+        rendered = diagnostic.get("rendered")
+        if not isinstance(rendered, str):
+            rendered = diagnostic.get("message")
+        if not isinstance(rendered, str):
+            raise InfrastructureError("Cargo negative diagnostic has no rendered message")
+        observation["rendered"].append(rendered)
+    return observations
+
+
 def offline_dependency_preflight() -> int:
     """Ask Cargo whether both locked source graphs are available offline."""
     try:
         before_lock = sha256_of(LOCKFILE)
         before_status = git_status_bytes()
         before_fingerprint = gate_writable_fingerprint()
+        before_manifests = {path: path.read_bytes() for path in preflight_manifests()}
         env = cargo_env(REPOSITORY_ROOT / "target", repo_toolchain_channel())
+        try:
+            public_api_nightly = read_lock()["public_api_nightly"]
+        except (DoctorError, OSError) as error:
+            raise InfrastructureError("invalid public API toolchain lock: %s" % error) from error
+        public_api_env = cargo_env(
+            REPOSITORY_ROOT / "target" / ("public-api-" + public_api_nightly),
+            public_api_nightly,
+        )
         # `fetch` resolves complete locked graphs and requires source archives,
         # unlike metadata --no-deps. The fixture is a standalone workspace;
         # cargo public-api later uses the repository workspace and its lock.
         failure = None
-        for graph, manifest in (
-            ("fixture", FIXTURE_DIR / "Cargo.toml"),
-            ("workspace", REPOSITORY_ROOT / "Cargo.toml"),
+        for graph, manifest, graph_env in (
+            ("fixture", FIXTURE_DIR / "Cargo.toml", env),
+            ("workspace", REPOSITORY_ROOT / "Cargo.toml", env),
+            ("public-api workspace", REPOSITORY_ROOT / "Cargo.toml", public_api_env),
         ):
             command = [
                 "cargo", "fetch", "--locked", "--offline", "--manifest-path",
@@ -621,7 +728,7 @@ def offline_dependency_preflight() -> int:
                 result = run_bounded(
                     command,
                     cwd=REPOSITORY_ROOT,
-                    env=env,
+                    env=graph_env,
                     capture_output=True,
                     text=True,
                     timeout_s=30,
@@ -642,16 +749,103 @@ def offline_dependency_preflight() -> int:
             failure = "Cargo.lock changed during the offline dependency preflight"
         elif gate_writable_fingerprint() != before_fingerprint:
             failure = "the external-consumer fixture or gate source changed during the offline dependency preflight"
+        elif any(not path.is_file() or path.is_symlink() or path.read_bytes() != content
+                 for path, content in before_manifests.items()):
+            failure = "a workspace manifest changed during the offline dependency preflight"
         elif git_status_bytes() != before_status:
             failure = "git status --porcelain changed during the offline dependency preflight"
         if failure:
             print("infrastructure failure: %s" % failure, file=sys.stderr, flush=True)
             return EXIT_INFRASTRUCTURE
+        run_id = os.environ.get("QGLANG_CI_RUN_ID")
+        if run_id:
+            write_preflight_stamp(run_id)
         print("external-consumer offline dependency preflight: ready", flush=True)
         return EXIT_OK
     except (InfrastructureError, OSError) as error:
         print("infrastructure failure: %s" % error, file=sys.stderr, flush=True)
         return EXIT_INFRASTRUCTURE
+
+
+def preflight_payload(run_id: str) -> dict:
+    if not re.fullmatch(r"[0-9a-f]{32}", run_id):
+        raise InfrastructureError("invalid local CI run identity")
+    manifests = preflight_manifests()
+    manifest_digest = hashlib.sha256()
+    for path in manifests:
+        manifest_digest.update(str(path.relative_to(REPOSITORY_ROOT)).encode("utf-8"))
+        manifest_digest.update(b"\0")
+        manifest_digest.update(path.read_bytes())
+        manifest_digest.update(b"\0")
+    return {
+        "schema": 1,
+        "run_id": run_id,
+        "repository": str(REPOSITORY_ROOT.resolve()),
+        "workspace_lock_sha256": sha256_of(LOCKFILE),
+        "fixture_lock_sha256": sha256_of(FIXTURE_LOCKFILE),
+        "manifest_count": len(manifests),
+        "manifest_sha256": manifest_digest.hexdigest(),
+        "toolchain_sha256": sha256_of(REPOSITORY_ROOT / "rust-toolchain.toml"),
+        "tool_lock_sha256": sha256_of(REPOSITORY_ROOT / "tools/ci/toolchain.lock.toml"),
+        "gate_sha256": sha256_of(Path(__file__)),
+    }
+
+
+def preflight_manifests() -> List[Path]:
+    env = cargo_env(REPOSITORY_ROOT / "target", repo_toolchain_channel())
+    try:
+        result = run_bounded(
+            ("cargo", "metadata", "--no-deps", "--format-version", "1", "--locked", "--offline"),
+            cwd=REPOSITORY_ROOT, env=env, capture_output=True, text=True, timeout_s=30,
+        )
+    except (OSError, ProcessTimeoutError) as error:
+        raise InfrastructureError("cannot enumerate workspace manifests: %s" % error) from error
+    if result.returncode:
+        raise InfrastructureError("cannot enumerate workspace manifests: %s" % result.stderr.strip())
+    try:
+        document = json.loads(result.stdout)
+        members = set(document["workspace_members"])
+        member_paths = {
+            Path(package["manifest_path"])
+            for package in document["packages"] if package["id"] in members
+        }
+    except (ValueError, KeyError, TypeError) as error:
+        raise InfrastructureError("invalid cargo metadata manifest inventory") from error
+    paths = sorted({REPOSITORY_ROOT / "Cargo.toml", FIXTURE_DIR / "Cargo.toml", *member_paths})
+    if len(member_paths) != len(members):
+        raise InfrastructureError("cargo metadata omitted a workspace member manifest")
+    for path in paths:
+        if not path.is_file() or path.is_symlink() or not path.resolve().is_relative_to(REPOSITORY_ROOT):
+            raise InfrastructureError("workspace manifest is missing or redirected: %s" % path)
+    return paths
+
+
+def write_preflight_stamp(run_id: str) -> None:
+    parent = PREFLIGHT_STAMP.parent
+    if parent.is_symlink():
+        raise InfrastructureError("local CI evidence directory is redirected")
+    parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(dir=str(parent), prefix=".external-preflight-")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(preflight_payload(run_id), handle, sort_keys=True)
+            handle.write("\n")
+        os.replace(temporary, PREFLIGHT_STAMP)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def consume_preflight_stamp(run_id: str) -> None:
+    if PREFLIGHT_STAMP.is_symlink() or not PREFLIGHT_STAMP.is_file():
+        raise InfrastructureError("same-run external preflight stamp is missing")
+    try:
+        observed = json.loads(PREFLIGHT_STAMP.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise InfrastructureError("cannot read external preflight stamp: %s" % error) from error
+    if observed != preflight_payload(run_id):
+        raise InfrastructureError("external preflight stamp does not match this run and source")
+    PREFLIGHT_STAMP.unlink()
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -779,18 +973,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
 
         # ---- stage 1/2: isolated fixture at a stable, owned path ----------
-        if offline_dependency_preflight() != EXIT_OK:
+        run_id = os.environ.get("QGLANG_CI_RUN_ID")
+        if run_id:
+            consume_preflight_stamp(run_id)
+        elif offline_dependency_preflight() != EXIT_OK:
             raise InfrastructureError("locked fixture dependencies are not available offline")
         channel = repo_toolchain_channel()
         cache_lock = lock_cache(CACHE_ROOT, REPOSITORY_ROOT)
         fixture = materialize_fixture(CACHE_ROOT)
         env = cargo_env(CACHE_ROOT / "build", channel)
         env["QGLANG_V3_VECTOR_PATH"] = str(VECTOR_PATH)
-        # Stage 3 runs at this checkout's stable manifest path, so its Cargo
-        # target can be reused without cross-checkout stale-path artifacts.
-        # Pin its toolchain too: an inherited RUSTUP_TOOLCHAIN can otherwise
-        # override rust-toolchain.toml and change the observed public API.
-        public_api_env = cargo_env(REPOSITORY_ROOT / "target", channel)
+        # cargo-public-api needs nightly rustdoc. A moving `nightly` alias can
+        # change the public surface independently of this source checkout.
+        try:
+            public_api_nightly = read_lock()["public_api_nightly"]
+        except (DoctorError, OSError) as error:
+            raise InfrastructureError("invalid public API toolchain lock: %s" % error) from error
+        public_api_env = cargo_env(
+            REPOSITORY_ROOT / "target" / ("public-api-" + public_api_nightly),
+            public_api_nightly,
+        )
         cargo_version = tool_version("cargo", fixture, env)
         rustc_version = tool_version("rustc", fixture, env)
         trace("locked fixture cache: %s" % CACHE_ROOT)
@@ -799,7 +1001,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         positive_main = (fixture / "src" / "main.rs").read_bytes()
 
         build = run(
-            ["cargo", "build", "--locked", "--message-format=json"],
+            [
+                "cargo", "build", "--locked", "--offline", "--message-format=json",
+                "--bin", FIXTURE_PACKAGE,
+            ],
             cwd=fixture,
             env=env,
         )
@@ -836,26 +1041,46 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if absent:
             violations.append("expected-code map names without a fixture: %s" % absent)
 
+        if not absent and not unregistered:
+            materialize_negative_bins(fixture)
+            result = run(
+                [
+                    "cargo", "check", "--locked", "--offline", "--bins", "--keep-going",
+                    "--message-format=json", "--color", "never",
+                ],
+                cwd=fixture,
+                env=env,
+            )
+            observations = negative_observations(result, fixture)
+        else:
+            observations = {}
+
         for name, (expected_code, expected_needle) in sorted(NEGATIVE_CASES.items()):
-            path = NEGATIVES_DIR / (name + ".rs")
-            if not path.is_file():
+            if name not in observations:
                 continue
-            (fixture / "src" / "main.rs").write_bytes(path.read_bytes())
-            result = run(["cargo", "check", "--locked", "--quiet"], cwd=fixture, env=env)
+            observation = observations[name]
             counts["negative_executed"] += 1
-            observed_codes = sorted(set(ERROR_CODE_RE.findall(result.stderr)))
+            if not observation["attempted"]:
+                raise InfrastructureError("negative %s was not attempted by Cargo" % name)
+            rendered = "\n".join(observation["rendered"])
+            observed_codes = sorted(observation["codes"])
+            failed = bool(observation["rendered"])
             if expected_code:
-                code_ok = result.returncode != 0 and expected_code in observed_codes
+                code_ok = failed and expected_code in observed_codes
             else:
                 # No E-code is expected for this diagnostic: any coded error is
                 # a mismatch, and the needle below carries the assertion.
-                code_ok = result.returncode != 0 and not observed_codes
-            needle_ok = result.returncode != 0 and expected_needle in result.stderr
-            if result.returncode == 0:
-                violations.append("negative %s compiled: the leak is reachable" % name)
-            elif FIXTURE_ANCHOR not in result.stderr:
+                code_ok = failed and not observed_codes
+            needle_ok = failed and expected_needle in rendered
+            if observation["compiled"] and failed:
                 raise InfrastructureError(
-                    "negative %s failed for a non-fixture reason:\n%s" % (name, result.stderr.strip())
+                    "negative %s emitted both a successful artifact and an error" % name
+                )
+            if observation["compiled"] and not failed:
+                violations.append("negative %s compiled: the leak is reachable" % name)
+            elif not failed:
+                raise InfrastructureError(
+                    "negative %s produced no terminal compiler result" % name
                 )
             if code_ok:
                 counts["code_matched"] += 1
@@ -871,7 +1096,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             if needle_ok:
                 counts["needle_matched"] += 1
             else:
-                first_line = result.stderr.strip().splitlines()
+                first_line = rendered.strip().splitlines()
                 mismatches.append(
                     "%s: expected message %r, observed %r"
                     % (name, expected_needle, first_line[0] if first_line else "")
@@ -880,7 +1105,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "privacy probe %-27s exit=%d expected=%s observed=%s"
                 % (
                     name,
-                    result.returncode,
+                    1 if failed else 0,
                     expected_code or "uncoded",
                     ",".join(observed_codes) or "none",
                 )

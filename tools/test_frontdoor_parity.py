@@ -275,6 +275,8 @@ def main() -> int:
             "-p",
             "quanta-gqlang-v2-diagnostics-stdio",
             "--bins",
+            "--locked",
+            "--offline",
             "--message-format=json-render-diagnostics",
         ],
         timeout_s=BUILD_TIMEOUT_S,

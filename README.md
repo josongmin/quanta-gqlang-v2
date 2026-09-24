@@ -121,14 +121,18 @@ downstream consumer 실행이나 배포를 입증하지 않는다. `just ci`는 
 `just ci`는 외부 consumer fixture와 저장소 workspace 양쪽의 잠긴 Cargo
 의존성을 오프라인에서 먼저 확인한다. 캐시가 비어 있으면 빌드와 테스트 전에
 실패한다. 해당 그래프의 캐시는 각각
-`CARGO_NET_OFFLINE=false cargo fetch --locked --manifest-path tools/frontend_external_consumer/Cargo.toml`와
-`CARGO_NET_OFFLINE=false cargo fetch --locked --manifest-path Cargo.toml`로
+`CARGO_NET_OFFLINE=false cargo fetch --locked --manifest-path tools/frontend_external_consumer/Cargo.toml`,
+`CARGO_NET_OFFLINE=false cargo fetch --locked --manifest-path Cargo.toml`, 그리고
+`CARGO_NET_OFFLINE=false RUSTUP_TOOLCHAIN=nightly-2026-09-23 cargo fetch --locked --manifest-path Cargo.toml`로
 채운 뒤 전체 게이트를 다시 실행한다. 직접 실행한 게이트의 단계별 시간은
 `JUST_TIME=true JUST_TIMESTAMP=true just ci`로 기록할 수 있다.
+실행 시작 시 tracked 및 non-ignored untracked 파일 전체를 해시하고 각 waterfall
+단계 뒤에 다시 대조하므로 실행 중 소스가 바뀌면 결과를 폐기한다.
 
 Focused 진입점은 원인 확인용이다:
 
-1. `just static` — format, TOML, MSRV/current Clippy, typos
+1. `just static` — format, TOML, Rust 1.95 Clippy, typos; Rust 1.81
+   workspace tests and doctests provide the MSRV compilation gate
 2. `just test` — workspace, rustdoc, shipped front-door parity
 3. `just policy` — qualification custody, architecture, external facade consumer,
    supply-chain, Semgrep
@@ -136,8 +140,11 @@ Focused 진입점은 원인 확인용이다:
 ## 로컬 개발 전제조건
 
 `rust-toolchain.toml`은 기본 Rust 1.81과 rustfmt/Clippy를 고정한다.
-`just ci`에는 별도 Rust 1.95 Clippy, `just`, `cargo-nextest`, `taplo`,
-`typos`, `cargo-deny`, Python 3, Semgrep CLI 또는 Python 모듈이 필요하다.
+`just ci`에는 별도 Rust 1.95 Clippy, 날짜 고정 public-API nightly,
+`just`, `cargo-nextest`, `taplo`, `typos`, `cargo-deny`, `cargo-public-api`,
+Python 3, Semgrep CLI가 필요하다. 정확한 버전은
+[`tools/ci/toolchain.lock.toml`](tools/ci/toolchain.lock.toml)에 고정되며
+`just doctor`가 설치 상태를 확인한다.
 Python AST 정책 의존성은 `python3 -m pip install -r tools/lint/requirements.txt`로
 고정 버전을 설치한다.
 필요한 실행 명령은 [Justfile](Justfile)이 권위다. 변경 부위의 owner 테스트로

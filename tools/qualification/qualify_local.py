@@ -11,11 +11,14 @@ rebuild after a source or toolchain change.
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import json
 import os
+import re
 import sys
 import tempfile
 import time
+import uuid
 from pathlib import Path
 from typing import Sequence
 
@@ -24,6 +27,7 @@ from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
 
 GIT_TIMEOUT_S = 120
 CI_TIMEOUT_S = 1800
+RECIPE_TIME = re.compile(r"^---> ([a-z][a-z0-9-]*) completed in ([0-9.]+)s$", re.MULTILINE)
 
 
 class QualificationError(RuntimeError):
@@ -72,6 +76,64 @@ def write_json_atomic(path: Path, payload: dict) -> None:
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
+
+
+def source_hashes(checkout: Path) -> dict:
+    paths = (
+        "Cargo.lock",
+        "tools/frontend_external_consumer/Cargo.lock",
+        "tools/ci/toolchain.lock.toml",
+    )
+    return {
+        name: hashlib.sha256((checkout / name).read_bytes()).hexdigest()
+        for name in paths if (checkout / name).is_file()
+    }
+
+
+def recipe_durations(log_path: Path) -> dict:
+    values = {}
+    with log_path.open("r", encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            match = RECIPE_TIME.match(line)
+            if match:
+                recipe, seconds = match.groups()
+                if recipe in values:
+                    raise QualificationError("duplicate Just timing for " + recipe)
+                values[recipe] = float(seconds)
+    return values
+
+
+def hash_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def replay_log(path: Path) -> None:
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            binary = getattr(sys.stdout, "buffer", None)
+            if binary is None:
+                sys.stdout.write(block.decode("utf-8", errors="replace"))
+            else:
+                binary.write(block)
+    sys.stdout.flush()
+
+
+def valid_nextest_evidence(evidence: object, run_id: str) -> bool:
+    if not isinstance(evidence, dict) or evidence.get("qualification_run_id") != run_id:
+        return False
+    fields = ("discovered", "selected", "executed", "skipped_ignored", "leaked", "exit")
+    if any(type(evidence.get(key)) is not int for key in fields):
+        return False
+    return (
+        evidence["exit"] == 0 and evidence["selected"] > 0
+        and evidence["selected"] == evidence["executed"]
+        and evidence["discovered"] == evidence["executed"] + evidence["skipped_ignored"]
+        and evidence["leaked"] == 0
+    )
 
 
 class QualificationDriver:
@@ -189,34 +251,93 @@ class QualificationDriver:
             print((self.checkout / "rust-toolchain.toml").read_text(encoding="utf-8"),
                   end="", flush=True)
             print("qualify-local: active tool versions:", flush=True)
+            observed_tools = {}
             for args in (("rustc", "--version"), ("cargo", "--version"), ("just", "--version")):
-                print(command(args, self.checkout), flush=True)
+                observed_tools[args[0]] = command(args, self.checkout)
+                print(observed_tools[args[0]], flush=True)
+            if (self.checkout / "tools/ci/doctor.py").is_file():
+                try:
+                    observed_tools = json.loads(command(
+                        ("python3", "tools/ci/doctor.py", "--json"), self.checkout
+                    ))
+                except (ValueError, QualificationError) as error:
+                    raise QualificationError("tool doctor failed before CI: %s" % error) from error
+            hashes = source_hashes(self.checkout)
+            run_id = uuid.uuid4().hex
+            receipt_dir = self.root / sha
+            if receipt_dir.is_symlink():
+                raise QualificationError("receipt path must not be a symlink")
+            receipt_dir.mkdir(exist_ok=True)
+            write_json_atomic(receipt_dir / "receipt.json", {
+                "schema": 2, "sha": sha, "tree": tree, "exit": None,
+                "status": "running", "dirty": False, "qualification_run_id": run_id,
+            })
+            log_path = receipt_dir / "ci.log"
+            log_fd, temporary_log = tempfile.mkstemp(dir=str(receipt_dir), prefix=".ci-log-")
             start = time.monotonic()
             try:
                 # Keep a per-recipe timing trail even when the caller did not
                 # set Just's optional reporting flags. This does not alter
                 # which recipes run or the exact-source receipt contract.
-                ci_env = {**os.environ, "JUST_TIME": "true", "JUST_TIMESTAMP": "true"}
-                result = run_bounded(
-                    ("just", "ci"), cwd=self.checkout, timeout_s=CI_TIMEOUT_S, env=ci_env,
-                )
+                ci_env = {
+                    **os.environ, "JUST_TIME": "true", "JUST_TIMESTAMP": "true",
+                    "QGLANG_QUALIFICATION_RUN_ID": run_id,
+                }
+                with os.fdopen(log_fd, "wb") as log_handle:
+                    result = run_bounded(
+                        ("just", "ci"), cwd=self.checkout, timeout_s=CI_TIMEOUT_S, env=ci_env,
+                        output_file=log_handle,
+                    )
                 exit_code = result.returncode if result.returncode >= 0 else 128 - result.returncode
             except ProcessTimeoutError as error:
                 print("qualify-local: " + str(error), file=sys.stderr, flush=True)
                 exit_code = 2
+            finally:
+                os.replace(temporary_log, log_path)
+            replay_log(log_path)
             duration_s = int(time.monotonic() - start)
             try:
                 self.verify_after_run(sha, tree)
             except QualificationError as error:
                 print("qualify-local: " + str(error), file=sys.stderr, flush=True)
                 exit_code = 1
-            receipt_dir = self.root / sha
-            if receipt_dir.is_symlink():
-                raise QualificationError("receipt path must not be a symlink")
-            receipt_dir.mkdir(exist_ok=True)
+            nextest_evidence = None
+            if (self.checkout / "tools/ci/nextest_gate.py").is_file():
+                evidence_path = self.checkout / "target/ci/nextest-evidence.json"
+                if evidence_path.is_file() and not evidence_path.is_symlink():
+                    try:
+                        observed = json.loads(evidence_path.read_text(encoding="utf-8"))
+                    except (OSError, ValueError) as error:
+                        raise QualificationError("cannot parse nextest evidence: %s" % error) from error
+                    if isinstance(observed, dict) and observed.get("qualification_run_id") == run_id:
+                        nextest_evidence = observed
+                if exit_code == 0 and not valid_nextest_evidence(nextest_evidence, run_id):
+                    print("qualify-local: current-run nextest evidence is missing or inconsistent",
+                          file=sys.stderr, flush=True)
+                    exit_code = 2
+            advisory_db = None
+            if (self.checkout / "tools/ci/advisory_db.py").is_file() and exit_code == 0:
+                try:
+                    advisory_db = json.loads(command(
+                        ("python3", "tools/ci/advisory_db.py", "--json"), self.checkout
+                    ))
+                except (ValueError, QualificationError) as error:
+                    print("qualify-local: advisory DB evidence failed: %s" % error,
+                          file=sys.stderr, flush=True)
+                    exit_code = 2
             write_json_atomic(receipt_dir / "receipt.json", {
                 "sha": sha, "tree": tree, "cmds": ["just ci"],
                 "exit": exit_code, "duration_s": duration_s,
+                "schema": 2,
+                "status": "complete",
+                "dirty": False,
+                "tool_versions": observed_tools,
+                "source_hashes": hashes,
+                "recipe_duration_s": recipe_durations(log_path),
+                "ci_log_sha256": hash_file(log_path),
+                "qualification_run_id": run_id,
+                "nextest": nextest_evidence,
+                "advisory_db": advisory_db,
             })
             print("qualify-local: receipt written to %s (exit=%d, duration_s=%d)" % (
                 receipt_dir / "receipt.json", exit_code, duration_s

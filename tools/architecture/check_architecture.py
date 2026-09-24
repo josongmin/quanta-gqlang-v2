@@ -101,17 +101,23 @@ def parse_args() -> argparse.Namespace:
 
 
 def cargo_metadata(root: Path) -> dict:
+    command = [
+        "cargo",
+        "metadata",
+        "--manifest-path",
+        str(root / "Cargo.toml"),
+        "--format-version",
+        "1",
+        "--no-deps",
+    ]
+    # Production and other locked workspaces must not resolve a different
+    # graph or touch Cargo.lock during a policy proof. Synthetic architecture
+    # fixtures deliberately have no lockfile and remain metadata-only.
+    if (root / "Cargo.lock").is_file():
+        command.extend(("--locked", "--offline"))
     try:
         result = subprocess.run(
-            [
-                "cargo",
-                "metadata",
-                "--manifest-path",
-                str(root / "Cargo.toml"),
-                "--format-version",
-                "1",
-                "--no-deps",
-            ],
+            command,
             cwd=root,
             check=False,
             capture_output=True,

@@ -77,6 +77,18 @@ class ProcessGuardTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stdout, "QGLANG\n")
 
+    def test_streamed_output_file_merges_stdout_and_stderr(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            log_path = Path(directory) / "gate.log"
+            with log_path.open("wb") as handle:
+                result = run_bounded(
+                    [sys.executable, "-c", "import sys; print('out'); print('err', file=sys.stderr)"],
+                    cwd=Path(directory), timeout_s=5, output_file=handle,
+                )
+            self.assertEqual(result.returncode, 0)
+            self.assertIn(b"out", log_path.read_bytes())
+            self.assertIn(b"err", log_path.read_bytes())
+
     def test_stuck_child_exits_at_the_gate_timeout(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaises(ProcessTimeoutError):

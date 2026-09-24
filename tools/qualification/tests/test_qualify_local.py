@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import io
 import json
 import os
@@ -145,9 +146,21 @@ class QualificationDriverTest(unittest.TestCase):
         receipt = json.loads(
             (self.driver.root / sha / "receipt.json").read_text(encoding="utf-8")
         )
-        self.assertEqual(set(receipt), {"sha", "tree", "cmds", "exit", "duration_s"})
+        self.assertEqual(set(receipt), {
+            "sha", "tree", "cmds", "exit", "duration_s", "schema", "tool_versions",
+            "source_hashes", "recipe_duration_s", "ci_log_sha256",
+            "qualification_run_id", "nextest", "advisory_db", "status", "dirty",
+        })
         self.assertEqual((receipt["sha"], receipt["tree"], receipt["cmds"], receipt["exit"]),
                          (sha, tree, ["just ci"], 0))
+        self.assertEqual(receipt["schema"], 2)
+        self.assertEqual(receipt["status"], "complete")
+        self.assertIs(receipt["dirty"], False)
+        self.assertIn("rustc", receipt["tool_versions"])
+        self.assertEqual(receipt["source_hashes"], {})
+        self.assertIsNone(receipt["nextest"])
+        log = (self.driver.root / sha / "ci.log").read_bytes()
+        self.assertEqual(receipt["ci_log_sha256"], hashlib.sha256(log).hexdigest())
         with redirect_stdout(io.StringIO()):
             self.assertEqual(self.driver.run(), 0)
         self.assertEqual(git(self.driver.checkout, "rev-parse", "HEAD"), sha)
@@ -169,6 +182,26 @@ class QualificationDriverTest(unittest.TestCase):
                          (sha, tree, ["just ci"], 2))
         self.assertEqual(git(self.driver.checkout, "rev-parse", "HEAD"), sha)
         self.assertEqual(git(self.repo, "status", "--porcelain"), "")
+
+    def test_ci_log_symlink_is_replaced_without_writing_external_file(self) -> None:
+        (self.repo / "rust-toolchain.toml").write_text(
+            '[toolchain]\nchannel = "1.81.0"\n', encoding="utf-8"
+        )
+        (self.repo / "Justfile").write_text("ci:\n    @true\n", encoding="utf-8")
+        run(["git", "add", "Justfile", "rust-toolchain.toml"], self.repo)
+        run(["git", "commit", "-qm", "fixture-log-custody"], self.repo)
+        sha, _ = self.pin()
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(self.driver.run(), 0)
+        outside = Path(self.temp.name) / "outside-log"
+        outside.write_text("keep", encoding="utf-8")
+        log_path = self.driver.root / sha / "ci.log"
+        log_path.unlink()
+        log_path.symlink_to(outside)
+        with redirect_stdout(io.StringIO()):
+            self.assertEqual(self.driver.run(), 0)
+        self.assertFalse(log_path.is_symlink())
+        self.assertEqual(outside.read_text(encoding="utf-8"), "keep")
 
 
 if __name__ == "__main__":

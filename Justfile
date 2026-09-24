@@ -10,10 +10,10 @@ taplo:
     taplo fmt --check
 
 clippy-msrv:
-    cargo clippy --workspace --all-targets -- -D warnings
+    CARGO_TARGET_DIR=target/ci-msrv cargo clippy --workspace --all-targets --locked --offline -- -D warnings
 
 clippy-current:
-    cargo +1.95.0 clippy --workspace --all-targets -- -D clippy::unused_result_ok -D warnings
+    CARGO_TARGET_DIR=target/ci-clippy-1.95 cargo +1.95.0 clippy --workspace --all-targets --locked --offline -- -D clippy::unused_result_ok -D warnings
 
 typos:
     typos .
@@ -22,7 +22,7 @@ pm-check:
     python3 tools/prompt-manager/pm.py check
 
 pm-test:
-    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/prompt-manager/tests -p 'test_*.py'
+    PYTHONDONTWRITEBYTECODE=1 python3 tools/ci/unittest_gate.py tools/prompt-manager/tests 'test_*.py'
 
 pm-sync:
     python3 tools/prompt-manager/pm.py sync
@@ -33,18 +33,18 @@ pm-status:
 # ---- test leaves (each runs exactly one test command) ----
 
 nextest:
-    cargo nextest run --workspace --no-tests pass
+    python3 tools/ci/nextest_gate.py
 
 doctest:
-    RUSTDOCFLAGS="-D warnings" cargo test --workspace --doc
+    python3 tools/ci/doctest_gate.py
 
 frontdoor-parity:
-    python3 tools/test_frontdoor_parity.py
+    CARGO_TARGET_DIR=target/ci-msrv python3 tools/test_frontdoor_parity.py
 
 # ---- policy leaves (each runs exactly one policy command) ----
 
 arch-lint:
-    python3 tools/architecture/tests/test_architecture.py
+    PYTHONDONTWRITEBYTECODE=1 python3 tools/ci/unittest_gate.py tools/architecture/tests 'test_architecture.py'
     python3 tools/architecture/check_architecture.py
 
 external-consumer:
@@ -54,32 +54,59 @@ external-consumer-preflight:
     python3 tools/test_frontend_external_consumer.py --preflight
 
 deny:
-    cargo deny check bans licenses sources advisories
+    python3 tools/ci/advisory_db.py
+    cargo deny --frozen check --disable-fetch bans licenses sources advisories
+
+advisory-refresh:
+    cargo deny fetch
+    python3 tools/ci/advisory_db.py
 
 semgrep:
-    python3 tools/lint/tests/test_semgrep_non_vacuity.py
-    tools/lint/run_semgrep.sh
+    PYTHONDONTWRITEBYTECODE=1 python3 tools/ci/unittest_gate.py tools/lint/tests 'test_semgrep_non_vacuity.py'
+    python3 tools/lint/semgrep_gate.py
 
 semantic-honesty:
-    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/lint/tests -p 'test_semantic_honesty.py'
+    PYTHONDONTWRITEBYTECODE=1 python3 tools/ci/unittest_gate.py tools/lint/tests 'test_semantic_honesty.py'
     python3 tools/lint/semantic_honesty.py
 
 qualifier-custody:
-    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/qualification/tests -p 'test_*.py'
+    PYTHONDONTWRITEBYTECODE=1 python3 tools/ci/unittest_gate.py tools/qualification/tests 'test_*.py'
+
+doctor:
+    python3 tools/ci/doctor.py
+
+ci-rail-test:
+    PYTHONDONTWRITEBYTECODE=1 python3 tools/ci/unittest_gate.py tools/ci/tests 'test_*.py'
 
 # ---- composition groups (one composition path per command) ----
-# Each full gate leaf is a dependency of exactly one group. The offline
-# external-consumer dependency preflight is a serial prerequisite of `ci`,
-# before any build or test. The old `lint` recipe (which nested test +
-# frontdoor-parity inside lint) is removed.
+# Each full gate leaf appears in exactly one explicit serial group body. The
+# offline external-consumer preflight runs before any build or test. The old
+# `lint` recipe (which nested test + frontdoor-parity inside lint) is removed.
 
-static: fmt taplo clippy-msrv clippy-current typos pm-check pm-test
+static:
+    just fmt
+    just taplo
+    just clippy-current
+    just typos
+    just pm-check
+    just pm-test
 
-test: nextest doctest frontdoor-parity
+test:
+    just nextest
+    just doctest
+    just frontdoor-parity
 
-policy: qualifier-custody arch-lint external-consumer deny semgrep semantic-honesty
+policy:
+    just ci-rail-test
+    just qualifier-custody
+    just arch-lint
+    just external-consumer
+    just deny
+    just semgrep
+    just semantic-honesty
 
-ci: external-consumer-preflight && static test policy
+ci:
+    python3 tools/ci/run_local.py
 
 # Pinned local qualification: one locked, stable-path managed worktree/cache;
 # clean-tree and exact HEAD/tree checks; then `just ci` and a local receipt.

@@ -8,10 +8,11 @@ compatibility promises.
 
 ## Inventory and execution
 
-- `cargo nextest list --workspace --message-format json` is the generated
-  inventory of Rust unit and integration tests. `cargo test --workspace --doc`
-  covers doctests separately. A `tests/support/mod.rs` file is a helper module,
-  not an independent test target. No checked-in per-test count is authoritative.
+- `just nextest` compares generated JSON inventory with machine-readable
+  terminal events, records ignored tests as skipped, rejects output leaks, and
+  caps process concurrency at four for deterministic local-host pressure. `just doctest` rejects
+  an empty doctest run. A `tests/support/mod.rs` file is a helper module, not
+  an independent test target. No checked-in per-test count is authoritative.
 - `just ci` is the local repository-wide composition: Rust tests, doctests,
   CLI/stdio parity, external-consumer/privacy probes, and static/policy rails.
   `just qualify-local` records an exact clean committed HEAD receipt; a focused
@@ -89,8 +90,8 @@ compatibility promises.
 | Gate | Rail | What it proves |
 |---|---|---|
 | Public downstream boundary | `tools/test_frontend_external_consumer.py` | Cargo-parsed fixture→facade→pipeline path-only dependency seam, locked offline dependency preflight before CI builds, locked external-consumer build and exact Cargo-emitted executable selection inside the owned cache, parse-only V3 root classifier positive/zero/multiple cases, selected V3 composition item and shared digest-vector replay, curated accessor return types and closed-enum variants, compile-fail private-boundary probes, and zero direct or globbed public leakage. No provider or query runtime executes here |
-| Architecture boundary | `tools/architecture/tests/test_architecture.py`, `tools/architecture/check_architecture.py` | Workspace dependency DAG and forbidden/retired edge rejection, including dependency-kind distinctions and exact member-path/no-registry-source checks for internal edges |
-| Policy and tooling integrity | `tools/lint/tests/test_semgrep_non_vacuity.py`, `tools/lint/tests/test_semantic_honesty.py`, `tools/prompt-manager/tests/test_pm.py`, `tools/qualification/tests/test_qualify_local.py`, `tools/qualification/tests/test_external_consumer_cache.py`, `tools/qualification/tests/test_frontdoor_parity.py`, `tools/qualification/tests/test_process_guard.py` | Semgrep positive-fixture non-vacuity, AST semantic honesty branch/return mutants and production scan for outcome/status/diagnostic projections, scoped prompt imports, managed checkout/lock/receipt behavior, external-consumer offline preflight/cache/privacy-probe and artifact-path custody, Cargo-emitted frontdoor executable selection, and bounded subprocess behavior |
+| Architecture boundary | `tools/architecture/tests/test_architecture.py`, `tools/architecture/check_architecture.py` | Production Cargo-metadata integration plus pure policy mutation checks for the workspace dependency DAG and forbidden/retired edges, including dependency-kind distinctions and exact member-path/no-registry-source checks for internal edges |
+| Policy and tooling integrity | `tools/lint/semgrep_gate.py`, `tools/lint/tests/test_semgrep_non_vacuity.py`, `tools/lint/tests/test_semantic_honesty.py`, `tools/prompt-manager/tests/test_pm.py`, `tools/qualification/tests/test_qualify_local.py`, `tools/qualification/tests/test_external_consumer_cache.py`, `tools/qualification/tests/test_frontdoor_parity.py`, `tools/qualification/tests/test_process_guard.py` | One JSON Semgrep scan proves both positive-fixture non-vacuity and zero production findings; AST semantic honesty branch/return mutants and production scan for outcome/status/diagnostic projections; scoped prompt imports; managed checkout/lock/receipt behavior; external-consumer offline preflight/cache/privacy-probe and artifact-path custody; Cargo-emitted frontdoor executable selection; and bounded subprocess behavior |
 | Documentation path integrity | `crates/quanta-gqlang-v2-surface/tests/v3_doc_inventory.rs` | Named Rust rail paths in this ledger exist; it does not establish reverse coverage or assertion quality |
 | Registry integrity | `crates/quanta-gqlang-v2-conformance/tests/self_validation.rs` | All 18 registered roots compile through the facade with exact V2 disposition and V3 item/family/payload-presence mapping; both supplemental sources retain exact no-plan or document-program membership and stay outside the V3 execution DTO; unsupported roots reject with an exact diagnostic/span; closed-source predicates and aggregate contexts retain exact positive/negative semantics; authored inner/CROSS joins retain mode, ON, inputs, and prior filter in the V3 relation tree; two authored mutually recursive rules form one checked program with two ordered members |
 | Full local composition | `just ci` | Repository-configured format, lint, architecture, Semgrep, test, and conformance composition; it is local proof, not hosted-CI evidence |

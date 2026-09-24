@@ -1,7 +1,7 @@
 //! Checked module/import authority and deterministic visibility resolution.
 
 use std::collections::BTreeMap;
-use std::collections::BTreeSet;
+use std::collections::VecDeque;
 
 use crate::budget::ModuleBudgetSessionV2;
 use crate::visibility::VisibilityV2;
@@ -767,78 +767,350 @@ impl ModuleGraphBuilderV2 {
         Ok(outcomes.into_values().collect())
     }
 
+    #[expect(
+        clippy::indexing_slicing,
+        reason = "indices are constructed from the same module-key snapshot"
+    )]
     fn detect_cycle(
         &self,
         session: &mut ModuleBudgetSessionV2,
     ) -> Result<Option<Vec<LocatedEdgeV2>>, ModuleDiagnosticV2> {
-        let mut candidates = Vec::new();
-        for root in self.modules.keys() {
-            let mut stack = vec![(
-                root.clone(),
-                Vec::<LocatedEdgeV2>::new(),
-                BTreeSet::from([root.clone()]),
-            )];
-            while let Some((node_id, path, seen)) = stack.pop() {
-                let Some(node) = self.modules.get(&node_id) else {
-                    continue;
-                };
+        let nodes = self.modules.keys().collect::<Vec<_>>();
+        let index = nodes
+            .iter()
+            .enumerate()
+            .map(|(index, id)| ((*id).clone(), index))
+            .collect::<BTreeMap<_, _>>();
+        let graph = nodes
+            .iter()
+            .map(|id| {
+                let node = &self.modules[*id];
                 let mut edges = node
                     .imports
                     .values()
                     .chain(node.reexports.values().flatten())
+                    .map(|edge| DependencyEdge {
+                        target: index.get(&edge.target.module_id).copied(),
+                        edge,
+                    })
                     .collect::<Vec<_>>();
-                edges.sort_by(|a, b| {
-                    a.target
-                        .cmp(&b.target)
-                        .then(loc_key(a.location.location()).cmp(&loc_key(b.location.location())))
+                edges.sort_by(|left, right| {
+                    left.edge.target.cmp(&right.edge.target).then(
+                        loc_key(left.edge.location.location())
+                            .cmp(&loc_key(right.edge.location.location())),
+                    )
                 });
-                for edge in edges.into_iter().rev() {
-                    session.charge_step()?;
-                    let located = LocatedEdgeV2 {
-                        from: node_id.clone(),
-                        to: edge.target.module_id.clone(),
-                        location: edge.location.location(),
-                    };
-                    if seen.contains(&edge.target.module_id) {
-                        let position = path
-                            .iter()
-                            .position(|item| item.from == edge.target.module_id)
-                            .unwrap_or(0);
-                        let mut cycle = path.get(position..).map_or_else(Vec::new, <[_]>::to_vec);
-                        cycle.push(located);
-                        candidates.push(canonicalize_located_cycle(cycle));
-                    } else {
-                        let mut next_path = path.clone();
-                        next_path.push(located);
-                        let mut next_seen = seen.clone();
-                        next_seen.insert(edge.target.module_id.clone());
-                        stack.push((edge.target.module_id.clone(), next_path, next_seen));
+                edges
+            })
+            .collect::<Vec<_>>();
+
+        if let Some(order) = topological_order(&graph) {
+            // A root is visited once by itself and once for every path from
+            // another root. This computes precisely the edge visits charged by
+            // the former path-enumerating DFS, including edges to absent nodes.
+            let mut visits = vec![1usize; nodes.len()];
+            let mut steps = 0usize;
+            let mut overflowed = false;
+            for source in order {
+                let edge_visits = visits[source]
+                    .checked_mul(graph[source].len())
+                    .unwrap_or_else(|| {
+                        overflowed = true;
+                        usize::MAX
+                    });
+                steps = steps.checked_add(edge_visits).unwrap_or_else(|| {
+                    overflowed = true;
+                    usize::MAX
+                });
+                for edge in &graph[source] {
+                    if let Some(target) = edge.target {
+                        visits[target] =
+                            visits[target]
+                                .checked_add(visits[source])
+                                .unwrap_or_else(|| {
+                                    overflowed = true;
+                                    usize::MAX
+                                });
+                    }
+                }
+            }
+            session.charge_steps(steps)?;
+            if overflowed {
+                // The true legacy count exceeds usize::MAX. Even a profile at
+                // that numeric maximum must reject the next logical visit.
+                session.charge_step()?;
+            }
+            return Ok(None);
+        }
+
+        // A cyclic graph still charges the legacy number of edge visits, so
+        // callers observe the same resource limit before a cycle diagnostic.
+        // Frames and membership are mutated in place instead of cloned for
+        // every path; the budget bounds the number of loop iterations.
+        let mut seen = vec![false; nodes.len()];
+        for root in 0..nodes.len() {
+            let mut stack = vec![(root, 0usize)];
+            seen[root] = true;
+            while let Some((node, next_edge)) = stack.last_mut() {
+                if *next_edge == graph[*node].len() {
+                    seen[*node] = false;
+                    stack.pop();
+                    continue;
+                }
+                let edge = &graph[*node][*next_edge];
+                *next_edge += 1;
+                session.charge_step()?;
+                if let Some(target) = edge.target {
+                    if !seen[target] {
+                        seen[target] = true;
+                        stack.push((target, 0));
                     }
                 }
             }
         }
-        candidates.sort();
-        Ok(candidates.into_iter().next())
+
+        Ok(minimal_cycle(&nodes, &graph))
     }
 }
 
-fn canonicalize_located_cycle(cycle: Vec<LocatedEdgeV2>) -> Vec<LocatedEdgeV2> {
-    if cycle.is_empty() {
-        return cycle;
-    }
-    rotations(&cycle).min().unwrap_or_default()
+struct DependencyEdge<'a> {
+    target: Option<usize>,
+    edge: &'a EdgeV2,
 }
 
-fn rotations(items: &[LocatedEdgeV2]) -> impl Iterator<Item = Vec<LocatedEdgeV2>> + '_ {
-    (0..items.len()).map(|offset| {
-        items
-            .iter()
-            .cycle()
-            .skip(offset)
-            .take(items.len())
-            .cloned()
-            .collect()
-    })
+#[expect(
+    clippy::indexing_slicing,
+    reason = "dependency targets are produced from this graph's node index"
+)]
+fn topological_order(graph: &[Vec<DependencyEdge<'_>>]) -> Option<Vec<usize>> {
+    let mut indegree = vec![0usize; graph.len()];
+    for edges in graph {
+        for edge in edges {
+            if let Some(target) = edge.target {
+                indegree[target] += 1;
+            }
+        }
+    }
+    let mut ready = indegree
+        .iter()
+        .enumerate()
+        .filter_map(|(node, count)| (*count == 0).then_some(node))
+        .collect::<VecDeque<_>>();
+    let mut order = Vec::with_capacity(graph.len());
+    while let Some(node) = ready.pop_front() {
+        order.push(node);
+        for edge in &graph[node] {
+            if let Some(target) = edge.target {
+                indegree[target] -= 1;
+                if indegree[target] == 0 {
+                    ready.push_back(target);
+                }
+            }
+        }
+    }
+    (order.len() == graph.len()).then_some(order)
+}
+
+#[expect(
+    clippy::indexing_slicing,
+    reason = "nodes and adjacency are built together with identical lengths"
+)]
+fn minimal_cycle(
+    nodes: &[&ModuleIdV2],
+    graph: &[Vec<DependencyEdge<'_>>],
+) -> Option<Vec<LocatedEdgeV2>> {
+    let labeled = graph
+        .iter()
+        .enumerate()
+        .map(|(source, edges)| {
+            edges
+                .iter()
+                .filter_map(|edge| {
+                    edge.target
+                        .map(|target| (target, located_edge(nodes[source], edge.edge)))
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    minimal_cycle_witness(&labeled)
+}
+
+/// Returns the lexicographically minimum canonical simple-cycle witness.
+/// The indexed adjacency may be in any order; each label must carry the full
+/// stable comparison key and the output payload for its edge. Equal labels on
+/// edges leaving the same node must have the same target.
+#[expect(
+    clippy::indexing_slicing,
+    reason = "all target indices are range-checked before indexed traversal"
+)]
+pub(crate) fn minimal_cycle_witness<K: Ord + Clone>(graph: &[Vec<(usize, K)>]) -> Option<Vec<K>> {
+    if graph
+        .iter()
+        .flatten()
+        .any(|(target, _)| *target >= graph.len())
+    {
+        return None;
+    }
+    // Kosaraju's two passes are iterative, including on narrow-stack hosts.
+    let mut visited = vec![false; graph.len()];
+    let mut finish = Vec::with_capacity(graph.len());
+    for root in 0..graph.len() {
+        if visited[root] {
+            continue;
+        }
+        visited[root] = true;
+        let mut stack = vec![(root, 0usize)];
+        while let Some((node, next_edge)) = stack.last_mut() {
+            if *next_edge == graph[*node].len() {
+                finish.push(*node);
+                stack.pop();
+                continue;
+            }
+            let target = graph[*node][*next_edge].0;
+            *next_edge += 1;
+            if !visited[target] {
+                visited[target] = true;
+                stack.push((target, 0));
+            }
+        }
+    }
+    let mut reverse = vec![Vec::new(); graph.len()];
+    for (source, edges) in graph.iter().enumerate() {
+        for edge in edges {
+            reverse[edge.0].push(source);
+        }
+    }
+    let mut component = vec![usize::MAX; graph.len()];
+    let mut component_count = 0usize;
+    for root in finish.into_iter().rev() {
+        if component[root] != usize::MAX {
+            continue;
+        }
+        let id = component_count;
+        component_count += 1;
+        let mut stack = vec![root];
+        component[root] = id;
+        while let Some(node) = stack.pop() {
+            for &next in &reverse[node] {
+                if component[next] == usize::MAX {
+                    component[next] = id;
+                    stack.push(next);
+                }
+            }
+        }
+    }
+
+    // The canonical rotation begins at the smallest labeled edge belonging to
+    // any cycle. An edge belongs to a cycle exactly when its ends share an SCC.
+    let mut first: Vec<(usize, usize)> = Vec::new();
+    for (source, edges) in graph.iter().enumerate() {
+        for (edge_index, edge) in edges.iter().enumerate() {
+            if component[source] != component[edge.0] {
+                continue;
+            }
+            match first
+                .first()
+                .map(|&(best_source, best_index)| edge.1.cmp(&graph[best_source][best_index].1))
+            {
+                None | Some(std::cmp::Ordering::Less) => {
+                    first.clear();
+                    first.push((source, edge_index));
+                }
+                Some(std::cmp::Ordering::Equal) => first.push((source, edge_index)),
+                Some(std::cmp::Ordering::Greater) => {}
+            }
+        }
+    }
+    if first.is_empty() {
+        return None;
+    }
+
+    // Equal minimum labels can occur at different source nodes. Compare their
+    // completed witnesses rather than depending on input adjacency order.
+    let sorted = (0..graph.len())
+        .map(|node| {
+            let mut order = (0..graph[node].len()).collect::<Vec<_>>();
+            order.sort_by(|&left, &right| graph[node][left].1.cmp(&graph[node][right].1));
+            order
+        })
+        .collect::<Vec<_>>();
+    let mut best: Option<Vec<K>> = None;
+    for (source, edge_index) in first {
+        let Some(candidate) =
+            cycle_from_edge(graph, &reverse, &component, &sorted, source, edge_index)
+        else {
+            continue;
+        };
+        if match &best {
+            None => true,
+            Some(current) => candidate < *current,
+        } {
+            best = Some(candidate);
+        }
+    }
+    best
+}
+
+#[expect(
+    clippy::indexing_slicing,
+    reason = "caller passes enumerated in-range nodes and edges after graph validation"
+)]
+fn cycle_from_edge<K: Ord + Clone>(
+    graph: &[Vec<(usize, K)>],
+    reverse: &[Vec<usize>],
+    component: &[usize],
+    sorted: &[Vec<usize>],
+    source: usize,
+    edge_index: usize,
+) -> Option<Vec<K>> {
+    let target = graph[source][edge_index].0;
+    let first_edge = graph[source][edge_index].1.clone();
+    if source == target {
+        return Some(vec![first_edge]);
+    }
+    // Within one fixed first edge, reachability after removing the path prefix
+    // identifies the lexicographically smallest simple completion.
+    let mut seen = vec![false; graph.len()];
+    seen[source] = true;
+    seen[target] = true;
+    let mut path = vec![first_edge];
+    let mut current = target;
+    while current != source {
+        // Reachability after removing the path prefix answers whether an edge
+        // can begin a simple completion. Recomputing it once per path vertex
+        // gives polynomial work even for heavily branching cyclic graphs.
+        let mut reaches_source = vec![false; graph.len()];
+        reaches_source[source] = true;
+        let mut pending = vec![source];
+        while let Some(node) = pending.pop() {
+            for &previous in &reverse[node] {
+                if component[previous] == component[source]
+                    && !seen[previous]
+                    && !reaches_source[previous]
+                {
+                    reaches_source[previous] = true;
+                    pending.push(previous);
+                }
+            }
+        }
+        let choice = sorted[current].iter().find_map(|&edge_index| {
+            let edge = &graph[current][edge_index];
+            let next = edge.0;
+            (component[next] == component[source] && reaches_source[next]).then_some(edge)
+        })?;
+        path.push(choice.1.clone());
+        current = choice.0;
+        seen[current] = true;
+    }
+    Some(path)
+}
+
+fn located_edge(source: &ModuleIdV2, edge: &EdgeV2) -> LocatedEdgeV2 {
+    LocatedEdgeV2 {
+        from: source.clone(),
+        to: edge.target.module_id.clone(),
+        location: edge.location.location(),
+    }
 }
 
 /// One binding visible while resolving a specific module.
@@ -1009,4 +1281,259 @@ pub(crate) fn loc_key(location: LocatedSpanV2) -> (u32, usize, usize) {
         location.span.start,
         location.span.end,
     )
+}
+
+#[cfg(test)]
+#[expect(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    reason = "bounded owner-local oracle and fixture construction assertions"
+)]
+mod cycle_tests {
+    use std::collections::BTreeSet;
+
+    use super::*;
+    use crate::budget::ModuleBudgetV2;
+    use quanta_gqlang_v2_hir::{SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1};
+    use quanta_gqlang_v2_types::AuthorityBudgetProfileV2;
+
+    fn checked(sources: &SourceRegistryViewV2, at: usize) -> CheckedLocatedSpanV2 {
+        sources
+            .try_check_location(LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(1),
+                span: SpanV1::new(at, at + 1),
+            })
+            .expect("test span is registered")
+    }
+
+    fn budget(steps: usize) -> ModuleBudgetV2 {
+        ModuleBudgetV2::from_profile(
+            AuthorityBudgetProfileV2::try_new(512, 512, steps, 1_000_000, 64)
+                .expect("positive test budget"),
+        )
+    }
+
+    fn graph_from_edges(
+        nodes: usize,
+        edges: &[(usize, usize)],
+        reverse: bool,
+    ) -> ModuleGraphBuilderV2 {
+        let sources = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(1),
+            source_len: 10_000,
+        }])
+        .expect("test source registry");
+        let known_ids = nodes.max(edges.iter().map(|(_, to)| to + 1).max().unwrap_or(nodes));
+        let ids = (0..known_ids)
+            .map(|node| {
+                ModuleIdV2::try_new(&format!("m{node:03}"), checked(&sources, node))
+                    .expect("test module ID")
+            })
+            .collect::<Vec<_>>();
+        let mut graph = ModuleGraphBuilderV2::new();
+        let mut session = budget(1_000_000).begin_session_v2();
+        for (node, id) in ids.iter().take(nodes).enumerate() {
+            graph
+                .try_add_module(
+                    ModuleNodeInputV2 {
+                        module_id: id.clone(),
+                        location: checked(&sources, node),
+                    },
+                    &mut session,
+                )
+                .expect("test node fits budget");
+        }
+        let mut order = (0..edges.len()).collect::<Vec<_>>();
+        if reverse {
+            order.reverse();
+        }
+        for index in order {
+            let (from, to) = edges[index];
+            graph
+                .try_import(
+                    ModuleImportInputV2 {
+                        owner_module_id: ids[from].clone(),
+                        local_name: format!("edge_{index}"),
+                        target: CatalogAssetRefInputV2 {
+                            module_id: ids[to].clone(),
+                            namespace_kind: NamespaceKindV2::Value,
+                            local_name: "x".to_owned(),
+                            location: checked(&sources, nodes + index * 2),
+                        },
+                        location: checked(&sources, nodes + index * 2 + 1),
+                    },
+                    &mut session,
+                )
+                .expect("test edge fits budget");
+        }
+        graph
+    }
+
+    // Bounded oracle: it uses path-copying enumeration and all-rotation
+    // canonicalization, with the acyclic-prefix self-loop defect corrected.
+    fn legacy_cycle(graph: &ModuleGraphBuilderV2) -> (Option<Vec<LocatedEdgeV2>>, usize) {
+        let mut candidates = Vec::new();
+        let mut steps = 0usize;
+        for root in graph.modules.keys() {
+            let mut stack = vec![(root.clone(), Vec::new(), BTreeSet::from([root.clone()]))];
+            while let Some((node_id, path, seen)) = stack.pop() {
+                let Some(node) = graph.modules.get(&node_id) else {
+                    continue;
+                };
+                let mut edges = node
+                    .imports
+                    .values()
+                    .chain(node.reexports.values().flatten())
+                    .collect::<Vec<_>>();
+                edges.sort_by(|a, b| {
+                    a.target
+                        .cmp(&b.target)
+                        .then(loc_key(a.location.location()).cmp(&loc_key(b.location.location())))
+                });
+                for edge in edges.into_iter().rev() {
+                    steps += 1;
+                    let located = located_edge(&node_id, edge);
+                    if seen.contains(&edge.target.module_id) {
+                        let position = path
+                            .iter()
+                            .position(|item: &LocatedEdgeV2| item.from == edge.target.module_id)
+                            .unwrap_or(path.len());
+                        let mut cycle = path[position..].to_vec();
+                        cycle.push(located);
+                        let canonical = (0..cycle.len())
+                            .map(|offset| {
+                                cycle
+                                    .iter()
+                                    .cycle()
+                                    .skip(offset)
+                                    .take(cycle.len())
+                                    .cloned()
+                                    .collect::<Vec<_>>()
+                            })
+                            .min()
+                            .expect("non-empty cycle");
+                        candidates.push(canonical);
+                    } else {
+                        let mut next_path = path.clone();
+                        next_path.push(located);
+                        let mut next_seen = seen.clone();
+                        next_seen.insert(edge.target.module_id.clone());
+                        stack.push((edge.target.module_id.clone(), next_path, next_seen));
+                    }
+                }
+            }
+        }
+        candidates.sort();
+        (candidates.into_iter().next(), steps)
+    }
+
+    #[test]
+    fn optimized_cycle_matches_exhaustive_oracle_on_three_node_graphs() {
+        for mask in 0u16..(1 << 9) {
+            let edges = (0..9)
+                .filter(|bit| mask & (1 << bit) != 0)
+                .map(|bit| (bit / 3, bit % 3))
+                .collect::<Vec<_>>();
+            for reverse in [false, true] {
+                let graph = graph_from_edges(3, &edges, reverse);
+                let (expected, steps) = legacy_cycle(&graph);
+                let mut exact = budget(steps.max(1)).begin_session_v2();
+                assert_eq!(
+                    graph.detect_cycle(&mut exact).expect("exact step budget"),
+                    expected,
+                    "mask {mask:09b}, reverse {reverse}"
+                );
+                if steps > 1 {
+                    let mut under = budget(steps - 1).begin_session_v2();
+                    let error = graph.detect_cycle(&mut under).expect_err("one under fails");
+                    let exhaustion = error.resource_exhaustion().expect("step exhaustion");
+                    assert_eq!(exhaustion.dimension(), "steps");
+                    assert_eq!(exhaustion.limit(), steps - 1);
+                    assert_eq!(exhaustion.observed(), steps);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn self_loop_witness_excludes_acyclic_prefix() {
+        let graph = graph_from_edges(2, &[(0, 1), (1, 1)], false);
+        let mut session = budget(8).begin_session_v2();
+        let cycle = graph
+            .detect_cycle(&mut session)
+            .expect("cycle fits budget")
+            .expect("self-loop is a cycle");
+        assert_eq!(cycle.len(), 1);
+        assert_eq!(cycle[0].from.as_str(), "m001");
+        assert_eq!(cycle[0].to.as_str(), "m001");
+        assert_eq!(cycle[0].location.span, SpanV1::new(5, 6));
+    }
+
+    #[test]
+    fn generic_witness_compares_equal_first_labels_by_complete_cycle() {
+        let graph = vec![vec![(1, 0u8)], vec![(0, 2)], vec![(3, 0)], vec![(2, 1)]];
+        assert_eq!(minimal_cycle_witness(&graph), Some(vec![0, 1]));
+    }
+
+    #[test]
+    fn missing_target_is_charged_once_without_becoming_cycle_vertex() {
+        let graph = graph_from_edges(2, &[(0, 2)], false);
+        let (expected, steps) = legacy_cycle(&graph);
+        assert_eq!(expected, None);
+        assert_eq!(steps, 1);
+        let mut exact = budget(1).begin_session_v2();
+        assert_eq!(graph.detect_cycle(&mut exact).expect("one step fits"), None);
+    }
+
+    #[test]
+    fn deep_chain_and_branching_dag_do_not_enumerate_paths() {
+        let chain = (0..255).map(|node| (node, node + 1)).collect::<Vec<_>>();
+        let graph = graph_from_edges(256, &chain, false);
+        let exact_steps = 256 * 255 / 2;
+        let mut exact = budget(exact_steps).begin_session_v2();
+        assert_eq!(
+            graph.detect_cycle(&mut exact).expect("exact chain budget"),
+            None
+        );
+
+        let mut branch = Vec::new();
+        for layer in 0..18 {
+            let current = layer * 2;
+            let next = (layer + 1) * 2;
+            branch.extend([
+                (current, next),
+                (current, next + 1),
+                (current + 1, next),
+                (current + 1, next + 1),
+            ]);
+        }
+        let graph = graph_from_edges(38, &branch, true);
+        let mut bounded = budget(1_000_000).begin_session_v2();
+        let error = graph
+            .detect_cycle(&mut bounded)
+            .expect_err("branch path count exceeds budget");
+        assert_eq!(
+            error
+                .resource_exhaustion()
+                .expect("step exhaustion")
+                .dimension(),
+            "steps"
+        );
+    }
+
+    #[test]
+    fn path_count_overflow_rejects_even_maximum_step_budget() {
+        let edges = (0..92)
+            .flat_map(|node| [(node, node + 1), (node, node + 2)])
+            .collect::<Vec<_>>();
+        let graph = graph_from_edges(94, &edges, false);
+        let mut session = budget(usize::MAX).begin_session_v2();
+        let error = graph
+            .detect_cycle(&mut session)
+            .expect_err("logical path count exceeds usize maximum");
+        let exhaustion = error.resource_exhaustion().expect("step exhaustion");
+        assert_eq!(exhaustion.dimension(), "steps");
+        assert_eq!(exhaustion.limit(), usize::MAX);
+        assert_eq!(exhaustion.observed(), usize::MAX);
+    }
 }

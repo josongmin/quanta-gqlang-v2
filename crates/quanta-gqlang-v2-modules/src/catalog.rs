@@ -8,7 +8,7 @@ use crate::graph::{
     excerpt, loc_key, CatalogAssetIdV2, CatalogAssetRefInputV2, ModuleIdV2, NamespaceKindV2,
 };
 use crate::lockfile::{CatalogPackActivationV2, ValidatedPackAuthorityV2};
-use crate::manifest::PackIdV2;
+use crate::manifest::{cycle_with_legacy_steps, PackIdV2};
 use crate::signature::{CallableKindV2, SignatureInputV2, SignatureV2};
 use crate::ModuleDiagnosticV2;
 use quanta_gqlang_v2_hir::{
@@ -518,53 +518,38 @@ fn catalog_cycle(
     assets: &BTreeMap<CatalogAssetIdV2, ExternalCatalogAssetV2>,
     session: &mut ModuleBudgetSessionV2,
 ) -> Result<Option<Vec<LocatedSpanV2>>, ModuleDiagnosticV2> {
-    let mut found: Vec<Vec<(CatalogAssetIdV2, LocatedSpanV2)>> = Vec::new();
-    for root in assets.keys() {
-        let mut stack = vec![(
-            root.clone(),
-            Vec::new(),
-            std::collections::BTreeSet::from([root.clone()]),
-        )];
-        while let Some((node, path, seen)) = stack.pop() {
-            let Some(asset) = assets.get(&node) else {
-                continue;
-            };
-            for edge in asset.dependencies.iter().rev() {
-                session.charge_step()?;
-                if seen.contains(&edge.target_asset_id) {
-                    let position = path
-                        .iter()
-                        .position(|(id, _)| id == &edge.target_asset_id)
-                        .map_or(0, |index| index + 1);
-                    let mut cycle = path.get(position..).map_or_else(Vec::new, <[_]>::to_vec);
-                    cycle.push((edge.target_asset_id.clone(), edge.location));
-                    cycle = canonicalize_catalog_cycle(cycle);
-                    found.push(cycle);
-                } else if !seen.contains(&edge.target_asset_id) {
-                    let mut next_path = path.clone();
-                    next_path.push((edge.target_asset_id.clone(), edge.location));
-                    let mut next_seen = seen.clone();
-                    next_seen.insert(edge.target_asset_id.clone());
-                    stack.push((edge.target_asset_id.clone(), next_path, next_seen));
-                }
-            }
-        }
+    let edges = assets
+        .iter()
+        .flat_map(|(source, asset)| {
+            asset.dependencies.iter().map(move |edge| {
+                (
+                    source.clone(),
+                    edge.target_asset_id.clone(),
+                    (edge.target_asset_id.clone(), loc_key(edge.location)),
+                    edge.location,
+                )
+            })
+        })
+        .collect::<Vec<_>>();
+    let roots = assets.keys().cloned().collect::<Vec<_>>();
+    let keyed = edges
+        .iter()
+        .map(|(source, target, key, _)| (source.clone(), target.clone(), key.clone()))
+        .collect::<Vec<_>>();
+    let Some(indices) = cycle_with_legacy_steps(&keyed, &roots, session)? else {
+        return Ok(None);
+    };
+    let mut witness = Vec::with_capacity(indices.len());
+    for index in indices {
+        let Some(edge) = edges.get(index) else {
+            return Err(ModuleDiagnosticV2::without_location(
+                "modules.internal_cycle_witness_mismatch",
+                "catalog cycle witness index is outside the validated edge set",
+            ));
+        };
+        witness.push(edge.3);
     }
-    found.sort_by(|left, right| {
-        left.iter()
-            .map(|(id, loc)| (id.clone(), loc_key(*loc)))
-            .collect::<Vec<_>>()
-            .cmp(
-                &right
-                    .iter()
-                    .map(|(id, loc)| (id.clone(), loc_key(*loc)))
-                    .collect::<Vec<_>>(),
-            )
-    });
-    Ok(found
-        .into_iter()
-        .next()
-        .map(|cycle| cycle.into_iter().map(|(_, location)| location).collect()))
+    Ok(Some(witness))
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1355,69 +1340,46 @@ fn document_cycle(
     assets: &BTreeMap<CatalogAssetIdV2, NamespaceKindV2>,
     session: &mut ModuleBudgetSessionV2,
 ) -> Result<Option<Vec<CheckedLocatedSpanV2>>, ModuleDiagnosticV2> {
-    let mut adjacency: BTreeMap<CatalogAssetIdV2, Vec<&DocumentCatalogDependencyV2>> =
-        BTreeMap::new();
-    for edge in edges.values() {
-        if assets.get(&edge.source_asset_id) == Some(&NamespaceKindV2::View)
-            && assets.get(&edge.target_asset_id) == Some(&NamespaceKindV2::View)
-        {
-            adjacency
-                .entry(edge.source_asset_id.clone())
-                .or_default()
-                .push(edge);
-        }
-    }
-    for outgoing in adjacency.values_mut() {
-        outgoing.sort_by(|left, right| {
-            left.target_asset_id
-                .cmp(&right.target_asset_id)
-                .then(loc_key(left.location.location()).cmp(&loc_key(right.location.location())))
-        });
-    }
-    let mut cycles = Vec::new();
-    for root in adjacency.keys() {
-        let mut stack = vec![(
-            root.clone(),
-            Vec::<(CatalogAssetIdV2, CheckedLocatedSpanV2)>::new(),
-            std::collections::BTreeSet::from([root.clone()]),
-        )];
-        while let Some((node, path, seen)) = stack.pop() {
-            for edge in adjacency.get(&node).into_iter().flatten().rev() {
-                session.charge_step()?;
-                if seen.contains(&edge.target_asset_id) {
-                    let position = path
-                        .iter()
-                        .position(|(id, _)| id == &edge.target_asset_id)
-                        .map_or(0, |index| index + 1);
-                    let mut cycle = path.get(position..).map_or_else(Vec::new, <[_]>::to_vec);
-                    cycle.push((edge.target_asset_id.clone(), edge.location.clone()));
-                    cycle = canonicalize_document_cycle(cycle);
-                    cycles.push(cycle);
-                } else {
-                    let mut next_path = path.clone();
-                    next_path.push((edge.target_asset_id.clone(), edge.location.clone()));
-                    let mut next_seen = seen.clone();
-                    next_seen.insert(edge.target_asset_id.clone());
-                    stack.push((edge.target_asset_id.clone(), next_path, next_seen));
-                }
-            }
-        }
-    }
-    cycles.sort_by(|left, right| {
-        left.iter()
-            .map(|(id, loc)| (id.clone(), loc_key(loc.location())))
-            .collect::<Vec<_>>()
-            .cmp(
-                &right
-                    .iter()
-                    .map(|(id, loc)| (id.clone(), loc_key(loc.location())))
-                    .collect::<Vec<_>>(),
-            )
-    });
-    Ok(cycles
+    let filtered = edges
+        .values()
+        .filter(|edge| {
+            assets.get(&edge.source_asset_id) == Some(&NamespaceKindV2::View)
+                && assets.get(&edge.target_asset_id) == Some(&NamespaceKindV2::View)
+        })
+        .collect::<Vec<_>>();
+    let roots = filtered
+        .iter()
+        .map(|edge| edge.source_asset_id.clone())
+        .collect::<BTreeSet<_>>()
         .into_iter()
-        .next()
-        .map(|cycle| cycle.into_iter().map(|(_, location)| location).collect()))
+        .collect::<Vec<_>>();
+    let keyed = filtered
+        .iter()
+        .map(|edge| {
+            (
+                edge.source_asset_id.clone(),
+                edge.target_asset_id.clone(),
+                (
+                    edge.target_asset_id.clone(),
+                    loc_key(edge.location.location()),
+                ),
+            )
+        })
+        .collect::<Vec<_>>();
+    let Some(indices) = cycle_with_legacy_steps(&keyed, &roots, session)? else {
+        return Ok(None);
+    };
+    let mut witness = Vec::with_capacity(indices.len());
+    for index in indices {
+        let Some(edge) = filtered.get(index) else {
+            return Err(ModuleDiagnosticV2::without_location(
+                "modules.internal_cycle_witness_mismatch",
+                "document cycle witness index is outside the validated edge set",
+            ));
+        };
+        witness.push(edge.location.clone());
+    }
+    Ok(Some(witness))
 }
 
 fn dependency_first_view_order(
@@ -1492,49 +1454,6 @@ fn dependency_first_view_order(
     Ok(order)
 }
 
-fn canonicalize_catalog_cycle(
-    cycle: Vec<(CatalogAssetIdV2, LocatedSpanV2)>,
-) -> Vec<(CatalogAssetIdV2, LocatedSpanV2)> {
-    (0..cycle.len())
-        .map(|offset| {
-            cycle
-                .iter()
-                .cycle()
-                .skip(offset)
-                .take(cycle.len())
-                .cloned()
-                .collect::<Vec<_>>()
-        })
-        .min_by_key(|rotation| {
-            rotation
-                .iter()
-                .map(|(id, location)| (id.clone(), loc_key(*location)))
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default()
-}
-
-fn canonicalize_document_cycle(
-    cycle: Vec<(CatalogAssetIdV2, CheckedLocatedSpanV2)>,
-) -> Vec<(CatalogAssetIdV2, CheckedLocatedSpanV2)> {
-    (0..cycle.len())
-        .map(|offset| {
-            cycle
-                .iter()
-                .cycle()
-                .skip(offset)
-                .take(cycle.len())
-                .cloned()
-                .collect::<Vec<_>>()
-        })
-        .min_by_key(|rotation| {
-            rotation
-                .iter()
-                .map(|(id, location)| (id.clone(), loc_key(location.location())))
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default()
-}
 fn reachable_external_profiles<'a>(
     edges: &BTreeMap<(CatalogAssetIdV2, CatalogAssetIdV2), DocumentCatalogDependencyV2>,
     external: &'a ExternalCatalogV2,

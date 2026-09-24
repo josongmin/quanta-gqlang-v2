@@ -22,24 +22,137 @@ from tools.test_frontend_external_consumer import (
     lock_cache,
     manifest_dependencies,
     materialize_fixture,
+    materialize_negative_bins,
+    negative_observations,
     offline_dependency_preflight,
+    consume_preflight_stamp,
     positive_executable,
     positive_outcome,
     public_api_roots,
+    write_preflight_stamp,
 )
 
 
 class ExternalConsumerCacheTest(unittest.TestCase):
+    def setUp(self) -> None:
+        # These tests may run under the repository's real QGLANG_CI_RUN_ID.
+        # Never let a mocked preflight overwrite the same-run production stamp.
+        self.stamp_directory = tempfile.TemporaryDirectory(
+            prefix="qglang-external-preflight-test-"
+        )
+        self.addCleanup(self.stamp_directory.cleanup)
+        stamp = Path(self.stamp_directory.name) / "external-preflight.json"
+        stamp_patch = mock.patch.object(consumer_gate, "PREFLIGHT_STAMP", stamp)
+        stamp_patch.start()
+        self.addCleanup(stamp_patch.stop)
+
+    def test_preflight_inventory_covers_root_fixture_and_all_workspace_members(self):
+        paths = consumer_gate.preflight_manifests()
+        self.assertEqual(len(paths), 16)
+        self.assertIn(REPOSITORY_ROOT / "Cargo.toml", paths)
+        self.assertIn(FIXTURE_DIR / "Cargo.toml", paths)
+        self.assertEqual(len([path for path in paths if path.parent.parent == REPOSITORY_ROOT / "crates"]), 14)
+
+    def test_negative_cargo_json_is_bound_to_exact_probe_source(self):
+        name = "d01_read_diagnostic_stage"
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory)
+            source = fixture / "src" / "bin" / (name + ".rs")
+            source.parent.mkdir(parents=True)
+            source.write_text("fn main() {}\n", encoding="utf-8")
+            event = {
+                "reason": "compiler-message",
+                "target": {"name": name, "src_path": str(source)},
+                "message": {
+                    "level": "error",
+                    "code": {"code": "E0616"},
+                    "message": "private field",
+                    "rendered": "error[E0616]: field `stage` is private",
+                    "spans": [{"file_name": str(source), "is_primary": True}],
+                },
+            }
+            result = subprocess.CompletedProcess(
+                ["cargo", "check"], 101, json.dumps(event), "cargo summary"
+            )
+            observation = negative_observations(result, fixture)[name]
+            self.assertTrue(observation["attempted"])
+            self.assertFalse(observation["compiled"])
+            self.assertEqual(observation["codes"], {"E0616"})
+            self.assertIn("field `stage` is private", observation["rendered"][0])
+
+            event["target"]["src_path"] = str(fixture / "src" / "main.rs")
+            bad = subprocess.CompletedProcess(
+                ["cargo", "check"], 101, json.dumps(event), "cargo summary"
+            )
+            with self.assertRaisesRegex(InfrastructureError, "wrong source path"):
+                negative_observations(bad, fixture)
+
+    def test_negative_bins_are_stable_and_reject_foreign_cache_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "cache"
+            with lock_cache(root, REPOSITORY_ROOT):
+                fixture = materialize_fixture(root)
+                bin_dir = materialize_negative_bins(fixture)
+                paths = sorted(bin_dir.glob("*.rs"))
+                before = {path: path.stat().st_mtime_ns for path in paths}
+                materialize_negative_bins(fixture)
+                self.assertEqual({path: path.stat().st_mtime_ns for path in paths}, before)
+                (bin_dir / "foreign.rs").write_text("fn main() {}\n", encoding="utf-8")
+                with self.assertRaisesRegex(InfrastructureError, "unexpected paths"):
+                    materialize_negative_bins(fixture)
+
+    def test_preflight_stamp_is_run_bound_hash_bound_and_single_use(self):
+        with tempfile.TemporaryDirectory() as directory:
+            stamp = Path(directory) / "external-preflight.json"
+            with mock.patch.object(consumer_gate, "PREFLIGHT_STAMP", stamp), \
+                 mock.patch.object(consumer_gate, "preflight_manifests", return_value=[
+                     REPOSITORY_ROOT / "Cargo.toml", FIXTURE_DIR / "Cargo.toml",
+                     REPOSITORY_ROOT / "crates/quanta-gqlang-v2-modules/Cargo.toml",
+                 ]):
+                run_id = "a" * 32
+                write_preflight_stamp(run_id)
+                with self.assertRaisesRegex(InfrastructureError, "does not match"):
+                    consume_preflight_stamp("b" * 32)
+                self.assertTrue(stamp.exists())
+                original_hash = consumer_gate.sha256_of
+                with mock.patch.object(consumer_gate, "sha256_of", side_effect=lambda path: (
+                    "changed" if path == consumer_gate.LOCKFILE else original_hash(path)
+                )):
+                    with self.assertRaisesRegex(InfrastructureError, "does not match"):
+                        consume_preflight_stamp(run_id)
+                original_bytes = Path.read_bytes
+                changed_manifest = REPOSITORY_ROOT / "crates/quanta-gqlang-v2-modules/Cargo.toml"
+                with mock.patch.object(Path, "read_bytes", autospec=True, side_effect=lambda path: (
+                    b"changed manifest" if path == changed_manifest else original_bytes(path)
+                )):
+                    with self.assertRaisesRegex(InfrastructureError, "does not match"):
+                        consume_preflight_stamp(run_id)
+                consume_preflight_stamp(run_id)
+                self.assertFalse(stamp.exists())
+                with self.assertRaisesRegex(InfrastructureError, "missing"):
+                    consume_preflight_stamp(run_id)
+
     def test_offline_preflight_uses_locked_cargo_fetch_without_build(self):
         result = subprocess.CompletedProcess(["cargo", "fetch"], 0, "", "")
         with mock.patch.object(consumer_gate, "run_bounded", return_value=result) as command, \
+             mock.patch.object(consumer_gate, "preflight_manifests", return_value=[REPOSITORY_ROOT / "Cargo.toml"]), \
              mock.patch.object(consumer_gate, "git_status_bytes", return_value=b""), \
              mock.patch.object(consumer_gate, "gate_writable_fingerprint", return_value={}):
             self.assertEqual(offline_dependency_preflight(), consumer_gate.EXIT_OK)
-        self.assertEqual(command.call_count, 2)
-        for call, manifest in zip(
+        self.assertEqual(command.call_count, 3)
+        nightly = consumer_gate.read_lock()["public_api_nightly"]
+        for call, manifest, toolchain in zip(
             command.call_args_list,
-            (FIXTURE_DIR / "Cargo.toml", REPOSITORY_ROOT / "Cargo.toml"),
+            (
+                FIXTURE_DIR / "Cargo.toml",
+                REPOSITORY_ROOT / "Cargo.toml",
+                REPOSITORY_ROOT / "Cargo.toml",
+            ),
+            (
+                consumer_gate.repo_toolchain_channel(),
+                consumer_gate.repo_toolchain_channel(),
+                nightly,
+            ),
         ):
             args, kwargs = call
             self.assertEqual(
@@ -49,11 +162,12 @@ class ExternalConsumerCacheTest(unittest.TestCase):
             self.assertEqual(kwargs["cwd"], REPOSITORY_ROOT)
             self.assertEqual(kwargs["timeout_s"], 30)
             self.assertEqual(kwargs["env"]["CARGO_NET_OFFLINE"], "true")
-            self.assertEqual(kwargs["env"]["RUSTUP_TOOLCHAIN"], consumer_gate.repo_toolchain_channel())
+            self.assertEqual(kwargs["env"]["RUSTUP_TOOLCHAIN"], toolchain)
 
     def test_offline_preflight_distinguishes_unavailable_sources_from_contract_failure(self):
         unavailable = subprocess.CompletedProcess(["cargo", "fetch"], 101, "", "source unavailable")
         with mock.patch.object(consumer_gate, "run_bounded", return_value=unavailable), \
+             mock.patch.object(consumer_gate, "preflight_manifests", return_value=[REPOSITORY_ROOT / "Cargo.toml"]), \
              mock.patch.object(consumer_gate, "git_status_bytes", return_value=b""), \
              mock.patch.object(consumer_gate, "gate_writable_fingerprint", return_value={}):
             self.assertEqual(consumer_gate.main(["--preflight"]), consumer_gate.EXIT_INFRASTRUCTURE)
@@ -63,6 +177,7 @@ class ExternalConsumerCacheTest(unittest.TestCase):
         unavailable = subprocess.CompletedProcess(["cargo", "fetch"], 101, "", "workspace source unavailable")
         diagnostics = io.StringIO()
         with mock.patch.object(consumer_gate, "run_bounded", side_effect=[ready, unavailable]) as command, \
+             mock.patch.object(consumer_gate, "preflight_manifests", return_value=[REPOSITORY_ROOT / "Cargo.toml"]), \
              mock.patch.object(consumer_gate, "git_status_bytes", return_value=b""), \
              mock.patch.object(consumer_gate, "gate_writable_fingerprint", return_value={}), \
              redirect_stderr(diagnostics):
@@ -74,6 +189,7 @@ class ExternalConsumerCacheTest(unittest.TestCase):
     def test_offline_preflight_rejects_checkout_mutation_even_when_cargo_succeeds(self):
         result = subprocess.CompletedProcess(["cargo", "fetch"], 0, "", "")
         with mock.patch.object(consumer_gate, "run_bounded", return_value=result), \
+             mock.patch.object(consumer_gate, "preflight_manifests", return_value=[REPOSITORY_ROOT / "Cargo.toml"]), \
              mock.patch.object(consumer_gate, "git_status_bytes", side_effect=[b"", b" M Cargo.lock\n"]), \
              mock.patch.object(consumer_gate, "gate_writable_fingerprint", return_value={}):
             self.assertEqual(offline_dependency_preflight(), consumer_gate.EXIT_INFRASTRUCTURE)
