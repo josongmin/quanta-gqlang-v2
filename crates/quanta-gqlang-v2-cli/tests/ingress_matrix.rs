@@ -44,14 +44,45 @@ fn run_os(args: &[OsString]) -> Output {
         .expect("spawn qglang cli")
 }
 
+fn assert_usage_block<'a>(mut lines: impl Iterator<Item = &'a str>, rendered: &str) {
+    assert!(
+        lines
+            .next()
+            .is_some_and(|line| line.starts_with("cli.usage=quanta-gqlang-v2-cli <")),
+        "{rendered}"
+    );
+    assert_eq!(lines.next(), Some("cli.read_only=true"), "{rendered}");
+    assert_eq!(
+        lines.next(),
+        Some("cli.command_plane=forbidden"),
+        "{rendered}"
+    );
+    assert_eq!(lines.next(), None, "{rendered}");
+}
+
+fn assert_io_error(stderr: &str, message_prefix: &str) {
+    let mut lines = stderr.lines();
+    assert_eq!(lines.next(), Some("cli.error.class=io"), "{stderr}");
+    assert!(
+        lines.next().is_some_and(|line| {
+            line.strip_prefix("cli.error.message=")
+                .is_some_and(|message| message.starts_with(message_prefix))
+        }),
+        "{stderr}"
+    );
+    assert_eq!(lines.next(), None, "{stderr}");
+}
+
 fn assert_usage_error(args: &[&str], message: &str) {
     let output = run_cli_argv_v1(args);
     assert_eq!(output.status.code(), Some(2), "argv {args:?}");
     assert!(cli_stdout_v1(&output).is_empty(), "argv {args:?}");
     let stderr = cli_stderr_v1(&output);
-    assert!(stderr.contains("cli.error.class=usage"), "{stderr}");
-    assert!(stderr.contains(message), "{stderr}");
-    assert_eq!(stderr.matches("cli.usage=").count(), 1, "{stderr}");
+    let mut lines = stderr.lines();
+    assert_eq!(lines.next(), Some("cli.error.class=usage"), "{stderr}");
+    let expected_message = format!("cli.error.message={message}");
+    assert_eq!(lines.next(), Some(expected_message.as_str()), "{stderr}");
+    assert_usage_block(lines, &stderr);
 }
 
 #[test]
@@ -61,8 +92,7 @@ fn help_aliases_are_stdout_only_successes() {
         assert_eq!(output.status.code(), Some(0), "{token}");
         assert!(cli_stderr_v1(&output).is_empty(), "{token}");
         let stdout = cli_stdout_v1(&output);
-        assert!(stdout.starts_with("cli.usage="), "{stdout}");
-        assert_eq!(stdout.matches("cli.usage=").count(), 1);
+        assert_usage_block(stdout.lines(), &stdout);
     }
 }
 
@@ -96,9 +126,7 @@ fn file_open_and_utf8_failures_use_the_documented_channel_and_exit() {
     assert_eq!(output.status.code(), Some(1));
     assert!(cli_stdout_v1(&output).is_empty());
     let stderr = cli_stderr_v1(&output);
-    assert!(stderr.contains("cli.error.class=io"), "{stderr}");
-    assert!(stderr.contains("failed to open"), "{stderr}");
-    assert!(!stderr.contains("cli.usage="), "{stderr}");
+    assert_io_error(&stderr, "failed to open");
 
     #[cfg(unix)]
     {
@@ -110,9 +138,7 @@ fn file_open_and_utf8_failures_use_the_documented_channel_and_exit() {
         assert_eq!(output.status.code(), Some(1));
         assert!(cli_stdout_v1(&output).is_empty());
         let stderr = cli_stderr_v1(&output);
-        assert!(stderr.contains("cli.error.class=io"), "{stderr}");
-        assert!(stderr.contains("failed to read"), "{stderr}");
-        assert!(!stderr.contains("cli.usage="), "{stderr}");
+        assert_io_error(&stderr, "failed to read");
     }
 
     let invalid = TempFile::new(&[0xff, 0xfe]);
@@ -124,11 +150,17 @@ fn file_open_and_utf8_failures_use_the_documented_channel_and_exit() {
     assert_eq!(output.status.code(), Some(2));
     assert!(cli_stdout_v1(&output).is_empty());
     let stderr = cli_stderr_v1(&output);
-    assert!(
-        stderr.contains("input file must be valid UTF-8"),
+    assert_eq!(
+        stderr.lines().next(),
+        Some("cli.error.class=usage"),
         "{stderr}"
     );
-    assert_eq!(stderr.matches("cli.usage=").count(), 1);
+    assert_eq!(
+        stderr.lines().nth(1),
+        Some("cli.error.message=input file must be valid UTF-8"),
+        "{stderr}"
+    );
+    assert_usage_block(stderr.lines().skip(2), &stderr);
 }
 
 #[cfg(unix)]
@@ -136,16 +168,29 @@ fn file_open_and_utf8_failures_use_the_documented_channel_and_exit() {
 fn non_utf8_command_and_inline_input_are_usage_failures() {
     use std::os::unix::ffi::OsStringExt;
 
-    for args in [
-        vec![OsString::from_vec(vec![0xff])],
-        vec![OsString::from("query"), OsString::from_vec(vec![0xff])],
+    for (args, message) in [
+        (vec![OsString::from_vec(vec![0xff])], "missing command"),
+        (
+            vec![OsString::from("query"), OsString::from_vec(vec![0xff])],
+            "input must be valid UTF-8",
+        ),
     ] {
         let output = run_os(&args);
         assert_eq!(output.status.code(), Some(2));
         assert!(cli_stdout_v1(&output).is_empty());
         let stderr = cli_stderr_v1(&output);
-        assert!(stderr.contains("cli.error.class=usage"), "{stderr}");
-        assert_eq!(stderr.matches("cli.usage=").count(), 1);
+        assert_eq!(
+            stderr.lines().next(),
+            Some("cli.error.class=usage"),
+            "{stderr}"
+        );
+        let expected_message = format!("cli.error.message={message}");
+        assert_eq!(
+            stderr.lines().nth(1),
+            Some(expected_message.as_str()),
+            "{stderr}"
+        );
+        assert_usage_block(stderr.lines().skip(2), &stderr);
     }
 }
 

@@ -267,16 +267,16 @@ fn deeply_nested_input_fails_closed_not_abort() {
 #[test]
 fn deeply_nested_not_fails_closed() {
     let s = "not ".repeat(5000) + "x";
-    let pred = parse_predicate(&s, &HirBuilderV1::new());
-    assert!(pred.is_err(), "deep `not` chain must reject, not abort");
+    let error = parse_predicate(&s, &HirBuilderV1::new()).expect_err("deep `not` chain rejects");
+    assert_eq!(error.code, ParseErrorCodeV1::ResourceExhausted);
 }
 
 /// `- - - ...` (unary value prefix self-recursion) also fails closed.
 #[test]
 fn deeply_nested_unary_fails_closed() {
     let s = "-".repeat(5000) + "1";
-    let expr = parse_expr(&s, &HirBuilderV1::new());
-    assert!(expr.is_err(), "deep unary chain must reject, not abort");
+    let error = parse_expr(&s, &HirBuilderV1::new()).expect_err("deep unary chain rejects");
+    assert_eq!(error.code, ParseErrorCodeV1::ResourceExhausted);
 }
 
 // ---- 1. TOTALITY / panic-freedom -------------------------------------------

@@ -11,7 +11,7 @@ fn err(src: &str) -> ParseDiagnosticV1 {
     parse_program(src, &builder).expect_err("must reject")
 }
 
-fn assert_unsupported(src: &str, needle: &str) -> ParseDiagnosticV1 {
+fn assert_unsupported(src: &str, expected_message: &str) -> ParseDiagnosticV1 {
     let d = err(src);
     assert_eq!(
         d.code,
@@ -19,11 +19,7 @@ fn assert_unsupported(src: &str, needle: &str) -> ParseDiagnosticV1 {
         "src {src:?} message {}",
         d.message
     );
-    assert!(
-        d.message.contains(needle),
-        "src {src:?}: message {:?} missing {needle:?}",
-        d.message
-    );
+    assert_eq!(d.message, expected_message, "src {src:?}");
     d
 }
 
@@ -280,6 +276,6 @@ fn reference_dangling_hyphen_rejects() {
 fn find_depth_overflow_rejects() {
     assert_unsupported(
         "find reachability a.b -> c.d | depth=99999999999",
-        "is not a valid",
+        "'99999999999' is not a valid a depth bound",
     );
 }

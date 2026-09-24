@@ -162,8 +162,10 @@ def main() -> int:
         cli = parse_cli(cli_binary, source)
         stdio = parse_stdio(stdio_binary, source)
         cli_status = cli.pop("process_status")
-        if cli_status == 0:
-            failures.append(f"{name}: CLI must exit non-zero for non-complete analysis")
+        if cli_status != 1:
+            failures.append(
+                f"{name}: CLI must exit 1 for non-complete analysis, got {cli_status}"
+            )
         if cli["analysis_status"] != expected_status:
             failures.append(
                 f"{name}: expected shared status {expected_status!r}, got {cli['analysis_status']!r}"

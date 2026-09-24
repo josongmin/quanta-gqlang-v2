@@ -22,7 +22,6 @@ quanta-gqlang-v2-surface  = { version = "0.1.0", path = "../quanta-gqlang-v2-sur
 sha2                      = "=0.10.9"
 
 [dev-dependencies]
-proptest = "=1.8.0"
 quanta-gqlang-v2-modules = { version = "0.1.0", path = "../quanta-gqlang-v2-modules" }
 quanta-gqlang-v2-sema = { version = "0.1.0", path = "../quanta-gqlang-v2-sema", features = [
     "test",

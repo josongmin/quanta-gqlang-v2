@@ -270,7 +270,6 @@ dependencies = [
 name = "quanta-gqlang-v2-pipeline"
 version = "0.1.0"
 dependencies = [
- "proptest",
  "quanta-gqlang-v2-algebra",
  "quanta-gqlang-v2-logic",
  "quanta-gqlang-v2-modules",
