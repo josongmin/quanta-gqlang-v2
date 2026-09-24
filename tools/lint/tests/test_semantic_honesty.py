@@ -29,9 +29,6 @@ class SemanticHonestyTest(unittest.TestCase):
         findings = lint.scan_source(source.encode(), "crates/fixture/src/lib.rs", self.policy, self.parser)
         return {finding.rule for finding in findings}
 
-    def test_current_checkout_is_clean(self) -> None:
-        self.assertEqual(lint.scan_repository(ROOT), ())
-
     def test_enum_policy_matches_exact_current_variants(self) -> None:
         lint.validate_enum_definitions(ROOT, self.policy)
 
@@ -47,11 +44,38 @@ class SemanticHonestyTest(unittest.TestCase):
     def test_reason_loss_and_terminal_error_retention(self) -> None:
         self.assertIn("SH-04-binding-loss", self.rules("fn f(x: PlanOutcomeV2) { match x { PlanOutcomeV2::NoPlan(reason) => Err(Error::Bad), _ => Err(Error::Bad) } }"))
         self.assertNotIn("SH-04-binding-loss", self.rules("fn f(x: PlanOutcomeV2) { match x { PlanOutcomeV2::NoPlan(reason) => Err(Error::from(reason)), _ => Err(Error::Bad) } }"))
+        self.assertIn("SH-04-binding-loss", self.rules("fn f(x: PlanOutcomeV2) { match x { PlanOutcomeV2::NoPlan(payload) => Err(Error::Bad), _ => Err(Error::Bad) } }"))
+
+    def test_branch_and_return_paths_are_checked_independently(self) -> None:
+        for value in (
+            "if cond { Ok(None) } else { Err(reason) }",
+            "match flag { true => Err(reason), false => Ok(None) }",
+            "{ if cond { return Ok(None); } Err(reason) }",
+        ):
+            source = f"fn f(x: PlanOutcomeV2, cond: bool, flag: bool) {{ match x {{ PlanOutcomeV2::NoPlan(reason) => {value}, _ => Err(Error::Bad) }} }}"
+            self.assertIn("SH-02-empty-success", self.rules(source), value)
+
+    def test_nested_constructor_is_not_the_returned_constructor(self) -> None:
+        source = "fn f(x: PlanOutcomeV2) { match x { PlanOutcomeV2::NoPlan(reason) => Err(E::from(PlanOutcomeV2::Plan(reason))), _ => Err(E::Bad) } }"
+        self.assertNotIn("SH-01-outcome-laundering", self.rules(source))
+        source = "fn f(x: PlanOutcomeV2) { match x { PlanOutcomeV2::NoPlan(reason) => PlanOutcomeV2::Plan(Err(reason)), _ => Err(E::Bad) } }"
+        self.assertIn("SH-01-outcome-laundering", self.rules(source))
+
+    def test_closure_return_is_not_arm_exit(self) -> None:
+        source = "fn f(x: PlanOutcomeV2) { match x { PlanOutcomeV2::NoPlan(reason) => { let closure = || return Ok(None); Err(reason) }, _ => Err(E::Bad) } }"
+        self.assertNotIn("SH-02-empty-success", self.rules(source))
+
+    def test_unsupported_macro_exit_is_type_scoped(self) -> None:
+        governed = "fn f(x: PlanOutcomeV2) -> Result<PlanOutcomeV2, E> { match x { PlanOutcomeV2::NoPlan(reason) => some_macro!(reason), _ => Err(E::Bad) } }"
+        self.assertIn("SH-11-unsupported-exit", self.rules(governed))
+        rendered = "fn f(x: AnalysisItemV2) -> Vec<String> { match x { AnalysisItemV2::BlockedByDiagnostics(diagnostics) => vec![format!(\"{}\", diagnostics.len())], _ => vec![] } }"
+        self.assertNotIn("SH-11-unsupported-exit", self.rules(rendered))
 
     def test_status_exit_code_and_wildcard(self) -> None:
         self.assertIn("SH-03-negative-exit", self.rules("fn f(s: AnalysisStatusV2) { match s { AnalysisStatusV2::Incomplete | AnalysisStatusV2::Error => 0, AnalysisStatusV2::Complete => 0 } }"))
         self.assertIn("SH-06-success-wildcard", self.rules("fn f(s: PlanOutcomeV2) { match s { PlanOutcomeV2::Plan(p) => Ok(p), _ => Ok(None) } }"))
         self.assertNotIn("SH-06-success-wildcard", self.rules("fn f(s: PlanOutcomeV2) { match s { PlanOutcomeV2::Plan(p) => Ok(p), _ => Err(Error::Bad) } }"))
+        self.assertNotIn("SH-06-success-wildcard", self.rules("fn f(s: PlanOutcomeV2) { match s { PlanOutcomeV2::Plan(p) => Ok(p), _ => { return Err(Error::Bad); } } }"))
         self.assertIn("SH-03-negative-exit", self.rules("fn f(s: AnalysisStatusV2) { match s { AnalysisStatusV2::Incomplete | AnalysisStatusV2::Error => ((0)), AnalysisStatusV2::Complete => 0 } }"))
         self.assertIn("SH-03-negative-exit", self.rules("fn f(s: AnalysisStatusV2) { match s { AnalysisStatusV2::Incomplete | AnalysisStatusV2::Error => (0, AnalysisStatusV2::Error).0, AnalysisStatusV2::Complete => 0 } }"))
         self.assertIn("SH-03-negative-exit", self.rules("fn f(s: AnalysisStatusV2) { match s { AnalysisStatusV2::Incomplete | AnalysisStatusV2::Error => ((0, AnalysisStatusV2::Error)).0, AnalysisStatusV2::Complete => 0 } }"))
@@ -61,9 +85,12 @@ class SemanticHonestyTest(unittest.TestCase):
             self.assertIn("SH-03-negative-exit", self.rules(f"fn f(s: AnalysisStatusV2) {{ match s {{ AnalysisStatusV2::Incomplete | AnalysisStatusV2::Error => {zero}, AnalysisStatusV2::Complete => 0 }} }}"))
         for complete in ('r"complete"', '"\\u{63}omplete"', '"com\\\n    plete"'):
             self.assertIn("SH-03-negative-exit", self.rules(f"impl AnalysisStatusV2 {{ fn f(self) {{ match self {{ Self::Error => {complete}, Self::Complete => \"complete\", Self::Incomplete => \"incomplete\" }} }} }}"))
+        self.assertIn("SH-11-unsupported-exit", self.rules("fn f(s: AnalysisStatusV2) { match s { AnalysisStatusV2::Error => 1 - 1, _ => 1 } }"))
 
     def test_error_to_ok_and_serde_default(self) -> None:
         self.assertIn("SH-05-error-to-ok", self.rules("fn f(x: Result<u8, E>) { match x { Err(_error) => Ok(()), Ok(value) => Ok(value) } }"))
+        self.assertIn("SH-05-error-to-ok", self.rules("fn f(x: Result<u8, E>) { match x { Err(error) => Ok(0), Ok(value) => Ok(value) } }"))
+        self.assertIn("SH-05-error-to-ok", self.rules("fn f(x: Result<u8, E>) { match x { Err(ref error) => if cond { Err(error.into()) } else { Ok(0) }, Ok(value) => Ok(value) } }"))
         self.assertIn("SH-08-semantic-serde-default", self.rules("struct RequestV2 { #[serde(default)] status: String }"))
         self.assertNotIn("SH-08-semantic-serde-default", self.rules("struct Other { #[serde(default)] status: String }"))
         self.assertIn("SH-05-error-to-ok", self.rules("fn f(x: Result<u8, E>) { match x { Err(_error) => { (Ok(())) }, Ok(value) => Ok(value) } }"))
@@ -156,6 +183,11 @@ class SemanticHonestyTest(unittest.TestCase):
                 "diagnostics: { let _discard = failure; Vec::new() },",
                 1,
             ),
+            source.replace(
+                "Ok(AnalysisPayloadV2 {\n                analysis_status: AnalysisStatusV2::Error.keyword(),",
+                "if failure.diagnostics().is_empty() { Ok(Default::default()) } else { Ok(AnalysisPayloadV2 {\n                analysis_status: AnalysisStatusV2::Error.keyword(),",
+                1,
+            ).replace(".collect(),\n            })\n        }\n        Err(FrontendTransactionErrorV2::Authority", ".collect(),\n            }) }\n        }\n        Err(FrontendTransactionErrorV2::Authority", 1),
         )
         for mutant in mutants:
             self.assertIn("SH-10-document-error-payload", self.rules(mutant))
@@ -189,6 +221,8 @@ class SemanticHonestyTest(unittest.TestCase):
 
         no_payload = "fn f(x: Result<(), FrontendTransactionErrorV2>) -> Result<AnalysisPayloadV2, E> { match x { Err(FrontendTransactionErrorV2::Document(failure)) => Ok(Default::default()), _ => Err(Error::Bad) } }"
         self.assertIn("SH-10-document-error-payload", self.rules(no_payload))
+        all_error = "fn f(x: Result<(), FrontendTransactionErrorV2>) -> Result<AnalysisPayloadV2, E> { match x { Err(FrontendTransactionErrorV2::Document(failure)) => Err(E::from(failure)), _ => Err(Error::Bad) } }"
+        self.assertIn("SH-10-document-error-payload", self.rules(all_error))
 
 
 if __name__ == "__main__":

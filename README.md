@@ -118,6 +118,13 @@ Repo-owned front-door e2e:
 qualification 영수증은 `just qualify-local`이 별도로 발행한다. 두 명령 모두
 downstream consumer 실행이나 배포를 입증하지 않는다. `just ci`는 focused
 검증을 다시 실행하므로 focused 명령을 순서대로 실행한 뒤 중복 실행하지 않는다.
+`just ci`는 외부 consumer fixture와 저장소 workspace 양쪽의 잠긴 Cargo
+의존성을 오프라인에서 먼저 확인한다. 캐시가 비어 있으면 빌드와 테스트 전에
+실패한다. 해당 그래프의 캐시는 각각
+`CARGO_NET_OFFLINE=false cargo fetch --locked --manifest-path tools/frontend_external_consumer/Cargo.toml`와
+`CARGO_NET_OFFLINE=false cargo fetch --locked --manifest-path Cargo.toml`로
+채운 뒤 전체 게이트를 다시 실행한다. 직접 실행한 게이트의 단계별 시간은
+`JUST_TIME=true JUST_TIMESTAMP=true just ci`로 기록할 수 있다.
 
 Focused 진입점은 원인 확인용이다:
 

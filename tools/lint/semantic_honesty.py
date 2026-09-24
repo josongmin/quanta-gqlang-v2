@@ -20,10 +20,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 POLICY = Path(__file__).with_name("semantic_honesty_policy.json")
-SEMANTIC_BINDING = re.compile(r"(?:reason|diagnostic|evidence|proof|status|unresolved)", re.I)
 EMPTY_SUCCESS = frozenset({"None", "Ok(None)", "Ok(())", "Ok(false)", "Ok(0)", "Ok(Vec::new())", "Ok(Default::default())"})
 TEST_PATH_PARTS = frozenset({"tests", "examples", "benches"})
 PARSER_VERSIONS = {"tree-sitter-language-pack": "0.9.1", "tree-sitter": "0.23.2"}
+RETURN_SCOPE_BOUNDARIES = frozenset({"closure_expression", "function_item", "async_block"})
+UNSUPPORTED_EXIT_FORMS = frozenset({"loop_expression", "while_expression", "for_expression", "try_block", "try_expression", "await_expression", "break_expression", "macro_invocation"})
 
 
 @dataclass(frozen=True)
@@ -376,19 +377,142 @@ def call_name(source: bytes, node) -> str | None:
     return node_text(source, function) if function else None
 
 
-def exit_expressions(node):
-    children = significant_named_children(node)
-    if node.type == "else_clause" and children:
-        yield from exit_expressions(children[0])
+class UnsupportedExit(ValueError):
+    """The local AST proof cannot classify a governed return path."""
+
+
+def nested_returns(node):
+    """Find function returns without treating closure-local returns as arm exits."""
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        if current.type in RETURN_SCOPE_BOUNDARIES:
+            continue
+        if current.type == "return_expression":
+            yield current
+            continue
+        stack.extend(reversed(current.named_children))
+
+
+def enclosing_return_type_node(node):
+    owner = node.parent
+    while owner is not None and owner.type != "function_item":
+        owner = owner.parent
+    if owner is None:
+        return None
+    return owner.child_by_field_name("return_type")
+
+
+def generic_return_arguments(source: bytes, node, constructor: str):
+    result = enclosing_return_type_node(node)
+    if result is None or result.type != "generic_type":
+        return None
+    children = significant_named_children(result)
+    if len(children) != 2 or children[0].type != "type_identifier" or node_text(source, children[0]) != constructor or children[1].type != "type_arguments":
+        return None
+    return significant_named_children(children[1])
+
+
+def is_render_vec_return(source: bytes, node) -> bool:
+    arguments = generic_return_arguments(source, node, "Vec")
+    return arguments is not None and len(arguments) == 1 and arguments[0].type == "type_identifier" and node_text(source, arguments[0]) == "String"
+
+
+def is_analysis_payload_return(source: bytes, node) -> bool:
+    arguments = generic_return_arguments(source, node, "Result")
+    return arguments is not None and len(arguments) == 2 and arguments[0].type == "type_identifier" and node_text(source, arguments[0]) == "AnalysisPayloadV2"
+
+
+def exit_expressions(source: bytes, node):
+    """Enumerate each syntactic arm exit, including branch and early-return paths.
+
+    Ordinary calls and identifiers remain opaque values. Unsupported control
+    forms fail closed because selecting their final value requires more than
+    the local branch grammar modeled here.
+    """
+    if node.type in {"parenthesized_expression", "expression_statement", "else_clause", "match_pattern"}:
+        children = significant_named_children(node)
+        if len(children) != 1:
+            raise UnsupportedExit(f"{node.type} does not have one value")
+        yield from exit_expressions(source, children[0])
+        return
+    if node.type == "return_expression":
+        children = significant_named_children(node)
+        if not children:
+            yield node  # Rust unit return.
+            return
+        if len(children) != 1:
+            raise UnsupportedExit("return has multiple values")
+        yield from exit_expressions(source, children[0])
         return
     if node.type == "block":
-        if children:
-            yield children[-1]
-        for child in walk(node):
-            if child.type == "return_expression" and child.named_children:
-                yield child.named_children[0]
-    else:
-        yield node
+        children = significant_named_children(node)
+        for statement in children[:-1]:
+            for early in nested_returns(statement):
+                yield from exit_expressions(source, early)
+        if not children:
+            yield node
+            return
+        final = children[-1]
+        if final.type == "let_declaration" or (final.type == "expression_statement" and any(child.type == ";" for child in final.children)):
+            for early in nested_returns(final):
+                yield from exit_expressions(source, early)
+            final_value = significant_named_children(final)
+            if not (len(final_value) == 1 and final_value[0].type == "return_expression"):
+                yield node
+            return
+        yield from exit_expressions(source, final)
+        return
+    if node.type == "if_expression":
+        condition = node.child_by_field_name("condition")
+        for early in nested_returns(condition) if condition is not None else ():
+            yield from exit_expressions(source, early)
+        consequence = node.child_by_field_name("consequence")
+        alternative = node.child_by_field_name("alternative")
+        if consequence is None:
+            raise UnsupportedExit("if has no auditable consequence")
+        yield from exit_expressions(source, consequence)
+        if alternative is None:
+            yield node  # The other path is Rust's unit value.
+        else:
+            yield from exit_expressions(source, alternative)
+        return
+    if node.type == "match_expression":
+        scrutinee = node.child_by_field_name("value")
+        for early in nested_returns(scrutinee) if scrutinee is not None else ():
+            yield from exit_expressions(source, early)
+        body = node.child_by_field_name("body")
+        arms = [child for child in body.named_children if child.type == "match_arm"] if body is not None else []
+        if not arms:
+            raise UnsupportedExit("match has no auditable arms")
+        for arm in arms:
+            value = arm.child_by_field_name("value")
+            if value is None:
+                raise UnsupportedExit("match arm has no auditable value")
+            yield from exit_expressions(source, value)
+        return
+    if node.type in UNSUPPORTED_EXIT_FORMS:
+        if node.type != "macro_invocation" or not is_render_vec_return(source, node):
+            raise UnsupportedExit(f"unsupported exit form {node.type}")
+    for early in nested_returns(node):
+        yield from exit_expressions(source, early)
+    yield node
+
+
+def terminal_variant(source: bytes, expression, aliases: dict[str, str], families: dict[str, dict]) -> tuple[str, str] | None:
+    """Classify only the returned constructor, never constructors in arguments."""
+    terminal = unwrap_terminal(expression)
+    if terminal is None:
+        return None
+    target = terminal
+    if terminal.type == "call_expression":
+        target = terminal.child_by_field_name("function")
+    elif terminal.type == "struct_expression":
+        target = terminal.child_by_field_name("name")
+    if target is None or target.type not in {"scoped_identifier", "scoped_type_identifier"}:
+        return None
+    refs = references(source, target, aliases, set(families))
+    return next(iter(refs)) if len(refs) == 1 else None
 
 
 def has_negative_terminal(source: bytes, expression, aliases: dict[str, str], families: dict[str, dict]) -> bool:
@@ -397,15 +521,41 @@ def has_negative_terminal(source: bytes, expression, aliases: dict[str, str], fa
         return False
     if call_name(source, terminal) == "Err":
         return True
-    reference_root = terminal
-    if terminal.type == "call_expression":
-        reference_root = terminal.child_by_field_name("function")
-    elif terminal.type == "struct_expression":
-        reference_root = terminal.child_by_field_name("name")
-    if reference_root is None or reference_root.type not in {"scoped_identifier", "scoped_type_identifier"}:
+    variant = terminal_variant(source, terminal, aliases, families)
+    return variant is not None and variant[1] in families[variant[0]]["negative"]
+
+
+def is_error_pattern(source: bytes, pattern) -> bool:
+    current = pattern
+    while current is not None and current.type in {"match_pattern", "parenthesized_pattern", "reference_pattern"}:
+        children = significant_named_children(current)
+        if len(children) != 1:
+            return False
+        current = children[0]
+    if current is None or current.type != "tuple_struct_pattern":
         return False
-    refs = references(source, reference_root, aliases, set(families))
-    return any(variant in families[family]["negative"] for family, variant in refs)
+    children = significant_named_children(current)
+    return bool(children) and syntax_compact(source, children[0]) == "Err"
+
+
+def pattern_bindings(source: bytes, pattern) -> set[str]:
+    """Collect bound values from pattern grammar, independent of their names."""
+    result = set()
+    for current in walk(pattern):
+        if current.type == "shorthand_field_identifier":
+            name = node_text(source, current)
+            if not name.startswith("_"):
+                result.add(name)
+        elif current.type == "identifier":
+            parent = current.parent
+            if parent is not None and parent.type in {"scoped_identifier", "scoped_type_identifier"}:
+                continue
+            if parent is not None and parent.type in {"tuple_struct_pattern", "struct_pattern"} and significant_named_children(parent)[0] == current:
+                continue
+            name = node_text(source, current)
+            if not name.startswith("_"):
+                result.add(name)
+    return result
 
 
 def aliases_in(source: bytes, root, known: set[str]) -> dict[str, str]:
@@ -413,11 +563,15 @@ def aliases_in(source: bytes, root, known: set[str]) -> dict[str, str]:
     for child in root.named_children:
         if child.type != "use_declaration":
             continue
-        text = node_text(source, child)
-        for family in known:
-            match = re.search(r"\b" + re.escape(family) + r"\s+as\s+([A-Za-z_][A-Za-z0-9_]*)", text)
-            if match:
-                aliases[match.group(1)] = family
+        for clause in walk(child):
+            if clause.type != "use_as_clause":
+                continue
+            parts = significant_named_children(clause)
+            if len(parts) != 2 or parts[1].type != "identifier":
+                continue
+            original = syntax_compact(source, parts[0]).split("::")[-1]
+            if original in known:
+                aliases[node_text(source, parts[1])] = original
     return aliases
 
 
@@ -454,12 +608,18 @@ def analysis_status_findings(source: bytes, path: str, function) -> list[Finding
     return [] if all(checks) else [Finding("SH-09-status-priority", path, function.start_point[0] + 1, "unresolved, blocked, and complete branches drifted")]
 
 
+def is_document_error_variant(source: bytes, node) -> bool:
+    if node.type not in {"scoped_identifier", "scoped_type_identifier"}:
+        return False
+    return syntax_compact(source, node).split("::")[-2:] == ["FrontendTransactionErrorV2", "Document"]
+
+
 def document_error_binding(source: bytes, pattern) -> str | None:
     for node in walk(pattern):
         if node.type != "tuple_struct_pattern":
             continue
         children = significant_named_children(node)
-        if len(children) != 2 or not syntax_compact(source, children[0]).endswith("FrontendTransactionErrorV2::Document"):
+        if len(children) != 2 or not is_document_error_variant(source, children[0]):
             continue
         binding = children[1]
         identifiers = [child for child in walk(binding) if child.type == "identifier"]
@@ -469,27 +629,33 @@ def document_error_binding(source: bytes, pattern) -> str | None:
 
 
 def document_error_payload_findings(source: bytes, path: str, arm) -> list[Finding]:
-    owner = arm.parent
-    while owner is not None and owner.type != "function_item":
-        owner = owner.parent
-    return_type = owner.child_by_field_name("return_type") if owner is not None else None
-    if return_type is None or "AnalysisPayloadV2" not in node_text(source, return_type):
+    if not is_analysis_payload_return(source, arm):
         return []
     pattern = arm.child_by_field_name("pattern")
     value = arm.child_by_field_name("value")
-    document_pattern = pattern is not None and any(
-        node.type == "scoped_identifier" and syntax_compact(source, node).endswith("FrontendTransactionErrorV2::Document")
-        for node in walk(pattern)
-    )
+    document_pattern = pattern is not None and any(is_document_error_variant(source, node) for node in walk(pattern))
     if not document_pattern:
         return []
     binding = document_error_binding(source, pattern) if pattern is not None else None
     if binding is None or value is None:
         return [Finding("SH-10-document-error-payload", path, arm.start_point[0] + 1, "document error pattern must retain one auditable failure binding")]
-    payloads = [node for node in walk(value) if node.type == "struct_expression" and (name := node.child_by_field_name("name")) is not None and node_text(source, name) == "AnalysisPayloadV2"]
-    if len(payloads) != 1:
-        return [Finding("SH-10-document-error-payload", path, arm.start_point[0] + 1, "document error arm must construct exactly one analysis payload")]
-    for payload in payloads:
+    try:
+        exits = tuple(exit_expressions(source, value))
+    except UnsupportedExit as error:
+        return [Finding("SH-10-document-error-payload", path, arm.start_point[0] + 1, str(error))]
+    if not exits:
+        return [Finding("SH-10-document-error-payload", path, arm.start_point[0] + 1, "document error arm has no auditable exit")]
+    success_exits = 0
+    for expression in exits:
+        if call_name(source, expression) == "Err":
+            continue
+        if call_name(source, expression) != "Ok":
+            return [Finding("SH-10-document-error-payload", path, arm.start_point[0] + 1, "document error arm has an untyped success exit")]
+        success_exits += 1
+        payload = unwrap_terminal(call_argument(expression))
+        name = payload.child_by_field_name("name") if payload is not None and payload.type == "struct_expression" else None
+        if name is None or syntax_compact(source, name) != "AnalysisPayloadV2":
+            return [Finding("SH-10-document-error-payload", path, arm.start_point[0] + 1, "document error success must construct an analysis payload")]
         fields = {}
         body = payload.child_by_field_name("body")
         for child in body.named_children if body else ():
@@ -509,6 +675,8 @@ def document_error_payload_findings(source: bytes, path: str, arm) -> list[Findi
             or fields.get("diagnostics") != f"{binding}.diagnostics().iter().map(WireDiagnosticV2::from).collect()"
         ):
             return [Finding("SH-10-document-error-payload", path, arm.start_point[0] + 1, "document error payload must report error and retain failure diagnostics")]
+    if success_exits == 0:
+        return [Finding("SH-10-document-error-payload", path, arm.start_point[0] + 1, "document error arm has no analysis payload exit")]
     return []
 
 
@@ -536,10 +704,15 @@ def scan_source(source: bytes, path: str, policy: dict, rust_parser) -> tuple[Fi
                 continue
             input_refs = references(source, pattern, aliases, set(families))
             negative = {(family, variant) for family, variant in input_refs if variant in families[family]["negative"]}
-            exits = tuple(exit_expressions(value))
+            try:
+                exits = tuple(exit_expressions(source, value))
+            except UnsupportedExit as error:
+                if negative or is_error_pattern(source, pattern):
+                    findings.append(Finding("SH-11-unsupported-exit", path, node.start_point[0] + 1, str(error)))
+                exits = ()
             for expression in exits:
-                output_refs = references(source, expression, aliases, set(families))
-                positive = {(family, variant) for family, variant in output_refs if variant in families[family]["positive"]}
+                output = terminal_variant(source, expression, aliases, families)
+                positive = {output} if output is not None and output[1] in families[output[0]]["positive"] else set()
                 forbidden = {(src, dst) for src in negative for dst in positive if [f"{src[0]}::{src[1]}", f"{dst[0]}::{dst[1]}"] not in policy["allowed_transitions"]}
                 if forbidden:
                     findings.append(Finding("SH-01-outcome-laundering", path, node.start_point[0] + 1, f"{sorted(forbidden)}"))
@@ -552,17 +725,16 @@ def scan_source(source: bytes, path: str, policy: dict, rust_parser) -> tuple[Fi
                     scalar = terminal_scalar(source, expression)
                     if any(scalar in families[family].get("forbidden_outputs", []) for family, _ in negative):
                         findings.append(Finding("SH-03-negative-exit", path, node.start_point[0] + 1, f"{sorted(negative)} reaches {scalar}"))
-            # Only explicit semantic bindings are checked. Ignored `_reason` is
-            # intentional on some unreachable invariant-error paths.
+                    if scalar is None and any(families[family].get("forbidden_outputs") for family, _ in negative):
+                        findings.append(Finding("SH-11-unsupported-exit", path, node.start_point[0] + 1, "scalar output cannot be classified from local AST"))
+            # Pattern grammar identifies payload bindings. An explicit `_` bind
+            # is a Rust discard and therefore outside this preservation rule.
             if negative:
                 used = {node_text(source, child) for child in walk(value) if child.type == "identifier"}
-                for child in walk(pattern):
-                    if child.type == "identifier":
-                        name = node_text(source, child)
-                        if not name.startswith("_") and name[:1].islower() and SEMANTIC_BINDING.search(name) and name not in used:
-                            findings.append(Finding("SH-04-binding-loss", path, node.start_point[0] + 1, f"semantic binding {name} is unused"))
-            compact_pattern = syntax_compact(source, pattern)
-            if re.fullmatch(r"Err\(+_[A-Za-z0-9_]*\)+", compact_pattern):
+                for name in pattern_bindings(source, pattern) - used:
+                    findings.append(Finding("SH-04-binding-loss", path, node.start_point[0] + 1, f"negative payload binding {name} is unused"))
+            document_payload_projection = document_error_binding(source, pattern) is not None and is_analysis_payload_return(source, node)
+            if is_error_pattern(source, pattern) and not document_payload_projection:
                 for expression in exits:
                     if call_name(source, expression) == "Ok" and not has_negative_terminal(source, expression, aliases, families):
                         findings.append(Finding("SH-05-error-to-ok", path, node.start_point[0] + 1, "Err is converted to Ok without a typed negative terminal"))
@@ -582,8 +754,14 @@ def scan_source(source: bytes, path: str, policy: dict, rust_parser) -> tuple[Fi
                     wildcard = arm
             if governed and wildcard is not None:
                 value = wildcard.child_by_field_name("value")
-                if value is not None and not all(has_negative_terminal(source, expression, aliases, families) for expression in exit_expressions(value)):
-                    findings.append(Finding("SH-06-success-wildcard", path, wildcard.start_point[0] + 1, f"wildcard hides future variants of {sorted(governed)}"))
+                if value is not None:
+                    try:
+                        exits = tuple(exit_expressions(source, value))
+                    except UnsupportedExit as error:
+                        findings.append(Finding("SH-11-unsupported-exit", path, wildcard.start_point[0] + 1, str(error)))
+                    else:
+                        if not all(has_negative_terminal(source, expression, aliases, families) for expression in exits):
+                            findings.append(Finding("SH-06-success-wildcard", path, wildcard.start_point[0] + 1, f"wildcard hides future variants of {sorted(governed)}"))
         elif node.type == "field_initializer":
             field = node.child_by_field_name("field")
             value = node.child_by_field_name("value")

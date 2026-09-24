@@ -25,7 +25,26 @@ targets or a substitute for recording actual gate durations.
 An interrupted gate also terminates and reaps its process group before the
 interrupt is propagated.
 
-For leaf timings on the next run, use `JUST_TIME=true just qualify-local`. Run
+`just ci` runs the external-consumer Cargo offline dependency preflight before
+the build and test groups. It checks both the external-consumer fixture and
+repository workspace locked dependency graphs against the pinned toolchain;
+it does not compile or execute either graph. A missing crate exits before the
+expensive gates. Populate the local Cargo cache for the missing graph with
+`CARGO_NET_OFFLINE=false cargo fetch --locked --manifest-path tools/frontend_external_consumer/Cargo.toml`
+or `CARGO_NET_OFFLINE=false cargo fetch --locked --manifest-path Cargo.toml`,
+then run `just ci` again. The preflight is not evidence that the external
+consumer gate passed; the full gate still runs in `just policy`.
+
+`qualify-local` always emits Just recipe timestamps and durations in its log.
+For the same trail from a direct local gate, use
+`JUST_TIME=true JUST_TIMESTAMP=true just ci`. A failed or timed-out gate has no
+automatic retry. Preserve the first failing leaf and exit code; run the leaf
+alone once after a concrete environment change, then run the full gate once to
+establish a new result. A binary timeout only proves that the process did not
+finish within its bound. It does not by itself identify dyld, host load, or
+application code as the cause.
+
+Run
 `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/qualification/tests`
 for the quick custody and exact-receipt tests. The separate Cargo rebuild smoke
 is run with:

@@ -13,10 +13,20 @@ projection. The enum inventory must match current production declarations
 exactly. The scanner skips test-only Rust and fails when a parse error overlaps
 a governed expression. No suppressions or baseline file are used.
 
-The policy checks local syntax: negative-to-positive match arms, empty success,
-loss of named semantic bindings, successful wildcard arms, selected `Err` to
-`Ok` conversions, lossy `.ok()` in semantic fields, and semantic wire defaults.
-It also checks the open-analysis status priority and document-error stdio
-projection. Owner and binary tests remain responsible for reachability,
-interprocedural flow, and actual front-door behavior. In stdio, `ok: true`
-means transport success; `analysis_status` reports analysis success or failure.
+The policy enumerates the syntactic exits of each governed match arm, including
+`if`, nested `match`, blocks, and early `return` paths. Closure-local returns
+are separate. It classifies the returned constructor, not constructors inside
+arguments. It checks negative-to-positive transitions, empty or untyped
+success, forbidden scalar exits, payload binding use, successful wildcards,
+`Err` to `Ok` conversions, lossy `.ok()` in semantic fields, and semantic wire
+defaults. Unsupported control exits fail the scan. A direct macro exit is
+accepted only inside a function whose return type AST is exactly `Vec<String>`;
+it cannot construct a governed enum or `Result` at that return position.
+
+The open-analysis status priority and document-error stdio projection have
+separate checks. Each successful document-error exit must construct a payload
+with error status and retained diagnostics. The local AST check does not prove
+interprocedural flow, alias propagation, side-effect collection semantics, or
+the content of `Vec<String>` renderers. Owner and binary tests cover those
+behaviors. In stdio, `ok: true` means transport success; `analysis_status`
+reports analysis success or failure.

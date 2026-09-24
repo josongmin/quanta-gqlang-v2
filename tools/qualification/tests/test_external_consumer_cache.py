@@ -1,12 +1,16 @@
 """Custody and semantic-contract checks for the external-consumer gate."""
 
 import json
+import io
 import os
 import subprocess
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from pathlib import Path
+from unittest import mock
 
+from tools import test_frontend_external_consumer as consumer_gate
 from tools.test_frontend_external_consumer import (
     FIXTURE_DIR,
     FIXTURE_LOCKFILE,
@@ -18,6 +22,7 @@ from tools.test_frontend_external_consumer import (
     lock_cache,
     manifest_dependencies,
     materialize_fixture,
+    offline_dependency_preflight,
     positive_executable,
     positive_outcome,
     public_api_roots,
@@ -25,6 +30,54 @@ from tools.test_frontend_external_consumer import (
 
 
 class ExternalConsumerCacheTest(unittest.TestCase):
+    def test_offline_preflight_uses_locked_cargo_fetch_without_build(self):
+        result = subprocess.CompletedProcess(["cargo", "fetch"], 0, "", "")
+        with mock.patch.object(consumer_gate, "run_bounded", return_value=result) as command, \
+             mock.patch.object(consumer_gate, "git_status_bytes", return_value=b""), \
+             mock.patch.object(consumer_gate, "gate_writable_fingerprint", return_value={}):
+            self.assertEqual(offline_dependency_preflight(), consumer_gate.EXIT_OK)
+        self.assertEqual(command.call_count, 2)
+        for call, manifest in zip(
+            command.call_args_list,
+            (FIXTURE_DIR / "Cargo.toml", REPOSITORY_ROOT / "Cargo.toml"),
+        ):
+            args, kwargs = call
+            self.assertEqual(
+                args[0],
+                ["cargo", "fetch", "--locked", "--offline", "--manifest-path", str(manifest)],
+            )
+            self.assertEqual(kwargs["cwd"], REPOSITORY_ROOT)
+            self.assertEqual(kwargs["timeout_s"], 30)
+            self.assertEqual(kwargs["env"]["CARGO_NET_OFFLINE"], "true")
+            self.assertEqual(kwargs["env"]["RUSTUP_TOOLCHAIN"], consumer_gate.repo_toolchain_channel())
+
+    def test_offline_preflight_distinguishes_unavailable_sources_from_contract_failure(self):
+        unavailable = subprocess.CompletedProcess(["cargo", "fetch"], 101, "", "source unavailable")
+        with mock.patch.object(consumer_gate, "run_bounded", return_value=unavailable), \
+             mock.patch.object(consumer_gate, "git_status_bytes", return_value=b""), \
+             mock.patch.object(consumer_gate, "gate_writable_fingerprint", return_value={}):
+            self.assertEqual(consumer_gate.main(["--preflight"]), consumer_gate.EXIT_INFRASTRUCTURE)
+
+    def test_offline_preflight_catches_workspace_sources_after_fixture_passes(self):
+        ready = subprocess.CompletedProcess(["cargo", "fetch"], 0, "", "")
+        unavailable = subprocess.CompletedProcess(["cargo", "fetch"], 101, "", "workspace source unavailable")
+        diagnostics = io.StringIO()
+        with mock.patch.object(consumer_gate, "run_bounded", side_effect=[ready, unavailable]) as command, \
+             mock.patch.object(consumer_gate, "git_status_bytes", return_value=b""), \
+             mock.patch.object(consumer_gate, "gate_writable_fingerprint", return_value={}), \
+             redirect_stderr(diagnostics):
+            self.assertEqual(consumer_gate.main(["--preflight"]), consumer_gate.EXIT_INFRASTRUCTURE)
+        self.assertEqual(command.call_count, 2)
+        self.assertIn("locked workspace dependency graph", diagnostics.getvalue())
+        self.assertIn("workspace source unavailable", diagnostics.getvalue())
+
+    def test_offline_preflight_rejects_checkout_mutation_even_when_cargo_succeeds(self):
+        result = subprocess.CompletedProcess(["cargo", "fetch"], 0, "", "")
+        with mock.patch.object(consumer_gate, "run_bounded", return_value=result), \
+             mock.patch.object(consumer_gate, "git_status_bytes", side_effect=[b"", b" M Cargo.lock\n"]), \
+             mock.patch.object(consumer_gate, "gate_writable_fingerprint", return_value={}):
+            self.assertEqual(offline_dependency_preflight(), consumer_gate.EXIT_INFRASTRUCTURE)
+
     def test_positive_artifact_uses_cargo_emitted_exact_binary_path(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

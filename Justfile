@@ -50,6 +50,9 @@ arch-lint:
 external-consumer:
     python3 tools/test_frontend_external_consumer.py
 
+external-consumer-preflight:
+    python3 tools/test_frontend_external_consumer.py --preflight
+
 deny:
     cargo deny check bans licenses sources advisories
 
@@ -65,9 +68,10 @@ qualifier-custody:
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/qualification/tests -p 'test_*.py'
 
 # ---- composition groups (one composition path per command) ----
-# Each leaf is a dependency of exactly one group; each group is a
-# dependency of exactly `ci`. The old `lint` recipe (which nested
-# test + frontdoor-parity inside lint) is removed.
+# Each full gate leaf is a dependency of exactly one group. The offline
+# external-consumer dependency preflight is a serial prerequisite of `ci`,
+# before any build or test. The old `lint` recipe (which nested test +
+# frontdoor-parity inside lint) is removed.
 
 static: fmt taplo clippy-msrv clippy-current typos pm-check pm-test
 
@@ -75,7 +79,7 @@ test: nextest doctest frontdoor-parity
 
 policy: qualifier-custody arch-lint external-consumer deny semgrep semantic-honesty
 
-ci: static test policy
+ci: external-consumer-preflight && static test policy
 
 # Pinned local qualification: one locked, stable-path managed worktree/cache;
 # clean-tree and exact HEAD/tree checks; then `just ci` and a local receipt.

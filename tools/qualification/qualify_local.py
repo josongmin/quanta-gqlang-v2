@@ -193,7 +193,13 @@ class QualificationDriver:
                 print(command(args, self.checkout), flush=True)
             start = time.monotonic()
             try:
-                result = run_bounded(("just", "ci"), cwd=self.checkout, timeout_s=CI_TIMEOUT_S)
+                # Keep a per-recipe timing trail even when the caller did not
+                # set Just's optional reporting flags. This does not alter
+                # which recipes run or the exact-source receipt contract.
+                ci_env = {**os.environ, "JUST_TIME": "true", "JUST_TIMESTAMP": "true"}
+                result = run_bounded(
+                    ("just", "ci"), cwd=self.checkout, timeout_s=CI_TIMEOUT_S, env=ci_env,
+                )
                 exit_code = result.returncode if result.returncode >= 0 else 128 - result.returncode
             except ProcessTimeoutError as error:
                 print("qualify-local: " + str(error), file=sys.stderr, flush=True)

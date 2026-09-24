@@ -44,6 +44,11 @@ case violation; 2 = the gate could not judge (infrastructure failure: the
 repository tree does not compile, a case failed for a non-fixture reason, or a
 required tool is missing). Exit 2 is never a pass.
 
+``--preflight`` checks the fixture and repository workspace locked dependency
+sources with Cargo's offline resolver before expensive CI rails. The latter is
+also needed by ``cargo public-api``. It does not build or materialize the
+fixture and reports an unavailable source as exit 2.
+
 Standard library only: the repository Python is 3.9, which has no ``tomllib``.
 Cargo's ``read-manifest`` parses the full TOML dependency grammar without
 writing a lockfile or requiring a second TOML implementation here.
@@ -593,10 +598,72 @@ def materialize_fixture(cache_root: Path) -> Path:
     return fixture
 
 
+def offline_dependency_preflight() -> int:
+    """Ask Cargo whether both locked source graphs are available offline."""
+    try:
+        before_lock = sha256_of(LOCKFILE)
+        before_status = git_status_bytes()
+        before_fingerprint = gate_writable_fingerprint()
+        env = cargo_env(REPOSITORY_ROOT / "target", repo_toolchain_channel())
+        # `fetch` resolves complete locked graphs and requires source archives,
+        # unlike metadata --no-deps. The fixture is a standalone workspace;
+        # cargo public-api later uses the repository workspace and its lock.
+        failure = None
+        for graph, manifest in (
+            ("fixture", FIXTURE_DIR / "Cargo.toml"),
+            ("workspace", REPOSITORY_ROOT / "Cargo.toml"),
+        ):
+            command = [
+                "cargo", "fetch", "--locked", "--offline", "--manifest-path",
+                str(manifest),
+            ]
+            try:
+                result = run_bounded(
+                    command,
+                    cwd=REPOSITORY_ROOT,
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout_s=30,
+                )
+                if result.returncode:
+                    failure = (
+                        "Cargo could not resolve or fetch the locked %s dependency graph offline "
+                        "(exit %d):\n%s" % (graph, result.returncode, result.stderr.strip())
+                    )
+                    break
+            except (ProcessTimeoutError, OSError) as error:
+                failure = "Cargo offline %s dependency preflight could not run: %s" % (graph, error)
+                break
+
+        # Cargo is allowed to populate its global cache. It must not change
+        # the tracked checkout, including the source fixture's lockfile.
+        if sha256_of(LOCKFILE) != before_lock:
+            failure = "Cargo.lock changed during the offline dependency preflight"
+        elif gate_writable_fingerprint() != before_fingerprint:
+            failure = "the external-consumer fixture or gate source changed during the offline dependency preflight"
+        elif git_status_bytes() != before_status:
+            failure = "git status --porcelain changed during the offline dependency preflight"
+        if failure:
+            print("infrastructure failure: %s" % failure, file=sys.stderr, flush=True)
+            return EXIT_INFRASTRUCTURE
+        print("external-consumer offline dependency preflight: ready", flush=True)
+        return EXIT_OK
+    except (InfrastructureError, OSError) as error:
+        print("infrastructure failure: %s" % error, file=sys.stderr, flush=True)
+        return EXIT_INFRASTRUCTURE
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--verbose", action="store_true", help="print every case and its verdict")
+    parser.add_argument(
+        "--preflight", action="store_true",
+        help="check locked fixture and workspace dependency sources offline before full CI",
+    )
     args = parser.parse_args(argv)
+    if args.preflight:
+        return offline_dependency_preflight()
 
     def say(message: str) -> None:
         print(message, flush=True)
@@ -712,6 +779,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
 
         # ---- stage 1/2: isolated fixture at a stable, owned path ----------
+        if offline_dependency_preflight() != EXIT_OK:
+            raise InfrastructureError("locked fixture dependencies are not available offline")
         channel = repo_toolchain_channel()
         cache_lock = lock_cache(CACHE_ROOT, REPOSITORY_ROOT)
         fixture = materialize_fixture(CACHE_ROOT)
