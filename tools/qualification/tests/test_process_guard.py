@@ -15,6 +15,27 @@ from unittest.mock import patch
 from tools.process_guard import ProcessTimeoutError, run_bounded
 
 
+def popen_after_child_ready(pid_file: Path, ready_at=None):
+    """Start the test parent before its short gate timeout begins."""
+    real_popen = subprocess.Popen
+
+    def start(*args, **kwargs):
+        process = real_popen(*args, **kwargs)
+        deadline = time.monotonic() + 5
+        while not pid_file.exists() and process.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.01)
+        if not pid_file.exists():
+            if process.poll() is None:
+                os.killpg(process.pid, signal.SIGKILL)
+            process.wait(timeout=1)
+            raise AssertionError("test child did not signal readiness")
+        if ready_at is not None:
+            ready_at.append(time.monotonic())
+        return process
+
+    return start
+
+
 class ProcessGuardTest(unittest.TestCase):
     def test_interrupted_gate_kills_and_reaps_its_process_group(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -75,16 +96,20 @@ class ProcessGuardTest(unittest.TestCase):
                 "pathlib.Path(%r).write_text(str(child.pid)); signal.pause()"
             ) % str(pid_file)
             try:
-                started = time.monotonic()
-                with self.assertRaises(ProcessTimeoutError):
-                    run_bounded(
-                        [sys.executable, "-c", parent],
-                        cwd=Path(directory),
-                        timeout_s=0.3,
-                        capture_output=True,
-                    )
+                ready_at = []
+                with patch(
+                    "tools.process_guard.subprocess.Popen",
+                    side_effect=popen_after_child_ready(pid_file, ready_at),
+                ):
+                    with self.assertRaises(ProcessTimeoutError):
+                        run_bounded(
+                            [sys.executable, "-c", parent],
+                            cwd=Path(directory),
+                            timeout_s=0.3,
+                            capture_output=True,
+                        )
                 self.assertTrue(pid_file.exists(), "escaped pipe holder did not start")
-                self.assertLess(time.monotonic() - started, 0.9)
+                self.assertLess(time.monotonic() - ready_at[0], 0.9)
             finally:
                 if pid_file.exists():
                     try:
@@ -104,12 +129,16 @@ class ProcessGuardTest(unittest.TestCase):
                 "signal.pause()\n"
             ) % (child, str(pid_file))
             try:
-                with self.assertRaises(ProcessTimeoutError):
-                    run_bounded(
-                        [sys.executable, "-c", parent],
-                        cwd=Path(directory),
-                        timeout_s=0.5,
-                    )
+                with patch(
+                    "tools.process_guard.subprocess.Popen",
+                    side_effect=popen_after_child_ready(pid_file),
+                ):
+                    with self.assertRaises(ProcessTimeoutError):
+                        run_bounded(
+                            [sys.executable, "-c", parent],
+                            cwd=Path(directory),
+                            timeout_s=0.5,
+                        )
                 self.assertTrue(pid_file.exists(), "same-group child did not start")
                 pid = int(pid_file.read_text())
                 status = subprocess.run(
