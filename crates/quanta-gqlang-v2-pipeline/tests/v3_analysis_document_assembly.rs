@@ -49,6 +49,37 @@ const DOC_SOURCE: SourceIdV2 = SourceIdV2::from_raw(9);
 /// A source document that needs no relation or graph authority.
 const MINIMAL_SOURCE: &str = "let answer = 1; rule local_rule : x if x = 1; show capabilities;";
 
+fn budget_with_diagnostic_limit(limit: u32) -> FrontendBudgetV2 {
+    FrontendBudgetV2::try_new(
+        64, 256, 1_024, 64, 32, 32, 2_048, 64, 64, 10_000, 128, 256, 10_000, 4_096, 1_024, 128,
+        256, 10_000, 64, 128, limit, 4_096,
+    )
+    .expect("checked diagnostic budget")
+}
+
+#[test]
+fn public_open_analysis_enforces_its_diagnostic_cap() {
+    let exact = OpenAnalysisAuthorityV2::try_empty_v2(budget_with_diagnostic_limit(3))
+        .expect("exact open authority");
+    let analyzed = analyze_source_document_v2(DOC_SOURCE, "show capabilities", &exact)
+        .expect("exact diagnostic limit admits all three missing-authority facts");
+    assert_eq!(analyzed.diagnostics().len(), 3);
+
+    let limited = OpenAnalysisAuthorityV2::try_empty_v2(budget_with_diagnostic_limit(2))
+        .expect("limited open authority");
+    let error = analyze_source_document_v2(DOC_SOURCE, "show capabilities", &limited)
+        .expect_err("a public analysis result must not exceed its own receipt");
+    let FrontendTransactionErrorV2::Document(failure) = error else {
+        panic!("diagnostic exhaustion must be source-anchored");
+    };
+    assert_eq!(failure.diagnostics().len(), 1);
+    assert_eq!(
+        failure.diagnostics()[0].code(),
+        "pipeline.analysis.diagnostic_limit_exceeded"
+    );
+    assert_eq!(failure.diagnostics()[0].primary().source_id, DOC_SOURCE);
+}
+
 #[test]
 fn incomplete_open_analysis_rejects_overdeep_relation_before_declaration() {
     let authority = OpenAnalysisAuthorityV2::try_standard_v2().expect("standard open authority");

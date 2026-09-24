@@ -31,6 +31,14 @@ pub fn handle_v3_diagnostics_v2(
             })
         }
         Err(FrontendTransactionErrorV2::Document(failure)) => {
+            if let [diagnostic] = failure.diagnostics() {
+                if diagnostic.code() == "pipeline.analysis.diagnostic_limit_exceeded" {
+                    return Err(ProtocolErrorV2::new(
+                        "diagnostic_limit_exceeded",
+                        diagnostic.message(),
+                    ));
+                }
+            }
             enforce_diagnostic_cap(failure.diagnostics().len(), authority)?;
             Ok(AnalysisPayloadV2 {
                 analysis_status: AnalysisStatusV2::Error.keyword(),

@@ -86,6 +86,7 @@ pub const OPEN_AUTHORITY_INCOMPLETE_CODE: &str = "pipeline.analysis.open_authori
 /// site anchors on the caller's own source and exact span, never on a fabricated
 /// source identity.
 pub const PARSE_BUDGET_PROJECTION_FAILED_CODE: &str = "pipeline.parse_budget_projection_failed";
+const ANALYSIS_DIAGNOSTIC_LIMIT_CODE: &str = "pipeline.analysis.diagnostic_limit_exceeded";
 
 /// Failure to classify exactly one parsed source root.
 #[derive(Debug)]
@@ -616,14 +617,19 @@ pub fn compile_source_document_v3(
     source: &str,
     authority: &ClosedFrontendAuthorityV2,
 ) -> Result<CompiledSourceDocumentV3, FrontendTransactionErrorV2> {
-    let parsed = parse_source(source_id, source, authority.budget())?;
-    let checked = CheckedSyntaxDocumentV2::try_from_hir(parsed.hir)
-        .map_err(FrontendTransactionErrorV2::from)?;
-    let document = resolve_checked_document_v2(checked, authority)?;
-    let (compiled, execution_items) = compile_resolved_parts(&document)?;
-    Ok(CompiledSourceDocumentV3 {
-        compiled,
-        execution: ExecutionDocumentV3::new(source_id, source.as_bytes(), execution_items),
+    let result = (|| {
+        let parsed = parse_source(source_id, source, authority.budget())?;
+        let checked = CheckedSyntaxDocumentV2::try_from_hir(parsed.hir)
+            .map_err(FrontendTransactionErrorV2::from)?;
+        let document = resolve_checked_document_v2(checked, authority)?;
+        let (compiled, execution_items) = compile_resolved_parts(&document)?;
+        Ok(CompiledSourceDocumentV3 {
+            compiled,
+            execution: ExecutionDocumentV3::new(source_id, source.as_bytes(), execution_items),
+        })
+    })();
+    result.map_err(|error| {
+        cap_transaction_error(error, source_id, authority.budget().max_diagnostics())
     })
 }
 
@@ -641,7 +647,13 @@ pub fn compile_source_document_v3(
 pub fn compile_resolved_document_v2(
     document: &SemanticDocumentV2,
 ) -> Result<CompiledDocumentV2, FrontendTransactionErrorV2> {
-    let (compiled, _execution_items) = compile_resolved_parts(document)?;
+    let (compiled, _execution_items) = compile_resolved_parts(document).map_err(|error| {
+        cap_transaction_error(
+            error,
+            document.source_id(),
+            document.budget_receipt().max_diagnostics(),
+        )
+    })?;
     Ok(compiled)
 }
 
@@ -651,6 +663,11 @@ fn compile_resolved_parts(
     let (items, rule_program, execution_items) = run_document(document)?.into_compiled()?;
     let compiled =
         CompiledDocumentV2::try_new(document.source_id(), Vec::new(), items, rule_program)?;
+    enforce_diagnostic_limit(
+        document.source_id(),
+        compiled.diagnostics().len(),
+        document.budget_receipt().max_diagnostics(),
+    )?;
     Ok((compiled, execution_items))
 }
 
@@ -670,25 +687,30 @@ pub fn analyze_source_document_v2(
     source: &str,
     authority: &OpenAnalysisAuthorityV2,
 ) -> Result<AnalysisDocumentV2, FrontendTransactionErrorV2> {
-    let parsed = parse_source(source_id, source, authority.budget())?;
-    let source_len = parsed.hir.source_len;
-    let checked = CheckedSyntaxDocumentV2::try_from_hir(parsed.hir)
-        .map_err(FrontendTransactionErrorV2::from)?;
-    let (Some(modules), Some(relations), Some(graph_references)) = (
-        authority.modules(),
-        authority.relations(),
-        authority.graph_references(),
-    ) else {
-        return incomplete_open_analysis(source_id, source_len, checked, authority);
-    };
-    let closed = ClosedFrontendAuthorityV2::try_new(
-        modules.clone(),
-        relations.clone(),
-        graph_references.clone(),
-        authority.budget().clone(),
-    )?;
-    let document = resolve_checked_document_v2(checked, &closed)?;
-    analyze_resolved_document_v2(&document)
+    let result = (|| {
+        let parsed = parse_source(source_id, source, authority.budget())?;
+        let source_len = parsed.hir.source_len;
+        let checked = CheckedSyntaxDocumentV2::try_from_hir(parsed.hir)
+            .map_err(FrontendTransactionErrorV2::from)?;
+        let (Some(modules), Some(relations), Some(graph_references)) = (
+            authority.modules(),
+            authority.relations(),
+            authority.graph_references(),
+        ) else {
+            return incomplete_open_analysis(source_id, source_len, checked, authority);
+        };
+        let closed = ClosedFrontendAuthorityV2::try_new(
+            modules.clone(),
+            relations.clone(),
+            graph_references.clone(),
+            authority.budget().clone(),
+        )?;
+        let document = resolve_checked_document_v2(checked, &closed)?;
+        analyze_resolved_document_v2(&document)
+    })();
+    result.map_err(|error| {
+        cap_transaction_error(error, source_id, authority.budget().max_diagnostics())
+    })
 }
 
 /// Analyze one already-sealed semantic document.
@@ -700,7 +722,18 @@ pub fn analyze_source_document_v2(
 pub fn analyze_resolved_document_v2(
     document: &SemanticDocumentV2,
 ) -> Result<AnalysisDocumentV2, FrontendTransactionErrorV2> {
-    Ok(run_document(document)?.into_analysis(document.source_id()))
+    run_document(document)
+        .map_err(|error| {
+            cap_transaction_error(
+                error,
+                document.source_id(),
+                document.budget_receipt().max_diagnostics(),
+            )
+        })?
+        .into_analysis(
+            document.source_id(),
+            document.budget_receipt().max_diagnostics(),
+        )
 }
 
 /// Format one source document from its checked parse, using only the caller's
@@ -797,6 +830,47 @@ fn enforce_source_budget(
     )))
 }
 
+fn enforce_diagnostic_limit(
+    source_id: SourceIdV2,
+    count: usize,
+    limit: u32,
+) -> Result<(), FrontendTransactionErrorV2> {
+    if count <= usize::try_from(limit).unwrap_or(usize::MAX) {
+        return Ok(());
+    }
+    Err(diagnostic_limit_error(source_id, count, limit))
+}
+
+fn diagnostic_limit_error(
+    source_id: SourceIdV2,
+    count: usize,
+    limit: u32,
+) -> FrontendTransactionErrorV2 {
+    document_transaction_error(FrontendDiagnosticV2::new(
+        FrontendStageV2::Resource,
+        ANALYSIS_DIAGNOSTIC_LIMIT_CODE,
+        FrontendSeverityV2::Error,
+        zero_location(source_id),
+        Vec::new(),
+        format!("diagnostic count {count} exceeds max_diagnostics {limit}"),
+    ))
+}
+
+fn cap_transaction_error(
+    error: FrontendTransactionErrorV2,
+    source_id: SourceIdV2,
+    limit: u32,
+) -> FrontendTransactionErrorV2 {
+    match &error {
+        FrontendTransactionErrorV2::Document(failure)
+            if failure.diagnostics().len() > usize::try_from(limit).unwrap_or(usize::MAX) =>
+        {
+            diagnostic_limit_error(source_id, failure.diagnostics().len(), limit)
+        }
+        FrontendTransactionErrorV2::Authority(_) | FrontendTransactionErrorV2::Document(_) => error,
+    }
+}
+
 /// Build the explicit incomplete-analysis document for partial open authority.
 fn incomplete_open_analysis(
     source_id: SourceIdV2,
@@ -875,6 +949,11 @@ fn incomplete_open_analysis(
         ));
     }
     let diagnostics = canonicalize_diagnostics(missing_authority);
+    enforce_diagnostic_limit(
+        source_id,
+        diagnostics.len(),
+        authority.budget().max_diagnostics(),
+    )?;
     let items = known
         .iter()
         .map(|_item| AnalysisItemV2::BlockedByDiagnostics(diagnostics.clone().into_boxed_slice()))
@@ -971,7 +1050,28 @@ impl DocumentRunV2 {
     }
 
     /// The exact analysis item list; blocked stages stay explicit.
-    fn into_analysis(self, source_id: SourceIdV2) -> AnalysisDocumentV2 {
+    fn into_analysis(
+        self,
+        source_id: SourceIdV2,
+        max_diagnostics: u32,
+    ) -> Result<AnalysisDocumentV2, FrontendTransactionErrorV2> {
+        // Count canonical diagnostics before a blocked rule-program diagnostic
+        // is cloned onto every authored rule member.
+        let mut diagnostics = self.rule_blocked.clone().unwrap_or_default();
+        for item in &self.items {
+            if let ItemRunV2::Blocked {
+                diagnostics: blocked,
+                ..
+            } = item
+            {
+                diagnostics.extend(blocked.iter().cloned());
+            }
+        }
+        enforce_diagnostic_limit(
+            source_id,
+            canonicalize_diagnostics(diagnostics).len(),
+            max_diagnostics,
+        )?;
         let rule_blocked = self.rule_blocked;
         let mut order = Vec::with_capacity(self.items.len());
         let items = self
@@ -1006,13 +1106,13 @@ impl DocumentRunV2 {
                 }
             })
             .collect::<Vec<_>>();
-        AnalysisDocumentV2 {
+        Ok(AnalysisDocumentV2 {
             source_id,
             order: order.into_boxed_slice(),
             items: items.into_boxed_slice(),
             rule_program: self.rule_program,
             unresolved: Box::new([]),
-        }
+        })
     }
 }
 
