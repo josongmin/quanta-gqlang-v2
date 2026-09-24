@@ -36,9 +36,11 @@
 //! - [`parse_expr`]: parse a bare value expression (decl-body/arg grammar).
 //! - [`parse_predicate`]: parse a bare boolean expression (filter/rule-body
 //!   grammar).
-//! - [`format_item`] / [`format_document`]: re-render a lowered HIR item (or a
-//!   whole document) back to canonical, idempotent v3 surface text. The crate
-//!   owns the grammar, so it owns the inverse.
+//! - [`format_item`] / [`format_document`]: re-render parser-produced HIR back
+//!   to canonical, idempotent v3 surface text.
+//! - [`try_format_item`]: checked surface-representability boundary for
+//!   caller-built HIR; rejects unrepresentable shapes and parser-invalid
+//!   output. HIR identity/span integrity remains the HIR owner's check.
 //!
 //! Every error path returns a typed [`ParseDiagnosticV1`] carrying a stable
 //! [`ParseErrorCodeV1`] and an exact `hir::SpanV1`.
@@ -86,7 +88,9 @@ mod unit;
 
 pub use budget::{ParseBudgetDimensionV2, ParseBudgetV2};
 pub use diag::{ParseDiagnosticV1, ParseErrorCodeV1, ResourceExhaustionV2, SurfaceDiagnosticV2};
-pub use format::{format_document, format_item};
+pub use format::{
+    format_document, format_item, try_format_item, FormatDiagnosticV1, FormatErrorCodeV1,
+};
 pub use lexer::{lex, LexErrorV1, TokenKindV1, TokenV1};
 pub use parser::{
     classify_parsed_root_v3, parse_document, parse_program, parse_source_document_v2,

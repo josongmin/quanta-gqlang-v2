@@ -7,11 +7,13 @@
 mod support;
 
 use quanta_gqlang_v2_hir::{
-    BoolExprKindV1, HirBuilderV1, PathSegmentV1, ProgramItemHirV1, RelationExistsPolarityV1,
-    SpanV1, ValueExprKindV1,
+    AdmissionV1, BoolExprKindV1, CatalogPayloadV1, GraphConstraintsV1, GraphEndpointsV1,
+    GraphQueryKindV1, GraphRefV1, HirBuilderV1, PathSegmentV1, ProgramItemHirV1,
+    RelationExistsPolarityV1, SpanV1, ValueExprKindV1,
 };
 use quanta_gqlang_v2_surface::{
-    format_document, format_item, parse_document, parse_program, SurfaceItemV1,
+    format_document, format_item, parse_document, parse_program, try_format_item,
+    FormatErrorCodeV1, SurfaceItemV1,
 };
 
 fn parse(src: &str) -> ProgramItemHirV1 {
@@ -360,6 +362,157 @@ fn raw_not_exists_keeps_not_distinct_from_not_exists_polarity() {
 }
 
 #[test]
+fn checked_formatter_rejects_unrepresentable_raw_hir_before_silent_loss() {
+    let builder = HirBuilderV1::new();
+    let span = SpanV1::new(0, 1);
+    let predicate = || builder.bool_value(builder.symbol("ok", span), span);
+    let staged_right = builder.relation_filter(
+        builder.relation_source("b", span, None, span),
+        predicate(),
+        span,
+    );
+    let join = ProgramItemHirV1::from(builder.query(
+        builder.inner_join(
+            builder.relation_source("a", span, None, span),
+            staged_right,
+            predicate(),
+            span,
+        ),
+        None,
+        span,
+    ));
+    assert_eq!(
+        try_format_item(&join).unwrap_err().code,
+        FormatErrorCodeV1::JoinRightNotSource
+    );
+
+    let empty_shape = ProgramItemHirV1::from(builder.query(
+        builder.relation_source("a", span, None, span),
+        Some(builder.shape_record(Vec::new(), span)),
+        span,
+    ));
+    assert_eq!(
+        try_format_item(&empty_shape).unwrap_err().code,
+        FormatErrorCodeV1::EmptyResultShape
+    );
+
+    let partial_endpoints = ProgramItemHirV1::from(builder.graph_query(
+        GraphQueryKindV1::Reachability,
+        GraphEndpointsV1 {
+            source: Some(GraphRefV1 {
+                name: "source".into(),
+                span,
+            }),
+            ..GraphEndpointsV1::default()
+        },
+        GraphConstraintsV1::default(),
+        span,
+    ));
+    assert_eq!(
+        try_format_item(&partial_endpoints).unwrap_err().code,
+        FormatErrorCodeV1::PartialGraphEndpoints
+    );
+
+    let raw_bool_literal = ProgramItemHirV1::from(builder.rule(
+        "r",
+        span,
+        builder.symbol("x", span),
+        builder.bool_literal(true, span),
+        span,
+    ));
+    assert_eq!(
+        try_format_item(&raw_bool_literal).unwrap_err().code,
+        FormatErrorCodeV1::RawBoolLiteral
+    );
+
+    let ambiguous_bool_paren = ProgramItemHirV1::from(builder.rule(
+        "r",
+        span,
+        builder.symbol("x", span),
+        builder.paren_bool(predicate(), span),
+        span,
+    ));
+    assert_eq!(
+        try_format_item(&ambiguous_bool_paren).unwrap_err().code,
+        FormatErrorCodeV1::AmbiguousBoolParen
+    );
+}
+
+#[test]
+fn checked_formatter_requires_parser_admission_and_preserves_positive_cases() {
+    let builder = HirBuilderV1::new();
+    let span = SpanV1::new(0, 1);
+    let malformed =
+        ProgramItemHirV1::from(builder.decl("bad name", span, builder.int("1", span), span));
+    let error = try_format_item(&malformed).expect_err("invalid raw identifier rejects");
+    assert_eq!(error.code, FormatErrorCodeV1::ParseRejected);
+    assert!(
+        error.parse.is_some(),
+        "retain the exact rendered parse error"
+    );
+
+    for source in [
+        "let x = (-a).b",
+        "rule r : x if not (exists (from a))",
+        "from a | join b on a.id = b.id => { id: a.id }",
+        "find reachability source -> sink | depth=2",
+    ] {
+        let item = parse(source);
+        assert_eq!(
+            try_format_item(&item).expect("parser-produced HIR is representable"),
+            format_item(&item),
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn checked_formatter_detects_canonical_text_with_split_raw_list_payloads() {
+    let builder = HirBuilderV1::new();
+    let span = SpanV1::new(0, 1);
+    let split_ref = GraphRefV1 {
+        name: "a, b".into(),
+        span,
+    };
+    for constraints in [
+        GraphConstraintsV1 {
+            via: vec![split_ref.clone()],
+            ..GraphConstraintsV1::default()
+        },
+        GraphConstraintsV1 {
+            summary_facets: vec!["calls, reads".into()],
+            ..GraphConstraintsV1::default()
+        },
+    ] {
+        let graph = ProgramItemHirV1::from(builder.graph_query(
+            GraphQueryKindV1::Summary,
+            GraphEndpointsV1::default(),
+            constraints,
+            span,
+        ));
+        assert_eq!(
+            try_format_item(&graph).unwrap_err().code,
+            FormatErrorCodeV1::NonCanonical,
+            "parse/format fixed point alone cannot detect a split list element"
+        );
+    }
+
+    let catalog = ProgramItemHirV1::from(builder.catalog_decl(
+        "profile_name",
+        span,
+        CatalogPayloadV1::Profile {
+            capabilities: vec![split_ref],
+            admission: AdmissionV1::Allowlist,
+        },
+        span,
+    ));
+    assert_eq!(
+        try_format_item(&catalog).unwrap_err().code,
+        FormatErrorCodeV1::NonCanonical
+    );
+}
+
+#[test]
 fn programmatic_precedence_is_preserved_by_reparse() {
     let builder = HirBuilderV1::new();
     let span = SpanV1::new(0, 1);
@@ -397,6 +550,11 @@ fn programmatic_precedence_is_preserved_by_reparse() {
 fn assert_roundtrip(src: &str) {
     let item1 = parse(src);
     let text1 = format_item(&item1);
+    assert_eq!(
+        try_format_item(&item1).expect("parser-produced item passes checked formatter"),
+        text1,
+        "checked formatting diverged for {src:?}"
+    );
 
     // rendered text must re-parse (it is canonical v3 surface).
     let item2 = parse(&text1);

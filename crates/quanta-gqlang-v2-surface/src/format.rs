@@ -19,20 +19,102 @@
 //! states the grammar cannot express (for example, a staged join RHS or an
 //! empty result-shape record). This infallible API does not validate those raw
 //! states and must not be treated as a general raw-HIR serialization boundary.
+//! [`try_format_item`] is the checked, parser-bounded alternative for raw HIR;
+//! it checks surface representability, not HIR identity/span integrity or
+//! downstream semantic legality.
 //!
 //! Join, group, and order stages are rendered from their dedicated closed HIR
 //! variants; there is no open operator tag or synthetic relation operand.
 
+use std::fmt;
+
+use crate::diag::ParseDiagnosticV1;
+use crate::parser::parse_program;
 use quanta_gqlang_v2_hir::{
     ActivationV1, AdmissionV1, BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CatalogPayloadV1,
     CompareMetricV1, CompositionBodyV1, CompositionHirV1, CompositionProducerV1, ConfirmModeV1,
     DetectionModeV1, EmitModeV1, EvidenceModeV1, ExportFormatV1, GateBindingV1, GraphConstraintsV1,
-    GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, JoinHirV1, LegalityHirV1,
-    LiteralV1, MetaKindV1, PresentationHirV1, PresentationKindV1, ProgramItemHirV1, QueryHirV1,
-    RelationExprHirV1, RelationExprKindV1, ResultShapeHirV1, ResultShapeKindV1, SampleModeV1,
-    ShowCategoryV1, SortDirectionHirV1, TruthModeV1, UsePackActivationV1, ValueExprHirV1,
-    ValueExprKindV1, ViewBodyV1,
+    GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1, JoinHirV1,
+    LegalityHirV1, LiteralV1, MetaKindV1, PresentationHirV1, PresentationKindV1, ProgramItemHirV1,
+    QueryHirV1, RelationExprHirV1, RelationExprKindV1, ResultShapeHirV1, ResultShapeKindV1,
+    SampleModeV1, ShowCategoryV1, SortDirectionHirV1, SpanV1, TruthModeV1, UsePackActivationV1,
+    ValueExprHirV1, ValueExprKindV1, ViewBodyV1,
 };
+
+/// Stable reason a caller-built HIR item cannot be serialized through the
+/// current surface grammar without loss.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FormatErrorCodeV1 {
+    /// A join RHS contains stages, but the grammar accepts only a source.
+    JoinRightNotSource,
+    /// A result-shape record has no fields.
+    EmptyResultShape,
+    /// Exactly one of FIND's paired source/sink endpoints is present.
+    PartialGraphEndpoints,
+    /// A raw boolean literal would reparse as a value-wrapped boolean.
+    RawBoolLiteral,
+    /// A boolean grouping around a bare value would reparse as value grouping.
+    AmbiguousBoolParen,
+    /// Rendered text is not admitted by the current parser and standard cap.
+    ParseRejected,
+    /// Re-parsing and formatting changes the emitted canonical text.
+    NonCanonical,
+}
+
+impl FormatErrorCodeV1 {
+    /// Stable diagnostic code.
+    #[must_use]
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::JoinRightNotSource => "surface.format.join_right_not_source",
+            Self::EmptyResultShape => "surface.format.empty_result_shape",
+            Self::PartialGraphEndpoints => "surface.format.partial_graph_endpoints",
+            Self::RawBoolLiteral => "surface.format.raw_bool_literal",
+            Self::AmbiguousBoolParen => "surface.format.ambiguous_bool_paren",
+            Self::ParseRejected => "surface.format.parse_rejected",
+            Self::NonCanonical => "surface.format.noncanonical",
+        }
+    }
+}
+
+/// Checked-format rejection. `span` belongs to the caller's raw HIR; an
+/// optional parse diagnostic retains the exact span in the rendered text.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FormatDiagnosticV1 {
+    /// Stable format rejection class.
+    pub code: FormatErrorCodeV1,
+    /// Location of the raw HIR node that could not be represented.
+    pub span: SpanV1,
+    /// Human-readable explanation.
+    pub message: String,
+    /// Exact parser rejection on the rendered text, when applicable.
+    pub parse: Option<ParseDiagnosticV1>,
+}
+
+impl FormatDiagnosticV1 {
+    fn unrepresentable(code: FormatErrorCodeV1, span: SpanV1, message: &'static str) -> Self {
+        Self {
+            code,
+            span,
+            message: message.to_owned(),
+            parse: None,
+        }
+    }
+
+    /// Stable diagnostic code.
+    #[must_use]
+    pub const fn code_str(&self) -> &'static str {
+        self.code.code()
+    }
+}
+
+impl fmt::Display for FormatDiagnosticV1 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.code.code(), self.message)
+    }
+}
+
+impl std::error::Error for FormatDiagnosticV1 {}
 
 /// Render an ordered list of top-level items to a canonical v3 document.
 ///
@@ -70,6 +152,278 @@ pub fn format_item(item: &ProgramItemHirV1) -> String {
         ProgramItemHirV1::Composition(c) => format_composition(c),
         ProgramItemHirV1::Meta(m) => format_meta(m),
     }
+}
+
+/// Render caller-built HIR only when the current grammar can read the emitted
+/// item back under its standard parse budget. This checked boundary rejects
+/// known lossy raw carriers before rendering and also requires a canonical
+/// parse/format fixed point. Parser-produced HIR may continue to use the
+/// cheaper infallible [`format_item`] path.
+pub fn try_format_item(item: &ProgramItemHirV1) -> Result<String, FormatDiagnosticV1> {
+    validate_raw_representability(item)?;
+    let rendered = format_item(item);
+    let reparsed =
+        parse_program(&rendered, &HirBuilderV1::new()).map_err(|parse| FormatDiagnosticV1 {
+            code: FormatErrorCodeV1::ParseRejected,
+            span: item.span(),
+            message: parse.to_string(),
+            parse: Some(parse),
+        })?;
+    let reparsed = reparsed.item.into_program_item();
+    if format_item(&reparsed) != rendered || !preserves_loss_sensitive_payload(item, &reparsed) {
+        return Err(FormatDiagnosticV1::unrepresentable(
+            FormatErrorCodeV1::NonCanonical,
+            item.span(),
+            "rendered raw HIR changes canonical text or a loss-sensitive payload",
+        ));
+    }
+    Ok(rendered)
+}
+
+fn same_ref_list(left: &[GraphRefV1], right: &[GraphRefV1]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .zip(right)
+            .all(|(left, right)| left.name == right.name)
+}
+
+fn same_ref_option(left: &Option<GraphRefV1>, right: &Option<GraphRefV1>) -> bool {
+    left.as_ref().map(|reference| reference.name.as_str())
+        == right.as_ref().map(|reference| reference.name.as_str())
+}
+
+fn same_graph_payload(left: &GraphQueryHirV1, right: &GraphQueryHirV1) -> bool {
+    let a = &left.endpoints;
+    let b = &right.endpoints;
+    let x = &left.constraints;
+    let y = &right.constraints;
+    left.kind == right.kind
+        && same_ref_option(&a.source, &b.source)
+        && same_ref_option(&a.sink, &b.sink)
+        && same_ref_option(&a.anchor, &b.anchor)
+        && same_ref_option(&a.reference, &b.reference)
+        && same_ref_option(&a.pointee, &b.pointee)
+        && same_ref_option(&a.callable, &b.callable)
+        && same_ref_list(&x.via, &y.via)
+        && same_ref_list(&x.through, &y.through)
+        && same_ref_list(&x.sanitizers, &y.sanitizers)
+        && same_ref_option(&x.scope, &y.scope)
+        && same_ref_option(&x.window, &y.window)
+        && same_ref_option(&x.frontier, &y.frontier)
+        && x.direction
+            .as_ref()
+            .map(|direction| direction.keyword.as_str())
+            == y.direction
+                .as_ref()
+                .map(|direction| direction.keyword.as_str())
+        && x.depth == y.depth
+        && x.summary_facets == y.summary_facets
+}
+
+fn same_legality_graph(left: &LegalityHirV1, right: &LegalityHirV1) -> bool {
+    match (&left.semantic_confirm, &right.semantic_confirm) {
+        (Some(left), Some(right)) => same_graph_payload(left, right),
+        (None, None) => true,
+        (Some(_), None) | (None, Some(_)) => false,
+    }
+}
+
+// Some raw string-list carriers can silently split at commas while retaining
+// identical rendered text. Compare those payloads after reparse; ids and spans
+// are intentionally irrelevant to surface equivalence.
+fn preserves_loss_sensitive_payload(left: &ProgramItemHirV1, right: &ProgramItemHirV1) -> bool {
+    match (left, right) {
+        (ProgramItemHirV1::GraphQuery(a), ProgramItemHirV1::GraphQuery(b)) => {
+            same_graph_payload(a, b)
+        }
+        (ProgramItemHirV1::Legality(a), ProgramItemHirV1::Legality(b)) => same_legality_graph(a, b),
+        (ProgramItemHirV1::CatalogDecl(a), ProgramItemHirV1::CatalogDecl(b)) => {
+            match (&a.payload, &b.payload) {
+                (
+                    CatalogPayloadV1::Profile {
+                        capabilities: left, ..
+                    },
+                    CatalogPayloadV1::Profile {
+                        capabilities: right,
+                        ..
+                    },
+                ) => same_ref_list(left, right),
+                (
+                    CatalogPayloadV1::Gate { checks: left, .. },
+                    CatalogPayloadV1::Gate { checks: right, .. },
+                ) => same_ref_list(left, right),
+                _ => true,
+            }
+        }
+        (ProgramItemHirV1::Composition(a), ProgramItemHirV1::Composition(b)) => {
+            a.bindings.len() == b.bindings.len()
+                && a.bindings.iter().zip(&b.bindings).all(|(left, right)| {
+                    match (&left.producer, &right.producer) {
+                        (
+                            CompositionProducerV1::GraphQuery(left),
+                            CompositionProducerV1::GraphQuery(right),
+                        ) => same_graph_payload(left, right),
+                        _ => true,
+                    }
+                })
+                && match (&a.body, &b.body) {
+                    (CompositionBodyV1::GraphQuery(left), CompositionBodyV1::GraphQuery(right)) => {
+                        same_graph_payload(left, right)
+                    }
+                    (CompositionBodyV1::Legality(left), CompositionBodyV1::Legality(right)) => {
+                        same_legality_graph(left, right)
+                    }
+                    _ => true,
+                }
+        }
+        _ => true,
+    }
+}
+
+// Borrowed, iterative traversal: the checked API must not reintroduce a
+// relation/bool/EXISTS stack overflow before the parser's depth cap can reject.
+fn validate_raw_representability(item: &ProgramItemHirV1) -> Result<(), FormatDiagnosticV1> {
+    enum Frame<'a> {
+        Query(&'a QueryHirV1),
+        Relation(&'a RelationExprHirV1),
+        Bool(&'a BoolExprHirV1),
+        Shape(&'a ResultShapeHirV1),
+        Graph(&'a GraphQueryHirV1),
+        Legality(&'a LegalityHirV1),
+    }
+
+    let mut stack = Vec::new();
+    match item {
+        ProgramItemHirV1::Query(query) => stack.push(Frame::Query(query)),
+        ProgramItemHirV1::Rule(rule) => stack.push(Frame::Bool(&rule.body)),
+        ProgramItemHirV1::GraphQuery(graph) => stack.push(Frame::Graph(graph)),
+        ProgramItemHirV1::Legality(legality) => stack.push(Frame::Legality(legality)),
+        ProgramItemHirV1::CatalogDecl(decl) => {
+            if let CatalogPayloadV1::View(ViewBodyV1::Inline(query)) = &decl.payload {
+                stack.push(Frame::Query(query));
+            }
+        }
+        ProgramItemHirV1::Composition(composition) => {
+            for binding in &composition.bindings {
+                match &binding.producer {
+                    CompositionProducerV1::Query(query) => stack.push(Frame::Query(query)),
+                    CompositionProducerV1::GraphQuery(graph) => stack.push(Frame::Graph(graph)),
+                    CompositionProducerV1::Sample(_) => {}
+                }
+            }
+            match &composition.body {
+                CompositionBodyV1::Query(query) => stack.push(Frame::Query(query)),
+                CompositionBodyV1::GraphQuery(graph) => stack.push(Frame::Graph(graph)),
+                CompositionBodyV1::Legality(legality) => stack.push(Frame::Legality(legality)),
+                CompositionBodyV1::Explain(_) => {}
+            }
+        }
+        ProgramItemHirV1::Decl(_)
+        | ProgramItemHirV1::Presentation(_)
+        | ProgramItemHirV1::Meta(_) => {}
+    }
+    while let Some(frame) = stack.pop() {
+        match frame {
+            Frame::Query(query) => {
+                stack.push(Frame::Relation(&query.body));
+                if let Some(shape) = &query.result_shape {
+                    stack.push(Frame::Shape(shape));
+                }
+            }
+            Frame::Relation(relation) => match &relation.kind {
+                RelationExprKindV1::Source(_) => {}
+                RelationExprKindV1::Project(project) => stack.push(Frame::Relation(&project.input)),
+                RelationExprKindV1::Filter(filter) => {
+                    stack.push(Frame::Relation(&filter.input));
+                    stack.push(Frame::Bool(&filter.predicate));
+                }
+                RelationExprKindV1::Join(join) => {
+                    let (left, right, on) = match join {
+                        JoinHirV1::Inner { left, right, on } => (left, right, Some(on)),
+                        JoinHirV1::Cross { left, right } => (left, right, None),
+                    };
+                    if !matches!(right.kind, RelationExprKindV1::Source(_)) {
+                        return Err(FormatDiagnosticV1::unrepresentable(
+                            FormatErrorCodeV1::JoinRightNotSource,
+                            right.span,
+                            "join RHS must be a relation source in the v3 grammar",
+                        ));
+                    }
+                    stack.push(Frame::Relation(left));
+                    if let Some(predicate) = on {
+                        stack.push(Frame::Bool(predicate));
+                    }
+                }
+                RelationExprKindV1::GroupBy(group) => stack.push(Frame::Relation(&group.input)),
+                RelationExprKindV1::OrderBy(order) => stack.push(Frame::Relation(&order.input)),
+            },
+            Frame::Bool(boolean) => match &boolean.kind {
+                BoolExprKindV1::Literal(_) => {
+                    return Err(FormatDiagnosticV1::unrepresentable(
+                        FormatErrorCodeV1::RawBoolLiteral,
+                        boolean.span,
+                        "raw boolean literal reparses as a value-wrapped boolean",
+                    ));
+                }
+                BoolExprKindV1::And(binary) | BoolExprKindV1::Or(binary) => {
+                    stack.push(Frame::Bool(&binary.lhs));
+                    stack.push(Frame::Bool(&binary.rhs));
+                }
+                BoolExprKindV1::Not(inner) => {
+                    stack.push(Frame::Bool(inner));
+                }
+                BoolExprKindV1::Paren(inner) => {
+                    if matches!(&inner.kind, BoolExprKindV1::Value(_)) {
+                        return Err(FormatDiagnosticV1::unrepresentable(
+                            FormatErrorCodeV1::AmbiguousBoolParen,
+                            boolean.span,
+                            "boolean grouping around a bare value reparses as value grouping",
+                        ));
+                    }
+                    stack.push(Frame::Bool(inner));
+                }
+                BoolExprKindV1::LogicalQuantifier(quantifier) => {
+                    stack.push(Frame::Bool(&quantifier.body));
+                }
+                BoolExprKindV1::RelationExists(exists) => {
+                    stack.push(Frame::Relation(&exists.relation));
+                }
+                BoolExprKindV1::Value(_) | BoolExprKindV1::Compare(_) => {}
+            },
+            Frame::Shape(shape) => match &shape.kind {
+                ResultShapeKindV1::Record(record) => {
+                    if record.fields.is_empty() {
+                        return Err(FormatDiagnosticV1::unrepresentable(
+                            FormatErrorCodeV1::EmptyResultShape,
+                            shape.span,
+                            "result-shape record must declare at least one field",
+                        ));
+                    }
+                    for field in &record.fields {
+                        stack.push(Frame::Shape(&field.shape));
+                    }
+                }
+                ResultShapeKindV1::List(list) => stack.push(Frame::Shape(&list.element)),
+                ResultShapeKindV1::Leaf(_) => {}
+            },
+            Frame::Graph(graph) => {
+                if graph.endpoints.source.is_some() != graph.endpoints.sink.is_some() {
+                    return Err(FormatDiagnosticV1::unrepresentable(
+                        FormatErrorCodeV1::PartialGraphEndpoints,
+                        graph.span,
+                        "source and sink endpoints must be rendered as a pair",
+                    ));
+                }
+            }
+            Frame::Legality(legality) => {
+                if let Some(graph) = &legality.semantic_confirm {
+                    stack.push(Frame::Graph(graph));
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 // ---- query -----------------------------------------------------------------
