@@ -91,7 +91,10 @@ fn file_ingress_enforces_exact_utf8_source_budget() {
 
 /// CLI-02: the shared trim-empty guard fails closed through BOTH ingress
 /// modes. Each case asserts exit 2, empty stdout, error class `usage`, the
-/// exact message, and exactly one usage block.
+/// exact message, and exactly one usage block. The positive file-ingress
+/// neighbor is `v3_cli_fmt_idempotence.rs::shipped_examples_pass_cli_file_frontdoors_v1`:
+/// it runs `query --file` for every shipped example and checks incomplete
+/// analysis with one retained item.
 #[test]
 fn empty_inputs_reject_at_the_shared_ingress_guard() {
     let empty_file = TempFileV1::new("zero-byte", b"");
@@ -128,15 +131,4 @@ fn empty_inputs_reject_at_the_shared_ingress_guard() {
             "exactly one usage block: {argv:?}\n{stderr}"
         );
     }
-}
-
-/// CLI-02 file positive neighbor: a non-empty file continues past usage
-/// validation into analysis. The inline positive is covered by
-/// `query_reports_incomplete_without_fabricating_a_plan`.
-#[test]
-fn non_empty_file_input_passes_the_shared_ingress_guard() {
-    let file = TempFileV1::new("non-empty", b"show capabilities");
-    let filed = run_cli_argv_v1(&["query", "--file", file.text()]);
-    assert_eq!(filed.status.code(), Some(1));
-    assert!(cli_stdout_v1(&filed).contains("analysis.status=incomplete"));
 }

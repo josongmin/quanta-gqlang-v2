@@ -515,10 +515,8 @@ fn fifty_thousand_deep_chain_step_charge_is_exact_and_bounded() {
     }
     let chain = RecursiveProgramV1::from_rules(rules);
 
-    assert!(
-        stratify(&chain, &receipt(50_000, 49_999, 199_998)).is_ok(),
-        "the exact step charge admits"
-    );
+    let proof: StratificationProofV1 =
+        stratify(&chain, &receipt(50_000, 49_999, 199_998)).expect("the exact step charge admits");
     let error =
         stratify(&chain, &receipt(50_000, 49_999, 199_997)).expect_err("one step less rejects");
     match error {
@@ -536,7 +534,5 @@ fn fifty_thousand_deep_chain_step_charge_is_exact_and_bounded() {
         }
         other => panic!("expected a step-budget rejection, got {other:?}"),
     }
-    let proof: StratificationProofV1 = stratify(&chain, &receipt(50_000, 49_999, 199_998))
-        .expect("the exact charge admits a second time");
     assert_eq!(proof.components().len(), DEPTH);
 }
