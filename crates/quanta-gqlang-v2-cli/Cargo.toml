@@ -18,6 +18,7 @@ name = "quanta-gqlang-v2-cli"
 path = "src/main.rs"
 
 [dependencies]
+libc                               = "=0.2.186"
 quanta-gqlang-v2-frontend-contract = { version = "0.1.0", path = "../quanta-gqlang-v2-frontend-contract" }
 
 [lints]

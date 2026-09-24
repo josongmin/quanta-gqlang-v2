@@ -5,6 +5,8 @@ use quanta_gqlang_v2_frontend_contract::{
     FrontendTransactionErrorV2, PlannedItemV2, SemanticPlanV2,
 };
 
+use crate::line_value::encode_line_value_v1;
+
 /// Render one open-analysis document without re-deriving frontend semantics.
 #[must_use]
 pub fn render_analysis_document_v2(document: &AnalysisDocumentV2) -> String {
@@ -98,7 +100,10 @@ pub fn render_transaction_error_v2(error: &FrontendTransactionErrorV2) -> String
             "analysis.status=error".to_owned(),
             "frontend.error.kind=authority".to_owned(),
             format!("frontend.error.code={}", error.code()),
-            format!("frontend.error.message={}", error.message()),
+            format!(
+                "frontend.error.message={}",
+                encode_line_value_v1(error.message())
+            ),
         ]
         .join("\n"),
         FrontendTransactionErrorV2::Document(failure) => render_failure_v2(failure),
@@ -136,6 +141,9 @@ fn render_diagnostic_v2(
             "{prefix}[{index}].span={}..{}",
             location.span.start, location.span.end
         ),
-        format!("{prefix}[{index}].message={}", diagnostic.message()),
+        format!(
+            "{prefix}[{index}].message={}",
+            encode_line_value_v1(diagnostic.message())
+        ),
     ]
 }

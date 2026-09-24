@@ -5,6 +5,7 @@ use quanta_gqlang_v2_frontend_contract::{
     OpenAnalysisAuthorityV2, SourceIdV2,
 };
 
+use crate::line_value::encode_line_value_v1;
 use crate::v3_plan::{render_analysis_document_v2, render_transaction_error_v2};
 
 /// Query output and its process status.
@@ -21,7 +22,7 @@ pub fn run(input: &str) -> Result<QueryOutputV2, String> {
         format!(
             "frontend.error.code={}\nfrontend.error.message={}",
             error.code(),
-            error.message()
+            encode_line_value_v1(error.message())
         )
     })?;
     let document = analyze_source_document_v2(SourceIdV2::from_raw(0), input, &authority)

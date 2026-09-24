@@ -84,17 +84,27 @@ fn format_query(q: &QueryHirV1) -> String {
 
 /// Render a relation as `<source> [| stage]*` WITHOUT the leading `from `.
 fn format_relation(rel: &RelationExprHirV1) -> String {
-    enum Frame<'a> {
-        Relation(&'a RelationExprHirV1),
-        Stage(&'a RelationExprHirV1),
-        JoinPredicate(&'a BoolExprHirV1),
-    }
-
     let mut out = String::new();
-    let mut stack = vec![Frame::Relation(rel)];
+    render_relation_bool(RenderFrame::Relation(rel), &mut out);
+    out
+}
+
+// Relation predicates may themselves contain relations through EXISTS. Both
+// node kinds must use the same work stack or a deep raw HIR can recurse across
+// otherwise iterative renderers.
+enum RenderFrame<'a> {
+    Relation(&'a RelationExprHirV1),
+    Stage(&'a RelationExprHirV1),
+    Bool(&'a BoolExprHirV1, u8, bool),
+    Text(&'a str),
+}
+
+fn render_relation_bool(initial: RenderFrame<'_>, out: &mut String) {
+    let mut stack = vec![initial];
     while let Some(frame) = stack.pop() {
         match frame {
-            Frame::Relation(node) => match &node.kind {
+            RenderFrame::Text(text) => out.push_str(text),
+            RenderFrame::Relation(node) => match &node.kind {
                 RelationExprKindV1::Source(source) => {
                     out.push_str(&source.name);
                     if let Some(alias) = &source.alias {
@@ -103,30 +113,30 @@ fn format_relation(rel: &RelationExprHirV1) -> String {
                     }
                 }
                 RelationExprKindV1::Project(project) => {
-                    stack.push(Frame::Stage(node));
-                    stack.push(Frame::Relation(&project.input));
+                    stack.push(RenderFrame::Stage(node));
+                    stack.push(RenderFrame::Relation(&project.input));
                 }
                 RelationExprKindV1::Filter(filter) => {
-                    stack.push(Frame::Stage(node));
-                    stack.push(Frame::Relation(&filter.input));
+                    stack.push(RenderFrame::Stage(node));
+                    stack.push(RenderFrame::Relation(&filter.input));
                 }
                 RelationExprKindV1::Join(join) => {
-                    stack.push(Frame::Stage(node));
+                    stack.push(RenderFrame::Stage(node));
                     let left = match join {
                         JoinHirV1::Inner { left, .. } | JoinHirV1::Cross { left, .. } => left,
                     };
-                    stack.push(Frame::Relation(left));
+                    stack.push(RenderFrame::Relation(left));
                 }
                 RelationExprKindV1::GroupBy(group) => {
-                    stack.push(Frame::Stage(node));
-                    stack.push(Frame::Relation(&group.input));
+                    stack.push(RenderFrame::Stage(node));
+                    stack.push(RenderFrame::Relation(&group.input));
                 }
                 RelationExprKindV1::OrderBy(order) => {
-                    stack.push(Frame::Stage(node));
-                    stack.push(Frame::Relation(&order.input));
+                    stack.push(RenderFrame::Stage(node));
+                    stack.push(RenderFrame::Relation(&order.input));
                 }
             },
-            Frame::Stage(node) => match &node.kind {
+            RenderFrame::Stage(node) => match &node.kind {
                 RelationExprKindV1::Source(_) => {}
                 RelationExprKindV1::Project(project) => {
                     out.push_str(" | project ");
@@ -139,16 +149,17 @@ fn format_relation(rel: &RelationExprHirV1) -> String {
                 }
                 RelationExprKindV1::Filter(filter) => {
                     out.push_str(" | where ");
-                    out.push_str(&format_bool(&filter.predicate));
+                    stack.push(RenderFrame::Bool(&filter.predicate, 0, false));
                 }
                 RelationExprKindV1::Join(JoinHirV1::Inner { right, on, .. }) => {
                     out.push_str(" | join ");
-                    stack.push(Frame::JoinPredicate(on));
-                    stack.push(Frame::Relation(right));
+                    stack.push(RenderFrame::Bool(on, 0, false));
+                    stack.push(RenderFrame::Text(" on "));
+                    stack.push(RenderFrame::Relation(right));
                 }
                 RelationExprKindV1::Join(JoinHirV1::Cross { right, .. }) => {
                     out.push_str(" | cross join ");
-                    stack.push(Frame::Relation(right));
+                    stack.push(RenderFrame::Relation(right));
                 }
                 RelationExprKindV1::GroupBy(group) => {
                     out.push_str(" | group by ");
@@ -174,13 +185,73 @@ fn format_relation(rel: &RelationExprHirV1) -> String {
                     }
                 }
             },
-            Frame::JoinPredicate(predicate) => {
-                out.push_str(" on ");
-                out.push_str(&format_bool(predicate));
+            RenderFrame::Bool(node, parent, right_child) => {
+                let precedence = bool_precedence(node);
+                if precedence < parent || (right_child && precedence == parent) {
+                    out.push('(');
+                    stack.push(RenderFrame::Text(")"));
+                }
+                match &node.kind {
+                    BoolExprKindV1::Literal(true) => out.push_str("true"),
+                    BoolExprKindV1::Literal(false) => out.push_str("false"),
+                    BoolExprKindV1::Value(value) => out.push_str(&format_value(value)),
+                    BoolExprKindV1::Compare(compare) => {
+                        out.push_str(&format_value(&compare.lhs));
+                        out.push(' ');
+                        out.push_str(&compare.op.symbol);
+                        out.push(' ');
+                        out.push_str(&format_value(&compare.rhs));
+                    }
+                    BoolExprKindV1::And(binary) => {
+                        stack.push(RenderFrame::Bool(&binary.rhs, precedence, true));
+                        stack.push(RenderFrame::Text(" and "));
+                        stack.push(RenderFrame::Bool(&binary.lhs, precedence, false));
+                    }
+                    BoolExprKindV1::Or(binary) => {
+                        stack.push(RenderFrame::Bool(&binary.rhs, precedence, true));
+                        stack.push(RenderFrame::Text(" or "));
+                        stack.push(RenderFrame::Bool(&binary.lhs, precedence, false));
+                    }
+                    BoolExprKindV1::Not(inner) => {
+                        out.push_str("not ");
+                        stack.push(RenderFrame::Bool(inner, precedence, false));
+                    }
+                    BoolExprKindV1::Paren(inner) => {
+                        out.push('(');
+                        stack.push(RenderFrame::Text(")"));
+                        stack.push(RenderFrame::Bool(inner, 0, false));
+                    }
+                    BoolExprKindV1::LogicalQuantifier(quantifier) => {
+                        out.push_str(match quantifier.kind {
+                            quanta_gqlang_v2_hir::LogicalQuantifierKindV1::Exists => "exists ",
+                            quanta_gqlang_v2_hir::LogicalQuantifierKindV1::Forall => "forall ",
+                        });
+                        for (index, binder) in quantifier.binders.as_slice().iter().enumerate() {
+                            if index > 0 {
+                                out.push_str(", ");
+                            }
+                            out.push_str(&binder.name);
+                        }
+                        out.push_str(" in (");
+                        stack.push(RenderFrame::Text(")"));
+                        stack.push(RenderFrame::Bool(&quantifier.body, 0, false));
+                    }
+                    BoolExprKindV1::RelationExists(exists) => {
+                        out.push_str(match exists.polarity {
+                            quanta_gqlang_v2_hir::RelationExistsPolarityV1::Exists => {
+                                "exists (from "
+                            }
+                            quanta_gqlang_v2_hir::RelationExistsPolarityV1::NotExists => {
+                                "not exists (from "
+                            }
+                        });
+                        stack.push(RenderFrame::Text(")"));
+                        stack.push(RenderFrame::Relation(&exists.relation));
+                    }
+                }
             }
         }
     }
-    out
 }
 
 fn format_projection_item(item: &quanta_gqlang_v2_hir::ProjectionItemV1) -> String {
@@ -351,7 +422,9 @@ fn format_literal(lit: &LiteralV1) -> String {
 }
 
 fn format_bool(pred: &BoolExprHirV1) -> String {
-    format_bool_prec(pred, 0, false)
+    let mut out = String::new();
+    render_relation_bool(RenderFrame::Bool(pred, 0, false), &mut out);
+    out
 }
 
 fn bool_precedence(pred: &BoolExprHirV1) -> u8 {
@@ -366,87 +439,6 @@ fn bool_precedence(pred: &BoolExprHirV1) -> u8 {
         | BoolExprKindV1::LogicalQuantifier(_)
         | BoolExprKindV1::RelationExists(_) => 40,
     }
-}
-
-fn format_bool_prec(pred: &BoolExprHirV1, parent: u8, right_child: bool) -> String {
-    enum Frame<'a> {
-        Bool(&'a BoolExprHirV1, u8, bool),
-        Text(&'a str),
-    }
-
-    let mut out = String::new();
-    let mut stack = vec![Frame::Bool(pred, parent, right_child)];
-    while let Some(frame) = stack.pop() {
-        match frame {
-            Frame::Text(text) => out.push_str(text),
-            Frame::Bool(node, parent, right_child) => {
-                let precedence = bool_precedence(node);
-                if precedence < parent || (right_child && precedence == parent) {
-                    out.push('(');
-                    stack.push(Frame::Text(")"));
-                }
-                match &node.kind {
-                    BoolExprKindV1::Literal(true) => out.push_str("true"),
-                    BoolExprKindV1::Literal(false) => out.push_str("false"),
-                    BoolExprKindV1::Value(value) => out.push_str(&format_value(value)),
-                    BoolExprKindV1::Compare(compare) => {
-                        out.push_str(&format_value(&compare.lhs));
-                        out.push(' ');
-                        out.push_str(&compare.op.symbol);
-                        out.push(' ');
-                        out.push_str(&format_value(&compare.rhs));
-                    }
-                    BoolExprKindV1::And(binary) => {
-                        stack.push(Frame::Bool(&binary.rhs, precedence, true));
-                        stack.push(Frame::Text(" and "));
-                        stack.push(Frame::Bool(&binary.lhs, precedence, false));
-                    }
-                    BoolExprKindV1::Or(binary) => {
-                        stack.push(Frame::Bool(&binary.rhs, precedence, true));
-                        stack.push(Frame::Text(" or "));
-                        stack.push(Frame::Bool(&binary.lhs, precedence, false));
-                    }
-                    BoolExprKindV1::Not(inner) => {
-                        out.push_str("not ");
-                        stack.push(Frame::Bool(inner, precedence, false));
-                    }
-                    BoolExprKindV1::Paren(inner) => {
-                        out.push('(');
-                        stack.push(Frame::Text(")"));
-                        stack.push(Frame::Bool(inner, 0, false));
-                    }
-                    BoolExprKindV1::LogicalQuantifier(quantifier) => {
-                        out.push_str(match quantifier.kind {
-                            quanta_gqlang_v2_hir::LogicalQuantifierKindV1::Exists => "exists ",
-                            quanta_gqlang_v2_hir::LogicalQuantifierKindV1::Forall => "forall ",
-                        });
-                        for (index, binder) in quantifier.binders.as_slice().iter().enumerate() {
-                            if index > 0 {
-                                out.push_str(", ");
-                            }
-                            out.push_str(&binder.name);
-                        }
-                        out.push_str(" in (");
-                        stack.push(Frame::Text(")"));
-                        stack.push(Frame::Bool(&quantifier.body, 0, false));
-                    }
-                    BoolExprKindV1::RelationExists(exists) => {
-                        out.push_str(match exists.polarity {
-                            quanta_gqlang_v2_hir::RelationExistsPolarityV1::Exists => {
-                                "exists (from "
-                            }
-                            quanta_gqlang_v2_hir::RelationExistsPolarityV1::NotExists => {
-                                "not exists (from "
-                            }
-                        });
-                        out.push_str(&format_relation(&exists.relation));
-                        out.push(')');
-                    }
-                }
-            }
-        }
-    }
-    out
 }
 
 fn escape_str(content: &str) -> String {

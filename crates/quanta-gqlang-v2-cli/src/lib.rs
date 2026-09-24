@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod line_value;
 pub mod v3_plan;
 
 /// Canonical CLI command kinds. Compatibility aliases (`v3-query`, `v3-fmt`)

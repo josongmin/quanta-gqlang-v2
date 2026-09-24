@@ -6,7 +6,7 @@
 
 mod support;
 
-use quanta_gqlang_v2_hir::{HirBuilderV1, ProgramItemHirV1, SpanV1};
+use quanta_gqlang_v2_hir::{HirBuilderV1, ProgramItemHirV1, RelationExistsPolarityV1, SpanV1};
 use quanta_gqlang_v2_surface::{
     format_document, format_item, parse_document, parse_program, SurfaceItemV1,
 };
@@ -70,6 +70,225 @@ fn deep_shape_formatter_is_stack_safe() {
     assert!(
         stdout.contains("test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured;"),
         "deep shape formatter child selected zero or multiple tests: {stdout}"
+    );
+}
+
+fn assert_deep_relation_child(test_name: &str, child_env: &str) {
+    let output = std::process::Command::new(std::env::current_exe().expect("test binary"))
+        .args(["--exact", test_name, "--nocapture"])
+        .env(child_env, "1")
+        .output()
+        .expect("child process");
+    assert!(
+        output.status.success(),
+        "{test_name} status: {}; stdout: {}; stderr: {}",
+        output.status,
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("running 1 test")
+            && stdout.contains("test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured;"),
+        "{test_name} selected zero or multiple tests: {stdout}"
+    );
+}
+
+fn assert_deep_relation_render(join: bool) {
+    const DEPTH: usize = 3_000;
+    const FILTER_PREFIX: &str = "from f | where exists (";
+    const JOIN_PREFIX: &str = "from l | join r on not exists (";
+
+    let builder = HirBuilderV1::new();
+    let span = SpanV1::new(0, 1);
+    let mut relation = builder.relation_source("leaf", span, None, span);
+    for _ in 0..DEPTH {
+        let polarity = if join {
+            RelationExistsPolarityV1::NotExists
+        } else {
+            RelationExistsPolarityV1::Exists
+        };
+        let predicate = builder.relation_exists(polarity, relation, span);
+        relation = if join {
+            builder.inner_join(
+                builder.relation_source("l", span, None, span),
+                builder.relation_source("r", span, None, span),
+                predicate,
+                span,
+            )
+        } else {
+            builder.relation_filter(
+                builder.relation_source("f", span, None, span),
+                predicate,
+                span,
+            )
+        };
+    }
+    let item = ProgramItemHirV1::from(builder.query(relation, None, span));
+    let rendered = format_item(&item);
+    // Raw HIR depth, rather than parser input, is the formatter's public boundary.
+    // Deep recursive destruction is owned by HIR and must not obscure this rail.
+    std::mem::forget(item);
+
+    let prefix = if join { JOIN_PREFIX } else { FILTER_PREFIX };
+    let suffix = format!("from leaf{}", ")".repeat(DEPTH));
+    let expected = format!("{}{suffix}", prefix.repeat(DEPTH));
+    assert_eq!(rendered.len(), expected.len());
+    assert!(rendered.starts_with(prefix));
+    assert!(rendered.ends_with(&suffix));
+    assert_eq!(rendered, expected);
+}
+
+#[test]
+fn deep_filter_exists_formatter_child() {
+    if std::env::var_os("QGLANG_DEEP_FILTER_FORMAT_CHILD").is_none() {
+        return;
+    }
+    std::thread::Builder::new()
+        .stack_size(128 * 1024)
+        .spawn(|| assert_deep_relation_render(false))
+        .expect("small-stack formatter thread")
+        .join()
+        .expect("small-stack formatter completed");
+}
+
+#[test]
+fn deep_filter_exists_formatter_is_stack_safe() {
+    assert_deep_relation_child(
+        "deep_filter_exists_formatter_child",
+        "QGLANG_DEEP_FILTER_FORMAT_CHILD",
+    );
+}
+
+#[test]
+fn deep_join_exists_formatter_child() {
+    if std::env::var_os("QGLANG_DEEP_JOIN_FORMAT_CHILD").is_none() {
+        return;
+    }
+    std::thread::Builder::new()
+        .stack_size(128 * 1024)
+        .spawn(|| assert_deep_relation_render(true))
+        .expect("small-stack formatter thread")
+        .join()
+        .expect("small-stack formatter completed");
+}
+
+#[test]
+fn deep_join_exists_formatter_is_stack_safe() {
+    assert_deep_relation_child(
+        "deep_join_exists_formatter_child",
+        "QGLANG_DEEP_JOIN_FORMAT_CHILD",
+    );
+}
+
+#[test]
+fn deep_mixed_relation_formatter_child() {
+    if std::env::var_os("QGLANG_DEEP_MIXED_FORMAT_CHILD").is_none() {
+        return;
+    }
+    std::thread::Builder::new()
+        .stack_size(128 * 1024)
+        .spawn(|| {
+            const DEPTH: usize = 3_000;
+            const FILTER_PREFIX: &str = "from f | where exists (";
+            const JOIN_PREFIX: &str = "from l | join r on not exists (";
+
+            let builder = HirBuilderV1::new();
+            let span = SpanV1::new(0, 1);
+            let mut relation = builder.relation_source("leaf", span, None, span);
+            for level in 0..DEPTH {
+                let is_join = level % 2 == 1;
+                let polarity = if is_join {
+                    RelationExistsPolarityV1::NotExists
+                } else {
+                    RelationExistsPolarityV1::Exists
+                };
+                let predicate = builder.relation_exists(polarity, relation, span);
+                relation = if is_join {
+                    builder.inner_join(
+                        builder.relation_source("l", span, None, span),
+                        builder.relation_source("r", span, None, span),
+                        predicate,
+                        span,
+                    )
+                } else {
+                    builder.relation_filter(
+                        builder.relation_source("f", span, None, span),
+                        predicate,
+                        span,
+                    )
+                };
+            }
+            let item = ProgramItemHirV1::from(builder.query(relation, None, span));
+            let rendered = format_item(&item);
+            std::mem::forget(item);
+
+            // The HIR is wrapped from the leaf outward; surface text emits in
+            // the opposite order. This oracle does not call a formatter helper.
+            let mut expected = String::new();
+            for level in (0..DEPTH).rev() {
+                expected.push_str(if level % 2 == 1 {
+                    JOIN_PREFIX
+                } else {
+                    FILTER_PREFIX
+                });
+            }
+            expected.push_str("from leaf");
+            expected.push_str(&")".repeat(DEPTH));
+            assert_eq!(rendered.len(), expected.len());
+            assert!(rendered.starts_with(JOIN_PREFIX));
+            assert!(rendered.ends_with(&format!("from leaf{}", ")".repeat(DEPTH))));
+            assert_eq!(rendered, expected);
+        })
+        .expect("small-stack formatter thread")
+        .join()
+        .expect("small-stack formatter completed");
+}
+
+#[test]
+fn deep_mixed_relation_formatter_is_stack_safe() {
+    assert_deep_relation_child(
+        "deep_mixed_relation_formatter_child",
+        "QGLANG_DEEP_MIXED_FORMAT_CHILD",
+    );
+}
+
+#[test]
+fn relation_exists_precedence_and_polarity_are_exact() {
+    let builder = HirBuilderV1::new();
+    let span = SpanV1::new(0, 1);
+    let inner = builder.relation_filter(
+        builder.relation_source("b", span, None, span),
+        builder.bool_literal(true, span),
+        span,
+    );
+    let exists = builder.relation_exists(RelationExistsPolarityV1::Exists, inner, span);
+    let not_exists = builder.relation_exists(
+        RelationExistsPolarityV1::NotExists,
+        builder.relation_source("c", span, None, span),
+        span,
+    );
+    let predicate = builder.or(
+        builder.and(
+            exists,
+            builder.bool_value(builder.symbol("x", span), span),
+            span,
+        ),
+        builder.not(not_exists, span),
+        span,
+    );
+    let item = ProgramItemHirV1::from(builder.query(
+        builder.relation_filter(
+            builder.relation_source("a", span, None, span),
+            predicate,
+            span,
+        ),
+        None,
+        span,
+    ));
+    assert_eq!(
+        format_item(&item),
+        "from a | where exists (from b | where true) and x or not not exists (from c)"
     );
 }
 

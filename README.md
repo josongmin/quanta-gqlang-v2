@@ -79,7 +79,11 @@ CLI front door:
 3. open-analysis example: `cargo run -p quanta-gqlang-v2-cli -- query --file examples/show/capabilities.qglang`
 4. `query` does not supply a host catalog or execute a plan; unresolved
    authority reports `analysis.status=incomplete` with exit code 1
-5. malformed argv, unreadable files, and command errors fail closed with non-zero exit
+5. malformed argv, unreadable files, and command errors fail closed with non-zero exit;
+   `--file` accepts only a regular file (including a symlink to one)
+6. untrusted CLI error and diagnostic values use one-line escaping for control
+   characters, backslashes, and Unicode line separators; field boundaries,
+   usage text, exit codes, and stdout/stderr channels remain unchanged
 
 Diagnostics stdio front door:
 

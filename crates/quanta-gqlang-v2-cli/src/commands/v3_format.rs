@@ -4,6 +4,7 @@ use quanta_gqlang_v2_frontend_contract::{
     format_source_document_v2, FrontendBudgetV2, FrontendFailureV2, SourceIdV2,
 };
 
+use crate::line_value::encode_line_value_v1;
 use crate::v3_plan::render_failure_v2;
 
 /// Format one source document under the canonical bounded profile.
@@ -12,7 +13,7 @@ pub fn run(input: &str) -> Result<String, String> {
         format!(
             "frontend.error.code={}\nfrontend.error.message={}",
             error.code(),
-            error.message()
+            encode_line_value_v1(error.message())
         )
     })?;
     format_source_document_v2(SourceIdV2::from_raw(0), input, &budget)

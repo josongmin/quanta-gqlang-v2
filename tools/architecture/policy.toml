@@ -88,6 +88,9 @@ build = []
 [external.normal."quanta-gqlang-v2-modules"]
 sha2 = { version = "=0.10.9", features = [] }
 
+[external.normal."quanta-gqlang-v2-cli"]
+libc = { version = "=0.2.186", features = [] }
+
 [external.normal."quanta-gqlang-v2-pipeline"]
 sha2 = { version = "=0.10.9", features = [] }
 

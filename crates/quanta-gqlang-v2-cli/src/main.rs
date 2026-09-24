@@ -4,9 +4,10 @@ use std::env;
 use std::ffi::OsString;
 use std::fs::File;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
+use quanta_gqlang_v2_cli::line_value::encode_line_value_v1;
 use quanta_gqlang_v2_cli::CliCommandKindV2;
 use quanta_gqlang_v2_cli::{cli_command_alternation_v1, cli_command_kind_v1, commands};
 use quanta_gqlang_v2_frontend_contract::FrontendBudgetV2;
@@ -55,7 +56,8 @@ impl CliErrorV2 {
     fn render(&self) -> String {
         let mut rendered = format!(
             "cli.error.class={}\ncli.error.message={}",
-            self.class, self.message
+            self.class,
+            encode_line_value_v1(&self.message)
         );
         if self.class == "usage" {
             rendered.push('\n');
@@ -80,7 +82,7 @@ fn run_cli() -> u8 {
         Err(error) => {
             eprintln!(
                 "cli.error.class=configuration\ncli.error.message={}",
-                error.message()
+                encode_line_value_v1(error.message())
             );
             return 1;
         }
@@ -159,8 +161,17 @@ fn parse_invocation(
 }
 
 fn read_input_file(path: PathBuf, max_source_bytes: u32) -> Result<String, CliErrorV2> {
-    let file = File::open(&path)
+    let file = open_input_file(&path)
         .map_err(|error| CliErrorV2::io(format!("failed to open {}: {error}", path.display())))?;
+    let file_type = file.metadata().map_err(|error| {
+        CliErrorV2::io(format!("failed to inspect {}: {error}", path.display()))
+    })?;
+    if !file_type.is_file() {
+        return Err(CliErrorV2::io(format!(
+            "input path is not a regular file: {}",
+            path.display()
+        )));
+    }
     let limit = u64::from(max_source_bytes) + 1;
     let mut bytes = Vec::new();
     file.take(limit)
@@ -171,6 +182,24 @@ fn read_input_file(path: PathBuf, max_source_bytes: u32) -> Result<String, CliEr
     }
     String::from_utf8(bytes)
         .map_err(|_invalid_utf8| CliErrorV2::usage("input file must be valid UTF-8"))
+}
+
+#[cfg(unix)]
+fn open_input_file(path: &Path) -> std::io::Result<File> {
+    use std::fs::OpenOptions;
+    use std::os::unix::fs::OpenOptionsExt;
+
+    // Opening a FIFO for reading must not wait for a writer. File type is
+    // checked on this descriptor, not on a separately inspected path.
+    OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NONBLOCK)
+        .open(path)
+}
+
+#[cfg(not(unix))]
+fn open_input_file(path: &Path) -> std::io::Result<File> {
+    File::open(path)
 }
 
 fn inline_input(
