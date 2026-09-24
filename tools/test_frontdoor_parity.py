@@ -45,8 +45,18 @@ def built_binaries(output: bytes) -> dict[str, Path]:
             and isinstance(target.get("name"), str)
             and isinstance(executable, str)
         ):
-            binaries[target["name"]] = Path(executable)
+            name = target["name"]
+            path = Path(executable)
+            if name in binaries:
+                raise ValueError(f"duplicate Cargo binary artifact: {name}")
+            if not path.is_absolute():
+                raise ValueError(f"relative Cargo binary artifact: {name}: {executable}")
+            binaries[name] = path
     return binaries
+
+
+def usable_binary(path: Path) -> bool:
+    return path.is_file() and not path.is_symlink()
 
 
 def parse_cli(executable: Path, source: str) -> dict[str, object]:
@@ -137,9 +147,9 @@ def main() -> int:
         return 1
     cli_binary = binaries[CLI_BINARY]
     stdio_binary = binaries[STDIO_BINARY]
-    if not cli_binary.is_file() or not stdio_binary.is_file():
+    if not usable_binary(cli_binary) or not usable_binary(stdio_binary):
         print(
-            "front-door parity Cargo artifact path is absent: "
+            "front-door parity Cargo artifact path is absent or redirected: "
             f"cli={cli_binary} stdio={stdio_binary}",
             file=sys.stderr,
         )
