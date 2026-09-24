@@ -382,7 +382,9 @@ fn checked_formatter_rejects_unrepresentable_raw_hir_before_silent_loss() {
         span,
     ));
     assert_eq!(
-        try_format_item(&join).unwrap_err().code,
+        try_format_item(&join)
+            .expect_err("staged join RHS rejects")
+            .code,
         FormatErrorCodeV1::JoinRightNotSource
     );
 
@@ -392,7 +394,9 @@ fn checked_formatter_rejects_unrepresentable_raw_hir_before_silent_loss() {
         span,
     ));
     assert_eq!(
-        try_format_item(&empty_shape).unwrap_err().code,
+        try_format_item(&empty_shape)
+            .expect_err("empty result shape rejects")
+            .code,
         FormatErrorCodeV1::EmptyResultShape
     );
 
@@ -409,7 +413,9 @@ fn checked_formatter_rejects_unrepresentable_raw_hir_before_silent_loss() {
         span,
     ));
     assert_eq!(
-        try_format_item(&partial_endpoints).unwrap_err().code,
+        try_format_item(&partial_endpoints)
+            .expect_err("partial graph endpoints reject")
+            .code,
         FormatErrorCodeV1::PartialGraphEndpoints
     );
 
@@ -421,7 +427,9 @@ fn checked_formatter_rejects_unrepresentable_raw_hir_before_silent_loss() {
         span,
     ));
     assert_eq!(
-        try_format_item(&raw_bool_literal).unwrap_err().code,
+        try_format_item(&raw_bool_literal)
+            .expect_err("raw boolean literal rejects")
+            .code,
         FormatErrorCodeV1::RawBoolLiteral
     );
 
@@ -433,7 +441,9 @@ fn checked_formatter_rejects_unrepresentable_raw_hir_before_silent_loss() {
         span,
     ));
     assert_eq!(
-        try_format_item(&ambiguous_bool_paren).unwrap_err().code,
+        try_format_item(&ambiguous_bool_paren)
+            .expect_err("ambiguous boolean grouping rejects")
+            .code,
         FormatErrorCodeV1::AmbiguousBoolParen
     );
 }
@@ -491,7 +501,9 @@ fn checked_formatter_detects_canonical_text_with_split_raw_list_payloads() {
             span,
         ));
         assert_eq!(
-            try_format_item(&graph).unwrap_err().code,
+            try_format_item(&graph)
+                .expect_err("split graph list payload rejects")
+                .code,
             FormatErrorCodeV1::NonCanonical,
             "parse/format fixed point alone cannot detect a split list element"
         );
@@ -507,7 +519,9 @@ fn checked_formatter_detects_canonical_text_with_split_raw_list_payloads() {
         span,
     ));
     assert_eq!(
-        try_format_item(&catalog).unwrap_err().code,
+        try_format_item(&catalog)
+            .expect_err("split catalog list payload rejects")
+            .code,
         FormatErrorCodeV1::NonCanonical
     );
 }
