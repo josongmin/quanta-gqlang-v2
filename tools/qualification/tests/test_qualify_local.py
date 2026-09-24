@@ -12,6 +12,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -150,6 +151,24 @@ class QualificationDriverTest(unittest.TestCase):
         with redirect_stdout(io.StringIO()):
             self.assertEqual(self.driver.run(), 0)
         self.assertEqual(git(self.driver.checkout, "rev-parse", "HEAD"), sha)
+
+    def test_ci_timeout_records_nonpassing_receipt_for_exact_source(self) -> None:
+        (self.repo / "rust-toolchain.toml").write_text(
+            '[toolchain]\nchannel = "1.81.0"\n', encoding="utf-8"
+        )
+        (self.repo / "Justfile").write_text("ci:\n    @sleep 2\n", encoding="utf-8")
+        run(["git", "add", "Justfile", "rust-toolchain.toml"], self.repo)
+        run(["git", "commit", "-qm", "fixture-timeout"], self.repo)
+        sha, tree = self.pin()
+        with patch("qualify_local.CI_TIMEOUT_S", 0.1), redirect_stdout(io.StringIO()):
+            self.assertEqual(self.driver.run(), 2)
+        receipt = json.loads(
+            (self.driver.root / sha / "receipt.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual((receipt["sha"], receipt["tree"], receipt["cmds"], receipt["exit"]),
+                         (sha, tree, ["just ci"], 2))
+        self.assertEqual(git(self.driver.checkout, "rev-parse", "HEAD"), sha)
+        self.assertEqual(git(self.repo, "status", "--porcelain"), "")
 
 
 if __name__ == "__main__":

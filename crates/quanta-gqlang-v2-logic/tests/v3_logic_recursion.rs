@@ -344,6 +344,137 @@ fn proof_is_invariant_under_rule_and_literal_permutation() {
     );
 }
 
+/// Exhaust every three-predicate graph with at most one positive or negated
+/// dependency per head (7 choices per head, 343 graphs). The oracle uses a
+/// reachability matrix and constraint relaxation, not Logic's Tarjan frames.
+/// It checks admission, component membership, recursion and minimum strata.
+#[test]
+fn small_rule_graphs_match_independent_reachability_oracle() {
+    const NAMES: [&str; 3] = ["a", "b", "c"];
+    #[derive(Clone)]
+    struct Edge {
+        head: usize,
+        target: usize,
+        negated: bool,
+        location: CheckedLocatedSpanV2,
+    }
+
+    for graph in 0usize..343 {
+        let locations = checked_locations(6);
+        let mut edges = Vec::new();
+        let mut rules = Vec::new();
+        for head in 0..3 {
+            let choice = (graph / 7usize.pow(u32::try_from(head).expect("small head"))) % 7;
+            if choice == 0 {
+                rules.push(seed(NAMES[head], &locations[head]));
+                continue;
+            }
+            let target = (choice - 1) % 3;
+            let negated_edge = choice > 3;
+            let location = locations[3 + head].clone();
+            let literal = if negated_edge {
+                negated(NAMES[target], &location)
+            } else {
+                positive(NAMES[target], &location)
+            };
+            rules.push(rule(NAMES[head], vec![literal], &locations[head]));
+            edges.push(Edge {
+                head,
+                target,
+                negated: negated_edge,
+                location,
+            });
+        }
+
+        let mut reachable = [[false; 3]; 3];
+        for (node, row) in reachable.iter_mut().enumerate() {
+            row[node] = true;
+        }
+        for edge in &edges {
+            reachable[edge.head][edge.target] = true;
+        }
+        for via in 0..3 {
+            for head in 0..3 {
+                for target in 0..3 {
+                    reachable[head][target] |= reachable[head][via] && reachable[via][target];
+                }
+            }
+        }
+        let mut assigned = [false; 3];
+        let mut components = Vec::<Vec<usize>>::new();
+        for head in 0..3 {
+            if assigned[head] {
+                continue;
+            }
+            let members: Vec<_> = (0..3)
+                .filter(|&candidate| reachable[head][candidate] && reachable[candidate][head])
+                .collect();
+            for &member in &members {
+                assigned[member] = true;
+            }
+            components.push(members);
+        }
+
+        let recursive_negation = edges
+            .iter()
+            .any(|edge| edge.negated && reachable[edge.target][edge.head]);
+        let actual = stratify(&RecursiveProgramV1::from_rules(rules), &generous());
+        if recursive_negation {
+            let Err(LogicDiagnosticV1::NegationCycle { offending_edge, .. }) = actual else {
+                panic!("graph {graph}: expected negation cycle, got {actual:?}");
+            };
+            assert!(
+                edges.iter().any(|edge| edge.negated
+                    && reachable[edge.target][edge.head]
+                    && edge.location == offending_edge),
+                "graph {graph}: offending edge was not in a negated cycle"
+            );
+            continue;
+        }
+
+        let proof = actual.unwrap_or_else(|error| panic!("graph {graph}: {error:?}"));
+        let expected_components: Vec<Vec<_>> = components
+            .iter()
+            .map(|members| members.iter().map(|&node| pred(NAMES[node])).collect())
+            .collect();
+        assert_eq!(
+            proof.components(),
+            expected_components,
+            "graph {graph}: SCCs"
+        );
+        for members in &components {
+            let recursive = members.len() > 1
+                || edges
+                    .iter()
+                    .any(|edge| edge.head == members[0] && edge.target == members[0]);
+            for &member in members {
+                assert_eq!(
+                    proof.is_recursive(&pred(NAMES[member])),
+                    recursive,
+                    "graph {graph}: recursive member {}",
+                    NAMES[member]
+                );
+            }
+        }
+
+        let mut strata = [0usize; 3];
+        for _ in 0..3 {
+            for edge in &edges {
+                let required = strata[edge.target] + usize::from(edge.negated);
+                strata[edge.head] = strata[edge.head].max(required);
+            }
+        }
+        for (node, expected) in strata.into_iter().enumerate() {
+            assert_eq!(
+                proof.stratum_of(&pred(NAMES[node])),
+                Some(expected),
+                "graph {graph}: stratum for {}",
+                NAMES[node]
+            );
+        }
+    }
+}
+
 // An empty program admits with an empty proof and zero strata; the projection
 // adapter, not this layer, owns the non-empty member requirement.
 #[test]

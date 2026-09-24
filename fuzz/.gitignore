@@ -1,0 +1,7 @@
+target/
+artifacts/
+coverage/
+corpus/surface_document/*
+!corpus/surface_document/select
+!corpus/surface_document/mixed
+!corpus/surface_document/reject

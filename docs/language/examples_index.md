@@ -44,3 +44,6 @@ Notes:
 3. experimental catalog/detail surfaces remain typed frontend examples only
 4. CLI `fmt --file` succeeds for these sources; CLI `query --file` uses open
    authority and reports `incomplete` with exit code 1 rather than executing
+5. conformance separately compiles the shipped select/basic, find/taint,
+   show/capabilities, and compare/semantic_delta files under a test-owned
+   closed authority; this proves selected frontend plans, not runtime results

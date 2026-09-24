@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import json
+import io
 import subprocess
 import tempfile
 import unittest
 from collections import defaultdict
+from contextlib import redirect_stderr
 import importlib.util
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -411,6 +414,19 @@ class ArchitectureCheckerTest(unittest.TestCase):
     def test_unknown_dependency_kind_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "unknown dependency kind future-kind"):
             architecture_checker.dependency_kind({"kind": "future-kind"})
+
+    def test_cargo_metadata_timeout_fails_closed(self) -> None:
+        stderr = io.StringIO()
+        with patch.object(
+            architecture_checker.subprocess,
+            "run",
+            side_effect=subprocess.TimeoutExpired(["cargo", "metadata"], 60),
+        ) as runner, redirect_stderr(stderr):
+            with self.assertRaises(SystemExit) as failure:
+                architecture_checker.cargo_metadata(ROOT)
+        self.assertEqual(failure.exception.code, 1)
+        self.assertIn("cargo metadata timed out after 60 s", stderr.getvalue())
+        self.assertEqual(runner.call_args.kwargs["timeout"], 60)
 
 
 if __name__ == "__main__":

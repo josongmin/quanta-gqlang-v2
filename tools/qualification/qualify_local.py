@@ -13,12 +13,17 @@ from __future__ import annotations
 import fcntl
 import json
 import os
-import subprocess
 import sys
 import tempfile
 import time
 from pathlib import Path
 from typing import Sequence
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
+
+GIT_TIMEOUT_S = 120
+CI_TIMEOUT_S = 1800
 
 
 class QualificationError(RuntimeError):
@@ -26,10 +31,10 @@ class QualificationError(RuntimeError):
 
 
 def command(args: Sequence[str], cwd: Path) -> str:
-    result = subprocess.run(
-        list(args), cwd=str(cwd), check=False, text=True,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-    )
+    try:
+        result = run_bounded(args, cwd=cwd, timeout_s=GIT_TIMEOUT_S, text=True, capture_output=True)
+    except ProcessTimeoutError as error:
+        raise QualificationError(str(error)) from error
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "").strip()
         raise QualificationError(
@@ -103,10 +108,13 @@ class QualificationDriver:
             raise QualificationError("managed checkout resolves to a different worktree")
         if git_common_dir(self.checkout) != git_common_dir(self.repo_root):
             raise QualificationError("managed checkout belongs to another repository")
-        branch = subprocess.run(
-            ("git", "symbolic-ref", "--quiet", "HEAD"), cwd=str(self.checkout),
-            check=False, capture_output=True,
-        )
+        try:
+            branch = run_bounded(
+                ("git", "symbolic-ref", "--quiet", "HEAD"),
+                cwd=self.checkout, timeout_s=GIT_TIMEOUT_S, capture_output=True,
+            )
+        except ProcessTimeoutError as error:
+            raise QualificationError(str(error)) from error
         if branch.returncode == 0:
             raise QualificationError("managed checkout is no longer detached")
         if branch.returncode != 1:
@@ -184,9 +192,13 @@ class QualificationDriver:
             for args in (("rustc", "--version"), ("cargo", "--version"), ("just", "--version")):
                 print(command(args, self.checkout), flush=True)
             start = time.monotonic()
-            result = subprocess.run(("just", "ci"), cwd=str(self.checkout), check=False)
+            try:
+                result = run_bounded(("just", "ci"), cwd=self.checkout, timeout_s=CI_TIMEOUT_S)
+                exit_code = result.returncode if result.returncode >= 0 else 128 - result.returncode
+            except ProcessTimeoutError as error:
+                print("qualify-local: " + str(error), file=sys.stderr, flush=True)
+                exit_code = 2
             duration_s = int(time.monotonic() - start)
-            exit_code = result.returncode if result.returncode >= 0 else 128 - result.returncode
             try:
                 self.verify_after_run(sha, tree)
             except QualificationError as error:

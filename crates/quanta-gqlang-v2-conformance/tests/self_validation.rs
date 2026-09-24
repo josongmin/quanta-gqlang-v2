@@ -297,6 +297,65 @@ fn every_family_compiles_through_the_facade_with_declared_disposition() {
     }
 }
 
+/// A selected acceptance subset reads the actual shipped files. The separate
+/// family registry checks every family, while these cases detect drift between
+/// published source bytes and closed-authority frontend behavior.
+#[test]
+fn selected_shipped_examples_compile_with_pinned_frontend_families() {
+    let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(std::path::Path::parent)
+        .expect("conformance crate is under crates/");
+    let authority = closed_authority();
+    for (index, (path, expected_kind, expected_family)) in [
+        (
+            "examples/select/basic.qglang",
+            "relation",
+            ExecutionFamilyV3::Relation,
+        ),
+        (
+            "examples/find/taint.qglang",
+            "graph",
+            ExecutionFamilyV3::Graph,
+        ),
+        (
+            "examples/show/capabilities.qglang",
+            "presentation",
+            ExecutionFamilyV3::Presentation,
+        ),
+        (
+            "examples/compare/semantic_delta.qglang",
+            "presentation",
+            ExecutionFamilyV3::Presentation,
+        ),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let source = std::fs::read_to_string(repo.join(path))
+            .unwrap_or_else(|error| panic!("{path}: read shipped source: {error}"));
+        let document = compile_source_document_v3(
+            SourceIdV2::from_raw(500 + u32::try_from(index).expect("small corpus")),
+            &source,
+            &authority,
+        )
+        .unwrap_or_else(|error| panic!("{path}: closed frontend rejected: {error:?}"));
+        assert_eq!(document.items().len(), 1, "{path}: one authored item");
+        let Some(CompiledItemV2::Planned(planned)) = document.items().first() else {
+            panic!("{path}: expected one planned item");
+        };
+        assert_eq!(planned_kind(planned), expected_kind, "{path}: planned kind");
+        let [execution_item] = document.execution().items() else {
+            panic!("{path}: expected one execution producer item");
+        };
+        assert_eq!(
+            execution_item.family(),
+            expected_family,
+            "{path}: V3 family"
+        );
+    }
+}
+
 fn assert_disposition(spec: RootFamilySpecV2, item: &CompiledItemV2) {
     match (spec.expected, item) {
         (

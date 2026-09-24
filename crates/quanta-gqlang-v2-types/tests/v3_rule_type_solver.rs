@@ -685,6 +685,158 @@ fn anchored_mutual_recursion_is_unique_and_input_permutation_stable() {
     assert_eq!(first.usage(), permuted.usage());
 }
 
+/// Three unary predicates form one equality cycle. A single integer comparison
+/// on any head must constrain all three; removing it leaves no unique closed
+/// assignment.
+fn three_rule_cycle_fixture(
+    anchor_head: Option<usize>,
+) -> (
+    HirDocumentV1,
+    Vec<RulePredicateInputV2>,
+    Vec<RuleSymbolInputV2>,
+    Vec<RuleCallInputV2>,
+) {
+    let b = HirBuilderV1::new();
+    let mut items = Vec::new();
+    let mut predicates = Vec::new();
+    let mut symbols = Vec::new();
+    let mut calls = Vec::new();
+    for (index, (name, target)) in [("a", "b"), ("b", "c"), ("c", "a")].into_iter().enumerate() {
+        let start = index * 70;
+        let head = b.symbol("x", span(start + 9, start + 10));
+        let head_id = head.id;
+        let arg = b.symbol("x", span(start + 32, start + 33));
+        let arg_id = arg.id;
+        let call = b.call(
+            target,
+            span(start + 30, start + 31),
+            CallArgsHirV1::try_new(vec![CallArgHirV1::Expr(arg)]).unwrap(),
+            span(start + 30, start + 34),
+        );
+        let call_id = call.id;
+        let call_body = b.bool_value(call, span(start + 30, start + 34));
+        let (body, anchor_id) = if anchor_head == Some(index) {
+            let anchor = b.symbol("x", span(start + 15, start + 16));
+            let anchor_id = anchor.id;
+            let compared = b.compare(
+                "=",
+                anchor,
+                b.int("1", span(start + 19, start + 20)),
+                span(start + 15, start + 20),
+            );
+            (
+                b.and(compared, call_body, span(start + 15, start + 34)),
+                Some(anchor_id),
+            )
+        } else {
+            (call_body, None)
+        };
+        let rule = b.rule(
+            name,
+            span(start + 5, start + 6),
+            head,
+            body,
+            span(start, start + 40),
+        );
+        let rule_id = rule.id;
+        items.push(ProgramItemHirV1::Rule(Box::new(rule)));
+        predicates.push(RulePredicateInputV2 {
+            rule_node: key(rule_id),
+            predicate_id: ResolvedPredicateIdV2::try_new(name).unwrap(),
+            head_binding: binding(rule_id),
+        });
+        for reference in [Some(head_id), Some(arg_id), anchor_id]
+            .into_iter()
+            .flatten()
+        {
+            symbols.push(RuleSymbolInputV2 {
+                reference: key(reference),
+                binding: binding(rule_id),
+            });
+        }
+        calls.push(RuleCallInputV2 {
+            call: key(call_id),
+            target: RuleCallableTargetV2::SourcePredicate(
+                ResolvedPredicateIdV2::try_new(target).unwrap(),
+            ),
+        });
+    }
+    (
+        HirDocumentV1 {
+            source_id: source(),
+            source_len: 256,
+            items,
+        },
+        predicates,
+        symbols,
+        calls,
+    )
+}
+
+#[test]
+fn three_rule_cycle_anchor_position_and_input_permutations_are_stable() {
+    let orders = [
+        [0, 1, 2],
+        [0, 2, 1],
+        [1, 0, 2],
+        [1, 2, 0],
+        [2, 0, 1],
+        [2, 1, 0],
+    ];
+    for anchor_head in [Some(0), Some(1), Some(2), None] {
+        let anchored = anchor_head.is_some();
+        let (document, predicates, symbols, calls) = three_rule_cycle_fixture(anchor_head);
+        assert_eq!(document.items.len(), 3);
+        let mut successes = 0;
+        let mut rejections = 0;
+        for (case, order) in orders.into_iter().enumerate() {
+            let mut permuted = document.clone();
+            permuted.items = order
+                .into_iter()
+                .map(|index| document.items.get(index).unwrap().clone())
+                .collect();
+            let mut predicates = predicates.clone();
+            let mut symbols = symbols.clone();
+            let mut calls = calls.clone();
+            predicates.rotate_left(case % 3);
+            let symbol_count = symbols.len();
+            symbols.rotate_left(case % symbol_count);
+            calls.rotate_left(case % 3);
+            if case % 2 == 1 {
+                predicates.reverse();
+                symbols.reverse();
+                calls.reverse();
+            }
+            let result = solve(&permuted, predicates, symbols, calls, roomy());
+            if anchored {
+                assert!(
+                    result.is_ok(),
+                    "anchor {anchor_head:?}, order {order:?}: {result:?}"
+                );
+                let proof = result.unwrap();
+                for name in ["a", "b", "c"] {
+                    let id = ResolvedPredicateIdV2::try_new(name).unwrap();
+                    assert_eq!(
+                        proof.predicate_type(&id),
+                        Some(&ValueTypeV1::int()),
+                        "anchor {anchor_head:?}, order {order:?}: {name}"
+                    );
+                }
+                successes += 1;
+            } else {
+                assert_eq!(
+                    result.unwrap_err().code(),
+                    "types.unanchored_recursive_rule",
+                    "anchor {anchor_head:?}, order {order:?}"
+                );
+                rejections += 1;
+            }
+        }
+        assert_eq!(successes, if anchored { 6 } else { 0 });
+        assert_eq!(rejections, if anchored { 0 } else { 6 });
+    }
+}
+
 #[test]
 fn unanchored_mutual_recursion_rejects_as_recursive_not_default() {
     let (doc, predicates, symbols, calls) = mutual_fixture(false);

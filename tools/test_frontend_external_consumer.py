@@ -67,6 +67,9 @@ import sys
 from pathlib import Path
 from typing import Dict, IO, List, Optional, Sequence, Tuple
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
+
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIR = REPOSITORY_ROOT / "tools" / "frontend_external_consumer"
 NEGATIVES_DIR = FIXTURE_DIR / "negatives"
@@ -262,25 +265,30 @@ def write_bytes_if_changed(path: Path, content: bytes) -> None:
 
 def run(command: Sequence[str], cwd: Path, env: Dict[str, str]) -> subprocess.CompletedProcess:
     try:
-        return subprocess.run(
-            list(command),
-            cwd=str(cwd),
+        return run_bounded(
+            command,
+            cwd=cwd,
             env=env,
-            check=False,
             capture_output=True,
             text=True,
+            timeout_s=300 if command[0] == "cargo" else 30,
         )
+    except ProcessTimeoutError as error:
+        raise InfrastructureError(str(error)) from error
     except OSError as error:
         raise InfrastructureError("%s is not runnable: %s" % (command[0], error))
 
 
 def git_status_bytes() -> bytes:
-    result = subprocess.run(
-        ["git", "status", "--porcelain"],
-        cwd=str(REPOSITORY_ROOT),
-        check=False,
-        capture_output=True,
-    )
+    try:
+        result = run_bounded(
+            ["git", "status", "--porcelain"],
+            cwd=REPOSITORY_ROOT,
+            capture_output=True,
+            timeout_s=60,
+        )
+    except ProcessTimeoutError as error:
+        raise InfrastructureError(str(error)) from error
     if result.returncode != 0:
         raise InfrastructureError("git status --porcelain failed in the checkout")
     return result.stdout

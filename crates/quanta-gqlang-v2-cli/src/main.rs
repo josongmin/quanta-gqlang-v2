@@ -180,11 +180,11 @@ fn inline_input(
 ) -> Result<String, CliErrorV2> {
     let limit = usize::try_from(max_source_bytes).unwrap_or(usize::MAX);
     let mut output = String::new();
-    for raw in std::iter::once(first).chain(rest) {
+    for (index, raw) in std::iter::once(first).chain(rest).enumerate() {
         let part = raw
             .into_string()
             .map_err(|_invalid_utf8| CliErrorV2::usage("input must be valid UTF-8"))?;
-        let separator = usize::from(!output.is_empty());
+        let separator = usize::from(index > 0);
         if output
             .len()
             .saturating_add(separator)
@@ -240,6 +240,46 @@ mod tests {
         assert_eq!(error.class, "usage");
         assert_eq!(error.message, "input exceeds max_source_bytes");
         assert_eq!(error.exit_code, 2);
+    }
+
+    #[test]
+    fn leading_empty_inline_argument_preserves_its_separator_and_budget() {
+        let exact = parse_invocation(
+            [
+                OsString::from("query"),
+                OsString::from(""),
+                OsString::from("x"),
+            ]
+            .into_iter(),
+            2,
+        )
+        .expect("empty first argument and separator fit exactly");
+        assert_eq!(exact.input, " x");
+
+        let error = parse_invocation(
+            [
+                OsString::from("query"),
+                OsString::from(""),
+                OsString::from("x"),
+            ]
+            .into_iter(),
+            1,
+        )
+        .expect_err("separator exceeds one-byte source budget");
+        assert_eq!(error.message, "input exceeds max_source_bytes");
+
+        let repeated = parse_invocation(
+            [
+                OsString::from("query"),
+                OsString::from(""),
+                OsString::from(""),
+                OsString::from("x"),
+            ]
+            .into_iter(),
+            3,
+        )
+        .expect("two leading empty arguments retain both separators");
+        assert_eq!(repeated.input, "  x");
     }
 
     #[cfg(unix)]

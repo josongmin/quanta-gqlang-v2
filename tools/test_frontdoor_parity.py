@@ -4,23 +4,27 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CLI_BINARY = "quanta-gqlang-v2-cli"
 STDIO_BINARY = "quanta-gqlang-v2-diagnostics-stdio"
+BUILD_TIMEOUT_S = 600
+BINARY_TIMEOUT_S = 20
 
 
-def run(command: list[str], *, stdin: bytes | None = None) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run(
+def run(command: list[str], *, stdin: bytes | None = None, timeout_s: int = BINARY_TIMEOUT_S):
+    return run_bounded(
         command,
         cwd=ROOT,
-        input=stdin,
+        input_data=stdin,
         capture_output=True,
-        check=False,
+        timeout_s=timeout_s,
     )
 
 
@@ -114,7 +118,8 @@ def main() -> int:
             "quanta-gqlang-v2-diagnostics-stdio",
             "--bins",
             "--message-format=json-render-diagnostics",
-        ]
+        ],
+        timeout_s=BUILD_TIMEOUT_S,
     )
     if build.returncode != 0:
         sys.stderr.buffer.write(build.stdout)
@@ -187,4 +192,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except ProcessTimeoutError as error:
+        print(f"front-door parity infrastructure failure: {error}", file=sys.stderr)
+        raise SystemExit(2) from error

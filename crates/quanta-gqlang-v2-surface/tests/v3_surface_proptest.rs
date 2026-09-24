@@ -5,7 +5,9 @@
 
 use proptest::prelude::*;
 mod support;
-use quanta_gqlang_v2_hir::HirBuilderV1;
+use quanta_gqlang_v2_hir::{
+    check_document_v2, check_tree, HirBuilderV1, HirDocumentV1, HirRootRefV1, SourceIdV2,
+};
 use quanta_gqlang_v2_surface::{
     format_document, format_item, lex, parse_document, parse_expr, parse_predicate, parse_program,
     ParseDiagnosticV1, ParsedDocumentV1, ParsedProgramV1, SurfaceItemV1,
@@ -217,6 +219,43 @@ fn document_witness(
     }
 }
 
+fn diagnostic_invariants(
+    source: &str,
+    diagnostic: &ParseDiagnosticV1,
+) -> Result<(), proptest::test_runner::TestCaseError> {
+    let span = diagnostic.span;
+    prop_assert!(
+        span.start <= span.end && span.end <= source.len(),
+        "diagnostic span {:?} exceeds source byte length {}",
+        span,
+        source.len()
+    );
+    prop_assert!(source.is_char_boundary(span.start));
+    prop_assert!(source.is_char_boundary(span.end));
+    prop_assert_eq!(
+        diagnostic.resource.is_some(),
+        diagnostic.code == ParseErrorCodeV1::ResourceExhausted,
+        "resource code and payload disagree"
+    );
+    if let Some(resource) = diagnostic.resource {
+        prop_assert!(resource.observed > resource.limit);
+    }
+    Ok(())
+}
+
+#[test]
+fn structural_witness_detects_a_dropped_query_stage() {
+    let original = parse_program("from users | where active = true", &HirBuilderV1::new())
+        .expect("filtered query parses");
+    let dropped =
+        parse_program("from users", &HirBuilderV1::new()).expect("unfiltered query parses");
+    assert_ne!(
+        support::structural_witness(&original.item.to_program_item()),
+        support::structural_witness(&dropped.item.to_program_item()),
+        "the fuzz round-trip oracle must notice a lost relation stage"
+    );
+}
+
 // ---- 0. regression: deep nesting fails CLOSED (no stack-overflow abort) -----
 
 use quanta_gqlang_v2_surface::ParseErrorCodeV1;
@@ -355,6 +394,54 @@ proptest! {
     fn parse_predicate_never_panics_any(s in arb_any_string()) {
         let builder = HirBuilderV1::new();
         let _result = parse_predicate(&s, &builder);
+    }
+}
+
+// ---- 4. STRUCTURED RESULT INVARIANTS --------------------------------------
+
+proptest! {
+    #![proptest_config(cfg())]
+
+    #[test]
+    fn arbitrary_program_has_bounded_diagnostic_or_integrity_checked_hir(s in arb_program_source()) {
+        match parse_program(&s, &HirBuilderV1::new()) {
+            Ok(parsed) => {
+                prop_assert_eq!(parsed.source_len, s.len());
+                let item = parsed.item.to_program_item();
+                let checked = check_tree(HirRootRefV1::Item(&item), s.len());
+                prop_assert!(checked.is_ok(), "accepted source has invalid HIR: {s:?}: {checked:?}");
+            }
+            Err(diagnostic) => diagnostic_invariants(&s, &diagnostic)?,
+        }
+    }
+
+    #[test]
+    fn arbitrary_document_has_bounded_diagnostic_or_integrity_checked_hir(s in arb_document_source()) {
+        match parse_document(&s, &HirBuilderV1::new()) {
+            Ok(parsed) => {
+                let document = HirDocumentV1 {
+                    source_id: SourceIdV2::from_raw(0),
+                    source_len: s.len(),
+                    items: parsed.items.iter().map(SurfaceItemV1::to_program_item).collect(),
+                };
+                let checked = check_document_v2(&document);
+                prop_assert!(checked.is_ok(), "accepted document has invalid HIR: {s:?}: {checked:?}");
+            }
+            Err(diagnostic) => diagnostic_invariants(&s, &diagnostic)?,
+        }
+    }
+
+    #[test]
+    fn arbitrary_expression_and_predicate_diagnostics_are_source_bounded(s in arb_program_source()) {
+        if let Err(diagnostic) = parse_expr(&s, &HirBuilderV1::new()) {
+            diagnostic_invariants(&s, &diagnostic)?;
+        }
+        if let Err(diagnostic) = parse_predicate(&s, &HirBuilderV1::new()) {
+            diagnostic_invariants(&s, &diagnostic)?;
+        }
+        if let Err(diagnostic) = lex(&s) {
+            diagnostic_invariants(&s, &diagnostic)?;
+        }
     }
 }
 

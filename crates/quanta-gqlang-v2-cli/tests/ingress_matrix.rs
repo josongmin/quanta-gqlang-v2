@@ -203,3 +203,19 @@ fn formatter_failure_is_stderr_only_and_nonzero() {
     assert!(stderr.starts_with("cli.error.class=command\nanalysis.status=error\n"));
     assert!(stderr.contains("diagnostic[0].code=surface.parse."));
 }
+
+#[test]
+fn leading_empty_argv_preserves_the_source_bytes_seen_by_the_binary() {
+    let split = run_cli_argv_v1(&["query", "", "totally not a qglang root"]);
+    let joined = run_cli_argv_v1(&["query", " totally not a qglang root"]);
+    assert_eq!(split.status.code(), Some(1));
+    assert_eq!(joined.status.code(), Some(1));
+    assert_eq!(
+        split.stdout, joined.stdout,
+        "inline source must be byte-exact"
+    );
+    assert_eq!(
+        split.stderr, joined.stderr,
+        "diagnostic spans must be byte-exact"
+    );
+}

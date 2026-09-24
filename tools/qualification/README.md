@@ -15,6 +15,16 @@ acceleration, **not** proof from a prior SHA: `just ci` still executes on every
 qualification. Old `target/qualification/<sha>/build` directories from the
 former cold-cache driver are not automatically removed.
 
+Local gate subprocesses use bounded process groups. Front-door parity gives
+its Cargo build 600 seconds and each shipped binary 20 seconds; the external
+consumer gate gives Cargo calls 300 seconds and other calls 30 seconds.
+`qualify-local` gives `just ci` 1800 seconds. A timeout terminates the spawned
+process group, fails closed (qualification exit 2), and still records the
+post-run source check and receipt. These are hang limits, not performance
+targets or a substitute for recording actual gate durations.
+An interrupted gate also terminates and reaps its process group before the
+interrupt is propagated.
+
 For leaf timings on the next run, use `JUST_TIME=true just qualify-local`. Run
 `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/qualification/tests`
 for the quick custody and exact-receipt tests. The separate Cargo rebuild smoke

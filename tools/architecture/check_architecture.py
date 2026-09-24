@@ -101,21 +101,26 @@ def parse_args() -> argparse.Namespace:
 
 
 def cargo_metadata(root: Path) -> dict:
-    result = subprocess.run(
-        [
-            "cargo",
-            "metadata",
-            "--manifest-path",
-            str(root / "Cargo.toml"),
-            "--format-version",
-            "1",
-            "--no-deps",
-        ],
-        cwd=root,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            [
+                "cargo",
+                "metadata",
+                "--manifest-path",
+                str(root / "Cargo.toml"),
+                "--format-version",
+                "1",
+                "--no-deps",
+            ],
+            cwd=root,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except subprocess.TimeoutExpired:
+        print("architecture lint failed: cargo metadata timed out after 60 s", file=sys.stderr)
+        raise SystemExit(1) from None
     if result.returncode != 0:
         print("architecture lint failed: cargo metadata failed", file=sys.stderr)
         print(result.stderr.rstrip(), file=sys.stderr)
