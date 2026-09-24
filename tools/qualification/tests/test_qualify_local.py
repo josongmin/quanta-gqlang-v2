@@ -17,7 +17,9 @@ from unittest.mock import patch
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from qualify_local import QualificationDriver, QualificationError, git  # noqa: E402
+from qualify_local import (  # noqa: E402
+    QualificationDriver, QualificationError, git, valid_nextest_evidence,
+)
 
 
 def run(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -57,6 +59,39 @@ class QualificationDriverTest(unittest.TestCase):
 
     def pin(self) -> tuple[str, str]:
         return git(self.repo, "rev-parse", "HEAD"), git(self.repo, "rev-parse", "HEAD^{tree}")
+
+    def test_nextest_evidence_rejects_unsuccessful_or_malformed_custody(self) -> None:
+        run_id = "a" * 32
+        evidence = {
+            "schema": 1,
+            "qualification_run_id": run_id,
+            "discovered": 1,
+            "selected": 1,
+            "executed": 1,
+            "skipped_ignored": 0,
+            "leaked": 0,
+            "leaked_tests": [],
+            "unsuccessful": {},
+            "test_threads": 4,
+            "summary_run": 1,
+            "summary_passed": 1,
+            "summary_failed": 0,
+            "inventory_sha256": "b" * 64,
+            "events_sha256": "c" * 64,
+            "exit": 0,
+        }
+        self.assertTrue(valid_nextest_evidence(evidence, run_id))
+        for key, value in (
+            ("unsuccessful", {"fixture::bin$test": "failed"}),
+            ("leaked_tests", ["fixture::bin$test"]),
+            ("inventory_sha256", "not-a-digest"),
+            ("test_threads", 0),
+            ("summary_passed", 0),
+            ("summary_failed", 1),
+        ):
+            malformed = dict(evidence)
+            malformed[key] = value
+            self.assertFalse(valid_nextest_evidence(malformed, run_id), key)
 
     def prepare(self) -> None:
         self.driver.prepare_checkout(*self.pin())
@@ -132,6 +167,17 @@ class QualificationDriverTest(unittest.TestCase):
             with self.assertRaisesRegex(QualificationError, "another local qualification"):
                 self.driver.run()
         self.assertFalse(self.driver.checkout.exists())
+
+    def test_redirected_repository_target_is_rejected(self) -> None:
+        self.driver.root.rmdir()
+        target_root = self.repo / "target"
+        target_root.rmdir()
+        outside = Path(self.temp.name) / "outside"
+        outside.mkdir()
+        target_root.symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(QualificationError, "target root must not be a symlink"):
+            self.driver.run()
+        self.assertEqual(list(outside.iterdir()), [])
 
     def test_run_records_exact_pin_and_reuses_managed_checkout(self) -> None:
         (self.repo / "rust-toolchain.toml").write_text(

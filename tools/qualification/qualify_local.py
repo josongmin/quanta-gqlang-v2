@@ -125,14 +125,30 @@ def replay_log(path: Path) -> None:
 def valid_nextest_evidence(evidence: object, run_id: str) -> bool:
     if not isinstance(evidence, dict) or evidence.get("qualification_run_id") != run_id:
         return False
-    fields = ("discovered", "selected", "executed", "skipped_ignored", "leaked", "exit")
+    fields = (
+        "discovered", "selected", "executed", "skipped_ignored", "leaked", "exit",
+        "summary_run", "summary_passed", "summary_failed", "test_threads",
+    )
     if any(type(evidence.get(key)) is not int for key in fields):
+        return False
+    hashes = (evidence.get("inventory_sha256"), evidence.get("events_sha256"))
+    if evidence.get("schema") != 1 or any(
+        not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None
+        for value in hashes
+    ):
+        return False
+    if evidence.get("leaked_tests") != [] or evidence.get("unsuccessful") != {}:
+        return False
+    if evidence["test_threads"] <= 0:
         return False
     return (
         evidence["exit"] == 0 and evidence["selected"] > 0
         and evidence["selected"] == evidence["executed"]
         and evidence["discovered"] == evidence["executed"] + evidence["skipped_ignored"]
         and evidence["leaked"] == 0
+        and evidence["summary_run"] == evidence["selected"]
+        and evidence["summary_passed"] == evidence["executed"]
+        and evidence["summary_failed"] == 0
     )
 
 
@@ -144,6 +160,19 @@ class QualificationDriver:
         self.build_cache = self.root / "managed-build-cache"
         self.marker = self.root / "managed-checkout.json"
         self.lock_path = self.root / ".managed-checkout.lock"
+
+    def ensure_storage_root(self) -> None:
+        target_root = self.repo_root / "target"
+        if target_root.is_symlink():
+            raise QualificationError("repository target root must not be a symlink")
+        if target_root.exists() and not target_root.is_dir():
+            raise QualificationError("repository target root must be a directory")
+        target_root.mkdir(exist_ok=True)
+        if self.root.is_symlink():
+            raise QualificationError("qualification root must not be a symlink")
+        if self.root.exists() and not self.root.is_dir():
+            raise QualificationError("qualification root must be a directory")
+        self.root.mkdir(exist_ok=True)
 
     def marker_payload(self) -> dict:
         return {
@@ -227,9 +256,7 @@ class QualificationDriver:
             raise QualificationError("caller checkout changed during qualification")
 
     def run(self) -> int:
-        if self.root.is_symlink():
-            raise QualificationError("qualification root must not be a symlink")
-        self.root.mkdir(parents=True, exist_ok=True)
+        self.ensure_storage_root()
         if self.lock_path.is_symlink():
             raise QualificationError("managed checkout lock must not be a symlink")
         with self.lock_path.open("a+") as lock:

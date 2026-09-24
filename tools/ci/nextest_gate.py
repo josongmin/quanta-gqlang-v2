@@ -57,8 +57,9 @@ def inventory(document: dict) -> Tuple[Set[str], Set[str]]:
     return selected, skipped
 
 
-def terminal_events(output: str) -> Tuple[Set[str], Set[str]]:
+def terminal_events(output: str) -> Tuple[Set[str], Dict[str, str], Set[str]]:
     completed: Set[str] = set()
+    unsuccessful: Dict[str, str] = {}
     leaked: Set[str] = set()
     for line in output.splitlines():
         try:
@@ -73,20 +74,31 @@ def terminal_events(output: str) -> Tuple[Set[str], Set[str]]:
         if not isinstance(name, str) or name in completed:
             raise NextestEvidenceError("unnamed or duplicate terminal nextest event")
         completed.add(name)
+        if status != "ok":
+            unsuccessful[name] = status
         nextest = event.get("nextest") or {}
         if isinstance(nextest, dict) and (
             nextest.get("leaked") is True or nextest.get("status") == "leaky"
         ):
             leaked.add(name)
-    return completed, leaked
+    return completed, unsuccessful, leaked
 
 
-def summary_leaks(stderr: str) -> int:
+def summary_counts(stderr: str) -> Tuple[int, int, int, int]:
     summaries = [line for line in stderr.splitlines() if "Summary [" in line]
-    if len(summaries) != 1 or not re.search(r"\b\d+ tests? run:", summaries[0]):
+    if len(summaries) != 1:
         raise NextestEvidenceError("missing or duplicate nextest run summary")
-    match = re.search(r"\((\d+) leaky\)", summaries[0])
-    return int(match.group(1)) if match else 0
+    run = re.search(r"\b(\d+) tests? run:", summaries[0])
+    passed = re.search(r"\b(\d+) passed\b", summaries[0])
+    if run is None or passed is None:
+        raise NextestEvidenceError("invalid nextest run summary")
+    failed = re.search(r"\b(\d+) failed\b", summaries[0])
+    leaky = re.search(r"\((\d+) leaky\)", summaries[0])
+    return (
+        int(run.group(1)), int(passed.group(1)),
+        int(failed.group(1)) if failed else 0,
+        int(leaky.group(1)) if leaky else 0,
+    )
 
 
 def reported_leaks(stderr: str) -> Set[str]:
@@ -103,13 +115,18 @@ def reported_leaks(stderr: str) -> Set[str]:
 def reconcile(
     selected: Set[str], completed: Set[str], leaked: int,
     leaked_tests: Optional[Set[str]] = None,
+    unsuccessful: Optional[Dict[str, str]] = None,
 ) -> None:
     missing, extra = selected - completed, completed - selected
-    if missing or extra or leaked:
+    if missing or extra or leaked or unsuccessful:
         leaked_names = ",".join(sorted(leaked_tests or set())) or "unknown"
+        unsuccessful_names = ",".join(
+            "%s=%s" % item for item in sorted((unsuccessful or {}).items())
+        ) or "none"
         raise NextestEvidenceError(
-            "terminal events differ from inventory: missing=%d extra=%d leaked=%d names=%s" % (
-                len(missing), len(extra), leaked, leaked_names
+            "terminal events differ from inventory: missing=%d extra=%d leaked=%d "
+            "names=%s unsuccessful=%s" % (
+                len(missing), len(extra), leaked, leaked_names, unsuccessful_names
             )
         )
 
@@ -147,9 +164,25 @@ def main() -> int:
             cwd=ROOT, env=env, capture_output=True, text=True, timeout_s=600,
         )
         sys.stderr.write(result.stderr or "")
-        completed, leaked = terminal_events(result.stdout or "")
+        completed, unsuccessful, leaked = terminal_events(result.stdout or "")
         leaked.update(reported_leaks(result.stderr or ""))
-        leak_count = max(len(leaked), summary_leaks(result.stderr or ""))
+        summary_run, summary_passed, summary_failed, summary_leaked = summary_counts(
+            result.stderr or ""
+        )
+        if (
+            summary_run != len(selected)
+            or summary_run != len(completed)
+            or summary_passed != len(completed) - len(unsuccessful)
+            or summary_failed != len(unsuccessful)
+        ):
+            raise NextestEvidenceError(
+                "nextest summary differs from terminal events: "
+                "run=%d passed=%d failed=%d selected=%d completed=%d unsuccessful=%d" % (
+                    summary_run, summary_passed, summary_failed, len(selected),
+                    len(completed), len(unsuccessful),
+                )
+            )
+        leak_count = max(len(leaked), summary_leaked)
         evidence = {
             "schema": 1,
             "qualification_run_id": env.get("QGLANG_QUALIFICATION_RUN_ID"),
@@ -159,13 +192,17 @@ def main() -> int:
             "skipped_ignored": len(skipped),
             "leaked": leak_count,
             "leaked_tests": sorted(leaked),
+            "unsuccessful": dict(sorted(unsuccessful.items())),
             "test_threads": TEST_THREADS,
+            "summary_run": summary_run,
+            "summary_passed": summary_passed,
+            "summary_failed": summary_failed,
             "inventory_sha256": hashlib.sha256((listed.stdout or "").encode()).hexdigest(),
             "events_sha256": hashlib.sha256((result.stdout or "").encode()).hexdigest(),
             "exit": result.returncode,
         }
         write_evidence(evidence)
-        reconcile(selected, completed, leak_count, leaked)
+        reconcile(selected, completed, leak_count, leaked, unsuccessful)
         if result.returncode:
             return result.returncode
         print("nextest gate: discovered=%d executed=%d skipped=%d leaked=0" % (

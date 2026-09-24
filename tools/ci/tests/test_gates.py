@@ -126,13 +126,13 @@ class LocalGateTest(unittest.TestCase):
             json.dumps({"type": "test", "event": "started", "name": "fixture::fixture$ignored"}),
             json.dumps({"type": "test", "event": "ok", "name": "fixture::fixture$works"}),
         ))
-        self.assertEqual(nextest_gate.terminal_events(events), (selected, set()))
-        self.assertEqual(nextest_gate.summary_leaks(
+        self.assertEqual(nextest_gate.terminal_events(events), (selected, {}, set()))
+        self.assertEqual(nextest_gate.summary_counts(
             "Summary [ 0.1s] 1 test run: 1 passed, 1 skipped"
-        ), 0)
-        self.assertEqual(nextest_gate.summary_leaks(
+        ), (1, 1, 0, 0))
+        self.assertEqual(nextest_gate.summary_counts(
             "Summary [ 0.1s] 1 test run: 1 passed (1 leaky), 1 skipped"
-        ), 1)
+        ), (1, 1, 0, 1))
         self.assertEqual(
             nextest_gate.reported_leaks(
                 "        LEAK [   0.154s] fixture::binary module::test_name"
@@ -148,11 +148,65 @@ class LocalGateTest(unittest.TestCase):
             nextest_gate.reconcile(selected, selected, 1)
         with self.assertRaisesRegex(nextest_gate.NextestEvidenceError, "names=fixture::leaky"):
             nextest_gate.reconcile(selected, selected, 1, {"fixture::leaky"})
+        with self.assertRaisesRegex(nextest_gate.NextestEvidenceError, "unsuccessful=.*failed"):
+            nextest_gate.reconcile(
+                selected, selected, 0, unsuccessful={"fixture::fixture$works": "failed"}
+            )
         with self.assertRaisesRegex(nextest_gate.NextestEvidenceError, "duplicate terminal"):
             nextest_gate.terminal_events(events + "\n" + events.splitlines()[1])
         listing["test-count"] = 3
         with self.assertRaisesRegex(nextest_gate.NextestEvidenceError, "inconsistent"):
             nextest_gate.inventory(listing)
+
+    def test_nextest_rejects_failed_event_with_zero_child_exit(self) -> None:
+        listing = json.dumps({
+            "test-count": 1,
+            "rust-suites": {"binary-id": {
+                "package-name": "fixture", "binary-name": "fixture",
+                "testcases": {"fails": {
+                    "filter-match": {"status": "matches"},
+                }},
+            }},
+        })
+        failed = json.dumps({
+            "type": "test", "event": "failed", "name": "fixture::fixture$fails",
+        })
+        results = [
+            subprocess.CompletedProcess(["cargo", "nextest", "list"], 0, listing, ""),
+            subprocess.CompletedProcess(
+                ["cargo", "nextest", "run"], 0, failed,
+                "Summary [ 0.1s] 1 test run: 0 passed, 1 failed\n",
+            ),
+        ]
+        with patch.object(nextest_gate, "run_bounded", side_effect=results), \
+             patch.object(nextest_gate, "write_evidence"), \
+             redirect_stderr(io.StringIO()) as errors:
+            self.assertEqual(nextest_gate.main(), 2)
+        self.assertIn("unsuccessful=fixture::fixture$fails=failed", errors.getvalue())
+
+    def test_nextest_rejects_summary_that_contradicts_ok_events(self) -> None:
+        listing = json.dumps({
+            "test-count": 1,
+            "rust-suites": {"binary-id": {
+                "package-name": "fixture", "binary-name": "fixture",
+                "testcases": {"works": {"filter-match": {"status": "matches"}}},
+            }},
+        })
+        succeeded = json.dumps({
+            "type": "test", "event": "ok", "name": "fixture::fixture$works",
+        })
+        results = [
+            subprocess.CompletedProcess(["cargo", "nextest", "list"], 0, listing, ""),
+            subprocess.CompletedProcess(
+                ["cargo", "nextest", "run"], 0, succeeded,
+                "Summary [ 0.1s] 1 test run: 0 passed, 1 failed, 0 skipped\n",
+            ),
+        ]
+        with patch.object(nextest_gate, "run_bounded", side_effect=results), \
+             patch.object(nextest_gate, "write_evidence"), \
+             redirect_stderr(io.StringIO()) as errors:
+            self.assertEqual(nextest_gate.main(), 2)
+        self.assertIn("summary differs from terminal events", errors.getvalue())
 
 
 if __name__ == "__main__":
