@@ -42,6 +42,29 @@ fn builder() -> ClosedFrontendAuthorityBuilderV2 {
 }
 
 #[test]
+fn raw_rule_budget_is_independent_and_copied_to_receipt() {
+    let base = FrontendBudgetV2::standard_v2().expect("standard budget");
+    assert_eq!(
+        base.max_rule_program_rules(),
+        base.max_rule_graph_nodes() + base.max_rule_graph_edges()
+    );
+    let tuned = base
+        .clone()
+        .try_with_rule_program_rules(7)
+        .expect("positive raw-rule cap");
+    assert_eq!(tuned.max_rule_program_rules(), 7);
+    assert_eq!(tuned.downstream_receipt().max_rule_program_rules(), 7);
+    assert_eq!(tuned.max_rule_graph_nodes(), base.max_rule_graph_nodes());
+    assert_eq!(tuned.max_rule_graph_edges(), base.max_rule_graph_edges());
+    assert_eq!(
+        base.try_with_rule_program_rules(0)
+            .expect_err("zero raw-rule cap rejects")
+            .code(),
+        "frontend.invalid_budget"
+    );
+}
+
+#[test]
 fn facade_builder_seals_relation_and_graph_authority_in_one_registry() {
     let mut builder = builder();
     builder.add_relation(FrontendRelationInputV2 {

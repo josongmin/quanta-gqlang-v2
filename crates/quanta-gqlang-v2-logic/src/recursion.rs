@@ -31,6 +31,18 @@
 //!
 //! # Exact budget accounting
 //!
+//! Raw public programs are admitted against independent rule-count and body-
+//! literal limits before any member-map allocation. Resource refusal wins for
+//! an over-limit raw program; within both caps, non-local targets still reject
+//! before any graph vertex or edge charge.
+//!
+//! - `max_rule_program_rules`: one preflight admission for the complete raw
+//!   rule count, before building the member set. It is independent of the
+//!   number of distinct graph vertices.
+//! - `max_rule_graph_edges`: one preflight admission for each raw body literal,
+//!   before scanning target membership. Over-limit input is refused at the
+//!   first literal beyond the cap, even if that literal is non-local.
+//!
 //! Every graph fact and traversal step is charged BEFORE the work from the
 //! document's immutable [`DownstreamBudgetReceiptV2`]. The charge that would
 //! exceed a dimension rejects with
@@ -312,6 +324,29 @@ pub fn stratify(
     program: &RecursiveProgramV1,
     budget: &DownstreamBudgetReceiptV2,
 ) -> Result<StratificationProofV1, LogicDiagnosticV1> {
+    if let Some(rule) = program
+        .rules()
+        .get(usize::try_from(budget.max_rule_program_rules()).unwrap_or(usize::MAX))
+    {
+        return Err(LogicDiagnosticV1::RuleGraphBudgetExceeded {
+            dimension: RuleGraphBudgetDimensionV1::Rules,
+            limit: budget.max_rule_program_rules(),
+            span: rule.location().clone(),
+        });
+    }
+    let mut body_literals = 0_u32;
+    for rule in program.rules() {
+        for literal in rule.body() {
+            if body_literals >= budget.max_rule_graph_edges() {
+                return Err(LogicDiagnosticV1::RuleGraphBudgetExceeded {
+                    dimension: RuleGraphBudgetDimensionV1::Edges,
+                    limit: budget.max_rule_graph_edges(),
+                    span: literal.location().clone(),
+                });
+            }
+            body_literals += 1;
+        }
+    }
     let mut charge = RuleGraphChargeV1::new(budget);
     let graph = RuleGraphV1::build(program, &mut charge)?;
     let components = TarjanStateV1::run(&graph, &mut charge)?;

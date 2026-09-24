@@ -117,6 +117,8 @@ pub enum LogicDiagnosticV1 {
 /// Which immutable rule-graph budget dimension was exhausted.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RuleGraphBudgetDimensionV1 {
+    /// `max_rule_program_rules`, before graph projection.
+    Rules,
     /// `max_rule_graph_nodes`.
     Nodes,
     /// `max_rule_graph_edges`.
@@ -131,6 +133,7 @@ impl RuleGraphBudgetDimensionV1 {
     #[must_use]
     pub const fn code(self) -> &'static str {
         match self {
+            Self::Rules => "rules",
             Self::Nodes => "nodes",
             Self::Edges => "edges",
             Self::Steps => "steps",
@@ -141,6 +144,7 @@ impl RuleGraphBudgetDimensionV1 {
     #[must_use]
     pub const fn name(self) -> &'static str {
         match self {
+            Self::Rules => "raw rule",
             Self::Nodes => "rule graph node",
             Self::Edges => "rule graph edge",
             Self::Steps => "rule graph step",

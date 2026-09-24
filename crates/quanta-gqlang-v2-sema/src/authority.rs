@@ -381,6 +381,7 @@ pub struct FrontendBudgetV2 {
     max_authority_string_bytes: NonZeroU32,
     max_rule_graph_nodes: NonZeroU32,
     max_rule_graph_edges: NonZeroU32,
+    max_rule_program_rules: NonZeroU32,
     max_rule_steps: NonZeroU32,
     max_witness_depth: NonZeroU32,
     max_witnesses: NonZeroU32,
@@ -414,6 +415,7 @@ pub struct DownstreamBudgetReceiptV2 {
     max_authority_string_bytes: NonZeroU32,
     max_rule_graph_nodes: NonZeroU32,
     max_rule_graph_edges: NonZeroU32,
+    max_rule_program_rules: NonZeroU32,
     max_rule_steps: NonZeroU32,
     max_witness_depth: NonZeroU32,
     max_witnesses: NonZeroU32,
@@ -506,6 +508,11 @@ impl DownstreamBudgetReceiptV2 {
     #[must_use]
     pub const fn max_rule_graph_edges(&self) -> u32 {
         self.max_rule_graph_edges.get()
+    }
+    /// Maximum raw rules admitted before constructing a logic graph.
+    #[must_use]
+    pub const fn max_rule_program_rules(&self) -> u32 {
+        self.max_rule_program_rules.get()
     }
     /// Logic rule relaxation step limit.
     #[must_use]
@@ -605,6 +612,12 @@ impl FrontendBudgetV2 {
                 .flatten()
                 .ok_or_else(|| configuration_failure("frontend.invalid_budget", "invalid budget"))
         };
+        // Preserve the existing constructor's profile while adding a distinct
+        // cap for caller-built programs with multiple rules per predicate.
+        let max_rule_program_rules = NonZeroU32::new(
+            max_rule_graph_nodes.saturating_add(max_rule_graph_edges),
+        )
+        .ok_or_else(|| configuration_failure("frontend.invalid_budget", "invalid rule cap"))?;
         Ok(Self {
             max_source_bytes: field()?,
             max_frame_bytes: field()?,
@@ -623,12 +636,25 @@ impl FrontendBudgetV2 {
             max_authority_string_bytes: field()?,
             max_rule_graph_nodes: field()?,
             max_rule_graph_edges: field()?,
+            max_rule_program_rules,
             max_rule_steps: field()?,
             max_witness_depth: field()?,
             max_witnesses: field()?,
             max_diagnostics: field()?,
             max_response_bytes: field()?,
         })
+    }
+
+    /// Set the independent raw-rule admission cap before sealing an authority.
+    /// This does not change the graph vertex, edge, or traversal budgets.
+    pub fn try_with_rule_program_rules(
+        mut self,
+        limit: u32,
+    ) -> Result<Self, FrontendAuthorityErrorV2> {
+        self.max_rule_program_rules = NonZeroU32::new(limit).ok_or_else(|| {
+            configuration_failure("frontend.invalid_budget", "raw rule cap must be positive")
+        })?;
+        Ok(self)
     }
 
     /// Pinned CLI/service profile.
@@ -683,6 +709,7 @@ impl FrontendBudgetV2 {
             max_authority_string_bytes: self.max_authority_string_bytes,
             max_rule_graph_nodes: self.max_rule_graph_nodes,
             max_rule_graph_edges: self.max_rule_graph_edges,
+            max_rule_program_rules: self.max_rule_program_rules,
             max_rule_steps: self.max_rule_steps,
             max_witness_depth: self.max_witness_depth,
             max_witnesses: self.max_witnesses,
@@ -788,6 +815,11 @@ impl FrontendBudgetV2 {
     #[must_use]
     pub const fn max_rule_graph_edges(&self) -> u32 {
         self.max_rule_graph_edges.get()
+    }
+    /// Maximum raw rules admitted before constructing a logic graph.
+    #[must_use]
+    pub const fn max_rule_program_rules(&self) -> u32 {
+        self.max_rule_program_rules.get()
     }
     /// Maximum rule steps.
     #[must_use]

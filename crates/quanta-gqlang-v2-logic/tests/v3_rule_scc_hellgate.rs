@@ -19,7 +19,8 @@
 
 use quanta_gqlang_v2_logic::{
     stratify, BodyLiteralV1, BodyPolarityV1, LogicDiagnosticV1, RecursiveProgramV1,
-    RejectAllRecursiveAggregatesV2, RuleDefV1, RuleProgramInvalidReasonV1,
+    RejectAllRecursiveAggregatesV2, RuleDefV1, RuleGraphBudgetDimensionV1,
+    RuleProgramInvalidReasonV1,
 };
 use quanta_gqlang_v2_sema::test_support::reference_checked_span_v2;
 use quanta_gqlang_v2_sema::{CheckedLocatedSpanV2, DownstreamBudgetReceiptV2, FrontendBudgetV2};
@@ -75,6 +76,52 @@ fn seed(head: &str, location: &CheckedLocatedSpanV2) -> RuleDefV1 {
 
 fn rule(head: &str, body: Vec<BodyLiteralV1>, location: &CheckedLocatedSpanV2) -> RuleDefV1 {
     RuleDefV1::new(pred(head), body, location.clone())
+}
+
+#[test]
+fn raw_rule_count_rejects_before_graph_allocation_at_cap_plus_one() {
+    let l = checked_locations(3);
+    let budget = FrontendBudgetV2::standard_v2()
+        .expect("standard budget")
+        .try_with_rule_program_rules(2)
+        .expect("explicit raw-rule cap")
+        .downstream_receipt();
+    let exact = RecursiveProgramV1::from_rules(vec![seed("p", &l[0]), seed("p", &l[1])]);
+    stratify(&exact, &budget).expect("two definitions at the exact cap admit");
+
+    let over = RecursiveProgramV1::from_rules(vec![
+        seed("p", &l[0]),
+        seed("p", &l[1]),
+        rule("p", vec![positive("missing", &l[2])], &l[2]),
+    ]);
+    let error = stratify(&over, &budget).expect_err("third rule rejects before graph work");
+    assert_eq!(error.code(), "logic.rule_graph_budget.rules");
+    assert_eq!(error.span(), &l[2]);
+    assert!(matches!(
+        error,
+        LogicDiagnosticV1::RuleGraphBudgetExceeded {
+            dimension: RuleGraphBudgetDimensionV1::Rules,
+            limit: 2,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn raw_body_literal_count_rejects_before_nonlocal_scan_at_cap_plus_one() {
+    let l = checked_locations(3);
+    let exact = RecursiveProgramV1::from_rules(vec![rule("p", vec![positive("p", &l[1])], &l[0])]);
+    stratify(&exact, &receipt(1, 1, 64)).expect("exact body-literal cap admits");
+
+    let over = RecursiveProgramV1::from_rules(vec![rule(
+        "p",
+        vec![positive("p", &l[1]), positive("missing", &l[2])],
+        &l[0],
+    )]);
+    let error = stratify(&over, &receipt(1, 1, 64))
+        .expect_err("over-budget raw body rejects before nonlocal scan");
+    assert_eq!(error.code(), "logic.rule_graph_budget.edges");
+    assert_eq!(error.span(), &l[2]);
 }
 
 // Hellgate 3: recursion through negation (unstratifiable) rejects with a typed

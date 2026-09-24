@@ -239,6 +239,7 @@ pub fn logic_code(error: &LogicDiagnosticV1) -> &'static str {
             }
         },
         LogicDiagnosticV1::RuleGraphBudgetExceeded { dimension, .. } => match dimension {
+            RuleGraphBudgetDimensionV1::Rules => "logic.rule_graph_budget.rules",
             RuleGraphBudgetDimensionV1::Nodes => "logic.rule_graph_budget.nodes",
             RuleGraphBudgetDimensionV1::Edges => "logic.rule_graph_budget.edges",
             RuleGraphBudgetDimensionV1::Steps => "logic.rule_graph_budget.steps",
@@ -719,6 +720,10 @@ mod tests {
         }
 
         for (dimension, expected) in [
+            (
+                RuleGraphBudgetDimensionV1::Rules,
+                "logic.rule_graph_budget.rules",
+            ),
             (
                 RuleGraphBudgetDimensionV1::Nodes,
                 "logic.rule_graph_budget.nodes",
