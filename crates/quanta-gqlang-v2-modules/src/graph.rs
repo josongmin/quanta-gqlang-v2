@@ -610,6 +610,12 @@ impl ModuleGraphBuilderV2 {
                 }
             }
             if candidates.len() > 1 {
+                // Validate every re-export edge, but only the winning binding
+                // tier can make a name ambiguous. Direct imports and local
+                // declarations replace this tier below.
+                if node.imports.contains_key(key) || node.declarations.contains_key(key) {
+                    continue;
+                }
                 let values = candidates.into_values().collect::<Vec<_>>();
                 let evidence = values
                     .iter()

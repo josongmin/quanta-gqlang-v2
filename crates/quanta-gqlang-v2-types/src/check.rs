@@ -1732,15 +1732,17 @@ impl DocumentChecker<'_, '_> {
             }
             ValueExprKindV1::Symbol(_) => match self.inputs.values.get(&key) {
                 Some(ResolvedTypeInputValueV2::Binding(state)) => state.clone(),
-                Some(ResolvedTypeInputValueV2::BindingFromExpression(target)) => self
-                    .facts
-                    .get(target)
-                    .map(|fact| fact.state.clone())
-                    .ok_or(TypeDiagnosticV2::UnavailableBindingDependency {
-                        node_id: node.id,
-                        target_node_id: target.node_id,
-                        location: self.location(node),
-                    })?,
+                Some(ResolvedTypeInputValueV2::BindingFromExpression(target)) => {
+                    let fact = self.facts.get(target).ok_or(
+                        TypeDiagnosticV2::UnavailableBindingDependency {
+                            node_id: node.id,
+                            target_node_id: target.node_id,
+                            location: self.location(node),
+                        },
+                    )?;
+                    effects = fact.effects;
+                    fact.state.clone()
+                }
                 Some(ResolvedTypeInputValueV2::BindingFromDeclaration(target)) => {
                     let body = self
                         .inputs
@@ -1752,7 +1754,9 @@ impl DocumentChecker<'_, '_> {
                             target_node_id: target.node_id,
                             location: self.location(node),
                         })?;
-                    self.type_expr(body, false)?
+                    let state = self.type_expr(body, false)?;
+                    effects = self.effects_for(body.id)?;
+                    state
                 }
                 Some(ResolvedTypeInputValueV2::BindingFromRelationRow(target)) => {
                     let row = self.relation_rows.get(target).ok_or(

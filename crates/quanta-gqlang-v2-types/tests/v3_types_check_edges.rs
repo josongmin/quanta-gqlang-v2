@@ -163,6 +163,55 @@ fn binding_from_prior_expression_reuses_the_single_kernel_fact() {
 }
 
 #[test]
+fn binding_from_prior_expression_retains_target_effects() {
+    let builder = HirBuilderV1::new();
+    let call = builder.call(
+        "now",
+        SpanV1::new(0, 3),
+        CallArgsHirV1::try_new(vec![]).unwrap(),
+        SpanV1::new(0, 5),
+    );
+    let call_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: call.id,
+    };
+    let reference = builder.symbol("prior", SpanV1::new(7, 12));
+    let reference_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: reference.id,
+    };
+    let doc = document(builder.list(vec![call, reference], SpanV1::new(0, 13)));
+    let registry = BuiltinRegistryV2::try_closed().unwrap();
+    let inputs = resolved_type_inputs(
+        check_document_v2(&doc).unwrap(),
+        vec![
+            ResolvedTypeInputEntryV2 {
+                key: call_key,
+                value: ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::Builtin(
+                    registry.family_id("now").unwrap(),
+                )),
+            },
+            ResolvedTypeInputEntryV2 {
+                key: reference_key,
+                value: ResolvedTypeInputValueV2::BindingFromExpression(call_key),
+            },
+        ],
+        vec![],
+    )
+    .unwrap();
+    let facts = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&inputs)
+        .unwrap();
+    let target = facts.get(call_key).unwrap();
+    let alias = facts.get(reference_key).unwrap();
+    assert_eq!(alias.state, target.state);
+    assert_eq!(alias.effects, target.effects);
+    assert_eq!(alias.effects.determinism, DeterminismV1::NonDeterministic);
+    assert_eq!(alias.effects.purity, PurityV1::Impure);
+}
+
+#[test]
 fn binding_expression_dependencies_reject_foreign_missing_self_and_forward_edges() {
     for target in [
         SourceQualifiedNodeIdV2 {
@@ -324,6 +373,74 @@ fn predeclared_forward_declaration_uses_one_kernel_pass() {
         facts.get(reference_key).unwrap().state,
         ExpressionTypeStateV2::Known(ValueTypeV1::int())
     );
+}
+
+#[test]
+fn declaration_reference_retains_nondeterministic_target_effects() {
+    let builder = HirBuilderV1::new();
+    let reference = builder.symbol("later", SpanV1::new(8, 13));
+    let reference_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: reference.id,
+    };
+    let call = builder.call(
+        "now",
+        SpanV1::new(32, 35),
+        CallArgsHirV1::try_new(vec![]).unwrap(),
+        SpanV1::new(32, 37),
+    );
+    let call_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(7),
+        node_id: call.id,
+    };
+    let doc = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(7),
+        source_len: 64,
+        items: vec![
+            ProgramItemHirV1::Decl(Box::new(DeclHirV1::new(
+                HirNodeIdV1::from_raw(10_000),
+                SpanV1::new(0, 16),
+                "first".into(),
+                SpanV1::new(0, 5),
+                reference,
+            ))),
+            ProgramItemHirV1::Decl(Box::new(DeclHirV1::new(
+                HirNodeIdV1::from_raw(10_001),
+                SpanV1::new(20, 40),
+                "later".into(),
+                SpanV1::new(20, 25),
+                call,
+            ))),
+        ],
+    };
+    let registry = BuiltinRegistryV2::try_closed().unwrap();
+    let inputs = resolved_type_inputs(
+        check_document_v2(&doc).unwrap(),
+        vec![
+            ResolvedTypeInputEntryV2 {
+                key: reference_key,
+                value: ResolvedTypeInputValueV2::BindingFromDeclaration(call_key),
+            },
+            ResolvedTypeInputEntryV2 {
+                key: call_key,
+                value: ResolvedTypeInputValueV2::Callable(ResolvedCallableInputV2::Builtin(
+                    registry.family_id("now").unwrap(),
+                )),
+            },
+        ],
+        vec![],
+    )
+    .unwrap();
+    let facts = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&inputs)
+        .unwrap();
+    let target = facts.get(call_key).unwrap();
+    let alias = facts.get(reference_key).unwrap();
+    assert_eq!(alias.state, target.state);
+    assert_eq!(alias.effects, target.effects);
+    assert_eq!(alias.effects.determinism, DeterminismV1::NonDeterministic);
+    assert_eq!(alias.effects.purity, PurityV1::Impure);
 }
 
 #[test]

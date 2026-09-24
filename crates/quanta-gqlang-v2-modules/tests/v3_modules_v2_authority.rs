@@ -2137,6 +2137,64 @@ fn direct_import_precedes_reexport() {
 }
 
 #[test]
+fn higher_priority_binding_shadows_ambiguous_reexports() {
+    for (direct, local, expected_module) in [(true, false, "left"), (false, true, "app")] {
+        let parts = finish_graph_case(|sources, app, left, right, builder| {
+            for (owner, at) in [(left, 20), (right, 21)] {
+                builder
+                    .try_declare(ModuleDeclarationInputV2 {
+                        owner_module_id: owner.clone(),
+                        local_name: "x".into(),
+                        namespace_kind: NamespaceKindV2::Value,
+                        visibility: VisibilityV2::Public,
+                        location: checked(sources, 1, at),
+                    })
+                    .unwrap();
+                builder
+                    .try_reexport(ModuleReexportInputV2 {
+                        owner_module_id: app.clone(),
+                        exported_name: "x".into(),
+                        target: asset_ref(sources, owner, NamespaceKindV2::Value, "x", at + 2),
+                        location: checked(sources, 1, at + 4),
+                    })
+                    .unwrap();
+            }
+            if direct {
+                builder
+                    .try_import(ModuleImportInputV2 {
+                        owner_module_id: app.clone(),
+                        local_name: "x".into(),
+                        target: asset_ref(sources, left, NamespaceKindV2::Value, "x", 30),
+                        location: checked(sources, 1, 31),
+                    })
+                    .unwrap();
+            }
+            if local {
+                builder
+                    .try_declare(ModuleDeclarationInputV2 {
+                        owner_module_id: app.clone(),
+                        local_name: "x".into(),
+                        namespace_kind: NamespaceKindV2::Value,
+                        visibility: VisibilityV2::Private,
+                        location: checked(sources, 1, 32),
+                    })
+                    .unwrap();
+            }
+        })
+        .expect("a shadowed lower-priority ambiguity must not reject");
+        let binding = parts
+            .resolved_graph()
+            .visible_bindings()
+            .get(NamespaceKindV2::Value, "x")
+            .unwrap();
+        assert_eq!(
+            binding.declaration_origin().module_id().as_str(),
+            expected_module
+        );
+    }
+}
+
+#[test]
 fn private_declaration_is_not_importable() {
     let error = finish_graph_case(|sources, app, left, _, builder| {
         builder
