@@ -10,7 +10,7 @@ use quanta_gqlang_v2_hir::{
 };
 use quanta_gqlang_v2_surface::{
     format_document, format_item, lex, parse_document, parse_expr, parse_predicate, parse_program,
-    ParseDiagnosticV1, ParsedDocumentV1, ParsedProgramV1, SurfaceItemV1,
+    try_format_item, ParseDiagnosticV1, ParsedDocumentV1, ParsedProgramV1, SurfaceItemV1,
 };
 
 /// Bounded config so the adversarial rails stay fast in CI.
@@ -487,7 +487,13 @@ proptest! {
         let Ok(parsed) = parse_program(&s, &HirBuilderV1::new()) else {
             return Ok(());
         };
-        let canon = format_item(&parsed.item.to_program_item());
+        let item = parsed.item.to_program_item();
+        let canon = format_item(&item);
+        prop_assert_eq!(
+            try_format_item(&item),
+            Ok(canon.clone()),
+            "every parser-produced HIR item must pass the checked formatter"
+        );
 
         // Idempotence at the text level: re-parse canonical text, re-format.
         let reparsed = parse_program(&canon, &HirBuilderV1::new());

@@ -77,6 +77,7 @@ mod budget;
 mod cursor;
 mod depth;
 mod diag;
+mod equivalence;
 mod expr;
 mod family;
 mod format;

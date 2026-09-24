@@ -2195,6 +2195,222 @@ fn higher_priority_binding_shadows_ambiguous_reexports() {
 }
 
 #[test]
+fn direct_import_is_local_only_and_explicit_reexport_controls_downstream_origin() {
+    let sources = registry(&[(1, 4096)]);
+    let app = module_id(&sources, "app", 0);
+    let left = module_id(&sources, "left", 1);
+    let right = module_id(&sources, "right", 2);
+    let consumer = module_id(&sources, "consumer", 3);
+    let mut builder = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+    for (id, at) in [(&app, 10), (&left, 11), (&right, 12), (&consumer, 13)] {
+        builder
+            .try_add_module(ModuleNodeInputV2 {
+                module_id: id.clone(),
+                location: checked(&sources, 1, at),
+            })
+            .unwrap();
+    }
+    for (owner, at) in [(&left, 20), (&right, 21)] {
+        builder
+            .try_declare(ModuleDeclarationInputV2 {
+                owner_module_id: owner.clone(),
+                local_name: "x".into(),
+                namespace_kind: NamespaceKindV2::Value,
+                visibility: VisibilityV2::Public,
+                location: checked(&sources, 1, at),
+            })
+            .unwrap();
+    }
+    builder
+        .try_import(ModuleImportInputV2 {
+            owner_module_id: app.clone(),
+            local_name: "x".into(),
+            target: asset_ref(&sources, &left, NamespaceKindV2::Value, "x", 22),
+            location: checked(&sources, 1, 23),
+        })
+        .unwrap();
+    builder
+        .try_reexport(ModuleReexportInputV2 {
+            owner_module_id: app.clone(),
+            exported_name: "x".into(),
+            target: asset_ref(&sources, &right, NamespaceKindV2::Value, "x", 24),
+            location: checked(&sources, 1, 25),
+        })
+        .unwrap();
+    builder
+        .try_import(ModuleImportInputV2 {
+            owner_module_id: consumer.clone(),
+            local_name: "x".into(),
+            target: asset_ref(&sources, &app, NamespaceKindV2::Value, "x", 26),
+            location: checked(&sources, 1, 27),
+        })
+        .unwrap();
+
+    let parts = builder
+        .finish(
+            CurrentModuleSelectionInputV2 {
+                module_id: consumer,
+                location: checked(&sources, 1, 99),
+            },
+            VersionV2::new(1, 0, 0),
+        )
+        .unwrap();
+    let app_binding = parts
+        .resolved_graph()
+        .module_bindings(&app)
+        .unwrap()
+        .find(|binding| {
+            binding.local_name() == "x" && binding.namespace_kind() == NamespaceKindV2::Value
+        })
+        .unwrap();
+    assert_eq!(
+        app_binding.declaration_origin().module_id().as_str(),
+        "left"
+    );
+    let consumer_binding = parts
+        .resolved_graph()
+        .visible_bindings()
+        .get(NamespaceKindV2::Value, "x")
+        .unwrap();
+    assert_eq!(
+        consumer_binding.declaration_origin().module_id().as_str(),
+        "right"
+    );
+}
+
+#[test]
+fn local_direct_import_does_not_suppress_downstream_reexport_ambiguity() {
+    let sources = registry(&[(1, 4096)]);
+    let app = module_id(&sources, "app", 0);
+    let left = module_id(&sources, "left", 1);
+    let right = module_id(&sources, "right", 2);
+    let consumer = module_id(&sources, "consumer", 3);
+    let mut builder = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+    for (id, at) in [(&app, 10), (&left, 11), (&right, 12), (&consumer, 13)] {
+        builder
+            .try_add_module(ModuleNodeInputV2 {
+                module_id: id.clone(),
+                location: checked(&sources, 1, at),
+            })
+            .unwrap();
+    }
+    for (owner, at) in [(&left, 20), (&right, 21)] {
+        builder
+            .try_declare(ModuleDeclarationInputV2 {
+                owner_module_id: owner.clone(),
+                local_name: "x".into(),
+                namespace_kind: NamespaceKindV2::Value,
+                visibility: VisibilityV2::Public,
+                location: checked(&sources, 1, at),
+            })
+            .unwrap();
+        builder
+            .try_reexport(ModuleReexportInputV2 {
+                owner_module_id: app.clone(),
+                exported_name: "x".into(),
+                target: asset_ref(&sources, owner, NamespaceKindV2::Value, "x", at + 2),
+                location: checked(&sources, 1, at + 4),
+            })
+            .unwrap();
+    }
+    builder
+        .try_import(ModuleImportInputV2 {
+            owner_module_id: app.clone(),
+            local_name: "x".into(),
+            target: asset_ref(&sources, &left, NamespaceKindV2::Value, "x", 30),
+            location: checked(&sources, 1, 31),
+        })
+        .unwrap();
+    builder
+        .try_import(ModuleImportInputV2 {
+            owner_module_id: consumer.clone(),
+            local_name: "x".into(),
+            target: asset_ref(&sources, &app, NamespaceKindV2::Value, "x", 32),
+            location: checked(&sources, 1, 33),
+        })
+        .unwrap();
+
+    let error = builder
+        .finish(
+            CurrentModuleSelectionInputV2 {
+                module_id: consumer,
+                location: checked(&sources, 1, 99),
+            },
+            VersionV2::new(1, 0, 0),
+        )
+        .unwrap_err();
+    assert_eq!(error.code(), "modules.ambiguous_import");
+    assert_eq!(error.ambiguous_candidates().len(), 2);
+}
+
+fn finish_declaration_reexport_collision(
+    visibility: VisibilityV2,
+) -> Result<ValidatedModuleAuthorityPartsV2, ModuleDiagnosticV2> {
+    let sources = registry(&[(1, 4096)]);
+    let app = module_id(&sources, "app", 0);
+    let left = module_id(&sources, "left", 1);
+    let consumer = module_id(&sources, "consumer", 2);
+    let mut builder = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+    for (id, at) in [(&app, 10), (&left, 11), (&consumer, 12)] {
+        builder.try_add_module(ModuleNodeInputV2 {
+            module_id: id.clone(),
+            location: checked(&sources, 1, at),
+        })?;
+    }
+    builder.try_declare(ModuleDeclarationInputV2 {
+        owner_module_id: app.clone(),
+        local_name: "x".into(),
+        namespace_kind: NamespaceKindV2::Value,
+        visibility,
+        location: checked(&sources, 1, 20),
+    })?;
+    builder.try_declare(ModuleDeclarationInputV2 {
+        owner_module_id: left.clone(),
+        local_name: "x".into(),
+        namespace_kind: NamespaceKindV2::Value,
+        visibility: VisibilityV2::Public,
+        location: checked(&sources, 1, 21),
+    })?;
+    builder.try_reexport(ModuleReexportInputV2 {
+        owner_module_id: app.clone(),
+        exported_name: "x".into(),
+        target: asset_ref(&sources, &left, NamespaceKindV2::Value, "x", 22),
+        location: checked(&sources, 1, 23),
+    })?;
+    builder.try_import(ModuleImportInputV2 {
+        owner_module_id: consumer.clone(),
+        local_name: "x".into(),
+        target: asset_ref(&sources, &app, NamespaceKindV2::Value, "x", 24),
+        location: checked(&sources, 1, 25),
+    })?;
+    builder.finish(
+        CurrentModuleSelectionInputV2 {
+            module_id: consumer,
+            location: checked(&sources, 1, 99),
+        },
+        VersionV2::new(1, 0, 0),
+    )
+}
+
+#[test]
+fn public_local_declaration_controls_downstream_name_before_reexport() {
+    let parts = finish_declaration_reexport_collision(VisibilityV2::Public).unwrap();
+    let binding = parts
+        .resolved_graph()
+        .visible_bindings()
+        .get(NamespaceKindV2::Value, "x")
+        .unwrap();
+    assert_eq!(binding.declaration_origin().module_id().as_str(), "app");
+}
+
+#[test]
+fn private_local_declaration_blocks_downstream_name_before_reexport() {
+    let error = finish_declaration_reexport_collision(VisibilityV2::Private).unwrap_err();
+    assert_eq!(error.code(), "modules.not_exported");
+    assert!(error.secondary().is_some());
+}
+
+#[test]
 fn private_declaration_is_not_importable() {
     let error = finish_graph_case(|sources, app, left, _, builder| {
         builder

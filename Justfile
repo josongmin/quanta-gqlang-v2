@@ -57,6 +57,10 @@ semgrep:
     python3 tools/lint/tests/test_semgrep_non_vacuity.py
     tools/lint/run_semgrep.sh
 
+semantic-honesty:
+    PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/lint/tests -p 'test_semantic_honesty.py'
+    python3 tools/lint/semantic_honesty.py
+
 qualifier-custody:
     PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools/qualification/tests -p 'test_*.py'
 
@@ -69,7 +73,7 @@ static: fmt taplo clippy-msrv clippy-current typos pm-check pm-test
 
 test: nextest doctest frontdoor-parity
 
-policy: qualifier-custody arch-lint external-consumer deny semgrep
+policy: qualifier-custody arch-lint external-consumer deny semgrep semantic-honesty
 
 ci: static test policy
 

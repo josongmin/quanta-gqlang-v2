@@ -610,9 +610,11 @@ impl ModuleGraphBuilderV2 {
                 }
             }
             if candidates.len() > 1 {
-                // Validate every re-export edge, but only the winning binding
-                // tier can make a name ambiguous. Direct imports and local
-                // declarations replace this tier below.
+                // Validate every re-export edge, but only the winning local
+                // visible tier can make this module's name ambiguous. A local
+                // declaration also owns the downstream export name (subject to
+                // visibility); a direct import shadows only local lookup and is
+                // absent from downstream origin resolution.
                 if node.imports.contains_key(key) || node.declarations.contains_key(key) {
                     continue;
                 }
@@ -646,7 +648,10 @@ impl ModuleGraphBuilderV2 {
                 );
             }
         }
-        // Direct imports replace re-export candidates.
+        // Direct imports replace re-export candidates only in the module's
+        // local visible namespace. They never become transitive exports;
+        // downstream resolution sees a local declaration first, then explicit
+        // re-export edges.
         for (key, edge) in &node.imports {
             let mut candidates = self.resolve_origin(module_id, edge, session)?;
             if candidates.len() != 1 {
@@ -836,6 +841,11 @@ fn rotations(items: &[LocatedEdgeV2]) -> impl Iterator<Item = Vec<LocatedEdgeV2>
     })
 }
 
+/// One binding visible while resolving a specific module.
+///
+/// `visibility` is the resolved declaration's importability. A direct import
+/// never becomes a downstream export. Downstream lookup resolves the target
+/// module's own declaration first and otherwise follows explicit re-exports.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolvedBindingV2 {
     local_name: String,

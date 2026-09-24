@@ -29,6 +29,7 @@
 use std::fmt;
 
 use crate::diag::ParseDiagnosticV1;
+use crate::equivalence::semantically_equivalent_items;
 use crate::parser::parse_program;
 use quanta_gqlang_v2_hir::{
     ActivationV1, AdmissionV1, BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CatalogPayloadV1,
@@ -53,11 +54,12 @@ pub enum FormatErrorCodeV1 {
     PartialGraphEndpoints,
     /// A raw boolean literal would reparse as a value-wrapped boolean.
     RawBoolLiteral,
-    /// A boolean grouping around a bare value would reparse as value grouping.
+    /// Reserved compatibility code for the retired strict parenthesis check.
+    /// Semantic-neutral value/bool parenthesis carriers are now equivalent.
     AmbiguousBoolParen,
     /// Rendered text is not admitted by the current parser and standard cap.
     ParseRejected,
-    /// Re-parsing and formatting changes the emitted canonical text.
+    /// Re-parsing changes canonical text or non-parenthesis HIR semantics.
     NonCanonical,
 }
 
@@ -170,7 +172,7 @@ pub fn try_format_item(item: &ProgramItemHirV1) -> Result<String, FormatDiagnost
             parse: Some(parse),
         })?;
     let reparsed = reparsed.item.into_program_item();
-    if format_item(&reparsed) != rendered || !preserves_loss_sensitive_payload(item, &reparsed) {
+    if format_item(&reparsed) != rendered || !semantically_equivalent_items(item, &reparsed) {
         return Err(FormatDiagnosticV1::unrepresentable(
             FormatErrorCodeV1::NonCanonical,
             item.span(),
@@ -178,107 +180,6 @@ pub fn try_format_item(item: &ProgramItemHirV1) -> Result<String, FormatDiagnost
         ));
     }
     Ok(rendered)
-}
-
-fn same_ref_list(left: &[GraphRefV1], right: &[GraphRefV1]) -> bool {
-    left.len() == right.len()
-        && left
-            .iter()
-            .zip(right)
-            .all(|(left, right)| left.name == right.name)
-}
-
-fn same_ref_option(left: &Option<GraphRefV1>, right: &Option<GraphRefV1>) -> bool {
-    left.as_ref().map(|reference| reference.name.as_str())
-        == right.as_ref().map(|reference| reference.name.as_str())
-}
-
-fn same_graph_payload(left: &GraphQueryHirV1, right: &GraphQueryHirV1) -> bool {
-    let a = &left.endpoints;
-    let b = &right.endpoints;
-    let x = &left.constraints;
-    let y = &right.constraints;
-    left.kind == right.kind
-        && same_ref_option(&a.source, &b.source)
-        && same_ref_option(&a.sink, &b.sink)
-        && same_ref_option(&a.anchor, &b.anchor)
-        && same_ref_option(&a.reference, &b.reference)
-        && same_ref_option(&a.pointee, &b.pointee)
-        && same_ref_option(&a.callable, &b.callable)
-        && same_ref_list(&x.via, &y.via)
-        && same_ref_list(&x.through, &y.through)
-        && same_ref_list(&x.sanitizers, &y.sanitizers)
-        && same_ref_option(&x.scope, &y.scope)
-        && same_ref_option(&x.window, &y.window)
-        && same_ref_option(&x.frontier, &y.frontier)
-        && x.direction
-            .as_ref()
-            .map(|direction| direction.keyword.as_str())
-            == y.direction
-                .as_ref()
-                .map(|direction| direction.keyword.as_str())
-        && x.depth == y.depth
-        && x.summary_facets == y.summary_facets
-}
-
-fn same_legality_graph(left: &LegalityHirV1, right: &LegalityHirV1) -> bool {
-    match (&left.semantic_confirm, &right.semantic_confirm) {
-        (Some(left), Some(right)) => same_graph_payload(left, right),
-        (None, None) => true,
-        (Some(_), None) | (None, Some(_)) => false,
-    }
-}
-
-// Some raw string-list carriers can silently split at commas while retaining
-// identical rendered text. Compare those payloads after reparse; ids and spans
-// are intentionally irrelevant to surface equivalence.
-fn preserves_loss_sensitive_payload(left: &ProgramItemHirV1, right: &ProgramItemHirV1) -> bool {
-    match (left, right) {
-        (ProgramItemHirV1::GraphQuery(a), ProgramItemHirV1::GraphQuery(b)) => {
-            same_graph_payload(a, b)
-        }
-        (ProgramItemHirV1::Legality(a), ProgramItemHirV1::Legality(b)) => same_legality_graph(a, b),
-        (ProgramItemHirV1::CatalogDecl(a), ProgramItemHirV1::CatalogDecl(b)) => {
-            match (&a.payload, &b.payload) {
-                (
-                    CatalogPayloadV1::Profile {
-                        capabilities: left, ..
-                    },
-                    CatalogPayloadV1::Profile {
-                        capabilities: right,
-                        ..
-                    },
-                ) => same_ref_list(left, right),
-                (
-                    CatalogPayloadV1::Gate { checks: left, .. },
-                    CatalogPayloadV1::Gate { checks: right, .. },
-                ) => same_ref_list(left, right),
-                _ => true,
-            }
-        }
-        (ProgramItemHirV1::Composition(a), ProgramItemHirV1::Composition(b)) => {
-            a.bindings.len() == b.bindings.len()
-                && a.bindings.iter().zip(&b.bindings).all(|(left, right)| {
-                    match (&left.producer, &right.producer) {
-                        (
-                            CompositionProducerV1::GraphQuery(left),
-                            CompositionProducerV1::GraphQuery(right),
-                        ) => same_graph_payload(left, right),
-                        _ => true,
-                    }
-                })
-                && match (&a.body, &b.body) {
-                    (CompositionBodyV1::GraphQuery(left), CompositionBodyV1::GraphQuery(right)) => {
-                        same_graph_payload(left, right)
-                    }
-                    (CompositionBodyV1::Legality(left), CompositionBodyV1::Legality(right)) => {
-                        same_legality_graph(left, right)
-                    }
-                    _ => true,
-                }
-        }
-        _ => true,
-    }
 }
 
 // Borrowed, iterative traversal: the checked API must not reintroduce a
@@ -373,16 +274,7 @@ fn validate_raw_representability(item: &ProgramItemHirV1) -> Result<(), FormatDi
                 BoolExprKindV1::Not(inner) => {
                     stack.push(Frame::Bool(inner));
                 }
-                BoolExprKindV1::Paren(inner) => {
-                    if matches!(&inner.kind, BoolExprKindV1::Value(_)) {
-                        return Err(FormatDiagnosticV1::unrepresentable(
-                            FormatErrorCodeV1::AmbiguousBoolParen,
-                            boolean.span,
-                            "boolean grouping around a bare value reparses as value grouping",
-                        ));
-                    }
-                    stack.push(Frame::Bool(inner));
-                }
+                BoolExprKindV1::Paren(inner) => stack.push(Frame::Bool(inner)),
                 BoolExprKindV1::LogicalQuantifier(quantifier) => {
                     stack.push(Frame::Bool(&quantifier.body));
                 }

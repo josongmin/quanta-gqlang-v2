@@ -6,9 +6,7 @@
 )]
 
 use quanta_gqlang_v2_hir::{BoolExprKindV1, HirBuilderV1, ProgramItemHirV1};
-use quanta_gqlang_v2_surface::{
-    format_item, lex, parse_predicate, parse_program, ParseErrorCodeV1, TokenKindV1,
-};
+use quanta_gqlang_v2_surface::{format_item, lex, parse_predicate, parse_program, TokenKindV1};
 
 // ---- lexer rails -----------------------------------------------------------
 
@@ -131,40 +129,106 @@ fn predicate_kind(src: &str) -> BoolExprKindV1 {
     std::mem::replace(&mut predicate.kind, BoolExprKindV1::Literal(false))
 }
 
-/// The depth counter must increment on a nested `(`. Kills expr.rs:168
-/// (`depth += 1` -> `*=`/`-=`).
-///
 /// `((a))` is a valid doubly-parenthesized VALUE: a compare token never appears,
-/// so the outer paren is a value paren and lowers to `BoolExprKind::Value`. The
-/// `-=` mutation drives the depth counter to underflow on the inner `)` (a
-/// panic), so requiring this to parse to a `Value` kills it.
+/// so the outer paren is a value paren and lowers to `BoolExprKind::Value`.
 #[test]
 fn nested_value_paren_keeps_value_kind() {
     assert!(matches!(predicate_kind("((a))"), BoolExprKindV1::Value(_)));
 }
 
-/// `((a > b))` REJECTS: `paren_opens_bool` only inspects depth-1 tokens of the
-/// OUTER paren, so a compare buried at depth 2 leaves the outer paren a value
-/// paren, and value-parsing `(a > b)` then fails on the `>`. The `*=` mutation
-/// on expr.rs:168 pins the depth at 1, which would (wrongly) see the `>` at
-/// "depth 1" and accept the input as a boolean paren. Requiring this to be an
-/// error kills `depth += 1` -> `*=`.
+/// Nested grouping remains transparent to boolean classification. This closes
+/// the historical hole where the outer paren treated a nested comparison as a
+/// value expression and rejected it at `>`.
 #[test]
-fn doubly_nested_compare_is_rejected() {
-    let builder = HirBuilderV1::new();
-    let err = parse_predicate("((a > b))", &builder).expect_err("must reject");
-    assert_eq!(err.code, ParseErrorCodeV1::UnexpectedToken);
+fn doubly_nested_compare_opens_bool_parens() {
+    assert!(matches!(
+        predicate_kind("((a > b))"),
+        BoolExprKindV1::Paren(_)
+    ));
 }
 
-/// A boolean token at depth 1 AFTER a closed nested paren makes it a BOOL paren.
-/// Kills expr.rs:170 (`depth -= 1` -> `+=`) and expr.rs:171 (`== 0` -> `!= 0`):
-/// either mutation fails to return depth to 1 / returns false prematurely at the
-/// inner `)`, so the trailing `or` is missed and the paren is misread as a
-/// value paren (which then fails to parse).
+#[test]
+fn boolean_keyword_path_segments_stay_value_syntax() {
+    let builder = HirBuilderV1::new();
+    for keyword in ["and", "or", "not", "exists", "forall"] {
+        let source = format!("(a.{keyword}) > 0");
+        let parsed = parse_predicate(&source, &builder)
+            .unwrap_or_else(|error| panic!("{source:?} must parse: {error}"));
+        assert!(
+            matches!(parsed.kind, BoolExprKindV1::Compare(_)),
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn contextual_boolean_words_stay_symbols_in_value_grouping() {
+    let builder = HirBuilderV1::new();
+    for source in [
+        "(and) > 0",
+        "(or) > 0",
+        "(not) = not",
+        "(exists) = exists",
+        "(forall) = forall",
+        "(a + and) > 0",
+        "(and + a) > 0",
+        "(not + a) > 0",
+        "(exists(a)) = exists(a)",
+        "(forall(a)) = forall(a)",
+    ] {
+        let parsed = parse_predicate(source, &builder)
+            .unwrap_or_else(|error| panic!("{source:?} must parse: {error}"));
+        assert!(
+            matches!(parsed.kind, BoolExprKindV1::Compare(_)),
+            "{source}"
+        );
+    }
+    for source in ["(and)", "(or)", "(not)", "(exists)", "(forall)"] {
+        assert!(
+            matches!(predicate_kind(source), BoolExprKindV1::Value(_)),
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn contextual_boolean_forms_still_open_boolean_grouping() {
+    for source in [
+        "(a and b)",
+        "(a or b)",
+        "(not a)",
+        "(exists x in (x))",
+        "(forall x, y in (x = y))",
+        "(exists (from t))",
+    ] {
+        assert!(
+            matches!(predicate_kind(source), BoolExprKindV1::Paren(_)),
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn boolean_tokens_inside_value_containers_do_not_reclassify_outer_paren() {
+    let builder = HirBuilderV1::new();
+    for source in [
+        "(f(and)) > 0",
+        "({ exists: 1 }) = { exists: 1 }",
+        "([forall]) = [forall]",
+    ] {
+        let parsed = parse_predicate(source, &builder)
+            .unwrap_or_else(|error| panic!("{source:?} must parse: {error}"));
+        assert!(
+            matches!(parsed.kind, BoolExprKindV1::Compare(_)),
+            "{source}"
+        );
+    }
+}
+
+/// A boolean token after a closed nested group remains visible to the outer
+/// group classifier.
 #[test]
 fn bool_token_after_nested_paren_opens_bool_paren() {
-    // `((a) or b)`: inner `(a)` closes back to depth 1, then `or` at depth 1
-    // marks a boolean group -> Paren wrapping an Or.
     assert!(matches!(
         predicate_kind("((a) or b)"),
         BoolExprKindV1::Paren(_)

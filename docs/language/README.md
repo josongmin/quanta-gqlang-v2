@@ -60,11 +60,18 @@ Interpretation rules:
    chains, before formatting or semantic traversal; the maximum configurable
    value is 64; programmatic HIR also bounds nested result shapes to 64
 7. parser-produced HIR uses the infallible canonical formatter; caller-built
-   raw HIR should use `try_format_item` for surface representability. It does
+   raw HIR should use `try_format_item` for surface representability. Its
+   stack-safe full-tree comparison ignores ids, spans, and semantic-neutral
+   parentheses but rejects every other parse/format structural drift. It does
    not replace HIR integrity checks or downstream semantic validation
 8. direct Logic callers can tune `max_rule_program_rules` independently of
    graph nodes, edges, and steps before sealing authority; raw programs over
    the rule or literal cap reject before graph construction
+9. local module lookup resolves declarations before direct imports before
+   re-exports. A direct import is never an implicit downstream export:
+   downstream lookup resolves the target module's declaration first (enforcing
+   its visibility), then explicit re-export edges, so a direct import cannot
+   suppress downstream re-export ambiguity
 
 ## Surface Families
 

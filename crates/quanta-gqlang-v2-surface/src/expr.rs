@@ -105,12 +105,11 @@ fn parse_comparison(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagno
         return parse_logical_quantifier(cur);
     }
 
-    // Parenthesized BOOLEAN grouping: `(a or b)`, `(not a)`, etc. A `(` here only
-    // opens a bool group when its top-level (depth-1) content carries a boolean
-    // connective the value grammar cannot hold (`and`/`or`/`not`). A plain
-    // `(a + b)` or a comparison-bearing `(a + b) > c` stays a VALUE paren so its
-    // author grouping is preserved as a value node and any following compare op
-    // still binds — so this branch is taken only for the genuinely-boolean case.
+    // Parenthesized BOOLEAN grouping: `(a or b)`, `(not a)`, `((a > b))`, etc.
+    // A `(` here opens a bool group when its grouped expression carries boolean
+    // syntax outside value-only containers. A plain `(a + b)` or a
+    // comparison-bearing `(a + b) > c` stays a VALUE paren, preserving its
+    // authored grouping while allowing the following comparison to bind.
     if matches!(cur.peek().kind, TokenKindV1::LParen) && paren_opens_bool(cur) {
         let open = cur.bump();
         let inner = parse_bool(cur)?;
@@ -196,44 +195,183 @@ fn is_compare_op(sym: &str) -> bool {
     matches!(sym, "=" | "<>" | "!=" | "<" | "<=" | ">" | ">=")
 }
 
+fn can_end_bool_operand(kind: &TokenKindV1) -> bool {
+    matches!(
+        kind,
+        TokenKindV1::Ident(_)
+            | TokenKindV1::Int(_)
+            | TokenKindV1::Float(_)
+            | TokenKindV1::Str(_)
+            | TokenKindV1::RParen
+            | TokenKindV1::RBrace
+            | TokenKindV1::RBracket
+    )
+}
+
+fn can_start_bool_operand(kind: &TokenKindV1) -> bool {
+    matches!(
+        kind,
+        TokenKindV1::Ident(_)
+            | TokenKindV1::Int(_)
+            | TokenKindV1::Float(_)
+            | TokenKindV1::Str(_)
+            | TokenKindV1::LParen
+            | TokenKindV1::LBrace
+            | TokenKindV1::LBracket
+    ) || matches!(kind, TokenKindV1::Op(symbol) if matches!(symbol.as_str(), "+" | "-"))
+}
+
+fn prefix_bool_position(cur: &CursorV1<'_>, n: usize) -> bool {
+    matches!(
+        cur.peek_ahead(n.saturating_sub(1)).kind,
+        TokenKindV1::LParen
+    ) || matches!(
+        &cur.peek_ahead(n.saturating_sub(1)).kind,
+        TokenKindV1::Ident(word) if matches!(word.as_str(), "and" | "or")
+    )
+}
+
+fn quantifier_starts_at(cur: &CursorV1<'_>, mut n: usize) -> bool {
+    if !matches!(cur.peek_ahead(n).kind, TokenKindV1::Ident(_)) {
+        return false;
+    }
+    n += 1;
+    while matches!(cur.peek_ahead(n).kind, TokenKindV1::Comma) {
+        n += 1;
+        if !matches!(cur.peek_ahead(n).kind, TokenKindV1::Ident(_)) {
+            return false;
+        }
+        n += 1;
+    }
+    cur.is_keyword_ahead(n, "in")
+        && matches!(
+            cur.peek_ahead(n.saturating_add(1)).kind,
+            TokenKindV1::LParen
+        )
+}
+
 /// Whether the `(` at the cursor opens a BOOLEAN group rather than a value paren.
 ///
-/// Scans forward to the matching `)` and reports `true` iff, at paren-depth 1
-/// (i.e. directly inside this paren, not within a nested paren), it sees a token
-/// only the boolean grammar can hold: an `and`/`or`/`not`/`exists`/`forall`
-/// keyword or a comparison operator. A purely arithmetic `(a + b)` has none of
-/// those at depth 1, so it stays a value paren; `(a + b) > c` keeps its `>` at
-/// depth 0, so it is also not a bool paren here. Fail-safe: an unbalanced run
-/// (no matching `)` before EOF) reports `false`, leaving the value path to emit
-/// the precise unclosed-paren diagnostic.
+/// Scans forward to the matching `)` and reports `true` iff the grouped
+/// expression contains boolean syntax outside opaque value containers (call
+/// arguments, records, and lists). Nested grouping parentheses remain visible,
+/// so `((a > b))` is classified as boolean. Keyword spellings used as path
+/// segments (`a.exists`) are never treated as operators.
+///
+/// Fail-safe: an unbalanced or mismatched delimiter reports `false`, leaving
+/// the value parser to emit the precise structural diagnostic.
 fn paren_opens_bool(cur: &CursorV1<'_>) -> bool {
-    // cursor is on the opening `(`; start scanning the token after it.
-    let mut depth: usize = 1;
+    #[derive(Clone, Copy)]
+    enum Delimiter {
+        GroupParen,
+        OpaqueParen,
+        OpaqueBrace,
+        OpaqueBracket,
+    }
+
+    let mut delimiters = vec![Delimiter::GroupParen];
+    let mut opaque_depth = 0usize;
     let mut n = 1usize;
+    let mut saw_boolean_syntax = false;
     loop {
         let kind = &cur.peek_ahead(n).kind;
         if matches!(kind, TokenKindV1::Eof) {
-            return false;
+            return saw_boolean_syntax;
         }
-        if matches!(kind, TokenKindV1::LParen) {
-            depth += 1;
-        } else if matches!(kind, TokenKindV1::RParen) {
-            depth -= 1;
-            if depth == 0 {
-                return false;
-            }
-        } else if depth == 1 {
-            // A boolean-only token directly inside this paren marks a bool group.
+        if opaque_depth == 0 {
             if let TokenKindV1::Ident(s) = kind {
-                if matches!(s.as_str(), "and" | "or" | "not" | "exists" | "forall") {
-                    return true;
+                let follows_dot =
+                    matches!(cur.peek_ahead(n.saturating_sub(1)).kind, TokenKindV1::Dot);
+                if !follows_dot {
+                    let previous = &cur.peek_ahead(n.saturating_sub(1)).kind;
+                    let next = &cur.peek_ahead(n.saturating_add(1)).kind;
+                    saw_boolean_syntax |= match s.as_str() {
+                        "and" | "or" => {
+                            can_end_bool_operand(previous) && can_start_bool_operand(next)
+                        }
+                        "not" => prefix_bool_position(cur, n) && can_start_bool_operand(next),
+                        "exists" => {
+                            prefix_bool_position(cur, n)
+                                && ((matches!(next, TokenKindV1::LParen)
+                                    && cur.is_keyword_ahead(n.saturating_add(2), "from"))
+                                    || quantifier_starts_at(cur, n.saturating_add(1)))
+                        }
+                        "forall" => {
+                            prefix_bool_position(cur, n)
+                                && quantifier_starts_at(cur, n.saturating_add(1))
+                        }
+                        _ => false,
+                    };
                 }
             }
             if let TokenKindV1::Op(sym) = kind {
                 if is_compare_op(sym) {
-                    return true;
+                    saw_boolean_syntax = true;
                 }
             }
+        }
+        match kind {
+            TokenKindV1::LParen => {
+                let call = matches!(
+                    cur.peek_ahead(n.saturating_sub(1)).kind,
+                    TokenKindV1::Ident(_)
+                );
+                let delimiter = if call {
+                    Delimiter::OpaqueParen
+                } else {
+                    Delimiter::GroupParen
+                };
+                opaque_depth += usize::from(matches!(delimiter, Delimiter::OpaqueParen));
+                delimiters.push(delimiter);
+            }
+            TokenKindV1::LBrace => {
+                delimiters.push(Delimiter::OpaqueBrace);
+                opaque_depth += 1;
+            }
+            TokenKindV1::LBracket => {
+                delimiters.push(Delimiter::OpaqueBracket);
+                opaque_depth += 1;
+            }
+            TokenKindV1::RParen => {
+                let Some(delimiter @ (Delimiter::GroupParen | Delimiter::OpaqueParen)) =
+                    delimiters.pop()
+                else {
+                    return false;
+                };
+                opaque_depth -= usize::from(matches!(delimiter, Delimiter::OpaqueParen));
+                if delimiters.is_empty() {
+                    let followed_by_comparison = matches!(
+                        &cur.peek_ahead(n.saturating_add(1)).kind,
+                        TokenKindV1::Op(symbol) if is_compare_op(symbol)
+                    );
+                    return saw_boolean_syntax && !followed_by_comparison;
+                }
+            }
+            TokenKindV1::RBrace => {
+                if !matches!(delimiters.pop(), Some(Delimiter::OpaqueBrace)) {
+                    return false;
+                }
+                opaque_depth -= 1;
+            }
+            TokenKindV1::RBracket => {
+                if !matches!(delimiters.pop(), Some(Delimiter::OpaqueBracket)) {
+                    return false;
+                }
+                opaque_depth -= 1;
+            }
+            TokenKindV1::Ident(_)
+            | TokenKindV1::Int(_)
+            | TokenKindV1::Float(_)
+            | TokenKindV1::Str(_)
+            | TokenKindV1::Comma
+            | TokenKindV1::Dot
+            | TokenKindV1::Colon
+            | TokenKindV1::Semicolon
+            | TokenKindV1::Pipe
+            | TokenKindV1::Arrow
+            | TokenKindV1::ThinArrow
+            | TokenKindV1::Op(_)
+            | TokenKindV1::Eof => {}
         }
         n += 1;
     }

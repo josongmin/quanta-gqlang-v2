@@ -433,7 +433,7 @@ fn checked_formatter_rejects_unrepresentable_raw_hir_before_silent_loss() {
         FormatErrorCodeV1::RawBoolLiteral
     );
 
-    let ambiguous_bool_paren = ProgramItemHirV1::from(builder.rule(
+    let semantically_equivalent_bool_paren = ProgramItemHirV1::from(builder.rule(
         "r",
         span,
         builder.symbol("x", span),
@@ -441,10 +441,9 @@ fn checked_formatter_rejects_unrepresentable_raw_hir_before_silent_loss() {
         span,
     ));
     assert_eq!(
-        try_format_item(&ambiguous_bool_paren)
-            .expect_err("ambiguous boolean grouping rejects")
-            .code,
-        FormatErrorCodeV1::AmbiguousBoolParen
+        try_format_item(&semantically_equivalent_bool_paren)
+            .expect("boolean/value parenthesis carriers have identical surface semantics"),
+        "rule r : x if (ok)"
     );
 }
 
@@ -464,6 +463,8 @@ fn checked_formatter_requires_parser_admission_and_preserves_positive_cases() {
     for source in [
         "let x = (-a).b",
         "rule r : x if not (exists (from a))",
+        "rule r : x if (a.exists)",
+        "rule r : x if (a.exists) > 0",
         "from a | join b on a.id = b.id => { id: a.id }",
         "find reachability source -> sink | depth=2",
     ] {
@@ -473,6 +474,21 @@ fn checked_formatter_requires_parser_admission_and_preserves_positive_cases() {
             format_item(&item),
             "{source}"
         );
+    }
+}
+
+#[test]
+fn checked_formatter_rejects_general_raw_hir_semantic_aliases() {
+    let builder = HirBuilderV1::new();
+    let span = SpanV1::new(0, 1);
+    for raw_symbol in ["true", "a.b", "f(1)"] {
+        let item =
+            ProgramItemHirV1::from(builder.decl("x", span, builder.symbol(raw_symbol, span), span));
+        let error = match try_format_item(&item) {
+            Err(error) => error,
+            Ok(rendered) => panic!("{raw_symbol:?} serialized as {rendered:?}"),
+        };
+        assert_eq!(error.code, FormatErrorCodeV1::NonCanonical, "{raw_symbol}");
     }
 }
 

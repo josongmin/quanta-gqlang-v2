@@ -131,6 +131,8 @@ Focused 진입점은 원인 확인용이다:
 `rust-toolchain.toml`은 기본 Rust 1.81과 rustfmt/Clippy를 고정한다.
 `just ci`에는 별도 Rust 1.95 Clippy, `just`, `cargo-nextest`, `taplo`,
 `typos`, `cargo-deny`, Python 3, Semgrep CLI 또는 Python 모듈이 필요하다.
+Python AST 정책 의존성은 `python3 -m pip install -r tools/lint/requirements.txt`로
+고정 버전을 설치한다.
 필요한 실행 명령은 [Justfile](Justfile)이 권위다. 변경 부위의 owner 테스트로
 반복하고, 저장소 전체 판정이 필요할 때 `just ci`를 실행한다. clean committed
 HEAD의 재현 가능한 영수증이 필요할 때만 `just qualify-local`을 사용한다.
