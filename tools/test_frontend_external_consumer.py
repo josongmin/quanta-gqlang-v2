@@ -69,13 +69,15 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import Dict, IO, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
 from tools.ci.doctor import DoctorError, read_lock  # noqa: E402
+from tools.ci.evidence import (  # noqa: E402
+    EvidencePathError, consume_json_evidence, read_json_evidence, write_json_evidence,
+)
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIR = REPOSITORY_ROOT / "tools" / "frontend_external_consumer"
@@ -87,6 +89,7 @@ LOCKFILE = REPOSITORY_ROOT / "Cargo.lock"
 FIXTURE_LOCKFILE = FIXTURE_DIR / "Cargo.lock"
 CACHE_ROOT = REPOSITORY_ROOT / "target" / "external-consumer-gate"
 PREFLIGHT_STAMP = REPOSITORY_ROOT / "target" / "ci" / "external-preflight.json"
+CI_EVIDENCE_ROOT = REPOSITORY_ROOT / "target"
 VECTOR_PATH = (
     REPOSITORY_ROOT
     / "crates"
@@ -821,31 +824,26 @@ def preflight_manifests() -> List[Path]:
 
 
 def write_preflight_stamp(run_id: str) -> None:
-    parent = PREFLIGHT_STAMP.parent
-    if parent.is_symlink():
-        raise InfrastructureError("local CI evidence directory is redirected")
-    parent.mkdir(parents=True, exist_ok=True)
-    fd, temporary = tempfile.mkstemp(dir=str(parent), prefix=".external-preflight-")
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump(preflight_payload(run_id), handle, sort_keys=True)
-            handle.write("\n")
-        os.replace(temporary, PREFLIGHT_STAMP)
-    finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
+        write_json_evidence(
+            PREFLIGHT_STAMP, preflight_payload(run_id),
+            owned_root=CI_EVIDENCE_ROOT, prefix="external-preflight",
+        )
+    except EvidencePathError as error:
+        raise InfrastructureError(str(error)) from error
 
 
 def consume_preflight_stamp(run_id: str) -> None:
-    if PREFLIGHT_STAMP.is_symlink() or not PREFLIGHT_STAMP.is_file():
-        raise InfrastructureError("same-run external preflight stamp is missing")
     try:
-        observed = json.loads(PREFLIGHT_STAMP.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as error:
+        observed, raw = read_json_evidence(PREFLIGHT_STAMP, owned_root=CI_EVIDENCE_ROOT)
+    except (EvidencePathError, OSError) as error:
         raise InfrastructureError("cannot read external preflight stamp: %s" % error) from error
     if observed != preflight_payload(run_id):
         raise InfrastructureError("external preflight stamp does not match this run and source")
-    PREFLIGHT_STAMP.unlink()
+    try:
+        consume_json_evidence(PREFLIGHT_STAMP, raw, owned_root=CI_EVIDENCE_ROOT)
+    except (EvidencePathError, OSError) as error:
+        raise InfrastructureError("cannot consume external preflight stamp: %s" % error) from error
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

@@ -18,7 +18,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from qualify_local import (  # noqa: E402
-    QualificationDriver, QualificationError, git, valid_nextest_evidence,
+    QualificationDriver, QualificationError, git, valid_deny_evidence,
+    valid_nextest_evidence,
 )
 
 
@@ -92,6 +93,33 @@ class QualificationDriverTest(unittest.TestCase):
             malformed = dict(evidence)
             malformed[key] = value
             self.assertFalse(valid_nextest_evidence(malformed, run_id), key)
+
+    def test_deny_evidence_is_bound_to_run_and_stable_revision(self) -> None:
+        run_id = "a" * 32
+        state = {
+            "path": "/db", "revision": "b" * 40,
+            "fetched_at_unix": 1, "fetch_age_s": 2,
+        }
+        evidence = {
+            "schema": 1,
+            "qualification_run_id": run_id,
+            "command": [
+                "cargo", "deny", "--frozen", "check", "--disable-fetch",
+                "bans", "licenses", "sources", "advisories",
+            ],
+            "exit": 0,
+            "before": state,
+            "after": dict(state, fetch_age_s=3),
+            "output_sha256": "c" * 64,
+        }
+        self.assertTrue(valid_deny_evidence(evidence, run_id, state))
+        changed = dict(state, revision="d" * 40)
+        self.assertFalse(valid_deny_evidence(evidence, run_id, changed))
+        self.assertFalse(valid_deny_evidence(evidence, "e" * 32, state))
+        for key, value in (("schema", True), ("exit", False)):
+            malformed = dict(evidence)
+            malformed[key] = value
+            self.assertFalse(valid_deny_evidence(malformed, run_id, state), key)
 
     def prepare(self) -> None:
         self.driver.prepare_checkout(*self.pin())
@@ -178,6 +206,14 @@ class QualificationDriverTest(unittest.TestCase):
         with self.assertRaisesRegex(QualificationError, "target root must not be a symlink"):
             self.driver.run()
         self.assertEqual(list(outside.iterdir()), [])
+
+    def test_redirected_ci_evidence_directory_is_rejected(self) -> None:
+        self.prepare()
+        outside = Path(self.temp.name) / "outside-evidence"
+        outside.mkdir()
+        (self.driver.build_cache / "ci").symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(QualificationError, "missing or redirected"):
+            self.driver.ci_evidence_path("nextest-evidence.json")
 
     def test_run_records_exact_pin_and_reuses_managed_checkout(self) -> None:
         (self.repo / "rust-toolchain.toml").write_text(

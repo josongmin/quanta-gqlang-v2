@@ -8,12 +8,12 @@ import json
 import os
 import re
 import sys
-import tempfile
 from pathlib import Path
 from typing import Dict, Optional, Set, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
+from tools.ci.evidence import EvidencePathError, write_json_evidence  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 EVIDENCE = ROOT / "target/ci/nextest-evidence.json"
@@ -28,7 +28,7 @@ class NextestEvidenceError(RuntimeError):
 
 def inventory(document: dict) -> Tuple[Set[str], Set[str]]:
     suites = document.get("rust-suites")
-    if not isinstance(suites, dict) or not isinstance(document.get("test-count"), int):
+    if not isinstance(suites, dict) or type(document.get("test-count")) is not int:
         raise NextestEvidenceError("invalid nextest list schema")
     selected: Set[str] = set()
     skipped: Set[str] = set()
@@ -132,16 +132,7 @@ def reconcile(
 
 
 def write_evidence(payload: dict) -> None:
-    EVIDENCE.parent.mkdir(parents=True, exist_ok=True)
-    fd, temporary = tempfile.mkstemp(dir=str(EVIDENCE.parent), prefix=".nextest-")
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump(payload, handle, indent=2, sort_keys=True)
-            handle.write("\n")
-        os.replace(temporary, EVIDENCE)
-    finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
+    write_json_evidence(EVIDENCE, payload, owned_root=ROOT / "target", prefix="nextest")
 
 
 def main() -> int:
@@ -209,7 +200,9 @@ def main() -> int:
             evidence["discovered"], evidence["executed"], evidence["skipped_ignored"]
         ))
         return 0
-    except (NextestEvidenceError, ProcessTimeoutError, OSError, ValueError) as error:
+    except (
+        EvidencePathError, NextestEvidenceError, ProcessTimeoutError, OSError, ValueError,
+    ) as error:
         print("nextest gate: " + str(error), file=sys.stderr)
         return 2
 

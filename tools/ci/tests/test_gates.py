@@ -13,7 +13,10 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-from tools.ci import advisory_db, doctor, doctest_gate, nextest_gate, run_local, unittest_gate
+from tools.ci import (
+    advisory_db, deny_gate, doctor, doctest_gate, nextest_gate, run_local, unittest_gate,
+)
+from tools.ci.evidence import EvidencePathError, read_json_evidence, write_json_evidence
 
 
 class LocalGateTest(unittest.TestCase):
@@ -129,6 +132,46 @@ class LocalGateTest(unittest.TestCase):
             with self.assertRaisesRegex(advisory_db.AdvisoryError, "checkout is dirty"):
                 advisory_db.state(cargo_home)
 
+    def test_deny_gate_rejects_database_change_during_scan(self) -> None:
+        before = {
+            "path": "/db", "revision": "a" * 40,
+            "fetched_at_unix": 1, "fetch_age_s": 2,
+        }
+        after = dict(before, revision="b" * 40)
+        completed = subprocess.CompletedProcess(list(deny_gate.COMMAND), 0, "ok", "")
+        with patch.object(deny_gate, "state", side_effect=[before, after]), \
+             patch.object(deny_gate, "run_bounded", return_value=completed), \
+             patch.object(deny_gate, "write_evidence"), \
+             redirect_stderr(io.StringIO()) as errors, redirect_stdout(io.StringIO()):
+            self.assertEqual(deny_gate.main(), 2)
+        self.assertIn("changed while cargo-deny", errors.getvalue())
+
+    def test_evidence_writer_rejects_redirected_directory(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="qglang-evidence-") as directory:
+            root = Path(directory) / "target"
+            outside = Path(directory) / "outside"
+            root.mkdir()
+            outside.mkdir()
+            (root / "ci").symlink_to(outside, target_is_directory=True)
+            with self.assertRaisesRegex(EvidencePathError, "redirected"):
+                write_json_evidence(
+                    root / "ci/evidence.json", {"pass": False},
+                    owned_root=root, prefix="test",
+                )
+            self.assertEqual(list(outside.iterdir()), [])
+
+    def test_evidence_consume_is_atomic_and_single_use(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="qglang-evidence-") as directory:
+            root = Path(directory) / "target"
+            path = root / "ci/evidence.json"
+            write_json_evidence(path, {"run": "one"}, owned_root=root, prefix="test")
+            observed, raw = read_json_evidence(path, owned_root=root, consume=True)
+            self.assertEqual(observed, {"run": "one"})
+            self.assertIn(b'"run": "one"', raw)
+            self.assertFalse(path.exists())
+            with self.assertRaisesRegex(EvidencePathError, "missing or redirected"):
+                read_json_evidence(path, owned_root=root, consume=True)
+
     def test_tool_lock_rejects_duplicate_missing_and_unknown_keys(self) -> None:
         original = doctor.LOCK.read_text(encoding="utf-8")
         missing_just = "\n".join(
@@ -202,6 +245,9 @@ class LocalGateTest(unittest.TestCase):
             nextest_gate.terminal_events(events + "\n" + events.splitlines()[1])
         listing["test-count"] = 3
         with self.assertRaisesRegex(nextest_gate.NextestEvidenceError, "inconsistent"):
+            nextest_gate.inventory(listing)
+        listing["test-count"] = True
+        with self.assertRaisesRegex(nextest_gate.NextestEvidenceError, "schema"):
             nextest_gate.inventory(listing)
 
     def test_nextest_rejects_failed_event_with_zero_child_exit(self) -> None:

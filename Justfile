@@ -54,8 +54,7 @@ external-consumer-preflight:
     python3 tools/test_frontend_external_consumer.py --preflight
 
 deny:
-    python3 tools/ci/advisory_db.py
-    cargo deny --frozen check --disable-fetch bans licenses sources advisories
+    python3 tools/ci/deny_gate.py
 
 advisory-refresh:
     cargo deny fetch

@@ -103,8 +103,10 @@ class ExternalConsumerCacheTest(unittest.TestCase):
 
     def test_preflight_stamp_is_run_bound_hash_bound_and_single_use(self):
         with tempfile.TemporaryDirectory() as directory:
-            stamp = Path(directory) / "external-preflight.json"
+            evidence_root = Path(directory) / "target"
+            stamp = evidence_root / "ci/external-preflight.json"
             with mock.patch.object(consumer_gate, "PREFLIGHT_STAMP", stamp), \
+                 mock.patch.object(consumer_gate, "CI_EVIDENCE_ROOT", evidence_root), \
                  mock.patch.object(consumer_gate, "preflight_manifests", return_value=[
                      REPOSITORY_ROOT / "Cargo.toml", FIXTURE_DIR / "Cargo.toml",
                      REPOSITORY_ROOT / "crates/quanta-gqlang-v2-modules/Cargo.toml",

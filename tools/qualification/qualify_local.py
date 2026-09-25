@@ -24,6 +24,7 @@ from typing import Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
+from tools.ci.evidence import EvidencePathError, read_json_evidence  # noqa: E402
 
 GIT_TIMEOUT_S = 120
 CI_TIMEOUT_S = 1800
@@ -132,7 +133,7 @@ def valid_nextest_evidence(evidence: object, run_id: str) -> bool:
     if any(type(evidence.get(key)) is not int for key in fields):
         return False
     hashes = (evidence.get("inventory_sha256"), evidence.get("events_sha256"))
-    if evidence.get("schema") != 1 or any(
+    if type(evidence.get("schema")) is not int or evidence["schema"] != 1 or any(
         not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None
         for value in hashes
     ):
@@ -149,6 +150,38 @@ def valid_nextest_evidence(evidence: object, run_id: str) -> bool:
         and evidence["summary_run"] == evidence["selected"]
         and evidence["summary_passed"] == evidence["executed"]
         and evidence["summary_failed"] == 0
+    )
+
+
+def valid_deny_evidence(evidence: object, run_id: str, current: object) -> bool:
+    if not isinstance(evidence, dict) or not isinstance(current, dict):
+        return False
+    if (
+        type(evidence.get("schema")) is not int or evidence["schema"] != 1
+        or evidence.get("qualification_run_id") != run_id
+    ):
+        return False
+    if type(evidence.get("exit")) is not int or evidence["exit"] != 0 or evidence.get("command") != [
+        "cargo", "deny", "--frozen", "check", "--disable-fetch",
+        "bans", "licenses", "sources", "advisories",
+    ]:
+        return False
+    output_hash = evidence.get("output_sha256")
+    if not isinstance(output_hash, str) or re.fullmatch(r"[0-9a-f]{64}", output_hash) is None:
+        return False
+    before, after = evidence.get("before"), evidence.get("after")
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return False
+    identity_keys = ("path", "revision", "fetched_at_unix")
+    identities = [tuple(value.get(key) for key in identity_keys) for value in (before, after, current)]
+    if identities[0] != identities[1] or identities[1] != identities[2]:
+        return False
+    path, revision, fetched_at = identities[0]
+    return (
+        isinstance(path, str) and bool(path)
+        and isinstance(revision, str) and re.fullmatch(r"[0-9a-f]{40}", revision) is not None
+        and type(fetched_at) is int
+        and all(type(value.get("fetch_age_s")) is int for value in (before, after, current))
     )
 
 
@@ -218,6 +251,26 @@ class QualificationDriver:
         dirty = source_status(self.checkout, checkout=True)
         if dirty:
             raise QualificationError("managed checkout is dirty; inspect before reusing:\n" + dirty)
+
+    def ci_evidence_path(self, name: str) -> Path:
+        evidence_dir = self.checkout / "target" / "ci"
+        if evidence_dir.is_symlink() or not evidence_dir.is_dir():
+            raise QualificationError("managed CI evidence directory is missing or redirected")
+        try:
+            evidence_dir.resolve().relative_to(self.build_cache.resolve())
+        except ValueError as error:
+            raise QualificationError("managed CI evidence directory escapes build cache") from error
+        path = evidence_dir / name
+        if path.is_symlink() or not path.is_file():
+            raise QualificationError("managed CI evidence is missing or redirected: " + name)
+        return path
+
+    def read_ci_evidence(self, name: str) -> tuple:
+        path = self.ci_evidence_path(name)
+        try:
+            return read_json_evidence(path, owned_root=self.build_cache)
+        except (EvidencePathError, OSError) as error:
+            raise QualificationError("cannot read managed CI evidence: %s" % error) from error
 
     def prepare_checkout(self, sha: str, tree: str) -> None:
         if self.checkout.exists() or self.checkout.is_symlink():
@@ -330,12 +383,12 @@ class QualificationDriver:
                 exit_code = 1
             nextest_evidence = None
             if (self.checkout / "tools/ci/nextest_gate.py").is_file():
-                evidence_path = self.checkout / "target/ci/nextest-evidence.json"
-                if evidence_path.is_file() and not evidence_path.is_symlink():
-                    try:
-                        observed = json.loads(evidence_path.read_text(encoding="utf-8"))
-                    except (OSError, ValueError) as error:
-                        raise QualificationError("cannot parse nextest evidence: %s" % error) from error
+                try:
+                    observed, _ = self.read_ci_evidence("nextest-evidence.json")
+                except (OSError, ValueError, QualificationError) as error:
+                    print("qualify-local: cannot read nextest evidence: %s" % error,
+                          file=sys.stderr, flush=True)
+                else:
                     if isinstance(observed, dict) and observed.get("qualification_run_id") == run_id:
                         nextest_evidence = observed
                 if exit_code == 0 and not valid_nextest_evidence(nextest_evidence, run_id):
@@ -345,13 +398,30 @@ class QualificationDriver:
             advisory_db = None
             if (self.checkout / "tools/ci/advisory_db.py").is_file() and exit_code == 0:
                 try:
-                    advisory_db = json.loads(command(
+                    current_advisory_db = json.loads(command(
                         ("python3", "tools/ci/advisory_db.py", "--json"), self.checkout
                     ))
                 except (ValueError, QualificationError) as error:
                     print("qualify-local: advisory DB evidence failed: %s" % error,
                           file=sys.stderr, flush=True)
                     exit_code = 2
+                else:
+                    deny_evidence = None
+                    deny_raw = None
+                    try:
+                        deny_evidence, deny_raw = self.read_ci_evidence("deny-evidence.json")
+                    except (OSError, ValueError, QualificationError) as error:
+                        print("qualify-local: cannot read deny evidence: %s" % error,
+                              file=sys.stderr, flush=True)
+                    if not valid_deny_evidence(deny_evidence, run_id, current_advisory_db):
+                        print("qualify-local: current-run deny evidence is missing or inconsistent",
+                              file=sys.stderr, flush=True)
+                        exit_code = 2
+                    else:
+                        advisory_db = dict(current_advisory_db)
+                        advisory_db["qualification_run_id"] = run_id
+                        advisory_db["gate_exit"] = 0
+                        advisory_db["evidence_sha256"] = hashlib.sha256(deny_raw).hexdigest()
             write_json_atomic(receipt_dir / "receipt.json", {
                 "sha": sha, "tree": tree, "cmds": ["just ci"],
                 "exit": exit_code, "duration_s": duration_s,

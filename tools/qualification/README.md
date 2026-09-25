@@ -46,8 +46,10 @@ is not evidence that the external consumer gate passed.
 
 `just advisory-refresh` explicitly refreshes cargo-deny's active RustSec DB.
 The routine `just deny` gate requires a fetch within seven days and runs with
-network disabled. The checked revision and fetch time are in the qualification
-receipt. `~/.cargo/advisory-dbs` (plural) is cargo-deny 0.19.7's active DB
+network disabled. It rejects a dirty database, requires checked-out HEAD to
+match the fetched revision, and proves that revision did not change across the
+scan. Qualification accepts only same-run deny evidence and records its hash,
+revision, and fetch time in the receipt. `~/.cargo/advisory-dbs` (plural) is cargo-deny 0.19.7's active DB
 directory; the older singular `advisory-db` directory is not this gate's DB.
 
 `qualify-local` always emits Just recipe timestamps and durations in its log.
