@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import signal
 import subprocess
+import time
 from pathlib import Path
 from typing import IO, Mapping, Optional, Sequence, Union
 
@@ -19,6 +20,28 @@ class ProcessTimeoutError(RuntimeError):
         self.command = tuple(command)
         self.timeout_s = timeout_s
         super().__init__("%s timed out after %g s" % (" ".join(command), timeout_s))
+
+
+PROCESS_GROUP_CLEANUP_TIMEOUT_S = 1.0
+
+
+def wait_for_process_group_exit(process_group: int) -> None:
+    """Give SIGKILL delivery and orphan reaping a bounded completion window."""
+    deadline = time.monotonic() + PROCESS_GROUP_CLEANUP_TIMEOUT_S
+    while True:
+        try:
+            os.killpg(process_group, 0)
+        except ProcessLookupError:
+            return
+        except PermissionError:
+            # macOS can report EPERM briefly after the group leader has been
+            # reaped while an orphaned member is still being torn down. That
+            # is not proof that the process group has disappeared.
+            pass
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return
+        time.sleep(min(0.01, remaining))
 
 
 def run_bounded(
@@ -69,6 +92,10 @@ def run_bounded(
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait(timeout=1)
+        # wait() reaps only the direct child. Under scheduler pressure a
+        # same-group grandchild can still be live for a short interval after
+        # killpg() returns. Do not report timeout completion during that gap.
+        wait_for_process_group_exit(process.pid)
         if isinstance(error, subprocess.TimeoutExpired):
             raise ProcessTimeoutError(command, timeout_s) from error
         raise

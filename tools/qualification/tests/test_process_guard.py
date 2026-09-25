@@ -12,7 +12,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tools.process_guard import ProcessTimeoutError, run_bounded
+from tools.process_guard import (
+    ProcessTimeoutError, run_bounded, wait_for_process_group_exit,
+)
 
 
 def popen_after_child_ready(pid_file: Path, ready_at=None):
@@ -37,6 +39,14 @@ def popen_after_child_ready(pid_file: Path, ready_at=None):
 
 
 class ProcessGuardTest(unittest.TestCase):
+    def test_cleanup_treats_permission_error_as_group_still_present(self) -> None:
+        with patch(
+            "tools.process_guard.os.killpg",
+            side_effect=[PermissionError, ProcessLookupError],
+        ) as probe, patch("tools.process_guard.time.sleep"):
+            wait_for_process_group_exit(12345)
+        self.assertEqual(probe.call_count, 2)
+
     def test_interrupted_gate_kills_and_reaps_its_process_group(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             started = []
