@@ -1,6 +1,6 @@
 # INT-02 — 구형 host-adapter의 공개 계약 불일치 처리
 
-상태: **현재 pair compile RED 확인** · 우선순위: P2 · 소유: Semantica workspace/adapter owner.
+상태: **소스 불일치·raw Cargo compile 진단 RED / QBC 판정 전** · 우선순위: P2 독립 workspace 위생 · 소유: Semantica workspace/adapter owner.
 
 ## 근거
 
@@ -10,17 +10,17 @@
 
 ## 현재 재현
 
-- Semantica `01c699be4d26f3d80e378c8906dfd2ee9b39af41`의 dirty checkout에서 `cargo check -p quanta-gqlang-v2-host-adapter --lib --no-default-features`를 실행했다.
+- Semantica `9ce5972352ad3503653e7952a9bab17340439898`의 dirty checkout에서 `cargo check -p quanta-gqlang-v2-host-adapter --lib --no-default-features`를 실행했다.
 - 결과는 exit 101이다. `algebra_lowering.rs`, `check_lowering.rs`, `graph_lowering.rs`, `presentation_lowering.rs`의 제거된 frontend/exec-contract import에서 `E0432` 5건이 발생했고, 그 후속 타입 추론 `E0282` 2건이 발생했다.
-- 이는 현재 sibling QGLang `39f72917…`과의 실제 compile defect다. Semantica checkout의 다른 dirty 변경 때문에 repository qualification으로 승격할 수는 없지만, “컴파일 판정 전” 상태는 아니다.
+- 이는 현재 sibling QGLang `145b6682…`과의 소스 불일치를 확인하는 진단이다. Semantica 규칙상 raw Cargo 결과는 권위 있는 Rust verdict가 아니며, checkout도 다른 작업으로 dirty하다. 등록 QBC 판정은 아직 없다.
 
 ## 판단·해결
 
-1. 실제 제품/테스트 소비자와 보존해야 할 계약을 확인한다. 소비자가 없으면 crate와 root/nested workspace 등록, runtime/executor census, timing scenario, feature-isolation 및 readiness 참조를 함께 제거한다.
-2. 필요하다면 V1 HIR 재-export/compat shim 없이 V3 공개 DTO와 별도 specified runtime payload를 기준으로 재설계한다.
-3. 수정 후 위 exact check와 등록된 QBC owner/member rail을 같은 source digest에서 통과시킨다. 제품 V3 경로를 구형 adapter로 재우회시키지 않는다.
+1. 제품 Rust 소비자는 조사 범위에서 미발견이지만 `tools/catalog`, `tools/casectl/registry/ext-gqlang-serving.yaml`, QBC timing/feature-isolation, boundary policy 참조는 존재한다. 이 참조가 실제 gate·제품 보증인지 먼저 분류한다.
+2. QBC에서 package 단위 compile을 진단한다. 제품 소비자가 없고 구형 owner rail도 더 이상 유효하지 않으면 crate와 workspace/registry/catalog/policy 참조를 함께 제거한다. 제품 요구가 실제 있다면 이 티켓에서 V1 shim을 만들지 말고 별도 V3 payload/consumer 설계 승인을 받는다.
+3. 선택한 경로의 package/workspace QBC compile과 해당 registry/policy 검증을 현재 source digest에서 실행한다. 이 P2는 제품 V3 pair proof의 무조건 선행조건이 아니다.
 
 ## 완료 조건
 
-- 의도한 workspace/member QBC compile·test가 현재 pair source digest에서 통과하고, 삭제 또는 V3 cutover의 선택 이유·남은 소비자가 기록된다.
+- 의도한 package/workspace QBC compile·test가 현재 pair source digest에서 통과하고, 유지/삭제 선택 이유와 남은 registry·제품 소비자가 기록된다.
 - 현 QGLang facade의 public allowlist를 adapter 편의 때문에 넓히지 않는다. Graph/CHECK 실행 지원 확대는 별도 기능 계약이다.

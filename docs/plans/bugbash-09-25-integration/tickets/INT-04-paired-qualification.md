@@ -4,17 +4,17 @@
 
 ## 현재 증거
 
-- QGLang `39f729171243c07d1f6dc5cdc2d6129731b7c6ad` / tree `cddb605117b7719d459877fd2b4046458a3800e2`의 current clean committed-source qualification receipt가 생성됐다: `status=complete`, `exit=0`, Nextest `1248/1248`, skipped/ignored/leaked `0/0/0`, duration 46s. 경로는 `target/qualification/39f729171243c07d1f6dc5cdc2d6129731b7c6ad/receipt.json`이다.
+- QGLang `145b66827a8791c22c4df26fcfa11d82592f913f` / tree `88815ae0779e8888cb0ce17661bfd5825a1979d7`의 current clean committed-source qualification receipt가 생성됐다: `status=complete`, `exit=0`, Nextest `1248/1248`, skipped/ignored/leaked `0/0/0`, duration 28s. 경로는 `target/qualification/145b66827a8791c22c4df26fcfa11d82592f913f/receipt.json`이다.
 - Semantica는 sibling `Q:crates/quanta-gqlang-v2-frontend-contract`를 path dependency로 소비한다: `S:packages/analysis/quanta-v2/crates/quanta-gqlang-v2-exec-contract/Cargo.toml:17-20,37`. QBC campaign source closure에는 sibling path dependency가 포함된다: `S:tools/quanta-build-cli/campaign_source_closure_v1.py:171-228`.
-- current Semantica owner RED는 두 개다: INT-00 golden-vector test `0/1`, INT-02 host-adapter check exit 101. 과거 QBC log에는 exec-contract/public-ingress의 옛 digest PASS, SDK GQLang 중단, 설치형 process target의 옛 digest 실패가 있다. current pair 제품 PASS는 확인되지 않았다. 중단은 test RED가 아니다.
+- current Semantica raw Cargo 진단 실패는 INT-00 golden-vector `0/1`과 INT-02 host-adapter check exit 101이다. 이 둘은 QBC owner verdict가 아니다. 과거 QBC log의 exec-contract/public-ingress PASS와 설치형 실패는 옛 digest다. current pair 제품 PASS는 확인되지 않았다.
 - `S:crates/quanta-cli-server/tests/server_socket_daemon_e2e.rs:3819-3910`은 V3 from-files의 실제 소켓/authority drift를 검사한다. lexical·semantic V3 Composition은 SDK owner 테스트가 있지만 설치형 process 양성은 확인되지 않았다. SDK 등록: `S:tools/testing/suite-registry-v1.yaml:646-775`.
 
 ## 실행 순서와 증거
 
-1. QGLang producer는 `39f72917…` clean receipt로 고정한다. INT-00~03의 Semantica 수정 후 Semantica HEAD·tree·dirty/untracked를 분리된 checkout에서 고정하고, QBC source digest에 sibling QGLang이 포함됐는지 기록한다. QGLang receipt와 QBC digest의 문자열 동일성을 요구하지 않는다.
-2. Semantica는 등록된 QBC owner/profile rail에서 exec-contract → ingress → runtime-execution → SDK GQLang 테스트를 동일 digest로 실행한다. 새로운 임의 QBC lane을 조용히 만들지 않는다.
-3. `dist-full,gqlang-process-proof` 설치 bundle/receipt를 생성하고, `S:crates/quanta-cli-server/tests/server_socket_daemon_e2e.rs:253-266`의 환경 입력과 binary SHA를 대조한다. INT-03의 exact test 후 filter 없는 `S:tools/quanta-build-cli/product-recipes-v1.toml:114-125` process target을 실행한다.
-4. 각 영수증에 pair HEAD, dirty/source digest, toolchain, feature, target, selected/executed test count, exit, 설치 binary/receipt identity를 남긴다. 실패·중단·skip·미선택을 PASS로 계산하지 않는다. 범위가 변하면 영향받은 단계부터 재실행한다.
+1. QGLang `145b6682…` clean receipt를 재사용한다. 그 뒤 QGLang HEAD/source 또는 qualification 도구가 바뀌었을 때만 새 clean-HEAD receipt를 받는다. Semantica는 INT-00/03 수정과 INT-01 판정 뒤 다른 dirty 작업을 분리하고, 양쪽 HEAD·tree·dirty/untracked를 고정한다. QBC source digest에 sibling QGLang이 포함됐는지 기록한다.
+2. 등록 QBC owner/profile rail에서 exec-contract → public-ingress → runtime-execution → SDK GQLang을 동일 Semantica source digest로 실행한다. SDK에는 `S:tools/testing/suite-registry-v1.yaml:646-775`의 files/lexical/semantic positive와 foreign-scope/generation negatives를 선택한다. 변경 없는 owner PASS는 같은 digest·feature·selector에서만 재사용한다.
+3. `dist-full,gqlang-process-proof` 설치 bundle/receipt의 binary SHA를 확인한다. INT-03 수정 뒤 exact process test를 먼저 실행하고, 성공하면 filter 없는 `S:tools/quanta-build-cli/product-recipes-v1.toml:114-125` recipe를 한 번 실행한다. 이전 소스 모순을 보기 위한 pre-fix process RED는 요구하지 않는다.
+4. pair HEAD, QBC source digest, toolchain, features, target, selected/executed/ignored count, exit, 설치 binary/receipt identity를 남긴다. 실패·중단·skip·미선택은 PASS가 아니다. 소스가 움직이면 영향받은 단계만 재판정한다. INT-02는 이 경로가 package/workspace gate를 실제 선택하지 않는 한 별도 P2다.
 
 ## 완료 조건
 

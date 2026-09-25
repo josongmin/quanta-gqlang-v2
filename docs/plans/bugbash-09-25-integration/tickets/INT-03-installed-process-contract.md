@@ -1,6 +1,6 @@
 # INT-03 — 설치형 full-provider 테스트와 V3 지원 계약 정합화
 
-상태: **소스상 테스트 기대 충돌 / 현재 process 실행 전** · 우선순위: P1 테스트 게이트 · 소유: Semantica CLI/server + SDK public query owner.
+상태: **확정 소스상 테스트 계약 충돌 / 현재 pair process 실행 전** · 우선순위: P1 테스트 게이트 · 소유: Semantica CLI/server + SDK public query owner.
 
 2026-09-25 current-source 재검증에서도 설치형 테스트는 단독 `check ...`와 단독 semantic `sample ...`의 성공·반복결정성을 기대한다. SDK owner tests와 QGLang V3 계약의 standalone-family typed reject 경계는 변하지 않았다. 현재 pair에서 이 exact process test를 실행한 receipt는 없으며, 검색된 최신 GQLang process receipts는 2026-09-23의 이전 source digest 실패다.
 
@@ -12,13 +12,13 @@
 
 ## 확인·해결
 
-1. receipt-bound 설치 artifact로 이 테스트를 먼저 exact-filter 실행하여 첫 실제 실패 위치/응답 reason을 기록한다. 단순 소스 모순을 실행 판정으로 오인하지 않는다.
-2. 현 제품 계약이 V3 Composition뿐이면 단독 CHECK/SAMPLE 기대를 성공으로 유지하지 않는다. 단독 family는 typed reject/no effects로 검증하고, semantic SAMPLE 양성은 `let sampled = sample ... from sampled ... with sampled`의 V3 Composition으로 옮긴다.
-3. Pattern signed packet에 독립적인 실제 공개 실행 경로가 있다면 그 경로의 process proof를 분리해 유지한다. 없으면 지원 주장/테스트를 정확히 축소한다. provider packet 검증 자체를 조용히 삭제하지 않는다.
-4. lexical·semantic Composition 모두 socket/daemon/receipt, 반복 결정성, foreign generation/provider·scope 거부를 추가한다. 이미 있는 SDK owner 테스트와 중복 책임을 분리한다.
+1. 현재 V3 계약에서는 단독 CHECK/SAMPLE 성공 oracle이 불가능하므로 이를 보기 위한 비싼 설치형 RED 실행은 생략한다. SDK의 standalone typed reject를 유지하고, process 테스트에서는 해당 요청의 typed reject/no effects를 검증한다.
+2. semantic SAMPLE 양성은 `let sampled = sample ... from sampled ... with sampled` V3 Composition으로 교체한다. 기존 persisted dense publication fixture·반복 결정성·generation 검사는 유지한다. lexical Composition 양성은 기존 SDK proof와 역할을 구분해 소켓/daemon 경계에 한 개만 추가한다.
+3. Pattern signed packet의 별도 공개 실행 경로가 실제 있다면 그 process test로 이동한다. 없다면 V3 CHECK 성공 주장을 제거하되 packet 생성/검증 자체는 owner rail에 남긴다. 기능을 열기 위해 QGLang의 standalone 실행 계약을 임의 확장하지 않는다.
+4. 수정 뒤 `dist-full,gqlang-process-proof` 설치 artifact와 receipt를 생성한다. 이 exact test를 실행한 다음 INT-04의 filter 없는 전체 process recipe를 한 번 실행한다. SDK에 이미 있는 foreign generation/provider 거부를 설치형에서 무조건 복제하지 않고, 소켓 경계에서만 추가로 위험한 identity/receipt 사례를 선택한다.
 
 ## 완료 조건
 
-- exact-filter process RED 원인과 post-fix GREEN이 동일 pair source digest 및 설치 artifact receipt에 연결된다.
+- 소스상 기존 기대 충돌과 수정 diff가 기록되고, post-fix exact-filter process GREEN이 pair source digest 및 설치 artifact receipt에 연결된다. pre-fix process RED 영수증은 필수 아님.
 - filter 없는 제품 process recipe에서 모든 GQLang 테스트가 실제 선택·실행되고 통과한다. `#[ignore]`, `required:false`, feature 선택, 환경 누락으로 통과처럼 보이는 결과를 허용하지 않는다.
 - 지원하지 않는 family를 정상 결과로 포장하거나 기존 Pattern/dense proof를 삭제해 녹색으로 만들지 않는다.
