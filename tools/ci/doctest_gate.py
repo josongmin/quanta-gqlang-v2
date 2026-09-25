@@ -12,11 +12,32 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
-RESULT = re.compile(r"^test result: ok\. (\d+) passed; (\d+) failed; (\d+) ignored;", re.MULTILINE)
+RESULT = re.compile(
+    r"^test result: (ok|FAILED)\. (\d+) passed; (\d+) failed; (\d+) ignored;(?:.*)$"
+)
+
+
+class DoctestEvidenceError(RuntimeError):
+    pass
 
 
 def count_executed(output: str) -> int:
-    return sum(int(passed) for passed, failed, ignored in RESULT.findall(output))
+    summaries = [line for line in output.splitlines() if line.startswith("test result:")]
+    if not summaries:
+        raise DoctestEvidenceError("missing doctest result summaries")
+    executed = 0
+    for line in summaries:
+        match = RESULT.fullmatch(line)
+        if match is None:
+            raise DoctestEvidenceError("invalid doctest result summary")
+        status, passed, failed, ignored = match.groups()
+        if status != "ok" or int(failed) != 0 or int(ignored) != 0:
+            raise DoctestEvidenceError(
+                "non-passing doctest summary: status=%s failed=%s ignored=%s"
+                % (status, failed, ignored)
+            )
+        executed += int(passed)
+    return executed
 
 
 def main() -> int:
@@ -35,11 +56,15 @@ def main() -> int:
     sys.stderr.write(result.stderr or "")
     if result.returncode:
         return result.returncode
-    executed = count_executed((result.stdout or "") + (result.stderr or ""))
+    try:
+        executed = count_executed((result.stdout or "") + "\n" + (result.stderr or ""))
+    except DoctestEvidenceError as error:
+        print("doctest gate: " + str(error), file=sys.stderr)
+        return 2
     if executed == 0:
         print("doctest gate: no doctests executed", file=sys.stderr)
         return 2
-    print("doctest gate: executed=%d" % executed)
+    print("doctest gate: executed=%d ignored=0" % executed)
     return 0
 
 

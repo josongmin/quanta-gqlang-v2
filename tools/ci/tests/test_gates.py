@@ -13,7 +13,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-from tools.ci import doctor, doctest_gate, nextest_gate, run_local, unittest_gate
+from tools.ci import advisory_db, doctor, doctest_gate, nextest_gate, run_local, unittest_gate
 
 
 class LocalGateTest(unittest.TestCase):
@@ -82,6 +82,52 @@ class LocalGateTest(unittest.TestCase):
             "test result: ok. 2 passed; 0 failed; 0 ignored;\n"
             "test result: ok. 3 passed; 0 failed; 0 ignored;\n"
         ), 5)
+
+    def test_doctest_rejects_contradictory_or_ignored_summaries(self) -> None:
+        for output in (
+            "test result: ok. 1 passed; 1 failed; 0 ignored;",
+            "test result: FAILED. 0 passed; 1 failed; 0 ignored;",
+            "test result: ok. 1 passed; 0 failed; 1 ignored;",
+            "test result: unknown",
+        ):
+            result = subprocess.CompletedProcess(["cargo", "test"], 0, output, "")
+            with patch.object(doctest_gate, "run_bounded", return_value=result), \
+                 redirect_stderr(io.StringIO()) as errors, redirect_stdout(io.StringIO()):
+                self.assertEqual(doctest_gate.main(), 2, output)
+            self.assertIn("doctest gate:", errors.getvalue())
+
+    def test_advisory_db_requires_clean_head_at_fetched_revision(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="qglang-advisory-") as directory:
+            cargo_home = Path(directory)
+            database = cargo_home / "advisory-dbs/advisory-db-fixture"
+            database.mkdir(parents=True)
+            subprocess.run(["git", "init", "-q"], cwd=database, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Advisory Test"], cwd=database, check=True
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "advisory@example.invalid"],
+                cwd=database, check=True,
+            )
+            tracked = database / "advisory.md"
+            tracked.write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=database, check=True)
+            subprocess.run(["git", "commit", "-qm", "fixture"], cwd=database, check=True)
+            revision = subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=database, check=True,
+                capture_output=True, text=True,
+            ).stdout.strip()
+            fetched = database / ".git/FETCH_HEAD"
+            fetched.write_text(revision + "\t\tbranch 'main' of fixture\n", encoding="utf-8")
+            self.assertEqual(advisory_db.state(cargo_home)["revision"], revision)
+
+            fetched.write_text("0" * 40 + "\t\tbranch 'main' of fixture\n", encoding="utf-8")
+            with self.assertRaisesRegex(advisory_db.AdvisoryError, "does not match"):
+                advisory_db.state(cargo_home)
+            fetched.write_text(revision + "\t\tbranch 'main' of fixture\n", encoding="utf-8")
+            tracked.write_text("dirty\n", encoding="utf-8")
+            with self.assertRaisesRegex(advisory_db.AdvisoryError, "checkout is dirty"):
+                advisory_db.state(cargo_home)
 
     def test_tool_lock_rejects_duplicate_missing_and_unknown_keys(self) -> None:
         original = doctor.LOCK.read_text(encoding="utf-8")

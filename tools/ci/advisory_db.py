@@ -18,8 +18,34 @@ class AdvisoryError(RuntimeError):
     pass
 
 
+def git(database: Path, *args: str) -> str:
+    result = subprocess.run(
+        ("git", "-C", str(database), *args),
+        capture_output=True, text=True, check=False, timeout=30,
+    )
+    if result.returncode:
+        raise AdvisoryError("cannot inspect advisory DB: " + result.stderr.strip())
+    return result.stdout.strip()
+
+
+def fetch_revision(text: str) -> str:
+    candidates = []
+    for line in text.splitlines():
+        fields = line.split("\t")
+        if len(fields) >= 2 and fields[1] != "not-for-merge":
+            candidates.append(fields[0])
+    if len(candidates) != 1 or not all(
+        len(value) == 40 and all(character in "0123456789abcdef" for character in value)
+        for value in candidates
+    ):
+        raise AdvisoryError("advisory DB FETCH_HEAD has no unique fetched revision")
+    return candidates[0]
+
+
 def state(cargo_home: Path, now: float = None) -> dict:
     root = cargo_home / "advisory-dbs"
+    if root.is_symlink() or not root.is_dir():
+        raise AdvisoryError("cargo-deny advisory DB root is missing or redirected")
     databases = sorted(root.glob("advisory-db-*"))
     if len(databases) != 1 or databases[0].is_symlink() or not databases[0].is_dir():
         raise AdvisoryError("expected exactly one owned cargo-deny advisory DB in %s" % root)
@@ -31,13 +57,14 @@ def state(cargo_home: Path, now: float = None) -> dict:
     age = now - fetched.stat().st_mtime
     if age < -300 or age > MAX_FETCH_AGE_S:
         raise AdvisoryError("advisory DB fetch is stale or future-dated (age_s=%d)" % age)
-    result = subprocess.run(
-        ("git", "-C", str(database), "rev-parse", "HEAD"),
-        capture_output=True, text=True, check=False, timeout=30,
-    )
-    revision = result.stdout.strip()
-    if result.returncode or len(revision) != 40:
+    revision = git(database, "rev-parse", "HEAD")
+    if len(revision) != 40 or any(character not in "0123456789abcdef" for character in revision):
         raise AdvisoryError("cannot identify advisory DB revision")
+    if git(database, "status", "--porcelain=v1", "--untracked-files=all"):
+        raise AdvisoryError("advisory DB checkout is dirty")
+    fetched_revision = fetch_revision(fetched.read_text(encoding="utf-8"))
+    if fetched_revision != revision:
+        raise AdvisoryError("advisory DB HEAD does not match the fetched revision")
     return {
         "path": str(database), "revision": revision,
         "fetched_at_unix": int(fetched.stat().st_mtime), "fetch_age_s": int(age),
