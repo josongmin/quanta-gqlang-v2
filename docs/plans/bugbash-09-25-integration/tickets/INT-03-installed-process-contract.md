@@ -1,8 +1,10 @@
 # INT-03 — 설치형 full-provider 테스트와 V3 지원 계약 정합화
 
-상태: **확정 소스상 테스트 계약 충돌 / 현재 pair process 실행 전** · 우선순위: P1 테스트 게이트 · 소유: Semantica CLI/server + SDK public query owner.
+상태: **계약 정합화 코드 반영 / 타깃 컴파일·process 실행 미완료** · 우선순위: P1 테스트 게이트 · 소유: Semantica CLI/server + SDK public query owner.
 
 2026-09-25 current-source 재검증에서도 설치형 테스트는 단독 `check ...`와 단독 semantic `sample ...`의 성공·반복결정성을 기대한다. SDK owner tests와 QGLang V3 계약의 standalone-family typed reject 경계는 변하지 않았다. 현재 pair에서 이 exact process test를 실행한 receipt는 없으며, 검색된 최신 GQLang process receipts는 2026-09-23의 이전 source digest 실패다.
+
+2026-09-26 수정: `server_socket_daemon_e2e.rs`의 해당 테스트를 named-scope/standalone CHECK/standalone SAMPLE/Hybrid의 typed reject·receipt 부재와 semantic SAMPLE Composition의 양성·반복결정성·generation/receipt 검증으로 변경했다. 이전 V1 Pattern candidate / standalone dense result oracle helper는 제거했다. 이 변경은 공유 Semantica main의 동시 커밋 `130a7f1f5e9`에 포함됐다. QBC `owner run --lane gqlang-ss-integration --package quanta-cli-server --execution-kind check --target-kind integration --target-name server_socket_daemon_e2e --compile-policy feature-isolation:quanta-cli-server.no-default.61b2510e7d2a`는 exit 101이며, 실패는 변경된 테스트가 아니라 `workspace_journal_operator_runtime_v1.rs:182`의 다른 동시 작업 `SourceAwareCloseout` non-exhaustive match(E0004)다. source snapshot digest `8b1b457dacc5121ea96ff9afa7d67c4e40d0437b4c1fc4abcecb3bebdf5958d4`. 따라서 process PASS는 아직 주장하지 않는다.
 
 ## 근거
 
