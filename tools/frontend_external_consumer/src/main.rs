@@ -25,12 +25,17 @@ use quanta_gqlang_v2_frontend_contract::{
     ExecutionCorrelationV3, ExecutionDeterminismV3, ExecutionDigestV3, ExecutionDocumentV3,
     ExecutionEffectV3, ExecutionEvidenceV3, ExecutionExistsPolarityV3, ExecutionExpressionShapeV3,
     ExecutionExpressionV3, ExecutionFamilyV3, ExecutionFieldV3, ExecutionFiniteFloatV3,
-    ExecutionGraphKindV3, ExecutionItemV3, ExecutionJoinModeV3, ExecutionLiteralV3,
-    ExecutionLogicalQuantifierV3, ExecutionNullOrderV3, ExecutionOperatorV3, ExecutionOrderKeyV3,
-    ExecutionPlanV3, ExecutionPolicyFamilyV3, ExecutionRecordFieldV3, ExecutionRelationAuthorityV3,
+    ExecutionGraphCapabilityV3, ExecutionGraphDedupIdentityV3, ExecutionGraphDirectionV3,
+    ExecutionGraphKindV3, ExecutionGraphQueryV3, ExecutionGraphReferenceKindV3,
+    ExecutionGraphReferenceRoleV3, ExecutionGraphReferenceV3, ExecutionGraphRelationShapeV3,
+    ExecutionGraphTargetV3, ExecutionGraphWitnessTieBreakV3, ExecutionItemV3,
+    ExecutionJoinModeV3, ExecutionLiteralV3, ExecutionLogicalQuantifierV3,
+    ExecutionNullOrderV3, ExecutionOperatorV3, ExecutionOrderKeyV3, ExecutionPlanV3,
+    ExecutionPolicyFamilyV3, ExecutionRecordFieldV3, ExecutionRelationAuthorityV3,
     ExecutionRelationV3, ExecutionRelationalOperatorV3, ExecutionSampleModeV3,
-    ExecutionScalarTypeV3, ExecutionSchemaV3, ExecutionSortDirectionV3, ExecutionSourceKindV3,
-    ExecutionSourceV3, ExecutionUnionVariantV3, ExecutionValueTypeV3, FrontendAuthorityErrorV2,
+    ExecutionScalarTypeV3, ExecutionSchemaV3,
+    ExecutionSortDirectionV3, ExecutionSourceKindV3, ExecutionSourceV3, ExecutionUnionVariantV3,
+    ExecutionValueTypeV3, FrontendAuthorityErrorV2,
     FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
     FrontendCallableParameterInputV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
     FrontendDiagnosticV2, FrontendFailureV2, FrontendGraphReferenceInputV2,
@@ -62,8 +67,33 @@ const CHANGED_COMPOSITION_DOCUMENT_TEXT: &str =
 const LITERAL_COMPOSITION_DOCUMENT_TEXT: &str =
     "let sampled = sample query=\"auth\" | mode=lexical | limit=2 from sampled s | project 42 as answer with sampled";
 
-/// No same-named host relation is supplied: this checks local binding
-/// resolution, not a real host-name collision.
+const MULTI_BINDING_DOCUMENT_TEXT: &str =
+    "let first = sample query=\"auth\" | mode=lexical | limit=2 \
+     let second = from first f | project f.path as path \
+     from second s | project s.path as path with second";
+
+const SCOPED_SAMPLE_DOCUMENT_TEXT: &str =
+    "let first = sample query=\"first\" | mode=lexical | limit=1 \
+     let second = sample query=\"second\" | mode=semantic | limit=1 | scope=first \
+     from second s | project s.path as path with second";
+
+const GRAPH_COMPOSITION_DOCUMENT_TEXT: &str =
+    "let paths = find path a -> b | via=mid | direction=backward | depth=2 \
+     find reachability paths -> b | direction=both | depth=3 with paths";
+
+const CHECK_COMPOSITION_DOCUMENT_TEXT: &str =
+    "ruledef rule1 | check-ref=check1; \
+     let first = sample query=\"first\" | mode=lexical | limit=1 \
+     let second = sample query=\"second\" | mode=semantic | limit=1 | scope=first \
+     check rule1 | scope=second | pattern=pattern1 | confirm=skip | mode=pattern with second";
+
+const EXPLAIN_COMPOSITION_DOCUMENT_TEXT: &str =
+    "let paths = find path a -> b | depth=1 \
+     let reachable = find reachability paths -> b | depth=2 \
+     explain reachable | evidence=auto | truth=inspect with reachable";
+
+/// Deliberately collides with the host `records` relation below. The local
+/// binding must win; host fallback would expose no `path` field and fail.
 const LOCAL_BINDING_DOCUMENT_TEXT: &str =
     "let records = sample query=\"auth\" | mode=semantic | limit=3 from records r | project r.path as path with records";
 
@@ -254,6 +284,7 @@ fn assert_exact_composition_handoff(
         query_text,
         mode,
         limit,
+        scope,
     } = binding.producer()
     else {
         panic!("SAMPLE binding keeps its exact producer payload");
@@ -261,6 +292,7 @@ fn assert_exact_composition_handoff(
     assert_eq!(query_text, "auth");
     assert_eq!(*mode, expected_mode);
     assert_eq!(*limit, expected_limit);
+    assert!(scope.is_none());
 
     let body = composition
         .body_relation()
@@ -385,8 +417,11 @@ fn execution_document_api(document: &ExecutionDocumentV3) -> usize {
         document.items()[0].item_id().hir_item_id(),
     ));
     let _: ExecutionDigestV3 = document.source_digest();
+    let _: u32 = document.source_digest_schema_version();
     let _: ExecutionDigestV3 = document.contract_digest();
+    let _: u32 = document.contract_digest_schema_version();
     let _: ExecutionDigestV3 = document.qualification_digest();
+    let _: u32 = document.qualification_digest_schema_version();
     document.items().len()
 }
 
@@ -613,6 +648,32 @@ fn execution_closed_logic_vocabulary_api(
         ExecutionGraphKindV3::Summary);
 }
 
+fn execution_graph_vocabulary_api(
+    direction: ExecutionGraphDirectionV3,
+    role: ExecutionGraphReferenceRoleV3,
+    kind: ExecutionGraphReferenceKindV3,
+    capability: ExecutionGraphCapabilityV3,
+) {
+    exhaustive_unit_enum!(direction;
+        ExecutionGraphDirectionV3::Forward, ExecutionGraphDirectionV3::Backward,
+        ExecutionGraphDirectionV3::Both, ExecutionGraphDirectionV3::Undirected);
+    exhaustive_unit_enum!(role;
+        ExecutionGraphReferenceRoleV3::Source, ExecutionGraphReferenceRoleV3::Sink,
+        ExecutionGraphReferenceRoleV3::Anchor, ExecutionGraphReferenceRoleV3::Reference,
+        ExecutionGraphReferenceRoleV3::Pointee, ExecutionGraphReferenceRoleV3::Callable,
+        ExecutionGraphReferenceRoleV3::Via, ExecutionGraphReferenceRoleV3::Through,
+        ExecutionGraphReferenceRoleV3::Sanitizer, ExecutionGraphReferenceRoleV3::Scope,
+        ExecutionGraphReferenceRoleV3::Window, ExecutionGraphReferenceRoleV3::Frontier);
+    exhaustive_unit_enum!(kind;
+        ExecutionGraphReferenceKindV3::Entity, ExecutionGraphReferenceKindV3::Callable,
+        ExecutionGraphReferenceKindV3::Scope, ExecutionGraphReferenceKindV3::Window,
+        ExecutionGraphReferenceKindV3::Frontier, ExecutionGraphReferenceKindV3::Sanitizer,
+        ExecutionGraphReferenceKindV3::Pattern, ExecutionGraphReferenceKindV3::Snapshot,
+        ExecutionGraphReferenceKindV3::ExportSource);
+    exhaustive_unit_enum!(capability;
+        ExecutionGraphCapabilityV3::Entity, ExecutionGraphCapabilityV3::Scope);
+}
+
 fn execution_value_type_api(value: &ExecutionValueTypeV3) {
     match value {
         ExecutionValueTypeV3::Scalar(value) => pin(*value),
@@ -706,7 +767,7 @@ fn execution_composition_body_api(body: &ExecutionCompositionBodyV3) {
         ExecutionCompositionBodyV3::Relation
         | ExecutionCompositionBodyV3::Check
         | ExecutionCompositionBodyV3::Explain => {}
-        ExecutionCompositionBodyV3::Graph(kind) => pin(*kind),
+        ExecutionCompositionBodyV3::Graph(query) => execution_graph_query_api(query),
     }
 }
 
@@ -717,12 +778,75 @@ fn execution_composition_producer_api(producer: &ExecutionCompositionProducerV3)
             query_text,
             mode,
             limit,
+            scope,
         } => {
             pin(query_text.as_str());
             pin(*mode);
             pin(*limit);
+            pin(scope.as_ref());
         }
-        ExecutionCompositionProducerV3::Graph { kind } => pin(*kind),
+        ExecutionCompositionProducerV3::Graph { query } => execution_graph_query_api(query),
+    }
+}
+
+fn execution_graph_query_api(query: &ExecutionGraphQueryV3) {
+    pin(query.kind());
+    pin(query.references());
+    pin(query.depth());
+    pin(query.direction());
+    pin(query.summary_facets());
+    pin(query.relation_shape());
+    pin(query.dedup_identity());
+    pin(query.max_witnesses());
+    pin(query.max_path_length());
+    pin(query.witness_tie_break());
+}
+
+fn execution_graph_witness_enum_api() {
+    for shape in [
+        ExecutionGraphRelationShapeV3::Acyclic,
+        ExecutionGraphRelationShapeV3::Cyclic,
+    ] {
+        pin(shape);
+    }
+    for identity in [
+        ExecutionGraphDedupIdentityV3::Endpoints,
+        ExecutionGraphDedupIdentityV3::NodeSequence,
+        ExecutionGraphDedupIdentityV3::NodeSet,
+    ] {
+        pin(identity);
+    }
+    for tie_break in [
+        ExecutionGraphWitnessTieBreakV3::ShortestThenLexical,
+        ExecutionGraphWitnessTieBreakV3::Lexical,
+    ] {
+        pin(tie_break);
+    }
+}
+
+fn execution_graph_reference_api(reference: &ExecutionGraphReferenceV3) {
+    pin(reference.role());
+    execution_graph_target_api(reference.target());
+}
+
+fn execution_graph_target_api(target: &ExecutionGraphTargetV3) {
+    match target {
+        ExecutionGraphTargetV3::Host {
+            kind,
+            spelling,
+            entity_subtype,
+        } => {
+            pin(*kind);
+            pin(spelling.as_str());
+            pin(entity_subtype.as_deref());
+        }
+        ExecutionGraphTargetV3::Composition {
+            binding,
+            capability,
+        } => {
+            pin(binding);
+            pin(*capability);
+        }
     }
 }
 
@@ -870,12 +994,23 @@ fn pin_curated_roots() {
             ExecutionSampleModeV3,
             ExecutionGraphKindV3,
         ));
+    pin(execution_graph_vocabulary_api
+        as fn(
+            ExecutionGraphDirectionV3,
+            ExecutionGraphReferenceRoleV3,
+            ExecutionGraphReferenceKindV3,
+            ExecutionGraphCapabilityV3,
+        ));
     pin(execution_value_type_api as fn(&ExecutionValueTypeV3));
     pin(execution_call_target_api as fn(&ExecutionCallTargetV3));
     pin(execution_expression_shape_api as fn(&ExecutionExpressionShapeV3));
     pin(execution_literal_api as fn(&ExecutionLiteralV3));
     pin(execution_composition_body_api as fn(&ExecutionCompositionBodyV3));
     pin(execution_composition_producer_api as fn(&ExecutionCompositionProducerV3));
+    pin(execution_graph_query_api as fn(&ExecutionGraphQueryV3));
+    pin(execution_graph_witness_enum_api as fn());
+    pin(execution_graph_reference_api as fn(&ExecutionGraphReferenceV3));
+    pin(execution_graph_target_api as fn(&ExecutionGraphTargetV3));
     pin(facade_authority_vocabulary_api
         as fn(
             GraphReferenceKindV2,
@@ -991,6 +1126,17 @@ fn main() {
             end: 4,
         },
     });
+    closed_builder.add_catalog_asset(FrontendCatalogAssetInputV2 {
+        module_name: "app".to_owned(),
+        local_name: "check1".to_owned(),
+        payload: FrontendCatalogPayloadV2::Check,
+        provenance: "host".to_owned(),
+        location: FrontendAuthorityLocationV2 {
+            source_id: SourceIdV2::from_raw(1),
+            start: 3,
+            end: 4,
+        },
+    });
     pin(std::mem::size_of::<FrontendCallableParameterInputV2>());
     closed_builder.add_lockfile(FrontendLockfileInputV2 {
         path: "acme.lock".to_owned(),
@@ -1002,6 +1148,43 @@ fn main() {
             end: 3,
         },
     });
+    let host_relation_location = FrontendAuthorityLocationV2 {
+        source_id: SourceIdV2::from_raw(1),
+        start: 4,
+        end: 5,
+    };
+    closed_builder.add_relation(FrontendRelationInputV2 {
+        authority: FrontendRelationAuthorityV2::Host,
+        provenance_namespace: "host".to_owned(),
+        qualified_name: "app::records".to_owned(),
+        lookup_name: "records".to_owned(),
+        fields: vec![FrontendRelationFieldInputV2 {
+            name: "host_only".to_owned(),
+            scalar_type: FrontendScalarTypeV2::String,
+            optional: false,
+            location: host_relation_location,
+        }],
+        cardinality: FrontendRelationCardinalityV2::Set,
+        provenance: "host".to_owned(),
+        location: host_relation_location,
+    });
+    for (spelling, kind, start) in [
+        ("a", GraphReferenceKindV2::Entity, 5),
+        ("b", GraphReferenceKindV2::Entity, 6),
+        ("mid", GraphReferenceKindV2::Entity, 7),
+        ("pattern1", GraphReferenceKindV2::Pattern, 5),
+    ] {
+        closed_builder.add_graph_reference(FrontendGraphReferenceInputV2 {
+            spelling: spelling.to_owned(),
+            kind,
+            entity_subtype: None,
+            location: FrontendAuthorityLocationV2 {
+                source_id: SourceIdV2::from_raw(1),
+                start,
+                end: start + 1,
+            },
+        });
+    }
     let closed = closed_builder
         .finish()
         .expect("facade-only authority builder seals");
@@ -1064,13 +1247,138 @@ fn main() {
         LOCAL_BINDING_DOCUMENT_TEXT,
         &closed,
     )
-    .expect("a local composition binding is selected without host relation fallback");
+    .expect("a local composition binding wins over the same-named host relation");
     assert_exact_composition_handoff(
         &local_binding,
         "records",
         ExecutionSampleModeV3::Semantic,
         3,
     );
+
+    let multi_binding = compile_source_document_v3(
+        SourceIdV2::from_raw(15),
+        MULTI_BINDING_DOCUMENT_TEXT,
+        &closed,
+    )
+    .expect("sequential multi-binding composition compiles through the facade");
+    let multi = multi_binding.execution().items()[0]
+        .composition()
+        .expect("multi-binding composition payload");
+    assert_eq!(multi.bindings().len(), 2);
+    assert_eq!(multi.bindings()[0].binding().name(), "first");
+    assert_eq!(multi.bindings()[0].binding().ordinal(), 0);
+    assert_eq!(multi.bindings()[1].binding().name(), "second");
+    assert_eq!(multi.bindings()[1].binding().ordinal(), 1);
+    assert_eq!(multi.with_binding(), multi.bindings()[1].binding());
+    assert!(matches!(
+        multi.bindings()[0].producer(),
+        ExecutionCompositionProducerV3::Sample { scope: None, .. }
+    ));
+    assert_eq!(
+        multi.bindings()[1]
+            .relation()
+            .expect("second producer retains relation")
+            .root()
+            .children()[0]
+            .source()
+            .expect("second producer scans first binding")
+            .name(),
+        "first"
+    );
+
+    let scoped_sample = compile_source_document_v3(
+        SourceIdV2::from_raw(16),
+        SCOPED_SAMPLE_DOCUMENT_TEXT,
+        &closed,
+    )
+    .expect("a SAMPLE scope can target a prior local binding");
+    let scoped = scoped_sample.execution().items()[0]
+        .composition()
+        .expect("scoped composition payload");
+    let ExecutionCompositionProducerV3::Sample {
+        scope: Some(ExecutionGraphTargetV3::Composition {
+            binding,
+            capability,
+        }),
+        ..
+    } = scoped.bindings()[1].producer()
+    else {
+        panic!("second SAMPLE retains its exact local scope")
+    };
+    assert_eq!(binding, scoped.bindings()[0].binding());
+    assert_eq!(*capability, ExecutionGraphCapabilityV3::Scope);
+
+    let graph_composition = compile_source_document_v3(
+        SourceIdV2::from_raw(17),
+        GRAPH_COMPOSITION_DOCUMENT_TEXT,
+        &closed,
+    )
+    .expect("graph producer and graph body compile through the facade");
+    let graph = graph_composition.execution().items()[0]
+        .composition()
+        .expect("graph composition payload");
+    let ExecutionCompositionProducerV3::Graph { query: producer } =
+        graph.bindings()[0].producer()
+    else {
+        panic!("graph producer payload")
+    };
+    assert_eq!(producer.kind(), ExecutionGraphKindV3::Path);
+    assert_eq!(producer.depth(), 2);
+    assert_eq!(
+        producer.direction(),
+        Some(ExecutionGraphDirectionV3::Backward)
+    );
+    assert_eq!(
+        producer
+            .references()
+            .iter()
+            .map(ExecutionGraphReferenceV3::role)
+            .collect::<Vec<_>>(),
+        [
+            ExecutionGraphReferenceRoleV3::Source,
+            ExecutionGraphReferenceRoleV3::Sink,
+            ExecutionGraphReferenceRoleV3::Via,
+        ]
+    );
+    let ExecutionCompositionBodyV3::Graph(body) = graph.body() else {
+        panic!("graph body payload")
+    };
+    assert_eq!(body.kind(), ExecutionGraphKindV3::Reachability);
+    assert_eq!(body.depth(), 3);
+    assert_eq!(body.direction(), Some(ExecutionGraphDirectionV3::Both));
+    assert!(matches!(
+        body.references()[0].target(),
+        ExecutionGraphTargetV3::Composition {
+            capability: ExecutionGraphCapabilityV3::Entity,
+            ..
+        }
+    ));
+
+    let check_composition = compile_source_document_v3(
+        SourceIdV2::from_raw(18),
+        CHECK_COMPOSITION_DOCUMENT_TEXT,
+        &closed,
+    )
+    .expect("mixed multi-binding CHECK composition compiles through the facade");
+    let check = check_composition.execution().items()[0]
+        .composition()
+        .expect("CHECK composition payload");
+    assert_eq!(check.bindings().len(), 2);
+    assert_eq!(check.with_binding(), check.bindings()[1].binding());
+    assert_eq!(check.body(), &ExecutionCompositionBodyV3::Check);
+
+    let explain_composition = compile_source_document_v3(
+        SourceIdV2::from_raw(19),
+        EXPLAIN_COMPOSITION_DOCUMENT_TEXT,
+        &closed,
+    )
+    .expect("mixed multi-binding EXPLAIN composition compiles through the facade");
+    let explain = explain_composition.execution().items()[0]
+        .composition()
+        .expect("EXPLAIN composition payload");
+    assert_eq!(explain.bindings().len(), 2);
+    assert_eq!(explain.with_binding(), explain.bindings()[1].binding());
+    assert_eq!(explain.body(), &ExecutionCompositionBodyV3::Explain);
 
     let typed_literal = compile_source_document_v3(
         SourceIdV2::from_raw(14),

@@ -43,12 +43,16 @@ pub use execution::{
     ExecutionCompositionV3, ExecutionCorrelationV3, ExecutionDeterminismV3, ExecutionDigestV3,
     ExecutionDocumentV3, ExecutionEffectV3, ExecutionEvidenceV3, ExecutionExistsPolarityV3,
     ExecutionExpressionShapeV3, ExecutionExpressionV3, ExecutionFamilyV3, ExecutionFieldV3,
-    ExecutionFiniteFloatV3, ExecutionGraphKindV3, ExecutionItemV3, ExecutionJoinModeV3,
-    ExecutionLiteralV3, ExecutionLogicalQuantifierV3, ExecutionNullOrderV3, ExecutionOperatorV3,
-    ExecutionOrderKeyV3, ExecutionPlanV3, ExecutionPolicyFamilyV3, ExecutionRecordFieldV3,
-    ExecutionRelationAuthorityV3, ExecutionRelationV3, ExecutionRelationalOperatorV3,
-    ExecutionSampleModeV3, ExecutionScalarTypeV3, ExecutionSchemaV3, ExecutionSortDirectionV3,
-    ExecutionSourceKindV3, ExecutionSourceV3, ExecutionUnionVariantV3, ExecutionValueTypeV3,
+    ExecutionFiniteFloatV3, ExecutionGraphCapabilityV3, ExecutionGraphDedupIdentityV3,
+    ExecutionGraphDirectionV3, ExecutionGraphKindV3, ExecutionGraphQueryV3,
+    ExecutionGraphReferenceKindV3, ExecutionGraphReferenceRoleV3, ExecutionGraphReferenceV3,
+    ExecutionGraphRelationShapeV3, ExecutionGraphTargetV3, ExecutionGraphWitnessTieBreakV3,
+    ExecutionItemV3, ExecutionJoinModeV3, ExecutionLiteralV3, ExecutionLogicalQuantifierV3,
+    ExecutionNullOrderV3, ExecutionOperatorV3, ExecutionOrderKeyV3, ExecutionPlanV3,
+    ExecutionPolicyFamilyV3, ExecutionRecordFieldV3, ExecutionRelationAuthorityV3,
+    ExecutionRelationV3, ExecutionRelationalOperatorV3, ExecutionSampleModeV3,
+    ExecutionScalarTypeV3, ExecutionSchemaV3, ExecutionSortDirectionV3, ExecutionSourceKindV3,
+    ExecutionSourceV3, ExecutionUnionVariantV3, ExecutionValueTypeV3,
 };
 pub use quanta_gqlang_v2_algebra::AlgebraFamilyV2;
 pub use quanta_gqlang_v2_planning::{NoPlanReasonV2, SemanticPlanV2};

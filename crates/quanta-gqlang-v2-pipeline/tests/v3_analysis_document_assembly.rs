@@ -139,11 +139,16 @@ fn minimal_authority() -> ClosedFrontendAuthorityV2 {
 
 /// Build one complete open authority carrying every proof.
 fn complete_open_authority() -> OpenAnalysisAuthorityV2 {
+    open_authority_mask(0b111)
+}
+
+/// Build one of the eight module/relation/graph proof masks.
+fn open_authority_mask(mask: u8) -> OpenAnalysisAuthorityV2 {
     let closed = minimal_authority();
     OpenAnalysisAuthorityV2::try_new(OpenAnalysisAuthorityInputV2::new(
-        Some(closed.modules().clone()),
-        Some(closed.relations().clone()),
-        Some(closed.graph_references().clone()),
+        (mask & 0b001 != 0).then(|| closed.modules().clone()),
+        (mask & 0b010 != 0).then(|| closed.relations().clone()),
+        (mask & 0b100 != 0).then(|| closed.graph_references().clone()),
         closed.modules().source_registry().clone(),
         closed.budget().clone(),
     ))
@@ -215,6 +220,58 @@ fn partial_open_authority_blocks_every_item_with_unresolved_facts() {
             codes.iter().any(|code| code == expected),
             "blocked diagnostics must name {expected}: {codes:?}"
         );
+    }
+}
+
+#[test]
+fn all_open_authority_masks_have_exact_status_and_missing_facts() {
+    for mask in 0_u8..=0b111 {
+        let authority = open_authority_mask(mask);
+        let analyzed = analyze_source_document_v2(DOC_SOURCE, MINIMAL_SOURCE, &authority)
+            .expect("every proof mask is a valid open analysis authority");
+        if mask == 0b111 {
+            assert_eq!(analyzed.status().keyword(), "complete");
+            assert!(analyzed.unresolved().is_empty());
+            assert!(analyzed.diagnostics().is_empty());
+            continue;
+        }
+
+        assert_eq!(analyzed.status().keyword(), "incomplete", "mask={mask:03b}");
+        assert_eq!(analyzed.unresolved().len(), 3, "mask={mask:03b}");
+        assert!(analyzed
+            .items()
+            .iter()
+            .all(|item| matches!(item, AnalysisItemV2::BlockedByDiagnostics(_))));
+        let actual = analyzed
+            .diagnostics()
+            .iter()
+            .map(|diagnostic| diagnostic.code())
+            .collect::<Vec<_>>();
+        let expected = [
+            (0b100, "pipeline.analysis.missing_graph_authority"),
+            (0b001, "pipeline.analysis.missing_module_authority"),
+            (0b010, "pipeline.analysis.missing_relation_authority"),
+        ]
+        .into_iter()
+        .filter_map(|(bit, code)| (mask & bit == 0).then_some(code))
+        .collect::<Vec<_>>();
+        assert_eq!(actual, expected, "mask={mask:03b}");
+    }
+}
+
+#[test]
+fn empty_documents_are_complete_for_every_open_authority_mask() {
+    for source in ["", " \n\t# comment-only document"] {
+        for mask in 0_u8..=0b111 {
+            let analyzed =
+                analyze_source_document_v2(DOC_SOURCE, source, &open_authority_mask(mask))
+                    .expect("empty source is a valid open analysis document");
+            assert_eq!(analyzed.status().keyword(), "complete", "mask={mask:03b}");
+            assert!(analyzed.order().is_empty());
+            assert!(analyzed.items().is_empty());
+            assert!(analyzed.unresolved().is_empty());
+            assert!(analyzed.diagnostics().is_empty());
+        }
     }
 }
 

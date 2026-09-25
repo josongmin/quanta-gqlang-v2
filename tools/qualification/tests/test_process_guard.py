@@ -13,7 +13,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tools.process_guard import (
-    ProcessTimeoutError, run_bounded, wait_for_process_group_exit,
+    ProcessGroupCleanupError, ProcessTimeoutError, run_bounded,
+    wait_for_process_group_exit,
 )
 
 
@@ -46,6 +47,20 @@ class ProcessGuardTest(unittest.TestCase):
         ) as probe, patch("tools.process_guard.time.sleep"):
             wait_for_process_group_exit(12345)
         self.assertEqual(probe.call_count, 2)
+
+    def test_cleanup_fails_closed_when_group_remains_observable(self) -> None:
+        with patch(
+            "tools.process_guard.os.killpg",
+            return_value=None,
+        ), patch(
+            "tools.process_guard.time.monotonic",
+            side_effect=[10.0, 11.0],
+        ):
+            with self.assertRaisesRegex(
+                ProcessGroupCleanupError,
+                "still exists after 1.0 s cleanup window",
+            ):
+                wait_for_process_group_exit(12345)
 
     def test_interrupted_gate_kills_and_reaps_its_process_group(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

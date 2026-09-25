@@ -18,6 +18,13 @@ acceleration, **not** proof from a prior SHA: `just ci` still executes on every
 qualification. Old `target/qualification/<sha>/build` directories from the
 former cold-cache driver are not automatically removed.
 
+The schema-2 receipt is intentionally non-replayable. Nextest inventory and
+event streams are parsed and reconciled fail-closed during the run, but their
+raw bytes are not archived. Persisted SHA-256 values are custody identifiers
+for those ephemeral inputs; they are not embedded evidence and cannot
+reconstruct or independently replay the test run. Raw-stream archival would be
+an optional custody extension, not part of the current correctness claim.
+
 Local gate subprocesses use bounded process groups. Front-door parity gives
 its Cargo build 600 seconds and each shipped binary 20 seconds; the external
 consumer gate gives Cargo calls 300 seconds and other calls 30 seconds.
@@ -25,8 +32,10 @@ consumer gate gives Cargo calls 300 seconds and other calls 30 seconds.
 process group, fails closed (qualification exit 2), and still records the
 post-run source check and receipt. These are hang limits, not performance
 targets or a substitute for recording actual gate durations.
-An interrupted gate also terminates and reaps its process group before the
-interrupt is propagated.
+An interrupted gate also sends `SIGKILL`, reaps its direct child, and waits a
+bounded second for the process group to disappear before the interrupt is
+propagated. If the group remains observable, cleanup fails closed instead of
+claiming that every descendant was reaped.
 
 `just ci` runs doctor, external-consumer preflight, static, test, and policy
 groups serially, and each group's leaves are an explicit serial waterfall.

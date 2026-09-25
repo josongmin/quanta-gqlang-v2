@@ -168,7 +168,7 @@ fn required_endpoints(kind: GraphQueryKindV1) -> &'static [GraphEndpointRoleV1] 
 }
 
 /// Endpoint-presence and endpoint-conflict legality over the resolved singular
-/// endpoint roles, in authored order.
+/// endpoint roles.
 ///
 /// Missing roles are checked first (in [`required_endpoints`] order), then
 /// unaccepted roles in [`GraphEndpointRoleV1::ALL`] order, so the reported role
@@ -343,8 +343,8 @@ impl GraphQueryContractV2 {
         &self.summary_facets
     }
 
-    /// Every resolved reference in its authored, deterministic order, including
-    /// sanitizer/scope/window/frontier facts that are not endpoints.
+    /// Every resolved reference in the Sema-owned deterministic role order,
+    /// including sanitizer/scope/window/frontier facts that are not endpoints.
     #[must_use]
     pub fn references(&self) -> &[ResolvedGraphReferenceV2] {
         &self.references
@@ -454,6 +454,28 @@ mod tests {
                     endpoint_legality(kind, &present),
                     Err(EndpointViolationV2::Missing(role)),
                     "{kind:?} must require {role:?}"
+                );
+            }
+        }
+    }
+
+    // Every endpoint role outside a subkind's exact required set is rejected.
+    // This closes the full 7-kind x 6-endpoint negative matrix rather than
+    // relying on representative points-to/slice examples.
+    #[test]
+    fn every_subkind_rejects_every_unexpected_endpoint() {
+        for kind in ALL_KINDS {
+            let required = required(kind);
+            for role in GraphEndpointRoleV1::ALL {
+                if required.contains(&role) {
+                    continue;
+                }
+                let mut present = required.clone();
+                present.push(role);
+                assert_eq!(
+                    endpoint_legality(kind, &present),
+                    Err(EndpointViolationV2::Unexpected(role)),
+                    "{kind:?} must reject unexpected {role:?}"
                 );
             }
         }

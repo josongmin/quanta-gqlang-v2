@@ -70,7 +70,9 @@ use crate::diagnostic::{
     planning_transaction_error, surface_failure, surface_transaction_error, DocumentAssemblyCodeV2,
 };
 use crate::execution::{
-    project_composition, project_relation, project_relation_root, ExecutionClosureFailureV3,
+    project_composition, project_graph_query, project_relation, project_relation_root,
+    ExecutionClosureFailureV3, ExecutionCompositionBodyProjectionV3,
+    ExecutionCompositionProducerProjectionV3, ExecutionCompositionProjectionFailureV3,
     ExecutionCompositionV3, ExecutionDocumentV3, ExecutionFamilyV3, ExecutionItemV3,
     ExecutionRelationV3,
 };
@@ -1376,24 +1378,33 @@ fn run_item(
             }))
         }
         SemanticItemV2::Composition(composition) => {
-            let mut producer_relations = Vec::with_capacity(composition.bindings().len());
+            let mut producer_projections = Vec::with_capacity(composition.bindings().len());
             for binding in composition.bindings() {
-                let relation = match binding.producer() {
+                let projection = match binding.producer() {
                     ResolvedCompositionProducerV2::Query(query) => {
                         let root = algebra
                             .lower_nested_relation(composition.item_id(), query.root())
                             .map_err(|error| algebra_error(document, id, &error))?;
-                        Some(
+                        ExecutionCompositionProducerProjectionV3::Relation(
                             project_relation_root(document, query.item_id(), &root)
                                 .map_err(|failure| closure_error(document, id, failure))?,
                         )
                     }
-                    ResolvedCompositionProducerV2::Sample { .. }
-                    | ResolvedCompositionProducerV2::Graph { .. } => None,
+                    ResolvedCompositionProducerV2::Sample { .. } => {
+                        ExecutionCompositionProducerProjectionV3::Sample
+                    }
+                    ResolvedCompositionProducerV2::Graph { graph, .. } => {
+                        let contract = GraphQueryContractV2::from_resolved(graph)
+                            .map_err(|error| logic_transaction_error(&error))?;
+                        ExecutionCompositionProducerProjectionV3::Graph {
+                            item_id: contract.item_id(),
+                            query: project_graph_query(&contract),
+                        }
+                    }
                 };
-                producer_relations.push(relation);
+                producer_projections.push(projection);
             }
-            let (body, body_relation) = composition_body_input(document, algebra, composition)?;
+            let (body, body_projection) = composition_body_input(document, algebra, composition)?;
             let input = CheckedCompositionPlanInputV2::new(composition, body)
                 .map_err(|error| planning_transaction_error(&error))?;
             let plan = planning_plan(
@@ -1402,8 +1413,8 @@ fn run_item(
                 id,
                 &SemanticPlanInputV2::Composition(Box::new(input)),
             )?;
-            let execution =
-                project_composition(document, composition, body_relation, producer_relations);
+            let execution = project_composition(composition, producer_projections, body_projection)
+                .map_err(|failure| composition_projection_error(document, id, failure))?;
             Ok(ItemRunV2::Planned(Box::new(PlannedRunV2 {
                 planned: Box::new(PlannedItemV2::Composition { item_id: id, plan }),
                 relation: None,
@@ -1508,7 +1519,13 @@ fn composition_body_input(
     document: &SemanticDocumentV2,
     algebra: &mut AlgebraSessionV2<'_>,
     composition: &ResolvedCompositionV2,
-) -> Result<(CompositionBodyPlanInputV2, Option<ExecutionRelationV3>), FrontendTransactionErrorV2> {
+) -> Result<
+    (
+        CompositionBodyPlanInputV2,
+        ExecutionCompositionBodyProjectionV3,
+    ),
+    FrontendTransactionErrorV2,
+> {
     let owner = composition.item_id();
     match composition.body() {
         ResolvedCompositionBodyV2::Query(body) => {
@@ -1526,26 +1543,32 @@ fn composition_body_input(
                 })?;
             Ok((
                 CompositionBodyPlanInputV2::Relational(body),
-                Some(execution),
+                ExecutionCompositionBodyProjectionV3::Relation(execution),
             ))
         }
-        ResolvedCompositionBodyV2::Graph(graph) => Ok((
-            CompositionBodyPlanInputV2::Graph(
-                GraphQueryContractV2::from_resolved(graph)
-                    .map_err(|error| logic_transaction_error(&error))?,
-            ),
-            None,
-        )),
+        ResolvedCompositionBodyV2::Graph(graph) => {
+            let contract = GraphQueryContractV2::from_resolved(graph)
+                .map_err(|error| logic_transaction_error(&error))?;
+            let execution = project_graph_query(&contract);
+            let item_id = contract.item_id();
+            Ok((
+                CompositionBodyPlanInputV2::Graph(contract),
+                ExecutionCompositionBodyProjectionV3::Graph {
+                    item_id,
+                    query: execution,
+                },
+            ))
+        }
         ResolvedCompositionBodyV2::Check(check) => Ok((
             CompositionBodyPlanInputV2::Check(check_contract(check)?),
-            None,
+            ExecutionCompositionBodyProjectionV3::Check,
         )),
         ResolvedCompositionBodyV2::Explain(explain) => Ok((
             CompositionBodyPlanInputV2::Explain(
                 PresentationContractV2::from_resolved(explain)
                     .map_err(|error| planning_transaction_error(&error))?,
             ),
-            None,
+            ExecutionCompositionBodyProjectionV3::Explain,
         )),
     }
 }
@@ -1630,6 +1653,26 @@ fn closure_error(
             "an executable item references an expression from another source",
         ),
     }
+}
+
+/// Map an impossible producer/body projection drift to a typed pipeline
+/// diagnostic instead of truncating a binding or aborting the process.
+fn composition_projection_error(
+    document: &SemanticDocumentV2,
+    id: SemanticItemIdV2,
+    failure: ExecutionCompositionProjectionFailureV3,
+) -> FrontendTransactionErrorV2 {
+    let (code, message) = match failure {
+        ExecutionCompositionProjectionFailureV3::Producer => (
+            DocumentAssemblyCodeV2::CompositionProducerMismatch,
+            "a composition producer and its checked execution projection disagree",
+        ),
+        ExecutionCompositionProjectionFailureV3::Body => (
+            DocumentAssemblyCodeV2::CompositionBodyMismatch,
+            "a composition body and its checked execution projection disagree",
+        ),
+    };
+    assembly(item_location_of(document, id), code, message)
 }
 
 /// Mint one pipeline-owned assembly failure.

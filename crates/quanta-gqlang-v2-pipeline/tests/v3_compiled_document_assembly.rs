@@ -34,13 +34,15 @@ use quanta_gqlang_v2_pipeline::{
     AnalysisItemV2, CompiledItemV2, DocumentAssemblyCodeV2, ExecutionAuthorityV3,
     ExecutionCallTargetV3, ExecutionCardinalityV3, ExecutionCompositionBodyV3,
     ExecutionCompositionProducerV3, ExecutionExpressionShapeV3, ExecutionFamilyV3,
-    ExecutionLiteralV3, ExecutionRelationAuthorityV3, ExecutionRelationV3,
-    ExecutionRelationalOperatorV3, ExecutionSampleModeV3, ExecutionScalarTypeV3, ExecutionSchemaV3,
-    ExecutionSourceKindV3, ExecutionValueTypeV3, FrontendAuthorityLocationV2,
-    FrontendAuthoritySourceV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
-    FrontendGraphReferenceInputV2, FrontendLanguageVersionV2, FrontendRelationAuthorityV2,
-    FrontendRelationInputV2, FrontendScalarTypeV2, FrontendStageV2, FrontendTransactionErrorV2,
-    PlannedItemV2,
+    ExecutionGraphCapabilityV3, ExecutionGraphDedupIdentityV3, ExecutionGraphDirectionV3,
+    ExecutionGraphKindV3, ExecutionGraphReferenceRoleV3, ExecutionGraphRelationShapeV3,
+    ExecutionGraphTargetV3, ExecutionGraphWitnessTieBreakV3, ExecutionLiteralV3,
+    ExecutionRelationAuthorityV3, ExecutionRelationV3, ExecutionRelationalOperatorV3,
+    ExecutionSampleModeV3, ExecutionScalarTypeV3, ExecutionSchemaV3, ExecutionSourceKindV3,
+    ExecutionValueTypeV3, FrontendAuthorityLocationV2, FrontendAuthoritySourceV2,
+    FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2, FrontendGraphReferenceInputV2,
+    FrontendLanguageVersionV2, FrontendRelationAuthorityV2, FrontendRelationInputV2,
+    FrontendScalarTypeV2, FrontendStageV2, FrontendTransactionErrorV2, PlannedItemV2,
 };
 use quanta_gqlang_v2_planning::{
     AuthorityLaneV2, CapabilityV2, CardinalityClassV2, CheckedCompositionPlanInputV2,
@@ -62,12 +64,12 @@ use quanta_gqlang_v2_sema::test_support::{
 use quanta_gqlang_v2_sema::{
     CardinalityV1, CheckedSyntaxDocumentV2, ClosedFrontendAuthorityV2, CompareMetricV1,
     ConfirmModeV1, DetectionModeV1, EmitModeV1, EvidenceModeV1, ExportFormatV1, FrontendBudgetV2,
-    GraphQueryKindV1, GraphReferenceCatalogV2, GraphReferenceInputV2, GraphReferenceKindV2,
-    GraphReferenceRoleV2, LocatedSpanV2, ProvenanceNamespaceV2, RecordFieldTypeV1, RecordTypeV1,
-    RelationCatalogV2, RelationSourceInputV2, ResolvedExplainTargetV2, ResolvedPresentationKindV2,
-    SampleModeV1, SemanticItemIdV2, SemanticItemV2, ShowCategoryV1, SourceIdV2,
-    SourceQualifiedNodeIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1, TruthModeV1,
-    ValueTypeV1,
+    GraphDirectionV2, GraphQueryKindV1, GraphReferenceCatalogV2, GraphReferenceInputV2,
+    GraphReferenceKindV2, GraphReferenceRoleV2, LocatedSpanV2, ProvenanceNamespaceV2,
+    RecordFieldTypeV1, RecordTypeV1, RelationCatalogV2, RelationSourceInputV2,
+    ResolvedExplainTargetV2, ResolvedPresentationKindV2, SampleModeV1, SemanticItemIdV2,
+    SemanticItemV2, ShowCategoryV1, SourceIdV2, SourceQualifiedNodeIdV2, SourceRegistrationV2,
+    SourceRegistryViewV2, SpanV1, TruthModeV1, ValueTypeV1,
 };
 
 /// The host registry source identity used by the minimal authority.
@@ -292,6 +294,12 @@ fn source_policy_authority() -> ClosedFrontendAuthorityV2 {
         ("db.write", GraphReferenceKindV2::Entity),
         ("authz.clean", GraphReferenceKindV2::Sanitizer),
         ("repo", GraphReferenceKindV2::Scope),
+        ("mid.one", GraphReferenceKindV2::Entity),
+        ("mid.two", GraphReferenceKindV2::Entity),
+        ("must.pass", GraphReferenceKindV2::Entity),
+        ("recent", GraphReferenceKindV2::Window),
+        ("edge", GraphReferenceKindV2::Frontier),
+        ("svc.handler", GraphReferenceKindV2::Callable),
         ("pattern.hybrid", GraphReferenceKindV2::Pattern),
         ("src.entry", GraphReferenceKindV2::Entity),
         ("sink.write", GraphReferenceKindV2::Entity),
@@ -1025,7 +1033,7 @@ fn authored_presentation_options_reach_the_exact_planned_policy() {
 #[test]
 fn authored_find_check_and_explain_options_reach_the_exact_planned_policy() {
     let source = concat!(
-        "find taint api.entry -> db.write | sanitizers=authz.clean | depth=3; ",
+        "find taint api.entry -> db.write | sanitizers=authz.clean | direction=backward | depth=3; ",
         "check rule.hybrid | scope=repo | pattern=pattern.hybrid | confirm=require ",
         "| emit=sarif | mode=hybrid using find reachability src.entry -> sink.write | depth=8; ",
         "explain rule.sqli | evidence=trace | truth=confirm;",
@@ -1045,6 +1053,12 @@ fn authored_find_check_and_explain_options_reach_the_exact_planned_policy() {
     };
     assert_eq!(witness.kind(), GraphQueryKindV1::Taint);
     assert_eq!(witness.depth(), 3);
+    assert_eq!(witness.direction(), Some(GraphDirectionV2::Backward));
+    assert_eq!(witness.references().len(), 3);
+    assert!(witness
+        .references()
+        .iter()
+        .any(|reference| reference.role() == GraphReferenceRoleV2::Sanitizer));
 
     let CompiledItemV2::Planned(check) = &compiled.items()[1] else {
         panic!("CHECK must be planned");
@@ -1104,6 +1118,76 @@ fn authored_find_check_and_explain_options_reach_the_exact_planned_policy() {
             .host_selector()
             .map(|target| target.spelling()),
         Some("rule.sqli")
+    );
+}
+
+#[test]
+fn find_selectors_and_summary_facets_survive_source_to_final_plan() {
+    let taint = compile_source_document_v3(
+        DOC_SOURCE,
+        concat!(
+            "find taint api.entry -> db.write | via=mid.one,mid.two ",
+            "| through=must.pass | sanitizers=authz.clean | scope=repo ",
+            "| window=recent | direction=backward | frontier=edge | depth=3",
+        ),
+        &source_policy_authority(),
+    )
+    .expect("fully selected FIND compiles");
+    let CompiledItemV2::Planned(item) = &taint.items()[0] else {
+        panic!("FIND must be planned");
+    };
+    let PlanPolicyV2::Graph(retention) = item.plan().expect("FIND plan").policy() else {
+        panic!("FIND must retain graph policy");
+    };
+    assert_eq!(retention.direction(), Some(GraphDirectionV2::Backward));
+    assert!(retention.summary_facets().is_empty());
+    let references = retention
+        .references()
+        .iter()
+        .map(|reference| {
+            (
+                reference.role(),
+                reference
+                    .target()
+                    .host_selector()
+                    .expect("source fixture uses host selectors")
+                    .spelling(),
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        references,
+        [
+            (GraphReferenceRoleV2::Source, "api.entry"),
+            (GraphReferenceRoleV2::Sink, "db.write"),
+            (GraphReferenceRoleV2::Scope, "repo"),
+            (GraphReferenceRoleV2::Window, "recent"),
+            (GraphReferenceRoleV2::Frontier, "edge"),
+            (GraphReferenceRoleV2::Via, "mid.one"),
+            (GraphReferenceRoleV2::Via, "mid.two"),
+            (GraphReferenceRoleV2::Through, "must.pass"),
+            (GraphReferenceRoleV2::Sanitizer, "authz.clean"),
+        ]
+    );
+
+    let summary = compile_source_document_v3(
+        DOC_SOURCE,
+        "find summary | callable=svc.handler | facets=calls,reads,writes | direction=forward | depth=4",
+        &source_policy_authority(),
+    )
+    .expect("summary FIND compiles");
+    let CompiledItemV2::Planned(item) = &summary.items()[0] else {
+        panic!("summary FIND must be planned");
+    };
+    let PlanPolicyV2::Graph(retention) = item.plan().expect("summary plan").policy() else {
+        panic!("summary FIND must retain graph policy");
+    };
+    assert_eq!(retention.direction(), Some(GraphDirectionV2::Forward));
+    assert_eq!(retention.summary_facets(), ["calls", "reads", "writes"]);
+    assert_eq!(retention.references().len(), 1);
+    assert_eq!(
+        retention.references()[0].role(),
+        GraphReferenceRoleV2::Callable
     );
 }
 
@@ -1326,6 +1410,87 @@ fn composition_producer_and_with_identity_are_assembled_exactly() {
         compiled.items(),
         other.items(),
         "a swapped composition body arm must change the assembled plan"
+    );
+}
+
+#[test]
+fn graph_composition_producer_is_logic_checked_and_fully_projected() {
+    let authority = source_policy_authority();
+    let unbounded = "let paths = find path api.entry -> db.write \
+                     find reachability paths -> db.write | depth=1 with paths";
+    let error = compile_source_document_v3(DOC_SOURCE, unbounded, &authority)
+        .expect_err("a graph producer cannot bypass the logic boundedness gate");
+    assert_eq!(
+        failure_code(&error),
+        "logic.unbounded_witness.missing_path_length_bound"
+    );
+
+    let source = "let paths = find path api.entry -> db.write \
+                  | via=mid.one | direction=backward | depth=2 \
+                  find reachability paths -> db.write | direction=both | depth=3 with paths";
+    let compiled = compile_source_document_v3(DOC_SOURCE, source, &authority)
+        .expect("bounded graph producer and body compile");
+    let composition = compiled.execution().items()[0]
+        .composition()
+        .expect("composition execution payload");
+    let ExecutionCompositionProducerV3::Graph { query: producer } =
+        composition.bindings()[0].producer()
+    else {
+        panic!("graph producer payload expected")
+    };
+    assert_eq!(producer.kind(), ExecutionGraphKindV3::Path);
+    assert_eq!(producer.depth(), 2);
+    assert_eq!(
+        producer.direction(),
+        Some(ExecutionGraphDirectionV3::Backward)
+    );
+    assert_eq!(producer.max_witnesses(), 10_000);
+    assert_eq!(
+        producer.relation_shape(),
+        ExecutionGraphRelationShapeV3::Cyclic
+    );
+    assert_eq!(
+        producer.dedup_identity(),
+        ExecutionGraphDedupIdentityV3::NodeSequence
+    );
+    assert_eq!(producer.max_path_length(), Some(2));
+    assert_eq!(
+        producer.witness_tie_break(),
+        ExecutionGraphWitnessTieBreakV3::ShortestThenLexical
+    );
+    assert_eq!(
+        producer
+            .references()
+            .iter()
+            .map(|reference| reference.role())
+            .collect::<Vec<_>>(),
+        [
+            ExecutionGraphReferenceRoleV3::Source,
+            ExecutionGraphReferenceRoleV3::Sink,
+            ExecutionGraphReferenceRoleV3::Via,
+        ]
+    );
+    let ExecutionCompositionBodyV3::Graph(body) = composition.body() else {
+        panic!("graph body payload expected")
+    };
+    assert_eq!(body.kind(), ExecutionGraphKindV3::Reachability);
+    assert_eq!(body.depth(), 3);
+    assert_eq!(body.direction(), Some(ExecutionGraphDirectionV3::Both));
+    assert_eq!(
+        body.dedup_identity(),
+        ExecutionGraphDedupIdentityV3::Endpoints
+    );
+    assert_eq!(body.max_path_length(), Some(3));
+    assert!(matches!(
+        body.references()[0].target(),
+        ExecutionGraphTargetV3::Composition {
+            capability: ExecutionGraphCapabilityV3::Entity,
+            ..
+        }
+    ));
+    assert_eq!(
+        composition.with_binding(),
+        composition.bindings()[0].binding()
     );
 }
 

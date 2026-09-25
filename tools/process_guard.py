@@ -25,6 +25,10 @@ class ProcessTimeoutError(RuntimeError):
 PROCESS_GROUP_CLEANUP_TIMEOUT_S = 1.0
 
 
+class ProcessGroupCleanupError(OSError):
+    """The bounded cleanup window ended while the process group still existed."""
+
+
 def wait_for_process_group_exit(process_group: int) -> None:
     """Give SIGKILL delivery and orphan reaping a bounded completion window."""
     deadline = time.monotonic() + PROCESS_GROUP_CLEANUP_TIMEOUT_S
@@ -40,7 +44,10 @@ def wait_for_process_group_exit(process_group: int) -> None:
             pass
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            return
+            raise ProcessGroupCleanupError(
+                "process group %d still exists after %.1f s cleanup window"
+                % (process_group, PROCESS_GROUP_CLEANUP_TIMEOUT_S)
+            )
         time.sleep(min(0.01, remaining))
 
 

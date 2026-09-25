@@ -8,15 +8,20 @@
 //! owner type stays unreachable.
 
 use quanta_gqlang_v2_algebra::{AlgebraFamilyV2, CheckedAlgebraNodeV2, LoweredRelationItemV2};
+use quanta_gqlang_v2_logic::{
+    DedupIdentityV1, GraphQueryContractV2, RelationShapeV1, WitnessTieBreakV1,
+};
 use quanta_gqlang_v2_planning::{
     AuthorityLaneV2, EffectClassV2, EvaluationDeterminismV2, EvidenceRequirementV2, PlanPolicyV2,
     SemanticPlanV2,
 };
 use quanta_gqlang_v2_sema::{
-    CardinalityV1, ExpressionTypeStateV2, GraphQueryKindV1, JoinModeV2, LogicalQuantifierKindV2,
-    NullOrderV2, RelationAuthorityV2, RelationExistsPolarityV2, RelationOutputContractV2,
-    ResolvedCallTargetV2, ResolvedCompositionBodyV2, ResolvedCompositionProducerV2,
-    ResolvedCompositionV2, ResolvedPresentationKindV2, ResolvedRelationSourceKindV2, SampleModeV1,
+    CardinalityV1, CompositionGraphCapabilityV2, ExpressionTypeStateV2, GraphDirectionV2,
+    GraphQueryKindV1, GraphReferenceKindV2, GraphReferenceRoleV2, JoinModeV2,
+    LogicalQuantifierKindV2, NullOrderV2, RelationAuthorityV2, RelationExistsPolarityV2,
+    RelationOutputContractV2, ResolvedCallTargetV2, ResolvedCompositionBodyV2,
+    ResolvedCompositionProducerV2, ResolvedCompositionV2, ResolvedGraphTargetV2,
+    ResolvedGraphUseV2, ResolvedPresentationKindV2, ResolvedRelationSourceKindV2, SampleModeV1,
     ScalarTyV1, SemanticDocumentV2, SemanticItemIdV2, SortDirectionV2, SourceIdV2,
     SourceQualifiedNodeIdV2, TypedCallArgumentV2, TypedExprShapeV2, TypedExprV2,
     TypedLiteralFactV2, TypedLiteralValueV2, ValueTypeV1,
@@ -109,6 +114,12 @@ impl ExecutionDocumentV3 {
         self.source_digest
     }
 
+    /// Canonical schema used by [`Self::source_digest`].
+    #[must_use]
+    pub const fn source_digest_schema_version(&self) -> u32 {
+        SOURCE_DIGEST_SCHEMA_VERSION
+    }
+
     /// Digest of the canonical DTO encoding only. Source-byte changes that do
     /// not alter the projected contract never move it.
     #[must_use]
@@ -116,11 +127,23 @@ impl ExecutionDocumentV3 {
         self.contract_digest
     }
 
+    /// Canonical schema used by [`Self::contract_digest`].
+    #[must_use]
+    pub const fn contract_digest_schema_version(&self) -> u32 {
+        CONTRACT_DIGEST_SCHEMA_VERSION
+    }
+
     /// Digest binding the contract domain, the schema version, and both legs
     /// above. Any DTO or source-byte change moves it.
     #[must_use]
     pub const fn qualification_digest(&self) -> ExecutionDigestV3 {
         self.qualification_digest
+    }
+
+    /// Canonical schema used by [`Self::qualification_digest`].
+    #[must_use]
+    pub const fn qualification_digest_schema_version(&self) -> u32 {
+        CONTRACT_DIGEST_SCHEMA_VERSION
     }
 }
 
@@ -994,7 +1017,7 @@ impl ExecutionCompositionV3 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ExecutionCompositionBodyV3 {
     Relation,
-    Graph(ExecutionGraphKindV3),
+    Graph(ExecutionGraphQueryV3),
     Check,
     Explain,
 }
@@ -1042,9 +1065,10 @@ pub enum ExecutionCompositionProducerV3 {
         query_text: String,
         mode: ExecutionSampleModeV3,
         limit: u32,
+        scope: Option<ExecutionGraphTargetV3>,
     },
     Graph {
-        kind: ExecutionGraphKindV3,
+        query: ExecutionGraphQueryV3,
     },
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -1062,6 +1086,175 @@ pub enum ExecutionGraphKindV3 {
     Path,
     PointsTo,
     Summary,
+}
+
+/// Closed traversal directions carried to runtime admission.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionGraphDirectionV3 {
+    Forward,
+    Backward,
+    Both,
+    Undirected,
+}
+
+/// Semantic role of one projected FIND selector.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionGraphReferenceRoleV3 {
+    Source,
+    Sink,
+    Anchor,
+    Reference,
+    Pointee,
+    Callable,
+    Via,
+    Through,
+    Sanitizer,
+    Scope,
+    Window,
+    Frontier,
+}
+
+/// Host selector kinds reachable from a FIND or scoped SAMPLE payload.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionGraphReferenceKindV3 {
+    Entity,
+    Callable,
+    Scope,
+    Window,
+    Frontier,
+    Sanitizer,
+    Pattern,
+    Snapshot,
+    ExportSource,
+}
+
+/// Capability proved for a prior Composition binding used as a graph target.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionGraphCapabilityV3 {
+    Entity,
+    Scope,
+}
+
+/// Whether the sealed witness relation can revisit nodes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionGraphRelationShapeV3 {
+    Acyclic,
+    Cyclic,
+}
+
+/// Exact identity used to deduplicate bounded graph witnesses.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionGraphDedupIdentityV3 {
+    Endpoints,
+    NodeSequence,
+    NodeSet,
+}
+
+/// Deterministic ordering used when a witness cap truncates candidates.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ExecutionGraphWitnessTieBreakV3 {
+    ShortestThenLexical,
+    Lexical,
+}
+
+/// Exact host or prior-Composition target used by a graph-bearing payload.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExecutionGraphTargetV3 {
+    Host {
+        kind: ExecutionGraphReferenceKindV3,
+        spelling: String,
+        entity_subtype: Option<String>,
+    },
+    Composition {
+        binding: ExecutionBindingV3,
+        capability: ExecutionGraphCapabilityV3,
+    },
+}
+
+/// One role-qualified target in a projected FIND query.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExecutionGraphReferenceV3 {
+    role: ExecutionGraphReferenceRoleV3,
+    target: ExecutionGraphTargetV3,
+}
+
+impl ExecutionGraphReferenceV3 {
+    #[must_use]
+    pub const fn role(&self) -> ExecutionGraphReferenceRoleV3 {
+        self.role
+    }
+
+    #[must_use]
+    pub const fn target(&self) -> &ExecutionGraphTargetV3 {
+        &self.target
+    }
+}
+
+/// Complete checked FIND payload needed for downstream admission or rejection.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExecutionGraphQueryV3 {
+    kind: ExecutionGraphKindV3,
+    references: Box<[ExecutionGraphReferenceV3]>,
+    depth: u32,
+    direction: Option<ExecutionGraphDirectionV3>,
+    summary_facets: Box<[String]>,
+    relation_shape: ExecutionGraphRelationShapeV3,
+    dedup_identity: ExecutionGraphDedupIdentityV3,
+    max_witnesses: u32,
+    max_path_length: Option<u32>,
+    witness_tie_break: ExecutionGraphWitnessTieBreakV3,
+}
+
+impl ExecutionGraphQueryV3 {
+    #[must_use]
+    pub const fn kind(&self) -> ExecutionGraphKindV3 {
+        self.kind
+    }
+
+    #[must_use]
+    pub fn references(&self) -> &[ExecutionGraphReferenceV3] {
+        &self.references
+    }
+
+    #[must_use]
+    pub const fn depth(&self) -> u32 {
+        self.depth
+    }
+
+    #[must_use]
+    pub const fn direction(&self) -> Option<ExecutionGraphDirectionV3> {
+        self.direction
+    }
+
+    #[must_use]
+    pub fn summary_facets(&self) -> &[String] {
+        &self.summary_facets
+    }
+
+    #[must_use]
+    pub const fn relation_shape(&self) -> ExecutionGraphRelationShapeV3 {
+        self.relation_shape
+    }
+
+    #[must_use]
+    pub const fn dedup_identity(&self) -> ExecutionGraphDedupIdentityV3 {
+        self.dedup_identity
+    }
+
+    #[must_use]
+    pub const fn max_witnesses(&self) -> u32 {
+        self.max_witnesses
+    }
+
+    #[must_use]
+    pub const fn max_path_length(&self) -> Option<u32> {
+        self.max_path_length
+    }
+
+    #[must_use]
+    pub const fn witness_tie_break(&self) -> ExecutionGraphWitnessTieBreakV3 {
+        self.witness_tie_break
+    }
 }
 
 /// Expression-closure failure: the item root references an expression the
@@ -1189,89 +1382,260 @@ fn close_expression_ids(
     Ok(closed.into_iter().collect())
 }
 
+/// Exactly one checked execution payload for one Composition producer.
+///
+/// This tagged projection prevents relation/graph payload arrays from drifting
+/// out of alignment with the sealed binding order.
+pub(crate) enum ExecutionCompositionProducerProjectionV3 {
+    Relation(ExecutionRelationV3),
+    Sample,
+    Graph {
+        item_id: SemanticItemIdV2,
+        query: ExecutionGraphQueryV3,
+    },
+}
+
+/// Exactly one checked execution payload for the Composition body.
+pub(crate) enum ExecutionCompositionBodyProjectionV3 {
+    Relation(ExecutionRelationV3),
+    Graph {
+        item_id: SemanticItemIdV2,
+        query: ExecutionGraphQueryV3,
+    },
+    Check,
+    Explain,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ExecutionCompositionProjectionFailureV3 {
+    Producer,
+    Body,
+}
+
 pub(crate) fn project_composition(
-    document: &SemanticDocumentV2,
     composition: &ResolvedCompositionV2,
-    body_relation: Option<ExecutionRelationV3>,
-    producer_relations: Vec<Option<ExecutionRelationV3>>,
-) -> ExecutionCompositionV3 {
+    producer_projections: Vec<ExecutionCompositionProducerProjectionV3>,
+    body_projection: ExecutionCompositionBodyProjectionV3,
+) -> Result<ExecutionCompositionV3, ExecutionCompositionProjectionFailureV3> {
+    if producer_projections.len() != composition.bindings().len() {
+        return Err(ExecutionCompositionProjectionFailureV3::Producer);
+    }
     let bindings = composition
         .bindings()
         .iter()
-        .zip(producer_relations)
-        .map(|(entry, relation)| {
-            let (family, producer) = match entry.producer() {
-                ResolvedCompositionProducerV2::Query(_) => (
+        .zip(producer_projections)
+        .map(|(entry, projection)| {
+            let (family, relation, producer) = match (entry.producer(), projection) {
+                (
+                    ResolvedCompositionProducerV2::Query(_),
+                    ExecutionCompositionProducerProjectionV3::Relation(relation),
+                ) if relation.item_id() == entry.producer().item_id() => (
                     ExecutionFamilyV3::Relation,
+                    Some(relation),
                     ExecutionCompositionProducerV3::Relation,
                 ),
-                ResolvedCompositionProducerV2::Sample { presentation, .. } => {
+                (
+                    ResolvedCompositionProducerV2::Sample { presentation, .. },
+                    ExecutionCompositionProducerProjectionV3::Sample,
+                ) => {
                     let ResolvedPresentationKindV2::Sample {
                         query_text,
                         mode,
                         limit,
-                        ..
+                        scope,
                     } = presentation.kind()
                     else {
-                        unreachable!("sealed composition SAMPLE producer")
+                        return Err(ExecutionCompositionProjectionFailureV3::Producer);
                     };
                     (
                         ExecutionFamilyV3::Presentation,
+                        None,
                         ExecutionCompositionProducerV3::Sample {
                             query_text: query_text.clone(),
                             mode: project_sample_mode(*mode),
                             limit: *limit,
+                            scope: scope.as_ref().map(project_graph_use),
                         },
                     )
                 }
-                ResolvedCompositionProducerV2::Graph { graph, .. } => (
+                (
+                    ResolvedCompositionProducerV2::Graph { .. },
+                    ExecutionCompositionProducerProjectionV3::Graph { item_id, query },
+                ) if item_id == entry.producer().item_id() => (
                     ExecutionFamilyV3::Graph,
-                    ExecutionCompositionProducerV3::Graph {
-                        kind: project_graph_kind(graph.kind()),
-                    },
+                    None,
+                    ExecutionCompositionProducerV3::Graph { query },
                 ),
+                _ => return Err(ExecutionCompositionProjectionFailureV3::Producer),
             };
-            ExecutionCompositionBindingV3 {
+            Ok(ExecutionCompositionBindingV3 {
                 binding: project_binding(entry.binding()),
                 producer_item_id: entry.producer().item_id(),
                 producer_family: family,
                 schema: entry.relation_output().map(project_schema),
                 relation,
                 producer,
-            }
+            })
         })
-        .collect::<Vec<_>>()
+        .collect::<Result<Vec<_>, _>>()?
         .into_boxed_slice();
-    let (body_item_id, body_family, body) = match composition.body() {
-        ResolvedCompositionBodyV2::Query(body) => (
-            body.item_id(),
-            ExecutionFamilyV3::Relation,
-            ExecutionCompositionBodyV3::Relation,
-        ),
-        ResolvedCompositionBodyV2::Graph(body) => (
-            body.item_id(),
-            ExecutionFamilyV3::Graph,
-            ExecutionCompositionBodyV3::Graph(project_graph_kind(body.kind())),
-        ),
-        ResolvedCompositionBodyV2::Check(body) => (
-            body.item_id(),
-            ExecutionFamilyV3::Check,
-            ExecutionCompositionBodyV3::Check,
-        ),
-        ResolvedCompositionBodyV2::Explain(body) => (
-            body.item_id(),
-            ExecutionFamilyV3::Presentation,
-            ExecutionCompositionBodyV3::Explain,
-        ),
-    };
-    let _ = document;
-    ExecutionCompositionV3 {
+    let (body_item_id, body_family, body_relation, body) =
+        match (composition.body(), body_projection) {
+            (
+                ResolvedCompositionBodyV2::Query(body),
+                ExecutionCompositionBodyProjectionV3::Relation(relation),
+            ) if relation.item_id() == body.item_id() => (
+                body.item_id(),
+                ExecutionFamilyV3::Relation,
+                Some(relation),
+                ExecutionCompositionBodyV3::Relation,
+            ),
+            (
+                ResolvedCompositionBodyV2::Graph(body),
+                ExecutionCompositionBodyProjectionV3::Graph { item_id, query },
+            ) if item_id == body.item_id() => (
+                body.item_id(),
+                ExecutionFamilyV3::Graph,
+                None,
+                ExecutionCompositionBodyV3::Graph(query),
+            ),
+            (
+                ResolvedCompositionBodyV2::Check(body),
+                ExecutionCompositionBodyProjectionV3::Check,
+            ) => (
+                body.item_id(),
+                ExecutionFamilyV3::Check,
+                None,
+                ExecutionCompositionBodyV3::Check,
+            ),
+            (
+                ResolvedCompositionBodyV2::Explain(body),
+                ExecutionCompositionBodyProjectionV3::Explain,
+            ) => (
+                body.item_id(),
+                ExecutionFamilyV3::Presentation,
+                None,
+                ExecutionCompositionBodyV3::Explain,
+            ),
+            _ => return Err(ExecutionCompositionProjectionFailureV3::Body),
+        };
+    Ok(ExecutionCompositionV3 {
         bindings,
         with_binding: project_binding(composition.with_target()),
         body_item_id,
         body_family,
         body_relation,
         body,
+    })
+}
+
+pub(crate) fn project_graph_query(contract: &GraphQueryContractV2) -> ExecutionGraphQueryV3 {
+    ExecutionGraphQueryV3 {
+        kind: project_graph_kind(contract.kind()),
+        references: contract
+            .references()
+            .iter()
+            .map(|reference| ExecutionGraphReferenceV3 {
+                role: project_graph_reference_role(reference.role()),
+                target: project_graph_target(reference.target()),
+            })
+            .collect::<Vec<_>>()
+            .into_boxed_slice(),
+        depth: contract.depth(),
+        direction: contract.direction().map(project_graph_direction),
+        summary_facets: contract.summary_facets().to_vec().into_boxed_slice(),
+        relation_shape: project_graph_relation_shape(contract.shape()),
+        dedup_identity: project_graph_dedup_identity(contract.dedup()),
+        max_witnesses: contract.max_witnesses(),
+        max_path_length: contract.witness().max_path_length(),
+        witness_tie_break: project_graph_witness_tie_break(contract.tie_break()),
+    }
+}
+
+const fn project_graph_relation_shape(shape: RelationShapeV1) -> ExecutionGraphRelationShapeV3 {
+    match shape {
+        RelationShapeV1::Acyclic => ExecutionGraphRelationShapeV3::Acyclic,
+        RelationShapeV1::Cyclic => ExecutionGraphRelationShapeV3::Cyclic,
+    }
+}
+
+const fn project_graph_dedup_identity(identity: DedupIdentityV1) -> ExecutionGraphDedupIdentityV3 {
+    match identity {
+        DedupIdentityV1::Endpoints => ExecutionGraphDedupIdentityV3::Endpoints,
+        DedupIdentityV1::NodeSequence => ExecutionGraphDedupIdentityV3::NodeSequence,
+        DedupIdentityV1::NodeSet => ExecutionGraphDedupIdentityV3::NodeSet,
+    }
+}
+
+const fn project_graph_witness_tie_break(
+    tie_break: WitnessTieBreakV1,
+) -> ExecutionGraphWitnessTieBreakV3 {
+    match tie_break {
+        WitnessTieBreakV1::ShortestThenLexical => {
+            ExecutionGraphWitnessTieBreakV3::ShortestThenLexical
+        }
+        WitnessTieBreakV1::Lexical => ExecutionGraphWitnessTieBreakV3::Lexical,
+    }
+}
+
+fn project_graph_use(graph_use: &ResolvedGraphUseV2) -> ExecutionGraphTargetV3 {
+    project_graph_target(graph_use.target())
+}
+
+fn project_graph_target(target: &ResolvedGraphTargetV2) -> ExecutionGraphTargetV3 {
+    match target {
+        ResolvedGraphTargetV2::Host(selector) => ExecutionGraphTargetV3::Host {
+            kind: project_graph_reference_kind(selector.kind()),
+            spelling: selector.spelling().to_owned(),
+            entity_subtype: selector.entity_subtype().map(str::to_owned),
+        },
+        ResolvedGraphTargetV2::Composition(target) => ExecutionGraphTargetV3::Composition {
+            binding: project_binding(target.source().binding()),
+            capability: match target.capability() {
+                CompositionGraphCapabilityV2::Entity => ExecutionGraphCapabilityV3::Entity,
+                CompositionGraphCapabilityV2::Scope => ExecutionGraphCapabilityV3::Scope,
+            },
+        },
+    }
+}
+
+const fn project_graph_reference_role(role: GraphReferenceRoleV2) -> ExecutionGraphReferenceRoleV3 {
+    match role {
+        GraphReferenceRoleV2::Source => ExecutionGraphReferenceRoleV3::Source,
+        GraphReferenceRoleV2::Sink => ExecutionGraphReferenceRoleV3::Sink,
+        GraphReferenceRoleV2::Anchor => ExecutionGraphReferenceRoleV3::Anchor,
+        GraphReferenceRoleV2::Reference => ExecutionGraphReferenceRoleV3::Reference,
+        GraphReferenceRoleV2::Pointee => ExecutionGraphReferenceRoleV3::Pointee,
+        GraphReferenceRoleV2::Callable => ExecutionGraphReferenceRoleV3::Callable,
+        GraphReferenceRoleV2::Via => ExecutionGraphReferenceRoleV3::Via,
+        GraphReferenceRoleV2::Through => ExecutionGraphReferenceRoleV3::Through,
+        GraphReferenceRoleV2::Sanitizer => ExecutionGraphReferenceRoleV3::Sanitizer,
+        GraphReferenceRoleV2::Scope => ExecutionGraphReferenceRoleV3::Scope,
+        GraphReferenceRoleV2::Window => ExecutionGraphReferenceRoleV3::Window,
+        GraphReferenceRoleV2::Frontier => ExecutionGraphReferenceRoleV3::Frontier,
+    }
+}
+
+const fn project_graph_reference_kind(kind: GraphReferenceKindV2) -> ExecutionGraphReferenceKindV3 {
+    match kind {
+        GraphReferenceKindV2::Entity => ExecutionGraphReferenceKindV3::Entity,
+        GraphReferenceKindV2::Callable => ExecutionGraphReferenceKindV3::Callable,
+        GraphReferenceKindV2::Scope => ExecutionGraphReferenceKindV3::Scope,
+        GraphReferenceKindV2::Window => ExecutionGraphReferenceKindV3::Window,
+        GraphReferenceKindV2::Frontier => ExecutionGraphReferenceKindV3::Frontier,
+        GraphReferenceKindV2::Sanitizer => ExecutionGraphReferenceKindV3::Sanitizer,
+        GraphReferenceKindV2::Pattern => ExecutionGraphReferenceKindV3::Pattern,
+        GraphReferenceKindV2::Snapshot => ExecutionGraphReferenceKindV3::Snapshot,
+        GraphReferenceKindV2::ExportSource => ExecutionGraphReferenceKindV3::ExportSource,
+    }
+}
+
+const fn project_graph_direction(direction: GraphDirectionV2) -> ExecutionGraphDirectionV3 {
+    match direction {
+        GraphDirectionV2::Forward => ExecutionGraphDirectionV3::Forward,
+        GraphDirectionV2::Backward => ExecutionGraphDirectionV3::Backward,
+        GraphDirectionV2::Both => ExecutionGraphDirectionV3::Both,
+        GraphDirectionV2::Undirected => ExecutionGraphDirectionV3::Undirected,
     }
 }
 
@@ -1541,13 +1905,19 @@ fn project_binding(binding: &quanta_gqlang_v2_sema::ResolvedValueBindingV2) -> E
 /// spellings) are encoded deliberately so the audit stays syntactic — one
 /// `put_*` call per field, no semantic filtering; cross-version drift is gated
 /// by the schema version instead.
-const CONTRACT_SCHEMA_VERSION_V3: u32 = 3;
+const SOURCE_DIGEST_SCHEMA_VERSION: u32 = 3;
+// The Rust DTO is still Execution V3. Its contract/qualification encoding has
+// an independent revision because adding scoped SAMPLE, complete graph-query
+// payloads, and the sealed witness policy is byte-incompatible with the
+// original schema-3 stream. The source byte stream itself did not change, so
+// its stable schema remains 3.
+const CONTRACT_DIGEST_SCHEMA_VERSION: u32 = 5;
 
 /// Digest of the raw UTF-8 source bytes only.
 fn digest_source_bytes(source: &[u8]) -> ExecutionDigestV3 {
     let mut bytes = Vec::new();
     put_str(&mut bytes, "qglang.execution.source-bytes.v3");
-    put_u32(&mut bytes, CONTRACT_SCHEMA_VERSION_V3);
+    put_u32(&mut bytes, SOURCE_DIGEST_SCHEMA_VERSION);
     put_usize(&mut bytes, source.len());
     bytes.extend_from_slice(source);
     ExecutionDigestV3(sha256(&bytes))
@@ -1556,8 +1926,8 @@ fn digest_source_bytes(source: &[u8]) -> ExecutionDigestV3 {
 /// Digest of the canonical DTO encoding only.
 fn digest_contract(source_id: SourceIdV2, items: &[ExecutionItemV3]) -> ExecutionDigestV3 {
     let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.contract.v3");
-    put_u32(&mut bytes, CONTRACT_SCHEMA_VERSION_V3);
+    put_str(&mut bytes, "qglang.execution.contract.v5");
+    put_u32(&mut bytes, CONTRACT_DIGEST_SCHEMA_VERSION);
     put_u32(&mut bytes, source_id.raw());
     put_usize(&mut bytes, items.len());
     for item in items {
@@ -1589,8 +1959,8 @@ fn digest_qualification(
     contract_digest: ExecutionDigestV3,
 ) -> ExecutionDigestV3 {
     let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.qualification.v3");
-    put_u32(&mut bytes, CONTRACT_SCHEMA_VERSION_V3);
+    put_str(&mut bytes, "qglang.execution.qualification.v5");
+    put_u32(&mut bytes, CONTRACT_DIGEST_SCHEMA_VERSION);
     put_u32(&mut bytes, source_id.raw());
     bytes.extend_from_slice(source_digest.as_bytes());
     bytes.extend_from_slice(contract_digest.as_bytes());
@@ -1691,6 +2061,7 @@ fn put_composition_producer(out: &mut Vec<u8>, producer: &ExecutionCompositionPr
             query_text,
             mode,
             limit,
+            scope,
         } => {
             put_u8(out, 1);
             put_str(out, query_text);
@@ -1703,22 +2074,162 @@ fn put_composition_producer(out: &mut Vec<u8>, producer: &ExecutionCompositionPr
                 },
             );
             put_u32(out, *limit);
+            put_optional_graph_target(out, scope.as_ref());
         }
-        ExecutionCompositionProducerV3::Graph { kind } => {
+        ExecutionCompositionProducerV3::Graph { query } => {
             put_u8(out, 2);
-            put_u8(out, graph_kind_tag(*kind));
+            put_graph_query(out, query);
         }
     }
 }
 fn put_composition_body(out: &mut Vec<u8>, body: &ExecutionCompositionBodyV3) {
     match body {
         ExecutionCompositionBodyV3::Relation => put_u8(out, 0),
-        ExecutionCompositionBodyV3::Graph(kind) => {
+        ExecutionCompositionBodyV3::Graph(query) => {
             put_u8(out, 1);
-            put_u8(out, graph_kind_tag(*kind));
+            put_graph_query(out, query);
         }
         ExecutionCompositionBodyV3::Check => put_u8(out, 2),
         ExecutionCompositionBodyV3::Explain => put_u8(out, 3),
+    }
+}
+
+fn put_graph_query(out: &mut Vec<u8>, query: &ExecutionGraphQueryV3) {
+    put_u8(out, graph_kind_tag(query.kind));
+    put_usize(out, query.references.len());
+    for reference in &query.references {
+        put_u8(out, graph_reference_role_tag(reference.role));
+        put_graph_target(out, &reference.target);
+    }
+    put_u32(out, query.depth);
+    match query.direction {
+        Some(direction) => {
+            put_u8(out, 1);
+            put_u8(out, graph_direction_tag(direction));
+        }
+        None => put_u8(out, 0),
+    }
+    put_usize(out, query.summary_facets.len());
+    for facet in &query.summary_facets {
+        put_str(out, facet);
+    }
+    put_u8(out, graph_relation_shape_tag(query.relation_shape));
+    put_u8(out, graph_dedup_identity_tag(query.dedup_identity));
+    put_u32(out, query.max_witnesses);
+    match query.max_path_length {
+        Some(max_path_length) => {
+            put_u8(out, 1);
+            put_u32(out, max_path_length);
+        }
+        None => put_u8(out, 0),
+    }
+    put_u8(out, graph_witness_tie_break_tag(query.witness_tie_break));
+}
+
+fn put_optional_graph_target(out: &mut Vec<u8>, target: Option<&ExecutionGraphTargetV3>) {
+    match target {
+        Some(target) => {
+            put_u8(out, 1);
+            put_graph_target(out, target);
+        }
+        None => put_u8(out, 0),
+    }
+}
+
+fn put_graph_target(out: &mut Vec<u8>, target: &ExecutionGraphTargetV3) {
+    match target {
+        ExecutionGraphTargetV3::Host {
+            kind,
+            spelling,
+            entity_subtype,
+        } => {
+            put_u8(out, 0);
+            put_u8(out, graph_reference_kind_tag(*kind));
+            put_str(out, spelling);
+            match entity_subtype {
+                Some(subtype) => {
+                    put_u8(out, 1);
+                    put_str(out, subtype);
+                }
+                None => put_u8(out, 0),
+            }
+        }
+        ExecutionGraphTargetV3::Composition {
+            binding,
+            capability,
+        } => {
+            put_u8(out, 1);
+            put_binding(out, binding);
+            put_u8(
+                out,
+                match capability {
+                    ExecutionGraphCapabilityV3::Entity => 0,
+                    ExecutionGraphCapabilityV3::Scope => 1,
+                },
+            );
+        }
+    }
+}
+
+const fn graph_direction_tag(direction: ExecutionGraphDirectionV3) -> u8 {
+    match direction {
+        ExecutionGraphDirectionV3::Forward => 0,
+        ExecutionGraphDirectionV3::Backward => 1,
+        ExecutionGraphDirectionV3::Both => 2,
+        ExecutionGraphDirectionV3::Undirected => 3,
+    }
+}
+
+const fn graph_relation_shape_tag(shape: ExecutionGraphRelationShapeV3) -> u8 {
+    match shape {
+        ExecutionGraphRelationShapeV3::Acyclic => 0,
+        ExecutionGraphRelationShapeV3::Cyclic => 1,
+    }
+}
+
+const fn graph_dedup_identity_tag(identity: ExecutionGraphDedupIdentityV3) -> u8 {
+    match identity {
+        ExecutionGraphDedupIdentityV3::Endpoints => 0,
+        ExecutionGraphDedupIdentityV3::NodeSequence => 1,
+        ExecutionGraphDedupIdentityV3::NodeSet => 2,
+    }
+}
+
+const fn graph_witness_tie_break_tag(tie_break: ExecutionGraphWitnessTieBreakV3) -> u8 {
+    match tie_break {
+        ExecutionGraphWitnessTieBreakV3::ShortestThenLexical => 0,
+        ExecutionGraphWitnessTieBreakV3::Lexical => 1,
+    }
+}
+
+const fn graph_reference_role_tag(role: ExecutionGraphReferenceRoleV3) -> u8 {
+    match role {
+        ExecutionGraphReferenceRoleV3::Source => 0,
+        ExecutionGraphReferenceRoleV3::Sink => 1,
+        ExecutionGraphReferenceRoleV3::Anchor => 2,
+        ExecutionGraphReferenceRoleV3::Reference => 3,
+        ExecutionGraphReferenceRoleV3::Pointee => 4,
+        ExecutionGraphReferenceRoleV3::Callable => 5,
+        ExecutionGraphReferenceRoleV3::Via => 6,
+        ExecutionGraphReferenceRoleV3::Through => 7,
+        ExecutionGraphReferenceRoleV3::Sanitizer => 8,
+        ExecutionGraphReferenceRoleV3::Scope => 9,
+        ExecutionGraphReferenceRoleV3::Window => 10,
+        ExecutionGraphReferenceRoleV3::Frontier => 11,
+    }
+}
+
+const fn graph_reference_kind_tag(kind: ExecutionGraphReferenceKindV3) -> u8 {
+    match kind {
+        ExecutionGraphReferenceKindV3::Entity => 0,
+        ExecutionGraphReferenceKindV3::Callable => 1,
+        ExecutionGraphReferenceKindV3::Scope => 2,
+        ExecutionGraphReferenceKindV3::Window => 3,
+        ExecutionGraphReferenceKindV3::Frontier => 4,
+        ExecutionGraphReferenceKindV3::Sanitizer => 5,
+        ExecutionGraphReferenceKindV3::Pattern => 6,
+        ExecutionGraphReferenceKindV3::Snapshot => 7,
+        ExecutionGraphReferenceKindV3::ExportSource => 8,
     }
 }
 const fn graph_kind_tag(kind: ExecutionGraphKindV3) -> u8 {
@@ -2151,11 +2662,16 @@ fn sha256(input: &[u8]) -> [u8; 32] {
 #[cfg(test)]
 #[expect(
     clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::panic,
     reason = "contract digest mutation rails assert exact fixture shapes"
 )]
 mod tests {
     use super::*;
-    use quanta_gqlang_v2_sema::HirNodeIdV1;
+    use quanta_gqlang_v2_sema::{
+        test_support::{reference_composition_document_v2, ReferenceCompositionBodyV2},
+        HirNodeIdV1,
+    };
 
     #[test]
     fn sha256_matches_published_empty_vector() {
@@ -2207,6 +2723,9 @@ mod tests {
             b"show models",
             vec![relation_item()],
         );
+        assert_eq!(document.source_digest_schema_version(), 3);
+        assert_eq!(document.contract_digest_schema_version(), 5);
+        assert_eq!(document.qualification_digest_schema_version(), 5);
         // Golden pins: any canonical-encoding change (tag swap, field reorder,
         // domain edit) must update these deliberately, never silently.
         assert_eq!(
@@ -2215,11 +2734,11 @@ mod tests {
         );
         assert_eq!(
             document.contract_digest().to_hex(),
-            "572f6156cc71d5a1f344832a3ed3a16ddfac8541219d838d0129da82844bc1f1"
+            "b429b5f8aaa3abc18bb81b47b56b86ceb3f2dbce6a61122182d5e16eacd78ebd"
         );
         assert_eq!(
             document.qualification_digest().to_hex(),
-            "2f012948c36a5a807d5ec5498e9e6498560c37c428446d6a5ebd3d89e7641a54"
+            "aa642e6b13a3bc34ca613536cdc31d84b587632c47221001b928b8f9a217ba78"
         );
     }
 
@@ -2338,6 +2857,50 @@ mod tests {
             graph_kind_tag(ExecutionGraphKindV3::Path),
             graph_kind_tag(ExecutionGraphKindV3::PointsTo),
             graph_kind_tag(ExecutionGraphKindV3::Summary),
+        ]);
+        assert_distinct_tags([
+            graph_direction_tag(ExecutionGraphDirectionV3::Forward),
+            graph_direction_tag(ExecutionGraphDirectionV3::Backward),
+            graph_direction_tag(ExecutionGraphDirectionV3::Both),
+            graph_direction_tag(ExecutionGraphDirectionV3::Undirected),
+        ]);
+        assert_distinct_tags([
+            graph_reference_role_tag(ExecutionGraphReferenceRoleV3::Source),
+            graph_reference_role_tag(ExecutionGraphReferenceRoleV3::Sink),
+            graph_reference_role_tag(ExecutionGraphReferenceRoleV3::Anchor),
+            graph_reference_role_tag(ExecutionGraphReferenceRoleV3::Reference),
+            graph_reference_role_tag(ExecutionGraphReferenceRoleV3::Pointee),
+            graph_reference_role_tag(ExecutionGraphReferenceRoleV3::Callable),
+            graph_reference_role_tag(ExecutionGraphReferenceRoleV3::Via),
+            graph_reference_role_tag(ExecutionGraphReferenceRoleV3::Through),
+            graph_reference_role_tag(ExecutionGraphReferenceRoleV3::Sanitizer),
+            graph_reference_role_tag(ExecutionGraphReferenceRoleV3::Scope),
+            graph_reference_role_tag(ExecutionGraphReferenceRoleV3::Window),
+            graph_reference_role_tag(ExecutionGraphReferenceRoleV3::Frontier),
+        ]);
+        assert_distinct_tags([
+            graph_reference_kind_tag(ExecutionGraphReferenceKindV3::Entity),
+            graph_reference_kind_tag(ExecutionGraphReferenceKindV3::Callable),
+            graph_reference_kind_tag(ExecutionGraphReferenceKindV3::Scope),
+            graph_reference_kind_tag(ExecutionGraphReferenceKindV3::Window),
+            graph_reference_kind_tag(ExecutionGraphReferenceKindV3::Frontier),
+            graph_reference_kind_tag(ExecutionGraphReferenceKindV3::Sanitizer),
+            graph_reference_kind_tag(ExecutionGraphReferenceKindV3::Pattern),
+            graph_reference_kind_tag(ExecutionGraphReferenceKindV3::Snapshot),
+            graph_reference_kind_tag(ExecutionGraphReferenceKindV3::ExportSource),
+        ]);
+        assert_distinct_tags([
+            graph_relation_shape_tag(ExecutionGraphRelationShapeV3::Acyclic),
+            graph_relation_shape_tag(ExecutionGraphRelationShapeV3::Cyclic),
+        ]);
+        assert_distinct_tags([
+            graph_dedup_identity_tag(ExecutionGraphDedupIdentityV3::Endpoints),
+            graph_dedup_identity_tag(ExecutionGraphDedupIdentityV3::NodeSequence),
+            graph_dedup_identity_tag(ExecutionGraphDedupIdentityV3::NodeSet),
+        ]);
+        assert_distinct_tags([
+            graph_witness_tie_break_tag(ExecutionGraphWitnessTieBreakV3::ShortestThenLexical),
+            graph_witness_tie_break_tag(ExecutionGraphWitnessTieBreakV3::Lexical),
         ]);
     }
 
@@ -2476,6 +3039,247 @@ mod tests {
         }
     }
 
+    fn graph_query(kind: ExecutionGraphKindV3) -> ExecutionGraphQueryV3 {
+        ExecutionGraphQueryV3 {
+            kind,
+            references: Box::new([]),
+            depth: 1,
+            direction: None,
+            summary_facets: Box::new([]),
+            relation_shape: ExecutionGraphRelationShapeV3::Cyclic,
+            dedup_identity: ExecutionGraphDedupIdentityV3::NodeSequence,
+            max_witnesses: 1,
+            max_path_length: Some(1),
+            witness_tie_break: ExecutionGraphWitnessTieBreakV3::ShortestThenLexical,
+        }
+    }
+
+    #[test]
+    fn composition_rejects_a_same_variant_body_projection_from_another_item() {
+        let fixture = reference_composition_document_v2(ReferenceCompositionBodyV2::Relational)
+            .expect("reference composition resolves");
+        let composition = fixture.composition();
+        let producer_projections = composition
+            .bindings()
+            .iter()
+            .map(|_| ExecutionCompositionProducerProjectionV3::Sample)
+            .collect();
+
+        assert_eq!(
+            project_composition(
+                composition,
+                producer_projections,
+                ExecutionCompositionBodyProjectionV3::Relation(relation()),
+            ),
+            Err(ExecutionCompositionProjectionFailureV3::Body),
+        );
+    }
+
+    #[test]
+    fn composition_rejects_same_variant_graph_projections_from_other_items() {
+        let fixture = reference_composition_document_v2(ReferenceCompositionBodyV2::Graph)
+            .expect("reference graph composition resolves");
+        let composition = fixture.composition();
+
+        assert_eq!(
+            project_composition(
+                composition,
+                vec![ExecutionCompositionProducerProjectionV3::Graph {
+                    item_id: fixture.body_item_id(),
+                    query: graph_query(ExecutionGraphKindV3::Path),
+                }],
+                ExecutionCompositionBodyProjectionV3::Graph {
+                    item_id: fixture.body_item_id(),
+                    query: graph_query(ExecutionGraphKindV3::Path),
+                },
+            ),
+            Err(ExecutionCompositionProjectionFailureV3::Producer),
+        );
+
+        assert_eq!(
+            project_composition(
+                composition,
+                vec![ExecutionCompositionProducerProjectionV3::Graph {
+                    item_id: fixture.producer_item_ids()[0],
+                    query: graph_query(ExecutionGraphKindV3::Path),
+                }],
+                ExecutionCompositionBodyProjectionV3::Graph {
+                    item_id: fixture.producer_item_ids()[0],
+                    query: graph_query(ExecutionGraphKindV3::Path),
+                },
+            ),
+            Err(ExecutionCompositionProjectionFailureV3::Body),
+        );
+    }
+
+    #[test]
+    fn independent_graph_encoder_matches_the_canonical_substream() {
+        fn write_u32(out: &mut Vec<u8>, value: u32) {
+            out.extend_from_slice(&value.to_be_bytes());
+        }
+        fn write_len(out: &mut Vec<u8>, value: usize) {
+            out.extend_from_slice(
+                &u64::try_from(value)
+                    .expect("test length fits")
+                    .to_be_bytes(),
+            );
+        }
+        fn write_text(out: &mut Vec<u8>, value: &str) {
+            write_len(out, value.len());
+            out.extend_from_slice(value.as_bytes());
+        }
+        fn independent_target(out: &mut Vec<u8>, target: &ExecutionGraphTargetV3) {
+            match target {
+                ExecutionGraphTargetV3::Host {
+                    kind,
+                    spelling,
+                    entity_subtype,
+                } => {
+                    out.push(0);
+                    out.push(match kind {
+                        ExecutionGraphReferenceKindV3::Entity => 0,
+                        ExecutionGraphReferenceKindV3::Callable => 1,
+                        ExecutionGraphReferenceKindV3::Scope => 2,
+                        ExecutionGraphReferenceKindV3::Window => 3,
+                        ExecutionGraphReferenceKindV3::Frontier => 4,
+                        ExecutionGraphReferenceKindV3::Sanitizer => 5,
+                        ExecutionGraphReferenceKindV3::Pattern => 6,
+                        ExecutionGraphReferenceKindV3::Snapshot => 7,
+                        ExecutionGraphReferenceKindV3::ExportSource => 8,
+                    });
+                    write_text(out, spelling);
+                    if let Some(subtype) = entity_subtype {
+                        out.push(1);
+                        write_text(out, subtype);
+                    } else {
+                        out.push(0);
+                    }
+                }
+                ExecutionGraphTargetV3::Composition {
+                    binding,
+                    capability,
+                } => {
+                    out.push(1);
+                    write_u32(out, binding.source_id().raw());
+                    write_u32(out, binding.owner_node());
+                    write_len(out, binding.ordinal());
+                    write_text(out, binding.name());
+                    out.push(match capability {
+                        ExecutionGraphCapabilityV3::Entity => 0,
+                        ExecutionGraphCapabilityV3::Scope => 1,
+                    });
+                }
+            }
+        }
+        fn independent_encode(query: &ExecutionGraphQueryV3) -> Vec<u8> {
+            let mut out = Vec::new();
+            out.push(match query.kind() {
+                ExecutionGraphKindV3::Reachability => 0,
+                ExecutionGraphKindV3::Flow => 1,
+                ExecutionGraphKindV3::Slice => 2,
+                ExecutionGraphKindV3::Taint => 3,
+                ExecutionGraphKindV3::Path => 4,
+                ExecutionGraphKindV3::PointsTo => 5,
+                ExecutionGraphKindV3::Summary => 6,
+            });
+            write_len(&mut out, query.references().len());
+            for reference in query.references() {
+                out.push(match reference.role() {
+                    ExecutionGraphReferenceRoleV3::Source => 0,
+                    ExecutionGraphReferenceRoleV3::Sink => 1,
+                    ExecutionGraphReferenceRoleV3::Anchor => 2,
+                    ExecutionGraphReferenceRoleV3::Reference => 3,
+                    ExecutionGraphReferenceRoleV3::Pointee => 4,
+                    ExecutionGraphReferenceRoleV3::Callable => 5,
+                    ExecutionGraphReferenceRoleV3::Via => 6,
+                    ExecutionGraphReferenceRoleV3::Through => 7,
+                    ExecutionGraphReferenceRoleV3::Sanitizer => 8,
+                    ExecutionGraphReferenceRoleV3::Scope => 9,
+                    ExecutionGraphReferenceRoleV3::Window => 10,
+                    ExecutionGraphReferenceRoleV3::Frontier => 11,
+                });
+                independent_target(&mut out, reference.target());
+            }
+            write_u32(&mut out, query.depth());
+            if let Some(direction) = query.direction() {
+                out.push(1);
+                out.push(match direction {
+                    ExecutionGraphDirectionV3::Forward => 0,
+                    ExecutionGraphDirectionV3::Backward => 1,
+                    ExecutionGraphDirectionV3::Both => 2,
+                    ExecutionGraphDirectionV3::Undirected => 3,
+                });
+            } else {
+                out.push(0);
+            }
+            write_len(&mut out, query.summary_facets().len());
+            for facet in query.summary_facets() {
+                write_text(&mut out, facet);
+            }
+            out.push(match query.relation_shape() {
+                ExecutionGraphRelationShapeV3::Acyclic => 0,
+                ExecutionGraphRelationShapeV3::Cyclic => 1,
+            });
+            out.push(match query.dedup_identity() {
+                ExecutionGraphDedupIdentityV3::Endpoints => 0,
+                ExecutionGraphDedupIdentityV3::NodeSequence => 1,
+                ExecutionGraphDedupIdentityV3::NodeSet => 2,
+            });
+            write_u32(&mut out, query.max_witnesses());
+            if let Some(max_path_length) = query.max_path_length() {
+                out.push(1);
+                write_u32(&mut out, max_path_length);
+            } else {
+                out.push(0);
+            }
+            out.push(match query.witness_tie_break() {
+                ExecutionGraphWitnessTieBreakV3::ShortestThenLexical => 0,
+                ExecutionGraphWitnessTieBreakV3::Lexical => 1,
+            });
+            out
+        }
+
+        let query = ExecutionGraphQueryV3 {
+            kind: ExecutionGraphKindV3::Summary,
+            references: Box::new([
+                ExecutionGraphReferenceV3 {
+                    role: ExecutionGraphReferenceRoleV3::Source,
+                    target: ExecutionGraphTargetV3::Host {
+                        kind: ExecutionGraphReferenceKindV3::Snapshot,
+                        spelling: "repo@head".to_owned(),
+                        entity_subtype: Some("function".to_owned()),
+                    },
+                },
+                ExecutionGraphReferenceV3 {
+                    role: ExecutionGraphReferenceRoleV3::Scope,
+                    target: ExecutionGraphTargetV3::Composition {
+                        binding: binding("prior"),
+                        capability: ExecutionGraphCapabilityV3::Scope,
+                    },
+                },
+            ]),
+            depth: 7,
+            direction: Some(ExecutionGraphDirectionV3::Undirected),
+            summary_facets: Box::new(["calls".to_owned(), "types".to_owned()]),
+            relation_shape: ExecutionGraphRelationShapeV3::Acyclic,
+            dedup_identity: ExecutionGraphDedupIdentityV3::NodeSet,
+            max_witnesses: 11,
+            max_path_length: Some(13),
+            witness_tie_break: ExecutionGraphWitnessTieBreakV3::Lexical,
+        };
+        let mut canonical = Vec::new();
+        put_graph_query(&mut canonical, &query);
+        assert_eq!(canonical, independent_encode(&query));
+    }
+
+    fn host_graph_target(spelling: &str) -> ExecutionGraphTargetV3 {
+        ExecutionGraphTargetV3::Host {
+            kind: ExecutionGraphReferenceKindV3::Entity,
+            spelling: spelling.to_owned(),
+            entity_subtype: None,
+        }
+    }
+
     fn contract_of(items: Vec<ExecutionItemV3>) -> ExecutionDigestV3 {
         ExecutionDocumentV3::new(SourceIdV2::from_raw(0), b"show models", items).contract_digest()
     }
@@ -2580,6 +3384,159 @@ mod tests {
             qualification_of(vec![composition_item(Some(schema()))]),
             qualification_of(vec![composition_item(None)])
         );
+    }
+
+    #[test]
+    fn composition_sample_scope_and_every_graph_query_field_move_contract() {
+        let mut unscoped = composition_item(None);
+        unscoped.composition.as_mut().expect("composition").bindings[0].producer =
+            ExecutionCompositionProducerV3::Sample {
+                query_text: "auth".to_owned(),
+                mode: ExecutionSampleModeV3::Lexical,
+                limit: 1,
+                scope: None,
+            };
+        let mut scoped = unscoped.clone();
+        let ExecutionCompositionProducerV3::Sample { scope, .. } =
+            &mut scoped.composition.as_mut().expect("composition").bindings[0].producer
+        else {
+            panic!("sample")
+        };
+        *scope = Some(host_graph_target("repo"));
+        assert_ne!(contract_of(vec![unscoped]), contract_of(vec![scoped]));
+
+        let mut base = composition_item(None);
+        base.composition.as_mut().expect("composition").bindings[0].producer =
+            ExecutionCompositionProducerV3::Graph {
+                query: graph_query(ExecutionGraphKindV3::Path),
+            };
+        let base_digest = contract_of(vec![base.clone()]);
+        let mut mutations = Vec::new();
+
+        let mut kind = base.clone();
+        let ExecutionCompositionProducerV3::Graph { query } =
+            &mut kind.composition.as_mut().expect("composition").bindings[0].producer
+        else {
+            panic!("graph")
+        };
+        query.kind = ExecutionGraphKindV3::Flow;
+        mutations.push(kind);
+
+        let mut references = base.clone();
+        let ExecutionCompositionProducerV3::Graph { query } = &mut references
+            .composition
+            .as_mut()
+            .expect("composition")
+            .bindings[0]
+            .producer
+        else {
+            panic!("graph")
+        };
+        query.references = Box::new([ExecutionGraphReferenceV3 {
+            role: ExecutionGraphReferenceRoleV3::Source,
+            target: host_graph_target("a"),
+        }]);
+        mutations.push(references);
+
+        let mut depth = base.clone();
+        let ExecutionCompositionProducerV3::Graph { query } =
+            &mut depth.composition.as_mut().expect("composition").bindings[0].producer
+        else {
+            panic!("graph")
+        };
+        query.depth = 2;
+        mutations.push(depth);
+
+        let mut direction = base.clone();
+        let ExecutionCompositionProducerV3::Graph { query } = &mut direction
+            .composition
+            .as_mut()
+            .expect("composition")
+            .bindings[0]
+            .producer
+        else {
+            panic!("graph")
+        };
+        query.direction = Some(ExecutionGraphDirectionV3::Backward);
+        mutations.push(direction);
+
+        let mut facets = base.clone();
+        let ExecutionCompositionProducerV3::Graph { query } =
+            &mut facets.composition.as_mut().expect("composition").bindings[0].producer
+        else {
+            panic!("graph")
+        };
+        query.summary_facets = Box::new(["calls".to_owned()]);
+        mutations.push(facets);
+
+        let mut relation_shape = base.clone();
+        let ExecutionCompositionProducerV3::Graph { query } = &mut relation_shape
+            .composition
+            .as_mut()
+            .expect("composition")
+            .bindings[0]
+            .producer
+        else {
+            panic!("graph")
+        };
+        query.relation_shape = ExecutionGraphRelationShapeV3::Acyclic;
+        mutations.push(relation_shape);
+
+        let mut dedup_identity = base.clone();
+        let ExecutionCompositionProducerV3::Graph { query } = &mut dedup_identity
+            .composition
+            .as_mut()
+            .expect("composition")
+            .bindings[0]
+            .producer
+        else {
+            panic!("graph")
+        };
+        query.dedup_identity = ExecutionGraphDedupIdentityV3::Endpoints;
+        mutations.push(dedup_identity);
+
+        let mut witnesses = base.clone();
+        let ExecutionCompositionProducerV3::Graph { query } = &mut witnesses
+            .composition
+            .as_mut()
+            .expect("composition")
+            .bindings[0]
+            .producer
+        else {
+            panic!("graph")
+        };
+        query.max_witnesses = 2;
+        mutations.push(witnesses);
+
+        let mut max_path_length = base.clone();
+        let ExecutionCompositionProducerV3::Graph { query } = &mut max_path_length
+            .composition
+            .as_mut()
+            .expect("composition")
+            .bindings[0]
+            .producer
+        else {
+            panic!("graph")
+        };
+        query.max_path_length = Some(2);
+        mutations.push(max_path_length);
+
+        let mut witness_tie_break = base;
+        let ExecutionCompositionProducerV3::Graph { query } = &mut witness_tie_break
+            .composition
+            .as_mut()
+            .expect("composition")
+            .bindings[0]
+            .producer
+        else {
+            panic!("graph")
+        };
+        query.witness_tie_break = ExecutionGraphWitnessTieBreakV3::Lexical;
+        mutations.push(witness_tie_break);
+
+        for mutation in mutations {
+            assert_ne!(contract_of(vec![mutation]), base_digest);
+        }
     }
 
     #[test]
@@ -3042,7 +3999,7 @@ mod tests {
         let mut body_digests = Vec::new();
         for body in [
             ExecutionCompositionBodyV3::Relation,
-            ExecutionCompositionBodyV3::Graph(ExecutionGraphKindV3::Taint),
+            ExecutionCompositionBodyV3::Graph(graph_query(ExecutionGraphKindV3::Taint)),
             ExecutionCompositionBodyV3::Check,
             ExecutionCompositionBodyV3::Explain,
         ] {
@@ -3070,6 +4027,7 @@ mod tests {
                 query_text: "auth".to_owned(),
                 mode,
                 limit: 7,
+                scope: None,
             };
             sample_digests.push(contract_of(vec![candidate]));
         }

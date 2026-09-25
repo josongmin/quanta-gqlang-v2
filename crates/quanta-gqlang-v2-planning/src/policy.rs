@@ -6,8 +6,9 @@
 //! "lost FIND witness cap/tie-break", SAMPLE/COMPARE/EXPORT payload retention),
 //! so [`PlanPolicyV2`] carries exactly that retention:
 //!
-//! - FIND keeps the exact graph witness depth/cap/dedup/tie-break provenance
-//!   from [`quanta_gqlang_v2_logic::GraphQueryContractV2`] — never reclassified.
+//! - FIND keeps its exact direction, facets, resolved selectors, and graph
+//!   witness depth/cap/dedup/tie-break provenance from
+//!   [`quanta_gqlang_v2_logic::GraphQueryContractV2`] — never reclassified.
 //! - CHECK keeps the exact detection/confirm/emit modes and its resolved rule,
 //!   scope, pattern, and nested graph provenance.
 //! - Presentation keeps the exact sealed presentation payload.
@@ -24,7 +25,8 @@ use quanta_gqlang_v2_logic::{
     WitnessTieBreakV1,
 };
 use quanta_gqlang_v2_sema::{
-    CheckedLocatedSpanV2, GraphQueryKindV1, ResolvedPresentationKindV2, SemanticItemIdV2,
+    CheckedLocatedSpanV2, GraphDirectionV2, GraphQueryKindV1, ResolvedGraphReferenceV2,
+    ResolvedPresentationKindV2, SemanticItemIdV2,
 };
 use quanta_gqlang_v2_types::{
     AggregationClassV1, DeterminismV1, MonotonicityV1, PurityV1, ResolvedPredicateIdV2,
@@ -69,7 +71,7 @@ impl EffectSummaryV2 {
     }
 }
 
-/// Exact witness provenance retained from a sealed graph contract.
+/// Exact query and witness provenance retained from a sealed graph contract.
 ///
 /// Every field is read from [`GraphQueryContractV2`]; planning never
 /// reclassifies a FIND from raw source, display names, or risk class.
@@ -79,6 +81,9 @@ pub struct GraphWitnessRetentionV2 {
     kind: GraphQueryKindV1,
     location: CheckedLocatedSpanV2,
     depth: u32,
+    direction: Option<GraphDirectionV2>,
+    summary_facets: Vec<String>,
+    references: Vec<ResolvedGraphReferenceV2>,
     shape: RelationShapeV1,
     max_witnesses: u32,
     max_path_length: Option<u32>,
@@ -95,6 +100,9 @@ impl GraphWitnessRetentionV2 {
             kind: contract.kind(),
             location: contract.location().clone(),
             depth: contract.depth(),
+            direction: contract.direction(),
+            summary_facets: contract.summary_facets().to_vec(),
+            references: contract.references().to_vec(),
             shape: contract.shape(),
             max_witnesses: contract.max_witnesses(),
             max_path_length: contract.witness().max_path_length(),
@@ -125,6 +133,24 @@ impl GraphWitnessRetentionV2 {
     #[must_use]
     pub const fn depth(&self) -> u32 {
         self.depth
+    }
+
+    /// Authored traversal direction, when present.
+    #[must_use]
+    pub const fn direction(&self) -> Option<GraphDirectionV2> {
+        self.direction
+    }
+
+    /// Ordered summary facets retained from the sealed graph contract.
+    #[must_use]
+    pub fn summary_facets(&self) -> &[String] {
+        &self.summary_facets
+    }
+
+    /// Every resolved endpoint and selector in Sema-owned deterministic order.
+    #[must_use]
+    pub fn references(&self) -> &[ResolvedGraphReferenceV2] {
+        &self.references
     }
 
     /// The relation shape the witness contract was bound against.
