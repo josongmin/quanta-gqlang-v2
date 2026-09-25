@@ -9,6 +9,8 @@
 - INT-00의 raw Cargo RED는 다른 authority fixture의 digest를 동일하게 요구한 오판으로 철회했다. 2026-09-26 Semantica 등록 QBC admission owner는 현 QGLang sibling을 사용해 6/6 PASS다. INT-02 host-adapter raw check exit 101은 별도 P2 진단이며 제품 V3 pair PASS는 여전히 확인되지 않았다.
 - `S:crates/quanta-cli-server/tests/server_socket_daemon_e2e.rs:3819-3910`은 V3 from-files의 실제 소켓/authority drift를 검사한다. lexical·semantic V3 Composition은 SDK owner 테스트가 있지만 설치형 process 양성은 확인되지 않았다. SDK 등록: `S:tools/testing/suite-registry-v1.yaml:646-775`.
 - 2026-09-26 설치형 테스트 계약 수정은 공유 Semantica 커밋 `130a7f1f5e9`에 포함됐다. 그 뒤 `dist-full,gqlang-process-proof` 타깃 QBC compile은 현 소스의 다른 동시 변경 `workspace_journal_operator_runtime_v1.rs:182`에서 E0004(`SourceAwareCloseout` 미처리)로 중단됐다. GQLang process 실행이나 테스트 컴파일 PASS로 세지 않는다.
+- 같은 타깃 QBC `check` 재실행은 source digest `03b688c325ee8d70be9afcd6375aa00fe20e495eaa2b4b42847b9f9ed852e809`에서 exit 0이다. 이는 컴파일 증거이며 설치형 process 실행이나 pair qualification PASS가 아니다.
+- 격리 Semantica SDK exact semantic SAMPLE 재현 시도는 source digest `22ccfbb146eb1ef0401e11fa70c00925b8c41d219f7193a5b346937f06b1a83f`에서 테스트 1개 선택·실행 후 현재 소스 `QUANTA_INDEX_SEARCHD_BIN` 미설정으로 실패했다. 타임아웃 동작 판정이나 SDK PASS가 아니며, 공유 main에 통합되지 않은 격리 checkout 결과다.
 
 ## 실행 순서와 증거
 

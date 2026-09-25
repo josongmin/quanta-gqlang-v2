@@ -23,8 +23,8 @@ Authority/TOCTOU 재감사에서는 새로운 오결과 경로를 찾지 못했�
 | --- | --- | --- | --- |
 | [INT-00](tickets/INT-00-v3-producer-consumer-drift.md) | CLOSED — 오판 철회 | 서로 다른 authority fixture의 DTO digest를 직접 비교했다. 현 Semantica 등록 QBC admission owner 6/6 PASS. | pin 변경 없음; pair 제품 증명은 INT-04 |
 | [INT-01](tickets/INT-01-execution-deadline.md) | P1 후보 | V3 SAMPLE의 admitted timeout이 실행/동기 대기까지 전달되지 않는 소스 경로. 지연 host 재현 전. | 재현 → ingress 절대 deadline·취소·late-success 거부를 한 authority로 연결 |
-| [INT-02](tickets/INT-02-legacy-host-adapter.md) | P2 별도 workspace 결함 | 구형 host-adapter가 공개 facade에 없는 V1 HIR를 import한다. raw Cargo check는 실패했고 QBC 판정은 없다. | 제품/등록 소비자 확인 → QBC package 진단 → 유지·제거 결정 |
-| [INT-03](tickets/INT-03-installed-process-contract.md) | 코드 수정·증명 대기 | 설치형 테스트를 standalone/named-scope typed reject와 semantic Composition 양성으로 변경했다. 현 소스 타깃 컴파일은 다른 동시 작업의 `SourceAwareCloseout` 비포괄 match(E0004)에서 중단됐다. | 그 변경이 정리된 뒤 같은 QBC compile rail과 receipt-bound process exact/전체 실행 |
+| [INT-02](tickets/INT-02-legacy-host-adapter.md) | P2 별도 workspace 결함 | 구형 host-adapter가 공개 facade에 없는 V1 HIR를 import한다. 등록 QBC package check도 E0432로 실패했고 Rust 역의존자는 0개다. | catalog/registry의 stable·wired 주장과 유지·제거 결정 |
+| [INT-03](tickets/INT-03-installed-process-contract.md) | 코드 수정·제품 증명 대기 | 설치형 테스트를 standalone/named-scope typed reject와 semantic Composition 양성으로 변경했다. QBC 타깃 `check`는 현 소스에서 통과했다. | 동일 소스 설치 bundle·SDK wheel 영수증으로 exact/전체 process 실행 |
 | [INT-04](tickets/INT-04-paired-qualification.md) | downstream 증명 공백 | QGLang 이전 clean qualification과 Semantica admission owner 6/6 PASS. SDK→설치형 process의 동일 pair PASS는 없다. | INT-01 판정 후 owner→SDK→설치형 제품 영수증 |
 
 ## 현재 증거와 미증명
@@ -32,9 +32,9 @@ Authority/TOCTOU 재감사에서는 새로운 오결과 경로를 찾지 못했�
 - QGLang의 `target/qualification/145b66827a8791c22c4df26fcfa11d82592f913f/receipt.json`은 current clean committed source에서 `status=complete`, `exit=0`, Nextest `1248/1248`, skipped/ignored/leaked `0/0/0`이다. 이는 producer와 public external consumer를 증명하지만 Semantica 소비자 또는 제품 실행을 증명하지 않는다.
 - Semantica는 QGLang을 sibling path dependency로 소비한다. QBC source closure는 그 sibling 의존성도 digest에 포함한다 (`S:tools/quanta-build-cli/campaign_source_closure_v1.py:171-228`). 즉 pair 봉인 설계가 없는 것이 아니라 **현 소스에서 끝까지 통과한 영수증이 없는 것**이다.
 - 이전 raw Cargo exact RED는 현 pair 결함의 증거가 아니다. QGLang과 Semantica의 golden fixture가 서로 다른 authority를 투영한다. 2026-09-26 현재 Semantica 등록 QBC admission owner는 현 QGLang sibling을 사용해 6개를 실제 실행·통과했다. 이 dirty-tree owner PASS는 설치형/clean-HEAD proof가 아니다.
-- raw Cargo host-adapter check도 exit 101(`E0432` 5건, 후속 `E0282` 2건)이었다. 이는 소스 불일치와 일치하는 진단이지 QBC qualification은 아니다. catalog·casectl·timing·feature-isolation·boundary policy 참조가 있으므로 무작정 삭제하지 않는다.
+- host-adapter 등록 QBC package `check`도 exit 101(`E0432`)이었다. Cargo metadata의 Rust 역의존자는 0개지만 catalog는 여전히 stable/wired/authoritative로 표기한다. catalog·casectl·timing·feature-isolation·boundary policy 참조가 있으므로 제품 계약 선택 없이 무작정 삭제하지 않는다.
 - 과거 QBC log의 exec-contract/public-ingress owner PASS는 옛 digest다. SDK GQLang owner 실행은 중단된 기록이 있고, 확인된 `dist-full,gqlang-process-proof` 설치형 실패 영수증은 2026-09-23의 이전 source digest다. 이것들은 current pair PASS가 아니다. 원자료: `/Users/songmin/Library/semantica-codegraph-v2/logs/quanta-build-cli/verification-results.jsonl`.
-- 설치형 대상은 `S:tools/quanta-build-cli/product-recipes-v1.toml:114-125`의 filter 없는 `server_socket_daemon_e2e`이다. `S:crates/quanta-cli-server/tests/server_socket_daemon_e2e.rs:253-266`에 따라 receipt-bound 설치 바이너리 없이는 process promotion proof가 불가능하다. GitHub Actions는 요구하지 않는다. 로컬 영수증으로 닫는다.
+- 설치형 대상은 `S:tools/quanta-build-cli/product-recipes-v1.toml:114-125`의 filter 없는 `server_socket_daemon_e2e`이다. 현 QBC 타깃 `check`는 exit 0이지만 테스트 실행 수는 0이다. `S:crates/quanta-cli-server/tests/server_socket_daemon_e2e.rs:253-266`에 따라 receipt-bound 설치 바이너리 없이는 process promotion proof가 불가능하다. GitHub Actions는 요구하지 않는다. 로컬 영수증으로 닫는다.
 - QGLang `composition_limit_2`와 Semantica pinned golden은 source digest만 같고 contract/qualification digest는 다르다. 계약상 이 두 digest는 DTO 투영을 포함하며 fixture authority가 다르다. 문자열 불일치만으로 pin drift라고 판정하지 않는다.
 
 ## 완료 판정 순서

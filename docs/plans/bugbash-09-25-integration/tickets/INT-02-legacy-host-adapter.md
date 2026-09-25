@@ -1,6 +1,6 @@
 # INT-02 — 구형 host-adapter의 공개 계약 불일치 처리
 
-상태: **소스 불일치·raw Cargo compile 진단 RED / QBC 판정 전** · 우선순위: P2 독립 workspace 위생 · 소유: Semantica workspace/adapter owner.
+상태: **소스 불일치·등록 QBC package check RED / 유지·제거 결정 전** · 우선순위: P2 독립 workspace 위생 · 소유: Semantica workspace/adapter owner.
 
 ## 근거
 
@@ -12,7 +12,9 @@
 
 - Semantica `9ce5972352ad3503653e7952a9bab17340439898`의 dirty checkout에서 `cargo check -p quanta-gqlang-v2-host-adapter --lib --no-default-features`를 실행했다.
 - 결과는 exit 101이다. `algebra_lowering.rs`, `check_lowering.rs`, `graph_lowering.rs`, `presentation_lowering.rs`의 제거된 frontend/exec-contract import에서 `E0432` 5건이 발생했고, 그 후속 타입 추론 `E0282` 2건이 발생했다.
-- 이는 현재 sibling QGLang `145b6682…`과의 소스 불일치를 확인하는 진단이다. Semantica 규칙상 raw Cargo 결과는 권위 있는 Rust verdict가 아니며, checkout도 다른 작업으로 dirty하다. 등록 QBC 판정은 아직 없다.
+- 이는 당시 sibling QGLang `145b6682…`과의 소스 불일치를 확인하는 진단이다. Semantica 규칙상 raw Cargo 결과는 권위 있는 Rust verdict가 아니며, checkout도 다른 작업으로 dirty했다.
+
+2026-09-26 등록 QBC `owner run --lane gqlang-ss-integration --package quanta-gqlang-v2-host-adapter --execution-kind check --target-kind lib --compile-policy feature-isolation:quanta-gqlang-v2-host-adapter.default.effbe15afb6d`도 exit 101, V1 HIR import `E0432`로 실패했다. receipt: `/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-d0b8b5a985ea/lanes/gqlang-ss-integration/verification-results/20260925T155327.307991Z-77b66c805d6c/receipt.json`. Cargo metadata의 Rust 역의존자는 0개다. 반면 catalog entry는 이 crate를 `stable`, `wired`, `authoritative_adapter`로 표기하므로 제품 실제 상태와 선언이 불일치한다. 유지/퇴역의 공개 결정은 아직 없다.
 
 ## 판단·해결
 

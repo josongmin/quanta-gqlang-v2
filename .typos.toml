@@ -4,6 +4,7 @@
 extend-exclude = ["target/**"]
 
 [default.extend-words]
-gqlang = "gqlang"
-lsp    = "lsp"
-sema   = "sema"
+gqlang  = "gqlang"
+lsp     = "lsp"
+searchd = "searchd"
+sema    = "sema"
