@@ -17,6 +17,7 @@ from unittest.mock import patch
 
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import qualify_local as qualify_local_module  # noqa: E402
 from qualify_local import (  # noqa: E402
     QualificationDriver, QualificationError, git, valid_deny_evidence,
     valid_nextest_evidence, validate_recipe_durations,
@@ -279,6 +280,32 @@ class QualificationDriverTest(unittest.TestCase):
                          (sha, tree, ["just ci"], 2))
         self.assertEqual(git(self.driver.checkout, "rev-parse", "HEAD"), sha)
         self.assertEqual(git(self.repo, "status", "--porcelain"), "")
+
+    def test_ci_spawn_failure_records_complete_nonpassing_receipt(self) -> None:
+        (self.repo / "rust-toolchain.toml").write_text(
+            '[toolchain]\nchannel = "1.81.0"\n', encoding="utf-8"
+        )
+        (self.repo / "Justfile").write_text("ci:\n    @true\n", encoding="utf-8")
+        run(["git", "add", "Justfile", "rust-toolchain.toml"], self.repo)
+        run(["git", "commit", "-qm", "fixture-spawn-failure"], self.repo)
+        sha, tree = self.pin()
+        original = qualify_local_module.run_bounded
+
+        def fail_ci(args, **kwargs):
+            if tuple(args) == ("just", "ci"):
+                raise OSError("cannot spawn just")
+            return original(args, **kwargs)
+
+        with patch("qualify_local.run_bounded", side_effect=fail_ci), \
+             redirect_stdout(io.StringIO()):
+            self.assertEqual(self.driver.run(), 2)
+        receipt = json.loads(
+            (self.driver.root / sha / "receipt.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual((receipt["sha"], receipt["tree"], receipt["exit"]), (sha, tree, 2))
+        self.assertEqual(receipt["status"], "complete")
+        self.assertIs(receipt["dirty"], False)
+        self.assertTrue((self.driver.root / sha / "ci.log").is_file())
 
     def test_ci_log_symlink_is_replaced_without_writing_external_file(self) -> None:
         (self.repo / "rust-toolchain.toml").write_text(

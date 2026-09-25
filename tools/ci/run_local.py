@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import re
 import secrets
 import sys
 from pathlib import Path
@@ -13,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
 from tools.ci.doctor import DoctorError, read_lock  # noqa: E402
-from tools.ci.environment import sanitized_environment  # noqa: E402
+from tools.ci.environment import sanitized_environment, valid_run_id  # noqa: E402
 
 GROUPS = ("doctor", "external-consumer-preflight", "static", "test", "policy")
 TIMEOUTS = {
@@ -80,7 +79,7 @@ def source_snapshot() -> str:
 
 def main() -> int:
     run_id = os.environ.get("QGLANG_QUALIFICATION_RUN_ID") or secrets.token_hex(16)
-    if not re.fullmatch(r"[0-9a-f]{32}", run_id):
+    if not valid_run_id(run_id):
         print("local CI: invalid qualification run identity", file=sys.stderr)
         return 2
     try:

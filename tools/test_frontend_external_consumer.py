@@ -78,7 +78,7 @@ from tools.ci.doctor import DoctorError, read_lock  # noqa: E402
 from tools.ci.evidence import (  # noqa: E402
     EvidencePathError, consume_json_evidence, read_json_evidence, write_json_evidence,
 )
-from tools.ci.environment import sanitized_environment  # noqa: E402
+from tools.ci.environment import sanitized_environment, valid_run_id  # noqa: E402
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIR = REPOSITORY_ROOT / "tools" / "frontend_external_consumer"
@@ -772,7 +772,7 @@ def offline_dependency_preflight() -> int:
 
 
 def preflight_payload(run_id: str) -> dict:
-    if not re.fullmatch(r"[0-9a-f]{32}", run_id):
+    if not valid_run_id(run_id):
         raise InfrastructureError("invalid local CI run identity")
     manifests = preflight_manifests()
     manifest_digest = hashlib.sha256()

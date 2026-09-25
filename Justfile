@@ -39,7 +39,7 @@ doctest:
     python3 tools/ci/doctest_gate.py
 
 frontdoor-parity:
-    CARGO_TARGET_DIR=target/ci-msrv python3 tools/test_frontdoor_parity.py
+    python3 tools/test_frontdoor_parity.py
 
 # ---- policy leaves (each runs exactly one policy command) ----
 

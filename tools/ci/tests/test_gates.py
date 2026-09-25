@@ -19,7 +19,9 @@ from tools.ci import (
     unittest_gate,
 )
 from tools.ci.evidence import EvidencePathError, read_json_evidence, write_json_evidence
-from tools.ci.environment import sanitized_environment
+from tools.ci.environment import (
+    EnvironmentSanitizationError, sanitized_environment,
+)
 
 
 class LocalGateTest(unittest.TestCase):
@@ -39,9 +41,14 @@ class LocalGateTest(unittest.TestCase):
         }
         self.assertEqual(sanitized_environment(source), {"PATH": "/usr/bin"})
         self.assertEqual(
-            sanitized_environment(source, preserve=("QGLANG_QUALIFICATION_RUN_ID",)),
+            sanitized_environment(source, preserve_qualification_run_id=True),
             {"PATH": "/usr/bin", "QGLANG_QUALIFICATION_RUN_ID": "a" * 32},
         )
+        source["QGLANG_QUALIFICATION_RUN_ID"] = "not-a-run"
+        with self.assertRaisesRegex(
+            EnvironmentSanitizationError, "invalid qualification run identity"
+        ):
+            sanitized_environment(source, preserve_qualification_run_id=True)
 
     def test_nextest_leak_timeout_is_bounded_and_failing(self) -> None:
         config = (run_local.ROOT / ".config/nextest.toml").read_text(encoding="utf-8")
@@ -212,12 +219,32 @@ class LocalGateTest(unittest.TestCase):
         }
         after = dict(before, revision="b" * 40)
         completed = subprocess.CompletedProcess(list(deny_gate.COMMAND), 0, "ok", "")
-        with patch.object(deny_gate, "state", side_effect=[before, after]), \
-             patch.object(deny_gate, "run_bounded", return_value=completed), \
+        with patch.dict(os.environ, {
+                 "RUSTFLAGS": "--cfg poisoned",
+                 "RUSTUP_TOOLCHAIN": "poisoned",
+             }), \
+             patch.object(deny_gate, "state", side_effect=[before, after]), \
+             patch.object(deny_gate, "run_bounded", return_value=completed) as invoked, \
              patch.object(deny_gate, "write_evidence"), \
              redirect_stderr(io.StringIO()) as errors, redirect_stdout(io.StringIO()):
             self.assertEqual(deny_gate.main(), 2)
         self.assertIn("changed while cargo-deny", errors.getvalue())
+        self.assertNotIn("RUSTFLAGS", invoked.call_args.kwargs["env"])
+        self.assertEqual(
+            invoked.call_args.kwargs["env"]["RUSTUP_TOOLCHAIN"], doctor.read_lock()["rust"]
+        )
+
+    def test_evidence_gates_reject_invalid_inherited_identity_before_execution(self) -> None:
+        for gate in (nextest_gate, deny_gate):
+            with self.subTest(gate=gate.__name__), \
+                 patch.dict(os.environ, {
+                     "QGLANG_QUALIFICATION_RUN_ID": "not-a-run",
+                 }, clear=True), \
+                 patch.object(gate, "run_bounded") as invoked, \
+                 redirect_stderr(io.StringIO()) as errors:
+                self.assertEqual(gate.main(), 2)
+                invoked.assert_not_called()
+            self.assertIn("invalid qualification run identity", errors.getvalue())
 
     def test_evidence_writer_rejects_redirected_directory(self) -> None:
         with tempfile.TemporaryDirectory(prefix="qglang-evidence-") as directory:

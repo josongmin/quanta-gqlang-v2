@@ -4,12 +4,15 @@
 from __future__ import annotations
 
 import hashlib
-import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.ci.advisory_db import AdvisoryError, advisory_identity, state  # noqa: E402
+from tools.ci.doctor import DoctorError, read_lock  # noqa: E402
+from tools.ci.environment import (  # noqa: E402
+    EnvironmentSanitizationError, sanitized_environment,
+)
 from tools.ci.evidence import EvidencePathError, write_json_evidence  # noqa: E402
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
 
@@ -30,12 +33,14 @@ def write_evidence(payload: dict) -> None:
 
 
 def main() -> int:
-    cargo_home = Path(os.environ.get("CARGO_HOME", str(Path.home() / ".cargo")))
-    run_id = os.environ.get("QGLANG_QUALIFICATION_RUN_ID")
     try:
+        env = sanitized_environment(preserve_qualification_run_id=True)
+        env["RUSTUP_TOOLCHAIN"] = read_lock()["rust"]
+        cargo_home = Path(env.get("CARGO_HOME", str(Path.home() / ".cargo")))
+        run_id = env.get("QGLANG_QUALIFICATION_RUN_ID")
         before = state(cargo_home)
         result = run_bounded(
-            COMMAND, cwd=ROOT, timeout_s=300, capture_output=True, text=True
+            COMMAND, cwd=ROOT, timeout_s=300, capture_output=True, text=True, env=env
         )
         sys.stdout.write(result.stdout or "")
         sys.stderr.write(result.stderr or "")
@@ -56,7 +61,8 @@ def main() -> int:
         if result.returncode:
             return result.returncode
     except (
-        AdvisoryError, DenyGateError, EvidencePathError, OSError, ProcessTimeoutError,
+        AdvisoryError, DenyGateError, DoctorError, EnvironmentSanitizationError,
+        EvidencePathError, OSError, ProcessTimeoutError,
     ) as error:
         print("deny gate: " + str(error), file=sys.stderr)
         return 2

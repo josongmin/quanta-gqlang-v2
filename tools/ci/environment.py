@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import Iterable, Mapping, Optional
+import re
+from typing import Mapping, Optional
 
 
 EXACT_KEYS = {
@@ -35,15 +36,29 @@ PREFIXES = (
     "PROPTEST_",
     "QGLANG_",
 )
+RUN_ID_RE = re.compile(r"[0-9a-f]{32}")
+
+
+class EnvironmentSanitizationError(RuntimeError):
+    pass
+
+
+def valid_run_id(value: object) -> bool:
+    return isinstance(value, str) and RUN_ID_RE.fullmatch(value) is not None
 
 
 def sanitized_environment(
-    source: Optional[Mapping[str, str]] = None, *, preserve: Iterable[str] = (),
+    source: Optional[Mapping[str, str]] = None,
+    *,
+    preserve_qualification_run_id: bool = False,
 ) -> dict[str, str]:
     env = dict(os.environ if source is None else source)
-    retained = {key: env[key] for key in preserve if key in env}
+    run_id = env.get("QGLANG_QUALIFICATION_RUN_ID")
+    if preserve_qualification_run_id and run_id is not None and not valid_run_id(run_id):
+        raise EnvironmentSanitizationError("invalid qualification run identity")
     for key in tuple(env):
         if key in EXACT_KEYS or key.startswith(PREFIXES):
             env.pop(key)
-    env.update(retained)
+    if preserve_qualification_run_id and run_id is not None:
+        env["QGLANG_QUALIFICATION_RUN_ID"] = run_id
     return env

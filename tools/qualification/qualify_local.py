@@ -409,7 +409,7 @@ class QualificationDriver:
                         output_file=log_handle,
                     )
                 exit_code = result.returncode if result.returncode >= 0 else 128 - result.returncode
-            except ProcessTimeoutError as error:
+            except (OSError, ProcessTimeoutError) as error:
                 print("qualify-local: " + str(error), file=sys.stderr, flush=True)
                 exit_code = 2
             finally:

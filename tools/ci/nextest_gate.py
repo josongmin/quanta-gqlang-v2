@@ -14,7 +14,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
 from tools.ci.evidence import EvidencePathError, write_json_evidence  # noqa: E402
 from tools.ci.doctor import DoctorError, read_lock  # noqa: E402
-from tools.ci.environment import sanitized_environment  # noqa: E402
+from tools.ci.environment import (  # noqa: E402
+    EnvironmentSanitizationError, sanitized_environment,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 EVIDENCE = ROOT / "target/ci/nextest-evidence.json"
@@ -141,10 +143,10 @@ def write_evidence(payload: dict) -> None:
 
 
 def main() -> int:
-    env = sanitized_environment(preserve=("QGLANG_QUALIFICATION_RUN_ID",))
-    env["CARGO_TARGET_DIR"] = str(ROOT / "target/ci-msrv")
-    env["NEXTEST_EXPERIMENTAL_LIBTEST_JSON"] = "1"
     try:
+        env = sanitized_environment(preserve_qualification_run_id=True)
+        env["CARGO_TARGET_DIR"] = str(ROOT / "target/ci-msrv")
+        env["NEXTEST_EXPERIMENTAL_LIBTEST_JSON"] = "1"
         env["RUSTUP_TOOLCHAIN"] = read_lock()["rust"]
         listed = run_bounded(
             (*BASE, "list", "--workspace", "--locked", "--offline", *SELECTION_ARGS,
@@ -212,7 +214,8 @@ def main() -> int:
         ))
         return 0
     except (
-        DoctorError, EvidencePathError, NextestEvidenceError, ProcessTimeoutError,
+        DoctorError, EnvironmentSanitizationError, EvidencePathError,
+        NextestEvidenceError, ProcessTimeoutError,
         OSError, ValueError,
     ) as error:
         print("nextest gate: " + str(error), file=sys.stderr)
