@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from tools.ci.advisory_db import AdvisoryError, state  # noqa: E402
+from tools.ci.advisory_db import AdvisoryError, advisory_identity, state  # noqa: E402
 from tools.ci.evidence import EvidencePathError, write_json_evidence  # noqa: E402
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
 
@@ -23,10 +23,6 @@ COMMAND = (
 
 class DenyGateError(RuntimeError):
     pass
-
-
-def stable_identity(observed: dict) -> tuple:
-    return tuple(observed.get(key) for key in ("path", "revision", "fetched_at_unix"))
 
 
 def write_evidence(payload: dict) -> None:
@@ -55,7 +51,7 @@ def main() -> int:
             "output_sha256": hashlib.sha256(output.encode()).hexdigest(),
         }
         write_evidence(evidence)
-        if stable_identity(before) != stable_identity(after):
+        if advisory_identity(before) != advisory_identity(after):
             raise DenyGateError("advisory DB changed while cargo-deny was running")
         if result.returncode:
             return result.returncode

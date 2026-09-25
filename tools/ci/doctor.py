@@ -13,6 +13,7 @@ from typing import Dict, Sequence
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCK = ROOT / "tools/ci/toolchain.lock.toml"
+RUST_TOOLCHAIN = ROOT / "rust-toolchain.toml"
 KEYS = {
     "schema", "rust", "clippy", "public_api_nightly", "public_api_rustc",
     "just", "nextest", "taplo", "typos", "deny", "public_api", "semgrep", "python",
@@ -41,6 +42,17 @@ def read_lock(path: Path = LOCK) -> Dict[str, str]:
     return values
 
 
+def rust_toolchain_channel(path: Path = None) -> str:
+    path = RUST_TOOLCHAIN if path is None else path
+    matches = re.findall(
+        r'^\s*channel\s*=\s*"([^"\\]+)"\s*$',
+        path.read_text(encoding="utf-8"), re.MULTILINE,
+    )
+    if len(matches) != 1:
+        raise DoctorError("rust-toolchain.toml must contain exactly one plain channel")
+    return matches[0]
+
+
 def version(args: Sequence[str], *, env: Dict[str, str] = None) -> str:
     try:
         result = subprocess.run(
@@ -61,6 +73,12 @@ def version(args: Sequence[str], *, env: Dict[str, str] = None) -> str:
 
 def report() -> Dict[str, str]:
     lock = read_lock()
+    configured_rust = rust_toolchain_channel()
+    if configured_rust != lock["rust"]:
+        raise DoctorError(
+            "Rust toolchain sources disagree: rust-toolchain.toml=%r lock=%r"
+            % (configured_rust, lock["rust"])
+        )
     installed = subprocess.run(
         ("rustup", "toolchain", "list"), cwd=str(ROOT), capture_output=True,
         text=True, check=True, timeout=30,

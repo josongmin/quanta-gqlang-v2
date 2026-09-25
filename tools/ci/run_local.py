@@ -12,6 +12,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
+from tools.ci.doctor import DoctorError, read_lock  # noqa: E402
+from tools.ci.environment import sanitized_environment  # noqa: E402
 
 GROUPS = ("doctor", "external-consumer-preflight", "static", "test", "policy")
 TIMEOUTS = {
@@ -81,7 +83,12 @@ def main() -> int:
     if not re.fullmatch(r"[0-9a-f]{32}", run_id):
         print("local CI: invalid qualification run identity", file=sys.stderr)
         return 2
-    env = dict(os.environ)
+    try:
+        env = sanitized_environment()
+        env["RUSTUP_TOOLCHAIN"] = read_lock()["rust"]
+    except (DoctorError, OSError) as error:
+        print("local CI: cannot load locked environment: %s" % error, file=sys.stderr)
+        return 2
     env["QGLANG_CI_RUN_ID"] = run_id
     env["QGLANG_QUALIFICATION_RUN_ID"] = run_id
     try:

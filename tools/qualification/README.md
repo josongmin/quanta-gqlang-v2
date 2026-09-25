@@ -11,8 +11,8 @@ dirty caller or managed checkout, and checks both again after `just ci`. It
 refuses an unknown worktree, marker, or redirected cache; it never resets or
 deletes a dirty checkout. The per-SHA `receipt.json` is schema 2: it retains
 `sha`, `tree`, `cmds`, `exit`, and `duration_s`, and records tool versions, input
-hashes, an explicit `dirty: false` source state, per-recipe durations,
-current-run nextest counts, advisory DB revision
+hashes, the observed post-run dirty state (`false` is required for success), per-recipe durations,
+current-run nextest counts with zero skipped/ignored cases, advisory DB revision
 and fetch time, and a hash of the streamed `ci.log`. A warm cache is build
 acceleration, **not** proof from a prior SHA: `just ci` still executes on every
 qualification. Old `target/qualification/<sha>/build` directories from the
@@ -30,6 +30,9 @@ interrupt is propagated.
 
 `just ci` runs doctor, external-consumer preflight, static, test, and policy
 groups serially, and each group's leaves are an explicit serial waterfall.
+It removes caller-controlled Rust/Cargo/Nextest/property-test settings and
+`QGLANG_*` test-child selectors, then restores only the locked Rust toolchain
+and current run identities before launching groups.
 It hashes every tracked and non-ignored untracked source path before the first
 group and rejects any between-group source drift. The preflight checks both the external-consumer fixture and
 repository workspace locked dependency graphs against the pinned toolchain;
@@ -47,12 +50,14 @@ is not evidence that the external consumer gate passed.
 `just advisory-refresh` explicitly refreshes cargo-deny's active RustSec DB.
 The routine `just deny` gate requires a fetch within seven days and runs with
 network disabled. It rejects a dirty database, requires checked-out HEAD to
-match the fetched revision, and proves that revision did not change across the
-scan. Qualification accepts only same-run deny evidence and records its hash,
-revision, and fetch time in the receipt. `~/.cargo/advisory-dbs` (plural) is cargo-deny 0.19.7's active DB
+match the fetched revision, requires the official RustSec advisory DB origin,
+and proves that identity did not change across the scan. Qualification accepts
+only same-run deny evidence and records its hash, origin, revision, and fetch
+time in the receipt. `~/.cargo/advisory-dbs` (plural) is cargo-deny 0.19.7's active DB
 directory; the older singular `advisory-db` directory is not this gate's DB.
 
-`qualify-local` always emits Just recipe timestamps and durations in its log.
+`qualify-local` always emits Just recipe timestamps and durations in its log,
+and a successful receipt requires the exact `ci`/group/leaf timing inventory.
 For the same trail from a direct local gate, use
 `JUST_TIME=true JUST_TIMESTAMP=true just ci`. A failed or timed-out gate has no
 automatic retry. Preserve the first failing leaf and exit code; run the leaf

@@ -75,6 +75,8 @@ class FrontdoorParityArtifactTest(unittest.TestCase):
 
 
 class FrontdoorParityOutputTest(unittest.TestCase):
+    env = {"PATH": "/usr/bin"}
+
     def test_cli_channel_and_schema_mutations_fail_closed(self):
         valid = b"cli.error.class=command\nanalysis.status=error\nanalysis.diagnostic_count=0\n"
         cases = (
@@ -88,7 +90,7 @@ class FrontdoorParityOutputTest(unittest.TestCase):
                 result = subprocess.CompletedProcess([], 1, stdout=stdout, stderr=stderr)
                 with patch("tools.test_frontdoor_parity.run", return_value=result):
                     with self.assertRaisesRegex((RuntimeError, ValueError), message):
-                        parse_cli(Path("/unused/cli"), "invalid")
+                        parse_cli(Path("/unused/cli"), "invalid", self.env)
 
     def test_cli_escaped_message_is_reversibly_compared(self):
         payload = (
@@ -102,7 +104,7 @@ class FrontdoorParityOutputTest(unittest.TestCase):
         ).encode()
         result = subprocess.CompletedProcess([], 1, stdout=b"", stderr=payload)
         with patch("tools.test_frontdoor_parity.run", return_value=result):
-            parsed = parse_cli(Path("/unused/cli"), "invalid")
+            parsed = parse_cli(Path("/unused/cli"), "invalid", self.env)
         self.assertEqual(parsed["diagnostics"][0]["message"], "bad\u2028\x1b\\tail")
         with self.assertRaisesRegex(ValueError, "unknown CLI line-value escape"):
             decode_line_value("bad\\q")
@@ -112,12 +114,12 @@ class FrontdoorParityOutputTest(unittest.TestCase):
         mixed = subprocess.CompletedProcess([], 0, stdout=valid, stderr=b"unexpected")
         with patch("tools.test_frontdoor_parity.run", return_value=mixed):
             with self.assertRaisesRegex(RuntimeError, "transport failed"):
-                parse_stdio(Path("/unused/stdio"), "invalid")
+                parse_stdio(Path("/unused/stdio"), "invalid", self.env)
         duplicate = valid.replace(b'"ok":true,', b'"ok":true,"ok":true,')
         result = subprocess.CompletedProcess([], 0, stdout=duplicate, stderr=b"")
         with patch("tools.test_frontdoor_parity.run", return_value=result):
             with self.assertRaisesRegex(ValueError, "duplicate diagnostics stdio JSON key"):
-                parse_stdio(Path("/unused/stdio"), "invalid")
+                parse_stdio(Path("/unused/stdio"), "invalid", self.env)
 
 
 if __name__ == "__main__":

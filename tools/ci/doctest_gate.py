@@ -3,13 +3,14 @@
 
 from __future__ import annotations
 
-import os
 import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
+from tools.ci.doctor import DoctorError, read_lock  # noqa: E402
+from tools.ci.environment import sanitized_environment  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 RESULT = re.compile(
@@ -41,15 +42,16 @@ def count_executed(output: str) -> int:
 
 
 def main() -> int:
-    env = dict(os.environ)
+    env = sanitized_environment()
     env["CARGO_TARGET_DIR"] = str(ROOT / "target/ci-msrv")
     env["RUSTDOCFLAGS"] = "-D warnings"
     try:
+        env["RUSTUP_TOOLCHAIN"] = read_lock()["rust"]
         result = run_bounded(
             ("cargo", "test", "--workspace", "--doc", "--locked", "--offline"),
             cwd=ROOT, env=env, capture_output=True, text=True, timeout_s=600,
         )
-    except (ProcessTimeoutError, OSError) as error:
+    except (DoctorError, ProcessTimeoutError, OSError) as error:
         print("doctest gate: " + str(error), file=sys.stderr)
         return 2
     sys.stdout.write(result.stdout or "")

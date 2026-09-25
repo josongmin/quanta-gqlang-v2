@@ -9,6 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
+from tools.ci.doctor import DoctorError, read_lock  # noqa: E402
+from tools.ci.environment import sanitized_environment  # noqa: E402
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,13 +20,17 @@ BUILD_TIMEOUT_S = 600
 BINARY_TIMEOUT_S = 20
 
 
-def run(command: list[str], *, stdin: bytes | None = None, timeout_s: int = BINARY_TIMEOUT_S):
+def run(
+    command: list[str], *, env: dict[str, str], stdin: bytes | None = None,
+    timeout_s: int = BINARY_TIMEOUT_S,
+):
     return run_bounded(
         command,
         cwd=ROOT,
         input_data=stdin,
         capture_output=True,
         timeout_s=timeout_s,
+        env=env,
     )
 
 
@@ -115,8 +121,8 @@ def nonnegative_int(value: str, key: str) -> int:
     return int(value)
 
 
-def parse_cli(executable: Path, source: str) -> dict[str, object]:
-    result = run([str(executable), "query", source])
+def parse_cli(executable: Path, source: str, env: dict[str, str]) -> dict[str, object]:
+    result = run([str(executable), "query", source], env=env)
     if bool(result.stdout) == bool(result.stderr):
         raise RuntimeError(
             f"CLI must use exactly one output channel: stdout={result.stdout!r} "
@@ -204,7 +210,9 @@ def parse_cli(executable: Path, source: str) -> dict[str, object]:
     }
 
 
-def parse_stdio(executable: Path, source: str) -> dict[str, object]:
+def parse_stdio(
+    executable: Path, source: str, env: dict[str, str],
+) -> dict[str, object]:
     request = {
         "id": "parity",
         "method": "v3_diagnostics",
@@ -213,6 +221,7 @@ def parse_stdio(executable: Path, source: str) -> dict[str, object]:
     }
     result = run(
         [str(executable)],
+        env=env,
         stdin=(json.dumps(request, separators=(",", ":")) + "\n").encode("utf-8"),
     )
     if result.returncode != 0 or result.stderr:
@@ -265,6 +274,13 @@ def parse_stdio(executable: Path, source: str) -> dict[str, object]:
 
 
 def main() -> int:
+    try:
+        env = sanitized_environment()
+        env["RUSTUP_TOOLCHAIN"] = read_lock()["rust"]
+    except (DoctorError, OSError) as error:
+        print(f"front-door parity cannot load locked environment: {error}", file=sys.stderr)
+        return 2
+    env["CARGO_TARGET_DIR"] = str(ROOT / "target/ci-msrv")
     build = run(
         [
             "cargo",
@@ -279,6 +295,7 @@ def main() -> int:
             "--offline",
             "--message-format=json-render-diagnostics",
         ],
+        env=env,
         timeout_s=BUILD_TIMEOUT_S,
     )
     if build.returncode != 0:
@@ -326,8 +343,8 @@ def main() -> int:
     }
     failures: list[str] = []
     for name, (source, expected_status, minimum_diagnostics) in cases.items():
-        cli = parse_cli(cli_binary, source)
-        stdio = parse_stdio(stdio_binary, source)
+        cli = parse_cli(cli_binary, source, env)
+        stdio = parse_stdio(stdio_binary, source, env)
         cli_status = cli.pop("process_status")
         if cli_status != 1:
             failures.append(

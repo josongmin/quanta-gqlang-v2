@@ -19,7 +19,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from qualify_local import (  # noqa: E402
     QualificationDriver, QualificationError, git, valid_deny_evidence,
-    valid_nextest_evidence,
+    valid_nextest_evidence, validate_recipe_durations,
 )
 
 
@@ -82,6 +82,8 @@ class QualificationDriverTest(unittest.TestCase):
             "exit": 0,
         }
         self.assertTrue(valid_nextest_evidence(evidence, run_id))
+        ignored = dict(evidence, discovered=2, skipped_ignored=1)
+        self.assertFalse(valid_nextest_evidence(ignored, run_id))
         for key, value in (
             ("unsuccessful", {"fixture::bin$test": "failed"}),
             ("leaked_tests", ["fixture::bin$test"]),
@@ -97,7 +99,8 @@ class QualificationDriverTest(unittest.TestCase):
     def test_deny_evidence_is_bound_to_run_and_stable_revision(self) -> None:
         run_id = "a" * 32
         state = {
-            "path": "/db", "revision": "b" * 40,
+            "path": "/db", "origin": "https://github.com/RustSec/advisory-db",
+            "revision": "b" * 40,
             "fetched_at_unix": 1, "fetch_age_s": 2,
         }
         evidence = {
@@ -120,6 +123,12 @@ class QualificationDriverTest(unittest.TestCase):
             malformed = dict(evidence)
             malformed[key] = value
             self.assertFalse(valid_deny_evidence(malformed, run_id, state), key)
+
+    def test_successful_receipt_requires_exact_recipe_timing_inventory(self) -> None:
+        validate_recipe_durations({"ci": 1.0}, {"ci"})
+        for observed in ({}, {"ci": 1.0, "foreign": 2.0}):
+            with self.assertRaisesRegex(QualificationError, "timing inventory"):
+                validate_recipe_durations(observed, {"ci"})
 
     def prepare(self) -> None:
         self.driver.prepare_checkout(*self.pin())
@@ -174,6 +183,12 @@ class QualificationDriverTest(unittest.TestCase):
         with self.assertRaisesRegex(QualificationError, "managed checkout is dirty"):
             self.prepare()
         self.assertEqual(unrelated.read_text(encoding="utf-8"), "user data")
+
+    def test_post_run_dirty_reports_observed_checkout_state(self) -> None:
+        self.prepare()
+        self.assertIs(self.driver.post_run_dirty(), False)
+        (self.repo / "concurrent-writer.txt").write_text("dirty\n", encoding="utf-8")
+        self.assertIs(self.driver.post_run_dirty(), True)
 
     def test_foreign_marker_and_redirected_target_are_rejected(self) -> None:
         self.prepare()

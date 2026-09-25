@@ -20,11 +20,16 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
-from typing import Sequence
+from typing import Optional, Sequence
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
-from tools.ci.evidence import EvidencePathError, read_json_evidence  # noqa: E402
+from tools.ci.evidence import (  # noqa: E402
+    EvidencePathError, read_json_evidence, write_json_evidence,
+)
+from tools.ci.advisory_db import OFFICIAL_ORIGINS, advisory_identity  # noqa: E402
+from tools.ci.deny_gate import COMMAND as DENY_COMMAND  # noqa: E402
+from tools.ci.run_local import GROUPS as CI_GROUPS  # noqa: E402
 
 GIT_TIMEOUT_S = 120
 CI_TIMEOUT_S = 1800
@@ -67,16 +72,13 @@ def source_status(root: Path, *, checkout: bool = False) -> str:
     return git(root, *args)
 
 
-def write_json_atomic(path: Path, payload: dict) -> None:
-    fd, temporary = tempfile.mkstemp(dir=str(path.parent), prefix="." + path.name + "-")
+def write_json_atomic(path: Path, payload: dict, *, owned_root: Path) -> None:
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump(payload, handle, indent=2)
-            handle.write("\n")
-        os.replace(temporary, path)
-    finally:
-        if os.path.exists(temporary):
-            os.unlink(temporary)
+        write_json_evidence(
+            path, payload, owned_root=owned_root, prefix=path.name.removesuffix(".json")
+        )
+    except EvidencePathError as error:
+        raise QualificationError("cannot write qualification evidence: %s" % error) from error
 
 
 def source_hashes(checkout: Path) -> dict:
@@ -102,6 +104,34 @@ def recipe_durations(log_path: Path) -> dict:
                     raise QualificationError("duplicate Just timing for " + recipe)
                 values[recipe] = float(seconds)
     return values
+
+
+def expected_recipe_names(checkout: Path) -> set:
+    if not (checkout / "tools/ci/run_local.py").is_file():
+        return {"ci"}
+    text = (checkout / "Justfile").read_text(encoding="utf-8")
+    expected = {"ci", *CI_GROUPS}
+    for group in CI_GROUPS:
+        match = re.search(
+            r"^" + re.escape(group) + r":\n((?:    [^\n]+\n)+)", text, re.MULTILINE
+        )
+        if match is None:
+            raise QualificationError("cannot identify Just recipe group " + group)
+        commands = [line.strip().split() for line in match.group(1).splitlines()]
+        expected.update(
+            command[1] for command in commands
+            if len(command) == 2 and command[0] == "just"
+        )
+    return expected
+
+
+def validate_recipe_durations(durations: dict, expected: set) -> None:
+    observed = set(durations)
+    if observed != expected:
+        raise QualificationError(
+            "Just timing inventory differs from executed recipes: missing=%s extra=%s"
+            % (sorted(expected - observed), sorted(observed - expected))
+        )
 
 
 def hash_file(path: Path) -> str:
@@ -145,6 +175,7 @@ def valid_nextest_evidence(evidence: object, run_id: str) -> bool:
     return (
         evidence["exit"] == 0 and evidence["selected"] > 0
         and evidence["selected"] == evidence["executed"]
+        and evidence["skipped_ignored"] == 0
         and evidence["discovered"] == evidence["executed"] + evidence["skipped_ignored"]
         and evidence["leaked"] == 0
         and evidence["summary_run"] == evidence["selected"]
@@ -161,10 +192,11 @@ def valid_deny_evidence(evidence: object, run_id: str, current: object) -> bool:
         or evidence.get("qualification_run_id") != run_id
     ):
         return False
-    if type(evidence.get("exit")) is not int or evidence["exit"] != 0 or evidence.get("command") != [
-        "cargo", "deny", "--frozen", "check", "--disable-fetch",
-        "bans", "licenses", "sources", "advisories",
-    ]:
+    if (
+        type(evidence.get("exit")) is not int
+        or evidence["exit"] != 0
+        or evidence.get("command") != list(DENY_COMMAND)
+    ):
         return False
     output_hash = evidence.get("output_sha256")
     if not isinstance(output_hash, str) or re.fullmatch(r"[0-9a-f]{64}", output_hash) is None:
@@ -172,13 +204,13 @@ def valid_deny_evidence(evidence: object, run_id: str, current: object) -> bool:
     before, after = evidence.get("before"), evidence.get("after")
     if not isinstance(before, dict) or not isinstance(after, dict):
         return False
-    identity_keys = ("path", "revision", "fetched_at_unix")
-    identities = [tuple(value.get(key) for key in identity_keys) for value in (before, after, current)]
+    identities = [advisory_identity(value) for value in (before, after, current)]
     if identities[0] != identities[1] or identities[1] != identities[2]:
         return False
-    path, revision, fetched_at = identities[0]
+    path, origin, revision, fetched_at = identities[0]
     return (
         isinstance(path, str) and bool(path)
+        and origin in OFFICIAL_ORIGINS
         and isinstance(revision, str) and re.fullmatch(r"[0-9a-f]{40}", revision) is not None
         and type(fetched_at) is int
         and all(type(value.get("fetch_age_s")) is int for value in (before, after, current))
@@ -287,7 +319,7 @@ class QualificationDriver:
                 raise QualificationError("unowned managed build-cache path already exists")
             # Claim these exact paths before creating a worktree. A failed add
             # leaves a visible marker and never adopts someone else's data.
-            write_json_atomic(self.marker, self.marker_payload())
+            write_json_atomic(self.marker, self.marker_payload(), owned_root=self.root)
             command(
                 ("git", "worktree", "add", "--detach", str(self.checkout), sha),
                 self.repo_root,
@@ -307,6 +339,14 @@ class QualificationDriver:
             raise QualificationError("pinned checkout changed during qualification")
         if git(self.repo_root, "rev-parse", "HEAD") != sha or source_status(self.repo_root):
             raise QualificationError("caller checkout changed during qualification")
+
+    def post_run_dirty(self) -> Optional[bool]:
+        try:
+            return bool(source_status(self.repo_root)) or bool(
+                source_status(self.checkout, checkout=True)
+            )
+        except (QualificationError, OSError):
+            return None
 
     def run(self) -> int:
         self.ensure_storage_root()
@@ -351,7 +391,7 @@ class QualificationDriver:
             write_json_atomic(receipt_dir / "receipt.json", {
                 "schema": 2, "sha": sha, "tree": tree, "exit": None,
                 "status": "running", "dirty": False, "qualification_run_id": run_id,
-            })
+            }, owned_root=self.root)
             log_path = receipt_dir / "ci.log"
             log_fd, temporary_log = tempfile.mkstemp(dir=str(receipt_dir), prefix=".ci-log-")
             start = time.monotonic()
@@ -381,6 +421,11 @@ class QualificationDriver:
             except QualificationError as error:
                 print("qualify-local: " + str(error), file=sys.stderr, flush=True)
                 exit_code = 1
+            post_run_dirty = self.post_run_dirty()
+            if exit_code == 0 and post_run_dirty is not False:
+                print("qualify-local: post-run source cleanliness is unavailable or dirty",
+                      file=sys.stderr, flush=True)
+                exit_code = 2
             nextest_evidence = None
             if (self.checkout / "tools/ci/nextest_gate.py").is_file():
                 try:
@@ -422,20 +467,29 @@ class QualificationDriver:
                         advisory_db["qualification_run_id"] = run_id
                         advisory_db["gate_exit"] = 0
                         advisory_db["evidence_sha256"] = hashlib.sha256(deny_raw).hexdigest()
+            durations = {}
+            try:
+                durations = recipe_durations(log_path)
+                if exit_code == 0:
+                    validate_recipe_durations(durations, expected_recipe_names(self.checkout))
+            except (OSError, QualificationError) as error:
+                print("qualify-local: recipe timing evidence failed: %s" % error,
+                      file=sys.stderr, flush=True)
+                exit_code = 2
             write_json_atomic(receipt_dir / "receipt.json", {
                 "sha": sha, "tree": tree, "cmds": ["just ci"],
                 "exit": exit_code, "duration_s": duration_s,
                 "schema": 2,
                 "status": "complete",
-                "dirty": False,
+                "dirty": post_run_dirty,
                 "tool_versions": observed_tools,
                 "source_hashes": hashes,
-                "recipe_duration_s": recipe_durations(log_path),
+                "recipe_duration_s": durations,
                 "ci_log_sha256": hash_file(log_path),
                 "qualification_run_id": run_id,
                 "nextest": nextest_evidence,
                 "advisory_db": advisory_db,
-            })
+            }, owned_root=self.root)
             print("qualify-local: receipt written to %s (exit=%d, duration_s=%d)" % (
                 receipt_dir / "receipt.json", exit_code, duration_s
             ), flush=True)

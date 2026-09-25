@@ -10,12 +10,22 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Mapping
 
 MAX_FETCH_AGE_S = 7 * 24 * 60 * 60
+OFFICIAL_ORIGINS = frozenset({
+    "https://github.com/RustSec/advisory-db",
+    "https://github.com/RustSec/advisory-db.git",
+})
+ADVISORY_IDENTITY_KEYS = ("path", "origin", "revision", "fetched_at_unix")
 
 
 class AdvisoryError(RuntimeError):
     pass
+
+
+def advisory_identity(observed: Mapping[str, object]) -> tuple:
+    return tuple(observed.get(key) for key in ADVISORY_IDENTITY_KEYS)
 
 
 def git(database: Path, *args: str) -> str:
@@ -62,11 +72,14 @@ def state(cargo_home: Path, now: float = None) -> dict:
         raise AdvisoryError("cannot identify advisory DB revision")
     if git(database, "status", "--porcelain=v1", "--untracked-files=all"):
         raise AdvisoryError("advisory DB checkout is dirty")
+    origin = git(database, "remote", "get-url", "origin")
+    if origin not in OFFICIAL_ORIGINS:
+        raise AdvisoryError("advisory DB origin is not the official RustSec repository")
     fetched_revision = fetch_revision(fetched.read_text(encoding="utf-8"))
     if fetched_revision != revision:
         raise AdvisoryError("advisory DB HEAD does not match the fetched revision")
     return {
-        "path": str(database), "revision": revision,
+        "path": str(database), "origin": origin, "revision": revision,
         "fetched_at_unix": int(fetched.stat().st_mtime), "fetch_age_s": int(age),
     }
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import re
 import subprocess
 import sys
@@ -14,12 +15,48 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tools.ci import (
-    advisory_db, deny_gate, doctor, doctest_gate, nextest_gate, run_local, unittest_gate,
+    advisory_db, clippy_gate, deny_gate, doctor, doctest_gate, nextest_gate, run_local,
+    unittest_gate,
 )
 from tools.ci.evidence import EvidencePathError, read_json_evidence, write_json_evidence
+from tools.ci.environment import sanitized_environment
 
 
 class LocalGateTest(unittest.TestCase):
+    def test_rust_cargo_and_nextest_semantic_overrides_are_removed(self) -> None:
+        source = {
+            "PATH": "/usr/bin",
+            "RUSTC_BOOTSTRAP": "1",
+            "RUSTFLAGS": "--cfg poisoned",
+            "RUSTUP_TOOLCHAIN": "poisoned",
+            "CARGO_BUILD_TARGET": "poisoned-target",
+            "CARGO_PROFILE_DEV_OPT_LEVEL": "0",
+            "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER": "false",
+            "NEXTEST_PROFILE": "poisoned",
+            "PROPTEST_CASES": "1",
+            "QGLANG_DEEP_HIR_CHILD": "1",
+            "QGLANG_QUALIFICATION_RUN_ID": "a" * 32,
+        }
+        self.assertEqual(sanitized_environment(source), {"PATH": "/usr/bin"})
+        self.assertEqual(
+            sanitized_environment(source, preserve=("QGLANG_QUALIFICATION_RUN_ID",)),
+            {"PATH": "/usr/bin", "QGLANG_QUALIFICATION_RUN_ID": "a" * 32},
+        )
+
+    def test_nextest_leak_timeout_is_bounded_and_failing(self) -> None:
+        config = (run_local.ROOT / ".config/nextest.toml").read_text(encoding="utf-8")
+        self.assertEqual(
+            len(re.findall(
+                r'^leak-timeout\s*=\s*\{ period = "1s", result = "fail" \}$',
+                config, re.MULTILINE,
+            )),
+            1,
+        )
+        self.assertEqual(
+            nextest_gate.SELECTION_ARGS,
+            ("--profile", "default", "--ignore-default-filter"),
+        )
+
     def test_cargo_heavy_composition_is_an_explicit_waterfall(self) -> None:
         text = (run_local.ROOT / "Justfile").read_text(encoding="utf-8")
         expected = {
@@ -99,6 +136,30 @@ class LocalGateTest(unittest.TestCase):
                 self.assertEqual(doctest_gate.main(), 2, output)
             self.assertIn("doctest gate:", errors.getvalue())
 
+    def test_rust_test_gates_override_inherited_toolchain(self) -> None:
+        lock = doctor.read_lock()
+        doctest_result = subprocess.CompletedProcess(
+            ["cargo", "test"], 0,
+            "test result: ok. 1 passed; 0 failed; 0 ignored;", "",
+        )
+        with patch.dict(os.environ, {"RUSTUP_TOOLCHAIN": "poisoned"}), \
+             patch.object(doctest_gate, "run_bounded", return_value=doctest_result) as run, \
+             redirect_stdout(io.StringIO()):
+            self.assertEqual(doctest_gate.main(), 0)
+        self.assertEqual(run.call_args.kwargs["env"]["RUSTUP_TOOLCHAIN"], lock["rust"])
+
+    def test_clippy_gate_uses_lock_instead_of_caller_or_justfile_literal(self) -> None:
+        completed = subprocess.CompletedProcess(list(clippy_gate.COMMAND), 0, None, None)
+        with patch.dict(os.environ, {"RUSTUP_TOOLCHAIN": "poisoned"}), \
+             patch.object(clippy_gate, "run_bounded", return_value=completed) as run:
+            self.assertEqual(clippy_gate.main(), 0)
+        self.assertEqual(
+            run.call_args.kwargs["env"]["RUSTUP_TOOLCHAIN"], doctor.read_lock()["clippy"]
+        )
+        justfile = (run_local.ROOT / "Justfile").read_text(encoding="utf-8")
+        self.assertIn("clippy-current:\n    python3 tools/ci/clippy_gate.py\n", justfile)
+        self.assertNotRegex(justfile, r"cargo \+\d+\.\d+\.\d+ clippy")
+
     def test_advisory_db_requires_clean_head_at_fetched_revision(self) -> None:
         with tempfile.TemporaryDirectory(prefix="qglang-advisory-") as directory:
             cargo_home = Path(directory)
@@ -110,6 +171,10 @@ class LocalGateTest(unittest.TestCase):
             )
             subprocess.run(
                 ["git", "config", "user.email", "advisory@example.invalid"],
+                cwd=database, check=True,
+            )
+            subprocess.run(
+                ["git", "remote", "add", "origin", "https://github.com/RustSec/advisory-db"],
                 cwd=database, check=True,
             )
             tracked = database / "advisory.md"
@@ -131,10 +196,18 @@ class LocalGateTest(unittest.TestCase):
             tracked.write_text("dirty\n", encoding="utf-8")
             with self.assertRaisesRegex(advisory_db.AdvisoryError, "checkout is dirty"):
                 advisory_db.state(cargo_home)
+            tracked.write_text("fixture\n", encoding="utf-8")
+            subprocess.run(
+                ["git", "remote", "set-url", "origin", "https://example.invalid/advisory-db"],
+                cwd=database, check=True,
+            )
+            with self.assertRaisesRegex(advisory_db.AdvisoryError, "official RustSec"):
+                advisory_db.state(cargo_home)
 
     def test_deny_gate_rejects_database_change_during_scan(self) -> None:
         before = {
-            "path": "/db", "revision": "a" * 40,
+            "path": "/db", "origin": "https://github.com/RustSec/advisory-db",
+            "revision": "a" * 40,
             "fetched_at_unix": 1, "fetch_age_s": 2,
         }
         after = dict(before, revision="b" * 40)
@@ -188,6 +261,21 @@ class LocalGateTest(unittest.TestCase):
                 with self.assertRaises(doctor.DoctorError):
                     doctor.read_lock(path)
 
+    def test_default_rust_toolchain_must_match_the_lock(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "rust-toolchain.toml"
+            path.write_text('[toolchain]\nchannel = "1.80.0"\n', encoding="utf-8")
+            self.assertEqual(doctor.rust_toolchain_channel(path), "1.80.0")
+            with patch.object(doctor, "RUST_TOOLCHAIN", path), \
+                 self.assertRaisesRegex(doctor.DoctorError, "sources disagree"):
+                doctor.report()
+            path.write_text(
+                '[toolchain]\nchannel = "1.80.0"\nchannel = "1.81.0"\n',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(doctor.DoctorError, "exactly one"):
+                doctor.rust_toolchain_channel(path)
+
     def test_tool_doctor_rejects_installed_version_drift(self) -> None:
         installed = "1.81.0-aarch64-apple-darwin\n1.95.0-aarch64-apple-darwin\nnightly-2026-09-23-aarch64-apple-darwin\n"
         result = subprocess.CompletedProcess(["rustup"], 0, installed, "")
@@ -225,6 +313,12 @@ class LocalGateTest(unittest.TestCase):
         self.assertEqual(
             nextest_gate.reported_leaks(
                 "        LEAK [   0.154s] fixture::binary module::test_name"
+            ),
+            {"fixture::binary$module::test_name"},
+        )
+        self.assertEqual(
+            nextest_gate.reported_leaks(
+                "   LEAK-FAIL [   1.004s] fixture::binary module::test_name"
             ),
             {"fixture::binary$module::test_name"},
         )
@@ -270,11 +364,49 @@ class LocalGateTest(unittest.TestCase):
                 "Summary [ 0.1s] 1 test run: 0 passed, 1 failed\n",
             ),
         ]
-        with patch.object(nextest_gate, "run_bounded", side_effect=results), \
+        with patch.object(nextest_gate, "run_bounded", side_effect=results) as run, \
              patch.object(nextest_gate, "write_evidence"), \
              redirect_stderr(io.StringIO()) as errors:
             self.assertEqual(nextest_gate.main(), 2)
         self.assertIn("unsuccessful=fixture::fixture$fails=failed", errors.getvalue())
+        list_command = run.call_args_list[0].args[0]
+        run_command = run.call_args_list[1].args[0]
+        self.assertIn("--ignore-default-filter", list_command)
+        self.assertIn("--ignore-default-filter", run_command)
+        self.assertEqual(run_command[run_command.index("--retries") + 1], "0")
+        self.assertEqual(
+            run.call_args_list[1].kwargs["env"]["RUSTUP_TOOLCHAIN"], doctor.read_lock()["rust"]
+        )
+
+    def test_nextest_rejects_ignored_inventory_after_running_selected_tests(self) -> None:
+        listing = json.dumps({
+            "test-count": 2,
+            "rust-suites": {"binary-id": {
+                "package-name": "fixture", "binary-name": "fixture",
+                "testcases": {
+                    "works": {"filter-match": {"status": "matches"}},
+                    "disabled": {"filter-match": {
+                        "status": "mismatch", "reason": "ignored",
+                    }},
+                },
+            }},
+        })
+        succeeded = json.dumps({
+            "type": "test", "event": "ok", "name": "fixture::fixture$works",
+        })
+        results = [
+            subprocess.CompletedProcess(["cargo", "nextest", "list"], 0, listing, ""),
+            subprocess.CompletedProcess(
+                ["cargo", "nextest", "run"], 0, succeeded,
+                "Summary [ 0.1s] 1 test run: 1 passed, 1 skipped\n",
+            ),
+        ]
+        with patch.object(nextest_gate, "run_bounded", side_effect=results), \
+             patch.object(nextest_gate, "write_evidence"), \
+             redirect_stderr(io.StringIO()) as errors:
+            self.assertEqual(nextest_gate.main(), 2)
+        self.assertIn("ignored=1", errors.getvalue())
+        self.assertIn("fixture::fixture$disabled", errors.getvalue())
 
     def test_nextest_rejects_summary_that_contradicts_ok_events(self) -> None:
         listing = json.dumps({

@@ -13,7 +13,7 @@ clippy-msrv:
     CARGO_TARGET_DIR=target/ci-msrv cargo clippy --workspace --all-targets --locked --offline -- -D warnings
 
 clippy-current:
-    CARGO_TARGET_DIR=target/ci-clippy-1.95 cargo +1.95.0 clippy --workspace --all-targets --locked --offline -- -D clippy::unused_result_ok -D warnings
+    python3 tools/ci/clippy_gate.py
 
 typos:
     typos .

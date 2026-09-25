@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
 import sys
 from pathlib import Path
@@ -14,12 +13,15 @@ from typing import Dict, Optional, Set, Tuple
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
 from tools.ci.evidence import EvidencePathError, write_json_evidence  # noqa: E402
+from tools.ci.doctor import DoctorError, read_lock  # noqa: E402
+from tools.ci.environment import sanitized_environment  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 EVIDENCE = ROOT / "target/ci/nextest-evidence.json"
 BASE = ("cargo", "nextest")
 TERMINAL = {"ok", "failed", "timeout"}
 TEST_THREADS = 4
+SELECTION_ARGS = ("--profile", "default", "--ignore-default-filter")
 
 
 class NextestEvidenceError(RuntimeError):
@@ -103,7 +105,7 @@ def summary_counts(stderr: str) -> Tuple[int, int, int, int]:
 
 def reported_leaks(stderr: str) -> Set[str]:
     leaks = set()
-    pattern = re.compile(r"^\s*LEAK\s+\[[^]]+\]\s+(\S+)\s+(.+?)\s*$")
+    pattern = re.compile(r"^\s*LEAK(?:-FAIL)?\s+\[[^]]+\]\s+(\S+)\s+(.+?)\s*$")
     for line in stderr.splitlines():
         match = pattern.match(line)
         if match:
@@ -116,17 +118,20 @@ def reconcile(
     selected: Set[str], completed: Set[str], leaked: int,
     leaked_tests: Optional[Set[str]] = None,
     unsuccessful: Optional[Dict[str, str]] = None,
+    skipped_ignored: Optional[Set[str]] = None,
 ) -> None:
     missing, extra = selected - completed, completed - selected
-    if missing or extra or leaked or unsuccessful:
+    if missing or extra or leaked or unsuccessful or skipped_ignored:
         leaked_names = ",".join(sorted(leaked_tests or set())) or "unknown"
+        ignored_names = ",".join(sorted(skipped_ignored or set())) or "none"
         unsuccessful_names = ",".join(
             "%s=%s" % item for item in sorted((unsuccessful or {}).items())
         ) or "none"
         raise NextestEvidenceError(
             "terminal events differ from inventory: missing=%d extra=%d leaked=%d "
-            "names=%s unsuccessful=%s" % (
-                len(missing), len(extra), leaked, leaked_names, unsuccessful_names
+            "names=%s ignored=%d ignored_names=%s unsuccessful=%s" % (
+                len(missing), len(extra), leaked, leaked_names,
+                len(skipped_ignored or set()), ignored_names, unsuccessful_names,
             )
         )
 
@@ -136,12 +141,14 @@ def write_evidence(payload: dict) -> None:
 
 
 def main() -> int:
-    env = dict(os.environ)
+    env = sanitized_environment(preserve=("QGLANG_QUALIFICATION_RUN_ID",))
     env["CARGO_TARGET_DIR"] = str(ROOT / "target/ci-msrv")
     env["NEXTEST_EXPERIMENTAL_LIBTEST_JSON"] = "1"
     try:
+        env["RUSTUP_TOOLCHAIN"] = read_lock()["rust"]
         listed = run_bounded(
-            (*BASE, "list", "--workspace", "--locked", "--offline", "--message-format", "json"),
+            (*BASE, "list", "--workspace", "--locked", "--offline", *SELECTION_ARGS,
+             "--message-format", "json"),
             cwd=ROOT, env=env, capture_output=True, text=True, timeout_s=600,
         )
         sys.stderr.write(listed.stderr or "")
@@ -149,7 +156,8 @@ def main() -> int:
             return listed.returncode
         selected, skipped = inventory(json.loads(listed.stdout or ""))
         result = run_bounded(
-            (*BASE, "run", "--workspace", "--locked", "--offline", "--no-tests", "fail",
+            (*BASE, "run", "--workspace", "--locked", "--offline", *SELECTION_ARGS,
+             "--retries", "0", "--no-tests", "fail",
              "--message-format", "libtest-json-plus", "--color", "never",
              "--status-level", "leak", "--test-threads", str(TEST_THREADS)),
             cwd=ROOT, env=env, capture_output=True, text=True, timeout_s=600,
@@ -193,7 +201,10 @@ def main() -> int:
             "exit": result.returncode,
         }
         write_evidence(evidence)
-        reconcile(selected, completed, leak_count, leaked, unsuccessful)
+        reconcile(
+            selected, completed, leak_count, leaked, unsuccessful,
+            skipped_ignored=skipped,
+        )
         if result.returncode:
             return result.returncode
         print("nextest gate: discovered=%d executed=%d skipped=%d leaked=0" % (
@@ -201,7 +212,8 @@ def main() -> int:
         ))
         return 0
     except (
-        EvidencePathError, NextestEvidenceError, ProcessTimeoutError, OSError, ValueError,
+        DoctorError, EvidencePathError, NextestEvidenceError, ProcessTimeoutError,
+        OSError, ValueError,
     ) as error:
         print("nextest gate: " + str(error), file=sys.stderr)
         return 2

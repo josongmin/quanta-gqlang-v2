@@ -41,10 +41,14 @@ class ExternalConsumerCacheTest(unittest.TestCase):
             prefix="qglang-external-preflight-test-"
         )
         self.addCleanup(self.stamp_directory.cleanup)
-        stamp = Path(self.stamp_directory.name) / "external-preflight.json"
+        evidence_root = Path(self.stamp_directory.name) / "target"
+        stamp = evidence_root / "ci/external-preflight.json"
         stamp_patch = mock.patch.object(consumer_gate, "PREFLIGHT_STAMP", stamp)
+        root_patch = mock.patch.object(consumer_gate, "CI_EVIDENCE_ROOT", evidence_root)
         stamp_patch.start()
+        root_patch.start()
         self.addCleanup(stamp_patch.stop)
+        self.addCleanup(root_patch.stop)
 
     def test_preflight_inventory_covers_root_fixture_and_all_workspace_members(self):
         paths = consumer_gate.preflight_manifests()

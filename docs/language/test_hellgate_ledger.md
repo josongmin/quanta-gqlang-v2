@@ -9,12 +9,16 @@ compatibility promises.
 ## Inventory and execution
 
 - `just nextest` compares generated JSON inventory with machine-readable
-  terminal events, records ignored tests as skipped, rejects output leaks, and
-  caps process concurrency at four for deterministic local-host pressure. `just doctest` rejects
+  terminal events, rejects any ignored test and output leak, and
+  caps process concurrency at four for deterministic local-host pressure. The
+  one-second failing leak grace avoids the upstream 100 ms process-shutdown
+  false positive while retaining a bounded leak failure. `just doctest` rejects
   an empty doctest run. A `tests/support/mod.rs` file is a helper module, not
   an independent test target. No checked-in per-test count is authoritative.
 - `just ci` is the local repository-wide composition: Rust tests, doctests,
   CLI/stdio parity, external-consumer/privacy probes, and static/policy rails.
+  It removes inherited Rust/Cargo/Nextest/property-test settings and test-child
+  selectors before restoring the repository-locked toolchain and run identity.
   `just qualify-local` records an exact clean committed HEAD receipt; a focused
   test or this ledger alone is not that qualification.
 - A crate integration test can exercise an owner API without spawning a binary.

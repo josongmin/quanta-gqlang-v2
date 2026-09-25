@@ -78,6 +78,7 @@ from tools.ci.doctor import DoctorError, read_lock  # noqa: E402
 from tools.ci.evidence import (  # noqa: E402
     EvidencePathError, consume_json_evidence, read_json_evidence, write_json_evidence,
 )
+from tools.ci.environment import sanitized_environment  # noqa: E402
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIR = REPOSITORY_ROOT / "tools" / "frontend_external_consumer"
@@ -349,7 +350,7 @@ def manifest_dependencies(manifest: Path) -> List[Dict[str, object]]:
     result = run(
         ["cargo", "read-manifest", "--manifest-path", str(manifest)],
         manifest.parent,
-        os.environ.copy(),
+        cargo_env(REPOSITORY_ROOT / "target", repo_toolchain_channel()),
     )
     if result.returncode != 0:
         raise InfrastructureError("Cargo could not parse %s:\n%s" % (manifest, result.stderr.strip()))
@@ -510,7 +511,7 @@ def repo_toolchain_channel() -> Optional[str]:
 
 
 def cargo_env(target_dir: Path, channel: Optional[str]) -> Dict[str, str]:
-    env = dict(os.environ)
+    env = sanitized_environment()
     env["CARGO_TARGET_DIR"] = str(target_dir)
     env["CARGO_NET_OFFLINE"] = "true"
     env["CARGO_TERM_COLOR"] = "never"

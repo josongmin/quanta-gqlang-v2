@@ -2,6 +2,7 @@
 fail-fast          = false
 failure-output     = "immediate-final"
 final-status-level = "slow"
+leak-timeout       = { period = "1s", result = "fail" }
 slow-timeout       = { period = "30s", terminate-after = 2 }
 status-level       = "fail"
 success-output     = "never"
