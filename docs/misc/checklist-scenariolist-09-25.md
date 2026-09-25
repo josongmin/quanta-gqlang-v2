@@ -3,6 +3,10 @@
 - Audit date: 2026-09-25
 - Audited source: `14e2d1264a488d9838f54ad84e70a4bda51144bd`
 - Audited tree: `3b940b5db007913b710fd291adb690cf378c58ca`
+- Current-head note (2026-09-26): repository HEAD before this documentation
+  refresh was `a01eecc5ff2d255aabc9eb09011cecd3895218a7`. The `14e2d126…`
+  results below are historical source-bound audit evidence, not an exact-HEAD
+  qualification receipt for `a01eecc5…`.
 - Branch state at audit start: `main == origin/main`; the report and the
   hardening edits described below are working-tree changes
 - Scope: syntax, HIR, binding, types, modules, semantic authority, algebra,

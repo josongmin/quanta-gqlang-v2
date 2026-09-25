@@ -24,5 +24,6 @@
 ## 완료 조건
 
 - 소스상 기존 기대 충돌과 수정 diff가 기록되고, post-fix exact-filter process GREEN이 pair source digest 및 설치 artifact receipt에 연결된다. pre-fix process RED 영수증은 필수 아님.
+- 설치 receipt는 `quanta`, `quanta-cli-server`, `quanta-filesystem-scan-worker`, `quanta-sql-rulepack-worker` 네 파일의 exact 설치 경로와 SHA-256을 고정한다. server/CLI가 별도 filesystem worker를 실제 선택·기동했음도 process 증거에 포함한다.
 - filter 없는 제품 process recipe에서 모든 GQLang 테스트가 실제 선택·실행되고 통과한다. `#[ignore]`, `required:false`, feature 선택, 환경 누락으로 통과처럼 보이는 결과를 허용하지 않는다.
 - 지원하지 않는 family를 정상 결과로 포장하거나 기존 Pattern/dense proof를 삭제해 녹색으로 만들지 않는다.
