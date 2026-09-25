@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -311,6 +312,42 @@ class LocalGateTest(unittest.TestCase):
             with self.assertRaisesRegex(doctor.DoctorError, "rust version mismatch"):
                 doctor.report()
 
+    def test_tool_doctor_checks_all_versions_with_bounded_concurrency(self) -> None:
+        lock = doctor.read_lock()
+        commands = {
+            ("rustup", "run", lock["rust"], "rustc", "--version"): "rustc " + lock["rust"],
+            ("rustup", "run", lock["rust"], "cargo", "--version"): "cargo " + lock["rust"],
+            ("rustup", "run", lock["clippy"], "cargo-clippy", "--version"):
+                "clippy 0.1." + lock["clippy"].split(".")[1],
+            ("rustup", "run", lock["public_api_nightly"], "rustc", "--version"):
+                lock["public_api_rustc"],
+            ("just", "--version"): lock["just"],
+            ("cargo-nextest", "--version"): lock["nextest"],
+            ("taplo", "--version"): lock["taplo"],
+            ("typos", "--version"): lock["typos"],
+            ("cargo-deny", "--version"): lock["deny"],
+            ("cargo-public-api", "--version"): lock["public_api"],
+            ("semgrep", "--version"): lock["semgrep"],
+        }
+        first_four = set(list(commands)[:4])
+        barrier = threading.Barrier(4, timeout=5)
+        calls = []
+
+        def fake_version(args: tuple[str, ...]) -> str:
+            calls.append(args)
+            if args in first_four:
+                barrier.wait()
+            return commands[args]
+
+        installed = "\n".join((lock["rust"], lock["clippy"], lock["public_api_nightly"])) + "\n"
+        toolchains = subprocess.CompletedProcess(["rustup"], 0, installed, "")
+        with patch.object(doctor.subprocess, "run", return_value=toolchains), \
+             patch.object(doctor, "version", side_effect=fake_version):
+            observed = doctor.report()
+        self.assertEqual(set(calls), set(commands))
+        self.assertEqual(len(calls), len(commands))
+        self.assertEqual(list(observed.values())[:len(commands)], list(commands.values()))
+
     def test_nextest_inventory_reconciles_only_selected_terminal_tests(self) -> None:
         listing = {
             "test-count": 2,
@@ -370,6 +407,39 @@ class LocalGateTest(unittest.TestCase):
         listing["test-count"] = True
         with self.assertRaisesRegex(nextest_gate.NextestEvidenceError, "schema"):
             nextest_gate.inventory(listing)
+
+    def test_nextest_records_list_run_and_parse_durations(self) -> None:
+        listing = json.dumps({
+            "test-count": 1,
+            "rust-suites": {"binary-id": {
+                "package-name": "fixture", "binary-name": "fixture",
+                "testcases": {"works": {"filter-match": {"status": "matches"}}},
+            }},
+        })
+        events = json.dumps({
+            "type": "test", "event": "ok", "name": "fixture::fixture$works",
+        })
+        results = [
+            subprocess.CompletedProcess(["cargo", "nextest", "list"], 0, listing, ""),
+            subprocess.CompletedProcess(
+                ["cargo", "nextest", "run"], 0, events,
+                "Summary [ 0.1s] 1 test run: 1 passed\n",
+            ),
+        ]
+        with patch.object(nextest_gate, "run_bounded", side_effect=results), \
+             patch.object(nextest_gate.time, "monotonic", side_effect=[10, 11, 12, 15, 16, 17]), \
+             patch.object(nextest_gate, "write_evidence") as write, \
+             redirect_stderr(io.StringIO()), \
+             redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(nextest_gate.main(), 0)
+        evidence = write.call_args.args[0]
+        self.assertEqual(
+            (evidence["list_duration_s"], evidence["run_duration_s"],
+             evidence["parse_duration_s"]),
+            (1, 3, 1),
+        )
+        self.assertEqual((evidence["selected"], evidence["executed"]), (1, 1))
+        self.assertIn("list=1.000s run=3.000s parse=1.000s", output.getvalue())
 
     def test_nextest_rejects_failed_event_with_zero_child_exit(self) -> None:
         listing = json.dumps({

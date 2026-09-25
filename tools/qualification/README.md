@@ -67,6 +67,8 @@ directory; the older singular `advisory-db` directory is not this gate's DB.
 
 `qualify-local` always emits Just recipe timestamps and durations in its log,
 and a successful receipt requires the exact `ci`/group/leaf timing inventory.
+The nextest evidence additionally records list, run, and event parsing durations
+so warm-cache delays can be attributed without changing test selection or counts.
 For the same trail from a direct local gate, use
 `JUST_TIME=true JUST_TIMESTAMP=true just ci`. A failed or timed-out gate has no
 automatic retry. Preserve the first failing leaf and exit code; run the leaf

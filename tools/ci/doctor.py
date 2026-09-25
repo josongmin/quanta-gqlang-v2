@@ -8,6 +8,7 @@ import json
 import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Dict, Sequence
 
@@ -86,20 +87,25 @@ def report() -> Dict[str, str]:
     for channel in (lock["rust"], lock["clippy"], lock["public_api_nightly"]):
         if not re.search(r"^" + re.escape(channel) + r"(?:-|\s)", installed, re.MULTILINE):
             raise DoctorError("required rustup toolchain is not installed: " + channel)
-    observed = {
-        "rust": version(("rustup", "run", lock["rust"], "rustc", "--version")),
-        "cargo": version(("rustup", "run", lock["rust"], "cargo", "--version")),
-        "clippy": version(("rustup", "run", lock["clippy"], "cargo-clippy", "--version")),
-        "public_api_rustc": version(("rustup", "run", lock["public_api_nightly"], "rustc", "--version")),
-        "just": version(("just", "--version")),
-        "nextest": version(("cargo-nextest", "--version")),
-        "taplo": version(("taplo", "--version")),
-        "typos": version(("typos", "--version")),
-        "deny": version(("cargo-deny", "--version")),
-        "public_api": version(("cargo-public-api", "--version")),
-        "semgrep": version(("semgrep", "--version")),
-        "python": ".".join(str(part) for part in sys.version_info[:3]),
-    }
+    commands = (
+        ("rust", ("rustup", "run", lock["rust"], "rustc", "--version")),
+        ("cargo", ("rustup", "run", lock["rust"], "cargo", "--version")),
+        ("clippy", ("rustup", "run", lock["clippy"], "cargo-clippy", "--version")),
+        ("public_api_rustc", ("rustup", "run", lock["public_api_nightly"], "rustc", "--version")),
+        ("just", ("just", "--version")),
+        ("nextest", ("cargo-nextest", "--version")),
+        ("taplo", ("taplo", "--version")),
+        ("typos", ("typos", "--version")),
+        ("deny", ("cargo-deny", "--version")),
+        ("public_api", ("cargo-public-api", "--version")),
+        ("semgrep", ("semgrep", "--version")),
+    )
+    with ThreadPoolExecutor(max_workers=4) as workers:
+        observed = dict(zip(
+            (key for key, _ in commands),
+            workers.map(lambda command: version(command[1]), commands),
+        ))
+    observed["python"] = ".".join(str(part) for part in sys.version_info[:3])
     expected = {
         "rust": "rustc " + lock["rust"],
         "cargo": "cargo " + lock["rust"],

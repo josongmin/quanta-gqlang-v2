@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 import sys
+import time
 from pathlib import Path
 from typing import Dict, Optional, Set, Tuple
 
@@ -148,15 +149,18 @@ def main() -> int:
         env["CARGO_TARGET_DIR"] = str(ROOT / "target/ci-msrv")
         env["NEXTEST_EXPERIMENTAL_LIBTEST_JSON"] = "1"
         env["RUSTUP_TOOLCHAIN"] = read_lock()["rust"]
+        list_started = time.monotonic()
         listed = run_bounded(
             (*BASE, "list", "--workspace", "--locked", "--offline", *SELECTION_ARGS,
              "--message-format", "json"),
             cwd=ROOT, env=env, capture_output=True, text=True, timeout_s=600,
         )
+        list_seconds = time.monotonic() - list_started
         sys.stderr.write(listed.stderr or "")
         if listed.returncode:
             return listed.returncode
         selected, skipped = inventory(json.loads(listed.stdout or ""))
+        run_started = time.monotonic()
         result = run_bounded(
             (*BASE, "run", "--workspace", "--locked", "--offline", *SELECTION_ARGS,
              "--retries", "0", "--no-tests", "fail",
@@ -164,7 +168,9 @@ def main() -> int:
              "--status-level", "leak", "--test-threads", str(TEST_THREADS)),
             cwd=ROOT, env=env, capture_output=True, text=True, timeout_s=600,
         )
+        run_seconds = time.monotonic() - run_started
         sys.stderr.write(result.stderr or "")
+        parse_started = time.monotonic()
         completed, unsuccessful, leaked = terminal_events(result.stdout or "")
         leaked.update(reported_leaks(result.stderr or ""))
         summary_run, summary_passed, summary_failed, summary_leaked = summary_counts(
@@ -184,6 +190,7 @@ def main() -> int:
                 )
             )
         leak_count = max(len(leaked), summary_leaked)
+        parse_seconds = time.monotonic() - parse_started
         evidence = {
             "schema": 1,
             "qualification_run_id": env.get("QGLANG_QUALIFICATION_RUN_ID"),
@@ -195,6 +202,9 @@ def main() -> int:
             "leaked_tests": sorted(leaked),
             "unsuccessful": dict(sorted(unsuccessful.items())),
             "test_threads": TEST_THREADS,
+            "list_duration_s": round(list_seconds, 3),
+            "run_duration_s": round(run_seconds, 3),
+            "parse_duration_s": round(parse_seconds, 3),
             "summary_run": summary_run,
             "summary_passed": summary_passed,
             "summary_failed": summary_failed,
@@ -209,8 +219,9 @@ def main() -> int:
         )
         if result.returncode:
             return result.returncode
-        print("nextest gate: discovered=%d executed=%d skipped=%d leaked=0" % (
-            evidence["discovered"], evidence["executed"], evidence["skipped_ignored"]
+        print("nextest gate: discovered=%d executed=%d skipped=%d leaked=0 list=%.3fs run=%.3fs parse=%.3fs" % (
+            evidence["discovered"], evidence["executed"], evidence["skipped_ignored"],
+            list_seconds, run_seconds, parse_seconds,
         ))
         return 0
     except (
