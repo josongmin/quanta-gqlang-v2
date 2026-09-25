@@ -2,6 +2,8 @@
 
 상태: **결함 후보 / 재현 필요** · 우선순위: P1 · 소유: Semantica SDK ingress + runtime task/host owner. QGLang frontend 변경은 전제하지 않는다.
 
+2026-09-25 current-source 재검증에서도 상태는 그대로다. handler는 dense provider connect에만 별도 deadline을 계산하고, 이후 Composition host context에는 여전히 `BudgetIntentV1::default()`를 넣는다. provider admission과 SAMPLE 실행은 deadline 입력이 없는 `run_sync_serving_task_v1`을 사용한다. GQLang delayed-host RED/GREEN 테스트는 검색 범위에서 확인되지 않았다.
+
 ## 근거
 
 - 실행 rail은 `timeout_ms`를 wall-clock/hard deadline 축으로 정의한다: `S:packages/analysis/quanta-v2/crates/quanta-contract-execution-rail-shared/src/execution_rail_contract_v1.rs:603-612,941-962`. admitted request identity에도 이를 hash한다: `S:packages/analysis/quanta-v2/crates/quanta-runtime-public-ingress-surface/src/admitted_execution_request_v3.rs:414-415`.

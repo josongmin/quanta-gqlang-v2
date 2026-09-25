@@ -2,6 +2,8 @@
 
 상태: **소스상 테스트 기대 충돌 / 현재 process 실행 전** · 우선순위: P1 테스트 게이트 · 소유: Semantica CLI/server + SDK public query owner.
 
+2026-09-25 current-source 재검증에서도 설치형 테스트는 단독 `check ...`와 단독 semantic `sample ...`의 성공·반복결정성을 기대한다. SDK owner tests와 QGLang V3 계약의 standalone-family typed reject 경계는 변하지 않았다. 현재 pair에서 이 exact process test를 실행한 receipt는 없으며, 검색된 최신 GQLang process receipts는 2026-09-23의 이전 source digest 실패다.
+
 ## 근거
 
 - 설치형 `daemon_process_full_gqlang_provider_packet_serves_pattern_and_dense_v1`은 CLI `gqlang text`를 통해 단독 `check r.x ...`와 단독 `sample ... mode=semantic`의 성공을 기대한다: `S:crates/quanta-cli-server/tests/server_socket_daemon_e2e.rs:4116-4120,4183-4202,4220-4240`. helper의 실제 CLI argv는 같은 파일 `2687-2748`이다.
