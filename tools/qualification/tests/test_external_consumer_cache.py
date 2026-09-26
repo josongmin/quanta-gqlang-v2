@@ -29,6 +29,7 @@ from tools.test_frontend_external_consumer import (
     positive_executable,
     positive_outcome,
     public_api_roots,
+    public_api_inventory,
     write_preflight_stamp,
 )
 
@@ -377,6 +378,12 @@ class ExternalConsumerCacheTest(unittest.TestCase):
             roots, direct = public_api_roots(prefix + mutation + "\n")
             self.assertEqual(roots, [], mutation)
             self.assertEqual(direct, [mutation], mutation)
+
+    def test_duplicate_public_root_is_an_extra_exposure(self):
+        self.assertEqual(
+            public_api_inventory(["FrontendBudgetV2", "FrontendBudgetV2"], ["FrontendBudgetV2"]),
+            ([], [], ["FrontendBudgetV2"]),
+        )
 
     def test_source_shape_rejects_indented_glob_and_module_mutations(self):
         source = "  pub use owner::*;\n\tpub mod leak;\n"

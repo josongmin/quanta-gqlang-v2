@@ -21,7 +21,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 POLICY = Path(__file__).with_name("semantic_honesty_policy.json")
 EMPTY_SUCCESS = frozenset({"None", "Ok(None)", "Ok(())", "Ok(false)", "Ok(0)", "Ok(Vec::new())", "Ok(Default::default())"})
-TEST_PATH_PARTS = frozenset({"tests", "examples", "benches"})
 PARSER_VERSIONS = {"tree-sitter-language-pack": "0.9.1", "tree-sitter": "0.23.2"}
 RETURN_SCOPE_BOUNDARIES = frozenset({"closure_expression", "function_item", "async_block"})
 UNSUPPORTED_EXIT_FORMS = frozenset({"loop_expression", "while_expression", "for_expression", "try_block", "try_expression", "await_expression", "break_expression", "macro_invocation"})
@@ -286,6 +285,14 @@ def walk(node):
         stack.extend(reversed(current.named_children))
 
 
+def wildcard_pattern(node) -> bool:
+    if node.type == "_":
+        return True
+    if node.type not in {"match_pattern", "parenthesized_pattern", "captured_pattern"}:
+        return False
+    return any(wildcard_pattern(child) for child in node.children)
+
+
 def cfg_operands(expression: str) -> tuple[str, list[str]] | None:
     match = re.fullmatch(r"(all|any)\s*\((.*)\)", expression.strip(), re.S)
     if match is None:
@@ -353,6 +360,10 @@ def owner_type(source: bytes, node) -> str | None:
 def references(source: bytes, root, aliases: dict[str, str], known: set[str]) -> set[tuple[str, str]]:
     found = set()
     for node in walk(root):
+        if node.type == "identifier" and node.parent is not None and node.parent.type in {"tuple_struct_pattern", "struct_pattern"}:
+            direct = aliases.get(node_text(source, node), "").split("::")
+            if len(direct) == 2 and direct[0] in known:
+                found.add((direct[0], direct[1]))
         if node.type not in {"scoped_identifier", "scoped_type_identifier"}:
             continue
         parts = node_text(source, node).split("::")
@@ -374,7 +385,10 @@ def call_name(source: bytes, node) -> str | None:
     if node.type != "call_expression":
         return None
     function = node.child_by_field_name("function")
-    return node_text(source, function) if function else None
+    name = node_text(source, function) if function else None
+    if name and name.startswith(("std::result::Result::", "core::result::Result::")):
+        return name.rsplit("::", 1)[-1]
+    return name
 
 
 class UnsupportedExit(ValueError):
@@ -509,7 +523,14 @@ def terminal_variant(source: bytes, expression, aliases: dict[str, str], familie
         target = terminal.child_by_field_name("function")
     elif terminal.type == "struct_expression":
         target = terminal.child_by_field_name("name")
-    if target is None or target.type not in {"scoped_identifier", "scoped_type_identifier"}:
+    if target is None:
+        return None
+    if target.type == "identifier":
+        direct = aliases.get(node_text(source, target), "").split("::")
+        if len(direct) == 2 and direct[0] in families:
+            return direct[0], direct[1]
+        return None
+    if target.type not in {"scoped_identifier", "scoped_type_identifier"}:
         return None
     refs = references(source, target, aliases, set(families))
     return next(iter(refs)) if len(refs) == 1 else None
@@ -535,7 +556,9 @@ def is_error_pattern(source: bytes, pattern) -> bool:
     if current is None or current.type != "tuple_struct_pattern":
         return False
     children = significant_named_children(current)
-    return bool(children) and syntax_compact(source, children[0]) == "Err"
+    return bool(children) and syntax_compact(source, children[0]) in {
+        "Err", "std::result::Result::Err", "core::result::Result::Err"
+    }
 
 
 def pattern_bindings(source: bytes, pattern) -> set[str]:
@@ -558,20 +581,40 @@ def pattern_bindings(source: bytes, pattern) -> set[str]:
     return result
 
 
-def aliases_in(source: bytes, root, known: set[str]) -> dict[str, str]:
+def aliases_in(source: bytes, location, known: set[str]) -> dict[str, str]:
+    """Resolve imports from the lexical containers of one governed expression."""
     aliases = {}
-    for child in root.named_children:
-        if child.type != "use_declaration":
-            continue
-        for clause in walk(child):
-            if clause.type != "use_as_clause":
+    scopes = []
+    scope = location.parent
+    while scope is not None:
+        scopes.append(scope)
+        scope = scope.parent
+    for scope in reversed(scopes):
+        for child in scope.named_children:
+            if child.type != "use_declaration":
                 continue
-            parts = significant_named_children(clause)
-            if len(parts) != 2 or parts[1].type != "identifier":
-                continue
-            original = syntax_compact(source, parts[0]).split("::")[-1]
-            if original in known:
-                aliases[node_text(source, parts[1])] = original
+            for clause in walk(child):
+                if clause.type == "scoped_use_list":
+                    parts = significant_named_children(clause)
+                    if len(parts) == 2:
+                        family = syntax_compact(source, parts[0]).split("::")[-1]
+                        if family in known:
+                            for member in significant_named_children(parts[1]):
+                                if member.type == "identifier":
+                                    variant = node_text(source, member)
+                                    aliases[variant] = f"{family}::{variant}"
+                                elif member.type == "use_as_clause":
+                                    names = significant_named_children(member)
+                                    if len(names) == 2:
+                                        aliases[node_text(source, names[1])] = f"{family}::{node_text(source, names[0])}"
+                if clause.type != "use_as_clause":
+                    continue
+                parts = significant_named_children(clause)
+                if len(parts) != 2 or parts[1].type != "identifier":
+                    continue
+                original = syntax_compact(source, parts[0]).split("::")[-1]
+                if original in known:
+                    aliases[node_text(source, parts[1])] = original
     return aliases
 
 
@@ -683,7 +726,6 @@ def document_error_payload_findings(source: bytes, path: str, arm) -> list[Findi
 def scan_source(source: bytes, path: str, policy: dict, rust_parser) -> tuple[Finding, ...]:
     root = rust_parser.parse(source).root_node
     families = {family["type"]: family for family in policy["enum_families"]}
-    aliases = aliases_in(source, root, set(families))
     candidates = tuple(production_nodes(root, source))
     findings = []
     targets = tuple(families) + tuple(policy["semantic_fields"]) + tuple(policy["wire_structs"])
@@ -697,6 +739,7 @@ def scan_source(source: bytes, path: str, policy: dict, rust_parser) -> tuple[Fi
             if any(token.encode() in source[context.start_byte:context.end_byte] for token in targets) or b"Err(" in source[context.start_byte:context.end_byte]:
                 findings.append(Finding("SH-00-parse-error", path, node.start_point[0] + 1, "parse error overlaps governed source"))
         if node.type == "match_arm":
+            aliases = aliases_in(source, node, set(families))
             findings.extend(document_error_payload_findings(source, path, node))
             pattern = node.child_by_field_name("pattern")
             value = node.child_by_field_name("value")
@@ -739,6 +782,7 @@ def scan_source(source: bytes, path: str, policy: dict, rust_parser) -> tuple[Fi
                     if call_name(source, expression) == "Ok" and not has_negative_terminal(source, expression, aliases, families):
                         findings.append(Finding("SH-05-error-to-ok", path, node.start_point[0] + 1, "Err is converted to Ok without a typed negative terminal"))
         elif node.type == "match_expression":
+            aliases = aliases_in(source, node, set(families))
             body = node.child_by_field_name("body")
             if body is None:
                 continue
@@ -750,7 +794,7 @@ def scan_source(source: bytes, path: str, policy: dict, rust_parser) -> tuple[Fi
                 if pattern is None:
                     continue
                 governed.update(family for family, _ in references(source, pattern, aliases, set(families)))
-                if node_text(source, pattern).strip() == "_":
+                if wildcard_pattern(pattern):
                     wildcard = arm
             if governed and wildcard is not None:
                 value = wildcard.child_by_field_name("value")
@@ -774,6 +818,12 @@ def scan_source(source: bytes, path: str, policy: dict, rust_parser) -> tuple[Fi
             owner_name = owner.child_by_field_name("name") if owner is not None else None
             if field is not None and owner_name is not None and node_text(source, owner_name) in policy["wire_structs"] and node_text(source, field) in policy["semantic_fields"]:
                 findings.append(Finding("SH-08-semantic-serde-default", path, node.start_point[0] + 1, "wire semantic field defaults missing data"))
+        elif node.type == "struct_item" and any(re.search(r"#\s*\[\s*serde\s*\([^]]*\bdefault\b", attr) for attr in attrs):
+            name = node.child_by_field_name("name")
+            if name is not None and node_text(source, name) in policy["wire_structs"]:
+                for field in walk(node):
+                    if field.type == "field_declaration" and (field_name := field.child_by_field_name("name")) is not None and node_text(source, field_name) in policy["semantic_fields"]:
+                        findings.append(Finding("SH-08-semantic-serde-default", path, field.start_point[0] + 1, "wire struct defaults a semantic field"))
     return tuple(sorted(set(findings), key=lambda finding: (finding.path, finding.line, finding.rule, finding.detail)))
 
 
@@ -795,7 +845,7 @@ def validate_enum_definitions(root: Path, policy: dict) -> None:
 
 def rust_paths(root: Path) -> tuple[str, ...]:
     result = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", "crates/**/src/*.rs"], cwd=root, capture_output=True, check=True)
-    return tuple(sorted({path for raw in result.stdout.split(b"\0") if raw and (path := raw.decode()) and not TEST_PATH_PARTS.intersection(Path(path).parts) and not path.endswith("/test_support.rs")}))
+    return tuple(sorted({path for raw in result.stdout.split(b"\0") if raw and (path := raw.decode())}))
 
 
 def scan_repository(root: Path = ROOT) -> tuple[Finding, ...]:

@@ -1,4 +1,13 @@
 {
+  "group_members": {
+    "claude_startup": [
+      "agents",
+      "claude"
+    ],
+    "cursor_root_startup": [
+      "agents"
+    ]
+  },
   "groups": {
     "claude_startup": {
       "bytes": 2190,
@@ -8,6 +17,14 @@
       "bytes": 1691,
       "lines": 26
     }
+  },
+  "outputs": {
+    "agents": "AGENTS.md",
+    "claude": "CLAUDE.md",
+    "claude_docs": ".claude/rules/documentation.md",
+    "claude_rust": ".claude/rules/rust-frontend.md",
+    "cursor_docs": ".cursor/rules/documentation.mdc",
+    "cursor_rust": ".cursor/rules/rust-frontend.mdc"
   },
   "targets": {
     "agents": {

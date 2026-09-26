@@ -23,4 +23,4 @@ rules:
       exclude:
         - /crates/quanta-gqlang-v2-sema/src/test_support.rs
     patterns:
-      - pattern-regex: '(?m)^\s*pub(?:\(crate\))?\s+fn\s+\w+[\s\S]{0,500}?->\s*Result<(?:[^<>]|<[^<>]*>){0,80},\s*String\s*>'
+      - pattern-regex: '(?m)^[ \t]*pub(?:\(crate\))?[ \t]+(?:async[ \t]+)?fn[ \t]+\w+[^;{]{0,1000}?->[ \t\r\n]*Result<[^;{]{0,500}?,[ \t\r\n]*String[ \t\r\n]*>'

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import hashlib
 import json
 import os
 import re
@@ -10,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -19,9 +21,12 @@ from tools.ci import (
     advisory_db, clippy_gate, deny_gate, doctor, doctest_gate, nextest_gate, run_local,
     unittest_gate,
 )
-from tools.ci.evidence import EvidencePathError, read_json_evidence, write_json_evidence
+from tools.ci.evidence import (
+    EvidencePathError, read_bytes_evidence, read_json_evidence,
+    write_bytes_evidence, write_json_evidence,
+)
 from tools.ci.environment import (
-    EnvironmentSanitizationError, sanitized_environment,
+    EnvironmentSanitizationError, isolated_cargo_home, sanitized_environment,
 )
 
 
@@ -39,6 +44,8 @@ class LocalGateTest(unittest.TestCase):
             "PROPTEST_CASES": "1",
             "QGLANG_DEEP_HIR_CHILD": "1",
             "QGLANG_QUALIFICATION_RUN_ID": "a" * 32,
+            "PYTHONPATH": "/tmp/sitecustomize",
+            "RUSTFMT": "/usr/bin/true",
         }
         self.assertEqual(sanitized_environment(source), {"PATH": "/usr/bin"})
         self.assertEqual(
@@ -50,6 +57,21 @@ class LocalGateTest(unittest.TestCase):
             EnvironmentSanitizationError, "invalid qualification run identity"
         ):
             sanitized_environment(source, preserve_qualification_run_id=True)
+
+    def test_cargo_home_config_is_not_inherited_by_full_ci(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            home = Path(directory) / "cargo-home"
+            root.mkdir()
+            home.mkdir()
+            (home / "config.toml").write_text('[build]\nrustflags=["--cap-lints","allow"]\n')
+            (home / "registry").mkdir()
+            destination = isolated_cargo_home(root, home)
+            self.assertFalse((destination / "config.toml").exists())
+            self.assertEqual((destination / "registry").resolve(), (home / "registry").resolve())
+            with self.assertRaisesRegex(EnvironmentSanitizationError, "not owned"):
+                (destination / ".qglang-ci-owned").unlink()
+                isolated_cargo_home(root, home)
 
     def test_nextest_leak_timeout_is_bounded_and_failing(self) -> None:
         config = (run_local.ROOT / ".config/nextest.toml").read_text(encoding="utf-8")
@@ -84,16 +106,21 @@ class LocalGateTest(unittest.TestCase):
             self.assertEqual(commands, ["just " + leaf for leaf in leaves])
 
     def test_local_runner_rejects_invalid_inherited_identity(self) -> None:
-        with patch.dict(run_local.os.environ, {"QGLANG_QUALIFICATION_RUN_ID": "not-a-run"}), \
+        with tempfile.TemporaryDirectory() as directory, \
+             patch.object(run_local, "ROOT", Path(directory)), \
+             patch.dict(run_local.os.environ, {"QGLANG_QUALIFICATION_RUN_ID": "not-a-run"}), \
              redirect_stderr(io.StringIO()) as errors:
             self.assertEqual(run_local.main(), 2)
         self.assertIn("invalid qualification run identity", errors.getvalue())
 
     def test_local_runner_rejects_source_mutation_between_groups(self) -> None:
         completed = subprocess.CompletedProcess(["just", "doctor"], 0, None, None)
-        with patch.dict(run_local.os.environ, {}, clear=True), \
+        with tempfile.TemporaryDirectory() as directory, \
+             patch.object(run_local, "ROOT", Path(directory)), \
+             patch.dict(run_local.os.environ, {}, clear=True), \
              patch.object(run_local, "GROUPS", ("doctor",)), \
              patch.object(run_local, "source_snapshot", side_effect=["before", "after"]), \
+             patch.object(run_local, "isolated_cargo_home", return_value=Path(directory)), \
              patch.object(run_local, "run_bounded", return_value=completed), \
              redirect_stderr(io.StringIO()) as errors, redirect_stdout(io.StringIO()):
             self.assertEqual(run_local.main(), 2)
@@ -112,12 +139,104 @@ class LocalGateTest(unittest.TestCase):
                 deleted = run_local.source_snapshot()
         self.assertNotEqual(present, deleted)
 
+    def test_source_snapshot_detects_edit_then_revert(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="qglang-source-snapshot-") as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            tracked = root / "tracked.txt"
+            tracked.write_text("present\n", encoding="utf-8")
+            subprocess.run(["git", "add", "tracked.txt"], cwd=root, check=True)
+            with patch.object(run_local, "ROOT", root):
+                before = run_local.source_snapshot()
+                tracked.write_text("mutation\n", encoding="utf-8")
+                tracked.write_text("present\n", encoding="utf-8")
+                self.assertNotEqual(before, run_local.source_snapshot())
+
+    def test_source_snapshot_rejects_external_tracked_symlink(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="qglang-source-snapshot-") as directory:
+            root = Path(directory) / "repo"
+            root.mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            outside = Path(directory) / "outside"
+            outside.write_text("foreign\n", encoding="utf-8")
+            (root / "linked").symlink_to(outside)
+            subprocess.run(["git", "add", "linked"], cwd=root, check=True)
+            with patch.object(run_local, "ROOT", root), \
+                 self.assertRaisesRegex(run_local.LocalCiError, "symlink leaves source tree"):
+                run_local.source_snapshot()
+
+    def test_source_snapshot_excludes_only_the_managed_build_cache_link(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="qglang-source-snapshot-") as directory:
+            qualification = Path(directory) / "qualification"
+            root = qualification / "managed-checkout"
+            cache = qualification / "managed-build-cache"
+            root.mkdir(parents=True)
+            cache.mkdir()
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            (root / ".gitignore").write_text("/target/\n", encoding="utf-8")
+            (root / "source.rs").write_text("fn main() {}\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            (root / "target").symlink_to(cache, target_is_directory=True)
+            with patch.object(run_local, "ROOT", root):
+                self.assertEqual(len(run_local.source_snapshot()), 64)
+                (root / "target").unlink()
+                (root / "target").symlink_to(Path(directory), target_is_directory=True)
+                with self.assertRaisesRegex(run_local.LocalCiError, "not the managed"):
+                    run_local.source_snapshot()
+
+    def test_local_ci_rechecks_nextest_raw_streams_after_policy_tests(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ci = root / "target/ci"
+            ci.mkdir(parents=True)
+            inventory, events = b"{}\n", b'{"type":"test"}\n'
+            (ci / "nextest-list.json").write_bytes(inventory)
+            (ci / "nextest-events.jsonl").write_bytes(events)
+            evidence = {
+                "qualification_run_id": "a" * 32, "exit": 0, "selected": 1, "executed": 1,
+                "inventory_sha256": hashlib.sha256(inventory).hexdigest(),
+                "events_sha256": hashlib.sha256(events).hexdigest(),
+            }
+            write_json_evidence(ci / "nextest-evidence.json", evidence,
+                                owned_root=root / "target", prefix="nextest")
+            with patch.object(run_local, "ROOT", root):
+                run_local.validate_nextest_custody("a" * 32)
+                (ci / "nextest-events.jsonl").write_bytes(b"overwritten by another gate")
+                with self.assertRaisesRegex(run_local.LocalCiError, "raw stream differs"):
+                    run_local.validate_nextest_custody("a" * 32)
+
     def test_unittest_zero_discovery_fails(self) -> None:
         with patch.object(sys, "argv", ["unittest_gate.py", "irrelevant", "test_*.py"]), \
              patch.object(unittest_gate.unittest.defaultTestLoader, "discover", return_value=unittest.TestSuite()), \
              redirect_stderr(io.StringIO()) as errors:
             self.assertEqual(unittest_gate.main(), 2)
         self.assertIn("no tests discovered", errors.getvalue())
+
+    def test_unittest_all_skipped_is_not_a_green_gate(self) -> None:
+        class Skipped(unittest.TestCase):
+            @unittest.skip("fixture")
+            def test_skipped(self) -> None:
+                pass
+
+        with patch.object(sys, "argv", ["unittest_gate.py", "irrelevant", "test_*.py"]), \
+             patch.object(unittest_gate.unittest.defaultTestLoader, "discover",
+                          return_value=unittest.defaultTestLoader.loadTestsFromTestCase(Skipped)), \
+             redirect_stderr(io.StringIO()) as errors, redirect_stdout(io.StringIO()):
+            self.assertEqual(unittest_gate.main(), 2)
+        self.assertIn("skipped=1", errors.getvalue())
+
+    def test_python_startup_hook_cannot_turn_an_empty_gate_green(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            hook = Path(directory) / "sitecustomize.py"
+            hook.write_text("import os; os._exit(0)\n", encoding="utf-8")
+            env = {**os.environ, "PYTHONPATH": directory, "PYTHONUSERBASE": directory}
+            result = subprocess.run(
+                ["python3", "-I", "-S", "tools/ci/python_gate.py",
+                 "tools/ci/unittest_gate.py", directory, "test_*.py"],
+                cwd=run_local.ROOT, env=env, capture_output=True, text=True,
+            )
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("no tests discovered", result.stderr)
 
     def test_doctest_zero_execution_fails(self) -> None:
         output = "Doc-tests empty\nrunning 0 tests\ntest result: ok. 0 passed; 0 failed; 0 ignored;"
@@ -165,7 +284,7 @@ class LocalGateTest(unittest.TestCase):
             run.call_args.kwargs["env"]["RUSTUP_TOOLCHAIN"], doctor.read_lock()["clippy"]
         )
         justfile = (run_local.ROOT / "Justfile").read_text(encoding="utf-8")
-        self.assertIn("clippy-current:\n    python3 tools/ci/clippy_gate.py\n", justfile)
+        self.assertIn("clippy-current:\n    python3 -I -S tools/ci/python_gate.py tools/ci/clippy_gate.py\n", justfile)
         self.assertNotRegex(justfile, r"cargo \+\d+\.\d+\.\d+ clippy")
 
     def test_advisory_db_requires_clean_head_at_fetched_revision(self) -> None:
@@ -197,6 +316,15 @@ class LocalGateTest(unittest.TestCase):
             fetched.write_text(revision + "\t\tbranch 'main' of fixture\n", encoding="utf-8")
             self.assertEqual(advisory_db.state(cargo_home)["revision"], revision)
 
+            real_git = advisory_db.git
+            def stale_commit_time(database_path: Path, *args: str) -> str:
+                if args == ("show", "-s", "--format=%ct", "HEAD"):
+                    return str(int(time.time()) - advisory_db.MAX_FETCH_AGE_S - 60)
+                return real_git(database_path, *args)
+            with patch.object(advisory_db, "git", side_effect=stale_commit_time), \
+                 self.assertRaisesRegex(advisory_db.AdvisoryError, "revision is stale"):
+                advisory_db.state(cargo_home)
+
             fetched.write_text("0" * 40 + "\t\tbranch 'main' of fixture\n", encoding="utf-8")
             with self.assertRaisesRegex(advisory_db.AdvisoryError, "does not match"):
                 advisory_db.state(cargo_home)
@@ -204,6 +332,14 @@ class LocalGateTest(unittest.TestCase):
             tracked.write_text("dirty\n", encoding="utf-8")
             with self.assertRaisesRegex(advisory_db.AdvisoryError, "checkout is dirty"):
                 advisory_db.state(cargo_home)
+            tracked.write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "update-index", "--assume-unchanged", "advisory.md"],
+                           cwd=database, check=True)
+            tracked.write_text("hidden dirty\n", encoding="utf-8")
+            with self.assertRaisesRegex(advisory_db.AdvisoryError, "index hides tracked"):
+                advisory_db.state(cargo_home)
+            subprocess.run(["git", "update-index", "--no-assume-unchanged", "advisory.md"],
+                           cwd=database, check=True)
             tracked.write_text("fixture\n", encoding="utf-8")
             subprocess.run(
                 ["git", "remote", "set-url", "origin", "https://example.invalid/advisory-db"],
@@ -272,6 +408,17 @@ class LocalGateTest(unittest.TestCase):
             self.assertFalse(path.exists())
             with self.assertRaisesRegex(EvidencePathError, "missing or redirected"):
                 read_json_evidence(path, owned_root=root, consume=True)
+
+    def test_raw_evidence_rejects_redirected_file(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "target"
+            path = root / "ci/nextest-events.jsonl"
+            write_bytes_evidence(path, b"event\n", owned_root=root, prefix="raw")
+            self.assertEqual(read_bytes_evidence(path, owned_root=root), b"event\n")
+            path.unlink()
+            path.symlink_to(Path(directory) / "outside")
+            with self.assertRaisesRegex(EvidencePathError, "missing or redirected"):
+                read_bytes_evidence(path, owned_root=root)
 
     def test_tool_lock_rejects_duplicate_missing_and_unknown_keys(self) -> None:
         original = doctor.LOCK.read_text(encoding="utf-8")
@@ -429,6 +576,7 @@ class LocalGateTest(unittest.TestCase):
         with patch.object(nextest_gate, "run_bounded", side_effect=results), \
              patch.object(nextest_gate.time, "monotonic", side_effect=[10, 11, 12, 15, 16, 17]), \
              patch.object(nextest_gate, "write_evidence") as write, \
+             patch.object(nextest_gate, "write_bytes_evidence") as write_raw, \
              redirect_stderr(io.StringIO()), \
              redirect_stdout(io.StringIO()) as output:
             self.assertEqual(nextest_gate.main(), 0)
@@ -439,6 +587,7 @@ class LocalGateTest(unittest.TestCase):
             (1, 3, 1),
         )
         self.assertEqual((evidence["selected"], evidence["executed"]), (1, 1))
+        self.assertEqual(write_raw.call_count, 2)
         self.assertIn("list=1.000s run=3.000s parse=1.000s", output.getvalue())
 
     def test_nextest_rejects_failed_event_with_zero_child_exit(self) -> None:

@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import qualify_local as qualify_local_module  # noqa: E402
 from qualify_local import (  # noqa: E402
     QualificationDriver, QualificationError, git, valid_deny_evidence,
-    valid_nextest_evidence, validate_recipe_durations,
+    valid_nextest_evidence, validate_recipe_durations, source_status,
 )
 
 
@@ -125,6 +125,27 @@ class QualificationDriverTest(unittest.TestCase):
             malformed[key] = value
             self.assertFalse(valid_deny_evidence(malformed, run_id, state), key)
 
+    def test_nextest_raw_streams_are_archived_only_at_matching_hashes(self) -> None:
+        self.prepare()
+        ci = self.driver.build_cache / "ci"
+        ci.mkdir()
+        receipt = self.driver.root / self.pin()[0]
+        receipt.mkdir()
+        streams = {"nextest-list.json": b"{}\n", "nextest-events.jsonl": b'{"type":"test"}\n'}
+        for name, raw in streams.items():
+            (ci / name).write_bytes(raw)
+        evidence = {
+            "inventory_sha256": hashlib.sha256(streams["nextest-list.json"]).hexdigest(),
+            "events_sha256": hashlib.sha256(streams["nextest-events.jsonl"]).hexdigest(),
+        }
+        self.assertEqual(self.driver.archive_nextest(receipt, evidence), {
+            name: hashlib.sha256(raw).hexdigest() for name, raw in streams.items()
+        })
+        self.assertEqual((receipt / "nextest-events.jsonl").read_bytes(), streams["nextest-events.jsonl"])
+        (ci / "nextest-events.jsonl").write_bytes(b"changed")
+        with self.assertRaisesRegex(QualificationError, "hash differs"):
+            self.driver.archive_nextest(receipt, evidence)
+
     def test_successful_receipt_requires_exact_recipe_timing_inventory(self) -> None:
         validate_recipe_durations({"ci": 1.0}, {"ci"})
         for observed in ({}, {"ci": 1.0, "foreign": 2.0}):
@@ -191,6 +212,21 @@ class QualificationDriverTest(unittest.TestCase):
         (self.repo / "concurrent-writer.txt").write_text("dirty\n", encoding="utf-8")
         self.assertIs(self.driver.post_run_dirty(), True)
 
+    def test_assume_unchanged_cannot_hide_changed_head_bytes(self) -> None:
+        source = self.repo / "src/lib.rs"
+        run(["git", "update-index", "--assume-unchanged", "src/lib.rs"], self.repo)
+        source.write_text(rust_source(2), encoding="utf-8")
+        self.assertIn("HEAD byte/mode drift", source_status(self.repo))
+        with self.assertRaisesRegex(QualificationError, "caller checkout is dirty"):
+            self.driver.run()
+
+    def test_assume_unchanged_cannot_hide_managed_checkout_edit(self) -> None:
+        self.prepare()
+        run(["git", "update-index", "--assume-unchanged", "src/lib.rs"], self.driver.checkout)
+        (self.driver.checkout / "src/lib.rs").write_text(rust_source(2), encoding="utf-8")
+        with self.assertRaisesRegex(QualificationError, "managed checkout is dirty"):
+            self.driver.validate_checkout()
+
     def test_foreign_marker_and_redirected_target_are_rejected(self) -> None:
         self.prepare()
         marker = json.loads(self.driver.marker.read_text(encoding="utf-8"))
@@ -247,16 +283,17 @@ class QualificationDriverTest(unittest.TestCase):
         self.assertEqual(set(receipt), {
             "sha", "tree", "cmds", "exit", "duration_s", "schema", "tool_versions",
             "source_hashes", "recipe_duration_s", "ci_log_sha256",
-            "qualification_run_id", "nextest", "advisory_db", "status", "dirty",
+            "qualification_run_id", "nextest", "nextest_raw", "advisory_db", "status", "dirty",
         })
         self.assertEqual((receipt["sha"], receipt["tree"], receipt["cmds"], receipt["exit"]),
                          (sha, tree, ["just ci"], 0))
-        self.assertEqual(receipt["schema"], 2)
+        self.assertEqual(receipt["schema"], 3)
         self.assertEqual(receipt["status"], "complete")
         self.assertIs(receipt["dirty"], False)
         self.assertIn("rustc", receipt["tool_versions"])
         self.assertEqual(receipt["source_hashes"], {})
         self.assertIsNone(receipt["nextest"])
+        self.assertIsNone(receipt["nextest_raw"])
         log = (self.driver.root / sha / "ci.log").read_bytes()
         self.assertEqual(receipt["ci_log_sha256"], hashlib.sha256(log).hexdigest())
         with redirect_stdout(io.StringIO()):

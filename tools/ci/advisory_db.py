@@ -70,8 +70,20 @@ def state(cargo_home: Path, now: float = None) -> dict:
     revision = git(database, "rev-parse", "HEAD")
     if len(revision) != 40 or any(character not in "0123456789abcdef" for character in revision):
         raise AdvisoryError("cannot identify advisory DB revision")
+    try:
+        revision_time = int(git(database, "show", "-s", "--format=%ct", "HEAD"))
+    except ValueError as error:
+        raise AdvisoryError("advisory DB revision has no valid commit time") from error
+    revision_age = now - revision_time
+    if revision_age < -300 or revision_age > MAX_FETCH_AGE_S:
+        raise AdvisoryError("advisory DB revision is stale or future-dated (age_s=%d)" % revision_age)
     if git(database, "status", "--porcelain=v1", "--untracked-files=all"):
         raise AdvisoryError("advisory DB checkout is dirty")
+    # Git status may silently skip paths marked assume-unchanged or
+    # skip-worktree. Neither flag is valid for a trusted advisory checkout.
+    index_flags = git(database, "ls-files", "-v")
+    if any(line and line[0] != "H" for line in index_flags.splitlines()):
+        raise AdvisoryError("advisory DB index hides tracked files")
     origin = git(database, "remote", "get-url", "origin")
     if origin not in OFFICIAL_ORIGINS:
         raise AdvisoryError("advisory DB origin is not the official RustSec repository")
@@ -81,6 +93,7 @@ def state(cargo_home: Path, now: float = None) -> dict:
     return {
         "path": str(database), "origin": origin, "revision": revision,
         "fetched_at_unix": int(fetched.stat().st_mtime), "fetch_age_s": int(age),
+        "revision_age_s": int(revision_age),
     }
 
 

@@ -12,7 +12,7 @@
 - 같은 타깃 QBC `check` 재실행은 source digest `03b688c325ee8d70be9afcd6375aa00fe20e495eaa2b4b42847b9f9ed852e809`에서 exit 0이다. 이는 컴파일 증거이며 설치형 process 실행이나 pair qualification PASS가 아니다.
 - 격리 Semantica SDK exact semantic SAMPLE 재현 시도는 source digest `22ccfbb146eb1ef0401e11fa70c00925b8c41d219f7193a5b346937f06b1a83f`에서 테스트 1개 선택·실행 후 현재 소스 `QUANTA_INDEX_SEARCHD_BIN` 미설정으로 실패했다. 타임아웃 동작 판정이나 SDK PASS가 아니며, 공유 main에 통합되지 않은 격리 checkout 결과다.
 - 공유 main의 lifecycle + bounded dispatch 통합 뒤 QBC **manual lane** 실행은 producer 17/17(`20260925T173906.192056Z-d9ec1b579081`, source `4cada145…`), 최종 runtime dispatch 1/1(`20260925T181455.961336Z-693b5e3485ce`, source `b0f024c0…`), 최신 SDK lifecycle 4/4(`20260925T181736.019920Z-77e5ae285e82`, source `ec097def…`) 모두 exit 0이다. receipt 위치: `/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-d0b8b5a985ea/lanes/gqlang-ss-integration/verification-results/<run-id>/receipt.json`. 각 receipt는 `authority_kind=manual`, `owner_execution_receipt=false`, `reuse_eligible=false`이며 digest도 다르므로 동일 pair qualification이 아니다.
-- QGLang `2ba085bc…` dirty 문서 스냅샷의 `just ci` exit 0, Nextest 1248/1248, external consumer positive 1/1·negative 15/15는 historical local gate다. 이후 HEAD와 계획 문서가 바뀌었으므로 current exact-HEAD qualification으로 재사용하지 않는다.
+- QGLang `2ba085bce017281799e445eb18b98e70e1efdb0d` dirty 문서 스냅샷의 `just ci` exit 0, Nextest 1248/1248, external consumer positive 1/1·negative 15/15는 historical local gate다. 이후 HEAD와 계획 문서가 바뀌었으므로 current exact-HEAD qualification으로 재사용하지 않는다.
 
 ## 실행 순서와 증거
 

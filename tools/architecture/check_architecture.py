@@ -314,6 +314,32 @@ def check_member_manifest(
             "(target-conditional dependencies are denied)"
         )
 
+    # Cargo features can enable dependency features without editing the
+    # dependency entry itself. Check the effective forwarding surface too.
+    declared: dict[str, set[str]] = {}
+    for section, kind in DEP_SECTION_KINDS:
+        for name in manifest.get(section, {}):
+            allowed = (
+                INTERNAL_ALLOWED_FEATURES.get(feature_key(consumer, kind, name), [])
+                if name in EXPECTED_WORKSPACE_MEMBERS
+                else EXTERNAL_ALLOW.get(kind, {}).get(consumer, {}).get(name, {}).get("features", [])
+            )
+            declared.setdefault(name, set()).update(allowed)
+    for owner_feature, forwarded in manifest.get("features", {}).items():
+        if not isinstance(forwarded, list) or not all(isinstance(item, str) for item in forwarded):
+            errors.append(f"{consumer} has invalid feature definition {owner_feature}")
+            continue
+        for entry in forwarded:
+            if "/" not in entry:
+                continue
+            dependency, feature = entry.split("/", 1)
+            dependency = dependency.removesuffix("?")
+            if feature not in declared.get(dependency, set()):
+                errors.append(
+                    f"{consumer} has feature forwarding drift in {owner_feature}: "
+                    f"{entry} is not allowed on {dependency}"
+                )
+
     for section, kind in DEP_SECTION_KINDS:
         section_table = manifest.get(section, {})
         if not isinstance(section_table, dict):

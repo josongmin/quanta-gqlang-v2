@@ -21,7 +21,7 @@ just pm-status
 python3 tools/prompt-manager/pm.py ratchet --update
 ```
 
-`sync` renders all outputs in memory, validates budgets and the shrink-only ratchet, then writes atomically. `check` fails on drift, retired files, invalid scoping metadata, missing imports, or budget growth. `ratchet --update` can lower existing ceilings; it never raises one.
+`sync` renders all outputs in memory, validates budgets and the shrink-only ratchet, then writes atomically. `check` fails on drift, retired files, invalid scoping metadata, missing imports, budget growth, changed startup-group members, or moved target outputs. The ratchet records those identities as well as sizes. `ratchet --update` can lower existing ceilings; it never raises one or silently changes an identity.
 
 Reference basis:
 

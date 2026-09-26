@@ -26,7 +26,8 @@ it cannot construct a governed enum or `Result` at that return position.
 The open-analysis status priority and document-error stdio projection have
 separate checks. Each successful document-error exit must construct a payload
 with error status and retained diagnostics. The local AST check does not prove
-interprocedural flow, alias propagation, side-effect collection semantics, or
+interprocedural flow, arbitrary reexports or name shadowing inside one scope,
+side-effect collection semantics, or
 the content of `Vec<String>` renderers. Owner and binary tests cover those
 behaviors. In stdio, `ok: true` means transport success; `analysis_status`
 reports analysis success or failure.

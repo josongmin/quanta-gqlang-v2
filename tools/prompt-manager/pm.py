@@ -226,10 +226,24 @@ def validate_managed_rule_directories(config: dict[str, Any]) -> None:
             raise PromptManagerError(f"unmanaged scoped prompt file(s): {joined}")
 
 
-def validate_ratchet(sizes: dict[str, dict[str, dict[str, int]]]) -> None:
+def ratchet_identities(config: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "outputs": {name: spec["output"] for name, spec in config["targets"].items()},
+        "group_members": {
+            name: spec["targets"] for name, spec in config["context_groups"].items()
+        },
+    }
+
+
+def validate_ratchet(config: dict[str, Any], sizes: dict[str, dict[str, dict[str, int]]]) -> None:
     if not RATCHET_PATH.is_file():
         raise PromptManagerError("missing context-size-ratchet.json; initialize it with ratchet --update")
     ratchet = load_json(RATCHET_PATH)
+    for identity, expected in ratchet_identities(config).items():
+        if ratchet.get(identity) != expected:
+            raise PromptManagerError(
+                f"ratchet {identity} changed; review targets.json and edit the baseline explicitly"
+            )
     for section in ("targets", "groups"):
         expected = sizes[section]
         recorded = ratchet.get(section)
@@ -260,7 +274,7 @@ def validate_all(
     validate_retired(config)
     validate_managed_rule_directories(config)
     if ratchet:
-        validate_ratchet(sizes)
+        validate_ratchet(config, sizes)
     return sizes
 
 
@@ -332,6 +346,11 @@ def command_ratchet_update(config: dict[str, Any]) -> None:
     sizes = validate_all(config, rendered, ratchet=False)
     if RATCHET_PATH.is_file():
         current = load_json(RATCHET_PATH)
+        for identity, expected in ratchet_identities(config).items():
+            if current.get(identity) != expected:
+                raise PromptManagerError(
+                    f"ratchet {identity} changed; edit the baseline in the same reviewed change"
+                )
         for section in ("targets", "groups"):
             old_section = current.get(section)
             if not isinstance(old_section, dict) or set(old_section) != set(sizes[section]):
@@ -346,7 +365,7 @@ def command_ratchet_update(config: dict[str, Any]) -> None:
                             f"ratchet update cannot raise {section}.{name}.{dimension}: "
                             f"{size[dimension]} > {old}"
                         )
-    atomic_write(RATCHET_PATH, json.dumps(sizes, indent=2, sort_keys=True) + "\n")
+    atomic_write(RATCHET_PATH, json.dumps({**sizes, **ratchet_identities(config)}, indent=2, sort_keys=True) + "\n")
     print("prompt-manager ratchet: updated shrink-only ceilings")
 
 

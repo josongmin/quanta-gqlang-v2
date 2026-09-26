@@ -481,6 +481,20 @@ class ArchitectureCheckerTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unknown dependency kind future-kind"):
             architecture_checker.dependency_kind({"kind": "future-kind"})
 
+    def test_feature_forwarding_cannot_bypass_dependency_feature_allowlist(self) -> None:
+        temporary, root = self.fixture("valid")
+        with temporary:
+            consumer = "quanta-gqlang-v2-cli"
+            manifest = root / "crates" / consumer / "Cargo.toml"
+            manifest.write_text(
+                manifest.read_text() +
+                '\n[features]\ndefault = ["quanta-gqlang-v2-frontend-contract/test"]\n',
+                encoding="utf-8",
+            )
+            with patch.object(architecture_checker, "cargo_metadata", return_value=fixture_metadata(root)):
+                _summary, errors = architecture_checker.run_check(root)
+        self.assertIn("feature forwarding drift", "\n".join(errors))
+
     def test_internal_manifest_dependency_must_use_exact_member_path(self) -> None:
         temporary, root = self.fixture("valid")
         with temporary:
