@@ -229,6 +229,42 @@ class ExternalConsumerCacheTest(unittest.TestCase):
              mock.patch.object(consumer_gate, "gate_writable_fingerprint", return_value={}):
             self.assertEqual(offline_dependency_preflight(), consumer_gate.EXIT_INFRASTRUCTURE)
 
+        original_hash = consumer_gate.sha256_of
+        with mock.patch.object(consumer_gate, "run_bounded", return_value=result), \
+             mock.patch.object(consumer_gate, "preflight_manifests", return_value=[REPOSITORY_ROOT / "Cargo.toml"]), \
+             mock.patch.object(consumer_gate, "git_status_bytes", return_value=b""), \
+             mock.patch.object(consumer_gate, "gate_writable_fingerprint", return_value={}), \
+             mock.patch.object(
+                 consumer_gate, "sha256_of",
+                 side_effect=[original_hash(consumer_gate.LOCKFILE), "changed"],
+             ):
+            self.assertEqual(offline_dependency_preflight(), consumer_gate.EXIT_INFRASTRUCTURE)
+
+        with mock.patch.object(consumer_gate, "run_bounded", return_value=result), \
+             mock.patch.object(consumer_gate, "preflight_manifests", return_value=[REPOSITORY_ROOT / "Cargo.toml"]), \
+             mock.patch.object(consumer_gate, "git_status_bytes", return_value=b""), \
+             mock.patch.object(
+                 consumer_gate, "gate_writable_fingerprint",
+                 side_effect=[{}, {"drift": "1"}],
+             ):
+            self.assertEqual(offline_dependency_preflight(), consumer_gate.EXIT_INFRASTRUCTURE)
+
+    def test_toolchain_pin_fails_closed_without_a_channel(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with mock.patch.object(consumer_gate, "REPOSITORY_ROOT", root):
+                with self.assertRaisesRegex(InfrastructureError, "cannot pin the fixture toolchain"):
+                    consumer_gate.repo_toolchain_channel()
+            (root / "rust-toolchain.toml").write_text("[toolchain]\n", encoding="utf-8")
+            with mock.patch.object(consumer_gate, "REPOSITORY_ROOT", root):
+                with self.assertRaisesRegex(InfrastructureError, "cannot pin the fixture toolchain"):
+                    consumer_gate.repo_toolchain_channel()
+            (root / "rust-toolchain.toml").write_text(
+                '[toolchain]\nchannel = "1.81.0"\n', encoding="utf-8"
+            )
+            with mock.patch.object(consumer_gate, "REPOSITORY_ROOT", root):
+                self.assertEqual(consumer_gate.repo_toolchain_channel(), "1.81.0")
+
     def test_positive_artifact_uses_cargo_emitted_exact_binary_path(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -229,6 +229,18 @@ fn every_reanchored_exists_family_derives_its_exact_capabilities() {
                 CapabilityV2::ExistenceCheck,
             ]),
         ),
+        (
+            ReferenceRelationFixtureV2::ExistsWithMultiplicativeRight,
+            BTreeSet::from([
+                CapabilityV2::RelationScan,
+                CapabilityV2::Join,
+                CapabilityV2::ExistenceCheck,
+            ]),
+        ),
+        (
+            ReferenceRelationFixtureV2::ConjunctiveExistsPair,
+            BTreeSet::from([CapabilityV2::RelationScan, CapabilityV2::ExistenceCheck]),
+        ),
     ] {
         let (_nodes, planned) = nodes(fixture);
         assert_eq!(planned.capabilities(), &expected, "{fixture:?}");

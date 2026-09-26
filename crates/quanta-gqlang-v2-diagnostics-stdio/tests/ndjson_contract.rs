@@ -146,9 +146,35 @@ fn valid_request_echoes_id_and_reports_honest_incomplete_analysis() {
     assert_eq!(responses[0]["ok"], true);
     assert_eq!(responses[0]["method"], "v3_diagnostics");
     assert_eq!(responses[0]["analysis_status"], "incomplete");
-    assert!(responses[0]["diagnostics"]
+    let diagnostics = responses[0]["diagnostics"]
         .as_array()
-        .is_some_and(|items| !items.is_empty()));
+        .expect("diagnostics array");
+    assert_eq!(diagnostics.len(), 3, "unexpected diagnostics: {}", responses[0]);
+    let codes: Vec<&str> = diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic["code"].as_str().expect("diagnostic code"))
+        .collect();
+    assert_eq!(
+        codes,
+        [
+            "pipeline.analysis.missing_graph_authority",
+            "pipeline.analysis.missing_module_authority",
+            "pipeline.analysis.missing_relation_authority",
+        ]
+    );
+    for diagnostic in diagnostics {
+        assert_eq!(diagnostic["stage"], "declaration");
+        assert_eq!(diagnostic["severity"], "warning");
+        assert_eq!(diagnostic["source_id"], 7);
+        assert_eq!(diagnostic["span_start"], 0);
+        assert_eq!(diagnostic["span_end"], 17);
+        assert!(
+            diagnostic["message"]
+                .as_str()
+                .is_some_and(|message| !message.is_empty()),
+            "unexpected diagnostic: {diagnostic}"
+        );
+    }
 }
 
 #[test]
@@ -182,7 +208,9 @@ fn protocol_is_one_object_per_line_not_brace_balanced_framing() {
     assert_eq!(status, 1);
     assert_eq!(responses.len(), 2);
     assert_eq!(responses[0]["ok"], false);
+    assert_eq!(responses[0]["error"]["code"], "invalid_request");
     assert_eq!(responses[1]["id"], 3);
+    assert_eq!(responses[1]["ok"], true);
 }
 
 #[test]
@@ -279,6 +307,7 @@ fn whitespace_lines_split_across_reads_are_ignored() {
     assert_eq!(lines.len(), 1);
     let response: Value = serde_json::from_slice(lines[0]).expect("response json");
     assert_eq!(response["id"], 7);
+    assert_eq!(response["ok"], true);
 }
 
 #[test]

@@ -10,7 +10,7 @@ use quanta_gqlang_v2_binder::{Binder, BinderKindV1, ModuleGraphV1, ResolvedTarge
 use quanta_gqlang_v2_hir::{
     CompositionBodyV1, CompositionProducerV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
     GraphConstraintsV1, GraphEndpointsV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1, HirNodeIdV1,
-    SpanV1,
+    SampleHirV1, SampleModeV1, SpanV1,
 };
 
 // Build a SAMPLE-ish producer item: a relation source query is the simplest
@@ -79,6 +79,14 @@ fn composition_body_and_with_resolve_to_let() {
         }
         other => panic!("expected composition-let local, got {other:?}"),
     }
+    // the `WITH s` consumer must record its own resolution to the same LET.
+    assert!(matches!(
+        result.target_of_use(composition.id, SpanV1::new(90, 91), "s"),
+        Some(ResolvedTargetV1::Local(binding))
+            if binding.name == "s"
+                && binding.kind == BinderKindV1::CompositionLet
+                && binding.identity() == (composition.id, 0)
+    ));
 }
 
 #[test]
@@ -213,4 +221,187 @@ fn duplicate_let_name_rejects() {
         "binder.duplicate_declaration: duplicate declaration `s` \
          (first at 4..5, again at 24..25)"
     );
+}
+
+// Every legality reference slot (rule ref, scope, pattern) must resolve to the
+// composition LET, exercising `resolve_legality`'s scope/pattern loop.
+#[test]
+fn legality_reference_slots_resolve_to_the_composition_let() {
+    let b = HirBuilderV1::new();
+    let binding = b.composition_binding("s", SpanV1::new(4, 5), working_set_producer(&b));
+    let legality = b.legality(
+        GraphRefV1 {
+            name: "s".to_owned(),
+            span: SpanV1::new(20, 21),
+        },
+        Some(GraphRefV1 {
+            name: "s".to_owned(),
+            span: SpanV1::new(25, 26),
+        }),
+        Some(GraphRefV1 {
+            name: "s".to_owned(),
+            span: SpanV1::new(28, 29),
+        }),
+        ConfirmModeV1::Skip,
+        EmitModeV1::Findings,
+        DetectionModeV1::PatternOnly,
+        SpanV1::new(15, 40),
+    );
+    let legality_id = legality.id;
+    let composition = b.composition(
+        vec![binding],
+        "s",
+        SpanV1::new(90, 91),
+        legality.into(),
+        SpanV1::new(0, 91),
+    );
+
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.resolve_composition(&composition);
+    let result = binder.finish();
+
+    assert!(result.is_ok(), "diags: {:?}", result.diagnostics());
+    for span in [
+        SpanV1::new(20, 21),
+        SpanV1::new(25, 26),
+        SpanV1::new(28, 29),
+    ] {
+        assert!(
+            matches!(
+                result.target_of_use(legality_id, span, "s"),
+                Some(ResolvedTargetV1::Local(binding))
+                    if binding.kind == BinderKindV1::CompositionLet
+                        && binding.identity() == (composition.id, 0)
+            ),
+            "legality ref at {span:?} must resolve to the LET; got {:?}",
+            result.target_of_use(legality_id, span, "s")
+        );
+    }
+}
+
+// Every graph-constraint reference chain (via/through/sanitizers/scope/window/
+// frontier) must resolve to the composition LET, exercising the `.chain(..)`
+// arms of `resolve_graph_query`.
+#[test]
+fn graph_constraint_reference_chains_resolve_to_the_composition_let() {
+    let b = HirBuilderV1::new();
+    let binding = b.composition_binding("s", SpanV1::new(4, 5), working_set_producer(&b));
+    let reference = |start: usize| GraphRefV1 {
+        name: "s".to_owned(),
+        span: SpanV1::new(start, start + 1),
+    };
+    let constraints = GraphConstraintsV1 {
+        via: vec![reference(20)],
+        through: vec![reference(22)],
+        sanitizers: vec![reference(24)],
+        scope: Some(reference(26)),
+        window: Some(reference(28)),
+        frontier: Some(reference(30)),
+        ..GraphConstraintsV1::default()
+    };
+    let find = b.graph_query(
+        GraphQueryKindV1::Reachability,
+        GraphEndpointsV1::default(),
+        constraints,
+        SpanV1::new(15, 35),
+    );
+    let find_id = find.id;
+    let composition = b.composition(
+        vec![binding],
+        "s",
+        SpanV1::new(90, 91),
+        find.into(),
+        SpanV1::new(0, 91),
+    );
+
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.resolve_composition(&composition);
+    let result = binder.finish();
+
+    assert!(result.is_ok(), "diags: {:?}", result.diagnostics());
+    for start in [20, 22, 24, 26, 28, 30] {
+        let span = SpanV1::new(start, start + 1);
+        assert!(
+            matches!(
+                result.target_of_use(find_id, span, "s"),
+                Some(ResolvedTargetV1::Local(binding))
+                    if binding.kind == BinderKindV1::CompositionLet
+                        && binding.identity() == (composition.id, 0)
+            ),
+            "constraint ref at {span:?} must resolve to the LET"
+        );
+    }
+}
+
+// A SAMPLE producer's scope ref and a FIND producer's endpoint must resolve
+// through `resolve_composition_producer`'s Sample / GraphQuery arms.
+#[test]
+fn sample_scope_and_graph_producer_resolve_to_a_prior_let() {
+    let b = HirBuilderV1::new();
+    let first = b.composition_binding("a", SpanV1::new(4, 5), working_set_producer(&b));
+
+    let sample = SampleHirV1 {
+        id: b.next_id(),
+        span: SpanV1::new(15, 25),
+        query_text: "sql injection".to_owned(),
+        mode: SampleModeV1::Hybrid,
+        limit: 5,
+        scope: Some(GraphRefV1 {
+            name: "a".to_owned(),
+            span: SpanV1::new(20, 21),
+        }),
+    };
+    let sample_id = sample.id;
+    let second = b.composition_binding(
+        "b",
+        SpanV1::new(6, 7),
+        CompositionProducerV1::Sample(Box::new(sample)),
+    );
+
+    let find = b.graph_query(
+        GraphQueryKindV1::Reachability,
+        GraphEndpointsV1 {
+            source: Some(GraphRefV1 {
+                name: "a".to_owned(),
+                span: SpanV1::new(30, 31),
+            }),
+            ..GraphEndpointsV1::default()
+        },
+        GraphConstraintsV1::default(),
+        SpanV1::new(28, 34),
+    );
+    let find_id = find.id;
+    let third = b.composition_binding("c", SpanV1::new(8, 9), find.into());
+
+    let (body, _) = find_body_referencing(&b, "a", SpanV1::new(50, 51));
+    let composition = b.composition(
+        vec![first, second, third],
+        "a",
+        SpanV1::new(90, 91),
+        body,
+        SpanV1::new(0, 91),
+    );
+
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.resolve_composition(&composition);
+    let result = binder.finish();
+
+    assert!(result.is_ok(), "diags: {:?}", result.diagnostics());
+    for (node, span) in [
+        (sample_id, SpanV1::new(20, 21)),
+        (find_id, SpanV1::new(30, 31)),
+    ] {
+        assert!(
+            matches!(
+                result.target_of_use(node, span, "a"),
+                Some(ResolvedTargetV1::Local(binding))
+                    if binding.kind == BinderKindV1::CompositionLet
+                        && binding.identity() == (composition.id, 0)
+            ),
+            "producer ref at {span:?} must resolve to the prior LET `a`"
+        );
+    }
 }

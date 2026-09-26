@@ -237,8 +237,18 @@ fn every_family_compiles_through_the_facade_with_declared_disposition() {
         ROOT_FAMILIES_V2.len(),
         "root family registry must not be empty or drift"
     );
+    assert_eq!(
+        specs.iter().map(|spec| spec.family).collect::<Vec<_>>(),
+        ROOT_FAMILIES_V2.to_vec(),
+        "registry specs must map one-to-one onto ROOT_FAMILIES_V2 in order"
+    );
     for (index, spec) in specs.into_iter().enumerate() {
-        assert!(spec.source.trim_start().starts_with(spec.keyword));
+        assert_eq!(
+            spec.source.split_whitespace().next(),
+            Some(spec.keyword),
+            "{:?}: source must open with its declared keyword",
+            spec.family
+        );
         let document = compile_source_document_v3(
             SourceIdV2::from_raw(100 + u32::try_from(index).expect("small registry")),
             spec.source,

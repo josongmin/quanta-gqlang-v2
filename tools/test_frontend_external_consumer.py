@@ -523,12 +523,14 @@ def public_api_inventory(observed: List[str], pinned: List[str]) -> Tuple[List[s
     return extra, missing, duplicates
 
 
-def repo_toolchain_channel() -> Optional[str]:
+def repo_toolchain_channel() -> str:
     manifest = REPOSITORY_ROOT / "rust-toolchain.toml"
     if not manifest.is_file():
-        return None
+        raise InfrastructureError("rust-toolchain.toml is missing; cannot pin the fixture toolchain")
     match = re.search(r'^\s*channel\s*=\s*"([^"]+)"', manifest.read_text(), re.MULTILINE)
-    return match.group(1) if match else None
+    if match is None:
+        raise InfrastructureError("rust-toolchain.toml has no channel; cannot pin the fixture toolchain")
+    return match.group(1)
 
 
 def cargo_env(target_dir: Path, channel: Optional[str]) -> Dict[str, str]:

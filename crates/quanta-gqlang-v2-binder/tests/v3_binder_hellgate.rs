@@ -8,8 +8,9 @@
 
 use quanta_gqlang_v2_binder::{BindDiagnosticV1, Binder, BinderKindV1, CaptureV1, ModuleGraphV1};
 use quanta_gqlang_v2_hir::{
-    AliasV1, HirBuilderV1, LogicalBinderV1, LogicalQuantifierKindV1, NonEmptyBindersV1,
-    PathSegmentV1, ProjectionItemV1, RelationExistsPolarityV1, SpanV1,
+    AliasV1, GraphConstraintsV1, GraphEndpointsV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1,
+    LogicalBinderV1, LogicalQuantifierKindV1, NonEmptyBindersV1, PathSegmentV1, ProjectionItemV1,
+    RelationExistsPolarityV1, SpanV1,
 };
 
 fn alias(name: &str, start: usize) -> AliasV1 {
@@ -149,6 +150,88 @@ fn illegal_capture_rejects() {
         "binder.illegal_capture: reference `outer` at 50..55 illegally captures \
          binding at 10..15 across a non-capturing boundary"
     );
+}
+
+/// A graph reference crossed out of a composition frame (`NonCapturing`) must
+/// reject through `resolve_local_ref`, not silently leak the outer binding.
+#[test]
+fn graph_reference_across_composition_barrier_rejects_as_illegal_capture() {
+    let b = HirBuilderV1::new();
+    let producer = b.query(
+        b.relation_source("catalog.users", SpanV1::new(0, 5), None, SpanV1::new(0, 5)),
+        None,
+        SpanV1::new(0, 5),
+    );
+    let binding = b.composition_binding("s", SpanV1::new(6, 7), producer.into());
+    let find = b.graph_query(
+        GraphQueryKindV1::Reachability,
+        GraphEndpointsV1 {
+            source: Some(GraphRefV1 {
+                name: "outer".to_owned(),
+                span: SpanV1::new(50, 55),
+            }),
+            ..GraphEndpointsV1::default()
+        },
+        GraphConstraintsV1::default(),
+        SpanV1::new(45, 60),
+    );
+    let find_id = find.id;
+    let composition = b.composition(
+        vec![binding],
+        "s",
+        SpanV1::new(90, 91),
+        find.into(),
+        SpanV1::new(0, 91),
+    );
+
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.open_scope(CaptureV1::Capturing);
+    binder.bind_let("outer", find_id, SpanV1::new(10, 15));
+    binder.resolve_composition(&composition);
+    let result = binder.finish();
+
+    assert_eq!(result.diagnostics().len(), 1);
+    let diag = &result.diagnostics()[0];
+    assert_eq!(diag.code(), "binder.illegal_capture");
+    assert_eq!(diag.name(), "outer");
+    assert_eq!(diag.primary_span(), SpanV1::new(50, 55));
+    match diag {
+        BindDiagnosticV1::IllegalCapture { binding_span, .. } => {
+            assert_eq!(*binding_span, SpanV1::new(10, 15));
+        }
+        other => panic!("expected illegal capture, got {other:?}"),
+    }
+}
+
+/// A relation source crossed out of a non-capturing query frame must reject
+/// through `resolve_relation`'s illegal-capture arm (not host fallback).
+#[test]
+fn relation_source_across_noncapturing_barrier_rejects_as_illegal_capture() {
+    let b = HirBuilderV1::new();
+    let outer = b.relation_source("catalog.outer", SpanV1::new(0, 10), None, SpanV1::new(0, 10));
+    let inner = b.relation_source("outer", SpanV1::new(20, 25), None, SpanV1::new(20, 25));
+    let query = b.query(inner, None, SpanV1::new(20, 25));
+
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.open_scope(CaptureV1::Capturing);
+    binder.bind_let("outer", outer.id, SpanV1::new(0, 5));
+    binder.open_scope(CaptureV1::NonCapturing);
+    binder.resolve_query(&query);
+    let result = binder.finish();
+
+    assert_eq!(result.diagnostics().len(), 1);
+    let diag = &result.diagnostics()[0];
+    assert_eq!(diag.code(), "binder.illegal_capture");
+    assert_eq!(diag.name(), "outer");
+    assert_eq!(diag.primary_span(), SpanV1::new(20, 25));
+    match diag {
+        BindDiagnosticV1::IllegalCapture { binding_span, .. } => {
+            assert_eq!(*binding_span, SpanV1::new(0, 5));
+        }
+        other => panic!("expected illegal capture, got {other:?}"),
+    }
 }
 
 // (5) ambiguous import (two frozen-graph entries for one name) -> fail closed,

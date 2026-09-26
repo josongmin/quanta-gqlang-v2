@@ -109,6 +109,55 @@ class FrontdoorParityOutputTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unknown CLI line-value escape"):
             decode_line_value("bad\\q")
 
+    def test_cli_complete_and_not_applicable_items_fail_closed(self):
+        plan = (
+            "item[0].plan.authority_lane=closed\n"
+            "item[0].plan.determinism=deterministic\n"
+            "item[0].plan.evidence=complete\n"
+            "item[0].plan.effect=read_only\n"
+            "item[0].plan.result_kind=relation\n"
+            "item[0].plan.capabilities=sample\n"
+            "item[0].cost.estimated_cardinality_class=small\n"
+            "item[0].cost.recursion_risk_class=none\n"
+            "item[0].cost.witness_explosion_risk_class=none\n"
+            "item[0].cost.ordering_contract=none\n"
+        )
+
+        def payload(*, kind=True, plan_text=plan, reason=True):
+            lines = [
+                "analysis.status=incomplete",
+                "analysis.source_id=0",
+                "analysis.item_count=2",
+                "analysis.unresolved_count=1",
+                "analysis.diagnostic_count=0",
+                "item[0].status=complete",
+            ]
+            if kind:
+                lines.append("item[0].kind=relation")
+            if plan_text:
+                lines.append(plan_text.rstrip("\n"))
+            lines.append("item[1].status=not_applicable")
+            if reason:
+                lines.append("item[1].no_plan_reason=closed_authority_incomplete")
+            return ("\n".join(lines) + "\n").encode()
+
+        def parse(value):
+            result = subprocess.CompletedProcess([], 1, stdout=value, stderr=b"")
+            with patch("tools.test_frontdoor_parity.run", return_value=result):
+                return parse_cli(Path("/unused/cli"), "let x = 1", self.env)
+
+        self.assertEqual(parse(payload())["analysis_status"], "incomplete")
+        # a complete item without a plan block is contract-legal
+        parse(payload(plan_text=""))
+        for name, mutant in (
+            ("missing kind", payload(kind=False)),
+            ("missing no_plan_reason", payload(reason=False)),
+            ("partial plan block", payload(plan_text="item[0].plan.authority_lane=closed")),
+        ):
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(ValueError, "CLI output schema drift"):
+                    parse(mutant)
+
     def test_stdio_mixed_channel_and_duplicate_json_key_fail_closed(self):
         valid = b'{"id":"parity","ok":true,"method":"v3_diagnostics","analysis_status":"error","diagnostics":[]}\n'
         mixed = subprocess.CompletedProcess([], 0, stdout=valid, stderr=b"unexpected")

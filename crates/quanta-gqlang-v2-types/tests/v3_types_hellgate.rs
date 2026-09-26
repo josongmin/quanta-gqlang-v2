@@ -85,10 +85,14 @@ fn resolved_inputs_reject_missing_duplicate_foreign_and_extra_entries() {
     let doc = checked_document(symbol);
     let checked = check_document_v2(&doc).unwrap();
     assert_eq!(
-        resolved_type_inputs(checked, vec![], vec![])
-            .unwrap_err()
-            .code(),
-        "types.missing_resolved_input"
+        resolved_type_inputs(checked, vec![], vec![]).unwrap_err(),
+        TypeDiagnosticV2::MissingNodeFact {
+            node_id: key.node_id,
+            location: quanta_gqlang_v2_hir::LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(9),
+                span: SpanV1::new(1, 5),
+            },
+        }
     );
     let entry = ResolvedTypeInputEntryV2 {
         key,
@@ -97,10 +101,29 @@ fn resolved_inputs_reject_missing_duplicate_foreign_and_extra_entries() {
         )),
     };
     assert_eq!(
-        resolved_type_inputs(checked, vec![entry.clone(), entry], vec![])
-            .unwrap_err()
-            .code(),
-        "types.duplicate_resolved_input"
+        resolved_type_inputs(checked, vec![entry.clone(), entry.clone()], vec![]).unwrap_err(),
+        TypeDiagnosticV2::DuplicateNodeFact {
+            node_id: key.node_id,
+            location: quanta_gqlang_v2_hir::LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(9),
+                span: SpanV1::point(0),
+            },
+        }
+    );
+    let extra = ResolvedTypeInputEntryV2 {
+        key: SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(9),
+            node_id: HirNodeIdV1::from_raw(777),
+        },
+        value: ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(
+            ValueTypeV1::string(),
+        )),
+    };
+    assert_eq!(
+        resolved_type_inputs(checked, vec![entry, extra], vec![]).unwrap_err(),
+        TypeDiagnosticV2::ExtraNodeFact {
+            node_id: HirNodeIdV1::from_raw(777),
+        }
     );
     let foreign = ResolvedTypeInputEntryV2 {
         key: SourceQualifiedNodeIdV2 {
@@ -112,10 +135,14 @@ fn resolved_inputs_reject_missing_duplicate_foreign_and_extra_entries() {
         )),
     };
     assert_eq!(
-        resolved_type_inputs(checked, vec![foreign], vec![])
-            .unwrap_err()
-            .code(),
-        "types.foreign_document_input"
+        resolved_type_inputs(checked, vec![foreign], vec![]).unwrap_err(),
+        TypeDiagnosticV2::ForeignDocumentFact {
+            node_id: key.node_id,
+            location: quanta_gqlang_v2_hir::LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(10),
+                span: SpanV1::point(0),
+            },
+        }
     );
 }
 
@@ -312,24 +339,37 @@ fn star_is_accepted_only_for_explicit_count_star_signature() {
 
 #[test]
 fn unknown_and_bad_operator_reject_distinctly() {
-    for (operator, code) in [
-        ("~", "types.unknown_operator"),
-        ("not", "types.bad_overload"),
-    ] {
+    for operator in ["~", "not"] {
         let builder = HirBuilderV1::new();
         let operand = builder.string("x", SpanV1::new(1, 4));
         let unary = builder.unary(operator, operand, SpanV1::new(0, 4));
+        let unary_id = unary.id;
         let doc = checked_document(unary);
         let inputs =
             resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
-        assert_eq!(
-            ExpressionTypeKernelV2::try_closed()
-                .unwrap()
-                .check_document(&inputs)
-                .unwrap_err()
-                .code(),
-            code
-        );
+        let error = ExpressionTypeKernelV2::try_closed()
+            .unwrap()
+            .check_document(&inputs)
+            .unwrap_err();
+        let location = quanta_gqlang_v2_hir::LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(9),
+            span: SpanV1::new(0, 4),
+        };
+        let expected = if operator == "~" {
+            TypeDiagnosticV2::UnknownOperator {
+                node_id: unary_id,
+                symbol: "~".into(),
+                location,
+            }
+        } else {
+            TypeDiagnosticV2::BadOverload {
+                node_id: unary_id,
+                name: "not".into(),
+                operands: vec![ValueTypeV1::string()],
+                location,
+            }
+        };
+        assert_eq!(error, expected, "wrong diagnostic for {operator}");
     }
 }
 
@@ -353,9 +393,14 @@ fn unused_contextual_input_rejects_during_kernel_finalization() {
         ExpressionTypeKernelV2::try_closed()
             .unwrap()
             .check_document(&inputs)
-            .unwrap_err()
-            .code(),
-        "types.unused_contextual_input"
+            .unwrap_err(),
+        TypeDiagnosticV2::UnusedContextualInput {
+            node_id: list.id,
+            location: quanta_gqlang_v2_hir::LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(9),
+                span: SpanV1::new(0, 2),
+            },
+        }
     );
 }
 
@@ -653,6 +698,18 @@ fn host_predicate_key_is_bounded_exact_and_disjoint_from_source_ids() {
     )
     .unwrap();
     assert_eq!(exact.canonical_bytes().len(), len);
+    let mut expected = Vec::new();
+    expected.extend_from_slice(b"gqlang-host-predicate-v2\0");
+    expected.extend_from_slice(&10u64.to_be_bytes());
+    expected.extend_from_slice(b"pkg::inner");
+    expected.push(1);
+    expected.extend_from_slice(&u64::try_from(local.len()).unwrap().to_be_bytes());
+    expected.extend_from_slice(local.as_bytes());
+    assert_eq!(
+        exact.canonical_bytes(),
+        expected.as_slice(),
+        "the host key encoding must pin prefix, big-endian lengths, kind tag, and payload"
+    );
     assert_eq!(
         ResolvedPredicateIdV2::try_new(&local).unwrap_err().code(),
         "types.invalid_resolved_identity"

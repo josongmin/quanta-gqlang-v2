@@ -1004,6 +1004,38 @@ fn external_catalog_validates_payload_and_dependency_kinds() {
         .unwrap_err();
     assert_eq!(error.code(), "modules.catalog_payload_kind_mismatch");
     assert_eq!(error.primary().unwrap().span, SpanV1::new(10, 11));
+
+    // A dependency whose authored reference kind differs from its
+    // `expected_kind` is rejected at external-catalog ingress before resolution.
+    let mut wrong_kind = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
+    let app = module_id(&sources, "app", 11);
+    wrong_kind
+        .try_add_module(ModuleNodeInputV2 {
+            module_id: app,
+            location: checked(&sources, 1, 12),
+        })
+        .unwrap();
+    let error = wrong_kind
+        .try_add_external(ExternalCatalogAssetInputV2 {
+            module_name: "ext".into(),
+            local_name: "view".into(),
+            kind_token: "view".into(),
+            typed_payload: ExternalCatalogPayloadInputV2::View(
+                RelationTypeV1::try_new(RecordTypeV1::try_new(vec![]).unwrap(), CardinalityV1::Set)
+                    .unwrap(),
+            ),
+            provenance: "host".into(),
+            location: checked(&sources, 1, 14),
+            dependencies: vec![ExternalCatalogDependencyInputV2 {
+                target: asset_ref(&sources, &ext, NamespaceKindV2::Value, "base", 15),
+                expected_kind: NamespaceKindV2::View,
+                location: checked(&sources, 1, 16),
+            }],
+        })
+        .unwrap_err();
+    assert_eq!(error.code(), "modules.catalog_dependency_kind_conflict");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(16, 17));
+    assert!(error.secondary().is_none());
 }
 
 #[test]
@@ -1790,6 +1822,20 @@ fn pack_lock_digest_version_and_reference_are_sealed() {
     );
     let error = pack_authority(|text| text.replacen("1.0.0", "1.0.1", 1)).unwrap_err();
     assert_eq!(error.code(), "modules.lock_mismatch");
+    assert_eq!(
+        error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(2),
+            span: SpanV1::new(0, 82),
+        }
+    );
+    assert_eq!(
+        error.secondary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(1),
+            span: SpanV1::new(6, 7),
+        }
+    );
     let error = pack_authority(|text| {
         let mut bytes = text.into_bytes();
         let index = bytes.len() - 2;
@@ -1798,8 +1844,30 @@ fn pack_lock_digest_version_and_reference_are_sealed() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.lock_mismatch");
+    assert_eq!(
+        error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(2),
+            span: SpanV1::new(0, 82),
+        }
+    );
+    assert_eq!(
+        error.secondary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(1),
+            span: SpanV1::new(6, 7),
+        }
+    );
     let error = pack_authority(|text| text.replacen(' ', "  ", 1)).unwrap_err();
     assert_eq!(error.code(), "modules.invalid_lock_syntax");
+    assert_eq!(
+        error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(2),
+            span: SpanV1::new(0, 83),
+        }
+    );
+    assert!(error.secondary().is_none());
 }
 
 #[test]
@@ -3129,6 +3197,8 @@ fn duplicate_dependency_rejects_even_when_ranges_match() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.duplicate_pack_dependency");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(40, 41));
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(30, 31));
 }
 
 #[test]
@@ -3390,6 +3460,14 @@ fn lock_missing_and_stale_pins_are_both_rejected() {
     })
     .unwrap_err();
     assert_eq!(missing_error.code(), "modules.lock_mismatch");
+    assert_eq!(
+        missing_error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(1),
+            span: SpanV1::new(23, 24),
+        }
+    );
+    assert!(missing_error.secondary().is_none());
 
     let stale = format!("a 1.0.0 {zeros}\nb 1.0.0 {zeros}\n");
     let stale_error = finish_pack_inputs(Some(&stale), |sources| {
@@ -3405,6 +3483,14 @@ fn lock_missing_and_stale_pins_are_both_rejected() {
     })
     .unwrap_err();
     assert_eq!(stale_error.code(), "modules.lock_mismatch");
+    assert_eq!(
+        stale_error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(2),
+            span: SpanV1::new(73, 145),
+        }
+    );
+    assert!(stale_error.secondary().is_none());
 }
 
 #[test]

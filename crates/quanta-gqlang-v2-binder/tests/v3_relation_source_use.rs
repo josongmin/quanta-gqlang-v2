@@ -86,16 +86,14 @@ fn composition_self_and_forward_sources_never_fall_back_to_host() {
             first.into(),
         );
         let later_binding = b.composition_binding("later", SpanV1::new(60, 65), second.into());
-        let body = b.query(
-            b.relation_source(
-                first_name,
-                SpanV1::new(70, 70 + first_name.len()),
-                None,
-                SpanV1::new(70, 70 + first_name.len()),
-            ),
+        let body_source = b.relation_source(
+            first_name,
+            SpanV1::new(70, 70 + first_name.len()),
             None,
-            SpanV1::new(68, 82),
+            SpanV1::new(70, 70 + first_name.len()),
         );
+        let body_source_id = body_source.id;
+        let body = b.query(body_source, None, SpanV1::new(68, 82));
         let composition = b.composition(
             vec![first_binding, later_binding],
             first_name,
@@ -107,8 +105,32 @@ fn composition_self_and_forward_sources_never_fall_back_to_host() {
         let mut binder = Binder::new(&graph);
         binder.resolve_composition(&composition);
         let result = binder.finish();
+        assert_eq!(
+            result.diagnostics().len(),
+            1,
+            "only the forbidden composition source may reject; got {:?}",
+            result.diagnostics()
+        );
         assert!(matches!(result.diagnostics().first(),
             Some(BindDiagnosticV1::Unresolved { name, .. }) if name == first_source));
+        // the valid body source still resolves to its own LET working set.
+        assert!(
+            matches!(
+                result.target_of_use(
+                    body_source_id,
+                    SpanV1::new(70, 70 + first_name.len()),
+                    first_name
+                ),
+                Some(ResolvedTargetV1::Local(binding))
+                    if binding.kind == BinderKindV1::CompositionLet
+            ),
+            "body source `{first_name}` must resolve to the LET; got {:?}",
+            result.target_of_use(
+                body_source_id,
+                SpanV1::new(70, 70 + first_name.len()),
+                first_name
+            )
+        );
     }
 }
 

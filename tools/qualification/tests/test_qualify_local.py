@@ -308,7 +308,8 @@ class QualificationDriverTest(unittest.TestCase):
             '[toolchain]\nchannel = "1.81.0"\n', encoding="utf-8"
         )
         (self.repo / "Justfile").write_text("ci:\n    @true\n", encoding="utf-8")
-        run(["git", "add", "Justfile", "rust-toolchain.toml"], self.repo)
+        (self.repo / "Cargo.lock").write_text("version = 3\n", encoding="utf-8")
+        run(["git", "add", "Justfile", "rust-toolchain.toml", "Cargo.lock"], self.repo)
         run(["git", "commit", "-qm", "fixture-qualifier"], self.repo)
         sha, tree = self.pin()
         with redirect_stdout(io.StringIO()):
@@ -330,7 +331,10 @@ class QualificationDriverTest(unittest.TestCase):
             receipt["tool_versions"]["rustc"].startswith("rustc "),
             receipt["tool_versions"]["rustc"],
         )
-        self.assertEqual(receipt["source_hashes"], {})
+        self.assertEqual(
+            receipt["source_hashes"],
+            {"Cargo.lock": hashlib.sha256(b"version = 3\n").hexdigest()},
+        )
         self.assertIsNone(receipt["nextest"])
         self.assertIsNone(receipt["nextest_raw"])
         log = (self.driver.root / sha / "ci.log").read_bytes()

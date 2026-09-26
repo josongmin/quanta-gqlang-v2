@@ -169,6 +169,7 @@ fn post_group_partition_alias_cannot_be_rebound_to_a_declaration_or_import() {
             Some(alias("r", 10)),
             SpanV1::new(0, 11),
         );
+        let scan_id = scan.id;
         let group = b
             .group_by(
                 scan,
@@ -176,6 +177,7 @@ fn post_group_partition_alias_cannot_be_rebound_to_a_declaration_or_import() {
                 SpanV1::new(0, 21),
             )
             .unwrap();
+        let group_id = group.id;
         let reference = b.symbol("r", SpanV1::new(37, 38));
         let reference_id = reference.id;
         let arg = b
@@ -227,7 +229,14 @@ fn post_group_partition_alias_cannot_be_rebound_to_a_declaration_or_import() {
                 panic!("pre-group alias required")
             };
             assert_eq!(binding.name, "r");
-            assert_eq!(result.partition_candidates().len(), 1);
+            assert_eq!(binding.identity(), (scan_id, 0));
+            let candidates = result.partition_candidates().collect::<Vec<_>>();
+            assert_eq!(candidates.len(), 1);
+            let candidate = candidates[0];
+            assert_eq!(candidate.reference(), reference_id);
+            assert_eq!(candidate.group(), group_id);
+            assert_eq!(candidate.binding().identity(), (scan_id, 0));
+            assert_eq!(candidate.span(), SpanV1::new(37, 38));
         } else {
             assert_eq!(
                 result.diagnostics()[0].code(),
@@ -859,7 +868,13 @@ fn relational_exists_records_exact_nonempty_and_explicit_empty_capture_sets() {
     assert!(result.has_capture_set(uncorrelated_id));
     assert!(result.capture_edges(uncorrelated_id).is_empty());
     let capture_sets = result.capture_sets().collect::<Vec<_>>();
-    assert_eq!(capture_sets.len(), 2);
+    assert_eq!(
+        capture_sets,
+        vec![
+            (correlated_id, [(outer_capture.id, outer.id, 0)].as_slice()),
+            (uncorrelated_id, [].as_slice()),
+        ]
+    );
 }
 
 #[test]

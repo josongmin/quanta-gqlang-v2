@@ -287,6 +287,8 @@ fn optional_catalog_probe_keeps_absent_host_names_open_but_rejects_wrong_kind() 
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.catalog_reference_kind_mismatch");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(32, 33));
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(20, 21));
 }
 
 #[test]
@@ -879,6 +881,13 @@ fn view_cycle_remains_view_only_and_foreign_registry_rejects() {
         }])
         .unwrap_err();
     assert_eq!(error.code(), "modules.source_registry_mismatch");
+    assert_eq!(
+        error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(10),
+            span: SpanV1::new(20, 21),
+        }
+    );
 }
 
 #[test]
@@ -1227,6 +1236,13 @@ fn host_predicate_proof_preserves_exact_catalog_id_signature_and_session() {
         .validate_host_predicate_proof(&proof, proof.key(), &wrong_location)
         .unwrap_err();
     assert_eq!(error.code(), "modules.host_predicate_proof_mismatch");
+    assert_eq!(
+        error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(9),
+            span: SpanV1::new(42, 43),
+        }
+    );
 
     let mut wrong_target_validator =
         DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
@@ -1259,6 +1275,13 @@ fn host_predicate_proof_preserves_exact_catalog_id_signature_and_session() {
         .validate_host_predicate_proof(&wrong_target_proof, &wrong_target_key, &call_location)
         .unwrap_err();
     assert_eq!(error.code(), "modules.host_predicate_proof_mismatch");
+    assert_eq!(
+        error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(9),
+            span: SpanV1::new(41, 42),
+        }
+    );
 
     let mut other = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
     other.predeclare_assets(Vec::new()).unwrap();
@@ -1266,6 +1289,13 @@ fn host_predicate_proof_preserves_exact_catalog_id_signature_and_session() {
         .validate_host_predicate_proof(&proof, proof.key(), &call_location)
         .unwrap_err();
     assert_eq!(error.code(), "modules.source_registry_mismatch");
+    assert_eq!(
+        error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(9),
+            span: SpanV1::new(41, 42),
+        }
+    );
 }
 
 #[test]
@@ -1355,6 +1385,13 @@ fn host_predicate_rejects_wrong_kind_ambiguity_and_missing_signature() {
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.missing_host_predicate_signature");
+    assert_eq!(
+        error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(9),
+            span: SpanV1::new(51, 52),
+        }
+    );
 }
 
 #[test]
@@ -1448,6 +1485,13 @@ fn imported_predicate_alias_uses_underlying_external_id_and_unproven_alias_rejec
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.unknown_catalog_reference");
+    assert_eq!(
+        error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(9),
+            span: SpanV1::new(61, 62),
+        }
+    );
 }
 
 #[test]

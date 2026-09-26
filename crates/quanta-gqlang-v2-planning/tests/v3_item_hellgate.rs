@@ -42,13 +42,17 @@ use quanta_gqlang_v2_planning::{
     WitnessExplosionRiskClassV2, WitnessSelectionPolicyV2,
 };
 use quanta_gqlang_v2_sema::test_support::ReferencePresentationFixtureV2;
-use quanta_gqlang_v2_sema::test_support::{ReferenceRelationFixtureV2, ReferenceRuleFixtureV2};
+use quanta_gqlang_v2_sema::test_support::{
+    ReferenceCompositionBodyV2, ReferenceRelationFixtureV2, ReferenceRuleFixtureV2,
+};
 use quanta_gqlang_v2_sema::{EvidenceModeV1, GraphQueryKindV1, SemanticItemV2, TruthModeV1};
 use quanta_gqlang_v2_types::ResolvedPredicateIdV2;
 
 mod support;
 
-use support::{check_input, graph_input, planned_relation, relational_policy, rule_input};
+use support::{
+    check_input, composition_input, graph_input, planned_relation, relational_policy, rule_input,
+};
 
 /// A stable predicate identity for the recursive-member assertions.
 fn predicate(name: &str) -> ResolvedPredicateIdV2 {
@@ -296,6 +300,11 @@ fn a_rule_program_retains_its_exact_stratified_policy() {
             2,
             Vec::new(),
         ),
+        (
+            ReferenceRuleFixtureV2::AggregatedNonRecursiveDependency,
+            2,
+            Vec::new(),
+        ),
     ] {
         let (document, input) = rule_input(fixture).expect("the rule fixture seals");
         let planned = plan(&input, document.document()).expect("the program plans");
@@ -455,6 +464,16 @@ fn the_plan_policy_vocabulary_is_closed_per_arm() {
         PlanPolicyV2::MetaRequireCertified.keyword(),
         "meta_require_certified"
     );
+
+    let (document, input) =
+        composition_input(ReferenceCompositionBodyV2::Relational).expect("composition fixture");
+    assert_eq!(
+        plan(&input, document.document())
+            .expect("the composition plans")
+            .policy()
+            .keyword(),
+        "composition"
+    );
 }
 
 /// A relational carrier is exactly ticket 05's sealed lowering product: the
@@ -490,6 +509,8 @@ fn every_reanchored_exists_family_plans_from_its_sealed_owner() {
         ReferenceRelationFixtureV2::CorrelatedExists,
         ReferenceRelationFixtureV2::CorrelatedNotExists,
         ReferenceRelationFixtureV2::NestedExistsTwoLevels,
+        ReferenceRelationFixtureV2::ExistsWithMultiplicativeRight,
+        ReferenceRelationFixtureV2::ConjunctiveExistsPair,
     ] {
         let (document, input) = support::relation_input(fixture).expect("the fixture lowers");
         let SemanticPlanInputV2::Relational(carrier) = &input else {

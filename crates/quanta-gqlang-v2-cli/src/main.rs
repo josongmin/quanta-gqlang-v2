@@ -254,6 +254,7 @@ mod tests {
             5,
         )
         .expect("two arguments plus separator fit exactly");
+        assert_eq!(exact.command, CliCommandKindV2::Query);
         assert_eq!(exact.input, "ab cd");
 
         let error = parse_invocation(
@@ -283,6 +284,7 @@ mod tests {
             2,
         )
         .expect("empty first argument and separator fit exactly");
+        assert_eq!(exact.command, CliCommandKindV2::Query);
         assert_eq!(exact.input, " x");
 
         let error = parse_invocation(
@@ -308,6 +310,7 @@ mod tests {
             3,
         )
         .expect("two leading empty arguments retain both separators");
+        assert_eq!(repeated.command, CliCommandKindV2::Query);
         assert_eq!(repeated.input, "  x");
     }
 

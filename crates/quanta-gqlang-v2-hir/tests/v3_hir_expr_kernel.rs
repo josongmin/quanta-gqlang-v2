@@ -10,9 +10,9 @@ use std::collections::HashSet;
 use quanta_gqlang_v2_hir::{
     check_tree, walk_bool, walk_query, walk_relation, walk_shape, walk_value, AliasV1,
     BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CallArgsHirV1, HirBuilderV1, HirNodeIdV1,
-    HirRootRefV1, HirVisitorV1, PathSegmentV1, ProjectionItemV1, QueryHirV1, RecordFieldV1,
-    RelationExprHirV1, RelationExprKindV1, ResultShapeHirV1, ResultShapeKindV1, ShapeFieldV1,
-    SpanV1, ValueExprHirV1, ValueExprKindV1,
+    HirRootRefV1, HirVisitorV1, NonEmptyBindersV1, PathSegmentV1, ProjectionItemV1, QueryHirV1,
+    RecordFieldV1, RelationExprHirV1, RelationExprKindV1, ResultShapeHirV1, ResultShapeKindV1,
+    ShapeFieldV1, SpanV1, ValueExprHirV1, ValueExprKindV1,
 };
 
 /// Collects every visited node's (id, span) across all node kinds.
@@ -146,6 +146,30 @@ fn call_args_reject_mixed_and_multiple_star_states() {
         CallArgsHirV1::try_new(vec![CallArgHirV1::star(span), CallArgHirV1::star(span),]).is_err()
     );
     assert!(CallArgsHirV1::try_new(vec![CallArgHirV1::star(span)]).is_ok());
+}
+
+/// The checked non-empty carriers must reject the empty input with their exact
+/// message, both directly and through the public builder.
+#[test]
+fn nonempty_carriers_reject_empty_inputs_with_exact_messages() {
+    let builder = HirBuilderV1::new();
+    assert_eq!(
+        NonEmptyBindersV1::try_new(Vec::new()).unwrap_err(),
+        "logical quantifier requires at least one binder"
+    );
+    let source = builder.relation_source("users", SpanV1::new(0, 5), None, SpanV1::new(0, 5));
+    assert_eq!(
+        builder
+            .group_by(source.clone(), Vec::new(), SpanV1::new(0, 5))
+            .unwrap_err(),
+        "relation stage requires at least one key"
+    );
+    assert_eq!(
+        builder
+            .order_by(source, Vec::new(), SpanV1::new(0, 5))
+            .unwrap_err(),
+        "relation stage requires at least one key"
+    );
 }
 
 /// Scenario 2: bool formula `(x > 1) and (y = 2 or z)` — grouping preserved.
@@ -289,6 +313,10 @@ fn relation_projection_with_aliases_and_nested_list() {
     let mut collector = NodeCollector::default();
     collector.visit_relation(&proj);
     assert_unique_ids(&collector.ids);
+    // Anchor the visitor count to the independent builder mint counter so a
+    // non-recursive `walk_relation` (1 visited vs 1 node) cannot satisfy the
+    // self-comparison below.
+    assert_eq!(collector.ids.len(), usize::try_from(b.minted()).unwrap());
     assert_eq!(checked.node_count(), collector.ids.len());
 }
 

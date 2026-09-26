@@ -130,6 +130,10 @@ fn help_aliases_are_stdout_only_successes() {
 fn command_and_file_arity_errors_are_exact_usage_failures() {
     assert_usage_error(&[], "missing command");
     assert_usage_error(&["unknown", "x"], "unsupported command `unknown`");
+    // `help`/`--help` are bare-arity successes only; any extra argv makes them
+    // an ordinary unsupported command, so the arity gate cannot widen silently.
+    assert_usage_error(&["help", "x"], "unsupported command `help`");
+    assert_usage_error(&["--help", "x"], "unsupported command `--help`");
     assert_usage_error(&["query"], "missing input or --file <path>");
     assert_usage_error(
         &["query", "--file"],
@@ -231,7 +235,12 @@ fn formatter_failure_is_stderr_only_and_nonzero() {
     assert!(cli_stdout_v1(&output).is_empty());
     let stderr = cli_stderr_v1(&output);
     assert!(stderr.starts_with("cli.error.class=command\nanalysis.status=error\n"));
-    assert!(stderr.contains("diagnostic[0].code=surface.parse."));
+    assert!(
+        stderr
+            .lines()
+            .any(|line| line == "diagnostic[0].code=surface.parse.unexpected_eof"),
+        "{stderr}"
+    );
 }
 
 #[test]
@@ -381,7 +390,11 @@ fn file_input_accepts_regular_symlink_and_rejects_nonregular_nodes() {
     ]);
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stderr.is_empty());
-    assert!(cli_stdout_v1(&output).contains("analysis.status=incomplete"));
+    let stdout = cli_stdout_v1(&output);
+    assert!(
+        stdout.lines().any(|line| line == "analysis.status=incomplete"),
+        "{stdout}"
+    );
 
     for path in [std::env::temp_dir(), PathBuf::from("/dev/null")] {
         let output = run_os_bounded(&[

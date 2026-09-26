@@ -397,6 +397,11 @@ fn implicit_group_semantic_steps_fail_at_the_exact_limit_and_one_over() {
     // Discover the exact charge sum of the documented tiny fixture, then
     // prove the boundary: success at the exact limit, resource failure with
     // the authored span and code one step below.
+    // The documented tiny fixture charges exactly six semantic steps. The
+    // pinned constant keeps the boundary test from being self-calibrated: a
+    // charge-model drift shifts the discovered limit and fails here even
+    // though the limit/one-over symmetry alone would still hold.
+    const SCALAR_COUNT_STAR_STEPS: u32 = 6;
     let mut exact = None;
     for limit in 1..=64u32 {
         if let Ok(budget) = document_budget(limit, 6, 9) {
@@ -409,6 +414,10 @@ fn implicit_group_semantic_steps_fail_at_the_exact_limit_and_one_over() {
     let exact = exact.unwrap_or_else(|| {
         panic!("scalar aggregate fixture must resolve within a bounded step budget");
     });
+    assert_eq!(
+        exact, SCALAR_COUNT_STAR_STEPS,
+        "the discovered charge must match the pinned fixture charge"
+    );
     let at_limit = document_budget(exact, 6, 9).unwrap();
     let document = resolve_scalar(&at_limit).unwrap();
     assert_eq!(document.budget_receipt().max_semantic_steps(), exact);

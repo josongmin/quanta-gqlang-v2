@@ -35,7 +35,8 @@ use quanta_gqlang_v2_pipeline::{
     ExecutionCallTargetV3, ExecutionCardinalityV3, ExecutionCompositionBodyV3,
     ExecutionCompositionProducerV3, ExecutionExpressionShapeV3, ExecutionFamilyV3,
     ExecutionGraphCapabilityV3, ExecutionGraphDedupIdentityV3, ExecutionGraphDirectionV3,
-    ExecutionGraphKindV3, ExecutionGraphReferenceRoleV3, ExecutionGraphRelationShapeV3,
+    ExecutionGraphKindV3, ExecutionGraphReferenceKindV3, ExecutionGraphReferenceRoleV3,
+    ExecutionGraphRelationShapeV3,
     ExecutionGraphTargetV3, ExecutionGraphWitnessTieBreakV3, ExecutionLiteralV3,
     ExecutionRelationAuthorityV3, ExecutionRelationV3, ExecutionRelationalOperatorV3,
     ExecutionSampleModeV3, ExecutionScalarTypeV3, ExecutionSchemaV3, ExecutionSourceKindV3,
@@ -410,6 +411,22 @@ fn compiled_item_order_is_the_authored_source_order() {
         .map(CompiledItemV2::item_id)
         .collect();
     assert_eq!(assembled, order);
+
+    // A multi-item source discriminates ORDER, not just membership: with three
+    // authored items the compiled sequence must match the document order
+    // element-by-element.
+    let multi = compile_source_document_v3(DOC_SOURCE, MINIMAL_SOURCE, &minimal_authority())
+        .expect("the minimal three-item document compiles");
+    assert_eq!(multi.items().len(), 3);
+    let authored: Vec<SemanticItemIdV2> = resolve_minimal_document(&minimal_authority())
+        .order()
+        .to_vec();
+    let assembled: Vec<SemanticItemIdV2> = multi
+        .items()
+        .iter()
+        .map(CompiledItemV2::item_id)
+        .collect();
+    assert_eq!(assembled, authored);
 }
 
 #[test]
@@ -1208,6 +1225,14 @@ fn inline_view_is_algebra_checked_before_its_catalog_no_plan_outcome() {
             ..
         }]
     ));
+
+    // Negative control: an inline View whose `select` body names an unknown
+    // relation must be rejected by Sema before any catalog non-plan outcome, so
+    // the positive case cannot stay green if the body traversal is dropped.
+    let unresolved = "view active | select=from missing_relation r | project r.id as id";
+    let error = compile_source_document_v3(DOC_SOURCE, unresolved, &authority_with_records())
+        .expect_err("an unresolvable view body must not reach catalog disposition");
+    assert_eq!(failure_code(&error), "sema.unresolved_reference");
 }
 
 #[test]
@@ -1490,13 +1515,32 @@ fn graph_composition_producer_is_logic_checked_and_fully_projected() {
         ExecutionGraphDedupIdentityV3::Endpoints
     );
     assert_eq!(body.max_path_length(), Some(3));
-    assert!(matches!(
+    // Full role/target retention: the composition source and the host sink,
+    // not merely the first target's shape.
+    assert_eq!(body.references().len(), 2, "body carries source and sink only");
+    assert_eq!(
+        body.references()[0].role(),
+        ExecutionGraphReferenceRoleV3::Source
+    );
+    assert_eq!(
         body.references()[0].target(),
-        ExecutionGraphTargetV3::Composition {
+        &ExecutionGraphTargetV3::Composition {
+            binding: composition.bindings()[0].binding().clone(),
             capability: ExecutionGraphCapabilityV3::Entity,
-            ..
         }
-    ));
+    );
+    assert_eq!(
+        body.references()[1].role(),
+        ExecutionGraphReferenceRoleV3::Sink
+    );
+    assert_eq!(
+        body.references()[1].target(),
+        &ExecutionGraphTargetV3::Host {
+            kind: ExecutionGraphReferenceKindV3::Entity,
+            spelling: "db.write".to_owned(),
+            entity_subtype: None,
+        }
+    );
     assert_eq!(
         composition.with_binding(),
         composition.bindings()[0].binding()

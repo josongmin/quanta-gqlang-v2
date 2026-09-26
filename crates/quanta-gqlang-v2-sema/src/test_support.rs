@@ -4951,12 +4951,31 @@ mod w4d_tests {
                     })?;
                 match document.presentation().kind() {
                     crate::ResolvedPresentationKindV2::Explain {
+                        target,
                         evidence: sealed_evidence,
                         truth: sealed_truth,
-                        ..
                     } => {
                         assert_eq!(*sealed_evidence, evidence);
                         assert_eq!(*sealed_truth, truth);
+                        let crate::ResolvedExplainTargetV2::Entity(target) = target else {
+                            return Err(
+                                "EXPLAIN must resolve the authored host entity selector".to_owned()
+                            );
+                        };
+                        let selector = target
+                            .target()
+                            .host_selector()
+                            .ok_or("EXPLAIN target must stay host-owned")?;
+                        assert_eq!(
+                            selector.spelling(),
+                            REFERENCE_PRESENTATION_ENTITY_SELECTOR_V2
+                        );
+                        assert_eq!(selector.kind(), GraphReferenceKindV2::Entity);
+                        assert_eq!(
+                            selector.entity_subtype(),
+                            Some(REFERENCE_PRESENTATION_ENTITY_SUBTYPE_V2)
+                        );
+                        assert_eq!(target.location().location().span, SpanV1::new(8, 15));
                     }
                     other => return Err(format!("EXPLAIN payload expected, got {other:?}")),
                 }
@@ -4972,6 +4991,7 @@ mod w4d_tests {
         let assert_use = |reference: &crate::ResolvedGraphUseV2,
                           spelling: &str,
                           kind: GraphReferenceKindV2,
+                          entity_subtype: Option<&str>,
                           span: SpanV1|
          -> Result<(), String> {
             let target = reference
@@ -4980,6 +5000,7 @@ mod w4d_tests {
                 .ok_or("expected a host presentation selector")?;
             assert_eq!(target.spelling(), spelling);
             assert_eq!(target.kind(), kind);
+            assert_eq!(target.entity_subtype(), entity_subtype);
             assert_eq!(
                 reference.location().location(),
                 LocatedSpanV2 {
@@ -5007,29 +5028,39 @@ mod w4d_tests {
             target,
             REFERENCE_PRESENTATION_ENTITY_SELECTOR_V2,
             GraphReferenceKindV2::Entity,
+            Some(REFERENCE_PRESENTATION_ENTITY_SUBTYPE_V2),
             SpanV1::new(17, 24),
         )?;
 
         let sample = reference_presentation_document_v2(ReferencePresentationFixtureV2::Sample)?;
-        assert!(matches!(
-            sample.presentation().kind(),
-            crate::ResolvedPresentationKindV2::Sample { limit, scope: None, .. }
-                if *limit == REFERENCE_PRESENTATION_SAMPLE_LIMIT_V2
-        ));
+        let crate::ResolvedPresentationKindV2::Sample {
+            query_text,
+            mode: SampleModeV1::Lexical,
+            limit,
+            scope: None,
+        } = sample.presentation().kind()
+        else {
+            return Err("expected an unscoped LEXICAL SAMPLE presentation".to_owned());
+        };
+        assert_eq!(query_text.as_str(), "auth");
+        assert_eq!(*limit, REFERENCE_PRESENTATION_SAMPLE_LIMIT_V2);
         let sample_with_scope =
             reference_presentation_document_v2(ReferencePresentationFixtureV2::SampleWithScope)?;
         let crate::ResolvedPresentationKindV2::Sample {
+            query_text,
+            mode: SampleModeV1::Lexical,
             scope: Some(scope),
             limit: REFERENCE_PRESENTATION_SAMPLE_LIMIT_V2,
-            ..
         } = sample_with_scope.presentation().kind()
         else {
             return Err("expected scoped SAMPLE presentation".to_owned());
         };
+        assert_eq!(query_text.as_str(), "auth");
         assert_use(
             scope,
             REFERENCE_PRESENTATION_SCOPE_SELECTOR_V2,
             GraphReferenceKindV2::Scope,
+            None,
             SpanV1::new(20, 27),
         )?;
 
@@ -5046,12 +5077,14 @@ mod w4d_tests {
             baseline,
             REFERENCE_PRESENTATION_BASELINE_SELECTOR_V2,
             GraphReferenceKindV2::Snapshot,
+            None,
             SpanV1::new(17, 27),
         )?;
         assert_use(
             candidate,
             REFERENCE_PRESENTATION_CANDIDATE_SELECTOR_V2,
             GraphReferenceKindV2::Snapshot,
+            None,
             SpanV1::new(30, 41),
         )?;
 
@@ -5068,6 +5101,7 @@ mod w4d_tests {
             source,
             REFERENCE_PRESENTATION_EXPORT_SELECTOR_V2,
             GraphReferenceKindV2::ExportSource,
+            None,
             SpanV1::new(14, 27),
         )?;
         Ok(())
@@ -5223,6 +5257,11 @@ mod w4d_tests {
 
         let over =
             forged_small_receipt_rule_program_document_v2(SMALL_BUDGET_RULE_PROGRAM_OVER_MEMBERS)?;
+        assert_eq!(
+            over.budget().max_semantic_steps(),
+            SMALL_BUDGET_MAX_SEMANTIC_STEPS,
+            "the one-over document must still carry the sealed small receipt"
+        );
         assert_eq!(
             reference_rule_program_charge_v2(SMALL_BUDGET_RULE_PROGRAM_OVER_MEMBERS),
             SMALL_BUDGET_MAX_SEMANTIC_STEPS + 1

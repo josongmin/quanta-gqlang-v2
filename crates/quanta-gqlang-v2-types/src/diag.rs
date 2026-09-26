@@ -384,7 +384,7 @@ impl std::error::Error for TypeDiagnosticV2 {}
 
 #[cfg(test)]
 mod tests {
-    use super::TypeDiagnosticV2;
+    use super::{diagnostic_excerpt, TypeAuthorityDiagnosticV2, TypeDiagnosticV2};
     use crate::ValueTypeV1;
     use quanta_gqlang_v2_hir::{HirNodeIdV1, LocatedSpanV2, SourceIdV2, SpanV1};
 
@@ -859,6 +859,109 @@ mod tests {
                 "wrong display for {diagnostic:?}"
             );
         }
+    }
+
+    #[test]
+    fn every_authority_diagnostic_pins_code_and_display() {
+        let location = LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(7),
+            span: SpanV1::new(3, 5),
+        };
+        let cases = vec![
+            (
+                TypeAuthorityDiagnosticV2::InvalidAuthorityBudget,
+                "types.invalid_authority_budget",
+                "types.invalid_authority_budget",
+            ),
+            (
+                TypeAuthorityDiagnosticV2::ResourceExhausted {
+                    dimension: "relations",
+                    limit: 4,
+                    observed: 5,
+                },
+                "types.resource_exhausted",
+                "types.resource_exhausted: relations limit 4, observed 5",
+            ),
+            (
+                TypeAuthorityDiagnosticV2::DuplicateRelationSource {
+                    name: "users".into(),
+                    primary: location,
+                    secondary: location,
+                },
+                "types.duplicate_relation_source",
+                "types.duplicate_relation_source: duplicate relation lookup name `users`",
+            ),
+            (
+                TypeAuthorityDiagnosticV2::DuplicateRelationSourceId {
+                    id: "pkg::users".into(),
+                    primary: location,
+                    secondary: location,
+                },
+                "types.duplicate_relation_source_id",
+                "types.duplicate_relation_source_id: duplicate relation source id `pkg::users`",
+            ),
+            (
+                TypeAuthorityDiagnosticV2::InvalidSourceLocation { location },
+                "types.invalid_source_location",
+                "types.invalid_source_location",
+            ),
+            (
+                TypeAuthorityDiagnosticV2::SourceRegistryMismatch { location },
+                "types.source_registry_mismatch",
+                "types.source_registry_mismatch",
+            ),
+            (
+                TypeAuthorityDiagnosticV2::InvalidCanonicalName {
+                    name: "pkg users".into(),
+                    location,
+                },
+                "types.invalid_canonical_name",
+                "types.invalid_canonical_name: invalid canonical name `pkg users`",
+            ),
+            (
+                TypeAuthorityDiagnosticV2::InvalidRelationAuthority {
+                    authority: "sandbox",
+                    location,
+                },
+                "types.invalid_relation_authority",
+                "types.invalid_relation_authority: invalid `sandbox` identity or shape",
+            ),
+            (
+                TypeAuthorityDiagnosticV2::InvalidRelationType(TypeDiagnosticV2::InvalidTypeName {
+                    location,
+                }),
+                "types.invalid_type_name",
+                "types.invalid_type_name",
+            ),
+        ];
+        assert_eq!(
+            cases.len(),
+            9,
+            "every TypeAuthorityDiagnosticV2 variant must be pinned exactly once"
+        );
+        for (diagnostic, code, display) in cases {
+            assert_eq!(diagnostic.code(), code, "wrong code for {diagnostic:?}");
+            assert_eq!(
+                diagnostic.to_string(),
+                display,
+                "wrong display for {diagnostic:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn diagnostic_excerpt_truncates_without_splitting_a_scalar() {
+        let ascii = "a".repeat(200);
+        assert_eq!(diagnostic_excerpt(&ascii), "a".repeat(128).as_str());
+        assert_eq!(diagnostic_excerpt("short"), "short");
+        let mut value = "a".repeat(126);
+        value.push('€');
+        value.push_str(&"b".repeat(10));
+        assert_eq!(
+            diagnostic_excerpt(&value),
+            "a".repeat(126).as_str(),
+            "the excerpt must back up to the last char boundary at or before 128"
+        );
     }
 }
 

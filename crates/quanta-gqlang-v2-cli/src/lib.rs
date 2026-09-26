@@ -92,23 +92,26 @@ mod tests {
     #[test]
     fn command_authority_is_single_and_closed() {
         let from_specs: Vec<&str> = CLI_COMMAND_SPECS_V1.iter().map(|spec| spec.token).collect();
+        assert_eq!(from_specs, ["query", "fmt", "v3-query", "v3-fmt"]);
         assert_eq!(from_specs, CLI_COMMAND_TOKENS_V1);
         assert_eq!(cli_command_alternation_v1(), "<query|fmt|v3-query|v3-fmt>");
         let mut seen = std::collections::HashSet::new();
         for spec in CLI_COMMAND_SPECS_V1 {
             assert!(seen.insert(spec.token), "duplicate token");
         }
-        assert!(
-            cli_command_kind_v1("query").is_some(),
-            "canonical `query` must resolve to a kind"
+        assert_eq!(
+            cli_command_kind_v1("query"),
+            Some(CliCommandKindV2::Query),
+            "canonical `query` must dispatch to Query"
         );
         assert_eq!(
             cli_command_kind_v1("query"),
             cli_command_kind_v1("v3-query")
         );
-        assert!(
-            cli_command_kind_v1("fmt").is_some(),
-            "canonical `fmt` must resolve to a kind"
+        assert_eq!(
+            cli_command_kind_v1("fmt"),
+            Some(CliCommandKindV2::Fmt),
+            "canonical `fmt` must dispatch to Fmt"
         );
         assert_eq!(cli_command_kind_v1("fmt"), cli_command_kind_v1("v3-fmt"));
         assert_ne!(cli_command_kind_v1("query"), cli_command_kind_v1("fmt"));

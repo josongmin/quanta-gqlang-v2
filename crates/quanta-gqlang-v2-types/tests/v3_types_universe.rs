@@ -4,8 +4,8 @@
 )]
 
 use quanta_gqlang_v2_hir::{
-    CheckedLocatedSpanV2, LocatedSpanV2, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2,
-    SpanV1,
+    CheckedLocatedSpanV2, HirNodeIdV1, LocatedSpanV2, SourceIdV2, SourceRegistrationV2,
+    SourceRegistryViewV2, SpanV1,
 };
 use quanta_gqlang_v2_types::*;
 

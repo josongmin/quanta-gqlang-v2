@@ -413,6 +413,54 @@ fn close_scope_pops_the_frame() {
 
 // Sanity companion: WITHOUT the close, `x` resolves (proves the test above is
 // detecting the pop, not some unrelated unbound condition).
+#[test]
+fn without_close_scope_the_let_still_resolves() {
+    let b = HirBuilderV1::new();
+    let body = b.symbol("x", SpanV1::new(40, 41));
+    let decl = b.decl("v", SpanV1::new(0, 1), body.clone(), SpanV1::new(0, 41));
+
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.open_scope(CaptureV1::Capturing);
+    binder.bind_let("x", decl.id, SpanV1::new(10, 11));
+    // Deliberately no close_scope: the frame holding `x` is still open.
+    binder.resolve_decl(&decl, &[]);
+    let result = binder.finish();
+
+    assert!(result.is_ok(), "diags: {:?}", result.diagnostics());
+    match result.target_of(body.id).unwrap() {
+        ResolvedTargetV1::Local(binding) => {
+            assert_eq!(binding.name, "x");
+            assert_eq!(binding.kind, BinderKindV1::Let);
+        }
+        other => panic!("expected the still-open let, got {other:?}"),
+    }
+}
+
+// A single `close_scope` must pop exactly one frame: an outer binding stays
+// visible after the inner frame is closed (kills clear-all / double-pop).
+#[test]
+fn close_scope_leaves_outer_frames_visible() {
+    let b = HirBuilderV1::new();
+    let outer_ref = b.symbol("outer", SpanV1::new(40, 45));
+    let decl = b.decl("v", SpanV1::new(0, 1), outer_ref.clone(), SpanV1::new(0, 45));
+
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.open_scope(CaptureV1::Capturing); // outer frame
+    binder.bind_let("outer", decl.id, SpanV1::new(10, 15));
+    binder.open_scope(CaptureV1::Capturing); // inner frame
+    binder.close_scope(); // pops only the inner frame
+    binder.resolve_decl(&decl, &[]);
+    let result = binder.finish();
+
+    assert!(result.is_ok(), "diags: {:?}", result.diagnostics());
+    match result.target_of(outer_ref.id).unwrap() {
+        ResolvedTargetV1::Local(binding) => assert_eq!(binding.name, "outer"),
+        other => panic!("the outer let must survive one close_scope, got {other:?}"),
+    }
+}
+
 // ===== resolve.rs:596 resolve_shape body -> () =============================
 //
 // A query result shape must be walked so its value positions resolve. A query

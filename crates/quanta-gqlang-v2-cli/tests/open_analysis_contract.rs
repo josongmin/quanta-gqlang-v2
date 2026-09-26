@@ -67,9 +67,29 @@ fn hard_source_error_is_deterministic_and_source_anchored() {
     assert_eq!(first.stdout, second.stdout);
     assert_eq!(first.stderr, second.stderr);
     let stderr = cli_stderr_v1(&first);
-    assert!(stderr.contains("analysis.status=error"));
-    assert!(stderr.contains("diagnostic[0].code=surface.parse."));
-    assert!(stderr.contains("diagnostic[0].source_id=0"));
+    assert!(stderr.lines().any(|line| line == "analysis.status=error"));
+    assert!(
+        stderr
+            .lines()
+            .any(|line| line == "analysis.diagnostic_count=1"),
+        "{stderr}"
+    );
+    assert!(
+        stderr
+            .lines()
+            .any(|line| line == "diagnostic[0].code=surface.parse.unexpected_eof"),
+        "{stderr}"
+    );
+    assert!(
+        stderr
+            .lines()
+            .any(|line| line == "diagnostic[0].source_id=0"),
+        "{stderr}"
+    );
+    assert!(
+        stderr.lines().any(|line| line == "diagnostic[0].span=25..25"),
+        "{stderr}"
+    );
 }
 
 #[test]
@@ -81,11 +101,21 @@ fn file_ingress_enforces_exact_utf8_source_budget() {
     let file = TempFileV1::new("source-budget", exact.as_bytes());
     let exact_output = run_cli_argv_v1(&["query", "--file", file.text()]);
     assert_eq!(exact_output.status.code(), Some(1));
-    assert!(cli_stdout_v1(&exact_output).contains("analysis.status=incomplete"));
+    let exact_stdout = cli_stdout_v1(&exact_output);
+    assert!(
+        exact_stdout
+            .lines()
+            .any(|line| line == "analysis.status=incomplete"),
+        "{exact_stdout}"
+    );
 
     fs::write(&file.path, "x".repeat(LIMIT + 1)).expect("write over-limit fixture");
     let over_output = run_cli_argv_v1(&["query", "--file", file.text()]);
     assert_eq!(over_output.status.code(), Some(2));
+    assert!(
+        cli_stdout_v1(&over_output).is_empty(),
+        "an over-limit usage failure must not emit stdout"
+    );
     assert!(cli_stderr_v1(&over_output).contains("input exceeds max_source_bytes"));
 }
 

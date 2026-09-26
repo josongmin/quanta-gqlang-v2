@@ -387,24 +387,39 @@ fn quantifier_binding_is_inferred_by_exact_owner_and_ordinal() {
     let head_anchor = b.compare("=", head_body, b.int("1", span(18, 19)), span(14, 19));
     let quantified = b.symbol("y", span(35, 36));
     let quantified_id = quantified.id;
-    let quant_body = b.compare("=", quantified, b.string("a", span(39, 42)), span(35, 42));
+    let quantified_second = b.symbol("z", span(46, 47));
+    let quantified_second_id = quantified_second.id;
+    let first_body = b.compare("=", quantified, b.string("a", span(39, 42)), span(35, 42));
+    let second_body = b.compare(
+        "=",
+        quantified_second,
+        b.int("1", span(50, 51)),
+        span(46, 51),
+    );
+    let quant_body = b.and(first_body, second_body, span(35, 51));
     let quant = b.logical_quantifier(
         LogicalQuantifierKindV1::Exists,
-        NonEmptyBindersV1::try_new(vec![LogicalBinderV1 {
-            name: "y".into(),
-            span: span(31, 32),
-        }])
+        NonEmptyBindersV1::try_new(vec![
+            LogicalBinderV1 {
+                name: "y".into(),
+                span: span(31, 32),
+            },
+            LogicalBinderV1 {
+                name: "z".into(),
+                span: span(42, 43),
+            },
+        ])
         .unwrap(),
         quant_body,
-        span(24, 42),
+        span(24, 51),
     );
     let quant_id = quant.id;
     let rule = b.rule(
         "r",
         span(5, 6),
         head,
-        b.and(head_anchor, quant, span(14, 42)),
-        span(0, 43),
+        b.and(head_anchor, quant, span(14, 51)),
+        span(0, 52),
     );
     let rule_id = rule.id;
     let doc = HirDocumentV1 {
@@ -432,6 +447,10 @@ fn quantifier_binding_is_inferred_by_exact_owner_and_ordinal() {
                 reference: key(quantified_id),
                 binding: binding(quant_id),
             },
+            RuleSymbolInputV2 {
+                reference: key(quantified_second_id),
+                binding: RuleBindingIdV2::new(source(), quant_id, 1),
+            },
         ],
         vec![],
         roomy(),
@@ -444,6 +463,11 @@ fn quantifier_binding_is_inferred_by_exact_owner_and_ordinal() {
     assert_eq!(
         proof.binding_type(binding(quant_id)),
         Some(&ValueTypeV1::string())
+    );
+    assert_eq!(
+        proof.binding_type(RuleBindingIdV2::new(source(), quant_id, 1)),
+        Some(&ValueTypeV1::int()),
+        "the second binder must resolve by ordinal, not by owner alone"
     );
 }
 
@@ -1412,7 +1436,15 @@ fn relation_existence_in_rule_has_exact_defense_in_depth_diagnostic() {
         roomy(),
     )
     .unwrap_err();
-    assert_eq!(error.code(), "types.relation_exists_in_rule");
+    assert_eq!(
+        error,
+        TypeDiagnosticV2::RelationExistsInRule {
+            location: LocatedSpanV2 {
+                source_id: source(),
+                span: span(13, 31),
+            },
+        }
+    );
 }
 
 #[test]
