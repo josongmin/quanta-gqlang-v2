@@ -63,6 +63,48 @@ def write_json_evidence(path: Path, payload: dict, *, owned_root: Path, prefix: 
         os.close(directory_fd)
 
 
+def write_bytes_evidence(path: Path, payload: bytes, *, owned_root: Path, prefix: str) -> None:
+    directory_fd = _open_parent(path, owned_root, create=True)
+    temporary = ".%s-%s" % (prefix, secrets.token_hex(16))
+    try:
+        file_fd = os.open(
+            temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=directory_fd
+        )
+        try:
+            with os.fdopen(file_fd, "wb") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+        except BaseException:
+            os.unlink(temporary, dir_fd=directory_fd)
+            raise
+        os.replace(temporary, path.name, src_dir_fd=directory_fd, dst_dir_fd=directory_fd)
+        os.fsync(directory_fd)
+    finally:
+        try:
+            os.unlink(temporary, dir_fd=directory_fd)
+        except FileNotFoundError:
+            pass
+        os.close(directory_fd)
+
+
+def read_bytes_evidence(path: Path, *, owned_root: Path) -> bytes:
+    directory_fd = _open_parent(path, owned_root, create=False)
+    try:
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        try:
+            file_fd = os.open(path.name, flags, dir_fd=directory_fd)
+        except OSError as error:
+            raise EvidencePathError("evidence file is missing or redirected") from error
+        with os.fdopen(file_fd, "rb") as handle:
+            metadata = os.fstat(handle.fileno())
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                raise EvidencePathError("evidence file is not an owned regular file")
+            return handle.read()
+    finally:
+        os.close(directory_fd)
+
+
 def read_json_evidence(
     path: Path, *, owned_root: Path, consume: bool = False,
 ) -> Tuple[object, bytes]:

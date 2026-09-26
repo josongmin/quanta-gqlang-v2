@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import copy
 import tempfile
 import unittest
 from pathlib import Path
@@ -23,6 +24,16 @@ class PromptManagerTest(unittest.TestCase):
     def test_all_candidates_fit_declared_budgets_and_scopes(self) -> None:
         sizes = PM.validate_all(self.config, self.rendered, ratchet=False)
         self.assertEqual(set(self.config["targets"]), set(sizes["targets"]))
+
+    def test_ratchet_rejects_removed_startup_member_and_moved_output(self) -> None:
+        config = copy.deepcopy(self.config)
+        config["context_groups"]["claude_startup"]["targets"].remove("claude")
+        with self.assertRaisesRegex(PM.PromptManagerError, "group_members changed"):
+            PM.validate_all(config, self.rendered)
+        config = copy.deepcopy(self.config)
+        config["targets"]["agents"]["output"] = "MOVED.md"
+        with self.assertRaisesRegex(PM.PromptManagerError, "outputs changed"):
+            PM.validate_all(config, self.rendered)
 
     def test_cursor_rules_are_mdc_and_conditionally_attached(self) -> None:
         verified = 0

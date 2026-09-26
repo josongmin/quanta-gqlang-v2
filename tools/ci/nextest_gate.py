@@ -13,7 +13,7 @@ from typing import Dict, Optional, Set, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
-from tools.ci.evidence import EvidencePathError, write_json_evidence  # noqa: E402
+from tools.ci.evidence import EvidencePathError, write_bytes_evidence, write_json_evidence  # noqa: E402
 from tools.ci.doctor import DoctorError, read_lock  # noqa: E402
 from tools.ci.environment import (  # noqa: E402
     EnvironmentSanitizationError, sanitized_environment,
@@ -21,6 +21,8 @@ from tools.ci.environment import (  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 EVIDENCE = ROOT / "target/ci/nextest-evidence.json"
+RAW_INVENTORY = ROOT / "target/ci/nextest-list.json"
+RAW_EVENTS = ROOT / "target/ci/nextest-events.jsonl"
 BASE = ("cargo", "nextest")
 TERMINAL = {"ok", "failed", "timeout"}
 TEST_THREADS = 4
@@ -219,6 +221,14 @@ def main() -> int:
         )
         if result.returncode:
             return result.returncode
+        write_bytes_evidence(
+            RAW_INVENTORY, (listed.stdout or "").encode(),
+            owned_root=ROOT / "target", prefix="nextest-list",
+        )
+        write_bytes_evidence(
+            RAW_EVENTS, (result.stdout or "").encode(),
+            owned_root=ROOT / "target", prefix="nextest-events",
+        )
         print("nextest gate: discovered=%d executed=%d skipped=%d leaked=0 list=%.3fs run=%.3fs parse=%.3fs" % (
             evidence["discovered"], evidence["executed"], evidence["skipped_ignored"],
             list_seconds, run_seconds, parse_seconds,

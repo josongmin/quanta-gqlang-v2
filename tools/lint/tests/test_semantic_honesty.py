@@ -41,6 +41,14 @@ class SemanticHonestyTest(unittest.TestCase):
         self.assertIn("SH-02-empty-success", self.rules("fn f(x: PlanOutcomeV2) { match x { PlanOutcomeV2::NoPlan(reason) => (/* c */ Ok(None)), _ => Err(Error::Bad) } }"))
         self.assertIn("SH-02-empty-success", self.rules("fn f(x: PlanOutcomeV2) { match x { PlanOutcomeV2::NoPlan(reason) => { Ok(None) /* c */ }, _ => Err(Error::Bad) } }"))
 
+    def test_nested_alias_and_imported_variants_cannot_hide_negative_outcomes(self) -> None:
+        nested = "mod inner { use crate::PlanOutcomeV2 as Outcome; fn f(x: Outcome) { match x { Outcome::NoPlan(reason) => Ok(None), _ => Err(reason) } } }"
+        direct = "use crate::PlanOutcomeV2::{NoPlan, Plan}; fn f(x: PlanOutcomeV2) { match x { NoPlan(reason) => Plan(reason), _ => Err(reason) } }"
+        self.assertIn("SH-02-empty-success", self.rules(nested))
+        self.assertIn("SH-01-outcome-laundering", self.rules(direct))
+        sibling = "mod a { use crate::PlanOutcomeV2 as Outcome; } mod b { fn f(x: Outcome) { match x { Outcome::NoPlan(reason) => Ok(None), _ => Err(reason) } } }"
+        self.assertNotIn("SH-02-empty-success", self.rules(sibling))
+
     def test_reason_loss_and_terminal_error_retention(self) -> None:
         self.assertIn("SH-04-binding-loss", self.rules("fn f(x: PlanOutcomeV2) { match x { PlanOutcomeV2::NoPlan(reason) => Err(Error::Bad), _ => Err(Error::Bad) } }"))
         self.assertNotIn("SH-04-binding-loss", self.rules("fn f(x: PlanOutcomeV2) { match x { PlanOutcomeV2::NoPlan(reason) => Err(Error::from(reason)), _ => Err(Error::Bad) } }"))
@@ -74,6 +82,7 @@ class SemanticHonestyTest(unittest.TestCase):
     def test_status_exit_code_and_wildcard(self) -> None:
         self.assertIn("SH-03-negative-exit", self.rules("fn f(s: AnalysisStatusV2) { match s { AnalysisStatusV2::Incomplete | AnalysisStatusV2::Error => 0, AnalysisStatusV2::Complete => 0 } }"))
         self.assertIn("SH-06-success-wildcard", self.rules("fn f(s: PlanOutcomeV2) { match s { PlanOutcomeV2::Plan(p) => Ok(p), _ => Ok(None) } }"))
+        self.assertIn("SH-06-success-wildcard", self.rules("fn f(s: PlanOutcomeV2) { match s { PlanOutcomeV2::Plan(p) => Ok(p), other @ _ => Ok(None) } }"))
         self.assertNotIn("SH-06-success-wildcard", self.rules("fn f(s: PlanOutcomeV2) { match s { PlanOutcomeV2::Plan(p) => Ok(p), _ => Err(Error::Bad) } }"))
         self.assertNotIn("SH-06-success-wildcard", self.rules("fn f(s: PlanOutcomeV2) { match s { PlanOutcomeV2::Plan(p) => Ok(p), _ => { return Err(Error::Bad); } } }"))
         self.assertIn("SH-03-negative-exit", self.rules("fn f(s: AnalysisStatusV2) { match s { AnalysisStatusV2::Incomplete | AnalysisStatusV2::Error => ((0)), AnalysisStatusV2::Complete => 0 } }"))
@@ -90,8 +99,10 @@ class SemanticHonestyTest(unittest.TestCase):
     def test_error_to_ok_and_serde_default(self) -> None:
         self.assertIn("SH-05-error-to-ok", self.rules("fn f(x: Result<u8, E>) { match x { Err(_error) => Ok(()), Ok(value) => Ok(value) } }"))
         self.assertIn("SH-05-error-to-ok", self.rules("fn f(x: Result<u8, E>) { match x { Err(error) => Ok(0), Ok(value) => Ok(value) } }"))
+        self.assertIn("SH-05-error-to-ok", self.rules("fn f(x: Result<u8, E>) { match x { std::result::Result::Err(error) => std::result::Result::Ok(0), std::result::Result::Ok(value) => std::result::Result::Ok(value) } }"))
         self.assertIn("SH-05-error-to-ok", self.rules("fn f(x: Result<u8, E>) { match x { Err(ref error) => if cond { Err(error.into()) } else { Ok(0) }, Ok(value) => Ok(value) } }"))
         self.assertIn("SH-08-semantic-serde-default", self.rules("struct RequestV2 { #[serde(default)] status: String }"))
+        self.assertIn("SH-08-semantic-serde-default", self.rules("#[serde(default)] struct RequestV2 { status: String }"))
         self.assertNotIn("SH-08-semantic-serde-default", self.rules("struct Other { #[serde(default)] status: String }"))
         self.assertIn("SH-05-error-to-ok", self.rules("fn f(x: Result<u8, E>) { match x { Err(_error) => { (Ok(())) }, Ok(value) => Ok(value) } }"))
         self.assertIn("SH-05-error-to-ok", self.rules("fn f(x: Result<u8, E>) { match x { Err(/* c */ _error) => (/* c */ Ok({ let _ = AnalysisStatusV2::Error; () })), Ok(value) => Ok(value) } }"))

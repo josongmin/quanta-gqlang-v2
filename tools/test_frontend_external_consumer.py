@@ -512,6 +512,17 @@ def public_api_roots(output: str) -> Tuple[List[str], List[str]]:
     return observed, unexpected
 
 
+def public_api_inventory(observed: List[str], pinned: List[str]) -> Tuple[List[str], List[str], List[str]]:
+    """Compare the entire simplified API inventory, including multiplicity."""
+    from collections import Counter
+
+    actual, expected = Counter(observed), Counter(pinned)
+    duplicates = sorted(name for name, count in actual.items() if count > expected[name])
+    extra = sorted(actual.keys() - expected.keys())
+    missing = sorted(expected.keys() - actual.keys())
+    return extra, missing, duplicates
+
+
 def repo_toolchain_channel() -> Optional[str]:
     manifest = REPOSITORY_ROOT / "rust-toolchain.toml"
     if not manifest.is_file():
@@ -898,6 +909,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         "public_api_observed": 0,
         "public_api_extra": 0,
         "public_api_missing": 0,
+        "public_api_duplicates": 0,
         "public_api_direct": 0,
     }
     cache_lock: Optional[IO[str]] = None
@@ -1149,12 +1161,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         observed_public, direct_public = public_api_roots(result.stdout)
         counts["public_api_observed"] = len(observed_public)
         counts["public_api_direct"] = len(direct_public)
-        public_extra = sorted(set(observed_public) - set(PINNED_ALLOWLIST))
-        public_missing = sorted(set(PINNED_ALLOWLIST) - set(observed_public))
+        public_extra, public_missing, public_duplicates = public_api_inventory(
+            observed_public, PINNED_ALLOWLIST
+        )
         counts["public_api_extra"] = len(public_extra)
         counts["public_api_missing"] = len(public_missing)
+        counts["public_api_duplicates"] = len(public_duplicates)
         if public_extra:
             violations.append("public API over-claims names outside the allowlist: %s" % public_extra)
+        if public_duplicates:
+            violations.append("public API exposes duplicate roots: %s" % public_duplicates)
         if public_missing:
             violations.append("public API is missing allowlisted names: %s" % public_missing)
         if direct_public:
@@ -1163,12 +1179,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 % direct_public
             )
         say(
-            "stage 3: public_api observed=%d pinned=%d extra=%d missing=%d direct=%d"
+            "stage 3: public_api observed=%d pinned=%d extra=%d missing=%d duplicates=%d direct=%d"
             % (
                 counts["public_api_observed"],
                 counts["allowlist_pinned"],
                 len(public_extra),
                 len(public_missing),
+                len(public_duplicates),
                 len(direct_public),
             )
         )
@@ -1261,12 +1278,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
     )
     say(
-        "public_api      observed=%d pinned=%d extra=%d missing=%d direct=%d"
+            "public_api      observed=%d pinned=%d extra=%d missing=%d duplicates=%d direct=%d"
         % (
             counts["public_api_observed"],
             counts["allowlist_pinned"],
             counts["public_api_extra"],
             counts["public_api_missing"],
+            counts["public_api_duplicates"],
             counts["public_api_direct"],
         )
     )

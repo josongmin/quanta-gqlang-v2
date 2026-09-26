@@ -7,9 +7,11 @@ runs, so Rust artifacts that embed `CARGO_MANIFEST_DIR` cannot be reused from a
 different checkout path. Git/Cargo still recheck changed source and toolchains.
 
 The driver takes a non-blocking OS file lock, pins HEAD and tree, refuses a
-dirty caller or managed checkout, and checks both again after `just ci`. It
+dirty caller or managed checkout, and checks both again after `just ci`.
+Tracked file bytes, symlink targets, and executable bits are compared directly
+with HEAD blobs, independently of Git index flags such as `assume-unchanged`. It
 refuses an unknown worktree, marker, or redirected cache; it never resets or
-deletes a dirty checkout. The per-SHA `receipt.json` is schema 2: it retains
+deletes a dirty checkout. The per-SHA `receipt.json` is schema 3: it retains
 `sha`, `tree`, `cmds`, `exit`, and `duration_s`, and records tool versions, input
 hashes, the observed post-run dirty state (`false` is required for success), per-recipe durations,
 current-run nextest counts with zero skipped/ignored cases, advisory DB revision
@@ -18,12 +20,15 @@ acceleration, **not** proof from a prior SHA: `just ci` still executes on every
 qualification. Old `target/qualification/<sha>/build` directories from the
 former cold-cache driver are not automatically removed.
 
-The schema-2 receipt is intentionally non-replayable. Nextest inventory and
-event streams are parsed and reconciled fail-closed during the run, but their
-raw bytes are not archived. Persisted SHA-256 values are custody identifiers
-for those ephemeral inputs; they are not embedded evidence and cannot
-reconstruct or independently replay the test run. Raw-stream archival would be
-an optional custody extension, not part of the current correctness claim.
+Nextest inventory and terminal event streams are parsed and reconciled
+fail-closed during the run. The qualification receipt archives both raw streams
+as `nextest-list.json` and `nextest-events.jsonl`, and checks their SHA-256 values
+against same-run gate evidence before accepting success. Direct `just ci` also
+rechecks both streams after the policy group, so a later gate cannot silently
+replace them. The Nextest component
+can therefore be independently replayed from the receipt. Other gates still
+have their own evidence boundaries; the receipt is not a complete replay of
+every command in `just ci`.
 
 Local gate subprocesses use bounded process groups. Front-door parity gives
 its Cargo build 600 seconds and each shipped binary 20 seconds; the external
@@ -41,9 +46,15 @@ claiming that every descendant was reaped.
 groups serially, and each group's leaves are an explicit serial waterfall.
 It removes caller-controlled Rust/Cargo/Nextest/property-test settings and
 `QGLANG_*` test-child selectors, then restores only the locked Rust toolchain
-and current run identities before launching groups.
-It hashes every tracked and non-ignored untracked source path before the first
-group and rejects any between-group source drift. The preflight checks both the external-consumer fixture and
+and current run identities before launching groups. Python gates start with
+`-I -S`; pinned user-site packages enter `sys.path` only after interpreter
+startup, so caller `PYTHONPATH` and startup hooks cannot preempt a gate.
+The full gate uses an owned Cargo home under `target/ci/` with no caller Cargo
+config. It shares offline registry/git caches and copies the advisory database.
+It hashes every tracked and non-ignored untracked source path, its change time,
+and containing-directory change times before the first group and rejects any
+between-group source drift, including an edit reverted before a group ends.
+The preflight checks both the external-consumer fixture and
 repository workspace locked dependency graphs against the pinned toolchain;
 it does not compile or execute either graph. A missing crate exits before the
 expensive gates. Populate the local Cargo cache for the missing graph with
@@ -58,7 +69,9 @@ is not evidence that the external consumer gate passed.
 
 `just advisory-refresh` explicitly refreshes cargo-deny's active RustSec DB.
 The routine `just deny` gate requires a fetch within seven days and runs with
-network disabled. It rejects a dirty database, requires checked-out HEAD to
+network disabled. It also requires the official DB commit time to be within
+seven days, so touching an old `FETCH_HEAD` cannot make an old revision fresh.
+It rejects a dirty database or hidden index paths, requires checked-out HEAD to
 match the fetched revision, requires the official RustSec advisory DB origin,
 and proves that identity did not change across the scan. Qualification accepts
 only same-run deny evidence and records its hash, origin, revision, and fetch

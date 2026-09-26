@@ -24,12 +24,13 @@ def main() -> int:
         )
         return 2
     result = unittest.TextTestRunner(verbosity=1).run(suite)
-    if result.testsRun != selected:
-        print("unittest gate: selected=%d executed=%d" % (
-            selected, result.testsRun), file=sys.stderr
+    executed = result.testsRun - len(result.skipped)
+    if result.testsRun != selected or result.skipped or executed == 0:
+        print("unittest gate: selected=%d executed=%d skipped=%d" % (
+            selected, executed, len(result.skipped)), file=sys.stderr
         )
         return 2
-    print("unittest gate: selected=%d executed=%d" % (selected, result.testsRun))
+    print("unittest gate: selected=%d executed=%d skipped=0" % (selected, executed))
     return 0 if result.wasSuccessful() else 1
 
 
