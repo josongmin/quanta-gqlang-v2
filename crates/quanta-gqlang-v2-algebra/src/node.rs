@@ -620,6 +620,22 @@ fn op_agrees_with_output(
     }
 }
 
+/// Exact frame preservation (row, provenance, columns, cardinality,
+/// partition, ordering) required of predicate-restricting stages. Composed
+/// expression effects are deliberately excluded: Sema extends a Filter
+/// stage's effects with its predicate's effects.
+fn preserves_input_frame(
+    output: &RelationOutputContractV2,
+    input: &RelationOutputContractV2,
+) -> bool {
+    output.row() == input.row()
+        && output.provenance() == input.provenance()
+        && output.columns() == input.columns()
+        && output.cardinality() == input.cardinality()
+        && output.partition_keys() == input.partition_keys()
+        && output.ordering() == input.ordering()
+}
+
 #[cfg(test)]
 mod projection_contract_tests {
     use super::*;
@@ -663,20 +679,4 @@ mod projection_contract_tests {
             assert_eq!(build(changed), Err(()));
         }
     }
-}
-
-/// Exact frame preservation (row, provenance, columns, cardinality,
-/// partition, ordering) required of predicate-restricting stages. Composed
-/// expression effects are deliberately excluded: Sema extends a Filter
-/// stage's effects with its predicate's effects.
-fn preserves_input_frame(
-    output: &RelationOutputContractV2,
-    input: &RelationOutputContractV2,
-) -> bool {
-    output.row() == input.row()
-        && output.provenance() == input.provenance()
-        && output.columns() == input.columns()
-        && output.cardinality() == input.cardinality()
-        && output.partition_keys() == input.partition_keys()
-        && output.ordering() == input.ordering()
 }
