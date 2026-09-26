@@ -24,6 +24,12 @@ a changed source identity and source-field/generated output origins. The existin
 seven Algebra semantic-mutant tests remain passing. Assertions check exact
 constructor errors rather than a later unrelated failure.
 
+The full test run exposed an older test-only fixture that expected to mint a
+Project with a transplanted SourceField origin. The stronger Sema constructor
+now rejects that mutation before document assembly. Its owner test was changed
+to assert that exact rejection, retaining the real self-join and distinct scan
+occurrences; no bypass was added to keep fabricating an invalid sealed Project.
+
 The helper is an internal-stage API and is not exported by the frontend facade.
 Valid syntax, typed output, execution DTOs and digest schema remain unchanged.
 The full clean-HEAD qualification receipt is recorded separately.

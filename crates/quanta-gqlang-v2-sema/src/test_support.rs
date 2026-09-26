@@ -619,18 +619,11 @@ pub fn forged_cardinality_downgrade_document_v2() -> Result<ReferenceRelationDoc
     reassemble_with_forged_relation(&checked, &real, item_id, forged_root)
 }
 
-/// Forged document for the wrong-scan-occurrence rail, minted from the real
-/// self-join fixture: the left projection's output column origin is rebuilt as
-/// a `SourceField` whose `scan_stage` is the right scan occurrence of the same
-/// host relation (a same-source, wrong-occurrence transplant in a row-aligned
-/// column origin).
-///
-/// # Errors
-///
-/// Returns a fixture-construction error if the backing fixture or the
-/// reassembled document no longer satisfies the assembly contract.
-pub fn forged_wrong_scan_occurrence_document_v2() -> Result<ReferenceRelationDocumentV2, String> {
-    let (checked, real, item_id) = self_join_parts()?;
+/// Attempt a same-source, wrong-occurrence transplant from a real self-join.
+/// Project sealing must reject the SourceField origin before assembly.
+#[cfg(test)]
+fn try_wrong_scan_occurrence_projection_v2() -> Result<(), String> {
+    let (_, real, item_id) = self_join_parts()?;
     let relation = relation_item(&real, item_id)?;
     let mut join_inputs = relation.root().inputs();
     let left_project = join_inputs.next().ok_or("join has no left input")?.clone();
@@ -648,6 +641,9 @@ pub fn forged_wrong_scan_occurrence_document_v2() -> Result<ReferenceRelationDoc
         .next()
         .ok_or("right projection has no scan")?
         .clone();
+    if left_scan.key() == right_scan.key() {
+        return Err("self-join requires distinct scan occurrences".to_owned());
+    }
     let scan_source = left_scan
         .source()
         .cloned()
@@ -676,28 +672,15 @@ pub fn forged_wrong_scan_occurrence_document_v2() -> Result<ReferenceRelationDoc
         left_project.output().effects(),
     )
     .map_err(str::to_owned)?;
-    let forged_left = TypedRelationExprV2::try_project(
+    TypedRelationExprV2::try_project(
         left_project.key(),
         left_project.location().clone(),
         left_scan,
         left_project.expressions().to_vec(),
         transplanted_output,
     )
-    .map_err(str::to_owned)?;
-    let forged_root = TypedRelationExprV2::join(
-        relation.root().key(),
-        relation.root().location().clone(),
-        forged_left,
-        right_project,
-        relation
-            .root()
-            .predicate()
-            .ok_or("join has no predicate")?
-            .clone(),
-        relation.output().clone(),
-    )
-    .map_err(str::to_owned)?;
-    reassemble_with_forged_relation(&checked, &real, item_id, forged_root)
+    .map(|_| ())
+    .map_err(str::to_owned)
 }
 
 /// Forged document for the wrong-nested-root rail, minted from the real
@@ -2683,26 +2666,11 @@ mod tests {
     }
 
     #[test]
-    fn forged_wrong_scan_occurrence_transplants_the_right_stage_key() -> Result<(), String> {
-        let forged = forged_wrong_scan_occurrence_document_v2()?;
-        let relation = relation_item(forged.document(), forged.item_id())?;
-        assert!(matches!(relation.root(), TypedRelationExprV2::Join(_)));
-        let mut inputs = relation.root().inputs();
-        let left = inputs.next().ok_or("left input expected")?;
-        let right = inputs.next().ok_or("right input expected")?;
-        let right_scan = right.inputs().next().ok_or("right scan expected")?;
-        let OutputColumnOriginV2::SourceField { scan_stage, .. } = left
-            .output()
-            .columns()
-            .first()
-            .ok_or("left column expected")?
-            .origin()
-        else {
-            return Err("forged left column must carry a SourceField origin".to_owned());
-        };
-        assert_eq!(*scan_stage, right_scan.key());
-        assert_ne!(*scan_stage, left.key());
-        Ok(())
+    fn wrong_scan_occurrence_projection_rejects_at_sealing() {
+        assert_eq!(
+            try_wrong_scan_occurrence_projection_v2(),
+            Err("invalid typed relation stage arity or payload".to_owned())
+        );
     }
 
     #[test]
