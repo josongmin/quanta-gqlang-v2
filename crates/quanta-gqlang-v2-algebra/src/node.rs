@@ -2,10 +2,12 @@
 
 use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, CompositionInstanceV2, JoinModeV2, OrderKeyContractV2,
-    OutputColumnOriginV2, OutputProvenanceV2, PartitionInputBindingV2, RelationOutputContractV2,
-    ResolvedScanSourceV2, SemanticItemIdV2, TypedBoolExprV2, TypedCorrelationEdgeV2, TypedExprV2,
+    OutputColumnOriginV2, PartitionInputBindingV2, RelationOutputContractV2, ResolvedScanSourceV2,
+    SemanticItemIdV2, TypedBoolExprV2, TypedCorrelationEdgeV2, TypedExprV2,
 };
-use quanta_gqlang_v2_types::{AggregationClassV1, CardinalityV1, SourceQualifiedNodeIdV2};
+use quanta_gqlang_v2_types::{
+    AggregationClassV1, CardinalityV1, ExpressionTypeStateV2, SourceQualifiedNodeIdV2,
+};
 
 /// Closed relational operator vocabulary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -171,12 +173,14 @@ pub(crate) enum AlgebraOpV2 {
 impl CheckedAlgebraNodeV2 {
     /// Assemble one node from a sealed stage contract and a lowered operator.
     ///
-    /// Construction is fail-closed: the node identity must be coherent with
-    /// its checked location, and the operator must agree with the exact
-    /// sealed output (schema, provenance, cardinality, partition, ordering,
-    /// and family-specific identity such as join mode, group keys, or
-    /// aggregate partition retention). Composed expression effects are the
-    /// one field a predicate-carrying stage may extend over its input.
+    /// Construction checks source identity and family-specific output
+    /// relationships: retained frames, exact join operands, and computed
+    /// field identities/types. Composed expression effects remain the sealed
+    /// semantic fact, with aggregate class checked for aggregate stages.
+    /// Lexical binding and complete EXISTS capture sets are Binder/Sema
+    /// authority; normalization validates and carries those facts with their
+    /// registered nested roots before calling this constructor. This is not
+    /// an independent reconstruction of lexical capture completeness.
     pub(crate) fn new(
         item_id: SemanticItemIdV2,
         stage_key: SourceQualifiedNodeIdV2,
@@ -522,7 +526,7 @@ fn op_agrees_with_output(
         AlgebraOpV2::Project { input, expressions } => {
             !expressions.is_empty()
                 && output.provenance() == input.output().provenance()
-                && output.has_exact_projection_origins(expressions.iter().map(TypedExprV2::key))
+                && projection_agrees_with_output(expressions, output)
         }
         AlgebraOpV2::Join {
             left,
@@ -533,19 +537,7 @@ fn op_agrees_with_output(
             matches!(
                 (*mode, predicate.is_some()),
                 (JoinModeV2::Inner, true) | (JoinModeV2::Cross, false)
-            ) && output.columns().iter().eq(left
-                .output()
-                .columns()
-                .iter()
-                .chain(right.output().columns().iter()))
-                && *output.provenance()
-                    == OutputProvenanceV2::new(
-                        left.output()
-                            .provenance()
-                            .iter()
-                            .chain(right.output().provenance().iter())
-                            .cloned(),
-                    )
+            ) && output.has_exact_join_frame(left.output(), right.output())
         }
         AlgebraOpV2::Group {
             input,
@@ -560,10 +552,7 @@ fn op_agrees_with_output(
             output.provenance() == input.output().provenance()
                 && if !keys.is_empty() {
                     let mut identities = std::collections::BTreeSet::new();
-                    output.columns().len() == keys.len()
-                        && output.columns().iter().zip(keys).all(|(column, key)| {
-                            *column.origin() == OutputColumnOriginV2::Expression(key.key())
-                        })
+                    projection_agrees_with_output(keys, output)
                         && output
                             .partition_keys()
                             .iter()
@@ -605,7 +594,7 @@ fn op_agrees_with_output(
                 && output.cardinality() == CardinalityV1::Set
                 && output.ordering().is_empty()
                 && output.effects().aggregation == AggregationClassV1::Aggregate
-                && output.has_exact_projection_origins(expressions.iter().map(TypedExprV2::key))
+                && projection_agrees_with_output(expressions, output)
         }
         AlgebraOpV2::Sort { input, keys } => {
             output.ordering() == keys.as_slice()
@@ -618,6 +607,25 @@ fn op_agrees_with_output(
             preserves_input_frame(output, left.output())
         }
     }
+}
+
+/// Compare already checked types and identities; this does not re-infer them.
+fn projection_agrees_with_output(
+    expressions: &[TypedExprV2],
+    output: &RelationOutputContractV2,
+) -> bool {
+    output.has_exact_projection_origins(expressions.iter().map(TypedExprV2::key))
+        && output
+            .row()
+            .fields()
+            .iter()
+            .map(|field| Some(field.value_type()))
+            .eq(expressions
+                .iter()
+                .map(|expression| match expression.type_state() {
+                    ExpressionTypeStateV2::Known(value_type) => Some(value_type),
+                    ExpressionTypeStateV2::Unknown(_) => None,
+                }))
 }
 
 /// Exact frame preservation (row, provenance, columns, cardinality,
@@ -677,6 +685,98 @@ mod projection_contract_tests {
         reversed.reverse();
         for changed in [Vec::new(), short, long, reversed] {
             assert_eq!(build(changed), Err(()));
+        }
+    }
+    #[test]
+    #[expect(clippy::expect_used, reason = "checked join constructor controls")]
+    fn checked_join_rejects_changed_frame_facts() {
+        use quanta_gqlang_v2_sema::test_support::{
+            forged_output_contract_v2, OutputContractMutationV2 as Mutation,
+            ReferenceRelationFixtureV2 as Fixture,
+        };
+        for fixture in [
+            Fixture::CrossJoin,
+            Fixture::InnerJoinOn,
+            Fixture::SelfJoinInner,
+        ] {
+            let document = reference_relation_document_v2(fixture).expect("real join");
+            let lowered = crate::lower_relation_item(document.document(), document.item_id())
+                .expect("real join lowers");
+            let root = lowered.root();
+            assert_eq!(root.family(), AlgebraFamilyV2::Join);
+            let build = |output| {
+                CheckedAlgebraNodeV2::new(
+                    root.item_id,
+                    root.stage_key,
+                    root.location.clone(),
+                    output,
+                    root.op.clone(),
+                )
+            };
+            assert!(build(root.output.clone()).is_ok());
+            for mutation in [
+                Mutation::SetCardinality,
+                Mutation::SequenceCardinality,
+                Mutation::FirstFieldType,
+                Mutation::FirstFieldOptionality,
+                Mutation::Partition,
+                Mutation::Ordering,
+            ] {
+                let output = forged_output_contract_v2(root.output(), root.stage_key(), mutation)
+                    .expect("generic output is row-aligned");
+                assert_ne!(&output, root.output(), "{fixture:?} {mutation:?}");
+                assert_eq!(build(output), Err(()), "{fixture:?} {mutation:?}");
+            }
+        }
+    }
+
+    #[test]
+    #[expect(clippy::expect_used, reason = "checked projection type controls")]
+    fn checked_projections_reject_types_differing_from_expression_facts() {
+        use quanta_gqlang_v2_sema::test_support::{
+            forged_output_contract_v2, OutputContractMutationV2 as Mutation,
+            ReferenceRelationFixtureV2 as Fixture,
+        };
+        for (fixture, family) in [
+            (
+                Fixture::ProjectMultipleExpressions,
+                AlgebraFamilyV2::Project,
+            ),
+            (Fixture::GroupedAggregateSum, AlgebraFamilyV2::Aggregate),
+            (Fixture::ScalarCountStar, AlgebraFamilyV2::Aggregate),
+        ] {
+            let document = reference_relation_document_v2(fixture).expect("real projection");
+            let lowered = crate::lower_relation_item(document.document(), document.item_id())
+                .expect("real projection lowers");
+            let root = lowered.root();
+            assert_eq!(root.family(), family);
+            let mut checked_nodes = vec![root];
+            if let AlgebraOpV2::Aggregate { input, .. } = &root.op {
+                if !input.expressions().is_empty() {
+                    assert_eq!(input.family(), AlgebraFamilyV2::Group);
+                    checked_nodes.push(input);
+                }
+            }
+            for root in checked_nodes {
+                let build = |output| {
+                    CheckedAlgebraNodeV2::new(
+                        root.item_id,
+                        root.stage_key,
+                        root.location.clone(),
+                        output,
+                        root.op.clone(),
+                    )
+                };
+                assert!(build(root.output.clone()).is_ok());
+                for mutation in [Mutation::FirstFieldType, Mutation::FirstFieldOptionality] {
+                    let output =
+                        forged_output_contract_v2(root.output(), root.stage_key(), mutation)
+                            .expect("generic output is row-aligned");
+                    assert_ne!(output.row(), root.output().row());
+                    assert_eq!(output.columns(), root.output().columns());
+                    assert_eq!(build(output), Err(()), "{fixture:?} {mutation:?}");
+                }
+            }
         }
     }
 }

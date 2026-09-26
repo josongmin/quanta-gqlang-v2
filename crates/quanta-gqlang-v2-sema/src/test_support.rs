@@ -67,6 +67,81 @@ use quanta_gqlang_v2_types::{
 };
 use std::collections::BTreeMap;
 
+/// Independent output mutations for checked-stage constructor controls.
+#[derive(Clone, Copy, Debug)]
+pub enum OutputContractMutationV2 {
+    SetCardinality,
+    SequenceCardinality,
+    FirstFieldType,
+    FirstFieldOptionality,
+    Partition,
+    Ordering,
+}
+
+/// Rebuild a row-aligned output while changing one stage-specific fact.
+/// The generic output constructor must still accept it; the stage constructor
+/// is responsible for rejecting its disagreement with the actual operands.
+pub fn forged_output_contract_v2(
+    original: &RelationOutputContractV2,
+    stage: SourceQualifiedNodeIdV2,
+    mutation: OutputContractMutationV2,
+) -> Result<RelationOutputContractV2, String> {
+    let mut row = original.row().clone();
+    let mut cardinality = original.cardinality();
+    let mut partition = original.partition_keys().to_vec();
+    let mut ordering = original.ordering().to_vec();
+    match mutation {
+        OutputContractMutationV2::SetCardinality => cardinality = CardinalityV1::Set,
+        OutputContractMutationV2::SequenceCardinality => cardinality = CardinalityV1::Sequence,
+        OutputContractMutationV2::FirstFieldType
+        | OutputContractMutationV2::FirstFieldOptionality => {
+            if row.fields().is_empty() {
+                return Err("row mutation requires a field".to_owned());
+            }
+            let fields = row
+                .fields()
+                .iter()
+                .zip(original.columns())
+                .enumerate()
+                .map(|(i, (field, column))| {
+                    let value_type = if i != 0 {
+                        field.value_type().clone()
+                    } else if matches!(mutation, OutputContractMutationV2::FirstFieldOptionality) {
+                        ValueTypeV1::try_optional(field.value_type().clone())
+                            .map_err(|error| format!("{error:?}"))?
+                    } else if field.value_type() == &ValueTypeV1::string() {
+                        ValueTypeV1::int()
+                    } else {
+                        ValueTypeV1::string()
+                    };
+                    RecordFieldTypeV1::try_new(field.name(), value_type, column.location().clone())
+                        .map_err(|error| format!("{error:?}"))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            row = RecordTypeV1::try_new(fields).map_err(|error| format!("{error:?}"))?;
+        }
+        OutputContractMutationV2::Partition => partition = vec![stage],
+        OutputContractMutationV2::Ordering => {
+            ordering = vec![crate::OrderKeyContractV2::new(
+                stage,
+                crate::SortDirectionV2::Asc,
+                crate::NullOrderV2::Last,
+                ValueTypeV1::int(),
+            )]
+        }
+    }
+    RelationOutputContractV2::try_new(
+        row,
+        original.provenance().clone(),
+        original.columns().to_vec(),
+        cardinality,
+        partition,
+        ordering,
+        original.effects(),
+    )
+    .map_err(str::to_owned)
+}
+
 /// Fixed source identity used by reference relation fixtures.
 pub const REFERENCE_SOURCE_V2: SourceIdV2 = SourceIdV2::from_raw(9);
 

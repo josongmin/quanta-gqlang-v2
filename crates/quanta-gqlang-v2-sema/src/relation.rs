@@ -293,6 +293,29 @@ impl RelationOutputContractV2 {
             })
             .eq(expressions.into_iter().map(Some))
     }
+    /// Exact inner/cross-join output frame. Types and ordered column origins
+    /// concatenate the operands; authored joins produce an unordered bag and
+    /// consume any operand partition/order metadata.
+    #[must_use]
+    pub fn has_exact_join_frame(&self, left: &Self, right: &Self) -> bool {
+        self.cardinality == CardinalityV1::Bag
+            && self.partition_keys.is_empty()
+            && self.ordering.is_empty()
+            && self
+                .row
+                .fields()
+                .iter()
+                .eq(left.row.fields().iter().chain(right.row.fields()))
+            && self
+                .columns
+                .iter()
+                .eq(left.columns.iter().chain(&right.columns))
+            && self
+                .provenance
+                .0
+                .iter()
+                .eq(left.provenance.0.union(&right.provenance.0))
+    }
     /// Cardinality/multiplicity.
     #[must_use]
     pub const fn cardinality(&self) -> CardinalityV1 {
@@ -491,7 +514,7 @@ impl TypedRelationExprV2 {
                     && join_mode.is_none()
             }
             TypedRelationStageKindV2::Join => {
-                inputs.len() == 2
+                matches!(inputs.as_slice(), [left, right] if output.has_exact_join_frame(left.output(), right.output()))
                     && expressions.is_empty()
                     && source.is_none()
                     && matches!(
@@ -1018,6 +1041,61 @@ mod tests {
             .err(),
             Some("invalid typed relation stage arity or payload")
         );
+    }
+
+    #[test]
+    #[expect(clippy::expect_used, reason = "sealed join constructor controls")]
+    fn join_requires_exact_operand_frame_and_bag_cardinality() {
+        use crate::test_support::{
+            forged_output_contract_v2, reference_relation_document_v2,
+            OutputContractMutationV2 as Mutation, ReferenceRelationFixtureV2 as Fixture,
+        };
+        for fixture in [
+            Fixture::CrossJoin,
+            Fixture::InnerJoinOn,
+            Fixture::SelfJoinInner,
+        ] {
+            let document = reference_relation_document_v2(fixture).expect("real join");
+            let Some(crate::SemanticItemV2::Relation(relation)) =
+                document.document().item(document.item_id())
+            else {
+                unreachable!("real relation");
+            };
+            let root = relation.root();
+            let build = |output| {
+                TypedRelationExprV2::try_from_stage(TypedRelationStageInputV2 {
+                    key: root.key(),
+                    location: root.location().clone(),
+                    kind: TypedRelationStageKindV2::Join,
+                    inputs: root.inputs().cloned().collect(),
+                    expressions: Vec::new(),
+                    predicate: root.predicate().cloned(),
+                    source: None,
+                    join_mode: root.join_mode(),
+                    implicit_partition: false,
+                    partition_input: Vec::new(),
+                    output,
+                })
+            };
+            assert!(build(root.output().clone()).is_ok());
+            for mutation in [
+                Mutation::SetCardinality,
+                Mutation::SequenceCardinality,
+                Mutation::FirstFieldType,
+                Mutation::FirstFieldOptionality,
+                Mutation::Partition,
+                Mutation::Ordering,
+            ] {
+                let output = forged_output_contract_v2(root.output(), root.key(), mutation)
+                    .expect("generic output is row-aligned");
+                assert_ne!(&output, root.output(), "{fixture:?} {mutation:?}");
+                assert_eq!(
+                    build(output).err(),
+                    Some("invalid typed relation stage arity or payload"),
+                    "{fixture:?} {mutation:?}"
+                );
+            }
+        }
     }
 
     fn empty_output() -> Result<RelationOutputContractV2, String> {
