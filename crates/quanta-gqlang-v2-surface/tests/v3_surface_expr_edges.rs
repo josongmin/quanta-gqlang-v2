@@ -108,13 +108,22 @@ fn call_with_multiple_args() {
             assert_eq!(c.callee.name, "f");
             assert_eq!(c.args().len(), 3);
             let CallArgHirV1::Expr(a0) = &c.args().as_slice()[0] else {
-                panic!("arg 0 must be an expression, got {:?}", c.args().as_slice()[0]);
+                panic!(
+                    "arg 0 must be an expression, got {:?}",
+                    c.args().as_slice()[0]
+                );
             };
             let CallArgHirV1::Expr(a1) = &c.args().as_slice()[1] else {
-                panic!("arg 1 must be an expression, got {:?}", c.args().as_slice()[1]);
+                panic!(
+                    "arg 1 must be an expression, got {:?}",
+                    c.args().as_slice()[1]
+                );
             };
             let CallArgHirV1::Expr(a2) = &c.args().as_slice()[2] else {
-                panic!("arg 2 must be an expression, got {:?}", c.args().as_slice()[2]);
+                panic!(
+                    "arg 2 must be an expression, got {:?}",
+                    c.args().as_slice()[2]
+                );
             };
             assert_eq!(symbol_name(a0), "a", "arg 0 payload");
             match &a1.kind {
@@ -251,7 +260,10 @@ fn quantifier_multiple_binders_with_in() {
                 vec!["x", "y"]
             );
             let BoolExprKindV1::Compare(c) = &q.body.kind else {
-                panic!("quantifier body must be a comparison, got {:?}", q.body.kind);
+                panic!(
+                    "quantifier body must be a comparison, got {:?}",
+                    q.body.kind
+                );
             };
             assert_eq!(c.op.symbol, ">");
             assert_eq!(symbol_name(&c.lhs), "x");
@@ -278,7 +290,10 @@ fn quantifier_missing_body_paren_rejects() {
     let missing_paren =
         parse_predicate("exists x in x > 1", &HirBuilderV1::new()).expect_err("must reject");
     assert_eq!(missing_paren.code, ParseErrorCodeV1::UnexpectedToken);
-    assert_eq!(missing_paren.message, "expected '(' to open quantifier body");
+    assert_eq!(
+        missing_paren.message,
+        "expected '(' to open quantifier body"
+    );
     assert_eq!(missing_paren.span, SpanV1::new(12, 13));
 }
 
@@ -428,7 +443,6 @@ fn unclosed_paren_rejects() {
     );
     assert_eq!(diag.span, SpanV1::new(6, 6));
 }
-
 
 /// A bare `!=` comparison is a valid operator, not only a lexed token.
 #[test]

@@ -87,7 +87,10 @@ fn rule_missing_if_rejects() {
     let builder = HirBuilderV1::new();
     let diag = parse_program("rule adult : person.id person.age", &builder).expect_err("rejects");
     assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
-    assert_eq!(diag.message, "expected 'if' between a rule head and its body");
+    assert_eq!(
+        diag.message,
+        "expected 'if' between a rule head and its body"
+    );
     assert_eq!(diag.span, SpanV1::new(23, 29));
 }
 
@@ -112,7 +115,6 @@ fn rule_body_supports_quantifier_placeholder() {
     }
     check_tree(HirRootRefV1::Rule(&rule), src.len()).expect("sound tree");
 }
-
 
 /// `parse_program` tolerates one trailing document separator.
 #[test]

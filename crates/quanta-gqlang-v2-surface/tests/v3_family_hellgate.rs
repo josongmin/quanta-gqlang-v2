@@ -123,7 +123,10 @@ fn find_missing_arrow_rejects() {
     // malformed FIND seed: no `->` between source and sink.
     let diag = err("find taint api.entry db.write");
     assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
-    assert_eq!(diag.message, "expected '->' between the FIND source and sink");
+    assert_eq!(
+        diag.message,
+        "expected '->' between the FIND source and sink"
+    );
     assert_eq!(diag.span, SpanV1::new(21, 23));
 }
 
@@ -733,8 +736,7 @@ fn composition_unconsumed_let_rejects() {
     // Exact message: `contains("with") || contains("binding")` would accept a
     // wrong branch (for example the `with` keyword-missing reject).
     assert_eq!(
-        diag.message,
-        "'with b' names an undefined composition binding",
+        diag.message, "'with b' names an undefined composition binding",
         "msg: {}",
         diag.message
     );
@@ -766,8 +768,7 @@ fn check_duplicate_confirm_clause_rejects() {
     let diag = err("check rule.x | confirm=require | confirm=skip");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert_eq!(
-        diag.message,
-        "duplicate CHECK clause 'confirm'",
+        diag.message, "duplicate CHECK clause 'confirm'",
         "msg: {}",
         diag.message
     );
@@ -779,8 +780,7 @@ fn explain_duplicate_evidence_clause_rejects() {
     let diag = err("explain rule.x | evidence=trace | evidence=auto");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert_eq!(
-        diag.message,
-        "duplicate EXPLAIN clause 'evidence'",
+        diag.message, "duplicate EXPLAIN clause 'evidence'",
         "msg: {}",
         diag.message
     );
@@ -792,8 +792,7 @@ fn sample_duplicate_mode_clause_rejects() {
     let diag = err("sample query=\"x\" | limit=1 | mode=lexical | mode=semantic");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert_eq!(
-        diag.message,
-        "duplicate SAMPLE clause 'mode'",
+        diag.message, "duplicate SAMPLE clause 'mode'",
         "msg: {}",
         diag.message
     );
@@ -805,8 +804,7 @@ fn compare_duplicate_metric_clause_rejects() {
     let diag = err("compare baseline=a | candidate=b | metric=exact | metric=semantic");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert_eq!(
-        diag.message,
-        "duplicate COMPARE clause 'metric'",
+        diag.message, "duplicate COMPARE clause 'metric'",
         "msg: {}",
         diag.message
     );
@@ -818,8 +816,7 @@ fn export_duplicate_kind_clause_rejects() {
     let diag = err("export source=a | kind=json | kind=csv");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert_eq!(
-        diag.message,
-        "duplicate EXPORT clause 'kind'",
+        diag.message, "duplicate EXPORT clause 'kind'",
         "msg: {}",
         diag.message
     );
@@ -831,8 +828,7 @@ fn model_duplicate_provider_clause_rejects() {
     let diag = err("model m | provider=p1 | source=s | provider=p2");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert_eq!(
-        diag.message,
-        "duplicate MODEL clause 'provider'",
+        diag.message, "duplicate MODEL clause 'provider'",
         "msg: {}",
         diag.message
     );
@@ -844,8 +840,7 @@ fn pack_duplicate_source_clause_rejects() {
     let diag = err("pack p | source=s1 | activation=session | source=s2");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert_eq!(
-        diag.message,
-        "duplicate PACK clause 'source'",
+        diag.message, "duplicate PACK clause 'source'",
         "msg: {}",
         diag.message
     );
@@ -857,8 +852,7 @@ fn profile_duplicate_admission_clause_rejects() {
     let diag = err("profile p | admission=allowlist | admission=certified-only");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert_eq!(
-        diag.message,
-        "duplicate PROFILE clause 'admission'",
+        diag.message, "duplicate PROFILE clause 'admission'",
         "msg: {}",
         diag.message
     );
@@ -870,8 +864,7 @@ fn gate_duplicate_binding_clause_rejects() {
     let diag = err("gate g | binding=all | binding=any");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert_eq!(
-        diag.message,
-        "duplicate GATE clause 'binding'",
+        diag.message, "duplicate GATE clause 'binding'",
         "msg: {}",
         diag.message
     );
@@ -884,8 +877,7 @@ fn use_pack_duplicate_activation_clause_rejects() {
     let diag = err("use pack p | activation=session | lockfile=p.lock | activation=workspace");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert_eq!(
-        diag.message,
-        "duplicate USE PACK clause 'activation'",
+        diag.message, "duplicate USE PACK clause 'activation'",
         "msg: {}",
         diag.message
     );
@@ -900,8 +892,7 @@ fn find_duplicate_depth_clause_rejects() {
     let diag = err(src);
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert_eq!(
-        diag.message,
-        "duplicate FIND clause 'depth'",
+        diag.message, "duplicate FIND clause 'depth'",
         "msg: {}",
         diag.message
     );

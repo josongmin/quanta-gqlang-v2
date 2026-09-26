@@ -111,11 +111,20 @@ fn invalid_escape_forms_reject() {
 fn bool_connectives_render_canonically() {
     assert_renders("rule r : x if a or b", "rule r : x if a or b");
     assert_renders("rule r : x if not a", "rule r : x if not a");
-    assert_renders("rule r : x if (a or b) and c", "rule r : x if (a or b) and c");
-    assert_renders("rule r : x if a and (b or c)", "rule r : x if a and (b or c)");
+    assert_renders(
+        "rule r : x if (a or b) and c",
+        "rule r : x if (a or b) and c",
+    );
+    assert_renders(
+        "rule r : x if a and (b or c)",
+        "rule r : x if a and (b or c)",
+    );
     // a parenthesized value-comparison stays a value paren, not a bool paren.
     assert_renders("rule r : x if (a + b) > c", "rule r : x if (a + b) > c");
-    assert_renders("rule r : x if exists v in (v.flag)", "rule r : x if exists v in (v.flag)");
+    assert_renders(
+        "rule r : x if exists v in (v.flag)",
+        "rule r : x if exists v in (v.flag)",
+    );
     assert_renders(
         "rule r : x if forall v, w in (v.k = w.k)",
         "rule r : x if forall v, w in (v.k = w.k)",
@@ -131,7 +140,10 @@ fn bool_connectives_render_canonically() {
 /// canonical text (pins scope/callable presence, not just re-parse stability).
 #[test]
 fn find_all_subkinds_round_trip() {
-    assert_renders("find reachability a.b -> c.d", "find reachability a.b -> c.d");
+    assert_renders(
+        "find reachability a.b -> c.d",
+        "find reachability a.b -> c.d",
+    );
     assert_renders("find flow a.b -> c.d", "find flow a.b -> c.d");
     assert_renders("find taint a.b -> c.d", "find taint a.b -> c.d");
     assert_renders("find path a.b -> c.d", "find path a.b -> c.d");
@@ -166,7 +178,10 @@ fn find_constraint_clauses_round_trip() {
         "find reachability a.b -> c.d | direction=undirected",
         "find reachability a.b -> c.d | direction=undirected",
     );
-    assert_renders("find flow a.b -> c.d | anchor=an.node", "find flow a.b -> c.d | anchor=an.node");
+    assert_renders(
+        "find flow a.b -> c.d | anchor=an.node",
+        "find flow a.b -> c.d | anchor=an.node",
+    );
 }
 
 // ---- CHECK / presentation modes --------------------------------------------
@@ -284,8 +299,14 @@ fn catalog_enum_modes_render() {
         "profile p | capabilities=c.a | admission=certified-only",
         "profile p | capabilities=c.a | admission=certified-only",
     );
-    assert_renders("gate g | checks=c.a | binding=all", "gate g | checks=c.a | binding=all");
-    assert_renders("gate g | checks=c.a | binding=any", "gate g | checks=c.a | binding=any");
+    assert_renders(
+        "gate g | checks=c.a | binding=all",
+        "gate g | checks=c.a | binding=all",
+    );
+    assert_renders(
+        "gate g | checks=c.a | binding=any",
+        "gate g | checks=c.a | binding=any",
+    );
     assert_renders(
         "use pack p | activation=workspace | lockfile=l.lock",
         "use pack p | activation=workspace | lockfile=l.lock",
@@ -298,13 +319,19 @@ fn catalog_enum_modes_render() {
 /// through the keyed-compose path.
 #[test]
 fn query_compose_shapes_render() {
-    assert_renders("from o x | group by x.a, x.b", "from o x | group by x.a, x.b");
+    assert_renders(
+        "from o x | group by x.a, x.b",
+        "from o x | group by x.a, x.b",
+    );
     assert_renders(
         "from o x | order by x.total desc, x.id asc",
         "from o x | order by x.total desc, x.id asc",
     );
     assert_renders("from a x | cross join b y", "from a x | cross join b y");
-    assert_renders("from a x | join b y on x.k = y.k", "from a x | join b y on x.k = y.k");
+    assert_renders(
+        "from a x | join b y on x.k = y.k",
+        "from a x | join b y on x.k = y.k",
+    );
     // Shape delimiters and spacing are pinned, not only round-trip stable.
     assert_renders(
         "from users u => { id: u.id, tags: [ u.t1 ] }",

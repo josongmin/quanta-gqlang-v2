@@ -242,7 +242,6 @@ fn relation_budget_is_shared_across_nested_exists_and_caps_custom_profiles() {
     assert!(ParseBudgetV2::try_new(100, 1, 100, 64, 129, 10, 10).is_err());
 }
 
-
 #[test]
 fn every_budget_dimension_rejects_zero() {
     // A zero in any one dimension must be rejected; a dropped array entry would
@@ -250,10 +249,8 @@ fn every_budget_dimension_rejects_zero() {
     for zero_index in 0..7usize {
         let args: [usize; 7] = std::array::from_fn(|i| usize::from(i != zero_index));
         assert!(
-            ParseBudgetV2::try_new(
-                args[0], args[1], args[2], args[3], args[4], args[5], args[6]
-            )
-            .is_err(),
+            ParseBudgetV2::try_new(args[0], args[1], args[2], args[3], args[4], args[5], args[6])
+                .is_err(),
             "dimension {zero_index} must reject a zero budget"
         );
     }

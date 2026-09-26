@@ -118,7 +118,10 @@ fn aliased_projection_with_nested_shape() {
     assert_eq!(record.fields.len(), 2);
     assert_eq!(record.fields[0].name, "id");
     let ResultShapeKindV1::Leaf(leaf0) = &record.fields[0].shape.kind else {
-        panic!("id field must be a leaf, got {:?}", record.fields[0].shape.kind);
+        panic!(
+            "id field must be a leaf, got {:?}",
+            record.fields[0].shape.kind
+        );
     };
     assert_eq!(path_parts(leaf0), ("u", vec!["id"]));
     assert_eq!(record.fields[1].name, "tags");
@@ -202,7 +205,10 @@ fn group_by_with_aggregate_call_projection() {
     };
     assert_eq!(project.items().len(), 2);
     let ValueExprKindV1::Call(call) = &project.items()[1].value.kind else {
-        panic!("item 1 must be the aggregate call, got {:?}", project.items()[1].value.kind);
+        panic!(
+            "item 1 must be the aggregate call, got {:?}",
+            project.items()[1].value.kind
+        );
     };
     assert_eq!(call.callee.name, "count");
     assert_eq!(call.args().len(), 1);
@@ -274,14 +280,16 @@ fn relation_pipeline_stage_set_is_closed() {
     let default_order =
         parse_program("from a | order by k", &builder).expect("order default parses");
     let SurfaceItemV1::Query(query) = &default_order.item else {
-        panic!("order source must parse to a query, got {:?}", default_order.item);
+        panic!(
+            "order source must parse to a query, got {:?}",
+            default_order.item
+        );
     };
     let RelationExprKindV1::OrderBy(order_by) = &query.body.kind else {
         panic!("body must be OrderBy, got {:?}", query.body.kind);
     };
     assert_eq!(order_by.keys()[0].direction, SortDirectionHirV1::Asc);
 }
-
 
 #[test]
 fn parsed_root_classification_matches_every_family() {
@@ -295,7 +303,10 @@ fn parsed_root_classification_matches_every_family() {
         ("check r.x | confirm=skip", SourceRootFamilyV3::Check),
         ("show capabilities", SourceRootFamilyV3::Presentation),
         ("view v | query-ref=r.x", SourceRootFamilyV3::Catalog),
-        ("use pack p | activation=session | lockfile=p.lock", SourceRootFamilyV3::Meta),
+        (
+            "use pack p | activation=session | lockfile=p.lock",
+            SourceRootFamilyV3::Meta,
+        ),
     ] {
         let parsed = parse_program(src, &HirBuilderV1::new()).expect(src);
         assert_eq!(
@@ -305,7 +316,6 @@ fn parsed_root_classification_matches_every_family() {
         );
     }
 }
-
 
 /// A reserved family keyword after a source name must not be silently consumed
 /// as a table alias; it is a trailing token, so the parse fails closed.

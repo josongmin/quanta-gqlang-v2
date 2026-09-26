@@ -280,7 +280,10 @@ fn lexed_token_invariants(
         previous_end = token.span.end;
     }
     prop_assert!(
-        matches!(tokens.last().map(|token| &token.kind), Some(TokenKindV1::Eof)),
+        matches!(
+            tokens.last().map(|token| &token.kind),
+            Some(TokenKindV1::Eof)
+        ),
         "a successful lex must terminate in Eof"
     );
     Ok(())

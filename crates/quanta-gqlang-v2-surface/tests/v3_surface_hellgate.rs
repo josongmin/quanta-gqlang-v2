@@ -94,7 +94,10 @@ fn parse_expr_rejects_trailing() {
     let builder = HirBuilderV1::new();
     let diag = parse_expr("a + b )", &builder).expect_err("must reject");
     assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
-    assert_eq!(diag.message, "unexpected trailing tokens after the expression");
+    assert_eq!(
+        diag.message,
+        "unexpected trailing tokens after the expression"
+    );
     assert_eq!(diag.span, SpanV1::new(6, 7));
 }
 
