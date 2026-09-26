@@ -277,27 +277,6 @@ impl DeclaredDocumentV2 {
     }
 }
 
-/// Document whose names/references have been resolved, before typed body
-/// assembly and global catalog validation.
-#[derive(Clone, Debug)]
-pub struct ResolvedDocumentV2 {
-    declared: DeclaredDocumentV2,
-}
-
-impl ResolvedDocumentV2 {
-    /// Advance the declared state only after the canonical owner resolution
-    /// phase reports no diagnostics.
-    #[must_use]
-    pub fn from_declared(declared: DeclaredDocumentV2) -> Self {
-        Self { declared }
-    }
-    /// Declared checked source.
-    #[must_use]
-    pub const fn declared(&self) -> &DeclaredDocumentV2 {
-        &self.declared
-    }
-}
-
 /// One unresolved editor-only fact. It cannot enter a closed document.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct UnresolvedSemanticFactV2 {
@@ -1495,14 +1474,13 @@ pub fn resolve_checked_document_v2(
             ))
         })?;
     let declared = DeclaredDocumentV2::try_new(checked, authority.budget(), &extended)?;
-    let resolved = ResolvedDocumentV2::from_declared(declared);
     let mut steps = SemanticStepCounterV2::new(authority.budget());
     let mut validator = DocumentCatalogValidatorV2::try_new(extended.clone(), authority.modules())
         .map_err(module_failure)?;
     // Mint local IDs through the modules owner before any body/reference
     // resolution. No semantic path derives CatalogAssetId from raw spelling.
     let mut authored_assets = Vec::new();
-    for item in &resolved.declared.checked().checked().document().items {
+    for item in &declared.checked().checked().document().items {
         if let ProgramItemHirV1::CatalogDecl(decl) = item {
             let kind = match &decl.payload {
                 quanta_gqlang_v2_hir::CatalogPayloadV1::View(_) => NamespaceKindV2::View,
@@ -1513,7 +1491,7 @@ pub fn resolve_checked_document_v2(
                 quanta_gqlang_v2_hir::CatalogPayloadV1::RuleBinding { .. } => NamespaceKindV2::Rule,
             };
             let location = quanta_gqlang_v2_hir::LocatedSpanV2 {
-                source_id: resolved.declared.checked().source_id(),
+                source_id: declared.checked().source_id(),
                 span: decl.name_span,
             };
             let checked_location =
@@ -1544,7 +1522,7 @@ pub fn resolve_checked_document_v2(
         .predeclare_assets(authored_assets)
         .map_err(module_failure)?;
     let mut catalog_items = BTreeMap::new();
-    for item in &resolved.declared.checked().checked().document().items {
+    for item in &declared.checked().checked().document().items {
         if let ProgramItemHirV1::CatalogDecl(decl) = item {
             let matches = predeclared
                 .iter()
@@ -1556,7 +1534,7 @@ pub fn resolve_checked_document_v2(
             let [asset] = matches.as_slice() else {
                 return Err(document_failure(
                     "sema.document_validation_failed",
-                    resolved.declared.checked().source_id(),
+                    declared.checked().source_id(),
                     decl.name_span,
                     "modules predeclaration omitted or ambiguously identified a catalog item",
                 )
@@ -1566,8 +1544,8 @@ pub fn resolve_checked_document_v2(
         }
     }
     let inline_views = collect_inline_view_plan(
-        resolved.declared.checked().checked().document(),
-        resolved.declared.checked().source_id(),
+        declared.checked().checked().document(),
+        declared.checked().source_id(),
         authority,
         &extended,
         &catalog_items,
@@ -1581,7 +1559,7 @@ pub fn resolve_checked_document_v2(
         .validate_view_topology(inline_views.dependency_edges.clone())
         .map_err(module_failure)?;
     let result = resolve_document_bodies(
-        &resolved,
+        &declared,
         authority,
         &extended,
         &catalog_items,
@@ -1594,7 +1572,7 @@ pub fn resolve_checked_document_v2(
         .validate_predeclared(topology, result.catalog_input)
         .map_err(module_failure)?;
     Ok(SemanticDocumentV2::try_assemble(
-        &resolved.declared,
+        &declared,
         result.items,
         result.expressions,
         result.nested_relations,
@@ -5736,7 +5714,7 @@ fn resolve_catalog_family_reference(
 }
 
 fn resolve_document_bodies(
-    resolved: &ResolvedDocumentV2,
+    declared: &DeclaredDocumentV2,
     authority: &ClosedFrontendAuthorityV2,
     extended: &quanta_gqlang_v2_hir::ExtendedSourceRegistryViewV2,
     predeclared: &BTreeMap<HirNodeIdV1, PredeclaredDocumentAssetV2>,
@@ -5745,7 +5723,7 @@ fn resolve_document_bodies(
     validator: &mut DocumentCatalogValidatorV2<'_>,
     steps: &mut SemanticStepCounterV2,
 ) -> Result<BodyResolutionV2, FrontendTransactionErrorV2> {
-    let checked = resolved.declared.checked();
+    let checked = declared.checked();
     let syntax = checked.checked().document();
     struct RuleRelationExistsV2(Option<SpanV1>);
     impl HirVisitorV1 for RuleRelationExistsV2 {

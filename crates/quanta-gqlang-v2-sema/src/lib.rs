@@ -48,8 +48,8 @@ pub use diagnostic::{
 };
 pub use document::{
     resolve_checked_document_v2, CheckedSyntaxDocumentV2, DeclaredDocumentV2,
-    FrontendTransactionErrorV2, IncompleteSemanticDocumentV2, ResolvedDocumentV2,
-    SemanticAnalysisV2, SemanticDocumentV2, UnresolvedSemanticFactV2,
+    FrontendTransactionErrorV2, IncompleteSemanticDocumentV2, SemanticAnalysisV2,
+    SemanticDocumentV2, UnresolvedSemanticFactV2,
 };
 pub use expr::{
     AggregateContextV2, AggregatePositionV2, LogicalQuantifierKindV2, RelationExistsPolarityV2,

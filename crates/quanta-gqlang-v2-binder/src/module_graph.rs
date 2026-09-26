@@ -5,12 +5,10 @@
 //! invent that authority. It only *consumes* an already-resolved frozen graph
 //! and resolves names against it.
 //!
-//! Because ticket 11 is not built yet, this module defines the CONSUMED
-//! interface as a concrete value type ([`ModuleGraphV1`]) plus a trait
-//! ([`ModuleGraphViewV1`]) so ticket 11 can later supply a real graph by
-//! implementing the trait without the binder changing. The binder treats the
-//! graph as immutable input: it never mutates, re-orders, or precedence-ranks
-//! entries.
+//! Production Sema supplies a `ModuleGraphViewV1` adapter over the modules-owned
+//! sealed graph. `ModuleGraphV1` is an inert name-to-target snapshot useful for
+//! isolated binder inputs and tests; it is not module admission authority.
+//! The binder never mutates, re-orders or precedence-ranks graph entries.
 //!
 //! Determinism contract (so resolution does not depend on textual import
 //! order): a lookup either returns exactly one fully-qualified target, or — if

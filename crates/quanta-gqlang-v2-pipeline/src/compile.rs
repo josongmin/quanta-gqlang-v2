@@ -60,7 +60,7 @@ use quanta_gqlang_v2_sema::{
 };
 use quanta_gqlang_v2_surface::{
     classify_parsed_root_v3, format_source_document_with_parse_budget_v2, parse_source_document_v2,
-    ParseBudgetV2,
+    ParseBudgetDimensionV2, ParseBudgetV2,
 };
 
 pub use quanta_gqlang_v2_surface::SourceRootFamilyV3 as FrontendSourceRootFamilyV3;
@@ -791,15 +791,18 @@ fn project_parse_budget(
     source: &str,
     budget: &FrontendBudgetV2,
 ) -> Result<ParseBudgetV2, FrontendFailureV2> {
-    ParseBudgetV2::try_new(
-        usize::try_from(budget.max_tokens()).unwrap_or(usize::MAX),
-        usize::try_from(budget.max_document_items()).unwrap_or(usize::MAX),
-        usize::try_from(budget.max_expression_nodes()).unwrap_or(usize::MAX),
-        usize::try_from(budget.max_expression_depth()).unwrap_or(usize::MAX),
-        usize::try_from(budget.max_relation_depth()).unwrap_or(usize::MAX),
-        usize::try_from(budget.max_collection_width()).unwrap_or(usize::MAX),
-        usize::try_from(budget.max_projection_width()).unwrap_or(usize::MAX),
-    )
+    ParseBudgetV2::try_from_dimensions(|dimension| {
+        let limit = match dimension {
+            ParseBudgetDimensionV2::Tokens => budget.max_tokens(),
+            ParseBudgetDimensionV2::DocumentItems => budget.max_document_items(),
+            ParseBudgetDimensionV2::ExpressionNodes => budget.max_expression_nodes(),
+            ParseBudgetDimensionV2::ExpressionDepth => budget.max_expression_depth(),
+            ParseBudgetDimensionV2::RelationDepth => budget.max_relation_depth(),
+            ParseBudgetDimensionV2::CollectionWidth => budget.max_collection_width(),
+            ParseBudgetDimensionV2::ProjectionWidth => budget.max_projection_width(),
+        };
+        usize::try_from(limit).unwrap_or(usize::MAX)
+    })
     .map_err(|message| {
         FrontendFailureV2::one(FrontendDiagnosticV2::new(
             FrontendStageV2::Resource,
@@ -1947,6 +1950,22 @@ mod tests {
 
     fn standard_budget_v2() -> FrontendBudgetV2 {
         FrontendBudgetV2::standard_v2().expect("standard frontend budget")
+    }
+
+    #[test]
+    fn parse_budget_projection_preserves_every_distinct_frontend_cap() {
+        let budget = FrontendBudgetV2::try_new(
+            151, 157, 31, 37, 11, 13, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103,
+            107,
+        )
+        .expect("distinct positive frontend caps");
+        let projected = project_parse_budget(SourceIdV2::from_raw(9), "", &budget)
+            .expect("validated owner profile projects");
+        assert_eq!(
+            projected,
+            ParseBudgetV2::try_new(31, 37, 41, 11, 13, 43, 47)
+                .expect("independently specified parse limits")
+        );
     }
 
     fn blocked_fixture_failure(code: &'static str) -> FrontendFailureV2 {

@@ -89,6 +89,25 @@ impl ParseBudgetV2 {
         })
     }
 
+    /// Project every parse-owned dimension from another checked budget.
+    ///
+    /// Callers match the closed dimension enum exhaustively, so a new parser
+    /// dimension requires an explicit owner mapping rather than a default cap.
+    /// Values pass through the same positivity and HIR depth checks as `try_new`.
+    pub fn try_from_dimensions(
+        mut limit: impl FnMut(ParseBudgetDimensionV2) -> usize,
+    ) -> Result<Self, &'static str> {
+        Self::try_new(
+            limit(ParseBudgetDimensionV2::Tokens),
+            limit(ParseBudgetDimensionV2::DocumentItems),
+            limit(ParseBudgetDimensionV2::ExpressionNodes),
+            limit(ParseBudgetDimensionV2::ExpressionDepth),
+            limit(ParseBudgetDimensionV2::RelationDepth),
+            limit(ParseBudgetDimensionV2::CollectionWidth),
+            limit(ParseBudgetDimensionV2::ProjectionWidth),
+        )
+    }
+
     /// Repository-standard bounded profile.
     #[must_use]
     pub const fn standard_v2() -> Self {
@@ -251,6 +270,61 @@ impl ParseBudgetCounterV2 {
             ))
         } else {
             Ok(())
+        }
+    }
+}
+
+#[cfg(test)]
+#[expect(
+    clippy::expect_used,
+    reason = "checked parse-budget construction controls"
+)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dimension_projection_preserves_each_cap_and_reuses_validation() {
+        let dimensions = [
+            ParseBudgetDimensionV2::Tokens,
+            ParseBudgetDimensionV2::DocumentItems,
+            ParseBudgetDimensionV2::ExpressionNodes,
+            ParseBudgetDimensionV2::ExpressionDepth,
+            ParseBudgetDimensionV2::RelationDepth,
+            ParseBudgetDimensionV2::CollectionWidth,
+            ParseBudgetDimensionV2::ProjectionWidth,
+        ];
+        let value = |dimension| match dimension {
+            ParseBudgetDimensionV2::Tokens => 101,
+            ParseBudgetDimensionV2::DocumentItems => 103,
+            ParseBudgetDimensionV2::ExpressionNodes => 107,
+            ParseBudgetDimensionV2::ExpressionDepth => 11,
+            ParseBudgetDimensionV2::RelationDepth => 13,
+            ParseBudgetDimensionV2::CollectionWidth => 109,
+            ParseBudgetDimensionV2::ProjectionWidth => 113,
+        };
+        let mut visited = Vec::new();
+        let projected = ParseBudgetV2::try_from_dimensions(|dimension| {
+            visited.push(dimension);
+            value(dimension)
+        })
+        .expect("distinct positive caps");
+        assert_eq!(visited, dimensions);
+        assert_eq!(
+            projected,
+            ParseBudgetV2::try_new(101, 103, 107, 11, 13, 109, 113).expect("literal budget")
+        );
+        for zero in dimensions {
+            assert_eq!(ParseBudgetV2::try_from_dimensions(|dimension| {
+                if dimension == zero { 0 } else { value(dimension) }
+            }), Err("parse budget dimensions must be positive and depths must stay within their safe maxima"));
+        }
+        for (dimension, over) in [
+            (ParseBudgetDimensionV2::ExpressionDepth, 65),
+            (ParseBudgetDimensionV2::RelationDepth, 129),
+        ] {
+            assert_eq!(ParseBudgetV2::try_from_dimensions(|candidate| {
+                if candidate == dimension { over } else { value(candidate) }
+            }), Err("parse budget dimensions must be positive and depths must stay within their safe maxima"));
         }
     }
 }

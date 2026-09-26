@@ -247,6 +247,11 @@ impl BindResultV1 {
 /// One binder is constructed per unit; it borrows the frozen graph and a
 /// declaration table built from the surrounding program. Construct via
 /// [`Binder::new`], then call one of the `resolve_*` entry points.
+///
+/// These owner-level entry points require structurally checked, depth-bounded
+/// HIR. The source transaction performs HIR integrity and configured Sema
+/// budget checks before invoking Binder. Raw caller-built HIR must cross that
+/// boundary first; this resolver is not an untrusted-input admission API.
 pub struct Binder<'g, G: ModuleGraphViewV1> {
     graph: &'g G,
     /// Top-level declaration/rule/view names visible to this unit.
