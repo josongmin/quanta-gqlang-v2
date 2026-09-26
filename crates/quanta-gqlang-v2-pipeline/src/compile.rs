@@ -1970,8 +1970,11 @@ mod tests {
         let failure = blocked_fixture_failure("planning.test.item_blocked");
         let rule_failure = blocked_fixture_failure("planning.test.rule_blocked");
         for rule_path in [false, true] {
-            let expected =
-                if rule_path { &rule_failure } else { &failure }.diagnostics()[0].clone();
+            let expected = if rule_path { &rule_failure } else { &failure }
+                .diagnostics()
+                .first()
+                .expect("nonempty owner failure")
+                .clone();
             let run = DocumentRunV2 {
                 items: vec![ItemRunV2::Blocked {
                     item_id: fixture.item_id(),
@@ -2013,7 +2016,11 @@ mod tests {
         );
         assert_eq!(
             analysis.diagnostics().as_ref(),
-            &[failure.diagnostics()[0].clone()]
+            &[failure
+                .diagnostics()
+                .first()
+                .expect("nonempty owner failure")
+                .clone()]
         );
         let error = make_run()
             .into_analysis(SourceIdV2::from_raw(73), 0)
@@ -2065,7 +2072,11 @@ mod tests {
         );
         assert_eq!(
             analysis.diagnostics().as_ref(),
-            &[failure.diagnostics()[0].clone()]
+            &[failure
+                .diagnostics()
+                .first()
+                .expect("nonempty owner failure")
+                .clone()]
         );
     }
 
