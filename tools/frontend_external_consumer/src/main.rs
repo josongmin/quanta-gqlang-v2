@@ -210,6 +210,48 @@ fn closed_authority_probe(authority: &ClosedFrontendAuthorityV2) -> &FrontendBud
     authority.budget()
 }
 
+/// Shallow declarations may form a dependency chain as long as the item budget.
+/// Compilation must complete on a bounded host thread in either authored order.
+fn assert_declaration_dependency_stack(authority: &ClosedFrontendAuthorityV2) {
+    const COUNT: usize = 4096;
+    assert_eq!(authority.budget().max_document_items(), 4096);
+    std::thread::scope(|scope| {
+        std::thread::Builder::new()
+            .stack_size(2 * 1024 * 1024)
+            .spawn_scoped(scope, || {
+                let mut declarations: Vec<_> = (0..COUNT)
+                    .map(|index| {
+                        if index + 1 == COUNT {
+                            format!("let x{index} = 1")
+                        } else {
+                            format!("let x{index} = x{}", index + 1)
+                        }
+                    })
+                    .collect();
+                for _ in 0..2 {
+                    let source = declarations.join("; ");
+                    let compiled = compile_source_document_v3(DOCUMENT_SOURCE, &source, authority)
+                        .expect("item-budget declaration chain compiles without stack overflow");
+                    assert_eq!(compiled.source_id(), DOCUMENT_SOURCE);
+                    assert!(compiled.diagnostics().is_empty());
+                    assert_eq!(compiled.items().len(), COUNT);
+                    assert!(compiled.items().iter().all(|item| matches!(
+                        item,
+                        CompiledItemV2::NoPlan {
+                            reason: NoPlanReasonV2::ValueDeclaration,
+                            ..
+                        }
+                    )));
+                    assert!(compiled.execution().items().is_empty());
+                    declarations.reverse();
+                }
+            })
+            .expect("bounded host thread")
+            .join()
+            .expect("declaration dependencies do not abort the host");
+    });
+}
+
 /// Exhaustive read of the closed algebra-family vocabulary.
 fn algebra_family_label(family: AlgebraFamilyV2) -> &'static str {
     match family {
@@ -1208,6 +1250,7 @@ fn main() {
     let closed = closed_builder
         .finish()
         .expect("facade-only authority builder seals");
+    assert_declaration_dependency_stack(&closed);
     let compiled = compile_source_document_v3(DOCUMENT_SOURCE, DOCUMENT_TEXT, &closed)
         .expect("facade-only closed authority compiles the probe source");
     assert_eq!(compiled.source_id(), DOCUMENT_SOURCE);

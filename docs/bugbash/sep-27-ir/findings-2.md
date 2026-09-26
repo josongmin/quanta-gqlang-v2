@@ -1,5 +1,11 @@
 # Lane E 최종 어딧 — 실제 문제만
 
+> F-04/F-05/F-09는 `3b403bbb3d2d02a03d0d1125d770467841d0d640`에서
+> 재감사했다. 아래는 최초 감사 기록이며, 해당 세 항목의 현재 판정은
+> [잔여 항목 재감사](remaining-reaudit.md)를 우선한다. F-04는 frontend
+> 분류 검증과 downstream 거부 정책을 분리했고, F-05의 enum 요구는
+> 필수 수정에서 제외했으며, F-09는 rustdoc 범위만 명확히 했다.
+
 대상: IR/SSOT 병렬 감사 Lane E (pipeline assembly / V3 DTO / facade / front doors), 2바퀴 병렬 + 적대적 반증 완료.
 근거 보고서: `docs/audits/lane-e/lane-E.md` 및 하위 4개 서브레인 보고서.
 Snapshot: `docs/audits/lane-b-snapshot-20260927-010019` @ HEAD `eaeb68ea2711d411616511713fb016d828cd80be` (dirty 포함, 정적 감사).
