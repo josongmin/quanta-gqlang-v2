@@ -25,7 +25,9 @@ pub struct ExplainNoteV2 {
     root_location: CheckedLocatedSpanV2,
     /// The checked algebra families present, root-first in stable pre-order.
     families: Vec<AlgebraFamilyV2>,
-    /// Whether the plan carries an admitted recursive closure.
+    /// Whether the plan requires recursive rule closure or cyclic bounded
+    /// witness traversal. The semantic cost's recursion risk distinguishes
+    /// `BoundedFixpoint` from `BoundDependent`; this flag alone does not.
     recursive: bool,
 }
 
@@ -55,7 +57,9 @@ impl ExplainNoteV2 {
         &self.families
     }
 
-    /// Whether the plan carries an admitted recursive closure.
+    /// Whether the plan requires recursive rule closure or cyclic bounded
+    /// witness traversal. The semantic cost's recursion risk distinguishes
+    /// `BoundedFixpoint` from `BoundDependent`; this flag alone does not.
     #[must_use]
     pub const fn recursive(&self) -> bool {
         self.recursive

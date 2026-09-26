@@ -6,8 +6,11 @@
 //!
 //! `D26`/pinned-semantics 6: multiplicity, duplicate-elimination, and output
 //! order are explicit and testable; an unordered result stays unordered. The
-//! [`MultiplicityOrderContractV2`] carries the sealed cardinality forward so
-//! tooling cannot invent an order the language does not guarantee.
+//! [`MultiplicityOrderContractV2`] carries relational cardinality forward, or
+//! records the planner-owned family rule for a non-relational result. FIND,
+//! CHECK and presentation results are unordered sets as specified in
+//! `docs/contracts/planning-results.md`; they do not have a relational root
+//! whose cardinality could be copied. Tooling cannot invent a semantic order.
 //!
 //! [`ResultContractV2`] is not an empty result-kind wrapper: it retains the
 //! closed [`ResultKindV2`], the per-row [`RenderRequirementV2`], the optional
@@ -73,16 +76,18 @@ impl WitnessSelectionPolicyV2 {
 }
 
 /// The multiplicity / duplicate / order contract of the rendered result, derived
-/// from the sealed cardinality of the plan root (`D26`).
+/// from the sealed relational root or the planner-owned non-relational family
+/// rule (`D26`; see `docs/contracts/planning-results.md`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MultiplicityOrderContractV2 {
-    /// The sealed cardinality of the result root: the single source of truth for
+    /// The planner's result cardinality: the single source of truth for
     /// whether duplicates are eliminated and whether order is semantic.
     pub cardinality: CardinalityV1,
 }
 
 impl MultiplicityOrderContractV2 {
-    /// Build the contract from a sealed root cardinality.
+    /// Retain a cardinality supplied by the planning owner. A standalone
+    /// value of this carrier does not confer checked-plan authority.
     #[must_use]
     pub const fn from_cardinality(cardinality: CardinalityV1) -> Self {
         Self { cardinality }

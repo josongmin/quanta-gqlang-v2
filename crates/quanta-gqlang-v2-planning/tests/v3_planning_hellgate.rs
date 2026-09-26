@@ -696,6 +696,30 @@ fn resolved_check_contract_enforces_the_complete_option_matrix() {
                         assert_eq!(contract.nested_graph(), nested.as_ref());
                         assert_eq!(contract.pattern().is_some(), with_pattern);
                         assert_eq!(contract.nested_graph().is_some(), with_nested_graph);
+                        let planned =
+                            plan(&SemanticPlanInputV2::Check(contract), fixture.document())
+                                .expect("valid CHECK plans");
+                        let result = planned.result().multiplicity_order();
+                        assert_eq!(
+                            result.cardinality,
+                            quanta_gqlang_v2_types::CardinalityV1::Set
+                        );
+                        assert!(result.eliminates_duplicates());
+                        assert!(!result.is_ordered());
+                        assert_eq!(
+                            planned.semantic_cost().ordering_contract,
+                            quanta_gqlang_v2_planning::OrderingContractV2::Unordered
+                        );
+                        assert_eq!(
+                            planned.result().witness_selection(),
+                            if with_nested_graph {
+                                Some(
+                                    quanta_gqlang_v2_planning::WitnessSelectionPolicyV2::AllWitness,
+                                )
+                            } else {
+                                None
+                            }
+                        );
                     }
                     (actual, expected) => panic!(
                         "CHECK option matrix mismatch: mode={mode:?} pattern={with_pattern} \

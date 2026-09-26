@@ -54,6 +54,22 @@ use support::{
     check_input, composition_input, graph_input, planned_relation, relational_policy, rule_input,
 };
 
+/// Literal non-relational result semantics, independent of the planner's
+/// family classifier and cardinality-to-order helper.
+fn assert_unordered_set_result(planned: &quanta_gqlang_v2_planning::SemanticPlanV2) {
+    let result = planned.result().multiplicity_order();
+    assert_eq!(
+        result.cardinality,
+        quanta_gqlang_v2_types::CardinalityV1::Set
+    );
+    assert!(result.eliminates_duplicates());
+    assert!(!result.is_ordered());
+    assert_eq!(
+        planned.semantic_cost().ordering_contract,
+        quanta_gqlang_v2_planning::OrderingContractV2::Unordered
+    );
+}
+
 /// A stable predicate identity for the recursive-member assertions.
 fn predicate(name: &str) -> ResolvedPredicateIdV2 {
     ResolvedPredicateIdV2::try_new(name).expect("the fixture predicate identity is valid")
@@ -155,6 +171,26 @@ fn the_sealed_find_provenance_follows_the_subkind() {
     ] {
         let (document, input) = graph_input(kind, 6).expect("the reference FIND authors");
         let planned = plan(&input, document.document()).expect("a bounded FIND plans");
+        assert_unordered_set_result(&planned);
+        assert_eq!(
+            planned.result().witness_selection(),
+            Some(WitnessSelectionPolicyV2::AllWitness),
+            "{kind:?}"
+        );
+        assert_eq!(
+            planned.capabilities(),
+            &BTreeSet::from([
+                CapabilityV2::RecursiveClosure,
+                CapabilityV2::WitnessMaterialization
+            ]),
+            "{kind:?}"
+        );
+        assert!(planned.explain().recursive(), "{kind:?}");
+        assert_eq!(
+            planned.semantic_cost().recursion_risk_class,
+            RecursionRiskClassV2::BoundDependent,
+            "{kind:?}"
+        );
         let retention: &GraphWitnessRetentionV2 =
             support::graph_policy(&planned).expect("a graph policy");
         assert_eq!(retention.kind(), kind);
@@ -210,6 +246,7 @@ fn a_mutated_find_bound_is_refused_and_the_pristine_carrier_plans() {
 fn a_check_is_an_alert_read_only_result() {
     let (document, input) = check_input().expect("the nested CHECK fixture");
     let planned = plan(&input, document.document()).expect("the CHECK plans");
+    assert_unordered_set_result(&planned);
 
     assert_eq!(planned.authority_lane(), AuthorityLaneV2::FrontendChecked);
     assert_eq!(planned.result().result_kind(), ResultKindV2::Alert);
@@ -402,6 +439,8 @@ fn every_presentation_verb_retains_its_sealed_payload_and_plan_shape() {
         let (document, input) =
             support::presentation_input(fixture).expect("the presentation fixture seals");
         let planned = plan(&input, document.document()).expect("the presentation plans");
+        assert_unordered_set_result(&planned);
+        assert_eq!(planned.result().witness_selection(), None, "{fixture:?}");
         assert_eq!(planned.result().result_kind(), result, "{fixture:?}");
         assert_eq!(planned.result().render_requirement(), render, "{fixture:?}");
         assert_eq!(planned.evidence(), evidence, "{fixture:?}");

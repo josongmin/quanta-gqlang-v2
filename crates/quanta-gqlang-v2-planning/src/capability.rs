@@ -5,16 +5,16 @@
 //! noun (`D7`). The V2 cut deletes the V1 recursive walk
 //! (`derive_algebra_capabilities`/`collect`): capabilities are now collected by
 //! the single iterative, deterministic, budgeted traversal run by
-//! [`crate::plan_outcome`], which keys every capability off the checked algebra
-//! family of a node it has actually charged a semantic step for.
+//! [`crate::plan_outcome`], which consumes checked algebra families and sealed
+//! logic contracts at the visited, budget-charged nodes.
 
 use quanta_gqlang_v2_algebra::AlgebraFamilyV2;
 
 /// A single host-agnostic capability the plan requires.
 ///
 /// Capabilities are derived purely from the presence of checked constructs; the
-/// closed set below maps one-to-one onto algebra families and sealed logic
-/// shapes the planner can classify.
+/// closed set below covers algebra families and sealed logic shapes the
+/// planner can classify. Several constructs can require the same capability.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum CapabilityV2 {
     /// Reading a base relation or a composition working set (a `Scan`).
@@ -33,8 +33,11 @@ pub enum CapabilityV2 {
     ExistenceCheck,
     /// Non-existence testing (an `AntiJoin`).
     NegationCheck,
-    /// Recursive closure (a document rule program with a recursive member).
-    /// Derived from the sealed logic proof, never from the algebra walk.
+    /// Admitted cyclic traversal: a recursive rule fixpoint or a bounded
+    /// graph witness search (including a CHECK's nested graph). Derived from
+    /// sealed logic facts. This capability alone does not distinguish them;
+    /// `SemanticCostV2::recursion_risk_class` records `BoundedFixpoint` for
+    /// recursive rules and `BoundDependent` for cyclic witness traversal.
     RecursiveClosure,
     /// Witness/path materialization. Derived from a sealed witness contract
     /// (FIND or a witness-bearing presentation), never from the algebra walk.

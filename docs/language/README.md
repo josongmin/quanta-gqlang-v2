@@ -106,6 +106,10 @@ Current non-servable truth:
 3. unsupported mixes reject fail-closed with typed planning or logic codes
 4. nothing is down-cast into legacy `RootSpecV1`
 
+The planning owner defines the non-relational result multiplicity and ordering
+contract in [Planning result semantics](../contracts/planning-results.md).
+These frontend plan requirements do not grant downstream runtime support.
+
 ## CLI And Diagnostics Stdio
 
 CLI:
