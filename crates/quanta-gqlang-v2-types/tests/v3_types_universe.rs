@@ -598,4 +598,51 @@ fn resolved_predicate_and_capture_identities_are_canonical() {
             .code(),
         "types.invalid_resolved_identity"
     );
+
+    let reference = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(1),
+        node_id: HirNodeIdV1::from_raw(40),
+    };
+    let owner = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(1),
+        node_id: HirNodeIdV1::from_raw(10),
+    };
+    let capture = ResolvedRelationCaptureInputV2::new(reference, owner, 1);
+    assert_eq!(capture.reference(), reference);
+    assert_eq!(capture.target_owner(), owner);
+    assert_eq!(
+        capture.target_ordinal(),
+        1,
+        "a non-zero ordinal must round-trip through the capture DTO"
+    );
+    let foreign = ResolvedRelationCaptureInputV2::new(
+        SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(2),
+            node_id: HirNodeIdV1::from_raw(40),
+        },
+        owner,
+        0,
+    );
+    assert_eq!(
+        ResolvedRelationPredicateInputV2::try_resolved(reference, vec![capture.clone(), foreign])
+            .unwrap_err(),
+        TypeDiagnosticV2::InvalidRelationPredicateInput {
+            node_id: reference.node_id,
+            location: LocatedSpanV2 {
+                source_id: reference.source_id,
+                span: SpanV1::point(0),
+            },
+        }
+    );
+    assert_eq!(
+        ResolvedRelationPredicateInputV2::try_resolved(reference, vec![capture.clone(), capture])
+            .unwrap_err(),
+        TypeDiagnosticV2::InvalidRelationPredicateInput {
+            node_id: reference.node_id,
+            location: LocatedSpanV2 {
+                source_id: reference.source_id,
+                span: SpanV1::point(0),
+            },
+        }
+    );
 }

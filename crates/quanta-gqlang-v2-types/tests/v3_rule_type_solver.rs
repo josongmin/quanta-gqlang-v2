@@ -536,10 +536,14 @@ fn nearest_quantifier_shadow_rejects_forged_outer_same_name() {
     );
     symbols.last_mut().unwrap().binding = binding(rule_id);
     assert_eq!(
-        solve(&doc, predicates, symbols, vec![], roomy())
-            .unwrap_err()
-            .code(),
-        "types.invalid_rule_input"
+        solve(&doc, predicates, symbols, vec![], roomy()).unwrap_err(),
+        TypeDiagnosticV2::InvalidRuleInput {
+            location: LocatedSpanV2 {
+                source_id: source(),
+                span: span(35, 36),
+            },
+        },
+        "a forged outer binding for a shadowed name must reject at the inner symbol"
     );
 }
 
@@ -886,16 +890,25 @@ fn three_rule_cycle_anchor_position_and_input_permutations_are_stable() {
 fn unanchored_mutual_recursion_rejects_as_recursive_not_default() {
     let (doc, predicates, symbols, calls) = mutual_fixture(false);
     assert_eq!(
-        solve(&doc, predicates, symbols, calls, roomy())
-            .unwrap_err()
-            .code(),
-        "types.unanchored_recursive_rule"
+        solve(&doc, predicates, symbols, calls, roomy()).unwrap_err(),
+        TypeDiagnosticV2::UnanchoredRecursiveRule {
+            location: LocatedSpanV2 {
+                source_id: source(),
+                span: span(9, 10),
+            },
+        }
     );
 }
 
 #[test]
 fn exact_rule_resolution_inputs_reject_missing_duplicate_foreign_and_wrong_binding() {
     let (doc, predicates, symbols, calls) = mutual_fixture(true);
+    let invalid = |span: SpanV1| TypeDiagnosticV2::InvalidRuleInput {
+        location: LocatedSpanV2 {
+            source_id: source(),
+            span,
+        },
+    };
     assert_eq!(
         solve(
             &doc,
@@ -904,25 +917,23 @@ fn exact_rule_resolution_inputs_reject_missing_duplicate_foreign_and_wrong_bindi
             calls.clone(),
             roomy()
         )
-        .unwrap_err()
-        .code(),
-        "types.invalid_rule_input"
+        .unwrap_err(),
+        invalid(SpanV1::point(0)),
+        "a missing required symbol must reject without a location"
     );
     let mut duplicated = symbols.clone();
     duplicated.push(symbols.first().unwrap().clone());
     assert_eq!(
-        solve(&doc, predicates.clone(), duplicated, calls.clone(), roomy())
-            .unwrap_err()
-            .code(),
-        "types.invalid_rule_input"
+        solve(&doc, predicates.clone(), duplicated, calls.clone(), roomy()).unwrap_err(),
+        invalid(span(9, 10)),
+        "a duplicated symbol must reject at the authored first symbol"
     );
     let mut foreign = symbols.clone();
     foreign.first_mut().unwrap().reference.source_id = SourceIdV2::from_raw(72);
     assert_eq!(
-        solve(&doc, predicates.clone(), foreign, calls.clone(), roomy())
-            .unwrap_err()
-            .code(),
-        "types.invalid_rule_input"
+        solve(&doc, predicates.clone(), foreign, calls.clone(), roomy()).unwrap_err(),
+        invalid(SpanV1::point(0)),
+        "a foreign-source symbol must reject without a location"
     );
     let mut wrong_binding = symbols.clone();
     let other_rule = predicates
@@ -940,9 +951,9 @@ fn exact_rule_resolution_inputs_reject_missing_duplicate_foreign_and_wrong_bindi
             calls.clone(),
             roomy()
         )
-        .unwrap_err()
-        .code(),
-        "types.invalid_rule_input"
+        .unwrap_err(),
+        invalid(span(9, 10)),
+        "a symbol bound to the wrong rule must reject at the first symbol"
     );
     let mut extra = symbols.clone();
     extra.push(RuleSymbolInputV2 {
@@ -950,10 +961,9 @@ fn exact_rule_resolution_inputs_reject_missing_duplicate_foreign_and_wrong_bindi
         binding: symbols.first().unwrap().binding,
     });
     assert_eq!(
-        solve(&doc, predicates.clone(), extra, calls.clone(), roomy())
-            .unwrap_err()
-            .code(),
-        "types.invalid_rule_input"
+        solve(&doc, predicates.clone(), extra, calls.clone(), roomy()).unwrap_err(),
+        invalid(SpanV1::point(0)),
+        "an extra symbol with no authored node must reject without a location"
     );
     let mut duplicate_predicates = predicates.clone();
     duplicate_predicates.push(predicates.first().unwrap().clone());
@@ -965,18 +975,22 @@ fn exact_rule_resolution_inputs_reject_missing_duplicate_foreign_and_wrong_bindi
             calls.clone(),
             roomy()
         )
-        .unwrap_err()
-        .code(),
-        "types.invalid_rule_input"
+        .unwrap_err(),
+        invalid(span(0, 40)),
+        "a duplicated rule predicate must reject at the authored rule span"
     );
     let mut unknown_call = calls.clone();
     unknown_call.first_mut().unwrap().target =
         RuleCallableTargetV2::SourcePredicate(ResolvedPredicateIdV2::try_new("missing").unwrap());
     assert_eq!(
-        solve(&doc, predicates, symbols, unknown_call, roomy())
-            .unwrap_err()
-            .code(),
-        "types.unknown_rule_callable"
+        solve(&doc, predicates, symbols, unknown_call, roomy()).unwrap_err(),
+        TypeDiagnosticV2::UnknownRuleCallable {
+            location: LocatedSpanV2 {
+                source_id: source(),
+                span: span(30, 34),
+            },
+        },
+        "an unresolved call target must reject at the call span"
     );
 }
 
@@ -1449,10 +1463,7 @@ fn relation_existence_in_rule_has_exact_defense_in_depth_diagnostic() {
 
 #[test]
 fn iterative_expected_prepass_rejects_one_over_depth_without_recursing() {
-    for (wrappers, expected_code) in [
-        (63, "types.ambiguous_rule_type"),
-        (64, "types.rule_type_resource_limit"),
-    ] {
+    for wrappers in [63usize, 64] {
         let b = HirBuilderV1::new();
         let head = b.symbol("x", span(9, 10));
         let head_id = head.id;
@@ -1482,15 +1493,23 @@ fn iterative_expected_prepass_rejects_one_over_depth_without_recursing() {
             RuleTypeBudgetV2::try_new(512, 512, 1_000_000).unwrap(),
         )
         .unwrap_err();
-        assert_eq!(error.code(), expected_code, "{error:?}");
-        if wrappers == 64 {
-            assert!(matches!(
-                error,
-                TypeDiagnosticV2::RuleTypeResourceLimit {
-                    dimension: "depth",
-                    ..
-                }
-            ));
-        }
+        let expected = if wrappers == 64 {
+            TypeDiagnosticV2::RuleTypeResourceLimit {
+                dimension: "depth",
+                location: LocatedSpanV2 {
+                    source_id: source(),
+                    span: span(15, 16),
+                },
+            }
+        } else {
+            TypeDiagnosticV2::AmbiguousRuleType {
+                location: LocatedSpanV2 {
+                    source_id: source(),
+                    span: span(9, 10),
+                },
+                candidates: 30,
+            }
+        };
+        assert_eq!(error, expected, "{error:?}");
     }
 }

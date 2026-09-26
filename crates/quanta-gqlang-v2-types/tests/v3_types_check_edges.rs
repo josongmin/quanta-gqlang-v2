@@ -771,15 +771,23 @@ fn mixed_string_and_integer_addition_rejects_bad_overload() {
         builder.int("1", SpanV1::new(6, 7)),
         SpanV1::new(0, 7),
     );
+    let value_id = value.id;
     let doc = document(value);
     let inputs = resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
     assert_eq!(
         ExpressionTypeKernelV2::try_closed()
             .unwrap()
             .check_document(&inputs)
-            .unwrap_err()
-            .code(),
-        "types.bad_overload"
+            .unwrap_err(),
+        TypeDiagnosticV2::BadOverload {
+            node_id: value_id,
+            name: "+".into(),
+            operands: vec![ValueTypeV1::string(), ValueTypeV1::int()],
+            location: quanta_gqlang_v2_hir::LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(7),
+                span: SpanV1::new(0, 7),
+            },
+        }
     );
 }
 

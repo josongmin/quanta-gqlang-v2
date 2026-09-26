@@ -443,7 +443,12 @@ fn without_close_scope_the_let_still_resolves() {
 fn close_scope_leaves_outer_frames_visible() {
     let b = HirBuilderV1::new();
     let outer_ref = b.symbol("outer", SpanV1::new(40, 45));
-    let decl = b.decl("v", SpanV1::new(0, 1), outer_ref.clone(), SpanV1::new(0, 45));
+    let decl = b.decl(
+        "v",
+        SpanV1::new(0, 1),
+        outer_ref.clone(),
+        SpanV1::new(0, 45),
+    );
 
     let graph = ModuleGraphV1::new();
     let mut binder = Binder::new(&graph);

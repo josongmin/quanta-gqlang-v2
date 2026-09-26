@@ -106,7 +106,7 @@ fn resolved_inputs_reject_missing_duplicate_foreign_and_extra_entries() {
             node_id: key.node_id,
             location: quanta_gqlang_v2_hir::LocatedSpanV2 {
                 source_id: SourceIdV2::from_raw(9),
-                span: SpanV1::point(0),
+                span: SpanV1::new(1, 5),
             },
         }
     );
@@ -377,6 +377,7 @@ fn unknown_and_bad_operator_reject_distinctly() {
 fn unused_contextual_input_rejects_during_kernel_finalization() {
     let builder = HirBuilderV1::new();
     let list = builder.list(vec![], SpanV1::new(0, 2));
+    let list_id = list.id;
     let key = SourceQualifiedNodeIdV2 {
         source_id: SourceIdV2::from_raw(9),
         node_id: list.id,
@@ -395,7 +396,7 @@ fn unused_contextual_input_rejects_during_kernel_finalization() {
             .check_document(&inputs)
             .unwrap_err(),
         TypeDiagnosticV2::UnusedContextualInput {
-            node_id: list.id,
+            node_id: list_id,
             location: quanta_gqlang_v2_hir::LocatedSpanV2 {
                 source_id: SourceIdV2::from_raw(9),
                 span: SpanV1::new(0, 2),

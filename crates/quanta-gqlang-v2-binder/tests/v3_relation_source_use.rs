@@ -113,23 +113,21 @@ fn composition_self_and_forward_sources_never_fall_back_to_host() {
         );
         assert!(matches!(result.diagnostics().first(),
             Some(BindDiagnosticV1::Unresolved { name, .. }) if name == first_source));
-        // the valid body source still resolves to its own LET working set.
+        // The valid body source still resolves to its own LET working set.
+        // `target_of_use` refuses to answer on a non-ok result, so inspect the
+        // recorded resolutions directly.
+        let body_span = SpanV1::new(70, 70 + first_name.len());
         assert!(
-            matches!(
-                result.target_of_use(
-                    body_source_id,
-                    SpanV1::new(70, 70 + first_name.len()),
-                    first_name
-                ),
-                Some(ResolvedTargetV1::Local(binding))
-                    if binding.kind == BinderKindV1::CompositionLet
-            ),
-            "body source `{first_name}` must resolve to the LET; got {:?}",
-            result.target_of_use(
-                body_source_id,
-                SpanV1::new(70, 70 + first_name.len()),
-                first_name
-            )
+            result.resolutions().iter().any(|resolution| {
+                resolution.reference == body_source_id
+                    && resolution.span == body_span
+                    && resolution.name == first_name
+                    && matches!(&resolution.target,
+                        ResolvedTargetV1::Local(binding)
+                            if binding.kind == BinderKindV1::CompositionLet)
+            }),
+            "body source `{first_name}` must resolve to the LET; resolutions: {:?}",
+            result.resolutions()
         );
     }
 }

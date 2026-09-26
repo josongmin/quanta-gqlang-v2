@@ -36,14 +36,14 @@ use quanta_gqlang_v2_pipeline::{
     ExecutionCompositionProducerV3, ExecutionExpressionShapeV3, ExecutionFamilyV3,
     ExecutionGraphCapabilityV3, ExecutionGraphDedupIdentityV3, ExecutionGraphDirectionV3,
     ExecutionGraphKindV3, ExecutionGraphReferenceKindV3, ExecutionGraphReferenceRoleV3,
-    ExecutionGraphRelationShapeV3,
-    ExecutionGraphTargetV3, ExecutionGraphWitnessTieBreakV3, ExecutionLiteralV3,
-    ExecutionRelationAuthorityV3, ExecutionRelationV3, ExecutionRelationalOperatorV3,
-    ExecutionSampleModeV3, ExecutionScalarTypeV3, ExecutionSchemaV3, ExecutionSourceKindV3,
-    ExecutionValueTypeV3, FrontendAuthorityLocationV2, FrontendAuthoritySourceV2,
-    FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2, FrontendGraphReferenceInputV2,
-    FrontendLanguageVersionV2, FrontendRelationAuthorityV2, FrontendRelationInputV2,
-    FrontendScalarTypeV2, FrontendStageV2, FrontendTransactionErrorV2, PlannedItemV2,
+    ExecutionGraphRelationShapeV3, ExecutionGraphTargetV3, ExecutionGraphWitnessTieBreakV3,
+    ExecutionLiteralV3, ExecutionRelationAuthorityV3, ExecutionRelationV3,
+    ExecutionRelationalOperatorV3, ExecutionSampleModeV3, ExecutionScalarTypeV3, ExecutionSchemaV3,
+    ExecutionSourceKindV3, ExecutionValueTypeV3, FrontendAuthorityLocationV2,
+    FrontendAuthoritySourceV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
+    FrontendGraphReferenceInputV2, FrontendLanguageVersionV2, FrontendRelationAuthorityV2,
+    FrontendRelationInputV2, FrontendScalarTypeV2, FrontendStageV2, FrontendTransactionErrorV2,
+    PlannedItemV2,
 };
 use quanta_gqlang_v2_planning::{
     AuthorityLaneV2, CapabilityV2, CardinalityClassV2, CheckedCompositionPlanInputV2,
@@ -421,11 +421,8 @@ fn compiled_item_order_is_the_authored_source_order() {
     let authored: Vec<SemanticItemIdV2> = resolve_minimal_document(&minimal_authority())
         .order()
         .to_vec();
-    let assembled: Vec<SemanticItemIdV2> = multi
-        .items()
-        .iter()
-        .map(CompiledItemV2::item_id)
-        .collect();
+    let assembled: Vec<SemanticItemIdV2> =
+        multi.items().iter().map(CompiledItemV2::item_id).collect();
     assert_eq!(assembled, authored);
 }
 
@@ -1517,7 +1514,11 @@ fn graph_composition_producer_is_logic_checked_and_fully_projected() {
     assert_eq!(body.max_path_length(), Some(3));
     // Full role/target retention: the composition source and the host sink,
     // not merely the first target's shape.
-    assert_eq!(body.references().len(), 2, "body carries source and sink only");
+    assert_eq!(
+        body.references().len(),
+        2,
+        "body carries source and sink only"
+    );
     assert_eq!(
         body.references()[0].role(),
         ExecutionGraphReferenceRoleV3::Source

@@ -209,7 +209,12 @@ fn graph_reference_across_composition_barrier_rejects_as_illegal_capture() {
 #[test]
 fn relation_source_across_noncapturing_barrier_rejects_as_illegal_capture() {
     let b = HirBuilderV1::new();
-    let outer = b.relation_source("catalog.outer", SpanV1::new(0, 10), None, SpanV1::new(0, 10));
+    let outer = b.relation_source(
+        "catalog.outer",
+        SpanV1::new(0, 10),
+        None,
+        SpanV1::new(0, 10),
+    );
     let inner = b.relation_source("outer", SpanV1::new(20, 25), None, SpanV1::new(20, 25));
     let query = b.query(inner, None, SpanV1::new(20, 25));
 
