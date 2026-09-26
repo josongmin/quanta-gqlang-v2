@@ -623,8 +623,8 @@ pub fn forged_cardinality_downgrade_document_v2() -> Result<ReferenceRelationDoc
 /// Project sealing must reject the SourceField origin before assembly.
 #[cfg(test)]
 fn try_wrong_scan_occurrence_projection_v2() -> Result<(), String> {
-    let (_, real, item_id) = self_join_parts()?;
-    let relation = relation_item(&real, item_id)?;
+    let real = reference_relation_document_v2(ReferenceRelationFixtureV2::SelfJoinInner)?;
+    let relation = relation_item(real.document(), real.item_id())?;
     let mut join_inputs = relation.root().inputs();
     let left_project = join_inputs.next().ok_or("join has no left input")?.clone();
     let right_project = join_inputs.next().ok_or("join has no right input")?.clone();
@@ -1542,19 +1542,6 @@ fn grouped_aggregate_parts() -> Result<
 > {
     let builder = HirBuilderV1::new();
     let (relation, source_len) = grouped_aggregate_hir(&builder)?;
-    resolve_fixture_parts(&builder, relation, source_len)
-}
-
-fn self_join_parts() -> Result<
-    (
-        CheckedSyntaxDocumentV2,
-        SemanticDocumentV2,
-        SemanticItemIdV2,
-    ),
-    String,
-> {
-    let builder = HirBuilderV1::new();
-    let (relation, source_len) = self_join_hir(&builder)?;
     resolve_fixture_parts(&builder, relation, source_len)
 }
 
