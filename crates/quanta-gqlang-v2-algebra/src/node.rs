@@ -519,7 +519,11 @@ fn op_agrees_with_output(
         AlgebraOpV2::Filter { input, conjuncts } => {
             !conjuncts.is_empty() && preserves_input_frame(output, input.output())
         }
-        AlgebraOpV2::Project { input, .. } => output.provenance() == input.output().provenance(),
+        AlgebraOpV2::Project { input, expressions } => {
+            !expressions.is_empty()
+                && output.provenance() == input.output().provenance()
+                && output.has_exact_projection_origins(expressions.iter().map(TypedExprV2::key))
+        }
         AlgebraOpV2::Join {
             left,
             right,
@@ -601,14 +605,7 @@ fn op_agrees_with_output(
                 && output.cardinality() == CardinalityV1::Set
                 && output.ordering().is_empty()
                 && output.effects().aggregation == AggregationClassV1::Aggregate
-                && output
-                    .columns()
-                    .iter()
-                    .zip(expressions)
-                    .all(|(column, expression)| {
-                        *column.origin() == OutputColumnOriginV2::Expression(expression.key())
-                    })
-                && output.columns().len() == expressions.len()
+                && output.has_exact_projection_origins(expressions.iter().map(TypedExprV2::key))
         }
         AlgebraOpV2::Sort { input, keys } => {
             output.ordering() == keys.as_slice()
@@ -619,6 +616,51 @@ fn op_agrees_with_output(
         }
         AlgebraOpV2::SemiJoin { left, .. } | AlgebraOpV2::AntiJoin { left, .. } => {
             preserves_input_frame(output, left.output())
+        }
+    }
+}
+
+#[cfg(test)]
+mod projection_contract_tests {
+    use super::*;
+    use quanta_gqlang_v2_sema::test_support::{
+        reference_relation_document_v2, ReferenceRelationFixtureV2,
+    };
+
+    #[test]
+    #[expect(
+        clippy::expect_used,
+        reason = "exact lowered projection constructor controls"
+    )]
+    fn checked_project_rejects_changed_expression_count_and_order() {
+        let fixture =
+            reference_relation_document_v2(ReferenceRelationFixtureV2::ProjectMultipleExpressions)
+                .expect("real projection fixture");
+        let lowered = crate::lower_relation_item(fixture.document(), fixture.item_id())
+            .expect("canonical projection lowers");
+        let root = lowered.root();
+        let AlgebraOpV2::Project { input, expressions } = &root.op else {
+            unreachable!("fixture lowers to Project");
+        };
+        let build = |expressions| {
+            CheckedAlgebraNodeV2::new(
+                root.item_id,
+                root.stage_key,
+                root.location.clone(),
+                root.output.clone(),
+                CheckedAlgebraNodeV2::project((**input).clone(), expressions),
+            )
+        };
+        assert_eq!(expressions.len(), 2);
+        assert!(build(expressions.clone()).is_ok());
+        let mut short = expressions.clone();
+        short.pop();
+        let mut long = expressions.clone();
+        long.push(expressions.first().expect("first expression").clone());
+        let mut reversed = expressions.clone();
+        reversed.reverse();
+        for changed in [Vec::new(), short, long, reversed] {
+            assert_eq!(build(changed), Err(()));
         }
     }
 }

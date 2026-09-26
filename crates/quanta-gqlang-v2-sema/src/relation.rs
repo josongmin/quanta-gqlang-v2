@@ -276,6 +276,23 @@ impl RelationOutputContractV2 {
     pub fn columns(&self) -> &[OutputColumnContractV2] {
         &self.columns
     }
+    /// Whether every output column has exactly the corresponding expression
+    /// origin, including source identity, order and total width. This compares
+    /// sealed identities only; it does not infer projections from names.
+    pub fn has_exact_projection_origins(
+        &self,
+        expressions: impl IntoIterator<Item = SourceQualifiedNodeIdV2>,
+    ) -> bool {
+        self.columns
+            .iter()
+            .map(|column| match column.origin() {
+                OutputColumnOriginV2::Expression(key) => Some(*key),
+                OutputColumnOriginV2::SourceField { .. } | OutputColumnOriginV2::Generated(_) => {
+                    None
+                }
+            })
+            .eq(expressions.into_iter().map(Some))
+    }
     /// Cardinality/multiplicity.
     #[must_use]
     pub const fn cardinality(&self) -> CardinalityV1 {
@@ -468,6 +485,7 @@ impl TypedRelationExprV2 {
             TypedRelationStageKindV2::Project => {
                 inputs.len() == 1
                     && !expressions.is_empty()
+                    && output.has_exact_projection_origins(expressions.iter().copied())
                     && predicate.is_none()
                     && source.is_none()
                     && join_mode.is_none()
@@ -625,15 +643,7 @@ impl TypedRelationExprV2 {
         {
             return Err("aggregate projection output loses its Group partition identity");
         }
-        if expressions.len() != output.columns().len()
-            || expressions
-                .iter()
-                .zip(output.columns())
-                .any(|(expression, column)| {
-                    !matches!(column.origin(),
-                    OutputColumnOriginV2::Expression(origin) if *origin == *expression)
-                })
-        {
+        if !output.has_exact_projection_origins(expressions.iter().copied()) {
             return Err("aggregate projection origins are not row-aligned with its expressions");
         }
         Self::try_from_stage(TypedRelationStageInputV2 {
@@ -932,6 +942,83 @@ mod tests {
         HirNodeIdV1, LocatedSpanV2, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
     };
     use quanta_gqlang_v2_types::RecordFieldTypeV1;
+
+    #[test]
+    #[expect(
+        clippy::expect_used,
+        reason = "exact sealed projection constructor controls"
+    )]
+    fn ordinary_projection_rejects_misaligned_expression_origins() {
+        use crate::test_support::{reference_relation_document_v2, ReferenceRelationFixtureV2};
+        let fixture =
+            reference_relation_document_v2(ReferenceRelationFixtureV2::ProjectMultipleExpressions)
+                .expect("real projection fixture");
+        let Some(crate::SemanticItemV2::Relation(relation)) =
+            fixture.document().item(fixture.item_id())
+        else {
+            unreachable!("fixture contains its relation");
+        };
+        let root = relation.root();
+        let input = root.inputs().next().expect("project input");
+        let keys = root.expressions().to_vec();
+        assert_eq!(keys.len(), 2);
+        assert!(TypedRelationExprV2::try_project(
+            root.key(),
+            root.location().clone(),
+            input.clone(),
+            keys.clone(),
+            root.output().clone()
+        )
+        .is_ok());
+        let mut short = keys.clone();
+        short.pop();
+        let mut long = keys.clone();
+        long.push(*keys.first().expect("first expression"));
+        let mut reversed = keys.clone();
+        reversed.reverse();
+        let mut foreign = keys.clone();
+        foreign.first_mut().expect("first expression").source_id = SourceIdV2::from_raw(999);
+        for changed in [Vec::new(), short, long, reversed, foreign] {
+            assert_eq!(
+                TypedRelationExprV2::try_project(
+                    root.key(),
+                    root.location().clone(),
+                    input.clone(),
+                    changed,
+                    root.output().clone()
+                )
+                .err(),
+                Some("invalid typed relation stage arity or payload")
+            );
+        }
+        let mut generated = root.output().clone();
+        for column in &mut generated.columns {
+            column.origin = OutputColumnOriginV2::Generated(fixture.item_id());
+        }
+        assert_eq!(
+            TypedRelationExprV2::try_project(
+                root.key(),
+                root.location().clone(),
+                input.clone(),
+                keys.clone(),
+                generated
+            )
+            .err(),
+            Some("invalid typed relation stage arity or payload")
+        );
+        assert_eq!(input.output().columns().len(), keys.len());
+        assert_eq!(
+            TypedRelationExprV2::try_project(
+                root.key(),
+                root.location().clone(),
+                input.clone(),
+                keys,
+                input.output().clone()
+            )
+            .err(),
+            Some("invalid typed relation stage arity or payload")
+        );
+    }
 
     fn empty_output() -> Result<RelationOutputContractV2, String> {
         RelationOutputContractV2::try_new(
