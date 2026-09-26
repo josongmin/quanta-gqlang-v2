@@ -36,6 +36,22 @@ class LocalCiError(RuntimeError):
 def source_snapshot() -> str:
     """Hash source bytes and change times, including containing directories."""
     try:
+        ignored = run_bounded(
+            ("git", "ls-files", "--cached", "--ignored",
+             "--exclude-per-directory=.gitignore", "-z"),
+            cwd=ROOT,
+            timeout_s=30,
+            capture_output=True,
+        )
+        if ignored.returncode:
+            raise LocalCiError("git tracked-ignore inventory failed (exit=%d)" % ignored.returncode)
+        ignored_names = [os.fsdecode(name) for name in (ignored.stdout or b"").split(b"\0") if name]
+        if ignored_names:
+            raise LocalCiError(
+                "tracked paths violate repository .gitignore policy (count=%d, first=%r); "
+                "keep generated artifacts outside the source index"
+                % (len(ignored_names), ignored_names[0])
+            )
         inventory = run_bounded(
             ("git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"),
             cwd=ROOT,

@@ -1,6 +1,0 @@
-{
-  "base": "final",
-  "add_external_deps": [
-    ["quanta-gqlang-v2-modules", "normal", "regex", "1.9"]
-  ]
-}

@@ -171,6 +171,16 @@ The checked owner enforces finite float and exact source membership before encod
 
 ## Shared conformance vectors
 
+The TSV is a pinned producer-output regression artifact, not an independent
+implementation of the byte contract. Independent expected streams live in
+`crates/quanta-gqlang-v2-pipeline/src/execution_digest_oracle.rs`: synthetic
+relation/composition fixtures build complete source, contract, and qualification
+streams from the literal tags and fixed-width framing specified above, without
+reading DTO fields or calling production writer/tag helpers. These fixtures cover
+nested payload encoding; they do not establish source acceptance or downstream
+runtime admission. The payload-free whole-stream fixture in `execution.rs` also
+pins independently computed SHA-256 values.
+
 `crates/quanta-gqlang-v2-pipeline/tests/fixtures/execution-v3-vectors.tsv` pins named source/authority cases and expected three lower-case hexadecimal digests. A same-byte/different-`SourceId` pair pins source equality and contract/qualification inequality. A byte-only change pins source/qualification inequality without assuming semantic-equivalence. The same source and ID under `records_host` versus `records_host_string_id` pins projected host field-schema sensitivity; `workspace_files_canonical` versus `workspace_files_host` pins relation-authority sensitivity. The composition pair changes SAMPLE limit. Encoder owner tests separately pin binding identity/order and schema field mutations; the TSV does not claim an authored binding-name/order pair. Typed literals pin `i128::MIN`, normalized zero, finite float, bool, non-ASCII string, and null. An unequal raw item ID returns no item; same-raw-ID cross-document selection is **not** rejected by lookup and needs downstream admission binding. Changing only Semantica data generation must leave all three frontend digests unchanged and change the admitted runtime identity; that final pairwise assertion belongs in Semantica.
 
 The TSV authority profiles use `FrontendBudgetV2::standard_v2()`, host source registration `SourceIdV2(1)` with length 64, selected module `app` version `1.0.0`, and checked host location `(1, 0..1)`. `minimal` has no relation or graph sources. `records_host` adds `app::records` (lookup `records`, Host authority, `host` provenance namespace, one `id:Int` field, Bag cardinality) and the checked graph selectors `a`, `b` (Entity), `scope` (Scope). `records_host_string_id` changes only that field to `id:String`; graph selectors remain the same. `workspace_files_canonical` uses the facade builder's `canonical_workspace_files` relation; `workspace_files_host` uses that same schema with Host authority. Composition rows use `minimal`. The TSV records exact one-line source UTF-8 text, source ID, profile, and digests, so a sibling can compile through the facade rather than reimplement this encoder.

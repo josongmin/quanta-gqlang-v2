@@ -44,6 +44,13 @@ claiming that every descendant was reaped.
 
 `just ci` runs doctor, external-consumer preflight, static, test, and policy
 groups serially, and each group's leaves are an explicit serial waterfall.
+Before running groups it rejects any indexed path excluded by a repository
+`.gitignore`, including force-added files. This check uses repository ignore
+files only, not personal global or `.git/info/exclude` rules. Put local audit
+snapshots and repro build trees under the ignored `.audit/` directory; keep
+durable audit reports and source provenance under `docs/audits/`. Ignoring a
+path does not remove it from Git: existing generated files must be removed
+from the index while preserving the local evidence when it is still needed.
 It removes caller-controlled Rust/Cargo/Nextest/property-test settings and
 `QGLANG_*` test-child selectors, then restores only the locked Rust toolchain
 and current run identities before launching groups. Python gates start with

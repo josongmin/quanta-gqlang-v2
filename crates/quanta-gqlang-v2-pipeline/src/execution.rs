@@ -2660,6 +2660,10 @@ fn sha256(input: &[u8]) -> [u8; 32] {
 }
 
 #[cfg(test)]
+#[path = "execution_digest_oracle.rs"]
+mod digest_oracle;
+
+#[cfg(test)]
 #[expect(
     clippy::expect_used,
     clippy::indexing_slicing,

@@ -138,6 +138,51 @@ class LocalGateTest(unittest.TestCase):
             self.assertEqual(run_local.main(), 2)
         self.assertIn("source changed while running doctor", errors.getvalue())
 
+    def test_source_snapshot_rejects_force_added_ignored_artifacts(self) -> None:
+        for name in (".audit/probe/output.log", "target/debug/object.o", "nested/build/output"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+                (root / ".gitignore").write_text("/.audit/\n/target/\n", encoding="utf-8")
+                (root / "nested").mkdir()
+                (root / "nested/.gitignore").write_text("/build/\n", encoding="utf-8")
+                source = root / "source.rs"
+                source.write_text("// source\n", encoding="utf-8")
+                artifact = root / name
+                artifact.parent.mkdir(parents=True, exist_ok=True)
+                artifact.write_bytes(b"generated evidence must survive untracking")
+                subprocess.run(["git", "add", ".gitignore", "nested/.gitignore", "source.rs"],
+                               cwd=root, check=True)
+                with patch.object(run_local, "ROOT", root):
+                    baseline = run_local.source_snapshot()
+                    subprocess.run(["git", "add", "--force", name], cwd=root, check=True)
+                    with self.assertRaisesRegex(
+                        run_local.LocalCiError, "tracked paths violate repository .gitignore policy"
+                    ) as raised:
+                        run_local.source_snapshot()
+                    self.assertIn(repr(name), str(raised.exception))
+                    subprocess.run(["git", "rm", "--cached", "--quiet", name],
+                                   cwd=root, check=True)
+                    self.assertEqual(artifact.read_bytes(), b"generated evidence must survive untracking")
+                    self.assertEqual(baseline, run_local.source_snapshot())
+
+    def test_tracked_ignore_guard_uses_repository_policy_not_local_excludes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            (root / "report.md").write_text("durable audit report\n", encoding="utf-8")
+            subprocess.run(["git", "add", "report.md"], cwd=root, check=True)
+            (root / ".git/info/exclude").write_text("report.md\n", encoding="utf-8")
+            with patch.object(run_local, "ROOT", root):
+                self.assertEqual(len(run_local.source_snapshot()), 64)
+
+    def test_source_snapshot_fails_when_tracked_ignore_enumeration_fails(self) -> None:
+        failed = subprocess.CompletedProcess(["git"], 128, b"", b"cannot enumerate")
+        with patch.object(run_local, "run_bounded", return_value=failed) as invoked, \
+             self.assertRaisesRegex(run_local.LocalCiError, "tracked-ignore inventory failed"):
+            run_local.source_snapshot()
+        invoked.assert_called_once()
+
     def test_source_snapshot_represents_a_tracked_deletion(self) -> None:
         with tempfile.TemporaryDirectory(prefix="qglang-source-snapshot-") as directory:
             root = Path(directory)

@@ -1,7 +1,0 @@
-{
-  "base": "final",
-  "add_build_rs": ["quanta-gqlang-v2-surface"],
-  "add_build_deps": [
-    ["quanta-gqlang-v2-surface", "proptest", "=1.8.0"]
-  ]
-}

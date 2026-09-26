@@ -1,4 +1,0 @@
-{
-  "base": "final",
-  "legacy_edge": ["quanta-gqlang-v2-pipeline", "quanta-gqlang-v1-legacy"]
-}

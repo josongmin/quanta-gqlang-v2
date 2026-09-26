@@ -1,6 +1,0 @@
-{
-  "base": "final",
-  "internal_version": [
-    ["quanta-gqlang-v2-pipeline", "normal", "quanta-gqlang-v2-sema", "0.2.0"]
-  ]
-}

@@ -1,2 +1,0 @@
-let suspects = sample query="auth" | mode=semantic | limit=3
-find taint api.entry -> db.write | depth=3 with suspects

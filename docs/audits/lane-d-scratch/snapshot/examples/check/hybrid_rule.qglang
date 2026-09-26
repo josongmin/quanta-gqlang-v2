@@ -1,1 +1,0 @@
-check rule.hybrid | scope=repo | pattern=p | confirm=require | emit=findings | mode=hybrid using find reachability src.entry -> sink.write | depth=8
