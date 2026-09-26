@@ -2806,7 +2806,23 @@ fn source_registered_builtin_and_operator_retain_exact_execution_identity() {
                     Some((name.as_str(), None)),
                 ExecutionExpressionShapeV3::Binary { operator, .. } =>
                     Some((operator.symbol(), Some(operator.overload_id()))),
-                _ => None,
+                ExecutionExpressionShapeV3::Literal(_)
+                | ExecutionExpressionShapeV3::Binding(_)
+                | ExecutionExpressionShapeV3::Path { .. }
+                | ExecutionExpressionShapeV3::Unary { .. }
+                | ExecutionExpressionShapeV3::Call {
+                    target: ExecutionCallTargetV3::Predicate { .. } | ExecutionCallTargetV3::HostPredicate { .. }, ..
+                }
+                | ExecutionExpressionShapeV3::Paren(_)
+                | ExecutionExpressionShapeV3::Record(_)
+                | ExecutionExpressionShapeV3::List(_)
+                | ExecutionExpressionShapeV3::BoolValue(_)
+                | ExecutionExpressionShapeV3::Compare { .. }
+                | ExecutionExpressionShapeV3::And { .. }
+                | ExecutionExpressionShapeV3::Or { .. }
+                | ExecutionExpressionShapeV3::Not { .. }
+                | ExecutionExpressionShapeV3::LogicalQuantifier { .. }
+                | ExecutionExpressionShapeV3::RelationExists { .. } => None,
             }).collect::<Vec<_>>();
         assert_eq!(symbols, [("length", None), ("+", Some(101))], "{source}");
     }
