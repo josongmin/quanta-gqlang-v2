@@ -535,10 +535,12 @@ pub enum ExecutionCallTargetV3 {
     HostPredicate { fingerprint: String },
 }
 
-fn project_call_target(target: &ResolvedCallTargetV2) -> ExecutionCallTargetV3 {
-    match target {
+fn project_call_target(
+    target: &ResolvedCallTargetV2,
+) -> Result<ExecutionCallTargetV3, ExecutionClosureFailureV3> {
+    Ok(match target {
         ResolvedCallTargetV2::Builtin(id) => ExecutionCallTargetV3::Builtin {
-            name: id.name().unwrap_or("invalid_closed_builtin").to_owned(),
+            name: registered_execution_symbol(id.name())?,
         },
         ResolvedCallTargetV2::Predicate(id) => ExecutionCallTargetV3::Predicate {
             name: id.as_str().to_owned(),
@@ -546,7 +548,16 @@ fn project_call_target(target: &ResolvedCallTargetV2) -> ExecutionCallTargetV3 {
         ResolvedCallTargetV2::HostPredicate(id) => ExecutionCallTargetV3::HostPredicate {
             fingerprint: hex_lower(id.canonical_bytes()),
         },
-    }
+    })
+}
+
+/// Never turn a missing owner spelling into a success-shaped DTO identity.
+fn registered_execution_symbol(
+    spelling: Option<&str>,
+) -> Result<String, ExecutionClosureFailureV3> {
+    spelling
+        .map(str::to_owned)
+        .ok_or(ExecutionClosureFailureV3::UnregisteredSymbol)
 }
 
 /// Closed logical-quantifier vocabulary.
@@ -896,14 +907,13 @@ impl ExecutionOperatorV3 {
     }
 }
 
-fn project_operator(operator: quanta_gqlang_v2_sema::OperatorIdV2) -> ExecutionOperatorV3 {
-    ExecutionOperatorV3 {
-        symbol: operator
-            .symbol()
-            .unwrap_or("invalid_closed_operator")
-            .to_owned(),
+fn project_operator(
+    operator: quanta_gqlang_v2_sema::OperatorIdV2,
+) -> Result<ExecutionOperatorV3, ExecutionClosureFailureV3> {
+    Ok(ExecutionOperatorV3 {
+        symbol: registered_execution_symbol(operator.symbol())?,
         overload_id: operator.raw(),
-    }
+    })
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1262,14 +1272,15 @@ impl ExecutionGraphQueryV3 {
     }
 }
 
-/// Expression-closure failure: the item root references an expression the
-/// document table cannot supply from the item's own source.
+/// Execution projection cannot close an expression's source or symbol identity.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum ExecutionClosureFailureV3 {
     /// A referenced expression identity is absent from the document table.
     Dangling,
     /// A referenced expression identity belongs to another source.
     Foreign,
+    /// The closed owner ID has no registered builtin name or operator symbol.
+    UnregisteredSymbol,
 }
 
 pub(crate) fn project_relation(
@@ -1298,7 +1309,7 @@ pub(crate) fn project_relation_root(
         let Some(expr) = document.expression(key) else {
             return Err(ExecutionClosureFailureV3::Dangling);
         };
-        table.push(project_expression(expr));
+        table.push(project_expression(expr)?);
     }
     Ok(ExecutionRelationV3 {
         item_id,
@@ -1714,20 +1725,24 @@ fn project_node(node: &CheckedAlgebraNodeV2) -> ExecutionRelationalOperatorV3 {
     }
 }
 
-fn project_expression(expr: &TypedExprV2) -> ExecutionExpressionV3 {
+fn project_expression(
+    expr: &TypedExprV2,
+) -> Result<ExecutionExpressionV3, ExecutionClosureFailureV3> {
     let value_type = match expr.type_state() {
         ExpressionTypeStateV2::Known(value) => project_value_type(value),
         ExpressionTypeStateV2::Unknown(_) => ExecutionValueTypeV3::Unknown,
     };
-    ExecutionExpressionV3 {
+    Ok(ExecutionExpressionV3 {
         id: expr.key(),
         value_type,
-        shape: project_expression_shape(expr.shape()),
-    }
+        shape: project_expression_shape(expr.shape())?,
+    })
 }
 
-fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShapeV3 {
-    match shape {
+fn project_expression_shape(
+    shape: &TypedExprShapeV2,
+) -> Result<ExecutionExpressionShapeV3, ExecutionClosureFailureV3> {
+    Ok(match shape {
         TypedExprShapeV2::Literal(fact) => ExecutionExpressionShapeV3::Literal(match fact {
             TypedLiteralFactV2::DeferredI128MinMagnitude => ExecutionLiteralV3::Int(i128::MIN),
             TypedLiteralFactV2::Value(value) => match value {
@@ -1752,16 +1767,16 @@ fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShap
                 .into_boxed_slice(),
         },
         TypedExprShapeV2::Unary { operator, operand } => ExecutionExpressionShapeV3::Unary {
-            operator: project_operator(*operator),
+            operator: project_operator(*operator)?,
             operand: *operand,
         },
         TypedExprShapeV2::Binary { operator, lhs, rhs } => ExecutionExpressionShapeV3::Binary {
-            operator: project_operator(*operator),
+            operator: project_operator(*operator)?,
             lhs: *lhs,
             rhs: *rhs,
         },
         TypedExprShapeV2::Call { target, arguments } => ExecutionExpressionShapeV3::Call {
-            target: project_call_target(target),
+            target: project_call_target(target)?,
             arguments: arguments
                 .iter()
                 .map(|arg| match arg {
@@ -1784,22 +1799,22 @@ fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShap
         }
         TypedExprShapeV2::BoolValue { value } => ExecutionExpressionShapeV3::BoolValue(*value),
         TypedExprShapeV2::Compare { operator, lhs, rhs } => ExecutionExpressionShapeV3::Compare {
-            operator: project_operator(*operator),
+            operator: project_operator(*operator)?,
             lhs: *lhs,
             rhs: *rhs,
         },
         TypedExprShapeV2::And { operator, lhs, rhs } => ExecutionExpressionShapeV3::And {
-            operator: project_operator(*operator),
+            operator: project_operator(*operator)?,
             lhs: *lhs,
             rhs: *rhs,
         },
         TypedExprShapeV2::Or { operator, lhs, rhs } => ExecutionExpressionShapeV3::Or {
-            operator: project_operator(*operator),
+            operator: project_operator(*operator)?,
             lhs: *lhs,
             rhs: *rhs,
         },
         TypedExprShapeV2::Not { operator, operand } => ExecutionExpressionShapeV3::Not {
-            operator: project_operator(*operator),
+            operator: project_operator(*operator)?,
             operand: *operand,
         },
         TypedExprShapeV2::LogicalQuantifier {
@@ -1831,7 +1846,7 @@ fn project_expression_shape(shape: &TypedExprShapeV2) -> ExecutionExpressionShap
                 .collect::<Vec<_>>()
                 .into_boxed_slice(),
         },
-    }
+    })
 }
 
 fn project_schema(output: &RelationOutputContractV2) -> ExecutionSchemaV3 {
@@ -3031,6 +3046,20 @@ mod tests {
             graph_witness_tie_break_tag(ExecutionGraphWitnessTieBreakV3::ShortestThenLexical),
             graph_witness_tie_break_tag(ExecutionGraphWitnessTieBreakV3::Lexical),
         ]);
+    }
+
+    #[test]
+    fn registered_symbols_preserve_exact_spelling_and_reject_absent_authority() {
+        for spelling in ["sum", "starts_with", "+", "!=", "not"] {
+            assert_eq!(
+                registered_execution_symbol(Some(spelling)),
+                Ok(spelling.to_owned())
+            );
+        }
+        assert_eq!(
+            registered_execution_symbol(None),
+            Err(ExecutionClosureFailureV3::UnregisteredSymbol)
+        );
     }
 
     fn key(source: u32, node: u32) -> SourceQualifiedNodeIdV2 {
@@ -4376,7 +4405,8 @@ mod tests {
                     kind,
                     binders: vec![first.clone(), second.clone()],
                     body: key(9, 83),
-                }),
+                })
+                .expect("closed quantified shape"),
                 ExecutionExpressionShapeV3::LogicalQuantifier {
                     kind: expected_kind,
                     binders: Box::new([
@@ -4440,7 +4470,7 @@ mod tests {
             // its typed expression shape currently has no retained DTO root.
             // This checks the dormant shape projector against sealed source facts.
             assert_eq!(
-                project_expression_shape(shape),
+                project_expression_shape(shape).expect("closed EXISTS shape"),
                 ExecutionExpressionShapeV3::RelationExists {
                     polarity: expected_polarity,
                     relation_root: *relation_root,
@@ -4498,7 +4528,7 @@ mod tests {
                 ResolvedCallTargetV2::Builtin(_) => panic!("no authored builtin"),
             };
             assert_eq!(
-                project_expression_shape(expression.shape()),
+                project_expression_shape(expression.shape()).expect("closed call shape"),
                 ExecutionExpressionShapeV3::Call {
                     target: expected_target,
                     arguments: Box::new([Some(*argument)]),

@@ -2784,3 +2784,30 @@ fn composition_flow_and_taint_project_the_exact_graph_kinds_roles_and_targets() 
         );
     }
 }
+
+#[test]
+fn source_registered_builtin_and_operator_retain_exact_execution_identity() {
+    for source in [
+        "from records r | project length(\"ab\") + 1 as n",
+        "let rows = from records r | project length(\"ab\") + 1 as n from rows x | project x.n as n with rows",
+        "let rows = from records r from rows x | project length(\"ab\") + 1 as n with rows",
+    ] {
+        let compiled = compile_source_document_v3(DOC_SOURCE, source, &authority_with_records())
+            .expect("registered expression compiles");
+        let item = &compiled.execution().items()[0];
+        let mut relations = item.relation().into_iter().collect::<Vec<_>>();
+        if let Some(composition) = item.composition() {
+            relations.extend(composition.bindings().iter().filter_map(|binding| binding.relation()));
+            relations.extend(composition.body_relation());
+        }
+        let symbols = relations.iter().flat_map(|relation| relation.expressions())
+            .filter_map(|expression| match expression.shape() {
+                ExecutionExpressionShapeV3::Call { target: ExecutionCallTargetV3::Builtin { name }, .. } =>
+                    Some((name.as_str(), None)),
+                ExecutionExpressionShapeV3::Binary { operator, .. } =>
+                    Some((operator.symbol(), Some(operator.overload_id()))),
+                _ => None,
+            }).collect::<Vec<_>>();
+        assert_eq!(symbols, [("length", None), ("+", Some(101))], "{source}");
+    }
+}

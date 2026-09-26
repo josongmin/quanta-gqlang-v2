@@ -64,6 +64,8 @@ pub enum DocumentAssemblyCodeV2 {
     /// An executable item references an expression identity the sealed
     /// document table does not carry.
     DanglingExecutionReference,
+    /// An executable expression's closed ID has no registered spelling.
+    UnregisteredExecutionSymbol,
 }
 
 impl DocumentAssemblyCodeV2 {
@@ -84,6 +86,7 @@ impl DocumentAssemblyCodeV2 {
             Self::CheckGraphMismatch => "pipeline.document.check_graph_mismatch",
             Self::InapplicableItemResult => "pipeline.document.inapplicable_item_result",
             Self::DanglingExecutionReference => "pipeline.document.dangling_execution_reference",
+            Self::UnregisteredExecutionSymbol => "pipeline.document.unregistered_execution_symbol",
         }
     }
 }
@@ -380,6 +383,10 @@ mod tests {
             (
                 DocumentAssemblyCodeV2::DanglingExecutionReference,
                 "pipeline.document.dangling_execution_reference",
+            ),
+            (
+                DocumentAssemblyCodeV2::UnregisteredExecutionSymbol,
+                "pipeline.document.unregistered_execution_symbol",
             ),
         ] {
             assert_eq!(code.as_str(), expected);

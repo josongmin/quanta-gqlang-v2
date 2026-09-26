@@ -169,6 +169,8 @@ The remaining expression shapes use these exact tags and payloads:
 | 14 | quantifier-kind tag, `SEQ(Binding)`, body NodeKey |
 | 15 | relation-exists polarity tag, relation-root NodeKey, `SEQ(Correlation)` |
 
+Builtin names and operator spellings come from their closed owner registries. If an issued identity has no registered spelling, projection returns `pipeline.document.unregistered_execution_symbol` at the enclosing authored item and issues no execution document. Placeholder symbol strings are not part of the execution contract.
+
 The checked owner enforces finite float and exact source membership before encoding; public DTO fields and document constructor remain private. `crates/quanta-gqlang-v2-pipeline/src/execution.rs` is the producer implementation of these rules, not a second source of policy.
 
 ## Shared conformance vectors

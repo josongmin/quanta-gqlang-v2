@@ -1653,6 +1653,11 @@ fn closure_error(
             DocumentAssemblyCodeV2::DanglingExecutionReference,
             "an executable item references an expression the sealed document does not carry",
         ),
+        ExecutionClosureFailureV3::UnregisteredSymbol => assembly(
+            location,
+            DocumentAssemblyCodeV2::UnregisteredExecutionSymbol,
+            "an executable expression's closed identity has no registered symbol",
+        ),
         ExecutionClosureFailureV3::Foreign => assembly(
             location,
             DocumentAssemblyCodeV2::ForeignItemResult,
@@ -2261,6 +2266,10 @@ mod tests {
             (
                 ExecutionClosureFailureV3::Foreign,
                 "pipeline.document.foreign_item_result",
+            ),
+            (
+                ExecutionClosureFailureV3::UnregisteredSymbol,
+                "pipeline.document.unregistered_execution_symbol",
             ),
         ] {
             let error = closure_error(fixture.document(), fixture.item_id(), failure);
