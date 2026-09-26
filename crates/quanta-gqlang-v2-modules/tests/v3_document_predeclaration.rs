@@ -1176,20 +1176,29 @@ fn forward_local_query_reference_seals_after_predeclaration() {
 
 #[test]
 fn host_predicate_proof_preserves_exact_catalog_id_signature_and_session() {
-    use quanta_gqlang_v2_types::{HostCallableNamespaceV2, ResolvedHostPredicateKeyV2};
+    use quanta_gqlang_v2_types::{
+        AggregationClassV1, CostClassV1, DeterminismV1, ExpressionEffectsV2,
+        HostCallableNamespaceV2, MonotonicityV1, PurityV1, ResolvedHostPredicateKeyV2,
+    };
 
     let host = registry();
     let authored = "policy/checks::is-safe.v2";
+    let effects = ExpressionEffectsV2 {
+        purity: PurityV1::Impure,
+        determinism: DeterminismV1::NonDeterministic,
+        monotonicity: MonotonicityV1::Antitone,
+        aggregation: AggregationClassV1::Aggregate,
+        cost: CostClassV1::Linear,
+    };
+    let mut signature = host_signature(&host, CallableKindV2::Predicate);
+    signature.effects = effects;
     let (parts, _, ext) = authority(
         &host,
         profile(100, 100),
         &[(
             "predicate",
             authored,
-            ExternalCatalogPayloadInputV2::Predicate(host_signature(
-                &host,
-                CallableKindV2::Predicate,
-            )),
+            ExternalCatalogPayloadInputV2::Predicate(signature),
         )],
     );
     let registry = extended(&host);
@@ -1209,6 +1218,8 @@ fn host_predicate_proof_preserves_exact_catalog_id_signature_and_session() {
     assert_eq!(proof.origin(), DocumentCatalogReferenceOriginV2::External);
     assert_eq!(proof.location(), &call_location);
     assert_eq!(proof.signature().parameters().len(), 1);
+    assert_eq!(proof.signature().effects(), effects);
+    assert_eq!(proof.callable().effects(), effects);
     assert_eq!(
         proof.callable().params(),
         &[quanta_gqlang_v2_types::ValueTypeV1::int()]

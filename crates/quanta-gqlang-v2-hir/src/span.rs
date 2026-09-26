@@ -442,6 +442,9 @@ mod source_registry_tests {
         let a = SourceRegistryViewV2::try_new(vec![one, two]).unwrap();
         let b = SourceRegistryViewV2::try_new(vec![two, one]).unwrap();
         assert_eq!(a.identity(), b.identity());
+        assert_eq!(a.source_len(one.source_id), Some(4));
+        assert_eq!(a.source_len(two.source_id), Some(8));
+        assert_eq!(a.source_len(SourceIdV2::from_raw(99)), None);
         assert_eq!(
             a.try_extend_document(one).unwrap_err().code(),
             "hir.source_registry.duplicate_source_id"
@@ -455,6 +458,7 @@ mod source_registry_tests {
         assert_eq!(extended.parent_identity(), &a.identity());
         assert_ne!(extended.identity(), a.identity());
         assert_eq!(extended.source_len(SourceIdV2::from_raw(3)), Some(12));
+        assert_eq!(extended.source_len(SourceIdV2::from_raw(99)), None);
     }
     #[test]
     fn identity_is_structural_and_checked_locations_share_backing() {

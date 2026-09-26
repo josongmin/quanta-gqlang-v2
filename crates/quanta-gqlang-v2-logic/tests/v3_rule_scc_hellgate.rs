@@ -422,12 +422,28 @@ fn canonical_offending_edge_is_permutation_invariant() {
         other => panic!("expected NegationCycle, got {other:?}"),
     }
 
-    for order in [
-        [4_u8, 3, 2, 1, 0],
-        [2, 0, 4, 1, 3],
-        [3, 4, 1, 2, 0],
-        [1, 2, 3, 4, 0],
-    ] {
+    fn permute(order: &mut [u8; 5], next: usize, orders: &mut Vec<[u8; 5]>) {
+        if next == order.len() {
+            orders.push(*order);
+            return;
+        }
+        for index in next..order.len() {
+            order.swap(next, index);
+            permute(order, next + 1, orders);
+            order.swap(next, index);
+        }
+    }
+    let mut orders = Vec::new();
+    permute(&mut [0, 1, 2, 3, 4], 0, &mut orders);
+    assert_eq!(orders.len(), 120);
+    assert_eq!(
+        orders
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+        120
+    );
+    for order in orders {
         let permuted = stratify(&build(&order), &generous())
             .expect_err("every permutation rejects identically");
         assert_eq!(

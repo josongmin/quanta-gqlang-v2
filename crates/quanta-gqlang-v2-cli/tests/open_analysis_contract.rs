@@ -87,7 +87,9 @@ fn hard_source_error_is_deterministic_and_source_anchored() {
         "{stderr}"
     );
     assert!(
-        stderr.lines().any(|line| line == "diagnostic[0].span=25..25"),
+        stderr
+            .lines()
+            .any(|line| line == "diagnostic[0].span=25..25"),
         "{stderr}"
     );
 }

@@ -4,25 +4,21 @@
     reason = "binary contract tests require successful process plumbing"
 )]
 
-use std::io::Write;
 use std::process::{Command, Output, Stdio};
+use std::time::Duration;
+
+#[path = "../../../tools/test_support/process.rs"]
+mod process;
 
 fn run(input: &[u8]) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_quanta-gqlang-v2-diagnostics-stdio"))
+    let child = Command::new(env!("CARGO_BIN_EXE_quanta-gqlang-v2-diagnostics-stdio"))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .expect("spawn diagnostics stdio");
-    child
-        .stdin
-        .take()
-        .expect("child stdin")
-        .write_all(input)
-        .expect("write request");
-    child
-        .wait_with_output()
-        .expect("wait for diagnostics stdio")
+    process::wait_bounded(child, Some(input.to_vec()), Duration::from_secs(10))
+        .expect("bounded diagnostics stdio")
 }
 
 #[test]
@@ -79,18 +75,16 @@ fn broken_stdout_is_reported_as_an_io_error_on_stderr() {
         .spawn()
         .expect("spawn diagnostics stdio");
     drop(child.stdout.take().expect("child stdout"));
-    child
-        .stdin
-        .take()
-        .expect("child stdin")
-        .write_all(
+    let output = process::wait_bounded(
+        child,
+        Some(
             br#"{"id":3,"method":"v3_diagnostics","source_id":1,"source":"show capabilities"}
-"#,
-        )
-        .expect("write request");
-    let output = child
-        .wait_with_output()
-        .expect("wait for diagnostics stdio");
+"#
+            .to_vec(),
+        ),
+        Duration::from_secs(10),
+    )
+    .expect("bounded diagnostics stdio");
     assert_eq!(output.status.code(), Some(1));
     assert!(output.stdout.is_empty());
     let response: serde_json::Value =

@@ -1,5 +1,10 @@
 # Sep 26 test audit: resolution record
 
+Current-source follow-up: [Sep 26 re-audit and implemented improvements](reaudit-2026-09-26.md).
+It records RA-01~05, the optional test/tooling improvements, and 12 compiling
+mutations rejected by 13 targeted test runs; its gate evidence is separate from
+the historical integration result below.
+
 Implementation base: committed HEAD `27386d1776710022372380a0bd30bde2efdb740c`; local integration ran on `2d5647b3d48a3d4a6f76cc4cae6f06d2a0a7120c` plus this patch. The audit found test-oracle and proof-claim gaps; it did not establish a production behavior failure. The seven retained gaps are addressed. Clean-HEAD qualification is a separate result.
 
 | ID | Resolution | Detail |

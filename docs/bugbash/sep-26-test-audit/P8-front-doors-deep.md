@@ -115,8 +115,10 @@ exact canonical text for a messy declaration.
   count/non-empty assert.
 - Class G: every spawned process asserts exit status; every structured response
   asserts `id` + `ok`/`error.code`.
-- Class I: exit status asserted at every spawn site; `run_os_bounded` kills and
-  reaps under a 10 s watchdog; no child is left unwaited.
+- Class I: shipped CLI and stdio children now share `tools/test_support/process.rs`
+  with a 10 s watchdog, concurrent pipe drains, and direct-child kill/reap cleanup.
+  Timeout custody and output beyond pipe capacity have independent controls.
+  This helper does not promise descendant process-group cleanup.
 - Hygiene: `#[ignore]` 0, `let _ =` 0, `unwrap_or*` as oracle 0, `filter_map`
   0, `todo!`/`unimplemented!` 0, tautological `assert_eq!(x, x)` 0.
 

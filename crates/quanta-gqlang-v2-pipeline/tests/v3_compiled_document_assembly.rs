@@ -2237,40 +2237,65 @@ fn every_projected_expression_reference_resolves_within_its_own_table() {
     let query =
         compile_source_document_v3(DOC_SOURCE, query_composition, &authority_with_records())
             .expect("Query composition compiles");
-    let mut bindings_with_schema = 0_usize;
-    for (label, compiled) in [("SAMPLE", sample), ("Query", query)] {
+    for (label, compiled, expected_family, expected_name) in [
+        ("SAMPLE", sample, ExecutionFamilyV3::Presentation, "sampled"),
+        ("Query", query, ExecutionFamilyV3::Relation, "rows"),
+    ] {
+        assert_eq!(compiled.execution().items().len(), 1, "{label}");
         let item = compiled.execution().items().first().expect("one item");
         let composition = item.composition().expect("composition payload");
+        assert_eq!(composition.bindings().len(), 1, "{label}");
         for binding in composition.bindings() {
-            if let Some(schema) = binding.schema() {
-                bindings_with_schema += 1;
-                let mut keys = Vec::new();
-                schema_keys(schema, &mut keys);
-                match binding.relation() {
-                    Some(producer) => {
-                        let table: BTreeSet<SourceQualifiedNodeIdV2> = producer
-                            .expressions()
-                            .iter()
-                            .map(|entry| entry.id())
-                            .collect();
-                        for key in keys {
-                            assert!(
-                                table.contains(&key),
-                                "{label}: binding schema {key:?} is absent from the producer table"
-                            );
-                        }
-                        assert_relation_closed(label, producer, true);
+            assert_eq!(binding.binding().name(), expected_name, "{label}");
+            assert_eq!(binding.binding().ordinal(), 0, "{label}");
+            assert_eq!(binding.producer_family(), expected_family, "{label}");
+            let schema = binding
+                .schema()
+                .expect("each authored producer exposes a schema");
+            let mut keys = Vec::new();
+            schema_keys(schema, &mut keys);
+            match expected_family {
+                ExecutionFamilyV3::Relation => {
+                    assert!(matches!(
+                        binding.producer(),
+                        ExecutionCompositionProducerV3::Relation
+                    ));
+                    let producer = binding
+                        .relation()
+                        .expect("the Query producer retains its relation table");
+                    assert_eq!(producer.item_id(), binding.producer_item_id());
+                    assert_eq!(schema, producer.root().schema());
+                    let table: BTreeSet<SourceQualifiedNodeIdV2> = producer
+                        .expressions()
+                        .iter()
+                        .map(|entry| entry.id())
+                        .collect();
+                    for key in keys {
+                        assert!(
+                            table.contains(&key),
+                            "{label}: binding schema {key:?} is absent from the producer table"
+                        );
                     }
-                    None => assert!(
+                    assert_relation_closed(label, producer, true);
+                }
+                ExecutionFamilyV3::Presentation => {
+                    assert!(matches!(
+                        binding.producer(),
+                        ExecutionCompositionProducerV3::Sample { .. }
+                    ));
+                    assert!(binding.relation().is_none(), "SAMPLE has no relation table");
+                    assert!(
                         keys.is_empty(),
                         "{label}: table-less producer schema must not reference expressions: {keys:?}"
-                    ),
+                    );
                 }
-            } else {
-                assert!(
-                    binding.relation().is_none(),
-                    "{label}: a relation-producing binding must retain its schema table"
-                );
+                other @ (ExecutionFamilyV3::Graph
+                | ExecutionFamilyV3::Check
+                | ExecutionFamilyV3::Composition
+                | ExecutionFamilyV3::MetaRequireCertified
+                | ExecutionFamilyV3::RuleProgram) => {
+                    panic!("unexpected authored producer family {other:?}")
+                }
             }
         }
         let body = composition
@@ -2278,10 +2303,6 @@ fn every_projected_expression_reference_resolves_within_its_own_table() {
             .expect("the SAMPLE/Query composition body is relational");
         assert_relation_closed(label, body, true);
     }
-    assert!(
-        bindings_with_schema >= 1,
-        "at least one composition binding must expose a schema table to close against its producer"
-    );
 }
 
 /// The resolved entry shares checked semantic items with the source entry,

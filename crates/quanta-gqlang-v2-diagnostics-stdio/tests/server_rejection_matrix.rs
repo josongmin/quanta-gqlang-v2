@@ -43,9 +43,8 @@ fn only_the_advertised_read_only_method_is_admitted() {
         "diagnostics",
         "zero_query",
     ] {
-        let line = format!(
-            r#"{{"id":1,"method":"{method}","source_id":1,"source":"show capabilities"}}"#
-        );
+        let line =
+            format!(r#"{{"id":1,"method":"{method}","source_id":1,"source":"show capabilities"}}"#);
         let response = dispatch(&line).expect("bounded method error response");
         assert_eq!(response["ok"], false, "method {method}");
         assert_eq!(

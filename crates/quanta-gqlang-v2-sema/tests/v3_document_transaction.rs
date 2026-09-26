@@ -7,10 +7,10 @@
 
 use quanta_gqlang_v2_hir::{
     ActivationV1, AdmissionV1, AliasV1, CallArgHirV1, CallArgsHirV1, CatalogDeclHirV1,
-    CatalogPayloadV1, ConfirmModeV1, DeclHirV1, DetectionModeV1, EmitModeV1, GateBindingV1,
-    GraphConstraintsV1, GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1,
-    HirBuilderV1, HirDocumentV1, HirNodeIdV1, LegalityHirV1, LiteralV1, LocatedSpanV2, MetaHirV1,
-    MetaKindV1, OrderKeyHirV1, PathSegmentV1, PresentationHirV1, PresentationKindV1,
+    CatalogPayloadV1, ConfirmModeV1, DeclHirV1, DetectionModeV1, EmitModeV1, ExportFormatV1,
+    GateBindingV1, GraphConstraintsV1, GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1,
+    GraphRefV1, HirBuilderV1, HirDocumentV1, HirNodeIdV1, LegalityHirV1, LiteralV1, LocatedSpanV2,
+    MetaHirV1, MetaKindV1, OrderKeyHirV1, PathSegmentV1, PresentationHirV1, PresentationKindV1,
     ProgramItemHirV1, ProjectionItemV1, RecordFieldV1, RelationExistsPolarityV1, ShowCategoryV1,
     SortDirectionHirV1, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
     SymbolRefV1, ValueExprHirV1, ValueExprKindV1, ViewBodyV1,
@@ -215,13 +215,22 @@ fn host() -> (SourceRegistryViewV2, ClosedFrontendAuthorityV2) {
     .unwrap();
     let graph = GraphReferenceCatalogV2::try_new(
         [
-            ("repo::src", SpanV1::new(1, 2)),
-            ("repo::sink", SpanV1::new(2, 3)),
+            ("repo::src", SpanV1::new(1, 2), GraphReferenceKindV2::Entity),
+            (
+                "repo::sink",
+                SpanV1::new(2, 3),
+                GraphReferenceKindV2::Entity,
+            ),
+            (
+                "result.latest",
+                SpanV1::new(5, 6),
+                GraphReferenceKindV2::ExportSource,
+            ),
         ]
         .into_iter()
-        .map(|(spelling, span)| GraphReferenceInputV2 {
+        .map(|(spelling, span, kind)| GraphReferenceInputV2 {
             spelling: spelling.into(),
-            kind: GraphReferenceKindV2::Entity,
+            kind,
             entity_subtype: None,
             location: host
                 .try_check_location(LocatedSpanV2 {
@@ -1390,6 +1399,168 @@ fn presentation_show_is_a_closed_source_item_without_phantom_reference() {
             category: ShowCategoryV1::Models
         }
     ));
+}
+
+fn export_profile_document(
+    profile_name: Option<&str>,
+    declare_profile: bool,
+    profile_first: bool,
+) -> CheckedSyntaxDocumentV2 {
+    let export = ProgramItemHirV1::Presentation(Box::new(PresentationHirV1::new(
+        HirNodeIdV1::from_raw(11),
+        SpanV1::new(40, 100),
+        PresentationKindV1::Export {
+            source_ref: GraphRefV1 {
+                name: "result.latest".into(),
+                span: SpanV1::new(54, 67),
+            },
+            format: ExportFormatV1::Sarif,
+            profile: profile_name.map(|name| GraphRefV1 {
+                name: name.into(),
+                span: SpanV1::new(88, 88 + name.len()),
+            }),
+        },
+    )));
+    let mut items = vec![export];
+    if declare_profile {
+        let profile = ProgramItemHirV1::CatalogDecl(Box::new(CatalogDeclHirV1::new(
+            HirNodeIdV1::from_raw(10),
+            SpanV1::new(0, 35),
+            "strict",
+            SpanV1::new(8, 14),
+            CatalogPayloadV1::Profile {
+                capabilities: vec![GraphRefV1 {
+                    name: "capability1".into(),
+                    span: SpanV1::new(16, 27),
+                }],
+                admission: AdmissionV1::Allowlist,
+            },
+        )));
+        if profile_first {
+            items.insert(0, profile);
+        } else {
+            items.push(profile);
+        }
+    }
+    CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(9),
+        source_len: 100,
+        items,
+    })
+    .expect("EXPORT fixture has distinct IDs and bounded authored spans")
+}
+
+#[test]
+fn export_profile_resolves_exact_local_identity_and_use_in_both_orders() {
+    use quanta_gqlang_v2_modules::NamespaceKindV2;
+    use quanta_gqlang_v2_sema::{ResolvedPresentationKindV2, SemanticItemV2};
+
+    let (_, authority) = host();
+    let source_id = SourceIdV2::from_raw(9);
+    for profile_first in [true, false] {
+        let document = resolve_checked_document_v2(
+            export_profile_document(Some("strict"), true, profile_first),
+            &authority,
+        )
+        .expect("EXPORT admits the authored profile, including forward references");
+        assert_eq!(document.order().len(), 2);
+        let SemanticItemV2::Catalog(declaration) = document
+            .item(SemanticItemIdV2::new(source_id, HirNodeIdV1::from_raw(10)))
+            .expect("authored profile retained")
+        else {
+            panic!("expected Profile declaration")
+        };
+        let SemanticItemV2::Presentation(export) = document
+            .item(SemanticItemIdV2::new(source_id, HirNodeIdV1::from_raw(11)))
+            .expect("authored EXPORT retained")
+        else {
+            panic!("expected EXPORT")
+        };
+        let ResolvedPresentationKindV2::Export {
+            source,
+            format,
+            profile: Some(profile),
+        } = export.kind()
+        else {
+            panic!("EXPORT must retain its authored profile")
+        };
+        assert_eq!(*format, ExportFormatV1::Sarif);
+        assert_eq!(profile.id(), declaration.asset_id());
+        assert_eq!(profile.id().module_id().as_str(), "app");
+        assert_eq!(profile.id().local_name(), "strict");
+        assert_eq!(profile.kind(), NamespaceKindV2::Profile);
+        assert_eq!(
+            profile.location().location(),
+            LocatedSpanV2 {
+                source_id,
+                span: SpanV1::new(88, 94)
+            }
+        );
+        assert_eq!(
+            source.location().location(),
+            LocatedSpanV2 {
+                source_id,
+                span: SpanV1::new(54, 67)
+            }
+        );
+        assert_eq!(
+            source
+                .target()
+                .host_selector()
+                .expect("host export source")
+                .spelling(),
+            "result.latest"
+        );
+    }
+    let no_profile =
+        resolve_checked_document_v2(export_profile_document(None, false, false), &authority)
+            .expect("profile remains optional");
+    assert_eq!(no_profile.order().len(), 1);
+    let (_, SemanticItemV2::Presentation(export)) = no_profile.items().next().expect("one EXPORT")
+    else {
+        panic!("expected EXPORT")
+    };
+    assert!(matches!(
+        export.kind(),
+        ResolvedPresentationKindV2::Export { profile: None, .. }
+    ));
+}
+
+#[test]
+fn export_profile_rejects_missing_and_wrong_kind_at_the_authored_use() {
+    let (_, authority) = host();
+    let source_id = SourceIdV2::from_raw(9);
+    for (name, code, secondary) in [
+        ("missing", "modules.unknown_catalog_reference", Vec::new()),
+        (
+            "capability1",
+            "modules.catalog_reference_kind_mismatch",
+            vec![LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(1),
+                span: SpanV1::new(3, 4),
+            }],
+        ),
+    ] {
+        let FrontendTransactionErrorV2::Document(failure) = resolve_checked_document_v2(
+            export_profile_document(Some(name), false, false),
+            &authority,
+        )
+        .expect_err("missing or non-Profile catalog target must reject") else {
+            panic!("expected document diagnostic")
+        };
+        let [diagnostic] = failure.diagnostics() else {
+            panic!("expected one exact diagnostic")
+        };
+        assert_eq!(diagnostic.code(), code, "{name}");
+        assert_eq!(
+            diagnostic.primary(),
+            LocatedSpanV2 {
+                source_id,
+                span: SpanV1::new(88, 88 + name.len())
+            }
+        );
+        assert_eq!(diagnostic.secondary(), secondary);
+    }
 }
 
 #[test]

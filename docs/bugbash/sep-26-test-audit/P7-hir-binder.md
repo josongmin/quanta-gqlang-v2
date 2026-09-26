@@ -87,6 +87,11 @@ payloads; `SourceRegistryDiagnosticV2`'s `Display` bodies and the non-extended
 `v3_binder_mutants.rs` reference stale `resolve.rs` line numbers. Closing these
 means authoring new expectations rather than converting an existing skip.
 
+Sep 26 re-audit correction: `ExtendedSourceRegistryViewV2::source_len` already
+exercised the base accessor's success path. The registry unit test now also pins
+both base source lengths and unknown-ID `None` in base and extended registries.
+The source-length accessor is no longer an open coverage item.
+
 ## Owner test status
 
 `cargo test -p quanta-gqlang-v2-hir -p quanta-gqlang-v2-binder`:

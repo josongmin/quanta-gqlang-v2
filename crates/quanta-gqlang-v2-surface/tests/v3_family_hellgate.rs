@@ -185,9 +185,14 @@ fn check_owns_explicit_semantic_confirm_query() {
 
 #[test]
 fn check_using_requires_a_find_query() {
-    let diag =
-        err("check rule.hybrid | confirm=require | mode=hybrid using check other | confirm=skip");
+    let src = "check rule.hybrid | confirm=require | mode=hybrid using check other | confirm=skip";
+    let diag = err(src);
     assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+    let invalid_keyword = src.find("using check").expect("authored using clause") + "using ".len();
+    assert_eq!(
+        diag.span,
+        SpanV1::new(invalid_keyword, invalid_keyword + "check".len())
+    );
     assert!(diag.message.contains("find"), "msg: {}", diag.message);
 }
 
@@ -196,6 +201,7 @@ fn check_missing_confirm_rejects() {
     // CHECK requires an explicit confirm clause: fail closed when absent.
     let diag = err("check rule.hybrid | scope=repo | emit=findings");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
+    assert_eq!(diag.span, SpanV1::new(0, 5));
     assert!(diag.message.contains("confirm"), "msg: {}", diag.message);
 }
 
@@ -455,6 +461,7 @@ fn compare_parses_to_presentation() {
 fn compare_missing_candidate_rejects() {
     let diag = err("compare baseline=run.a | metric=exact");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
+    assert_eq!(diag.span, SpanV1::new(0, 7));
     assert!(diag.message.contains("candidate"), "msg: {}", diag.message);
 }
 
@@ -752,6 +759,8 @@ fn composition_duplicate_binding_rejects() {
                find taint p -> q with a";
     let diag = err(src);
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
+    let duplicate_name = src.rfind("let a").expect("second authored binding") + "let ".len();
+    assert_eq!(diag.span, SpanV1::new(duplicate_name, duplicate_name + 1));
     assert!(diag.message.contains("duplicate"), "msg: {}", diag.message);
 }
 
@@ -1022,6 +1031,7 @@ fn find_summary_empty_facets_rejects() {
     let src = "find summary | facets=";
     let diag = err(src);
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
+    assert_eq!(diag.span, SpanV1::new(15, 21));
     assert!(diag.message.contains("facet"), "msg: {}", diag.message);
 }
 

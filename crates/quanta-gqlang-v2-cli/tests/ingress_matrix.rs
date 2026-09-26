@@ -1,6 +1,5 @@
 #![expect(
     clippy::expect_used,
-    clippy::panic,
     reason = "binary ingress tests assert fixture/process plumbing and fail a bounded hang watchdog"
 )]
 
@@ -11,8 +10,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU64, Ordering};
-#[cfg(unix)]
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use quanta_gqlang_v2_cli::v3_plan::render_failure_v2;
 use quanta_gqlang_v2_frontend_contract::{
@@ -46,32 +44,20 @@ impl Drop for TempFile {
 }
 
 fn run_os(args: &[OsString]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_quanta-gqlang-v2-cli"))
+    let child = Command::new(env!("CARGO_BIN_EXE_quanta-gqlang-v2-cli"))
         .args(args)
-        .output()
-        .expect("spawn qglang cli")
-}
-
-#[cfg(unix)]
-fn run_os_bounded(args: &[OsString]) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_quanta-gqlang-v2-cli"))
-        .args(args)
+        .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
         .expect("spawn qglang cli");
-    let started = Instant::now();
-    loop {
-        if child.try_wait().expect("poll qglang cli").is_some() {
-            return child.wait_with_output().expect("collect qglang cli output");
-        }
-        if started.elapsed() >= Duration::from_secs(10) {
-            child.kill().expect("kill hung CLI");
-            drop(child.wait_with_output().expect("reap hung CLI"));
-            panic!("CLI did not reject a non-regular input within the watchdog");
-        }
-        std::thread::sleep(Duration::from_millis(10));
-    }
+    support::process::wait_bounded(child, None, Duration::from_secs(10))
+        .expect("bounded qglang cli")
+}
+
+#[cfg(unix)]
+fn run_os_bounded(args: &[OsString]) -> Output {
+    run_os(args)
 }
 
 fn assert_usage_block<'a>(mut lines: impl Iterator<Item = &'a str>, rendered: &str) {
@@ -392,7 +378,9 @@ fn file_input_accepts_regular_symlink_and_rejects_nonregular_nodes() {
     assert!(output.stderr.is_empty());
     let stdout = cli_stdout_v1(&output);
     assert!(
-        stdout.lines().any(|line| line == "analysis.status=incomplete"),
+        stdout
+            .lines()
+            .any(|line| line == "analysis.status=incomplete"),
         "{stdout}"
     );
 

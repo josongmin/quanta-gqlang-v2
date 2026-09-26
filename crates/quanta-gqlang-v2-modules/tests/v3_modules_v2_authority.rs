@@ -336,7 +336,8 @@ use quanta_gqlang_v2_hir::{
 };
 use quanta_gqlang_v2_modules::*;
 use quanta_gqlang_v2_types::{
-    AuthorityBudgetProfileV2, CardinalityV1, ExpressionEffectsV2, RecordTypeV1, RelationTypeV1,
+    AggregationClassV1, AuthorityBudgetProfileV2, CardinalityV1, CostClassV1, DeterminismV1,
+    ExpressionEffectsV2, MonotonicityV1, PurityV1, RecordTypeV1, RelationTypeV1,
     ResolvedPredicateIdV2, ValueTypeV1,
 };
 
@@ -3835,6 +3836,15 @@ fn signature_parameter_names_use_the_closed_identifier_grammar() {
 
 #[test]
 fn public_signature_projection_preserves_every_callable_fact() {
+    // Every axis differs from pure_scalar; this is authored metadata, not a
+    // default that either signature construction or projection may recreate.
+    let effects = ExpressionEffectsV2 {
+        purity: PurityV1::Impure,
+        determinism: DeterminismV1::NonDeterministic,
+        monotonicity: MonotonicityV1::Antitone,
+        aggregation: AggregationClassV1::Aggregate,
+        cost: CostClassV1::Linear,
+    };
     let sources = registry(&[(1, 256)]);
     let app = module_id(&sources, "app", 0);
     let mut builder = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
@@ -3864,7 +3874,7 @@ fn public_signature_projection_preserves_every_callable_fact() {
                 ],
                 result: ValueTypeV1::bool(),
                 callable_kind: CallableKindV2::Predicate,
-                effects: ExpressionEffectsV2::pure_scalar(),
+                effects,
                 location: checked(&sources, 1, 5),
             }),
             provenance: "host".into(),
@@ -3889,6 +3899,7 @@ fn public_signature_projection_preserves_every_callable_fact() {
     let ExternalCatalogPayloadV2::Predicate(signature) = asset.payload() else {
         return;
     };
+    assert_eq!(signature.effects(), effects);
     assert_eq!(
         signature
             .parameters()
@@ -3907,7 +3918,7 @@ fn public_signature_projection_preserves_every_callable_fact() {
         &[ValueTypeV1::int(), ValueTypeV1::string()]
     );
     assert_eq!(projected.result(), &ValueTypeV1::bool());
-    assert_eq!(projected.effects(), ExpressionEffectsV2::pure_scalar());
+    assert_eq!(projected.effects(), effects);
 }
 
 #[test]

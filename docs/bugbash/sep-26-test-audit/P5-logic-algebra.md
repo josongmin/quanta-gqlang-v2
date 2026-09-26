@@ -162,3 +162,12 @@ The Summary-drop and widened-PointsTo probes also surfaced (and forced me to
 revert) two of my own temporary production mutations, which is why the final
 tree has no production residue (`git grep` confirms the original
 `PointsTo => &[Reference, Pointee]` and `Summary => &[Callable]` arms).
+
+## Sep 26 re-audit supplement
+
+The previously held permutation-completeness gap is closed: the offending-edge
+rail enumerates all 120 five-rule orders, and the diamond rail enumerates all
+24 rule orders times two literal orders (48 combinations). Both generators have
+exact cardinality and distinct-order guards; the independent 343-graph oracle
+is retained. Direction/facets and non-endpoint reference roles already have
+source-to-pipeline coverage and are not additional open findings.

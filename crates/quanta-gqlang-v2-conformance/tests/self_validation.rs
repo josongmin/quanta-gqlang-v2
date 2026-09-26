@@ -13,12 +13,13 @@ use quanta_gqlang_v2_conformance::{
 use quanta_gqlang_v2_frontend_contract::{
     analyze_source_document_v2, compile_source_document_v3, AlgebraFamilyV2, AnalysisItemV2,
     AnalysisStatusV2, ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledItemV2,
-    ExecutionExpressionShapeV3, ExecutionFamilyV3, ExecutionJoinModeV3, FrontendAuthorityErrorV2,
-    FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
-    FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2, FrontendGraphReferenceInputV2,
-    FrontendLanguageVersionV2, FrontendLockfileInputV2, FrontendPackInputV2,
-    FrontendRelationCardinalityV2, FrontendRelationFieldInputV2, FrontendRelationInputV2,
-    FrontendScalarTypeV2, GraphReferenceKindV2, OpenAnalysisAuthorityV2, PlannedItemV2, SourceIdV2,
+    ExecutionCallTargetV3, ExecutionExpressionShapeV3, ExecutionFamilyV3, ExecutionJoinModeV3,
+    FrontendAuthorityErrorV2, FrontendAuthorityLocationV2, FrontendAuthoritySourceV2,
+    FrontendBudgetV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
+    FrontendGraphReferenceInputV2, FrontendLanguageVersionV2, FrontendLockfileInputV2,
+    FrontendPackInputV2, FrontendRelationCardinalityV2, FrontendRelationFieldInputV2,
+    FrontendRelationInputV2, FrontendScalarTypeV2, GraphReferenceKindV2, OpenAnalysisAuthorityV2,
+    PlannedItemV2, SemanticItemIdV2, SourceIdV2,
 };
 
 const HOST: SourceIdV2 = SourceIdV2::from_raw(1);
@@ -658,7 +659,43 @@ fn authored_aggregates_retain_partition_truth_and_reject_illegal_contexts() {
             group.schema().partition_keys(),
             "{source}: aggregate must preserve group partition identity"
         );
-        assert_eq!(aggregate.expressions().len(), 1, "{source}");
+        let [aggregate_id] = aggregate.expressions() else {
+            panic!("{source}: expected exactly one aggregate expression");
+        };
+        let expression = relation
+            .expressions()
+            .iter()
+            .find(|expression| expression.id() == *aggregate_id)
+            .expect("aggregate expression must exist in the execution table");
+        let ExecutionExpressionShapeV3::Call {
+            target: ExecutionCallTargetV3::Builtin { name },
+            arguments,
+        } = expression.shape()
+        else {
+            panic!("{source}: authored aggregate must retain a builtin call");
+        };
+        assert_eq!(name, "sum", "{source}");
+        let [Some(argument_id)] = arguments.as_ref() else {
+            panic!("{source}: sum must retain exactly one expression argument");
+        };
+        let argument = relation
+            .expressions()
+            .iter()
+            .find(|expression| expression.id() == *argument_id)
+            .expect("sum argument must exist in the execution table");
+        let ExecutionExpressionShapeV3::Path { base, segments } = argument.shape() else {
+            panic!("{source}: sum must retain the authored f.score path");
+        };
+        assert_eq!(segments.as_ref(), ["score"], "{source}");
+        let base = relation
+            .expressions()
+            .iter()
+            .find(|expression| expression.id() == *base)
+            .expect("field-path base must exist in the execution table");
+        let ExecutionExpressionShapeV3::Binding(binding) = base.shape() else {
+            panic!("{source}: field-path base must retain its binding");
+        };
+        assert_eq!(binding.name(), "f", "{source}");
         let [field] = aggregate.schema().fields() else {
             panic!("{source}: aggregate must expose exactly one field");
         };
@@ -759,6 +796,23 @@ fn supplemental_units_are_explicit_and_unsupported_source_fails_closed() {
     };
     assert_eq!(value_reason.code(), "value_declaration");
     assert_eq!(value.item(*value_id), value.items().first());
+    let pair = compile_source_document_v3(
+        SourceIdV2::from_raw(303),
+        "let first = 1; let second = 2",
+        &authority,
+    )
+    .expect("two value declarations compile");
+    let [first, second] = pair.items() else {
+        panic!("expected two source-ordered compiled items");
+    };
+    assert_ne!(first.item_id(), second.item_id());
+    assert_eq!(pair.item(first.item_id()), Some(first));
+    assert_eq!(pair.item(second.item_id()), Some(second));
+    let absent = SemanticItemIdV2::new(SourceIdV2::from_raw(304), first.item_id().hir_item_id());
+    assert!(
+        pair.item(absent).is_none(),
+        "foreign compiled item must miss"
+    );
     assert!(value.rule_program().is_none());
     assert!(value.execution().items().is_empty());
 

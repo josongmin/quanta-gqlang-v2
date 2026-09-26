@@ -319,29 +319,55 @@ fn proof_is_invariant_under_rule_and_literal_permutation() {
     let (canonical, l) = diamond_program();
     let reference = stratify(&canonical, &generous()).expect("canonical order admits");
 
-    // Rule order reversed.
-    let reversed = RecursiveProgramV1::from_rules(vec![
-        rule("d", vec![positive("b", &l[6]), positive("c", &l[7])], &l[5]),
-        rule("c", vec![positive("a", &l[4])], &l[3]),
-        rule("b", vec![positive("a", &l[2])], &l[1]),
-        seed("a", &l[0]),
-    ]);
+    fn permute(order: &mut [u8; 4], next: usize, orders: &mut Vec<[u8; 4]>) {
+        if next == order.len() {
+            orders.push(*order);
+            return;
+        }
+        for index in next..order.len() {
+            order.swap(next, index);
+            permute(order, next + 1, orders);
+            order.swap(next, index);
+        }
+    }
+    let mut orders = Vec::new();
+    permute(&mut [0, 1, 2, 3], 0, &mut orders);
+    assert_eq!(orders.len(), 24);
     assert_eq!(
-        stratify(&reversed, &generous()).expect("reversed order admits"),
-        reference
+        orders
+            .iter()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+        24
     );
-
-    // `d` body literals swapped (canonical edge order must be unaffected).
-    let swapped = RecursiveProgramV1::from_rules(vec![
-        seed("a", &l[0]),
-        rule("b", vec![positive("a", &l[2])], &l[1]),
-        rule("c", vec![positive("a", &l[4])], &l[3]),
-        rule("d", vec![positive("c", &l[7]), positive("b", &l[6])], &l[5]),
-    ]);
-    assert_eq!(
-        stratify(&swapped, &generous()).expect("swapped literals admit"),
-        reference
-    );
+    let mut checked = 0;
+    for order in orders {
+        for swapped in [false, true] {
+            let mut body = vec![positive("b", &l[6]), positive("c", &l[7])];
+            if swapped {
+                body.swap(0, 1);
+            }
+            let rules = [
+                seed("a", &l[0]),
+                rule("b", vec![positive("a", &l[2])], &l[1]),
+                rule("c", vec![positive("a", &l[4])], &l[3]),
+                rule("d", body, &l[5]),
+            ];
+            let program = RecursiveProgramV1::from_rules(
+                order
+                    .iter()
+                    .map(|index| rules[usize::from(*index)].clone())
+                    .collect(),
+            );
+            assert_eq!(
+                stratify(&program, &generous()).expect("every authored order admits"),
+                reference,
+                "order={order:?}, swapped={swapped}"
+            );
+            checked += 1;
+        }
+    }
+    assert_eq!(checked, 48);
 }
 
 /// Exhaust every three-predicate graph with at most one positive or negated

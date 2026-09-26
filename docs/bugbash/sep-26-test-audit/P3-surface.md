@@ -100,8 +100,10 @@ Final: green (248 + 1 doctest). `cargo clippy -p quanta-gqlang-v2-surface --test
   is closed.
 - **`support::structural_witness` paren transparency** — deliberate and documented; a
   grouping-relevant paren changes traversal order and is still caught.
-- **Remaining `contains` message checks** — only in rails whose primary oracle (code+span or
-  witness) is already exact.
+- **Remaining `contains` message checks** — message fragments supplement the diagnostic
+  code. The Sep 26 re-audit also pins exact spans for CHECK's missing FIND/confirm,
+  COMPARE's missing candidate, duplicate composition binding, and empty summary facets.
+  This is representative diagnostic coverage, not a full-message golden claim.
 
 ## 5. Modified files (17)
 

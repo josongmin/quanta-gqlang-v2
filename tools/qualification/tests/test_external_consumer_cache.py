@@ -410,6 +410,7 @@ class ExternalConsumerCacheTest(unittest.TestCase):
                     "lib",
                     "--edition",
                     "2021",
+                    "--error-format=json",
                     "-o",
                     str(output_path),
                     str(source_path),
@@ -473,18 +474,25 @@ pub fn exhaustive_variant(mode: Mode) {
         self.assertEqual(baseline_result.returncode, 0, baseline_result.stderr)
 
         mutations = {
-            "method removed": baseline.replace("pub fn count(&self) -> u32 { 0 }", ""),
-            "return type drifted": baseline.replace(
+            "method removed": (baseline.replace("pub fn count(&self) -> u32 { 0 }", ""), "E0599"),
+            "return type drifted": (baseline.replace(
                 "pub fn count(&self) -> u32 { 0 }",
                 "pub fn count(&self) -> u64 { 0 }",
-            ),
-            "variant removed": baseline.replace("pub enum Mode { A, B }", "pub enum Mode { A }"),
-            "variant added": baseline.replace("pub enum Mode { A, B }", "pub enum Mode { A, B, C }"),
+            ), "E0308"),
+            "variant removed": (baseline.replace("pub enum Mode { A, B }", "pub enum Mode { A }"), "E0599"),
+            "variant added": (baseline.replace("pub enum Mode { A, B }", "pub enum Mode { A, B, C }"), "E0004"),
         }
-        for name, source in mutations.items():
+        for name, (source, expected_code) in mutations.items():
             with self.subTest(name=name):
                 result = self.compile_rust_contract(source)
                 self.assertNotEqual(result.returncode, 0, result.stderr)
+                codes = [
+                    diagnostic["code"]["code"]
+                    for line in result.stderr.splitlines()
+                    if (diagnostic := json.loads(line)).get("level") == "error"
+                    and diagnostic.get("code") is not None
+                ]
+                self.assertEqual(codes, [expected_code], result.stderr)
 
     def test_rust_denies_a_curated_root_that_is_only_imported(self):
         source = """

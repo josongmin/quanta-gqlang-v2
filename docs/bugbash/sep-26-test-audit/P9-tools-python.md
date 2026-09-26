@@ -41,8 +41,9 @@ closes the remaining mechanically-safe held items. `just ci` / `just qualify-loc
   own `FINAL_*` constants (self-referential); pinning literals is a policy-ratchet decision.
 - `test_architecture.py` valid fixture declares no external dependency / internal feature, so
   allowlist over-strictness has no positive control.
-- `test_external_consumer_cache.py` `compile_rust_contract` mutation callers assert only non-zero
-  exit, and the shipped `src/main.rs` semantic probe is never bound by the test.
+- `test_external_consumer_cache.py` now pins compiler-mutation JSON error codes
+  (`E0599`, `E0308`, `E0599`, `E0004`) as well as non-zero exit. The synthetic probe
+  remains separate from the shipped `src/main.rs` semantic program.
 - `test_frontend_external_consumer.py` source-shape regexes ignore non-canonical `pub use`/`pub mod`
   forms, the positive program's imports are not bound to `PINNED_ALLOWLIST`, and the immutability
   fingerprint omits facade oracle inputs (misattribution risk for concurrent editors).

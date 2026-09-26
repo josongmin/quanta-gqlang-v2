@@ -149,7 +149,12 @@ fn valid_request_echoes_id_and_reports_honest_incomplete_analysis() {
     let diagnostics = responses[0]["diagnostics"]
         .as_array()
         .expect("diagnostics array");
-    assert_eq!(diagnostics.len(), 3, "unexpected diagnostics: {}", responses[0]);
+    assert_eq!(
+        diagnostics.len(),
+        3,
+        "unexpected diagnostics: {}",
+        responses[0]
+    );
     let codes: Vec<&str> = diagnostics
         .iter()
         .map(|diagnostic| diagnostic["code"].as_str().expect("diagnostic code"))
