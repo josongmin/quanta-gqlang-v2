@@ -134,7 +134,10 @@ impl ExecutionDocumentV3 {
     }
 
     /// Digest binding the contract domain, the schema version, and both legs
-    /// above. Any DTO or source-byte change moves it.
+    /// above. Its inputs are the projected execution contract and original
+    /// source bytes; compiled dispositions and rule-program data outside that
+    /// projection are not separately encoded. Source-byte changes remain bound
+    /// even when the execution projection is unchanged.
     #[must_use]
     pub const fn qualification_digest(&self) -> ExecutionDigestV3 {
         self.qualification_digest

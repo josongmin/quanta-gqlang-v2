@@ -1042,6 +1042,21 @@ fn main() {
     );
 
     // The public parse-only route classifier has no closed authority input.
+    // These roots may be refused by a downstream runtime, but classification
+    // must preserve their exact family without resolving any external names.
+    // Runtime support and typed admission failures remain consumer-owned.
+    for (source, expected) in [
+        ("let x = 1", FrontendSourceRootFamilyV3::Declaration),
+        ("rule r : x if a", FrontendSourceRootFamilyV3::Rule),
+        ("view v | query-ref=r.x", FrontendSourceRootFamilyV3::Catalog),
+    ] {
+        assert_eq!(
+            classify_single_source_root_v3(DOCUMENT_SOURCE, source, &budget)
+                .expect("parse-only family classification needs no closed authority"),
+            expected,
+            "{source}",
+        );
+    }
     assert_eq!(
         classify_single_source_root_v3(
             DOCUMENT_SOURCE,
