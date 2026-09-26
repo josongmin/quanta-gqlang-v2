@@ -499,10 +499,7 @@ fn two_key_group_preserves_authored_partition_order() {
     let authored: Vec<String> = keys
         .iter()
         .map(|key| {
-            let expression = reference
-                .document()
-                .expression(*key)
-                .expect("each group key is a document expression fact");
+            let expression = reference.document().expression(*key).unwrap();
             let TypedExprShapeV2::Path { segments, .. } = expression.shape() else {
                 panic!("each authored group key is the checked field path");
             };
@@ -641,10 +638,7 @@ fn assert_single_key_sort(
     assert_eq!(key.null_order(), NullOrderV2::Last);
     // Expression identity: the key must resolve to the authored `field_name`
     // path, not merely to some column of the same value type.
-    let key_expression = reference
-        .document()
-        .expression(key.expression())
-        .expect("the sort key is a document expression fact");
+    let key_expression = reference.document().expression(key.expression()).unwrap();
     let TypedExprShapeV2::Path { segments, .. } = key_expression.shape() else {
         panic!("sort keys are checked field paths");
     };

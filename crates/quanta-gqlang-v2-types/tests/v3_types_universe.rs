@@ -371,8 +371,7 @@ fn relation_catalog_enforces_profile_string_and_aggregate_byte_limits() {
         RelationCatalogV2::try_new(vec![make_input()], &registry, string_short).unwrap_err();
     assert_eq!(error.code(), "types.resource_exhausted");
     for zero_at in 0..5 {
-        let mut profile = [1usize; 5];
-        profile[zero_at] = 0;
+        let profile: [usize; 5] = std::array::from_fn(|index| usize::from(index != zero_at));
         assert_eq!(
             AuthorityBudgetProfileV2::try_new(
                 profile[0], profile[1], profile[2], profile[3], profile[4]

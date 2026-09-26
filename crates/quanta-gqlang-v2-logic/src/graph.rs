@@ -468,7 +468,7 @@ mod tests {
             assert_eq!(expected.len(), 1, "{kind:?} appears exactly once");
             assert_eq!(
                 required(kind),
-                expected[0],
+                *expected.first().expect("one authored role set"),
                 "{kind:?} must require exactly the authored role set"
             );
         }

@@ -132,10 +132,7 @@ fn correlated_not_exists_keeps_the_same_exact_captures() {
     // and the checked location of that fact.
     assert_eq!(edge.binding().ordinal(), 0);
     assert_eq!(edge.binding().source_id(), REFERENCE_SOURCE_V2);
-    let captured = reference
-        .document()
-        .expression(edge.reference())
-        .expect("the capture reference is a document expression fact");
+    let captured = reference.document().expression(edge.reference()).unwrap();
     assert!(
         matches!(captured.shape(), TypedExprShapeV2::Binding(binding) if binding.canonical_name() == "r"),
         "the capture reference is the inner `r` symbol fact"
