@@ -386,10 +386,11 @@ class QualificationDriverTest(unittest.TestCase):
         self.assertEqual(set(receipt), {
             "sha", "tree", "cmds", "exit", "duration_s", "schema", "tool_versions",
             "source_hashes", "recipe_duration_s", "ci_log_sha256",
-            "qualification_run_id", "nextest", "advisory_db", "status", "dirty",
+            "qualification_run_id", "nextest", "nextest_raw", "advisory_db", "status", "dirty",
         })
         self.assertEqual(receipt["cmds"], ["just ci"])
-        self.assertEqual(receipt["schema"], 2)
+        self.assertEqual(receipt["schema"], 3)
+        self.assertIsNone(receipt["nextest_raw"])
         self.assertEqual(receipt["ci_log_sha256"], hashlib.sha256(log.read_bytes()).hexdigest())
 
     def test_ci_log_symlink_is_replaced_without_writing_external_file(self) -> None:
