@@ -15,7 +15,7 @@ use std::time::Duration;
 use quanta_gqlang_v2_hir::{
     AdmissionV1, BoolExprKindV1, CatalogPayloadV1, GraphConstraintsV1, GraphEndpointsV1,
     GraphQueryKindV1, GraphRefV1, HirBuilderV1, PathSegmentV1, ProgramItemHirV1,
-    RelationExistsPolarityV1, SpanV1, ValueExprKindV1,
+    RelationExistsPolarityV1, RelationExprKindV1, SpanV1, ValueExprKindV1,
 };
 use quanta_gqlang_v2_surface::{
     format_document, format_item, parse_document, parse_program, try_format_item,
@@ -903,4 +903,47 @@ fn document_roundtrips() {
     // second formatter run.
     let pair: Vec<ProgramItemHirV1> = vec![parse("show capabilities"), parse("show models")];
     assert_eq!(format_document(&pair), "show capabilities;\nshow models");
+}
+
+#[test]
+fn keyword_roles_distinguish_composition_prefixes_from_value_symbols_and_aliases() {
+    for name in ["from", "sample", "find"] {
+        let builder = HirBuilderV1::new();
+        let span = SpanV1::new(0, 1);
+        let raw = ProgramItemHirV1::from(builder.decl("x", span, builder.symbol(name, span), span));
+        let error =
+            try_format_item(&raw).expect_err("unparenthesized producer prefix selects composition");
+        assert_eq!(error.code, FormatErrorCodeV1::ParseRejected, "{name}");
+        let source = format!("let x = ({name})");
+        let item = parse(&source);
+        let ProgramItemHirV1::Decl(decl) = &item else {
+            panic!("value declaration required");
+        };
+        let ValueExprKindV1::Paren(inner) = &decl.body.kind else {
+            panic!("explicit grouping required");
+        };
+        let ValueExprKindV1::Symbol(symbol) = &inner.kind else {
+            panic!("symbol required");
+        };
+        assert_eq!(symbol.name, name);
+        assert_eq!(
+            try_format_item(&item).expect("parenthesized value spelling"),
+            source
+        );
+    }
+    for name in ["find", "sample", "cross"] {
+        let source = format!("from records {name}");
+        let item = parse(&source);
+        let ProgramItemHirV1::Query(query) = &item else {
+            panic!("query required");
+        };
+        let RelationExprKindV1::Source(relation) = &query.body.kind else {
+            panic!("source required");
+        };
+        assert_eq!(relation.alias.as_ref().expect("bare alias").name, name);
+        assert_eq!(
+            try_format_item(&item).expect("contextual bare alias"),
+            source
+        );
+    }
 }

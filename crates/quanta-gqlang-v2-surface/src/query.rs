@@ -104,7 +104,10 @@ fn parse_bare_alias(cur: &mut CursorV1<'_>) -> Result<Option<AliasV1>, ParseDiag
     Ok(None)
 }
 
-/// Reserved pipeline keywords that must not be eaten as a bare alias.
+/// Closed bare-alias restrictions, shared by parsing and canonical formatting.
+/// This is a context-specific grammar policy, not a union of root-family or
+/// stage-dispatch keywords: `find`, `sample` and `cross` remain legal bare aliases.
+/// Explicit `as` admits names otherwise reserved in this position.
 pub(crate) fn is_reserved(word: &str) -> bool {
     matches!(
         word,

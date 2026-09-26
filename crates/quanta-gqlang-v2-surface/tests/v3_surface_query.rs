@@ -317,7 +317,7 @@ fn parsed_root_classification_matches_every_family() {
     }
 }
 
-/// A reserved family keyword after a source name must not be silently consumed
+/// A keyword reserved in bare-alias position must not be silently consumed
 /// as a table alias; it is a trailing token, so the parse fails closed.
 #[test]
 fn reserved_word_after_source_is_not_an_alias() {

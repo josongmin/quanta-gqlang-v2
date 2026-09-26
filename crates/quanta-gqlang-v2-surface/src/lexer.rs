@@ -113,7 +113,7 @@ pub(crate) fn lex_with_budget(
             let next = scan_string(source, i)?;
             let span = SpanV1::new(i, next);
             counter.charge_token(span)?;
-            let content = decode_string(source, i, next);
+            let content = decode_string(source, i, next)?;
             tokens.push(TokenV1 {
                 kind: TokenKindV1::Str(content),
                 span,
@@ -176,6 +176,15 @@ pub(crate) fn lex_with_budget(
 }
 
 fn scan_string(source: &str, start: usize) -> Result<usize, LexErrorV1> {
+    walk_string(source, start, |_| {})
+}
+
+/// One escape grammar serves the allocation-free scan and admitted decoding.
+fn walk_string(
+    source: &str,
+    start: usize,
+    mut emit: impl FnMut(char),
+) -> Result<usize, LexErrorV1> {
     let len = source.len();
     let mut i = start + 1; // skip opening quote
     while i < len {
@@ -195,7 +204,13 @@ fn scan_string(source: &str, start: usize) -> Result<usize, LexErrorV1> {
                 break;
             };
             match escape {
-                '"' | '\\' | 'n' | 'r' | 't' | 'b' | 'f' => {}
+                '"' => emit('"'),
+                '\\' => emit('\\'),
+                'n' => emit('\n'),
+                'r' => emit('\r'),
+                't' => emit('\t'),
+                'b' => emit('\u{0008}'),
+                'f' => emit('\u{000c}'),
                 'u' => {
                     i += escape.len_utf8();
                     let open = source.get(i..).and_then(|tail| tail.chars().next());
@@ -241,7 +256,7 @@ fn scan_string(source: &str, start: usize) -> Result<usize, LexErrorV1> {
                     let value = u32::from_str_radix(digits, 16).map_err(|_invalid_hex| {
                         invalid_escape(source, escape_start, i + 1, "invalid Unicode escape")
                     })?;
-                    let _scalar = char::from_u32(value).ok_or_else(|| {
+                    let scalar = char::from_u32(value).ok_or_else(|| {
                         invalid_escape(
                             source,
                             escape_start,
@@ -249,6 +264,7 @@ fn scan_string(source: &str, start: usize) -> Result<usize, LexErrorV1> {
                             "Unicode escape is not a scalar value",
                         )
                     })?;
+                    emit(scalar);
                     i += 1;
                     continue;
                 }
@@ -264,6 +280,7 @@ fn scan_string(source: &str, start: usize) -> Result<usize, LexErrorV1> {
             i += escape.len_utf8();
             continue;
         }
+        emit(ch);
         i += ch.len_utf8();
     }
     Err(ParseDiagnosticV1::new(
@@ -273,44 +290,13 @@ fn scan_string(source: &str, start: usize) -> Result<usize, LexErrorV1> {
     ))
 }
 
-fn decode_string(source: &str, start: usize, end: usize) -> String {
+fn decode_string(source: &str, start: usize, end: usize) -> Result<String, LexErrorV1> {
     note_payload_allocation();
-    let raw = source.get(start + 1..end - 1).unwrap_or_default();
-    let mut content = String::with_capacity(raw.len());
-    let mut chars = raw.chars();
-    while let Some(ch) = chars.next() {
-        if ch != '\\' {
-            content.push(ch);
-            continue;
-        }
-        let Some(escape) = chars.next() else { break };
-        match escape {
-            '"' => content.push('"'),
-            '\\' => content.push('\\'),
-            'n' => content.push('\n'),
-            'r' => content.push('\r'),
-            't' => content.push('\t'),
-            'b' => content.push('\u{0008}'),
-            'f' => content.push('\u{000c}'),
-            'u' => {
-                let mut digits = String::new();
-                let _open = chars.next();
-                for digit in chars.by_ref() {
-                    if digit == '}' {
-                        break;
-                    }
-                    digits.push(digit);
-                }
-                if let Ok(value) = u32::from_str_radix(&digits, 16) {
-                    if let Some(scalar) = char::from_u32(value) {
-                        content.push(scalar);
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-    content
+    // `end` came from the allocation-free pass, before the token was charged.
+    // UTF-8 escape decoding cannot require more bytes than the raw contents.
+    let mut content = String::with_capacity(end.saturating_sub(start).saturating_sub(2));
+    walk_string(source, start, |ch| content.push(ch))?;
+    Ok(content)
 }
 
 fn invalid_escape(source: &str, start: usize, end: usize, message: &str) -> LexErrorV1 {
@@ -453,9 +439,122 @@ mod tests {
         reason = "unit rail asserts exact budget construction and rejection"
     )]
 
-    use super::{lex_with_budget, PAYLOAD_ALLOCATIONS};
+    use super::{decode_string, lex_with_budget, scan_string, PAYLOAD_ALLOCATIONS};
     use crate::budget::ParseBudgetCounterV2;
-    use crate::{ParseBudgetDimensionV2, ParseBudgetV2, ParseErrorCodeV1};
+    use crate::{ParseBudgetDimensionV2, ParseBudgetV2, ParseDiagnosticV1, ParseErrorCodeV1};
+    use quanta_gqlang_v2_hir::SpanV1;
+
+    #[test]
+    fn string_walk_preserves_all_escape_payloads_and_utf8_offsets() {
+        for (quoted, decoded) in [
+            ("\"\"", ""),
+            (r#""a\"b\\c\n\r\t\b\f""#, "a\"b\\c\n\r\t\u{0008}\u{000c}"),
+            (
+                r#""\u{0}\u{7f}\u{80}\u{d7ff}\u{e000}\u{10ffff}""#,
+                "\0\u{7f}\u{80}\u{d7ff}\u{e000}\u{10ffff}",
+            ),
+            ("\"é🙂\"", "é🙂"),
+        ] {
+            let source = format!("é {quoted}");
+            assert_eq!(scan_string(&source, 3), Ok(source.len()));
+            assert_eq!(
+                decode_string(&source, 3, source.len()),
+                Ok(decoded.to_owned())
+            );
+        }
+    }
+
+    #[test]
+    fn decoding_without_a_scanner_cannot_drop_invalid_escape_input() {
+        for (quoted, code, message, start, end) in [
+            (
+                r#""\q""#,
+                ParseErrorCodeV1::UnexpectedChar,
+                "unknown string escape",
+                1,
+                3,
+            ),
+            (
+                r#""\é""#,
+                ParseErrorCodeV1::UnexpectedChar,
+                "unknown string escape",
+                1,
+                4,
+            ),
+            (
+                r#""\u110000""#,
+                ParseErrorCodeV1::UnexpectedChar,
+                "expected '{' after \\u",
+                1,
+                3,
+            ),
+            (
+                r#""\u{}""#,
+                ParseErrorCodeV1::UnexpectedChar,
+                "invalid Unicode escape",
+                1,
+                4,
+            ),
+            (
+                r#""\u{0000041}""#,
+                ParseErrorCodeV1::UnexpectedChar,
+                "invalid Unicode escape",
+                1,
+                11,
+            ),
+            (
+                r#""\u{g}""#,
+                ParseErrorCodeV1::UnexpectedChar,
+                "invalid Unicode escape",
+                1,
+                5,
+            ),
+            (
+                r#""\u{d800}""#,
+                ParseErrorCodeV1::UnexpectedChar,
+                "Unicode escape is not a scalar value",
+                1,
+                9,
+            ),
+            (
+                r#""\u{110000}""#,
+                ParseErrorCodeV1::UnexpectedChar,
+                "Unicode escape is not a scalar value",
+                1,
+                11,
+            ),
+            (
+                "\"\\u{41",
+                ParseErrorCodeV1::UnexpectedChar,
+                "invalid Unicode escape",
+                1,
+                6,
+            ),
+            (
+                "\"x\\",
+                ParseErrorCodeV1::UnterminatedString,
+                "unterminated string literal",
+                0,
+                3,
+            ),
+            (
+                "\"\\u{41}",
+                ParseErrorCodeV1::UnterminatedString,
+                "unterminated string literal",
+                0,
+                7,
+            ),
+        ] {
+            let source = format!("é {quoted}");
+            let expected = ParseDiagnosticV1::new(code, SpanV1::new(start + 3, end + 3), message);
+            assert_eq!(scan_string(&source, 3), Err(expected.clone()), "{source}");
+            assert_eq!(
+                decode_string(&source, 3, source.len()),
+                Err(expected),
+                "{source}"
+            );
+        }
+    }
 
     #[test]
     fn token_limit_rejects_long_payload_before_copy_or_decode() {

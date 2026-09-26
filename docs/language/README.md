@@ -110,6 +110,24 @@ The planning owner defines the non-relational result multiplicity and ordering
 contract in [Planning result semantics](../contracts/planning-results.md).
 These frontend plan requirements do not grant downstream runtime support.
 
+### Keyword context and string escapes
+
+Keyword roles are contextual. Root-family dispatch and relation-stage dispatch
+are not the same vocabulary as bare-alias restrictions. Parsing and formatting
+share the bare-alias policy; `find`, `sample` and `cross` can be bare aliases,
+while restricted aliases use explicit `as`.
+
+Immediately after `let name =`, an unparenthesized `from`, `sample` or `find`
+selects composition syntax. To refer to a value symbol with one of those names,
+write `let name = (from)` (likewise for sample/find). A raw declaration whose
+canonical spelling instead selects composition is rejected by `try_format_item`.
+
+String scanning and decoding share one escape walker. The supported short
+escapes are quote, backslash, n, r, t, b and f; Unicode escapes use one to six hex
+digits inside `\u{...}` and must denote a Unicode scalar. Unknown, malformed and
+unterminated escapes reject with source-byte diagnostics. Token admission occurs
+before decoded payload allocation; no decoder branch silently discards an escape.
+
 ## CLI And Diagnostics Stdio
 
 CLI:

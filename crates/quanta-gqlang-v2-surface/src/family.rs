@@ -128,8 +128,10 @@ pub(crate) fn parse_family(
 
 /// Whether the cursor is at a composition: `let <name> = <producer> ...`, where
 /// the producer is a SELECT (`from`), SAMPLE (`sample`), or FIND (`find`). A
-/// plain `let x = <value>` decl never starts its body with those keywords, so
-/// this lookahead disambiguates composition from a value declaration.
+/// leading unparenthesized `from`, `sample` or `find` selects this grammar even
+/// when that spelling could be a value symbol elsewhere. Use `let x = (from)`
+/// (and likewise for sample/find) for a declaration referring to such a symbol.
+/// Raw HIR whose canonical rendering is ambiguous is rejected by try_format_item.
 pub(crate) fn at_composition(cur: &CursorV1<'_>) -> bool {
     if !cur.is_keyword("let") {
         return false;
