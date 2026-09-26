@@ -105,7 +105,7 @@ fn parse_bare_alias(cur: &mut CursorV1<'_>) -> Result<Option<AliasV1>, ParseDiag
 }
 
 /// Reserved pipeline keywords that must not be eaten as a bare alias.
-fn is_reserved(word: &str) -> bool {
+pub(crate) fn is_reserved(word: &str) -> bool {
     matches!(
         word,
         "from"

@@ -10,12 +10,19 @@ use quanta_gqlang_v2_hir::{
     SpanV1,
 };
 
+#[path = "../../../tools/test_support/process.rs"]
+mod process;
+
 fn assert_exact_child_passes(test_name: &str, env_name: &str, mode: &str, sentinel: &str) {
-    let output = std::process::Command::new(std::env::current_exe().expect("test binary"))
+    let mut command = std::process::Command::new(std::env::current_exe().expect("test binary"));
+    command
         .args(["--exact", test_name, "--nocapture"])
         .env(env_name, mode)
-        .output()
-        .expect("child process");
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    let child = command.spawn().expect("child process starts");
+    let output = process::wait_bounded(child, None, std::time::Duration::from_secs(10))
+        .expect("child process finishes within watchdog");
     assert!(
         output.status.success(),
         "{test_name} {mode} child status: {}; stderr: {}",

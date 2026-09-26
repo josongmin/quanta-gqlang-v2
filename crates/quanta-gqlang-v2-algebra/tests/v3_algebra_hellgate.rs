@@ -293,12 +293,13 @@ fn bool_tree_small_budget_resolves_exact_and_rejects_one_over() {
 }
 
 #[test]
-fn expression_walk_small_receipt_is_exact_and_rejects_one_node_over() {
+fn expression_walk_small_receipt_admits_below_limit_and_rejects_next_tree() {
     // Each authored leaf is a BoolValue wrapping one Bool literal: the
     // decomposition walk charges 2 * d + 1 nodes and the per-leaf
     // descendant search charges two more per leaf, 4 * d + 3 in total.
-    // Depth 1 charges seven of the eight small-receipt nodes; depth 2
-    // charges eleven and rejects one over.
+    // Depth 1 charges seven of the eight small-receipt nodes. The next
+    // representable tree has depth 2, charges eleven, and is rejected; this
+    // fixture therefore does not claim an exact-limit or limit-plus-one case.
     let exact = forged_small_receipt_bool_tree_document_v2(1).unwrap();
     let lowered = lower_relation_item(exact.document(), exact.item_id()).unwrap();
     assert_eq!(lowered.root().family(), AlgebraFamilyV2::Filter);
@@ -322,7 +323,7 @@ fn expression_walk_small_receipt_is_exact_and_rejects_one_node_over() {
 
     let over = forged_small_receipt_bool_tree_document_v2(2).unwrap();
     let diagnostic = match lower_relation_item(over.document(), over.item_id()) {
-        Ok(_) => panic!("one expression node over the receipt must not lower"),
+        Ok(_) => panic!("the next representable tree over the receipt must not lower"),
         Err(diagnostic) => diagnostic,
     };
     assert_eq!(

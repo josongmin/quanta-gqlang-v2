@@ -356,7 +356,13 @@ fn render_relation_bool(initial: RenderFrame<'_>, out: &mut String) {
                 RelationExprKindV1::Source(source) => {
                     out.push_str(&source.name);
                     if let Some(alias) = &source.alias {
-                        out.push(' ');
+                        // Explicit `as` admits reserved identifiers that cannot
+                        // be consumed by the parser's bare-alias branch.
+                        out.push_str(if crate::query::is_reserved(&alias.name) {
+                            " as "
+                        } else {
+                            " "
+                        });
                         out.push_str(&alias.name);
                     }
                 }

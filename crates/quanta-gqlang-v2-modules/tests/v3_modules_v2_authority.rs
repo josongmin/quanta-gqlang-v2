@@ -8,6 +8,9 @@ const OWNER_LOCAL_AUTHORITY_CHAIN_LEN: usize = 16;
 const STACK_SAFETY_AUTHORITY_CHAIN_LEN: usize = 256;
 const STACK_SAFETY_CHILD: &str = "QGLANG_MODULES_STACK_SAFETY_CHILD";
 
+#[path = "../../../tools/test_support/process.rs"]
+mod process;
+
 fn chain_steps(nodes: usize) -> usize {
     nodes * (nodes - 1) / 2 + nodes - 1
 }
@@ -306,15 +309,19 @@ fn deep_module_catalog_pack_graphs_are_stack_safe() {
         return;
     }
 
-    let output = std::process::Command::new(std::env::current_exe().expect("test binary"))
+    let mut command = std::process::Command::new(std::env::current_exe().expect("test binary"));
+    command
         .args([
             "--exact",
             "deep_module_catalog_pack_graphs_are_stack_safe",
             "--nocapture",
         ])
         .env(STACK_SAFETY_CHILD, "1")
-        .output()
-        .expect("deep modules child process starts");
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    let child = command.spawn().expect("deep modules child process starts");
+    let output = process::wait_bounded(child, None, std::time::Duration::from_secs(10))
+        .expect("deep modules child process finishes within watchdog");
     assert!(
         output.status.success(),
         "deep modules child status: {}; stderr: {}",

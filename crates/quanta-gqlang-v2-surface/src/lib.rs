@@ -145,6 +145,9 @@ pub fn parse_predicate(
 }
 
 /// Parse then canonically format a document with one explicit parse budget.
+/// Successful output is also admitted by that budget. Output rejection retains
+/// the caller's source identity and anchors on the complete original document;
+/// generated-text offsets must never be attributed to the original source.
 pub fn format_source_document_with_parse_budget_v2(
     source_id: SourceIdV2,
     source: &str,
@@ -158,7 +161,14 @@ pub fn format_source_document_with_parse_budget_v2(
         .into_iter()
         .map(SurfaceItemV1::into_program_item)
         .collect::<Vec<_>>();
-    Ok(format_document(&items))
+    let rendered = format_document(&items);
+    parser::parse_document_items_with_budget(&rendered, &HirBuilderV1::new(), budget)
+        .map_err(|mut error| {
+            error.span = quanta_gqlang_v2_hir::SpanV1::new(0, source.len());
+            error.message = format!("canonical output: {}", error.message);
+            SurfaceDiagnosticV2::from_parse(source_id, error)
+        })?;
+    Ok(rendered)
 }
 
 /// Assert the cursor is at EOF, else a typed trailing-token reject.

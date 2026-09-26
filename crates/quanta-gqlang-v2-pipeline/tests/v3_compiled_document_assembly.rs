@@ -1803,6 +1803,33 @@ fn source_literals_reach_the_v3_contract_as_checked_typed_values() {
 }
 
 #[test]
+fn i128_min_projects_as_the_root_literal_without_a_second_negation() {
+    let source = "from records r | project -170141183460469231731687303715884105728 as x";
+    let compiled = compile_source_document_v3(DOC_SOURCE, source, &authority_with_records())
+        .expect("checked i128::MIN source compiles");
+    let relation = compiled.execution().items()[0]
+        .relation()
+        .expect("one top-level relation");
+    let root_ids = relation.root().expressions();
+    assert_eq!(root_ids.len(), 1, "one authored projection expression");
+    let root = relation
+        .expressions()
+        .iter()
+        .find(|expression| expression.id() == root_ids[0])
+        .expect("the projection root is present in the closed expression table");
+    assert_eq!(
+        root.shape(),
+        &ExecutionExpressionShapeV3::Literal(ExecutionLiteralV3::Int(i128::MIN)),
+        "the checked minimum value must not remain Unary('-', Int(MIN))"
+    );
+    assert_eq!(
+        relation.expressions().len(),
+        1,
+        "the out-of-range positive magnitude is not an executable child"
+    );
+}
+
+#[test]
 fn source_id_is_transaction_local_and_foreign_item_lookup_is_empty() {
     let authority = authority_with_records();
     let first = compile_source_document_v3(DOC_SOURCE, RECORD_SOURCE, &authority)

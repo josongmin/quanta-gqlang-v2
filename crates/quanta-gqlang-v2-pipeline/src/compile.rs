@@ -59,7 +59,8 @@ use quanta_gqlang_v2_sema::{
     SourceRegistrationV2, SpanV1,
 };
 use quanta_gqlang_v2_surface::{
-    classify_parsed_root_v3, format_document, parse_source_document_v2, ParseBudgetV2,
+    classify_parsed_root_v3, format_source_document_with_parse_budget_v2,
+    parse_source_document_v2, ParseBudgetV2,
 };
 
 pub use quanta_gqlang_v2_surface::SourceRootFamilyV3 as FrontendSourceRootFamilyV3;
@@ -744,7 +745,9 @@ pub fn analyze_resolved_document_v2(
 /// # Errors
 ///
 /// Returns a bounded source-anchored failure when the source exceeds the
-/// budget's `max_source_bytes` or when the surface parser rejects the source.
+/// budget's `max_source_bytes`, when the surface parser rejects the source, or
+/// when canonical output exceeds the same source/parse budget. Output failures
+/// anchor on the original document, never on generated-text byte offsets.
 pub fn format_source_document_v2(
     source_id: SourceIdV2,
     source: &str,
@@ -752,9 +755,22 @@ pub fn format_source_document_v2(
 ) -> Result<String, FrontendFailureV2> {
     enforce_source_budget(source_id, source, budget)?;
     let projected = project_parse_budget(source_id, source, budget)?;
-    let parsed = parse_source_document_v2(source_id, source, &projected)
+    let rendered = format_source_document_with_parse_budget_v2(source_id, source, &projected)
         .map_err(|error| surface_failure(&error))?;
-    Ok(format_document(&parsed.hir.items))
+    if rendered.len() > usize::try_from(budget.max_source_bytes()).unwrap_or(usize::MAX) {
+        return Err(FrontendFailureV2::one(FrontendDiagnosticV2::new(
+            FrontendStageV2::Resource,
+            "frontend.resource_limit_exceeded",
+            FrontendSeverityV2::Error,
+            LocatedSpanV2 {
+                source_id,
+                span: SpanV1::new(0, source.len()),
+            },
+            Vec::new(),
+            "canonical output exceeds the frontend budget's max_source_bytes",
+        )));
+    }
+    Ok(rendered)
 }
 
 // ---------------------------------------------------------------------------

@@ -2828,7 +2828,27 @@ fn materialize_declaration_expr(
             "closed expression cannot retain unknown type",
         ));
     }
+    // The types owner records the authored `-2^127` expression as the checked
+    // `i128::MIN` value on the unary node. Its positive magnitude child is only
+    // a parsing/type-checking sentinel and must not become executable IR: doing
+    // so would encode a second, overflowing negation of an already-minimum
+    // value. Preserve the authored root identity while materializing the
+    // authoritative checked literal fact.
     let shape = match &node.kind {
+        ValueExprKindV1::Unary(unary) if fact.literal.is_some() => {
+            // Retain a typed proof for every checked HIR node. The sentinel remains
+            // in the semantic document but is unreachable from the folded root, so
+            // execution closure projection excludes it.
+            let _ = child(&unary.operand, output)?;
+            TypedExprShapeV2::Literal(fact.literal.clone().ok_or_else(|| {
+                document_failure(
+                    "sema.document_validation_failed",
+                    source_id,
+                    node.span,
+                    "types owner omitted folded unary literal fact",
+                )
+            })?)
+        }
         ValueExprKindV1::Literal(_) => {
             TypedExprShapeV2::Literal(fact.literal.clone().ok_or_else(|| {
                 document_failure(
