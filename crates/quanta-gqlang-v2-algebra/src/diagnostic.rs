@@ -21,7 +21,7 @@ pub enum AlgebraFailureKindV2 {
     MissingNestedRelation,
     /// A correlation set has duplicate reference identities.
     DuplicateCorrelationReference,
-    /// A budgeted lowering traversal exceeded the document's sealed
+    /// Ownership discovery or lowering exceeded the document's shared sealed
     /// downstream receipt (`max_semantic_steps` for relation stages,
     /// `max_expression_nodes` for expression nodes).
     TraversalBudgetExceeded,

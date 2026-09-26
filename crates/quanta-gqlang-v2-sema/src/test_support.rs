@@ -4645,6 +4645,84 @@ pub fn reference_composition_document_v2(
     })
 }
 
+/// A bounded chain of relational producers over one SAMPLE working set.
+/// Each query is a single Scan; used to count ownership visits independently
+/// of expression traversal and wall-clock timing.
+pub fn reference_query_producer_composition_v2(
+    producer_count: usize,
+) -> Result<ReferenceCompositionDocumentV2, String> {
+    if !(1..=16).contains(&producer_count) {
+        return Err("fixture producer count must be in 1..=16".to_owned());
+    }
+    let builder = HirBuilderV1::new();
+    let mut bindings = vec![composition_sample_producer(
+        &builder, "sampled", 4, 14, "auth", 2,
+    )];
+    let mut previous = "sampled".to_owned();
+    for index in 0..producer_count {
+        let start = 100 + index * 32;
+        let name = format!("q{index}");
+        let scan = builder.relation_source(
+            &previous,
+            SpanV1::new(start + 8, start + 8 + previous.len()),
+            None,
+            SpanV1::new(start + 8, start + 8 + previous.len()),
+        );
+        let query = builder.query(scan, None, SpanV1::new(start + 4, start + 24));
+        bindings.push(builder.composition_binding(
+            &name,
+            SpanV1::new(start, start + name.len()),
+            CompositionProducerV1::Query(Box::new(query)),
+        ));
+        previous = name;
+    }
+    let start = 100 + producer_count * 32;
+    let source_len = start + 64;
+    let scan = builder.relation_source(
+        &previous,
+        SpanV1::new(start + 8, start + 8 + previous.len()),
+        None,
+        SpanV1::new(start + 8, start + 8 + previous.len()),
+    );
+    let body = builder.query(scan, None, SpanV1::new(start + 4, start + 24));
+    let composition = builder.composition(
+        bindings,
+        &previous,
+        SpanV1::new(start + 32, start + 32 + previous.len()),
+        CompositionBodyV1::Query(Box::new(body)),
+        SpanV1::new(0, source_len),
+    );
+    let composition_item_id = SemanticItemIdV2::new(REFERENCE_SOURCE_V2, composition.id);
+    let checked = CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+        source_id: REFERENCE_SOURCE_V2,
+        source_len,
+        items: vec![ProgramItemHirV1::Composition(Box::new(composition))],
+    })
+    .map_err(|error| format!("{error:?}"))?;
+    let document = resolve_checked_document_v2(
+        checked,
+        &composition_authority_v2(ReferenceCompositionBodyV2::Relational)?,
+    )
+    .map_err(|error| format!("{error:?}"))?;
+    let Some(SemanticItemV2::Composition(composition)) = document.item(composition_item_id) else {
+        return Err("composition fixture did not seal".to_owned());
+    };
+    let body_item_id = composition.body().item_id();
+    let producer_item_ids = composition
+        .bindings()
+        .iter()
+        .map(|binding| binding.producer().item_id())
+        .collect();
+    let with_binding = composition.with_target().clone();
+    Ok(ReferenceCompositionDocumentV2 {
+        document,
+        composition_item_id,
+        body_item_id,
+        producer_item_ids,
+        with_binding,
+    })
+}
+
 // ---- small-receipt rule documents ------------------------------------------
 
 /// Exact `max_semantic_steps` charge of a document rule program with

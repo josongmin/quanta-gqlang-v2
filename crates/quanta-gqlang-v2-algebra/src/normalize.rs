@@ -5,11 +5,10 @@ use crate::node::{AlgebraFamilyV2, CheckedAlgebraNodeV2, CorrelationSetV2, Lower
 use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, DownstreamBudgetReceiptV2, JoinModeV2, RelationExistsPolarityV2,
     ResolvedCompositionBodyV2, ResolvedCompositionProducerV2, SemanticDocumentV2, SemanticItemIdV2,
-    SemanticItemV2, TypedBoolExprV2, TypedCallArgumentV2, TypedExprShapeV2, TypedExprV2,
-    TypedRelationExprV2,
+    SemanticItemV2, TypedBoolExprV2, TypedExprShapeV2, TypedExprV2, TypedRelationExprV2,
 };
 use quanta_gqlang_v2_types::{AggregationClassV1, SourceQualifiedNodeIdV2};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Lower exactly one sealed relation item from a semantic document.
 ///
@@ -35,10 +34,15 @@ pub fn lower_relation_item(
 /// Top-level relations, inline Views, and composition relations consume the
 /// same semantic-step and expression-node ledgers. The borrowed document makes
 /// the remaining allowance non-transferable to another semantic transaction.
+/// Nested-root ownership is indexed once per owner and charges those same
+/// ledgers. Repeated lookups reuse that index but still compare the exact tree.
 pub struct AlgebraSessionV2<'a> {
     document: &'a SemanticDocumentV2,
     budget: LoweringBudgetV2,
+    owned_relations: BTreeMap<SemanticItemIdV2, OwnedRelationsV2<'a>>,
 }
+
+type OwnedRelationsV2<'a> = BTreeMap<SourceQualifiedNodeIdV2, &'a TypedRelationExprV2>;
 
 impl<'a> AlgebraSessionV2<'a> {
     /// Start one lowering transaction from the document's immutable receipt.
@@ -47,6 +51,7 @@ impl<'a> AlgebraSessionV2<'a> {
         Self {
             document,
             budget: LoweringBudgetV2::new(document.budget_receipt()),
+            owned_relations: BTreeMap::new(),
         }
     }
 
@@ -95,7 +100,7 @@ impl<'a> AlgebraSessionV2<'a> {
         root: &TypedRelationExprV2,
     ) -> Result<CheckedAlgebraNodeV2, AlgebraDiagnosticV2> {
         let document = self.document;
-        validate_nested_owner(document, owner_item_id, root)?;
+        self.validate_nested_owner(owner_item_id, root)?;
         let lowered = lower_root_with_budget(document, owner_item_id, root, &mut self.budget)?;
         Ok(match document.item(owner_item_id) {
             Some(SemanticItemV2::Composition(composition)) => {
@@ -127,83 +132,101 @@ pub fn lower_nested_relation_v2(
     AlgebraSessionV2::new(document).lower_nested_relation(owner_item_id, root)
 }
 
-fn validate_nested_owner(
-    document: &SemanticDocumentV2,
-    owner_item_id: SemanticItemIdV2,
-    root: &TypedRelationExprV2,
-) -> Result<(), AlgebraDiagnosticV2> {
-    if owner_item_id.source_id() != document.source_id() {
-        return Err(AlgebraDiagnosticV2::new(
-            AlgebraFailureKindV2::ForeignSemanticFact,
-            Some(root.location().clone()),
-            "owning item belongs to another semantic document",
-        ));
+impl<'a> AlgebraSessionV2<'a> {
+    fn validate_nested_owner(
+        &mut self,
+        owner: SemanticItemIdV2,
+        root: &TypedRelationExprV2,
+    ) -> Result<(), AlgebraDiagnosticV2> {
+        if owner.source_id() != self.document.source_id() {
+            return Err(failure(
+                AlgebraFailureKindV2::ForeignSemanticFact,
+                root.location(),
+                "owning item belongs to another semantic document",
+            ));
+        }
+        if root.key().source_id != self.document.source_id() {
+            return Err(failure(
+                AlgebraFailureKindV2::ForeignSemanticFact,
+                root.location(),
+                "nested relation root belongs to another semantic document",
+            ));
+        }
+        // Invalid caller-supplied identities must not grow the session cache.
+        if self.document.item(owner).is_none() {
+            return Err(failure(
+                AlgebraFailureKindV2::ForeignSemanticFact,
+                root.location(),
+                "nested relation root is not owned by the requested semantic item",
+            ));
+        }
+        if let std::collections::btree_map::Entry::Vacant(entry) = self.owned_relations.entry(owner)
+        {
+            // Publish only a complete index. A failed build consumes its work
+            // allowance but never installs partial ownership authority.
+            let index = discover_owned_relations(self.document, owner, &mut self.budget)?;
+            entry.insert(index);
+        }
+        if !self
+            .owned_relations
+            .get(&owner)
+            .and_then(|index| index.get(&root.key()))
+            .is_some_and(|sealed| *sealed == root)
+        {
+            return Err(failure(
+                AlgebraFailureKindV2::ForeignSemanticFact,
+                root.location(),
+                "nested relation root is not owned by the requested semantic item",
+            ));
+        }
+        Ok(())
     }
-    if root.key().source_id != document.source_id() {
-        return Err(AlgebraDiagnosticV2::new(
-            AlgebraFailureKindV2::ForeignSemanticFact,
-            Some(root.location().clone()),
-            "nested relation root belongs to another semantic document",
-        ));
-    }
-    if !item_owns_nested_relation(document, owner_item_id, root) {
-        return Err(failure(
-            AlgebraFailureKindV2::ForeignSemanticFact,
-            root.location(),
-            "nested relation root is not owned by the requested semantic item",
-        ));
-    }
-    Ok(())
 }
 
-/// Whether `root` is one of the exact relation trees sealed under `owner`.
-///
-/// Top-level relations own only their relational-EXISTS trees; Catalog Views
-/// and Compositions additionally own their direct inline/producer/body roots.
-/// Descendant discovery follows the document's sealed expression identities,
-/// so another same-source item's structurally compatible relation cannot be
-/// relabeled with this owner's identity.
-fn item_owns_nested_relation(
-    document: &SemanticDocumentV2,
+/// Index only the exact roots the owner can lower separately: direct inline /
+/// composition roots and transitively registered EXISTS roots, never arbitrary
+/// subtrees. Every distinct discovery visit charges the same transaction
+/// ledgers as lowering. References borrow the immutable session document.
+fn discover_owned_relations<'a>(
+    document: &'a SemanticDocumentV2,
     owner: SemanticItemIdV2,
-    root: &TypedRelationExprV2,
-) -> bool {
+    budget: &mut LoweringBudgetV2,
+) -> Result<OwnedRelationsV2<'a>, AlgebraDiagnosticV2> {
+    let mut owned = BTreeMap::new();
+    let mut relations = Vec::new();
     let Some(item) = document.item(owner) else {
-        return false;
+        return Ok(owned);
     };
     match item {
-        SemanticItemV2::Relation(relation) => {
-            relation_references_nested(document, relation.root(), root)
+        SemanticItemV2::Relation(relation) => relations.push(relation.root()),
+        SemanticItemV2::Catalog(catalog) => {
+            if let Some(view) = catalog.inline_view() {
+                insert_owned_root(&mut owned, view.root())?;
+                relations.push(view.root());
+            }
         }
-        SemanticItemV2::Catalog(catalog) => catalog.inline_view().is_some_and(|view| {
-            view.root() == root || relation_references_nested(document, view.root(), root)
-        }),
         SemanticItemV2::Composition(composition) => {
-            composition.bindings().iter().any(|binding| {
-                matches!(binding.producer(), ResolvedCompositionProducerV2::Query(query)
-                    if query.root() == root
-                        || relation_references_nested(document, query.root(), root))
-            }) || matches!(composition.body(), ResolvedCompositionBodyV2::Query(query)
-                if query.root() == root
-                    || relation_references_nested(document, query.root(), root))
+            for binding in composition.bindings() {
+                if let ResolvedCompositionProducerV2::Query(query) = binding.producer() {
+                    insert_owned_root(&mut owned, query.root())?;
+                    relations.push(query.root());
+                }
+            }
+            if let ResolvedCompositionBodyV2::Query(query) = composition.body() {
+                insert_owned_root(&mut owned, query.root())?;
+                relations.push(query.root());
+            }
         }
         SemanticItemV2::Graph(_)
         | SemanticItemV2::Check(_)
         | SemanticItemV2::Presentation(_)
         | SemanticItemV2::Declaration(_)
         | SemanticItemV2::Meta(_)
-        | SemanticItemV2::Rule(_) => false,
+        | SemanticItemV2::Rule(_) => {}
     }
-}
-
-/// Whether `candidate` contains a relational-EXISTS expression whose sealed
-/// registry root is exactly `nested`.
-fn relation_references_nested(
-    document: &SemanticDocumentV2,
-    candidate: &TypedRelationExprV2,
-    nested: &TypedRelationExprV2,
-) -> bool {
-    let mut relations = vec![candidate];
+    // Visit direct roots in authored order. Stack traversal within each root
+    // is deterministic; it does not depend on map insertion order.
+    relations.reverse();
     let mut expressions = Vec::new();
     let mut visited_relations = BTreeSet::new();
     let mut visited_expressions = BTreeSet::new();
@@ -212,62 +235,66 @@ fn relation_references_nested(
             if !visited_relations.insert(relation.key()) {
                 continue;
             }
+            if budget.semantic_steps == 0 {
+                return Err(failure(
+                    AlgebraFailureKindV2::TraversalBudgetExceeded,
+                    relation.location(),
+                    "ownership discovery exceeded the document's max_semantic_steps budget",
+                ));
+            }
+            budget.semantic_steps -= 1;
             relations.extend(relation.inputs());
             expressions.extend(relation.expressions().iter().copied());
             if let Some(predicate) = relation.predicate() {
                 expressions.push(predicate.expression().key());
             }
         }
-
         while let Some(key) = expressions.pop() {
             if !visited_expressions.insert(key) {
                 continue;
             }
-            let Some(expression) = document.expression(key) else {
-                continue;
-            };
-            match expression.shape() {
-                TypedExprShapeV2::RelationExists { relation_root, .. } => {
-                    let Some(sealed) = document.nested_relation(*relation_root) else {
-                        continue;
-                    };
-                    if *relation_root == nested.key() && sealed == nested {
-                        return true;
-                    }
-                    // Nested EXISTS trees remain owned transitively by the
-                    // same top-level item. Continue through the sealed root so
-                    // a second-level relation can neither be rejected as
-                    // foreign nor relabeled under a sibling item.
-                    relations.push(sealed);
-                }
-                TypedExprShapeV2::Path { base, .. }
-                | TypedExprShapeV2::Unary { operand: base, .. }
-                | TypedExprShapeV2::Paren { inner: base }
-                | TypedExprShapeV2::BoolValue { value: base }
-                | TypedExprShapeV2::Not { operand: base, .. } => expressions.push(*base),
-                TypedExprShapeV2::Binary { lhs, rhs, .. }
-                | TypedExprShapeV2::Compare { lhs, rhs, .. }
-                | TypedExprShapeV2::And { lhs, rhs, .. }
-                | TypedExprShapeV2::Or { lhs, rhs, .. } => {
-                    expressions.push(*rhs);
-                    expressions.push(*lhs);
-                }
-                TypedExprShapeV2::Call { arguments, .. } => {
-                    expressions.extend(arguments.iter().filter_map(|argument| match argument {
-                        TypedCallArgumentV2::Expression(key) => Some(*key),
-                        TypedCallArgumentV2::Star => None,
-                    }))
-                }
-                TypedExprShapeV2::Record(fields) => {
-                    expressions.extend(fields.iter().map(|field| field.value()));
-                }
-                TypedExprShapeV2::List(items) => expressions.extend(items.iter().copied()),
-                TypedExprShapeV2::LogicalQuantifier { body, .. } => expressions.push(*body),
-                TypedExprShapeV2::Literal(_) | TypedExprShapeV2::Binding(_) => {}
+            let expression = required_expression_by_key(document, key, None)?;
+            if budget.expression_nodes == 0 {
+                return Err(failure(
+                    AlgebraFailureKindV2::TraversalBudgetExceeded,
+                    expression.location(),
+                    "ownership discovery exceeded the document's max_expression_nodes budget",
+                ));
+            }
+            budget.expression_nodes -= 1;
+            if let TypedExprShapeV2::RelationExists { relation_root, .. } = expression.shape() {
+                let sealed = document.nested_relation(*relation_root).ok_or_else(|| {
+                    failure(
+                        AlgebraFailureKindV2::MissingNestedRelation,
+                        expression.location(),
+                        "relational EXISTS root is absent from the semantic document",
+                    )
+                })?;
+                insert_owned_root(&mut owned, sealed)?;
+                relations.push(sealed);
+            } else {
+                expressions.extend(expression_children(expression.shape()));
             }
         }
     }
-    false
+    Ok(owned)
+}
+
+fn insert_owned_root<'a>(
+    owned: &mut OwnedRelationsV2<'a>,
+    root: &'a TypedRelationExprV2,
+) -> Result<(), AlgebraDiagnosticV2> {
+    if owned
+        .insert(root.key(), root)
+        .is_some_and(|previous| previous != root)
+    {
+        return Err(failure(
+            AlgebraFailureKindV2::InvalidStageContract,
+            root.location(),
+            "owned nested roots disagree under the same identity",
+        ));
+    }
+    Ok(())
 }
 
 struct LoweringBudgetV2 {
@@ -999,6 +1026,200 @@ mod tests {
         DownstreamBudgetReceiptV2, FrontendBudgetV2, NullOrderV2, OutputColumnOriginV2,
         SortDirectionV2, TypedCallArgumentV2,
     };
+
+    #[test]
+    fn nested_ownership_discovery_is_charged_once_per_session() {
+        use quanta_gqlang_v2_sema::test_support::{
+            reference_composition_document_v2, ReferenceCompositionBodyV2,
+        };
+        let fixture =
+            reference_composition_document_v2(ReferenceCompositionBodyV2::Relational).unwrap();
+        let ResolvedCompositionBodyV2::Query(body) = fixture.composition().body() else {
+            panic!("query body");
+        };
+        let mut session = AlgebraSessionV2::new(fixture.document());
+        // The fixture owns one Project(Scan) with Path(Binding): discovery
+        // charges exactly 2 relation and 2 expression nodes. Each lowering
+        // separately charges the 2 relation nodes, without rediscovery.
+        session.budget.semantic_steps = 6;
+        session.budget.expression_nodes = 2;
+        session
+            .lower_nested_relation(fixture.composition_item_id(), body.root())
+            .unwrap();
+        assert_eq!(session.budget.semantic_steps, 2);
+        assert_eq!(session.budget.expression_nodes, 0);
+        session
+            .lower_nested_relation(fixture.composition_item_id(), body.root())
+            .unwrap();
+        assert_eq!(session.budget.semantic_steps, 0);
+        assert_eq!(session.budget.expression_nodes, 0);
+        let error = session
+            .lower_nested_relation(fixture.composition_item_id(), body.root())
+            .unwrap_err();
+        assert_eq!(error.kind(), AlgebraFailureKindV2::TraversalBudgetExceeded);
+        assert_eq!(
+            error.message(),
+            "relation lowering exceeded the document's max_semantic_steps budget"
+        );
+    }
+
+    #[test]
+    fn ownership_index_scales_with_distinct_producer_nodes() {
+        use quanta_gqlang_v2_sema::test_support::reference_query_producer_composition_v2;
+        for producer_count in [1, 4, 16] {
+            let fixture = reference_query_producer_composition_v2(producer_count).unwrap();
+            let composition = fixture.composition();
+            let mut roots = composition
+                .bindings()
+                .iter()
+                .filter_map(|binding| match binding.producer() {
+                    ResolvedCompositionProducerV2::Query(query) => Some(query.root()),
+                    ResolvedCompositionProducerV2::Sample { .. }
+                    | ResolvedCompositionProducerV2::Graph { .. } => None,
+                })
+                .collect::<Vec<_>>();
+            let ResolvedCompositionBodyV2::Query(body) = composition.body() else {
+                panic!("query body");
+            };
+            roots.push(body.root());
+            assert_eq!(roots.len(), producer_count + 1);
+            let visits = u32::try_from(producer_count + 1).unwrap();
+            let mut session = AlgebraSessionV2::new(fixture.document());
+            session.budget.semantic_steps = 2 * visits;
+            session.budget.expression_nodes = 0;
+            for root in roots {
+                assert_eq!(root.inputs().count(), 0, "one Scan per root");
+                session
+                    .lower_nested_relation(fixture.composition_item_id(), root)
+                    .unwrap();
+            }
+            assert_eq!(session.budget.semantic_steps, 0);
+            assert_eq!(session.budget.expression_nodes, 0);
+            assert_eq!(session.owned_relations.len(), 1);
+            assert_eq!(
+                session
+                    .owned_relations
+                    .get(&fixture.composition_item_id())
+                    .unwrap()
+                    .len(),
+                producer_count + 1
+            );
+        }
+    }
+
+    #[test]
+    fn ownership_index_budget_failures_never_publish_partial_authority() {
+        use quanta_gqlang_v2_sema::test_support::{
+            reference_composition_document_v2, ReferenceCompositionBodyV2,
+        };
+        let fixture =
+            reference_composition_document_v2(ReferenceCompositionBodyV2::Relational).unwrap();
+        let ResolvedCompositionBodyV2::Query(body) = fixture.composition().body() else {
+            panic!("query body");
+        };
+        let mut absent = AlgebraSessionV2::new(fixture.document());
+        for owner in fixture
+            .producer_item_ids()
+            .iter()
+            .copied()
+            .chain(std::iter::once(fixture.body_item_id()))
+        {
+            assert!(fixture.document().item(owner).is_none());
+            let error = absent
+                .lower_nested_relation(owner, body.root())
+                .unwrap_err();
+            assert_eq!(error.kind(), AlgebraFailureKindV2::ForeignSemanticFact);
+            assert!(absent.owned_relations.is_empty());
+        }
+        for (steps, expressions, message, span) in [
+            (
+                1,
+                2,
+                "ownership discovery exceeded the document's max_semantic_steps budget",
+                (125, 134),
+            ),
+            (
+                4,
+                1,
+                "ownership discovery exceeded the document's max_expression_nodes budget",
+                (152, 153),
+            ),
+        ] {
+            let mut session = AlgebraSessionV2::new(fixture.document());
+            session.budget.semantic_steps = steps;
+            session.budget.expression_nodes = expressions;
+            let error = session
+                .lower_nested_relation(fixture.composition_item_id(), body.root())
+                .unwrap_err();
+            assert_eq!(error.code(), "algebra.traversal_budget_exceeded");
+            assert_eq!(error.message(), message);
+            let location = error.location().unwrap().location();
+            assert_eq!((location.span.start, location.span.end), span);
+            assert_eq!(
+                location.source_id,
+                fixture.composition_item_id().source_id()
+            );
+            assert!(session.owned_relations.is_empty());
+        }
+    }
+
+    #[test]
+    fn cached_ownership_preserves_exact_tree_and_transitive_root_checks() {
+        use quanta_gqlang_v2_sema::test_support::{
+            reference_composition_document_v2, ReferenceCompositionBodyV2,
+        };
+        let good = reference_composition_document_v2(ReferenceCompositionBodyV2::RelationalFilter)
+            .unwrap();
+        let changed =
+            reference_composition_document_v2(ReferenceCompositionBodyV2::RelationalFilterFalse)
+                .unwrap();
+        let ResolvedCompositionBodyV2::Query(body) = good.composition().body() else {
+            panic!("query body");
+        };
+        let ResolvedCompositionBodyV2::Query(other) = changed.composition().body() else {
+            panic!("query body");
+        };
+        assert_eq!(body.root().key(), other.root().key());
+        assert_eq!(body.root().output(), other.root().output());
+        let mut session = AlgebraSessionV2::new(good.document());
+        session
+            .lower_nested_relation(good.composition_item_id(), body.root())
+            .unwrap();
+        for invalid in [other.root(), body.root().inputs().next().unwrap()] {
+            let error = session
+                .lower_nested_relation(good.composition_item_id(), invalid)
+                .unwrap_err();
+            assert_eq!(error.kind(), AlgebraFailureKindV2::ForeignSemanticFact);
+            assert_eq!(
+                error.message(),
+                "nested relation root is not owned by the requested semantic item"
+            );
+        }
+        let nested =
+            reference_relation_document_v2(ReferenceRelationFixtureV2::NestedExistsTwoLevels)
+                .unwrap();
+        let mut session = AlgebraSessionV2::new(nested.document());
+        let roots = nested
+            .document()
+            .nested_relations()
+            .map(|(_, root)| root)
+            .collect::<Vec<_>>();
+        assert_eq!(roots.len(), 2);
+        for root in roots {
+            session
+                .lower_nested_relation(nested.item_id(), root)
+                .unwrap();
+        }
+        assert_eq!(session.owned_relations.len(), 1);
+        assert_eq!(
+            session
+                .owned_relations
+                .get(&nested.item_id())
+                .unwrap()
+                .len(),
+            2
+        );
+    }
 
     /// Smallest legal budget: every dimension 1 except the two under test,
     /// with frame bytes covering source bytes. The public entry always reads
