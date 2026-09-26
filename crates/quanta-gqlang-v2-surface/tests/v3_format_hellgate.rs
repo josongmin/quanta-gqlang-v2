@@ -54,13 +54,18 @@ fn deep_shape_formatter_child() {
     ));
 
     let rendered = format_item(&item);
-    assert_eq!(rendered.len(), "from r => ".len() + DEPTH * 4 + 1);
-    assert!(rendered.starts_with("from r => [ [ [ "));
-    assert!(rendered.ends_with(" ] ] ]"));
-
-    // Keep this rail scoped to formatter stack behavior: recursively dropping
-    // an adversarial raw-HIR shape is a separate ownership concern.
+    // Forget the raw deep HIR before any assertion so a failed oracle cannot
+    // be obscured by recursive-drop stack overflow during panic unwinding.
     std::mem::forget(item);
+    // Construct the complete literal output independently of formatter helpers.
+    // Length/prefix/suffix alone cannot detect a corrupted interior or leaf.
+    let expected = format!("from r => {}1{}", "[ ".repeat(DEPTH), " ]".repeat(DEPTH));
+    assert!(
+        rendered == expected,
+        "deep shape output differs from the complete {}-byte expectation",
+        expected.len()
+    );
+
     println!("qglang-deep-complete:deep_shape_formatter_child");
 }
 
@@ -140,6 +145,23 @@ fn deep_child_protocol_rejects_selected_but_unexecuted_work() {
             "{name}: no work is not completion"
         );
     }
+}
+
+#[test]
+fn structural_witness_distinguishes_nested_call_argument_boundaries() {
+    for (source, regrouped) in [
+        ("let x = f(g(a), b)", "let x = f(g(a, b))"),
+        ("let x = f(g(), a)", "let x = f(g(a))"),
+    ] {
+        assert!(
+            !same_structure(&parse(source), &parse(regrouped)),
+            "{source} != {regrouped}"
+        );
+    }
+    assert!(same_structure(
+        &parse("let x = f(g(a), b)"),
+        &parse("let x = f((g((a))), (b))")
+    ));
 }
 
 #[test]

@@ -1592,12 +1592,25 @@ fn boolean_hir_literal_facts_preserve_both_authored_values() {
     for value in [false, true] {
         let builder = HirBuilderV1::new();
         let body = builder.bool_literal(value, SpanV1::new(10, 15));
-        let key = SourceQualifiedNodeIdV2 { source_id: SourceIdV2::from_raw(9), node_id: body.id };
+        let key = SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(9),
+            node_id: body.id,
+        };
         let doc = checked_rule(builder.int("1", SpanV1::new(4, 5)), body);
-        let inputs = resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
-        let facts = ExpressionTypeKernelV2::try_closed().unwrap().check_document(&inputs).unwrap();
+        let inputs =
+            resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
+        let facts = ExpressionTypeKernelV2::try_closed()
+            .unwrap()
+            .check_document(&inputs)
+            .unwrap();
         let fact = facts.get(key).unwrap();
-        assert_eq!(fact.state, ExpressionTypeStateV2::Known(ValueTypeV1::bool()));
-        assert_eq!(fact.literal, Some(TypedLiteralFactV2::Value(TypedLiteralValueV2::Bool(value))));
+        assert_eq!(
+            fact.state,
+            ExpressionTypeStateV2::Known(ValueTypeV1::bool())
+        );
+        assert_eq!(
+            fact.literal,
+            Some(TypedLiteralFactV2::Value(TypedLiteralValueV2::Bool(value)))
+        );
     }
 }

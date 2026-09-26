@@ -1050,6 +1050,63 @@ fn authored_presentation_options_reach_the_exact_planned_policy() {
 }
 
 #[test]
+fn authored_nondefault_execution_plan_facts_survive_projection() {
+    use quanta_gqlang_v2_pipeline::{
+        ExecutionEffectV3, ExecutionEvidenceV3, ExecutionPolicyFamilyV3,
+    };
+
+    let source = concat!(
+        "export source=result.latest | kind=sarif; ",
+        "explain rule.sqli | evidence=trace | truth=confirm; ",
+        "find taint api.entry -> db.write | sanitizers=authz.clean | direction=backward | depth=3; ",
+        "check rule.hybrid | scope=repo | pattern=pattern.hybrid | confirm=require ",
+        "| emit=sarif | mode=hybrid using find reachability src.entry -> sink.write | depth=8;",
+    );
+    let compiled = compile_source_document_v3(DOC_SOURCE, source, &source_policy_authority())
+        .expect("existing source policy fixtures compile together");
+    let expected = [
+        (
+            ExecutionFamilyV3::Presentation,
+            ExecutionEffectV3::ExportOnly,
+            ExecutionEvidenceV3::None,
+            ExecutionPolicyFamilyV3::Presentation,
+        ),
+        (
+            ExecutionFamilyV3::Presentation,
+            ExecutionEffectV3::ReadOnly,
+            ExecutionEvidenceV3::ProofTree,
+            ExecutionPolicyFamilyV3::Presentation,
+        ),
+        (
+            ExecutionFamilyV3::Graph,
+            ExecutionEffectV3::ProofEvidenceOnly,
+            ExecutionEvidenceV3::WitnessPayload,
+            ExecutionPolicyFamilyV3::Graph,
+        ),
+        (
+            ExecutionFamilyV3::Check,
+            ExecutionEffectV3::ExportOnly,
+            ExecutionEvidenceV3::ProofTree,
+            ExecutionPolicyFamilyV3::Check,
+        ),
+    ];
+    assert_eq!(compiled.items().len(), expected.len());
+    assert_eq!(compiled.execution().items().len(), expected.len());
+    for (index, (family, effect, evidence, policy_family)) in expected.into_iter().enumerate() {
+        let item = &compiled.execution().items()[index];
+        assert_eq!(item.item_id(), compiled.items()[index].item_id());
+        assert_eq!(item.family(), family, "authored item {index}");
+        assert_eq!(item.plan().effect(), effect, "authored item {index}");
+        assert_eq!(item.plan().evidence(), evidence, "authored item {index}");
+        assert_eq!(
+            item.plan().policy_family(),
+            policy_family,
+            "authored item {index}"
+        );
+    }
+}
+
+#[test]
 fn authored_find_check_and_explain_options_reach_the_exact_planned_policy() {
     let source = concat!(
         "find taint api.entry -> db.write | sanitizers=authz.clean | direction=backward | depth=3; ",
@@ -2562,4 +2619,141 @@ fn public_optional_relation_field_reaches_the_execution_schema_as_optional() {
             ExecutionScalarTypeV3::Int
         )))
     );
+}
+
+#[test]
+fn source_sort_direction_and_null_placement_reach_execution_unchanged() {
+    use quanta_gqlang_v2_pipeline::{ExecutionNullOrderV3, ExecutionSortDirectionV3};
+    let nullable = ValueTypeV1::try_optional(ValueTypeV1::int()).expect("nullable sort key");
+    let sorted = compile_source_document_v3(
+        DOC_SOURCE,
+        "from records r | order by r.id asc, r.id desc",
+        &authority_with_records_type(nullable),
+    )
+    .expect("mixed-direction nullable sort source");
+    let relation = sorted.execution().items()[0]
+        .relation()
+        .expect("sort relation");
+    let schema = relation.root().schema();
+    assert_eq!(schema.cardinality(), ExecutionCardinalityV3::Sequence);
+    assert_eq!(
+        schema
+            .order()
+            .iter()
+            .map(|key| (key.direction(), key.null_order()))
+            .collect::<Vec<_>>(),
+        [
+            (ExecutionSortDirectionV3::Asc, ExecutionNullOrderV3::Last),
+            (ExecutionSortDirectionV3::Desc, ExecutionNullOrderV3::Last)
+        ]
+    );
+    for key in schema.order() {
+        assert_eq!(
+            key.value_type(),
+            &ExecutionValueTypeV3::Optional(Box::new(ExecutionValueTypeV3::Scalar(
+                ExecutionScalarTypeV3::Int
+            )))
+        );
+        let expression = relation
+            .expressions()
+            .iter()
+            .find(|entry| entry.id() == key.expression())
+            .expect("sort key retains its expression identity");
+        let ExecutionExpressionShapeV3::Path { segments, .. } = expression.shape() else {
+            panic!("source sort key is a path");
+        };
+        // Row aliases resolve to binding identity; the canonical field path retains id.
+        assert_eq!(segments.as_ref(), &["id".to_owned()]);
+    }
+}
+
+#[test]
+fn composition_flow_and_taint_project_the_exact_graph_kinds_roles_and_targets() {
+    let source = "let paths = find flow api.entry -> db.write | via=mid.two,mid.one | through=must.pass | depth=2 \
+                  find taint api.entry -> db.write | sanitizers=authz.clean | scope=repo | window=recent | frontier=edge | depth=3 with paths";
+    let compiled = compile_source_document_v3(DOC_SOURCE, source, &source_policy_authority())
+        .expect("bounded flow producer and taint body compile");
+    let composition = compiled.execution().items()[0]
+        .composition()
+        .expect("composition DTO");
+    let ExecutionCompositionProducerV3::Graph { query: producer } =
+        composition.bindings()[0].producer()
+    else {
+        panic!("graph producer");
+    };
+    assert_eq!(producer.kind(), ExecutionGraphKindV3::Flow);
+    let expected = [
+        (ExecutionGraphReferenceRoleV3::Source, "api.entry"),
+        (ExecutionGraphReferenceRoleV3::Sink, "db.write"),
+        (ExecutionGraphReferenceRoleV3::Via, "mid.two"),
+        (ExecutionGraphReferenceRoleV3::Via, "mid.one"),
+        (ExecutionGraphReferenceRoleV3::Through, "must.pass"),
+    ];
+    assert_eq!(producer.references().len(), expected.len());
+    for (reference, (role, spelling)) in producer.references().iter().zip(expected) {
+        assert_eq!(reference.role(), role);
+        assert_eq!(
+            reference.target(),
+            &ExecutionGraphTargetV3::Host {
+                kind: ExecutionGraphReferenceKindV3::Entity,
+                spelling: spelling.to_owned(),
+                entity_subtype: None
+            }
+        );
+    }
+    let ExecutionCompositionBodyV3::Graph(body) = composition.body() else {
+        panic!("graph body");
+    };
+    assert_eq!(body.kind(), ExecutionGraphKindV3::Taint);
+    assert_eq!(body.references().len(), 6);
+    assert_eq!(
+        body.references()[0].role(),
+        ExecutionGraphReferenceRoleV3::Source
+    );
+    assert_eq!(
+        body.references()[0].target(),
+        &ExecutionGraphTargetV3::Host {
+            kind: ExecutionGraphReferenceKindV3::Entity,
+            spelling: "api.entry".to_owned(),
+            entity_subtype: None
+        }
+    );
+    let expected = [
+        (
+            ExecutionGraphReferenceRoleV3::Sink,
+            ExecutionGraphReferenceKindV3::Entity,
+            "db.write",
+        ),
+        (
+            ExecutionGraphReferenceRoleV3::Scope,
+            ExecutionGraphReferenceKindV3::Scope,
+            "repo",
+        ),
+        (
+            ExecutionGraphReferenceRoleV3::Window,
+            ExecutionGraphReferenceKindV3::Window,
+            "recent",
+        ),
+        (
+            ExecutionGraphReferenceRoleV3::Frontier,
+            ExecutionGraphReferenceKindV3::Frontier,
+            "edge",
+        ),
+        (
+            ExecutionGraphReferenceRoleV3::Sanitizer,
+            ExecutionGraphReferenceKindV3::Sanitizer,
+            "authz.clean",
+        ),
+    ];
+    for (reference, (role, kind, spelling)) in body.references().iter().skip(1).zip(expected) {
+        assert_eq!(reference.role(), role);
+        assert_eq!(
+            reference.target(),
+            &ExecutionGraphTargetV3::Host {
+                kind,
+                spelling: spelling.to_owned(),
+                entity_subtype: None
+            }
+        );
+    }
 }

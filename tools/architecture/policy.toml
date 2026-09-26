@@ -103,6 +103,8 @@ proptest = { version = "=1.8.0", features = [] }
 
 [external.dev."quanta-gqlang-v2-surface"]
 proptest = { version = "=1.8.0", features = [] }
+# Test-only pin for the example corpus byte manifest.
+sha2 = { version = "=0.10.9", features = [] }
 
 # Manifest hygiene enforced on every workspace member manifest.
 [hygiene]

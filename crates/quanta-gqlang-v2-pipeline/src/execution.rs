@@ -4056,4 +4056,326 @@ mod tests {
         }
         assert_all_digests_distinct(&sample_digests);
     }
+    fn authored_projector_facts(source: &str) -> SemanticDocumentV2 {
+        use quanta_gqlang_v2_sema::{
+            resolve_checked_document_v2, CheckedSyntaxDocumentV2, ClosedFrontendAuthorityBuilderV2,
+            FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
+            FrontendCallableParameterInputV2, FrontendCatalogAssetInputV2,
+            FrontendCatalogPayloadV2, FrontendLanguageVersionV2, FrontendRelationAuthorityV2,
+            FrontendRelationCardinalityV2, FrontendRelationFieldInputV2, FrontendRelationInputV2,
+            FrontendScalarTypeV2,
+        };
+        let location = FrontendAuthorityLocationV2 {
+            source_id: SourceIdV2::from_raw(1),
+            start: 0,
+            end: 1,
+        };
+        let budget = FrontendBudgetV2::standard_v2().expect("standard budget");
+        let mut builder = ClosedFrontendAuthorityBuilderV2::try_new(
+            budget,
+            vec![FrontendAuthoritySourceV2 {
+                source_id: location.source_id,
+                source_len: 64,
+            }],
+            "app".to_owned(),
+            location,
+            FrontendLanguageVersionV2 {
+                major: 1,
+                minor: 0,
+                patch: 0,
+            },
+        )
+        .expect("closed builder");
+        builder.add_relation(FrontendRelationInputV2 {
+            authority: FrontendRelationAuthorityV2::Host,
+            provenance_namespace: "host".to_owned(),
+            qualified_name: "app::records".to_owned(),
+            lookup_name: "records".to_owned(),
+            fields: vec![FrontendRelationFieldInputV2 {
+                name: "id".to_owned(),
+                scalar_type: FrontendScalarTypeV2::Int,
+                optional: false,
+                location,
+            }],
+            cardinality: FrontendRelationCardinalityV2::Bag,
+            provenance: "projector test".to_owned(),
+            location,
+        });
+        builder.add_catalog_asset(FrontendCatalogAssetInputV2 {
+            module_name: "app".to_owned(),
+            local_name: "host_pred".to_owned(),
+            payload: FrontendCatalogPayloadV2::Rule {
+                parameters: vec![FrontendCallableParameterInputV2 {
+                    name: "value".to_owned(),
+                    scalar_type: FrontendScalarTypeV2::Int,
+                    optional: false,
+                    location,
+                }],
+                result: FrontendScalarTypeV2::Bool,
+            },
+            provenance: "projector test".to_owned(),
+            location,
+        });
+        let seed = builder.finish().expect("closed fixture seed");
+        // A Rule catalog payload cannot satisfy a source predicate call. The
+        // curated builder has no Predicate input, so seal that test authority
+        // through the modules owner with the SAME registry and budget profile.
+        let authority = {
+            use quanta_gqlang_v2_modules::{
+                CallableKindV2, CurrentModuleSelectionInputV2, ExternalCatalogAssetInputV2,
+                ExternalCatalogPayloadInputV2, LocatedParameterInputV2, ModuleAuthorityBuilderV2,
+                ModuleIdV2, ModuleNodeInputV2, SignatureInputV2, VersionV2,
+            };
+            use quanta_gqlang_v2_sema::{ClosedFrontendAuthorityV2, LocatedSpanV2, SpanV1};
+            let host = seed.modules().source_registry().clone();
+            let checked_location = host
+                .try_check_location(LocatedSpanV2 {
+                    source_id: SourceIdV2::from_raw(1),
+                    span: SpanV1::new(0, 1),
+                })
+                .expect("checked fixture location");
+            let effects = seed
+                .modules()
+                .external_catalog()
+                .iter()
+                .find_map(|asset| {
+                    if let quanta_gqlang_v2_modules::ExternalCatalogPayloadV2::Rule(signature) =
+                        asset.payload()
+                    {
+                        Some(signature.effects())
+                    } else {
+                        None
+                    }
+                })
+                .expect("seed callable effects");
+            let module = ModuleIdV2::try_new("app", checked_location.clone()).expect("app module");
+            let mut modules = ModuleAuthorityBuilderV2::try_new(
+                seed.budget()
+                    .authority_profile()
+                    .expect("authority profile"),
+                host,
+            )
+            .expect("modules builder");
+            modules
+                .try_add_module(ModuleNodeInputV2 {
+                    module_id: module.clone(),
+                    location: checked_location.clone(),
+                })
+                .expect("app module added");
+            modules
+                .try_add_external(ExternalCatalogAssetInputV2 {
+                    module_name: "app".to_owned(),
+                    local_name: "host_pred".to_owned(),
+                    kind_token: "predicate".to_owned(),
+                    typed_payload: ExternalCatalogPayloadInputV2::Predicate(SignatureInputV2 {
+                        parameters: vec![LocatedParameterInputV2 {
+                            name: "value".to_owned(),
+                            value_type: ValueTypeV1::int(),
+                            location: checked_location.clone(),
+                        }],
+                        result: ValueTypeV1::bool(),
+                        callable_kind: CallableKindV2::Predicate,
+                        effects,
+                        location: checked_location.clone(),
+                    }),
+                    provenance: "projector test".to_owned(),
+                    location: checked_location.clone(),
+                    dependencies: Vec::new(),
+                })
+                .expect("host predicate added");
+            let modules = modules
+                .finish(
+                    CurrentModuleSelectionInputV2 {
+                        module_id: module,
+                        location: checked_location,
+                    },
+                    VersionV2::new(1, 0, 0),
+                )
+                .expect("predicate module authority seals");
+            ClosedFrontendAuthorityV2::try_new(
+                modules,
+                seed.relations().clone(),
+                seed.graph_references().clone(),
+                seed.budget().clone(),
+            )
+            .expect("shared registry and profile authority seals")
+        };
+        let parsed = quanta_gqlang_v2_surface::parse_source_document_v2(
+            SourceIdV2::from_raw(9),
+            source,
+            &quanta_gqlang_v2_surface::ParseBudgetV2::standard_v2(),
+        )
+        .expect("authored projector source parses");
+        let checked = CheckedSyntaxDocumentV2::try_from_hir(parsed.hir).expect("checked HIR");
+        resolve_checked_document_v2(checked, &authority).expect("authored source resolves")
+    }
+
+    #[test]
+    fn quantified_shape_retains_kind_binder_identities_and_body() {
+        use quanta_gqlang_v2_sema::{ResolvedBindingKindV2, ResolvedValueBindingV2};
+        // Logical quantifiers are currently rule-only, and source rule members
+        // issue no Execution item. Pin this private projector's full owner-fact
+        // payload without claiming an active source execution path.
+        let first = ResolvedValueBindingV2::try_new(
+            SourceIdV2::from_raw(9),
+            HirNodeIdV1::from_raw(71),
+            2,
+            ResolvedBindingKindV2::Quantified,
+            "left",
+        )
+        .expect("first quantified identity");
+        let second = ResolvedValueBindingV2::try_new(
+            SourceIdV2::from_raw(9),
+            HirNodeIdV1::from_raw(72),
+            3,
+            ResolvedBindingKindV2::Quantified,
+            "right",
+        )
+        .expect("second quantified identity");
+        for (kind, expected_kind) in [
+            (
+                LogicalQuantifierKindV2::Exists,
+                ExecutionLogicalQuantifierV3::Exists,
+            ),
+            (
+                LogicalQuantifierKindV2::Forall,
+                ExecutionLogicalQuantifierV3::Forall,
+            ),
+        ] {
+            assert_eq!(
+                project_expression_shape(&TypedExprShapeV2::LogicalQuantifier {
+                    kind,
+                    binders: vec![first.clone(), second.clone()],
+                    body: key(9, 83),
+                }),
+                ExecutionExpressionShapeV3::LogicalQuantifier {
+                    kind: expected_kind,
+                    binders: Box::new([
+                        ExecutionBindingV3 {
+                            source_id: SourceIdV2::from_raw(9),
+                            owner_node: 71,
+                            ordinal: 2,
+                            name: "left".to_owned(),
+                        },
+                        ExecutionBindingV3 {
+                            source_id: SourceIdV2::from_raw(9),
+                            owner_node: 72,
+                            ordinal: 3,
+                            name: "right".to_owned(),
+                        },
+                    ]),
+                    body: key(9, 83),
+                },
+            );
+        }
+    }
+
+    #[test]
+    fn authored_exists_shape_retains_polarity_nested_identity_and_capture() {
+        for (source, expected_polarity) in [
+            (
+                "from records r | where exists (from records s | where s.id = r.id)",
+                ExecutionExistsPolarityV3::Exists,
+            ),
+            (
+                "from records r | where not exists (from records s | where s.id = r.id)",
+                ExecutionExistsPolarityV3::NotExists,
+            ),
+        ] {
+            let document = authored_projector_facts(source);
+            let shapes = document
+                .expressions()
+                .filter_map(|(_, expression)| {
+                    if let TypedExprShapeV2::RelationExists {
+                        relation_root,
+                        correlations,
+                        ..
+                    } = expression.shape()
+                    {
+                        Some((expression.shape(), *relation_root, correlations))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+            let [(shape, relation_root, captures)] = shapes.as_slice() else {
+                panic!("one authored EXISTS semantic fact expected");
+            };
+            let [capture] = captures.as_slice() else {
+                panic!("one authored outer-r capture expected");
+            };
+            assert_eq!(capture.binding().canonical_name(), "r");
+            assert_eq!(relation_root.source_id, SourceIdV2::from_raw(9));
+            assert!(document.nested_relation(*relation_root).is_some());
+            // EXISTS is lowered to SemiJoin/AntiJoin on the active source path;
+            // its typed expression shape currently has no retained DTO root.
+            // This checks the dormant shape projector against sealed source facts.
+            assert_eq!(
+                project_expression_shape(shape),
+                ExecutionExpressionShapeV3::RelationExists {
+                    polarity: expected_polarity,
+                    relation_root: *relation_root,
+                    correlations: Box::new([ExecutionCorrelationV3 {
+                        binding: ExecutionBindingV3 {
+                            source_id: SourceIdV2::from_raw(9),
+                            owner_node: capture.binding().target_node().raw(),
+                            ordinal: capture.binding().ordinal(),
+                            name: "r".to_owned(),
+                        },
+                        reference: capture.reference(),
+                    }]),
+                },
+            );
+        }
+    }
+
+    #[test]
+    fn authored_local_and_host_calls_retain_target_identity_and_argument_keys() {
+        let source = "rule local_pred : x if x = 1; rule caller : x if x = 1 and local_pred(x) and host_pred(x)";
+        let document = authored_projector_facts(source);
+        let mut local_calls = 0;
+        let mut host_calls = 0;
+        for (_, expression) in document.expressions() {
+            let TypedExprShapeV2::Call { target, arguments } = expression.shape() else {
+                continue;
+            };
+            let [TypedCallArgumentV2::Expression(argument)] = arguments.as_slice() else {
+                panic!("each authored predicate takes exactly one expression argument");
+            };
+            assert_eq!(argument.source_id, SourceIdV2::from_raw(9));
+            let argument_fact = document
+                .expression(*argument)
+                .expect("authored argument fact");
+            let TypedExprShapeV2::Binding(binding) = argument_fact.shape() else {
+                panic!("the authored argument is the caller's x binding");
+            };
+            assert_eq!(binding.canonical_name(), "x");
+            let expected_target = match target {
+                ResolvedCallTargetV2::Predicate(_) => {
+                    local_calls += 1;
+                    ExecutionCallTargetV3::Predicate {
+                        name: "local_pred".to_owned(),
+                    }
+                }
+                ResolvedCallTargetV2::HostPredicate(_) => {
+                    host_calls += 1;
+                    // Independent literal for prefix + len(app) + app + Predicate(1)
+                    // + len(host_pred) + host_pred. Do not derive via hex_lower
+                    // or canonical_bytes: both are part of the production seam.
+                    ExecutionCallTargetV3::HostPredicate {
+                        fingerprint: "67716c616e672d686f73742d7072656469636174652d7632000000000000000003617070010000000000000009686f73745f70726564".to_owned(),
+                    }
+                }
+                ResolvedCallTargetV2::Builtin(_) => panic!("no authored builtin"),
+            };
+            assert_eq!(
+                project_expression_shape(expression.shape()),
+                ExecutionExpressionShapeV3::Call {
+                    target: expected_target,
+                    arguments: Box::new([Some(*argument)]),
+                },
+            );
+        }
+        assert_eq!((local_calls, host_calls), (1, 1));
+    }
 }

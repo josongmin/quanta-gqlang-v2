@@ -78,7 +78,11 @@ impl HirVisitorV1 for Witness {
             ),
             ValueExprKindV1::Unary(unary) => format!("value:unary:{}", unary.op.symbol),
             ValueExprKindV1::Binary(binary) => format!("value:binary:{}", binary.op.symbol),
-            ValueExprKindV1::Call(call) => format!("value:call:{}", call.callee.name),
+            ValueExprKindV1::Call(call) => format!(
+                "value:call:{}:arity={}",
+                call.callee.name,
+                call.args().as_slice().len()
+            ),
             ValueExprKindV1::Paren(_) => unreachable!("handled above"),
             ValueExprKindV1::Record(record) => format!(
                 "value:record:{}",

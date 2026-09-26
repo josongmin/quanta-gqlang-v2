@@ -907,9 +907,7 @@ fn exit_class(
                 Some(input)
                     if input.family() == AlgebraFamilyV2::Group && !input.expressions().is_empty()
             );
-            let child = children
-                .next()
-                .unwrap_or(CardinalityClassV2::LinearInInput);
+            let child = children.next().unwrap_or(CardinalityClassV2::LinearInInput);
             if grouped {
                 child
             } else {
@@ -919,17 +917,13 @@ fn exit_class(
         AlgebraFamilyV2::Group
         | AlgebraFamilyV2::Project
         | AlgebraFamilyV2::Filter
-        | AlgebraFamilyV2::Sort => children
-            .next()
-            .unwrap_or(CardinalityClassV2::LinearInInput),
+        | AlgebraFamilyV2::Sort => children.next().unwrap_or(CardinalityClassV2::LinearInInput),
         AlgebraFamilyV2::SemiJoin | AlgebraFamilyV2::AntiJoin => {
             // The result is bounded by the LEFT input; the right input only
             // decides existence. Child results are source ordered, so do not
             // recover them by popping a shared stack: nested joins can leave
             // unrelated intermediate values adjacent to this node's results.
-            children
-                .next()
-                .unwrap_or(CardinalityClassV2::LinearInInput)
+            children.next().unwrap_or(CardinalityClassV2::LinearInInput)
         }
     }
 }
