@@ -96,7 +96,13 @@ impl<'a> AlgebraSessionV2<'a> {
     ) -> Result<CheckedAlgebraNodeV2, AlgebraDiagnosticV2> {
         let document = self.document;
         validate_nested_owner(document, owner_item_id, root)?;
-        lower_root_with_budget(document, owner_item_id, root, &mut self.budget)
+        let lowered = lower_root_with_budget(document, owner_item_id, root, &mut self.budget)?;
+        Ok(match document.item(owner_item_id) {
+            Some(SemanticItemV2::Composition(composition)) => {
+                lowered.with_composition_origin(composition.instance().clone(), root.key())
+            }
+            _ => lowered,
+        })
     }
 }
 

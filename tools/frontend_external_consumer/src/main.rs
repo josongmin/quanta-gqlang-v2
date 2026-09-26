@@ -46,7 +46,7 @@ use quanta_gqlang_v2_frontend_contract::{
     FrontendTransactionErrorV2, GraphReferenceKindV2, LocatedSpanV2, NoPlanReasonV2,
     OpenAnalysisAuthorityV2, PlannedItemV2, RuleProgramMemberV2, SemanticItemIdV2, SemanticPlanV2,
     SourceIdV2, SourceQualifiedNodeIdV2, SpanV1, UnresolvedAnalysisFactV2,
-    OPEN_AUTHORITY_INCOMPLETE_CODE,
+    ANALYSIS_DIAGNOSTIC_LIMIT_CODE, OPEN_AUTHORITY_INCOMPLETE_CODE,
 };
 
 /// Document identity of the probe source.
@@ -1027,9 +1027,14 @@ fn pin_curated_roots() {
     pin(facade_status_vocabulary_api
         as fn(AnalysisStatusV2, FrontendStageV2, FrontendSeverityV2, &FrontendCatalogPayloadV2));
     pin(OPEN_AUTHORITY_INCOMPLETE_CODE);
+    pin(ANALYSIS_DIAGNOSTIC_LIMIT_CODE);
 }
 
 fn main() {
+    assert_eq!(
+        ANALYSIS_DIAGNOSTIC_LIMIT_CODE,
+        "pipeline.analysis.diagnostic_limit_exceeded"
+    );
     let budget: FrontendBudgetV2 = FrontendBudgetV2::standard_v2().expect("standard budget");
     assert!(
         budget.max_source_bytes() > 0,

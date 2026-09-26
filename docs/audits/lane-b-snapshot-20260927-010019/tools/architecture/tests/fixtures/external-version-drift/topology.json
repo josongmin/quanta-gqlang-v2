@@ -1,0 +1,6 @@
+{
+  "base": "final",
+  "add_external_deps": [
+    ["quanta-gqlang-v2-modules", "normal", "sha2", "0.10"]
+  ]
+}

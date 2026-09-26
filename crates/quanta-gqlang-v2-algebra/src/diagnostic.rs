@@ -28,6 +28,22 @@ pub enum AlgebraFailureKindV2 {
 }
 
 impl AlgebraFailureKindV2 {
+    /// Full stable diagnostic code, shared with pipeline projections.
+    #[must_use]
+    pub const fn full_code(self) -> &'static str {
+        match self {
+            Self::NonRelationItem => "algebra.non_relation_item",
+            Self::MissingExpression => "algebra.missing_expression",
+            Self::ForeignSemanticFact => "algebra.foreign_semantic_fact",
+            Self::InvalidStageContract => "algebra.invalid_stage_contract",
+            Self::AggregateWithoutGroup => "algebra.aggregate_without_group",
+            Self::NestedAggregate => "algebra.nested_aggregate",
+            Self::MissingNestedRelation => "algebra.missing_nested_relation",
+            Self::DuplicateCorrelationReference => "algebra.duplicate_correlation_reference",
+            Self::TraversalBudgetExceeded => "algebra.traversal_budget_exceeded",
+        }
+    }
+
     /// Stable code suffix.
     #[must_use]
     pub const fn code(self) -> &'static str {
@@ -69,7 +85,7 @@ impl AlgebraDiagnosticV2 {
     /// Stable diagnostic code.
     #[must_use]
     pub fn code(&self) -> String {
-        format!("algebra.{}", self.kind.code())
+        self.kind.full_code().to_owned()
     }
 
     /// Closed failure category.

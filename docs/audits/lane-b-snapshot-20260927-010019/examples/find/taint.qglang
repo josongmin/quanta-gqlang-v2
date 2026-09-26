@@ -1,0 +1,1 @@
+find taint api.entry -> db.write | sanitizers=authz.clean | depth=3

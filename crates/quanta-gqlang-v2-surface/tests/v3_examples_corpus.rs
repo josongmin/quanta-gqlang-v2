@@ -29,10 +29,13 @@ use sha2::{Digest, Sha256};
 // One maintained path list remains in examples_index.md. These review pins are
 // independent of both disk discovery and the index, so coordinated deletion or
 // a same-count replacement cannot silently change the shipped corpus. Hash only
-// sorted, length-framed UTF-8 paths; content behavior has separate rails below.
+// sorted, length-framed UTF-8 paths. The second pin binds each reviewed path
+// to its canonical content without duplicating the maintained index list.
 const EXPECTED_EXAMPLE_COUNT: usize = 18;
 const EXPECTED_PATH_SHA256: &str =
     "341b5c868876d9e6e1687a0f9f090bb35def755835fed769e86675f8bfb8bfe4";
+const EXPECTED_CANONICAL_CORPUS_SHA256: &str =
+    "495c5327612e65a11ae04614e9dd890c025b23781dffa6c544205d7b03927a83";
 
 /// Repo root = this crate's manifest dir walked up out of `crates/<crate>`.
 fn repo_root() -> PathBuf {
@@ -135,6 +138,8 @@ fn canonical_witness_v1(src: &str, path: &str) -> Vec<Vec<String>> {
 #[test]
 fn every_shipped_example_parses_and_round_trips() {
     let paths = corpus_paths();
+    let mut corpus_digest = Sha256::new();
+    corpus_digest.update(b"qglang.examples.canonical-content.v1\0");
     assert!(
         !paths.is_empty(),
         "the shipped example corpus must not be empty"
@@ -160,7 +165,24 @@ fn every_shipped_example_parses_and_round_trips() {
             text2, text,
             "{path}: format -> parse -> format must be a fixed point"
         );
+
+        // Bind reviewed paths to the meaning-bearing canonical source. Raw
+        // comments and whitespace may change without requiring a new pin;
+        // swapping a GATE example for another valid family may not.
+        for bytes in [path.as_bytes(), text.as_bytes()] {
+            corpus_digest.update(
+                u64::try_from(bytes.len())
+                    .expect("example byte length fits u64")
+                    .to_le_bytes(),
+            );
+            corpus_digest.update(bytes);
+        }
     }
+    assert_eq!(
+        format!("{:x}", corpus_digest.finalize()),
+        EXPECTED_CANONICAL_CORPUS_SHA256,
+        "shipped example canonical content drift; review every changed example against examples_index.md"
+    );
 }
 
 #[test]

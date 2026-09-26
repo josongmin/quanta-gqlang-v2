@@ -218,6 +218,81 @@ pub enum PlanningDiagnosticV1 {
 }
 
 impl PlanningDiagnosticV1 {
+    /// Full stable code without allocation, shared with pipeline projections.
+    #[must_use]
+    pub const fn code_str(&self) -> &'static str {
+        match self {
+            Self::IllegalGraphQuery { logic } | Self::IllegalRuleProgram { logic } => {
+                logic.code_str()
+            }
+            Self::SemanticStepBudgetExceeded { .. } => "planning.budget.semantic_steps_exceeded",
+            Self::InputDocumentMismatch { reason, .. } => match reason {
+                InputDocumentMismatchReasonV2::Absent => "planning.input_document_mismatch.absent",
+                InputDocumentMismatchReasonV2::WrongKind => {
+                    "planning.input_document_mismatch.wrong_kind"
+                }
+                InputDocumentMismatchReasonV2::IdentityMismatch => {
+                    "planning.input_document_mismatch.identity_mismatch"
+                }
+            },
+            Self::InvalidCheck { reason, .. } => match reason {
+                CheckInvalidReasonV2::NestedGraphIdentityMismatch => {
+                    "planning.invalid_check.nested_graph_identity_mismatch"
+                }
+                CheckInvalidReasonV2::UnexpectedNestedGraph => {
+                    "planning.invalid_check.unexpected_nested_graph"
+                }
+                CheckInvalidReasonV2::MissingNestedGraph => {
+                    "planning.invalid_check.missing_nested_graph"
+                }
+                CheckInvalidReasonV2::SemanticConfirmInPatternMode => {
+                    "planning.invalid_check.semantic_confirm_in_pattern_mode"
+                }
+                CheckInvalidReasonV2::MissingSemanticConfirm => {
+                    "planning.invalid_check.missing_semantic_confirm"
+                }
+                CheckInvalidReasonV2::PatternInputInSemanticMode => {
+                    "planning.invalid_check.pattern_input_in_semantic_mode"
+                }
+                CheckInvalidReasonV2::MissingHybridPatternInput => {
+                    "planning.invalid_check.missing_hybrid_pattern_input"
+                }
+                CheckInvalidReasonV2::MissingHybridSemanticInput => {
+                    "planning.invalid_check.missing_hybrid_semantic_input"
+                }
+            },
+            Self::InvalidPresentation { reason, .. } => match reason {
+                PresentationInvalidReasonV2::UnsupportedExplainEvidenceTruth => {
+                    "planning.invalid_presentation.unsupported_explain_evidence_truth"
+                }
+            },
+            Self::InvalidComposition { reason, .. } => match reason {
+                CompositionInvalidReasonV2::EmptyProducers => {
+                    "planning.invalid_composition.empty_producers"
+                }
+                CompositionInvalidReasonV2::ProducerOrdinalMismatch => {
+                    "planning.invalid_composition.producer_ordinal_mismatch"
+                }
+                CompositionInvalidReasonV2::ProducerIdentityMismatch => {
+                    "planning.invalid_composition.producer_identity_mismatch"
+                }
+                CompositionInvalidReasonV2::DuplicateProducer => {
+                    "planning.invalid_composition.duplicate_producer"
+                }
+                CompositionInvalidReasonV2::WithTargetNotAProducer => {
+                    "planning.invalid_composition.with_target_not_a_producer"
+                }
+                CompositionInvalidReasonV2::BodyIdentityMismatch => {
+                    "planning.invalid_composition.body_identity_mismatch"
+                }
+                CompositionInvalidReasonV2::BodyKindMismatch => {
+                    "planning.invalid_composition.body_kind_mismatch"
+                }
+            },
+            Self::NoPlan { reason, .. } => reason.full_code(),
+        }
+    }
+
     /// The stable diagnostic code, shared by CLI/LSP/tests.
     ///
     /// Codes are dot-namespaced under `planning.` and never change spelling,
@@ -225,29 +300,7 @@ impl PlanningDiagnosticV1 {
     /// verbatim (logic owns graph-query and rule-program legality).
     #[must_use]
     pub fn code(&self) -> String {
-        match self {
-            // Legality is logic's; relay its stable code unchanged.
-            Self::IllegalGraphQuery { logic } | Self::IllegalRuleProgram { logic } => logic.code(),
-            Self::SemanticStepBudgetExceeded { .. } => {
-                "planning.budget.semantic_steps_exceeded".to_owned()
-            }
-            Self::InputDocumentMismatch { reason, .. } => {
-                format!("planning.input_document_mismatch.{}", reason.code())
-            }
-            Self::InvalidCheck { reason, .. } => {
-                format!("planning.invalid_check.{}", reason.code())
-            }
-            Self::InvalidPresentation { reason, .. } => {
-                format!("planning.invalid_presentation.{}", reason.code())
-            }
-            Self::InvalidComposition { reason, .. } => {
-                format!("planning.invalid_composition.{}", reason.code())
-            }
-            Self::NoPlan { reason, .. } => match reason.catalog_kind() {
-                Some(kind) => format!("planning.no_plan.{}.{}", reason.code(), kind.code()),
-                None => format!("planning.no_plan.{}", reason.code()),
-            },
-        }
+        self.code_str().to_owned()
     }
 
     /// The checked location the diagnostic points at.

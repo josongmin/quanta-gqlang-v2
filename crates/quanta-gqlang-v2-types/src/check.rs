@@ -1,5 +1,6 @@
 use crate::builtin::{
-    BuiltinFamilyIdV2, BuiltinIdV2, BuiltinRegistryV2, CallableSignatureV2, ExpressionEffectsV2,
+    AggregationClassV1, BuiltinFamilyIdV2, BuiltinIdV2, BuiltinRegistryV2, CallableSignatureV2,
+    ExpressionEffectsV2,
 };
 use crate::op::{OperatorIdV2, OperatorRegistryV2};
 use crate::ty::{FiniteF64V2, RecordFieldTypeV1, RecordTypeV1, TypedLiteralValueV2, ValueTypeV1};
@@ -1206,6 +1207,7 @@ pub struct TypedExpressionFactV2 {
     pub state: ExpressionTypeStateV2,
     pub operator_id: Option<OperatorIdV2>,
     resolved_call: Option<ResolvedCallTargetV2>,
+    intrinsic_call_aggregation: Option<AggregationClassV1>,
     pub effects: ExpressionEffectsV2,
     pub literal: Option<TypedLiteralFactV2>,
 }
@@ -1242,6 +1244,12 @@ impl TypedExpressionFactV2 {
     #[must_use]
     pub fn resolved_call(&self) -> Option<&ResolvedCallTargetV2> {
         self.resolved_call.as_ref()
+    }
+
+    /// Aggregation of this call itself, before composing effects of its arguments.
+    #[must_use]
+    pub const fn intrinsic_call_aggregation(&self) -> Option<AggregationClassV1> {
+        self.intrinsic_call_aggregation
     }
 }
 
@@ -1698,6 +1706,7 @@ impl DocumentChecker<'_, '_> {
                 state: state.clone(),
                 operator_id,
                 resolved_call: None,
+                intrinsic_call_aggregation: None,
                 effects,
                 literal,
             },
@@ -1722,6 +1731,7 @@ impl DocumentChecker<'_, '_> {
         let _ = self.visiting.insert(node.id);
         let mut operator_id = None;
         let mut resolved_call = None;
+        let mut intrinsic_call_aggregation = None;
         let mut literal = None;
         let mut effects = ExpressionEffectsV2::pure_scalar();
         let state = match &node.kind {
@@ -1776,13 +1786,19 @@ impl DocumentChecker<'_, '_> {
                 }
             },
             ValueExprKindV1::Paren(inner) => {
-                let state = self.type_expr(inner, false)?;
+                // Parentheses do not change the magnitude consumed by the
+                // immediately enclosing unary minus.
+                let state = self.type_expr(inner, deferred_min_child)?;
                 effects = self.effects_for(inner.id)?;
                 state
             }
             ValueExprKindV1::Unary(unary) => {
+                let mut magnitude = &unary.operand;
+                while let ValueExprKindV1::Paren(inner) = &magnitude.kind {
+                    magnitude = inner;
+                }
                 let min_case = unary.op.symbol == "-"
-                    && matches!(&unary.operand.kind, ValueExprKindV1::Literal(LiteralV1::Int(text)) if text.trim() == "170141183460469231731687303715884105728");
+                    && matches!(&magnitude.kind, ValueExprKindV1::Literal(LiteralV1::Int(text)) if text == "170141183460469231731687303715884105728");
                 let operand = self.type_expr(&unary.operand, min_case)?;
                 if min_case {
                     literal = Some(TypedLiteralFactV2::Value(TypedLiteralValueV2::Int(
@@ -1860,6 +1876,7 @@ impl DocumentChecker<'_, '_> {
                     CallArgHirV1::Star { .. } => None,
                 });
                 effects = call_effects.compose(arg_effects);
+                intrinsic_call_aggregation = Some(call_effects.aggregation);
                 resolved_call = call_target;
                 state
             }
@@ -2021,6 +2038,7 @@ impl DocumentChecker<'_, '_> {
                 state: state.clone(),
                 operator_id,
                 resolved_call,
+                intrinsic_call_aggregation,
                 effects,
                 literal,
             },

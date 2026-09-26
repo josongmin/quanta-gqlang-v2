@@ -2742,6 +2742,126 @@ mod tests {
         );
     }
 
+    #[test]
+    fn independent_whole_stream_oracle_pins_document_header_items_and_order() {
+        // Handwritten schema-5 stream for two payload-free certified items.
+        // This does not call any production tag or put_* helper. The SHA values
+        // were computed independently from these bytes with Python hashlib.
+        let plan = ExecutionPlanV3 {
+            authority: ExecutionAuthorityV3::CertifiedRequirementValidated,
+            determinism: ExecutionDeterminismV3::Deterministic,
+            evidence: ExecutionEvidenceV3::None,
+            effect: ExecutionEffectV3::ReadOnly,
+            policy_family: ExecutionPolicyFamilyV3::MetaRequireCertified,
+        };
+        let first = ExecutionItemV3 {
+            item_id: item(9, 7),
+            family: ExecutionFamilyV3::MetaRequireCertified,
+            relation: None,
+            composition: None,
+            plan: plan.clone(),
+        };
+        let second = ExecutionItemV3 {
+            item_id: item(9, 8),
+            family: ExecutionFamilyV3::MetaRequireCertified,
+            relation: None,
+            composition: None,
+            plan,
+        };
+        let source = b"require certified";
+        let document = ExecutionDocumentV3::new(
+            SourceIdV2::from_raw(9),
+            source,
+            vec![first.clone(), second.clone()],
+        );
+
+        let source_stream = [
+            &[0, 0, 0, 0, 0, 0, 0, 32][..],
+            b"qglang.execution.source-bytes.v3",
+            &[0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 17],
+            source,
+        ]
+        .concat();
+        let contract_stream = [
+            &[0, 0, 0, 0, 0, 0, 0, 28][..],
+            b"qglang.execution.contract.v5",
+            &[0, 0, 0, 5, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 2],
+            // item 7: source, node, family, authority, determinism,
+            // evidence, effect, policy, absent relation, absent composition.
+            &[0, 0, 0, 9, 0, 0, 0, 7, 5, 1, 0, 0, 0, 5, 0, 0],
+            &[0, 0, 0, 9, 0, 0, 0, 8, 5, 1, 0, 0, 0, 5, 0, 0],
+        ]
+        .concat();
+        let qualification_stream = [
+            &[0, 0, 0, 0, 0, 0, 0, 33][..],
+            b"qglang.execution.qualification.v5",
+            &[0, 0, 0, 5, 0, 0, 0, 9],
+            Sha256::digest(&source_stream).as_slice(),
+            Sha256::digest(&contract_stream).as_slice(),
+        ]
+        .concat();
+        let expected = [
+            (
+                &source_stream,
+                document.source_digest(),
+                "f086dc8812ecb6fc73c5cbc01d655e1743695c83629f577cd096043fab1ae1eb",
+            ),
+            (
+                &contract_stream,
+                document.contract_digest(),
+                "f2ac4a19b67293506b7cc39fceeec3cfa3a14ac93d057fa8f2d4a327eced08f6",
+            ),
+            (
+                &qualification_stream,
+                document.qualification_digest(),
+                "fa612df227a5a7f2127f86ccd2aa6ab834ef2d2cc3447dbec25a9559a2c1042d",
+            ),
+        ];
+        for (independent_stream, production_digest, pinned_sha) in expected {
+            assert_eq!(
+                format!("{:x}", Sha256::digest(independent_stream)),
+                pinned_sha
+            );
+            assert_eq!(production_digest.to_hex(), pinned_sha);
+        }
+        let reversed =
+            ExecutionDocumentV3::new(SourceIdV2::from_raw(9), source, vec![second, first]);
+        assert_ne!(reversed.contract_digest(), document.contract_digest());
+    }
+
+    #[test]
+    fn root_stage_and_child_order_each_change_the_contract_digest() {
+        let mut relation_item = relation_item();
+        let relation = relation_item.relation.as_mut().expect("relation payload");
+        relation.root.family = AlgebraFamilyV2::Join;
+        relation.root.join_mode = Some(ExecutionJoinModeV3::Inner);
+        let mut left = root();
+        left.stage = key(0, 3);
+        let mut right = root();
+        right.stage = key(0, 4);
+        relation.root.children = Box::new([left, right]);
+        let baseline = contract_of(vec![relation_item.clone()]);
+
+        let mut changed_stage = relation_item.clone();
+        changed_stage
+            .relation
+            .as_mut()
+            .expect("relation payload")
+            .root
+            .stage = key(0, 5);
+        assert_ne!(contract_of(vec![changed_stage]), baseline);
+
+        let mut reversed_children = relation_item;
+        reversed_children
+            .relation
+            .as_mut()
+            .expect("relation payload")
+            .root
+            .children
+            .reverse();
+        assert_ne!(contract_of(vec![reversed_children]), baseline);
+    }
+
     fn assert_distinct_tags<const N: usize>(tags: [u8; N]) {
         let mut sorted = tags.to_vec();
         sorted.sort_unstable();

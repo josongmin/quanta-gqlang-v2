@@ -1,0 +1,49 @@
+   Compiling quanta-gqlang-v2-frontend-external-consumer v0.1.0 (/Users/songmin/Documents/code-new/quanta-gqlang-v2/docs/audits/lane-d-scratch/snapshot/tools/frontend_external_consumer)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.59s
+     Running tests/lane_d_polarity_repro.rs (/Users/songmin/Documents/code-new/quanta-gqlang-v2/docs/audits/lane-d-scratch/target-laneD-repro/debug/deps/lane_d_polarity_repro-95d58deedda91d96)
+
+running 1 test
+A_plain: OK items=1 :: let answer = 1; rule u : x if x = 1; rule t : x if x = 1; rule s : x if x or false; rule main : y if y = 1 and s(t(1)); show capabilities;
+V2_builtin_layer: OK items=1 :: let answer = 1; rule u : x if x = 1; rule t : x if x = 1; rule s : x if x or false; rule main : y if y = 1 and s(is_null(count(u(1)))); show capabilities;
+V4_single_predicate_layer: OK items=1 :: let answer = 1; rule u : x if x = 1; rule t : x if x = 1; rule s : x if x or false; rule main : y if y = 1 and t(count(u(1))); show capabilities;
+B_agg_nested: ERR ["logic.rule_program.polarity_flip [113..127] rule call polarity disagrees with the document's resolved polarity"]
+DRIFT_CONFIRMED: sema sealed the document, logic rejected it: ["logic.rule_program.polarity_flip [113..127] rule call polarity disagrees with the document's resolved polarity"]
+thread 'predicate_call_under_aggregate_keeps_sema_polarity' panicked at tests/lane_d_polarity_repro.rs:132:5:
+sema-legal B must compile (drift repro): Err(["logic.rule_program.polarity_flip [113..127] rule call polarity disagrees with the document's resolved polarity"])
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test predicate_call_under_aggregate_keeps_sema_polarity ... FAILED
+
+failures:
+
+failures:
+    predicate_call_under_aggregate_keeps_sema_polarity
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `--test lane_d_polarity_repro`
+   Compiling quanta-gqlang-v2-frontend-external-consumer v0.1.0 (/Users/songmin/Documents/code-new/quanta-gqlang-v2/docs/audits/lane-d-scratch/snapshot/tools/frontend_external_consumer)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.40s
+     Running tests/lane_d_polarity_repro.rs (/Users/songmin/Documents/code-new/quanta-gqlang-v2/docs/audits/lane-d-scratch/target-laneD-repro/debug/deps/lane_d_polarity_repro-95d58deedda91d96)
+
+running 1 test
+V6_record_control: OK items=1 :: let answer = 1; rule u : x if x = 1; rule t : x if x = 1; rule s : x if x or false; rule main : y if y = 1 and is_null({a: t(1), b: 1}); show capabilities;
+V5_record_under_scalar_builtin: ERR ["logic.rule_program.polarity_flip [123..127] rule call polarity disagrees with the document's resolved polarity"]
+V5 outcome (drift if logic.*): Err(["logic.rule_program.polarity_flip [123..127] rule call polarity disagrees with the document's resolved polarity"])
+A_plain: OK items=1 :: let answer = 1; rule u : x if x = 1; rule t : x if x = 1; rule s : x if x or false; rule main : y if y = 1 and s(t(1)); show capabilities;
+V2_builtin_layer: OK items=1 :: let answer = 1; rule u : x if x = 1; rule t : x if x = 1; rule s : x if x or false; rule main : y if y = 1 and s(is_null(count(u(1)))); show capabilities;
+V4_single_predicate_layer: OK items=1 :: let answer = 1; rule u : x if x = 1; rule t : x if x = 1; rule s : x if x or false; rule main : y if y = 1 and t(count(u(1))); show capabilities;
+B_agg_nested: ERR ["logic.rule_program.polarity_flip [113..127] rule call polarity disagrees with the document's resolved polarity"]
+DRIFT_CONFIRMED: sema sealed the document, logic rejected it: ["logic.rule_program.polarity_flip [113..127] rule call polarity disagrees with the document's resolved polarity"]
+thread 'predicate_call_under_aggregate_keeps_sema_polarity' panicked at tests/lane_d_polarity_repro.rs:143:5:
+sema-legal B must compile (drift repro): Err(["logic.rule_program.polarity_flip [113..127] rule call polarity disagrees with the document's resolved polarity"])
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test predicate_call_under_aggregate_keeps_sema_polarity ... FAILED
+
+failures:
+
+failures:
+    predicate_call_under_aggregate_keeps_sema_polarity
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+error: test failed, to rerun pass `--test lane_d_polarity_repro`

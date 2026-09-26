@@ -222,6 +222,10 @@ fn diagnostic_and_response_caps_fail_closed() {
         .expect("bounded error response");
     let diagnostic: Value = serde_json::from_slice(&diagnostic).expect("diagnostic json");
     assert_eq!(diagnostic["error"]["code"], "diagnostic_limit_exceeded");
+    assert_eq!(
+        diagnostic["error"]["message"],
+        "diagnostic count 3 exceeds max_diagnostics 2"
+    );
 
     let full_response = exact_diagnostic_server
         .dispatch(request)

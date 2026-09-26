@@ -1,0 +1,4 @@
+{
+  "base": "final",
+  "drop_lints": ["quanta-gqlang-v2-hir"]
+}

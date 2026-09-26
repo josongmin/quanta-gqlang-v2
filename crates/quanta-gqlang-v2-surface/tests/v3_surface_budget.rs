@@ -34,6 +34,34 @@ fn formatter_v2_preserves_source_identity_on_failure() {
     assert_eq!(error.code, ParseErrorCodeV1::UnexpectedChar);
 }
 
+#[test]
+fn formatter_checks_canonical_output_at_the_exact_token_boundary() {
+    let source = "from t | order by a";
+    let expected = "from t | order by a asc";
+    let source_id = SourceIdV2::from_raw(91);
+    let exact = budget(8, 1, 16, 8, 8, 8);
+    let formatted = format_source_document_with_parse_budget_v2(source_id, source, &exact).unwrap();
+    assert_eq!(formatted, expected);
+    assert_eq!(
+        format_source_document_with_parse_budget_v2(source_id, &formatted, &exact).unwrap(),
+        expected
+    );
+    let limited = budget(7, 1, 16, 8, 8, 8);
+    parse_source_document_v2(source_id, source, &limited).unwrap();
+    let failure =
+        format_source_document_with_parse_budget_v2(source_id, source, &limited).unwrap_err();
+    assert_eq!(failure.source_id, source_id);
+    assert_eq!(failure.code, ParseErrorCodeV1::ResourceExhausted);
+    assert_eq!(failure.span, SpanV1::new(0, source.len()));
+    assert_eq!(
+        failure.message,
+        "canonical output: tokens budget exhausted: limit 7, observed 8"
+    );
+    let resource = failure.resource.unwrap();
+    assert_eq!(resource.dimension, ParseBudgetDimensionV2::Tokens);
+    assert_eq!((resource.limit, resource.observed), (7, 8));
+}
+
 fn exhausted(
     source: &str,
     budget: &ParseBudgetV2,

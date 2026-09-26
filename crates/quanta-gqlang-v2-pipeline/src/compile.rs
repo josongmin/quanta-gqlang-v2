@@ -59,8 +59,8 @@ use quanta_gqlang_v2_sema::{
     SourceRegistrationV2, SpanV1,
 };
 use quanta_gqlang_v2_surface::{
-    classify_parsed_root_v3, format_source_document_with_parse_budget_v2,
-    parse_source_document_v2, ParseBudgetV2,
+    classify_parsed_root_v3, format_source_document_with_parse_budget_v2, parse_source_document_v2,
+    ParseBudgetV2,
 };
 
 pub use quanta_gqlang_v2_surface::SourceRootFamilyV3 as FrontendSourceRootFamilyV3;
@@ -89,7 +89,8 @@ pub const OPEN_AUTHORITY_INCOMPLETE_CODE: &str = "pipeline.analysis.open_authori
 /// site anchors on the caller's own source and exact span, never on a fabricated
 /// source identity.
 pub const PARSE_BUDGET_PROJECTION_FAILED_CODE: &str = "pipeline.parse_budget_projection_failed";
-const ANALYSIS_DIAGNOSTIC_LIMIT_CODE: &str = "pipeline.analysis.diagnostic_limit_exceeded";
+/// Pipeline-owned code for an open-analysis diagnostic count over its sealed cap.
+pub const ANALYSIS_DIAGNOSTIC_LIMIT_CODE: &str = "pipeline.analysis.diagnostic_limit_exceeded";
 
 /// Failure to classify exactly one parsed source root.
 #[derive(Debug)]

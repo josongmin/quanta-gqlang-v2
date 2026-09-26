@@ -2,7 +2,7 @@
 
 use quanta_gqlang_v2_frontend_contract::{
     analyze_source_document_v2, AnalysisStatusV2, FrontendDiagnosticV2, FrontendTransactionErrorV2,
-    OpenAnalysisAuthorityV2, SourceIdV2,
+    OpenAnalysisAuthorityV2, SourceIdV2, ANALYSIS_DIAGNOSTIC_LIMIT_CODE,
 };
 use serde::Serialize;
 
@@ -24,7 +24,6 @@ pub fn handle_v3_diagnostics_v2(
     match analyze_source_document_v2(SourceIdV2::from_raw(source_id), source, authority) {
         Ok(document) => {
             let diagnostics = document.diagnostics();
-            enforce_diagnostic_cap(diagnostics.len(), authority)?;
             Ok(AnalysisPayloadV2 {
                 analysis_status: document.status().keyword(),
                 diagnostics: diagnostics.iter().map(WireDiagnosticV2::from).collect(),
@@ -32,14 +31,13 @@ pub fn handle_v3_diagnostics_v2(
         }
         Err(FrontendTransactionErrorV2::Document(failure)) => {
             if let [diagnostic] = failure.diagnostics() {
-                if diagnostic.code() == "pipeline.analysis.diagnostic_limit_exceeded" {
+                if diagnostic.code() == ANALYSIS_DIAGNOSTIC_LIMIT_CODE {
                     return Err(ProtocolErrorV2::new(
                         "diagnostic_limit_exceeded",
                         diagnostic.message(),
                     ));
                 }
             }
-            enforce_diagnostic_cap(failure.diagnostics().len(), authority)?;
             Ok(AnalysisPayloadV2 {
                 analysis_status: AnalysisStatusV2::Error.keyword(),
                 diagnostics: failure
@@ -54,20 +52,6 @@ pub fn handle_v3_diagnostics_v2(
             format!("{}: {}", error.code(), error.message()),
         )),
     }
-}
-
-fn enforce_diagnostic_cap(
-    count: usize,
-    authority: &OpenAnalysisAuthorityV2,
-) -> Result<(), ProtocolErrorV2> {
-    let limit = usize::try_from(authority.budget().max_diagnostics()).unwrap_or(usize::MAX);
-    if count > limit {
-        return Err(ProtocolErrorV2::new(
-            "diagnostic_limit_exceeded",
-            format!("diagnostic count {count} exceeds max_diagnostics {limit}"),
-        ));
-    }
-    Ok(())
 }
 
 impl From<&FrontendDiagnosticV2> for WireDiagnosticV2 {

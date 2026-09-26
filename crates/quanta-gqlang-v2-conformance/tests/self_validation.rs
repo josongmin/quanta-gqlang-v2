@@ -781,6 +781,123 @@ fn two_authored_mutual_rules_reach_one_checked_program() {
 }
 
 #[test]
+fn scalar_call_does_not_spread_nested_aggregate_polarity_to_sibling_predicates() {
+    let authority = closed_authority();
+    let rules = "rule u : x if x = 1; rule t : x if x = 1; rule s : x if x or false; ";
+    for body in [
+        "y = 1 and s(t(1))",
+        "y = 1 and s(t(count(u(1))))",
+        "y = 1 and is_null({a: t(1), b: count(u(1))})",
+    ] {
+        let source = format!("{rules}rule main : y if {body}");
+        let document = compile_source_document_v3(SourceIdV2::from_raw(406), &source, &authority)
+            .unwrap_or_else(|error| {
+                panic!("{body}: semantically legal rule must compile: {error:?}")
+            });
+        let program = document.rule_program().expect("one checked rule program");
+        assert_eq!(program.members().len(), 4, "{body}");
+        assert_eq!(document.items().len(), 4, "{body}");
+    }
+}
+
+#[test]
+fn both_not_equal_surface_spellings_resolve_to_the_same_closed_operator() {
+    let authority = closed_authority();
+    for spelling in ["<>", "!="] {
+        let source = format!("from findings f | where f.score {spelling} 1");
+        let document = compile_source_document_v3(SourceIdV2::from_raw(407), &source, &authority)
+            .unwrap_or_else(|error| {
+                panic!("{spelling}: surface not-equal must compile: {error:?}")
+            });
+        let [item] = document.execution().items() else {
+            panic!("{spelling}: expected one executable relation");
+        };
+        let relation = item.relation().expect("filtered relation");
+        let comparisons = relation
+            .expressions()
+            .iter()
+            .filter_map(|expression| {
+                if let ExecutionExpressionShapeV3::Compare { operator, .. } = expression.shape() {
+                    Some(operator)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        let [operator] = comparisons.as_slice() else {
+            panic!("{spelling}: expected one not-equal comparison");
+        };
+        assert_eq!(operator.symbol(), "!=", "{spelling}");
+        assert_eq!(operator.overload_id(), 321, "{spelling}");
+    }
+}
+
+#[test]
+fn parenthesized_i128_minimum_compiles_but_positive_magnitude_rejects() {
+    let authority = closed_authority();
+    let magnitude = "170141183460469231731687303715884105728";
+    for expression in [
+        format!("-{magnitude}"),
+        format!("-({magnitude})"),
+        format!("-(({magnitude}))"),
+    ] {
+        let source = format!("let minimum = {expression}");
+        let compiled = compile_source_document_v3(SourceIdV2::from_raw(408), &source, &authority)
+            .unwrap_or_else(|error| panic!("{expression}: {error:?}"));
+        assert_eq!(compiled.items().len(), 1, "{expression}");
+    }
+    for expression in [magnitude.to_owned(), format!("+({magnitude})")] {
+        let source = format!("let overflow = {expression}");
+        let error = compile_source_document_v3(SourceIdV2::from_raw(408), &source, &authority)
+            .expect_err("positive magnitude exceeds i128::MAX");
+        let quanta_gqlang_v2_frontend_contract::FrontendTransactionErrorV2::Document(failure) =
+            error
+        else {
+            panic!("{expression}: expected document failure");
+        };
+        let [diagnostic] = failure.diagnostics() else {
+            panic!("{expression}: expected one diagnostic");
+        };
+        assert_eq!(
+            diagnostic.code(),
+            "types.integer_out_of_range",
+            "{expression}"
+        );
+    }
+}
+
+#[test]
+fn repeated_catalog_reference_uses_modules_canonical_dependency() {
+    let authority = closed_authority();
+    for source in [
+        "profile strict-review | capabilities=graph.read | admission=certified-only",
+        "profile strict-review | capabilities=graph.read,graph.read | admission=certified-only",
+        "profile strict-review | capabilities=graph.read,graph.trace,graph.read | admission=certified-only",
+        "profile strict-review | capabilities=graph.trace,graph.read,graph.trace | admission=certified-only",
+        "gate release-gate | checks=owasp.sql,owasp.sql | binding=all",
+        "gate release-gate | checks=authz.path,owasp.sql,authz.path | binding=all",
+    ] {
+        let document = compile_source_document_v3(SourceIdV2::from_raw(409), source, &authority)
+            .unwrap_or_else(|error| {
+                panic!("modules-admitted catalog reference must remain admitted: {error:?}")
+            });
+        assert_eq!(document.items().len(), 1, "{source}");
+        assert_eq!(document.execution().items().len(), 0, "{source}");
+    }
+    let source = "profile strict-review | capabilities=graph.read,absent.capability,graph.read | admission=certified-only";
+    let error = compile_source_document_v3(SourceIdV2::from_raw(409), source, &authority)
+        .expect_err("deduplicating a known edge must not admit an unknown target");
+    let quanta_gqlang_v2_frontend_contract::FrontendTransactionErrorV2::Document(failure) = error
+    else {
+        panic!("expected document failure");
+    };
+    let [diagnostic] = failure.diagnostics() else {
+        panic!("expected one unresolved target diagnostic");
+    };
+    assert_eq!(diagnostic.code(), "modules.unknown_catalog_reference");
+}
+
+#[test]
 fn supplemental_units_are_explicit_and_unsupported_source_fails_closed() {
     let authority = closed_authority();
     assert_eq!(SUPPLEMENTAL_SOURCES_V2.len(), 2);

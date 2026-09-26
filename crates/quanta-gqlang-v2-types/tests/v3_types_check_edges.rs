@@ -613,6 +613,64 @@ fn unary_minimum_uses_closed_deferred_child_fact() {
 }
 
 #[test]
+fn parenthesized_unary_minimum_preserves_only_the_direct_magnitude_exception() {
+    for depth in [1, 2] {
+        let builder = HirBuilderV1::new();
+        let magnitude = builder.int(
+            "170141183460469231731687303715884105728",
+            SpanV1::new(3, 42),
+        );
+        let magnitude_key = SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(7),
+            node_id: magnitude.id,
+        };
+        let mut operand = magnitude;
+        for (start, end) in [(2, 43), (1, 44)].into_iter().take(depth) {
+            operand = builder.paren_value(operand, SpanV1::new(start, end));
+        }
+        let negative = builder.unary("-", operand.clone(), SpanV1::new(0, 45));
+        let negative_key = SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(7),
+            node_id: negative.id,
+        };
+        let negative_doc = document(negative);
+        let inputs =
+            resolved_type_inputs(check_document_v2(&negative_doc).unwrap(), vec![], vec![])
+                .unwrap();
+        let facts = ExpressionTypeKernelV2::try_closed()
+            .unwrap()
+            .check_document(&inputs)
+            .unwrap();
+        assert_eq!(
+            facts.get(magnitude_key).unwrap().literal,
+            Some(TypedLiteralFactV2::DeferredI128MinMagnitude),
+            "depth {depth}"
+        );
+        assert_eq!(
+            facts.get(negative_key).unwrap().literal,
+            Some(TypedLiteralFactV2::Value(TypedLiteralValueV2::Int(
+                i128::MIN
+            ))),
+            "depth {depth}"
+        );
+
+        let positive_doc = document(builder.unary("+", operand, SpanV1::new(0, 45)));
+        let inputs =
+            resolved_type_inputs(check_document_v2(&positive_doc).unwrap(), vec![], vec![])
+                .unwrap();
+        assert_eq!(
+            ExpressionTypeKernelV2::try_closed()
+                .unwrap()
+                .check_document(&inputs)
+                .unwrap_err()
+                .code(),
+            "types.integer_out_of_range",
+            "depth {depth}"
+        );
+    }
+}
+
+#[test]
 fn non_finite_and_nonzero_underflow_reject_with_exact_codes() {
     let overflow = format!("{}.0", "9".repeat(400));
     let underflow = format!("0.{}1", "0".repeat(400));

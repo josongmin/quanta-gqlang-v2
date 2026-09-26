@@ -79,6 +79,11 @@ mod tests {
                 "missing {symbol}"
             );
         }
+        assert_eq!(
+            registry.binary_overloads("<>"),
+            registry.binary_overloads("!="),
+            "surface not-equal aliases share the same stable overload identities"
+        );
         for symbol in ["+", "-", "not"] {
             assert!(
                 !registry.unary_overloads(symbol).is_empty(),
@@ -834,7 +839,11 @@ impl OperatorRegistryV2 {
     }
     #[must_use]
     pub(crate) fn binary_overloads(&self, symbol: &str) -> &[BinaryOverloadV1] {
-        self.binary.get(symbol).map_or(&[], Vec::as_slice)
+        // The surface grammar admits SQL's `<>` alongside `!=`. Both spellings
+        // denote the same closed operator IDs; aliasing at lookup avoids a
+        // duplicate overload table or a second semantic identity.
+        let canonical = if symbol == "<>" { "!=" } else { symbol };
+        self.binary.get(canonical).map_or(&[], Vec::as_slice)
     }
 }
 

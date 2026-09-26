@@ -1,0 +1,6 @@
+{
+  "base": "final",
+  "add_external_deps": [
+    ["quanta-gqlang-v2-diagnostics-stdio", "normal", "serde", "1.0", []]
+  ]
+}

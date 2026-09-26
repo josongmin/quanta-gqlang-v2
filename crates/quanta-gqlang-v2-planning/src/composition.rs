@@ -201,20 +201,23 @@ impl CompositionBodyPlanInputV2 {
 /// Whether a nested relation body input is the canonical lowering of the sealed
 /// body relation.
 ///
-/// The lowered root must be anchored on THIS composition as its owning document
-/// item and carry the sealed body relation's exact output contract. The root
-/// stage KEY is deliberately NOT compared, for the same reason as the top-level
-/// relational arm: canonical lowering re-anchors a pure relational `EXISTS`
-/// conjunct onto the EXISTS stage key
+/// The lowered root must be minted from THIS resolved composition instance and
+/// its exact original body root, and carry the sealed output contract. The
+/// lowered stage KEY is deliberately NOT compared: canonical lowering may
+/// re-anchor a pure relational `EXISTS` conjunct onto the EXISTS stage key
 /// (`algebra::pure_exists_conjunct_lowers_to_semijoin_with_no_residual_filter`),
 /// so comparing keys would make every pure-`EXISTS` composition body
 /// unplannable.
 fn nested_root_matches(
-    owner_item_id: SemanticItemIdV2,
+    composition: &ResolvedCompositionV2,
     sealed: &TypedRelationV2,
     body: &CompositionRelationalBodyPlanInputV2,
 ) -> bool {
-    body.root().item_id() == owner_item_id && body.root().output() == sealed.output()
+    body.root().item_id() == composition.item_id()
+        && body.root().output() == sealed.output()
+        && body
+            .root()
+            .matches_composition_origin(composition.instance(), sealed.root().key())
 }
 
 /// One retained composition producer (a `LET` working set).
@@ -614,7 +617,7 @@ impl CheckedCompositionPlanInputV2 {
             CompositionBodyPlanInputV2::Relational(input),
         ) = (composition.body(), &body)
         {
-            if !nested_root_matches(composition.item_id(), sealed, input) {
+            if !nested_root_matches(composition, sealed, input) {
                 return Err(reject(CompositionInvalidReasonV2::BodyIdentityMismatch));
             }
         }
@@ -710,12 +713,13 @@ pub(crate) mod tests {
     )]
 
     use crate::policy::{EffectSummaryV2, GraphWitnessRetentionV2};
-    use quanta_gqlang_v2_algebra::lower_relation_item;
+    use quanta_gqlang_v2_algebra::{lower_nested_relation_v2, lower_relation_item};
     use quanta_gqlang_v2_logic::{GraphQueryContractV2, RuleProgramContractV2};
     use quanta_gqlang_v2_sema::test_support::{
         pristine_capture_edge_set_v2, reference_absent_item_id_v2, reference_checked_span_v2,
-        reference_graph_document_v2, reference_nested_check_document_v2,
-        reference_relation_document_v2, reference_rule_document_v2, ReferenceGraphDocumentV2,
+        reference_composition_document_v2, reference_graph_document_v2,
+        reference_nested_check_document_v2, reference_relation_document_v2,
+        reference_rule_document_v2, ReferenceCompositionBodyV2, ReferenceGraphDocumentV2,
         ReferenceGraphReferenceV2, ReferenceGraphRequestV2, ReferenceNestedCheckDocumentV2,
         ReferenceRelationFixtureV2, ReferenceRuleFixtureV2, REFERENCE_SOURCE_V2,
         SECONDARY_REFERENCE_SOURCE_V2,
@@ -1162,19 +1166,17 @@ pub(crate) mod tests {
     /// owning item, is not this body.
     #[test]
     fn a_nested_body_root_must_be_the_sealed_body_lowering() -> Result<(), String> {
-        let document = reference_relation_document_v2(ReferenceRelationFixtureV2::Scan)?;
-        let sealed = match document.document().item(document.item_id()) {
-            Some(quanta_gqlang_v2_sema::SemanticItemV2::Relation(relation)) => relation.clone(),
-            other => return Err(format!("the scan fixture holds a relation, got {other:?}")),
+        let document = reference_composition_document_v2(ReferenceCompositionBodyV2::Relational)?;
+        let composition = document.composition();
+        let ResolvedCompositionBodyV2::Query(sealed) = composition.body() else {
+            return Err("the composition fixture has no query body".to_owned());
         };
-        let lowered = lower_relation_item(document.document(), document.item_id())
-            .map_err(|error| format!("{error:?}"))?;
-        let body = CompositionRelationalBodyPlanInputV2::try_new(
-            document.item_id(),
-            lowered.root().clone(),
-        )
-        .map_err(|reason| format!("{reason:?}"))?;
-        assert!(nested_root_matches(document.item_id(), &sealed, &body));
+        let lowered =
+            lower_nested_relation_v2(document.document(), composition.item_id(), sealed.root())
+                .map_err(|error| format!("{error:?}"))?;
+        let body = CompositionRelationalBodyPlanInputV2::try_new(sealed.item_id(), lowered.clone())
+            .map_err(|reason| format!("{reason:?}"))?;
+        assert!(nested_root_matches(composition, sealed, &body));
 
         // A DIFFERENT relation's lowering is not this body: the exact sealed
         // output contract differs.
@@ -1182,22 +1184,18 @@ pub(crate) mod tests {
         let other_lowered = lower_relation_item(other.document(), other.item_id())
             .map_err(|error| format!("{error:?}"))?;
         let forged = CompositionRelationalBodyPlanInputV2::try_new(
-            document.item_id(),
+            sealed.item_id(),
             other_lowered.root().clone(),
         )
         .map_err(|reason| format!("{reason:?}"))?;
-        assert!(!nested_root_matches(document.item_id(), &sealed, &forged));
-
-        // A nested body root is anchored on the COMPOSITION that owns it, so a
-        // root lowered for another document item is not this body either.
-        assert!(!nested_root_matches(other.item_id(), &sealed, &body));
+        assert!(!nested_root_matches(composition, sealed, &forged));
 
         // The body identity and its root must belong to one source.
         let (binding, _root) = binding_and_root()?;
         assert_eq!(
             CompositionRelationalBodyPlanInputV2::try_new(
                 SemanticItemIdV2::new(SECONDARY_REFERENCE_SOURCE_V2, binding.target_node()),
-                lowered.root().clone()
+                lowered
             ),
             Err(CompositionInvalidReasonV2::BodyIdentityMismatch)
         );

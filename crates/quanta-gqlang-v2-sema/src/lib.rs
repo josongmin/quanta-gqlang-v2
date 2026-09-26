@@ -57,12 +57,13 @@ pub use expr::{
     TypedPathSegmentV2, TypedRecordFieldV2,
 };
 pub use item::{
-    CompositionGraphCapabilityV2, GraphDirectionV2, GraphReferenceRoleV2, GraphWitnessBoundsV2,
-    ResolvedCatalogItemV2, ResolvedCatalogPayloadV2, ResolvedCheckV2, ResolvedCompositionBindingV2,
-    ResolvedCompositionBodyV2, ResolvedCompositionGraphTargetV2, ResolvedCompositionProducerV2,
-    ResolvedCompositionV2, ResolvedDeclarationV2, ResolvedExplainTargetV2, ResolvedGraphQueryV2,
-    ResolvedGraphReferenceV2, ResolvedGraphTargetV2, ResolvedGraphUseV2, ResolvedMetaKindV2,
-    ResolvedMetaV2, ResolvedPresentationKindV2, ResolvedPresentationV2, SemanticItemV2,
+    CompositionGraphCapabilityV2, CompositionInstanceV2, GraphDirectionV2, GraphReferenceRoleV2,
+    GraphWitnessBoundsV2, ResolvedCatalogItemV2, ResolvedCatalogPayloadV2, ResolvedCheckV2,
+    ResolvedCompositionBindingV2, ResolvedCompositionBodyV2, ResolvedCompositionGraphTargetV2,
+    ResolvedCompositionProducerV2, ResolvedCompositionV2, ResolvedDeclarationV2,
+    ResolvedExplainTargetV2, ResolvedGraphQueryV2, ResolvedGraphReferenceV2, ResolvedGraphTargetV2,
+    ResolvedGraphUseV2, ResolvedMetaKindV2, ResolvedMetaV2, ResolvedPresentationKindV2,
+    ResolvedPresentationV2, SemanticItemV2,
 };
 pub use names::{
     ResolvedBindingKindV2, ResolvedCatalogReferenceV2, ResolvedCompositionSourceIdV2,

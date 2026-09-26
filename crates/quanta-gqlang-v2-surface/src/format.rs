@@ -13,6 +13,11 @@
 //!   fixed point, because re-parsing canonical text yields the same structure
 //!   which renders to the same text.
 //!
+//! These reparse guarantees require the generated text to fit the chosen parse
+//! budget. Canonical direction keywords and string escapes can enlarge output.
+//! The infallible HIR renderers do not enforce that resource boundary; source
+//! formatting through `format_source_document_with_parse_budget_v2` does.
+//!
 //! For parser-produced HIR the renderer is structure-faithful: it emits exactly
 //! the clauses/forms the parser accepts, never a lossy `#[unformatted]` marker,
 //! and never invents clauses absent from the HIR. Public builders can construct

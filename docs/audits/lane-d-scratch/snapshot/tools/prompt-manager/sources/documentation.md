@@ -1,0 +1,7 @@
+# Documentation authority
+
+- Describe current shipped behavior from source and current tests. Keep planned, historical, and qualified states distinct.
+- Do not turn a plan, receipt, focused test, or stale command output into a repository-wide completion claim.
+- Keep runtime availability and backend materialization claims out of this frontend repository.
+- Update the narrow canonical document for the changed contract; do not synchronize unrelated historical plan packets.
+- `AGENTS.md`, `CLAUDE.md`, `.cursor/rules/*.mdc`, and `.claude/rules/*.md` are generated. Edit `tools/prompt-manager/sources/` or `tools/prompt-manager/targets.json`, then run `just pm-sync` and `just pm-check`.

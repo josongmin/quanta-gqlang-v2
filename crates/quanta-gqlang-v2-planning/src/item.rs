@@ -124,6 +124,26 @@ impl CatalogDeclarationKindV2 {
 }
 
 impl NoPlanReasonV2 {
+    /// Full stable diagnostic code, including the exact catalog payload.
+    #[must_use]
+    pub const fn full_code(self) -> &'static str {
+        match self {
+            Self::CatalogDeclaration { kind } => match kind {
+                CatalogDeclarationKindV2::View => "planning.no_plan.catalog_declaration.view",
+                CatalogDeclarationKindV2::Model => "planning.no_plan.catalog_declaration.model",
+                CatalogDeclarationKindV2::Pack => "planning.no_plan.catalog_declaration.pack",
+                CatalogDeclarationKindV2::Profile => "planning.no_plan.catalog_declaration.profile",
+                CatalogDeclarationKindV2::Gate => "planning.no_plan.catalog_declaration.gate",
+                CatalogDeclarationKindV2::RuleBinding => {
+                    "planning.no_plan.catalog_declaration.rule_binding"
+                }
+            },
+            Self::ValueDeclaration => "planning.no_plan.value_declaration",
+            Self::MetaActivation => "planning.no_plan.meta_activation",
+            Self::EmptyRuleProgram => "planning.no_plan.empty_rule_program",
+        }
+    }
+
     /// The stable reason spelling (without the `planning.no_plan.` prefix).
     #[must_use]
     pub const fn code(self) -> &'static str {

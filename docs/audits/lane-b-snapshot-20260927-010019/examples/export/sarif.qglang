@@ -1,0 +1,1 @@
+export source=result.latest | kind=sarif | profile=strict

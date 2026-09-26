@@ -31,7 +31,8 @@ pub use compile::{
     AnalysisDocumentV2, AnalysisItemV2, AnalysisStatusV2, CompiledDocumentV2, CompiledItemV2,
     CompiledRuleProgramV2, CompiledSourceDocumentV3, FrontendSourceRootClassificationErrorV3,
     FrontendSourceRootFamilyV3, PlannedItemV2, RuleProgramMemberV2, UnresolvedAnalysisFactV2,
-    OPEN_AUTHORITY_INCOMPLETE_CODE, PARSE_BUDGET_PROJECTION_FAILED_CODE,
+    ANALYSIS_DIAGNOSTIC_LIMIT_CODE, OPEN_AUTHORITY_INCOMPLETE_CODE,
+    PARSE_BUDGET_PROJECTION_FAILED_CODE,
 };
 pub use diagnostic::{
     algebra_code, diagnostic_sort_key, logic_code, no_plan_code, planning_code,

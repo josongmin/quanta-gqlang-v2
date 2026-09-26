@@ -162,12 +162,13 @@ pub fn format_source_document_with_parse_budget_v2(
         .map(SurfaceItemV1::into_program_item)
         .collect::<Vec<_>>();
     let rendered = format_document(&items);
-    parser::parse_document_items_with_budget(&rendered, &HirBuilderV1::new(), budget)
-        .map_err(|mut error| {
+    parser::parse_document_items_with_budget(&rendered, &HirBuilderV1::new(), budget).map_err(
+        |mut error| {
             error.span = quanta_gqlang_v2_hir::SpanV1::new(0, source.len());
             error.message = format!("canonical output: {}", error.message);
             SurfaceDiagnosticV2::from_parse(source_id, error)
-        })?;
+        },
+    )?;
     Ok(rendered)
 }
 

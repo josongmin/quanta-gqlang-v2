@@ -168,6 +168,7 @@ Acceptance and final behavior:
   pins. File content is checked by parse/format/witness rails, not this path hash.
   Discovery no longer flattens entry errors or uses lossy path conversion; type
   errors and symlinks fail closed instead of following an unbounded directory cycle.
+
 - All four deep formatter parents share the existing bounded process helper:
   null stdin, concurrent stdout/stderr drains and a 10-second watchdog. Each child
   emits its exact named completion line only after its assertions and worker join.
@@ -224,3 +225,24 @@ fixture or signature assertions. This narrow CI fix is in
 `sema/tests/v3_authority_builder.rs`; the original frozen failure log/receipt remain
 `frozen-ci-first.log` and `frozen-ci-first-result.json`. The final source is copied
 and verified again before rerunning the complete gate.
+
+## 9. Canonical example-content identity (2026-09-27)
+
+The path pin above did not protect a surviving valid-content replacement: changing
+`examples/gate/release_gate.qglang` from GATE to `show capabilities` kept both the
+surface corpus round-trip and CLI shipped-example rails green. The index still
+listed the path under Declaration roots. Conformance compiles only four selected
+example files and does not select this GATE example.
+
+The corpus rail now also pins a domain-separated SHA-256 of the ordered pairs
+`(path, canonical_source)`, each component framed by a u64 little-endian UTF-8
+byte length. The scalar constant is independent of discovery and the maintained
+index; it does not duplicate their path list. It intentionally ignores source
+comments/whitespace and binds every reviewed example's parsed canonical
+content. An isolated valid wrong-family replacement failed by the final digest
+assertion; a comment-only edit still passed. The full digest was independently
+recomputed from the shipped CLI output for all 18 examples.
+
+This is a syntax/corpus-identity guarantee. Only the four selected conformance
+examples carry the separate closed-authority compilation claim; no runtime or
+provider behavior is inferred from the new pin.

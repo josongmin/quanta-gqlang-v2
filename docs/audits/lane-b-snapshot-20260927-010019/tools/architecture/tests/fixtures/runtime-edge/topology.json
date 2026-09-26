@@ -1,0 +1,4 @@
+{
+  "base": "final",
+  "runtime_edge": ["quanta-gqlang-v2-cli", "quanta-runtime"]
+}

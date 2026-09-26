@@ -182,6 +182,7 @@ PINNED_ALLOWLIST: Tuple[str, ...] = (
     "PlannedItemV2",
     "RuleProgramMemberV2",
     "UnresolvedAnalysisFactV2",
+    "ANALYSIS_DIAGNOSTIC_LIMIT_CODE",
     "OPEN_AUTHORITY_INCOMPLETE_CODE",
     "NoPlanReasonV2",
     "SemanticPlanV2",

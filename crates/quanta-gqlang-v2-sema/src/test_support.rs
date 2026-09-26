@@ -4249,6 +4249,10 @@ pub const REFERENCE_COMPOSITION_RULE_V2: &str = "rule1";
 pub enum ReferenceCompositionBodyV2 {
     /// A relational working-set body over the ordered LET producers.
     Relational,
+    /// A relational body whose pure filter preserves its input output contract.
+    RelationalFilter,
+    /// Same relation shape with a different pure predicate.
+    RelationalFilterFalse,
     /// A FIND body.
     Graph,
     /// A CHECK body.
@@ -4409,6 +4413,31 @@ fn reference_composition_hir(
                 SpanV1::new(0, 247),
             )
         }
+        ReferenceCompositionBodyV2::RelationalFilter
+        | ReferenceCompositionBodyV2::RelationalFilterFalse => {
+            let sampled = composition_sample_producer(builder, "sampled", 4, 14, "auth", 2);
+            let scan = builder.relation_source(
+                "sampled",
+                SpanV1::new(125, 132),
+                None,
+                SpanV1::new(125, 132),
+            );
+            let truth = body == ReferenceCompositionBodyV2::RelationalFilter;
+            let end = if truth { 144 } else { 145 };
+            let predicate = builder.bool_value(
+                builder.bool_lit(truth, SpanV1::new(140, end)),
+                SpanV1::new(140, end),
+            );
+            let filtered = builder.relation_filter(scan, predicate, SpanV1::new(125, end));
+            let query = builder.query(filtered, None, SpanV1::new(120, end));
+            builder.composition(
+                vec![sampled],
+                "sampled",
+                SpanV1::new(240, 247),
+                CompositionBodyV1::Query(Box::new(query)),
+                SpanV1::new(0, 247),
+            )
+        }
         ReferenceCompositionBodyV2::Graph => {
             let paths = composition_find_producer(
                 builder,
@@ -4495,7 +4524,12 @@ fn composition_authority_v2(
     let with_rule = body == ReferenceCompositionBodyV2::Check;
     graph_authority_with_graph_inputs_v2(with_rule, budget, |host, _location| {
         let mut admissions: Vec<(&str, GraphReferenceKindV2, Option<&str>)> = Vec::new();
-        if body != ReferenceCompositionBodyV2::Relational {
+        if !matches!(
+            body,
+            ReferenceCompositionBodyV2::Relational
+                | ReferenceCompositionBodyV2::RelationalFilter
+                | ReferenceCompositionBodyV2::RelationalFilterFalse
+        ) {
             admissions.push((
                 REFERENCE_COMPOSITION_SOURCE_SELECTOR_V2,
                 GraphReferenceKindV2::Entity,

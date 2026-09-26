@@ -1,0 +1,2 @@
+accept|query
+from users u | where u.active = true | project u.id, u.name

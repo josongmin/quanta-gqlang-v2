@@ -20,6 +20,89 @@ use std::path::{Path, PathBuf};
 
 use support::{cli_stderr_v1, cli_stdout_v1, run_cli_argv_v1};
 
+struct FormatFixture(PathBuf);
+
+impl FormatFixture {
+    fn new(name: &str, bytes: &[u8]) -> Self {
+        let path =
+            std::env::temp_dir().join(format!("qglang-fmt-{}-{name}.qglang", std::process::id()));
+        std::fs::write(&path, bytes).expect("write format fixture");
+        Self(path)
+    }
+
+    fn format(&self) -> std::process::Output {
+        run_cli_argv_v1(&[
+            "fmt",
+            "--file",
+            self.0.to_str().expect("UTF-8 fixture path"),
+        ])
+    }
+}
+
+impl Drop for FormatFixture {
+    fn drop(&mut self) {
+        let _removed = std::fs::remove_file(&self.0);
+    }
+}
+
+#[test]
+fn cli_preserves_explicit_reserved_alias() {
+    let first = run_cli_argv_v1(&["fmt", "from t as where"]);
+    assert_eq!(first.status.code(), Some(0));
+    assert!(first.stderr.is_empty());
+    assert_eq!(cli_stdout_v1(&first), "from t as where\n");
+    let second = run_cli_argv_v1(&["fmt", &cli_stdout_v1(&first)]);
+    assert_eq!(second.status.code(), Some(0));
+    assert!(second.stderr.is_empty());
+    assert_eq!(second.stdout, first.stdout);
+}
+
+#[test]
+fn cli_rejects_output_token_and_byte_overflow_before_writing_stdout() {
+    let keys = vec!["a"; 1_024].join(", ");
+    let token_source = format!("from t{}", format!(" | order by {keys}").repeat(44));
+    let byte_source = format!("let x = \"{}\"", "\n".repeat(600_000));
+    for (name, source, expected_message, expected_code) in [
+        (
+            "tokens",
+            token_source,
+            "canonical output: tokens budget exhausted: limit 131072, observed 131073",
+            "surface.resource_exhausted",
+        ),
+        (
+            "bytes",
+            byte_source,
+            "canonical output exceeds the frontend budget's max_source_bytes",
+            "frontend.resource_limit_exceeded",
+        ),
+    ] {
+        let output = FormatFixture::new(name, source.as_bytes()).format();
+        assert_eq!(output.status.code(), Some(1));
+        assert!(
+            output.stdout.is_empty(),
+            "failed formatting must not emit a success artifact"
+        );
+        assert_eq!(cli_stderr_v1(&output), format!(
+            "cli.error.class=command\nanalysis.status=error\nanalysis.diagnostic_count=1\ndiagnostic[0].stage=resource\ndiagnostic[0].code={expected_code}\ndiagnostic[0].severity=error\ndiagnostic[0].source_id=0\ndiagnostic[0].span=0..{}\ndiagnostic[0].message={expected_message}\n", source.len()
+        ));
+    }
+}
+
+#[test]
+fn cli_exact_source_byte_cap_is_a_refeedable_fixed_point() {
+    let cap = 1_048_576;
+    let canonical = format!("let x = \"{}\"", "x".repeat(cap - 10));
+    assert_eq!(canonical.len(), cap);
+    let first = FormatFixture::new("exact-bytes", canonical.as_bytes()).format();
+    assert_eq!(first.status.code(), Some(0));
+    assert!(first.stderr.is_empty());
+    assert_eq!(first.stdout, canonical.as_bytes());
+    let second = FormatFixture::new("exact-bytes-refeed", &first.stdout).format();
+    assert_eq!(second.status.code(), Some(0));
+    assert!(second.stderr.is_empty());
+    assert_eq!(second.stdout, first.stdout);
+}
+
 fn shipped_examples_v1() -> Vec<PathBuf> {
     let repo_root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()

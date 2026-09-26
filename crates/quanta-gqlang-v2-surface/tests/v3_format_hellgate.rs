@@ -35,6 +35,35 @@ fn same_structure(a: &ProgramItemHirV1, b: &ProgramItemHirV1) -> bool {
 }
 
 #[test]
+fn explicit_reserved_aliases_survive_every_relation_container() {
+    for alias in [
+        "from", "where", "project", "join", "on", "group", "order", "by", "as", "and", "or", "not",
+        "asc", "desc", "let", "rule", "with", "if", "exists", "forall", "in",
+    ] {
+        for source in [
+            format!("from t as {alias}"),
+            format!("from t | join u as {alias} on true"),
+            format!("from t | cross join u as {alias}"),
+            format!("from t | where exists (from u as {alias})"),
+            format!("view v | select=from t as {alias}"),
+            format!("let q = from t as {alias} from q with q"),
+            format!("let q = from t from q as {alias} with q"),
+        ] {
+            let item = parse(&source);
+            let rendered = format_item(&item);
+            assert_eq!(rendered, source);
+            assert_eq!(
+                try_format_item(&item).expect("accepted alias is representable"),
+                source
+            );
+            assert!(same_structure(&item, &parse(&rendered)));
+        }
+    }
+    // Keep the existing canonical spelling for ordinary aliases.
+    assert_eq!(format_item(&parse("from t as ordinary")), "from t ordinary");
+}
+
+#[test]
 fn deep_shape_formatter_child() {
     if std::env::var_os("QGLANG_DEEP_SHAPE_FORMAT_CHILD").is_none() {
         return;

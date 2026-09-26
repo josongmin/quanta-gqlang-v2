@@ -39,7 +39,8 @@ pub use quanta_gqlang_v2_pipeline::{
     ExecutionRelationAuthorityV3, ExecutionRelationV3, ExecutionRelationalOperatorV3,
     ExecutionSampleModeV3, ExecutionScalarTypeV3, ExecutionSchemaV3, ExecutionSortDirectionV3,
     ExecutionSourceKindV3, ExecutionSourceV3, ExecutionUnionVariantV3, ExecutionValueTypeV3,
-    PlannedItemV2, RuleProgramMemberV2, UnresolvedAnalysisFactV2, OPEN_AUTHORITY_INCOMPLETE_CODE,
+    PlannedItemV2, RuleProgramMemberV2, UnresolvedAnalysisFactV2, ANALYSIS_DIAGNOSTIC_LIMIT_CODE,
+    OPEN_AUTHORITY_INCOMPLETE_CODE,
 };
 
 // ---- planning DTOs reachable from the assembled documents ------------------

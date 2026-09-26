@@ -10,6 +10,7 @@ use quanta_gqlang_v2_hir::{
     EvidenceModeV1, ExportFormatV1, GraphQueryKindV1, SampleModeV1, ShowCategoryV1, TruthModeV1,
 };
 use quanta_gqlang_v2_modules::CatalogAssetIdV2;
+use std::sync::Arc;
 
 /// Semantic role of one resolved FIND reference.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -965,9 +966,24 @@ impl ResolvedCompositionBindingV2 {
     }
 }
 
+/// Opaque identity of one sealed composition transaction.
+/// This process-local seal binds lowerings to this exact resolved instance;
+/// source-qualified IDs alone may be reused by another document transaction.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CompositionInstanceV2(Arc<()>);
+
+impl CompositionInstanceV2 {
+    /// Whether two references originate from the same resolved composition.
+    #[must_use]
+    pub fn same_instance(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
 /// Typed composition item retaining sequential producers and exact body.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolvedCompositionV2 {
+    instance: CompositionInstanceV2,
     item_id: SemanticItemIdV2,
     location: CheckedLocatedSpanV2,
     bindings: Vec<ResolvedCompositionBindingV2>,
@@ -1019,6 +1035,7 @@ impl ResolvedCompositionV2 {
             );
         }
         Ok(Self {
+            instance: CompositionInstanceV2(Arc::new(())),
             item_id,
             location,
             bindings,
@@ -1031,6 +1048,11 @@ impl ResolvedCompositionV2 {
     #[must_use]
     pub const fn item_id(&self) -> SemanticItemIdV2 {
         self.item_id
+    }
+    /// Opaque identity of this resolved composition transaction.
+    #[must_use]
+    pub const fn instance(&self) -> &CompositionInstanceV2 {
+        &self.instance
     }
     /// Checked authored composition location.
     #[must_use]

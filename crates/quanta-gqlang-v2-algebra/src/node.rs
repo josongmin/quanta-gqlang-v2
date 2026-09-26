@@ -1,9 +1,9 @@
 //! Opaque algebra nodes backed by sealed semantic contracts.
 
 use quanta_gqlang_v2_sema::{
-    CheckedLocatedSpanV2, JoinModeV2, OrderKeyContractV2, OutputColumnOriginV2, OutputProvenanceV2,
-    PartitionInputBindingV2, RelationOutputContractV2, ResolvedScanSourceV2, SemanticItemIdV2,
-    TypedBoolExprV2, TypedCorrelationEdgeV2, TypedExprV2,
+    CheckedLocatedSpanV2, CompositionInstanceV2, JoinModeV2, OrderKeyContractV2,
+    OutputColumnOriginV2, OutputProvenanceV2, PartitionInputBindingV2, RelationOutputContractV2,
+    ResolvedScanSourceV2, SemanticItemIdV2, TypedBoolExprV2, TypedCorrelationEdgeV2, TypedExprV2,
 };
 use quanta_gqlang_v2_types::{AggregationClassV1, CardinalityV1, SourceQualifiedNodeIdV2};
 
@@ -121,6 +121,7 @@ pub struct CheckedAlgebraNodeV2 {
     location: CheckedLocatedSpanV2,
     output: RelationOutputContractV2,
     op: AlgebraOpV2,
+    composition_origin: Option<(CompositionInstanceV2, SourceQualifiedNodeIdV2)>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -195,7 +196,31 @@ impl CheckedAlgebraNodeV2 {
             location,
             output,
             op,
+            composition_origin: None,
         })
+    }
+
+    /// Bind this lowered nested root to its owner and original semantic root.
+    /// Canonical rewrites may change `stage_key`, so it cannot serve as this proof.
+    pub(crate) fn with_composition_origin(
+        mut self,
+        instance: CompositionInstanceV2,
+        root_key: SourceQualifiedNodeIdV2,
+    ) -> Self {
+        self.composition_origin = Some((instance, root_key));
+        self
+    }
+
+    /// Whether this algebra root came from this exact composition and body root.
+    #[must_use]
+    pub fn matches_composition_origin(
+        &self,
+        instance: &CompositionInstanceV2,
+        root_key: SourceQualifiedNodeIdV2,
+    ) -> bool {
+        self.composition_origin
+            .as_ref()
+            .is_some_and(|(minted, key)| minted.same_instance(instance) && *key == root_key)
     }
 
     /// Closed operator family.

@@ -229,25 +229,66 @@ impl UnboundedWitnessReasonV1 {
 }
 
 impl LogicDiagnosticV1 {
+    /// Full stable code without allocation, shared with pipeline projections.
+    #[must_use]
+    pub const fn code_str(&self) -> &'static str {
+        match self {
+            Self::NegationCycle { .. } => "logic.negation_cycle",
+            Self::RecursiveAggregate { .. } => "logic.recursive_aggregate",
+            Self::UnboundedWitness { reason, .. } => match reason {
+                UnboundedWitnessReasonV1::MissingMaxWitnesses => {
+                    "logic.unbounded_witness.missing_max_witnesses"
+                }
+                UnboundedWitnessReasonV1::MissingPathLengthBound => {
+                    "logic.unbounded_witness.missing_path_length_bound"
+                }
+                UnboundedWitnessReasonV1::ZeroMaxWitnesses => {
+                    "logic.unbounded_witness.zero_max_witnesses"
+                }
+                UnboundedWitnessReasonV1::ZeroPathLengthBound => {
+                    "logic.unbounded_witness.zero_path_length_bound"
+                }
+                UnboundedWitnessReasonV1::MaxWitnessesOverBudget => {
+                    "logic.unbounded_witness.max_witnesses_over_budget"
+                }
+                UnboundedWitnessReasonV1::PathLengthBoundOverBudget => {
+                    "logic.unbounded_witness.path_length_bound_over_budget"
+                }
+            },
+            Self::GraphEndpointMissing { .. } => "logic.graph_endpoint_missing",
+            Self::GraphEndpointUnexpected { .. } => "logic.graph_endpoint_unexpected",
+            Self::RuleProgramInvalid { reason, .. } => match reason {
+                RuleProgramInvalidReasonV1::MissingMember => "logic.rule_program.missing_member",
+                RuleProgramInvalidReasonV1::DuplicateMember => {
+                    "logic.rule_program.duplicate_member"
+                }
+                RuleProgramInvalidReasonV1::NonLocalTarget => "logic.rule_program.nonlocal_target",
+                RuleProgramInvalidReasonV1::WrongCallId => "logic.rule_program.wrong_call_id",
+                RuleProgramInvalidReasonV1::TargetTransplanted => {
+                    "logic.rule_program.target_transplanted"
+                }
+                RuleProgramInvalidReasonV1::PolarityFlip => "logic.rule_program.polarity_flip",
+                RuleProgramInvalidReasonV1::ForeignLocation => {
+                    "logic.rule_program.foreign_location"
+                }
+                RuleProgramInvalidReasonV1::MembershipMismatch => {
+                    "logic.rule_program.membership_mismatch"
+                }
+            },
+            Self::RuleGraphBudgetExceeded { dimension, .. } => match dimension {
+                RuleGraphBudgetDimensionV1::Rules => "logic.rule_graph_budget.rules",
+                RuleGraphBudgetDimensionV1::Nodes => "logic.rule_graph_budget.nodes",
+                RuleGraphBudgetDimensionV1::Edges => "logic.rule_graph_budget.edges",
+                RuleGraphBudgetDimensionV1::Steps => "logic.rule_graph_budget.steps",
+            },
+        }
+    }
+
     /// The stable diagnostic code, shared by CLI/LSP/tests. Codes are
     /// dot-namespaced under `logic.` and never change spelling.
     #[must_use]
     pub fn code(&self) -> String {
-        match self {
-            Self::NegationCycle { .. } => "logic.negation_cycle".to_owned(),
-            Self::RecursiveAggregate { .. } => "logic.recursive_aggregate".to_owned(),
-            Self::UnboundedWitness { reason, .. } => {
-                format!("logic.unbounded_witness.{}", reason.code())
-            }
-            Self::GraphEndpointMissing { .. } => "logic.graph_endpoint_missing".to_owned(),
-            Self::GraphEndpointUnexpected { .. } => "logic.graph_endpoint_unexpected".to_owned(),
-            Self::RuleProgramInvalid { reason, .. } => {
-                format!("logic.rule_program.{}", reason.code())
-            }
-            Self::RuleGraphBudgetExceeded { dimension, .. } => {
-                format!("logic.rule_graph_budget.{}", dimension.code())
-            }
-        }
+        self.code_str().to_owned()
     }
 
     /// The registry-proven location the diagnostic points at.

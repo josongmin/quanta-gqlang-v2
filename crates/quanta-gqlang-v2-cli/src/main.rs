@@ -107,7 +107,14 @@ fn run_cli() -> u8 {
         },
         CliCommandKindV2::Fmt => match commands::v3_format::run(&invocation.input) {
             Ok(output) => {
-                println!("{output}");
+                // The transport newline is also a source byte on re-entry.
+                // Preserve it where it fits; an exact-cap document must remain
+                // feedable through the same bounded file front door.
+                if output.len() < usize::try_from(budget.max_source_bytes()).unwrap_or(usize::MAX) {
+                    println!("{output}");
+                } else {
+                    print!("{output}");
+                }
                 0
             }
             Err(error) => {

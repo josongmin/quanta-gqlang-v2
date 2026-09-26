@@ -1,0 +1,12 @@
+ M crates/quanta-gqlang-v2-cli/src/main.rs
+ M crates/quanta-gqlang-v2-cli/tests/v3_cli_fmt_idempotence.rs
+ M crates/quanta-gqlang-v2-pipeline/src/compile.rs
+ M crates/quanta-gqlang-v2-surface/src/format.rs
+ M crates/quanta-gqlang-v2-surface/src/lib.rs
+ M crates/quanta-gqlang-v2-surface/tests/v3_format_hellgate.rs
+ M crates/quanta-gqlang-v2-surface/tests/v3_surface_budget.rs
+ M docs/language/README.md
+ M docs/language/test_hellgate_ledger.md
+?? crates/quanta-gqlang-v2-pipeline/tests/v3_format_budget.rs
+?? docs/audits/
+?? docs/bugbash/sep-26-test-audit/P3-format-closure-2026-09-27.md

@@ -64,6 +64,11 @@ Interpretation rules:
    stack-safe full-tree comparison ignores ids, spans, and semantic-neutral
    parentheses but rejects every other parse/format structural drift. It does
    not replace HIR integrity checks or downstream semantic validation
+   The bounded source-format APIs also admit canonical output under the same
+   parse budget; the public frontend checks its output source-byte cap too.
+   Canonical-output rejection retains the original source identity and whole
+   document span. CLI omits its transport newline only when canonical text
+   exactly fills the source-byte cap, keeping successful output re-feedable
 8. direct Logic callers can tune `max_rule_program_rules` independently of
    graph nodes, edges, and steps before sealing authority; raw programs over
    the rule or literal cap reject before graph construction

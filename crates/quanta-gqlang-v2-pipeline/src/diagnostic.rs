@@ -15,27 +15,15 @@
 //! 3. the pipeline's own exact-key assembly codes
 //!    ([`DocumentAssemblyCodeV2`]) and open-analysis codes.
 //!
-//! ## Why the owner codes are bridged by explicit matches
+//! ## Owner code authority
 //!
-//! [`FrontendDiagnosticV2::new`] requires a `&'static str` code, while the
-//! algebra/logic/planning owners build theirs by concatenating a stable prefix
-//! with a stable suffix. The pipeline therefore names each owner code exactly
-//! once in [`algebra_code`], [`logic_code`], and [`planning_code`]. Every match
-//! is exhaustive over the owner's public enum, so a new owner variant stops the
-//! pipeline from compiling instead of silently degrading its code; the
-//! document-assembly suites additionally assert the bridged string equals the
-//! owner's own `code()` output for every reachable variant.
+//! [`FrontendDiagnosticV2::new`] requires a `&'static str` code. Each owner
+//! exposes that full stable code directly; pipeline bridge functions delegate
+//! to it. The independent literal tests pin the external vocabulary.
 
 use quanta_gqlang_v2_algebra::{AlgebraDiagnosticV2, AlgebraFailureKindV2};
-use quanta_gqlang_v2_logic::{
-    LogicDiagnosticV1, RuleGraphBudgetDimensionV1, RuleProgramInvalidReasonV1,
-    UnboundedWitnessReasonV1,
-};
-use quanta_gqlang_v2_planning::{
-    CatalogDeclarationKindV2, CheckInvalidReasonV2, CompositionInvalidReasonV2,
-    InputDocumentMismatchReasonV2, NoPlanReasonV2, PlanningDiagnosticV1,
-    PresentationInvalidReasonV2,
-};
+use quanta_gqlang_v2_logic::LogicDiagnosticV1;
+use quanta_gqlang_v2_planning::{NoPlanReasonV2, PlanningDiagnosticV1};
 use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2,
     FrontendStageV2, FrontendTransactionErrorV2, LocatedSpanV2, SourceIdV2, SpanV1,
@@ -181,172 +169,25 @@ pub(crate) fn canonicalize_diagnostics(
 /// The full stable code of one algebra failure kind.
 #[must_use]
 pub fn algebra_code(kind: AlgebraFailureKindV2) -> &'static str {
-    match kind {
-        AlgebraFailureKindV2::NonRelationItem => "algebra.non_relation_item",
-        AlgebraFailureKindV2::MissingExpression => "algebra.missing_expression",
-        AlgebraFailureKindV2::ForeignSemanticFact => "algebra.foreign_semantic_fact",
-        AlgebraFailureKindV2::InvalidStageContract => "algebra.invalid_stage_contract",
-        AlgebraFailureKindV2::AggregateWithoutGroup => "algebra.aggregate_without_group",
-        AlgebraFailureKindV2::NestedAggregate => "algebra.nested_aggregate",
-        AlgebraFailureKindV2::MissingNestedRelation => "algebra.missing_nested_relation",
-        AlgebraFailureKindV2::DuplicateCorrelationReference => {
-            "algebra.duplicate_correlation_reference"
-        }
-        AlgebraFailureKindV2::TraversalBudgetExceeded => "algebra.traversal_budget_exceeded",
-    }
+    kind.full_code()
 }
 
 /// The full stable code of one logic diagnostic.
 #[must_use]
 pub fn logic_code(error: &LogicDiagnosticV1) -> &'static str {
-    match error {
-        LogicDiagnosticV1::NegationCycle { .. } => "logic.negation_cycle",
-        LogicDiagnosticV1::RecursiveAggregate { .. } => "logic.recursive_aggregate",
-        LogicDiagnosticV1::UnboundedWitness { reason, .. } => match reason {
-            UnboundedWitnessReasonV1::MissingMaxWitnesses => {
-                "logic.unbounded_witness.missing_max_witnesses"
-            }
-            UnboundedWitnessReasonV1::MissingPathLengthBound => {
-                "logic.unbounded_witness.missing_path_length_bound"
-            }
-            UnboundedWitnessReasonV1::ZeroMaxWitnesses => {
-                "logic.unbounded_witness.zero_max_witnesses"
-            }
-            UnboundedWitnessReasonV1::ZeroPathLengthBound => {
-                "logic.unbounded_witness.zero_path_length_bound"
-            }
-            UnboundedWitnessReasonV1::MaxWitnessesOverBudget => {
-                "logic.unbounded_witness.max_witnesses_over_budget"
-            }
-            UnboundedWitnessReasonV1::PathLengthBoundOverBudget => {
-                "logic.unbounded_witness.path_length_bound_over_budget"
-            }
-        },
-        LogicDiagnosticV1::GraphEndpointMissing { .. } => "logic.graph_endpoint_missing",
-        LogicDiagnosticV1::GraphEndpointUnexpected { .. } => "logic.graph_endpoint_unexpected",
-        LogicDiagnosticV1::RuleProgramInvalid { reason, .. } => match reason {
-            RuleProgramInvalidReasonV1::MissingMember => "logic.rule_program.missing_member",
-            RuleProgramInvalidReasonV1::DuplicateMember => "logic.rule_program.duplicate_member",
-            RuleProgramInvalidReasonV1::NonLocalTarget => "logic.rule_program.nonlocal_target",
-            RuleProgramInvalidReasonV1::WrongCallId => "logic.rule_program.wrong_call_id",
-            RuleProgramInvalidReasonV1::TargetTransplanted => {
-                "logic.rule_program.target_transplanted"
-            }
-            RuleProgramInvalidReasonV1::PolarityFlip => "logic.rule_program.polarity_flip",
-            RuleProgramInvalidReasonV1::ForeignLocation => "logic.rule_program.foreign_location",
-            RuleProgramInvalidReasonV1::MembershipMismatch => {
-                "logic.rule_program.membership_mismatch"
-            }
-        },
-        LogicDiagnosticV1::RuleGraphBudgetExceeded { dimension, .. } => match dimension {
-            RuleGraphBudgetDimensionV1::Rules => "logic.rule_graph_budget.rules",
-            RuleGraphBudgetDimensionV1::Nodes => "logic.rule_graph_budget.nodes",
-            RuleGraphBudgetDimensionV1::Edges => "logic.rule_graph_budget.edges",
-            RuleGraphBudgetDimensionV1::Steps => "logic.rule_graph_budget.steps",
-        },
-    }
+    error.code_str()
 }
 
 /// The full stable code of one planning diagnostic.
-///
-/// The two relay variants surface the originating logic code verbatim; every
-/// other code is `planning.`-namespaced.
 #[must_use]
 pub fn planning_code(error: &PlanningDiagnosticV1) -> &'static str {
-    match error {
-        PlanningDiagnosticV1::IllegalGraphQuery { logic }
-        | PlanningDiagnosticV1::IllegalRuleProgram { logic } => logic_code(logic),
-        PlanningDiagnosticV1::SemanticStepBudgetExceeded { .. } => {
-            "planning.budget.semantic_steps_exceeded"
-        }
-        PlanningDiagnosticV1::InputDocumentMismatch { reason, .. } => match reason {
-            InputDocumentMismatchReasonV2::Absent => "planning.input_document_mismatch.absent",
-            InputDocumentMismatchReasonV2::WrongKind => {
-                "planning.input_document_mismatch.wrong_kind"
-            }
-            InputDocumentMismatchReasonV2::IdentityMismatch => {
-                "planning.input_document_mismatch.identity_mismatch"
-            }
-        },
-        PlanningDiagnosticV1::InvalidCheck { reason, .. } => match reason {
-            CheckInvalidReasonV2::NestedGraphIdentityMismatch => {
-                "planning.invalid_check.nested_graph_identity_mismatch"
-            }
-            CheckInvalidReasonV2::UnexpectedNestedGraph => {
-                "planning.invalid_check.unexpected_nested_graph"
-            }
-            CheckInvalidReasonV2::MissingNestedGraph => {
-                "planning.invalid_check.missing_nested_graph"
-            }
-            CheckInvalidReasonV2::SemanticConfirmInPatternMode => {
-                "planning.invalid_check.semantic_confirm_in_pattern_mode"
-            }
-            CheckInvalidReasonV2::MissingSemanticConfirm => {
-                "planning.invalid_check.missing_semantic_confirm"
-            }
-            CheckInvalidReasonV2::PatternInputInSemanticMode => {
-                "planning.invalid_check.pattern_input_in_semantic_mode"
-            }
-            CheckInvalidReasonV2::MissingHybridPatternInput => {
-                "planning.invalid_check.missing_hybrid_pattern_input"
-            }
-            CheckInvalidReasonV2::MissingHybridSemanticInput => {
-                "planning.invalid_check.missing_hybrid_semantic_input"
-            }
-        },
-        PlanningDiagnosticV1::InvalidPresentation { reason, .. } => match reason {
-            PresentationInvalidReasonV2::UnsupportedExplainEvidenceTruth => {
-                "planning.invalid_presentation.unsupported_explain_evidence_truth"
-            }
-        },
-        PlanningDiagnosticV1::InvalidComposition { reason, .. } => match reason {
-            CompositionInvalidReasonV2::EmptyProducers => {
-                "planning.invalid_composition.empty_producers"
-            }
-            CompositionInvalidReasonV2::ProducerOrdinalMismatch => {
-                "planning.invalid_composition.producer_ordinal_mismatch"
-            }
-            CompositionInvalidReasonV2::ProducerIdentityMismatch => {
-                "planning.invalid_composition.producer_identity_mismatch"
-            }
-            CompositionInvalidReasonV2::DuplicateProducer => {
-                "planning.invalid_composition.duplicate_producer"
-            }
-            CompositionInvalidReasonV2::WithTargetNotAProducer => {
-                "planning.invalid_composition.with_target_not_a_producer"
-            }
-            CompositionInvalidReasonV2::BodyIdentityMismatch => {
-                "planning.invalid_composition.body_identity_mismatch"
-            }
-            CompositionInvalidReasonV2::BodyKindMismatch => {
-                "planning.invalid_composition.body_kind_mismatch"
-            }
-        },
-        PlanningDiagnosticV1::NoPlan { reason, .. } => match reason.catalog_kind() {
-            Some(kind) => match kind {
-                CatalogDeclarationKindV2::View => "planning.no_plan.catalog_declaration.view",
-                CatalogDeclarationKindV2::Model => "planning.no_plan.catalog_declaration.model",
-                CatalogDeclarationKindV2::Pack => "planning.no_plan.catalog_declaration.pack",
-                CatalogDeclarationKindV2::Profile => "planning.no_plan.catalog_declaration.profile",
-                CatalogDeclarationKindV2::Gate => "planning.no_plan.catalog_declaration.gate",
-                CatalogDeclarationKindV2::RuleBinding => {
-                    "planning.no_plan.catalog_declaration.rule_binding"
-                }
-            },
-            None => no_plan_code(*reason),
-        },
-    }
+    error.code_str()
 }
 
-/// The full stable code of one non-plan reason.
+/// The full stable code of one non-plan reason, including its catalog kind.
 #[must_use]
 pub fn no_plan_code(reason: NoPlanReasonV2) -> &'static str {
-    match reason {
-        NoPlanReasonV2::CatalogDeclaration { kind: _ } => "planning.no_plan.catalog_declaration",
-        NoPlanReasonV2::ValueDeclaration => "planning.no_plan.value_declaration",
-        NoPlanReasonV2::MetaActivation => "planning.no_plan.meta_activation",
-        NoPlanReasonV2::EmptyRuleProgram => "planning.no_plan.empty_rule_program",
-    }
+    reason.full_code()
 }
 
 // ---------------------------------------------------------------------------
@@ -496,7 +337,14 @@ fn empty_blocked_failure() -> FrontendTransactionErrorV2 {
 )]
 mod tests {
     use super::*;
-    use quanta_gqlang_v2_logic::GraphEndpointRoleV1;
+    use quanta_gqlang_v2_logic::{
+        GraphEndpointRoleV1, RuleGraphBudgetDimensionV1, RuleProgramInvalidReasonV1,
+        UnboundedWitnessReasonV1,
+    };
+    use quanta_gqlang_v2_planning::{
+        CatalogDeclarationKindV2, CheckInvalidReasonV2, CompositionInvalidReasonV2,
+        InputDocumentMismatchReasonV2, PresentationInvalidReasonV2,
+    };
     use quanta_gqlang_v2_sema::GraphQueryKindV1;
 
     fn span() -> CheckedLocatedSpanV2 {
@@ -615,6 +463,7 @@ mod tests {
             ),
         ] {
             assert_eq!(algebra_code(kind), expected);
+            assert_eq!(kind.full_code(), expected);
         }
     }
 
@@ -768,6 +617,7 @@ mod tests {
                 span: span(),
             };
             assert_eq!(planning_code(&diagnostic), expected);
+            assert_eq!(diagnostic.code(), expected);
         }
         for (reason, expected) in [
             (
@@ -808,6 +658,7 @@ mod tests {
                 span: span(),
             };
             assert_eq!(planning_code(&diagnostic), expected);
+            assert_eq!(diagnostic.code(), expected);
         }
         for (reason, expected) in [
             (
@@ -844,6 +695,7 @@ mod tests {
                 span: span(),
             };
             assert_eq!(planning_code(&diagnostic), expected);
+            assert_eq!(diagnostic.code(), expected);
         }
         let presentation = PlanningDiagnosticV1::InvalidPresentation {
             reason: PresentationInvalidReasonV2::UnsupportedExplainEvidenceTruth,
@@ -853,6 +705,7 @@ mod tests {
             planning_code(&presentation),
             "planning.invalid_presentation.unsupported_explain_evidence_truth"
         );
+        assert_eq!(planning_code(&presentation), presentation.code());
         let budget = PlanningDiagnosticV1::SemanticStepBudgetExceeded {
             limit: 7,
             span: span(),
@@ -861,6 +714,7 @@ mod tests {
             planning_code(&budget),
             "planning.budget.semantic_steps_exceeded"
         );
+        assert_eq!(planning_code(&budget), budget.code());
 
         for (reason, expected) in [
             (
@@ -882,6 +736,7 @@ mod tests {
                 span: span(),
             };
             assert_eq!(planning_code(&diagnostic), expected);
+            assert_eq!(diagnostic.code(), expected);
         }
         for (kind, expected) in [
             (
@@ -910,12 +765,13 @@ mod tests {
             ),
         ] {
             let reason = NoPlanReasonV2::CatalogDeclaration { kind };
-            assert_eq!(no_plan_code(reason), "planning.no_plan.catalog_declaration");
+            assert_eq!(no_plan_code(reason), expected);
             let diagnostic = PlanningDiagnosticV1::NoPlan {
                 reason,
                 span: span(),
             };
             assert_eq!(planning_code(&diagnostic), expected);
+            assert_eq!(diagnostic.code(), expected);
         }
     }
 }

@@ -1,0 +1,446 @@
+#![expect(
+    clippy::panic,
+    clippy::unwrap_used,
+    reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
+)]
+
+use quanta_gqlang_v2_hir::{
+    check_document_v2, check_tree, ActivationV1, CatalogPayloadV1, CheckedHirDocumentOwnedV2,
+    ConfirmModeV1, DetectionModeV1, EmitModeV1, GraphConstraintsV1, GraphEndpointsV1,
+    GraphQueryKindV1, GraphRefV1, HirBuilderV1, HirDocumentV1, HirIntegrityErrorV1, HirRootRefV1,
+    LocatedSpanErrorV2, LocatedSpanV2, MetaKindV1, PresentationKindV1, ProgramItemHirV1,
+    ShowCategoryV1, SourceIdV2, SpanV1, UsePackActivationV1, UsePackHirV1, ViewBodyV1,
+};
+
+fn gref(name: &str, start: usize, end: usize) -> GraphRefV1 {
+    GraphRefV1 {
+        name: name.into(),
+        span: SpanV1::new(start, end),
+    }
+}
+
+#[test]
+fn document_integrity_rejects_duplicate_id_across_roots() {
+    let builder = HirBuilderV1::new();
+    let decl = ProgramItemHirV1::from(builder.decl(
+        "x",
+        SpanV1::new(4, 5),
+        builder.int("1", SpanV1::new(8, 9)),
+        SpanV1::new(0, 9),
+    ));
+    let document = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(3),
+        source_len: 9,
+        items: vec![decl.clone(), decl],
+    };
+    assert!(matches!(
+        check_document_v2(&document),
+        Err(HirIntegrityErrorV1::DuplicateNodeId { .. })
+    ));
+}
+
+#[test]
+fn document_integrity_rejects_out_of_bounds_root() {
+    let builder = HirBuilderV1::new();
+    let item = ProgramItemHirV1::from(builder.decl(
+        "x",
+        SpanV1::new(4, 5),
+        builder.int("1", SpanV1::new(8, 9)),
+        SpanV1::new(0, 10),
+    ));
+    let document = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(4),
+        source_len: 9,
+        items: vec![item],
+    };
+    assert!(matches!(
+        check_document_v2(&document),
+        Err(HirIntegrityErrorV1::SpanOutOfBounds { .. })
+    ));
+}
+
+#[test]
+fn document_integrity_accepts_valid_multi_root_with_one_authority() {
+    let builder = HirBuilderV1::new();
+    let first = ProgramItemHirV1::from(builder.decl(
+        "x",
+        SpanV1::new(4, 5),
+        builder.int("1", SpanV1::new(8, 9)),
+        SpanV1::new(0, 9),
+    ));
+    let second = ProgramItemHirV1::from(builder.decl(
+        "y",
+        SpanV1::new(14, 15),
+        builder.int("2", SpanV1::new(18, 19)),
+        SpanV1::new(10, 19),
+    ));
+    let document = HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(42),
+        source_len: 19,
+        items: vec![first, second],
+    };
+    let checked = check_document_v2(&document).unwrap();
+    assert_eq!(checked.document().source_id, SourceIdV2::from_raw(42));
+    assert_eq!(checked.document().source_len, 19);
+    assert_eq!(checked.node_count(), 4);
+
+    let owned = CheckedHirDocumentOwnedV2::try_new(document).unwrap();
+    assert_eq!(owned.node_count(), 4);
+    assert_eq!(owned.document().source_id, SourceIdV2::from_raw(42));
+    assert_eq!(owned.as_checked().node_count(), 4);
+}
+
+#[test]
+fn owned_document_integrity_proof_rejects_invalid_input_before_ownership() {
+    let builder = HirBuilderV1::new();
+    let item = ProgramItemHirV1::from(builder.decl(
+        "x",
+        SpanV1::new(4, 5),
+        builder.int("1", SpanV1::new(8, 9)),
+        SpanV1::new(0, 10),
+    ));
+    let error = CheckedHirDocumentOwnedV2::try_new(HirDocumentV1 {
+        source_id: SourceIdV2::from_raw(4),
+        source_len: 9,
+        items: vec![item],
+    })
+    .unwrap_err();
+    assert_eq!(error.code(), "hir.integrity.span_out_of_bounds");
+}
+
+#[test]
+fn located_span_rejects_wrong_source_and_out_of_range() {
+    let located = LocatedSpanV2 {
+        source_id: SourceIdV2::from_raw(2),
+        span: SpanV1::new(1, 3),
+    };
+    assert!(matches!(
+        located.validate(SourceIdV2::from_raw(1), 3),
+        Err(LocatedSpanErrorV2::WrongSource { expected, actual })
+            if expected == SourceIdV2::from_raw(1) && actual == SourceIdV2::from_raw(2)
+    ));
+
+    let out_of_range = LocatedSpanV2 {
+        source_id: SourceIdV2::from_raw(1),
+        span: SpanV1::new(1, 4),
+    };
+    assert!(matches!(
+        out_of_range.validate(SourceIdV2::from_raw(1), 3),
+        Err(LocatedSpanErrorV2::OutOfBounds { span, source_len })
+            if span == SpanV1::new(1, 4) && source_len == 3
+    ));
+}
+
+/// `id()` and `span()` must return the payload node's own id and span.
+#[test]
+fn id_and_span_accessors_report_the_carried_payload_for_every_variant() {
+    let b = HirBuilderV1::new();
+
+    // Query
+    let q = b.query(
+        b.relation_source("t", SpanV1::new(0, 1), None, SpanV1::new(0, 1)),
+        None,
+        SpanV1::new(0, 7),
+    );
+    let (qid, qspan) = (q.id, q.span);
+    let item = ProgramItemHirV1::from(q);
+    assert_eq!(item.id(), qid);
+    assert_eq!(item.span(), qspan);
+
+    // Decl
+    let d = b.decl(
+        "x",
+        SpanV1::new(0, 1),
+        b.int("1", SpanV1::new(4, 5)),
+        SpanV1::new(0, 5),
+    );
+    let (did, dspan) = (d.id, d.span);
+    let item = ProgramItemHirV1::from(d);
+    assert!(matches!(item, ProgramItemHirV1::Decl(_)));
+    assert_eq!(item.id(), did);
+    assert_eq!(item.span(), dspan);
+
+    // Rule
+    let r = b.rule(
+        "r",
+        SpanV1::new(0, 1),
+        b.symbol("h", SpanV1::new(5, 6)),
+        b.bool_literal(true, SpanV1::new(9, 13)),
+        SpanV1::new(0, 13),
+    );
+    let (rid, rspan) = (r.id, r.span);
+    let item = ProgramItemHirV1::from(r);
+    assert!(matches!(item, ProgramItemHirV1::Rule(_)));
+    assert_eq!(item.id(), rid);
+    assert_eq!(item.span(), rspan);
+
+    // GraphQuery
+    let g = b.graph_query(
+        GraphQueryKindV1::Slice,
+        GraphEndpointsV1 {
+            anchor: Some(gref("a", 5, 6)),
+            ..GraphEndpointsV1::default()
+        },
+        GraphConstraintsV1::default(),
+        SpanV1::new(0, 10),
+    );
+    let (gid, gspan) = (g.id, g.span);
+    let item = ProgramItemHirV1::from(g);
+    assert_eq!(item.id(), gid);
+    assert_eq!(item.span(), gspan);
+
+    // Legality
+    let l = b.legality(
+        gref("rules.x", 6, 13),
+        None,
+        None,
+        ConfirmModeV1::Prompt,
+        EmitModeV1::Findings,
+        DetectionModeV1::SemanticOnly,
+        SpanV1::new(0, 20),
+    );
+    let (lid, lspan) = (l.id, l.span);
+    let item = ProgramItemHirV1::from(l);
+    assert_eq!(item.id(), lid);
+    assert_eq!(item.span(), lspan);
+
+    // Presentation
+    let p = b.presentation(
+        PresentationKindV1::Show {
+            category: ShowCategoryV1::Views,
+        },
+        SpanV1::new(0, 9),
+    );
+    let (pid, pspan) = (p.id, p.span);
+    let item = ProgramItemHirV1::from(p);
+    assert_eq!(item.id(), pid);
+    assert_eq!(item.span(), pspan);
+
+    // CatalogDecl
+    let c = b.catalog_decl(
+        "v",
+        SpanV1::new(5, 6),
+        CatalogPayloadV1::View(ViewBodyV1::QueryRef(gref("base", 10, 14))),
+        SpanV1::new(0, 14),
+    );
+    let (cid, cspan) = (c.id, c.span);
+    let item = ProgramItemHirV1::from(c);
+    assert_eq!(item.id(), cid);
+    assert_eq!(item.span(), cspan);
+
+    // Composition
+    let producer = b.query(
+        b.relation_source("u", SpanV1::new(10, 11), None, SpanV1::new(10, 11)),
+        None,
+        SpanV1::new(10, 11),
+    );
+    let binding = b.composition_binding("c", SpanV1::new(4, 5), producer.into());
+    let body = b.query(
+        b.relation_source("rules", SpanV1::new(20, 25), None, SpanV1::new(20, 25)),
+        None,
+        SpanV1::new(20, 25),
+    );
+    let comp = b.composition(
+        vec![binding],
+        "c",
+        SpanV1::new(40, 41),
+        body.into(),
+        SpanV1::new(0, 50),
+    );
+    let (compid, compspan) = (comp.id, comp.span);
+    let item = ProgramItemHirV1::from(comp);
+    assert_eq!(item.id(), compid);
+    assert_eq!(item.span(), compspan);
+
+    // Meta
+    let m = b.meta(MetaKindV1::RequireCertified, SpanV1::new(0, 16));
+    let (mid, mspan) = (m.id, m.span);
+    let item = ProgramItemHirV1::from(m);
+    assert_eq!(item.id(), mid);
+    assert_eq!(item.span(), mspan);
+}
+
+/// `check_tree` returns a `CheckedHirV1` exposing the root view and the
+/// validated source length; the root must dispatch back to the same item.
+#[test]
+fn checked_root_exposes_item_root_and_source_len() {
+    let b = HirBuilderV1::new();
+    let m = b.meta(MetaKindV1::RequireCertified, SpanV1::new(0, 16));
+    let item = ProgramItemHirV1::from(m);
+    let checked = check_tree(HirRootRefV1::Item(&item), 64).unwrap();
+    assert_eq!(checked.source_len(), 64);
+    assert_eq!(checked.node_count(), 1);
+    let root = checked.root();
+    let HirRootRefV1::Item(item_root) = root else {
+        panic!("expected Item root, got {root:?}");
+    };
+    assert!(matches!(item_root, ProgramItemHirV1::Meta(_)));
+}
+
+/// `HirRootRefV1::accept` dispatches each leaf-root variant to the matching
+/// visitor hook; `check_tree` over each must validate exactly the carried node.
+#[test]
+fn check_tree_validates_each_leaf_root_variant_directly() {
+    let b = HirBuilderV1::new();
+
+    let value = b.int("42", SpanV1::new(0, 2));
+    assert_eq!(
+        check_tree(HirRootRefV1::Value(&value), 2)
+            .unwrap()
+            .node_count(),
+        1
+    );
+
+    let boolean = b.bool_literal(true, SpanV1::new(0, 4));
+    assert_eq!(
+        check_tree(HirRootRefV1::Bool(&boolean), 4)
+            .unwrap()
+            .node_count(),
+        1
+    );
+
+    let relation = b.relation_source("t", SpanV1::new(0, 1), None, SpanV1::new(0, 1));
+    assert_eq!(
+        check_tree(HirRootRefV1::Relation(&relation), 1)
+            .unwrap()
+            .node_count(),
+        1
+    );
+
+    let shape = b.shape_leaf(b.int("1", SpanV1::new(0, 1)), SpanV1::new(0, 1));
+    // shape leaf + its embedded value = 2 id-bearing nodes.
+    assert_eq!(
+        check_tree(HirRootRefV1::Shape(&shape), 1)
+            .unwrap()
+            .node_count(),
+        2
+    );
+
+    let decl = b.decl(
+        "x",
+        SpanV1::new(0, 1),
+        b.int("1", SpanV1::new(4, 5)),
+        SpanV1::new(0, 5),
+    );
+    // decl + body value = 2.
+    assert_eq!(
+        check_tree(HirRootRefV1::Decl(&decl), 5)
+            .unwrap()
+            .node_count(),
+        2
+    );
+
+    let rule = b.rule(
+        "r",
+        SpanV1::new(0, 1),
+        b.symbol("h", SpanV1::new(5, 6)),
+        b.bool_literal(true, SpanV1::new(9, 13)),
+        SpanV1::new(0, 13),
+    );
+    // rule + head value + body bool = 3.
+    assert_eq!(
+        check_tree(HirRootRefV1::Rule(&rule), 13)
+            .unwrap()
+            .node_count(),
+        3
+    );
+}
+
+/// The dedicated graph-query / legality / presentation / catalog / composition /
+/// meta root variants of `accept` must also be reachable directly (not only
+/// through an `Item` wrapper).
+#[test]
+fn check_tree_validates_each_dedicated_item_root_variant() {
+    let b = HirBuilderV1::new();
+
+    let g = b.graph_query(
+        GraphQueryKindV1::Path,
+        GraphEndpointsV1::default(),
+        GraphConstraintsV1::default(),
+        SpanV1::new(0, 10),
+    );
+    assert_eq!(
+        check_tree(HirRootRefV1::GraphQuery(&g), 10)
+            .unwrap()
+            .node_count(),
+        1
+    );
+
+    let l = b.legality(
+        gref("rules.x", 6, 13),
+        None,
+        None,
+        ConfirmModeV1::Skip,
+        EmitModeV1::Sarif,
+        DetectionModeV1::Hybrid,
+        SpanV1::new(0, 20),
+    );
+    assert_eq!(
+        check_tree(HirRootRefV1::Legality(&l), 20)
+            .unwrap()
+            .node_count(),
+        1
+    );
+
+    let p = b.presentation(
+        PresentationKindV1::Show {
+            category: ShowCategoryV1::Packs,
+        },
+        SpanV1::new(0, 9),
+    );
+    assert_eq!(
+        check_tree(HirRootRefV1::Presentation(&p), 9)
+            .unwrap()
+            .node_count(),
+        1
+    );
+
+    let c = b.catalog_decl(
+        "p",
+        SpanV1::new(5, 6),
+        CatalogPayloadV1::Pack {
+            source: gref("reg", 10, 13),
+            activation: ActivationV1::Manual,
+        },
+        SpanV1::new(0, 13),
+    );
+    assert_eq!(
+        check_tree(HirRootRefV1::CatalogDecl(&c), 13)
+            .unwrap()
+            .node_count(),
+        1
+    );
+
+    let inner = b.query(
+        b.relation_source("w", SpanV1::new(20, 21), None, SpanV1::new(20, 21)),
+        None,
+        SpanV1::new(20, 21),
+    );
+    let comp = b.composition(
+        vec![],
+        "w",
+        SpanV1::new(40, 41),
+        inner.into(),
+        SpanV1::new(0, 50),
+    );
+    // composition + body query + relation = 3.
+    assert_eq!(
+        check_tree(HirRootRefV1::Composition(&comp), 50)
+            .unwrap()
+            .node_count(),
+        3
+    );
+
+    let m = b.meta(
+        MetaKindV1::UsePack(UsePackHirV1 {
+            pack_id: "x".into(),
+            activation: UsePackActivationV1::Session,
+            lockfile: "x.lock".into(),
+        }),
+        SpanV1::new(0, 16),
+    );
+    assert_eq!(
+        check_tree(HirRootRefV1::Meta(&m), 16).unwrap().node_count(),
+        1
+    );
+}

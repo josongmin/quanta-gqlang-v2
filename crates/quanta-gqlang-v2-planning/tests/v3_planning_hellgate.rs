@@ -1162,6 +1162,42 @@ fn composition_body_transplants_fail_closed_at_the_public_constructor() {
     );
 }
 
+#[test]
+fn composition_body_rejects_a_different_same_output_nested_relation() {
+    let (document, canonical_input) =
+        composition_input(ReferenceCompositionBodyV2::RelationalFilter)
+            .expect("true-filter composition seals");
+    let (other_document, other_input) =
+        composition_input(ReferenceCompositionBodyV2::RelationalFilterFalse)
+            .expect("false-filter composition seals");
+    let SemanticPlanInputV2::Composition(canonical) = canonical_input else {
+        panic!("fixture must produce composition input");
+    };
+    let SemanticPlanInputV2::Composition(other) = other_input else {
+        panic!("other fixture must produce composition input");
+    };
+    let CompositionBodyPlanInputV2::Relational(expected) = canonical.body() else {
+        panic!("canonical body is relational");
+    };
+    let CompositionBodyPlanInputV2::Relational(substituted) = other.body() else {
+        panic!("other body is relational");
+    };
+    assert_eq!(
+        document.composition_item_id(),
+        other_document.composition_item_id()
+    );
+    assert_eq!(document.body_item_id(), other_document.body_item_id());
+    assert_ne!(substituted.root(), expected.root(), "predicates differ");
+    assert_eq!(substituted.root().output(), expected.root().output());
+    assert_eq!(
+        CheckedCompositionPlanInputV2::new(document.composition(), other.body().clone()),
+        Err(PlanningDiagnosticV1::InvalidComposition {
+            reason: CompositionInvalidReasonV2::BodyIdentityMismatch,
+            span: document.composition().location().clone(),
+        })
+    );
+}
+
 /// Every closed composition reason code and message remains byte-stable,
 /// independently of the behavioral entry rails above.
 #[test]

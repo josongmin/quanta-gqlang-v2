@@ -1,0 +1,24 @@
+[package]
+categories.workspace   = true
+description            = "QGLang v3 surface language parser producing shared HIR"
+edition.workspace      = true
+keywords.workspace     = true
+license.workspace      = true
+name                   = "quanta-gqlang-v2-surface"
+readme.workspace       = true
+rust-version.workspace = true
+version.workspace      = true
+
+[lib]
+name = "quanta_gqlang_v2_surface"
+path = "src/lib.rs"
+
+[dependencies]
+quanta-gqlang-v2-hir = { version = "0.1.0", path = "../quanta-gqlang-v2-hir" }
+
+[dev-dependencies]
+proptest = "=1.8.0"
+sha2     = "=0.10.9"
+
+[lints]
+workspace = true

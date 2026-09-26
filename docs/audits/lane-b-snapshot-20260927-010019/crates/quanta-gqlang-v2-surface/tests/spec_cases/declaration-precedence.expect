@@ -1,0 +1,2 @@
+accept|decl
+let total = base + tax * 2

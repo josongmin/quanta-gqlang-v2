@@ -323,6 +323,7 @@ pub struct TypedExprV2 {
     type_state: ExpressionTypeStateV2,
     effects: ExpressionEffectsV2,
     resolved_call: Option<ResolvedCallTargetV2>,
+    intrinsic_call_aggregation: Option<AggregationClassV1>,
     aggregate_context: AggregateContextV2,
     shape: TypedExprShapeV2,
 }
@@ -376,12 +377,20 @@ impl TypedExprV2 {
                 "semantic call shape disagrees with the types-owned resolved target",
             ));
         }
+        if shape_call.is_some() != fact.intrinsic_call_aggregation().is_some() {
+            return Err(expression_failure(
+                "sema.document_validation_failed",
+                raw_location,
+                "semantic call shape disagrees with the types-owned intrinsic aggregation",
+            ));
+        }
         Ok(Self {
             key,
             location,
             type_state: fact.state.clone(),
             effects: fact.effects,
             resolved_call: fact.resolved_call().cloned(),
+            intrinsic_call_aggregation: fact.intrinsic_call_aggregation(),
             aggregate_context,
             shape,
         })
@@ -411,6 +420,11 @@ impl TypedExprV2 {
     #[must_use]
     pub const fn resolved_call(&self) -> Option<&ResolvedCallTargetV2> {
         self.resolved_call.as_ref()
+    }
+    /// Types-owned aggregation of this call itself, excluding argument effects.
+    #[must_use]
+    pub const fn intrinsic_call_aggregation(&self) -> Option<AggregationClassV1> {
+        self.intrinsic_call_aggregation
     }
     /// Checked aggregate placement.
     #[must_use]

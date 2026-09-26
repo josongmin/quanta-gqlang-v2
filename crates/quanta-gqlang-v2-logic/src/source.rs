@@ -368,8 +368,15 @@ fn derive_body_calls(
                         if matches!(target, ResolvedCallTargetV2::Predicate(_)) {
                             derived.insert(key, (derived_polarity(negated, aggregated), location));
                         }
-                        let child_aggregated = aggregated
-                            || expression.effects().aggregation == AggregationClassV1::Aggregate;
+                        let intrinsic =
+                            expression.intrinsic_call_aggregation().ok_or_else(|| {
+                                invalid(
+                                    RuleProgramInvalidReasonV1::WrongCallId,
+                                    rule_location(rule),
+                                )
+                            })?;
+                        let child_aggregated =
+                            aggregated || intrinsic == AggregationClassV1::Aggregate;
                         for argument in arguments {
                             match argument {
                                 TypedCallArgumentV2::Expression(child) => {

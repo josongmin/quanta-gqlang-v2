@@ -634,19 +634,46 @@ impl SemanticDocumentV2 {
                 certified.first().map_or(SpanV1::point(0), |location| location.span),
                 "semantic certification directive differs from modules-validated exact location/count"));
         }
-        let mut semantic_edges = Vec::new();
+        // Modules seals one dependency per (source, target), retaining the
+        // earliest checked location for repeated identical references. Mirror
+        // that exact canonicalization before comparing the semantic payload.
+        let mut semantic_edges: BTreeMap<
+            (CatalogAssetIdV2, CatalogAssetIdV2),
+            (
+                NamespaceKindV2,
+                Option<DocumentCatalogReferenceFamilyV2>,
+                quanta_gqlang_v2_hir::LocatedSpanV2,
+            ),
+        > = BTreeMap::new();
+        let mut semantic_conflict = false;
         for item in items.values() {
             let SemanticItemV2::Catalog(catalog) = item else {
                 continue;
             };
             let mut add = |reference: &ResolvedCatalogReferenceV2, family| {
-                semantic_edges.push((
-                    catalog.asset_id().clone(),
-                    reference.id().clone(),
-                    reference.kind(),
-                    family,
-                    reference.location().location(),
-                ))
+                let key = (catalog.asset_id().clone(), reference.id().clone());
+                let candidate = (reference.kind(), family, reference.location().location());
+                if let Some(existing) = semantic_edges.get_mut(&key) {
+                    if existing.0 != candidate.0 || existing.1 != candidate.1 {
+                        semantic_conflict = true;
+                    } else {
+                        let candidate_location = candidate.2;
+                        let existing_location = existing.2;
+                        if (
+                            candidate_location.source_id.raw(),
+                            candidate_location.span.start,
+                            candidate_location.span.end,
+                        ) < (
+                            existing_location.source_id.raw(),
+                            existing_location.span.start,
+                            existing_location.span.end,
+                        ) {
+                            *existing = candidate;
+                        }
+                    }
+                } else {
+                    semantic_edges.insert(key, candidate);
+                }
             };
             match catalog.payload() {
                 ResolvedCatalogPayloadV2::View { query_ref } => {
@@ -682,22 +709,27 @@ impl SemanticDocumentV2 {
                 ),
             }
         }
-        let mut validated_edges = catalog
+        let validated_edges = catalog
             .dependencies()
             .iter()
             .map(|edge| {
                 (
-                    edge.source_asset_id().clone(),
-                    edge.target_asset_id().clone(),
-                    edge.expected_target_kind(),
-                    edge.family(),
-                    edge.location().location(),
+                    (
+                        edge.source_asset_id().clone(),
+                        edge.target_asset_id().clone(),
+                    ),
+                    (
+                        edge.expected_target_kind(),
+                        edge.family(),
+                        edge.location().location(),
+                    ),
                 )
             })
-            .collect::<Vec<_>>();
-        semantic_edges.sort_by(|left, right| (&left.0, &left.1).cmp(&(&right.0, &right.1)));
-        validated_edges.sort_by(|left, right| (&left.0, &left.1).cmp(&(&right.0, &right.1)));
-        if semantic_edges != validated_edges {
+            .collect::<BTreeMap<_, _>>();
+        if semantic_conflict
+            || validated_edges.len() != catalog.dependencies().len()
+            || semantic_edges != validated_edges
+        {
             return Err(document_failure(
                 "sema.document_validation_failed",
                 source_id,
@@ -1710,7 +1742,6 @@ struct RuleDependencyCollectorV2<'a> {
     source_id: SourceIdV2,
     targets: &'a BTreeMap<HirNodeIdV1, RuleCallableTargetV2>,
     facts: &'a TypedExpressionFactsV2,
-    builtins: &'a BuiltinRegistryV2,
     extended: &'a ExtendedSourceRegistryViewV2,
     negated: bool,
     aggregated: bool,
@@ -2705,18 +2736,7 @@ impl HirVisitorV1 for RuleDependencyCollectorV2<'_> {
                     }
                 }
             }
-            let intrinsic = match fact.resolved_call() {
-                Some(ResolvedCallTargetV2::Builtin(id)) => self.builtins.effects_of_resolved(*id),
-                Some(ResolvedCallTargetV2::HostPredicate(_)) => match self.targets.get(&node.id) {
-                    Some(RuleCallableTargetV2::HostPredicate(callable)) => Some(callable.effects()),
-                    _ => None,
-                },
-                Some(ResolvedCallTargetV2::Predicate(_)) => {
-                    Some(ExpressionEffectsV2::pure_scalar())
-                }
-                None => None,
-            };
-            let Some(intrinsic) = intrinsic else {
+            let Some(intrinsic) = fact.intrinsic_call_aggregation() else {
                 if self.error.is_none() {
                     self.error = Some(document_failure(
                         "sema.document_validation_failed",
@@ -2727,7 +2747,7 @@ impl HirVisitorV1 for RuleDependencyCollectorV2<'_> {
                 }
                 return;
             };
-            self.aggregated |= intrinsic.aggregation == AggregationClassV1::Aggregate;
+            self.aggregated |= intrinsic == AggregationClassV1::Aggregate;
         }
         quanta_gqlang_v2_hir::walk_value(self, node);
         self.aggregated = previous_aggregate;
@@ -6574,7 +6594,6 @@ fn resolve_document_bodies(
                     source_id: checked.source_id(),
                     targets: &rule_call_targets,
                     facts: &facts,
-                    builtins: &builtins,
                     extended,
                     negated: false,
                     aggregated: false,
