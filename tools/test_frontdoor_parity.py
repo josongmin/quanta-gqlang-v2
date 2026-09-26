@@ -88,6 +88,8 @@ def decode_line_value(value: str) -> str:
             continue
         if escape == "x":
             digits = value[index + 1 : index + 3]
+            if len(digits) != 2:
+                raise ValueError("invalid hexadecimal CLI line-value escape")
             index += 3
         elif escape == "u" and value[index + 1 : index + 2] == "{":
             close = value.find("}", index + 2)

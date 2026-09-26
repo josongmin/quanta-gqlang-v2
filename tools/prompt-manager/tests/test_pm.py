@@ -29,11 +29,11 @@ class PromptManagerTest(unittest.TestCase):
         config = copy.deepcopy(self.config)
         config["context_groups"]["claude_startup"]["targets"].remove("claude")
         with self.assertRaisesRegex(PM.PromptManagerError, "group_members changed"):
-            PM.validate_all(config, self.rendered)
+            PM.validate_ratchet(config, PM.current_sizes(config, self.rendered))
         config = copy.deepcopy(self.config)
         config["targets"]["agents"]["output"] = "MOVED.md"
         with self.assertRaisesRegex(PM.PromptManagerError, "outputs changed"):
-            PM.validate_all(config, self.rendered)
+            PM.validate_ratchet(config, PM.current_sizes(config, self.rendered))
 
     def test_cursor_rules_are_mdc_and_conditionally_attached(self) -> None:
         verified = 0
@@ -55,11 +55,43 @@ class PromptManagerTest(unittest.TestCase):
             self.assertTrue(self.rendered[name].startswith("---\npaths:\n"), name)
         self.assertGreater(verified, 0, "no claude_rule target was verified")
 
+    def test_scoping_rejects_justfile_case_regression_for_both_clients(self) -> None:
+        for target in ("claude_rust", "cursor_rust"):
+            config = copy.deepcopy(self.config)
+            spec = config["targets"][target]
+            if target == "claude_rust":
+                spec["paths"] = ["justfile"]
+            else:
+                spec["globs"] = "justfile"
+            with self.subTest(target=target):
+                with self.assertRaisesRegex(PM.PromptManagerError, "wrong-case scope path"):
+                    PM.validate_scoping(config, PM.render_all(config))
+
+    def test_literal_scopes_check_every_path_component_and_missing_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root / "tools").mkdir()
+            (root / "tools" / "gate.py").write_text("pass\n", encoding="utf-8")
+            with patch.object(PM, "ROOT", root):
+                PM.validate_scope_paths("rule", ["tools/gate.py", "tools/**/*.py"])
+                for path in ("Tools/gate.py", "tools/Gate.py", "tools/missing.py"):
+                    with self.subTest(path=path):
+                        with self.assertRaisesRegex(PM.PromptManagerError, "scope path"):
+                            PM.validate_scope_paths("rule", [path])
+
     def test_startup_files_do_not_import_document_stack(self) -> None:
         startup = self.rendered["agents"] + self.rendered["claude"]
         self.assertNotIn("@README", startup)
         self.assertNotIn("@docs/", startup)
         self.assertEqual(self.rendered["claude"].count("@AGENTS.md"), 1)
+
+    def test_claude_bootstrap_cannot_drop_duplicate_or_quote_required_import(self) -> None:
+        for body in ("No shared instructions\n", "@AGENTS.md\n@AGENTS.md\n", "`@AGENTS.md`\n"):
+            rendered = self.rendered.copy()
+            rendered["claude"] = body
+            with self.subTest(body=body):
+                with self.assertRaisesRegex(PM.PromptManagerError, "import contract changed"):
+                    PM.validate_imports(self.config, rendered)
 
     def test_all_scoped_rule_files_are_managed(self) -> None:
         PM.validate_managed_rule_directories(self.config)
@@ -83,13 +115,63 @@ class PromptManagerTest(unittest.TestCase):
             (root / "AGENTS.md").write_text("local\n", encoding="utf-8")
             (parent / "foreign.md").write_text("foreign\n", encoding="utf-8")
             (root / "linked.md").symlink_to(parent / "foreign.md")
-            config = {"targets": {"agents": {"output": "AGENTS.md"}}}
+            config = {
+                "targets": {
+                    "agents": {"output": "AGENTS.md"},
+                    "claude": {"output": "CLAUDE.md"},
+                },
+                "context_groups": {"startup": {"targets": ["agents", "claude"]}},
+            }
             with patch.object(PM, "ROOT", root):
-                PM.validate_imports(config, {"claude": "@AGENTS.md\n"})
+                PM.validate_imports(config, {"agents": "local\n", "claude": "@AGENTS.md\n"})
                 for imported in ("../foreign.md", "linked.md"):
                     with self.subTest(imported=imported):
                         with self.assertRaisesRegex(PM.PromptManagerError, "external import"):
-                            PM.validate_imports(config, {"claude": f"@{imported}\n"})
+                            PM.validate_imports(config, {"agents": "local\n", "claude": f"@{imported}\n"})
+
+    def test_imports_cannot_bypass_budgets_or_group_membership(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root / "extra.md").write_text("large context\n" * 1000, encoding="utf-8")
+            config = copy.deepcopy(self.config)
+            rendered = self.rendered.copy()
+            with patch.object(PM, "ROOT", root):
+                rendered["claude"] = "@extra.md\n"
+                with self.assertRaisesRegex(PM.PromptManagerError, "unbudgeted import"):
+                    PM.validate_imports(config, rendered)
+                rendered["claude"] = "@.claude/rules/rust-frontend.md\n"
+                with self.assertRaisesRegex(PM.PromptManagerError, "import escapes context group"):
+                    PM.validate_imports(config, rendered)
+                rendered["claude"] = self.rendered["claude"]
+                rendered["claude_rust"] = "@../../AGENTS.md\n"
+                with self.assertRaisesRegex(PM.PromptManagerError, "import without context group"):
+                    PM.validate_imports(config, rendered)
+
+    def test_import_cycles_are_rejected(self) -> None:
+        config = copy.deepcopy(self.config)
+        del config["context_groups"]["cursor_root_startup"]
+        rendered = self.rendered.copy()
+        rendered["agents"] = "@CLAUDE.md\n"
+        with self.assertRaisesRegex(PM.PromptManagerError, "import cycle"):
+            PM.validate_imports(config, rendered)
+
+    def test_imports_resolve_relative_to_output_and_ignore_code_examples(self) -> None:
+        config = {
+            "targets": {
+                "agents": {"output": "AGENTS.md"},
+                "claude": {"output": "nested/CLAUDE.md"},
+            },
+            "context_groups": {"startup": {"targets": ["agents", "claude"]}},
+        }
+        PM.validate_imports(config, {
+            "agents": "Shared instructions\n",
+            "claude": (
+                "@../AGENTS.md\n`@missing-inline.md`\n``@missing-double.md``\n"
+                "```md\n@missing-fenced.md\n````\n"
+                "~~~md\n@missing-tilde.md\n~~~\n"
+                "```md\n@missing-unclosed.md\n"
+            ),
+        })
 
 
 if __name__ == "__main__":

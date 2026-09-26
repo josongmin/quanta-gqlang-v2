@@ -302,7 +302,23 @@ fn expression_walk_small_receipt_is_exact_and_rejects_one_node_over() {
     let exact = forged_small_receipt_bool_tree_document_v2(1).unwrap();
     let lowered = lower_relation_item(exact.document(), exact.item_id()).unwrap();
     assert_eq!(lowered.root().family(), AlgebraFamilyV2::Filter);
-    assert_eq!(lowered.root().filter_conjuncts().len(), 2);
+    let conjuncts = lowered.root().filter_conjuncts();
+    assert_eq!(conjuncts.len(), 2);
+    let Some(SemanticItemV2::Relation(relation)) = exact.document().item(exact.item_id()) else {
+        panic!("forged Bool tree is a relation item");
+    };
+    let predicate = relation.root().predicate().unwrap();
+    let TypedExprShapeV2::And { lhs, rhs, .. } = predicate.expression().shape() else {
+        panic!("depth-one Bool tree is one authored AND");
+    };
+    assert_eq!(
+        conjuncts
+            .iter()
+            .map(|conjunct| conjunct.expression().key())
+            .collect::<Vec<_>>(),
+        [*lhs, *rhs],
+        "ordinary conjuncts retain exact authored left-to-right order"
+    );
 
     let over = forged_small_receipt_bool_tree_document_v2(2).unwrap();
     let diagnostic = match lower_relation_item(over.document(), over.item_id()) {

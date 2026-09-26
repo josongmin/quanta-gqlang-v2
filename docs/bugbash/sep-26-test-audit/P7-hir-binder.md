@@ -82,8 +82,7 @@ the presentation/catalog/meta "sound program item" rails still assert integrity
 constructors); `check_tree_validates_each_leaf_root_variant_directly` omits the
 direct `Query` root (covered elsewhere); several `v3_hir_expr_kernel.rs` shape /
 record / decl-rule rails compare counts or selected fields rather than full
-payloads; `SourceRegistryDiagnosticV2`'s `Display` bodies and the non-extended
-`source_len` accessor are unasserted; and a few section anchors in
+payloads; and a few section anchors in
 `v3_binder_mutants.rs` reference stale `resolve.rs` line numbers. Closing these
 means authoring new expectations rather than converting an existing skip.
 
@@ -91,6 +90,14 @@ Sep 26 re-audit correction: `ExtendedSourceRegistryViewV2::source_len` already
 exercised the base accessor's success path. The registry unit test now also pins
 both base source lengths and unknown-ID `None` in base and extended registries.
 The source-length accessor is no longer an open coverage item.
+
+Adversarial follow-up: swapping duplicate lengths, changing an unknown source
+ID and reversing an invalid span in `SourceRegistryDiagnosticV2::Display` all
+survived the HIR owner suite together. `v3_source_registry_diagnostics.rs` now
+pins the exact payload/code/Display for real duplicate, unknown, inverted and
+out-of-bounds failures, with exact-end and zero-width positive controls. Each
+Display mutation compiles and fails the new assertion independently. The
+Display gap is closed; [evidence and boundary checks](adversarial-review-2026-09-26.md).
 
 ## Owner test status
 

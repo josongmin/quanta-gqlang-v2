@@ -1,8 +1,8 @@
 # P8 — front doors deep fail-open audit (cli + diagnostics-stdio + conformance)
 
-Final state. Base: committed HEAD `9040a8a` ("Close Sep 26 test audit proof
-gaps"), plus this pass's supplements (uncommitted working tree at the time of
-writing). Companion to the curated `P8-front-doors.md` (TA-01/TA-05 resolution
+Final state. Current recheck base: committed HEAD `78f4770`, plus the named
+working-tree supplements in `recheck-2026-09-26.md`. Companion to the curated
+`P8-front-doors.md` (TA-01/TA-05 resolution
 record); this file carries the full audit, the supplement pass, and the
 remaining held items.
 
@@ -24,8 +24,9 @@ pass, and a ledger-vs-assertion cross-check), then a lead pass that re-read and
 re-verified every claim in the implementation before editing, then a final
 supplement pass on the committed HEAD that closes every remaining gap closable
 by assertion rather than by production change. Classes A/B/C/D/D'/E/F/G/H plus
-process class I. `docs/`, fixtures, and production code were not modified;
-`just ci` / `just qualify-local` were not run (integrator-only).
+process class I. No language production behavior was changed; tests and their
+coverage documentation were corrected. Clean-HEAD `just qualify-local` remains
+separate from the dirty-source local gate.
 
 ## 1) Applied fixes
 
@@ -65,28 +66,29 @@ exact canonical text for a messy declaration.
 | `diagnostics-stdio/tests/server_rejection_matrix.rs:88` | TA-02: added a wrong-`source`-type case **without** `extra`, so the type rejection is isolated from the unknown-field rejection. |
 | `conformance/tests/self_validation.rs:240-250` | `spec.family` was never validated and the keyword check was a prefix `starts_with`. Now asserts the registry maps one-to-one onto `ROOT_FAMILIES_V2` in order, and that each source's first token equals its declared keyword. |
 
-## 2) Remaining held items (report-only)
+## 2) Held-item disposition
+
+Current-source correction (2026-09-26): RA-04 now pins the `sum` target,
+argument, `score` path and `f` binding; RA-05 pins two exact item lookups and
+an absent ID. The former aggregate-count and id-ignoring lookup rows are
+resolved, with compiling mutants rejected. See [re-audit](reaudit-2026-09-26.md).
 
 | file:line | class | severity | why it remains |
 |---|---|---|---|
-| `diagnostics-stdio/tests/server_rejection_matrix.rs:95` | E | 낮음 | The schema matrix asserts `!error.1.is_empty()` only; exact messages are unpinned. Needs message goldens. |
-| `conformance/tests/self_validation.rs:661` | E | 낮음 | `aggregate.expressions().len() == 1` is count-only; a `sum(f.score)`→`count(f.score)` swap keeps one expression and the field name `total`. Needs an expression-shape/argument assert. |
-| `conformance/tests/self_validation.rs:761` | E | 낮음 | `value.item(*value_id) == value.items().first()` derives `value_id` from `first()`, so an id-ignoring `item()` passes. Needs an absent-id lookup expecting `None`. |
-| `conformance/tests/self_validation.rs:320-347` | F | 낮음 | `selected_shipped_examples_...` iterates a test-local 4-entry literal with no count assert; only a test edit can empty it. |
+| `diagnostics-stdio/tests/server_rejection_matrix.rs` | E | 낮음 | Closed: ten schema errors pin exact messages and line/column; valid string/number IDs pin exact echo. |
+| `conformance/tests/self_validation.rs` | F | 낮음 | Closed: the four selected shipped examples have an explicit cardinality guard. |
 | `diagnostics-stdio/tests/ndjson_contract.rs` (determinism / short-reads) | E | 낮음 | Differential rails compare two runs of the same implementation; an independent response golden lives only in the sibling rails. Inherent to a differential property. |
-| `cli/tests/command_doc_gate.rs:34` | E (latent) | 낮음 | `usage_alternation_v1` takes the first `<`/`>`. An extra future bracket would truncate silently; current alternation has none. |
-| `cli/tests/command_doc_gate.rs:86-134` | D' (latent) | 낮음 | The dispatch rail hardcodes the four tokens; all four are covered today, so only a future token addition escapes. |
-| `conformance/tests/self_validation.rs:267` | A (latent) | 낮음 | `(NoPlan, _)` wildcards the item variant, but `assert_disposition` panics on a mismatch first. |
+| `cli/tests/command_doc_gate.rs` | E (latent) | 낮음 | Closed: the usage parser anchors the binary prefix and requires a whole balanced command field; trailing/nested brackets reject. |
+| `cli/tests/command_doc_gate.rs` | D' (latent) | 낮음 | Closed: exact advertised/covered-token set equality requires every new token to acquire a binary dispatch case. |
+| `conformance/tests/self_validation.rs` | A (latent) | 낮음 | Tightened to the explicit `CompiledItemV2::NoPlan` variant; the earlier disposition guard remains. |
 
-### Ledger cross-check (report-only; `docs/` not modified)
+### Ledger cross-check (resolved)
 
-| ledger line | claim | reality |
-|---|---|---|
-| L111 | "`command_doc_gate.rs` pins the shipped CLI allowlist **and diagnostics method documentation**" | The file has no diagnostics/method content. Stale. |
-| L88 header | diagnostics row under "Binary rails" | 3 of its 4 files are API-only (`run_stdio_session_v2`, `run_stdio_session_with_budget_v2`, `DiagnosticsServerV2::dispatch`); only `binary_contract.rs` spawns. Mislabeled per the ledger's own proof-boundary rule. |
-| L100 | "V3 item/family/**payload-presence** mapping" | Only relation/composition presence is asserted. Partial. |
-| L88 | "the closed read-only command plane" | Now substantively covered by the new `only_the_advertised_read_only_method_is_admitted` test; the ledger text can stay. |
-| L88 | "Strict NDJSON schema" | Strictness is request-side only; no response-side closed-schema assertion. |
+The current ledger now states the actual proof boundaries: only
+`binary_contract.rs` spawns diagnostics, `command_doc_gate.rs` owns only the CLI
+allowlist/documentation comparison, non-relation/composition payload fields are
+not promoted by the registry rail, and request/response schema coverage is
+described separately from byte-level process proof.
 
 ## 3) Refuted claims (verified, no action)
 
@@ -117,7 +119,8 @@ exact canonical text for a messy declaration.
   asserts `id` + `ok`/`error.code`.
 - Class I: shipped CLI and stdio children now share `tools/test_support/process.rs`
   with a 10 s watchdog, concurrent pipe drains, and direct-child kill/reap cleanup.
-  Timeout custody and output beyond pipe capacity have independent controls.
+  Custody controls run once in `cli/tests/process_support.rs`: timeout kill/reap,
+  both output streams beyond pipe capacity, exact large stdin, and an unread-input watchdog.
   This helper does not promise descendant process-group cleanup.
 - Hygiene: `#[ignore]` 0, `let _ =` 0, `unwrap_or*` as oracle 0, `filter_map`
   0, `todo!`/`unimplemented!` 0, tautological `assert_eq!(x, x)` 0.

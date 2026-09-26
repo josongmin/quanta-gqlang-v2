@@ -31,10 +31,21 @@ fn usage_alternation_v1(usage: &str) -> Vec<&str> {
         .lines()
         .find(|line| line.starts_with("cli.usage="))
         .expect("usage block carries a cli.usage= line");
-    let open = line.find('<').expect("usage alternation opens with <");
-    let close = line.find('>').expect("usage alternation closes with >");
-    assert!(open < close, "alternation brackets are ordered");
-    line[open + 1..close].split('|').collect()
+    let field = line
+        .strip_prefix("cli.usage=quanta-gqlang-v2-cli ")
+        .expect("usage names the shipped binary")
+        .split_whitespace()
+        .next()
+        .expect("usage carries a command field");
+    let inner = field
+        .strip_prefix('<')
+        .and_then(|value| value.strip_suffix('>'))
+        .expect("command field is one closed <a|b|...> alternation");
+    assert!(
+        !inner.contains(['<', '>']),
+        "command alternation contains no nested or trailing brackets"
+    );
+    inner.split('|').collect()
 }
 
 #[test]
@@ -87,6 +98,14 @@ fn every_command_token_dispatches_at_the_binary_boundary_v1() {
     // CLI-01: every advertised token is invoked through the compiled binary
     // with a minimal valid input. Alias pairs must be behaviorally identical:
     // equal exit code and byte-equal normalized stdout/stderr.
+    let mut covered = ["query", "v3-query", "fmt", "v3-fmt"];
+    let mut advertised = CLI_COMMAND_TOKENS_V1;
+    covered.sort_unstable();
+    advertised.sort_unstable();
+    assert_eq!(
+        advertised, covered,
+        "every advertised token needs a binary dispatch case"
+    );
     let query_pair = [
         run_cli_argv_v1(&["query", "show capabilities"]),
         run_cli_argv_v1(&["v3-query", "show capabilities"]),

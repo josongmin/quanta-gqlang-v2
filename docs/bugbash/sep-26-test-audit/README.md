@@ -1,6 +1,10 @@
 # Sep 26 test audit: resolution record
 
 Current-source follow-up: [Sep 26 re-audit and implemented improvements](reaudit-2026-09-26.md).
+Second recheck: [additional budget and stdin test gaps](recheck-2026-09-26.md).
+Final review: [full payload, wire schema and test-custody hardening](final-review-2026-09-26.md).
+Adversarial follow-up: [surviving registry diagnostic mutation and boundary checks](adversarial-review-2026-09-26.md).
+Transport follow-up: [UTF-8 byte limits and oversized EOF frame](transport-boundary-review-2026-09-26.md).
 It records RA-01~05, the optional test/tooling improvements, and 12 compiling
 mutations rejected by 13 targeted test runs; its gate evidence is separate from
 the historical integration result below.

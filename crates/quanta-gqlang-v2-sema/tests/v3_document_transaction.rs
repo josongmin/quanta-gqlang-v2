@@ -31,6 +31,10 @@ use quanta_gqlang_v2_types::{
 };
 
 fn host() -> (SourceRegistryViewV2, ClosedFrontendAuthorityV2) {
+    host_with_budget(FrontendBudgetV2::standard_v2().unwrap())
+}
+
+fn host_with_budget(budget: FrontendBudgetV2) -> (SourceRegistryViewV2, ClosedFrontendAuthorityV2) {
     let host = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
         source_id: SourceIdV2::from_raw(1),
         source_len: 8,
@@ -43,7 +47,6 @@ fn host() -> (SourceRegistryViewV2, ClosedFrontendAuthorityV2) {
         })
         .unwrap();
     let module = ModuleIdV2::try_new("app", location.clone()).unwrap();
-    let budget = FrontendBudgetV2::standard_v2().unwrap();
     let profile = budget.authority_profile().unwrap();
     let mut builder = ModuleAuthorityBuilderV2::try_new(profile.clone(), host.clone()).unwrap();
     builder
@@ -1561,6 +1564,72 @@ fn export_profile_rejects_missing_and_wrong_kind_at_the_authored_use() {
         );
         assert_eq!(diagnostic.secondary(), secondary);
     }
+}
+
+#[test]
+fn export_profile_charges_one_step_at_the_exact_authored_use() {
+    let budget = |steps| {
+        let standard = FrontendBudgetV2::standard_v2().unwrap();
+        FrontendBudgetV2::try_new(
+            standard.max_source_bytes(),
+            standard.max_frame_bytes(),
+            standard.max_tokens(),
+            standard.max_document_items(),
+            standard.max_expression_depth(),
+            standard.max_relation_depth(),
+            standard.max_expression_nodes(),
+            standard.max_collection_width(),
+            standard.max_projection_width(),
+            steps,
+            standard.max_module_graph_nodes(),
+            standard.max_module_graph_edges(),
+            standard.max_module_steps(),
+            standard.max_authority_bytes(),
+            standard.max_authority_string_bytes(),
+            standard.max_rule_graph_nodes(),
+            standard.max_rule_graph_edges(),
+            standard.max_rule_steps(),
+            standard.max_witness_depth(),
+            standard.max_witnesses(),
+            standard.max_diagnostics(),
+            standard.max_response_bytes(),
+        )
+        .unwrap()
+    };
+    // Profile item + capability, EXPORT item + source, optional profile use.
+    // Keep the declaration first so the final charge is the profile use.
+    const WITHOUT_PROFILE_STEPS: u32 = 4;
+    const WITH_PROFILE_STEPS: u32 = 5;
+    let (_, exact) = host_with_budget(budget(WITH_PROFILE_STEPS));
+    let document =
+        resolve_checked_document_v2(export_profile_document(Some("strict"), true, true), &exact)
+            .expect("five authored semantic charges fit exactly");
+    assert_eq!(
+        document.budget_receipt().max_semantic_steps(),
+        WITH_PROFILE_STEPS
+    );
+
+    let (_, under) = host_with_budget(budget(WITHOUT_PROFILE_STEPS));
+    resolve_checked_document_v2(export_profile_document(None, true, true), &under)
+        .expect("the identical document without the optional use fits four steps");
+    let FrontendTransactionErrorV2::Document(failure) =
+        resolve_checked_document_v2(export_profile_document(Some("strict"), true, true), &under)
+            .expect_err("the optional use must consume its own fifth step")
+    else {
+        panic!("expected document resource diagnostic")
+    };
+    let [diagnostic] = failure.diagnostics() else {
+        panic!("expected one resource diagnostic")
+    };
+    assert_eq!(diagnostic.code(), "frontend.resource_limit_exceeded");
+    assert_eq!(
+        diagnostic.primary(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(9),
+            span: SpanV1::new(88, 94),
+        }
+    );
+    assert!(diagnostic.secondary().is_empty());
 }
 
 #[test]
@@ -4909,4 +4978,80 @@ fn global_single_sum_remains_admitted() {
         relation.root().inputs().next(),
         Some(quanta_gqlang_v2_sema::TypedRelationExprV2::Group(_))
     ));
+}
+
+#[test]
+fn same_primary_diagnostics_pin_stage_severity_code_and_message_ties() {
+    use quanta_gqlang_v2_sema::{
+        FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2, FrontendStageV2,
+    };
+    let primary = LocatedSpanV2 {
+        source_id: SourceIdV2::from_raw(9),
+        span: SpanV1::new(3, 4),
+    };
+    let cases = [
+        (
+            FrontendStageV2::Binding,
+            FrontendSeverityV2::Note,
+            "z",
+            "binding-note",
+        ),
+        (
+            FrontendStageV2::Typing,
+            FrontendSeverityV2::Error,
+            "a",
+            "typing-error-a-a",
+        ),
+        (
+            FrontendStageV2::Typing,
+            FrontendSeverityV2::Error,
+            "a",
+            "typing-error-a-b",
+        ),
+        (
+            FrontendStageV2::Typing,
+            FrontendSeverityV2::Error,
+            "z",
+            "typing-error-z",
+        ),
+        (
+            FrontendStageV2::Typing,
+            FrontendSeverityV2::Warning,
+            "a",
+            "typing-warning",
+        ),
+        (
+            FrontendStageV2::Typing,
+            FrontendSeverityV2::Note,
+            "a",
+            "typing-note",
+        ),
+    ];
+    for order in [[5, 4, 3, 2, 1, 0], [2, 5, 0, 4, 1, 3]] {
+        let diagnostics = order
+            .into_iter()
+            .map(|index| {
+                let (stage, severity, code, message) = *cases
+                    .get(index)
+                    .expect("registered diagnostic permutation index");
+                FrontendDiagnosticV2::new(stage, code, severity, primary, Vec::new(), message)
+            })
+            .collect();
+        let failure = FrontendFailureV2::try_new(diagnostics).unwrap();
+        assert_eq!(
+            failure
+                .diagnostics()
+                .iter()
+                .map(FrontendDiagnosticV2::message)
+                .collect::<Vec<_>>(),
+            [
+                "binding-note",
+                "typing-error-a-a",
+                "typing-error-a-b",
+                "typing-error-z",
+                "typing-warning",
+                "typing-note"
+            ]
+        );
+    }
 }

@@ -24,6 +24,15 @@ mod support;
 
 use quanta_gqlang_v2_hir::HirBuilderV1;
 use quanta_gqlang_v2_surface::{format_document, parse_document};
+use sha2::{Digest, Sha256};
+
+// One maintained path list remains in examples_index.md. These review pins are
+// independent of both disk discovery and the index, so coordinated deletion or
+// a same-count replacement cannot silently change the shipped corpus. Hash only
+// sorted, length-framed UTF-8 paths; content behavior has separate rails below.
+const EXPECTED_EXAMPLE_COUNT: usize = 18;
+const EXPECTED_PATH_SHA256: &str =
+    "341b5c868876d9e6e1687a0f9f090bb35def755835fed769e86675f8bfb8bfe4";
 
 /// Repo root = this crate's manifest dir walked up out of `crates/<crate>`.
 fn repo_root() -> PathBuf {
@@ -41,16 +50,30 @@ fn corpus_paths() -> Vec<String> {
         // shrink the corpus to nothing (a shorter corpus is not a pass).
         let entries = std::fs::read_dir(dir)
             .unwrap_or_else(|err| panic!("read example directory {dir:?}: {err}"));
-        for entry in entries.flatten() {
+        for entry in entries {
+            let entry = entry.unwrap_or_else(|err| panic!("read example entry in {dir:?}: {err}"));
             let path = entry.path();
-            if path.is_dir() {
+            let kind = entry
+                .file_type()
+                .unwrap_or_else(|err| panic!("read example file type {path:?}: {err}"));
+            assert!(
+                !kind.is_symlink(),
+                "example corpus must not follow symlinks: {path:?}"
+            );
+            if kind.is_dir() {
                 walk(&path, out, root);
-            } else if path.extension().is_some_and(|e| e == "qglang") {
+            } else if kind.is_file() && path.extension().is_some_and(|e| e == "qglang") {
                 let rel = path
                     .strip_prefix(root)
                     .expect("corpus file is under the repo root")
-                    .to_string_lossy()
-                    .into_owned();
+                    .components()
+                    .map(|part| {
+                        part.as_os_str()
+                            .to_str()
+                            .expect("example path must be UTF-8")
+                    })
+                    .collect::<Vec<_>>()
+                    .join("/");
                 out.push(rel);
             }
         }
@@ -59,6 +82,26 @@ fn corpus_paths() -> Vec<String> {
     let mut out = Vec::new();
     walk(&root.join("examples"), &mut out, &root);
     out.sort();
+    assert_eq!(
+        out.len(),
+        EXPECTED_EXAMPLE_COUNT,
+        "shipped example count drift"
+    );
+    let mut digest = Sha256::new();
+    digest.update(b"qglang.examples.paths.v1\0");
+    for path in &out {
+        digest.update(
+            u64::try_from(path.len())
+                .expect("path length fits u64")
+                .to_le_bytes(),
+        );
+        digest.update(path.as_bytes());
+    }
+    assert_eq!(
+        format!("{:x}", digest.finalize()),
+        EXPECTED_PATH_SHA256,
+        "shipped example path identity drift; review changes against examples_index.md"
+    );
     out
 }
 

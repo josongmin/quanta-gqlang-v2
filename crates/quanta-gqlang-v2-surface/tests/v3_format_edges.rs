@@ -51,7 +51,8 @@ fn value_kinds_render_canonically() {
     assert_renders("let x = -a * b", "let x = -a * b");
 }
 
-/// Every literal kind renders verbatim: int, float, string (escaped), bool, null.
+/// Non-string literals render verbatim: int, float, bool, null.
+/// String content and escaping are pinned by `string_escapes_round_trip` below.
 #[test]
 fn literal_kinds_render_canonically() {
     assert_renders("let x = 42", "let x = 42");

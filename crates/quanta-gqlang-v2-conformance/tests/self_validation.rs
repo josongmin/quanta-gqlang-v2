@@ -265,7 +265,7 @@ fn every_family_compiles_through_the_facade_with_declared_disposition() {
             spec.expected,
             document.items().first().expect("one compiled item"),
         ) {
-            (ExpectedDispositionV2::NoPlan { .. }, _) => {
+            (ExpectedDispositionV2::NoPlan { .. }, CompiledItemV2::NoPlan { .. }) => {
                 assert!(document.execution().items().is_empty(), "{:?}", spec.family);
             }
             (ExpectedDispositionV2::Planned { kind, .. }, CompiledItemV2::Planned(planned)) => {
@@ -324,7 +324,7 @@ fn selected_shipped_examples_compile_with_pinned_frontend_families() {
         .and_then(std::path::Path::parent)
         .expect("conformance crate is under crates/");
     let authority = closed_authority();
-    for (index, (path, expected_kind, expected_family)) in [
+    let examples = [
         (
             "examples/select/basic.qglang",
             "relation",
@@ -345,10 +345,13 @@ fn selected_shipped_examples_compile_with_pinned_frontend_families() {
             "presentation",
             ExecutionFamilyV3::Presentation,
         ),
-    ]
-    .into_iter()
-    .enumerate()
-    {
+    ];
+    assert_eq!(
+        examples.len(),
+        4,
+        "the selected shipped acceptance corpus stays populated"
+    );
+    for (index, (path, expected_kind, expected_family)) in examples.into_iter().enumerate() {
         let source = std::fs::read_to_string(repo.join(path))
             .unwrap_or_else(|error| panic!("{path}: read shipped source: {error}"));
         let document = compile_source_document_v3(

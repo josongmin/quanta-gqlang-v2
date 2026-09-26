@@ -61,12 +61,12 @@ subject was substituted. Every edit was re-run against the owner tests.
 | `pipeline/tests/v3_compiled_document_assembly.rs:402` | E | low | source-order rail: added a grounded three-item document (`MINIMAL_SOURCE`) whose compiled order must equal the authored document order, so ordering is discriminated, not just membership. |
 | `pipeline/tests/v3_compiled_document_assembly.rs:1506` | H | low | graph-body references: replaced the first-target shape probe with a full role+target comparison (composition source binding + host `db.write` sink). |
 
-### Still held (2)
+### Held-item disposition (final review, 2026-09-26)
 
 | file:line | class | severity | reason |
 |---|---|---|---|
-| `planning/tests/v3_planning_hellgate.rs:995` | H | medium | composition body policy is compared by `keyword()` only. A full compare must reconstruct each family's body policy (the Relational arm needs a lowered traversal), i.e. re-implement classification inside the test; holding to avoid substituting a hand-built oracle. Recommend an owner-approved helper that classifies a sealed composition body. |
-| `planning/tests/v3_explain_provenance.rs:172` | redundant | low | `assert_eq!(planned.explain().families(), families.as_slice())` is tautological (`families` came from the same plan). The real oracle is the exact literal family vector earlier in the test, so this is dead code, not fail-open. |
+| `planning/tests/v3_planning_hellgate.rs` | H | medium | Closed: relational Project→Scan pins literal nodes/effects; graph pins every retained field against the sealed contract; CHECK and EXPLAIN also compare their payloads to the sealed semantic body. No classifier is reimplemented in the test. |
+| `planning/tests/v3_explain_provenance.rs` | redundant | low | Removed the self-comparison. The independent literal six-node family vector remains. |
 
 ### Verified fail-closed (representative)
 

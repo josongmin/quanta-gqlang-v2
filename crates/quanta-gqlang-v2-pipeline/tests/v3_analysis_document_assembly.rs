@@ -311,6 +311,12 @@ fn complete_open_authority_carries_complete_payloads() {
         dispositions,
         ["not_applicable", "rule_member", "presentation"]
     );
+    // Three different dispositions make returning the first item for every
+    // registered identity observable, independently of lookup membership.
+    for (index, item_id) in analyzed.order().iter().enumerate() {
+        assert_eq!(analyzed.item(*item_id), Some(&analyzed.items()[index]));
+    }
+    assert_eq!(analyzed.item(reference_absent_item_id_v2()), None);
     let AnalysisItemV2::NotApplicable(reason) = &analyzed.items()[0] else {
         panic!("a value declaration has no plan");
     };

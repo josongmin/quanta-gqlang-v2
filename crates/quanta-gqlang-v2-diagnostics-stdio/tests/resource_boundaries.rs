@@ -117,6 +117,86 @@ fn source_exact_limit_is_admitted_and_plus_one_is_rejected() {
 }
 
 #[test]
+fn source_limit_counts_decoded_utf8_bytes_not_scalars_or_json_escape_bytes() {
+    let source = "let x = \"한🙂\"";
+    assert_eq!(source.len(), 17);
+    assert_eq!(source.chars().count(), 12);
+    let exact = format!("{source} ");
+    let over = format!("{source}  ");
+    assert_eq!(exact.len(), 18);
+    assert_eq!(over.len(), 19);
+
+    let mut input = Vec::new();
+    for (id, text) in [(0, source), (1, exact.as_str()), (2, over.as_str())] {
+        let request = serde_json::json!({
+            "id": id, "method": "v3_diagnostics", "source_id": 7, "source": text,
+        });
+        input.extend_from_slice(&serde_json::to_vec(&request).expect("request json"));
+        input.push(b'\n');
+    }
+    // Same decoded exact-limit source, with different physical JSON bytes.
+    input.extend_from_slice(
+        br#"{"id":3,"method":"v3_diagnostics","source_id":7,"source":"let x = \"\uD55C\uD83D\uDE42\" "}"#,
+    );
+    input.push(b'\n');
+    input.extend_from_slice(br#"{"id":4,"method":"v3_diagnostics","source_id":7,"source":""}"#);
+    let (status, responses) = run(&input, budget(18, 256, 16, 4_096));
+    assert_eq!(status, 0, "source rejection is a serialized request error");
+    assert_eq!(responses.len(), 5);
+    for (id, response) in responses.iter().enumerate() {
+        assert_eq!(response["id"], id);
+        assert_eq!(response["ok"], id != 2);
+    }
+    assert_eq!(responses[2]["error"]["code"], "source_limit_exceeded");
+    assert_eq!(
+        responses[2]["error"]["message"],
+        "source exceeds max_source_bytes 18"
+    );
+    let mut escaped = responses[3].clone();
+    escaped["id"] = serde_json::json!(1);
+    assert_eq!(
+        responses[1], escaped,
+        "JSON escaping preserves decoded input"
+    );
+}
+
+#[test]
+fn response_limit_counts_serialized_utf8_bytes_and_emits_bounded_fallback() {
+    let request = r#"{"id":"응🙂","method":"한🙂한🙂","source_id":7,"source":""}"#.as_bytes();
+    // Independent wire golden, including multibyte ID and method text.
+    let expected = r#"{"id":"응🙂","ok":false,"error":{"code":"method_not_allowed","message":"method `한🙂한🙂` is not allowed"}}"#;
+    assert_eq!(expected.len(), 116);
+    assert_eq!(expected.chars().count(), 101);
+    let exact =
+        DiagnosticsServerV2::try_with_budget(budget(64, 256, 16, 116)).expect("exact byte budget");
+    assert_eq!(
+        exact.dispatch(request).expect("116 bytes admitted"),
+        expected.as_bytes()
+    );
+
+    let below = DiagnosticsServerV2::try_with_budget(budget(64, 256, 16, 115))
+        .expect("one-under byte budget can still hold fallback");
+    let error = below.dispatch(request).expect_err("116 bytes exceed 115");
+    assert_eq!(error.code, "response_limit_exceeded");
+    assert_eq!(
+        error.message,
+        "serialized response exceeds max_response_bytes 115"
+    );
+
+    let mut input = Cursor::new(request);
+    let mut output = Vec::new();
+    let status =
+        run_stdio_session_with_budget_v2(&mut input, &mut output, budget(64, 256, 16, 115))
+            .expect("bounded fallback session");
+    assert_eq!(status, 1);
+    assert_eq!(
+        output,
+        b"{\"id\":null,\"ok\":false,\"error\":{\"code\":\"response_limit_exceeded\",\"message\":\"response exceeds configured limit\"}}\n"
+    );
+    assert!(output.len() <= 115, "fallback plus framing stays bounded");
+}
+
+#[test]
 fn diagnostic_and_response_caps_fail_closed() {
     let request =
         br#"{"id":1,"method":"v3_diagnostics","source_id":1,"source":"show capabilities"}"#;
@@ -192,6 +272,59 @@ fn overflow_spanning_many_reads_discards_only_that_frame_and_recovers() {
     assert_eq!(responses[0]["error"]["code"], "frame_limit_exceeded");
     assert_eq!(responses[1]["id"], 9);
     assert_eq!(responses[1]["ok"], true);
+}
+
+#[test]
+fn overflowing_final_frame_without_newline_emits_one_error() {
+    for prefix in [false, true] {
+        let mut input = Vec::new();
+        if prefix {
+            input.extend_from_slice(
+                br#"{"id":9,"method":"v3_diagnostics","source_id":1,"source":""}"#,
+            );
+            input.push(b'\n');
+        }
+        input.extend_from_slice(&padded_object(257));
+        // Exact first overflow clears the buffered line, leaving only the flag
+        // at EOF. No newline or further byte may be required to emit its error.
+        for one_byte in [false, true] {
+            let mut output = Vec::new();
+            let limits = budget(64, 256, 16, 4_096);
+            let status = if one_byte {
+                let mut reader = OneByteReader {
+                    bytes: input.clone(),
+                    cursor: 0,
+                };
+                run_stdio_session_with_budget_v2(&mut reader, &mut output, limits)
+            } else {
+                let mut reader = Cursor::new(&input);
+                run_stdio_session_with_budget_v2(&mut reader, &mut output, limits)
+            }
+            .expect("overflow at EOF session");
+            assert_eq!(status, 1);
+            let responses: Vec<Value> = output
+                .split(|byte| *byte == b'\n')
+                .filter(|line| !line.is_empty())
+                .map(|line| serde_json::from_slice(line).expect("response json"))
+                .collect();
+            assert_eq!(responses.len(), if prefix { 2 } else { 1 });
+            if prefix {
+                assert_eq!(responses[0]["id"], 9);
+                assert_eq!(responses[0]["ok"], true);
+            }
+            assert_eq!(
+                responses.last().expect("overflow response"),
+                &serde_json::json!({
+                    "id": null, "ok": false,
+                    "error": {
+                        "code": "frame_limit_exceeded",
+                        "message": "request exceeds max_frame_bytes 256",
+                    },
+                })
+            );
+            assert_eq!(output.last(), Some(&b'\n'));
+        }
+    }
 }
 
 #[test]

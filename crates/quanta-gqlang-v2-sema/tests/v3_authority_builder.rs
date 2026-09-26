@@ -268,3 +268,112 @@ fn facade_builder_seals_pack_and_canonical_lockfile_without_owner_proofs() {
         lock_text
     );
 }
+
+#[test]
+fn facade_relation_and_rule_inputs_preserve_every_scalar_and_optional_type() {
+    use quanta_gqlang_v2_modules::ExternalCatalogPayloadV2;
+    use quanta_gqlang_v2_sema::{
+        FrontendCallableParameterInputV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
+    };
+    use quanta_gqlang_v2_types::{ScalarTyV1, ValueTypeV1};
+    let cases = [
+        (FrontendScalarTypeV2::Bool, ScalarTyV1::Bool),
+        (FrontendScalarTypeV2::Int, ScalarTyV1::Int),
+        (FrontendScalarTypeV2::Float, ScalarTyV1::Float),
+        (FrontendScalarTypeV2::String, ScalarTyV1::String),
+        (FrontendScalarTypeV2::Duration, ScalarTyV1::Duration),
+        (FrontendScalarTypeV2::Location, ScalarTyV1::Location),
+        (FrontendScalarTypeV2::Path, ScalarTyV1::Path),
+        (FrontendScalarTypeV2::RepoPath, ScalarTyV1::RepoPath),
+        (FrontendScalarTypeV2::EntityRef, ScalarTyV1::EntityRef),
+        (FrontendScalarTypeV2::SymbolRef, ScalarTyV1::SymbolRef),
+        (FrontendScalarTypeV2::RuleRef, ScalarTyV1::RuleRef),
+        (FrontendScalarTypeV2::SourceScope, ScalarTyV1::SourceScope),
+        (FrontendScalarTypeV2::ProofTree, ScalarTyV1::ProofTree),
+    ];
+    for optional in [false, true] {
+        let mut input = builder();
+        input.add_relation(FrontendRelationInputV2 {
+            authority: quanta_gqlang_v2_sema::FrontendRelationAuthorityV2::Host,
+            provenance_namespace: "host".to_owned(),
+            qualified_name: "app::typed".to_owned(),
+            lookup_name: "typed".to_owned(),
+            fields: cases
+                .iter()
+                .enumerate()
+                .map(|(index, (scalar_type, _))| FrontendRelationFieldInputV2 {
+                    name: format!("field_{index}"),
+                    scalar_type: *scalar_type,
+                    optional,
+                    location: location(2 + index, 3 + index),
+                })
+                .collect(),
+            cardinality: FrontendRelationCardinalityV2::Bag,
+            provenance: "test".to_owned(),
+            location: location(1, 16),
+        });
+        input.add_catalog_asset(FrontendCatalogAssetInputV2 {
+            module_name: "app".to_owned(),
+            local_name: "typed_rule".to_owned(),
+            payload: FrontendCatalogPayloadV2::Rule {
+                parameters: cases
+                    .iter()
+                    .enumerate()
+                    .map(
+                        |(index, (scalar_type, _))| FrontendCallableParameterInputV2 {
+                            name: format!("param_{index}"),
+                            scalar_type: *scalar_type,
+                            optional,
+                            location: location(20 + index, 21 + index),
+                        },
+                    )
+                    .collect(),
+                result: FrontendScalarTypeV2::Bool,
+            },
+            provenance: "test".to_owned(),
+            location: location(19, 34),
+        });
+        let authority = input.finish().expect("curated input matrix seals");
+        let row = authority
+            .relations()
+            .get("typed")
+            .expect("authored relation retained")
+            .relation_type()
+            .row();
+        assert_eq!(row.fields().len(), cases.len());
+        let signature = authority
+            .modules()
+            .external_catalog()
+            .iter()
+            .find_map(|asset| {
+                if let ExternalCatalogPayloadV2::Rule(signature) = asset.payload() {
+                    Some(signature)
+                } else {
+                    None
+                }
+            })
+            .expect("authored rule signature retained");
+        assert_eq!(signature.parameters().len(), cases.len());
+        assert_eq!(signature.result(), &ValueTypeV1::bool());
+        for (index, (_, owner)) in cases.iter().enumerate() {
+            let scalar = ValueTypeV1::scalar(owner.clone());
+            let expected = if optional {
+                ValueTypeV1::try_optional(scalar).expect("single optional wrapper")
+            } else {
+                scalar
+            };
+            let field = row
+                .fields()
+                .get(index)
+                .expect("one row field per authored scalar");
+            assert_eq!(field.name(), format!("field_{index}"));
+            assert_eq!(field.value_type(), &expected);
+            let parameter = signature
+                .parameters()
+                .get(index)
+                .expect("one parameter per authored scalar");
+            assert_eq!(parameter.name(), format!("param_{index}"));
+            assert_eq!(parameter.value_type(), &expected);
+        }
+    }
+}

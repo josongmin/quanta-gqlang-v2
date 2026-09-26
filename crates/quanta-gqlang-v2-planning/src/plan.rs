@@ -645,8 +645,12 @@ enum WalkFrameV2<'a> {
     RuleMember(&'a ResolvedRuleV2),
     /// A checked algebra node about to be visited.
     AlgebraEnter(&'a CheckedAlgebraNodeV2),
-    /// A checked algebra node whose children are all visited.
-    AlgebraExit(&'a CheckedAlgebraNodeV2),
+    /// A checked algebra node whose children are all visited. `value_base`
+    /// isolates this node's ordered child results from sibling/ancestor folds.
+    AlgebraExit {
+        node: &'a CheckedAlgebraNodeV2,
+        value_base: usize,
+    },
 }
 
 /// Charge-before-visit semantic-step accounting against the document receipt.
@@ -792,14 +796,18 @@ fn walk(
                 for expression in node.expressions() {
                     effects = effects.join(expression.effects());
                 }
-                stack.push(WalkFrameV2::AlgebraExit(node));
+                stack.push(WalkFrameV2::AlgebraExit {
+                    node,
+                    value_base: values.len(),
+                });
                 let children = node.children();
                 for child in children.iter().rev() {
                     stack.push(WalkFrameV2::AlgebraEnter(child));
                 }
             }
-            WalkFrameV2::AlgebraExit(node) => {
-                let class = exit_class(node, &mut values);
+            WalkFrameV2::AlgebraExit { node, value_base } => {
+                let class = exit_class(node, values.iter().skip(value_base).copied());
+                values.truncate(value_base);
                 algebra_depth = algebra_depth.saturating_sub(1);
                 if algebra_depth == 0 {
                     plan_class = Some(class);
@@ -882,7 +890,7 @@ fn visit_leaf(
 /// already-computed classes.
 fn exit_class(
     node: &CheckedAlgebraNodeV2,
-    values: &mut Vec<CardinalityClassV2>,
+    mut children: impl Iterator<Item = CardinalityClassV2>,
 ) -> CardinalityClassV2 {
     match node.family() {
         AlgebraFamilyV2::Scan => CardinalityClassV2::LinearInInput,
@@ -899,7 +907,9 @@ fn exit_class(
                 Some(input)
                     if input.family() == AlgebraFamilyV2::Group && !input.expressions().is_empty()
             );
-            let child = values.pop().unwrap_or(CardinalityClassV2::LinearInInput);
+            let child = children
+                .next()
+                .unwrap_or(CardinalityClassV2::LinearInInput);
             if grouped {
                 child
             } else {
@@ -909,12 +919,17 @@ fn exit_class(
         AlgebraFamilyV2::Group
         | AlgebraFamilyV2::Project
         | AlgebraFamilyV2::Filter
-        | AlgebraFamilyV2::Sort => values.pop().unwrap_or(CardinalityClassV2::LinearInInput),
+        | AlgebraFamilyV2::Sort => children
+            .next()
+            .unwrap_or(CardinalityClassV2::LinearInInput),
         AlgebraFamilyV2::SemiJoin | AlgebraFamilyV2::AntiJoin => {
             // The result is bounded by the LEFT input; the right input only
-            // decides existence.
-            let _right = values.pop();
-            values.pop().unwrap_or(CardinalityClassV2::LinearInInput)
+            // decides existence. Child results are source ordered, so do not
+            // recover them by popping a shared stack: nested joins can leave
+            // unrelated intermediate values adjacent to this node's results.
+            children
+                .next()
+                .unwrap_or(CardinalityClassV2::LinearInInput)
         }
     }
 }

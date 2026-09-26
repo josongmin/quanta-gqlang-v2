@@ -36,7 +36,7 @@ use quanta_gqlang_v2_logic::{GraphEndpointRoleV1, GraphQueryContractV2, LogicDia
 use quanta_gqlang_v2_planning::{
     plan, plan_outcome, CheckContractV2, CheckInvalidReasonV2, CheckedCompositionPlanInputV2,
     CompositionBodyFamilyV2, CompositionBodyPlanInputV2, CompositionInvalidReasonV2, EffectClassV2,
-    InputDocumentMismatchReasonV2, NoPlanReasonV2, PlanOutcomeV2, PlanPolicyV2,
+    EffectSummaryV2, InputDocumentMismatchReasonV2, NoPlanReasonV2, PlanOutcomeV2, PlanPolicyV2,
     PlanningDiagnosticV1, PresentationContractV2, PresentationInvalidReasonV2, ResultKindV2,
     SemanticPlanInputV2,
 };
@@ -53,6 +53,7 @@ use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, DetectionModeV1, EvidenceModeV1, GraphQueryKindV1, SemanticItemV2,
     TruthModeV1,
 };
+use quanta_gqlang_v2_types::{AggregationClassV1, DeterminismV1, MonotonicityV1, PurityV1};
 
 mod support;
 
@@ -1000,6 +1001,76 @@ fn every_composition_body_family_plans_with_exact_retention() {
         assert_eq!(policy.body_family(), family);
         assert_eq!(policy.with_binding(), document.with_binding());
         assert_eq!(policy.body().policy().keyword(), body_policy);
+        let SemanticPlanInputV2::Composition(input) = &input else {
+            panic!("expected checked composition input");
+        };
+        // Compare the complete retained payload to the sealed input. The
+        // relational fixture is exactly Project -> Scan with one pure path;
+        // its authored fold is pinned rather than recomputed by the planner.
+        match (input.body(), policy.body().policy()) {
+            (CompositionBodyPlanInputV2::Relational(_), retained) => assert_eq!(
+                retained,
+                &PlanPolicyV2::Relational {
+                    nodes: 2,
+                    effects: EffectSummaryV2::new(
+                        PurityV1::Pure,
+                        DeterminismV1::Deterministic,
+                        MonotonicityV1::Monotone,
+                        AggregationClassV1::Scalar,
+                    ),
+                },
+            ),
+            (CompositionBodyPlanInputV2::Graph(contract), PlanPolicyV2::Graph(retained)) => {
+                assert_eq!(retained.item_id(), contract.item_id());
+                assert_eq!(retained.kind(), contract.kind());
+                assert_eq!(retained.location(), contract.location());
+                assert_eq!(retained.depth(), contract.depth());
+                assert_eq!(retained.direction(), contract.direction());
+                assert_eq!(retained.summary_facets(), contract.summary_facets());
+                assert_eq!(retained.references(), contract.references());
+                assert_eq!(retained.shape(), contract.shape());
+                assert_eq!(retained.max_witnesses(), contract.max_witnesses());
+                assert_eq!(
+                    retained.max_path_length(),
+                    contract.witness().max_path_length()
+                );
+                assert_eq!(retained.dedup(), contract.dedup());
+                assert_eq!(retained.tie_break(), contract.tie_break());
+            }
+            (CompositionBodyPlanInputV2::Check(contract), PlanPolicyV2::Check(retained)) => {
+                assert_eq!(retained, contract.policy());
+                let quanta_gqlang_v2_sema::ResolvedCompositionBodyV2::Check(sealed) =
+                    document.composition().body()
+                else {
+                    panic!("expected sealed CHECK body");
+                };
+                assert_eq!(retained.mode(), sealed.mode());
+                assert_eq!(retained.confirm(), sealed.confirm());
+                assert_eq!(retained.emit(), sealed.emit());
+                assert_eq!(retained.rule(), sealed.rule());
+                assert_eq!(retained.scope(), sealed.scope());
+                assert_eq!(retained.pattern(), sealed.pattern());
+                assert!(
+                    retained.nested_graph().is_none(),
+                    "pattern-only fixture has no nested graph"
+                );
+            }
+            (
+                CompositionBodyPlanInputV2::Explain(contract),
+                PlanPolicyV2::Presentation(retained),
+            ) => {
+                assert_eq!(retained, contract.kind());
+                let quanta_gqlang_v2_sema::ResolvedCompositionBodyV2::Explain(sealed) =
+                    document.composition().body()
+                else {
+                    panic!("expected sealed EXPLAIN body");
+                };
+                assert_eq!(retained, sealed.kind());
+            }
+            (expected, actual) => {
+                panic!("composition body policy mismatch: {expected:?} / {actual:?}")
+            }
+        }
         assert!(
             !policy.producers().is_empty(),
             "{body:?}: a composition plan retains its ordered producers"

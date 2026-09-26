@@ -6,6 +6,12 @@
 
 mod support;
 
+#[path = "../../../tools/test_support/process.rs"]
+mod process;
+
+use std::process::{Command, Output, Stdio};
+use std::time::Duration;
+
 use quanta_gqlang_v2_hir::{
     AdmissionV1, BoolExprKindV1, CatalogPayloadV1, GraphConstraintsV1, GraphEndpointsV1,
     GraphQueryKindV1, GraphRefV1, HirBuilderV1, PathSegmentV1, ProgramItemHirV1,
@@ -22,9 +28,8 @@ fn parse(src: &str) -> ProgramItemHirV1 {
     parsed.item.into_program_item()
 }
 
-/// Structural equality of two items ignoring node ids and spans: re-render both
-/// and compare the canonical text. Two items render identically iff their
-/// structure matches, so canonical-text equality is the structural oracle.
+/// Compare ordered HIR payloads independently of formatter output, ignoring
+/// node ids, spans and transparent parenthesis carriers.
 fn same_structure(a: &ProgramItemHirV1, b: &ProgramItemHirV1) -> bool {
     support::structural_witness(a) == support::structural_witness(b)
 }
@@ -56,47 +61,98 @@ fn deep_shape_formatter_child() {
     // Keep this rail scoped to formatter stack behavior: recursively dropping
     // an adversarial raw-HIR shape is a separate ownership concern.
     std::mem::forget(item);
+    println!("qglang-deep-complete:deep_shape_formatter_child");
 }
 
 #[test]
 fn deep_shape_formatter_is_stack_safe() {
-    let output = std::process::Command::new(std::env::current_exe().expect("test binary"))
-        .args(["--exact", "deep_shape_formatter_child", "--nocapture"])
-        .env("QGLANG_DEEP_SHAPE_FORMAT_CHILD", "1")
-        .output()
-        .expect("child process");
-    assert!(
-        output.status.success(),
-        "deep shape formatter child status: {}; stderr: {}",
-        output.status,
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        stdout.contains("test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured;"),
-        "deep shape formatter child selected zero or multiple tests: {stdout}"
+    assert_deep_relation_child(
+        "deep_shape_formatter_child",
+        "QGLANG_DEEP_SHAPE_FORMAT_CHILD",
     );
 }
 
-fn assert_deep_relation_child(test_name: &str, child_env: &str) {
-    let output = std::process::Command::new(std::env::current_exe().expect("test binary"))
+fn run_deep_child(test_name: &str, child_env: &str, enabled: bool) -> Output {
+    let mut command = Command::new(std::env::current_exe().expect("test binary"));
+    command
         .args(["--exact", test_name, "--nocapture"])
-        .env(child_env, "1")
-        .output()
-        .expect("child process");
+        .env_remove(child_env)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    if enabled {
+        command.env(child_env, "1");
+    }
+    let child = command.spawn().expect("spawn deep formatter child");
+    process::wait_bounded(child, None, Duration::from_secs(10))
+        .expect("deep formatter child finishes within watchdog")
+}
+
+fn deep_child_completed(output: &Output, test_name: &str) -> bool {
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let marker = format!("qglang-deep-complete:{test_name}");
+    output.status.success()
+        && stdout.contains("running 1 test")
+        && stdout.contains("test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured;")
+        && stdout.lines().filter(|line| *line == marker).count() == 1
+}
+
+fn assert_deep_relation_child(test_name: &str, child_env: &str) {
+    let output = run_deep_child(test_name, child_env, true);
     assert!(
-        output.status.success(),
+        deep_child_completed(&output, test_name),
         "{test_name} status: {}; stdout: {}; stderr: {}",
         output.status,
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        stdout.contains("running 1 test")
-            && stdout.contains("test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured;"),
-        "{test_name} selected zero or multiple tests: {stdout}"
-    );
+}
+
+#[test]
+fn deep_child_protocol_rejects_selected_but_unexecuted_work() {
+    for (name, env) in [
+        (
+            "deep_shape_formatter_child",
+            "QGLANG_DEEP_SHAPE_FORMAT_CHILD",
+        ),
+        (
+            "deep_filter_exists_formatter_child",
+            "QGLANG_DEEP_FILTER_FORMAT_CHILD",
+        ),
+        (
+            "deep_join_exists_formatter_child",
+            "QGLANG_DEEP_JOIN_FORMAT_CHILD",
+        ),
+        (
+            "deep_mixed_relation_formatter_child",
+            "QGLANG_DEEP_MIXED_FORMAT_CHILD",
+        ),
+    ] {
+        let output = run_deep_child(name, env, false);
+        assert!(
+            output.status.success(),
+            "ungated child returns successfully"
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("test result: ok. 1 passed;"));
+        assert!(
+            !deep_child_completed(&output, name),
+            "{name}: no work is not completion"
+        );
+    }
+}
+
+#[test]
+fn structural_witness_keeps_grouping_and_ignores_paren_carriers() {
+    let left_grouped = parse("let x = (a - b) - c");
+    assert!(same_structure(
+        &left_grouped,
+        &parse("let x = ((a - b)) - c")
+    ));
+    assert!(!same_structure(
+        &left_grouped,
+        &parse("let x = a - (b - c)")
+    ));
 }
 
 fn assert_deep_relation_render(join: bool) {
@@ -155,6 +211,7 @@ fn deep_filter_exists_formatter_child() {
         .expect("small-stack formatter thread")
         .join()
         .expect("small-stack formatter completed");
+    println!("qglang-deep-complete:deep_filter_exists_formatter_child");
 }
 
 #[test]
@@ -176,6 +233,7 @@ fn deep_join_exists_formatter_child() {
         .expect("small-stack formatter thread")
         .join()
         .expect("small-stack formatter completed");
+    println!("qglang-deep-complete:deep_join_exists_formatter_child");
 }
 
 #[test]
@@ -248,6 +306,7 @@ fn deep_mixed_relation_formatter_child() {
         .expect("small-stack formatter thread")
         .join()
         .expect("small-stack formatter completed");
+    println!("qglang-deep-complete:deep_mixed_relation_formatter_child");
 }
 
 #[test]

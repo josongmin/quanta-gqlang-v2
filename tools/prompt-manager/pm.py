@@ -176,26 +176,100 @@ def validate_scoping(config: dict[str, Any], rendered: dict[str, str]) -> None:
                 raise PromptManagerError(f"Cursor target {name} must be .cursor/rules/*.mdc")
             if "\nalwaysApply: false\n" not in content or "\nglobs: " not in content:
                 raise PromptManagerError(f"Cursor target {name} must be file-scoped")
+            patterns = [pattern.strip() for pattern in spec["globs"].split(",")]
+            validate_scope_paths(name, patterns)
         elif kind == "claude_rule":
             if not output.endswith(".md") or not output.startswith(".claude/rules/"):
                 raise PromptManagerError(f"Claude target {name} must be .claude/rules/*.md")
             if not content.startswith("---\npaths:\n"):
                 raise PromptManagerError(f"Claude target {name} must use paths frontmatter")
+            validate_scope_paths(name, spec["paths"])
+
+
+def validate_scope_paths(name: str, patterns: list[str]) -> None:
+    for pattern in patterns:
+        relative = Path(pattern)
+        if not pattern or relative.is_absolute() or ".." in relative.parts:
+            raise PromptManagerError(f"invalid scope path in {name}: {pattern!r}")
+        if any(character in pattern for character in "*?[]{}"):
+            continue
+        # exists() accepts wrong casing on common macOS filesystems. Compare
+        # directory entries explicitly so literal scopes also work on Linux.
+        candidate = ROOT
+        for part in relative.parts:
+            if not candidate.is_dir() or part not in {entry.name for entry in candidate.iterdir()}:
+                raise PromptManagerError(f"missing or wrong-case scope path in {name}: {pattern}")
+            candidate = candidate / part
+        if not candidate.is_file():
+            raise PromptManagerError(f"literal scope must name a file in {name}: {pattern}")
+
+
+def imports(content: str) -> list[str]:
+    prose: list[str] = []
+    fence = ""
+    for line in content.splitlines(keepends=True):
+        marker = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line.rstrip("\n"))
+        if fence:
+            if (marker and marker[1][0] == fence[0]
+                    and len(marker[1]) >= len(fence) and not marker[2].strip()):
+                fence = ""
+        elif marker:
+            fence = marker[1]
+        else:
+            prose.append(line)
+    without_code = re.sub(r"(`+)(?!`).*?(?<!`)\1(?!`)", "", "".join(prose), flags=re.S)
+    return re.findall(r"(?<![\w@])@([A-Za-z0-9_./~-]+)", without_code)
 
 
 def validate_imports(config: dict[str, Any], rendered: dict[str, str]) -> None:
-    available = {Path(spec["output"]) for spec in config["targets"].values()}
+    available = {output_path(spec): name for name, spec in config["targets"].items()}
+    edges: dict[str, list[str]] = {}
     for name, content in rendered.items():
-        without_code = re.sub(r"`[^`\n]*`", "", content)
-        for match in re.finditer(r"(?<![\w@])@([A-Za-z0-9_./~-]+)", without_code):
-            imported = Path(match.group(1))
+        edges[name] = []
+        for raw_import in imports(content):
+            imported = Path(raw_import)
             if imported.is_absolute() or str(imported).startswith("~"):
                 raise PromptManagerError(f"external import is not allowed in {name}: @{imported}")
-            candidate = (ROOT / imported).resolve()
+            candidate = (output_path(config["targets"][name]).parent / imported).resolve()
             if candidate != ROOT and ROOT not in candidate.parents:
                 raise PromptManagerError(f"external import is not allowed in {name}: @{imported}")
-            if imported not in available and not candidate.is_file():
+            if candidate not in available and not candidate.is_file():
                 raise PromptManagerError(f"missing import in {name}: @{imported}")
+            if candidate not in available:
+                raise PromptManagerError(f"unbudgeted import in {name}: @{imported}; use an on-demand route")
+            edges[name].append(available[candidate])
+    groups = config.get("context_groups", {})
+    for name, imported_targets in edges.items():
+        if imported_targets and not any(name in group["targets"] for group in groups.values()):
+            raise PromptManagerError(f"import without context group in {name}")
+    for group_name, group in groups.items():
+        members = set(group["targets"])
+        for name in members:
+            if any(imported not in members for imported in edges[name]):
+                raise PromptManagerError(f"import escapes context group {group_name}: {name}")
+
+    def visit(name: str, active: set[str], visited: set[str]) -> None:
+        if name in active:
+            raise PromptManagerError(f"import cycle at {name}")
+        if name in visited:
+            return
+        for imported in edges[name]:
+            visit(imported, active | {name}, visited)
+        visited.add(name)
+
+    visited: set[str] = set()
+    for name in edges:
+        visit(name, set(), visited)
+    for name, spec in config["targets"].items():
+        if "required_imports" not in spec:
+            continue
+        required = spec["required_imports"]
+        if (not isinstance(required, list)
+                or not all(isinstance(target, str) and target in available.values() for target in required)
+                or len(required) != len(set(required))):
+            raise PromptManagerError(f"invalid required_imports in {name}")
+        if edges[name] != required:
+            raise PromptManagerError(f"import contract changed in {name}: expected {required}, got {edges[name]}")
 
 
 def validate_retired(config: dict[str, Any]) -> None:

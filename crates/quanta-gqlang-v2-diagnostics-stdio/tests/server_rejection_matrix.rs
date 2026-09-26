@@ -56,12 +56,21 @@ fn only_the_advertised_read_only_method_is_admitted() {
 
 #[test]
 fn only_string_and_number_ids_are_admitted() {
-    for id in [r#""text""#, "0", "-1", "1.25"] {
+    for (id, expected) in [
+        (r#""text""#, serde_json::json!("text")),
+        ("0", serde_json::json!(0)),
+        ("-1", serde_json::json!(-1)),
+        ("1.25", serde_json::json!(1.25)),
+    ] {
         let line = format!(
             r#"{{"id":{id},"method":"v3_diagnostics","source_id":1,"source":"show capabilities"}}"#
         );
         let response = dispatch(&line).expect("valid id");
         assert_eq!(response["ok"], true, "id {id}");
+        assert_eq!(
+            response["id"], expected,
+            "id {id} must be preserved exactly"
+        );
     }
 
     for id in ["null", "true", "false", "[]", "{}"] {
@@ -77,20 +86,20 @@ fn only_string_and_number_ids_are_admitted() {
 #[test]
 fn required_fields_types_ranges_and_unknown_fields_fail_as_invalid_request() {
     let cases = [
-        r#"{"method":"v3_diagnostics","source_id":1,"source":"x"}"#,
-        r#"{"id":1,"source_id":1,"source":"x"}"#,
-        r#"{"id":1,"method":"v3_diagnostics","source":"x"}"#,
-        r#"{"id":1,"method":"v3_diagnostics","source_id":1}"#,
-        r#"{"id":1,"method":7,"source_id":1,"source":"x"}"#,
-        r#"{"id":1,"method":"v3_diagnostics","source_id":-1,"source":"x"}"#,
-        r#"{"id":1,"method":"v3_diagnostics","source_id":4294967296,"source":"x"}"#,
-        r#"{"id":1,"method":"v3_diagnostics","source_id":1,"source":[]}"#,
-        r#"{"id":1,"method":"v3_diagnostics","source_id":1,"source":[],"extra":0}"#,
-        r#"{"id":1,"method":"v3_diagnostics","source_id":1,"source":"x","extra":0}"#,
+        (r#"{"method":"v3_diagnostics","source_id":1,"source":"x"}"#, "missing field `id` at line 1 column 54"),
+        (r#"{"id":1,"source_id":1,"source":"x"}"#, "missing field `method` at line 1 column 35"),
+        (r#"{"id":1,"method":"v3_diagnostics","source":"x"}"#, "missing field `source_id` at line 1 column 47"),
+        (r#"{"id":1,"method":"v3_diagnostics","source_id":1}"#, "missing field `source` at line 1 column 48"),
+        (r#"{"id":1,"method":7,"source_id":1,"source":"x"}"#, "invalid type: integer `7`, expected a string at line 1 column 18"),
+        (r#"{"id":1,"method":"v3_diagnostics","source_id":-1,"source":"x"}"#, "invalid value: integer `-1`, expected u32 at line 1 column 48"),
+        (r#"{"id":1,"method":"v3_diagnostics","source_id":4294967296,"source":"x"}"#, "invalid value: integer `4294967296`, expected u32 at line 1 column 56"),
+        (r#"{"id":1,"method":"v3_diagnostics","source_id":1,"source":[]}"#, "invalid type: sequence, expected a string at line 1 column 57"),
+        (r#"{"id":1,"method":"v3_diagnostics","source_id":1,"source":[],"extra":0}"#, "invalid type: sequence, expected a string at line 1 column 57"),
+        (r#"{"id":1,"method":"v3_diagnostics","source_id":1,"source":"x","extra":0}"#, "unknown field `extra`, expected one of `id`, `method`, `source_id`, `source` at line 1 column 68"),
     ];
-    for line in cases {
+    for (line, expected_message) in cases {
         let error = dispatch(line).expect_err("schema-invalid request");
         assert_eq!(error.0, "invalid_request", "request {line}");
-        assert!(!error.1.is_empty());
+        assert_eq!(error.1, expected_message, "request {line}");
     }
 }

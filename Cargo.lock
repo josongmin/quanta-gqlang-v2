@@ -306,6 +306,7 @@ version = "0.1.0"
 dependencies = [
  "proptest",
  "quanta-gqlang-v2-hir",
+ "sha2",
 ]
 
 [[package]]

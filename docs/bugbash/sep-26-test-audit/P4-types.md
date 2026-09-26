@@ -101,7 +101,7 @@ Result: **~45 proof gaps raised, all mechanically closed or explicitly held.**
   프로덕션 변경이라 보류.
 - `hellgate` `ResolvedRelationCaptureInputV2.target_ordinal`은 kernel(check.rs:816-831)이 읽지 않아
   round-trip 이상을 검증할 수 없다(DTO round-trip은 위에서 고정).
-- `hellgate` `HostCallableNamespaceV2::Rule` tag byte 2는 `assert_ne!`로만 커버(선택적 강화 여지).
+- `hellgate` `HostCallableNamespaceV2::Rule` tag byte 2는 최종 보강에서 전체 canonical byte vector로 고정했다. Predicate의 tag 1과 별도로 검증한다.
 - 이름 over-claim(`universe:250` `_rejects_oob`, `universe:374` `..._or_nested`,
   `universe:499` `_and_capture_`(일부 해소), `solver:164` negative control 부재)은 오라클이 아니라
   이름·구성 문제라 별도 판단으로 보류.

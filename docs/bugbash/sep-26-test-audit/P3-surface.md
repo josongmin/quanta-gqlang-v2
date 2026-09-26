@@ -85,25 +85,24 @@ Final: green (248 + 1 doctest). `cargo clippy -p quanta-gqlang-v2-surface --test
 | `src/parser.rs` cross-entry drift / formatter structure loss | `document_hellgate::single_item_document_matches_program` compares `parse_program` vs `parse_document`; `examples_corpus` compares `structural_witness` before/after canonical formatting. |
 | `src/equivalence.rs` paren-layer stripper | New nested-paren `try_format_item` unit case. |
 
-## 4. Residual (reported, not fixed) and reasons
+## 4. Residual disposition (structural closeout in section 8)
 
-- **Examples-corpus identity pin (F)** — a strongly reduced corpus (delete 19/20 examples and
-  their index rows) would still pass. The ledger designates `docs/language/examples_index.md`
-  as the single maintained list, so adding a second hard-coded list would violate the
-  maintenance rule; non-empty + disk↔index cross-check retained.
-- **`proptest` `try_format_item` self-comparison (E)** — the round-trip proptest compares the
-  checked formatter to the infallible one; the negative direction is owned by
-  `v3_format_hellgate.rs::checked_formatter_rejects_*` (5 exact rails), so not duplicated.
-- **`depth.rs` diagnostic span** — `exhausted` pins code/dimension/observed/message but not the
-  exact subexpression span (varies per input); code+message+resource are pinned.
-- **env-gated child targets** — parents assert `running 1 test` + `1 passed`, so zero-selection
-  is closed.
-- **`support::structural_witness` paren transparency** — deliberate and documented; a
-  grouping-relevant paren changes traversal order and is still caught.
-- **Remaining `contains` message checks** — message fragments supplement the diagnostic
-  code. The Sep 26 re-audit also pins exact spans for CHECK's missing FIND/confirm,
-  COMPARE's missing candidate, duplicate composition binding, and empty summary facets.
-  This is representative diagnostic coverage, not a full-message golden claim.
+- **Examples-corpus identity pin (F)** — closed by an independent count and
+  path SHA-256. A scalar fingerprint does not duplicate the maintained path list.
+- **`proptest` `try_format_item` self-comparison (E)** — retained as a positive
+  property. Existing raw-HIR rejection rails independently reject always-Ok.
+- **Expression-depth diagnostic span** — closed by input-specific exact spans,
+  independently expected resource limits/counts and formatter ingress equality.
+- **env-gated child targets** — one selected/passed test alone did not prove
+  executed work. Closed by post-assertion completion markers, bounded subprocess
+  custody and an explicit selected-but-unexecuted negative control.
+- **`support::structural_witness` paren transparency** — retained policy with
+  redundant-paren equality and subtraction regrouping inequality controls.
+- **Remaining `contains` message checks** — all eight fragment rails now use
+  complete expected messages and complete spans.
+- **Shape-limit branch** — no parser-reachable survivor was established; the
+  recursive shape parser rejects first at the same limit. This is not counted as
+  a mutation kill or a newly covered branch.
 
 ## 5. Modified files (17)
 
@@ -126,3 +125,102 @@ Report: `docs/bugbash/sep-26-test-audit/P3-surface.md`.
 | probes | temporary `tests/zz_probe*.rs` used to sample exact canonical/diagnostic values; both deleted (18 `.rs` targets restored) | — |
 
 `just ci` / `just qualify-local` were not run (integrator-only).
+
+## 7. Post-re-audit verification (HEAD `78f4770`)
+
+The re-audit (`reaudit-2026-09-26.md`) closed its one P3 residual — the five surface
+substring rails (`check_using_requires_a_find_query`, `check_missing_confirm_rejects`,
+`compare_missing_candidate_rejects`, `composition_duplicate_binding_rejects`,
+`find_summary_empty_facets_rejects`) now also pin exact diagnostic spans, and section 4's
+scope claim was narrowed accordingly. RA-04/RA-05 belong to the conformance owner, not this
+scope.
+
+Re-verified on the current committed HEAD (all P3 markers present; worktree clean for
+`crates/quanta-gqlang-v2-surface/`):
+
+| check | command | result |
+|---|---|---|
+| tests | `cargo test -p quanta-gqlang-v2-surface` | green — 20 targets, **250 passed + 1 doctest** |
+| lint | `cargo clippy -p quanta-gqlang-v2-surface --tests --all-features` | clean |
+| format | `cargo fmt -p quanta-gqlang-v2-surface -- --check` | clean |
+| probes | no `zz*` files present; 18 integration targets + `support/mod.rs` | — |
+
+Historical residual at that verification point (superseded by section 8): examples-corpus identity pin (ledger
+designates `examples_index.md` as the single list), proptest `try_format_item`
+negative direction owned by `v3_format_hellgate.rs`, expression-depth diagnostic span
+(relation-depth span is pinned; other depths pin code+message+resource), env-gated child
+targets, and documented `Paren` transparency in `structural_witness`.
+
+
+## 8. Structural residual closeout
+
+Base is `78f477056cfbc726441d298fe243d3d34efb566f` plus the existing shared
+working-tree changes. This closeout owns surface tests, surface dev-dependency
+metadata, this record and the corpus ledger description. It changes no production
+semantics or public frontend contract. The earlier 250-test receipt is historical.
+
+Acceptance and final behavior:
+
+- The corpus has 18 reviewed paths, pinned independently by count and SHA-256 of
+  sorted, u64-little-endian-length-framed UTF-8 paths with domain
+  `qglang.examples.paths.v1\0`. The index remains the only maintained path list.
+  Intentional path additions/removals/renames require reviewing and updating the
+  pins. File content is checked by parse/format/witness rails, not this path hash.
+  Discovery no longer flattens entry errors or uses lossy path conversion; type
+  errors and symlinks fail closed instead of following an unbounded directory cycle.
+- All four deep formatter parents share the existing bounded process helper:
+  null stdin, concurrent stdout/stderr drains and a 10-second watchdog. Each child
+  emits its exact named completion line only after its assertions and worker join.
+  Parents require success, one selected/passed test and exactly one completion
+  line. A negative control executes each child with its gate removed, proves that
+  libtest still reports a pass, and rejects it as unexecuted work. Direct-child
+  cleanup is covered by the existing process-support owner; no descendant cleanup
+  claim is made here.
+- Budget oracles now pin independently expected limit/observed and exact span,
+  including the recursive NOT case and flat value/bool HIR admission. Formatter
+  ingress retains the entire expected source-bound diagnostic. Four custom-depth
+  acceptance/rejection pairs cover unary, parentheses, result shape and NOT;
+  direct value/predicate entrypoints pin their own depth spans and resource payloads.
+- All eight remaining family message-fragment rails pin complete messages.
+  Missing USE PACK lockfile now also pins 4..8; zero FIND depth pins both span ends.
+- The proptest's parser-produced checked/infallible equality remains a positive
+  property backed by the existing raw/lossy-HIR rejection rails. No duplicate
+  negative suite is added. The checked-formatter always-Ok mutation is exercised
+  against those rejection rails.
+- A separate witness regression accepts redundant paren carriers and rejects
+  left/right subtraction regrouping. Raw unary/path and NOT/NOT EXISTS goldens
+  remain separate. The parser's Shape-depth rejection still precedes the HIR
+  Shape-limit branch; no unreachable mutation is claimed as a kill.
+
+Evidence is kept in `target/sep26-p3-closure/`: the isolated mutation checkout
+pins surface production to the inspected committed HEAD and copies the owner
+changes without editing the shared checkout. `baseline.json` and
+`mutation-results.json` record commands, source/log hashes, terminal assertion
+failures and byte-for-byte restoration. Compiler failures are not mutation kills.
+The first shared-checkout CI attempt rejected source drift during doctor; its
+log and receipt are preserved as `shared-ci-first.log` and
+`shared-ci-first-result.json`. Final `just ci` runs in a detached worktree populated
+from one byte-verified shared dirty-source snapshot; `ci.log` and `ci-result.json`
+record that isolated source separately. It cannot qualify later edits in the shared
+checkout. Corpus path components are joined with `/` before sorting/hashing so the
+path identity does not depend on native separator spelling. Local CI is not a clean committed-HEAD, hosted CI or downstream
+runtime qualification. Clean-HEAD qualification remains a separate integration step.
+
+The frozen isolated positive owner run passes 113 tests (3 corpus, 66 family,
+28 format and 16 budget, including three concurrent owner additions). Sixteen
+compiling mutations are rejected by assertions: coordinated shrink, same-count
+replacement, omitted child env, removed completion check, erased HIR/parser
+depth spans, eight fragment-preserving wrong messages, always-Ok checked formatter
+and erased witness binary grouping. An initial always-Ok probe hit unused-import
+compiler errors and was discarded; the accepted probe retains the original typed
+body after an unconditional success branch and reaches four failing rejection
+assertions. The first isolated baseline caught an incorrect 18..23 expectation in
+a concurrent budget test; the owner corrected it to the authored 19..24 before
+the accepted frozen baseline. Neither invalid run is counted as a mutation kill.
+
+The first frozen CI found a concurrent sema test's wildcard enum arm rejected by
+Clippy. Its Rule-only `find_map` is expressed as an `if let` without changing the
+fixture or signature assertions. This narrow CI fix is in
+`sema/tests/v3_authority_builder.rs`; the original frozen failure log/receipt remain
+`frozen-ci-first.log` and `frozen-ci-first-result.json`. The final source is copied
+and verified again before rerunning the complete gate.

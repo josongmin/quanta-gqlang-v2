@@ -105,6 +105,70 @@ impl Read for InterruptingReader<'_> {
     }
 }
 
+struct ShortWriter {
+    bytes: Vec<u8>,
+    interrupt: bool,
+    zero: bool,
+    flushes: usize,
+}
+
+impl Write for ShortWriter {
+    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
+        if self.interrupt {
+            self.interrupt = false;
+            return Err(io::ErrorKind::Interrupted.into());
+        }
+        if self.zero {
+            return Ok(0);
+        }
+        let count = buffer.len().min(3);
+        self.bytes.extend_from_slice(&buffer[..count]);
+        Ok(count)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.flushes += 1;
+        Ok(())
+    }
+}
+
+#[test]
+fn short_and_interrupted_writes_preserve_exact_response_and_framing() {
+    const REQUEST: &[u8] = b"{\"id\":17,\"method\":\"shutdown\",\"source_id\":1,\"source\":\"\"}\n";
+    const EXPECTED: &[u8] = b"{\"id\":17,\"ok\":false,\"error\":{\"code\":\"method_not_allowed\",\"message\":\"method `shutdown` is not allowed\"}}\n";
+    for interrupt in [false, true] {
+        let mut input = Cursor::new(REQUEST);
+        let mut writer = ShortWriter {
+            bytes: Vec::new(),
+            interrupt,
+            zero: false,
+            flushes: 0,
+        };
+        let status = run_stdio_session_v2(&mut input, &mut writer).expect("short-write session");
+        assert_eq!(
+            status, 0,
+            "serialized method rejection is not a transport failure"
+        );
+        assert_eq!(
+            writer.bytes, EXPECTED,
+            "every payload and delimiter byte must be written"
+        );
+        assert_eq!(writer.flushes, 1);
+    }
+    let mut input = Cursor::new(REQUEST);
+    let mut writer = ShortWriter {
+        bytes: Vec::new(),
+        interrupt: false,
+        zero: true,
+        flushes: 0,
+    };
+    let error = run_stdio_session_v2(&mut input, &mut writer)
+        .expect_err("zero write cannot fabricate success");
+    assert_eq!(error.kind(), io::ErrorKind::WriteZero);
+    assert!(writer.bytes.is_empty());
+    assert_eq!(writer.flushes, 0);
+}
+
 struct FailingWriter {
     calls: usize,
     fail_at: usize,
@@ -142,6 +206,17 @@ fn valid_request_echoes_id_and_reports_honest_incomplete_analysis() {
     let (status, responses) = run(request.as_bytes());
     assert_eq!(status, 0);
     assert_eq!(responses.len(), 1);
+    let mut response_keys: Vec<&str> = responses[0]
+        .as_object()
+        .expect("success response is an object")
+        .keys()
+        .map(String::as_str)
+        .collect();
+    response_keys.sort_unstable();
+    assert_eq!(
+        response_keys,
+        ["analysis_status", "diagnostics", "id", "method", "ok"]
+    );
     assert_eq!(responses[0]["id"], 41);
     assert_eq!(responses[0]["ok"], true);
     assert_eq!(responses[0]["method"], "v3_diagnostics");
@@ -168,6 +243,25 @@ fn valid_request_echoes_id_and_reports_honest_incomplete_analysis() {
         ]
     );
     for diagnostic in diagnostics {
+        let mut keys: Vec<&str> = diagnostic
+            .as_object()
+            .expect("diagnostic is an object")
+            .keys()
+            .map(String::as_str)
+            .collect();
+        keys.sort_unstable();
+        assert_eq!(
+            keys,
+            [
+                "code",
+                "message",
+                "severity",
+                "source_id",
+                "span_end",
+                "span_start",
+                "stage"
+            ]
+        );
         assert_eq!(diagnostic["stage"], "declaration");
         assert_eq!(diagnostic["severity"], "warning");
         assert_eq!(diagnostic["source_id"], 7);
@@ -198,6 +292,22 @@ fn malformed_invalid_utf8_and_duplicate_lines_do_not_poison_following_requests()
     assert_eq!(status, 1);
     assert_eq!(responses.len(), 4);
     for response in &responses[..3] {
+        let mut keys: Vec<&str> = response
+            .as_object()
+            .expect("error response is an object")
+            .keys()
+            .map(String::as_str)
+            .collect();
+        keys.sort_unstable();
+        assert_eq!(keys, ["error", "id", "ok"]);
+        let mut error_keys: Vec<&str> = response["error"]
+            .as_object()
+            .expect("protocol error is an object")
+            .keys()
+            .map(String::as_str)
+            .collect();
+        error_keys.sort_unstable();
+        assert_eq!(error_keys, ["code", "message"]);
         assert_eq!(response["ok"], false);
         assert_eq!(response["id"], Value::Null);
         assert_eq!(response["error"]["code"], "invalid_request");

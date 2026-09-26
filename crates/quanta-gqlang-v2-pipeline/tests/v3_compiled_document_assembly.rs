@@ -2081,11 +2081,27 @@ fn execution_expressions_expose_operator_and_builtin_semantics_without_registrie
     let mut filter_predicates = None;
     while let Some(node) = stack.pop() {
         if node.family() == AlgebraFamilyV2::Filter {
-            filter_predicates = Some(node.predicates().len());
+            filter_predicates = Some(
+                node.predicates()
+                    .iter()
+                    .map(|key| {
+                        let expression = expressions
+                            .iter()
+                            .find(|entry| entry.id() == *key)
+                            .expect("each filter key names its closed expression");
+                        let ExecutionExpressionShapeV3::Compare { operator, .. } =
+                            expression.shape()
+                        else {
+                            panic!("the authored filter conjunct is a comparison");
+                        };
+                        operator.symbol()
+                    })
+                    .collect::<Vec<_>>(),
+            );
         }
         stack.extend(node.children().iter());
     }
-    assert_eq!(filter_predicates, Some(2));
+    assert_eq!(filter_predicates, Some(vec![">", "!="]));
     assert!(
         !operators.contains("*"),
         "the noise item's `*` must not leak into the relation table: {operators:?}"
@@ -2391,4 +2407,159 @@ fn format_entry_emits_canonical_text_and_enforces_the_source_budget() {
     let syntax = format_source_document_v2(DOC_SOURCE, "from records r | bogus", &budget)
         .expect_err("unknown stage must retain syntax/integrity classification");
     assert_eq!(syntax.diagnostics()[0].stage(), FrontendStageV2::Integrity);
+}
+
+#[test]
+fn existence_cardinality_uses_the_left_subtree_after_both_children_fold() {
+    use quanta_gqlang_v2_sema::{FrontendRelationCardinalityV2, FrontendRelationFieldInputV2};
+    let location = FrontendAuthorityLocationV2 {
+        source_id: HOST_SOURCE,
+        start: 0,
+        end: 1,
+    };
+    let mut builder = quanta_gqlang_v2_pipeline::ClosedFrontendAuthorityBuilderV2::try_new(
+        FrontendBudgetV2::standard_v2().expect("standard budget"),
+        vec![FrontendAuthoritySourceV2 {
+            source_id: HOST_SOURCE,
+            source_len: 64,
+        }],
+        "app".to_owned(),
+        location,
+        FrontendLanguageVersionV2 {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        },
+    )
+    .expect("source authority builder");
+    // Distinct field names make both joins valid under the closed row schema.
+    for (name, field) in [("left_rows", "id"), ("right_rows", "other_id")] {
+        builder.add_relation(FrontendRelationInputV2 {
+            authority: FrontendRelationAuthorityV2::Host,
+            provenance_namespace: "host".to_owned(),
+            qualified_name: format!("app::{name}"),
+            lookup_name: name.to_owned(),
+            fields: vec![FrontendRelationFieldInputV2 {
+                name: field.to_owned(),
+                scalar_type: FrontendScalarTypeV2::Int,
+                optional: false,
+                location,
+            }],
+            cardinality: FrontendRelationCardinalityV2::Bag,
+            provenance: "test".to_owned(),
+            location,
+        });
+    }
+    let authority = builder.finish().expect("join authority");
+    for polarity in ["exists", "not exists"] {
+        for left_join in [false, true] {
+            for right_join in [false, true] {
+                // Self-joins must avoid duplicate output field names so this
+                // rail reaches planning instead of failing in record typing.
+                let left = if left_join {
+                    "from left_rows a | project a.id as left_id | join right_rows b on left_id = b.other_id"
+                } else {
+                    "from left_rows a"
+                };
+                let right = if right_join {
+                    "from left_rows c | project c.id as right_id | join right_rows d on right_id = d.other_id"
+                } else {
+                    "from left_rows c"
+                };
+                let source = format!("{left} | where {polarity} ({right})");
+                let compiled = compile_source_document_v3(DOC_SOURCE, &source, &authority)
+                    .unwrap_or_else(|error| panic!("{source}: {error:?}"));
+                assert_eq!(compiled.items().len(), 1);
+                let plan = compiled.items()[0].plan().expect("relation plan");
+                let expected = if left_join {
+                    CardinalityClassV2::Multiplicative
+                } else {
+                    CardinalityClassV2::LinearInInput
+                };
+                assert_eq!(
+                    plan.semantic_cost().estimated_cardinality_class,
+                    expected,
+                    "{source}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn false_value_and_predicate_literals_reach_the_execution_contract_unchanged() {
+    // Both value projection and predicate use must retain the source literal.
+    // Raw Bool HIR literals have a separate Types owner rail.
+    for source in [
+        "from records r | project false as x",
+        "from records r | where false",
+    ] {
+        assert_eq!(
+            projected_literal(source),
+            ExecutionLiteralV3::Bool(false),
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn public_optional_relation_field_reaches_the_execution_schema_as_optional() {
+    use quanta_gqlang_v2_sema::{
+        ClosedFrontendAuthorityBuilderV2, FrontendRelationCardinalityV2,
+        FrontendRelationFieldInputV2,
+    };
+    let location = FrontendAuthorityLocationV2 {
+        source_id: HOST_SOURCE,
+        start: 0,
+        end: 1,
+    };
+    let mut builder = ClosedFrontendAuthorityBuilderV2::try_new(
+        FrontendBudgetV2::standard_v2().expect("standard budget"),
+        vec![FrontendAuthoritySourceV2 {
+            source_id: HOST_SOURCE,
+            source_len: 64,
+        }],
+        "app".to_owned(),
+        location,
+        FrontendLanguageVersionV2 {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        },
+    )
+    .expect("public builder starts");
+    builder.add_relation(FrontendRelationInputV2 {
+        authority: FrontendRelationAuthorityV2::Host,
+        provenance_namespace: "host".to_owned(),
+        qualified_name: "app::optional_records".to_owned(),
+        lookup_name: "optional_records".to_owned(),
+        fields: vec![FrontendRelationFieldInputV2 {
+            name: "id".to_owned(),
+            scalar_type: FrontendScalarTypeV2::Int,
+            optional: true,
+            location,
+        }],
+        cardinality: FrontendRelationCardinalityV2::Bag,
+        provenance: "test".to_owned(),
+        location,
+    });
+    let authority = builder.finish().expect("optional relation authority seals");
+    let compiled = compile_source_document_v3(
+        DOC_SOURCE,
+        "from optional_records r | project r.id as id",
+        &authority,
+    )
+    .expect("optional field projection compiles");
+    let relation = compiled.execution().items()[0]
+        .relation()
+        .expect("one authored relation");
+    let fields = relation.root().schema().fields();
+    assert_eq!(fields.len(), 1);
+    assert_eq!(fields[0].name(), "id");
+    assert_eq!(
+        fields[0].value_type(),
+        &ExecutionValueTypeV3::Optional(Box::new(ExecutionValueTypeV3::Scalar(
+            ExecutionScalarTypeV3::Int
+        )))
+    );
 }

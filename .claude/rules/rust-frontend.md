@@ -13,5 +13,8 @@ paths:
 - Only `quanta-gqlang-v2-frontend-contract` is a public downstream seam. Do not expose pipeline internals as a second public API.
 - Keep open analysis distinct from closed compilation. Missing external authority must remain typed `Incomplete`, never a fabricated plan or success.
 - Do not add provider, backend, runtime execution, host DTO, or SDK wiring to this repository.
-- For a local change, run the narrow crate/test target that proves the behavior. Use the root gate according to `AGENTS.md`.
-- Read `docs/language/README.md` only when the language surface or stage ownership changes. Read `docs/contracts/frontend-execution-v3.md` only when the public contract changes.
+- Keep invalid states unrepresentable where practical. Validate external input at its boundary; propagate typed errors with source spans instead of panics or success-shaped defaults.
+- Preserve source order and deterministic tie-breaks in diagnostics and DTOs. Do not derive public ordering or identity from hash-map iteration, wall clocks, or process-local state.
+- Treat frontend IDs as transaction-local. A matching raw ID or digest alone cannot establish runtime provenance; use the documented owner contract.
+- Review schema/digest changes against producer and consumer expectations. Preserve all plan-required items; unsupported payloads need explicit typed rejection at the responsible boundary.
+- Match test depth to changed behavior: independent semantic oracles for transformations, exact bytes for encoding contracts, and process tests when exit/stdout/stderr behavior changes.

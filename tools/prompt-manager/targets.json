@@ -25,6 +25,7 @@
     },
     "claude": {
       "kind": "plain",
+      "required_imports": ["agents"],
       "max_bytes": 1500,
       "max_lines": 30,
       "output": "CLAUDE.md",

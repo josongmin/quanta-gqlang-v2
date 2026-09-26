@@ -10,12 +10,12 @@
   },
   "groups": {
     "claude_startup": {
-      "bytes": 2190,
-      "lines": 34
+      "bytes": 3616,
+      "lines": 46
     },
     "cursor_root_startup": {
-      "bytes": 1691,
-      "lines": 26
+      "bytes": 3117,
+      "lines": 38
     }
   },
   "outputs": {
@@ -28,28 +28,28 @@
   },
   "targets": {
     "agents": {
-      "bytes": 1691,
-      "lines": 26
+      "bytes": 3117,
+      "lines": 38
     },
     "claude": {
       "bytes": 499,
       "lines": 8
     },
     "claude_docs": {
-      "bytes": 918,
+      "bytes": 939,
       "lines": 18
     },
     "claude_rust": {
-      "bytes": 1032,
-      "lines": 17
+      "bytes": 1618,
+      "lines": 20
     },
     "cursor_docs": {
-      "bytes": 962,
+      "bytes": 983,
       "lines": 13
     },
     "cursor_rust": {
-      "bytes": 1068,
-      "lines": 14
+      "bytes": 1654,
+      "lines": 17
     }
   }
 }

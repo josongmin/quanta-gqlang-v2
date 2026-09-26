@@ -731,6 +731,14 @@ fn host_predicate_key_is_bounded_exact_and_disjoint_from_source_ids() {
     )
     .unwrap();
     assert_ne!(exact, other_kind);
+    let mut expected_rule = Vec::new();
+    expected_rule.extend_from_slice(b"gqlang-host-predicate-v2\0");
+    expected_rule.extend_from_slice(&10u64.to_be_bytes());
+    expected_rule.extend_from_slice(b"pkg::inner");
+    expected_rule.push(2);
+    expected_rule.extend_from_slice(&u64::try_from(local.len()).unwrap().to_be_bytes());
+    expected_rule.extend_from_slice(local.as_bytes());
+    assert_eq!(other_kind.canonical_bytes(), expected_rule.as_slice());
     assert_eq!(
         ResolvedHostPredicateKeyV2::try_from_catalog_parts(
             "",
@@ -1505,4 +1513,91 @@ fn ambiguous_unknown_builtin_domain_keeps_conservative_effects_without_id() {
             cost: CostClassV1::Linear,
         }
     );
+}
+
+#[test]
+fn matching_antitone_callable_effects_preserve_antitone_in_parent_fact() {
+    let b = HirBuilderV1::new();
+    let inner = b.call(
+        "inner",
+        SpanV1::new(6, 11),
+        CallArgsHirV1::try_new(vec![]).unwrap(),
+        SpanV1::new(6, 13),
+    );
+    let inner_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(9),
+        node_id: inner.id,
+    };
+    let outer = b.call(
+        "outer",
+        SpanV1::new(0, 5),
+        CallArgsHirV1::try_new(vec![CallArgHirV1::Expr(inner)]).unwrap(),
+        SpanV1::new(0, 14),
+    );
+    let outer_key = SourceQualifiedNodeIdV2 {
+        source_id: SourceIdV2::from_raw(9),
+        node_id: outer.id,
+    };
+    let effects = ExpressionEffectsV2 {
+        purity: PurityV1::Impure,
+        determinism: DeterminismV1::NonDeterministic,
+        monotonicity: MonotonicityV1::Antitone,
+        aggregation: AggregationClassV1::Scalar,
+        cost: CostClassV1::Linear,
+    };
+    let callable = |name: &str, params: Vec<ValueTypeV1>| {
+        ResolvedCallableInputV2::Predicate(
+            ResolvedPredicateCallableV2::try_new(
+                ResolvedPredicateIdV2::try_new(name).unwrap(),
+                params,
+                ValueTypeV1::bool(),
+                effects,
+            )
+            .unwrap(),
+        )
+    };
+    let doc = checked_document(outer);
+    let inputs = resolved_type_inputs(
+        check_document_v2(&doc).unwrap(),
+        vec![
+            ResolvedTypeInputEntryV2 {
+                key: inner_key,
+                value: ResolvedTypeInputValueV2::Callable(callable("inner", vec![])),
+            },
+            ResolvedTypeInputEntryV2 {
+                key: outer_key,
+                value: ResolvedTypeInputValueV2::Callable(callable(
+                    "outer",
+                    vec![ValueTypeV1::bool()],
+                )),
+            },
+        ],
+        vec![],
+    )
+    .unwrap();
+    let facts = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&inputs)
+        .unwrap();
+    assert_eq!(facts.get(inner_key).unwrap().effects, effects);
+    assert_eq!(facts.get(outer_key).unwrap().effects, effects);
+    assert_eq!(
+        facts.get(outer_key).unwrap().state,
+        ExpressionTypeStateV2::Known(ValueTypeV1::bool())
+    );
+}
+
+#[test]
+fn boolean_hir_literal_facts_preserve_both_authored_values() {
+    for value in [false, true] {
+        let builder = HirBuilderV1::new();
+        let body = builder.bool_literal(value, SpanV1::new(10, 15));
+        let key = SourceQualifiedNodeIdV2 { source_id: SourceIdV2::from_raw(9), node_id: body.id };
+        let doc = checked_rule(builder.int("1", SpanV1::new(4, 5)), body);
+        let inputs = resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
+        let facts = ExpressionTypeKernelV2::try_closed().unwrap().check_document(&inputs).unwrap();
+        let fact = facts.get(key).unwrap();
+        assert_eq!(fact.state, ExpressionTypeStateV2::Known(ValueTypeV1::bool()));
+        assert_eq!(fact.literal, Some(TypedLiteralFactV2::Value(TypedLiteralValueV2::Bool(value))));
+    }
 }

@@ -193,7 +193,7 @@ fn check_using_requires_a_find_query() {
         diag.span,
         SpanV1::new(invalid_keyword, invalid_keyword + "check".len())
     );
-    assert!(diag.message.contains("find"), "msg: {}", diag.message);
+    assert_eq!(diag.message, "expected 'find' after CHECK 'using'");
 }
 
 #[test]
@@ -202,7 +202,10 @@ fn check_missing_confirm_rejects() {
     let diag = err("check rule.hybrid | scope=repo | emit=findings");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert_eq!(diag.span, SpanV1::new(0, 5));
-    assert!(diag.message.contains("confirm"), "msg: {}", diag.message);
+    assert_eq!(
+        diag.message,
+        "CHECK requires an explicit 'confirm' clause (skip|prompt|require)"
+    );
 }
 
 #[test]
@@ -462,7 +465,10 @@ fn compare_missing_candidate_rejects() {
     let diag = err("compare baseline=run.a | metric=exact");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert_eq!(diag.span, SpanV1::new(0, 7));
-    assert!(diag.message.contains("candidate"), "msg: {}", diag.message);
+    assert_eq!(
+        diag.message,
+        "COMPARE requires an explicit 'candidate' clause"
+    );
 }
 
 // ---- EXPORT ----------------------------------------------------------------
@@ -687,7 +693,8 @@ fn use_pack_parses_to_meta() {
 fn use_pack_without_lockfile_rejects() {
     let diag = err("use pack secure-pack | activation=session");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(diag.message.contains("lockfile"), "msg: {}", diag.message);
+    assert_eq!(diag.span, SpanV1::new(4, 8));
+    assert_eq!(diag.message, "USE PACK requires a '.lock' lockfile");
 }
 
 #[test]
@@ -761,7 +768,7 @@ fn composition_duplicate_binding_rejects() {
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     let duplicate_name = src.rfind("let a").expect("second authored binding") + "let ".len();
     assert_eq!(diag.span, SpanV1::new(duplicate_name, duplicate_name + 1));
-    assert!(diag.message.contains("duplicate"), "msg: {}", diag.message);
+    assert_eq!(diag.message, "duplicate composition binding 'a'");
 }
 
 // ---- D28 duplicate-clause fail-closed across the clause-bearing families ---
@@ -958,13 +965,9 @@ fn find_depth_zero_rejects() {
     let src = "find taint a -> b | depth=0";
     let diag = err(src);
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("depth") && diag.message.contains("> 0"),
-        "msg: {}",
-        diag.message
-    );
+    assert_eq!(diag.message, "FIND depth must be > 0");
     // points at the `0` literal at byte 26.
-    assert_eq!(diag.span.start, 26);
+    assert_eq!(diag.span, SpanV1::new(26, 27));
 }
 
 #[test]
@@ -988,12 +991,8 @@ fn find_direction_unknown_keyword_rejects() {
     let src = "find taint a -> b | direction=invalid_keyword";
     let diag = err(src);
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("direction") && diag.message.contains("invalid_keyword"),
-        "msg: {}",
-        diag.message
-    );
-    // span covers the offending keyword exactly: `invalid_keyword` at byte 29.
+    assert_eq!(diag.message, "unsupported FIND direction 'invalid_keyword'");
+    // span covers the offending keyword exactly: `invalid_keyword` at byte 30.
     let start = src
         .find("invalid_keyword")
         .expect("keyword present in input");
@@ -1032,7 +1031,7 @@ fn find_summary_empty_facets_rejects() {
     let diag = err(src);
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
     assert_eq!(diag.span, SpanV1::new(15, 21));
-    assert!(diag.message.contains("facet"), "msg: {}", diag.message);
+    assert_eq!(diag.message, "FIND facets list must not be empty");
 }
 
 #[test]

@@ -109,6 +109,14 @@ class FrontdoorParityOutputTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unknown CLI line-value escape"):
             decode_line_value("bad\\q")
 
+    def test_cli_hex_escape_requires_two_digits(self):
+        self.assertEqual(decode_line_value(r"\x01!"), "\x01!")
+        self.assertEqual(decode_line_value(r"\x00\x0f"), "\x00\x0f")
+        for value in (r"\x", r"\x1", r"\x0!"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "invalid hexadecimal CLI line-value escape"):
+                    decode_line_value(value)
+
     def test_cli_complete_and_not_applicable_items_fail_closed(self):
         plan = (
             "item[0].plan.authority_lane=closed\n"

@@ -33,5 +33,6 @@ mod tests {
             "Aé=100%\\\\\\n\\r\\t\\x1b\\x85\\u{2028}\\u{2029}終"
         );
         assert_eq!(encode_line_value_v1("plain é=100% 終"), "plain é=100% 終");
+        assert_eq!(encode_line_value_v1("\u{1}"), "\\x01");
     }
 }
