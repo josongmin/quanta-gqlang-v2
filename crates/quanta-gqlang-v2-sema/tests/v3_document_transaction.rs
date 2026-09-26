@@ -344,6 +344,40 @@ fn declared_item_set_retains_authored_identity_and_checked_kind() {
 }
 
 #[test]
+fn itemless_documents_retain_the_checked_original_source_anchor() {
+    let (host, authority) = host();
+    for (source, source_len) in [(9, 0), (23, 37)] {
+        let source_id = SourceIdV2::from_raw(source);
+        let checked = CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+            source_id,
+            source_len,
+            items: Vec::new(),
+        })
+        .unwrap();
+        let document = resolve_checked_document_v2(checked, &authority).unwrap();
+        let expected_registry = host
+            .try_extend_document(SourceRegistrationV2 {
+                source_id,
+                source_len,
+            })
+            .unwrap();
+        assert!(document.order().is_empty());
+        assert_eq!(document.items().count(), 0);
+        assert_eq!(
+            document.source_anchor().location(),
+            LocatedSpanV2 {
+                source_id,
+                span: SpanV1::point(0),
+            }
+        );
+        assert_eq!(
+            document.source_anchor().registry_identity(),
+            &expected_registry.identity()
+        );
+    }
+}
+
+#[test]
 #[expect(
     clippy::panic,
     reason = "wrong semantic variant must fail this owner test"

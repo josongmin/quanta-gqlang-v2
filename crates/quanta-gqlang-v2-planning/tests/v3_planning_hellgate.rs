@@ -363,6 +363,39 @@ fn an_empty_rule_program_is_a_typed_non_plan_from_both_entries() {
     }
 }
 
+#[test]
+fn itemless_document_diagnostic_retains_the_original_registry() {
+    let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::SingleRule)
+        .expect("sealed rule fixture");
+    let original = fixture.document();
+    let empty = original.clone().forged_membership(|order, items| {
+        order.clear();
+        items.clear();
+    });
+    let contract = quanta_gqlang_v2_logic::RuleProgramContractV2::from_document(&empty)
+        .expect("empty membership is consistent");
+    let input = SemanticPlanInputV2::Rule(contract);
+    assert_eq!(
+        plan_outcome(&input, &empty).expect("empty program outcome"),
+        PlanOutcomeV2::NoPlan(NoPlanReasonV2::EmptyRuleProgram),
+    );
+    let error = plan(&input, &empty).expect_err("compatibility entry reports typed no-plan");
+    let PlanningDiagnosticV1::NoPlan { reason, span } = &error else {
+        panic!("empty program must retain the typed no-plan reason");
+    };
+    assert_eq!(*reason, NoPlanReasonV2::EmptyRuleProgram);
+    assert_eq!(error.code(), "planning.no_plan.empty_rule_program");
+    assert_eq!(span.location().source_id, original.source_id());
+    assert_eq!(
+        span.location().span,
+        quanta_gqlang_v2_sema::SpanV1::point(0)
+    );
+    assert_eq!(
+        span.registry_identity(),
+        original.catalog().source_registry_identity()
+    );
+}
+
 /// A resolved `USE PACK` is a typed non-plan through both public entries, with
 /// the authored directive span preserved in the refusal diagnostic.
 #[test]

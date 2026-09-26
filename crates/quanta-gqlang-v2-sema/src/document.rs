@@ -8,19 +8,19 @@ use crate::diagnostic::{
     location, FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2, FrontendStageV2,
 };
 use crate::{
-    AggregateContextV2, AggregatePositionV2, GraphDirectionV2, GraphReferenceRoleV2,
-    GraphWitnessBoundsV2, NullOrderV2, OrderKeyContractV2, OutputColumnContractV2,
-    OutputColumnOriginV2, OutputProvenanceV2, PartitionInputBindingV2, RelationOutputContractV2,
-    ResolvedBindingKindV2, ResolvedCatalogItemV2, ResolvedCatalogPayloadV2,
-    ResolvedCatalogReferenceV2, ResolvedCheckV2, ResolvedCompositionBindingV2,
-    ResolvedCompositionBodyV2, ResolvedCompositionProducerV2, ResolvedCompositionSourceIdV2,
-    ResolvedCompositionV2, ResolvedDeclarationV2, ResolvedExplainTargetV2, ResolvedGraphQueryV2,
-    ResolvedGraphReferenceV2, ResolvedGraphTargetV2, ResolvedGraphUseV2, ResolvedMetaKindV2,
-    ResolvedMetaV2, ResolvedPresentationKindV2, ResolvedPresentationV2, ResolvedRuleCallV2,
-    ResolvedRuleV2, ResolvedScanSourceV2, ResolvedValueBindingV2, RuleCallPolarityV2,
-    SemanticItemIdV2, SemanticItemV2, TypedBoolExprV2, TypedCallArgumentV2, TypedCorrelationEdgeV2,
-    TypedExprShapeV2, TypedExprV2, TypedPathSegmentV2, TypedRecordFieldV2, TypedRelationExprV2,
-    TypedRelationV2,
+    AggregateContextV2, AggregatePositionV2, CheckedLocatedSpanV2, GraphDirectionV2,
+    GraphReferenceRoleV2, GraphWitnessBoundsV2, NullOrderV2, OrderKeyContractV2,
+    OutputColumnContractV2, OutputColumnOriginV2, OutputProvenanceV2, PartitionInputBindingV2,
+    RelationOutputContractV2, ResolvedBindingKindV2, ResolvedCatalogItemV2,
+    ResolvedCatalogPayloadV2, ResolvedCatalogReferenceV2, ResolvedCheckV2,
+    ResolvedCompositionBindingV2, ResolvedCompositionBodyV2, ResolvedCompositionProducerV2,
+    ResolvedCompositionSourceIdV2, ResolvedCompositionV2, ResolvedDeclarationV2,
+    ResolvedExplainTargetV2, ResolvedGraphQueryV2, ResolvedGraphReferenceV2, ResolvedGraphTargetV2,
+    ResolvedGraphUseV2, ResolvedMetaKindV2, ResolvedMetaV2, ResolvedPresentationKindV2,
+    ResolvedPresentationV2, ResolvedRuleCallV2, ResolvedRuleV2, ResolvedScanSourceV2,
+    ResolvedValueBindingV2, RuleCallPolarityV2, SemanticItemIdV2, SemanticItemV2, TypedBoolExprV2,
+    TypedCallArgumentV2, TypedCorrelationEdgeV2, TypedExprShapeV2, TypedExprV2, TypedPathSegmentV2,
+    TypedRecordFieldV2, TypedRelationExprV2, TypedRelationV2,
 };
 use quanta_gqlang_v2_binder::{
     BindResultV1, Binder, BinderKindV1, ModuleGraphViewV1, ParamV1, ResolvedTargetV1,
@@ -126,6 +126,7 @@ impl CheckedSyntaxDocumentV2 {
 #[derive(Clone, Debug)]
 pub struct DeclaredDocumentV2 {
     checked: CheckedSyntaxDocumentV2,
+    source_anchor: CheckedLocatedSpanV2,
     expected: BTreeMap<SemanticItemIdV2, (SpanV1, SemanticItemKindV2)>,
     order: Vec<SemanticItemIdV2>,
     expected_expressions: BTreeSet<SourceQualifiedNodeIdV2>,
@@ -239,8 +240,20 @@ impl DeclaredDocumentV2 {
             .into_iter()
             .map(|node_id| SourceQualifiedNodeIdV2 { source_id, node_id })
             .collect();
+        let source_anchor = extended
+            .combined()
+            .try_check_location(location(source_id, SpanV1::point(0)))
+            .map_err(|error| {
+                document_failure(
+                    "sema.document_validation_failed",
+                    source_id,
+                    SpanV1::point(0),
+                    error.to_string(),
+                )
+            })?;
         Ok(Self {
             checked,
+            source_anchor,
             expected,
             order,
             expected_expressions,
@@ -427,6 +440,7 @@ impl From<FrontendAuthorityErrorV2> for FrontendTransactionErrorV2 {
 #[derive(Clone, Debug)]
 pub struct SemanticDocumentV2 {
     source_id: SourceIdV2,
+    source_anchor: CheckedLocatedSpanV2,
     order: Vec<SemanticItemIdV2>,
     items: BTreeMap<SemanticItemIdV2, SemanticItemV2>,
     expressions: BTreeMap<SourceQualifiedNodeIdV2, TypedExprV2>,
@@ -871,6 +885,7 @@ impl SemanticDocumentV2 {
         Ok(Self {
             source_id,
             order: declared.order.clone(),
+            source_anchor: declared.source_anchor.clone(),
             items,
             expressions,
             nested_relations,
@@ -888,6 +903,12 @@ impl SemanticDocumentV2 {
     #[must_use]
     pub fn order(&self) -> &[SemanticItemIdV2] {
         &self.order
+    }
+    /// Byte-zero diagnostic anchor checked against this transaction's original
+    /// extended source registry, retained even when the document has no items.
+    #[must_use]
+    pub const fn source_anchor(&self) -> &CheckedLocatedSpanV2 {
+        &self.source_anchor
     }
     /// Exact semantic item by ID.
     #[must_use]

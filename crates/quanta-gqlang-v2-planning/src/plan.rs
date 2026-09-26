@@ -79,10 +79,9 @@ use std::collections::BTreeSet;
 use quanta_gqlang_v2_algebra::{AlgebraFamilyV2, CheckedAlgebraNodeV2};
 use quanta_gqlang_v2_logic::{GraphQueryContractV2, RelationShapeV1, RuleProgramContractV2};
 use quanta_gqlang_v2_sema::{
-    CheckedLocatedSpanV2, ConfirmModeV1, EmitModeV1, ExportFormatV1, LocatedSpanV2,
-    ResolvedCheckV2, ResolvedMetaKindV2, ResolvedMetaV2, ResolvedPresentationKindV2,
-    ResolvedRuleV2, SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2, SourceIdV2,
-    SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
+    CheckedLocatedSpanV2, ConfirmModeV1, EmitModeV1, ExportFormatV1, ResolvedCheckV2,
+    ResolvedMetaKindV2, ResolvedMetaV2, ResolvedPresentationKindV2, ResolvedRuleV2,
+    SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2,
 };
 use quanta_gqlang_v2_types::{
     CardinalityV1, DeterminismV1, ExpressionEffectsV2, ResolvedPredicateIdV2,
@@ -533,17 +532,16 @@ fn attribution_anchor(
 /// The document's own anchor: the checked location of its first item.
 ///
 /// A document that carries no item at all retains no checked item location, so
-/// the anchor is the start of the document's own source, proven through the same
-/// public registry API the document transaction uses. That degenerate document
-/// can neither plan nor reject with an item location, and a total anchor keeps
-/// the entry points total instead of panicking.
+/// the fallback is the source-start anchor retained by semantic admission from
+/// the transaction's original extended registry. Planning never creates a
+/// replacement registry to manufacture a diagnostic location.
 fn document_anchor(document: &SemanticDocumentV2) -> CheckedLocatedSpanV2 {
     document
         .order()
         .iter()
         .find_map(|id| document.item(*id))
         .and_then(item_location)
-        .unwrap_or_else(|| source_start_anchor(document.source_id()))
+        .unwrap_or_else(|| document.source_anchor().clone())
 }
 
 /// The checked location of one semantic item, where the item retains one.
@@ -561,34 +559,6 @@ fn item_location(item: &SemanticItemV2) -> Option<CheckedLocatedSpanV2> {
         SemanticItemV2::Composition(composition) => Some(composition.location().clone()),
         SemanticItemV2::Meta(meta) => Some(meta.location().clone()),
     }
-}
-
-/// A registry-proven point location at the start of the document's own source.
-///
-/// The anchor is MINTED THROUGH THE REGISTRY, not fabricated: the source
-/// registration and the byte-zero point span are validated by the same public
-/// registry API the document transaction uses, so an unregistered source or an
-/// out-of-bounds span is refused rather than asserted.
-///
-/// The mint is total for every input: a single-registration view cannot report a
-/// duplicate source, and byte zero is in bounds of a zero-length source. It is
-/// only reached for a document with no located item at all — an outcome whose
-/// public diagnostic still requires a checked span — so a mint that could not be
-/// validated would leave the entry points with nothing to anchor on.
-fn source_start_anchor(source_id: SourceIdV2) -> CheckedLocatedSpanV2 {
-    SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
-        source_id,
-        source_len: 0,
-    }])
-    .and_then(|registry| {
-        registry.try_check_location(LocatedSpanV2 {
-            source_id,
-            span: SpanV1::point(0),
-        })
-    })
-    .unwrap_or_else(|_error| {
-        unreachable!("a single-registration view cannot conflict and byte zero is in bounds")
-    })
 }
 
 /// The rule's own checked body location.

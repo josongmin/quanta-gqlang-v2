@@ -93,11 +93,15 @@ impl RuleProgramContractV2 {
                         ));
                     }
                 }
-            } else if let Some(anchor) = membership_anchor(&members, document) {
+            } else {
                 // The document's authored item set names an identity its item map
                 // cannot produce, so the rule program cannot prove that it
-                // enumerated every member. Fail closed on the surviving anchor.
-                return Err(invalid(RuleProgramInvalidReasonV1::MissingMember, anchor));
+                // enumerated every member. The document retains its original
+                // checked source anchor even if no item survives.
+                return Err(invalid(
+                    RuleProgramInvalidReasonV1::MissingMember,
+                    membership_anchor(&members, document),
+                ));
             }
         }
         for (id, rule) in &members {
@@ -481,18 +485,19 @@ fn rule_location(rule: &ResolvedRuleV2) -> CheckedLocatedSpanV2 {
 }
 
 /// A document-owned anchor for a membership rejection that has no rule fact of
-/// its own. A surviving Rule member is preferred; then any located item. Only a
-/// document that retains no rule and no located item can return `None`.
+/// its own. A surviving Rule member is preferred; then any located item; then
+/// the document's retained source anchor from its original registry.
 fn membership_anchor(
     members: &BTreeMap<SemanticItemIdV2, ResolvedRuleV2>,
     document: &SemanticDocumentV2,
-) -> Option<CheckedLocatedSpanV2> {
+) -> CheckedLocatedSpanV2 {
     if let Some(rule) = members.values().next() {
-        return Some(rule_location(rule));
+        return rule_location(rule);
     }
     document
         .items()
         .find_map(|(_id, item)| item_location(item).cloned())
+        .unwrap_or_else(|| document.source_anchor().clone())
 }
 
 /// The checked location of an item kind that retains one.

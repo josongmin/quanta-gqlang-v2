@@ -750,6 +750,36 @@ fn every_value_wrapper_preserves_exact_call_polarity_location_and_scc_membership
 // ---- forged document membership --------------------------------------------
 
 #[test]
+fn missing_member_without_surviving_items_rejects_at_original_source_start() {
+    let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::SingleRule)
+        .expect("sealed single-rule fixture");
+    let original = fixture.document();
+    let forged = original
+        .clone()
+        .forged_membership(|_order, items| items.clear());
+    assert!(!forged.order().is_empty());
+    assert_eq!(forged.items().count(), 0);
+    let error = rejection(&forged);
+    let LogicDiagnosticV1::RuleProgramInvalid { reason, span } = &error else {
+        panic!("missing membership must have a typed rule-program rejection");
+    };
+    assert_eq!(*reason, RuleProgramInvalidReasonV1::MissingMember);
+    assert_eq!(error.code(), "logic.rule_program.missing_member");
+    assert_eq!(span.location().source_id, original.source_id());
+    assert_eq!(span.location().span, SpanV1::point(0));
+    assert_eq!(
+        span.registry_identity(),
+        original.catalog().source_registry_identity()
+    );
+
+    let empty = original.clone().forged_membership(|order, items| {
+        order.clear();
+        items.clear();
+    });
+    assert!(accepted(&empty).rules().is_empty());
+}
+
+#[test]
 fn dropped_rule_item_is_missing_member() {
     let forged = forged_rule_membership_document_v2(ForgedRuleMembershipMutationV2::DroppedItem)
         .expect("forged membership document seals");
