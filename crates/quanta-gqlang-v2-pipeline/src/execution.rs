@@ -156,6 +156,8 @@ pub enum ExecutionFamilyV3 {
     Presentation,
     Composition,
     MetaRequireCertified,
+    /// Reserved wire vocabulary. Current compilation emits neither rule
+    /// members nor the document rule program as V3 execution items.
     RuleProgram,
 }
 
@@ -218,15 +220,18 @@ impl ExecutionItemV3 {
     pub const fn composition(&self) -> Option<&ExecutionCompositionV3> {
         self.composition.as_ref()
     }
-    /// Producer-derived policy and authority; callers cannot replace it.
+    /// Producer-derived plan summary and authority; callers cannot replace it.
+    /// Detailed semantic policy and the rule program are outside this DTO.
     #[must_use]
     pub const fn plan(&self) -> &ExecutionPlanV3 {
         &self.plan
     }
 }
 
-/// Frontend-checked policy copied from the sealed semantic plan. This is pure
-/// frontend vocabulary: no runtime, provider, or backend routing appears here.
+/// Summary tags projected from the sealed semantic plan, not its full policy.
+/// Rule-program plans and detailed capability, cost, explain and policy payloads
+/// are outside this DTO and its contract digest. This is frontend vocabulary;
+/// it carries no runtime, provider or backend routing.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionPlanV3 {
     authority: ExecutionAuthorityV3,

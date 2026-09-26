@@ -4,6 +4,8 @@
 # checker (check_architecture.py) enforces. Every allowlist here is exact:
 # anything not listed is denied. The checker loads this file at startup, so
 # the constants it exposes stay in sync with this policy by construction.
+# Internal dependency edges are permitted maxima, not required dependencies:
+# removing an allowed edge is valid; adding an unlisted edge is rejected.
 #
 # NOTE: internal edges are "consumer -> dependency" strings (not pairs)
 # because the workspace taplo config reorders arrays; plain strings keep

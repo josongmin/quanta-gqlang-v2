@@ -107,6 +107,8 @@ The nested encoding is recursive and uses the following exact field order. `Rela
 
 `ValueType` tags are: `0 || scalar tag`; `1` Null; `2 || SEQ(ValueType)` Tuple; `3 || SEQ(STR(field name) || ValueType)` Record; `4 || ValueType` Optional; `5 || ValueType || cardinality tag` Collection; `6 || SEQ(STR(variant tag) || ValueType)` Union; `7` Unknown. An operator is `STR(symbol) || U32BE(overload ID)`; the spelling is a checked display witness, never reparsed. A call target is `U8(0) || STR(name)` Builtin, `U8(1) || STR(name)` Predicate, or `U8(2) || STR(fingerprint)` HostPredicate.
 
+`ExecutionFamilyV3::RuleProgram` (item-family tag 6) is reserved vocabulary: the current producer emits no execution item with that family. Its presence in the encoding table does not grant rule-program execution support.
+
 Within each tag family below, the first listed variant has tag `0`, the next tag `1`, and so on. This is an explicit ordered mapping, not a sorting rule:
 
 | Tag family | Variants in tag order |

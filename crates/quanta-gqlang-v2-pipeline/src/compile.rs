@@ -67,8 +67,8 @@ pub use quanta_gqlang_v2_surface::SourceRootFamilyV3 as FrontendSourceRootFamily
 
 use crate::diagnostic::{
     algebra_transaction_error, assembly_transaction_error, canonicalize_diagnostics,
-    document_transaction_error, document_transaction_failure, logic_transaction_error,
-    planning_transaction_error, surface_failure, surface_transaction_error, DocumentAssemblyCodeV2,
+    document_transaction_error, logic_transaction_error, planning_transaction_error,
+    surface_failure, surface_transaction_error, DocumentAssemblyCodeV2,
 };
 use crate::execution::{
     project_composition, project_graph_query, project_relation, project_relation_root,
@@ -1000,7 +1000,7 @@ fn incomplete_open_analysis(
 struct DocumentRunV2 {
     items: Vec<ItemRunV2>,
     rule_program: Option<CompiledRuleProgramV2>,
-    rule_blocked: Option<Vec<FrontendDiagnosticV2>>,
+    rule_blocked: Option<FrontendFailureV2>,
 }
 
 type CompiledPartsV2 = (
@@ -1028,18 +1028,18 @@ enum ItemRunV2 {
         item_id: SemanticItemIdV2,
         reason: NoPlanReasonV2,
     },
-    /// A stage failed; the ordered diagnostics are the reason.
+    /// A stage failed; the owner failure guarantees non-empty ordered diagnostics.
     Blocked {
         item_id: SemanticItemIdV2,
-        diagnostics: Vec<FrontendDiagnosticV2>,
+        failure: FrontendFailureV2,
     },
 }
 
 impl DocumentRunV2 {
     /// The exact compiled item list, failing closed on the first blocked stage.
     fn into_compiled(self) -> Result<CompiledPartsV2, FrontendTransactionErrorV2> {
-        if let Some(diagnostics) = self.rule_blocked {
-            return Err(document_transaction_failure(diagnostics));
+        if let Some(failure) = self.rule_blocked {
+            return Err(FrontendTransactionErrorV2::Document(failure.deduplicated()));
         }
         let mut items = Vec::with_capacity(self.items.len());
         let mut execution_items = Vec::new();
@@ -1060,8 +1060,8 @@ impl DocumentRunV2 {
                 ItemRunV2::NoPlan { item_id, reason } => {
                     items.push(CompiledItemV2::NoPlan { item_id, reason });
                 }
-                ItemRunV2::Blocked { diagnostics, .. } => {
-                    return Err(document_transaction_failure(diagnostics));
+                ItemRunV2::Blocked { failure, .. } => {
+                    return Err(FrontendTransactionErrorV2::Document(failure.deduplicated()));
                 }
             }
         }
@@ -1076,14 +1076,14 @@ impl DocumentRunV2 {
     ) -> Result<AnalysisDocumentV2, FrontendTransactionErrorV2> {
         // Count canonical diagnostics before a blocked rule-program diagnostic
         // is cloned onto every authored rule member.
-        let mut diagnostics = self.rule_blocked.clone().unwrap_or_default();
+        let mut diagnostics = self
+            .rule_blocked
+            .as_ref()
+            .map(|failure| failure.diagnostics().to_vec())
+            .unwrap_or_default();
         for item in &self.items {
-            if let ItemRunV2::Blocked {
-                diagnostics: blocked,
-                ..
-            } = item
-            {
-                diagnostics.extend(blocked.iter().cloned());
+            if let ItemRunV2::Blocked { failure, .. } = item {
+                diagnostics.extend(failure.diagnostics().iter().cloned());
             }
         }
         enforce_diagnostic_limit(
@@ -1102,9 +1102,9 @@ impl DocumentRunV2 {
                     if let PlannedItemV2::RuleMember(member) = planned.as_ref() {
                         order.push(member.member_item_id());
                         match &rule_blocked {
-                            Some(diagnostics) => AnalysisItemV2::BlockedByDiagnostics(
-                                diagnostics.clone().into_boxed_slice(),
-                            ),
+                            Some(failure) => {
+                                AnalysisItemV2::BlockedByDiagnostics(failure.diagnostics().into())
+                            }
                             None => AnalysisItemV2::Complete(planned),
                         }
                     } else {
@@ -1116,12 +1116,9 @@ impl DocumentRunV2 {
                     order.push(item_id);
                     AnalysisItemV2::NotApplicable(reason)
                 }
-                ItemRunV2::Blocked {
-                    item_id,
-                    diagnostics,
-                } => {
+                ItemRunV2::Blocked { item_id, failure } => {
                     order.push(item_id);
-                    AnalysisItemV2::BlockedByDiagnostics(diagnostics.into_boxed_slice())
+                    AnalysisItemV2::BlockedByDiagnostics(failure.diagnostics().into())
                 }
             })
             .collect::<Vec<_>>();
@@ -1153,9 +1150,7 @@ fn run_document(
         Some(program_id) => {
             match compile_rule_program(document, &mut planning, program_id, &rule_members) {
                 Ok(program) => (Some(program), None),
-                Err(FrontendTransactionErrorV2::Document(failure)) => {
-                    (None, Some(failure.diagnostics().to_vec()))
-                }
+                Err(FrontendTransactionErrorV2::Document(failure)) => (None, Some(failure)),
                 Err(error @ FrontendTransactionErrorV2::Authority(_)) => return Err(error),
             }
         }
@@ -1197,21 +1192,15 @@ fn run_document(
                 )?;
                 items.push(ItemRunV2::NoPlan { item_id, reason });
             }
-            Ok(ItemRunV2::Blocked {
-                item_id,
-                diagnostics,
-            }) => {
+            Ok(blocked @ ItemRunV2::Blocked { .. }) => {
                 blocked_stage = true;
-                items.push(ItemRunV2::Blocked {
-                    item_id,
-                    diagnostics,
-                });
+                items.push(blocked);
             }
             Err(FrontendTransactionErrorV2::Document(failure)) => {
                 blocked_stage = true;
                 items.push(ItemRunV2::Blocked {
                     item_id: *id,
-                    diagnostics: failure.diagnostics().to_vec(),
+                    failure,
                 });
             }
             Err(error @ FrontendTransactionErrorV2::Authority(_)) => return Err(error),
@@ -1953,6 +1942,131 @@ mod tests {
 
     fn standard_budget_v2() -> FrontendBudgetV2 {
         FrontendBudgetV2::standard_v2().expect("standard frontend budget")
+    }
+
+    fn blocked_fixture_failure(code: &'static str) -> FrontendFailureV2 {
+        let diagnostic = FrontendDiagnosticV2::new(
+            FrontendStageV2::Validation,
+            code,
+            FrontendSeverityV2::Error,
+            LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(73),
+                span: SpanV1::new(17, 31),
+            },
+            vec![LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(74),
+                span: SpanV1::new(44, 49),
+            }],
+            "owner stage failed",
+        );
+        FrontendFailureV2::try_new(vec![diagnostic.clone(), diagnostic])
+            .expect("nonempty owner failure")
+    }
+
+    #[test]
+    fn blocked_compile_retains_exact_owner_failure_for_rule_and_item_paths() {
+        let fixture = reference_relation_document_v2(ReferenceRelationFixtureV2::Scan)
+            .expect("reference relation");
+        let failure = blocked_fixture_failure("planning.test.item_blocked");
+        let rule_failure = blocked_fixture_failure("planning.test.rule_blocked");
+        for rule_path in [false, true] {
+            let expected =
+                if rule_path { &rule_failure } else { &failure }.diagnostics()[0].clone();
+            let run = DocumentRunV2 {
+                items: vec![ItemRunV2::Blocked {
+                    item_id: fixture.item_id(),
+                    failure: failure.clone(),
+                }],
+                rule_program: None,
+                rule_blocked: rule_path.then(|| rule_failure.clone()),
+            };
+            assert_eq!(
+                run.into_compiled()
+                    .expect_err("blocked stage must reject compilation"),
+                FrontendTransactionErrorV2::Document(FrontendFailureV2::one(expected.clone())),
+            );
+        }
+    }
+
+    #[test]
+    fn blocked_analysis_retains_item_failure_and_counts_canonical_diagnostics() {
+        let fixture = reference_relation_document_v2(ReferenceRelationFixtureV2::Scan)
+            .expect("reference relation");
+        let failure = blocked_fixture_failure("planning.test.item_blocked");
+        let make_run = || DocumentRunV2 {
+            items: vec![ItemRunV2::Blocked {
+                item_id: fixture.item_id(),
+                failure: failure.clone(),
+            }],
+            rule_program: None,
+            rule_blocked: None,
+        };
+        let analysis = make_run()
+            .into_analysis(SourceIdV2::from_raw(73), 1)
+            .expect("two identical diagnostics count once");
+        assert_eq!(analysis.order.as_ref(), &[fixture.item_id()]);
+        assert_eq!(
+            analysis.items(),
+            &[AnalysisItemV2::BlockedByDiagnostics(
+                failure.diagnostics().into()
+            )]
+        );
+        assert_eq!(
+            analysis.diagnostics().as_ref(),
+            &[failure.diagnostics()[0].clone()]
+        );
+        let error = make_run()
+            .into_analysis(SourceIdV2::from_raw(73), 0)
+            .expect_err("nonempty failure exceeds zero diagnostic budget");
+        assert_eq!(
+            failure_code(&error),
+            "pipeline.analysis.diagnostic_limit_exceeded"
+        );
+    }
+
+    #[test]
+    fn blocked_rule_analysis_projects_owner_failure_to_every_member_after_counting() {
+        use quanta_gqlang_v2_sema::test_support::{
+            reference_rule_document_v2, ReferenceRuleFixtureV2,
+        };
+        let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::NonRecursiveDependency)
+            .expect("reference rules");
+        let membership = DocumentMembershipV2::of(fixture.document()).expect("membership");
+        let program_id = membership.rule_program_id().expect("rule program");
+        let members = membership.rule_member_ids();
+        assert_eq!(members.len(), 2);
+        let failure = blocked_fixture_failure("planning.test.item_blocked");
+        let run = DocumentRunV2 {
+            items: members
+                .iter()
+                .map(|id| {
+                    ItemRunV2::Planned(Box::new(PlannedRunV2 {
+                        planned: Box::new(PlannedItemV2::RuleMember(RuleProgramMemberV2::new(
+                            program_id, *id,
+                        ))),
+                        relation: None,
+                        composition: None,
+                    }))
+                })
+                .collect(),
+            rule_program: None,
+            rule_blocked: Some(failure.clone()),
+        };
+        let analysis = run
+            .into_analysis(SourceIdV2::from_raw(73), 1)
+            .expect("one canonical failure is counted before member fanout");
+        assert_eq!(analysis.order.as_ref(), members.as_slice());
+        assert_eq!(
+            analysis.items(),
+            &[
+                AnalysisItemV2::BlockedByDiagnostics(failure.diagnostics().into()),
+                AnalysisItemV2::BlockedByDiagnostics(failure.diagnostics().into()),
+            ]
+        );
+        assert_eq!(
+            analysis.diagnostics().as_ref(),
+            &[failure.diagnostics()[0].clone()]
+        );
     }
 
     #[test]

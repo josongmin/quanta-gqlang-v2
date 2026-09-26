@@ -3,9 +3,9 @@
 //! Canonical downstream seam for external qglang-v3 consumers.
 //!
 //! Sibling repos depend on this crate — never on an owner crate. The facade
-//! exposes exactly the three pinned source-document entry points plus a curated
-//! allowlist of host-agnostic DTO roots; owner internals (HIR, Binder, Types,
-//! Modules, Algebra, Logic, Planning, Pipeline) stay unreachable, and no
+//! exposes pinned source-document entry points and a curated allowlist of
+//! host-agnostic DTO roots, including selected owner-defined values and plan
+//! results. Owner modules and proof constructors are not re-exported; no
 //! crate-wide glob is used.
 //!
 //! Closed compilation authority is constructed through the curated

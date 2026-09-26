@@ -180,6 +180,17 @@ impl FrontendFailureV2 {
         }
     }
 
+    /// Remove adjacent identical diagnostics without exposing an empty state.
+    ///
+    /// The owner has already sorted by its canonical key. Distinct diagnostics
+    /// tied on that key retain their input order, including secondary spans.
+    /// This preserves the pipeline's existing adjacent-deduplication policy.
+    #[must_use]
+    pub fn deduplicated(mut self) -> Self {
+        self.diagnostics.dedup();
+        self
+    }
+
     /// Ordered diagnostics.
     #[must_use]
     pub fn diagnostics(&self) -> &[FrontendDiagnosticV2] {
@@ -230,6 +241,35 @@ mod tests {
             Vec::new(),
             message,
         )
+    }
+
+    #[test]
+    #[expect(
+        clippy::expect_used,
+        reason = "test constructs a nonempty diagnostic list"
+    )]
+    fn nonempty_failure_dedup_preserves_diagnostic_identity_and_tie_order() {
+        assert_eq!(
+            FrontendFailureV2::try_new(Vec::new()),
+            Err("frontend failure requires at least one diagnostic")
+        );
+        let a = diagnostic("same");
+        let mut b = a.clone();
+        b.secondary
+            .push(location(SourceIdV2::from_raw(9), SpanV1::new(21, 25)));
+        let failure = FrontendFailureV2::try_new(vec![a.clone(), a.clone(), b.clone(), a.clone()])
+            .expect("nonempty fixture failure");
+        // Secondary locations distinguish diagnostics but are not sort keys.
+        assert_eq!(
+            failure.deduplicated().diagnostics(),
+            &[a.clone(), b, a.clone()]
+        );
+        assert_eq!(
+            FrontendFailureV2::one(a.clone())
+                .deduplicated()
+                .diagnostics(),
+            &[a]
+        );
     }
 
     #[test]

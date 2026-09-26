@@ -720,6 +720,9 @@ fn canonical_type_name(value: &str) -> bool {
         && bytes.all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
 }
 
+/// Finite IEEE-754 value with both signed zeros canonicalized to positive zero.
+/// Equality and hashing compare canonical bits; ordering uses `f64::total_cmp`.
+/// Excluding NaNs and normalizing zero makes these contracts agree.
 #[derive(Clone, Copy, Debug)]
 pub struct FiniteF64V2(u64);
 impl FiniteF64V2 {

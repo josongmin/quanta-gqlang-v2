@@ -3,17 +3,17 @@
 //! The shared compiler service defines no private diagnostic wrapper: every
 //! stage failure is carried by the Sema-owned
 //! [`FrontendTransactionErrorV2`], which separates a source-less authority
-//! session failure from a source-anchored document failure. This module owns:
+//! session failure from a source-anchored document failure. This module:
 //!
-//! 1. the transaction vocabulary the facade and front doors match on
+//! 1. uses the Sema-owned transaction vocabulary the facade and front doors match on
 //!    ([`FrontendTransactionErrorV2`], [`FrontendFailureV2`],
 //!    [`FrontendDiagnosticV2`], [`FrontendSeverityV2`], [`FrontendStageV2`],
 //!    [`quanta_gqlang_v2_sema::FrontendAuthorityErrorV2`]);
-//! 2. the projection of each owner diagnostic (surface, algebra, logic,
+//! 2. owns the projection of each owner diagnostic (surface, algebra, logic,
 //!    planning) into a [`FrontendDiagnosticV2`] that preserves the owner's
 //!    stable code, exact checked span, and message;
-//! 3. the pipeline's own exact-key assembly codes
-//!    ([`DocumentAssemblyCodeV2`]) and open-analysis codes.
+//! 3. owns exact-key assembly codes ([`DocumentAssemblyCodeV2`]);
+//!    open-analysis codes are emitted by the sibling compile module.
 //!
 //! ## Owner code authority
 //!
@@ -26,7 +26,7 @@ use quanta_gqlang_v2_logic::LogicDiagnosticV1;
 use quanta_gqlang_v2_planning::{NoPlanReasonV2, PlanningDiagnosticV1};
 use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2,
-    FrontendStageV2, FrontendTransactionErrorV2, LocatedSpanV2, SourceIdV2, SpanV1,
+    FrontendStageV2, FrontendTransactionErrorV2, LocatedSpanV2,
 };
 use quanta_gqlang_v2_surface::{ParseErrorCodeV1, SurfaceDiagnosticV2};
 
@@ -90,9 +90,9 @@ impl DocumentAssemblyCodeV2 {
 
 /// The pipeline stage a diagnostic originated from.
 ///
-/// The stage is also derivable from the stable code prefix; this enum exists so
-/// the pipeline can report which stage short-circuited without rewriting any
-/// owner code.
+/// Display vocabulary for owner stages. Code prefixes identify code authority,
+/// not necessarily the stage reporting it: planning may relay a logic code.
+/// Production transaction diagnostics carry the Sema-owned `FrontendStageV2`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PipelineStageV2 {
     /// Surface parse / lex.
@@ -153,7 +153,11 @@ pub fn diagnostic_sort_key(
     )
 }
 
-/// Sort and deduplicate diagnostics in the canonical Sema order.
+/// Stable-sort by the Sema key, then remove adjacent full-struct duplicates.
+///
+/// The adjacent deduplication is pipeline policy, not a Sema sort guarantee.
+/// Equal-key diagnostics retain input order; secondary spans are outside the
+/// sort key, so distinct tied diagnostics can separate identical entries.
 pub(crate) fn canonicalize_diagnostics(
     mut diagnostics: Vec<FrontendDiagnosticV2>,
 ) -> Vec<FrontendDiagnosticV2> {
@@ -298,36 +302,6 @@ pub(crate) fn document_transaction_error(
     diagnostic: FrontendDiagnosticV2,
 ) -> FrontendTransactionErrorV2 {
     FrontendTransactionErrorV2::Document(FrontendFailureV2::one(diagnostic))
-}
-
-/// Wrap an ordered, non-empty diagnostic set as a document transaction failure.
-///
-/// A blocked stage always reports at least one diagnostic, so the empty set is
-/// unrepresentable here; the fallback names the closed pipeline code rather
-/// than inventing an owner code.
-#[must_use]
-pub(crate) fn document_transaction_failure(
-    diagnostics: Vec<FrontendDiagnosticV2>,
-) -> FrontendTransactionErrorV2 {
-    FrontendFailureV2::try_new(canonicalize_diagnostics(diagnostics)).map_or_else(
-        |_empty| empty_blocked_failure(),
-        FrontendTransactionErrorV2::Document,
-    )
-}
-
-/// The closed fallback for an impossible empty blocked stage.
-fn empty_blocked_failure() -> FrontendTransactionErrorV2 {
-    FrontendTransactionErrorV2::Document(FrontendFailureV2::one(FrontendDiagnosticV2::new(
-        FrontendStageV2::Validation,
-        DocumentAssemblyCodeV2::MissingItemResult.as_str(),
-        FrontendSeverityV2::Error,
-        LocatedSpanV2 {
-            source_id: SourceIdV2::from_raw(0),
-            span: SpanV1::point(0),
-        },
-        Vec::new(),
-        "a blocked stage reported no diagnostic",
-    )))
 }
 
 #[cfg(test)]

@@ -81,7 +81,9 @@ pub struct BindResultV1 {
     partition_inputs: BTreeMap<HirNodeIdV1, Vec<BindingV1>>,
     /// Uncommitted partition-input name candidates. Only an exact later
     /// aggregate-call proof can authorize one; syntactic call position alone
-    /// is never a successful semantic resolution.
+    /// is never a successful semantic resolution. The accompanying `Local`
+    /// resolution records provisional binding identity, not permission to read
+    /// that binding outside the later checked aggregate-argument context.
     partition_candidates: BTreeMap<HirNodeIdV1, PartitionCandidateV1>,
     /// Exact correlation edges keyed by the relational-EXISTS boolean node.
     /// Every visited EXISTS owns an entry, including uncorrelated empty sets.
