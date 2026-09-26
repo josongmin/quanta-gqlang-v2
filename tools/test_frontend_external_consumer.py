@@ -826,7 +826,7 @@ def preflight_manifests() -> List[Path]:
     except (ValueError, KeyError, TypeError) as error:
         raise InfrastructureError("invalid cargo metadata manifest inventory") from error
     paths = sorted({REPOSITORY_ROOT / "Cargo.toml", FIXTURE_DIR / "Cargo.toml", *member_paths})
-    if len(member_paths) != len(members):
+    if not members or len(member_paths) != len(members):
         raise InfrastructureError("cargo metadata omitted a workspace member manifest")
     for path in paths:
         if not path.is_file() or path.is_symlink() or not path.resolve().is_relative_to(REPOSITORY_ROOT):
@@ -1120,6 +1120,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 )
             )
 
+        if counts["negative_executed"] != counts["negative_selected"]:
+            violations.append(
+                "negative probe coverage drifted: selected=%d executed=%d"
+                % (counts["negative_selected"], counts["negative_executed"])
+            )
         say(
             "stage 2: negative selected=%d executed=%d code_matched=%d needle_matched=%d mismatches=%d"
             % (

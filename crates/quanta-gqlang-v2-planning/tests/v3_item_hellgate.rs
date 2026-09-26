@@ -127,6 +127,9 @@ fn a_find_is_a_path_witness_evidence_only_result() {
                 retention.max_path_length(),
                 contract.witness().max_path_length()
             );
+            assert_eq!(retention.direction(), contract.direction());
+            assert_eq!(retention.summary_facets(), contract.summary_facets());
+            assert_eq!(retention.references(), contract.references());
         }
         other => panic!("expected a graph policy, got {other:?}"),
     }
@@ -227,10 +230,10 @@ fn a_check_is_an_alert_read_only_result() {
     );
     assert_eq!(policy.confirm(), quanta_gqlang_v2_sema::ConfirmModeV1::Skip);
     assert_eq!(policy.emit(), quanta_gqlang_v2_sema::EmitModeV1::Findings);
-    assert_eq!(policy.rule().location(), {
-        let check = support::resolved_check(&document).expect("the resolved CHECK");
-        check.rule().location()
-    });
+    let check = support::resolved_check(&document).expect("the resolved CHECK");
+    assert_eq!(policy.rule(), check.rule());
+    assert_eq!(policy.scope(), check.scope());
+    assert_eq!(policy.pattern(), check.pattern());
     let nested = policy
         .nested_graph()
         .expect("the nested confirm provenance");

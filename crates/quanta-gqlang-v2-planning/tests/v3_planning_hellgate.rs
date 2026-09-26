@@ -637,7 +637,10 @@ fn resolved_check_contract_enforces_the_complete_option_matrix() {
                     | DetectionModeV1::Hybrid => None,
                 };
 
-                match (CheckContractV2::from_resolved(check, nested), expected) {
+                match (
+                    CheckContractV2::from_resolved(check, nested.clone()),
+                    expected,
+                ) {
                     (
                         Err(PlanningDiagnosticV1::InvalidCheck { reason, span }),
                         Some(expected_reason),
@@ -653,6 +656,10 @@ fn resolved_check_contract_enforces_the_complete_option_matrix() {
                         assert_eq!(contract.item_id(), check.item_id());
                         assert_eq!(contract.location(), check.location());
                         assert_eq!(contract.mode(), mode);
+                        assert_eq!(contract.rule(), check.rule());
+                        assert_eq!(contract.scope(), check.scope());
+                        assert_eq!(contract.pattern(), check.pattern());
+                        assert_eq!(contract.nested_graph(), nested.as_ref());
                         assert_eq!(contract.pattern().is_some(), with_pattern);
                         assert_eq!(contract.nested_graph().is_some(), with_nested_graph);
                     }
@@ -993,6 +1000,10 @@ fn every_composition_body_family_plans_with_exact_retention() {
         assert_eq!(policy.body_family(), family);
         assert_eq!(policy.with_binding(), document.with_binding());
         assert_eq!(policy.body().policy().keyword(), body_policy);
+        assert!(
+            !policy.producers().is_empty(),
+            "{body:?}: a composition plan retains its ordered producers"
+        );
         assert_eq!(
             policy
                 .producers()
@@ -1010,6 +1021,24 @@ fn every_composition_body_family_plans_with_exact_retention() {
                 .all(|(ordinal, producer)| producer.ordinal() == ordinal),
             "{body:?}"
         );
+        // Retain more than the identity: the checked name location and the
+        // optional relation output are copied from the sealed binding, so a
+        // dropped/relocated producer payload must fail here.
+        let sealed_bindings = document.composition().bindings();
+        assert_eq!(policy.producers().len(), sealed_bindings.len(), "{body:?}");
+        for (producer, binding) in policy.producers().iter().zip(sealed_bindings) {
+            assert_eq!(producer.item_id(), binding.producer().item_id(), "{body:?}");
+            assert_eq!(
+                producer.name_location(),
+                binding.name_location(),
+                "{body:?}"
+            );
+            assert_eq!(
+                producer.relation_output(),
+                binding.relation_output(),
+                "{body:?}"
+            );
+        }
     }
 }
 

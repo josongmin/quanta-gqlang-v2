@@ -111,7 +111,11 @@ fn literal_operator_anchor_infers_unary_rule_head_from_canonical_registry() {
         Some(&ValueTypeV1::int())
     );
     assert_eq!(proof.predicate_type(&predicate), Some(&ValueTypeV1::int()));
-    assert!(proof.usage().steps > 0);
+    let usage = proof.usage();
+    assert!(
+        usage.nodes > 0 && usage.edges > 0 && usage.steps > 0,
+        "a solved rule type must account for every usage dimension"
+    );
 }
 
 #[test]
@@ -169,8 +173,16 @@ fn anchored_self_recursion_solves_without_guessing_a_default() {
     assert_eq!(callable.id(), &predicate);
     assert_eq!(callable.params(), &[ValueTypeV1::int()]);
     assert_eq!(callable.result(), &ValueTypeV1::bool());
-    assert_eq!(callable.effects().aggregation, AggregationClassV1::Scalar);
-    assert_eq!(callable.effects().purity, PurityV1::Impure);
+    assert_eq!(
+        callable.effects(),
+        ExpressionEffectsV2 {
+            purity: PurityV1::Impure,
+            determinism: DeterminismV1::NonDeterministic,
+            monotonicity: MonotonicityV1::NonMonotone,
+            aggregation: AggregationClassV1::Scalar,
+            cost: CostClassV1::SuperLinear,
+        }
+    );
     assert!(proof
         .try_source_predicate_callable(&ResolvedPredicateIdV2::try_new("missing").unwrap())
         .unwrap()
@@ -244,6 +256,11 @@ fn unanchored_self_recursion_is_not_closed_success() {
         Some(&ExpressionTypeStateV2::Unknown(
             UnknownTypeCauseV2::UnanchoredRuleVariable
         ))
+    );
+    assert_eq!(
+        analysis.diagnostics().len(),
+        1,
+        "an unanchored rule must yield exactly one diagnostic"
     );
     assert_eq!(
         analysis.diagnostics().first().unwrap().code(),
@@ -682,6 +699,10 @@ fn anchored_mutual_recursion_is_unique_and_input_permutation_stable() {
         assert_eq!(first.predicate_type(&id), Some(&ValueTypeV1::int()));
         assert_eq!(permuted.predicate_type(&id), first.predicate_type(&id));
     }
+    assert!(
+        first.usage().nodes > 0 && first.usage().edges > 0 && first.usage().steps > 0,
+        "permutation stability must be asserted over non-trivial usage"
+    );
     assert_eq!(first.usage(), permuted.usage());
 }
 

@@ -466,6 +466,10 @@ fn every_plan_field_is_read_through_one_stable_accessor() {
     let planned: SemanticPlanV2 = plan(&input, document.document()).expect("a sort plans");
     let repeated = plan(&input, document.document()).expect("a sort plans again");
     assert_eq!(
+        planned, repeated,
+        "the whole plan must be stable, not just the sampled accessors"
+    );
+    assert_eq!(
         planned.semantic_cost().fields(),
         [
             ("estimated_cardinality_class", "linear_in_input"),

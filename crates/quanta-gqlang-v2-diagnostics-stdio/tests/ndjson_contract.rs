@@ -196,6 +196,10 @@ fn response_is_byte_deterministic() {
         run_stdio_session_v2(&mut first_input, &mut first).expect("first"),
         0
     );
+    assert!(
+        !first.is_empty(),
+        "a valid request must emit at least one NDJSON response"
+    );
     assert_eq!(
         run_stdio_session_v2(&mut second_input, &mut second).expect("second"),
         0
@@ -211,6 +215,10 @@ fn arbitrary_short_reads_and_eof_without_newline_preserve_framing() {
     let mut baseline = Vec::new();
     let baseline_status =
         run_stdio_session_v2(&mut baseline_input, &mut baseline).expect("baseline session");
+    assert!(
+        !baseline.is_empty(),
+        "the baseline session must emit responses before chunked comparison"
+    );
 
     for chunks in [
         vec![1],

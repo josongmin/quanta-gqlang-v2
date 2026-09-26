@@ -301,6 +301,11 @@ fn every_subkind_admits_at_the_sealed_depth_limit() {
             vec![reference(GraphReferenceRoleV2::Callable, "callable", 5, 6)],
         ),
     ];
+    assert_eq!(
+        cases.len(),
+        7,
+        "the sealed-limit matrix covers every FIND subkind (all seven kinds)"
+    );
 
     for (kind, references) in cases {
         let document =

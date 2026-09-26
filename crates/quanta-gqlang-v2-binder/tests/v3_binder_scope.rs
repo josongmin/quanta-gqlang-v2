@@ -76,9 +76,9 @@ fn group_output_exposes_only_ordered_key_bindings_and_retains_private_partition_
             .partition_input(group_id)
             .unwrap()
             .iter()
-            .map(|binding| binding.identity())
+            .map(|binding| (binding.name.as_str(), binding.identity()))
             .collect::<Vec<_>>(),
-        vec![(scan_id, 0)]
+        vec![("u", (scan_id, 0))]
     );
     let ResolvedTargetV1::Local(binding) = result.target_of(order_ref_id).unwrap() else {
         panic!("key-only group frame required")
@@ -255,6 +255,7 @@ fn alias_resolves_in_projection_and_filter() {
         Some(alias),
         SpanV1::new(15, 31),
     );
+    let source_id = source.id;
 
     // projection: u.id
     let proj_base = b.symbol("u", SpanV1::new(7, 8));
@@ -310,6 +311,7 @@ fn alias_resolves_in_projection_and_filter() {
             ResolvedTargetV1::Local(binding) => {
                 assert_eq!(binding.name, "u");
                 assert_eq!(binding.kind, BinderKindV1::Alias);
+                assert_eq!(binding.identity(), (source_id, 0));
             }
             other => panic!("expected local alias, got {other:?}"),
         }
@@ -462,6 +464,7 @@ fn join_rhs_alias_is_hidden_from_lhs_but_visible_to_on_and_later_stages() {
         Some(alias("l", 10)),
         SpanV1::new(0, 11),
     );
+    let lhs_source_id = lhs_source.id;
     let premature_rhs_ref = b.symbol("r", SpanV1::new(20, 21));
     let lhs = b.relation_filter(
         lhs_source,
@@ -474,6 +477,7 @@ fn join_rhs_alias_is_hidden_from_lhs_but_visible_to_on_and_later_stages() {
         Some(alias("r", 40)),
         SpanV1::new(30, 41),
     );
+    let rhs_id = rhs.id;
     let on_lhs_ref = b.symbol("l", SpanV1::new(48, 49));
     let on_rhs_ref = b.symbol("r", SpanV1::new(50, 51));
     let joined = b.inner_join(
@@ -508,15 +512,16 @@ fn join_rhs_alias_is_hidden_from_lhs_but_visible_to_on_and_later_stages() {
     assert_eq!(result.diagnostics()[0].code(), "binder.unresolved_symbol");
     assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(20, 21));
     assert!(result.target_of(premature_rhs_ref.id).is_none());
-    for (reference, expected_name) in [
-        (on_lhs_ref.id, "l"),
-        (on_rhs_ref.id, "r"),
-        (later_rhs_ref.id, "r"),
+    for (reference, expected_name, expected_identity) in [
+        (on_lhs_ref.id, "l", (lhs_source_id, 0)),
+        (on_rhs_ref.id, "r", (rhs_id, 0)),
+        (later_rhs_ref.id, "r", (rhs_id, 0)),
     ] {
         match result.target_of(reference).unwrap() {
             ResolvedTargetV1::Local(binding) => {
                 assert_eq!(binding.name, expected_name);
                 assert_eq!(binding.kind, BinderKindV1::Alias);
+                assert_eq!(binding.identity(), expected_identity);
             }
             other => panic!("expected relation alias, got {other:?}"),
         }
@@ -526,9 +531,9 @@ fn join_rhs_alias_is_hidden_from_lhs_but_visible_to_on_and_later_stages() {
             .relation_output(joined_id)
             .unwrap()
             .iter()
-            .map(|binding| binding.name.as_str())
+            .map(|binding| (binding.name.as_str(), binding.identity()))
             .collect::<Vec<_>>(),
-        vec!["l", "r"]
+        vec![("l", (lhs_source_id, 0)), ("r", (rhs_id, 0))]
     );
 }
 
@@ -576,11 +581,17 @@ fn projection_replaces_row_frame_and_exposes_only_named_outputs() {
     assert!(result.is_ok(), "diags: {:?}", result.diagnostics());
     assert!(matches!(
         result.target_of(projected_input.id),
-        Some(ResolvedTargetV1::Local(binding)) if binding.name == "u"
+        Some(ResolvedTargetV1::Local(binding))
+            if binding.name == "u"
+                && binding.kind == BinderKindV1::Alias
+                && binding.identity() == (source_id, 0)
     ));
     assert!(matches!(
         result.target_of(output_ref.id),
-        Some(ResolvedTargetV1::Local(binding)) if binding.name == "user"
+        Some(ResolvedTargetV1::Local(binding))
+            if binding.name == "user"
+                && binding.kind == BinderKindV1::Alias
+                && binding.identity() == (projected_id, 0)
     ));
     assert_eq!(
         result

@@ -3,7 +3,7 @@
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
-use quanta_gqlang_v2_hir::HirBuilderV1;
+use quanta_gqlang_v2_hir::{HirBuilderV1, SpanV1};
 use quanta_gqlang_v2_surface::{parse_program, ParseDiagnosticV1, ParseErrorCodeV1};
 
 fn err(src: &str) -> ParseDiagnosticV1 {
@@ -92,6 +92,8 @@ fn show_unsupported_category_rejects() {
 fn describe_missing_double_colon_rejects() {
     let d = err("describe rule.path");
     assert_eq!(d.code, ParseErrorCodeV1::UnexpectedToken);
+    assert_eq!(d.message, "expected ':' in a 'kind::path' target");
+    assert_eq!(d.span, SpanV1::new(13, 14));
 }
 
 // ---- SAMPLE rejects --------------------------------------------------------
@@ -122,6 +124,8 @@ fn sample_wrong_first_key_rejects() {
 fn sample_non_integer_limit_rejects() {
     let d = err("sample query=\"q\" | limit=many");
     assert_eq!(d.code, ParseErrorCodeV1::UnexpectedToken);
+    assert_eq!(d.message, "expected a positive limit");
+    assert_eq!(d.span, SpanV1::new(25, 29));
 }
 
 // ---- COMPARE / EXPORT rejects ----------------------------------------------
@@ -260,6 +264,8 @@ fn reference_missing_ident_rejects() {
     // `check` with no rule reference: `parse_ref` hits the `|` instead of an ident.
     let d = err("check | confirm=skip");
     assert_eq!(d.code, ParseErrorCodeV1::UnexpectedToken);
+    assert_eq!(d.message, "expected a rule reference");
+    assert_eq!(d.span, SpanV1::new(6, 7));
 }
 
 /// A hyphenated reference with no segment after `-` fails closed asking for the
@@ -268,6 +274,8 @@ fn reference_missing_ident_rejects() {
 fn reference_dangling_hyphen_rejects() {
     let d = err("pack secure- | source=s | activation=session");
     assert_eq!(d.code, ParseErrorCodeV1::UnexpectedToken);
+    assert_eq!(d.message, "expected a path segment after separator");
+    assert_eq!(d.span, SpanV1::new(13, 14));
 }
 
 /// An integer literal too large for `u32` fails closed in `parse_u32`'s

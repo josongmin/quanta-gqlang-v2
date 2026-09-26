@@ -2977,6 +2977,10 @@ mod tests {
     }
 
     fn assert_all_digests_distinct(digests: &[ExecutionDigestV3]) {
+        assert!(
+            !digests.is_empty(),
+            "an empty digest set cannot witness distinct encodings"
+        );
         let mut deduped = digests.to_vec();
         deduped.sort_by(|left, right| left.as_bytes().cmp(right.as_bytes()));
         deduped.dedup();
@@ -3671,10 +3675,29 @@ mod tests {
             LocatedSpanV2, RecordFieldTypeV1, RecordTypeV1, SourceRegistrationV2,
             SourceRegistryViewV2, SpanV1,
         };
-        assert_eq!(
-            project_value_type(&ValueTypeV1::int()),
-            ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Int)
-        );
+        // Every constructible scalar arm projects one-to-one; a swapped
+        // `project_scalar` pair must fail here rather than stay green.
+        for (scalar, expected) in [
+            (ScalarTyV1::Bool, ExecutionScalarTypeV3::Bool),
+            (ScalarTyV1::Int, ExecutionScalarTypeV3::Int),
+            (ScalarTyV1::Float, ExecutionScalarTypeV3::Float),
+            (ScalarTyV1::String, ExecutionScalarTypeV3::String),
+            (ScalarTyV1::Duration, ExecutionScalarTypeV3::Duration),
+            (ScalarTyV1::Location, ExecutionScalarTypeV3::Location),
+            (ScalarTyV1::Path, ExecutionScalarTypeV3::Path),
+            (ScalarTyV1::RepoPath, ExecutionScalarTypeV3::RepoPath),
+            (ScalarTyV1::EntityRef, ExecutionScalarTypeV3::EntityRef),
+            (ScalarTyV1::SymbolRef, ExecutionScalarTypeV3::SymbolRef),
+            (ScalarTyV1::RuleRef, ExecutionScalarTypeV3::RuleRef),
+            (ScalarTyV1::SourceScope, ExecutionScalarTypeV3::SourceScope),
+            (ScalarTyV1::ProofTree, ExecutionScalarTypeV3::ProofTree),
+        ] {
+            assert_eq!(
+                project_value_type(&ValueTypeV1::scalar(scalar.clone())),
+                ExecutionValueTypeV3::Scalar(expected),
+                "{scalar:?}"
+            );
+        }
         assert_eq!(
             project_value_type(&ValueTypeV1::null()),
             ExecutionValueTypeV3::Null

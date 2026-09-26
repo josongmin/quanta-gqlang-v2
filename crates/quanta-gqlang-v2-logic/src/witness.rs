@@ -341,6 +341,35 @@ mod tests {
                 .expect_err("sixth defect"),
             UnboundedWitnessReasonV1::PathLengthBoundOverBudget
         );
+
+        // Defense in depth: a LATER defect present alongside an EARLIER one must
+        // not steal the report. Without these cross-cases a mutant that moved
+        // (say) the path-budget check ahead of the cap check would keep this
+        // rail green, because every case above isolates exactly one defect.
+        assert_eq!(
+            WitnessContractV2::validate(&binding(cyclic, None, Some(0)))
+                .expect_err("cap presence beats path degeneracy"),
+            UnboundedWitnessReasonV1::MissingMaxWitnesses
+        );
+        assert_eq!(
+            WitnessContractV2::validate(&binding(cyclic, Some(0), Some(SEALED_MAX_DEPTH + 1)))
+                .expect_err("cap degeneracy beats path budget"),
+            UnboundedWitnessReasonV1::ZeroMaxWitnesses
+        );
+        assert_eq!(
+            WitnessContractV2::validate(&binding(
+                cyclic,
+                Some(SEALED_MAX_WITNESSES + 1),
+                Some(SEALED_MAX_DEPTH + 1)
+            ))
+            .expect_err("cap budget beats path budget"),
+            UnboundedWitnessReasonV1::MaxWitnessesOverBudget
+        );
+        assert_eq!(
+            WitnessContractV2::validate(&binding(cyclic, Some(SEALED_MAX_WITNESSES + 1), Some(0)))
+                .expect_err("cap budget beats path degeneracy"),
+            UnboundedWitnessReasonV1::MaxWitnessesOverBudget
+        );
     }
 
     // The acyclic arm of the retained vocabulary still admits a structurally
@@ -402,6 +431,11 @@ mod tests {
             ),
         ];
 
+        assert_eq!(
+            cases.len(),
+            6,
+            "the rail table covers every UnboundedWitnessReasonV1"
+        );
         for (binding, reason, code, message) in cases {
             let err = WitnessContractV2::bind(&binding, &span).expect_err("rail rejects");
             assert_eq!(err.code(), code);
@@ -450,6 +484,11 @@ mod tests {
                 "path_length_bound_over_budget",
             ),
         ];
+        assert_eq!(
+            codes.len(),
+            6,
+            "the code table covers every UnboundedWitnessReasonV1"
+        );
         for (reason, code) in codes {
             assert_eq!(reason.code(), code);
         }

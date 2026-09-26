@@ -84,12 +84,30 @@ class ExternalConsumerCacheTest(unittest.TestCase):
             self.assertEqual(observation["codes"], {"E0616"})
             self.assertIn("field `stage` is private", observation["rendered"][0])
 
+            artifact = subprocess.CompletedProcess(
+                ["cargo", "check"], 0,
+                json.dumps({
+                    "reason": "compiler-artifact",
+                    "target": {"name": name, "src_path": str(source)},
+                }),
+                "",
+            )
+            self.assertTrue(negative_observations(artifact, fixture)[name]["compiled"])
+
             event["target"]["src_path"] = str(fixture / "src" / "main.rs")
             bad = subprocess.CompletedProcess(
                 ["cargo", "check"], 101, json.dumps(event), "cargo summary"
             )
             with self.assertRaisesRegex(InfrastructureError, "wrong source path"):
                 negative_observations(bad, fixture)
+
+            event["target"]["src_path"] = str(source)
+            event["message"]["spans"][0]["file_name"] = str(fixture / "src" / "main.rs")
+            unanchored = subprocess.CompletedProcess(
+                ["cargo", "check"], 101, json.dumps(event), "cargo summary"
+            )
+            with self.assertRaisesRegex(InfrastructureError, "not anchored to its probe source"):
+                negative_observations(unanchored, fixture)
 
     def test_negative_bins_are_stable_and_reject_foreign_cache_entries(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -98,6 +116,11 @@ class ExternalConsumerCacheTest(unittest.TestCase):
                 fixture = materialize_fixture(root)
                 bin_dir = materialize_negative_bins(fixture)
                 paths = sorted(bin_dir.glob("*.rs"))
+                self.assertEqual(
+                    {path.name for path in paths},
+                    {name + ".rs" for name in consumer_gate.NEGATIVE_CASES},
+                    "negative bin cache must expose the registered probe inventory",
+                )
                 before = {path: path.stat().st_mtime_ns for path in paths}
                 materialize_negative_bins(fixture)
                 self.assertEqual({path: path.stat().st_mtime_ns for path in paths}, before)
@@ -123,6 +146,11 @@ class ExternalConsumerCacheTest(unittest.TestCase):
                 original_hash = consumer_gate.sha256_of
                 with mock.patch.object(consumer_gate, "sha256_of", side_effect=lambda path: (
                     "changed" if path == consumer_gate.LOCKFILE else original_hash(path)
+                )):
+                    with self.assertRaisesRegex(InfrastructureError, "does not match"):
+                        consume_preflight_stamp(run_id)
+                with mock.patch.object(consumer_gate, "sha256_of", side_effect=lambda path: (
+                    "changed" if path == consumer_gate.FIXTURE_LOCKFILE else original_hash(path)
                 )):
                     with self.assertRaisesRegex(InfrastructureError, "does not match"):
                         consume_preflight_stamp(run_id)

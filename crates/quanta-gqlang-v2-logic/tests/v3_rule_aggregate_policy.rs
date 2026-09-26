@@ -172,11 +172,18 @@ fn unspelled_recursive_aggregate_renders_stable_placeholder() {
         l[0].clone(),
     )]);
 
-    let literal = program
-        .rules()
-        .first()
-        .and_then(|rule| rule.body().first())
-        .expect("the fixture rule carries one body reference");
+    assert_eq!(
+        program.rules().len(),
+        1,
+        "the fixture carries exactly one rule, so `.first()` is that rule"
+    );
+    let rule = program.rules().first().expect("the fixture rule");
+    assert_eq!(
+        rule.body().len(),
+        1,
+        "the fixture rule carries exactly one body reference"
+    );
+    let literal = rule.body().first().expect("the fixture body reference");
     assert_eq!(literal.aggregate_function(), None);
     assert_eq!(literal.polarity(), BodyPolarityV1::Aggregated);
 

@@ -516,25 +516,29 @@ mod tests {
     #[test]
     fn closed_registry_preserves_builtin_families_metadata_and_ids() {
         let registry = BuiltinRegistryV2::try_closed().expect("valid static registry");
-        for name in [
-            "count",
-            "sum",
-            "min",
-            "max",
-            "avg",
-            "starts_with",
-            "ends_with",
-            "contains",
-            "length",
-            "is_null",
-            "size",
-            "path_length",
-            "path_locations",
-            "explain",
-            "proof_size",
-            "now",
+        for (name, family) in [
+            ("count", 1u32),
+            ("sum", 2),
+            ("min", 3),
+            ("max", 4),
+            ("avg", 5),
+            ("starts_with", 6),
+            ("ends_with", 7),
+            ("contains", 8),
+            ("length", 9),
+            ("is_null", 10),
+            ("size", 11),
+            ("path_length", 12),
+            ("path_locations", 13),
+            ("explain", 14),
+            ("proof_size", 15),
+            ("now", 16),
         ] {
-            assert!(registry.family_id(name).is_some(), "missing {name}");
+            assert_eq!(
+                registry.family_id(name),
+                Some(BuiltinFamilyIdV2(family)),
+                "wrong family id for {name}"
+            );
         }
         assert_eq!(registry.entries.len(), 21);
         assert!(registry
@@ -555,13 +559,32 @@ mod tests {
             .iter()
             .find(|entry| entry.name == "now")
             .expect("now");
-        assert_eq!(now.effects.determinism, DeterminismV1::NonDeterministic);
+        assert_eq!(
+            now.effects,
+            ExpressionEffectsV2 {
+                purity: PurityV1::Impure,
+                determinism: DeterminismV1::NonDeterministic,
+                monotonicity: MonotonicityV1::NonMonotone,
+                aggregation: AggregationClassV1::Scalar,
+                cost: CostClassV1::Constant,
+            }
+        );
         let count = registry
             .lookup_family(registry.family_id("count").expect("count"))
             .collect::<Vec<_>>();
-        assert!(count
-            .iter()
-            .any(|entry| matches!(entry.signature, CallableSignatureV2::AggregateStar { .. })));
+        assert_eq!(
+            count.len(),
+            2,
+            "count admits exactly the any and star overloads"
+        );
+        assert!(count.iter().any(|entry| matches!(
+            &entry.signature,
+            CallableSignatureV2::AnySingle { result } if *result == ValueTypeV1::int()
+        )));
+        assert!(count.iter().any(|entry| matches!(
+            &entry.signature,
+            CallableSignatureV2::AggregateStar { result } if *result == ValueTypeV1::int()
+        )));
     }
 
     #[test]
@@ -660,10 +683,11 @@ mod tests {
         );
         let duplicate_id = e(1, 2, "g", fixed(vec![], ValueTypeV1::bool()), effects);
         assert_eq!(
-            BuiltinRegistryV2::try_from_entries(vec![first.clone(), duplicate_id])
-                .unwrap_err()
-                .code(),
-            "types.registry_duplicate_id"
+            BuiltinRegistryV2::try_from_entries(vec![first.clone(), duplicate_id]).unwrap_err(),
+            TypeDiagnosticV2::RegistryDuplicateId {
+                registry: "builtin",
+                id: 1
+            }
         );
         let duplicate_signature = e(
             2,
@@ -673,10 +697,11 @@ mod tests {
             effects,
         );
         assert_eq!(
-            BuiltinRegistryV2::try_from_entries(vec![first, duplicate_signature])
-                .unwrap_err()
-                .code(),
-            "types.registry_duplicate_id"
+            BuiltinRegistryV2::try_from_entries(vec![first, duplicate_signature]).unwrap_err(),
+            TypeDiagnosticV2::RegistryDuplicateId {
+                registry: "builtin_signature",
+                id: 2
+            }
         );
     }
     #[test]
@@ -699,24 +724,27 @@ mod tests {
             effects,
         );
         assert_eq!(
-            BuiltinRegistryV2::try_from_entries(vec![first.clone(), overlap])
-                .unwrap_err()
-                .code(),
-            "types.registry_duplicate_id"
+            BuiltinRegistryV2::try_from_entries(vec![first.clone(), overlap]).unwrap_err(),
+            TypeDiagnosticV2::RegistryDuplicateId {
+                registry: "builtin_signature",
+                id: 2
+            }
         );
         let aliased_name = e(3, 2, "f", fixed(vec![], ValueTypeV1::bool()), effects);
         assert_eq!(
-            BuiltinRegistryV2::try_from_entries(vec![first.clone(), aliased_name])
-                .unwrap_err()
-                .code(),
-            "types.registry_duplicate_id"
+            BuiltinRegistryV2::try_from_entries(vec![first.clone(), aliased_name]).unwrap_err(),
+            TypeDiagnosticV2::RegistryDuplicateId {
+                registry: "builtin_family",
+                id: 3
+            }
         );
         let aliased_family = e(4, 1, "g", fixed(vec![], ValueTypeV1::bool()), effects);
         assert_eq!(
-            BuiltinRegistryV2::try_from_entries(vec![first, aliased_family])
-                .unwrap_err()
-                .code(),
-            "types.registry_duplicate_id"
+            BuiltinRegistryV2::try_from_entries(vec![first, aliased_family]).unwrap_err(),
+            TypeDiagnosticV2::RegistryDuplicateId {
+                registry: "builtin_family",
+                id: 4
+            }
         );
     }
 

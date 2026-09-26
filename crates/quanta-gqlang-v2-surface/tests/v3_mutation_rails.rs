@@ -39,6 +39,15 @@ fn space_separates_two_idents() {
             TokenKindV1::Eof,
         ]
     );
+    // a carriage return also separates.
+    assert_eq!(
+        kinds("a\rb"),
+        vec![
+            TokenKindV1::Ident("a".into()),
+            TokenKindV1::Ident("b".into()),
+            TokenKindV1::Eof,
+        ]
+    );
 }
 
 /// A `#` line comment is skipped up to the newline, and a comment that runs to

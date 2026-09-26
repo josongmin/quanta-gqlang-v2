@@ -116,12 +116,29 @@ class ProcessGuardTest(unittest.TestCase):
 
     def test_stuck_child_exits_at_the_gate_timeout(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            with self.assertRaises(ProcessTimeoutError):
-                run_bounded(
-                    [sys.executable, "-c", "import signal; signal.pause()"],
-                    cwd=Path(directory),
-                    timeout_s=0.1,
-                )
+            started = []
+            real_popen = subprocess.Popen
+
+            def recording_popen(*args, **kwargs):
+                process = real_popen(*args, **kwargs)
+                started.append(process)
+                return process
+
+            try:
+                with patch("tools.process_guard.subprocess.Popen", side_effect=recording_popen):
+                    with self.assertRaises(ProcessTimeoutError):
+                        run_bounded(
+                            [sys.executable, "-c", "import signal; signal.pause()"],
+                            cwd=Path(directory),
+                            timeout_s=0.1,
+                        )
+                self.assertEqual(len(started), 1)
+                self.assertIsNotNone(started[0].poll(), "timed-out gate left its child running")
+            finally:
+                for process in started:
+                    if process.poll() is None:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    process.wait(timeout=1)
 
     def test_timeout_does_not_wait_for_escaped_pipe_holder(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -178,14 +195,35 @@ class ProcessGuardTest(unittest.TestCase):
                         )
                 self.assertTrue(pid_file.exists(), "same-group child did not start")
                 pid = int(pid_file.read_text())
+                control = subprocess.run(
+                    ["ps", "-o", "stat=", "-p", str(os.getpid())],
+                    capture_output=True, text=True, check=False,
+                )
+                self.assertEqual(
+                    control.returncode, 0,
+                    f"ps liveness oracle unavailable: {control.stderr!r}",
+                )
+                self.assertTrue(control.stdout.strip(), "ps liveness oracle returned no state")
                 status = subprocess.run(
                     ["ps", "-o", "stat=", "-p", str(pid)],
                     capture_output=True, text=True, check=False,
                 )
-                self.assertTrue(
-                    status.returncode != 0 or status.stdout.strip().startswith("Z"),
-                    f"the gate left a same-group child running: {status.stdout!r}",
-                )
+                if status.returncode == 0:
+                    self.assertTrue(
+                        status.stdout.strip().startswith("Z"),
+                        f"the gate left a same-group child running: {status.stdout!r}",
+                    )
+                else:
+                    self.assertEqual(
+                        status.stderr.strip(), "",
+                        f"unexpected ps error for the child pid: {status.stderr!r}",
+                    )
+                    self.assertEqual(
+                        status.stdout.strip(), "",
+                        f"ps reported {status.stdout!r} with exit {status.returncode}",
+                    )
+                    with self.assertRaises(ProcessLookupError):
+                        os.kill(pid, 0)
             finally:
                 if pid_file.exists():
                     try:

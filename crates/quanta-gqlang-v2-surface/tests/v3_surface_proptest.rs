@@ -11,6 +11,7 @@ use quanta_gqlang_v2_hir::{
 use quanta_gqlang_v2_surface::{
     format_document, format_item, lex, parse_document, parse_expr, parse_predicate, parse_program,
     try_format_item, ParseDiagnosticV1, ParsedDocumentV1, ParsedProgramV1, SurfaceItemV1,
+    TokenKindV1, TokenV1,
 };
 
 /// Bounded config so the adversarial rails stay fast in CI.
@@ -237,9 +238,51 @@ fn diagnostic_invariants(
         diagnostic.code == ParseErrorCodeV1::ResourceExhausted,
         "resource code and payload disagree"
     );
-    if let Some(resource) = diagnostic.resource {
-        prop_assert!(resource.observed > resource.limit);
+    // Total, fail-closed option handling: a `ResourceExhausted` diagnostic must
+    // carry a payload whose observed count exceeds the limit, and no other
+    // diagnostic may masquerade as one. The `None` arm is explicit so the
+    // payload check cannot be skipped by a silently absent resource.
+    match diagnostic.resource {
+        Some(resource) => prop_assert!(
+            resource.observed > resource.limit,
+            "resource payload must exceed its limit: {resource:?}"
+        ),
+        None => prop_assert_ne!(
+            diagnostic.code,
+            ParseErrorCodeV1::ResourceExhausted,
+            "resource code and payload disagree"
+        ),
     }
+    Ok(())
+}
+
+/// Accepted token streams carry the same source-bounded, ordered invariants the
+/// diagnostics do, so a successful `lex` is verified rather than merely observed.
+fn lexed_token_invariants(
+    source: &str,
+    tokens: &[TokenV1],
+) -> Result<(), proptest::test_runner::TestCaseError> {
+    let mut previous_end = 0usize;
+    for token in tokens {
+        prop_assert!(
+            token.span.start <= token.span.end && token.span.end <= source.len(),
+            "lexed token span {:?} exceeds source byte length {}",
+            token.span,
+            source.len()
+        );
+        prop_assert!(source.is_char_boundary(token.span.start));
+        prop_assert!(source.is_char_boundary(token.span.end));
+        prop_assert!(
+            token.span.start >= previous_end,
+            "lexed token spans must stay ordered and non-overlapping: {:?}",
+            token.span
+        );
+        previous_end = token.span.end;
+    }
+    prop_assert!(
+        matches!(tokens.last().map(|token| &token.kind), Some(TokenKindV1::Eof)),
+        "a successful lex must terminate in Eof"
+    );
     Ok(())
 }
 
@@ -419,9 +462,12 @@ proptest! {
     fn arbitrary_document_has_bounded_diagnostic_or_integrity_checked_hir(s in arb_document_source()) {
         match parse_document(&s, &HirBuilderV1::new()) {
             Ok(parsed) => {
+                // The caller-visible source length is part of the accepted result,
+                // not just an input we re-derive.
+                prop_assert_eq!(parsed.source_len, s.len());
                 let document = HirDocumentV1 {
                     source_id: SourceIdV2::from_raw(0),
-                    source_len: s.len(),
+                    source_len: parsed.source_len,
                     items: parsed.items.iter().map(SurfaceItemV1::to_program_item).collect(),
                 };
                 let checked = check_document_v2(&document);
@@ -433,14 +479,34 @@ proptest! {
 
     #[test]
     fn arbitrary_expression_and_predicate_diagnostics_are_source_bounded(s in arb_program_source()) {
-        if let Err(diagnostic) = parse_expr(&s, &HirBuilderV1::new()) {
-            diagnostic_invariants(&s, &diagnostic)?;
+        // Fixed positive controls: if any entry point regressed to rejecting
+        // unconditionally, the Ok branches below would go permanently unexercised.
+        prop_assert!(parse_expr("a + 1", &HirBuilderV1::new()).is_ok(), "parse_expr must accept");
+        prop_assert!(
+            parse_predicate("a > 1", &HirBuilderV1::new()).is_ok(),
+            "parse_predicate must accept"
+        );
+        prop_assert!(lex("let x = 1").is_ok(), "lex must accept");
+        // Every branch asserts: an accepted result must carry integrity-checked
+        // HIR, and a rejected one must carry a source-bounded diagnostic. No
+        // entry point can pass this case by producing `Ok` silently.
+        match parse_expr(&s, &HirBuilderV1::new()) {
+            Ok(value) => prop_assert!(
+                check_tree(HirRootRefV1::Value(&value), s.len()).is_ok(),
+                "accepted expression has invalid HIR: {s:?}"
+            ),
+            Err(diagnostic) => diagnostic_invariants(&s, &diagnostic)?,
         }
-        if let Err(diagnostic) = parse_predicate(&s, &HirBuilderV1::new()) {
-            diagnostic_invariants(&s, &diagnostic)?;
+        match parse_predicate(&s, &HirBuilderV1::new()) {
+            Ok(predicate) => prop_assert!(
+                check_tree(HirRootRefV1::Bool(&predicate), s.len()).is_ok(),
+                "accepted predicate has invalid HIR: {s:?}"
+            ),
+            Err(diagnostic) => diagnostic_invariants(&s, &diagnostic)?,
         }
-        if let Err(diagnostic) = lex(&s) {
-            diagnostic_invariants(&s, &diagnostic)?;
+        match lex(&s) {
+            Ok(tokens) => lexed_token_invariants(&s, &tokens)?,
+            Err(diagnostic) => diagnostic_invariants(&s, &diagnostic)?,
         }
     }
 }
@@ -455,6 +521,9 @@ proptest! {
     fn parse_program_is_deterministic(s in arb_program_source()) {
         let a = parse_program(&s, &HirBuilderV1::new());
         let b = parse_program(&s, &HirBuilderV1::new());
+        // Full structural equality, not only the id/span-free witness: a reused
+        // builder that leaks node ids between parses must fail here.
+        prop_assert_eq!(&a, &b);
         prop_assert_eq!(program_witness(&a), program_witness(&b));
     }
 
@@ -462,6 +531,7 @@ proptest! {
     fn parse_program_is_deterministic_any(s in arb_any_string()) {
         let a = parse_program(&s, &HirBuilderV1::new());
         let b = parse_program(&s, &HirBuilderV1::new());
+        prop_assert_eq!(&a, &b);
         prop_assert_eq!(program_witness(&a), program_witness(&b));
     }
 
@@ -469,6 +539,7 @@ proptest! {
     fn parse_document_is_deterministic(s in arb_document_source()) {
         let a = parse_document(&s, &HirBuilderV1::new());
         let b = parse_document(&s, &HirBuilderV1::new());
+        prop_assert_eq!(&a, &b);
         prop_assert_eq!(document_witness(&a), document_witness(&b));
     }
 
@@ -484,8 +555,14 @@ proptest! {
     /// text. Also format is idempotent: format(format(x)) == format(x).
     #[test]
     fn parse_program_round_trips_and_is_idempotent(s in arb_program_source()) {
-        let Ok(parsed) = parse_program(&s, &HirBuilderV1::new()) else {
-            return Ok(());
+        // Rejected inputs still assert the diagnostic bound, so a case is never a
+        // silent no-op; accepted inputs assert the full round-trip.
+        let parsed = match parse_program(&s, &HirBuilderV1::new()) {
+            Ok(parsed) => parsed,
+            Err(diagnostic) => {
+                diagnostic_invariants(&s, &diagnostic)?;
+                return Ok(());
+            }
         };
         let item = parsed.item.to_program_item();
         let canon = format_item(&item);
@@ -516,8 +593,12 @@ proptest! {
     /// -> format unchanged.
     #[test]
     fn parse_document_round_trips_and_is_idempotent(s in arb_document_source()) {
-        let Ok(parsed) = parse_document(&s, &HirBuilderV1::new()) else {
-            return Ok(());
+        let parsed = match parse_document(&s, &HirBuilderV1::new()) {
+            Ok(parsed) => parsed,
+            Err(diagnostic) => {
+                diagnostic_invariants(&s, &diagnostic)?;
+                return Ok(());
+            }
         };
         let items: Vec<_> = parsed.items.iter().map(SurfaceItemV1::to_program_item).collect();
         let canon = format_document(&items);

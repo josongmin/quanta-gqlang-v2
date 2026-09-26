@@ -70,6 +70,25 @@ fn rejection(document: &SemanticDocumentV2) -> LogicDiagnosticV1 {
     }
 }
 
+/// The INDEPENDENT code suffix of one rule-program reason.
+///
+/// `assert_invalid` must not derive its expectation from `reason.code()`: the
+/// diagnostic under test is itself built from `reason.code()`, so calling the
+/// same production accessor on both sides makes the code assertion unable to
+/// fail however the spellings drift.
+fn expected_invalid_suffix(reason: RuleProgramInvalidReasonV1) -> &'static str {
+    match reason {
+        RuleProgramInvalidReasonV1::MissingMember => "missing_member",
+        RuleProgramInvalidReasonV1::DuplicateMember => "duplicate_member",
+        RuleProgramInvalidReasonV1::NonLocalTarget => "nonlocal_target",
+        RuleProgramInvalidReasonV1::WrongCallId => "wrong_call_id",
+        RuleProgramInvalidReasonV1::TargetTransplanted => "target_transplanted",
+        RuleProgramInvalidReasonV1::PolarityFlip => "polarity_flip",
+        RuleProgramInvalidReasonV1::ForeignLocation => "foreign_location",
+        RuleProgramInvalidReasonV1::MembershipMismatch => "membership_mismatch",
+    }
+}
+
 /// Assert the exact fail-closed payload of one rule-program rejection.
 fn assert_invalid(
     error: &LogicDiagnosticV1,
@@ -77,7 +96,7 @@ fn assert_invalid(
     message: &str,
     span: &CheckedLocatedSpanV2,
 ) {
-    let suffix = reason.code();
+    let suffix = expected_invalid_suffix(reason);
     assert_eq!(error.code(), format!("logic.rule_program.{suffix}"));
     assert_eq!(error.message(), message);
     assert_eq!(error.span(), span);
@@ -123,10 +142,18 @@ fn program_rule<'a>(program: &'a [RuleDefV1], head: &str) -> &'a RuleDefV1 {
 
 /// The one body reference of `rule` targeting `target`.
 fn body_literal<'a>(rule: &'a RuleDefV1, target: &str) -> &'a BodyLiteralV1 {
-    rule.body()
+    let mut matches = rule
+        .body()
         .iter()
-        .find(|literal| literal.predicate().as_str() == target)
-        .expect("projected rule body carries the expected reference")
+        .filter(|literal| literal.predicate().as_str() == target);
+    let literal = matches
+        .next()
+        .expect("projected rule body carries the expected reference");
+    assert!(
+        matches.next().is_none(),
+        "projected rule body carries exactly one reference to `{target}`"
+    );
+    literal
 }
 
 /// The registry-proven call fact of a rule's only resolved call.
@@ -171,6 +198,9 @@ fn relational_exists_documents_never_project_logic_rule_members() {
     // Relational EXISTS / NOT EXISTS is owned by semantic analysis and lowered by
     // algebra (SS-05C). No EXISTS shape may produce a logic rule, a rule member,
     // or a rule-body edge — the retired V1 lowerer has no successor here.
+    //
+    // The table must carry EVERY relational-EXISTS fixture variant; dropping one
+    // silently narrows the "no EXISTS shape" claim to the shapes still listed.
     for fixture in [
         ReferenceRelationFixtureV2::Exists,
         ReferenceRelationFixtureV2::NotExists,
@@ -181,6 +211,7 @@ fn relational_exists_documents_never_project_logic_rule_members() {
         ReferenceRelationFixtureV2::CorrelatedExists,
         ReferenceRelationFixtureV2::CorrelatedNotExists,
         ReferenceRelationFixtureV2::NestedExistsTwoLevels,
+        ReferenceRelationFixtureV2::ExistsWithMultiplicativeRight,
     ] {
         let reference = reference_relation_document_v2(fixture).expect("EXISTS fixture resolves");
         let document = reference.document();
@@ -297,6 +328,11 @@ fn single_rule_document_projects_its_exact_member_and_locations() {
             .collect::<Vec<_>>(),
         fixture.item_ids()
     );
+    assert_eq!(
+        contract.rules().len(),
+        1,
+        "the fixture projects exactly one member, so `.first()` is that member"
+    );
     let rule = contract.rules().first().expect("one projected member");
     assert_eq!(rule.predicate_id(), &predicate("r"));
     assert!(
@@ -306,6 +342,11 @@ fn single_rule_document_projects_its_exact_member_and_locations() {
 
     let program = contract.to_program();
     assert_eq!(program.len(), 1);
+    assert_eq!(
+        program.first().map(RuleDefV1::head),
+        Some(&predicate("r")),
+        "the single projected program member IS the contract's single member"
+    );
     let projected = program_rule(&program, "r");
     assert!(projected.body().is_empty());
     assert_eq!(projected.location(), rule.body().expression().location());
@@ -338,6 +379,11 @@ fn positive_self_recursion_projects_one_positive_edge() {
     let document = fixture.document();
     let contract = accepted(document);
 
+    assert_eq!(
+        contract.rules().len(),
+        1,
+        "the fixture projects exactly one member, so `.first()` is that member"
+    );
     let rule = contract.rules().first().expect("one projected member");
     let call = only_call(rule);
     assert_eq!(
@@ -357,7 +403,13 @@ fn positive_self_recursion_projects_one_positive_edge() {
     assert_eq!(call.location(), fact.location());
 
     let program = contract.to_program();
+    assert_eq!(program.len(), 1, "one member projects one program rule");
     let projected = program_rule(&program, "r");
+    assert_eq!(
+        projected.body().len(),
+        1,
+        "the self-recursion fixture projects exactly one edge"
+    );
     let literal = body_literal(projected, "r");
     assert_eq!(literal.polarity(), BodyPolarityV1::Positive);
     assert_eq!(literal.location(), call.location());
@@ -389,6 +441,11 @@ fn negated_self_recursion_is_refused_at_the_sole_ingress() {
     let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::NegatedSelfRecursion)
         .expect("negated self-recursion fixture resolves");
     let document = fixture.document();
+    assert_eq!(
+        document.rules().count(),
+        1,
+        "the fixture document has exactly one member, so `.next()` is that member"
+    );
     let rule = document.rules().next().expect("one document member");
     let call = only_call(rule);
     assert_eq!(
@@ -419,6 +476,11 @@ fn aggregated_self_recursion_is_refused_at_the_sole_ingress() {
     let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::AggregatedSelfRecursion)
         .expect("aggregated self-recursion fixture resolves");
     let document = fixture.document();
+    assert_eq!(
+        document.rules().count(),
+        1,
+        "the fixture document has exactly one member, so `.next()` is that member"
+    );
     let rule = document.rules().next().expect("one document member");
     let call = only_call(rule);
     assert_eq!(
@@ -474,6 +536,11 @@ fn mutual_recursion_pair_projects_document_order_members_and_exact_edges() {
             call.polarity(),
             quanta_gqlang_v2_sema::RuleCallPolarityV2::Positive
         );
+        assert_eq!(
+            program_rule(&program, head).body().len(),
+            1,
+            "each member of the mutual pair projects exactly one edge"
+        );
         let literal = body_literal(program_rule(&program, head), target);
         assert_eq!(literal.polarity(), BodyPolarityV1::Positive);
         assert_eq!(literal.location(), call.location());
@@ -489,6 +556,11 @@ fn nonrecursive_dependency_projects_exactly_one_edge_on_one_member() {
 
     assert_eq!(program.len(), 2);
     assert!(program_rule(&program, "s").body().is_empty());
+    assert_eq!(
+        program_rule(&program, "r").body().len(),
+        1,
+        "`r` projects exactly one edge on `s`"
+    );
     let literal = body_literal(program_rule(&program, "r"), "s");
     assert_eq!(literal.polarity(), BodyPolarityV1::Positive);
     assert_eq!(
@@ -508,6 +580,16 @@ fn negated_nonrecursive_dependency_projects_one_negated_edge() {
     let contract = accepted(fixture.document());
     let program = contract.to_program();
 
+    assert_eq!(
+        program.len(),
+        2,
+        "the negated-dependency fixture projects two members"
+    );
+    assert_eq!(
+        program_rule(&program, "r").body().len(),
+        1,
+        "`r` projects exactly one negated edge"
+    );
     let literal = body_literal(program_rule(&program, "r"), "s");
     assert_eq!(literal.polarity(), BodyPolarityV1::Negated);
     assert!(program_rule(&program, "s").body().is_empty());
@@ -557,6 +639,11 @@ fn aggregated_nonrecursive_dependency_projects_exact_edge_and_stratification() {
 
     let program = contract.to_program();
     assert_eq!(program.len(), 2);
+    assert_eq!(
+        program_rule(&program, "r").body().len(),
+        1,
+        "`r` projects exactly one aggregate edge on `s`"
+    );
     let literal = body_literal(program_rule(&program, "r"), "s");
     assert_eq!(literal.predicate(), &predicate("s"));
     assert_eq!(literal.polarity(), BodyPolarityV1::Aggregated);
@@ -596,6 +683,11 @@ fn builtin_call_body_never_becomes_a_local_graph_node() {
     let document = fixture.document();
     let contract = accepted(document);
 
+    assert_eq!(
+        contract.rules().len(),
+        1,
+        "the fixture projects exactly one member, so `.first()` is that member"
+    );
     let rule = contract.rules().first().expect("one projected member");
     assert_eq!(rule.predicate_id(), &predicate("r"));
     assert!(rule.calls().is_empty());
@@ -613,7 +705,7 @@ fn builtin_call_body_never_becomes_a_local_graph_node() {
 
 #[test]
 fn every_value_wrapper_preserves_exact_call_polarity_location_and_scc_membership() {
-    for wrapper in [
+    let wrappers = [
         ForgedRuleCallWrapperV2::Unary,
         ForgedRuleCallWrapperV2::Binary,
         ForgedRuleCallWrapperV2::Compare,
@@ -623,7 +715,13 @@ fn every_value_wrapper_preserves_exact_call_polarity_location_and_scc_membership
         ForgedRuleCallWrapperV2::Record,
         ForgedRuleCallWrapperV2::List,
         ForgedRuleCallWrapperV2::LogicalQuantifier,
-    ] {
+    ];
+    assert_eq!(
+        wrappers.len(),
+        9,
+        "the wrapper table covers every ForgedRuleCallWrapperV2 variant"
+    );
+    for wrapper in wrappers {
         let fixture = forged_rule_call_wrapper_document_v2(wrapper)
             .expect("wrapper fixture retains the real nonrecursive call");
         let contract = accepted(fixture.document());
@@ -725,6 +823,11 @@ fn call_target_outside_the_document_members_is_nonlocal_target() {
     )
     .expect("forged rule-fact document seals");
     let document = forged.document();
+    assert_eq!(
+        document.rules().count(),
+        1,
+        "the forged document retains exactly one member, so `.next()` is that member"
+    );
     let rule = document.rules().next().expect("forged member retained");
     let call = only_call(rule);
     assert!(
@@ -776,6 +879,11 @@ fn flipped_call_polarity_is_polarity_flip() {
     )
     .expect("forged rule-fact document seals");
     let document = forged.document();
+    assert_eq!(
+        document.rules().count(),
+        1,
+        "the forged document retains exactly one member, so `.next()` is that member"
+    );
     let rule = document.rules().next().expect("forged member retained");
     let call = only_call(rule);
     assert_eq!(
@@ -845,6 +953,11 @@ fn dropped_call_edge_is_wrong_call_id() {
     )
     .expect("forged rule-fact document seals");
     let document = forged.document();
+    assert_eq!(
+        document.rules().count(),
+        1,
+        "the forged document retains exactly one member, so `.next()` is that member"
+    );
     let rule = document.rules().next().expect("forged member retained");
     assert!(
         rule.calls().is_empty(),
@@ -868,6 +981,11 @@ fn extra_call_edge_is_wrong_call_id() {
     )
     .expect("forged rule-fact document seals");
     let document = forged.document();
+    assert_eq!(
+        document.rules().count(),
+        1,
+        "the forged document retains exactly one member, so `.next()` is that member"
+    );
     let rule = document.rules().next().expect("forged member retained");
     assert_eq!(rule.calls().len(), 2, "the forged rule duplicates its edge");
     let duplicated = rule

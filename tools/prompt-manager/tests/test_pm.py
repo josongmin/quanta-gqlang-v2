@@ -25,18 +25,24 @@ class PromptManagerTest(unittest.TestCase):
         self.assertEqual(set(self.config["targets"]), set(sizes["targets"]))
 
     def test_cursor_rules_are_mdc_and_conditionally_attached(self) -> None:
+        verified = 0
         for name, spec in self.config["targets"].items():
             if spec["kind"] != "cursor_rule":
                 continue
+            verified += 1
             self.assertTrue(spec["output"].endswith(".mdc"), name)
             self.assertIn("\nalwaysApply: false\n", self.rendered[name])
             self.assertIn("\nglobs: ", self.rendered[name])
+        self.assertGreater(verified, 0, "no cursor_rule target was verified")
 
     def test_claude_rules_are_path_scoped(self) -> None:
+        verified = 0
         for name, spec in self.config["targets"].items():
             if spec["kind"] != "claude_rule":
                 continue
+            verified += 1
             self.assertTrue(self.rendered[name].startswith("---\npaths:\n"), name)
+        self.assertGreater(verified, 0, "no claude_rule target was verified")
 
     def test_startup_files_do_not_import_document_stack(self) -> None:
         startup = self.rendered["agents"] + self.rendered["claude"]
@@ -46,6 +52,16 @@ class PromptManagerTest(unittest.TestCase):
 
     def test_all_scoped_rule_files_are_managed(self) -> None:
         PM.validate_managed_rule_directories(self.config)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            stray = root / ".cursor/rules/stray.mdc"
+            stray.parent.mkdir(parents=True)
+            stray.write_text("stray\n", encoding="utf-8")
+            with patch.object(PM, "ROOT", root):
+                with self.assertRaisesRegex(
+                    PM.PromptManagerError, "unmanaged scoped prompt file"
+                ):
+                    PM.validate_managed_rule_directories(self.config)
 
     def test_imports_cannot_escape_repository_through_parent_or_symlink(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

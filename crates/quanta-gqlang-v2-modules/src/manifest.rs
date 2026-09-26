@@ -845,12 +845,18 @@ mod cycle_walk_tests {
                     .map(move |&target| (source, target, (source, target)))
             })
             .collect::<Vec<_>>();
-        assert!(cycle_with_legacy_steps(
+        let error = cycle_with_legacy_steps(
             &keyed,
             &(0..90).collect::<Vec<_>>(),
-            &mut session(usize::MAX)
+            &mut session(usize::MAX),
         )
-        .is_err());
+        .unwrap_err();
+        assert_eq!(
+            error
+                .resource_exhaustion()
+                .map(|payload| payload.dimension()),
+            Some("steps")
+        );
     }
 
     #[test]

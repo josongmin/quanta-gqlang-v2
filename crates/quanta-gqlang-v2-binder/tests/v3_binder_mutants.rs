@@ -460,7 +460,8 @@ fn resolve_shape_walks_nested_record_and_list() {
     assert!(result.is_ok(), "diags: {:?}", result.diagnostics());
     assert!(matches!(
         result.target_of(inner_ref.id).unwrap(),
-        ResolvedTargetV1::Local(_)
+        ResolvedTargetV1::Local(binding)
+            if binding.name == "u" && binding.kind == BinderKindV1::Alias
     ));
 }
 
@@ -470,12 +471,17 @@ fn resolve_shape_walks_nested_record_and_list() {
 fn scope_resolve_distinguishes_bound_from_unbound() {
     let mut scope = LexicalScopeV1::new();
     scope.push(CaptureV1::Capturing);
-    let _ = scope.bind(BindingV1::new(
-        "y",
-        BinderKindV1::Let,
-        SpanV1::new(0, 1),
-        id(0),
+    assert!(scope
+        .bind(BindingV1::new(
+            "y",
+            BinderKindV1::Let,
+            SpanV1::new(0, 1),
+            id(0)
+        ))
+        .is_none());
+    assert!(matches!(
+        scope.resolve("y"),
+        LexicalResolutionV1::Bound(binding) if binding.name == "y"
     ));
-    assert!(matches!(scope.resolve("y"), LexicalResolutionV1::Bound(_)));
     assert!(matches!(scope.resolve("z"), LexicalResolutionV1::Unbound));
 }

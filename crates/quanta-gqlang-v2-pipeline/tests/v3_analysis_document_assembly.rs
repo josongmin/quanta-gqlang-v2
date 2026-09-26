@@ -210,16 +210,18 @@ fn partial_open_authority_blocks_every_item_with_unresolved_facts() {
         assert_eq!(fact.code(), OPEN_AUTHORITY_INCOMPLETE_CODE);
         assert_eq!(fact.location().source_id, DOC_SOURCE);
     }
-    let codes = blocked_diagnostics(&analyzed.items()[0]);
-    for expected in [
-        "pipeline.analysis.missing_module_authority",
-        "pipeline.analysis.missing_relation_authority",
-        "pipeline.analysis.missing_graph_authority",
-    ] {
-        assert!(
-            codes.iter().any(|code| code == expected),
-            "blocked diagnostics must name {expected}: {codes:?}"
-        );
+    for (index, item) in analyzed.items().iter().enumerate() {
+        let codes = blocked_diagnostics(item);
+        for expected in [
+            "pipeline.analysis.missing_module_authority",
+            "pipeline.analysis.missing_relation_authority",
+            "pipeline.analysis.missing_graph_authority",
+        ] {
+            assert!(
+                codes.iter().any(|code| code == expected),
+                "blocked item {index} must name {expected}: {codes:?}"
+            );
+        }
     }
 }
 
@@ -238,6 +240,11 @@ fn all_open_authority_masks_have_exact_status_and_missing_facts() {
 
         assert_eq!(analyzed.status().keyword(), "incomplete", "mask={mask:03b}");
         assert_eq!(analyzed.unresolved().len(), 3, "mask={mask:03b}");
+        assert_eq!(
+            analyzed.items().len(),
+            3,
+            "mask={mask:03b}: a partial authority must still author every item"
+        );
         assert!(analyzed
             .items()
             .iter()
@@ -334,6 +341,10 @@ fn a_blocked_rule_program_blocks_every_rule_member() {
         .expect("a rule-program failure stays inside the analysis document");
     assert!(analyzed.rule_program().is_none());
     assert_eq!(analyzed.items().len(), forged.item_ids().len());
+    assert!(
+        !analyzed.items().is_empty(),
+        "the forged rule program must block at least one rule member"
+    );
     for (index, item) in analyzed.items().iter().enumerate() {
         assert_eq!(
             blocked_diagnostics(item),
@@ -360,7 +371,13 @@ fn blocked_analysis_is_not_compilable() {
             .code(),
         "algebra.traversal_budget_exceeded"
     );
-    analyze_resolved_document_v2(over.document()).expect("analysis still reports the blocked item");
+    let blocked = analyze_resolved_document_v2(over.document())
+        .expect("analysis still reports the blocked item");
+    assert_eq!(
+        blocked_diagnostics(&blocked.items()[0]),
+        ["algebra.traversal_budget_exceeded"],
+        "the analysis must still name the owner-stage failure, not merely succeed"
+    );
 }
 
 #[test]
@@ -372,6 +389,10 @@ fn closed_and_open_entries_agree_on_the_same_source() {
         analyze_source_document_v2(DOC_SOURCE, MINIMAL_SOURCE, &complete_open_authority())
             .expect("the same source analyzes");
     assert_eq!(compiled.items().len(), analyzed.items().len());
+    assert!(
+        !compiled.items().is_empty(),
+        "the minimal document must compile at least one item to compare"
+    );
     for index in 0..compiled.items().len() {
         match (&compiled.items()[index], &analyzed.items()[index]) {
             (CompiledItemV2::Planned(compiled_item), AnalysisItemV2::Complete(analyzed_item)) => {

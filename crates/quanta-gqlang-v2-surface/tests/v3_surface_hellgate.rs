@@ -3,7 +3,7 @@
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
-use quanta_gqlang_v2_hir::HirBuilderV1;
+use quanta_gqlang_v2_hir::{HirBuilderV1, SpanV1};
 use quanta_gqlang_v2_surface::{parse_expr, parse_program, ParseErrorCodeV1};
 
 fn err_program(src: &str) -> quanta_gqlang_v2_surface::ParseDiagnosticV1 {
@@ -94,6 +94,8 @@ fn parse_expr_rejects_trailing() {
     let builder = HirBuilderV1::new();
     let diag = parse_expr("a + b )", &builder).expect_err("must reject");
     assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+    assert_eq!(diag.message, "unexpected trailing tokens after the expression");
+    assert_eq!(diag.span, SpanV1::new(6, 7));
 }
 
 /// D10 fail-closed: a record literal must not declare the same field name twice.

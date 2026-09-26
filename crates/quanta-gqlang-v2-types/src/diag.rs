@@ -827,6 +827,20 @@ mod tests {
             ),
         ];
 
+        assert_eq!(
+            cases.len(),
+            43,
+            "every TypeDiagnosticV2 variant must be pinned exactly once"
+        );
+        assert_eq!(
+            cases
+                .iter()
+                .map(|(diagnostic, ..)| diagnostic.code())
+                .collect::<std::collections::BTreeSet<_>>()
+                .len(),
+            43,
+            "each TypeDiagnosticV2 variant code must appear exactly once"
+        );
         for (diagnostic, code, expected_primary, expected_secondary, display) in cases {
             assert_eq!(diagnostic.code(), code, "wrong code for {diagnostic:?}");
             assert_eq!(

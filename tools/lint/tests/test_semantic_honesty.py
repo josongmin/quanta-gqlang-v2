@@ -137,12 +137,16 @@ class SemanticHonestyTest(unittest.TestCase):
         source = (ROOT / "crates/quanta-gqlang-v2-pipeline/src/compile.rs").read_text()
         for variant in ("Incomplete", "Error", "Complete"):
             mutant = source.replace(f"AnalysisStatusV2::{variant}\n", f"(AnalysisStatusV2::{variant})\n", 1)
+            self.assertNotEqual(mutant, source, f"mutation for {variant} was not applied")
             self.assertNotIn("SH-09-status-priority", self.rules(mutant))
         mutant = source.replace("if !self.unresolved.is_empty()", "if /* priority */ (!self.unresolved.is_empty())", 1)
+        self.assertNotEqual(mutant, source, "comment-wrapper mutation was not applied")
         self.assertNotIn("SH-09-status-priority", self.rules(mutant))
         mutant = source.replace("if !self.unresolved.is_empty()", "if (/* priority */ !self.unresolved.is_empty())", 1)
+        self.assertNotEqual(mutant, source, "parenthesized comment-wrapper mutation was not applied")
         self.assertNotIn("SH-09-status-priority", self.rules(mutant))
         mutant = source.replace("AnalysisStatusV2::Incomplete\n", "{ AnalysisStatusV2::Incomplete /* c */ }\n", 1)
+        self.assertNotEqual(mutant, source, "block-wrapper mutation was not applied")
         self.assertNotIn("SH-09-status-priority", self.rules(mutant))
 
     def test_status_classifier_rejects_hidden_control_flow(self) -> None:
@@ -209,6 +213,7 @@ class SemanticHonestyTest(unittest.TestCase):
             "Err(quanta_gqlang_v2_frontend_contract::FrontendTransactionErrorV2::Document(failure))",
         ):
             mutant = empty.replace("Err(FrontendTransactionErrorV2::Document(failure))", pattern, 1)
+            self.assertNotEqual(mutant, empty, f"wrapper mutation {pattern!r} was not applied")
             self.assertIn("SH-10-document-error-payload", self.rules(mutant))
 
         renamed = source.replace("failure", "document_failure")

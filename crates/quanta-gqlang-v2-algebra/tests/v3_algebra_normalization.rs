@@ -268,6 +268,13 @@ fn project_lowering_retains_exact_typed_expressions_and_row_aligned_origins() {
 /// authored expression (the anti-transplant invariant: a column never
 /// names another side's scan or expression).
 fn assert_expression_aligned_origins(project: &CheckedAlgebraNodeV2) {
+    // `zip` truncates to the shorter side, so a missing or extra column would
+    // otherwise leave the tail unverified; pin the one-to-one width first.
+    assert_eq!(
+        project.expressions().len(),
+        project.output().columns().len(),
+        "row-aligned origins require one output column per projection expression"
+    );
     for (expression, column) in project.expressions().iter().zip(project.output().columns()) {
         assert!(matches!(
             column.origin(),
@@ -408,6 +415,11 @@ fn group_then_aggregate_preserves_partition_identity() {
     // proof aligned with the pre-group frame, a Set output.
     let expressions = group.expressions();
     assert_eq!(expressions.len(), 1);
+    assert_eq!(
+        group.output().columns().len(),
+        expressions.len(),
+        "the Group projects one column per authored key"
+    );
     assert_eq!(group.output().row().fields().len(), 1);
     assert_eq!(group.output().partition_keys().len(), 1);
     assert_eq!(
@@ -481,6 +493,27 @@ fn two_key_group_preserves_authored_partition_order() {
     assert_eq!(keys.first().unwrap(), &expressions.first().unwrap().key());
     assert_eq!(keys.get(1).unwrap(), &expressions.get(1).unwrap().key());
     assert_ne!(keys.first().unwrap(), keys.get(1).unwrap());
+    // The AUTHORED order is part of the contract (r.id then r.value): a mutant
+    // that emitted the same two keys in the opposite order is internally
+    // consistent, so the key identities must be resolved to their field names.
+    let authored: Vec<String> = keys
+        .iter()
+        .map(|key| {
+            let expression = reference
+                .document()
+                .expression(*key)
+                .expect("each group key is a document expression fact");
+            let TypedExprShapeV2::Path { segments, .. } = expression.shape() else {
+                panic!("each authored group key is the checked field path");
+            };
+            segments.first().unwrap().name().to_owned()
+        })
+        .collect();
+    assert_eq!(
+        authored,
+        vec!["id".to_owned(), "value".to_owned()],
+        "the group keys keep their authored order"
+    );
     for (expression, key) in expressions.iter().zip(keys) {
         assert!(
             matches!(
@@ -501,6 +534,11 @@ fn two_key_group_preserves_authored_partition_order() {
             OutputColumnOriginV2::Expression(origin) if *origin == expression.key()
         ));
     }
+    assert_eq!(
+        group.output().columns().len(),
+        expressions.len(),
+        "the Group projects one column per authored key"
+    );
     assert_eq!(group.output().row().fields().len(), 2);
     let bindings = group.partition_input();
     assert_eq!(
@@ -571,6 +609,11 @@ fn count_star_keeps_the_sealed_star_argument() {
         fold.aggregate_context().aggregation(),
         AggregationClassV1::Aggregate
     );
+    assert_eq!(
+        root.output().columns().len(),
+        1,
+        "count(*) over the implicit empty group projects exactly one column"
+    );
     assert!(matches!(
         root.output().columns().first().unwrap().origin(),
         OutputColumnOriginV2::Expression(origin) if *origin == fold.key()
@@ -596,6 +639,20 @@ fn assert_single_key_sort(
     let key = keys.first().unwrap();
     assert_eq!(key.direction(), direction);
     assert_eq!(key.null_order(), NullOrderV2::Last);
+    // Expression identity: the key must resolve to the authored `field_name`
+    // path, not merely to some column of the same value type.
+    let key_expression = reference
+        .document()
+        .expression(key.expression())
+        .expect("the sort key is a document expression fact");
+    let TypedExprShapeV2::Path { segments, .. } = key_expression.shape() else {
+        panic!("sort keys are checked field paths");
+    };
+    assert_eq!(
+        segments.first().unwrap().name(),
+        field_name,
+        "the sort key resolves to the authored field path"
+    );
     let root_children = root.children();
     let input = root_children.first().unwrap();
     assert_eq!(
@@ -644,6 +701,11 @@ fn nullable_key_sort_pins_the_nulls_last_payload() {
 
     let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
     let root = lowered.root();
+    assert_eq!(
+        root.order_keys().len(),
+        1,
+        "a single-key sort fixture must lower to exactly one key"
+    );
     let key = root.order_keys().first().unwrap();
     assert_eq!(key.direction(), SortDirectionV2::Desc);
     assert_eq!(key.null_order(), NullOrderV2::Last);
@@ -712,6 +774,11 @@ fn sort_after_project_orders_by_projected_expression_identity() {
         let project = root_children.first().unwrap();
         assert_eq!(project.family(), AlgebraFamilyV2::Project);
         assert_eq!(project.expressions().len(), 1);
+        assert_eq!(
+            root.order_keys().len(),
+            1,
+            "the sort fixture authors exactly one key"
+        );
 
         // The sort key resolves to the OUTPUT ALIAS binding fact — never a
         // fresh re-derivation of the projected path expression.

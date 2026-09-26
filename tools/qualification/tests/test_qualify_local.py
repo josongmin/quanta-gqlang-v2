@@ -89,13 +89,30 @@ class QualificationDriverTest(unittest.TestCase):
             ("unsuccessful", {"fixture::bin$test": "failed"}),
             ("leaked_tests", ["fixture::bin$test"]),
             ("inventory_sha256", "not-a-digest"),
+            ("events_sha256", "not-a-digest"),
+            ("schema", 2),
+            ("exit", 1),
+            ("leaked", 1),
             ("test_threads", 0),
+            ("summary_run", 0),
             ("summary_passed", 0),
             ("summary_failed", 1),
         ):
             malformed = dict(evidence)
             malformed[key] = value
             self.assertFalse(valid_nextest_evidence(malformed, run_id), key)
+        self.assertFalse(valid_nextest_evidence(evidence, "f" * 32))
+        self.assertFalse(valid_nextest_evidence(
+            dict(evidence, selected=2, executed=1, discovered=1,
+                 summary_run=2, summary_passed=1),
+            run_id,
+        ))
+        self.assertFalse(valid_nextest_evidence(
+            dict(evidence, selected=0, executed=0, discovered=0,
+                 summary_run=0, summary_passed=0),
+            run_id,
+        ))
+        self.assertFalse(valid_nextest_evidence(dict(evidence, discovered=2), run_id))
 
     def test_deny_evidence_is_bound_to_run_and_stable_revision(self) -> None:
         run_id = "a" * 32
@@ -124,6 +141,25 @@ class QualificationDriverTest(unittest.TestCase):
             malformed = dict(evidence)
             malformed[key] = value
             self.assertFalse(valid_deny_evidence(malformed, run_id, state), key)
+        self.assertFalse(valid_deny_evidence(
+            dict(evidence, before=dict(state, revision="f" * 40)), run_id, state))
+        self.assertFalse(valid_deny_evidence(
+            dict(evidence, output_sha256="not-a-digest"), run_id, state))
+        self.assertFalse(valid_deny_evidence(
+            dict(evidence, command=["cargo", "deny"]), run_id, state))
+        for field, value in (
+            ("origin", "https://evil.example"),
+            ("revision", "zz"),
+            ("fetch_age_s", "2"),
+            ("path", ""),
+        ):
+            degraded = dict(state, **{field: value})
+            self.assertFalse(
+                valid_deny_evidence(
+                    dict(evidence, before=degraded, after=degraded), run_id, degraded
+                ),
+                field,
+            )
 
     def test_successful_receipt_requires_exact_recipe_timing_inventory(self) -> None:
         validate_recipe_durations({"ci": 1.0}, {"ci"})
@@ -254,7 +290,10 @@ class QualificationDriverTest(unittest.TestCase):
         self.assertEqual(receipt["schema"], 2)
         self.assertEqual(receipt["status"], "complete")
         self.assertIs(receipt["dirty"], False)
-        self.assertIn("rustc", receipt["tool_versions"])
+        self.assertTrue(
+            receipt["tool_versions"]["rustc"].startswith("rustc "),
+            receipt["tool_versions"]["rustc"],
+        )
         self.assertEqual(receipt["source_hashes"], {})
         self.assertIsNone(receipt["nextest"])
         log = (self.driver.root / sha / "ci.log").read_bytes()
@@ -305,7 +344,16 @@ class QualificationDriverTest(unittest.TestCase):
         self.assertEqual((receipt["sha"], receipt["tree"], receipt["exit"]), (sha, tree, 2))
         self.assertEqual(receipt["status"], "complete")
         self.assertIs(receipt["dirty"], False)
-        self.assertTrue((self.driver.root / sha / "ci.log").is_file())
+        log = self.driver.root / sha / "ci.log"
+        self.assertTrue(log.is_file())
+        self.assertEqual(set(receipt), {
+            "sha", "tree", "cmds", "exit", "duration_s", "schema", "tool_versions",
+            "source_hashes", "recipe_duration_s", "ci_log_sha256",
+            "qualification_run_id", "nextest", "advisory_db", "status", "dirty",
+        })
+        self.assertEqual(receipt["cmds"], ["just ci"])
+        self.assertEqual(receipt["schema"], 2)
+        self.assertEqual(receipt["ci_log_sha256"], hashlib.sha256(log.read_bytes()).hexdigest())
 
     def test_ci_log_symlink_is_replaced_without_writing_external_file(self) -> None:
         (self.repo / "rust-toolchain.toml").write_text(

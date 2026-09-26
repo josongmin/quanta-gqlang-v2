@@ -127,6 +127,24 @@ fn correlated_not_exists_keeps_the_same_exact_captures() {
     let edge = edges.first().unwrap();
     assert_eq!(edge.binding().canonical_name(), "r");
     assert_eq!(edge.binding().kind(), ResolvedBindingKindV2::Alias);
+    // The NOT EXISTS rail shares the CorrelatedExists HIR, so it must retain
+    // the same exact capture: ordinal, source identity, resolved Binding fact,
+    // and the checked location of that fact.
+    assert_eq!(edge.binding().ordinal(), 0);
+    assert_eq!(edge.binding().source_id(), REFERENCE_SOURCE_V2);
+    let captured = reference
+        .document()
+        .expression(edge.reference())
+        .expect("the capture reference is a document expression fact");
+    assert!(
+        matches!(captured.shape(), TypedExprShapeV2::Binding(binding) if binding.canonical_name() == "r"),
+        "the capture reference is the inner `r` symbol fact"
+    );
+    assert_eq!(
+        edge.location(),
+        captured.location(),
+        "the capture edge names the exact checked location of its reference"
+    );
     assert_eq!(
         root.children().get(1).map(|child| child.family()),
         Some(AlgebraFamilyV2::Filter),
@@ -248,6 +266,11 @@ fn nested_exists_keeps_boundary_separated_capture_sets() {
     let nested_semi = middle_children.first().unwrap();
     assert_eq!(nested_semi.family(), AlgebraFamilyV2::SemiJoin);
     assert_eq!(nested_semi.correlations().unwrap().iter().count(), 1);
+    // NOTE: the nested and outer capture sets are deliberately NOT disjoint by
+    // reference site here — the inner reference site is inside the outer EXISTS
+    // body, so the outer edge set legitimately also carries it. "Boundary
+    // separated" means each level keeps its OWN edge set, which the per-level
+    // counts above pin; a naive disjointness assert would be a wrong oracle.
 }
 
 #[test]

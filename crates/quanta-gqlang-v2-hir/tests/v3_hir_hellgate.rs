@@ -146,7 +146,8 @@ fn reject_out_of_bounds_auxiliary_spans_across_value_payloads() {
     for root in [&path, &call, &record] {
         assert!(matches!(
             check_tree(HirRootRefV1::Value(root), 4),
-            Err(HirIntegrityErrorV1::AuxiliarySpanOutOfBounds { .. })
+            Err(HirIntegrityErrorV1::AuxiliarySpanOutOfBounds { span, source_len })
+                if span == SpanV1::new(9, 10) && source_len == 4
         ));
     }
 }

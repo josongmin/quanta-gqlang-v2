@@ -7,7 +7,7 @@
 )]
 
 use quanta_gqlang_v2_hir::{
-    check_tree, BoolExprKindV1, HirBuilderV1, HirRootRefV1, ValueExprKindV1,
+    check_tree, BoolExprKindV1, HirBuilderV1, HirRootRefV1, SpanV1, ValueExprKindV1,
 };
 use quanta_gqlang_v2_surface::{parse_program, ParseErrorCodeV1, SurfaceItemV1};
 
@@ -44,6 +44,8 @@ fn rule_embeds_shared_value_head_and_bool_body() {
         other => panic!("expected rule, got {other:?}"),
     };
     assert_eq!(rule.name, "adult");
+    // The rule root span covers the full authored rule, keyword through body.
+    assert_eq!(rule.span, SpanV1::new(0, src.len()));
     // head is a shared value path expression.
     assert!(matches!(rule.head.kind, ValueExprKindV1::Path(_)));
     // body is a shared bool expr: And(Compare(>=), Value(person.active)).
@@ -65,7 +67,8 @@ fn decl_missing_equals_rejects() {
     let builder = HirBuilderV1::new();
     let diag = parse_program("let total 1", &builder).expect_err("must reject");
     assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
-    assert!(diag.message.contains('='), "message: {}", diag.message);
+    assert_eq!(diag.message, "expected '=' after the declaration name");
+    assert_eq!(diag.span, SpanV1::new(10, 11));
 }
 
 /// A `rule` missing its `:` after the name fails closed with a typed token error.
@@ -74,6 +77,8 @@ fn rule_missing_colon_rejects() {
     let builder = HirBuilderV1::new();
     let diag = parse_program("rule adult person.id if x", &builder).expect_err("must reject");
     assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+    assert_eq!(diag.message, "expected ':' after the rule name");
+    assert_eq!(diag.span, SpanV1::new(11, 17));
 }
 
 /// A `rule` missing its `if` between head and body fails closed.
@@ -82,6 +87,8 @@ fn rule_missing_if_rejects() {
     let builder = HirBuilderV1::new();
     let diag = parse_program("rule adult : person.id person.age", &builder).expect_err("rejects");
     assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+    assert_eq!(diag.message, "expected 'if' between a rule head and its body");
+    assert_eq!(diag.span, SpanV1::new(23, 29));
 }
 
 #[test]
@@ -104,4 +111,11 @@ fn rule_body_supports_quantifier_placeholder() {
         other => panic!("body should be Quantifier, got {other:?}"),
     }
     check_tree(HirRootRefV1::Rule(&rule), src.len()).expect("sound tree");
+}
+
+
+/// `parse_program` tolerates one trailing document separator.
+#[test]
+fn program_tolerates_trailing_separator() {
+    parse_program("let x = 1;", &HirBuilderV1::new()).expect("trailing ';' is tolerated");
 }

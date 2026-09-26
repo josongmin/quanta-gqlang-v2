@@ -9,7 +9,9 @@
 use quanta_gqlang_v2_hir::{
     check_tree, HirBuilderV1, HirRootRefV1, ProgramItemHirV1, RelationExprKindV1, SpanV1,
 };
-use quanta_gqlang_v2_surface::{parse_document, ParseErrorCodeV1, SurfaceItemV1};
+use quanta_gqlang_v2_surface::{
+    format_document, parse_document, parse_program, ParseErrorCodeV1, SurfaceItemV1,
+};
 use std::collections::HashSet;
 
 #[test]
@@ -145,13 +147,21 @@ fn separator_branches_reject_with_exact_oracles() {
 
 #[test]
 fn single_item_document_matches_program() {
+    let src = "from users u | where u.active";
     let builder = HirBuilderV1::new();
-    let doc = parse_document("from users u | where u.active", &builder).expect("parse");
+    let doc = parse_document(src, &builder).expect("parse");
     assert_eq!(doc.items.len(), 1);
-    assert!(matches!(
-        doc.items.into_iter().next().unwrap().into_program_item(),
-        ProgramItemHirV1::Query(_)
-    ));
+    let doc_item = doc.items.into_iter().next().unwrap().into_program_item();
+    assert!(matches!(doc_item, ProgramItemHirV1::Query(_)));
+
+    // The name's claim is cross-entry agreement: `parse_program` must produce the
+    // same single root, not merely "some single item" out of `parse_document`.
+    let single = parse_program(src, &HirBuilderV1::new()).expect("parse_program");
+    assert_eq!(
+        format_document(std::slice::from_ref(&single.item.into_program_item())),
+        format_document(std::slice::from_ref(&doc_item)),
+        "parse_program and parse_document disagree on the single root"
+    );
 }
 
 #[test]

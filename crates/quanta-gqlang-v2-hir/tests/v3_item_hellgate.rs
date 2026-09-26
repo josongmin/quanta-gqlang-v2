@@ -309,7 +309,9 @@ fn catalog_reference_payloads(span: SpanV1) -> Vec<CatalogPayloadV1> {
 #[test]
 fn catalog_reference_spans_are_checked_at_exact_inverted_and_oob_boundaries() {
     const SOURCE_LEN: usize = 10;
-    for payload in catalog_reference_payloads(SpanV1::new(2, 3)) {
+    let valid = catalog_reference_payloads(SpanV1::new(2, 3));
+    assert_eq!(valid.len(), 6, "catalog payload matrix must stay complete");
+    for payload in valid {
         let b = HirBuilderV1::new();
         let decl = b.catalog_decl("x", SpanV1::new(0, 1), payload, SpanV1::new(0, SOURCE_LEN));
         assert!(
@@ -318,7 +320,9 @@ fn catalog_reference_spans_are_checked_at_exact_inverted_and_oob_boundaries() {
         );
     }
 
-    for payload in catalog_reference_payloads(SpanV1::new(9, SOURCE_LEN)) {
+    let exact = catalog_reference_payloads(SpanV1::new(9, SOURCE_LEN));
+    assert_eq!(exact.len(), 6, "catalog payload matrix must stay complete");
+    for payload in exact {
         let b = HirBuilderV1::new();
         let decl = b.catalog_decl("x", SpanV1::new(0, 1), payload, SpanV1::new(0, SOURCE_LEN));
         assert!(
@@ -327,7 +331,13 @@ fn catalog_reference_spans_are_checked_at_exact_inverted_and_oob_boundaries() {
         );
     }
 
-    for payload in catalog_reference_payloads(SpanV1::new(9, 8)) {
+    let inverted = catalog_reference_payloads(SpanV1::new(9, 8));
+    assert_eq!(
+        inverted.len(),
+        6,
+        "catalog payload matrix must stay complete"
+    );
+    for payload in inverted {
         let b = HirBuilderV1::new();
         let decl = b.catalog_decl("x", SpanV1::new(0, 1), payload, SpanV1::new(0, SOURCE_LEN));
         assert!(matches!(
@@ -338,7 +348,13 @@ fn catalog_reference_spans_are_checked_at_exact_inverted_and_oob_boundaries() {
         ));
     }
 
-    for payload in catalog_reference_payloads(SpanV1::new(SOURCE_LEN, SOURCE_LEN + 1)) {
+    let out_of_bounds = catalog_reference_payloads(SpanV1::new(SOURCE_LEN, SOURCE_LEN + 1));
+    assert_eq!(
+        out_of_bounds.len(),
+        6,
+        "catalog payload matrix must stay complete"
+    );
+    for payload in out_of_bounds {
         let b = HirBuilderV1::new();
         let decl = b.catalog_decl("x", SpanV1::new(0, 1), payload, SpanV1::new(0, SOURCE_LEN));
         assert!(matches!(

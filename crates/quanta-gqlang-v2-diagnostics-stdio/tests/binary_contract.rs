@@ -52,6 +52,12 @@ fn semantic_diagnostics_are_a_successful_protocol_response() {
     assert_eq!(response["id"], 3);
     assert_eq!(response["ok"], true);
     assert_eq!(response["analysis_status"], "error");
+    assert!(
+        response["diagnostics"]
+            .as_array()
+            .is_some_and(|diagnostics| !diagnostics.is_empty()),
+        "an error analysis must carry at least one diagnostic: {response}"
+    );
 }
 
 #[cfg(unix)]

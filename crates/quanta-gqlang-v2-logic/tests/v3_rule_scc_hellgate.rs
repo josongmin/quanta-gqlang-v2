@@ -122,6 +122,17 @@ fn raw_body_literal_count_rejects_before_nonlocal_scan_at_cap_plus_one() {
         .expect_err("over-budget raw body rejects before nonlocal scan");
     assert_eq!(error.code(), "logic.rule_graph_budget.edges");
     assert_eq!(error.span(), &l[2]);
+    assert!(
+        matches!(
+            error,
+            LogicDiagnosticV1::RuleGraphBudgetExceeded {
+                dimension: RuleGraphBudgetDimensionV1::Edges,
+                limit: 1,
+                ..
+            }
+        ),
+        "the body-literal cap reports the Edges dimension at the exact cap"
+    );
 }
 
 // Hellgate 3: recursion through negation (unstratifiable) rejects with a typed
@@ -382,10 +393,16 @@ fn canonical_offending_edge_is_permutation_invariant() {
         ];
         let mut ordered: Vec<RuleDefV1> = Vec::new();
         for index in order {
-            if let Some(rule) = rules.get(usize::from(*index)) {
-                ordered.push(rule.clone());
-            }
+            let rule = rules
+                .get(usize::from(*index))
+                .expect("permutation index names one of the five fixture rules");
+            ordered.push(rule.clone());
         }
+        assert_eq!(
+            ordered.len(),
+            rules.len(),
+            "every permutation must place every fixture rule, not silently drop one"
+        );
         RecursiveProgramV1::from_rules(ordered)
     };
 

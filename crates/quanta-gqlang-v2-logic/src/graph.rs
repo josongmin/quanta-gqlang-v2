@@ -429,10 +429,55 @@ mod tests {
         required_endpoints(kind).to_vec()
     }
 
+    /// The INDEPENDENT required-role expectation: the authored contract for each
+    /// subkind, written out here rather than read back from production.
+    ///
+    /// Without this table the negative rails below are self-referential: they
+    /// build `present` from `required_endpoints(kind)` itself, so a mutant that
+    /// narrows a subkind's required set is never contradicted by the very loop
+    /// that claims every required role is enforced.
+    fn required_expectations() -> Vec<(GraphQueryKindV1, &'static [GraphEndpointRoleV1])> {
+        use GraphEndpointRoleV1::{Anchor, Callable, Pointee, Reference, Sink, Source};
+        vec![
+            (GraphQueryKindV1::Reachability, &[Source, Sink]),
+            (GraphQueryKindV1::Flow, &[Source, Sink]),
+            (GraphQueryKindV1::Slice, &[Anchor]),
+            (GraphQueryKindV1::Taint, &[Source, Sink]),
+            (GraphQueryKindV1::Path, &[Source, Sink]),
+            (GraphQueryKindV1::PointsTo, &[Reference, Pointee]),
+            (GraphQueryKindV1::Summary, &[Callable]),
+        ]
+    }
+
+    // The production required-role table equals the authored expectation for
+    // every subkind, and that expectation covers every subkind exactly once.
+    #[test]
+    fn required_endpoint_table_matches_the_authored_expectation() {
+        let expectations = required_expectations();
+        assert_eq!(
+            expectations.len(),
+            ALL_KINDS.len(),
+            "the expectation table covers every subkind exactly once"
+        );
+        for kind in ALL_KINDS {
+            let expected: Vec<_> = expectations
+                .iter()
+                .filter(|(expected_kind, _)| *expected_kind == kind)
+                .map(|(_, roles)| *roles)
+                .collect();
+            assert_eq!(expected.len(), 1, "{kind:?} appears exactly once");
+            assert_eq!(
+                required(kind),
+                expected[0],
+                "{kind:?} must require exactly the authored role set"
+            );
+        }
+    }
+
     // Every subkind admits exactly its required endpoint roles.
     #[test]
     fn every_subkind_admits_its_required_endpoints() {
-        for kind in ALL_KINDS {
+        for (kind, _) in required_expectations() {
             let present = required(kind);
             assert_eq!(
                 endpoint_legality(kind, &present),
@@ -443,16 +488,21 @@ mod tests {
     }
 
     // Every required role is genuinely required: dropping it reports exactly
-    // that role as missing.
+    // that role as missing. The expected role set comes from the authored
+    // table, so a narrowed production set cannot make this loop vacuous.
     #[test]
     fn every_required_endpoint_is_enforced_by_exact_role() {
-        for kind in ALL_KINDS {
-            for (index, role) in required(kind).into_iter().enumerate() {
-                let mut present = required(kind);
+        for (kind, expected_roles) in required_expectations() {
+            assert!(
+                !expected_roles.is_empty(),
+                "{kind:?} must declare at least one required endpoint role"
+            );
+            for (index, role) in expected_roles.iter().enumerate() {
+                let mut present = expected_roles.to_vec();
                 present.remove(index);
                 assert_eq!(
                     endpoint_legality(kind, &present),
-                    Err(EndpointViolationV2::Missing(role)),
+                    Err(EndpointViolationV2::Missing(*role)),
                     "{kind:?} must require {role:?}"
                 );
             }
@@ -461,16 +511,16 @@ mod tests {
 
     // Every endpoint role outside a subkind's exact required set is rejected.
     // This closes the full 7-kind x 6-endpoint negative matrix rather than
-    // relying on representative points-to/slice examples.
+    // relying on representative points-to/slice examples. The accepted set is
+    // the AUTHORED expectation, not production's own output.
     #[test]
     fn every_subkind_rejects_every_unexpected_endpoint() {
-        for kind in ALL_KINDS {
-            let required = required(kind);
+        for (kind, expected_roles) in required_expectations() {
             for role in GraphEndpointRoleV1::ALL {
-                if required.contains(&role) {
+                if expected_roles.contains(&role) {
                     continue;
                 }
-                let mut present = required.clone();
+                let mut present = expected_roles.to_vec();
                 present.push(role);
                 assert_eq!(
                     endpoint_legality(kind, &present),
@@ -654,29 +704,49 @@ mod tests {
         );
     }
 
-    // Subkind keywords are stable (they render into diagnostics).
+    // Subkind keywords are stable (they render into diagnostics). The table
+    // covers EVERY subkind, not a representative sample: a keyword mutant in an
+    // unlisted arm would otherwise keep this rail green.
     #[test]
     fn subkind_keywords_are_stable() {
-        assert_eq!(graph_query_keyword(GraphQueryKindV1::PointsTo), "points_to");
-        assert_eq!(graph_query_keyword(GraphQueryKindV1::Taint), "taint");
+        let expected = [
+            (GraphQueryKindV1::Reachability, "reachability"),
+            (GraphQueryKindV1::Flow, "flow"),
+            (GraphQueryKindV1::Slice, "slice"),
+            (GraphQueryKindV1::Taint, "taint"),
+            (GraphQueryKindV1::Path, "path"),
+            (GraphQueryKindV1::PointsTo, "points_to"),
+            (GraphQueryKindV1::Summary, "summary"),
+        ];
         assert_eq!(
-            graph_query_keyword(GraphQueryKindV1::Reachability),
-            "reachability"
+            expected.len(),
+            ALL_KINDS.len(),
+            "the keyword table covers every subkind in ALL_KINDS"
         );
+        for (kind, keyword) in expected {
+            assert_eq!(graph_query_keyword(kind), keyword, "{kind:?}");
+        }
     }
 
-    // Endpoint-role keywords are stable (they render into diagnostics).
+    // Endpoint-role keywords are stable (they render into diagnostics). The
+    // table covers EVERY role.
     #[test]
     fn endpoint_role_keywords_are_stable() {
-        for (role, keyword) in [
+        let expected = [
             (GraphEndpointRoleV1::Source, "source"),
             (GraphEndpointRoleV1::Sink, "sink"),
             (GraphEndpointRoleV1::Anchor, "anchor"),
             (GraphEndpointRoleV1::Reference, "reference"),
             (GraphEndpointRoleV1::Pointee, "pointee"),
             (GraphEndpointRoleV1::Callable, "callable"),
-        ] {
-            assert_eq!(role.keyword(), keyword);
+        ];
+        assert_eq!(
+            expected.len(),
+            GraphEndpointRoleV1::ALL.len(),
+            "the keyword table covers every endpoint role"
+        );
+        for (role, keyword) in expected {
+            assert_eq!(role.keyword(), keyword, "{role:?}");
         }
     }
 }

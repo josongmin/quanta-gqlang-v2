@@ -1565,12 +1565,25 @@ mod tests {
     /// non-family word must return `false`.
     #[test]
     fn family_keyword_discriminates() {
-        // a representative member of the owned set returns true.
-        assert!(is_family_keyword("find"));
-        assert!(is_family_keyword("require"));
+        // Every keyword the family dispatcher owns must be recognized; a single
+        // dropped arm would send that family down the non-family parse path.
+        for keyword in [
+            "find", "check", "explain", "show", "describe", "sample", "compare", "export", "view",
+            "model", "pack", "profile", "gate", "ruledef", "use", "require",
+        ] {
+            assert!(
+                is_family_keyword(keyword),
+                "{keyword} must be a family keyword"
+            );
+        }
+        // Sibling root keywords owned elsewhere must not be claimed here.
+        for keyword in ["from", "let", "rule", "select"] {
+            assert!(
+                !is_family_keyword(keyword),
+                "{keyword} must not be a family keyword"
+            );
+        }
         // arbitrary non-family words return false (the `-> true` mutant fails).
-        assert!(!is_family_keyword("from"));
-        assert!(!is_family_keyword("let"));
         assert!(!is_family_keyword("zzz_not_a_family"));
         assert!(!is_family_keyword(""));
     }

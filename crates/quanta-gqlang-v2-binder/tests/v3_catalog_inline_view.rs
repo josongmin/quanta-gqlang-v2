@@ -98,6 +98,7 @@ fn inline_view_reports_unresolved_projection_symbol_at_the_symbol_span() {
 
     assert_eq!(result.diagnostics().len(), 1);
     assert_eq!(result.diagnostics()[0].code(), "binder.unresolved_symbol");
+    assert_eq!(result.diagnostics()[0].name(), "missing");
     assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(38, 45));
 }
 

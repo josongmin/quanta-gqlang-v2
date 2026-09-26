@@ -459,6 +459,21 @@ mod tests {
 
     #[test]
     fn token_limit_rejects_long_payload_before_copy_or_decode() {
+        // Positive control first: a generous budget must actually allocate
+        // payloads, otherwise the `== 0` assertions below could pass with a dead
+        // counter rather than with "rejected before copy or decode".
+        PAYLOAD_ALLOCATIONS.with(|count| count.set(0));
+        let generous = ParseBudgetV2::try_new(100, 1, 100, 8, 8, 8, 8).unwrap();
+        let counter = ParseBudgetCounterV2::new(&generous);
+        lex_with_budget("x \"y\"", &counter).unwrap();
+        PAYLOAD_ALLOCATIONS.with(|count| {
+            assert!(
+                count.get() >= 2,
+                "payload allocations must be observable, got {}",
+                count.get()
+            )
+        });
+
         let long = "x".repeat(32_768);
         let cases = [
             format!("({long}"),

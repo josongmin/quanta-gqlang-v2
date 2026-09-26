@@ -198,6 +198,10 @@ fn bare_fmt_alias_matches_v3_fmt_fixed_point_v1() {
 fn v3_fmt_preserves_string_literals_idempotently_v1() {
     let source = "let label = \"a \\\"quoted\\\" b\"";
     let first = v3_fmt_inline_v1(source);
+    assert!(
+        !first.trim().is_empty(),
+        "v3-fmt produced empty output for `{source}`; an empty fixed point is vacuous"
+    );
     let second = v3_fmt_inline_v1(&first);
     assert_eq!(
         first, second,

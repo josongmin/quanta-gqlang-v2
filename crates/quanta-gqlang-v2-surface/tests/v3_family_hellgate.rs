@@ -13,7 +13,7 @@ use quanta_gqlang_v2_hir::{
     CompositionBodyV1, CompositionProducerV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
     EvidenceModeV1, ExportFormatV1, GateBindingV1, GraphQueryKindV1, HirBuilderV1, HirRootRefV1,
     MetaKindV1, PresentationKindV1, ProgramItemHirV1, RelationExprKindV1, SampleModeV1,
-    ShowCategoryV1, TruthModeV1, UsePackActivationV1, ValueExprKindV1, ViewBodyV1,
+    ShowCategoryV1, SpanV1, TruthModeV1, UsePackActivationV1, ValueExprKindV1, ViewBodyV1,
 };
 use quanta_gqlang_v2_surface::{parse_program, ParseErrorCodeV1};
 
@@ -46,7 +46,7 @@ fn assert_empty_find_list_rejects(src: &str, key: &str) {
 
 #[test]
 fn find_taint_parses_to_graph_query() {
-    let src = "find taint api.entry -> db.write | sanitizers=authz.clean | depth=3";
+    let src = "find taint api.entry -> db.write | sanitizers=authz.clean,authz.safe | depth=3";
     let item = program(src);
     let gq = match item {
         ProgramItemHirV1::GraphQuery(g) => g,
@@ -55,7 +55,13 @@ fn find_taint_parses_to_graph_query() {
     assert_eq!(gq.kind, GraphQueryKindV1::Taint);
     assert_eq!(gq.endpoints.source.as_ref().unwrap().name, "api.entry");
     assert_eq!(gq.endpoints.sink.as_ref().unwrap().name, "db.write");
-    assert_eq!(gq.constraints.sanitizers[0].name, "authz.clean");
+    let sanitizers: Vec<&str> = gq
+        .constraints
+        .sanitizers
+        .iter()
+        .map(|r| r.name.as_str())
+        .collect();
+    assert_eq!(sanitizers, ["authz.clean", "authz.safe"]);
     assert_eq!(gq.constraints.depth, Some(3));
     // span starts at `find` (byte 0) and ends at the last clause value.
     assert_eq!(gq.span.start, 0);
@@ -117,14 +123,17 @@ fn find_missing_arrow_rejects() {
     // malformed FIND seed: no `->` between source and sink.
     let diag = err("find taint api.entry db.write");
     assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
+    assert_eq!(diag.message, "expected '->' between the FIND source and sink");
+    assert_eq!(diag.span, SpanV1::new(21, 23));
 }
 
 #[test]
 fn find_unknown_subkind_rejects() {
     let diag = err("find frobnicate a -> b");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    // points at the bad subkind token `frobnicate` at byte 5.
-    assert_eq!(diag.span.start, 5);
+    assert_eq!(diag.message, "unknown FIND subkind 'frobnicate'");
+    // points at the bad subkind token `frobnicate` at bytes 5..15.
+    assert_eq!(diag.span, SpanV1::new(5, 15));
 }
 
 // ---- CHECK -----------------------------------------------------------------
@@ -403,12 +412,16 @@ fn sample_parses_to_presentation() {
 fn sample_zero_limit_rejects() {
     let diag = err("sample query=\"x\" | mode=lexical | limit=0");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
+    assert_eq!(diag.message, "SAMPLE limit must be > 0");
+    assert_eq!(diag.span, SpanV1::new(40, 41));
 }
 
 #[test]
 fn sample_empty_query_rejects() {
     let diag = err("sample query=\"\" | limit=1");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
+    assert_eq!(diag.message, "SAMPLE query_text must not be empty");
+    assert_eq!(diag.span, SpanV1::new(13, 15));
 }
 
 // ---- COMPARE ---------------------------------------------------------------
@@ -542,6 +555,7 @@ fn model_parses_to_catalog_decl() {
         ProgramItemHirV1::CatalogDecl(d) => d,
         other => panic!("expected CatalogDecl, got {other:?}"),
     };
+    assert_eq!(decl.name, "embeddings.code");
     match decl.payload {
         CatalogPayloadV1::Model { provider, source } => {
             assert_eq!(provider, "openai");
@@ -558,6 +572,7 @@ fn pack_parses_to_catalog_decl() {
         ProgramItemHirV1::CatalogDecl(d) => d,
         other => panic!("expected CatalogDecl, got {other:?}"),
     };
+    assert_eq!(decl.name, "secure-pack");
     match decl.payload {
         CatalogPayloadV1::Pack { source, activation } => {
             assert_eq!(source.name, "registry.security");
@@ -575,13 +590,16 @@ fn profile_parses_to_catalog_decl() {
         ProgramItemHirV1::CatalogDecl(d) => d,
         other => panic!("expected CatalogDecl, got {other:?}"),
     };
+    assert_eq!(decl.name, "strict");
     match decl.payload {
         CatalogPayloadV1::Profile {
             capabilities,
             admission,
         } => {
-            assert_eq!(capabilities.len(), 2);
-            assert_eq!(capabilities[0].name, "graph.read");
+            // Full list, not just arity and the first element: a dropped or
+            // reordered capability must fail this rail.
+            let names: Vec<&str> = capabilities.iter().map(|r| r.name.as_str()).collect();
+            assert_eq!(names, ["graph.read", "graph.trace"]);
             assert_eq!(admission, AdmissionV1::CertifiedOnly);
         }
         other => panic!("expected Profile, got {other:?}"),
@@ -600,9 +618,12 @@ fn gate_parses_to_catalog_decl() {
         ProgramItemHirV1::CatalogDecl(d) => d,
         other => panic!("expected CatalogDecl, got {other:?}"),
     };
+    assert_eq!(decl.name, "release");
     match decl.payload {
         CatalogPayloadV1::Gate { checks, binding } => {
-            assert_eq!(checks.len(), 2);
+            // Full ordered list; arity alone would let a dropped check-name pass.
+            let names: Vec<&str> = checks.iter().map(|r| r.name.as_str()).collect();
+            assert_eq!(names, ["owasp.sql", "authz.path"]);
             assert_eq!(binding, GateBindingV1::All);
         }
         other => panic!("expected Gate, got {other:?}"),
@@ -623,6 +644,7 @@ fn rule_binding_parses_to_catalog_decl() {
         ProgramItemHirV1::CatalogDecl(d) => d,
         other => panic!("expected CatalogDecl, got {other:?}"),
     };
+    assert_eq!(decl.name, "shell.exec");
     match decl.payload {
         CatalogPayloadV1::RuleBinding { check_ref } => {
             assert_eq!(check_ref.name, "checks.shell-exec")
@@ -681,12 +703,24 @@ fn composition_let_with_parses() {
     };
     assert_eq!(comp.bindings.len(), 1);
     assert_eq!(comp.bindings[0].name, "suspects");
-    assert!(matches!(
-        &comp.bindings[0].producer,
-        CompositionProducerV1::Sample(_)
-    ));
+    let CompositionProducerV1::Sample(sample) = &comp.bindings[0].producer else {
+        panic!(
+            "binding must be a SAMPLE producer, got {:?}",
+            comp.bindings[0].producer
+        );
+    };
+    // The SAMPLE payload is part of the producer oracle: a producer that loses
+    // its query text, mode, or limit must fail here, not just a non-SAMPLE one.
+    assert_eq!(sample.query_text, "auth");
+    assert_eq!(sample.mode, SampleModeV1::Semantic);
+    assert_eq!(sample.limit, 3);
     assert_eq!(comp.with_name, "suspects");
-    assert!(matches!(&comp.body, CompositionBodyV1::GraphQuery(_)));
+    let CompositionBodyV1::GraphQuery(body) = &comp.body else {
+        panic!("body must be a FIND graph query, got {:?}", comp.body);
+    };
+    assert_eq!(body.kind, GraphQueryKindV1::Taint);
+    assert_eq!(body.endpoints.source.as_ref().unwrap().name, "api.entry");
+    assert_eq!(body.endpoints.sink.as_ref().unwrap().name, "db.write");
 }
 
 #[test]
@@ -696,11 +730,17 @@ fn composition_unconsumed_let_rejects() {
                find taint api.entry -> db.write with b";
     let diag = err(src);
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("with") || diag.message.contains("binding"),
+    // Exact message: `contains("with") || contains("binding")` would accept a
+    // wrong branch (for example the `with` keyword-missing reject).
+    assert_eq!(
+        diag.message,
+        "'with b' names an undefined composition binding",
         "msg: {}",
         diag.message
     );
+    let with_at = src.find("with b").expect("with clause in source") + "with ".len();
+    assert_eq!(diag.span.start, with_at);
+    assert_eq!(diag.span.end, with_at + "b".len());
 }
 
 #[test]
@@ -725,99 +765,117 @@ fn check_duplicate_confirm_clause_rejects() {
     // The reported repro: confirm=require then confirm=skip must NOT last-wins.
     let diag = err("check rule.x | confirm=require | confirm=skip");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("duplicate") && diag.message.contains("confirm"),
+    assert_eq!(
+        diag.message,
+        "duplicate CHECK clause 'confirm'",
         "msg: {}",
         diag.message
     );
+    assert_eq!(diag.span, SpanV1::new(33, 40));
 }
 
 #[test]
 fn explain_duplicate_evidence_clause_rejects() {
     let diag = err("explain rule.x | evidence=trace | evidence=auto");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("duplicate") && diag.message.contains("evidence"),
+    assert_eq!(
+        diag.message,
+        "duplicate EXPLAIN clause 'evidence'",
         "msg: {}",
         diag.message
     );
+    assert_eq!(diag.span, SpanV1::new(34, 42));
 }
 
 #[test]
 fn sample_duplicate_mode_clause_rejects() {
     let diag = err("sample query=\"x\" | limit=1 | mode=lexical | mode=semantic");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("duplicate") && diag.message.contains("mode"),
+    assert_eq!(
+        diag.message,
+        "duplicate SAMPLE clause 'mode'",
         "msg: {}",
         diag.message
     );
+    assert_eq!(diag.span, SpanV1::new(44, 48));
 }
 
 #[test]
 fn compare_duplicate_metric_clause_rejects() {
     let diag = err("compare baseline=a | candidate=b | metric=exact | metric=semantic");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("duplicate") && diag.message.contains("metric"),
+    assert_eq!(
+        diag.message,
+        "duplicate COMPARE clause 'metric'",
         "msg: {}",
         diag.message
     );
+    assert_eq!(diag.span, SpanV1::new(50, 56));
 }
 
 #[test]
 fn export_duplicate_kind_clause_rejects() {
     let diag = err("export source=a | kind=json | kind=csv");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("duplicate") && diag.message.contains("kind"),
+    assert_eq!(
+        diag.message,
+        "duplicate EXPORT clause 'kind'",
         "msg: {}",
         diag.message
     );
+    assert_eq!(diag.span, SpanV1::new(30, 34));
 }
 
 #[test]
 fn model_duplicate_provider_clause_rejects() {
     let diag = err("model m | provider=p1 | source=s | provider=p2");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("duplicate") && diag.message.contains("provider"),
+    assert_eq!(
+        diag.message,
+        "duplicate MODEL clause 'provider'",
         "msg: {}",
         diag.message
     );
+    assert_eq!(diag.span, SpanV1::new(35, 43));
 }
 
 #[test]
 fn pack_duplicate_source_clause_rejects() {
     let diag = err("pack p | source=s1 | activation=session | source=s2");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("duplicate") && diag.message.contains("source"),
+    assert_eq!(
+        diag.message,
+        "duplicate PACK clause 'source'",
         "msg: {}",
         diag.message
     );
+    assert_eq!(diag.span, SpanV1::new(42, 48));
 }
 
 #[test]
 fn profile_duplicate_admission_clause_rejects() {
     let diag = err("profile p | admission=allowlist | admission=certified-only");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("duplicate") && diag.message.contains("admission"),
+    assert_eq!(
+        diag.message,
+        "duplicate PROFILE clause 'admission'",
         "msg: {}",
         diag.message
     );
+    assert_eq!(diag.span, SpanV1::new(34, 43));
 }
 
 #[test]
 fn gate_duplicate_binding_clause_rejects() {
     let diag = err("gate g | binding=all | binding=any");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("duplicate") && diag.message.contains("binding"),
+    assert_eq!(
+        diag.message,
+        "duplicate GATE clause 'binding'",
         "msg: {}",
         diag.message
     );
+    assert_eq!(diag.span, SpanV1::new(23, 30));
 }
 
 #[test]
@@ -825,11 +883,13 @@ fn use_pack_duplicate_activation_clause_rejects() {
     // USE PACK is also clause-bearing; a duplicate activation must fail closed.
     let diag = err("use pack p | activation=session | lockfile=p.lock | activation=workspace");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("duplicate") && diag.message.contains("activation"),
+    assert_eq!(
+        diag.message,
+        "duplicate USE PACK clause 'activation'",
         "msg: {}",
         diag.message
     );
+    assert_eq!(diag.span, SpanV1::new(52, 62));
 }
 
 #[test]
@@ -839,13 +899,14 @@ fn find_duplicate_depth_clause_rejects() {
     let src = "find taint a -> b | depth=2 | depth=5";
     let diag = err(src);
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(
-        diag.message.contains("duplicate") && diag.message.contains("depth"),
+    assert_eq!(
+        diag.message,
+        "duplicate FIND clause 'depth'",
         "msg: {}",
         diag.message
     );
-    // points at the second `depth` key, at byte 30.
-    assert_eq!(diag.span.start, 30);
+    // points at the second `depth` key, at bytes 30..35.
+    assert_eq!(diag.span, SpanV1::new(30, 35));
 }
 
 #[test]
@@ -853,7 +914,8 @@ fn find_duplicate_endpoint_clause_rejects() {
     // Repeated endpoint clause (anchor) also fails closed.
     let diag = err("find slice | anchor=a | anchor=b");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(diag.message.contains("duplicate"), "msg: {}", diag.message);
+    assert_eq!(diag.message, "duplicate FIND clause 'anchor'");
+    assert_eq!(diag.span, SpanV1::new(24, 30));
 }
 
 #[test]
@@ -861,7 +923,8 @@ fn find_duplicate_list_clause_rejects() {
     // Repeated list-valued clause (via) also fails closed.
     let diag = err("find taint a -> b | via=m1 | via=m2");
     assert_eq!(diag.code, ParseErrorCodeV1::UnsupportedConstruct);
-    assert!(diag.message.contains("duplicate"), "msg: {}", diag.message);
+    assert_eq!(diag.message, "duplicate FIND clause 'via'");
+    assert_eq!(diag.span, SpanV1::new(29, 32));
 }
 
 #[test]
@@ -1042,11 +1105,19 @@ fn composition_find_producer_check_body_is_accepted() {
         other => panic!("expected Composition, got {other:?}"),
     };
     assert_eq!(comp.bindings.len(), 1);
-    assert!(matches!(
-        &comp.bindings[0].producer,
-        CompositionProducerV1::GraphQuery(_)
-    ));
-    assert!(matches!(&comp.body, CompositionBodyV1::Legality(_)));
+    let CompositionProducerV1::GraphQuery(producer) = &comp.bindings[0].producer else {
+        panic!(
+            "producer must be a FIND graph query, got {:?}",
+            comp.bindings[0].producer
+        );
+    };
+    assert_eq!(producer.kind, GraphQueryKindV1::Taint);
+    assert_eq!(producer.constraints.depth, Some(1));
+    let CompositionBodyV1::Legality(check) = &comp.body else {
+        panic!("body must be a CHECK legality item, got {:?}", comp.body);
+    };
+    assert_eq!(check.rule_ref.name, "rule.x");
+    assert_eq!(check.confirm, ConfirmModeV1::Skip);
     assert_eq!(comp.with_name, "q");
 }
 
@@ -1132,10 +1203,18 @@ fn composition_second_producer_from_parses() {
         other => panic!("expected Composition, got {other:?}"),
     };
     assert_eq!(comp.bindings.len(), 2);
-    assert!(matches!(
-        &comp.bindings[1].producer,
-        CompositionProducerV1::Query(_)
-    ));
+    assert_eq!(comp.bindings[0].name, "q");
+    assert!(
+        matches!(&comp.bindings[0].producer, CompositionProducerV1::Sample(_)),
+        "first binding must stay the SAMPLE producer: {:?}",
+        comp.bindings[0].producer
+    );
+    assert_eq!(comp.bindings[1].name, "bad");
+    assert!(
+        matches!(&comp.bindings[1].producer, CompositionProducerV1::Query(_)),
+        "second binding must be the `from` query producer: {:?}",
+        comp.bindings[1].producer
+    );
 }
 
 #[test]
@@ -1185,6 +1264,11 @@ fn find_seed_and_clause_endpoints_coexist_unvalidated() {
         gq1.endpoints.anchor.is_some(),
         "clause anchor should be present"
     );
+    assert_eq!(
+        gq1.endpoints.anchor.as_ref().map(|r| r.name.as_str()),
+        Some("x"),
+        "clause anchor must retain its authored ref"
+    );
 
     // Test 2: find points_to a -> b | reference=p | pointee=q
     // seed (source/sink) + clause (reference/pointee) coexist
@@ -1206,5 +1290,15 @@ fn find_seed_and_clause_endpoints_coexist_unvalidated() {
     assert!(
         gq2.endpoints.pointee.is_some(),
         "clause pointee should be present"
+    );
+    assert_eq!(
+        gq2.endpoints.reference.as_ref().map(|r| r.name.as_str()),
+        Some("p"),
+        "clause reference must retain its authored ref"
+    );
+    assert_eq!(
+        gq2.endpoints.pointee.as_ref().map(|r| r.name.as_str()),
+        Some("q"),
+        "clause pointee must retain its authored ref"
     );
 }

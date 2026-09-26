@@ -513,6 +513,7 @@ fn checked_locations_cannot_cross_registry_identity() {
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.source_registry_mismatch");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(0, 1));
     assert_eq!(
         substitute
             .try_check_location(LocatedSpanV2 {
@@ -556,16 +557,28 @@ fn explicit_module_current_selection_and_typed_namespaces_resolve() {
             VersionV2::new(1, 0, 0),
         )
         .unwrap();
-    assert!(parts
+    let value_binding = parts
         .resolved_graph()
         .visible_bindings()
         .get(NamespaceKindV2::Value, "same")
-        .is_some());
-    assert!(parts
+        .unwrap();
+    assert_eq!(value_binding.namespace_kind(), NamespaceKindV2::Value);
+    assert_eq!(value_binding.local_name(), "same");
+    assert_eq!(
+        value_binding.declaration_origin().module_id().as_str(),
+        "app"
+    );
+    let type_binding = parts
         .resolved_graph()
         .visible_bindings()
         .get(NamespaceKindV2::Type, "same")
-        .is_some());
+        .unwrap();
+    assert_eq!(type_binding.namespace_kind(), NamespaceKindV2::Type);
+    assert_eq!(type_binding.local_name(), "same");
+    assert_eq!(
+        type_binding.declaration_origin().module_id().as_str(),
+        "app"
+    );
 }
 
 #[test]
@@ -633,7 +646,19 @@ fn disconnected_cycle_rejects_whole_graph_with_located_witness() {
         )
         .unwrap_err();
     assert_eq!(error.code(), "modules.import_cycle");
-    assert_eq!(error.edge_witness().len(), 2);
+    assert_eq!(
+        error.edge_witness().to_vec(),
+        [
+            LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(1),
+                span: SpanV1::new(21, 22),
+            },
+            LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(1),
+                span: SpanV1::new(23, 24),
+            },
+        ]
+    );
 }
 
 #[test]
@@ -952,6 +977,12 @@ fn external_catalog_validates_payload_and_dependency_kinds() {
         )
         .unwrap();
     assert_eq!(parts.external_catalog().iter().count(), 2);
+    let view = parts
+        .external_catalog()
+        .iter()
+        .find(|asset| asset.id().local_name() == "view")
+        .unwrap();
+    assert_eq!(view.dependencies().len(), 1);
 
     let mut bad = ModuleAuthorityBuilderV2::try_new(profile(), sources.clone()).unwrap();
     let app = module_id(&sources, "app", 8);
@@ -972,6 +1003,7 @@ fn external_catalog_validates_payload_and_dependency_kinds() {
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.catalog_payload_kind_mismatch");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(10, 11));
 }
 
 #[test]
@@ -995,7 +1027,8 @@ fn external_catalog_rejects_duplicate_and_unresolved_assets() {
         } else {
             let error = result.unwrap_err();
             assert_eq!(error.code(), "modules.duplicate_external_catalog_asset");
-            assert!(error.secondary().is_some());
+            assert_eq!(error.primary().unwrap().span, SpanV1::new(3, 4));
+            assert_eq!(error.secondary().unwrap().span, SpanV1::new(2, 3));
         }
     }
 
@@ -1034,6 +1067,7 @@ fn external_catalog_rejects_duplicate_and_unresolved_assets() {
         )
         .unwrap_err();
     assert_eq!(error.code(), "modules.unknown_catalog_reference");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(7, 8));
 }
 
 #[test]
@@ -1097,7 +1131,19 @@ fn external_catalog_cycle_witness_excludes_acyclic_tail_and_is_permutation_stabl
     let forward = run(false);
     let reverse = run(true);
     assert_eq!(forward, reverse);
-    assert_eq!(forward.len(), 2);
+    assert_eq!(
+        forward,
+        [
+            LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(1),
+                span: SpanV1::new(21, 22),
+            },
+            LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(1),
+                span: SpanV1::new(20, 21),
+            },
+        ]
+    );
     assert!(!forward
         .iter()
         .any(|location| location.span == SpanV1::new(10, 11)));
@@ -1186,6 +1232,26 @@ fn external_catalog_accepts_exact_closed_ten_kind_payload_matrix() {
         )
         .unwrap();
     assert_eq!(parts.external_catalog().iter().count(), 10);
+    let expected = [
+        ("asset_0", NamespaceKindV2::Value),
+        ("asset_1", NamespaceKindV2::Relation),
+        ("asset_2", NamespaceKindV2::Predicate),
+        ("asset_3", NamespaceKindV2::Type),
+        ("asset_4", NamespaceKindV2::View),
+        ("asset_5", NamespaceKindV2::Model),
+        ("asset_6", NamespaceKindV2::Pack),
+        ("asset_7", NamespaceKindV2::Profile),
+        ("asset_8", NamespaceKindV2::Gate),
+        ("asset_9", NamespaceKindV2::Rule),
+    ];
+    for (name, kind) in expected {
+        let asset = parts
+            .external_catalog()
+            .iter()
+            .find(|asset| asset.id().local_name() == name)
+            .unwrap();
+        assert_eq!(asset.payload().namespace_kind(), kind, "{name}");
+    }
 }
 
 #[test]
@@ -1336,9 +1402,12 @@ fn external_signature_preserves_arity_and_parameter_order() {
         signature
             .parameters()
             .iter()
-            .map(SignatureParameterV2::name)
+            .map(|parameter| (parameter.name(), parameter.value_type().clone()))
             .collect::<Vec<_>>(),
-        vec!["right", "left"]
+        vec![
+            ("right", ValueTypeV1::int()),
+            ("left", ValueTypeV1::string())
+        ]
     );
 }
 
@@ -1380,8 +1449,13 @@ fn multibyte_identifier_diagnostic_is_utf8_safe_and_bounded_before_formatting() 
     let rendered = ModuleIdV2::try_new(&invalid, checked(&sources, 1, 0))
         .unwrap_err()
         .to_string();
-    assert!(rendered.len() < 256);
-    assert!(rendered.starts_with("modules.invalid_module_id:"));
+    // 64 multibyte chars (128 bytes) survive; the excerpt is byte-bounded and
+    // cut on a char boundary, so the exact rendering is a stable oracle.
+    let expected = format!(
+        "modules.invalid_module_id: invalid module id `{}`",
+        "é".repeat(64)
+    );
+    assert_eq!(rendered, expected);
 }
 
 #[test]
@@ -1434,7 +1508,14 @@ fn document_profile_and_require_certified_are_validated_in_combined_registry() {
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.certified_required_violation");
-    assert_eq!(error.primary().unwrap().source_id.raw(), 9);
+    assert_eq!(
+        error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(9),
+            span: SpanV1::new(4, 5),
+        }
+    );
+    assert!(error.secondary().is_none());
 }
 
 #[test]
@@ -1515,6 +1596,20 @@ fn document_view_can_depend_on_external_base_asset() {
         .validate(input)
         .unwrap();
     assert_eq!(authority.assets().count(), 1);
+    assert_eq!(authority.dependencies().len(), 1);
+    let edge = authority.dependencies().first().unwrap();
+    assert_eq!(edge.source_asset_id().local_name(), "derived");
+    assert_eq!(
+        edge.source_asset_id().namespace_kind(),
+        NamespaceKindV2::View
+    );
+    assert_eq!(edge.target_asset_id().local_name(), "base");
+    assert_eq!(edge.target_asset_id().module_id().as_str(), "host");
+    assert_eq!(
+        edge.target_asset_id().namespace_kind(),
+        NamespaceKindV2::Value
+    );
+    assert!(edge.family().is_none());
 }
 
 #[test]
@@ -1628,11 +1723,11 @@ fn require_certified_traverses_activated_external_pack_contracts() {
         DocumentCatalogValidatorV2::try_new(extended, &parts)?.validate(input)
     }
 
-    assert_eq!(
-        validate(ProfileAdmissionV2::Allowlist).unwrap_err().code(),
-        "modules.certified_required_violation"
-    );
-    assert!(validate(ProfileAdmissionV2::CertifiedOnly).is_ok());
+    let error = validate(ProfileAdmissionV2::Allowlist).unwrap_err();
+    assert_eq!(error.code(), "modules.certified_required_violation");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(3, 4));
+    let authority = validate(ProfileAdmissionV2::CertifiedOnly).unwrap();
+    assert_eq!(authority.activations().iter().count(), 1);
 }
 
 fn pack_authority(
@@ -1723,6 +1818,7 @@ fn lock_reference_registry_is_rejected_at_builder_ingress() {
         )
         .unwrap_err();
     assert_eq!(error.code(), "modules.source_registry_mismatch");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(0, 1));
 }
 
 #[test]
@@ -1776,7 +1872,7 @@ fn hex_bytes(bytes: &[u8]) -> String {
     bytes
         .iter()
         .fold(String::with_capacity(bytes.len() * 2), |mut text, byte| {
-            assert!(write!(text, "{byte:02x}").is_ok());
+            write!(text, "{byte:02x}").expect("writing to a String cannot fail");
             text
         })
 }
@@ -1858,7 +1954,13 @@ fn pack_activation_and_model_extension_are_observable() {
             VersionV2::new(1, 1, 0),
         )
         .unwrap();
-    assert_eq!(parts.composed_model().unwrap().facts().count(), 1);
+    let composed = parts.composed_model().unwrap();
+    let facts = composed.facts().collect::<Vec<_>>();
+    assert_eq!(facts.len(), 1);
+    assert_eq!(facts.first().unwrap().target(), "framework::read");
+    assert_eq!(facts.first().unwrap().attribute(), "taint_kind");
+    assert_eq!(facts.first().unwrap().value(), "source");
+    assert_eq!(facts.first().unwrap().location().span, SpanV1::new(10, 11));
     let extended = host
         .try_extend_document(SourceRegistrationV2 {
             source_id: SourceIdV2::from_raw(9),
@@ -1894,10 +1996,9 @@ fn pack_activation_and_model_extension_are_observable() {
         })
         .unwrap();
     assert_eq!(authority.activations().iter().count(), 1);
-    assert_eq!(
-        authority.activations().iter().next().unwrap().activation(),
-        UsePackActivationV2::Session
-    );
+    let activation = authority.activations().iter().next().unwrap();
+    assert_eq!(activation.pack_id().as_str(), "secure-pack");
+    assert_eq!(activation.activation(), UsePackActivationV2::Session);
 }
 
 macro_rules! namespace_tag_rail {
@@ -1953,26 +2054,42 @@ fn callable_kind_tags_are_closed() {
     assert_eq!(CallableKindV2::Rule.tag(), "rule");
 }
 
-macro_rules! version_parse_rail {
-    ($name:ident, $text:literal, $ok:expr) => {
+macro_rules! version_accept_rail {
+    ($name:ident, $text:literal, $expected:expr) => {
         #[test]
         fn $name() {
             let sources = registry(&[(1, 32)]);
             assert_eq!(
-                VersionV2::try_parse($text, checked(&sources, 1, 0)).is_ok(),
-                $ok
+                VersionV2::try_parse($text, checked(&sources, 1, 0)).unwrap(),
+                $expected
             );
         }
     };
 }
 
-version_parse_rail!(version_zero_is_canonical, "0.0.0", true);
-version_parse_rail!(version_numeric_order_fixture_is_canonical, "1.10.0", true);
-version_parse_rail!(version_leading_zero_rejects, "1.01.0", false);
-version_parse_rail!(version_missing_component_rejects, "1.0", false);
-version_parse_rail!(version_extra_component_rejects, "1.0.0.0", false);
-version_parse_rail!(version_sign_rejects, "+1.0.0", false);
-version_parse_rail!(version_whitespace_rejects, "1.0.0 ", false);
+macro_rules! version_reject_rail {
+    ($name:ident, $text:literal) => {
+        #[test]
+        fn $name() {
+            let sources = registry(&[(1, 32)]);
+            let error = VersionV2::try_parse($text, checked(&sources, 1, 0)).unwrap_err();
+            assert_eq!(error.code(), "modules.invalid_version");
+            assert_eq!(error.primary().unwrap().span, SpanV1::new(0, 1));
+        }
+    };
+}
+
+version_accept_rail!(version_zero_is_canonical, "0.0.0", VersionV2::new(0, 0, 0));
+version_accept_rail!(
+    version_numeric_order_fixture_is_canonical,
+    "1.10.0",
+    VersionV2::new(1, 10, 0)
+);
+version_reject_rail!(version_leading_zero_rejects, "1.01.0");
+version_reject_rail!(version_missing_component_rejects, "1.0");
+version_reject_rail!(version_extra_component_rejects, "1.0.0.0");
+version_reject_rail!(version_sign_rejects, "+1.0.0");
+version_reject_rail!(version_whitespace_rejects, "1.0.0 ");
 
 #[test]
 fn version_overflow_rejects_in_every_component() {
@@ -2340,7 +2457,14 @@ fn local_direct_import_does_not_suppress_downstream_reexport_ambiguity() {
         )
         .unwrap_err();
     assert_eq!(error.code(), "modules.ambiguous_import");
-    assert_eq!(error.ambiguous_candidates().len(), 2);
+    assert_eq!(
+        error
+            .ambiguous_candidates()
+            .iter()
+            .map(|candidate| candidate.origin().module_id().as_str())
+            .collect::<Vec<_>>(),
+        vec!["left", "right"]
+    );
 }
 
 fn finish_declaration_reexport_collision(
@@ -2407,7 +2531,8 @@ fn public_local_declaration_controls_downstream_name_before_reexport() {
 fn private_local_declaration_blocks_downstream_name_before_reexport() {
     let error = finish_declaration_reexport_collision(VisibilityV2::Private).unwrap_err();
     assert_eq!(error.code(), "modules.not_exported");
-    assert!(error.secondary().is_some());
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(25, 26));
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(20, 21));
 }
 
 #[test]
@@ -2433,7 +2558,8 @@ fn private_declaration_is_not_importable() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.not_exported");
-    assert!(error.secondary().is_some());
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(22, 23));
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(20, 21));
 }
 
 #[test]
@@ -2450,6 +2576,7 @@ fn absent_declaration_is_not_exported() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.not_exported");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(22, 23));
     assert!(error.secondary().is_none());
 }
 
@@ -2557,7 +2684,8 @@ fn duplicate_direct_import_rejects_different_target() {
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.duplicate_import");
-    assert!(error.secondary().is_some());
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(9, 10));
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(7, 8));
 }
 
 #[test]
@@ -2625,7 +2753,13 @@ fn self_import_cycle_rejects_with_one_edge_witness() {
         )
         .unwrap_err();
     assert_eq!(error.code(), "modules.import_cycle");
-    assert_eq!(error.edge_witness().len(), 1);
+    assert_eq!(
+        error.edge_witness().to_vec(),
+        [LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(1),
+            span: SpanV1::new(3, 4),
+        }]
+    );
 }
 
 fn manifest_input(
@@ -2704,12 +2838,14 @@ fn nonempty_pack_graph_requires_lockfile() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.missing_lockfile");
+    assert!(error.primary().is_none());
 }
 
 #[test]
 fn empty_pack_graph_rejects_unexpected_lockfile() {
     let error = finish_pack_inputs(Some(""), |_| vec![]).unwrap_err();
     assert_eq!(error.code(), "modules.unexpected_lockfile");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(2, 3));
 }
 
 #[test]
@@ -2730,7 +2866,8 @@ fn builder_rejects_duplicate_lockfile_and_model_pack_at_ingress() {
         } else {
             let error = result.unwrap_err();
             assert_eq!(error.code(), "modules.duplicate_lockfile_input");
-            assert!(error.secondary().is_some());
+            assert_eq!(error.primary().unwrap().span, SpanV1::new(2, 3));
+            assert_eq!(error.secondary().unwrap().span, SpanV1::new(1, 2));
         }
     }
 
@@ -2748,7 +2885,8 @@ fn builder_rejects_duplicate_lockfile_and_model_pack_at_ingress() {
         } else {
             let error = result.unwrap_err();
             assert_eq!(error.code(), "modules.duplicate_model_pack");
-            assert!(error.secondary().is_some());
+            assert_eq!(error.primary().unwrap().span, SpanV1::new(5, 6));
+            assert_eq!(error.secondary().unwrap().span, SpanV1::new(4, 5));
         }
     }
 }
@@ -2780,7 +2918,8 @@ fn duplicate_pack_rejects_before_graph_validation() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.duplicate_pack");
-    assert!(error.secondary().is_some());
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(23, 24));
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(13, 14));
 }
 
 #[test]
@@ -2806,6 +2945,7 @@ fn compatibility_mismatch_rejects() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.compat_mismatch");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(13, 14));
 }
 
 #[test]
@@ -2834,6 +2974,8 @@ fn unknown_pack_dependency_rejects_at_edge() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.unknown_pack");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(22, 23));
+    assert!(error.secondary().is_none());
 }
 
 #[test]
@@ -2873,7 +3015,8 @@ fn unsatisfied_pack_dependency_retains_target_location() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.dependency_unsatisfied");
-    assert!(error.secondary().is_some());
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(32, 33));
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(43, 44));
 }
 
 #[test]
@@ -2902,7 +3045,13 @@ fn pack_self_dependency_cycle_rejects() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.pack_dependency_cycle");
-    assert_eq!(error.edge_witness().len(), 1);
+    assert_eq!(
+        error.edge_witness().to_vec(),
+        [LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(1),
+            span: SpanV1::new(22, 23),
+        }]
+    );
 }
 
 #[test]
@@ -2938,7 +3087,8 @@ fn overlapping_pack_export_rejects_with_both_locations() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.overlapping_pack_export");
-    assert!(error.secondary().is_some());
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(30, 31));
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(20, 21));
 }
 
 #[test]
@@ -3022,7 +3172,8 @@ fn duplicate_dependency_rejects_different_ranges() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.duplicate_pack_dependency");
-    assert!(error.secondary().is_some());
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(40, 41));
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(30, 31));
 }
 
 #[test]
@@ -3052,6 +3203,8 @@ fn duplicate_suite_declaration_rejects() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.duplicate_suite");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(21, 22));
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(20, 21));
 }
 
 #[test]
@@ -3116,6 +3269,20 @@ fn duplicate_lock_pin_rejects() {
     })
     .unwrap_err();
     assert_eq!(error.code(), "modules.duplicate_lock_pin");
+    assert_eq!(
+        error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(2),
+            span: SpanV1::new(73, 145),
+        }
+    );
+    assert_eq!(
+        error.secondary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(2),
+            span: SpanV1::new(0, 72),
+        }
+    );
 }
 
 #[test]
@@ -3175,22 +3342,24 @@ fn lock_blank_line_is_rejected_with_that_line_as_primary() {
 #[test]
 fn lock_version_drift_is_rejected_exactly() {
     let lock = format!("a 1.0.1 {}\n", "0".repeat(64));
+    let error = finish_pack_inputs(Some(&lock), |sources| {
+        vec![manifest_input(
+            sources,
+            "a",
+            VersionV2::new(1, 0, 0),
+            vec![],
+            vec![],
+            vec![],
+            10,
+        )]
+    })
+    .unwrap_err();
+    assert_eq!(error.code(), "modules.lock_mismatch");
     assert_eq!(
-        finish_pack_inputs(Some(&lock), |sources| {
-            vec![manifest_input(
-                sources,
-                "a",
-                VersionV2::new(1, 0, 0),
-                vec![],
-                vec![],
-                vec![],
-                10,
-            )]
-        })
-        .unwrap_err()
-        .code(),
-        "modules.lock_mismatch"
+        error.primary().unwrap().span,
+        SpanV1::new(0, lock.len() - 1)
     );
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(13, 14));
 }
 
 #[test]
@@ -3496,6 +3665,7 @@ fn external_catalog_unknown_kind_token_rejects() {
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.unknown_catalog_kind");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(2, 3));
 }
 
 #[test]
@@ -3538,7 +3708,8 @@ fn duplicate_signature_parameter_rejects_with_both_locations() {
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.duplicate_signature_parameter");
-    assert!(error.secondary().is_some());
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(3, 4));
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(2, 3));
 }
 
 #[test]
@@ -3624,9 +3795,12 @@ fn public_signature_projection_preserves_every_callable_fact() {
             VersionV2::new(1, 0, 0),
         )
         .unwrap();
-    let ExternalCatalogPayloadV2::Predicate(signature) =
-        parts.external_catalog().iter().next().unwrap().payload()
-    else {
+    let asset = parts.external_catalog().iter().next().unwrap();
+    assert!(matches!(
+        asset.payload(),
+        ExternalCatalogPayloadV2::Predicate(_)
+    ));
+    let ExternalCatalogPayloadV2::Predicate(signature) = asset.payload() else {
         return;
     };
     assert_eq!(
@@ -3683,6 +3857,13 @@ fn document_profile_requires_exactly_one_admission() {
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.missing_profile_admission");
+    assert_eq!(
+        error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(9),
+            span: SpanV1::new(1, 2),
+        }
+    );
 }
 
 #[test]
@@ -3711,7 +3892,8 @@ fn document_catalog_duplicate_profile_and_reference_negative_matrix() {
         duplicate_asset.code(),
         "modules.duplicate_document_catalog_asset"
     );
-    assert!(duplicate_asset.secondary().is_some());
+    assert_eq!(duplicate_asset.primary().unwrap().span, SpanV1::new(2, 3));
+    assert_eq!(duplicate_asset.secondary().unwrap().span, SpanV1::new(1, 2));
 
     let wrong_profile_kind = document_case_error(|sources, app| DocumentCatalogInputV2 {
         assets: vec![DocumentCatalogAssetInputV2 {
@@ -3785,7 +3967,11 @@ fn document_catalog_duplicate_profile_and_reference_negative_matrix() {
         duplicate_profile.code(),
         "modules.duplicate_profile_admission"
     );
-    assert!(duplicate_profile.secondary().is_some());
+    assert_eq!(duplicate_profile.primary().unwrap().span, SpanV1::new(3, 4));
+    assert_eq!(
+        duplicate_profile.secondary().unwrap().span,
+        SpanV1::new(3, 4)
+    );
 
     let wrong_reference_kind = document_case_error(|sources, app| DocumentCatalogInputV2 {
         assets: vec![DocumentCatalogAssetInputV2 {
@@ -3929,7 +4115,13 @@ fn document_view_dependency_self_cycle_rejects() {
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.view_inline_cycle");
-    assert_eq!(error.edge_witness().len(), 1);
+    assert_eq!(
+        error.edge_witness().to_vec(),
+        [LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(9),
+            span: SpanV1::new(3, 4),
+        }]
+    );
 }
 
 #[test]
@@ -4007,7 +4199,19 @@ fn document_cycle_witness_excludes_acyclic_tail_and_is_permutation_stable() {
     let forward = run(false);
     let reverse = run(true);
     assert_eq!(forward, reverse);
-    assert_eq!(forward.len(), 2);
+    assert_eq!(
+        forward,
+        [
+            LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(9),
+                span: SpanV1::new(21, 22),
+            },
+            LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(9),
+                span: SpanV1::new(20, 21),
+            },
+        ]
+    );
     assert!(!forward
         .iter()
         .any(|location| location.span == SpanV1::new(10, 11)));
@@ -4055,6 +4259,20 @@ fn activation_lock_reference_must_match_sealed_reference() {
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.lock_reference_mismatch");
+    assert_eq!(
+        error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(9),
+            span: SpanV1::new(1, 2),
+        }
+    );
+    assert_eq!(
+        error.secondary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(1),
+            span: SpanV1::new(7, 8),
+        }
+    );
 }
 
 #[test]
@@ -4109,6 +4327,13 @@ fn duplicate_activation_validates_and_charges_attempted_lock_path_before_dedup()
         .validate(input)
         .unwrap_err();
     assert_eq!(error.code(), "modules.invalid_lockfile_path");
+    assert_eq!(
+        error.primary().unwrap(),
+        LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(9),
+            span: SpanV1::new(3, 4),
+        }
+    );
 }
 
 #[test]
@@ -4153,7 +4378,8 @@ fn duplicate_pack_activation_rejects_identical_valid_references() {
         .validate(input)
         .unwrap_err();
     assert_eq!(error.code(), "modules.duplicate_pack_activation");
-    assert!(error.secondary().is_some());
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(4, 5));
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(2, 3));
 }
 
 #[test]
@@ -4401,6 +4627,7 @@ fn fingerprint_mutation_matrix_covers_all_manifest_semantics() {
         mutated!(suite_member = "join"),
     ];
     let mutations: Vec<_> = cases.iter().map(build).collect();
+    assert_eq!(mutations.len(), cases.len());
     assert!(mutations.iter().all(|fingerprint| fingerprint != &base));
 }
 
@@ -4502,7 +4729,8 @@ fn module_step_budget_accepts_exact_limit_and_reports_one_over() {
         )
     }
 
-    assert!(run(2).is_ok());
+    let accepted = run(2).unwrap();
+    assert_eq!(accepted.resolved_graph().current_module().as_str(), "app");
     let error = run(1).unwrap_err();
     let payload = error.resource_exhaustion().unwrap();
     assert_eq!(payload.dimension(), "steps");
@@ -4770,6 +4998,8 @@ fn model_duplicate_fact_is_idempotent_and_observable() {
     let parts = finish_model_facts(&[("source", 20), ("source", 19)]).unwrap();
     let facts = parts.composed_model().unwrap().facts().collect::<Vec<_>>();
     assert_eq!(facts.len(), 1);
+    assert_eq!(facts.first().unwrap().target(), "framework::read");
+    assert_eq!(facts.first().unwrap().attribute(), "kind");
     assert_eq!(facts.first().unwrap().value(), "source");
     assert_eq!(facts.first().unwrap().location().span, SpanV1::new(19, 20));
 }
@@ -4862,6 +5092,7 @@ fn agreeing_model_packs_merge_and_retain_sorted_provenance() {
             VersionV2::new(1, 1, 0),
         )
         .unwrap();
+    assert_eq!(parts.composed_model().unwrap().facts().count(), 1);
     let fact = parts.composed_model().unwrap().facts().next().unwrap();
     assert_eq!(
         fact.asserting_packs()
@@ -4966,8 +5197,8 @@ fn conflicting_values_across_distinct_model_packs_reject_with_both_locations() {
         )
         .unwrap_err();
     assert_eq!(error.code(), "modules.model_conflict");
-    assert!(error.primary().is_some());
-    assert!(error.secondary().is_some());
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(31, 32));
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(30, 31));
 }
 
 #[test]
@@ -4984,8 +5215,7 @@ fn model_conflict_is_permutation_stable_and_retains_both_locations() {
 
 #[test]
 fn model_value_outside_schema_rejects() {
-    assert_eq!(
-        finish_model_facts(&[("unknown", 20)]).unwrap_err().code(),
-        "modules.invalid_model_data"
-    );
+    let error = finish_model_facts(&[("unknown", 20)]).unwrap_err();
+    assert_eq!(error.code(), "modules.invalid_model_data");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(20, 21));
 }

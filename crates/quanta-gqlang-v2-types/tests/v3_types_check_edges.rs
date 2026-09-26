@@ -160,6 +160,11 @@ fn binding_from_prior_expression_reuses_the_single_kernel_fact() {
         facts.get(reference_key).unwrap().state,
         ExpressionTypeStateV2::Known(ValueTypeV1::int())
     );
+    assert_eq!(
+        facts.get(reference_key).unwrap().effects,
+        facts.get(producer_key).unwrap().effects,
+        "the alias must reuse the producer's kernel effects, not just its state"
+    );
 }
 
 #[test]
@@ -206,9 +211,21 @@ fn binding_from_prior_expression_retains_target_effects() {
     let target = facts.get(call_key).unwrap();
     let alias = facts.get(reference_key).unwrap();
     assert_eq!(alias.state, target.state);
+    assert_eq!(
+        alias.state,
+        ExpressionTypeStateV2::Known(ValueTypeV1::scalar(ScalarTyV1::Duration))
+    );
     assert_eq!(alias.effects, target.effects);
-    assert_eq!(alias.effects.determinism, DeterminismV1::NonDeterministic);
-    assert_eq!(alias.effects.purity, PurityV1::Impure);
+    assert_eq!(
+        alias.effects,
+        ExpressionEffectsV2 {
+            purity: PurityV1::Impure,
+            determinism: DeterminismV1::NonDeterministic,
+            monotonicity: MonotonicityV1::NonMonotone,
+            aggregation: AggregationClassV1::Scalar,
+            cost: CostClassV1::Constant,
+        }
+    );
 }
 
 #[test]
@@ -438,9 +455,21 @@ fn declaration_reference_retains_nondeterministic_target_effects() {
     let target = facts.get(call_key).unwrap();
     let alias = facts.get(reference_key).unwrap();
     assert_eq!(alias.state, target.state);
+    assert_eq!(
+        alias.state,
+        ExpressionTypeStateV2::Known(ValueTypeV1::scalar(ScalarTyV1::Duration))
+    );
     assert_eq!(alias.effects, target.effects);
-    assert_eq!(alias.effects.determinism, DeterminismV1::NonDeterministic);
-    assert_eq!(alias.effects.purity, PurityV1::Impure);
+    assert_eq!(
+        alias.effects,
+        ExpressionEffectsV2 {
+            purity: PurityV1::Impure,
+            determinism: DeterminismV1::NonDeterministic,
+            monotonicity: MonotonicityV1::NonMonotone,
+            aggregation: AggregationClassV1::Scalar,
+            cost: CostClassV1::Constant,
+        }
+    );
 }
 
 #[test]
@@ -703,9 +732,9 @@ fn positive_plus_and_larger_than_minimum_magnitude_reject() {
 
 #[test]
 fn integer_and_float_addition_select_exact_result_types() {
-    for (left, right, expected) in [
-        ("1", "2", ValueTypeV1::int()),
-        ("1.0", "2.0", ValueTypeV1::float()),
+    for (left, right, expected, expected_operator) in [
+        ("1", "2", ValueTypeV1::int(), 101u32),
+        ("1.0", "2.0", ValueTypeV1::float(), 106),
     ] {
         let builder = HirBuilderV1::new();
         let lhs = if left.contains('.') {
@@ -726,7 +755,10 @@ fn integer_and_float_addition_select_exact_result_types() {
         let facts = check_value(value, vec![]);
         let fact = facts.get(key).unwrap();
         assert_eq!(fact.state, ExpressionTypeStateV2::Known(expected));
-        assert!(fact.operator_id.is_some());
+        assert_eq!(
+            fact.operator_id.map(OperatorIdV2::raw),
+            Some(expected_operator)
+        );
     }
 }
 
@@ -768,6 +800,11 @@ fn parenthesized_value_preserves_type_and_child_fact() {
     assert_eq!(
         facts.get(child_key).unwrap().state,
         ExpressionTypeStateV2::Known(ValueTypeV1::int())
+    );
+    assert_eq!(
+        facts.get(child_key).unwrap().literal,
+        Some(TypedLiteralFactV2::Value(TypedLiteralValueV2::Int(7))),
+        "the parenthesized value must preserve the child's literal fact"
     );
     assert_eq!(
         facts.get(parent_key).unwrap().state,
@@ -967,7 +1004,7 @@ fn aggregate_overload_retains_selected_result_and_effect_class() {
     assert_eq!(fact.effects.cost, CostClassV1::Linear);
     assert!(matches!(
         fact.resolved_call(),
-        Some(ResolvedCallTargetV2::Builtin(_))
+        Some(ResolvedCallTargetV2::Builtin(id)) if id.raw() == 4 && id.name() == Some("sum")
     ));
 }
 
@@ -1330,11 +1367,18 @@ fn deferred_relation_rows_are_owner_built_and_reject_identity_mutations() {
         .unwrap();
     assert_eq!(facts.relation_row_count(), 2);
     let source_record = facts.relation_row(source_key).unwrap().clone();
+    assert_eq!(source_record.fields().len(), 1);
+    assert_eq!(source_record.fields().first().unwrap().name(), "base");
+    assert_eq!(
+        source_record.fields().first().unwrap().value_type(),
+        &ValueTypeV1::int()
+    );
     let project_record = facts.relation_row(project_key).unwrap();
     assert_eq!(project_record.fields().len(), 2);
     let copied_field = project_record.fields().first().unwrap();
     let integer_field = project_record.fields().get(1).unwrap();
     assert_eq!(copied_field.name(), "copied");
+    assert_eq!(integer_field.name(), "n");
     assert_eq!(
         copied_field.value_type(),
         &ValueTypeV1::try_record(source_record).unwrap()
@@ -1500,10 +1544,17 @@ fn prior_relation_rows_require_the_exact_earlier_source_and_retain_its_row() {
         .unwrap()
         .check_document(&inputs)
         .unwrap();
+    let right_row = facts.relation_row(right_key).unwrap();
+    let left_row = facts.relation_row(left_key).unwrap();
     assert_eq!(
-        facts.relation_row(right_key),
-        facts.relation_row(left_key),
+        right_row, left_row,
         "a Composition-local scan must reuse the exact earlier typed row"
+    );
+    assert_eq!(left_row.fields().len(), 1);
+    assert_eq!(left_row.fields().first().unwrap().name(), "left_id");
+    assert_eq!(
+        left_row.fields().first().unwrap().value_type(),
+        &ValueTypeV1::int()
     );
 
     let foreign = SourceQualifiedNodeIdV2 {
@@ -1626,6 +1677,13 @@ fn relation_pre_evaluation_is_exact_dependency_first_and_fail_closed() {
         .check_document(&inputs)
         .unwrap();
     assert_eq!(facts.relation_row_count(), 3);
+    let upstream_row = facts.relation_row(upstream_key).unwrap();
+    assert_eq!(upstream_row.fields().len(), 1);
+    assert_eq!(upstream_row.fields().first().unwrap().name(), "id");
+    assert_eq!(
+        upstream_row.fields().first().unwrap().value_type(),
+        &ValueTypeV1::int()
+    );
     assert_eq!(
         facts.relation_row(downstream_key),
         facts.relation_row(upstream_key)
@@ -1897,6 +1955,16 @@ fn three_producer_pre_evaluation_follows_the_exact_target_not_plan_or_authored_o
             .unwrap()
             .name(),
         "b"
+    );
+    assert_eq!(
+        swapped
+            .relation_row(right_key)
+            .unwrap()
+            .fields()
+            .first()
+            .unwrap()
+            .value_type(),
+        &ValueTypeV1::string()
     );
 
     // Plan transplant between producers: moving `beta` after its consumer

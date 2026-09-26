@@ -76,7 +76,18 @@ fn finite_float_normalizes_signed_zero_and_orders_deterministically() {
     let positive = FiniteF64V2::try_new(0.0, loc(1, 0)).unwrap();
     let negative = FiniteF64V2::try_new(-0.0, loc(1, 1)).unwrap();
     assert_eq!(positive, negative);
-    assert!(FiniteF64V2::try_new(f64::INFINITY, loc(1, 2)).is_err());
+    assert_eq!(
+        FiniteF64V2::try_new(f64::INFINITY, loc(1, 2))
+            .unwrap_err()
+            .code(),
+        "types.float_non_finite"
+    );
+    assert_eq!(
+        FiniteF64V2::try_new(f64::NEG_INFINITY, loc(1, 2))
+            .unwrap_err()
+            .code(),
+        "types.float_non_finite"
+    );
     assert_eq!(
         FiniteF64V2::try_new(f64::NAN, loc(1, 2))
             .unwrap_err()
@@ -115,6 +126,20 @@ fn relation_catalog_rejects_duplicate_name_and_structured_id() {
         provenance: "catalog".into(),
         location: checked(&registry, 1, 2),
     };
+    let structured_duplicate = RelationSourceInputV2 {
+        lookup_name: "people".into(),
+        ..source.clone()
+    };
+    assert_eq!(
+        RelationCatalogV2::try_new(
+            vec![source.clone(), structured_duplicate],
+            &registry,
+            authority_budget()
+        )
+        .unwrap_err()
+        .code(),
+        "types.duplicate_relation_source_id"
+    );
     assert_eq!(
         RelationCatalogV2::try_new(vec![source, duplicate], &registry, authority_budget())
             .unwrap_err()
@@ -181,6 +206,23 @@ fn workspace_files_authority_is_validated_and_part_of_relation_identity() {
         RelationAuthorityV2::CanonicalWorkspaceFiles
     );
     assert_ne!(canonical_id, host_id);
+    let canonical_again = RelationCatalogV2::try_new(
+        vec![workspace_files_input(
+            &registry,
+            RelationAuthorityV2::CanonicalWorkspaceFiles,
+        )],
+        &registry,
+        authority_budget(),
+    )
+    .unwrap();
+    assert_eq!(
+        canonical_id,
+        canonical_again
+            .get(CANONICAL_WORKSPACE_FILES_LOOKUP_NAME_V2)
+            .unwrap()
+            .id(),
+        "identical authored relations must derive one identical id"
+    );
 }
 
 #[test]
@@ -222,7 +264,15 @@ fn relation_identity_and_diagnostic_rendering_are_globally_bounded() {
     )
     .unwrap_err();
     assert_eq!(error.code(), "types.invalid_canonical_name");
-    assert!(error.to_string().len() <= 1024);
+    let oversized = format!("{}tail", "segment::".repeat(40));
+    assert_eq!(
+        error.to_string(),
+        format!(
+            "types.invalid_canonical_name: invalid canonical name `{}`",
+            &oversized[..128]
+        ),
+        "diagnostic rendering must truncate the untrusted name to the pinned bound"
+    );
 }
 
 #[test]
@@ -309,7 +359,9 @@ fn relation_catalog_enforces_profile_string_and_aggregate_byte_limits() {
         location: checked(&registry, 1, 0),
     };
     let exact = AuthorityBudgetProfileV2::try_new(1, 1, 1, 23, 10).unwrap();
-    assert!(RelationCatalogV2::try_new(vec![make_input()], &registry, exact).is_ok());
+    let retained = RelationCatalogV2::try_new(vec![make_input()], &registry, exact).unwrap();
+    assert_eq!(retained.iter().count(), 1);
+    assert_eq!(retained.get("users").unwrap().lookup_name(), "users");
     let aggregate_short = AuthorityBudgetProfileV2::try_new(1, 1, 1, 22, 10).unwrap();
     let error =
         RelationCatalogV2::try_new(vec![make_input()], &registry, aggregate_short).unwrap_err();
@@ -318,12 +370,19 @@ fn relation_catalog_enforces_profile_string_and_aggregate_byte_limits() {
     let error =
         RelationCatalogV2::try_new(vec![make_input()], &registry, string_short).unwrap_err();
     assert_eq!(error.code(), "types.resource_exhausted");
-    assert_eq!(
-        AuthorityBudgetProfileV2::try_new(0, 1, 1, 1, 1)
+    for zero_at in 0..5 {
+        let mut profile = [1usize; 5];
+        profile[zero_at] = 0;
+        assert_eq!(
+            AuthorityBudgetProfileV2::try_new(
+                profile[0], profile[1], profile[2], profile[3], profile[4]
+            )
             .unwrap_err()
             .code(),
-        "types.invalid_authority_budget"
-    );
+            "types.invalid_authority_budget",
+            "a zero at position {zero_at} must reject"
+        );
+    }
 }
 
 #[test]
@@ -337,9 +396,17 @@ fn type_names_are_canonical_ascii_and_bounded() {
             "types.invalid_type_name"
         );
     }
-    assert!(
-        RecordFieldTypeV1::try_new("dash-name", ValueTypeV1::int(), checked(&registry, 1, 0),)
-            .is_ok()
+    let dashed = RecordTypeV1::try_new(vec![RecordFieldTypeV1::try_new(
+        "dash-name",
+        ValueTypeV1::int(),
+        checked(&registry, 1, 0),
+    )
+    .unwrap()])
+    .unwrap();
+    assert_eq!(dashed.fields().first().unwrap().name(), "dash-name");
+    assert_eq!(
+        dashed.fields().first().unwrap().value_type(),
+        &ValueTypeV1::int()
     );
     assert_eq!(
         UnionVariantTypeV1::try_new(
@@ -350,6 +417,17 @@ fn type_names_are_canonical_ascii_and_bounded() {
         .unwrap_err()
         .code(),
         "types.invalid_type_name"
+    );
+    let exact_limit = UnionTypeV1::try_new(vec![UnionVariantTypeV1::try_new(
+        &"x".repeat(MAX_TYPE_NAME_BYTES),
+        ValueTypeV1::int(),
+        checked(&registry, 1, 0),
+    )
+    .unwrap()])
+    .unwrap();
+    assert_eq!(
+        exact_limit.variants().first().unwrap().tag(),
+        "x".repeat(MAX_TYPE_NAME_BYTES)
     );
 }
 
@@ -459,6 +537,11 @@ fn semantic_type_order_and_hash_ignore_construction_locations() {
     )
     .unwrap();
     assert_eq!(left, right);
+    assert_eq!(
+        std::collections::HashSet::from([left.clone(), right.clone()]).len(),
+        1,
+        "hash identity must ignore construction locations"
+    );
     assert_eq!(BTreeSet::from([left, right]).len(), 1);
 }
 
@@ -503,7 +586,13 @@ fn resolved_predicate_and_capture_identities_are_canonical() {
             .code(),
         "types.invalid_resolved_identity"
     );
-    assert!(ResolvedPredicateIdV2::try_new("pkg::predicate_1").is_ok());
+    assert_eq!(
+        ResolvedPredicateIdV2::try_new("pkg::predicate_1")
+            .unwrap()
+            .as_str(),
+        "pkg::predicate_1",
+        "an admitted identity must be retained verbatim, not normalized"
+    );
     assert_eq!(
         ResolvedPredicateIdV2::try_new(&"a".repeat(MAX_TYPE_NAME_BYTES + 1))
             .unwrap_err()

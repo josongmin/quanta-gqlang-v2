@@ -1477,12 +1477,20 @@ mod cycle_tests {
 
     #[test]
     fn missing_target_is_charged_once_without_becoming_cycle_vertex() {
-        let graph = graph_from_edges(2, &[(0, 2)], false);
+        // Two dangling edges make a zero charge observable: with one edge and a
+        // positive budget, charging 0 and charging 1 look identical.
+        let graph = graph_from_edges(2, &[(0, 2), (1, 3)], false);
         let (expected, steps) = legacy_cycle(&graph);
         assert_eq!(expected, None);
-        assert_eq!(steps, 1);
-        let mut exact = budget(1).begin_session_v2();
-        assert_eq!(graph.detect_cycle(&mut exact).expect("one step fits"), None);
+        assert_eq!(steps, 2);
+        let mut exact = budget(2).begin_session_v2();
+        assert_eq!(graph.detect_cycle(&mut exact).expect("two steps fit"), None);
+        let mut under = budget(1).begin_session_v2();
+        let error = graph.detect_cycle(&mut under).expect_err("one under fails");
+        let exhaustion = error.resource_exhaustion().expect("step exhaustion");
+        assert_eq!(exhaustion.dimension(), "steps");
+        assert_eq!(exhaustion.limit(), 1);
+        assert_eq!(exhaustion.observed(), 2);
     }
 
     #[test]

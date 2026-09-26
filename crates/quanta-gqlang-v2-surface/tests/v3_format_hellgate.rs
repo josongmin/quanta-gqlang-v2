@@ -609,6 +609,15 @@ fn assert_roundtrip(src: &str) {
     assert_eq!(text2, text3, "format not idempotent for {src:?}");
 }
 
+/// The rendered text is also asserted to equal an EXACT expected canonical form,
+/// so a dropped field or a keyword aliased onto another variant cannot survive on
+/// round-trip stability alone.
+fn assert_renders(src: &str, expected: &str) {
+    let item = parse(src);
+    assert_eq!(format_item(&item), expected, "render of {src:?}");
+    assert_roundtrip(src);
+}
+
 fn assert_witness_diff(left: &str, right: &str) {
     assert_ne!(
         support::structural_witness(&parse(left)),
@@ -681,7 +690,10 @@ fn decl_and_rule_roundtrip() {
 fn find_roundtrips() {
     assert_roundtrip("find taint api.entry -> db.write | sanitizers=authz.clean | depth=3");
     assert_roundtrip("find reachability a.b -> c.d");
-    assert_roundtrip("find summary | callable=svc.handler | facets=calls, reads");
+    assert_renders(
+        "find summary | callable=svc.handler | facets=calls, reads",
+        "find summary | callable=svc.handler | facets=calls, reads",
+    );
     assert_roundtrip("find points_to | reference=p.x | pointee=heap.obj");
 }
 
@@ -689,8 +701,14 @@ fn find_roundtrips() {
 fn check_roundtrips() {
     assert_roundtrip("check rule.hybrid | scope=repo | confirm=require | emit=sarif | mode=hybrid");
     assert_roundtrip("check rule.x | confirm=skip | emit=findings | mode=pattern");
-    assert_roundtrip(
+    assert_renders(
         "check rule.hybrid | pattern=p | confirm=require | emit=findings | mode=hybrid using find reachability src.entry -> sink.write | depth=8",
+        "check rule.hybrid | pattern=p | confirm=require | emit=findings | mode=hybrid using find reachability src.entry -> sink.write | depth=8",
+    );
+    // scope and pattern must co-occur and render in distinct slots.
+    assert_renders(
+        "check r | scope=s | pattern=p | confirm=skip",
+        "check r | scope=s | pattern=p | confirm=skip | emit=findings | mode=hybrid",
     );
 }
 
@@ -755,6 +773,24 @@ fn document_roundtrips() {
         .into_iter()
         .map(SurfaceItemV1::into_program_item)
         .collect();
+    // "each same family": every re-parsed item must retain its family and its
+    // authored structure, not merely the document's item count.
+    for (before, after) in items.iter().zip(&items2) {
+        assert_eq!(
+            std::mem::discriminant(before),
+            std::mem::discriminant(after),
+            "document item family changed under round trip"
+        );
+        assert!(
+            same_structure(before, after),
+            "document item structure changed under round trip"
+        );
+    }
     // idempotent at document level.
     assert_eq!(text, format_document(&items2));
+
+    // The public document separator bytes are pinned exactly, not compared to a
+    // second formatter run.
+    let pair: Vec<ProgramItemHirV1> = vec![parse("show capabilities"), parse("show models")];
+    assert_eq!(format_document(&pair), "show capabilities;\nshow models");
 }

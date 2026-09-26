@@ -94,6 +94,7 @@ mod tests {
             .collect::<BTreeSet<_>>();
         let count = registry.binary.values().map(Vec::len).sum::<usize>()
             + registry.unary.values().map(Vec::len).sum::<usize>();
+        assert_eq!(count, 67, "the closed operator surface must be pinned");
         assert_eq!(ids.len(), count);
         for (symbol, overloads) in &registry.binary {
             assert!(overloads
@@ -112,22 +113,38 @@ mod tests {
         let duplicate_id = u(1, "+", ValueTypeV1::int(), ValueTypeV1::int());
         assert_eq!(
             OperatorRegistryV2::try_from_entries(vec![one.clone(), duplicate_id], vec![])
-                .unwrap_err()
-                .code(),
-            "types.registry_duplicate_id"
+                .unwrap_err(),
+            TypeDiagnosticV2::RegistryDuplicateId {
+                registry: "operator",
+                id: 1
+            }
         );
         let duplicate_domain = u(2, "-", ValueTypeV1::int(), ValueTypeV1::float());
         assert_eq!(
-            OperatorRegistryV2::try_from_entries(vec![one, duplicate_domain], vec![])
-                .unwrap_err()
-                .code(),
-            "types.registry_duplicate_id"
+            OperatorRegistryV2::try_from_entries(vec![one, duplicate_domain], vec![]).unwrap_err(),
+            TypeDiagnosticV2::RegistryDuplicateId {
+                registry: "operator_signature",
+                id: 2
+            }
         );
     }
 
     #[test]
     fn every_operator_id_has_the_pinned_complete_effect_tuple() {
         let registry = OperatorRegistryV2::try_closed().expect("valid static registry");
+        assert!(
+            !registry.unary.is_empty(),
+            "the unary effect matrix must not be vacuous"
+        );
+        assert!(
+            !registry.binary.is_empty(),
+            "the binary effect matrix must not be vacuous"
+        );
+        assert_eq!(
+            registry.all_unary_overloads().count() + registry.all_binary_overloads().count(),
+            67,
+            "every admitted operator overload must be enumerated"
+        );
         let scalar = |monotonicity| ExpressionEffectsV2 {
             purity: PurityV1::Pure,
             determinism: DeterminismV1::Deterministic,

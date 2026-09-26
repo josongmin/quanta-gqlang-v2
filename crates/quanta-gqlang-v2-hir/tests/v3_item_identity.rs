@@ -116,7 +116,8 @@ fn located_span_rejects_wrong_source_and_out_of_range() {
     };
     assert!(matches!(
         located.validate(SourceIdV2::from_raw(1), 3),
-        Err(LocatedSpanErrorV2::WrongSource { .. })
+        Err(LocatedSpanErrorV2::WrongSource { expected, actual })
+            if expected == SourceIdV2::from_raw(1) && actual == SourceIdV2::from_raw(2)
     ));
 
     let out_of_range = LocatedSpanV2 {
@@ -125,7 +126,8 @@ fn located_span_rejects_wrong_source_and_out_of_range() {
     };
     assert!(matches!(
         out_of_range.validate(SourceIdV2::from_raw(1), 3),
-        Err(LocatedSpanErrorV2::OutOfBounds { .. })
+        Err(LocatedSpanErrorV2::OutOfBounds { span, source_len })
+            if span == SpanV1::new(1, 4) && source_len == 3
     ));
 }
 

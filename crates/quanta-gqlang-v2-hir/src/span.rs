@@ -454,7 +454,7 @@ mod source_registry_tests {
             .unwrap();
         assert_eq!(extended.parent_identity(), &a.identity());
         assert_ne!(extended.identity(), a.identity());
-        assert_eq!(extended.combined().identity(), extended.identity());
+        assert_eq!(extended.source_len(SourceIdV2::from_raw(3)), Some(12));
     }
     #[test]
     fn identity_is_structural_and_checked_locations_share_backing() {
@@ -483,6 +483,20 @@ mod source_registry_tests {
                 span: SpanV1::new(1, 2),
             })
             .unwrap();
+        assert_eq!(
+            left.location(),
+            LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(9),
+                span: SpanV1::new(0, 1),
+            }
+        );
+        assert_eq!(
+            right.location(),
+            LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(9),
+                span: SpanV1::new(1, 2),
+            }
+        );
         assert!(std::sync::Arc::ptr_eq(
             &left.registry_identity.0,
             &right.registry_identity.0

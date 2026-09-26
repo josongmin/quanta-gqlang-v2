@@ -239,10 +239,9 @@ fn all_six_family_references_resolve_exact_host_kinds_and_forward_paths() {
         .dependencies()
         .iter()
         .all(|edge| edge.family().is_some()));
-    assert_eq!(
-        finalize(&mut validator, final_input()).unwrap_err().code(),
-        "modules.document_catalog_phase_error"
-    );
+    let error = finalize(&mut validator, final_input()).unwrap_err();
+    assert_eq!(error.code(), "modules.document_catalog_phase_error");
+    assert!(error.primary().is_none());
 }
 
 #[test]
@@ -333,20 +332,24 @@ fn each_family_rejects_wrong_kind_and_unknown_target() {
             })
             .unwrap_err();
         assert_eq!(wrong.code(), "modules.catalog_reference_kind_mismatch");
-        assert_eq!(wrong.primary().unwrap().span.start, 40 + index);
+        assert_eq!(
+            wrong.primary().unwrap().span,
+            SpanV1::new(40 + index, 41 + index)
+        );
         let mut validator = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
         validator.predeclare_assets(Vec::new()).unwrap();
+        let error = validator
+            .resolve_reference(DocumentCatalogReferenceInputV2 {
+                module_id: Some(ext.clone()),
+                local_name: "missing.target".into(),
+                expected_kind: family.target_kind(),
+                location: checked(registry.combined(), 9, 60 + index),
+            })
+            .unwrap_err();
+        assert_eq!(error.code(), "modules.unknown_catalog_reference");
         assert_eq!(
-            validator
-                .resolve_reference(DocumentCatalogReferenceInputV2 {
-                    module_id: Some(ext.clone()),
-                    local_name: "missing.target".into(),
-                    expected_kind: family.target_kind(),
-                    location: checked(registry.combined(), 9, 60 + index),
-                })
-                .unwrap_err()
-                .code(),
-            "modules.unknown_catalog_reference"
+            error.primary().unwrap().span,
+            SpanV1::new(60 + index, 61 + index)
         );
     }
 }
@@ -376,8 +379,8 @@ fn predeclaration_rejects_duplicate_and_preserves_catalog_path_spelling() {
         ])
         .unwrap_err();
     assert_eq!(error.code(), "modules.duplicate_document_catalog_asset");
-    assert_eq!(error.primary().unwrap().span.start, 21);
-    assert_eq!(error.secondary().unwrap().span.start, 20);
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(21, 22));
+    assert_eq!(error.secondary().unwrap().span, SpanV1::new(20, 21));
     for name in [
         "catalog.users",
         "models/code",
@@ -396,7 +399,10 @@ fn predeclaration_rejects_duplicate_and_preserves_catalog_path_spelling() {
                 30,
             )])
             .unwrap();
+        assert_eq!(assets.len(), 1);
+        assert_eq!(assets.first().unwrap().kind(), NamespaceKindV2::View);
         assert_eq!(assets.first().unwrap().id().local_name(), name);
+        assert_eq!(assets.first().unwrap().id().module_id(), &app);
     }
     for name in [".bad", "a..b", "a//b", "a::", "a-", "a b", "é"] {
         let mut validator = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
@@ -553,6 +559,8 @@ fn imported_path_is_visible_and_local_collision_is_ambiguous() {
         DocumentCatalogReferenceOriginV2::VisibleHost
     );
     assert_eq!(imported.id().module_id(), &lib);
+    assert_eq!(imported.id().local_name(), "queries.catalog.users");
+    assert_eq!(imported.kind(), NamespaceKindV2::Query);
 
     let mut validator = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
     validator
@@ -573,7 +581,7 @@ fn imported_path_is_visible_and_local_collision_is_ambiguous() {
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.ambiguous_catalog_reference");
-    assert_eq!(error.primary().unwrap().span.start, 22);
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(22, 23));
 }
 
 #[test]
@@ -626,8 +634,11 @@ fn local_document_identity_cannot_duplicate_visible_or_external_host_declaration
             .predeclare_assets(vec![local(registry.combined(), &app, kind, name, at)])
             .unwrap_err();
         assert_eq!(error.code(), "modules.duplicate_document_catalog_asset");
-        assert_eq!(error.primary().unwrap().span.start, at);
-        assert_eq!(error.secondary().unwrap().span.start, host_at);
+        assert_eq!(error.primary().unwrap().span, SpanV1::new(at, at + 1));
+        assert_eq!(
+            error.secondary().unwrap().span,
+            SpanV1::new(host_at, host_at + 1)
+        );
     }
 }
 
@@ -647,7 +658,7 @@ fn document_predeclaration_cannot_mint_asset_in_foreign_module() {
         )])
         .unwrap_err();
     assert_eq!(error.code(), "modules.document_asset_wrong_module");
-    assert_eq!(error.primary().unwrap().span.start, 20);
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(20, 21));
 }
 
 #[test]
@@ -688,7 +699,17 @@ fn optional_rule_probe_preserves_session_on_absence_in_both_orders() {
                     location: checked(registry.combined(), 9, 20 + index),
                 })
                 .unwrap();
-            assert_eq!(result.is_some(), name == "rule.present");
+            if name == "rule.present" {
+                let reference = result.expect("present rule probes to a reference");
+                assert_eq!(reference.id().local_name(), "rule.present");
+                assert_eq!(reference.kind(), NamespaceKindV2::Rule);
+                assert_eq!(
+                    reference.origin(),
+                    DocumentCatalogReferenceOriginV2::External
+                );
+            } else {
+                assert!(result.is_none(), "absent rule probes to None");
+            }
         }
         finalize(&mut validator, final_input()).unwrap();
     }
@@ -703,10 +724,10 @@ fn optional_rule_probe_preserves_session_on_absence_in_both_orders() {
         })
         .unwrap_err();
     assert_eq!(error.code(), "modules.catalog_reference_kind_mismatch");
-    assert_eq!(
-        finalize(&mut validator, final_input()).unwrap_err().code(),
-        "modules.document_catalog_phase_error"
-    );
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(30, 31));
+    let error = finalize(&mut validator, final_input()).unwrap_err();
+    assert_eq!(error.code(), "modules.document_catalog_phase_error");
+    assert!(error.primary().is_none());
 }
 
 #[test]
@@ -765,14 +786,19 @@ fn repeated_host_identity_requires_the_same_declaration_origin() {
         if let Some(code) = expected_error {
             let error = result.unwrap_err();
             assert_eq!(error.code(), code);
-            assert_eq!(error.primary().unwrap().span.start, external_at);
-            assert_eq!(error.secondary().unwrap().span.start, 2);
+            assert_eq!(
+                error.primary().unwrap().span,
+                SpanV1::new(external_at, external_at + 1)
+            );
+            assert_eq!(error.secondary().unwrap().span, SpanV1::new(2, 3));
         } else {
             let reference = result.unwrap();
             assert_eq!(
                 reference.origin(),
                 DocumentCatalogReferenceOriginV2::VisibleHost
             );
+            assert_eq!(reference.id().local_name(), "checks.authz");
+            assert_eq!(reference.kind(), NamespaceKindV2::Check);
         }
     }
 }
@@ -822,7 +848,20 @@ fn view_cycle_remains_view_only_and_foreign_registry_rejects() {
     }
     let error = validator.validate_view_topology(edges).unwrap_err();
     assert_eq!(error.code(), "modules.view_inline_cycle");
-    assert_eq!(error.edge_witness().len(), 2);
+    let witness: Vec<LocatedSpanV2> = error.edge_witness().to_vec();
+    assert_eq!(
+        witness,
+        [
+            LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(9),
+                span: SpanV1::new(31, 32),
+            },
+            LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(9),
+                span: SpanV1::new(30, 31),
+            },
+        ]
+    );
 
     let other = host
         .try_extend_document(SourceRegistrationV2 {
@@ -986,7 +1025,7 @@ fn same_spelling_cross_kind_is_ambiguous_before_expected_kind_selection() {
         .unwrap_err();
     assert_eq!(error.code(), "modules.ambiguous_catalog_reference");
     assert_eq!(error.ambiguous_candidates().len(), 2);
-    assert_eq!(error.primary().unwrap().span.start, 22);
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(22, 23));
 }
 
 #[test]
@@ -1039,10 +1078,9 @@ fn final_family_refs_must_come_from_the_same_validator_session() {
             target: second_target,
             location: checked(registry.combined(), 9, 40),
         });
-    assert_eq!(
-        finalize(&mut second, input).unwrap_err().code(),
-        "modules.catalog_reference_session_mismatch"
-    );
+    let error = finalize(&mut second, input).unwrap_err();
+    assert_eq!(error.code(), "modules.catalog_reference_session_mismatch");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(40, 41));
 
     let mut third = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
     let third_assets = third.predeclare_assets(assets()).unwrap();
@@ -1060,10 +1098,9 @@ fn final_family_refs_must_come_from_the_same_validator_session() {
             target: first_target,
             location: checked(registry.combined(), 9, 41),
         });
-    assert_eq!(
-        finalize(&mut third, input).unwrap_err().code(),
-        "modules.catalog_reference_session_mismatch"
-    );
+    let error = finalize(&mut third, input).unwrap_err();
+    assert_eq!(error.code(), "modules.catalog_reference_session_mismatch");
+    assert_eq!(error.primary().unwrap().span, SpanV1::new(41, 42));
     assert_eq!(second_assets.len(), 2);
 }
 
@@ -1274,6 +1311,10 @@ fn host_predicate_rejects_wrong_kind_ambiguity_and_missing_signature() {
             })
             .unwrap_err();
         assert_eq!(error.code(), code);
+        assert_eq!(error.primary().unwrap().span, SpanV1::new(50, 51));
+        if code == "modules.ambiguous_catalog_reference" {
+            assert_eq!(error.ambiguous_candidates().len(), 2);
+        }
     }
 
     let app = ModuleIdV2::try_new("app", checked(&host, 1, 0)).unwrap();

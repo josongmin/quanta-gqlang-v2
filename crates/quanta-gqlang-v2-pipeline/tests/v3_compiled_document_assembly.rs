@@ -588,6 +588,11 @@ fn rule_program_receives_one_plan_and_exact_members() {
     assert_eq!(members, fixture.item_ids());
     assert_eq!(program.program_id(), fixture.item_ids()[0]);
     assert!(program.stratification().stratum_count() > 0);
+    assert_eq!(
+        compiled.items().len(),
+        fixture.item_ids().len(),
+        "every authored rule item compiles to one item result"
+    );
     for member in program.members() {
         assert_eq!(member.program_id(), program.program_id());
     }
@@ -1223,6 +1228,10 @@ fn analyze_and_compile_share_the_same_stage_payloads() {
     assert_eq!(analyzed.source_id(), compiled.source_id());
     assert_eq!(analyzed.order(), document.order());
     assert_eq!(analyzed.items().len(), compiled.items().len());
+    assert!(
+        !compiled.items().is_empty(),
+        "the minimal document must compile at least one item to compare"
+    );
     for index in 0..compiled.items().len() {
         match (&compiled.items()[index], &analyzed.items()[index]) {
             (CompiledItemV2::Planned(compiled_item), AnalysisItemV2::Complete(analyzed_item)) => {
@@ -2164,11 +2173,17 @@ fn every_projected_expression_reference_resolves_within_its_own_table() {
     let where_compiled =
         compile_source_document_v3(DOC_SOURCE, where_source, &authority_with_records())
             .expect("where/count relation compiles");
+    let mut closed_relations = 0_usize;
     for item in where_compiled.execution().items() {
         if let Some(relation) = item.relation() {
             assert_relation_closed("where/count relation", relation, true);
+            closed_relations += 1;
         }
     }
+    assert_eq!(
+        closed_relations, 1,
+        "the where/count document must expose exactly one relation to close"
+    );
     let sample =
         compile_source_document_v3(DOC_SOURCE, &composition_source(2), &minimal_authority())
             .expect("SAMPLE composition compiles");
@@ -2177,11 +2192,13 @@ fn every_projected_expression_reference_resolves_within_its_own_table() {
     let query =
         compile_source_document_v3(DOC_SOURCE, query_composition, &authority_with_records())
             .expect("Query composition compiles");
+    let mut bindings_with_schema = 0_usize;
     for (label, compiled) in [("SAMPLE", sample), ("Query", query)] {
         let item = compiled.execution().items().first().expect("one item");
         let composition = item.composition().expect("composition payload");
         for binding in composition.bindings() {
             if let Some(schema) = binding.schema() {
+                bindings_with_schema += 1;
                 let mut keys = Vec::new();
                 schema_keys(schema, &mut keys);
                 match binding.relation() {
@@ -2204,12 +2221,22 @@ fn every_projected_expression_reference_resolves_within_its_own_table() {
                         "{label}: table-less producer schema must not reference expressions: {keys:?}"
                     ),
                 }
+            } else {
+                assert!(
+                    binding.relation().is_none(),
+                    "{label}: a relation-producing binding must retain its schema table"
+                );
             }
         }
-        if let Some(body) = composition.body_relation() {
-            assert_relation_closed(label, body, true);
-        }
+        let body = composition
+            .body_relation()
+            .expect("the SAMPLE/Query composition body is relational");
+        assert_relation_closed(label, body, true);
     }
+    assert!(
+        bindings_with_schema >= 1,
+        "at least one composition binding must expose a schema table to close against its producer"
+    );
 }
 
 /// The resolved entry shares checked semantic items with the source entry,
@@ -2274,8 +2301,10 @@ fn format_entry_emits_canonical_text_and_enforces_the_source_budget() {
     let budget = FrontendBudgetV2::standard_v2().expect("standard budget");
     let formatted = format_source_document_v2(DOC_SOURCE, MINIMAL_SOURCE, &budget)
         .expect("the minimal source formats");
-    assert!(formatted.contains("let answer = 1"));
-    assert!(formatted.contains("show capabilities"));
+    assert_eq!(
+        formatted, "let answer = 1;\nrule local_rule : x if x = 1;\nshow capabilities",
+        "canonical formatting must emit the exact canonical text"
+    );
 
     let tiny = FrontendBudgetV2::try_new(
         8, 4_194_304, 131_072, 4_096, 64, 128, 262_144, 4_096, 4_096, 1_000_000, 50_000, 200_000,

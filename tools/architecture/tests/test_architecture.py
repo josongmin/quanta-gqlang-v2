@@ -82,7 +82,7 @@ NAMED_MUTATIONS: tuple[tuple[str, str, str | None, tuple[str, ...]], ...] = (
             "rename",
             "optional",
             "target",
-            "feature drift",
+            "feature drift on internal normal dependency",
             "workspace-external path",
             "default-features",
         ),
@@ -443,10 +443,13 @@ class ArchitectureCheckerTest(unittest.TestCase):
         temporary, root = self.fixture("reverse-edge")
         with temporary:
             result = run_checker(root, "--format", "json")
+            human = run_checker(root)
         self.assertNotEqual(result.returncode, 0)
         verdict = json.loads(result.stdout)
         self.assertEqual(verdict["verdict"], "failed")
         self.assertTrue(verdict["errors"])
+        self.assertNotEqual(human.returncode, 0)
+        self.assertIn("architecture lint failed", human.stderr)
 
     def test_named_mutations_all_exit_1(self) -> None:
         self.assertEqual(len(NAMED_MUTATIONS), 13)
@@ -525,7 +528,6 @@ class ArchitectureCheckerTest(unittest.TestCase):
                 for item in packages["quanta-gqlang-v2-cli"]["dependencies"]
                 if item["name"] == "quanta-gqlang-v2-frontend-contract"
             )
-            dependency["path"] = None
             dependency["source"] = "registry+https://github.com/rust-lang/crates.io-index"
             errors: list[str] = []
             architecture_checker.check_metadata_edges(packages, errors)

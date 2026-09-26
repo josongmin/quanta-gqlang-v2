@@ -2697,10 +2697,15 @@ mod tests {
             .nested_relation(real_key)
             .ok_or("real nested relation expected")?;
         assert_eq!(forged_nested.key(), real_nested.key());
-        assert_ne!(
-            forged_nested.inputs().next().map(TypedRelationExprV2::key),
-            real_nested.inputs().next().map(TypedRelationExprV2::key)
-        );
+        let forged_child = forged_nested
+            .inputs()
+            .next()
+            .ok_or("forged nested scan expected")?;
+        let real_child = real_nested
+            .inputs()
+            .next()
+            .ok_or("real nested scan expected")?;
+        assert_ne!(forged_child.key(), real_child.key());
         Ok(())
     }
 
@@ -3589,6 +3594,17 @@ pub fn forged_rule_call_wrapper_document_v2(
         };
         expressions.insert(root, expression.forged_with_shape(shape));
     });
+    // Fail closed when the mutation silently no-opped: every wrapper arm must
+    // replace the base `And` rule body, so an unchanged body means the fixture
+    // (and therefore its consumer's wrapper matrix) proved nothing.
+    match document.expression(root) {
+        Some(expression) if !matches!(expression.shape(), TypedExprShapeV2::And { .. }) => {}
+        _ => {
+            return Err(
+                "the forged call wrapper must replace the nonrecursive rule body".to_owned(),
+            )
+        }
+    }
     Ok(wrap_rule_document_v2(document))
 }
 

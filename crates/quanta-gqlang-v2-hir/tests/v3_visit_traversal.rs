@@ -93,6 +93,11 @@ fn catalog_payload_references_visit_auxiliary_spans_in_authored_order() {
         ),
     ];
 
+    assert_eq!(
+        payloads.len(),
+        6,
+        "catalog payload matrix must stay complete"
+    );
     for (payload, references) in payloads {
         let declaration = b.catalog_decl("x", name_span, payload, SpanV1::new(0, 20));
         let mut expected = vec![name_span];
@@ -367,13 +372,12 @@ impl HirVisitorV1 for DefaultDelegationCounter {
 #[test]
 fn default_item_hooks_delegate_into_their_walks() {
     let b = HirBuilderV1::new();
-    // A composition whose producer is a VIEW catalog decl carrying an inline
-    // SELECT (filter over a source, plus a record result shape), and whose body
-    // is a META directive. Driving this with a visitor that overrides ONLY
-    // visit_relation forces the default visit_composition / visit_catalog_decl /
-    // visit_query / visit_shape / visit_value / visit_bool / visit_meta hooks to
-    // each run through their trait-default delegation.
-    // producer: VIEW v = SELECT (users WHERE active) with a leaf result shape.
+    // A composition whose producer is a plain SELECT (filter over a source, plus
+    // a leaf result shape) and whose body is a second SELECT. Driving this with a
+    // visitor that overrides ONLY visit_relation forces the default visit_item /
+    // visit_composition / visit_query / visit_shape / visit_value / visit_bool
+    // hooks to each run through their trait-default delegation.
+    // producer: SELECT (users WHERE active) with a leaf result shape.
     let users = b.relation_source("users", SpanV1::new(20, 25), None, SpanV1::new(20, 25));
     let pred = b.bool_value(b.symbol("active", SpanV1::new(32, 38)), SpanV1::new(32, 38));
     let filtered = b.relation_filter(users, pred, SpanV1::new(20, 38));

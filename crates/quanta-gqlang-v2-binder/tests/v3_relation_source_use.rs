@@ -56,8 +56,11 @@ fn composition_from_use_resolves_to_exact_prior_let_before_alias_frame() {
             if binding.kind == BinderKindV1::CompositionLet
                 && binding.identity() == (composition.id, 0)));
     assert_eq!(
-        result.relation_output(use_id).map(|frame| frame.len()),
-        Some(1)
+        result.relation_output(use_id).map(|frame| frame
+            .iter()
+            .map(|binding| (binding.name.as_str(), binding.identity()))
+            .collect::<Vec<_>>()),
+        Some(vec![("q", (use_id, 0))])
     );
 }
 

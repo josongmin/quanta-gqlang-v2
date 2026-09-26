@@ -125,6 +125,7 @@ fn kernel_selects_stable_operator_and_builtin_ids() {
     let lhs = builder.symbol("a", SpanV1::new(0, 1));
     let lhs_id = lhs.id;
     let rhs = builder.int("1", SpanV1::new(4, 5));
+    let rhs_id = rhs.id;
     let sum = builder.binary("+", lhs, rhs, SpanV1::new(0, 5));
     let sum_key = SourceQualifiedNodeIdV2 {
         source_id: SourceIdV2::from_raw(9),
@@ -144,7 +145,24 @@ fn kernel_selects_stable_operator_and_builtin_ids() {
         .unwrap()
         .check_document(&inputs)
         .unwrap();
-    assert!(facts.get(sum_key).unwrap().operator_id.is_some());
+    let sum_fact = facts.get(sum_key).unwrap();
+    assert_eq!(sum_fact.operator_id.map(OperatorIdV2::raw), Some(101));
+    assert_eq!(
+        sum_fact.operator_id.and_then(OperatorIdV2::symbol),
+        Some("+")
+    );
+    assert_eq!(
+        facts
+            .get(SourceQualifiedNodeIdV2 {
+                source_id: SourceIdV2::from_raw(9),
+                node_id: rhs_id,
+            })
+            .unwrap()
+            .literal,
+        Some(TypedLiteralFactV2::Value(TypedLiteralValueV2::Int(1))),
+        "the integer literal operand must retain its typed literal fact"
+    );
+    assert_eq!(sum_fact.literal, None);
 
     let builder = HirBuilderV1::new();
     let arg = builder.int("1", SpanV1::new(6, 7));
@@ -174,7 +192,7 @@ fn kernel_selects_stable_operator_and_builtin_ids() {
         .unwrap();
     assert!(matches!(
         facts.get(key).unwrap().resolved_call(),
-        Some(ResolvedCallTargetV2::Builtin(_))
+        Some(ResolvedCallTargetV2::Builtin(id)) if id.raw() == 1 && id.name() == Some("count")
     ));
 }
 
@@ -250,7 +268,7 @@ fn star_is_accepted_only_for_explicit_count_star_signature() {
         if expected_ok {
             assert!(matches!(
                 result.unwrap().get(key).unwrap().resolved_call(),
-                Some(ResolvedCallTargetV2::Builtin(_))
+                Some(ResolvedCallTargetV2::Builtin(id)) if id.raw() == 2 && id.name() == Some("count")
             ));
         } else {
             assert_eq!(result.unwrap_err().code(), "types.invalid_star_argument");
@@ -424,16 +442,16 @@ fn callable_parameters_contextualize_empty_lists_without_external_context_facts(
 
 #[test]
 fn unknown_operands_select_only_unique_safe_operator_ids() {
-    for (operator, expected_state, expects_id) in [
+    for (operator, expected_state, expected_id) in [
         (
             "not",
             ExpressionTypeStateV2::Known(ValueTypeV1::bool()),
-            true,
+            Some(7u32),
         ),
         (
             "+",
             ExpressionTypeStateV2::Unknown(UnknownTypeCauseV2::UnresolvedEditorBinding),
-            false,
+            None,
         ),
     ] {
         let builder = HirBuilderV1::new();
@@ -462,7 +480,7 @@ fn unknown_operands_select_only_unique_safe_operator_ids() {
             .unwrap();
         let fact = facts.get(unary_key).unwrap();
         assert_eq!(fact.state, expected_state);
-        assert_eq!(fact.operator_id.is_some(), expects_id);
+        assert_eq!(fact.operator_id.map(OperatorIdV2::raw), expected_id);
     }
 }
 
@@ -499,9 +517,16 @@ fn parent_nodes_conservatively_compose_call_effects() {
         .check_document(&inputs)
         .unwrap();
     let effects = facts.get(parent_key).unwrap().effects;
-    assert_eq!(effects.purity, PurityV1::Impure);
-    assert_eq!(effects.determinism, DeterminismV1::NonDeterministic);
-    assert_eq!(effects.monotonicity, MonotonicityV1::NonMonotone);
+    assert_eq!(
+        effects,
+        ExpressionEffectsV2 {
+            purity: PurityV1::Impure,
+            determinism: DeterminismV1::NonDeterministic,
+            monotonicity: MonotonicityV1::NonMonotone,
+            aggregation: AggregationClassV1::Scalar,
+            cost: CostClassV1::Constant,
+        }
+    );
 }
 
 #[test]
@@ -531,7 +556,10 @@ fn unresolved_callable_effects_are_fail_closed() {
         .check_document(&inputs)
         .unwrap();
     let fact = facts.get(key).unwrap();
-    assert!(matches!(fact.state, ExpressionTypeStateV2::Unknown(_)));
+    assert_eq!(
+        fact.state,
+        ExpressionTypeStateV2::Unknown(UnknownTypeCauseV2::UnresolvedEditorCallable)
+    );
     assert_eq!(fact.resolved_call(), None);
     assert_eq!(fact.effects.purity, PurityV1::Impure);
     assert_eq!(fact.effects.determinism, DeterminismV1::NonDeterministic);
@@ -580,6 +608,11 @@ fn predicate_calls_are_checked_once_and_retain_opaque_identity_and_effects() {
         .unwrap()
         .check_document(&inputs)
         .unwrap();
+    assert_eq!(
+        facts.len(),
+        2,
+        "one fact per call node and per literal argument, with no re-typing"
+    );
     let fact = facts.get(key).unwrap();
     assert_eq!(
         fact.state,
@@ -620,7 +653,10 @@ fn host_predicate_key_is_bounded_exact_and_disjoint_from_source_ids() {
     )
     .unwrap();
     assert_eq!(exact.canonical_bytes().len(), len);
-    assert!(ResolvedPredicateIdV2::try_new(&local).is_err());
+    assert_eq!(
+        ResolvedPredicateIdV2::try_new(&local).unwrap_err().code(),
+        "types.invalid_resolved_identity"
+    );
     let other_split = ResolvedHostPredicateKeyV2::try_from_catalog_parts(
         "pkg",
         HostCallableNamespaceV2::Predicate,
@@ -755,8 +791,9 @@ fn logical_quantifier_retains_complete_nested_predicate_effects() {
         aggregation: AggregationClassV1::Scalar,
         cost: CostClassV1::SuperLinear,
     };
+    let predicate_id = ResolvedPredicateIdV2::try_new("pkg::p").unwrap();
     let callable = ResolvedPredicateCallableV2::try_new(
-        ResolvedPredicateIdV2::try_new("pkg::p").unwrap(),
+        predicate_id.clone(),
         vec![],
         ValueTypeV1::bool(),
         effects,
@@ -773,7 +810,15 @@ fn logical_quantifier_retains_complete_nested_predicate_effects() {
         .unwrap()
         .check_document(&inputs)
         .unwrap();
-    assert_eq!(facts.get(call_key).unwrap().effects, effects);
+    let call_fact = facts.get(call_key).unwrap();
+    assert_eq!(call_fact.effects, effects);
+    assert_eq!(
+        call_fact.state,
+        ExpressionTypeStateV2::Known(ValueTypeV1::bool())
+    );
+    assert!(
+        matches!(call_fact.resolved_call(), Some(ResolvedCallTargetV2::Predicate(id)) if id == &predicate_id)
+    );
     assert_eq!(facts.get(quantifier_key).unwrap().effects, effects);
     assert_eq!(
         facts.get(quantifier_key).unwrap().state,
@@ -864,7 +909,20 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
         AuthorityBudgetProfileV2::try_new(128, 256, 1024, 64 * 1024, 1024).unwrap(),
     )
     .unwrap();
-    let _relation_id = catalog.get("users").unwrap().id().clone();
+    let relation_source = catalog.get("users").unwrap();
+    assert_eq!(relation_source.lookup_name(), "users");
+    assert_eq!(
+        relation_source.id().authority(),
+        quanta_gqlang_v2_types::RelationAuthorityV2::Host
+    );
+    assert_eq!(relation_source.id().qualified_name(), "pkg::users");
+    assert_eq!(relation_source.id().namespace().as_str(), "host");
+    assert_eq!(relation_source.provenance(), "host");
+    assert_eq!(
+        relation_source.relation_type(),
+        &RelationTypeV1::try_new(RecordTypeV1::try_new(vec![]).unwrap(), CardinalityV1::Set)
+            .unwrap()
+    );
     let capture = ResolvedRelationCaptureInputV2::new(
         SourceQualifiedNodeIdV2 {
             source_id: SourceIdV2::from_raw(9),
@@ -1025,12 +1083,29 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
         4,
         "every value and bool node must have one fact"
     );
+    assert_eq!(
+        facts.relation_row_count(),
+        2,
+        "the supplied known source row and its filtered copy must be materialized"
+    );
     assert!(facts
-        .get(SourceQualifiedNodeIdV2 {
+        .relation_row(SourceQualifiedNodeIdV2 {
             source_id: SourceIdV2::from_raw(9),
-            node_id: nested_id
+            node_id: source_root,
         })
-        .is_some());
+        .unwrap()
+        .fields()
+        .is_empty());
+    assert_eq!(
+        facts
+            .get(SourceQualifiedNodeIdV2 {
+                source_id: SourceIdV2::from_raw(9),
+                node_id: nested_id,
+            })
+            .unwrap()
+            .state,
+        ExpressionTypeStateV2::Known(ValueTypeV1::bool())
+    );
     let fact = facts.get(exists_key).unwrap();
     assert_eq!(
         fact.state,
@@ -1079,7 +1154,10 @@ fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
         .check_document(&unknown_inputs)
         .unwrap();
     let unknown = unknown_facts.get(exists_key).unwrap();
-    assert!(matches!(unknown.state, ExpressionTypeStateV2::Unknown(_)));
+    assert_eq!(
+        unknown.state,
+        ExpressionTypeStateV2::Unknown(UnknownTypeCauseV2::UnresolvedEditorBinding)
+    );
     assert_eq!(unknown.effects.purity, PurityV1::Impure);
     assert_eq!(unknown.effects.determinism, DeterminismV1::NonDeterministic);
     assert_eq!(unknown.effects.monotonicity, MonotonicityV1::NonMonotone);
@@ -1172,13 +1250,32 @@ fn relation_exists_captures_use_hir_order_and_types_owned_effects() {
 
     // Both captures are real relation-subtree references and are supplied in
     // HIR traversal order. Types does not need Binder to reject a permutation.
-    assert!(resolved_type_inputs_with_rows(
+    let ordered = resolved_type_inputs_with_rows(
         checked,
         entries(vec![capture(first_id), capture(second_id)]),
         vec![],
         rows(),
     )
-    .is_ok());
+    .unwrap();
+    let ordered_facts = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&ordered)
+        .unwrap();
+    let exists_fact = ordered_facts.get(exists_key).unwrap();
+    assert_eq!(
+        exists_fact.state,
+        ExpressionTypeStateV2::Known(ValueTypeV1::bool())
+    );
+    assert_eq!(
+        exists_fact.effects,
+        ExpressionEffectsV2 {
+            purity: PurityV1::Impure,
+            determinism: DeterminismV1::NonDeterministic,
+            monotonicity: MonotonicityV1::NonMonotone,
+            aggregation: AggregationClassV1::Scalar,
+            cost: CostClassV1::SuperLinear,
+        }
+    );
     assert_eq!(
         resolved_type_inputs_with_rows(
             checked,
@@ -1220,16 +1317,46 @@ fn comparison_and_boolean_parents_emit_complete_bool_facts() {
         facts.get(compare_key).unwrap().state,
         ExpressionTypeStateV2::Known(ValueTypeV1::bool())
     );
-    assert!(facts.get(compare_key).unwrap().operator_id.is_some());
     assert_eq!(
-        facts.get(compare_key).unwrap().effects.monotonicity,
-        MonotonicityV1::NonMonotone
+        facts
+            .get(compare_key)
+            .unwrap()
+            .operator_id
+            .map(OperatorIdV2::raw),
+        Some(200)
+    );
+    assert_eq!(
+        facts.get(compare_key).unwrap().effects,
+        ExpressionEffectsV2 {
+            purity: PurityV1::Pure,
+            determinism: DeterminismV1::Deterministic,
+            monotonicity: MonotonicityV1::NonMonotone,
+            aggregation: AggregationClassV1::Scalar,
+            cost: CostClassV1::Constant,
+        }
     );
     assert_eq!(
         facts.get(parent_key).unwrap().state,
         ExpressionTypeStateV2::Known(ValueTypeV1::bool())
     );
-    assert!(facts.get(parent_key).unwrap().operator_id.is_some());
+    assert_eq!(
+        facts
+            .get(parent_key)
+            .unwrap()
+            .operator_id
+            .map(OperatorIdV2::raw),
+        Some(7)
+    );
+    assert_eq!(
+        facts.get(parent_key).unwrap().effects,
+        ExpressionEffectsV2 {
+            purity: PurityV1::Pure,
+            determinism: DeterminismV1::Deterministic,
+            monotonicity: MonotonicityV1::NonMonotone,
+            aggregation: AggregationClassV1::Scalar,
+            cost: CostClassV1::Constant,
+        }
+    );
 }
 
 #[test]
@@ -1305,8 +1432,19 @@ fn ambiguous_unknown_builtin_domain_keeps_conservative_effects_without_id() {
         .check_document(&inputs)
         .unwrap();
     let fact = facts.get(call_key).unwrap();
-    assert!(matches!(fact.state, ExpressionTypeStateV2::Unknown(_)));
+    assert_eq!(
+        fact.state,
+        ExpressionTypeStateV2::Unknown(UnknownTypeCauseV2::UnresolvedEditorBinding)
+    );
     assert!(fact.resolved_call().is_none());
-    assert_eq!(fact.effects.aggregation, AggregationClassV1::Aggregate);
-    assert_eq!(fact.effects.cost, CostClassV1::Linear);
+    assert_eq!(
+        fact.effects,
+        ExpressionEffectsV2 {
+            purity: PurityV1::Pure,
+            determinism: DeterminismV1::Deterministic,
+            monotonicity: MonotonicityV1::Monotone,
+            aggregation: AggregationClassV1::Aggregate,
+            cost: CostClassV1::Linear,
+        }
+    );
 }

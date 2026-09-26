@@ -6,7 +6,7 @@
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
-use quanta_gqlang_v2_binder::{BindDiagnosticV1, Binder, CaptureV1, ModuleGraphV1};
+use quanta_gqlang_v2_binder::{BindDiagnosticV1, Binder, BinderKindV1, CaptureV1, ModuleGraphV1};
 use quanta_gqlang_v2_hir::{
     AliasV1, HirBuilderV1, LogicalBinderV1, LogicalQuantifierKindV1, NonEmptyBindersV1,
     PathSegmentV1, ProjectionItemV1, RelationExistsPolarityV1, SpanV1,
@@ -204,7 +204,10 @@ fn local_binding_shadows_import_deterministically() {
 
     assert!(result.is_ok(), "diags: {:?}", result.diagnostics());
     match result.target_of(body.id).unwrap() {
-        quanta_gqlang_v2_binder::ResolvedTargetV1::Local(_) => {}
+        quanta_gqlang_v2_binder::ResolvedTargetV1::Local(binding) => {
+            assert_eq!(binding.kind, BinderKindV1::Let);
+            assert_eq!(binding.name, "name");
+        }
         other => panic!("local must win over import, got {other:?}"),
     }
 }
@@ -278,6 +281,11 @@ fn relation_alias_shadowing_outer_row_binding_rejects() {
     assert_eq!(result.diagnostics().len(), 1);
     assert_eq!(result.diagnostics()[0].code(), "binder.shadowed_binding");
     assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(30, 31));
+    assert_eq!(result.diagnostics()[0].name(), "x");
+    assert_eq!(
+        result.diagnostics()[0].to_string(),
+        "binder.shadowed_binding: binding `x` at 30..31 shadows outer binding at 10..11"
+    );
 }
 
 #[test]
@@ -338,6 +346,11 @@ fn duplicate_default_path_names_reject_at_second_segment() {
         "binder.duplicate_declaration"
     );
     assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(32, 34));
+    assert_eq!(
+        result.diagnostics()[0].to_string(),
+        "binder.duplicate_declaration: duplicate declaration `id` \
+         (first at 22..24, again at 32..34)"
+    );
 }
 
 #[test]
@@ -378,6 +391,11 @@ fn duplicate_canonical_col_names_reject_at_second_expression() {
         "binder.duplicate_declaration"
     );
     assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(30, 31));
+    assert_eq!(
+        result.diagnostics()[0].to_string(),
+        "binder.duplicate_declaration: duplicate declaration `col` \
+         (first at 20..21, again at 30..31)"
+    );
 }
 
 #[test]
@@ -401,6 +419,7 @@ fn bare_rule_name_is_not_a_value_binding() {
 
     assert_eq!(result.diagnostics().len(), 1);
     assert_eq!(result.diagnostics()[0].code(), "binder.unresolved_symbol");
+    assert_eq!(result.diagnostics()[0].name(), "is_valid");
     assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(30, 38));
 }
 
@@ -443,4 +462,9 @@ fn duplicate_quantifier_binders_reject_exact_second_name() {
         "binder.duplicate_declaration"
     );
     assert_eq!(result.diagnostics()[0].primary_span(), SpanV1::new(24, 25));
+    assert_eq!(
+        result.diagnostics()[0].to_string(),
+        "binder.duplicate_declaration: duplicate declaration `x` \
+         (first at 20..21, again at 24..25)"
+    );
 }

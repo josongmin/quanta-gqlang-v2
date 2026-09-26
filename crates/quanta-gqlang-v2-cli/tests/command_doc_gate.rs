@@ -44,6 +44,11 @@ fn every_command_token_is_in_usage_and_documented_v1() {
     // string is the binary's own command list, so it ties the const to the
     // shipped binary.
     let output = run_cli_argv_v1(&[]);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "no-args invocation must fail closed as a usage error"
+    );
     assert!(cli_stdout_v1(&output).is_empty());
     let usage = cli_stderr_v1(&output);
 

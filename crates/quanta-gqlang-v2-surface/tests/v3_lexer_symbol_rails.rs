@@ -56,14 +56,17 @@ fn projection_relation_span_covers_the_clause_not_default() {
         other => panic!("expected a Query item, got {other:?}"),
     };
     let span = query.body.span;
-    assert!(
-        span.start < span.end,
-        "projection span must be a real non-empty range, got {span:?}"
+    // Exact coverage, not "almost to the end": the projection relation node must
+    // start at the input relation and reach the source end. A span merge that
+    // drops the trailing byte (`end == src.len() - 1`) must fail here.
+    assert_eq!(
+        span.start, 5,
+        "projection span must start at the input relation (`from ` prefix), got {span:?}"
     );
-    assert!(
-        span.end >= src.len() - 1,
-        "projection span must extend to the end of the `project` clause \
-         (src len {}), got {span:?}",
+    assert_eq!(
+        span.end,
+        src.len(),
+        "projection span must extend to the end of the `project` clause (src len {}), got {span:?}",
         src.len()
     );
 }

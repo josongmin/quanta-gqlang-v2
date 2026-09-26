@@ -618,10 +618,16 @@ fn fifty_thousand_deep_chain_needs_no_process_stack() {
         .expect_err("one vertex over the node budget rejects");
     match error {
         LogicDiagnosticV1::RuleGraphBudgetExceeded {
-            dimension, limit, ..
+            dimension,
+            limit,
+            span,
         } => {
             assert_eq!(dimension, RuleGraphBudgetDimensionV1::Nodes);
             assert_eq!(limit, 49_999);
+            assert_eq!(
+                span, l[0],
+                "the refused last vertex is anchored at its defining rule's checked location"
+            );
         }
         other => panic!("expected a node-budget rejection, got {other:?}"),
     }

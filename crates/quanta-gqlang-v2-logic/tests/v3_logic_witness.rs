@@ -130,6 +130,11 @@ fn dedup_identity_is_retained_per_subkind() {
         (GraphQueryKindV1::PointsTo, DedupIdentityV1::NodeSet),
         (GraphQueryKindV1::Summary, DedupIdentityV1::NodeSet),
     ];
+    assert_eq!(
+        expected.len(),
+        ALL_KINDS.len(),
+        "the dedup table covers every subkind"
+    );
     for (kind, dedup) in expected {
         let contract = contract(kind, 2);
         assert_eq!(contract.dedup(), dedup, "{kind:?}");

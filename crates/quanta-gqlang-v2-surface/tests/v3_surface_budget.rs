@@ -39,6 +39,16 @@ fn exhausted(source: &str, budget: &ParseBudgetV2, dimension: ParseBudgetDimensi
     let resource = error.resource.unwrap();
     assert_eq!(resource.dimension, dimension);
     assert_eq!(resource.observed, resource.limit + 1);
+    assert_eq!(error.code.code(), "surface.resource_exhausted");
+    assert_eq!(
+        error.message,
+        format!(
+            "{} budget exhausted: limit {}, observed {}",
+            dimension.as_str(),
+            resource.limit,
+            resource.observed
+        )
+    );
 }
 
 #[test]
@@ -230,4 +240,29 @@ fn relation_budget_is_shared_across_nested_exists_and_caps_custom_profiles() {
 
     assert!(ParseBudgetV2::try_new(100, 1, 100, 65, 128, 10, 10).is_err());
     assert!(ParseBudgetV2::try_new(100, 1, 100, 64, 129, 10, 10).is_err());
+}
+
+
+#[test]
+fn every_budget_dimension_rejects_zero() {
+    // A zero in any one dimension must be rejected; a dropped array entry would
+    // silently accept a budget that can never admit anything.
+    for zero_index in 0..7usize {
+        let args: [usize; 7] = std::array::from_fn(|i| usize::from(i != zero_index));
+        assert!(
+            ParseBudgetV2::try_new(
+                args[0], args[1], args[2], args[3], args[4], args[5], args[6]
+            )
+            .is_err(),
+            "dimension {zero_index} must reject a zero budget"
+        );
+    }
+}
+
+#[test]
+fn flat_sibling_width_restores_expression_depth_per_element() {
+    // Each list element must charge and then restore the shared expression-depth
+    // counter: 65 shallow siblings must not exhaust a 64-deep budget.
+    let wide = format!("[{}]", vec!["1"; 65].join(","));
+    parse_expr(&wide, &HirBuilderV1::new()).unwrap();
 }

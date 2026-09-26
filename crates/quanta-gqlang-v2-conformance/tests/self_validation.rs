@@ -231,7 +231,13 @@ fn registry_has_exactly_eighteen_unique_families() {
 #[test]
 fn every_family_compiles_through_the_facade_with_declared_disposition() {
     let authority = closed_authority();
-    for (index, spec) in root_family_specs_v2().enumerate() {
+    let specs: Vec<RootFamilySpecV2> = root_family_specs_v2().collect();
+    assert_eq!(
+        specs.len(),
+        ROOT_FAMILIES_V2.len(),
+        "root family registry must not be empty or drift"
+    );
+    for (index, spec) in specs.into_iter().enumerate() {
         assert!(spec.source.trim_start().starts_with(spec.keyword));
         let document = compile_source_document_v3(
             SourceIdV2::from_raw(100 + u32::try_from(index).expect("small registry")),
@@ -403,7 +409,13 @@ fn planned_kind(item: &PlannedItemV2) -> &'static str {
 #[test]
 fn open_authority_reports_every_valid_family_as_incomplete_not_compiled() {
     let authority = OpenAnalysisAuthorityV2::try_standard_v2().expect("open authority");
-    for (index, spec) in root_family_specs_v2().enumerate() {
+    let specs: Vec<RootFamilySpecV2> = root_family_specs_v2().collect();
+    assert_eq!(
+        specs.len(),
+        ROOT_FAMILIES_V2.len(),
+        "root family registry must not be empty or drift"
+    );
+    for (index, spec) in specs.into_iter().enumerate() {
         let source_id = SourceIdV2::from_raw(200 + u32::try_from(index).expect("small registry"));
         let first = analyze_source_document_v2(source_id, spec.source, &authority)
             .unwrap_or_else(|error| panic!("{:?} open analysis failed: {error:?}", spec.family));
@@ -439,6 +451,11 @@ fn open_authority_reports_every_valid_family_as_incomplete_not_compiled() {
             assert_eq!(diagnostic.primary().span.start, 0);
             assert_eq!(diagnostic.primary().span.end, spec.source.len());
         }
+        assert!(
+            !first.items().is_empty(),
+            "{:?}: open analysis must retain the authored items as blocked",
+            spec.family
+        );
         assert!(first
             .items()
             .iter()

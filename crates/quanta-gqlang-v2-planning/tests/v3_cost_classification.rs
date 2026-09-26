@@ -415,7 +415,10 @@ fn witness_and_alert_results_are_unordered_sets() {
     let (document, input) = check_input().expect("the nested CHECK fixture");
     let planned = plan(&input, document.document()).expect("the CHECK plans");
     assert_eq!(planned.result().result_kind(), ResultKindV2::Alert);
-    assert!(!planned.result().multiplicity_order().is_ordered());
+    let multiplicity = planned.result().multiplicity_order();
+    assert!(!multiplicity.is_ordered());
+    assert!(multiplicity.eliminates_duplicates());
+    assert_eq!(multiplicity.cardinality, CardinalityV1::Set);
 }
 
 // ---- closed keyword sets ---------------------------------------------------

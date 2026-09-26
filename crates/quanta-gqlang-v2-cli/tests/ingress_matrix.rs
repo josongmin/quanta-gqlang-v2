@@ -240,6 +240,10 @@ fn leading_empty_argv_preserves_the_source_bytes_seen_by_the_binary() {
     let joined = run_cli_argv_v1(&["query", " totally not a qglang root"]);
     assert_eq!(split.status.code(), Some(1));
     assert_eq!(joined.status.code(), Some(1));
+    assert!(
+        !split.stderr.is_empty(),
+        "the parse error must be rendered; empty stderr would make the byte comparison vacuous"
+    );
     assert_eq!(
         split.stdout, joined.stdout,
         "inline source must be byte-exact"

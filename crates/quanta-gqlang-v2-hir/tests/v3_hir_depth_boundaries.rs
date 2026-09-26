@@ -10,7 +10,7 @@ use quanta_gqlang_v2_hir::{
     SpanV1,
 };
 
-fn assert_exact_child_passes(test_name: &str, env_name: &str, mode: &str) {
+fn assert_exact_child_passes(test_name: &str, env_name: &str, mode: &str, sentinel: &str) {
     let output = std::process::Command::new(std::env::current_exe().expect("test binary"))
         .args(["--exact", test_name, "--nocapture"])
         .env(env_name, mode)
@@ -27,6 +27,13 @@ fn assert_exact_child_passes(test_name: &str, env_name: &str, mode: &str) {
         stdout.contains("test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured;"),
         "{test_name} {mode} selected zero or multiple tests: {stdout}"
     );
+    // An env-absent child returns early and still reports "1 passed", so the
+    // summary line alone cannot prove the body ran. The child prints this
+    // sentinel only after it has read its env var and entered body execution.
+    assert!(
+        stdout.contains(sentinel),
+        "{test_name} {mode} child returned before entering its body (missing {sentinel}): {stdout}"
+    );
 }
 
 #[test]
@@ -34,9 +41,11 @@ fn raw_deep_drop_child() {
     let Some(mode) = std::env::var_os("QGLANG_RAW_HIR_DROP_CHILD") else {
         return;
     };
+    let mode = mode.to_str().expect("known child mode");
+    println!("QGLANG_RAW_HIR_DROP_CHILD_RAN:{mode}");
     let builder = HirBuilderV1::new();
     let span = SpanV1::new(0, 1);
-    match mode.to_str().expect("known child mode") {
+    match mode {
         "relation" | "document" => {
             let mut relation = builder.relation_source("r", span, None, span);
             for _ in 0..100_000 {
@@ -95,7 +104,12 @@ fn raw_deep_drop_child() {
 #[test]
 fn direct_raw_hir_roots_drop_without_stack_abort() {
     for mode in ["relation", "document", "value", "bool", "shape", "mixed"] {
-        assert_exact_child_passes("raw_deep_drop_child", "QGLANG_RAW_HIR_DROP_CHILD", mode);
+        assert_exact_child_passes(
+            "raw_deep_drop_child",
+            "QGLANG_RAW_HIR_DROP_CHILD",
+            mode,
+            &format!("QGLANG_RAW_HIR_DROP_CHILD_RAN:{mode}"),
+        );
     }
 }
 
@@ -104,6 +118,7 @@ fn extreme_owned_hir_child() {
     if std::env::var_os("QGLANG_DEEP_HIR_CHILD").is_none() {
         return;
     }
+    println!("QGLANG_DEEP_HIR_CHILD_RAN");
     let builder = HirBuilderV1::new();
     let span = SpanV1::new(0, 1);
     let mut relation = builder.relation_source("r", span, None, span);
@@ -129,6 +144,10 @@ fn extreme_owned_hir_child() {
     ));
     let error = CheckedHirDocumentOwnedV2::try_new(document).expect_err("depth must reject");
     assert_eq!(error.code(), "hir.resource_limit_exceeded");
+    assert_eq!(
+        error.to_string(),
+        "hir.resource_limit_exceeded: relation_depth exceeds safe limit 128 (observed 129)"
+    );
 
     let early_invalid =
         ProgramItemHirV1::from(builder.decl("x", span, builder.int("1", span), SpanV1::new(0, 2)));
@@ -146,7 +165,8 @@ fn extreme_owned_hir_child() {
     };
     assert!(matches!(
         CheckedHirDocumentOwnedV2::try_new(document),
-        Err(HirIntegrityErrorV1::SpanOutOfBounds { .. })
+        Err(HirIntegrityErrorV1::SpanOutOfBounds { ref span, source_len: 1, .. })
+            if *span == SpanV1::new(0, 2)
     ));
 
     let mut value = builder.int("1", span);
@@ -213,7 +233,12 @@ fn extreme_owned_hir_child() {
 
 #[test]
 fn extreme_owned_hir_rejects_without_abort() {
-    assert_exact_child_passes("extreme_owned_hir_child", "QGLANG_DEEP_HIR_CHILD", "1");
+    assert_exact_child_passes(
+        "extreme_owned_hir_child",
+        "QGLANG_DEEP_HIR_CHILD",
+        "1",
+        "QGLANG_DEEP_HIR_CHILD_RAN",
+    );
 }
 
 #[test]
@@ -267,4 +292,13 @@ fn direct_hir_exact_and_one_over_depth_boundaries() {
             ..
         })
     ));
+}
+
+/// The stable machine label of each depth dimension feeds the
+/// `hir.resource_limit_exceeded` rendering, so pin it literally.
+#[test]
+fn depth_dimension_labels_are_literal() {
+    assert_eq!(HirDepthDimensionV2::Expression.as_str(), "expression_depth");
+    assert_eq!(HirDepthDimensionV2::Relation.as_str(), "relation_depth");
+    assert_eq!(HirDepthDimensionV2::Shape.as_str(), "shape_depth");
 }

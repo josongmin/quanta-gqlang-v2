@@ -19,7 +19,9 @@ from tools.ci import (
     advisory_db, clippy_gate, deny_gate, doctor, doctest_gate, nextest_gate, run_local,
     unittest_gate,
 )
-from tools.ci.evidence import EvidencePathError, read_json_evidence, write_json_evidence
+from tools.ci.evidence import (
+    EvidencePathError, consume_json_evidence, read_json_evidence, write_json_evidence,
+)
 from tools.ci.environment import (
     EnvironmentSanitizationError, sanitized_environment,
 )
@@ -53,10 +55,14 @@ class LocalGateTest(unittest.TestCase):
 
     def test_nextest_leak_timeout_is_bounded_and_failing(self) -> None:
         config = (run_local.ROOT / ".config/nextest.toml").read_text(encoding="utf-8")
+        default_profile = re.search(
+            r"^\[profile\.default\]\n((?:[^\[].*\n)*)", config, re.MULTILINE
+        )
+        self.assertIsNotNone(default_profile, "nextest.toml has no [profile.default]")
         self.assertEqual(
             len(re.findall(
                 r'^leak-timeout\s*=\s*\{ period = "1s", result = "fail" \}$',
-                config, re.MULTILINE,
+                default_profile.group(1), re.MULTILINE,
             )),
             1,
         )
@@ -82,6 +88,14 @@ class LocalGateTest(unittest.TestCase):
             self.assertIsNotNone(match, recipe)
             commands = [line.strip() for line in match.group(1).splitlines()]
             self.assertEqual(commands, ["just " + leaf for leaf in leaves])
+        flattened = [leaf for leaves in expected.values() for leaf in leaves]
+        self.assertEqual(
+            re.findall(r"^    just (\S+)$", text, re.MULTILINE),
+            flattened,
+            "every gate leaf must appear in exactly one explicit serial group body",
+        )
+        for leaf in flattened:
+            self.assertRegex(text, r"(?m)^" + re.escape(leaf) + r":\n")
 
     def test_local_runner_rejects_invalid_inherited_identity(self) -> None:
         with patch.dict(run_local.os.environ, {"QGLANG_QUALIFICATION_RUN_ID": "not-a-run"}), \
@@ -132,17 +146,19 @@ class LocalGateTest(unittest.TestCase):
         ), 5)
 
     def test_doctest_rejects_contradictory_or_ignored_summaries(self) -> None:
-        for output in (
-            "test result: ok. 1 passed; 1 failed; 0 ignored;",
-            "test result: FAILED. 0 passed; 1 failed; 0 ignored;",
-            "test result: ok. 1 passed; 0 failed; 1 ignored;",
-            "test result: unknown",
+        for output, reason in (
+            ("test result: ok. 1 passed; 1 failed; 0 ignored;", "non-passing doctest summary"),
+            ("test result: FAILED. 0 passed; 1 failed; 0 ignored;", "non-passing doctest summary"),
+            ("test result: ok. 1 passed; 0 failed; 1 ignored;", "non-passing doctest summary"),
+            ("test result: unknown", "invalid doctest result summary"),
         ):
             result = subprocess.CompletedProcess(["cargo", "test"], 0, output, "")
             with patch.object(doctest_gate, "run_bounded", return_value=result), \
                  redirect_stderr(io.StringIO()) as errors, redirect_stdout(io.StringIO()):
                 self.assertEqual(doctest_gate.main(), 2, output)
             self.assertIn("doctest gate:", errors.getvalue())
+            with self.assertRaisesRegex(doctest_gate.DoctestEvidenceError, reason):
+                doctest_gate.count_executed(output)
 
     def test_rust_test_gates_override_inherited_toolchain(self) -> None:
         lock = doctor.read_lock()
@@ -273,6 +289,16 @@ class LocalGateTest(unittest.TestCase):
             with self.assertRaisesRegex(EvidencePathError, "missing or redirected"):
                 read_json_evidence(path, owned_root=root, consume=True)
 
+            write_json_evidence(path, {"run": "two"}, owned_root=root, prefix="test")
+            _, raw_two = read_json_evidence(path, owned_root=root)
+            with self.assertRaisesRegex(EvidencePathError, "changed before consumption"):
+                consume_json_evidence(path, b'{"run": "other"}', owned_root=root)
+            self.assertTrue(path.exists())
+            consume_json_evidence(path, raw_two, owned_root=root)
+            self.assertFalse(path.exists())
+            with self.assertRaisesRegex(EvidencePathError, "missing or redirected"):
+                consume_json_evidence(path, raw_two, owned_root=root)
+
     def test_tool_lock_rejects_duplicate_missing_and_unknown_keys(self) -> None:
         original = doctor.LOCK.read_text(encoding="utf-8")
         missing_just = "\n".join(
@@ -347,6 +373,7 @@ class LocalGateTest(unittest.TestCase):
         self.assertEqual(set(calls), set(commands))
         self.assertEqual(len(calls), len(commands))
         self.assertEqual(list(observed.values())[:len(commands)], list(commands.values()))
+        self.assertEqual(observed["python"], lock["python"])
 
     def test_nextest_inventory_reconciles_only_selected_terminal_tests(self) -> None:
         listing = {
@@ -368,6 +395,13 @@ class LocalGateTest(unittest.TestCase):
             json.dumps({"type": "test", "event": "ok", "name": "fixture::fixture$works"}),
         ))
         self.assertEqual(nextest_gate.terminal_events(events), (selected, {}, set()))
+        leaky = json.dumps({
+            "type": "test", "event": "ok", "name": "fixture::fixture$works",
+            "nextest": {"leaked": True},
+        })
+        self.assertEqual(
+            nextest_gate.terminal_events(leaky)[2], {"fixture::fixture$works"}
+        )
         self.assertEqual(nextest_gate.summary_counts(
             "Summary [ 0.1s] 1 test run: 1 passed, 1 skipped"
         ), (1, 1, 0, 0))

@@ -170,7 +170,13 @@ fn surface_to_hir_to_sema_reaches_every_composition_body_family() {
         let document = resolve(source);
         let composition = composition(&document);
         match (expected, composition.body()) {
-            ("query", ResolvedCompositionBodyV2::Query(_)) => {}
+            ("query", ResolvedCompositionBodyV2::Query(_)) => {
+                let ResolvedCompositionProducerV2::Query(_) =
+                    composition.bindings().first().unwrap().producer()
+                else {
+                    panic!("a relational Query body must retain a Query producer");
+                };
+            }
             ("sample-query", ResolvedCompositionBodyV2::Query(body)) => {
                 let ResolvedCompositionProducerV2::Sample { output, .. } =
                     composition.bindings().first().unwrap().producer()

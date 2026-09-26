@@ -259,6 +259,7 @@ fn families_are_charged_one_step_per_visited_node() {
     let (_document, planned) =
         planned_relation(ReferenceRelationFixtureV2::SelfJoinInner).expect("self join");
     let (nodes, _effects) = relational_policy(&planned).expect("relational policy");
+    assert_eq!(nodes, 5, "the self join charges five algebra nodes");
     assert_eq!(
         u32::try_from(planned.explain().families().len()).expect("a small family list"),
         nodes

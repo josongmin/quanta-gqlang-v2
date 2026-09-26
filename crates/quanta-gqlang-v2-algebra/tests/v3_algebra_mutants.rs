@@ -11,7 +11,9 @@ use quanta_gqlang_v2_sema::test_support::{
     ForgedCaptureEdgeMutationV2, ReferenceRelationDocumentV2, ReferenceRelationFixtureV2,
     REFERENCE_SOURCE_V2,
 };
-use quanta_gqlang_v2_sema::{SemanticItemV2, TypedCorrelationEdgeV2, TypedExprShapeV2};
+use quanta_gqlang_v2_sema::{
+    ResolvedScanSourceV2, SemanticItemV2, TypedCorrelationEdgeV2, TypedExprShapeV2,
+};
 
 #[test]
 fn scan_preserves_the_sema_output_contract_without_reconstruction() {
@@ -25,7 +27,13 @@ fn scan_preserves_the_sema_output_contract_without_reconstruction() {
     assert_eq!(root.stage_key().source_id, REFERENCE_SOURCE_V2);
     assert_eq!(root.output().row().fields().len(), 1);
     assert_eq!(root.output().row().fields().first().unwrap().name(), "id");
-    assert!(root.scan_source().is_some());
+    assert!(
+        matches!(
+            root.scan_source(),
+            Some(ResolvedScanSourceV2::Relation(source)) if source.qualified_name() == "app::records"
+        ),
+        "the scan preserves the sealed host relation identity"
+    );
     assert!(root.children().is_empty());
 }
 

@@ -539,6 +539,11 @@ pub(crate) fn semantically_equivalent_items(
 
 #[cfg(test)]
 mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "unit rails assert exact comparator and checked-formatter behavior"
+    )]
+
     use super::semantically_equivalent_items;
     use quanta_gqlang_v2_hir::{HirBuilderV1, ProgramItemHirV1, SpanV1};
 
@@ -561,9 +566,30 @@ mod tests {
         let left = deep_shape_item("1");
         let right = deep_shape_item("2");
         assert!(!semantically_equivalent_items(&left, &right));
-        // Dropping this intentionally adversarial raw tree is HIR-owner work;
+        // Positive neighbor: two structurally identical deep trees must compare
+        // equivalent, so an always-`false` comparator cannot satisfy this rail.
+        let same = deep_shape_item("1");
+        assert!(
+            semantically_equivalent_items(&left, &same),
+            "structurally identical deep trees must compare equivalent"
+        );
+        // Dropping these intentionally adversarial raw trees is HIR-owner work;
         // keep this rail scoped to the comparator's stack behavior.
         std::mem::forget(left);
         std::mem::forget(right);
+        std::mem::forget(same);
+    }
+
+    #[test]
+    fn nested_parens_are_semantically_equivalent_and_representable() {
+        let builder = HirBuilderV1::new();
+        let span = SpanV1::new(0, 1);
+        let inner = builder.paren_value(builder.int("1", span), span);
+        let outer = builder.paren_value(inner, span);
+        let item = ProgramItemHirV1::from(builder.decl("x", span, outer, span));
+        assert_eq!(
+            crate::try_format_item(&item).expect("nested parens are representable"),
+            "let x = ((1))"
+        );
     }
 }

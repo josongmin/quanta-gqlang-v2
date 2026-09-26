@@ -16,6 +16,8 @@ fn float_constructor_carries_raw_float_literal() {
         panic!("expected Float literal, got {:?}", f.kind);
     };
     assert_eq!(raw, "3.14");
+    // the caller-supplied span is carried verbatim, not defaulted.
+    assert_eq!(f.span, SpanV1::new(0, 4));
     // built node validates as a single in-bounds id-bearing node.
     assert_eq!(
         check_tree(HirRootRefV1::Value(&f), 4).unwrap().node_count(),
@@ -36,6 +38,8 @@ fn bool_lit_constructor_carries_bool_literal() {
         f.kind,
         ValueExprKindV1::Literal(LiteralV1::Bool(false))
     ));
+    assert_eq!(t.span, SpanV1::new(0, 4));
+    assert_eq!(f.span, SpanV1::new(5, 10));
 }
 
 #[test]
@@ -43,6 +47,7 @@ fn null_constructor_carries_null_literal() {
     let b = HirBuilderV1::new();
     let n = b.null(SpanV1::new(0, 4));
     assert!(matches!(n.kind, ValueExprKindV1::Literal(LiteralV1::Null)));
+    assert_eq!(n.span, SpanV1::new(0, 4));
 }
 
 #[test]

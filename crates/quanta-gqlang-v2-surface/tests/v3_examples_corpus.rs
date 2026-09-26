@@ -20,6 +20,8 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
+mod support;
+
 use quanta_gqlang_v2_hir::HirBuilderV1;
 use quanta_gqlang_v2_surface::{format_document, parse_document};
 
@@ -35,9 +37,10 @@ fn repo_root() -> PathBuf {
 /// Every `*.qglang` under `examples/`, as repo-relative slash paths, sorted.
 fn corpus_paths() -> Vec<String> {
     fn walk(dir: &Path, out: &mut Vec<String>, root: &Path) {
-        let Ok(entries) = std::fs::read_dir(dir) else {
-            return;
-        };
+        // Fail closed: an unreadable or missing directory must not silently
+        // shrink the corpus to nothing (a shorter corpus is not a pass).
+        let entries = std::fs::read_dir(dir)
+            .unwrap_or_else(|err| panic!("read example directory {dir:?}: {err}"));
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_dir() {
@@ -72,6 +75,20 @@ fn canonical_text_v1(src: &str, path: &str) -> String {
     format_document(&items)
 }
 
+/// The independent visitor witness of one example's parsed items, so the
+/// canonical text can be checked for structural preservation rather than only
+/// fixed-point stability.
+fn canonical_witness_v1(src: &str, path: &str) -> Vec<Vec<String>> {
+    let builder = HirBuilderV1::new();
+    let doc = parse_document(src, &builder)
+        .unwrap_or_else(|diag| panic!("{path}: shipped example must parse, got {diag:?}"));
+    doc.items
+        .iter()
+        .map(quanta_gqlang_v2_surface::SurfaceItemV1::to_program_item)
+        .map(|item| support::structural_witness(&item))
+        .collect()
+}
+
 #[test]
 fn every_shipped_example_parses_and_round_trips() {
     let paths = corpus_paths();
@@ -84,6 +101,15 @@ fn every_shipped_example_parses_and_round_trips() {
             .unwrap_or_else(|err| panic!("read {path}: {err}"));
         let text = canonical_text_v1(&src, path);
         assert!(!text.is_empty(), "{path}: canonical text must not be empty");
+
+        // The canonical text must preserve the example's authored structure, not
+        // merely be a fixed point: a formatter arm that drops a field would still
+        // round-trip. Compare the independent visitor witness of both parses.
+        assert_eq!(
+            canonical_witness_v1(&src, path),
+            canonical_witness_v1(&text, path),
+            "{path}: canonical formatting changed the parsed structure"
+        );
 
         // Fixed point: the canonical text parses again and re-renders identically.
         let text2 = canonical_text_v1(&text, path);
@@ -145,9 +171,11 @@ fn single_root_examples_agree_across_entry_points() {
         let src = std::fs::read_to_string(repo_root().join(path))
             .unwrap_or_else(|err| panic!("read {path}: {err}"));
         let builder = HirBuilderV1::new();
-        let Ok(doc) = parse_document(&src, &builder) else {
-            continue;
-        };
+        // Fail closed on a parse failure instead of skipping the example; the
+        // corpus-wide parse rail is a separate claim, not a license to ignore a
+        // broken example here.
+        let doc = parse_document(&src, &builder)
+            .unwrap_or_else(|diag| panic!("{path}: shipped example must parse, got {diag:?}"));
         if doc.items.len() != 1 {
             continue;
         }

@@ -98,9 +98,17 @@ mod tests {
         for spec in CLI_COMMAND_SPECS_V1 {
             assert!(seen.insert(spec.token), "duplicate token");
         }
+        assert!(
+            cli_command_kind_v1("query").is_some(),
+            "canonical `query` must resolve to a kind"
+        );
         assert_eq!(
             cli_command_kind_v1("query"),
             cli_command_kind_v1("v3-query")
+        );
+        assert!(
+            cli_command_kind_v1("fmt").is_some(),
+            "canonical `fmt` must resolve to a kind"
         );
         assert_eq!(cli_command_kind_v1("fmt"), cli_command_kind_v1("v3-fmt"));
         assert_ne!(cli_command_kind_v1("query"), cli_command_kind_v1("fmt"));

@@ -8,9 +8,34 @@
 )]
 
 use quanta_gqlang_v2_hir::{
-    check_tree, HirBuilderV1, HirRootRefV1, RelationExprKindV1, ResultShapeKindV1, ValueExprKindV1,
+    check_tree, BoolExprKindV1, CallArgHirV1, HirBuilderV1, HirRootRefV1, RelationExprKindV1,
+    ResultShapeKindV1, SortDirectionHirV1, SpanV1, ValueExprHirV1, ValueExprKindV1,
 };
-use quanta_gqlang_v2_surface::{parse_program, ParseErrorCodeV1, SurfaceItemV1};
+use quanta_gqlang_v2_surface::{
+    classify_parsed_root_v3, parse_program, ParseErrorCodeV1, SourceRootFamilyV3, SurfaceItemV1,
+};
+
+/// The `(base symbol, path segments)` of a path value; panics on any other node.
+fn path_parts(v: &ValueExprHirV1) -> (&str, Vec<&str>) {
+    let ValueExprKindV1::Path(p) = &v.kind else {
+        panic!("expected path, got {:?}", v.kind);
+    };
+    let ValueExprKindV1::Symbol(base) = &p.base.kind else {
+        panic!("expected symbol path base, got {:?}", p.base.kind);
+    };
+    (
+        base.name.as_str(),
+        p.segments.iter().map(|s| s.name.as_str()).collect(),
+    )
+}
+
+/// The symbol name of a value node; panics on any other node.
+fn symbol_name(v: &ValueExprHirV1) -> &str {
+    let ValueExprKindV1::Symbol(s) = &v.kind else {
+        panic!("expected symbol, got {:?}", v.kind);
+    };
+    s.name.as_str()
+}
 
 #[test]
 fn empty_result_shape_record_is_rejected() {
@@ -77,10 +102,12 @@ fn aliased_projection_with_nested_shape() {
         other => panic!("input should be Source, got {other:?}"),
     }
 
-    // two projection items, each aliased.
+    // two projection items, each aliased, with the authored value paths retained.
     assert_eq!(project.items().len(), 2);
     assert_eq!(project.items()[0].alias.as_ref().unwrap().name, "id");
     assert_eq!(project.items()[1].alias.as_ref().unwrap().name, "name");
+    assert_eq!(path_parts(&project.items()[0].value), ("u", vec!["id"]));
+    assert_eq!(path_parts(&project.items()[1].value), ("u", vec!["name"]));
 
     // nested result shape: record { id: leaf, tags: [ leaf ] }.
     let shape = query.result_shape.as_ref().expect("result shape present");
@@ -90,16 +117,25 @@ fn aliased_projection_with_nested_shape() {
     };
     assert_eq!(record.fields.len(), 2);
     assert_eq!(record.fields[0].name, "id");
-    assert!(matches!(
-        record.fields[0].shape.kind,
-        ResultShapeKindV1::Leaf(_)
-    ));
+    let ResultShapeKindV1::Leaf(leaf0) = &record.fields[0].shape.kind else {
+        panic!("id field must be a leaf, got {:?}", record.fields[0].shape.kind);
+    };
+    assert_eq!(path_parts(leaf0), ("u", vec!["id"]));
     assert_eq!(record.fields[1].name, "tags");
     let list = match &record.fields[1].shape.kind {
         ResultShapeKindV1::List(l) => l,
         other => panic!("tags should be a list shape, got {other:?}"),
     };
-    assert!(matches!(list.element.kind, ResultShapeKindV1::Leaf(_)));
+    let ResultShapeKindV1::Leaf(leaf1) = &list.element.kind else {
+        panic!("tags element must be a leaf, got {:?}", list.element.kind);
+    };
+    assert_eq!(path_parts(leaf1), ("u", vec!["t1"]));
+    let list_open = src.find('[').expect("list bracket in source");
+    let list_close = src.rfind(']').expect("list close bracket in source");
+    assert_eq!(
+        record.fields[1].shape.span,
+        SpanV1::new(list_open, list_close + 1)
+    );
 
     // whole query tree is integrity-sound.
     check_tree(HirRootRefV1::Query(&query), src.len()).expect("sound tree");
@@ -118,10 +154,30 @@ fn where_filter_and_join_compose() {
         RelationExprKindV1::Join(j) => j,
         other => panic!("outer should be Join, got {other:?}"),
     };
-    let quanta_gqlang_v2_hir::JoinHirV1::Inner { left, .. } = join else {
+    let quanta_gqlang_v2_hir::JoinHirV1::Inner { left, right, on } = join else {
         panic!("inner join")
     };
-    assert!(matches!(left.kind, RelationExprKindV1::Filter(_)));
+    // Both join inputs and the ON predicate are part of the oracle: checking
+    // only "left is a Filter" would accept a dropped right source or ON clause.
+    let RelationExprKindV1::Filter(filter) = &left.kind else {
+        panic!("join left must be the WHERE filter, got {:?}", left.kind);
+    };
+    let BoolExprKindV1::Compare(filter_compare) = &filter.predicate.kind else {
+        panic!(
+            "WHERE predicate must be a comparison, got {:?}",
+            filter.predicate.kind
+        );
+    };
+    assert_eq!(filter_compare.op.symbol, ">");
+    let RelationExprKindV1::Source(source) = &right.kind else {
+        panic!("join right must be a source, got {:?}", right.kind);
+    };
+    assert_eq!(source.name, "repos");
+    assert_eq!(source.alias.as_ref().expect("join alias r").name, "r");
+    let BoolExprKindV1::Compare(on_compare) = &on.kind else {
+        panic!("join ON must be a comparison, got {:?}", on.kind);
+    };
+    assert_eq!(on_compare.op.symbol, "=");
     check_tree(HirRootRefV1::Query(&query), src.len()).expect("sound tree");
 }
 
@@ -145,10 +201,27 @@ fn group_by_with_aggregate_call_projection() {
         other => panic!("group input should be Project, got {other:?}"),
     };
     assert_eq!(project.items().len(), 2);
-    assert!(matches!(
-        project.items()[1].value.kind,
-        ValueExprKindV1::Call(_)
-    ));
+    let ValueExprKindV1::Call(call) = &project.items()[1].value.kind else {
+        panic!("item 1 must be the aggregate call, got {:?}", project.items()[1].value.kind);
+    };
+    assert_eq!(call.callee.name, "count");
+    assert_eq!(call.args().len(), 1);
+    assert!(
+        matches!(&call.args().as_slice()[0], CallArgHirV1::Star { .. }),
+        "count aggregate must carry a star argument, got {:?}",
+        call.args().as_slice()[0]
+    );
+    assert_eq!(
+        project.items()[1]
+            .alias
+            .as_ref()
+            .expect("aggregate alias n")
+            .name,
+        "n"
+    );
+    // The grouping key itself is part of the oracle, not just the aggregate.
+    assert_eq!(group.keys().len(), 1);
+    assert_eq!(symbol_name(&group.keys()[0]), "repo");
     check_tree(HirRootRefV1::Query(&query), src.len()).expect("sound tree");
 }
 
@@ -185,4 +258,60 @@ fn relation_pipeline_stage_set_is_closed() {
     ] {
         parse_program(stage, &builder).expect(stage);
     }
+
+    // `order by ... desc` must retain the explicit direction, not default to asc.
+    let ordered = parse_program("from a | order by k desc", &builder).expect("order parses");
+    let SurfaceItemV1::Query(query) = &ordered.item else {
+        panic!("order source must parse to a query, got {:?}", ordered.item);
+    };
+    let RelationExprKindV1::OrderBy(order_by) = &query.body.kind else {
+        panic!("body must be OrderBy, got {:?}", query.body.kind);
+    };
+    assert_eq!(order_by.keys().len(), 1);
+    assert_eq!(order_by.keys()[0].direction, SortDirectionHirV1::Desc);
+
+    // An omitted direction must default to ascending, not descending.
+    let default_order =
+        parse_program("from a | order by k", &builder).expect("order default parses");
+    let SurfaceItemV1::Query(query) = &default_order.item else {
+        panic!("order source must parse to a query, got {:?}", default_order.item);
+    };
+    let RelationExprKindV1::OrderBy(order_by) = &query.body.kind else {
+        panic!("body must be OrderBy, got {:?}", query.body.kind);
+    };
+    assert_eq!(order_by.keys()[0].direction, SortDirectionHirV1::Asc);
+}
+
+
+#[test]
+fn parsed_root_classification_matches_every_family() {
+    // The parser-owner boundary classification must map each family exactly; a
+    // swapped arm silently misroutes a root downstream.
+    for (src, expected) in [
+        ("from users", SourceRootFamilyV3::Relation),
+        ("let x = 1", SourceRootFamilyV3::Declaration),
+        ("rule r : x if a", SourceRootFamilyV3::Rule),
+        ("find reachability a.b -> c.d", SourceRootFamilyV3::Graph),
+        ("check r.x | confirm=skip", SourceRootFamilyV3::Check),
+        ("show capabilities", SourceRootFamilyV3::Presentation),
+        ("view v | query-ref=r.x", SourceRootFamilyV3::Catalog),
+        ("use pack p | activation=session | lockfile=p.lock", SourceRootFamilyV3::Meta),
+    ] {
+        let parsed = parse_program(src, &HirBuilderV1::new()).expect(src);
+        assert_eq!(
+            classify_parsed_root_v3(&parsed.item.into_program_item()),
+            expected,
+            "{src}"
+        );
+    }
+}
+
+
+/// A reserved family keyword after a source name must not be silently consumed
+/// as a table alias; it is a trailing token, so the parse fails closed.
+#[test]
+fn reserved_word_after_source_is_not_an_alias() {
+    let diag = parse_program("from t exists", &HirBuilderV1::new())
+        .expect_err("a reserved word must not become an alias");
+    assert_eq!(diag.code, ParseErrorCodeV1::UnexpectedToken);
 }
