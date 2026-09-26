@@ -1,17 +1,15 @@
-# P8: current front-door test gap
+# P8: front-door findings resolved in the working tree
 
-## TA-01: error diagnostic identity is unchecked
+## TA-01: error diagnostic identity
 
-- `crates/quanta-gqlang-v2-diagnostics-stdio/tests/binary_contract.rs:42-61`: `semantic_diagnostics_are_a_successful_protocol_response` now requires a nonempty `diagnostics` array. It does not check count or entries, so a wrong nonempty list still satisfies the test.
-- `crates/quanta-gqlang-v2-diagnostics-stdio/src/handlers/v3_diagnostics.rs:13-48` serializes diagnostics from the document failure into an unrestricted `Vec`. The nonempty assertion at `tests/ndjson_contract.rs:149` exercises an incomplete-analysis fixture, not this error path.
-- Current binary observation for the existing fixture: one diagnostic, code `surface.parse.unexpected_token`, source ID `1`, span `0..7`. Add those response assertions and verify the test fails if the code changes while the list stays nonempty.
+Before: `binary_contract.rs` accepted any nonempty diagnostics array for the malformed-source response.
 
-No production response failure was observed. The existing focused binary test passes with this partial oracle.
+Now: `semantic_diagnostics_are_a_successful_protocol_response` runs the shipped diagnostics process and pins one diagnostic's stage, code, severity, message, source ID, and span. The focused binary test passed. A temporary wrong-code conversion in `handlers/v3_diagnostics.rs` made that test fail; the mutation was restored.
 
-The former TA-02 combined-invalid-fields claim is withdrawn: the current binary reports `invalid type: sequence, expected a string` both with and without the trailing `extra` field; `extra` alone reports an unknown field.
+## TA-05: canonical CLI output
 
-## TA-05: the CLI formatter has no noncanonical output oracle
+Before: messy-input tests checked only nonempty output and `fmt(fmt(x)) == fmt(x)`, which an identity formatter could satisfy.
 
-- `crates/quanta-gqlang-v2-cli/tests/v3_cli_fmt_idempotence.rs:120-159` feeds messy inputs through the shipped binary and checks nonempty output plus `fmt(fmt(x)) == fmt(x)`. An identity formatter satisfies both. The shipped-example rail also checks only nonempty formatted output; `command_doc_gate.rs:114-134` uses already-canonical `let x = 1`.
-- The pipeline library rail pins canonical output (`pipeline/tests/v3_compiled_document_assembly.rs:2302-2311`), but it does not exercise the CLI wrapper at `cli/src/commands/v3_format.rs:19`.
-- Current binary observation for `let  x =  1 +  2*3` is `let x = 1 + 2 * 3`. Assert this exact output in one binary test. A CLI wrapper that returns validated input unchanged must fail.
+Now: `messy_declaration_has_canonical_binary_output_v1` requires the shipped `v3-fmt` process to convert `let  x =  1 +  2*3` to `let x = 1 + 2 * 3`. The focused binary test passed. A temporary validated-identity formatter made it fail; the mutation was restored. The existing bare-`fmt` rail compares its output with `v3-fmt` on a messy input.
+
+TA-02 was rejected: a combined wrong-type `source` and unknown `extra` request reports the same wrong-type error as the request without `extra`; `extra` alone reports an unknown field.

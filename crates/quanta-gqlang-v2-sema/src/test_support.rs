@@ -2335,6 +2335,30 @@ mod tests {
         assert_eq!(relation.root().join_mode(), Some(JoinModeV2::Inner));
         assert!(relation.root().predicate().is_some());
         assert_eq!(relation.root().inputs().count(), 2);
+        let mut join_inputs = relation.root().inputs();
+        let left = join_inputs.next().ok_or("left join input expected")?;
+        let right = join_inputs.next().ok_or("right join input expected")?;
+        let left_source = left
+            .output()
+            .provenance()
+            .iter()
+            .next()
+            .ok_or("left source provenance expected")?;
+        let right_source = right
+            .output()
+            .provenance()
+            .iter()
+            .next()
+            .ok_or("right source provenance expected")?;
+        assert_ne!(left_source, right_source);
+        let sources = relation.output().provenance().iter().collect::<Vec<_>>();
+        assert_eq!(
+            sources.len(),
+            2,
+            "the join must retain both distinct origins"
+        );
+        assert!(sources.contains(&left_source));
+        assert!(sources.contains(&right_source));
 
         let self_join = reference_relation_document_v2(ReferenceRelationFixtureV2::SelfJoinInner)?;
         let relation = relation_item(self_join.document(), self_join.item_id())?;
@@ -3981,6 +4005,9 @@ pub const REFERENCE_PRESENTATION_CANDIDATE_SELECTOR_V2: &str = "candidate_b";
 /// EXPORT source selector admitted for the reference presentation fixtures.
 pub const REFERENCE_PRESENTATION_EXPORT_SELECTOR_V2: &str = "export_source";
 
+/// SAMPLE scope selector admitted for the optional-scope fixture.
+pub const REFERENCE_PRESENTATION_SCOPE_SELECTOR_V2: &str = "scope_a";
+
 /// Source length of every reference presentation fixture document.
 pub const REFERENCE_PRESENTATION_SOURCE_LEN_V2: usize = 64;
 
@@ -4007,6 +4034,8 @@ pub enum ReferencePresentationFixtureV2 {
     Describe,
     /// SAMPLE with a positive limit and no scope.
     Sample,
+    /// SAMPLE with an authored scope reference.
+    SampleWithScope,
     /// COMPARE two admitted snapshot selectors.
     Compare,
     /// EXPORT the admitted export source as SARIF.
@@ -4084,6 +4113,15 @@ fn reference_presentation_hir(
             limit: REFERENCE_PRESENTATION_SAMPLE_LIMIT_V2,
             scope: None,
         },
+        ReferencePresentationFixtureV2::SampleWithScope => PresentationKindV1::Sample {
+            query_text: "auth".to_owned(),
+            mode: SampleModeV1::Lexical,
+            limit: REFERENCE_PRESENTATION_SAMPLE_LIMIT_V2,
+            scope: Some(reference_graph_selector_v2(
+                REFERENCE_PRESENTATION_SCOPE_SELECTOR_V2,
+                20,
+            )),
+        },
         ReferencePresentationFixtureV2::Compare => PresentationKindV1::Compare {
             baseline_ref: reference_graph_selector_v2(
                 REFERENCE_PRESENTATION_BASELINE_SELECTOR_V2,
@@ -4105,7 +4143,8 @@ fn reference_presentation_hir(
         ReferencePresentationFixtureV2::Explain { .. } => 24,
         ReferencePresentationFixtureV2::Show => 16,
         ReferencePresentationFixtureV2::Describe => 25,
-        ReferencePresentationFixtureV2::Sample => 40,
+        ReferencePresentationFixtureV2::Sample
+        | ReferencePresentationFixtureV2::SampleWithScope => 40,
         ReferencePresentationFixtureV2::Compare => 42,
         ReferencePresentationFixtureV2::Export => 26,
     };
@@ -4135,6 +4174,11 @@ fn presentation_authority_v2() -> Result<ClosedFrontendAuthorityV2, String> {
             (
                 REFERENCE_PRESENTATION_EXPORT_SELECTOR_V2,
                 GraphReferenceKindV2::ExportSource,
+                None,
+            ),
+            (
+                REFERENCE_PRESENTATION_SCOPE_SELECTOR_V2,
+                GraphReferenceKindV2::Scope,
                 None,
             ),
         ]
@@ -4870,6 +4914,7 @@ mod w4d_tests {
             ReferencePresentationFixtureV2::Show,
             ReferencePresentationFixtureV2::Describe,
             ReferencePresentationFixtureV2::Sample,
+            ReferencePresentationFixtureV2::SampleWithScope,
             ReferencePresentationFixtureV2::Compare,
             ReferencePresentationFixtureV2::Export,
         ] {
@@ -4924,6 +4969,26 @@ mod w4d_tests {
 
     #[test]
     fn presentation_payloads_retain_their_exact_facts() -> Result<(), String> {
+        let assert_use = |reference: &crate::ResolvedGraphUseV2,
+                          spelling: &str,
+                          kind: GraphReferenceKindV2,
+                          span: SpanV1|
+         -> Result<(), String> {
+            let target = reference
+                .target()
+                .host_selector()
+                .ok_or("expected a host presentation selector")?;
+            assert_eq!(target.spelling(), spelling);
+            assert_eq!(target.kind(), kind);
+            assert_eq!(
+                reference.location().location(),
+                LocatedSpanV2 {
+                    source_id: REFERENCE_SOURCE_V2,
+                    span,
+                }
+            );
+            Ok(())
+        };
         let show = reference_presentation_document_v2(ReferencePresentationFixtureV2::Show)?;
         assert!(matches!(
             show.presentation().kind(),
@@ -4934,35 +4999,77 @@ mod w4d_tests {
 
         let describe =
             reference_presentation_document_v2(ReferencePresentationFixtureV2::Describe)?;
-        assert!(matches!(
-            describe.presentation().kind(),
-            crate::ResolvedPresentationKindV2::Describe { .. }
-        ));
+        let crate::ResolvedPresentationKindV2::Describe { target } = describe.presentation().kind()
+        else {
+            return Err("expected DESCRIBE presentation".to_owned());
+        };
+        assert_use(
+            target,
+            REFERENCE_PRESENTATION_ENTITY_SELECTOR_V2,
+            GraphReferenceKindV2::Entity,
+            SpanV1::new(17, 24),
+        )?;
 
         let sample = reference_presentation_document_v2(ReferencePresentationFixtureV2::Sample)?;
         assert!(matches!(
             sample.presentation().kind(),
-            crate::ResolvedPresentationKindV2::Sample { limit, .. }
+            crate::ResolvedPresentationKindV2::Sample { limit, scope: None, .. }
                 if *limit == REFERENCE_PRESENTATION_SAMPLE_LIMIT_V2
         ));
+        let sample_with_scope =
+            reference_presentation_document_v2(ReferencePresentationFixtureV2::SampleWithScope)?;
+        let crate::ResolvedPresentationKindV2::Sample {
+            scope: Some(scope),
+            limit: REFERENCE_PRESENTATION_SAMPLE_LIMIT_V2,
+            ..
+        } = sample_with_scope.presentation().kind()
+        else {
+            return Err("expected scoped SAMPLE presentation".to_owned());
+        };
+        assert_use(
+            scope,
+            REFERENCE_PRESENTATION_SCOPE_SELECTOR_V2,
+            GraphReferenceKindV2::Scope,
+            SpanV1::new(20, 27),
+        )?;
 
         let compare = reference_presentation_document_v2(ReferencePresentationFixtureV2::Compare)?;
-        assert!(matches!(
-            compare.presentation().kind(),
-            crate::ResolvedPresentationKindV2::Compare {
-                metric: CompareMetricV1::Structural,
-                ..
-            }
-        ));
+        let crate::ResolvedPresentationKindV2::Compare {
+            baseline,
+            candidate,
+            metric: CompareMetricV1::Structural,
+        } = compare.presentation().kind()
+        else {
+            return Err("expected structural COMPARE presentation".to_owned());
+        };
+        assert_use(
+            baseline,
+            REFERENCE_PRESENTATION_BASELINE_SELECTOR_V2,
+            GraphReferenceKindV2::Snapshot,
+            SpanV1::new(17, 27),
+        )?;
+        assert_use(
+            candidate,
+            REFERENCE_PRESENTATION_CANDIDATE_SELECTOR_V2,
+            GraphReferenceKindV2::Snapshot,
+            SpanV1::new(30, 41),
+        )?;
 
         let export = reference_presentation_document_v2(ReferencePresentationFixtureV2::Export)?;
-        assert!(matches!(
-            export.presentation().kind(),
-            crate::ResolvedPresentationKindV2::Export {
-                format: ExportFormatV1::Sarif,
-                ..
-            }
-        ));
+        let crate::ResolvedPresentationKindV2::Export {
+            source,
+            format: ExportFormatV1::Sarif,
+            profile: None,
+        } = export.presentation().kind()
+        else {
+            return Err("expected SARIF EXPORT presentation".to_owned());
+        };
+        assert_use(
+            source,
+            REFERENCE_PRESENTATION_EXPORT_SELECTOR_V2,
+            GraphReferenceKindV2::ExportSource,
+            SpanV1::new(14, 27),
+        )?;
         Ok(())
     }
 

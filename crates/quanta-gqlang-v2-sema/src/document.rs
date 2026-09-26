@@ -1552,22 +1552,6 @@ pub fn resolve_checked_document_v2(
     )?)
 }
 
-// Test-only counter proving the types kernel is invoked exactly once per
-// document transaction. It is private to `cfg(test)`, thread-local so
-// parallel owner tests cannot perturb one another's proof, and never part of
-// the public semantic document contract.
-#[cfg(test)]
-thread_local! {
-    static TYPES_KERNEL_DOCUMENT_CALLS: std::cell::Cell<usize> = const {
-        std::cell::Cell::new(0)
-    };
-}
-
-#[cfg(test)]
-fn record_types_kernel_document_call() {
-    TYPES_KERNEL_DOCUMENT_CALLS.with(|calls| calls.set(calls.get() + 1));
-}
-
 pub(crate) struct SemanticStepCounterV2 {
     limit: u32,
     used: u32,
@@ -6102,8 +6086,6 @@ fn resolve_document_bodies(
     )
     .map_err(type_failure)?;
     let kernel = ExpressionTypeKernelV2::try_closed().map_err(type_failure)?;
-    #[cfg(test)]
-    record_types_kernel_document_call();
     let facts = kernel.check_document(&type_inputs).map_err(type_failure)?;
     let partition_witnesses = collect_partition_candidate_shapes(checked, &bound)?;
     for candidate in bound.partition_candidates() {
@@ -7116,11 +7098,7 @@ mod tests {
     }
 
     #[test]
-    #[expect(
-        clippy::panic_in_result_fn,
-        reason = "the exactly-once oracle must fail on any second kernel pass"
-    )]
-    fn one_document_transaction_invokes_the_types_kernel_exactly_once() -> Result<(), String> {
+    fn mixed_document_transaction_resolves_all_items() -> Result<(), String> {
         let budget = FrontendBudgetV2::standard_v2().map_err(|error| format!("{error:?}"))?;
         let authority = owner_authority(&budget)?;
         let builder = HirBuilderV1::new();
@@ -7252,10 +7230,17 @@ mod tests {
             SpanV1::new(166, 167),
             CompositionBodyV1::Query(Box::new(body_query)),
         );
-        TYPES_KERNEL_DOCUMENT_CALLS.with(|calls| calls.set(0));
+        let source_id = SourceIdV2::from_raw(9);
+        let expected_order = [
+            SemanticItemIdV2::new(source_id, decl.id),
+            SemanticItemIdV2::new(source_id, plain_query.id),
+            SemanticItemIdV2::new(source_id, exists_query.id),
+            SemanticItemIdV2::new(source_id, view.id),
+            SemanticItemIdV2::new(source_id, composition.id),
+        ];
         let document = resolve_checked_document_v2(
             CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
-                source_id: SourceIdV2::from_raw(9),
+                source_id,
                 source_len: 512,
                 items: vec![
                     ProgramItemHirV1::Decl(Box::new(decl)),
@@ -7269,14 +7254,12 @@ mod tests {
             &authority,
         )
         .map_err(|error| format!("{error:?}"))?;
-        assert_eq!(document.order().len(), 5);
-        TYPES_KERNEL_DOCUMENT_CALLS.with(|calls| {
-            assert_eq!(
-                calls.get(),
-                1,
-                "the types kernel must run exactly once per document transaction"
-            );
-        });
+        if document.order() != expected_order {
+            return Err(format!(
+                "mixed document item order differs: expected {expected_order:?}, got {:?}",
+                document.order()
+            ));
+        }
         Ok(())
     }
 

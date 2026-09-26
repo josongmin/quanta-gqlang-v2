@@ -241,6 +241,40 @@ fn shadow_search_stops_at_noncapturing_barrier() {
     );
 }
 
+#[test]
+fn immediate_noncapturing_edge_hides_outer_shadow_but_capturing_edge_does_not() {
+    for (edge, should_shadow) in [
+        (CaptureV1::NonCapturing, false),
+        (CaptureV1::Capturing, true),
+    ] {
+        let mut scope = LexicalScopeV1::new();
+        scope.push(CaptureV1::Capturing);
+        assert!(scope
+            .bind(BindingV1::new(
+                "x",
+                BinderKindV1::Let,
+                SpanV1::new(0, 1),
+                id(0),
+            ))
+            .is_none());
+        scope.push(edge);
+        let report = scope.bind(BindingV1::new(
+            "x",
+            BinderKindV1::Let,
+            SpanV1::new(8, 9),
+            id(1),
+        ));
+        assert_eq!(report.is_some(), should_shadow, "edge: {edge:?}");
+        if let Some(report) = report {
+            assert_eq!(
+                report.kind,
+                quanta_gqlang_v2_binder::ShadowReportKindV1::OuterShadow
+            );
+            assert_eq!(report.existing.span, SpanV1::new(0, 1));
+        }
+    }
+}
+
 // Companion: WITHOUT a barrier the outer `x` IS visible and bind reports an
 // OuterShadow. This pins the positive side so the `break` cannot be deleted
 // outright (a body that always returns None would fail here).

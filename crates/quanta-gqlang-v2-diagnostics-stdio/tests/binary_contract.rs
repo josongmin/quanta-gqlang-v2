@@ -52,12 +52,21 @@ fn semantic_diagnostics_are_a_successful_protocol_response() {
     assert_eq!(response["id"], 3);
     assert_eq!(response["ok"], true);
     assert_eq!(response["analysis_status"], "error");
-    assert!(
-        response["diagnostics"]
-            .as_array()
-            .is_some_and(|diagnostics| !diagnostics.is_empty()),
-        "an error analysis must carry at least one diagnostic: {response}"
+    let diagnostics = response["diagnostics"]
+        .as_array()
+        .expect("diagnostics array");
+    assert_eq!(diagnostics.len(), 1, "unexpected diagnostics: {response}");
+    let diagnostic = &diagnostics[0];
+    assert_eq!(diagnostic["stage"], "integrity");
+    assert_eq!(diagnostic["code"], "surface.parse.unexpected_token");
+    assert_eq!(diagnostic["severity"], "error");
+    assert_eq!(
+        diagnostic["message"],
+        "expected a top-level item ('let', 'rule', 'from', or a v3 family keyword)"
     );
+    assert_eq!(diagnostic["source_id"], 1);
+    assert_eq!(diagnostic["span_start"], 0);
+    assert_eq!(diagnostic["span_end"], 7);
 }
 
 #[cfg(unix)]

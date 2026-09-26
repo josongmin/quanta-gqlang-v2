@@ -106,6 +106,14 @@ fn v3_fmt_inline_v1(inline: &str) -> String {
     cli_stdout_v1(&output).trim_end_matches('\n').to_owned()
 }
 
+#[test]
+fn messy_declaration_has_canonical_binary_output_v1() {
+    let source = "let  x =  1 +  2*3";
+    let formatted = v3_fmt_inline_v1(source);
+    assert_eq!(formatted, "let x = 1 + 2 * 3");
+    assert_ne!(formatted, source);
+}
+
 /// A messy-but-valid v3 query/decl/rule paired with a descriptive label, used as
 /// a non-canonical control to prove `v3-fmt` converges to a fixed point.
 struct MessyV3InputV1 {

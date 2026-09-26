@@ -112,6 +112,143 @@ fn catalog_payload_references_visit_auxiliary_spans_in_authored_order() {
 }
 
 #[test]
+fn presentation_references_visit_exact_auxiliary_spans_and_invalid_span_rejects() {
+    use quanta_gqlang_v2_hir::{
+        check_tree, CompareMetricV1, EvidenceModeV1, ExportFormatV1, HirIntegrityErrorV1,
+        HirRootRefV1, PresentationKindV1, SampleModeV1, ShowCategoryV1, TruthModeV1,
+    };
+
+    let builder = HirBuilderV1::new();
+    let cases = [
+        (
+            PresentationKindV1::Explain {
+                target_ref: gref("rule", 1, 5),
+                evidence: EvidenceModeV1::Auto,
+                truth: TruthModeV1::Inspect,
+            },
+            vec![SpanV1::new(1, 5)],
+        ),
+        (
+            PresentationKindV1::Show {
+                category: ShowCategoryV1::Gates,
+            },
+            vec![],
+        ),
+        (
+            PresentationKindV1::Describe {
+                kind: "entity".into(),
+                path: gref("input", 6, 11),
+            },
+            vec![SpanV1::new(6, 11)],
+        ),
+        (
+            PresentationKindV1::Sample {
+                query_text: "q".into(),
+                mode: SampleModeV1::Lexical,
+                limit: 1,
+                scope: Some(gref("scope", 12, 17)),
+            },
+            vec![SpanV1::new(12, 17)],
+        ),
+        (
+            PresentationKindV1::Compare {
+                baseline_ref: gref("before", 18, 24),
+                candidate_ref: gref("after", 25, 30),
+                metric: CompareMetricV1::Structural,
+            },
+            vec![SpanV1::new(18, 24), SpanV1::new(25, 30)],
+        ),
+        (
+            PresentationKindV1::Export {
+                source_ref: gref("source", 31, 37),
+                format: ExportFormatV1::Sarif,
+                profile: Some(gref("profile", 38, 45)),
+            },
+            vec![SpanV1::new(31, 37), SpanV1::new(38, 45)],
+        ),
+    ];
+    for (kind, expected) in cases {
+        let presentation = builder.presentation(kind, SpanV1::new(0, 50));
+        let mut trace = AuxiliarySpanTrace::default();
+        trace.visit_presentation(&presentation);
+        assert_eq!(trace.0, expected, "wrong presentation span order");
+    }
+
+    let invalid = builder.presentation(
+        PresentationKindV1::Describe {
+            kind: "entity".into(),
+            path: gref("outside", 20, 21),
+        },
+        SpanV1::new(0, 20),
+    );
+    assert!(matches!(
+        check_tree(HirRootRefV1::Presentation(&invalid), 20),
+        Err(HirIntegrityErrorV1::AuxiliarySpanOutOfBounds {
+            span,
+            source_len: 20,
+        }) if span == SpanV1::new(20, 21)
+    ));
+}
+
+#[test]
+fn graph_and_variant_presentation_nodes_visit_every_reference_in_order() {
+    use quanta_gqlang_v2_hir::{
+        EvidenceModeV1, ExplainHirV1, SampleHirV1, SampleModeV1, TruthModeV1,
+    };
+
+    let builder = HirBuilderV1::new();
+    let graph = builder.graph_query(
+        GraphQueryKindV1::Reachability,
+        GraphEndpointsV1 {
+            source: Some(gref("a", 1, 2)),
+            sink: Some(gref("b", 3, 4)),
+            anchor: Some(gref("c", 5, 6)),
+            reference: Some(gref("d", 7, 8)),
+            pointee: Some(gref("e", 9, 10)),
+            callable: Some(gref("f", 11, 12)),
+        },
+        GraphConstraintsV1 {
+            scope: Some(gref("g", 13, 14)),
+            window: Some(gref("h", 15, 16)),
+            frontier: Some(gref("i", 17, 18)),
+            via: vec![gref("j", 19, 20), gref("k", 21, 22)],
+            through: vec![gref("l", 23, 24)],
+            sanitizers: vec![gref("m", 25, 26)],
+            ..GraphConstraintsV1::default()
+        },
+        SpanV1::new(0, 27),
+    );
+    let mut spans = AuxiliarySpanTrace::default();
+    spans.visit_graph_query(&graph);
+    assert_eq!(
+        spans.0,
+        (0..13)
+            .map(|index| SpanV1::new(index * 2 + 1, index * 2 + 2))
+            .collect::<Vec<_>>()
+    );
+
+    let sample = SampleHirV1 {
+        id: HirNodeIdV1::from_raw(100),
+        span: SpanV1::new(0, 30),
+        query_text: "q".into(),
+        mode: SampleModeV1::Lexical,
+        limit: 1,
+        scope: Some(gref("scope", 27, 28)),
+    };
+    let explain = ExplainHirV1 {
+        id: HirNodeIdV1::from_raw(101),
+        span: SpanV1::new(0, 30),
+        target_ref: gref("target", 28, 29),
+        evidence: EvidenceModeV1::Auto,
+        truth: TruthModeV1::Inspect,
+    };
+    let mut spans = AuxiliarySpanTrace::default();
+    spans.visit_sample(&sample);
+    spans.visit_explain(&explain);
+    assert_eq!(spans.0, vec![SpanV1::new(27, 28), SpanV1::new(28, 29)]);
+}
+
+#[test]
 fn walk_value_recurses_path_paren_unary_binary_call_record_list() {
     let b = HirBuilderV1::new();
     // path over a paren'd binary base: path -> paren -> binary(lhs sym, rhs int).
@@ -168,6 +305,27 @@ fn walk_value_recurses_path_paren_unary_binary_call_record_list() {
     // pre-order: the path node is visited before its (paren) base, regardless of
     // the order ids were minted in.
     assert_eq!(trace.values[0], path.id.raw());
+    let mut spans = AuxiliarySpanTrace::default();
+    spans.visit_value(&path);
+    spans.visit_value(&call);
+    assert_eq!(
+        spans.0,
+        vec![SpanV1::new(8, 9), SpanV1::new(50, 51), SpanV1::new(30, 31)]
+    );
+}
+
+#[test]
+fn call_star_forwards_its_authored_span() {
+    let builder = HirBuilderV1::new();
+    let call = builder.call(
+        "count",
+        SpanV1::new(0, 5),
+        CallArgsHirV1::try_new(vec![CallArgHirV1::star(SpanV1::new(6, 7))]).unwrap(),
+        SpanV1::new(0, 8),
+    );
+    let mut spans = AuxiliarySpanTrace::default();
+    spans.visit_value(&call);
+    assert_eq!(spans.0, vec![SpanV1::new(0, 5), SpanV1::new(6, 7)]);
 }
 
 #[test]
@@ -208,26 +366,40 @@ fn walk_bool_recurses_compare_and_or_not_paren_quantifier_value() {
     // value nodes reached through bool position: compare lhs+rhs, the z symbol
     // under the bool-value wrapper = 3.
     assert_eq!(trace.values.len(), 3);
+    let mut spans = AuxiliarySpanTrace::default();
+    spans.visit_bool(&conj);
+    assert_eq!(spans.0, vec![SpanV1::new(22, 23)]);
 }
 
 #[test]
 fn walk_relation_recurses_filter_project_compose_through_default_hooks() {
     let b = HirBuilderV1::new();
-    let src = b.relation_source("users", SpanV1::new(0, 5), None, SpanV1::new(0, 5));
+    let src = b.relation_source(
+        "users",
+        SpanV1::new(0, 5),
+        Some(quanta_gqlang_v2_hir::AliasV1 {
+            name: "u".into(),
+            span: SpanV1::new(6, 7),
+        }),
+        SpanV1::new(0, 7),
+    );
     // filter users where active
     let pred = b.bool_value(b.symbol("active", SpanV1::new(12, 18)), SpanV1::new(12, 18));
     let filtered = b.relation_filter(src, pred, SpanV1::new(0, 18));
     // project id from the filtered relation
     let proj_item = quanta_gqlang_v2_hir::ProjectionItemV1 {
         value: b.symbol("id", SpanV1::new(25, 27)),
-        alias: None,
+        alias: Some(quanta_gqlang_v2_hir::AliasV1 {
+            name: "projected_id".into(),
+            span: SpanV1::new(28, 40),
+        }),
     };
     let projected = b
-        .try_project(filtered, vec![proj_item], SpanV1::new(0, 27))
+        .try_project(filtered, vec![proj_item], SpanV1::new(0, 40))
         .unwrap();
     // cross join the projected relation with another source.
-    let other = b.relation_source("roles", SpanV1::new(30, 35), None, SpanV1::new(30, 35));
-    let composed = b.cross_join(projected, other, SpanV1::new(0, 35));
+    let other = b.relation_source("roles", SpanV1::new(45, 50), None, SpanV1::new(45, 50));
+    let composed = b.cross_join(projected, other, SpanV1::new(0, 50));
 
     let mut trace = IdTrace::default();
     trace.visit_relation(&composed);
@@ -236,6 +408,17 @@ fn walk_relation_recurses_filter_project_compose_through_default_hooks() {
     assert_eq!(trace.values.len(), 2);
     // bool nodes reached: the filter predicate wrapper.
     assert_eq!(trace.bools.len(), 1);
+    let mut spans = AuxiliarySpanTrace::default();
+    spans.visit_relation(&composed);
+    assert_eq!(
+        spans.0,
+        vec![
+            SpanV1::new(0, 5),
+            SpanV1::new(6, 7),
+            SpanV1::new(28, 40),
+            SpanV1::new(45, 50),
+        ]
+    );
 }
 
 #[test]
@@ -258,6 +441,9 @@ fn walk_item_dispatches_decl_and_rule_variants() {
     walk_item(&mut trace, &decl_item);
     // decl body binary + lhs + rhs = 3 value nodes.
     assert_eq!(trace.values.len(), 3);
+    let mut spans = AuxiliarySpanTrace::default();
+    spans.visit_item(&decl_item);
+    assert_eq!(spans.0, vec![SpanV1::new(0, 1)]);
 
     // Rule: head symbol, body compare.
     let rule = b.rule(
@@ -278,6 +464,9 @@ fn walk_item_dispatches_decl_and_rule_variants() {
     // head symbol + compare lhs + compare rhs = 3 value nodes; one compare bool.
     assert_eq!(rtrace.values.len(), 3);
     assert_eq!(rtrace.bools.len(), 1);
+    let mut spans = AuxiliarySpanTrace::default();
+    spans.visit_item(&rule_item);
+    assert_eq!(spans.0, vec![SpanV1::new(0, 1)]);
 }
 
 #[test]
@@ -305,11 +494,20 @@ fn walk_item_leaf_items_have_no_id_bearing_value_children() {
         SpanV1::new(0, 20),
     );
 
-    for item in [ProgramItemHirV1::from(find), ProgramItemHirV1::from(check)] {
+    for (item, expected) in [
+        (
+            ProgramItemHirV1::from(find),
+            vec![SpanV1::new(0, 1), SpanV1::new(4, 5)],
+        ),
+        (ProgramItemHirV1::from(check), vec![SpanV1::new(6, 13)]),
+    ] {
         let mut trace = IdTrace::default();
         walk_item(&mut trace, &item);
         assert!(trace.values.is_empty(), "{item:?} reached value nodes");
         assert!(trace.bools.is_empty(), "{item:?} reached bool nodes");
+        let mut spans = AuxiliarySpanTrace::default();
+        spans.visit_item(&item);
+        assert_eq!(spans.0, expected, "wrong auxiliary-span trace for {item:?}");
     }
 }
 
@@ -340,6 +538,9 @@ fn shape_default_hook_recurses_record_and_list_into_leaf_values() {
     trace.visit_shape(&rec);
     // two leaf value expressions reached through the shape tree.
     assert_eq!(trace.values.len(), 2);
+    let mut spans = AuxiliarySpanTrace::default();
+    spans.visit_shape(&rec);
+    assert_eq!(spans.0, vec![SpanV1::new(2, 3), SpanV1::new(7, 12)]);
 }
 
 /// A visitor that overrides ONLY the two observation hooks it needs, so every
@@ -405,6 +606,17 @@ fn default_item_hooks_delegate_into_their_walks() {
 
     // Producer source+filter and body source.
     assert_eq!(counter.relations, 3);
+    let mut spans = AuxiliarySpanTrace::default();
+    spans.visit_item(&item);
+    assert_eq!(
+        spans.0,
+        vec![
+            SpanV1::new(62, 63),
+            SpanV1::new(4, 5),
+            SpanV1::new(20, 25),
+            SpanV1::new(45, 52),
+        ]
+    );
 
     // Also drive a bare presentation item through the default visit_presentation
     // hook (its walk is a no-op, so no relations are reached).
@@ -448,10 +660,21 @@ fn legality_default_hook_visits_semantic_confirm_query_once() {
         SpanV1::new(0, 113),
     );
 
+    let item = ProgramItemHirV1::from(check);
     let mut counter = DefaultDelegationCounter::default();
-    counter.visit_item(&ProgramItemHirV1::from(check));
+    counter.visit_item(&item);
 
     assert_eq!(counter.graph_queries, 1);
+    let mut spans = AuxiliarySpanTrace::default();
+    spans.visit_item(&item);
+    assert_eq!(
+        spans.0,
+        vec![
+            SpanV1::new(6, 17),
+            SpanV1::new(80, 89),
+            SpanV1::new(93, 103),
+        ]
+    );
 }
 
 /// Counts ONLY value nodes by overriding `visit_value`; deliberately does NOT

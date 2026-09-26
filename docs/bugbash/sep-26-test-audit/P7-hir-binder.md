@@ -1,16 +1,13 @@
-# P7: current HIR and binder proof gaps
+# P7: HIR and binder proof gaps resolved in the working tree
 
-No production failure was observed. The round-2 fixes to depth-child sentinels, HIR error payloads, and binder diagnostics are present in the working tree.
+## TA-09: auxiliary-span visitor coverage
 
-## TA-09: auxiliary spans are not traced across the visitor families
+Before: exact auxiliary-span order was asserted for catalog payloads only; other tests counted visited nodes without proving the auxiliary callbacks.
 
-- `crates/quanta-gqlang-v2-hir/src/visit.rs` forwards auxiliary spans from relation aliases, projection aliases, result-shape fields, presentation selectors, graph references, and composition binding names. `src/integrity.rs:658` consumes this visitor hook to validate spans.
-- `tests/v3_visit_traversal.rs:43-113` compares an exact span trace for six catalog payloads. The other listed families lack a corresponding exact auxiliary-span trace; count-only node walks do not detect a removed span callback.
-- Repair: add small per-family `AuxiliarySpanTrace` fixtures with exact authored order and an invalid-span rejection for at least one previously uncovered branch. Removing a required callback must fail.
+Now: `v3_visit_traversal.rs` traces exact auxiliary spans across value paths/calls/records and call-star, logical binders, relation source/projection aliases, result shape, declarations/rules, graph references, legality, all presentation variants, standalone SAMPLE/EXPLAIN, catalog, and composition. An out-of-bounds presentation reference must fail HIR integrity. The traversal target passed 14 tests. Temporarily removing the relation source-name callback made its focused test fail; the mutation was restored. This is branch-focused coverage, not a claim that every possible HIR shape is enumerated.
 
-## TA-10: an immediate noncapturing shadow barrier lacks a control
+## TA-10: immediate noncapturing barrier
 
-- `crates/quanta-gqlang-v2-binder/src/scope.rs:198-201` returns `None` when the current frame's parent edge is `NonCapturing`. The existing `v3_binder_mutants.rs:216-242` barrier test places the noncapturing edge on a middle frame; it cannot detect deletion of the early top-frame guard.
-- Repair: put `x` in an outer frame, push a directly `NonCapturing` child, bind another `x`, and require no outer-shadow report. Pair it with a `Capturing` child that must report `OuterShadow`. Removing the early guard must fail.
+Before: the existing barrier test placed `NonCapturing` on a middle frame, leaving the top-frame early guard untested.
 
-The old claim that there is no positive shadow or open-scope control anywhere in the crate is not retained: `v3_binder_hellgate.rs:93-116` checks outer shadow through `Binder`, and `v3_binder_scope.rs:321-344` checks an open-scope local resolution.
+Now: `v3_binder_mutants.rs` pairs a directly noncapturing child (no outer shadow) with a capturing child (exact `OuterShadow` report and outer span). The focused binder test passed. Temporarily deleting the early guard made it fail; the mutation was restored.
