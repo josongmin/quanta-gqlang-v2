@@ -400,6 +400,202 @@ fn relation_scan_compiles_to_one_exact_planned_item() {
 }
 
 #[test]
+fn parenthesized_exists_and_not_parenthesized_exists_compile_as_literals() {
+    for (source, family) in [
+        (
+            "from records r | where (exists (from records s | where s.id = r.id))",
+            AlgebraFamilyV2::SemiJoin,
+        ),
+        (
+            "from records r | where not (exists (from records s | where s.id = r.id))",
+            AlgebraFamilyV2::AntiJoin,
+        ),
+    ] {
+        let compiled = compile_source_document_v3(
+            DOC_SOURCE,
+            source,
+            &authority_with_records_type(ValueTypeV1::int()),
+        )
+        .expect("transparent wrappers preserve a direct existential literal");
+        let root = compiled.execution().items()[0]
+            .relation()
+            .expect("relation")
+            .root();
+        assert_eq!(root.family(), family);
+        assert_eq!(root.children().len(), 2);
+        assert_eq!(root.correlations().len(), 1);
+    }
+}
+
+#[test]
+fn many_exists_conditions_have_constant_operator_depth_and_closed_terms() {
+    let source = format!(
+        "from records r | where {}",
+        std::iter::repeat("exists (from records s | where s.id = r.id)")
+            .take(48)
+            .collect::<Vec<_>>()
+            .join(" and ")
+    );
+    let compiled = compile_source_document_v3(
+        DOC_SOURCE,
+        &source,
+        &authority_with_records_type(ValueTypeV1::int()),
+    )
+    .expect("48 existential conjuncts fit the source depth budget");
+    let relation = compiled.execution().items()[0]
+        .relation()
+        .expect("relation");
+    let root = relation.root();
+    assert_eq!(root.family(), AlgebraFamilyV2::ExistsFilter);
+    assert_eq!(root.existential_terms().len(), 48);
+    assert_eq!(root.children().len(), 49);
+    assert_eq!(root.children()[0].family(), AlgebraFamilyV2::Scan);
+    let table: BTreeSet<_> = relation
+        .expressions()
+        .iter()
+        .map(|expr| expr.id())
+        .collect();
+    for (term, child) in root.existential_terms().iter().zip(&root.children()[1..]) {
+        assert_eq!(child.family(), AlgebraFamilyV2::Filter);
+        assert!(table.contains(&term.expression()));
+        assert_eq!(term.correlations().len(), 1);
+        assert!(table.contains(&term.correlations()[0].reference()));
+    }
+    assert_eq!(
+        root.children()
+            .iter()
+            .map(|child| child.children().len())
+            .max(),
+        Some(1)
+    );
+}
+
+#[test]
+fn flat_exists_filter_retains_mixed_polarity_and_both_capabilities() {
+    let source = concat!(
+        "from records r | where exists (from records s | where s.id = r.id) ",
+        "and not (exists (from records t | where t.id = r.id))"
+    );
+    let compiled = compile_source_document_v3(
+        DOC_SOURCE,
+        source,
+        &authority_with_records_type(ValueTypeV1::int()),
+    )
+    .expect("mixed existential polarities compile");
+    let item = &compiled.execution().items()[0];
+    let root = item.relation().expect("relation").root();
+    assert_eq!(root.family(), AlgebraFamilyV2::ExistsFilter);
+    assert_eq!(root.existential_terms().len(), 2);
+    assert_eq!(
+        root.existential_terms()
+            .iter()
+            .map(|term| term.polarity())
+            .collect::<Vec<_>>(),
+        vec![
+            quanta_gqlang_v2_pipeline::ExecutionExistsPolarityV3::Exists,
+            quanta_gqlang_v2_pipeline::ExecutionExistsPolarityV3::NotExists,
+        ]
+    );
+    let relation = item.relation().expect("relation");
+    for (term, child) in root.existential_terms().iter().zip(&root.children()[1..]) {
+        let expression = relation
+            .expressions()
+            .iter()
+            .find(|expression| expression.id() == term.expression())
+            .expect("each term names a closed expression");
+        let ExecutionExpressionShapeV3::RelationExists {
+            polarity,
+            relation_root,
+            correlations,
+        } = expression.shape()
+        else {
+            panic!("each term names a relational EXISTS shape");
+        };
+        assert_eq!(
+            *polarity,
+            quanta_gqlang_v2_pipeline::ExecutionExistsPolarityV3::Exists,
+            "an enclosing NOT changes the term, not its inner EXISTS fact"
+        );
+        assert_eq!(*relation_root, child.stage());
+        assert_eq!(correlations.as_ref(), term.correlations());
+    }
+    assert_eq!(
+        relation
+            .expressions()
+            .iter()
+            .map(|expression| expression.id().node_id.raw())
+            .collect::<Vec<_>>(),
+        vec![2, 3, 4, 5, 6, 9, 11, 12, 13, 14, 15, 18],
+        "the flat relation contains exactly its source-bound expression closure"
+    );
+    let plan = compiled.items()[0]
+        .plan()
+        .expect("relation must be planned");
+    assert!(plan.capabilities().contains(&CapabilityV2::ExistenceCheck));
+    assert!(plan.capabilities().contains(&CapabilityV2::NegationCheck));
+}
+
+#[test]
+fn residual_filter_and_flat_exists_share_source_stage_provenance() {
+    let source = concat!(
+        "from records r | where true and exists (from records s) ",
+        "and exists (from records t)"
+    );
+    let compiled = compile_source_document_v3(
+        DOC_SOURCE,
+        source,
+        &authority_with_records_type(ValueTypeV1::int()),
+    )
+    .expect("ordinary and existential conjuncts compile");
+    let residual = compiled.execution().items()[0]
+        .relation()
+        .expect("relation")
+        .root();
+    assert_eq!(residual.family(), AlgebraFamilyV2::Filter);
+    let [flat] = residual.children() else {
+        panic!("one flat existential child remains below the residual filter");
+    };
+    assert_eq!(flat.family(), AlgebraFamilyV2::ExistsFilter);
+    assert_eq!(flat.existential_terms().len(), 2);
+    assert_eq!(residual.stage(), flat.stage());
+    assert_ne!(residual.family(), flat.family());
+}
+
+#[test]
+fn exists_nested_under_or_or_scalar_wrapper_remains_unplannable() {
+    for (source, expected_code) in [
+        (
+            "from records r | where true or exists (from records s)",
+            "algebra.invalid_stage_contract",
+        ),
+        (
+            "from records r | where exists (from records s) = true",
+            "surface.parse.unexpected_token",
+        ),
+        (
+            "from records r | where length(exists (from records s)) > 0",
+            "surface.parse.unexpected_token",
+        ),
+    ] {
+        let error = compile_source_document_v3(
+            DOC_SOURCE,
+            source,
+            &authority_with_records_type(ValueTypeV1::int()),
+        )
+        .expect_err("nested existential must not produce an execution document");
+        let FrontendTransactionErrorV2::Document(failure) = error else {
+            panic!("nested existential must fail with a source diagnostic: {source}");
+        };
+        assert_eq!(failure.diagnostics().len(), 1, "{source}");
+        assert_eq!(
+            failure.diagnostics()[0].code(),
+            expected_code,
+            "nested existential must reject at its actual owner: {source}"
+        );
+    }
+}
+
+#[test]
 fn compiled_item_order_is_the_authored_source_order() {
     let fixture = reference_relation_document_v2(ReferenceRelationFixtureV2::CrossJoin)
         .expect("join resolves");
@@ -2043,7 +2239,7 @@ fn source_bound_v3_digests_match_the_shared_golden_vectors() {
         );
         selected += 1;
     }
-    assert_eq!(selected, 15, "the shared V3 corpus must not be vacuous");
+    assert_eq!(selected, 16, "the shared V3 corpus must not be vacuous");
 }
 
 #[test]
@@ -2253,6 +2449,10 @@ fn every_projected_expression_reference_resolves_within_its_own_table() {
         out.extend_from_slice(node.predicates());
         out.extend_from_slice(node.expressions());
         out.extend(node.correlations().iter().map(|edge| edge.reference()));
+        for term in node.existential_terms() {
+            out.push(term.expression());
+            out.extend(term.correlations().iter().map(|edge| edge.reference()));
+        }
         schema_keys(node.schema(), out);
         for child in node.children() {
             operator_keys(child, out);

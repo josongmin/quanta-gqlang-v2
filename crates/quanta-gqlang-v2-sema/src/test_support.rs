@@ -3398,7 +3398,7 @@ pub enum ReferenceRuleFixtureV2 {
     PositiveSelfRecursion,
     /// One rule that negated-depends on itself.
     NegatedSelfRecursion,
-    /// One rule that folds itself through an aggregate call.
+    /// Invalid source rule that folds itself through an aggregate call.
     AggregatedSelfRecursion,
     /// Two rules with a mutual (r -> s, s -> r) dependency.
     MutualRecursionPair,
@@ -3406,7 +3406,7 @@ pub enum ReferenceRuleFixtureV2 {
     NonRecursiveDependency,
     /// Two rules with a single negated nonrecursive edge (r -> not s).
     NegatedNonRecursiveDependency,
-    /// Two rules with a single aggregated nonrecursive edge (r -> aggregate s).
+    /// Invalid source rule with a predicate call inside an aggregate argument.
     AggregatedNonRecursiveDependency,
     /// One rule whose only call is a builtin, never a graph vertex.
     BuiltinCallOnly,
@@ -3564,7 +3564,8 @@ fn rule_item_v2(
     ))))
 }
 
-/// Seal one rule-document fixture through the real transaction.
+/// Resolve one rule-document fixture through the real transaction. Invalid
+/// aggregate-wrapped source-call fixtures return the semantic rejection.
 pub fn reference_rule_document_v2(
     fixture: ReferenceRuleFixtureV2,
 ) -> Result<ReferenceRuleDocumentV2, String> {
@@ -3772,6 +3773,8 @@ pub enum ForgedRuleFactMutationV2 {
     UnknownCallId,
     /// The first call's location comes from another registry identity.
     ForeignCallLocation,
+    /// The first call's location is another span in the same registry.
+    MismatchedCallLocation,
     /// The rule loses the call edge its body still proves.
     DroppedCall,
     /// The rule duplicates the call edge it already carries.
@@ -3849,6 +3852,12 @@ pub fn forged_rule_fact_document_v2(
                 first.polarity(),
                 foreign_location.clone(),
             )],
+            ForgedRuleFactMutationV2::MismatchedCallLocation => vec![replace_call_v2(
+                first,
+                first.target().clone(),
+                first.polarity(),
+                rule.body().expression().location().clone(),
+            )],
             ForgedRuleFactMutationV2::DroppedCall => Vec::new(),
             ForgedRuleFactMutationV2::ExtraCall => vec![first.clone(), first.clone()],
         };
@@ -3856,6 +3865,80 @@ pub fn forged_rule_fact_document_v2(
             target_item,
             SemanticItemV2::Rule(rule.forged_with_calls(rewritten)),
         );
+    });
+    Ok(wrap_rule_document_v2(document))
+}
+
+/// Forge an extra call edge from a real builtin typed fact. The semantic
+/// producer never includes builtin calls in a rule's source dependency list.
+pub fn forged_non_source_rule_call_document_v2() -> Result<ReferenceRuleDocumentV2, String> {
+    let base = reference_rule_document_v2(ReferenceRuleFixtureV2::BuiltinCallOnly)?;
+    let item_id = *base
+        .item_ids
+        .first()
+        .ok_or("the builtin rule fixture names one rule")?;
+    let (key, fact) = base
+        .document
+        .expressions()
+        .find(|(_, fact)| {
+            fact.resolved_call().is_some_and(|target| {
+                !matches!(
+                    target,
+                    quanta_gqlang_v2_types::ResolvedCallTargetV2::Predicate(_)
+                )
+            })
+        })
+        .ok_or("the builtin rule fixture retains one non-source call fact")?;
+    let target = fact
+        .resolved_call()
+        .cloned()
+        .ok_or("the selected expression retains its call target")?;
+    let extra = crate::ResolvedRuleCallV2::new(
+        *key,
+        target,
+        crate::RuleCallPolarityV2::Positive,
+        fact.location().clone(),
+    );
+    let document = base.document.forged_membership(move |_order, items| {
+        if let Some(SemanticItemV2::Rule(rule)) = items.remove(&item_id) {
+            items.insert(
+                item_id,
+                SemanticItemV2::Rule(rule.forged_with_calls(vec![extra])),
+            );
+        }
+    });
+    Ok(wrap_rule_document_v2(document))
+}
+
+/// Forge a source call's typed shape target while leaving its retained fact
+/// and rule edge untouched, so Logic must compare its derived target too.
+pub fn forged_rule_call_shape_target_document_v2() -> Result<ReferenceRuleDocumentV2, String> {
+    let base = reference_rule_document_v2(ReferenceRuleFixtureV2::NonRecursiveDependency)?;
+    let rule = base
+        .document
+        .rules()
+        .next()
+        .ok_or("the nonrecursive fixture retains its caller")?;
+    let call = rule
+        .calls()
+        .first()
+        .ok_or("the nonrecursive caller retains its source edge")?
+        .call();
+    let wrong_target =
+        quanta_gqlang_v2_types::ResolvedCallTargetV2::Predicate(rule.predicate_id().clone());
+    let document = base.document.forged_expressions(move |expressions| {
+        let Some(expression) = expressions.remove(&call) else {
+            return;
+        };
+        let TypedExprShapeV2::Call { arguments, .. } = expression.shape() else {
+            expressions.insert(call, expression);
+            return;
+        };
+        let shape = TypedExprShapeV2::Call {
+            target: wrong_target,
+            arguments: arguments.clone(),
+        };
+        expressions.insert(call, expression.forged_with_shape(shape));
     });
     Ok(wrap_rule_document_v2(document))
 }

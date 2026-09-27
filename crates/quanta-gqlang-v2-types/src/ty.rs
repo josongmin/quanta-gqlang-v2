@@ -3,8 +3,10 @@
 use crate::diag::TypeDiagnosticV2;
 use quanta_gqlang_v2_hir::{CheckedLocatedSpanV2, LocatedSpanV2};
 use std::cmp::Ordering;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
 pub const MAX_TYPE_DEPTH: usize = 64;
 pub const MAX_TYPE_NODES: usize = 4096;
@@ -28,29 +30,34 @@ impl TypeShapeFactsV1 {
         children: impl IntoIterator<Item = &'a TypeShapeFactsV1>,
         contains_relation: bool,
     ) -> Result<Self, TypeDiagnosticV2> {
-        let mut depth = 1usize;
-        let mut nodes = 1usize;
-        let mut relation = contains_relation;
+        let mut shape = Self {
+            contains_relation,
+            ..Self::LEAF
+        };
         for child in children {
-            depth = depth.max(
-                child
-                    .depth
-                    .checked_add(1)
-                    .ok_or(TypeDiagnosticV2::TypeShapeLimit)?,
-            );
-            nodes = nodes
-                .checked_add(child.nodes)
-                .ok_or(TypeDiagnosticV2::TypeShapeLimit)?;
-            relation |= child.contains_relation;
-            if depth > MAX_TYPE_DEPTH || nodes > MAX_TYPE_NODES {
-                return Err(TypeDiagnosticV2::TypeShapeLimit);
-            }
+            shape.try_push_child(child)?;
         }
-        Ok(Self {
-            depth,
-            nodes,
-            contains_relation: relation,
-        })
+        Ok(shape)
+    }
+
+    fn try_push_child(&mut self, child: &Self) -> Result<(), TypeDiagnosticV2> {
+        let depth = self.depth.max(
+            child
+                .depth
+                .checked_add(1)
+                .ok_or(TypeDiagnosticV2::TypeShapeLimit { location: None })?,
+        );
+        let nodes = self
+            .nodes
+            .checked_add(child.nodes)
+            .ok_or(TypeDiagnosticV2::TypeShapeLimit { location: None })?;
+        if depth > MAX_TYPE_DEPTH || nodes > MAX_TYPE_NODES {
+            return Err(TypeDiagnosticV2::TypeShapeLimit { location: None });
+        }
+        self.depth = depth;
+        self.nodes = nodes;
+        self.contains_relation |= child.contains_relation;
+        Ok(())
     }
 }
 
@@ -149,7 +156,7 @@ impl RecordFieldV1 {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RecordTypeV1 {
-    fields: Vec<RecordFieldV1>,
+    fields: Arc<[RecordFieldV1]>,
     shape: TypeShapeFactsV1,
 }
 
@@ -176,7 +183,8 @@ impl RecordTypeV1 {
                     name: field.name,
                     value_type: field.value_type,
                 })
-                .collect(),
+                .collect::<Vec<_>>()
+                .into(),
             shape,
         })
     }
@@ -187,6 +195,96 @@ impl RecordTypeV1 {
     #[must_use]
     pub fn field(&self, name: &str) -> Option<&RecordFieldV1> {
         self.fields.iter().find(|field| field.name == name)
+    }
+}
+
+/// Builds an internal record from borrowed child types. Shape and name checks
+/// happen before an admitted child is cloned into an owned field.
+pub(crate) struct RecordTypeBuilderV1 {
+    fields: Vec<RecordFieldTypeV1>,
+    shape: TypeShapeFactsV1,
+    seen: BTreeMap<String, LocatedSpanV2>,
+    duplicate: Option<TypeDiagnosticV2>,
+    shape_limit: Option<TypeDiagnosticV2>,
+}
+
+impl RecordTypeBuilderV1 {
+    pub(crate) fn new() -> Self {
+        Self {
+            fields: Vec::new(),
+            shape: TypeShapeFactsV1::LEAF,
+            seen: BTreeMap::new(),
+            duplicate: None,
+            shape_limit: None,
+        }
+    }
+
+    pub(crate) fn try_push(
+        &mut self,
+        name: &str,
+        value_type: &ValueTypeV1,
+        location: CheckedLocatedSpanV2,
+    ) -> Result<(), TypeDiagnosticV2> {
+        if !canonical_type_name(name) {
+            return Err(TypeDiagnosticV2::InvalidTypeName {
+                location: location.location(),
+            });
+        }
+        if self.shape_limit.is_some() {
+            return Ok(());
+        }
+        if let Err(error) = self.shape.try_push_child(&value_type.0.shape) {
+            self.shape_limit = Some(error.at_location(location.location()));
+            return Ok(());
+        }
+        if let Some(original) = self.seen.get(name) {
+            if self.duplicate.is_none() {
+                self.duplicate = Some(TypeDiagnosticV2::DuplicateRecordField {
+                    name: name.to_owned(),
+                    primary: location.location(),
+                    secondary: *original,
+                });
+            }
+        } else if self.duplicate.is_none() {
+            self.seen.insert(name.to_owned(), location.location());
+        }
+        if self.duplicate.is_none() {
+            self.fields.push(RecordFieldTypeV1::try_new(
+                name,
+                value_type.clone(),
+                location,
+            )?);
+        }
+        Ok(())
+    }
+
+    pub(crate) fn shape_limit(&self) -> Option<&TypeDiagnosticV2> {
+        self.shape_limit.as_ref()
+    }
+
+    pub(crate) fn valid_name(name: &str) -> bool {
+        canonical_type_name(name)
+    }
+
+    pub(crate) fn finish(self) -> Result<RecordTypeV1, TypeDiagnosticV2> {
+        if let Some(shape_limit) = self.shape_limit {
+            return Err(shape_limit);
+        }
+        if let Some(duplicate) = self.duplicate {
+            return Err(duplicate);
+        }
+        Ok(RecordTypeV1 {
+            fields: self
+                .fields
+                .into_iter()
+                .map(|field| RecordFieldV1 {
+                    name: field.name,
+                    value_type: field.value_type,
+                })
+                .collect::<Vec<_>>()
+                .into(),
+            shape: self.shape,
+        })
     }
 }
 
@@ -234,7 +332,7 @@ impl UnionVariantV1 {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct UnionTypeV1 {
-    variants: Vec<UnionVariantV1>,
+    variants: Arc<[UnionVariantV1]>,
     shape: TypeShapeFactsV1,
 }
 
@@ -261,7 +359,8 @@ impl UnionTypeV1 {
                     tag: variant.tag,
                     value_type: variant.value_type,
                 })
-                .collect(),
+                .collect::<Vec<_>>()
+                .into(),
             shape,
         })
     }
@@ -273,13 +372,16 @@ impl UnionTypeV1 {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TupleTypeV1 {
-    items: Vec<ValueTypeV1>,
+    items: Arc<[ValueTypeV1]>,
     shape: TypeShapeFactsV1,
 }
 impl TupleTypeV1 {
     pub fn try_new(items: Vec<ValueTypeV1>) -> Result<Self, TypeDiagnosticV2> {
         let shape = TypeShapeFactsV1::try_parent(items.iter().map(|item| &item.0.shape), false)?;
-        Ok(Self { items, shape })
+        Ok(Self {
+            items: items.into(),
+            shape,
+        })
     }
     #[must_use]
     pub fn items(&self) -> &[ValueTypeV1] {
@@ -770,4 +872,136 @@ pub enum TypedLiteralValueV2 {
     Bool(bool),
     String(String),
     Null,
+}
+
+#[cfg(test)]
+#[expect(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "unit test asserts checked builder construction and rejection"
+)]
+mod tests {
+    use super::{
+        RecordFieldTypeV1, RecordTypeBuilderV1, RecordTypeV1, TypeV1, UnionTypeV1,
+        UnionVariantTypeV1, ValueTypeV1, MAX_TYPE_NODES,
+    };
+    use quanta_gqlang_v2_hir::{
+        LocatedSpanV2, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
+    };
+
+    #[test]
+    fn oversized_builder_retains_only_admitted_owned_child() {
+        let source_id = SourceIdV2::from_raw(7);
+        let location = LocatedSpanV2 {
+            source_id,
+            span: SpanV1::new(0, 1),
+        };
+        let registry = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
+            source_id,
+            source_len: 1,
+        }])
+        .expect("source registry");
+        let checked = registry
+            .try_check_location(location)
+            .expect("field location");
+        let large = ValueTypeV1::try_tuple(vec![ValueTypeV1::int(); MAX_TYPE_NODES - 2])
+            .expect("4095-node child");
+        let mut builder = RecordTypeBuilderV1::new();
+        for index in 0..MAX_TYPE_NODES {
+            builder
+                .try_push(&format!("g{index}"), &large, checked.clone())
+                .expect("defer parent limit until field priority is known");
+        }
+        assert_eq!(builder.fields.len(), 1, "only the admitted child is owned");
+        assert_eq!(
+            builder.shape_limit().and_then(|error| error.primary()),
+            Some(location)
+        );
+        assert_eq!(
+            builder.finish().unwrap_err().code(),
+            "types.type_shape_limit"
+        );
+
+        let mut duplicate = RecordTypeBuilderV1::new();
+        duplicate
+            .try_push("same", &large, checked.clone())
+            .expect("first field");
+        duplicate
+            .try_push("same", &large, checked)
+            .expect("shape error is deferred");
+        assert_eq!(
+            duplicate.finish().unwrap_err().code(),
+            "types.type_shape_limit",
+            "parent shape precedes duplicate detection at the public constructor boundary"
+        );
+    }
+
+    #[test]
+    fn wide_type_clones_share_children_without_changing_shape() {
+        let source_id = SourceIdV2::from_raw(7);
+        let registry = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
+            source_id,
+            source_len: 1,
+        }])
+        .expect("source registry");
+        let checked = registry
+            .try_check_location(LocatedSpanV2 {
+                source_id,
+                span: SpanV1::new(0, 1),
+            })
+            .expect("field location");
+
+        let tuple = ValueTypeV1::try_tuple(vec![ValueTypeV1::int(); MAX_TYPE_NODES - 2])
+            .expect("4095-node tuple");
+        let tuple_copy = tuple.clone();
+        assert_eq!(tuple, tuple_copy);
+        assert_eq!(tuple.node_count(), MAX_TYPE_NODES - 1);
+        assert!(std::ptr::eq(
+            tuple.as_tuple().expect("tuple").items().as_ptr(),
+            tuple_copy.as_tuple().expect("tuple copy").items().as_ptr(),
+        ));
+
+        let record = ValueTypeV1::try_record(
+            RecordTypeV1::try_new(vec![RecordFieldTypeV1::try_new(
+                "value",
+                tuple,
+                checked.clone(),
+            )
+            .expect("field")])
+            .expect("4096-node record"),
+        )
+        .expect("value record");
+        let record_copy = record.clone();
+        assert_eq!(record, record_copy);
+        assert_eq!(record.node_count(), MAX_TYPE_NODES);
+        assert!(std::ptr::eq(
+            record.as_record().expect("record").fields().as_ptr(),
+            record_copy
+                .as_record()
+                .expect("record copy")
+                .fields()
+                .as_ptr(),
+        ));
+
+        let union = ValueTypeV1::try_from_type(TypeV1::union(
+            UnionTypeV1::try_new(vec![
+                UnionVariantTypeV1::try_new("first", ValueTypeV1::int(), checked.clone())
+                    .expect("first variant"),
+                UnionVariantTypeV1::try_new("second", ValueTypeV1::bool(), checked)
+                    .expect("second variant"),
+            ])
+            .expect("union"),
+        ))
+        .expect("value union");
+        let union_copy = union.clone();
+        assert_eq!(union, union_copy);
+        assert!(std::ptr::eq(
+            union.as_union().expect("union").variants().as_ptr(),
+            union_copy
+                .as_union()
+                .expect("union copy")
+                .variants()
+                .as_ptr(),
+        ));
+    }
 }

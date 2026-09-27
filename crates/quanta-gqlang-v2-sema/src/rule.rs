@@ -1,10 +1,224 @@
 //! Resolved unary rule contracts consumed by the logic owner.
 
-use crate::{SemanticItemIdV2, TypedBoolExprV2, TypedExprV2};
+use crate::{
+    SemanticItemIdV2, TypedBoolExprV2, TypedCallArgumentV2, TypedExprShapeV2, TypedExprV2,
+    TypedRelationExprV2,
+};
 use quanta_gqlang_v2_hir::CheckedLocatedSpanV2;
 use quanta_gqlang_v2_types::{
-    ResolvedCallTargetV2, ResolvedPredicateIdV2, SourceQualifiedNodeIdV2,
+    AggregationClassV1, ResolvedCallTargetV2, ResolvedPredicateIdV2, SourceQualifiedNodeIdV2,
 };
+use std::collections::BTreeSet;
+
+/// A rule-body shape that cannot prove its source predicate calls are literals.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RuleBodyClassificationErrorV2 {
+    location: Option<CheckedLocatedSpanV2>,
+    reason: &'static str,
+}
+
+impl RuleBodyClassificationErrorV2 {
+    #[must_use]
+    pub const fn location(&self) -> Option<&CheckedLocatedSpanV2> {
+        self.location.as_ref()
+    }
+
+    #[must_use]
+    pub const fn reason(&self) -> &'static str {
+        self.reason
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum RuleBodyPositionV2 {
+    Truth,
+    NegatedTruth,
+    Aggregated,
+    OpaqueScalar,
+}
+
+impl RuleBodyPositionV2 {
+    fn negated(self) -> Self {
+        match self {
+            Self::Truth => Self::NegatedTruth,
+            Self::NegatedTruth => Self::Truth,
+            Self::Aggregated => Self::Aggregated,
+            Self::OpaqueScalar => Self::OpaqueScalar,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum RuleBodyNodeV2 {
+    Expression(SourceQualifiedNodeIdV2, RuleBodyPositionV2, bool),
+    Relation(SourceQualifiedNodeIdV2),
+}
+
+/// Classify source calls from the sealed typed shape. A source call is an SCC
+/// edge only when it follows a BoolValue through transparent parentheses in the
+/// truth spine. Every other reachable source call is an error, including
+/// aggregate arguments and scalar comparisons. Both the document producer and
+/// Logic use this walk.
+pub(crate) fn classify_rule_body_calls<'a>(
+    root: SourceQualifiedNodeIdV2,
+    expression: impl Fn(SourceQualifiedNodeIdV2) -> Option<&'a TypedExprV2>,
+    relation: impl Fn(SourceQualifiedNodeIdV2) -> Option<&'a TypedRelationExprV2>,
+) -> Result<Vec<ResolvedRuleCallV2>, RuleBodyClassificationErrorV2> {
+    let mut calls = Vec::new();
+    let mut seen = BTreeSet::new();
+    let mut seen_relations = BTreeSet::new();
+    let mut stack = vec![RuleBodyNodeV2::Expression(
+        root,
+        RuleBodyPositionV2::Truth,
+        false,
+    )];
+    while let Some(node) = stack.pop() {
+        match node {
+            RuleBodyNodeV2::Expression(key, position, direct_literal) => {
+                if !seen.insert((key, position, direct_literal)) {
+                    continue;
+                }
+                let Some(expr) = expression(key) else {
+                    return Err(RuleBodyClassificationErrorV2 {
+                        location: None,
+                        reason: "rule body typed expression is missing",
+                    });
+                };
+                let child = |key, position| RuleBodyNodeV2::Expression(key, position, false);
+                match expr.shape() {
+                    TypedExprShapeV2::BoolValue { value } => {
+                        let direct = !direct_literal
+                            && matches!(
+                                position,
+                                RuleBodyPositionV2::Truth | RuleBodyPositionV2::NegatedTruth
+                            );
+                        stack.push(RuleBodyNodeV2::Expression(
+                            *value,
+                            if direct {
+                                position
+                            } else {
+                                RuleBodyPositionV2::OpaqueScalar
+                            },
+                            direct,
+                        ));
+                    }
+                    TypedExprShapeV2::Not { operand, .. } => {
+                        stack.push(child(*operand, position.negated()));
+                    }
+                    TypedExprShapeV2::Paren { inner } => {
+                        stack.push(RuleBodyNodeV2::Expression(*inner, position, direct_literal));
+                    }
+                    TypedExprShapeV2::And { lhs, rhs, .. }
+                    | TypedExprShapeV2::Or { lhs, rhs, .. } => {
+                        stack.push(child(*rhs, position));
+                        stack.push(child(*lhs, position));
+                    }
+                    TypedExprShapeV2::Call { target, arguments } => {
+                        if matches!(target, ResolvedCallTargetV2::Predicate(_)) {
+                            if !direct_literal
+                                || !matches!(
+                                    position,
+                                    RuleBodyPositionV2::Truth | RuleBodyPositionV2::NegatedTruth
+                                )
+                            {
+                                return Err(RuleBodyClassificationErrorV2 {
+                                    location: Some(expr.location().clone()),
+                                    reason:
+                                        "source predicate call is not a direct rule truth literal",
+                                });
+                            }
+                            calls.push(ResolvedRuleCallV2::new(
+                                key,
+                                target.clone(),
+                                if position == RuleBodyPositionV2::NegatedTruth {
+                                    RuleCallPolarityV2::Negated
+                                } else {
+                                    RuleCallPolarityV2::Positive
+                                },
+                                expr.location().clone(),
+                            ));
+                        }
+                        let aggregate = expr.intrinsic_call_aggregation().ok_or_else(|| {
+                            RuleBodyClassificationErrorV2 {
+                                location: Some(expr.location().clone()),
+                                reason: "rule call lacks typed intrinsic aggregation",
+                            }
+                        })? == AggregationClassV1::Aggregate;
+                        for argument in arguments.iter().rev() {
+                            if let TypedCallArgumentV2::Expression(key) = argument {
+                                stack.push(child(
+                                    *key,
+                                    if aggregate || position == RuleBodyPositionV2::Aggregated {
+                                        RuleBodyPositionV2::Aggregated
+                                    } else {
+                                        RuleBodyPositionV2::OpaqueScalar
+                                    },
+                                ));
+                            }
+                        }
+                    }
+                    TypedExprShapeV2::Compare { lhs, rhs, .. }
+                    | TypedExprShapeV2::Binary { lhs, rhs, .. } => {
+                        stack.push(child(*rhs, RuleBodyPositionV2::OpaqueScalar));
+                        stack.push(child(*lhs, RuleBodyPositionV2::OpaqueScalar));
+                    }
+                    TypedExprShapeV2::Unary { operand, .. } => {
+                        stack.push(child(*operand, RuleBodyPositionV2::OpaqueScalar));
+                    }
+                    TypedExprShapeV2::Path { base, .. } => {
+                        stack.push(child(*base, RuleBodyPositionV2::OpaqueScalar));
+                    }
+                    TypedExprShapeV2::Record(fields) => {
+                        for field in fields.iter().rev() {
+                            stack.push(child(field.value(), RuleBodyPositionV2::OpaqueScalar));
+                        }
+                    }
+                    TypedExprShapeV2::List(items) => {
+                        for item in items.iter().rev() {
+                            stack.push(child(*item, RuleBodyPositionV2::OpaqueScalar));
+                        }
+                    }
+                    TypedExprShapeV2::LogicalQuantifier { body, .. } => {
+                        stack.push(child(*body, RuleBodyPositionV2::OpaqueScalar));
+                    }
+                    TypedExprShapeV2::RelationExists { relation_root, .. } => {
+                        stack.push(RuleBodyNodeV2::Relation(*relation_root));
+                    }
+                    TypedExprShapeV2::Literal(_) | TypedExprShapeV2::Binding(_) => {}
+                }
+            }
+            RuleBodyNodeV2::Relation(key) => {
+                if !seen_relations.insert(key) {
+                    continue;
+                }
+                let Some(relation) = relation(key) else {
+                    return Err(RuleBodyClassificationErrorV2 {
+                        location: None,
+                        reason: "rule body typed nested relation is missing",
+                    });
+                };
+                for input in relation.inputs().collect::<Vec<_>>().into_iter().rev() {
+                    stack.push(RuleBodyNodeV2::Relation(input.key()));
+                }
+                for key in relation.expressions().iter().rev() {
+                    stack.push(RuleBodyNodeV2::Expression(
+                        *key,
+                        RuleBodyPositionV2::OpaqueScalar,
+                        false,
+                    ));
+                }
+                if let Some(predicate) = relation.predicate() {
+                    stack.push(RuleBodyNodeV2::Expression(
+                        predicate.expression().key(),
+                        RuleBodyPositionV2::OpaqueScalar,
+                        false,
+                    ));
+                }
+            }
+        }
+    }
+    Ok(calls)
+}
 
 /// Semantic polarity of one resolved rule-body call.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

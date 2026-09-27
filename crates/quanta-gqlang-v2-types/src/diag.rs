@@ -174,11 +174,23 @@ pub enum TypeDiagnosticV2 {
         id: u32,
     },
     RelationUsedAsValue,
-    TypeShapeLimit,
+    TypeShapeLimit {
+        location: Option<LocatedSpanV2>,
+    },
     RedundantOptional,
 }
 
 impl TypeDiagnosticV2 {
+    pub(crate) fn at_location(self, location: LocatedSpanV2) -> Self {
+        if matches!(self, Self::TypeShapeLimit { location: None }) {
+            Self::TypeShapeLimit {
+                location: Some(location),
+            }
+        } else {
+            self
+        }
+    }
+
     #[must_use]
     pub const fn primary(&self) -> Option<LocatedSpanV2> {
         match self {
@@ -217,13 +229,13 @@ impl TypeDiagnosticV2 {
             | Self::BadProjection { location, .. }
             | Self::HeterogeneousCollection { location, .. }
             | Self::InvalidStarArgument { location, .. } => Some(*location),
+            Self::TypeShapeLimit { location } => *location,
             Self::ExtraNodeFact { .. }
             | Self::InvalidRuleTypeBudget
             | Self::InvalidResolvedIdentity
             | Self::HostPredicateIdentityLimit
             | Self::RegistryDuplicateId { .. }
             | Self::RelationUsedAsValue
-            | Self::TypeShapeLimit
             | Self::RedundantOptional => None,
         }
     }
@@ -287,7 +299,7 @@ impl TypeDiagnosticV2 {
             Self::InvalidStarArgument { .. } => "types.invalid_star_argument",
             Self::RegistryDuplicateId { .. } => "types.registry_duplicate_id",
             Self::RelationUsedAsValue => "types.relation_used_as_value",
-            Self::TypeShapeLimit => "types.type_shape_limit",
+            Self::TypeShapeLimit { .. } => "types.type_shape_limit",
             Self::RedundantOptional => "types.redundant_optional",
         }
     }
@@ -374,7 +386,7 @@ impl fmt::Display for TypeDiagnosticV2 {
             | Self::HeterogeneousCollection { .. }
             | Self::InvalidStarArgument { .. }
             | Self::RegistryDuplicateId { .. } => f.write_str(self.code()),
-            Self::RelationUsedAsValue | Self::TypeShapeLimit | Self::RedundantOptional => {
+            Self::RelationUsedAsValue | Self::TypeShapeLimit { .. } | Self::RedundantOptional => {
                 f.write_str(self.code())
             }
         }
@@ -812,7 +824,7 @@ mod tests {
                 "types.relation_used_as_value",
             ),
             (
-                TypeDiagnosticV2::TypeShapeLimit,
+                TypeDiagnosticV2::TypeShapeLimit { location: None },
                 "types.type_shape_limit",
                 None,
                 None,

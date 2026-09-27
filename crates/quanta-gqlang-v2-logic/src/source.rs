@@ -23,11 +23,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, DownstreamBudgetReceiptV2, ResolvedRuleV2, RuleCallPolarityV2,
-    SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2, TypedCallArgumentV2, TypedExprShapeV2,
-    TypedRelationExprV2,
+    SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2,
 };
 use quanta_gqlang_v2_types::{
-    AggregationClassV1, ResolvedCallTargetV2, ResolvedPredicateIdV2, SourceQualifiedNodeIdV2,
+    ResolvedCallTargetV2, ResolvedPredicateIdV2, SourceQualifiedNodeIdV2,
 };
 
 use crate::diagnostic::{LogicDiagnosticV1, RuleProgramInvalidReasonV1};
@@ -273,15 +272,12 @@ fn validate_rule(
         // (a ghost target can never agree with a real document fact), collapsing
         // the two distinct rejection families into one.
         let ResolvedCallTargetV2::Predicate(predicate) = call.target() else {
-            // Builtin/host calls stay typed body facts: they are never local graph
-            // nodes and carry no SCC edge obligation.
-            if fact.resolved_call() != Some(call.target()) {
-                return Err(invalid(
-                    RuleProgramInvalidReasonV1::TargetTransplanted,
-                    location.clone(),
-                ));
-            }
-            continue;
+            // Builtin/host calls remain typed expression facts, never members
+            // of the rule's source-dependency edge list.
+            return Err(invalid(
+                RuleProgramInvalidReasonV1::WrongCallId,
+                location.clone(),
+            ));
         };
         if !predicates.contains(predicate) {
             return Err(invalid(
@@ -295,22 +291,35 @@ fn validate_rule(
                 location.clone(),
             ));
         }
-        let Some((derived_polarity, _derived_location)) = derived.get(&call.call()) else {
+        let Some((derived_target, derived_polarity, derived_location)) = derived.get(&call.call())
+        else {
             return Err(invalid(
                 RuleProgramInvalidReasonV1::WrongCallId,
                 location.clone(),
             ));
         };
+        if derived_target != call.target() {
+            return Err(invalid(
+                RuleProgramInvalidReasonV1::TargetTransplanted,
+                location.clone(),
+            ));
+        }
         if *derived_polarity != body_polarity(call.polarity()) {
             return Err(invalid(
                 RuleProgramInvalidReasonV1::PolarityFlip,
                 location.clone(),
             ));
         }
+        if derived_location != location {
+            return Err(invalid(
+                RuleProgramInvalidReasonV1::WrongCallId,
+                location.clone(),
+            ));
+        }
     }
 
     // Every source-predicate call the body proves must be a retained edge.
-    for (key, (_polarity, location)) in &derived {
+    for (key, (_target, _polarity, location)) in &derived {
         if !rule.calls().iter().any(|call| call.call() == *key) {
             return Err(invalid(
                 RuleProgramInvalidReasonV1::WrongCallId,
@@ -321,161 +330,42 @@ fn validate_rule(
     Ok(())
 }
 
-/// One node of the sealed typed tree the rule body proves.
-#[derive(Clone, Copy)]
-enum BodyNodeV2 {
-    /// A typed expression fact.
-    Expression(SourceQualifiedNodeIdV2),
-    /// A typed nested relation (the right side of a relational EXISTS).
-    Relation(SourceQualifiedNodeIdV2),
-}
-
-/// Re-derive every source-predicate call the rule body proves with the polarity
-/// its position implies.
-///
-/// The walk mirrors the semantic producer's own dependency walk over the sealed
-/// typed tree: logical `Not` toggles negation for its subtree, aggregate
-/// placement propagates into a call's descendants, and a relational EXISTS
-/// descends into its registered nested relation. Any body node the document does
-/// not retain fails closed as [`RuleProgramInvalidReasonV1::WrongCallId`].
+/// Re-derive edges through the semantic owner's exact typed-shape classifier.
+/// Any unproven scalar occurrence or missing body node fails closed before graph
+/// construction.
 fn derive_body_calls(
     document: &SemanticDocumentV2,
     rule: &ResolvedRuleV2,
 ) -> Result<
-    BTreeMap<SourceQualifiedNodeIdV2, (BodyPolarityV1, CheckedLocatedSpanV2)>,
+    BTreeMap<SourceQualifiedNodeIdV2, (ResolvedCallTargetV2, BodyPolarityV1, CheckedLocatedSpanV2)>,
     LogicDiagnosticV1,
 > {
-    let mut derived: BTreeMap<SourceQualifiedNodeIdV2, (BodyPolarityV1, CheckedLocatedSpanV2)> =
-        BTreeMap::new();
-    let mut expressions: BTreeSet<SourceQualifiedNodeIdV2> = BTreeSet::new();
-    let mut relations: BTreeSet<SourceQualifiedNodeIdV2> = BTreeSet::new();
-    let mut stack: Vec<(BodyNodeV2, bool, bool)> = vec![(
-        BodyNodeV2::Expression(rule.body().expression().key()),
-        false,
-        false,
-    )];
-    while let Some((node, negated, aggregated)) = stack.pop() {
-        match node {
-            BodyNodeV2::Expression(key) => {
-                if !expressions.insert(key) {
-                    continue;
-                }
-                let Some(expression) = document.expression(key) else {
-                    return Err(invalid(
-                        RuleProgramInvalidReasonV1::WrongCallId,
-                        rule_location(rule),
-                    ));
-                };
-                let location = expression.location().clone();
-                match expression.shape() {
-                    TypedExprShapeV2::Call { target, arguments } => {
-                        if matches!(target, ResolvedCallTargetV2::Predicate(_)) {
-                            derived.insert(key, (derived_polarity(negated, aggregated), location));
-                        }
-                        let intrinsic =
-                            expression.intrinsic_call_aggregation().ok_or_else(|| {
-                                invalid(
-                                    RuleProgramInvalidReasonV1::WrongCallId,
-                                    rule_location(rule),
-                                )
-                            })?;
-                        let child_aggregated =
-                            aggregated || intrinsic == AggregationClassV1::Aggregate;
-                        for argument in arguments {
-                            match argument {
-                                TypedCallArgumentV2::Expression(child) => {
-                                    stack.push((
-                                        BodyNodeV2::Expression(*child),
-                                        negated,
-                                        child_aggregated,
-                                    ));
-                                }
-                                TypedCallArgumentV2::Star => {}
-                            }
-                        }
-                    }
-                    TypedExprShapeV2::Not { operand, .. } => {
-                        stack.push((BodyNodeV2::Expression(*operand), !negated, aggregated))
-                    }
-                    TypedExprShapeV2::BoolValue { value } => {
-                        stack.push((BodyNodeV2::Expression(*value), negated, aggregated));
-                    }
-                    TypedExprShapeV2::Compare { lhs, rhs, .. }
-                    | TypedExprShapeV2::And { lhs, rhs, .. }
-                    | TypedExprShapeV2::Or { lhs, rhs, .. }
-                    | TypedExprShapeV2::Binary { lhs, rhs, .. } => {
-                        stack.push((BodyNodeV2::Expression(*lhs), negated, aggregated));
-                        stack.push((BodyNodeV2::Expression(*rhs), negated, aggregated));
-                    }
-                    TypedExprShapeV2::Unary { operand, .. } => {
-                        stack.push((BodyNodeV2::Expression(*operand), negated, aggregated));
-                    }
-                    TypedExprShapeV2::Paren { inner } => {
-                        stack.push((BodyNodeV2::Expression(*inner), negated, aggregated));
-                    }
-                    TypedExprShapeV2::Path { base, .. } => {
-                        stack.push((BodyNodeV2::Expression(*base), negated, aggregated));
-                    }
-                    TypedExprShapeV2::Record(fields) => {
-                        for field in fields {
-                            stack.push((
-                                BodyNodeV2::Expression(field.value()),
-                                negated,
-                                aggregated,
-                            ));
-                        }
-                    }
-                    TypedExprShapeV2::List(items) => {
-                        for item in items {
-                            stack.push((BodyNodeV2::Expression(*item), negated, aggregated));
-                        }
-                    }
-                    TypedExprShapeV2::LogicalQuantifier { body, .. } => {
-                        stack.push((BodyNodeV2::Expression(*body), negated, aggregated));
-                    }
-                    TypedExprShapeV2::RelationExists { relation_root, .. } => {
-                        stack.push((BodyNodeV2::Relation(*relation_root), negated, aggregated));
-                    }
-                    TypedExprShapeV2::Literal(_) | TypedExprShapeV2::Binding(_) => {}
-                }
-            }
-            BodyNodeV2::Relation(key) => {
-                if !relations.insert(key) {
-                    continue;
-                }
-                let Some(relation) = document.nested_relation(key) else {
-                    return Err(invalid(
-                        RuleProgramInvalidReasonV1::WrongCallId,
-                        rule_location(rule),
-                    ));
-                };
-                descend_relation(relation, negated, aggregated, &mut stack);
-            }
-        }
-    }
-    Ok(derived)
-}
-
-/// Push every expression a typed nested relation proves.
-fn descend_relation(
-    relation: &TypedRelationExprV2,
-    negated: bool,
-    aggregated: bool,
-    stack: &mut Vec<(BodyNodeV2, bool, bool)>,
-) {
-    if let Some(predicate) = relation.predicate() {
-        stack.push((
-            BodyNodeV2::Expression(predicate.expression().key()),
-            negated,
-            aggregated,
-        ));
-    }
-    for expression in relation.expressions() {
-        stack.push((BodyNodeV2::Expression(*expression), negated, aggregated));
-    }
-    for input in relation.inputs() {
-        stack.push((BodyNodeV2::Relation(input.key()), negated, aggregated));
-    }
+    document
+        .classify_rule_body_calls(rule.body().expression().key())
+        .map(|calls| {
+            calls
+                .into_iter()
+                .map(|call| {
+                    (
+                        call.call(),
+                        (
+                            call.target().clone(),
+                            body_polarity(call.polarity()),
+                            call.location().clone(),
+                        ),
+                    )
+                })
+                .collect()
+        })
+        .map_err(|error| {
+            invalid(
+                RuleProgramInvalidReasonV1::WrongCallId,
+                error
+                    .location()
+                    .cloned()
+                    .unwrap_or_else(|| rule_location(rule)),
+            )
+        })
 }
 
 /// The location a rule-program rejection points at when the rule itself is the
@@ -512,18 +402,6 @@ fn item_location(item: &SemanticItemV2) -> Option<&CheckedLocatedSpanV2> {
         | SemanticItemV2::Presentation(_)
         | SemanticItemV2::Catalog(_)
         | SemanticItemV2::Declaration(_) => None,
-    }
-}
-
-/// The polarity a call position implies: aggregate placement wins over negation,
-/// exactly as the semantic producer's dependency walk decides it.
-fn derived_polarity(negated: bool, aggregated: bool) -> BodyPolarityV1 {
-    if aggregated {
-        BodyPolarityV1::Aggregated
-    } else if negated {
-        BodyPolarityV1::Negated
-    } else {
-        BodyPolarityV1::Positive
     }
 }
 

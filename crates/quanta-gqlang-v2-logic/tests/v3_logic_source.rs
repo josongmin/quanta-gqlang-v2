@@ -26,13 +26,14 @@ use quanta_gqlang_v2_logic::{
     RuleProgramContractV2, RuleProgramInvalidReasonV1, StratificationProofV1,
 };
 use quanta_gqlang_v2_sema::test_support::{
-    deep_relation_chain_document_v2, forged_rule_call_wrapper_document_v2,
+    deep_relation_chain_document_v2, forged_non_source_rule_call_document_v2,
+    forged_rule_call_shape_target_document_v2, forged_rule_call_wrapper_document_v2,
     forged_rule_fact_document_v2, forged_rule_membership_document_v2,
     forged_small_receipt_relation_chain_document_v2, reference_relation_document_v2,
     reference_rule_document_v2, second_source_relation_document_v2, ForgedRuleCallWrapperV2,
     ForgedRuleFactMutationV2, ForgedRuleMembershipMutationV2, ReferenceBudgetV2,
-    ReferenceRelationFixtureV2, ReferenceRuleFixtureV2, REFERENCE_SOURCE_V2,
-    SECONDARY_REFERENCE_SOURCE_V2, SMALL_BUDGET_MAX_SEMANTIC_STEPS,
+    ReferenceRelationFixtureV2, ReferenceRuleFixtureV2, SECONDARY_REFERENCE_SOURCE_V2,
+    SMALL_BUDGET_MAX_SEMANTIC_STEPS,
 };
 use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, FrontendBudgetV2, SemanticDocumentV2, SpanV1, TypedExprV2,
@@ -467,39 +468,22 @@ fn negated_self_recursion_is_refused_at_the_sole_ingress() {
 }
 
 #[test]
-fn aggregated_self_recursion_is_refused_at_the_sole_ingress() {
-    // Aggregated recursion is refused by the same ingress, under lane W3-A's
-    // fixed reject-all policy: the diagnostic names the folded predicate and is
-    // anchored on the aggregate CALL, not on the rule body. The admitted
-    // nonrecursive projection is covered separately below, so this rail retains
-    // the recursive rejection contract verbatim.
-    let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::AggregatedSelfRecursion)
-        .expect("aggregated self-recursion fixture resolves");
-    let document = fixture.document();
-    assert_eq!(
-        document.rules().count(),
-        1,
-        "the fixture document has exactly one member, so `.next()` is that member"
-    );
-    let rule = document.rules().next().expect("one document member");
-    let call = only_call(rule);
-    assert_eq!(
-        call.polarity(),
-        quanta_gqlang_v2_sema::RuleCallPolarityV2::Aggregated,
-        "the fixture document really retains an aggregated call edge"
-    );
-    assert_ne!(call.location(), rule.body().expression().location());
-
-    let error = match RuleProgramContractV2::from_document(document) {
-        Ok(contract) => panic!("recursive aggregate has no proof: {contract:?}"),
-        Err(error) => error,
-    };
-    assert_eq!(error.code(), "logic.recursive_aggregate");
-    assert_eq!(
-        error.message(),
-        "recursive aggregate `<aggregate>` over recursive predicate `r` is not admitted"
-    );
-    assert_eq!(error.span(), call.location());
+fn aggregate_wrapped_source_call_rejects_before_logic_ingress() {
+    for fixture in [
+        ReferenceRuleFixtureV2::AggregatedSelfRecursion,
+        ReferenceRuleFixtureV2::AggregatedNonRecursiveDependency,
+    ] {
+        let error = reference_rule_document_v2(fixture)
+            .expect_err("aggregate argument cannot prove a direct source literal");
+        assert!(
+            error.contains("sema.invalid_item_shape"),
+            "{fixture:?}: {error}"
+        );
+        assert!(
+            error.contains("source predicate call is not a direct rule truth literal"),
+            "{fixture:?}: {error}"
+        );
+    }
 }
 
 #[test]
@@ -596,83 +580,6 @@ fn negated_nonrecursive_dependency_projects_one_negated_edge() {
 }
 
 #[test]
-fn aggregated_nonrecursive_dependency_projects_exact_edge_and_stratification() {
-    let fixture =
-        reference_rule_document_v2(ReferenceRuleFixtureV2::AggregatedNonRecursiveDependency)
-            .expect("aggregated nonrecursive dependency fixture resolves");
-    let document = fixture.document();
-    let contract = accepted(document);
-
-    assert_eq!(fixture.item_ids().len(), 2);
-    assert_eq!(
-        contract
-            .rules()
-            .iter()
-            .map(quanta_gqlang_v2_sema::ResolvedRuleV2::item_id)
-            .collect::<Vec<_>>(),
-        fixture.item_ids(),
-        "the admitted carrier preserves the canonical document member order"
-    );
-
-    let caller = contract
-        .rules()
-        .iter()
-        .find(|rule| rule.predicate_id() == &predicate("r"))
-        .expect("r is the aggregate caller");
-    let callee = contract
-        .rules()
-        .iter()
-        .find(|rule| rule.predicate_id() == &predicate("s"))
-        .expect("s is the aggregate callee");
-    let call = only_call(caller);
-    assert_eq!(
-        call.target(),
-        &ResolvedCallTargetV2::Predicate(predicate("s"))
-    );
-    assert_eq!(
-        call.polarity(),
-        quanta_gqlang_v2_sema::RuleCallPolarityV2::Aggregated
-    );
-    assert_eq!(call.location().location().source_id, REFERENCE_SOURCE_V2);
-    assert_eq!(call.location().location().span, SpanV1::new(40, 44));
-    assert!(callee.calls().is_empty());
-
-    let program = contract.to_program();
-    assert_eq!(program.len(), 2);
-    assert_eq!(
-        program_rule(&program, "r").body().len(),
-        1,
-        "`r` projects exactly one aggregate edge on `s`"
-    );
-    let literal = body_literal(program_rule(&program, "r"), "s");
-    assert_eq!(literal.predicate(), &predicate("s"));
-    assert_eq!(literal.polarity(), BodyPolarityV1::Aggregated);
-    assert_eq!(literal.location(), call.location());
-    assert_eq!(literal.aggregate_function(), None);
-    assert!(program_rule(&program, "s").body().is_empty());
-
-    let recomputed = stratify(
-        &RecursiveProgramV1::from_rules(contract.to_program()),
-        &contract.budget(),
-    )
-    .expect("a nonrecursive aggregate edge is stratifiable");
-    assert_eq!(contract.stratification(), &recomputed);
-    assert!(contract.stratification().recursive().is_empty());
-    assert!(!contract.stratification().is_recursive(&predicate("r")));
-    assert!(!contract.stratification().is_recursive(&predicate("s")));
-    assert_eq!(contract.stratification().components().len(), 2);
-    assert_eq!(contract.stratification().stratum_count(), 2);
-    assert_eq!(
-        contract.stratification().stratum_of(&predicate("r")),
-        Some(1)
-    );
-    assert_eq!(
-        contract.stratification().stratum_of(&predicate("s")),
-        Some(0)
-    );
-}
-
-#[test]
 fn builtin_call_body_never_becomes_a_local_graph_node() {
     // SS-06B step 4: a builtin/host call stays a typed body fact. The document
     // retains no resolved source-predicate edge for it, so the projected program
@@ -704,7 +611,32 @@ fn builtin_call_body_never_becomes_a_local_graph_node() {
 }
 
 #[test]
-fn every_value_wrapper_preserves_exact_call_polarity_location_and_scc_membership() {
+fn forged_builtin_call_edge_is_wrong_call_id() {
+    let forged = forged_non_source_rule_call_document_v2()
+        .expect("the real builtin call fact can be forged into the source edge list");
+    let document = forged.document();
+    let rule = document.rules().next().expect("one forged member");
+    let call = only_call(rule);
+    assert!(!matches!(call.target(), ResolvedCallTargetV2::Predicate(_)));
+    assert_eq!(
+        document
+            .expression(call.call())
+            .expect("the builtin call keeps its typed fact")
+            .resolved_call(),
+        Some(call.target())
+    );
+
+    let error = rejection(document);
+    assert_invalid(
+        &error,
+        RuleProgramInvalidReasonV1::WrongCallId,
+        message_of(RuleProgramInvalidReasonV1::WrongCallId),
+        call.location(),
+    );
+}
+
+#[test]
+fn forged_scalar_wrappers_cannot_smuggle_source_literal_edges() {
     let wrappers = [
         ForgedRuleCallWrapperV2::Unary,
         ForgedRuleCallWrapperV2::Binary,
@@ -716,34 +648,25 @@ fn every_value_wrapper_preserves_exact_call_polarity_location_and_scc_membership
         ForgedRuleCallWrapperV2::List,
         ForgedRuleCallWrapperV2::LogicalQuantifier,
     ];
-    assert_eq!(
-        wrappers.len(),
-        9,
-        "the wrapper table covers every ForgedRuleCallWrapperV2 variant"
-    );
     for wrapper in wrappers {
         let fixture = forged_rule_call_wrapper_document_v2(wrapper)
-            .expect("wrapper fixture retains the real nonrecursive call");
-        let contract = accepted(fixture.document());
-        let caller = contract
+            .expect("wrapper fixture retains the original resolved edge");
+        let call_location = fixture
+            .document()
             .rules()
-            .iter()
-            .find(|rule| rule.predicate_id().as_str() == "r")
-            .expect("the caller remains a projected member");
-        let call = only_call(caller);
-        let program = contract.to_program();
-        let literal = body_literal(program_rule(&program, "r"), "s");
-
+            .next()
+            .expect("forged caller remains present")
+            .calls()
+            .first()
+            .expect("forged caller retains one source edge")
+            .location();
+        let error = rejection(fixture.document());
         assert_eq!(
-            call.target(),
-            &ResolvedCallTargetV2::Predicate(predicate("s"))
+            error.code(),
+            "logic.rule_program.wrong_call_id",
+            "{wrapper:?}"
         );
-        assert_eq!(literal.polarity(), BodyPolarityV1::Positive, "{wrapper:?}");
-        assert_eq!(literal.location(), call.location(), "{wrapper:?}");
-        assert!(program_rule(&program, "s").body().is_empty(), "{wrapper:?}");
-        assert!(!contract.stratification().is_recursive(&predicate("r")));
-        assert!(!contract.stratification().is_recursive(&predicate("s")));
-        assert!(contract.stratification().recursive().is_empty());
+        assert_eq!(error.span(), call_location, "{wrapper:?}");
     }
 }
 
@@ -902,6 +825,31 @@ fn transplanted_call_target_is_target_transplanted() {
 }
 
 #[test]
+fn typed_call_shape_target_disagreement_is_target_transplanted() {
+    let forged = forged_rule_call_shape_target_document_v2()
+        .expect("the source call shape can be forged independently from its fact");
+    let document = forged.document();
+    let rule = document.rules().next().expect("the caller remains present");
+    let call = only_call(rule);
+    let fact = document
+        .expression(call.call())
+        .expect("the source call keeps its typed expression fact");
+    let quanta_gqlang_v2_sema::TypedExprShapeV2::Call { target, .. } = fact.shape() else {
+        panic!("the forged source call must retain a call shape");
+    };
+    assert_ne!(target, call.target());
+    assert_eq!(fact.resolved_call(), Some(call.target()));
+
+    let error = rejection(document);
+    assert_invalid(
+        &error,
+        RuleProgramInvalidReasonV1::TargetTransplanted,
+        message_of(RuleProgramInvalidReasonV1::TargetTransplanted),
+        call.location(),
+    );
+}
+
+#[test]
 fn flipped_call_polarity_is_polarity_flip() {
     let forged = forged_rule_fact_document_v2(
         ReferenceRuleFixtureV2::PositiveSelfRecursion,
@@ -972,6 +920,34 @@ fn foreign_call_location_is_foreign_location() {
         RuleProgramInvalidReasonV1::ForeignLocation,
         message_of(RuleProgramInvalidReasonV1::ForeignLocation),
         foreign.location(),
+    );
+}
+
+#[test]
+fn same_registry_call_location_mismatch_is_wrong_call_id() {
+    let forged = forged_rule_fact_document_v2(
+        ReferenceRuleFixtureV2::PositiveSelfRecursion,
+        ForgedRuleFactMutationV2::MismatchedCallLocation,
+    )
+    .expect("forged rule-fact document seals");
+    let document = forged.document();
+    let rule = document.rules().next().expect("one forged member");
+    let call = only_call(rule);
+    let fact = document
+        .expression(call.call())
+        .expect("the call retains its typed expression fact");
+    assert_eq!(
+        call.location().registry_identity(),
+        fact.location().registry_identity()
+    );
+    assert_ne!(call.location(), fact.location());
+
+    let error = rejection(document);
+    assert_invalid(
+        &error,
+        RuleProgramInvalidReasonV1::WrongCallId,
+        message_of(RuleProgramInvalidReasonV1::WrongCallId),
+        call.location(),
     );
 }
 

@@ -987,7 +987,112 @@ fn anchored_source_rule_call_is_a_typed_exact_scc_dependency() {
 }
 
 #[test]
-fn source_rule_dependency_polarity_uses_exact_ancestor_overload_not_composed_sibling_effects() {
+fn boolean_and_value_parens_preserve_direct_rule_literal_position() {
+    let (_host, authority) = host();
+    let builder = HirBuilderV1::new();
+    let head = builder.symbol("x", SpanV1::new(9, 10));
+    let anchor = builder.compare(
+        "=",
+        builder.symbol("x", SpanV1::new(14, 15)),
+        builder.int("1", SpanV1::new(18, 19)),
+        SpanV1::new(14, 19),
+    );
+    let call = builder.call(
+        "r",
+        SpanV1::new(25, 26),
+        CallArgsHirV1::try_new(vec![CallArgHirV1::Expr(
+            builder.symbol("x", SpanV1::new(27, 28)),
+        )])
+        .unwrap(),
+        SpanV1::new(25, 29),
+    );
+    let value_grouped = builder.paren_value(call, SpanV1::new(24, 30));
+    let literal = builder.bool_value(value_grouped, SpanV1::new(24, 30));
+    let grouped = builder.paren_bool(literal, SpanV1::new(23, 31));
+    let disjunction = builder.or(
+        grouped,
+        builder.bool_literal(false, SpanV1::new(34, 39)),
+        SpanV1::new(23, 39),
+    );
+    let body = builder.and(anchor, disjunction, SpanV1::new(14, 39));
+    let rule = builder.rule("r", SpanV1::new(5, 6), head, body, SpanV1::new(0, 40));
+    let document = resolve_checked_document_v2(
+        CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+            source_id: SourceIdV2::from_raw(9),
+            source_len: 40,
+            items: vec![ProgramItemHirV1::Rule(Box::new(rule))],
+        })
+        .unwrap(),
+        &authority,
+    )
+    .unwrap();
+    let calls = document.rules().next().unwrap().calls();
+    assert_eq!(calls.len(), 1);
+    assert_eq!(
+        calls.first().unwrap().polarity(),
+        quanta_gqlang_v2_sema::RuleCallPolarityV2::Positive
+    );
+    assert_eq!(
+        calls.first().unwrap().location().location().span,
+        SpanV1::new(25, 29)
+    );
+}
+
+#[test]
+fn source_rule_call_inside_scalar_comparison_is_not_a_literal() {
+    let (_host, authority) = host();
+    for value in [false, true] {
+        let builder = HirBuilderV1::new();
+        let head = builder.symbol("x", SpanV1::new(9, 10));
+        let anchor = builder.compare(
+            "=",
+            builder.symbol("x", SpanV1::new(14, 15)),
+            builder.int("1", SpanV1::new(18, 19)),
+            SpanV1::new(14, 19),
+        );
+        let call = builder.call(
+            "r",
+            SpanV1::new(24, 25),
+            CallArgsHirV1::try_new(vec![CallArgHirV1::Expr(
+                builder.symbol("x", SpanV1::new(26, 27)),
+            )])
+            .unwrap(),
+            SpanV1::new(24, 28),
+        );
+        let scalar_comparison = builder.compare(
+            "=",
+            call,
+            builder.bool_lit(value, SpanV1::new(31, 36)),
+            SpanV1::new(24, 36),
+        );
+        let comparison = if value {
+            builder.paren_bool(scalar_comparison, SpanV1::new(23, 37))
+        } else {
+            scalar_comparison
+        };
+        let end = if value { 38 } else { 37 };
+        let body = builder.and(anchor, comparison, SpanV1::new(14, end - 1));
+        let rule = builder.rule("r", SpanV1::new(5, 6), head, body, SpanV1::new(0, end));
+        let result = resolve_checked_document_v2(
+            CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
+                source_id: SourceIdV2::from_raw(9),
+                source_len: end,
+                items: vec![ProgramItemHirV1::Rule(Box::new(rule))],
+            })
+            .unwrap(),
+            &authority,
+        );
+        let FrontendTransactionErrorV2::Document(error) = result.unwrap_err() else {
+            panic!("scalar comparison with {value} must reject in sema");
+        };
+        let diagnostic = error.diagnostics().first().unwrap();
+        assert_eq!(diagnostic.code(), "sema.invalid_item_shape");
+        assert_eq!(diagnostic.primary().span, SpanV1::new(24, 28));
+    }
+}
+
+#[test]
+fn source_rule_dependency_inside_scalar_wrappers_rejects_at_call() {
     let (_host, authority) = host();
     for aggregated in [false, true] {
         let builder = HirBuilderV1::new();
@@ -1007,7 +1112,6 @@ fn source_rule_dependency_polarity_uses_exact_ancestor_overload_not_composed_sib
             .unwrap(),
             SpanV1::new(40, 44),
         );
-        let recursive_id = recursive.id;
         let predicate = if aggregated {
             let count = builder.call(
                 "count",
@@ -1056,7 +1160,7 @@ fn source_rule_dependency_polarity_uses_exact_ancestor_overload_not_composed_sib
         };
         let body = builder.and(anchor, predicate, SpanV1::new(14, 49));
         let rule = builder.rule("r", SpanV1::new(5, 6), head, body, SpanV1::new(0, 50));
-        let document = resolve_checked_document_v2(
+        let result = resolve_checked_document_v2(
             CheckedSyntaxDocumentV2::try_from_hir(HirDocumentV1 {
                 source_id: SourceIdV2::from_raw(9),
                 source_len: 50,
@@ -1064,19 +1168,13 @@ fn source_rule_dependency_polarity_uses_exact_ancestor_overload_not_composed_sib
             })
             .unwrap(),
             &authority,
-        )
-        .unwrap();
-        let calls = document.rules().next().unwrap().calls();
-        assert_eq!(calls.len(), 1);
-        assert_eq!(calls.first().unwrap().call().node_id, recursive_id);
-        assert_eq!(
-            calls.first().unwrap().polarity(),
-            if aggregated {
-                quanta_gqlang_v2_sema::RuleCallPolarityV2::Aggregated
-            } else {
-                quanta_gqlang_v2_sema::RuleCallPolarityV2::Positive
-            }
         );
+        let FrontendTransactionErrorV2::Document(error) = result.unwrap_err() else {
+            panic!("source call under a scalar wrapper must reject in sema");
+        };
+        let diagnostic = error.diagnostics().first().unwrap();
+        assert_eq!(diagnostic.code(), "sema.invalid_item_shape");
+        assert_eq!(diagnostic.primary().span, SpanV1::new(40, 44));
     }
 }
 

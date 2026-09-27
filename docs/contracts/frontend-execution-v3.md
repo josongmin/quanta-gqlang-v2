@@ -85,10 +85,10 @@ before effects.
 All three digests are SHA-256 over distinct canonical byte streams. `STR(x)` means `U64BE(length of UTF-8 bytes) || UTF-8 bytes`; `SEQ(xs)` means `U64BE(count) || each element in declared order`; `OPT(x)` means one byte `0` if absent or `1 || x` if present. `U8`, `U32BE`, `U64BE`, and `I128BE` have fixed widths; signed integers use two's-complement big-endian bytes. Lengths come from the frontend's bounded checked transaction and are encoded as `U64BE`. No display/debug formatting, hash-map order, host pointer width, runtime ID, provider, generation, lease, or budget enters these streams.
 
 The V3 Rust DTO uses source-byte digest schema 3 and contract/qualification
-digest schema 5. Schema 5 is the explicit incompatible contract-encoding
-revision that added scoped SAMPLE targets, complete Composition graph queries,
-and their sealed witness policy. The unchanged source-byte stream remains on
-schema/domain 3; revised contract streams use the `.v5` suffix so older bytes
+digest schema 6. Schema 6 is the explicit incompatible contract-encoding
+revision that adds flat multi-EXISTS condition metadata to the earlier scoped
+SAMPLE and Composition graph-query contract. The unchanged source-byte stream remains on
+schema/domain 3; revised contract streams use the `.v6` suffix so older bytes
 cannot collide. The document exposes all three schema versions through
 read-only accessors, so a downstream receipt never has to infer the digest
 algorithm from the Rust DTO name or from a hash value:
@@ -96,12 +96,14 @@ algorithm from the Rust DTO name or from a hash value:
 | Digest | Exact top-level stream |
 | --- | --- |
 | `source_digest` | `STR("qglang.execution.source-bytes.v3") || U32BE(3) || U64BE(source byte length) || exact source UTF-8 bytes` |
-| `contract_digest` | `STR("qglang.execution.contract.v5") || U32BE(5) || U32BE(SourceId.raw) || SEQ(source-ordered execution items)` |
-| `qualification_digest` | `STR("qglang.execution.qualification.v5") || U32BE(5) || U32BE(SourceId.raw) || raw 32-byte source_digest || raw 32-byte contract_digest` |
+| `contract_digest` | `STR("qglang.execution.contract.v6") || U32BE(6) || U32BE(SourceId.raw) || SEQ(source-ordered execution items)` |
+| `qualification_digest` | `STR("qglang.execution.qualification.v6") || U32BE(6) || U32BE(SourceId.raw) || raw 32-byte source_digest || raw 32-byte contract_digest` |
 
 An item is encoded in this order: `ItemId`, family tag, plan authority tag, determinism tag, evidence tag, effect tag, policy-family tag, optional relation, optional composition. `ItemId = U32BE(source ID) || U32BE(HIR item ID)`; `NodeKey = U32BE(source ID) || U32BE(node ID)`; `Binding = U32BE(source ID) || U32BE(owner node) || U64BE(ordinal) || STR(name)`.
 
-The nested encoding is recursive and uses the following exact field order. `Relation = U8(1) || ItemId || Node || SEQ(expressions)`; each expression is `NodeKey || ValueType || ExpressionShape`. `Node = algebra-family tag || OPT(join-mode tag) || stage NodeKey || OPT(Source) || Schema || SEQ(predicate NodeKeys) || SEQ(expression NodeKeys) || SEQ(Correlation) || SEQ(partition-input Bindings) || SEQ(child Nodes)`. `Source = relation-authority tag || source-kind tag || OPT(STR(namespace)) || STR(name)`. `Correlation = Binding || reference NodeKey`. `Schema = SEQ(fields) || cardinality tag || SEQ(partition-key NodeKeys) || SEQ(order keys)`; a field is `STR(name) || ValueType` and an order key is `NodeKey || direction tag || null-order tag || ValueType`.
+The nested encoding is recursive and uses the following exact field order. `Relation = U8(1) || ItemId || Node || SEQ(expressions)`; each expression is `NodeKey || ValueType || ExpressionShape`. `Node = algebra-family tag || OPT(join-mode tag) || stage NodeKey || OPT(Source) || Schema || SEQ(predicate NodeKeys) || SEQ(expression NodeKeys) || SEQ(Correlation) || [SEQ(ExistentialTerm) if family is ExistsFilter] || SEQ(partition-input Bindings) || SEQ(child Nodes)`. `ExistentialTerm = expression NodeKey || relation-exists polarity tag || SEQ(Correlation)`; its index matches the corresponding child after the input child, in authored order. `Source = relation-authority tag || source-kind tag || OPT(STR(namespace)) || STR(name)`. `Correlation = Binding || reference NodeKey`. `Schema = SEQ(fields) || cardinality tag || SEQ(partition-key NodeKeys) || SEQ(order keys)`; a field is `STR(name) || ValueType` and an order key is `NodeKey || direction tag || null-order tag || ValueType`.
+
+The node's `stage` key is source-stage provenance, not a unique operator ID. A filter stage with ordinary and multiple existential conjuncts emits a residual `Filter` above an `ExistsFilter`; both carry that stage key. Consumers distinguish operator nodes by tree position and family. An existential term's polarity is the effective filter polarity, including an enclosing direct `not`; its referenced `RelationExists` expression retains its authored inner polarity.
 
 `Composition = U8(1) || SEQ(bindings) || WITH Binding || body ItemId || STR(body-family keyword) || OPT(body Relation) || Body`. Each composition binding is `Binding || producer ItemId || STR(producer-family keyword) || OPT(Schema) || OPT(Relation) || Producer`. `Producer` is `U8(0)` for Relation, `U8(1) || STR(query text) || sample-mode tag || U32BE(limit) || OPT(GraphTarget)` for Sample, or `U8(2) || GraphQuery` for Graph. `Body` is `U8(0)` for Relation, `U8(1) || GraphQuery` for Graph, `U8(2)` for Check, or `U8(3)` for Explain. `GraphQuery = graph-kind tag || SEQ(graph-role tag || GraphTarget) || U32BE(depth) || OPT(graph-direction tag) || SEQ(STR(summary facet)) || relation-shape tag || dedup-identity tag || U32BE(max witnesses) || OPT(U32BE(max path length)) || witness-tie-break tag`. `GraphTarget` is `U8(0) || graph-reference-kind tag || STR(spelling) || OPT(STR(entity subtype))` for a host selector or `U8(1) || Binding || graph-capability tag` for a prior Composition binding. The top-level optional relation/composition use `U8(0)` absent or the corresponding payload beginning with `U8(1)` present; no second presence byte is inserted.
 
@@ -126,7 +128,7 @@ Within each tag family below, the first listed variant has tag `0`, the next tag
 | graph relation shape | Acyclic, Cyclic |
 | graph dedup identity | Endpoints, NodeSequence, NodeSet |
 | graph witness tie-break | ShortestThenLexical, Lexical |
-| algebra family | Scan, Filter, Project, Join, Group, Aggregate, Sort, SemiJoin, AntiJoin |
+| algebra family | Scan, Filter, Project, Join, Group, Aggregate, Sort, SemiJoin, AntiJoin, ExistsFilter |
 | relation authority | Host, CanonicalWorkspaceFiles, CatalogView, CompositionBinding |
 | source kind | Relation, View, Composition |
 | join mode | Inner, Cross |

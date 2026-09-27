@@ -668,6 +668,7 @@ pub struct ExecutionRelationalOperatorV3 {
     predicates: Box<[SourceQualifiedNodeIdV2]>,
     expressions: Box<[SourceQualifiedNodeIdV2]>,
     correlations: Box<[ExecutionCorrelationV3]>,
+    existential_terms: Box<[ExecutionExistentialTermV3]>,
     partition_input: Box<[ExecutionBindingV3]>,
     children: Box<[ExecutionRelationalOperatorV3]>,
 }
@@ -706,6 +707,11 @@ impl ExecutionRelationalOperatorV3 {
     pub fn correlations(&self) -> &[ExecutionCorrelationV3] {
         &self.correlations
     }
+    /// Flat EXISTS conditions; child zero is the input and each following
+    /// child corresponds to one condition in authored order.
+    pub fn existential_terms(&self) -> &[ExecutionExistentialTermV3] {
+        &self.existential_terms
+    }
     #[must_use]
     pub fn partition_input(&self) -> &[ExecutionBindingV3] {
         &self.partition_input
@@ -713,6 +719,28 @@ impl ExecutionRelationalOperatorV3 {
     #[must_use]
     pub fn children(&self) -> &[ExecutionRelationalOperatorV3] {
         &self.children
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExecutionExistentialTermV3 {
+    expression: SourceQualifiedNodeIdV2,
+    polarity: ExecutionExistsPolarityV3,
+    correlations: Box<[ExecutionCorrelationV3]>,
+}
+
+impl ExecutionExistentialTermV3 {
+    #[must_use]
+    pub const fn expression(&self) -> SourceQualifiedNodeIdV2 {
+        self.expression
+    }
+    #[must_use]
+    pub const fn polarity(&self) -> ExecutionExistsPolarityV3 {
+        self.polarity
+    }
+    #[must_use]
+    pub fn correlations(&self) -> &[ExecutionCorrelationV3] {
+        &self.correlations
     }
 }
 
@@ -1333,6 +1361,10 @@ fn collect_operator_roots(
     for edge in &node.correlations {
         roots.push(edge.reference);
     }
+    for term in &node.existential_terms {
+        roots.push(term.expression);
+        roots.extend(term.correlations.iter().map(|edge| edge.reference));
+    }
     roots.extend_from_slice(&node.schema.partition_keys);
     for key in &node.schema.order {
         roots.push(key.expression);
@@ -1702,6 +1734,24 @@ fn project_node(node: &CheckedAlgebraNodeV2) -> ExecutionRelationalOperatorV3 {
         })
         .collect::<Vec<_>>()
         .into_boxed_slice();
+    let existential_terms = node
+        .existential_terms()
+        .iter()
+        .map(|term| ExecutionExistentialTermV3 {
+            expression: term.expression(),
+            polarity: project_exists_polarity(term.polarity()),
+            correlations: term
+                .correlations()
+                .iter()
+                .map(|edge| ExecutionCorrelationV3 {
+                    binding: project_binding(edge.binding()),
+                    reference: edge.reference(),
+                })
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+        })
+        .collect::<Vec<_>>()
+        .into_boxed_slice();
     let partition_input = node
         .partition_input()
         .iter()
@@ -1723,6 +1773,7 @@ fn project_node(node: &CheckedAlgebraNodeV2) -> ExecutionRelationalOperatorV3 {
         predicates,
         expressions,
         correlations,
+        existential_terms,
         partition_input,
         children,
     }
@@ -1930,11 +1981,10 @@ fn project_binding(binding: &quanta_gqlang_v2_sema::ResolvedValueBindingV2) -> E
 /// by the schema version instead.
 const SOURCE_DIGEST_SCHEMA_VERSION: u32 = 3;
 // The Rust DTO is still Execution V3. Its contract/qualification encoding has
-// an independent revision because adding scoped SAMPLE, complete graph-query
-// payloads, and the sealed witness policy is byte-incompatible with the
-// original schema-3 stream. The source byte stream itself did not change, so
-// its stable schema remains 3.
-const CONTRACT_DIGEST_SCHEMA_VERSION: u32 = 5;
+// an independent revision. Schema 6 adds flat multi-EXISTS condition payloads
+// to the earlier scoped SAMPLE, graph-query, and witness-policy revisions.
+// The source byte stream itself did not change, so its stable schema remains 3.
+const CONTRACT_DIGEST_SCHEMA_VERSION: u32 = 6;
 
 /// Digest of the raw UTF-8 source bytes only.
 fn digest_source_bytes(source: &[u8]) -> ExecutionDigestV3 {
@@ -1949,7 +1999,7 @@ fn digest_source_bytes(source: &[u8]) -> ExecutionDigestV3 {
 /// Digest of the canonical DTO encoding only.
 fn digest_contract(source_id: SourceIdV2, items: &[ExecutionItemV3]) -> ExecutionDigestV3 {
     let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.contract.v5");
+    put_str(&mut bytes, "qglang.execution.contract.v6");
     put_u32(&mut bytes, CONTRACT_DIGEST_SCHEMA_VERSION);
     put_u32(&mut bytes, source_id.raw());
     put_usize(&mut bytes, items.len());
@@ -1982,7 +2032,7 @@ fn digest_qualification(
     contract_digest: ExecutionDigestV3,
 ) -> ExecutionDigestV3 {
     let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.qualification.v5");
+    put_str(&mut bytes, "qglang.execution.qualification.v6");
     put_u32(&mut bytes, CONTRACT_DIGEST_SCHEMA_VERSION);
     put_u32(&mut bytes, source_id.raw());
     bytes.extend_from_slice(source_digest.as_bytes());
@@ -2317,6 +2367,18 @@ fn put_node(out: &mut Vec<u8>, node: &ExecutionRelationalOperatorV3) {
         put_binding(out, &edge.binding);
         put_key(out, edge.reference);
     }
+    if node.family == AlgebraFamilyV2::ExistsFilter {
+        put_usize(out, node.existential_terms.len());
+        for term in &node.existential_terms {
+            put_key(out, term.expression);
+            put_u8(out, exists_polarity_tag(term.polarity));
+            put_usize(out, term.correlations.len());
+            for edge in &term.correlations {
+                put_binding(out, &edge.binding);
+                put_key(out, edge.reference);
+            }
+        }
+    }
     put_usize(out, node.partition_input.len());
     for binding in &node.partition_input {
         put_binding(out, binding);
@@ -2591,6 +2653,7 @@ const fn algebra_family_tag(value: AlgebraFamilyV2) -> u8 {
         AlgebraFamilyV2::Sort => 6,
         AlgebraFamilyV2::SemiJoin => 7,
         AlgebraFamilyV2::AntiJoin => 8,
+        AlgebraFamilyV2::ExistsFilter => 9,
     }
 }
 
@@ -2751,8 +2814,8 @@ mod tests {
             vec![relation_item()],
         );
         assert_eq!(document.source_digest_schema_version(), 3);
-        assert_eq!(document.contract_digest_schema_version(), 5);
-        assert_eq!(document.qualification_digest_schema_version(), 5);
+        assert_eq!(document.contract_digest_schema_version(), 6);
+        assert_eq!(document.qualification_digest_schema_version(), 6);
         // Golden pins: any canonical-encoding change (tag swap, field reorder,
         // domain edit) must update these deliberately, never silently.
         assert_eq!(
@@ -2761,17 +2824,17 @@ mod tests {
         );
         assert_eq!(
             document.contract_digest().to_hex(),
-            "b429b5f8aaa3abc18bb81b47b56b86ceb3f2dbce6a61122182d5e16eacd78ebd"
+            "8f3a3a1d91adb282cf1a3182600acac2678ccabc0fe1e339e32ad22950f4bfcf"
         );
         assert_eq!(
             document.qualification_digest().to_hex(),
-            "aa642e6b13a3bc34ca613536cdc31d84b587632c47221001b928b8f9a217ba78"
+            "140a207e264b94d7a3a072cc11a8c377e0105605737c445c01808ed649dcecfe"
         );
     }
 
     #[test]
     fn independent_whole_stream_oracle_pins_document_header_items_and_order() {
-        // Handwritten schema-5 stream for two payload-free certified items.
+        // Handwritten schema-6 stream for two payload-free certified items.
         // This does not call any production tag or put_* helper. The SHA values
         // were computed independently from these bytes with Python hashlib.
         let plan = ExecutionPlanV3 {
@@ -2811,8 +2874,8 @@ mod tests {
         .concat();
         let contract_stream = [
             &[0, 0, 0, 0, 0, 0, 0, 28][..],
-            b"qglang.execution.contract.v5",
-            &[0, 0, 0, 5, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 2],
+            b"qglang.execution.contract.v6",
+            &[0, 0, 0, 6, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 2],
             // item 7: source, node, family, authority, determinism,
             // evidence, effect, policy, absent relation, absent composition.
             &[0, 0, 0, 9, 0, 0, 0, 7, 5, 1, 0, 0, 0, 5, 0, 0],
@@ -2821,8 +2884,8 @@ mod tests {
         .concat();
         let qualification_stream = [
             &[0, 0, 0, 0, 0, 0, 0, 33][..],
-            b"qglang.execution.qualification.v5",
-            &[0, 0, 0, 5, 0, 0, 0, 9],
+            b"qglang.execution.qualification.v6",
+            &[0, 0, 0, 6, 0, 0, 0, 9],
             Sha256::digest(&source_stream).as_slice(),
             Sha256::digest(&contract_stream).as_slice(),
         ]
@@ -2836,12 +2899,12 @@ mod tests {
             (
                 &contract_stream,
                 document.contract_digest(),
-                "f2ac4a19b67293506b7cc39fceeec3cfa3a14ac93d057fa8f2d4a327eced08f6",
+                "bec5329c2007188f9a7d944fba9dcd926eeda52bbb5d7201de0523717ca1d74b",
             ),
             (
                 &qualification_stream,
                 document.qualification_digest(),
-                "fa612df227a5a7f2127f86ccd2aa6ab834ef2d2cc3447dbec25a9559a2c1042d",
+                "6dd2462f547eb2fb1a6bb7bbbe4b903e36ea676c89436bc816466eccc34418b6",
             ),
         ];
         for (independent_stream, production_digest, pinned_sha) in expected {
@@ -2963,6 +3026,7 @@ mod tests {
             algebra_family_tag(AlgebraFamilyV2::Sort),
             algebra_family_tag(AlgebraFamilyV2::SemiJoin),
             algebra_family_tag(AlgebraFamilyV2::AntiJoin),
+            algebra_family_tag(AlgebraFamilyV2::ExistsFilter),
         ]);
         assert_distinct_tags([
             join_mode_tag(ExecutionJoinModeV3::Inner),
@@ -3107,6 +3171,7 @@ mod tests {
             predicates: Box::new([]),
             expressions: Box::new([]),
             correlations: Box::new([]),
+            existential_terms: Box::new([]),
             partition_input: Box::new([]),
             children: Box::new([]),
         }

@@ -762,6 +762,16 @@ fn walk(
                 if let Some(capability) = capability_for_family(family) {
                     capabilities.insert(capability);
                 }
+                for term in node.existential_terms() {
+                    capabilities.insert(match term.polarity() {
+                        quanta_gqlang_v2_sema::RelationExistsPolarityV2::Exists => {
+                            CapabilityV2::ExistenceCheck
+                        }
+                        quanta_gqlang_v2_sema::RelationExistsPolarityV2::NotExists => {
+                            CapabilityV2::NegationCheck
+                        }
+                    });
+                }
                 effects = effects.join(node.output().effects());
                 for expression in node.expressions() {
                     effects = effects.join(expression.effects());
@@ -888,7 +898,7 @@ fn exit_class(
         | AlgebraFamilyV2::Project
         | AlgebraFamilyV2::Filter
         | AlgebraFamilyV2::Sort => children.next().unwrap_or(CardinalityClassV2::LinearInInput),
-        AlgebraFamilyV2::SemiJoin | AlgebraFamilyV2::AntiJoin => {
+        AlgebraFamilyV2::SemiJoin | AlgebraFamilyV2::AntiJoin | AlgebraFamilyV2::ExistsFilter => {
             // The result is bounded by the LEFT input; the right input only
             // decides existence. Child results are source ordered, so do not
             // recover them by popping a shared stack: nested joins can leave

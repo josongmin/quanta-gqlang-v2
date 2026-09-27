@@ -1242,7 +1242,7 @@ impl HirVisitorV1 for ConstructedCandidateTypes<'_> {
                         Ok(ty) => {
                             let _ = records.insert(ty);
                         }
-                        Err(TypeDiagnosticV2::TypeShapeLimit) => {}
+                        Err(TypeDiagnosticV2::TypeShapeLimit { .. }) => {}
                         Err(error) => {
                             self.error = Some(error);
                             return;

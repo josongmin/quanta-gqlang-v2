@@ -909,6 +909,164 @@ fn nested_record_and_list_type_through_the_shared_kernel() {
 }
 
 #[test]
+fn record_builder_retains_duplicate_and_invalid_name_diagnostic_order() {
+    for (names, expected) in [
+        (vec!["a", "a"], "types.duplicate_record_field"),
+        (vec!["a", "a", "bad name"], "types.invalid_type_name"),
+    ] {
+        let builder = HirBuilderV1::new();
+        let fields = names
+            .into_iter()
+            .map(|name| RecordFieldV1 {
+                name: name.to_owned(),
+                name_span: SpanV1::new(0, 1),
+                value: builder.int("1", SpanV1::new(0, 1)),
+            })
+            .collect();
+        let doc = document(builder.record(fields, SpanV1::new(0, 1)));
+        let inputs =
+            resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![], vec![]).unwrap();
+        let error = ExpressionTypeKernelV2::try_closed()
+            .unwrap()
+            .check_document(&inputs)
+            .unwrap_err();
+        assert_eq!(error.code(), expected);
+    }
+}
+
+#[test]
+fn oversized_record_preserves_later_unknown_and_invalid_name() {
+    let large = ValueTypeV1::try_tuple(vec![ValueTypeV1::int(); MAX_TYPE_NODES - 2]).unwrap();
+    assert_eq!(large.node_count(), MAX_TYPE_NODES - 1);
+    for (last_name, last_state, expected) in [
+        (
+            "later".to_owned(),
+            ExpressionTypeStateV2::Unknown(UnknownTypeCauseV2::UnresolvedEditorBinding),
+            "unknown",
+        ),
+        (
+            "x".repeat(MAX_TYPE_NAME_BYTES + 1),
+            ExpressionTypeStateV2::Known(ValueTypeV1::int()),
+            "types.invalid_type_name",
+        ),
+    ] {
+        let builder = HirBuilderV1::new();
+        let mut entries = Vec::new();
+        let fields = ["a".to_owned(), "b".to_owned(), last_name]
+            .into_iter()
+            .enumerate()
+            .map(|(index, name)| {
+                let value = builder.symbol(format!("v{index}"), SpanV1::new(0, 1));
+                entries.push(ResolvedTypeInputEntryV2 {
+                    key: SourceQualifiedNodeIdV2 {
+                        source_id: SourceIdV2::from_raw(7),
+                        node_id: value.id,
+                    },
+                    value: ResolvedTypeInputValueV2::Binding(if index < 2 {
+                        ExpressionTypeStateV2::Known(large.clone())
+                    } else {
+                        last_state.clone()
+                    }),
+                });
+                RecordFieldV1 {
+                    name,
+                    name_span: SpanV1::new(2, 3),
+                    value,
+                }
+            })
+            .collect();
+        let record = builder.record(fields, SpanV1::new(0, 4));
+        let root = SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(7),
+            node_id: record.id,
+        };
+        let doc = document(record);
+        let inputs =
+            resolved_type_inputs(check_document_v2(&doc).unwrap(), entries, vec![]).unwrap();
+        let result = ExpressionTypeKernelV2::try_closed()
+            .unwrap()
+            .check_document(&inputs);
+        if expected == "unknown" {
+            let facts = result.unwrap();
+            assert_eq!(facts.get(root).unwrap().state, last_state);
+        } else {
+            assert_eq!(result.unwrap_err().code(), expected);
+        }
+    }
+}
+
+#[test]
+fn oversized_list_is_located_at_source_expression() {
+    let builder = HirBuilderV1::new();
+    let element = builder.symbol("large", SpanV1::new(3, 8));
+    let input = ResolvedTypeInputEntryV2 {
+        key: SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(7),
+            node_id: element.id,
+        },
+        value: ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(
+            ValueTypeV1::try_tuple(vec![ValueTypeV1::int(); MAX_TYPE_NODES - 1]).unwrap(),
+        )),
+    };
+    let list_span = SpanV1::new(2, 9);
+    let doc = document(builder.list(vec![element], list_span));
+    let inputs =
+        resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
+    let error = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&inputs)
+        .unwrap_err();
+    assert_eq!(error.code(), "types.type_shape_limit");
+    assert_eq!(
+        error.primary(),
+        Some(quanta_gqlang_v2_hir::LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(7),
+            span: list_span,
+        })
+    );
+}
+
+#[test]
+fn nested_oversized_list_is_located_at_inner_list() {
+    let builder = HirBuilderV1::new();
+    let element = builder.symbol("large", SpanV1::new(4, 9));
+    let input = ResolvedTypeInputEntryV2 {
+        key: SourceQualifiedNodeIdV2 {
+            source_id: SourceIdV2::from_raw(7),
+            node_id: element.id,
+        },
+        value: ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(
+            ValueTypeV1::try_tuple(vec![ValueTypeV1::int(); MAX_TYPE_NODES - 1]).unwrap(),
+        )),
+    };
+    let inner_span = SpanV1::new(3, 10);
+    let list = builder.list(vec![element], inner_span);
+    let record = builder.record(
+        vec![RecordFieldV1 {
+            name: "nested".to_owned(),
+            name_span: SpanV1::new(1, 2),
+            value: list,
+        }],
+        SpanV1::new(0, 11),
+    );
+    let doc = document(record);
+    let inputs =
+        resolved_type_inputs(check_document_v2(&doc).unwrap(), vec![input], vec![]).unwrap();
+    let error = ExpressionTypeKernelV2::try_closed()
+        .unwrap()
+        .check_document(&inputs)
+        .unwrap_err();
+    assert_eq!(error.code(), "types.type_shape_limit");
+    assert_eq!(
+        error.primary(),
+        Some(quanta_gqlang_v2_hir::LocatedSpanV2 {
+            source_id: SourceIdV2::from_raw(7),
+            span: inner_span,
+        })
+    );
+}
+
+#[test]
 fn path_projection_reads_checked_record_fields() {
     let builder = HirBuilderV1::new();
     let base = builder.record(

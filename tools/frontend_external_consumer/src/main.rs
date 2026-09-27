@@ -16,26 +16,24 @@ use std::path::{Path, PathBuf};
 
 use quanta_gqlang_v2_frontend_contract::{
     analyze_source_document_v2, classify_single_source_root_v3, compile_source_document_v3,
-    format_source_document_v2,
-    AlgebraFamilyV2, AnalysisDocumentV2, AnalysisItemV2, AnalysisStatusV2, CheckedLocatedSpanV2,
-    ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledItemV2,
-    CompiledRuleProgramV2, CompiledSourceDocumentV3, ExecutionAuthorityV3, ExecutionBindingV3,
-    ExecutionCallTargetV3, ExecutionCardinalityV3, ExecutionCompositionBindingV3,
-    ExecutionCompositionBodyV3, ExecutionCompositionProducerV3, ExecutionCompositionV3,
-    ExecutionCorrelationV3, ExecutionDeterminismV3, ExecutionDigestV3, ExecutionDocumentV3,
-    ExecutionEffectV3, ExecutionEvidenceV3, ExecutionExistsPolarityV3, ExecutionExpressionShapeV3,
-    ExecutionExpressionV3, ExecutionFamilyV3, ExecutionFieldV3, ExecutionFiniteFloatV3,
-    ExecutionGraphCapabilityV3, ExecutionGraphDedupIdentityV3, ExecutionGraphDirectionV3,
-    ExecutionGraphKindV3, ExecutionGraphQueryV3, ExecutionGraphReferenceKindV3,
-    ExecutionGraphReferenceRoleV3, ExecutionGraphReferenceV3, ExecutionGraphRelationShapeV3,
-    ExecutionGraphTargetV3, ExecutionGraphWitnessTieBreakV3, ExecutionItemV3,
-    ExecutionJoinModeV3, ExecutionLiteralV3, ExecutionLogicalQuantifierV3,
-    ExecutionNullOrderV3, ExecutionOperatorV3, ExecutionOrderKeyV3, ExecutionPlanV3,
-    ExecutionPolicyFamilyV3, ExecutionRecordFieldV3, ExecutionRelationAuthorityV3,
+    format_source_document_v2, AlgebraFamilyV2, AnalysisDocumentV2, AnalysisItemV2,
+    AnalysisStatusV2, CheckedLocatedSpanV2, ClosedFrontendAuthorityBuilderV2,
+    ClosedFrontendAuthorityV2, CompiledItemV2, CompiledRuleProgramV2, CompiledSourceDocumentV3,
+    ExecutionAuthorityV3, ExecutionBindingV3, ExecutionCallTargetV3, ExecutionCardinalityV3,
+    ExecutionCompositionBindingV3, ExecutionCompositionBodyV3, ExecutionCompositionProducerV3,
+    ExecutionCompositionV3, ExecutionCorrelationV3, ExecutionDeterminismV3, ExecutionDigestV3,
+    ExecutionDocumentV3, ExecutionEffectV3, ExecutionEvidenceV3, ExecutionExistentialTermV3,
+    ExecutionExistsPolarityV3, ExecutionExpressionShapeV3, ExecutionExpressionV3,
+    ExecutionFamilyV3, ExecutionFieldV3, ExecutionFiniteFloatV3, ExecutionGraphCapabilityV3,
+    ExecutionGraphDedupIdentityV3, ExecutionGraphDirectionV3, ExecutionGraphKindV3,
+    ExecutionGraphQueryV3, ExecutionGraphReferenceKindV3, ExecutionGraphReferenceRoleV3,
+    ExecutionGraphReferenceV3, ExecutionGraphRelationShapeV3, ExecutionGraphTargetV3,
+    ExecutionGraphWitnessTieBreakV3, ExecutionItemV3, ExecutionJoinModeV3, ExecutionLiteralV3,
+    ExecutionLogicalQuantifierV3, ExecutionNullOrderV3, ExecutionOperatorV3, ExecutionOrderKeyV3,
+    ExecutionPlanV3, ExecutionPolicyFamilyV3, ExecutionRecordFieldV3, ExecutionRelationAuthorityV3,
     ExecutionRelationV3, ExecutionRelationalOperatorV3, ExecutionSampleModeV3,
-    ExecutionScalarTypeV3, ExecutionSchemaV3,
-    ExecutionSortDirectionV3, ExecutionSourceKindV3, ExecutionSourceV3, ExecutionUnionVariantV3,
-    ExecutionValueTypeV3, FrontendAuthorityErrorV2,
+    ExecutionScalarTypeV3, ExecutionSchemaV3, ExecutionSortDirectionV3, ExecutionSourceKindV3,
+    ExecutionSourceV3, ExecutionUnionVariantV3, ExecutionValueTypeV3, FrontendAuthorityErrorV2,
     FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
     FrontendCallableParameterInputV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
     FrontendDiagnosticV2, FrontendFailureV2, FrontendGraphReferenceInputV2,
@@ -81,14 +79,12 @@ const GRAPH_COMPOSITION_DOCUMENT_TEXT: &str =
     "let paths = find path a -> b | via=mid | direction=backward | depth=2 \
      find reachability paths -> b | direction=both | depth=3 with paths";
 
-const CHECK_COMPOSITION_DOCUMENT_TEXT: &str =
-    "ruledef rule1 | check-ref=check1; \
+const CHECK_COMPOSITION_DOCUMENT_TEXT: &str = "ruledef rule1 | check-ref=check1; \
      let first = sample query=\"first\" | mode=lexical | limit=1 \
      let second = sample query=\"second\" | mode=semantic | limit=1 | scope=first \
      check rule1 | scope=second | pattern=pattern1 | confirm=skip | mode=pattern with second";
 
-const EXPLAIN_COMPOSITION_DOCUMENT_TEXT: &str =
-    "let paths = find path a -> b | depth=1 \
+const EXPLAIN_COMPOSITION_DOCUMENT_TEXT: &str = "let paths = find path a -> b | depth=1 \
      let reachable = find reachability paths -> b | depth=2 \
      explain reachable | evidence=auto | truth=inspect with reachable";
 
@@ -264,6 +260,7 @@ fn algebra_family_label(family: AlgebraFamilyV2) -> &'static str {
         AlgebraFamilyV2::Sort => "sort",
         AlgebraFamilyV2::SemiJoin => "semi-join",
         AlgebraFamilyV2::AntiJoin => "anti-join",
+        AlgebraFamilyV2::ExistsFilter => "exists-filter",
     }
 }
 
@@ -501,9 +498,17 @@ fn execution_operator_node_api(node: &ExecutionRelationalOperatorV3) -> usize {
     let _: &[SourceQualifiedNodeIdV2] = node.predicates();
     let _: &[SourceQualifiedNodeIdV2] = node.expressions();
     let _: &[ExecutionCorrelationV3] = node.correlations();
+    let _: &[ExecutionExistentialTermV3] = node.existential_terms();
     let _: &[ExecutionBindingV3] = node.partition_input();
     let _: &[ExecutionRelationalOperatorV3] = node.children();
     node.children().len()
+}
+
+fn execution_existential_term_api(term: &ExecutionExistentialTermV3) -> usize {
+    let _: SourceQualifiedNodeIdV2 = term.expression();
+    let _: ExecutionExistsPolarityV3 = term.polarity();
+    let _: &[ExecutionCorrelationV3] = term.correlations();
+    term.correlations().len()
 }
 
 fn execution_schema_api(schema: &ExecutionSchemaV3) -> usize {
@@ -993,6 +998,7 @@ fn pin_curated_roots() {
     pin(execution_plan_api as fn(&ExecutionPlanV3) -> usize);
     pin(execution_relation_api as fn(&ExecutionRelationV3) -> usize);
     pin(execution_operator_node_api as fn(&ExecutionRelationalOperatorV3) -> usize);
+    pin(execution_existential_term_api as fn(&ExecutionExistentialTermV3) -> usize);
     pin(execution_schema_api as fn(&ExecutionSchemaV3) -> usize);
     pin(execution_field_api as fn(&ExecutionFieldV3) -> usize);
     pin(execution_order_key_api as fn(&ExecutionOrderKeyV3) -> usize);
@@ -1090,7 +1096,10 @@ fn main() {
     for (source, expected) in [
         ("let x = 1", FrontendSourceRootFamilyV3::Declaration),
         ("rule r : x if a", FrontendSourceRootFamilyV3::Rule),
-        ("view v | query-ref=r.x", FrontendSourceRootFamilyV3::Catalog),
+        (
+            "view v | query-ref=r.x",
+            FrontendSourceRootFamilyV3::Catalog,
+        ),
     ] {
         assert_eq!(
             classify_single_source_root_v3(DOCUMENT_SOURCE, source, &budget)
@@ -1118,11 +1127,7 @@ fn main() {
         Err(FrontendSourceRootClassificationErrorV3::NoItem),
     ));
     assert!(matches!(
-        classify_single_source_root_v3(
-            DOCUMENT_SOURCE,
-            "show capabilities; show models",
-            &budget,
-        ),
+        classify_single_source_root_v3(DOCUMENT_SOURCE, "show capabilities; show models", &budget,),
         Err(FrontendSourceRootClassificationErrorV3::MultipleItems { observed: 2 }),
     ));
 
@@ -1359,10 +1364,11 @@ fn main() {
         .composition()
         .expect("scoped composition payload");
     let ExecutionCompositionProducerV3::Sample {
-        scope: Some(ExecutionGraphTargetV3::Composition {
-            binding,
-            capability,
-        }),
+        scope:
+            Some(ExecutionGraphTargetV3::Composition {
+                binding,
+                capability,
+            }),
         ..
     } = scoped.bindings()[1].producer()
     else {
@@ -1380,8 +1386,7 @@ fn main() {
     let graph = graph_composition.execution().items()[0]
         .composition()
         .expect("graph composition payload");
-    let ExecutionCompositionProducerV3::Graph { query: producer } =
-        graph.bindings()[0].producer()
+    let ExecutionCompositionProducerV3::Graph { query: producer } = graph.bindings()[0].producer()
     else {
         panic!("graph producer payload")
     };
@@ -1458,6 +1463,34 @@ fn main() {
         expression.shape(),
         ExecutionExpressionShapeV3::Literal(ExecutionLiteralV3::Int(42))
     )));
+
+    let flat_exists = compile_source_document_v3(
+        SourceIdV2::from_raw(16),
+        "from records r | where exists (from records s) and not (exists (from records t))",
+        &closed,
+    )
+    .expect("flat EXISTS reaches the public facade");
+    let relation = flat_exists.execution().items()[0]
+        .relation()
+        .expect("flat EXISTS has a relation payload");
+    let root = relation.root();
+    assert_eq!(root.family(), AlgebraFamilyV2::ExistsFilter);
+    assert_eq!(root.children().len(), 3);
+    assert_eq!(root.existential_terms().len(), 2);
+    assert_eq!(
+        root.existential_terms()[0].polarity(),
+        ExecutionExistsPolarityV3::Exists
+    );
+    assert_eq!(
+        root.existential_terms()[1].polarity(),
+        ExecutionExistsPolarityV3::NotExists
+    );
+    for term in root.existential_terms() {
+        assert!(relation
+            .expressions()
+            .iter()
+            .any(|expression| expression.id() == term.expression()));
+    }
 
     // ---- format_source_document_v2: twice, deterministic, idempotent -------
     let first: Result<String, FrontendFailureV2> =
@@ -1632,6 +1665,10 @@ fn main() {
     // ---- closed algebra vocabulary ----------------------------------------
     assert_eq!(algebra_family_label(AlgebraFamilyV2::Scan), "scan");
     assert_eq!(algebra_family_label(AlgebraFamilyV2::AntiJoin), "anti-join");
+    assert_eq!(
+        algebra_family_label(AlgebraFamilyV2::ExistsFilter),
+        "exists-filter"
+    );
 
     // ---- curated roots remain type-reachable ------------------------------
     pin_curated_roots();

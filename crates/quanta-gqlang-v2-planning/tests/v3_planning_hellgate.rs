@@ -539,29 +539,14 @@ fn an_unstratifiable_rule_program_is_refused_at_the_sole_ingress() {
     assert_eq!(logic.span(), member.body().expression().location());
 }
 
-/// The recursive-aggregate policy is reject-all, and the ingress relays logic's
-/// exact reason for it: the diagnostic points at the AGGREGATE CALL that folds
-/// the recursive predicate, not at the rule body.
+/// Aggregate-wrapped source calls fail at semantic sealing before a rule
+/// program or plan can be issued. Raw recursive aggregate SCC legality remains
+/// covered by the Logic owner's direct program tests.
 #[test]
-fn a_recursive_aggregate_rule_program_is_refused_at_the_sole_ingress() {
-    let document = reference_rule_document_v2(ReferenceRuleFixtureV2::AggregatedSelfRecursion)
-        .expect("the aggregated self-recursion fixture");
-    let member = document
-        .document()
-        .rules()
-        .next()
-        .expect("the fixture carries one member");
-    let call = member.calls().first().expect("one aggregated call");
-    assert_ne!(call.location(), member.body().expression().location());
-
-    let logic = quanta_gqlang_v2_logic::RuleProgramContractV2::from_document(document.document())
-        .expect_err("aggregated recursion is not stratifiable");
-    assert_eq!(logic.code(), "logic.recursive_aggregate");
-    assert_eq!(
-        logic.message(),
-        "recursive aggregate `<aggregate>` over recursive predicate `r` is not admitted"
-    );
-    assert_eq!(logic.span(), call.location());
+fn an_aggregate_wrapped_source_rule_never_reaches_plan_admission() {
+    let error = reference_rule_document_v2(ReferenceRuleFixtureV2::AggregatedSelfRecursion)
+        .expect_err("aggregate-wrapped source call cannot seal");
+    assert!(error.contains("sema.invalid_item_shape"), "{error}");
 }
 
 /// The graph-legality relay surfaces logic's missing-endpoint diagnostic

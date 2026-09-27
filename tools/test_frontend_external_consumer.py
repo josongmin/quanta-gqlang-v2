@@ -141,6 +141,7 @@ PINNED_ALLOWLIST: Tuple[str, ...] = (
     "ExecutionDocumentV3",
     "ExecutionEffectV3",
     "ExecutionEvidenceV3",
+    "ExecutionExistentialTermV3",
     "ExecutionExistsPolarityV3",
     "ExecutionExpressionShapeV3",
     "ExecutionExpressionV3",

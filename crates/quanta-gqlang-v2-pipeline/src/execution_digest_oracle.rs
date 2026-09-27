@@ -1,4 +1,4 @@
-//! Independent schema-5 fixtures from docs/contracts/frontend-execution-v3.md.
+//! Independent schema-6 fixtures from docs/contracts/frontend-execution-v3.md.
 //!
 //! Expected bytes use only fixed-width primitives and literal tags. They never
 //! read DTO fields or call production tag/writer helpers. These synthetic DTOs
@@ -346,6 +346,7 @@ fn relation() -> (ExecutionRelationV3, Vec<u8>) {
         predicates: Box::new([]),
         expressions: Box::new([]),
         correlations: Box::new([]),
+        existential_terms: Box::new([]),
         partition_input: Box::new([]),
         children: Box::new([]),
     });
@@ -383,6 +384,7 @@ fn relation() -> (ExecutionRelationV3, Vec<u8>) {
             binding: binding(),
             reference: key(42),
         }]),
+        existential_terms: Box::new([]),
         partition_input: Box::new([binding()]),
         children: Box::new(children),
     };
@@ -491,8 +493,8 @@ fn assert_document(items: Vec<ExecutionItemV3>, expected_items: &[Vec<u8>]) {
     let source = "digest fixture é";
     let source_bytes = [text("qglang.execution.source-bytes.v3"), n(3), text(source)].concat();
     let contract_bytes = [
-        text("qglang.execution.contract.v5"),
-        n(5),
+        text("qglang.execution.contract.v6"),
+        n(6),
         n(17),
         seq(expected_items),
     ]
@@ -500,8 +502,8 @@ fn assert_document(items: Vec<ExecutionItemV3>, expected_items: &[Vec<u8>]) {
     let source_hash = Sha256::digest(&source_bytes);
     let contract_hash = Sha256::digest(&contract_bytes);
     let qualification_bytes = [
-        text("qglang.execution.qualification.v5"),
-        n(5),
+        text("qglang.execution.qualification.v6"),
+        n(6),
         n(17),
         source_hash.to_vec(),
         contract_hash.to_vec(),
@@ -535,6 +537,157 @@ fn whole_relation_stream_has_independent_expected_bytes() {
     assert_document(
         vec![item],
         &[[wire_key(31), vec![0, 0, 1, 2, 1, 6], bytes, vec![0]].concat()],
+    );
+}
+
+#[test]
+fn flat_exists_node_encodes_each_condition_before_its_ordered_children() {
+    let empty_schema = ExecutionSchemaV3 {
+        fields: Box::new([]),
+        cardinality: ExecutionCardinalityV3::Set,
+        partition_keys: Box::new([]),
+        order: Box::new([]),
+    };
+    let scans = [60, 61, 62].map(|stage| ExecutionRelationalOperatorV3 {
+        family: AlgebraFamilyV2::Scan,
+        join_mode: None,
+        stage: key(stage),
+        source: None,
+        schema: empty_schema.clone(),
+        predicates: Box::new([]),
+        expressions: Box::new([]),
+        correlations: Box::new([]),
+        existential_terms: Box::new([]),
+        partition_input: Box::new([]),
+        children: Box::new([]),
+    });
+    let node = ExecutionRelationalOperatorV3 {
+        family: AlgebraFamilyV2::ExistsFilter,
+        join_mode: None,
+        stage: key(70),
+        source: None,
+        schema: empty_schema,
+        predicates: Box::new([]),
+        expressions: Box::new([]),
+        correlations: Box::new([]),
+        existential_terms: Box::new([
+            ExecutionExistentialTermV3 {
+                expression: key(71),
+                polarity: ExecutionExistsPolarityV3::Exists,
+                correlations: Box::new([]),
+            },
+            ExecutionExistentialTermV3 {
+                expression: key(72),
+                polarity: ExecutionExistsPolarityV3::NotExists,
+                correlations: Box::new([ExecutionCorrelationV3 {
+                    binding: binding(),
+                    reference: key(73),
+                }]),
+            },
+        ]),
+        partition_input: Box::new([]),
+        children: Box::new(scans),
+    };
+    let schema_bytes = [count(0), vec![0], count(0), count(0)].concat();
+    let scan_bytes = [60, 61, 62].map(|stage| {
+        [
+            vec![0, 0],
+            wire_key(stage),
+            vec![0],
+            schema_bytes.clone(),
+            count(0),
+            count(0),
+            count(0),
+            count(0),
+            count(0),
+        ]
+        .concat()
+    });
+    let terms = [
+        [wire_key(71), vec![0], count(0)].concat(),
+        [
+            wire_key(72),
+            vec![1],
+            seq(&[[wire_binding(), wire_key(73)].concat()]),
+        ]
+        .concat(),
+    ];
+    let expected = [
+        vec![9, 0],
+        wire_key(70),
+        vec![0],
+        schema_bytes,
+        count(0),
+        count(0),
+        count(0),
+        seq(&terms),
+        count(0),
+        seq(&scan_bytes),
+    ]
+    .concat();
+    let mut actual = Vec::new();
+    put_node(&mut actual, &node);
+    assert_eq!(actual, expected);
+
+    let expressions = [
+        ExecutionExpressionV3 {
+            id: key(71),
+            value_type: ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Bool),
+            shape: ExecutionExpressionShapeV3::RelationExists {
+                polarity: ExecutionExistsPolarityV3::Exists,
+                relation_root: key(61),
+                correlations: Box::new([]),
+            },
+        },
+        ExecutionExpressionV3 {
+            id: key(72),
+            value_type: ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Bool),
+            shape: ExecutionExpressionShapeV3::RelationExists {
+                polarity: ExecutionExistsPolarityV3::NotExists,
+                relation_root: key(62),
+                correlations: Box::new([ExecutionCorrelationV3 {
+                    binding: binding(),
+                    reference: key(73),
+                }]),
+            },
+        },
+        ExecutionExpressionV3 {
+            id: key(73),
+            value_type: ExecutionValueTypeV3::Unknown,
+            shape: ExecutionExpressionShapeV3::Binding(binding()),
+        },
+    ];
+    let expression_bytes = [
+        [wire_key(71), vec![0, 0, 15, 0], wire_key(61), count(0)].concat(),
+        [
+            wire_key(72),
+            vec![0, 0, 15, 1],
+            wire_key(62),
+            seq(&[[wire_binding(), wire_key(73)].concat()]),
+        ]
+        .concat(),
+        [wire_key(73), vec![7, 1], wire_binding()].concat(),
+    ];
+    let relation_bytes = [vec![1], wire_key(31), expected, seq(&expression_bytes)].concat();
+    assert_document(
+        vec![ExecutionItemV3 {
+            item_id: id(31),
+            family: ExecutionFamilyV3::Relation,
+            relation: Some(ExecutionRelationV3 {
+                item_id: id(31),
+                root: node,
+                expressions: Box::new(expressions),
+            }),
+            composition: None,
+            plan: plan(),
+        }],
+        &[[
+            wire_key(31),
+            vec![0, 0, 1, 2, 1, 6],
+            relation_bytes,
+            vec![0],
+        ]
+        .concat()],
     );
 }
 

@@ -156,18 +156,12 @@ fn conjunctive_exists_attach_left_to_right_in_authored_order() {
 
     let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
     let root = lowered.root();
-    assert_eq!(root.family(), AlgebraFamilyV2::SemiJoin);
+    assert_eq!(root.family(), AlgebraFamilyV2::ExistsFilter);
 
-    // Two conjunctive EXISTS lower to exactly two SemiJoins; the FIRST
-    // authored conjunct attaches innermost.
+    // The first child is the input; following children match authored terms.
     let children = root.children();
-    let inner = children.first().unwrap();
-    assert_eq!(inner.family(), AlgebraFamilyV2::SemiJoin);
-    assert_eq!(
-        root.children().get(1).map(|child| child.family()),
-        Some(AlgebraFamilyV2::Scan)
-    );
-    assert_eq!(inner.children().len(), 2);
+    assert_eq!(children.len(), 3);
+    assert_eq!(root.existential_terms().len(), 2);
     let scan_name = |node: &CheckedAlgebraNodeV2| match node.scan_source().unwrap() {
         ResolvedScanSourceV2::Relation(source) => source.qualified_name().to_owned(),
         ResolvedScanSourceV2::View(_) | ResolvedScanSourceV2::Composition(_) => {
@@ -175,22 +169,32 @@ fn conjunctive_exists_attach_left_to_right_in_authored_order() {
         }
     };
     assert_eq!(
-        root.children().get(1).map(|child| scan_name(child)),
-        Some("app::records2".to_owned()),
-        "the SECOND authored EXISTS (records2) is the outer right input"
-    );
-    assert_eq!(
-        inner.children().get(1).map(|child| scan_name(child)),
+        children.get(1).map(|child| scan_name(child)),
         Some("app::other".to_owned()),
-        "the FIRST authored EXISTS (other) attaches innermost"
+        "the FIRST authored EXISTS (other) is the first nested input"
     );
     assert_eq!(
-        inner.children().first().map(|child| scan_name(child)),
-        Some("app::records".to_owned()),
-        "the outer relation input is the leftmost input"
+        children.get(2).map(|child| scan_name(child)),
+        Some("app::records2".to_owned()),
+        "the SECOND authored EXISTS (records2) is the second nested input"
     );
-    assert!(root.correlations().is_some_and(|set| set.is_empty()));
-    assert!(inner.correlations().is_some_and(|set| set.is_empty()));
+    assert_eq!(
+        children.first().map(|child| scan_name(child)),
+        Some("app::records".to_owned()),
+        "the outer relation input is the first child"
+    );
+    assert!(root
+        .existential_terms()
+        .iter()
+        .all(|term| term.correlations().is_empty()));
+    for (term, child) in root.existential_terms().iter().zip(children.iter().skip(1)) {
+        let expression = reference.document().expression(term.expression()).unwrap();
+        let TypedExprShapeV2::RelationExists { relation_root, .. } = expression.shape() else {
+            panic!("each flat condition names its sealed EXISTS expression");
+        };
+        assert_eq!(term.right().stage_key(), *relation_root);
+        assert!(std::ptr::eq(term.right(), *child));
+    }
 }
 
 #[test]
@@ -300,28 +304,12 @@ fn exists_below_disjunction_rejects_as_a_conjunct_violation() {
 }
 
 #[test]
-fn negated_exists_rejects_as_a_conjunct_violation() {
+fn negated_direct_exists_lowers_as_anti_join() {
     let reference =
         reference_relation_document_v2(ReferenceRelationFixtureV2::NegatedExists).unwrap();
 
-    let diagnostic = match lower_relation_item(reference.document(), reference.item_id()) {
-        Ok(_) => panic!("a negated relational EXISTS must not lower"),
-        Err(diagnostic) => diagnostic,
-    };
-    assert_eq!(
-        diagnostic.kind(),
-        AlgebraFailureKindV2::InvalidStageContract
-    );
-    assert_eq!(diagnostic.code(), "algebra.invalid_stage_contract");
-    assert_eq!(
-        diagnostic.message(),
-        "relational EXISTS must appear as a predicate conjunct"
-    );
-    assert!(
-        diagnostic.location().is_some_and(|location| {
-            let span = location.location().span;
-            span.start == 18 && span.end == 31
-        }),
-        "the rejection is pinned at the EXISTS expression under the Not"
-    );
+    let lowered = lower_relation_item(reference.document(), reference.item_id()).unwrap();
+    assert_eq!(lowered.root().family(), AlgebraFamilyV2::AntiJoin);
+    assert_eq!(lowered.root().children().len(), 2);
+    assert!(lowered.root().correlations().is_some());
 }

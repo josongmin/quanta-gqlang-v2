@@ -1,7 +1,10 @@
 //! The sole semantic-document to algebra lowering cut.
 
 use crate::diagnostic::{AlgebraDiagnosticV2, AlgebraFailureKindV2};
-use crate::node::{AlgebraFamilyV2, CheckedAlgebraNodeV2, CorrelationSetV2, LoweredRelationItemV2};
+use crate::node::{
+    AlgebraFamilyV2, CheckedAlgebraNodeV2, CorrelationSetV2, ExistentialTermV2,
+    LoweredRelationItemV2,
+};
 use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, DownstreamBudgetReceiptV2, JoinModeV2, RelationExistsPolarityV2,
     ResolvedCompositionBodyV2, ResolvedCompositionProducerV2, SemanticDocumentV2, SemanticItemIdV2,
@@ -521,7 +524,34 @@ fn assemble(
             // The lowered children arrive in stable authored order: the
             // filtered input first, then each EXISTS nested root.
             let mut chain = drained.remove(0);
-            for (leaf, right) in exists.into_iter().zip(drained) {
+            if exists.len() > 1 {
+                let terms = exists
+                    .into_iter()
+                    .zip(drained)
+                    .map(|(leaf, right)| {
+                        ExistentialTermV2::new(
+                            leaf.expression.key(),
+                            leaf.polarity,
+                            leaf.correlations,
+                            right,
+                        )
+                    })
+                    .collect();
+                chain = CheckedAlgebraNodeV2::new(
+                    item_id,
+                    stage.key(),
+                    location.clone(),
+                    output.clone(),
+                    CheckedAlgebraNodeV2::exists_filter(chain, terms),
+                )
+                .map_err(|()| {
+                    failure(
+                        AlgebraFailureKindV2::InvalidStageContract,
+                        location,
+                        "relational EXISTS conjuncts cannot form a checked algebra filter",
+                    )
+                })?;
+            } else if let Some((leaf, right)) = exists.into_iter().zip(drained).next() {
                 let op = match leaf.polarity {
                     RelationExistsPolarityV2::Exists => {
                         CheckedAlgebraNodeV2::semi_join(chain, right, leaf.correlations)
@@ -704,9 +734,10 @@ fn assemble(
 /// Decompose one checked Bool predicate into its top-level conjunction, in
 /// stable authored left-to-right order.
 ///
-/// A relational EXISTS leaf becomes a validated Semi/Anti candidate; an
-/// ordinary leaf must be free of nested EXISTS below OR/NOT/call/record/
-/// list/quantifier shapes and is retained as the residual Filter's ordinary
+/// A direct relational EXISTS leaf (optionally parenthesized or directly
+/// negated) becomes a validated Semi/Anti candidate; an ordinary leaf must be
+/// free of nested EXISTS below OR/scalar/call/record/list/quantifier shapes
+/// and is retained as the residual Filter's ordinary
 /// conjunction. Every visited expression node charges the shared
 /// `max_expression_nodes` ledger before it is visited, and every EXISTS-side
 /// fact (nested root, duplicate-free capture set, same-document references)
@@ -732,6 +763,13 @@ fn decompose_predicate<'a>(
         }
         *expression_nodes -= 1;
         match expression.shape() {
+            TypedExprShapeV2::Paren { inner } => {
+                work.push(required_expression(
+                    document,
+                    *inner,
+                    expression.location(),
+                )?);
+            }
             TypedExprShapeV2::And { lhs, rhs, .. } => {
                 let left = required_expression(document, *lhs, expression.location())?;
                 let right = required_expression(document, *rhs, expression.location())?;
@@ -739,7 +777,16 @@ fn decompose_predicate<'a>(
                 work.push(left);
             }
             TypedExprShapeV2::RelationExists { .. } => {
-                exists.push(exists_leaf(document, expression)?);
+                exists.push(exists_leaf(document, expression, false)?);
+            }
+            TypedExprShapeV2::Not { operand, .. } => {
+                let inner = required_expression(document, *operand, expression.location())?;
+                if let Some(leaf) = direct_exists_under_parens(document, inner, expression_nodes)? {
+                    exists.push(exists_leaf(document, leaf, true)?);
+                } else {
+                    reject_nested_exists(document, expression, expression_nodes)?;
+                    ordinary.push(bool_carrier(root_key, predicate.clone(), expression)?);
+                }
             }
             // Every other shape is an ordinary conjunct leaf; it may keep the
             // residual Filter only when no relational EXISTS hides below it.
@@ -749,28 +796,14 @@ fn decompose_predicate<'a>(
             | TypedExprShapeV2::Unary { .. }
             | TypedExprShapeV2::Binary { .. }
             | TypedExprShapeV2::Call { .. }
-            | TypedExprShapeV2::Paren { .. }
             | TypedExprShapeV2::Record(_)
             | TypedExprShapeV2::List(_)
             | TypedExprShapeV2::BoolValue { .. }
             | TypedExprShapeV2::Compare { .. }
             | TypedExprShapeV2::Or { .. }
-            | TypedExprShapeV2::Not { .. }
             | TypedExprShapeV2::LogicalQuantifier { .. } => {
                 reject_nested_exists(document, expression, expression_nodes)?;
-                let carrier = if expression.key() == root_key {
-                    predicate.clone()
-                } else {
-                    TypedBoolExprV2::try_new(expression.clone(), expression.location().location())
-                        .map_err(|_failure| {
-                        failure(
-                            AlgebraFailureKindV2::InvalidStageContract,
-                            expression.location(),
-                            "filter conjunct is not a checked Bool fact",
-                        )
-                    })?
-                };
-                ordinary.push(carrier);
+                ordinary.push(bool_carrier(root_key, predicate.clone(), expression)?);
             }
         }
     }
@@ -784,6 +817,70 @@ fn decompose_predicate<'a>(
     Ok((exists, ordinary))
 }
 
+fn bool_carrier(
+    root_key: SourceQualifiedNodeIdV2,
+    root: TypedBoolExprV2,
+    expression: &TypedExprV2,
+) -> Result<TypedBoolExprV2, AlgebraDiagnosticV2> {
+    if expression.key() == root_key {
+        Ok(root)
+    } else {
+        TypedBoolExprV2::try_new(expression.clone(), expression.location().location()).map_err(
+            |_type_error| {
+                failure(
+                    AlgebraFailureKindV2::InvalidStageContract,
+                    expression.location(),
+                    "filter conjunct is not a checked Bool fact",
+                )
+            },
+        )
+    }
+}
+
+/// A NOT only changes an EXISTS literal when every wrapper is transparent.
+fn direct_exists_under_parens<'a>(
+    document: &'a SemanticDocumentV2,
+    mut expression: &'a TypedExprV2,
+    expression_nodes: &mut u32,
+) -> Result<Option<&'a TypedExprV2>, AlgebraDiagnosticV2> {
+    let remaining_before_probe = *expression_nodes;
+    loop {
+        if *expression_nodes == 0 {
+            return Err(failure(
+                AlgebraFailureKindV2::TraversalBudgetExceeded,
+                expression.location(),
+                "predicate traversal exceeded the document's max_expression_nodes budget",
+            ));
+        }
+        *expression_nodes -= 1;
+        match expression.shape() {
+            TypedExprShapeV2::Paren { inner } => {
+                expression = required_expression(document, *inner, expression.location())?;
+            }
+            TypedExprShapeV2::RelationExists { .. } => return Ok(Some(expression)),
+            TypedExprShapeV2::Literal(_)
+            | TypedExprShapeV2::Binding(_)
+            | TypedExprShapeV2::Path { .. }
+            | TypedExprShapeV2::Unary { .. }
+            | TypedExprShapeV2::Binary { .. }
+            | TypedExprShapeV2::Call { .. }
+            | TypedExprShapeV2::Record(_)
+            | TypedExprShapeV2::List(_)
+            | TypedExprShapeV2::BoolValue { .. }
+            | TypedExprShapeV2::Compare { .. }
+            | TypedExprShapeV2::And { .. }
+            | TypedExprShapeV2::Or { .. }
+            | TypedExprShapeV2::Not { .. }
+            | TypedExprShapeV2::LogicalQuantifier { .. } => {
+                // The ordinary-leaf rejection walk will charge this path
+                // again, so the failed direct-literal probe consumes no budget.
+                *expression_nodes = remaining_before_probe;
+                return Ok(None);
+            }
+        }
+    }
+}
+
 /// Validate one relational EXISTS leaf against the document before any node
 /// construction: the exact nested root must be present, the capture set must
 /// be duplicate-free, and every correlation reference and binding must
@@ -791,6 +888,7 @@ fn decompose_predicate<'a>(
 fn exists_leaf<'a>(
     document: &'a SemanticDocumentV2,
     expression: &'a TypedExprV2,
+    negated: bool,
 ) -> Result<ExistsLeaf<'a>, AlgebraDiagnosticV2> {
     let TypedExprShapeV2::RelationExists {
         polarity,
@@ -831,7 +929,14 @@ fn exists_leaf<'a>(
     }
     Ok(ExistsLeaf {
         expression,
-        polarity: *polarity,
+        polarity: if negated {
+            match polarity {
+                RelationExistsPolarityV2::Exists => RelationExistsPolarityV2::NotExists,
+                RelationExistsPolarityV2::NotExists => RelationExistsPolarityV2::Exists,
+            }
+        } else {
+            *polarity
+        },
         right,
         correlations,
     })
@@ -1650,22 +1755,22 @@ mod tests {
         assert_eq!(
             families,
             vec![
-                AlgebraFamilyV2::SemiJoin,
-                AlgebraFamilyV2::SemiJoin,
+                AlgebraFamilyV2::ExistsFilter,
                 AlgebraFamilyV2::Scan,
                 AlgebraFamilyV2::Scan,
                 AlgebraFamilyV2::Scan,
             ],
-            "two conjunctive EXISTS lower to exactly two SemiJoins over the input scan"
+            "two conjunctive EXISTS lower to one flat operator over three scans"
         );
-        // Stable authored order: the FIRST conjunct (`other`) attaches
-        // innermost; the SECOND (`records2`) is the outer right input.
-        let outer = root;
-        let inner = &outer.children()[0];
-        assert_eq!(scan_qualified_name(outer.children()[1]), "app::records2");
-        assert_eq!(scan_qualified_name(inner.children()[1]), "app::other");
-        assert_eq!(scan_qualified_name(inner.children()[0]), "app::records");
-        assert!(outer.correlations().is_some_and(|set| set.is_empty()));
+        let children = root.children();
+        assert_eq!(scan_qualified_name(children[0]), "app::records");
+        assert_eq!(scan_qualified_name(children[1]), "app::other");
+        assert_eq!(scan_qualified_name(children[2]), "app::records2");
+        assert_eq!(root.existential_terms().len(), 2);
+        assert!(root
+            .existential_terms()
+            .iter()
+            .all(|term| term.correlations().is_empty()));
     }
 
     #[test]

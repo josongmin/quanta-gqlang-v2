@@ -7,6 +7,7 @@ use crate::authority::{
 use crate::diagnostic::{
     location, FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2, FrontendStageV2,
 };
+use crate::rule::{classify_rule_body_calls, RuleBodyClassificationErrorV2};
 use crate::{
     AggregateContextV2, AggregatePositionV2, CheckedLocatedSpanV2, GraphDirectionV2,
     GraphReferenceRoleV2, GraphWitnessBoundsV2, NullOrderV2, OrderKeyContractV2,
@@ -18,9 +19,9 @@ use crate::{
     ResolvedExplainTargetV2, ResolvedGraphQueryV2, ResolvedGraphReferenceV2, ResolvedGraphTargetV2,
     ResolvedGraphUseV2, ResolvedMetaKindV2, ResolvedMetaV2, ResolvedPresentationKindV2,
     ResolvedPresentationV2, ResolvedRuleCallV2, ResolvedRuleV2, ResolvedScanSourceV2,
-    ResolvedValueBindingV2, RuleCallPolarityV2, SemanticItemIdV2, SemanticItemV2, TypedBoolExprV2,
-    TypedCallArgumentV2, TypedCorrelationEdgeV2, TypedExprShapeV2, TypedExprV2, TypedPathSegmentV2,
-    TypedRecordFieldV2, TypedRelationExprV2, TypedRelationV2,
+    ResolvedValueBindingV2, SemanticItemIdV2, SemanticItemV2, TypedBoolExprV2, TypedCallArgumentV2,
+    TypedCorrelationEdgeV2, TypedExprShapeV2, TypedExprV2, TypedPathSegmentV2, TypedRecordFieldV2,
+    TypedRelationExprV2, TypedRelationV2,
 };
 use quanta_gqlang_v2_binder::{
     BindResultV1, Binder, BinderKindV1, ModuleGraphViewV1, ParamV1, ResolvedTargetV1,
@@ -932,6 +933,18 @@ impl SemanticDocumentV2 {
     ) -> impl Iterator<Item = (&SourceQualifiedNodeIdV2, &TypedRelationExprV2)> {
         self.nested_relations.iter()
     }
+    /// Independently classify this document's typed rule-body source calls.
+    /// Logic uses the same shape proof as the semantic producer.
+    pub fn classify_rule_body_calls(
+        &self,
+        root: SourceQualifiedNodeIdV2,
+    ) -> Result<Vec<ResolvedRuleCallV2>, RuleBodyClassificationErrorV2> {
+        classify_rule_body_calls(
+            root,
+            |key| self.expression(key),
+            |key| self.nested_relation(key),
+        )
+    }
     /// Document catalog proof.
     #[must_use]
     pub const fn catalog(&self) -> &DocumentCatalogAuthorityV2 {
@@ -1735,22 +1748,6 @@ impl HirVisitorV1 for RuleSymbolInputsV2<'_> {
         }
         quanta_gqlang_v2_hir::walk_value(self, node);
     }
-}
-
-struct RuleDependencyCollectorV2<'a> {
-    source_id: SourceIdV2,
-    targets: &'a BTreeMap<HirNodeIdV1, RuleCallableTargetV2>,
-    facts: &'a TypedExpressionFactsV2,
-    extended: &'a ExtendedSourceRegistryViewV2,
-    negated: bool,
-    aggregated: bool,
-    edges: Vec<(
-        SourceQualifiedNodeIdV2,
-        ResolvedCallTargetV2,
-        RuleCallPolarityV2,
-        quanta_gqlang_v2_hir::CheckedLocatedSpanV2,
-    )>,
-    error: Option<FrontendFailureV2>,
 }
 
 /// Read-only witness of one Binder capture edge. This is comparison data for
@@ -2633,124 +2630,6 @@ fn check_partition_candidate_shape(
         return Err("partition candidate differs from the checked HIR reference, group, or call-argument path");
     }
     Ok(())
-}
-
-impl HirVisitorV1 for RuleDependencyCollectorV2<'_> {
-    fn visit_bool(&mut self, node: &BoolExprHirV1) {
-        if let BoolExprKindV1::Not(inner) = &node.kind {
-            self.negated = !self.negated;
-            self.visit_bool(inner);
-            self.negated = !self.negated;
-        } else {
-            quanta_gqlang_v2_hir::walk_bool(self, node);
-        }
-    }
-
-    fn visit_value(&mut self, node: &ValueExprHirV1) {
-        let previous_aggregate = self.aggregated;
-        if let ValueExprKindV1::Call(_) = &node.kind {
-            let key = SourceQualifiedNodeIdV2 {
-                source_id: self.source_id,
-                node_id: node.id,
-            };
-            let Some(fact) = self.facts.get(key) else {
-                if self.error.is_none() {
-                    self.error = Some(document_failure(
-                        "sema.document_validation_failed",
-                        self.source_id,
-                        node.span,
-                        "types owner omitted rule callable fact",
-                    ));
-                }
-                return;
-            };
-            match self.targets.get(&node.id) {
-                Some(RuleCallableTargetV2::SourcePredicate(id)) => {
-                    let target = ResolvedCallTargetV2::Predicate(id.clone());
-                    if fact.resolved_call() != Some(&target) || self.aggregated && self.negated {
-                        if self.error.is_none() {
-                            self.error = Some(document_failure("sema.invalid_item_shape", self.source_id, node.span,
-                            "source call target or combined aggregate/negation polarity cannot be sealed"));
-                        }
-                        return;
-                    }
-                    let polarity = if self.aggregated {
-                        RuleCallPolarityV2::Aggregated
-                    } else if self.negated {
-                        RuleCallPolarityV2::Negated
-                    } else {
-                        RuleCallPolarityV2::Positive
-                    };
-                    match self
-                        .extended
-                        .combined()
-                        .try_check_location(location(self.source_id, node.span))
-                    {
-                        Ok(checked) => self.edges.push((key, target, polarity, checked)),
-                        Err(error) => {
-                            if self.error.is_none() {
-                                self.error = Some(document_failure(
-                                    "sema.document_validation_failed",
-                                    self.source_id,
-                                    node.span,
-                                    error.to_string(),
-                                ));
-                            }
-                        }
-                    }
-                }
-                Some(RuleCallableTargetV2::Builtin(_)) => {
-                    if !matches!(fact.resolved_call(), Some(ResolvedCallTargetV2::Builtin(_)))
-                        && self.error.is_none()
-                    {
-                        self.error = Some(document_failure(
-                            "sema.document_validation_failed",
-                            self.source_id,
-                            node.span,
-                            "builtin call target differs from types-owned fact",
-                        ));
-                    }
-                }
-                Some(RuleCallableTargetV2::HostPredicate(callable)) => {
-                    if fact.resolved_call()
-                        != Some(&ResolvedCallTargetV2::HostPredicate(callable.key().clone()))
-                        && self.error.is_none()
-                    {
-                        self.error = Some(document_failure(
-                            "sema.document_validation_failed",
-                            self.source_id,
-                            node.span,
-                            "host call target differs from types-owned exact catalog key",
-                        ));
-                    }
-                }
-                Some(RuleCallableTargetV2::Unknown) | None => {
-                    if self.error.is_none() {
-                        self.error = Some(document_failure(
-                            "sema.document_validation_failed",
-                            self.source_id,
-                            node.span,
-                            "rule callable lacks an exact source/host authority target",
-                        ));
-                    }
-                }
-            }
-            let Some(intrinsic) = fact.intrinsic_call_aggregation() else {
-                if self.error.is_none() {
-                    self.error = Some(document_failure(
-                        "sema.document_validation_failed",
-                        self.source_id,
-                        node.span,
-                        "call lacks types-owned intrinsic overload effects",
-                    ));
-                }
-                return;
-            };
-            self.aggregated |= intrinsic == AggregationClassV1::Aggregate;
-        }
-        quanta_gqlang_v2_hir::walk_value(self, node);
-        self.aggregated = previous_aggregate;
-    }
 }
 
 impl HirVisitorV1 for DeclarationTypeInputsV2<'_> {
@@ -6225,10 +6104,6 @@ fn resolve_document_bodies(
             .validate_host_predicate_proof(proof, expected_key, proof.location())
             .map_err(module_failure)?;
     }
-    let rule_call_targets = rule_calls
-        .iter()
-        .map(|call| (call.call.node_id, call.target.clone()))
-        .collect::<BTreeMap<_, _>>();
     let mut items = Vec::new();
     let mut expressions = BTreeMap::new();
     let mut nested_relations = BTreeMap::new();
@@ -6589,27 +6464,32 @@ fn resolve_document_bodies(
                     )
                     .into());
                 }
-                let mut dependencies = RuleDependencyCollectorV2 {
-                    source_id: checked.source_id(),
-                    targets: &rule_call_targets,
-                    facts: &facts,
-                    extended,
-                    negated: false,
-                    aggregated: false,
-                    edges: Vec::new(),
-                    error: None,
-                };
-                dependencies.visit_bool(&rule.body);
-                if let Some(error) = dependencies.error {
-                    return Err(error.into());
-                }
-                let expected_calls = dependencies.edges;
-                let calls = expected_calls
+                let calls = classify_rule_body_calls(
+                    body.expression().key(),
+                    |key| expressions.get(&key),
+                    |key| nested_relations.get(&key),
+                )
+                .map_err(|error| {
+                    document_failure(
+                        "sema.invalid_item_shape",
+                        checked.source_id(),
+                        error
+                            .location()
+                            .map_or(rule.body.span, |location| location.location().span),
+                        error.reason(),
+                    )
+                })?;
+                let expected_calls = calls
                     .iter()
-                    .map(|(key, target, polarity, location)| {
-                        ResolvedRuleCallV2::new(*key, target.clone(), *polarity, location.clone())
+                    .map(|call| {
+                        (
+                            call.call(),
+                            call.target().clone(),
+                            call.polarity(),
+                            call.location().clone(),
+                        )
                     })
-                    .collect();
+                    .collect::<Vec<_>>();
                 let typed = ResolvedRuleV2::try_new(
                     SemanticItemIdV2::new(checked.source_id(), rule.id),
                     head.key(),

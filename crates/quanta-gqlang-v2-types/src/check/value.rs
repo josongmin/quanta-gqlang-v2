@@ -9,9 +9,9 @@ use super::{
     DocumentChecker, ExpressionTypeStateV2, ResolvedTypeInputValueV2, TypedExpressionFactV2,
     TypedLiteralFactV2, UnknownTypeCauseV2,
 };
+use crate::ty::RecordTypeBuilderV1;
 use crate::{
-    CardinalityV1, ExpressionEffectsV2, RecordFieldTypeV1, RecordTypeV1, TypeDiagnosticV2,
-    TypedLiteralValueV2, ValueTypeV1,
+    CardinalityV1, ExpressionEffectsV2, TypeDiagnosticV2, TypedLiteralValueV2, ValueTypeV1,
 };
 use quanta_gqlang_v2_hir::{
     BinaryExprV1, CallArgHirV1, CallExprV1, ListExprV1, LiteralV1, LocatedSpanV2, PathAccessV1,
@@ -37,7 +37,7 @@ enum ValueFrame<'a> {
         node: &'a ValueExprHirV1,
         record: &'a RecordExprV1,
         next: usize,
-        fields: Vec<RecordFieldTypeV1>,
+        fields: RecordTypeBuilderV1,
         unknown: Option<UnknownTypeCauseV2>,
         effects: ExpressionEffectsV2,
     },
@@ -63,13 +63,72 @@ fn value_fact(state: ExpressionTypeStateV2, effects: ExpressionEffectsV2) -> Typ
 }
 
 impl DocumentChecker<'_, '_> {
+    /// Once a record exceeds its shape limit, a suffix of already-known
+    /// bindings cannot change the result. Inspect it without materializing
+    /// another copy of each potentially large child type.
+    fn record_suffix_is_known(&self, record: &RecordExprV1, next: usize) -> bool {
+        record.fields.get(next..).is_some_and(|remaining| {
+            remaining.iter().rev().all(|field| {
+                if !RecordTypeBuilderV1::valid_name(&field.name)
+                    || self
+                        .inputs
+                        .source_registry
+                        .try_check_location(LocatedSpanV2 {
+                            source_id: self.inputs.checked.document().source_id,
+                            span: field.name_span,
+                        })
+                        .is_err()
+                {
+                    return false;
+                }
+                let value = &field.value;
+                if self
+                    .facts
+                    .get(&self.key(value))
+                    .is_some_and(|fact| matches!(fact.state, ExpressionTypeStateV2::Known(_)))
+                {
+                    return true;
+                }
+                if !matches!(value.kind, ValueExprKindV1::Symbol(_)) {
+                    return false;
+                }
+                match self.inputs.values.get(&self.key(value)) {
+                    Some(ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(_))) => {
+                        true
+                    }
+                    Some(ResolvedTypeInputValueV2::BindingFromExpression(target)) => self
+                        .facts
+                        .get(target)
+                        .is_some_and(|fact| matches!(fact.state, ExpressionTypeStateV2::Known(_))),
+                    Some(ResolvedTypeInputValueV2::BindingFromDeclaration(target)) => self
+                        .inputs
+                        .declaration_bodies
+                        .get(&target.node_id)
+                        .and_then(|body| self.facts.get(&self.key(body)))
+                        .is_some_and(|fact| matches!(fact.state, ExpressionTypeStateV2::Known(_))),
+                    Some(ResolvedTypeInputValueV2::BindingFromRelationRow(target)) => {
+                        self.relation_rows.contains_key(target)
+                    }
+                    _ => false,
+                }
+            })
+        })
+    }
+
     fn value_state(
         &self,
         node: &ValueExprHirV1,
     ) -> Result<ExpressionTypeStateV2, TypeDiagnosticV2> {
+        self.value_state_ref(node).cloned()
+    }
+
+    fn value_state_ref(
+        &self,
+        node: &ValueExprHirV1,
+    ) -> Result<&ExpressionTypeStateV2, TypeDiagnosticV2> {
         self.facts
             .get(&self.key(node))
-            .map(|fact| fact.state.clone())
+            .map(|fact| &fact.state)
             .ok_or(TypeDiagnosticV2::MissingNodeFact {
                 node_id: node.id,
                 location: self.location(node),
@@ -214,7 +273,7 @@ impl DocumentChecker<'_, '_> {
                                 node,
                                 record,
                                 next: 0,
-                                fields: Vec::new(),
+                                fields: RecordTypeBuilderV1::new(),
                                 unknown: None,
                                 effects: ExpressionEffectsV2::pure_scalar(),
                             });
@@ -385,7 +444,7 @@ impl DocumentChecker<'_, '_> {
                         .checked_sub(1)
                         .and_then(|index| record.fields.get(index))
                     {
-                        match self.value_state(&field.value)? {
+                        match self.value_state_ref(&field.value)? {
                             ExpressionTypeStateV2::Known(ty) => {
                                 let location = LocatedSpanV2 {
                                     source_id: self.key(node).source_id,
@@ -398,11 +457,18 @@ impl DocumentChecker<'_, '_> {
                                     .map_err(|_source_error| TypeDiagnosticV2::InvalidTypeName {
                                         location,
                                     })?;
-                                fields.push(RecordFieldTypeV1::try_new(&field.name, ty, checked)?);
+                                fields.try_push(&field.name, ty, checked)?;
                             }
-                            ExpressionTypeStateV2::Unknown(cause) => unknown = Some(cause),
+                            ExpressionTypeStateV2::Unknown(cause) => unknown = Some(cause.clone()),
                         }
                         effects = effects.join(self.effects_for(field.value.id)?);
+                    }
+                    if unknown.is_none() {
+                        if let Some(error) = fields.shape_limit() {
+                            if self.record_suffix_is_known(record, next) {
+                                return Err(error.clone());
+                            }
+                        }
                     }
                     if let Some(field) = record.fields.get(next) {
                         stack.push(ValueFrame::Record {
@@ -418,9 +484,9 @@ impl DocumentChecker<'_, '_> {
                     }
                     let state = match unknown {
                         Some(cause) => ExpressionTypeStateV2::Unknown(cause),
-                        None => ExpressionTypeStateV2::Known(ValueTypeV1::try_record(
-                            RecordTypeV1::try_new(fields)?,
-                        )?),
+                        None => {
+                            ExpressionTypeStateV2::Known(ValueTypeV1::try_record(fields.finish()?)?)
+                        }
                     };
                     (node, value_fact(state, effects))
                 }
@@ -471,9 +537,10 @@ impl DocumentChecker<'_, '_> {
                     let key = self.key(node);
                     let state = match (unknown, selected) {
                         (Some(cause), _) => ExpressionTypeStateV2::Unknown(cause),
-                        (None, Some(element)) => {
-                            ExpressionTypeStateV2::Known(ValueTypeV1::try_list(element)?)
-                        }
+                        (None, Some(element)) => ExpressionTypeStateV2::Known(
+                            ValueTypeV1::try_list(element)
+                                .map_err(|error| error.at_location(self.location(node)))?,
+                        ),
                         (None, None) => match self.inputs.contexts.get(&key) {
                             Some((expected, _))
                                 if expected.as_collection().is_some_and(|collection| {
@@ -504,5 +571,116 @@ impl DocumentChecker<'_, '_> {
             self.facts.insert(self.key(node), fact);
         }
         self.value_state(root)
+    }
+}
+
+#[cfg(test)]
+#[expect(
+    clippy::expect_used,
+    reason = "unit test asserts checked type inputs and early shape rejection"
+)]
+mod tests {
+    use super::super::{
+        DocumentChecker, ExpressionTypeKernelV2, ExpressionTypeStateV2, ResolvedTypeInputEntryV2,
+        ResolvedTypeInputValueV2, ResolvedTypeInputsV2, SourceQualifiedNodeIdV2,
+    };
+    use crate::{TypeDiagnosticV2, ValueTypeV1, MAX_TYPE_NODES};
+    use quanta_gqlang_v2_hir::{
+        check_document_v2, HirBuilderV1, HirDocumentV1, ProgramItemHirV1, RecordFieldV1,
+        SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
+    };
+    use std::collections::{BTreeMap, BTreeSet};
+
+    #[test]
+    fn oversized_record_stops_evaluating_known_suffix() {
+        let source_id = SourceIdV2::from_raw(7);
+        let span = SpanV1::new(0, 1);
+        let builder = HirBuilderV1::new();
+        let seed = builder.symbol("seed", span);
+        let seed_key = SourceQualifiedNodeIdV2 {
+            source_id,
+            node_id: seed.id,
+        };
+        let large = ValueTypeV1::try_tuple(vec![ValueTypeV1::int(); MAX_TYPE_NODES - 2])
+            .expect("4095-node type");
+        let mut entries = vec![ResolvedTypeInputEntryV2 {
+            key: seed_key,
+            value: ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(large)),
+        }];
+        let fields = (0..64)
+            .map(|index| {
+                let value = builder.symbol("x", span);
+                entries.push(ResolvedTypeInputEntryV2 {
+                    key: SourceQualifiedNodeIdV2 {
+                        source_id,
+                        node_id: value.id,
+                    },
+                    value: ResolvedTypeInputValueV2::BindingFromDeclaration(seed_key),
+                });
+                RecordFieldV1 {
+                    name: format!("g{index}"),
+                    name_span: span,
+                    value,
+                }
+            })
+            .collect();
+        let document = HirDocumentV1 {
+            source_id,
+            source_len: 1,
+            items: vec![
+                ProgramItemHirV1::from(builder.decl("x", span, seed, span)),
+                ProgramItemHirV1::from(builder.decl(
+                    "out",
+                    span,
+                    builder.record(fields, span),
+                    span,
+                )),
+            ],
+        };
+        let registry = SourceRegistryViewV2::try_new(vec![])
+            .expect("host registry")
+            .try_extend_document(SourceRegistrationV2 {
+                source_id,
+                source_len: 1,
+            })
+            .expect("document source");
+        let inputs = ResolvedTypeInputsV2::try_new(
+            check_document_v2(&document).expect("checked HIR"),
+            &registry,
+            entries,
+            vec![],
+            vec![],
+        )
+        .expect("resolved bindings");
+        let kernel = ExpressionTypeKernelV2::try_closed().expect("type kernel");
+        let mut checker = DocumentChecker {
+            kernel: &kernel,
+            inputs: &inputs,
+            facts: BTreeMap::new(),
+            relation_rows: BTreeMap::new(),
+            used_contexts: BTreeSet::new(),
+            callable_contexts: BTreeMap::new(),
+            error: None,
+        };
+        let output = document
+            .items
+            .last()
+            .and_then(|item| {
+                if let ProgramItemHirV1::Decl(decl) = item {
+                    Some(&decl.body)
+                } else {
+                    None
+                }
+            })
+            .expect("out declaration");
+        assert!(matches!(
+            checker.type_expr(output, false),
+            Err(TypeDiagnosticV2::TypeShapeLimit { .. })
+        ));
+        assert_eq!(
+            checker.facts.len(),
+            3,
+            "seed plus two references; remaining 62 types were never copied"
+        );
     }
 }

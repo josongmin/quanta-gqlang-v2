@@ -34,6 +34,7 @@
 
 use std::collections::BTreeSet;
 
+use quanta_gqlang_v2_algebra::AlgebraFamilyV2;
 use quanta_gqlang_v2_logic::DedupIdentityV1;
 use quanta_gqlang_v2_planning::{
     plan, AuthorityLaneV2, CapabilityV2, CardinalityClassV2, EffectClassV2,
@@ -337,11 +338,6 @@ fn a_rule_program_retains_its_exact_stratified_policy() {
             2,
             Vec::new(),
         ),
-        (
-            ReferenceRuleFixtureV2::AggregatedNonRecursiveDependency,
-            2,
-            Vec::new(),
-        ),
     ] {
         let (document, input) = rule_input(fixture).expect("the rule fixture seals");
         let planned = plan(&input, document.document()).expect("the program plans");
@@ -536,10 +532,9 @@ fn a_relational_carrier_is_the_sealed_lowering_product() {
     assert_eq!(carrier.root().location(), relation.root().location());
 }
 
-/// Canonical lowering may promote a pure EXISTS/NOT EXISTS stage to the root.
-/// Planning accepts that re-anchoring because item identity and the complete
-/// output contract remain sealed, while the plan stays anchored on the authored
-/// relation item location.
+/// Canonical lowering may promote a pure single EXISTS/NOT EXISTS to the root;
+/// multi-EXISTS retains the filter stage as one flat node. Planning accepts
+/// both because item identity and the complete output contract remain sealed.
 #[test]
 fn every_reanchored_exists_family_plans_from_its_sealed_owner() {
     for fixture in [
@@ -562,16 +557,22 @@ fn every_reanchored_exists_family_plans_from_its_sealed_owner() {
         assert_eq!(carrier.item_id(), relation.item_id(), "{fixture:?}");
         assert_eq!(carrier.root().item_id(), relation.item_id(), "{fixture:?}");
         assert_eq!(carrier.output(), relation.output(), "{fixture:?}");
-        assert_ne!(
-            carrier.root().stage_key(),
-            relation.root().key(),
-            "{fixture:?}: this fixture must exercise root re-anchoring"
-        );
-        assert_ne!(
-            carrier.root().location(),
-            relation.root().location(),
-            "{fixture:?}"
-        );
+        if matches!(fixture, ReferenceRelationFixtureV2::ConjunctiveExistsPair) {
+            assert_eq!(carrier.root().family(), AlgebraFamilyV2::ExistsFilter);
+            assert_eq!(carrier.root().stage_key(), relation.root().key());
+            assert_eq!(carrier.root().location(), relation.root().location());
+        } else {
+            assert_ne!(
+                carrier.root().stage_key(),
+                relation.root().key(),
+                "{fixture:?}: this fixture must exercise root re-anchoring"
+            );
+            assert_ne!(
+                carrier.root().location(),
+                relation.root().location(),
+                "{fixture:?}"
+            );
+        }
         let planned = plan(&input, document.document()).expect("the re-anchored relation plans");
         assert_eq!(planned.result().result_kind(), ResultKindV2::Table);
         assert_eq!(

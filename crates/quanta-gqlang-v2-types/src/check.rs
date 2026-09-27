@@ -3,7 +3,7 @@ use crate::builtin::{
     ExpressionEffectsV2,
 };
 use crate::op::{OperatorIdV2, OperatorRegistryV2};
-use crate::ty::{FiniteF64V2, RecordFieldTypeV1, RecordTypeV1, TypedLiteralValueV2, ValueTypeV1};
+use crate::ty::{FiniteF64V2, RecordTypeBuilderV1, RecordTypeV1, TypedLiteralValueV2, ValueTypeV1};
 use crate::TypeDiagnosticV2;
 use quanta_gqlang_v2_hir::{
     BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CheckedHirDocumentV2, CheckedLocatedSpanV2,
@@ -1355,21 +1355,24 @@ impl HirVisitorV1 for DocumentChecker<'_, '_> {
         quanta_gqlang_v2_hir::walk_relation(self, node);
         if self.error.is_none() {
             if let Err(error) = self.complete_relation_row(node) {
-                self.error = Some(error);
+                self.error = Some(error.at_location(LocatedSpanV2 {
+                    source_id: self.inputs.checked.document().source_id,
+                    span: node.span,
+                }));
             }
         }
     }
     fn visit_value(&mut self, node: &ValueExprHirV1) {
         if self.error.is_none() {
             if let Err(error) = self.type_expr(node, false) {
-                self.error = Some(error);
+                self.error = Some(error.at_location(self.location(node)));
             }
         }
     }
     fn visit_bool(&mut self, node: &BoolExprHirV1) {
         if self.error.is_none() {
             if let Err(error) = self.type_bool(node) {
-                self.error = Some(error);
+                self.error = Some(error.at_location(self.bool_location(node)));
             }
         }
     }
@@ -1452,21 +1455,22 @@ impl DocumentChecker<'_, '_> {
                     quanta_gqlang_v2_hir::JoinHirV1::Inner { left, right, .. }
                     | quanta_gqlang_v2_hir::JoinHirV1::Cross { left, right } => (left.id, right.id),
                 };
-                let left_row = self.relation_rows.get(&self.key_id(left)).cloned().ok_or(
+                let left_row = self.relation_rows.get(&self.key_id(left)).ok_or(
                     TypeDiagnosticV2::UnavailableRelationRowDependency {
                         root: node.id,
                         target: left,
                         location,
                     },
                 )?;
-                let right_row = self.relation_rows.get(&self.key_id(right)).cloned().ok_or(
+                let right_row = self.relation_rows.get(&self.key_id(right)).ok_or(
                     TypeDiagnosticV2::UnavailableRelationRowDependency {
                         root: node.id,
                         target: right,
                         location,
                     },
                 )?;
-                let fields = left_row
+                let mut fields = RecordTypeBuilderV1::new();
+                for (field, field_location) in left_row
                     .record
                     .fields()
                     .iter()
@@ -1478,18 +1482,13 @@ impl DocumentChecker<'_, '_> {
                             .iter()
                             .zip(right_row.locations.iter()),
                     )
-                    .map(|(field, field_location)| {
-                        RecordFieldTypeV1::try_new(
-                            field.name(),
-                            field.value_type().clone(),
-                            field_location.clone(),
-                        )
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-                let mut locations = left_row.locations;
-                locations.extend(right_row.locations);
+                {
+                    fields.try_push(field.name(), field.value_type(), field_location.clone())?;
+                }
+                let mut locations = left_row.locations.clone();
+                locations.extend(right_row.locations.iter().cloned());
                 CheckedRelationRowV2 {
-                    record: RecordTypeV1::try_new(fields)?,
+                    record: fields.finish()?,
                     locations,
                 }
             }
@@ -1504,13 +1503,13 @@ impl DocumentChecker<'_, '_> {
         fields: &[DeferredRelationRowFieldInputV2],
     ) -> Result<CheckedRelationRowV2, TypeDiagnosticV2> {
         let mut locations = Vec::with_capacity(fields.len());
-        let mut typed_fields = Vec::with_capacity(fields.len());
+        let mut typed_fields = RecordTypeBuilderV1::new();
         for field in fields {
             let value_type = match &field.source {
-                RelationRowFieldSourceV2::Known(value_type) => value_type.clone(),
+                RelationRowFieldSourceV2::Known(value_type) => value_type,
                 RelationRowFieldSourceV2::PriorExpression(target) => {
                     match self.facts.get(target).map(|fact| &fact.state) {
-                        Some(ExpressionTypeStateV2::Known(value_type)) => value_type.clone(),
+                        Some(ExpressionTypeStateV2::Known(value_type)) => value_type,
                         _ => {
                             return Err(TypeDiagnosticV2::UnavailableRelationRowDependency {
                                 root,
@@ -1522,14 +1521,10 @@ impl DocumentChecker<'_, '_> {
                 }
             };
             locations.push(field.name_location.clone());
-            typed_fields.push(RecordFieldTypeV1::try_new(
-                &field.name,
-                value_type,
-                field.name_location.clone(),
-            )?);
+            typed_fields.try_push(&field.name, value_type, field.name_location.clone())?;
         }
         Ok(CheckedRelationRowV2 {
-            record: RecordTypeV1::try_new(typed_fields)?,
+            record: typed_fields.finish()?,
             locations,
         })
     }

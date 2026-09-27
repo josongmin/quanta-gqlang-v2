@@ -76,4 +76,6 @@ pub use relation::{
     SortDirectionV2, TypedRelationExprV2, TypedRelationStageInputV2, TypedRelationStageKindV2,
     TypedRelationV2,
 };
-pub use rule::{ResolvedRuleCallV2, ResolvedRuleV2, RuleCallPolarityV2};
+pub use rule::{
+    ResolvedRuleCallV2, ResolvedRuleV2, RuleBodyClassificationErrorV2, RuleCallPolarityV2,
+};

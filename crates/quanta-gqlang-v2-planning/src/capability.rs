@@ -66,8 +66,8 @@ impl CapabilityV2 {
 /// The capability a checked algebra family requires, if any.
 ///
 /// `Scan`, `Filter`, `Join`, `Group`, `Aggregate`, `Sort`, `SemiJoin`, and
-/// `AntiJoin` each require exactly one capability;
-/// `Project` is a pure frame re-shape and requires none.
+/// `AntiJoin` each require exactly one capability. `ExistsFilter` contributes
+/// capabilities per existential term in the planning walk; `Project` requires none.
 pub(crate) const fn capability_for_family(family: AlgebraFamilyV2) -> Option<CapabilityV2> {
     match family {
         AlgebraFamilyV2::Scan => Some(CapabilityV2::RelationScan),
@@ -78,7 +78,7 @@ pub(crate) const fn capability_for_family(family: AlgebraFamilyV2) -> Option<Cap
         AlgebraFamilyV2::Sort => Some(CapabilityV2::Ordering),
         AlgebraFamilyV2::SemiJoin => Some(CapabilityV2::ExistenceCheck),
         AlgebraFamilyV2::AntiJoin => Some(CapabilityV2::NegationCheck),
-        AlgebraFamilyV2::Project => None,
+        AlgebraFamilyV2::Project | AlgebraFamilyV2::ExistsFilter => None,
     }
 }
 
@@ -86,7 +86,7 @@ pub(crate) const fn capability_for_family(family: AlgebraFamilyV2) -> Option<Cap
 mod tests {
     use super::*;
 
-    const ALL_FAMILIES: [AlgebraFamilyV2; 9] = [
+    const ALL_FAMILIES: [AlgebraFamilyV2; 10] = [
         AlgebraFamilyV2::Scan,
         AlgebraFamilyV2::Filter,
         AlgebraFamilyV2::Project,
@@ -96,14 +96,21 @@ mod tests {
         AlgebraFamilyV2::Sort,
         AlgebraFamilyV2::SemiJoin,
         AlgebraFamilyV2::AntiJoin,
+        AlgebraFamilyV2::ExistsFilter,
     ];
 
     #[test]
     fn every_family_has_a_stable_capability_except_project() {
         for family in ALL_FAMILIES {
             let capability = capability_for_family(family);
-            if family == AlgebraFamilyV2::Project {
-                assert_eq!(capability, None, "Project is a pure frame re-shape");
+            if matches!(
+                family,
+                AlgebraFamilyV2::Project | AlgebraFamilyV2::ExistsFilter
+            ) {
+                assert_eq!(
+                    capability, None,
+                    "Project or per-term ExistsFilter has no family capability"
+                );
             } else {
                 assert!(
                     capability.is_some(),

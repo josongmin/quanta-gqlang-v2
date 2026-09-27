@@ -2,8 +2,9 @@
 
 use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, CompositionInstanceV2, JoinModeV2, OrderKeyContractV2,
-    OutputColumnOriginV2, PartitionInputBindingV2, RelationOutputContractV2, ResolvedScanSourceV2,
-    SemanticItemIdV2, TypedBoolExprV2, TypedCorrelationEdgeV2, TypedExprV2,
+    OutputColumnOriginV2, PartitionInputBindingV2, RelationExistsPolarityV2,
+    RelationOutputContractV2, ResolvedScanSourceV2, SemanticItemIdV2, TypedBoolExprV2,
+    TypedCorrelationEdgeV2, TypedExprV2,
 };
 use quanta_gqlang_v2_types::{
     AggregationClassV1, CardinalityV1, ExpressionTypeStateV2, SourceQualifiedNodeIdV2,
@@ -30,6 +31,8 @@ pub enum AlgebraFamilyV2 {
     SemiJoin,
     /// Negative relational existence.
     AntiJoin,
+    /// Several relational existence conjuncts over one input frame.
+    ExistsFilter,
 }
 
 impl AlgebraFamilyV2 {
@@ -46,6 +49,7 @@ impl AlgebraFamilyV2 {
             Self::Sort => "sort",
             Self::SemiJoin => "semi_join",
             Self::AntiJoin => "anti_join",
+            Self::ExistsFilter => "exists_filter",
         }
     }
 }
@@ -75,6 +79,49 @@ impl CorrelationSetV2 {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+}
+
+/// One authored existential condition and its checked nested relation.
+/// Keeping the pair together prevents condition/right drift before projection.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExistentialTermV2 {
+    expression: SourceQualifiedNodeIdV2,
+    polarity: RelationExistsPolarityV2,
+    correlations: CorrelationSetV2,
+    right: Box<CheckedAlgebraNodeV2>,
+}
+
+impl ExistentialTermV2 {
+    pub(crate) fn new(
+        expression: SourceQualifiedNodeIdV2,
+        polarity: RelationExistsPolarityV2,
+        correlations: CorrelationSetV2,
+        right: CheckedAlgebraNodeV2,
+    ) -> Self {
+        Self {
+            expression,
+            polarity,
+            correlations,
+            right: Box::new(right),
+        }
+    }
+
+    #[must_use]
+    pub const fn expression(&self) -> SourceQualifiedNodeIdV2 {
+        self.expression
+    }
+    #[must_use]
+    pub const fn polarity(&self) -> RelationExistsPolarityV2 {
+        self.polarity
+    }
+    #[must_use]
+    pub const fn correlations(&self) -> &CorrelationSetV2 {
+        &self.correlations
+    }
+    #[must_use]
+    pub fn right(&self) -> &CheckedAlgebraNodeV2 {
+        self.right.as_ref()
     }
 }
 
@@ -168,6 +215,10 @@ pub(crate) enum AlgebraOpV2 {
         right: Box<CheckedAlgebraNodeV2>,
         correlations: CorrelationSetV2,
     },
+    ExistsFilter {
+        input: Box<CheckedAlgebraNodeV2>,
+        terms: Vec<ExistentialTermV2>,
+    },
 }
 
 impl CheckedAlgebraNodeV2 {
@@ -240,6 +291,7 @@ impl CheckedAlgebraNodeV2 {
             AlgebraOpV2::Sort { .. } => AlgebraFamilyV2::Sort,
             AlgebraOpV2::SemiJoin { .. } => AlgebraFamilyV2::SemiJoin,
             AlgebraOpV2::AntiJoin { .. } => AlgebraFamilyV2::AntiJoin,
+            AlgebraOpV2::ExistsFilter { .. } => AlgebraFamilyV2::ExistsFilter,
         }
     }
 
@@ -280,6 +332,12 @@ impl CheckedAlgebraNodeV2 {
             AlgebraOpV2::Join { left, right, .. }
             | AlgebraOpV2::SemiJoin { left, right, .. }
             | AlgebraOpV2::AntiJoin { left, right, .. } => vec![left, right],
+            AlgebraOpV2::ExistsFilter { input, terms } => {
+                let mut children = Vec::with_capacity(1 + terms.len());
+                children.push(input.as_ref());
+                children.extend(terms.iter().map(ExistentialTermV2::right));
+                children
+            }
         }
     }
 
@@ -295,7 +353,8 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
             | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. } => None,
+            | AlgebraOpV2::AntiJoin { .. }
+            | AlgebraOpV2::ExistsFilter { .. } => None,
         }
     }
 
@@ -313,7 +372,8 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
             | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. } => None,
+            | AlgebraOpV2::AntiJoin { .. }
+            | AlgebraOpV2::ExistsFilter { .. } => None,
         }
     }
 
@@ -330,7 +390,8 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
             | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. } => &[],
+            | AlgebraOpV2::AntiJoin { .. }
+            | AlgebraOpV2::ExistsFilter { .. } => &[],
         }
     }
 
@@ -346,7 +407,8 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
             | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. } => None,
+            | AlgebraOpV2::AntiJoin { .. }
+            | AlgebraOpV2::ExistsFilter { .. } => None,
         }
     }
 
@@ -361,7 +423,8 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Join { .. }
             | AlgebraOpV2::Sort { .. }
             | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. } => &[],
+            | AlgebraOpV2::AntiJoin { .. }
+            | AlgebraOpV2::ExistsFilter { .. } => &[],
         }
     }
 
@@ -376,7 +439,8 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Group { .. }
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. } => &[],
+            | AlgebraOpV2::AntiJoin { .. }
+            | AlgebraOpV2::ExistsFilter { .. } => &[],
         }
     }
 
@@ -393,7 +457,8 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Aggregate { .. }
             | AlgebraOpV2::Sort { .. }
             | AlgebraOpV2::SemiJoin { .. }
-            | AlgebraOpV2::AntiJoin { .. } => &[],
+            | AlgebraOpV2::AntiJoin { .. }
+            | AlgebraOpV2::ExistsFilter { .. } => &[],
         }
     }
 
@@ -409,7 +474,25 @@ impl CheckedAlgebraNodeV2 {
             | AlgebraOpV2::Join { .. }
             | AlgebraOpV2::Group { .. }
             | AlgebraOpV2::Aggregate { .. }
-            | AlgebraOpV2::Sort { .. } => None,
+            | AlgebraOpV2::Sort { .. }
+            | AlgebraOpV2::ExistsFilter { .. } => None,
+        }
+    }
+
+    /// Authored conditions of a flat existential filter. The first child is
+    /// the input, and each following child matches one condition in order.
+    pub fn existential_terms(&self) -> &[ExistentialTermV2] {
+        match &self.op {
+            AlgebraOpV2::ExistsFilter { terms, .. } => terms,
+            AlgebraOpV2::Scan { .. }
+            | AlgebraOpV2::Filter { .. }
+            | AlgebraOpV2::Project { .. }
+            | AlgebraOpV2::Join { .. }
+            | AlgebraOpV2::Group { .. }
+            | AlgebraOpV2::Aggregate { .. }
+            | AlgebraOpV2::Sort { .. }
+            | AlgebraOpV2::SemiJoin { .. }
+            | AlgebraOpV2::AntiJoin { .. } => &[],
         }
     }
 
@@ -501,6 +584,16 @@ impl CheckedAlgebraNodeV2 {
             left: Box::new(left),
             right: Box::new(right),
             correlations,
+        }
+    }
+
+    pub(crate) fn exists_filter(
+        input: CheckedAlgebraNodeV2,
+        terms: Vec<ExistentialTermV2>,
+    ) -> AlgebraOpV2 {
+        AlgebraOpV2::ExistsFilter {
+            input: Box::new(input),
+            terms,
         }
     }
 }
@@ -605,6 +698,14 @@ fn op_agrees_with_output(
         }
         AlgebraOpV2::SemiJoin { left, .. } | AlgebraOpV2::AntiJoin { left, .. } => {
             preserves_input_frame(output, left.output())
+        }
+        AlgebraOpV2::ExistsFilter { input, terms } => {
+            terms.len() >= 2
+                && terms.iter().all(|term| {
+                    term.expression.source_id == stage_key.source_id
+                        && term.right.stage_key().source_id == stage_key.source_id
+                })
+                && preserves_input_frame(output, input.output())
         }
     }
 }

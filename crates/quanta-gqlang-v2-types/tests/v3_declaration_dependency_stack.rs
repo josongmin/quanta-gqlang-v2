@@ -1,17 +1,19 @@
 #![expect(
     clippy::expect_used,
+    clippy::panic,
     reason = "assert checked owner fixtures and worker results"
 )]
 
 use quanta_gqlang_v2_hir::{
-    check_document_v2, CallArgsHirV1, HirBuilderV1, HirDocumentV1, ProgramItemHirV1, SourceIdV2,
-    SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
+    check_document_v2, CallArgsHirV1, HirBuilderV1, HirDocumentV1, ProgramItemHirV1, RecordFieldV1,
+    SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
 };
 use quanta_gqlang_v2_types::{
     AggregationClassV1, BuiltinRegistryV2, CostClassV1, DeterminismV1, ExpressionEffectsV2,
     ExpressionTypeKernelV2, ExpressionTypeStateV2, MonotonicityV1, PurityV1,
     ResolvedCallableInputV2, ResolvedTypeInputEntryV2, ResolvedTypeInputValueV2,
-    ResolvedTypeInputsV2, ScalarTyV1, SourceQualifiedNodeIdV2, TypeDiagnosticV2, ValueTypeV1,
+    ResolvedTypeInputsV2, ScalarTyV1, SourceQualifiedNodeIdV2, TypeDiagnosticV2,
+    TypedExpressionFactsV2, ValueTypeV1, MAX_TYPE_NODES,
 };
 
 const SOURCE: SourceIdV2 = SourceIdV2::from_raw(7);
@@ -137,6 +139,130 @@ fn long_declaration_chains_preserve_types_and_effects_in_both_orders() {
         .expect("bounded stack worker")
         .join()
         .expect("worker completes without overflow");
+}
+
+fn record_declaration_fanout(
+    output_fields: usize,
+) -> Result<
+    (
+        TypedExpressionFactsV2,
+        SourceQualifiedNodeIdV2,
+        SourceQualifiedNodeIdV2,
+    ),
+    TypeDiagnosticV2,
+> {
+    let builder = HirBuilderV1::new();
+    let mut items = Vec::new();
+    let mut entries = Vec::new();
+    let key = |node_id| SourceQualifiedNodeIdV2 {
+        source_id: SOURCE,
+        node_id,
+    };
+    let base = builder.int("1", SPAN);
+    let mut previous = key(base.id);
+    items.push(ProgramItemHirV1::from(builder.decl("x0", SPAN, base, SPAN)));
+    for index in 1..=11 {
+        let fields = ["a", "b"]
+            .into_iter()
+            .map(|name| {
+                let value = builder.symbol(format!("x{}", index - 1), SPAN);
+                entries.push(ResolvedTypeInputEntryV2 {
+                    key: key(value.id),
+                    value: ResolvedTypeInputValueV2::BindingFromDeclaration(previous),
+                });
+                RecordFieldV1 {
+                    name: name.to_owned(),
+                    name_span: SPAN,
+                    value,
+                }
+            })
+            .collect();
+        let body = builder.record(fields, SPAN);
+        previous = key(body.id);
+        items.push(ProgramItemHirV1::from(builder.decl(
+            format!("x{index}"),
+            SPAN,
+            body,
+            SPAN,
+        )));
+    }
+    let fields = (0..output_fields)
+        .map(|index| {
+            let value = builder.symbol("x11", SPAN);
+            entries.push(ResolvedTypeInputEntryV2 {
+                key: key(value.id),
+                value: ResolvedTypeInputValueV2::BindingFromDeclaration(previous),
+            });
+            RecordFieldV1 {
+                name: format!("g{index}"),
+                name_span: SPAN,
+                value,
+            }
+        })
+        .collect();
+    let output = builder.record(fields, SPAN);
+    let output_key = key(output.id);
+    items.push(ProgramItemHirV1::from(
+        builder.decl("out", SPAN, output, SPAN),
+    ));
+    let document = HirDocumentV1 {
+        source_id: SOURCE,
+        source_len: 1,
+        items,
+    };
+    let registry = SourceRegistryViewV2::try_new(vec![])
+        .expect("host registry")
+        .try_extend_document(SourceRegistrationV2 {
+            source_id: SOURCE,
+            source_len: 1,
+        })
+        .expect("document source");
+    let inputs = ResolvedTypeInputsV2::try_new(
+        check_document_v2(&document).expect("valid generated HIR"),
+        &registry,
+        entries,
+        vec![],
+        vec![],
+    )
+    .expect("resolved dependencies");
+    let facts = ExpressionTypeKernelV2::try_closed()
+        .expect("type kernel")
+        .check_document(&inputs)?;
+    Ok((facts, previous, output_key))
+}
+
+#[test]
+fn declaration_reference_fanout_checks_parent_shape_before_owning_all_children() {
+    let (facts, child_key, output_key) = record_declaration_fanout(1).expect("exact parent limit");
+    let ExpressionTypeStateV2::Known(output_type) = &facts.get(output_key).expect("out fact").state
+    else {
+        panic!("out must have a known type");
+    };
+    let ExpressionTypeStateV2::Known(child_type) = &facts.get(child_key).expect("x11 fact").state
+    else {
+        panic!("x11 must have a known type");
+    };
+    assert_eq!(child_type.node_count(), MAX_TYPE_NODES - 1);
+    assert_eq!(output_type.node_count(), MAX_TYPE_NODES);
+    assert_eq!(
+        output_type
+            .as_record()
+            .expect("record")
+            .fields()
+            .first()
+            .expect("one output field")
+            .value_type(),
+        child_type
+    );
+    assert_eq!(
+        record_declaration_fanout(4096).expect_err("second child exceeds parent limit"),
+        TypeDiagnosticV2::TypeShapeLimit {
+            location: Some(quanta_gqlang_v2_hir::LocatedSpanV2 {
+                source_id: SOURCE,
+                span: SPAN,
+            }),
+        }
+    );
 }
 
 #[test]

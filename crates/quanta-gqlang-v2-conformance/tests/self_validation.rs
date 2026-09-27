@@ -781,22 +781,52 @@ fn two_authored_mutual_rules_reach_one_checked_program() {
 }
 
 #[test]
-fn scalar_call_does_not_spread_nested_aggregate_polarity_to_sibling_predicates() {
+fn source_rule_calls_require_direct_truth_literals_before_plan_assembly() {
     let authority = closed_authority();
-    let rules = "rule u : x if x = 1; rule t : x if x = 1; rule s : x if x or false; ";
+    for body in ["p(x)", "(p(x))", "((p(x)))", "(p(x) or false)"] {
+        let source = format!("rule p : x if x = 1 and {body}");
+        let compiled = compile_source_document_v3(SourceIdV2::from_raw(406), &source, &authority)
+            .unwrap_or_else(|error| panic!("{body}: direct recursion must compile: {error:?}"));
+        let program = compiled.rule_program().expect("one checked rule program");
+        assert_eq!(program.members().len(), 1, "{body}");
+        assert_eq!(program.stratification().recursive().len(), 1, "{body}");
+    }
+
     for body in [
-        "y = 1 and s(t(1))",
-        "y = 1 and s(t(count(u(1))))",
-        "y = 1 and is_null({a: t(1), b: count(u(1))})",
+        "p(x) = false",
+        "(p(x) = true)",
+        "(p(x)) = true",
+        "is_null({a: p(x)})",
+        "is_null({a: (p(x))})",
+        "p(count(p(x)))",
     ] {
-        let source = format!("{rules}rule main : y if {body}");
-        let document = compile_source_document_v3(SourceIdV2::from_raw(406), &source, &authority)
-            .unwrap_or_else(|error| {
-                panic!("{body}: semantically legal rule must compile: {error:?}")
-            });
-        let program = document.rule_program().expect("one checked rule program");
-        assert_eq!(program.members().len(), 4, "{body}");
-        assert_eq!(document.items().len(), 4, "{body}");
+        let source = format!("rule p : x if x = 1 and {body}");
+        let error = compile_source_document_v3(SourceIdV2::from_raw(406), &source, &authority)
+            .expect_err("scalar-wrapped source call cannot produce a compiled plan");
+        let quanta_gqlang_v2_frontend_contract::FrontendTransactionErrorV2::Document(failure) =
+            error
+        else {
+            panic!("{body}: expected a source-anchored document failure");
+        };
+        let [diagnostic] = failure.diagnostics() else {
+            panic!("{body}: expected one typed failure");
+        };
+        assert_eq!(diagnostic.code(), "sema.invalid_item_shape", "{body}");
+    }
+
+    for body in ["not p(x)", "not (p(x))", "not ((p(x)))"] {
+        let source = format!("rule p : x if x = 1 and {body}");
+        let error = compile_source_document_v3(SourceIdV2::from_raw(406), &source, &authority)
+            .expect_err("negative recursive SCC cannot produce a compiled plan");
+        let quanta_gqlang_v2_frontend_contract::FrontendTransactionErrorV2::Document(failure) =
+            error
+        else {
+            panic!("{body}: expected a source-anchored document failure");
+        };
+        let [diagnostic] = failure.diagnostics() else {
+            panic!("{body}: expected one logic failure");
+        };
+        assert_eq!(diagnostic.code(), "logic.negation_cycle", "{body}");
     }
 }
 
