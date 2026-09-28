@@ -360,11 +360,17 @@ class ExternalConsumerCacheTest(unittest.TestCase):
             root = Path(directory)
             facade = root / "facade"
             manifest = root / "Cargo.toml"
+            (facade / "src").mkdir(parents=True)
+            (facade / "src" / "lib.rs").write_text("pub struct Contract;\n")
+            (facade / "Cargo.toml").write_text(
+                '[package]\nname = "quanta-gqlang-v2-frontend-contract"\n'
+                'version = "0.1.0"\nedition = "2021"\n'
+            )
             (root / "src").mkdir()
             (root / "src" / "main.rs").write_text("fn main() {}\n")
             baseline = (
                 '[package]\nname = "external-probe"\nversion = "0.1.0"\n'
-                'edition = "2021"\n[dependencies]\n'
+                'edition = "2021"\n[workspace]\n[dependencies]\n'
                 'quanta-gqlang-v2-frontend-contract = { path = "facade" }\n'
             )
             manifest.write_text(baseline)
