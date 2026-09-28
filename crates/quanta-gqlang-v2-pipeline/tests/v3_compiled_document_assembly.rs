@@ -1752,6 +1752,107 @@ fn composition_exists_retains_only_actual_outer_row_captures() {
 }
 
 #[test]
+fn composition_flat_mixed_exists_retains_each_capture_and_residual_filter() {
+    use quanta_gqlang_v2_pipeline::ExecutionExistsPolarityV3::{Exists, NotExists};
+
+    let source = concat!(
+        "let sampled = sample query=\"auth\" | mode=lexical | limit=2 ",
+        "from sampled s | where false and exists ",
+        "(from sampled t | where t.path = s.path) and not ",
+        "(exists (from sampled u | where u.path = s.path)) ",
+        "| project s.path as path with sampled"
+    );
+    let compiled = compile_source_document_v3(DOC_SOURCE, source, &minimal_authority())
+        .expect("two correlated LET scans and the residual predicate compile");
+    let composition = compiled.execution().items()[0]
+        .composition()
+        .expect("composition");
+    let relation = composition.body_relation().expect("relational body");
+    assert_eq!(relation.root().family(), AlgebraFamilyV2::Project);
+    let [residual] = relation.root().children() else {
+        panic!("project has one residual filter child");
+    };
+    assert_eq!(residual.family(), AlgebraFamilyV2::Filter);
+    let [predicate] = residual.predicates() else {
+        panic!("the residual false predicate is retained exactly once");
+    };
+    let residual_expression = relation
+        .expressions()
+        .iter()
+        .find(|expression| expression.id() == *predicate)
+        .expect("residual expression is closed");
+    let ExecutionExpressionShapeV3::BoolValue(literal) = residual_expression.shape() else {
+        panic!("residual preserves the authored Bool wrapper");
+    };
+    assert!(relation.expressions().iter().any(|expression| {
+        expression.id() == *literal
+            && expression.shape()
+                == &ExecutionExpressionShapeV3::Literal(ExecutionLiteralV3::Bool(false))
+    }));
+
+    let [flat] = residual.children() else {
+        panic!("one flat existential operator is below the residual filter");
+    };
+    assert_eq!(flat.family(), AlgebraFamilyV2::ExistsFilter);
+    assert_eq!(flat.stage(), residual.stage());
+    assert_eq!(flat.children().len(), 3);
+    assert_eq!(flat.existential_terms().len(), 2);
+    assert_eq!(
+        flat.existential_terms()
+            .iter()
+            .map(|term| term.polarity())
+            .collect::<Vec<_>>(),
+        vec![Exists, NotExists]
+    );
+    let outer_scan = &flat.children()[0];
+    assert_eq!(outer_scan.family(), AlgebraFamilyV2::Scan);
+    let expected_binding = composition.bindings()[0].binding();
+    for scan in std::iter::once(outer_scan).chain(flat.children()[1..].iter().map(|right| {
+        assert_eq!(right.family(), AlgebraFamilyV2::Filter);
+        let [scan] = right.children() else {
+            panic!("each right predicate filters one LET scan");
+        };
+        scan
+    })) {
+        assert_eq!(scan.family(), AlgebraFamilyV2::Scan);
+        let source = scan.source().expect("LET scan source");
+        assert_eq!(
+            source.authority(),
+            ExecutionRelationAuthorityV3::CompositionBinding
+        );
+        assert_eq!(source.name(), "sampled");
+        assert_eq!(source.composition_binding(), Some(expected_binding));
+    }
+    let mut capture_references = BTreeSet::new();
+    for (term, right) in flat.existential_terms().iter().zip(&flat.children()[1..]) {
+        assert_eq!(term.correlations().len(), 1);
+        let capture = &term.correlations()[0];
+        assert_eq!(capture.binding().name(), "s");
+        assert_eq!(
+            capture.binding().owner_node(),
+            outer_scan.stage().node_id.raw()
+        );
+        assert!(capture_references.insert(capture.reference()));
+        assert!(relation.expressions().iter().any(|expression| {
+            expression.id() == capture.reference()
+                && matches!(expression.shape(), ExecutionExpressionShapeV3::Binding(binding)
+                    if binding == capture.binding())
+        }));
+        let expression = relation
+            .expressions()
+            .iter()
+            .find(|expression| expression.id() == term.expression())
+            .expect("each term has a closed relation-exists expression");
+        assert!(
+            matches!(expression.shape(), ExecutionExpressionShapeV3::RelationExists {
+            relation_root, correlations, ..
+        } if *relation_root == right.stage() && correlations.as_ref() == term.correlations())
+        );
+    }
+    assert_eq!(capture_references.len(), 2);
+}
+
+#[test]
 fn composition_nested_exists_retains_each_crossed_row_boundary() {
     let source = concat!(
         "let sampled = sample query=\"auth\" | mode=lexical | limit=2 ",
