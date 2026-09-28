@@ -65,6 +65,185 @@ fn composition_from_use_resolves_to_exact_prior_let_before_alias_frame() {
 }
 
 #[test]
+fn composition_exists_sources_keep_exact_resolution_without_row_captures() {
+    for correlated in [false, true] {
+        let b = HirBuilderV1::new();
+        let producer = b.query(
+            b.relation_source("host", SpanV1::new(0, 4), None, SpanV1::new(0, 4)),
+            None,
+            SpanV1::new(0, 4),
+        );
+        let binding = b.composition_binding("p", SpanV1::new(5, 6), producer.into());
+        let outer = b.relation_source(
+            "p",
+            SpanV1::new(10, 11),
+            Some(AliasV1 {
+                name: "r".into(),
+                span: SpanV1::new(12, 13),
+            }),
+            SpanV1::new(10, 13),
+        );
+        let middle = b.relation_source(
+            "p",
+            SpanV1::new(20, 21),
+            Some(AliasV1 {
+                name: "m".into(),
+                span: SpanV1::new(22, 23),
+            }),
+            SpanV1::new(20, 23),
+        );
+        let inner = b.relation_source("p", SpanV1::new(30, 31), None, SpanV1::new(30, 31));
+        let root_ref = b.symbol("r", SpanV1::new(40, 41));
+        let middle_ref = b.symbol("m", SpanV1::new(44, 45));
+        let inner_relation = if correlated {
+            b.relation_filter(
+                inner.clone(),
+                b.compare(
+                    "=",
+                    root_ref.clone(),
+                    middle_ref.clone(),
+                    SpanV1::new(40, 45),
+                ),
+                SpanV1::new(30, 45),
+            )
+        } else {
+            inner.clone()
+        };
+        let inner_exists = b.relation_exists(
+            RelationExistsPolarityV1::NotExists,
+            inner_relation,
+            SpanV1::new(28, 46),
+        );
+        let inner_id = inner_exists.id;
+        let outer_exists = b.relation_exists(
+            RelationExistsPolarityV1::Exists,
+            b.relation_filter(middle.clone(), inner_exists, SpanV1::new(20, 46)),
+            SpanV1::new(18, 47),
+        );
+        let outer_id = outer_exists.id;
+        let body = b.query(
+            b.relation_filter(outer.clone(), outer_exists, SpanV1::new(10, 47)),
+            None,
+            SpanV1::new(10, 47),
+        );
+        let composition = b.composition(
+            vec![binding],
+            "p",
+            SpanV1::new(50, 51),
+            body.into(),
+            SpanV1::new(0, 51),
+        );
+        let graph = ModuleGraphV1::new();
+        let mut binder = Binder::new(&graph);
+        binder.resolve_composition(&composition);
+        let result = binder.finish();
+        assert!(result.is_ok(), "{:?}", result.diagnostics());
+        for source in [&outer, &middle, &inner] {
+            assert!(
+                matches!(result.target_of_use(source.id, match &source.kind {
+                quanta_gqlang_v2_hir::RelationExprKindV1::Source(source) => source.name_span,
+                quanta_gqlang_v2_hir::RelationExprKindV1::Project(_)
+                | quanta_gqlang_v2_hir::RelationExprKindV1::Filter(_)
+                | quanta_gqlang_v2_hir::RelationExprKindV1::Join(_)
+                | quanta_gqlang_v2_hir::RelationExprKindV1::GroupBy(_)
+                | quanta_gqlang_v2_hir::RelationExprKindV1::OrderBy(_) => unreachable!(),
+            }, "p"), Some(ResolvedTargetV1::Local(binding))
+                if binding.kind == BinderKindV1::CompositionLet
+                    && binding.identity() == (composition.id, 0))
+            );
+        }
+        assert!(result.has_capture_set(outer_id));
+        assert!(result.has_capture_set(inner_id));
+        if correlated {
+            assert_eq!(
+                result.capture_edges(outer_id),
+                &[(root_ref.id, outer.id, 0)]
+            );
+            assert_eq!(
+                result.capture_edges(inner_id),
+                &[(root_ref.id, outer.id, 0), (middle_ref.id, middle.id, 0),]
+            );
+        } else {
+            assert!(result.capture_edges(outer_id).is_empty());
+            assert!(result.capture_edges(inner_id).is_empty());
+        }
+    }
+}
+
+#[test]
+fn composition_let_spelling_shadowed_by_row_alias_is_not_a_relation_source() {
+    let b = HirBuilderV1::new();
+    let producer = b.query(
+        b.relation_source("host", SpanV1::new(0, 4), None, SpanV1::new(0, 4)),
+        None,
+        SpanV1::new(0, 4),
+    );
+    let binding = b.composition_binding("p", SpanV1::new(6, 7), producer.into());
+    let outer = b.relation_source(
+        "p",
+        SpanV1::new(10, 11),
+        Some(AliasV1 {
+            name: "p".into(),
+            span: SpanV1::new(12, 13),
+        }),
+        SpanV1::new(10, 13),
+    );
+    let inner = b.relation_source("p", SpanV1::new(20, 21), None, SpanV1::new(20, 21));
+    let exists = b.relation_exists(RelationExistsPolarityV1::Exists, inner, SpanV1::new(18, 22));
+    let body = b.query(
+        b.relation_filter(outer, exists, SpanV1::new(10, 22)),
+        None,
+        SpanV1::new(10, 22),
+    );
+    let composition = b.composition(
+        vec![binding],
+        "p",
+        SpanV1::new(25, 26),
+        body.into(),
+        SpanV1::new(0, 26),
+    );
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.resolve_composition(&composition);
+    let result = binder.finish();
+    assert!(result.diagnostics().iter().any(|diagnostic| matches!(diagnostic,
+        BindDiagnosticV1::WrongRelationSourceKind { name, span, binding_span }
+            if name == "p" && *span == SpanV1::new(20, 21) && *binding_span == SpanV1::new(12, 13))));
+}
+
+#[test]
+fn composition_source_barrier_still_rejects_enclosing_let() {
+    let b = HirBuilderV1::new();
+    let outer = b.relation_source("host", SpanV1::new(0, 4), None, SpanV1::new(0, 4));
+    let inner = b.relation_source("outer", SpanV1::new(20, 25), None, SpanV1::new(20, 25));
+    let exists = b.relation_exists(RelationExistsPolarityV1::Exists, inner, SpanV1::new(18, 26));
+    let body = b.query(
+        b.relation_filter(outer.clone(), exists, SpanV1::new(0, 26)),
+        None,
+        SpanV1::new(0, 26),
+    );
+    let producer = b.query(outer.clone(), None, SpanV1::new(0, 4));
+    let binding = b.composition_binding("p", SpanV1::new(6, 7), producer.into());
+    let composition = b.composition(
+        vec![binding],
+        "p",
+        SpanV1::new(30, 31),
+        body.into(),
+        SpanV1::new(0, 31),
+    );
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.open_scope(quanta_gqlang_v2_binder::CaptureV1::Capturing);
+    binder.bind_let("outer", outer.id, SpanV1::new(8, 13));
+    binder.resolve_composition(&composition);
+    let result = binder.finish();
+    assert!(
+        matches!(result.diagnostics(), [BindDiagnosticV1::IllegalCapture { name, span, binding_span }]
+        if name == "outer" && *span == SpanV1::new(20, 25) && *binding_span == SpanV1::new(8, 13))
+    );
+}
+
+#[test]
 fn composition_self_and_forward_sources_never_fall_back_to_host() {
     for (first_name, first_source) in [("self_ref", "self_ref"), ("first", "later")] {
         let b = HirBuilderV1::new();

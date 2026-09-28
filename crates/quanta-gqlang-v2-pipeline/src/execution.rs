@@ -12,21 +12,74 @@ use quanta_gqlang_v2_logic::{
     DedupIdentityV1, GraphQueryContractV2, RelationShapeV1, WitnessTieBreakV1,
 };
 use quanta_gqlang_v2_planning::{
-    AuthorityLaneV2, EffectClassV2, EvaluationDeterminismV2, EvidenceRequirementV2, PlanPolicyV2,
-    SemanticPlanV2,
+    AuthorityLaneV2, CheckContractV2, EffectClassV2, EvaluationDeterminismV2,
+    EvidenceRequirementV2, PlanPolicyV2, PresentationContractV2, SemanticPlanV2,
 };
 use quanta_gqlang_v2_sema::{
-    CardinalityV1, CompositionGraphCapabilityV2, ExpressionTypeStateV2, GraphDirectionV2,
+    CardinalityV1, CompareMetricV1, CompositionGraphCapabilityV2, ConfirmModeV1, DetectionModeV1,
+    EmitModeV1, EvidenceModeV1, ExportFormatV1, ExpressionTypeStateV2, GraphDirectionV2,
     GraphQueryKindV1, GraphReferenceKindV2, GraphReferenceRoleV2, JoinModeV2,
     LogicalQuantifierKindV2, NullOrderV2, RelationAuthorityV2, RelationExistsPolarityV2,
     RelationOutputContractV2, ResolvedCallTargetV2, ResolvedCompositionBodyV2,
-    ResolvedCompositionProducerV2, ResolvedCompositionV2, ResolvedGraphTargetV2,
-    ResolvedGraphUseV2, ResolvedPresentationKindV2, ResolvedRelationSourceKindV2, SampleModeV1,
-    ScalarTyV1, SemanticDocumentV2, SemanticItemIdV2, SortDirectionV2, SourceIdV2,
-    SourceQualifiedNodeIdV2, TypedCallArgumentV2, TypedExprShapeV2, TypedExprV2,
-    TypedLiteralFactV2, TypedLiteralValueV2, ValueTypeV1,
+    ResolvedCompositionProducerV2, ResolvedCompositionV2, ResolvedExplainTargetV2,
+    ResolvedGraphTargetV2, ResolvedGraphUseV2, ResolvedPresentationKindV2,
+    ResolvedRelationSourceKindV2, SampleModeV1, ScalarTyV1, SemanticDocumentV2, SemanticItemIdV2,
+    ShowCategoryV1, SortDirectionV2, SourceIdV2, SourceQualifiedNodeIdV2, TruthModeV1,
+    TypedCallArgumentV2, TypedExprShapeV2, TypedExprV2, TypedLiteralFactV2, TypedLiteralValueV2,
+    ValueTypeV1,
 };
 use sha2::{Digest as _, Sha256};
+
+pub use quanta_gqlang_v2_sema::OperatorSemanticKindV2 as ExecutionOperatorKindV3;
+
+/// Canonical overload semantics for downstream execution. Not part of the encoded DTO.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExecutionOperatorDescriptorV3 {
+    kind: ExecutionOperatorKindV3,
+    operands: Box<[ExecutionValueTypeV3]>,
+    result: ExecutionValueTypeV3,
+}
+
+impl ExecutionOperatorDescriptorV3 {
+    #[must_use]
+    pub const fn kind(&self) -> ExecutionOperatorKindV3 {
+        self.kind
+    }
+    #[must_use]
+    pub fn operand_types(&self) -> &[ExecutionValueTypeV3] {
+        &self.operands
+    }
+    #[must_use]
+    pub const fn result_type(&self) -> &ExecutionValueTypeV3 {
+        &self.result
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExecutionOperatorDescriptorErrorV3 {
+    InvalidCanonicalRegistry { reason: String },
+}
+
+/// Looks up an ID in the closed type-checker registry. Unknown IDs are explicit absence;
+/// an invalid canonical registry is an error, never an invented overload.
+pub fn execution_operator_descriptor_v3(
+    raw_id: u32,
+) -> Result<Option<ExecutionOperatorDescriptorV3>, ExecutionOperatorDescriptorErrorV3> {
+    let descriptor = quanta_gqlang_v2_sema::operator_descriptor_v2(raw_id).map_err(|error| {
+        ExecutionOperatorDescriptorErrorV3::InvalidCanonicalRegistry {
+            reason: error.to_string(),
+        }
+    })?;
+    Ok(descriptor.map(|descriptor| ExecutionOperatorDescriptorV3 {
+        kind: descriptor.kind(),
+        operands: descriptor
+            .operand_types()
+            .iter()
+            .map(project_value_type)
+            .collect(),
+        result: project_value_type(descriptor.result_type()),
+    }))
+}
 
 /// SHA-256 digest of the canonical execution-contract encoding.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -96,7 +149,7 @@ impl ExecutionDocumentV3 {
     }
 
     /// Source-ordered plan-required items. Non-plan declarations are absent;
-    /// only payload-bearing families are candidates for downstream execution.
+    /// downstream admission must reject any family without an executable payload.
     #[must_use]
     pub fn items(&self) -> &[ExecutionItemV3] {
         &self.items
@@ -164,6 +217,177 @@ pub enum ExecutionFamilyV3 {
     RuleProgram,
 }
 
+/// A checked catalog identity. The variant supplies the namespace; a host
+/// must still resolve this identity against its admitted catalog generation.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExecutionCatalogIdentityV3 {
+    module: String,
+    name: String,
+}
+impl ExecutionCatalogIdentityV3 {
+    #[must_use]
+    pub fn module(&self) -> &str {
+        &self.module
+    }
+    #[must_use]
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExecutionConfirmModeV3 {
+    Skip,
+    Prompt,
+    Require,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExecutionEmitModeV3 {
+    Findings,
+    Sarif,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExecutionDetectionModeV3 {
+    PatternOnly,
+    SemanticOnly,
+    Hybrid,
+}
+
+/// A nested CHECK/FIND retains its distinct source item identity.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExecutionNestedGraphV3 {
+    item_id: SemanticItemIdV2,
+    query: ExecutionGraphQueryV3,
+}
+impl ExecutionNestedGraphV3 {
+    #[must_use]
+    pub const fn item_id(&self) -> SemanticItemIdV2 {
+        self.item_id
+    }
+    #[must_use]
+    pub const fn query(&self) -> &ExecutionGraphQueryV3 {
+        &self.query
+    }
+}
+
+/// The coherent CHECK input projected from Planning's sealed contract.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExecutionCheckV3 {
+    rule: ExecutionCatalogIdentityV3,
+    scope: Option<ExecutionGraphTargetV3>,
+    pattern: Option<ExecutionGraphTargetV3>,
+    nested_graph: Option<ExecutionNestedGraphV3>,
+    confirm: ExecutionConfirmModeV3,
+    emit: ExecutionEmitModeV3,
+    mode: ExecutionDetectionModeV3,
+}
+impl ExecutionCheckV3 {
+    #[must_use]
+    pub const fn rule(&self) -> &ExecutionCatalogIdentityV3 {
+        &self.rule
+    }
+    #[must_use]
+    pub const fn scope(&self) -> Option<&ExecutionGraphTargetV3> {
+        self.scope.as_ref()
+    }
+    #[must_use]
+    pub const fn pattern(&self) -> Option<&ExecutionGraphTargetV3> {
+        self.pattern.as_ref()
+    }
+    #[must_use]
+    pub const fn nested_graph(&self) -> Option<&ExecutionNestedGraphV3> {
+        self.nested_graph.as_ref()
+    }
+    #[must_use]
+    pub const fn confirm(&self) -> ExecutionConfirmModeV3 {
+        self.confirm
+    }
+    #[must_use]
+    pub const fn emit(&self) -> ExecutionEmitModeV3 {
+        self.emit
+    }
+    #[must_use]
+    pub const fn mode(&self) -> ExecutionDetectionModeV3 {
+        self.mode
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExecutionEvidenceModeV3 {
+    Auto,
+    Trace,
+    Citation,
+    Counterexample,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExecutionTruthModeV3 {
+    Inspect,
+    Confirm,
+    Refute,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExecutionShowCategoryV3 {
+    Capabilities,
+    Models,
+    Views,
+    Rules,
+    Packs,
+    Profiles,
+    Gates,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExecutionCompareMetricV3 {
+    Exact,
+    Structural,
+    Semantic,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExecutionExportFormatV3 {
+    Json,
+    Csv,
+    Sarif,
+    Markdown,
+    GraphMl,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExecutionExplainTargetV3 {
+    Rule(ExecutionCatalogIdentityV3),
+    Entity(ExecutionGraphTargetV3),
+}
+
+/// Disjoint verb payload projected only after Presentation policy validation.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ExecutionPresentationKindV3 {
+    Explain {
+        target: ExecutionExplainTargetV3,
+        evidence: ExecutionEvidenceModeV3,
+        truth: ExecutionTruthModeV3,
+    },
+    Show {
+        category: ExecutionShowCategoryV3,
+    },
+    Describe {
+        target: ExecutionGraphTargetV3,
+    },
+    Sample {
+        query_text: String,
+        mode: ExecutionSampleModeV3,
+        limit: u32,
+        scope: Option<ExecutionGraphTargetV3>,
+    },
+    Compare {
+        baseline: ExecutionGraphTargetV3,
+        candidate: ExecutionGraphTargetV3,
+        metric: ExecutionCompareMetricV3,
+    },
+    Export {
+        source: ExecutionGraphTargetV3,
+        format: ExecutionExportFormatV3,
+        profile: Option<ExecutionCatalogIdentityV3>,
+    },
+}
+
 impl ExecutionFamilyV3 {
     /// Stable wire keyword.
     #[must_use]
@@ -186,6 +410,9 @@ pub struct ExecutionItemV3 {
     item_id: SemanticItemIdV2,
     family: ExecutionFamilyV3,
     relation: Option<ExecutionRelationV3>,
+    graph: Option<ExecutionGraphQueryV3>,
+    check: Option<ExecutionCheckV3>,
+    presentation: Option<ExecutionPresentationKindV3>,
     composition: Option<ExecutionCompositionV3>,
     plan: ExecutionPlanV3,
 }
@@ -195,6 +422,9 @@ impl ExecutionItemV3 {
         item_id: SemanticItemIdV2,
         family: ExecutionFamilyV3,
         relation: Option<ExecutionRelationV3>,
+        graph: Option<ExecutionGraphQueryV3>,
+        check: Option<ExecutionCheckV3>,
+        presentation: Option<ExecutionPresentationKindV3>,
         composition: Option<ExecutionCompositionV3>,
         plan: &SemanticPlanV2,
     ) -> Self {
@@ -202,6 +432,9 @@ impl ExecutionItemV3 {
             item_id,
             family,
             relation,
+            graph,
+            check,
+            presentation,
             composition,
             plan: project_plan(plan),
         }
@@ -218,6 +451,18 @@ impl ExecutionItemV3 {
     #[must_use]
     pub const fn relation(&self) -> Option<&ExecutionRelationV3> {
         self.relation.as_ref()
+    }
+    #[must_use]
+    pub const fn graph(&self) -> Option<&ExecutionGraphQueryV3> {
+        self.graph.as_ref()
+    }
+    #[must_use]
+    pub const fn check(&self) -> Option<&ExecutionCheckV3> {
+        self.check.as_ref()
+    }
+    #[must_use]
+    pub const fn presentation(&self) -> Option<&ExecutionPresentationKindV3> {
+        self.presentation.as_ref()
     }
     #[must_use]
     pub const fn composition(&self) -> Option<&ExecutionCompositionV3> {
@@ -961,6 +1206,7 @@ pub struct ExecutionSourceV3 {
     kind: ExecutionSourceKindV3,
     namespace: Option<String>,
     name: String,
+    composition_binding: Option<ExecutionBindingV3>,
 }
 impl ExecutionSourceV3 {
     #[must_use]
@@ -978,6 +1224,12 @@ impl ExecutionSourceV3 {
     #[must_use]
     pub fn name(&self) -> &str {
         &self.name
+    }
+    /// Sealed Binder slot for a Composition source. Its name is also encoded in
+    /// the scan and its exact slot is encoded by the enclosing composition.
+    #[must_use]
+    pub const fn composition_binding(&self) -> Option<&ExecutionBindingV3> {
+        self.composition_binding.as_ref()
     }
 }
 
@@ -1603,6 +1855,127 @@ pub(crate) fn project_graph_query(contract: &GraphQueryContractV2) -> ExecutionG
     }
 }
 
+pub(crate) fn project_check(contract: &CheckContractV2) -> ExecutionCheckV3 {
+    let policy = contract.policy();
+    ExecutionCheckV3 {
+        rule: project_catalog_identity(policy.rule()),
+        scope: policy.scope().map(project_graph_use),
+        pattern: policy.pattern().map(project_graph_use),
+        nested_graph: contract.nested_graph().map(|graph| ExecutionNestedGraphV3 {
+            item_id: graph.item_id(),
+            query: project_graph_query(graph),
+        }),
+        confirm: match policy.confirm() {
+            ConfirmModeV1::Skip => ExecutionConfirmModeV3::Skip,
+            ConfirmModeV1::Prompt => ExecutionConfirmModeV3::Prompt,
+            ConfirmModeV1::Require => ExecutionConfirmModeV3::Require,
+        },
+        emit: match policy.emit() {
+            EmitModeV1::Findings => ExecutionEmitModeV3::Findings,
+            EmitModeV1::Sarif => ExecutionEmitModeV3::Sarif,
+        },
+        mode: match policy.mode() {
+            DetectionModeV1::PatternOnly => ExecutionDetectionModeV3::PatternOnly,
+            DetectionModeV1::SemanticOnly => ExecutionDetectionModeV3::SemanticOnly,
+            DetectionModeV1::Hybrid => ExecutionDetectionModeV3::Hybrid,
+        },
+    }
+}
+
+fn project_catalog_identity(
+    reference: &quanta_gqlang_v2_sema::ResolvedCatalogReferenceV2,
+) -> ExecutionCatalogIdentityV3 {
+    ExecutionCatalogIdentityV3 {
+        module: reference.id().module_id().as_str().to_owned(),
+        name: reference.id().local_name().to_owned(),
+    }
+}
+
+pub(crate) fn project_presentation(
+    contract: &PresentationContractV2,
+) -> ExecutionPresentationKindV3 {
+    match contract.kind() {
+        ResolvedPresentationKindV2::Explain {
+            target,
+            evidence,
+            truth,
+        } => ExecutionPresentationKindV3::Explain {
+            target: match target {
+                ResolvedExplainTargetV2::Rule(rule) => {
+                    ExecutionExplainTargetV3::Rule(project_catalog_identity(rule))
+                }
+                ResolvedExplainTargetV2::Entity(entity) => {
+                    ExecutionExplainTargetV3::Entity(project_graph_use(entity))
+                }
+            },
+            evidence: match evidence {
+                EvidenceModeV1::Auto => ExecutionEvidenceModeV3::Auto,
+                EvidenceModeV1::Trace => ExecutionEvidenceModeV3::Trace,
+                EvidenceModeV1::Citation => ExecutionEvidenceModeV3::Citation,
+                EvidenceModeV1::Counterexample => ExecutionEvidenceModeV3::Counterexample,
+            },
+            truth: match truth {
+                TruthModeV1::Inspect => ExecutionTruthModeV3::Inspect,
+                TruthModeV1::Confirm => ExecutionTruthModeV3::Confirm,
+                TruthModeV1::Refute => ExecutionTruthModeV3::Refute,
+            },
+        },
+        ResolvedPresentationKindV2::Show { category } => ExecutionPresentationKindV3::Show {
+            category: match category {
+                ShowCategoryV1::Capabilities => ExecutionShowCategoryV3::Capabilities,
+                ShowCategoryV1::Models => ExecutionShowCategoryV3::Models,
+                ShowCategoryV1::Views => ExecutionShowCategoryV3::Views,
+                ShowCategoryV1::Rules => ExecutionShowCategoryV3::Rules,
+                ShowCategoryV1::Packs => ExecutionShowCategoryV3::Packs,
+                ShowCategoryV1::Profiles => ExecutionShowCategoryV3::Profiles,
+                ShowCategoryV1::Gates => ExecutionShowCategoryV3::Gates,
+            },
+        },
+        ResolvedPresentationKindV2::Describe { target } => ExecutionPresentationKindV3::Describe {
+            target: project_graph_use(target),
+        },
+        ResolvedPresentationKindV2::Sample {
+            query_text,
+            mode,
+            limit,
+            scope,
+        } => ExecutionPresentationKindV3::Sample {
+            query_text: query_text.clone(),
+            mode: project_sample_mode(*mode),
+            limit: *limit,
+            scope: scope.as_ref().map(project_graph_use),
+        },
+        ResolvedPresentationKindV2::Compare {
+            baseline,
+            candidate,
+            metric,
+        } => ExecutionPresentationKindV3::Compare {
+            baseline: project_graph_use(baseline),
+            candidate: project_graph_use(candidate),
+            metric: match metric {
+                CompareMetricV1::Exact => ExecutionCompareMetricV3::Exact,
+                CompareMetricV1::Structural => ExecutionCompareMetricV3::Structural,
+                CompareMetricV1::Semantic => ExecutionCompareMetricV3::Semantic,
+            },
+        },
+        ResolvedPresentationKindV2::Export {
+            source,
+            format,
+            profile,
+        } => ExecutionPresentationKindV3::Export {
+            source: project_graph_use(source),
+            format: match format {
+                ExportFormatV1::Json => ExecutionExportFormatV3::Json,
+                ExportFormatV1::Csv => ExecutionExportFormatV3::Csv,
+                ExportFormatV1::Sarif => ExecutionExportFormatV3::Sarif,
+                ExportFormatV1::Markdown => ExecutionExportFormatV3::Markdown,
+                ExportFormatV1::GraphMl => ExecutionExportFormatV3::GraphMl,
+            },
+            profile: profile.as_ref().map(project_catalog_identity),
+        },
+    }
+}
+
 const fn project_graph_relation_shape(shape: RelationShapeV1) -> ExecutionGraphRelationShapeV3 {
     match shape {
         RelationShapeV1::Acyclic => ExecutionGraphRelationShapeV3::Acyclic,
@@ -1946,18 +2319,21 @@ fn project_source(source: &ResolvedRelationSourceKindV2) -> ExecutionSourceV3 {
             kind: ExecutionSourceKindV3::Relation,
             namespace: Some(id.namespace().as_str().to_owned()),
             name: id.qualified_name().to_owned(),
+            composition_binding: None,
         },
         ResolvedRelationSourceKindV2::View(id) => ExecutionSourceV3 {
             authority: ExecutionRelationAuthorityV3::CatalogView,
             kind: ExecutionSourceKindV3::View,
             namespace: Some(id.module_id().as_str().to_owned()),
             name: id.local_name().to_owned(),
+            composition_binding: None,
         },
         ResolvedRelationSourceKindV2::Composition(id) => ExecutionSourceV3 {
             authority: ExecutionRelationAuthorityV3::CompositionBinding,
             kind: ExecutionSourceKindV3::Composition,
             namespace: None,
             name: id.binding().canonical_name().to_owned(),
+            composition_binding: Some(project_binding(id.binding())),
         },
     }
 }
@@ -1984,7 +2360,7 @@ const SOURCE_DIGEST_SCHEMA_VERSION: u32 = 3;
 // an independent revision. Schema 6 adds flat multi-EXISTS condition payloads
 // to the earlier scoped SAMPLE, graph-query, and witness-policy revisions.
 // The source byte stream itself did not change, so its stable schema remains 3.
-const CONTRACT_DIGEST_SCHEMA_VERSION: u32 = 6;
+const CONTRACT_DIGEST_SCHEMA_VERSION: u32 = 7;
 
 /// Digest of the raw UTF-8 source bytes only.
 fn digest_source_bytes(source: &[u8]) -> ExecutionDigestV3 {
@@ -1999,7 +2375,7 @@ fn digest_source_bytes(source: &[u8]) -> ExecutionDigestV3 {
 /// Digest of the canonical DTO encoding only.
 fn digest_contract(source_id: SourceIdV2, items: &[ExecutionItemV3]) -> ExecutionDigestV3 {
     let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.contract.v6");
+    put_str(&mut bytes, "qglang.execution.contract.v7");
     put_u32(&mut bytes, CONTRACT_DIGEST_SCHEMA_VERSION);
     put_u32(&mut bytes, source_id.raw());
     put_usize(&mut bytes, items.len());
@@ -2021,6 +2397,27 @@ fn digest_contract(source_id: SourceIdV2, items: &[ExecutionItemV3]) -> Executio
         } else {
             put_u8(&mut bytes, 0);
         }
+        match &item.graph {
+            Some(graph) => {
+                put_u8(&mut bytes, 1);
+                put_graph_query(&mut bytes, graph);
+            }
+            None => put_u8(&mut bytes, 0),
+        }
+        match &item.check {
+            Some(check) => {
+                put_u8(&mut bytes, 1);
+                put_check(&mut bytes, check);
+            }
+            None => put_u8(&mut bytes, 0),
+        }
+        match &item.presentation {
+            Some(presentation) => {
+                put_u8(&mut bytes, 1);
+                put_presentation(&mut bytes, presentation);
+            }
+            None => put_u8(&mut bytes, 0),
+        }
     }
     ExecutionDigestV3(sha256(&bytes))
 }
@@ -2032,7 +2429,7 @@ fn digest_qualification(
     contract_digest: ExecutionDigestV3,
 ) -> ExecutionDigestV3 {
     let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.qualification.v6");
+    put_str(&mut bytes, "qglang.execution.qualification.v7");
     put_u32(&mut bytes, CONTRACT_DIGEST_SCHEMA_VERSION);
     put_u32(&mut bytes, source_id.raw());
     bytes.extend_from_slice(source_digest.as_bytes());
@@ -2197,6 +2594,167 @@ fn put_graph_query(out: &mut Vec<u8>, query: &ExecutionGraphQueryV3) {
         None => put_u8(out, 0),
     }
     put_u8(out, graph_witness_tie_break_tag(query.witness_tie_break));
+}
+
+fn put_catalog_identity(out: &mut Vec<u8>, identity: &ExecutionCatalogIdentityV3) {
+    put_str(out, &identity.module);
+    put_str(out, &identity.name);
+}
+
+fn put_check(out: &mut Vec<u8>, check: &ExecutionCheckV3) {
+    put_catalog_identity(out, &check.rule);
+    put_optional_graph_target(out, check.scope.as_ref());
+    put_optional_graph_target(out, check.pattern.as_ref());
+    match &check.nested_graph {
+        Some(nested) => {
+            put_u8(out, 1);
+            put_item_id(out, nested.item_id);
+            put_graph_query(out, &nested.query);
+        }
+        None => put_u8(out, 0),
+    }
+    put_u8(
+        out,
+        match check.confirm {
+            ExecutionConfirmModeV3::Skip => 0,
+            ExecutionConfirmModeV3::Prompt => 1,
+            ExecutionConfirmModeV3::Require => 2,
+        },
+    );
+    put_u8(
+        out,
+        match check.emit {
+            ExecutionEmitModeV3::Findings => 0,
+            ExecutionEmitModeV3::Sarif => 1,
+        },
+    );
+    put_u8(
+        out,
+        match check.mode {
+            ExecutionDetectionModeV3::PatternOnly => 0,
+            ExecutionDetectionModeV3::SemanticOnly => 1,
+            ExecutionDetectionModeV3::Hybrid => 2,
+        },
+    );
+}
+
+fn put_presentation(out: &mut Vec<u8>, presentation: &ExecutionPresentationKindV3) {
+    match presentation {
+        ExecutionPresentationKindV3::Explain {
+            target,
+            evidence,
+            truth,
+        } => {
+            put_u8(out, 0);
+            match target {
+                ExecutionExplainTargetV3::Rule(rule) => {
+                    put_u8(out, 0);
+                    put_catalog_identity(out, rule);
+                }
+                ExecutionExplainTargetV3::Entity(entity) => {
+                    put_u8(out, 1);
+                    put_graph_target(out, entity);
+                }
+            }
+            put_u8(
+                out,
+                match evidence {
+                    ExecutionEvidenceModeV3::Auto => 0,
+                    ExecutionEvidenceModeV3::Trace => 1,
+                    ExecutionEvidenceModeV3::Citation => 2,
+                    ExecutionEvidenceModeV3::Counterexample => 3,
+                },
+            );
+            put_u8(
+                out,
+                match truth {
+                    ExecutionTruthModeV3::Inspect => 0,
+                    ExecutionTruthModeV3::Confirm => 1,
+                    ExecutionTruthModeV3::Refute => 2,
+                },
+            );
+        }
+        ExecutionPresentationKindV3::Show { category } => {
+            put_u8(out, 1);
+            put_u8(
+                out,
+                match category {
+                    ExecutionShowCategoryV3::Capabilities => 0,
+                    ExecutionShowCategoryV3::Models => 1,
+                    ExecutionShowCategoryV3::Views => 2,
+                    ExecutionShowCategoryV3::Rules => 3,
+                    ExecutionShowCategoryV3::Packs => 4,
+                    ExecutionShowCategoryV3::Profiles => 5,
+                    ExecutionShowCategoryV3::Gates => 6,
+                },
+            );
+        }
+        ExecutionPresentationKindV3::Describe { target } => {
+            put_u8(out, 2);
+            put_graph_target(out, target);
+        }
+        ExecutionPresentationKindV3::Sample {
+            query_text,
+            mode,
+            limit,
+            scope,
+        } => {
+            put_u8(out, 3);
+            put_str(out, query_text);
+            put_u8(
+                out,
+                match mode {
+                    ExecutionSampleModeV3::Lexical => 0,
+                    ExecutionSampleModeV3::Semantic => 1,
+                    ExecutionSampleModeV3::Hybrid => 2,
+                },
+            );
+            put_u32(out, *limit);
+            put_optional_graph_target(out, scope.as_ref());
+        }
+        ExecutionPresentationKindV3::Compare {
+            baseline,
+            candidate,
+            metric,
+        } => {
+            put_u8(out, 4);
+            put_graph_target(out, baseline);
+            put_graph_target(out, candidate);
+            put_u8(
+                out,
+                match metric {
+                    ExecutionCompareMetricV3::Exact => 0,
+                    ExecutionCompareMetricV3::Structural => 1,
+                    ExecutionCompareMetricV3::Semantic => 2,
+                },
+            );
+        }
+        ExecutionPresentationKindV3::Export {
+            source,
+            format,
+            profile,
+        } => {
+            put_u8(out, 5);
+            put_graph_target(out, source);
+            put_u8(
+                out,
+                match format {
+                    ExecutionExportFormatV3::Json => 0,
+                    ExecutionExportFormatV3::Csv => 1,
+                    ExecutionExportFormatV3::Sarif => 2,
+                    ExecutionExportFormatV3::Markdown => 3,
+                    ExecutionExportFormatV3::GraphMl => 4,
+                },
+            );
+            match profile {
+                Some(profile) => {
+                    put_u8(out, 1);
+                    put_catalog_identity(out, profile);
+                }
+                None => put_u8(out, 0),
+            }
+        }
+    }
 }
 
 fn put_optional_graph_target(out: &mut Vec<u8>, target: Option<&ExecutionGraphTargetV3>) {
@@ -2814,8 +3372,8 @@ mod tests {
             vec![relation_item()],
         );
         assert_eq!(document.source_digest_schema_version(), 3);
-        assert_eq!(document.contract_digest_schema_version(), 6);
-        assert_eq!(document.qualification_digest_schema_version(), 6);
+        assert_eq!(document.contract_digest_schema_version(), 7);
+        assert_eq!(document.qualification_digest_schema_version(), 7);
         // Golden pins: any canonical-encoding change (tag swap, field reorder,
         // domain edit) must update these deliberately, never silently.
         assert_eq!(
@@ -2824,17 +3382,17 @@ mod tests {
         );
         assert_eq!(
             document.contract_digest().to_hex(),
-            "8f3a3a1d91adb282cf1a3182600acac2678ccabc0fe1e339e32ad22950f4bfcf"
+            "0f51bb8f09a1d9128b83b2158a27964b9a7517cfed85dcd44d353067f4ea487a"
         );
         assert_eq!(
             document.qualification_digest().to_hex(),
-            "140a207e264b94d7a3a072cc11a8c377e0105605737c445c01808ed649dcecfe"
+            "c10f451dd3f42660e80c8daaa969c0e1df1d90d450ab30d475c6ec86aafbc3fb"
         );
     }
 
     #[test]
     fn independent_whole_stream_oracle_pins_document_header_items_and_order() {
-        // Handwritten schema-6 stream for two payload-free certified items.
+        // Handwritten schema-7 stream for two payload-free certified items.
         // This does not call any production tag or put_* helper. The SHA values
         // were computed independently from these bytes with Python hashlib.
         let plan = ExecutionPlanV3 {
@@ -2848,6 +3406,9 @@ mod tests {
             item_id: item(9, 7),
             family: ExecutionFamilyV3::MetaRequireCertified,
             relation: None,
+            graph: None,
+            check: None,
+            presentation: None,
             composition: None,
             plan: plan.clone(),
         };
@@ -2855,6 +3416,9 @@ mod tests {
             item_id: item(9, 8),
             family: ExecutionFamilyV3::MetaRequireCertified,
             relation: None,
+            graph: None,
+            check: None,
+            presentation: None,
             composition: None,
             plan,
         };
@@ -2874,18 +3438,18 @@ mod tests {
         .concat();
         let contract_stream = [
             &[0, 0, 0, 0, 0, 0, 0, 28][..],
-            b"qglang.execution.contract.v6",
-            &[0, 0, 0, 6, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 2],
+            b"qglang.execution.contract.v7",
+            &[0, 0, 0, 7, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 2],
             // item 7: source, node, family, authority, determinism,
-            // evidence, effect, policy, absent relation, absent composition.
-            &[0, 0, 0, 9, 0, 0, 0, 7, 5, 1, 0, 0, 0, 5, 0, 0],
-            &[0, 0, 0, 9, 0, 0, 0, 8, 5, 1, 0, 0, 0, 5, 0, 0],
+            // evidence, effect, policy, five absent payloads.
+            &[0, 0, 0, 9, 0, 0, 0, 7, 5, 1, 0, 0, 0, 5, 0, 0, 0, 0, 0],
+            &[0, 0, 0, 9, 0, 0, 0, 8, 5, 1, 0, 0, 0, 5, 0, 0, 0, 0, 0],
         ]
         .concat();
         let qualification_stream = [
             &[0, 0, 0, 0, 0, 0, 0, 33][..],
-            b"qglang.execution.qualification.v6",
-            &[0, 0, 0, 6, 0, 0, 0, 9],
+            b"qglang.execution.qualification.v7",
+            &[0, 0, 0, 7, 0, 0, 0, 9],
             Sha256::digest(&source_stream).as_slice(),
             Sha256::digest(&contract_stream).as_slice(),
         ]
@@ -2899,12 +3463,12 @@ mod tests {
             (
                 &contract_stream,
                 document.contract_digest(),
-                "bec5329c2007188f9a7d944fba9dcd926eeda52bbb5d7201de0523717ca1d74b",
+                "70e54b17195f353d64adfd9af5219bc13248436c282cc3f7385d8a03cac4597e",
             ),
             (
                 &qualification_stream,
                 document.qualification_digest(),
-                "6dd2462f547eb2fb1a6bb7bbbe4b903e36ea676c89436bc816466eccc34418b6",
+                "cea359dad01cf77e9fd575c7c05d5d75f998d52c579c147d85767e62561a4e8c",
             ),
         ];
         for (independent_stream, production_digest, pinned_sha) in expected {
@@ -3240,6 +3804,9 @@ mod tests {
             item_id: item(0, 1),
             family: ExecutionFamilyV3::Relation,
             relation: Some(relation()),
+            graph: None,
+            check: None,
+            presentation: None,
             composition: None,
             plan: plan(),
         }
@@ -3250,6 +3817,9 @@ mod tests {
             item_id: item(0, 9),
             family: ExecutionFamilyV3::Composition,
             relation: None,
+            graph: None,
+            check: None,
+            presentation: None,
             composition: Some(ExecutionCompositionV3 {
                 bindings: Box::new([ExecutionCompositionBindingV3 {
                     binding: binding("q"),
@@ -4240,6 +4810,7 @@ mod tests {
                 kind: ExecutionSourceKindV3::Relation,
                 namespace: Some("ns".to_owned()),
                 name: "items".to_owned(),
+                composition_binding: None,
             });
             source_digests.push(contract_of(vec![candidate]));
         }

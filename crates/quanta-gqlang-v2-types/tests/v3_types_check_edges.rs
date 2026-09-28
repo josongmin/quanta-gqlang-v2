@@ -952,20 +952,25 @@ fn oversized_record_preserves_later_unknown_and_invalid_name() {
     ] {
         let builder = HirBuilderV1::new();
         let mut entries = Vec::new();
-        let fields = ["a".to_owned(), "b".to_owned(), last_name]
+        let mut tail_key = None;
+        let fields = ["a".to_owned(), "b".to_owned(), last_name, "tail".to_owned()]
             .into_iter()
             .enumerate()
             .map(|(index, name)| {
                 let value = builder.symbol(format!("v{index}"), SpanV1::new(0, 1));
+                let key = SourceQualifiedNodeIdV2 {
+                    source_id: SourceIdV2::from_raw(7),
+                    node_id: value.id,
+                };
+                if index == 3 {
+                    tail_key = Some(key);
+                }
                 entries.push(ResolvedTypeInputEntryV2 {
-                    key: SourceQualifiedNodeIdV2 {
-                        source_id: SourceIdV2::from_raw(7),
-                        node_id: value.id,
-                    },
-                    value: ResolvedTypeInputValueV2::Binding(if index < 2 {
-                        ExpressionTypeStateV2::Known(large.clone())
-                    } else {
+                    key,
+                    value: ResolvedTypeInputValueV2::Binding(if index == 2 {
                         last_state.clone()
+                    } else {
+                        ExpressionTypeStateV2::Known(large.clone())
                     }),
                 });
                 RecordFieldV1 {
@@ -989,6 +994,11 @@ fn oversized_record_preserves_later_unknown_and_invalid_name() {
         if expected == "unknown" {
             let facts = result.unwrap();
             assert_eq!(facts.get(root).unwrap().state, last_state);
+            assert_eq!(
+                facts.get(tail_key.unwrap()).unwrap().state,
+                ExpressionTypeStateV2::Known(large.clone()),
+                "a later Unknown must prevent skipping the remaining fields"
+            );
         } else {
             assert_eq!(result.unwrap_err().code(), expected);
         }

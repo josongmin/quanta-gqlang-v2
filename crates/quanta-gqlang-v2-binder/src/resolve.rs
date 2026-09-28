@@ -700,22 +700,15 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
                 // unbound names are left for the host/catalog authority.
                 // Record the exact name-token use before its alias enters
                 // the current relation frame.
-                let (resolution, binding_frame) = self.scope.resolve_with_capture(&source.name);
+                let (resolution, _) = self.scope.resolve_with_capture(&source.name);
                 match resolution {
                     LexicalResolutionV1::Bound(binding)
                         if binding.kind == BinderKindV1::CompositionLet =>
                     {
-                        if let Some(binding_frame) = binding_frame {
-                            for &(owner, owner_frame) in &self.capture_owners {
-                                if binding_frame < owner_frame {
-                                    self.result.capture_edges.entry(owner).or_default().push((
-                                        relation.id,
-                                        binding.node,
-                                        binding.identity().1,
-                                    ));
-                                }
-                            }
-                        }
+                        // A LET working-set source is a relation-namespace use,
+                        // not a row expression captured by EXISTS. Retain its
+                        // exact binding proof here; resolve_name records actual
+                        // outer-row expression captures separately.
                         self.result.resolutions.push(ResolutionV1 {
                             reference: relation.id,
                             span: source.name_span,

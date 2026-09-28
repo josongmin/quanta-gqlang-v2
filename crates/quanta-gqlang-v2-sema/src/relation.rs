@@ -834,7 +834,7 @@ impl TypedRelationExprV2 {
         &self.stage().location
     }
     /// Typed child stages, in evaluation order.
-    pub fn inputs(&self) -> impl Iterator<Item = &TypedRelationExprV2> {
+    pub fn inputs(&self) -> impl DoubleEndedIterator<Item = &TypedRelationExprV2> {
         self.stage().inputs.iter()
     }
     /// Typed expression keys owned by this stage.

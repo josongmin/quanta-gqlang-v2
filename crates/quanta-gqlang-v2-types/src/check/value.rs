@@ -38,6 +38,7 @@ enum ValueFrame<'a> {
         record: &'a RecordExprV1,
         next: usize,
         fields: RecordTypeBuilderV1,
+        known_suffix_start: Option<usize>,
         unknown: Option<UnknownTypeCauseV2>,
         effects: ExpressionEffectsV2,
     },
@@ -63,56 +64,63 @@ fn value_fact(state: ExpressionTypeStateV2, effects: ExpressionEffectsV2) -> Typ
 }
 
 impl DocumentChecker<'_, '_> {
-    /// Once a record exceeds its shape limit, a suffix of already-known
-    /// bindings cannot change the result. Inspect it without materializing
-    /// another copy of each potentially large child type.
-    fn record_suffix_is_known(&self, record: &RecordExprV1, next: usize) -> bool {
-        record.fields.get(next..).is_some_and(|remaining| {
-            remaining.iter().rev().all(|field| {
-                if !RecordTypeBuilderV1::valid_name(&field.name)
-                    || self
-                        .inputs
-                        .source_registry
-                        .try_check_location(LocatedSpanV2 {
-                            source_id: self.inputs.checked.document().source_id,
-                            span: field.name_span,
-                        })
-                        .is_err()
-                {
-                    return false;
-                }
-                let value = &field.value;
-                if self
-                    .facts
-                    .get(&self.key(value))
-                    .is_some_and(|fact| matches!(fact.state, ExpressionTypeStateV2::Known(_)))
-                {
-                    return true;
-                }
-                if !matches!(value.kind, ValueExprKindV1::Symbol(_)) {
-                    return false;
-                }
-                match self.inputs.values.get(&self.key(value)) {
-                    Some(ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(_))) => {
-                        true
-                    }
-                    Some(ResolvedTypeInputValueV2::BindingFromExpression(target)) => self
-                        .facts
-                        .get(target)
-                        .is_some_and(|fact| matches!(fact.state, ExpressionTypeStateV2::Known(_))),
-                    Some(ResolvedTypeInputValueV2::BindingFromDeclaration(target)) => self
-                        .inputs
-                        .declaration_bodies
-                        .get(&target.node_id)
-                        .and_then(|body| self.facts.get(&self.key(body)))
-                        .is_some_and(|fact| matches!(fact.state, ExpressionTypeStateV2::Known(_))),
-                    Some(ResolvedTypeInputValueV2::BindingFromRelationRow(target)) => {
-                        self.relation_rows.contains_key(target)
-                    }
-                    _ => false,
-                }
+    /// Once a record exceeds its shape limit, compute the already-known suffix
+    /// boundary once. Continue evaluating through the last uncertain field to
+    /// preserve diagnostic priority, without rescanning the suffix per field.
+    /// Already recorded facts and resolved bindings do not change.
+    fn record_known_suffix_start(&self, record: &RecordExprV1, next: usize) -> usize {
+        record
+            .fields
+            .get(next..)
+            .map_or(record.fields.len(), |remaining| {
+                remaining
+                    .iter()
+                    .rposition(|field| !self.record_field_is_known(field))
+                    .map_or(next, |index| next + index + 1)
             })
-        })
+    }
+
+    fn record_field_is_known(&self, field: &quanta_gqlang_v2_hir::RecordFieldV1) -> bool {
+        if !RecordTypeBuilderV1::valid_name(&field.name)
+            || self
+                .inputs
+                .source_registry
+                .try_check_location(LocatedSpanV2 {
+                    source_id: self.inputs.checked.document().source_id,
+                    span: field.name_span,
+                })
+                .is_err()
+        {
+            return false;
+        }
+        let value = &field.value;
+        if self
+            .facts
+            .get(&self.key(value))
+            .is_some_and(|fact| matches!(fact.state, ExpressionTypeStateV2::Known(_)))
+        {
+            return true;
+        }
+        if !matches!(value.kind, ValueExprKindV1::Symbol(_)) {
+            return false;
+        }
+        match self.inputs.values.get(&self.key(value)) {
+            Some(ResolvedTypeInputValueV2::Binding(ExpressionTypeStateV2::Known(_))) => true,
+            Some(ResolvedTypeInputValueV2::BindingFromExpression(target)) => self
+                .facts
+                .get(target)
+                .is_some_and(|fact| matches!(fact.state, ExpressionTypeStateV2::Known(_))),
+            Some(ResolvedTypeInputValueV2::BindingFromDeclaration(target)) => self
+                .inputs
+                .declaration_bodies
+                .get(&target.node_id)
+                .and_then(|body| self.facts.get(&self.key(body)))
+                .is_some_and(|fact| matches!(fact.state, ExpressionTypeStateV2::Known(_))),
+            Some(ResolvedTypeInputValueV2::BindingFromRelationRow(target)) => {
+                self.relation_rows.contains_key(target)
+            }
+            _ => false,
+        }
     }
 
     fn value_state(
@@ -274,6 +282,7 @@ impl DocumentChecker<'_, '_> {
                                 record,
                                 next: 0,
                                 fields: RecordTypeBuilderV1::new(),
+                                known_suffix_start: None,
                                 unknown: None,
                                 effects: ExpressionEffectsV2::pure_scalar(),
                             });
@@ -437,6 +446,7 @@ impl DocumentChecker<'_, '_> {
                     record,
                     next,
                     mut fields,
+                    mut known_suffix_start,
                     mut unknown,
                     mut effects,
                 } => {
@@ -465,7 +475,10 @@ impl DocumentChecker<'_, '_> {
                     }
                     if unknown.is_none() {
                         if let Some(error) = fields.shape_limit() {
-                            if self.record_suffix_is_known(record, next) {
+                            let start = *known_suffix_start.get_or_insert_with(|| {
+                                self.record_known_suffix_start(record, next)
+                            });
+                            if next >= start {
                                 return Err(error.clone());
                             }
                         }
@@ -476,6 +489,7 @@ impl DocumentChecker<'_, '_> {
                             record,
                             next: next + 1,
                             fields,
+                            known_suffix_start,
                             unknown,
                             effects,
                         });
@@ -584,15 +598,18 @@ mod tests {
         DocumentChecker, ExpressionTypeKernelV2, ExpressionTypeStateV2, ResolvedTypeInputEntryV2,
         ResolvedTypeInputValueV2, ResolvedTypeInputsV2, SourceQualifiedNodeIdV2,
     };
-    use crate::{TypeDiagnosticV2, ValueTypeV1, MAX_TYPE_NODES};
+    use crate::{ValueTypeV1, MAX_TYPE_NODES};
     use quanta_gqlang_v2_hir::{
         check_document_v2, HirBuilderV1, HirDocumentV1, ProgramItemHirV1, RecordFieldV1,
         SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
     };
     use std::collections::{BTreeMap, BTreeSet};
 
-    #[test]
-    fn oversized_record_stops_evaluating_known_suffix() {
+    fn assert_oversized_record_suffix(
+        late_literal: Option<&str>,
+        expected_code: &str,
+        expected_facts: usize,
+    ) {
         let source_id = SourceIdV2::from_raw(7);
         let span = SpanV1::new(0, 1);
         let builder = HirBuilderV1::new();
@@ -609,14 +626,20 @@ mod tests {
         }];
         let fields = (0..64)
             .map(|index| {
-                let value = builder.symbol("x", span);
-                entries.push(ResolvedTypeInputEntryV2 {
-                    key: SourceQualifiedNodeIdV2 {
-                        source_id,
-                        node_id: value.id,
-                    },
-                    value: ResolvedTypeInputValueV2::BindingFromDeclaration(seed_key),
-                });
+                let value = match late_literal.filter(|_| index == 32) {
+                    Some(text) => builder.int(text, span),
+                    None => {
+                        let value = builder.symbol("x", span);
+                        entries.push(ResolvedTypeInputEntryV2 {
+                            key: SourceQualifiedNodeIdV2 {
+                                source_id,
+                                node_id: value.id,
+                            },
+                            value: ResolvedTypeInputValueV2::BindingFromDeclaration(seed_key),
+                        });
+                        value
+                    }
+                };
                 RecordFieldV1 {
                     name: format!("g{index}"),
                     name_span: span,
@@ -673,14 +696,31 @@ mod tests {
                 }
             })
             .expect("out declaration");
-        assert!(matches!(
-            checker.type_expr(output, false),
-            Err(TypeDiagnosticV2::TypeShapeLimit { .. })
-        ));
+        let error = checker
+            .type_expr(output, false)
+            .expect_err("invalid record");
+        assert_eq!(error.code(), expected_code);
         assert_eq!(
             checker.facts.len(),
-            3,
-            "seed plus two references; remaining 62 types were never copied"
+            expected_facts,
+            "only the required prefix is evaluated before returning the error"
+        );
+    }
+
+    #[test]
+    fn oversized_record_stops_evaluating_known_suffix() {
+        assert_oversized_record_suffix(None, "types.type_shape_limit", 3);
+    }
+
+    #[test]
+    fn oversized_record_checks_uncertain_prefix_before_skipping_known_suffix() {
+        // Seed, 32 references, and the valid literal; the final 31 references
+        // need no evaluation. A faulty literal must win over the parent limit.
+        assert_oversized_record_suffix(Some("1"), "types.type_shape_limit", 34);
+        assert_oversized_record_suffix(
+            Some("170141183460469231731687303715884105728"),
+            "types.integer_out_of_range",
+            33,
         );
     }
 }

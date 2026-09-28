@@ -32,14 +32,17 @@ use quanta_gqlang_v2_modules::{
 use quanta_gqlang_v2_pipeline::{
     compile_resolved_document_v2, compile_source_document_v3, format_source_document_v2,
     AnalysisItemV2, CompiledItemV2, DocumentAssemblyCodeV2, ExecutionAuthorityV3,
-    ExecutionCallTargetV3, ExecutionCardinalityV3, ExecutionCompositionBodyV3,
-    ExecutionCompositionProducerV3, ExecutionExpressionShapeV3, ExecutionFamilyV3,
-    ExecutionGraphCapabilityV3, ExecutionGraphDedupIdentityV3, ExecutionGraphDirectionV3,
-    ExecutionGraphKindV3, ExecutionGraphReferenceKindV3, ExecutionGraphReferenceRoleV3,
-    ExecutionGraphRelationShapeV3, ExecutionGraphTargetV3, ExecutionGraphWitnessTieBreakV3,
-    ExecutionLiteralV3, ExecutionRelationAuthorityV3, ExecutionRelationV3,
-    ExecutionRelationalOperatorV3, ExecutionSampleModeV3, ExecutionScalarTypeV3, ExecutionSchemaV3,
-    ExecutionSourceKindV3, ExecutionValueTypeV3, FrontendAuthorityLocationV2,
+    ExecutionCallTargetV3, ExecutionCardinalityV3, ExecutionCompareMetricV3,
+    ExecutionCompositionBodyV3, ExecutionCompositionProducerV3, ExecutionConfirmModeV3,
+    ExecutionDetectionModeV3, ExecutionEmitModeV3, ExecutionEvidenceModeV3,
+    ExecutionExplainTargetV3, ExecutionExportFormatV3, ExecutionExpressionShapeV3,
+    ExecutionFamilyV3, ExecutionGraphCapabilityV3, ExecutionGraphDedupIdentityV3,
+    ExecutionGraphDirectionV3, ExecutionGraphKindV3, ExecutionGraphReferenceKindV3,
+    ExecutionGraphReferenceRoleV3, ExecutionGraphRelationShapeV3, ExecutionGraphTargetV3,
+    ExecutionGraphWitnessTieBreakV3, ExecutionLiteralV3, ExecutionPresentationKindV3,
+    ExecutionRelationAuthorityV3, ExecutionRelationV3, ExecutionRelationalOperatorV3,
+    ExecutionSampleModeV3, ExecutionScalarTypeV3, ExecutionSchemaV3, ExecutionShowCategoryV3,
+    ExecutionSourceKindV3, ExecutionTruthModeV3, ExecutionValueTypeV3, FrontendAuthorityLocationV2,
     FrontendAuthoritySourceV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
     FrontendGraphReferenceInputV2, FrontendLanguageVersionV2, FrontendRelationAuthorityV2,
     FrontendRelationInputV2, FrontendScalarTypeV2, FrontendStageV2, FrontendTransactionErrorV2,
@@ -1243,6 +1246,38 @@ fn authored_presentation_options_reach_the_exact_planned_policy() {
             .map(|target| target.spelling()),
         Some("owasp.sqli")
     );
+    let issued = compiled.execution().items();
+    assert!(
+        matches!(issued[0].presentation(), Some(ExecutionPresentationKindV3::Sample {
+        query_text, mode: ExecutionSampleModeV3::Semantic, limit: 5, scope: Some(_),
+    }) if query_text == "callgraph")
+    );
+    assert!(
+        matches!(issued[1].presentation(), Some(ExecutionPresentationKindV3::Compare {
+        baseline: ExecutionGraphTargetV3::Host { spelling: baseline, .. },
+        candidate: ExecutionGraphTargetV3::Host { spelling: candidate, .. },
+        metric: ExecutionCompareMetricV3::Semantic,
+    }) if baseline == "run.a" && candidate == "run.b")
+    );
+    assert!(matches!(
+        issued[2].presentation(),
+        Some(ExecutionPresentationKindV3::Export {
+            format: ExecutionExportFormatV3::Sarif,
+            profile: None,
+            ..
+        })
+    ));
+    assert!(matches!(
+        issued[3].presentation(),
+        Some(ExecutionPresentationKindV3::Show {
+            category: ExecutionShowCategoryV3::Capabilities,
+        })
+    ));
+    assert!(
+        matches!(issued[4].presentation(), Some(ExecutionPresentationKindV3::Describe {
+        target: ExecutionGraphTargetV3::Host { spelling, .. },
+    }) if spelling == "owasp.sqli")
+    );
 }
 
 #[test]
@@ -1300,6 +1335,56 @@ fn authored_nondefault_execution_plan_facts_survive_projection() {
             "authored item {index}"
         );
     }
+    let items = compiled.execution().items();
+    assert!(matches!(
+        items[0].presentation(),
+        Some(ExecutionPresentationKindV3::Export {
+            format: ExecutionExportFormatV3::Sarif,
+            ..
+        })
+    ));
+    assert!(matches!(
+        items[1].presentation(),
+        Some(ExecutionPresentationKindV3::Explain {
+            target: ExecutionExplainTargetV3::Entity(_),
+            evidence: ExecutionEvidenceModeV3::Trace,
+            truth: ExecutionTruthModeV3::Confirm,
+        })
+    ));
+    let graph = items[2].graph().expect("standalone graph payload");
+    assert_eq!(graph.kind(), ExecutionGraphKindV3::Taint);
+    assert_eq!(graph.depth(), 3);
+    assert_eq!(graph.direction(), Some(ExecutionGraphDirectionV3::Backward));
+    assert_eq!(
+        graph.references()[0].role(),
+        ExecutionGraphReferenceRoleV3::Source
+    );
+    assert_eq!(
+        graph.references()[1].role(),
+        ExecutionGraphReferenceRoleV3::Sink
+    );
+    assert_eq!(
+        graph.references()[2].role(),
+        ExecutionGraphReferenceRoleV3::Sanitizer
+    );
+    let check = items[3].check().expect("standalone CHECK payload");
+    assert_eq!(check.rule().module(), "app");
+    assert_eq!(check.rule().name(), "rule.hybrid");
+    assert!(
+        matches!(check.scope(), Some(ExecutionGraphTargetV3::Host { spelling, .. }) if spelling == "repo")
+    );
+    assert!(
+        matches!(check.pattern(), Some(ExecutionGraphTargetV3::Host { spelling, .. }) if spelling == "pattern.hybrid")
+    );
+    assert_eq!(check.confirm(), ExecutionConfirmModeV3::Require);
+    assert_eq!(check.emit(), ExecutionEmitModeV3::Sarif);
+    assert_eq!(check.mode(), ExecutionDetectionModeV3::Hybrid);
+    let nested = check.nested_graph().expect("checked nested FIND");
+    assert_ne!(nested.item_id(), items[3].item_id());
+    assert_eq!(nested.query().kind(), ExecutionGraphKindV3::Reachability);
+    assert_eq!(nested.query().depth(), 8);
+    assert!(items[0].graph().is_none() && items[0].check().is_none());
+    assert!(items[2].presentation().is_none() && items[3].graph().is_none());
 }
 
 #[test]
@@ -1556,6 +1641,186 @@ fn resolve_minimal_document(
     let checked = CheckedSyntaxDocumentV2::try_from_hir(parsed.hir).expect("HIR integrity holds");
     quanta_gqlang_v2_sema::resolve_checked_document_v2(checked, authority)
         .expect("semantic transaction succeeds")
+}
+
+#[test]
+fn composition_exists_source_uses_compile_without_false_correlations() {
+    use quanta_gqlang_v2_pipeline::ExecutionExistsPolarityV3::{Exists, NotExists};
+
+    for (predicate, family, polarities) in [
+        ("exists (from sampled t)", AlgebraFamilyV2::SemiJoin, vec![]),
+        (
+            "not exists (from sampled t)",
+            AlgebraFamilyV2::AntiJoin,
+            vec![],
+        ),
+        (
+            "not (exists (from sampled t))",
+            AlgebraFamilyV2::AntiJoin,
+            vec![],
+        ),
+        (
+            "exists (from sampled t) and exists (from sampled u)",
+            AlgebraFamilyV2::ExistsFilter,
+            vec![Exists, Exists],
+        ),
+        (
+            "exists (from sampled t) and not (exists (from sampled u))",
+            AlgebraFamilyV2::ExistsFilter,
+            vec![Exists, NotExists],
+        ),
+    ] {
+        let source = format!(
+            "let sampled = sample query=\"auth\" | mode=lexical | limit=2 \
+             from sampled s | where {predicate} | project s.path as path with sampled"
+        );
+        let compiled = compile_source_document_v3(DOC_SOURCE, &source, &minimal_authority())
+            .expect("LET relation sources inside EXISTS compile");
+        let again = compile_source_document_v3(DOC_SOURCE, &source, &minimal_authority())
+            .expect("repeat compilation succeeds");
+        assert_eq!(compiled.execution(), again.execution());
+        let composition = compiled.execution().items()[0]
+            .composition()
+            .expect("composition");
+        let relation = composition.body_relation().expect("relational body");
+        assert_eq!(relation.root().family(), AlgebraFamilyV2::Project);
+        let exists = &relation.root().children()[0];
+        assert_eq!(exists.family(), family);
+        assert!(exists.correlations().is_empty());
+        assert_eq!(
+            exists
+                .existential_terms()
+                .iter()
+                .map(|term| term.polarity())
+                .collect::<Vec<_>>(),
+            polarities
+        );
+        assert!(exists
+            .existential_terms()
+            .iter()
+            .all(|term| term.correlations().is_empty()));
+        for child in exists.children() {
+            assert_eq!(child.family(), AlgebraFamilyV2::Scan);
+            let source = child.source().expect("each child is a LET scan");
+            assert_eq!(
+                source.authority(),
+                ExecutionRelationAuthorityV3::CompositionBinding
+            );
+            assert_eq!(source.name(), "sampled");
+            assert_eq!(
+                source.composition_binding(),
+                Some(composition.bindings()[0].binding()),
+                "scan retains the exact selected LET slot independently of row capture"
+            );
+        }
+    }
+}
+
+#[test]
+fn composition_exists_retains_only_actual_outer_row_captures() {
+    for polarity in ["exists", "not exists"] {
+        let source = format!(
+            "let sampled = sample query=\"auth\" | mode=lexical | limit=2 \
+             from sampled s | where {polarity} (from sampled t | where t.path = s.path) \
+             | project s.path as path with sampled"
+        );
+        let compiled = compile_source_document_v3(DOC_SOURCE, &source, &minimal_authority())
+            .expect("actual outer row capture compiles");
+        let relation = compiled.execution().items()[0]
+            .composition()
+            .expect("composition")
+            .body_relation()
+            .expect("body");
+        let exists = &relation.root().children()[0];
+        assert_eq!(exists.correlations().len(), 1);
+        let capture = &exists.correlations()[0];
+        assert_eq!(capture.binding().name(), "s");
+        let reference = relation
+            .expressions()
+            .iter()
+            .find(|expression| expression.id() == capture.reference())
+            .expect("capture references a real expression");
+        assert!(
+            matches!(reference.shape(), ExecutionExpressionShapeV3::Binding(binding)
+            if binding == capture.binding())
+        );
+        assert_eq!(
+            capture.binding().owner_node(),
+            exists.children()[0].stage().node_id.raw()
+        );
+    }
+}
+
+#[test]
+fn composition_nested_exists_retains_each_crossed_row_boundary() {
+    let source = concat!(
+        "let sampled = sample query=\"auth\" | mode=lexical | limit=2 ",
+        "from sampled s | where exists (from sampled t | where not exists ",
+        "(from sampled u | where u.path = s.path and u.path = t.path)) ",
+        "| project s.path as path with sampled"
+    );
+    let compiled = compile_source_document_v3(DOC_SOURCE, source, &minimal_authority())
+        .expect("nested LET scans retain only expression correlations");
+    let relation = compiled.execution().items()[0]
+        .composition()
+        .expect("composition")
+        .body_relation()
+        .expect("body");
+    let outer = &relation.root().children()[0];
+    assert_eq!(outer.family(), AlgebraFamilyV2::SemiJoin);
+    assert_eq!(
+        outer
+            .correlations()
+            .iter()
+            .map(|edge| edge.binding().name())
+            .collect::<Vec<_>>(),
+        vec!["s"]
+    );
+    let inner = &outer.children()[1];
+    assert_eq!(inner.family(), AlgebraFamilyV2::AntiJoin);
+    assert_eq!(
+        inner
+            .correlations()
+            .iter()
+            .map(|edge| edge.binding().name())
+            .collect::<Vec<_>>(),
+        vec!["s", "t"]
+    );
+    for edge in outer.correlations().iter().chain(inner.correlations()) {
+        let expression = relation
+            .expressions()
+            .iter()
+            .find(|expression| expression.id() == edge.reference())
+            .expect("nested capture has a real expression");
+        assert!(
+            matches!(expression.shape(), ExecutionExpressionShapeV3::Binding(binding) if binding == edge.binding())
+        );
+    }
+}
+
+#[test]
+fn query_producer_composition_exists_uses_have_no_source_captures() {
+    for predicate in [
+        "exists (from rows t)",
+        "exists (from rows t) and not exists (from rows u)",
+    ] {
+        let source = format!(
+            "let rows = from records r from rows x | where {predicate} | project x.id as id with rows"
+        );
+        let compiled = compile_source_document_v3(DOC_SOURCE, &source, &authority_with_records())
+            .expect("Query-produced LET scans inside EXISTS compile");
+        let relation = compiled.execution().items()[0]
+            .composition()
+            .expect("composition")
+            .body_relation()
+            .expect("body");
+        let exists = &relation.root().children()[0];
+        assert!(exists.correlations().is_empty());
+        assert!(exists
+            .existential_terms()
+            .iter()
+            .all(|term| term.correlations().is_empty()));
+    }
 }
 
 #[test]
@@ -2209,6 +2474,7 @@ fn source_bound_v3_digests_match_the_shared_golden_vectors() {
             "records_host" => authority_with_records(),
             "records_host_string_id" => authority_with_records_type(ValueTypeV1::string()),
             "minimal" => minimal_authority(),
+            "source_policy" => source_policy_authority(),
             "workspace_files_canonical" => {
                 authority_with_workspace_files(FrontendRelationAuthorityV2::CanonicalWorkspaceFiles)
             }
@@ -2239,7 +2505,10 @@ fn source_bound_v3_digests_match_the_shared_golden_vectors() {
         );
         selected += 1;
     }
-    assert_eq!(selected, 16, "the shared V3 corpus must not be vacuous");
+    assert_eq!(
+        selected, 24,
+        "the shared V3 corpus must cover every standalone family"
+    );
 }
 
 #[test]

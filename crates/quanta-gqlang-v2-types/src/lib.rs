@@ -31,7 +31,10 @@ pub use env::{
     CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2, CANONICAL_WORKSPACE_FILES_PROVENANCE_V2,
     CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2,
 };
-pub use op::{OperatorIdV2, OperatorRegistryV2};
+pub use op::{
+    operator_descriptor_v2, OperatorDescriptorV2, OperatorIdV2, OperatorRegistryV2,
+    OperatorSemanticKindV2,
+};
 pub use solver::{
     RuleBindingIdV2, RuleCallInputV2, RuleCallableTargetV2, RulePredicateInputV2,
     RuleSymbolInputV2, RuleTypeAnalysisV2, RuleTypeBudgetV2, RuleTypeProofV2, RuleTypeSolverV2,

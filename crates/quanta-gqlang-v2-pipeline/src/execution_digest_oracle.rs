@@ -1,4 +1,4 @@
-//! Independent schema-6 fixtures from docs/contracts/frontend-execution-v3.md.
+//! Independent schema-7 fixtures from docs/contracts/frontend-execution-v3.md.
 //!
 //! Expected bytes use only fixed-width primitives and literal tags. They never
 //! read DTO fields or call production tag/writer helpers. These synthetic DTOs
@@ -372,6 +372,7 @@ fn relation() -> (ExecutionRelationV3, Vec<u8>) {
         join_mode: Some(ExecutionJoinModeV3::Cross),
         stage: key(60),
         source: Some(ExecutionSourceV3 {
+            composition_binding: None,
             authority: ExecutionRelationAuthorityV3::CatalogView,
             kind: ExecutionSourceKindV3::View,
             namespace: Some("库".to_owned()),
@@ -493,8 +494,8 @@ fn assert_document(items: Vec<ExecutionItemV3>, expected_items: &[Vec<u8>]) {
     let source = "digest fixture é";
     let source_bytes = [text("qglang.execution.source-bytes.v3"), n(3), text(source)].concat();
     let contract_bytes = [
-        text("qglang.execution.contract.v6"),
-        n(6),
+        text("qglang.execution.contract.v7"),
+        n(7),
         n(17),
         seq(expected_items),
     ]
@@ -502,8 +503,8 @@ fn assert_document(items: Vec<ExecutionItemV3>, expected_items: &[Vec<u8>]) {
     let source_hash = Sha256::digest(&source_bytes);
     let contract_hash = Sha256::digest(&contract_bytes);
     let qualification_bytes = [
-        text("qglang.execution.qualification.v6"),
-        n(6),
+        text("qglang.execution.qualification.v7"),
+        n(7),
         n(17),
         source_hash.to_vec(),
         contract_hash.to_vec(),
@@ -531,12 +532,21 @@ fn whole_relation_stream_has_independent_expected_bytes() {
         item_id: id(31),
         family: ExecutionFamilyV3::Relation,
         relation: Some(relation),
+        graph: None,
+        check: None,
+        presentation: None,
         composition: None,
         plan: plan(),
     };
     assert_document(
         vec![item],
-        &[[wire_key(31), vec![0, 0, 1, 2, 1, 6], bytes, vec![0]].concat()],
+        &[[
+            wire_key(31),
+            vec![0, 0, 1, 2, 1, 6],
+            bytes,
+            vec![0, 0, 0, 0],
+        ]
+        .concat()],
     );
 }
 
@@ -678,6 +688,9 @@ fn flat_exists_node_encodes_each_condition_before_its_ordered_children() {
                 root: node,
                 expressions: Box::new(expressions),
             }),
+            graph: None,
+            check: None,
+            presentation: None,
             composition: None,
             plan: plan(),
         }],
@@ -685,7 +698,7 @@ fn flat_exists_node_encodes_each_condition_before_its_ordered_children() {
             wire_key(31),
             vec![0, 0, 1, 2, 1, 6],
             relation_bytes,
-            vec![0],
+            vec![0, 0, 0, 0],
         ]
         .concat()],
     );
@@ -799,6 +812,9 @@ fn whole_composition_stream_has_independent_expected_bytes() {
             item_id: id(node),
             family: ExecutionFamilyV3::Composition,
             relation: None,
+            graph: None,
+            check: None,
+            presentation: None,
             composition: Some(composition),
             plan: plan(),
         });
@@ -812,6 +828,7 @@ fn whole_composition_stream_has_independent_expected_bytes() {
                 text("relation"),
                 relation_bytes.clone(),
                 body_bytes,
+                vec![0, 0, 0],
             ]
             .concat(),
         );
@@ -821,6 +838,9 @@ fn whole_composition_stream_has_independent_expected_bytes() {
         item_id: id(84),
         family: ExecutionFamilyV3::Composition,
         relation: None,
+        graph: None,
+        check: None,
+        presentation: None,
         composition: Some(ExecutionCompositionV3 {
             bindings: Box::new([]),
             with_binding: binding(),
@@ -839,9 +859,156 @@ fn whole_composition_stream_has_independent_expected_bytes() {
             wire_binding(),
             wire_key(32),
             text("check"),
-            vec![0, 2],
+            vec![0, 2, 0, 0, 0],
         ]
         .concat(),
     );
+    assert_document(items, &expected);
+}
+
+#[test]
+fn standalone_graph_check_and_all_presentation_verbs_have_independent_bytes() {
+    let (graph, graph_bytes) = graph();
+    let host = |kind, spelling: &str| ExecutionGraphTargetV3::Host {
+        kind,
+        spelling: spelling.to_owned(),
+        entity_subtype: None,
+    };
+    let host_bytes = |kind: u8, spelling: &str| [vec![0, kind], text(spelling), vec![0]].concat();
+    let mut items = Vec::new();
+    let mut expected = Vec::new();
+    items.push(ExecutionItemV3 {
+        item_id: id(40),
+        family: ExecutionFamilyV3::Graph,
+        relation: None,
+        composition: None,
+        graph: Some(graph.clone()),
+        check: None,
+        presentation: None,
+        plan: plan(),
+    });
+    expected.push(
+        [
+            wire_key(40),
+            vec![1, 0, 1, 2, 1, 6, 0, 0, 1],
+            graph_bytes.clone(),
+            vec![0, 0],
+        ]
+        .concat(),
+    );
+
+    items.push(ExecutionItemV3 {
+        item_id: id(41),
+        family: ExecutionFamilyV3::Check,
+        relation: None,
+        composition: None,
+        graph: None,
+        check: Some(ExecutionCheckV3 {
+            rule: ExecutionCatalogIdentityV3 {
+                module: "app".to_owned(),
+                name: "rule".to_owned(),
+            },
+            scope: Some(host(ExecutionGraphReferenceKindV3::Scope, "repo")),
+            pattern: None,
+            nested_graph: Some(ExecutionNestedGraphV3 {
+                item_id: id(31),
+                query: graph,
+            }),
+            confirm: ExecutionConfirmModeV3::Require,
+            emit: ExecutionEmitModeV3::Sarif,
+            mode: ExecutionDetectionModeV3::SemanticOnly,
+        }),
+        presentation: None,
+        plan: plan(),
+    });
+    expected.push(
+        [
+            wire_key(41),
+            vec![2, 0, 1, 2, 1, 6, 0, 0, 0, 1],
+            text("app"),
+            text("rule"),
+            vec![1],
+            host_bytes(2, "repo"),
+            vec![0, 1],
+            wire_key(31),
+            graph_bytes.clone(),
+            vec![2, 1, 1, 0],
+        ]
+        .concat(),
+    );
+
+    let presentations = vec![
+        (
+            ExecutionPresentationKindV3::Explain {
+                target: ExecutionExplainTargetV3::Rule(ExecutionCatalogIdentityV3 {
+                    module: "app".to_owned(),
+                    name: "rule".to_owned(),
+                }),
+                evidence: ExecutionEvidenceModeV3::Trace,
+                truth: ExecutionTruthModeV3::Confirm,
+            },
+            [vec![0, 0], text("app"), text("rule"), vec![1, 1]].concat(),
+        ),
+        (
+            ExecutionPresentationKindV3::Show {
+                category: ExecutionShowCategoryV3::Capabilities,
+            },
+            vec![1, 0],
+        ),
+        (
+            ExecutionPresentationKindV3::Describe {
+                target: host(ExecutionGraphReferenceKindV3::Entity, "node"),
+            },
+            [vec![2], host_bytes(0, "node")].concat(),
+        ),
+        (
+            ExecutionPresentationKindV3::Sample {
+                query_text: "q".to_owned(),
+                mode: ExecutionSampleModeV3::Semantic,
+                limit: 2,
+                scope: None,
+            },
+            [vec![3], text("q"), vec![1], n(2), vec![0]].concat(),
+        ),
+        (
+            ExecutionPresentationKindV3::Compare {
+                baseline: host(ExecutionGraphReferenceKindV3::Snapshot, "a"),
+                candidate: host(ExecutionGraphReferenceKindV3::Snapshot, "b"),
+                metric: ExecutionCompareMetricV3::Structural,
+            },
+            [vec![4], host_bytes(7, "a"), host_bytes(7, "b"), vec![1]].concat(),
+        ),
+        (
+            ExecutionPresentationKindV3::Export {
+                source: host(ExecutionGraphReferenceKindV3::ExportSource, "result"),
+                format: ExecutionExportFormatV3::Sarif,
+                profile: Some(ExecutionCatalogIdentityV3 {
+                    module: "app".to_owned(),
+                    name: "profile".to_owned(),
+                }),
+            },
+            [
+                vec![5],
+                host_bytes(8, "result"),
+                vec![2, 1],
+                text("app"),
+                text("profile"),
+            ]
+            .concat(),
+        ),
+    ];
+    for (node, (presentation, bytes)) in (42u32..).zip(presentations) {
+        items.push(ExecutionItemV3 {
+            item_id: id(node),
+            family: ExecutionFamilyV3::Presentation,
+            relation: None,
+            composition: None,
+            graph: None,
+            check: None,
+            presentation: Some(presentation),
+            plan: plan(),
+        });
+        expected.push([wire_key(node), vec![3, 0, 1, 2, 1, 6, 0, 0, 0, 0, 1], bytes].concat());
+    }
     assert_document(items, &expected);
 }

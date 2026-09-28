@@ -3,6 +3,87 @@ use crate::{
     TypeDiagnosticV2, ValueTypeV1,
 };
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::OnceLock;
+
+/// Cached lookup in the canonical closed registry used by type checking.
+pub fn operator_descriptor_v2(
+    raw_id: u32,
+) -> Result<Option<OperatorDescriptorV2>, TypeDiagnosticV2> {
+    static REGISTRY: OnceLock<Result<OperatorRegistryV2, TypeDiagnosticV2>> = OnceLock::new();
+    match REGISTRY.get_or_init(OperatorRegistryV2::try_closed) {
+        Ok(registry) => Ok(registry.descriptor(raw_id)),
+        Err(error) => Err(error.clone()),
+    }
+}
+
+/// Semantic operation stored with each canonical overload, independently of its spelling.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OperatorSemanticKindV2 {
+    UnaryNegate,
+    UnaryPositive,
+    Not,
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Remainder,
+    And,
+    Or,
+    Xor,
+    Concat,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+    Equal,
+    NotEqual,
+}
+
+impl OperatorSemanticKindV2 {
+    #[must_use]
+    pub const fn symbol(self) -> &'static str {
+        match self {
+            Self::UnaryNegate | Self::Subtract => "-",
+            Self::UnaryPositive | Self::Add => "+",
+            Self::Not => "not",
+            Self::Multiply => "*",
+            Self::Divide => "/",
+            Self::Remainder => "%",
+            Self::And => "and",
+            Self::Or => "or",
+            Self::Xor => "xor",
+            Self::Concat => "++",
+            Self::Less => "<",
+            Self::LessEqual => "<=",
+            Self::Greater => ">",
+            Self::GreaterEqual => ">=",
+            Self::Equal => "=",
+            Self::NotEqual => "!=",
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OperatorDescriptorV2 {
+    kind: OperatorSemanticKindV2,
+    operands: Box<[ValueTypeV1]>,
+    result: ValueTypeV1,
+}
+
+impl OperatorDescriptorV2 {
+    #[must_use]
+    pub const fn kind(&self) -> OperatorSemanticKindV2 {
+        self.kind
+    }
+    #[must_use]
+    pub fn operand_types(&self) -> &[ValueTypeV1] {
+        &self.operands
+    }
+    #[must_use]
+    pub const fn result_type(&self) -> &ValueTypeV1 {
+        &self.result
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct OperatorIdV2(u32);
@@ -40,6 +121,7 @@ impl OperatorIdV2 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct UnaryOverloadV1 {
     pub id: OperatorIdV2,
+    pub kind: OperatorSemanticKindV2,
     pub operand: ValueTypeV1,
     pub result: ValueTypeV1,
     pub effects: ExpressionEffectsV2,
@@ -47,6 +129,7 @@ pub(crate) struct UnaryOverloadV1 {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct BinaryOverloadV1 {
     pub id: OperatorIdV2,
+    pub kind: OperatorSemanticKindV2,
     pub lhs: ValueTypeV1,
     pub rhs: ValueTypeV1,
     pub result: ValueTypeV1,
@@ -114,8 +197,18 @@ mod tests {
     }
     #[test]
     fn duplicate_id_and_semantic_domain_reject() {
-        let one = u(1, "-", ValueTypeV1::int(), ValueTypeV1::int());
-        let duplicate_id = u(1, "+", ValueTypeV1::int(), ValueTypeV1::int());
+        let one = u(
+            1,
+            OperatorSemanticKindV2::UnaryNegate,
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+        );
+        let duplicate_id = u(
+            1,
+            OperatorSemanticKindV2::UnaryPositive,
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+        );
         assert_eq!(
             OperatorRegistryV2::try_from_entries(vec![one.clone(), duplicate_id], vec![])
                 .unwrap_err(),
@@ -124,7 +217,12 @@ mod tests {
                 id: 1
             }
         );
-        let duplicate_domain = u(2, "-", ValueTypeV1::int(), ValueTypeV1::float());
+        let duplicate_domain = u(
+            2,
+            OperatorSemanticKindV2::UnaryNegate,
+            ValueTypeV1::int(),
+            ValueTypeV1::float(),
+        );
         assert_eq!(
             OperatorRegistryV2::try_from_entries(vec![one, duplicate_domain], vec![]).unwrap_err(),
             TypeDiagnosticV2::RegistryDuplicateId {
@@ -598,6 +696,28 @@ mod tests {
 }
 
 impl OperatorRegistryV2 {
+    /// Resolve a canonical ID through the same entries used by type checking.
+    #[must_use]
+    pub fn descriptor(&self, raw_id: u32) -> Option<OperatorDescriptorV2> {
+        if let Some(entry) = self
+            .all_unary_overloads()
+            .find(|entry| entry.id.raw() == raw_id)
+        {
+            return Some(OperatorDescriptorV2 {
+                kind: entry.kind,
+                operands: Box::new([entry.operand.clone()]),
+                result: entry.result.clone(),
+            });
+        }
+        self.all_binary_overloads()
+            .find(|entry| entry.id.raw() == raw_id)
+            .map(|entry| OperatorDescriptorV2 {
+                kind: entry.kind,
+                operands: Box::new([entry.lhs.clone(), entry.rhs.clone()]),
+                result: entry.result.clone(),
+            })
+    }
+
     pub(crate) fn all_unary_overloads(&self) -> impl Iterator<Item = &UnaryOverloadV1> {
         self.unary.values().flatten()
     }
@@ -658,137 +778,207 @@ impl OperatorRegistryV2 {
         use crate::ScalarTyV1;
         let duration = || ValueTypeV1::scalar(ScalarTyV1::Duration);
         let unary = vec![
-            u(1, "-", ValueTypeV1::int(), ValueTypeV1::int()),
-            u(2, "-", ValueTypeV1::float(), ValueTypeV1::float()),
-            u(3, "-", duration(), duration()),
-            u(4, "+", ValueTypeV1::int(), ValueTypeV1::int()),
-            u(5, "+", ValueTypeV1::float(), ValueTypeV1::float()),
-            u(6, "+", duration(), duration()),
-            u(7, "not", ValueTypeV1::bool(), ValueTypeV1::bool()),
+            u(
+                1,
+                OperatorSemanticKindV2::UnaryNegate,
+                ValueTypeV1::int(),
+                ValueTypeV1::int(),
+            ),
+            u(
+                2,
+                OperatorSemanticKindV2::UnaryNegate,
+                ValueTypeV1::float(),
+                ValueTypeV1::float(),
+            ),
+            u(
+                3,
+                OperatorSemanticKindV2::UnaryNegate,
+                duration(),
+                duration(),
+            ),
+            u(
+                4,
+                OperatorSemanticKindV2::UnaryPositive,
+                ValueTypeV1::int(),
+                ValueTypeV1::int(),
+            ),
+            u(
+                5,
+                OperatorSemanticKindV2::UnaryPositive,
+                ValueTypeV1::float(),
+                ValueTypeV1::float(),
+            ),
+            u(
+                6,
+                OperatorSemanticKindV2::UnaryPositive,
+                duration(),
+                duration(),
+            ),
+            u(
+                7,
+                OperatorSemanticKindV2::Not,
+                ValueTypeV1::bool(),
+                ValueTypeV1::bool(),
+            ),
         ];
         let mut binary = vec![
             b(
                 101,
-                "+",
+                OperatorSemanticKindV2::Add,
                 ValueTypeV1::int(),
                 ValueTypeV1::int(),
                 ValueTypeV1::int(),
             ),
             b(
                 102,
-                "-",
+                OperatorSemanticKindV2::Subtract,
                 ValueTypeV1::int(),
                 ValueTypeV1::int(),
                 ValueTypeV1::int(),
             ),
             b(
                 103,
-                "*",
+                OperatorSemanticKindV2::Multiply,
                 ValueTypeV1::int(),
                 ValueTypeV1::int(),
                 ValueTypeV1::int(),
             ),
             b(
                 104,
-                "/",
+                OperatorSemanticKindV2::Divide,
                 ValueTypeV1::int(),
                 ValueTypeV1::int(),
                 ValueTypeV1::int(),
             ),
             b(
                 105,
-                "%",
+                OperatorSemanticKindV2::Remainder,
                 ValueTypeV1::int(),
                 ValueTypeV1::int(),
                 ValueTypeV1::int(),
             ),
             b(
                 106,
-                "+",
+                OperatorSemanticKindV2::Add,
                 ValueTypeV1::float(),
                 ValueTypeV1::float(),
                 ValueTypeV1::float(),
             ),
             b(
                 107,
-                "-",
+                OperatorSemanticKindV2::Subtract,
                 ValueTypeV1::float(),
                 ValueTypeV1::float(),
                 ValueTypeV1::float(),
             ),
             b(
                 108,
-                "*",
+                OperatorSemanticKindV2::Multiply,
                 ValueTypeV1::float(),
                 ValueTypeV1::float(),
                 ValueTypeV1::float(),
             ),
             b(
                 109,
-                "/",
+                OperatorSemanticKindV2::Divide,
                 ValueTypeV1::float(),
                 ValueTypeV1::float(),
                 ValueTypeV1::float(),
             ),
-            b(110, "+", duration(), duration(), duration()),
-            b(111, "-", duration(), duration(), duration()),
-            b(112, "*", duration(), duration(), duration()),
-            b(113, "*", duration(), ValueTypeV1::int(), duration()),
-            b(114, "/", duration(), ValueTypeV1::int(), duration()),
+            b(
+                110,
+                OperatorSemanticKindV2::Add,
+                duration(),
+                duration(),
+                duration(),
+            ),
+            b(
+                111,
+                OperatorSemanticKindV2::Subtract,
+                duration(),
+                duration(),
+                duration(),
+            ),
+            b(
+                112,
+                OperatorSemanticKindV2::Multiply,
+                duration(),
+                duration(),
+                duration(),
+            ),
+            b(
+                113,
+                OperatorSemanticKindV2::Multiply,
+                duration(),
+                ValueTypeV1::int(),
+                duration(),
+            ),
+            b(
+                114,
+                OperatorSemanticKindV2::Divide,
+                duration(),
+                ValueTypeV1::int(),
+                duration(),
+            ),
             b(
                 115,
-                "and",
+                OperatorSemanticKindV2::And,
                 ValueTypeV1::bool(),
                 ValueTypeV1::bool(),
                 ValueTypeV1::bool(),
             ),
             b(
                 116,
-                "or",
+                OperatorSemanticKindV2::Or,
                 ValueTypeV1::bool(),
                 ValueTypeV1::bool(),
                 ValueTypeV1::bool(),
             ),
             b(
                 117,
-                "xor",
+                OperatorSemanticKindV2::Xor,
                 ValueTypeV1::bool(),
                 ValueTypeV1::bool(),
                 ValueTypeV1::bool(),
             ),
             b(
                 118,
-                "++",
+                OperatorSemanticKindV2::Concat,
                 ValueTypeV1::string(),
                 ValueTypeV1::string(),
                 ValueTypeV1::string(),
             ),
         ];
-        for (base, symbol) in [(200, "<"), (210, "<="), (220, ">"), (230, ">=")] {
+        for (base, kind) in [
+            (200, OperatorSemanticKindV2::Less),
+            (210, OperatorSemanticKindV2::LessEqual),
+            (220, OperatorSemanticKindV2::Greater),
+            (230, OperatorSemanticKindV2::GreaterEqual),
+        ] {
             binary.push(b(
                 base,
-                symbol,
+                kind,
                 ValueTypeV1::int(),
                 ValueTypeV1::int(),
                 ValueTypeV1::bool(),
             ));
             binary.push(b(
                 base + 1,
-                symbol,
+                kind,
                 ValueTypeV1::float(),
                 ValueTypeV1::float(),
                 ValueTypeV1::bool(),
             ));
             binary.push(b(
                 base + 2,
-                symbol,
+                kind,
                 ValueTypeV1::string(),
                 ValueTypeV1::string(),
                 ValueTypeV1::bool(),
             ));
             binary.push(b(
                 base + 3,
-                symbol,
+                kind,
                 duration(),
                 duration(),
                 ValueTypeV1::bool(),
@@ -818,14 +1008,14 @@ impl OperatorRegistryV2 {
         for ((scalar, eq_id), ne_id) in scalars.into_iter().zip(eq_ids).zip(ne_ids) {
             binary.push(b(
                 eq_id,
-                "=",
+                OperatorSemanticKindV2::Equal,
                 ValueTypeV1::scalar(scalar.clone()),
                 ValueTypeV1::scalar(scalar.clone()),
                 ValueTypeV1::bool(),
             ));
             binary.push(b(
                 ne_id,
-                "!=",
+                OperatorSemanticKindV2::NotEqual,
                 ValueTypeV1::scalar(scalar.clone()),
                 ValueTypeV1::scalar(scalar),
                 ValueTypeV1::bool(),
@@ -849,46 +1039,62 @@ impl OperatorRegistryV2 {
 
 fn u(
     id: u32,
-    symbol: &str,
+    kind: OperatorSemanticKindV2,
     operand: ValueTypeV1,
     result: ValueTypeV1,
 ) -> (String, UnaryOverloadV1) {
     (
-        symbol.to_owned(),
+        kind.symbol().to_owned(),
         UnaryOverloadV1 {
             id: OperatorIdV2(id),
+            kind,
             operand,
             result,
-            effects: operator_effects(symbol, true),
+            effects: operator_effects(kind),
         },
     )
 }
 fn b(
     id: u32,
-    symbol: &str,
+    kind: OperatorSemanticKindV2,
     lhs: ValueTypeV1,
     rhs: ValueTypeV1,
     result: ValueTypeV1,
 ) -> (String, BinaryOverloadV1) {
     (
-        symbol.to_owned(),
+        kind.symbol().to_owned(),
         BinaryOverloadV1 {
             id: OperatorIdV2(id),
+            kind,
             lhs,
             rhs,
             result,
-            effects: operator_effects(symbol, false),
+            effects: operator_effects(kind),
         },
     )
 }
 
-fn operator_effects(symbol: &str, unary: bool) -> ExpressionEffectsV2 {
-    let monotonicity = if unary && matches!(symbol, "-" | "not") {
-        MonotonicityV1::Antitone
-    } else if (unary && symbol == "+") || (!unary && matches!(symbol, "+" | "and" | "or")) {
-        MonotonicityV1::Monotone
-    } else {
-        MonotonicityV1::NonMonotone
+fn operator_effects(kind: OperatorSemanticKindV2) -> ExpressionEffectsV2 {
+    let monotonicity = match kind {
+        OperatorSemanticKindV2::UnaryNegate | OperatorSemanticKindV2::Not => {
+            MonotonicityV1::Antitone
+        }
+        OperatorSemanticKindV2::UnaryPositive
+        | OperatorSemanticKindV2::Add
+        | OperatorSemanticKindV2::And
+        | OperatorSemanticKindV2::Or => MonotonicityV1::Monotone,
+        OperatorSemanticKindV2::Subtract
+        | OperatorSemanticKindV2::Multiply
+        | OperatorSemanticKindV2::Divide
+        | OperatorSemanticKindV2::Remainder
+        | OperatorSemanticKindV2::Xor
+        | OperatorSemanticKindV2::Concat
+        | OperatorSemanticKindV2::Less
+        | OperatorSemanticKindV2::LessEqual
+        | OperatorSemanticKindV2::Greater
+        | OperatorSemanticKindV2::GreaterEqual
+        | OperatorSemanticKindV2::Equal
+        | OperatorSemanticKindV2::NotEqual => MonotonicityV1::NonMonotone,
     };
     ExpressionEffectsV2 {
         purity: PurityV1::Pure,

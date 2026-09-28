@@ -22,8 +22,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use quanta_gqlang_v2_sema::{
-    CheckedLocatedSpanV2, DownstreamBudgetReceiptV2, ResolvedRuleV2, RuleCallPolarityV2,
-    SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2,
+    CheckedLocatedSpanV2, DownstreamBudgetReceiptV2, ResolvedRuleCallV2, ResolvedRuleV2,
+    RuleCallPolarityV2, SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2,
 };
 use quanta_gqlang_v2_types::{
     ResolvedCallTargetV2, ResolvedPredicateIdV2, SourceQualifiedNodeIdV2,
@@ -71,26 +71,34 @@ impl RuleProgramContractV2 {
     pub fn from_document(document: &SemanticDocumentV2) -> Result<Self, LogicDiagnosticV1> {
         // The document's complete Rule item set, by canonical identity. This is
         // the only membership authority; no caller enumerates it for us.
-        let mut members: BTreeMap<SemanticItemIdV2, ResolvedRuleV2> = BTreeMap::new();
+        let mut members: BTreeMap<SemanticItemIdV2, &ResolvedRuleV2> = BTreeMap::new();
         for (id, item) in document.items() {
             if let SemanticItemV2::Rule(rule) = item {
-                members.insert(*id, rule.clone());
+                if *id != rule.item_id() {
+                    return Err(invalid(
+                        RuleProgramInvalidReasonV1::MembershipMismatch,
+                        rule_location(rule),
+                    ));
+                }
+                members.insert(*id, rule);
             }
         }
 
         // Cross-check that set against the document's own authored item order: a
         // rule member is exactly one authored item identity that resolves to one
         // Rule item, and nothing else may claim that identity.
-        let mut positions: BTreeMap<SemanticItemIdV2, usize> = BTreeMap::new();
-        for (index, id) in document.order().iter().enumerate() {
+        let mut authored_members = BTreeSet::new();
+        let mut ordered = Vec::new();
+        for id in document.order() {
             if let Some(item) = document.item(*id) {
                 if let SemanticItemV2::Rule(rule) = item {
-                    if positions.insert(*id, index).is_some() {
+                    if !authored_members.insert(*id) {
                         return Err(invalid(
                             RuleProgramInvalidReasonV1::DuplicateMember,
                             rule_location(rule),
                         ));
                     }
+                    ordered.push(rule);
                 }
             } else {
                 // The document's authored item set names an identity its item map
@@ -104,7 +112,7 @@ impl RuleProgramContractV2 {
             }
         }
         for (id, rule) in &members {
-            if !positions.contains_key(id) {
+            if !authored_members.contains(id) {
                 // A Rule item outside the document's own item order is an extra
                 // membership: the rule set disagrees with the document item set.
                 return Err(invalid(
@@ -115,29 +123,28 @@ impl RuleProgramContractV2 {
         }
 
         // Validate every member and every call edge before any graph allocation.
-        let predicates: BTreeSet<ResolvedPredicateIdV2> = members
-            .values()
-            .map(|rule| rule.predicate_id().clone())
-            .collect();
+        let predicates: BTreeSet<&ResolvedPredicateIdV2> =
+            members.values().map(|rule| rule.predicate_id()).collect();
         for rule in members.values() {
             validate_rule(document, &predicates, rule)?;
         }
-
-        // Validated members in document order.
-        let mut ordered: Vec<(usize, ResolvedRuleV2)> = members
-            .into_iter()
-            .filter_map(|(id, rule)| positions.get(&id).map(|index| (*index, rule)))
-            .collect();
-        ordered.sort_by_key(|(index, _rule)| *index);
-        let rules: Vec<ResolvedRuleV2> = ordered.into_iter().map(|(_index, rule)| rule).collect();
+        // The authored sequence borrows the document directly. Release the
+        // validation indexes before allocating the projected rule program.
+        drop(predicates);
+        drop(members);
+        drop(authored_members);
 
         // The ONE stratification of this document's member set, under this
         // document's own rule-graph budget. Charging happens here and nowhere
         // else: the proof below is the single allowance spend for this document.
         let budget = document.budget_receipt();
-        let program = RecursiveProgramV1::from_rules(project_rules(&rules));
+        let program = RecursiveProgramV1::from_rules(project_rules(ordered.iter().copied()));
         let stratification = stratify(&program, &budget)?;
+        drop(program);
 
+        // The output owns its rules only after admission. Rejected documents
+        // never deep-clone the typed heads, bodies, or retained call vectors.
+        let rules = ordered.into_iter().cloned().collect();
         Ok(Self {
             rules,
             budget,
@@ -179,7 +186,7 @@ impl RuleProgramContractV2 {
     /// projections of the same validated member set.
     #[must_use]
     pub fn to_program(&self) -> Vec<RuleDefV1> {
-        project_rules(&self.rules)
+        project_rules(self.rules.iter())
     }
 }
 
@@ -188,9 +195,8 @@ impl RuleProgramContractV2 {
 /// The sole projection: [`RuleProgramContractV2::to_program`] exposes it and the
 /// ingress stratifies it, so the admitted proof and the projected program can
 /// never describe different member sets.
-fn project_rules(rules: &[ResolvedRuleV2]) -> Vec<RuleDefV1> {
+fn project_rules<'a>(rules: impl Iterator<Item = &'a ResolvedRuleV2>) -> Vec<RuleDefV1> {
     rules
-        .iter()
         .map(|rule| {
             let body = rule
                 .calls()
@@ -214,7 +220,7 @@ fn project_rules(rules: &[ResolvedRuleV2]) -> Vec<RuleDefV1> {
 /// Validate one member rule and every resolved call it retained.
 fn validate_rule(
     document: &SemanticDocumentV2,
-    predicates: &BTreeSet<ResolvedPredicateIdV2>,
+    predicates: &BTreeSet<&ResolvedPredicateIdV2>,
     rule: &ResolvedRuleV2,
 ) -> Result<(), LogicDiagnosticV1> {
     let source_id = document.source_id();
@@ -279,7 +285,7 @@ fn validate_rule(
                 location.clone(),
             ));
         };
-        if !predicates.contains(predicate) {
+        if !predicates.contains(&predicate) {
             return Err(invalid(
                 RuleProgramInvalidReasonV1::NonLocalTarget,
                 location.clone(),
@@ -291,26 +297,25 @@ fn validate_rule(
                 location.clone(),
             ));
         }
-        let Some((derived_target, derived_polarity, derived_location)) = derived.get(&call.call())
-        else {
+        let Some(derived_call) = derived.get(&call.call()) else {
             return Err(invalid(
                 RuleProgramInvalidReasonV1::WrongCallId,
                 location.clone(),
             ));
         };
-        if derived_target != call.target() {
+        if derived_call.target() != call.target() {
             return Err(invalid(
                 RuleProgramInvalidReasonV1::TargetTransplanted,
                 location.clone(),
             ));
         }
-        if *derived_polarity != body_polarity(call.polarity()) {
+        if derived_call.polarity() != call.polarity() {
             return Err(invalid(
                 RuleProgramInvalidReasonV1::PolarityFlip,
                 location.clone(),
             ));
         }
-        if derived_location != location {
+        if derived_call.location() != location {
             return Err(invalid(
                 RuleProgramInvalidReasonV1::WrongCallId,
                 location.clone(),
@@ -319,11 +324,11 @@ fn validate_rule(
     }
 
     // Every source-predicate call the body proves must be a retained edge.
-    for (key, (_target, _polarity, location)) in &derived {
-        if !rule.calls().iter().any(|call| call.call() == *key) {
+    for (key, call) in &derived {
+        if !seen.contains(key) {
             return Err(invalid(
                 RuleProgramInvalidReasonV1::WrongCallId,
-                location.clone(),
+                call.location().clone(),
             ));
         }
     }
@@ -336,27 +341,10 @@ fn validate_rule(
 fn derive_body_calls(
     document: &SemanticDocumentV2,
     rule: &ResolvedRuleV2,
-) -> Result<
-    BTreeMap<SourceQualifiedNodeIdV2, (ResolvedCallTargetV2, BodyPolarityV1, CheckedLocatedSpanV2)>,
-    LogicDiagnosticV1,
-> {
+) -> Result<BTreeMap<SourceQualifiedNodeIdV2, ResolvedRuleCallV2>, LogicDiagnosticV1> {
     document
         .classify_rule_body_calls(rule.body().expression().key())
-        .map(|calls| {
-            calls
-                .into_iter()
-                .map(|call| {
-                    (
-                        call.call(),
-                        (
-                            call.target().clone(),
-                            body_polarity(call.polarity()),
-                            call.location().clone(),
-                        ),
-                    )
-                })
-                .collect()
-        })
+        .map(|calls| calls.into_iter().map(|call| (call.call(), call)).collect())
         .map_err(|error| {
             invalid(
                 RuleProgramInvalidReasonV1::WrongCallId,
@@ -378,7 +366,7 @@ fn rule_location(rule: &ResolvedRuleV2) -> CheckedLocatedSpanV2 {
 /// its own. A surviving Rule member is preferred; then any located item; then
 /// the document's retained source anchor from its original registry.
 fn membership_anchor(
-    members: &BTreeMap<SemanticItemIdV2, ResolvedRuleV2>,
+    members: &BTreeMap<SemanticItemIdV2, &ResolvedRuleV2>,
     document: &SemanticDocumentV2,
 ) -> CheckedLocatedSpanV2 {
     if let Some(rule) = members.values().next() {

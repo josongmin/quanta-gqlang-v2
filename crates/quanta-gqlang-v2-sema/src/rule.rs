@@ -197,7 +197,7 @@ pub(crate) fn classify_rule_body_calls<'a>(
                         reason: "rule body typed nested relation is missing",
                     });
                 };
-                for input in relation.inputs().collect::<Vec<_>>().into_iter().rev() {
+                for input in relation.inputs().rev() {
                     stack.push(RuleBodyNodeV2::Relation(input.key()));
                 }
                 for key in relation.expressions().iter().rev() {
@@ -295,12 +295,6 @@ impl ResolvedRuleV2 {
         item_id: SemanticItemIdV2,
         expected_head: SourceQualifiedNodeIdV2,
         expected_body: SourceQualifiedNodeIdV2,
-        expected_calls: &[(
-            SourceQualifiedNodeIdV2,
-            ResolvedCallTargetV2,
-            RuleCallPolarityV2,
-            CheckedLocatedSpanV2,
-        )],
         predicate_id: ResolvedPredicateIdV2,
         head_term: TypedExprV2,
         body: TypedBoolExprV2,
@@ -310,18 +304,6 @@ impl ResolvedRuleV2 {
             || body.expression().key() != expected_body
             || expected_head.source_id != item_id.source_id()
             || expected_body.source_id != item_id.source_id()
-            || calls
-                .iter()
-                .map(|call| {
-                    (
-                        call.call,
-                        call.target.clone(),
-                        call.polarity,
-                        call.location.clone(),
-                    )
-                })
-                .collect::<Vec<_>>()
-                != expected_calls
             || calls.iter().any(|call| {
                 call.call.source_id != item_id.source_id()
                     || call.location.location().source_id != item_id.source_id()
@@ -376,5 +358,49 @@ impl ResolvedRuleV2 {
     pub fn forged_with_calls(mut self, calls: Vec<ResolvedRuleCallV2>) -> Self {
         self.calls = calls;
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_support::{
+        reference_rule_document_v2, ReferenceRuleFixtureV2, SECONDARY_REFERENCE_SOURCE_V2,
+    };
+
+    #[test]
+    #[expect(
+        clippy::panic_in_result_fn,
+        reason = "owner test propagates fixture errors and asserts sealed source ownership"
+    )]
+    fn rule_seal_rejects_foreign_call_source() -> Result<(), String> {
+        let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::PositiveSelfRecursion)?;
+        let rule = fixture
+            .document()
+            .rules()
+            .next()
+            .ok_or("fixture must retain one source rule")?;
+        let seal = |calls: Vec<_>| {
+            ResolvedRuleV2::try_new(
+                rule.item_id(),
+                rule.head_term().key(),
+                rule.body().expression().key(),
+                rule.predicate_id().clone(),
+                rule.head_term().clone(),
+                rule.body().clone(),
+                calls,
+            )
+        };
+        assert_eq!(seal(rule.calls().to_vec()), Ok(rule.clone()));
+        let mut foreign_calls = rule.calls().to_vec();
+        let [foreign_call] = foreign_calls.as_mut_slice() else {
+            return Err("fixture must retain exactly one source call".into());
+        };
+        foreign_call.call.source_id = SECONDARY_REFERENCE_SOURCE_V2;
+        assert_eq!(
+            seal(foreign_calls),
+            Err("rule semantic facts differ from the checked rule body"),
+        );
+        Ok(())
     }
 }

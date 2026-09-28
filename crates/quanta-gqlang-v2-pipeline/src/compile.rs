@@ -71,10 +71,11 @@ use crate::diagnostic::{
     surface_failure, surface_transaction_error, DocumentAssemblyCodeV2,
 };
 use crate::execution::{
-    project_composition, project_graph_query, project_relation, project_relation_root,
-    ExecutionClosureFailureV3, ExecutionCompositionBodyProjectionV3,
-    ExecutionCompositionProducerProjectionV3, ExecutionCompositionProjectionFailureV3,
-    ExecutionCompositionV3, ExecutionDocumentV3, ExecutionFamilyV3, ExecutionItemV3,
+    project_check, project_composition, project_graph_query, project_presentation,
+    project_relation, project_relation_root, ExecutionCheckV3, ExecutionClosureFailureV3,
+    ExecutionCompositionBodyProjectionV3, ExecutionCompositionProducerProjectionV3,
+    ExecutionCompositionProjectionFailureV3, ExecutionCompositionV3, ExecutionDocumentV3,
+    ExecutionFamilyV3, ExecutionGraphQueryV3, ExecutionItemV3, ExecutionPresentationKindV3,
     ExecutionRelationV3,
 };
 
@@ -1018,6 +1019,9 @@ type CompiledPartsV2 = (
 struct PlannedRunV2 {
     planned: Box<PlannedItemV2>,
     relation: Option<ExecutionRelationV3>,
+    graph: Option<ExecutionGraphQueryV3>,
+    check: Option<ExecutionCheckV3>,
+    presentation: Option<ExecutionPresentationKindV3>,
     composition: Option<ExecutionCompositionV3>,
 }
 
@@ -1054,6 +1058,9 @@ impl DocumentRunV2 {
                             run.planned.item_id(),
                             family,
                             run.relation,
+                            run.graph,
+                            run.check,
+                            run.presentation,
                             run.composition,
                             plan,
                         ));
@@ -1348,6 +1355,9 @@ fn run_item(
             Ok(ItemRunV2::Planned(Box::new(PlannedRunV2 {
                 planned: Box::new(PlannedItemV2::Relation { item_id: id, plan }),
                 relation: Some(relation),
+                graph: None,
+                check: None,
+                presentation: None,
                 composition: None,
             })))
         }
@@ -1358,9 +1368,16 @@ fn run_item(
                 document,
                 planning,
                 id,
-                &SemanticPlanInputV2::Graph(contract),
+                &SemanticPlanInputV2::Graph(contract.clone()),
             )?;
-            Ok(planned_run(PlannedItemV2::Graph { item_id: id, plan }))
+            Ok(ItemRunV2::Planned(Box::new(PlannedRunV2 {
+                planned: Box::new(PlannedItemV2::Graph { item_id: id, plan }),
+                relation: None,
+                graph: Some(project_graph_query(&contract)),
+                check: None,
+                presentation: None,
+                composition: None,
+            })))
         }
         SemanticItemV2::Check(check) => {
             let contract = check_contract(check)?;
@@ -1368,9 +1385,16 @@ fn run_item(
                 document,
                 planning,
                 id,
-                &SemanticPlanInputV2::Check(contract),
+                &SemanticPlanInputV2::Check(contract.clone()),
             )?;
-            Ok(planned_run(PlannedItemV2::Check { item_id: id, plan }))
+            Ok(ItemRunV2::Planned(Box::new(PlannedRunV2 {
+                planned: Box::new(PlannedItemV2::Check { item_id: id, plan }),
+                relation: None,
+                graph: None,
+                check: Some(project_check(&contract)),
+                presentation: None,
+                composition: None,
+            })))
         }
         SemanticItemV2::Presentation(presentation) => {
             let contract = PresentationContractV2::from_resolved(presentation)
@@ -1379,12 +1403,16 @@ fn run_item(
                 document,
                 planning,
                 id,
-                &SemanticPlanInputV2::Presentation(contract),
+                &SemanticPlanInputV2::Presentation(contract.clone()),
             )?;
-            Ok(planned_run(PlannedItemV2::Presentation {
-                item_id: id,
-                plan,
-            }))
+            Ok(ItemRunV2::Planned(Box::new(PlannedRunV2 {
+                planned: Box::new(PlannedItemV2::Presentation { item_id: id, plan }),
+                relation: None,
+                graph: None,
+                check: None,
+                presentation: Some(project_presentation(&contract)),
+                composition: None,
+            })))
         }
         SemanticItemV2::Composition(composition) => {
             let mut producer_projections = Vec::with_capacity(composition.bindings().len());
@@ -1427,6 +1455,9 @@ fn run_item(
             Ok(ItemRunV2::Planned(Box::new(PlannedRunV2 {
                 planned: Box::new(PlannedItemV2::Composition { item_id: id, plan }),
                 relation: None,
+                graph: None,
+                check: None,
+                presentation: None,
                 composition: Some(execution),
             })))
         }
@@ -1586,6 +1617,9 @@ fn planned_run(planned: PlannedItemV2) -> ItemRunV2 {
     ItemRunV2::Planned(Box::new(PlannedRunV2 {
         planned: Box::new(planned),
         relation: None,
+        graph: None,
+        check: None,
+        presentation: None,
         composition: None,
     }))
 }
@@ -2076,6 +2110,9 @@ mod tests {
                             program_id, *id,
                         ))),
                         relation: None,
+                        graph: None,
+                        check: None,
+                        presentation: None,
                         composition: None,
                     }))
                 })

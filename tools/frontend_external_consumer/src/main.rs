@@ -20,30 +20,35 @@ use quanta_gqlang_v2_frontend_contract::{
     AnalysisStatusV2, CheckedLocatedSpanV2, ClosedFrontendAuthorityBuilderV2,
     ClosedFrontendAuthorityV2, CompiledItemV2, CompiledRuleProgramV2, CompiledSourceDocumentV3,
     ExecutionAuthorityV3, ExecutionBindingV3, ExecutionCallTargetV3, ExecutionCardinalityV3,
+    ExecutionCatalogIdentityV3, ExecutionCheckV3, ExecutionCompareMetricV3,
     ExecutionCompositionBindingV3, ExecutionCompositionBodyV3, ExecutionCompositionProducerV3,
-    ExecutionCompositionV3, ExecutionCorrelationV3, ExecutionDeterminismV3, ExecutionDigestV3,
-    ExecutionDocumentV3, ExecutionEffectV3, ExecutionEvidenceV3, ExecutionExistentialTermV3,
-    ExecutionExistsPolarityV3, ExecutionExpressionShapeV3, ExecutionExpressionV3,
-    ExecutionFamilyV3, ExecutionFieldV3, ExecutionFiniteFloatV3, ExecutionGraphCapabilityV3,
+    ExecutionCompositionV3, ExecutionConfirmModeV3, ExecutionCorrelationV3,
+    ExecutionDetectionModeV3, ExecutionDeterminismV3, ExecutionDigestV3, ExecutionDocumentV3,
+    ExecutionEffectV3, ExecutionEmitModeV3, ExecutionEvidenceModeV3, ExecutionEvidenceV3,
+    ExecutionExistentialTermV3, ExecutionExistsPolarityV3, ExecutionExplainTargetV3,
+    ExecutionExportFormatV3, ExecutionExpressionShapeV3, ExecutionExpressionV3, ExecutionFamilyV3,
+    ExecutionFieldV3, ExecutionFiniteFloatV3, ExecutionGraphCapabilityV3,
     ExecutionGraphDedupIdentityV3, ExecutionGraphDirectionV3, ExecutionGraphKindV3,
     ExecutionGraphQueryV3, ExecutionGraphReferenceKindV3, ExecutionGraphReferenceRoleV3,
     ExecutionGraphReferenceV3, ExecutionGraphRelationShapeV3, ExecutionGraphTargetV3,
     ExecutionGraphWitnessTieBreakV3, ExecutionItemV3, ExecutionJoinModeV3, ExecutionLiteralV3,
-    ExecutionLogicalQuantifierV3, ExecutionNullOrderV3, ExecutionOperatorV3, ExecutionOrderKeyV3,
-    ExecutionPlanV3, ExecutionPolicyFamilyV3, ExecutionRecordFieldV3, ExecutionRelationAuthorityV3,
+    ExecutionLogicalQuantifierV3, ExecutionNestedGraphV3, ExecutionNullOrderV3,
+    ExecutionOperatorDescriptorErrorV3, ExecutionOperatorDescriptorV3, ExecutionOperatorKindV3,
+    ExecutionOperatorV3, ExecutionOrderKeyV3, ExecutionPlanV3, ExecutionPolicyFamilyV3,
+    ExecutionPresentationKindV3, ExecutionRecordFieldV3, ExecutionRelationAuthorityV3,
     ExecutionRelationV3, ExecutionRelationalOperatorV3, ExecutionSampleModeV3,
-    ExecutionScalarTypeV3, ExecutionSchemaV3, ExecutionSortDirectionV3, ExecutionSourceKindV3,
-    ExecutionSourceV3, ExecutionUnionVariantV3, ExecutionValueTypeV3, FrontendAuthorityErrorV2,
-    FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
-    FrontendCallableParameterInputV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
-    FrontendDiagnosticV2, FrontendFailureV2, FrontendGraphReferenceInputV2,
-    FrontendLanguageVersionV2, FrontendLockfileInputV2, FrontendPackInputV2,
-    FrontendRelationAuthorityV2, FrontendRelationCardinalityV2, FrontendRelationFieldInputV2,
-    FrontendRelationInputV2, FrontendScalarTypeV2, FrontendSeverityV2,
-    FrontendSourceRootClassificationErrorV3, FrontendSourceRootFamilyV3, FrontendStageV2,
-    FrontendTransactionErrorV2, GraphReferenceKindV2, LocatedSpanV2, NoPlanReasonV2,
-    OpenAnalysisAuthorityV2, PlannedItemV2, RuleProgramMemberV2, SemanticItemIdV2, SemanticPlanV2,
-    SourceIdV2, SourceQualifiedNodeIdV2, SpanV1, UnresolvedAnalysisFactV2,
+    ExecutionScalarTypeV3, ExecutionSchemaV3, ExecutionShowCategoryV3, ExecutionSortDirectionV3,
+    ExecutionSourceKindV3, ExecutionSourceV3, ExecutionTruthModeV3, ExecutionUnionVariantV3,
+    ExecutionValueTypeV3, FrontendAuthorityErrorV2, FrontendAuthorityLocationV2,
+    FrontendAuthoritySourceV2, FrontendBudgetV2, FrontendCallableParameterInputV2,
+    FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2, FrontendDiagnosticV2, FrontendFailureV2,
+    FrontendGraphReferenceInputV2, FrontendLanguageVersionV2, FrontendLockfileInputV2,
+    FrontendPackInputV2, FrontendRelationAuthorityV2, FrontendRelationCardinalityV2,
+    FrontendRelationFieldInputV2, FrontendRelationInputV2, FrontendScalarTypeV2,
+    FrontendSeverityV2, FrontendSourceRootClassificationErrorV3, FrontendSourceRootFamilyV3,
+    FrontendStageV2, FrontendTransactionErrorV2, GraphReferenceKindV2, LocatedSpanV2,
+    NoPlanReasonV2, OpenAnalysisAuthorityV2, PlannedItemV2, RuleProgramMemberV2, SemanticItemIdV2,
+    SemanticPlanV2, SourceIdV2, SourceQualifiedNodeIdV2, SpanV1, UnresolvedAnalysisFactV2,
     ANALYSIS_DIAGNOSTIC_LIMIT_CODE, OPEN_AUTHORITY_INCOMPLETE_CODE,
 };
 
@@ -468,9 +473,61 @@ fn execution_item_api(item: &ExecutionItemV3) -> usize {
     let _: SemanticItemIdV2 = item.item_id();
     let _: ExecutionFamilyV3 = item.family();
     let _: Option<&ExecutionRelationV3> = item.relation();
+    let _: Option<&ExecutionGraphQueryV3> = item.graph();
+    let _: Option<&ExecutionCheckV3> = item.check();
+    let _: Option<&ExecutionPresentationKindV3> = item.presentation();
     let _: Option<&ExecutionCompositionV3> = item.composition();
     let _: &ExecutionPlanV3 = item.plan();
     std::mem::size_of_val(item.plan())
+}
+
+fn execution_check_api(check: &ExecutionCheckV3) -> usize {
+    let rule: &ExecutionCatalogIdentityV3 = check.rule();
+    let _: &str = rule.module();
+    let _: &str = rule.name();
+    let _: Option<&ExecutionGraphTargetV3> = check.scope();
+    let _: Option<&ExecutionGraphTargetV3> = check.pattern();
+    let nested: Option<&ExecutionNestedGraphV3> = check.nested_graph();
+    if let Some(nested) = nested {
+        let _: SemanticItemIdV2 = nested.item_id();
+        let _: &ExecutionGraphQueryV3 = nested.query();
+    }
+    let _: ExecutionConfirmModeV3 = check.confirm();
+    let _: ExecutionEmitModeV3 = check.emit();
+    let _: ExecutionDetectionModeV3 = check.mode();
+    rule.name().len()
+}
+
+fn execution_presentation_api(presentation: &ExecutionPresentationKindV3) -> usize {
+    match presentation {
+        ExecutionPresentationKindV3::Explain {
+            target,
+            evidence,
+            truth,
+        } => {
+            let _: &ExecutionExplainTargetV3 = target;
+            let _: &ExecutionEvidenceModeV3 = evidence;
+            let _: &ExecutionTruthModeV3 = truth;
+            match target {
+                ExecutionExplainTargetV3::Rule(rule) => rule.name().len(),
+                ExecutionExplainTargetV3::Entity(_) => 1,
+            }
+        }
+        ExecutionPresentationKindV3::Show { category } => {
+            let _: &ExecutionShowCategoryV3 = category;
+            1
+        }
+        ExecutionPresentationKindV3::Describe { .. } => 2,
+        ExecutionPresentationKindV3::Sample { .. } => 3,
+        ExecutionPresentationKindV3::Compare { metric, .. } => {
+            let _: &ExecutionCompareMetricV3 = metric;
+            4
+        }
+        ExecutionPresentationKindV3::Export { format, .. } => {
+            let _: &ExecutionExportFormatV3 = format;
+            5
+        }
+    }
 }
 
 fn execution_plan_api(plan: &ExecutionPlanV3) -> usize {
@@ -541,6 +598,7 @@ fn execution_expression_api(expression: &ExecutionExpressionV3) -> usize {
 }
 
 fn execution_source_api(source: &ExecutionSourceV3) -> usize {
+    let _: Option<&ExecutionBindingV3> = source.composition_binding();
     let _: ExecutionRelationAuthorityV3 = source.authority();
     let _: ExecutionSourceKindV3 = source.kind();
     let _: Option<&str> = source.namespace();
@@ -995,6 +1053,8 @@ fn pin_curated_roots() {
     pin(unresolved_fact_probe as fn(&UnresolvedAnalysisFactV2) -> (&'static str, LocatedSpanV2));
     pin(execution_document_api as fn(&ExecutionDocumentV3) -> usize);
     pin(execution_item_api as fn(&ExecutionItemV3) -> usize);
+    pin(execution_check_api as fn(&ExecutionCheckV3) -> usize);
+    pin(execution_presentation_api as fn(&ExecutionPresentationKindV3) -> usize);
     pin(execution_plan_api as fn(&ExecutionPlanV3) -> usize);
     pin(execution_relation_api as fn(&ExecutionRelationV3) -> usize);
     pin(execution_operator_node_api as fn(&ExecutionRelationalOperatorV3) -> usize);
@@ -1079,6 +1139,30 @@ fn pin_curated_roots() {
 }
 
 fn main() {
+    let descriptor: Result<
+        Option<ExecutionOperatorDescriptorV3>,
+        ExecutionOperatorDescriptorErrorV3,
+    > = quanta_gqlang_v2_frontend_contract::execution_operator_descriptor_v3(327);
+    let descriptor = descriptor
+        .expect("closed registry")
+        .expect("RepoPath inequality");
+    assert_eq!(descriptor.kind(), ExecutionOperatorKindV3::NotEqual);
+    assert_eq!(
+        descriptor.operand_types(),
+        &[
+            ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::RepoPath),
+            ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::RepoPath)
+        ]
+    );
+    assert_eq!(
+        descriptor.result_type(),
+        &ExecutionValueTypeV3::Scalar(ExecutionScalarTypeV3::Bool)
+    );
+    assert_eq!(
+        quanta_gqlang_v2_frontend_contract::execution_operator_descriptor_v3(u32::MAX),
+        Ok(None)
+    );
+
     assert_eq!(
         ANALYSIS_DIAGNOSTIC_LIMIT_CODE,
         "pipeline.analysis.diagnostic_limit_exceeded"
@@ -1260,6 +1344,34 @@ fn main() {
         .expect("facade-only closed authority compiles the probe source");
     assert_eq!(compiled.source_id(), DOCUMENT_SOURCE);
     assert_eq!(compiled.items().len(), 3);
+    assert!(matches!(compiled.execution().items(), [item]
+    if matches!(item.presentation(), Some(ExecutionPresentationKindV3::Show {
+        category: ExecutionShowCategoryV3::Capabilities,
+    }))));
+    let standalone_graph = compile_source_document_v3(
+        SourceIdV2::from_raw(21),
+        "find path a -> b | depth=1",
+        &closed,
+    )
+    .expect("trusted host graph references compile through the facade");
+    let graph = standalone_graph.execution().items()[0]
+        .graph()
+        .expect("standalone Graph DTO");
+    assert_eq!(graph.kind(), ExecutionGraphKindV3::Path);
+    assert_eq!(graph.depth(), 1);
+    let standalone_check = compile_source_document_v3(
+        SourceIdV2::from_raw(22),
+        "ruledef rule1 | check-ref=check1; check rule1 | pattern=pattern1 | confirm=skip | mode=pattern",
+        &closed,
+    ).expect("rule declaration plus standalone CHECK compile through the facade");
+    assert_eq!(standalone_check.execution().items().len(), 1);
+    let check = standalone_check.execution().items()[0]
+        .check()
+        .expect("standalone CHECK DTO");
+    assert_eq!(check.rule().name(), "rule1");
+    assert_eq!(check.mode(), ExecutionDetectionModeV3::PatternOnly);
+    assert!(check.pattern().is_some());
+    assert!(check.nested_graph().is_none());
     let pack_compiled =
         compile_source_document_v3(SourceIdV2::from_raw(10), PACK_DOCUMENT_TEXT, &closed)
             .expect("facade-only pack authority compiles USE PACK");

@@ -29,11 +29,11 @@ use quanta_gqlang_v2_sema::test_support::{
     deep_relation_chain_document_v2, forged_non_source_rule_call_document_v2,
     forged_rule_call_shape_target_document_v2, forged_rule_call_wrapper_document_v2,
     forged_rule_fact_document_v2, forged_rule_membership_document_v2,
-    forged_small_receipt_relation_chain_document_v2, reference_relation_document_v2,
-    reference_rule_document_v2, second_source_relation_document_v2, ForgedRuleCallWrapperV2,
-    ForgedRuleFactMutationV2, ForgedRuleMembershipMutationV2, ReferenceBudgetV2,
-    ReferenceRelationFixtureV2, ReferenceRuleFixtureV2, SECONDARY_REFERENCE_SOURCE_V2,
-    SMALL_BUDGET_MAX_SEMANTIC_STEPS,
+    forged_small_receipt_relation_chain_document_v2, reference_absent_item_id_v2,
+    reference_relation_document_v2, reference_rule_document_v2, second_source_relation_document_v2,
+    ForgedRuleCallWrapperV2, ForgedRuleFactMutationV2, ForgedRuleMembershipMutationV2,
+    ReferenceBudgetV2, ReferenceRelationFixtureV2, ReferenceRuleFixtureV2,
+    SECONDARY_REFERENCE_SOURCE_V2, SMALL_BUDGET_MAX_SEMANTIC_STEPS,
 };
 use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, FrontendBudgetV2, SemanticDocumentV2, SpanV1, TypedExprV2,
@@ -532,6 +532,57 @@ fn mutual_recursion_pair_projects_document_order_members_and_exact_edges() {
 }
 
 #[test]
+fn authored_rule_order_is_independent_of_identity_order() {
+    let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::MutualRecursionPair)
+        .expect("mutual-recursion fixture resolves");
+    for (reverse, expected) in [(false, ["r", "s"]), (true, ["s", "r"])] {
+        let document = fixture
+            .document()
+            .clone()
+            .forged_membership(|order, _items| {
+                if reverse {
+                    order.reverse();
+                }
+            });
+        assert_eq!(document.order().len(), 2);
+        assert_eq!(
+            document.order().windows(2).all(|pair| {
+                let [left, right] = pair else {
+                    return false;
+                };
+                left < right
+            }),
+            !reverse,
+            "the control must actually differ from canonical identity order",
+        );
+        let contract = accepted(&document);
+        assert_eq!(
+            contract
+                .rules()
+                .iter()
+                .map(|rule| rule.predicate_id().as_str())
+                .collect::<Vec<_>>(),
+            expected,
+        );
+        let program = contract.to_program();
+        assert_eq!(
+            program
+                .iter()
+                .map(|rule| rule.head().as_str())
+                .collect::<Vec<_>>(),
+            expected,
+        );
+        let proof = contract.stratification();
+        assert_eq!(proof.components(), &[vec![predicate("r"), predicate("s")]]);
+        assert_eq!(proof.stratum_of(&predicate("r")), Some(0));
+        assert_eq!(proof.stratum_of(&predicate("s")), Some(0));
+        assert!(proof.is_recursive(&predicate("r")));
+        assert!(proof.is_recursive(&predicate("s")));
+        assert_eq!(contract.budget(), document.budget_receipt());
+    }
+}
+
+#[test]
 fn nonrecursive_dependency_projects_exactly_one_edge_on_one_member() {
     let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::NonRecursiveDependency)
         .expect("nonrecursive dependency fixture resolves");
@@ -737,6 +788,31 @@ fn rule_item_outside_the_document_order_is_membership_mismatch() {
         RuleProgramInvalidReasonV1::MembershipMismatch,
         message_of(RuleProgramInvalidReasonV1::MembershipMismatch),
         orphan.body().expression().location(),
+    );
+}
+
+#[test]
+fn rule_item_key_must_match_its_sealed_identity() {
+    let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::SingleRule)
+        .expect("reference rule document seals");
+    let original = fixture.document();
+    let rule = original.rules().next().expect("fixture retains one rule");
+    let expected_location = rule.body().expression().location().clone();
+    let forged = original.clone().forged_membership(|order, items| {
+        let [old_id] = order.as_mut_slice() else {
+            panic!("fixture must retain exactly one authored rule");
+        };
+        let item = items.remove(old_id).expect("fixture item exists");
+        let alias = reference_absent_item_id_v2();
+        *old_id = alias;
+        assert!(items.insert(alias, item).is_none());
+    });
+    let error = rejection(&forged);
+    assert_invalid(
+        &error,
+        RuleProgramInvalidReasonV1::MembershipMismatch,
+        message_of(RuleProgramInvalidReasonV1::MembershipMismatch),
+        &expected_location,
     );
 }
 

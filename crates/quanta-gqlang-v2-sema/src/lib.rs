@@ -27,10 +27,10 @@ pub use quanta_gqlang_v2_hir::{
     ShowCategoryV1, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1, TruthModeV1,
 };
 pub use quanta_gqlang_v2_types::{
-    CardinalityV1, ExpressionTypeStateV2, OperatorIdV2, ProvenanceNamespaceV2, RecordFieldTypeV1,
-    RecordTypeV1, RelationAuthorityV2, RelationCatalogV2, RelationSourceInputV2,
-    ResolvedCallTargetV2, ScalarTyV1, SourceQualifiedNodeIdV2, TypedLiteralFactV2,
-    TypedLiteralValueV2, ValueTypeV1,
+    operator_descriptor_v2, CardinalityV1, ExpressionTypeStateV2, OperatorIdV2,
+    OperatorSemanticKindV2, ProvenanceNamespaceV2, RecordFieldTypeV1, RecordTypeV1,
+    RelationAuthorityV2, RelationCatalogV2, RelationSourceInputV2, ResolvedCallTargetV2,
+    ScalarTyV1, SourceQualifiedNodeIdV2, TypedLiteralFactV2, TypedLiteralValueV2, ValueTypeV1,
 };
 
 pub use authority::{

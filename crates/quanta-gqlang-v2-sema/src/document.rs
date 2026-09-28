@@ -6479,22 +6479,10 @@ fn resolve_document_bodies(
                         error.reason(),
                     )
                 })?;
-                let expected_calls = calls
-                    .iter()
-                    .map(|call| {
-                        (
-                            call.call(),
-                            call.target().clone(),
-                            call.polarity(),
-                            call.location().clone(),
-                        )
-                    })
-                    .collect::<Vec<_>>();
                 let typed = ResolvedRuleV2::try_new(
                     SemanticItemIdV2::new(checked.source_id(), rule.id),
                     head.key(),
                     body.expression().key(),
-                    &expected_calls,
                     predicate.predicate_id.clone(),
                     head,
                     body,
