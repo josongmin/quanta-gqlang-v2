@@ -6,6 +6,7 @@
 
 use super::*;
 use quanta_gqlang_v2_sema::HirNodeIdV1;
+use std::sync::Arc;
 
 fn n(value: u32) -> Vec<u8> {
     value.to_be_bytes().to_vec()
@@ -534,9 +535,9 @@ fn assert_document(items: Vec<ExecutionItemV3>, expected_items: &[Vec<u8>]) {
 fn rename_apply_has_independent_exact_target_and_token_bytes() {
     let command = ExecutionRenameCommandV3 {
         target: ExecutionSymbolTargetV3 {
-            selector: "s".to_owned(),
-            repo_path: "src/a.py".to_owned(),
-            symbol_id: "def:17".to_owned(),
+            selector: Arc::<str>::from("s"),
+            repo_path: Arc::<str>::from("src/a.py"),
+            symbol_id: Arc::<str>::from("def:17"),
             start_byte: 17,
             end_byte: 20,
         },

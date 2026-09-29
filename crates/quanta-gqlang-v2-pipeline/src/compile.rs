@@ -703,6 +703,14 @@ pub fn analyze_source_document_v2(
     let result = (|| {
         let parsed = parse_source(source_id, source, authority.budget())?;
         let source_len = parsed.hir.source_len;
+        let missing_symbol_target_location = parsed.hir.items.iter().find_map(|item| {
+            (classify_parsed_root_v3(item) == FrontendSourceRootFamilyV3::Command).then_some(
+                LocatedSpanV2 {
+                    source_id,
+                    span: item.span(),
+                },
+            )
+        });
         let checked = CheckedSyntaxDocumentV2::try_from_hir(parsed.hir)
             .map_err(FrontendTransactionErrorV2::from)?;
         let (Some(modules), Some(relations), Some(graph_references)) = (
@@ -710,8 +718,26 @@ pub fn analyze_source_document_v2(
             authority.relations(),
             authority.graph_references(),
         ) else {
-            return incomplete_open_analysis(source_id, source_len, checked, authority);
+            return incomplete_open_analysis(
+                source_id,
+                source_len,
+                checked,
+                authority,
+                missing_symbol_target_location,
+            );
         };
+        // Open authority currently carries no symbol-target catalog. Preserve
+        // that absence as an incomplete editor result; the closed resolver's
+        // `unknown_symbol_target` means a complete catalog rejected a name.
+        if missing_symbol_target_location.is_some() {
+            return incomplete_open_analysis(
+                source_id,
+                source_len,
+                checked,
+                authority,
+                missing_symbol_target_location,
+            );
+        }
         let closed = ClosedFrontendAuthorityV2::try_new(
             modules.clone(),
             relations.clone(),
@@ -908,6 +934,7 @@ fn incomplete_open_analysis(
     source_len: usize,
     checked: CheckedSyntaxDocumentV2,
     authority: &OpenAnalysisAuthorityV2,
+    missing_symbol_target_location: Option<LocatedSpanV2>,
 ) -> Result<AnalysisDocumentV2, FrontendTransactionErrorV2> {
     let extended = authority
         .host_sources()
@@ -977,6 +1004,16 @@ fn incomplete_open_analysis(
             *location,
             Vec::new(),
             message,
+        ));
+    }
+    if let Some(location) = missing_symbol_target_location {
+        missing_authority.push(FrontendDiagnosticV2::new(
+            FrontendStageV2::Declaration,
+            "pipeline.analysis.missing_symbol_target_authority",
+            FrontendSeverityV2::Warning,
+            location,
+            Vec::new(),
+            "open analysis has no closed symbol target catalog for rename commands",
         ));
     }
     let diagnostics = canonicalize_diagnostics(missing_authority);

@@ -854,7 +854,7 @@ pub struct ClosedFrontendAuthorityV2 {
     modules: ValidatedModuleAuthorityPartsV2,
     relations: RelationCatalogV2,
     graph_references: GraphReferenceCatalogV2,
-    symbol_targets: BTreeMap<String, ResolvedSymbolTargetV3>,
+    symbol_targets: BTreeMap<Arc<str>, ResolvedSymbolTargetV3>,
     budget: FrontendBudgetV2,
 }
 
@@ -862,9 +862,9 @@ pub struct ClosedFrontendAuthorityV2 {
 /// record; runtime must still revalidate it against the admitted snapshot.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResolvedSymbolTargetV3 {
-    selector: String,
-    repo_path: String,
-    symbol_id: String,
+    selector: Arc<str>,
+    repo_path: Arc<str>,
+    symbol_id: Arc<str>,
     start_byte: u64,
     end_byte: u64,
     location: CheckedLocatedSpanV2,
@@ -882,6 +882,24 @@ impl ResolvedSymbolTargetV3 {
     #[must_use]
     pub fn symbol_id(&self) -> &str {
         &self.symbol_id
+    }
+    /// Shared selector storage for cross-crate immutable projections.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn clone_selector_storage_v3(&self) -> Arc<str> {
+        Arc::clone(&self.selector)
+    }
+    /// Shared repository path storage for cross-crate immutable projections.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn clone_repo_path_storage_v3(&self) -> Arc<str> {
+        Arc::clone(&self.repo_path)
+    }
+    /// Shared symbol ID storage for cross-crate immutable projections.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn clone_symbol_id_storage_v3(&self) -> Arc<str> {
+        Arc::clone(&self.symbol_id)
     }
     #[must_use]
     pub const fn start_byte(&self) -> u64 {
@@ -1466,17 +1484,19 @@ impl ClosedFrontendAuthorityBuilderV2 {
                     "symbol target catalog exceeds authority limit",
                 ));
             }
+            let location = target.location.check(&host_sources)?;
+            let selector: Arc<str> = Arc::from(target.selector);
             let resolved = ResolvedSymbolTargetV3 {
-                selector: target.selector.clone(),
-                repo_path: target.repo_path,
-                symbol_id: target.symbol_id,
+                selector: Arc::clone(&selector),
+                repo_path: Arc::from(target.repo_path),
+                symbol_id: Arc::from(target.symbol_id),
                 start_byte: target.start_byte,
                 end_byte: target.end_byte,
-                location: target.location.check(&host_sources)?,
+                location,
             };
             if authority
                 .symbol_targets
-                .insert(target.selector, resolved)
+                .insert(selector, resolved)
                 .is_some()
             {
                 return Err(configuration_failure(

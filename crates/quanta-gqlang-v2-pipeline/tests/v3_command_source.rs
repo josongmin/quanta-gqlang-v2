@@ -21,6 +21,13 @@ fn authority() -> quanta_gqlang_v2_pipeline::ClosedFrontendAuthorityV2 {
 fn authority_with_identity(
     symbol_id: &str,
 ) -> quanta_gqlang_v2_pipeline::ClosedFrontendAuthorityV2 {
+    authority_with_target("src/a.py".to_owned(), symbol_id.to_owned())
+}
+
+fn authority_with_target(
+    repo_path: String,
+    symbol_id: String,
+) -> quanta_gqlang_v2_pipeline::ClosedFrontendAuthorityV2 {
     let location = FrontendAuthorityLocationV2 {
         source_id: HOST,
         start: 0,
@@ -43,8 +50,8 @@ fn authority_with_identity(
     .expect("builder");
     builder.add_symbol_target(FrontendSymbolTargetInputV3 {
         selector: "symbol.one".to_owned(),
-        repo_path: "src/a.py".to_owned(),
-        symbol_id: symbol_id.to_owned(),
+        repo_path,
+        symbol_id,
         start_byte: 17,
         end_byte: 20,
         location,
@@ -106,6 +113,46 @@ fn target_authority_changes_contract_but_not_source_and_duplicate_rejects() {
         builder.finish().expect_err("duplicate selector").code(),
         "sema.duplicate_symbol_target"
     );
+}
+
+#[test]
+fn repeated_rename_targets_share_large_immutable_identity_storage() {
+    let repeated = "rename symbol.one to \"new_name\" | phase=preview | snapshot=\"snap-7\"";
+    let source = format!("{repeated}; {repeated}");
+    let large_identity = "x".repeat(32 * 1024);
+    let authority = authority_with_target(
+        format!("src/{large_identity}"),
+        format!("def:{large_identity}"),
+    );
+    let document = compile_source_document_v3(DOC, &source, &authority)
+        .expect("repeated exact target compiles");
+    let items = document.execution().items();
+    assert_eq!(items.len(), 2);
+    let mut items = items.iter();
+    let first = items
+        .next()
+        .expect("first command item")
+        .command()
+        .expect("first command payload")
+        .target();
+    let second = items
+        .next()
+        .expect("second command item")
+        .command()
+        .expect("second command payload")
+        .target();
+    assert!(std::ptr::eq(
+        first.repo_path().as_ptr(),
+        second.repo_path().as_ptr()
+    ));
+    assert!(std::ptr::eq(
+        first.symbol_id().as_ptr(),
+        second.symbol_id().as_ptr()
+    ));
+    assert!(std::ptr::eq(
+        first.selector().as_ptr(),
+        second.selector().as_ptr()
+    ));
 }
 
 #[test]

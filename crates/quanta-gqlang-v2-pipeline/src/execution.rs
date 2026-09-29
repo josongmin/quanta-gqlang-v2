@@ -29,6 +29,7 @@ use quanta_gqlang_v2_sema::{
     TypedLiteralFactV2, TypedLiteralValueV2, ValueTypeV1,
 };
 use sha2::{Digest as _, Sha256};
+use std::sync::Arc;
 
 pub use quanta_gqlang_v2_sema::OperatorSemanticKindV2 as ExecutionOperatorKindV3;
 
@@ -221,9 +222,9 @@ pub enum ExecutionFamilyV3 {
 /// Exact host-issued code symbol carried by a compiled rename intent.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExecutionSymbolTargetV3 {
-    selector: String,
-    repo_path: String,
-    symbol_id: String,
+    selector: Arc<str>,
+    repo_path: Arc<str>,
+    symbol_id: Arc<str>,
     start_byte: u64,
     end_byte: u64,
 }
@@ -293,9 +294,9 @@ fn project_command(command: &ResolvedRenameCommandV3) -> ExecutionRenameCommandV
     let target = command.target();
     ExecutionRenameCommandV3 {
         target: ExecutionSymbolTargetV3 {
-            selector: target.selector().to_owned(),
-            repo_path: target.repo_path().to_owned(),
-            symbol_id: target.symbol_id().to_owned(),
+            selector: target.clone_selector_storage_v3(),
+            repo_path: target.clone_repo_path_storage_v3(),
+            symbol_id: target.clone_symbol_id_storage_v3(),
             start_byte: target.start_byte(),
             end_byte: target.end_byte(),
         },
@@ -2565,9 +2566,9 @@ fn put_command(out: &mut Vec<u8>, command: &ExecutionRenameCommandV3) {
             ExecutionCommandPhaseV3::Apply => 1,
         },
     );
-    put_str(out, &command.target.selector);
-    put_str(out, &command.target.repo_path);
-    put_str(out, &command.target.symbol_id);
+    put_str(out, command.target.selector());
+    put_str(out, command.target.repo_path());
+    put_str(out, command.target.symbol_id());
     out.extend_from_slice(&command.target.start_byte.to_be_bytes());
     out.extend_from_slice(&command.target.end_byte.to_be_bytes());
     put_str(out, &command.new_name);

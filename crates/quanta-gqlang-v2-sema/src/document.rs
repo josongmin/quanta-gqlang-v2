@@ -6190,14 +6190,17 @@ fn resolve_document_bodies(
                     )
                     .into());
                 };
+                let valid_phase_token = match command.phase {
+                    quanta_gqlang_v2_hir::RenamePhaseV3::Preview => command.preview_token.is_none(),
+                    quanta_gqlang_v2_hir::RenamePhaseV3::Apply => command
+                        .preview_token
+                        .as_ref()
+                        .is_some_and(|value| !value.is_empty()),
+                };
                 if command.new_name.is_empty()
                     || command.new_name.chars().any(char::is_control)
                     || command.expected_snapshot.is_empty()
-                    || matches!(command.phase, quanta_gqlang_v2_hir::RenamePhaseV3::Apply)
-                        != command
-                            .preview_token
-                            .as_ref()
-                            .is_some_and(|value| !value.is_empty())
+                    || !valid_phase_token
                 {
                     return Err(document_failure(
                         "sema.invalid_rename_command",
@@ -6846,8 +6849,9 @@ mod tests {
     use quanta_gqlang_v2_hir::{
         AliasV1, CallArgHirV1, CallArgsHirV1, CatalogDeclHirV1, CatalogPayloadV1,
         CompositionBindingV1, CompositionBodyV1, CompositionHirV1, CompositionProducerV1,
-        DeclHirV1, HirBuilderV1, LocatedSpanV2, PathSegmentV1, ProjectionItemV1,
-        RelationExistsPolarityV1, SourceRegistrationV2, SourceRegistryViewV2, ViewBodyV1,
+        DeclHirV1, GraphRefV1, HirBuilderV1, LocatedSpanV2, PathSegmentV1, ProjectionItemV1,
+        RelationExistsPolarityV1, RenamePhaseV3, SourceRegistrationV2, SourceRegistryViewV2,
+        ViewBodyV1,
     };
     use quanta_gqlang_v2_modules::{
         CurrentModuleSelectionInputV2, ModuleAuthorityBuilderV2, ModuleIdV2, ModuleNodeInputV2,
@@ -6921,6 +6925,111 @@ mod tests {
             .map_err(|error| format!("{error:?}"))?;
         ClosedFrontendAuthorityV2::try_new(modules, relations, graphs, budget.clone())
             .map_err(|error| format!("{error:?}"))
+    }
+
+    fn rename_authority() -> Result<ClosedFrontendAuthorityV2, String> {
+        let host_source = SourceIdV2::from_raw(1);
+        let host_location = crate::FrontendAuthorityLocationV2 {
+            source_id: host_source,
+            start: 0,
+            end: 1,
+        };
+        let mut builder = crate::ClosedFrontendAuthorityBuilderV2::try_new(
+            FrontendBudgetV2::standard_v2().map_err(|error| format!("{error:?}"))?,
+            vec![crate::FrontendAuthoritySourceV2 {
+                source_id: host_source,
+                source_len: 64,
+            }],
+            "app".to_owned(),
+            host_location,
+            crate::FrontendLanguageVersionV2 {
+                major: 1,
+                minor: 0,
+                patch: 0,
+            },
+        )
+        .map_err(|error| format!("{error:?}"))?;
+        builder.add_symbol_target(crate::FrontendSymbolTargetInputV3 {
+            selector: "symbol.one".to_owned(),
+            repo_path: "src/a.py".to_owned(),
+            symbol_id: "def:17".to_owned(),
+            start_byte: 17,
+            end_byte: 20,
+            location: host_location,
+        });
+        builder.finish().map_err(|error| format!("{error:?}"))
+    }
+
+    fn raw_rename_document(phase: RenamePhaseV3, preview_token: Option<String>) -> HirDocumentV1 {
+        let builder = HirBuilderV1::new();
+        let command = builder.rename_command(
+            GraphRefV1 {
+                name: "symbol.one".to_owned(),
+                span: SpanV1::new(7, 17),
+            },
+            "renamed".to_owned(),
+            phase,
+            "snap-7".to_owned(),
+            preview_token,
+            SpanV1::new(0, 32),
+        );
+        HirDocumentV1 {
+            source_id: SourceIdV2::from_raw(9),
+            source_len: 64,
+            items: vec![ProgramItemHirV1::from(command)],
+        }
+    }
+
+    #[test]
+    fn raw_hir_rename_enforces_exact_phase_token_combinations() -> Result<(), String> {
+        let authority = rename_authority()?;
+        for (phase, token, expected_code) in [
+            (RenamePhaseV3::Preview, None, None),
+            (RenamePhaseV3::Apply, Some("issued".to_owned()), None),
+            (
+                RenamePhaseV3::Preview,
+                Some(String::new()),
+                Some("sema.invalid_rename_command"),
+            ),
+            (
+                RenamePhaseV3::Preview,
+                Some("issued".to_owned()),
+                Some("sema.invalid_rename_command"),
+            ),
+            (
+                RenamePhaseV3::Apply,
+                None,
+                Some("sema.invalid_rename_command"),
+            ),
+            (
+                RenamePhaseV3::Apply,
+                Some(String::new()),
+                Some("sema.invalid_rename_command"),
+            ),
+        ] {
+            let checked = CheckedSyntaxDocumentV2::try_from_hir(raw_rename_document(phase, token))
+                .map_err(|error| format!("{error:?}"))?;
+            let result = resolve_checked_document_v2(checked, &authority);
+            match expected_code {
+                None => {
+                    result
+                        .map_err(|error| format!("valid {phase:?} intent rejected: {error:?}"))?;
+                }
+                Some(expected) => match result {
+                    Err(FrontendTransactionErrorV2::Document(failure))
+                        if failure
+                            .diagnostics()
+                            .iter()
+                            .any(|diagnostic| diagnostic.code() == expected) => {}
+                    other => {
+                        return Err(format!(
+                            "invalid {phase:?} token state must fail with {expected}, got {other:?}"
+                        ));
+                    }
+                },
+            }
+        }
+        Ok(())
     }
 
     /// One `from records as r | project count(*)` document: the legal scalar

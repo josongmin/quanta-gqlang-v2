@@ -137,7 +137,7 @@ fn minimal_authority() -> ClosedFrontendAuthorityV2 {
         .expect("closed authority seals")
 }
 
-/// Build one complete open authority carrying every proof.
+/// Build one open authority carrying every modeled module/relation/graph proof.
 fn complete_open_authority() -> OpenAnalysisAuthorityV2 {
     open_authority_mask(0b111)
 }
@@ -324,6 +324,31 @@ fn complete_open_authority_carries_complete_payloads() {
     assert_eq!(
         reason,
         &quanta_gqlang_v2_planning::NoPlanReasonV2::ValueDeclaration
+    );
+}
+
+#[test]
+fn rename_command_without_symbol_target_authority_is_incomplete() {
+    let authority = complete_open_authority();
+    let source = "rename symbol.one to \"new_name\" | phase=preview | snapshot=\"snap-7\"";
+    let analyzed = analyze_source_document_v2(DOC_SOURCE, source, &authority)
+        .expect("missing rename target authority remains incomplete analysis");
+
+    assert_eq!(analyzed.status().keyword(), "incomplete");
+    assert_eq!(analyzed.order().len(), 1);
+    assert_eq!(analyzed.unresolved().len(), 1);
+    assert_eq!(
+        analyzed.unresolved()[0].code(),
+        OPEN_AUTHORITY_INCOMPLETE_CODE
+    );
+    assert_eq!(analyzed.unresolved()[0].location().source_id, DOC_SOURCE);
+    assert_eq!(
+        blocked_diagnostics(&analyzed.items()[0]),
+        ["pipeline.analysis.missing_symbol_target_authority"]
+    );
+    assert_eq!(
+        analyzed.diagnostics()[0].primary().span,
+        SpanV1::new(0, source.len())
     );
 }
 
