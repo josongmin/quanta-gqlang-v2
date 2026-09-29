@@ -162,6 +162,7 @@ pub enum SourceRootFamilyV3 {
     Catalog,
     Composition,
     Meta,
+    Command,
 }
 
 /// Classify one already-parsed HIR root at the parser-owner boundary.
@@ -180,6 +181,7 @@ pub fn classify_parsed_root_v3(item: &ProgramItemHirV1) -> SourceRootFamilyV3 {
         ProgramItemHirV1::CatalogDecl(_) => SourceRootFamilyV3::Catalog,
         ProgramItemHirV1::Composition(_) => SourceRootFamilyV3::Composition,
         ProgramItemHirV1::Meta(_) => SourceRootFamilyV3::Meta,
+        ProgramItemHirV1::Command(_) => SourceRootFamilyV3::Command,
     }
 }
 

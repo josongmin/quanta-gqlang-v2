@@ -84,7 +84,8 @@ impl CompositionBodyFamilyV2 {
             PlanPolicyV2::Presentation(_) => Some(Self::Explain),
             PlanPolicyV2::Rule(_)
             | PlanPolicyV2::MetaRequireCertified
-            | PlanPolicyV2::Composition(_) => None,
+            | PlanPolicyV2::Composition(_)
+            | PlanPolicyV2::Command(_) => None,
         }
     }
 }

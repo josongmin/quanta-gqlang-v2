@@ -25,6 +25,14 @@ impl HirVisitorV1 for Witness {
             ProgramItemHirV1::Decl(decl) => format!("item:decl:{}", decl.name),
             ProgramItemHirV1::Rule(rule) => format!("item:rule:{}", rule.name),
             ProgramItemHirV1::GraphQuery(graph) => format!("item:{}", graph_witness(graph)),
+            ProgramItemHirV1::Command(command) => format!(
+                "item:command:rename:{}:{}:{:?}:{}:{:?}",
+                command.target.name,
+                command.new_name,
+                command.phase,
+                command.expected_snapshot,
+                command.preview_token,
+            ),
             ProgramItemHirV1::Legality(check) => format!("item:{}", legality_witness(check)),
             ProgramItemHirV1::Presentation(presentation) => {
                 presentation_witness(&presentation.kind)

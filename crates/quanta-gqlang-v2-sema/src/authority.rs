@@ -854,7 +854,58 @@ pub struct ClosedFrontendAuthorityV2 {
     modules: ValidatedModuleAuthorityPartsV2,
     relations: RelationCatalogV2,
     graph_references: GraphReferenceCatalogV2,
+    symbol_targets: BTreeMap<String, ResolvedSymbolTargetV3>,
     budget: FrontendBudgetV2,
+}
+
+/// A host-issued, exact symbol target. Source spelling only selects this sealed
+/// record; runtime must still revalidate it against the admitted snapshot.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResolvedSymbolTargetV3 {
+    selector: String,
+    repo_path: String,
+    symbol_id: String,
+    start_byte: u64,
+    end_byte: u64,
+    location: CheckedLocatedSpanV2,
+}
+
+impl ResolvedSymbolTargetV3 {
+    #[must_use]
+    pub fn selector(&self) -> &str {
+        &self.selector
+    }
+    #[must_use]
+    pub fn repo_path(&self) -> &str {
+        &self.repo_path
+    }
+    #[must_use]
+    pub fn symbol_id(&self) -> &str {
+        &self.symbol_id
+    }
+    #[must_use]
+    pub const fn start_byte(&self) -> u64 {
+        self.start_byte
+    }
+    #[must_use]
+    pub const fn end_byte(&self) -> u64 {
+        self.end_byte
+    }
+    #[must_use]
+    pub const fn location(&self) -> &CheckedLocatedSpanV2 {
+        &self.location
+    }
+}
+
+/// Host-supplied symbol coordinates admitted into one closed authority.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FrontendSymbolTargetInputV3 {
+    pub selector: String,
+    pub repo_path: String,
+    pub symbol_id: String,
+    pub start_byte: u64,
+    pub end_byte: u64,
+    pub location: FrontendAuthorityLocationV2,
 }
 
 /// Raw host source registration accepted by the curated authority builder.
@@ -1157,6 +1208,7 @@ pub struct ClosedFrontendAuthorityBuilderV2 {
     lockfiles: Vec<FrontendLockfileInputV2>,
     relations: Vec<FrontendRelationInputV2>,
     graph_references: Vec<FrontendGraphReferenceInputV2>,
+    symbol_targets: Vec<FrontendSymbolTargetInputV3>,
     catalog_assets: Vec<FrontendCatalogAssetInputV2>,
 }
 
@@ -1192,6 +1244,7 @@ impl ClosedFrontendAuthorityBuilderV2 {
             lockfiles: Vec::new(),
             relations: Vec::new(),
             graph_references: Vec::new(),
+            symbol_targets: Vec::new(),
             catalog_assets: Vec::new(),
         })
     }
@@ -1204,6 +1257,11 @@ impl ClosedFrontendAuthorityBuilderV2 {
     /// Add one graph selector declaration. Validation remains atomic until finish.
     pub fn add_graph_reference(&mut self, reference: FrontendGraphReferenceInputV2) {
         self.graph_references.push(reference);
+    }
+
+    /// Add an exact host-issued code symbol. Duplicates reject at `finish`.
+    pub fn add_symbol_target(&mut self, target: FrontendSymbolTargetInputV3) {
+        self.symbol_targets.push(target);
     }
 
     /// Add one opaque external catalog asset. Validation remains atomic until
@@ -1362,7 +1420,72 @@ impl ClosedFrontendAuthorityBuilderV2 {
             .collect::<Result<Vec<_>, FrontendAuthorityErrorV2>>()?;
         let graph_references =
             GraphReferenceCatalogV2::try_new(graph_inputs, &host_sources, profile)?;
-        ClosedFrontendAuthorityV2::try_new(modules, relations, graph_references, self.budget)
+        let max_symbol_bytes =
+            usize::try_from(self.budget.max_authority_bytes()).unwrap_or(usize::MAX);
+        let max_symbol_string =
+            usize::try_from(self.budget.max_authority_string_bytes()).unwrap_or(usize::MAX);
+        let mut authority =
+            ClosedFrontendAuthorityV2::try_new(modules, relations, graph_references, self.budget)?;
+        let mut symbol_bytes = 0usize;
+        for target in self.symbol_targets {
+            if target.selector.is_empty()
+                || target.repo_path.is_empty()
+                || target.symbol_id.is_empty()
+                || target.start_byte >= target.end_byte
+            {
+                return Err(configuration_failure(
+                    "sema.invalid_symbol_target",
+                    "symbol target requires nonempty selector/path/id and a nonempty byte span",
+                ));
+            }
+            let strings = [&target.selector, &target.repo_path, &target.symbol_id];
+            if strings.iter().any(|value| value.len() > max_symbol_string) {
+                return Err(configuration_failure(
+                    "sema.symbol_target_budget_exceeded",
+                    "symbol target string exceeds authority limit",
+                ));
+            }
+            let entry_bytes = strings
+                .iter()
+                .try_fold(16usize, |acc, value| acc.checked_add(value.len()))
+                .ok_or_else(|| {
+                    configuration_failure(
+                        "sema.symbol_target_budget_exceeded",
+                        "symbol target size overflow",
+                    )
+                })?;
+            symbol_bytes = symbol_bytes.checked_add(entry_bytes).ok_or_else(|| {
+                configuration_failure(
+                    "sema.symbol_target_budget_exceeded",
+                    "symbol target size overflow",
+                )
+            })?;
+            if symbol_bytes > max_symbol_bytes {
+                return Err(configuration_failure(
+                    "sema.symbol_target_budget_exceeded",
+                    "symbol target catalog exceeds authority limit",
+                ));
+            }
+            let resolved = ResolvedSymbolTargetV3 {
+                selector: target.selector.clone(),
+                repo_path: target.repo_path,
+                symbol_id: target.symbol_id,
+                start_byte: target.start_byte,
+                end_byte: target.end_byte,
+                location: target.location.check(&host_sources)?,
+            };
+            if authority
+                .symbol_targets
+                .insert(target.selector, resolved)
+                .is_some()
+            {
+                return Err(configuration_failure(
+                    "sema.duplicate_symbol_target",
+                    "duplicate symbol target selector",
+                ));
+            }
+        }
+        Ok(authority)
     }
 }
 
@@ -1407,6 +1530,7 @@ impl ClosedFrontendAuthorityV2 {
             modules,
             relations,
             graph_references,
+            symbol_targets: BTreeMap::new(),
             budget,
         })
     }
@@ -1425,6 +1549,11 @@ impl ClosedFrontendAuthorityV2 {
     #[must_use]
     pub const fn graph_references(&self) -> &GraphReferenceCatalogV2 {
         &self.graph_references
+    }
+    /// Resolve a source spelling to an exact host-issued symbol coordinate.
+    #[must_use]
+    pub fn symbol_target(&self, selector: &str) -> Option<&ResolvedSymbolTargetV3> {
+        self.symbol_targets.get(selector)
     }
     /// Frontend budget.
     #[must_use]

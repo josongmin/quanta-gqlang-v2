@@ -278,6 +278,11 @@ impl CompiledItemV2 {
 /// the document rule program and never duplicates its plan.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PlannedItemV2 {
+    /// Exact-target rename command with a host-grant-dependent effect.
+    Command {
+        item_id: SemanticItemIdV2,
+        plan: SemanticPlanV2,
+    },
     /// Relational query/relation item.
     Relation {
         /// Canonical item identity.
@@ -330,7 +335,8 @@ impl PlannedItemV2 {
     #[must_use]
     pub const fn item_id(&self) -> SemanticItemIdV2 {
         match self {
-            Self::Relation { item_id, .. }
+            Self::Command { item_id, .. }
+            | Self::Relation { item_id, .. }
             | Self::Graph { item_id, .. }
             | Self::Check { item_id, .. }
             | Self::Presentation { item_id, .. }
@@ -345,7 +351,8 @@ impl PlannedItemV2 {
     #[must_use]
     pub const fn plan(&self) -> Option<&SemanticPlanV2> {
         match self {
-            Self::Relation { plan, .. }
+            Self::Command { plan, .. }
+            | Self::Relation { plan, .. }
             | Self::Graph { plan, .. }
             | Self::Check { plan, .. }
             | Self::Presentation { plan, .. }
@@ -360,7 +367,8 @@ impl PlannedItemV2 {
     pub const fn rule_member(&self) -> Option<&RuleProgramMemberV2> {
         match self {
             Self::RuleMember(member) => Some(member),
-            Self::Relation { .. }
+            Self::Command { .. }
+            | Self::Relation { .. }
             | Self::Graph { .. }
             | Self::Check { .. }
             | Self::Presentation { .. }
@@ -1340,6 +1348,15 @@ fn run_item(
         ));
     };
     match item {
+        SemanticItemV2::Command(command) => {
+            let plan = planning_plan(
+                document,
+                planning,
+                id,
+                &SemanticPlanInputV2::Command(command.clone()),
+            )?;
+            Ok(planned_run(PlannedItemV2::Command { item_id: id, plan }))
+        }
         SemanticItemV2::Relation(_) => {
             let lowered = algebra
                 .lower_relation_item(id)
@@ -1626,6 +1643,7 @@ fn planned_run(planned: PlannedItemV2) -> ItemRunV2 {
 
 fn execution_identity(planned: &PlannedItemV2) -> Option<(ExecutionFamilyV3, &SemanticPlanV2)> {
     match planned {
+        PlannedItemV2::Command { plan, .. } => Some((ExecutionFamilyV3::Command, plan)),
         PlannedItemV2::Relation { plan, .. } => Some((ExecutionFamilyV3::Relation, plan)),
         PlannedItemV2::Graph { plan, .. } => Some((ExecutionFamilyV3::Graph, plan)),
         PlannedItemV2::Check { plan, .. } => Some((ExecutionFamilyV3::Check, plan)),
@@ -1749,6 +1767,7 @@ fn zero_location(source_id: SourceIdV2) -> LocatedSpanV2 {
 /// fabricated byte 0.
 fn item_location(item: &SemanticItemV2) -> Option<LocatedSpanV2> {
     match item {
+        SemanticItemV2::Command(command) => Some(command.location().location()),
         SemanticItemV2::Relation(relation) => Some(relation.location().location()),
         SemanticItemV2::Graph(graph) => Some(graph.location().location()),
         SemanticItemV2::Check(check) => Some(check.rule().location().location()),
@@ -1920,6 +1939,7 @@ impl<'a> DocumentMembershipV2<'a> {
                     matches!(
                         item,
                         SemanticItemV2::Relation(_)
+                            | SemanticItemV2::Command(_)
                             | SemanticItemV2::Graph(_)
                             | SemanticItemV2::Check(_)
                             | SemanticItemV2::Presentation(_)

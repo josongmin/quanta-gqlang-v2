@@ -126,6 +126,7 @@ fn compiled_item_label(item: &CompiledItemV2) -> &'static str {
         CompiledItemV2::Planned(planned) => match planned.as_ref() {
             PlannedItemV2::Relation { .. } => "planned-relation",
             PlannedItemV2::Graph { .. } => "planned-graph",
+            PlannedItemV2::Command { .. } => "planned-command",
             PlannedItemV2::Check { .. } => "planned-check",
             PlannedItemV2::Presentation { .. } => "planned-presentation",
             PlannedItemV2::Composition { .. } => "planned-composition",
@@ -680,6 +681,7 @@ fn execution_closed_vocabulary_api(
     policy: ExecutionPolicyFamilyV3,
 ) {
     exhaustive_unit_enum!(family;
+        ExecutionFamilyV3::Command,
         ExecutionFamilyV3::Relation, ExecutionFamilyV3::Graph, ExecutionFamilyV3::Check,
         ExecutionFamilyV3::Presentation, ExecutionFamilyV3::Composition,
         ExecutionFamilyV3::MetaRequireCertified, ExecutionFamilyV3::RuleProgram);
@@ -692,9 +694,11 @@ fn execution_closed_vocabulary_api(
         ExecutionEvidenceV3::None, ExecutionEvidenceV3::SourceLocation,
         ExecutionEvidenceV3::WitnessPayload, ExecutionEvidenceV3::ProofTree);
     exhaustive_unit_enum!(effect;
+        ExecutionEffectV3::MutationRequiresGrant,
         ExecutionEffectV3::ReadOnly, ExecutionEffectV3::ProofEvidenceOnly,
         ExecutionEffectV3::ExportOnly, ExecutionEffectV3::MutationForbidden);
     exhaustive_unit_enum!(policy;
+        ExecutionPolicyFamilyV3::Command,
         ExecutionPolicyFamilyV3::Relational, ExecutionPolicyFamilyV3::Graph,
         ExecutionPolicyFamilyV3::Check, ExecutionPolicyFamilyV3::Presentation,
         ExecutionPolicyFamilyV3::RuleProgram, ExecutionPolicyFamilyV3::MetaRequireCertified,

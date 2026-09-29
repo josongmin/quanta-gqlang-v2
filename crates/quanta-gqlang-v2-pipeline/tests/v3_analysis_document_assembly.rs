@@ -299,6 +299,7 @@ fn complete_open_authority_carries_complete_payloads() {
                 PlannedItemV2::Presentation { .. } => "presentation",
                 PlannedItemV2::Relation { .. }
                 | PlannedItemV2::Graph { .. }
+                | PlannedItemV2::Command { .. }
                 | PlannedItemV2::Check { .. }
                 | PlannedItemV2::Composition { .. }
                 | PlannedItemV2::MetaRequireCertified { .. } => "planned",

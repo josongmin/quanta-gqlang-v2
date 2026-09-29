@@ -119,6 +119,8 @@ pub enum EffectClassV2 {
     /// Mutation-forbidden guard marker. Unreachable from a sealed input; kept so
     /// the frontend's explicit mutation prohibition has one stable spelling.
     MutationForbidden,
+    /// An apply intent requiring an independent runtime mutation grant.
+    MutationRequiresGrant,
 }
 
 impl EffectClassV2 {
@@ -130,6 +132,7 @@ impl EffectClassV2 {
             Self::ProofEvidenceOnly => "proof_evidence_only",
             Self::ExportOnly => "export_only",
             Self::MutationForbidden => "mutation_forbidden",
+            Self::MutationRequiresGrant => "mutation_requires_grant",
         }
     }
 }

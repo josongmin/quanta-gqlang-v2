@@ -17,7 +17,7 @@ use crate::expr::{
 use crate::item::{
     CatalogDeclHirV1, CatalogPayloadV1, CompositionBodyV1, CompositionHirV1, CompositionProducerV1,
     ExplainHirV1, GraphQueryHirV1, LegalityHirV1, MetaHirV1, PresentationHirV1, ProgramItemHirV1,
-    SampleHirV1, ViewBodyV1,
+    RenameCommandHirV3, SampleHirV1, ViewBodyV1,
 };
 use crate::relation::{RelationExprHirV1, RelationExprKindV1};
 use crate::shape::{ResultShapeHirV1, ResultShapeKindV1};
@@ -102,6 +102,9 @@ pub trait HirVisitorV1 {
     /// Visit a meta directive item.
     fn visit_meta(&mut self, node: &MetaHirV1) {
         walk_meta(self, node);
+    }
+    fn visit_command(&mut self, node: &RenameCommandHirV3) {
+        self.visit_auxiliary_span(node.target.span);
     }
 }
 
@@ -287,6 +290,7 @@ pub fn walk_item<V: HirVisitorV1 + ?Sized>(visitor: &mut V, node: &ProgramItemHi
         ProgramItemHirV1::CatalogDecl(decl) => visitor.visit_catalog_decl(decl),
         ProgramItemHirV1::Composition(comp) => visitor.visit_composition(comp),
         ProgramItemHirV1::Meta(meta) => visitor.visit_meta(meta),
+        ProgramItemHirV1::Command(command) => visitor.visit_command(command),
     }
 }
 

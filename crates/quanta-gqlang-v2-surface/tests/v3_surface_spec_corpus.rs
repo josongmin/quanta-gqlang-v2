@@ -42,6 +42,7 @@ fn kind(item: &ProgramItemHirV1) -> &'static str {
         ProgramItemHirV1::CatalogDecl(_) => "catalog_decl",
         ProgramItemHirV1::Composition(_) => "composition",
         ProgramItemHirV1::Meta(_) => "meta",
+        ProgramItemHirV1::Command(_) => "command",
     }
 }
 

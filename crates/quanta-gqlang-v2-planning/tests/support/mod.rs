@@ -274,6 +274,7 @@ pub(crate) fn item_location(item: &SemanticItemV2) -> Option<CheckedLocatedSpanV
         SemanticItemV2::Declaration(declaration) => Some(declaration.body().location().clone()),
         SemanticItemV2::Composition(composition) => Some(composition.location().clone()),
         SemanticItemV2::Meta(meta) => Some(meta.location().clone()),
+        SemanticItemV2::Command(command) => Some(command.location().clone()),
     }
 }
 
@@ -295,7 +296,8 @@ pub(crate) fn relational_policy(planned: &SemanticPlanV2) -> Option<(u32, Effect
         | PlanPolicyV2::Presentation(_)
         | PlanPolicyV2::Rule(_)
         | PlanPolicyV2::MetaRequireCertified
-        | PlanPolicyV2::Composition(_) => None,
+        | PlanPolicyV2::Composition(_)
+        | PlanPolicyV2::Command(_) => None,
     }
 }
 
@@ -309,7 +311,8 @@ pub(crate) fn graph_policy(planned: &SemanticPlanV2) -> Option<&GraphWitnessRete
         | PlanPolicyV2::Presentation(_)
         | PlanPolicyV2::Rule(_)
         | PlanPolicyV2::MetaRequireCertified
-        | PlanPolicyV2::Composition(_) => None,
+        | PlanPolicyV2::Composition(_)
+        | PlanPolicyV2::Command(_) => None,
     }
 }
 
@@ -322,7 +325,8 @@ pub(crate) fn check_policy(planned: &SemanticPlanV2) -> Option<&CheckPolicyV2> {
         | PlanPolicyV2::Presentation(_)
         | PlanPolicyV2::Rule(_)
         | PlanPolicyV2::MetaRequireCertified
-        | PlanPolicyV2::Composition(_) => None,
+        | PlanPolicyV2::Composition(_)
+        | PlanPolicyV2::Command(_) => None,
     }
 }
 
@@ -335,7 +339,8 @@ pub(crate) fn rule_policy(planned: &SemanticPlanV2) -> Option<&RuleProgramPolicy
         | PlanPolicyV2::Check(_)
         | PlanPolicyV2::Presentation(_)
         | PlanPolicyV2::MetaRequireCertified
-        | PlanPolicyV2::Composition(_) => None,
+        | PlanPolicyV2::Composition(_)
+        | PlanPolicyV2::Command(_) => None,
     }
 }
 

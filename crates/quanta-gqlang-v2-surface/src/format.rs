@@ -158,6 +158,7 @@ pub fn format_item(item: &ProgramItemHirV1) -> String {
         ProgramItemHirV1::CatalogDecl(d) => format_catalog_decl(d),
         ProgramItemHirV1::Composition(c) => format_composition(c),
         ProgramItemHirV1::Meta(m) => format_meta(m),
+        ProgramItemHirV1::Command(command) => format_rename(command),
     }
 }
 
@@ -227,7 +228,8 @@ fn validate_raw_representability(item: &ProgramItemHirV1) -> Result<(), FormatDi
         }
         ProgramItemHirV1::Decl(_)
         | ProgramItemHirV1::Presentation(_)
-        | ProgramItemHirV1::Meta(_) => {}
+        | ProgramItemHirV1::Meta(_)
+        | ProgramItemHirV1::Command(_) => {}
     }
     while let Some(frame) = stack.pop() {
         match frame {
@@ -690,6 +692,24 @@ fn format_literal(lit: &LiteralV1) -> String {
         LiteralV1::Bool(false) => "false".to_string(),
         LiteralV1::Null => "null".to_string(),
     }
+}
+
+fn format_rename(command: &quanta_gqlang_v2_hir::RenameCommandHirV3) -> String {
+    let phase = match command.phase {
+        quanta_gqlang_v2_hir::RenamePhaseV3::Preview => "preview",
+        quanta_gqlang_v2_hir::RenamePhaseV3::Apply => "apply",
+    };
+    let mut out = format!(
+        "rename {} to \"{}\" | phase={} | snapshot=\"{}\"",
+        command.target.name,
+        escape_str(&command.new_name),
+        phase,
+        escape_str(&command.expected_snapshot),
+    );
+    if let Some(token) = &command.preview_token {
+        out.push_str(&format!(" | preview_token=\"{}\"", escape_str(token)));
+    }
+    out
 }
 
 fn format_bool(pred: &BoolExprHirV1) -> String {

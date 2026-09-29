@@ -20,13 +20,13 @@ use quanta_gqlang_v2_sema::{
     EmitModeV1, EvidenceModeV1, ExportFormatV1, ExpressionTypeStateV2, GraphDirectionV2,
     GraphQueryKindV1, GraphReferenceKindV2, GraphReferenceRoleV2, JoinModeV2,
     LogicalQuantifierKindV2, NullOrderV2, RelationAuthorityV2, RelationExistsPolarityV2,
-    RelationOutputContractV2, ResolvedCallTargetV2, ResolvedCompositionBodyV2,
+    RelationOutputContractV2, RenamePhaseV3, ResolvedCallTargetV2, ResolvedCompositionBodyV2,
     ResolvedCompositionProducerV2, ResolvedCompositionV2, ResolvedExplainTargetV2,
     ResolvedGraphTargetV2, ResolvedGraphUseV2, ResolvedPresentationKindV2,
-    ResolvedRelationSourceKindV2, SampleModeV1, ScalarTyV1, SemanticDocumentV2, SemanticItemIdV2,
-    ShowCategoryV1, SortDirectionV2, SourceIdV2, SourceQualifiedNodeIdV2, TruthModeV1,
-    TypedCallArgumentV2, TypedExprShapeV2, TypedExprV2, TypedLiteralFactV2, TypedLiteralValueV2,
-    ValueTypeV1,
+    ResolvedRelationSourceKindV2, ResolvedRenameCommandV3, SampleModeV1, ScalarTyV1,
+    SemanticDocumentV2, SemanticItemIdV2, ShowCategoryV1, SortDirectionV2, SourceIdV2,
+    SourceQualifiedNodeIdV2, TruthModeV1, TypedCallArgumentV2, TypedExprShapeV2, TypedExprV2,
+    TypedLiteralFactV2, TypedLiteralValueV2, ValueTypeV1,
 };
 use sha2::{Digest as _, Sha256};
 
@@ -206,6 +206,7 @@ impl ExecutionDocumentV3 {
 /// Closed top-level execution family.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ExecutionFamilyV3 {
+    Command,
     Relation,
     Graph,
     Check,
@@ -215,6 +216,97 @@ pub enum ExecutionFamilyV3 {
     /// Reserved wire vocabulary. Current compilation emits neither rule
     /// members nor the document rule program as V3 execution items.
     RuleProgram,
+}
+
+/// Exact host-issued code symbol carried by a compiled rename intent.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExecutionSymbolTargetV3 {
+    selector: String,
+    repo_path: String,
+    symbol_id: String,
+    start_byte: u64,
+    end_byte: u64,
+}
+impl ExecutionSymbolTargetV3 {
+    #[must_use]
+    pub fn selector(&self) -> &str {
+        &self.selector
+    }
+    #[must_use]
+    pub fn repo_path(&self) -> &str {
+        &self.repo_path
+    }
+    #[must_use]
+    pub fn symbol_id(&self) -> &str {
+        &self.symbol_id
+    }
+    #[must_use]
+    pub const fn start_byte(&self) -> u64 {
+        self.start_byte
+    }
+    #[must_use]
+    pub const fn end_byte(&self) -> u64 {
+        self.end_byte
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExecutionCommandPhaseV3 {
+    Preview,
+    Apply,
+}
+
+/// Source-bound rename intent. `expected_snapshot` and `preview_token` are
+/// untrusted preconditions; this DTO never conveys a mutation grant.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ExecutionRenameCommandV3 {
+    target: ExecutionSymbolTargetV3,
+    new_name: String,
+    phase: ExecutionCommandPhaseV3,
+    expected_snapshot: String,
+    preview_token: Option<String>,
+}
+impl ExecutionRenameCommandV3 {
+    #[must_use]
+    pub const fn target(&self) -> &ExecutionSymbolTargetV3 {
+        &self.target
+    }
+    #[must_use]
+    pub fn new_name(&self) -> &str {
+        &self.new_name
+    }
+    #[must_use]
+    pub const fn phase(&self) -> ExecutionCommandPhaseV3 {
+        self.phase
+    }
+    #[must_use]
+    pub fn expected_snapshot(&self) -> &str {
+        &self.expected_snapshot
+    }
+    #[must_use]
+    pub fn preview_token(&self) -> Option<&str> {
+        self.preview_token.as_deref()
+    }
+}
+
+fn project_command(command: &ResolvedRenameCommandV3) -> ExecutionRenameCommandV3 {
+    let target = command.target();
+    ExecutionRenameCommandV3 {
+        target: ExecutionSymbolTargetV3 {
+            selector: target.selector().to_owned(),
+            repo_path: target.repo_path().to_owned(),
+            symbol_id: target.symbol_id().to_owned(),
+            start_byte: target.start_byte(),
+            end_byte: target.end_byte(),
+        },
+        new_name: command.new_name().to_owned(),
+        phase: match command.phase() {
+            RenamePhaseV3::Preview => ExecutionCommandPhaseV3::Preview,
+            RenamePhaseV3::Apply => ExecutionCommandPhaseV3::Apply,
+        },
+        expected_snapshot: command.expected_snapshot().to_owned(),
+        preview_token: command.preview_token().map(str::to_owned),
+    }
 }
 
 /// A checked catalog identity. The variant supplies the namespace; a host
@@ -393,6 +485,7 @@ impl ExecutionFamilyV3 {
     #[must_use]
     pub const fn keyword(self) -> &'static str {
         match self {
+            Self::Command => "command",
             Self::Relation => "relation",
             Self::Graph => "graph",
             Self::Check => "check",
@@ -414,6 +507,7 @@ pub struct ExecutionItemV3 {
     check: Option<ExecutionCheckV3>,
     presentation: Option<ExecutionPresentationKindV3>,
     composition: Option<ExecutionCompositionV3>,
+    command: Option<ExecutionRenameCommandV3>,
     plan: ExecutionPlanV3,
 }
 
@@ -436,6 +530,16 @@ impl ExecutionItemV3 {
             check,
             presentation,
             composition,
+            command: match plan.policy() {
+                PlanPolicyV2::Command(command) => Some(project_command(command)),
+                PlanPolicyV2::Relational { .. }
+                | PlanPolicyV2::Graph(_)
+                | PlanPolicyV2::Check(_)
+                | PlanPolicyV2::Presentation(_)
+                | PlanPolicyV2::Rule(_)
+                | PlanPolicyV2::MetaRequireCertified
+                | PlanPolicyV2::Composition(_) => None,
+            },
             plan: project_plan(plan),
         }
     }
@@ -467,6 +571,10 @@ impl ExecutionItemV3 {
     #[must_use]
     pub const fn composition(&self) -> Option<&ExecutionCompositionV3> {
         self.composition.as_ref()
+    }
+    #[must_use]
+    pub const fn command(&self) -> Option<&ExecutionRenameCommandV3> {
+        self.command.as_ref()
     }
     /// Producer-derived plan summary and authority; callers cannot replace it.
     /// Detailed semantic policy and the rule program are outside this DTO.
@@ -534,6 +642,7 @@ pub enum ExecutionEffectV3 {
     ProofEvidenceOnly,
     ExportOnly,
     MutationForbidden,
+    MutationRequiresGrant,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ExecutionPolicyFamilyV3 {
@@ -544,6 +653,7 @@ pub enum ExecutionPolicyFamilyV3 {
     RuleProgram,
     MetaRequireCertified,
     Composition,
+    Command,
 }
 impl ExecutionPolicyFamilyV3 {
     #[must_use]
@@ -556,6 +666,7 @@ impl ExecutionPolicyFamilyV3 {
             Self::RuleProgram => "rule_program",
             Self::MetaRequireCertified => "meta_require_certified",
             Self::Composition => "composition",
+            Self::Command => "command",
         }
     }
 }
@@ -860,6 +971,7 @@ fn project_plan(plan: &SemanticPlanV2) -> ExecutionPlanV3 {
         EffectClassV2::ProofEvidenceOnly => ExecutionEffectV3::ProofEvidenceOnly,
         EffectClassV2::ExportOnly => ExecutionEffectV3::ExportOnly,
         EffectClassV2::MutationForbidden => ExecutionEffectV3::MutationForbidden,
+        EffectClassV2::MutationRequiresGrant => ExecutionEffectV3::MutationRequiresGrant,
     };
     let policy_family = match plan.policy() {
         PlanPolicyV2::Relational { .. } => ExecutionPolicyFamilyV3::Relational,
@@ -869,6 +981,7 @@ fn project_plan(plan: &SemanticPlanV2) -> ExecutionPlanV3 {
         PlanPolicyV2::Rule(_) => ExecutionPolicyFamilyV3::RuleProgram,
         PlanPolicyV2::MetaRequireCertified => ExecutionPolicyFamilyV3::MetaRequireCertified,
         PlanPolicyV2::Composition(_) => ExecutionPolicyFamilyV3::Composition,
+        PlanPolicyV2::Command(_) => ExecutionPolicyFamilyV3::Command,
     };
     ExecutionPlanV3 {
         authority,
@@ -2360,7 +2473,7 @@ const SOURCE_DIGEST_SCHEMA_VERSION: u32 = 3;
 // an independent revision. Schema 6 adds flat multi-EXISTS condition payloads
 // to the earlier scoped SAMPLE, graph-query, and witness-policy revisions.
 // The source byte stream itself did not change, so its stable schema remains 3.
-const CONTRACT_DIGEST_SCHEMA_VERSION: u32 = 7;
+const CONTRACT_DIGEST_SCHEMA_VERSION: u32 = 8;
 
 /// Digest of the raw UTF-8 source bytes only.
 fn digest_source_bytes(source: &[u8]) -> ExecutionDigestV3 {
@@ -2375,7 +2488,7 @@ fn digest_source_bytes(source: &[u8]) -> ExecutionDigestV3 {
 /// Digest of the canonical DTO encoding only.
 fn digest_contract(source_id: SourceIdV2, items: &[ExecutionItemV3]) -> ExecutionDigestV3 {
     let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.contract.v7");
+    put_str(&mut bytes, "qglang.execution.contract.v8");
     put_u32(&mut bytes, CONTRACT_DIGEST_SCHEMA_VERSION);
     put_u32(&mut bytes, source_id.raw());
     put_usize(&mut bytes, items.len());
@@ -2418,6 +2531,13 @@ fn digest_contract(source_id: SourceIdV2, items: &[ExecutionItemV3]) -> Executio
             }
             None => put_u8(&mut bytes, 0),
         }
+        match &item.command {
+            Some(command) => {
+                put_u8(&mut bytes, 1);
+                put_command(&mut bytes, command);
+            }
+            None => put_u8(&mut bytes, 0),
+        }
     }
     ExecutionDigestV3(sha256(&bytes))
 }
@@ -2429,7 +2549,7 @@ fn digest_qualification(
     contract_digest: ExecutionDigestV3,
 ) -> ExecutionDigestV3 {
     let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.qualification.v7");
+    put_str(&mut bytes, "qglang.execution.qualification.v8");
     put_u32(&mut bytes, CONTRACT_DIGEST_SCHEMA_VERSION);
     put_u32(&mut bytes, source_id.raw());
     bytes.extend_from_slice(source_digest.as_bytes());
@@ -2437,8 +2557,33 @@ fn digest_qualification(
     ExecutionDigestV3(sha256(&bytes))
 }
 
+fn put_command(out: &mut Vec<u8>, command: &ExecutionRenameCommandV3) {
+    put_u8(
+        out,
+        match command.phase {
+            ExecutionCommandPhaseV3::Preview => 0,
+            ExecutionCommandPhaseV3::Apply => 1,
+        },
+    );
+    put_str(out, &command.target.selector);
+    put_str(out, &command.target.repo_path);
+    put_str(out, &command.target.symbol_id);
+    out.extend_from_slice(&command.target.start_byte.to_be_bytes());
+    out.extend_from_slice(&command.target.end_byte.to_be_bytes());
+    put_str(out, &command.new_name);
+    put_str(out, &command.expected_snapshot);
+    match &command.preview_token {
+        Some(token) => {
+            put_u8(out, 1);
+            put_str(out, token);
+        }
+        None => put_u8(out, 0),
+    }
+}
+
 const fn family_tag(value: ExecutionFamilyV3) -> u8 {
     match value {
+        ExecutionFamilyV3::Command => 7,
         ExecutionFamilyV3::Relation => 0,
         ExecutionFamilyV3::Graph => 1,
         ExecutionFamilyV3::Check => 2,
@@ -2478,6 +2623,7 @@ const fn effect_tag(value: ExecutionEffectV3) -> u8 {
         ExecutionEffectV3::ProofEvidenceOnly => 1,
         ExecutionEffectV3::ExportOnly => 2,
         ExecutionEffectV3::MutationForbidden => 3,
+        ExecutionEffectV3::MutationRequiresGrant => 4,
     }
 }
 
@@ -2490,6 +2636,7 @@ const fn policy_family_tag(value: ExecutionPolicyFamilyV3) -> u8 {
         ExecutionPolicyFamilyV3::RuleProgram => 4,
         ExecutionPolicyFamilyV3::MetaRequireCertified => 5,
         ExecutionPolicyFamilyV3::Composition => 6,
+        ExecutionPolicyFamilyV3::Command => 7,
     }
 }
 
@@ -3372,8 +3519,8 @@ mod tests {
             vec![relation_item()],
         );
         assert_eq!(document.source_digest_schema_version(), 3);
-        assert_eq!(document.contract_digest_schema_version(), 7);
-        assert_eq!(document.qualification_digest_schema_version(), 7);
+        assert_eq!(document.contract_digest_schema_version(), 8);
+        assert_eq!(document.qualification_digest_schema_version(), 8);
         // Golden pins: any canonical-encoding change (tag swap, field reorder,
         // domain edit) must update these deliberately, never silently.
         assert_eq!(
@@ -3382,17 +3529,17 @@ mod tests {
         );
         assert_eq!(
             document.contract_digest().to_hex(),
-            "0f51bb8f09a1d9128b83b2158a27964b9a7517cfed85dcd44d353067f4ea487a"
+            "c076e609614a771112e3d36e697daefc789d930c4005e66d165dafafe4250444"
         );
         assert_eq!(
             document.qualification_digest().to_hex(),
-            "c10f451dd3f42660e80c8daaa969c0e1df1d90d450ab30d475c6ec86aafbc3fb"
+            "6d0e03a1a037aa4fb29c281c5e1e037ec3f06e274f26179f230345f93978d521"
         );
     }
 
     #[test]
     fn independent_whole_stream_oracle_pins_document_header_items_and_order() {
-        // Handwritten schema-7 stream for two payload-free certified items.
+        // Handwritten schema-8 stream for two payload-free certified items.
         // This does not call any production tag or put_* helper. The SHA values
         // were computed independently from these bytes with Python hashlib.
         let plan = ExecutionPlanV3 {
@@ -3410,6 +3557,7 @@ mod tests {
             check: None,
             presentation: None,
             composition: None,
+            command: None,
             plan: plan.clone(),
         };
         let second = ExecutionItemV3 {
@@ -3420,6 +3568,7 @@ mod tests {
             check: None,
             presentation: None,
             composition: None,
+            command: None,
             plan,
         };
         let source = b"require certified";
@@ -3438,18 +3587,18 @@ mod tests {
         .concat();
         let contract_stream = [
             &[0, 0, 0, 0, 0, 0, 0, 28][..],
-            b"qglang.execution.contract.v7",
-            &[0, 0, 0, 7, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 2],
+            b"qglang.execution.contract.v8",
+            &[0, 0, 0, 8, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 2],
             // item 7: source, node, family, authority, determinism,
-            // evidence, effect, policy, five absent payloads.
-            &[0, 0, 0, 9, 0, 0, 0, 7, 5, 1, 0, 0, 0, 5, 0, 0, 0, 0, 0],
-            &[0, 0, 0, 9, 0, 0, 0, 8, 5, 1, 0, 0, 0, 5, 0, 0, 0, 0, 0],
+            // evidence, effect, policy, six absent payloads.
+            &[0, 0, 0, 9, 0, 0, 0, 7, 5, 1, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
+            &[0, 0, 0, 9, 0, 0, 0, 8, 5, 1, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0],
         ]
         .concat();
         let qualification_stream = [
             &[0, 0, 0, 0, 0, 0, 0, 33][..],
-            b"qglang.execution.qualification.v7",
-            &[0, 0, 0, 7, 0, 0, 0, 9],
+            b"qglang.execution.qualification.v8",
+            &[0, 0, 0, 8, 0, 0, 0, 9],
             Sha256::digest(&source_stream).as_slice(),
             Sha256::digest(&contract_stream).as_slice(),
         ]
@@ -3463,12 +3612,12 @@ mod tests {
             (
                 &contract_stream,
                 document.contract_digest(),
-                "70e54b17195f353d64adfd9af5219bc13248436c282cc3f7385d8a03cac4597e",
+                "728b35c8e47e9c04f18fa2738f120bd630b8b945f89f5343fc0dc603dd967366",
             ),
             (
                 &qualification_stream,
                 document.qualification_digest(),
-                "cea359dad01cf77e9fd575c7c05d5d75f998d52c579c147d85767e62561a4e8c",
+                "e147b89a6e6a8912dfb4a455b268a96b7bbf1da6f62a0e2ea70dde7dd5d35dcc",
             ),
         ];
         for (independent_stream, production_digest, pinned_sha) in expected {
@@ -3808,6 +3957,7 @@ mod tests {
             check: None,
             presentation: None,
             composition: None,
+            command: None,
             plan: plan(),
         }
     }
@@ -3835,6 +3985,7 @@ mod tests {
                 body_relation: None,
                 body: ExecutionCompositionBodyV3::Relation,
             }),
+            command: None,
             plan: plan(),
         }
     }

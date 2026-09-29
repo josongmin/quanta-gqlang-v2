@@ -57,6 +57,8 @@ pub enum ProgramItemHirV1 {
     Composition(Box<CompositionHirV1>),
     /// A meta directive (USE PACK / REQUIRE CERTIFIED).
     Meta(Box<MetaHirV1>),
+    /// Source-authored rename intent. Runtime snapshot and mutation grants remain host-owned.
+    Command(Box<RenameCommandHirV3>),
 }
 
 impl ProgramItemHirV1 {
@@ -73,6 +75,7 @@ impl ProgramItemHirV1 {
             Self::CatalogDecl(node) => node.id,
             Self::Composition(node) => node.id,
             Self::Meta(node) => node.id,
+            Self::Command(node) => node.id,
         }
     }
 
@@ -89,6 +92,7 @@ impl ProgramItemHirV1 {
             Self::CatalogDecl(node) => node.span,
             Self::Composition(node) => node.span,
             Self::Meta(node) => node.span,
+            Self::Command(node) => node.span,
         }
     }
 }
@@ -144,6 +148,32 @@ impl From<CompositionHirV1> for ProgramItemHirV1 {
 impl From<MetaHirV1> for ProgramItemHirV1 {
     fn from(node: MetaHirV1) -> Self {
         Self::Meta(Box::new(node))
+    }
+}
+
+/// A rename command's source-level phase. Apply requires an issued preview token.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RenamePhaseV3 {
+    Preview,
+    Apply,
+}
+
+/// Source-authored rename intent. `target` must resolve through the closed symbol
+/// catalog; its spelling is never an executable target by itself.
+#[derive(Clone, Debug, PartialEq)]
+pub struct RenameCommandHirV3 {
+    pub id: HirNodeIdV1,
+    pub span: SpanV1,
+    pub target: GraphRefV1,
+    pub new_name: String,
+    pub phase: RenamePhaseV3,
+    pub expected_snapshot: String,
+    pub preview_token: Option<String>,
+}
+
+impl From<RenameCommandHirV3> for ProgramItemHirV1 {
+    fn from(node: RenameCommandHirV3) -> Self {
+        Self::Command(Box::new(node))
     }
 }
 

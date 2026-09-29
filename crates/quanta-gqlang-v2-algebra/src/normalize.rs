@@ -221,6 +221,7 @@ fn discover_owned_relations<'a>(
             }
         }
         SemanticItemV2::Graph(_)
+        | SemanticItemV2::Command(_)
         | SemanticItemV2::Check(_)
         | SemanticItemV2::Presentation(_)
         | SemanticItemV2::Declaration(_)

@@ -1,4 +1,4 @@
-//! Independent schema-7 fixtures from docs/contracts/frontend-execution-v3.md.
+//! Independent schema-8 fixtures from docs/contracts/frontend-execution-v3.md.
 //!
 //! Expected bytes use only fixed-width primitives and literal tags. They never
 //! read DTO fields or call production tag/writer helpers. These synthetic DTOs
@@ -493,18 +493,23 @@ fn plan() -> ExecutionPlanV3 {
 fn assert_document(items: Vec<ExecutionItemV3>, expected_items: &[Vec<u8>]) {
     let source = "digest fixture é";
     let source_bytes = [text("qglang.execution.source-bytes.v3"), n(3), text(source)].concat();
+    // Every non-command fixture explicitly has the V8 command-absence tag.
+    let expected_items: Vec<Vec<u8>> = expected_items
+        .iter()
+        .map(|item| [item.as_slice(), &[0]].concat())
+        .collect();
     let contract_bytes = [
-        text("qglang.execution.contract.v7"),
-        n(7),
+        text("qglang.execution.contract.v8"),
+        n(8),
         n(17),
-        seq(expected_items),
+        seq(&expected_items),
     ]
     .concat();
     let source_hash = Sha256::digest(&source_bytes);
     let contract_hash = Sha256::digest(&contract_bytes);
     let qualification_bytes = [
-        text("qglang.execution.qualification.v7"),
-        n(7),
+        text("qglang.execution.qualification.v8"),
+        n(8),
         n(17),
         source_hash.to_vec(),
         contract_hash.to_vec(),
@@ -526,6 +531,73 @@ fn assert_document(items: Vec<ExecutionItemV3>, expected_items: &[Vec<u8>]) {
 }
 
 #[test]
+fn rename_apply_has_independent_exact_target_and_token_bytes() {
+    let command = ExecutionRenameCommandV3 {
+        target: ExecutionSymbolTargetV3 {
+            selector: "s".to_owned(),
+            repo_path: "src/a.py".to_owned(),
+            symbol_id: "def:17".to_owned(),
+            start_byte: 17,
+            end_byte: 20,
+        },
+        new_name: "new".to_owned(),
+        phase: ExecutionCommandPhaseV3::Apply,
+        expected_snapshot: "snap-7".to_owned(),
+        preview_token: Some("issued-1".to_owned()),
+    };
+    let item = ExecutionItemV3 {
+        item_id: id(71),
+        family: ExecutionFamilyV3::Command,
+        relation: None,
+        composition: None,
+        graph: None,
+        check: None,
+        presentation: None,
+        command: Some(command),
+        plan: ExecutionPlanV3 {
+            authority: ExecutionAuthorityV3::FrontendChecked,
+            determinism: ExecutionDeterminismV3::Deterministic,
+            evidence: ExecutionEvidenceV3::None,
+            effect: ExecutionEffectV3::MutationRequiresGrant,
+            policy_family: ExecutionPolicyFamilyV3::Command,
+        },
+    };
+    let expected_command = [
+        vec![1],
+        text("s"),
+        text("src/a.py"),
+        text("def:17"),
+        count(17),
+        count(20),
+        text("new"),
+        text("snap-7"),
+        vec![1],
+        text("issued-1"),
+    ]
+    .concat();
+    let expected_item = [
+        wire_key(71),
+        // family, authority, determinism, evidence, effect, policy;
+        // five preceding payloads absent, command present.
+        vec![7, 0, 0, 0, 4, 7, 0, 0, 0, 0, 0, 1],
+        expected_command,
+    ]
+    .concat();
+    let expected_contract = [
+        text("qglang.execution.contract.v8"),
+        n(8),
+        n(17),
+        seq(&[expected_item]),
+    ]
+    .concat();
+    let document = ExecutionDocumentV3::new(SourceIdV2::from_raw(17), b"rename", vec![item]);
+    assert_eq!(
+        document.contract_digest().as_bytes().as_slice(),
+        Sha256::digest(expected_contract).as_slice()
+    );
+}
+
+#[test]
 fn whole_relation_stream_has_independent_expected_bytes() {
     let (relation, bytes) = relation();
     let item = ExecutionItemV3 {
@@ -536,6 +608,7 @@ fn whole_relation_stream_has_independent_expected_bytes() {
         check: None,
         presentation: None,
         composition: None,
+        command: None,
         plan: plan(),
     };
     assert_document(
@@ -692,6 +765,7 @@ fn flat_exists_node_encodes_each_condition_before_its_ordered_children() {
             check: None,
             presentation: None,
             composition: None,
+            command: None,
             plan: plan(),
         }],
         &[[
@@ -816,6 +890,7 @@ fn whole_composition_stream_has_independent_expected_bytes() {
             check: None,
             presentation: None,
             composition: Some(composition),
+            command: None,
             plan: plan(),
         });
         expected.push(
@@ -849,6 +924,7 @@ fn whole_composition_stream_has_independent_expected_bytes() {
             body_relation: None,
             body: ExecutionCompositionBodyV3::Check,
         }),
+        command: None,
         plan: plan(),
     });
     expected.push(
@@ -885,6 +961,7 @@ fn standalone_graph_check_and_all_presentation_verbs_have_independent_bytes() {
         graph: Some(graph.clone()),
         check: None,
         presentation: None,
+        command: None,
         plan: plan(),
     });
     expected.push(
@@ -919,6 +996,7 @@ fn standalone_graph_check_and_all_presentation_verbs_have_independent_bytes() {
             mode: ExecutionDetectionModeV3::SemanticOnly,
         }),
         presentation: None,
+        command: None,
         plan: plan(),
     });
     expected.push(
@@ -1006,6 +1084,7 @@ fn standalone_graph_check_and_all_presentation_verbs_have_independent_bytes() {
             graph: None,
             check: None,
             presentation: Some(presentation),
+            command: None,
             plan: plan(),
         });
         expected.push([wire_key(node), vec![3, 0, 1, 2, 1, 6, 0, 0, 0, 0, 1], bytes].concat());

@@ -54,6 +54,7 @@ fn planned_kind_v2(item: &PlannedItemV2) -> &'static str {
     match item {
         PlannedItemV2::Relation { .. } => "relation",
         PlannedItemV2::Graph { .. } => "graph",
+        PlannedItemV2::Command { .. } => "command",
         PlannedItemV2::Check { .. } => "check",
         PlannedItemV2::Presentation { .. } => "presentation",
         PlannedItemV2::Composition { .. } => "composition",

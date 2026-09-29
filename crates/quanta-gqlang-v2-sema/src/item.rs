@@ -12,6 +12,69 @@ use quanta_gqlang_v2_hir::{
 use quanta_gqlang_v2_modules::CatalogAssetIdV2;
 use std::sync::Arc;
 
+/// Sealed rename intent. Target identity comes from the closed host symbol
+/// catalog; snapshot/token remain source preconditions, not grants.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ResolvedRenameCommandV3 {
+    item_id: SemanticItemIdV2,
+    location: CheckedLocatedSpanV2,
+    target: crate::ResolvedSymbolTargetV3,
+    new_name: String,
+    phase: quanta_gqlang_v2_hir::RenamePhaseV3,
+    expected_snapshot: String,
+    preview_token: Option<String>,
+}
+
+impl ResolvedRenameCommandV3 {
+    pub(crate) fn new(
+        item_id: SemanticItemIdV2,
+        location: CheckedLocatedSpanV2,
+        target: crate::ResolvedSymbolTargetV3,
+        new_name: String,
+        phase: quanta_gqlang_v2_hir::RenamePhaseV3,
+        expected_snapshot: String,
+        preview_token: Option<String>,
+    ) -> Self {
+        Self {
+            item_id,
+            location,
+            target,
+            new_name,
+            phase,
+            expected_snapshot,
+            preview_token,
+        }
+    }
+    #[must_use]
+    pub const fn item_id(&self) -> SemanticItemIdV2 {
+        self.item_id
+    }
+    #[must_use]
+    pub const fn location(&self) -> &CheckedLocatedSpanV2 {
+        &self.location
+    }
+    #[must_use]
+    pub const fn target(&self) -> &crate::ResolvedSymbolTargetV3 {
+        &self.target
+    }
+    #[must_use]
+    pub fn new_name(&self) -> &str {
+        &self.new_name
+    }
+    #[must_use]
+    pub const fn phase(&self) -> quanta_gqlang_v2_hir::RenamePhaseV3 {
+        self.phase
+    }
+    #[must_use]
+    pub fn expected_snapshot(&self) -> &str {
+        &self.expected_snapshot
+    }
+    #[must_use]
+    pub fn preview_token(&self) -> Option<&str> {
+        self.preview_token.as_deref()
+    }
+}
+
 /// Semantic role of one resolved FIND reference.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GraphReferenceRoleV2 {
@@ -1135,6 +1198,8 @@ impl ResolvedMetaV2 {
 /// Closed semantic document item vocabulary.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SemanticItemV2 {
+    /// Sealed source-authored rename intent.
+    Command(ResolvedRenameCommandV3),
     /// Relational query/composition result.
     Relation(TypedRelationV2),
     /// Resolved source rule.
@@ -1160,6 +1225,7 @@ impl SemanticItemV2 {
     #[must_use]
     pub const fn item_id(&self) -> SemanticItemIdV2 {
         match self {
+            Self::Command(item) => item.item_id(),
             Self::Relation(item) => item.item_id(),
             Self::Rule(item) => item.item_id(),
             Self::Graph(item) => item.item_id(),

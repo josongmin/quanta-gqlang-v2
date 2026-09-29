@@ -80,8 +80,8 @@ use quanta_gqlang_v2_algebra::{AlgebraFamilyV2, CheckedAlgebraNodeV2};
 use quanta_gqlang_v2_logic::{GraphQueryContractV2, RelationShapeV1, RuleProgramContractV2};
 use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, ConfirmModeV1, EmitModeV1, ExportFormatV1, ResolvedCheckV2,
-    ResolvedMetaKindV2, ResolvedMetaV2, ResolvedPresentationKindV2, ResolvedRuleV2,
-    SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2,
+    ResolvedMetaKindV2, ResolvedMetaV2, ResolvedPresentationKindV2, ResolvedRenameCommandV3,
+    ResolvedRuleV2, SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2,
 };
 use quanta_gqlang_v2_types::{
     CardinalityV1, DeterminismV1, ExpressionEffectsV2, ResolvedPredicateIdV2,
@@ -327,6 +327,7 @@ fn non_plan_reason(input: &SemanticPlanInputV2) -> Option<NoPlanReasonV2> {
             Some(NoPlanReasonV2::EmptyRuleProgram)
         }
         SemanticPlanInputV2::Relational(_)
+        | SemanticPlanInputV2::Command(_)
         | SemanticPlanInputV2::Graph(_)
         | SemanticPlanInputV2::Check(_)
         | SemanticPlanInputV2::Presentation(_)
@@ -359,6 +360,15 @@ fn validate_identity(
         None => None,
     };
     match input {
+        SemanticPlanInputV2::Command(command) => {
+            let Some(SemanticItemV2::Command(resolved)) = resolved else {
+                return Err(wrong_kind(&anchor));
+            };
+            if resolved != command {
+                return Err(identity_mismatch(&anchor));
+            }
+            Ok(())
+        }
         SemanticPlanInputV2::Relational(item) => {
             let Some(SemanticItemV2::Relation(relation)) = resolved else {
                 return Err(wrong_kind(&anchor));
@@ -519,6 +529,7 @@ fn attribution_anchor(
     document: &SemanticDocumentV2,
 ) -> CheckedLocatedSpanV2 {
     match input {
+        SemanticPlanInputV2::Command(command) => command.location().clone(),
         SemanticPlanInputV2::Relational(item) => item.root().location().clone(),
         SemanticPlanInputV2::Composition(composition) => composition.location().clone(),
         SemanticPlanInputV2::Graph(_)
@@ -547,6 +558,7 @@ fn document_anchor(document: &SemanticDocumentV2) -> CheckedLocatedSpanV2 {
 /// The checked location of one semantic item, where the item retains one.
 fn item_location(item: &SemanticItemV2) -> Option<CheckedLocatedSpanV2> {
     match item {
+        SemanticItemV2::Command(command) => Some(command.location().clone()),
         SemanticItemV2::Relation(relation) => Some(relation.location().clone()),
         SemanticItemV2::Rule(rule) => Some(rule_location(rule).clone()),
         SemanticItemV2::Graph(graph) => Some(graph.location().clone()),
@@ -675,6 +687,14 @@ fn walk(
     while let Some(frame) = stack.pop() {
         match frame {
             WalkFrameV2::Input(arm) => match arm {
+                SemanticPlanInputV2::Command(command) => {
+                    charge.charge(command.location())?;
+                    capabilities.insert(CapabilityV2::SymbolRenamePreview);
+                    if command.phase() == quanta_gqlang_v2_sema::RenamePhaseV3::Apply {
+                        capabilities.insert(CapabilityV2::SymbolRenameApply);
+                    }
+                    plan_class = Some(CardinalityClassV2::ScalarOrSingleton);
+                }
                 SemanticPlanInputV2::Relational(item) => {
                     stack.push(WalkFrameV2::AlgebraEnter(item.root()));
                 }
@@ -952,6 +972,7 @@ fn presentation_class(kind: &ResolvedPresentationKindV2) -> CardinalityClassV2 {
 /// is classified by the one classifier rather than by a parallel one.
 #[derive(Clone, Copy)]
 enum ArmV2<'a> {
+    Command(&'a ResolvedRenameCommandV3),
     /// One relational plan root: a top-level lowered item's root, or a
     /// composition body's lowered nested root.
     Relational(&'a CheckedAlgebraNodeV2),
@@ -969,6 +990,7 @@ impl<'a> ArmV2<'a> {
     /// carrier whose plan the composition's plan is.
     fn of(input: &'a SemanticPlanInputV2) -> Self {
         match input {
+            SemanticPlanInputV2::Command(command) => Self::Command(command),
             SemanticPlanInputV2::Relational(item) => Self::Relational(item.root()),
             SemanticPlanInputV2::Graph(contract) => Self::Graph(contract),
             SemanticPlanInputV2::Check(contract) => Self::Check(contract),
@@ -997,6 +1019,7 @@ impl<'a> ArmV2<'a> {
     /// attributed to its first member, else to the document's own anchor.
     fn root_location(self, document: &SemanticDocumentV2) -> CheckedLocatedSpanV2 {
         match self {
+            Self::Command(command) => command.location().clone(),
             Self::Relational(root) => document
                 .item(root.item_id())
                 .and_then(item_location)
@@ -1034,6 +1057,7 @@ impl<'a> PlanRootV2<'a> {
         match input {
             SemanticPlanInputV2::Composition(composition) => Self::Composition(composition),
             SemanticPlanInputV2::Relational(_)
+            | SemanticPlanInputV2::Command(_)
             | SemanticPlanInputV2::Graph(_)
             | SemanticPlanInputV2::Check(_)
             | SemanticPlanInputV2::Presentation(_)
@@ -1092,6 +1116,7 @@ fn classify(
 ) -> Result<PlanPartsV2, PlanningDiagnosticV1> {
     let mut capabilities = walk.capabilities.clone();
     let facts = match arm {
+        ArmV2::Command(command) => command_facts(command),
         ArmV2::Relational(root) => relational_facts(root, walk),
         ArmV2::Graph(contract) => graph_facts(contract),
         ArmV2::Check(contract) => check_facts(contract),
@@ -1135,6 +1160,27 @@ fn classify(
         explain: ExplainNoteV2::new(root_location, walk.families.clone(), facts.recursive),
         policy,
     })
+}
+
+fn command_facts(command: &ResolvedRenameCommandV3) -> ArmFactsV2 {
+    ArmFactsV2 {
+        authority_lane: AuthorityLaneV2::FrontendChecked,
+        evidence: EvidenceRequirementV2::None,
+        effect: if command.phase() == quanta_gqlang_v2_sema::RenamePhaseV3::Apply {
+            EffectClassV2::MutationRequiresGrant
+        } else {
+            EffectClassV2::ReadOnly
+        },
+        result_kind: ResultKindV2::CommandReceipt,
+        render: RenderRequirementV2::CommandReceipt,
+        witness_selection: None,
+        cardinality: CardinalityV1::Set,
+        cardinality_class: CardinalityClassV2::ScalarOrSingleton,
+        recursion_risk: RecursionRiskClassV2::None,
+        witness_risk: WitnessExplosionRiskClassV2::None,
+        recursive: false,
+        policy: PlanPolicyV2::Command(command.clone()),
+    }
 }
 
 /// The relational arm: an ordinary checked relation renders a read-only table.
@@ -1447,7 +1493,8 @@ mod tests {
             | PlanPolicyV2::Presentation(_)
             | PlanPolicyV2::Rule(_)
             | PlanPolicyV2::MetaRequireCertified
-            | PlanPolicyV2::Composition(_) => Err("expected a relational policy".to_owned()),
+            | PlanPolicyV2::Composition(_)
+            | PlanPolicyV2::Command(_) => Err("expected a relational policy".to_owned()),
         }
     }
 
@@ -1707,7 +1754,8 @@ mod tests {
             | PlanPolicyV2::Presentation(_)
             | PlanPolicyV2::Rule(_)
             | PlanPolicyV2::MetaRequireCertified
-            | PlanPolicyV2::Composition(_) => {
+            | PlanPolicyV2::Composition(_)
+            | PlanPolicyV2::Command(_) => {
                 return Err("expected a graph policy".to_owned());
             }
         }
@@ -1750,7 +1798,8 @@ mod tests {
             | PlanPolicyV2::Check(_)
             | PlanPolicyV2::Presentation(_)
             | PlanPolicyV2::MetaRequireCertified
-            | PlanPolicyV2::Composition(_) => {
+            | PlanPolicyV2::Composition(_)
+            | PlanPolicyV2::Command(_) => {
                 return Err("expected a rule-program policy".to_owned());
             }
         }
@@ -1834,7 +1883,8 @@ mod tests {
             | PlanPolicyV2::Check(_)
             | PlanPolicyV2::Presentation(_)
             | PlanPolicyV2::Rule(_)
-            | PlanPolicyV2::MetaRequireCertified => {
+            | PlanPolicyV2::MetaRequireCertified
+            | PlanPolicyV2::Command(_) => {
                 return Err("expected a composition policy".to_owned());
             }
         }

@@ -234,6 +234,8 @@ impl RuleProgramPolicyV2 {
 /// Retained family policy of one semantic plan.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PlanPolicyV2 {
+    /// Exact sealed rename intent. Runtime snapshot/grant/preview checks remain required.
+    Command(quanta_gqlang_v2_sema::ResolvedRenameCommandV3),
     /// An ordinary relational plan: the checked algebra root is the whole
     /// policy, and the retained effect summary is its folded expression effects.
     Relational {
@@ -262,6 +264,7 @@ impl PlanPolicyV2 {
     #[must_use]
     pub const fn keyword(&self) -> &'static str {
         match self {
+            Self::Command(_) => "command",
             Self::Relational { .. } => "relational",
             Self::Graph(_) => "graph",
             Self::Check(_) => "check",

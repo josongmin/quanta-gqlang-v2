@@ -558,7 +558,8 @@ impl<'a> ResolvedTypeInputsV2<'a> {
                 | quanta_gqlang_v2_hir::ProgramItemHirV1::Presentation(_)
                 | quanta_gqlang_v2_hir::ProgramItemHirV1::CatalogDecl(_)
                 | quanta_gqlang_v2_hir::ProgramItemHirV1::Composition(_)
-                | quanta_gqlang_v2_hir::ProgramItemHirV1::Meta(_) => None,
+                | quanta_gqlang_v2_hir::ProgramItemHirV1::Meta(_)
+                | quanta_gqlang_v2_hir::ProgramItemHirV1::Command(_) => None,
             })
             .collect::<BTreeMap<_, _>>();
         let mut values = BTreeMap::new();

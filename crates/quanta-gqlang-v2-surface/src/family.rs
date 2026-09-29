@@ -38,8 +38,8 @@ use quanta_gqlang_v2_hir::{
     CompositionProducerV1, ConfirmModeV1, DetectionModeV1, EmitModeV1, EvidenceModeV1,
     ExplainHirV1, ExportFormatV1, GateBindingV1, GraphConstraintsV1, GraphDirectionV1,
     GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, MetaKindV1,
-    PresentationKindV1, ProgramItemHirV1, SampleHirV1, SampleModeV1, ShowCategoryV1, TruthModeV1,
-    UsePackActivationV1, UsePackHirV1, ViewBodyV1,
+    PresentationKindV1, ProgramItemHirV1, RenamePhaseV3, SampleHirV1, SampleModeV1, ShowCategoryV1,
+    TruthModeV1, UsePackActivationV1, UsePackHirV1, ViewBodyV1,
 };
 
 /// Whether `word` is a leading keyword owned by a v3 family parser here.
@@ -62,6 +62,7 @@ pub(crate) fn is_family_keyword(word: &str) -> bool {
             | "ruledef"
             | "use"
             | "require"
+            | "rename"
     )
 }
 
@@ -121,7 +122,110 @@ pub(crate) fn parse_family(
     if cur.is_keyword("require") {
         return parse_require_certified(cur);
     }
+    if cur.is_keyword("rename") {
+        return parse_rename(cur, source);
+    }
     Err(cur.unexpected("a v3 family keyword"))
+}
+
+// ---- RENAME COMMAND -------------------------------------------------------
+
+/// One canonical, fail-closed command surface. Snapshot and preview token are
+/// authored preconditions; the host still owns authority to preview or mutate.
+fn parse_rename(
+    cur: &mut CursorV1<'_>,
+    source: &str,
+) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
+    let start = cur
+        .expect_keyword("rename", "'rename' to start a command")?
+        .span
+        .start;
+    let target = parse_ref(cur, source, "a closed symbol selector")?;
+    cur.expect_keyword("to", "'to' after a rename target")?;
+    let (new_name, name_span) = expect_string(cur, "a quoted replacement name")?;
+    if new_name.is_empty() {
+        return Err(reject(
+            cur,
+            name_span,
+            "rename replacement must not be empty",
+        ));
+    }
+    let mut end = name_span.end;
+    let mut phase = None;
+    let mut snapshot = None;
+    let mut token = None;
+    let mut seen = Vec::new();
+    while at_clause(cur) {
+        let (key, key_span) = clause_key(cur)?;
+        let expected = match seen.len() {
+            0 => "phase",
+            1 => "snapshot",
+            2 if phase == Some(RenamePhaseV3::Apply) => "preview_token",
+            _ => return Err(reject(cur, key_span, "unexpected RENAME clause")),
+        };
+        if key != expected {
+            return Err(reject(
+                cur,
+                key_span,
+                format!("expected RENAME clause '{expected}'"),
+            ));
+        }
+        note_clause(cur, &mut seen, "RENAME", &key, key_span)?;
+        match key.as_str() {
+            "phase" => {
+                let (value, span) = cur.expect_ident("'preview' or 'apply'")?;
+                phase = Some(match value.as_str() {
+                    "preview" => RenamePhaseV3::Preview,
+                    "apply" => RenamePhaseV3::Apply,
+                    _ => return Err(reject(cur, span, "unsupported RENAME phase")),
+                });
+                end = span.end;
+            }
+            "snapshot" => {
+                let (value, span) = expect_string(cur, "a quoted expected snapshot")?;
+                if value.is_empty() {
+                    return Err(reject(cur, span, "RENAME snapshot must not be empty"));
+                }
+                snapshot = Some(value);
+                end = span.end;
+            }
+            "preview_token" => {
+                let (value, span) = expect_string(cur, "a quoted issued preview token")?;
+                if value.is_empty() {
+                    return Err(reject(cur, span, "RENAME preview token must not be empty"));
+                }
+                token = Some(value);
+                end = span.end;
+            }
+            _ => return Err(reject(cur, key_span, "unsupported RENAME clause")),
+        }
+    }
+    let phase =
+        phase.ok_or_else(|| reject(cur, SpanV1::new(start, end), "RENAME phase is required"))?;
+    let snapshot = snapshot
+        .ok_or_else(|| reject(cur, SpanV1::new(start, end), "RENAME snapshot is required"))?;
+    if matches!(phase, RenamePhaseV3::Preview) && token.is_some() {
+        return Err(reject(
+            cur,
+            SpanV1::new(start, end),
+            "preview cannot carry a preview token",
+        ));
+    }
+    if matches!(phase, RenamePhaseV3::Apply) && token.is_none() {
+        return Err(reject(
+            cur,
+            SpanV1::new(start, end),
+            "apply requires an issued preview token",
+        ));
+    }
+    Ok(ProgramItemHirV1::from(cur.builder.rename_command(
+        target,
+        new_name,
+        phase,
+        snapshot,
+        token,
+        SpanV1::new(start, end),
+    )))
 }
 
 // ---- COMPOSITION -----------------------------------------------------------

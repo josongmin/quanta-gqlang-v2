@@ -17,6 +17,10 @@ use quanta_gqlang_v2_algebra::AlgebraFamilyV2;
 /// planner can classify. Several constructs can require the same capability.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum CapabilityV2 {
+    /// Resolve and preview an exact code-symbol rename on a trusted snapshot.
+    SymbolRenamePreview,
+    /// Apply an issued preview under an independent mutation grant.
+    SymbolRenameApply,
     /// Reading a base relation or a composition working set (a `Scan`).
     RelationScan,
     /// Row-level filtering (a `Filter`).
@@ -49,6 +53,8 @@ impl CapabilityV2 {
     #[must_use]
     pub const fn keyword(self) -> &'static str {
         match self {
+            Self::SymbolRenamePreview => "symbol_rename_preview",
+            Self::SymbolRenameApply => "symbol_rename_apply",
             Self::RelationScan => "relation_scan",
             Self::Filtering => "filtering",
             Self::Join => "join",

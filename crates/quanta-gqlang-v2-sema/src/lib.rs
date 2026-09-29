@@ -23,8 +23,9 @@ pub mod test_support;
 // direction and expression tags below prevent downstream direct HIR dependency.
 pub use quanta_gqlang_v2_hir::{
     CheckedLocatedSpanV2, CompareMetricV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
-    EvidenceModeV1, ExportFormatV1, GraphQueryKindV1, HirNodeIdV1, LocatedSpanV2, SampleModeV1,
-    ShowCategoryV1, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1, TruthModeV1,
+    EvidenceModeV1, ExportFormatV1, GraphQueryKindV1, HirNodeIdV1, LocatedSpanV2, RenamePhaseV3,
+    SampleModeV1, ShowCategoryV1, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
+    TruthModeV1,
 };
 pub use quanta_gqlang_v2_types::{
     operator_descriptor_v2, CardinalityV1, ExpressionTypeStateV2, OperatorIdV2,
@@ -40,8 +41,9 @@ pub use authority::{
     FrontendCatalogPayloadV2, FrontendGraphReferenceInputV2, FrontendLanguageVersionV2,
     FrontendLockfileInputV2, FrontendPackInputV2, FrontendRelationAuthorityV2,
     FrontendRelationCardinalityV2, FrontendRelationFieldInputV2, FrontendRelationInputV2,
-    FrontendScalarTypeV2, GraphReferenceCatalogV2, GraphReferenceIdV2, GraphReferenceInputV2,
-    GraphReferenceKindV2, OpenAnalysisAuthorityInputV2, OpenAnalysisAuthorityV2,
+    FrontendScalarTypeV2, FrontendSymbolTargetInputV3, GraphReferenceCatalogV2, GraphReferenceIdV2,
+    GraphReferenceInputV2, GraphReferenceKindV2, OpenAnalysisAuthorityInputV2,
+    OpenAnalysisAuthorityV2, ResolvedSymbolTargetV3,
 };
 pub use diagnostic::{
     FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2, FrontendStageV2,
@@ -63,7 +65,7 @@ pub use item::{
     ResolvedCompositionProducerV2, ResolvedCompositionV2, ResolvedDeclarationV2,
     ResolvedExplainTargetV2, ResolvedGraphQueryV2, ResolvedGraphReferenceV2, ResolvedGraphTargetV2,
     ResolvedGraphUseV2, ResolvedMetaKindV2, ResolvedMetaV2, ResolvedPresentationKindV2,
-    ResolvedPresentationV2, SemanticItemV2,
+    ResolvedPresentationV2, ResolvedRenameCommandV3, SemanticItemV2,
 };
 pub use names::{
     ResolvedBindingKindV2, ResolvedCatalogReferenceV2, ResolvedCompositionSourceIdV2,

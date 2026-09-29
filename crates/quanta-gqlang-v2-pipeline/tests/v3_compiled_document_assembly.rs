@@ -1098,6 +1098,7 @@ fn closed_source_entry_assembles_the_exact_item_dispositions() {
                 PlannedItemV2::Presentation { .. } => "presentation",
                 PlannedItemV2::Relation { .. }
                 | PlannedItemV2::Graph { .. }
+                | PlannedItemV2::Command { .. }
                 | PlannedItemV2::Check { .. }
                 | PlannedItemV2::Composition { .. }
                 | PlannedItemV2::MetaRequireCertified { .. } => "planned",
@@ -2960,6 +2961,7 @@ fn every_projected_expression_reference_resolves_within_its_own_table() {
                     );
                 }
                 other @ (ExecutionFamilyV3::Graph
+                | ExecutionFamilyV3::Command
                 | ExecutionFamilyV3::Check
                 | ExecutionFamilyV3::Composition
                 | ExecutionFamilyV3::MetaRequireCertified

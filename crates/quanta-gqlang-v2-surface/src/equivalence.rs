@@ -107,6 +107,16 @@ pub(crate) fn semantically_equivalent_items(
                 (ProgramItemHirV1::GraphQuery(a), ProgramItemHirV1::GraphQuery(b)) => {
                     stack.push(Frame::Graph(a, b));
                 }
+                (ProgramItemHirV1::Command(a), ProgramItemHirV1::Command(b)) => {
+                    if a.target.name != b.target.name
+                        || a.new_name != b.new_name
+                        || a.phase != b.phase
+                        || a.expected_snapshot != b.expected_snapshot
+                        || a.preview_token != b.preview_token
+                    {
+                        return false;
+                    }
+                }
                 (ProgramItemHirV1::Legality(a), ProgramItemHirV1::Legality(b)) => {
                     stack.push(Frame::Legality(a, b));
                 }

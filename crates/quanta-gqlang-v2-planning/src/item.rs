@@ -14,7 +14,7 @@
 
 use quanta_gqlang_v2_algebra::LoweredRelationItemV2;
 use quanta_gqlang_v2_logic::{GraphQueryContractV2, RuleProgramContractV2};
-use quanta_gqlang_v2_sema::{ResolvedMetaV2, SemanticItemIdV2};
+use quanta_gqlang_v2_sema::{ResolvedMetaV2, ResolvedRenameCommandV3, SemanticItemIdV2};
 
 use crate::check::CheckContractV2;
 use crate::composition::CheckedCompositionPlanInputV2;
@@ -29,6 +29,8 @@ use crate::presentation::PresentationContractV2;
 /// resolved directive.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SemanticPlanInputV2 {
+    /// Closed, exact-target rename intent; effect remains subject to host grant.
+    Command(ResolvedRenameCommandV3),
     /// A fully lowered, checked relational item (ticket 05).
     Relational(Box<LoweredRelationItemV2>),
     /// A sealed FIND graph contract (ticket 06).
@@ -193,6 +195,7 @@ impl NoPlanReasonV2 {
 #[must_use]
 pub(crate) const fn input_item_id(input: &SemanticPlanInputV2) -> Option<SemanticItemIdV2> {
     match input {
+        SemanticPlanInputV2::Command(command) => Some(command.item_id()),
         SemanticPlanInputV2::Relational(item) => Some(item.item_id()),
         SemanticPlanInputV2::Graph(contract) => Some(contract.item_id()),
         SemanticPlanInputV2::Check(contract) => Some(contract.item_id()),

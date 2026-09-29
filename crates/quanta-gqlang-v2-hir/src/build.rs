@@ -567,4 +567,25 @@ impl HirBuilderV1 {
     pub fn meta(&self, kind: MetaKindV1, span: SpanV1) -> MetaHirV1 {
         MetaHirV1::new(self.ids.next(), span, kind)
     }
+
+    /// Source-authored rename intent; semantic target sealing is downstream.
+    pub fn rename_command(
+        &self,
+        target: crate::item::GraphRefV1,
+        new_name: String,
+        phase: crate::item::RenamePhaseV3,
+        expected_snapshot: String,
+        preview_token: Option<String>,
+        span: SpanV1,
+    ) -> crate::item::RenameCommandHirV3 {
+        crate::item::RenameCommandHirV3 {
+            id: self.ids.next(),
+            span,
+            target,
+            new_name,
+            phase,
+            expected_snapshot,
+            preview_token,
+        }
+    }
 }

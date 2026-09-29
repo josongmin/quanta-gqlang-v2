@@ -138,6 +138,7 @@ fn composition(
             | SemanticItemV2::Presentation(_)
             | SemanticItemV2::Catalog(_)
             | SemanticItemV2::Declaration(_)
+            | SemanticItemV2::Command(_)
             | SemanticItemV2::Meta(_) => None,
         })
         .unwrap()
@@ -211,7 +212,7 @@ fn surface_to_hir_to_sema_mixed_document_reaches_all_semantic_item_variants() {
              from sampled s | project s.path as path with sampled; \
          require certified",
     );
-    let counts = document.items().fold([0_u8; 9], |mut counts, (_, item)| {
+    let counts = document.items().fold([0_u8; 10], |mut counts, (_, item)| {
         let index = match item {
             SemanticItemV2::Declaration(_) => 0,
             SemanticItemV2::Rule(_) => 1,
@@ -222,9 +223,10 @@ fn surface_to_hir_to_sema_mixed_document_reaches_all_semantic_item_variants() {
             SemanticItemV2::Catalog(_) => 6,
             SemanticItemV2::Composition(_) => 7,
             SemanticItemV2::Meta(_) => 8,
+            SemanticItemV2::Command(_) => 9,
         };
         counts[index] += 1;
         counts
     });
-    assert_eq!(counts, [1, 1, 1, 1, 1, 1, 2, 1, 1]);
+    assert_eq!(counts, [1, 1, 1, 1, 1, 1, 2, 1, 1, 0]);
 }

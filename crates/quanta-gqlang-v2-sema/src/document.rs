@@ -145,6 +145,7 @@ enum SemanticItemKindV2 {
     Catalog,
     Composition,
     Meta,
+    Command,
 }
 
 impl SemanticItemKindV2 {
@@ -159,6 +160,7 @@ impl SemanticItemKindV2 {
             ProgramItemHirV1::CatalogDecl(_) => Self::Catalog,
             ProgramItemHirV1::Composition(_) => Self::Composition,
             ProgramItemHirV1::Meta(_) => Self::Meta,
+            ProgramItemHirV1::Command(_) => Self::Command,
         }
     }
 
@@ -173,6 +175,7 @@ impl SemanticItemKindV2 {
             SemanticItemV2::Catalog(_) => Self::Catalog,
             SemanticItemV2::Composition(_) => Self::Composition,
             SemanticItemV2::Meta(_) => Self::Meta,
+            SemanticItemV2::Command(_) => Self::Command,
         }
     }
 }
@@ -555,7 +558,8 @@ impl SemanticDocumentV2 {
                 | SemanticItemV2::Presentation(_)
                 | SemanticItemV2::Declaration(_)
                 | SemanticItemV2::Composition(_)
-                | SemanticItemV2::Meta(_) => None,
+                | SemanticItemV2::Meta(_)
+                | SemanticItemV2::Command(_) => None,
             })
             .collect::<BTreeSet<_>>();
         let validated_assets = catalog
@@ -619,7 +623,8 @@ impl SemanticDocumentV2 {
                 | SemanticItemV2::Catalog(_)
                 | SemanticItemV2::Declaration(_)
                 | SemanticItemV2::Composition(_)
-                | SemanticItemV2::Meta(_) => None,
+                | SemanticItemV2::Meta(_)
+                | SemanticItemV2::Command(_) => None,
             })
             .collect::<Vec<_>>();
         if certified.len() > 1 || certified.first().copied() != catalog.require_certified_location()
@@ -910,7 +915,8 @@ impl SemanticDocumentV2 {
             | SemanticItemV2::Catalog(_)
             | SemanticItemV2::Declaration(_)
             | SemanticItemV2::Composition(_)
-            | SemanticItemV2::Meta(_) => None,
+            | SemanticItemV2::Meta(_)
+            | SemanticItemV2::Command(_) => None,
         })
     }
     /// Closed typed expression by exact source-qualified node ID.
@@ -1236,7 +1242,8 @@ fn collect_inline_view_plan(
             | ProgramItemHirV1::Legality(_)
             | ProgramItemHirV1::Presentation(_)
             | ProgramItemHirV1::Composition(_)
-            | ProgramItemHirV1::Meta(_) => {
+            | ProgramItemHirV1::Meta(_)
+            | ProgramItemHirV1::Command(_) => {
                 let mut collector = ViewSourceUseCollectorV2 {
                     source_asset: None,
                     uses: Vec::new(),
@@ -5658,6 +5665,7 @@ fn resolve_document_bodies(
                 | ProgramItemHirV1::Legality(_)
                 | ProgramItemHirV1::CatalogDecl(_)
                 | ProgramItemHirV1::Composition(_)
+                | ProgramItemHirV1::Command(_)
         )
     }) {
         return Err(document_failure(
@@ -5682,7 +5690,8 @@ fn resolve_document_bodies(
             | ProgramItemHirV1::Presentation(_)
             | ProgramItemHirV1::CatalogDecl(_)
             | ProgramItemHirV1::Composition(_)
-            | ProgramItemHirV1::Meta(_) => None,
+            | ProgramItemHirV1::Meta(_)
+            | ProgramItemHirV1::Command(_) => None,
         })
         .collect::<Vec<_>>();
     let rules = syntax
@@ -5697,7 +5706,8 @@ fn resolve_document_bodies(
             | ProgramItemHirV1::Presentation(_)
             | ProgramItemHirV1::CatalogDecl(_)
             | ProgramItemHirV1::Composition(_)
-            | ProgramItemHirV1::Meta(_) => None,
+            | ProgramItemHirV1::Meta(_)
+            | ProgramItemHirV1::Command(_) => None,
         })
         .collect::<Vec<_>>();
     binder.declare_program(&declarations, &rules);
@@ -5726,7 +5736,8 @@ fn resolve_document_bodies(
             | ProgramItemHirV1::GraphQuery(_)
             | ProgramItemHirV1::Legality(_)
             | ProgramItemHirV1::Presentation(_)
-            | ProgramItemHirV1::Meta(_) => {}
+            | ProgramItemHirV1::Meta(_)
+            | ProgramItemHirV1::Command(_) => {}
         }
     }
     let bound = binder.finish();
@@ -5930,7 +5941,8 @@ fn resolve_document_bodies(
             | ProgramItemHirV1::Legality(_)
             | ProgramItemHirV1::Presentation(_)
             | ProgramItemHirV1::CatalogDecl(_)
-            | ProgramItemHirV1::Meta(_) => {}
+            | ProgramItemHirV1::Meta(_)
+            | ProgramItemHirV1::Command(_) => {}
         }
     }
     if let Some(error) = query_inputs.error {
@@ -6166,6 +6178,58 @@ fn resolve_document_bodies(
     for item in &checked.checked().document().items {
         steps.charge(checked.source_id(), item.span())?;
         match item {
+            ProgramItemHirV1::Command(command) => {
+                let source_id = checked.source_id();
+                steps.charge(source_id, command.target.span)?;
+                let Some(target) = authority.symbol_target(&command.target.name) else {
+                    return Err(document_failure(
+                        "sema.unknown_symbol_target",
+                        source_id,
+                        command.target.span,
+                        "rename target is absent from the closed symbol authority",
+                    )
+                    .into());
+                };
+                if command.new_name.is_empty()
+                    || command.new_name.chars().any(char::is_control)
+                    || command.expected_snapshot.is_empty()
+                    || matches!(command.phase, quanta_gqlang_v2_hir::RenamePhaseV3::Apply)
+                        != command
+                            .preview_token
+                            .as_ref()
+                            .is_some_and(|value| !value.is_empty())
+                {
+                    return Err(document_failure(
+                        "sema.invalid_rename_command",
+                        source_id,
+                        command.span,
+                        "rename intent has an invalid name, snapshot, or phase/token combination",
+                    )
+                    .into());
+                }
+                let location = extended
+                    .combined()
+                    .try_check_location(location(source_id, command.span))
+                    .map_err(|error| {
+                        document_failure(
+                            "sema.document_validation_failed",
+                            source_id,
+                            command.span,
+                            error.to_string(),
+                        )
+                    })?;
+                items.push(SemanticItemV2::Command(
+                    crate::ResolvedRenameCommandV3::new(
+                        SemanticItemIdV2::new(source_id, command.id),
+                        location,
+                        target.clone(),
+                        command.new_name.clone(),
+                        command.phase,
+                        command.expected_snapshot.clone(),
+                        command.preview_token.clone(),
+                    ),
+                ));
+            }
             ProgramItemHirV1::Query(query) => {
                 let typed = materialize_query(
                     query,

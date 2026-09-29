@@ -381,6 +381,7 @@ fn membership_anchor(
 /// The checked location of an item kind that retains one.
 fn item_location(item: &SemanticItemV2) -> Option<&CheckedLocatedSpanV2> {
     match item {
+        SemanticItemV2::Command(item) => Some(item.location()),
         SemanticItemV2::Relation(item) => Some(item.location()),
         SemanticItemV2::Graph(item) => Some(item.location()),
         SemanticItemV2::Composition(item) => Some(item.location()),

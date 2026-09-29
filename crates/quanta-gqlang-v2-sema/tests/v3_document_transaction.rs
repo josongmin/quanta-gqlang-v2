@@ -2379,6 +2379,7 @@ fn inline_view_diamond_materializes_dependency_first_despite_reverse_authored_or
         | quanta_gqlang_v2_sema::SemanticItemV2::Presentation(_)
         | quanta_gqlang_v2_sema::SemanticItemV2::Declaration(_)
         | quanta_gqlang_v2_sema::SemanticItemV2::Composition(_)
+        | quanta_gqlang_v2_sema::SemanticItemV2::Command(_)
         | quanta_gqlang_v2_sema::SemanticItemV2::Meta(_) => {
             panic!("inline View declaration must materialize as Catalog")
         }

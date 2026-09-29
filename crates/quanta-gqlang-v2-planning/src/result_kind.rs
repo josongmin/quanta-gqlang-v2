@@ -22,6 +22,8 @@ use quanta_gqlang_v2_types::CardinalityV1;
 /// The KIND of result the plan renders.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ResultKindV2 {
+    /// A typed command preview or apply receipt.
+    CommandReceipt,
     /// A relational table of rows.
     Table,
     /// An alert: rows that must carry a source location (file/span) payload.
@@ -37,6 +39,7 @@ impl ResultKindV2 {
     #[must_use]
     pub const fn keyword(self) -> &'static str {
         match self {
+            Self::CommandReceipt => "command_receipt",
             Self::Table => "table",
             Self::Alert => "alert",
             Self::PathWitness => "path_witness",
@@ -112,6 +115,8 @@ impl MultiplicityOrderContractV2 {
 /// well-formed (`D20`). Distinct from the authority-lane evidence requirement.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum RenderRequirementV2 {
+    /// A typed command receipt with a target and phase, not a relation row.
+    CommandReceipt,
     /// Nothing beyond the result columns.
     RowsOnly,
     /// Each row must carry a source location (file/span).
@@ -130,6 +135,7 @@ impl RenderRequirementV2 {
     #[must_use]
     pub const fn keyword(self) -> &'static str {
         match self {
+            Self::CommandReceipt => "command_receipt",
             Self::RowsOnly => "rows_only",
             Self::SourceLocation => "source_location",
             Self::SarifFindings => "sarif_findings",

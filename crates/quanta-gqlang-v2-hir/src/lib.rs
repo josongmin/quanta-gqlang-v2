@@ -91,8 +91,8 @@ pub use item::{
     ConfirmModeV1, DetectionModeV1, EmitModeV1, EvidenceModeV1, ExplainHirV1, ExportFormatV1,
     GateBindingV1, GraphConstraintsV1, GraphDirectionV1, GraphEndpointsV1, GraphQueryHirV1,
     GraphQueryKindV1, GraphRefV1, LegalityHirV1, MetaHirV1, MetaKindV1, PresentationHirV1,
-    PresentationKindV1, ProgramItemHirV1, SampleHirV1, SampleModeV1, ShowCategoryV1, TruthModeV1,
-    UsePackActivationV1, UsePackHirV1, ViewBodyV1,
+    PresentationKindV1, ProgramItemHirV1, RenameCommandHirV3, RenamePhaseV3, SampleHirV1,
+    SampleModeV1, ShowCategoryV1, TruthModeV1, UsePackActivationV1, UsePackHirV1, ViewBodyV1,
 };
 
 pub use visit::{
