@@ -2471,76 +2471,110 @@ fn project_binding(binding: &quanta_gqlang_v2_sema::ResolvedValueBindingV2) -> E
 /// by the schema version instead.
 const SOURCE_DIGEST_SCHEMA_VERSION: u32 = 3;
 // The Rust DTO is still Execution V3. Its contract/qualification encoding has
-// an independent revision. Schema 6 adds flat multi-EXISTS condition payloads
-// to the earlier scoped SAMPLE, graph-query, and witness-policy revisions.
+// an independent revision. Schema 8 adds Rename Command target and intent
+// after the earlier relation, graph, and presentation payloads.
 // The source byte stream itself did not change, so its stable schema remains 3.
 const CONTRACT_DIGEST_SCHEMA_VERSION: u32 = 8;
 
+/// One canonical byte stream can be sent directly to the digest or, in tests,
+/// captured for exact-byte comparisons. Writers below own field order and
+/// framing; sinks own only byte delivery.
+trait CanonicalByteSink {
+    fn write_bytes(&mut self, bytes: &[u8]);
+
+    fn write_byte(&mut self, byte: u8) {
+        self.write_bytes(&[byte]);
+    }
+}
+
+impl CanonicalByteSink for Sha256 {
+    fn write_bytes(&mut self, bytes: &[u8]) {
+        self.update(bytes);
+    }
+}
+
+#[cfg(test)]
+impl CanonicalByteSink for Vec<u8> {
+    fn write_bytes(&mut self, bytes: &[u8]) {
+        self.extend_from_slice(bytes);
+    }
+}
+
 /// Digest of the raw UTF-8 source bytes only.
 fn digest_source_bytes(source: &[u8]) -> ExecutionDigestV3 {
-    let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.source-bytes.v3");
-    put_u32(&mut bytes, SOURCE_DIGEST_SCHEMA_VERSION);
-    put_usize(&mut bytes, source.len());
-    bytes.extend_from_slice(source);
-    ExecutionDigestV3(sha256(&bytes))
+    let mut digest = Sha256::new();
+    put_str(&mut digest, "qglang.execution.source-bytes.v3");
+    put_u32(&mut digest, SOURCE_DIGEST_SCHEMA_VERSION);
+    put_usize(&mut digest, source.len());
+    digest.write_bytes(source);
+    ExecutionDigestV3(finish_sha256(digest))
 }
 
 /// Digest of the canonical DTO encoding only.
 fn digest_contract(source_id: SourceIdV2, items: &[ExecutionItemV3]) -> ExecutionDigestV3 {
-    let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.contract.v8");
-    put_u32(&mut bytes, CONTRACT_DIGEST_SCHEMA_VERSION);
-    put_u32(&mut bytes, source_id.raw());
-    put_usize(&mut bytes, items.len());
+    let mut digest = Sha256::new();
+    write_contract(&mut digest, source_id, items);
+    ExecutionDigestV3(finish_sha256(digest))
+}
+
+/// The sole schema-8 contract encoder, shared by production hashing and the
+/// bounded test sink. No complete canonical stream is materialized here.
+fn write_contract(
+    out: &mut impl CanonicalByteSink,
+    source_id: SourceIdV2,
+    items: &[ExecutionItemV3],
+) {
+    put_str(out, "qglang.execution.contract.v8");
+    put_u32(out, CONTRACT_DIGEST_SCHEMA_VERSION);
+    put_u32(out, source_id.raw());
+    put_usize(out, items.len());
     for item in items {
-        put_item_id(&mut bytes, item.item_id);
-        put_u8(&mut bytes, family_tag(item.family));
-        put_u8(&mut bytes, authority_tag(item.plan.authority));
-        put_u8(&mut bytes, determinism_tag(item.plan.determinism));
-        put_u8(&mut bytes, evidence_tag(item.plan.evidence));
-        put_u8(&mut bytes, effect_tag(item.plan.effect));
-        put_u8(&mut bytes, policy_family_tag(item.plan.policy_family));
+        put_item_id(out, item.item_id);
+        put_u8(out, family_tag(item.family));
+        put_u8(out, authority_tag(item.plan.authority));
+        put_u8(out, determinism_tag(item.plan.determinism));
+        put_u8(out, evidence_tag(item.plan.evidence));
+        put_u8(out, effect_tag(item.plan.effect));
+        put_u8(out, policy_family_tag(item.plan.policy_family));
         if let Some(relation) = &item.relation {
-            put_relation(&mut bytes, relation);
+            put_relation(out, relation);
         } else {
-            put_u8(&mut bytes, 0);
+            put_u8(out, 0);
         }
         if let Some(composition) = &item.composition {
-            put_composition(&mut bytes, composition);
+            put_composition(out, composition);
         } else {
-            put_u8(&mut bytes, 0);
+            put_u8(out, 0);
         }
         match &item.graph {
             Some(graph) => {
-                put_u8(&mut bytes, 1);
-                put_graph_query(&mut bytes, graph);
+                put_u8(out, 1);
+                put_graph_query(out, graph);
             }
-            None => put_u8(&mut bytes, 0),
+            None => put_u8(out, 0),
         }
         match &item.check {
             Some(check) => {
-                put_u8(&mut bytes, 1);
-                put_check(&mut bytes, check);
+                put_u8(out, 1);
+                put_check(out, check);
             }
-            None => put_u8(&mut bytes, 0),
+            None => put_u8(out, 0),
         }
         match &item.presentation {
             Some(presentation) => {
-                put_u8(&mut bytes, 1);
-                put_presentation(&mut bytes, presentation);
+                put_u8(out, 1);
+                put_presentation(out, presentation);
             }
-            None => put_u8(&mut bytes, 0),
+            None => put_u8(out, 0),
         }
         match &item.command {
             Some(command) => {
-                put_u8(&mut bytes, 1);
-                put_command(&mut bytes, command);
+                put_u8(out, 1);
+                put_command(out, command);
             }
-            None => put_u8(&mut bytes, 0),
+            None => put_u8(out, 0),
         }
     }
-    ExecutionDigestV3(sha256(&bytes))
 }
 
 /// Digest binding the contract domain, the schema version, and both legs.
@@ -2549,16 +2583,16 @@ fn digest_qualification(
     source_digest: ExecutionDigestV3,
     contract_digest: ExecutionDigestV3,
 ) -> ExecutionDigestV3 {
-    let mut bytes = Vec::new();
-    put_str(&mut bytes, "qglang.execution.qualification.v8");
-    put_u32(&mut bytes, CONTRACT_DIGEST_SCHEMA_VERSION);
-    put_u32(&mut bytes, source_id.raw());
-    bytes.extend_from_slice(source_digest.as_bytes());
-    bytes.extend_from_slice(contract_digest.as_bytes());
-    ExecutionDigestV3(sha256(&bytes))
+    let mut digest = Sha256::new();
+    put_str(&mut digest, "qglang.execution.qualification.v8");
+    put_u32(&mut digest, CONTRACT_DIGEST_SCHEMA_VERSION);
+    put_u32(&mut digest, source_id.raw());
+    digest.write_bytes(source_digest.as_bytes());
+    digest.write_bytes(contract_digest.as_bytes());
+    ExecutionDigestV3(finish_sha256(digest))
 }
 
-fn put_command(out: &mut Vec<u8>, command: &ExecutionRenameCommandV3) {
+fn put_command(out: &mut impl CanonicalByteSink, command: &ExecutionRenameCommandV3) {
     put_u8(
         out,
         match command.phase {
@@ -2569,8 +2603,8 @@ fn put_command(out: &mut Vec<u8>, command: &ExecutionRenameCommandV3) {
     put_str(out, command.target.selector());
     put_str(out, command.target.repo_path());
     put_str(out, command.target.symbol_id());
-    out.extend_from_slice(&command.target.start_byte.to_be_bytes());
-    out.extend_from_slice(&command.target.end_byte.to_be_bytes());
+    out.write_bytes(&command.target.start_byte.to_be_bytes());
+    out.write_bytes(&command.target.end_byte.to_be_bytes());
     put_str(out, &command.new_name);
     put_str(out, &command.expected_snapshot);
     match &command.preview_token {
@@ -2641,7 +2675,7 @@ const fn policy_family_tag(value: ExecutionPolicyFamilyV3) -> u8 {
     }
 }
 
-fn put_composition(out: &mut Vec<u8>, composition: &ExecutionCompositionV3) {
+fn put_composition(out: &mut impl CanonicalByteSink, composition: &ExecutionCompositionV3) {
     put_u8(out, 1);
     put_usize(out, composition.bindings.len());
     for binding in &composition.bindings {
@@ -2672,7 +2706,10 @@ fn put_composition(out: &mut Vec<u8>, composition: &ExecutionCompositionV3) {
     put_composition_body(out, &composition.body);
 }
 
-fn put_composition_producer(out: &mut Vec<u8>, producer: &ExecutionCompositionProducerV3) {
+fn put_composition_producer(
+    out: &mut impl CanonicalByteSink,
+    producer: &ExecutionCompositionProducerV3,
+) {
     match producer {
         ExecutionCompositionProducerV3::Relation => put_u8(out, 0),
         ExecutionCompositionProducerV3::Sample {
@@ -2700,7 +2737,7 @@ fn put_composition_producer(out: &mut Vec<u8>, producer: &ExecutionCompositionPr
         }
     }
 }
-fn put_composition_body(out: &mut Vec<u8>, body: &ExecutionCompositionBodyV3) {
+fn put_composition_body(out: &mut impl CanonicalByteSink, body: &ExecutionCompositionBodyV3) {
     match body {
         ExecutionCompositionBodyV3::Relation => put_u8(out, 0),
         ExecutionCompositionBodyV3::Graph(query) => {
@@ -2712,7 +2749,7 @@ fn put_composition_body(out: &mut Vec<u8>, body: &ExecutionCompositionBodyV3) {
     }
 }
 
-fn put_graph_query(out: &mut Vec<u8>, query: &ExecutionGraphQueryV3) {
+fn put_graph_query(out: &mut impl CanonicalByteSink, query: &ExecutionGraphQueryV3) {
     put_u8(out, graph_kind_tag(query.kind));
     put_usize(out, query.references.len());
     for reference in &query.references {
@@ -2744,12 +2781,12 @@ fn put_graph_query(out: &mut Vec<u8>, query: &ExecutionGraphQueryV3) {
     put_u8(out, graph_witness_tie_break_tag(query.witness_tie_break));
 }
 
-fn put_catalog_identity(out: &mut Vec<u8>, identity: &ExecutionCatalogIdentityV3) {
+fn put_catalog_identity(out: &mut impl CanonicalByteSink, identity: &ExecutionCatalogIdentityV3) {
     put_str(out, &identity.module);
     put_str(out, &identity.name);
 }
 
-fn put_check(out: &mut Vec<u8>, check: &ExecutionCheckV3) {
+fn put_check(out: &mut impl CanonicalByteSink, check: &ExecutionCheckV3) {
     put_catalog_identity(out, &check.rule);
     put_optional_graph_target(out, check.scope.as_ref());
     put_optional_graph_target(out, check.pattern.as_ref());
@@ -2786,7 +2823,7 @@ fn put_check(out: &mut Vec<u8>, check: &ExecutionCheckV3) {
     );
 }
 
-fn put_presentation(out: &mut Vec<u8>, presentation: &ExecutionPresentationKindV3) {
+fn put_presentation(out: &mut impl CanonicalByteSink, presentation: &ExecutionPresentationKindV3) {
     match presentation {
         ExecutionPresentationKindV3::Explain {
             target,
@@ -2905,7 +2942,10 @@ fn put_presentation(out: &mut Vec<u8>, presentation: &ExecutionPresentationKindV
     }
 }
 
-fn put_optional_graph_target(out: &mut Vec<u8>, target: Option<&ExecutionGraphTargetV3>) {
+fn put_optional_graph_target(
+    out: &mut impl CanonicalByteSink,
+    target: Option<&ExecutionGraphTargetV3>,
+) {
     match target {
         Some(target) => {
             put_u8(out, 1);
@@ -2915,7 +2955,7 @@ fn put_optional_graph_target(out: &mut Vec<u8>, target: Option<&ExecutionGraphTa
     }
 }
 
-fn put_graph_target(out: &mut Vec<u8>, target: &ExecutionGraphTargetV3) {
+fn put_graph_target(out: &mut impl CanonicalByteSink, target: &ExecutionGraphTargetV3) {
     match target {
         ExecutionGraphTargetV3::Host {
             kind,
@@ -3023,7 +3063,7 @@ const fn graph_kind_tag(kind: ExecutionGraphKindV3) -> u8 {
     }
 }
 
-fn put_relation(out: &mut Vec<u8>, relation: &ExecutionRelationV3) {
+fn put_relation(out: &mut impl CanonicalByteSink, relation: &ExecutionRelationV3) {
     put_u8(out, 1);
     put_item_id(out, relation.item_id);
     put_node(out, &relation.root);
@@ -3034,7 +3074,7 @@ fn put_relation(out: &mut Vec<u8>, relation: &ExecutionRelationV3) {
         put_expression_shape(out, &expr.shape);
     }
 }
-fn put_node(out: &mut Vec<u8>, node: &ExecutionRelationalOperatorV3) {
+fn put_node(out: &mut impl CanonicalByteSink, node: &ExecutionRelationalOperatorV3) {
     put_u8(out, algebra_family_tag(node.family));
     match node.join_mode {
         Some(mode) => {
@@ -3104,7 +3144,7 @@ const fn relation_authority_tag(authority: ExecutionRelationAuthorityV3) -> u8 {
     }
 }
 
-fn put_expression_shape(out: &mut Vec<u8>, shape: &ExecutionExpressionShapeV3) {
+fn put_expression_shape(out: &mut impl CanonicalByteSink, shape: &ExecutionExpressionShapeV3) {
     match shape {
         ExecutionExpressionShapeV3::Literal(value) => {
             put_u8(out, 0);
@@ -3221,15 +3261,15 @@ fn put_expression_shape(out: &mut Vec<u8>, shape: &ExecutionExpressionShapeV3) {
         }
     }
 }
-fn put_literal(out: &mut Vec<u8>, literal: &ExecutionLiteralV3) {
+fn put_literal(out: &mut impl CanonicalByteSink, literal: &ExecutionLiteralV3) {
     match literal {
         ExecutionLiteralV3::Int(value) => {
             put_u8(out, 0);
-            out.extend_from_slice(&value.to_be_bytes());
+            out.write_bytes(&value.to_be_bytes());
         }
         ExecutionLiteralV3::Float(value) => {
             put_u8(out, 1);
-            out.extend_from_slice(&value.bits().to_be_bytes());
+            out.write_bytes(&value.bits().to_be_bytes());
         }
         ExecutionLiteralV3::Bool(value) => {
             put_u8(out, 2);
@@ -3242,7 +3282,7 @@ fn put_literal(out: &mut Vec<u8>, literal: &ExecutionLiteralV3) {
         ExecutionLiteralV3::Null => put_u8(out, 4),
     }
 }
-fn put_schema(out: &mut Vec<u8>, schema: &ExecutionSchemaV3) {
+fn put_schema(out: &mut impl CanonicalByteSink, schema: &ExecutionSchemaV3) {
     put_usize(out, schema.fields.len());
     for field in &schema.fields {
         put_str(out, &field.name);
@@ -3262,7 +3302,7 @@ fn put_schema(out: &mut Vec<u8>, schema: &ExecutionSchemaV3) {
     }
 }
 
-fn put_value_type(out: &mut Vec<u8>, value: &ExecutionValueTypeV3) {
+fn put_value_type(out: &mut impl CanonicalByteSink, value: &ExecutionValueTypeV3) {
     match value {
         ExecutionValueTypeV3::Scalar(scalar) => {
             put_u8(out, 0);
@@ -3378,7 +3418,7 @@ const fn source_kind_tag(value: ExecutionSourceKindV3) -> u8 {
     }
 }
 
-fn put_call_target(out: &mut Vec<u8>, target: &ExecutionCallTargetV3) {
+fn put_call_target(out: &mut impl CanonicalByteSink, target: &ExecutionCallTargetV3) {
     match target {
         ExecutionCallTargetV3::Builtin { name } => {
             put_u8(out, 0);
@@ -3408,47 +3448,51 @@ const fn exists_polarity_tag(value: ExecutionExistsPolarityV3) -> u8 {
         ExecutionExistsPolarityV3::NotExists => 1,
     }
 }
-fn put_binding(out: &mut Vec<u8>, binding: &ExecutionBindingV3) {
+fn put_binding(out: &mut impl CanonicalByteSink, binding: &ExecutionBindingV3) {
     put_u32(out, binding.source_id.raw());
     put_u32(out, binding.owner_node);
     put_usize(out, binding.ordinal);
     put_str(out, &binding.name);
 }
-fn put_operator(out: &mut Vec<u8>, operator: &ExecutionOperatorV3) {
+fn put_operator(out: &mut impl CanonicalByteSink, operator: &ExecutionOperatorV3) {
     put_str(out, &operator.symbol);
     put_u32(out, operator.overload_id);
 }
-fn put_item_id(out: &mut Vec<u8>, id: SemanticItemIdV2) {
+fn put_item_id(out: &mut impl CanonicalByteSink, id: SemanticItemIdV2) {
     put_u32(out, id.source_id().raw());
     put_u32(out, id.hir_item_id().raw());
 }
-fn put_key(out: &mut Vec<u8>, key: SourceQualifiedNodeIdV2) {
+fn put_key(out: &mut impl CanonicalByteSink, key: SourceQualifiedNodeIdV2) {
     put_u32(out, key.source_id.raw());
     put_u32(out, key.node_id.raw());
 }
-fn put_str(out: &mut Vec<u8>, value: &str) {
+fn put_str(out: &mut impl CanonicalByteSink, value: &str) {
     put_usize(out, value.len());
-    out.extend_from_slice(value.as_bytes());
+    out.write_bytes(value.as_bytes());
 }
-fn put_usize(out: &mut Vec<u8>, value: usize) {
+fn put_usize(out: &mut impl CanonicalByteSink, value: usize) {
     // Total conversion: lengths beyond `u64::MAX` saturate (unreachable on any
     // real target; the digest writer must stay total regardless of platform).
-    out.extend_from_slice(&u64::try_from(value).unwrap_or(u64::MAX).to_be_bytes());
+    out.write_bytes(&u64::try_from(value).unwrap_or(u64::MAX).to_be_bytes());
 }
-fn put_u32(out: &mut Vec<u8>, value: u32) {
-    out.extend_from_slice(&value.to_be_bytes());
+fn put_u32(out: &mut impl CanonicalByteSink, value: u32) {
+    out.write_bytes(&value.to_be_bytes());
 }
-fn put_u8(out: &mut Vec<u8>, value: u8) {
-    out.push(value);
+fn put_u8(out: &mut impl CanonicalByteSink, value: u8) {
+    out.write_byte(value);
 }
 
-/// SHA-256 over the canonical encoding via the audited `sha2` crate. No
-/// hand-rolled cryptography lives in this module.
-fn sha256(input: &[u8]) -> [u8; 32] {
-    let digest = Sha256::digest(input);
+/// Finalize a streamed canonical digest via the audited `sha2` crate.
+fn finish_sha256(hasher: Sha256) -> [u8; 32] {
+    let digest = hasher.finalize();
     let mut out = [0u8; 32];
     out.copy_from_slice(&digest);
     out
+}
+
+#[cfg(test)]
+fn sha256(input: &[u8]) -> [u8; 32] {
+    finish_sha256(Sha256::new().chain_update(input))
 }
 
 #[cfg(test)]

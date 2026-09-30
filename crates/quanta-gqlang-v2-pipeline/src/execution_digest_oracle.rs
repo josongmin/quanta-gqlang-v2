@@ -599,6 +599,98 @@ fn rename_apply_has_independent_exact_target_and_token_bytes() {
 }
 
 #[test]
+fn repeated_rename_contract_streams_through_bounded_writes() {
+    struct ProbeSink {
+        hash: Sha256,
+        total_bytes: usize,
+        largest_write: usize,
+    }
+
+    impl CanonicalByteSink for ProbeSink {
+        fn write_bytes(&mut self, bytes: &[u8]) {
+            self.total_bytes += bytes.len();
+            self.largest_write = self.largest_write.max(bytes.len());
+            self.hash.update(bytes);
+        }
+    }
+
+    let repo_path: Arc<str> = Arc::from(format!("src/{}", "x".repeat(32 * 1024)));
+    let symbol_id: Arc<str> = Arc::from(format!("def:{}", "x".repeat(32 * 1024)));
+    let items: Vec<_> = (0..64_u32)
+        .map(|index| ExecutionItemV3 {
+            item_id: id(100 + index),
+            family: ExecutionFamilyV3::Command,
+            relation: None,
+            composition: None,
+            graph: None,
+            check: None,
+            presentation: None,
+            command: Some(ExecutionRenameCommandV3 {
+                target: ExecutionSymbolTargetV3 {
+                    selector: Arc::from("s"),
+                    repo_path: Arc::clone(&repo_path),
+                    symbol_id: Arc::clone(&symbol_id),
+                    start_byte: 17,
+                    end_byte: 20,
+                },
+                new_name: "new".to_owned(),
+                phase: ExecutionCommandPhaseV3::Preview,
+                expected_snapshot: "snap-7".to_owned(),
+                preview_token: None,
+            }),
+            plan: ExecutionPlanV3 {
+                authority: ExecutionAuthorityV3::FrontendChecked,
+                determinism: ExecutionDeterminismV3::Deterministic,
+                evidence: ExecutionEvidenceV3::None,
+                effect: ExecutionEffectV3::ReadOnly,
+                policy_family: ExecutionPolicyFamilyV3::Command,
+            },
+        })
+        .collect();
+
+    let mut probe = ProbeSink {
+        hash: Sha256::new(),
+        total_bytes: 0,
+        largest_write: 0,
+    };
+    write_contract(&mut probe, SourceIdV2::from_raw(17), &items);
+    assert!(probe.total_bytes > 4 * 1024 * 1024);
+    assert!(
+        probe.largest_write < 64 * 1024,
+        "one write of {} bytes would materialize the contract stream",
+        probe.largest_write
+    );
+
+    // Build the expected stream independently of production tags and writers.
+    let mut expected = Sha256::new();
+    expected.update(text("qglang.execution.contract.v8"));
+    expected.update(n(8));
+    expected.update(n(17));
+    expected.update(length(items.len()));
+    for index in 0..64_u32 {
+        expected.update(wire_key(100 + index));
+        // family, authority, determinism, evidence, effect, policy;
+        // five preceding payloads absent, command present.
+        expected.update([7, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 1]);
+        expected.update([0]); // Preview phase.
+        expected.update(text("s"));
+        expected.update(text(&repo_path));
+        expected.update(text(&symbol_id));
+        expected.update(count(17));
+        expected.update(count(20));
+        expected.update(text("new"));
+        expected.update(text("snap-7"));
+        expected.update([0]); // No preview token.
+    }
+    let expected_hash = finish_sha256(expected);
+    assert_eq!(finish_sha256(probe.hash), expected_hash);
+    assert_eq!(
+        digest_contract(SourceIdV2::from_raw(17), &items).as_bytes(),
+        &expected_hash
+    );
+}
+
+#[test]
 fn whole_relation_stream_has_independent_expected_bytes() {
     let (relation, bytes) = relation();
     let item = ExecutionItemV3 {
