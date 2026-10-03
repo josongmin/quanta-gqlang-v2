@@ -86,6 +86,7 @@ static:
     just fmt
     just taplo
     just clippy-current
+    just clippy-msrv
     just typos
     just pm-check
     just pm-test
