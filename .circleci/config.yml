@@ -1,0 +1,111 @@
+version: 2.1
+
+# Project triggers are configured in CircleCI: default-branch pushes and PRs.
+# There is no schedule trigger. The project setting auto-cancel-builds is on.
+parameters:
+  run_heavy:
+    type: boolean
+    default: false
+
+jobs:
+  verify:
+    machine:
+      image: ubuntu-2404:2026.05.1
+    resource_class: medium
+    environment:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_TERM_COLOR: always
+    steps:
+      - checkout
+      - run:
+          name: Check source revision and executor
+          command: |
+            set -euo pipefail
+            test "$(git rev-parse HEAD)" = "$CIRCLE_SHA1"
+            test "$(uname -s)" = Linux
+            test "$(uname -m)" = x86_64
+            test "$(nproc)" -ge "$CARGO_BUILD_JOBS"
+      - restore_cache:
+          keys:
+            - qglang-v2-tools-v1-{{ arch }}-rust1.95.0-{{ checksum "tools/ci/toolchain.lock.toml" }}
+      - restore_cache:
+          keys:
+            - qglang-v2-deps-v1-{{ arch }}-rust1.81.0-{{ checksum "tools/ci/toolchain.lock.toml" }}-{{ checksum "Cargo.lock" }}-{{ checksum "tools/frontend_external_consumer/Cargo.lock" }}
+            - qglang-v2-deps-v1-{{ arch }}-rust1.81.0-{{ checksum "tools/ci/toolchain.lock.toml" }}-
+      - run:
+          name: Install pinned verification tools
+          no_output_timeout: 20m
+          command: |
+            set -euo pipefail
+            bash tools/ci/circleci-install.sh
+      - save_cache:
+          key: qglang-v2-tools-v1-{{ arch }}-rust1.95.0-{{ checksum "tools/ci/toolchain.lock.toml" }}
+          paths:
+            - ~/.local/share/qglang-ci-tools/bin
+      - run:
+          name: Fetch locked dependencies and fresh advisories
+          no_output_timeout: 20m
+          command: |
+            set -euo pipefail
+            test "$(git rev-parse HEAD)" = "$CIRCLE_SHA1"
+            cargo fetch --locked --manifest-path Cargo.toml
+            cargo fetch --locked --manifest-path tools/frontend_external_consumer/Cargo.toml
+            just advisory-refresh
+            test -d "$HOME/.cargo/registry/cache"
+            test -n "$(find "$HOME/.cargo/registry/cache" -mindepth 2 -maxdepth 2 -type f -print -quit)"
+      - save_cache:
+          key: qglang-v2-deps-v1-{{ arch }}-rust1.81.0-{{ checksum "tools/ci/toolchain.lock.toml" }}-{{ checksum "Cargo.lock" }}-{{ checksum "tools/frontend_external_consumer/Cargo.lock" }}
+          paths:
+            - ~/.cargo/registry
+            - ~/.cargo/git
+      - run:
+          name: Full repository CI
+          no_output_timeout: 20m
+          command: |
+            set -euo pipefail
+            test "$(git rev-parse HEAD)" = "$CIRCLE_SHA1"
+            just ci
+      - store_artifacts:
+          path: target/ci
+          destination: ci-evidence
+
+  fuzz:
+    machine:
+      image: ubuntu-2404:2026.05.1
+    resource_class: medium
+    environment:
+      CARGO_BUILD_JOBS: "2"
+    steps:
+      - checkout
+      - run:
+          name: Pinned fuzz smoke
+          no_output_timeout: 20m
+          command: |
+            set -euo pipefail
+            test "$(git rev-parse HEAD)" = "$CIRCLE_SHA1"
+            sudo apt-get update
+            sudo apt-get install -y build-essential curl
+            if ! command -v rustup >/dev/null 2>&1; then
+              curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+            fi
+            export PATH="$HOME/.cargo/bin:$PATH"
+            rustup toolchain install nightly-2026-09-23 --profile minimal --component rust-src
+            RUSTUP_TOOLCHAIN=nightly-2026-09-23 cargo install cargo-fuzz --version 0.13.1 --locked
+            test "$(cargo +nightly-2026-09-23 fuzz --version)" = 'cargo-fuzz 0.13.1'
+            cargo +nightly-2026-09-23 fetch --locked --manifest-path fuzz/Cargo.toml
+            export CARGO_NET_OFFLINE=true
+            mkdir -p target/circleci-fuzz/corpus
+            cp fuzz/corpus/surface_document/* target/circleci-fuzz/corpus/
+            test -n "$(find target/circleci-fuzz/corpus -type f -print -quit)"
+            cargo +nightly-2026-09-23 fuzz run surface_document target/circleci-fuzz/corpus -- -max_total_time=60 -timeout=5
+            git diff --exit-code -- fuzz/Cargo.lock Cargo.lock
+
+workflows:
+  regular:
+    unless: << pipeline.parameters.run_heavy >>
+    jobs:
+      - verify
+  manual-heavy:
+    when: << pipeline.parameters.run_heavy >>
+    jobs:
+      - fuzz

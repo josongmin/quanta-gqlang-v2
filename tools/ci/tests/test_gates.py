@@ -94,7 +94,9 @@ class LocalGateTest(unittest.TestCase):
     def test_cargo_heavy_composition_is_an_explicit_waterfall(self) -> None:
         text = (run_local.ROOT / "Justfile").read_text(encoding="utf-8")
         expected = {
-            "static": ["fmt", "taplo", "clippy-current", "typos", "pm-check", "pm-test"],
+            "static": [
+                "fmt", "taplo", "clippy-current", "clippy-msrv", "typos", "pm-check", "pm-test",
+            ],
             "test": ["nextest", "doctest", "frontdoor-parity"],
             "policy": [
                 "ci-rail-test", "qualifier-custody", "arch-lint", "external-consumer",
