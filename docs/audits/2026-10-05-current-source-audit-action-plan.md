@@ -35,14 +35,16 @@
 - 전체 격리 후보는 common base de040 대비30개 파일. Linux trust1개는 위 체크포인트로 반영했고, **나머지29개**를 최신 main에 통합해야 한다.
 - Graph parser/adapter/host의 top-level16함수 bounded projection, canonical IDs, chain/cycle/depth/work 처리; SDK·ingress generation owner 전달; request 회귀 및 source pin이 포함된다.
 - Provider alias/clone/last-drop 및 foreign-root **3/3**, Graph 결과 owner **8/8**, generation carrier **3/3**은 `082640af`/source digest `1936608667ea97c33ab4a93685b38e47eba1db05a3589381a1a96d844bac986c`에서 PASS다. 최신 a48의 추가 변화는 Linux trust1개다. 이 결과를 최신 main의 전체 제품 증명으로 읽지 않는다.
-- 공유 main과 겹치는 committed 파일은 lock와 suite registry2개이며 확인한 변경 hunk는 분리된다. 두 파일의 새 SDK/runtime 의존성과 M23 profile을 보존해야 한다. SDK·ingress·lock·registry에는 다른 작업의 활성 claim이 있어 통합 조정이 필요하다.
+- 재확인 HEAD `ed3abaf7f0754561aa3d83ecca4e7f6ece1971b4`에서는 committed 교집합이5개다: lock, suite registry, daemon E2E, SDK handler, dense factory. Dense factory에는 새 dirty 변경도 있다. SDK의 boxed permit 선예약·control 전달과 새 process oracle을 보존해 재조정해야 한다. SDK·ingress·lock·registry의 활성 claim은 다른 실제 작업에서도 진행 중임을 확인했다.
 - **완료 조건:** 최신 main descendant에 정확한 owner 변경만 재적용, 양측 변경 보존, coordinator의 claim/barrier/source-commit/require-head로 checkpoint 생성. 다른 dirty/index 변경은 포함하지 않는다.
 
 ### 2. P0 — Graph host·EXISTS·SDK 최종 owner 검증
 
 - Linux parser portable HIR **10/10 PASS**는 b41 소스에서의 증거다. 뒤 변경은 provider test 및 trust1개로 parser 입력은 그대로다.
 - Linux adapter **9/9**, trust **6/6**은 a48의 동일 source digest `5fb8ca024533fd917ba75a9fe4ce38a1a7d49f3fc8240493189efbe5bbbc7f95`다.
-- **현재 실행 중:** 같은 frozen Linux 조합의 Graph host QBC. 이후 EXISTS exact → SDK lib check를 같은 warm lane에서 순차 실행한다. 아직 결과를 PASS로 기록하지 않는다.
+- **Graph host QBC 종료, 테스트0:** broad dist-full 컴파일에서 runtime-analysis rustc SIGKILL 및 Docker OOM 기록, request-spec 모듈 경로 E0433이 확인됐다. 경로 오류는 최신 공유 main에 이미 수정돼 있어 오래된 후보에 중복 수리하지 않는다.
+- 최종화에서 추가로 약4만 소스 항목의 inode 변경을 감지해 QBC가 결과 JSON을 발행하지 않았다. Tuple은 현재 clean이고 샘플의 내용·시간 정보는 유지됐지만 최초 전체 inode/byte 상태와의 동등성은 입증되지 않았다. Docker bind metadata 불안정 가능성이 있으며 가드를 유지해야 한다. **이 실행의 qualified verdict는 없다.**
+- 후속 EXISTS exact·SDK lib check는 실행되지 않았다. 최신 소스를 통합하고 Linux native filesystem에 소스를 고정한 뒤, Docker7.65GiB에 맞춰 jobs1/낮은 rustc frontend thread 수로 검증을 재개한다. Cache는 호환성 범위에서 보존한다.
 - EXISTS의 비어 있지 않은 입력 두0행 oracle은 이미 구현됐다. 새 테스트 작성보다 실제 실행 결과 확인이 남았다.
 - **완료 조건:** 실제 선택/실행 수와 receipt 확인; main replay의 proof 입력 delta 검토 및 바뀐 proof closure 재검증. 컴파일-only SDK check를 SDK 제품 실행 증명으로 대신하지 않는다.
 
@@ -51,7 +53,7 @@
 - `quanta-cli-product.release-full.build`의 immutable4-binary bundle, build receipt, binary hashes와 source tuple을 고정해야 한다.
 - Linux 설치형 Graph: PATH/Reachability 성공, unreachable 빈 결과, budget/stale/foreign 거절. CHECK: signed catalog zero/one/multi 실제 matcher 결과.
 - macOS는 parser/worker 미설치의 typed Unsupported 및 결과/receipt 미발급을 검증한다.
-- **현재 NOT_RUN.** Linux owner PASS를 설치형 제품 완료로 계산하지 않는다. Linux 환경은 aarch64이며 x86_64 증명이 아니다.
+- **현재 NOT_RUN.** Linux owner PASS를 설치형 제품 완료로 계산하지 않는다. Linux 환경은 aarch64이며 x86_64 증명이 아니다. 새 실행은 위 native-source/메모리 선행 조건을 먼저 해결해야 한다.
 - **완료 조건:** 최종 committed producer/consumer/Index 조합, 동일 physical build root/lane의 bundle와 process rail, source drift 및 cleanup 확인.
 
 ### 4. P0 — Consumer closeout pin과 최종 증거 기록
@@ -63,7 +65,7 @@
 
 ## 완료나 신규 기능으로 잘못 계산하지 않을 것
 
-- Semantic generation carrier3/3은 **실제 semantic request의 양성 clone/drop 증명이 아니다**. Public ingress는 Composition을 UnsupportedFamily로, Relation의 Some generation을 SemanticSampleGenerationUnexpected로 거절한다. 현재 공개 경로의 성공 기능을 새로 구현하는 것은 이번 maintenance 범위에 추가하지 않는다.
+- Semantic generation carrier3/3은 **실제 semantic request의 양성 clone/drop 증명이 아니다**. 현재 SDK source_admission_v3→compile_issued_gqlang_source_with_generation_v3 경로는 public ingress의 Composition→UnsupportedFamily 선거절에 도달하며 Relation의 Some generation도 거절된다. 공유 main의 새 configured-Semantic process oracle은 양성 결과를 기대하나, 그 테스트의 PASS는 확인되지 않았다. Oracle과 선거절 경로의 정합은 해당 작업과 통합 조정해야 한다. 현재 공개 성공 기능을 이 maintenance의 새 구현 범위로 추가하지 않는다.
 - `query.result_shape`는 leaf/record/nested 모두 현재 sema에서 typed 거절한다. 신규 지원은 이번 잔여가 아니다.
 - SHOW staged 양성 경로가 있어 SHOW 전체 불능이라는 주장은 틀리다.
 - Rename 포함 conformance19 corpus, stale 주석 수리, Graph cap1/dedup 계약, EXISTS oracle 소스는 이미 구현된 항목이다.
