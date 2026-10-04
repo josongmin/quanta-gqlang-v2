@@ -1,10 +1,12 @@
 //! Ergonomic, id-allocating builders for HIR trees.
 //!
-//! The v3 parser (ticket 06) does not exist yet, so HIR trees must be buildable
-//! programmatically. [`HirBuilderV1`] owns a single [`HirNodeIdGen`] and mints a
-//! fresh unique id for every node it constructs, so trees built entirely through
-//! one builder satisfy the id-uniqueness invariant by construction. Spans are
-//! always caller-supplied (the builder never invents source offsets).
+//! The v3 surface parser lowers source through this builder
+//! (`surface::parse_document` / `parse_program`). Tests and embedders may also
+//! construct trees programmatically. [`HirBuilderV1`] owns a single
+//! [`HirNodeIdGen`] and mints a fresh unique id for every node it constructs, so
+//! trees built entirely through one builder satisfy the id-uniqueness invariant
+//! by construction. Spans are always caller-supplied (the builder never invents
+//! source offsets).
 
 use crate::expr::{
     BinaryBoolV1, LogicalQuantifierHirV1, LogicalQuantifierKindV1, NonEmptyBindersV1,

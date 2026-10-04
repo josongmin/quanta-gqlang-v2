@@ -34,12 +34,17 @@ use crate::lexer::TokenKindV1;
 use crate::query::parse_query;
 use quanta_gqlang_v2_hir::SpanV1;
 use quanta_gqlang_v2_hir::{
-    ActivationV1, AdmissionV1, CatalogPayloadV1, CompareMetricV1, CompositionBodyV1,
-    CompositionProducerV1, ConfirmModeV1, DetectionModeV1, EmitModeV1, EvidenceModeV1,
-    ExplainHirV1, ExportFormatV1, GateBindingV1, GraphConstraintsV1, GraphDirectionV1,
-    GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, MetaKindV1,
-    PresentationKindV1, ProgramItemHirV1, RenamePhaseV3, SampleHirV1, SampleModeV1, ShowCategoryV1,
-    TruthModeV1, UsePackActivationV1, UsePackHirV1, ViewBodyV1,
+    CompareMetricV1, CompositionBodyV1, CompositionProducerV1, ConfirmModeV1, DetectionModeV1,
+    EmitModeV1, EvidenceModeV1, ExplainHirV1, ExportFormatV1, GraphConstraintsV1, GraphDirectionV1,
+    GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, PresentationKindV1,
+    ProgramItemHirV1, RenamePhaseV3, SampleHirV1, SampleModeV1, ShowCategoryV1, TruthModeV1,
+};
+
+mod catalog;
+
+use catalog::{
+    parse_gate, parse_model, parse_pack, parse_profile, parse_require_certified, parse_ruledef,
+    parse_use_pack, parse_view,
 };
 
 /// Whether `word` is a leading keyword owned by a v3 family parser here.
@@ -84,7 +89,7 @@ pub(crate) fn parse_family(
         return parse_explain(cur, source);
     }
     if cur.is_keyword("show") {
-        return parse_show(cur);
+        return parse_show(cur, source);
     }
     if cur.is_keyword("describe") {
         return parse_describe(cur, source);
@@ -272,10 +277,7 @@ pub(crate) fn parse_composition(
                 format!("duplicate composition binding '{name}'"),
             ));
         }
-        cur.expect(
-            &TokenKindV1::Op("=".to_string()),
-            "'=' after a binding name",
-        )?;
+        cur.expect_op("=", "'=' after a binding name")?;
         cur.budget
             .charge_collection_element(bindings.len() + 1, name_span)?;
         let producer = parse_producer(cur, source)?;
@@ -460,7 +462,7 @@ fn parse_ref(
         break;
     }
     let span = SpanV1::new(start, end);
-    let name = source.get(start..end).unwrap_or_default().to_string();
+    let name = cur.materialize_reference_v1(source, span)?;
     Ok(GraphRefV1 { name, span })
 }
 
@@ -508,7 +510,7 @@ fn at_clause(cur: &CursorV1<'_>) -> bool {
 fn clause_key(cur: &mut CursorV1<'_>) -> Result<(String, SpanV1), ParseDiagnosticV1> {
     cur.expect(&TokenKindV1::Pipe, "'|' to start a clause")?;
     let (key, span) = parse_keyword_value(cur, "a clause key")?;
-    cur.expect(&TokenKindV1::Op("=".to_string()), "'=' after a clause key")?;
+    cur.expect_op("=", "'=' after a clause key")?;
     Ok((key, span))
 }
 
@@ -930,7 +932,7 @@ fn parse_explain(
 
 // ---- SHOW ------------------------------------------------------------------
 
-fn parse_show(cur: &mut CursorV1<'_>) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
+fn parse_show(cur: &mut CursorV1<'_>, source: &str) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
     let kw = cur.expect_keyword("show", "'show' to start a catalog query")?;
     let (cat, cat_span) = cur.expect_ident("a SHOW category")?;
     let category = match cat.as_str() {
@@ -951,6 +953,7 @@ fn parse_show(cur: &mut CursorV1<'_>) -> Result<ProgramItemHirV1, ParseDiagnosti
     };
     let span = kw.span.merge(&cat_span);
     let kind = PresentationKindV1::Show { category };
+    cur.reserve_show_box_v1(source, span)?;
     Ok(ProgramItemHirV1::from(cur.builder.presentation(kind, span)))
 }
 
@@ -990,7 +993,7 @@ fn parse_sample(
             "SAMPLE must start with a 'query' clause",
         ));
     }
-    cur.expect(&TokenKindV1::Op("=".to_string()), "'=' after 'query'")?;
+    cur.expect_op("=", "'=' after 'query'")?;
     let (query_text, q_text_span) = expect_string(cur, "a quoted query text")?;
     if query_text.is_empty() {
         return Err(reject(
@@ -1078,7 +1081,7 @@ fn parse_compare(
             "COMPARE must start with a 'baseline' clause",
         ));
     }
-    cur.expect(&TokenKindV1::Op("=".to_string()), "'=' after 'baseline'")?;
+    cur.expect_op("=", "'=' after 'baseline'")?;
     let baseline_ref = parse_ref(cur, source, "a baseline reference")?;
     let mut end = baseline_ref.span.end;
 
@@ -1147,7 +1150,7 @@ fn parse_export(
             "EXPORT must start with a 'source' clause",
         ));
     }
-    cur.expect(&TokenKindV1::Op("=".to_string()), "'=' after 'source'")?;
+    cur.expect_op("=", "'=' after 'source'")?;
     let source_ref = parse_ref(cur, source, "a source reference")?;
     let mut end = source_ref.span.end;
 
@@ -1203,410 +1206,16 @@ fn parse_export(
     Ok(ProgramItemHirV1::from(cur.builder.presentation(kind, span)))
 }
 
-// ---- VIEW ------------------------------------------------------------------
-
-fn parse_view(cur: &mut CursorV1<'_>, source: &str) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
-    let kw = cur.expect_keyword("view", "'view' to declare a view")?;
-    let name_ref = parse_ref(cur, source, "a view name")?;
-    let (key, key_span) = clause_key(cur)?;
-    let (body, end) = match key.as_str() {
-        "query-ref" => {
-            let r = parse_ref(cur, source, "a query reference")?;
-            (ViewBodyV1::QueryRef(r.clone()), r.span.end)
-        }
-        "select" => {
-            // inline SELECT: the v3 `from | ...` pipe is the shared query carrier.
-            let query = parse_query(cur)?;
-            let e = query.span.end;
-            (ViewBodyV1::Inline(Box::new(query)), e)
-        }
-        other => {
-            return Err(reject(
-                cur,
-                key_span,
-                format!("VIEW body must be 'query-ref' or 'select', got '{other}'"),
-            ))
-        }
-    };
-    let span = kw.span.merge(&SpanV1::point(end));
-    let decl = cur.builder.catalog_decl(
-        name_ref.name,
-        name_ref.span,
-        CatalogPayloadV1::View(body),
-        span,
-    );
-    Ok(ProgramItemHirV1::from(decl))
-}
-
-// ---- MODEL -----------------------------------------------------------------
-
-fn parse_model(
-    cur: &mut CursorV1<'_>,
-    source: &str,
-) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
-    let kw = cur.expect_keyword("model", "'model' to declare a model")?;
-    let name_ref = parse_ref(cur, source, "a model name")?;
-    let mut provider = None;
-    let mut model_source = None;
-    let mut end = name_ref.span.end;
-
-    let mut seen: Vec<String> = Vec::new();
-    while at_clause(cur) {
-        let (key, key_span) = clause_key(cur)?;
-        note_clause(cur, &mut seen, "MODEL", &key, key_span)?;
-        match key.as_str() {
-            "provider" => {
-                let r = parse_ref(cur, source, "a provider tag")?;
-                end = r.span.end;
-                provider = Some(r.name);
-            }
-            "source" => {
-                let r = parse_ref(cur, source, "a source reference")?;
-                end = r.span.end;
-                model_source = Some(r);
-            }
-            other => {
-                return Err(reject(
-                    cur,
-                    key_span,
-                    format!("unsupported MODEL clause '{other}'"),
-                ))
-            }
-        }
-    }
-
-    let provider = provider.ok_or_else(|| reject(cur, kw.span, "MODEL requires a 'provider'"))?;
-    let model_source =
-        model_source.ok_or_else(|| reject(cur, kw.span, "MODEL requires a 'source'"))?;
-    let span = kw.span.merge(&SpanV1::point(end));
-    let decl = cur.builder.catalog_decl(
-        name_ref.name,
-        name_ref.span,
-        CatalogPayloadV1::Model {
-            provider,
-            source: model_source,
-        },
-        span,
-    );
-    Ok(ProgramItemHirV1::from(decl))
-}
-
-// ---- PACK ------------------------------------------------------------------
-
-fn parse_pack(cur: &mut CursorV1<'_>, source: &str) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
-    let kw = cur.expect_keyword("pack", "'pack' to declare a pack")?;
-    let name_ref = parse_ref(cur, source, "a pack name")?;
-    let mut pack_source = None;
-    let mut activation = None;
-    let mut end = name_ref.span.end;
-
-    let mut seen: Vec<String> = Vec::new();
-    while at_clause(cur) {
-        let (key, key_span) = clause_key(cur)?;
-        note_clause(cur, &mut seen, "PACK", &key, key_span)?;
-        match key.as_str() {
-            "source" => {
-                let r = parse_ref(cur, source, "a source reference")?;
-                end = r.span.end;
-                pack_source = Some(r);
-            }
-            "activation" => {
-                let (v, sp) = activation_value(cur)?;
-                end = sp.end;
-                activation = Some(v);
-            }
-            other => {
-                return Err(reject(
-                    cur,
-                    key_span,
-                    format!("unsupported PACK clause '{other}'"),
-                ))
-            }
-        }
-    }
-
-    let pack_source =
-        pack_source.ok_or_else(|| reject(cur, kw.span, "PACK requires a 'source'"))?;
-    let activation =
-        activation.ok_or_else(|| reject(cur, kw.span, "PACK requires an 'activation'"))?;
-    let span = kw.span.merge(&SpanV1::point(end));
-    let decl = cur.builder.catalog_decl(
-        name_ref.name,
-        name_ref.span,
-        CatalogPayloadV1::Pack {
-            source: pack_source,
-            activation,
-        },
-        span,
-    );
-    Ok(ProgramItemHirV1::from(decl))
-}
-
-// ---- PROFILE ---------------------------------------------------------------
-
-fn parse_profile(
-    cur: &mut CursorV1<'_>,
-    source: &str,
-) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
-    let kw = cur.expect_keyword("profile", "'profile' to declare a profile")?;
-    let name_ref = parse_ref(cur, source, "a profile name")?;
-    let mut capabilities = Vec::new();
-    let mut admission = None;
-    let mut end = name_ref.span.end;
-
-    let mut seen: Vec<String> = Vec::new();
-    while at_clause(cur) {
-        let (key, key_span) = clause_key(cur)?;
-        note_clause(cur, &mut seen, "PROFILE", &key, key_span)?;
-        match key.as_str() {
-            "capabilities" => {
-                let refs = parse_required_ref_list(
-                    cur,
-                    source,
-                    "a capability reference",
-                    key_span,
-                    "PROFILE capabilities list must not be empty",
-                )?;
-                end = refs.last().map(|r| r.span.end).unwrap_or(end);
-                capabilities = refs;
-            }
-            "admission" => {
-                let (v, sp) = parse_keyword_value(cur, "an admission policy")?;
-                end = sp.end;
-                admission = Some(match v.as_str() {
-                    "allowlist" => AdmissionV1::Allowlist,
-                    "review-required" => AdmissionV1::ReviewRequired,
-                    "certified-only" => AdmissionV1::CertifiedOnly,
-                    other => {
-                        return Err(reject(
-                            cur,
-                            sp,
-                            format!("unsupported admission policy '{other}'"),
-                        ))
-                    }
-                });
-            }
-            other => {
-                return Err(reject(
-                    cur,
-                    key_span,
-                    format!("unsupported PROFILE clause '{other}'"),
-                ))
-            }
-        }
-    }
-
-    let admission =
-        admission.ok_or_else(|| reject(cur, kw.span, "PROFILE requires an 'admission'"))?;
-    if capabilities.is_empty() {
-        return Err(reject(
-            cur,
-            kw.span,
-            "PROFILE requires a 'capabilities' clause",
-        ));
-    }
-    let span = kw.span.merge(&SpanV1::point(end));
-    let decl = cur.builder.catalog_decl(
-        name_ref.name,
-        name_ref.span,
-        CatalogPayloadV1::Profile {
-            capabilities,
-            admission,
-        },
-        span,
-    );
-    Ok(ProgramItemHirV1::from(decl))
-}
-
-// ---- GATE ------------------------------------------------------------------
-
-fn parse_gate(cur: &mut CursorV1<'_>, source: &str) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
-    let kw = cur.expect_keyword("gate", "'gate' to declare a gate")?;
-    let name_ref = parse_ref(cur, source, "a gate name")?;
-    let mut checks = Vec::new();
-    let mut binding = None;
-    let mut end = name_ref.span.end;
-
-    let mut seen: Vec<String> = Vec::new();
-    while at_clause(cur) {
-        let (key, key_span) = clause_key(cur)?;
-        note_clause(cur, &mut seen, "GATE", &key, key_span)?;
-        match key.as_str() {
-            "checks" => {
-                let refs = parse_required_ref_list(
-                    cur,
-                    source,
-                    "a check reference",
-                    key_span,
-                    "GATE checks list must not be empty",
-                )?;
-                end = refs.last().map(|r| r.span.end).unwrap_or(end);
-                checks = refs;
-            }
-            "binding" => {
-                let (v, sp) = cur.expect_ident("a binding policy")?;
-                end = sp.end;
-                binding = Some(match v.as_str() {
-                    "all" => GateBindingV1::All,
-                    "any" => GateBindingV1::Any,
-                    other => {
-                        return Err(reject(
-                            cur,
-                            sp,
-                            format!("unsupported binding policy '{other}'"),
-                        ))
-                    }
-                });
-            }
-            other => {
-                return Err(reject(
-                    cur,
-                    key_span,
-                    format!("unsupported GATE clause '{other}'"),
-                ))
-            }
-        }
-    }
-
-    let binding = binding.ok_or_else(|| reject(cur, kw.span, "GATE requires a 'binding'"))?;
-    if checks.is_empty() {
-        return Err(reject(cur, kw.span, "GATE requires a 'checks' clause"));
-    }
-    let span = kw.span.merge(&SpanV1::point(end));
-    let decl = cur.builder.catalog_decl(
-        name_ref.name,
-        name_ref.span,
-        CatalogPayloadV1::Gate { checks, binding },
-        span,
-    );
-    Ok(ProgramItemHirV1::from(decl))
-}
-
-// ---- RULE binding (ruledef) ------------------------------------------------
-
-fn parse_ruledef(
-    cur: &mut CursorV1<'_>,
-    source: &str,
-) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
-    let kw = cur.expect_keyword("ruledef", "'ruledef' to bind a catalog rule")?;
-    let name_ref = parse_ref(cur, source, "a rule name")?;
-    let (key, key_span) = clause_key(cur)?;
-    if key != "check-ref" {
-        return Err(reject(
-            cur,
-            key_span,
-            format!("RULE binding requires a 'check-ref' clause, got '{key}'"),
-        ));
-    }
-    let check_ref = parse_ref(cur, source, "a check reference")?;
-    let span = kw.span.merge(&check_ref.span);
-    let decl = cur.builder.catalog_decl(
-        name_ref.name,
-        name_ref.span,
-        CatalogPayloadV1::RuleBinding { check_ref },
-        span,
-    );
-    Ok(ProgramItemHirV1::from(decl))
-}
-
-// ---- META: USE PACK --------------------------------------------------------
-
-fn parse_use_pack(
-    cur: &mut CursorV1<'_>,
-    source: &str,
-) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
-    let kw = cur.expect_keyword("use", "'use' to start a meta directive")?;
-    let pack_word = cur.expect_keyword("pack", "'pack' after 'use'")?;
-    let pack_ref = parse_ref(cur, source, "a pack id")?;
-    let mut end = pack_ref.span.end;
-
-    let mut activation = None;
-    let mut lockfile = None;
-
-    let mut seen: Vec<String> = Vec::new();
-    while at_clause(cur) {
-        let (key, key_span) = clause_key(cur)?;
-        note_clause(cur, &mut seen, "USE PACK", &key, key_span)?;
-        match key.as_str() {
-            "activation" => {
-                let (v, sp) = activation_value(cur)?;
-                end = sp.end;
-                // USE PACK only admits session/workspace (manual is reject in v2).
-                if matches!(v, ActivationV1::Manual) {
-                    return Err(reject(
-                        cur,
-                        sp,
-                        "USE PACK activation must be 'session' or 'workspace'",
-                    ));
-                }
-                activation = Some(v);
-            }
-            "lockfile" => {
-                let r = parse_ref(cur, source, "a lockfile path")?;
-                end = r.span.end;
-                if !r.name.ends_with(".lock") {
-                    return Err(reject(
-                        cur,
-                        r.span,
-                        "USE PACK lockfile must end with '.lock'",
-                    ));
-                }
-                lockfile = Some(r.name);
-            }
-            other => {
-                return Err(reject(
-                    cur,
-                    key_span,
-                    format!("unsupported USE PACK clause '{other}'"),
-                ))
-            }
-        }
-    }
-
-    let activation = activation
-        .ok_or_else(|| reject(cur, pack_word.span, "USE PACK requires an 'activation'"))?;
-    let lockfile = lockfile
-        .ok_or_else(|| reject(cur, pack_word.span, "USE PACK requires a '.lock' lockfile"))?;
-    let span = kw.span.merge(&SpanV1::point(end));
-    let meta = cur.builder.meta(
-        MetaKindV1::UsePack(UsePackHirV1 {
-            pack_id: pack_ref.name,
-            activation: match activation {
-                ActivationV1::Session => UsePackActivationV1::Session,
-                ActivationV1::Workspace => UsePackActivationV1::Workspace,
-                ActivationV1::Manual => {
-                    return Err(reject(
-                        cur,
-                        pack_word.span,
-                        "USE PACK activation must be 'session' or 'workspace'",
-                    ));
-                }
-            },
-            lockfile,
-        }),
-        span,
-    );
-    Ok(ProgramItemHirV1::from(meta))
-}
-
-// ---- META: REQUIRE CERTIFIED -----------------------------------------------
-
-fn parse_require_certified(cur: &mut CursorV1<'_>) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
-    let kw = cur.expect_keyword("require", "'require' to start a meta directive")?;
-    let cert = cur.expect_keyword("certified", "'certified' after 'require'")?;
-    let span = kw.span.merge(&cert.span);
-    let meta = cur.builder.meta(MetaKindV1::RequireCertified, span);
-    Ok(ProgramItemHirV1::from(meta))
-}
-
 // ---- small value parsers ---------------------------------------------------
 
 /// Parse a non-negative integer literal into a `u32` plus its span.
 fn parse_u32(cur: &mut CursorV1<'_>, what: &str) -> Result<(u32, SpanV1), ParseDiagnosticV1> {
-    if let TokenKindV1::Int(raw) = &cur.peek().kind {
-        let raw = raw.clone();
-        let span = cur.here_span();
-        let _ = cur.bump();
+    if matches!(&cur.peek().kind, TokenKindV1::Int(_)) {
+        let token = cur.bump();
+        let TokenKindV1::Int(raw) = token.kind else {
+            return Err(cur.unexpected(what));
+        };
+        let span = token.span;
         let n = raw
             .parse::<u32>()
             .map_err(|_err| cur.unsupported(span, format!("'{raw}' is not a valid {what}")))?;
@@ -1620,25 +1229,13 @@ fn expect_string(
     cur: &mut CursorV1<'_>,
     what: &str,
 ) -> Result<(String, SpanV1), ParseDiagnosticV1> {
-    if let TokenKindV1::Str(content) = &cur.peek().kind {
-        let content = content.clone();
-        let span = cur.here_span();
-        let _ = cur.bump();
-        return Ok((content, span));
+    if matches!(&cur.peek().kind, TokenKindV1::Str(_)) {
+        let token = cur.bump();
+        if let TokenKindV1::Str(content) = token.kind {
+            return Ok((content, token.span));
+        }
     }
     Err(cur.unexpected(what))
-}
-
-/// Parse an activation policy keyword (`manual`/`session`/`workspace`).
-fn activation_value(cur: &mut CursorV1<'_>) -> Result<(ActivationV1, SpanV1), ParseDiagnosticV1> {
-    let (v, sp) = cur.expect_ident("an activation policy")?;
-    let act = match v.as_str() {
-        "manual" => ActivationV1::Manual,
-        "session" => ActivationV1::Session,
-        "workspace" => ActivationV1::Workspace,
-        other => return Err(cur.unsupported(sp, format!("unsupported activation '{other}'"))),
-    };
-    Ok((act, sp))
 }
 
 /// Parse a possibly-hyphenated keyword VALUE (`certified-only`,
@@ -1661,7 +1258,6 @@ fn parse_keyword_value(
     }
     Ok((text, SpanV1::new(first_span.start, end)))
 }
-
 #[cfg(test)]
 mod tests {
     use super::is_family_keyword;

@@ -80,6 +80,10 @@ fn strip_bool_parens(mut value: &BoolExprHirV1) -> &BoolExprHirV1 {
 ///
 /// This is deliberately independent of canonical text: two different raw HIR
 /// shapes must never be accepted merely because they render to the same bytes.
+#[expect(
+    clippy::too_many_lines,
+    reason = "legacy iterative HIR equivalence walk"
+)]
 pub(crate) fn semantically_equivalent_items(
     left: &ProgramItemHirV1,
     right: &ProgramItemHirV1,

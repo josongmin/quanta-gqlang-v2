@@ -12,4 +12,5 @@ rust               = "1.81.0"
 schema             = 1
 semgrep            = "1.157.0"
 taplo              = "taplo 0.10.0"
+tokei              = "tokei 14.0.0"
 typos              = "typos-cli 1.46.3"

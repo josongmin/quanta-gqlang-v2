@@ -7,19 +7,21 @@
 use std::collections::BTreeSet;
 
 use quanta_gqlang_v2_conformance::{
-    root_family_specs_v2, ExpectedDispositionV2, RootFamilySpecV2, ROOT_FAMILIES_V2,
+    root_family_specs_v2, ExpectedDispositionV2, RootFamilySpecV2, RootFamilyV2, ROOT_FAMILIES_V2,
     SUPPLEMENTAL_SOURCES_V2, UNSUPPORTED_SOURCE_V2,
 };
 use quanta_gqlang_v2_frontend_contract::{
-    analyze_source_document_v2, compile_source_document_v3, AlgebraFamilyV2, AnalysisItemV2,
-    AnalysisStatusV2, ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledItemV2,
-    ExecutionCallTargetV3, ExecutionExpressionShapeV3, ExecutionFamilyV3, ExecutionJoinModeV3,
+    analyze_source_document_v2, classify_single_source_root_v3, compile_source_document_v3,
+    AlgebraFamilyV2, AnalysisItemV2, AnalysisStatusV2, ClosedFrontendAuthorityBuilderV2,
+    ClosedFrontendAuthorityV2, CompiledItemV2, ExecutionCallTargetV3, ExecutionCommandPhaseV3,
+    ExecutionEffectV3, ExecutionExpressionShapeV3, ExecutionFamilyV3, ExecutionJoinModeV3,
     FrontendAuthorityErrorV2, FrontendAuthorityLocationV2, FrontendAuthoritySourceV2,
     FrontendBudgetV2, FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2,
     FrontendGraphReferenceInputV2, FrontendLanguageVersionV2, FrontendLockfileInputV2,
     FrontendPackInputV2, FrontendRelationCardinalityV2, FrontendRelationFieldInputV2,
-    FrontendRelationInputV2, FrontendScalarTypeV2, GraphReferenceKindV2, OpenAnalysisAuthorityV2,
-    PlannedItemV2, SemanticItemIdV2, SourceIdV2,
+    FrontendRelationInputV2, FrontendScalarTypeV2, FrontendSourceRootFamilyV3,
+    FrontendSymbolTargetInputV3, GraphReferenceKindV2, OpenAnalysisAuthorityV2, PlannedItemV2,
+    SemanticItemIdV2, SourceIdV2,
 };
 
 const HOST: SourceIdV2 = SourceIdV2::from_raw(1);
@@ -114,6 +116,7 @@ fn closed_authority_with_lock_digest(
         ("run.b", GraphReferenceKindV2::Snapshot, None),
         ("result.latest", GraphReferenceKindV2::ExportSource, None),
         ("pattern.hybrid", GraphReferenceKindV2::Pattern, None),
+        ("p", GraphReferenceKindV2::Pattern, None),
         ("src.entry", GraphReferenceKindV2::Entity, None),
         ("sink.write", GraphReferenceKindV2::Entity, None),
     ]
@@ -127,6 +130,15 @@ fn closed_authority_with_lock_digest(
             location: location(200 + index, 201 + index),
         });
     }
+
+    builder.add_symbol_target(FrontendSymbolTargetInputV3 {
+        selector: "symbol.one".to_owned(),
+        repo_path: "src/a.py".to_owned(),
+        symbol_id: "def:17".to_owned(),
+        start_byte: 17,
+        end_byte: 20,
+        location: location(340, 341),
+    });
 
     for (index, (local_name, payload)) in [
         (
@@ -216,8 +228,8 @@ fn source_limited_budget(max_source_bytes: u32) -> FrontendBudgetV2 {
 }
 
 #[test]
-fn registry_has_exactly_eighteen_unique_families() {
-    assert_eq!(ROOT_FAMILIES_V2.len(), 18);
+fn registry_has_exactly_nineteen_unique_families() {
+    assert_eq!(ROOT_FAMILIES_V2.len(), 19);
     assert_eq!(
         ROOT_FAMILIES_V2
             .iter()
@@ -227,6 +239,166 @@ fn registry_has_exactly_eighteen_unique_families() {
         ROOT_FAMILIES_V2.len()
     );
     assert_eq!(root_family_specs_v2().len(), ROOT_FAMILIES_V2.len());
+}
+
+fn root_keyword(root: FrontendSourceRootFamilyV3) -> &'static str {
+    match root {
+        FrontendSourceRootFamilyV3::Relation => "relation",
+        FrontendSourceRootFamilyV3::Declaration => "declaration",
+        FrontendSourceRootFamilyV3::Rule => "rule",
+        FrontendSourceRootFamilyV3::Graph => "graph",
+        FrontendSourceRootFamilyV3::Check => "check",
+        FrontendSourceRootFamilyV3::Presentation => "presentation",
+        FrontendSourceRootFamilyV3::Catalog => "catalog",
+        FrontendSourceRootFamilyV3::Composition => "composition",
+        FrontendSourceRootFamilyV3::Meta => "meta",
+        FrontendSourceRootFamilyV3::Command => "command",
+    }
+}
+
+#[test]
+fn registered_and_supplemental_sources_cover_closed_root_classification() {
+    let budget = FrontendBudgetV2::standard_v2().expect("standard budget");
+    let mut observed = BTreeSet::new();
+    for spec in root_family_specs_v2() {
+        let expected = match spec.family {
+            RootFamilyV2::Select => FrontendSourceRootFamilyV3::Relation,
+            RootFamilyV2::Find => FrontendSourceRootFamilyV3::Graph,
+            RootFamilyV2::Check => FrontendSourceRootFamilyV3::Check,
+            RootFamilyV2::Explain
+            | RootFamilyV2::Show
+            | RootFamilyV2::Describe
+            | RootFamilyV2::Sample
+            | RootFamilyV2::Compare
+            | RootFamilyV2::Export => FrontendSourceRootFamilyV3::Presentation,
+            RootFamilyV2::View
+            | RootFamilyV2::RuleBinding
+            | RootFamilyV2::Model
+            | RootFamilyV2::Pack
+            | RootFamilyV2::Profile
+            | RootFamilyV2::Gate => FrontendSourceRootFamilyV3::Catalog,
+            RootFamilyV2::UsePack | RootFamilyV2::RequireCertified => {
+                FrontendSourceRootFamilyV3::Meta
+            }
+            RootFamilyV2::Composition => FrontendSourceRootFamilyV3::Composition,
+            RootFamilyV2::Rename => FrontendSourceRootFamilyV3::Command,
+        };
+        let actual = classify_single_source_root_v3(SourceIdV2::from_raw(90), spec.source, &budget)
+            .expect("registered source classifies without host authority");
+        assert_eq!(actual, expected, "{:?}", spec.family);
+        observed.insert(root_keyword(actual));
+    }
+    for (source, expected) in SUPPLEMENTAL_SOURCES_V2.into_iter().zip([
+        FrontendSourceRootFamilyV3::Declaration,
+        FrontendSourceRootFamilyV3::Rule,
+    ]) {
+        let actual = classify_single_source_root_v3(SourceIdV2::from_raw(90), source, &budget)
+            .expect("supplemental source classifies without host authority");
+        assert_eq!(actual, expected, "{source}");
+        observed.insert(root_keyword(actual));
+    }
+    assert_eq!(
+        observed,
+        BTreeSet::from([
+            "relation",
+            "declaration",
+            "rule",
+            "graph",
+            "check",
+            "presentation",
+            "catalog",
+            "composition",
+            "meta",
+            "command",
+        ]),
+        "every closed classifier variant needs a source witness",
+    );
+}
+
+#[test]
+fn rename_preview_and_apply_preserve_exact_intent_through_facade() {
+    let authority = closed_authority();
+    for (source, phase, effect, token) in [
+        (
+            "rename symbol.one to \"new_name\" | phase=preview | snapshot=\"snap-7\"",
+            ExecutionCommandPhaseV3::Preview,
+            ExecutionEffectV3::ReadOnly,
+            None,
+        ),
+        (
+            "rename symbol.one to \"new_name\" | phase=apply | snapshot=\"snap-7\" | preview_token=\"issued-1\"",
+            ExecutionCommandPhaseV3::Apply,
+            ExecutionEffectV3::MutationRequiresGrant,
+            Some("issued-1"),
+        ),
+    ] {
+        let document = compile_source_document_v3(SourceIdV2::from_raw(91), source, &authority)
+            .expect("closed rename intent compiles through the facade");
+        let [item] = document.execution().items() else {
+            panic!("one exact command item");
+        };
+        assert_eq!(item.family(), ExecutionFamilyV3::Command);
+        assert_eq!(item.plan().effect(), effect);
+        let command = item.command().expect("complete rename payload");
+        assert_eq!(command.phase(), phase);
+        assert_eq!(command.target().selector(), "symbol.one");
+        assert_eq!(command.target().repo_path(), "src/a.py");
+        assert_eq!(command.target().symbol_id(), "def:17");
+        assert_eq!(command.target().start_byte(), 17);
+        assert_eq!(command.target().end_byte(), 20);
+        assert_eq!(command.new_name(), "new_name");
+        assert_eq!(command.expected_snapshot(), "snap-7");
+        assert_eq!(command.preview_token(), token);
+    }
+}
+
+#[test]
+fn authored_result_shapes_reject_closed_compile_without_omission() {
+    let authority = closed_authority();
+    let source_id = SourceIdV2::from_raw(92);
+    let plain = "from users u | project u.id as id";
+    let control = compile_source_document_v3(source_id, plain, &authority)
+        .expect("the same query without a result shape compiles");
+    assert_eq!(control.execution().items().len(), 1);
+
+    for source in [
+        "from users u | project u.id as id => 1",
+        "from users u | project u.id as id => { id: 1 }",
+        "from users u | project u.id as id => { row: { id: 1, tags: [ \"tag\" ] } }",
+        "let shaped = from users u | project u.id as id => { id: 1 } from shaped s with shaped",
+    ] {
+        let error = compile_source_document_v3(source_id, source, &authority)
+            .expect_err("an unsupported authored shape cannot issue an execution document");
+        let quanta_gqlang_v2_frontend_contract::FrontendTransactionErrorV2::Document(failure) =
+            error
+        else {
+            panic!("{source}: expected a source-anchored rejection");
+        };
+        let [diagnostic] = failure.diagnostics() else {
+            panic!("{source}: one explicit result-shape diagnostic");
+        };
+        assert_eq!(
+            diagnostic.code(),
+            "sema.document_validation_failed",
+            "{source}"
+        );
+        assert_eq!(diagnostic.stage().keyword(), "validation", "{source}");
+        assert_eq!(diagnostic.severity().keyword(), "error", "{source}");
+        assert_eq!(
+            diagnostic.message(),
+            "authored query result shapes are not supported by closed compilation",
+            "{source}"
+        );
+        assert_eq!(diagnostic.primary().source_id, source_id);
+        let start = if source.starts_with("let ") { 13 } else { 0 };
+        let end = if source.starts_with("let ") {
+            59
+        } else {
+            source.len()
+        };
+        assert_eq!(diagnostic.primary().span.start, start, "{source}");
+        assert_eq!(diagnostic.primary().span.end, end, "{source}");
+    }
 }
 
 #[test]
@@ -279,6 +451,7 @@ fn every_family_compiles_through_the_facade_with_declared_disposition() {
                     "presentation" => ExecutionFamilyV3::Presentation,
                     "composition" => ExecutionFamilyV3::Composition,
                     "meta_require_certified" => ExecutionFamilyV3::MetaRequireCertified,
+                    "command" => ExecutionFamilyV3::Command,
                     other => panic!("unmapped V3 family: {other}"),
                 };
                 assert_eq!(
@@ -302,6 +475,12 @@ fn every_family_compiles_through_the_facade_with_declared_disposition() {
                 assert_eq!(
                     execution_item.composition().is_some(),
                     expected_family == ExecutionFamilyV3::Composition,
+                    "{:?}",
+                    spec.family,
+                );
+                assert_eq!(
+                    execution_item.command().is_some(),
+                    expected_family == ExecutionFamilyV3::Command,
                     "{:?}",
                     spec.family,
                 );
@@ -331,12 +510,32 @@ fn selected_shipped_examples_compile_with_pinned_frontend_families() {
             ExecutionFamilyV3::Relation,
         ),
         (
+            "examples/check/hybrid_rule.qglang",
+            "check",
+            ExecutionFamilyV3::Check,
+        ),
+        (
             "examples/find/taint.qglang",
             "graph",
             ExecutionFamilyV3::Graph,
         ),
         (
+            "examples/explain/why_no_result.qglang",
+            "presentation",
+            ExecutionFamilyV3::Presentation,
+        ),
+        (
             "examples/show/capabilities.qglang",
+            "presentation",
+            ExecutionFamilyV3::Presentation,
+        ),
+        (
+            "examples/describe/rule_detail.qglang",
+            "presentation",
+            ExecutionFamilyV3::Presentation,
+        ),
+        (
+            "examples/sample/retrieval.qglang",
             "presentation",
             ExecutionFamilyV3::Presentation,
         ),
@@ -345,10 +544,20 @@ fn selected_shipped_examples_compile_with_pinned_frontend_families() {
             "presentation",
             ExecutionFamilyV3::Presentation,
         ),
+        (
+            "examples/composition/let_with_find.qglang",
+            "composition",
+            ExecutionFamilyV3::Composition,
+        ),
+        (
+            "examples/require_certified/strict_only.qglang",
+            "meta_require_certified",
+            ExecutionFamilyV3::MetaRequireCertified,
+        ),
     ];
     assert_eq!(
         examples.len(),
-        4,
+        10,
         "the selected shipped acceptance corpus stays populated"
     );
     for (index, (path, expected_kind, expected_family)) in examples.into_iter().enumerate() {
@@ -374,6 +583,72 @@ fn selected_shipped_examples_compile_with_pinned_frontend_families() {
             "{path}: V3 family"
         );
     }
+}
+
+#[test]
+fn shipped_catalog_declarations_retain_typed_nonexecution() {
+    let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(std::path::Path::parent)
+        .expect("conformance crate is under crates/");
+    let authority = closed_authority();
+    let examples = [
+        ("examples/view/catalog_users.qglang", "catalog_declaration"),
+        ("examples/rule/shell_exec.qglang", "catalog_declaration"),
+        (
+            "examples/model/embeddings_code.qglang",
+            "catalog_declaration",
+        ),
+        (
+            "examples/pack/security_default.qglang",
+            "catalog_declaration",
+        ),
+        (
+            "examples/profile/strict_review.qglang",
+            "catalog_declaration",
+        ),
+        ("examples/gate/release_gate.qglang", "catalog_declaration"),
+        ("examples/use_pack/secure_pack.qglang", "meta_activation"),
+    ];
+    for (index, (path, expected_reason)) in examples.into_iter().enumerate() {
+        let source = std::fs::read_to_string(repo.join(path))
+            .unwrap_or_else(|error| panic!("{path}: read shipped source: {error}"));
+        let document = compile_source_document_v3(
+            SourceIdV2::from_raw(600 + u32::try_from(index).expect("small corpus")),
+            &source,
+            &authority,
+        )
+        .unwrap_or_else(|error| panic!("{path}: closed frontend rejected: {error:?}"));
+        assert_eq!(document.items().len(), 1, "{path}: one authored item");
+        let Some(CompiledItemV2::NoPlan { reason, .. }) = document.items().first() else {
+            panic!("{path}: expected typed catalog non-plan");
+        };
+        assert_eq!(reason.code(), expected_reason, "{path}");
+        assert!(document.execution().items().is_empty(), "{path}");
+    }
+}
+
+#[test]
+fn shipped_export_without_authored_profile_rejects_closed_compilation() {
+    let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(std::path::Path::parent)
+        .expect("conformance crate is under crates/");
+    let source = std::fs::read_to_string(repo.join("examples/export/sarif.qglang"))
+        .expect("shipped export source");
+    let error = compile_source_document_v3(SourceIdV2::from_raw(700), &source, &closed_authority())
+        .expect_err("the shipped export names a profile absent from this document");
+    let quanta_gqlang_v2_frontend_contract::FrontendTransactionErrorV2::Document(failure) = error
+    else {
+        panic!("export must reject at the authored profile reference");
+    };
+    let [diagnostic] = failure.diagnostics() else {
+        panic!("export must have one primary profile diagnostic");
+    };
+    assert_eq!(diagnostic.code(), "modules.unknown_catalog_reference");
+    assert_eq!(diagnostic.primary().source_id, SourceIdV2::from_raw(700));
+    assert_eq!(diagnostic.primary().span.start, 51);
+    assert_eq!(diagnostic.primary().span.end, 57);
 }
 
 fn assert_disposition(spec: RootFamilySpecV2, item: &CompiledItemV2) {
@@ -446,16 +721,26 @@ fn open_authority_reports_every_valid_family_as_incomplete_not_compiled() {
         assert_eq!(first.status().keyword(), "incomplete");
         assert!(!first.unresolved().is_empty(), "{:?}", spec.family);
         let diagnostics = first.diagnostics();
+        let expected_codes = if spec.family == RootFamilyV2::Rename {
+            vec![
+                "pipeline.analysis.missing_graph_authority",
+                "pipeline.analysis.missing_module_authority",
+                "pipeline.analysis.missing_relation_authority",
+                "pipeline.analysis.missing_symbol_target_authority",
+            ]
+        } else {
+            vec![
+                "pipeline.analysis.missing_graph_authority",
+                "pipeline.analysis.missing_module_authority",
+                "pipeline.analysis.missing_relation_authority",
+            ]
+        };
         assert_eq!(
             diagnostics
                 .iter()
                 .map(|diagnostic| diagnostic.code())
                 .collect::<Vec<_>>(),
-            [
-                "pipeline.analysis.missing_graph_authority",
-                "pipeline.analysis.missing_module_authority",
-                "pipeline.analysis.missing_relation_authority",
-            ],
+            expected_codes,
             "{:?}",
             spec.family
         );

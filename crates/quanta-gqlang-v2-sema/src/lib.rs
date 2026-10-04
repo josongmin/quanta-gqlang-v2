@@ -49,7 +49,7 @@ pub use diagnostic::{
     FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2, FrontendStageV2,
 };
 pub use document::{
-    resolve_checked_document_v2, CheckedSyntaxDocumentV2, DeclaredDocumentV2,
+    resolve_checked_document_v2, CheckedSyntaxDocumentV2, DeclaredDocumentV2, DeclaredShowSourceV2,
     FrontendTransactionErrorV2, IncompleteSemanticDocumentV2, SemanticAnalysisV2,
     SemanticDocumentV2, UnresolvedSemanticFactV2,
 };

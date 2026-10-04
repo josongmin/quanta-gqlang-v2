@@ -102,6 +102,7 @@ pub use visit::{
 };
 
 pub use integrity::{
-    check_document_v2, check_tree, CheckedHirDocumentOwnedV2, CheckedHirDocumentV2, CheckedHirV1,
-    HirDocumentV1, HirIntegrityDiagnosticV2, HirIntegrityErrorV1, HirRootRefV1,
+    check_document_show_monotonic_v2, check_document_v2, check_tree, CheckedHirDocumentOwnedV2,
+    CheckedHirDocumentV2, CheckedHirV1, HirDocumentV1, HirIntegrityDiagnosticV2,
+    HirIntegrityErrorV1, HirRootRefV1, ShowIntegrityErrorV2,
 };

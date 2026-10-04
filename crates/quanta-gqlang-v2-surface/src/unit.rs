@@ -22,10 +22,7 @@ use quanta_gqlang_v2_hir::{DeclHirV1, RuleHirV1};
 pub(crate) fn parse_decl(cur: &mut CursorV1<'_>) -> Result<DeclHirV1, ParseDiagnosticV1> {
     let let_kw = cur.expect_keyword("let", "'let' to start a declaration")?;
     let (name, name_span) = cur.expect_ident("a declaration name")?;
-    cur.expect(
-        &TokenKindV1::Op("=".to_string()),
-        "'=' after the declaration name",
-    )?;
+    cur.expect_op("=", "'=' after the declaration name")?;
     let body = parse_value(cur)?;
     let span = let_kw.span.merge(&body.span);
     Ok(cur.builder.decl(name, name_span, body, span))

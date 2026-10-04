@@ -82,6 +82,7 @@ mod expr;
 mod family;
 mod format;
 mod lexer;
+mod materialization;
 mod parser;
 mod query;
 mod shape;
@@ -92,10 +93,18 @@ pub use diag::{ParseDiagnosticV1, ParseErrorCodeV1, ResourceExhaustionV2, Surfac
 pub use format::{
     format_document, format_item, try_format_item, FormatDiagnosticV1, FormatErrorCodeV1,
 };
-pub use lexer::{lex, LexErrorV1, TokenKindV1, TokenV1};
+pub use lexer::{
+    census_lexical_materialization_v1, lex, LexErrorV1, LexicalMaterializationCensusV1,
+    TokenKindV1, TokenV1,
+};
+pub use materialization::{
+    FrontendLexicalHostCeilingV1, FrontendLexicalMaterializationRootV1, FrontendLexicalPermitV1,
+};
 pub use parser::{
-    classify_parsed_root_v3, parse_document, parse_program, parse_source_document_v2,
-    ParsedDocumentV1, ParsedDocumentV2, ParsedProgramV1, SourceRootFamilyV3, SurfaceItemV1,
+    census_source_lexical_materialization_v2, classify_parsed_root_v3, parse_document,
+    parse_program, parse_source_document_v2, parse_source_document_with_lexical_owner_v1,
+    AdmittedLexicalParsedDocumentV1, AdmittedLexicalValueV1, ParsedDocumentV1, ParsedDocumentV2,
+    ParsedProgramV1, SourceRootFamilyV3, SurfaceItemV1,
 };
 
 use cursor::CursorV1;

@@ -1,6 +1,6 @@
 [package]
 categories.workspace   = true
-description            = "QGLang v3 dev-only parity guard: proves the 18 root families and pins standalone decl/rule gaps"
+description            = "QGLang v3 dev-only parity guard: proves 19 registered source families and pins standalone decl/rule gaps"
 edition.workspace      = true
 keywords.workspace     = true
 license.workspace      = true

@@ -28,9 +28,99 @@ from tools.ci.evidence import (
 from tools.ci.environment import (
     EnvironmentSanitizationError, isolated_cargo_home, sanitized_environment,
 )
+from tools.lint import size_gate
 
 
 class LocalGateTest(unittest.TestCase):
+    def test_size_gate_rejects_new_growth_stale_and_missing_sources(self) -> None:
+        legacy = "crates/example/src/legacy.rs"
+        new = "crates/example/src/new.rs"
+        limits = {"production": 1200, "test": 2500}
+        paths = {legacy, new}
+        self.assertEqual(
+            size_gate.evaluate(paths, {legacy: 1300, new: 1200}, limits, {legacy: 1300}),
+            [],
+        )
+        findings = size_gate.evaluate(
+            paths | {"crates/example/tests/missing.rs"},
+            {legacy: 1301, new: 1201}, limits,
+            {legacy: 1300, "crates/example/src/removed.rs": 1500},
+        )
+        self.assertEqual(len(findings), 4)
+        self.assertTrue(any("exceeds legacy ceiling" in item for item in findings))
+        self.assertTrue(any("split the file" in item for item in findings))
+        self.assertTrue(any("tokei omitted source" in item for item in findings))
+        self.assertTrue(any("missing source" in item for item in findings))
+        self.assertIn(
+            "legacy exception is stale",
+            size_gate.evaluate(paths, {legacy: 1200, new: 1}, limits, {legacy: 1300})[0],
+        )
+
+    def test_size_gate_rejects_unguarded_test_support(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / size_gate.TEST_SUPPORT
+            source.parent.mkdir(parents=True)
+            source.write_text("pub fn fixture() {}\n", encoding="utf-8")
+            owner = root / size_gate.TEST_SUPPORT_OWNER
+            owner.write_text("pub mod test_support;\n", encoding="utf-8")
+            with self.assertRaisesRegex(size_gate.SizeGateError, "not guarded"):
+                size_gate.source_paths(root)
+            owner.write_text(
+                '#[cfg(any(test, feature = "test"))]\n#[doc(hidden)]\npub mod test_support;\n',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(size_gate.SizeGateError, "feature-test module is missing"):
+                size_gate.source_paths(root)
+            family = root / next(iter(size_gate.FEATURE_TEST_MODULES))
+            family.parent.mkdir(parents=True, exist_ok=True)
+            family.write_text("pub fn family() {}\n", encoding="utf-8")
+            source.write_text("mod families;\npub fn fixture() {}\n", encoding="utf-8")
+            self.assertEqual(
+                size_gate.source_paths(root),
+                {size_gate.TEST_SUPPORT, size_gate.TEST_SUPPORT_OWNER,
+                 next(iter(size_gate.FEATURE_TEST_MODULES))},
+            )
+            owner.write_text(
+                '// #[cfg(any(test, feature = "test"))] #[doc(hidden)] pub mod test_support;\n'
+                'pub mod test_support;\n', encoding="utf-8",
+            )
+            with self.assertRaisesRegex(size_gate.SizeGateError, "not guarded"):
+                size_gate.source_paths(root)
+            owner.write_text(
+                '#[cfg(any(test, feature = "test"))]\n#[doc(hidden)]\npub mod test_support;\n',
+                encoding="utf-8",
+            )
+            source.write_text("/*\nmod families;\n*/\n", encoding="utf-8")
+            with self.assertRaisesRegex(size_gate.SizeGateError, "feature-test module is missing"):
+                size_gate.source_paths(root)
+
+    def test_size_gate_rejects_commented_test_module_guard(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            support = root / size_gate.TEST_SUPPORT
+            support.parent.mkdir(parents=True)
+            support.write_text("mod families;\n", encoding="utf-8")
+            family = root / next(iter(size_gate.FEATURE_TEST_MODULES))
+            family.parent.mkdir(parents=True)
+            family.write_text("pub fn fixture() {}\n", encoding="utf-8")
+            support_owner = root / size_gate.TEST_SUPPORT_OWNER
+            support_owner.write_text(
+                '#[cfg(any(test, feature = "test"))]\n#[doc(hidden)]\npub mod test_support;\n',
+                encoding="utf-8",
+            )
+            test_path = "crates/quanta-gqlang-v2-pipeline/src/compile/tests.rs"
+            test_file = root / test_path
+            test_file.parent.mkdir(parents=True)
+            test_file.write_text("pub fn fixture() {}\n", encoding="utf-8")
+            test_owner = root / "crates/quanta-gqlang-v2-pipeline/src/compile.rs"
+            test_owner.write_text(
+                '// #[cfg(test)] #[path = "compile/tests.rs"] mod tests;\n'
+                '#[path = "compile/tests.rs"] mod tests;\n', encoding="utf-8",
+            )
+            with self.assertRaisesRegex(size_gate.SizeGateError, "not cfg\\(test\\) guarded"):
+                size_gate.source_paths(root)
+
     def test_rust_cargo_and_nextest_semantic_overrides_are_removed(self) -> None:
         source = {
             "PATH": "/usr/bin",
@@ -94,7 +184,10 @@ class LocalGateTest(unittest.TestCase):
     def test_cargo_heavy_composition_is_an_explicit_waterfall(self) -> None:
         text = (run_local.ROOT / "Justfile").read_text(encoding="utf-8")
         expected = {
-            "static": ["fmt", "taplo", "clippy-current", "typos", "pm-check", "pm-test"],
+            "static": [
+                "fmt", "taplo", "size-lint", "clippy-current", "clippy-msrv",
+                "typos", "pm-check", "pm-test",
+            ],
             "test": ["nextest", "doctest", "frontdoor-parity"],
             "policy": [
                 "ci-rail-test", "qualifier-custody", "arch-lint", "external-consumer",
@@ -540,6 +633,7 @@ class LocalGateTest(unittest.TestCase):
             ("just", "--version"): lock["just"],
             ("cargo-nextest", "--version"): lock["nextest"],
             ("taplo", "--version"): lock["taplo"],
+            ("tokei", "--version"): lock["tokei"] + " compiled with serialization support: json",
             ("typos", "--version"): lock["typos"],
             ("cargo-deny", "--version"): lock["deny"],
             ("cargo-public-api", "--version"): lock["public_api"],

@@ -31,6 +31,8 @@ pub enum ParseErrorCodeV1 {
     UnsupportedConstruct,
     /// A configured parse resource limit was exceeded.
     ResourceExhausted,
+    /// Lexical storage arithmetic cannot be represented on this target.
+    LexicalMaterializationOverflow,
 }
 
 impl ParseErrorCodeV1 {
@@ -44,6 +46,7 @@ impl ParseErrorCodeV1 {
             Self::UnexpectedEof => "surface.parse.unexpected_eof",
             Self::UnsupportedConstruct => "surface.parse.unsupported_construct",
             Self::ResourceExhausted => "surface.resource_exhausted",
+            Self::LexicalMaterializationOverflow => "surface.lexical_materialization_overflow",
         }
     }
 }

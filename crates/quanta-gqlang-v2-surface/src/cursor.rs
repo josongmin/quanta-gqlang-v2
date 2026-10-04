@@ -9,6 +9,7 @@
 use crate::budget::ParseBudgetCounterV2;
 use crate::diag::{ParseDiagnosticV1, ParseErrorCodeV1};
 use crate::lexer::{TokenKindV1, TokenV1};
+use crate::materialization::ReferenceCloneAdmissionV1;
 use quanta_gqlang_v2_hir::{HirBuilderV1, SpanV1};
 
 /// Shared parsing state: token stream + position + the id-allocating builder.
@@ -19,6 +20,7 @@ pub(crate) struct CursorV1<'b> {
     pub(crate) budget: ParseBudgetCounterV2,
     /// The single builder for the whole parse; borrowed by every sub-parser.
     pub(crate) builder: &'b HirBuilderV1,
+    reference_admission: Option<&'b mut dyn ReferenceCloneAdmissionV1>,
 }
 
 impl<'b> CursorV1<'b> {
@@ -33,7 +35,80 @@ impl<'b> CursorV1<'b> {
             pos: 0,
             budget,
             builder,
+            reference_admission: None,
         }
+    }
+
+    pub(crate) fn new_with_reference_admission_v1(
+        tokens: Vec<TokenV1>,
+        builder: &'b HirBuilderV1,
+        budget: ParseBudgetCounterV2,
+        reference_admission: &'b mut dyn ReferenceCloneAdmissionV1,
+    ) -> Self {
+        Self {
+            tokens,
+            pos: 0,
+            budget,
+            builder,
+            reference_admission: Some(reference_admission),
+        }
+    }
+
+    /// Preserve the legacy producer while admitted parsing debits exact source
+    /// bytes before the reference String's first allocation.
+    pub(crate) fn materialize_reference_v1(
+        &mut self,
+        source: &str,
+        span: SpanV1,
+    ) -> Result<String, ParseDiagnosticV1> {
+        let Some(admission) = self.reference_admission.as_mut() else {
+            let text = source.get(span.start..span.end).ok_or_else(|| {
+                ParseDiagnosticV1::new(
+                    ParseErrorCodeV1::UnexpectedToken,
+                    span,
+                    "reference span is outside source",
+                )
+            })?;
+            return Ok(text.to_string());
+        };
+        admission.reserve_reference_v1(source, span)?;
+        let text = source.get(span.start..span.end).ok_or_else(|| {
+            ParseDiagnosticV1::new(
+                ParseErrorCodeV1::UnexpectedToken,
+                span,
+                "reference span is outside source",
+            )
+        })?;
+        let mut owned = String::new();
+        owned.try_reserve_exact(text.len()).map_err(|_error| {
+            ParseDiagnosticV1::new(
+                ParseErrorCodeV1::ResourceExhausted,
+                span,
+                "reference string allocation failed",
+            )
+        })?;
+        if owned.capacity() > text.len() {
+            return Err(ParseDiagnosticV1::new(
+                ParseErrorCodeV1::ResourceExhausted,
+                span,
+                "reference allocator capacity exceeds admitted bytes",
+            ));
+        }
+        owned.push_str(text);
+        Ok(owned)
+    }
+
+    /// Debit the source-bound presentation payload before `ProgramItemHirV1`
+    /// boxes it. The aggregate permit moves with the admitted parsed owner.
+    pub(crate) fn reserve_show_box_v1(
+        &mut self,
+        source: &str,
+        span: SpanV1,
+    ) -> Result<(), ParseDiagnosticV1> {
+        if let Some(admission) = self.reference_admission.as_mut() {
+            admission.reserve_show_box_v1(source, span)?;
+        }
+        Ok(())
     }
 
     /// Run `body` one level deeper in the recursive-descent grammar, failing
@@ -105,11 +180,24 @@ impl<'b> CursorV1<'b> {
 
     /// Advance past and return the current token.
     pub(crate) fn bump(&mut self) -> TokenV1 {
-        let tok = self.at(self.pos).clone();
-        if self.pos < self.tokens.len() {
-            self.pos += 1;
-        }
-        tok
+        let Some(slot) = self.tokens.get_mut(self.pos) else {
+            return TokenV1 {
+                kind: TokenKindV1::Eof,
+                span: self.at(self.pos).span,
+            };
+        };
+        // A consumed slot is never revisited. Move its owned payload into the
+        // parser instead of cloning a String before the HIR owner can use it.
+        let span = slot.span;
+        let token = std::mem::replace(
+            slot,
+            TokenV1 {
+                kind: TokenKindV1::Eof,
+                span,
+            },
+        );
+        self.pos += 1;
+        token
     }
 
     /// The span of the current token (for diagnostics).
@@ -167,18 +255,37 @@ impl<'b> CursorV1<'b> {
         }
     }
 
+    /// Require an operator without allocating a temporary owned token kind.
+    pub(crate) fn expect_op(
+        &mut self,
+        symbol: &str,
+        what: &str,
+    ) -> Result<TokenV1, ParseDiagnosticV1> {
+        if matches!(&self.peek().kind, TokenKindV1::Op(value) if value == symbol) {
+            Ok(self.bump())
+        } else {
+            Err(self.unexpected(what))
+        }
+    }
+
     /// Require an identifier token, returning its `(text, span)`.
     pub(crate) fn expect_ident(
         &mut self,
         what: &str,
     ) -> Result<(String, SpanV1), ParseDiagnosticV1> {
-        if let TokenKindV1::Ident(s) = &self.peek().kind {
-            let s = s.clone();
-            let span = self.peek().span;
-            let _ = self.bump();
-            return Ok((s, span));
+        if !matches!(&self.peek().kind, TokenKindV1::Ident(_)) {
+            return Err(self.unexpected(what));
         }
-        Err(self.unexpected(what))
+        let token = self.bump();
+        if let TokenKindV1::Ident(name) = token.kind {
+            Ok((name, token.span))
+        } else {
+            Err(ParseDiagnosticV1::new(
+                ParseErrorCodeV1::UnexpectedToken,
+                token.span,
+                "identifier lookahead changed during consumption",
+            ))
+        }
     }
 
     /// Build an `UnexpectedToken`/`UnexpectedEof` diagnostic at the cursor with
@@ -209,5 +316,60 @@ impl<'b> CursorV1<'b> {
         message: impl Into<String>,
     ) -> ParseDiagnosticV1 {
         ParseDiagnosticV1::new(ParseErrorCodeV1::UnsupportedConstruct, span, message)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![expect(
+        clippy::expect_used,
+        reason = "unit tests assert exact parser outcomes"
+    )]
+
+    use super::*;
+    use crate::budget::ParseBudgetV2;
+
+    #[test]
+    fn consuming_identifier_moves_lexer_payload_without_copy() {
+        let name = String::from("source_name");
+        let original_payload = name.as_ptr();
+        let span = SpanV1::new(0, name.len());
+        let builder = HirBuilderV1::new();
+        let mut cursor = CursorV1::new(
+            vec![
+                TokenV1 {
+                    kind: TokenKindV1::Ident(name),
+                    span,
+                },
+                TokenV1 {
+                    kind: TokenKindV1::Eof,
+                    span: SpanV1::point(span.end),
+                },
+            ],
+            &builder,
+            ParseBudgetCounterV2::new(&ParseBudgetV2::standard_v2()),
+        );
+
+        let (consumed, consumed_span) = cursor.expect_ident("source").expect("identifier");
+        assert_eq!(consumed.as_ptr(), original_payload);
+        assert_eq!(consumed_span, span);
+        assert!(cursor.at_eof());
+    }
+
+    #[test]
+    fn legacy_reference_materialization_rejects_invalid_span() {
+        let builder = HirBuilderV1::new();
+        let mut cursor = CursorV1::new(
+            vec![TokenV1 {
+                kind: TokenKindV1::Eof,
+                span: SpanV1::point(0),
+            }],
+            &builder,
+            ParseBudgetCounterV2::new(&ParseBudgetV2::standard_v2()),
+        );
+        let error = cursor
+            .materialize_reference_v1("foo", SpanV1::new(0, 4))
+            .expect_err("invalid source span cannot become an empty reference");
+        assert_eq!(error.code, ParseErrorCodeV1::UnexpectedToken);
     }
 }

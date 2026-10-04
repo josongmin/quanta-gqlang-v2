@@ -14,12 +14,28 @@
 
 /// Analyze one source document under the open authority.
 pub use quanta_gqlang_v2_pipeline::analyze_source_document_v2;
+/// Count the exact lexer-owned portion of a source's frontend storage.
+/// This is a partial census, not a frontend execution admission.
+pub use quanta_gqlang_v2_pipeline::census_source_lexical_materialization_v3;
 /// Parse and classify exactly one source root without minting host authority.
 pub use quanta_gqlang_v2_pipeline::classify_single_source_root_v3;
+/// Versioned route classification with an explicit lexical storage owner.
+pub use quanta_gqlang_v2_pipeline::classify_single_source_root_with_lexical_owner_v1;
 /// Compile one closed source document into a source-bound V3 execution document.
 pub use quanta_gqlang_v2_pipeline::compile_source_document_v3;
+/// Versioned closed compile that retains its lexical-only storage owner.
+pub use quanta_gqlang_v2_pipeline::compile_source_document_with_lexical_owner_v1;
 /// Format one source document under the canonical budget.
 pub use quanta_gqlang_v2_pipeline::format_source_document_v2;
+pub use quanta_gqlang_v2_pipeline::LexicalMaterializationCensusV1;
+/// SHOW-only parsed/integrity owner. Semantic and plan materialization remain open.
+pub use quanta_gqlang_v2_pipeline::{
+    admit_show_syntax_v2, AdmittedShowDocumentV2, ShowSyntaxAdmissionErrorV2,
+};
+pub use quanta_gqlang_v2_pipeline::{
+    AdmittedLexicalCompiledSourceDocumentV1, FrontendLexicalHostCeilingV1,
+    FrontendLexicalMaterializationRootV1,
+};
 
 // ---- assembled document DTOs ----------------------------------------------
 pub use quanta_gqlang_v2_pipeline::{

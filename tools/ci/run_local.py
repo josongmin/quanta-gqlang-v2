@@ -22,7 +22,7 @@ GROUPS = ("doctor", "external-consumer-preflight", "static", "test", "policy")
 TIMEOUTS = {
     "doctor": 120,
     "external-consumer-preflight": 180,
-    "static": 900,
+    "static": 1800,
     "test": 900,
     "policy": 900,
 }

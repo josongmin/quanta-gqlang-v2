@@ -893,6 +893,10 @@ fn logical_quantifier_retains_complete_nested_predicate_effects() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "closed authority and nested type edge fixture"
+)]
 fn relation_exists_requires_resolved_authority_and_types_nested_expressions() {
     let builder = HirBuilderV1::new();
     let nested_symbol = builder.symbol("active", SpanV1::new(20, 26));

@@ -209,7 +209,10 @@ pub fn no_plan_code(reason: NoPlanReasonV2) -> &'static str {
 /// synthesizes one, and it never rewrites the surface code.
 #[must_use]
 pub(crate) fn surface_failure(error: &SurfaceDiagnosticV2) -> FrontendFailureV2 {
-    let stage = if error.code == ParseErrorCodeV1::ResourceExhausted {
+    let stage = if matches!(
+        error.code,
+        ParseErrorCodeV1::ResourceExhausted | ParseErrorCodeV1::LexicalMaterializationOverflow
+    ) {
         FrontendStageV2::Resource
     } else {
         FrontendStageV2::Integrity
@@ -327,6 +330,28 @@ mod tests {
     fn span() -> CheckedLocatedSpanV2 {
         quanta_gqlang_v2_sema::test_support::reference_checked_span_v2(3, 11)
             .expect("checked fixture span")
+    }
+
+    #[test]
+    fn lexical_size_overflow_remains_a_resource_failure_with_exact_source() {
+        let source_id = quanta_gqlang_v2_sema::SourceIdV2::from_raw(27);
+        let span = quanta_gqlang_v2_sema::SpanV1::new(3, 7);
+        let input = SurfaceDiagnosticV2 {
+            source_id,
+            code: ParseErrorCodeV1::LexicalMaterializationOverflow,
+            span,
+            message: "lexical materialization size overflow".to_owned(),
+            resource: None,
+        };
+        let failure = surface_failure(&input);
+        let diagnostic = failure.diagnostics().first().expect("one diagnostic");
+        assert_eq!(diagnostic.stage(), FrontendStageV2::Resource);
+        assert_eq!(
+            diagnostic.code(),
+            "surface.lexical_materialization_overflow"
+        );
+        assert_eq!(diagnostic.primary().source_id, source_id);
+        assert_eq!(diagnostic.primary().span, span);
     }
 
     #[test]

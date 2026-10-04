@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! Facade-only conformance registry for every public source family.
+//! Facade-only conformance registry for registered public source families.
 
 macro_rules! declare_root_families_v2 {
     ($($variant:ident),+ $(,)?) => {
@@ -28,6 +28,7 @@ declare_root_families_v2!(
     UsePack,
     RequireCertified,
     Composition,
+    Rename,
 );
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -176,6 +177,12 @@ pub const fn spec_for_v2(family: RootFamilyV2) -> RootFamilySpecV2 {
             keyword: "let",
             source: "let suspects = find taint a.b -> c.d | depth=2 find taint api.entry -> db.write | depth=3 with suspects",
             expected: planned("composition", "path_witness", "proof_evidence_only"),
+        },
+        RootFamilyV2::Rename => RootFamilySpecV2 {
+            family,
+            keyword: "rename",
+            source: "rename symbol.one to \"new_name\" | phase=preview | snapshot=\"snap-7\"",
+            expected: planned("command", "command_receipt", "read_only"),
         },
     }
 }

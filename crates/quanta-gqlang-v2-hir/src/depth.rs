@@ -50,6 +50,7 @@ struct DepthGuard {
 }
 
 impl DepthGuard {
+    #[expect(clippy::too_many_lines, reason = "legacy iterative depth walk")]
     fn scan(&mut self, root: Frame<'_>) {
         let mut stack = vec![root];
         while let Some(frame) = stack.pop() {

@@ -17,7 +17,7 @@ LOCK = ROOT / "tools/ci/toolchain.lock.toml"
 RUST_TOOLCHAIN = ROOT / "rust-toolchain.toml"
 KEYS = {
     "schema", "rust", "clippy", "public_api_nightly", "public_api_rustc",
-    "just", "nextest", "taplo", "typos", "deny", "public_api", "semgrep", "python",
+    "just", "nextest", "taplo", "tokei", "typos", "deny", "public_api", "semgrep", "python",
 }
 
 
@@ -95,6 +95,7 @@ def report() -> Dict[str, str]:
         ("just", ("just", "--version")),
         ("nextest", ("cargo-nextest", "--version")),
         ("taplo", ("taplo", "--version")),
+        ("tokei", ("tokei", "--version")),
         ("typos", ("typos", "--version")),
         ("deny", ("cargo-deny", "--version")),
         ("public_api", ("cargo-public-api", "--version")),
@@ -114,6 +115,7 @@ def report() -> Dict[str, str]:
         "just": lock["just"],
         "nextest": lock["nextest"],
         "taplo": lock["taplo"],
+        "tokei": lock["tokei"],
         "typos": lock["typos"],
         "deny": lock["deny"],
         "public_api": lock["public_api"],
@@ -122,7 +124,7 @@ def report() -> Dict[str, str]:
     }
     for key, want in expected.items():
         actual = observed[key]
-        if key in {"rust", "cargo", "clippy"}:
+        if key in {"rust", "cargo", "clippy", "tokei"}:
             matches = actual.startswith(want + " ") or actual == want
         else:
             matches = actual == want

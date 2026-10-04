@@ -32,8 +32,8 @@ Meta roots:
 1. `examples/use_pack/secure_pack.qglang`
 2. `examples/require_certified/strict_only.qglang`
 
-Composition family (the clause-level `LET`/`WITH` family; a composition of roots,
-not one of the 17 root families):
+Composition family (the clause-level `LET`/`WITH` family; distinct from a
+standalone declaration root):
 
 1. `examples/composition/let_with_find.qglang`
 
@@ -44,6 +44,7 @@ Notes:
 3. experimental catalog/detail surfaces remain typed frontend examples only
 4. CLI `fmt --file` succeeds for these sources; CLI `query --file` uses open
    authority and reports `incomplete` with exit code 1 rather than executing
-5. conformance separately compiles the shipped select/basic, find/taint,
-   show/capabilities, and compare/semantic_delta files under a test-owned
-   closed authority; this proves selected frontend plans, not runtime results
+5. conformance checks all 18 shipped files under test-owned closed authority:
+   10 produce frontend plans, seven declarations or activations retain typed
+   non-plan outcomes, and `export/sarif` rejects its unbound `strict` profile at
+   the authored span. These are frontend results, not runtime results

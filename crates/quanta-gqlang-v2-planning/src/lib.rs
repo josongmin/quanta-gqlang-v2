@@ -64,7 +64,10 @@ pub use diagnostic::{
 pub use effect::{AuthorityLaneV2, EffectClassV2, EvaluationDeterminismV2, EvidenceRequirementV2};
 pub use explain::ExplainNoteV2;
 pub use item::{CatalogDeclarationKindV2, NoPlanReasonV2, SemanticPlanInputV2};
-pub use plan::{plan, plan_outcome, PlanOutcomeV2, PlanningSessionV2, SemanticPlanV2};
+pub use plan::{
+    plan, plan_outcome, PlanOutcomeV2, PlanningSessionV2, SemanticPlanV2, ShowPlanningErrorV2,
+    ShowPlanningSessionV2,
+};
 pub use policy::{EffectSummaryV2, GraphWitnessRetentionV2, PlanPolicyV2, RuleProgramPolicyV2};
 pub use presentation::PresentationContractV2;
 pub use result_kind::{

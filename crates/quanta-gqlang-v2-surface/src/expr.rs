@@ -125,8 +125,9 @@ fn parse_comparison(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagno
     let lhs = parse_additive(cur)?;
     if let TokenKindV1::Op(sym) = &cur.peek().kind {
         if is_compare_op(sym) {
-            let sym = sym.clone();
-            let _ = cur.bump();
+            let TokenKindV1::Op(sym) = cur.bump().kind else {
+                return Err(cur.unexpected("a comparison operator"));
+            };
             let rhs = parse_additive(cur)?;
             let span = lhs.span.merge(&rhs.span);
             cur.charge_expression_node(span)?;
@@ -381,8 +382,7 @@ fn paren_opens_bool(cur: &CursorV1<'_>) -> bool {
 
 fn parse_additive(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosticV1> {
     let mut lhs = parse_multiplicative(cur)?;
-    while let Some(sym) = op_here(cur, &["+", "-"]) {
-        let _ = cur.bump();
+    while let Some(sym) = take_op_if(cur, &["+", "-"]) {
         let rhs = parse_multiplicative(cur)?;
         let span = lhs.span.merge(&rhs.span);
         cur.charge_expression_node(span)?;
@@ -393,8 +393,7 @@ fn parse_additive(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnos
 
 fn parse_multiplicative(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosticV1> {
     let mut lhs = parse_unary(cur)?;
-    while let Some(sym) = op_here(cur, &["*", "/"]) {
-        let _ = cur.bump();
+    while let Some(sym) = take_op_if(cur, &["*", "/"]) {
         let rhs = parse_unary(cur)?;
         let span = lhs.span.merge(&rhs.span);
         cur.charge_expression_node(span)?;
@@ -408,12 +407,10 @@ fn parse_unary(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnostic
         if sym == "-" || sym == "+" {
             // `- - - ...` self-recurses without re-entering parse_value; guard.
             return cur.with_recursion_depth(|cur| {
-                let sym = if let TokenKindV1::Op(s) = &cur.peek().kind {
-                    s.clone()
-                } else {
-                    String::new()
-                };
                 let op_tok = cur.bump();
+                let TokenKindV1::Op(sym) = op_tok.kind else {
+                    return Err(cur.unexpected("a unary operator"));
+                };
                 let operand = parse_unary(cur)?;
                 let span = op_tok.span.merge(&operand.span);
                 cur.charge_expression_node(span)?;
@@ -446,23 +443,28 @@ fn parse_postfix(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnost
 }
 
 fn parse_primary(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosticV1> {
-    // Numeric/string literals carry their raw text in the token; clone it before
-    // bumping so the value lowers verbatim.
-    if let TokenKindV1::Int(raw) = &cur.peek().kind {
-        let raw = raw.clone();
+    // Numeric/string literals transfer their lexed payload into HIR.
+    if matches!(&cur.peek().kind, TokenKindV1::Int(_)) {
         let tok = cur.bump();
+        let TokenKindV1::Int(raw) = tok.kind else {
+            return Err(cur.unexpected("an integer literal"));
+        };
         cur.charge_expression_node(tok.span)?;
         return Ok(cur.builder.int(raw, tok.span));
     }
-    if let TokenKindV1::Float(raw) = &cur.peek().kind {
-        let raw = raw.clone();
+    if matches!(&cur.peek().kind, TokenKindV1::Float(_)) {
         let tok = cur.bump();
+        let TokenKindV1::Float(raw) = tok.kind else {
+            return Err(cur.unexpected("a float literal"));
+        };
         cur.charge_expression_node(tok.span)?;
         return Ok(cur.builder.float(raw, tok.span));
     }
-    if let TokenKindV1::Str(content) = &cur.peek().kind {
-        let content = content.clone();
+    if matches!(&cur.peek().kind, TokenKindV1::Str(_)) {
         let tok = cur.bump();
+        let TokenKindV1::Str(content) = tok.kind else {
+            return Err(cur.unexpected("a string literal"));
+        };
         cur.charge_expression_node(tok.span)?;
         return Ok(cur.builder.string(content, tok.span));
     }
@@ -483,26 +485,28 @@ fn parse_primary(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnost
     if matches!(cur.peek().kind, TokenKindV1::LBracket) {
         return parse_list(cur);
     }
-    if let TokenKindV1::Ident(s) = &cur.peek().kind {
-        let name = s.clone();
-        // keyword literals first
-        if name == "true" {
-            let tok = cur.bump();
-            cur.charge_expression_node(tok.span)?;
-            return Ok(cur.builder.bool_lit(true, tok.span));
-        }
-        if name == "false" {
-            let tok = cur.bump();
-            cur.charge_expression_node(tok.span)?;
-            return Ok(cur.builder.bool_lit(false, tok.span));
-        }
-        if name == "null" {
-            let tok = cur.bump();
-            cur.charge_expression_node(tok.span)?;
-            return Ok(cur.builder.null(tok.span));
-        }
+    // keyword literals first
+    if cur.is_keyword("true") {
+        let tok = cur.bump();
+        cur.charge_expression_node(tok.span)?;
+        return Ok(cur.builder.bool_lit(true, tok.span));
+    }
+    if cur.is_keyword("false") {
+        let tok = cur.bump();
+        cur.charge_expression_node(tok.span)?;
+        return Ok(cur.builder.bool_lit(false, tok.span));
+    }
+    if cur.is_keyword("null") {
+        let tok = cur.bump();
+        cur.charge_expression_node(tok.span)?;
+        return Ok(cur.builder.null(tok.span));
+    }
+    if matches!(&cur.peek().kind, TokenKindV1::Ident(_)) {
         // call vs bare symbol
         let name_tok = cur.bump();
+        let TokenKindV1::Ident(name) = name_tok.kind else {
+            return Err(cur.unexpected("an identifier"));
+        };
         if matches!(cur.peek().kind, TokenKindV1::LParen) {
             return parse_call(cur, name, name_tok.span);
         }
@@ -605,12 +609,13 @@ fn parse_list(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosticV
     Ok(cur.builder.list(elements, span))
 }
 
-/// Return the current operator symbol if it is one of `wanted`, else `None`.
-/// Avoids a wildcard match over the full token enum at each precedence level.
-fn op_here(cur: &CursorV1<'_>, wanted: &[&str]) -> Option<String> {
+/// Move a matching operator payload from the lexer token into the HIR builder.
+fn take_op_if(cur: &mut CursorV1<'_>, wanted: &[&str]) -> Option<String> {
     if let TokenKindV1::Op(sym) = &cur.peek().kind {
         if wanted.contains(&sym.as_str()) {
-            return Some(sym.clone());
+            if let TokenKindV1::Op(symbol) = cur.bump().kind {
+                return Some(symbol);
+            }
         }
     }
     None

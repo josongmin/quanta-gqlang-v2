@@ -284,6 +284,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "exhaustive operator registry fixture"
+    )]
     fn closed_registry_pins_every_operator_operand_and_result_semantics() {
         use crate::ScalarTyV1;
         let registry = OperatorRegistryV2::try_closed().expect("valid static registry");
@@ -774,6 +778,10 @@ impl OperatorRegistryV2 {
         })
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "legacy canonical operator registry table"
+    )]
     pub fn try_closed() -> Result<Self, TypeDiagnosticV2> {
         use crate::ScalarTyV1;
         let duration = || ValueTypeV1::scalar(ScalarTyV1::Duration);

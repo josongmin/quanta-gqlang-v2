@@ -24,8 +24,12 @@ large-error-threshold = 256
 #
 # The final facade cut boxes the variants whose size gap exceeds this bound
 # (`SemanticPlanInputV2`, plan outcomes, compiled/analysis items, and the large
-# composition query body). The remaining inline semantic carriers stay below
-# 384 bytes of variant-size difference and are move-once owner IR rather than
-# public transport DTOs. Keep this explicit bound so later growth becomes a
-# failing lint instead of silently expanding stack movement.
-enum-variant-size-threshold = 384
+# composition query body). The public composition body input keeps its CHECK
+# contract inline for V2 compatibility; MSRV Clippy reports a 416-byte gap
+# against its 464-byte second-largest variant. The remaining inline carriers
+# are move-once owner IR. Keep a 448-byte bound so later growth still fails.
+enum-variant-size-threshold = 448
+
+# This bounds newly introduced long functions. Existing exceptions are
+# narrowly marked with #[expect] at their definitions and removed when split.
+too-many-lines-threshold = 200

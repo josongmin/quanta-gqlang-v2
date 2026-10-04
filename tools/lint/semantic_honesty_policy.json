@@ -33,7 +33,7 @@
     },
     {
       "type": "ItemRunV2",
-      "source": "crates/quanta-gqlang-v2-pipeline/src/compile.rs",
+      "source": "crates/quanta-gqlang-v2-pipeline/src/compile/assembly.rs",
       "negative": ["NoPlan", "Blocked"],
       "positive": ["Planned"],
       "empty_is_success": false

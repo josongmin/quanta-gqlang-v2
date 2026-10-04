@@ -15,24 +15,26 @@
 use std::path::{Path, PathBuf};
 
 use quanta_gqlang_v2_frontend_contract::{
-    analyze_source_document_v2, classify_single_source_root_v3, compile_source_document_v3,
-    format_source_document_v2, AlgebraFamilyV2, AnalysisDocumentV2, AnalysisItemV2,
-    AnalysisStatusV2, CheckedLocatedSpanV2, ClosedFrontendAuthorityBuilderV2,
-    ClosedFrontendAuthorityV2, CompiledItemV2, CompiledRuleProgramV2, CompiledSourceDocumentV3,
-    ExecutionAuthorityV3, ExecutionBindingV3, ExecutionCallTargetV3, ExecutionCardinalityV3,
-    ExecutionCatalogIdentityV3, ExecutionCheckV3, ExecutionCompareMetricV3,
-    ExecutionCompositionBindingV3, ExecutionCompositionBodyV3, ExecutionCompositionProducerV3,
-    ExecutionCompositionV3, ExecutionConfirmModeV3, ExecutionCorrelationV3,
-    ExecutionDetectionModeV3, ExecutionDeterminismV3, ExecutionDigestV3, ExecutionDocumentV3,
-    ExecutionEffectV3, ExecutionEmitModeV3, ExecutionEvidenceModeV3, ExecutionEvidenceV3,
-    ExecutionExistentialTermV3, ExecutionExistsPolarityV3, ExecutionExplainTargetV3,
-    ExecutionExportFormatV3, ExecutionExpressionShapeV3, ExecutionExpressionV3, ExecutionFamilyV3,
-    ExecutionFieldV3, ExecutionFiniteFloatV3, ExecutionGraphCapabilityV3,
-    ExecutionGraphDedupIdentityV3, ExecutionGraphDirectionV3, ExecutionGraphKindV3,
-    ExecutionGraphQueryV3, ExecutionGraphReferenceKindV3, ExecutionGraphReferenceRoleV3,
-    ExecutionGraphReferenceV3, ExecutionGraphRelationShapeV3, ExecutionGraphTargetV3,
-    ExecutionGraphWitnessTieBreakV3, ExecutionItemV3, ExecutionJoinModeV3, ExecutionLiteralV3,
-    ExecutionLogicalQuantifierV3, ExecutionNestedGraphV3, ExecutionNullOrderV3,
+    admit_show_syntax_v2, analyze_source_document_v2, census_source_lexical_materialization_v3,
+    classify_single_source_root_v3, classify_single_source_root_with_lexical_owner_v1,
+    compile_source_document_v3, compile_source_document_with_lexical_owner_v1,
+    format_source_document_v2, AdmittedLexicalCompiledSourceDocumentV1, AdmittedShowDocumentV2,
+    AlgebraFamilyV2, AnalysisDocumentV2, AnalysisItemV2, AnalysisStatusV2, CheckedLocatedSpanV2,
+    ClosedFrontendAuthorityBuilderV2, ClosedFrontendAuthorityV2, CompiledItemV2,
+    CompiledRuleProgramV2, CompiledSourceDocumentV3, ExecutionAuthorityV3, ExecutionBindingV3,
+    ExecutionCallTargetV3, ExecutionCardinalityV3, ExecutionCatalogIdentityV3, ExecutionCheckV3,
+    ExecutionCompareMetricV3, ExecutionCompositionBindingV3, ExecutionCompositionBodyV3,
+    ExecutionCompositionProducerV3, ExecutionCompositionV3, ExecutionConfirmModeV3,
+    ExecutionCorrelationV3, ExecutionDetectionModeV3, ExecutionDeterminismV3, ExecutionDigestV3,
+    ExecutionDocumentV3, ExecutionEffectV3, ExecutionEmitModeV3, ExecutionEvidenceModeV3,
+    ExecutionEvidenceV3, ExecutionExistentialTermV3, ExecutionExistsPolarityV3,
+    ExecutionExplainTargetV3, ExecutionExportFormatV3, ExecutionExpressionShapeV3,
+    ExecutionExpressionV3, ExecutionFamilyV3, ExecutionFieldV3, ExecutionFiniteFloatV3,
+    ExecutionGraphCapabilityV3, ExecutionGraphDedupIdentityV3, ExecutionGraphDirectionV3,
+    ExecutionGraphKindV3, ExecutionGraphQueryV3, ExecutionGraphReferenceKindV3,
+    ExecutionGraphReferenceRoleV3, ExecutionGraphReferenceV3, ExecutionGraphRelationShapeV3,
+    ExecutionGraphTargetV3, ExecutionGraphWitnessTieBreakV3, ExecutionItemV3, ExecutionJoinModeV3,
+    ExecutionLiteralV3, ExecutionLogicalQuantifierV3, ExecutionNestedGraphV3, ExecutionNullOrderV3,
     ExecutionOperatorDescriptorErrorV3, ExecutionOperatorDescriptorV3, ExecutionOperatorKindV3,
     ExecutionOperatorV3, ExecutionOrderKeyV3, ExecutionPlanV3, ExecutionPolicyFamilyV3,
     ExecutionPresentationKindV3, ExecutionRecordFieldV3, ExecutionRelationAuthorityV3,
@@ -42,14 +44,16 @@ use quanta_gqlang_v2_frontend_contract::{
     ExecutionValueTypeV3, FrontendAuthorityErrorV2, FrontendAuthorityLocationV2,
     FrontendAuthoritySourceV2, FrontendBudgetV2, FrontendCallableParameterInputV2,
     FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2, FrontendDiagnosticV2, FrontendFailureV2,
-    FrontendGraphReferenceInputV2, FrontendLanguageVersionV2, FrontendLockfileInputV2,
-    FrontendPackInputV2, FrontendRelationAuthorityV2, FrontendRelationCardinalityV2,
-    FrontendRelationFieldInputV2, FrontendRelationInputV2, FrontendScalarTypeV2,
-    FrontendSeverityV2, FrontendSourceRootClassificationErrorV3, FrontendSourceRootFamilyV3,
-    FrontendStageV2, FrontendTransactionErrorV2, GraphReferenceKindV2, LocatedSpanV2,
-    NoPlanReasonV2, OpenAnalysisAuthorityV2, PlannedItemV2, RuleProgramMemberV2, SemanticItemIdV2,
-    SemanticPlanV2, SourceIdV2, SourceQualifiedNodeIdV2, SpanV1, UnresolvedAnalysisFactV2,
-    ANALYSIS_DIAGNOSTIC_LIMIT_CODE, OPEN_AUTHORITY_INCOMPLETE_CODE,
+    FrontendGraphReferenceInputV2, FrontendLanguageVersionV2, FrontendLexicalHostCeilingV1,
+    FrontendLexicalMaterializationRootV1, FrontendLockfileInputV2, FrontendPackInputV2,
+    FrontendRelationAuthorityV2, FrontendRelationCardinalityV2, FrontendRelationFieldInputV2,
+    FrontendRelationInputV2, FrontendScalarTypeV2, FrontendSeverityV2,
+    FrontendSourceRootClassificationErrorV3, FrontendSourceRootFamilyV3, FrontendStageV2,
+    FrontendTransactionErrorV2, GraphReferenceKindV2, LexicalMaterializationCensusV1,
+    LocatedSpanV2, NoPlanReasonV2, OpenAnalysisAuthorityV2, PlannedItemV2, RuleProgramMemberV2,
+    SemanticItemIdV2, SemanticPlanV2, ShowSyntaxAdmissionErrorV2, SourceIdV2,
+    SourceQualifiedNodeIdV2, SpanV1, UnresolvedAnalysisFactV2, ANALYSIS_DIAGNOSTIC_LIMIT_CODE,
+    OPEN_AUTHORITY_INCOMPLETE_CODE,
 };
 
 /// Document identity of the probe source.
@@ -119,6 +123,95 @@ const MISSING_AUTHORITY_CODES_V2: [&str; 3] = [
 /// mint are still proved *reachable*: the item must exist, and its exact
 /// signature must hold.
 fn pin<T>(_item: T) {}
+
+/// Exercise the public lexical owner through the facade alone. Its permit
+/// covers only the named source storage; the host still owns final admission.
+fn lexical_owner_probe(authority: &ClosedFrontendAuthorityV2, budget: &FrontendBudgetV2) {
+    let source_id = SourceIdV2::from_raw(41);
+    let source = String::from("show capabilities");
+    let census: LexicalMaterializationCensusV1 =
+        census_source_lexical_materialization_v3(source_id, &source, budget)
+            .expect("valid SHOW source has a lexical census");
+    assert!(census.token_count() > 0);
+    assert!(census.token_storage_bytes() > 0);
+    assert!(census.logical_bytes() >= census.token_storage_bytes() + census.payload_bytes());
+
+    // The installed ceiling is fixture-owned, rather than derived from the
+    // request. A lexical-only census cannot admit parser/HIR storage.
+    let host = FrontendLexicalHostCeilingV1::try_new(1_000_000)
+        .expect("fixture host installs a finite positive ceiling");
+    assert!(FrontendLexicalHostCeilingV1::try_new(0).is_err());
+    assert!(
+        FrontendLexicalMaterializationRootV1::issue_v1(source_id, &source, 1_000_001, host,)
+            .is_err()
+    );
+    let short = FrontendLexicalMaterializationRootV1::issue_v1(
+        source_id,
+        &source,
+        u64::try_from(census.logical_bytes()).expect("finite lexical census"),
+        host,
+    )
+    .expect("lexical-only request is constructible");
+    assert!(
+        classify_single_source_root_with_lexical_owner_v1(source_id, &source, budget, &short,)
+            .is_err()
+    );
+    assert_eq!(short.live_bytes_v1(), 0);
+
+    let root = FrontendLexicalMaterializationRootV1::issue_v1(source_id, &source, 1_000_000, host)
+        .expect("fixture request stays within its installed ceiling");
+    assert_eq!(
+        classify_single_source_root_with_lexical_owner_v1(source_id, &source, budget, &root)
+            .expect("SHOW route classification"),
+        FrontendSourceRootFamilyV3::Presentation,
+    );
+    assert_eq!(root.live_bytes_v1(), 0);
+    let foreign_source = String::from("show capabilities");
+    assert!(classify_single_source_root_with_lexical_owner_v1(
+        source_id,
+        &foreign_source,
+        budget,
+        &root,
+    )
+    .is_err());
+    assert_eq!(root.live_bytes_v1(), 0);
+
+    let syntax: AdmittedShowDocumentV2<'_, '_> =
+        admit_show_syntax_v2(source_id, &source, budget, &root)
+            .expect("SHOW syntax admits under the same source root");
+    assert_eq!(syntax.item_count_v2(), 1);
+    assert_eq!(syntax.source_id_v2(), source_id);
+    assert!(root.live_bytes_v1() > 0);
+    drop(syntax);
+    assert_eq!(root.live_bytes_v1(), 0);
+
+    let compiled: AdmittedLexicalCompiledSourceDocumentV1<'_, '_> =
+        compile_source_document_with_lexical_owner_v1(source_id, &source, authority, &root)
+            .expect("closed compile retains its lexical source permit");
+    assert_eq!(compiled.value_v1().source_id(), source_id);
+    assert_eq!(compiled.value_v1().execution().items().len(), 1);
+    assert!(root.live_bytes_v1() > 0);
+    drop(compiled);
+    assert_eq!(root.live_bytes_v1(), 0);
+
+    let adjacent = String::from("let answer = 1");
+    let adjacent_root =
+        FrontendLexicalMaterializationRootV1::issue_v1(source_id, &adjacent, 1_000_000, host)
+            .expect("adjacent source has a distinct root");
+    let rejected: ShowSyntaxAdmissionErrorV2 =
+        admit_show_syntax_v2(source_id, &adjacent, budget, &adjacent_root)
+            .err()
+            .expect("non-SHOW syntax cannot enter the SHOW stage");
+    assert!(matches!(
+        rejected,
+        ShowSyntaxAdmissionErrorV2::IncompleteShowGrammar
+    ));
+    assert_eq!(
+        rejected.reason_code(),
+        "pipeline.show_syntax_incomplete_grammar"
+    );
+    assert_eq!(adjacent_root.live_bytes_v1(), 0);
+}
 
 /// Exhaustive read of the closed compiled-item vocabulary.
 fn compiled_item_label(item: &CompiledItemV2) -> &'static str {
@@ -1343,6 +1436,7 @@ fn main() {
     let closed = closed_builder
         .finish()
         .expect("facade-only authority builder seals");
+    lexical_owner_probe(&closed, &budget);
     assert_declaration_dependency_stack(&closed);
     let compiled = compile_source_document_v3(DOCUMENT_SOURCE, DOCUMENT_TEXT, &closed)
         .expect("facade-only closed authority compiles the probe source");

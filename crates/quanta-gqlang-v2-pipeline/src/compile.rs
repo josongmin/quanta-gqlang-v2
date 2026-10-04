@@ -47,20 +47,23 @@ use quanta_gqlang_v2_planning::{
     CatalogDeclarationKindV2, CheckContractV2, CheckedCompositionPlanInputV2,
     CompositionBodyPlanInputV2, CompositionRelationalBodyPlanInputV2, NoPlanReasonV2,
     PlanOutcomeV2, PlanningDiagnosticV1, PlanningSessionV2, PresentationContractV2,
-    SemanticPlanInputV2, SemanticPlanV2,
+    SemanticPlanInputV2, SemanticPlanV2, ShowPlanningErrorV2, ShowPlanningSessionV2,
 };
 use quanta_gqlang_v2_sema::{
     resolve_checked_document_v2, CheckedSyntaxDocumentV2, ClosedFrontendAuthorityV2,
-    DeclaredDocumentV2, FrontendBudgetV2, FrontendDiagnosticV2, FrontendFailureV2,
-    FrontendSeverityV2, FrontendStageV2, FrontendTransactionErrorV2, LocatedSpanV2,
-    OpenAnalysisAuthorityV2, ResolvedCatalogItemV2, ResolvedCatalogPayloadV2, ResolvedCheckV2,
-    ResolvedCompositionBodyV2, ResolvedCompositionProducerV2, ResolvedCompositionV2,
-    ResolvedMetaKindV2, SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2, SourceIdV2,
-    SourceRegistrationV2, SpanV1,
+    DeclaredDocumentV2, DeclaredShowSourceV2, FrontendBudgetV2, FrontendDiagnosticV2,
+    FrontendFailureV2, FrontendSeverityV2, FrontendStageV2, FrontendTransactionErrorV2,
+    LocatedSpanV2, OpenAnalysisAuthorityV2, ResolvedCatalogItemV2, ResolvedCatalogPayloadV2,
+    ResolvedCheckV2, ResolvedCompositionBodyV2, ResolvedCompositionProducerV2,
+    ResolvedCompositionV2, ResolvedMetaKindV2, SemanticDocumentV2, SemanticItemIdV2,
+    SemanticItemV2, SourceIdV2, SourceRegistrationV2, SpanV1,
 };
 use quanta_gqlang_v2_surface::{
-    classify_parsed_root_v3, format_source_document_with_parse_budget_v2, parse_source_document_v2,
-    ParseBudgetDimensionV2, ParseBudgetV2,
+    census_source_lexical_materialization_v2, classify_parsed_root_v3,
+    format_source_document_with_parse_budget_v2, parse_source_document_v2,
+    parse_source_document_with_lexical_owner_v1, AdmittedLexicalParsedDocumentV1,
+    AdmittedLexicalValueV1, FrontendLexicalMaterializationRootV1, FrontendLexicalPermitV1,
+    LexicalMaterializationCensusV1, ParseBudgetDimensionV2, ParseBudgetV2,
 };
 
 pub use quanta_gqlang_v2_surface::SourceRootFamilyV3 as FrontendSourceRootFamilyV3;
@@ -72,11 +75,11 @@ use crate::diagnostic::{
 };
 use crate::execution::{
     project_check, project_composition, project_graph_query, project_presentation,
-    project_relation, project_relation_root, ExecutionCheckV3, ExecutionClosureFailureV3,
-    ExecutionCompositionBodyProjectionV3, ExecutionCompositionProducerProjectionV3,
-    ExecutionCompositionProjectionFailureV3, ExecutionCompositionV3, ExecutionDocumentV3,
-    ExecutionFamilyV3, ExecutionGraphQueryV3, ExecutionItemV3, ExecutionPresentationKindV3,
-    ExecutionRelationV3,
+    project_relation, project_relation_root, project_selected_show_item_v2, ExecutionCheckV3,
+    ExecutionClosureFailureV3, ExecutionCompositionBodyProjectionV3,
+    ExecutionCompositionProducerProjectionV3, ExecutionCompositionProjectionFailureV3,
+    ExecutionCompositionV3, ExecutionDocumentV3, ExecutionFamilyV3, ExecutionGraphQueryV3,
+    ExecutionItemV3, ExecutionPresentationKindV3, ExecutionRelationV3,
 };
 
 /// Pipeline-owned code for an open-analysis source whose authority is partial.
@@ -193,6 +196,154 @@ impl CompiledDocumentV2 {
 pub struct CompiledSourceDocumentV3 {
     compiled: CompiledDocumentV2,
     execution: ExecutionDocumentV3,
+}
+
+/// Closed result retaining lexer and top-level parser item-vector debits.
+/// HIR conversion, semantic and plan allocations remain open.
+pub type AdmittedLexicalCompiledSourceDocumentV1<'root, 'source> =
+    AdmittedLexicalValueV1<'root, 'source, CompiledSourceDocumentV3>;
+
+/// SHOW-only syntax proof. No public method exposes owned or cloneable HIR or
+/// the generic V1 map; all parser reservations remain attached.
+///
+/// ```compile_fail
+/// use quanta_gqlang_v2_pipeline::AdmittedShowDocumentV2;
+/// fn assert_clone<T: Clone>() {}
+/// assert_clone::<AdmittedShowDocumentV2<'static, 'static>>();
+/// ```
+///
+/// ```compile_fail
+/// use quanta_gqlang_v2_pipeline::AdmittedShowDocumentV2;
+/// fn detach(owner: &AdmittedShowDocumentV2<'_, '_>) {
+///     let _ = owner.value_v1();
+/// }
+/// ```
+pub struct AdmittedShowDocumentV2<'root, 'source> {
+    checked: AdmittedLexicalValueV1<'root, 'source, CheckedSyntaxDocumentV2>,
+    budget: FrontendBudgetV2,
+}
+
+/// SHOW source declaration retaining the syntax root and the exact host
+/// registry extension. This is not a resolved semantic document or a plan.
+///
+/// ```compile_fail
+/// use quanta_gqlang_v2_pipeline::AdmittedShowSourceDeclarationV2;
+/// fn detach(owner: &AdmittedShowSourceDeclarationV2<'_, '_>) {
+///     let _ = owner.value_v1();
+/// }
+/// ```
+pub struct AdmittedShowSourceDeclarationV2<'root, 'source> {
+    declared: AdmittedLexicalValueV1<'root, 'source, DeclaredShowSourceV2>,
+}
+
+/// SHOW semantic plans in authored order, retaining both the parser and plan
+/// output debits. No public accessor exposes a cloneable plan or bare HIR.
+/// Generic compilation, execution projection and host issuer remain open.
+pub struct AdmittedShowPlannedDocumentV2<'root, 'source> {
+    plans: Vec<SemanticPlanV2>,
+    declared: AdmittedShowSourceDeclarationV2<'root, 'source>,
+    _plan_permit: FrontendLexicalPermitV1<'root, 'source>,
+}
+
+/// Selected SHOW execution DTO retaining syntax, semantic-plan, and execution
+/// vector debits on the same source root. It exposes only copied identity and
+/// digest projections; a cloneable bare execution document cannot escape.
+pub struct AdmittedShowExecutionDocumentV2<'root, 'source> {
+    execution: ExecutionDocumentV3,
+    planned: AdmittedShowPlannedDocumentV2<'root, 'source>,
+    _execution_permit: FrontendLexicalPermitV1<'root, 'source>,
+}
+
+impl AdmittedShowDocumentV2<'_, '_> {
+    #[must_use]
+    pub fn source_id_v2(&self) -> SourceIdV2 {
+        self.checked.value_v1().source_id()
+    }
+
+    #[must_use]
+    pub fn item_count_v2(&self) -> usize {
+        self.checked.value_v1().checked().document().items.len()
+    }
+
+    #[must_use]
+    pub fn checked_node_count_v2(&self) -> usize {
+        self.checked.value_v1().node_count()
+    }
+}
+
+impl AdmittedShowSourceDeclarationV2<'_, '_> {
+    #[must_use]
+    pub fn source_id_v2(&self) -> SourceIdV2 {
+        self.declared.value_v1().source_id()
+    }
+
+    #[must_use]
+    pub fn item_count_v2(&self) -> usize {
+        self.declared.value_v1().item_count()
+    }
+}
+
+impl AdmittedShowPlannedDocumentV2<'_, '_> {
+    #[must_use]
+    pub fn source_id_v2(&self) -> SourceIdV2 {
+        self.declared.source_id_v2()
+    }
+
+    #[must_use]
+    pub fn plan_count_v2(&self) -> usize {
+        self.plans.len()
+    }
+}
+
+impl AdmittedShowExecutionDocumentV2<'_, '_> {
+    #[must_use]
+    pub fn source_id_v2(&self) -> SourceIdV2 {
+        self.planned.source_id_v2()
+    }
+
+    #[must_use]
+    pub fn item_count_v2(&self) -> usize {
+        self.execution.items().len()
+    }
+
+    #[must_use]
+    pub fn qualification_digest_v2(&self) -> crate::execution::ExecutionDigestV3 {
+        self.execution.qualification_digest()
+    }
+}
+
+/// A selected SHOW-only stage has an explicit incomplete result for adjacent
+/// grammar. Existing V1/legacy frontend entrypoints remain unqualified.
+#[derive(Debug)]
+pub enum ShowSyntaxAdmissionErrorV2 {
+    Frontend(FrontendTransactionErrorV2),
+    IncompleteShowGrammar,
+    IncompleteAuthorityBudget,
+    IncompleteShowRoot,
+    IncompleteShowOutputDemand,
+    IncompleteShowOutputStorage,
+    IncompleteShowPlanning(ShowPlanningErrorV2),
+    IncompleteShowSourceLimit,
+    IncompleteSourceDiagnostics,
+    IncompleteShowExecution(&'static str),
+}
+
+impl ShowSyntaxAdmissionErrorV2 {
+    #[must_use]
+    pub const fn reason_code(&self) -> &'static str {
+        match self {
+            Self::Frontend(_) => "pipeline.show_syntax_frontend_rejected",
+            Self::IncompleteShowGrammar => "pipeline.show_syntax_incomplete_grammar",
+            Self::IncompleteAuthorityBudget => "pipeline.show_source_incomplete_authority_budget",
+            Self::IncompleteShowRoot => "pipeline.show_plan_incomplete_root",
+            Self::IncompleteShowOutputDemand => "pipeline.show_plan_incomplete_output_demand",
+            Self::IncompleteShowOutputStorage => "pipeline.show_plan_incomplete_output_storage",
+            Self::IncompleteShowPlanning(_) => "pipeline.show_plan_incomplete_planning",
+            Self::IncompleteShowSourceLimit => "pipeline.show_source_incomplete_source_limit",
+            Self::IncompleteSourceDiagnostics => "pipeline.show_source_incomplete_diagnostic_owner",
+            Self::IncompleteShowExecution(_) => "pipeline.show_execution_incomplete",
+        }
+    }
 }
 
 impl CompiledSourceDocumentV3 {
@@ -618,6 +769,43 @@ pub fn classify_single_source_root_v3(
     Ok(classify_parsed_root_v3(item))
 }
 
+/// Classify with a source-bound lexical owner. The downstream admitted host
+/// must authenticate the host ceiling before calling this public API.
+pub fn classify_single_source_root_with_lexical_owner_v1(
+    source_id: SourceIdV2,
+    source: &str,
+    budget: &FrontendBudgetV2,
+    root: &FrontendLexicalMaterializationRootV1<'_>,
+) -> Result<FrontendSourceRootFamilyV3, FrontendSourceRootClassificationErrorV3> {
+    let parsed = parse_source_with_lexical_owner(source_id, source, budget, root)
+        .map_err(FrontendSourceRootClassificationErrorV3::Frontend)?;
+    let [item] = parsed.value_v1().items.as_slice() else {
+        return Err(if parsed.value_v1().items.is_empty() {
+            FrontendSourceRootClassificationErrorV3::NoItem
+        } else {
+            FrontendSourceRootClassificationErrorV3::MultipleItems {
+                observed: parsed.value_v1().items.len(),
+            }
+        });
+    };
+    Ok(classify_parsed_root_v3(item))
+}
+
+/// Validate source and parse limits, then count only lexer-owned storage.
+/// A runtime must admit HIR, semantic, and plan storage separately before it
+/// may claim a complete frontend materialization owner.
+pub fn census_source_lexical_materialization_v3(
+    source_id: SourceIdV2,
+    source: &str,
+    budget: &FrontendBudgetV2,
+) -> Result<LexicalMaterializationCensusV1, FrontendTransactionErrorV2> {
+    enforce_source_budget(source_id, source, budget).map_err(FrontendTransactionErrorV2::from)?;
+    let projected = project_parse_budget(source_id, source, budget)
+        .map_err(FrontendTransactionErrorV2::from)?;
+    census_source_lexical_materialization_v2(source_id, source, &projected)
+        .map_err(|error| surface_transaction_error(&error))
+}
+
 /// Compile one source document against complete immutable authority.
 ///
 /// # Errors
@@ -644,6 +832,181 @@ pub fn compile_source_document_v3(
     result.map_err(|error| {
         cap_transaction_error(error, source_id, authority.budget().max_diagnostics())
     })
+}
+
+/// Compile under the same source-bound root used for route classification.
+/// The returned wrapper keeps lexer and parser item-vector debits; subsequent
+/// stage demands remain unqualified until their producer owners issue permits.
+pub fn compile_source_document_with_lexical_owner_v1<'root, 'source>(
+    source_id: SourceIdV2,
+    source: &'source str,
+    authority: &ClosedFrontendAuthorityV2,
+    root: &'root FrontendLexicalMaterializationRootV1<'source>,
+) -> Result<AdmittedLexicalCompiledSourceDocumentV1<'root, 'source>, FrontendTransactionErrorV2> {
+    let result = (|| {
+        let parsed = parse_source_with_lexical_owner(source_id, source, authority.budget(), root)?;
+        parsed.try_map_v1(|hir| {
+            let checked = CheckedSyntaxDocumentV2::try_from_hir(hir)
+                .map_err(FrontendTransactionErrorV2::from)?;
+            let document = resolve_checked_document_v2(checked, authority)?;
+            let (compiled, execution_items) = compile_resolved_parts(&document)?;
+            Ok(CompiledSourceDocumentV3 {
+                compiled,
+                execution: ExecutionDocumentV3::new(source_id, source.as_bytes(), execution_items),
+            })
+        })
+    })();
+    result.map_err(|error| {
+        cap_transaction_error(error, source_id, authority.budget().max_diagnostics())
+    })
+}
+
+/// Admit the parsed and integrity-checked SHOW syntax under one source root.
+/// This is a partial frontend stage: semantic, planning and execution storage
+/// still require producer-owned reservations before a positive compile claim.
+pub fn admit_show_syntax_v2<'root, 'source>(
+    source_id: SourceIdV2,
+    source: &'source str,
+    budget: &FrontendBudgetV2,
+    root: &'root FrontendLexicalMaterializationRootV1<'source>,
+) -> Result<AdmittedShowDocumentV2<'root, 'source>, ShowSyntaxAdmissionErrorV2> {
+    let parsed = parse_source_with_lexical_owner(source_id, source, budget, root)
+        .map_err(ShowSyntaxAdmissionErrorV2::Frontend)?;
+    if !parsed.is_show_only_v2() {
+        return Err(ShowSyntaxAdmissionErrorV2::IncompleteShowGrammar);
+    }
+    let checked = parsed.try_map_v1(|hir| {
+        CheckedSyntaxDocumentV2::try_from_show_hir_monotonic_v2(hir)
+            .map_err(FrontendTransactionErrorV2::from)
+            .map_err(ShowSyntaxAdmissionErrorV2::Frontend)
+    })?;
+    Ok(AdmittedShowDocumentV2 {
+        checked,
+        budget: budget.clone(),
+    })
+}
+
+/// Consume SHOW syntax into the allocation-free source declaration stage.
+/// Generic semantic item maps and planning remain outside this contract.
+pub fn admit_show_source_declaration_v2<'root, 'source>(
+    syntax: AdmittedShowDocumentV2<'root, 'source>,
+    authority: &ClosedFrontendAuthorityV2,
+) -> Result<AdmittedShowSourceDeclarationV2<'root, 'source>, ShowSyntaxAdmissionErrorV2> {
+    if syntax.budget != *authority.budget() {
+        return Err(ShowSyntaxAdmissionErrorV2::IncompleteAuthorityBudget);
+    }
+    let declared = syntax.checked.try_map_v1(|checked| {
+        DeclaredShowSourceV2::try_new(checked, authority).map_err(|error| {
+            ShowSyntaxAdmissionErrorV2::Frontend(FrontendTransactionErrorV2::from(error))
+        })
+    })?;
+    Ok(AdmittedShowSourceDeclarationV2 { declared })
+}
+
+/// Plan the selected SHOW document under the same live root as its parser
+/// owner. The checked authored item count, not a caller estimate, determines
+/// the logical plan-vector debit before its first allocation. This entry is a
+/// producer stage only; an installed host must authenticate `root` separately.
+pub fn admit_show_plans_v2<'root, 'source>(
+    declared: AdmittedShowSourceDeclarationV2<'root, 'source>,
+    source: &'source str,
+    root: &'root FrontendLexicalMaterializationRootV1<'source>,
+) -> Result<AdmittedShowPlannedDocumentV2<'root, 'source>, ShowSyntaxAdmissionErrorV2> {
+    if !declared.declared.shares_root_v2(root) {
+        return Err(ShowSyntaxAdmissionErrorV2::IncompleteShowRoot);
+    }
+    let item_count = declared.declared.value_v1().item_count();
+    let bytes = item_count
+        .checked_mul(std::mem::size_of::<SemanticPlanV2>())
+        .and_then(|bytes| bytes.checked_add(std::mem::size_of::<Vec<SemanticPlanV2>>()))
+        .ok_or(ShowSyntaxAdmissionErrorV2::IncompleteShowOutputDemand)?;
+    let permit = root
+        .reserve_stage_v2(declared.source_id_v2(), source, bytes)
+        .map_err(|_error| ShowSyntaxAdmissionErrorV2::IncompleteShowOutputStorage)?;
+    let mut plans = Vec::new();
+    plans
+        .try_reserve_exact(item_count)
+        .map_err(|_error| ShowSyntaxAdmissionErrorV2::IncompleteShowOutputStorage)?;
+    if plans.capacity() > item_count {
+        return Err(ShowSyntaxAdmissionErrorV2::IncompleteShowOutputStorage);
+    }
+    let mut planning = ShowPlanningSessionV2::new(declared.declared.value_v1());
+    for index in 0..item_count {
+        plans.push(
+            planning
+                .plan_next_v2(index)
+                .map_err(ShowSyntaxAdmissionErrorV2::IncompleteShowPlanning)?,
+        );
+    }
+    Ok(AdmittedShowPlannedDocumentV2 {
+        plans,
+        declared,
+        _plan_permit: permit,
+    })
+}
+
+/// Move the selected plan owner into a source-bound execution DTO. SHOW's
+/// per-item projection and canonical digest stream are allocation-free; the
+/// authored-count execution vector is debited before it is created.
+pub fn admit_show_execution_v2<'root, 'source>(
+    planned: AdmittedShowPlannedDocumentV2<'root, 'source>,
+    source: &'source str,
+    root: &'root FrontendLexicalMaterializationRootV1<'source>,
+) -> Result<AdmittedShowExecutionDocumentV2<'root, 'source>, ShowSyntaxAdmissionErrorV2> {
+    if !planned.declared.declared.shares_root_v2(root) {
+        return Err(ShowSyntaxAdmissionErrorV2::IncompleteShowRoot);
+    }
+    let count = planned.plans.len();
+    let bytes = count
+        .checked_mul(std::mem::size_of::<ExecutionItemV3>())
+        .and_then(|bytes| bytes.checked_add(std::mem::size_of::<Vec<ExecutionItemV3>>()))
+        .ok_or(ShowSyntaxAdmissionErrorV2::IncompleteShowOutputDemand)?;
+    let permit = root
+        .reserve_stage_v2(planned.source_id_v2(), source, bytes)
+        .map_err(|_error| ShowSyntaxAdmissionErrorV2::IncompleteShowOutputStorage)?;
+    let mut items = Vec::new();
+    items
+        .try_reserve_exact(count)
+        .map_err(|_error| ShowSyntaxAdmissionErrorV2::IncompleteShowOutputStorage)?;
+    if items.capacity() > count {
+        return Err(ShowSyntaxAdmissionErrorV2::IncompleteShowOutputStorage);
+    }
+    for (index, plan) in planned.plans.iter().enumerate() {
+        let resolved = planned
+            .declared
+            .declared
+            .value_v1()
+            .resolve_show_item_v2(index)
+            .map_err(ShowSyntaxAdmissionErrorV2::IncompleteShowExecution)?;
+        items.push(
+            project_selected_show_item_v2(&resolved, plan)
+                .map_err(ShowSyntaxAdmissionErrorV2::IncompleteShowExecution)?,
+        );
+    }
+    let execution = ExecutionDocumentV3::new(planned.source_id_v2(), source.as_bytes(), items);
+    Ok(AdmittedShowExecutionDocumentV2 {
+        execution,
+        planned,
+        _execution_permit: permit,
+    })
+}
+
+/// Raw source cannot enter the selected owned path until the parser's error
+/// message and diagnostic Vec births have a preissued request-root debit.
+/// Refuse without invoking the lexer: both overlong and malformed source
+/// otherwise allocate diagnostics before the first surface reservation.
+/// Hosts may still consume an already-admitted syntax owner with the staged
+/// APIs, but that partial path is not qualified as public source admission.
+pub fn admit_show_planned_source_v2<'root, 'source>(
+    _source_id: SourceIdV2,
+    source: &'source str,
+    authority: &ClosedFrontendAuthorityV2,
+    _root: &'root FrontendLexicalMaterializationRootV1<'source>,
+) -> Result<AdmittedShowPlannedDocumentV2<'root, 'source>, ShowSyntaxAdmissionErrorV2> {
+    if source.len() > usize::try_from(authority.budget().max_source_bytes()).unwrap_or(usize::MAX) {
+        return Err(ShowSyntaxAdmissionErrorV2::IncompleteShowSourceLimit);
+    }
+    Err(ShowSyntaxAdmissionErrorV2::IncompleteSourceDiagnostics)
 }
 
 /// Compile one already-sealed semantic document.
@@ -866,6 +1229,19 @@ fn parse_source(
         .map_err(|error| surface_transaction_error(&error))
 }
 
+fn parse_source_with_lexical_owner<'root, 'source>(
+    source_id: SourceIdV2,
+    source: &'source str,
+    budget: &FrontendBudgetV2,
+    root: &'root FrontendLexicalMaterializationRootV1<'source>,
+) -> Result<AdmittedLexicalParsedDocumentV1<'root, 'source>, FrontendTransactionErrorV2> {
+    enforce_source_budget(source_id, source, budget).map_err(FrontendTransactionErrorV2::from)?;
+    let projected = project_parse_budget(source_id, source, budget)
+        .map_err(FrontendTransactionErrorV2::from)?;
+    parse_source_document_with_lexical_owner_v1(source_id, source, &projected, root)
+        .map_err(|error| surface_transaction_error(&error))
+}
+
 fn enforce_source_budget(
     source_id: SourceIdV2,
     source: &str,
@@ -1045,1348 +1421,16 @@ fn incomplete_open_analysis(
     })
 }
 
-/// The completed run of every applicable stage over one sealed document.
-struct DocumentRunV2 {
-    items: Vec<ItemRunV2>,
-    rule_program: Option<CompiledRuleProgramV2>,
-    rule_blocked: Option<FrontendFailureV2>,
-}
+mod assembly;
 
-type CompiledPartsV2 = (
-    Vec<CompiledItemV2>,
-    Option<CompiledRuleProgramV2>,
-    Vec<ExecutionItemV3>,
-);
-
-/// Boxed planned payload: the plan plus its two execution projections dwarf the
-/// other outcomes, so the box keeps every `ItemRunV2` variant pointer-sized.
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct PlannedRunV2 {
-    planned: Box<PlannedItemV2>,
-    relation: Option<ExecutionRelationV3>,
-    graph: Option<ExecutionGraphQueryV3>,
-    check: Option<ExecutionCheckV3>,
-    presentation: Option<ExecutionPresentationKindV3>,
-    composition: Option<ExecutionCompositionV3>,
-}
-
-/// One item's stage outcome.
-#[derive(Clone, Debug, PartialEq, Eq)]
-enum ItemRunV2 {
-    /// Every applicable stage completed.
-    Planned(Box<PlannedRunV2>),
-    /// The item is a checked non-plan declaration.
-    NoPlan {
-        item_id: SemanticItemIdV2,
-        reason: NoPlanReasonV2,
-    },
-    /// A stage failed; the owner failure guarantees non-empty ordered diagnostics.
-    Blocked {
-        item_id: SemanticItemIdV2,
-        failure: FrontendFailureV2,
-    },
-}
-
-impl DocumentRunV2 {
-    /// The exact compiled item list, failing closed on the first blocked stage.
-    fn into_compiled(self) -> Result<CompiledPartsV2, FrontendTransactionErrorV2> {
-        if let Some(failure) = self.rule_blocked {
-            return Err(FrontendTransactionErrorV2::Document(failure.deduplicated()));
-        }
-        let mut items = Vec::with_capacity(self.items.len());
-        let mut execution_items = Vec::new();
-        for item in self.items {
-            match item {
-                ItemRunV2::Planned(run) => {
-                    if let Some((family, plan)) = execution_identity(run.planned.as_ref()) {
-                        execution_items.push(ExecutionItemV3::new(
-                            run.planned.item_id(),
-                            family,
-                            run.relation,
-                            run.graph,
-                            run.check,
-                            run.presentation,
-                            run.composition,
-                            plan,
-                        ));
-                    }
-                    items.push(CompiledItemV2::Planned(run.planned));
-                }
-                ItemRunV2::NoPlan { item_id, reason } => {
-                    items.push(CompiledItemV2::NoPlan { item_id, reason });
-                }
-                ItemRunV2::Blocked { failure, .. } => {
-                    return Err(FrontendTransactionErrorV2::Document(failure.deduplicated()));
-                }
-            }
-        }
-        Ok((items, self.rule_program, execution_items))
-    }
-
-    /// The exact analysis item list; blocked stages stay explicit.
-    fn into_analysis(
-        self,
-        source_id: SourceIdV2,
-        max_diagnostics: u32,
-    ) -> Result<AnalysisDocumentV2, FrontendTransactionErrorV2> {
-        // Count canonical diagnostics before a blocked rule-program diagnostic
-        // is cloned onto every authored rule member.
-        let mut diagnostics = self
-            .rule_blocked
-            .as_ref()
-            .map(|failure| failure.diagnostics().to_vec())
-            .unwrap_or_default();
-        for item in &self.items {
-            if let ItemRunV2::Blocked { failure, .. } = item {
-                diagnostics.extend(failure.diagnostics().iter().cloned());
-            }
-        }
-        enforce_diagnostic_limit(
-            source_id,
-            canonicalize_diagnostics(diagnostics).len(),
-            max_diagnostics,
-        )?;
-        let rule_blocked = self.rule_blocked;
-        let mut order = Vec::with_capacity(self.items.len());
-        let items = self
-            .items
-            .into_iter()
-            .map(|item| match item {
-                ItemRunV2::Planned(run) => {
-                    let planned = run.planned;
-                    if let PlannedItemV2::RuleMember(member) = planned.as_ref() {
-                        order.push(member.member_item_id());
-                        match &rule_blocked {
-                            Some(failure) => {
-                                AnalysisItemV2::BlockedByDiagnostics(failure.diagnostics().into())
-                            }
-                            None => AnalysisItemV2::Complete(planned),
-                        }
-                    } else {
-                        order.push(planned.item_id());
-                        AnalysisItemV2::Complete(planned)
-                    }
-                }
-                ItemRunV2::NoPlan { item_id, reason } => {
-                    order.push(item_id);
-                    AnalysisItemV2::NotApplicable(reason)
-                }
-                ItemRunV2::Blocked { item_id, failure } => {
-                    order.push(item_id);
-                    AnalysisItemV2::BlockedByDiagnostics(failure.diagnostics().into())
-                }
-            })
-            .collect::<Vec<_>>();
-        Ok(AnalysisDocumentV2 {
-            source_id,
-            order: order.into_boxed_slice(),
-            items: items.into_boxed_slice(),
-            rule_program: self.rule_program,
-            unresolved: Box::new([]),
-        })
-    }
-}
-
-/// Run every applicable stage of one sealed document.
-///
-/// Only membership inconsistency is a hard error here; every owner stage
-/// failure is collected so the analysis path can report it per item while the
-/// compile path fails closed on the same collection.
-fn run_document(
-    document: &SemanticDocumentV2,
-) -> Result<DocumentRunV2, FrontendTransactionErrorV2> {
-    let membership = DocumentMembershipV2::of(document)?;
-    let rule_members = membership.rule_member_ids();
-    let rule_program_id = membership.rule_program_id();
-    let mut algebra = AlgebraSessionV2::new(document);
-    let mut planning = PlanningSessionV2::new(document);
-
-    let (rule_program, rule_blocked) = match rule_program_id {
-        Some(program_id) => {
-            match compile_rule_program(document, &mut planning, program_id, &rule_members) {
-                Ok(program) => (Some(program), None),
-                Err(FrontendTransactionErrorV2::Document(failure)) => (None, Some(failure)),
-                Err(error @ FrontendTransactionErrorV2::Authority(_)) => return Err(error),
-            }
-        }
-        None => (None, None),
-    };
-
-    let mut items = Vec::with_capacity(membership.order().len());
-    let mut produced_plan: BTreeSet<SemanticItemIdV2> = BTreeSet::new();
-    let mut produced_member: BTreeSet<SemanticItemIdV2> = BTreeSet::new();
-    let mut produced_no_plan: BTreeSet<SemanticItemIdV2> = BTreeSet::new();
-    let mut blocked_stage = false;
-    for id in membership.order() {
-        let location = membership.location(*id);
-        match run_item(document, &membership, &mut algebra, &mut planning, *id) {
-            Ok(ItemRunV2::Planned(run)) => {
-                if matches!(run.planned.as_ref(), PlannedItemV2::RuleMember(_)) {
-                    record_produced_identity(
-                        &mut produced_member,
-                        *id,
-                        location,
-                        "one authored identity produced two results",
-                    )?;
-                } else {
-                    record_produced_identity(
-                        &mut produced_plan,
-                        *id,
-                        location,
-                        "one authored identity produced two results",
-                    )?;
-                }
-                items.push(ItemRunV2::Planned(run));
-            }
-            Ok(ItemRunV2::NoPlan { item_id, reason }) => {
-                record_produced_identity(
-                    &mut produced_no_plan,
-                    *id,
-                    location,
-                    "one authored identity produced two non-plan results",
-                )?;
-                items.push(ItemRunV2::NoPlan { item_id, reason });
-            }
-            Ok(blocked @ ItemRunV2::Blocked { .. }) => {
-                blocked_stage = true;
-                items.push(blocked);
-            }
-            Err(FrontendTransactionErrorV2::Document(failure)) => {
-                blocked_stage = true;
-                items.push(ItemRunV2::Blocked {
-                    item_id: *id,
-                    failure,
-                });
-            }
-            Err(error @ FrontendTransactionErrorV2::Authority(_)) => return Err(error),
-        }
-    }
-
-    // A blocked owner stage is reported first: the produced key sets are
-    // incomplete by construction, so comparing them would mask the real stage
-    // failure with a pipeline membership code.
-    if blocked_stage || rule_blocked.is_some() {
-        return Ok(DocumentRunV2 {
-            items,
-            rule_program,
-            rule_blocked,
-        });
-    }
-
-    validate_produced_membership(
-        document.source_id(),
-        &membership,
-        &produced_plan,
-        &produced_member,
-        &produced_no_plan,
-    )?;
-
-    Ok(DocumentRunV2 {
-        items,
-        rule_program,
-        rule_blocked,
-    })
-}
-
-fn record_produced_identity(
-    produced: &mut BTreeSet<SemanticItemIdV2>,
-    id: SemanticItemIdV2,
-    location: LocatedSpanV2,
-    message: &'static str,
-) -> Result<(), FrontendTransactionErrorV2> {
-    if produced.insert(id) {
-        Ok(())
-    } else {
-        Err(assembly(
-            location,
-            DocumentAssemblyCodeV2::DuplicateItemResult,
-            message,
-        ))
-    }
-}
-
-fn validate_produced_membership(
-    source_id: SourceIdV2,
-    membership: &DocumentMembershipV2<'_>,
-    produced_plan: &BTreeSet<SemanticItemIdV2>,
-    produced_member: &BTreeSet<SemanticItemIdV2>,
-    produced_no_plan: &BTreeSet<SemanticItemIdV2>,
-) -> Result<(), FrontendTransactionErrorV2> {
-    let expected_plan = membership.plan_required_ids();
-    let expected_member: BTreeSet<SemanticItemIdV2> =
-        membership.rule_member_ids().into_iter().collect();
-    let expected_no_plan = membership.no_plan_ids();
-    if produced_member != &expected_member {
-        let anchor = expected_member
-            .iter()
-            .chain(produced_member.iter())
-            .find(|id| expected_member.contains(id) != produced_member.contains(id))
-            .copied();
-        let location =
-            anchor.map_or_else(|| zero_location(source_id), |id| membership.location(id));
-        return Err(assembly(
-            location,
-            DocumentAssemblyCodeV2::RuleMembershipMismatch,
-            "the produced rule members disagree with the authored rule set",
-        ));
-    }
-    for id in &expected_plan {
-        if !produced_plan.contains(id) {
-            return Err(assembly(
-                membership.location(*id),
-                DocumentAssemblyCodeV2::MissingItemResult,
-                "an applicable authored item produced no plan result",
-            ));
-        }
-    }
-    for id in produced_plan {
-        if !expected_plan.contains(id) {
-            return Err(assembly(
-                membership.location(*id),
-                DocumentAssemblyCodeV2::ExtraItemResult,
-                "a produced plan has no applicable authored identity",
-            ));
-        }
-    }
-    for id in &expected_no_plan {
-        if !produced_no_plan.contains(id) {
-            return Err(assembly(
-                membership.location(*id),
-                DocumentAssemblyCodeV2::MissingItemResult,
-                "a non-executable declaration produced no checked non-plan reason",
-            ));
-        }
-    }
-    for id in produced_no_plan {
-        if !expected_no_plan.contains(id) {
-            return Err(assembly(
-                membership.location(*id),
-                DocumentAssemblyCodeV2::ExtraItemResult,
-                "a produced non-plan result has no authored declaration identity",
-            ));
-        }
-    }
-    Ok(())
-}
-
-/// Run the applicable stages for one authored item.
-fn run_item(
-    document: &SemanticDocumentV2,
-    membership: &DocumentMembershipV2<'_>,
-    algebra: &mut AlgebraSessionV2<'_>,
-    planning: &mut PlanningSessionV2<'_>,
-    id: SemanticItemIdV2,
-) -> Result<ItemRunV2, FrontendTransactionErrorV2> {
-    let Some(item) = membership.item(id) else {
-        return Err(assembly(
-            membership.location(id),
-            DocumentAssemblyCodeV2::MissingItemResult,
-            "an authored item has no produced semantic result",
-        ));
-    };
-    match item {
-        SemanticItemV2::Command(command) => {
-            let plan = planning_plan(
-                document,
-                planning,
-                id,
-                &SemanticPlanInputV2::Command(command.clone()),
-            )?;
-            Ok(planned_run(PlannedItemV2::Command { item_id: id, plan }))
-        }
-        SemanticItemV2::Relation(_) => {
-            let lowered = algebra
-                .lower_relation_item(id)
-                .map_err(|error| algebra_error(document, id, &error))?;
-            let relation = project_relation(document, &lowered)
-                .map_err(|failure| closure_error(document, id, failure))?;
-            let plan = planning_plan(
-                document,
-                planning,
-                id,
-                &SemanticPlanInputV2::Relational(Box::new(lowered)),
-            )?;
-            Ok(ItemRunV2::Planned(Box::new(PlannedRunV2 {
-                planned: Box::new(PlannedItemV2::Relation { item_id: id, plan }),
-                relation: Some(relation),
-                graph: None,
-                check: None,
-                presentation: None,
-                composition: None,
-            })))
-        }
-        SemanticItemV2::Graph(graph) => {
-            let contract = GraphQueryContractV2::from_resolved(graph)
-                .map_err(|error| logic_transaction_error(&error))?;
-            let plan = planning_plan(
-                document,
-                planning,
-                id,
-                &SemanticPlanInputV2::Graph(contract.clone()),
-            )?;
-            Ok(ItemRunV2::Planned(Box::new(PlannedRunV2 {
-                planned: Box::new(PlannedItemV2::Graph { item_id: id, plan }),
-                relation: None,
-                graph: Some(project_graph_query(&contract)),
-                check: None,
-                presentation: None,
-                composition: None,
-            })))
-        }
-        SemanticItemV2::Check(check) => {
-            let contract = check_contract(check)?;
-            let plan = planning_plan(
-                document,
-                planning,
-                id,
-                &SemanticPlanInputV2::Check(contract.clone()),
-            )?;
-            Ok(ItemRunV2::Planned(Box::new(PlannedRunV2 {
-                planned: Box::new(PlannedItemV2::Check { item_id: id, plan }),
-                relation: None,
-                graph: None,
-                check: Some(project_check(&contract)),
-                presentation: None,
-                composition: None,
-            })))
-        }
-        SemanticItemV2::Presentation(presentation) => {
-            let contract = PresentationContractV2::from_resolved(presentation)
-                .map_err(|error| planning_transaction_error(&error))?;
-            let plan = planning_plan(
-                document,
-                planning,
-                id,
-                &SemanticPlanInputV2::Presentation(contract.clone()),
-            )?;
-            Ok(ItemRunV2::Planned(Box::new(PlannedRunV2 {
-                planned: Box::new(PlannedItemV2::Presentation { item_id: id, plan }),
-                relation: None,
-                graph: None,
-                check: None,
-                presentation: Some(project_presentation(&contract)),
-                composition: None,
-            })))
-        }
-        SemanticItemV2::Composition(composition) => {
-            let mut producer_projections = Vec::with_capacity(composition.bindings().len());
-            for binding in composition.bindings() {
-                let projection = match binding.producer() {
-                    ResolvedCompositionProducerV2::Query(query) => {
-                        let root = algebra
-                            .lower_nested_relation(composition.item_id(), query.root())
-                            .map_err(|error| algebra_error(document, id, &error))?;
-                        ExecutionCompositionProducerProjectionV3::Relation(
-                            project_relation_root(document, query.item_id(), &root)
-                                .map_err(|failure| closure_error(document, id, failure))?,
-                        )
-                    }
-                    ResolvedCompositionProducerV2::Sample { .. } => {
-                        ExecutionCompositionProducerProjectionV3::Sample
-                    }
-                    ResolvedCompositionProducerV2::Graph { graph, .. } => {
-                        let contract = GraphQueryContractV2::from_resolved(graph)
-                            .map_err(|error| logic_transaction_error(&error))?;
-                        ExecutionCompositionProducerProjectionV3::Graph {
-                            item_id: contract.item_id(),
-                            query: project_graph_query(&contract),
-                        }
-                    }
-                };
-                producer_projections.push(projection);
-            }
-            let (body, body_projection) = composition_body_input(document, algebra, composition)?;
-            let input = CheckedCompositionPlanInputV2::new(composition, body)
-                .map_err(|error| planning_transaction_error(&error))?;
-            let plan = planning_plan(
-                document,
-                planning,
-                id,
-                &SemanticPlanInputV2::Composition(Box::new(input)),
-            )?;
-            let execution = project_composition(composition, producer_projections, body_projection)
-                .map_err(|failure| composition_projection_error(document, id, failure))?;
-            Ok(ItemRunV2::Planned(Box::new(PlannedRunV2 {
-                planned: Box::new(PlannedItemV2::Composition { item_id: id, plan }),
-                relation: None,
-                graph: None,
-                check: None,
-                presentation: None,
-                composition: Some(execution),
-            })))
-        }
-        SemanticItemV2::Meta(meta) => match meta.kind() {
-            ResolvedMetaKindV2::RequireCertified => {
-                let plan = planning_plan(
-                    document,
-                    planning,
-                    id,
-                    &SemanticPlanInputV2::MetaRequireCertified(meta.clone()),
-                )?;
-                Ok(planned_run(PlannedItemV2::MetaRequireCertified {
-                    item_id: id,
-                    plan,
-                }))
-            }
-            ResolvedMetaKindV2::UsePack { .. } => Ok(ItemRunV2::NoPlan {
-                item_id: id,
-                reason: NoPlanReasonV2::MetaActivation,
-            }),
-        },
-        SemanticItemV2::Rule(_) => match membership.rule_program_id() {
-            Some(program_id) => Ok(planned_run(PlannedItemV2::RuleMember(
-                RuleProgramMemberV2::new(program_id, id),
-            ))),
-            None => Err(assembly(
-                membership.location(id),
-                DocumentAssemblyCodeV2::RuleMembershipMismatch,
-                "a source rule has no document rule program",
-            )),
-        },
-        SemanticItemV2::Catalog(catalog) => {
-            if let Some(view) = catalog.inline_view() {
-                algebra
-                    .lower_nested_relation(id, view.root())
-                    .map_err(|error| algebra_error(document, id, &error))?;
-            }
-            Ok(ItemRunV2::NoPlan {
-                item_id: id,
-                reason: NoPlanReasonV2::CatalogDeclaration {
-                    kind: catalog_declaration_kind(catalog),
-                },
-            })
-        }
-        SemanticItemV2::Declaration(_) => Ok(ItemRunV2::NoPlan {
-            item_id: id,
-            reason: NoPlanReasonV2::ValueDeclaration,
-        }),
-    }
-}
-
-/// Build and plan the one document-wide rule program.
-///
-/// Stratification is NOT repeated here: the program's sole ingress
-/// ([`RuleProgramContractV2::from_document`]) already charged the document's
-/// rule-graph allowance once and retained the proof, and this DTO carries that
-/// exact proof.
-fn compile_rule_program(
-    document: &SemanticDocumentV2,
-    planning: &mut PlanningSessionV2<'_>,
-    program_id: SemanticItemIdV2,
-    members: &[SemanticItemIdV2],
-) -> Result<CompiledRuleProgramV2, FrontendTransactionErrorV2> {
-    let contract = RuleProgramContractV2::from_document(document)
-        .map_err(|error| logic_transaction_error(&error))?;
-    let stratification = contract.stratification().clone();
-    let plan = planning_plan(
-        document,
-        planning,
-        program_id,
-        &SemanticPlanInputV2::Rule(contract),
-    )?;
-    Ok(CompiledRuleProgramV2 {
-        program_id,
-        members: members
-            .iter()
-            .map(|member| RuleProgramMemberV2::new(program_id, *member))
-            .collect::<Vec<_>>()
-            .into_boxed_slice(),
-        plan,
-        stratification,
-    })
-}
-
-/// Build one CHECK contract with its identity-checked nested graph contract.
-fn check_contract(check: &ResolvedCheckV2) -> Result<CheckContractV2, FrontendTransactionErrorV2> {
-    let graph = match check.nested_graph() {
-        Some(nested) => Some(
-            GraphQueryContractV2::from_resolved(nested)
-                .map_err(|error| logic_transaction_error(&error))?,
-        ),
-        None => None,
-    };
-    CheckContractV2::from_resolved(check, graph).map_err(|error| planning_transaction_error(&error))
-}
-
-/// Build one composition body plan input.
-fn composition_body_input(
-    document: &SemanticDocumentV2,
-    algebra: &mut AlgebraSessionV2<'_>,
-    composition: &ResolvedCompositionV2,
-) -> Result<
-    (
-        CompositionBodyPlanInputV2,
-        ExecutionCompositionBodyProjectionV3,
-    ),
-    FrontendTransactionErrorV2,
-> {
-    let owner = composition.item_id();
-    match composition.body() {
-        ResolvedCompositionBodyV2::Query(body) => {
-            let root = algebra
-                .lower_nested_relation(owner, body.root())
-                .map_err(|error| algebra_error(document, owner, &error))?;
-            let execution = project_relation_root(document, body.item_id(), &root)
-                .map_err(|failure| closure_error(document, owner, failure))?;
-            let body = CompositionRelationalBodyPlanInputV2::try_new(body.item_id(), root)
-                .map_err(|reason| {
-                    planning_transaction_error(&PlanningDiagnosticV1::InvalidComposition {
-                        reason,
-                        span: composition.location().clone(),
-                    })
-                })?;
-            Ok((
-                CompositionBodyPlanInputV2::Relational(body),
-                ExecutionCompositionBodyProjectionV3::Relation(execution),
-            ))
-        }
-        ResolvedCompositionBodyV2::Graph(graph) => {
-            let contract = GraphQueryContractV2::from_resolved(graph)
-                .map_err(|error| logic_transaction_error(&error))?;
-            let execution = project_graph_query(&contract);
-            let item_id = contract.item_id();
-            Ok((
-                CompositionBodyPlanInputV2::Graph(contract),
-                ExecutionCompositionBodyProjectionV3::Graph {
-                    item_id,
-                    query: execution,
-                },
-            ))
-        }
-        ResolvedCompositionBodyV2::Check(check) => Ok((
-            CompositionBodyPlanInputV2::Check(check_contract(check)?),
-            ExecutionCompositionBodyProjectionV3::Check,
-        )),
-        ResolvedCompositionBodyV2::Explain(explain) => Ok((
-            CompositionBodyPlanInputV2::Explain(
-                PresentationContractV2::from_resolved(explain)
-                    .map_err(|error| planning_transaction_error(&error))?,
-            ),
-            ExecutionCompositionBodyProjectionV3::Explain,
-        )),
-    }
-}
-
-fn planned_run(planned: PlannedItemV2) -> ItemRunV2 {
-    ItemRunV2::Planned(Box::new(PlannedRunV2 {
-        planned: Box::new(planned),
-        relation: None,
-        graph: None,
-        check: None,
-        presentation: None,
-        composition: None,
-    }))
-}
-
-fn execution_identity(planned: &PlannedItemV2) -> Option<(ExecutionFamilyV3, &SemanticPlanV2)> {
-    match planned {
-        PlannedItemV2::Command { plan, .. } => Some((ExecutionFamilyV3::Command, plan)),
-        PlannedItemV2::Relation { plan, .. } => Some((ExecutionFamilyV3::Relation, plan)),
-        PlannedItemV2::Graph { plan, .. } => Some((ExecutionFamilyV3::Graph, plan)),
-        PlannedItemV2::Check { plan, .. } => Some((ExecutionFamilyV3::Check, plan)),
-        PlannedItemV2::Presentation { plan, .. } => Some((ExecutionFamilyV3::Presentation, plan)),
-        PlannedItemV2::Composition { plan, .. } => Some((ExecutionFamilyV3::Composition, plan)),
-        PlannedItemV2::MetaRequireCertified { plan, .. } => {
-            Some((ExecutionFamilyV3::MetaRequireCertified, plan))
-        }
-        PlannedItemV2::RuleMember(_) => None,
-    }
-}
-
-/// Map one resolved catalog payload to its closed non-plan reason kind.
-fn catalog_declaration_kind(catalog: &ResolvedCatalogItemV2) -> CatalogDeclarationKindV2 {
-    match catalog.payload() {
-        ResolvedCatalogPayloadV2::View { .. } => CatalogDeclarationKindV2::View,
-        ResolvedCatalogPayloadV2::Model { .. } => CatalogDeclarationKindV2::Model,
-        ResolvedCatalogPayloadV2::Pack { .. } => CatalogDeclarationKindV2::Pack,
-        ResolvedCatalogPayloadV2::Profile { .. } => CatalogDeclarationKindV2::Profile,
-        ResolvedCatalogPayloadV2::Gate { .. } => CatalogDeclarationKindV2::Gate,
-        ResolvedCatalogPayloadV2::RuleBinding { .. } => CatalogDeclarationKindV2::RuleBinding,
-    }
-}
-
-/// Plan one input and require the plan-required outcome.
-fn planning_plan(
-    document: &SemanticDocumentV2,
-    planning: &mut PlanningSessionV2<'_>,
-    id: SemanticItemIdV2,
-    input: &SemanticPlanInputV2,
-) -> Result<SemanticPlanV2, FrontendTransactionErrorV2> {
-    match planning.plan_outcome(input) {
-        Ok(PlanOutcomeV2::Plan(plan)) => Ok(*plan),
-        Ok(PlanOutcomeV2::NoPlan(_reason)) => Err(assembly(
-            item_location_of(document, id),
-            DocumentAssemblyCodeV2::PlanOutcomeMismatch,
-            "a plan-required item returned a checked non-plan outcome",
-        )),
-        Err(error) => Err(planning_transaction_error(&error)),
-    }
-}
-
-/// Project one algebra diagnostic with an explicit same-document fallback.
-fn algebra_error(
-    document: &SemanticDocumentV2,
-    id: SemanticItemIdV2,
-    error: &quanta_gqlang_v2_algebra::AlgebraDiagnosticV2,
-) -> FrontendTransactionErrorV2 {
-    algebra_transaction_error(error, item_location_of(document, id))
-}
-
-/// Map an execution expression-closure failure to a stable assembly error.
-fn closure_error(
-    document: &SemanticDocumentV2,
-    id: SemanticItemIdV2,
-    failure: ExecutionClosureFailureV3,
-) -> FrontendTransactionErrorV2 {
-    let location = item_location_of(document, id);
-    match failure {
-        ExecutionClosureFailureV3::Dangling => assembly(
-            location,
-            DocumentAssemblyCodeV2::DanglingExecutionReference,
-            "an executable item references an expression the sealed document does not carry",
-        ),
-        ExecutionClosureFailureV3::UnregisteredSymbol => assembly(
-            location,
-            DocumentAssemblyCodeV2::UnregisteredExecutionSymbol,
-            "an executable expression's closed identity has no registered symbol",
-        ),
-        ExecutionClosureFailureV3::Foreign => assembly(
-            location,
-            DocumentAssemblyCodeV2::ForeignItemResult,
-            "an executable item references an expression from another source",
-        ),
-    }
-}
-
-/// Map an impossible producer/body projection drift to a typed pipeline
-/// diagnostic instead of truncating a binding or aborting the process.
-fn composition_projection_error(
-    document: &SemanticDocumentV2,
-    id: SemanticItemIdV2,
-    failure: ExecutionCompositionProjectionFailureV3,
-) -> FrontendTransactionErrorV2 {
-    let (code, message) = match failure {
-        ExecutionCompositionProjectionFailureV3::Producer => (
-            DocumentAssemblyCodeV2::CompositionProducerMismatch,
-            "a composition producer and its checked execution projection disagree",
-        ),
-        ExecutionCompositionProjectionFailureV3::Body => (
-            DocumentAssemblyCodeV2::CompositionBodyMismatch,
-            "a composition body and its checked execution projection disagree",
-        ),
-    };
-    assembly(item_location_of(document, id), code, message)
-}
-
-/// Mint one pipeline-owned assembly failure.
-fn assembly(
-    location: LocatedSpanV2,
-    code: DocumentAssemblyCodeV2,
-    message: &'static str,
-) -> FrontendTransactionErrorV2 {
-    assembly_transaction_error(location, code, message)
-}
-
-/// The only location a fully empty document can offer.
-fn zero_location(source_id: SourceIdV2) -> LocatedSpanV2 {
-    LocatedSpanV2 {
-        source_id,
-        span: SpanV1::point(0),
-    }
-}
-
-/// The authored location of one semantic item.
-///
-/// A catalog declaration retains its checked location through its inline VIEW
-/// where it has one, and otherwise through the checked
-/// [`quanta_gqlang_v2_sema::ResolvedCatalogReferenceV2`] its payload resolved;
-/// both are document-owned facts, so a declaration is never anchored on a
-/// fabricated byte 0.
-fn item_location(item: &SemanticItemV2) -> Option<LocatedSpanV2> {
-    match item {
-        SemanticItemV2::Command(command) => Some(command.location().location()),
-        SemanticItemV2::Relation(relation) => Some(relation.location().location()),
-        SemanticItemV2::Graph(graph) => Some(graph.location().location()),
-        SemanticItemV2::Check(check) => Some(check.rule().location().location()),
-        SemanticItemV2::Presentation(presentation) => Some(presentation.location().location()),
-        SemanticItemV2::Composition(composition) => Some(composition.location().location()),
-        SemanticItemV2::Meta(meta) => Some(meta.location().location()),
-        SemanticItemV2::Catalog(catalog) => catalog_location(catalog),
-        SemanticItemV2::Declaration(declaration) => Some(declaration.body().location().location()),
-        SemanticItemV2::Rule(rule) => Some(rule.body().expression().location().location()),
-    }
-}
-
-/// The checked location of one catalog declaration, from the facts it retains.
-///
-/// A View alias/inline body anchors on the inline VIEW's own typed relation; a
-/// declaration without one anchors on its payload's exact checked reference (the
-/// queried/source/check reference the declaration resolved), falling back to the
-/// first canonical inline-View dependency. Only a catalog item that resolves no
-/// reference at all has no location of its own.
-fn catalog_location(catalog: &ResolvedCatalogItemV2) -> Option<LocatedSpanV2> {
-    if let Some(view) = catalog.inline_view() {
-        return Some(view.location().location());
-    }
-    let payload_reference = match catalog.payload() {
-        ResolvedCatalogPayloadV2::View { query_ref } => query_ref.as_ref(),
-        ResolvedCatalogPayloadV2::Model { source } => Some(source),
-        ResolvedCatalogPayloadV2::Pack { source, .. } => Some(source),
-        ResolvedCatalogPayloadV2::Profile { capabilities, .. } => capabilities.first(),
-        ResolvedCatalogPayloadV2::Gate { checks, .. } => checks.first(),
-        ResolvedCatalogPayloadV2::RuleBinding { check_ref } => Some(check_ref),
-    };
-    payload_reference
-        .or_else(|| catalog.inline_view_dependencies().first())
-        .map(|reference| reference.location().location())
-}
-
-/// A located anchor for one authored identity.
-fn item_location_of(document: &SemanticDocumentV2, id: SemanticItemIdV2) -> LocatedSpanV2 {
-    document
-        .item(id)
-        .and_then(item_location)
-        .unwrap_or_else(|| zero_location(document.source_id()))
-}
-
-// ---------------------------------------------------------------------------
-// Exact-key membership
-// ---------------------------------------------------------------------------
-
-/// The authored membership of one sealed document, verified exactly once.
-struct DocumentMembershipV2<'a> {
-    items: BTreeMap<SemanticItemIdV2, &'a SemanticItemV2>,
-    order: Vec<SemanticItemIdV2>,
-    rule_program_id: Option<SemanticItemIdV2>,
-}
-
-impl<'a> DocumentMembershipV2<'a> {
-    /// Verify duplicate, missing, extra, foreign, and wrong-kind membership.
-    fn of(document: &'a SemanticDocumentV2) -> Result<Self, FrontendTransactionErrorV2> {
-        let mut items: BTreeMap<SemanticItemIdV2, &'a SemanticItemV2> = BTreeMap::new();
-        for (key, item) in document.items() {
-            if key.source_id() != document.source_id() || item.item_id() != *key {
-                return Err(assembly(
-                    item_location(item).unwrap_or_else(|| zero_location(document.source_id())),
-                    DocumentAssemblyCodeV2::WrongKindItemResult,
-                    "a produced item is registered under a foreign or mismatched identity",
-                ));
-            }
-            if items.insert(*key, item).is_some() {
-                return Err(assembly(
-                    item_location(item).unwrap_or_else(|| zero_location(document.source_id())),
-                    DocumentAssemblyCodeV2::DuplicateItemResult,
-                    "a produced item identity was registered twice",
-                ));
-            }
-        }
-        let mut order = Vec::with_capacity(document.order().len());
-        let mut seen = BTreeSet::new();
-        for id in document.order() {
-            if id.source_id() != document.source_id() {
-                return Err(assembly(
-                    zero_location(document.source_id()),
-                    DocumentAssemblyCodeV2::ForeignItemResult,
-                    "the authored order names an item of another source",
-                ));
-            }
-            if !seen.insert(*id) {
-                return Err(assembly(
-                    items
-                        .get(id)
-                        .and_then(|item| item_location(item))
-                        .unwrap_or_else(|| zero_location(document.source_id())),
-                    DocumentAssemblyCodeV2::DuplicateItemResult,
-                    "the authored order names one item twice",
-                ));
-            }
-            if !items.contains_key(id) {
-                return Err(assembly(
-                    zero_location(document.source_id()),
-                    DocumentAssemblyCodeV2::MissingItemResult,
-                    "an authored item has no produced semantic result",
-                ));
-            }
-            order.push(*id);
-        }
-        if let Some(extra) = items.keys().find(|id| !seen.contains(id)) {
-            let location = items
-                .get(extra)
-                .and_then(|item| item_location(item))
-                .unwrap_or_else(|| zero_location(document.source_id()));
-            return Err(assembly(
-                location,
-                DocumentAssemblyCodeV2::ExtraItemResult,
-                "a produced semantic item was not authored in document order",
-            ));
-        }
-        let rule_program_id = order.iter().copied().find(|id| {
-            items
-                .get(id)
-                .is_some_and(|item| matches!(item, SemanticItemV2::Rule(_)))
-        });
-        Ok(Self {
-            items,
-            order,
-            rule_program_id,
-        })
-    }
-
-    /// Authored source order.
-    fn order(&self) -> &[SemanticItemIdV2] {
-        &self.order
-    }
-
-    /// Exact authored item by identity, present for every verified order id.
-    fn item(&self, id: SemanticItemIdV2) -> Option<&'a SemanticItemV2> {
-        self.items.get(&id).copied()
-    }
-
-    /// A located anchor for one authored identity.
-    fn location(&self, id: SemanticItemIdV2) -> LocatedSpanV2 {
-        self.item(id)
-            .and_then(item_location)
-            .unwrap_or_else(|| zero_location(id.source_id()))
-    }
-
-    /// The stable document rule program identity (first rule in order).
-    fn rule_program_id(&self) -> Option<SemanticItemIdV2> {
-        self.rule_program_id
-    }
-
-    /// Authored rule identities in source order.
-    fn rule_member_ids(&self) -> Vec<SemanticItemIdV2> {
-        self.order
-            .iter()
-            .copied()
-            .filter(|id| {
-                self.item(*id)
-                    .is_some_and(|item| matches!(item, SemanticItemV2::Rule(_)))
-            })
-            .collect()
-    }
-
-    /// Identities that must carry one semantic plan.
-    fn plan_required_ids(&self) -> BTreeSet<SemanticItemIdV2> {
-        self.order
-            .iter()
-            .copied()
-            .filter(|id| {
-                self.item(*id).is_some_and(|item| {
-                    matches!(
-                        item,
-                        SemanticItemV2::Relation(_)
-                            | SemanticItemV2::Command(_)
-                            | SemanticItemV2::Graph(_)
-                            | SemanticItemV2::Check(_)
-                            | SemanticItemV2::Presentation(_)
-                            | SemanticItemV2::Composition(_)
-                    ) || matches!(
-                        item,
-                        SemanticItemV2::Meta(meta)
-                            if matches!(meta.kind(), ResolvedMetaKindV2::RequireCertified)
-                    )
-                })
-            })
-            .collect()
-    }
-
-    /// Identities that must carry one checked non-plan reason.
-    fn no_plan_ids(&self) -> BTreeSet<SemanticItemIdV2> {
-        self.order
-            .iter()
-            .copied()
-            .filter(|id| {
-                self.item(*id).is_some_and(|item| {
-                    matches!(
-                        item,
-                        SemanticItemV2::Catalog(_) | SemanticItemV2::Declaration(_)
-                    ) || matches!(
-                        item,
-                        SemanticItemV2::Meta(meta)
-                            if matches!(meta.kind(), ResolvedMetaKindV2::UsePack { .. })
-                    )
-                })
-            })
-            .collect()
-    }
-}
+use assembly::{run_document, zero_location};
 
 #[cfg(test)]
 #[expect(
     clippy::expect_used,
+    clippy::unwrap_used,
     clippy::panic,
     reason = "owner-local assembly tests inspect exact sealed fixture results"
 )]
-mod tests {
-    use super::*;
-    use quanta_gqlang_v2_sema::test_support::{
-        reference_meta_document_v2, reference_relation_document_v2, ReferenceMetaFixtureV2,
-        ReferenceRelationFixtureV2,
-    };
-    use quanta_gqlang_v2_sema::HirNodeIdV1;
-
-    fn failure_code(error: &FrontendTransactionErrorV2) -> &str {
-        match error {
-            FrontendTransactionErrorV2::Document(failure) => failure
-                .diagnostics()
-                .first()
-                .expect("one assembly diagnostic")
-                .code(),
-            FrontendTransactionErrorV2::Authority(_) => {
-                panic!("assembly test unexpectedly returned an authority error")
-            }
-        }
-    }
-
-    fn standard_budget_v2() -> FrontendBudgetV2 {
-        FrontendBudgetV2::standard_v2().expect("standard frontend budget")
-    }
-
-    #[test]
-    fn parse_budget_projection_preserves_every_distinct_frontend_cap() {
-        let budget = FrontendBudgetV2::try_new(
-            151, 157, 31, 37, 11, 13, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103,
-            107,
-        )
-        .expect("distinct positive frontend caps");
-        let projected = project_parse_budget(SourceIdV2::from_raw(9), "", &budget)
-            .expect("validated owner profile projects");
-        assert_eq!(
-            projected,
-            ParseBudgetV2::try_new(31, 37, 41, 11, 13, 43, 47)
-                .expect("independently specified parse limits")
-        );
-    }
-
-    fn blocked_fixture_failure(code: &'static str) -> FrontendFailureV2 {
-        let diagnostic = FrontendDiagnosticV2::new(
-            FrontendStageV2::Validation,
-            code,
-            FrontendSeverityV2::Error,
-            LocatedSpanV2 {
-                source_id: SourceIdV2::from_raw(73),
-                span: SpanV1::new(17, 31),
-            },
-            vec![LocatedSpanV2 {
-                source_id: SourceIdV2::from_raw(74),
-                span: SpanV1::new(44, 49),
-            }],
-            "owner stage failed",
-        );
-        FrontendFailureV2::try_new(vec![diagnostic.clone(), diagnostic])
-            .expect("nonempty owner failure")
-    }
-
-    #[test]
-    fn blocked_compile_retains_exact_owner_failure_for_rule_and_item_paths() {
-        let fixture = reference_relation_document_v2(ReferenceRelationFixtureV2::Scan)
-            .expect("reference relation");
-        let failure = blocked_fixture_failure("planning.test.item_blocked");
-        let rule_failure = blocked_fixture_failure("planning.test.rule_blocked");
-        for rule_path in [false, true] {
-            let expected = if rule_path { &rule_failure } else { &failure }
-                .diagnostics()
-                .first()
-                .expect("nonempty owner failure")
-                .clone();
-            let run = DocumentRunV2 {
-                items: vec![ItemRunV2::Blocked {
-                    item_id: fixture.item_id(),
-                    failure: failure.clone(),
-                }],
-                rule_program: None,
-                rule_blocked: rule_path.then(|| rule_failure.clone()),
-            };
-            assert_eq!(
-                run.into_compiled()
-                    .expect_err("blocked stage must reject compilation"),
-                FrontendTransactionErrorV2::Document(FrontendFailureV2::one(expected.clone())),
-            );
-        }
-    }
-
-    #[test]
-    fn blocked_analysis_retains_item_failure_and_counts_canonical_diagnostics() {
-        let fixture = reference_relation_document_v2(ReferenceRelationFixtureV2::Scan)
-            .expect("reference relation");
-        let failure = blocked_fixture_failure("planning.test.item_blocked");
-        let make_run = || DocumentRunV2 {
-            items: vec![ItemRunV2::Blocked {
-                item_id: fixture.item_id(),
-                failure: failure.clone(),
-            }],
-            rule_program: None,
-            rule_blocked: None,
-        };
-        let analysis = make_run()
-            .into_analysis(SourceIdV2::from_raw(73), 1)
-            .expect("two identical diagnostics count once");
-        assert_eq!(analysis.order.as_ref(), &[fixture.item_id()]);
-        assert_eq!(
-            analysis.items(),
-            &[AnalysisItemV2::BlockedByDiagnostics(
-                failure.diagnostics().into()
-            )]
-        );
-        assert_eq!(
-            analysis.diagnostics().as_ref(),
-            &[failure
-                .diagnostics()
-                .first()
-                .expect("nonempty owner failure")
-                .clone()]
-        );
-        let error = make_run()
-            .into_analysis(SourceIdV2::from_raw(73), 0)
-            .expect_err("nonempty failure exceeds zero diagnostic budget");
-        assert_eq!(
-            failure_code(&error),
-            "pipeline.analysis.diagnostic_limit_exceeded"
-        );
-    }
-
-    #[test]
-    fn blocked_rule_analysis_projects_owner_failure_to_every_member_after_counting() {
-        use quanta_gqlang_v2_sema::test_support::{
-            reference_rule_document_v2, ReferenceRuleFixtureV2,
-        };
-        let fixture = reference_rule_document_v2(ReferenceRuleFixtureV2::NonRecursiveDependency)
-            .expect("reference rules");
-        let membership = DocumentMembershipV2::of(fixture.document()).expect("membership");
-        let program_id = membership.rule_program_id().expect("rule program");
-        let members = membership.rule_member_ids();
-        assert_eq!(members.len(), 2);
-        let failure = blocked_fixture_failure("planning.test.item_blocked");
-        let run = DocumentRunV2 {
-            items: members
-                .iter()
-                .map(|id| {
-                    ItemRunV2::Planned(Box::new(PlannedRunV2 {
-                        planned: Box::new(PlannedItemV2::RuleMember(RuleProgramMemberV2::new(
-                            program_id, *id,
-                        ))),
-                        relation: None,
-                        graph: None,
-                        check: None,
-                        presentation: None,
-                        composition: None,
-                    }))
-                })
-                .collect(),
-            rule_program: None,
-            rule_blocked: Some(failure.clone()),
-        };
-        let analysis = run
-            .into_analysis(SourceIdV2::from_raw(73), 1)
-            .expect("one canonical failure is counted before member fanout");
-        assert_eq!(analysis.order.as_ref(), members.as_slice());
-        assert_eq!(
-            analysis.items(),
-            &[
-                AnalysisItemV2::BlockedByDiagnostics(failure.diagnostics().into()),
-                AnalysisItemV2::BlockedByDiagnostics(failure.diagnostics().into()),
-            ]
-        );
-        assert_eq!(
-            analysis.diagnostics().as_ref(),
-            &[failure
-                .diagnostics()
-                .first()
-                .expect("nonempty owner failure")
-                .clone()]
-        );
-    }
-
-    #[test]
-    fn source_root_classifier_maps_supported_and_refused_families_without_authority() {
-        for (source_v1, expected_v1) in [
-            (
-                "find path src.marker -> src.marker | depth=8",
-                FrontendSourceRootFamilyV3::Graph,
-            ),
-            (
-                "show capabilities",
-                FrontendSourceRootFamilyV3::Presentation,
-            ),
-            (
-                "let q = sample query=\"x\" | mode=lexical | limit=1 from users u with q",
-                FrontendSourceRootFamilyV3::Composition,
-            ),
-        ] {
-            assert_eq!(
-                classify_single_source_root_v3(
-                    SourceIdV2::from_raw(1),
-                    source_v1,
-                    &standard_budget_v2(),
-                )
-                .expect("valid root must classify"),
-                expected_v1,
-            );
-        }
-    }
-
-    #[test]
-    fn source_root_classifier_rejects_zero_multiple_and_malformed_documents() {
-        assert!(matches!(
-            classify_single_source_root_v3(SourceIdV2::from_raw(1), "", &standard_budget_v2(),),
-            Err(FrontendSourceRootClassificationErrorV3::NoItem)
-        ));
-        assert!(matches!(
-            classify_single_source_root_v3(
-                SourceIdV2::from_raw(1),
-                "show capabilities; show models",
-                &standard_budget_v2(),
-            ),
-            Err(FrontendSourceRootClassificationErrorV3::MultipleItems { observed: 2 })
-        ));
-        assert!(matches!(
-            classify_single_source_root_v3(
-                SourceIdV2::from_raw(1),
-                "find path src.marker src.marker",
-                &standard_budget_v2(),
-            ),
-            Err(FrontendSourceRootClassificationErrorV3::Frontend(_))
-        ));
-    }
-
-    #[test]
-    fn duplicate_producer_identity_fails_closed_at_the_second_insert() {
-        let fixture = reference_relation_document_v2(ReferenceRelationFixtureV2::Scan)
-            .expect("reference relation");
-        let id = fixture.item_id();
-        let location = item_location_of(fixture.document(), id);
-        let mut produced = BTreeSet::new();
-        record_produced_identity(&mut produced, id, location, "duplicate")
-            .expect("first identity is admitted");
-        let error = record_produced_identity(&mut produced, id, location, "duplicate")
-            .expect_err("second identity rejects");
-        assert_eq!(
-            failure_code(&error),
-            "pipeline.document.duplicate_item_result"
-        );
-    }
-
-    #[test]
-    fn plan_membership_missing_extra_and_rule_mismatch_are_exact() {
-        let fixture = reference_relation_document_v2(ReferenceRelationFixtureV2::Scan)
-            .expect("reference relation");
-        let membership = DocumentMembershipV2::of(fixture.document()).expect("membership");
-        let id = fixture.item_id();
-        let expected_plan = BTreeSet::from([id]);
-        validate_produced_membership(
-            fixture.document().source_id(),
-            &membership,
-            &expected_plan,
-            &BTreeSet::new(),
-            &BTreeSet::new(),
-        )
-        .expect("exact plan membership");
-
-        let missing = validate_produced_membership(
-            fixture.document().source_id(),
-            &membership,
-            &BTreeSet::new(),
-            &BTreeSet::new(),
-            &BTreeSet::new(),
-        )
-        .expect_err("missing plan rejects");
-        assert_eq!(
-            failure_code(&missing),
-            "pipeline.document.missing_item_result"
-        );
-
-        let extra_id = SemanticItemIdV2::new(
-            fixture.document().source_id(),
-            HirNodeIdV1::from_raw(id.hir_item_id().raw() + 100),
-        );
-        let extra = validate_produced_membership(
-            fixture.document().source_id(),
-            &membership,
-            &BTreeSet::from([id, extra_id]),
-            &BTreeSet::new(),
-            &BTreeSet::new(),
-        )
-        .expect_err("extra plan rejects");
-        assert_eq!(failure_code(&extra), "pipeline.document.extra_item_result");
-
-        let rule_mismatch = validate_produced_membership(
-            fixture.document().source_id(),
-            &membership,
-            &expected_plan,
-            &BTreeSet::from([extra_id]),
-            &BTreeSet::new(),
-        )
-        .expect_err("unexpected rule member rejects first");
-        assert_eq!(
-            failure_code(&rule_mismatch),
-            "pipeline.document.rule_membership_mismatch"
-        );
-    }
-
-    #[test]
-    fn checked_non_plan_membership_missing_and_extra_are_exact() {
-        let fixture = reference_meta_document_v2(ReferenceMetaFixtureV2::UsePack)
-            .expect("reference USE PACK");
-        let membership = DocumentMembershipV2::of(fixture.document()).expect("membership");
-        let id = fixture.meta_item_id();
-        validate_produced_membership(
-            fixture.document().source_id(),
-            &membership,
-            &BTreeSet::new(),
-            &BTreeSet::new(),
-            &BTreeSet::from([id]),
-        )
-        .expect("exact non-plan membership");
-
-        let missing = validate_produced_membership(
-            fixture.document().source_id(),
-            &membership,
-            &BTreeSet::new(),
-            &BTreeSet::new(),
-            &BTreeSet::new(),
-        )
-        .expect_err("missing non-plan rejects");
-        assert_eq!(
-            failure_code(&missing),
-            "pipeline.document.missing_item_result"
-        );
-
-        let extra_id = SemanticItemIdV2::new(
-            fixture.document().source_id(),
-            HirNodeIdV1::from_raw(id.hir_item_id().raw() + 100),
-        );
-        let extra = validate_produced_membership(
-            fixture.document().source_id(),
-            &membership,
-            &BTreeSet::new(),
-            &BTreeSet::new(),
-            &BTreeSet::from([id, extra_id]),
-        )
-        .expect_err("extra non-plan rejects");
-        assert_eq!(failure_code(&extra), "pipeline.document.extra_item_result");
-    }
-
-    #[test]
-    fn execution_closure_failures_project_to_independent_pipeline_codes() {
-        let fixture = reference_relation_document_v2(ReferenceRelationFixtureV2::Scan)
-            .expect("reference relation");
-        for (failure, expected) in [
-            (
-                ExecutionClosureFailureV3::Dangling,
-                "pipeline.document.dangling_execution_reference",
-            ),
-            (
-                ExecutionClosureFailureV3::Foreign,
-                "pipeline.document.foreign_item_result",
-            ),
-            (
-                ExecutionClosureFailureV3::UnregisteredSymbol,
-                "pipeline.document.unregistered_execution_symbol",
-            ),
-        ] {
-            let error = closure_error(fixture.document(), fixture.item_id(), failure);
-            assert_eq!(failure_code(&error), expected);
-        }
-    }
-}
+#[path = "compile/tests.rs"]
+mod tests;

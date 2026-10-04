@@ -4,7 +4,7 @@ Status: producer contract for the breaking, pre-release qglang/Semantica source-
 
 ## Public boundary
 
-`compile_source_document_v3(SourceIdV2, &str, &ClosedFrontendAuthorityV2) -> Result<CompiledSourceDocumentV3, FrontendTransactionErrorV2>` is the only closed source entry that issues an `ExecutionDocumentV3`. The result retains the source-ordered compiled item dispositions and exposes one immutable execution document. No public constructor accepts preassembled execution items or a caller-supplied digest. `compile_resolved_document_v2` can check a sealed semantic document without original bytes, but its result exposes **no** execution document or source/qualification digest. Open analysis is never promoted to closed execution.
+`compile_source_document_v3(SourceIdV2, &str, &ClosedFrontendAuthorityV2) -> Result<CompiledSourceDocumentV3, FrontendTransactionErrorV2>` is the direct closed source entry that issues an `ExecutionDocumentV3`. The result retains the source-ordered compiled item dispositions and exposes one immutable execution document. `compile_source_document_with_lexical_owner_v1` performs the same closed compile while retaining a source-bound permit for lexer and top-level parser storage in `AdmittedLexicalCompiledSourceDocumentV1`; its permit does **not** cover nested HIR, semantic, planning, or execution allocations. Neither entry grants downstream runtime admission or complete frontend memory qualification. No public constructor accepts preassembled execution items or a caller-supplied digest. `compile_resolved_document_v2` can check a sealed semantic document without original bytes, but its result exposes **no** execution document or source/qualification digest. Open analysis is never promoted to closed execution.
 
 `classify_single_source_root_v3(SourceIdV2, &str, &FrontendBudgetV2)` is a
 canonical parse-only routing aid. It requires exactly one source item and
@@ -13,6 +13,32 @@ issue an execution document, or grant host/runtime authority. A downstream
 consumer may use it to reject an unsupported family before constructing closed
 authority, but every supported family must still pass
 `compile_source_document_v3` before execution.
+
+`census_source_lexical_materialization_v3` reports only lexer token storage and
+decoded payload demand. It does not account for HIR, semantic, planning, or
+retained execution objects and grants no compile or runtime admission.
+`FrontendLexicalHostCeilingV1` is a finite value whose issuer the frontend does
+not authenticate. The downstream host must install its own ceiling before
+issuing `FrontendLexicalMaterializationRootV1` for an exact source invocation.
+`classify_single_source_root_with_lexical_owner_v1` keeps that root live while
+classifying. `admit_show_syntax_v2` retains parser and SHOW HIR storage under
+the same root, but its result is only a syntax-stage owner. A lexical census
+alone cannot admit parser storage; a SHOW syntax owner cannot be treated as a
+semantic plan or execution grant. The facade-only external consumer exercises
+the positive, short-budget, foreign-source, and non-SHOW rejection paths.
+
+`admit_show_planned_source_v2` is **not** a live one-shot compile. After the
+source-byte cap check it always returns `IncompleteSourceDiagnostics` and never
+invokes the lexer (preissued diagnostic debit is missing). Hosts may still use
+the staged SHOW APIs (`admit_show_syntax_v2` → plans/execution) on an already
+admitted syntax owner.
+
+All authored `query.result_shape` forms (leaf, record, and nested record/list)
+parse and format, but
+`sema::materialize_query` rejects `result_shape.is_some()` with a typed
+“not yet available” failure. Closed compile of that construct is therefore
+RED until a later owner cut. FIND/CHECK payloads on the V3 DTO are frontend
+contracts, not solver execution.
 
 `SourceIdV2`, `SemanticItemIdV2`, and `SourceQualifiedNodeIdV2` are transaction-local frontend identities. Their raw values and `SourceIdV2` are encoded deliberately. Contract and qualification digests are deterministic fingerprints of the projected DTO and source bytes with that source ID, **not** unique transaction-instance IDs or fingerprints of the entire host authority. Equal source bytes under different source IDs have equal source digests but different contract and qualification digests; a repeated compile with the same ID, bytes, and DTO has the same digests. They are not cross-transaction semantic-equivalence cache keys. Runtime admission must bind the selected document and item to its own source/authority closure, generation, provider, lease, and budget as applicable. Formatting-equivalent text has no promised contract-digest equality.
 
@@ -87,6 +113,54 @@ at `tools/frontend_external_consumer/src/main.rs` is the compiled integration
 reference. Selecting an item is not runtime admission: the downstream owner
 must bind its own generation/provider/budget and reject unsupported payloads
 before effects.
+
+
+`ExecutionDocumentV3::matches_source_bytes_v3()` checks source identity using
+this document's canonical source-digest encoder. Hosts can use it before
+issuing a source-bound receipt without recompiling or duplicating the encoder.
+A matching digest grants no runtime authority; the host must also verify the
+selected plan and its own generation/provider/budget. This helper adds no DTO
+fields and does not change any digest schema.
+
+## Public DTO field map
+
+This is the field inventory for the facade's `Execution*V3` payload. Each row
+lists stored fields in the order exposed by accessors; the last column names
+the exact contract-stream clause below. The stream order is authoritative when
+it differs from accessor order. `ItemId` and `NodeKey` are source-qualified;
+strings and sequence elements keep their checked, authored order.
+
+| DTO | Stored fields or variant payloads | Contract-stream clause |
+| --- | --- | --- |
+| `ExecutionDocumentV3` | `source_id`, `items`, `source_digest`, `contract_digest`, `qualification_digest` | `source_id` and `items` enter `contract_digest`; raw source enters `source_digest`; the two digests and `source_id` enter `qualification_digest`. Digests are outputs, not recursively encoded fields. |
+| `ExecutionItemV3` | `item_id`, `family`, `relation`, `graph`, `check`, `presentation`, `composition`, `command`, `plan` | `ItemId`, family and the five plan tags, then optional Relation, Composition, Graph, CHECK, Presentation, Command in that order. |
+| `ExecutionPlanV3` | `authority`, `determinism`, `evidence`, `effect`, `policy_family` | Five plan tags in that order; detailed semantic plan policy is outside V3. |
+| `ExecutionSymbolTargetV3` / `ExecutionRenameCommandV3` | target: `selector`, `repo_path`, `symbol_id`, `start_byte`, `end_byte`; command: `target`, `new_name`, `phase`, `expected_snapshot`, `preview_token` | Command encodes `phase`, then target's five fields, then `new_name`, `expected_snapshot`, optional `preview_token`. |
+| `ExecutionCatalogIdentityV3` | `module`, `name` | `CatalogIdentity`; CHECK fixes the Rule namespace, EXPORT fixes Profile, and EXPLAIN Rule fixes Rule. |
+| `ExecutionNestedGraphV3` / `ExecutionCheckV3` | nested: `item_id`, `query`; CHECK: `rule`, `scope`, `pattern`, `nested_graph`, `confirm`, `emit`, `mode` | CHECK clause, including the nested Graph's distinct `ItemId`. |
+| `ExecutionPresentationKindV3` | EXPLAIN `target`, `evidence`, `truth`; SHOW `category`; DESCRIBE `target`; SAMPLE `query_text`, `mode`, `limit`, `scope`; COMPARE `baseline`, `candidate`, `metric`; EXPORT `source`, `format`, `profile` | Presentation verb tag followed by exactly the selected variant's fields. The other variants supply no fields. |
+| `ExecutionRelationV3` | `item_id`, `root`, `expressions` | Relation clause: `ItemId`, Node, ordered expression table. |
+| `ExecutionRelationalOperatorV3` | `family`, `join_mode`, `stage`, `source`, `schema`, `predicates`, `expressions`, `correlations`, `existential_terms`, `partition_input`, `children` | Node clause in this order; `existential_terms` has a sequence only for ExistsFilter. |
+| `ExecutionExistentialTermV3` | `expression`, `polarity`, `correlations` | ExistentialTerm clause. |
+| `ExecutionSchemaV3` / `ExecutionFieldV3` / `ExecutionOrderKeyV3` | schema: `fields`, `cardinality`, `partition_keys`, `order`; field: `name`, `value_type`; order key: `expression`, `direction`, `null_order`, `value_type` | Schema, field and order-key clauses. |
+| `ExecutionExpressionV3` / `ExecutionExpressionShapeV3` / `ExecutionLiteralV3` | expression: `id`, `value_type`, `shape`; shape and literal carry their selected enum variant's fields | ExpressionShape and literal tag tables below; no unselected variant contributes bytes. |
+| `ExecutionOperatorV3` | `symbol`, `overload_id` | Operator clause; semantic dispatch uses the separate closed descriptor lookup. |
+| `ExecutionSourceV3` | `authority`, `kind`, `namespace`, `name`, `composition_binding` | Source clause encodes the first four. The exact `composition_binding` slot is encoded by the enclosing Composition binding sequence; a consumer must match it there. |
+| `ExecutionBindingV3` / `ExecutionCorrelationV3` | binding: `source_id`, `owner_node`, `ordinal`, `name`; correlation: `binding`, `reference` | Binding and Correlation clauses. |
+| `ExecutionCompositionV3` | `bindings`, `with_binding`, `body_item_id`, `body_family`, `body_relation`, `body` | Composition clause in this order. |
+| `ExecutionCompositionBindingV3` | `binding`, `producer_item_id`, `producer_family`, `schema`, `relation`, `producer` | One ordered Composition binding clause per producer. |
+| `ExecutionCompositionProducerV3` / `ExecutionCompositionBodyV3` | producer: Relation, Sample (`query_text`, `mode`, `limit`, `scope`), or Graph (`query`); body: Relation, Graph (`query`), Check, or Explain | Producer and Body tagged clauses; payload-free variants contribute only their tag. |
+| `ExecutionGraphQueryV3` | `kind`, `references`, `depth`, `direction`, `summary_facets`, `relation_shape`, `dedup_identity`, `max_witnesses`, `max_path_length`, `witness_tie_break` | GraphQuery clause in this order. |
+| `ExecutionGraphReferenceV3` / `ExecutionGraphTargetV3` | reference: `role`, `target`; target: Host (`kind`, `spelling`, `entity_subtype`) or Composition (`binding`, `capability`) | Graph role/target clauses. |
+| `ExecutionValueTypeV3` / `ExecutionRecordFieldV3` / `ExecutionUnionVariantV3` | selected type variant; record field: `name`, `value_type`; union variant: `tag`, `value_type` | ValueType tag table, including ordered record fields and union variants. |
+
+`ExecutionDocumentV3::item()` is a document-local lookup, not a stored field.
+The three `*_schema_version()` accessors return stream constants, not DTO
+fields. `ExecutionFiniteFloatV3::get()` derives a value from its encoded finite
+bits; `ExecutionOperatorDescriptorV3` is a lookup result and adds no bytes.
+Every enum tag and expression payload is specified below. This mapping is a
+frontend encoding contract; downstream admission must validate its own host
+generation and supported capabilities before execution.
 
 ## Canonical digest encoding
 

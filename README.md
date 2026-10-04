@@ -62,10 +62,11 @@ algebra·logic, planning의 checked 결과를 조립한다. 각 stage의 책임�
 주요 문서:
 
 1. [docs/language/README.md](docs/language/README.md)
-2. [docs/contracts/frontend-execution-v3.md](docs/contracts/frontend-execution-v3.md)
-3. [docs/language/examples_index.md](docs/language/examples_index.md)
-4. [docs/language/test_hellgate_ledger.md](docs/language/test_hellgate_ledger.md)
-5. [docs/language/release_discipline.md](docs/language/release_discipline.md)
+2. [docs/ssot/engine-status-v1.md](docs/ssot/engine-status-v1.md)
+3. [docs/contracts/frontend-execution-v3.md](docs/contracts/frontend-execution-v3.md)
+4. [docs/language/examples_index.md](docs/language/examples_index.md)
+5. [docs/language/test_hellgate_ledger.md](docs/language/test_hellgate_ledger.md)
+6. [docs/language/release_discipline.md](docs/language/release_discipline.md)
 
 예제:
 
@@ -131,8 +132,8 @@ downstream consumer 실행이나 배포를 입증하지 않는다. `just ci`는 
 
 Focused 진입점은 원인 확인용이다:
 
-1. `just static` — format, TOML, Rust 1.95 Clippy, typos; Rust 1.81
-   workspace tests and doctests provide the MSRV compilation gate
+1. `just static` — format, TOML, Rust 1.95 and MSRV Rust 1.81 Clippy,
+   typos; Rust 1.81 workspace tests and doctests also check MSRV compilation
 2. `just test` — workspace, rustdoc, shipped front-door parity
 3. `just policy` — qualification custody, architecture, external facade consumer,
    supply-chain, Semgrep

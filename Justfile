@@ -15,6 +15,13 @@ clippy-msrv:
 clippy-current:
     python3 -I -S tools/ci/python_gate.py tools/ci/clippy_gate.py
 
+size-lint:
+    python3 -I -S tools/ci/python_gate.py tools/lint/size_gate.py
+
+# Exploratory local-only fuzz smoke. Keep it outside ci and qualification.
+fuzz-smoke:
+    python3 -I -S tools/ci/fuzz_smoke.py
+
 typos:
     typos .
 
@@ -85,7 +92,9 @@ ci-rail-test:
 static:
     just fmt
     just taplo
+    just size-lint
     just clippy-current
+    just clippy-msrv
     just typos
     just pm-check
     just pm-test

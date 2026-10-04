@@ -1,25 +1,33 @@
 //! Closed and open semantic authority plus the canonical frontend budget.
 
+mod inputs;
+mod open_analysis;
+
+pub use inputs::{
+    FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendCallableParameterInputV2,
+    FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2, FrontendGraphReferenceInputV2,
+    FrontendLanguageVersionV2, FrontendLockfileInputV2, FrontendPackInputV2,
+    FrontendRelationAuthorityV2, FrontendRelationCardinalityV2, FrontendRelationFieldInputV2,
+    FrontendRelationInputV2, FrontendScalarTypeV2, FrontendSymbolTargetInputV3,
+};
+pub use open_analysis::{OpenAnalysisAuthorityInputV2, OpenAnalysisAuthorityV2};
+
 use crate::diagnostic::{
     bounded_identifier, FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2,
     FrontendStageV2,
 };
 use quanta_gqlang_v2_hir::{
     CheckedLocatedSpanV2, ExtendedSourceRegistryViewV2, LocatedSpanV2, SourceIdV2,
-    SourceRegistrationV2, SourceRegistryIdentityV2, SourceRegistryViewV2, SpanV1,
+    SourceRegistrationV2, SourceRegistryIdentityV2, SourceRegistryViewV2,
 };
 use quanta_gqlang_v2_modules::{
-    CallableKindV2, ContentDigestV2, CurrentModuleSelectionInputV2, ExternalCatalogAssetInputV2,
-    ExternalCatalogPayloadInputV2, LocatedParameterInputV2, LockReferenceInputV2,
-    ModuleAuthorityBuilderV2, ModuleIdV2, ModuleNodeInputV2, PackIdV2, PackManifestInputV2,
-    SignatureInputV2, ValidatedModuleAuthorityPartsV2, VersionRangeV2, VersionV2,
+    ContentDigestV2, CurrentModuleSelectionInputV2, ExternalCatalogAssetInputV2,
+    LockReferenceInputV2, ModuleAuthorityBuilderV2, ModuleIdV2, ModuleNodeInputV2, PackIdV2,
+    PackManifestInputV2, ValidatedModuleAuthorityPartsV2, VersionRangeV2, VersionV2,
 };
 use quanta_gqlang_v2_types::{
-    AuthorityBudgetProfileV2, CardinalityV1, ExpressionEffectsV2, ExpressionTypeKernelV2,
-    ProvenanceNamespaceV2, RecordFieldTypeV1, RecordTypeV1, RelationAuthorityV2, RelationCatalogV2,
-    RelationSourceInputV2, ScalarTyV1, ValueTypeV1, CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2,
-    CANONICAL_WORKSPACE_FILES_LOOKUP_NAME_V2, CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2,
-    CANONICAL_WORKSPACE_FILES_PROVENANCE_V2, CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2,
+    AuthorityBudgetProfileV2, ProvenanceNamespaceV2, RecordFieldTypeV1, RecordTypeV1,
+    RelationCatalogV2, RelationSourceInputV2, ValueTypeV1,
 };
 use std::collections::BTreeMap;
 use std::num::NonZeroU32;
@@ -915,302 +923,6 @@ impl ResolvedSymbolTargetV3 {
     }
 }
 
-/// Host-supplied symbol coordinates admitted into one closed authority.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FrontendSymbolTargetInputV3 {
-    pub selector: String,
-    pub repo_path: String,
-    pub symbol_id: String,
-    pub start_byte: u64,
-    pub end_byte: u64,
-    pub location: FrontendAuthorityLocationV2,
-}
-
-/// Raw host source registration accepted by the curated authority builder.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct FrontendAuthoritySourceV2 {
-    /// Stable source identity.
-    pub source_id: SourceIdV2,
-    /// Exact byte length of the registered host source.
-    pub source_len: usize,
-}
-
-/// Raw host location checked against the builder's source registry at finish.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct FrontendAuthorityLocationV2 {
-    /// Registered host source identity.
-    pub source_id: SourceIdV2,
-    /// Inclusive byte start.
-    pub start: usize,
-    /// Exclusive byte end.
-    pub end: usize,
-}
-
-impl FrontendAuthorityLocationV2 {
-    fn check(
-        self,
-        sources: &SourceRegistryViewV2,
-    ) -> Result<CheckedLocatedSpanV2, FrontendAuthorityErrorV2> {
-        sources
-            .try_check_location(LocatedSpanV2 {
-                source_id: self.source_id,
-                span: SpanV1::new(self.start, self.end),
-            })
-            .map_err(|error| configuration_failure(error.code(), error.to_string()))
-    }
-}
-
-/// Host-agnostic scalar field vocabulary admitted by relation authority.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FrontendScalarTypeV2 {
-    Bool,
-    Int,
-    Float,
-    String,
-    Duration,
-    Location,
-    Path,
-    RepoPath,
-    EntityRef,
-    SymbolRef,
-    RuleRef,
-    SourceScope,
-    ProofTree,
-}
-
-impl FrontendScalarTypeV2 {
-    const fn owner(self) -> ScalarTyV1 {
-        match self {
-            Self::Bool => ScalarTyV1::Bool,
-            Self::Int => ScalarTyV1::Int,
-            Self::Float => ScalarTyV1::Float,
-            Self::String => ScalarTyV1::String,
-            Self::Duration => ScalarTyV1::Duration,
-            Self::Location => ScalarTyV1::Location,
-            Self::Path => ScalarTyV1::Path,
-            Self::RepoPath => ScalarTyV1::RepoPath,
-            Self::EntityRef => ScalarTyV1::EntityRef,
-            Self::SymbolRef => ScalarTyV1::SymbolRef,
-            Self::RuleRef => ScalarTyV1::RuleRef,
-            Self::SourceScope => ScalarTyV1::SourceScope,
-            Self::ProofTree => ScalarTyV1::ProofTree,
-        }
-    }
-}
-
-/// Relation multiplicity admitted by the curated authority builder.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FrontendRelationCardinalityV2 {
-    Set,
-    Bag,
-    Sequence,
-}
-
-/// Closed relation provenance admitted at the public frontend boundary.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FrontendRelationAuthorityV2 {
-    /// An application-hosted relation with host-defined identity and schema.
-    Host,
-    /// The canonical workspace-file inventory relation.
-    CanonicalWorkspaceFiles,
-}
-
-impl FrontendRelationAuthorityV2 {
-    const fn owner(self) -> RelationAuthorityV2 {
-        match self {
-            Self::Host => RelationAuthorityV2::Host,
-            Self::CanonicalWorkspaceFiles => RelationAuthorityV2::CanonicalWorkspaceFiles,
-        }
-    }
-}
-
-impl FrontendRelationCardinalityV2 {
-    const fn owner(self) -> CardinalityV1 {
-        match self {
-            Self::Set => CardinalityV1::Set,
-            Self::Bag => CardinalityV1::Bag,
-            Self::Sequence => CardinalityV1::Sequence,
-        }
-    }
-}
-
-/// One relation field supplied through the public authority boundary.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FrontendRelationFieldInputV2 {
-    pub name: String,
-    pub scalar_type: FrontendScalarTypeV2,
-    pub optional: bool,
-    pub location: FrontendAuthorityLocationV2,
-}
-
-/// One host relation supplied through the public authority boundary.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FrontendRelationInputV2 {
-    pub authority: FrontendRelationAuthorityV2,
-    pub provenance_namespace: String,
-    pub qualified_name: String,
-    pub lookup_name: String,
-    pub fields: Vec<FrontendRelationFieldInputV2>,
-    pub cardinality: FrontendRelationCardinalityV2,
-    pub provenance: String,
-    pub location: FrontendAuthorityLocationV2,
-}
-
-impl FrontendRelationInputV2 {
-    /// Construct the exact canonical workspace-file authority contract without
-    /// requiring hosts to duplicate or infer its identity and row schema.
-    #[must_use]
-    pub fn canonical_workspace_files(
-        location: FrontendAuthorityLocationV2,
-        field_location: FrontendAuthorityLocationV2,
-    ) -> Self {
-        Self {
-            authority: FrontendRelationAuthorityV2::CanonicalWorkspaceFiles,
-            provenance_namespace: CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2.to_owned(),
-            qualified_name: CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2.to_owned(),
-            lookup_name: CANONICAL_WORKSPACE_FILES_LOOKUP_NAME_V2.to_owned(),
-            fields: vec![FrontendRelationFieldInputV2 {
-                name: CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2.to_owned(),
-                scalar_type: FrontendScalarTypeV2::RepoPath,
-                optional: false,
-                location: field_location,
-            }],
-            cardinality: FrontendRelationCardinalityV2::Set,
-            provenance: CANONICAL_WORKSPACE_FILES_PROVENANCE_V2.to_owned(),
-            location,
-        }
-    }
-}
-
-/// One graph selector supplied through the public authority boundary.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FrontendGraphReferenceInputV2 {
-    pub spelling: String,
-    pub kind: GraphReferenceKindV2,
-    pub entity_subtype: Option<String>,
-    pub location: FrontendAuthorityLocationV2,
-}
-
-/// Simple host catalog kinds admitted through the public authority builder.
-/// Payload-bearing relation/predicate/model contracts remain owner-internal;
-/// this vocabulary covers the opaque reference families authored by source.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum FrontendCatalogPayloadV2 {
-    Query,
-    Check,
-    Capability,
-    ModelSource,
-    PackSource,
-    Rule {
-        parameters: Vec<FrontendCallableParameterInputV2>,
-        result: FrontendScalarTypeV2,
-    },
-}
-
-impl FrontendCatalogPayloadV2 {
-    const fn tag(&self) -> &'static str {
-        match self {
-            Self::Query => "query",
-            Self::Check => "check",
-            Self::Capability => "capability",
-            Self::ModelSource => "model_source",
-            Self::PackSource => "pack_source",
-            Self::Rule { .. } => "rule",
-        }
-    }
-
-    fn owner_payload(
-        self,
-        sources: &SourceRegistryViewV2,
-        location: &CheckedLocatedSpanV2,
-    ) -> Result<ExternalCatalogPayloadInputV2, FrontendAuthorityErrorV2> {
-        match self {
-            Self::Query => Ok(ExternalCatalogPayloadInputV2::Query),
-            Self::Check => Ok(ExternalCatalogPayloadInputV2::Check),
-            Self::Capability => Ok(ExternalCatalogPayloadInputV2::Capability),
-            Self::ModelSource => Ok(ExternalCatalogPayloadInputV2::ModelSource),
-            Self::PackSource => Ok(ExternalCatalogPayloadInputV2::PackSource),
-            Self::Rule { parameters, result } => {
-                Ok(ExternalCatalogPayloadInputV2::Rule(SignatureInputV2 {
-                    parameters: parameters
-                        .into_iter()
-                        .map(|parameter| {
-                            let mut value_type = ValueTypeV1::scalar(parameter.scalar_type.owner());
-                            if parameter.optional {
-                                value_type =
-                                    ValueTypeV1::try_optional(value_type).map_err(|error| {
-                                        configuration_failure(
-                                            "sema.invalid_catalog_signature",
-                                            error.to_string(),
-                                        )
-                                    })?;
-                            }
-                            Ok(LocatedParameterInputV2 {
-                                name: parameter.name,
-                                value_type,
-                                location: parameter.location.check(sources)?,
-                            })
-                        })
-                        .collect::<Result<Vec<_>, FrontendAuthorityErrorV2>>()?,
-                    result: ValueTypeV1::scalar(result.owner()),
-                    callable_kind: CallableKindV2::Rule,
-                    effects: ExpressionEffectsV2::pure_scalar(),
-                    location: location.clone(),
-                }))
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FrontendCallableParameterInputV2 {
-    pub name: String,
-    pub scalar_type: FrontendScalarTypeV2,
-    pub optional: bool,
-    pub location: FrontendAuthorityLocationV2,
-}
-
-/// One opaque external catalog asset supplied through the public authority
-/// transaction.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FrontendCatalogAssetInputV2 {
-    pub module_name: String,
-    pub local_name: String,
-    pub payload: FrontendCatalogPayloadV2,
-    pub provenance: String,
-    pub location: FrontendAuthorityLocationV2,
-}
-
-/// Semantic language version selected by the host authority.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct FrontendLanguageVersionV2 {
-    pub major: u64,
-    pub minor: u64,
-    pub patch: u64,
-}
-
-/// One dependency-free pack manifest supplied through the public authority
-/// boundary. Dependency/export/suite authoring remains an owner-level concern;
-/// this DTO is the minimal closed input required for source-level `USE PACK`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FrontendPackInputV2 {
-    pub pack_id: String,
-    pub version: FrontendLanguageVersionV2,
-    pub content_digest: String,
-    pub language_lower: FrontendLanguageVersionV2,
-    pub language_upper: FrontendLanguageVersionV2,
-    pub location: FrontendAuthorityLocationV2,
-}
-
-/// One canonical lockfile and the checked host declaration that names it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FrontendLockfileInputV2 {
-    pub path: String,
-    pub source_id: SourceIdV2,
-    pub text: String,
-    pub location: FrontendAuthorityLocationV2,
-}
-
 /// Curated external transaction for constructing closed frontend authority.
 ///
 /// It accepts only host-agnostic declarations. Owner proofs and checked
@@ -1299,6 +1011,10 @@ impl ClosedFrontendAuthorityBuilderV2 {
     }
 
     /// Validate every input and seal one closed authority.
+    #[expect(
+        clippy::too_many_lines,
+        reason = "legacy authority sealing path awaiting stage extraction"
+    )]
     pub fn finish(self) -> Result<ClosedFrontendAuthorityV2, FrontendAuthorityErrorV2> {
         let host_sources = SourceRegistryViewV2::try_new(
             self.sources
@@ -1509,12 +1225,6 @@ impl ClosedFrontendAuthorityBuilderV2 {
     }
 }
 
-impl FrontendLanguageVersionV2 {
-    const fn owner(self) -> VersionV2 {
-        VersionV2::new(self.major, self.minor, self.patch)
-    }
-}
-
 impl ClosedFrontendAuthorityV2 {
     /// Seal authority proofs only when registry identity and budget profiles
     /// are exactly the ones selected by the frontend budget.
@@ -1592,129 +1302,6 @@ impl ClosedFrontendAuthorityV2 {
                 source_id,
                 source_len,
             })
-    }
-}
-
-/// Explicit inputs for open editor analysis. Missing authority stays missing.
-#[derive(Debug)]
-pub struct OpenAnalysisAuthorityInputV2 {
-    optional_modules: Option<ValidatedModuleAuthorityPartsV2>,
-    optional_relations: Option<RelationCatalogV2>,
-    optional_graph_references: Option<GraphReferenceCatalogV2>,
-    host_sources: SourceRegistryViewV2,
-    budget: FrontendBudgetV2,
-}
-
-impl OpenAnalysisAuthorityInputV2 {
-    /// Construct the explicit open-authority input carrier.
-    #[must_use]
-    pub fn new(
-        optional_modules: Option<ValidatedModuleAuthorityPartsV2>,
-        optional_relations: Option<RelationCatalogV2>,
-        optional_graph_references: Option<GraphReferenceCatalogV2>,
-        host_sources: SourceRegistryViewV2,
-        budget: FrontendBudgetV2,
-    ) -> Self {
-        Self {
-            optional_modules,
-            optional_relations,
-            optional_graph_references,
-            host_sources,
-            budget,
-        }
-    }
-}
-
-/// Checked authority for editor analysis. Absence is distinct from an empty
-/// closed proof.
-#[derive(Debug)]
-pub struct OpenAnalysisAuthorityV2 {
-    modules: Option<ValidatedModuleAuthorityPartsV2>,
-    relations: Option<RelationCatalogV2>,
-    graph_references: Option<GraphReferenceCatalogV2>,
-    host_sources: SourceRegistryViewV2,
-    budget: FrontendBudgetV2,
-}
-
-impl OpenAnalysisAuthorityV2 {
-    /// Validate every supplied proof against the explicit host registry and
-    /// canonical budget projection.
-    pub fn try_new(input: OpenAnalysisAuthorityInputV2) -> Result<Self, FrontendAuthorityErrorV2> {
-        let projected = input.budget.authority_profile()?;
-        if input.optional_modules.as_ref().is_some_and(|modules| {
-            modules.source_registry().identity() != input.host_sources.identity()
-                || modules.budget_profile() != &projected
-        }) || input.optional_relations.as_ref().is_some_and(|relations| {
-            relations.source_registry_identity() != &input.host_sources.identity()
-                || relations.budget_profile() != &projected
-        }) || input
-            .optional_graph_references
-            .as_ref()
-            .is_some_and(|graph| {
-                graph.source_registry_identity() != &input.host_sources.identity()
-                    || graph.budget_profile() != &projected
-            })
-        {
-            return Err(configuration_failure(
-                "sema.open_authority_mismatch",
-                "open authority proof does not match the host registry and budget",
-            ));
-        }
-        Ok(Self {
-            modules: input.optional_modules,
-            relations: input.optional_relations,
-            graph_references: input.optional_graph_references,
-            host_sources: input.host_sources,
-            budget: input.budget,
-        })
-    }
-
-    /// Construct the standard open editor authority without inventing module,
-    /// relation, catalog, pack, or lock authority.
-    pub fn try_standard_v2() -> Result<Self, FrontendAuthorityErrorV2> {
-        Self::try_empty_v2(FrontendBudgetV2::standard_v2()?)
-    }
-
-    /// Construct an open editor authority with an explicit checked budget and
-    /// no fabricated host authority.
-    pub fn try_empty_v2(budget: FrontendBudgetV2) -> Result<Self, FrontendAuthorityErrorV2> {
-        let _kernel = ExpressionTypeKernelV2::try_closed()
-            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-        let host_sources = SourceRegistryViewV2::try_new(Vec::new())
-            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-        Self::try_new(OpenAnalysisAuthorityInputV2::new(
-            None,
-            None,
-            None,
-            host_sources,
-            budget,
-        ))
-    }
-
-    /// Optional module authority.
-    #[must_use]
-    pub const fn modules(&self) -> Option<&ValidatedModuleAuthorityPartsV2> {
-        self.modules.as_ref()
-    }
-    /// Optional relation catalog.
-    #[must_use]
-    pub const fn relations(&self) -> Option<&RelationCatalogV2> {
-        self.relations.as_ref()
-    }
-    /// Optional host graph selectors.
-    #[must_use]
-    pub const fn graph_references(&self) -> Option<&GraphReferenceCatalogV2> {
-        self.graph_references.as_ref()
-    }
-    /// Checked host sources.
-    #[must_use]
-    pub const fn host_sources(&self) -> &SourceRegistryViewV2 {
-        &self.host_sources
-    }
-    /// Frontend budget.
-    #[must_use]
-    pub const fn budget(&self) -> &FrontendBudgetV2 {
-        &self.budget
     }
 }
 

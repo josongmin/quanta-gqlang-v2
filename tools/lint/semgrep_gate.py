@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json
-import re
 import shutil
 import sys
 from pathlib import Path
@@ -12,6 +11,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from tools.process_guard import ProcessTimeoutError, run_bounded  # noqa: E402
 from tools.lint.semantic_honesty import node_text, parser, production_nodes  # noqa: E402
+from tools.lint.rust_module_guards import module_has_attributes  # noqa: E402
+from tools.lint.size_gate import TEST_SUPPORT_ATTRIBUTES  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG = ROOT / ".semgrep/qglang-frontend.yml"
@@ -34,13 +35,14 @@ def expected_paths() -> set[str]:
         for owner in CORE_CRATES
         for path in (ROOT / ("crates/quanta-gqlang-v2-" + owner) / "src").rglob("*.rs")
     }
-    guard = (ROOT / "crates/quanta-gqlang-v2-sema/src/lib.rs").read_text(encoding="utf-8")
-    if not re.search(
-        r'#\[cfg\(any\(test, feature = "test"\)\)\]\s*#\[doc\(hidden\)\]\s*pub mod test_support;',
-        guard,
-    ):
+    guard = (ROOT / "crates/quanta-gqlang-v2-sema/src/lib.rs").read_bytes()
+    if not module_has_attributes(guard, "test_support", TEST_SUPPORT_ATTRIBUTES):
         raise SemgrepGateError("test_support exclusion lost its test-only module guard")
-    paths.discard("crates/quanta-gqlang-v2-sema/src/test_support.rs")
+    paths = {
+        path for path in paths
+        if path != "crates/quanta-gqlang-v2-sema/src/test_support.rs"
+        and not path.startswith("crates/quanta-gqlang-v2-sema/src/test_support/")
+    }
     paths.add(EXPECTED_PATH)
     return paths
 

@@ -143,6 +143,10 @@ impl DocumentChecker<'_, '_> {
             })
     }
 
+    #[expect(
+        clippy::too_many_lines,
+        reason = "legacy iterative expression typing walk"
+    )]
     pub(super) fn type_expr(
         &mut self,
         root: &ValueExprHirV1,

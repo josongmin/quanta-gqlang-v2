@@ -7,11 +7,20 @@ format; rejects must carry source-bounded typed
 diagnostics. This is an exploratory rail outside `just ci` and outside the
 clean-HEAD qualification receipt.
 
-Run a bounded local investigation with the installed nightly toolchain:
+Run a bounded local investigation with the pinned installed nightly toolchain:
 
 ```sh
-cargo +nightly fuzz run surface_document -- -max_total_time=60
+just fuzz-smoke
 ```
+
+For a solo macOS checkout, run this once per week from the repository root
+with a local scheduler such as launchd. The recipe requires `cargo-fuzz 0.13.1`
+and `nightly-2026-09-23`, runs offline for 60 seconds, and sets a five-second
+per-input timeout. Its growing corpus, crash artifacts, and bounded log stay
+under `target/fuzz-smoke/`; it copies only tracked seeds from `fuzz/corpus/`.
+Keep the scheduler's working directory at this checkout and retain the exit
+status. Missing tools, seeds, or dependencies fail the run. Fuzzing is absent
+from `just ci` because its coverage-guided result is nondeterministic.
 
 The checked-in corpus is seed input, not expected output. Keep generated
 `fuzz/artifacts/` and coverage data local. Minimize a failure, inspect the

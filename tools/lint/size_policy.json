@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "limits": {
+    "production": 1200,
+    "test": 2500
+  },
+  "exceptions": []
+}

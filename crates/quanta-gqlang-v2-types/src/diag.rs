@@ -426,6 +426,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "exhaustive diagnostic code and location fixture"
+    )]
     fn every_type_diagnostic_pins_code_locations_and_display() {
         let primary = LocatedSpanV2 {
             source_id: SourceIdV2::from_raw(7),

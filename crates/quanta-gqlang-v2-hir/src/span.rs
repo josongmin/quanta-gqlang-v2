@@ -42,16 +42,123 @@ pub struct SourceRegistrationV2 {
     pub source_len: usize,
 }
 
-/// Checked source bounds. Entry-list construction keeps duplicate IDs
-/// observable before a map can collapse them.
+/// Checked source bounds. Up to two registrations stay inline; larger host
+/// registries share one sorted owner across cloned views and one-document
+/// extensions.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceRegistryViewV2 {
-    lengths: std::collections::BTreeMap<SourceIdV2, usize>,
     identity: SourceRegistryIdentityV2,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct SourceRegistryIdentityV2(std::sync::Arc<[SourceRegistrationV2]>);
+#[derive(Clone, Debug)]
+pub struct SourceRegistryIdentityV2(SourceRegistrationsV2);
+
+#[derive(Clone, Debug)]
+enum SourceRegistrationsV2 {
+    Empty,
+    Single(SourceRegistrationV2),
+    Pair([SourceRegistrationV2; 2]),
+    Many(std::sync::Arc<Vec<SourceRegistrationV2>>),
+    ExtendedMany {
+        parent: std::sync::Arc<Vec<SourceRegistrationV2>>,
+        document: SourceRegistrationV2,
+    },
+}
+
+impl SourceRegistryIdentityV2 {
+    fn registrations_v2(&self) -> SourceRegistrationIterV2<'_> {
+        match &self.0 {
+            SourceRegistrationsV2::Empty => SourceRegistrationIterV2::new(&[], None),
+            SourceRegistrationsV2::Single(entry) => {
+                SourceRegistrationIterV2::new(std::slice::from_ref(entry), None)
+            }
+            SourceRegistrationsV2::Pair(entries) => SourceRegistrationIterV2::new(entries, None),
+            SourceRegistrationsV2::Many(entries) => SourceRegistrationIterV2::new(entries, None),
+            SourceRegistrationsV2::ExtendedMany { parent, document } => {
+                SourceRegistrationIterV2::new(parent, Some(*document))
+            }
+        }
+    }
+
+    fn source_len_v2(&self, source_id: SourceIdV2) -> Option<usize> {
+        if let SourceRegistrationsV2::ExtendedMany { parent, document } = &self.0 {
+            if document.source_id == source_id {
+                return Some(document.source_len);
+            }
+            return parent
+                .binary_search_by_key(&source_id, |entry| entry.source_id)
+                .ok()
+                .and_then(|index| parent.get(index))
+                .map(|entry| entry.source_len);
+        }
+        let entries = match &self.0 {
+            SourceRegistrationsV2::Empty => &[][..],
+            SourceRegistrationsV2::Single(entry) => std::slice::from_ref(entry),
+            SourceRegistrationsV2::Pair(entries) => entries.as_slice(),
+            SourceRegistrationsV2::Many(entries) => entries.as_slice(),
+            SourceRegistrationsV2::ExtendedMany { .. } => unreachable!(),
+        };
+        entries
+            .binary_search_by_key(&source_id, |entry| entry.source_id)
+            .ok()
+            .and_then(|index| entries.get(index))
+            .map(|entry| entry.source_len)
+    }
+}
+
+/// Walk one canonical sorted registry without materializing a merged Vec.
+struct SourceRegistrationIterV2<'a> {
+    base: &'a [SourceRegistrationV2],
+    document: Option<SourceRegistrationV2>,
+    index: usize,
+}
+
+impl<'a> SourceRegistrationIterV2<'a> {
+    const fn new(base: &'a [SourceRegistrationV2], document: Option<SourceRegistrationV2>) -> Self {
+        Self {
+            base,
+            document,
+            index: 0,
+        }
+    }
+}
+
+impl Iterator for SourceRegistrationIterV2<'_> {
+    type Item = SourceRegistrationV2;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(document) = self.document {
+            if self
+                .base
+                .get(self.index)
+                .map_or(true, |entry| document.source_id < entry.source_id)
+            {
+                self.document = None;
+                return Some(document);
+            }
+        }
+        let entry = self.base.get(self.index).copied()?;
+        self.index += 1;
+        Some(entry)
+    }
+}
+
+impl PartialEq for SourceRegistryIdentityV2 {
+    fn eq(&self, other: &Self) -> bool {
+        self.registrations_v2().eq(other.registrations_v2())
+    }
+}
+
+impl Eq for SourceRegistryIdentityV2 {}
+
+impl core::hash::Hash for SourceRegistryIdentityV2 {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.registrations_v2().count().hash(state);
+        for entry in self.registrations_v2() {
+            entry.hash(state);
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ExtendedSourceRegistryViewV2 {
@@ -60,27 +167,49 @@ pub struct ExtendedSourceRegistryViewV2 {
 }
 
 impl SourceRegistryViewV2 {
-    pub fn try_new(entries: Vec<SourceRegistrationV2>) -> Result<Self, SourceRegistryDiagnosticV2> {
-        let mut lengths = std::collections::BTreeMap::new();
-        for entry in entries {
-            if let Some(original_len) = lengths.insert(entry.source_id, entry.source_len) {
-                return Err(SourceRegistryDiagnosticV2::DuplicateSourceId {
-                    source_id: entry.source_id,
-                    original_len,
-                    duplicate_len: entry.source_len,
-                });
-            }
+    pub fn try_new(
+        mut entries: Vec<SourceRegistrationV2>,
+    ) -> Result<Self, SourceRegistryDiagnosticV2> {
+        if entries.is_empty() {
+            return Ok(Self {
+                identity: SourceRegistryIdentityV2(SourceRegistrationsV2::Empty),
+            });
         }
-        let registrations = lengths
-            .iter()
-            .map(|(source_id, source_len)| SourceRegistrationV2 {
-                source_id: *source_id,
-                source_len: *source_len,
+        if let [entry] = entries.as_slice() {
+            return Ok(Self {
+                identity: SourceRegistryIdentityV2(SourceRegistrationsV2::Single(*entry)),
+            });
+        }
+        // Check duplicates by authored ordinal before changing the input order.
+        // The temporary index buffer preserves the exact first-duplicate
+        // diagnostic without retaining a second registration payload.
+        let mut ordinals = entries.iter().copied().enumerate().collect::<Vec<_>>();
+        ordinals.sort_unstable_by_key(|(index, entry)| (entry.source_id, *index));
+        let first_duplicate = ordinals
+            .windows(2)
+            .filter_map(|pair| match pair {
+                [(_, original), (index, duplicate)]
+                    if original.source_id == duplicate.source_id =>
+                {
+                    Some((*index, *original, *duplicate))
+                }
+                _ => None,
             })
-            .collect::<Vec<_>>();
+            .min_by_key(|(index, _, _)| *index);
+        if let Some((_, original, duplicate)) = first_duplicate {
+            return Err(SourceRegistryDiagnosticV2::DuplicateSourceId {
+                source_id: duplicate.source_id,
+                original_len: original.source_len,
+                duplicate_len: duplicate.source_len,
+            });
+        }
+        drop(ordinals);
+        // Valid registry identity is independent of host registration order.
+        entries.sort_unstable_by_key(|entry| entry.source_id);
         Ok(Self {
-            lengths,
-            identity: SourceRegistryIdentityV2(registrations.into()),
+            identity: SourceRegistryIdentityV2(SourceRegistrationsV2::Many(std::sync::Arc::new(
+                entries,
+            ))),
         })
     }
 
@@ -88,7 +217,7 @@ impl SourceRegistryViewV2 {
         &self,
         location: LocatedSpanV2,
     ) -> Result<CheckedLocatedSpanV2, SourceRegistryDiagnosticV2> {
-        let source_len = self.lengths.get(&location.source_id).copied().ok_or(
+        let source_len = self.source_len(location.source_id).ok_or(
             SourceRegistryDiagnosticV2::UnknownSourceId {
                 source_id: location.source_id,
             },
@@ -106,17 +235,54 @@ impl SourceRegistryViewV2 {
         &self,
         entry: SourceRegistrationV2,
     ) -> Result<ExtendedSourceRegistryViewV2, SourceRegistryDiagnosticV2> {
-        let mut entries = self
-            .lengths
-            .iter()
-            .map(|(source_id, source_len)| SourceRegistrationV2 {
-                source_id: *source_id,
-                source_len: *source_len,
-            })
-            .collect::<Vec<_>>();
-        entries.push(entry);
+        if let Some(original_len) = self.source_len(entry.source_id) {
+            return Err(SourceRegistryDiagnosticV2::DuplicateSourceId {
+                source_id: entry.source_id,
+                original_len,
+                duplicate_len: entry.source_len,
+            });
+        }
+        let combined = match &self.identity.0 {
+            SourceRegistrationsV2::Empty => SourceRegistrationsV2::Single(entry),
+            SourceRegistrationsV2::Single(parent) => {
+                let pair = if parent.source_id < entry.source_id {
+                    [*parent, entry]
+                } else {
+                    [entry, *parent]
+                };
+                SourceRegistrationsV2::Pair(pair)
+            }
+            SourceRegistrationsV2::Many(parent) => SourceRegistrationsV2::ExtendedMany {
+                parent: parent.clone(),
+                document: entry,
+            },
+            // Chained public extensions retain their prior behavior. The closed
+            // frontend extends a host registry once; this fallback is not an
+            // allocation-qualified path.
+            SourceRegistrationsV2::Pair(_) | SourceRegistrationsV2::ExtendedMany { .. } => {
+                let mut entries = self.identity.registrations_v2().collect::<Vec<_>>();
+                let insertion = match entries
+                    .binary_search_by_key(&entry.source_id, |registered| registered.source_id)
+                {
+                    Ok(index) => {
+                        return Err(SourceRegistryDiagnosticV2::DuplicateSourceId {
+                            source_id: entry.source_id,
+                            original_len: entries
+                                .get(index)
+                                .map_or(entry.source_len, |found| found.source_len),
+                            duplicate_len: entry.source_len,
+                        })
+                    }
+                    Err(index) => index,
+                };
+                entries.insert(insertion, entry);
+                SourceRegistrationsV2::Many(std::sync::Arc::new(entries))
+            }
+        };
         Ok(ExtendedSourceRegistryViewV2 {
-            combined: Self::try_new(entries)?,
+            combined: Self {
+                identity: SourceRegistryIdentityV2(combined),
+            },
             parent_identity: self.identity(),
         })
     }
@@ -128,7 +294,7 @@ impl SourceRegistryViewV2 {
 
     #[must_use]
     pub fn source_len(&self, source_id: SourceIdV2) -> Option<usize> {
-        self.lengths.get(&source_id).copied()
+        self.identity.source_len_v2(source_id)
     }
 }
 
@@ -375,7 +541,7 @@ impl SpanV1 {
 }
 
 #[cfg(test)]
-#[expect(clippy::unwrap_used, reason = "owner assertions")]
+#[expect(clippy::unwrap_used, clippy::panic, reason = "owner assertions")]
 mod source_registry_tests {
     use super::*;
     #[test]
@@ -442,6 +608,13 @@ mod source_registry_tests {
         let a = SourceRegistryViewV2::try_new(vec![one, two]).unwrap();
         let b = SourceRegistryViewV2::try_new(vec![two, one]).unwrap();
         assert_eq!(a.identity(), b.identity());
+        let cloned = a.clone();
+        let (SourceRegistrationsV2::Many(left), SourceRegistrationsV2::Many(right)) =
+            (&a.identity.0, &cloned.identity.0)
+        else {
+            panic!("two-source registry must share its owned backing");
+        };
+        assert!(std::sync::Arc::ptr_eq(left, right));
         assert_eq!(a.source_len(one.source_id), Some(4));
         assert_eq!(a.source_len(two.source_id), Some(8));
         assert_eq!(a.source_len(SourceIdV2::from_raw(99)), None);
@@ -459,9 +632,207 @@ mod source_registry_tests {
         assert_ne!(extended.identity(), a.identity());
         assert_eq!(extended.source_len(SourceIdV2::from_raw(3)), Some(12));
         assert_eq!(extended.source_len(SourceIdV2::from_raw(99)), None);
+        assert_eq!(extended.source_len(one.source_id), Some(one.source_len));
+        assert_eq!(extended.source_len(two.source_id), Some(two.source_len));
+    }
+
+    #[test]
+    fn one_document_extension_shares_host_entries_and_has_canonical_identity() {
+        use core::hash::{Hash, Hasher};
+
+        let host_entries = [
+            SourceRegistrationV2 {
+                source_id: SourceIdV2::from_raw(2),
+                source_len: 7,
+            },
+            SourceRegistrationV2 {
+                source_id: SourceIdV2::from_raw(9),
+                source_len: 15,
+            },
+        ];
+        let host = SourceRegistryViewV2::try_new(host_entries.to_vec()).unwrap();
+        for document_id in [1, 5, 10] {
+            let document = SourceRegistrationV2 {
+                source_id: SourceIdV2::from_raw(document_id),
+                source_len: 21,
+            };
+            let extended = host.try_extend_document(document).unwrap();
+            let SourceRegistrationsV2::Many(host_owner) = &host.identity.0 else {
+                panic!("two host registrations must share one owner");
+            };
+            let SourceRegistrationsV2::ExtendedMany { parent, .. } = &extended.combined.identity.0
+            else {
+                panic!("document extension must borrow host owner");
+            };
+            assert!(std::sync::Arc::ptr_eq(host_owner, parent));
+
+            let materialized = SourceRegistryViewV2::try_new(
+                [host_entries[0], host_entries[1], document].to_vec(),
+            )
+            .unwrap();
+            assert_eq!(extended.identity(), materialized.identity());
+            let fingerprint = |identity: &SourceRegistryIdentityV2| {
+                let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                identity.hash(&mut hasher);
+                hasher.finish()
+            };
+            assert_eq!(
+                fingerprint(&extended.identity()),
+                fingerprint(&materialized.identity())
+            );
+            for entry in [host_entries[0], host_entries[1], document] {
+                assert_eq!(extended.source_len(entry.source_id), Some(entry.source_len));
+            }
+            assert_eq!(
+                extended
+                    .try_check_location(LocatedSpanV2 {
+                        source_id: document.source_id,
+                        span: SpanV1::new(0, document.source_len),
+                    })
+                    .unwrap()
+                    .registry_identity(),
+                &materialized.identity()
+            );
+            assert_eq!(
+                host.try_extend_document(host_entries[0]).unwrap_err(),
+                SourceRegistryDiagnosticV2::DuplicateSourceId {
+                    source_id: host_entries[0].source_id,
+                    original_len: host_entries[0].source_len,
+                    duplicate_len: host_entries[0].source_len,
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn one_source_host_extends_inline_and_matches_materialized_pair() {
+        let host_entry = SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(9),
+            source_len: 15,
+        };
+        let document = SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(2),
+            source_len: 21,
+        };
+        let host = SourceRegistryViewV2::try_new(vec![host_entry]).unwrap();
+        let extended = host.try_extend_document(document).unwrap();
+        assert!(matches!(
+            &extended.combined.identity.0,
+            SourceRegistrationsV2::Pair([first, second]) if *first == document && *second == host_entry
+        ));
+        assert_eq!(
+            extended.identity(),
+            SourceRegistryViewV2::try_new(vec![host_entry, document])
+                .unwrap()
+                .identity()
+        );
+        let chained = extended
+            .combined()
+            .try_extend_document(SourceRegistrationV2 {
+                source_id: SourceIdV2::from_raw(5),
+                source_len: 11,
+            })
+            .unwrap();
+        assert_eq!(
+            chained.source_len(document.source_id),
+            Some(document.source_len)
+        );
+        assert_eq!(
+            chained.source_len(host_entry.source_id),
+            Some(host_entry.source_len)
+        );
+        assert_eq!(chained.source_len(SourceIdV2::from_raw(5)), Some(11));
+    }
+
+    #[test]
+    fn duplicate_diagnostic_keeps_authored_length_order() {
+        let source_id = SourceIdV2::from_raw(7);
+        let error = SourceRegistryViewV2::try_new(vec![
+            SourceRegistrationV2 {
+                source_id,
+                source_len: 29,
+            },
+            SourceRegistrationV2 {
+                source_id,
+                source_len: 13,
+            },
+        ])
+        .unwrap_err();
+        assert_eq!(
+            error,
+            SourceRegistryDiagnosticV2::DuplicateSourceId {
+                source_id,
+                original_len: 29,
+                duplicate_len: 13,
+            }
+        );
+
+        let other = SourceIdV2::from_raw(2);
+        let interleaved = SourceRegistryViewV2::try_new(vec![
+            SourceRegistrationV2 {
+                source_id,
+                source_len: 29,
+            },
+            SourceRegistrationV2 {
+                source_id: other,
+                source_len: 41,
+            },
+            SourceRegistrationV2 {
+                source_id,
+                source_len: 13,
+            },
+            SourceRegistrationV2 {
+                source_id: other,
+                source_len: 7,
+            },
+        ])
+        .unwrap_err();
+        assert_eq!(
+            interleaved,
+            SourceRegistryDiagnosticV2::DuplicateSourceId {
+                source_id,
+                original_len: 29,
+                duplicate_len: 13,
+            }
+        );
+    }
+
+    #[test]
+    fn empty_host_to_one_source_extension_stays_inline_and_rejects_foreign_id() {
+        let host = SourceRegistryViewV2::try_new(Vec::new()).unwrap();
+        assert!(matches!(&host.identity.0, SourceRegistrationsV2::Empty));
+        let entry = SourceRegistrationV2 {
+            source_id: SourceIdV2::from_raw(11),
+            source_len: 9,
+        };
+        let extended = host.try_extend_document(entry).unwrap();
+        assert!(matches!(
+            &extended.combined.identity.0,
+            SourceRegistrationsV2::Single(observed) if *observed == entry
+        ));
+        assert_eq!(extended.source_len(entry.source_id), Some(9));
+        assert_eq!(extended.source_len(SourceIdV2::from_raw(12)), None);
+        assert_eq!(extended.parent_identity(), &host.identity());
+        assert_eq!(
+            extended.combined.identity(),
+            SourceRegistryViewV2::try_new(vec![entry])
+                .unwrap()
+                .identity()
+        );
+        assert_eq!(
+            extended
+                .combined
+                .try_check_location(LocatedSpanV2 {
+                    source_id: SourceIdV2::from_raw(12),
+                    span: SpanV1::point(0),
+                })
+                .unwrap_err()
+                .code(),
+            "hir.source_registry.unknown_source_id"
+        );
     }
     #[test]
-    fn identity_is_structural_and_checked_locations_share_backing() {
+    fn identity_is_structural_and_checked_locations_retain_identity() {
         let entries = vec![SourceRegistrationV2 {
             source_id: SourceIdV2::from_raw(9),
             source_len: 20,
@@ -501,9 +872,6 @@ mod source_registry_tests {
                 span: SpanV1::new(1, 2),
             }
         );
-        assert!(std::sync::Arc::ptr_eq(
-            &left.registry_identity.0,
-            &right.registry_identity.0
-        ));
+        assert_eq!(left.registry_identity, right.registry_identity);
     }
 }

@@ -95,10 +95,13 @@ fn parse_bare_alias(cur: &mut CursorV1<'_>) -> Result<Option<AliasV1>, ParseDiag
     }
     if let TokenKindV1::Ident(s) = &cur.peek().kind {
         if !is_reserved(s) {
-            let span = cur.peek().span;
-            let name = s.clone();
-            let _ = cur.bump();
-            return Ok(Some(AliasV1 { name, span }));
+            let token = cur.bump();
+            if let TokenKindV1::Ident(name) = token.kind {
+                return Ok(Some(AliasV1 {
+                    name,
+                    span: token.span,
+                }));
+            }
         }
     }
     Ok(None)
@@ -304,10 +307,13 @@ fn parse_value_key_items(
         if allow_direction {
             if let TokenKindV1::Ident(s) = &cur.peek().kind {
                 if s == "asc" || s == "desc" {
-                    let span = cur.peek().span;
-                    let name = s.clone();
-                    let _ = cur.bump();
-                    alias = Some(AliasV1 { name, span });
+                    let token = cur.bump();
+                    if let TokenKindV1::Ident(name) = token.kind {
+                        alias = Some(AliasV1 {
+                            name,
+                            span: token.span,
+                        });
+                    }
                 }
             }
         }

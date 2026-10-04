@@ -1,4 +1,18 @@
-# Semantic honesty policy
+# Local Rust lint policies
+
+`just size-lint` uses locked Tokei 14.0.0 to count code lines in every Rust
+file under `crates/*/src/` and `crates/*/tests/`, including untracked source.
+`size_policy.json` limits new production files to 1,200 code lines and test
+files to 2,500. Exact-path legacy ceilings stop existing oversized files from
+growing. Remove an exception when its file falls below the common limit;
+lower its ceiling after a substantial split. `test_support.rs` and extracted
+owner unit-test modules receive the test limit only while their declarations
+remain test guarded.
+The gate fails on tool-version drift, missing or inaccurate Tokei results,
+unknown files, stale exceptions, and exceeded ceilings. It measures source
+size, not algorithmic complexity or behavioral correctness.
+
+## Semantic honesty policy
 
 `just semantic-honesty` runs the policy fixtures and scans production Rust under
 `crates/**/src/*.rs`. It is part of `just policy` and `just ci`.

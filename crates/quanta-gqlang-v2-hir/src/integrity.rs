@@ -21,7 +21,7 @@ use crate::expr::{
 use crate::id::HirNodeIdV1;
 use crate::item::{
     CatalogDeclHirV1, CompositionHirV1, ExplainHirV1, GraphQueryHirV1, LegalityHirV1, MetaHirV1,
-    PresentationHirV1, ProgramItemHirV1, SampleHirV1,
+    PresentationHirV1, PresentationKindV1, ProgramItemHirV1, SampleHirV1,
 };
 use crate::relation::{JoinHirV1, RelationExprHirV1, RelationExprKindV1, RelationSourceV1};
 use crate::shape::{ResultShapeHirV1, ResultShapeKindV1, ShapeRecordV1};
@@ -335,6 +335,18 @@ impl CheckedHirDocumentOwnedV2 {
         })
     }
 
+    /// Check a SHOW-only document using its producer's strictly increasing
+    /// id order. This requires no identity table allocation.
+    pub fn try_new_show_monotonic_v2(
+        document: HirDocumentV1,
+    ) -> Result<Self, ShowIntegrityErrorV2> {
+        let node_count = check_document_show_monotonic_v2(&document)?;
+        Ok(Self {
+            document,
+            node_count,
+        })
+    }
+
     /// Borrow the checked document and its retained proof metadata.
     #[must_use]
     pub const fn as_checked(&self) -> CheckedHirDocumentV2<'_> {
@@ -390,6 +402,45 @@ pub fn check_document_v2(
             node_count: collector.seen.len(),
         }),
     }
+}
+
+/// SHOW-only admission and ordinary integrity failure stay distinguishable.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ShowIntegrityErrorV2 {
+    IncompleteShowDocument,
+    NonMonotonicIdentity,
+    Integrity(HirIntegrityErrorV1),
+}
+
+/// Reuse the same integrity visitor with a zero-heap strictly increasing id
+/// witness. SHOW parser items each mint exactly one id in authored order.
+/// Hand-built out-of-order trees stay explicitly incomplete in this V2 path.
+pub fn check_document_show_monotonic_v2(
+    document: &HirDocumentV1,
+) -> Result<usize, ShowIntegrityErrorV2> {
+    if document.items.is_empty()
+        || document.items.iter().any(|item| {
+            !matches!(item, ProgramItemHirV1::Presentation(presentation)
+                if matches!(&presentation.kind, PresentationKindV1::Show { .. }))
+        })
+    {
+        return Err(ShowIntegrityErrorV2::IncompleteShowDocument);
+    }
+    let mut collector = IntegrityCollector::with_monotonic_show(document.source_len);
+    for item in &document.items {
+        check_safe_depth(HirRootRefV1::Item(item)).map_err(ShowIntegrityErrorV2::Integrity)?;
+        HirRootRefV1::Item(item).accept(&mut collector);
+        if collector.error.is_some() || collector.show_non_monotonic {
+            break;
+        }
+    }
+    if let Some(error) = collector.error {
+        return Err(ShowIntegrityErrorV2::Integrity(error));
+    }
+    if collector.show_non_monotonic || collector.seen.len() != document.items.len() {
+        return Err(ShowIntegrityErrorV2::NonMonotonicIdentity);
+    }
+    Ok(collector.seen.len())
 }
 
 fn check_safe_depth(root: HirRootRefV1<'_>) -> Result<(), HirIntegrityErrorV1> {
@@ -599,16 +650,73 @@ impl Drop for ResultShapeHirV1 {
 /// errors after the first, but traversal still completes (cheap, bounded).
 struct IntegrityCollector {
     source_len: usize,
-    seen: HashMap<HirNodeIdV1, SpanV1>,
+    seen: IntegritySeenV2,
     error: Option<HirIntegrityErrorV1>,
+    show_non_monotonic: bool,
+}
+
+enum IntegritySeenV2 {
+    Hash(HashMap<HirNodeIdV1, SpanV1>),
+    MonotonicShow {
+        previous: Option<(HirNodeIdV1, SpanV1)>,
+        count: usize,
+    },
+}
+
+impl IntegritySeenV2 {
+    fn len(&self) -> usize {
+        match self {
+            Self::Hash(seen) => seen.len(),
+            Self::MonotonicShow { count, .. } => *count,
+        }
+    }
+
+    fn first_span(&self, id: HirNodeIdV1) -> Option<SpanV1> {
+        match self {
+            Self::Hash(seen) => seen.get(&id).copied(),
+            Self::MonotonicShow { previous, .. } => previous
+                .as_ref()
+                .and_then(|(seen, span)| (*seen == id).then_some(*span)),
+        }
+    }
+
+    fn insert(&mut self, id: HirNodeIdV1, span: SpanV1) -> bool {
+        match self {
+            Self::Hash(seen) => {
+                let _ = seen.insert(id, span);
+                true
+            }
+            Self::MonotonicShow { previous, count }
+                if previous.as_ref().map_or(true, |(last, _)| id > *last) =>
+            {
+                *previous = Some((id, span));
+                *count += 1;
+                true
+            }
+            Self::MonotonicShow { .. } => false,
+        }
+    }
 }
 
 impl IntegrityCollector {
     fn new(source_len: usize) -> Self {
         Self {
             source_len,
-            seen: HashMap::new(),
+            seen: IntegritySeenV2::Hash(HashMap::new()),
             error: None,
+            show_non_monotonic: false,
+        }
+    }
+
+    fn with_monotonic_show(source_len: usize) -> Self {
+        Self {
+            source_len,
+            seen: IntegritySeenV2::MonotonicShow {
+                previous: None,
+                count: 0,
+            },
+            error: None,
+            show_non_monotonic: false,
         }
     }
 
@@ -628,15 +736,17 @@ impl IntegrityCollector {
             });
             return;
         }
-        if let Some(first_span) = self.seen.get(&id) {
+        if let Some(first_span) = self.seen.first_span(id) {
             self.error = Some(HirIntegrityErrorV1::DuplicateNodeId {
                 id,
-                first_span: *first_span,
+                first_span,
                 second_span: span,
             });
             return;
         }
-        let _ = self.seen.insert(id, span);
+        if !self.seen.insert(id, span) {
+            self.show_non_monotonic = true;
+        }
     }
 
     fn record_auxiliary_span(&mut self, span: SpanV1) {
@@ -650,6 +760,8 @@ impl IntegrityCollector {
                 span,
                 source_len: self.source_len,
             });
+        } else if matches!(&self.seen, IntegritySeenV2::MonotonicShow { .. }) {
+            self.show_non_monotonic = true;
         }
     }
 }
@@ -724,5 +836,75 @@ impl HirVisitorV1 for IntegrityCollector {
     fn visit_meta(&mut self, node: &MetaHirV1) {
         self.record(node.id, node.span);
         crate::visit::walk_meta(self, node);
+    }
+}
+
+#[cfg(test)]
+#[expect(
+    clippy::expect_used,
+    reason = "owner SHOW fixture must admit two increasing IDs"
+)]
+mod show_monotonic_integrity_tests {
+    use super::*;
+    use crate::item::ShowCategoryV1;
+
+    fn show(id: u32, span: SpanV1) -> ProgramItemHirV1 {
+        ProgramItemHirV1::from(PresentationHirV1::new(
+            HirNodeIdV1::from_raw(id),
+            span,
+            PresentationKindV1::Show {
+                category: ShowCategoryV1::Models,
+            },
+        ))
+    }
+
+    #[test]
+    fn show_monotonic_check_preserves_duplicate_and_span_validation() {
+        let span = SpanV1::new(0, 11);
+        let document = HirDocumentV1 {
+            source_id: SourceIdV2::from_raw(1),
+            source_len: 11,
+            items: vec![show(1, span), show(2, span)],
+        };
+        let checked = CheckedHirDocumentOwnedV2::try_new_show_monotonic_v2(document)
+            .expect("two increasing SHOW ids");
+        assert_eq!(checked.node_count(), 2);
+
+        let duplicate = HirDocumentV1 {
+            source_id: SourceIdV2::from_raw(1),
+            source_len: 11,
+            items: vec![show(1, span), show(1, span)],
+        };
+        assert!(matches!(
+            CheckedHirDocumentOwnedV2::try_new_show_monotonic_v2(duplicate),
+            Err(ShowIntegrityErrorV2::Integrity(
+                HirIntegrityErrorV1::DuplicateNodeId { .. }
+            ))
+        ));
+
+        let invalid = HirDocumentV1 {
+            source_id: SourceIdV2::from_raw(1),
+            source_len: 11,
+            items: vec![show(1, SpanV1::new(0, 12))],
+        };
+        assert!(matches!(
+            CheckedHirDocumentOwnedV2::try_new_show_monotonic_v2(invalid),
+            Err(ShowIntegrityErrorV2::Integrity(
+                HirIntegrityErrorV1::SpanOutOfBounds { .. }
+            ))
+        ));
+    }
+
+    #[test]
+    fn show_out_of_order_identity_is_typed_incomplete() {
+        let document = HirDocumentV1 {
+            source_id: SourceIdV2::from_raw(1),
+            source_len: 11,
+            items: vec![show(2, SpanV1::new(0, 11)), show(1, SpanV1::new(0, 11))],
+        };
+        assert!(matches!(
+            CheckedHirDocumentOwnedV2::try_new_show_monotonic_v2(document),
+            Err(ShowIntegrityErrorV2::NonMonotonicIdentity)
+        ));
     }
 }

@@ -26,11 +26,18 @@ mod diagnostic;
 mod execution;
 
 pub use compile::{
-    analyze_resolved_document_v2, analyze_source_document_v2, classify_single_source_root_v3,
-    compile_resolved_document_v2, compile_source_document_v3, format_source_document_v2,
-    AnalysisDocumentV2, AnalysisItemV2, AnalysisStatusV2, CompiledDocumentV2, CompiledItemV2,
-    CompiledRuleProgramV2, CompiledSourceDocumentV3, FrontendSourceRootClassificationErrorV3,
-    FrontendSourceRootFamilyV3, PlannedItemV2, RuleProgramMemberV2, UnresolvedAnalysisFactV2,
+    admit_show_execution_v2, admit_show_planned_source_v2, admit_show_plans_v2,
+    admit_show_source_declaration_v2, admit_show_syntax_v2, analyze_resolved_document_v2,
+    analyze_source_document_v2, census_source_lexical_materialization_v3,
+    classify_single_source_root_v3, classify_single_source_root_with_lexical_owner_v1,
+    compile_resolved_document_v2, compile_source_document_v3,
+    compile_source_document_with_lexical_owner_v1, format_source_document_v2,
+    AdmittedLexicalCompiledSourceDocumentV1, AdmittedShowDocumentV2,
+    AdmittedShowExecutionDocumentV2, AdmittedShowPlannedDocumentV2,
+    AdmittedShowSourceDeclarationV2, AnalysisDocumentV2, AnalysisItemV2, AnalysisStatusV2,
+    CompiledDocumentV2, CompiledItemV2, CompiledRuleProgramV2, CompiledSourceDocumentV3,
+    FrontendSourceRootClassificationErrorV3, FrontendSourceRootFamilyV3, PlannedItemV2,
+    RuleProgramMemberV2, ShowSyntaxAdmissionErrorV2, UnresolvedAnalysisFactV2,
     ANALYSIS_DIAGNOSTIC_LIMIT_CODE, OPEN_AUTHORITY_INCOMPLETE_CODE,
     PARSE_BUDGET_PROJECTION_FAILED_CODE,
 };
@@ -75,4 +82,8 @@ pub use quanta_gqlang_v2_sema::{
     FrontendSeverityV2, FrontendStageV2, FrontendSymbolTargetInputV3, FrontendTransactionErrorV2,
     GraphReferenceKindV2, LocatedSpanV2, OpenAnalysisAuthorityV2, SemanticItemIdV2, SourceIdV2,
     SourceQualifiedNodeIdV2, SpanV1,
+};
+pub use quanta_gqlang_v2_surface::LexicalMaterializationCensusV1;
+pub use quanta_gqlang_v2_surface::{
+    FrontendLexicalHostCeilingV1, FrontendLexicalMaterializationRootV1,
 };

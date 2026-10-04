@@ -1992,6 +1992,10 @@ fn relation_pre_evaluation_is_exact_dependency_first_and_fail_closed() {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "independent three producer ordering fixture"
+)]
 fn three_producer_pre_evaluation_follows_the_exact_target_not_plan_or_authored_order() {
     let builder = HirBuilderV1::new();
     // Three independent producers carry three distinct row payloads, and two
