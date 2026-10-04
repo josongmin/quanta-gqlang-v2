@@ -29,23 +29,200 @@
 //! catalog rule-binding family uses the distinct keyword `ruledef`.
 
 use crate::cursor::CursorV1;
-use crate::diag::ParseDiagnosticV1;
+use crate::diag::{ParseDiagnosticV1, ParseErrorCodeV1};
 use crate::lexer::TokenKindV1;
+use crate::materialization::FrontendRetainedStoragePermitV3;
 use crate::query::parse_query;
 use quanta_gqlang_v2_hir::SpanV1;
 use quanta_gqlang_v2_hir::{
-    CompareMetricV1, CompositionBodyV1, CompositionProducerV1, ConfirmModeV1, DetectionModeV1,
-    EmitModeV1, EvidenceModeV1, ExplainHirV1, ExportFormatV1, GraphConstraintsV1, GraphDirectionV1,
-    GraphEndpointsV1, GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, PresentationKindV1,
-    ProgramItemHirV1, RenamePhaseV3, SampleHirV1, SampleModeV1, ShowCategoryV1, TruthModeV1,
+    CompositionBodyV1, CompositionProducerV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
+    EvidenceModeV1, ExplainHirV1, GraphConstraintsV1, GraphDirectionV1, GraphEndpointsV1,
+    GraphQueryHirV1, GraphQueryKindV1, GraphRefV1, PresentationKindV1, ProgramItemHirV1,
+    RenamePhaseV3, SampleHirV1, TruthModeV1,
 };
 
 mod catalog;
+mod presentation;
 
 use catalog::{
     parse_gate, parse_model, parse_pack, parse_profile, parse_require_certified, parse_ruledef,
     parse_use_pack, parse_view,
 };
+use presentation::{parse_compare, parse_describe, parse_export, parse_sample, parse_show};
+
+fn boxed_program_item_v3<T>(
+    cur: &mut CursorV1<'_>,
+    node: T,
+    span: SpanV1,
+) -> Result<ProgramItemHirV1, ParseDiagnosticV1>
+where
+    ProgramItemHirV1: From<T>,
+{
+    cur.reserve_nested_bytes_v3(std::mem::size_of::<T>(), span)?;
+    Ok(ProgramItemHirV1::from(node))
+}
+
+struct RequestBindingNodeV3 {
+    binding: Option<quanta_gqlang_v2_hir::CompositionBindingV1>,
+    next: Option<Box<Self>>,
+    _scratch_permit: FrontendRetainedStoragePermitV3,
+}
+
+impl Drop for RequestBindingNodeV3 {
+    fn drop(&mut self) {
+        // Error paths may drop a long partial composition. Detach successors
+        // iteratively so the linked scratch never recurses on the Rust stack.
+        let mut next = self.next.take();
+        while let Some(mut node) = next {
+            next = node.next.take();
+        }
+    }
+}
+
+enum CompositionBindingsV3 {
+    Raw(Vec<quanta_gqlang_v2_hir::CompositionBindingV1>),
+    Request {
+        newest: Option<Box<RequestBindingNodeV3>>,
+        len: usize,
+    },
+}
+
+impl CompositionBindingsV3 {
+    fn new(request_owner: bool) -> Self {
+        if request_owner {
+            Self::Request {
+                newest: None,
+                len: 0,
+            }
+        } else {
+            Self::Raw(Vec::new())
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            Self::Raw(bindings) => bindings.len(),
+            Self::Request { len, .. } => *len,
+        }
+    }
+
+    fn contains_name(&self, name: &str) -> bool {
+        match self {
+            Self::Raw(bindings) => bindings.iter().any(|binding| binding.name == name),
+            Self::Request { newest, .. } => {
+                let mut node = newest.as_deref();
+                while let Some(binding) = node {
+                    if binding
+                        .binding
+                        .as_ref()
+                        .is_some_and(|value| value.name == name)
+                    {
+                        return true;
+                    }
+                    node = binding.next.as_deref();
+                }
+                false
+            }
+        }
+    }
+
+    fn push(
+        &mut self,
+        cur: &mut CursorV1<'_>,
+        binding: quanta_gqlang_v2_hir::CompositionBindingV1,
+        span: SpanV1,
+    ) -> Result<(), ParseDiagnosticV1> {
+        match self {
+            Self::Raw(bindings) => bindings.push(binding),
+            Self::Request { newest, len } => {
+                let new_len = len.checked_add(1).ok_or_else(|| {
+                    ParseDiagnosticV1::new(
+                        ParseErrorCodeV1::ResourceExhausted,
+                        span,
+                        "composition binding count overflow",
+                    )
+                })?;
+                // This linked node is temporary parser scratch. Give it its
+                // own live permit so conversion to the final admitted Vec
+                // releases the scratch reservation with the last node.
+                let scratch_permit = cur
+                    .reserve_temporary_scratch_v3(
+                        std::mem::size_of::<RequestBindingNodeV3>(),
+                        span,
+                    )?
+                    .ok_or_else(|| {
+                        ParseDiagnosticV1::new(
+                            ParseErrorCodeV1::ResourceExhausted,
+                            span,
+                            "request composition scratch has no storage owner",
+                        )
+                    })?;
+                let previous = newest.take();
+                *newest = Some(Box::new(RequestBindingNodeV3 {
+                    binding: Some(binding),
+                    next: previous,
+                    _scratch_permit: scratch_permit,
+                }));
+                *len = new_len;
+            }
+        }
+        Ok(())
+    }
+
+    fn into_vec(
+        self,
+        cur: &mut CursorV1<'_>,
+        span: SpanV1,
+    ) -> Result<Vec<quanta_gqlang_v2_hir::CompositionBindingV1>, ParseDiagnosticV1> {
+        match self {
+            Self::Raw(bindings) => Ok(bindings),
+            Self::Request { mut newest, len } => {
+                let bytes = len
+                    .checked_mul(std::mem::size_of::<
+                        quanta_gqlang_v2_hir::CompositionBindingV1,
+                    >())
+                    .ok_or_else(|| {
+                        ParseDiagnosticV1::new(
+                            ParseErrorCodeV1::ResourceExhausted,
+                            span,
+                            "composition binding vector size overflow",
+                        )
+                    })?;
+                cur.reserve_nested_bytes_v3(bytes, span)?;
+                let mut ordered = Vec::new();
+                ordered
+                    .try_reserve_exact(len)
+                    .map_err(|_allocation_error| {
+                        ParseDiagnosticV1::new(
+                            ParseErrorCodeV1::ResourceExhausted,
+                            span,
+                            "composition binding vector allocation failed",
+                        )
+                    })?;
+                if ordered.capacity() > len {
+                    return Err(ParseDiagnosticV1::new(
+                        ParseErrorCodeV1::ResourceExhausted,
+                        span,
+                        "composition binding allocator exceeded admitted slots",
+                    ));
+                }
+                while let Some(mut node) = newest {
+                    let binding = node.binding.take().ok_or_else(|| {
+                        ParseDiagnosticV1::new(
+                            ParseErrorCodeV1::ResourceExhausted,
+                            span,
+                            "composition binding scratch lost its value",
+                        )
+                    })?;
+                    ordered.push(binding);
+                    newest = node.next.take();
+                }
+                ordered.reverse();
+                Ok(ordered)
+            }
+        }
+    }
+}
 
 /// Whether `word` is a leading keyword owned by a v3 family parser here.
 pub(crate) fn is_family_keyword(word: &str) -> bool {
@@ -159,10 +336,11 @@ fn parse_rename(
     let mut phase = None;
     let mut snapshot = None;
     let mut token = None;
-    let mut seen = Vec::new();
+    let mut seen = 0u64;
+    let mut seen_count = 0usize;
     while at_clause(cur) {
         let (key, key_span) = clause_key(cur)?;
-        let expected = match seen.len() {
+        let expected = match seen_count {
             0 => "phase",
             1 => "snapshot",
             2 if phase == Some(RenamePhaseV3::Apply) => "preview_token",
@@ -176,6 +354,7 @@ fn parse_rename(
             ));
         }
         note_clause(cur, &mut seen, "RENAME", &key, key_span)?;
+        seen_count += 1;
         match key.as_str() {
             "phase" => {
                 let (value, span) = cur.expect_ident("'preview' or 'apply'")?;
@@ -223,14 +402,15 @@ fn parse_rename(
             "apply requires an issued preview token",
         ));
     }
-    Ok(ProgramItemHirV1::from(cur.builder.rename_command(
+    let command = cur.builder.rename_command(
         target,
         new_name,
         phase,
         snapshot,
         token,
         SpanV1::new(start, end),
-    )))
+    );
+    boxed_program_item_v3(cur, command, SpanV1::new(start, end))
 }
 
 // ---- COMPOSITION -----------------------------------------------------------
@@ -260,17 +440,14 @@ pub(crate) fn parse_composition(
     cur: &mut CursorV1<'_>,
     source: &str,
 ) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
-    let mut bindings = Vec::new();
+    let mut bindings = CompositionBindingsV3::new(cur.has_request_owner_v3());
     let start = cur.here_span().start;
 
     while cur.is_keyword("let") {
         let _let = cur.expect_keyword("let", "'let' to start a composition binding")?;
         let (name, name_span) = cur.expect_ident("a composition binding name")?;
         // duplicate-name reject (fail closed).
-        if bindings
-            .iter()
-            .any(|b: &quanta_gqlang_v2_hir::CompositionBindingV1| b.name == name)
-        {
+        if bindings.contains_name(&name) {
             return Err(reject(
                 cur,
                 name_span,
@@ -278,10 +455,18 @@ pub(crate) fn parse_composition(
             ));
         }
         cur.expect_op("=", "'=' after a binding name")?;
+        let next_binding_count = bindings.len().checked_add(1).ok_or_else(|| {
+            ParseDiagnosticV1::new(
+                ParseErrorCodeV1::ResourceExhausted,
+                name_span,
+                "composition binding count overflow",
+            )
+        })?;
         cur.budget
-            .charge_collection_element(bindings.len() + 1, name_span)?;
+            .charge_collection_element(next_binding_count, name_span)?;
         let producer = parse_producer(cur, source)?;
-        bindings.push(cur.builder.composition_binding(name, name_span, producer));
+        let binding = cur.builder.composition_binding(name, name_span, producer);
+        bindings.push(cur, binding, name_span)?;
     }
 
     // body: a FIND / SELECT / CHECK / EXPLAIN family (legality is downstream).
@@ -293,7 +478,7 @@ pub(crate) fn parse_composition(
         cur.expect_ident("a composition binding name after 'with'")?;
 
     // the consumed name must be one of the declared bindings (fail closed).
-    if !bindings.iter().any(|b| b.name == with_name) {
+    if !bindings.contains_name(&with_name) {
         return Err(reject(
             cur,
             with_name_span,
@@ -303,10 +488,11 @@ pub(crate) fn parse_composition(
 
     let span = SpanV1::new(start, with_name_span.end);
     let _ = with_kw;
+    let bindings = bindings.into_vec(cur, span)?;
     let comp = cur
         .builder
         .composition(bindings, with_name, with_name_span, body, span);
-    Ok(ProgramItemHirV1::from(comp))
+    boxed_program_item_v3(cur, comp, span)
 }
 
 // The composition (producer, body) family matrix.
@@ -341,7 +527,9 @@ fn parse_producer(
     source: &str,
 ) -> Result<CompositionProducerV1, ParseDiagnosticV1> {
     if cur.is_keyword("from") {
-        return Ok(CompositionProducerV1::Query(Box::new(parse_query(cur)?)));
+        let query = parse_query(cur)?;
+        cur.reserve_nested_bytes_v3(std::mem::size_of_val(&query), query.span)?;
+        return Ok(CompositionProducerV1::Query(Box::new(query)));
     }
     if cur.is_keyword("sample") {
         let ProgramItemHirV1::Presentation(presentation) = parse_sample(cur, source)? else {
@@ -349,6 +537,7 @@ fn parse_producer(
         };
         let sample = SampleHirV1::try_from(*presentation)
             .map_err(|_wrong_kind| cur.unexpected("a SAMPLE composition producer"))?;
+        cur.reserve_nested_bytes_v3(std::mem::size_of_val(&sample), sample.span)?;
         return Ok(CompositionProducerV1::Sample(Box::new(sample)));
     }
     if cur.is_keyword("find") {
@@ -367,7 +556,9 @@ fn parse_body(
     source: &str,
 ) -> Result<CompositionBodyV1, ParseDiagnosticV1> {
     if cur.is_keyword("from") {
-        return Ok(CompositionBodyV1::Query(Box::new(parse_query(cur)?)));
+        let query = parse_query(cur)?;
+        cur.reserve_nested_bytes_v3(std::mem::size_of_val(&query), query.span)?;
+        return Ok(CompositionBodyV1::Query(Box::new(query)));
     }
     if cur.is_keyword("find") {
         let ProgramItemHirV1::GraphQuery(graph) = parse_find(cur, source)? else {
@@ -387,6 +578,7 @@ fn parse_body(
         };
         let explain = ExplainHirV1::try_from(*presentation)
             .map_err(|_wrong_kind| cur.unexpected("an EXPLAIN composition body"))?;
+        cur.reserve_nested_bytes_v3(std::mem::size_of_val(&explain), explain.span)?;
         return Ok(CompositionBodyV1::Explain(Box::new(explain)));
     }
     Err(cur.unexpected("a composition body (find / from / check / explain)"))
@@ -472,7 +664,7 @@ fn parse_ref_list(
     source: &str,
     what: &str,
 ) -> Result<Vec<GraphRefV1>, ParseDiagnosticV1> {
-    let mut refs = Vec::new();
+    let mut refs = cur.preallocate_clause_items_v3::<GraphRefV1>()?;
     loop {
         cur.budget
             .charge_collection_element(refs.len() + 1, cur.here_span())?;
@@ -528,19 +720,64 @@ fn reject(cur: &CursorV1<'_>, span: SpanV1, msg: impl Into<String>) -> ParseDiag
 /// every clause-bearing family loop.
 fn note_clause(
     cur: &CursorV1<'_>,
-    seen: &mut Vec<String>,
+    seen: &mut u64,
     family: &str,
     key: &str,
     key_span: SpanV1,
 ) -> Result<(), ParseDiagnosticV1> {
-    if seen.iter().any(|k| k == key) {
+    let Some(bit) = match key {
+        "phase" => Some(0),
+        "snapshot" => Some(1),
+        "preview_token" => Some(2),
+        "provider" => Some(3),
+        "source" => Some(4),
+        "activation" => Some(5),
+        "capabilities" => Some(6),
+        "admission" => Some(7),
+        "checks" => Some(8),
+        "binding" => Some(9),
+        "lockfile" => Some(10),
+        "scope" => Some(11),
+        "pattern" => Some(12),
+        "confirm" => Some(13),
+        "emit" => Some(14),
+        "mode" => Some(15),
+        "evidence" => Some(16),
+        "truth" => Some(17),
+        "limit" => Some(18),
+        "candidate" => Some(19),
+        "metric" => Some(20),
+        "kind" => Some(21),
+        "profile" => Some(22),
+        "via" => Some(23),
+        "through" => Some(24),
+        "sanitizers" => Some(25),
+        "window" => Some(26),
+        "frontier" => Some(27),
+        "direction" => Some(28),
+        "depth" => Some(29),
+        "anchor" => Some(30),
+        "reference" => Some(31),
+        "pointee" => Some(32),
+        "callable" => Some(33),
+        "facets" => Some(34),
+        _ => None,
+    }
+    .map(|position| 1u64 << position) else {
+        return Err(reject(
+            cur,
+            key_span,
+            format!("unsupported {family} clause '{key}'"),
+        ));
+    };
+    if *seen & bit != 0 {
         return Err(reject(
             cur,
             key_span,
             format!("duplicate {family} clause '{key}'"),
         ));
     }
-    seen.push(key.to_string());
+    *seen |= bit;
     Ok(())
 }
 
@@ -549,7 +786,8 @@ fn note_clause(
 fn parse_find(cur: &mut CursorV1<'_>, source: &str) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
     let find_kw = cur.expect_keyword("find", "'find' to start a graph query")?;
     let graph = parse_find_body(cur, source, find_kw.span)?;
-    Ok(ProgramItemHirV1::from(graph))
+    let span = graph.span;
+    boxed_program_item_v3(cur, graph, span)
 }
 
 fn parse_find_body(
@@ -598,17 +836,10 @@ fn parse_find_body(
     //
     // D28 (conflicts fail closed): a repeated clause key is rejected with a
     // typed `UnsupportedConstruct` rather than silently overwriting (last-wins).
-    let mut seen: Vec<String> = Vec::new();
+    let mut seen = 0u64;
     while at_clause(cur) {
         let (key, key_span) = clause_key(cur)?;
-        if seen.iter().any(|k| k == &key) {
-            return Err(reject(
-                cur,
-                key_span,
-                format!("duplicate FIND clause '{key}'"),
-            ));
-        }
-        seen.push(key.clone());
+        note_clause(cur, &mut seen, "FIND", &key, key_span)?;
         match key.as_str() {
             "via" => {
                 let refs = parse_required_ref_list(
@@ -719,7 +950,7 @@ fn parse_find_body(
                 if !matches!(cur.peek().kind, TokenKindV1::Ident(_)) {
                     return Err(reject(cur, key_span, "FIND facets list must not be empty"));
                 }
-                let mut facets = Vec::new();
+                let mut facets = cur.preallocate_clause_items_v3::<String>()?;
                 loop {
                     cur.budget
                         .charge_collection_element(facets.len() + 1, cur.here_span())?;
@@ -763,7 +994,7 @@ fn parse_check(
     let mut emit = EmitModeV1::Findings;
     let mut mode = DetectionModeV1::Hybrid;
 
-    let mut seen: Vec<String> = Vec::new();
+    let mut seen = 0u64;
     while at_clause(cur) {
         let (key, key_span) = clause_key(cur)?;
         note_clause(cur, &mut seen, "CHECK", &key, key_span)?;
@@ -852,6 +1083,7 @@ fn parse_check(
 
     if let Some(query) = &semantic_confirm {
         end = query.span.end;
+        cur.reserve_nested_bytes_v3(std::mem::size_of::<GraphQueryHirV1>(), query.span)?;
     }
     let span = check_kw.span.merge(&SpanV1::point(end));
     let chk = match semantic_confirm {
@@ -862,7 +1094,8 @@ fn parse_check(
             .builder
             .legality(rule_ref, scope, pattern, confirm, emit, mode, span),
     };
-    Ok(ProgramItemHirV1::from(chk))
+    let span = chk.span;
+    boxed_program_item_v3(cur, chk, span)
 }
 
 // ---- EXPLAIN ---------------------------------------------------------------
@@ -877,7 +1110,7 @@ fn parse_explain(
     let mut evidence = EvidenceModeV1::Auto;
     let mut truth = TruthModeV1::Inspect;
 
-    let mut seen: Vec<String> = Vec::new();
+    let mut seen = 0u64;
     while at_clause(cur) {
         let (key, key_span) = clause_key(cur)?;
         note_clause(cur, &mut seen, "EXPLAIN", &key, key_span)?;
@@ -927,283 +1160,8 @@ fn parse_explain(
         evidence,
         truth,
     };
-    Ok(ProgramItemHirV1::from(cur.builder.presentation(kind, span)))
-}
-
-// ---- SHOW ------------------------------------------------------------------
-
-fn parse_show(cur: &mut CursorV1<'_>, source: &str) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
-    let kw = cur.expect_keyword("show", "'show' to start a catalog query")?;
-    let (cat, cat_span) = cur.expect_ident("a SHOW category")?;
-    let category = match cat.as_str() {
-        "capabilities" => ShowCategoryV1::Capabilities,
-        "models" => ShowCategoryV1::Models,
-        "views" => ShowCategoryV1::Views,
-        "rules" => ShowCategoryV1::Rules,
-        "packs" => ShowCategoryV1::Packs,
-        "profiles" => ShowCategoryV1::Profiles,
-        "gates" => ShowCategoryV1::Gates,
-        other => {
-            return Err(reject(
-                cur,
-                cat_span,
-                format!("unsupported SHOW category '{other}'"),
-            ))
-        }
-    };
-    let span = kw.span.merge(&cat_span);
-    let kind = PresentationKindV1::Show { category };
-    cur.reserve_show_box_v1(source, span)?;
-    Ok(ProgramItemHirV1::from(cur.builder.presentation(kind, span)))
-}
-
-// ---- DESCRIBE --------------------------------------------------------------
-
-fn parse_describe(
-    cur: &mut CursorV1<'_>,
-    source: &str,
-) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
-    let kw = cur.expect_keyword("describe", "'describe' to start an entity lookup")?;
-    let (entity_kind, _kind_span) = cur.expect_ident("an entity kind")?;
-    // `kind::path`
-    cur.expect(&TokenKindV1::Colon, "':' in a 'kind::path' target")?;
-    cur.expect(&TokenKindV1::Colon, "'::' in a 'kind::path' target")?;
-    let path = parse_ref(cur, source, "an entity path")?;
-    let span = kw.span.merge(&path.span);
-    let kind = PresentationKindV1::Describe {
-        kind: entity_kind,
-        path,
-    };
-    Ok(ProgramItemHirV1::from(cur.builder.presentation(kind, span)))
-}
-
-// ---- SAMPLE ----------------------------------------------------------------
-
-fn parse_sample(
-    cur: &mut CursorV1<'_>,
-    source: &str,
-) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
-    let kw = cur.expect_keyword("sample", "'sample' to start a retrieval")?;
-    // `query="text"`
-    let (q_key, _q_span) = cur.expect_ident("the 'query' key")?;
-    if q_key != "query" {
-        return Err(reject(
-            cur,
-            _q_span,
-            "SAMPLE must start with a 'query' clause",
-        ));
-    }
-    cur.expect_op("=", "'=' after 'query'")?;
-    let (query_text, q_text_span) = expect_string(cur, "a quoted query text")?;
-    if query_text.is_empty() {
-        return Err(reject(
-            cur,
-            q_text_span,
-            "SAMPLE query_text must not be empty",
-        ));
-    }
-    let mut end = q_text_span.end;
-
-    let mut mode = SampleModeV1::Lexical;
-    let mut limit: Option<(u32, SpanV1)> = None;
-    let mut scope = None;
-
-    let mut seen: Vec<String> = Vec::new();
-    while at_clause(cur) {
-        let (key, key_span) = clause_key(cur)?;
-        note_clause(cur, &mut seen, "SAMPLE", &key, key_span)?;
-        match key.as_str() {
-            "mode" => {
-                let (v, sp) = cur.expect_ident("a sample mode")?;
-                end = sp.end;
-                mode = match v.as_str() {
-                    "lexical" => SampleModeV1::Lexical,
-                    "semantic" => SampleModeV1::Semantic,
-                    "hybrid" => SampleModeV1::Hybrid,
-                    other => {
-                        return Err(reject(
-                            cur,
-                            sp,
-                            format!("unsupported sample mode '{other}'"),
-                        ))
-                    }
-                };
-            }
-            "limit" => {
-                let (n, sp) = parse_u32(cur, "a positive limit")?;
-                end = sp.end;
-                limit = Some((n, sp));
-            }
-            "scope" => {
-                let r = parse_ref(cur, source, "a scope reference")?;
-                end = r.span.end;
-                scope = Some(r);
-            }
-            other => {
-                return Err(reject(
-                    cur,
-                    key_span,
-                    format!("unsupported SAMPLE clause '{other}'"),
-                ))
-            }
-        }
-    }
-
-    let limit = match limit {
-        Some((n, _sp)) if n > 0 => n,
-        Some((_, sp)) => return Err(reject(cur, sp, "SAMPLE limit must be > 0")),
-        None => return Err(reject(cur, kw.span, "SAMPLE requires a 'limit' clause")),
-    };
-
-    let span = kw.span.merge(&SpanV1::point(end));
-    let kind = PresentationKindV1::Sample {
-        query_text,
-        mode,
-        limit,
-        scope,
-    };
-    Ok(ProgramItemHirV1::from(cur.builder.presentation(kind, span)))
-}
-
-// ---- COMPARE ---------------------------------------------------------------
-
-fn parse_compare(
-    cur: &mut CursorV1<'_>,
-    source: &str,
-) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
-    let kw = cur.expect_keyword("compare", "'compare' to start a delta")?;
-    // `baseline=<ref>`
-    let (b_key, b_span) = cur.expect_ident("the 'baseline' key")?;
-    if b_key != "baseline" {
-        return Err(reject(
-            cur,
-            b_span,
-            "COMPARE must start with a 'baseline' clause",
-        ));
-    }
-    cur.expect_op("=", "'=' after 'baseline'")?;
-    let baseline_ref = parse_ref(cur, source, "a baseline reference")?;
-    let mut end = baseline_ref.span.end;
-
-    let mut candidate_ref = None;
-    let mut metric = CompareMetricV1::Exact;
-
-    let mut seen: Vec<String> = Vec::new();
-    while at_clause(cur) {
-        let (key, key_span) = clause_key(cur)?;
-        note_clause(cur, &mut seen, "COMPARE", &key, key_span)?;
-        match key.as_str() {
-            "candidate" => {
-                let r = parse_ref(cur, source, "a candidate reference")?;
-                end = r.span.end;
-                candidate_ref = Some(r);
-            }
-            "metric" => {
-                let (v, sp) = cur.expect_ident("a comparison metric")?;
-                end = sp.end;
-                metric = match v.as_str() {
-                    "exact" => CompareMetricV1::Exact,
-                    "structural" => CompareMetricV1::Structural,
-                    "semantic" => CompareMetricV1::Semantic,
-                    other => return Err(reject(cur, sp, format!("unsupported metric '{other}'"))),
-                };
-            }
-            other => {
-                return Err(reject(
-                    cur,
-                    key_span,
-                    format!("unsupported COMPARE clause '{other}'"),
-                ))
-            }
-        }
-    }
-
-    let candidate_ref = candidate_ref.ok_or_else(|| {
-        reject(
-            cur,
-            kw.span,
-            "COMPARE requires an explicit 'candidate' clause",
-        )
-    })?;
-
-    let span = kw.span.merge(&SpanV1::point(end));
-    let kind = PresentationKindV1::Compare {
-        baseline_ref,
-        candidate_ref,
-        metric,
-    };
-    Ok(ProgramItemHirV1::from(cur.builder.presentation(kind, span)))
-}
-
-// ---- EXPORT ----------------------------------------------------------------
-
-fn parse_export(
-    cur: &mut CursorV1<'_>,
-    source: &str,
-) -> Result<ProgramItemHirV1, ParseDiagnosticV1> {
-    let kw = cur.expect_keyword("export", "'export' to start a bridge receipt")?;
-    let (s_key, s_span) = cur.expect_ident("the 'source' key")?;
-    if s_key != "source" {
-        return Err(reject(
-            cur,
-            s_span,
-            "EXPORT must start with a 'source' clause",
-        ));
-    }
-    cur.expect_op("=", "'=' after 'source'")?;
-    let source_ref = parse_ref(cur, source, "a source reference")?;
-    let mut end = source_ref.span.end;
-
-    let mut format = None;
-    let mut profile = None;
-
-    let mut seen: Vec<String> = Vec::new();
-    while at_clause(cur) {
-        let (key, key_span) = clause_key(cur)?;
-        note_clause(cur, &mut seen, "EXPORT", &key, key_span)?;
-        match key.as_str() {
-            "kind" => {
-                let r = parse_ref(cur, source, "an export kind")?;
-                end = r.span.end;
-                format = Some(match r.name.as_str() {
-                    "json" => ExportFormatV1::Json,
-                    "csv" => ExportFormatV1::Csv,
-                    "sarif" => ExportFormatV1::Sarif,
-                    "markdown" => ExportFormatV1::Markdown,
-                    "graph-ml" => ExportFormatV1::GraphMl,
-                    other => {
-                        return Err(reject(
-                            cur,
-                            r.span,
-                            format!("unsupported export kind '{other}'"),
-                        ))
-                    }
-                });
-            }
-            "profile" => {
-                let r = parse_ref(cur, source, "a profile reference")?;
-                end = r.span.end;
-                profile = Some(r);
-            }
-            other => {
-                return Err(reject(
-                    cur,
-                    key_span,
-                    format!("unsupported EXPORT clause '{other}'"),
-                ))
-            }
-        }
-    }
-
-    let format = format.ok_or_else(|| reject(cur, kw.span, "EXPORT requires a 'kind' clause"))?;
-
-    let span = kw.span.merge(&SpanV1::point(end));
-    let kind = PresentationKindV1::Export {
-        source_ref,
-        format,
-        profile,
-    };
-    Ok(ProgramItemHirV1::from(cur.builder.presentation(kind, span)))
+    let presentation = cur.builder.presentation(kind, span);
+    boxed_program_item_v3(cur, presentation, span)
 }
 
 // ---- small value parsers ---------------------------------------------------

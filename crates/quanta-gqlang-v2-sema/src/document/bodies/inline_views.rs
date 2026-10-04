@@ -33,7 +33,7 @@ pub(super) fn materialize_inline_view_bodies(
     let mut materialized_inline_views = BTreeMap::new();
     let mut inline_view_outputs = BTreeMap::new();
     for asset in topology.dependency_first_order() {
-        let Some(declaration) = inline_views.declarations.get(asset).copied() else {
+        let Some(declaration) = inline_views.declaration_for(asset) else {
             continue;
         };
         let query = inline_query_for_decl(syntax, declaration).ok_or_else(|| {

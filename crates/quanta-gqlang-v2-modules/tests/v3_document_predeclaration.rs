@@ -6,11 +6,66 @@
 )]
 
 use quanta_gqlang_v2_hir::{
-    CheckedLocatedSpanV2, LocatedSpanV2, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2,
-    SpanV1,
+    CheckedLocatedSpanV2, FrontendRequestMaterializationRootV3, FrontendRequestStoragePermitV3,
+    FrontendRequestStorageSinkV3, FrontendRetainedStoragePermitV3, FrontendStorageRefusalV3,
+    LocatedSpanV2, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
 };
 use quanta_gqlang_v2_modules::*;
 use quanta_gqlang_v2_types::AuthorityBudgetProfileV2;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+
+struct RequestTestSinkV3 {
+    live: Arc<AtomicU64>,
+    peak: Arc<AtomicU64>,
+    limit: u64,
+    identity: Arc<()>,
+}
+
+struct RequestTestPermitV3 {
+    live: Arc<AtomicU64>,
+    charged: u64,
+    identity: Arc<()>,
+}
+
+impl Drop for RequestTestPermitV3 {
+    fn drop(&mut self) {
+        self.live.fetch_sub(self.charged, Ordering::AcqRel);
+    }
+}
+
+impl FrontendRequestStorageSinkV3 for RequestTestSinkV3 {
+    fn reserve_v3(
+        &self,
+        logical_bytes: u64,
+    ) -> Result<Box<dyn FrontendRequestStoragePermitV3>, FrontendStorageRefusalV3> {
+        let charged = logical_bytes
+            .checked_add(u64::try_from(std::mem::size_of::<RequestTestPermitV3>()).unwrap())
+            .ok_or(FrontendStorageRefusalV3::DemandOverflow)?;
+        let next = self
+            .live
+            .load(Ordering::Acquire)
+            .checked_add(charged)
+            .ok_or(FrontendStorageRefusalV3::DemandOverflow)?;
+        if next > self.limit {
+            return Err(FrontendStorageRefusalV3::BudgetRejected);
+        }
+        self.live.store(next, Ordering::Release);
+        self.peak.fetch_max(next, Ordering::AcqRel);
+        Ok(Box::new(RequestTestPermitV3 {
+            live: Arc::clone(&self.live),
+            charged,
+            identity: Arc::clone(&self.identity),
+        }))
+    }
+
+    fn owns_permit_v3(&self, permit: &dyn FrontendRequestStoragePermitV3) -> bool {
+        permit
+            .as_any_v3()
+            .downcast_ref::<RequestTestPermitV3>()
+            .is_some_and(|candidate| Arc::ptr_eq(&candidate.identity, &self.identity))
+    }
+}
 
 fn registry() -> SourceRegistryViewV2 {
     SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
@@ -421,6 +476,304 @@ fn predeclaration_rejects_duplicate_and_preserves_catalog_path_spelling() {
                 .code(),
             "modules.invalid_catalog_name"
         );
+    }
+}
+
+#[test]
+fn predeclaration_proofs_keep_input_ordinals_across_id_sorting() {
+    let host = registry();
+    let (parts, app, _) = authority(&host, profile(100, 100), &[]);
+    let registry = extended(&host);
+    let mut validator = DocumentCatalogValidatorV2::try_new(registry.clone(), &parts).unwrap();
+    let proofs = validator
+        .predeclare_assets(vec![
+            local(registry.combined(), &app, NamespaceKindV2::View, "zeta", 20),
+            local(
+                registry.combined(),
+                &app,
+                NamespaceKindV2::View,
+                "alpha",
+                21,
+            ),
+        ])
+        .unwrap();
+    assert_eq!(proofs.len(), 2);
+    assert_eq!(proofs[0].id().local_name(), "alpha");
+    assert_eq!(proofs[0].input_ordinal(), 1);
+    assert_eq!(proofs[1].id().local_name(), "zeta");
+    assert_eq!(proofs[1].input_ordinal(), 0);
+}
+
+#[test]
+fn request_predeclaration_retains_exact_source_order_and_refuses_short_or_foreign_roots() {
+    let host = registry();
+    let (parts, app, _) = authority(&host, profile(100, 100), &[]);
+    let registry = extended(&host);
+    let source_id = SourceIdV2::from_raw(9);
+    let source = "x".repeat(512);
+    let live = Arc::new(AtomicU64::new(0));
+    let peak = Arc::new(AtomicU64::new(0));
+    let sink = RequestTestSinkV3 {
+        live: Arc::clone(&live),
+        peak: Arc::clone(&peak),
+        limit: u64::MAX,
+        identity: Arc::new(()),
+    };
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &sink);
+    let mut permit = root.reserve_v3(source_id, &source, 0).unwrap();
+    let mut validator = DocumentCatalogValidatorV2::try_new_with_request_owner_v3(
+        registry.clone(),
+        &parts,
+        &root,
+        source_id,
+        &source,
+        &mut permit,
+    )
+    .unwrap();
+    let inputs = || {
+        vec![
+            local(registry.combined(), &app, NamespaceKindV2::View, "zeta", 20),
+            local(
+                registry.combined(),
+                &app,
+                NamespaceKindV2::View,
+                "alpha",
+                21,
+            ),
+        ]
+    };
+    let copied_source = source.clone();
+    assert!(matches!(
+        validator.predeclare_assets_with_request_owner_v3(
+            inputs(),
+            &root,
+            source_id,
+            &copied_source,
+            &mut permit,
+        ),
+        Err(DocumentPredeclareRequestErrorV3::Storage(
+            FrontendStorageRefusalV3::ForeignSource
+        ))
+    ));
+    let foreign_live = Arc::new(AtomicU64::new(0));
+    let foreign_sink = RequestTestSinkV3 {
+        live: Arc::clone(&foreign_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: u64::MAX,
+        identity: Arc::new(()),
+    };
+    let foreign_root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(
+        source_id,
+        &source,
+        &foreign_sink,
+    );
+    assert_eq!(
+        validator.validate_owner_v3(&root, source_id, &source),
+        Ok(())
+    );
+    assert_eq!(
+        validator.validate_owner_v3(&foreign_root, source_id, &source),
+        Err(FrontendStorageRefusalV3::ForeignRequestRoot)
+    );
+    assert_eq!(
+        validator.validate_owner_v3(&root, source_id, &copied_source),
+        Err(FrontendStorageRefusalV3::ForeignSource)
+    );
+    assert!(matches!(
+        validator.predeclare_assets_with_request_owner_v3(
+            inputs(),
+            &foreign_root,
+            source_id,
+            &source,
+            &mut permit,
+        ),
+        Err(DocumentPredeclareRequestErrorV3::Storage(
+            FrontendStorageRefusalV3::ForeignRequestRoot
+        ))
+    ));
+    assert_eq!(foreign_live.load(Ordering::Acquire), 0);
+    let mut foreign_permit = foreign_root.reserve_v3(source_id, &source, 0).unwrap();
+    assert!(matches!(
+        validator.predeclare_assets_with_request_owner_v3(
+            inputs(),
+            &foreign_root,
+            source_id,
+            &source,
+            &mut foreign_permit,
+        ),
+        Err(DocumentPredeclareRequestErrorV3::Storage(
+            FrontendStorageRefusalV3::ForeignRequestRoot
+        ))
+    ));
+    drop(foreign_permit);
+
+    // Independent layout oracle: two sorted retained slots, two returned
+    // proofs, both owned Arc carriers, session identity, and spelling bytes.
+    type RetainedSlot = (
+        CatalogAssetIdV2,
+        NamespaceKindV2,
+        CheckedLocatedSpanV2,
+        usize,
+    );
+    let arc_payload = std::alloc::Layout::new::<(Vec<RetainedSlot>, Arc<()>, Option<Arc<()>>)>();
+    let arc_bytes = std::alloc::Layout::new::<[std::sync::atomic::AtomicUsize; 2]>()
+        .extend(arc_payload)
+        .unwrap()
+        .0
+        .pad_to_align()
+        .size();
+    let session_arc_bytes = std::alloc::Layout::new::<[std::sync::atomic::AtomicUsize; 2]>()
+        .extend(std::alloc::Layout::new::<
+            Option<FrontendRetainedStoragePermitV3>,
+        >())
+        .unwrap()
+        .0
+        .pad_to_align()
+        .size();
+    let custody_arc_bytes = std::alloc::Layout::new::<[std::sync::atomic::AtomicUsize; 2]>()
+        .extend(std::alloc::Layout::new::<FrontendRetainedStoragePermitV3>())
+        .unwrap()
+        .0
+        .pad_to_align()
+        .size();
+    let logical_predeclare = 2 * std::mem::size_of::<RetainedSlot>()
+        + 2 * std::mem::size_of::<PredeclaredDocumentAssetV2>()
+        + arc_bytes
+        + custody_arc_bytes
+        + 2 * "app".len()
+        + "alpha".len()
+        + "zeta".len();
+    let sink_permit_bytes = std::mem::size_of::<RequestTestPermitV3>();
+    let expected_peak = 3 * sink_permit_bytes + session_arc_bytes + logical_predeclare;
+    let proofs = validator
+        .predeclare_assets_with_request_owner_v3(inputs(), &root, source_id, &source, &mut permit)
+        .unwrap();
+    assert_eq!(proofs.len(), 2);
+    assert_eq!(
+        (proofs[0].id().local_name(), proofs[0].input_ordinal()),
+        ("alpha", 1)
+    );
+    assert_eq!(
+        (proofs[1].id().local_name(), proofs[1].input_ordinal()),
+        ("zeta", 0)
+    );
+    assert_eq!(
+        peak.load(Ordering::Acquire),
+        u64::try_from(expected_peak).unwrap()
+    );
+    drop(permit);
+    assert!(live.load(Ordering::Acquire) > 0);
+    drop(validator);
+    assert!(live.load(Ordering::Acquire) > 0);
+    drop(proofs);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+
+    let short_live = Arc::new(AtomicU64::new(0));
+    let short_sink = RequestTestSinkV3 {
+        live: Arc::clone(&short_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: u64::try_from(expected_peak - 1).unwrap(),
+        identity: Arc::new(()),
+    };
+    let short_root =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &short_sink);
+    let mut short_permit = short_root.reserve_v3(source_id, &source, 0).unwrap();
+    let mut short_validator = DocumentCatalogValidatorV2::try_new_with_request_owner_v3(
+        registry.clone(),
+        &parts,
+        &short_root,
+        source_id,
+        &source,
+        &mut short_permit,
+    )
+    .unwrap();
+    let before_birth = short_live.load(Ordering::Acquire);
+    assert!(matches!(
+        short_validator.predeclare_assets_with_request_owner_v3(
+            inputs(),
+            &short_root,
+            source_id,
+            &source,
+            &mut short_permit,
+        ),
+        Err(DocumentPredeclareRequestErrorV3::Storage(
+            FrontendStorageRefusalV3::BudgetRejected
+        ))
+    ));
+    assert_eq!(short_live.load(Ordering::Acquire), before_birth);
+    drop(short_validator);
+    drop(short_permit);
+    assert_eq!(short_live.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn request_session_and_predeclaration_custody_outlive_caller_permit_in_both_drop_orders() {
+    let host = registry();
+    let (parts, app, _) = authority(&host, profile(100, 100), &[]);
+    let registry = extended(&host);
+    let source_id = SourceIdV2::from_raw(9);
+    let source = "x".repeat(512);
+    let session_arc_bytes = std::alloc::Layout::new::<[std::sync::atomic::AtomicUsize; 2]>()
+        .extend(std::alloc::Layout::new::<
+            Option<FrontendRetainedStoragePermitV3>,
+        >())
+        .unwrap()
+        .0
+        .pad_to_align()
+        .size();
+    let charge_bytes = std::mem::size_of::<RequestTestPermitV3>();
+    for predeclare in [false, true] {
+        let live = Arc::new(AtomicU64::new(0));
+        let sink = RequestTestSinkV3 {
+            live: Arc::clone(&live),
+            peak: Arc::new(AtomicU64::new(0)),
+            limit: u64::MAX,
+            identity: Arc::new(()),
+        };
+        let root =
+            FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &sink);
+        let mut permit = root.reserve_v3(source_id, &source, 0).unwrap();
+        let mut validator = DocumentCatalogValidatorV2::try_new_with_request_owner_v3(
+            registry.clone(),
+            &parts,
+            &root,
+            source_id,
+            &source,
+            &mut permit,
+        )
+        .unwrap();
+        assert_eq!(
+            live.load(Ordering::Acquire),
+            u64::try_from(2 * charge_bytes + session_arc_bytes).unwrap()
+        );
+        if predeclare {
+            let proofs = validator
+                .predeclare_assets_with_request_owner_v3(
+                    vec![local(
+                        registry.combined(),
+                        &app,
+                        NamespaceKindV2::View,
+                        "alpha",
+                        20,
+                    )],
+                    &root,
+                    source_id,
+                    &source,
+                    &mut permit,
+                )
+                .unwrap();
+            drop(proofs);
+            drop(permit);
+            assert!(live.load(Ordering::Acquire) > 0);
+        } else {
+            drop(permit);
+            assert_eq!(
+                live.load(Ordering::Acquire),
+                u64::try_from(charge_bytes + session_arc_bytes).unwrap()
+            );
+        }
+        drop(validator);
+        assert_eq!(live.load(Ordering::Acquire), 0);
     }
 }
 

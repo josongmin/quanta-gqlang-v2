@@ -8,6 +8,72 @@ use quanta_gqlang_v2_types::RecordFieldTypeV1;
 
 #[test]
 #[expect(
+    clippy::panic_in_result_fn,
+    reason = "assertions are the independent semantic oracle"
+)]
+fn request_single_provenance_matches_legacy_set_without_heap_nodes() -> Result<(), String> {
+    let source_id = SourceIdV2::from_raw(8);
+    let binding = ResolvedValueBindingV2::try_new(
+        source_id,
+        HirNodeIdV1::from_raw(2),
+        0,
+        ResolvedBindingKindV2::Composition,
+        "q".to_owned(),
+    )
+    .map_err(str::to_owned)?;
+    let source = ResolvedScanSourceV2::Composition(
+        ResolvedCompositionSourceIdV2::try_from_binding(binding).map_err(str::to_owned)?,
+    );
+    let single = OutputProvenanceV2::from_single_source_v3(source.clone());
+    let legacy = OutputProvenanceV2::new([source.clone(), source.clone()]);
+    assert_eq!(single, legacy);
+    assert_eq!(single.iter().cloned().collect::<Vec<_>>(), vec![source]);
+    assert!(!single.is_empty());
+    Ok(())
+}
+
+#[test]
+#[expect(
+    clippy::panic_in_result_fn,
+    reason = "independent sorted and duplicate union oracles"
+)]
+fn mixed_provenance_union_keeps_disjoint_and_overlap_order() -> Result<(), String> {
+    let source = |node, name: &str| {
+        let binding = ResolvedValueBindingV2::try_new(
+            SourceIdV2::from_raw(8),
+            HirNodeIdV1::from_raw(node),
+            0,
+            ResolvedBindingKindV2::Composition,
+            name.to_owned(),
+        )?;
+        Ok::<_, &'static str>(ResolvedScanSourceV2::Composition(
+            ResolvedCompositionSourceIdV2::try_from_binding(binding)?,
+        ))
+    };
+    let first = source(2, "a").map_err(str::to_owned)?;
+    let second = source(3, "b").map_err(str::to_owned)?;
+    let mut expected = vec![first.clone(), second.clone()];
+    expected.sort();
+    let single = OutputProvenanceV2::from_single_source_v3(first.clone());
+    let other = OutputProvenanceV2::from_single_source_v3(second.clone());
+    assert_eq!(
+        single.union_iter(&other).cloned().collect::<Vec<_>>(),
+        expected
+    );
+    let many = OutputProvenanceV2::new([first.clone(), second]);
+    assert_eq!(
+        many.union_iter(&single).cloned().collect::<Vec<_>>(),
+        expected
+    );
+    assert_eq!(
+        single.union_iter(&single).cloned().collect::<Vec<_>>(),
+        [first]
+    );
+    Ok(())
+}
+
+#[test]
+#[expect(
     clippy::expect_used,
     reason = "exact sealed projection constructor controls"
 )]

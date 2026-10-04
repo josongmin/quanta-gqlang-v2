@@ -1337,12 +1337,13 @@ pub(crate) enum ExecutionClosureFailureV3 {
 
 mod encoding;
 mod projection;
+pub(crate) mod scalar_request;
 mod vocabulary;
 
 use vocabulary::{
     project_call_target, project_cardinality, project_exists_polarity, project_join_mode,
-    project_logical_quantifier, project_null_order, project_plan, project_sort_direction,
-    project_value_type, registered_execution_symbol,
+    project_logical_quantifier, project_null_order, project_plan, project_scalar_plan,
+    project_sort_direction, project_value_type, registered_execution_symbol,
 };
 pub use vocabulary::{
     ExecutionCallTargetV3, ExecutionCardinalityV3, ExecutionExistsPolarityV3, ExecutionJoinModeV3,
@@ -1359,7 +1360,6 @@ pub(crate) use projection::{
     ExecutionCompositionBodyProjectionV3, ExecutionCompositionProducerProjectionV3,
     ExecutionCompositionProjectionFailureV3,
 };
-
 #[cfg(test)]
 #[path = "execution_digest_oracle.rs"]
 mod digest_oracle;

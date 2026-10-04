@@ -1,10 +1,11 @@
 //! Closed type inputs collected from bound document syntax.
 
 use super::{
-    document_failure, location, AggregationClassV1, BTreeMap, BTreeSet, BindResultV1, BinderKindV1,
-    BoolExprHirV1, BoolExprKindV1, BuiltinRegistryV2, CatalogAssetIdV2, CheckedSyntaxDocumentV2,
-    ClosedFrontendAuthorityV2, DeferredRelationRowFieldInputV2, DeferredRelationRowInputV2,
-    ExtendedSourceRegistryViewV2, FrontendFailureV2, HirNodeIdV1, HirVisitorV1, ProgramItemHirV1,
+    document_failure, location, AggregationClassV1, BTreeMap, BTreeSet, BindResultV1,
+    BinderEvidenceReaderV3, BinderKindV1, BoolExprHirV1, BoolExprKindV1, BuiltinEvidenceReaderV3,
+    BuiltinRegistryV2, CheckedSyntaxDocumentV2, ClosedFrontendAuthorityV2,
+    DeferredRelationRowFieldInputV2, DeferredRelationRowInputV2, ExtendedSourceRegistryViewV2,
+    FrontendFailureV2, HirNodeIdV1, HirVisitorV1, InlineViewPlanV2, ProgramItemHirV1,
     RelationRowFieldSourceV2, ResolvedCallTargetV2, ResolvedCallableInputV2,
     ResolvedRelationCaptureInputV2, ResolvedRelationPredicateInputV2, ResolvedTargetV1,
     ResolvedTypeInputEntryV2, ResolvedTypeInputValueV2, RuleBindingIdV2, RuleSymbolInputV2,
@@ -14,16 +15,16 @@ use super::{
 
 pub(super) struct DeclarationTypeInputsV2<'a> {
     pub(super) source_id: SourceIdV2,
-    pub(super) bound: &'a BindResultV1,
+    pub(super) bound: &'a dyn BinderEvidenceReaderV3,
     pub(super) declaration_bodies: &'a BTreeMap<HirNodeIdV1, HirNodeIdV1>,
-    pub(super) builtins: &'a BuiltinRegistryV2,
+    pub(super) builtins: &'a dyn BuiltinEvidenceReaderV3,
     pub(super) entries: Vec<ResolvedTypeInputEntryV2>,
     pub(super) error: Option<FrontendFailureV2>,
 }
 
 pub(super) struct RuleSymbolInputsV2<'a> {
     pub(super) source_id: SourceIdV2,
-    pub(super) bound: &'a BindResultV1,
+    pub(super) bound: &'a dyn BinderEvidenceReaderV3,
     pub(super) symbols: Vec<RuleSymbolInputV2>,
     pub(super) calls: Vec<(SourceQualifiedNodeIdV2, String, SpanV1)>,
     pub(super) error: Option<FrontendFailureV2>,
@@ -94,7 +95,7 @@ pub(super) struct CaptureVectorWitnessV2 {
 /// Project one Binder capture set into the read-only witness compared by
 /// [`validate_capture_vector`]. Binder remains the sole lexical authority.
 pub(super) fn capture_vector_witness(
-    bound: &BindResultV1,
+    bound: &dyn BinderEvidenceReaderV3,
     exists: HirNodeIdV1,
     relation_root: HirNodeIdV1,
 ) -> CaptureVectorWitnessV2 {
@@ -123,7 +124,7 @@ pub(super) fn validate_capture_vector(
     exists_node: HirNodeIdV1,
     hir_relation_root: HirNodeIdV1,
     witness: &CaptureVectorWitnessV2,
-    bound: &BindResultV1,
+    bound: &dyn BinderEvidenceReaderV3,
 ) -> Result<Vec<CaptureEdgeWitnessV2>, &'static str> {
     if !bound.has_capture_set(exists_node) {
         return Err("Binder omitted the explicit relational EXISTS capture set");
@@ -166,11 +167,11 @@ pub(super) fn validate_capture_vector(
 pub(super) struct QueryTypeInputsV2<'a> {
     pub(super) source_id: SourceIdV2,
     pub(super) authority: &'a ClosedFrontendAuthorityV2,
-    pub(super) bound: &'a BindResultV1,
-    pub(super) builtins: &'a BuiltinRegistryV2,
+    pub(super) bound: &'a dyn BinderEvidenceReaderV3,
+    pub(super) builtins: &'a dyn BuiltinEvidenceReaderV3,
     pub(super) extended: &'a ExtendedSourceRegistryViewV2,
-    pub(super) view_source_targets: &'a BTreeMap<HirNodeIdV1, ViewSourceTargetV2>,
-    pub(super) view_relation_roots: &'a BTreeMap<CatalogAssetIdV2, SourceQualifiedNodeIdV2>,
+    pub(super) view_source_targets: &'a InlineViewPlanV2,
+    pub(super) view_relation_roots: &'a InlineViewPlanV2,
     pub(super) owners: BTreeMap<(HirNodeIdV1, usize), ResolvedTypeInputValueV2>,
     pub(super) entries: Vec<ResolvedTypeInputEntryV2>,
     pub(super) rows: Vec<DeferredRelationRowInputV2>,
@@ -190,39 +191,107 @@ pub(super) enum CompositionRelationRowV2 {
     Absent,
 }
 
-impl HirVisitorV1 for QueryTypeInputsV2<'_> {
-    #[expect(
-        clippy::too_many_lines,
-        reason = "legacy relation visitor awaits phase extraction"
-    )]
-    fn visit_relation(&mut self, relation: &quanta_gqlang_v2_hir::RelationExprHirV1) {
-        match &relation.kind {
-            quanta_gqlang_v2_hir::RelationExprKindV1::Source(source) => {
-                let root = SourceQualifiedNodeIdV2 {
-                    source_id: self.source_id,
-                    node_id: relation.id,
-                };
-                if let Some(view) = self.view_source_targets.get(&relation.id) {
-                    match view {
-                        ViewSourceTargetV2::Inline(view) => {
-                            let Some(target_root) = self.view_relation_roots.get(view).copied()
-                            else {
-                                if self.error.is_none() {
-                                    self.error = Some(document_failure(
-                                        "sema.unmaterialized_view_source",
-                                        self.source_id,
-                                        source.name_span,
-                                        "resolved View source has no local inline relation root",
-                                    ));
-                                }
-                                return;
-                            };
-                            self.rows.push(DeferredRelationRowInputV2::prior_relation(
-                                root,
-                                target_root,
+impl QueryTypeInputsV2<'_> {
+    fn visit_relation_source(
+        &mut self,
+        relation: &quanta_gqlang_v2_hir::RelationExprHirV1,
+        source: &quanta_gqlang_v2_hir::RelationSourceV1,
+    ) -> bool {
+        let root = SourceQualifiedNodeIdV2 {
+            source_id: self.source_id,
+            node_id: relation.id,
+        };
+        if let Some(view) = self.view_source_targets.source_target_for(relation.id) {
+            match view {
+                ViewSourceTargetV2::Inline(view) => {
+                    let Some(target_root) = self.view_relation_roots.relation_root_for(view) else {
+                        if self.error.is_none() {
+                            self.error = Some(document_failure(
+                                "sema.unmaterialized_view_source",
+                                self.source_id,
+                                source.name_span,
+                                "resolved View source has no local inline relation root",
                             ));
                         }
-                        ViewSourceTargetV2::External { relation_type, .. } => {
+                        return false;
+                    };
+                    self.rows.push(DeferredRelationRowInputV2::prior_relation(
+                        root,
+                        target_root,
+                    ));
+                }
+                ViewSourceTargetV2::External { relation_type, .. } => {
+                    let checked = match self
+                        .extended
+                        .combined()
+                        .try_check_location(location(self.source_id, source.name_span))
+                    {
+                        Ok(checked) => checked,
+                        Err(error) => {
+                            if self.error.is_none() {
+                                self.error = Some(document_failure(
+                                    "sema.document_validation_failed",
+                                    self.source_id,
+                                    source.name_span,
+                                    error.to_string(),
+                                ));
+                            }
+                            return false;
+                        }
+                    };
+                    let fields = relation_type
+                        .row()
+                        .fields()
+                        .iter()
+                        .enumerate()
+                        .map(|(ordinal, field)| {
+                            DeferredRelationRowFieldInputV2::new(
+                                ordinal,
+                                field.name(),
+                                checked.clone(),
+                                RelationRowFieldSourceV2::Known(field.value_type().clone()),
+                            )
+                        })
+                        .collect::<Vec<_>>();
+                    self.rows.push(DeferredRelationRowInputV2::known_source(
+                        root,
+                        fields.len(),
+                        fields,
+                    ));
+                }
+            }
+            if source.alias.is_some() {
+                self.owners.insert(
+                    (relation.id, 0),
+                    ResolvedTypeInputValueV2::BindingFromRelationRow(root),
+                );
+            }
+            return true;
+        }
+        if let Some(target) = self
+            .bound
+            .target_of_use(relation.id, source.name_span, &source.name)
+        {
+            match target {
+                ResolvedTargetV1::Local(binding)
+                    if binding.kind == BinderKindV1::CompositionLet =>
+                {
+                    let Some(producer_row) = self.composition_rows.get(&binding.identity()) else {
+                        if self.error.is_none() {
+                            self.error = Some(document_failure(
+                                "sema.non_relation_composition_source",
+                                self.source_id,
+                                source.name_span,
+                                "Composition binding has no relation row",
+                            ));
+                        }
+                        return false;
+                    };
+                    match producer_row {
+                        CompositionRelationRowV2::PriorRelation(producer_root) => self.rows.push(
+                            DeferredRelationRowInputV2::prior_relation(root, *producer_root),
+                        ),
+                        CompositionRelationRowV2::Generated { field_name, scalar } => {
                             let checked = match self
                                 .extended
                                 .combined()
@@ -238,28 +307,32 @@ impl HirVisitorV1 for QueryTypeInputsV2<'_> {
                                             error.to_string(),
                                         ));
                                     }
-                                    return;
+                                    return false;
                                 }
                             };
-                            let fields = relation_type
-                                .row()
-                                .fields()
-                                .iter()
-                                .enumerate()
-                                .map(|(ordinal, field)| {
-                                    DeferredRelationRowFieldInputV2::new(
-                                        ordinal,
-                                        field.name(),
-                                        checked.clone(),
-                                        RelationRowFieldSourceV2::Known(field.value_type().clone()),
-                                    )
-                                })
-                                .collect::<Vec<_>>();
                             self.rows.push(DeferredRelationRowInputV2::known_source(
                                 root,
-                                fields.len(),
-                                fields,
+                                1,
+                                vec![DeferredRelationRowFieldInputV2::new(
+                                    0,
+                                    *field_name,
+                                    checked,
+                                    RelationRowFieldSourceV2::Known(ValueTypeV1::scalar(
+                                        scalar.clone(),
+                                    )),
+                                )],
                             ));
+                        }
+                        CompositionRelationRowV2::Absent => {
+                            if self.error.is_none() {
+                                self.error = Some(document_failure(
+                                    "sema.non_relation_composition_source",
+                                    self.source_id,
+                                    source.name_span,
+                                    "Composition binding has no relation row",
+                                ));
+                            }
+                            return false;
                         }
                     }
                     if source.alias.is_some() {
@@ -268,156 +341,97 @@ impl HirVisitorV1 for QueryTypeInputsV2<'_> {
                             ResolvedTypeInputValueV2::BindingFromRelationRow(root),
                         );
                     }
-                    quanta_gqlang_v2_hir::walk_relation(self, relation);
-                    return;
+                    return true;
                 }
-                if let Some(target) =
-                    self.bound
-                        .target_of_use(relation.id, source.name_span, &source.name)
-                {
-                    match target {
-                        ResolvedTargetV1::Local(binding)
-                            if binding.kind == BinderKindV1::CompositionLet =>
-                        {
-                            let Some(producer_row) = self.composition_rows.get(&binding.identity())
-                            else {
-                                if self.error.is_none() {
-                                    self.error = Some(document_failure(
-                                        "sema.non_relation_composition_source",
-                                        self.source_id,
-                                        source.name_span,
-                                        "Composition binding has no relation row",
-                                    ));
-                                }
-                                return;
-                            };
-                            match producer_row {
-                                CompositionRelationRowV2::PriorRelation(producer_root) => {
-                                    self.rows.push(DeferredRelationRowInputV2::prior_relation(
-                                        root,
-                                        *producer_root,
-                                    ))
-                                }
-                                CompositionRelationRowV2::Generated { field_name, scalar } => {
-                                    let checked = match self.extended.combined().try_check_location(
-                                        location(self.source_id, source.name_span),
-                                    ) {
-                                        Ok(checked) => checked,
-                                        Err(error) => {
-                                            if self.error.is_none() {
-                                                self.error = Some(document_failure(
-                                                    "sema.document_validation_failed",
-                                                    self.source_id,
-                                                    source.name_span,
-                                                    error.to_string(),
-                                                ));
-                                            }
-                                            return;
-                                        }
-                                    };
-                                    self.rows.push(DeferredRelationRowInputV2::known_source(
-                                        root,
-                                        1,
-                                        vec![DeferredRelationRowFieldInputV2::new(
-                                            0,
-                                            *field_name,
-                                            checked,
-                                            RelationRowFieldSourceV2::Known(ValueTypeV1::scalar(
-                                                scalar.clone(),
-                                            )),
-                                        )],
-                                    ));
-                                }
-                                CompositionRelationRowV2::Absent => {
-                                    if self.error.is_none() {
-                                        self.error = Some(document_failure(
-                                            "sema.non_relation_composition_source",
-                                            self.source_id,
-                                            source.name_span,
-                                            "Composition binding has no relation row",
-                                        ));
-                                    }
-                                    return;
-                                }
-                            }
-                            if source.alias.is_some() {
-                                self.owners.insert(
-                                    (relation.id, 0),
-                                    ResolvedTypeInputValueV2::BindingFromRelationRow(root),
-                                );
-                            }
-                            quanta_gqlang_v2_hir::walk_relation(self, relation);
-                            return;
-                        }
-                        ResolvedTargetV1::Local(_)
-                        | ResolvedTargetV1::Declaration { .. }
-                        | ResolvedTargetV1::Import { .. } => {
-                            if self.error.is_none() {
-                                self.error = Some(document_failure(
-                                    "sema.invalid_relation_source_kind",
-                                    self.source_id,
-                                    source.name_span,
-                                    "resolved source is not a Composition relation binding",
-                                ));
-                            }
-                            return;
-                        }
-                    }
-                }
-                let Some(host) = self.authority.relations().get(&source.name) else {
+                ResolvedTargetV1::Local(_)
+                | ResolvedTargetV1::Declaration { .. }
+                | ResolvedTargetV1::Import { .. } => {
                     if self.error.is_none() {
                         self.error = Some(document_failure(
-                            "sema.unresolved_reference",
+                            "sema.invalid_relation_source_kind",
                             self.source_id,
                             source.name_span,
-                            "host relation source is absent",
+                            "resolved source is not a Composition relation binding",
                         ));
                     }
-                    return;
-                };
-                let checked = match self
-                    .extended
-                    .combined()
-                    .try_check_location(location(self.source_id, source.name_span))
-                {
-                    Ok(checked) => checked,
-                    Err(error) => {
-                        if self.error.is_none() {
-                            self.error = Some(document_failure(
-                                "sema.document_validation_failed",
-                                self.source_id,
-                                source.name_span,
-                                error.to_string(),
-                            ));
-                        }
-                        return;
-                    }
-                };
-                let fields = host
-                    .relation_type()
-                    .row()
-                    .fields()
-                    .iter()
-                    .enumerate()
-                    .map(|(ordinal, field)| {
-                        DeferredRelationRowFieldInputV2::new(
-                            ordinal,
-                            field.name(),
-                            checked.clone(),
-                            RelationRowFieldSourceV2::Known(field.value_type().clone()),
-                        )
-                    })
-                    .collect::<Vec<_>>();
-                self.rows.push(DeferredRelationRowInputV2::known_source(
-                    root,
-                    fields.len(),
-                    fields,
+                    return false;
+                }
+            }
+        }
+        self.visit_host_relation_source(relation, source, root)
+    }
+
+    fn visit_host_relation_source(
+        &mut self,
+        relation: &quanta_gqlang_v2_hir::RelationExprHirV1,
+        source: &quanta_gqlang_v2_hir::RelationSourceV1,
+        root: SourceQualifiedNodeIdV2,
+    ) -> bool {
+        let Some(host) = self.authority.relations().get(&source.name) else {
+            if self.error.is_none() {
+                self.error = Some(document_failure(
+                    "sema.unresolved_reference",
+                    self.source_id,
+                    source.name_span,
+                    "host relation source is absent",
                 ));
-                if source.alias.is_some() {
-                    self.owners.insert(
-                        (relation.id, 0),
-                        ResolvedTypeInputValueV2::BindingFromRelationRow(root),
-                    );
+            }
+            return false;
+        };
+        let checked = match self
+            .extended
+            .combined()
+            .try_check_location(location(self.source_id, source.name_span))
+        {
+            Ok(checked) => checked,
+            Err(error) => {
+                if self.error.is_none() {
+                    self.error = Some(document_failure(
+                        "sema.document_validation_failed",
+                        self.source_id,
+                        source.name_span,
+                        error.to_string(),
+                    ));
+                }
+                return false;
+            }
+        };
+        let fields = host
+            .relation_type()
+            .row()
+            .fields()
+            .iter()
+            .enumerate()
+            .map(|(ordinal, field)| {
+                DeferredRelationRowFieldInputV2::new(
+                    ordinal,
+                    field.name(),
+                    checked.clone(),
+                    RelationRowFieldSourceV2::Known(field.value_type().clone()),
+                )
+            })
+            .collect::<Vec<_>>();
+        self.rows.push(DeferredRelationRowInputV2::known_source(
+            root,
+            fields.len(),
+            fields,
+        ));
+        if source.alias.is_some() {
+            self.owners.insert(
+                (relation.id, 0),
+                ResolvedTypeInputValueV2::BindingFromRelationRow(root),
+            );
+        }
+        true
+    }
+}
+
+impl HirVisitorV1 for QueryTypeInputsV2<'_> {
+    fn visit_relation(&mut self, relation: &quanta_gqlang_v2_hir::RelationExprHirV1) {
+        match &relation.kind {
+            quanta_gqlang_v2_hir::RelationExprKindV1::Source(source) => {
+                if !self.visit_relation_source(relation, source) {
+                    return;
                 }
             }
             quanta_gqlang_v2_hir::RelationExprKindV1::Project(project) => {

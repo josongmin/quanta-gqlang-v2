@@ -120,6 +120,32 @@ class LocalGateTest(unittest.TestCase):
             )
             with self.assertRaisesRegex(size_gate.SizeGateError, "not cfg\\(test\\) guarded"):
                 size_gate.source_paths(root)
+            test_owner.write_text(
+                '#[cfg(test)]\n#[path = "compile/tests.rs"]\nmod tests;\n',
+                encoding="utf-8",
+            )
+            oracle_path = "crates/quanta-gqlang-v2-pipeline/src/execution_digest_oracle.rs"
+            oracle_file = root / oracle_path
+            oracle_file.write_text("fn digest_fixture() {}\n", encoding="utf-8")
+            oracle_owner = root / "crates/quanta-gqlang-v2-pipeline/src/execution.rs"
+            oracle_owner.write_text(
+                '// #[cfg(test)]\n#[path = "execution_digest_oracle.rs"]\nmod digest_oracle;\n',
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(size_gate.SizeGateError, "not cfg\\(test\\) guarded"):
+                size_gate.source_paths(root)
+            oracle_owner.write_text(
+                '#[cfg(test)]\n#[path = "execution_digest_oracle.rs"]\nmod digest_oracle;\n',
+                encoding="utf-8",
+            )
+            paths = size_gate.source_paths(root)
+            self.assertIn(oracle_path, paths)
+            counts = {name: 1 for name in paths}
+            counts[oracle_path] = 1201
+            self.assertEqual(
+                size_gate.evaluate(paths, counts, {"production": 1200, "test": 2500}, {}),
+                [],
+            )
 
     def test_rust_cargo_and_nextest_semantic_overrides_are_removed(self) -> None:
         source = {

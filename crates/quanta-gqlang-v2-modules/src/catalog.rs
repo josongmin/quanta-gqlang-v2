@@ -9,19 +9,26 @@ use crate::graph::{
 };
 use crate::lockfile::{CatalogPackActivationV2, ValidatedPackAuthorityV2};
 use crate::manifest::{cycle_with_legacy_steps, PackIdV2};
+use crate::session_identity::DocumentSessionIdentityV2;
+use crate::session_identity::PredeclaredRequestCustodyV3;
 use crate::signature::{CallableKindV2, SignatureInputV2, SignatureV2};
 
+mod predeclaration;
+mod request_final_demand;
 mod view_topology;
 
 use crate::ModuleDiagnosticV2;
+pub use predeclaration::DocumentPredeclareRequestErrorV3;
+pub(crate) use predeclaration::PredeclaredDocumentAssetsV2;
 use quanta_gqlang_v2_hir::{
     CheckedLocatedSpanV2, LocatedSpanV2, SourceRegistryIdentityV2, SourceRegistryViewV2,
 };
 use quanta_gqlang_v2_types::{
     RelationTypeV1, ResolvedHostPredicateCallableV2, ResolvedHostPredicateKeyV2, ValueTypeV1,
 };
+pub(crate) use request_final_demand::request_final_catalog_bytes_v3;
 pub use view_topology::DocumentViewTopologyProofV2;
-pub(crate) use view_topology::DocumentViewTopologyStateV2;
+pub(crate) use view_topology::{request_topology_bytes_v3, DocumentViewTopologyStateV2};
 
 // Checked external and document catalog authority -------------------------
 
@@ -566,13 +573,25 @@ pub struct DocumentCatalogAssetInputV2 {
 }
 /// One local asset sealed during document predeclaration. Its ID is derived by
 /// modules, not supplied by the semantic consumer.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct PredeclaredDocumentAssetV2 {
     id: CatalogAssetIdV2,
     kind: NamespaceKindV2,
     location: CheckedLocatedSpanV2,
-    session_key: Arc<()>,
+    session_key: Arc<DocumentSessionIdentityV2>,
+    input_ordinal: usize,
+    _request_custody: Option<Arc<PredeclaredRequestCustodyV3>>,
 }
+impl PartialEq for PredeclaredDocumentAssetV2 {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.kind == other.kind
+            && self.location == other.location
+            && self.session_key == other.session_key
+            && self.input_ordinal == other.input_ordinal
+    }
+}
+impl Eq for PredeclaredDocumentAssetV2 {}
 impl PredeclaredDocumentAssetV2 {
     #[must_use]
     pub const fn id(&self) -> &CatalogAssetIdV2 {
@@ -586,7 +605,12 @@ impl PredeclaredDocumentAssetV2 {
     pub const fn location(&self) -> &CheckedLocatedSpanV2 {
         &self.location
     }
-    pub(crate) fn belongs_to(&self, key: &Arc<()>) -> bool {
+    /// Position in the authored input sequence, retained across ID sorting.
+    #[must_use]
+    pub const fn input_ordinal(&self) -> usize {
+        self.input_ordinal
+    }
+    pub(crate) fn belongs_to(&self, key: &Arc<DocumentSessionIdentityV2>) -> bool {
         Arc::ptr_eq(&self.session_key, key)
     }
 }
@@ -616,7 +640,7 @@ pub struct ResolvedDocumentCatalogReferenceV2 {
     kind: NamespaceKindV2,
     origin: DocumentCatalogReferenceOriginV2,
     location: CheckedLocatedSpanV2,
-    session_key: Arc<()>,
+    session_key: Arc<DocumentSessionIdentityV2>,
 }
 impl ResolvedDocumentCatalogReferenceV2 {
     pub(crate) fn new(
@@ -624,7 +648,7 @@ impl ResolvedDocumentCatalogReferenceV2 {
         kind: NamespaceKindV2,
         origin: DocumentCatalogReferenceOriginV2,
         location: CheckedLocatedSpanV2,
-        session_key: Arc<()>,
+        session_key: Arc<DocumentSessionIdentityV2>,
     ) -> Self {
         Self {
             id,
@@ -650,7 +674,7 @@ impl ResolvedDocumentCatalogReferenceV2 {
     pub const fn location(&self) -> &CheckedLocatedSpanV2 {
         &self.location
     }
-    pub(crate) fn belongs_to(&self, key: &Arc<()>) -> bool {
+    pub(crate) fn belongs_to(&self, key: &Arc<DocumentSessionIdentityV2>) -> bool {
         Arc::ptr_eq(&self.session_key, key)
     }
 }
@@ -714,7 +738,7 @@ impl ResolvedHostPredicateProofV2 {
         self.callable.key()
     }
 
-    pub(crate) fn belongs_to(&self, key: &Arc<()>) -> bool {
+    pub(crate) fn belongs_to(&self, key: &Arc<DocumentSessionIdentityV2>) -> bool {
         self.reference.belongs_to(key)
     }
 }
@@ -831,95 +855,25 @@ pub struct DocumentCatalogFinalInputV2 {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PredeclaredDocumentAssetsV2 {
-    assets: BTreeMap<CatalogAssetIdV2, NamespaceKindV2>,
-    locations: BTreeMap<CatalogAssetIdV2, CheckedLocatedSpanV2>,
-    session_key: Arc<()>,
-}
-impl PredeclaredDocumentAssetsV2 {
-    pub(crate) fn try_new(
-        inputs: Vec<DocumentCatalogAssetInputV2>,
-        source_registry: &SourceRegistryViewV2,
-        session: &mut ModuleBudgetSessionV2,
-        session_key: Arc<()>,
-    ) -> Result<Self, ModuleDiagnosticV2> {
-        let mut assets = BTreeMap::new();
-        let mut locations = BTreeMap::new();
-        for asset in inputs {
-            session.charge_node()?;
-            session.charge_string(asset.owner_module_id.as_str())?;
-            session.charge_string(&asset.local_name)?;
-            ensure_registry(&asset.location, source_registry)?;
-            let id = CatalogAssetIdV2::derive(
-                asset.owner_module_id,
-                asset.namespace_kind,
-                &asset.local_name,
-                &asset.location,
-            )?;
-            if let Some(original) = locations.get(&id) {
-                return Err(ModuleDiagnosticV2::conflict(
-                    "modules.duplicate_document_catalog_asset",
-                    "duplicate document catalog asset",
-                    &asset.location,
-                    original,
-                ));
-            }
-            locations.insert(id.clone(), asset.location);
-            assets.insert(id, asset.namespace_kind);
-        }
-        Ok(Self {
-            assets,
-            locations,
-            session_key,
-        })
-    }
-    pub(crate) fn get(&self, id: &CatalogAssetIdV2) -> Option<NamespaceKindV2> {
-        self.assets.get(id).copied()
-    }
-    pub(crate) fn location(&self, id: &CatalogAssetIdV2) -> Option<&CheckedLocatedSpanV2> {
-        self.locations.get(id)
-    }
-    pub(crate) fn iter(&self) -> impl Iterator<Item = PredeclaredDocumentAssetV2> + '_ {
-        self.assets.iter().filter_map(|(id, kind)| {
-            self.locations
-                .get(id)
-                .map(|location| PredeclaredDocumentAssetV2 {
-                    id: id.clone(),
-                    kind: *kind,
-                    location: location.clone(),
-                    session_key: self.session_key.clone(),
-                })
-        })
-    }
-    pub(crate) fn belongs_to(&self, key: &Arc<()>) -> bool {
-        Arc::ptr_eq(&self.session_key, key)
-    }
-}
-
-#[derive(Clone, Debug)]
 pub struct DocumentCatalogAuthorityV2 {
-    assets: BTreeMap<CatalogAssetIdV2, NamespaceKindV2>,
-    profiles: BTreeMap<CatalogAssetIdV2, ProfileAdmissionV2>,
+    assets: Arc<PredeclaredDocumentAssetsV2>,
+    profiles: Vec<(CatalogAssetIdV2, ProfileAdmissionV2, CheckedLocatedSpanV2)>,
     dependencies: Vec<DocumentCatalogDependencyV2>,
     activations: crate::ValidatedPackActivationsV2,
     require_certified: Option<LocatedSpanV2>,
     registry_identity: SourceRegistryIdentityV2,
 }
 impl DocumentCatalogAuthorityV2 {
-    #[expect(
-        clippy::too_many_lines,
-        reason = "legacy closed catalog assembly transaction"
-    )]
     pub(crate) fn try_new_predeclared(
         input: DocumentCatalogFinalInputV2,
-        predeclared: &PredeclaredDocumentAssetsV2,
+        predeclared: &Arc<PredeclaredDocumentAssetsV2>,
         topology: &DocumentViewTopologyProofV2,
         visible: &crate::ResolvedGraphV2,
         external: &ExternalCatalogV2,
         packs: &ValidatedPackAuthorityV2,
         source_registry: &SourceRegistryViewV2,
         session: &mut ModuleBudgetSessionV2,
-        session_key: &Arc<()>,
+        session_key: &Arc<DocumentSessionIdentityV2>,
     ) -> Result<Self, ModuleDiagnosticV2> {
         if !predeclared.belongs_to(session_key) {
             return Err(ModuleDiagnosticV2::without_location(
@@ -933,161 +887,31 @@ impl DocumentCatalogAuthorityV2 {
                 "View topology proof belongs to another document validator",
             ));
         }
+        let DocumentCatalogFinalInputV2 {
+            profile_admissions,
+            activations,
+            require_certified_directives,
+            family_references,
+        } = input;
         // Activation authority participates in REQUIRE CERTIFIED reachability,
         // so validate and seal it before certification closure.
         let activations = packs.validate_document_activations(
-            input.activations,
+            activations,
             &source_registry.identity(),
             session,
         )?;
-        let assets = predeclared.assets.clone();
-        let asset_locations = &predeclared.locations;
-        let mut profiles = BTreeMap::new();
-        let mut profile_locations: BTreeMap<CatalogAssetIdV2, CheckedLocatedSpanV2> =
-            BTreeMap::new();
-        for profile in input.profile_admissions {
-            session.charge_edge()?;
-            session.charge_string(profile.profile.module_id.as_str())?;
-            session.charge_string(&profile.profile.local_name)?;
-            ensure_registry(&profile.location, source_registry)?;
-            ensure_registry(&profile.profile.location, source_registry)?;
-            let profile_asset_id = profile.profile.derive()?;
-            match assets.get(&profile_asset_id) {
-                Some(NamespaceKindV2::Profile) => {}
-                Some(_) => {
-                    return Err(ModuleDiagnosticV2::new(
-                        "modules.profile_admission_wrong_kind",
-                        "profile admission target is not a Profile",
-                        &profile.location,
-                    ))
-                }
-                None => {
-                    return Err(ModuleDiagnosticV2::new(
-                        "modules.unknown_profile_admission",
-                        "profile admission target is absent",
-                        &profile.location,
-                    ))
-                }
-            }
-            if let Some(original) = profile_locations.get(&profile_asset_id) {
-                return Err(ModuleDiagnosticV2::conflict(
-                    "modules.duplicate_profile_admission",
-                    "duplicate profile admission",
-                    &profile.location,
-                    original,
-                ));
-            }
-            profile_locations.insert(profile_asset_id.clone(), profile.location);
-            profiles.insert(profile_asset_id, profile.admission);
-        }
-        for (id, kind) in &assets {
-            if *kind == NamespaceKindV2::Profile && !profiles.contains_key(id) {
-                let Some(location) = asset_locations.get(id) else {
-                    return Err(ModuleDiagnosticV2::without_location(
-                        "modules.missing_profile_admission",
-                        "profile location missing from document catalog",
-                    ));
-                };
-                return Err(ModuleDiagnosticV2::new(
-                    "modules.missing_profile_admission",
-                    "local Profile requires exactly one admission",
-                    location,
-                ));
-            }
-        }
-        let mut dependency_edges = topology
-            .state()
-            .dependencies
-            .iter()
-            .cloned()
-            .map(|edge| {
-                (
-                    (edge.source_asset_id.clone(), edge.target_asset_id.clone()),
-                    edge,
-                )
-            })
-            .collect::<BTreeMap<_, _>>();
-        for reference in input.family_references {
-            session.charge_edge()?;
-            ensure_registry(&reference.location, source_registry)?;
-            ensure_registry(&reference.source.location, source_registry)?;
-            ensure_registry(&reference.target.location, source_registry)?;
-            if !reference.source.belongs_to(session_key)
-                || !reference.target.belongs_to(session_key)
-            {
-                return Err(ModuleDiagnosticV2::new(
-                    "modules.catalog_reference_session_mismatch",
-                    "family reference proof belongs to another document validator",
-                    &reference.location,
-                ));
-            }
-            let source_id = reference.source.id.clone();
-            if predeclared.get(&source_id) != Some(reference.family.source_kind())
-                || predeclared.location(&source_id) != Some(&reference.source.location)
-                || reference.source.kind != reference.family.source_kind()
-            {
-                return Err(ModuleDiagnosticV2::new(
-                    "modules.catalog_dependency_source_wrong_kind",
-                    "family reference source is not the matching predeclared local asset",
-                    &reference.location,
-                ));
-            }
-            if reference.target.kind != reference.family.target_kind() {
-                return Err(ModuleDiagnosticV2::new(
-                    "modules.catalog_reference_kind_mismatch",
-                    "family reference target kind differs from required kind",
-                    &reference.location,
-                ));
-            }
-            let target_id = reference.target.id.clone();
-            let target_exists = predeclared.get(&target_id) == Some(reference.target.kind)
-                || external
-                    .asset(&target_id)
-                    .is_some_and(|asset| asset.kind() == reference.target.kind)
-                || visible.visible_bindings().iter().any(|binding| {
-                    binding.resolved_asset_id() == &target_id
-                        && binding.namespace_kind() == reference.target.kind
-                });
-            if !target_exists {
-                return Err(ModuleDiagnosticV2::new(
-                    "modules.unknown_catalog_reference",
-                    "family reference target is absent from sealed document or host authority",
-                    &reference.location,
-                ));
-            }
-            let key = (source_id.clone(), target_id.clone());
-            let edge = DocumentCatalogDependencyV2 {
-                source_asset_id: source_id,
-                target_asset_id: target_id,
-                expected_target_kind: reference.family.target_kind(),
-                family: Some(reference.family),
-                location: reference.location,
-            };
-            match dependency_edges.get_mut(&key) {
-                Some(existing)
-                    if existing.expected_target_kind != edge.expected_target_kind
-                        || existing.family != edge.family =>
-                {
-                    return Err(ModuleDiagnosticV2::new(
-                        "modules.catalog_dependency_kind_conflict",
-                        "duplicate edge disagrees on expected kind",
-                        &edge.location,
-                    ));
-                }
-                Some(existing)
-                    if loc_key(edge.location.location())
-                        < loc_key(existing.location.location()) =>
-                {
-                    *existing = edge;
-                }
-                Some(_) => {}
-                None => {
-                    dependency_edges.insert(key, edge);
-                }
-            }
-        }
+        let context = CatalogSealContext {
+            predeclared,
+            topology,
+            visible,
+            external,
+            source_registry,
+            session_key,
+        };
+        let profiles = admit_profiles(profile_admissions, &context, session)?;
+        let dependency_edges = merge_family_references(family_references, &context, session)?;
         let mut require_location: Option<CheckedLocatedSpanV2> = None;
-        for directive in input.require_certified_directives {
+        for directive in require_certified_directives {
             session.charge_edge()?;
             ensure_registry(&directive.location, source_registry)?;
             if require_location.as_ref().map_or(true, |current| {
@@ -1097,7 +921,7 @@ impl DocumentCatalogAuthorityV2 {
             }
         }
         if let Some(require) = &require_location {
-            for (id, admission) in &profiles {
+            for (id, admission, _) in &profiles {
                 if *admission != ProfileAdmissionV2::CertifiedOnly {
                     return Err(ModuleDiagnosticV2::new(
                         "modules.certified_required_violation",
@@ -1109,7 +933,7 @@ impl DocumentCatalogAuthorityV2 {
                     ));
                 }
             }
-            let reachable = reachable_external_profiles(&dependency_edges, external, &activations);
+            let reachable = reachable_external_profiles(&dependency_edges, external, &activations)?;
             for asset in reachable {
                 if let ExternalCatalogPayloadV2::Profile(admission) = asset.payload() {
                     if *admission != ProfileAdmissionV2::CertifiedOnly {
@@ -1126,23 +950,25 @@ impl DocumentCatalogAuthorityV2 {
             }
         }
         Ok(Self {
-            assets,
+            assets: predeclared.clone(),
             profiles,
-            dependencies: dependency_edges.into_values().collect(),
+            dependencies: dependency_edges,
             activations,
             require_certified: require_location.map(|location| location.location()),
             registry_identity: source_registry.identity(),
         })
     }
     pub fn assets(&self) -> impl Iterator<Item = (&CatalogAssetIdV2, NamespaceKindV2)> {
-        self.assets.iter().map(|(id, kind)| (id, *kind))
+        self.assets.iter_borrowed().map(|(id, kind, _)| (id, kind))
     }
     #[must_use]
     pub const fn activations(&self) -> &crate::ValidatedPackActivationsV2 {
         &self.activations
     }
     pub fn profiles(&self) -> impl Iterator<Item = (&CatalogAssetIdV2, ProfileAdmissionV2)> {
-        self.profiles.iter().map(|(id, admission)| (id, *admission))
+        self.profiles
+            .iter()
+            .map(|(id, admission, _)| (id, *admission))
     }
     /// Exact validated dependency and family-reference facts in stable ID order.
     #[must_use]
@@ -1159,21 +985,209 @@ impl DocumentCatalogAuthorityV2 {
     }
 }
 
+struct CatalogSealContext<'a> {
+    predeclared: &'a PredeclaredDocumentAssetsV2,
+    topology: &'a DocumentViewTopologyProofV2,
+    visible: &'a crate::ResolvedGraphV2,
+    external: &'a ExternalCatalogV2,
+    source_registry: &'a SourceRegistryViewV2,
+    session_key: &'a Arc<DocumentSessionIdentityV2>,
+}
+
+fn admit_profiles(
+    profile_admissions: Vec<ProfileAdmissionInputV2>,
+    context: &CatalogSealContext<'_>,
+    session: &mut ModuleBudgetSessionV2,
+) -> Result<Vec<(CatalogAssetIdV2, ProfileAdmissionV2, CheckedLocatedSpanV2)>, ModuleDiagnosticV2> {
+    let source_registry = context.source_registry;
+    let mut profiles: Vec<(CatalogAssetIdV2, ProfileAdmissionV2, CheckedLocatedSpanV2)> =
+        Vec::new();
+    for profile in profile_admissions {
+        session.charge_edge()?;
+        session.charge_string(profile.profile.module_id.as_str())?;
+        session.charge_string(&profile.profile.local_name)?;
+        ensure_registry(&profile.location, source_registry)?;
+        ensure_registry(&profile.profile.location, source_registry)?;
+        let profile_asset_id = profile.profile.derive()?;
+        match context.predeclared.get(&profile_asset_id) {
+            Some(NamespaceKindV2::Profile) => {}
+            Some(_) => {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.profile_admission_wrong_kind",
+                    "profile admission target is not a Profile",
+                    &profile.location,
+                ))
+            }
+            None => {
+                return Err(ModuleDiagnosticV2::new(
+                    "modules.unknown_profile_admission",
+                    "profile admission target is absent",
+                    &profile.location,
+                ))
+            }
+        }
+        match profiles.binary_search_by(|(id, _, _)| id.cmp(&profile_asset_id)) {
+            Ok(index) => {
+                let Some((_, _, original)) = profiles.get(index) else {
+                    return Err(ModuleDiagnosticV2::without_location(
+                        "modules.internal_profile_index_mismatch",
+                        "sorted profile index is outside the admitted profile set",
+                    ));
+                };
+                return Err(ModuleDiagnosticV2::conflict(
+                    "modules.duplicate_profile_admission",
+                    "duplicate profile admission",
+                    &profile.location,
+                    original,
+                ));
+            }
+            Err(index) => profiles.insert(
+                index,
+                (profile_asset_id, profile.admission, profile.location),
+            ),
+        }
+    }
+    for (id, kind, _) in context.predeclared.iter_borrowed() {
+        if kind == NamespaceKindV2::Profile
+            && profiles
+                .binary_search_by(|(candidate, _, _)| candidate.cmp(id))
+                .is_err()
+        {
+            let Some(location) = context.predeclared.location(id) else {
+                return Err(ModuleDiagnosticV2::without_location(
+                    "modules.missing_profile_admission",
+                    "profile location missing from document catalog",
+                ));
+            };
+            return Err(ModuleDiagnosticV2::new(
+                "modules.missing_profile_admission",
+                "local Profile requires exactly one admission",
+                location,
+            ));
+        }
+    }
+    Ok(profiles)
+}
+
+fn merge_family_references(
+    family_references: Vec<DocumentCatalogFamilyReferenceInputV2>,
+    context: &CatalogSealContext<'_>,
+    session: &mut ModuleBudgetSessionV2,
+) -> Result<Vec<DocumentCatalogDependencyV2>, ModuleDiagnosticV2> {
+    let topology = context.topology;
+    let predeclared = context.predeclared;
+    let visible = context.visible;
+    let external = context.external;
+    let source_registry = context.source_registry;
+    let session_key = context.session_key;
+    let mut dependency_edges = topology.state().dependencies.to_vec();
+    for reference in family_references {
+        session.charge_edge()?;
+        ensure_registry(&reference.location, source_registry)?;
+        ensure_registry(&reference.source.location, source_registry)?;
+        ensure_registry(&reference.target.location, source_registry)?;
+        if !reference.source.belongs_to(session_key) || !reference.target.belongs_to(session_key) {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.catalog_reference_session_mismatch",
+                "family reference proof belongs to another document validator",
+                &reference.location,
+            ));
+        }
+        let source_id = reference.source.id.clone();
+        if predeclared.get(&source_id) != Some(reference.family.source_kind())
+            || predeclared.location(&source_id) != Some(&reference.source.location)
+            || reference.source.kind != reference.family.source_kind()
+        {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.catalog_dependency_source_wrong_kind",
+                "family reference source is not the matching predeclared local asset",
+                &reference.location,
+            ));
+        }
+        if reference.target.kind != reference.family.target_kind() {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.catalog_reference_kind_mismatch",
+                "family reference target kind differs from required kind",
+                &reference.location,
+            ));
+        }
+        let target_id = reference.target.id.clone();
+        let target_exists = predeclared.get(&target_id) == Some(reference.target.kind)
+            || external
+                .asset(&target_id)
+                .is_some_and(|asset| asset.kind() == reference.target.kind)
+            || visible.visible_bindings().iter().any(|binding| {
+                binding.resolved_asset_id() == &target_id
+                    && binding.namespace_kind() == reference.target.kind
+            });
+        if !target_exists {
+            return Err(ModuleDiagnosticV2::new(
+                "modules.unknown_catalog_reference",
+                "family reference target is absent from sealed document or host authority",
+                &reference.location,
+            ));
+        }
+        let edge = DocumentCatalogDependencyV2 {
+            source_asset_id: source_id,
+            target_asset_id: target_id,
+            expected_target_kind: reference.family.target_kind(),
+            family: Some(reference.family),
+            location: reference.location,
+        };
+        match dependency_edges.binary_search_by(|existing| {
+            (&existing.source_asset_id, &existing.target_asset_id)
+                .cmp(&(&edge.source_asset_id, &edge.target_asset_id))
+        }) {
+            Ok(index) => {
+                let Some(existing) = dependency_edges.get_mut(index) else {
+                    return Err(ModuleDiagnosticV2::without_location(
+                        "modules.internal_dependency_index_mismatch",
+                        "sorted dependency index is outside the sealed edge set",
+                    ));
+                };
+                if existing.expected_target_kind != edge.expected_target_kind
+                    || existing.family != edge.family
+                {
+                    return Err(ModuleDiagnosticV2::new(
+                        "modules.catalog_dependency_kind_conflict",
+                        "duplicate edge disagrees on expected kind",
+                        &edge.location,
+                    ));
+                }
+                if loc_key(edge.location.location()) < loc_key(existing.location.location()) {
+                    *existing = edge;
+                }
+            }
+            Err(index) => dependency_edges.insert(index, edge),
+        }
+    }
+    Ok(dependency_edges)
+}
+
 fn reachable_external_profiles<'a>(
-    edges: &BTreeMap<(CatalogAssetIdV2, CatalogAssetIdV2), DocumentCatalogDependencyV2>,
+    edges: &'a [DocumentCatalogDependencyV2],
     external: &'a ExternalCatalogV2,
     activations: &crate::ValidatedPackActivationsV2,
-) -> Vec<&'a ExternalCatalogAssetV2> {
-    let mut queue = edges
-        .values()
-        .map(|edge| edge.target_asset_id.clone())
-        .collect::<Vec<_>>();
+) -> Result<Vec<&'a ExternalCatalogAssetV2>, ModuleDiagnosticV2> {
+    let (queue_slots, profile_slots) = reachable_profile_slots_v3(
+        edges.len(),
+        external,
+        activations.iter().map(|activation| activation.pack_id()),
+    )
+    .ok_or_else(|| {
+        ModuleDiagnosticV2::without_location(
+            "modules.resource_exhausted",
+            "reachable profile capacity overflowed",
+        )
+    })?;
+    let mut queue = Vec::with_capacity(queue_slots);
+    queue.extend(edges.iter().map(|edge| &edge.target_asset_id));
     for activation in activations.iter() {
         queue.extend(external.iter().filter_map(|asset| match asset.payload() {
             ExternalCatalogPayloadV2::Pack(contract)
                 if contract.pack_id() == activation.pack_id() =>
             {
-                Some(asset.id().clone())
+                Some(asset.id())
             }
             ExternalCatalogPayloadV2::Pack(_)
             | ExternalCatalogPayloadV2::Value(_)
@@ -1192,24 +1206,50 @@ fn reachable_external_profiles<'a>(
             | ExternalCatalogPayloadV2::Rule(_) => None,
         }));
     }
-    let mut seen = std::collections::BTreeSet::new();
-    let mut profiles = Vec::new();
+    let mut seen = Vec::with_capacity(queue_slots);
+    let mut profiles = Vec::with_capacity(profile_slots);
     while let Some(id) = queue.pop() {
-        if !seen.insert(id.clone()) {
-            continue;
+        match seen.binary_search(&id) {
+            Ok(_) => continue,
+            Err(index) => seen.insert(index, id),
         }
-        if let Some(asset) = external.asset(&id) {
+        if let Some(asset) = external.asset(id) {
             if asset.kind == NamespaceKindV2::Profile {
                 profiles.push(asset);
             }
-            queue.extend(
-                asset
-                    .dependencies
-                    .iter()
-                    .map(|edge| edge.target_asset_id.clone()),
-            );
+            queue.extend(asset.dependencies.iter().map(|edge| &edge.target_asset_id));
         }
     }
-    profiles.sort_by_key(|asset| asset.id.clone());
-    profiles
+    // External catalog IDs are unique; unstable ordering preserves the exact
+    // ID order without allocating stable-sort scratch.
+    profiles.sort_unstable_by(|left, right| left.id.cmp(&right.id));
+    Ok(profiles)
+}
+
+pub(super) fn reachable_profile_slots_v3<'a>(
+    dependency_count: usize,
+    external: &ExternalCatalogV2,
+    activations: impl Iterator<Item = &'a PackIdV2>,
+) -> Option<(usize, usize)> {
+    let mut queue_slots = dependency_count;
+    for activation in activations {
+        let matching_packs = external
+            .iter()
+            .filter(|asset| {
+                matches!(
+                    asset.payload(),
+                    ExternalCatalogPayloadV2::Pack(contract) if contract.pack_id() == activation
+                )
+            })
+            .count();
+        queue_slots = queue_slots.checked_add(matching_packs)?;
+    }
+    let mut profile_slots = 0_usize;
+    for asset in external.iter() {
+        queue_slots = queue_slots.checked_add(asset.dependencies.len())?;
+        if asset.kind == NamespaceKindV2::Profile {
+            profile_slots = profile_slots.checked_add(1)?;
+        }
+    }
+    Some((queue_slots, profile_slots))
 }

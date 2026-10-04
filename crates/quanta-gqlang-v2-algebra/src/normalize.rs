@@ -7,8 +7,9 @@ use crate::node::{
 };
 use quanta_gqlang_v2_sema::{
     CheckedLocatedSpanV2, DownstreamBudgetReceiptV2, JoinModeV2, RelationExistsPolarityV2,
-    ResolvedCompositionBodyV2, ResolvedCompositionProducerV2, SemanticDocumentV2, SemanticItemIdV2,
-    SemanticItemV2, TypedBoolExprV2, TypedExprShapeV2, TypedExprV2, TypedRelationExprV2,
+    RelationOutputContractV2, ResolvedCompositionBodyV2, ResolvedCompositionProducerV2,
+    SemanticDocumentV2, SemanticItemIdV2, SemanticItemV2, TypedBoolExprV2, TypedExprShapeV2,
+    TypedExprV2, TypedRelationExprV2,
 };
 use quanta_gqlang_v2_types::{AggregationClassV1, SourceQualifiedNodeIdV2};
 use std::collections::{BTreeMap, BTreeSet};
@@ -482,10 +483,6 @@ enum Frame<'a> {
 
 /// Assemble one node from a finished stage, consuming exactly the child
 /// results this stage's plan lowered.
-#[expect(
-    clippy::too_many_lines,
-    reason = "legacy stage assembly awaits per-stage extraction"
-)]
 fn assemble(
     document: &SemanticDocumentV2,
     item_id: SemanticItemIdV2,
@@ -520,86 +517,7 @@ fn assemble(
             })
         }
         StagePlan::Filter { exists, ordinary } => {
-            let take = 1 + exists.len();
-            if results.len() < take {
-                return Err(invalid_arity(location));
-            }
-            let mut drained: Vec<CheckedAlgebraNodeV2> =
-                results.drain(results.len() - take..).collect();
-            // The lowered children arrive in stable authored order: the
-            // filtered input first, then each EXISTS nested root.
-            let mut chain = drained.remove(0);
-            if exists.len() > 1 {
-                let terms = exists
-                    .into_iter()
-                    .zip(drained)
-                    .map(|(leaf, right)| {
-                        ExistentialTermV2::new(
-                            leaf.expression.key(),
-                            leaf.polarity,
-                            leaf.correlations,
-                            right,
-                        )
-                    })
-                    .collect();
-                chain = CheckedAlgebraNodeV2::new(
-                    item_id,
-                    stage.key(),
-                    location.clone(),
-                    output.clone(),
-                    CheckedAlgebraNodeV2::exists_filter(chain, terms),
-                )
-                .map_err(|()| {
-                    failure(
-                        AlgebraFailureKindV2::InvalidStageContract,
-                        location,
-                        "relational EXISTS conjuncts cannot form a checked algebra filter",
-                    )
-                })?;
-            } else if let Some((leaf, right)) = exists.into_iter().zip(drained).next() {
-                let op = match leaf.polarity {
-                    RelationExistsPolarityV2::Exists => {
-                        CheckedAlgebraNodeV2::semi_join(chain, right, leaf.correlations)
-                    }
-                    RelationExistsPolarityV2::NotExists => {
-                        CheckedAlgebraNodeV2::anti_join(chain, right, leaf.correlations)
-                    }
-                };
-                chain = CheckedAlgebraNodeV2::new(
-                    item_id,
-                    leaf.expression.key(),
-                    leaf.expression.location().clone(),
-                    output.clone(),
-                    op,
-                )
-                .map_err(|()| {
-                    failure(
-                        AlgebraFailureKindV2::InvalidStageContract,
-                        leaf.expression.location(),
-                        "relational EXISTS cannot form a checked algebra join",
-                    )
-                })?;
-            }
-            if !ordinary.is_empty() {
-                let op = CheckedAlgebraNodeV2::filter(chain, ordinary);
-                return CheckedAlgebraNodeV2::new(
-                    item_id,
-                    stage.key(),
-                    location.clone(),
-                    output,
-                    op,
-                )
-                .map_err(|()| {
-                    failure(
-                        AlgebraFailureKindV2::InvalidStageContract,
-                        location,
-                        "filter stage cannot form a checked algebra node",
-                    )
-                });
-            }
-            // A pure relational EXISTS predicate: the deepest Semi/Anti join
-            // is the stage root and no residual Filter node exists.
-            Ok(chain)
+            assemble_filter(item_id, stage, location, output, exists, ordinary, results)
         }
         StagePlan::Project => {
             let expressions = checked_expressions(document, stage.expressions(), location)?;
@@ -734,6 +652,90 @@ fn assemble(
             })
         }
     }
+}
+
+fn assemble_filter(
+    item_id: SemanticItemIdV2,
+    stage: &TypedRelationExprV2,
+    location: &CheckedLocatedSpanV2,
+    output: RelationOutputContractV2,
+    exists: Vec<ExistsLeaf<'_>>,
+    ordinary: Vec<TypedBoolExprV2>,
+    results: &mut Vec<CheckedAlgebraNodeV2>,
+) -> Result<CheckedAlgebraNodeV2, AlgebraDiagnosticV2> {
+    let take = 1 + exists.len();
+    if results.len() < take {
+        return Err(invalid_arity(location));
+    }
+    let mut drained: Vec<CheckedAlgebraNodeV2> = results.drain(results.len() - take..).collect();
+    // The lowered children arrive in stable authored order: the
+    // filtered input first, then each EXISTS nested root.
+    let mut chain = drained.remove(0);
+    if exists.len() > 1 {
+        let terms = exists
+            .into_iter()
+            .zip(drained)
+            .map(|(leaf, right)| {
+                ExistentialTermV2::new(
+                    leaf.expression.key(),
+                    leaf.polarity,
+                    leaf.correlations,
+                    right,
+                )
+            })
+            .collect();
+        chain = CheckedAlgebraNodeV2::new(
+            item_id,
+            stage.key(),
+            location.clone(),
+            output.clone(),
+            CheckedAlgebraNodeV2::exists_filter(chain, terms),
+        )
+        .map_err(|()| {
+            failure(
+                AlgebraFailureKindV2::InvalidStageContract,
+                location,
+                "relational EXISTS conjuncts cannot form a checked algebra filter",
+            )
+        })?;
+    } else if let Some((leaf, right)) = exists.into_iter().zip(drained).next() {
+        let op = match leaf.polarity {
+            RelationExistsPolarityV2::Exists => {
+                CheckedAlgebraNodeV2::semi_join(chain, right, leaf.correlations)
+            }
+            RelationExistsPolarityV2::NotExists => {
+                CheckedAlgebraNodeV2::anti_join(chain, right, leaf.correlations)
+            }
+        };
+        chain = CheckedAlgebraNodeV2::new(
+            item_id,
+            leaf.expression.key(),
+            leaf.expression.location().clone(),
+            output.clone(),
+            op,
+        )
+        .map_err(|()| {
+            failure(
+                AlgebraFailureKindV2::InvalidStageContract,
+                leaf.expression.location(),
+                "relational EXISTS cannot form a checked algebra join",
+            )
+        })?;
+    }
+    if !ordinary.is_empty() {
+        let op = CheckedAlgebraNodeV2::filter(chain, ordinary);
+        return CheckedAlgebraNodeV2::new(item_id, stage.key(), location.clone(), output, op)
+            .map_err(|()| {
+                failure(
+                    AlgebraFailureKindV2::InvalidStageContract,
+                    location,
+                    "filter stage cannot form a checked algebra node",
+                )
+            });
+    }
+    // A pure relational EXISTS predicate: the deepest Semi/Anti join
+    // is the stage root and no residual Filter node exists.
+    Ok(chain)
 }
 
 /// Decompose one checked Bool predicate into its top-level conjunction, in

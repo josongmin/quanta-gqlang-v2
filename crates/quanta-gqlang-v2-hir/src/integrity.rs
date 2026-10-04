@@ -14,7 +14,10 @@
 //! checked constructor: it returns `Ok(CheckedHirV1)` only when all invariants
 //! hold, so a `CheckedHirV1` is a proof token that the embedded tree is sound.
 
-use crate::depth::{check_depths_v2, HirDepthDimensionV2};
+use crate::depth::{
+    check_depths_v2, check_depths_with_source_slots_v3, depth_stack_storage_bytes_v3,
+    HirDepthAdmissionErrorV3, HirDepthDimensionV2,
+};
 use crate::expr::{
     BoolExprHirV1, BoolExprKindV1, CallArgHirV1, LiteralV1, ValueExprHirV1, ValueExprKindV1,
 };
@@ -299,6 +302,24 @@ pub struct HirDocumentV1 {
 /// the single error vocabulary for node identity and span failures.
 pub type HirIntegrityDiagnosticV2 = HirIntegrityErrorV1;
 
+/// Failure of the parser-issued, request-owned integrity scan. Storage and
+/// source-witness failures must not be recast as intrinsic HIR violations.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum HirRequestIntegrityErrorV3 {
+    Integrity(HirIntegrityErrorV1),
+    Storage,
+}
+
+/// Simultaneously live ID-index and iterative depth-stack scratch at the
+/// parser's issued-node upper bound. The caller reserves this on its request
+/// root before the checker creates either Vec.
+#[must_use]
+pub fn request_integrity_scratch_bytes_v3(issued_node_slots: usize) -> Option<usize> {
+    issued_node_slots
+        .checked_mul(std::mem::size_of::<Option<SpanV1>>())?
+        .checked_add(depth_stack_storage_bytes_v3(issued_node_slots)?)
+}
+
 /// Borrowed proof that every root in one document passed one shared integrity
 /// traversal.
 #[derive(Clone, Copy, Debug)]
@@ -324,6 +345,25 @@ impl CheckedHirDocumentOwnedV2 {
     pub fn try_new(document: HirDocumentV1) -> Result<Self, HirIntegrityDiagnosticV2> {
         let node_count = match check_document_v2(&document).map(|checked| checked.node_count()) {
             Ok(count) => count,
+            Err(error) => {
+                drop(document);
+                return Err(error);
+            }
+        };
+        Ok(Self {
+            document,
+            node_count,
+        })
+    }
+
+    /// Consume parser-issued HIR after the caller has admitted
+    /// `request_integrity_scratch_bytes_v3` on its original request root.
+    pub fn try_new_with_source_slots_v3(
+        document: HirDocumentV1,
+        issued_node_slots: usize,
+    ) -> Result<Self, HirRequestIntegrityErrorV3> {
+        let node_count = match check_document_with_source_slots_v3(&document, issued_node_slots) {
+            Ok(checked) => checked.node_count(),
             Err(error) => {
                 drop(document);
                 return Err(error);
@@ -401,6 +441,55 @@ pub fn check_document_v2(
             document,
             node_count: collector.seen.len(),
         }),
+    }
+}
+
+/// Validate source-issued HIR with a finite indexed ID table and bounded
+/// depth stack. The caller must retain its scratch permit through this call.
+pub fn check_document_with_source_slots_v3(
+    document: &HirDocumentV1,
+    issued_node_slots: usize,
+) -> Result<CheckedHirDocumentV2<'_>, HirRequestIntegrityErrorV3> {
+    let mut collector =
+        IntegrityCollector::with_source_slots(document.source_len, issued_node_slots)?;
+    for item in &document.items {
+        let root = HirRootRefV1::Item(item);
+        match check_depths_with_source_slots_v3(
+            root,
+            crate::MAX_SAFE_HIR_EXPRESSION_DEPTH_V2,
+            crate::MAX_SAFE_RELATION_DEPTH_V2,
+            crate::MAX_SAFE_EXPRESSION_DEPTH_V2,
+            issued_node_slots,
+        ) {
+            Ok(()) => {}
+            Err(HirDepthAdmissionErrorV3::Depth(error)) => {
+                return Err(HirRequestIntegrityErrorV3::Integrity(
+                    HirIntegrityErrorV1::ExcessiveDepth {
+                        dimension: error.dimension,
+                        span: error.span,
+                        limit: error.limit,
+                        observed: error.observed,
+                    },
+                ));
+            }
+            Err(HirDepthAdmissionErrorV3::Storage) => {
+                return Err(HirRequestIntegrityErrorV3::Storage);
+            }
+        }
+        root.accept(&mut collector);
+        if collector.error.is_some() || collector.storage_error {
+            break;
+        }
+    }
+    if collector.storage_error {
+        Err(HirRequestIntegrityErrorV3::Storage)
+    } else if let Some(error) = collector.error {
+        Err(HirRequestIntegrityErrorV3::Integrity(error))
+    } else {
+        Ok(CheckedHirDocumentV2 {
+            document,
+            node_count: collector.seen.len(),
+        })
     }
 }
 
@@ -652,11 +741,16 @@ struct IntegrityCollector {
     source_len: usize,
     seen: IntegritySeenV2,
     error: Option<HirIntegrityErrorV1>,
+    storage_error: bool,
     show_non_monotonic: bool,
 }
 
 enum IntegritySeenV2 {
     Hash(HashMap<HirNodeIdV1, SpanV1>),
+    SourceIndexed {
+        spans: Vec<Option<SpanV1>>,
+        count: usize,
+    },
     MonotonicShow {
         previous: Option<(HirNodeIdV1, SpanV1)>,
         count: usize,
@@ -667,6 +761,7 @@ impl IntegritySeenV2 {
     fn len(&self) -> usize {
         match self {
             Self::Hash(seen) => seen.len(),
+            Self::SourceIndexed { count, .. } => *count,
             Self::MonotonicShow { count, .. } => *count,
         }
     }
@@ -674,6 +769,10 @@ impl IntegritySeenV2 {
     fn first_span(&self, id: HirNodeIdV1) -> Option<SpanV1> {
         match self {
             Self::Hash(seen) => seen.get(&id).copied(),
+            Self::SourceIndexed { spans, .. } => spans
+                .get(usize::try_from(id.raw()).ok()?)
+                .copied()
+                .flatten(),
             Self::MonotonicShow { previous, .. } => previous
                 .as_ref()
                 .and_then(|(seen, span)| (*seen == id).then_some(*span)),
@@ -684,6 +783,17 @@ impl IntegritySeenV2 {
         match self {
             Self::Hash(seen) => {
                 let _ = seen.insert(id, span);
+                true
+            }
+            Self::SourceIndexed { spans, count } => {
+                let Some(slot) = usize::try_from(id.raw())
+                    .ok()
+                    .and_then(|index| spans.get_mut(index))
+                else {
+                    return false;
+                };
+                *slot = Some(span);
+                *count += 1;
                 true
             }
             Self::MonotonicShow { previous, count }
@@ -704,8 +814,30 @@ impl IntegrityCollector {
             source_len,
             seen: IntegritySeenV2::Hash(HashMap::new()),
             error: None,
+            storage_error: false,
             show_non_monotonic: false,
         }
+    }
+
+    fn with_source_slots(
+        source_len: usize,
+        issued_node_slots: usize,
+    ) -> Result<Self, HirRequestIntegrityErrorV3> {
+        let mut spans = Vec::new();
+        spans
+            .try_reserve_exact(issued_node_slots)
+            .map_err(|_error| HirRequestIntegrityErrorV3::Storage)?;
+        if spans.capacity() > issued_node_slots {
+            return Err(HirRequestIntegrityErrorV3::Storage);
+        }
+        spans.resize_with(issued_node_slots, || None);
+        Ok(Self {
+            source_len,
+            seen: IntegritySeenV2::SourceIndexed { spans, count: 0 },
+            error: None,
+            storage_error: false,
+            show_non_monotonic: false,
+        })
     }
 
     fn with_monotonic_show(source_len: usize) -> Self {
@@ -716,12 +848,19 @@ impl IntegrityCollector {
                 count: 0,
             },
             error: None,
+            storage_error: false,
             show_non_monotonic: false,
         }
     }
 
     fn record(&mut self, id: HirNodeIdV1, span: SpanV1) {
-        if self.error.is_some() {
+        if self.error.is_some() || self.storage_error {
+            return;
+        }
+        if matches!(&self.seen, IntegritySeenV2::SourceIndexed { spans, .. }
+            if usize::try_from(id.raw()).ok().map_or(true, |index| index >= spans.len()))
+        {
+            self.storage_error = true;
             return;
         }
         if !span.is_well_formed() {
@@ -745,7 +884,11 @@ impl IntegrityCollector {
             return;
         }
         if !self.seen.insert(id, span) {
-            self.show_non_monotonic = true;
+            if matches!(&self.seen, IntegritySeenV2::SourceIndexed { .. }) {
+                self.storage_error = true;
+            } else {
+                self.show_non_monotonic = true;
+            }
         }
     }
 
@@ -906,5 +1049,64 @@ mod show_monotonic_integrity_tests {
             CheckedHirDocumentOwnedV2::try_new_show_monotonic_v2(document),
             Err(ShowIntegrityErrorV2::NonMonotonicIdentity)
         ));
+    }
+}
+
+#[cfg(test)]
+#[expect(
+    clippy::expect_used,
+    reason = "request integrity fixture asserts a finite source census"
+)]
+mod request_integrity_tests {
+    use super::*;
+    use crate::item::ShowCategoryV1;
+
+    fn show(id: u32) -> ProgramItemHirV1 {
+        ProgramItemHirV1::from(PresentationHirV1::new(
+            HirNodeIdV1::from_raw(id),
+            SpanV1::new(0, 11),
+            PresentationKindV1::Show {
+                category: ShowCategoryV1::Models,
+            },
+        ))
+    }
+
+    fn document(items: Vec<ProgramItemHirV1>) -> HirDocumentV1 {
+        HirDocumentV1 {
+            source_id: SourceIdV2::from_raw(1),
+            source_len: 11,
+            items,
+        }
+    }
+
+    #[test]
+    fn source_index_preserves_identity_and_refuses_out_of_census() {
+        let slots = 3;
+        let expected = slots * std::mem::size_of::<Option<SpanV1>>()
+            + depth_stack_storage_bytes_v3(slots).expect("finite three-node stack");
+        assert_eq!(request_integrity_scratch_bytes_v3(slots), Some(expected));
+        let valid = document(vec![show(1), show(2)]);
+        assert_eq!(
+            check_document_with_source_slots_v3(&valid, slots)
+                .expect("valid source-issued IDs")
+                .node_count(),
+            2
+        );
+        let duplicate = document(vec![show(1), show(1)]);
+        assert!(matches!(
+            check_document_with_source_slots_v3(&duplicate, slots),
+            Err(HirRequestIntegrityErrorV3::Integrity(
+                HirIntegrityErrorV1::DuplicateNodeId { .. }
+            ))
+        ));
+        let foreign = document(vec![show(3)]);
+        assert_eq!(
+            check_document_with_source_slots_v3(&foreign, slots).err(),
+            Some(HirRequestIntegrityErrorV3::Storage)
+        );
+        assert_eq!(
+            check_document_with_source_slots_v3(&valid, 1).err(),
+            Some(HirRequestIntegrityErrorV3::Storage)
+        );
     }
 }

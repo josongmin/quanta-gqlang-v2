@@ -25,6 +25,118 @@ struct ModuleDiagnosticDetailsV2 {
     ambiguous_candidates: Vec<AmbiguousCandidateV2>,
 }
 
+const fn decimal_digits(mut value: usize) -> usize {
+    let mut digits = 1;
+    while value >= 10 {
+        value /= 10;
+        digits += 1;
+    }
+    digits
+}
+
+const RESOURCE_MESSAGE_BYTES: usize = "authority_string_bytes limit ".len()
+    + decimal_digits(usize::MAX)
+    + " exceeded by observed value ".len()
+    + decimal_digits(usize::MAX);
+
+/// Fixed carrier for the request reference selector's bounded literal errors.
+/// Ambiguity rows and copied IDs/witnesses are charged from exact candidate
+/// inventories by the producer.
+pub(crate) fn reference_diagnostic_fixed_bytes_v3() -> usize {
+    const MESSAGES: &[&str] = &[
+        "catalog reference uses another registry",
+        "invalid catalog reference path",
+        "visible declaration location lost registry proof",
+        "external declaration location lost registry proof",
+        "host catalog identity has distinct declaration origins",
+        "catalog name resolves to distinct assets",
+        "catalog reference has wrong kind",
+        "catalog reference is absent",
+        "document catalog validator cannot repeat or skip a phase",
+    ];
+    // A budget charge can fail after the read-only preflight only if a
+    // producer's charge census drifts. Keep that diagnostic admitted too:
+    // each formatted number is bounded by the decimal width of usize.
+    std::mem::size_of::<ModuleDiagnosticDetailsV2>()
+        + MESSAGES
+            .iter()
+            .map(|message| message.len())
+            .max()
+            .unwrap_or(0)
+            .max(RESOURCE_MESSAGE_BYTES)
+}
+
+/// Longest emitted topology diagnostic plus the temporary invalid-name
+/// excerpt. The excerpt length is censed from the authored edge names.
+pub(crate) fn topology_diagnostic_fixed_bytes_v3(excerpt_bytes: usize) -> usize {
+    const MESSAGES: &[&str] = &[
+        "predeclaration belongs to another document validator",
+        "target reference kind differs from expected kind",
+        "document dependency source must be a local View",
+        "document dependency target is absent",
+        "catalog target location lost registry proof",
+        "document dependency target has wrong kind",
+        "duplicate edge disagrees on expected kind",
+        "empty document View cycle witness",
+        "document View dependency cycle",
+        "document cycle witness index is outside the validated edge set",
+        "resolved View edge has an unknown local source",
+        "View dependency count overflowed",
+        "resolved View edge has an unknown local target",
+        "View dependency count underflowed",
+        "acyclic View graph did not produce a complete topological order",
+        "location belongs to another source registry",
+        "cycle node capacity overflowed",
+    ];
+    let invalid_name_message = "invalid catalog local name `".len() + excerpt_bytes + "`".len();
+    let message = MESSAGES
+        .iter()
+        .map(|message| message.len())
+        .max()
+        .unwrap_or(0)
+        .max(RESOURCE_MESSAGE_BYTES)
+        .max(invalid_name_message);
+    std::mem::size_of::<ModuleDiagnosticDetailsV2>() + message + excerpt_bytes
+}
+
+pub(crate) fn final_catalog_diagnostic_bytes_v3(excerpt_bytes: usize) -> usize {
+    const MESSAGES: &[&str] = &[
+        "predeclaration belongs to another document validator",
+        "View topology proof belongs to another document validator",
+        "View topology proof was dropped, reordered, or substituted",
+        "document catalog validator cannot repeat or skip a phase",
+        "pack authority has no lock reference",
+        "activation location belongs to another document registry",
+        "duplicate pack activation",
+        "activation lock reference differs from sealed authority",
+        "activation names an unknown pack",
+        "profile admission target is not a Profile",
+        "profile admission target is absent",
+        "duplicate profile admission",
+        "profile location missing from document catalog",
+        "local Profile requires exactly one admission",
+        "catalog dependency capacity overflowed",
+        "family reference proof belongs to another document validator",
+        "family reference source is not the matching predeclared local asset",
+        "family reference target kind differs from required kind",
+        "family reference target is absent from sealed document or host authority",
+        "duplicate edge disagrees on expected kind",
+        "reachable profile capacity overflowed",
+        "location belongs to another source registry",
+    ];
+    let message = MESSAGES
+        .iter()
+        .map(|message| message.len())
+        .max()
+        .unwrap_or(0)
+        .max(RESOURCE_MESSAGE_BYTES)
+        .max("invalid lock reference `".len() + excerpt_bytes + "`".len())
+        .max("invalid catalog local name `".len() + excerpt_bytes + "`".len())
+        .max("profile `".len() + excerpt_bytes + "` is not certified-only".len())
+        .max("external profile `".len() + excerpt_bytes + "` is not certified-only".len());
+    std::mem::size_of::<ModuleDiagnosticDetailsV2>() + message + excerpt_bytes
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ResourceExhaustionV2 {
     dimension: &'static str,
@@ -186,3 +298,23 @@ impl fmt::Display for ModuleDiagnosticV2 {
 }
 
 impl std::error::Error for ModuleDiagnosticV2 {}
+
+#[cfg(test)]
+mod request_storage_tests {
+    use super::{
+        reference_diagnostic_fixed_bytes_v3, ModuleDiagnosticDetailsV2, ModuleDiagnosticV2,
+    };
+
+    #[test]
+    fn reference_diagnostic_carrier_covers_longest_resource_message() {
+        let diagnostic = ModuleDiagnosticV2::resource_exhausted(
+            "authority_string_bytes",
+            usize::MAX,
+            usize::MAX,
+        );
+        assert!(
+            std::mem::size_of::<ModuleDiagnosticDetailsV2>() + diagnostic.details.message.len()
+                <= reference_diagnostic_fixed_bytes_v3()
+        );
+    }
+}

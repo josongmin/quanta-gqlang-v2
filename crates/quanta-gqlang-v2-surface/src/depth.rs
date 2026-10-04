@@ -1,11 +1,12 @@
 //! Surface diagnostics for the shared stack-safe HIR depth admission.
 
 use crate::budget::ParseBudgetDimensionV2;
-use crate::diag::ParseDiagnosticV1;
+use crate::diag::{ParseDiagnosticV1, ParseErrorCodeV1};
 use crate::parser::SurfaceItemV1;
 use quanta_gqlang_v2_hir::{
-    check_depths_v2, BoolExprHirV1, HirDepthDiagnosticV2, HirDepthDimensionV2, HirRootRefV1,
-    ValueExprHirV1, MAX_SAFE_RELATION_DEPTH_V2,
+    check_depths_v2, check_depths_with_source_slots_v3, BoolExprHirV1, HirDepthAdmissionErrorV3,
+    HirDepthDiagnosticV2, HirDepthDimensionV2, HirRootRefV1, ValueExprHirV1,
+    MAX_SAFE_RELATION_DEPTH_V2,
 };
 
 fn surface_diagnostic(error: HirDepthDiagnosticV2) -> ParseDiagnosticV1 {
@@ -31,6 +32,40 @@ pub(crate) fn check_item(
     };
     check_depths_v2(root, expression_limit, relation_limit, expression_limit)
         .map_err(surface_diagnostic)
+}
+
+pub(crate) fn check_item_with_source_slots_v3(
+    item: &SurfaceItemV1,
+    expression_limit: usize,
+    relation_limit: usize,
+    issued_node_slots: usize,
+) -> Result<(), ParseDiagnosticV1> {
+    let root = match item {
+        SurfaceItemV1::Query(query) => HirRootRefV1::Query(query),
+        SurfaceItemV1::Decl(decl) => HirRootRefV1::Decl(decl),
+        SurfaceItemV1::Rule(rule) => HirRootRefV1::Rule(rule),
+        SurfaceItemV1::Program(program) => HirRootRefV1::Item(program),
+    };
+    check_depths_with_source_slots_v3(
+        root,
+        expression_limit,
+        relation_limit,
+        expression_limit,
+        issued_node_slots,
+    )
+    .map_err(|error| match error {
+        HirDepthAdmissionErrorV3::Depth(error) => surface_diagnostic(error),
+        HirDepthAdmissionErrorV3::Storage => ParseDiagnosticV1::new(
+            ParseErrorCodeV1::ResourceExhausted,
+            match item {
+                SurfaceItemV1::Query(query) => query.span,
+                SurfaceItemV1::Decl(decl) => decl.span,
+                SurfaceItemV1::Rule(rule) => rule.span,
+                SurfaceItemV1::Program(program) => program.span(),
+            },
+            "admitted depth scratch could not be materialized",
+        ),
+    })
 }
 
 pub(crate) fn check_value(value: &ValueExprHirV1, limit: usize) -> Result<(), ParseDiagnosticV1> {

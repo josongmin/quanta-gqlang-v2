@@ -30,7 +30,11 @@ mod scope;
 
 pub use diagnostic::BindDiagnosticV1;
 pub use module_graph::{ModuleGraphV1, ModuleGraphViewV1};
-pub use resolve::{BindResultV1, Binder, ParamV1, ResolutionV1, ResolvedTargetV1};
+pub use resolve::{
+    AdmittedBinderDeclarationsV3, AdmittedBinderResolutionV3, BindResultV1, Binder,
+    BinderDeclarationRequestErrorV3, BinderEvidenceReaderV3, ParamV1, ResolutionV1,
+    ResolvedTargetV1,
+};
 pub use scope::{
     BinderKindV1, BindingV1, CaptureV1, LexicalResolutionV1, LexicalScopeV1, ShadowReportKindV1,
     ShadowReportV1,

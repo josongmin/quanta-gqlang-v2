@@ -503,3 +503,100 @@ fn duplicate_unbound_graph_use_key_rejects_before_host_lookup() {
         .target_of_use(graph_id, SpanV1::new(50, 54), "host")
         .is_none());
 }
+
+#[test]
+fn three_max_width_reverse_graph_lists_keep_first_use_and_reject_exact_duplicate() {
+    let b = HirBuilderV1::new();
+    let producer = b.query(
+        b.relation_source(
+            "catalog.users",
+            SpanV1::new(8, 21),
+            None,
+            SpanV1::new(8, 21),
+        ),
+        None,
+        SpanV1::new(0, 21),
+    );
+    let binding = b.composition_binding("p", SpanV1::new(30, 31), producer.into());
+    let reverse_refs = |offset: usize, count: usize| {
+        (offset..offset + count)
+            .map(|ordinal| {
+                let start = 200_000 - ordinal * 8;
+                GraphRefV1 {
+                    name: format!("host_{ordinal:05}"),
+                    span: SpanV1::new(start, start + 7),
+                }
+            })
+            .collect::<Vec<_>>()
+    };
+    let duplicate = GraphRefV1 {
+        name: "p".into(),
+        span: SpanV1::new(40, 41),
+    };
+    let mut via = reverse_refs(0, 4095);
+    via.push(duplicate.clone());
+    let mut through = reverse_refs(4095, 4095);
+    through.push(duplicate.clone());
+    let sanitizers = reverse_refs(8190, 4096);
+    assert_eq!(
+        (via.len(), through.len(), sanitizers.len()),
+        (4096, 4096, 4096)
+    );
+    assert!(via
+        .first()
+        .zip(via.get(4094))
+        .is_some_and(|(first, last)| first.span.start > last.span.start));
+    let graph_body = b.graph_query(
+        GraphQueryKindV1::Reachability,
+        GraphEndpointsV1 {
+            source: Some(GraphRefV1 {
+                name: "p".into(),
+                span: SpanV1::new(50, 51),
+            }),
+            ..GraphEndpointsV1::default()
+        },
+        GraphConstraintsV1 {
+            via,
+            through,
+            sanitizers,
+            ..GraphConstraintsV1::default()
+        },
+        SpanV1::new(35, 200_010),
+    );
+    let graph_id = graph_body.id;
+    let composition = b.composition(
+        vec![binding],
+        "p",
+        SpanV1::new(200_020, 200_021),
+        graph_body.into(),
+        SpanV1::new(0, 200_021),
+    );
+    let graph = ModuleGraphV1::new();
+    let mut binder = Binder::new(&graph);
+    binder.resolve_composition(&composition);
+    let result = binder.finish();
+    assert!(matches!(result.diagnostics(),
+        [BindDiagnosticV1::DuplicateReferenceUse { name, span }]
+            if name == "p" && *span == duplicate.span));
+    let local_uses = result
+        .resolutions()
+        .iter()
+        .filter(|resolution| resolution.reference == graph_id && resolution.name == "p")
+        .collect::<Vec<_>>();
+    assert_eq!(
+        local_uses
+            .iter()
+            .map(|resolution| resolution.span)
+            .collect::<Vec<_>>(),
+        vec![SpanV1::new(50, 51), duplicate.span],
+    );
+    assert!(local_uses.iter().all(|resolution| matches!(
+        &resolution.target,
+        ResolvedTargetV1::Local(binding)
+            if binding.kind == BinderKindV1::CompositionLet
+                && binding.identity() == (composition.id, 0)
+    )));
+    assert!(result
+        .target_of_use(graph_id, duplicate.span, "p")
+        .is_none());
+}

@@ -99,13 +99,18 @@ pub use lexer::{
 };
 pub use materialization::{
     FrontendLexicalHostCeilingV1, FrontendLexicalMaterializationRootV1, FrontendLexicalPermitV1,
+    FrontendRequestMaterializationRootV3, FrontendRequestOwnedValueV3,
+    FrontendRequestStoragePermitV3, FrontendRequestStorageSinkV3, FrontendRetainedStoragePermitV3,
+    FrontendStorageRefusalV3,
 };
 pub use parser::{
     census_source_lexical_materialization_v2, classify_parsed_root_v3, parse_document,
     parse_program, parse_source_document_v2, parse_source_document_with_lexical_owner_v1,
-    AdmittedLexicalParsedDocumentV1, AdmittedLexicalValueV1, ParsedDocumentV1, ParsedDocumentV2,
-    ParsedProgramV1, SourceRootFamilyV3, SurfaceItemV1,
+    parse_source_document_with_request_owner_v3, AdmittedLexicalParsedDocumentV1,
+    AdmittedLexicalValueV1, ParsedDocumentV1, ParsedDocumentV2, ParsedProgramV1,
+    SourceRootFamilyV3, SurfaceItemV1,
 };
+pub use quanta_gqlang_v2_hir::HirDocumentV1;
 
 use cursor::CursorV1;
 use quanta_gqlang_v2_hir::{BoolExprHirV1, HirBuilderV1, SourceIdV2, ValueExprHirV1};

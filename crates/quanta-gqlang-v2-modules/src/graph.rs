@@ -8,6 +8,9 @@ use crate::visibility::VisibilityV2;
 use crate::ModuleDiagnosticV2;
 use quanta_gqlang_v2_hir::{CheckedLocatedSpanV2, LocatedSpanV2, SourceRegistryIdentityV2};
 
+mod catalog_identity;
+pub use catalog_identity::{CatalogAssetIdV2, CatalogAssetRefInputV2};
+
 /// Canonical, collision-free qualified module identity.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ModuleIdV2(String);
@@ -101,71 +104,6 @@ impl NamespaceKindV2 {
                 location,
             )),
         }
-    }
-}
-
-/// Derived identity of one catalog declaration.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CatalogAssetIdV2 {
-    module_id: ModuleIdV2,
-    namespace_kind: NamespaceKindV2,
-    local_name: String,
-}
-
-impl CatalogAssetIdV2 {
-    pub(crate) fn derive(
-        module_id: ModuleIdV2,
-        namespace_kind: NamespaceKindV2,
-        local_name: &str,
-        location: &CheckedLocatedSpanV2,
-    ) -> Result<Self, ModuleDiagnosticV2> {
-        if !is_catalog_local_name(local_name) {
-            return Err(ModuleDiagnosticV2::new(
-                "modules.invalid_catalog_name",
-                format!("invalid catalog local name `{}`", excerpt(local_name)),
-                location,
-            ));
-        }
-        Ok(Self {
-            module_id,
-            namespace_kind,
-            local_name: local_name.to_owned(),
-        })
-    }
-
-    #[must_use]
-    pub const fn module_id(&self) -> &ModuleIdV2 {
-        &self.module_id
-    }
-
-    #[must_use]
-    pub const fn namespace_kind(&self) -> NamespaceKindV2 {
-        self.namespace_kind
-    }
-
-    #[must_use]
-    pub fn local_name(&self) -> &str {
-        &self.local_name
-    }
-}
-
-/// Declarative asset reference resolved inside an authority transaction.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct CatalogAssetRefInputV2 {
-    pub module_id: ModuleIdV2,
-    pub namespace_kind: NamespaceKindV2,
-    pub local_name: String,
-    pub location: CheckedLocatedSpanV2,
-}
-
-impl CatalogAssetRefInputV2 {
-    pub(crate) fn derive(self) -> Result<CatalogAssetIdV2, ModuleDiagnosticV2> {
-        CatalogAssetIdV2::derive(
-            self.module_id,
-            self.namespace_kind,
-            &self.local_name,
-            &self.location,
-        )
     }
 }
 
@@ -959,7 +897,8 @@ pub(crate) fn minimal_cycle_witness<K: Ord + Clone>(graph: &[Vec<(usize, K)>]) -
             continue;
         }
         visited[root] = true;
-        let mut stack = vec![(root, 0usize)];
+        let mut stack = Vec::with_capacity(graph.len());
+        stack.push((root, 0usize));
         while let Some((node, next_edge)) = stack.last_mut() {
             if *next_edge == graph[*node].len() {
                 finish.push(*node);
@@ -974,7 +913,16 @@ pub(crate) fn minimal_cycle_witness<K: Ord + Clone>(graph: &[Vec<(usize, K)>]) -
             }
         }
     }
-    let mut reverse = vec![Vec::new(); graph.len()];
+    let mut incoming = vec![0_usize; graph.len()];
+    for edges in graph {
+        for (target, _) in edges {
+            incoming[*target] += 1;
+        }
+    }
+    let mut reverse = Vec::with_capacity(graph.len());
+    for count in incoming {
+        reverse.push(Vec::with_capacity(count));
+    }
     for (source, edges) in graph.iter().enumerate() {
         for edge in edges {
             reverse[edge.0].push(source);
@@ -988,7 +936,8 @@ pub(crate) fn minimal_cycle_witness<K: Ord + Clone>(graph: &[Vec<(usize, K)>]) -
         }
         let id = component_count;
         component_count += 1;
-        let mut stack = vec![root];
+        let mut stack = Vec::with_capacity(graph.len());
+        stack.push(root);
         component[root] = id;
         while let Some(node) = stack.pop() {
             for &next in &reverse[node] {
@@ -1002,7 +951,7 @@ pub(crate) fn minimal_cycle_witness<K: Ord + Clone>(graph: &[Vec<(usize, K)>]) -
 
     // The canonical rotation begins at the smallest labeled edge belonging to
     // any cycle. An edge belongs to a cycle exactly when its ends share an SCC.
-    let mut first: Vec<(usize, usize)> = Vec::new();
+    let mut first: Vec<(usize, usize)> = Vec::with_capacity(graph.iter().map(Vec::len).sum());
     for (source, edges) in graph.iter().enumerate() {
         for (edge_index, edge) in edges.iter().enumerate() {
             if component[source] != component[edge.0] {
@@ -1030,7 +979,14 @@ pub(crate) fn minimal_cycle_witness<K: Ord + Clone>(graph: &[Vec<(usize, K)>]) -
     let sorted = (0..graph.len())
         .map(|node| {
             let mut order = (0..graph[node].len()).collect::<Vec<_>>();
-            order.sort_by(|&left, &right| graph[node][left].1.cmp(&graph[node][right].1));
+            // The index tie-break preserves the former stable input order
+            // without allocating a stable-sort merge buffer.
+            order.sort_unstable_by(|&left, &right| {
+                graph[node][left]
+                    .1
+                    .cmp(&graph[node][right].1)
+                    .then_with(|| left.cmp(&right))
+            });
             order
         })
         .collect::<Vec<_>>();
@@ -1049,6 +1005,34 @@ pub(crate) fn minimal_cycle_witness<K: Ord + Clone>(graph: &[Vec<(usize, K)>]) -
         }
     }
     best
+}
+
+/// Sum of the live Vec capacities reachable through the indexed SCC witness
+/// path. Each loop iteration drops its previous candidate and reachability
+/// scratch, so one candidate and one reachability traversal cover the peak.
+pub(crate) fn minimal_cycle_scratch_bytes_v3<K>(nodes: usize, edges: usize) -> Option<usize> {
+    fn add<T>(total: &mut usize, count: usize) -> Option<()> {
+        *total = total.checked_add(count.checked_mul(std::mem::size_of::<T>())?)?;
+        Some(())
+    }
+    let mut total = 0_usize;
+    add::<bool>(&mut total, nodes)?; // visited
+    add::<usize>(&mut total, nodes)?; // finish
+    add::<(usize, usize)>(&mut total, nodes)?; // DFS stack
+    add::<usize>(&mut total, nodes)?; // incoming counts
+    add::<Vec<usize>>(&mut total, nodes)?; // reverse headers
+    add::<usize>(&mut total, edges)?; // reverse edges
+    add::<usize>(&mut total, nodes)?; // SCC component
+    add::<usize>(&mut total, nodes)?; // reverse DFS stack
+    add::<(usize, usize)>(&mut total, edges)?; // equal-minimum edges
+    add::<Vec<usize>>(&mut total, nodes)?; // sorted adjacency headers
+    add::<usize>(&mut total, edges)?; // sorted adjacency indices
+    add::<K>(&mut total, nodes)?; // retained best cycle
+    add::<bool>(&mut total, nodes)?; // candidate seen
+    add::<K>(&mut total, nodes)?; // candidate path
+    add::<bool>(&mut total, nodes)?; // reaches_source
+    add::<usize>(&mut total, nodes)?; // reachability pending
+    Some(total)
 }
 
 #[expect(
@@ -1073,7 +1057,8 @@ fn cycle_from_edge<K: Ord + Clone>(
     let mut seen = vec![false; graph.len()];
     seen[source] = true;
     seen[target] = true;
-    let mut path = vec![first_edge];
+    let mut path = Vec::with_capacity(graph.len());
+    path.push(first_edge);
     let mut current = target;
     while current != source {
         // Reachability after removing the path prefix answers whether an edge
@@ -1081,7 +1066,8 @@ fn cycle_from_edge<K: Ord + Clone>(
         // gives polynomial work even for heavily branching cyclic graphs.
         let mut reaches_source = vec![false; graph.len()];
         reaches_source[source] = true;
-        let mut pending = vec![source];
+        let mut pending = Vec::with_capacity(graph.len());
+        pending.push(source);
         while let Some(node) = pending.pop() {
             for &previous in &reverse[node] {
                 if component[previous] == component[source]

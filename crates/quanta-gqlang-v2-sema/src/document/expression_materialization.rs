@@ -2,42 +2,51 @@
 
 use super::{
     capture_vector_witness, document_failure, location, materialize_relation,
-    validate_capture_vector, AggregateContextV2, AggregatePositionV2, BTreeMap, BindResultV1,
-    BinderKindV1, BoolExprHirV1, BoolExprKindV1, ClosedFrontendAuthorityV2, ExpressionTypeStateV2,
-    ExtendedSourceRegistryViewV2, FrontendFailureV2, HirNodeIdV1, RelationOutputContractV2,
-    ResolvedBindingKindV2, ResolvedTargetV1, ResolvedValueBindingV2, SemanticStepCounterV2,
-    SourceIdV2, SourceQualifiedNodeIdV2, TypedBoolExprV2, TypedCallArgumentV2,
-    TypedCorrelationEdgeV2, TypedExprShapeV2, TypedExprV2, TypedExpressionFactsV2,
-    TypedPathSegmentV2, TypedRecordFieldV2, TypedRelationExprV2, ValueExprHirV1, ValueExprKindV1,
+    validate_capture_vector, AggregateContextV2, AggregatePositionV2, BTreeMap,
+    BinderEvidenceReaderV3, BinderKindV1, BoolExprHirV1, BoolExprKindV1, ClosedFrontendAuthorityV2,
+    ExpressionTypeStateV2, ExtendedSourceRegistryViewV2, FrontendFailureV2, HirNodeIdV1,
+    RelationOutputContractV2, ResolvedBindingKindV2, ResolvedTargetV1, ResolvedValueBindingV2,
+    SemanticStepCounterV2, SourceIdV2, SourceQualifiedNodeIdV2, TypeFactsReaderV3, TypedBoolExprV2,
+    TypedCallArgumentV2, TypedCorrelationEdgeV2, TypedExprShapeV2, TypedExprV2, TypedPathSegmentV2,
+    TypedRecordFieldV2, TypedRelationExprV2, ValueExprHirV1, ValueExprKindV1,
     ViewMaterializationInputsV2,
 };
 
-#[expect(
-    clippy::too_many_lines,
-    reason = "legacy expression materialization awaits phase extraction"
-)]
+pub(super) trait TypedExpressionSinkV3 {
+    fn insert_unique_v3(&mut self, key: SourceQualifiedNodeIdV2, value: TypedExprV2) -> bool;
+}
+
+impl TypedExpressionSinkV3 for BTreeMap<SourceQualifiedNodeIdV2, TypedExprV2> {
+    fn insert_unique_v3(&mut self, key: SourceQualifiedNodeIdV2, value: TypedExprV2) -> bool {
+        self.insert(key, value).is_none()
+    }
+}
+
+impl TypedExpressionSinkV3 for Vec<(SourceQualifiedNodeIdV2, TypedExprV2)> {
+    fn insert_unique_v3(&mut self, key: SourceQualifiedNodeIdV2, value: TypedExprV2) -> bool {
+        if self.iter().any(|(existing, _)| *existing == key) {
+            return false;
+        }
+        self.push((key, value));
+        true
+    }
+}
+
 pub(super) fn materialize_declaration_expr(
     node: &ValueExprHirV1,
     source_id: SourceIdV2,
-    bound: &BindResultV1,
-    facts: &TypedExpressionFactsV2,
+    bound: &dyn BinderEvidenceReaderV3,
+    facts: &dyn TypeFactsReaderV3,
     extended: &ExtendedSourceRegistryViewV2,
-    output: &mut BTreeMap<SourceQualifiedNodeIdV2, TypedExprV2>,
+    output: &mut impl TypedExpressionSinkV3,
     steps: &mut SemanticStepCounterV2,
     position: AggregatePositionV2,
 ) -> Result<TypedExprV2, FrontendFailureV2> {
     steps.charge(source_id, node.span)?;
-    let key_of = |id| SourceQualifiedNodeIdV2 {
+    let key = SourceQualifiedNodeIdV2 {
         source_id,
-        node_id: id,
+        node_id: node.id,
     };
-    let mut child = |child: &ValueExprHirV1, output: &mut BTreeMap<_, _>| {
-        materialize_declaration_expr(
-            child, source_id, bound, facts, extended, output, steps, position,
-        )
-        .map(|typed| typed.key())
-    };
-    let key = key_of(node.id);
     let fact = facts.get(key).ok_or_else(|| {
         document_failure(
             "sema.document_validation_failed",
@@ -60,6 +69,52 @@ pub(super) fn materialize_declaration_expr(
     // so would encode a second, overflowing negation of an already-minimum
     // value. Preserve the authored root identity while materializing the
     // authoritative checked literal fact.
+    let shape = materialize_declaration_shape(
+        node, fact, source_id, bound, facts, extended, output, steps, position,
+    )?;
+    let location = location(source_id, node.span);
+    let star = matches!(&shape, TypedExprShapeV2::Call { arguments, .. } if arguments.iter().any(|arg| matches!(arg, TypedCallArgumentV2::Star)));
+    let context = AggregateContextV2::try_new(position, fact.effects.aggregation, star, location)?;
+    let checked = extended
+        .combined()
+        .try_check_location(location)
+        .map_err(|error| {
+            document_failure(
+                "sema.document_validation_failed",
+                source_id,
+                node.span,
+                error.to_string(),
+            )
+        })?;
+    let typed = TypedExprV2::try_from_fact(key, fact, context, shape, checked)?;
+    if !output.insert_unique_v3(key, typed.clone()) {
+        return Err(document_failure(
+            "sema.document_validation_failed",
+            source_id,
+            node.span,
+            "duplicate typed expression identity",
+        ));
+    }
+    Ok(typed)
+}
+
+fn materialize_declaration_shape(
+    node: &ValueExprHirV1,
+    fact: &quanta_gqlang_v2_types::TypedExpressionFactV2,
+    source_id: SourceIdV2,
+    bound: &dyn BinderEvidenceReaderV3,
+    facts: &dyn TypeFactsReaderV3,
+    extended: &ExtendedSourceRegistryViewV2,
+    output: &mut impl TypedExpressionSinkV3,
+    steps: &mut SemanticStepCounterV2,
+    position: AggregatePositionV2,
+) -> Result<TypedExprShapeV2, FrontendFailureV2> {
+    let mut child = |child: &ValueExprHirV1, output: &mut _| {
+        materialize_declaration_expr(
+            child, source_id, bound, facts, extended, output, steps, position,
+        )
+        .map(|typed| typed.key())
+    };
     let shape = match &node.kind {
         ValueExprKindV1::Unary(unary) if fact.literal.is_some() => {
             // Retain a typed proof for every checked HIR node. The sentinel remains
@@ -226,42 +281,15 @@ pub(super) fn materialize_declaration_expr(
             TypedExprShapeV2::List(elements)
         }
     };
-    let location = location(source_id, node.span);
-    let star = matches!(&shape, TypedExprShapeV2::Call { arguments, .. } if arguments.iter().any(|arg| matches!(arg, TypedCallArgumentV2::Star)));
-    let context = AggregateContextV2::try_new(position, fact.effects.aggregation, star, location)?;
-    let checked = extended
-        .combined()
-        .try_check_location(location)
-        .map_err(|error| {
-            document_failure(
-                "sema.document_validation_failed",
-                source_id,
-                node.span,
-                error.to_string(),
-            )
-        })?;
-    let typed = TypedExprV2::try_from_fact(key, fact, context, shape, checked)?;
-    if output.insert(key, typed.clone()).is_some() {
-        return Err(document_failure(
-            "sema.document_validation_failed",
-            source_id,
-            node.span,
-            "duplicate typed expression identity",
-        ));
-    }
-    Ok(typed)
+    Ok(shape)
 }
 
-#[expect(
-    clippy::too_many_lines,
-    reason = "legacy boolean materialization awaits phase extraction"
-)]
 pub(super) fn materialize_bool(
     node: &BoolExprHirV1,
     source_id: SourceIdV2,
     authority: &ClosedFrontendAuthorityV2,
-    bound: &BindResultV1,
-    facts: &TypedExpressionFactsV2,
+    bound: &dyn BinderEvidenceReaderV3,
+    facts: &dyn TypeFactsReaderV3,
     extended: &ExtendedSourceRegistryViewV2,
     composition_outputs: &BTreeMap<(HirNodeIdV1, usize), RelationOutputContractV2>,
     views: &ViewMaterializationInputsV2<'_>,
@@ -334,6 +362,91 @@ pub(super) fn materialize_bool(
                 rhs: rhs.key(),
             }
         }
+        BoolExprKindV1::And(_)
+        | BoolExprKindV1::Or(_)
+        | BoolExprKindV1::Not(_)
+        | BoolExprKindV1::Paren(_)
+        | BoolExprKindV1::LogicalQuantifier(_) => materialize_bool_combinator(
+            node,
+            fact,
+            source_id,
+            authority,
+            bound,
+            facts,
+            extended,
+            composition_outputs,
+            views,
+            output,
+            nested_relations,
+            steps,
+            position,
+        )?
+        .ok_or_else(|| {
+            document_failure(
+                "sema.document_validation_failed",
+                source_id,
+                node.span,
+                "boolean combinator dispatch differs from checked HIR",
+            )
+        })?,
+        BoolExprKindV1::RelationExists(exists) => materialize_relation_exists(
+            node,
+            exists,
+            source_id,
+            authority,
+            bound,
+            facts,
+            extended,
+            composition_outputs,
+            views,
+            output,
+            nested_relations,
+            steps,
+            position,
+        )?,
+    };
+    let raw = location(source_id, node.span);
+    let context = AggregateContextV2::try_new(position, fact.effects.aggregation, false, raw)?;
+    let checked = extended
+        .combined()
+        .try_check_location(raw)
+        .map_err(|error| {
+            document_failure(
+                "sema.document_validation_failed",
+                source_id,
+                node.span,
+                error.to_string(),
+            )
+        })?;
+    let typed = TypedExprV2::try_from_fact(key(node.id), fact, context, shape, checked)?;
+    let bool_fact = TypedBoolExprV2::try_new(typed.clone(), raw)?;
+    if output.insert(key(node.id), typed).is_some() {
+        return Err(document_failure(
+            "sema.document_validation_failed",
+            source_id,
+            node.span,
+            "duplicate typed boolean identity",
+        ));
+    }
+    Ok(bool_fact)
+}
+
+fn materialize_bool_combinator(
+    node: &BoolExprHirV1,
+    fact: &quanta_gqlang_v2_types::TypedExpressionFactV2,
+    source_id: SourceIdV2,
+    authority: &ClosedFrontendAuthorityV2,
+    bound: &dyn BinderEvidenceReaderV3,
+    facts: &dyn TypeFactsReaderV3,
+    extended: &ExtendedSourceRegistryViewV2,
+    composition_outputs: &BTreeMap<(HirNodeIdV1, usize), RelationOutputContractV2>,
+    views: &ViewMaterializationInputsV2<'_>,
+    output: &mut BTreeMap<SourceQualifiedNodeIdV2, TypedExprV2>,
+    nested_relations: &mut BTreeMap<SourceQualifiedNodeIdV2, TypedRelationExprV2>,
+    steps: &mut SemanticStepCounterV2,
+    position: AggregatePositionV2,
+) -> Result<Option<TypedExprShapeV2>, FrontendFailureV2> {
+    let shape = match &node.kind {
         BoolExprKindV1::And(binary) | BoolExprKindV1::Or(binary) => {
             let lhs = materialize_bool(
                 &binary.lhs,
@@ -475,167 +588,160 @@ pub(super) fn materialize_bool(
                 body: body.expression().key(),
             }
         }
-        BoolExprKindV1::RelationExists(exists) => {
-            if position == AggregatePositionV2::RuleBody {
-                return Err(document_failure(
-                    "sema.invalid_item_shape",
-                    source_id,
-                    node.span,
-                    "relational EXISTS is not admitted inside a source rule body",
-                ));
-            }
-            if !bound.has_capture_set(node.id) {
-                return Err(document_failure(
-                    "sema.document_validation_failed",
-                    source_id,
-                    node.span,
-                    "Binder omitted the explicit relational EXISTS capture set",
-                ));
-            }
-            let relation = materialize_relation(
-                &exists.relation,
-                source_id,
-                authority,
-                bound,
-                facts,
-                extended,
-                composition_outputs,
-                views,
-                output,
-                nested_relations,
-                steps,
-            )?;
-            let relation_root = SourceQualifiedNodeIdV2 {
-                source_id,
-                node_id: exists.relation.id,
-            };
-            if relation.key() != relation_root {
-                return Err(document_failure(
-                    "sema.document_validation_failed",
-                    source_id,
-                    exists.relation.span,
-                    "nested relational EXISTS root differs from checked HIR identity",
-                ));
-            }
-            if nested_relations.insert(relation_root, relation).is_some() {
-                return Err(document_failure(
-                    "sema.document_validation_failed",
-                    source_id,
-                    node.span,
-                    "duplicate nested relational EXISTS root",
-                ));
-            }
-            let witness = capture_vector_witness(bound, node.id, exists.relation.id);
-            let edges = validate_capture_vector(node.id, exists.relation.id, &witness, bound)
-                .map_err(|message| {
-                    document_failure(
-                        "sema.document_validation_failed",
-                        source_id,
-                        node.span,
-                        message,
-                    )
-                })?;
-            let mut correlations = Vec::new();
-            for edge in edges {
-                let Some(resolution) = bound
-                    .resolutions()
-                    .iter()
-                    .find(|resolution| resolution.reference == edge.reference)
-                else {
-                    return Err(document_failure(
-                        "sema.document_validation_failed",
-                        source_id,
-                        node.span,
-                        "Binder capture reference lacks its exact resolution proof",
-                    ));
-                };
-                let ResolvedTargetV1::Local(binding) = &resolution.target else {
-                    return Err(document_failure(
-                        "sema.document_validation_failed",
-                        source_id,
-                        resolution.span,
-                        "Binder capture target is not a local binding",
-                    ));
-                };
-                if binding.identity() != (edge.owner, edge.ordinal) {
-                    return Err(document_failure(
-                        "sema.document_validation_failed",
-                        source_id,
-                        resolution.span,
-                        "Binder capture owner or ordinal differs from its resolution proof",
-                    ));
-                }
-                let kind = match binding.kind {
-                    BinderKindV1::Alias => ResolvedBindingKindV2::Alias,
-                    BinderKindV1::Param => ResolvedBindingKindV2::Parameter,
-                    BinderKindV1::Let => ResolvedBindingKindV2::Local,
-                    BinderKindV1::Quantified => ResolvedBindingKindV2::Quantified,
-                    BinderKindV1::CompositionLet => ResolvedBindingKindV2::Composition,
-                };
-                let binding = ResolvedValueBindingV2::try_new(
-                    source_id,
-                    edge.owner,
-                    edge.ordinal,
-                    kind,
-                    binding.name.clone(),
-                )
-                .map_err(|error| {
-                    document_failure(
-                        "sema.document_validation_failed",
-                        source_id,
-                        resolution.span,
-                        error,
-                    )
-                })?;
-                let location = extended
-                    .combined()
-                    .try_check_location(location(source_id, resolution.span))
-                    .map_err(|error| {
-                        document_failure(
-                            "sema.document_validation_failed",
-                            source_id,
-                            resolution.span,
-                            error.to_string(),
-                        )
-                    })?;
-                correlations.push(TypedCorrelationEdgeV2::new(
-                    binding,
-                    SourceQualifiedNodeIdV2 {
-                        source_id,
-                        node_id: edge.reference,
-                    },
-                    location,
-                ));
-            }
-            TypedExprShapeV2::RelationExists {
-                polarity: exists.polarity.into(),
-                relation_root,
-                correlations,
-            }
-        }
+        BoolExprKindV1::Literal(_)
+        | BoolExprKindV1::Value(_)
+        | BoolExprKindV1::Compare(_)
+        | BoolExprKindV1::RelationExists(_) => return Ok(None),
     };
-    let raw = location(source_id, node.span);
-    let context = AggregateContextV2::try_new(position, fact.effects.aggregation, false, raw)?;
-    let checked = extended
-        .combined()
-        .try_check_location(raw)
-        .map_err(|error| {
-            document_failure(
-                "sema.document_validation_failed",
-                source_id,
-                node.span,
-                error.to_string(),
-            )
-        })?;
-    let typed = TypedExprV2::try_from_fact(key(node.id), fact, context, shape, checked)?;
-    let bool_fact = TypedBoolExprV2::try_new(typed.clone(), raw)?;
-    if output.insert(key(node.id), typed).is_some() {
+    Ok(Some(shape))
+}
+
+fn materialize_relation_exists(
+    node: &BoolExprHirV1,
+    exists: &quanta_gqlang_v2_hir::RelationExistsHirV1,
+    source_id: SourceIdV2,
+    authority: &ClosedFrontendAuthorityV2,
+    bound: &dyn BinderEvidenceReaderV3,
+    facts: &dyn TypeFactsReaderV3,
+    extended: &ExtendedSourceRegistryViewV2,
+    composition_outputs: &BTreeMap<(HirNodeIdV1, usize), RelationOutputContractV2>,
+    views: &ViewMaterializationInputsV2<'_>,
+    output: &mut BTreeMap<SourceQualifiedNodeIdV2, TypedExprV2>,
+    nested_relations: &mut BTreeMap<SourceQualifiedNodeIdV2, TypedRelationExprV2>,
+    steps: &mut SemanticStepCounterV2,
+    position: AggregatePositionV2,
+) -> Result<TypedExprShapeV2, FrontendFailureV2> {
+    if position == AggregatePositionV2::RuleBody {
+        return Err(document_failure(
+            "sema.invalid_item_shape",
+            source_id,
+            node.span,
+            "relational EXISTS is not admitted inside a source rule body",
+        ));
+    }
+    if !bound.has_capture_set(node.id) {
         return Err(document_failure(
             "sema.document_validation_failed",
             source_id,
             node.span,
-            "duplicate typed boolean identity",
+            "Binder omitted the explicit relational EXISTS capture set",
         ));
     }
-    Ok(bool_fact)
+    let relation = materialize_relation(
+        &exists.relation,
+        source_id,
+        authority,
+        bound,
+        facts,
+        extended,
+        composition_outputs,
+        views,
+        output,
+        nested_relations,
+        steps,
+    )?;
+    let relation_root = SourceQualifiedNodeIdV2 {
+        source_id,
+        node_id: exists.relation.id,
+    };
+    if relation.key() != relation_root {
+        return Err(document_failure(
+            "sema.document_validation_failed",
+            source_id,
+            exists.relation.span,
+            "nested relational EXISTS root differs from checked HIR identity",
+        ));
+    }
+    if nested_relations.insert(relation_root, relation).is_some() {
+        return Err(document_failure(
+            "sema.document_validation_failed",
+            source_id,
+            node.span,
+            "duplicate nested relational EXISTS root",
+        ));
+    }
+    let witness = capture_vector_witness(bound, node.id, exists.relation.id);
+    let edges = validate_capture_vector(node.id, exists.relation.id, &witness, bound).map_err(
+        |message| {
+            document_failure(
+                "sema.document_validation_failed",
+                source_id,
+                node.span,
+                message,
+            )
+        },
+    )?;
+    let mut correlations = Vec::new();
+    for edge in edges {
+        let Some(resolution) = bound.resolution_of(edge.reference) else {
+            return Err(document_failure(
+                "sema.document_validation_failed",
+                source_id,
+                node.span,
+                "Binder capture reference lacks its exact resolution proof",
+            ));
+        };
+        let ResolvedTargetV1::Local(binding) = &resolution.target else {
+            return Err(document_failure(
+                "sema.document_validation_failed",
+                source_id,
+                resolution.span,
+                "Binder capture target is not a local binding",
+            ));
+        };
+        if binding.identity() != (edge.owner, edge.ordinal) {
+            return Err(document_failure(
+                "sema.document_validation_failed",
+                source_id,
+                resolution.span,
+                "Binder capture owner or ordinal differs from its resolution proof",
+            ));
+        }
+        let kind = match binding.kind {
+            BinderKindV1::Alias => ResolvedBindingKindV2::Alias,
+            BinderKindV1::Param => ResolvedBindingKindV2::Parameter,
+            BinderKindV1::Let => ResolvedBindingKindV2::Local,
+            BinderKindV1::Quantified => ResolvedBindingKindV2::Quantified,
+            BinderKindV1::CompositionLet => ResolvedBindingKindV2::Composition,
+        };
+        let binding = ResolvedValueBindingV2::try_new(
+            source_id,
+            edge.owner,
+            edge.ordinal,
+            kind,
+            binding.name.clone(),
+        )
+        .map_err(|error| {
+            document_failure(
+                "sema.document_validation_failed",
+                source_id,
+                resolution.span,
+                error,
+            )
+        })?;
+        let location = extended
+            .combined()
+            .try_check_location(location(source_id, resolution.span))
+            .map_err(|error| {
+                document_failure(
+                    "sema.document_validation_failed",
+                    source_id,
+                    resolution.span,
+                    error.to_string(),
+                )
+            })?;
+        correlations.push(TypedCorrelationEdgeV2::new(
+            binding,
+            SourceQualifiedNodeIdV2 {
+                source_id,
+                node_id: edge.reference,
+            },
+            location,
+        ));
+    }
+    Ok(TypedExprShapeV2::RelationExists {
+        polarity: exists.polarity.into(),
+        relation_root,
+        correlations,
+    })
 }

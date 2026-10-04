@@ -13,6 +13,7 @@
 mod diagnostic;
 mod node;
 mod normalize;
+mod scalar_request;
 
 pub use diagnostic::{AlgebraDiagnosticV2, AlgebraFailureKindV2};
 pub use node::{
@@ -20,3 +21,7 @@ pub use node::{
     LoweredRelationItemV2,
 };
 pub use normalize::{lower_nested_relation_v2, lower_relation_item, AlgebraSessionV2};
+pub use scalar_request::{
+    lower_scalar_source_project_with_request_owner_v3, AdmittedScalarAlgebraV3,
+    ScalarAlgebraReadV3, ScalarAlgebraRequestErrorV3,
+};

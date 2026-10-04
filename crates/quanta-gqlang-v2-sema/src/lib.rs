@@ -21,17 +21,22 @@ pub mod test_support;
 
 // Host-agnostic checked coordinates remain the canonical HIR primitive. Semantic
 // direction and expression tags below prevent downstream direct HIR dependency.
+pub use quanta_gqlang_v2_binder::BinderDeclarationRequestErrorV3;
 pub use quanta_gqlang_v2_hir::{
     CheckedLocatedSpanV2, CompareMetricV1, ConfirmModeV1, DetectionModeV1, EmitModeV1,
-    EvidenceModeV1, ExportFormatV1, GraphQueryKindV1, HirNodeIdV1, LocatedSpanV2, RenamePhaseV3,
-    SampleModeV1, ShowCategoryV1, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
-    TruthModeV1,
+    EvidenceModeV1, ExportFormatV1, ExtendedSourceRegistryViewV2,
+    FrontendRequestMaterializationRootV3, FrontendStorageRefusalV3, GraphQueryKindV1, HirNodeIdV1,
+    HirRequestIntegrityErrorV3, LocatedSpanV2, RenamePhaseV3, SampleModeV1, ShowCategoryV1,
+    SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1, TruthModeV1,
 };
 pub use quanta_gqlang_v2_types::{
-    operator_descriptor_v2, CardinalityV1, ExpressionTypeStateV2, OperatorIdV2,
+    operator_descriptor_v2, AdmittedBuiltinRegistryV3, BuiltinFamilyIdV2,
+    BuiltinRegistryRequestErrorV3, CardinalityV1, ExpressionTypeStateV2, OperatorIdV2,
     OperatorSemanticKindV2, ProvenanceNamespaceV2, RecordFieldTypeV1, RecordTypeV1,
     RelationAuthorityV2, RelationCatalogV2, RelationSourceInputV2, ResolvedCallTargetV2,
     ScalarTyV1, SourceQualifiedNodeIdV2, TypedLiteralFactV2, TypedLiteralValueV2, ValueTypeV1,
+    CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2, CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2,
+    CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2,
 };
 
 pub use authority::{
@@ -49,9 +54,27 @@ pub use diagnostic::{
     FrontendDiagnosticV2, FrontendFailureV2, FrontendSeverityV2, FrontendStageV2,
 };
 pub use document::{
-    resolve_checked_document_v2, CheckedSyntaxDocumentV2, DeclaredDocumentV2, DeclaredShowSourceV2,
-    FrontendTransactionErrorV2, IncompleteSemanticDocumentV2, SemanticAnalysisV2,
-    SemanticDocumentV2, UnresolvedSemanticFactV2,
+    attach_source_catalog_assets_with_request_owner_v3, begin_bind_document_with_request_owner_v3,
+    begin_prepare_document_body_types_with_request_owner_v3,
+    begin_resolving_document_session_with_request_owner_v3,
+    collect_catalog_asset_inputs_with_request_owner_v3,
+    declare_checked_document_with_request_owner_v3,
+    materialize_source_inline_view_with_request_owner_v3,
+    predeclare_source_catalog_with_request_owner_v3, resolve_checked_document_v2,
+    resolve_source_document_binder_with_request_owner_v3,
+    seal_source_scalar_catalog_with_request_owner_v3,
+    topologize_source_inline_view_with_request_owner_v3,
+    type_one_let_composition_body_with_request_owner_v3,
+    type_source_inline_view_with_request_owner_v3, AdmittedBinderDeclarationsV3,
+    AdmittedScalarSemanticDocumentV3, AdmittedScalarSemanticKindV3,
+    AdmittedSourceBinderResolutionV3, AdmittedSourceBodyTypesV3, AdmittedSourceInlineViewBodyV3,
+    AdmittedSourceViewTopologyV3, CatalogAssetInputsRequestErrorV3, CheckedSyntaxDocumentV2,
+    DeclarationBuildErrorV3, DeclaredDocumentV2, DeclaredRequestErrorV3, DeclaredShowSourceV2,
+    DocumentTopologyRequestErrorV3, FrontendTransactionErrorV2, IncompleteSemanticDocumentV2,
+    ResolvingDocumentSessionV3, ScalarSemanticAssemblyErrorV3, ScalarSourceProjectReadV3,
+    SemanticAnalysisV2, SemanticDocumentV2, SemanticRequestPredeclareErrorV3,
+    SourceBodyMaterializationRequestErrorV3, SourceBodyTypesRequestErrorV3, SourceCatalogAssetsV3,
+    SourceCatalogAttachErrorV3, SourceCatalogSealErrorV3, UnresolvedSemanticFactV2,
 };
 pub use expr::{
     AggregateContextV2, AggregatePositionV2, LogicalQuantifierKindV2, RelationExistsPolarityV2,
@@ -72,6 +95,7 @@ pub use names::{
     ResolvedRelationSourceKindV2, ResolvedRelationSourceV2, ResolvedValueBindingV2,
     SemanticItemIdV2,
 };
+pub use quanta_gqlang_v2_modules::DocumentValidatorRequestErrorV3;
 pub use relation::{
     JoinModeV2, NullOrderV2, OrderKeyContractV2, OutputColumnContractV2, OutputColumnOriginV2,
     OutputProvenanceV2, PartitionInputBindingV2, RelationOutputContractV2, ResolvedScanSourceV2,

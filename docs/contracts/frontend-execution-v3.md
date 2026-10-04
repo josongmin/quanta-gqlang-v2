@@ -33,6 +33,161 @@ invokes the lexer (preissued diagnostic debit is missing). Hosts may still use
 the staged SHOW APIs (`admit_show_syntax_v2` → plans/execution) on an already
 admitted syntax owner.
 
+`parse_source_document_with_request_owner_v3(SourceIdV2, &str,
+&FrontendBudgetV2, &FrontendRequestMaterializationRootV3)` is a partial parser
+entry. The pipeline checks the public source-byte cap and projects parser
+limits from the same checked frontend budget. Its opaque
+`ParsedRequestSourceV3` retains request-root reservations for lexical storage,
+parser/HIR items, and nested constructors. Parser temporary storage is charged
+before use and released before the owner returns.
+`check_source_document_with_request_owner_v3` consumes that owner, checks the
+parser-issued HIR under the exact same source and root, and returns an opaque
+`CheckedRequestSourceV3`. Its integrity scratch is reserved before use and
+released when the check finishes. Neither stage issues an execution document
+or runtime authority. Diagnostic, semantic, planning, and execution storage
+still require producer admission.
+
+The host implements `FrontendRequestStorageSinkV3` against its issued request
+ledger. Each reservation must include its concrete boxed permit carrier.
+`FrontendRequestMaterializationRootV3` checks the exact source invocation.
+`FrontendRetainedStoragePermitV3` asks the host to authenticate it before extending its
+reservations. Equal source bytes, source IDs, or numeric limits do not
+authorize a foreign request root. The facade exposes the opaque parsed and
+checked stages, the bounded scalar compile entry described below, and the
+named opaque storage permit returned by the root.
+The generic payload owner and producer mapping operation are private to owner
+crates; naming a retained permit does not construct a parsed or checked stage.
+Permits remain live until their payload
+owner drops, and linked reservations are released iteratively with bounded
+stack use. The facade consumer tests source-byte refusal, foreign and short
+roots, and release after the checked owner drops.
+`validate_minimum_reservation_v3` authenticates the permit and checks its
+current stage's logical bytes against producer-derived demand. Earlier linked
+reservations and permit-carrier overhead cannot satisfy the new stage's demand.
+
+Producer-only staging also retains declared syntax, a Modules session,
+predeclared catalog assets, the finite builtin inventory, and Binder
+declarations and source bindings. Source binding admission supports declaration
+values, bare relations, and source-backed projects including inline Views;
+calls and richer relation/rule families return a typed preflight refusal.
+Those stages validate the exact source and request root;
+their nested producers retain independently issued permits. The Modules
+session identity retains its permit through every shared proof, and the
+predeclared backing and returned proofs share catalog storage custody.
+Dropping the original caller permit does not release live producer storage.
+Binder declaration carriers also authenticate their own original request,
+including empty declaration tables; an authentic foreign root and caller
+permit cannot rebind the declaration owner. Request-only frame and duplicate
+indices use admitted Vec storage without relying on private standard-library
+BTree node layouts.
+Binder source resolution also admits one Composition LET whose Query producer
+and Query body each contain one Source alias followed by a one-field Project
+of that alias's one-segment path. The body Source must name that exact LET;
+self-reference, a different WITH target, rebinding, cross-query alias capture,
+and adjacent shapes return typed preflight refusal. Its lexical identities and
+ordered outputs match ordinary Binder resolution. The admitted result retains
+the resolution reservation, uses two prepared scope frames and Vec-backed
+relation evidence, and exposes the exact LET identity through a borrowed
+reader. This is a producer-only Binder stage; the bounded scalar source entry
+continues to accept only a bare Query, and later body stages do not admit
+Composition through this route.
+
+The producer-only Types continuation also accepts this exact one-LET shape.
+Sema checks the Binder LET identity, host scalar fields, and the producer/body
+field join before reserving storage. Types retains four expression facts and
+four relation rows in bounded Vec tables. Its owner test compares each node
+with the ordinary Type kernel and observes logical Vec/string/record births
+against the reserved upper. This is not a whole-allocator heap bound. The
+following scalar materializer still refuses Composition, and the public
+bounded scalar compile entry remains Query-only.
+The facade exposes the partial parser and HIR-check stages. Later retained
+carriers feed the producer-owned continuation described below; their constructors
+and stage mapping hooks remain outside the facade.
+
+Producer-only body staging supports one bare Query or inline View over a host
+Source followed by a Project of scalar, one-segment field paths. Types, topology, and body
+materialization consume opaque stage owners. Type admission authenticates the
+parent, Modules session, Binder result, and builtin inventory before reserving
+new storage. The Types owner recomputes demand from checked input and retains
+both its permit and builtin custody; readers borrow facts without extracting
+the whole cloneable fact store. Other shapes return typed refusal. Request-only
+expression stores and single-origin provenance avoid tree-node allocations.
+Sema retains a Modules session witness and seals the final catalog only when
+the original root, source registry, exact item/expression membership, and issuing
+validator session agree. Query has zero catalog assets; View has one.
+
+The finite continuation consumes these owners through a borrowed normalized
+Project(Scan) algebra view and fixed-size relational plan. It reuses the ordinary
+Algebra contract checks and Planning result/cost/policy constructors, preserving
+expression order, effects, capability, and the authored item's checked location.
+These two stages create no new heap payload and retain all earlier reservations.
+They require no private BTree layout assumption or new normal crate dependency.
+The read views convey no detachable semantic authority. These intermediate
+stages remain outside the facade. The bounded scalar source entry composes them
+with execution projection and the document seal; this does not certify general
+execution or full serving memory custody.
+Producer reservations cover logical payload and the documented finite capacity
+bounds; allocator metadata and process-wide heap usage are not measured by them.
+
+### Bounded scalar request entry
+
+`compile_scalar_source_with_request_owner_v3(SourceIdV2, &str,
+&ClosedFrontendAuthorityV2, &FrontendRequestMaterializationRootV3)` accepts one
+bare Query in the scalar Source→Project subset. It consumes the parser-issued
+owner through checking, declarations, Modules/Binder/Types, semantic body,
+catalog, normalized algebra, planning, execution projection, and the document
+seal. Other root families return typed `UnsupportedRoot`; unsupported relation
+and expression shapes return the owning stage's typed refusal. No fallback to
+the unrestricted compiler occurs. Inline View staging remains producer-only.
+
+`ParsedRequestSourceV3::root_family_v3` classifies the retained parser owner
+without another parse or reservation.
+`compile_scalar_parsed_source_with_request_owner_v3(SourceIdV2, &str,
+&ClosedFrontendAuthorityV2, &FrontendRequestMaterializationRootV3,
+ParsedRequestSourceV3)` consumes that same owner and continues the bounded
+compile. The parser's checked budget must equal the authority's checked budget;
+a mismatch returns `ParsedBudgetMismatch` before further reservations. Source
+and issued-root identity remain subject to the checking stage's validation.
+
+The final `AdmittedScalarExecutionDocumentV3` keeps the original source custody
+and the reservations backing its execution payload attached. Consumed semantic
+and planning payloads release their independent reservations when they drop;
+this does not release live execution storage. Its DTO backing and constructors are
+private. It exposes source/item identities, family, expression count, digests,
+source-byte comparison, and original-root/issued-sink validation. The three
+digests use the existing V3 encoding and match ordinary compilation of the same
+source/authority; this owner does not introduce a wire schema version.
+
+`into_shared_with_request_owner_v3` authenticates the original root and reserves
+shared-owner storage before allocating. `SharedAdmittedScalarExecutionDocumentV3`
+clones share the immutable allocation and permits without deep-cloning the DTO.
+`shares_payload_v3` and equality compare that allocation's identity, not semantic
+equivalence between two compilations. Issued-sink validation authenticates every
+linked retained permit iteratively. Reservations survive dropping the caller or
+an earlier shared clone, and release when the final owner drops.
+
+The shared owner offers a borrowed `AdmittedCanonicalFilesScalarReadV3` only
+when its exact sealed Scan→Project payload carries canonical workspace-files
+authority and the supported RepoPath field/binding shape. Its accessors expose
+item identity, source namespace/name, input/output field names and cardinalities,
+and source-local binding identity. A same-spelling ordinary Host relation does
+not yield this observation. The read cannot outlive the shared owner and carries
+no runtime generation, provider, lease, or execution grant. Downstream must bind
+the retained owner to its independently issued authority and request ledger.
+
+The facade exports the producer-owned
+`CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2`,
+`CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2`, and
+`CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2` constants for those canonical names.
+They share the Types owner's definitions through the existing stage direction;
+the names alone confer no canonical source or runtime authority.
+
+The facade-only consumer pins result/digest parity, exact canonical fields,
+foreign-root and foreign-ledger refusal, no-spare shared-allocation refusal,
+adjacent root refusal, and clone/last-drop custody. Compile-fail probes reject
+backing access, deep cloning of the move-only owner, public construction fields,
+and detaching the borrowed read from its owner.
+
 All authored `query.result_shape` forms (leaf, record, and nested record/list)
 parse and format, but
 `sema::materialize_query` rejects `result_shape.is_some()` with a typed

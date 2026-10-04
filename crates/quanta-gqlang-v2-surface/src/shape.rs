@@ -10,7 +10,7 @@ use crate::cursor::CursorV1;
 use crate::diag::ParseDiagnosticV1;
 use crate::expr::parse_value;
 use crate::lexer::TokenKindV1;
-use quanta_gqlang_v2_hir::{ResultShapeHirV1, ShapeFieldV1};
+use quanta_gqlang_v2_hir::{ResultShapeHirV1, ShapeFieldV1, ValueExprHirV1};
 
 /// Parse one result shape node.
 pub(crate) fn parse_result_shape(
@@ -26,13 +26,14 @@ pub(crate) fn parse_result_shape(
         }
         let value = parse_value(cur)?;
         let span = value.span;
+        cur.reserve_nested_bytes_v3(std::mem::size_of::<ValueExprHirV1>(), span)?;
         Ok(cur.builder.shape_leaf(value, span))
     })
 }
 
 fn parse_shape_record(cur: &mut CursorV1<'_>) -> Result<ResultShapeHirV1, ParseDiagnosticV1> {
     let open = cur.expect(&TokenKindV1::LBrace, "'{' to open a result-shape record")?;
-    let mut fields: Vec<ShapeFieldV1> = Vec::new();
+    let mut fields = cur.preallocate_delimited_items_v3::<ShapeFieldV1>(TokenKindV1::RBrace)?;
     if !matches!(cur.peek().kind, TokenKindV1::RBrace) {
         loop {
             cur.budget
@@ -77,5 +78,6 @@ fn parse_shape_list(cur: &mut CursorV1<'_>) -> Result<ResultShapeHirV1, ParseDia
     let element = parse_result_shape(cur)?;
     let close = cur.expect(&TokenKindV1::RBracket, "']' to close a result-shape list")?;
     let span = open.span.merge(&close.span);
+    cur.reserve_nested_bytes_v3(std::mem::size_of::<ResultShapeHirV1>(), span)?;
     Ok(cur.builder.shape_list(element, span))
 }

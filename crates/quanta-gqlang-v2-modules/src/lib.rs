@@ -11,24 +11,31 @@ mod extension;
 mod graph;
 mod lockfile;
 mod manifest;
+mod session_identity;
 mod signature;
 mod version;
 mod visibility;
 
 pub use authority::{
-    DocumentCatalogValidatorV2, ModuleAuthorityBuilderV2, ValidatedModuleAuthorityPartsV2,
+    AdmittedDocumentCatalogAuthorityV3, AdmittedDocumentCatalogDiagnosticV3,
+    AdmittedDocumentReferenceDiagnosticV3, AdmittedDocumentReferenceV3,
+    AdmittedDocumentTopologyDiagnosticV3, AdmittedDocumentViewTopologyProofV3,
+    DocumentCatalogFamilyReferenceInputV3, DocumentCatalogFinalInputV3,
+    DocumentCatalogRequestErrorV3, DocumentCatalogSessionWitnessV3, DocumentCatalogValidatorV2,
+    DocumentReferenceRequestErrorV3, DocumentTopologyRequestErrorV3,
+    DocumentValidatorRequestErrorV3, ModuleAuthorityBuilderV2, ValidatedModuleAuthorityPartsV2,
 };
 pub use budget::ModuleBudgetV2;
 pub use catalog::{
     DocumentCatalogAssetInputV2, DocumentCatalogAuthorityV2, DocumentCatalogDependencyInputV2,
     DocumentCatalogDependencyV2, DocumentCatalogFamilyReferenceInputV2,
     DocumentCatalogFinalInputV2, DocumentCatalogInputV2, DocumentCatalogReferenceFamilyV2,
-    DocumentCatalogReferenceInputV2, DocumentCatalogReferenceOriginV2, DocumentViewTopologyProofV2,
-    ExternalCatalogAssetInputV2, ExternalCatalogAssetV2, ExternalCatalogDependencyInputV2,
-    ExternalCatalogPayloadInputV2, ExternalCatalogPayloadV2, ExternalCatalogV2,
-    ExternalPackContractV2, GateBindingV2, GateContractV2, PredeclaredDocumentAssetV2,
-    ProfileAdmissionInputV2, ProfileAdmissionV2, RequireCertifiedInputV2,
-    ResolvedDocumentCatalogReferenceV2, ResolvedHostPredicateProofV2,
+    DocumentCatalogReferenceInputV2, DocumentCatalogReferenceOriginV2,
+    DocumentPredeclareRequestErrorV3, DocumentViewTopologyProofV2, ExternalCatalogAssetInputV2,
+    ExternalCatalogAssetV2, ExternalCatalogDependencyInputV2, ExternalCatalogPayloadInputV2,
+    ExternalCatalogPayloadV2, ExternalCatalogV2, ExternalPackContractV2, GateBindingV2,
+    GateContractV2, PredeclaredDocumentAssetV2, ProfileAdmissionInputV2, ProfileAdmissionV2,
+    RequireCertifiedInputV2, ResolvedDocumentCatalogReferenceV2, ResolvedHostPredicateProofV2,
 };
 pub use diagnostic::{ModuleDiagnosticV2, ResourceExhaustionV2};
 pub use extension::{

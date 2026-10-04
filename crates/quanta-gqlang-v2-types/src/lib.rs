@@ -9,18 +9,22 @@ mod solver;
 mod ty;
 
 pub use builtin::{
-    AggregationClassV1, BuiltinFamilyIdV2, BuiltinIdV2, BuiltinRegistryV2, CostClassV1,
-    DeterminismV1, ExpressionEffectsV2, MonotonicityV1, PurityV1,
+    AdmittedBuiltinRegistryV3, AggregationClassV1, BuiltinEvidenceReaderV3, BuiltinFamilyIdV2,
+    BuiltinIdV2, BuiltinRegistryRequestErrorV3, BuiltinRegistryV2, CostClassV1, DeterminismV1,
+    ExpressionEffectsV2, MonotonicityV1, PurityV1,
 };
 pub use check::{
-    ContextualExpectedTypeInputV2, ContextualTypeReasonV2, DeferredRelationRowFieldInputV2,
-    DeferredRelationRowInputV2, DeferredRelationRowKindV2, ExpressionTypeKernelV2,
-    ExpressionTypeStateV2, HostCallableNamespaceV2, RelationPreEvaluationInputV2,
-    RelationRowFieldSourceV2, ResolvedCallTargetV2, ResolvedCallableInputV2,
-    ResolvedHostPredicateCallableV2, ResolvedHostPredicateKeyV2, ResolvedPredicateCallableV2,
-    ResolvedPredicateIdV2, ResolvedRelationCaptureInputV2, ResolvedRelationPredicateInputV2,
-    ResolvedTypeInputEntryV2, ResolvedTypeInputValueV2, ResolvedTypeInputsV2,
-    SourceQualifiedNodeIdV2, TypedExpressionFactV2, TypedExpressionFactsV2, TypedLiteralFactV2,
+    check_one_let_composition_with_request_owner_v3, check_scalar_projection_with_request_owner_v3,
+    one_let_composition_type_storage_upper_v3, scalar_projection_type_storage_upper_v3,
+    AdmittedScalarProjectionFactsV3, ContextualExpectedTypeInputV2, ContextualTypeReasonV2,
+    DeferredRelationRowFieldInputV2, DeferredRelationRowInputV2, DeferredRelationRowKindV2,
+    ExpressionTypeKernelV2, ExpressionTypeStateV2, HostCallableNamespaceV2,
+    RelationPreEvaluationInputV2, RelationRowFieldSourceV2, ResolvedCallTargetV2,
+    ResolvedCallableInputV2, ResolvedHostPredicateCallableV2, ResolvedHostPredicateKeyV2,
+    ResolvedPredicateCallableV2, ResolvedPredicateIdV2, ResolvedRelationCaptureInputV2,
+    ResolvedRelationPredicateInputV2, ResolvedTypeInputEntryV2, ResolvedTypeInputValueV2,
+    ResolvedTypeInputsV2, ScalarProjectionCheckRequestErrorV3, SourceQualifiedNodeIdV2,
+    TypeFactsReaderV3, TypedExpressionFactV2, TypedExpressionFactsV2, TypedLiteralFactV2,
     UnknownTypeCauseV2,
 };
 pub use diag::{TypeAuthorityDiagnosticV2, TypeDiagnosticV2};

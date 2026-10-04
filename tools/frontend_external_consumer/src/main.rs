@@ -12,6 +12,378 @@
 #![forbid(unsafe_code)]
 #![deny(unused_imports)]
 
+mod request_owner {
+    //! Request-root storage through the facade alone; no runtime authority claim.
+
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
+
+    use quanta_gqlang_v2_frontend_contract::{
+        check_source_document_with_request_owner_v3,
+        classify_single_source_root_with_request_owner_v3,
+        compile_scalar_parsed_source_with_request_owner_v3,
+        compile_scalar_source_with_request_owner_v3, compile_source_document_v3,
+        parse_source_document_with_request_owner_v3, AdmittedCanonicalFilesScalarReadV3,
+        AdmittedScalarExecutionDocumentV3, ClosedFrontendAuthorityBuilderV2,
+        ClosedFrontendAuthorityV2, ExecutionCardinalityV3, ExecutionFamilyV3,
+        FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendBudgetV2,
+        FrontendLanguageVersionV2, FrontendRelationAuthorityV2, FrontendRelationInputV2,
+        FrontendRequestMaterializationRootV3, FrontendRequestStoragePermitV3,
+        FrontendRequestStorageSinkV3, FrontendSourceRootFamilyV3, FrontendStorageRefusalV3,
+        ScalarExecutionRequestErrorV3, ScalarSourceCompileRequestErrorV3,
+        SharedAdmittedScalarExecutionDocumentV3, SourceIdV2,
+        CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2, CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2,
+        CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2,
+    };
+
+    struct Sink {
+        limit: AtomicU64,
+        live: Arc<AtomicU64>,
+    }
+
+    struct Permit {
+        live: Arc<AtomicU64>,
+        bytes: u64,
+    }
+
+    impl Drop for Permit {
+        fn drop(&mut self) {
+            self.live.fetch_sub(self.bytes, Ordering::AcqRel);
+        }
+    }
+
+    impl FrontendRequestStorageSinkV3 for Sink {
+        fn reserve_v3(
+            &self,
+            logical_bytes: u64,
+        ) -> Result<Box<dyn FrontendRequestStoragePermitV3>, FrontendStorageRefusalV3> {
+            let bytes = logical_bytes
+                .checked_add(std::mem::size_of::<Permit>() as u64)
+                .ok_or(FrontendStorageRefusalV3::DemandOverflow)?;
+            self.live
+                .fetch_update(Ordering::AcqRel, Ordering::Acquire, |live| {
+                    live.checked_add(bytes)
+                        .filter(|next| *next <= self.limit.load(Ordering::Acquire))
+                })
+                .map_err(|_| FrontendStorageRefusalV3::BudgetRejected)?;
+            Ok(Box::new(Permit {
+                live: Arc::clone(&self.live),
+                bytes,
+            }))
+        }
+
+        fn owns_permit_v3(&self, permit: &dyn FrontendRequestStoragePermitV3) -> bool {
+            permit
+                .as_any_v3()
+                .downcast_ref::<Permit>()
+                .is_some_and(|permit| Arc::ptr_eq(&self.live, &permit.live))
+        }
+    }
+
+    pub(super) fn probe(budget: &FrontendBudgetV2) {
+        let source_id = SourceIdV2::from_raw(43);
+        let source = String::from("show capabilities");
+        let live = Arc::new(AtomicU64::new(0));
+        let sink = Sink {
+            limit: AtomicU64::new(1_000_000),
+            live: Arc::clone(&live),
+        };
+        let root =
+            FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &sink);
+        let parsed = parse_source_document_with_request_owner_v3(source_id, &source, budget, &root)
+            .expect("facade budget admits a partial parser owner");
+        assert_eq!(parsed.item_count_v3(), 1);
+        let parsed_bytes = live.load(Ordering::Acquire);
+        assert!(parsed_bytes > 0);
+        let checked =
+            check_source_document_with_request_owner_v3(source_id, &source, &root, parsed)
+                .expect("pipeline-issued integrity stage");
+        assert_eq!(checked.node_count_v3(), 1);
+        assert_eq!(live.load(Ordering::Acquire), parsed_bytes);
+        drop(checked);
+        assert_eq!(live.load(Ordering::Acquire), 0);
+
+        let foreign = String::from("show capabilities");
+        assert!(
+            parse_source_document_with_request_owner_v3(source_id, &foreign, budget, &root)
+                .is_err()
+        );
+        assert_eq!(live.load(Ordering::Acquire), 0);
+        let short = Sink {
+            limit: AtomicU64::new(0),
+            live: Arc::clone(&live),
+        };
+        let short_root =
+            FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &short);
+        assert!(parse_source_document_with_request_owner_v3(
+            source_id,
+            &source,
+            budget,
+            &short_root
+        )
+        .is_err());
+        assert_eq!(live.load(Ordering::Acquire), 0);
+
+        let overlong = " ".repeat(budget.max_source_bytes() as usize + 1);
+        let overlong_root =
+            FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &overlong, &sink);
+        assert!(parse_source_document_with_request_owner_v3(
+            source_id,
+            &overlong,
+            budget,
+            &overlong_root
+        )
+        .is_err());
+        assert_eq!(live.load(Ordering::Acquire), 0);
+    }
+
+    fn scalar_authority(
+        budget: &FrontendBudgetV2,
+        kind: FrontendRelationAuthorityV2,
+    ) -> ClosedFrontendAuthorityV2 {
+        let location = FrontendAuthorityLocationV2 {
+            source_id: SourceIdV2::from_raw(1),
+            start: 0,
+            end: 1,
+        };
+        let mut builder = ClosedFrontendAuthorityBuilderV2::try_new(
+            budget.clone(),
+            vec![FrontendAuthoritySourceV2 {
+                source_id: location.source_id,
+                source_len: 64,
+            }],
+            "app".to_owned(),
+            location,
+            FrontendLanguageVersionV2 {
+                major: 1,
+                minor: 0,
+                patch: 0,
+            },
+        )
+        .expect("facade creates closed scalar authority");
+        let mut relation = FrontendRelationInputV2::canonical_workspace_files(location, location);
+        relation.authority = kind;
+        builder.add_relation(relation);
+        builder.finish().expect("issued relation authority seals")
+    }
+
+    pub(super) fn scalar_probe(budget: &FrontendBudgetV2) {
+        assert_eq!(CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2, "builtin");
+        assert_eq!(
+            CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2,
+            "workspace_files"
+        );
+        assert_eq!(CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2, "path");
+        let source_id = SourceIdV2::from_raw(44);
+        let source = String::from("from files f | project f.path as renamed");
+        let authority =
+            scalar_authority(budget, FrontendRelationAuthorityV2::CanonicalWorkspaceFiles);
+        let live = Arc::new(AtomicU64::new(0));
+        let sink = Sink {
+            limit: AtomicU64::new(1_000_000),
+            live: Arc::clone(&live),
+        };
+        let root =
+            FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &sink);
+
+        assert_eq!(
+            classify_single_source_root_with_request_owner_v3(source_id, &source, budget, &root)
+                .expect("issued scalar route classification"),
+            FrontendSourceRootFamilyV3::Relation
+        );
+        assert_eq!(live.load(Ordering::Acquire), 0);
+        let parsed = parse_source_document_with_request_owner_v3(source_id, &source, budget, &root)
+            .expect("facade retains the parser-issued route owner");
+        let parser_charge = live.load(Ordering::Acquire);
+        assert!(parser_charge > 0);
+        assert_eq!(
+            parsed
+                .root_family_v3()
+                .expect("borrowed route classification"),
+            FrontendSourceRootFamilyV3::Relation
+        );
+        assert_eq!(live.load(Ordering::Acquire), parser_charge);
+        let document: AdmittedScalarExecutionDocumentV3 =
+            compile_scalar_parsed_source_with_request_owner_v3(
+                source_id, &source, &authority, &root, parsed,
+            )
+            .expect("facade consumes the same parser owner through the execution seal");
+        let ordinary = compile_source_document_v3(source_id, &source, &authority)
+            .expect("ordinary frontend admits the same source");
+        assert_eq!(document.source_id_v3(), source_id);
+        assert_eq!(document.item_family_v3(), ExecutionFamilyV3::Relation);
+        assert_eq!(document.expression_count_v3(), 2);
+        assert_eq!(
+            document.item_id_v3(),
+            ordinary.execution().items()[0].item_id()
+        );
+        assert_eq!(
+            document.source_digest_v3(),
+            ordinary.execution().source_digest()
+        );
+        assert_eq!(
+            document.contract_digest_v3(),
+            ordinary.execution().contract_digest()
+        );
+        assert_eq!(
+            document.qualification_digest_v3(),
+            ordinary.execution().qualification_digest()
+        );
+        assert!(document.matches_source_bytes_v3(source.as_bytes()));
+        assert!(!document.matches_source_bytes_v3(b"from files f | project f.path as path"));
+        document
+            .validate_owner_v3(&root, &source)
+            .expect("original owner validates");
+        document
+            .validate_issued_sink_v3(&sink)
+            .expect("original issued sink validates");
+        let retained = live.load(Ordering::Acquire);
+        assert!(retained > 0);
+        let shared: SharedAdmittedScalarExecutionDocumentV3 = document
+            .into_shared_with_request_owner_v3(&root, &source)
+            .expect("shared storage is reserved before allocation");
+        let shared_bytes = live.load(Ordering::Acquire);
+        assert!(shared_bytes > retained);
+        let read: AdmittedCanonicalFilesScalarReadV3<'_> = shared
+            .canonical_files_scalar_read_v3()
+            .expect("exact canonical files authority and shape");
+        assert_eq!(read.item_id(), shared.item_id_v3());
+        assert_eq!(read.source_namespace(), "builtin");
+        assert_eq!(read.source_name(), "workspace_files");
+        assert_eq!(read.scan_field_name(), "path");
+        assert_eq!(read.output_field_name(), "renamed");
+        assert_eq!(read.scan_cardinality(), ExecutionCardinalityV3::Set);
+        assert_eq!(read.output_cardinality(), ExecutionCardinalityV3::Set);
+        assert_eq!(read.binding_source_id(), source_id);
+        assert_eq!(read.binding_ordinal(), 0);
+        let ordinary_scan = &ordinary.execution().items()[0]
+            .relation()
+            .expect("ordinary scalar relation")
+            .root()
+            .children()[0];
+        assert_eq!(
+            read.binding_owner_node(),
+            ordinary_scan.stage().node_id.raw()
+        );
+        assert_eq!(shared.source_id_v3(), source_id);
+        assert_eq!(shared.item_family_v3(), ExecutionFamilyV3::Relation);
+        assert_eq!(
+            shared.source_digest_v3(),
+            ordinary.execution().source_digest()
+        );
+        assert_eq!(
+            shared.contract_digest_v3(),
+            ordinary.execution().contract_digest()
+        );
+        assert_eq!(
+            shared.qualification_digest_v3(),
+            ordinary.execution().qualification_digest()
+        );
+        assert!(shared.matches_source_bytes_v3(source.as_bytes()));
+
+        let foreign_live = Arc::new(AtomicU64::new(0));
+        let foreign_sink = Sink {
+            limit: AtomicU64::new(1_000_000),
+            live: Arc::clone(&foreign_live),
+        };
+        let foreign_root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(
+            source_id,
+            &source,
+            &foreign_sink,
+        );
+        assert_eq!(
+            shared.validate_owner_v3(&foreign_root, &source),
+            Err(FrontendStorageRefusalV3::ForeignRequestRoot)
+        );
+        assert_eq!(
+            shared.validate_issued_sink_v3(&foreign_sink),
+            Err(FrontendStorageRefusalV3::ForeignRequestRoot)
+        );
+        assert_eq!(foreign_live.load(Ordering::Acquire), 0);
+        shared
+            .validate_owner_v3(&root, &source)
+            .expect("original shared owner validates");
+        shared
+            .validate_issued_sink_v3(&sink)
+            .expect("original shared sink validates");
+        let clone = shared.clone();
+        assert!(shared.shares_payload_v3(&clone));
+        assert_eq!(shared, clone);
+        assert_eq!(live.load(Ordering::Acquire), shared_bytes);
+        drop(shared);
+        assert_eq!(live.load(Ordering::Acquire), shared_bytes);
+        drop(clone);
+        assert_eq!(live.load(Ordering::Acquire), 0);
+
+        let document =
+            compile_scalar_source_with_request_owner_v3(source_id, &source, &authority, &root)
+                .expect("second owner admits under its original request");
+        sink.limit
+            .store(live.load(Ordering::Acquire), Ordering::Release);
+        let refused: ScalarExecutionRequestErrorV3 = document
+            .into_shared_with_request_owner_v3(&root, &source)
+            .err()
+            .expect("no spare budget rejects the shared owner birth");
+        assert!(matches!(
+            refused,
+            ScalarExecutionRequestErrorV3::Storage(FrontendStorageRefusalV3::BudgetRejected)
+        ));
+        assert_eq!(live.load(Ordering::Acquire), 0);
+        sink.limit.store(1_000_000, Ordering::Release);
+
+        let document =
+            compile_scalar_source_with_request_owner_v3(source_id, &source, &authority, &root)
+                .expect("original owner for foreign sharing test");
+        assert!(matches!(
+            document.into_shared_with_request_owner_v3(&foreign_root, &source),
+            Err(ScalarExecutionRequestErrorV3::Storage(
+                FrontendStorageRefusalV3::ForeignRequestRoot
+            ))
+        ));
+        assert_eq!(live.load(Ordering::Acquire), 0);
+        assert_eq!(foreign_live.load(Ordering::Acquire), 0);
+
+        let unsupported = String::from("show capabilities");
+        let unsupported_root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(
+            source_id,
+            &unsupported,
+            &sink,
+        );
+        let refused: ScalarSourceCompileRequestErrorV3 =
+            compile_scalar_source_with_request_owner_v3(
+                source_id,
+                &unsupported,
+                &authority,
+                &unsupported_root,
+            )
+            .err()
+            .expect("adjacent public family is outside scalar compilation");
+        assert!(matches!(
+            refused,
+            ScalarSourceCompileRequestErrorV3::UnsupportedRoot
+        ));
+        assert_eq!(live.load(Ordering::Acquire), 0);
+
+        let host = scalar_authority(budget, FrontendRelationAuthorityV2::Host);
+        let document =
+            compile_scalar_source_with_request_owner_v3(source_id, &source, &host, &root)
+                .expect("same source with ordinary host relation compiles");
+        assert_ne!(
+            document.contract_digest_v3(),
+            ordinary.execution().contract_digest()
+        );
+        let shared = document
+            .into_shared_with_request_owner_v3(&root, &source)
+            .expect("host owner shares");
+        assert!(
+            shared.canonical_files_scalar_read_v3().is_none(),
+            "same source spelling grants no canonical-files capability"
+        );
+        drop(shared);
+        assert_eq!(live.load(Ordering::Acquire), 0);
+    }
+}
+
 use std::path::{Path, PathBuf};
 
 use quanta_gqlang_v2_frontend_contract::{
@@ -1437,6 +1809,8 @@ fn main() {
         .finish()
         .expect("facade-only authority builder seals");
     lexical_owner_probe(&closed, &budget);
+    request_owner::probe(&budget);
+    request_owner::scalar_probe(&budget);
     assert_declaration_dependency_stack(&closed);
     let compiled = compile_source_document_v3(DOCUMENT_SOURCE, DOCUMENT_TEXT, &closed)
         .expect("facade-only closed authority compiles the probe source");

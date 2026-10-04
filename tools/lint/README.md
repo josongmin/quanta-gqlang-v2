@@ -2,15 +2,23 @@
 
 `just size-lint` uses locked Tokei 14.0.0 to count code lines in every Rust
 file under `crates/*/src/` and `crates/*/tests/`, including untracked source.
-`size_policy.json` limits new production files to 1,200 code lines and test
-files to 2,500. Exact-path legacy ceilings stop existing oversized files from
-growing. Remove an exception when its file falls below the common limit;
-lower its ceiling after a substantial split. `test_support.rs` and extracted
-owner unit-test modules receive the test limit only while their declarations
-remain test guarded.
+`size_policy.json` limits production files to 1,200 code lines and test
+files to 2,500. Its legacy exception list is empty. `test_support.rs` and
+extracted owner unit-test modules receive the test limit only while their
+declarations remain test guarded.
 The gate fails on tool-version drift, missing or inaccurate Tokei results,
 unknown files, stale exceptions, and exceeded ceilings. It measures source
 size, not algorithmic complexity or behavioral correctness.
+
+The same gate uses the pinned Rust AST parser to reject production
+`allow`/`expect` overrides of `clippy::too_many_lines` and the covering
+`clippy::pedantic`, `clippy::all`, and `warnings` groups. Module, impl, crate,
+and conditional attributes are included. Literal macro-emitted overrides and
+dynamic macro lint arguments are rejected. Comments and string literals are
+not attributes. Real test-only scopes can retain test fixture exceptions.
+Clippy enforces the actual 200-line function limit; this AST check prevents
+local suppressions from bypassing it. The independent policy fixtures run
+through the existing `ci-rail-test` command in local CI.
 
 ## Semantic honesty policy
 

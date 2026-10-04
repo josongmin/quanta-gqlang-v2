@@ -25,7 +25,7 @@ use crate::query::parse_query;
 use quanta_gqlang_v2_hir::{
     BoolExprHirV1, CallArgHirV1, CallArgsHirV1, LogicalBinderV1, LogicalQuantifierKindV1,
     NonEmptyBindersV1, PathSegmentV1, ProjectionItemV1, RecordFieldV1, RelationExistsPolarityV1,
-    SpanV1, ValueExprHirV1,
+    SpanV1, ValueExprHirV1, MAX_SAFE_EXPRESSION_DEPTH_V2,
 };
 
 /// Parse a full boolean expression (the predicate grammar entry point).
@@ -53,6 +53,7 @@ fn parse_or(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagnosticV1> 
         let rhs = parse_and(cur)?;
         let span = lhs.span.merge(&rhs.span);
         cur.charge_expression_node(span)?;
+        cur.reserve_nested_bytes_v3(2 * std::mem::size_of::<BoolExprHirV1>(), span)?;
         lhs = cur.builder.or(lhs, rhs, span);
     }
     Ok(lhs)
@@ -65,6 +66,7 @@ fn parse_and(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagnosticV1>
         let rhs = parse_not(cur)?;
         let span = lhs.span.merge(&rhs.span);
         cur.charge_expression_node(span)?;
+        cur.reserve_nested_bytes_v3(2 * std::mem::size_of::<BoolExprHirV1>(), span)?;
         lhs = cur.builder.and(lhs, rhs, span);
     }
     Ok(lhs)
@@ -86,6 +88,7 @@ fn parse_not(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagnosticV1>
             let inner = parse_not(cur)?;
             let span = kw.span.merge(&inner.span);
             cur.charge_expression_node(span)?;
+            cur.reserve_nested_bytes_v3(std::mem::size_of::<BoolExprHirV1>(), span)?;
             Ok(cur.builder.not(inner, span))
         });
     }
@@ -119,6 +122,7 @@ fn parse_comparison(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagno
         )?;
         let span = open.span.merge(&close.span);
         cur.charge_expression_node(span)?;
+        cur.reserve_nested_bytes_v3(std::mem::size_of::<BoolExprHirV1>(), span)?;
         return Ok(cur.builder.paren_bool(inner, span));
     }
 
@@ -131,12 +135,14 @@ fn parse_comparison(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, ParseDiagno
             let rhs = parse_additive(cur)?;
             let span = lhs.span.merge(&rhs.span);
             cur.charge_expression_node(span)?;
+            cur.reserve_nested_bytes_v3(2 * std::mem::size_of::<ValueExprHirV1>(), span)?;
             return Ok(cur.builder.compare(sym, lhs, rhs, span));
         }
     }
     // bare value in boolean position
     let span = lhs.span;
     cur.charge_expression_node(span)?;
+    cur.reserve_nested_bytes_v3(std::mem::size_of::<ValueExprHirV1>(), span)?;
     Ok(cur.builder.bool_value(lhs, span))
 }
 
@@ -149,7 +155,43 @@ fn parse_logical_quantifier(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, Par
     } else {
         LogicalQuantifierKindV1::Exists
     };
-    let mut binders = Vec::new();
+    let mut binder_slots = 0usize;
+    let mut lookahead = 0usize;
+    while cur.has_request_owner_v3()
+        && matches!(cur.peek_ahead(lookahead).kind, TokenKindV1::Ident(_))
+    {
+        binder_slots = binder_slots.checked_add(1).ok_or_else(|| {
+            ParseDiagnosticV1::new(
+                ParseErrorCodeV1::LexicalMaterializationOverflow,
+                cur.here_span(),
+                "quantifier binder count overflow",
+            )
+        })?;
+        lookahead = lookahead.checked_add(1).ok_or_else(|| {
+            ParseDiagnosticV1::new(
+                ParseErrorCodeV1::LexicalMaterializationOverflow,
+                cur.here_span(),
+                "quantifier token offset overflow",
+            )
+        })?;
+        if !matches!(cur.peek_ahead(lookahead).kind, TokenKindV1::Comma) {
+            break;
+        }
+        lookahead = lookahead.checked_add(1).ok_or_else(|| {
+            ParseDiagnosticV1::new(
+                ParseErrorCodeV1::LexicalMaterializationOverflow,
+                cur.here_span(),
+                "quantifier token offset overflow",
+            )
+        })?;
+    }
+    let binder_span = cur.here_span();
+    if cur.has_request_owner_v3() {
+        cur.budget
+            .charge_collection_element(binder_slots, binder_span)?;
+    }
+    let mut binders =
+        cur.preallocate_exact_items_v3::<LogicalBinderV1>(binder_slots, binder_span)?;
     loop {
         let observed = binders.len().saturating_add(1);
         cur.budget
@@ -169,6 +211,7 @@ fn parse_logical_quantifier(cur: &mut CursorV1<'_>) -> Result<BoolExprHirV1, Par
     let binders = NonEmptyBindersV1::try_new(binders)
         .map_err(|message| cur.unsupported(kw_tok.span, message))?;
     cur.charge_expression_node(span)?;
+    cur.reserve_nested_bytes_v3(std::mem::size_of::<BoolExprHirV1>(), span)?;
     Ok(cur.builder.logical_quantifier(kind, binders, body, span))
 }
 
@@ -189,6 +232,10 @@ fn parse_relation_exists(
     let close = cur.expect(&TokenKindV1::RParen, "')' to close relational existence")?;
     let span = start.merge(&close.span);
     cur.charge_expression_node(span)?;
+    cur.reserve_nested_bytes_v3(
+        std::mem::size_of::<quanta_gqlang_v2_hir::RelationExprHirV1>(),
+        span,
+    )?;
     Ok(cur.builder.relation_exists(polarity, query.body, span))
 }
 
@@ -270,7 +317,20 @@ fn paren_opens_bool(cur: &CursorV1<'_>) -> bool {
         OpaqueBracket,
     }
 
-    let mut delimiters = vec![Delimiter::GroupParen];
+    // The parser's installed expression-depth ceiling bounds every accepted
+    // nested group. Keep lookahead scratch inline so classification has no
+    // unleased heap birth before the source-owned parse begins.
+    let mut delimiters = [Delimiter::GroupParen; MAX_SAFE_EXPRESSION_DEPTH_V2 + 1];
+    let mut delimiter_len = 1usize;
+    macro_rules! push_delimiter {
+        ($delimiter:expr) => {{
+            let Some(slot) = delimiters.get_mut(delimiter_len) else {
+                return false;
+            };
+            *slot = $delimiter;
+            delimiter_len += 1;
+        }};
+    }
     let mut opaque_depth = 0usize;
     let mut n = 1usize;
     let mut saw_boolean_syntax = false;
@@ -323,24 +383,29 @@ fn paren_opens_bool(cur: &CursorV1<'_>) -> bool {
                     Delimiter::GroupParen
                 };
                 opaque_depth += usize::from(matches!(delimiter, Delimiter::OpaqueParen));
-                delimiters.push(delimiter);
+                push_delimiter!(delimiter);
             }
             TokenKindV1::LBrace => {
-                delimiters.push(Delimiter::OpaqueBrace);
+                push_delimiter!(Delimiter::OpaqueBrace);
                 opaque_depth += 1;
             }
             TokenKindV1::LBracket => {
-                delimiters.push(Delimiter::OpaqueBracket);
+                push_delimiter!(Delimiter::OpaqueBracket);
                 opaque_depth += 1;
             }
             TokenKindV1::RParen => {
-                let Some(delimiter @ (Delimiter::GroupParen | Delimiter::OpaqueParen)) =
-                    delimiters.pop()
-                else {
+                if delimiter_len == 0 {
+                    return false;
+                }
+                delimiter_len -= 1;
+                let Some(&delimiter) = delimiters.get(delimiter_len) else {
                     return false;
                 };
+                if !matches!(delimiter, Delimiter::GroupParen | Delimiter::OpaqueParen) {
+                    return false;
+                }
                 opaque_depth -= usize::from(matches!(delimiter, Delimiter::OpaqueParen));
-                if delimiters.is_empty() {
+                if delimiter_len == 0 {
                     let followed_by_comparison = matches!(
                         &cur.peek_ahead(n.saturating_add(1)).kind,
                         TokenKindV1::Op(symbol) if is_compare_op(symbol)
@@ -349,13 +414,24 @@ fn paren_opens_bool(cur: &CursorV1<'_>) -> bool {
                 }
             }
             TokenKindV1::RBrace => {
-                if !matches!(delimiters.pop(), Some(Delimiter::OpaqueBrace)) {
+                if delimiter_len == 0 {
+                    return false;
+                }
+                delimiter_len -= 1;
+                if !matches!(delimiters.get(delimiter_len), Some(Delimiter::OpaqueBrace)) {
                     return false;
                 }
                 opaque_depth -= 1;
             }
             TokenKindV1::RBracket => {
-                if !matches!(delimiters.pop(), Some(Delimiter::OpaqueBracket)) {
+                if delimiter_len == 0 {
+                    return false;
+                }
+                delimiter_len -= 1;
+                if !matches!(
+                    delimiters.get(delimiter_len),
+                    Some(Delimiter::OpaqueBracket)
+                ) {
                     return false;
                 }
                 opaque_depth -= 1;
@@ -386,6 +462,7 @@ fn parse_additive(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnos
         let rhs = parse_multiplicative(cur)?;
         let span = lhs.span.merge(&rhs.span);
         cur.charge_expression_node(span)?;
+        cur.reserve_nested_bytes_v3(2 * std::mem::size_of::<ValueExprHirV1>(), span)?;
         lhs = cur.builder.binary(sym, lhs, rhs, span);
     }
     Ok(lhs)
@@ -397,6 +474,7 @@ fn parse_multiplicative(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseD
         let rhs = parse_unary(cur)?;
         let span = lhs.span.merge(&rhs.span);
         cur.charge_expression_node(span)?;
+        cur.reserve_nested_bytes_v3(2 * std::mem::size_of::<ValueExprHirV1>(), span)?;
         lhs = cur.builder.binary(sym, lhs, rhs, span);
     }
     Ok(lhs)
@@ -414,6 +492,7 @@ fn parse_unary(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnostic
                 let operand = parse_unary(cur)?;
                 let span = op_tok.span.merge(&operand.span);
                 cur.charge_expression_node(span)?;
+                cur.reserve_nested_bytes_v3(std::mem::size_of::<ValueExprHirV1>(), span)?;
                 Ok(cur.builder.unary(sym, operand, span))
             });
         }
@@ -427,7 +506,36 @@ fn parse_postfix(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnost
     if !matches!(cur.peek().kind, TokenKindV1::Dot) {
         return Ok(base);
     }
-    let mut segments = Vec::new();
+    let mut segment_slots = 0usize;
+    loop {
+        if !cur.has_request_owner_v3() {
+            break;
+        }
+        let offset = segment_slots.checked_mul(2).ok_or_else(|| {
+            ParseDiagnosticV1::new(
+                ParseErrorCodeV1::LexicalMaterializationOverflow,
+                cur.here_span(),
+                "path segment token offset overflow",
+            )
+        })?;
+        if !matches!(cur.peek_ahead(offset).kind, TokenKindV1::Dot) {
+            break;
+        }
+        segment_slots = segment_slots.checked_add(1).ok_or_else(|| {
+            ParseDiagnosticV1::new(
+                ParseErrorCodeV1::LexicalMaterializationOverflow,
+                cur.here_span(),
+                "path segment count overflow",
+            )
+        })?;
+    }
+    let segment_span = cur.here_span();
+    if cur.has_request_owner_v3() {
+        cur.budget
+            .charge_collection_element(segment_slots, segment_span)?;
+    }
+    let mut segments =
+        cur.preallocate_exact_items_v3::<PathSegmentV1>(segment_slots, segment_span)?;
     while cur.eat(&TokenKindV1::Dot).is_some() {
         cur.budget
             .charge_collection_element(segments.len().saturating_add(1), cur.here_span())?;
@@ -437,6 +545,7 @@ fn parse_postfix(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnost
     let last = segments.last().map(|s| s.span).unwrap_or(base.span);
     let span = base.span.merge(&last);
     cur.charge_expression_node(span)?;
+    cur.reserve_nested_bytes_v3(std::mem::size_of::<ValueExprHirV1>(), span)?;
     cur.builder
         .try_path(base, segments, span)
         .map_err(|message| ParseDiagnosticV1::new(ParseErrorCodeV1::UnexpectedToken, span, message))
@@ -477,6 +586,7 @@ fn parse_primary(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnost
         )?;
         let span = open.span.merge(&close.span);
         cur.charge_expression_node(span)?;
+        cur.reserve_nested_bytes_v3(std::mem::size_of::<ValueExprHirV1>(), span)?;
         return Ok(cur.builder.paren_value(inner, span));
     }
     if matches!(cur.peek().kind, TokenKindV1::LBrace) {
@@ -522,7 +632,7 @@ fn parse_call(
     callee_span: SpanV1,
 ) -> Result<ValueExprHirV1, ParseDiagnosticV1> {
     let _open = cur.expect(&TokenKindV1::LParen, "'(' to open call arguments")?;
-    let mut args = Vec::new();
+    let mut args = cur.preallocate_delimited_items_v3::<CallArgHirV1>(TokenKindV1::RParen)?;
     if !matches!(cur.peek().kind, TokenKindV1::RParen) {
         loop {
             cur.budget
@@ -556,7 +666,7 @@ fn parse_call(
 
 fn parse_record(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosticV1> {
     let open = cur.expect(&TokenKindV1::LBrace, "'{' to open record")?;
-    let mut fields: Vec<RecordFieldV1> = Vec::new();
+    let mut fields = cur.preallocate_delimited_items_v3::<RecordFieldV1>(TokenKindV1::RBrace)?;
     if !matches!(cur.peek().kind, TokenKindV1::RBrace) {
         loop {
             cur.budget
@@ -590,7 +700,8 @@ fn parse_record(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosti
 
 fn parse_list(cur: &mut CursorV1<'_>) -> Result<ValueExprHirV1, ParseDiagnosticV1> {
     let open = cur.expect(&TokenKindV1::LBracket, "'[' to open list")?;
-    let mut elements = Vec::new();
+    let mut elements =
+        cur.preallocate_delimited_items_v3::<ValueExprHirV1>(TokenKindV1::RBracket)?;
     if !matches!(cur.peek().kind, TokenKindV1::RBracket) {
         loop {
             cur.budget

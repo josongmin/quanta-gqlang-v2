@@ -4,16 +4,18 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use quanta_gqlang_v2_hir::{
-    CheckedLocatedSpanV2, ExtendedSourceRegistryViewV2, SourceIdV2, SourceRegistryViewV2,
+    CheckedLocatedSpanV2, ExtendedSourceRegistryViewV2, FrontendRequestMaterializationRootV3,
+    FrontendRetainedStoragePermitV3, FrontendStorageRefusalV3, SourceIdV2, SourceRegistryViewV2,
 };
 
 use crate::budget::ModuleBudgetSessionV2;
 use crate::catalog::{
     DocumentCatalogAuthorityV2, DocumentCatalogFinalInputV2, DocumentCatalogInputV2,
-    DocumentCatalogReferenceInputV2, DocumentCatalogReferenceOriginV2, DocumentViewTopologyProofV2,
-    DocumentViewTopologyStateV2, ExternalCatalogAssetInputV2, ExternalCatalogPayloadV2,
-    ExternalCatalogV2, PrecheckedExternalCatalogAssetV2, PredeclaredDocumentAssetV2,
-    PredeclaredDocumentAssetsV2, ResolvedDocumentCatalogReferenceV2, ResolvedHostPredicateProofV2,
+    DocumentCatalogReferenceInputV2, DocumentCatalogReferenceOriginV2,
+    DocumentPredeclareRequestErrorV3, DocumentViewTopologyProofV2, DocumentViewTopologyStateV2,
+    ExternalCatalogAssetInputV2, ExternalCatalogPayloadV2, ExternalCatalogV2,
+    PrecheckedExternalCatalogAssetV2, PredeclaredDocumentAssetV2, PredeclaredDocumentAssetsV2,
+    ResolvedDocumentCatalogReferenceV2, ResolvedHostPredicateProofV2,
 };
 use crate::extension::{
     ComposedModelV2, ModelPackInputV2, ModelPackV2, ModelSchemaInputV2, ModelSchemaV2,
@@ -28,7 +30,25 @@ use crate::lockfile::{
     LockReferenceInputV2, LockReferenceV2, LockfileV2, ValidatedPackAuthorityV2,
 };
 use crate::manifest::{PackGraphV2, PackIdV2, PackManifestInputV2, PackManifestV2};
+use crate::session_identity::{
+    arc_layout_bytes_v3, DocumentSessionIdentityV2, PredeclaredRequestCustodyV3,
+};
 use crate::{ModuleBudgetV2, ModuleDiagnosticV2, VersionV2};
+mod reference_request;
+mod request_catalog;
+
+use reference_request::ReferenceCandidateV3;
+pub use reference_request::{
+    AdmittedDocumentReferenceDiagnosticV3, AdmittedDocumentReferenceV3,
+    DocumentReferenceRequestErrorV3,
+};
+pub use request_catalog::{
+    AdmittedDocumentCatalogAuthorityV3, AdmittedDocumentCatalogDiagnosticV3,
+    AdmittedDocumentTopologyDiagnosticV3, AdmittedDocumentViewTopologyProofV3,
+    DocumentCatalogFamilyReferenceInputV3, DocumentCatalogFinalInputV3,
+    DocumentCatalogRequestErrorV3, DocumentCatalogSessionWitnessV3, DocumentTopologyRequestErrorV3,
+};
+
 use quanta_gqlang_v2_types::{
     AuthorityBudgetProfileV2, HostCallableNamespaceV2, ResolvedHostPredicateKeyV2,
 };
@@ -353,10 +373,19 @@ pub struct DocumentCatalogValidatorV2<'a> {
     extended_registry: ExtendedSourceRegistryViewV2,
     parts: &'a ValidatedModuleAuthorityPartsV2,
     session: ModuleBudgetSessionV2,
-    predeclared: Option<PredeclaredDocumentAssetsV2>,
-    topology_state: Option<DocumentViewTopologyStateV2>,
+    predeclared: Option<Arc<PredeclaredDocumentAssetsV2>>,
+    topology_state: Option<Arc<DocumentViewTopologyStateV2>>,
+    _topology_storage: Option<Arc<FrontendRetainedStoragePermitV3>>,
+    request_stage: DocumentCatalogRequestStageV3,
     phase: DocumentCatalogPhaseV2,
-    session_key: Arc<()>,
+    session_key: Arc<DocumentSessionIdentityV2>,
+}
+
+/// Allocation-free refusal from the request-owned validator constructor.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DocumentValidatorRequestErrorV3 {
+    Storage(FrontendStorageRefusalV3),
+    RegistryMismatch,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -368,7 +397,26 @@ enum DocumentCatalogPhaseV2 {
     Failed,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DocumentCatalogRequestStageV3 {
+    Raw,
+    Issued,
+    Predeclared,
+    TopologyValidated,
+    Finished,
+}
+
 impl<'a> DocumentCatalogValidatorV2<'a> {
+    /// Authenticate the validator's independently retained document session.
+    pub fn validate_owner_v3(
+        &self,
+        root: &FrontendRequestMaterializationRootV3<'_>,
+        source_id: SourceIdV2,
+        source: &str,
+    ) -> Result<(), FrontendStorageRefusalV3> {
+        self.session_key.validate_owner_v3(root, source_id, source)
+    }
+
     pub fn try_new(
         extended_registry: ExtendedSourceRegistryViewV2,
         parts: &'a ValidatedModuleAuthorityPartsV2,
@@ -379,15 +427,62 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
                 "document registry is not an extension of sealed host authority",
             ));
         }
-        Ok(Self {
+        Ok(Self::new_with_validated_registry(
+            extended_registry,
+            parts,
+            Arc::new(DocumentSessionIdentityV2::unowned()),
+        ))
+    }
+
+    /// Reserve an independently retained session identity before its first
+    /// allocation. Public proofs keep this charge after the caller permit drops.
+    pub fn try_new_with_request_owner_v3(
+        extended_registry: ExtendedSourceRegistryViewV2,
+        parts: &'a ValidatedModuleAuthorityPartsV2,
+        root: &FrontendRequestMaterializationRootV3<'_>,
+        source_id: SourceIdV2,
+        source: &str,
+        permit: &mut FrontendRetainedStoragePermitV3,
+    ) -> Result<Self, DocumentValidatorRequestErrorV3> {
+        permit
+            .validate_owner_v3(root, source_id, source)
+            .map_err(DocumentValidatorRequestErrorV3::Storage)?;
+        if extended_registry.parent_identity() != &parts.source_registry.identity()
+            || extended_registry.source_len(source_id) != Some(source.len())
+        {
+            return Err(DocumentValidatorRequestErrorV3::RegistryMismatch);
+        }
+        let bytes = arc_layout_bytes_v3::<DocumentSessionIdentityV2>().ok_or(
+            DocumentValidatorRequestErrorV3::Storage(FrontendStorageRefusalV3::DemandOverflow),
+        )?;
+        let storage = root
+            .reserve_v3(source_id, source, bytes)
+            .map_err(DocumentValidatorRequestErrorV3::Storage)?;
+        let mut validator = Self::new_with_validated_registry(
+            extended_registry,
+            parts,
+            Arc::new(DocumentSessionIdentityV2::owned(storage)),
+        );
+        validator.request_stage = DocumentCatalogRequestStageV3::Issued;
+        Ok(validator)
+    }
+
+    fn new_with_validated_registry(
+        extended_registry: ExtendedSourceRegistryViewV2,
+        parts: &'a ValidatedModuleAuthorityPartsV2,
+        session_key: Arc<DocumentSessionIdentityV2>,
+    ) -> Self {
+        Self {
             extended_registry,
             parts,
             session: ModuleBudgetV2::from_profile(parts.budget_profile.clone()).begin_session_v2(),
             predeclared: None,
             topology_state: None,
+            _topology_storage: None,
+            request_stage: DocumentCatalogRequestStageV3::Raw,
             phase: DocumentCatalogPhaseV2::Empty,
-            session_key: Arc::new(()),
-        })
+            session_key,
+        }
     }
 
     /// Derive and charge every local document asset exactly once, before any
@@ -410,26 +505,26 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
         // A document declaration cannot reuse a sealed host identity. A later
         // resolver lookup keyed only by CatalogAssetId would otherwise merge
         // two distinct declaration origins and silently choose one payload.
-        for asset in predeclared.iter() {
+        for (id, kind, location) in predeclared.iter_borrowed() {
             self.session.charge_step()?;
-            if asset.id().module_id() != self.parts.resolved_graph.current_module() {
+            if id.module_id() != self.parts.resolved_graph.current_module() {
                 return Err(ModuleDiagnosticV2::new(
                     "modules.document_asset_wrong_module",
                     "document catalog asset must belong to the selected current module",
-                    asset.location(),
+                    location,
                 ));
             }
             let host_location = self
                 .parts
                 .external_catalog
-                .asset(asset.id())
+                .asset(id)
                 .map(crate::ExternalCatalogAssetV2::location)
                 .or_else(|| {
                     self.parts
                         .resolved_graph
                         .visible_bindings()
-                        .get(asset.kind(), asset.id().local_name())
-                        .filter(|binding| binding.resolved_asset_id() == asset.id())
+                        .get(kind, id.local_name())
+                        .filter(|binding| binding.resolved_asset_id() == id)
                         .map(crate::ResolvedBindingV2::declaration_location)
                 });
             if let Some(host_location) = host_location {
@@ -446,14 +541,151 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
                 return Err(ModuleDiagnosticV2::conflict(
                     "modules.duplicate_document_catalog_asset",
                     "document catalog asset duplicates a sealed host declaration",
-                    asset.location(),
+                    location,
                     &checked_host,
                 ));
             }
         }
         let output = predeclared.iter().collect();
-        self.predeclared = Some(predeclared);
+        self.predeclared = Some(Arc::new(predeclared));
         self.phase = DocumentCatalogPhaseV2::Predeclared;
+        Ok(output)
+    }
+
+    /// Admit independently retained storage for the local catalog and every
+    /// returned proof before either Vec or copied ID spelling is born.
+    pub fn predeclare_assets_with_request_owner_v3(
+        &mut self,
+        assets: Vec<crate::DocumentCatalogAssetInputV2>,
+        root: &FrontendRequestMaterializationRootV3<'_>,
+        source_id: SourceIdV2,
+        source: &str,
+        permit: &mut FrontendRetainedStoragePermitV3,
+    ) -> Result<Vec<PredeclaredDocumentAssetV2>, DocumentPredeclareRequestErrorV3> {
+        permit
+            .validate_owner_v3(root, source_id, source)
+            .map_err(DocumentPredeclareRequestErrorV3::Storage)?;
+        if self.phase != DocumentCatalogPhaseV2::Empty
+            || self.request_stage != DocumentCatalogRequestStageV3::Issued
+        {
+            return Err(DocumentPredeclareRequestErrorV3::Phase);
+        }
+        self.session_key
+            .validate_owner_v3(root, source_id, source)
+            .map_err(DocumentPredeclareRequestErrorV3::Storage)?;
+        self.phase = DocumentCatalogPhaseV2::Failed;
+        let slots = assets.len();
+        self.session
+            .preflight_predeclaration_v3(
+                assets
+                    .iter()
+                    .map(|asset| (asset.owner_module_id.as_str(), asset.local_name.as_str())),
+                slots,
+            )
+            .map_err(|error| DocumentPredeclareRequestErrorV3::Resource {
+                dimension: error.dimension,
+                limit: error.limit,
+                observed: error.observed,
+            })?;
+        let retained_bytes = slots
+            .checked_mul(std::mem::size_of::<(
+                CatalogAssetIdV2,
+                NamespaceKindV2,
+                CheckedLocatedSpanV2,
+                usize,
+            )>())
+            .ok_or(DocumentPredeclareRequestErrorV3::DemandOverflow)?;
+        let returned_bytes = slots
+            .checked_mul(std::mem::size_of::<PredeclaredDocumentAssetV2>())
+            .ok_or(DocumentPredeclareRequestErrorV3::DemandOverflow)?;
+        let arc_bytes = std::alloc::Layout::new::<[std::sync::atomic::AtomicUsize; 2]>()
+            .extend(std::alloc::Layout::new::<PredeclaredDocumentAssetsV2>())
+            .map_err(|_layout_error| DocumentPredeclareRequestErrorV3::DemandOverflow)?
+            .0
+            .pad_to_align()
+            .size();
+        let custody_bytes = arc_layout_bytes_v3::<PredeclaredRequestCustodyV3>()
+            .ok_or(DocumentPredeclareRequestErrorV3::DemandOverflow)?;
+        let bytes = assets
+            .iter()
+            .try_fold(
+                retained_bytes
+                    .checked_add(returned_bytes)
+                    .and_then(|total| total.checked_add(arc_bytes))
+                    .and_then(|total| total.checked_add(custody_bytes))
+                    .ok_or(DocumentPredeclareRequestErrorV3::DemandOverflow)?,
+                |bytes, asset| {
+                    bytes
+                        .checked_add(asset.owner_module_id.as_str().len())?
+                        .checked_add(asset.local_name.len())
+                },
+            )
+            .ok_or(DocumentPredeclareRequestErrorV3::DemandOverflow)?;
+        let storage = root
+            .reserve_v3(source_id, source, bytes)
+            .map_err(DocumentPredeclareRequestErrorV3::Storage)?;
+        let custody = Arc::new(PredeclaredRequestCustodyV3::new(storage));
+        let mut retained = Vec::new();
+        retained
+            .try_reserve_exact(slots)
+            .map_err(|_error| DocumentPredeclareRequestErrorV3::FallibleAllocation)?;
+        let mut output = Vec::new();
+        output
+            .try_reserve_exact(slots)
+            .map_err(|_error| DocumentPredeclareRequestErrorV3::FallibleAllocation)?;
+        if retained.capacity() > slots || output.capacity() > slots {
+            return Err(DocumentPredeclareRequestErrorV3::FallibleAllocation);
+        }
+        let predeclared = PredeclaredDocumentAssetsV2::try_new_request_v3(
+            assets,
+            self.extended_registry.combined(),
+            self.session_key.clone(),
+            custody,
+            retained,
+        )?;
+        for (id, kind, location) in predeclared.iter_borrowed() {
+            if id.module_id() != self.parts.resolved_graph.current_module() {
+                return Err(DocumentPredeclareRequestErrorV3::WrongModule(
+                    location.location(),
+                ));
+            }
+            let host_location = self
+                .parts
+                .external_catalog
+                .asset(id)
+                .map(crate::ExternalCatalogAssetV2::location)
+                .or_else(|| {
+                    self.parts
+                        .resolved_graph
+                        .visible_bindings()
+                        .get(kind, id.local_name())
+                        .filter(|binding| binding.resolved_asset_id() == id)
+                        .map(crate::ResolvedBindingV2::declaration_location)
+                });
+            if let Some(host_location) = host_location {
+                if self
+                    .extended_registry
+                    .combined()
+                    .try_check_location(host_location)
+                    .is_err()
+                {
+                    return Err(DocumentPredeclareRequestErrorV3::HostRegistryMismatch);
+                }
+                return Err(DocumentPredeclareRequestErrorV3::HostConflict(
+                    location.location(),
+                    host_location,
+                ));
+            }
+        }
+        for asset in predeclared.iter() {
+            if output.len() >= output.capacity() {
+                return Err(DocumentPredeclareRequestErrorV3::FallibleAllocation);
+            }
+            output.push(asset);
+        }
+        self.predeclared = Some(Arc::new(predeclared));
+        self.phase = DocumentCatalogPhaseV2::Predeclared;
+        self.request_stage = DocumentCatalogRequestStageV3::Predeclared;
         Ok(output)
     }
 
@@ -468,15 +700,17 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
             return Err(self.reject_phase());
         }
         let location = input.location.clone();
-        let result = self.resolve_reference_inner(input).and_then(|reference| {
-            reference.ok_or_else(|| {
-                ModuleDiagnosticV2::new(
-                    "modules.unknown_catalog_reference",
-                    "catalog reference is absent",
-                    &location,
-                )
-            })
-        });
+        let result = self
+            .resolve_reference_inner(input, Vec::new())
+            .and_then(|reference| {
+                reference.ok_or_else(|| {
+                    ModuleDiagnosticV2::new(
+                        "modules.unknown_catalog_reference",
+                        "catalog reference is absent",
+                        &location,
+                    )
+                })
+            });
         if result.is_err() {
             self.phase = DocumentCatalogPhaseV2::Failed;
         }
@@ -496,7 +730,7 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
         if !self.references_are_open() {
             return Err(self.reject_phase());
         }
-        let result = self.resolve_reference_inner(input);
+        let result = self.resolve_reference_inner(input, Vec::new());
         if result.is_err() {
             self.phase = DocumentCatalogPhaseV2::Failed;
         }
@@ -514,7 +748,7 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
         if !self.references_are_open() {
             return Err(self.reject_phase());
         }
-        let result = self.resolve_reference_inner(input);
+        let result = self.resolve_reference_inner(input, Vec::new());
         if result.is_err() {
             self.phase = DocumentCatalogPhaseV2::Failed;
         }
@@ -665,9 +899,10 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
         Ok(())
     }
 
-    fn resolve_reference_inner(
-        &mut self,
+    fn resolve_reference_inner<'candidate>(
+        &'candidate mut self,
         input: DocumentCatalogReferenceInputV2,
+        mut candidates: Vec<ReferenceCandidateV3<'candidate>>,
     ) -> Result<Option<ResolvedDocumentCatalogReferenceV2>, ModuleDiagnosticV2> {
         let registry = self.extended_registry.combined();
         if input.location.registry_identity() != &registry.identity() {
@@ -687,31 +922,27 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
             ));
         }
         let Some(predeclared) = &self.predeclared else {
-            return Err(self.reject_phase());
+            self.phase = DocumentCatalogPhaseV2::Failed;
+            return Err(document_phase_error());
         };
         let current_module = self.parts.resolved_graph.current_module();
         let selected = input.module_id.as_ref().unwrap_or(current_module);
-        let mut candidates: BTreeMap<
-            CatalogAssetIdV2,
-            (
-                NamespaceKindV2,
-                DocumentCatalogReferenceOriginV2,
-                CheckedLocatedSpanV2,
-                Vec<crate::LocatedEdgeV2>,
-            ),
-        > = BTreeMap::new();
-        for asset in predeclared.iter() {
+        for (id, kind, location) in predeclared.iter_borrowed() {
             self.session.charge_step()?;
-            if asset.id().module_id() == selected && asset.id().local_name() == input.local_name {
-                candidates.insert(
-                    asset.id().clone(),
-                    (
-                        asset.kind(),
-                        DocumentCatalogReferenceOriginV2::Local,
-                        asset.location().clone(),
-                        Vec::new(),
+            if id.module_id() == selected && id.local_name() == input.local_name {
+                match candidates.binary_search_by(|(candidate, _, _, _, _)| (*candidate).cmp(id)) {
+                    Ok(_) => {}
+                    Err(index) => candidates.insert(
+                        index,
+                        (
+                            id,
+                            kind,
+                            DocumentCatalogReferenceOriginV2::Local,
+                            location.clone(),
+                            &[],
+                        ),
                     ),
-                );
+                }
             }
         }
         if selected == current_module {
@@ -726,14 +957,21 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
                                 "visible declaration location lost registry proof",
                             )
                         })?;
-                    candidates
-                        .entry(binding.resolved_asset_id().clone())
-                        .or_insert((
-                            binding.namespace_kind(),
-                            DocumentCatalogReferenceOriginV2::VisibleHost,
-                            location,
-                            binding.edge_witness().to_vec(),
-                        ));
+                    let id = binding.resolved_asset_id();
+                    if let Err(index) =
+                        candidates.binary_search_by(|(candidate, _, _, _, _)| (*candidate).cmp(id))
+                    {
+                        candidates.insert(
+                            index,
+                            (
+                                id,
+                                binding.namespace_kind(),
+                                DocumentCatalogReferenceOriginV2::VisibleHost,
+                                location,
+                                binding.edge_witness(),
+                            ),
+                        );
+                    }
                 }
             }
         }
@@ -749,24 +987,36 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
                                 "external declaration location lost registry proof",
                             )
                         })?;
-                match candidates.entry(asset.id().clone()) {
-                    std::collections::btree_map::Entry::Occupied(existing) => {
-                        if existing.get().2.location() != location.location() {
+                match candidates
+                    .binary_search_by(|(candidate, _, _, _, _)| (*candidate).cmp(asset.id()))
+                {
+                    Ok(index) => {
+                        let Some((_, _, _, previous, _)) = candidates.get(index) else {
+                            return Err(ModuleDiagnosticV2::without_location(
+                                "modules.internal_reference_index_mismatch",
+                                "sorted reference index is outside the candidate set",
+                            ));
+                        };
+                        if previous.location() != location.location() {
                             return Err(ModuleDiagnosticV2::conflict(
                                 "modules.duplicate_host_catalog_asset",
                                 "host catalog identity has distinct declaration origins",
                                 &location,
-                                &existing.get().2,
+                                previous,
                             ));
                         }
                     }
-                    std::collections::btree_map::Entry::Vacant(vacant) => {
-                        vacant.insert((
-                            asset.kind(),
-                            DocumentCatalogReferenceOriginV2::External,
-                            location,
-                            Vec::new(),
-                        ));
+                    Err(index) => {
+                        candidates.insert(
+                            index,
+                            (
+                                asset.id(),
+                                asset.kind(),
+                                DocumentCatalogReferenceOriginV2::External,
+                                location,
+                                &[],
+                            ),
+                        );
                     }
                 }
             }
@@ -777,11 +1027,11 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
         if candidates.len() > 1 {
             let detailed = candidates
                 .iter()
-                .map(|(id, (_, _, location, witness))| {
+                .map(|(id, _, _, location, witness)| {
                     crate::AmbiguousCandidateV2::from_catalog_reference(
-                        id.clone(),
+                        CatalogAssetIdV2::clone(*id),
                         location.location(),
-                        witness.clone(),
+                        (*witness).to_vec(),
                     )
                 })
                 .collect();
@@ -792,10 +1042,10 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
             )
             .with_ambiguous_candidates(detailed));
         }
-        if let Some((id, (kind, origin, wrong, _))) = candidates.into_iter().next() {
+        if let Some((id, kind, origin, wrong, _)) = candidates.into_iter().next() {
             if kind == input.expected_kind {
                 return Ok(Some(ResolvedDocumentCatalogReferenceV2::new(
-                    id,
+                    CatalogAssetIdV2::clone(id),
                     kind,
                     origin,
                     input.location,
@@ -810,6 +1060,29 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
             ));
         }
         Ok(None)
+    }
+
+    /// Borrowed absence probe for a host relation fallback. Any catalog
+    /// spelling in the current module's local, visible, or external inventory
+    /// requires normal Modules resolution; a host relation must not bypass it.
+    #[must_use]
+    pub fn has_current_catalog_spelling_v3(&self, name: &str) -> bool {
+        let current = self.parts.resolved_graph.current_module();
+        self.predeclared.as_ref().is_some_and(|predeclared| {
+            predeclared
+                .iter_borrowed()
+                .any(|(id, _, _)| id.module_id() == current && id.local_name() == name)
+        }) || self
+            .parts
+            .resolved_graph
+            .visible_bindings()
+            .iter()
+            .any(|binding| binding.local_name() == name)
+            || self
+                .parts
+                .external_catalog
+                .iter()
+                .any(|asset| asset.id().module_id() == current && asset.id().local_name() == name)
     }
 
     const fn references_are_open(&self) -> bool {
@@ -847,7 +1120,7 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
             &mut self.session,
             self.session_key.clone(),
         )?;
-        self.topology_state = Some(proof.state().clone());
+        self.topology_state = Some(proof.shared_state());
         self.phase = DocumentCatalogPhaseV2::TopologyValidated;
         Ok(proof)
     }
@@ -869,7 +1142,7 @@ impl<'a> DocumentCatalogValidatorV2<'a> {
         let Some(expected_topology) = &self.topology_state else {
             return Err(self.reject_phase());
         };
-        validate_view_topology_proof(expected_topology, &topology, &self.session_key)?;
+        validate_view_topology_proof(expected_topology.as_ref(), &topology, &self.session_key)?;
         let result = DocumentCatalogAuthorityV2::try_new_predeclared(
             input,
             predeclared,
@@ -923,7 +1196,7 @@ fn document_phase_error() -> ModuleDiagnosticV2 {
 fn validate_view_topology_proof(
     expected: &DocumentViewTopologyStateV2,
     proof: &DocumentViewTopologyProofV2,
-    session_key: &Arc<()>,
+    session_key: &Arc<DocumentSessionIdentityV2>,
 ) -> Result<(), ModuleDiagnosticV2> {
     if !proof.belongs_to(session_key) {
         return Err(ModuleDiagnosticV2::without_location(
@@ -974,7 +1247,7 @@ mod tests {
             dependencies: Vec::new(),
             dependency_first_order: vec![first.clone(), second.clone()],
         };
-        let session = Arc::new(());
+        let session = Arc::new(DocumentSessionIdentityV2::unowned());
 
         let dropped = DocumentViewTopologyProofV2::from_state(
             DocumentViewTopologyStateV2 {
@@ -1004,7 +1277,10 @@ mod tests {
             "modules.view_topology_proof_mismatch"
         );
 
-        let foreign = DocumentViewTopologyProofV2::from_state(expected.clone(), Arc::new(()));
+        let foreign = DocumentViewTopologyProofV2::from_state(
+            expected.clone(),
+            Arc::new(DocumentSessionIdentityV2::unowned()),
+        );
         assert_eq!(
             validate_view_topology_proof(&expected, &foreign, &session)
                 .unwrap_err()

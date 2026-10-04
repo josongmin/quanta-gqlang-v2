@@ -6,11 +6,11 @@ use super::super::{
     resolve_check_item, resolve_graph_item, resolve_presentation_item, AggregatePositionV2,
     BTreeMap, BindResultV1, BodyResolutionV2, CheckedSyntaxDocumentV2, ClosedFrontendAuthorityV2,
     DeclaredDocumentV2, DocumentCatalogFinalInputV2, DocumentCatalogValidatorV2,
-    ExpressionTypeStateV2, FrontendTransactionErrorV2, HirNodeIdV1, InlineViewPlanV2,
-    LockReferenceInputV2, PackActivationInputV2, PackIdV2, PredeclaredDocumentAssetV2,
-    ProgramItemHirV1, RequireCertifiedInputV2, ResolvedDeclarationV2, ResolvedMetaKindV2,
-    ResolvedMetaV2, ResolvedRuleV2, RulePredicateInputV2, SemanticItemIdV2, SemanticItemV2,
-    SemanticStepCounterV2, SourceQualifiedNodeIdV2, TypedExprV2, TypedExpressionFactsV2,
+    ExpressionTypeStateV2, FrontendTransactionErrorV2, InlineViewPlanV2, LockReferenceInputV2,
+    PackActivationInputV2, PackIdV2, ProgramItemHirV1, RequireCertifiedInputV2,
+    ResolvedDeclarationV2, ResolvedMetaKindV2, ResolvedMetaV2, ResolvedRuleV2,
+    RulePredicateInputV2, SemanticItemIdV2, SemanticItemV2, SemanticStepCounterV2,
+    SourceCatalogAssetsV3, SourceQualifiedNodeIdV2, TypedExprV2, TypedExpressionFactsV2,
     TypedRelationExprV2, UsePackActivationV2, ViewMaterializationInputsV2,
 };
 use super::catalog::resolve_catalog_declaration;
@@ -22,12 +22,12 @@ pub(super) fn materialize_source_order(
     declared: &DeclaredDocumentV2,
     authority: &ClosedFrontendAuthorityV2,
     extended: &quanta_gqlang_v2_hir::ExtendedSourceRegistryViewV2,
-    predeclared: &BTreeMap<HirNodeIdV1, PredeclaredDocumentAssetV2>,
-    inline_views: &InlineViewPlanV2,
+    predeclared: &SourceCatalogAssetsV3,
+    inline_views: &mut InlineViewPlanV2,
     validator: &mut DocumentCatalogValidatorV2<'_>,
     steps: &mut SemanticStepCounterV2,
     prepared: PreparedBodyTypesV2,
-    inline: InlineViewBodiesV2,
+    mut inline: InlineViewBodiesV2,
 ) -> Result<BodyResolutionV2, FrontendTransactionErrorV2> {
     let checked = declared.checked();
     let bound = &prepared.bound;
@@ -104,8 +104,8 @@ pub(super) fn materialize_source_order(
                     decl,
                     checked,
                     predeclared,
-                    inline_views,
-                    &inline.views,
+                    &mut inline_views.direct_references,
+                    &mut inline.views,
                     extended,
                     validator,
                     steps,

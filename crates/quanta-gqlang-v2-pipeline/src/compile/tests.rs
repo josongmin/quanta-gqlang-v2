@@ -7,7 +7,857 @@ use quanta_gqlang_v2_sema::test_support::{
     reference_meta_document_v2, reference_relation_document_v2, ReferenceMetaFixtureV2,
     ReferenceRelationFixtureV2,
 };
-use quanta_gqlang_v2_sema::HirNodeIdV1;
+use quanta_gqlang_v2_sema::{
+    BinderDeclarationRequestErrorV3, BuiltinRegistryRequestErrorV3, HirNodeIdV1,
+};
+
+struct RequestTestSinkV3 {
+    live: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    peak: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    limit: u64,
+}
+
+struct RequestTestPermitV3 {
+    live: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    bytes: u64,
+}
+
+struct AdjustableRequestTestSinkV3 {
+    inner: RequestTestSinkV3,
+    limit: std::sync::Arc<std::sync::atomic::AtomicU64>,
+}
+
+impl quanta_gqlang_v2_surface::FrontendRequestStorageSinkV3 for AdjustableRequestTestSinkV3 {
+    fn reserve_v3(
+        &self,
+        logical_bytes: u64,
+    ) -> Result<
+        Box<dyn quanta_gqlang_v2_surface::FrontendRequestStoragePermitV3>,
+        FrontendStorageRefusalV3,
+    > {
+        let charge_bytes = logical_bytes
+            .checked_add(u64::try_from(std::mem::size_of::<RequestTestPermitV3>()).unwrap())
+            .ok_or(FrontendStorageRefusalV3::DemandOverflow)?;
+        let next = self
+            .inner
+            .live
+            .load(std::sync::atomic::Ordering::Acquire)
+            .checked_add(charge_bytes)
+            .ok_or(FrontendStorageRefusalV3::DemandOverflow)?;
+        if next > self.limit.load(std::sync::atomic::Ordering::Acquire) {
+            return Err(FrontendStorageRefusalV3::BudgetRejected);
+        }
+        self.inner.reserve_v3(logical_bytes)
+    }
+
+    fn owns_permit_v3(
+        &self,
+        permit: &dyn quanta_gqlang_v2_surface::FrontendRequestStoragePermitV3,
+    ) -> bool {
+        self.inner.owns_permit_v3(permit)
+    }
+}
+
+impl Drop for RequestTestPermitV3 {
+    fn drop(&mut self) {
+        self.live
+            .fetch_sub(self.bytes, std::sync::atomic::Ordering::AcqRel);
+    }
+}
+
+impl quanta_gqlang_v2_surface::FrontendRequestStorageSinkV3 for RequestTestSinkV3 {
+    fn reserve_v3(
+        &self,
+        logical_bytes: u64,
+    ) -> Result<
+        Box<dyn quanta_gqlang_v2_surface::FrontendRequestStoragePermitV3>,
+        quanta_gqlang_v2_surface::FrontendStorageRefusalV3,
+    > {
+        use quanta_gqlang_v2_surface::FrontendStorageRefusalV3;
+        let bytes = logical_bytes
+            .checked_add(u64::try_from(std::mem::size_of::<RequestTestPermitV3>()).unwrap())
+            .ok_or(FrontendStorageRefusalV3::DemandOverflow)?;
+        let mut live = self.live.load(std::sync::atomic::Ordering::Acquire);
+        loop {
+            let next = live
+                .checked_add(bytes)
+                .ok_or(FrontendStorageRefusalV3::DemandOverflow)?;
+            if next > self.limit {
+                return Err(FrontendStorageRefusalV3::BudgetRejected);
+            }
+            match self.live.compare_exchange_weak(
+                live,
+                next,
+                std::sync::atomic::Ordering::AcqRel,
+                std::sync::atomic::Ordering::Acquire,
+            ) {
+                Ok(_) => {
+                    self.peak
+                        .fetch_max(next, std::sync::atomic::Ordering::AcqRel);
+                    break;
+                }
+                Err(observed) => live = observed,
+            }
+        }
+        Ok(Box::new(RequestTestPermitV3 {
+            live: std::sync::Arc::clone(&self.live),
+            bytes,
+        }))
+    }
+
+    fn owns_permit_v3(
+        &self,
+        permit: &dyn quanta_gqlang_v2_surface::FrontendRequestStoragePermitV3,
+    ) -> bool {
+        permit
+            .as_any_v3()
+            .downcast_ref::<RequestTestPermitV3>()
+            .is_some_and(|permit| std::sync::Arc::ptr_eq(&self.live, &permit.live))
+    }
+}
+
+#[test]
+fn request_checked_hir_uses_same_owner_and_releases_scratch_v3() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
+
+    let source_id = SourceIdV2::from_raw(701);
+    let source = String::from("from records");
+    let budget = standard_budget_v2();
+    let live = Arc::new(AtomicU64::new(0));
+    let peak = Arc::new(AtomicU64::new(0));
+    let sink = RequestTestSinkV3 {
+        live: Arc::clone(&live),
+        peak: Arc::clone(&peak),
+        limit: u64::MAX,
+    };
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &sink);
+    let parsed = parse_source_document_with_request_owner_v3(source_id, &source, &budget, &root)
+        .expect("source parser owner");
+    let parse_live = live.load(Ordering::Acquire);
+    let checked = check_source_document_with_request_owner_v3(source_id, &source, &root, parsed)
+        .expect("checked source owner");
+    let checked_peak = peak.load(Ordering::Acquire);
+    assert_eq!(checked.node_count_v3(), 2);
+    assert!(checked_peak > parse_live);
+    assert_eq!(live.load(Ordering::Acquire), parse_live);
+    drop(checked);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+
+    let short_live = Arc::new(AtomicU64::new(0));
+    let short_sink = RequestTestSinkV3 {
+        live: Arc::clone(&short_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: checked_peak - 1,
+    };
+    let short_root =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &short_sink);
+    let parsed =
+        parse_source_document_with_request_owner_v3(source_id, &source, &budget, &short_root)
+            .expect("short limit still admits the parser stage");
+    assert!(matches!(
+        check_source_document_with_request_owner_v3(source_id, &source, &short_root, parsed),
+        Err(FrontendRequestCheckErrorV3::Root(
+            FrontendStorageRefusalV3::BudgetRejected
+        ))
+    ));
+    assert_eq!(short_live.load(Ordering::Acquire), 0);
+
+    let owner_live = Arc::new(AtomicU64::new(0));
+    let owner_sink = RequestTestSinkV3 {
+        live: Arc::clone(&owner_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: u64::MAX,
+    };
+    let owner_root =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &owner_sink);
+    let parsed =
+        parse_source_document_with_request_owner_v3(source_id, &source, &budget, &owner_root)
+            .expect("source parser owner");
+    let foreign_live = Arc::new(AtomicU64::new(0));
+    let foreign_sink = RequestTestSinkV3 {
+        live: Arc::clone(&foreign_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: u64::MAX,
+    };
+    let foreign_root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(
+        source_id,
+        &source,
+        &foreign_sink,
+    );
+    assert!(matches!(
+        check_source_document_with_request_owner_v3(source_id, &source, &foreign_root, parsed),
+        Err(FrontendRequestCheckErrorV3::Root(
+            FrontendStorageRefusalV3::ForeignRequestRoot
+        ))
+    ));
+    assert_eq!(owner_live.load(Ordering::Acquire), 0);
+    assert_eq!(foreign_live.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn request_checked_hir_keeps_two_source_ordered_items_and_refuses_foreign_source_v3() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
+
+    let source_id = SourceIdV2::from_raw(703);
+    let source = String::from("show capabilities; show models");
+    let budget = standard_budget_v2();
+    let live = Arc::new(AtomicU64::new(0));
+    let sink = RequestTestSinkV3 {
+        live: Arc::clone(&live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: u64::MAX,
+    };
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &sink);
+    let parsed = parse_source_document_with_request_owner_v3(source_id, &source, &budget, &root)
+        .expect("both authored SHOW items parse");
+    assert_eq!(parsed.item_count_v3(), 2);
+    let checked = check_source_document_with_request_owner_v3(source_id, &source, &root, parsed)
+        .expect("both parser-issued identities check");
+    assert_eq!(checked.node_count_v3(), 2);
+    drop(checked);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+
+    let mixed_source = String::from("let answer = 1; show capabilities");
+    let mixed_root =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &mixed_source, &sink);
+    let mixed =
+        parse_source_document_with_request_owner_v3(source_id, &mixed_source, &budget, &mixed_root)
+            .expect("declaration then presentation parse in source order");
+    assert_eq!(mixed.item_count_v3(), 2);
+    let mixed =
+        check_source_document_with_request_owner_v3(source_id, &mixed_source, &mixed_root, mixed)
+            .expect("mixed families keep parser-issued identities");
+    assert!(mixed.node_count_v3() >= 2);
+    drop(mixed);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+
+    let parsed = parse_source_document_with_request_owner_v3(source_id, &source, &budget, &root)
+        .expect("source parser owner");
+    assert!(matches!(
+        check_source_document_with_request_owner_v3(
+            SourceIdV2::from_raw(704),
+            &source,
+            &root,
+            parsed,
+        ),
+        Err(FrontendRequestCheckErrorV3::Root(
+            FrontendStorageRefusalV3::ForeignSource
+        ))
+    ));
+    assert_eq!(live.load(Ordering::Acquire), 0);
+
+    let parsed = parse_source_document_with_request_owner_v3(source_id, &source, &budget, &root)
+        .expect("source parser owner");
+    let equal_bytes_foreign = String::from("show capabilities; show models");
+    assert!(matches!(
+        check_source_document_with_request_owner_v3(source_id, &equal_bytes_foreign, &root, parsed,),
+        Err(FrontendRequestCheckErrorV3::Root(
+            FrontendStorageRefusalV3::ForeignSource
+        ))
+    ));
+    assert_eq!(live.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn request_declaration_vectors_admit_before_birth_and_drop_v3() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
+
+    let source_id = SourceIdV2::from_raw(702);
+    let source = String::from("from records");
+    let budget = standard_budget_v2();
+    let host_source = SourceIdV2::from_raw(1);
+    let authority = quanta_gqlang_v2_sema::ClosedFrontendAuthorityBuilderV2::try_new(
+        budget.clone(),
+        vec![quanta_gqlang_v2_sema::FrontendAuthoritySourceV2 {
+            source_id: host_source,
+            source_len: 64,
+        }],
+        "app".to_owned(),
+        quanta_gqlang_v2_sema::FrontendAuthorityLocationV2 {
+            source_id: host_source,
+            start: 0,
+            end: 1,
+        },
+        quanta_gqlang_v2_sema::FrontendLanguageVersionV2 {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        },
+    )
+    .expect("host authority builder")
+    .finish()
+    .expect("closed host authority");
+
+    let live = Arc::new(AtomicU64::new(0));
+    let peak = Arc::new(AtomicU64::new(0));
+    let sink = RequestTestSinkV3 {
+        live: Arc::clone(&live),
+        peak: Arc::clone(&peak),
+        limit: u64::MAX,
+    };
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &sink);
+    let parsed = parse_source_document_with_request_owner_v3(source_id, &source, &budget, &root)
+        .expect("source parser owner");
+    let checked = check_source_document_with_request_owner_v3(source_id, &source, &root, parsed)
+        .expect("checked source owner");
+    let before_declaration = live.load(Ordering::Acquire);
+    let declared =
+        declare_source_document_with_request_owner_v3(&source, &authority, &root, checked)
+            .expect("request-owned declaration");
+    assert_eq!(declared.item_count_v3(), 1);
+    let declaration_peak = peak.load(Ordering::Acquire);
+    assert!(declaration_peak > before_declaration);
+    let resolving = begin_resolve_source_document_with_request_owner_v3(&source, &root, declared)
+        .expect("request-owned Modules session");
+    assert_eq!(resolving.item_count_v3(), 1);
+    let resolve_peak = peak.load(Ordering::Acquire);
+    assert!(resolve_peak > declaration_peak);
+    let predeclared = predeclare_source_catalog_with_request_owner_v3(&source, &root, resolving)
+        .expect("source without catalog items keeps an empty exact index");
+    assert_eq!(predeclared.local_asset_count_v3(), 0);
+    drop(predeclared);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+
+    let short_live = Arc::new(AtomicU64::new(0));
+    let short_sink = RequestTestSinkV3 {
+        live: Arc::clone(&short_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: declaration_peak - 1,
+    };
+    let short_root =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &short_sink);
+    let parsed =
+        parse_source_document_with_request_owner_v3(source_id, &source, &budget, &short_root)
+            .expect("declaration-short root still admits parser");
+    let checked =
+        check_source_document_with_request_owner_v3(source_id, &source, &short_root, parsed)
+            .expect("declaration-short root still admits HIR check");
+    assert!(declare_source_document_with_request_owner_v3(
+        &source,
+        &authority,
+        &short_root,
+        checked,
+    )
+    .is_err());
+    assert_eq!(short_live.load(Ordering::Acquire), 0);
+
+    let owned_live = Arc::new(AtomicU64::new(0));
+    let owned_sink = RequestTestSinkV3 {
+        live: Arc::clone(&owned_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: u64::MAX,
+    };
+    let owned_root =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &owned_sink);
+    let parsed =
+        parse_source_document_with_request_owner_v3(source_id, &source, &budget, &owned_root)
+            .expect("owned source parser");
+    let checked =
+        check_source_document_with_request_owner_v3(source_id, &source, &owned_root, parsed)
+            .expect("owned HIR check");
+    let foreign_live = Arc::new(AtomicU64::new(0));
+    let foreign_sink = RequestTestSinkV3 {
+        live: Arc::clone(&foreign_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: u64::MAX,
+    };
+    let foreign_root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(
+        source_id,
+        &source,
+        &foreign_sink,
+    );
+    assert!(matches!(
+        declare_source_document_with_request_owner_v3(&source, &authority, &foreign_root, checked,),
+        Err(quanta_gqlang_v2_sema::DeclaredRequestErrorV3::Storage(
+            FrontendStorageRefusalV3::ForeignRequestRoot
+        ))
+    ));
+    assert_eq!(owned_live.load(Ordering::Acquire), 0);
+    assert_eq!(foreign_live.load(Ordering::Acquire), 0);
+
+    let resolve_short_live = Arc::new(AtomicU64::new(0));
+    let resolve_short_sink = RequestTestSinkV3 {
+        live: Arc::clone(&resolve_short_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: resolve_peak - 1,
+    };
+    let resolve_short_root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(
+        source_id,
+        &source,
+        &resolve_short_sink,
+    );
+    let parsed = parse_source_document_with_request_owner_v3(
+        source_id,
+        &source,
+        &budget,
+        &resolve_short_root,
+    )
+    .expect("resolver-short root admits parser");
+    let checked = check_source_document_with_request_owner_v3(
+        source_id,
+        &source,
+        &resolve_short_root,
+        parsed,
+    )
+    .expect("resolver-short root admits integrity");
+    let declared = declare_source_document_with_request_owner_v3(
+        &source,
+        &authority,
+        &resolve_short_root,
+        checked,
+    )
+    .expect("resolver-short root admits declaration");
+    assert!(matches!(
+        begin_resolve_source_document_with_request_owner_v3(&source, &resolve_short_root, declared,),
+        Err(
+            quanta_gqlang_v2_modules::DocumentValidatorRequestErrorV3::Storage(
+                FrontendStorageRefusalV3::BudgetRejected
+            )
+        )
+    ));
+    assert_eq!(resolve_short_live.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn request_catalog_predeclaration_admits_real_source_and_refuses_short_root_v3() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
+
+    let source_id = SourceIdV2::from_raw(703);
+    let source = String::from(
+        "view zeta | select=from records r | project r.id as id ;\n\
+         view alpha | select=from records r | project r.id as id",
+    );
+    let budget = standard_budget_v2();
+    let host_source = SourceIdV2::from_raw(1);
+    let authority = quanta_gqlang_v2_sema::ClosedFrontendAuthorityBuilderV2::try_new(
+        budget.clone(),
+        vec![quanta_gqlang_v2_sema::FrontendAuthoritySourceV2 {
+            source_id: host_source,
+            source_len: 64,
+        }],
+        "app".to_owned(),
+        quanta_gqlang_v2_sema::FrontendAuthorityLocationV2 {
+            source_id: host_source,
+            start: 0,
+            end: 1,
+        },
+        quanta_gqlang_v2_sema::FrontendLanguageVersionV2 {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        },
+    )
+    .expect("host authority builder")
+    .finish()
+    .expect("closed host authority");
+
+    let live = Arc::new(AtomicU64::new(0));
+    let peak = Arc::new(AtomicU64::new(0));
+    let sink = RequestTestSinkV3 {
+        live: Arc::clone(&live),
+        peak: Arc::clone(&peak),
+        limit: u64::MAX,
+    };
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &sink);
+    let parsed = parse_source_document_with_request_owner_v3(source_id, &source, &budget, &root)
+        .expect("source parser owner");
+    let checked = check_source_document_with_request_owner_v3(source_id, &source, &root, parsed)
+        .expect("checked source owner");
+    let declared =
+        declare_source_document_with_request_owner_v3(&source, &authority, &root, checked)
+            .expect("request-owned declaration");
+    let resolving = begin_resolve_source_document_with_request_owner_v3(&source, &root, declared)
+        .expect("request-owned Modules session");
+    let before_predeclare = peak.load(Ordering::Acquire);
+    let predeclared = predeclare_source_catalog_with_request_owner_v3(&source, &root, resolving)
+        .expect("source-issued local View ID");
+    assert_eq!(predeclared.local_asset_count_v3(), 2);
+    let predeclare_peak = peak.load(Ordering::Acquire);
+    assert!(predeclare_peak > before_predeclare);
+    drop(predeclared);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+
+    let short_live = Arc::new(AtomicU64::new(0));
+    let short_sink = RequestTestSinkV3 {
+        live: Arc::clone(&short_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: predeclare_peak - 1,
+    };
+    let short_root =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &short_sink);
+    let parsed =
+        parse_source_document_with_request_owner_v3(source_id, &source, &budget, &short_root)
+            .expect("short root admits parser");
+    let checked =
+        check_source_document_with_request_owner_v3(source_id, &source, &short_root, parsed)
+            .expect("short root admits integrity");
+    let declared =
+        declare_source_document_with_request_owner_v3(&source, &authority, &short_root, checked)
+            .expect("short root admits declaration");
+    let resolving =
+        begin_resolve_source_document_with_request_owner_v3(&source, &short_root, declared)
+            .expect("short root admits validator session");
+    assert!(matches!(
+        predeclare_source_catalog_with_request_owner_v3(&source, &short_root, resolving,),
+        Err(FrontendRequestPredeclareErrorV3::Attach(
+            quanta_gqlang_v2_sema::SourceCatalogAttachErrorV3::Storage(
+                FrontendStorageRefusalV3::BudgetRejected
+            )
+        ))
+    ));
+    assert_eq!(short_live.load(Ordering::Acquire), 0);
+
+    let owner_live = Arc::new(AtomicU64::new(0));
+    let owner_sink = RequestTestSinkV3 {
+        live: Arc::clone(&owner_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: u64::MAX,
+    };
+    let owner_root =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &owner_sink);
+    let parsed =
+        parse_source_document_with_request_owner_v3(source_id, &source, &budget, &owner_root)
+            .expect("owner root parser");
+    let checked =
+        check_source_document_with_request_owner_v3(source_id, &source, &owner_root, parsed)
+            .expect("owner root integrity");
+    let declared =
+        declare_source_document_with_request_owner_v3(&source, &authority, &owner_root, checked)
+            .expect("owner root declaration");
+    let resolving =
+        begin_resolve_source_document_with_request_owner_v3(&source, &owner_root, declared)
+            .expect("owner root validator session");
+    let foreign_live = Arc::new(AtomicU64::new(0));
+    let foreign_sink = RequestTestSinkV3 {
+        live: Arc::clone(&foreign_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: u64::MAX,
+    };
+    let foreign_root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(
+        source_id,
+        &source,
+        &foreign_sink,
+    );
+    assert!(matches!(
+        predeclare_source_catalog_with_request_owner_v3(&source, &foreign_root, resolving,),
+        Err(FrontendRequestPredeclareErrorV3::Inputs(
+            quanta_gqlang_v2_sema::CatalogAssetInputsRequestErrorV3::Storage(
+                FrontendStorageRefusalV3::ForeignRequestRoot
+            )
+        ))
+    ));
+    assert_eq!(owner_live.load(Ordering::Acquire), 0);
+    assert_eq!(foreign_live.load(Ordering::Acquire), 0);
+}
+
+fn request_predeclared_fixture_v3<'authority>(
+    source_id: SourceIdV2,
+    source: &str,
+    budget: &FrontendBudgetV2,
+    authority: &'authority ClosedFrontendAuthorityV2,
+    root: &FrontendRequestMaterializationRootV3<'_>,
+) -> PredeclaredRequestSourceV3<'authority> {
+    let parsed = parse_source_document_with_request_owner_v3(source_id, source, budget, root)
+        .expect("request parser");
+    let checked = check_source_document_with_request_owner_v3(source_id, source, root, parsed)
+        .expect("request HIR");
+    let declared = declare_source_document_with_request_owner_v3(source, authority, root, checked)
+        .expect("request declaration");
+    let resolving = begin_resolve_source_document_with_request_owner_v3(source, root, declared)
+        .expect("request session");
+    predeclare_source_catalog_with_request_owner_v3(source, root, resolving)
+        .expect("request catalog")
+}
+
+fn body_request_authority_v3(budget: FrontendBudgetV2) -> ClosedFrontendAuthorityV2 {
+    let host_source = SourceIdV2::from_raw(1);
+    quanta_gqlang_v2_sema::ClosedFrontendAuthorityBuilderV2::try_new(
+        budget,
+        vec![quanta_gqlang_v2_sema::FrontendAuthoritySourceV2 {
+            source_id: host_source,
+            source_len: 64,
+        }],
+        "app".to_owned(),
+        quanta_gqlang_v2_sema::FrontendAuthorityLocationV2 {
+            source_id: host_source,
+            start: 0,
+            end: 1,
+        },
+        quanta_gqlang_v2_sema::FrontendLanguageVersionV2 {
+            major: 1,
+            minor: 0,
+            patch: 0,
+        },
+    )
+    .expect("host authority builder")
+    .finish()
+    .expect("closed host authority")
+}
+
+fn request_declaring_fixture_v3<'authority>(
+    source_id: SourceIdV2,
+    source: &str,
+    budget: &FrontendBudgetV2,
+    authority: &'authority ClosedFrontendAuthorityV2,
+    root: &FrontendRequestMaterializationRootV3<'_>,
+) -> DeclaringBinderRequestSourceV3<'authority> {
+    let catalog = request_predeclared_fixture_v3(source_id, source, budget, authority, root);
+    let preparing = begin_prepare_source_body_with_request_owner_v3(source, root, catalog)
+        .expect("source-owned builtin preparation");
+    begin_bind_source_document_with_request_owner_v3(source, root, preparing)
+        .expect("source-owned Binder declarations")
+}
+
+#[test]
+fn request_source_binder_resolves_values_and_inline_view_and_releases_v3() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
+
+    let source_id = SourceIdV2::from_raw(706);
+    let source = "let answer = 1; let next = answer; view alpha | select=from records r | project r.id as id";
+    let budget = standard_budget_v2();
+    let authority = body_request_authority_v3(budget.clone());
+    let live = Arc::new(AtomicU64::new(0));
+    let sink = RequestTestSinkV3 {
+        live: Arc::clone(&live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: u64::MAX,
+    };
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, source, &sink);
+    let declaring = request_declaring_fixture_v3(source_id, source, &budget, &authority, &root);
+    assert_eq!(declaring.declared_name_count_v3(), 2);
+    let bound = resolve_source_bindings_with_request_owner_v3(source, &root, declaring)
+        .expect("value and inline View source resolution");
+    assert_eq!(bound.resolved_reference_count_v3(), 2);
+    assert_eq!(bound.relation_output_count_v3(), 2);
+    assert!(live.load(Ordering::Acquire) > 0);
+    drop(bound);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn request_source_binder_propagates_short_budget_and_foreign_root_v3() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
+
+    let source_id = SourceIdV2::from_raw(707);
+    let source = "let answer = 1; let next = answer; from records r";
+    let budget = standard_budget_v2();
+    let authority = body_request_authority_v3(budget.clone());
+    let live = Arc::new(AtomicU64::new(0));
+    let limit = Arc::new(AtomicU64::new(u64::MAX));
+    let peak = Arc::new(AtomicU64::new(0));
+    let sink = AdjustableRequestTestSinkV3 {
+        inner: RequestTestSinkV3 {
+            live: Arc::clone(&live),
+            peak: Arc::clone(&peak),
+            limit: u64::MAX,
+        },
+        limit: Arc::clone(&limit),
+    };
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, source, &sink);
+    let declaring = request_declaring_fixture_v3(source_id, source, &budget, &authority, &root);
+    peak.store(live.load(Ordering::Acquire), Ordering::Release);
+    let bound = resolve_source_bindings_with_request_owner_v3(source, &root, declaring)
+        .expect("measure the owning stage admission boundary");
+    let resolution_peak = peak.load(Ordering::Acquire);
+    drop(bound);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+
+    let declaring = request_declaring_fixture_v3(source_id, source, &budget, &authority, &root);
+    limit.store(resolution_peak - 1, Ordering::Release);
+    assert!(matches!(
+        resolve_source_bindings_with_request_owner_v3(source, &root, declaring),
+        Err(BinderDeclarationRequestErrorV3::Storage(
+            FrontendStorageRefusalV3::BudgetRejected
+        ))
+    ));
+    assert_eq!(live.load(Ordering::Acquire), 0);
+    limit.store(u64::MAX, Ordering::Release);
+
+    let declaring = request_declaring_fixture_v3(source_id, source, &budget, &authority, &root);
+    let foreign_live = Arc::new(AtomicU64::new(0));
+    let foreign_sink = RequestTestSinkV3 {
+        live: Arc::clone(&foreign_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: u64::MAX,
+    };
+    let foreign_root =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, source, &foreign_sink);
+    assert!(matches!(
+        resolve_source_bindings_with_request_owner_v3(source, &foreign_root, declaring),
+        Err(BinderDeclarationRequestErrorV3::Storage(
+            FrontendStorageRefusalV3::ForeignRequestRoot
+        ))
+    ));
+    assert_eq!(live.load(Ordering::Acquire), 0);
+    assert_eq!(foreign_live.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn request_source_binder_refuses_unsupported_call_before_allocating_v3() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
+
+    let source_id = SourceIdV2::from_raw(708);
+    let source = "let answer = count(1)";
+    let budget = standard_budget_v2();
+    let authority = body_request_authority_v3(budget.clone());
+    let live = Arc::new(AtomicU64::new(0));
+    let peak = Arc::new(AtomicU64::new(0));
+    let sink = RequestTestSinkV3 {
+        live: Arc::clone(&live),
+        peak: Arc::clone(&peak),
+        limit: u64::MAX,
+    };
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, source, &sink);
+    let declaring = request_declaring_fixture_v3(source_id, source, &budget, &authority, &root);
+    peak.store(live.load(Ordering::Acquire), Ordering::Release);
+    let before = peak.load(Ordering::Acquire);
+    assert!(matches!(
+        resolve_source_bindings_with_request_owner_v3(source, &root, declaring),
+        Err(BinderDeclarationRequestErrorV3::UnsupportedShape)
+    ));
+    assert_eq!(peak.load(Ordering::Acquire), before);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn request_body_stages_preserve_catalog_and_declaration_and_drop_v3() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
+
+    let source_id = SourceIdV2::from_raw(703);
+    let source = "let answer = 1; view zeta | select=from records r | project r.id as id ; view alpha | select=from records r | project r.id as id";
+    let budget = standard_budget_v2();
+    let authority = body_request_authority_v3(budget.clone());
+    let live = Arc::new(AtomicU64::new(0));
+    let peak = Arc::new(AtomicU64::new(0));
+    let sink = RequestTestSinkV3 {
+        live: Arc::clone(&live),
+        peak: Arc::clone(&peak),
+        limit: u64::MAX,
+    };
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, source, &sink);
+    let predeclared = request_predeclared_fixture_v3(source_id, source, &budget, &authority, &root);
+    assert_eq!(predeclared.local_asset_count_v3(), 2);
+    let predeclare_peak = peak.load(Ordering::Acquire);
+    let preparing = begin_prepare_source_body_with_request_owner_v3(source, &root, predeclared)
+        .expect("source-owned builtin inventory");
+    assert_eq!(preparing.local_asset_count_v3(), 2);
+    assert_eq!(
+        preparing.builtin_family_v3("count").map(|id| id.raw()),
+        Some(1)
+    );
+    assert!(peak.load(Ordering::Acquire) > predeclare_peak);
+    let declaring = begin_bind_source_document_with_request_owner_v3(source, &root, preparing)
+        .expect("source-owned Binder declarations");
+    assert_eq!(declaring.declared_name_count_v3(), 1);
+    assert!(live.load(Ordering::Acquire) > 0);
+    drop(declaring);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn request_body_builtin_refuses_short_budget_before_retaining_v3() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
+
+    let source_id = SourceIdV2::from_raw(704);
+    let source = "let answer = 1; view zeta | select=from records r | project r.id as id";
+    let budget = standard_budget_v2();
+    let authority = body_request_authority_v3(budget.clone());
+    let live = Arc::new(AtomicU64::new(0));
+    let peak = Arc::new(AtomicU64::new(0));
+    let sink = RequestTestSinkV3 {
+        live: Arc::clone(&live),
+        peak: Arc::clone(&peak),
+        limit: u64::MAX,
+    };
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, source, &sink);
+    let predeclared = request_predeclared_fixture_v3(source_id, source, &budget, &authority, &root);
+    let predeclare_peak = peak.load(Ordering::Acquire);
+    let preparing = begin_prepare_source_body_with_request_owner_v3(source, &root, predeclared)
+        .expect("exact builtin inventory");
+    let builtin_peak = peak.load(Ordering::Acquire);
+    assert!(builtin_peak > predeclare_peak);
+    drop(preparing);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+
+    let short_live = Arc::new(AtomicU64::new(0));
+    let short_sink = RequestTestSinkV3 {
+        live: Arc::clone(&short_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: builtin_peak - 1,
+    };
+    let short_root =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, source, &short_sink);
+    let predeclared =
+        request_predeclared_fixture_v3(source_id, source, &budget, &authority, &short_root);
+    assert!(matches!(
+        begin_prepare_source_body_with_request_owner_v3(source, &short_root, predeclared),
+        Err(BuiltinRegistryRequestErrorV3::Storage(
+            FrontendStorageRefusalV3::BudgetRejected
+        ))
+    ));
+    assert_eq!(short_live.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn request_body_stages_refuse_foreign_root_and_release_source_v3() {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
+
+    let source_id = SourceIdV2::from_raw(705);
+    let source = "let answer = 1; view zeta | select=from records r | project r.id as id";
+    let budget = standard_budget_v2();
+    let authority = body_request_authority_v3(budget.clone());
+    let owner_live = Arc::new(AtomicU64::new(0));
+    let owner_sink = RequestTestSinkV3 {
+        live: Arc::clone(&owner_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: u64::MAX,
+    };
+    let owner_root =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, source, &owner_sink);
+    let foreign_live = Arc::new(AtomicU64::new(0));
+    let foreign_sink = RequestTestSinkV3 {
+        live: Arc::clone(&foreign_live),
+        peak: Arc::new(AtomicU64::new(0)),
+        limit: u64::MAX,
+    };
+    let foreign_root =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, source, &foreign_sink);
+
+    let predeclared =
+        request_predeclared_fixture_v3(source_id, source, &budget, &authority, &owner_root);
+    assert!(matches!(
+        begin_prepare_source_body_with_request_owner_v3(source, &foreign_root, predeclared),
+        Err(BuiltinRegistryRequestErrorV3::Storage(
+            FrontendStorageRefusalV3::ForeignRequestRoot
+        ))
+    ));
+    assert_eq!(owner_live.load(Ordering::Acquire), 0);
+    assert_eq!(foreign_live.load(Ordering::Acquire), 0);
+
+    let predeclared =
+        request_predeclared_fixture_v3(source_id, source, &budget, &authority, &owner_root);
+    let preparing =
+        begin_prepare_source_body_with_request_owner_v3(source, &owner_root, predeclared)
+            .expect("source-owned builtin inventory");
+    assert!(matches!(
+        begin_bind_source_document_with_request_owner_v3(source, &foreign_root, preparing),
+        Err(BinderDeclarationRequestErrorV3::Storage(
+            FrontendStorageRefusalV3::ForeignRequestRoot
+        ))
+    ));
+    assert_eq!(owner_live.load(Ordering::Acquire), 0);
+    assert_eq!(foreign_live.load(Ordering::Acquire), 0);
+}
 
 fn failure_code(error: &FrontendTransactionErrorV2) -> &str {
     match error {

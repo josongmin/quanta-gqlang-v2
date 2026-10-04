@@ -1,14 +1,85 @@
-//! Source-bound surface storage admission. This ledger currently covers lexer
-//! logical storage, top-level parser/HIR vectors, `parse_ref` string copies,
-//! and the SHOW presentation box.
-//! Other nested HIR, semantic, planning and execution storage need separate
-//! producer admission.
+//! Source-bound surface storage admission. The request-root producer covers
+//! lexer storage and parser-authored HIR containers and copies, including
+//! nested expression and composition producers. Semantic, planning, and
+//! execution storage require later producer admission.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use quanta_gqlang_v2_hir::{PresentationHirV1, SourceIdV2, SpanV1};
 
 use crate::diag::{ParseDiagnosticV1, ParseErrorCodeV1};
+
+// One host-issued storage primitive is shared by all frontend stages.
+pub use quanta_gqlang_v2_hir::{
+    FrontendRequestMaterializationRootV3, FrontendRequestStoragePermitV3,
+    FrontendRequestStorageSinkV3, FrontendRetainedStoragePermitV3, FrontendStorageRefusalV3,
+};
+
+/// A produced value and every request-root reservation that was live while it
+/// was built. Moving the value through the frontend stages moves custody too.
+pub struct FrontendRequestOwnedValueV3<T> {
+    value: T,
+    permit: FrontendRetainedStoragePermitV3,
+    source_issued_node_slots: usize,
+}
+
+impl<T> FrontendRequestOwnedValueV3<T> {
+    pub(crate) fn new_v3(
+        value: T,
+        permit: FrontendRetainedStoragePermitV3,
+        source_issued_node_slots: usize,
+    ) -> Self {
+        Self {
+            value,
+            permit,
+            source_issued_node_slots,
+        }
+    }
+
+    #[must_use]
+    pub fn value_v3(&self) -> &T {
+        &self.value
+    }
+
+    /// Source parser's builder census retained across trusted frontend stages.
+    #[must_use]
+    pub fn source_issued_node_slots_v3(&self) -> usize {
+        self.source_issued_node_slots
+    }
+
+    /// Authenticate the retained parser/stage custody without exposing it.
+    pub fn validate_owner_v3(
+        &self,
+        root: &FrontendRequestMaterializationRootV3<'_>,
+        source_id: SourceIdV2,
+        source: &str,
+    ) -> Result<(), FrontendStorageRefusalV3> {
+        self.permit.validate_owner_v3(root, source_id, source)
+    }
+
+    /// Observe that every retained stage belongs to the issued host ledger.
+    pub fn validate_issued_sink_v3(
+        &self,
+        sink: &dyn FrontendRequestStorageSinkV3,
+    ) -> Result<(), FrontendStorageRefusalV3> {
+        self.permit.validate_issued_sink_v3(sink)
+    }
+
+    /// The producer receives the retained permit before constructing its next
+    /// value. It must extend the same root for each allocation it will make.
+    pub fn try_map_v3<U, E>(
+        self,
+        produce: impl FnOnce(T, &mut FrontendRetainedStoragePermitV3) -> Result<U, E>,
+    ) -> Result<FrontendRequestOwnedValueV3<U>, E> {
+        let mut permit = self.permit;
+        let value = produce(self.value, &mut permit)?;
+        Ok(FrontendRequestOwnedValueV3 {
+            value,
+            permit,
+            source_issued_node_slots: self.source_issued_node_slots,
+        })
+    }
+}
 
 /// A finite ceiling supplied separately from a request's own limit. This
 /// public type does not authenticate its issuer; the downstream admitted host
@@ -197,6 +268,30 @@ pub(crate) trait ReferenceCloneAdmissionV1 {
     fn reserve_reference_v1(&mut self, source: &str, span: SpanV1)
         -> Result<(), ParseDiagnosticV1>;
     fn reserve_show_box_v1(&mut self, source: &str, span: SpanV1) -> Result<(), ParseDiagnosticV1>;
+
+    fn is_request_owner_v3(&self) -> bool {
+        false
+    }
+
+    /// The existing lexical-only owner does not qualify general nested HIR.
+    /// Its default keeps that partial contract explicit while request-root
+    /// producers can reserve each concrete birth at the parser call site.
+    fn reserve_nested_bytes_v3(
+        &mut self,
+        _bytes: usize,
+        _span: SpanV1,
+    ) -> Result<(), ParseDiagnosticV1> {
+        Ok(())
+    }
+
+    /// Scratch has its own permit and is released when the check returns.
+    fn reserve_temporary_scratch_v3(
+        &mut self,
+        _bytes: usize,
+        _span: SpanV1,
+    ) -> Result<Option<FrontendRetainedStoragePermitV3>, ParseDiagnosticV1> {
+        Ok(None)
+    }
 }
 
 /// One aggregate permit avoids allocating permit metadata for each parser node.
@@ -267,6 +362,124 @@ impl ReferenceCloneAdmissionV1 for ReferenceCloneAggregateV1<'_, '_> {
     }
 }
 
+/// Reuses the parser's exact reference and SHOW-box producers with the host
+/// request root. The first parser reservation already owns the permit; each
+/// nested allocation extends that same owner before construction.
+pub(crate) struct RequestReferenceAggregateV3<'a, 'source, 'permit> {
+    root: &'a FrontendRequestMaterializationRootV3<'source>,
+    source_id: SourceIdV2,
+    permit: &'permit mut FrontendRetainedStoragePermitV3,
+}
+
+impl<'a, 'source, 'permit> RequestReferenceAggregateV3<'a, 'source, 'permit> {
+    pub(crate) fn new_v3(
+        root: &'a FrontendRequestMaterializationRootV3<'source>,
+        source_id: SourceIdV2,
+        permit: &'permit mut FrontendRetainedStoragePermitV3,
+    ) -> Self {
+        Self {
+            root,
+            source_id,
+            permit,
+        }
+    }
+
+    fn reserve_bytes_v3(
+        &mut self,
+        source: &str,
+        span: SpanV1,
+        bytes: usize,
+    ) -> Result<(), ParseDiagnosticV1> {
+        self.permit
+            .try_extend_v3(self.root, self.source_id, source, bytes)
+            .map_err(|refusal| {
+                ParseDiagnosticV1::new(
+                    ParseErrorCodeV1::ResourceExhausted,
+                    span,
+                    match refusal {
+                        FrontendStorageRefusalV3::ForeignSource => {
+                            "frontend request source mismatch"
+                        }
+                        FrontendStorageRefusalV3::ForeignRequestRoot => {
+                            "frontend request root mismatch"
+                        }
+                        FrontendStorageRefusalV3::DemandOverflow => {
+                            "frontend request storage demand overflow"
+                        }
+                        FrontendStorageRefusalV3::BudgetRejected => {
+                            "frontend request storage budget rejected"
+                        }
+                    },
+                )
+            })
+    }
+}
+
+impl ReferenceCloneAdmissionV1 for RequestReferenceAggregateV3<'_, '_, '_> {
+    fn is_request_owner_v3(&self) -> bool {
+        true
+    }
+    fn reserve_reference_v1(
+        &mut self,
+        source: &str,
+        span: SpanV1,
+    ) -> Result<(), ParseDiagnosticV1> {
+        let bytes = source
+            .get(span.start..span.end)
+            .ok_or_else(|| {
+                ParseDiagnosticV1::new(
+                    ParseErrorCodeV1::UnexpectedToken,
+                    span,
+                    "reference span is outside source",
+                )
+            })?
+            .len();
+        self.reserve_bytes_v3(source, span, bytes)
+    }
+
+    fn reserve_show_box_v1(&mut self, source: &str, span: SpanV1) -> Result<(), ParseDiagnosticV1> {
+        self.reserve_bytes_v3(source, span, std::mem::size_of::<PresentationHirV1>())
+    }
+
+    fn reserve_nested_bytes_v3(
+        &mut self,
+        bytes: usize,
+        span: SpanV1,
+    ) -> Result<(), ParseDiagnosticV1> {
+        self.reserve_bytes_v3(self.root.source_v3(), span, bytes)
+    }
+
+    fn reserve_temporary_scratch_v3(
+        &mut self,
+        bytes: usize,
+        span: SpanV1,
+    ) -> Result<Option<FrontendRetainedStoragePermitV3>, ParseDiagnosticV1> {
+        self.root
+            .reserve_v3(self.source_id, self.root.source_v3(), bytes)
+            .map(Some)
+            .map_err(|refusal| {
+                ParseDiagnosticV1::new(
+                    ParseErrorCodeV1::ResourceExhausted,
+                    span,
+                    match refusal {
+                        FrontendStorageRefusalV3::ForeignSource => {
+                            "frontend request source mismatch"
+                        }
+                        FrontendStorageRefusalV3::ForeignRequestRoot => {
+                            "frontend request root mismatch"
+                        }
+                        FrontendStorageRefusalV3::DemandOverflow => {
+                            "frontend request storage demand overflow"
+                        }
+                        FrontendStorageRefusalV3::BudgetRejected => {
+                            "frontend request storage budget rejected"
+                        }
+                    },
+                )
+            })
+    }
+}
+
 impl Drop for FrontendLexicalPermitV1<'_, '_> {
     fn drop(&mut self) {
         self.root.live_bytes.fetch_sub(self.bytes, Ordering::AcqRel);
@@ -282,6 +495,157 @@ mod tests {
     )]
 
     use super::*;
+    use std::sync::Arc;
+
+    struct CountingRequestSinkV3 {
+        limit: u64,
+        live: Arc<AtomicU64>,
+    }
+
+    struct CountingRequestPermitV3 {
+        live: Arc<AtomicU64>,
+        bytes: u64,
+    }
+
+    impl Drop for CountingRequestPermitV3 {
+        fn drop(&mut self) {
+            self.live.fetch_sub(self.bytes, Ordering::AcqRel);
+        }
+    }
+
+    impl FrontendRequestStorageSinkV3 for CountingRequestSinkV3 {
+        fn reserve_v3(
+            &self,
+            logical_bytes: u64,
+        ) -> Result<Box<dyn FrontendRequestStoragePermitV3>, FrontendStorageRefusalV3> {
+            let bytes = logical_bytes
+                .checked_add(
+                    u64::try_from(std::mem::size_of::<CountingRequestPermitV3>())
+                        .expect("test storage fits u64"),
+                )
+                .ok_or(FrontendStorageRefusalV3::DemandOverflow)?;
+            let mut live = self.live.load(Ordering::Acquire);
+            loop {
+                let next = live
+                    .checked_add(bytes)
+                    .ok_or(FrontendStorageRefusalV3::DemandOverflow)?;
+                if next > self.limit {
+                    return Err(FrontendStorageRefusalV3::BudgetRejected);
+                }
+                match self.live.compare_exchange_weak(
+                    live,
+                    next,
+                    Ordering::AcqRel,
+                    Ordering::Acquire,
+                ) {
+                    Ok(_) => break,
+                    Err(observed) => live = observed,
+                }
+            }
+            Ok(Box::new(CountingRequestPermitV3 {
+                live: Arc::clone(&self.live),
+                bytes,
+            }))
+        }
+
+        fn owns_permit_v3(&self, permit: &dyn FrontendRequestStoragePermitV3) -> bool {
+            permit
+                .as_any_v3()
+                .downcast_ref::<CountingRequestPermitV3>()
+                .is_some_and(|permit| Arc::ptr_eq(&self.live, &permit.live))
+        }
+    }
+
+    #[test]
+    fn request_permit_chain_releases_on_a_small_stack_v3() {
+        std::thread::Builder::new()
+            .stack_size(64 * 1024)
+            .spawn(|| {
+                let links = 16_384_u64;
+                let carrier = u64::try_from(std::mem::size_of::<CountingRequestPermitV3>())
+                    .expect("test storage fits u64");
+                let link = u64::try_from(std::mem::size_of::<FrontendRetainedStoragePermitV3>())
+                    .expect("test storage fits u64");
+                let exact = carrier + links * (carrier + link);
+                let source = String::from("show capabilities");
+                let source_id = SourceIdV2::from_raw(72);
+                let live = Arc::new(AtomicU64::new(0));
+                let sink = CountingRequestSinkV3 {
+                    limit: exact,
+                    live: Arc::clone(&live),
+                };
+                let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(
+                    source_id, &source, &sink,
+                );
+                let mut owner = root.reserve_v3(source_id, &source, 0).unwrap();
+                for _ in 0..links {
+                    owner.try_extend_v3(&root, source_id, &source, 0).unwrap();
+                }
+                assert_eq!(live.load(Ordering::Acquire), exact);
+                drop(owner);
+                assert_eq!(live.load(Ordering::Acquire), 0);
+            })
+            .unwrap()
+            .join()
+            .unwrap();
+    }
+
+    #[test]
+    fn request_sink_retains_exact_stage_chain_and_refuses_foreign_or_short_v3() {
+        let source = String::from("show capabilities");
+        let foreign_source = String::from("show capabilities");
+        let source_id = SourceIdV2::from_raw(71);
+        let exact = 3_u64
+            + 5
+            + u64::try_from(std::mem::size_of::<FrontendRetainedStoragePermitV3>())
+                .expect("test storage fits u64")
+            + 2 * u64::try_from(std::mem::size_of::<CountingRequestPermitV3>())
+                .expect("test storage fits u64");
+        let live = Arc::new(AtomicU64::new(0));
+        let sink = CountingRequestSinkV3 {
+            limit: exact,
+            live: Arc::clone(&live),
+        };
+        let foreign_sink = CountingRequestSinkV3 {
+            limit: exact,
+            live: Arc::new(AtomicU64::new(0)),
+        };
+        let owner = {
+            let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(
+                source_id, &source, &sink,
+            );
+            assert!(matches!(
+                root.reserve_v3(source_id, &foreign_source, 3),
+                Err(FrontendStorageRefusalV3::ForeignSource)
+            ));
+            let mut owner = root.reserve_v3(source_id, &source, 3).unwrap();
+            let foreign_root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(
+                source_id,
+                &source,
+                &foreign_sink,
+            );
+            assert_eq!(
+                owner.try_extend_v3(&foreign_root, source_id, &source, 5),
+                Err(FrontendStorageRefusalV3::ForeignRequestRoot)
+            );
+            assert_eq!(
+                live.load(Ordering::Acquire),
+                3 + u64::try_from(std::mem::size_of::<CountingRequestPermitV3>())
+                    .expect("test storage fits u64")
+            );
+            owner.try_extend_v3(&root, source_id, &source, 5).unwrap();
+            assert_eq!(live.load(Ordering::Acquire), exact);
+            assert_eq!(
+                owner.try_extend_v3(&root, source_id, &source, 1),
+                Err(FrontendStorageRefusalV3::BudgetRejected)
+            );
+            assert_eq!(live.load(Ordering::Acquire), exact);
+            owner
+        };
+        assert_eq!(live.load(Ordering::Acquire), exact);
+        drop(owner);
+        assert_eq!(live.load(Ordering::Acquire), 0);
+    }
 
     #[test]
     fn exact_one_short_and_foreign_source_are_distinct() {

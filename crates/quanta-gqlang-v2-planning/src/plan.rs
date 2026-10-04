@@ -107,6 +107,12 @@ use crate::result_kind::{
     WitnessSelectionPolicyV2,
 };
 
+mod scalar_request;
+pub use scalar_request::{
+    plan_scalar_source_project_with_request_owner_v3, AdmittedScalarPlanV3,
+    ScalarPlanningRequestErrorV3,
+};
+
 /// The checked outcome of planning one sealed input.
 ///
 /// [`Self::NoPlan`] is a TYPED, non-error outcome: the input is well-formed, it
@@ -1223,18 +1229,7 @@ fn assemble_plan_parts_v2(
     root_location: CheckedLocatedSpanV2,
     policy: PlanPolicyV2,
 ) -> PlanPartsV2 {
-    let result = ResultContractV2::new(
-        facts.result_kind,
-        facts.render,
-        facts.witness_selection,
-        MultiplicityOrderContractV2::from_cardinality(facts.cardinality),
-    );
-    let semantic_cost = SemanticCostV2 {
-        estimated_cardinality_class: facts.cardinality_class,
-        recursion_risk_class: facts.recursion_risk,
-        witness_explosion_risk_class: facts.witness_risk,
-        ordering_contract: ordering_contract(facts.cardinality),
-    };
+    let (result, semantic_cost) = classified_result_and_cost(&facts);
     PlanPartsV2 {
         authority_lane: facts.authority_lane,
         evaluation_determinism: determinism_of(walk.effects),
@@ -1246,6 +1241,22 @@ fn assemble_plan_parts_v2(
         explain: ExplainNoteV2::new(root_location, walk.families.clone(), facts.recursive),
         policy,
     }
+}
+
+fn classified_result_and_cost(facts: &ArmFactsV2) -> (ResultContractV2, SemanticCostV2) {
+    let result = ResultContractV2::new(
+        facts.result_kind,
+        facts.render,
+        facts.witness_selection,
+        MultiplicityOrderContractV2::from_cardinality(facts.cardinality),
+    );
+    let cost = SemanticCostV2 {
+        estimated_cardinality_class: facts.cardinality_class,
+        recursion_risk_class: facts.recursion_risk,
+        witness_explosion_risk_class: facts.witness_risk,
+        ordering_contract: ordering_contract(facts.cardinality),
+    };
+    (result, cost)
 }
 
 fn command_facts(command: &ResolvedRenameCommandV3) -> ArmFactsV2 {
@@ -1271,6 +1282,20 @@ fn command_facts(command: &ResolvedRenameCommandV3) -> ArmFactsV2 {
 
 /// The relational arm: an ordinary checked relation renders a read-only table.
 fn relational_facts(root: &CheckedAlgebraNodeV2, walk: &WalkV2) -> ArmFactsV2 {
+    relational_facts_from_shape(
+        root.output().cardinality(),
+        walk.cardinality_class,
+        walk.algebra_nodes,
+        walk.effects,
+    )
+}
+
+fn relational_facts_from_shape(
+    cardinality: CardinalityV1,
+    cardinality_class: CardinalityClassV2,
+    nodes: u32,
+    effects: EffectSummaryV2,
+) -> ArmFactsV2 {
     ArmFactsV2 {
         authority_lane: AuthorityLaneV2::FrontendChecked,
         evidence: EvidenceRequirementV2::None,
@@ -1278,15 +1303,12 @@ fn relational_facts(root: &CheckedAlgebraNodeV2, walk: &WalkV2) -> ArmFactsV2 {
         result_kind: ResultKindV2::Table,
         render: RenderRequirementV2::RowsOnly,
         witness_selection: None,
-        cardinality: root.output().cardinality(),
-        cardinality_class: walk.cardinality_class,
+        cardinality,
+        cardinality_class,
         recursion_risk: RecursionRiskClassV2::None,
         witness_risk: WitnessExplosionRiskClassV2::None,
         recursive: false,
-        policy: PlanPolicyV2::Relational {
-            nodes: walk.algebra_nodes,
-            effects: walk.effects,
-        },
+        policy: PlanPolicyV2::Relational { nodes, effects },
     }
 }
 

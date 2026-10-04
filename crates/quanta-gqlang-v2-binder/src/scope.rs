@@ -151,6 +151,53 @@ impl LexicalScopeV1 {
         Self { frames: Vec::new() }
     }
 
+    pub(crate) const fn one_frame_storage_bytes_v3() -> usize {
+        std::mem::size_of::<FrameV1>()
+    }
+
+    pub(crate) fn try_reserve_one_frame_v3(
+        &mut self,
+    ) -> Result<(), std::collections::TryReserveError> {
+        self.frames.try_reserve_exact(1)
+    }
+
+    pub(crate) fn one_frame_capacity_v3(&self) -> bool {
+        self.frames.capacity() == 1
+    }
+
+    pub(crate) const fn two_frame_storage_bytes_v3() -> usize {
+        2 * std::mem::size_of::<FrameV1>()
+    }
+
+    pub(crate) fn try_reserve_two_frames_v3(
+        &mut self,
+    ) -> Result<(), std::collections::TryReserveError> {
+        self.frames.try_reserve_exact(2)
+    }
+
+    pub(crate) fn two_frame_capacity_v3(&self) -> bool {
+        self.frames.capacity() == 2
+    }
+
+    pub(crate) fn push_prepared_frame_v3(
+        &mut self,
+        parent_edge: CaptureV1,
+        bindings: Vec<BindingV1>,
+    ) -> bool {
+        if self.frames.len() >= self.frames.capacity() {
+            return false;
+        }
+        self.frames.push(FrameV1 {
+            bindings,
+            parent_edge,
+        });
+        true
+    }
+
+    pub(crate) fn is_unborn_v3(&self) -> bool {
+        self.frames.is_empty() && self.frames.capacity() == 0
+    }
+
     /// Push a new innermost frame whose edge to the current top has the given
     /// capture discipline.
     pub fn push(&mut self, parent_edge: CaptureV1) {

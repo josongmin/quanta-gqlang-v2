@@ -24,8 +24,9 @@ use crate::diag::{ParseDiagnosticV1, ParseErrorCodeV1, SurfaceDiagnosticV2};
 use crate::family::{at_composition, is_family_keyword, parse_composition, parse_family};
 use crate::lexer::{lex_with_budget, TokenKindV1};
 use crate::materialization::{
-    FrontendLexicalMaterializationRootV1, FrontendLexicalPermitV1, ReferenceCloneAdmissionV1,
-    ReferenceCloneAggregateV1,
+    FrontendLexicalMaterializationRootV1, FrontendLexicalPermitV1,
+    FrontendRequestMaterializationRootV3, FrontendRequestOwnedValueV3, FrontendStorageRefusalV3,
+    ReferenceCloneAdmissionV1, ReferenceCloneAggregateV1, RequestReferenceAggregateV3,
 };
 use crate::query::parse_query;
 use crate::unit::{parse_decl, parse_rule};
@@ -53,6 +54,48 @@ pub enum SurfaceItemV1 {
 }
 
 impl SurfaceItemV1 {
+    #[must_use]
+    pub(crate) fn span(&self) -> quanta_gqlang_v2_hir::SpanV1 {
+        match self {
+            Self::Query(node) => node.span,
+            Self::Decl(node) => node.span,
+            Self::Rule(node) => node.span,
+            Self::Program(node) => node.span(),
+        }
+    }
+
+    /// Mirror the HIR depth visitor's branches that enter the iterative
+    /// Value/Bool/Relation/Shape scanner. Pure reference/tag roots need no
+    /// scratch; the zero-slot checker still refuses if this mirror drifts.
+    fn requires_depth_stack_v3(&self) -> bool {
+        use quanta_gqlang_v2_hir::{
+            CatalogPayloadV1, CompositionBodyV1, CompositionProducerV1, ViewBodyV1,
+        };
+        match self {
+            Self::Query(_) | Self::Decl(_) | Self::Rule(_) => true,
+            Self::Program(item) => {
+                match item {
+                    ProgramItemHirV1::Query(_)
+                    | ProgramItemHirV1::Decl(_)
+                    | ProgramItemHirV1::Rule(_) => true,
+                    ProgramItemHirV1::CatalogDecl(decl) => {
+                        matches!(&decl.payload, CatalogPayloadV1::View(ViewBodyV1::Inline(_)))
+                    }
+                    ProgramItemHirV1::Composition(composition) => {
+                        composition.bindings.iter().any(|binding| {
+                            matches!(&binding.producer, CompositionProducerV1::Query(_))
+                        }) || matches!(&composition.body, CompositionBodyV1::Query(_))
+                    }
+                    ProgramItemHirV1::GraphQuery(_)
+                    | ProgramItemHirV1::Legality(_)
+                    | ProgramItemHirV1::Presentation(_)
+                    | ProgramItemHirV1::Meta(_)
+                    | ProgramItemHirV1::Command(_) => false,
+                }
+            }
+        }
+    }
+
     /// Borrowing conversion into the unified program-item view.
     ///
     /// The standalone `query` / `decl` / `rule` carriers stay first-class at the
@@ -393,12 +436,56 @@ fn parse_document_items_from_tokens(
 
         cur.budget.charge_document_item(cur.here_span())?;
         reject_v2_isms(&cur)?;
+        let issued_before = builder.minted();
         let item = parse_one_item(&mut cur, source)?;
-        crate::depth::check_item(
-            &item,
-            cur.budget.max_expression_depth(),
-            cur.budget.max_relation_depth(),
-        )?;
+        if cur.has_request_owner_v3() {
+            let issued_for_item = builder.minted().checked_sub(issued_before).ok_or_else(|| {
+                ParseDiagnosticV1::new(
+                    ParseErrorCodeV1::ResourceExhausted,
+                    item.span(),
+                    "issued HIR node census regressed",
+                )
+            })?;
+            let slots = usize::try_from(issued_for_item).map_err(|_overflow| {
+                ParseDiagnosticV1::new(
+                    ParseErrorCodeV1::ResourceExhausted,
+                    item.span(),
+                    "issued HIR node census is not representable",
+                )
+            })?;
+            let slots = if item.requires_depth_stack_v3() {
+                slots
+            } else {
+                0
+            };
+            let bytes =
+                quanta_gqlang_v2_hir::depth_stack_storage_bytes_v3(slots).ok_or_else(|| {
+                    ParseDiagnosticV1::new(
+                        ParseErrorCodeV1::ResourceExhausted,
+                        item.span(),
+                        "HIR depth scratch storage size overflow",
+                    )
+                })?;
+            let scratch = if bytes > 0 {
+                cur.reserve_temporary_scratch_v3(bytes, item.span())?
+            } else {
+                None
+            };
+            let checked = crate::depth::check_item_with_source_slots_v3(
+                &item,
+                cur.budget.max_expression_depth(),
+                cur.budget.max_relation_depth(),
+                slots,
+            );
+            drop(scratch);
+            checked?;
+        } else {
+            crate::depth::check_item(
+                &item,
+                cur.budget.max_expression_depth(),
+                cur.budget.max_relation_depth(),
+            )?;
+        }
         if admitted_slots.is_some_and(|slots| items.len() >= slots) {
             return Err(ParseDiagnosticV1::new(
                 ParseErrorCodeV1::LexicalMaterializationOverflow,
@@ -551,6 +638,164 @@ pub fn parse_source_document_with_lexical_owner_v1<'root, 'source>(
     })
 }
 
+/// Parse with the host's issued request root. This stage retains lexer,
+/// top-level item-vector, reference-copy and SHOW-box debits. Other nested HIR
+/// constructors and diagnostics still require their producer-owned admission;
+/// this partial owner must not be treated as a complete frontend proof.
+pub fn parse_source_document_with_request_owner_v3(
+    source_id: SourceIdV2,
+    source: &str,
+    budget: &ParseBudgetV2,
+    root: &FrontendRequestMaterializationRootV3<'_>,
+) -> Result<FrontendRequestOwnedValueV3<HirDocumentV1>, SurfaceDiagnosticV2> {
+    let source_span = quanta_gqlang_v2_hir::SpanV1::new(0, source.len());
+    let storage_error = |refusal: FrontendStorageRefusalV3| {
+        SurfaceDiagnosticV2::from_parse(
+            source_id,
+            ParseDiagnosticV1::new(
+                ParseErrorCodeV1::ResourceExhausted,
+                source_span,
+                match refusal {
+                    FrontendStorageRefusalV3::ForeignSource => "frontend request source mismatch",
+                    FrontendStorageRefusalV3::ForeignRequestRoot => {
+                        "frontend request root mismatch"
+                    }
+                    FrontendStorageRefusalV3::DemandOverflow => {
+                        "frontend request storage demand overflow"
+                    }
+                    FrontendStorageRefusalV3::BudgetRejected => {
+                        "frontend request storage budget rejected"
+                    }
+                },
+            ),
+        )
+    };
+    let census = crate::lexer::census_lexical_materialization_v1(source, budget)
+        .map_err(|error| SurfaceDiagnosticV2::from_parse(source_id, error))?;
+    let mut permit = root
+        .reserve_v3(source_id, source, census.logical_bytes())
+        .map_err(storage_error)?;
+    let builder = HirBuilderV1::new();
+    let counter = ParseBudgetCounterV2::new(budget);
+    let tokens = crate::lexer::lex_with_census_v1(source, &counter, census)
+        .map_err(|error| SurfaceDiagnosticV2::from_parse(source_id, error))?;
+    let item_slots = parser_item_slots_v1(&tokens)
+        .map_err(|error| SurfaceDiagnosticV2::from_parse(source_id, error))?;
+    let parser_bytes = parser_item_storage_bytes_v1(item_slots)
+        .map_err(|error| SurfaceDiagnosticV2::from_parse(source_id, error))?;
+    permit
+        .try_extend_v3(root, source_id, source, parser_bytes)
+        .map_err(storage_error)?;
+    let parsed = {
+        let mut reference_admission =
+            RequestReferenceAggregateV3::new_v3(root, source_id, &mut permit);
+        parse_document_items_from_tokens(
+            source,
+            &builder,
+            counter,
+            tokens,
+            Some(item_slots),
+            Some(&mut reference_admission),
+        )
+        .map_err(|error| SurfaceDiagnosticV2::from_parse(source_id, error))?
+    };
+    let hir_item_slots = parsed.items.len();
+    let hir_bytes = hir_item_slots
+        .checked_mul(std::mem::size_of::<ProgramItemHirV1>())
+        .and_then(|bytes| bytes.checked_add(std::mem::size_of::<Vec<ProgramItemHirV1>>()))
+        .ok_or_else(|| {
+            SurfaceDiagnosticV2::from_parse(
+                source_id,
+                ParseDiagnosticV1::new(
+                    ParseErrorCodeV1::LexicalMaterializationOverflow,
+                    source_span,
+                    "HIR item vector storage size overflow",
+                ),
+            )
+        })?;
+    permit
+        .try_extend_v3(root, source_id, source, hir_bytes)
+        .map_err(storage_error)?;
+    let mut hir_items = Vec::new();
+    hir_items
+        .try_reserve_exact(hir_item_slots)
+        .map_err(|_allocation_error| {
+            SurfaceDiagnosticV2::from_parse(
+                source_id,
+                ParseDiagnosticV1::new(
+                    ParseErrorCodeV1::ResourceExhausted,
+                    source_span,
+                    "HIR item vector storage allocation failed",
+                ),
+            )
+        })?;
+    if hir_items.capacity() > hir_item_slots {
+        return Err(SurfaceDiagnosticV2::from_parse(
+            source_id,
+            ParseDiagnosticV1::new(
+                ParseErrorCodeV1::ResourceExhausted,
+                source_span,
+                "HIR item vector allocator exceeded admitted slots",
+            ),
+        ));
+    }
+    for item in parsed.items {
+        let root_box = match &item {
+            SurfaceItemV1::Query(query) => Some((std::mem::size_of::<QueryHirV1>(), query.span)),
+            SurfaceItemV1::Decl(decl) => Some((std::mem::size_of::<DeclHirV1>(), decl.span)),
+            SurfaceItemV1::Rule(rule) => Some((std::mem::size_of::<RuleHirV1>(), rule.span)),
+            SurfaceItemV1::Program(_) => None,
+        };
+        if let Some((bytes, span)) = root_box {
+            permit
+                .try_extend_v3(root, source_id, source, bytes)
+                .map_err(|refusal| {
+                    SurfaceDiagnosticV2::from_parse(
+                        source_id,
+                        ParseDiagnosticV1::new(
+                            ParseErrorCodeV1::ResourceExhausted,
+                            span,
+                            match refusal {
+                                FrontendStorageRefusalV3::ForeignSource => {
+                                    "frontend request source mismatch"
+                                }
+                                FrontendStorageRefusalV3::ForeignRequestRoot => {
+                                    "frontend request root mismatch"
+                                }
+                                FrontendStorageRefusalV3::DemandOverflow => {
+                                    "frontend request storage demand overflow"
+                                }
+                                FrontendStorageRefusalV3::BudgetRejected => {
+                                    "frontend request storage budget rejected"
+                                }
+                            },
+                        ),
+                    )
+                })?;
+        }
+        hir_items.push(item.into_program_item());
+    }
+    let issued_node_slots = usize::try_from(builder.minted()).map_err(|_overflow| {
+        SurfaceDiagnosticV2::from_parse(
+            source_id,
+            ParseDiagnosticV1::new(
+                ParseErrorCodeV1::ResourceExhausted,
+                source_span,
+                "source-issued HIR node census is not representable",
+            ),
+        )
+    })?;
+    Ok(FrontendRequestOwnedValueV3::new_v3(
+        HirDocumentV1 {
+            source_id,
+            source_len: parsed.source_len,
+            items: hir_items,
+        },
+        permit,
+        issued_node_slots,
+    ))
+}
+
 /// Count lexical storage for one source without creating a token or HIR node.
 /// The result deliberately excludes parser, semantic, and plan allocations.
 pub fn census_source_lexical_materialization_v2(
@@ -627,6 +872,10 @@ fn is_v2_root_keyword(word: &str) -> bool {
         "SELECT" | "FROM" | "WHERE" | "GROUP" | "ORDER" | "DEFINE" | "DECLARE" | "RULE"
     )
 }
+
+#[cfg(test)]
+#[path = "parser/request_owner_tests.rs"]
+mod request_owner_tests;
 
 #[cfg(test)]
 mod lexical_owner_tests {

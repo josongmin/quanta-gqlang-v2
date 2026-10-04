@@ -658,7 +658,7 @@ fn project_node(node: &CheckedAlgebraNodeV2) -> ExecutionRelationalOperatorV3 {
     }
 }
 
-fn project_expression(
+pub(super) fn project_expression(
     expr: &TypedExprV2,
 ) -> Result<ExecutionExpressionV3, ExecutionClosureFailureV3> {
     let value_type = match expr.type_state() {
@@ -782,7 +782,7 @@ pub(super) fn project_expression_shape(
     })
 }
 
-fn project_schema(output: &RelationOutputContractV2) -> ExecutionSchemaV3 {
+pub(super) fn project_schema(output: &RelationOutputContractV2) -> ExecutionSchemaV3 {
     let fields = output
         .row()
         .fields()
@@ -813,7 +813,7 @@ fn project_schema(output: &RelationOutputContractV2) -> ExecutionSchemaV3 {
     }
 }
 
-fn project_source(source: &ResolvedRelationSourceKindV2) -> ExecutionSourceV3 {
+pub(super) fn project_source(source: &ResolvedRelationSourceKindV2) -> ExecutionSourceV3 {
     match source {
         ResolvedRelationSourceKindV2::Relation(id) => ExecutionSourceV3 {
             authority: match id.authority() {

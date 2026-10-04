@@ -38,6 +38,12 @@ pub trait ModuleGraphViewV1 {
     fn imported_targets(&self, name: &str) -> Vec<String>;
 }
 
+impl<T: ModuleGraphViewV1 + ?Sized> ModuleGraphViewV1 for &T {
+    fn imported_targets(&self, name: &str) -> Vec<String> {
+        T::imported_targets(*self, name)
+    }
+}
+
 /// A concrete frozen module-graph snapshot.
 ///
 /// This is a plain, immutable mapping from imported short name to the set of

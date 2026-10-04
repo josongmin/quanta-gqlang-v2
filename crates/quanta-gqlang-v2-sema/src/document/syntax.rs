@@ -7,11 +7,29 @@ use super::{
 };
 
 impl CheckedSyntaxDocumentV2 {
+    /// Concrete scratch demand owned by the syntax checker, before allocation.
+    #[must_use]
+    pub fn request_integrity_scratch_bytes_v3(issued_node_slots: usize) -> Option<usize> {
+        quanta_gqlang_v2_hir::request_integrity_scratch_bytes_v3(issued_node_slots)
+    }
+
     /// Consume raw HIR and invoke the sole HIR document integrity checker.
     pub fn try_from_hir(document: HirDocumentV1) -> Result<Self, FrontendFailureV2> {
         let source_id = document.source_id;
         let checked = CheckedHirDocumentOwnedV2::try_new(document)
             .map_err(|error| integrity_failure(source_id, error))?;
+        Ok(Self { checked })
+    }
+
+    /// Consume source-parser HIR using the caller's preadmitted indexed-ID
+    /// and iterative depth scratch. The caller retains its scratch permit
+    /// until this method returns.
+    pub fn try_from_hir_with_source_slots_v3(
+        document: HirDocumentV1,
+        issued_node_slots: usize,
+    ) -> Result<Self, quanta_gqlang_v2_hir::HirRequestIntegrityErrorV3> {
+        let checked =
+            CheckedHirDocumentOwnedV2::try_new_with_source_slots_v3(document, issued_node_slots)?;
         Ok(Self { checked })
     }
 

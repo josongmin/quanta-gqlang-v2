@@ -14,8 +14,8 @@ use crate::{
     CardinalityV1, ExpressionEffectsV2, TypeDiagnosticV2, TypedLiteralValueV2, ValueTypeV1,
 };
 use quanta_gqlang_v2_hir::{
-    BinaryExprV1, CallArgHirV1, CallExprV1, ListExprV1, LiteralV1, LocatedSpanV2, PathAccessV1,
-    RecordExprV1, UnaryExprV1, ValueExprHirV1, ValueExprKindV1,
+    BinaryExprV1, CallArgHirV1, CallExprV1, HirNodeIdV1, ListExprV1, LiteralV1, LocatedSpanV2,
+    PathAccessV1, RecordExprV1, UnaryExprV1, ValueExprHirV1, ValueExprKindV1,
 };
 use std::collections::BTreeSet;
 
@@ -52,6 +52,14 @@ enum ValueFrame<'a> {
     },
 }
 
+struct RecordProgress {
+    next: usize,
+    fields: RecordTypeBuilderV1,
+    known_suffix_start: Option<usize>,
+    unknown: Option<UnknownTypeCauseV2>,
+    effects: ExpressionEffectsV2,
+}
+
 fn value_fact(state: ExpressionTypeStateV2, effects: ExpressionEffectsV2) -> TypedExpressionFactV2 {
     TypedExpressionFactV2 {
         state,
@@ -63,7 +71,7 @@ fn value_fact(state: ExpressionTypeStateV2, effects: ExpressionEffectsV2) -> Typ
     }
 }
 
-impl DocumentChecker<'_, '_> {
+impl<'input, 'hir> DocumentChecker<'input, 'hir> {
     /// Once a record exceeds its shape limit, compute the already-known suffix
     /// boundary once. Continue evaluating through the last uncertain field to
     /// preserve diagnostic priority, without rescanning the suffix per field.
@@ -143,10 +151,6 @@ impl DocumentChecker<'_, '_> {
             })
     }
 
-    #[expect(
-        clippy::too_many_lines,
-        reason = "legacy iterative expression typing walk"
-    )]
     pub(super) fn type_expr(
         &mut self,
         root: &ValueExprHirV1,
@@ -157,152 +161,9 @@ impl DocumentChecker<'_, '_> {
         while let Some(frame) = stack.pop() {
             let (node, fact) = match frame {
                 ValueFrame::Enter(node, deferred) => {
-                    let key = self.key(node);
-                    if self.facts.contains_key(&key) {
-                        continue;
-                    }
-                    if !active.insert(node.id) {
-                        return Err(TypeDiagnosticV2::CyclicDeclarationDependency {
-                            node_id: node.id,
-                            location: self.location(node),
-                        });
-                    }
-                    match &node.kind {
-                        ValueExprKindV1::Literal(value) => {
-                            let (ty, literal) = self.type_literal(node, value, deferred)?;
-                            let mut fact = value_fact(
-                                ExpressionTypeStateV2::Known(ty),
-                                ExpressionEffectsV2::pure_scalar(),
-                            );
-                            fact.literal = Some(literal);
-                            (node, fact)
-                        }
-                        ValueExprKindV1::Symbol(_) => {
-                            let fact = match self.inputs.values.get(&key) {
-                                Some(ResolvedTypeInputValueV2::Binding(state)) => {
-                                    value_fact(state.clone(), ExpressionEffectsV2::pure_scalar())
-                                }
-                                Some(ResolvedTypeInputValueV2::BindingFromExpression(target)) => {
-                                    let fact = self.facts.get(target).ok_or(
-                                        TypeDiagnosticV2::UnavailableBindingDependency {
-                                            node_id: node.id,
-                                            target_node_id: target.node_id,
-                                            location: self.location(node),
-                                        },
-                                    )?;
-                                    value_fact(fact.state.clone(), fact.effects)
-                                }
-                                Some(ResolvedTypeInputValueV2::BindingFromDeclaration(target)) => {
-                                    let body = self
-                                        .inputs
-                                        .declaration_bodies
-                                        .get(&target.node_id)
-                                        .copied()
-                                        .ok_or(TypeDiagnosticV2::InvalidBindingDependency {
-                                            node_id: node.id,
-                                            target_node_id: target.node_id,
-                                            location: self.location(node),
-                                        })?;
-                                    stack.push(ValueFrame::Copy(node, body));
-                                    stack.push(ValueFrame::Enter(body, false));
-                                    continue;
-                                }
-                                Some(ResolvedTypeInputValueV2::BindingFromRelationRow(target)) => {
-                                    let row = self.relation_rows.get(target).ok_or(
-                                        TypeDiagnosticV2::UnavailableRelationRowDependency {
-                                            root: node.id,
-                                            target: target.node_id,
-                                            location: self.location(node),
-                                        },
-                                    )?;
-                                    value_fact(
-                                        ExpressionTypeStateV2::Known(ValueTypeV1::try_record(
-                                            row.record.clone(),
-                                        )?),
-                                        ExpressionEffectsV2::pure_scalar(),
-                                    )
-                                }
-                                _ => {
-                                    return Err(TypeDiagnosticV2::MissingNodeFact {
-                                        node_id: node.id,
-                                        location: self.location(node),
-                                    })
-                                }
-                            };
-                            (node, fact)
-                        }
-                        ValueExprKindV1::Paren(inner) => {
-                            stack.push(ValueFrame::Copy(node, inner));
-                            stack.push(ValueFrame::Enter(inner, deferred));
-                            continue;
-                        }
-                        ValueExprKindV1::Unary(unary) => {
-                            let mut magnitude = &unary.operand;
-                            while let ValueExprKindV1::Paren(inner) = &magnitude.kind {
-                                magnitude = inner;
-                            }
-                            let min_case = unary.op.symbol == "-"
-                                && matches!(&magnitude.kind, ValueExprKindV1::Literal(LiteralV1::Int(text)) if text == "170141183460469231731687303715884105728");
-                            stack.push(ValueFrame::Unary(node, unary, min_case));
-                            stack.push(ValueFrame::Enter(&unary.operand, min_case));
-                            continue;
-                        }
-                        ValueExprKindV1::Binary(binary) => {
-                            stack.push(ValueFrame::Binary(node, binary));
-                            stack.push(ValueFrame::Enter(&binary.rhs, false));
-                            stack.push(ValueFrame::Enter(&binary.lhs, false));
-                            continue;
-                        }
-                        ValueExprKindV1::Path(path) => {
-                            stack.push(ValueFrame::Path(node, path));
-                            stack.push(ValueFrame::Enter(&path.base, false));
-                            continue;
-                        }
-                        ValueExprKindV1::Call(call) => {
-                            let input = self
-                                .inputs
-                                .values
-                                .get(&key)
-                                .ok_or(TypeDiagnosticV2::MissingNodeFact {
-                                    node_id: node.id,
-                                    location: self.location(node),
-                                })?
-                                .clone();
-                            let contexts =
-                                self.callable_argument_contexts(&input, call.args().as_slice());
-                            stack.push(ValueFrame::Call {
-                                node,
-                                call,
-                                input,
-                                contexts,
-                                next: 0,
-                                types: Vec::new(),
-                            });
-                            continue;
-                        }
-                        ValueExprKindV1::Record(record) => {
-                            stack.push(ValueFrame::Record {
-                                node,
-                                record,
-                                next: 0,
-                                fields: RecordTypeBuilderV1::new(),
-                                known_suffix_start: None,
-                                unknown: None,
-                                effects: ExpressionEffectsV2::pure_scalar(),
-                            });
-                            continue;
-                        }
-                        ValueExprKindV1::List(list) => {
-                            stack.push(ValueFrame::List {
-                                node,
-                                list,
-                                next: 0,
-                                selected: None,
-                                unknown: None,
-                                effects: ExpressionEffectsV2::pure_scalar(),
-                            });
-                            continue;
-                        }
+                    match self.enter_value(node, deferred, &mut stack, &mut active)? {
+                        Some(fact) => fact,
+                        None => continue,
                     }
                 }
                 ValueFrame::Copy(node, child) => (
@@ -404,191 +265,401 @@ impl DocumentChecker<'_, '_> {
                     input,
                     contexts,
                     next,
-                    mut types,
+                    types,
                 } => {
-                    let args = call.args().as_slice();
-                    if let Some(CallArgHirV1::Expr(previous)) =
-                        next.checked_sub(1).and_then(|index| args.get(index))
-                    {
-                        types.push(self.value_state(previous)?);
+                    match self.resume_call(node, call, input, contexts, next, types, &mut stack)? {
+                        Some(fact) => fact,
+                        None => continue,
                     }
-                    if let Some(argument) = args.get(next) {
-                        if let CallArgHirV1::Expr(expr) = argument {
-                            if let Some(Some(expected)) = contexts.get(next) {
-                                self.callable_contexts
-                                    .insert(self.key(expr), expected.clone());
-                            }
-                        }
-                        stack.push(ValueFrame::Call {
-                            node,
-                            call,
-                            input,
-                            contexts,
-                            next: next + 1,
-                            types,
-                        });
-                        if let CallArgHirV1::Expr(expr) = argument {
-                            stack.push(ValueFrame::Enter(expr, false));
-                        }
-                        continue;
-                    }
-                    let (state, call_effects, target) =
-                        self.resolve_call(node, input, args, &types)?;
-                    let effects = call_effects.compose(args.iter().filter_map(|arg| match arg {
-                        CallArgHirV1::Expr(expr) => {
-                            self.facts.get(&self.key(expr)).map(|fact| fact.effects)
-                        }
-                        CallArgHirV1::Star { .. } => None,
-                    }));
-                    let mut fact = value_fact(state, effects);
-                    fact.intrinsic_call_aggregation = Some(call_effects.aggregation);
-                    fact.resolved_call = target;
-                    (node, fact)
                 }
                 ValueFrame::Record {
                     node,
                     record,
                     next,
-                    mut fields,
-                    mut known_suffix_start,
-                    mut unknown,
-                    mut effects,
+                    fields,
+                    known_suffix_start,
+                    unknown,
+                    effects,
                 } => {
-                    if let Some(field) = next
-                        .checked_sub(1)
-                        .and_then(|index| record.fields.get(index))
-                    {
-                        match self.value_state_ref(&field.value)? {
-                            ExpressionTypeStateV2::Known(ty) => {
-                                let location = LocatedSpanV2 {
-                                    source_id: self.key(node).source_id,
-                                    span: field.name_span,
-                                };
-                                let checked = self
-                                    .inputs
-                                    .source_registry
-                                    .try_check_location(location)
-                                    .map_err(|_source_error| TypeDiagnosticV2::InvalidTypeName {
-                                        location,
-                                    })?;
-                                fields.try_push(&field.name, ty, checked)?;
-                            }
-                            ExpressionTypeStateV2::Unknown(cause) => unknown = Some(cause.clone()),
-                        }
-                        effects = effects.join(self.effects_for(field.value.id)?);
-                    }
-                    if unknown.is_none() {
-                        if let Some(error) = fields.shape_limit() {
-                            let start = *known_suffix_start.get_or_insert_with(|| {
-                                self.record_known_suffix_start(record, next)
-                            });
-                            if next >= start {
-                                return Err(error.clone());
-                            }
-                        }
-                    }
-                    if let Some(field) = record.fields.get(next) {
-                        stack.push(ValueFrame::Record {
-                            node,
-                            record,
-                            next: next + 1,
+                    match self.resume_record(
+                        node,
+                        record,
+                        RecordProgress {
+                            next,
                             fields,
                             known_suffix_start,
                             unknown,
                             effects,
-                        });
-                        stack.push(ValueFrame::Enter(&field.value, false));
-                        continue;
+                        },
+                        &mut stack,
+                    )? {
+                        Some(fact) => fact,
+                        None => continue,
                     }
-                    let state = match unknown {
-                        Some(cause) => ExpressionTypeStateV2::Unknown(cause),
-                        None => {
-                            ExpressionTypeStateV2::Known(ValueTypeV1::try_record(fields.finish()?)?)
-                        }
-                    };
-                    (node, value_fact(state, effects))
                 }
                 ValueFrame::List {
                     node,
                     list,
                     next,
-                    mut selected,
-                    mut unknown,
-                    mut effects,
+                    selected,
+                    unknown,
+                    effects,
                 } => {
-                    if let Some(value) = next
-                        .checked_sub(1)
-                        .and_then(|index| list.elements.get(index))
+                    match self
+                        .resume_list(node, list, next, selected, unknown, effects, &mut stack)?
                     {
-                        match self.value_state(value)? {
-                            ExpressionTypeStateV2::Unknown(cause) => unknown = Some(cause),
-                            ExpressionTypeStateV2::Known(ty) => match &selected {
-                                None => selected = Some(ty),
-                                Some(expected) if ty.is_assignable_to(expected) => {}
-                                Some(expected) if expected.is_assignable_to(&ty) => {
-                                    selected = Some(ty)
-                                }
-                                Some(expected) => {
-                                    return Err(TypeDiagnosticV2::HeterogeneousCollection {
-                                        node_id: node.id,
-                                        expected: expected.clone(),
-                                        actual: ty,
-                                        location: self.location(node),
-                                    })
-                                }
-                            },
-                        }
-                        effects = effects.join(self.effects_for(value.id)?);
+                        Some(fact) => fact,
+                        None => continue,
                     }
-                    if let Some(value) = list.elements.get(next) {
-                        stack.push(ValueFrame::List {
-                            node,
-                            list,
-                            next: next + 1,
-                            selected,
-                            unknown,
-                            effects,
-                        });
-                        stack.push(ValueFrame::Enter(value, false));
-                        continue;
-                    }
-                    let key = self.key(node);
-                    let state = match (unknown, selected) {
-                        (Some(cause), _) => ExpressionTypeStateV2::Unknown(cause),
-                        (None, Some(element)) => ExpressionTypeStateV2::Known(
-                            ValueTypeV1::try_list(element)
-                                .map_err(|error| error.at_location(self.location(node)))?,
-                        ),
-                        (None, None) => match self.inputs.contexts.get(&key) {
-                            Some((expected, _))
-                                if expected.as_collection().is_some_and(|collection| {
-                                    collection.cardinality() == CardinalityV1::Sequence
-                                }) =>
-                            {
-                                self.used_contexts.insert(key);
-                                ExpressionTypeStateV2::Known(expected.clone())
-                            }
-                            _ => match self.callable_contexts.get(&key) {
-                                Some(expected)
-                                    if expected.as_collection().is_some_and(|collection| {
-                                        collection.cardinality() == CardinalityV1::Sequence
-                                    }) =>
-                                {
-                                    ExpressionTypeStateV2::Known(expected.clone())
-                                }
-                                _ => ExpressionTypeStateV2::Unknown(
-                                    UnknownTypeCauseV2::EmptyCollectionElement,
-                                ),
-                            },
-                        },
-                    };
-                    (node, value_fact(state, effects))
                 }
             };
             active.remove(&node.id);
             self.facts.insert(self.key(node), fact);
         }
         self.value_state(root)
+    }
+    fn enter_value<'a>(
+        &mut self,
+        node: &'a ValueExprHirV1,
+        deferred: bool,
+        stack: &mut Vec<ValueFrame<'a>>,
+        active: &mut BTreeSet<HirNodeIdV1>,
+    ) -> Result<Option<(&'a ValueExprHirV1, TypedExpressionFactV2)>, TypeDiagnosticV2>
+    where
+        'hir: 'a,
+    {
+        let key = self.key(node);
+        if self.facts.contains_key(&key) {
+            return Ok(None);
+        }
+        if !active.insert(node.id) {
+            return Err(TypeDiagnosticV2::CyclicDeclarationDependency {
+                node_id: node.id,
+                location: self.location(node),
+            });
+        }
+        Ok(Some(match &node.kind {
+            ValueExprKindV1::Literal(value) => {
+                let (ty, literal) = self.type_literal(node, value, deferred)?;
+                let mut fact = value_fact(
+                    ExpressionTypeStateV2::Known(ty),
+                    ExpressionEffectsV2::pure_scalar(),
+                );
+                fact.literal = Some(literal);
+                (node, fact)
+            }
+            ValueExprKindV1::Symbol(_) => {
+                let fact = match self.inputs.values.get(&key) {
+                    Some(ResolvedTypeInputValueV2::Binding(state)) => {
+                        value_fact(state.clone(), ExpressionEffectsV2::pure_scalar())
+                    }
+                    Some(ResolvedTypeInputValueV2::BindingFromExpression(target)) => {
+                        let fact = self.facts.get(target).ok_or(
+                            TypeDiagnosticV2::UnavailableBindingDependency {
+                                node_id: node.id,
+                                target_node_id: target.node_id,
+                                location: self.location(node),
+                            },
+                        )?;
+                        value_fact(fact.state.clone(), fact.effects)
+                    }
+                    Some(ResolvedTypeInputValueV2::BindingFromDeclaration(target)) => {
+                        let body = self
+                            .inputs
+                            .declaration_bodies
+                            .get(&target.node_id)
+                            .copied()
+                            .ok_or(TypeDiagnosticV2::InvalidBindingDependency {
+                                node_id: node.id,
+                                target_node_id: target.node_id,
+                                location: self.location(node),
+                            })?;
+                        stack.push(ValueFrame::Copy(node, body));
+                        stack.push(ValueFrame::Enter(body, false));
+                        return Ok(None);
+                    }
+                    Some(ResolvedTypeInputValueV2::BindingFromRelationRow(target)) => {
+                        let row = self.relation_rows.get(target).ok_or(
+                            TypeDiagnosticV2::UnavailableRelationRowDependency {
+                                root: node.id,
+                                target: target.node_id,
+                                location: self.location(node),
+                            },
+                        )?;
+                        value_fact(
+                            ExpressionTypeStateV2::Known(ValueTypeV1::try_record(
+                                row.record.clone(),
+                            )?),
+                            ExpressionEffectsV2::pure_scalar(),
+                        )
+                    }
+                    _ => {
+                        return Err(TypeDiagnosticV2::MissingNodeFact {
+                            node_id: node.id,
+                            location: self.location(node),
+                        })
+                    }
+                };
+                (node, fact)
+            }
+            ValueExprKindV1::Paren(inner) => {
+                stack.push(ValueFrame::Copy(node, inner));
+                stack.push(ValueFrame::Enter(inner, deferred));
+                return Ok(None);
+            }
+            ValueExprKindV1::Unary(unary) => {
+                let mut magnitude = &unary.operand;
+                while let ValueExprKindV1::Paren(inner) = &magnitude.kind {
+                    magnitude = inner;
+                }
+                let min_case = unary.op.symbol == "-"
+                    && matches!(&magnitude.kind, ValueExprKindV1::Literal(LiteralV1::Int(text)) if text == "170141183460469231731687303715884105728");
+                stack.push(ValueFrame::Unary(node, unary, min_case));
+                stack.push(ValueFrame::Enter(&unary.operand, min_case));
+                return Ok(None);
+            }
+            ValueExprKindV1::Binary(binary) => {
+                stack.push(ValueFrame::Binary(node, binary));
+                stack.push(ValueFrame::Enter(&binary.rhs, false));
+                stack.push(ValueFrame::Enter(&binary.lhs, false));
+                return Ok(None);
+            }
+            ValueExprKindV1::Path(path) => {
+                stack.push(ValueFrame::Path(node, path));
+                stack.push(ValueFrame::Enter(&path.base, false));
+                return Ok(None);
+            }
+            ValueExprKindV1::Call(call) => {
+                let input = self
+                    .inputs
+                    .values
+                    .get(&key)
+                    .ok_or(TypeDiagnosticV2::MissingNodeFact {
+                        node_id: node.id,
+                        location: self.location(node),
+                    })?
+                    .clone();
+                let contexts = self.callable_argument_contexts(&input, call.args().as_slice());
+                stack.push(ValueFrame::Call {
+                    node,
+                    call,
+                    input,
+                    contexts,
+                    next: 0,
+                    types: Vec::new(),
+                });
+                return Ok(None);
+            }
+            ValueExprKindV1::Record(record) => {
+                stack.push(ValueFrame::Record {
+                    node,
+                    record,
+                    next: 0,
+                    fields: RecordTypeBuilderV1::new(),
+                    known_suffix_start: None,
+                    unknown: None,
+                    effects: ExpressionEffectsV2::pure_scalar(),
+                });
+                return Ok(None);
+            }
+            ValueExprKindV1::List(list) => {
+                stack.push(ValueFrame::List {
+                    node,
+                    list,
+                    next: 0,
+                    selected: None,
+                    unknown: None,
+                    effects: ExpressionEffectsV2::pure_scalar(),
+                });
+                return Ok(None);
+            }
+        }))
+    }
+
+    fn resume_call<'a>(
+        &mut self,
+        node: &'a ValueExprHirV1,
+        call: &'a CallExprV1,
+        input: ResolvedTypeInputValueV2,
+        contexts: Vec<Option<ValueTypeV1>>,
+        next: usize,
+        mut types: Vec<ExpressionTypeStateV2>,
+        stack: &mut Vec<ValueFrame<'a>>,
+    ) -> Result<Option<(&'a ValueExprHirV1, TypedExpressionFactV2)>, TypeDiagnosticV2> {
+        let args = call.args().as_slice();
+        if let Some(CallArgHirV1::Expr(previous)) =
+            next.checked_sub(1).and_then(|index| args.get(index))
+        {
+            types.push(self.value_state(previous)?);
+        }
+        if let Some(argument) = args.get(next) {
+            if let CallArgHirV1::Expr(expr) = argument {
+                if let Some(Some(expected)) = contexts.get(next) {
+                    self.callable_contexts
+                        .insert(self.key(expr), expected.clone());
+                }
+            }
+            stack.push(ValueFrame::Call {
+                node,
+                call,
+                input,
+                contexts,
+                next: next + 1,
+                types,
+            });
+            if let CallArgHirV1::Expr(expr) = argument {
+                stack.push(ValueFrame::Enter(expr, false));
+            }
+            return Ok(None);
+        }
+        let (state, call_effects, target) = self.resolve_call(node, input, args, &types)?;
+        let effects = call_effects.compose(args.iter().filter_map(|arg| match arg {
+            CallArgHirV1::Expr(expr) => self.facts.get(&self.key(expr)).map(|fact| fact.effects),
+            CallArgHirV1::Star { .. } => None,
+        }));
+        let mut fact = value_fact(state, effects);
+        fact.intrinsic_call_aggregation = Some(call_effects.aggregation);
+        fact.resolved_call = target;
+        Ok(Some((node, fact)))
+    }
+
+    fn resume_record<'a>(
+        &mut self,
+        node: &'a ValueExprHirV1,
+        record: &'a RecordExprV1,
+        progress: RecordProgress,
+        stack: &mut Vec<ValueFrame<'a>>,
+    ) -> Result<Option<(&'a ValueExprHirV1, TypedExpressionFactV2)>, TypeDiagnosticV2> {
+        let RecordProgress {
+            next,
+            mut fields,
+            mut known_suffix_start,
+            mut unknown,
+            mut effects,
+        } = progress;
+        if let Some(field) = next
+            .checked_sub(1)
+            .and_then(|index| record.fields.get(index))
+        {
+            match self.value_state_ref(&field.value)? {
+                ExpressionTypeStateV2::Known(ty) => {
+                    let location = LocatedSpanV2 {
+                        source_id: self.key(node).source_id,
+                        span: field.name_span,
+                    };
+                    let checked = self
+                        .inputs
+                        .source_registry
+                        .try_check_location(location)
+                        .map_err(|_source_error| TypeDiagnosticV2::InvalidTypeName { location })?;
+                    fields.try_push(&field.name, ty, checked)?;
+                }
+                ExpressionTypeStateV2::Unknown(cause) => unknown = Some(cause.clone()),
+            }
+            effects = effects.join(self.effects_for(field.value.id)?);
+        }
+        if unknown.is_none() {
+            if let Some(error) = fields.shape_limit() {
+                let start = *known_suffix_start
+                    .get_or_insert_with(|| self.record_known_suffix_start(record, next));
+                if next >= start {
+                    return Err(error.clone());
+                }
+            }
+        }
+        if let Some(field) = record.fields.get(next) {
+            stack.push(ValueFrame::Record {
+                node,
+                record,
+                next: next + 1,
+                fields,
+                known_suffix_start,
+                unknown,
+                effects,
+            });
+            stack.push(ValueFrame::Enter(&field.value, false));
+            return Ok(None);
+        }
+        let state = match unknown {
+            Some(cause) => ExpressionTypeStateV2::Unknown(cause),
+            None => ExpressionTypeStateV2::Known(ValueTypeV1::try_record(fields.finish()?)?),
+        };
+        Ok(Some((node, value_fact(state, effects))))
+    }
+
+    fn resume_list<'a>(
+        &mut self,
+        node: &'a ValueExprHirV1,
+        list: &'a ListExprV1,
+        next: usize,
+        mut selected: Option<ValueTypeV1>,
+        mut unknown: Option<UnknownTypeCauseV2>,
+        mut effects: ExpressionEffectsV2,
+        stack: &mut Vec<ValueFrame<'a>>,
+    ) -> Result<Option<(&'a ValueExprHirV1, TypedExpressionFactV2)>, TypeDiagnosticV2> {
+        if let Some(value) = next
+            .checked_sub(1)
+            .and_then(|index| list.elements.get(index))
+        {
+            match self.value_state(value)? {
+                ExpressionTypeStateV2::Unknown(cause) => unknown = Some(cause),
+                ExpressionTypeStateV2::Known(ty) => match &selected {
+                    None => selected = Some(ty),
+                    Some(expected) if ty.is_assignable_to(expected) => {}
+                    Some(expected) if expected.is_assignable_to(&ty) => selected = Some(ty),
+                    Some(expected) => {
+                        return Err(TypeDiagnosticV2::HeterogeneousCollection {
+                            node_id: node.id,
+                            expected: expected.clone(),
+                            actual: ty,
+                            location: self.location(node),
+                        })
+                    }
+                },
+            }
+            effects = effects.join(self.effects_for(value.id)?);
+        }
+        if let Some(value) = list.elements.get(next) {
+            stack.push(ValueFrame::List {
+                node,
+                list,
+                next: next + 1,
+                selected,
+                unknown,
+                effects,
+            });
+            stack.push(ValueFrame::Enter(value, false));
+            return Ok(None);
+        }
+        let key = self.key(node);
+        let state = match (unknown, selected) {
+            (Some(cause), _) => ExpressionTypeStateV2::Unknown(cause),
+            (None, Some(element)) => ExpressionTypeStateV2::Known(
+                ValueTypeV1::try_list(element)
+                    .map_err(|error| error.at_location(self.location(node)))?,
+            ),
+            (None, None) => match self.inputs.contexts.get(&key) {
+                Some((expected, _))
+                    if expected.as_collection().is_some_and(|collection| {
+                        collection.cardinality() == CardinalityV1::Sequence
+                    }) =>
+                {
+                    self.used_contexts.insert(key);
+                    ExpressionTypeStateV2::Known(expected.clone())
+                }
+                _ => match self.callable_contexts.get(&key) {
+                    Some(expected)
+                        if expected.as_collection().is_some_and(|collection| {
+                            collection.cardinality() == CardinalityV1::Sequence
+                        }) =>
+                    {
+                        ExpressionTypeStateV2::Known(expected.clone())
+                    }
+                    _ => ExpressionTypeStateV2::Unknown(UnknownTypeCauseV2::EmptyCollectionElement),
+                },
+            },
+        };
+        Ok(Some((node, value_fact(state, effects))))
     }
 }
 

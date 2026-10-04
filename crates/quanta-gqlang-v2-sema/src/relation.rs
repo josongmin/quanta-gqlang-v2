@@ -93,23 +93,82 @@ impl OrderKeyContractV2 {
 }
 
 /// Deterministic set of relation and View origins.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct OutputProvenanceV2(BTreeSet<ResolvedScanSourceV2>);
+#[derive(Clone, Debug)]
+enum ProvenanceStorageV2 {
+    Set(BTreeSet<ResolvedScanSourceV2>),
+    Single(ResolvedScanSourceV2),
+}
+
+#[derive(Clone, Debug)]
+pub struct OutputProvenanceV2(ProvenanceStorageV2);
+
+impl Default for OutputProvenanceV2 {
+    fn default() -> Self {
+        Self(ProvenanceStorageV2::Set(BTreeSet::new()))
+    }
+}
+
+impl PartialEq for OutputProvenanceV2 {
+    fn eq(&self, other: &Self) -> bool {
+        self.iter().eq(other.iter())
+    }
+}
+
+impl Eq for OutputProvenanceV2 {}
 
 impl OutputProvenanceV2 {
     /// Build a unique source set.
     #[must_use]
     pub fn new(sources: impl IntoIterator<Item = ResolvedScanSourceV2>) -> Self {
-        Self(sources.into_iter().collect())
+        Self(ProvenanceStorageV2::Set(sources.into_iter().collect()))
+    }
+
+    pub(crate) fn from_single_source_v3(source: ResolvedScanSourceV2) -> Self {
+        Self(ProvenanceStorageV2::Single(source))
     }
     /// Ordered source identities.
     pub fn iter(&self) -> impl Iterator<Item = &ResolvedScanSourceV2> {
-        self.0.iter()
+        let single = match &self.0 {
+            ProvenanceStorageV2::Single(source) => Some(source),
+            ProvenanceStorageV2::Set(_) => None,
+        };
+        let set = match &self.0 {
+            ProvenanceStorageV2::Set(set) => Some(set),
+            ProvenanceStorageV2::Single(_) => None,
+        };
+        single
+            .into_iter()
+            .chain(set.into_iter().flat_map(BTreeSet::iter))
+    }
+
+    fn union_iter<'a>(&'a self, other: &'a Self) -> impl Iterator<Item = &'a ResolvedScanSourceV2> {
+        let mut left = self.iter().peekable();
+        let mut right = other.iter().peekable();
+        std::iter::from_fn(move || match (left.peek(), right.peek()) {
+            (Some(first), Some(second)) => match first.cmp(second) {
+                std::cmp::Ordering::Less => left.next(),
+                std::cmp::Ordering::Equal => {
+                    let _ = right.next();
+                    left.next()
+                }
+                std::cmp::Ordering::Greater => right.next(),
+            },
+            (Some(_), None) => left.next(),
+            (None, Some(_)) => right.next(),
+            (None, None) => None,
+        })
+    }
+
+    fn contains(&self, source: &ResolvedScanSourceV2) -> bool {
+        match &self.0 {
+            ProvenanceStorageV2::Set(set) => set.contains(source),
+            ProvenanceStorageV2::Single(value) => value == source,
+        }
     }
     /// No source origin.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.iter().next().is_none()
     }
 }
 
@@ -207,7 +266,7 @@ impl RelationOutputContractV2 {
         if columns.iter().any(|column| {
             matches!(&column.origin,
                 OutputColumnOriginV2::SourceField { source, field_name, .. }
-                    if field_name.is_empty() || !provenance.0.contains(source))
+                    if field_name.is_empty() || !provenance.contains(source))
         }) {
             return Err("output columns differ from the typed row or authoritative origins");
         }
@@ -312,9 +371,8 @@ impl RelationOutputContractV2 {
                 .eq(left.columns.iter().chain(&right.columns))
             && self
                 .provenance
-                .0
                 .iter()
-                .eq(left.provenance.0.union(&right.provenance.0))
+                .eq(left.provenance.union_iter(&right.provenance))
     }
     /// Cardinality/multiplicity.
     #[must_use]

@@ -21,6 +21,12 @@ pub use quanta_gqlang_v2_pipeline::census_source_lexical_materialization_v3;
 pub use quanta_gqlang_v2_pipeline::classify_single_source_root_v3;
 /// Versioned route classification with an explicit lexical storage owner.
 pub use quanta_gqlang_v2_pipeline::classify_single_source_root_with_lexical_owner_v1;
+/// Classify one source root while retaining storage under the issued request.
+pub use quanta_gqlang_v2_pipeline::classify_single_source_root_with_request_owner_v3;
+/// Continue the bounded compile from the same parser-issued classification owner.
+pub use quanta_gqlang_v2_pipeline::compile_scalar_parsed_source_with_request_owner_v3;
+/// Compile the bounded scalar Source→Project family under the issued request.
+pub use quanta_gqlang_v2_pipeline::compile_scalar_source_with_request_owner_v3;
 /// Compile one closed source document into a source-bound V3 execution document.
 pub use quanta_gqlang_v2_pipeline::compile_source_document_v3;
 /// Versioned closed compile that retains its lexical-only storage owner.
@@ -32,9 +38,26 @@ pub use quanta_gqlang_v2_pipeline::LexicalMaterializationCensusV1;
 pub use quanta_gqlang_v2_pipeline::{
     admit_show_syntax_v2, AdmittedShowDocumentV2, ShowSyntaxAdmissionErrorV2,
 };
+/// Sealed parser/check stages and the bounded scalar execution owner.
+/// Richer families and runtime admission retain their separate contracts.
+pub use quanta_gqlang_v2_pipeline::{
+    check_source_document_with_request_owner_v3, parse_source_document_with_request_owner_v3,
+    AdmittedCanonicalFilesScalarReadV3, AdmittedScalarExecutionDocumentV3, CheckedRequestSourceV3,
+    FrontendRequestCheckErrorV3, ParsedRequestSourceV3, SharedAdmittedScalarExecutionDocumentV3,
+};
 pub use quanta_gqlang_v2_pipeline::{
     AdmittedLexicalCompiledSourceDocumentV1, FrontendLexicalHostCeilingV1,
-    FrontendLexicalMaterializationRootV1,
+    FrontendLexicalMaterializationRootV1, FrontendRequestMaterializationRootV3,
+    FrontendRequestStoragePermitV3, FrontendRequestStorageSinkV3, FrontendRetainedStoragePermitV3,
+    FrontendStorageRefusalV3,
+};
+pub use quanta_gqlang_v2_pipeline::{
+    ScalarExecutionRequestErrorV3, ScalarSourceCompileRequestErrorV3,
+};
+/// Producer-owned canonical names for the workspace-files source contract.
+pub use quanta_gqlang_v2_pipeline::{
+    CANONICAL_WORKSPACE_FILES_FIELD_NAME_V2, CANONICAL_WORKSPACE_FILES_PROVENANCE_NAMESPACE_V2,
+    CANONICAL_WORKSPACE_FILES_QUALIFIED_NAME_V2,
 };
 
 // ---- assembled document DTOs ----------------------------------------------

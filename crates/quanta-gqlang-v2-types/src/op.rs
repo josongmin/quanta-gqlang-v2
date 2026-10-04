@@ -778,257 +778,11 @@ impl OperatorRegistryV2 {
         })
     }
 
-    #[expect(
-        clippy::too_many_lines,
-        reason = "legacy canonical operator registry table"
-    )]
     pub fn try_closed() -> Result<Self, TypeDiagnosticV2> {
-        use crate::ScalarTyV1;
-        let duration = || ValueTypeV1::scalar(ScalarTyV1::Duration);
-        let unary = vec![
-            u(
-                1,
-                OperatorSemanticKindV2::UnaryNegate,
-                ValueTypeV1::int(),
-                ValueTypeV1::int(),
-            ),
-            u(
-                2,
-                OperatorSemanticKindV2::UnaryNegate,
-                ValueTypeV1::float(),
-                ValueTypeV1::float(),
-            ),
-            u(
-                3,
-                OperatorSemanticKindV2::UnaryNegate,
-                duration(),
-                duration(),
-            ),
-            u(
-                4,
-                OperatorSemanticKindV2::UnaryPositive,
-                ValueTypeV1::int(),
-                ValueTypeV1::int(),
-            ),
-            u(
-                5,
-                OperatorSemanticKindV2::UnaryPositive,
-                ValueTypeV1::float(),
-                ValueTypeV1::float(),
-            ),
-            u(
-                6,
-                OperatorSemanticKindV2::UnaryPositive,
-                duration(),
-                duration(),
-            ),
-            u(
-                7,
-                OperatorSemanticKindV2::Not,
-                ValueTypeV1::bool(),
-                ValueTypeV1::bool(),
-            ),
-        ];
-        let mut binary = vec![
-            b(
-                101,
-                OperatorSemanticKindV2::Add,
-                ValueTypeV1::int(),
-                ValueTypeV1::int(),
-                ValueTypeV1::int(),
-            ),
-            b(
-                102,
-                OperatorSemanticKindV2::Subtract,
-                ValueTypeV1::int(),
-                ValueTypeV1::int(),
-                ValueTypeV1::int(),
-            ),
-            b(
-                103,
-                OperatorSemanticKindV2::Multiply,
-                ValueTypeV1::int(),
-                ValueTypeV1::int(),
-                ValueTypeV1::int(),
-            ),
-            b(
-                104,
-                OperatorSemanticKindV2::Divide,
-                ValueTypeV1::int(),
-                ValueTypeV1::int(),
-                ValueTypeV1::int(),
-            ),
-            b(
-                105,
-                OperatorSemanticKindV2::Remainder,
-                ValueTypeV1::int(),
-                ValueTypeV1::int(),
-                ValueTypeV1::int(),
-            ),
-            b(
-                106,
-                OperatorSemanticKindV2::Add,
-                ValueTypeV1::float(),
-                ValueTypeV1::float(),
-                ValueTypeV1::float(),
-            ),
-            b(
-                107,
-                OperatorSemanticKindV2::Subtract,
-                ValueTypeV1::float(),
-                ValueTypeV1::float(),
-                ValueTypeV1::float(),
-            ),
-            b(
-                108,
-                OperatorSemanticKindV2::Multiply,
-                ValueTypeV1::float(),
-                ValueTypeV1::float(),
-                ValueTypeV1::float(),
-            ),
-            b(
-                109,
-                OperatorSemanticKindV2::Divide,
-                ValueTypeV1::float(),
-                ValueTypeV1::float(),
-                ValueTypeV1::float(),
-            ),
-            b(
-                110,
-                OperatorSemanticKindV2::Add,
-                duration(),
-                duration(),
-                duration(),
-            ),
-            b(
-                111,
-                OperatorSemanticKindV2::Subtract,
-                duration(),
-                duration(),
-                duration(),
-            ),
-            b(
-                112,
-                OperatorSemanticKindV2::Multiply,
-                duration(),
-                duration(),
-                duration(),
-            ),
-            b(
-                113,
-                OperatorSemanticKindV2::Multiply,
-                duration(),
-                ValueTypeV1::int(),
-                duration(),
-            ),
-            b(
-                114,
-                OperatorSemanticKindV2::Divide,
-                duration(),
-                ValueTypeV1::int(),
-                duration(),
-            ),
-            b(
-                115,
-                OperatorSemanticKindV2::And,
-                ValueTypeV1::bool(),
-                ValueTypeV1::bool(),
-                ValueTypeV1::bool(),
-            ),
-            b(
-                116,
-                OperatorSemanticKindV2::Or,
-                ValueTypeV1::bool(),
-                ValueTypeV1::bool(),
-                ValueTypeV1::bool(),
-            ),
-            b(
-                117,
-                OperatorSemanticKindV2::Xor,
-                ValueTypeV1::bool(),
-                ValueTypeV1::bool(),
-                ValueTypeV1::bool(),
-            ),
-            b(
-                118,
-                OperatorSemanticKindV2::Concat,
-                ValueTypeV1::string(),
-                ValueTypeV1::string(),
-                ValueTypeV1::string(),
-            ),
-        ];
-        for (base, kind) in [
-            (200, OperatorSemanticKindV2::Less),
-            (210, OperatorSemanticKindV2::LessEqual),
-            (220, OperatorSemanticKindV2::Greater),
-            (230, OperatorSemanticKindV2::GreaterEqual),
-        ] {
-            binary.push(b(
-                base,
-                kind,
-                ValueTypeV1::int(),
-                ValueTypeV1::int(),
-                ValueTypeV1::bool(),
-            ));
-            binary.push(b(
-                base + 1,
-                kind,
-                ValueTypeV1::float(),
-                ValueTypeV1::float(),
-                ValueTypeV1::bool(),
-            ));
-            binary.push(b(
-                base + 2,
-                kind,
-                ValueTypeV1::string(),
-                ValueTypeV1::string(),
-                ValueTypeV1::bool(),
-            ));
-            binary.push(b(
-                base + 3,
-                kind,
-                duration(),
-                duration(),
-                ValueTypeV1::bool(),
-            ));
-        }
-        let scalars = [
-            ScalarTyV1::Bool,
-            ScalarTyV1::Int,
-            ScalarTyV1::Float,
-            ScalarTyV1::String,
-            ScalarTyV1::Duration,
-            ScalarTyV1::Location,
-            ScalarTyV1::Path,
-            ScalarTyV1::RepoPath,
-            ScalarTyV1::EntityRef,
-            ScalarTyV1::SymbolRef,
-            ScalarTyV1::RuleRef,
-            ScalarTyV1::SourceScope,
-            ScalarTyV1::ProofTree,
-        ];
-        let eq_ids = [
-            300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312,
-        ];
-        let ne_ids = [
-            320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332,
-        ];
-        for ((scalar, eq_id), ne_id) in scalars.into_iter().zip(eq_ids).zip(ne_ids) {
-            binary.push(b(
-                eq_id,
-                OperatorSemanticKindV2::Equal,
-                ValueTypeV1::scalar(scalar.clone()),
-                ValueTypeV1::scalar(scalar.clone()),
-                ValueTypeV1::bool(),
-            ));
-            binary.push(b(
-                ne_id,
-                OperatorSemanticKindV2::NotEqual,
-                ValueTypeV1::scalar(scalar.clone()),
-                ValueTypeV1::scalar(scalar),
-                ValueTypeV1::bool(),
-            ));
-        }
+        let unary = closed_unary_entries();
+        let mut binary = closed_scalar_binary_entries();
+        append_comparison_entries(&mut binary);
+        append_equality_entries(&mut binary);
         Self::try_from_entries(unary, binary)
     }
     #[must_use]
@@ -1042,6 +796,271 @@ impl OperatorRegistryV2 {
         // duplicate overload table or a second semantic identity.
         let canonical = if symbol == "<>" { "!=" } else { symbol };
         self.binary.get(canonical).map_or(&[], Vec::as_slice)
+    }
+}
+
+fn closed_unary_entries() -> Vec<(String, UnaryOverloadV1)> {
+    use crate::ScalarTyV1;
+    let duration = || ValueTypeV1::scalar(ScalarTyV1::Duration);
+    let unary = vec![
+        u(
+            1,
+            OperatorSemanticKindV2::UnaryNegate,
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+        ),
+        u(
+            2,
+            OperatorSemanticKindV2::UnaryNegate,
+            ValueTypeV1::float(),
+            ValueTypeV1::float(),
+        ),
+        u(
+            3,
+            OperatorSemanticKindV2::UnaryNegate,
+            duration(),
+            duration(),
+        ),
+        u(
+            4,
+            OperatorSemanticKindV2::UnaryPositive,
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+        ),
+        u(
+            5,
+            OperatorSemanticKindV2::UnaryPositive,
+            ValueTypeV1::float(),
+            ValueTypeV1::float(),
+        ),
+        u(
+            6,
+            OperatorSemanticKindV2::UnaryPositive,
+            duration(),
+            duration(),
+        ),
+        u(
+            7,
+            OperatorSemanticKindV2::Not,
+            ValueTypeV1::bool(),
+            ValueTypeV1::bool(),
+        ),
+    ];
+    unary
+}
+
+fn closed_scalar_binary_entries() -> Vec<(String, BinaryOverloadV1)> {
+    use crate::ScalarTyV1;
+    let duration = || ValueTypeV1::scalar(ScalarTyV1::Duration);
+    let binary = vec![
+        b(
+            101,
+            OperatorSemanticKindV2::Add,
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+        ),
+        b(
+            102,
+            OperatorSemanticKindV2::Subtract,
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+        ),
+        b(
+            103,
+            OperatorSemanticKindV2::Multiply,
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+        ),
+        b(
+            104,
+            OperatorSemanticKindV2::Divide,
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+        ),
+        b(
+            105,
+            OperatorSemanticKindV2::Remainder,
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+        ),
+        b(
+            106,
+            OperatorSemanticKindV2::Add,
+            ValueTypeV1::float(),
+            ValueTypeV1::float(),
+            ValueTypeV1::float(),
+        ),
+        b(
+            107,
+            OperatorSemanticKindV2::Subtract,
+            ValueTypeV1::float(),
+            ValueTypeV1::float(),
+            ValueTypeV1::float(),
+        ),
+        b(
+            108,
+            OperatorSemanticKindV2::Multiply,
+            ValueTypeV1::float(),
+            ValueTypeV1::float(),
+            ValueTypeV1::float(),
+        ),
+        b(
+            109,
+            OperatorSemanticKindV2::Divide,
+            ValueTypeV1::float(),
+            ValueTypeV1::float(),
+            ValueTypeV1::float(),
+        ),
+        b(
+            110,
+            OperatorSemanticKindV2::Add,
+            duration(),
+            duration(),
+            duration(),
+        ),
+        b(
+            111,
+            OperatorSemanticKindV2::Subtract,
+            duration(),
+            duration(),
+            duration(),
+        ),
+        b(
+            112,
+            OperatorSemanticKindV2::Multiply,
+            duration(),
+            duration(),
+            duration(),
+        ),
+        b(
+            113,
+            OperatorSemanticKindV2::Multiply,
+            duration(),
+            ValueTypeV1::int(),
+            duration(),
+        ),
+        b(
+            114,
+            OperatorSemanticKindV2::Divide,
+            duration(),
+            ValueTypeV1::int(),
+            duration(),
+        ),
+        b(
+            115,
+            OperatorSemanticKindV2::And,
+            ValueTypeV1::bool(),
+            ValueTypeV1::bool(),
+            ValueTypeV1::bool(),
+        ),
+        b(
+            116,
+            OperatorSemanticKindV2::Or,
+            ValueTypeV1::bool(),
+            ValueTypeV1::bool(),
+            ValueTypeV1::bool(),
+        ),
+        b(
+            117,
+            OperatorSemanticKindV2::Xor,
+            ValueTypeV1::bool(),
+            ValueTypeV1::bool(),
+            ValueTypeV1::bool(),
+        ),
+        b(
+            118,
+            OperatorSemanticKindV2::Concat,
+            ValueTypeV1::string(),
+            ValueTypeV1::string(),
+            ValueTypeV1::string(),
+        ),
+    ];
+    binary
+}
+
+fn append_comparison_entries(binary: &mut Vec<(String, BinaryOverloadV1)>) {
+    use crate::ScalarTyV1;
+    let duration = || ValueTypeV1::scalar(ScalarTyV1::Duration);
+    for (base, kind) in [
+        (200, OperatorSemanticKindV2::Less),
+        (210, OperatorSemanticKindV2::LessEqual),
+        (220, OperatorSemanticKindV2::Greater),
+        (230, OperatorSemanticKindV2::GreaterEqual),
+    ] {
+        binary.push(b(
+            base,
+            kind,
+            ValueTypeV1::int(),
+            ValueTypeV1::int(),
+            ValueTypeV1::bool(),
+        ));
+        binary.push(b(
+            base + 1,
+            kind,
+            ValueTypeV1::float(),
+            ValueTypeV1::float(),
+            ValueTypeV1::bool(),
+        ));
+        binary.push(b(
+            base + 2,
+            kind,
+            ValueTypeV1::string(),
+            ValueTypeV1::string(),
+            ValueTypeV1::bool(),
+        ));
+        binary.push(b(
+            base + 3,
+            kind,
+            duration(),
+            duration(),
+            ValueTypeV1::bool(),
+        ));
+    }
+}
+
+fn append_equality_entries(binary: &mut Vec<(String, BinaryOverloadV1)>) {
+    use crate::ScalarTyV1;
+    let scalars = [
+        ScalarTyV1::Bool,
+        ScalarTyV1::Int,
+        ScalarTyV1::Float,
+        ScalarTyV1::String,
+        ScalarTyV1::Duration,
+        ScalarTyV1::Location,
+        ScalarTyV1::Path,
+        ScalarTyV1::RepoPath,
+        ScalarTyV1::EntityRef,
+        ScalarTyV1::SymbolRef,
+        ScalarTyV1::RuleRef,
+        ScalarTyV1::SourceScope,
+        ScalarTyV1::ProofTree,
+    ];
+    let eq_ids = [
+        300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312,
+    ];
+    let ne_ids = [
+        320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332,
+    ];
+    for ((scalar, eq_id), ne_id) in scalars.into_iter().zip(eq_ids).zip(ne_ids) {
+        binary.push(b(
+            eq_id,
+            OperatorSemanticKindV2::Equal,
+            ValueTypeV1::scalar(scalar.clone()),
+            ValueTypeV1::scalar(scalar.clone()),
+            ValueTypeV1::bool(),
+        ));
+        binary.push(b(
+            ne_id,
+            OperatorSemanticKindV2::NotEqual,
+            ValueTypeV1::scalar(scalar.clone()),
+            ValueTypeV1::scalar(scalar),
+            ValueTypeV1::bool(),
+        ));
     }
 }
 

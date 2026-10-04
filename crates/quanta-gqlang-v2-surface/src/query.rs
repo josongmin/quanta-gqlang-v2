@@ -188,6 +188,11 @@ fn parse_where(
     let input_span = input.span;
     let predicate = parse_bool(cur)?;
     let span = input_span.merge(&predicate.span);
+    cur.reserve_nested_bytes_v3(
+        std::mem::size_of::<RelationExprHirV1>()
+            + std::mem::size_of::<quanta_gqlang_v2_hir::BoolExprHirV1>(),
+        span,
+    )?;
     Ok(cur.builder.relation_filter(input, predicate, span))
 }
 
@@ -198,6 +203,7 @@ fn parse_project(
     let input_span = input.span;
     let items = parse_projection_items(cur)?;
     let span = project_span(input_span, &items);
+    cur.reserve_nested_bytes_v3(std::mem::size_of::<RelationExprHirV1>(), span)?;
     cur.builder
         .try_project(input, items, span)
         .map_err(|message| {
@@ -218,6 +224,7 @@ fn parse_join(
     cur.expect_keyword("on", "'on' after an inner join source")?;
     let predicate = parse_bool(cur)?;
     let span = left_span.merge(&predicate.span);
+    cur.reserve_nested_bytes_v3(2 * std::mem::size_of::<RelationExprHirV1>(), span)?;
     Ok(cur.builder.inner_join(left, right, predicate, span))
 }
 
@@ -228,6 +235,7 @@ fn parse_cross_join(
     cur.expect_keyword("join", "'join' after 'cross'")?;
     let right = parse_source(cur)?;
     let span = left.span.merge(&right.span);
+    cur.reserve_nested_bytes_v3(2 * std::mem::size_of::<RelationExprHirV1>(), span)?;
     Ok(cur.builder.cross_join(left, right, span))
 }
 
@@ -239,7 +247,10 @@ fn parse_group(
     let input_span = input.span;
     let items = parse_value_key_items(cur, false)?;
     let span = project_span(input_span, &items);
-    let keys = items.into_iter().map(|item| item.value).collect();
+    let mut keys =
+        cur.preallocate_exact_items_v3::<quanta_gqlang_v2_hir::ValueExprHirV1>(items.len(), span)?;
+    keys.extend(items.into_iter().map(|item| item.value));
+    cur.reserve_nested_bytes_v3(std::mem::size_of::<RelationExprHirV1>(), span)?;
     cur.builder.group_by(input, keys, span).map_err(|message| {
         ParseDiagnosticV1::new(
             crate::diag::ParseErrorCodeV1::UnexpectedToken,
@@ -257,16 +268,15 @@ fn parse_order(
     let input_span = input.span;
     let items = parse_value_key_items(cur, true)?;
     let span = project_span(input_span, &items);
-    let keys = items
-        .into_iter()
-        .map(|item| OrderKeyHirV1 {
-            value: item.value,
-            direction: match item.alias.as_ref().map(|alias| alias.name.as_str()) {
-                Some("desc") => SortDirectionHirV1::Desc,
-                _ => SortDirectionHirV1::Asc,
-            },
-        })
-        .collect();
+    let mut keys = cur.preallocate_exact_items_v3::<OrderKeyHirV1>(items.len(), span)?;
+    keys.extend(items.into_iter().map(|item| OrderKeyHirV1 {
+        value: item.value,
+        direction: match item.alias.as_ref().map(|alias| alias.name.as_str()) {
+            Some("desc") => SortDirectionHirV1::Desc,
+            _ => SortDirectionHirV1::Asc,
+        },
+    }));
+    cur.reserve_nested_bytes_v3(std::mem::size_of::<RelationExprHirV1>(), span)?;
     cur.builder.order_by(input, keys, span).map_err(|message| {
         ParseDiagnosticV1::new(
             crate::diag::ParseErrorCodeV1::UnexpectedToken,
@@ -279,7 +289,7 @@ fn parse_order(
 fn parse_projection_items(
     cur: &mut CursorV1<'_>,
 ) -> Result<Vec<ProjectionItemV1>, ParseDiagnosticV1> {
-    let mut items = Vec::new();
+    let mut items = cur.preallocate_stage_items_v3::<ProjectionItemV1>()?;
     loop {
         cur.budget
             .charge_projection_element(items.len() + 1, cur.here_span())?;
@@ -298,7 +308,7 @@ fn parse_value_key_items(
     cur: &mut CursorV1<'_>,
     allow_direction: bool,
 ) -> Result<Vec<ProjectionItemV1>, ParseDiagnosticV1> {
-    let mut items = Vec::new();
+    let mut items = cur.preallocate_stage_items_v3::<ProjectionItemV1>()?;
     loop {
         cur.budget
             .charge_projection_element(items.len() + 1, cur.here_span())?;

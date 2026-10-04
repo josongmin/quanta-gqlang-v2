@@ -82,6 +82,35 @@ use crate::execution::{
     ExecutionItemV3, ExecutionPresentationKindV3, ExecutionRelationV3,
 };
 
+mod request_owner;
+pub use request_owner::{
+    begin_bind_source_document_with_request_owner_v3,
+    begin_prepare_source_body_with_request_owner_v3,
+    begin_resolve_source_document_with_request_owner_v3,
+    check_source_document_with_request_owner_v3, classify_single_source_root_with_request_owner_v3,
+    compile_scalar_parsed_source_with_request_owner_v3,
+    compile_scalar_source_with_request_owner_v3, declare_source_document_with_request_owner_v3,
+    lower_source_body_with_request_owner_v3, materialize_source_body_with_request_owner_v3,
+    parse_source_document_with_request_owner_v3, plan_source_body_with_request_owner_v3,
+    predeclare_source_catalog_with_request_owner_v3, project_source_body_with_request_owner_v3,
+    resolve_source_bindings_with_request_owner_v3,
+    seal_scalar_execution_document_with_request_owner_v3,
+    seal_source_catalog_with_request_owner_v3, topologize_source_body_with_request_owner_v3,
+    type_source_body_with_request_owner_v3, AdmittedCanonicalFilesScalarReadV3,
+    AdmittedScalarExecutionDocumentV3, CatalogSealedSourceBodyRequestSourceV3,
+    CheckedRequestSourceV3, DeclaredRequestSourceV3, DeclaringBinderRequestSourceV3,
+    FrontendRequestCheckErrorV3, FrontendRequestPredeclareErrorV3,
+    LoweredSourceBodyRequestSourceV3, MaterializedSourceBodyRequestSourceV3, ParsedRequestSourceV3,
+    PlannedSourceBodyRequestSourceV3, PredeclaredRequestSourceV3, PreparingBodyRequestSourceV3,
+    ProjectedSourceBodyRequestSourceV3, ResolvedSourceBinderRequestSourceV3,
+    ResolvingRequestSourceV3, ScalarExecutionRequestErrorV3, ScalarSourceCompileRequestErrorV3,
+    SharedAdmittedScalarExecutionDocumentV3, SourceBodyTopologyRequestErrorV3,
+    SourceCatalogSealErrorV3, TopologizedSourceBodyRequestSourceV3, TypedSourceBodyRequestSourceV3,
+};
+
+#[cfg(test)]
+use quanta_gqlang_v2_surface::{FrontendRequestMaterializationRootV3, FrontendStorageRefusalV3};
+
 /// Pipeline-owned code for an open-analysis source whose authority is partial.
 pub const OPEN_AUTHORITY_INCOMPLETE_CODE: &str = "pipeline.analysis.open_authority_incomplete";
 

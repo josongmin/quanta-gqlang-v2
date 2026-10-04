@@ -25,11 +25,21 @@ use crate::scope::{
 };
 use quanta_gqlang_v2_hir::{
     BoolExprHirV1, BoolExprKindV1, CallArgHirV1, CatalogDeclHirV1, CatalogPayloadV1,
-    CompositionBodyV1, CompositionHirV1, CompositionProducerV1, DeclHirV1, GraphRefV1, HirNodeIdV1,
-    JoinHirV1, QueryHirV1, RelationExprHirV1, RelationExprKindV1, RuleHirV1, SpanV1,
-    ValueExprHirV1, ValueExprKindV1, ViewBodyV1,
+    CheckedHirDocumentOwnedV2, CompositionBodyV1, CompositionHirV1, CompositionProducerV1,
+    DeclHirV1, FrontendRequestMaterializationRootV3, FrontendRetainedStoragePermitV3,
+    FrontendStorageRefusalV3, GraphRefV1, HirNodeIdV1, JoinHirV1, ProgramItemHirV1, QueryHirV1,
+    RelationExprHirV1, RelationExprKindV1, RuleHirV1, SourceIdV2, SpanV1, ValueExprHirV1,
+    ValueExprKindV1, ViewBodyV1,
 };
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
+
+#[path = "resolve/evidence.rs"]
+mod evidence;
+pub use evidence::BinderEvidenceReaderV3;
+
+#[path = "resolve/request_owner.rs"]
+mod request_owner;
+pub use request_owner::{AdmittedBinderDeclarationsV3, AdmittedBinderResolutionV3};
 
 /// Where a resolved value-namespace reference points.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -76,6 +86,8 @@ pub struct BindResultV1 {
     /// Ordered alias frame produced by every relation node. Consumers use this
     /// side table instead of reconstructing stage visibility from raw HIR.
     relation_outputs: BTreeMap<HirNodeIdV1, Vec<BindingV1>>,
+    /// Exact-capacity request-only side table; sorted by node ID at completion.
+    request_relation_outputs: Vec<(HirNodeIdV1, Vec<BindingV1>)>,
     /// The input frame consumed by grouping. It is not the public group output
     /// and can be admitted later only by an exact aggregate-argument proof.
     partition_inputs: BTreeMap<HirNodeIdV1, Vec<BindingV1>>,
@@ -90,6 +102,38 @@ pub struct BindResultV1 {
     capture_edges: BTreeMap<HirNodeIdV1, Vec<(HirNodeIdV1, HirNodeIdV1, usize)>>,
     /// Every Composition LET introduced by the Binder, including unused LETs.
     composition_bindings: BTreeMap<(HirNodeIdV1, usize), BindingV1>,
+    /// One admitted Composition LET, stored without a BTree node allocation.
+    request_composition_binding: Option<((HirNodeIdV1, usize), BindingV1)>,
+}
+
+enum RelationOutputsIterV1<'a> {
+    Legacy(std::collections::btree_map::Iter<'a, HirNodeIdV1, Vec<BindingV1>>),
+    Request(std::slice::Iter<'a, (HirNodeIdV1, Vec<BindingV1>)>),
+}
+
+impl<'a> Iterator for RelationOutputsIterV1<'a> {
+    type Item = (HirNodeIdV1, &'a [BindingV1]);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Legacy(iter) => iter.next().map(|(id, frame)| (*id, frame.as_slice())),
+            Self::Request(iter) => iter.next().map(|(id, frame)| (*id, frame.as_slice())),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+}
+
+impl ExactSizeIterator for RelationOutputsIterV1<'_> {
+    fn len(&self) -> usize {
+        match self {
+            Self::Legacy(iter) => iter.len(),
+            Self::Request(iter) => iter.len(),
+        }
+    }
 }
 
 /// Exact source argument reference tentatively linked to a Group input.
@@ -179,16 +223,26 @@ impl BindResultV1 {
     /// Ordered alias frame produced by one relation node.
     #[must_use]
     pub fn relation_output(&self, relation: HirNodeIdV1) -> Option<&[BindingV1]> {
-        self.relation_outputs.get(&relation).map(Vec::as_slice)
+        if self.request_relation_outputs.is_empty() {
+            self.relation_outputs.get(&relation).map(Vec::as_slice)
+        } else {
+            self.request_relation_outputs
+                .binary_search_by_key(&relation, |(id, _)| *id)
+                .ok()
+                .and_then(|index| self.request_relation_outputs.get(index))
+                .map(|(_, frame)| frame.as_slice())
+        }
     }
 
     /// Every relation output frame in stable node-id order.
     pub fn relation_outputs(
         &self,
     ) -> impl ExactSizeIterator<Item = (HirNodeIdV1, &[BindingV1])> + '_ {
-        self.relation_outputs
-            .iter()
-            .map(|(node, bindings)| (*node, bindings.as_slice()))
+        if self.request_relation_outputs.is_empty() {
+            RelationOutputsIterV1::Legacy(self.relation_outputs.iter())
+        } else {
+            RelationOutputsIterV1::Request(self.request_relation_outputs.iter())
+        }
     }
 
     /// Private-to-the-frontend partition input, distinct from the key-only
@@ -238,7 +292,11 @@ impl BindResultV1 {
     /// authority for unused LETs; consumers must not remint owner/ordinal pairs.
     #[must_use]
     pub fn composition_binding(&self, owner: HirNodeIdV1, ordinal: usize) -> Option<&BindingV1> {
-        self.composition_bindings.get(&(owner, ordinal))
+        self.request_composition_binding
+            .as_ref()
+            .filter(|(identity, _)| *identity == (owner, ordinal))
+            .map(|(_, binding)| binding)
+            .or_else(|| self.composition_bindings.get(&(owner, ordinal)))
     }
 }
 
@@ -252,10 +310,10 @@ impl BindResultV1 {
 /// HIR. The source transaction performs HIR integrity and configured Sema
 /// budget checks before invoking Binder. Raw caller-built HIR must cross that
 /// boundary first; this resolver is not an untrusted-input admission API.
-pub struct Binder<'g, G: ModuleGraphViewV1> {
-    graph: &'g G,
+pub struct Binder<G: ModuleGraphViewV1> {
+    graph: G,
     /// Top-level declaration/rule/view names visible to this unit.
-    declarations: BTreeMap<String, DeclSymbolV1>,
+    declarations: Vec<(String, DeclSymbolV1)>,
     scope: LexicalScopeV1,
     result: BindResultV1,
     /// Active relational EXISTS nodes and their own frame indices. A nested
@@ -269,6 +327,30 @@ pub struct Binder<'g, G: ModuleGraphViewV1> {
     /// producer. An unbound relation source matching this set is a forbidden
     /// forward/self reference, never a host fallback candidate.
     forbidden_composition_sources: BTreeMap<String, SpanV1>,
+    request_declaration_attempted: bool,
+    request_declaration_complete: bool,
+    request_declaration_storage: Option<FrontendRetainedStoragePermitV3>,
+    request_resolution_attempted: bool,
+    request_resolution_complete: bool,
+    /// Keeps already-materialized request results leased if a later fallible
+    /// allocation or consistency check refuses before the result is moved out.
+    request_resolution_storage: Option<FrontendRetainedStoragePermitV3>,
+    /// One exact-capacity alias frame prepared after request admission and
+    /// before the raw relation traversal can clone the alias name.
+    request_alias_output: Option<Vec<BindingV1>>,
+    request_project_input: Option<Vec<BindingV1>>,
+    request_project_output: Option<Vec<BindingV1>>,
+    request_project_index: Option<Vec<(usize, usize, SpanV1)>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BinderDeclarationRequestErrorV3 {
+    Storage(FrontendStorageRefusalV3),
+    Phase,
+    SourceMismatch,
+    DemandOverflow,
+    FallibleAllocation,
+    UnsupportedShape,
 }
 
 /// A top-level declaration symbol-table entry.
@@ -278,13 +360,13 @@ struct DeclSymbolV1 {
     span: SpanV1,
 }
 
-impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
+impl<G: ModuleGraphViewV1> Binder<G> {
     /// A binder over `graph` with no top-level declarations yet.
     #[must_use]
-    pub fn new(graph: &'g G) -> Self {
+    pub fn new(graph: G) -> Self {
         Self {
             graph,
-            declarations: BTreeMap::new(),
+            declarations: Vec::new(),
             scope: LexicalScopeV1::new(),
             result: BindResultV1::default(),
             capture_owners: Vec::new(),
@@ -292,24 +374,49 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
             active_partition: None,
             active_calls: Vec::new(),
             forbidden_composition_sources: BTreeMap::new(),
+            request_declaration_attempted: false,
+            request_declaration_complete: false,
+            request_declaration_storage: None,
+            request_resolution_attempted: false,
+            request_resolution_complete: false,
+            request_resolution_storage: None,
+            request_alias_output: None,
+            request_project_input: None,
+            request_project_output: None,
+            request_project_index: None,
         }
+    }
+
+    #[must_use]
+    pub fn declared_name_count_v3(&self) -> usize {
+        self.declarations.len()
     }
 
     /// Register a top-level declaration/rule/view name in the declaration
     /// namespace. A second registration of the same name emits a duplicate
     /// diagnostic and keeps the first binding (fail-closed, order-independent in
     /// effect because both spans are reported).
+    #[expect(
+        clippy::indexing_slicing,
+        reason = "binary_search returns an in-bounds index"
+    )]
     pub fn declare(&mut self, name: impl Into<String>, node: HirNodeIdV1, span: SpanV1) {
         let name = name.into();
-        if let Some(existing) = self.declarations.get(&name) {
-            self.result.diagnostics.push(BindDiagnosticV1::Duplicate {
-                name,
-                first_span: existing.span,
-                second_span: span,
-            });
-            return;
+        match self
+            .declarations
+            .binary_search_by(|(candidate, _)| candidate.cmp(&name))
+        {
+            Ok(index) => {
+                self.result.diagnostics.push(BindDiagnosticV1::Duplicate {
+                    name,
+                    first_span: self.declarations[index].1.span,
+                    second_span: span,
+                });
+            }
+            Err(index) => self
+                .declarations
+                .insert(index, (name, DeclSymbolV1 { node, span })),
         }
-        let _ = self.declarations.insert(name, DeclSymbolV1 { node, span });
     }
 
     /// Register every value declaration name before resolving any body, so
@@ -318,7 +425,19 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
     /// intentionally not admitted as bare value symbols here.
     pub fn declare_program(&mut self, decls: &[DeclHirV1], _rules: &[RuleHirV1]) {
         let mut ordered = decls.iter().collect::<Vec<_>>();
-        ordered.sort_by_key(|decl| {
+        self.declare_preordered_program(&mut ordered);
+    }
+
+    /// Register borrowed source declarations without cloning their HIR bodies.
+    /// The temporary pointer vector is separate from the caller's source-order
+    /// sequence, matching the raw program's duplicate-diagnostic order.
+    pub fn declare_borrowed_program(&mut self, decls: &[&DeclHirV1]) {
+        let mut ordered = decls.to_vec();
+        self.declare_preordered_program(&mut ordered);
+    }
+
+    fn declare_preordered_program(&mut self, ordered: &mut [&DeclHirV1]) {
+        ordered.sort_unstable_by_key(|decl| {
             (
                 decl.name_span.start,
                 decl.name_span.end,
@@ -334,14 +453,29 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
     /// Finish and take the accumulated result.
     #[must_use]
     pub fn finish(mut self) -> BindResultV1 {
-        let mut seen_uses = BTreeSet::new();
-        for resolution in &self.result.resolutions {
-            if !seen_uses.insert((
-                resolution.reference,
-                resolution.span.start,
-                resolution.span.end,
-                resolution.name.clone(),
-            )) {
+        let mut ordered = self.result.resolutions.iter().collect::<Vec<_>>();
+        ordered.sort_unstable_by(|left, right| {
+            (
+                left.reference,
+                left.span.start,
+                left.span.end,
+                left.name.as_str(),
+            )
+                .cmp(&(
+                    right.reference,
+                    right.span.start,
+                    right.span.end,
+                    right.name.as_str(),
+                ))
+        });
+        for pair in ordered.windows(2) {
+            let [previous, resolution] = pair else {
+                continue;
+            };
+            if previous.reference == resolution.reference
+                && previous.span == resolution.span
+                && previous.name == resolution.name
+            {
                 self.result
                     .diagnostics
                     .push(BindDiagnosticV1::DuplicateReferenceUse {
@@ -350,23 +484,16 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
                     });
             }
         }
-        self.result.diagnostics.sort_by(|left, right| {
+        drop(ordered);
+        // The comparison includes the rendered tie-break fields. Equal keys
+        // have the same observable diagnostic, so a stable merge buffer is
+        // unnecessary for deterministic output order.
+        self.result.diagnostics.sort_unstable_by(|left, right| {
             let left_span = left.primary_span();
             let right_span = right.primary_span();
-            (
-                left_span.start,
-                left_span.end,
-                left.code(),
-                left.name(),
-                left.to_string(),
-            )
-                .cmp(&(
-                    right_span.start,
-                    right_span.end,
-                    right.code(),
-                    right.name(),
-                    right.to_string(),
-                ))
+            (left_span.start, left_span.end, left.code(), left.name())
+                .cmp(&(right_span.start, right_span.end, right.code(), right.name()))
+                .then_with(|| left.render_tie_break_order(right))
         });
         for edges in self.result.capture_edges.values_mut() {
             edges.sort_unstable();
@@ -547,18 +674,24 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
             constraints.window.as_ref(),
             constraints.frontier.as_ref(),
         ];
-        let mut seen = BTreeSet::new();
+        let seen_slots = singular.iter().flatten().count()
+            + constraints.via.len()
+            + constraints.through.len()
+            + constraints.sanitizers.len()
+            + constrained.iter().flatten().count();
+        let mut seen = Vec::with_capacity(seen_slots);
         for reference in singular
             .into_iter()
             .flatten()
             .chain(repeated)
             .chain(constrained.into_iter().flatten())
         {
-            if !seen.insert((
+            let key = (
                 reference.span.start,
                 reference.span.end,
                 reference.name.as_str(),
-            )) {
+            );
+            let Err(index) = seen.binary_search(&key) else {
                 self.result
                     .diagnostics
                     .push(BindDiagnosticV1::DuplicateReferenceUse {
@@ -566,7 +699,8 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
                         span: reference.span,
                     });
                 continue;
-            }
+            };
+            seen.insert(index, key);
             self.resolve_local_ref(reference, graph.id);
         }
     }
@@ -746,16 +880,40 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
                         }
                     }
                 }
-                let bindings = source.alias.as_ref().map_or_else(Vec::new, |alias| {
-                    vec![BindingV1::new_indexed(
-                        alias.name.clone(),
-                        BinderKindV1::Alias,
-                        alias.span,
-                        relation.id,
-                        0,
-                    )]
-                });
-                self.checked_new_relation_frame(bindings)
+                if let Some(alias) = &source.alias {
+                    if let Some(mut output) = self.request_alias_output.take() {
+                        // A Source introduces exactly one alias. The normal
+                        // duplicate-frame check has no second binding here;
+                        // retain its outer-shadow diagnostic unchanged.
+                        if let Some(outer) = self.scope.visible_outer_binding(&alias.name) {
+                            self.result.diagnostics.push(BindDiagnosticV1::Shadowed {
+                                name: alias.name.clone(),
+                                outer_span: outer.span,
+                                inner_span: alias.span,
+                            });
+                        }
+                        output.push(BindingV1::new_indexed(
+                            alias.name.clone(),
+                            BinderKindV1::Alias,
+                            alias.span,
+                            relation.id,
+                            0,
+                        ));
+                        output
+                    } else {
+                        self.checked_new_relation_frame([BindingV1::new_indexed(
+                            alias.name.clone(),
+                            BinderKindV1::Alias,
+                            alias.span,
+                            relation.id,
+                            0,
+                        )])
+                    }
+                } else if self.request_project_input.is_some() {
+                    Vec::new()
+                } else {
+                    self.checked_new_relation_frame(std::iter::empty())
+                }
             }
             RelationExprKindV1::Project(project) => {
                 let input = self.resolve_relation(&project.input);
@@ -841,10 +999,16 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
                 input
             }
         };
-        let _ = self
-            .result
-            .relation_outputs
-            .insert(relation.id, output.clone());
+        if self.request_resolution_attempted {
+            self.result
+                .request_relation_outputs
+                .push((relation.id, output.clone()));
+        } else {
+            let _ = self
+                .result
+                .relation_outputs
+                .insert(relation.id, output.clone());
+        }
         output
     }
 
@@ -856,7 +1020,7 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
         bindings: impl IntoIterator<Item = BindingV1>,
     ) -> Vec<BindingV1> {
         let mut by_name = BTreeMap::<String, SpanV1>::new();
-        let mut output = Vec::new();
+        let mut output = self.request_project_output.take().unwrap_or_default();
         for binding in bindings {
             if let Some(existing_span) = by_name.get(&binding.name) {
                 self.result.diagnostics.push(BindDiagnosticV1::Duplicate {
@@ -878,7 +1042,12 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
         &mut self,
         bindings: impl IntoIterator<Item = BindingV1>,
     ) -> Vec<BindingV1> {
-        let bindings = bindings.into_iter().collect::<Vec<_>>();
+        let bindings = if let Some(mut admitted) = self.request_project_input.take() {
+            admitted.extend(bindings);
+            admitted
+        } else {
+            bindings.into_iter().collect::<Vec<_>>()
+        };
         for binding in &bindings {
             if let Some(outer) = self.scope.visible_outer_binding(&binding.name) {
                 self.result.diagnostics.push(BindDiagnosticV1::Shadowed {
@@ -887,6 +1056,50 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
                     inner_span: binding.span,
                 });
             }
+        }
+        if let Some(mut index) = self.request_project_index.take() {
+            index.extend(
+                bindings
+                    .iter()
+                    .enumerate()
+                    .map(|(ordinal, binding)| (ordinal, ordinal, binding.span)),
+            );
+            index.sort_unstable_by(|left, right| {
+                bindings
+                    .get(left.0)
+                    .map(|binding| binding.name.as_str())
+                    .cmp(&bindings.get(right.0).map(|binding| binding.name.as_str()))
+                    .then_with(|| left.0.cmp(&right.0))
+            });
+            let mut first_ordinal = 0;
+            let mut previous_name = None;
+            for entry in &mut index {
+                let name = bindings.get(entry.0).map(|binding| binding.name.as_str());
+                if previous_name != name {
+                    first_ordinal = entry.0;
+                }
+                entry.1 = first_ordinal;
+                entry.2 = bindings
+                    .get(first_ordinal)
+                    .map_or(entry.2, |first| first.span);
+                previous_name = name;
+            }
+            index.sort_unstable_by_key(|entry| entry.0);
+            let mut output = self.request_project_output.take().unwrap_or_default();
+            for ((ordinal, binding), (_, first, first_span)) in
+                bindings.into_iter().enumerate().zip(index)
+            {
+                if first == ordinal {
+                    output.push(binding);
+                } else {
+                    self.result.diagnostics.push(BindDiagnosticV1::Duplicate {
+                        name: binding.name.clone(),
+                        first_span,
+                        second_span: binding.span,
+                    });
+                }
+            }
+            return output;
         }
         self.checked_relation_frame(bindings)
     }
@@ -1022,6 +1235,10 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
     /// (`D25`): local lexical scope first, then top-level declarations, then the
     /// frozen import graph. Import order is never authority (`D28`/`D30`): an
     /// ambiguous import is a hard reject, not a tiebreak.
+    #[expect(
+        clippy::indexing_slicing,
+        reason = "binary_search returns an in-bounds index"
+    )]
     fn resolve_name(&mut self, name: &str, reference: HirNodeIdV1, span: SpanV1) {
         let (resolution, binding_frame) = self.scope.resolve_with_capture(name);
         match resolution {
@@ -1058,7 +1275,11 @@ impl<'g, G: ModuleGraphViewV1> Binder<'g, G> {
             LexicalResolutionV1::Unbound => {}
         }
 
-        if let Some(decl) = self.declarations.get(name) {
+        if let Ok(index) = self
+            .declarations
+            .binary_search_by(|(candidate, _)| candidate.as_str().cmp(name))
+        {
+            let decl = &self.declarations[index].1;
             if let Some(binding) = self
                 .active_partition
                 .filter(|_| !self.active_calls.is_empty())

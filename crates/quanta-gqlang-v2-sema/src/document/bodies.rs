@@ -1,9 +1,9 @@
 //! Authored document body resolution after declaration and topology sealing.
 
 use super::{
-    BTreeMap, BodyResolutionV2, ClosedFrontendAuthorityV2, DeclaredDocumentV2,
-    DocumentCatalogValidatorV2, DocumentViewTopologyProofV2, FrontendTransactionErrorV2,
-    HirNodeIdV1, InlineViewPlanV2, PredeclaredDocumentAssetV2, SemanticStepCounterV2,
+    BodyResolutionV2, ClosedFrontendAuthorityV2, DeclaredDocumentV2, DocumentCatalogValidatorV2,
+    DocumentViewTopologyProofV2, FrontendTransactionErrorV2, InlineViewPlanV2,
+    SemanticStepCounterV2, SourceCatalogAssetsV3,
 };
 
 mod catalog;
@@ -15,8 +15,8 @@ pub(super) fn resolve_document_bodies(
     declared: &DeclaredDocumentV2,
     authority: &ClosedFrontendAuthorityV2,
     extended: &quanta_gqlang_v2_hir::ExtendedSourceRegistryViewV2,
-    predeclared: &BTreeMap<HirNodeIdV1, PredeclaredDocumentAssetV2>,
-    inline_views: &InlineViewPlanV2,
+    predeclared: &SourceCatalogAssetsV3,
+    inline_views: &mut InlineViewPlanV2,
     topology: &DocumentViewTopologyProofV2,
     validator: &mut DocumentCatalogValidatorV2<'_>,
     steps: &mut SemanticStepCounterV2,

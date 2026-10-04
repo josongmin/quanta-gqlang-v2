@@ -607,19 +607,14 @@ fn op_agrees_with_output(
     stage_key: SourceQualifiedNodeIdV2,
 ) -> bool {
     match op {
-        AlgebraOpV2::Scan { .. } => output.columns().iter().all(|column| {
-            matches!(
-                column.origin(),
-                OutputColumnOriginV2::SourceField { scan_stage, .. } if *scan_stage == stage_key
-            )
-        }),
+        AlgebraOpV2::Scan { .. } => scan_agrees_with_output(stage_key, output),
         AlgebraOpV2::Filter { input, conjuncts } => {
             !conjuncts.is_empty() && preserves_input_frame(output, input.output())
         }
         AlgebraOpV2::Project { input, expressions } => {
             !expressions.is_empty()
                 && output.provenance() == input.output().provenance()
-                && projection_agrees_with_output(expressions, output)
+                && projection_agrees_with_output(expressions.iter().map(Some), output)
         }
         AlgebraOpV2::Join {
             left,
@@ -645,7 +640,7 @@ fn op_agrees_with_output(
             output.provenance() == input.output().provenance()
                 && if !keys.is_empty() {
                     let mut identities = std::collections::BTreeSet::new();
-                    projection_agrees_with_output(keys, output)
+                    projection_agrees_with_output(keys.iter().map(Some), output)
                         && output
                             .partition_keys()
                             .iter()
@@ -687,7 +682,7 @@ fn op_agrees_with_output(
                 && output.cardinality() == CardinalityV1::Set
                 && output.ordering().is_empty()
                 && output.effects().aggregation == AggregationClassV1::Aggregate
-                && projection_agrees_with_output(expressions, output)
+                && projection_agrees_with_output(expressions.iter().map(Some), output)
         }
         AlgebraOpV2::Sort { input, keys } => {
             output.ordering() == keys.as_slice()
@@ -710,23 +705,43 @@ fn op_agrees_with_output(
     }
 }
 
-/// Compare already checked types and identities; this does not re-infer them.
-fn projection_agrees_with_output(
-    expressions: &[TypedExprV2],
+/// The same checked Scan origin rule serves the V2 node constructor and the
+/// request-owned borrowed scalar view.
+pub(crate) fn scan_agrees_with_output(
+    stage_key: SourceQualifiedNodeIdV2,
     output: &RelationOutputContractV2,
 ) -> bool {
-    output.has_exact_projection_origins(expressions.iter().map(TypedExprV2::key))
-        && output
-            .row()
-            .fields()
-            .iter()
-            .map(|field| Some(field.value_type()))
-            .eq(expressions
-                .iter()
-                .map(|expression| match expression.type_state() {
-                    ExpressionTypeStateV2::Known(value_type) => Some(value_type),
-                    ExpressionTypeStateV2::Unknown(_) => None,
-                }))
+    output.columns().iter().all(|column| {
+        matches!(
+            column.origin(),
+            OutputColumnOriginV2::SourceField { scan_stage, .. } if *scan_stage == stage_key
+        )
+    })
+}
+
+/// Compare already checked types, ordered expression IDs and output origins.
+/// The request path supplies fallible borrowed lookups; None must reject.
+pub(crate) fn projection_agrees_with_output<'a>(
+    expressions: impl IntoIterator<Item = Option<&'a TypedExprV2>>,
+    output: &RelationOutputContractV2,
+) -> bool {
+    if output.columns().len() != output.row().fields().len() {
+        return false;
+    }
+    let mut expressions = expressions.into_iter();
+    for (column, field) in output.columns().iter().zip(output.row().fields()) {
+        let Some(Some(expression)) = expressions.next() else {
+            return false;
+        };
+        if !matches!(column.origin(), OutputColumnOriginV2::Expression(key)
+            if *key == expression.key())
+            || !matches!(expression.type_state(), ExpressionTypeStateV2::Known(value)
+                if value == field.value_type())
+        {
+            return false;
+        }
+    }
+    expressions.next().is_none()
 }
 
 /// Exact frame preservation (row, provenance, columns, cardinality,
@@ -778,6 +793,13 @@ mod projection_contract_tests {
         };
         assert_eq!(expressions.len(), 2);
         assert!(build(expressions.clone()).is_ok());
+        assert!(!projection_agrees_with_output(
+            expressions
+                .iter()
+                .enumerate()
+                .map(|(index, expression)| (index != 1).then_some(expression)),
+            root.output(),
+        ));
         let mut short = expressions.clone();
         short.pop();
         let mut long = expressions.clone();

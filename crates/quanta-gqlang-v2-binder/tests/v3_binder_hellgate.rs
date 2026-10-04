@@ -6,12 +6,76 @@
     reason = "integration tests assert with expect/unwrap/indexing/panic and match exhaustively; allowed for test targets only"
 )]
 
-use quanta_gqlang_v2_binder::{BindDiagnosticV1, Binder, BinderKindV1, CaptureV1, ModuleGraphV1};
-use quanta_gqlang_v2_hir::{
-    AliasV1, GraphConstraintsV1, GraphEndpointsV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1,
-    LogicalBinderV1, LogicalQuantifierKindV1, NonEmptyBindersV1, PathSegmentV1, ProjectionItemV1,
-    RelationExistsPolarityV1, SpanV1,
+use quanta_gqlang_v2_binder::{
+    BindDiagnosticV1, Binder, BinderDeclarationRequestErrorV3, BinderKindV1, CaptureV1,
+    ModuleGraphV1,
 };
+use quanta_gqlang_v2_hir::{
+    AliasV1, CheckedHirDocumentOwnedV2, FrontendRequestMaterializationRootV3,
+    FrontendRequestStoragePermitV3, FrontendRequestStorageSinkV3, FrontendStorageRefusalV3,
+    GraphConstraintsV1, GraphEndpointsV1, GraphQueryKindV1, GraphRefV1, HirBuilderV1,
+    HirDocumentV1, LogicalBinderV1, LogicalQuantifierKindV1, NonEmptyBindersV1, PathSegmentV1,
+    ProgramItemHirV1, ProjectionItemV1, RelationExistsPolarityV1, SourceIdV2, SpanV1,
+};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+
+struct DeclarationTestSink {
+    identity: Arc<()>,
+    live: Arc<AtomicU64>,
+    limit: u64,
+}
+
+struct DeclarationTestPermit {
+    identity: Arc<()>,
+    live: Arc<AtomicU64>,
+    charged: u64,
+}
+
+impl Drop for DeclarationTestPermit {
+    fn drop(&mut self) {
+        self.live.fetch_sub(self.charged, Ordering::AcqRel);
+    }
+}
+
+impl FrontendRequestStorageSinkV3 for DeclarationTestSink {
+    fn reserve_v3(
+        &self,
+        logical_bytes: u64,
+    ) -> Result<Box<dyn FrontendRequestStoragePermitV3>, FrontendStorageRefusalV3> {
+        let charged = logical_bytes
+            .checked_add(u64::try_from(std::mem::size_of::<DeclarationTestPermit>()).unwrap())
+            .ok_or(FrontendStorageRefusalV3::DemandOverflow)?;
+        let mut live = self.live.load(Ordering::Acquire);
+        loop {
+            let next = live
+                .checked_add(charged)
+                .ok_or(FrontendStorageRefusalV3::DemandOverflow)?;
+            if next > self.limit {
+                return Err(FrontendStorageRefusalV3::BudgetRejected);
+            }
+            match self
+                .live
+                .compare_exchange_weak(live, next, Ordering::AcqRel, Ordering::Acquire)
+            {
+                Ok(_) => break,
+                Err(observed) => live = observed,
+            }
+        }
+        Ok(Box::new(DeclarationTestPermit {
+            identity: Arc::clone(&self.identity),
+            live: Arc::clone(&self.live),
+            charged,
+        }))
+    }
+
+    fn owns_permit_v3(&self, permit: &dyn FrontendRequestStoragePermitV3) -> bool {
+        permit
+            .as_any_v3()
+            .downcast_ref::<DeclarationTestPermit>()
+            .is_some_and(|issued| Arc::ptr_eq(&issued.identity, &self.identity))
+    }
+}
 
 fn alias(name: &str, start: usize) -> AliasV1 {
     AliasV1 {
@@ -67,8 +131,18 @@ fn duplicate_declaration_rejects() {
     );
 
     let mut reversed = Binder::new(&graph);
-    reversed.declare_program(&[d2, d1], &[]);
+    reversed.declare_program(&[d2.clone(), d1.clone()], &[]);
     assert_eq!(reversed.finish().diagnostics(), result.diagnostics());
+
+    let borrowed = [&d2, &d1];
+    let mut borrowed_binder = Binder::new(&graph);
+    borrowed_binder.declare_borrowed_program(&borrowed);
+    assert_eq!(borrowed[0].id, d2.id, "caller source order stays intact");
+    assert_eq!(
+        borrowed_binder.finish().diagnostics(),
+        result.diagnostics(),
+        "borrowed and owned paths retain one duplicate decision"
+    );
 
     let first_body = b.int("3", SpanV1::new(40, 41));
     let later = b.decl("dup", SpanV1::new(44, 47), first_body, SpanV1::new(40, 47));
@@ -87,6 +161,107 @@ fn duplicate_declaration_rejects() {
         shuffled.diagnostics()[0].primary_span(),
         SpanV1::new(44, 47)
     );
+}
+
+#[test]
+fn request_declarations_preserve_source_first_duplicate_with_reverse_items() {
+    let builder = HirBuilderV1::new();
+    let first = builder.decl(
+        "x",
+        SpanV1::new(4, 5),
+        builder.int("1", SpanV1::new(8, 9)),
+        SpanV1::new(0, 9),
+    );
+    let other = builder.decl(
+        "y",
+        SpanV1::new(14, 15),
+        builder.int("2", SpanV1::new(18, 19)),
+        SpanV1::new(10, 19),
+    );
+    let second = builder.decl(
+        "x",
+        SpanV1::new(24, 25),
+        builder.int("3", SpanV1::new(28, 29)),
+        SpanV1::new(20, 29),
+    );
+    let third = builder.decl(
+        "x",
+        SpanV1::new(44, 45),
+        builder.int("4", SpanV1::new(48, 49)),
+        SpanV1::new(40, 49),
+    );
+    let source_id = SourceIdV2::from_raw(73);
+    let source = " ".repeat(49);
+    let checked = CheckedHirDocumentOwnedV2::try_new(HirDocumentV1 {
+        source_id,
+        source_len: source.len(),
+        items: vec![
+            ProgramItemHirV1::from(third.clone()),
+            ProgramItemHirV1::from(second.clone()),
+            ProgramItemHirV1::from(other.clone()),
+            ProgramItemHirV1::from(first.clone()),
+        ],
+    })
+    .unwrap();
+    let sink = DeclarationTestSink {
+        identity: Arc::new(()),
+        live: Arc::new(AtomicU64::new(0)),
+        limit: u64::MAX,
+    };
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &sink);
+    let parent = root.reserve_v3(source_id, &source, 0).unwrap();
+    let retained = Binder::new(ModuleGraphV1::new())
+        .declare_checked_program_with_request_owner_v3(&checked, &root, source_id, &source, &parent)
+        .unwrap();
+    assert_eq!(retained.declared_name_count_v3(), 2);
+    let mut conventional = Binder::new(ModuleGraphV1::new());
+    conventional.declare_program(&[third, second, other, first], &[]);
+    assert_eq!(conventional.finish().diagnostics().len(), 2);
+    assert!(matches!(
+        retained.resolve_checked_source_bindings_with_request_owner_v3(
+            &checked, &root, source_id, &source, &parent,
+        ),
+        Err(BinderDeclarationRequestErrorV3::Phase)
+    ));
+    drop(parent);
+    assert_eq!(sink.live.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn request_declaration_refuses_scratch_budget_before_symbol_birth() {
+    let builder = HirBuilderV1::new();
+    let source_id = SourceIdV2::from_raw(74);
+    let source = " ".repeat(9);
+    let checked = CheckedHirDocumentOwnedV2::try_new(HirDocumentV1 {
+        source_id,
+        source_len: source.len(),
+        items: vec![ProgramItemHirV1::from(builder.decl(
+            "x",
+            SpanV1::new(4, 5),
+            builder.int("1", SpanV1::new(8, 9)),
+            SpanV1::new(0, 9),
+        ))],
+    })
+    .unwrap();
+    // The parent permit requests zero logical bytes; the declaration's
+    // nonempty scratch vector must make another request and be refused.
+    let sink = DeclarationTestSink {
+        identity: Arc::new(()),
+        live: Arc::new(AtomicU64::new(0)),
+        limit: u64::try_from(std::mem::size_of::<DeclarationTestPermit>()).unwrap(),
+    };
+    let root = FrontendRequestMaterializationRootV3::from_issued_sink_v3(source_id, &source, &sink);
+    let parent = root.reserve_v3(source_id, &source, 0).unwrap();
+    assert!(matches!(
+        Binder::new(ModuleGraphV1::new()).declare_checked_program_with_request_owner_v3(
+            &checked, &root, source_id, &source, &parent,
+        ),
+        Err(BinderDeclarationRequestErrorV3::Storage(
+            FrontendStorageRefusalV3::BudgetRejected
+        ))
+    ));
+    drop(parent);
+    assert_eq!(sink.live.load(Ordering::Acquire), 0);
 }
 
 // shadowed binding (a let shadows an outer let of the same name) -> fail closed.

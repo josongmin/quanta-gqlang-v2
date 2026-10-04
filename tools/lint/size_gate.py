@@ -4,12 +4,14 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 from tools.ci.doctor import DoctorError, read_lock
 from tools.lint.rust_module_guards import TEST_MODULES, module_has_attributes
+from tools.lint.semantic_honesty import cfg_implies_test, node_text, parser
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -42,11 +44,10 @@ def source_paths(root: Path) -> set[str]:
     for name, module_name in FEATURE_TEST_MODULES.items():
         if name not in paths or not module_has_attributes(test_support, module_name, set()):
             raise SizeGateError("feature-test module is missing from test support: " + name)
-    for name, (owner_name, relative) in TEST_MODULES.items():
+    for name, (owner_name, relative, module_name) in TEST_MODULES.items():
         if name not in paths:
             continue
         owner = (root / owner_name).read_bytes()
-        module_name = Path(name).stem
         required = {'#[cfg(test)]', f'#[path="{relative}"]'}
         if not module_has_attributes(owner, module_name, required):
             raise SizeGateError("test module is not cfg(test) guarded: " + name)
@@ -142,12 +143,131 @@ def evaluate(paths: set[str], counts: dict[str, int], limits: dict[str, int],
     return findings
 
 
+
+# These groups can suppress the function-size warning just as its exact lint can.
+FUNCTION_SIZE_OVERRIDE_LINTS = {
+    "warnings", "clippy::all", "clippy::pedantic", "clippy::too_many_lines",
+}
+TRIVIA = {"line_comment", "block_comment"}
+LITERALS = {"string_literal", "raw_string_literal", "char_literal"}
+
+
+def _test_attribute(source: bytes, node) -> bool:
+    text = node_text(source, node)
+    match = re.fullmatch(r"#\s*!?\s*\[\s*cfg\s*\((.*)\)\s*\]", text, re.S)
+    return bool(match and cfg_implies_test(match.group(1)))
+
+
+def _production_attributes(source: bytes, root):
+    """Keep actual attributes and macro-emitted attributes outside test scopes."""
+    stack = [root]
+    while stack:
+        scope = stack.pop()
+        children = scope.named_children
+        if any(child.type == "inner_attribute_item" and _test_attribute(source, child)
+               for child in children):
+            continue
+        pending = []
+        for child in children:
+            if child.type in TRIVIA:
+                continue
+            if child.type == "attribute_item":
+                pending.append(child)
+                continue
+            if child.type == "inner_attribute_item":
+                yield child
+                continue
+            attrs, pending = pending, []
+            if any(_test_attribute(source, attr) for attr in attrs):
+                continue
+            yield from attrs
+            if child.type == "macro_definition":
+                # Rust attributes in macro token trees are not attribute_item AST
+                # nodes. Check their literal syntax; ignore quoted documentation.
+                yield child
+            else:
+                stack.append(child)
+
+
+def _syntax_tokens(source: bytes, node):
+    tokens = []
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        if current.type in TRIVIA | LITERALS:
+            continue
+        if current.children:
+            stack.extend(reversed(current.children))
+        else:
+            tokens.append((node_text(source, current), current.start_point.row + 1))
+    return tokens
+
+
+def _overrides(source: bytes, node):
+    tokens = _syntax_tokens(source, node)
+    values = [value for value, _line in tokens]
+    # Macro token trees contain literal attributes as tokens rather than AST
+    # attribute_item nodes. Delimit exact #[...] / #![...] syntax first.
+    index = 0
+    while index < len(values):
+        bracket = index + 1
+        if values[index] != "#":
+            index += 1
+            continue
+        if values[bracket:bracket + 1] == ["!"]:
+            bracket += 1
+        if values[bracket:bracket + 1] != ["["]:
+            index += 1
+            continue
+        depth = 1
+        end = bracket + 1
+        while end < len(values) and depth:
+            depth += values[end] == "["
+            depth -= values[end] == "]"
+            end += 1
+        for cursor in range(bracket + 1, end - 1):
+            level = values[cursor]
+            if level not in {"allow", "expect"} or values[cursor + 1:cursor + 2] != ["("]:
+                continue
+            call_depth = 1
+            call_end = cursor + 2
+            while call_end < end and call_depth:
+                call_depth += values[call_end] == "("
+                call_depth -= values[call_end] == ")"
+                call_end += 1
+            body = values[cursor + 2:call_end - 1]
+            # Reason strings and comments were removed before lint parsing.
+            for name in "".join(body).split(","):
+                if name in FUNCTION_SIZE_OVERRIDE_LINTS:
+                    yield tokens[cursor][1], level, name
+            if node.type == "macro_definition" and any(token.startswith("$") for token in body):
+                yield tokens[cursor][1], level, "dynamic macro lint"
+        index = end
+
+
+def function_size_overrides(root: Path, paths: set[str]) -> list[str]:
+    findings = []
+    rust_parser = parser()
+    test_paths = {TEST_SUPPORT, *TEST_MODULES, *FEATURE_TEST_MODULES}
+    for name in sorted(paths):
+        if "/tests/" in name or name in test_paths:
+            continue
+        source = (root / name).read_bytes()
+        tree = rust_parser.parse(source)
+        if tree.root_node.has_error:
+            raise SizeGateError("cannot inspect function-size policy in invalid Rust: " + name)
+        for node in _production_attributes(source, tree.root_node):
+            for line, level, lint in _overrides(source, node):
+                findings.append(f"{name}:{line}: production {level}({lint}) function-size override is forbidden; split the function")
+    return sorted(set(findings))
+
 def main() -> int:
     try:
         limits, ceilings = read_policy()
         paths = source_paths(ROOT)
         counts = tokei_code_lines(ROOT, read_lock()["tokei"])
         findings = evaluate(paths, counts, limits, ceilings)
+        findings.extend(function_size_overrides(ROOT, paths))
     except (DoctorError, OSError, SizeGateError) as error:
         print("size gate: " + str(error), file=sys.stderr)
         return 2

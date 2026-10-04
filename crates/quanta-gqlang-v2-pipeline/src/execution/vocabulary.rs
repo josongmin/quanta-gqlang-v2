@@ -339,30 +339,58 @@ pub(super) const fn project_exists_polarity(
 }
 
 pub(super) fn project_plan(plan: &SemanticPlanV2) -> ExecutionPlanV3 {
-    let authority = match plan.authority_lane() {
+    project_plan_parts(
+        plan.authority_lane(),
+        plan.evaluation_determinism(),
+        plan.evidence(),
+        plan.effect(),
+        plan.policy(),
+    )
+}
+
+pub(super) fn project_scalar_plan(
+    plan: &quanta_gqlang_v2_planning::AdmittedScalarPlanV3<'_>,
+) -> ExecutionPlanV3 {
+    project_plan_parts(
+        plan.authority_lane_v3(),
+        plan.evaluation_determinism_v3(),
+        plan.evidence_v3(),
+        plan.effect_v3(),
+        plan.policy_v3(),
+    )
+}
+
+fn project_plan_parts(
+    authority_lane: AuthorityLaneV2,
+    evaluation_determinism: EvaluationDeterminismV2,
+    evidence_requirement: EvidenceRequirementV2,
+    effect_class: EffectClassV2,
+    policy: &PlanPolicyV2,
+) -> ExecutionPlanV3 {
+    let authority = match authority_lane {
         AuthorityLaneV2::FrontendChecked => ExecutionAuthorityV3::FrontendChecked,
         AuthorityLaneV2::CertifiedRequirementValidated => {
             ExecutionAuthorityV3::CertifiedRequirementValidated
         }
     };
-    let determinism = match plan.evaluation_determinism() {
+    let determinism = match evaluation_determinism {
         EvaluationDeterminismV2::Deterministic => ExecutionDeterminismV3::Deterministic,
         EvaluationDeterminismV2::NonDeterministic => ExecutionDeterminismV3::NonDeterministic,
     };
-    let evidence = match plan.evidence() {
+    let evidence = match evidence_requirement {
         EvidenceRequirementV2::None => ExecutionEvidenceV3::None,
         EvidenceRequirementV2::SourceLocation => ExecutionEvidenceV3::SourceLocation,
         EvidenceRequirementV2::WitnessPayload => ExecutionEvidenceV3::WitnessPayload,
         EvidenceRequirementV2::ProofTree => ExecutionEvidenceV3::ProofTree,
     };
-    let effect = match plan.effect() {
+    let effect = match effect_class {
         EffectClassV2::ReadOnly => ExecutionEffectV3::ReadOnly,
         EffectClassV2::ProofEvidenceOnly => ExecutionEffectV3::ProofEvidenceOnly,
         EffectClassV2::ExportOnly => ExecutionEffectV3::ExportOnly,
         EffectClassV2::MutationForbidden => ExecutionEffectV3::MutationForbidden,
         EffectClassV2::MutationRequiresGrant => ExecutionEffectV3::MutationRequiresGrant,
     };
-    let policy_family = match plan.policy() {
+    let policy_family = match policy {
         PlanPolicyV2::Relational { .. } => ExecutionPolicyFamilyV3::Relational,
         PlanPolicyV2::Graph(_) => ExecutionPolicyFamilyV3::Graph,
         PlanPolicyV2::Check(_) => ExecutionPolicyFamilyV3::Check,

@@ -121,7 +121,10 @@ binary path emitted by Cargo for that fixture and rejects missing, redirected,
 duplicate, relative, or cache-external artifacts. Cargo parses the complete
 dependency tables before the gate accepts the facade-only path seam; the
 positive program reads selected digests from the producer-owned V3 vector TSV.
-All 15 negative probes are stable Cargo bins checked in one `--keep-going`
+The curated public roots and privacy probes are pinned in
+`tools/test_frontend_external_consumer.py` and checked against the current
+facade. The gate reconciles selected and executed probe counts. The negative
+probes are stable Cargo bins checked in one `--keep-going`
 JSON run, then reconciled by exact target source, error code, and diagnostic
 text. Its public-API probe uses a target directory isolated by the pinned dated
 nightly. The standalone

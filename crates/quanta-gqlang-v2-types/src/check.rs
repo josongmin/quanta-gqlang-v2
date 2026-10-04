@@ -11,8 +11,15 @@ use quanta_gqlang_v2_hir::{
     RelationExprHirV1, RelationExprKindV1, SourceIdV2, ValueExprHirV1, ValueExprKindV1,
 };
 use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 
+mod scalar_request;
 mod value;
+pub use scalar_request::{
+    check_one_let_composition_with_request_owner_v3, check_scalar_projection_with_request_owner_v3,
+    one_let_composition_type_storage_upper_v3, scalar_projection_type_storage_upper_v3,
+    AdmittedScalarProjectionFactsV3, ScalarProjectionCheckRequestErrorV3, TypeFactsReaderV3,
+};
 
 mod inputs;
 use inputs::ResolvedRelationPredicateKindV2;
@@ -43,32 +50,83 @@ pub struct TypedExpressionFactV2 {
     pub literal: Option<TypedLiteralFactV2>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct TypedExpressionFactsV2 {
     facts: BTreeMap<SourceQualifiedNodeIdV2, TypedExpressionFactV2>,
     relation_rows: BTreeMap<SourceQualifiedNodeIdV2, RecordTypeV1>,
+    request_facts: Option<Vec<(SourceQualifiedNodeIdV2, TypedExpressionFactV2)>>,
+    request_rows: Option<Vec<(SourceQualifiedNodeIdV2, RecordTypeV1)>>,
 }
+impl PartialEq for TypedExpressionFactsV2 {
+    fn eq(&self, other: &Self) -> bool {
+        self.len() == other.len()
+            && self.relation_row_count() == other.relation_row_count()
+            && self.request_facts.as_ref().map_or_else(
+                || {
+                    self.facts
+                        .iter()
+                        .all(|(key, fact)| other.get(*key) == Some(fact))
+                },
+                |facts| {
+                    facts
+                        .iter()
+                        .all(|(key, fact)| other.get(*key) == Some(fact))
+                },
+            )
+            && self.request_rows.as_ref().map_or_else(
+                || {
+                    self.relation_rows
+                        .iter()
+                        .all(|(key, row)| other.relation_row(*key) == Some(row))
+                },
+                |rows| {
+                    rows.iter()
+                        .all(|(key, row)| other.relation_row(*key) == Some(row))
+                },
+            )
+    }
+}
+impl Eq for TypedExpressionFactsV2 {}
 impl TypedExpressionFactsV2 {
     #[must_use]
     pub fn get(&self, key: SourceQualifiedNodeIdV2) -> Option<&TypedExpressionFactV2> {
-        self.facts.get(&key)
+        self.request_facts.as_ref().map_or_else(
+            || self.facts.get(&key),
+            |facts| {
+                facts
+                    .binary_search_by_key(&key, |entry| entry.0)
+                    .ok()
+                    .and_then(|i| facts.get(i).map(|entry| &entry.1))
+            },
+        )
     }
     #[must_use]
     pub fn len(&self) -> usize {
-        self.facts.len()
+        self.request_facts
+            .as_ref()
+            .map_or(self.facts.len(), Vec::len)
     }
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.facts.is_empty()
+        self.len() == 0
     }
     /// Types-owned row for one exact checked relation stage.
     #[must_use]
     pub fn relation_row(&self, root: SourceQualifiedNodeIdV2) -> Option<&RecordTypeV1> {
-        self.relation_rows.get(&root)
+        self.request_rows.as_ref().map_or_else(
+            || self.relation_rows.get(&root),
+            |rows| {
+                rows.binary_search_by_key(&root, |entry| entry.0)
+                    .ok()
+                    .and_then(|i| rows.get(i).map(|entry| &entry.1))
+            },
+        )
     }
     #[must_use]
     pub fn relation_row_count(&self) -> usize {
-        self.relation_rows.len()
+        self.request_rows
+            .as_ref()
+            .map_or(self.relation_rows.len(), Vec::len)
     }
 }
 impl TypedExpressionFactV2 {
@@ -86,8 +144,25 @@ impl TypedExpressionFactV2 {
 
 #[derive(Clone, Debug)]
 pub struct ExpressionTypeKernelV2 {
-    operators: OperatorRegistryV2,
-    builtins: BuiltinRegistryV2,
+    operators: Option<OperatorRegistryV2>,
+    builtins: KernelBuiltinsV2,
+}
+
+#[derive(Clone, Debug)]
+enum KernelBuiltinsV2 {
+    Owned(BuiltinRegistryV2),
+    Shared(Arc<crate::builtin::AdmittedBuiltinRegistryInnerV3>),
+}
+
+impl std::ops::Deref for KernelBuiltinsV2 {
+    type Target = BuiltinRegistryV2;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Owned(value) => value,
+            Self::Shared(value) => &value.registry,
+        }
+    }
 }
 impl ExpressionTypeKernelV2 {
     pub fn try_new(
@@ -95,15 +170,25 @@ impl ExpressionTypeKernelV2 {
         builtins: BuiltinRegistryV2,
     ) -> Result<Self, TypeDiagnosticV2> {
         Ok(Self {
-            operators,
-            builtins,
+            operators: Some(operators),
+            builtins: KernelBuiltinsV2::Owned(builtins),
         })
     }
     pub fn try_closed() -> Result<Self, TypeDiagnosticV2> {
         Ok(Self {
-            operators: OperatorRegistryV2::try_closed()?,
-            builtins: BuiltinRegistryV2::try_closed()?,
+            operators: Some(OperatorRegistryV2::try_closed()?),
+            builtins: KernelBuiltinsV2::Owned(BuiltinRegistryV2::try_closed()?),
         })
+    }
+
+    /// Share the issued builtin inventory and its permit without allocation.
+    pub(crate) fn for_admitted_scalar_projection_v3(
+        builtins: &crate::AdmittedBuiltinRegistryV3,
+    ) -> Self {
+        Self {
+            operators: None,
+            builtins: KernelBuiltinsV2::Shared(builtins.shared_inner()),
+        }
     }
 
     pub fn check_document(
@@ -156,6 +241,8 @@ impl ExpressionTypeKernelV2 {
                 .into_iter()
                 .map(|(key, row)| (key, row.record))
                 .collect(),
+            request_facts: None,
+            request_rows: None,
         })
     }
 }
@@ -714,7 +801,14 @@ impl DocumentChecker<'_, '_> {
         selected: &mut Option<OperatorIdV2>,
         effects: &mut ExpressionEffectsV2,
     ) -> Result<ExpressionTypeStateV2, TypeDiagnosticV2> {
-        let overloads = self.kernel.operators.unary_overloads(symbol);
+        let Some(operators) = self.kernel.operators.as_ref() else {
+            return Err(TypeDiagnosticV2::UnknownOperator {
+                node_id,
+                symbol: symbol.into(),
+                location,
+            });
+        };
+        let overloads = operators.unary_overloads(symbol);
         if overloads.is_empty() {
             return Err(TypeDiagnosticV2::UnknownOperator {
                 node_id,
@@ -810,7 +904,14 @@ impl DocumentChecker<'_, '_> {
         selected: &mut Option<OperatorIdV2>,
         effects: &mut ExpressionEffectsV2,
     ) -> Result<ExpressionTypeStateV2, TypeDiagnosticV2> {
-        let overloads = self.kernel.operators.binary_overloads(symbol);
+        let Some(operators) = self.kernel.operators.as_ref() else {
+            return Err(TypeDiagnosticV2::UnknownOperator {
+                node_id,
+                symbol: symbol.into(),
+                location,
+            });
+        };
+        let overloads = operators.binary_overloads(symbol);
         if overloads.is_empty() {
             return Err(TypeDiagnosticV2::UnknownOperator {
                 node_id,

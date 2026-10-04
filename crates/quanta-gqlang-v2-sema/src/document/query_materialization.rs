@@ -3,24 +3,23 @@
 use super::{
     document_failure, location, materialize_relation, resolve_check_item,
     resolve_composition_explain, resolve_graph_item, resolve_graph_target_use, BTreeMap,
-    BindResultV1, BinderKindV1, ClosedFrontendAuthorityV2, DocumentCatalogValidatorV2,
-    ExpressionEffectsV2, ExtendedSourceRegistryViewV2, FrontendFailureV2,
-    FrontendTransactionErrorV2, HirNodeIdV1, OutputColumnContractV2, OutputColumnOriginV2,
-    OutputProvenanceV2, RelationOutputContractV2, ResolvedBindingKindV2,
+    BindResultV1, BinderEvidenceReaderV3, BinderKindV1, ClosedFrontendAuthorityV2,
+    DocumentCatalogValidatorV2, ExpressionEffectsV2, ExtendedSourceRegistryViewV2,
+    FrontendFailureV2, FrontendTransactionErrorV2, HirNodeIdV1, OutputColumnContractV2,
+    OutputColumnOriginV2, OutputProvenanceV2, RelationOutputContractV2, ResolvedBindingKindV2,
     ResolvedCompositionBindingV2, ResolvedCompositionBodyV2, ResolvedCompositionProducerV2,
     ResolvedCompositionV2, ResolvedGraphQueryV2, ResolvedGraphUseV2, ResolvedPresentationKindV2,
     ResolvedPresentationV2, ResolvedTargetV1, ResolvedValueBindingV2, ScalarTyV1, SemanticItemIdV2,
-    SemanticStepCounterV2, SourceIdV2, SourceQualifiedNodeIdV2, TypedExprV2,
-    TypedExpressionFactsV2, TypedRelationExprV2, TypedRelationV2, ValueTypeV1,
-    ViewMaterializationInputsV2,
+    SemanticStepCounterV2, SourceIdV2, SourceQualifiedNodeIdV2, TypeFactsReaderV3, TypedExprV2,
+    TypedRelationExprV2, TypedRelationV2, ValueTypeV1, ViewMaterializationInputsV2,
 };
 
 pub(super) fn materialize_query(
     query: &quanta_gqlang_v2_hir::QueryHirV1,
     source_id: SourceIdV2,
     authority: &ClosedFrontendAuthorityV2,
-    bound: &BindResultV1,
-    facts: &TypedExpressionFactsV2,
+    bound: &dyn BinderEvidenceReaderV3,
+    facts: &dyn TypeFactsReaderV3,
     extended: &ExtendedSourceRegistryViewV2,
     composition_outputs: &BTreeMap<(HirNodeIdV1, usize), RelationOutputContractV2>,
     views: &ViewMaterializationInputsV2<'_>,
@@ -244,35 +243,24 @@ fn materialize_composition_graph(
     Ok((resolved, Some(output)))
 }
 
-#[expect(
-    clippy::too_many_lines,
-    reason = "legacy composition materialization awaits phase extraction"
-)]
-pub(super) fn materialize_query_composition(
+type CompositionBindingRowsV2 = (
+    Vec<ResolvedCompositionBindingV2>,
+    BTreeMap<(HirNodeIdV1, usize), RelationOutputContractV2>,
+);
+
+fn materialize_composition_bindings(
     composition: &quanta_gqlang_v2_hir::CompositionHirV1,
+    item_id: SemanticItemIdV2,
     source_id: SourceIdV2,
     authority: &ClosedFrontendAuthorityV2,
     bound: &BindResultV1,
-    facts: &TypedExpressionFactsV2,
+    facts: &dyn TypeFactsReaderV3,
     extended: &ExtendedSourceRegistryViewV2,
-    validator: &mut DocumentCatalogValidatorV2<'_>,
     views: &ViewMaterializationInputsV2<'_>,
     expressions: &mut BTreeMap<SourceQualifiedNodeIdV2, TypedExprV2>,
     nested_relations: &mut BTreeMap<SourceQualifiedNodeIdV2, TypedRelationExprV2>,
     steps: &mut SemanticStepCounterV2,
-) -> Result<ResolvedCompositionV2, FrontendTransactionErrorV2> {
-    let item_id = SemanticItemIdV2::new(source_id, composition.id);
-    let item_location = extended
-        .combined()
-        .try_check_location(location(source_id, composition.span))
-        .map_err(|error| {
-            document_failure(
-                "sema.document_validation_failed",
-                source_id,
-                composition.span,
-                error.to_string(),
-            )
-        })?;
+) -> Result<CompositionBindingRowsV2, FrontendTransactionErrorV2> {
     let mut outputs = BTreeMap::new();
     let mut bindings: Vec<ResolvedCompositionBindingV2> =
         Vec::with_capacity(composition.bindings.len());
@@ -432,6 +420,47 @@ pub(super) fn materialize_query_composition(
         }
         bindings.push(resolved);
     }
+    Ok((bindings, outputs))
+}
+
+pub(super) fn materialize_query_composition(
+    composition: &quanta_gqlang_v2_hir::CompositionHirV1,
+    source_id: SourceIdV2,
+    authority: &ClosedFrontendAuthorityV2,
+    bound: &BindResultV1,
+    facts: &dyn TypeFactsReaderV3,
+    extended: &ExtendedSourceRegistryViewV2,
+    validator: &mut DocumentCatalogValidatorV2<'_>,
+    views: &ViewMaterializationInputsV2<'_>,
+    expressions: &mut BTreeMap<SourceQualifiedNodeIdV2, TypedExprV2>,
+    nested_relations: &mut BTreeMap<SourceQualifiedNodeIdV2, TypedRelationExprV2>,
+    steps: &mut SemanticStepCounterV2,
+) -> Result<ResolvedCompositionV2, FrontendTransactionErrorV2> {
+    let item_id = SemanticItemIdV2::new(source_id, composition.id);
+    let item_location = extended
+        .combined()
+        .try_check_location(location(source_id, composition.span))
+        .map_err(|error| {
+            document_failure(
+                "sema.document_validation_failed",
+                source_id,
+                composition.span,
+                error.to_string(),
+            )
+        })?;
+    let (bindings, outputs) = materialize_composition_bindings(
+        composition,
+        item_id,
+        source_id,
+        authority,
+        bound,
+        facts,
+        extended,
+        views,
+        expressions,
+        nested_relations,
+        steps,
+    )?;
     let composition_graph_targets = bindings
         .iter()
         .map(|binding| {

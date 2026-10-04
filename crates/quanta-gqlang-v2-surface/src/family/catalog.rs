@@ -1,8 +1,8 @@
 //! Catalog declarations and pack activation directives.
 
 use super::{
-    at_clause, clause_key, note_clause, parse_keyword_value, parse_ref, parse_required_ref_list,
-    reject,
+    at_clause, boxed_program_item_v3, clause_key, note_clause, parse_keyword_value, parse_ref,
+    parse_required_ref_list, reject,
 };
 use crate::cursor::CursorV1;
 use crate::diag::ParseDiagnosticV1;
@@ -24,12 +24,14 @@ pub(super) fn parse_view(
     let (body, end) = match key.as_str() {
         "query-ref" => {
             let r = parse_ref(cur, source, "a query reference")?;
+            cur.reserve_nested_bytes_v3(r.name.len(), r.span)?;
             (ViewBodyV1::QueryRef(r.clone()), r.span.end)
         }
         "select" => {
             // inline SELECT: the v3 `from | ...` pipe is the shared query carrier.
             let query = parse_query(cur)?;
             let e = query.span.end;
+            cur.reserve_nested_bytes_v3(std::mem::size_of_val(&query), query.span)?;
             (ViewBodyV1::Inline(Box::new(query)), e)
         }
         other => {
@@ -47,7 +49,7 @@ pub(super) fn parse_view(
         CatalogPayloadV1::View(body),
         span,
     );
-    Ok(ProgramItemHirV1::from(decl))
+    boxed_program_item_v3(cur, decl, span)
 }
 
 // ---- MODEL -----------------------------------------------------------------
@@ -62,7 +64,7 @@ pub(super) fn parse_model(
     let mut model_source = None;
     let mut end = name_ref.span.end;
 
-    let mut seen: Vec<String> = Vec::new();
+    let mut seen = 0u64;
     while at_clause(cur) {
         let (key, key_span) = clause_key(cur)?;
         note_clause(cur, &mut seen, "MODEL", &key, key_span)?;
@@ -100,7 +102,7 @@ pub(super) fn parse_model(
         },
         span,
     );
-    Ok(ProgramItemHirV1::from(decl))
+    boxed_program_item_v3(cur, decl, span)
 }
 
 // ---- PACK ------------------------------------------------------------------
@@ -115,7 +117,7 @@ pub(super) fn parse_pack(
     let mut activation = None;
     let mut end = name_ref.span.end;
 
-    let mut seen: Vec<String> = Vec::new();
+    let mut seen = 0u64;
     while at_clause(cur) {
         let (key, key_span) = clause_key(cur)?;
         note_clause(cur, &mut seen, "PACK", &key, key_span)?;
@@ -154,7 +156,7 @@ pub(super) fn parse_pack(
         },
         span,
     );
-    Ok(ProgramItemHirV1::from(decl))
+    boxed_program_item_v3(cur, decl, span)
 }
 
 // ---- PROFILE ---------------------------------------------------------------
@@ -169,7 +171,7 @@ pub(super) fn parse_profile(
     let mut admission = None;
     let mut end = name_ref.span.end;
 
-    let mut seen: Vec<String> = Vec::new();
+    let mut seen = 0u64;
     while at_clause(cur) {
         let (key, key_span) = clause_key(cur)?;
         note_clause(cur, &mut seen, "PROFILE", &key, key_span)?;
@@ -230,7 +232,7 @@ pub(super) fn parse_profile(
         },
         span,
     );
-    Ok(ProgramItemHirV1::from(decl))
+    boxed_program_item_v3(cur, decl, span)
 }
 
 // ---- GATE ------------------------------------------------------------------
@@ -245,7 +247,7 @@ pub(super) fn parse_gate(
     let mut binding = None;
     let mut end = name_ref.span.end;
 
-    let mut seen: Vec<String> = Vec::new();
+    let mut seen = 0u64;
     while at_clause(cur) {
         let (key, key_span) = clause_key(cur)?;
         note_clause(cur, &mut seen, "GATE", &key, key_span)?;
@@ -297,7 +299,7 @@ pub(super) fn parse_gate(
         CatalogPayloadV1::Gate { checks, binding },
         span,
     );
-    Ok(ProgramItemHirV1::from(decl))
+    boxed_program_item_v3(cur, decl, span)
 }
 
 // ---- RULE binding (ruledef) ------------------------------------------------
@@ -324,7 +326,7 @@ pub(super) fn parse_ruledef(
         CatalogPayloadV1::RuleBinding { check_ref },
         span,
     );
-    Ok(ProgramItemHirV1::from(decl))
+    boxed_program_item_v3(cur, decl, span)
 }
 
 // ---- META: USE PACK --------------------------------------------------------
@@ -341,7 +343,7 @@ pub(super) fn parse_use_pack(
     let mut activation = None;
     let mut lockfile = None;
 
-    let mut seen: Vec<String> = Vec::new();
+    let mut seen = 0u64;
     while at_clause(cur) {
         let (key, key_span) = clause_key(cur)?;
         note_clause(cur, &mut seen, "USE PACK", &key, key_span)?;
@@ -404,7 +406,7 @@ pub(super) fn parse_use_pack(
         }),
         span,
     );
-    Ok(ProgramItemHirV1::from(meta))
+    boxed_program_item_v3(cur, meta, span)
 }
 
 // ---- META: REQUIRE CERTIFIED -----------------------------------------------
@@ -416,7 +418,7 @@ pub(super) fn parse_require_certified(
     let cert = cur.expect_keyword("certified", "'certified' after 'require'")?;
     let span = kw.span.merge(&cert.span);
     let meta = cur.builder.meta(MetaKindV1::RequireCertified, span);
-    Ok(ProgramItemHirV1::from(meta))
+    boxed_program_item_v3(cur, meta, span)
 }
 
 /// Parse an activation policy keyword (`manual`/`session`/`workspace`).

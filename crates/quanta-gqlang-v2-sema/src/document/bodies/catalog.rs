@@ -3,18 +3,19 @@
 use super::super::{
     document_failure, resolve_catalog_family_reference, BTreeMap, CatalogAssetRefInputV2,
     CheckedSyntaxDocumentV2, DocumentCatalogReferenceFamilyV2, DocumentCatalogValidatorV2,
-    FrontendTransactionErrorV2, HirNodeIdV1, InlineViewPlanV2, NamespaceKindV2,
-    PredeclaredDocumentAssetV2, ProfileAdmissionInputV2, ProfileAdmissionV2, ResolvedCatalogItemV2,
-    ResolvedCatalogPayloadV2, SemanticItemIdV2, SemanticStepCounterV2, TypedRelationV2,
+    FrontendTransactionErrorV2, HirNodeIdV1, NamespaceKindV2, ProfileAdmissionInputV2,
+    ProfileAdmissionV2, ResolvedCatalogItemV2, ResolvedCatalogPayloadV2,
+    ResolvedCatalogReferenceV2, SemanticItemIdV2, SemanticStepCounterV2, SourceCatalogAssetsV3,
+    TypedRelationV2,
 };
 use quanta_gqlang_v2_modules::{CatalogAssetIdV2, DocumentCatalogFamilyReferenceInputV2};
 
 pub(super) fn resolve_catalog_declaration(
     decl: &quanta_gqlang_v2_hir::CatalogDeclHirV1,
     checked: &CheckedSyntaxDocumentV2,
-    predeclared: &BTreeMap<HirNodeIdV1, PredeclaredDocumentAssetV2>,
-    inline_views: &InlineViewPlanV2,
-    materialized_inline_views: &BTreeMap<CatalogAssetIdV2, TypedRelationV2>,
+    predeclared: &SourceCatalogAssetsV3,
+    direct_references: &mut [(HirNodeIdV1, Vec<ResolvedCatalogReferenceV2>)],
+    materialized_inline_views: &mut BTreeMap<CatalogAssetIdV2, TypedRelationV2>,
     extended: &quanta_gqlang_v2_hir::ExtendedSourceRegistryViewV2,
     validator: &mut DocumentCatalogValidatorV2<'_>,
     steps: &mut SemanticStepCounterV2,
@@ -138,8 +139,7 @@ pub(super) fn resolve_catalog_declaration(
             query,
         )) => {
             let view = materialized_inline_views
-                .get(asset.id())
-                .cloned()
+                .remove(asset.id())
                 .ok_or_else(|| {
                     document_failure(
                         "sema.view_materialization_order",
@@ -168,10 +168,11 @@ pub(super) fn resolve_catalog_declaration(
         provider_metadata,
         expected_inline_view_id,
         inline_view,
-        inline_views
-            .direct_references
-            .get(&decl.id)
-            .cloned()
+        direct_references
+            .binary_search_by_key(&decl.id, |(owner, _)| *owner)
+            .ok()
+            .and_then(|index| direct_references.get_mut(index))
+            .map(|(_, references)| std::mem::take(references))
             .unwrap_or_default(),
         payload,
     )

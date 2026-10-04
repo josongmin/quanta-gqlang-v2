@@ -386,7 +386,6 @@ impl Engine<'_> {
             .collect();
         self.add(vec![left, right], tuples, span)
     }
-    #[expect(clippy::too_many_lines, reason = "legacy iterative rule value walk")]
     pub(super) fn value(&mut self, node: &ValueExprHirV1) -> Result<Variable, TypeDiagnosticV2> {
         let var = self.intern(
             Variable::Value(SourceQualifiedNodeIdV2 {
@@ -449,114 +448,7 @@ impl Engine<'_> {
                     .collect();
                 self.add(vec![lhs, rhs, var.clone()], tuples, node.span)?;
             }
-            ValueExprKindV1::Call(call) => {
-                let target_cost = match self.call_map.get(&node.id) {
-                    Some(RuleCallableTargetV2::HostPredicate(signature)) => type_shape_cost(
-                        signature
-                            .params()
-                            .iter()
-                            .chain(std::iter::once(signature.result())),
-                    ),
-                    Some(RuleCallableTargetV2::Builtin(_))
-                    | Some(RuleCallableTargetV2::SourcePredicate(_))
-                    | Some(RuleCallableTargetV2::Unknown) => 1,
-                    None => {
-                        return Err(TypeDiagnosticV2::InvalidRuleInput {
-                            location: self.location(node.span),
-                        })
-                    }
-                };
-                self.charge_many("steps", target_cost, node.span)?;
-                let target = self.call_map.get(&node.id).cloned().ok_or(
-                    TypeDiagnosticV2::InvalidRuleInput {
-                        location: self.location(node.span),
-                    },
-                )?;
-                let mut args = Vec::new();
-                let mut star = false;
-                for arg in call.args().as_slice() {
-                    match arg {
-                        CallArgHirV1::Expr(expr) => args.push(self.value(expr)?),
-                        CallArgHirV1::Star { .. } => star = true,
-                    }
-                }
-                let mut tuples = Vec::new();
-                let mut unresolved = false;
-                match target {
-                    RuleCallableTargetV2::Builtin(family) => {
-                        for entry in self.builtins.lookup_family(family) {
-                            match &entry.signature {
-                                CallableSignatureV2::Fixed { params, result }
-                                    if !star && params.len() == args.len() =>
-                                {
-                                    self.reserve_materialization(
-                                        1,
-                                        params.len().saturating_add(1),
-                                        node.span,
-                                    )?;
-                                    let mut row = params.clone();
-                                    row.push(result.clone());
-                                    tuples.push(row);
-                                }
-                                CallableSignatureV2::AnySingle { result }
-                                    if !star && args.len() == 1 =>
-                                {
-                                    self.reserve_materialization(
-                                        self.universe.len(),
-                                        2,
-                                        node.span,
-                                    )?;
-                                    for ty in &self.universe {
-                                        tuples.push(vec![ty.clone(), result.clone()]);
-                                    }
-                                }
-                                CallableSignatureV2::AggregateStar { result }
-                                    if star && args.is_empty() =>
-                                {
-                                    self.reserve_materialization(1, 1, node.span)?;
-                                    tuples.push(vec![result.clone()])
-                                }
-                                CallableSignatureV2::Fixed { .. }
-                                | CallableSignatureV2::AnySingle { .. }
-                                | CallableSignatureV2::AggregateStar { .. } => {}
-                            }
-                        }
-                    }
-                    RuleCallableTargetV2::HostPredicate(signature) => {
-                        if !star && signature.params().len() == args.len() {
-                            self.reserve_materialization(
-                                1,
-                                signature.params().len().saturating_add(1),
-                                node.span,
-                            )?;
-                            let mut row = signature.params().to_vec();
-                            row.push(signature.result().clone());
-                            tuples.push(row);
-                        }
-                    }
-                    RuleCallableTargetV2::SourcePredicate(id) => {
-                        if !star && args.len() == 1 {
-                            let binding = self.predicate_bindings.get(&id).copied().ok_or(
-                                TypeDiagnosticV2::UnknownRuleCallable {
-                                    location: self.location(node.span),
-                                },
-                            )?;
-                            self.reserve_materialization(self.universe.len(), 3, node.span)?;
-                            for ty in &self.universe {
-                                tuples.push(vec![ty.clone(), ty.clone(), ValueTypeV1::bool()]);
-                            }
-                            args.push(Variable::Binding(binding));
-                        }
-                    }
-                    RuleCallableTargetV2::Unknown => {
-                        unresolved = true;
-                    }
-                }
-                if !unresolved {
-                    args.push(var.clone());
-                    self.add(args, tuples, node.span)?;
-                }
-            }
+            ValueExprKindV1::Call(call) => self.value_call(node, call, &var)?,
             ValueExprKindV1::Path(path) => {
                 let base = self.value(&path.base)?;
                 self.reserve_materialization(
@@ -640,6 +532,117 @@ impl Engine<'_> {
         }
         Ok(var)
     }
+    fn value_call(
+        &mut self,
+        node: &ValueExprHirV1,
+        call: &quanta_gqlang_v2_hir::CallExprV1,
+        var: &Variable,
+    ) -> Result<(), TypeDiagnosticV2> {
+        let target_cost = match self.call_map.get(&node.id) {
+            Some(RuleCallableTargetV2::HostPredicate(signature)) => type_shape_cost(
+                signature
+                    .params()
+                    .iter()
+                    .chain(std::iter::once(signature.result())),
+            ),
+            Some(RuleCallableTargetV2::Builtin(_))
+            | Some(RuleCallableTargetV2::SourcePredicate(_))
+            | Some(RuleCallableTargetV2::Unknown) => 1,
+            None => {
+                return Err(TypeDiagnosticV2::InvalidRuleInput {
+                    location: self.location(node.span),
+                })
+            }
+        };
+        self.charge_many("steps", target_cost, node.span)?;
+        let target =
+            self.call_map
+                .get(&node.id)
+                .cloned()
+                .ok_or(TypeDiagnosticV2::InvalidRuleInput {
+                    location: self.location(node.span),
+                })?;
+        let mut args = Vec::new();
+        let mut star = false;
+        for arg in call.args().as_slice() {
+            match arg {
+                CallArgHirV1::Expr(expr) => args.push(self.value(expr)?),
+                CallArgHirV1::Star { .. } => star = true,
+            }
+        }
+        let mut tuples = Vec::new();
+        let mut unresolved = false;
+        match target {
+            RuleCallableTargetV2::Builtin(family) => {
+                for entry in self.builtins.lookup_family(family) {
+                    match &entry.signature {
+                        CallableSignatureV2::Fixed { params, result }
+                            if !star && params.len() == args.len() =>
+                        {
+                            self.reserve_materialization(
+                                1,
+                                params.len().saturating_add(1),
+                                node.span,
+                            )?;
+                            let mut row = params.clone();
+                            row.push(result.clone());
+                            tuples.push(row);
+                        }
+                        CallableSignatureV2::AnySingle { result } if !star && args.len() == 1 => {
+                            self.reserve_materialization(self.universe.len(), 2, node.span)?;
+                            for ty in &self.universe {
+                                tuples.push(vec![ty.clone(), result.clone()]);
+                            }
+                        }
+                        CallableSignatureV2::AggregateStar { result }
+                            if star && args.is_empty() =>
+                        {
+                            self.reserve_materialization(1, 1, node.span)?;
+                            tuples.push(vec![result.clone()])
+                        }
+                        CallableSignatureV2::Fixed { .. }
+                        | CallableSignatureV2::AnySingle { .. }
+                        | CallableSignatureV2::AggregateStar { .. } => {}
+                    }
+                }
+            }
+            RuleCallableTargetV2::HostPredicate(signature) => {
+                if !star && signature.params().len() == args.len() {
+                    self.reserve_materialization(
+                        1,
+                        signature.params().len().saturating_add(1),
+                        node.span,
+                    )?;
+                    let mut row = signature.params().to_vec();
+                    row.push(signature.result().clone());
+                    tuples.push(row);
+                }
+            }
+            RuleCallableTargetV2::SourcePredicate(id) => {
+                if !star && args.len() == 1 {
+                    let binding = self.predicate_bindings.get(&id).copied().ok_or(
+                        TypeDiagnosticV2::UnknownRuleCallable {
+                            location: self.location(node.span),
+                        },
+                    )?;
+                    self.reserve_materialization(self.universe.len(), 3, node.span)?;
+                    for ty in &self.universe {
+                        tuples.push(vec![ty.clone(), ty.clone(), ValueTypeV1::bool()]);
+                    }
+                    args.push(Variable::Binding(binding));
+                }
+            }
+            RuleCallableTargetV2::Unknown => {
+                unresolved = true;
+            }
+        }
+        if !unresolved {
+            args.push((*var).clone());
+            self.add(args, tuples, node.span)?;
+        }
+        Ok(())
+    }
+
     pub(super) fn boolean(&mut self, node: &BoolExprHirV1) -> Result<Variable, TypeDiagnosticV2> {
         let var = self.intern(
             Variable::Bool(SourceQualifiedNodeIdV2 {

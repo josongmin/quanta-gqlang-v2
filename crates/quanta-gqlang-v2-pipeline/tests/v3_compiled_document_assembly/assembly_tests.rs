@@ -1197,6 +1197,27 @@ fn inline_view_is_algebra_checked_before_its_catalog_no_plan_outcome() {
 }
 
 #[test]
+fn inline_view_proofs_join_by_source_item_when_catalog_ids_sort_differently() {
+    let source = "view zeta | select=from records r | project r.id as id ;\n\
+                  view alpha | select=from records r | project r.id as id";
+    let compiled = compile_source_document_v3(DOC_SOURCE, source, &authority_with_records())
+        .expect("both source-ordered Views retain their Modules-issued proofs");
+    assert!(matches!(
+        compiled.items(),
+        [
+            CompiledItemV2::NoPlan {
+                reason: NoPlanReasonV2::CatalogDeclaration { .. },
+                ..
+            },
+            CompiledItemV2::NoPlan {
+                reason: NoPlanReasonV2::CatalogDeclaration { .. },
+                ..
+            }
+        ]
+    ));
+}
+
+#[test]
 fn duplicate_authored_projection_alias_rejects_before_a_plan_is_issued() {
     let source = "from records r | project r.id as id, r.id as id";
     let error = compile_source_document_v3(DOC_SOURCE, source, &authority_with_records())

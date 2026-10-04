@@ -3,7 +3,7 @@
 use quanta_gqlang_v2_hir::{LocatedSpanV2, SourceIdV2, SpanV1};
 
 const MAX_IDENTIFIER_EXCERPT_BYTES: usize = 128;
-const MAX_MESSAGE_BYTES: usize = 1_024;
+pub(crate) const MAX_MESSAGE_BYTES: usize = 1_024;
 
 /// Ordered frontend stage attached to a diagnostic.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

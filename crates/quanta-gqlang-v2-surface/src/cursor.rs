@@ -9,7 +9,7 @@
 use crate::budget::ParseBudgetCounterV2;
 use crate::diag::{ParseDiagnosticV1, ParseErrorCodeV1};
 use crate::lexer::{TokenKindV1, TokenV1};
-use crate::materialization::ReferenceCloneAdmissionV1;
+use crate::materialization::{FrontendRetainedStoragePermitV3, ReferenceCloneAdmissionV1};
 use quanta_gqlang_v2_hir::{HirBuilderV1, SpanV1};
 
 /// Shared parsing state: token stream + position + the id-allocating builder.
@@ -109,6 +109,273 @@ impl<'b> CursorV1<'b> {
             admission.reserve_show_box_v1(source, span)?;
         }
         Ok(())
+    }
+
+    /// Admit one concrete nested HIR allocation before its constructor runs.
+    /// Raw and lexical-only entries keep their existing partial contract.
+    pub(crate) fn reserve_nested_bytes_v3(
+        &mut self,
+        bytes: usize,
+        span: SpanV1,
+    ) -> Result<(), ParseDiagnosticV1> {
+        if let Some(admission) = self.reference_admission.as_mut() {
+            admission.reserve_nested_bytes_v3(bytes, span)?;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn has_request_owner_v3(&self) -> bool {
+        self.reference_admission
+            .as_ref()
+            .is_some_and(|admission| admission.is_request_owner_v3())
+    }
+
+    pub(crate) fn reserve_temporary_scratch_v3(
+        &mut self,
+        bytes: usize,
+        span: SpanV1,
+    ) -> Result<Option<FrontendRetainedStoragePermitV3>, ParseDiagnosticV1> {
+        self.reference_admission
+            .as_mut()
+            .map_or(Ok(None), |admission| {
+                admission.reserve_temporary_scratch_v3(bytes, span)
+            })
+    }
+
+    /// Count a comma list from the already lexed tokens before creating its
+    /// Vec. The caller has consumed the opening delimiter and supplies its
+    /// closing kind. Nested delimiters do not contribute separators.
+    pub(crate) fn preallocate_delimited_items_v3<T>(
+        &mut self,
+        close: TokenKindV1,
+    ) -> Result<Vec<T>, ParseDiagnosticV1> {
+        if !self.has_request_owner_v3() {
+            return Ok(Vec::new());
+        }
+        let span = self.here_span();
+        let mut parens = 0usize;
+        let mut braces = 0usize;
+        let mut brackets = 0usize;
+        let mut slots = usize::from(self.peek().kind != close);
+        let mut offset = 0usize;
+        loop {
+            let kind = &self.peek_ahead(offset).kind;
+            if matches!(kind, TokenKindV1::Eof) {
+                return Err(self.unexpected("a closing list delimiter"));
+            }
+            let top = parens == 0 && braces == 0 && brackets == 0;
+            if top && kind == &close {
+                break;
+            }
+            if top && matches!(kind, TokenKindV1::Comma) {
+                slots = slots.checked_add(1).ok_or_else(|| {
+                    ParseDiagnosticV1::new(
+                        ParseErrorCodeV1::LexicalMaterializationOverflow,
+                        span,
+                        "collection item count overflow",
+                    )
+                })?;
+            }
+            match kind {
+                TokenKindV1::LParen => parens += 1,
+                TokenKindV1::LBrace => braces += 1,
+                TokenKindV1::LBracket => brackets += 1,
+                TokenKindV1::RParen if parens > 0 => parens -= 1,
+                TokenKindV1::RBrace if braces > 0 => braces -= 1,
+                TokenKindV1::RBracket if brackets > 0 => brackets -= 1,
+                TokenKindV1::RParen | TokenKindV1::RBrace | TokenKindV1::RBracket => {
+                    return Err(self.unexpected("a matching collection delimiter"));
+                }
+                TokenKindV1::Ident(_)
+                | TokenKindV1::Int(_)
+                | TokenKindV1::Float(_)
+                | TokenKindV1::Str(_)
+                | TokenKindV1::Comma
+                | TokenKindV1::Dot
+                | TokenKindV1::Colon
+                | TokenKindV1::Semicolon
+                | TokenKindV1::Pipe
+                | TokenKindV1::Arrow
+                | TokenKindV1::ThinArrow
+                | TokenKindV1::Op(_)
+                | TokenKindV1::Eof => {}
+            }
+            offset = offset.checked_add(1).ok_or_else(|| {
+                ParseDiagnosticV1::new(
+                    ParseErrorCodeV1::LexicalMaterializationOverflow,
+                    span,
+                    "collection token offset overflow",
+                )
+            })?;
+        }
+        self.budget.charge_collection_element(slots, span)?;
+        self.preallocate_exact_items_v3(slots, span)
+    }
+
+    pub(crate) fn preallocate_exact_items_v3<T>(
+        &mut self,
+        slots: usize,
+        span: SpanV1,
+    ) -> Result<Vec<T>, ParseDiagnosticV1> {
+        if !self.has_request_owner_v3() {
+            return Ok(Vec::new());
+        }
+        let bytes = slots.checked_mul(std::mem::size_of::<T>()).ok_or_else(|| {
+            ParseDiagnosticV1::new(
+                ParseErrorCodeV1::LexicalMaterializationOverflow,
+                span,
+                "collection storage size overflow",
+            )
+        })?;
+        if bytes > 0 {
+            self.reserve_nested_bytes_v3(bytes, span)?;
+        }
+        let mut items = Vec::new();
+        items
+            .try_reserve_exact(slots)
+            .map_err(|_allocation_error| {
+                ParseDiagnosticV1::new(
+                    ParseErrorCodeV1::ResourceExhausted,
+                    span,
+                    "collection storage allocation failed",
+                )
+            })?;
+        if items.capacity() > slots {
+            return Err(ParseDiagnosticV1::new(
+                ParseErrorCodeV1::ResourceExhausted,
+                span,
+                "collection allocator exceeded admitted slots",
+            ));
+        }
+        Ok(items)
+    }
+
+    /// Count top-level projection/group/order items until the query stage
+    /// boundary. Commas inside call, record, list, or grouped expressions do
+    /// not grow the outer Vec. The parse budget checks projection width before
+    /// any request-owned allocation.
+    pub(crate) fn preallocate_stage_items_v3<T>(&mut self) -> Result<Vec<T>, ParseDiagnosticV1> {
+        if !self.has_request_owner_v3() {
+            return Ok(Vec::new());
+        }
+        let span = self.here_span();
+        let mut parens = 0usize;
+        let mut braces = 0usize;
+        let mut brackets = 0usize;
+        let mut slots = 1usize;
+        let mut offset = 0usize;
+        loop {
+            let kind = &self.peek_ahead(offset).kind;
+            let top = parens == 0 && braces == 0 && brackets == 0;
+            if top
+                && matches!(
+                    kind,
+                    TokenKindV1::Pipe
+                        | TokenKindV1::Arrow
+                        | TokenKindV1::Semicolon
+                        | TokenKindV1::RParen
+                        | TokenKindV1::RBrace
+                        | TokenKindV1::RBracket
+                        | TokenKindV1::Eof
+                )
+            {
+                break;
+            }
+            if top && matches!(kind, TokenKindV1::Comma) {
+                slots = slots.checked_add(1).ok_or_else(|| {
+                    ParseDiagnosticV1::new(
+                        ParseErrorCodeV1::LexicalMaterializationOverflow,
+                        span,
+                        "projection item count overflow",
+                    )
+                })?;
+            }
+            match kind {
+                TokenKindV1::LParen => parens += 1,
+                TokenKindV1::LBrace => braces += 1,
+                TokenKindV1::LBracket => brackets += 1,
+                TokenKindV1::RParen if parens > 0 => parens -= 1,
+                TokenKindV1::RBrace if braces > 0 => braces -= 1,
+                TokenKindV1::RBracket if brackets > 0 => brackets -= 1,
+                TokenKindV1::Eof => break,
+                TokenKindV1::Ident(_)
+                | TokenKindV1::Int(_)
+                | TokenKindV1::Float(_)
+                | TokenKindV1::Str(_)
+                | TokenKindV1::RParen
+                | TokenKindV1::RBrace
+                | TokenKindV1::RBracket
+                | TokenKindV1::Comma
+                | TokenKindV1::Dot
+                | TokenKindV1::Colon
+                | TokenKindV1::Semicolon
+                | TokenKindV1::Pipe
+                | TokenKindV1::Arrow
+                | TokenKindV1::ThinArrow
+                | TokenKindV1::Op(_) => {}
+            }
+            offset = offset.checked_add(1).ok_or_else(|| {
+                ParseDiagnosticV1::new(
+                    ParseErrorCodeV1::LexicalMaterializationOverflow,
+                    span,
+                    "projection token offset overflow",
+                )
+            })?;
+        }
+        self.budget.charge_projection_element(slots, span)?;
+        self.preallocate_exact_items_v3(slots, span)
+    }
+
+    /// Catalog/FIND comma lists contain only flat references or identifiers.
+    /// Count their slots through the next clause/document boundary before the
+    /// first request-owned Vec allocation.
+    pub(crate) fn preallocate_clause_items_v3<T>(&mut self) -> Result<Vec<T>, ParseDiagnosticV1> {
+        if !self.has_request_owner_v3() {
+            return Ok(Vec::new());
+        }
+        let span = self.here_span();
+        let mut slots = 1usize;
+        let mut offset = 0usize;
+        loop {
+            match &self.peek_ahead(offset).kind {
+                TokenKindV1::Pipe
+                | TokenKindV1::Semicolon
+                | TokenKindV1::RParen
+                | TokenKindV1::RBrace
+                | TokenKindV1::RBracket
+                | TokenKindV1::Eof => break,
+                TokenKindV1::Comma => {
+                    slots = slots.checked_add(1).ok_or_else(|| {
+                        ParseDiagnosticV1::new(
+                            ParseErrorCodeV1::LexicalMaterializationOverflow,
+                            span,
+                            "clause item count overflow",
+                        )
+                    })?;
+                }
+                TokenKindV1::Ident(_)
+                | TokenKindV1::Int(_)
+                | TokenKindV1::Float(_)
+                | TokenKindV1::Str(_)
+                | TokenKindV1::LParen
+                | TokenKindV1::LBrace
+                | TokenKindV1::LBracket
+                | TokenKindV1::Dot
+                | TokenKindV1::Colon
+                | TokenKindV1::Arrow
+                | TokenKindV1::ThinArrow
+                | TokenKindV1::Op(_) => {}
+            }
+            offset = offset.checked_add(1).ok_or_else(|| {
+                ParseDiagnosticV1::new(
+                    ParseErrorCodeV1::LexicalMaterializationOverflow,
+                    span,
+                    "clause token offset overflow",
+                )
+            })?;
+        }
+        self.budget.charge_collection_element(slots, span)?;
+        self.preallocate_exact_items_v3(slots, span)
     }
 
     /// Run `body` one level deeper in the recursive-descent grammar, failing

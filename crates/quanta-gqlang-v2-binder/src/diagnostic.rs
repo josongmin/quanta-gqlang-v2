@@ -15,7 +15,49 @@
 //!   hidden-scope success.
 
 use quanta_gqlang_v2_hir::SpanV1;
+use std::cmp::Ordering;
 use std::fmt;
+
+fn decimal_render_order(mut left: usize, mut right: usize) -> Ordering {
+    fn highest_place(mut value: usize) -> usize {
+        let mut place = 1usize;
+        while value >= 10 {
+            value /= 10;
+            place *= 10;
+        }
+        place
+    }
+    let mut left_place = highest_place(left);
+    let mut right_place = highest_place(right);
+    loop {
+        let digit_order = (left / left_place).cmp(&(right / right_place));
+        if digit_order != Ordering::Equal {
+            return digit_order;
+        }
+        if left_place == 1 || right_place == 1 {
+            return (left_place != 1).cmp(&(right_place != 1));
+        }
+        left %= left_place;
+        right %= right_place;
+        left_place /= 10;
+        right_place /= 10;
+    }
+}
+
+fn span_render_order(left: SpanV1, right: SpanV1) -> Ordering {
+    decimal_render_order(left.start, right.start)
+        .then_with(|| decimal_render_order(left.end, right.end))
+}
+
+fn joined_candidates_render_order(left: &[String], right: &[String]) -> Ordering {
+    fn bytes(candidates: &[String]) -> impl Iterator<Item = u8> + '_ {
+        candidates.iter().enumerate().flat_map(|(index, value)| {
+            let separator: &[u8] = if index == 0 { b"" } else { b", " };
+            separator.iter().copied().chain(value.bytes())
+        })
+    }
+    bytes(left).cmp(bytes(right))
+}
 
 /// A typed binder diagnostic.
 ///
@@ -148,6 +190,67 @@ impl BindDiagnosticV1 {
             Self::Shadowed { inner_span, .. } => *inner_span,
         }
     }
+
+    /// Exact Display tie-break without allocating rendered diagnostics inside
+    /// the sort comparator. Call only after primary span, code, and name tie.
+    #[must_use]
+    pub(crate) fn render_tie_break_order(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (
+                Self::Duplicate {
+                    first_span: left, ..
+                },
+                Self::Duplicate {
+                    first_span: right, ..
+                },
+            )
+            | (
+                Self::Shadowed {
+                    outer_span: left, ..
+                },
+                Self::Shadowed {
+                    outer_span: right, ..
+                },
+            )
+            | (
+                Self::PartitionAuthorityCollision {
+                    partition_span: left,
+                    ..
+                },
+                Self::PartitionAuthorityCollision {
+                    partition_span: right,
+                    ..
+                },
+            )
+            | (
+                Self::WrongRelationSourceKind {
+                    binding_span: left, ..
+                },
+                Self::WrongRelationSourceKind {
+                    binding_span: right,
+                    ..
+                },
+            )
+            | (
+                Self::IllegalCapture {
+                    binding_span: left, ..
+                },
+                Self::IllegalCapture {
+                    binding_span: right,
+                    ..
+                },
+            ) => span_render_order(*left, *right),
+            (
+                Self::AmbiguousImport {
+                    candidates: left, ..
+                },
+                Self::AmbiguousImport {
+                    candidates: right, ..
+                },
+            ) => joined_candidates_render_order(left, right),
+            _ => Ordering::Equal,
+        }
+    }
 }
 
 impl fmt::Display for BindDiagnosticV1 {
@@ -193,15 +296,23 @@ impl fmt::Display for BindDiagnosticV1 {
                 name,
                 span,
                 candidates,
-            } => write!(
-                f,
-                "{}: imported symbol `{}` at {}..{} is ambiguous between {}",
-                self.code(),
-                name,
-                span.start,
-                span.end,
-                candidates.join(", "),
-            ),
+            } => {
+                write!(
+                    f,
+                    "{}: imported symbol `{}` at {}..{} is ambiguous between ",
+                    self.code(),
+                    name,
+                    span.start,
+                    span.end,
+                )?;
+                for (index, candidate) in candidates.iter().enumerate() {
+                    if index > 0 {
+                        f.write_str(", ")?;
+                    }
+                    f.write_str(candidate)?;
+                }
+                Ok(())
+            }
             Self::PartitionAuthorityCollision {
                 name,
                 span,
@@ -255,3 +366,69 @@ impl fmt::Display for BindDiagnosticV1 {
 }
 
 impl std::error::Error for BindDiagnosticV1 {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decimal_tie_break_matches_display_at_digit_boundaries() {
+        let values = [0, 1, 9, 10, 11, 99, 100, usize::MAX];
+        for left in values {
+            for right in values {
+                assert_eq!(
+                    decimal_render_order(left, right),
+                    left.to_string().cmp(&right.to_string())
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn typed_tie_break_matches_rendered_diagnostic_order() {
+        let cases = [
+            (
+                BindDiagnosticV1::Duplicate {
+                    name: "x".into(),
+                    first_span: SpanV1::new(9, 10),
+                    second_span: SpanV1::new(30, 31),
+                },
+                BindDiagnosticV1::Duplicate {
+                    name: "x".into(),
+                    first_span: SpanV1::new(10, 11),
+                    second_span: SpanV1::new(30, 31),
+                },
+            ),
+            (
+                BindDiagnosticV1::AmbiguousImport {
+                    name: "x".into(),
+                    span: SpanV1::new(30, 31),
+                    candidates: vec!["a".into(), "z".into()],
+                },
+                BindDiagnosticV1::AmbiguousImport {
+                    name: "x".into(),
+                    span: SpanV1::new(30, 31),
+                    candidates: vec!["a+".into()],
+                },
+            ),
+            (
+                BindDiagnosticV1::IllegalCapture {
+                    name: "x".into(),
+                    span: SpanV1::new(30, 31),
+                    binding_span: SpanV1::new(9, 10),
+                },
+                BindDiagnosticV1::IllegalCapture {
+                    name: "x".into(),
+                    span: SpanV1::new(30, 31),
+                    binding_span: SpanV1::new(10, 11),
+                },
+            ),
+        ];
+        for (left, right) in cases {
+            assert_eq!(
+                left.render_tie_break_order(&right),
+                left.to_string().cmp(&right.to_string())
+            );
+        }
+    }
+}

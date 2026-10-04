@@ -1,5 +1,8 @@
 use crate::{TypeDiagnosticV2, ValueTypeV1};
-use std::collections::{BTreeMap, BTreeSet};
+use quanta_gqlang_v2_hir::{
+    FrontendRequestMaterializationRootV3, FrontendRetainedStoragePermitV3,
+    FrontendStorageRefusalV3, SourceIdV2,
+};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PurityV1 {
@@ -177,47 +180,176 @@ pub struct BuiltinRegistryV2 {
     entries: Vec<BuiltinEntryV2>,
 }
 
+/// Closed builtin inventory retained by the original source request. The
+/// cloneable V2 registry stays private; readers expose copied scalar facts.
+pub struct AdmittedBuiltinRegistryV3 {
+    inner: std::sync::Arc<AdmittedBuiltinRegistryInnerV3>,
+}
+
+pub(crate) struct AdmittedBuiltinRegistryInnerV3 {
+    pub(crate) registry: BuiltinRegistryV2,
+    _storage: FrontendRetainedStoragePermitV3,
+}
+
+impl std::fmt::Debug for AdmittedBuiltinRegistryInnerV3 {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("AdmittedBuiltinRegistryInnerV3")
+            .field("registry", &self.registry)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Scalar observations carry no source authority on their own.
+pub trait BuiltinEvidenceReaderV3 {
+    fn family_id(&self, name: &str) -> Option<BuiltinFamilyIdV2>;
+    fn effects_of_resolved(&self, id: BuiltinIdV2) -> Option<ExpressionEffectsV2>;
+}
+
+impl BuiltinEvidenceReaderV3 for BuiltinRegistryV2 {
+    fn family_id(&self, name: &str) -> Option<BuiltinFamilyIdV2> {
+        BuiltinRegistryV2::family_id(self, name)
+    }
+
+    fn effects_of_resolved(&self, id: BuiltinIdV2) -> Option<ExpressionEffectsV2> {
+        BuiltinRegistryV2::effects_of_resolved(self, id)
+    }
+}
+
+impl BuiltinEvidenceReaderV3 for AdmittedBuiltinRegistryV3 {
+    fn family_id(&self, name: &str) -> Option<BuiltinFamilyIdV2> {
+        self.inner.registry.family_id(name)
+    }
+
+    fn effects_of_resolved(&self, id: BuiltinIdV2) -> Option<ExpressionEffectsV2> {
+        self.inner.registry.effects_of_resolved(id)
+    }
+}
+
+impl AdmittedBuiltinRegistryV3 {
+    /// Recheck the original builtin debit against the exact issued request.
+    pub fn validate_owner_v3(
+        &self,
+        root: &FrontendRequestMaterializationRootV3<'_>,
+        source_id: SourceIdV2,
+        source: &str,
+    ) -> Result<(), FrontendStorageRefusalV3> {
+        self.inner
+            ._storage
+            .validate_owner_v3(root, source_id, source)
+    }
+
+    pub(crate) fn shared_inner(&self) -> std::sync::Arc<AdmittedBuiltinRegistryInnerV3> {
+        std::sync::Arc::clone(&self.inner)
+    }
+    #[must_use]
+    pub fn family_id(&self, name: &str) -> Option<BuiltinFamilyIdV2> {
+        self.inner.registry.family_id(name)
+    }
+
+    #[must_use]
+    pub fn effects_of_resolved(&self, id: BuiltinIdV2) -> Option<ExpressionEffectsV2> {
+        self.inner.registry.effects_of_resolved(id)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum BuiltinRegistryRequestErrorV3 {
+    Storage(FrontendStorageRefusalV3),
+    SourceMismatch,
+    DemandOverflow,
+    Registry(TypeDiagnosticV2),
+}
+
 impl BuiltinRegistryV2 {
     pub(crate) fn all_entries(&self) -> impl Iterator<Item = &BuiltinEntryV2> {
         self.entries.iter()
     }
+    #[expect(
+        clippy::indexing_slicing,
+        reason = "enumerate index is within the same entries slice"
+    )]
     fn try_from_entries(entries: Vec<BuiltinEntryV2>) -> Result<Self, TypeDiagnosticV2> {
-        let mut ids = BTreeSet::new();
-        let mut names = BTreeMap::new();
-        let mut families = BTreeMap::new();
-        let mut admitted_domains: Vec<(&str, BuiltinFamilyIdV2, &CallableSignatureV2)> = Vec::new();
-        for entry in &entries {
-            if !ids.insert(entry.id) {
+        for (index, entry) in entries.iter().enumerate() {
+            let earlier = &entries[..index];
+            if earlier.iter().any(|prior| prior.id == entry.id) {
                 return Err(TypeDiagnosticV2::RegistryDuplicateId {
                     registry: "builtin",
                     id: entry.id.raw(),
                 });
             }
-            if names
-                .insert(entry.name.as_str(), entry.family_id)
-                .is_some_and(|family| family != entry.family_id)
-                || families
-                    .insert(entry.family_id, entry.name.as_str())
-                    .is_some_and(|name| name != entry.name)
-            {
+            if earlier.iter().any(|prior| {
+                (prior.name == entry.name && prior.family_id != entry.family_id)
+                    || (prior.family_id == entry.family_id && prior.name != entry.name)
+            }) {
                 return Err(TypeDiagnosticV2::RegistryDuplicateId {
                     registry: "builtin_family",
                     id: entry.id.raw(),
                 });
             }
-            if admitted_domains.iter().any(|(name, family, signature)| {
-                *name == entry.name
-                    && *family == entry.family_id
-                    && domains_overlap(signature, &entry.signature)
+            if earlier.iter().any(|prior| {
+                prior.name == entry.name
+                    && prior.family_id == entry.family_id
+                    && domains_overlap(&prior.signature, &entry.signature)
             }) {
                 return Err(TypeDiagnosticV2::RegistryDuplicateId {
                     registry: "builtin_signature",
                     id: entry.id.raw(),
                 });
             }
-            admitted_domains.push((&entry.name, entry.family_id, &entry.signature));
         }
         Ok(Self { entries })
+    }
+
+    /// Reserve the pinned 21-entry builtin inventory before any String, Vec,
+    /// or nested type Box is born. The inventory is defined by `try_closed`;
+    /// adding an entry requires updating this source-count census together.
+    pub fn try_closed_with_request_owner_v3(
+        root: &FrontendRequestMaterializationRootV3<'_>,
+        source_id: SourceIdV2,
+        source: &str,
+        parent: &FrontendRetainedStoragePermitV3,
+    ) -> Result<AdmittedBuiltinRegistryV3, BuiltinRegistryRequestErrorV3> {
+        parent
+            .validate_owner_v3(root, source_id, source)
+            .map_err(BuiltinRegistryRequestErrorV3::Storage)?;
+        let name_bytes = (1..=21_u32).try_fold(0_usize, |total, id| {
+            total.checked_add(BuiltinIdV2(id).name()?.len())
+        });
+        let retained_bytes = 21_usize
+            .checked_mul(std::mem::size_of::<BuiltinEntryV2>())
+            .and_then(|bytes| bytes.checked_add(name_bytes?))
+            .and_then(|bytes| {
+                20_usize
+                    .checked_mul(std::mem::size_of::<ValueTypeV1>())
+                    .and_then(|params| bytes.checked_add(params))
+            })
+            .and_then(|bytes| {
+                2_usize
+                    .checked_mul(std::mem::size_of::<ValueTypeV1>())
+                    .and_then(|boxes| bytes.checked_add(boxes))
+            })
+            .and_then(|bytes| {
+                // The Arc payload includes the permit itself, so cloned Type
+                // kernels keep its debit until their final shared owner drops.
+                std::mem::size_of::<AdmittedBuiltinRegistryInnerV3>()
+                    .checked_add(2 * std::mem::size_of::<usize>())
+                    .and_then(|arc| {
+                        arc.checked_add(std::mem::align_of::<AdmittedBuiltinRegistryInnerV3>() - 1)
+                    })
+                    .and_then(|arc| bytes.checked_add(arc))
+            })
+            .ok_or(BuiltinRegistryRequestErrorV3::DemandOverflow)?;
+        let storage = root
+            .reserve_v3(source_id, source, retained_bytes)
+            .map_err(BuiltinRegistryRequestErrorV3::Storage)?;
+        let registry = Self::try_closed().map_err(BuiltinRegistryRequestErrorV3::Registry)?;
+        Ok(AdmittedBuiltinRegistryV3 {
+            inner: std::sync::Arc::new(AdmittedBuiltinRegistryInnerV3 {
+                registry,
+                _storage: storage,
+            }),
+        })
     }
 
     pub fn try_closed() -> Result<Self, TypeDiagnosticV2> {
@@ -513,6 +645,7 @@ fn e(
 #[expect(clippy::unwrap_used, clippy::expect_used, reason = "owner assertions")]
 mod tests {
     use super::*;
+    use std::collections::BTreeSet;
     #[test]
     fn closed_registry_preserves_builtin_families_metadata_and_ids() {
         let registry = BuiltinRegistryV2::try_closed().expect("valid static registry");
@@ -585,6 +718,35 @@ mod tests {
             &entry.signature,
             CallableSignatureV2::AggregateStar { result } if *result == ValueTypeV1::int()
         )));
+    }
+
+    #[test]
+    fn closed_registry_storage_census_matches_pinned_producer() {
+        let registry = BuiltinRegistryV2::try_closed().expect("valid static registry");
+        assert_eq!(registry.entries.len(), 21);
+        assert_eq!(registry.entries.capacity(), 21);
+        let mut parameter_slots = 0;
+        let mut boxed_collections = 0;
+        for entry in &registry.entries {
+            assert_eq!(entry.name.capacity(), entry.name.len());
+            match &entry.signature {
+                CallableSignatureV2::Fixed { params, result } => {
+                    parameter_slots += params.len();
+                    assert_eq!(params.capacity(), params.len());
+                    boxed_collections += params
+                        .iter()
+                        .filter(|parameter| parameter.as_collection().is_some())
+                        .count();
+                    boxed_collections += usize::from(result.as_collection().is_some());
+                }
+                CallableSignatureV2::AnySingle { result }
+                | CallableSignatureV2::AggregateStar { result } => {
+                    boxed_collections += usize::from(result.as_collection().is_some());
+                }
+            }
+        }
+        assert_eq!(parameter_slots, 20);
+        assert_eq!(boxed_collections, 2);
     }
 
     #[test]

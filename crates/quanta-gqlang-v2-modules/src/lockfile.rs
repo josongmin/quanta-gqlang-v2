@@ -415,17 +415,17 @@ impl ValidatedPackActivationV2 {
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ValidatedPackActivationsV2 {
-    activations: BTreeMap<PackIdV2, ValidatedPackActivationV2>,
+    activations: Vec<(ValidatedPackActivationV2, CheckedLocatedSpanV2)>,
 }
 impl ValidatedPackActivationsV2 {
     fn empty() -> Self {
         Self {
-            activations: BTreeMap::new(),
+            activations: Vec::new(),
         }
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &ValidatedPackActivationV2> {
-        self.activations.values()
+        self.activations.iter().map(|(activation, _)| activation)
     }
 }
 
@@ -485,6 +485,10 @@ impl ValidatedPackAuthorityV2 {
         dead_code,
         reason = "pinned host-phase API; document callers use the combined-registry path"
     )]
+    #[expect(
+        clippy::indexing_slicing,
+        reason = "binary_search returns an in-range duplicate index"
+    )]
     pub(crate) fn validate_activations(
         &self,
         inputs: Vec<PackActivationInputV2>,
@@ -506,8 +510,7 @@ impl ValidatedPackAuthorityV2 {
                 "pack authority has no lock reference",
             )
         })?;
-        let mut activations: BTreeMap<PackIdV2, ValidatedPackActivationV2> = BTreeMap::new();
-        let mut locations: BTreeMap<PackIdV2, CheckedLocatedSpanV2> = BTreeMap::new();
+        let mut activations = Vec::with_capacity(inputs.len());
         for input in inputs {
             session.charge_edge()?;
             session.charge_string(input.pack_id.as_str())?;
@@ -519,14 +522,21 @@ impl ValidatedPackAuthorityV2 {
                 ));
             }
             let reference = LockReferenceV2::try_new(input.lock_reference, session)?;
-            if let Some(original) = locations.get(&input.pack_id) {
-                return Err(ModuleDiagnosticV2::conflict(
-                    "modules.duplicate_pack_activation",
-                    "duplicate pack activation",
-                    &input.location,
-                    original,
-                ));
-            }
+            let insertion = match activations.binary_search_by(
+                |(activation, _): &(ValidatedPackActivationV2, CheckedLocatedSpanV2)| {
+                    activation.pack_id.cmp(&input.pack_id)
+                },
+            ) {
+                Ok(index) => {
+                    return Err(ModuleDiagnosticV2::conflict(
+                        "modules.duplicate_pack_activation",
+                        "duplicate pack activation",
+                        &input.location,
+                        &activations[index].1,
+                    ));
+                }
+                Err(index) => index,
+            };
             if reference.path() != expected_reference.path() {
                 return Err(ModuleDiagnosticV2::conflict(
                     "modules.lock_reference_mismatch",
@@ -542,19 +552,25 @@ impl ValidatedPackAuthorityV2 {
                     &input.location,
                 ));
             }
-            locations.insert(input.pack_id.clone(), input.location.clone());
             activations.insert(
-                input.pack_id.clone(),
-                ValidatedPackActivationV2 {
-                    pack_id: input.pack_id,
-                    activation: input.activation,
-                    location: input.location.location(),
-                },
+                insertion,
+                (
+                    ValidatedPackActivationV2 {
+                        pack_id: input.pack_id,
+                        activation: input.activation,
+                        location: input.location.location(),
+                    },
+                    input.location,
+                ),
             );
         }
         Ok(ValidatedPackActivationsV2 { activations })
     }
 
+    #[expect(
+        clippy::indexing_slicing,
+        reason = "binary_search returns an in-range duplicate index"
+    )]
     pub(crate) fn validate_document_activations(
         &self,
         inputs: Vec<PackActivationInputV2>,
@@ -570,8 +586,7 @@ impl ValidatedPackAuthorityV2 {
                 "pack authority has no lock reference",
             )
         })?;
-        let mut activations = BTreeMap::new();
-        let mut locations: BTreeMap<PackIdV2, CheckedLocatedSpanV2> = BTreeMap::new();
+        let mut activations = Vec::with_capacity(inputs.len());
         for input in inputs {
             session.charge_edge()?;
             session.charge_string(input.pack_id.as_str())?;
@@ -585,14 +600,21 @@ impl ValidatedPackAuthorityV2 {
                 ));
             }
             let reference = LockReferenceV2::try_new(input.lock_reference, session)?;
-            if let Some(original) = locations.get(&input.pack_id) {
-                return Err(ModuleDiagnosticV2::conflict(
-                    "modules.duplicate_pack_activation",
-                    "duplicate pack activation",
-                    &input.location,
-                    original,
-                ));
-            }
+            let insertion = match activations.binary_search_by(
+                |(activation, _): &(ValidatedPackActivationV2, CheckedLocatedSpanV2)| {
+                    activation.pack_id.cmp(&input.pack_id)
+                },
+            ) {
+                Ok(index) => {
+                    return Err(ModuleDiagnosticV2::conflict(
+                        "modules.duplicate_pack_activation",
+                        "duplicate pack activation",
+                        &input.location,
+                        &activations[index].1,
+                    ));
+                }
+                Err(index) => index,
+            };
             if reference.path() != expected_reference.path() {
                 return Err(ModuleDiagnosticV2::conflict(
                     "modules.lock_reference_mismatch",
@@ -608,14 +630,16 @@ impl ValidatedPackAuthorityV2 {
                     &input.location,
                 ));
             }
-            locations.insert(input.pack_id.clone(), input.location.clone());
             activations.insert(
-                input.pack_id.clone(),
-                ValidatedPackActivationV2 {
-                    pack_id: input.pack_id,
-                    activation: input.activation,
-                    location: input.location.location(),
-                },
+                insertion,
+                (
+                    ValidatedPackActivationV2 {
+                        pack_id: input.pack_id,
+                        activation: input.activation,
+                        location: input.location.location(),
+                    },
+                    input.location,
+                ),
             );
         }
         Ok(ValidatedPackActivationsV2 { activations })

@@ -119,6 +119,13 @@ fn authority_with_records() -> ClosedFrontendAuthorityV2 {
 }
 
 fn authority_with_records_type(id_type: ValueTypeV1) -> ClosedFrontendAuthorityV2 {
+    authority_with_records_type_and_host_id(id_type, "app::records")
+}
+
+fn authority_with_records_type_and_host_id(
+    id_type: ValueTypeV1,
+    host_id: &str,
+) -> ClosedFrontendAuthorityV2 {
     let host = SourceRegistryViewV2::try_new(vec![SourceRegistrationV2 {
         source_id: HOST_SOURCE,
         source_len: 64,
@@ -155,7 +162,7 @@ fn authority_with_records_type(id_type: ValueTypeV1) -> ClosedFrontendAuthorityV
             authority: quanta_gqlang_v2_sema::RelationAuthorityV2::Host,
             provenance_namespace: ProvenanceNamespaceV2::try_new("host", location.clone())
                 .expect("provenance namespace"),
-            qualified_name: "app::records".to_owned(),
+            qualified_name: host_id.to_owned(),
             lookup_name: "records".to_owned(),
             row: RecordTypeV1::try_new(vec![RecordFieldTypeV1::try_new(
                 "id",
@@ -392,6 +399,12 @@ fn resolve_minimal_document(
 
 #[path = "v3_compiled_document_assembly/assembly_tests.rs"]
 mod assembly_tests;
+
+#[path = "v3_compiled_document_assembly/request_body_tests.rs"]
+mod request_body_tests;
+
+#[path = "v3_compiled_document_assembly/scalar_request_tests.rs"]
+mod scalar_request_tests;
 
 #[path = "v3_compiled_document_assembly/execution_contract_tests.rs"]
 mod execution_contract_tests;

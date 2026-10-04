@@ -25,10 +25,10 @@ pub(super) struct PreparedBodyTypesV2 {
     pub(super) rule_proof: Option<RuleTypeProofV2>,
 }
 
-struct BoundDocumentV2 {
+struct BoundDocumentV2<'hir> {
     bound: BindResultV1,
-    declarations: Vec<DeclHirV1>,
-    rules: Vec<RuleHirV1>,
+    declarations: Vec<&'hir DeclHirV1>,
+    rules: Vec<&'hir RuleHirV1>,
 }
 
 struct ResolvedRulesV2 {
@@ -146,10 +146,10 @@ fn validate_item_families(
     Ok(())
 }
 
-fn bind_document(
-    checked: &CheckedSyntaxDocumentV2,
+fn bind_document<'hir>(
+    checked: &'hir CheckedSyntaxDocumentV2,
     authority: &ClosedFrontendAuthorityV2,
-) -> Result<BoundDocumentV2, FrontendTransactionErrorV2> {
+) -> Result<BoundDocumentV2<'hir>, FrontendTransactionErrorV2> {
     let syntax = checked.checked().document();
     let graph = ModuleImportAdapterV2(authority.modules().resolved_graph());
     let mut binder = Binder::new(&graph);
@@ -157,7 +157,7 @@ fn bind_document(
         .items
         .iter()
         .filter_map(|item| match item {
-            ProgramItemHirV1::Decl(decl) => Some((**decl).clone()),
+            ProgramItemHirV1::Decl(decl) => Some(decl.as_ref()),
             ProgramItemHirV1::Query(_)
             | ProgramItemHirV1::Rule(_)
             | ProgramItemHirV1::GraphQuery(_)
@@ -173,7 +173,7 @@ fn bind_document(
         .items
         .iter()
         .filter_map(|item| match item {
-            ProgramItemHirV1::Rule(rule) => Some((**rule).clone()),
+            ProgramItemHirV1::Rule(rule) => Some(rule.as_ref()),
             ProgramItemHirV1::Query(_)
             | ProgramItemHirV1::Decl(_)
             | ProgramItemHirV1::GraphQuery(_)
@@ -185,7 +185,7 @@ fn bind_document(
             | ProgramItemHirV1::Command(_) => None,
         })
         .collect::<Vec<_>>();
-    binder.declare_program(&declarations, &rules);
+    binder.declare_borrowed_program(&declarations);
     for decl in &declarations {
         binder.resolve_decl(decl, &[]);
     }
@@ -237,7 +237,7 @@ fn resolve_rule_callables(
     authority: &ClosedFrontendAuthorityV2,
     extended: &quanta_gqlang_v2_hir::ExtendedSourceRegistryViewV2,
     validator: &mut DocumentCatalogValidatorV2<'_>,
-    binding: &BoundDocumentV2,
+    binding: &BoundDocumentV2<'_>,
     builtins: &BuiltinRegistryV2,
 ) -> Result<ResolvedRulesV2, FrontendTransactionErrorV2> {
     let bound = &binding.bound;
@@ -389,7 +389,7 @@ fn check_document_types(
     extended: &quanta_gqlang_v2_hir::ExtendedSourceRegistryViewV2,
     inline_views: &InlineViewPlanV2,
     topology: &DocumentViewTopologyProofV2,
-    binding: &BoundDocumentV2,
+    binding: &BoundDocumentV2<'_>,
     rules: &ResolvedRulesV2,
     builtins: &BuiltinRegistryV2,
 ) -> Result<TypedExpressionFactsV2, FrontendTransactionErrorV2> {
@@ -422,8 +422,8 @@ fn check_document_types(
         bound,
         builtins,
         extended,
-        view_source_targets: &inline_views.source_targets,
-        view_relation_roots: &inline_views.relation_roots,
+        view_source_targets: inline_views,
+        view_relation_roots: inline_views,
         owners: BTreeMap::new(),
         entries: Vec::new(),
         rows: Vec::new(),
@@ -431,7 +431,7 @@ fn check_document_types(
         error: None,
     };
     for asset in topology.dependency_first_order() {
-        let Some(declaration) = inline_views.declarations.get(asset).copied() else {
+        let Some(declaration) = inline_views.declaration_for(asset) else {
             continue;
         };
         let query = inline_query_for_decl(syntax, declaration).ok_or_else(|| {
@@ -519,7 +519,7 @@ fn check_document_types(
     }
     let pre_evaluation_roots = topology
         .dependency_first_order()
-        .filter_map(|asset| inline_views.relation_roots.get(asset).copied())
+        .filter_map(|asset| inline_views.relation_root_for(asset))
         .collect();
     let type_inputs = ResolvedTypeInputsV2::try_new_with_relation_pre_evaluation(
         checked.checked().as_checked(),

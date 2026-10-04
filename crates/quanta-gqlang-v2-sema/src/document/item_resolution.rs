@@ -224,10 +224,6 @@ pub(super) fn resolve_graph_item(
     .map_err(|error| document_failure("sema.invalid_item_shape", source_id, graph.span, error))
 }
 
-#[expect(
-    clippy::too_many_lines,
-    reason = "legacy presentation resolution awaits phase extraction"
-)]
 pub(super) fn resolve_presentation_item(
     presentation: &quanta_gqlang_v2_hir::PresentationHirV1,
     source_id: SourceIdV2,
@@ -361,71 +357,9 @@ pub(super) fn resolve_presentation_item(
             target_ref,
             evidence,
             truth,
-        } => {
-            steps.charge(source_id, target_ref.span)?;
-            let raw = location(source_id, target_ref.span);
-            let checked = extended
-                .combined()
-                .try_check_location(raw)
-                .map_err(|error| {
-                    document_failure(
-                        "sema.document_validation_failed",
-                        source_id,
-                        target_ref.span,
-                        error.to_string(),
-                    )
-                })?;
-            let rule = validator
-                .probe_reference(DocumentCatalogReferenceInputV2 {
-                    module_id: None,
-                    local_name: target_ref.name.clone(),
-                    expected_kind: NamespaceKindV2::Rule,
-                    location: checked.clone(),
-                })
-                .map_err(module_failure)?;
-            let entity = authority.graph_references().probe(
-                &target_ref.name,
-                crate::GraphReferenceKindV2::Entity,
-                raw,
-            )?;
-            let target = match (rule, entity) {
-                (Some(rule), None) => {
-                    ResolvedExplainTargetV2::Rule(ResolvedCatalogReferenceV2::from_proof(&rule))
-                }
-                (None, Some(entity)) => ResolvedExplainTargetV2::Entity(ResolvedGraphUseV2::new(
-                    ResolvedGraphTargetV2::host(entity),
-                    checked,
-                )),
-                (Some(rule), Some(entity)) => {
-                    return Err(FrontendFailureV2::one(FrontendDiagnosticV2::new(
-                        FrontendStageV2::Resolution,
-                        "sema.ambiguous_reference",
-                        FrontendSeverityV2::Error,
-                        raw,
-                        vec![
-                            rule.location().location(),
-                            entity.declaration_location().location(),
-                        ],
-                        "EXPLAIN target resolves in both Rule and Entity namespaces",
-                    ))
-                    .into())
-                }
-                (None, None) => {
-                    return Err(document_failure(
-                        "sema.unresolved_reference",
-                        source_id,
-                        target_ref.span,
-                        "EXPLAIN target is absent from Rule and Entity authorities",
-                    )
-                    .into())
-                }
-            };
-            ResolvedPresentationKindV2::Explain {
-                target,
-                evidence: *evidence,
-                truth: *truth,
-            }
-        }
+        } => resolve_presentation_explain(
+            target_ref, *evidence, *truth, source_id, authority, extended, validator, steps,
+        )?,
     };
     ResolvedPresentationV2::try_new(
         SemanticItemIdV2::new(source_id, presentation.id),
@@ -450,6 +384,81 @@ pub(super) fn resolve_presentation_item(
             error,
         )
         .into()
+    })
+}
+
+fn resolve_presentation_explain(
+    target_ref: &quanta_gqlang_v2_hir::GraphRefV1,
+    evidence: quanta_gqlang_v2_hir::EvidenceModeV1,
+    truth: quanta_gqlang_v2_hir::TruthModeV1,
+    source_id: SourceIdV2,
+    authority: &ClosedFrontendAuthorityV2,
+    extended: &ExtendedSourceRegistryViewV2,
+    validator: &mut DocumentCatalogValidatorV2<'_>,
+    steps: &mut SemanticStepCounterV2,
+) -> Result<ResolvedPresentationKindV2, FrontendTransactionErrorV2> {
+    steps.charge(source_id, target_ref.span)?;
+    let raw = location(source_id, target_ref.span);
+    let checked = extended
+        .combined()
+        .try_check_location(raw)
+        .map_err(|error| {
+            document_failure(
+                "sema.document_validation_failed",
+                source_id,
+                target_ref.span,
+                error.to_string(),
+            )
+        })?;
+    let rule = validator
+        .probe_reference(DocumentCatalogReferenceInputV2 {
+            module_id: None,
+            local_name: target_ref.name.clone(),
+            expected_kind: NamespaceKindV2::Rule,
+            location: checked.clone(),
+        })
+        .map_err(module_failure)?;
+    let entity = authority.graph_references().probe(
+        &target_ref.name,
+        crate::GraphReferenceKindV2::Entity,
+        raw,
+    )?;
+    let target = match (rule, entity) {
+        (Some(rule), None) => {
+            ResolvedExplainTargetV2::Rule(ResolvedCatalogReferenceV2::from_proof(&rule))
+        }
+        (None, Some(entity)) => ResolvedExplainTargetV2::Entity(ResolvedGraphUseV2::new(
+            ResolvedGraphTargetV2::host(entity),
+            checked,
+        )),
+        (Some(rule), Some(entity)) => {
+            return Err(FrontendFailureV2::one(FrontendDiagnosticV2::new(
+                FrontendStageV2::Resolution,
+                "sema.ambiguous_reference",
+                FrontendSeverityV2::Error,
+                raw,
+                vec![
+                    rule.location().location(),
+                    entity.declaration_location().location(),
+                ],
+                "EXPLAIN target resolves in both Rule and Entity namespaces",
+            ))
+            .into())
+        }
+        (None, None) => {
+            return Err(document_failure(
+                "sema.unresolved_reference",
+                source_id,
+                target_ref.span,
+                "EXPLAIN target is absent from Rule and Entity authorities",
+            )
+            .into())
+        }
+    };
+    Ok(ResolvedPresentationKindV2::Explain {
+        target,
+        evidence,
+        truth,
     })
 }
 

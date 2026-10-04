@@ -130,8 +130,11 @@ impl RecordFieldTypeV1 {
                 location: location.location(),
             });
         }
+        let owned_name = name.to_owned();
+        #[cfg(test)]
+        request_storage_observer::note_string(&owned_name);
         Ok(Self {
-            name: name.to_owned(),
+            name: owned_name,
             value_type,
             location,
         })
@@ -160,7 +163,124 @@ pub struct RecordTypeV1 {
     shape: TypeShapeFactsV1,
 }
 
+pub(crate) enum ScalarRecordErrorV3 {
+    Storage,
+    Diagnostic(TypeDiagnosticV2),
+}
+
+#[cfg(test)]
+pub(crate) mod request_storage_observer {
+    use std::cell::Cell;
+    use std::mem::{align_of, size_of};
+
+    thread_local! {
+        static GROSS_BIRTH_BYTES: Cell<Option<usize>> = const { Cell::new(None) };
+    }
+
+    pub(crate) fn begin() {
+        GROSS_BIRTH_BYTES.with(|bytes| bytes.set(Some(0)));
+    }
+
+    pub(crate) fn finish() -> usize {
+        GROSS_BIRTH_BYTES.with(|bytes| bytes.replace(None).unwrap_or(0))
+    }
+
+    fn add(bytes: usize) {
+        GROSS_BIRTH_BYTES.with(|observed| {
+            if let Some(total) = observed.get() {
+                observed.set(total.checked_add(bytes));
+            }
+        });
+    }
+
+    pub(crate) fn note_vec<T>(values: &Vec<T>) {
+        add(values.capacity().saturating_mul(size_of::<T>()));
+    }
+
+    pub(crate) fn note_string(value: &String) {
+        add(value.capacity());
+    }
+
+    pub(crate) fn note_arc_slice<T>(len: usize) {
+        let header = 2 * size_of::<usize>();
+        let padding = align_of::<T>().saturating_sub(1);
+        add(header
+            .saturating_add(padding)
+            .saturating_add(len.saturating_mul(size_of::<T>())));
+    }
+}
+
 impl RecordTypeV1 {
+    /// Request-owned row construction; the duplicate index borrows field names
+    /// and never creates an uncharged tree node or duplicate string.
+    pub(crate) fn try_new_scalar_request_v3(
+        fields: Vec<RecordFieldTypeV1>,
+    ) -> Result<Self, ScalarRecordErrorV3> {
+        let shape = TypeShapeFactsV1::try_parent(
+            fields.iter().map(|field| &field.value_type.0.shape),
+            false,
+        )
+        .map_err(ScalarRecordErrorV3::Diagnostic)?;
+        let mut index = Vec::new();
+        index
+            .try_reserve_exact(fields.len())
+            .map_err(|_allocation| ScalarRecordErrorV3::Storage)?;
+        let admitted_slots = fields
+            .len()
+            .checked_next_power_of_two()
+            .ok_or(ScalarRecordErrorV3::Storage)?;
+        if index.capacity() > admitted_slots {
+            return Err(ScalarRecordErrorV3::Storage);
+        }
+        #[cfg(test)]
+        request_storage_observer::note_vec(&index);
+        index.extend(fields.iter().enumerate());
+        index.sort_unstable_by(|(left_ordinal, left), (right_ordinal, right)| {
+            left.name
+                .cmp(&right.name)
+                .then(left_ordinal.cmp(right_ordinal))
+        });
+        let duplicate = index
+            .windows(2)
+            .filter_map(|pair| {
+                let [left, right] = pair else { return None };
+                (left.1.name == right.1.name).then_some((left, right))
+            })
+            .min_by_key(|(_, right)| right.0);
+        if let Some((left, right)) = duplicate {
+            let name = right.1.name.clone();
+            #[cfg(test)]
+            request_storage_observer::note_string(&name);
+            return Err(ScalarRecordErrorV3::Diagnostic(
+                TypeDiagnosticV2::DuplicateRecordField {
+                    name,
+                    primary: right.1.location.location(),
+                    secondary: left.1.location.location(),
+                },
+            ));
+        }
+        drop(index);
+        let mut owned = Vec::new();
+        owned
+            .try_reserve_exact(fields.len())
+            .map_err(|_allocation| ScalarRecordErrorV3::Storage)?;
+        if owned.capacity() > admitted_slots {
+            return Err(ScalarRecordErrorV3::Storage);
+        }
+        #[cfg(test)]
+        request_storage_observer::note_vec(&owned);
+        owned.extend(fields.into_iter().map(|field| RecordFieldV1 {
+            name: field.name,
+            value_type: field.value_type,
+        }));
+        #[cfg(test)]
+        request_storage_observer::note_arc_slice::<RecordFieldV1>(owned.len());
+        Ok(Self {
+            fields: owned.into(),
+            shape,
+        })
+    }
+
     pub fn try_new(fields: Vec<RecordFieldTypeV1>) -> Result<Self, TypeDiagnosticV2> {
         let shape = TypeShapeFactsV1::try_parent(
             fields.iter().map(|field| &field.value_type.0.shape),
@@ -195,6 +315,55 @@ impl RecordTypeV1 {
     #[must_use]
     pub fn field(&self, name: &str) -> Option<&RecordFieldV1> {
         self.fields.iter().find(|field| field.name == name)
+    }
+}
+
+#[cfg(test)]
+#[expect(
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "independent duplicate diagnostic oracle"
+)]
+mod scalar_request_tests {
+    use super::*;
+    use quanta_gqlang_v2_hir::{
+        LocatedSpanV2, SourceIdV2, SourceRegistrationV2, SourceRegistryViewV2, SpanV1,
+    };
+
+    #[test]
+    fn duplicate_row_diagnostic_uses_first_repeated_source_field() {
+        let source_id = SourceIdV2::from_raw(91);
+        let registry = SourceRegistryViewV2::try_new(Vec::new())
+            .unwrap()
+            .try_extend_document(SourceRegistrationV2 {
+                source_id,
+                source_len: 16,
+            })
+            .unwrap();
+        let fields: Vec<_> = ["a", "b", "b", "a"]
+            .into_iter()
+            .enumerate()
+            .map(|(ordinal, name)| {
+                let start = ordinal * 2;
+                let location = registry
+                    .combined()
+                    .try_check_location(LocatedSpanV2 {
+                        source_id,
+                        span: SpanV1::new(start, start + 1),
+                    })
+                    .unwrap();
+                RecordFieldTypeV1::try_new(name, ValueTypeV1::int(), location).unwrap()
+            })
+            .collect();
+        let legacy = RecordTypeV1::try_new(fields.clone()).unwrap_err();
+        let request = match RecordTypeV1::try_new_scalar_request_v3(fields) {
+            Err(ScalarRecordErrorV3::Diagnostic(error)) => error,
+            _ => panic!("duplicate row must produce a diagnostic"),
+        };
+        assert_eq!(request, legacy);
+        assert!(
+            matches!(request, TypeDiagnosticV2::DuplicateRecordField { ref name, .. } if name == "b")
+        );
     }
 }
 

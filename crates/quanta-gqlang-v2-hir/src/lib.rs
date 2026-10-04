@@ -43,6 +43,7 @@ mod id;
 mod integrity;
 mod item;
 mod relation;
+mod request_storage;
 mod shape;
 mod span;
 mod unit;
@@ -58,8 +59,15 @@ pub const MAX_SAFE_EXPRESSION_DEPTH_V2: usize = 64;
 pub const MAX_SAFE_HIR_EXPRESSION_DEPTH_V2: usize = 128;
 
 pub use build::HirBuilderV1;
-pub use depth::{check_depths_v2, HirDepthDiagnosticV2, HirDepthDimensionV2};
+pub use depth::{
+    check_depths_v2, check_depths_with_source_slots_v3, depth_stack_storage_bytes_v3,
+    HirDepthAdmissionErrorV3, HirDepthDiagnosticV2, HirDepthDimensionV2,
+};
 pub use id::{HirNodeIdGen, HirNodeIdV1};
+pub use request_storage::{
+    FrontendRequestMaterializationRootV3, FrontendRequestStoragePermitV3,
+    FrontendRequestStorageSinkV3, FrontendRetainedStoragePermitV3, FrontendStorageRefusalV3,
+};
 pub use span::{
     CheckedLocatedSpanV2, ExtendedSourceRegistryViewV2, LocatedSpanErrorV2, LocatedSpanV2,
     SourceIdV2, SourceRegistrationV2, SourceRegistryDiagnosticV2, SourceRegistryIdentityV2,
@@ -102,7 +110,8 @@ pub use visit::{
 };
 
 pub use integrity::{
-    check_document_show_monotonic_v2, check_document_v2, check_tree, CheckedHirDocumentOwnedV2,
+    check_document_show_monotonic_v2, check_document_v2, check_document_with_source_slots_v3,
+    check_tree, request_integrity_scratch_bytes_v3, CheckedHirDocumentOwnedV2,
     CheckedHirDocumentV2, CheckedHirV1, HirDocumentV1, HirIntegrityDiagnosticV2,
-    HirIntegrityErrorV1, HirRootRefV1, ShowIntegrityErrorV2,
+    HirIntegrityErrorV1, HirRequestIntegrityErrorV3, HirRootRefV1, ShowIntegrityErrorV2,
 };

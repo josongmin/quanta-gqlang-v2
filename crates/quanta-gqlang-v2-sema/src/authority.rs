@@ -1,8 +1,10 @@
 //! Closed and open semantic authority plus the canonical frontend budget.
 
+mod budget;
 mod inputs;
 mod open_analysis;
 
+pub use budget::{DownstreamBudgetReceiptV2, FrontendBudgetV2};
 pub use inputs::{
     FrontendAuthorityLocationV2, FrontendAuthoritySourceV2, FrontendCallableParameterInputV2,
     FrontendCatalogAssetInputV2, FrontendCatalogPayloadV2, FrontendGraphReferenceInputV2,
@@ -30,7 +32,6 @@ use quanta_gqlang_v2_types::{
     RelationCatalogV2, RelationSourceInputV2, ValueTypeV1,
 };
 use std::collections::BTreeMap;
-use std::num::NonZeroU32;
 use std::sync::Arc;
 
 /// Source-independent authority construction error. It never fabricates a
@@ -369,493 +370,6 @@ impl GraphReferenceCatalogV2 {
     }
 }
 
-/// Immutable configuration for every bounded frontend stage.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FrontendBudgetV2 {
-    max_source_bytes: NonZeroU32,
-    max_frame_bytes: NonZeroU32,
-    max_tokens: NonZeroU32,
-    max_document_items: NonZeroU32,
-    max_expression_depth: NonZeroU32,
-    max_relation_depth: NonZeroU32,
-    max_expression_nodes: NonZeroU32,
-    max_collection_width: NonZeroU32,
-    max_projection_width: NonZeroU32,
-    max_semantic_steps: NonZeroU32,
-    max_module_graph_nodes: NonZeroU32,
-    max_module_graph_edges: NonZeroU32,
-    max_module_steps: NonZeroU32,
-    max_authority_bytes: NonZeroU32,
-    max_authority_string_bytes: NonZeroU32,
-    max_rule_graph_nodes: NonZeroU32,
-    max_rule_graph_edges: NonZeroU32,
-    max_rule_program_rules: NonZeroU32,
-    max_rule_steps: NonZeroU32,
-    max_witness_depth: NonZeroU32,
-    max_witnesses: NonZeroU32,
-    max_diagnostics: NonZeroU32,
-    max_response_bytes: NonZeroU32,
-}
-
-/// Immutable read-only projection of one `FrontendBudgetV2` retained by the
-/// sealed semantic document. Downstream stages (algebra, logic, planning, and
-/// the front doors) read their traversal and output caps from the document;
-/// no consumer accepts an independent budget argument, a caller-selected
-/// replacement, or a default. The receipt never extends the canonical budget:
-/// every dimension is copied exactly once by
-/// [`FrontendBudgetV2::downstream_receipt`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct DownstreamBudgetReceiptV2 {
-    max_source_bytes: NonZeroU32,
-    max_frame_bytes: NonZeroU32,
-    max_tokens: NonZeroU32,
-    max_document_items: NonZeroU32,
-    max_expression_depth: NonZeroU32,
-    max_relation_depth: NonZeroU32,
-    max_expression_nodes: NonZeroU32,
-    max_collection_width: NonZeroU32,
-    max_projection_width: NonZeroU32,
-    max_semantic_steps: NonZeroU32,
-    max_module_graph_nodes: NonZeroU32,
-    max_module_graph_edges: NonZeroU32,
-    max_module_steps: NonZeroU32,
-    max_authority_bytes: NonZeroU32,
-    max_authority_string_bytes: NonZeroU32,
-    max_rule_graph_nodes: NonZeroU32,
-    max_rule_graph_edges: NonZeroU32,
-    max_rule_program_rules: NonZeroU32,
-    max_rule_steps: NonZeroU32,
-    max_witness_depth: NonZeroU32,
-    max_witnesses: NonZeroU32,
-    max_diagnostics: NonZeroU32,
-    max_response_bytes: NonZeroU32,
-}
-
-impl DownstreamBudgetReceiptV2 {
-    /// Maximum source bytes admitted to one document transaction.
-    #[must_use]
-    pub const fn max_source_bytes(&self) -> u32 {
-        self.max_source_bytes.get()
-    }
-    /// Maximum transport frame bytes for one request.
-    #[must_use]
-    pub const fn max_frame_bytes(&self) -> u32 {
-        self.max_frame_bytes.get()
-    }
-    /// Maximum surface parse tokens.
-    #[must_use]
-    pub const fn max_tokens(&self) -> u32 {
-        self.max_tokens.get()
-    }
-    /// Maximum authored document items.
-    #[must_use]
-    pub const fn max_document_items(&self) -> u32 {
-        self.max_document_items.get()
-    }
-    /// Maximum expression nesting depth.
-    #[must_use]
-    pub const fn max_expression_depth(&self) -> u32 {
-        self.max_expression_depth.get()
-    }
-    /// Maximum nested relation stages on one execution path.
-    #[must_use]
-    pub const fn max_relation_depth(&self) -> u32 {
-        self.max_relation_depth.get()
-    }
-    /// Expression walk limit shared by every downstream expression traversal.
-    #[must_use]
-    pub const fn max_expression_nodes(&self) -> u32 {
-        self.max_expression_nodes.get()
-    }
-    /// Maximum authored collection width.
-    #[must_use]
-    pub const fn max_collection_width(&self) -> u32 {
-        self.max_collection_width.get()
-    }
-    /// Maximum authored projection width.
-    #[must_use]
-    pub const fn max_projection_width(&self) -> u32 {
-        self.max_projection_width.get()
-    }
-    /// Relation walk and planning traversal step limit.
-    #[must_use]
-    pub const fn max_semantic_steps(&self) -> u32 {
-        self.max_semantic_steps.get()
-    }
-    /// Module graph node limit.
-    #[must_use]
-    pub const fn max_module_graph_nodes(&self) -> u32 {
-        self.max_module_graph_nodes.get()
-    }
-    /// Module graph edge limit.
-    #[must_use]
-    pub const fn max_module_graph_edges(&self) -> u32 {
-        self.max_module_graph_edges.get()
-    }
-    /// Module admission step limit.
-    #[must_use]
-    pub const fn max_module_steps(&self) -> u32 {
-        self.max_module_steps.get()
-    }
-    /// Authority byte session limit.
-    #[must_use]
-    pub const fn max_authority_bytes(&self) -> u32 {
-        self.max_authority_bytes.get()
-    }
-    /// Authority string byte limit.
-    #[must_use]
-    pub const fn max_authority_string_bytes(&self) -> u32 {
-        self.max_authority_string_bytes.get()
-    }
-    /// Logic rule graph node limit.
-    #[must_use]
-    pub const fn max_rule_graph_nodes(&self) -> u32 {
-        self.max_rule_graph_nodes.get()
-    }
-    /// Logic rule graph edge limit.
-    #[must_use]
-    pub const fn max_rule_graph_edges(&self) -> u32 {
-        self.max_rule_graph_edges.get()
-    }
-    /// Maximum raw rules admitted before constructing a logic graph.
-    #[must_use]
-    pub const fn max_rule_program_rules(&self) -> u32 {
-        self.max_rule_program_rules.get()
-    }
-    /// Logic rule relaxation step limit.
-    #[must_use]
-    pub const fn max_rule_steps(&self) -> u32 {
-        self.max_rule_steps.get()
-    }
-    /// Graph witness depth limit.
-    #[must_use]
-    pub const fn max_witness_depth(&self) -> u32 {
-        self.max_witness_depth.get()
-    }
-    /// Graph witness count limit.
-    #[must_use]
-    pub const fn max_witnesses(&self) -> u32 {
-        self.max_witnesses.get()
-    }
-    /// Maximum diagnostics accumulated for one frontend outcome.
-    #[must_use]
-    pub const fn max_diagnostics(&self) -> u32 {
-        self.max_diagnostics.get()
-    }
-    /// Maximum serialized response bytes.
-    #[must_use]
-    pub const fn max_response_bytes(&self) -> u32 {
-        self.max_response_bytes.get()
-    }
-}
-
-impl FrontendBudgetV2 {
-    /// Construct one checked frontend budget. Every limit must be positive,
-    /// depths must fit the shared HIR safety caps, and the transport frame must
-    /// be able to contain the admitted source.
-    pub fn try_new(
-        max_source_bytes: u32,
-        max_frame_bytes: u32,
-        max_tokens: u32,
-        max_document_items: u32,
-        max_expression_depth: u32,
-        max_relation_depth: u32,
-        max_expression_nodes: u32,
-        max_collection_width: u32,
-        max_projection_width: u32,
-        max_semantic_steps: u32,
-        max_module_graph_nodes: u32,
-        max_module_graph_edges: u32,
-        max_module_steps: u32,
-        max_authority_bytes: u32,
-        max_authority_string_bytes: u32,
-        max_rule_graph_nodes: u32,
-        max_rule_graph_edges: u32,
-        max_rule_steps: u32,
-        max_witness_depth: u32,
-        max_witnesses: u32,
-        max_diagnostics: u32,
-        max_response_bytes: u32,
-    ) -> Result<Self, FrontendAuthorityErrorV2> {
-        let raw = [
-            max_source_bytes,
-            max_frame_bytes,
-            max_tokens,
-            max_document_items,
-            max_expression_depth,
-            max_relation_depth,
-            max_expression_nodes,
-            max_collection_width,
-            max_projection_width,
-            max_semantic_steps,
-            max_module_graph_nodes,
-            max_module_graph_edges,
-            max_module_steps,
-            max_authority_bytes,
-            max_authority_string_bytes,
-            max_rule_graph_nodes,
-            max_rule_graph_edges,
-            max_rule_steps,
-            max_witness_depth,
-            max_witnesses,
-            max_diagnostics,
-            max_response_bytes,
-        ];
-        if raw.contains(&0)
-            || max_frame_bytes < max_source_bytes
-            || usize::try_from(max_expression_depth).unwrap_or(usize::MAX)
-                > quanta_gqlang_v2_hir::MAX_SAFE_EXPRESSION_DEPTH_V2
-            || usize::try_from(max_relation_depth).unwrap_or(usize::MAX)
-                > quanta_gqlang_v2_hir::MAX_SAFE_RELATION_DEPTH_V2
-        {
-            return Err(configuration_failure(
-                "frontend.invalid_budget",
-                "all frontend limits must be positive, frame bytes must cover source bytes, and expression/relation depths must stay within their safe maxima",
-            ));
-        }
-        let mut values = raw.into_iter().map(NonZeroU32::new);
-        let mut field = || {
-            values
-                .next()
-                .flatten()
-                .ok_or_else(|| configuration_failure("frontend.invalid_budget", "invalid budget"))
-        };
-        // Preserve the existing constructor's profile while adding a distinct
-        // cap for caller-built programs with multiple rules per predicate.
-        let max_rule_program_rules = NonZeroU32::new(
-            max_rule_graph_nodes.saturating_add(max_rule_graph_edges),
-        )
-        .ok_or_else(|| configuration_failure("frontend.invalid_budget", "invalid rule cap"))?;
-        Ok(Self {
-            max_source_bytes: field()?,
-            max_frame_bytes: field()?,
-            max_tokens: field()?,
-            max_document_items: field()?,
-            max_expression_depth: field()?,
-            max_relation_depth: field()?,
-            max_expression_nodes: field()?,
-            max_collection_width: field()?,
-            max_projection_width: field()?,
-            max_semantic_steps: field()?,
-            max_module_graph_nodes: field()?,
-            max_module_graph_edges: field()?,
-            max_module_steps: field()?,
-            max_authority_bytes: field()?,
-            max_authority_string_bytes: field()?,
-            max_rule_graph_nodes: field()?,
-            max_rule_graph_edges: field()?,
-            max_rule_program_rules,
-            max_rule_steps: field()?,
-            max_witness_depth: field()?,
-            max_witnesses: field()?,
-            max_diagnostics: field()?,
-            max_response_bytes: field()?,
-        })
-    }
-
-    /// Set the independent raw-rule admission cap before sealing an authority.
-    /// This does not change the graph vertex, edge, or traversal budgets.
-    pub fn try_with_rule_program_rules(
-        mut self,
-        limit: u32,
-    ) -> Result<Self, FrontendAuthorityErrorV2> {
-        self.max_rule_program_rules = NonZeroU32::new(limit).ok_or_else(|| {
-            configuration_failure("frontend.invalid_budget", "raw rule cap must be positive")
-        })?;
-        Ok(self)
-    }
-
-    /// Pinned CLI/service profile.
-    pub fn standard_v2() -> Result<Self, FrontendAuthorityErrorV2> {
-        Self::try_new(
-            1_048_576,
-            4_194_304,
-            131_072,
-            4_096,
-            u32::try_from(quanta_gqlang_v2_hir::MAX_SAFE_EXPRESSION_DEPTH_V2).unwrap_or(u32::MAX),
-            u32::try_from(quanta_gqlang_v2_hir::MAX_SAFE_RELATION_DEPTH_V2).unwrap_or(u32::MAX),
-            262_144,
-            4_096,
-            4_096,
-            1_000_000,
-            50_000,
-            200_000,
-            1_000_000,
-            16_777_216,
-            65_536,
-            50_000,
-            200_000,
-            1_000_000,
-            1_024,
-            10_000,
-            1_024,
-            8_388_608,
-        )
-    }
-
-    /// The one immutable downstream budget receipt. Every downstream traversal
-    /// and output cap is read from this projection on the sealed semantic
-    /// document; it is never extended, replaced, or accepted as an independent
-    /// consumer argument.
-    #[must_use]
-    pub const fn downstream_receipt(&self) -> DownstreamBudgetReceiptV2 {
-        DownstreamBudgetReceiptV2 {
-            max_source_bytes: self.max_source_bytes,
-            max_frame_bytes: self.max_frame_bytes,
-            max_tokens: self.max_tokens,
-            max_document_items: self.max_document_items,
-            max_expression_depth: self.max_expression_depth,
-            max_relation_depth: self.max_relation_depth,
-            max_expression_nodes: self.max_expression_nodes,
-            max_collection_width: self.max_collection_width,
-            max_projection_width: self.max_projection_width,
-            max_semantic_steps: self.max_semantic_steps,
-            max_module_graph_nodes: self.max_module_graph_nodes,
-            max_module_graph_edges: self.max_module_graph_edges,
-            max_module_steps: self.max_module_steps,
-            max_authority_bytes: self.max_authority_bytes,
-            max_authority_string_bytes: self.max_authority_string_bytes,
-            max_rule_graph_nodes: self.max_rule_graph_nodes,
-            max_rule_graph_edges: self.max_rule_graph_edges,
-            max_rule_program_rules: self.max_rule_program_rules,
-            max_rule_steps: self.max_rule_steps,
-            max_witness_depth: self.max_witness_depth,
-            max_witnesses: self.max_witnesses,
-            max_diagnostics: self.max_diagnostics,
-            max_response_bytes: self.max_response_bytes,
-        }
-    }
-
-    /// Canonical projection used by module, relation, and per-document catalog
-    /// admission. Each admission owns its own non-resettable counter.
-    pub fn authority_profile(&self) -> Result<AuthorityBudgetProfileV2, FrontendAuthorityErrorV2> {
-        AuthorityBudgetProfileV2::try_new(
-            usize::try_from(self.max_module_graph_nodes.get()).unwrap_or(usize::MAX),
-            usize::try_from(self.max_module_graph_edges.get()).unwrap_or(usize::MAX),
-            usize::try_from(self.max_module_steps.get()).unwrap_or(usize::MAX),
-            usize::try_from(self.max_authority_bytes.get()).unwrap_or(usize::MAX),
-            usize::try_from(self.max_authority_string_bytes.get()).unwrap_or(usize::MAX),
-        )
-        .map_err(|error| configuration_failure(error.code(), error.to_string()))
-    }
-
-    /// Maximum source bytes.
-    #[must_use]
-    pub const fn max_source_bytes(&self) -> u32 {
-        self.max_source_bytes.get()
-    }
-    /// Maximum frame bytes.
-    #[must_use]
-    pub const fn max_frame_bytes(&self) -> u32 {
-        self.max_frame_bytes.get()
-    }
-    /// Maximum tokens.
-    #[must_use]
-    pub const fn max_tokens(&self) -> u32 {
-        self.max_tokens.get()
-    }
-    /// Maximum document items.
-    #[must_use]
-    pub const fn max_document_items(&self) -> u32 {
-        self.max_document_items.get()
-    }
-    /// Maximum expression depth.
-    #[must_use]
-    pub const fn max_expression_depth(&self) -> u32 {
-        self.max_expression_depth.get()
-    }
-    /// Maximum nested relation stages on one execution path.
-    #[must_use]
-    pub const fn max_relation_depth(&self) -> u32 {
-        self.max_relation_depth.get()
-    }
-    /// Maximum expression nodes.
-    #[must_use]
-    pub const fn max_expression_nodes(&self) -> u32 {
-        self.max_expression_nodes.get()
-    }
-    /// Maximum collection width.
-    #[must_use]
-    pub const fn max_collection_width(&self) -> u32 {
-        self.max_collection_width.get()
-    }
-    /// Maximum projection width.
-    #[must_use]
-    pub const fn max_projection_width(&self) -> u32 {
-        self.max_projection_width.get()
-    }
-    /// Maximum semantic steps.
-    #[must_use]
-    pub const fn max_semantic_steps(&self) -> u32 {
-        self.max_semantic_steps.get()
-    }
-    /// Maximum module graph nodes.
-    #[must_use]
-    pub const fn max_module_graph_nodes(&self) -> u32 {
-        self.max_module_graph_nodes.get()
-    }
-    /// Maximum module graph edges.
-    #[must_use]
-    pub const fn max_module_graph_edges(&self) -> u32 {
-        self.max_module_graph_edges.get()
-    }
-    /// Maximum module steps.
-    #[must_use]
-    pub const fn max_module_steps(&self) -> u32 {
-        self.max_module_steps.get()
-    }
-    /// Maximum authority bytes per sealed admission session.
-    #[must_use]
-    pub const fn max_authority_bytes(&self) -> u32 {
-        self.max_authority_bytes.get()
-    }
-    /// Maximum bytes in one authority string.
-    #[must_use]
-    pub const fn max_authority_string_bytes(&self) -> u32 {
-        self.max_authority_string_bytes.get()
-    }
-    /// Maximum rule graph nodes.
-    #[must_use]
-    pub const fn max_rule_graph_nodes(&self) -> u32 {
-        self.max_rule_graph_nodes.get()
-    }
-    /// Maximum rule graph edges.
-    #[must_use]
-    pub const fn max_rule_graph_edges(&self) -> u32 {
-        self.max_rule_graph_edges.get()
-    }
-    /// Maximum raw rules admitted before constructing a logic graph.
-    #[must_use]
-    pub const fn max_rule_program_rules(&self) -> u32 {
-        self.max_rule_program_rules.get()
-    }
-    /// Maximum rule steps.
-    #[must_use]
-    pub const fn max_rule_steps(&self) -> u32 {
-        self.max_rule_steps.get()
-    }
-    /// Maximum witness depth.
-    #[must_use]
-    pub const fn max_witness_depth(&self) -> u32 {
-        self.max_witness_depth.get()
-    }
-    /// Maximum witness count.
-    #[must_use]
-    pub const fn max_witnesses(&self) -> u32 {
-        self.max_witnesses.get()
-    }
-    /// Maximum diagnostics accumulated for one frontend outcome.
-    #[must_use]
-    pub const fn max_diagnostics(&self) -> u32 {
-        self.max_diagnostics.get()
-    }
-    /// Maximum serialized response bytes.
-    #[must_use]
-    pub const fn max_response_bytes(&self) -> u32 {
-        self.max_response_bytes.get()
-    }
-}
-
 /// Complete immutable authority required for closed semantic compilation.
 #[derive(Debug)]
 pub struct ClosedFrontendAuthorityV2 {
@@ -1011,10 +525,6 @@ impl ClosedFrontendAuthorityBuilderV2 {
     }
 
     /// Validate every input and seal one closed authority.
-    #[expect(
-        clippy::too_many_lines,
-        reason = "legacy authority sealing path awaiting stage extraction"
-    )]
     pub fn finish(self) -> Result<ClosedFrontendAuthorityV2, FrontendAuthorityErrorV2> {
         let host_sources = SourceRegistryViewV2::try_new(
             self.sources
@@ -1026,203 +536,260 @@ impl ClosedFrontendAuthorityBuilderV2 {
                 .collect(),
         )
         .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-        let module_location = self.current_module_location.check(&host_sources)?;
-        let profile = self.budget.authority_profile()?;
-        let module = ModuleIdV2::try_new(&self.current_module, module_location.clone())
-            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-        let mut modules = ModuleAuthorityBuilderV2::try_new(profile.clone(), host_sources.clone())
-            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-        modules
-            .try_add_module(ModuleNodeInputV2 {
-                module_id: module.clone(),
-                location: module_location.clone(),
-            })
-            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-        for pack in self.packs {
-            let location = pack.location.check(&host_sources)?;
-            let pack_id = PackIdV2::try_new(&pack.pack_id, location.clone())
-                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-            let content_digest = ContentDigestV2::try_parse(&pack.content_digest, location.clone())
-                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-            let language_range = VersionRangeV2::try_new(
-                pack.language_lower.owner(),
-                pack.language_upper.owner(),
-                location.clone(),
-            )
-            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-            modules
-                .try_add_manifest(PackManifestInputV2 {
-                    pack_id,
-                    version: pack.version.owner(),
-                    content_digest,
-                    language_range,
-                    dependencies: Vec::new(),
-                    exports: Vec::new(),
-                    suites: Vec::new(),
-                    location,
-                })
-                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-        }
-        for lockfile in self.lockfiles {
-            modules
-                .try_set_lockfile(
-                    LockReferenceInputV2 {
-                        path: lockfile.path,
-                        location: lockfile.location.check(&host_sources)?,
-                    },
-                    lockfile.source_id,
-                    &lockfile.text,
-                )
-                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-        }
-        for asset in self.catalog_assets {
-            let location = asset.location.check(&host_sources)?;
-            let kind_token = asset.payload.tag().to_owned();
-            let typed_payload = asset.payload.owner_payload(&host_sources, &location)?;
-            modules
-                .try_add_external(ExternalCatalogAssetInputV2 {
-                    module_name: asset.module_name,
-                    local_name: asset.local_name,
-                    kind_token,
-                    typed_payload,
-                    provenance: asset.provenance,
-                    location,
-                    dependencies: Vec::new(),
-                })
-                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-        }
-        let modules = modules
-            .finish(
-                CurrentModuleSelectionInputV2 {
-                    module_id: module,
-                    location: module_location,
-                },
-                VersionV2::new(
-                    self.language_version.major,
-                    self.language_version.minor,
-                    self.language_version.patch,
-                ),
-            )
-            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-
-        let mut relation_inputs = Vec::with_capacity(self.relations.len());
-        for relation in self.relations {
-            let location = relation.location.check(&host_sources)?;
-            let namespace =
-                ProvenanceNamespaceV2::try_new(&relation.provenance_namespace, location.clone())
-                    .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-            let mut fields = Vec::with_capacity(relation.fields.len());
-            for field in relation.fields {
-                let field_location = field.location.check(&host_sources)?;
-                let mut value_type = ValueTypeV1::scalar(field.scalar_type.owner());
-                if field.optional {
-                    value_type = ValueTypeV1::try_optional(value_type)
-                        .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-                }
-                fields.push(
-                    RecordFieldTypeV1::try_new(&field.name, value_type, field_location)
-                        .map_err(|error| configuration_failure(error.code(), error.to_string()))?,
-                );
-            }
-            let row = RecordTypeV1::try_new(fields)
-                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-            relation_inputs.push(RelationSourceInputV2 {
-                authority: relation.authority.owner(),
-                provenance_namespace: namespace,
-                qualified_name: relation.qualified_name,
-                lookup_name: relation.lookup_name,
-                row,
-                cardinality: relation.cardinality.owner(),
-                provenance: relation.provenance,
-                location,
-            });
-        }
-        let relations = RelationCatalogV2::try_new(relation_inputs, &host_sources, profile.clone())
-            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
-
-        let graph_inputs = self
-            .graph_references
-            .into_iter()
-            .map(|reference| {
-                Ok(GraphReferenceInputV2 {
-                    spelling: reference.spelling,
-                    kind: reference.kind,
-                    entity_subtype: reference.entity_subtype,
-                    location: reference.location.check(&host_sources)?,
-                })
-            })
-            .collect::<Result<Vec<_>, FrontendAuthorityErrorV2>>()?;
+        let (modules, profile) = seal_modules(
+            &host_sources,
+            &self.budget,
+            self.current_module,
+            self.current_module_location,
+            self.language_version,
+            self.packs,
+            self.lockfiles,
+            self.catalog_assets,
+        )?;
+        let relations = seal_relations(&host_sources, self.relations, profile.clone())?;
         let graph_references =
-            GraphReferenceCatalogV2::try_new(graph_inputs, &host_sources, profile)?;
-        let max_symbol_bytes =
-            usize::try_from(self.budget.max_authority_bytes()).unwrap_or(usize::MAX);
-        let max_symbol_string =
-            usize::try_from(self.budget.max_authority_string_bytes()).unwrap_or(usize::MAX);
+            seal_graph_references(&host_sources, self.graph_references, profile)?;
+        let max_symbol_bytes = self.budget.max_authority_bytes();
+        let max_symbol_string = self.budget.max_authority_string_bytes();
         let mut authority =
             ClosedFrontendAuthorityV2::try_new(modules, relations, graph_references, self.budget)?;
-        let mut symbol_bytes = 0usize;
-        for target in self.symbol_targets {
-            if target.selector.is_empty()
-                || target.repo_path.is_empty()
-                || target.symbol_id.is_empty()
-                || target.start_byte >= target.end_byte
-            {
-                return Err(configuration_failure(
-                    "sema.invalid_symbol_target",
-                    "symbol target requires nonempty selector/path/id and a nonempty byte span",
-                ));
+        seal_symbol_targets(
+            &host_sources,
+            max_symbol_bytes,
+            max_symbol_string,
+            self.symbol_targets,
+            &mut authority,
+        )?;
+        Ok(authority)
+    }
+}
+
+fn seal_modules(
+    host_sources: &SourceRegistryViewV2,
+    budget: &FrontendBudgetV2,
+    current_module: String,
+    current_module_location: FrontendAuthorityLocationV2,
+    language_version: FrontendLanguageVersionV2,
+    packs: Vec<FrontendPackInputV2>,
+    lockfiles: Vec<FrontendLockfileInputV2>,
+    catalog_assets: Vec<FrontendCatalogAssetInputV2>,
+) -> Result<(ValidatedModuleAuthorityPartsV2, AuthorityBudgetProfileV2), FrontendAuthorityErrorV2> {
+    let module_location = current_module_location.check(host_sources)?;
+    let profile = budget.authority_profile()?;
+    let module = ModuleIdV2::try_new(&current_module, module_location.clone())
+        .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+    let mut modules = ModuleAuthorityBuilderV2::try_new(profile.clone(), (*host_sources).clone())
+        .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+    modules
+        .try_add_module(ModuleNodeInputV2 {
+            module_id: module.clone(),
+            location: module_location.clone(),
+        })
+        .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+    for pack in packs {
+        let location = pack.location.check(host_sources)?;
+        let pack_id = PackIdV2::try_new(&pack.pack_id, location.clone())
+            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+        let content_digest = ContentDigestV2::try_parse(&pack.content_digest, location.clone())
+            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+        let language_range = VersionRangeV2::try_new(
+            pack.language_lower.owner(),
+            pack.language_upper.owner(),
+            location.clone(),
+        )
+        .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+        modules
+            .try_add_manifest(PackManifestInputV2 {
+                pack_id,
+                version: pack.version.owner(),
+                content_digest,
+                language_range,
+                dependencies: Vec::new(),
+                exports: Vec::new(),
+                suites: Vec::new(),
+                location,
+            })
+            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+    }
+    for lockfile in lockfiles {
+        modules
+            .try_set_lockfile(
+                LockReferenceInputV2 {
+                    path: lockfile.path,
+                    location: lockfile.location.check(host_sources)?,
+                },
+                lockfile.source_id,
+                &lockfile.text,
+            )
+            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+    }
+    for asset in catalog_assets {
+        let location = asset.location.check(host_sources)?;
+        let kind_token = asset.payload.tag().to_owned();
+        let typed_payload = asset.payload.owner_payload(host_sources, &location)?;
+        modules
+            .try_add_external(ExternalCatalogAssetInputV2 {
+                module_name: asset.module_name,
+                local_name: asset.local_name,
+                kind_token,
+                typed_payload,
+                provenance: asset.provenance,
+                location,
+                dependencies: Vec::new(),
+            })
+            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+    }
+    let modules = modules
+        .finish(
+            CurrentModuleSelectionInputV2 {
+                module_id: module,
+                location: module_location,
+            },
+            VersionV2::new(
+                language_version.major,
+                language_version.minor,
+                language_version.patch,
+            ),
+        )
+        .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+
+    Ok((modules, profile))
+}
+
+fn seal_relations(
+    host_sources: &SourceRegistryViewV2,
+    relation_declarations: Vec<FrontendRelationInputV2>,
+    profile: AuthorityBudgetProfileV2,
+) -> Result<RelationCatalogV2, FrontendAuthorityErrorV2> {
+    let mut relation_inputs = Vec::with_capacity(relation_declarations.len());
+    for relation in relation_declarations {
+        let location = relation.location.check(host_sources)?;
+        let namespace =
+            ProvenanceNamespaceV2::try_new(&relation.provenance_namespace, location.clone())
+                .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+        let mut fields = Vec::with_capacity(relation.fields.len());
+        for field in relation.fields {
+            let field_location = field.location.check(host_sources)?;
+            let mut value_type = ValueTypeV1::scalar(field.scalar_type.owner());
+            if field.optional {
+                value_type = ValueTypeV1::try_optional(value_type)
+                    .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
             }
-            let strings = [&target.selector, &target.repo_path, &target.symbol_id];
-            if strings.iter().any(|value| value.len() > max_symbol_string) {
-                return Err(configuration_failure(
-                    "sema.symbol_target_budget_exceeded",
-                    "symbol target string exceeds authority limit",
-                ));
-            }
-            let entry_bytes = strings
-                .iter()
-                .try_fold(16usize, |acc, value| acc.checked_add(value.len()))
-                .ok_or_else(|| {
-                    configuration_failure(
-                        "sema.symbol_target_budget_exceeded",
-                        "symbol target size overflow",
-                    )
-                })?;
-            symbol_bytes = symbol_bytes.checked_add(entry_bytes).ok_or_else(|| {
+            fields.push(
+                RecordFieldTypeV1::try_new(&field.name, value_type, field_location)
+                    .map_err(|error| configuration_failure(error.code(), error.to_string()))?,
+            );
+        }
+        let row = RecordTypeV1::try_new(fields)
+            .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+        relation_inputs.push(RelationSourceInputV2 {
+            authority: relation.authority.owner(),
+            provenance_namespace: namespace,
+            qualified_name: relation.qualified_name,
+            lookup_name: relation.lookup_name,
+            row,
+            cardinality: relation.cardinality.owner(),
+            provenance: relation.provenance,
+            location,
+        });
+    }
+    let relations = RelationCatalogV2::try_new(relation_inputs, host_sources, profile.clone())
+        .map_err(|error| configuration_failure(error.code(), error.to_string()))?;
+
+    Ok(relations)
+}
+
+fn seal_graph_references(
+    host_sources: &SourceRegistryViewV2,
+    graph_declarations: Vec<FrontendGraphReferenceInputV2>,
+    profile: AuthorityBudgetProfileV2,
+) -> Result<GraphReferenceCatalogV2, FrontendAuthorityErrorV2> {
+    let graph_inputs = graph_declarations
+        .into_iter()
+        .map(|reference| {
+            Ok(GraphReferenceInputV2 {
+                spelling: reference.spelling,
+                kind: reference.kind,
+                entity_subtype: reference.entity_subtype,
+                location: reference.location.check(host_sources)?,
+            })
+        })
+        .collect::<Result<Vec<_>, FrontendAuthorityErrorV2>>()?;
+    let graph_references = GraphReferenceCatalogV2::try_new(graph_inputs, host_sources, profile)?;
+    Ok(graph_references)
+}
+
+fn seal_symbol_targets(
+    host_sources: &SourceRegistryViewV2,
+    max_symbol_bytes_limit: u32,
+    max_symbol_string_limit: u32,
+    symbol_targets: Vec<FrontendSymbolTargetInputV3>,
+    authority: &mut ClosedFrontendAuthorityV2,
+) -> Result<(), FrontendAuthorityErrorV2> {
+    let max_symbol_bytes = usize::try_from(max_symbol_bytes_limit).unwrap_or(usize::MAX);
+    let max_symbol_string = usize::try_from(max_symbol_string_limit).unwrap_or(usize::MAX);
+    let mut symbol_bytes = 0usize;
+    for target in symbol_targets {
+        if target.selector.is_empty()
+            || target.repo_path.is_empty()
+            || target.symbol_id.is_empty()
+            || target.start_byte >= target.end_byte
+        {
+            return Err(configuration_failure(
+                "sema.invalid_symbol_target",
+                "symbol target requires nonempty selector/path/id and a nonempty byte span",
+            ));
+        }
+        let strings = [&target.selector, &target.repo_path, &target.symbol_id];
+        if strings.iter().any(|value| value.len() > max_symbol_string) {
+            return Err(configuration_failure(
+                "sema.symbol_target_budget_exceeded",
+                "symbol target string exceeds authority limit",
+            ));
+        }
+        let entry_bytes = strings
+            .iter()
+            .try_fold(16usize, |acc, value| acc.checked_add(value.len()))
+            .ok_or_else(|| {
                 configuration_failure(
                     "sema.symbol_target_budget_exceeded",
                     "symbol target size overflow",
                 )
             })?;
-            if symbol_bytes > max_symbol_bytes {
-                return Err(configuration_failure(
-                    "sema.symbol_target_budget_exceeded",
-                    "symbol target catalog exceeds authority limit",
-                ));
-            }
-            let location = target.location.check(&host_sources)?;
-            let selector: Arc<str> = Arc::from(target.selector);
-            let resolved = ResolvedSymbolTargetV3 {
-                selector: Arc::clone(&selector),
-                repo_path: Arc::from(target.repo_path),
-                symbol_id: Arc::from(target.symbol_id),
-                start_byte: target.start_byte,
-                end_byte: target.end_byte,
-                location,
-            };
-            if authority
-                .symbol_targets
-                .insert(selector, resolved)
-                .is_some()
-            {
-                return Err(configuration_failure(
-                    "sema.duplicate_symbol_target",
-                    "duplicate symbol target selector",
-                ));
-            }
+        symbol_bytes = symbol_bytes.checked_add(entry_bytes).ok_or_else(|| {
+            configuration_failure(
+                "sema.symbol_target_budget_exceeded",
+                "symbol target size overflow",
+            )
+        })?;
+        if symbol_bytes > max_symbol_bytes {
+            return Err(configuration_failure(
+                "sema.symbol_target_budget_exceeded",
+                "symbol target catalog exceeds authority limit",
+            ));
         }
-        Ok(authority)
+        let location = target.location.check(host_sources)?;
+        let selector: Arc<str> = Arc::from(target.selector);
+        let resolved = ResolvedSymbolTargetV3 {
+            selector: Arc::clone(&selector),
+            repo_path: Arc::from(target.repo_path),
+            symbol_id: Arc::from(target.symbol_id),
+            start_byte: target.start_byte,
+            end_byte: target.end_byte,
+            location,
+        };
+        if authority
+            .symbol_targets
+            .insert(selector, resolved)
+            .is_some()
+        {
+            return Err(configuration_failure(
+                "sema.duplicate_symbol_target",
+                "duplicate symbol target selector",
+            ));
+        }
     }
+    Ok(())
 }
 
 impl ClosedFrontendAuthorityV2 {

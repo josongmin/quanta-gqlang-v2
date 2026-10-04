@@ -26,6 +26,94 @@ fn resolved_type_inputs(
     ResolvedTypeInputsV2::try_new(checked, &registry, entries, contexts, Vec::new())
 }
 
+#[test]
+fn admitted_type_factory_rejects_builtin_from_foreign_request_before_checker() {
+    use quanta_gqlang_v2_hir::{
+        FrontendRequestMaterializationRootV3, FrontendRequestStoragePermitV3,
+        FrontendRequestStorageSinkV3, FrontendStorageRefusalV3,
+    };
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::Arc;
+
+    struct Sink {
+        issuer: Arc<()>,
+        live: Arc<AtomicU64>,
+    }
+    struct Permit {
+        issuer: Arc<()>,
+        live: Arc<AtomicU64>,
+        bytes: u64,
+    }
+    impl Drop for Permit {
+        fn drop(&mut self) {
+            self.live.fetch_sub(self.bytes, Ordering::AcqRel);
+        }
+    }
+    impl FrontendRequestStorageSinkV3 for Sink {
+        fn reserve_v3(
+            &self,
+            logical_bytes: u64,
+        ) -> Result<Box<dyn FrontendRequestStoragePermitV3>, FrontendStorageRefusalV3> {
+            let bytes = logical_bytes
+                .checked_add(u64::try_from(std::mem::size_of::<Permit>()).unwrap())
+                .ok_or(FrontendStorageRefusalV3::DemandOverflow)?;
+            self.live.fetch_add(bytes, Ordering::AcqRel);
+            Ok(Box::new(Permit {
+                issuer: Arc::clone(&self.issuer),
+                live: Arc::clone(&self.live),
+                bytes,
+            }))
+        }
+        fn owns_permit_v3(&self, permit: &dyn FrontendRequestStoragePermitV3) -> bool {
+            permit
+                .as_any_v3()
+                .downcast_ref::<Permit>()
+                .is_some_and(|owned| Arc::ptr_eq(&owned.issuer, &self.issuer))
+        }
+    }
+
+    let source = "x".repeat(100);
+    let id = SourceIdV2::from_raw(9);
+    let live = Arc::new(AtomicU64::new(0));
+    let first_sink = Sink {
+        issuer: Arc::new(()),
+        live: Arc::clone(&live),
+    };
+    let second_sink = Sink {
+        issuer: Arc::new(()),
+        live: Arc::clone(&live),
+    };
+    let first = FrontendRequestMaterializationRootV3::from_issued_sink_v3(id, &source, &first_sink);
+    let second =
+        FrontendRequestMaterializationRootV3::from_issued_sink_v3(id, &source, &second_sink);
+    let parent = first.reserve_v3(id, &source, 1).unwrap();
+    let builtins =
+        BuiltinRegistryV2::try_closed_with_request_owner_v3(&first, id, &source, &parent).unwrap();
+    let storage = second.reserve_v3(id, &source, 1).unwrap();
+    let builder = HirBuilderV1::new();
+    let document = checked_document(builder.int("1", SpanV1::new(1, 2)));
+    let checked = check_document_v2(&document).unwrap();
+    let registry = SourceRegistryViewV2::try_new(Vec::new())
+        .unwrap()
+        .try_extend_document(SourceRegistrationV2 {
+            source_id: document.source_id,
+            source_len: document.source_len,
+        })
+        .unwrap();
+    let row = RecordTypeV1::try_new(Vec::new()).unwrap();
+    assert!(matches!(
+        check_scalar_projection_with_request_owner_v3(
+            &checked, &registry, &row, builtins, storage, &second, id, &source,
+        ),
+        Err(ScalarProjectionCheckRequestErrorV3::Storage(
+            FrontendStorageRefusalV3::ForeignRequestRoot
+        ))
+    ));
+    assert!(live.load(Ordering::Acquire) > 0); // original parent remains
+    drop(parent);
+    assert_eq!(live.load(Ordering::Acquire), 0);
+}
+
 fn resolved_type_inputs_with_rows(
     checked: CheckedHirDocumentV2<'_>,
     entries: Vec<ResolvedTypeInputEntryV2>,

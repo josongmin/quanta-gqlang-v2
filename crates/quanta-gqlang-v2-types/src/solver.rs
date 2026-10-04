@@ -24,6 +24,11 @@ use std::num::NonZeroU32;
 mod engine;
 use engine::{ConstructedCandidateTypes, Engine};
 
+type ValidatedCallsV2 = (
+    BTreeMap<HirNodeIdV1, RuleCallableTargetV2>,
+    Vec<(SpanV1, TypeDiagnosticV2)>,
+);
+
 /// Exact Binder binding identity, including the ordinal for quantifiers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RuleBindingIdV2 {
@@ -558,10 +563,6 @@ impl RuleTypeSolverV2 {
         })
     }
 
-    #[expect(
-        clippy::too_many_lines,
-        reason = "legacy open rule analysis transaction"
-    )]
     pub fn analyze_open(
         &self,
         checked: CheckedHirDocumentV2<'_>,
@@ -586,6 +587,78 @@ impl RuleTypeSolverV2 {
                 expected.visit_rule_iterative(rule)?;
             }
         }
+        let predicate_map = Self::validate_predicates(&expected, source_id, predicates)?;
+        let source_predicates = predicate_map.values().cloned().collect::<BTreeSet<_>>();
+        let symbol_map = Self::validate_symbols(&expected, source_id, symbols)?;
+        let (call_map, unresolved_calls) =
+            self.validate_calls(&expected, source_id, &source_predicates, calls)?;
+        let (universe, prepass_steps) = self.candidate_universe(
+            checked,
+            registry,
+            &call_map,
+            source_id,
+            budget,
+            expected.steps,
+        )?;
+        let mut engine = Engine {
+            source_id,
+            budget,
+            usage: RuleTypeUsageV2 {
+                steps: prepass_steps,
+                ..RuleTypeUsageV2::default()
+            },
+            universe,
+            domains: BTreeMap::new(),
+            constraints: Vec::new(),
+            symbol_map,
+            call_map,
+            predicate_bindings: predicate_map
+                .iter()
+                .map(|(rule, id)| (id.clone(), RuleBindingIdV2::new(source_id, *rule, 0)))
+                .collect(),
+            operators: &self.operators,
+            builtins: &self.builtins,
+        };
+        for ((node, ordinal), (span, _)) in &expected.bindings {
+            let _ = engine.intern(
+                Variable::Binding(RuleBindingIdV2::new(source_id, *node, *ordinal)),
+                *span,
+            )?;
+        }
+        for item in &checked.document().items {
+            if let ProgramItemHirV1::Rule(rule) = item {
+                let head = engine.value(&rule.head)?;
+                let _ = engine.boolean(&rule.body)?;
+                engine.reserve_materialization(engine.universe.len(), 2, rule.head.span)?;
+                engine.add(
+                    vec![
+                        head,
+                        Variable::Binding(RuleBindingIdV2::new(source_id, rule.id, 0)),
+                    ],
+                    engine
+                        .universe
+                        .iter()
+                        .cloned()
+                        .map(|ty| vec![ty.clone(), ty])
+                        .collect(),
+                    rule.head.span,
+                )?;
+            }
+        }
+        engine.propagate()?;
+        Self::finish_analysis(
+            engine,
+            &expected,
+            &predicate_map,
+            unresolved_calls,
+            source_id,
+        )
+    }
+    fn validate_predicates(
+        expected: &Expected,
+        source_id: SourceIdV2,
+        predicates: Vec<RulePredicateInputV2>,
+    ) -> Result<BTreeMap<HirNodeIdV1, ResolvedPredicateIdV2>, TypeDiagnosticV2> {
         let mut predicate_map = BTreeMap::new();
         let mut ids = BTreeSet::new();
         for input in predicates {
@@ -630,7 +703,14 @@ impl RuleTypeSolverV2 {
                 },
             });
         }
-        let source_predicates = predicate_map.values().cloned().collect::<BTreeSet<_>>();
+        Ok(predicate_map)
+    }
+
+    fn validate_symbols(
+        expected: &Expected,
+        source_id: SourceIdV2,
+        symbols: Vec<RuleSymbolInputV2>,
+    ) -> Result<BTreeMap<HirNodeIdV1, RuleBindingIdV2>, TypeDiagnosticV2> {
         let mut symbol_map = BTreeMap::new();
         for input in symbols {
             if input.reference.source_id != source_id || input.binding.source_id != source_id {
@@ -690,6 +770,16 @@ impl RuleTypeSolverV2 {
                 });
             }
         }
+        Ok(symbol_map)
+    }
+
+    fn validate_calls(
+        &self,
+        expected: &Expected,
+        source_id: SourceIdV2,
+        source_predicates: &BTreeSet<ResolvedPredicateIdV2>,
+        calls: Vec<RuleCallInputV2>,
+    ) -> Result<ValidatedCallsV2, TypeDiagnosticV2> {
         let mut call_map = BTreeMap::new();
         let mut unresolved_calls = Vec::new();
         for input in calls {
@@ -773,7 +863,19 @@ impl RuleTypeSolverV2 {
             });
         }
 
-        let mut prepass_steps = expected.steps;
+        Ok((call_map, unresolved_calls))
+    }
+
+    fn candidate_universe(
+        &self,
+        checked: CheckedHirDocumentV2<'_>,
+        registry: &ExtendedSourceRegistryViewV2,
+        call_map: &BTreeMap<HirNodeIdV1, RuleCallableTargetV2>,
+        source_id: SourceIdV2,
+        budget: RuleTypeBudgetV2,
+        initial_steps: u32,
+    ) -> Result<(BTreeSet<ValueTypeV1>, u32), TypeDiagnosticV2> {
+        let mut prepass_steps = initial_steps;
         charge_prepass_steps(&mut prepass_steps, budget, source_id, SpanV1::point(0), 5)?;
         let mut universe = BTreeSet::from([
             ValueTypeV1::bool(),
@@ -897,52 +999,16 @@ impl RuleTypeSolverV2 {
             return Err(error);
         }
         universe.extend(constructed.candidates);
-        let mut engine = Engine {
-            source_id,
-            budget,
-            usage: RuleTypeUsageV2 {
-                steps: constructed.steps,
-                ..RuleTypeUsageV2::default()
-            },
-            universe,
-            domains: BTreeMap::new(),
-            constraints: Vec::new(),
-            symbol_map,
-            call_map,
-            predicate_bindings: predicate_map
-                .iter()
-                .map(|(rule, id)| (id.clone(), RuleBindingIdV2::new(source_id, *rule, 0)))
-                .collect(),
-            operators: &self.operators,
-            builtins: &self.builtins,
-        };
-        for ((node, ordinal), (span, _)) in &expected.bindings {
-            let _ = engine.intern(
-                Variable::Binding(RuleBindingIdV2::new(source_id, *node, *ordinal)),
-                *span,
-            )?;
-        }
-        for item in &checked.document().items {
-            if let ProgramItemHirV1::Rule(rule) = item {
-                let head = engine.value(&rule.head)?;
-                let _ = engine.boolean(&rule.body)?;
-                engine.reserve_materialization(engine.universe.len(), 2, rule.head.span)?;
-                engine.add(
-                    vec![
-                        head,
-                        Variable::Binding(RuleBindingIdV2::new(source_id, rule.id, 0)),
-                    ],
-                    engine
-                        .universe
-                        .iter()
-                        .cloned()
-                        .map(|ty| vec![ty.clone(), ty])
-                        .collect(),
-                    rule.head.span,
-                )?;
-            }
-        }
-        engine.propagate()?;
+        Ok((universe, constructed.steps))
+    }
+
+    fn finish_analysis(
+        mut engine: Engine<'_>,
+        expected: &Expected,
+        predicate_map: &BTreeMap<HirNodeIdV1, ResolvedPredicateIdV2>,
+        unresolved_calls: Vec<(SpanV1, TypeDiagnosticV2)>,
+        source_id: SourceIdV2,
+    ) -> Result<RuleTypeAnalysisV2, TypeDiagnosticV2> {
         let mut source_call_graph: BTreeMap<
             ResolvedPredicateIdV2,
             BTreeSet<ResolvedPredicateIdV2>,

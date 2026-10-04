@@ -1,6 +1,8 @@
 //! Checked pack manifests, dependency graphs, and canonical fingerprints.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
+#[cfg(test)]
+use std::collections::BTreeSet;
 use std::fmt::Write as _;
 
 use crate::budget::ModuleBudgetSessionV2;
@@ -533,43 +535,58 @@ pub(crate) fn cycle_with_legacy_steps<Id: Ord + Clone, Key: Ord + Clone>(
     roots: &[Id],
     session: &mut ModuleBudgetSessionV2,
 ) -> Result<Option<Vec<usize>>, ModuleDiagnosticV2> {
-    let nodes = roots
-        .iter()
-        .cloned()
-        .chain(
-            edges
-                .iter()
-                .flat_map(|(source, target, _)| [source.clone(), target.clone()]),
-        )
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect::<Vec<_>>();
-    let node_index = nodes
-        .iter()
-        .cloned()
-        .enumerate()
-        .map(|(index, id)| (id, index))
-        .collect::<BTreeMap<_, _>>();
-    let mut adjacency = vec![Vec::<(usize, CycleEdgeLabel<Key>)>::new(); nodes.len()];
-    let mut adjacency_ids = nodes
-        .iter()
-        .cloned()
-        .map(|id| (id, Vec::new()))
-        .collect::<BTreeMap<_, _>>();
+    let node_slots = roots
+        .len()
+        .checked_add(edges.len().checked_mul(2).ok_or_else(|| {
+            ModuleDiagnosticV2::without_location(
+                "modules.resource_exhausted",
+                "cycle node capacity overflowed",
+            )
+        })?)
+        .ok_or_else(|| {
+            ModuleDiagnosticV2::without_location(
+                "modules.resource_exhausted",
+                "cycle node capacity overflowed",
+            )
+        })?;
+    let mut nodes = Vec::with_capacity(node_slots);
+    nodes.extend(roots.iter().cloned());
+    for (source, target, _) in edges {
+        nodes.push(source.clone());
+        nodes.push(target.clone());
+    }
+    nodes.sort_unstable();
+    nodes.dedup();
+    let mut outbound = vec![0_usize; nodes.len()];
+    for (source, _, _) in edges {
+        let source_index = nodes.binary_search(source).expect("source was indexed");
+        outbound[source_index] += 1;
+    }
+    let mut adjacency = Vec::with_capacity(nodes.len());
+    let mut adjacency_ids = Vec::with_capacity(nodes.len());
+    for count in outbound {
+        adjacency.push(Vec::with_capacity(count));
+        adjacency_ids.push(Vec::with_capacity(count));
+    }
     for (index, (source, target, key)) in edges.iter().enumerate() {
-        adjacency[node_index[source]].push((
-            node_index[target],
+        let source_index = nodes.binary_search(source).expect("source was indexed");
+        let target_index = nodes.binary_search(target).expect("target was indexed");
+        adjacency[source_index].push((
+            target_index,
             CycleEdgeLabel {
                 key: key.clone(),
                 index,
             },
         ));
-        adjacency_ids
-            .get_mut(source)
-            .expect("source was indexed")
-            .push(target.clone());
+        adjacency_ids[source_index].push(target_index);
     }
-    if let Some((steps, overflowed)) = acyclic_cycle_walk_steps(&adjacency_ids, roots) {
+    let root_indices = roots
+        .iter()
+        .map(|root| nodes.binary_search(root).expect("root was indexed"))
+        .collect::<Vec<_>>();
+    if let Some((steps, overflowed)) =
+        acyclic_cycle_walk_steps_indexed(&adjacency_ids, &root_indices)
+    {
         session.charge_steps(steps)?;
         if overflowed {
             session.charge_step()?;
@@ -580,10 +597,10 @@ pub(crate) fn cycle_with_legacy_steps<Id: Ord + Clone, Key: Ord + Clone>(
     // The charge-only walk uses one active bit per node and one frame per
     // path vertex. No cycle path is copied for a charged edge.
     let mut active = vec![false; nodes.len()];
-    for root in roots {
-        let root_index = node_index[root];
+    for &root_index in &root_indices {
         active[root_index] = true;
-        let mut stack = vec![(root_index, 0_usize)];
+        let mut stack = Vec::with_capacity(nodes.len());
+        stack.push((root_index, 0_usize));
         while let Some((node, next_index)) = stack.last_mut() {
             let Some((target, _)) = adjacency[*node].get(*next_index) else {
                 active[*node] = false;
@@ -601,6 +618,36 @@ pub(crate) fn cycle_with_legacy_steps<Id: Ord + Clone, Key: Ord + Clone>(
     }
     Ok(crate::graph::minimal_cycle_witness(&adjacency)
         .map(|witness| witness.into_iter().map(|label| label.index).collect()))
+}
+
+/// Source-count upper capacity of the indexed cycle walk. This models both
+/// DAG and cyclic branches because the branch is selected after admission.
+/// The request caller instantiates Id and Key with borrowed catalog IDs, so
+/// their Clone operations never allocate nested strings.
+pub(crate) fn cycle_scratch_bytes_v3<Id, Key>(edges: usize, roots: usize) -> Option<usize> {
+    fn add<T>(total: &mut usize, count: usize) -> Option<()> {
+        *total = total.checked_add(count.checked_mul(std::mem::size_of::<T>())?)?;
+        Some(())
+    }
+    let nodes = roots.checked_add(edges.checked_mul(2)?)?;
+    let mut total = 0_usize;
+    add::<Id>(&mut total, nodes)?;
+    add::<usize>(&mut total, nodes)?; // outbound counts
+    add::<Vec<(usize, CycleEdgeLabel<Key>)>>(&mut total, nodes)?;
+    add::<(usize, CycleEdgeLabel<Key>)>(&mut total, edges)?;
+    add::<Vec<usize>>(&mut total, nodes)?;
+    add::<usize>(&mut total, edges)?;
+    add::<usize>(&mut total, roots)?; // root indices
+    add::<usize>(&mut total, nodes)?; // indegree
+    add::<usize>(&mut total, nodes)?; // ways
+    add::<usize>(&mut total, nodes)?; // ready
+    add::<bool>(&mut total, nodes)?; // cyclic active set
+    add::<(usize, usize)>(&mut total, nodes)?; // cyclic DFS stack
+    total = total.checked_add(crate::graph::minimal_cycle_scratch_bytes_v3::<
+        CycleEdgeLabel<Key>,
+    >(nodes, edges)?)?;
+    add::<usize>(&mut total, nodes)?; // returned witness indices
+    Some(total)
 }
 
 #[derive(Clone)]
@@ -628,6 +675,64 @@ impl<Key: Ord> Ord for CycleEdgeLabel<Key> {
 
 /// Counts the edge visits of the legacy all-root simple-path walk on a DAG.
 /// This keeps the public step budget exact without enumerating its paths.
+fn acyclic_cycle_walk_steps_indexed(
+    adjacency: &[Vec<usize>],
+    roots: &[usize],
+) -> Option<(usize, bool)> {
+    let mut indegree = vec![0_usize; adjacency.len()];
+    for targets in adjacency {
+        for &target in targets {
+            *indegree.get_mut(target)? += 1;
+        }
+    }
+    let mut ways = vec![0_usize; adjacency.len()];
+    for &root in roots {
+        *ways.get_mut(root)? += 1;
+    }
+    let mut ready = Vec::with_capacity(indegree.len());
+    for (index, count) in indegree.iter().enumerate() {
+        if *count == 0 {
+            ready.push(index);
+        }
+    }
+    let mut steps = 0_usize;
+    let mut overflowed = false;
+    let mut visited = 0_usize;
+    while !ready.is_empty() {
+        let node = ready.remove(0);
+        visited += 1;
+        let visits = *ways.get(node)?;
+        let targets = adjacency.get(node)?;
+        let edge_visits = visits.checked_mul(targets.len()).unwrap_or_else(|| {
+            overflowed = true;
+            usize::MAX
+        });
+        steps = steps.checked_add(edge_visits).unwrap_or_else(|| {
+            overflowed = true;
+            usize::MAX
+        });
+        for &target in targets {
+            let target_ways = ways.get_mut(target)?;
+            *target_ways = target_ways.checked_add(visits).unwrap_or_else(|| {
+                overflowed = true;
+                usize::MAX
+            });
+            let count = indegree.get_mut(target)?;
+            *count -= 1;
+            if *count == 0 {
+                match ready.binary_search(&target) {
+                    Ok(_) => {}
+                    Err(index) => ready.insert(index, target),
+                }
+            }
+        }
+    }
+    (visited == indegree.len()).then_some((steps, overflowed))
+}
+
+/// Compatibility test oracle for the historical map-based step count. The
+/// production cycle walker above uses source-indexed vectors.
+#[cfg(test)]
 pub(crate) fn acyclic_cycle_walk_steps<Id: Ord + Clone>(
     adjacency: &BTreeMap<Id, Vec<Id>>,
     roots: &[Id],

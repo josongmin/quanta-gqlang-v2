@@ -37,7 +37,112 @@ pub(crate) struct ModuleBudgetSessionV2 {
     authority_bytes: usize,
 }
 
+/// Typed, allocation-free budget refusal used before request predeclaration
+/// creates an ID, output vector, or rich diagnostic.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct ModuleRequestBudgetRefusalV3 {
+    pub(crate) dimension: &'static str,
+    pub(crate) limit: usize,
+    pub(crate) observed: usize,
+}
+
 impl ModuleBudgetSessionV2 {
+    /// Read-only gate for the exact charges made by one reference lookup.
+    pub(crate) fn preflight_reference_v3(
+        &self,
+        name: &str,
+        steps: usize,
+    ) -> Result<(), ModuleRequestBudgetRefusalV3> {
+        let width = self.budget.profile.authority_string_bytes();
+        if name.len() > width {
+            return Err(ModuleRequestBudgetRefusalV3 {
+                dimension: "authority_string_bytes",
+                limit: width,
+                observed: name.len(),
+            });
+        }
+        for (current, amount, limit, dimension) in [
+            (
+                self.authority_bytes,
+                name.len(),
+                self.budget.profile.authority_bytes(),
+                "authority_bytes",
+            ),
+            (
+                self.steps,
+                steps,
+                self.budget.profile.module_steps(),
+                "steps",
+            ),
+        ] {
+            let observed = current.saturating_add(amount);
+            if observed > limit {
+                return Err(ModuleRequestBudgetRefusalV3 {
+                    dimension,
+                    limit,
+                    observed,
+                });
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn preflight_predeclaration_v3<'a>(
+        &mut self,
+        names: impl Iterator<Item = (&'a str, &'a str)>,
+        count: usize,
+    ) -> Result<(), ModuleRequestBudgetRefusalV3> {
+        fn within(
+            current: usize,
+            amount: usize,
+            limit: usize,
+            dimension: &'static str,
+        ) -> Result<usize, ModuleRequestBudgetRefusalV3> {
+            let observed = current.saturating_add(amount);
+            if observed > limit {
+                Err(ModuleRequestBudgetRefusalV3 {
+                    dimension,
+                    limit,
+                    observed,
+                })
+            } else {
+                Ok(observed)
+            }
+        }
+
+        let mut nodes = self.nodes;
+        let mut bytes = self.authority_bytes;
+        for (module_id, local_name) in names {
+            nodes = within(nodes, 1, self.budget.profile.module_nodes(), "nodes")?;
+            for value in [module_id, local_name] {
+                let width = self.budget.profile.authority_string_bytes();
+                if value.len() > width {
+                    return Err(ModuleRequestBudgetRefusalV3 {
+                        dimension: "authority_string_bytes",
+                        limit: width,
+                        observed: value.len(),
+                    });
+                }
+                bytes = within(
+                    bytes,
+                    value.len(),
+                    self.budget.profile.authority_bytes(),
+                    "authority_bytes",
+                )?;
+            }
+        }
+        let steps = within(
+            self.steps,
+            count,
+            self.budget.profile.module_steps(),
+            "steps",
+        )?;
+        self.nodes = nodes;
+        self.authority_bytes = bytes;
+        self.steps = steps;
+        Ok(())
+    }
+
     pub(crate) fn charge_node(&mut self) -> Result<(), ModuleDiagnosticV2> {
         Self::charge(
             &mut self.nodes,
@@ -113,7 +218,7 @@ impl ModuleBudgetSessionV2 {
         limit: usize,
         dimension: &'static str,
     ) -> Result<(), ModuleDiagnosticV2> {
-        let observed = current.checked_add(amount).unwrap_or(usize::MAX);
+        let observed = current.saturating_add(amount);
         if observed > limit {
             return Err(ModuleDiagnosticV2::resource_exhausted(
                 dimension, limit, observed,
