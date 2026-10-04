@@ -19,7 +19,21 @@
 - 집중 검증: sema Clippy, document transaction 67/67, semantic budget 7/7;
   Surface lib/family 25/66, Modules lib/predeclaration 16/22,
   Sema lib/authority builder 60/7, result-shape conformance 1 PASS.
-- A/B/C/E 및 전체 local CI의 완료 여부는 후속 실행 결과로 판정한다.
+- A의 producer 소유 변경은 `cc27ff2`로 commit했고 contract subtree/vector pin은
+  기존 consumer 기대값과 일치했다. 소비자 M23-120 정적 closeout gate도 통과했다.
+  이 gate에서 발견한 오래된 compile API 검사를 generation-aware owner에 맞추고
+  generation authority 제거를 거절하는 회귀 2개를 추가했다.
+- clean snapshot의 첫 local CI: Nextest 1,433/1,433, doctest 8, frontdoor 10,
+  external consumer 135 API/15 negative 및 앞선 정책 gate는 통과했다. 마지막
+  semantic-honesty가 추출된 test-only 파일을 production으로 분류해 실패했다.
+  실제 부모 AST의 cfg(test)/path를 확인하는 공통 inventory로 수정했고, 실제 guard
+  / 누락 / 주석 / 잘못된 path 회귀를 포함한 focused gate 22개가 통과했다.
+  전체 clean-HEAD CI는 이 수정이 포함된 commit에서 재실행한다.
+- 같은 `cc27ff2`의 bounded offline fuzz 60초는 성공했다. corpus 1,240개,
+  crash 0개이며 전후 source/HEAD/clean 상태가 일치했다.
+- B/C/E의 실제 실행 증명은 후속 결과로 판정한다. 후속 증거는
+  [remediation evidence](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/latest-remediation/producer-commit-source.json),
+  [fuzz 결과](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/latest-remediation/fuzz-smoke-result.json)에 보존한다.
 
 목적은 현재 지원하는 gqlang 계약이 실제 소비자 실행까지 유지되는지 확인하고,
 큰 함수의 변경 범위를 줄이는 것이다. 이번 턴은 production 수정이나 Rust 실행

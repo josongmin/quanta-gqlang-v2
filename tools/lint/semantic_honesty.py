@@ -849,6 +849,10 @@ def rust_paths(root: Path) -> tuple[str, ...]:
 
 
 def scan_repository(root: Path = ROOT) -> tuple[Finding, ...]:
+    # Imported after this module is initialized: the guard parser reuses the
+    # Rust syntax helpers defined here, and test-only status needs owner syntax.
+    from tools.lint.rust_module_guards import guarded_test_module_paths
+
     policy = read_policy()
     validate_enum_definitions(root, policy)
     local = threading.local()
@@ -858,7 +862,8 @@ def scan_repository(root: Path = ROOT) -> tuple[Finding, ...]:
             local.rust_parser = parser()
         return scan_source((root / path).read_bytes(), path, policy, local.rust_parser)
 
-    paths = rust_paths(root)
+    test_modules = guarded_test_module_paths(root)
+    paths = tuple(path for path in rust_paths(root) if path not in test_modules)
     with ThreadPoolExecutor(max_workers=min(8, max(1, len(paths)))) as pool:
         return tuple(sorted((finding for batch in pool.map(scan, paths) for finding in batch), key=lambda finding: (finding.path, finding.line, finding.rule, finding.detail)))
 

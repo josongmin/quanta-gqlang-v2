@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 from tools.ci.doctor import DoctorError, read_lock
-from tools.lint.rust_module_guards import module_has_attributes
+from tools.lint.rust_module_guards import TEST_MODULES, module_has_attributes
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -17,28 +17,6 @@ POLICY = Path(__file__).with_name("size_policy.json")
 TEST_SUPPORT = "crates/quanta-gqlang-v2-sema/src/test_support.rs"
 TEST_SUPPORT_OWNER = "crates/quanta-gqlang-v2-sema/src/lib.rs"
 TEST_SUPPORT_ATTRIBUTES = {'#[cfg(any(test,feature="test"))]', '#[doc(hidden)]'}
-TEST_MODULES = {
-    "crates/quanta-gqlang-v2-algebra/src/normalize/tests.rs":
-        ("crates/quanta-gqlang-v2-algebra/src/normalize.rs", "normalize/tests.rs"),
-    "crates/quanta-gqlang-v2-modules/src/graph/cycle_tests.rs":
-        ("crates/quanta-gqlang-v2-modules/src/graph.rs", "graph/cycle_tests.rs"),
-    "crates/quanta-gqlang-v2-pipeline/src/compile/tests.rs":
-        ("crates/quanta-gqlang-v2-pipeline/src/compile.rs", "compile/tests.rs"),
-    "crates/quanta-gqlang-v2-pipeline/src/execution/tests.rs":
-        ("crates/quanta-gqlang-v2-pipeline/src/execution.rs", "execution/tests.rs"),
-    "crates/quanta-gqlang-v2-planning/src/plan/tests.rs":
-        ("crates/quanta-gqlang-v2-planning/src/plan.rs", "plan/tests.rs"),
-    "crates/quanta-gqlang-v2-sema/src/document/tests.rs":
-        ("crates/quanta-gqlang-v2-sema/src/document.rs", "document/tests.rs"),
-    "crates/quanta-gqlang-v2-sema/src/item/tests.rs":
-        ("crates/quanta-gqlang-v2-sema/src/item.rs", "item/tests.rs"),
-    "crates/quanta-gqlang-v2-sema/src/relation/tests.rs":
-        ("crates/quanta-gqlang-v2-sema/src/relation.rs", "relation/tests.rs"),
-    "crates/quanta-gqlang-v2-sema/src/test_support/tests.rs":
-        ("crates/quanta-gqlang-v2-sema/src/test_support.rs", "test_support/tests.rs"),
-    "crates/quanta-gqlang-v2-sema/src/test_support/w4d_tests.rs":
-        ("crates/quanta-gqlang-v2-sema/src/test_support.rs", "test_support/w4d_tests.rs"),
-}
 FEATURE_TEST_MODULES = {
     "crates/quanta-gqlang-v2-sema/src/test_support/families.rs": "families",
 }

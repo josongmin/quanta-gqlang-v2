@@ -117,6 +117,37 @@ class SemanticHonestyTest(unittest.TestCase):
         self.assertIn("SH-03-negative-exit", self.rules("#[cfg(any(test, feature = \"x\"))] fn f(s: AnalysisStatusV2) { match s { AnalysisStatusV2::Incomplete => 0, _ => 1 } }"))
         self.assertIn("SH-00-parse-error", self.rules("fn f(s: AnalysisStatusV2) { match s { AnalysisStatusV2::Incomplete => "))
 
+    def test_external_test_module_requires_real_owner_guard(self) -> None:
+        from tools.lint.rust_module_guards import guarded_test_module_paths
+
+        relative = "crates/quanta-gqlang-v2-planning/src/plan/tests.rs"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            child = root / relative
+            child.parent.mkdir(parents=True)
+            child.write_text(
+                'fn f(s: PlanOutcomeV2) { match s { '
+                'PlanOutcomeV2::NoPlan(reason) => assert_eq!(reason, expected), '
+                'PlanOutcomeV2::Plan(plan) => use_plan(plan) } }'
+            )
+            self.assertIn("SH-11-unsupported-exit", {
+                finding.rule for finding in lint.scan_source(
+                    child.read_bytes(), relative, self.policy, self.parser
+                )
+            })
+            owner = child.parent.parent / "plan.rs"
+            owner.write_text('#[cfg(test)] #[path = "plan/tests.rs"] mod tests;')
+            self.assertEqual(guarded_test_module_paths(root), {relative})
+            for declaration in (
+                '#[path = "plan/tests.rs"] mod tests;',
+                '// #[cfg(test)]\n#[path = "plan/tests.rs"] mod tests;',
+                '#[cfg(test)] #[path = "other.rs"] mod tests;',
+            ):
+                with self.subTest(declaration=declaration):
+                    owner.write_text(declaration)
+                    with self.assertRaisesRegex(ValueError, "not cfg\\(test\\) guarded"):
+                        guarded_test_module_paths(root)
+
     def test_new_unclassified_enum_variant_fails_policy(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

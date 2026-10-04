@@ -17,6 +17,10 @@ size, not algorithmic complexity or behavioral correctness.
 `just semantic-honesty` runs the policy fixtures and scans production Rust under
 `crates/**/src/*.rs`. It is part of `just policy` and `just ci`.
 
+Out-of-line unit-test files are excluded only when the shared exact module
+inventory proves a real `cfg(test)` and matching `path` on their owner. Missing,
+commented, or mismatched guards fail the scan; a test-like filename is insufficient.
+
 The scanner uses `tree-sitter-language-pack` pinned in `requirements.txt`.
 Install it into the same Python environment used by `just` before running the
 gate. Missing parser support fails the gate.
