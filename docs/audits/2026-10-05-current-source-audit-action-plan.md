@@ -1,6 +1,6 @@
 # 이 세션의 잔여 작업 — 최신 코드 감사
 
-관측: 2026-10-05 15:15 KST. 공유 main, 미커밋 overlay, 격리 후보와 실제 검증 소스를 구분한다.
+관측: 2026-10-05 15:38 KST. 공유 main, 미커밋 overlay, 격리 후보와 실제 검증 소스를 구분한다.
 
 ## 이번 체크포인트
 
@@ -36,7 +36,7 @@
 - **Execution seam 및 회귀 main `37e52c612fbbabdadae376deefa8bca2f7eefeb6` 통합 완료.** Storage permit/sink/refusal을 기존 exec-contract seam으로 노출하고 runtime import를 연결했다. Composition output-field borrow는 다른 checkpoint가 main에 먼저 반영해 중복 변경을 제외했다.
 - **Graph parser/adapter/host 11개 파일은 main `00290be45350259f8fd9d379d7406e9526a2dc0d`에 통합 완료.** Native macOS candidate `27c247841f5ef5d87331e056bfecee6cfd17bccc`의 Graph owner11/11 GREEN 뒤 최신 main descendant에 경로를 제한해 replay했다. Scoped boundary before/after와 staged rustfmt/safety fence PASS. 통합 blob은 검증 후보와 같으며 다른 작업의 dirty/index를 보존했다.
 - **IDE 오류 전달 수리는 main `3b714aa81bb83797128246f958fd01d2950f8868`, duplicate authority host 분류는 main `14a45cf8eb8c4b6a80e95373be395eae8234ff30`에 통합 완료.** 실제 E0382/E0004 이후 소유 consumer를 수정했고 Graph11 및 duplicate InvalidRequest 회귀1/1 GREEN이다. 새 오류의 authority/count를 유지한다.
-- SDK·ingress generation 전달과 registry는 활성 작업과 invariant/proof 조정이 필요하다. Graph 결과/selector authority는 최신 main과 검증 후보가 byte-identical임을 재확인해 추가 패치에서 제외했다. 다른 작업에 조정 메시지를 보내는 사용자 답변은 아직 없으며 메시지를 보내지 않았다. 기존 lock·registry·SDK·새 Semantic process oracle을 candidate 전체로 덮어쓰지 않는다.
+- SDK·ingress generation 전달과 registry는 활성 작업과 invariant/proof 조정이 필요하다. Graph 결과/selector authority는 최신 main과 검증 후보가 byte-identical임을 재확인해 추가 패치에서 제외했다. 사용자 진행 지시 후 AG5와 IRC 소비자 작업에 설치형 컴파일 전제와 Semantic 지원 정합을 전달했다. 기존 lock·registry·SDK·새 Semantic process oracle을 candidate 전체로 덮어쓰지 않는다.
 - **완료 조건:** owner GREEN 뒤 최신 main descendant의 정확한 변경 경로만 coordinator claim/barrier/source-commit/require-head로 통합한다. 겹치는 후속 묶음은 조정 후 재검토한다.
 
 ### 2. P0 — Graph host 최종 owner 검증
@@ -55,7 +55,9 @@
 - Linux 설치형 Graph: PATH/Reachability 성공, unreachable 빈 결과, budget/stale/foreign 거절. CHECK: signed catalog zero/one/multi 실제 matcher 결과.
 - macOS는 parser/worker 미설치의 typed Unsupported 및 결과/receipt 미발급을 검증한다.
 - **Linux 설치형 NOT_RUN.** Linux 환경은 aarch64이며 x86_64 증명이 아니다. 반복 OOM 조건이 바뀌어야 설치형 bundle/process 검증을 진행한다.
-- Mac 설치형 source `4265f108b2fea66180fc69e93bdaa54b8d67a1a8`은 main `b55d5296d5c4b20638501147dd8f20d77fb42915` 위에 non-Linux Graph typed refusal20행만 추가한 clean 후보다. 4-binary product recipe 빌드 진행 중이며 process 결과는 아직 없다. Product와 test linker env가 달라 warm-lane guard가 첫 시도를 거절했다. 기존 target을 reset하지 않고 명시적 token으로 product compile-family lane을 분리했다.
+- Mac 설치형 첫 후보4265는 E0373 async query-id borrow로 실패했다. 담당 작업이 main에 반영한 `d806bc6230c`를 소비한 candidate `3a6f7b090e0f5cfb0a3e0f72873ca0b4aab9e8a7`도 **product build RED**: `index_owner.rs` 모듈 경로2개 E0583, `integrated_executor/invalidation.rs`의 `RuntimeError` 타입 E0412. Immutable bundle 미생성, process 테스트0. Source guard와 receipt는 정상 최종화됐다. 모듈 경로는 최신 main에서 수정됐고 타입 수정은 담당 작업의 dirty overlay에 있어 committed checkpoint를 요청했다.
+- Product/test가 같은 physical target을 쓰도록 기존 Mac warm lane의 linker-native symbol-strip 플래그를 제품 빌드에도 명시했다. Guard와 oracle은 유지했으며 target reset은 없다.
+- 후보 `0f426c0935a88e412baeefb82a572dc9bf7bee23`에는 별도 `daemon_native_gqlang_graph_unsupported_worker_refuses_v3`를 준비했다. 기존 Path/Reachability 양성 함수는 committed main과 동일하며 positive selector를 negative 성공으로 바꾸지 않는다. PATH와 Reachability 모두 catalog refusal의 유한 public reason, 빈 payload와 receipt 미발급을 확인한다. **NOT_RUN/미통합**, 담당 runtime 컴파일 수리의 committed source가 전제다.
 - **완료 조건:** 최종 committed producer/consumer/Index 조합, 동일 physical build root/lane의 bundle와 process rail, source drift 및 cleanup 확인.
 
 ### 4. 완료 — Consumer closeout pin; 후속 증거 기록
@@ -77,7 +79,7 @@
 ## 소스·증거
 
 - Producer core checkpoint: e598a1d; committed tree=f0e97b3. 이후 이 소유 보고서의 문서 checkpoint는 별도다.
-- Consumer shared 관측 HEAD: `98b1c760d91ac4108e6d34a54800f4e4d1df34a4`; 공유 HEAD는 다른 작업으로 계속 이동한다. Trust e7ffc579, pin/lint82cc45e7, execution37e52c6는 그 main 계열에 반영됐다.
+- Consumer shared 관측 HEAD: `2e346eaa218097cbb29ee473e80a9c00fadc131c`; 공유 HEAD는 다른 작업으로 계속 이동한다. Trust e7ffc579, pin/lint82cc45e7, execution37e52c6, IDE3b714aa, error14a45cf, Graph00290be는 그 main 계열에 반영됐다.
 - Full consumer 후보 branch: `codex/fcp-consumer-de040-upstream-first-20261005`의 a48. Host 작업트리는 trust checkpoint를 위해 최신 main 기반 별도 branch로 이동했다. Linux frozen 조합은 a48/718/07 clean이다.
 
 [Producer main checkpoint 기록](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/latest-remediation/producer-main-checkpoint-20261005/checkpoint-result.json)
