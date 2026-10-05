@@ -1,5 +1,28 @@
 # 최신 소스 감사와 실행 계획
 
+## 현재 판정 — 2026-10-05 22:49 KST
+
+이 문서의 2026-10-04 snapshot·계획·실패 기록은 **이력**이다. 현재 source와
+잔여 액션의 기준은 [2026-10-05 최신 세션 감사](2026-10-05-current-source-audit-action-plan.md)다.
+Producer `1ddeaac`, consumer `3f037ea04ee`의 source/hash를 재확인했다.
+
+- Producer 구조 분할, scratch/request permit, dependency 방향, lint/MSRV,
+  facade/pin 및 result-shape 진단 수정은 main에 통합됐다. Clean source867의
+  CI1514/1514와 60초 fuzz PASS가 있으며 tracked code/tool input delta는 없다.
+- 확정 코드 잔여는 소비자 **CHECK canonical counting/encoding work admission**이다.
+  Product PTA의 과거 bootstrap 거절은 최신 seed-lifetime 변경 이후 해결 여부를
+  아직 검증하지 못했다. 실제 거절 분기를 특정한 뒤 수리 필요 여부를 판정한다.
+- Graph/CHECK fixture 통합은 same-source actual-query GREEN 이후다.
+  Linux signed installed profile/trust/slot/approval 부족은 설치 전제로 구분한다.
+- SHOW Pipeline staged plan/Execution DTO는 live다. Specialized one-shot
+  `admit_show_planned_source_v2`의 typed refusal는 여전히 의도된 제한이다.
+
+이 갱신은 문서/source 대조이며 새 Rust/QBC/CI/product 실행 결과를 만들지 않았다.
+아래에서 “현재”, “최신”, “진행 중”은 각 **당시 관측 소스**를 뜻한다.
+후속 완료 항목을 다시 backlog로 등록하거나 이전 receipt를 현재 main에 합성하지 않는다.
+
+## 2026-10-04 관측·구현 이력
+
 관측일: 2026-10-04, Asia/Seoul. 상태: 소스 감사 및 계획 작성.
 
 ## 구현 진행 기록

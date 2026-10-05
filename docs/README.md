@@ -2,6 +2,11 @@
 
 현재 공개 표면과 검증 안내:
 
+- [최신 세션 코드 감사·잔여 액션](audits/2026-10-05-current-source-audit-action-plan.md):
+  완료된 producer 정리, 소비자 코드 잔여, source별 증거와 설치 전제
+- [Frontend/소비자 계약 계획](audits/2026-10-04-frontend-consumer-contract-plan.md):
+  현재 판정과 원래 수리의 acceptance; 이전 source 기록은 이력
+
 - [시스템 구성·사용 사례·현재 증거](../README.md): 두 진입 경로와 로컬 개발 전제조건
 - [언어/owner stack](language/README.md): 지원 family, open/closed authority,
   CLI 및 diagnostics 경계

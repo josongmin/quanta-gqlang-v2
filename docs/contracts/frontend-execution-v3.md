@@ -29,9 +29,13 @@ the positive, short-budget, foreign-source, and non-SHOW rejection paths.
 
 `admit_show_planned_source_v2` is **not** a live one-shot compile. After the
 source-byte cap check it always returns `IncompleteSourceDiagnostics` and never
-invokes the lexer (preissued diagnostic debit is missing). Hosts may still use
-the staged SHOW APIs (`admit_show_syntax_v2` → plans/execution) on an already
-admitted syntax owner.
+invokes the lexer (preissued diagnostic debit is missing). The Pipeline owner
+has the live staged continuation `admit_show_syntax_v2` →
+`admit_show_source_declaration_v2` → `admit_show_plans_v2` →
+`admit_show_execution_v2` on one retained source/root. Only the syntax entry and
+syntax owner are exported by the downstream facade. Later Pipeline owner
+entries are not a second public downstream seam, and an issued frontend DTO
+still requires downstream runtime admission.
 
 `parse_source_document_with_request_owner_v3(SourceIdV2, &str,
 &FrontendBudgetV2, &FrontendRequestMaterializationRootV3)` is a partial parser

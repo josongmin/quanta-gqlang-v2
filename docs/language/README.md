@@ -9,14 +9,17 @@ The legacy monolithic `syntax -> sema -> ir` path is gone. The current
 public downstream entrypoint; the deleted legacy syntax/IR crate contracts are
 not compatibility surfaces.
 
-Code status (2026-10-04, source authority over this prose):
+Code status (2026-10-05, source authority over this prose):
 `compile_source_document_v3` is a live transformer stack (surface → HIR →
 binder/types/modules → algebra → logic/Tarjan → planning classify →
 `ExecutionDocumentV3`). Conformance registers 19 source families, including
 Rename Command, through the
 facade. `unimplemented!`/`todo!` are denied in src. Planning is host-agnostic
 classification, not a physical plan. All authored query `result_shape` forms are parse-live
-and sema-RED. `admit_show_planned_source_v2` always fails closed before lexing.
+and sema-RED. The specialized one-shot `admit_show_planned_source_v2`
+still refuses before lexing. Pipeline staged SHOW syntax → declaration → plan
+→ Execution DTO is live under the same retained root; only the syntax owner is
+exported by the frontend facade. Neither path grants downstream runtime authority.
 Index: [engine status](../ssot/engine-status-v1.md).
 
 The live owner stack is:

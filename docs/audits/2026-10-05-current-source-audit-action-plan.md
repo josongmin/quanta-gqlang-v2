@@ -1,6 +1,23 @@
 # 이 세션의 잔여 작업 — 최신 코드 감사
 
-관측: 2026-10-05 20:48 KST. 공유 main, 미커밋 overlay, clean 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 신규 엔진·컴파일러·SMT·production library 추가는 없다. CI는 로컬 실행이다.
+관측: **2026-10-05 22:49 KST**. 문서 수정 전 producer main `1ddeaacaa754c0d432c88dc25ba3feac83f47c1c`, consumer main `3f037ea04eecd80606f045ad9b3a7709c5a17ee7`을 기준으로 committed source와 working bytes를 대조했다. 공유 main, 미커밋 overlay, clean 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 CI는 로컬 실행이다.
+
+## 현재 남은 코드 작업
+
+| 구분 | 작업·근거 | 완료 조건 |
+| --- | --- | --- |
+| **확정 코드 공백 / P0** | **CHECK Native Match의 canonical 순회 work admission.** `native_worker_projection_v3.rs:627`은 전체 artifact 길이를 센 뒤 4 MiB를 검사하고 다시 인코딩한다. Foundation `canonical_cbor.rs::encoded_len_v1`에는 work callback이 없고, `NativeMatchCanonicalAdmitterV3`는 memory만 예약한다. 이후 hash copy/hash의 byte work는 이미 차감한다. | 기존 Match request control로 길이·인코딩의 visit/payload work를 작업 전에 차감하거나 하나의 bounded admitted pass로 구성. exact/one-short work, 거절 시 encoding/transport 미실행, 기존 cap·typed failure 보존. Parser parent와 foundation의 기존 AG5/IRC writer를 따른다. |
+| **원인 확인·수리 여부 판정 / P0** | **Product PTA bootstrap.** 실제 Mac/Linux 실패는 source4501 및 앞선 후보에서 query 이전 `PtaOccurrenceAuthorityRefused`다. 최신 main은 pre-key cohort에 `ProductCallGraphSeedConsumptionV1`을 보유하며 caller도 해당 consumption을 전달한다. 동일 최신 source의 bootstrap 성공은 확인하지 못했다. | 최초 거절 분기를 특정하고 기존 lifetime 수리로 해결되는지 owner QBC/실제 bootstrap으로 확인. 여전히 실패하면 그 owner만 수정. 현재 main의 확정 결함이나 수리 완료로 단정하지 않는다. |
+| **테스트 코드 통합 / P1** | **Graph/CHECK process fixture 수리와 Mac Graph refusal 회귀.** 격리 candidate에 있으나 실제 query oracle이 통과하지 않아 main 미통합이다. | 같은 clean tuple의 실제 성공/거절 회귀가 GREEN이면 검증된 test delta만 main checkpoint에 반영. 기존 실패 oracle을 완화하지 않는다. |
+| **설치·검증 전제** | Linux CHECK4501은 signed installed trust가 없어 서버 시작에서 거절됐다. Generic aarch64 bundle은 canonical x86_64 installed profile에도 맞지 않는다. 현재 근거로 trust 코드 결함을 확인한 것은 아니다. | 기존 release owner에서 공식 profile·root 소유 immutable slot·독립 approval/key·active generation 확보 후 actual process proof. |
+
+**Producer의 원래 구조·계약 정리에는 추가 production 코드 수정이 남아 있지 않다.**
+`8675bcd`와 현재 main의 tracked crates/manifests/Justfile/lint/architecture/external-consumer 입력에 committed delta가 없다.
+Foreign untracked `hir/src/btree_storage.rs`, CircleCI 및 RFC 변경은 이 증명에 포함하지 않는다.
+이번 재감사는 source/hash·caller와 기존 증거를 읽었으며 새 Rust/QBC/전체 CI/product 실행은 하지 않았다.
+감사 source bytes와 상태는 [현재 source capture](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/current-session-source-audit-20261005.json)에 보존한다.
+
+후속 AG5의 전체 행/rollback/qualification 연결, IRC의 일반 Graph·Composition·FunctionRef 확장은 해당 소비자 계획의 별도 작업이다. 이번 bounded Graph/CHECK 유지보수의 미완료 항목과 합산하지 않는다.
 
 ## 완료한 구조·정책 정리
 
@@ -79,33 +96,34 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 
 ## 최신 main과 검증 후보의 차이
 
-- Consumer worker checkpoint HEAD **`17bdfd62c2f3d6624eed9523c6fcef5f72927110`**; 최종 관측 main **`fb58ca46257d2c1094c3824d13a7e0da4f9a6daf`**. 다른 작업으로 main은 계속 이동한다. Worker2경로와 installed test 경로의 dirty overlay는0개다.
+- Consumer worker checkpoint HEAD **`17bdfd62c2f3d6624eed9523c6fcef5f72927110`**; 이번 source capture의 main **`3f037ea04eecd80606f045ad9b3a7709c5a17ee7`**. 다른 작업으로 main은 계속 이동한다. Worker2경로와 installed test 경로의 dirty overlay는0개다. Worker2경로는 clean4501의 qualified blob과 같다.
 - Source digest 차이는 플랫폼 차이가 아니다. Product806의 전체 primary snapshot은55308640, owner806의 policy/Cargo sibling closure(consumer/producer/Index)는49e5414b다. 기존 canonical owner로 세 저장소의 byte-aware clean HEAD와 두 digest를 독립 재계산해 join을 확인했다. Digest 문자열을 같다고 가정하거나 receipt를 다른 소스로 합성하지 않는다.
 - 이후 다른 작업에서 portable parser/adapter의 metering/borrow/staging과 Graph test165줄 등을 수정했다. 원래 Graph owner11 및 parser10/adapter9 receipt는 원래 source에만 유효하다. 과거의 “소유17개 blob 모두 동일” 주장은 더 이상 현재 상태가 아니다.
-- 경로별 committed delta와 dirty 상태는 아래 custody JSON에 기록한다. 최신 main 전체 product/설치형 qualification은 **없다**. 검증 후보 결과와 최신 main 결과를 합성하지 않는다.
+- 경로별 committed delta와 dirty 상태는 아래 custody JSON에 기록한다. 최신 main 전체 product/설치형 qualification은 **확인하지 못했다**. 검증 후보 결과와 최신 main 결과를 합성하지 않는다.
 - Semantic generation carrier3/3은 실제 semantic request 양성 clone/drop proof가 아니다. 기존 SDK source_admission→public ingress에서 Composition→UnsupportedFamily 선거절을 관측했으며, 새 configured-Semantic oracle과의 정합은 활성 소비자 작업에 전달했다. 해당 작업의 최신 source를 덮어쓰거나 새 Composition 기능을 이 maintenance에 추가하지 않는다.
-- 최신 main의 `ccd6efbf53` 이후 pre-key native DFG cohort가 `ProductCallGraphSeedConsumptionV1`을 `_seed_lifetime_v1`로 보유한다. 기존 owner의 수명/byte root 수정이며 해당 변경의 Rust 동작 proof는 아직 확인되지 않았다. 현재 bootstrap 거절의 원인 또는 해소라고 단정하지 않는다. Source4501의 receipt를 이 후속 변경이나 최신 main에 합성하지 않는다.
+- 최신 main의 `ccd6efbf53` 이후 pre-key native DFG cohort가 `ProductCallGraphSeedConsumptionV1`을 `_seed_lifetime_v1`로 보유한다. `query_impl/query_contract.rs`의 retain 호출→cohort 인자→retained field 연결을 재확인했다. 해당 변경의 Rust/actual bootstrap proof는 확인되지 않았다. Source4501의 receipt를 이 후속 변경이나 최신 main에 합성하지 않는다.
+- 다른 소비자 작업의 TS/JS LocalCall assignment 수리는 source64c869에서 owner4/4 GREEN(`20261005T133702.606698Z-f7f4540d8738`)이다. 이는 source4501 Python Product PTA bootstrap의 해소 증명이 아니다.
 
 ## 최종 잔여 액션
 
-1. **P0: 소비자 Product bootstrap authority 수리·증명.** Mac 호출0개 및 Linux Graph attach에서 재현된 `PtaOccurrenceAuthorityRefused`의 실제 거절 분기를 기존 AG5/IRC owner에서 특정한다. 최신 seed lifetime 보유 변경은 후보이며, owner QBC와 실제 bootstrap의 동일 clean source 증거가 필요하다. 거절 우회나 추가 builtin 지원으로 해결하지 않는다.
-2. **P0: Linux 설치 proof의 기존 authority 전제 확보.** Generic aarch64 bundle로 정식 installed proof를 시도했던 환경 전제가 부족하다. Canonical x86_64 installed QBC profile, root 소유 immutable slot, AG5 selected phase와 독립 deployment approval/key/active generation을 기존 release owner의 경로로 확보한다. Key/approval/profile을 임의로 발급·대체하거나 trust 검사를 우회하지 않는다. 이 전제까지 갖추지 않은 실행은 설치 성공 qualification이 아니다.
-3. **P0: 동일 tuple의 설치형 Graph/CHECK 회귀를 통과시킨 후 fixture 통합.** Canonical4-binary bundle과 설치 authority를 확인하고 FIND PATH/Reachability, empty/budget/stale/foreign, signed CHECK zero/one/multi와 foreign/short를 실제 query까지 검증한다. 통과한 scope만 최신 main에 coordinator checkpoint로 합친다.
-4. **P1: 마지막 소비자 source를 고정하고 Product qualification 정합 확인.** 현재 owner·product receipt는 각 source에만 유효하다. 공식 x86_64 release qualification은 기존 release owner의 별도 rail이며 이번 aarch64/Mac 결과로 대체하지 않는다. Producer core의 clean CI/fuzz 증명은 완료됐고 Rust source가 바뀌지 않으면 반복하지 않는다.
+1. **P0 코드: CHECK canonical work admission 연결.** 위 두 unmetered 순회를 기존 request control에 연결하고 독립 exact/one-short 및 no-transport 회귀를 검증한다. 기존 writer custody를 확인한 뒤 owner에서 수정한다.
+2. **P0 원인 확인: Product PTA bootstrap 거절.** 기존 AG5/IRC owner가 최초 거절 분기를 특정하고 최신 seed lifetime 수리를 같은 clean source에서 검증한다. 실패가 남으면 해당 owner만 수정한다.
+3. **P0 설치 전제: Linux installed authority.** Canonical x86_64 profile, root 소유 immutable slot, AG5 selected phase와 독립 deployment approval/key/active generation을 기존 release owner 경로로 확보한다. Generic aarch64/Mac 결과로 공식 설치 qualification을 대체하지 않는다.
+4. **P1 회귀·통합: 동일 tuple의 actual Graph/CHECK와 fixture checkpoint.** FIND PATH/Reachability, empty/budget/stale/foreign, signed CHECK zero/one/multi와 foreign/short를 실제 query까지 검증한다. GREEN인 test scope만 최신 main에 합치고 마지막 source/receipt 정합을 기록한다. Producer core는 입력 변경 없이 CI/fuzz를 반복하지 않는다.
 
 Fuzz 정기 실행은 로컬 운영 선택으로 남긴다. Hosted CI, 신규 엔진/컴파일러/SMT/library 도입은 잔여 액션에 없다.
 
 ## 잘못 남은 작업으로 계산하지 않을 것
 
 - `query.result_shape`: leaf/record/nested 모두 현재 sema typed 거절. 새 지원 구현은 이번 범위가 아니다.
-- SHOW staged 양성 경로가 있으므로 “항상 실패”라는 주장은 틀리다.
+- SHOW를 API별로 구분한다. Pipeline staged syntax→declaration→plan→Execution DTO 양성 경로는 있다. Specialized `admit_show_planned_source_v2` one-shot은 source cap 또는 `IncompleteSourceDiagnostics`로 항상 거절한다. Facade는 SHOW syntax owner만 공개하며 staged owner 성공은 runtime admission이 아니다.
 - Rename 포함 conformance19, stale 주석 수리, Graph cap1/dedup 지원 계약, EXISTS 결과 oracle 소스는 이미 반영됐다.
 - 물리 optimizer, Graph engine, SMT, 신규 production dependency는 계획에 없다.
 
 ## 증거 위치
 
 [Producer checkpoint](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/latest-remediation/producer-main-checkpoint-20261005/checkpoint-result.json)
-[Producer clean qualification](/Users/songmin/.codex/worktrees/fcp-producer-main-integration-oct5/quanta-gqlang-v2/target/qualification/8675bcd2ba5609c0a80a7e24950edc624aa0c52b/receipt.json)
+[Producer clean qualification 원본 log](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/latest-remediation/producer-main-checkpoint-qualification-20261005.log) — 관리 checkout/target의 원 receipt 경로는 정리돼 현재 없다. 보존된 log는 source867/1514 PASS/receipt exit0를 기록하며 새 receipt로 재발급하지 않았다.
 [Same-source fuzz smoke](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/latest-remediation/producer-checkpoint-fuzz-8675bcd-20261005.json)
 [Source별 proof 상태](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/latest-proof-status.json)
 [Current-main delta custody](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/current-main-checkpoint-custody.json)

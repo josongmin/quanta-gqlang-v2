@@ -1,44 +1,27 @@
 # Frontend / Semantica contract repair plan
 
-> 최신 우선순위와 소스 판정은 [최신 소스 감사·실행 계획](2026-10-04-current-source-audit-plan.md)을 따른다.
-> 아래는 기존 구현·snapshot 검증 이력이다. 최신 감사에서는 Python negative test의
-> 일반 assignment 결함 해석을 철회했고, CHECK의 현재 SDK 연결을 확인했다.
+## Current status — 2026-10-05 22:49 KST
 
-Date: 2026-10-04 (Asia/Seoul). Status: implementation authored; producer local
-CI, paired pin/tooling gate, final admission/EXISTS/MemSSA owners and the
-typed-only Stage5 proof owner passed. Final installed Graph execution is
-NOT_RUN after the Stage5 repair. Integration into current main and full product
-qualification remain open. The latest pre-repair installed attempt failed.
+Current producer source: `main@1ddeaacaa754c0d432c88dc25ba3feac83f47c1c`
+before this documentation checkpoint. Consumer source:
+`main@3f037ea04eecd80606f045ad9b3a7709c5a17ee7`.
+The current disposition and source/receipt boundaries are maintained in the
+[latest session audit](2026-10-05-current-source-audit-action-plan.md).
+The work packages and older verification entries below retain their original
+source identities; they do not qualify the current shared checkout.
 
-## 최종 실행 순서
+| Scope | Current disposition |
+| --- | --- |
+| Producer structure, request owners, local size/dependency/MSRV gates | Integrated in `e598a1d`; clean source867 local CI 1514/1514 and bounded fuzz PASS. Tracked code/tool inputs are unchanged at the current producer HEAD. |
+| Graph ingress profile, schema/vector pins, EXISTS independent results, conformance | Main checkpoints recorded in the latest audit. Rename is included in 19 facade families. No schema change beyond the intended 3/8/8 contract. |
+| Remaining confirmed code gap | Native Match canonical length and encoding traverse the artifact without original-request work admission. Existing memory reservations and later hash work do not cover these passes. |
+| PTA bootstrap investigation | Old Mac/Linux process attempts refused before query. Current cohort retains the seed consumption owner; current-source bootstrap resolution is unverified. Identify the exact refusal before deciding another repair. |
+| Process fixture integration | Candidate Graph/CHECK inputs and Mac Graph refusal regression remain outside main pending actual-query GREEN on one clean tuple. |
+| Linux installation | Generic aarch64 product GREEN does not satisfy the signed x86_64 installed profile/root/slot/approval prerequisites. This is an installation gap, not an established trust-code defect. |
 
-목적: 기존 언어와 실행 계약을 일치시키고, 큰 함수와 파일의 재성장을
-로컬 게이트로 막는다. production 라이브러리 추가는 0개이며, DTO 필드와
-source/contract/qualification schema는 3/8/8을 유지한다.
-
-| 순서 | 책임 / 작업 | 완료 조건 |
-| --- | --- | --- |
-| 1 / P0 | Semantica: 최신 main의 새 입력으로 설치 Graph 검증 | 최신 main의 소스·producer/index 입력을 다시 동결하고 새로운 4-binary build/receipt/bundle에서 Path/Reachability의 정확한 1개 witness, 빈 결과, 예산 고갈, foreign/stale source 거절을 기존 테스트로 확인. `e019cb8f`의 archive·owner 성공을 현재 main의 설치 성공으로 표시하지 않는다. |
-| 2 / P0 | 양쪽 저장소: 소유 변경 반영·pin 정합성 | 최신 HEAD와 dirty ownership 재확인 → 검토된 producer 변경만 commit → 동일 tree/vector의 consumer pin → consumer의 필요한 7개 repair 파일만 반영. 이미 main에서 수정된 3개 fixture는 복사하지 않는다. 반영 소스의 owner/설치 검증이 있어야 main 완료로 표시한다. |
-| 3 / P1 | QGLang: `resolve_document_bodies` 분해 | 선언·타입 준비 → topology 순서의 inline view 준비 → family dispatch를 typed helper로 분리. 진단 순서·IR·digest·실패 순서 유지. 함수 크기 예외 제거. 이 파일은 정확한 legacy 파일 ceiling 예외 대상이 아니다. |
-| 4 / P1 | QGLang: 로컬 크기·의존성 게이트 유지 | production/test 파일 1,200/2,500 code LOC, 함수 200줄 Clippy, 정확한 legacy no-growth ceiling, test module guard 및 architecture gate 유지. 새 예외·allow로 우회하지 않는다. |
-| 5 / P1 | QGLang: bounded local fuzz | parser/formatter 변경 및 release 전 `just fuzz-smoke`. source/seed/corpus/시간 상한/실패 입력을 보존. 구조 변경 후 해당 owner 테스트, 마지막에 `just ci` 1회. |
-| 6 / P1 downstream | Semantica: Python assignment call | 실제 production captured-generation에서 sealed assignment의 성공 여부를 먼저 재현. 현재 negative test의 unsealed 거절만으로 일반 assignment 결함을 단정하지 않는다. 결함이 확인되면 정확한 source/DFG issuer owner를 수리하고 기존 authority 거절을 보존. |
-| 7 / P2 downstream | full provider/S21/legacy joint 증명 | 실제 SDK publication callback/receipt producer를 현재 API에 맞추고 요구된 public process matrix 실행. 미지원 기능이나 fixture receipt를 성공으로 대체하지 않는다. |
-| 8 / P2 downstream | consumer 전체 God gate의 기존 baseline drift | 현재 main에서 재측정해 기존 violation과 새 변경을 분리하고 각 owner에서 정리. 이번 두 repair의 delta 성공을 전체 gate 성공으로 표시하거나 baseline을 올려 숨기지 않는다. |
-
-병렬로 진행할 수 있는 작업은 3·4·5의 QGLang 구조/정책 점검과 6의
-downstream 재현 조사다. 1·2의 동일 소스 proof, commit, pin 변경은 순차로
-진행한다. 같은 consumer QBC lane의 빌드/테스트는 동시에 실행하지 않는다.
-
-추가 기능 설계는 [code-query action list](../rfcs/2026-10-04-code-query-action-list.md)에
-별도 proposed work로 기록되어 있다. V4 RuleProgram, 다중 relation 실행,
-재귀 evaluator, 옵티마이저, incremental runtime은 이 계약 정리의 완료 조건에
-포함되지 않는다. 해당 설계 문서는 구현/성능/제품 검증 결과를 주장하지 않는다.
-
-검증 자료는 `/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004`
-에 보존한다. 현재 main으로 그대로 합성할 수 있는 증명이 아니므로 아래의
-source-bound 결과와 main 반영 상태를 함께 읽어야 한다.
+CI is local. New engines, compilers, physical optimizers, SMT and production
+dependencies are outside this maintenance scope. Broader downstream AG5/IRC
+feature and release work remains in those owners' plans.
 
 ## Objective and scope
 
@@ -59,36 +42,30 @@ as a test-only direct edge. There is no new external or production dependency.
 
 ## Current action list
 
-| Priority | Work | Status / acceptance |
+| Priority / kind | Work | Acceptance |
 | --- | --- | --- |
-| P0 | Graph ingress budget/dedup alignment | Authored; admission passes. Installed Path/Reachability success and rejection proof is still required. |
-| P0 | Schema-8 golden and committed producer tree/vector pins | Authored; independent digest/admission and M23-120 checks pass on the recorded frozen pair. |
-| P1 | Independent conjunctive EXISTS results | Authored; both false-conjunct zero-row cases plus positive/empty controls pass. |
-| P1 | Rename/root classification/result-shape conformance | Authored; producer local CI passes 1,433 tests, with 19 registered source families. |
-| P1 | Local Clippy/MSRV, file/dependency gates, thematic file extraction | Existing overlay validated by local CI. Exact legacy size exceptions cannot grow. |
-| P1 | Split `resolve_document_bodies` | Next structural batch. Extract declaration/type preparation, ordered inline-view preparation, then family dispatch. Preserve diagnostics, IR/digests and failure ordering; remove the function-size exception. |
-| P1 | Reconcile the shared producer overlay into reviewed commits | Pending ownership integration. Preserve concurrent work, integrate only reviewed owned paths, and exclude the existing untracked CircleCI config/install scripts from this local-only plan. Clean committed source and matching consumer pins are the completion boundary. |
-| P1 | Bounded local fuzz on parser/formatter changes | Existing local command; run on relevant changes and retain source/corpus/crashes. Not executed in this contract-repair batch. |
-| P1, downstream | Native Python call occurrence coverage | Historical direct-return owner and source/runtime-ID proofs pass on their recorded source. Current negative test requires unsealed assignment refusal; production sealed assignment must be reproduced before deciding whether an issuer repair is needed. |
-| P2 | Full provider/S21/legacy joint qualification | Separate work. Repair the real SDK publication fixture callback and receipt producer, then run the required public process matrix; existing gates remain. |
+| P0 / code | Meter Native Match canonical counting and encoding | Original request control charges visits/payload before work; exact/one-short and no-transport regressions; existing 4 MiB cap and typed refusal retained. Coordinate parser/foundation writers. |
+| P0 / diagnosis | Resolve Product PTA bootstrap refusal | Identify the first refused boundary and verify the already integrated seed-lifetime change on current clean source; repair only a remaining reached failure. |
+| P0 / installation | Establish canonical Linux installed inputs | Signed x86_64 profile, root-owned immutable slots, independent approval/key and active generation from the release owner. |
+| P1 / test integration | Prove actual Graph/CHECK and merge reviewed fixtures | One clean producer/consumer/index tuple, immutable product artifacts, actual query positive/rejection results; merge only GREEN scope and preserve historical RED attempts. |
 
-Production libraries added: zero. Public DTO fields and schema tags remain
-unchanged. Moving DTO definitions into the existing frontend facade would create
-a dependency cycle; this audit does not recommend that move. Authored
-`result_shape` remains explicitly unsupported; implementing it requires a real
-consumer requirement rather than a test-count target.
+The producer structural and contract repairs are complete in the scoped main
+checkpoint. Local fuzz scheduling is an operational choice. Authored
+`result_shape` remains typed unsupported. DTO definitions stay in their owner;
+the facade remains the sole downstream seam. All current proof details live
+in the linked session audit rather than a second manual result matrix here.
 
 ## Disposition of the original ten audit actions
 
 | Original action | Current evidence / next action |
 | --- | --- |
 | Host `just ci` in GHA | Use local `just ci`, as requested. Existing untracked CircleCI config/install scripts are outside this plan and must not be included in its owned commit. |
-| Include `clippy-msrv` in static/CI | Implemented in the existing overlay and passed in producer local CI. |
-| Split `document.rs` | Implemented by responsibility into nine children. Residual: the large `resolve_document_bodies` function needs the next owner extraction. |
+| Include `clippy-msrv` in static/CI | Integrated in producer main; both current/MSRV Clippy passed clean source867 local CI. |
+| Split `document.rs` | Owner modules and typed preparation/inline-view/source-order helpers are integrated. The orchestration function has no production function-size exception. |
 | Split `execution.rs` / move DTO | Encoding, projection, vocabulary and tests are separate. Keep the existing public facade; a reverse pipeline-to-facade dependency would cycle. |
 | Split three mega integration tests | Three harnesses now mount thematic children; measured sizes are listed below. Keep test-only module guards. |
-| Schedule fuzz smoke | Use the existing bounded local smoke command for parser/formatter changes and before release. A hosted schedule is not required by this solo workflow. No fuzz run was performed in this contract batch. |
-| Split `types/check.rs` / `solver.rs` | Inputs/value checking and the candidate engine are extracted. Current no-growth limits cover the remaining orchestration files. |
+| Schedule fuzz smoke | The same clean source867 completed a 60-second local smoke with exit0/crash0. Keep it bounded and separate from deterministic CI; periodic local scheduling is optional. |
+| Split `types/check.rs` / `solver.rs` | Inputs/value checking and candidate owners are extracted. Current size policy has no legacy exceptions. |
 | Expand closed-authority examples | Conformance checks all 18 shipped examples under test-owned closed authority: ten plans, seven non-plan outcomes, one exact unsupported-profile rejection. Rename preview/apply are added to the facade family corpus; shipping a Rename example is optional documentation work. |
 | Document Execution DTO 1:1 | The contract document contains a stored-field/variant map and canonical stream clauses with independent encoding vectors. The map is manual; code/doc drift is not automatically proved absent. Update it whenever a public DTO changes. |
 | Clean `sema/test_support.rs` | Common helpers and family fixtures/owner tests are separated; the largest current helpers are below the test-file limit. |
@@ -100,10 +77,13 @@ authored `result_shape` values reject in sema, and the specialized
 `admit_show_planned_source_v2` always returns typed incomplete diagnostics (or
 source-limit refusal) until parser diagnostic allocations have an issued
 request-root debit. The ordinary closed source compiler is a separate entry.
-Keep these limitations explicit; implementing either requires an owner-scoped
-consumer requirement and acceptance criteria.
+The Pipeline staged syntax → declaration → plan → Execution DTO path is live;
+its owners and one-shot refusal have positive/short/foreign/drop regressions.
+Only the syntax entry is exported by the downstream facade. Keep these
+limitations explicit; implementing either unsupported form requires an
+owner-scoped consumer requirement and acceptance criteria.
 
-## Audit baseline and evidence boundaries
+## Historical audit baseline and evidence boundaries
 
 - QGLang: `main`, HEAD `9060e46997dd9c62080a18bdfae06f8c162442e2`, shared dirty tree.
 - QGLang pre-plan local source snapshot:
@@ -398,7 +378,7 @@ or fabricate receipts to turn the full gate green.
 
 These patterns guide the existing owners; none requires importing the engines.
 
-## Broader structural audit
+## Historical broader structural audit and current disposition
 
 The earlier large-file numbers describe the committed baseline. The current
 overlay contains substantial module/test extraction already. Tokei 14.0.0 code
@@ -426,24 +406,13 @@ typed pattern authority; no new engine or production dependency is introduced.
 Fuzz smoke is a bounded local command, excluded from
 deterministic CI and qualification.
 
-File extraction has not eliminated every large function.
-`sema/src/document/bodies.rs::resolve_document_bodies` still occupies nearly
-its entire 1,100-line file and explicitly expects `clippy::too_many_lines`.
-This is a maintainability residual, not a reproduced semantic defect. The
-next structural action is family-specific body handlers, retaining one ordered
-dispatcher and explicit shared authority/step/catalog inputs. Preserve source
-order, diagnostics, catalog finalization, and failure before DTO issuance.
-Extract in the existing phase order: item-shape/declaration binding and callable
-type preparation; topology-ordered inline-view preparation; then the ordered
-item dispatcher using the current family resolvers. Pass each helper only its
-required borrows and typed outputs rather than one mutable context containing
-every stage. Acceptance is removal of the existing function-size exception,
-unchanged ordered diagnostics/IR/digests, and the current document transaction
-and conformance regressions passing, followed by one `just ci` on the resulting
-source. Remove the function-size exception and lower the corresponding exact
-file ceiling after extraction; do not increase it to accommodate new growth.
-Use `just qualify-local` only if a clean committed-HEAD receipt is required.
-This structural batch has not been implemented or qualified here.
+The original structural residual is complete: `resolve_document_bodies`
+now delegates typed preparation, dependency-ordered inline views and source-order
+materialization to separate owners. Production function-size suppressions and
+all eight legacy file ceilings were removed. Request owner/dependency repairs
+were integrated in `e598a1d`, with clean source867 CI/fuzz evidence. The older
+size table above describes its audit snapshot, not the current file inventory.
+
 Avoid moving public DTO definitions into the facade solely to reduce file size:
 the current facade depends on pipeline, so a reverse edge would create a cycle.
 An independently required contract leaf crate would need a separate design and
@@ -451,11 +420,12 @@ compatibility review; there is no demonstrated need in these four repairs.
 
 ## Implementation and verification record
 
-This table is the current proof record. Subsequent implementation entries are
-historical checkpoints, including failed and pending attempts on older source.
+This section is a historical proof record on the explicitly named sources.
+The current status is the linked 2026-10-05 session audit; older failed or
+pending attempts remain unchanged.
 
-- Original producer remains at HEAD
-  `9060e46997dd9c62080a18bdfae06f8c162442e2` with its shared overlay preserved.
+- At the original audit, producer HEAD was
+  `9060e46997dd9c62080a18bdfae06f8c162442e2` with a shared overlay.
 - Frozen producer: `1b55f6233b578d1be351bb926dfbeac2a0262b70` at
   `/Users/songmin/.codex/worktrees/frontend-consumer-contract-proof/quanta-gqlang-v2`.
   Parent `c9c3f1302f53162e0cad9093f4de55a655854e75` copies the tested overlay;
