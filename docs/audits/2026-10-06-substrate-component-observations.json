@@ -651,80 +651,88 @@
     }
   },
   "document_validation": {
-    "captured_at_utc": "2026-10-05T21:52:18.036834+00:00",
+    "schema": "architecture_document_validation_v1",
+    "captured_at_utc": "2026-10-05T22:06:54.032934+00:00",
     "source_references": {
-      "/Users/songmin/Documents/code-new/quanta-gqlang-v2": "ddcaa191cfa0f0b30bdb5c4fc59c0285475f8559",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2": "395405989418c7fea6d048b311f4a9420688c870",
-      "/Users/songmin/Documents/code-new/quanta-index": "66f92d210bbb9641a2f091d6e6ab42330b0a5ffb"
-    },
-    "latest_heads_observed": {
-      "/Users/songmin/Documents/code-new/quanta-gqlang-v2": "ddcaa191cfa0f0b30bdb5c4fc59c0285475f8559",
+      "/Users/songmin/Documents/code-new/quanta-gqlang-v2": "a14dd48fe911a455cfa44cb3624a662fb7c15c6c",
       "/Users/songmin/Documents/code-new/semantica-codegraph-v2": "e6a93afebf4ff93ea8f9460be77497be2cb97e75",
       "/Users/songmin/Documents/code-new/quanta-index": "66f92d210bbb9641a2f091d6e6ab42330b0a5ffb"
     },
-    "markdown_links_checked": 435,
-    "deep_full_source_refs_checked": 126,
-    "unique_source_files_checked": 328,
-    "deep_owner_and_link_files": 59,
-    "claimed_execution_and_audit_hashes_checked": 35,
+    "latest_heads_observed": {
+      "/Users/songmin/Documents/code-new/quanta-gqlang-v2": "a14dd48fe911a455cfa44cb3624a662fb7c15c6c",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2": "9037d25cc4ca01e0d8b75065b39fe712a9a96496",
+      "/Users/songmin/Documents/code-new/quanta-index": "bc18e67e63ebd5914bb679d2aeb25ae498c4d2f9"
+    },
+    "markdown_links_checked": 451,
+    "architecture_full_source_refs_checked": 61,
+    "line_bounds_checked": 509,
+    "claimed_owner_hashes_checked": 34,
+    "unique_source_files_checked": 326,
     "mermaid_blocks": 4,
     "mermaid_unchanged": true,
     "json_files_parsed": 2,
     "active_actions": 13,
     "duplicate_actions": 7,
-    "source_changes_after_previous_13_action_inventory": [],
+    "previous_resolution_owner_files_rechecked": 40,
+    "active_action_owner_changes": [],
+    "source_files_different_from_frozen": [
+      "/Users/songmin/Documents/code-new/quanta-gqlang-v2/docs/audits/2026-10-06-substrate-component-observations.json",
+      "/Users/songmin/Documents/code-new/quanta-index/crates/quanta-index-sdk/src/binding.rs",
+      "/Users/songmin/Documents/code-new/quanta-index/crates/quanta-index-sdk/src/client.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/Cargo.toml",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-foundation/src/in_memory/core/input_cell_store.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-in-memory-shared/src/in_memory/core/memo_table/gc.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-contract-error-shared/src/contract_error_v2.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-memory-host/src/session/transcript_adapter.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/snapshot_admitted_owner_v1.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker_uniqueness.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-context-shared/src/runtime_execution_session_v1.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/budget_handle.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/invalidation/snapshot_gc/gc.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memory-compose/src/lib.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-public-ingress-surface/src/lib.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_real.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/bootstrap_inputs_v1/runtime_executor_ingress_packet.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/Cargo.toml",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/daemon_search_execution_aggregate_owner_v2.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_api.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/gqlang_handler.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/registered_query_runtime_admission_v1.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/repo_state/analysis_epoch_receipt_v1.rs"
+    ],
     "linked_dirty": {
-      "/Users/songmin/Documents/code-new/quanta-gqlang-v2": [],
+      "/Users/songmin/Documents/code-new/quanta-gqlang-v2": [
+        " M docs/audits/2026-10-06-substrate-component-observations.json"
+      ],
       "/Users/songmin/Documents/code-new/semantica-codegraph-v2": [
-        "packages/analysis/quanta-v2/crates/quanta-adapters-foundation/src/in_memory/core/input_cell_store.rs",
-        "packages/analysis/quanta-v2/crates/quanta-adapters-in-memory-shared/src/in_memory/core/memo_table/gc.rs",
-        "packages/analysis/quanta-v2/crates/quanta-contract-error-shared/src/contract_error_v2.rs",
-        "packages/analysis/quanta-v2/crates/quanta-memory-host/src/session/transcript_adapter.rs",
-        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/snapshot_admitted_owner_v1.rs",
-        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker.rs",
-        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker_uniqueness.rs",
-        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/query_impl/run_impl_stages_part5.rs",
-        "packages/analysis/quanta-v2/crates/quanta-runtime-context-shared/src/runtime_execution_session_v1.rs",
-        "packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/budget_handle.rs",
-        "packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/invalidation/snapshot_gc/gc.rs",
-        "packages/analysis/quanta-v2/crates/quanta-runtime-memory-compose/src/lib.rs",
-        "packages/analysis/quanta-v2/crates/quanta-runtime-public-ingress-surface/src/lib.rs",
-        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_real.rs",
-        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/bootstrap_inputs_v1/runtime_executor_ingress_packet.rs",
-        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/Cargo.toml",
-        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/daemon_search_execution_aggregate_owner_v2.rs",
-        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_api.rs",
-        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/gqlang_handler.rs",
-        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/registered_query_runtime_admission_v1.rs",
-        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/repo_state/analysis_epoch_receipt_v1.rs"
+        " M Cargo.toml",
+        " M packages/analysis/quanta-v2/crates/quanta-adapters-foundation/src/in_memory/core/input_cell_store.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-adapters-in-memory-shared/src/in_memory/core/memo_table/gc.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-contract-error-shared/src/contract_error_v2.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-memory-host/src/session/transcript_adapter.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/snapshot_admitted_owner_v1.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker_uniqueness.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-runtime-context-shared/src/runtime_execution_session_v1.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/budget_handle.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/invalidation/snapshot_gc/gc.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-runtime-memory-compose/src/lib.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-runtime-public-ingress-surface/src/lib.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_real.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/bootstrap_inputs_v1/runtime_executor_ingress_packet.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/Cargo.toml",
+        " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_api.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/gqlang_handler.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/registered_query_runtime_admission_v1.rs",
+        " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/repo_state/analysis_epoch_receipt_v1.rs"
       ],
       "/Users/songmin/Documents/code-new/quanta-index": []
     },
-    "source_inputs_different_from_frozen": [
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_api.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/gqlang_handler.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-public-ingress-surface/src/lib.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/budget_handle.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-context-shared/src/runtime_execution_session_v1.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-contract-error-shared/src/contract_error_v2.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-foundation/src/in_memory/core/input_cell_store.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memory-compose/src/lib.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/bootstrap_inputs_v1/runtime_executor_ingress_packet.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/snapshot_admitted_owner_v1.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/registered_query_runtime_admission_v1.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/repo_state/analysis_epoch_receipt_v1.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/Cargo.toml",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/daemon_search_execution_aggregate_owner_v2.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_real.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker_uniqueness.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/invalidation/snapshot_gc/gc.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-in-memory-shared/src/in_memory/core/memo_table/gc.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-memory-host/src/session/transcript_adapter.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker.rs",
-      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/query_impl/run_impl_stages_part5.rs"
-    ],
-    "scope": "Document links/line bounds/JSON/action parity/source hashes. Source tests and comments remain separately classified; no Rust/installed qualification.",
-    "failures": []
+    "controlled_component_fixture_sha256": {
+      "A": "5db6aa0eedf3299beb3f3ead4c077ec88083a59a8b73d8374e21ddd592f014ed",
+      "B": "0aa3660e1a69fe563515cd6f86a1aa82794bad9f64cc6876c3b5eda354c83dd9"
+    },
+    "failures": [],
+    "limits": "Documentation/source integrity and selected owner continuity only. Policy gate, Rust algorithm parity and installed product not run. Source-link drift is recorded separately from frozen evidence."
   },
   "sdk_tie_break_observation": {
     "all_product_requests_equal": true,
@@ -1193,50 +1201,57 @@
         "category": "중복 제거",
         "id": "D1",
         "item": "Shape 계산 owner",
-        "acceptance": "Cost/standalone의 같은 계산을 standalone lean owner와 cost 호환 위임으로 공통화하는 설계를 우선 검토. Public export·feature·오류·V2 authority·Tree/DAG/cycle/self-loop/duplicate edge parity를 고정. 현재 제품 factory는 cost이며 정확도 우열은 미확인.",
-        "prior_acceptance_before_deep_review": "Cost/standalone의 같은 ShapeAnalyzerPort 계산을 한 owner로 위임/retire. Public export·feature consumer와 Tree/DAG/cycle/self-loop/duplicate edge/error parity를 먼저 고정. 현재 wrong-result 주장 없음."
+        "acceptance": "기존 standalone 계산 owner로 모든 factory·concrete import를 직접 전환하고 cost Shape module/export를 삭제. 기존 port·결과·PTA authority 변환 유지, 새 wrapper/trait/crate 없음. Shape-only 제품 feature 분리는 D1-B에서 cfg·overlay까지 검증.",
+        "prior_acceptance_before_deep_review": "Cost/standalone의 같은 ShapeAnalyzerPort 계산을 한 owner로 위임/retire. Public export·feature consumer와 Tree/DAG/cycle/self-loop/duplicate edge/error parity를 먼저 고정. 현재 wrong-result 주장 없음.",
+        "acceptance_history_before_architecture_review": "Cost/standalone의 같은 계산을 standalone lean owner와 cost 호환 위임으로 공통화하는 설계를 우선 검토. Public export·feature·오류·V2 authority·Tree/DAG/cycle/self-loop/duplicate edge parity를 고정. 현재 제품 factory는 cost이며 정확도 우열은 미확인."
       },
       {
         "category": "중복 제거",
         "id": "D2",
         "item": "SCC traversal kernel",
-        "acceptance": "Analysis Generic/PTA/taint 순회 kernel의 공유 owner·checkpoint API를 먼저 결정. Unknown-neighbor·입력 closure·emission order/ID·typed failure·budget을 보존. Core Andersen/CallGraph는 core-compatible dependency 결정과 parity 없이 analysis graph-utils로 일괄 교체하지 않음.",
-        "prior_acceptance_before_deep_review": "Generic/PTA/taint의 중복 순회 계산을 기존 core-compatible owner로 공유. Unknown-neighbor·입력 closure·순서·checkpoint/budget 정책은 domain에 유지. CallGraph의 별도 알고리즘은 parity·core dependency 확인 없이 치환하지 않는다."
+        "acceptance": "기존 graph-utils의 tier 분류·빈 default feature·dependency default 설정을 먼저 수정. Borrowed indexed iterative kernel과 Compute/Stop을 구분하는 checkpoint 함수 API를 확장. PTA부터 순서/ID·closure·typed 실패·취소 parity 후 소비자별 전환; 새 universal crate 없음.",
+        "prior_acceptance_before_deep_review": "Generic/PTA/taint의 중복 순회 계산을 기존 core-compatible owner로 공유. Unknown-neighbor·입력 closure·순서·checkpoint/budget 정책은 domain에 유지. CallGraph의 별도 알고리즘은 parity·core dependency 확인 없이 치환하지 않는다.",
+        "acceptance_history_before_architecture_review": "Analysis Generic/PTA/taint 순회 kernel의 공유 owner·checkpoint API를 먼저 결정. Unknown-neighbor·입력 closure·emission order/ID·typed failure·budget을 보존. Core Andersen/CallGraph는 core-compatible dependency 결정과 parity 없이 analysis graph-utils로 일괄 교체하지 않음."
       },
       {
         "category": "중복 제거",
         "id": "D3",
         "item": "MemoryIR build-input lowering",
-        "acceptance": "사용 중인 runtime pack 기준으로 public/feature·dependency consumer를 확인하고 DFG 중복 build-input lowering을 위임/retire. Synthetic LoadOpId·explicit map·deletion/alias authority·digest·비손실 오류 mapping을 보존. 별도 PortDFG와 solver는 일괄 삭제하지 않음.",
-        "prior_acceptance_before_deep_review": "Active runtime pack을 기준으로 public/feature 소비자를 확인하고 adapter의 중복 build-input lowering을 위임/retire. Synthetic LoadOpId·explicit load-value map·deletion·alias authority·digest/error 보존. 별도 PortDFG 계약과 MemSSA solver는 유지 여부를 독립 판단."
+        "acceptance": "활성 runtime pack 유지, 미사용 DFG build-input entry·고유 helper/export/tests 제거. DFG→pack wrapper를 추가해 runtime dependency closure를 넓히지 않음. Synthetic load ID·explicit map·authority·digest·typed 실패는 pack 회귀로 보존. PortDFG는 별도 판정.",
+        "prior_acceptance_before_deep_review": "Active runtime pack을 기준으로 public/feature 소비자를 확인하고 adapter의 중복 build-input lowering을 위임/retire. Synthetic LoadOpId·explicit load-value map·deletion·alias authority·digest/error 보존. 별도 PortDFG 계약과 MemSSA solver는 유지 여부를 독립 판단.",
+        "acceptance_history_before_architecture_review": "사용 중인 runtime pack 기준으로 public/feature·dependency consumer를 확인하고 DFG 중복 build-input lowering을 위임/retire. Synthetic LoadOpId·explicit map·deletion/alias authority·digest·비손실 오류 mapping을 보존. 별도 PortDFG와 solver는 일괄 삭제하지 않음."
       },
       {
         "category": "중복 제거",
         "id": "D4",
         "item": "SCV2 RRF contribution",
-        "acceptance": "활성 Hybrid SCV2 inline 수식만 기존 helper에 위임하고 SCV2 leaf feature의 dependency를 연결. Default K·rank clamp·aggregation order·identity tie-break·top-k·duplicate refusal parity 유지. Entity-collapse 전체와 합치지 않으며 현재 score 오류 미확인.",
-        "prior_acceptance_before_deep_review": "활성 inline `1/(60+max(rank,1))`을 기존 helper에 위임하고 SCV2 feature dependency 연결. Contribution·aggregation order·identity tie-break·top-k parity 유지. 현재 score 오류는 확인되지 않음."
+        "acceptance": "활성 SCV2 contribution 수식만 기존 rrf_contribution_v1에 위임하고 SCV2 leaf dependency를 활성화. K/clamp·합산 순서·identity/tie-break·top-k·duplicate refusal 보존. Complete fusion owner는 각각 유지.",
+        "prior_acceptance_before_deep_review": "활성 inline `1/(60+max(rank,1))`을 기존 helper에 위임하고 SCV2 feature dependency 연결. Contribution·aggregation order·identity tie-break·top-k parity 유지. 현재 score 오류는 확인되지 않음.",
+        "acceptance_history_before_architecture_review": "활성 Hybrid SCV2 inline 수식만 기존 helper에 위임하고 SCV2 leaf feature의 dependency를 연결. Default K·rank clamp·aggregation order·identity tie-break·top-k·duplicate refusal parity 유지. Entity-collapse 전체와 합치지 않으며 현재 score 오류 미확인."
       },
       {
         "category": "중복 제거",
         "id": "D5",
         "item": "PTA UnionFind",
-        "acceptance": "Base를 현재 Steensgaard owner로 유지. Andersen exported UF의 외부 소비자를 확인한 뒤 retire 또는 bool/root·growth/count/capacity 호환 wrapper. Base size metadata의 약 8 bytes/node 비용을 고려. Mahjong min-root와 Andersen solver는 제거 대상 아님.",
-        "prior_acceptance_before_deep_review": "Andersen/base의 path compression·union-by-rank를 한 구현에 위임/retire. Public export·set-size·root/bool return contract 보존. Mahjong min-root와 dormant Slice의 다른 identity/cap 계약까지 같은 자료구조로 합치지 않는다."
+        "acceptance": "현재 base와 실제 Steensgaard/pair session 유지. 새 consumer census 후 dormant Andersen UF module·공개 export·자체 tests 제거. Bool/root 호환 wrapper·새 UF trait 없음. Mahjong min-root·활성 Andersen solver는 유지.",
+        "prior_acceptance_before_deep_review": "Andersen/base의 path compression·union-by-rank를 한 구현에 위임/retire. Public export·set-size·root/bool return contract 보존. Mahjong min-root와 dormant Slice의 다른 identity/cap 계약까지 같은 자료구조로 합치지 않는다.",
+        "acceptance_history_before_architecture_review": "Base를 현재 Steensgaard owner로 유지. Andersen exported UF의 외부 소비자를 확인한 뒤 retire 또는 bool/root·growth/count/capacity 호환 wrapper. Base size metadata의 약 8 bytes/node 비용을 고려. Mahjong min-root와 Andersen solver는 제거 대상 아님."
       },
       {
         "category": "중복 제거",
         "id": "D6",
-        "item": "App canonical symbol-row→hit 변환",
-        "acceptance": "F1 계약 수리 후 현재 symbol-row 공통 필드 extraction만 공유. API strict envelope·agent result/GraphRAG shaping·typed failure 유지. Legacy 지원은 consumer 증거를 확인. Dormant SymbolRetriever의 세 번째 copy/export도 함께 판정; 공개 MCP 활성 owner로 세지 않음.",
-        "prior_acceptance_before_deep_review": "F1 수리 후 공통 필드 변환만 단일 owner로 공유. API strict validation, agent legacy wrapper·기본값 수용, 앱별 hit/GraphRAG shaping은 각각 보존. 전체 parser 계약 통합은 요구하지 않는다."
+        "item": "App current SDK row→hit 변환",
+        "acceptance": "F1의 truthful current SDK row 계약 확정 후 기존 shared Python package에서 data→app 공통 변환 추출, API·agent 동시 전환. Non-symbol/optional location을 왜곡하지 않음. Legacy readers 제거, 앱별 request·typed failure·GraphRAG presentation 유지. Dormant third copy도 consumer 확인 후 retire.",
+        "prior_acceptance_before_deep_review": "F1 수리 후 공통 필드 변환만 단일 owner로 공유. API strict validation, agent legacy wrapper·기본값 수용, 앱별 hit/GraphRAG shaping은 각각 보존. 전체 parser 계약 통합은 요구하지 않는다.",
+        "acceptance_history_before_architecture_review": "F1 계약 수리 후 현재 symbol-row 공통 필드 extraction만 공유. API strict envelope·agent result/GraphRAG shaping·typed failure 유지. Legacy 지원은 consumer 증거를 확인. Dormant SymbolRetriever의 세 번째 copy/export도 함께 판정; 공개 MCP 활성 owner로 세지 않음."
       },
       {
         "category": "중복 제거",
         "id": "D7",
-        "item": "MCP manifest 경로 결정",
-        "acceptance": "Canonical default와 explicit override authority를 한 경로 선택 owner로 공유. Invalid explicit override를 다른 파일로 대체하지 않는 동작을 명시하고, introspection의 soft diagnostic result·metadata 및 registry executable validation을 유지. Packaged launch와 cache reset 검증; startup finally는 선택적 hygiene.",
-        "prior_acceptance_before_deep_review": "같은 canonical crosswalk 경로를 결정하는 공통 메커니즘을 공유. Explicit override·packaged launch는 보존하고 introspection soft fallback·registry fail-closed·결과 정책은 각 caller에 유지. Startup finally 범위 정리는 선택적 hygiene."
+        "item": "MCP manifest source 단일화",
+        "acceptance": "기존 registry에서 경로·bounded read·검증을 한 번 수행하고 private immutable source record에 path/digest/entries를 보존. Mapping·schema·목록·introspection·dispatch는 같은 source 사용. Invalid override 거절·packaged artifact 유지, process restart lifecycle. 경로 helper만 공유하는 안은 제외.",
+        "prior_acceptance_before_deep_review": "같은 canonical crosswalk 경로를 결정하는 공통 메커니즘을 공유. Explicit override·packaged launch는 보존하고 introspection soft fallback·registry fail-closed·결과 정책은 각 caller에 유지. Startup finally 범위 정리는 선택적 hygiene.",
+        "acceptance_history_before_architecture_review": "Canonical default와 explicit override authority를 한 경로 선택 owner로 공유. Invalid explicit override를 다른 파일로 대체하지 않는 동작을 명시하고, introspection의 soft diagnostic result·metadata 및 registry executable validation을 유지. Packaged launch와 cache reset 검증; startup finally는 선택적 hygiene."
       }
     ],
     "original_action_dispositions": [
@@ -2975,47 +2990,47 @@
     "changed_or_dirty_owner_paths": []
   },
   "duplicate_owner_selection_review": {
-    "schema": "substrate_duplicate_owner_selection_v2",
+    "schema": "substrate_duplicate_owner_selection_v3",
     "source_references": {
-      "gqlang": "ddcaa191cfa0f0b30bdb5c4fc59c0285475f8559",
-      "semantica": "395405989418c7fea6d048b311f4a9420688c870"
+      "gqlang": "a14dd48fe911a455cfa44cb3624a662fb7c15c6c",
+      "semantica": "e6a93afebf4ff93ea8f9460be77497be2cb97e75"
     },
-    "proof_kind": "Three parallel source audits and root RRF contract audit; current Python owner tests and direct boundary components. No integrated Rust/installed proof. Prior selection preserved in history.",
+    "proof_kind": "Three parallel current-source architecture comparisons plus root policy/RRF audit. Controlled manifest read/cache schedule components; no new Rust or installed runtime proof.",
     "items": [
       {
         "item": "D1 Shape",
         "actual_ingress_and_reachability": "Rust SDK shape builder → configured port → **cost adapter factory**. Standalone은 공개 export·runtime dev-dependency 테스트 외 non-test caller 미확인.",
-        "selection_and_rationale": "계산 우열 없음. 동일 알고리즘이므로 **standalone을 가벼운 공통 owner로 삼고 cost 경로가 위임**하는 설계가 적합하다. 현재 제품은 cost에 연결돼 있다는 사실과 향후 owner 선택을 구분한다."
+        "selection_and_rationale": "기존 standalone 계산 owner로 모든 factory·concrete import를 직접 전환하고 cost Shape module/export를 삭제. 기존 port·결과·PTA authority 변환 유지, 새 wrapper/trait/crate 없음. Shape-only 제품 feature 분리는 D1-B에서 cfg·overlay까지 검증."
       },
       {
         "item": "D2 SCC",
         "actual_ingress_and_reachability": "graph-utils는 Index community build; runtime PTA는 census·summary·whole-program·worker uniqueness; taint는 recursion 정책 활성화 시. Core Andersen SCC와 조건부 CallGraph SCC도 별도 사용.",
-        "selection_and_rationale": "단일 우승 구현 없음. Analysis 계층의 순회 kernel 공통화부터 진행하되 취소·unknown-neighbor·순서 계약을 보존. **Core가 analysis graph-utils에 의존하게 만드는 일괄 교체는 제외**한다."
+        "selection_and_rationale": "기존 graph-utils의 tier 분류·빈 default feature·dependency default 설정을 먼저 수정. Borrowed indexed iterative kernel과 Compute/Stop을 구분하는 checkpoint 함수 API를 확장. PTA부터 순서/ID·closure·typed 실패·취소 parity 후 소비자별 전환; 새 universal crate 없음."
       },
       {
         "item": "D3 MemoryIR",
         "actual_ingress_and_reachability": "Taint promotion·summary reissue가 **runtime MemSSA pack** 사용. DFG build-input 복사본은 export·테스트 외 non-test caller 미확인.",
-        "selection_and_rationale": "Pack이 사용 중이며 synthetic load surrogate·explicit mapping까지 제공한다. 중복 build-input lowering만 위임/retire 후보. 별도 PortDFG ingress와 solver는 다른 계약이다."
+        "selection_and_rationale": "활성 runtime pack 유지, 미사용 DFG build-input entry·고유 helper/export/tests 제거. DFG→pack wrapper를 추가해 runtime dependency closure를 넓히지 않음. Synthetic load ID·explicit map·authority·digest·typed 실패는 pack 회귀로 보존. PortDFG는 별도 판정."
       },
       {
         "item": "D4 RRF",
         "actual_ingress_and_reachability": "Native search → SDK SearchBuilder → **Hybrid Index owner stage3** → SCV2 inline. 공용 helper는 별도 entity-collapse accumulator가 사용.",
-        "selection_and_rationale": "기본 수식은 동일. 기존 `rrf_contribution_v1`에 **contribution 수식만** 위임한다. 두 fusion 전체를 합치지 않는다."
+        "selection_and_rationale": "활성 SCV2 contribution 수식만 기존 rrf_contribution_v1에 위임하고 SCV2 leaf dependency를 활성화. K/clamp·합산 순서·identity/tie-break·top-k·duplicate refusal 보존. Complete fusion owner는 각각 유지."
       },
       {
         "item": "D5 UnionFind",
         "actual_ingress_and_reachability": "**base UF**가 Steensgaard main solver·retained pair session에서 사용됨. Andersen UF 복사본은 export·테스트 외 non-test caller 미확인.",
-        "selection_and_rationale": "Base를 유지하고 사용되지 않는 복사본의 retire/호환 wrapper를 검토한다. Base는 set-size 때문에 원소당 약 8 bytes를 더 써서 항상 더 가볍거나 빠른 구현은 아니다."
+        "selection_and_rationale": "현재 base와 실제 Steensgaard/pair session 유지. 새 consumer census 후 dormant Andersen UF module·공개 export·자체 tests 제거. Bool/root 호환 wrapper·새 UF trait 없음. Mahjong min-root·활성 Andersen solver는 유지."
       },
       {
         "item": "D6 App projection",
         "actual_ingress_and_reachability": "HTTP search는 API strict parser, HTTP agent는 `apps/mcp`의 QueryAdapter. **공개 MCP는 GeneratedDaemonSdkQueryAdapter** 사용. 세 번째 SymbolRetriever 복사본은 composition root 미확인.",
-        "selection_and_rationale": "현재 symbol row 필드 변환만 공유. API envelope 검증·agent GraphRAG shaping·오류 종류는 각 caller에 유지. 세 번째 export의 외부 소비자도 확인한다."
+        "selection_and_rationale": "F1의 truthful current SDK row 계약 확정 후 기존 shared Python package에서 data→app 공통 변환 추출, API·agent 동시 전환. Non-symbol/optional location을 왜곡하지 않음. Legacy readers 제거, 앱별 request·typed failure·GraphRAG presentation 유지. Dormant third copy도 consumer 확인 후 retire."
       },
       {
         "item": "D7 MCP manifest",
         "actual_ingress_and_reachability": "MCP tool schema 구성은 registry, 공개 tool 목록·dispatch 허가는 SurfaceConfig/introspection 사용. **두 resolver 모두 startup 경로**에 존재.",
-        "selection_and_rationale": "Registry의 canonical default와 명시 경로 authority를 공통 선택 기준으로 사용. Metadata·진단·schema admission을 전체 loader 하나로 합치지 않는다."
+        "selection_and_rationale": "기존 registry에서 경로·bounded read·검증을 한 번 수행하고 private immutable source record에 path/digest/entries를 보존. Mapping·schema·목록·introspection·dispatch는 같은 source 사용. Invalid override 거절·packaged artifact 유지, process restart lifecycle. 경로 helper만 공유하는 안은 제외."
       }
     ],
     "deep_evidence_pointer": "deep_duplicate_audit",
@@ -3026,7 +3041,8 @@
       "Repository-wide non-test census does not establish outside-repository absence.",
       "Exports/internal callers do not imply default product installation.",
       "Conditional feature/config authority is named per ingress."
-    ]
+    ],
+    "architecture_evidence_pointer": "architecture_decision_review"
   },
   "duplicate_owner_selection_review_history": [
     {
@@ -3150,6 +3166,60 @@
         "D6 QueryAdapter under apps/mcp is instantiated by API agent; public MCP startup uses GeneratedDaemonSdkQueryAdapter.",
         "SCC requires preserving checkpoint and domain neighbor/budget policies; there is no fully equivalent drop-in winner.",
         "New owner selection does not change final 6 repair + 7 duplicate action count; historical runtime observations remain at their actual source cuts."
+      ]
+    },
+    {
+      "schema": "substrate_duplicate_owner_selection_v2",
+      "source_references": {
+        "gqlang": "ddcaa191cfa0f0b30bdb5c4fc59c0285475f8559",
+        "semantica": "395405989418c7fea6d048b311f4a9420688c870"
+      },
+      "proof_kind": "Three parallel source audits and root RRF contract audit; current Python owner tests and direct boundary components. No integrated Rust/installed proof. Prior selection preserved in history.",
+      "items": [
+        {
+          "item": "D1 Shape",
+          "actual_ingress_and_reachability": "Rust SDK shape builder → configured port → **cost adapter factory**. Standalone은 공개 export·runtime dev-dependency 테스트 외 non-test caller 미확인.",
+          "selection_and_rationale": "계산 우열 없음. 동일 알고리즘이므로 **standalone을 가벼운 공통 owner로 삼고 cost 경로가 위임**하는 설계가 적합하다. 현재 제품은 cost에 연결돼 있다는 사실과 향후 owner 선택을 구분한다."
+        },
+        {
+          "item": "D2 SCC",
+          "actual_ingress_and_reachability": "graph-utils는 Index community build; runtime PTA는 census·summary·whole-program·worker uniqueness; taint는 recursion 정책 활성화 시. Core Andersen SCC와 조건부 CallGraph SCC도 별도 사용.",
+          "selection_and_rationale": "단일 우승 구현 없음. Analysis 계층의 순회 kernel 공통화부터 진행하되 취소·unknown-neighbor·순서 계약을 보존. **Core가 analysis graph-utils에 의존하게 만드는 일괄 교체는 제외**한다."
+        },
+        {
+          "item": "D3 MemoryIR",
+          "actual_ingress_and_reachability": "Taint promotion·summary reissue가 **runtime MemSSA pack** 사용. DFG build-input 복사본은 export·테스트 외 non-test caller 미확인.",
+          "selection_and_rationale": "Pack이 사용 중이며 synthetic load surrogate·explicit mapping까지 제공한다. 중복 build-input lowering만 위임/retire 후보. 별도 PortDFG ingress와 solver는 다른 계약이다."
+        },
+        {
+          "item": "D4 RRF",
+          "actual_ingress_and_reachability": "Native search → SDK SearchBuilder → **Hybrid Index owner stage3** → SCV2 inline. 공용 helper는 별도 entity-collapse accumulator가 사용.",
+          "selection_and_rationale": "기본 수식은 동일. 기존 `rrf_contribution_v1`에 **contribution 수식만** 위임한다. 두 fusion 전체를 합치지 않는다."
+        },
+        {
+          "item": "D5 UnionFind",
+          "actual_ingress_and_reachability": "**base UF**가 Steensgaard main solver·retained pair session에서 사용됨. Andersen UF 복사본은 export·테스트 외 non-test caller 미확인.",
+          "selection_and_rationale": "Base를 유지하고 사용되지 않는 복사본의 retire/호환 wrapper를 검토한다. Base는 set-size 때문에 원소당 약 8 bytes를 더 써서 항상 더 가볍거나 빠른 구현은 아니다."
+        },
+        {
+          "item": "D6 App projection",
+          "actual_ingress_and_reachability": "HTTP search는 API strict parser, HTTP agent는 `apps/mcp`의 QueryAdapter. **공개 MCP는 GeneratedDaemonSdkQueryAdapter** 사용. 세 번째 SymbolRetriever 복사본은 composition root 미확인.",
+          "selection_and_rationale": "현재 symbol row 필드 변환만 공유. API envelope 검증·agent GraphRAG shaping·오류 종류는 각 caller에 유지. 세 번째 export의 외부 소비자도 확인한다."
+        },
+        {
+          "item": "D7 MCP manifest",
+          "actual_ingress_and_reachability": "MCP tool schema 구성은 registry, 공개 tool 목록·dispatch 허가는 SurfaceConfig/introspection 사용. **두 resolver 모두 startup 경로**에 존재.",
+          "selection_and_rationale": "Registry의 canonical default와 명시 경로 authority를 공통 선택 기준으로 사용. Metadata·진단·schema admission을 전체 loader 하나로 합치지 않는다."
+        }
+      ],
+      "deep_evidence_pointer": "deep_duplicate_audit",
+      "active_duplicate_removals": 7,
+      "active_repairs": 6,
+      "limits": [
+        "No performance winner established.",
+        "Repository-wide non-test census does not establish outside-repository absence.",
+        "Exports/internal callers do not imply default product installation.",
+        "Conditional feature/config authority is named per ingress."
       ]
     }
   ],
@@ -4823,6 +4893,991 @@
           "agent_or_owner_input_hash_mismatch": "apps/mcp/mcp/adapters/search/query_adapter.py"
         }
       ]
+    },
+    {
+      "captured_at_utc": "2026-10-05T21:52:18.036834+00:00",
+      "source_references": {
+        "/Users/songmin/Documents/code-new/quanta-gqlang-v2": "ddcaa191cfa0f0b30bdb5c4fc59c0285475f8559",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2": "395405989418c7fea6d048b311f4a9420688c870",
+        "/Users/songmin/Documents/code-new/quanta-index": "66f92d210bbb9641a2f091d6e6ab42330b0a5ffb"
+      },
+      "latest_heads_observed": {
+        "/Users/songmin/Documents/code-new/quanta-gqlang-v2": "ddcaa191cfa0f0b30bdb5c4fc59c0285475f8559",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2": "e6a93afebf4ff93ea8f9460be77497be2cb97e75",
+        "/Users/songmin/Documents/code-new/quanta-index": "66f92d210bbb9641a2f091d6e6ab42330b0a5ffb"
+      },
+      "markdown_links_checked": 435,
+      "deep_full_source_refs_checked": 126,
+      "unique_source_files_checked": 328,
+      "deep_owner_and_link_files": 59,
+      "claimed_execution_and_audit_hashes_checked": 35,
+      "mermaid_blocks": 4,
+      "mermaid_unchanged": true,
+      "json_files_parsed": 2,
+      "active_actions": 13,
+      "duplicate_actions": 7,
+      "source_changes_after_previous_13_action_inventory": [],
+      "linked_dirty": {
+        "/Users/songmin/Documents/code-new/quanta-gqlang-v2": [],
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2": [
+          "packages/analysis/quanta-v2/crates/quanta-adapters-foundation/src/in_memory/core/input_cell_store.rs",
+          "packages/analysis/quanta-v2/crates/quanta-adapters-in-memory-shared/src/in_memory/core/memo_table/gc.rs",
+          "packages/analysis/quanta-v2/crates/quanta-contract-error-shared/src/contract_error_v2.rs",
+          "packages/analysis/quanta-v2/crates/quanta-memory-host/src/session/transcript_adapter.rs",
+          "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/snapshot_admitted_owner_v1.rs",
+          "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker.rs",
+          "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker_uniqueness.rs",
+          "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/query_impl/run_impl_stages_part5.rs",
+          "packages/analysis/quanta-v2/crates/quanta-runtime-context-shared/src/runtime_execution_session_v1.rs",
+          "packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/budget_handle.rs",
+          "packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/invalidation/snapshot_gc/gc.rs",
+          "packages/analysis/quanta-v2/crates/quanta-runtime-memory-compose/src/lib.rs",
+          "packages/analysis/quanta-v2/crates/quanta-runtime-public-ingress-surface/src/lib.rs",
+          "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_real.rs",
+          "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/bootstrap_inputs_v1/runtime_executor_ingress_packet.rs",
+          "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/Cargo.toml",
+          "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/daemon_search_execution_aggregate_owner_v2.rs",
+          "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_api.rs",
+          "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/gqlang_handler.rs",
+          "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/registered_query_runtime_admission_v1.rs",
+          "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/repo_state/analysis_epoch_receipt_v1.rs"
+        ],
+        "/Users/songmin/Documents/code-new/quanta-index": []
+      },
+      "source_inputs_different_from_frozen": [
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_api.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/gqlang_handler.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-public-ingress-surface/src/lib.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/budget_handle.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-context-shared/src/runtime_execution_session_v1.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-contract-error-shared/src/contract_error_v2.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-foundation/src/in_memory/core/input_cell_store.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memory-compose/src/lib.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/bootstrap_inputs_v1/runtime_executor_ingress_packet.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/snapshot_admitted_owner_v1.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/registered_query_runtime_admission_v1.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/repo_state/analysis_epoch_receipt_v1.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/Cargo.toml",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/daemon_search_execution_aggregate_owner_v2.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_real.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker_uniqueness.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/invalidation/snapshot_gc/gc.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-in-memory-shared/src/in_memory/core/memo_table/gc.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-memory-host/src/session/transcript_adapter.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/query_impl/run_impl_stages_part5.rs"
+      ],
+      "scope": "Document links/line bounds/JSON/action parity/source hashes. Source tests and comments remain separately classified; no Rust/installed qualification.",
+      "failures": []
     }
-  ]
+  ],
+  "architecture_decision_review": {
+    "schema": "substrate_architecture_decisions_v1",
+    "captured_at_utc": "2026-10-05T22:05:19.944751+00:00",
+    "source_references": {
+      "gqlang": "a14dd48fe911a455cfa44cb3624a662fb7c15c6c",
+      "semantica": "e6a93afebf4ff93ea8f9460be77497be2cb97e75"
+    },
+    "scope": "Design audit and owned documentation only; no runtime source edits, Rust/daemon/packaged E2E verdict.",
+    "reports": {
+      "shape-memoryir": {
+        "original_path": "/tmp/gqlang-design-shape-memoryir.json",
+        "sha256": "6a6c46c9776485188aa13074996349b84bd7477fbd778adcfbb4efbfdc33187c",
+        "report": {
+          "scope": {
+            "task": "Design audit only: D1 Shape and D3 MemoryIR duplicate-removal architecture",
+            "gqlang_head": "a14dd48fe911a455cfa44cb3624a662fb7c15c6c",
+            "semantica_head": "e6a93afebf4ff93ea8f9460be77497be2cb97e75",
+            "owner_paths_clean": true,
+            "foreign_dirty_present": true,
+            "tests_run": false,
+            "runtime_build_run": false,
+            "basis": "Current source + Cargo/path graph + static non-test caller census; not product qualification."
+          },
+          "hashes_sha256": {
+            "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs": "7b7ca68d2a9fab8f46d4dcb4304a1a76146f678a4be0ca4ac1b75968559a955e",
+            "packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs": "9bd1d533b25014f5cd71c8c98c819bb4b6c00ac7a2042f44658d6602de526ad2",
+            "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/canonical_ir.rs": "1ef4e3158814b7efd7c684a366a28f4cab43e82337ffac2ff659cce0b4d811e9",
+            "packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress.rs": "b4b608863538d850bcc7be2529dc9a1e23269ddd163b458201f30f3961dad037"
+          },
+          "rule": {
+            "ref": "AGENT_RULE_CATALOG.md:17-29,164-205",
+            "effect": "Existing-engine-first; pre-release one-current-contract cutover; remove old symbols with consumers; no source aliases/shims or new owner without demonstrated unmet contract."
+          },
+          "D1_shape": {
+            "finding": "Two near-identical implementations of the same ShapeAnalyzerPort + PTA converters. Cost copy is selected by runtime factory, standalone has export/dev-test use but no production non-test caller in checked repository. No measured correctness or speed winner. Existing ShapeAnalyzerPort is sufficient; no new trait/type/crate.",
+            "evidence": [
+              "packages/analysis/quanta-v2/crates/quanta-contract-ports/src/shape_analyzer_port.rs:272",
+              "packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/src/analysis/mod.rs:113-121",
+              "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_source_sink.rs:274-305",
+              "packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs:38-284",
+              "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs:35-282",
+              "packages/analysis/quanta-v2/crates/quanta-runtime/Cargo.toml:3574"
+            ],
+            "decision": "Choose direct standalone owner/factory cutover and remove cost copy/old source symbols in one pre-release change; no cost->shape wrapper. For measurable regex-free product benefit, perform the additional runtime shape feature/port-storage/SDK cfg split in the same goal before claiming success. ShapeAnalyzerPort and independent analysis-shape contract features already exist; no new trait/type/crate.",
+            "why": "Shape crate already owns identical algorithm and converters, and has no regex. Cost crate has no internal non-test dependency on its shape module. Direct factory retarget avoids unnecessary cost->shape dependency and source alias. Cargo path graph contains no shape->cost edge; adding runtime-surface/facade/adapters->shape has no identified cycle. The runtime shape-analyzer feature currently includes cost-analyzer, so this cutover alone does not make production shape regex-free.",
+            "cutover_files": [
+              "packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/Cargo.toml: add optional shape dependency to analysis/cost-analyzer feature closure; src/analysis/mod.rs: direct factory and concrete export/import",
+              "packages/analysis/quanta-v2/crates/quanta-adapters-analysis-facade/Cargo.toml and src/lib.rs: direct shape import/factory",
+              "packages/analysis/quanta-v2/crates/quanta-adapters/Cargo.toml and src/analysis/mod.rs: direct shape import/factory/converter exports",
+              "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/adapter_surface.rs: concrete SDK constructor import to shape owner or direct factory; preserve function behavior",
+              "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/lib.rs and src/shape_analyzer_adapter.rs: remove module and exports; move nonredundant tests into shape crate",
+              "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/pta_shape_bundle_builder.rs: verify imports resolve to current direct owner after facade retarget",
+              "tools/ci/gates/gate-shape-analysis-ghiya-hendren.sh: unit test selector currently targets cost shape module; retarget to standalone crate"
+            ],
+            "feature_closure": [
+              "packages/analysis/quanta-v2/crates/quanta-adapters-shape/Cargo.toml: default=[]; shape=[]; pta-rail pulls PTA engine; no regex",
+              "packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/Cargo.toml: cost-analyzer and analysis-query-core both currently enable cost; map standalone shape as separate optional dependency and preserve cfg gates for PTA conversion",
+              "packages/analysis/quanta-v2/crates/quanta-runtime/Cargo.toml:3008 shape-analyzer includes cost-analyzer, and runtime factory is under cost-analyzer/analysis; runtime lean feature separation is optional later feature work, not a dedup claim"
+            ],
+            "contract_invariants": [
+              "Same BTree node/edge order and Tarjan SCC classification including self loops and unknown endpoints",
+              "Same typed overflow/authority errors in converters and port analysis",
+              "No state retention; create adapter cheaply per factory, recompute graph per invocation. No new cache or cross-request lifetime",
+              "Keep shape input/output and ShapeAnalyzerPort identity; do not change SDK result contract"
+            ],
+            "options": {
+              "delegation_wrapper": "Reject: duplicate disappears internally but obsolete cost public module survives as source alias and adds cost->shape dependency. Violates pre-release rule.",
+              "common_kernel": "Reject: would add surface to accommodate one equivalent algorithm with no second required domain policy.",
+              "new_interface_or_crate": "Reject: ShapeAnalyzerPort and existing standalone crate suffice.",
+              "separate_maintenance": "Reject: allows drift across same algorithm and same port.",
+              "direct_cutover": "Choose; update all in-repo consumers in same change."
+            },
+            "proof": [
+              "Static rg: old cost shape symbol absent from non-test source after cutover; factory concrete type resolves to standalone",
+              "Owner shape tests for tree/DAG/self-loop/cycle/unknown endpoint and PTA converter authority/overflow; SDK shape E2E and cost/heap integration",
+              "Retarget gate-shape-analysis-ghiya-hendren.sh cost-specific unit selector; run gate-shape-sota only through coordinated QBC rail",
+              "Feature checks: shape only, runtime cost-analyzer, analysis-query-core, full shape-analyzer; assert regex-free claim only on actually lean closure",
+              "If regex-free benefit is claimed, feature-tree verification and shape-only SDK/overlay execution are required; direct factory retarget alone is insufficient."
+            ],
+            "product_benefit_condition": {
+              "current_block": "The standalone crate is regex-free, but current quanta-runtime shape-analyzer includes cost-analyzer (packages/analysis/quanta-v2/crates/quanta-runtime/Cargo.toml:3008-3014); cost-analyzer enables quanta_adapters/cost-analyzer and regex via cost crate. Therefore direct factory retarget + duplicate deletion alone does not deliver a regex-free product shape lane.",
+              "necessary_scope_if_regex_free_shape_is_the_goal": [
+                "Make runtime shape-analyzer depend on PTA and shape contracts plus standalone adapter feature, not cost-analyzer; preserve independently required cfg-dfg/PTA features. Existing runtime ports-bundle-contract and kernel-contract already have independent analysis-shape features (Cargo.toml:67,178).",
+                "Add shape-only factory/export in runtime-surface gated by shape capability, with direct quanta-adapters-shape dependency. Keep cost/termination/heap binding under their existing feature gates.",
+                "Split RuntimeIngressAnalyzerOverlayV1 and its bundle injection in ingress_session_source_sink.rs:262-305 and runtime_ingress_execution_budget_v1.rs:180-190 so a shape-only port can be injected without constructing cost/termination/heap or enabling regex.",
+                "Retarget SDK compile gates from cost-analyzer to shape-analyzer in sdk/mod.rs:674-678, code/domain_modeling_selector.rs:96-100, public_exports_head.rs:224, rails_reexport.rs:12-30, pta_shape_bundle_builder.rs:13-71 and later cfgs, capabilities_projection.rs:140-149,215-218. Preserve PTA requirement and typed error/authority checks.",
+                "Keep cost-only feature behavior intentional: current cost-only runtime overlay installs a shape port, but non-test runtime reads found only SDK shape/PTA, heap builder, and capability probes; no clear cost analysis algorithm read of shape port. Do not introduce an alias merely for the old export. Verify cost-only public capability contract/test before removing optional shape binding."
+              ],
+              "proof": "Compile/check shape-analyzer without cost-analyzer; confirm cargo feature tree excludes regex and cost crate along this lane, run SDK shape E2E + PTA bundle + cost-only regression + heap analysis. Current source audit is static; no feature/build check executed.",
+              "SCC_note": "Reusing D2 common SCC kernel or rewriting recursive Shape Tarjan is a separate change. Do not couple it to duplicate removal."
+            }
+          },
+          "D3_memoryir": {
+            "finding": "Pack is the live runtime build-input ingress for selected MemSSA taint promotion/summary reissue; DFG build-input lowering is public inside memssa_adapter and tested but no non-test caller found. DFG PortDFG->CanonicalMemoryIr is separate dormant input contract, not proof that build-input copy is needed. Product taint path is conditional on installed taint solver and MemSSA selection.",
+            "evidence": [
+              "packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress.rs:234-265,390-482",
+              "packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/adapter_solver_solve_v2_with_dfg/memssa_input_promotion.rs:644-700",
+              "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/canonical_ir.rs:132-170,343-475",
+              "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/mod.rs:71-75",
+              "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/lib.rs:184-185",
+              "tools/rust-crate-boundary-guard/policies/quanta-memssa-runtime-surface-ingress-boundary.toml:172-179"
+            ],
+            "decision": "Keep runtime pack as live build-input canonical ingress. Remove DFG canonical_memory_ir_from_build_input, its unique lowering helpers/tests, and old inventory claim in one pre-release cutover. Keep PortDFG->CanonicalMemoryIr separate for now only if its authored producer contract is intentionally retained; it has no in-repo non-test caller and deserves an explicit retirement decision, but is a different ingress and should not be relabeled live. Do not add DFG->runtime-pack dependency or a forwarding wrapper. Do not move pack runtime authority into quanta-memssa core.",
+            "why": "Pack handles strict-load surrogate allocation, explicit load-value-def mapping, typed CanonicalValidation, and runtime summary receipts. DFG clone lacks synthetic load surrogate and has different error enum/def_id Option. Direct DFG->pack has no cycle in current path graph but pulls pack runtime-delta-authority through quanta-memssa into default DFG memssa-rail, materially widening compile closure and reversing domain boundary. Existing pack boundary policy says runtime-facing ingress enters through pack; core policy forbids core->pack. Since DFG build-input API has no in-repo production caller, retirement costs less than compatibility mapping. No shared kernel/new type/trait is justified.",
+            "contract_invariants": [
+              "Keep deletion authority validation before lowering, typed failure on missing slot/derivation/unknown CFG block; preserve effective alias projection",
+              "Keep synthetic LoadOpId high-bit domain projected to collision-free sub-floor value-def IDs in pack; preserve explicit override map and strict validator",
+              "Keep deterministic per-block op order, schema/shape-policy/producer digests, no fabricated authority; pack rebuilds per request, with runtime capture/reissue responsible for lifetime",
+              "PortDFG direct path has definition-backed statement identity and AddressUse reflection semantics; do not silently route through build-input unless equivalence is proven"
+            ],
+            "error_detail": "DFG MemssaInputBuildError has ForeignFunction/ForeignSourceAuthority, IncompleteProducer.def_id Option<u32>, errors folded to UnsupportedAccessPath; pack error has CanonicalValidation and def_id u32. Straight alias/reexport would break public shape and typed semantics; no external stable-release guarantee established.",
+            "options": {
+              "DFG_to_pack_wrapper": "Reject: no current caller, preserves obsolete source API, widens default DFG feature closure to runtime authority; error mapping cannot be lossless without API change.",
+              "common_kernel_in_core": "Reject for this duplicate: moving strict runtime pack behavior into core violates core boundary; common lowering helper still leaves two public producers and explicit error adapters.",
+              "new_crate_or_trait": "Reject: build input and canonical IR contracts already exist; extra layer increases lifecycle and feature graph.",
+              "separate_maintenance": "Reject for build-input clone: drift already visible on synthetic-load IDs and error typing.",
+              "delete_unused_clone": "Choose; pack remains current runtime ingress.",
+              "port_dfg_direct": "Different typed input; retain only as explicitly dormant capability or retire separately after its consumer/use-case decision; no default adapter->runtime-pack dependency."
+            },
+            "cutover_files": [
+              "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/canonical_ir.rs: delete build-input entry and helpers reachable only from it; preserve PortDFG-specific event lowering/finalization if retained",
+              "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/mod.rs: remove build-input export and stale governance inventory stable/compat claims",
+              "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests.rs and canonical_ir.rs test module: migrate unique assertions for deletion/IDs/digest to pack tests, remove duplicate tests",
+              "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/lib.rs: inspect PortDFG exports and remove only if separately retired; build-input function is not top-level exported",
+              "packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress.rs: retain implementation; add pack regression for observed DFG clone cases where coverage is missing",
+              "boundary policy/docs: assert no runtime build-input DFG bridge and update source ownership references"
+            ],
+            "dependency_graph": "Static Cargo path dependency BFS across repository: pack->DFG none; DFG->pack none; both directly depend on quanta-memssa; proposed DFG->pack currently no direct cycle but introduces transitive runtime-delta-authority into DFG memssa-rail (default cfg-dfg). Deletion avoids graph change.",
+            "product_reachability": "Native SDK/query backend taint_flow registration -> analysis().taint() -> configured IfdsTaintAdapter under taint-solver/product-v4 features -> admitted/frozen forward -> selected MemSSA PTA_CS -> interproc graph authority -> pack promotion; pack summary reissue only when native plans present. This is static trace, not E2E proof.",
+            "proof": [
+              "Repo-wide non-test symbol census plus exact feature/target checks; no remaining DFG build-input export/caller/inventory claim",
+              "Pack owner regressions: deletion rejection, missing derivation/slot, synthetic+real LoadOpId collision, explicit map mismatch, stable op order/digest and strict ingress",
+              "QBC owner tests for pack and DFG memssa-rail, gate-memssa-frontdoor, runtime taint smoke including MemSSA-selected route; execute only after root coordinates shared QBC",
+              "Boundary guard quanta-memssa-runtime-surface-ingress-boundary and quanta-memssa-core-boundary; verify no new pack dependency in DFG and no direct runtime-delta-authority feature"
+            ]
+          },
+          "status": "Design report only; no repository edits, tests, or QBC builds."
+        }
+      },
+      "scc-unionfind": {
+        "original_path": "/tmp/gqlang-design-scc-unionfind.json",
+        "sha256": "8e55aab6392efd7e9f7dc21ff17a0d807abb2267e2ff3729dbdd14386219de09",
+        "report": {
+          "scope": {
+            "task": "D2 SCC and D5 UnionFind architecture decision; source-only; no repo edits or QBC builds",
+            "gqlang_head": "a14dd48fe911a455cfa44cb3624a662fb7c15c6c",
+            "semantica_initial_head": "e6a93afebf4ff93ea8f9460be77497be2cb97e75",
+            "semantica_observed_head": "1fee79c832428f050a3c1367b31c7796e2755bf6",
+            "drift": "Semantica HEAD moved during audit; root Cargo.toml dirty foreign. Implementation files SCC/UF clean at observed HEAD.",
+            "digests_sha256": {
+              "packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs": "4dacdc6f5a26bf251133c59d50f37480ba411294646151b298067cbd07d38cad",
+              "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc.rs": "2235b450e72d593894e4a6e5089237e0984c246517243410e72b3e67f400056c",
+              "packages/core/pta/engine/src/solver/andersen/union_find.rs": "f28ef0284a267054371a8db74de18e24069b976d01004d00219b33150a5b6ddd",
+              "packages/core/pta/engine/src/solver/union_find_base.rs": "d764ea1fd178edc9ac47d6bdba6055bef96660ef06e938dde535001ae11eacf9"
+            }
+          },
+          "decision": {
+            "scc": "Prefer remove the forbidden default feature, reclassify, and extend existing quanta-graph-utils-v1 pure iterative Tarjan owner. Build a borrowed indexed kernel and generic BTree wrapper, plus generic checkpoint closure with typed compute-vs-stop error; adapters keep domain closure, budget, projection, ordering, and error mapping. No trait object, new universal core crate, or replacement via petgraph. Migrate consumers only after per-owner parity, failure mapping, and allocation/latency evidence. Core CallGraph recursion is a separate risk, not automatically same cutover.",
+            "uf": "Delete dormant Andersen UnionFind implementation and its public reexports/tests in one pre-release consumer cutover after verifying no external consumer. Keep live union_find_base for Steensgaard and retained pair session. Do not force base's 8-byte/node size array onto a wrapper for a zero-caller copy; do not add a trait or third generic UF. Leave Mahjong min-root DSU separate."
+          },
+          "evidence": [
+            {
+              "claim": "graph-utils has zero dependencies and owns deterministic iterative typed Tarjan; its current default=[] feature must be removed before tier1-adapter classification because the policy forbids the feature name itself. The indexed wrapper does Vec->BTreeMap/BTreeSet->Vec conversion.",
+              "paths": [
+                "packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/Cargo.toml:2-33",
+                "packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs:65-203",
+                "packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs:249-279",
+                "tools/ci/policy-checker/src/policy.rs:1033-1051",
+                "Cargo.toml:858-859"
+              ]
+            },
+            {
+              "claim": "Current graph-utils metadata tier0-shared is blocked from tier1-adapter and tier2-app callers by actual layer checker; path alone is not the reason.",
+              "paths": [
+                "Cargo.toml:784",
+                "Cargo.toml:821-822",
+                "Cargo.toml:1032",
+                "tools/ci/policy-checker/src/policy.rs:1113-1167"
+              ]
+            },
+            {
+              "claim": "Existing consumers query-HIR-wire tier1-adapter and runtime tier2-app, and potential PTA/taint tier2-app/core PTA/CFG tier1-adapter all permit a tier1-adapter dependency. Graph-utils has zero deps; its default=[] feature name is incompatible and must be deleted. No inspected dependent feature enables quanta-graph-utils-v1/default; runtime already uses default-features=false, query-HIR must add it.",
+              "paths": [
+                "packages/analysis/quanta-v2/crates/quanta-runtime-query-hir-wire/Cargo.toml:9-36",
+                "packages/analysis/quanta-v2/crates/quanta-runtime/Cargo.toml:11-29",
+                "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/Cargo.toml:9",
+                "packages/analysis/quanta-v2/crates/quanta-taint-solver/Cargo.toml:14",
+                "packages/core/pta/engine/Cargo.toml:11",
+                "packages/core/cfg/schema/Cargo.toml:11",
+                "Cargo.toml:821-864",
+                "Cargo.toml:1032",
+                "tools/ci/policy-checker/src/policy.rs:1178-1190",
+                "packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/Cargo.toml:15-17",
+                "tools/ci/policy-checker/src/policy.rs:1033-1051"
+              ]
+            },
+            {
+              "claim": "PTA clone has per-node/neighbor/frame/materialization checkpoints and silent ignore of unregistered neighbor. Its Result<E> shape only admits stop error while generic typed compute errors differ; callers depend on deterministic component order/IDs. Observed production adjacency builders generally insert both source and target keys.",
+              "paths": [
+                "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc.rs:62-238",
+                "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/whole_program.rs:58-92",
+                "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_summary_catalog/recursive_scc.rs:490-515",
+                "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/recursive_call_graph_census_v1.rs:67-82"
+              ]
+            },
+            {
+              "claim": "Core Andersen copy-edge Tarjan is default-on through solver config, cycle-only, min-root, cancellation, sorted/dedup graph. Generic off-the-shelf conversion may add materialization; per-owner allocation and ordering parity required.",
+              "paths": [
+                "packages/core/pta/engine/src/solver/andersen/scc.rs:1-230",
+                "packages/core/pta/engine/src/solver/andersen/config.rs:42-50"
+              ]
+            },
+            {
+              "claim": "Graph-dominance already contains a private core-tier iterative Tarjan, but it is specialized to no-exit sink SCC and coupled to dominance resource/projection semantics; not a general graph owner.",
+              "paths": [
+                "packages/core/codegraph-graph-dominance/src/lib.rs:281-373",
+                "packages/core/codegraph-graph-dominance/Cargo.toml:8-20",
+                "packages/core/cfg/schema/Cargo.toml:27"
+              ]
+            },
+            {
+              "claim": "Andersen UF exported but no production caller found within searched repository; base UF live. Andersen copy has no size vector; base has Vec<u64> size, so wrapper changes memory and return API.",
+              "paths": [
+                "packages/core/pta/engine/src/solver/andersen/union_find.rs:50-255",
+                "packages/core/pta/engine/src/solver/union_find_base.rs:47-345",
+                "packages/core/pta/engine/src/solver/andersen/mod.rs:22-50",
+                "packages/core/pta/engine/src/lib.rs:56-70"
+              ]
+            },
+            {
+              "claim": "Repository posture is existing-engine-first and prohibits source aliases/shims for coordinated pre-release cutover.",
+              "paths": [
+                "AGENT_RULE_CATALOG.md:17-29",
+                "AGENT_RULE_CATALOG.md:164-218"
+              ]
+            }
+          ],
+          "options": [
+            {
+              "name": "Existing graph-utils tier1-adapter + borrowed indexed kernel + checkpoint",
+              "verdict": "selected",
+              "why": "One existing zero-dep pure algorithm owner can legally serve tier1/tier2 after exact metadata correction and removal of forbidden default=[] feature; no inspected dependent feature references its default feature. Centralizes graph traversal without domain policy transfer.",
+              "cost": "Four source hunks across three manifests/root files: graph-utils manifest tier and default=[] deletion, root path tier, query-HIR dependency default-features=false; owner API/regressions and consumer parity/allocation proof."
+            },
+            {
+              "name": "Allow tier0-shared globally in tier1-adapter/tier2-app policy",
+              "verdict": "reject",
+              "why": "Broadens all workspace dependency edges to solve one crate classification; owner is an algorithm adapter rather than a contract type. May hide unrelated policy violations."
+            },
+            {
+              "name": "Create new tier1 core/universal graph crate",
+              "verdict": "reject for now",
+              "why": "Duplicates existing zero-dep graph-utils package and adds manifest/catalog/budget build surface without a demonstrated semantic gap."
+            },
+            {
+              "name": "Extend codegraph-graph-dominance as universal SCC owner",
+              "verdict": "reject",
+              "why": "Dominance-specific no-exit projection and existing resource accounting make a universal graph API an ownership expansion despite its usable iterative kernel."
+            },
+            {
+              "name": "Adopt workspace petgraph 0.6",
+              "verdict": "reject pending evidence",
+              "why": "No demonstrated graph-utils correctness/scale gap; public SCC API's determinism/cancellation/stack properties need exact 0.6 validation. New dependency and conversion costs.",
+              "limitation": "0.6 docs/source not validated in this source-only pass; do not claim 0.6 recursion definitively from 0.8 docs."
+            },
+            {
+              "name": "Thin wrapper on BaseUnionFind",
+              "verdict": "reject",
+              "why": "Dormant exported copy has no known production user, while base size Vec<u64> costs ~8 bytes/node and bool-return adapter would be an avoidable shim."
+            },
+            {
+              "name": "New UF trait/rewrite",
+              "verdict": "reject",
+              "why": "No multiple live generic consumer contracts require dynamic dispatch or a third implementation."
+            }
+          ],
+          "plan": [
+            {
+              "step": 0,
+              "files": [
+                "Cargo.toml",
+                "packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/Cargo.toml",
+                "packages/analysis/quanta-v2/crates/quanta-runtime-query-hir-wire/Cargo.toml"
+              ],
+              "action": "Coordinate dirty Cargo.toml exact hunk; reclass graph-utils tier1-adapter in root path and manifest; delete graph-utils [features] default=[] declaration (forbidden by tier1-adapter feature-name check); set query-HIR dependency default-features=false. Existing runtime dependency already has false. Static search found no dependency feature forwarding quanta-graph-utils-v1/default. Run actual layer gate, including feature-name check, dependency tier, and default-feature edge; do not claim clean gate from source alone."
+            },
+            {
+              "step": 1,
+              "files": [
+                "packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs"
+              ],
+              "action": "Extract borrowing dense/indexed iterative kernel. Generic BTree entry indexes exactly once. Preserve deterministic traversal/emission, typed invalid neighbor, no recursion. Add controlled callback and typed Stop(E)/Compute(SccComputeError) instead of swallowing errors. Assert indexed API skips map/set boxing and callback invoked for roots/edges/frames/materialization as required."
+            },
+            {
+              "step": 2,
+              "files": [
+                "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc.rs",
+                "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/Cargo.toml"
+              ],
+              "action": "Prove every production caller creates closed adjacency or make closure explicit. Adapt domain stop and compute errors without expect/silent skip; if infallible caller signatures cannot safely carry compute error, defer consumer cutover. Assert exact SCC order and component IDs, cancellation during indexing/traversal/materialization, deep graph, malformed neighbor rejection."
+            },
+            {
+              "step": 3,
+              "files": [
+                "packages/core/pta/engine/src/solver/andersen/scc.rs",
+                "packages/core/pta/engine/Cargo.toml"
+              ],
+              "action": "Only after representative workload measurement, adapt COPY-edge sorted/closed graph to kernel with no duplicate materialization, preserve cycle-only, self-loop, min-representative, default-on control cancellation and any checksum/persist order; otherwise retain current implementation with explicit different-cost rationale."
+            },
+            {
+              "step": 4,
+              "files": [
+                "packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs",
+                "packages/core/cfg/schema/src/domain/call_graph/record.rs",
+                "packages/core/codegraph-graph-dominance/src/lib.rs"
+              ],
+              "action": "Evaluate separately. Taint default-off strict recurrence has closure/sorted output/budget failure semantics and should cut over only with opt-in parity/space proof. Core CallGraph recursive Kosaraju deserves deep-chain safety rail; do not assume replacement preserves ordering. Dominance no-exit sink SCC retained unless direct proof of equivalent kernel and resource accounting."
+            },
+            {
+              "step": 5,
+              "files": [
+                "packages/core/pta/engine/src/solver/andersen/union_find.rs",
+                "packages/core/pta/engine/src/solver/andersen/mod.rs",
+                "packages/core/pta/engine/src/lib.rs"
+              ],
+              "action": "Re-scan whole workspace and any known SDK consuming manifests; delete dormant Andersen UF implementation, test module, and public reexports in one coordinated pre-release cutover. Keep BaseUnionFind and live Steensgaard/pair-session users. Document exported API removal."
+            }
+          ],
+          "gates": {
+            "minimum": [
+              "policy-checker exact owner tier gate covering forbidden crate feature names, workspace dependency tier edges, and dependency default-features",
+              "graph-utils unit parity and deep/invalid adjacency tests",
+              "PTA owner tests + checkpoint cancellation/malformed input",
+              "core PTA Andersen owner tests on default config",
+              "taint opt-in and core CFG only if touched",
+              "workspace reachable compile via prescribed QBC after source freeze"
+            ],
+            "measurement": "Before/after same frozen source/workload: peak allocations/bytes and latency for SCC input sizes and COPY-heavy PTA. No unsupported performance claim from source inspection.",
+            "stop_conditions": [
+              "Graph-utils tier1-adapter reclass causes a forbidden inbound edge or wider policy failure not attributable to this hunk",
+              "PTA closed adjacency cannot be established and typed compute error cannot be propagated without changing public failure contract",
+              "Consumer output order, representative IDs, budget/cancellation point, or persisted digest changes unexpectedly",
+              "Andersen or taint adaptation materially raises peak memory/latency on representative workload",
+              "External Andersen UF consumer is identified and cannot be coordinated in same cutover"
+            ]
+          },
+          "limits": [
+            "Earlier report incorrectly said graph-utils default=[] fits tier1-adapter; corrected: policy.rs:1033-1051 rejects feature name default, so its declaration must be removed. Source scan found no quanta-graph-utils-v1/default forwarding; cargo metadata/compile was not run.",
+            "The existing quanta-runtime-query-hir-wire/Cargo.toml:16 also declares default=[] while its tier is tier1-adapter. The same source rule predicts a separate pre-existing policy violation; full gate cleanliness cannot be inferred from graph-utils four hunks without running/scoping the gate.",
+            "No engine/test/policy rail was executed in this subtask; predicted policy violations are static interpretation.",
+            "No distinct external Andersen UF consumer was found in the inspected local repository; absence outside it is unproven.",
+            "Semantica HEAD moved during audit and Cargo.toml has foreign dirty changes, so re-freeze before implementation."
+          ]
+        }
+      },
+      "app-manifest": {
+        "original_path": "/tmp/gqlang-design-app-manifest.json",
+        "sha256": "deaf721b8812174860737d23718ebb84059876ce55586d232dd26dc5453bb5ae",
+        "report": {
+          "kind": "read_only_design_adjudication",
+          "frozen": {
+            "gqlang_head": "a14dd48fe911a455cfa44cb3624a662fb7c15c6c",
+            "semantica_head": "e6a93afebf4ff93ea8f9460be77497be2cb97e75",
+            "source_sha256": {
+              "apps/api/api/routes/search.py": "082db78f8c4265b389b993fa14924a8c2a2639b707b0f8a65bdab2bac998cc38",
+              "apps/api/api/routes/agent.py": "8f726c56af67bef6d7bab8c089eee1caca2fd035d3d7d88366bcb574c7ab3a89",
+              "apps/mcp/mcp/adapters/search/query_adapter.py": "a027850ebccde1d29371adeb4427d219fbb554e5e7a233b3abd5e44ccbdd7848",
+              "apps/mcp/mcp/adapters/search/symbol_retriever.py": "24e11c7974d6ee9666059a54077fb4ad7af73d6417b454ae7625cdcdb97120db",
+              "apps/mcp/mcp/domain/query_surface_registry.py": "099474913615bd1d4f08d4f9df188a16f9b39319f5faa35cad4dda163e95bbb9",
+              "apps/mcp/mcp/handlers/introspection.py": "477f8aa693df62d41068807047c36c8f62904ec7126cbd95b1c8cd614e890f6e",
+              "apps/mcp/mcp/handlers/surface_config.py": "aecad497509d49c8e33e3f4b9eda5851af4516c2f2a6fcf160ddad6925f4ab0d",
+              "apps/mcp/mcp/domain/schemas.py": "285a13b5663a4cf809442cbbba9726f32d505f69279205cb856de7511ba96438",
+              "apps/mcp/mcp/main.py": "1ac221f442ff4b1c3e76ebaca1aefb49911a2c746eeebce8edbc111ee6bb8180",
+              "apps/mcp/mcp/adapters/fluent_engine_sdk_query_adapter.py": "d4bcfd6024beb10b17bc65c9df981ecb034278ee588fc6ce4037185ca1b4a838",
+              "apps/mcp/mcp/handlers/usecase_ai_tools.py": "3a2e231393a599f89720e1345c958c3ada251436444f34ffff6e850ec32e548d",
+              "packages/sdk/python/codegraph_sdk/_product_search_projection_v1.py": "3f347584050bcc85c76c882d130f8e0efb68212bbfcb9d138e77d02cf5d18e4e",
+              "packages/sdk/python/codegraph_sdk/client.py": "08b814c2997d3c71ee25d6ec1e493ce5c80fd032a3518ff2ef2ea10f8458e6d1",
+              "packages/analysis/codegraph-shared/codegraph_shared/infra/fluent_engine.py": "af62007ae6b709aab1d3f89add6bc5ca3db43daa717d3986dfa8b098acb19ddf",
+              "packages/analysis/codegraph-shared/codegraph_shared/infra/product_client_boundary.py": "0e4f589b788a7f29dc79759ec20aba563aaa43161c469b46b32da8a8174a8007",
+              "packages/analysis/quanta-v2/crates/quanta-usecase/src/generated/crosswalk.json": "5d430e66c6e3e0421cff95d26b889004153ae753b3d065ddb6956d68eea84390",
+              "apps/mcp/tests/test_packaged_mcp_process_runtime.py": "1a91cbb4a9afb4b32b61fdc9020a56ad2a71aca7e10604a157fe17526b763f2e"
+            },
+            "owner_files_clean_and_same_as_frozen": true,
+            "later_observed_semantica_head": "1dfba78da5ec0d07d377938fdaac586648e079d9"
+          },
+          "decision": {
+            "D6": "After F1 establishes one truthful current generated SDK search DTO, extract one SDK-result to app-hit projection in codegraph_shared and cut API plus API-agent consumers together. Remove QueryAdapter legacy readers; no new engine or polymorphic interface. Existing app DTO fields may need widening if F1 admits non-symbol rows or optional location.",
+            "D7": "Extend existing MCP query_surface_registry owner to load and validate one manifest source snapshot for the process. Reuse it across registry, schemas, SurfaceConfig/introspection and dynamic stdio handlers. Remove alternate introspection path scan/loader and independently cached reads; restart to reload manifest. No new plugin/provider interface."
+          },
+          "D6": {
+            "current_source_contract": [
+              "Generated SDK client owns raw ProductResponse query.search -> current symbols,total,truncated projection: packages/sdk/python/codegraph_sdk/_product_search_projection_v1.py:69-88,157-194; client.py:1095-1103,2291-2303 returns data dict when with_status=False and raises on typed failure.",
+              "API /api/v1/search main.py:211 -> search.py:259-309 validates exact current data envelope and row/location keys, projects hit fields and returns SearchResponse with total/truncated.",
+              "API /api/v1/agent/analyze main.py:220 -> agent.py:67-85,174-232 -> QueryAdapter.py:503-605,645-713 accepts list/hits/payload/data variants, projects current symbol row, then GraphRAG and QueryResult. This QueryAdapter is not public MCP; main.py:44-55 mounts GeneratedDaemonSdkQueryAdapter there.",
+              "The generated typed search request permits unanchored scope: SDK test_sdk_client_execute.py:1675-1693. The API route's explicit file/path requirement is its own public policy from codegraph_shared/infra/product_client_boundary.py:299-315. Do not infer the agent's unanchored request is invalid.",
+              "SDK with_status=False drops success/degraded metadata before the apps receive data. The current app parsers do not own restoration of that status. If status is required publicly, decide separately to use the existing with_status=True SDK contract and update app response contracts."
+            ],
+            "candidate_review": [
+              "Reuse SDK _product_search_projection_v1 as the raw-wire validator and source of current symbol DTO. It has different output responsibility from app hit shaping; extending SDK to emit app SearchHitResult would couple generated SDK to API-agent DTO.",
+              "Do not import API routes.search parser into QueryAdapter: wrong app dependency direction and HTTP-specific exception/response policy.",
+              "codegraph_shared/infra/fluent_engine.py:2339-2430 is a real candidate but its normalization accepts results fallback, synthetic ID, alternate name/location and Index IPC metadata. It is not the strict generated SDK result contract and should not be used as its validator.",
+              "SymbolRetrieverAdapter.py:110-169 is a third source copy returning a different symbol DTO. It is exported/tested and MCPSearchService can consume it, but no production composition root instantiates the service or retriever in repository search. Retire only after checking external/public export obligations; do not describe it as live public MCP."
+            ],
+            "new_owner": "packages/analysis/codegraph-shared/codegraph_shared/infra/search/sdk_search_hit_projection.py: one internal app projection of the single F1-established current SDK search DTO. Avoid new public DTO or Protocol; widen existing SearchResponse/SearchHitResult fields only if F1 proves row kinds or optional location require it. RuntimeError on malformed response preserves app boundary failure mapping.",
+            "proposed_semantics": [
+              "F1 must first choose one truthful producer→generated SDK result contract for text/semantic/hybrid/symbol rows. Current {symbols,total,truncated} is an observed existing SDK projection, not a mandate that every native row has symbol_id or location. Do not fabricate symbol_id, line or span to fit this shape.",
+              "Implement the shared projection against that chosen DTO, retaining stable native identity and result ordering, required/optional row-kind fields and optional location exactly as the approved F1 contract states. Reject malformed required fields; if a consumer cannot represent an admitted row, change its existing DTO or fail explicitly rather than silently omit it.",
+              "Remove QueryAdapter list/hits/payload/data compatibility once F1 single current DTO and its consumers are cut together. Hits-style fake tests do not establish a shipping product contract. Keep API request anchor policy and SDK-supported agent unanchored request distinct.",
+              "API continues to own HTTP total/truncated and error response; agent owns SearchHitResult/GraphRAG/result reasons. Shared projection does not promise to restore SDK degraded metadata: execute_registered_query_v1(with_status=False) returns data only, so any public status requirement needs a separate with_status=True contract decision."
+            ],
+            "F1_dependency": "Resolve Native→generated SDK F1 at producer/contract owner first or atomically: actual non-symbol search rows and optional location may not truthfully satisfy current symbol_id/location assumptions. Decide one supported row schema/typed variants and real identity. Then design D6 shared app projection against that exact DTO; do not normalize fabricated symbols. Gate with real native→SDK outputs, not hits fakes.",
+            "cutover": [
+              "Freeze F1 final producer and generated SDK result schema with positive, empty, truncated, multiple row kinds and optional-location cases as supported; establish independent expected IDs/locations.",
+              "Extract only the repeated current-result→app-hit mapping from API/agent into codegraph_shared after F1; remove QueryAdapter legacy readers and update tests to real current SDK DTO. Widen existing app DTOs only for admitted F1 optional fields, with public compatibility/version review.",
+              "Review dormant SymbolRetrieverAdapter/export separately; no repository production composition-root caller found, but external Python consumers are unverified."
+            ],
+            "gates": [
+              "Real native ProductResponse→generated SDK execute_registered_query_v1→API search and API agent for each F1-supported row kind, nonempty/empty/truncated and optional-location paths; assert true native identity and no invented coordinate.",
+              "Malformed required fields and unsupported legacy list/hits/wrapper shapes fail closed in both apps; accepted optional fields survive with correct DTO/HTTP representation, not omission or fabricated placeholders.",
+              "SDK typed failed/not_computed/degraded semantics tested at SDK owner. App status preservation remains unclaimed unless with_status=True is deliberately adopted. GraphRAG failure keeps seed hits and its own reasons.",
+              "API route mounting, agent injection and public MCP separate GeneratedDaemonSdkQueryAdapter remain unchanged."
+            ],
+            "not_a_claim": "Direct crafted NaN acceptance was observed in both app projectors, but generated envelope/wire admission was not proven; do not count it as a reachable production defect."
+          },
+          "D7": {
+            "current_source_contract": [
+              "query_surface_registry.py:37-61 selects CODEGRAPH_CROSSWALK_PATH or code-root generated/crosswalk.json, caches selected path, reads JSON in separate mapping/public-list functions with independent caches.",
+              "introspection.py:55-100 independently scans explicit path only if it exists, then CODEGRAPH_REPO_PATH and cwd ancestor .ai/target paths, returning diagnostic sentinel on missing/JSON read error. SurfaceConfig.load uses require_crosswalk and list_usecases, which reads the same path twice: surface_config.py:78-112.",
+              "MCP startup main.py:229-249 initializes SDK then builds tools before stdio. Adapter and handler modules create query registries at import: fluent_engine_sdk_query_adapter.py:57-58 and usecase_ai_tools.py:121-125. list_tools and dispatch dynamically call SurfaceConfig via main.py:101-119,157-185.",
+              "Packaged process test sets explicit canonical manifest path: apps/mcp/tests/test_packaged_mcp_process_runtime.py:165-192. Current generated file has 54 entries and 31,966 bytes; generator_provenance_v1.state is commit_unavailable, so its SHA identifies bytes but does not prove source commit lineage."
+            ],
+            "counterexample": {
+              "script": "/tmp/gqlang-design-app-manifest-toctou.py",
+              "command": ".venv/bin/python /tmp/gqlang-design-app-manifest-toctou.py > /tmp/gqlang-design-app-manifest-toctou-raw.json",
+              "raw": "/tmp/gqlang-design-app-manifest-toctou-raw.json",
+              "same_path_two_reads": "Controlled replacement between SurfaceConfig.load's first and second read yields config.version=A with tools=['hover'] from manifest B. This is a schedule counterexample, not an observed production writer race.",
+              "split_caches": "Controlled replacement after public names cache yields registry cached ['goto_definition'] while SurfaceConfig lists ['hover'] and later mapping reads {'hover':'ide.hover'}. A shared path helper alone cannot prevent this.",
+              "bare_repo_vs_packaged": "Without explicit env at repo root, _build_tool_list raises CrosswalkLoadError although registry's code-root generated file exists; with explicit canonical env it lists hello plus eight query tools. This is config-dependent and not proof packaged startup fails.",
+              "script_sha256": "b63b967a64db70bf37df0e88bdb9b92e6cfba3a7bc76a3730dcd88250e832b05",
+              "raw_sha256": "a9d5368b5339e153ffa14993193a594362aa7dc2df79237c8c928a9667a7a654",
+              "fixture_sha256": {
+                "A": "5db6aa0eedf3299beb3f3ead4c077ec88083a59a8b73d8374e21ddd592f014ed",
+                "B": "0aa3660e1a69fe563515cd6f86a1aa82794bad9f64cc6876c3b5eda354c83dd9"
+              },
+              "fixture_source": "Two JSON manifests A and B are literal dictionaries in /tmp/gqlang-design-app-manifest-toctou.py; each is written to a temporary crosswalk.json under CODEGRAPH_CROSSWALK_PATH. Temporary files are deleted when the isolated component exits."
+            },
+            "candidate_review": [
+              "Extend query_surface_registry existing path/validation owner; do not add a new manifest provider interface or a separate facade that still reads a second file.",
+              "Do not use CODEGRAPH_REPO_PATH to find the MCP contract: it denotes the analyzed workspace, which may be another repository. Module-relative generated file is the source-checkout default; packaged launch must inject explicit file or package it deliberately.",
+              "Current introspection soft error sentinel is consumed by require_crosswalk and not a separately mounted public MCP tool. If no supported external consumer requires it, remove the alternate loader and route introspection metadata projection from the same snapshot; keep typed fail-closed startup behavior.",
+              "Existing refresh_surface_config has no repo production caller and only refreshes one cache. Do not promise hot reload; remove or make process-restart-only during pre-release cutover. Full runtime reload would require atomic replacement of schemas, mapping, handler and tool list together."
+            ],
+            "new_owner": "apps/mcp/mcp/domain/query_surface_registry.py owns a startup-loaded private frozen CrosswalkSourceSnapshot value record (no same-role record exists): selected path, one bounded read byte sequence or validated immutable entries, SHA256, version/provenance. All existing derived public-name/mapping/metadata projections consume the same captured source; no new public interface. Snapshot digest identifies bytes, not generated-from-commit proof.",
+            "proposed_semantics": [
+              "Select explicit CODEGRAPH_CROSSWALK_PATH if set and fail closed if missing/invalid; otherwise use one canonical module-relative generated path. Remove .ai/target/cwd/project scan from MCP serving. Freeze config before importing adapter/handler registries or constructing SDK client.",
+              "Read manifest once, validate current version/truth class, root and entry shape, duplicate canonical tool IDs, deps and stub schema hashes, then derive mapping and filtered public tools from one source. Preserve schema/implemented-subset policy and introspection tier/metadata projection. Retain file digest/path for diagnostics; report commit_unavailable truth honestly.",
+              "SurfaceConfig.load consumes the already captured snapshot once; `list_usecases` does not reopen the file. list_tools, call_tool authorization, handler and SDK adapter use projections of that same snapshot for the whole stdio process. On file change, require process restart; do not mix new metadata with old cached routing.",
+              "An explicit malformed override never falls back to another path. Missing/corrupt/incompatible manifest fails before stdio starts. No empty synthetic public surface is emitted as successful startup."
+            ],
+            "cutover": [
+              "Implement one snapshot loader in query_surface_registry and replace the two read/cache families there. Preserve lazy schema import needed to avoid circular import.",
+              "Have introspection and SurfaceConfig take current snapshot as input or fetch the same cached snapshot. Remove alternate path scanner/soft sentinel if unneeded by verified current consumers; remove independent refresh operation.",
+              "Move startup snapshot preflight before _initialize_sdk and _build_tool_list; ensure import-time registries, dynamic list_tools and dispatch all derive from the frozen source. Preserve packaged explicit path and shutdown behavior."
+            ],
+            "gates": [
+              "Source checkout without override and packaged MCP with explicit generated manifest both advertise the same eight public query tools plus hello; invalid explicit path and malformed/duplicate/stub entries fail before stdio.",
+              "Controlled same-path file replacement between would-be reads leaves version, names, mapping, schemas and dispatch on one captured digest; process restart picks up new manifest once.",
+              "CODEGRAPH_REPO_PATH and cwd variations do not choose unrelated crosswalks. Verify tool list and call_tool authorization against the same snapshot under import-order permutations.",
+              "Generated crosswalk writer/current fixture provenance and hash checked by qualification gate separately; snapshot SHA alone does not qualify exact source lineage."
+            ],
+            "existing_snapshot_types_review": {
+              "PublicQuerySurfaceEntry": "apps/mcp/mcp/domain/query_surface_registry.py:14-20 is frozen but one projected tool, not the path/bytes/manifest generation source.",
+              "PolicySnapshot": "apps/mcp/mcp/domain/policy.py:392-410 is governance policy, not crosswalk source.",
+              "SnapshotInfo": "apps/mcp/mcp/domain/schemas.py:240-255 is response repo snapshot, not crosswalk source.",
+              "decision": "No existing same-role immutable crosswalk source record. One private frozen internal record in query_surface_registry is justified to bind path, exact read bytes or validated immutable entries, source SHA256, version and provenance. This is a value record, not a new public DTO, Protocol, provider or abstract interface."
+            },
+            "protocol_and_reload_review": {
+              "server_capabilities_source": "apps/mcp/mcp/main.py:241-247 passes capabilities={tools:{}}. Installed MCP InitializationOptions model coerces this to ToolsCapability(listChanged=None); local inspection .venv/lib/python3.12/site-packages/mcp/types.py:455-459.",
+              "installed_library_notification_defaults": "Installed MCP NotificationOptions.tools_changed defaults false: .venv/lib/python3.12/site-packages/mcp/server/lowlevel/server.py:112-121,215-217.",
+              "current_consumers": "No `send_tool_list_changed`/ToolListChangedNotification or manifest watcher in apps/mcp/mcp; refresh_surface_config has no production caller in repo search and only resets one SurfaceConfig cache (surface_config.py:143-147). Dynamic stdio list_tools/call_tool handlers exist but use cached inventory; they do not declare hot reload.",
+              "decision": "Process-lifetime immutable tool inventory plus restart on manifest update is consistent with current advertised capabilities and caller evidence. Do not claim all MCP implementations are static; if product later requires live changes, atomically swap one full validated surface snapshot and send tools/list_changed."
+            }
+          },
+          "verification": {
+            "previous_owner_local_python_tests": "60 passed in apps/api/tests/test_search_route_canonical_surface.py, apps/mcp/tests/test_query_adapter.py, apps/mcp/tests/test_introspection.py and apps/mcp/tests/test_surface_config.py on unchanged input hashes; see /tmp/gqlang-deep-app-manifest-audit.json",
+            "controlled_manifest_schedules": "Both read-only isolated Python component scenarios succeeded; raw result file linked in D7.counterexample.",
+            "not_run": [
+              "code changes",
+              "daemon",
+              "packaged-process E2E",
+              "Rust",
+              "real concurrent manifest writer"
+            ],
+            "D6_boundary_component": {
+              "script": "/tmp/gqlang-deep-app-manifest-component.py",
+              "command": ".venv/bin/python /tmp/gqlang-deep-app-manifest-component.py > /tmp/gqlang-deep-app-manifest-component-raw.json",
+              "raw": "/tmp/gqlang-deep-app-manifest-component-raw.json",
+              "actual_source_inputs": "Frozen/current source SHA table in /tmp/gqlang-deep-app-manifest-audit.json",
+              "script_sha256": "f5b2fd7012a5a888bb99885ff66a45175c75f97047ff5b31f33a263cc6fbd9cc",
+              "raw_sha256": "e3eb4a1baf5240dc8a079e57d0fa7bceb2189124e5e06b268ff044849883a530"
+            }
+          }
+        }
+      },
+      "rrf": {
+        "original_path": "/tmp/gqlang-design-rrf.json",
+        "sha256": "47e7cee8f828d9e68d4553aa66ab692d67eeb8ba35ca11477a13b8822ce25527",
+        "report": {
+          "scope": "D4 RRF architecture alternative audit plus global decision constraints",
+          "source": {
+            "gqlang": "a14dd48fe911a455cfa44cb3624a662fb7c15c6c",
+            "semantica": "e6a93afebf4ff93ea8f9460be77497be2cb97e75",
+            "observed_semantica_head": "1fee79c832428f050a3c1367b31c7796e2755bf6",
+            "files": {
+              "AGENTS.md": {
+                "sha256": "7cf36150ca9ce87802d87bba516321a749c460e6ce37db38bb368f0c7b0ebba2",
+                "frozen_live_equal": true,
+                "dirty": ""
+              },
+              "AGENT_RULE_CATALOG.md": {
+                "sha256": "69077527322bcc6a2e35ae3ac9945f66308ed24566c8218bf76ba19bbf86aa1a",
+                "frozen_live_equal": true,
+                "dirty": ""
+              },
+              "packages/analysis/quanta-v2/crates/quanta-retrieval-algo-v1/src/rrf.rs": {
+                "sha256": "c162d4ed990e1af45ede28f24d0bec3f0408aabbdcde7a8a39e75c9098863b0c",
+                "frozen_live_equal": true,
+                "dirty": ""
+              },
+              "packages/analysis/quanta-v2/crates/quanta-retrieval-algo-v1/Cargo.toml": {
+                "sha256": "512e00570345cf549678622401f3f132c0601b65b45161e13ce724264cf4c6b3",
+                "frozen_live_equal": true,
+                "dirty": ""
+              },
+              "packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/src/scv2_exact_fusion.rs": {
+                "sha256": "7027088cf1048d4aa70f9d3de7807ee7ff144b9e4f75b126d3f60a9a1bb79bc9",
+                "frozen_live_equal": true,
+                "dirty": ""
+              },
+              "packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/src/entity_collapse/mod.rs": {
+                "sha256": "5476e85ab9e4d36fbfb61e56222a245d2f4c6eb73007ec77841b17bb912157a5",
+                "frozen_live_equal": true,
+                "dirty": ""
+              },
+              "packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/Cargo.toml": {
+                "sha256": "140bd01a7c85ee2f996cc21facb789ae427d5464744a1350ad4dbe0a98b68d31",
+                "frozen_live_equal": true,
+                "dirty": ""
+              },
+              "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/search_builder/index_owner.rs": {
+                "sha256": "5fc6822ac28fee53601a0386045d4426f04b8794791e9a82b688c9262f72bcc6",
+                "frozen_live_equal": true,
+                "dirty": ""
+              },
+              "packages/analysis/quanta-v2/crates/quanta-runtime/src/retrieval/aggregator_impl_flow/mod.rs": {
+                "sha256": "bccd14b52d5d817ecd6a525f27b51d1647616a9a4154b3b06fd1d2908de67732",
+                "frozen_live_equal": true,
+                "dirty": ""
+              }
+            }
+          },
+          "global_constraints": {
+            "source": "AGENTS.md:15-19 and AGENT_RULE_CATALOG.md:17-29,164-214",
+            "decision": "Existing-engine-first and one current pre-release producer/consumer contract. No compatibility source alias/shim solely to retain a dormant export. New abstraction/algorithm requires unmet actual consumer contract. Preserve real distinct input/authority/lifetime semantics.",
+            "correction_to_prior_review": "Prior default compatibility wrappers and categorical core->analysis path ban were not sufficiently supported; actual Cargo dependency and layer metadata must govern."
+          },
+          "D4": {
+            "responsibility": "default rank-only RRF contribution: u32 1-indexed rank with defensive zero clamp -> f64 score contribution",
+            "selected": "REUSE existing quanta-retrieval-algo-v1::rrf_contribution_v1 directly; EXTEND current SCV2 leaf feature dependency only",
+            "interface_decision": "No new trait, port, strategy object, DTO, or crate. Existing pure function already exactly matches responsibility; SCV2 and entity-collapse retain their separate aggregation owners.",
+            "alternatives": [
+              {
+                "choice": "Keep duplicate math",
+                "decision": "reject",
+                "reason": "Duplicate K=60 and clamp semantics diverge over time; existing owner is available."
+              },
+              {
+                "choice": "Unify complete SCV2 and entity-collapse fusion",
+                "decision": "reject",
+                "reason": "Different identity/corpus/lane representative/conflicting score and bonus contracts. Sharing whole engine would erase domain semantics."
+              },
+              {
+                "choice": "New RrfScorer trait or backend interface",
+                "decision": "reject",
+                "reason": "One actual default formula and no selectable backend, authority, state or lifecycle to abstract. Parameter experimentation already exists as pure with_k helper."
+              },
+              {
+                "choice": "New library or rewritten fusion",
+                "decision": "reject",
+                "reason": "No unmet contribution correctness/scale requirement; pure helper zero-dep. Would expand dependency and proof scope without demonstrated benefit."
+              }
+            ],
+            "start_files": [
+              "packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/src/scv2_exact_fusion.rs:19,471-476",
+              "packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/Cargo.toml:24-27,87"
+            ],
+            "sequence": [
+              "Activate dep:quanta-retrieval-algo-v1 within scv2-exact-owner-surface leaf feature, preserving default=[]",
+              "Remove duplicate RRF_K_V1; map contribution.rank to existing helper at same aggregation position",
+              "Update stale helper/SSOT docs only if current caller statements change",
+              "Execute helper tests and affected SCV2 module owner rail, plus isolated scv2-exact-owner-surface compile; broader runtime composite only if feature closure changes beyond leaf"
+            ],
+            "mandatory_invariants": [
+              "rank0/1/u32max contribution bit equality at default K",
+              "same floating point aggregation order",
+              "same canonicalization/conflicting duplicate refusal",
+              "score total_cmp and SeedFusionIdentity stable tie-break",
+              "positive top-k and checked final ranks"
+            ],
+            "existing_owner_regressions": [
+              "exact_fusion_equal_score_cross_owner_tie_uses_canonical_identity_order_v1",
+              "contribution_permutation_is_byte_stable_v1",
+              "conflicting_duplicate_contribution_fails_closed_v1",
+              "exact_fusion_truncates_and_renumbers_final_rank_v1",
+              "exact_fusion_is_identity_idempotent_v1"
+            ],
+            "rollback": "Revert complete leaf dependency+formula change together. No dual scorer mode or compatibility layer.",
+            "proof_limits": "Architecture and source equality only in this new audit; previous RRF QBC attempt had no valid receipt. No performance superiority, installed product, or post-refactor test result claimed."
+          },
+          "verification": {
+            "kind": "read-only current source and dependency/owner-test census",
+            "frozen_hashes_checked": 9,
+            "executed_runtime_tests": false,
+            "not_run": [
+              "new Rust owner rail",
+              "SCV2 parity",
+              "installed product"
+            ]
+          }
+        }
+      }
+    },
+    "selected_actions": {
+      "D1": "기존 standalone 계산 owner로 모든 factory·concrete import를 직접 전환하고 cost Shape module/export를 삭제. 기존 port·결과·PTA authority 변환 유지, 새 wrapper/trait/crate 없음. Shape-only 제품 feature 분리는 D1-B에서 cfg·overlay까지 검증.",
+      "D2": "기존 graph-utils의 tier 분류·빈 default feature·dependency default 설정을 먼저 수정. Borrowed indexed iterative kernel과 Compute/Stop을 구분하는 checkpoint 함수 API를 확장. PTA부터 순서/ID·closure·typed 실패·취소 parity 후 소비자별 전환; 새 universal crate 없음.",
+      "D3": "활성 runtime pack 유지, 미사용 DFG build-input entry·고유 helper/export/tests 제거. DFG→pack wrapper를 추가해 runtime dependency closure를 넓히지 않음. Synthetic load ID·explicit map·authority·digest·typed 실패는 pack 회귀로 보존. PortDFG는 별도 판정.",
+      "D4": "활성 SCV2 contribution 수식만 기존 rrf_contribution_v1에 위임하고 SCV2 leaf dependency를 활성화. K/clamp·합산 순서·identity/tie-break·top-k·duplicate refusal 보존. Complete fusion owner는 각각 유지.",
+      "D5": "현재 base와 실제 Steensgaard/pair session 유지. 새 consumer census 후 dormant Andersen UF module·공개 export·자체 tests 제거. Bool/root 호환 wrapper·새 UF trait 없음. Mahjong min-root·활성 Andersen solver는 유지.",
+      "D6": "F1의 truthful current SDK row 계약 확정 후 기존 shared Python package에서 data→app 공통 변환 추출, API·agent 동시 전환. Non-symbol/optional location을 왜곡하지 않음. Legacy readers 제거, 앱별 request·typed failure·GraphRAG presentation 유지. Dormant third copy도 consumer 확인 후 retire.",
+      "D7": "기존 registry에서 경로·bounded read·검증을 한 번 수행하고 private immutable source record에 path/digest/entries를 보존. Mapping·schema·목록·introspection·dispatch는 같은 source 사용. Invalid override 거절·packaged artifact 유지, process restart lifecycle. 경로 helper만 공유하는 안은 제외."
+    },
+    "root_policy_correction": {
+      "source": "tools/ci/policy-checker/src/policy.rs:1033-1051",
+      "fact": "Tier forbidden crate features are checked by name, so default=[] is forbidden too.",
+      "required_change": "Remove inert graph-utils default feature name when applying tier1-adapter classification; verify no explicit feature consumer.",
+      "verification": "Static checker source, not a policy rail verdict."
+    },
+    "controlled_manifest_component": {
+      "cwd": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "command": ".venv/bin/python /tmp/gqlang-design-app-manifest-toctou.py",
+      "script_sha256": "b63b967a64db70bf37df0e88bdb9b92e6cfba3a7bc76a3730dcd88250e832b05",
+      "script_source": "\"\"\"Read-only controlled crosswalk replacement schedules for D7 design audit.\"\"\"\n\nimport contextlib\nimport hashlib\nimport io\nimport json\nimport os\nimport subprocess\nimport sys\nimport tempfile\nfrom pathlib import Path\n\n\ndef launch(code: str, manifest_path: Path) -> dict[str, object]:\n    env = os.environ.copy()\n    env[\"CODEGRAPH_CROSSWALK_PATH\"] = str(manifest_path)\n    process = subprocess.run([sys.executable, \"-c\", code], env=env, text=True, capture_output=True)\n    lines = process.stdout.splitlines()\n    data = next((json.loads(line.removeprefix(\"RESULT \")) for line in lines if line.startswith(\"RESULT \")), None)\n    return {\"exit_code\": process.returncode, \"observation\": data, \"stderr\": process.stderr}\n\n\nwith tempfile.TemporaryDirectory() as directory:\n    manifest_path = Path(directory) / \"crosswalk.json\"\n    before = {\n        \"version\": \"A\",\n        \"entries\": [{\"usecase_id\": \"ide.go_to_definition\", \"tool_name\": \"goto_definition\", \"exposure\": \"public\", \"tier\": \"Q4\", \"deps\": []}],\n    }\n    after = {\n        \"version\": \"B\",\n        \"entries\": [{\"usecase_id\": \"ide.hover\", \"tool_name\": \"hover\", \"exposure\": \"public\", \"tier\": \"Q4\", \"deps\": []}],\n    }\n    manifest_path.write_text(json.dumps(before), encoding=\"utf-8\")\n    double_read_code = (\n        \"import json,os\\nfrom pathlib import Path\\n\"\n        \"from apps.mcp.mcp.handlers import surface_config\\n\"\n        \"path=Path(os.environ['CODEGRAPH_CROSSWALK_PATH'])\\n\"\n        f\"after={after!r}\\n\"\n        \"original=surface_config.require_crosswalk\\n\"\n        \"def first_read_then_replace():\\n\"\n        \" old=original()\\n path.write_text(json.dumps(after),encoding='utf-8')\\n return old\\n\"\n        \"surface_config.require_crosswalk=first_read_then_replace\\n\"\n        \"config=surface_config.SurfaceConfig.load()\\n\"\n        \"print('RESULT '+json.dumps({'first_manifest_version':config.version,'tools_after_second_read':config.get_tool_names(),'current_file_version':json.loads(path.read_text())['version']}))\\n\"\n    )\n    double_read = launch(double_read_code, manifest_path)\n    manifest_path.write_text(json.dumps(before), encoding=\"utf-8\")\n    cache_code = (\n        \"import json,os\\nfrom pathlib import Path\\n\"\n        \"from apps.mcp.mcp.domain import query_surface_registry as registry\\n\"\n        \"from apps.mcp.mcp.handlers.surface_config import SurfaceConfig\\n\"\n        \"path=Path(os.environ['CODEGRAPH_CROSSWALK_PATH'])\\n\"\n        \"before=registry.mcp_public_tool_names_v1()\\n\"\n        f\"after={after!r}\\n\"\n        \"path.write_text(json.dumps(after),encoding='utf-8')\\n\"\n        \"surface=SurfaceConfig.load()\\n\"\n        \"mapping=registry._tool_to_usecase_mapping()\\n\"\n        \"print('RESULT '+json.dumps({'registry_cached_A':before,'surface_read_B':surface.get_tool_names(),'mapping_read_B':mapping,'registry_still_A':registry.mcp_public_tool_names_v1()}))\\n\"\n    )\n    cache_split = launch(cache_code, manifest_path)\n\nfixture_sha256 = {\n    \"A\": hashlib.sha256(json.dumps(before).encode(\"utf-8\")).hexdigest(),\n    \"B\": hashlib.sha256(json.dumps(after).encode(\"utf-8\")).hexdigest(),\n}\nprint(json.dumps({\"fixture_sha256\": fixture_sha256, \"double_read\": double_read, \"cache_split\": cache_split}, indent=2, sort_keys=True))\n",
+      "raw_sha256": "a9d5368b5339e153ffa14993193a594362aa7dc2df79237c8c928a9667a7a654",
+      "raw_text": "{\n  \"cache_split\": {\n    \"exit_code\": 0,\n    \"observation\": {\n      \"mapping_read_B\": {\n        \"hover\": \"ide.hover\"\n      },\n      \"registry_cached_A\": [\n        \"goto_definition\"\n      ],\n      \"registry_still_A\": [\n        \"goto_definition\"\n      ],\n      \"surface_read_B\": [\n        \"hover\"\n      ]\n    },\n    \"stderr\": \"Logging initialized: profile=dev, level=INFO\\n\"\n  },\n  \"double_read\": {\n    \"exit_code\": 0,\n    \"observation\": {\n      \"current_file_version\": \"B\",\n      \"first_manifest_version\": \"A\",\n      \"tools_after_second_read\": [\n        \"hover\"\n      ]\n    },\n    \"stderr\": \"Logging initialized: profile=dev, level=INFO\\n\"\n  },\n  \"fixture_sha256\": {\n    \"A\": \"5db6aa0eedf3299beb3f3ead4c077ec88083a59a8b73d8374e21ddd592f014ed\",\n    \"B\": \"0aa3660e1a69fe563515cd6f86a1aa82794bad9f64cc6876c3b5eda354c83dd9\"\n  }\n}\n",
+      "raw": {
+        "cache_split": {
+          "exit_code": 0,
+          "observation": {
+            "mapping_read_B": {
+              "hover": "ide.hover"
+            },
+            "registry_cached_A": [
+              "goto_definition"
+            ],
+            "registry_still_A": [
+              "goto_definition"
+            ],
+            "surface_read_B": [
+              "hover"
+            ]
+          },
+          "stderr": "Logging initialized: profile=dev, level=INFO\n"
+        },
+        "double_read": {
+          "exit_code": 0,
+          "observation": {
+            "current_file_version": "B",
+            "first_manifest_version": "A",
+            "tools_after_second_read": [
+              "hover"
+            ]
+          },
+          "stderr": "Logging initialized: profile=dev, level=INFO\n"
+        },
+        "fixture_sha256": {
+          "A": "5db6aa0eedf3299beb3f3ead4c077ec88083a59a8b73d8374e21ddd592f014ed",
+          "B": "0aa3660e1a69fe563515cd6f86a1aa82794bad9f64cc6876c3b5eda354c83dd9"
+        }
+      },
+      "limits": "Literal temporary manifests + controlled replacement between actual imported functions; no real production writer, SDK/stdio, or installed artifact run."
+    },
+    "new_interfaces": [
+      "D2 borrowed indexed kernel with generic checkpoint function and separate Compute/Stop errors",
+      "D7 one private immutable path/digest/validated-entry value record in existing registry"
+    ],
+    "rejected_additions": [
+      "Universal engine/plugin framework",
+      "New SCC/UF/Shape crates",
+      "Compatibility aliases for dormant pre-release exports",
+      "New SDK/generated app DTO owner",
+      "Manifest hot reload without advertised capability/use case"
+    ],
+    "constraints": [
+      "Keep six repairs and seven duplication actions",
+      "Known consumers and fixtures cut over together under pre-release policy",
+      "Domain ordering, authority, typed refusal and budget stay owner controlled",
+      "Performance change unmeasured; refreeze foreign dirty before implementation"
+    ],
+    "reference_validation_corrections": {
+      "initial_validation": {
+        "schema": "architecture_document_validation_v1",
+        "captured_at_utc": "2026-10-05T22:06:26.304915+00:00",
+        "source_references": {
+          "/Users/songmin/Documents/code-new/quanta-gqlang-v2": "a14dd48fe911a455cfa44cb3624a662fb7c15c6c",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2": "e6a93afebf4ff93ea8f9460be77497be2cb97e75",
+          "/Users/songmin/Documents/code-new/quanta-index": "66f92d210bbb9641a2f091d6e6ab42330b0a5ffb"
+        },
+        "latest_heads_observed": {
+          "/Users/songmin/Documents/code-new/quanta-gqlang-v2": "a14dd48fe911a455cfa44cb3624a662fb7c15c6c",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2": "9037d25cc4ca01e0d8b75065b39fe712a9a96496",
+          "/Users/songmin/Documents/code-new/quanta-index": "bc18e67e63ebd5914bb679d2aeb25ae498c4d2f9"
+        },
+        "markdown_links_checked": 451,
+        "architecture_full_source_refs_checked": 63,
+        "line_bounds_checked": 509,
+        "claimed_owner_hashes_checked": 34,
+        "unique_source_files_checked": 326,
+        "mermaid_blocks": 4,
+        "mermaid_unchanged": true,
+        "json_files_parsed": 2,
+        "active_actions": 13,
+        "duplicate_actions": 7,
+        "previous_resolution_owner_files_rechecked": 40,
+        "active_action_owner_changes": [],
+        "source_files_different_from_frozen": [
+          "/Users/songmin/Documents/code-new/quanta-gqlang-v2/docs/audits/2026-10-06-substrate-component-observations.json",
+          "/Users/songmin/Documents/code-new/quanta-index/crates/quanta-index-sdk/src/binding.rs",
+          "/Users/songmin/Documents/code-new/quanta-index/crates/quanta-index-sdk/src/client.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/Cargo.toml",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-foundation/src/in_memory/core/input_cell_store.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-in-memory-shared/src/in_memory/core/memo_table/gc.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-contract-error-shared/src/contract_error_v2.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-memory-host/src/session/transcript_adapter.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/snapshot_admitted_owner_v1.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker_uniqueness.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-context-shared/src/runtime_execution_session_v1.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/budget_handle.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/invalidation/snapshot_gc/gc.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memory-compose/src/lib.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-public-ingress-surface/src/lib.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_real.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/bootstrap_inputs_v1/runtime_executor_ingress_packet.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/Cargo.toml",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/daemon_search_execution_aggregate_owner_v2.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_api.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/gqlang_handler.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/registered_query_runtime_admission_v1.rs",
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/repo_state/analysis_epoch_receipt_v1.rs"
+        ],
+        "linked_dirty": {
+          "/Users/songmin/Documents/code-new/quanta-gqlang-v2": [
+            " M docs/audits/2026-10-06-substrate-component-observations.json"
+          ],
+          "/Users/songmin/Documents/code-new/semantica-codegraph-v2": [
+            " M Cargo.toml",
+            " M packages/analysis/quanta-v2/crates/quanta-adapters-foundation/src/in_memory/core/input_cell_store.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-adapters-in-memory-shared/src/in_memory/core/memo_table/gc.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-contract-error-shared/src/contract_error_v2.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-memory-host/src/session/transcript_adapter.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/snapshot_admitted_owner_v1.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker_uniqueness.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-runtime-context-shared/src/runtime_execution_session_v1.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/budget_handle.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/invalidation/snapshot_gc/gc.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-runtime-memory-compose/src/lib.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-runtime-public-ingress-surface/src/lib.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_real.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/bootstrap_inputs_v1/runtime_executor_ingress_packet.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/Cargo.toml",
+            " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_api.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/gqlang_handler.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/registered_query_runtime_admission_v1.rs",
+            " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/repo_state/analysis_epoch_receipt_v1.rs"
+          ],
+          "/Users/songmin/Documents/code-new/quanta-index": []
+        },
+        "controlled_component_fixture_sha256": {
+          "A": "5db6aa0eedf3299beb3f3ead4c077ec88083a59a8b73d8374e21ddd592f014ed",
+          "B": "0aa3660e1a69fe563515cd6f86a1aa82794bad9f64cc6876c3b5eda354c83dd9"
+        },
+        "failures": [
+          "Line out of bounds /Users/songmin/Documents/code-new/semantica-codegraph-v2/Cargo.toml:3008-3014",
+          "Line out of bounds /Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/core/codegraph-graph-dominance/Cargo.toml:8-21",
+          "Missing source /Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/mcp/types.py",
+          "Missing source /Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/mcp/server/lowlevel/server.py"
+        ],
+        "limits": "Documentation/source integrity and selected owner continuity only. Policy gate, Rust algorithm parity and installed product not run. Source-link drift is recorded separately from frozen evidence."
+      },
+      "repairs": [
+        "Shape report current_block expands shorthand Cargo.toml to actual runtime manifest",
+        "Dominance manifest source range clipped to actual last line 20"
+      ],
+      "validator_correction": "Do not match site-packages/mcp as repository packages/mcp; installed SDK introspection is separately attributed, not a committed repo source."
+    },
+    "validation": {
+      "schema": "architecture_document_validation_v1",
+      "captured_at_utc": "2026-10-05T22:06:54.032934+00:00",
+      "source_references": {
+        "/Users/songmin/Documents/code-new/quanta-gqlang-v2": "a14dd48fe911a455cfa44cb3624a662fb7c15c6c",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2": "e6a93afebf4ff93ea8f9460be77497be2cb97e75",
+        "/Users/songmin/Documents/code-new/quanta-index": "66f92d210bbb9641a2f091d6e6ab42330b0a5ffb"
+      },
+      "latest_heads_observed": {
+        "/Users/songmin/Documents/code-new/quanta-gqlang-v2": "a14dd48fe911a455cfa44cb3624a662fb7c15c6c",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2": "9037d25cc4ca01e0d8b75065b39fe712a9a96496",
+        "/Users/songmin/Documents/code-new/quanta-index": "bc18e67e63ebd5914bb679d2aeb25ae498c4d2f9"
+      },
+      "markdown_links_checked": 451,
+      "architecture_full_source_refs_checked": 61,
+      "line_bounds_checked": 509,
+      "claimed_owner_hashes_checked": 34,
+      "unique_source_files_checked": 326,
+      "mermaid_blocks": 4,
+      "mermaid_unchanged": true,
+      "json_files_parsed": 2,
+      "active_actions": 13,
+      "duplicate_actions": 7,
+      "previous_resolution_owner_files_rechecked": 40,
+      "active_action_owner_changes": [],
+      "source_files_different_from_frozen": [
+        "/Users/songmin/Documents/code-new/quanta-gqlang-v2/docs/audits/2026-10-06-substrate-component-observations.json",
+        "/Users/songmin/Documents/code-new/quanta-index/crates/quanta-index-sdk/src/binding.rs",
+        "/Users/songmin/Documents/code-new/quanta-index/crates/quanta-index-sdk/src/client.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/Cargo.toml",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-foundation/src/in_memory/core/input_cell_store.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-in-memory-shared/src/in_memory/core/memo_table/gc.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-contract-error-shared/src/contract_error_v2.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-memory-host/src/session/transcript_adapter.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/snapshot_admitted_owner_v1.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker_uniqueness.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-context-shared/src/runtime_execution_session_v1.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/budget_handle.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/invalidation/snapshot_gc/gc.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memory-compose/src/lib.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-public-ingress-surface/src/lib.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_real.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/bootstrap_inputs_v1/runtime_executor_ingress_packet.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/Cargo.toml",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/daemon_search_execution_aggregate_owner_v2.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_api.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/gqlang_handler.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/registered_query_runtime_admission_v1.rs",
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/repo_state/analysis_epoch_receipt_v1.rs"
+      ],
+      "linked_dirty": {
+        "/Users/songmin/Documents/code-new/quanta-gqlang-v2": [
+          " M docs/audits/2026-10-06-substrate-component-observations.json"
+        ],
+        "/Users/songmin/Documents/code-new/semantica-codegraph-v2": [
+          " M Cargo.toml",
+          " M packages/analysis/quanta-v2/crates/quanta-adapters-foundation/src/in_memory/core/input_cell_store.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-adapters-in-memory-shared/src/in_memory/core/memo_table/gc.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-contract-error-shared/src/contract_error_v2.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-memory-host/src/session/transcript_adapter.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/snapshot_admitted_owner_v1.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker_uniqueness.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-runtime-context-shared/src/runtime_execution_session_v1.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/budget_handle.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/invalidation/snapshot_gc/gc.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-runtime-memory-compose/src/lib.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-runtime-public-ingress-surface/src/lib.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_real.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/bootstrap_inputs_v1/runtime_executor_ingress_packet.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/Cargo.toml",
+          " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_api.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/gqlang_handler.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/query_handlers/registered_query_runtime_admission_v1.rs",
+          " M packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/repo_state/analysis_epoch_receipt_v1.rs"
+        ],
+        "/Users/songmin/Documents/code-new/quanta-index": []
+      },
+      "controlled_component_fixture_sha256": {
+        "A": "5db6aa0eedf3299beb3f3ead4c077ec88083a59a8b73d8374e21ddd592f014ed",
+        "B": "0aa3660e1a69fe563515cd6f86a1aa82794bad9f64cc6876c3b5eda354c83dd9"
+      },
+      "failures": [],
+      "limits": "Documentation/source integrity and selected owner continuity only. Policy gate, Rust algorithm parity and installed product not run. Source-link drift is recorded separately from frozen evidence."
+    },
+    "foreign_cargo_policy_continuity": {
+      "frozen_reference": "e6a93afebf4ff93ea8f9460be77497be2cb97e75",
+      "latest_reference": "9037d25cc4ca01e0d8b75065b39fe712a9a96496",
+      "file": "Cargo.toml",
+      "frozen_sha256": "b3deccd719f6d953e097e6897559a35875f473eac21ca5728aaf07295f758012",
+      "live_sha256": "1d9517390db288733946da7f4d785d134b65b83cb36383d23e41fa6b73935a55",
+      "tier_rules_same": {
+        "tier1-adapter": true,
+        "tier2-app": true,
+        "tier0-shared": true
+      },
+      "layer_policy_semantic_sha256": {
+        "frozen": "cbaf3ffb6e3df016d3a516bda07b99c60e4ebcb7c7a964bd8cb73dc81043ef5b",
+        "live": "cbaf3ffb6e3df016d3a516bda07b99c60e4ebcb7c7a964bd8cb73dc81043ef5b"
+      },
+      "path_mapping_entries": {
+        "packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/**": "tier0-shared"
+      },
+      "method": "TOML semantic comparison on selected policy rules; compile/policy gate not run."
+    }
+  }
 }
