@@ -1,6 +1,6 @@
 # Graph/CHECK process fixture continuation
 
-재관측: 2026-10-06. Producer `9f781ca`, fixture checkpoint `98141eff6e5`, local lane checkpoint `d224b7ead54`, ACK reader checkpoint `0b418d11b65`, curated binding checkpoint `f5028ee6c85`, ingress caller checkpoint `b576c57feec`. 공유 consumer HEAD와 foreign dirty는 계속 변경된다. 실행 증명은 아래의 frozen source별로 구분한다.
+재관측: 2026-10-06. Producer `648460c`(이번 문서 수정 전), fixture checkpoint `98141eff6e5`, local lane checkpoint `d224b7ead54`, ACK reader checkpoint `0b418d11b65`, curated binding checkpoint `f5028ee6c85`, ingress caller checkpoint `b576c57feec`, PTA caller checkpoint `62fc21be4fe`. 현재 재검증의 frozen consumer는 `cbbfe47ce212a38ffb2137592065bab631400070`이다. 공유 consumer HEAD와 foreign dirty는 계속 변경된다. 실행 증명은 아래의 frozen source별로 구분한다.
 
 ## 적용한 후보
 
@@ -67,6 +67,10 @@ System Python3.9로 시도한 boundary 검사는 `zip(strict=True)`에서 중단
 - Accumulator는 admitted requested key set을 private `take_requested_dfg_keys_v1`에서 move하고 sibling handoff가 그 method를 사용한다. BTreeSet clone/추가 allocation 없이 payload·node permits는 accumulator에 유지한다. Keys traversal과 drop·finish 순서, stable BTreeSet ordering, 원래 root authority는 유지한다.
 - Boundary6·GOD3파일0·Rustfmt3 PASS. 작업 중 공유 snapshot `62fc21be4fef90766ce236b2976e11b25a27070a`가 수리3개 변경을 흡수했다. Exact source commit 준비는 이미 흡수된 변경을 발견해 main mutation 전에 중단했고 빈·중복 commit을 만들지 않았다. Readback에서 세 변경을 확인했다. Foreign accumulator allocation·formatting 변경을 보존했으며 claim/barrier를 해제했다.
 - 다음 frozen product·process source는 `5be58c12f90f19c47cf190a236d7f1e831d076db`다. Source checkpoint와 static gate를 actual process GREEN으로 계산하지 않는다.
+- 해당 product run `20261005T191654.905048Z-2a5df62f802b`: source `e30b0f45e5944d756cc8dbc53d642aa2a26ed511af7cc16f29122649e37dec08`, exit101, 188,112ms. DFG synthetic publication child3개에서 `QueryId`·`REASON_CODE_QUERY_FAILED` imports가 빠져 compiler 오류15개로 종료했다. Actual Graph/CHECK0건이다.
+- 기존 main `c8e025531c2b0ce2982db63ec9e0670d6e9c65ae`가 `slot_assignment_error.rs`·`statement_membership.rs`·`typed_publication.rs`의 explicit owner imports를 이미 수리했다. 중복 source 수정 없이 모두 포함한 `14cd42b7ed9b2562f1971cc38c5ebb83a4b8ace7`를 다음 canonical product·process source로 고정한다.
+- `14cd42b7ed9`의 product run `20261005T192331.381715Z-22b70874a114`: source `24e319d755be82e926bf8490122434f38c99c267c8a00142845a9afe03e91c27`, exit101, 254,450ms. `native_generation_binding_index_v1.rs`가 exact FunctionRef index를 옛 parent에서 import해 `E0432`와 후속 `E0282`로 종료했다. Actual Graph/CHECK0건이다.
+- 기존 main `a384b1e6df87cb9c145c6b34c4ee648205a4a862`가 private `native_extracted_constraint_binding_v1` owner에서 기존 alias를 직접 import하도록 수리했다. 중복 source 수정·shim·type annotation을 추가하지 않았다. 그 수리를 포함한 `cbbfe47ce212a38ffb2137592065bab631400070`에서 canonical product·process를 재검증 중이다.
 
 ## 남은 실행 전제
 
@@ -90,3 +94,7 @@ System Python3.9로 시도한 boundary 검사는 `zip(strict=True)`에서 중단
 [Kernel import compile RED와 기존 main 수리](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v5/terminal-compile-result.json).
 
 [PTA compile RED](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v6/terminal-compile-result.json), [PTA 수리 main readback](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v6/pta-caller-main-absorbed.json), [PTA boundary 검사](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v6/pta-caller-boundary.log), [foreign source 보존](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v6/pta-caller-foreign-preservation.json).
+
+[DFG child import RED와 기존 main 수리](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v7/terminal-compile-result.json).
+
+[PTA private index import RED와 기존 main 수리](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v8/terminal-compile-result.json), [다음 frozen product 요청](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v9/request.json).

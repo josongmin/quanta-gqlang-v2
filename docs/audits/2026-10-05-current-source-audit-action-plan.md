@@ -2,7 +2,7 @@
 
 ## 2026-10-06 source·receipt 재확인
 
-- Producer 재관측 HEAD `9f781ca`: tracked core/CI 입력은 검증 source `8675bcd`와 같다. Foreign CircleCI/RFC/BTree 파일은 이 변경에 포함하지 않는다.
+- Producer 재관측 HEAD `648460c`(이번 문서 수정 전): tracked core/CI 입력은 검증 source `8675bcd`와 같다. Foreign CircleCI/RFC/BTree 파일은 이 변경에 포함하지 않는다.
 - Consumer fixture 대조 관측 HEAD `98141eff6e57f6557e1360b6b7161d5c00054ca8`: 공유 main은 계속 이동한다. CHECK work 수리의 Foundation37/37은 원래 source 결과이며 후속 `canonical_cbor.rs` 변경이나 최신 consumer 전체 GREEN을 증명하지 않는다.
 - SDK 검증은 아직 미완료다. 선행 SDK run `20261005T165505.678967Z-ca7c0788afa3`의 borrowed request seed `E0515`는 main에서 수리됐다. 이 continuation의 Mac product run `20261005T171304.672815Z-ad6080a60fc0`는 frozen consumer `a1d91184`, canonical source `f1b29bd4…`에서 일반 publication observer가 crash-test feature 전용 ACK getter를 호출해 `E0599`2건으로 RED, actual process0건이다. 해당 cfg 수리는 main `0b418d11b65`에 반영했다. SDK index/hydration 및 actual Graph/CHECK 성공은 아직 관측하지 못했다.
 - 끝난 FCP checkout24/branch25를 보관 후 정리했다. Dirty overlay4와 복구 ref156을 유지했다. [정리·복구 기록](/Users/songmin/Documents/code-new/quanta-gqlang-v2/docs/audits/2026-10-06-proof-input-retirement.md)을 참조한다. 이전 경로 링크는 historical source 위치이며 현재 실행 입력으로 사용하지 않는다.
@@ -13,8 +13,10 @@
 - Main `b576c57feec`는 해당 CLI ingress2경로·6줄을 수리했다. 기존 `core_v1().request_id`를 사용하고 root admission 전 borrowed copy view, 성공 후 owned request 복사 순서를 맞췄다. 새 accessor·API·dependency는 없다. Boundary1·GOD2파일0·staged Rustfmt2·patch/safety fence PASS. Claim/barrier를 해제했고 소유2경로 clean을 확인했다. 같은 committed source의 canonical product·Graph/CHECK 검증을 진행한다.
 - Frozen `b576c57feec`의 product `20261005T185316.385788Z-8aab9e9b04e7`은 kernel `context_core/mod.rs`의 unused canonical admission imports가 `-D unused-imports`에 걸려 RED/exit101, actual process0건이다. 최신 main `27de476a8fa`에 해당 import 제거가 이미 반영돼 중복 변경하지 않았다. 그 수리를 포함한 committed `fc6a554735d`를 다음 canonical product·process 입력으로 고정한다.
 - Frozen `fc6a554735d`의 product `20261005T190036.472946Z-eb6ce819547d`는 kernel import 지점을 통과한 뒤 PTA adapter의 borrowed target facade 누락3건과 private admitted key 접근1건으로 RED/exit101, actual process0건이다. 기존 타입을 facade에 export하고 private owner의 key move method로 handoff를 연결했다. Boundary6·GOD3파일0·Rustfmt3 PASS. 공유 main `62fc21be4fe`의 수리3개 변경을 확인했으며 foreign accumulator 작업을 보존했다. 모두 포함한 `5be58c12f90`에서 canonical product·process를 재검증한다.
+- Frozen `5be58c12f90`의 product `20261005T191654.905048Z-2a5df62f802b`는 DFG synthetic publication child3개의 `QueryId`·query-failed reason import 누락15건으로 RED/exit101, actual process0건이다. 기존 main `c8e025531c2`가 각 child import를 수리했으므로 중복 변경하지 않았다. 해당 수리를 포함한 `14cd42b7ed9`를 다음 canonical product·process 입력으로 고정한다.
+- Frozen `14cd42b7ed9`의 product `20261005T192331.381715Z-22b70874a114`는 PTA exact FunctionRef index를 옛 parent에서 import한 오류와 후속 타입 추론 오류로 RED/exit101, actual process0건이다. 기존 main `a384b1e6df8`가 private child owner의 index를 직접 import하도록 수리했다. 새 source 변경 없이 그 수리를 포함한 `cbbfe47ce21`을 canonical product·process 입력으로 고정해 재검증 중이다.
 
-관측: **2026-10-05 23:50 KST**. 문서 수정 전 producer main `7cf36e887397cfae317fb043118b7aa7e84c4091`, consumer main `65836a3adfcbee70b76a6617c0cec9349610d593`. CHECK work 수리 source와 QBC frozen owner 결과를 대조했다. 공유 main, 미커밋 overlay, 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 CI는 로컬 실행이다.
+초기 관측: **2026-10-05 23:50 KST**. 당시 producer main `7cf36e887397cfae317fb043118b7aa7e84c4091`, consumer main `65836a3adfcbee70b76a6617c0cec9349610d593`. 이후 source·receipt는 위 continuation과 연결 문서에 기록한다. 공유 main, 미커밋 overlay, 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 CI는 로컬 실행이다.
 
 ## 현재 남은 코드 작업
 
@@ -88,22 +90,24 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 
 ## 최종 검증 결과와 차단 전제
 
-### Mac — product 완료, 실제 process proof는 bootstrap에서 RED
+### 과거 Mac source — product GREEN, 실제 process proof는 bootstrap에서 RED
+
+아래 결과는 원래 source의 이력이다. Fixture는 후속 main `98141eff6e5`에 통합됐다. 최신 frozen product·process 상태는 문서 상단과 continuation이 기준이다.
 
 - 초기 Product 기준 source는 consumer **`7ab464c843466c31cbb8cefac9a49bffb0a12c25`** + producer867 + Index07, 모두 clean. 기존806에서 production 변경 없이 CHECK integration fixture만 고친 후보다. 후속 e0e/2f7도 아래에 source별로 기록한다.
 - 기존806 및 새26dd/7ab의 `quanta-cli-product.release-full.build`는 모두 **GREEN/exit0**, immutable4-binary bundle 검증 완료. 7ab product receipt는 `20261005T091528.821620Z-24c696bcc087`이고, 마지막 Mac2f7 product receipt는 `20261005T100319.030844Z-562fa13c7f6c`다.
 - 실제 SDK/product 컴파일 전제 E0373/E0583/E0412/E0624/E0753/E0277/E0425는 담당 작업의 committed 수리를 소비했다. Canonical permit seam과 shared wire visibility는 위2개 main checkpoint로 수리했다. 이전 RED는 보존한다.
-- **Graph806 actual process RED0/1**, ignored0. `workspace.attach`의 초기 exact-six 실행이 `CallGraphPta/Pta/Execution(PtaOccurrenceAuthorityRefused)`로 실패했다. Graph query 전 단계이며 유한 Graph catalog refusal oracle은 아직 검증되지 않았다. 신규68줄 테스트는 main 미통합이다.
+- **Graph806 actual process RED0/1**, ignored0. `workspace.attach`의 초기 exact-six 실행이 `CallGraphPta/Pta/Execution(PtaOccurrenceAuthorityRefused)`로 실패했다. Graph query 전 단계이며 유한 Graph catalog refusal oracle은 아직 검증되지 않았다. 당시 신규68줄 테스트는 main 미통합이었다.
 - CHECK 첫 실행은 fixture의 dense configured root와 attach root 불일치로 실패했고, 진단 Python import의 bytecode/cache-directory 생성 때문에 source guard에서도 **INVALID/exit125**였다. 이 시도를 owner proof로 계산하지 않는다. 후속 source probe에는 bytecode 생성을 금지했다.
 - CHECK fixture를 source-first/exact configured root/case별freshdaemon으로 고친26dd는 실제 RootScope 검사를 통과한 뒤 누락된 target Python authority로 **RED0/1**. 기존 Graph fixture와 같은 authored Python3.12/src 설정을 추가한7ab는 두 전제를 통과했다.
 - **CHECK7ab actual process RED0/1**, ignored0/sourceguard PASS. 초기 Product normalized attribution이 `UnsupportedConstraintKind/unresolved_direct_call_target_v1 caller=app;statement=1;slot=0`로 `print(1)`을 거절했다. CHECK query는 아직 실행되지 않았다. Graph의 PTA authority 실패와 다른 원인이다.
 - Signed pattern이 identifier 호출 전체를 매칭함을 확인했다. CHECK 양성 입력을 same-module declared return calls로 바꾼e0e는 독립 AST 기준0/1/2 호출과 모든 target 선언을 만족한다. 서명·query·예산·응답 및 foreign/short oracle은 그대로다. Actual Mac CHECK는 attribution을 통과하고 Graph와 같은 `PtaOccurrenceAuthorityRefused`로 RED0/1이다.
 - 추가로2f7의 Mac 거절 입력을 호출0개인 상수 반환 선언으로 한정했다. Linux 양성 Graph/CHECK 본문은 byte-identical이다. Mac2f7의4-binary product는 GREEN이나 Graph/CHECK는 각각 **RED0/1**, failed1/ignored0: 모두 query 이전 initial exact-six Product PTA에서 거절됐다. Immutable run별 stderr와 사후 clean3-repo digest join을 확인했다. 호출0개에서도 같은 오류이므로 단순 미선언 call target이 공통 거절을 설명하지 않는다. 어떤 authority check가 실패했는지는 현재 typed 오류만으로 특정하지 못한다.
-- Fixture/input 수리는 boundary before/after와 staged hooks를 통과한 **격리 candidate만**이며 main 미통합이다. 기존0/1/2 결과, foreign/short rejection, WorkerUnavailable 기대값, production RootScope/lowering 거절을 변경하지 않았다.
+- 당시 fixture/input 수리는 boundary before/after와 staged hooks를 통과한 **격리 candidate만**이었다. 후속 main `98141eff6e5`가 수리를 흡수했다. 기존0/1/2 결과, foreign/short rejection, WorkerUnavailable 기대값, production RootScope/lowering 거절을 변경하지 않았다.
 - 실제 bootstrap 실패와 Linux 설치 authority 전제 부족을 기존 AG5/IRC 담당 작업에 전달했다. 해당 owner의 committed 수리·동일 source proof 및 설치 authority를 확보한 뒤 query를 재검증한다. 새로운 builtin semantics/engine 지원은 이번 maintenance에 추가하지 않는다.
-- **남은 통합 조건:** 실제 query까지 도달한 독립1/1 GREEN과 Linux0/1/2 결과 확인 후, 최신 main에 test fixture와 별도 Graph 거절 테스트를 scope별로 합친다.
+- **남은 검증 조건:** main에 반영된 fixture로 실제 query까지 도달한 독립1/1 GREEN과 Linux0/1/2 결과를 확인한다. Source 통합과 실행 qualification을 구분한다.
 
-### Linux — Graph owner 완료, native worker 컴파일 수리 검증
+### 과거 Linux source — Graph owner GREEN, native worker 컴파일 수리 검증
 
 - 과거8GiB Docker 조건의 SIGKILL/OOM3회는 RED/테스트0으로 기록했다. Frontend1/codegen1 시도도 실패했으며 gate나 oracle을 약화하지 않았다.
 - 사용자 진행 승인 후 Docker 메모리를 **16GiB**로 변경·재시작했다. 중단 전 proof 컨테이너에 active child가 없음을 확인했고 기존 실행 컨테이너5개를 모두 복원했다. 이미지/volume 삭제는 없다.
@@ -116,11 +120,11 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 - **Linux Graph 실제 process RED0/1**, failed1/ignored0@4501. Immutable receipt `20261005T110342.809277Z-bbf07943cb01` 및 run별 stderr를 확인했다. `workspace.attach` initial exact-six Product가 Mac과 같은 `CallGraphPta/Pta/Execution(PtaOccurrenceAuthorityRefused)`로 거절되어 FIND query는 NOT_REACHED다.
 - **Linux CHECK 실제 process RED0/1**, failed1/ignored0@같은4501. Immutable receipt `20261005T113050.261563Z-971dcaa2b43d`다. 서버 시작의 Match worker 준비가 `daemon_gqlang.pattern_provider_config_invalid_v1 / ControlledNativeBudgetUnavailableV3`로 거절되어 attach/query는 NOT_REACHED다.
 - CHECK 경로는 `prepare_installed_match_worker_v3`→`from_installed_server_v3`→고정 root의 `verify_installed_product_v1`이다. 컨테이너에 `/etc/semantica-codegraph-v2/trust`가 없으며 canonical profile 검증도 generic bundle을 `copied build receipt differs from requested product build profile`로 거절했다. **정식 설치 authority/환경 전제 부족이며 예산 전달 코드 결함으로 판정하지 않는다.** Worker OS 제한 설치도 이 실행에서는 호출되지 않았다.
-- 두 process 종료 후 consumer4501/producer867/Index07의 clean HEAD와 primary798f152f/owner78e56da2를 canonical owner로 재계산했다. Run별 immutable stderr/stdout와 source join을 확인했다. Fixture는 main 미통합이며, 관련2개 claim을 해제해 격리 후보만 보존했다. Active QBC/우리 claim/barrier는 없다.
+- 두 process 종료 후 consumer4501/producer867/Index07의 clean HEAD와 primary798f152f/owner78e56da2를 canonical owner로 재계산했다. Run별 immutable stderr/stdout와 source join을 확인했다. 당시 fixture는 main 미통합이었고 관련2개 claim을 해제해 격리 후보를 보존했다. 후속 fixture 통합과 실행은 continuation에 기록한다.
 - 기존 warm lane의 compile-env 변경과 미등록 새 lane은 QBC가 각각 빌드 전에 거절했다. 새 lane을 canonical issuer로 등록했고 기존 lane/cache/receipt를 reset하지 않았다. Product/process는 이미 설치된 Rust toolchain의 LLD shim과 같은 flags를 사용한다. Production source/recipe/feature/profile은 바꾸지 않았다.
 - aarch64 generic installed 후보와 공식 **x86_64 installed release profile**을 구분한다. 현재 환경의 PASS는 x86_64 release qualification이 아니다.
 
-## 최신 main과 검증 후보의 차이
+## 이전 main 관측과 당시 검증 후보의 차이
 
 - Consumer worker checkpoint HEAD **`17bdfd62c2f3d6624eed9523c6fcef5f72927110`**; 이번 source capture의 main **`3f037ea04eecd80606f045ad9b3a7709c5a17ee7`**. 다른 작업으로 main은 계속 이동한다. Worker2경로와 installed test 경로의 dirty overlay는0개다. Worker2경로는 clean4501의 qualified blob과 같다.
 - Source digest 차이는 플랫폼 차이가 아니다. Product806의 전체 primary snapshot은55308640, owner806의 policy/Cargo sibling closure(consumer/producer/Index)는49e5414b다. 기존 canonical owner로 세 저장소의 byte-aware clean HEAD와 두 digest를 독립 재계산해 join을 확인했다. Digest 문자열을 같다고 가정하거나 receipt를 다른 소스로 합성하지 않는다.
@@ -134,7 +138,7 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 
 1. **P0 원인 확인: Product PTA bootstrap 거절.** 기존 AG5/IRC owner가 최초 거절 분기를 특정하고 최신 seed lifetime 수리를 같은 clean source에서 검증한다. 실패가 남으면 해당 owner만 수정한다.
 2. **P0 설치 전제: Linux installed authority.** Canonical x86_64 profile, root 소유 immutable slot, AG5 selected phase와 독립 deployment approval/key/active generation을 기존 release owner 경로로 확보한다. Generic aarch64/Mac 결과로 공식 설치 qualification을 대체하지 않는다.
-3. **P1 회귀·통합: 동일 tuple의 actual Graph/CHECK와 fixture checkpoint.** FIND PATH/Reachability, empty/budget/stale/foreign, signed CHECK zero/one/multi와 foreign/short를 실제 query까지 검증한다. GREEN인 test scope만 최신 main에 합치고 마지막 source/receipt 정합을 기록한다. Producer core는 입력 변경 없이 CI/fuzz를 반복하지 않는다.
+3. **P1 회귀 검증: 동일 tuple의 actual Graph/CHECK.** Fixture source checkpoint `98141eff6e5`는 main에 반영됐다. FIND PATH/Reachability, empty/budget/stale/foreign, signed CHECK zero/one/multi와 foreign/short를 실제 query까지 검증하고 source/receipt 정합을 기록한다. Producer core는 입력 변경 없이 CI/fuzz를 반복하지 않는다.
 
 CHECK canonical work 수리는 main 반영과 소유자 proof를 완료해 잔여에서 제거했다.
 
