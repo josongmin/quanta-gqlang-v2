@@ -1,6 +1,6 @@
 # 이 세션의 잔여 작업 — 최신 코드 감사
 
-관측: 2026-10-05 15:38 KST. 공유 main, 미커밋 overlay, 격리 후보와 실제 검증 소스를 구분한다.
+관측: 2026-10-05 16:02 KST. 공유 main, 미커밋 overlay, 격리 후보와 실제 검증 소스를 구분한다.
 
 ## 이번 체크포인트
 
@@ -55,9 +55,10 @@
 - Linux 설치형 Graph: PATH/Reachability 성공, unreachable 빈 결과, budget/stale/foreign 거절. CHECK: signed catalog zero/one/multi 실제 matcher 결과.
 - macOS는 parser/worker 미설치의 typed Unsupported 및 결과/receipt 미발급을 검증한다.
 - **Linux 설치형 NOT_RUN.** Linux 환경은 aarch64이며 x86_64 증명이 아니다. 반복 OOM 조건이 바뀌어야 설치형 bundle/process 검증을 진행한다.
-- Mac 설치형 첫 후보4265는 E0373 async query-id borrow로 실패했다. 담당 작업이 main에 반영한 `d806bc6230c`를 소비한 candidate `3a6f7b090e0f5cfb0a3e0f72873ca0b4aab9e8a7`도 **product build RED**: `index_owner.rs` 모듈 경로2개 E0583, `integrated_executor/invalidation.rs`의 `RuntimeError` 타입 E0412. Immutable bundle 미생성, process 테스트0. Source guard와 receipt는 정상 최종화됐다. 모듈 경로는 최신 main에서 수정됐고 타입 수정은 담당 작업의 dirty overlay에 있어 committed checkpoint를 요청했다.
+- Mac 설치형 제품 빌드에서 발견한 E0373 async capture, E0583 모듈 경로, E0412 타입 경로, E0624 kernel 부모 접근, E0753 included-file doc 주석은 담당 작업의 committed main 수리 `d806bc6230c`·`e685a7d0895`·`5156a674411`·`1c25e469e62`를 소비했다. 이 작업은 해당 경로를 중복 수정하거나 main으로 재수입하지 않았다.
+- Frozen consumer `1bba0ba893c4aa4eddddd8c6498f7ffd19b21df8` + producer867 + Index07의 최신 product run은 **RED101**: `executor/handle/dispatch.rs:1252`의 `Vec<u8> != Arc<[u8]>` 비교 E0277. Source digest `147b007efd8fbb2223c5167cad827fd67ae7f41acedadea1efb11dd0dbab0fd2`, immutable receipt `20261005T065605.129997Z-7fd794eff04f`. 최신 main에도 같은 비교가 있었으며 AG5 소유 claim이 활성이라 오류와 exact source를 해당 작업에 전달했다. Immutable bundle 미생성, process 테스트0; 이 결과는 메모리 실패가 아니다.
 - Product/test가 같은 physical target을 쓰도록 기존 Mac warm lane의 linker-native symbol-strip 플래그를 제품 빌드에도 명시했다. Guard와 oracle은 유지했으며 target reset은 없다.
-- 후보 `0f426c0935a88e412baeefb82a572dc9bf7bee23`에는 별도 `daemon_native_gqlang_graph_unsupported_worker_refuses_v3`를 준비했다. 기존 Path/Reachability 양성 함수는 committed main과 동일하며 positive selector를 negative 성공으로 바꾸지 않는다. PATH와 Reachability 모두 catalog refusal의 유한 public reason, 빈 payload와 receipt 미발급을 확인한다. **NOT_RUN/미통합**, 담당 runtime 컴파일 수리의 committed source가 전제다.
+- 별도 `daemon_native_gqlang_graph_unsupported_worker_refuses_v3`는 현재 frozen candidate `1bba0ba893c4aa4eddddd8c6498f7ffd19b21df8`에 준비됐다. 기존 Path/Reachability 양성 함수와 registry oracle을 유지한다. PATH와 Reachability 모두 catalog refusal의 유한 public reason, 빈 payload와 receipt 미발급을 검증하도록 작성했다. **NOT_RUN/미통합**, AG5 바이트 비교 수리의 committed source가 전제다. 테스트 예상값은 Catalog→public reason→SDK 매핑을 추적해 정했으며 실행 출력에서 복사한 값이 아니다.
 - **완료 조건:** 최종 committed producer/consumer/Index 조합, 동일 physical build root/lane의 bundle와 process rail, source drift 및 cleanup 확인.
 
 ### 4. 완료 — Consumer closeout pin; 후속 증거 기록
@@ -79,8 +80,8 @@
 ## 소스·증거
 
 - Producer core checkpoint: e598a1d; committed tree=f0e97b3. 이후 이 소유 보고서의 문서 checkpoint는 별도다.
-- Consumer shared 관측 HEAD: `2e346eaa218097cbb29ee473e80a9c00fadc131c`; 공유 HEAD는 다른 작업으로 계속 이동한다. Trust e7ffc579, pin/lint82cc45e7, execution37e52c6, IDE3b714aa, error14a45cf, Graph00290be는 그 main 계열에 반영됐다.
-- Full consumer 후보 branch: `codex/fcp-consumer-de040-upstream-first-20261005`의 a48. Host 작업트리는 trust checkpoint를 위해 최신 main 기반 별도 branch로 이동했다. Linux frozen 조합은 a48/718/07 clean이다.
+- Consumer shared 관측 HEAD: `d0b896735ac1ba492ddb5401cb88d9a9f300cfa4`; 공유 HEAD는 다른 작업으로 계속 이동한다. Trust e7ffc579, pin/lint82cc45e7, execution37e52c6, IDE3b714aa, error14a45cf, Graph00290be는 그 main 계열에 반영됐다.
+- Full consumer 후보 branch: `codex/fcp-consumer-de040-upstream-first-20261005`의 a48. Host 작업트리는 trust checkpoint를 위해 최신 main 기반 별도 branch로 이동했다. 현재 Linux native frozen proof 조합은8be/867/07이며, 초기 a48/718/07 proof와 구분한다. 최신 관측 main에서 execution·IDE·map·Graph 소유17개 blob은 해당 GREEN source와 동일하고 경로별 dirty0다.
 
 [Producer main checkpoint 기록](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/latest-remediation/producer-main-checkpoint-20261005/checkpoint-result.json)
 [Producer clean qualification](/Users/songmin/.codex/worktrees/fcp-producer-main-integration-oct5/quanta-gqlang-v2/target/qualification/8675bcd2ba5609c0a80a7e24950edc624aa0c52b/receipt.json)
