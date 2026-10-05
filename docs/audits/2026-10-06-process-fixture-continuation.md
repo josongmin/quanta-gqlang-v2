@@ -1,6 +1,6 @@
 # Graph/CHECK process fixture continuation
 
-재관측: 2026-10-06. Producer `099d02767a6`, fixture checkpoint `98141eff6e5`, local lane checkpoint `d224b7ead54`, ACK reader checkpoint `0b418d11b65`, curated binding checkpoint `f5028ee6c85`. 공유 consumer HEAD와 foreign dirty는 계속 변경된다. 실행 증명은 아래의 frozen source별로 구분한다.
+재관측: 2026-10-06. Producer `9f781ca`, fixture checkpoint `98141eff6e5`, local lane checkpoint `d224b7ead54`, ACK reader checkpoint `0b418d11b65`, curated binding checkpoint `f5028ee6c85`, ingress caller checkpoint `b576c57feec`. 공유 consumer HEAD와 foreign dirty는 계속 변경된다. 실행 증명은 아래의 frozen source별로 구분한다.
 
 ## 적용한 후보
 
@@ -46,15 +46,23 @@ System Python3.9로 시도한 boundary 검사는 `zip(strict=True)`에서 중단
 - Consumer는 GQLang SDK executor이며 owning type은 기존 search aggregate owner의 `AggregateQueryBindingErrorV3`다. 오류 cause·reason code·feature cfg·wire 의미는 바꾸지 않는다.
 - Acceptance: ordinary product에서 타입을 resolve하고, executor의 runtime SDK 직접 import 금지와 exact curated export gate를 함께 통과한다. 기존 `index-sdk-ingress` cfg를 유지하고 누락 export를 검사기가 거절해야 한다.
 - 중간 main `84bf7329d8d`의 직접 `sdk::search_builder_facade` import는 canonical boundary preflight에서 RED였다. Curated `boundary_gqlang_runtime_v1/search_builder.rs`에 타입을 명시 export하고 caller를 기존 curated 경로로 연결했다.
-- Fanin inventory의 exact gated block에 해당 오류 타입만 추가했다. Guard의 export 삭제 음성 사례와 기존 wildcard/gate/owner drift 거절 검사를 유지했다. Boundary preflight PASS, Python guard28/28 PASS. Public/frontend schema·dependency·engine 변경은 없다.
+- Fanin inventory의 exact gated block에 해당 오류 타입만 추가했다. Guard의 export 삭제 음성 사례와 기존 wildcard/gate/owner drift 거절 검사를 유지했다. Boundary24 PASS, Python guard28/28 PASS, Rustfmt2 PASS, 해당 production2파일 GOD findings0 PASS. Public/frontend schema·dependency·engine 변경은 없다.
 - 작업 중 공유 snapshot `f5028ee6c85a18700e28eb6a5954a4c9e9548863`가 수리4경로를 main에 흡수했다. Commit readback과 경로 clean을 확인하고 claim을 해제했다. ACK claim도 해제했다.
-- 같은 committed source를 canonical casectl snapshot/lease로 고정해 `quanta-cli-product.release-full.build`를 실행한다. Jobs1, frontend1, canonical cache admission 유지. Terminal product와 actual Graph/CHECK 결과는 실행 종료 뒤 기록한다.
+- 같은 committed source의 canonical product run `20261005T181406.687054Z-9d7618d60b31`: source `5f73fb398bfea4a5ebd21e0b864f742e5f1268bf37988e60e88245e3ad9015c2`, exit101, 2,025,911ms. ACK·curated export·SDK executor 지점은 통과했고 CLI ingress에서 후속6개 compiler 오류로 종료했다. 네 바이너리 publication과 actual process proof는 없다.
+
+## Ingress borrowed-to-owned caller 수리
+
+- `ProjectedDaemonRequestV1`의 기존 read-only API는 `core_v1()`이며 core의 `request_id`를 제공한다. `DaemonSearchRequestCopyViewV1`은 `&str`, 실행 요청은 owned `String`을 요구한다.
+- Frozen `f5028ee6c85`와 live main 모두 `code_agent.rs`·`search.rs`에서 nonexistent `request_id()`4개와 code-agent query의 반대 ownership2개가 남아 있었다. Compile error6개는 `E0599`4개와 `E0308`2개다.
+- `b576c57feec1e24e6b5af60e829e2c0680cb3864`: 기존 core identity를 root issuance 전 빌리고, root admission 성공 후 실행 요청에 복사한다. Code-agent query도 copy view에서 빌리고 owned request 구성 시 복사한다. Deadline·cancel·root 거절 순서와 원래 source authority를 유지한다. 새 accessor/API/engine/dependency는 없다.
+- Acceptance: ordinary product profile에서 두 caller의 타입 계약이 맞고, root admission 이전 owned request 복사를 만들지 않는다. Boundary1·GOD2파일0·staged Rustfmt2·staged patch/safety fence PASS. 소유2경로·6줄만 private index로 커밋했고 다른 staged 변경을 보존했다. Claim/barrier 해제, 소유2경로 clean.
+- 같은 committed source를 canonical casectl snapshot/lease로 고정해 product·actual Graph/CHECK를 다시 실행한다. Jobs1, frontend1, canonical cache admission 유지. 이 단계의 실제 query 결과는 아직 관측하지 못했다.
 
 ## 남은 실행 전제
 
-1. SDK/PTA 공통 compile closure: 선행 borrow 수리, ACK cfg와 curated 오류 export 수리를 소비하는 같은 frozen source에서 compiler와 actual attach를 확인한다. 선행 `E0515`·`E0599`·`E0412`는 원래 source에 보존하며 최신 main 전체 결함으로 합산하지 않는다. SDK owner의 검증을 중복하지 않는다.
+1. SDK/PTA 공통 compile closure: 선행 borrow 수리, ACK cfg·curated 오류 export·ingress caller 수리를 소비하는 같은 frozen source에서 compiler와 actual attach를 확인한다. 과거 compiler 실패는 원래 source에 보존하며 최신 main 전체 결함으로 합산하지 않는다. SDK owner의 검증을 중복하지 않는다.
 2. Mac non-Linux Graph/CHECK typed refusal: 최신 frozen source의 receipt-bound CLI/server/worker bundle과 executing test target을 맞춰 실행한다. 실패는 native boundary·empty payload·no receipt까지 관측해야 한다.
-3. Linux Graph Path/Reachability와 signed CHECK0/1/2: 로컬 Docker는 `aarch64`; `/etc/semantica-codegraph-v2/trust`는 없다. 공식 `quanta-cli-product.release-full.linux-installed-build`는 `x86_64-unknown-linux-gnu` 및 installed authority features를 요구한다. 공식 bundle/대상 환경·deployment approval·root protected key/active generation 입력을 요청했다. 입력은 아직 제공되지 않았다.
+3. Linux Graph Path/Reachability와 signed CHECK0/1/2: 2026-10-06 live Docker 재확인에서도 `aarch64`이고 `/etc/semantica-codegraph-v2/trust`는 없다. 공식 `quanta-cli-product.release-full.linux-installed-build`는 `x86_64-unknown-linux-gnu` 및 installed authority features를 요구한다. 공식 bundle/대상 환경·deployment approval·root protected key/active generation 입력을 요청했다. 입력은 아직 제공되지 않았다.
 4. Source checkpoint `98141eff6e5`의 회귀를 같은 frozen source에서 actual 검증하고 receipt를 기록한다. Consumer main 반영을 actual GREEN으로 계산하지 않는다. Graph Linux cfg 들여쓰기2줄도 후속 공유 snapshot에 흡수됐고 소유2경로는 clean이다. Source checkpoint 뒤 claim을 해제했다.
 
 ## 증거
@@ -66,3 +74,5 @@ System Python3.9로 시도한 boundary 검사는 `zip(strict=True)`에서 중단
 기존 owner/kernel/local CI 결과는 원래 source에 유지한다. 이 후보의 actual process 또는 공식 installed qualification으로 합성하지 않는다.
 
 [ACK 이후 compile RED](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v3/terminal-compile-result.json), [curated boundary 검사](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final/curated-binding-error-boundary.log), [guard28개 검사](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final/curated-binding-error-tests.log), [main 흡수 readback](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final/curated-binding-error-absorbed.json), [frozen product 요청](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v4/request.json).
+
+[CLI ingress compile RED](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v4/terminal-compile-result.json), [ingress main checkpoint](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v4/ingress-copy-view-main-checkpoint.json), [ingress boundary 검사](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v4/ingress-copy-view-boundary.log), [curated GOD 검사](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final/curated-binding-error-god.log), [live Linux 설치 전제](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/linux-installed-preconditions-live-20261006.json).
