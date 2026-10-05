@@ -1,6 +1,6 @@
 # Graph/CHECK process fixture continuation
 
-재관측: 2026-10-06. Producer `9d32b86`(이번 문서 수정 전), fixture checkpoint `98141eff6e5`, local lane checkpoint `d224b7ead54`, ACK reader checkpoint `0b418d11b65`, curated binding checkpoint `f5028ee6c85`, ingress caller checkpoint `b576c57feec`, PTA caller checkpoint `62fc21be4fe`. 현재 재검증의 frozen consumer는 `693cd7e7eced7d0e82d11c3eaaa7268d9cacc2d7`이다. 공유 consumer HEAD와 foreign dirty는 계속 변경된다. 실행 증명은 아래의 frozen source별로 구분한다.
+재관측: 2026-10-06. Producer `b7b443f`(이번 문서 수정 전), fixture checkpoint `98141eff6e5`, local lane checkpoint `d224b7ead54`, ACK reader checkpoint `0b418d11b65`, curated binding checkpoint `f5028ee6c85`, ingress caller checkpoint `b576c57feec`, PTA caller checkpoint `62fc21be4fe`. 최종 완료한 product attempt의 frozen consumer는 `693cd7e7eced7d0e82d11c3eaaa7268d9cacc2d7`이며 RED다. 공유 consumer HEAD와 foreign dirty는 계속 변경된다. 실행 증명은 아래의 frozen source별로 구분한다.
 
 ## 적용한 후보
 
@@ -74,11 +74,19 @@ System Python3.9로 시도한 boundary 검사는 `zip(strict=True)`에서 중단
 - `cbbfe47ce21`의 product run `20261005T193141.649451Z-f2c5ebb1d4c1`: source `98d6a1f43d718cc00f0b22e3dcd22fe19718496e32cf93bffcec2883e6a95291`, exit101, 678,658ms. Runtime-analysis의 missing lease field1, delta helper generic mismatch2, packet view mismatch1, opaque snapshot field/후속 inference7, FunctionRef binding move-after-borrow1로 종료했다. Actual Graph/CHECK0건이다.
 - 기존 main `9a05e53cd37`의 delta helper generic, `99234f0bca1`의 snapshot `.as_ref()`·packet `.bytes_v1()`, `6be819ecd08`의 lease field·original source owner retention 수리를 해당6경로 readback으로 확인했다. 새 source 수정 없이 모두 포함한 `693cd7e7eced7d0e82d11c3eaaa7268d9cacc2d7`를 다음 canonical product·process 입력으로 고정했다.
 
+## 현재 product compile 차단
+
+- Frozen `693cd7e7ece`의 canonical product run `20261005T194447.127472Z-bb8fa5a945cc`: source `5c43ace395588f9dd138bf662ee9729155afe716d528e007fd8c87751fa803cf`, exit101, 718,745ms. 선행 runtime-analysis 오류 지점을 통과한 뒤 `quanta-runtime`11경로에서 compiler 오류31건으로 종료했다. Four-role bundle 및 actual Graph/CHECK0건이다.
+- Transcript 연결14건: session-id에서 `SessionTranscriptHandleV1`으로의 전환 중 ports·analysis-session·injector 계약이 서로 다르다. 기존 foreign dirty4경로와 QMP/host cutover가 해당 부분을 변경 중이다.
+- Resume/publication 연결17건: 제거된 rootless prepare export, child reason/type import, original execution-session argument, Arc registry borrow, layout admission error mapping, hydration refusal exhaustiveness, temporary manifest view lifetime이다. 기존 IRC recovery/integration claim과 겹친다. Main `7afbb088133` 대조에서11경로의 committed delta0, foreign dirty5경로를 확인했다. Source를 통합하거나 typed 원래 session을 가짜/default authority로 대체하지 않았다.
+- AG5 SDK의 별도 immutable run `20261005T193555.409816Z-33b000ebfa9b`도 exit101/actual0이다. Source `735039e37ad2774bd414298cae01f7026377030544599ecbac5948e7011f695b`에서 QMP pin `14cf0345`에 없는 `SessionHandle`·`open_session`·`retire_session`3개가 원인이다. 이 결과를 위 product31오류와 합산하지 않는다.
+- 기존 QMP 담당 작업은 source checkpoint `8c85dae`와 workspace900/feature18/document selector353 결과를 보고했고 추출 검증·host pin 통합을 진행 중이다. 이는 담당 작업의 보고이며 이번 Graph/CHECK 실행 proof가 아니다. Consumer manifest의 actual pin 갱신과 동일 source product를 확인한 뒤 다음 실행을 한다.
+
 ## 남은 실행 전제
 
-1. SDK/PTA 공통 compile closure: 선행 borrow·kernel import 수리, ACK cfg·curated 오류 export·ingress caller·PTA facade/handoff 수리를 소비하는 같은 frozen source에서 compiler와 actual attach를 확인한다. 과거 compiler 실패는 원래 source에 보존하며 최신 main 전체 결함으로 합산하지 않는다. SDK owner의 검증을 중복하지 않는다.
+1. 소비자 compile closure: 선행 수리에 더해 transcript/QMP pin 및 resume/publication caller·export·typed admission 연결을 기존 소유자가 main에 통합한다. 원래 session handle·refusal을 유지하고 같은 frozen source에서 compiler와 actual attach를 확인한다. 과거 compiler 실패는 원래 source에 보존하며 최신 main 전체 결함으로 합산하지 않는다. SDK owner의 검증을 중복하지 않는다.
 2. Mac non-Linux Graph/CHECK typed refusal: 최신 frozen source의 receipt-bound CLI/server/worker bundle과 executing test target을 맞춰 실행한다. 실패는 native boundary·empty payload·no receipt까지 관측해야 한다.
-3. Linux Graph Path/Reachability: generic aarch64 four-role product bundle로 별도 actual query proof를 실행할 수 있다. 기존 컨테이너에 lockfile의 `architecture-tooling`21개 package를 Python3.12 환경으로 오프라인 복원했다. Canonical source snapshot/lease·product·bundle·Graph exact selector 실행을 준비했으며 아직 product/process는 시작하지 않았다. 공식 설치형 qualification으로 확대하지 않는다.
+3. Linux Graph Path/Reachability: generic aarch64 four-role product bundle로 별도 actual query proof를 실행할 수 있다. 기존 컨테이너에 lockfile의 `architecture-tooling`21개 package를 Python3.12 환경으로 오프라인 복원했다. Primary Git mount가 읽기 전용이어서 canonical worktree 생성은 거절됐다. 전용 native clone3개에서 consumer `693cd7e7ece`/producer `b7b443f`/Index `66f92d2`의 clean 상태를 확인하고 canonical snapshot/lease 준비를 통과했다. Product/bundle/Graph exact selector 실행은 준비 상태이며 시작하지 않았다. 공식 설치형 qualification으로 확대하지 않는다.
 4. Signed Linux CHECK0/1/2: 2026-10-06 live Docker 재확인에서도 `aarch64`이고 `/etc/semantica-codegraph-v2/trust`는 없다. 공식 `quanta-cli-product.release-full.linux-installed-build`는 `x86_64-unknown-linux-gnu` 및 installed authority features를 요구한다. 공식 bundle/대상 환경·deployment approval·root protected key/active generation 입력을 요청했다. 입력은 아직 제공되지 않았다.
 5. Source checkpoint `98141eff6e5`의 회귀를 같은 frozen source에서 actual 검증하고 receipt를 기록한다. Consumer main 반영을 actual GREEN으로 계산하지 않는다. Graph Linux cfg 들여쓰기2줄도 후속 공유 snapshot에 흡수됐고 소유2경로는 clean이다. Source checkpoint 뒤 claim을 해제했다.
 
@@ -103,3 +111,5 @@ System Python3.9로 시도한 boundary 검사는 `zip(strict=True)`에서 중단
 [PTA private index import RED와 기존 main 수리](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v8/terminal-compile-result.json), [다음 frozen product 요청](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v9/request.json).
 
 [Runtime-analysis 타입/borrow compile RED](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v9/terminal-compile-result.json).
+
+[현재 product compiler31 RED](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v10/terminal-compile-result.json), [고정 source 요청](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v10/request.json), [Linux native base 입력](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/linux-native-base-source-inputs.json).
