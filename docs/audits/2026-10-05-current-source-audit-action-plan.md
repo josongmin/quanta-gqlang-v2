@@ -1,6 +1,6 @@
 # 이 세션의 잔여 작업 — 최신 코드 감사
 
-관측: 2026-10-05 08:21 KST. 공유 main, 미커밋 overlay, 격리 후보와 실제 검증 소스를 구분한다.
+관측: 2026-10-05 15:15 KST. 공유 main, 미커밋 overlay, 격리 후보와 실제 검증 소스를 구분한다.
 
 ## 이번 체크포인트
 
@@ -34,8 +34,9 @@
 
 - **Consumer pin/lint main `82cc45e7bd763c0651b753df7c9d3b9b1706fe3f` 통합 완료.** Producer subtree/vector pin과 현행 budgeted admission 호출 marker를 맞췄다. 기존 provider-before-selection 거절을 유지하고 실제 mutation 회귀를 보완했다. `M23-120` static gate PASS: Python23+6+30, locked/offline metadata. Rust나 설치형 제품 증명은 아니다.
 - **Execution seam 및 회귀 main `37e52c612fbbabdadae376deefa8bca2f7eefeb6` 통합 완료.** Storage permit/sink/refusal을 기존 exec-contract seam으로 노출하고 runtime import를 연결했다. Composition output-field borrow는 다른 checkpoint가 main에 먼저 반영해 중복 변경을 제외했다.
-- 최신 main 기반 candidate **`8be8cd2f23b36e60b60242da97056e82ef993526`**에 Graph parser/adapter/host 11개 파일을 별도로 재적용했다. 이 11개는 관측 시점에 foreign dirty/active claim과 겹치지 않았다. Scoped boundary before/after PASS, staged rustfmt14/changed safety fence PASS. **Graph main 통합은 아직 아니다.**
-- SDK·ingress generation 전달, Graph 결과/selector authority, registry는 활성 작업과 invariant/proof 조정이 필요하다. 다른 작업에 조정 메시지를 보내는 사용자 답변은 아직 없으며, 메시지를 보내지 않았다. 기존 lock·registry·SDK·새 Semantic process oracle을 candidate 전체로 덮어쓰지 않는다.
+- **Graph parser/adapter/host 11개 파일은 main `00290be45350259f8fd9d379d7406e9526a2dc0d`에 통합 완료.** Native macOS candidate `27c247841f5ef5d87331e056bfecee6cfd17bccc`의 Graph owner11/11 GREEN 뒤 최신 main descendant에 경로를 제한해 replay했다. Scoped boundary before/after와 staged rustfmt/safety fence PASS. 통합 blob은 검증 후보와 같으며 다른 작업의 dirty/index를 보존했다.
+- **IDE 오류 전달 수리는 main `3b714aa81bb83797128246f958fd01d2950f8868`, duplicate authority host 분류는 main `14a45cf8eb8c4b6a80e95373be395eae8234ff30`에 통합 완료.** 실제 E0382/E0004 이후 소유 consumer를 수정했고 Graph11 및 duplicate InvalidRequest 회귀1/1 GREEN이다. 새 오류의 authority/count를 유지한다.
+- SDK·ingress generation 전달과 registry는 활성 작업과 invariant/proof 조정이 필요하다. Graph 결과/selector authority는 최신 main과 검증 후보가 byte-identical임을 재확인해 추가 패치에서 제외했다. 다른 작업에 조정 메시지를 보내는 사용자 답변은 아직 없으며 메시지를 보내지 않았다. 기존 lock·registry·SDK·새 Semantic process oracle을 candidate 전체로 덮어쓰지 않는다.
 - **완료 조건:** owner GREEN 뒤 최신 main descendant의 정확한 변경 경로만 coordinator claim/barrier/source-commit/require-head로 통합한다. 겹치는 후속 묶음은 조정 후 재검토한다.
 
 ### 2. P0 — Graph host 최종 owner 검증
@@ -43,8 +44,9 @@
 - Candidate8be + producer867 + Index07의 관계 실행 전체 **37/37 GREEN**, filtered0/ignored0. Source digest `0ea3af40e2452f0703d81df7f05877ea051e3dad9810358688f329c9c1cc3782`. EXISTS 두0행, 상관/중첩, foreign binding/root, typed source/sort 거절, budget/cancellation, digest 및 output last-drop를 포함한다.
 - 초기 테스트 private API 및 unowned Composition fixture는 현재 계약에 맞게 고쳤다. 실제 frontend DTO를 기존 relation compiler에서 검증하는 **커널 증명**이며 공개 Composition 성공을 주장하지 않는다. 별도 public selection refusal도 GREEN이다. Long rename 기대값에는 wire logical demand 외 sized Arc owner demand를 포함했다; production charge를 제거하지 않았다.
 - Graph host 최신 8be 실행은 **RED/테스트0**: Rust1.92 Linux aarch64, Docker7.65GiB, jobs1/frontend thread1에서도 runtime-analysis가 SIGKILL. Compiler의 dev codegen-units256과 Docker OOM 기록을 확인했다. Source guard는 정상 최종화해 receipt를 발행했다. 이전 bind-metadata inode 문제는 native source로 재발하지 않았다.
-- 동일 source/features에서 **`RUSTFLAGS=-Zthreads=1 -Ccodegen-units=1` 재시도 중**이다. 기존 warm lane의 env-drift guard가 변경을 거절했으므로 기존 target/receipt를 보존하고 명시적 token으로 새 compile-family lane을 등록했다. Guard·locked·feature closure·oracle은 유지한다. 코드 의미 변경이 아니라 compile-memory 회복이다. 같은 source tuple의 generic Graph owner는 native macOS48GiB에서도 별도 검증 중이다. 두 실행 모두 아직 verdict가 없다; Mac unit 결과를 Linux 설치형 증명으로 계산하지 않는다.
-- Parser10/adapter9/trust6의 기존 GREEN은 이전 source에서 보존한다. SDK compile/product completion으로 확대하지 않는다.
+- Linux frontend1/codegen1 재시도도 **OOM/테스트0**으로 종료됐다. Peak child RSS5,551,480KiB, Docker guest OOM counter3. 다른 Index 컨테이너가 약2GiB를 사용 중이며 Docker7.65GiB 조건은 유지됐다. 다른 컨테이너를 중단하거나 Docker 설정을 바꾸지 않았다. 16GiB 변경·재시작은 다른 작업을 잠시 중단시키므로 사용자 확인을 요청했다.
+- **Native macOS48GiB Graph owner11/11 GREEN**: source27c, digest `314645e4299aa59e7f8b833fcf8601e2b287a5d51fbbc0579c3034d4d33e6126`, failed/ignored0, filtered163. 체인/순환/정확한 witness, foreign/partial census/short budget 거절을 포함한다. Duplicate authority exact 회귀1/1도 같은 digest GREEN이다. Mac 결과는 Linux 설치형 증명이 아니다.
+- Candidate8be + producer867 + Index07의 **Linux parser10/10 및 adapter9/9를 새로 확인**했다. 동일 source digest0ea3af40, ignored0. 종전 a48 proof와 구분하며 SDK/product completion으로 확대하지 않는다.
 - **완료 조건:** Graph host 실제 선택/실행 수와 receipt 확인, main replay의 proof-input delta 기록. 이후 동일 committed tuple의 process proof를 별도로 확인한다.
 
 ### 3. P0 — 같은 소스의 설치형 Graph·CHECK 실행 증명
@@ -52,7 +54,8 @@
 - `quanta-cli-product.release-full.build`의 immutable4-binary bundle, build receipt, binary hashes와 source tuple을 고정해야 한다.
 - Linux 설치형 Graph: PATH/Reachability 성공, unreachable 빈 결과, budget/stale/foreign 거절. CHECK: signed catalog zero/one/multi 실제 matcher 결과.
 - macOS는 parser/worker 미설치의 typed Unsupported 및 결과/receipt 미발급을 검증한다.
-- **현재 NOT_RUN.** Linux owner PASS를 설치형 제품 완료로 계산하지 않는다. Linux 환경은 aarch64이며 x86_64 증명이 아니다. Native source는 준비됐다. 설치형 bundle/process 실행 전 Graph owner compile-memory 회복을 확인해야 한다.
+- **Linux 설치형 NOT_RUN.** Linux 환경은 aarch64이며 x86_64 증명이 아니다. 반복 OOM 조건이 바뀌어야 설치형 bundle/process 검증을 진행한다.
+- Mac 설치형 source `4265f108b2fea66180fc69e93bdaa54b8d67a1a8`은 main `b55d5296d5c4b20638501147dd8f20d77fb42915` 위에 non-Linux Graph typed refusal20행만 추가한 clean 후보다. 4-binary product recipe 빌드 진행 중이며 process 결과는 아직 없다. Product와 test linker env가 달라 warm-lane guard가 첫 시도를 거절했다. 기존 target을 reset하지 않고 명시적 token으로 product compile-family lane을 분리했다.
 - **완료 조건:** 최종 committed producer/consumer/Index 조합, 동일 physical build root/lane의 bundle와 process rail, source drift 및 cleanup 확인.
 
 ### 4. 완료 — Consumer closeout pin; 후속 증거 기록
@@ -88,3 +91,8 @@
 [Execution main checkpoint](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/exec-checkpoint-result.json)
 [Relation whole37 QBC](</Volumes/Extreme SSD 1/gqlang-linux-check-proof-20261004/qbc-relation-whole-native-8be8cd2f23b-20261005-result.json>)
 [Graph OOM disposition](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/graph-host-oom-disposition.json)
+
+[Graph main checkpoint](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/graph-checkpoint-result.json)
+[IDE main checkpoint](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/ide-checkpoint-result.json)
+[Duplicate authority main checkpoint](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/map-checkpoint-result.json)
+[최신 source별 proof 상태](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/latest-proof-status.json)
