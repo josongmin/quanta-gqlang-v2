@@ -1,6 +1,6 @@
 # 이 세션의 잔여 작업 — 최신 코드 감사
 
-관측: 2026-10-05 18:39 KST. 공유 main, 미커밋 overlay, clean 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 신규 엔진·컴파일러·SMT·production library 추가는 없다. CI는 로컬 실행이다.
+관측: 2026-10-05 19:43 KST. 공유 main, 미커밋 overlay, clean 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 신규 엔진·컴파일러·SMT·production library 추가는 없다. CI는 로컬 실행이다.
 
 ## 완료한 구조·정책 정리
 
@@ -53,22 +53,27 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 - CHECK 첫 실행은 fixture의 dense configured root와 attach root 불일치로 실패했고, 진단 Python import의 bytecode/cache-directory 생성 때문에 source guard에서도 **INVALID/exit125**였다. 이 시도를 owner proof로 계산하지 않는다. 후속 source probe에는 bytecode 생성을 금지했다.
 - CHECK fixture를 source-first/exact configured root/case별freshdaemon으로 고친26dd는 실제 RootScope 검사를 통과한 뒤 누락된 target Python authority로 **RED0/1**. 기존 Graph fixture와 같은 authored Python3.12/src 설정을 추가한7ab는 두 전제를 통과했다.
 - **CHECK7ab actual process RED0/1**, ignored0/sourceguard PASS. 초기 Product normalized attribution이 `UnsupportedConstraintKind/unresolved_direct_call_target_v1 caller=app;statement=1;slot=0`로 `print(1)`을 거절했다. CHECK query는 아직 실행되지 않았다. Graph의 PTA authority 실패와 다른 원인이다.
+- Signed pattern이 identifier 호출 전체를 매칭함을 확인했다. CHECK 양성 입력을 same-module declared return calls로 바꾼e0e는 독립 AST 기준0/1/2 호출과 모든 target 선언을 만족한다. 서명·query·예산·응답 및 foreign/short oracle은 그대로다. Actual Mac CHECK는 attribution을 통과하고 Graph와 같은 `PtaOccurrenceAuthorityRefused`로 RED0/1이다.
+- 추가로2f7의 Mac 거절 입력을 호출0개인 상수 반환 선언으로 한정했다. Linux 양성 Graph/CHECK 본문은 byte-identical이다. Mac2f7의4-binary product는 GREEN이나 Graph/CHECK는 각각 **RED0/1**, failed1/ignored0: 모두 query 이전 initial exact-six Product PTA에서 거절됐다. Immutable run별 stderr와 사후 clean3-repo digest join을 확인했다. 호출0개에서도 같은 오류이므로 단순 미선언 call target이 공통 거절을 설명하지 않는다. 어떤 authority check가 실패했는지는 현재 typed 오류만으로 특정하지 못한다.
 - Fixture수리2건은 boundary before/after와 staged hooks를 통과한 **격리 candidate만**이며 main 미통합이다. 기존0/1/2 결과, foreign/short rejection, WorkerUnavailable 기대값, production RootScope/lowering 거절을 변경하지 않았다.
 - 두 실제 bootstrap 전제를 기존 AG5/initial Product 담당 작업에 전달했다. 해당 owner의 committed 수리와 proof를 소비한 뒤 동일 tuple로 설치형 query를 재검증한다. 새로운 builtin semantics/engine 지원은 이번 maintenance에 추가하지 않는다.
 - **남은 통합 조건:** 실제 query까지 도달한 독립1/1 GREEN과 Linux0/1/2 결과 확인 후, 최신 main에 test fixture와 별도 Graph 거절 테스트를 scope별로 합친다.
 
-### Linux — Graph owner 완료, 설치형 product 실행
+### Linux — Graph owner 완료, native worker 컴파일 수리 검증
 
 - 과거8GiB Docker 조건의 SIGKILL/OOM3회는 RED/테스트0으로 기록했다. Frontend1/codegen1 시도도 실패했으며 gate나 oracle을 약화하지 않았다.
 - 사용자 진행 승인 후 Docker 메모리를 **16GiB**로 변경·재시작했다. 중단 전 proof 컨테이너에 active child가 없음을 확인했고 기존 실행 컨테이너5개를 모두 복원했다. 이미지/volume 삭제는 없다.
 - Frozen806/867/07의 native Linux **aarch64** Graph owner는 **GREEN11/11**, failed0/ignored0, jobs1/frontend1. 전체 실행 약79분, peak child RSS9,051,304KiB였다. Immutable receipt: `20261005T080825.880997Z-31332bdffa29`, owner closure digest49e5414b. 이 결과는 설치형 query 증명이 아니다.
-- **설치형 Graph/CHECK 양성 proof NOT_RUN.** 완료된 owner receipt를 보존하고 CHECK-only fixture delta를 확인해 clean7ab/867/07로 freeze했다. 기존 generic product4-binary recipe는 별도 lane에서 **RUNNING**이다. 성공 후 canonical bundle→Graph PATH/Reachability/empty/budget/stale/foreign→signed CHECK zero/one/multi 실제 결과를 실행한다. Runtime bootstrap 전제는 해소되지 않았다.
+- Clean7ab/867/07의 generic product는 **RED/exit101**이다. Linux native worker의 직접 `libc::setrlimit/getrlimit` unsafe4개가 workspace `deny(unsafe_code)`에 걸렸다. OOM0이며 Graph/CHECK 설치 실행은 아직 NOT_RUN이다.
+- Parser가 이미 직접 사용하는 pinned **rustix1.1.4**의 `process` feature를 native-worker에 활성화한 candidate4501을 준비했다. 안전한 setter와 fallible `prlimit`의 동일 ceiling 재설정/이전값 확인을 사용한다. AS/DATA 모두 유한한 soft/hard≤요청값, zero/infinity/overflow 거절, syscall 오류의 typed ResourceLimit, allocation 이전 적용, 비Linux 거절을 유지한다. dependency/version 추가나 unsafe lint 예외는 없다.
+- **Native worker whole target8/8 GREEN**, failed0/ignored0/filtered0@4501/867/07. 기존 Match3개와 finite/soft/hard/infinite guard 회귀를 포함한다. Boundary before/after 및 staged hooks PASS. 같은 source의 generic4-binary product 재실행은 RUNNING이다. 이 컴파일 수리는 아직 main 미통합이며 product 성공 후2개 경로만 별도 checkpoint로 합친다.
+- **설치형 Graph/CHECK 양성 proof NOT_RUN.** Product 성공 후 canonical bundle→Graph PATH/Reachability/empty/budget/stale/foreign→signed CHECK zero/one/multi 실제 결과를 실행한다. Runtime bootstrap 전제는 해소되지 않았다.
 - 기존 warm lane의 compile-env 변경과 미등록 새 lane은 QBC가 각각 빌드 전에 거절했다. 새 lane을 canonical issuer로 등록했고 기존 lane/cache/receipt를 reset하지 않았다. Product/process는 이미 설치된 Rust toolchain의 LLD shim과 같은 flags를 사용한다. Production source/recipe/feature/profile은 바꾸지 않았다.
 - aarch64 generic installed 후보와 공식 **x86_64 installed release profile**을 구분한다. 현재 환경의 PASS는 x86_64 release qualification이 아니다.
 
 ## 최신 main과 검증 후보의 차이
 
-- Consumer 관측 HEAD **`aa49994ed6b189e9932f70cb6caf157d982fde8c`**. 다른 작업으로 main은 계속 이동한다. 기존 소유 checkpoint 경로의 dirty overlay는0개다.
+- Consumer 관측 HEAD **`363ca3172600d6ce64ba47d9a92814b06af31315`**. 다른 작업으로 main은 계속 이동한다. 현재 준비 중인 worker2경로와 installed test 경로의 dirty overlay는0개다.
 - Source digest 차이는 플랫폼 차이가 아니다. Product806의 전체 primary snapshot은55308640, owner806의 policy/Cargo sibling closure(consumer/producer/Index)는49e5414b다. 기존 canonical owner로 세 저장소의 byte-aware clean HEAD와 두 digest를 독립 재계산해 join을 확인했다. Digest 문자열을 같다고 가정하거나 receipt를 다른 소스로 합성하지 않는다.
 - 이후 다른 작업에서 portable parser/adapter의 metering/borrow/staging과 Graph test165줄 등을 수정했다. 원래 Graph owner11 및 parser10/adapter9 receipt는 원래 source에만 유효하다. 과거의 “소유17개 blob 모두 동일” 주장은 더 이상 현재 상태가 아니다.
 - 경로별 committed delta와 dirty 상태는 아래 custody JSON에 기록한다. 최신 main 전체 product/설치형 qualification은 **없다**. 검증 후보 결과와 최신 main 결과를 합성하지 않는다.
@@ -95,3 +100,6 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 [Source identity closure join](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/source-identity-domain-join-806.json)
 [Graph actual attach RED](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/installed-mac-graph-attach-failure.json)
 [CHECK actual attribution RED](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/installed-mac-check-attribution-failure.json)
+[Mac zero-call bootstrap failures](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/installed-mac-zero-call-bootstrap-failures.json)
+[Linux product unsafe compile RED](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/linux-installed-product-unsafe-compile-failure.json)
+[Native safe limit candidate](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/mac-native-owner-8be-20261005/native-safe-rlimit-preparation.json)
