@@ -1,6 +1,6 @@
 # 이 세션의 잔여 작업 — 최신 코드 감사
 
-관측: 2026-10-05 18:25 KST. 공유 main, 미커밋 overlay, clean 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 신규 엔진·컴파일러·SMT·production library 추가는 없다. CI는 로컬 실행이다.
+관측: 2026-10-05 18:39 KST. 공유 main, 미커밋 overlay, clean 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 신규 엔진·컴파일러·SMT·production library 추가는 없다. CI는 로컬 실행이다.
 
 ## 완료한 구조·정책 정리
 
@@ -32,7 +32,7 @@
 | `37e52c612fb` | canonical storage permit/sink/refusal 공개 seam, runtime import 및 관계 결과 회귀 | Linux relation whole37/37 PASS@8be; kernel 증명 |
 | `3b714aa81bb` | IDE failure class를 detail move 전에 보존 | 실제 E0382 수리, Mac Graph11 PASS@27c |
 | `14a45cf8eb8` | DuplicateExecutionAuthority→InvalidRequest, authority/count 유지 | 독립 exact1/1 및 Graph11 PASS@27c |
-| `00290be4535` | bounded top-level Python Graph census의 parser→adapter→host 연결 | Mac Graph owner11/11 PASS@27c; Linux parser10+adapter9 PASS@8be |
+| `00290be4535` | bounded top-level Python Graph census의 parser→adapter→host 연결 | Mac Graph owner11/11 PASS@27c; Linux parser10+adapter9 PASS@8be; Linux Graph owner11/11 PASS@806 |
 | `76922f834eb` | 기존 `ServingSourceIssuanceTemporaryPermitV1` canonical trait 재수출 | 실제 SDK 호출부 포함 Mac4-binary product PASS@806 |
 | `4305ac65652` | 공용 Match wire 상수4개 `pub(crate)`: library sibling·standalone binary 두 경로 컴파일 | library와 native binary 포함 Mac4-binary product PASS@806; 값/형식 변경 없음 |
 
@@ -57,17 +57,18 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 - 두 실제 bootstrap 전제를 기존 AG5/initial Product 담당 작업에 전달했다. 해당 owner의 committed 수리와 proof를 소비한 뒤 동일 tuple로 설치형 query를 재검증한다. 새로운 builtin semantics/engine 지원은 이번 maintenance에 추가하지 않는다.
 - **남은 통합 조건:** 실제 query까지 도달한 독립1/1 GREEN과 Linux0/1/2 결과 확인 후, 최신 main에 test fixture와 별도 Graph 거절 테스트를 scope별로 합친다.
 
-### Linux — 메모리 복구 후 Graph owner 재실행
+### Linux — Graph owner 완료, 설치형 product 실행
 
 - 과거8GiB Docker 조건의 SIGKILL/OOM3회는 RED/테스트0으로 기록했다. Frontend1/codegen1 시도도 실패했으며 gate나 oracle을 약화하지 않았다.
 - 사용자 진행 승인 후 Docker 메모리를 **16GiB**로 변경·재시작했다. 중단 전 proof 컨테이너에 active child가 없음을 확인했고 기존 실행 컨테이너5개를 모두 복원했다. 이미지/volume 삭제는 없다.
-- Frozen806/867/07의 native Linux **aarch64** Graph owner는 **RUNNING/테스트0**, jobs1/frontend1. 컴파일 후 GNU ld가 약8.2GiB RSS로 장시간 link 중이다. 테스트 verdict가 아직 없다.
-- **설치형 Graph/CHECK 양성 proof NOT_RUN.** Graph owner 종료 후 reviewed CHECK-only fixture delta를 별도로 기록해 clean7ab/867/07로 freeze한다. 기존 generic product4-binary recipe→bundle→Graph PATH/Reachability/empty/budget/stale/foreign 및 signed CHECK zero/one/multi 실제 결과를 실행한다. Runtime bootstrap 전제는 해소되지 않았다.
-- aarch64 generic installed 후보와 공식 **x86_64 installed release profile**을 구분한다. 현재 환경의 PASS는 x86_64 release qualification이 아니다. 다음 product/process 묶음은 이미 설치된 Rust toolchain의 LLD shim을 명시하고 동일 flags를 bundle/test에 고정하도록 준비했다. 실행 중인 GNU owner rail은 변경하지 않았다.
+- Frozen806/867/07의 native Linux **aarch64** Graph owner는 **GREEN11/11**, failed0/ignored0, jobs1/frontend1. 전체 실행 약79분, peak child RSS9,051,304KiB였다. Immutable receipt: `20261005T080825.880997Z-31332bdffa29`, owner closure digest49e5414b. 이 결과는 설치형 query 증명이 아니다.
+- **설치형 Graph/CHECK 양성 proof NOT_RUN.** 완료된 owner receipt를 보존하고 CHECK-only fixture delta를 확인해 clean7ab/867/07로 freeze했다. 기존 generic product4-binary recipe는 별도 lane에서 **RUNNING**이다. 성공 후 canonical bundle→Graph PATH/Reachability/empty/budget/stale/foreign→signed CHECK zero/one/multi 실제 결과를 실행한다. Runtime bootstrap 전제는 해소되지 않았다.
+- 기존 warm lane의 compile-env 변경과 미등록 새 lane은 QBC가 각각 빌드 전에 거절했다. 새 lane을 canonical issuer로 등록했고 기존 lane/cache/receipt를 reset하지 않았다. Product/process는 이미 설치된 Rust toolchain의 LLD shim과 같은 flags를 사용한다. Production source/recipe/feature/profile은 바꾸지 않았다.
+- aarch64 generic installed 후보와 공식 **x86_64 installed release profile**을 구분한다. 현재 환경의 PASS는 x86_64 release qualification이 아니다.
 
 ## 최신 main과 검증 후보의 차이
 
-- Consumer 관측 HEAD **`154c8ed0b897c9ba2d4b9ef99d61af7ad4c02549`**. 다른 작업으로 main은 계속 이동한다.
+- Consumer 관측 HEAD **`aa49994ed6b189e9932f70cb6caf157d982fde8c`**. 다른 작업으로 main은 계속 이동한다. 기존 소유 checkpoint 경로의 dirty overlay는0개다.
 - Source digest 차이는 플랫폼 차이가 아니다. Product806의 전체 primary snapshot은55308640, owner806의 policy/Cargo sibling closure(consumer/producer/Index)는49e5414b다. 기존 canonical owner로 세 저장소의 byte-aware clean HEAD와 두 digest를 독립 재계산해 join을 확인했다. Digest 문자열을 같다고 가정하거나 receipt를 다른 소스로 합성하지 않는다.
 - 이후 다른 작업에서 portable parser/adapter의 metering/borrow/staging과 Graph test165줄 등을 수정했다. 원래 Graph owner11 및 parser10/adapter9 receipt는 원래 source에만 유효하다. 과거의 “소유17개 blob 모두 동일” 주장은 더 이상 현재 상태가 아니다.
 - 경로별 committed delta와 dirty 상태는 아래 custody JSON에 기록한다. 최신 main 전체 product/설치형 qualification은 **없다**. 검증 후보 결과와 최신 main 결과를 합성하지 않는다.
