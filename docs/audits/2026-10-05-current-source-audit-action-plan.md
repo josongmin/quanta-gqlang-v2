@@ -1,5 +1,13 @@
 # 이 세션의 잔여 작업 — 최신 코드 감사
 
+## 2026-10-06 source·receipt 재확인
+
+- Producer main `2987f54a6d17bf4fe9b5e657d0291cb73422882a`: tracked core/CI 입력은 검증 source `8675bcd`와 같다. Foreign CircleCI/RFC/BTree 파일은 이 변경에 포함하지 않는다.
+- Consumer main `33d1ba8ce8ad6c7b476bf7bf8b5c982a196351db`: CHECK work 수리4경로 중3개는 원래 proof bytes와 같고 `canonical_cbor.rs`에는 후속 변경이 있다. Foundation37/37은 원래 source 결과다. 최신 consumer 전체 GREEN이 아니다.
+- SDK 검증은 아직 미완료다. 최근 진단은 URI normalizer의 String/&str 컴파일 오류2개에서 멈췄고 담당 작업이 수리·재실행 중이다. PTA indexing/hydration 성공 및 Graph/CHECK actual query는 관측하지 못했다.
+- 끝난 FCP checkout24/branch25를 보관 후 정리했다. Dirty overlay4와 복구 ref156을 유지했다. [정리·복구 기록](/Users/songmin/Documents/code-new/quanta-gqlang-v2/docs/audits/2026-10-06-proof-input-retirement.md)을 참조한다. 이전 경로 링크는 historical source 위치이며 현재 실행 입력으로 사용하지 않는다.
+- 이번에는 문서/정리만 변경했다. 기존 local CI1514와 owner37/23을 현재 source의 새 product qualification으로 합산하지 않는다.
+
 관측: **2026-10-05 23:50 KST**. 문서 수정 전 producer main `7cf36e887397cfae317fb043118b7aa7e84c4091`, consumer main `65836a3adfcbee70b76a6617c0cec9349610d593`. CHECK work 수리 source와 QBC frozen owner 결과를 대조했다. 공유 main, 미커밋 overlay, 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 CI는 로컬 실행이다.
 
 ## 현재 남은 코드 작업

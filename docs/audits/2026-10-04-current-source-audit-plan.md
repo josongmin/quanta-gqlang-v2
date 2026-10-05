@@ -1,5 +1,12 @@
 # 최신 소스 감사와 실행 계획
 
+## Historical proof 경로 안내 — 2026-10-06
+
+이 문서의 과거 checkpoint/qualification checkout 일부는 보관 후 퇴역했다.
+현재 상태와 복구 경로는 [최신 액션 계획](/Users/songmin/Documents/code-new/quanta-gqlang-v2/docs/audits/2026-10-05-current-source-audit-action-plan.md)과
+[검증 입력 정리 기록](/Users/songmin/Documents/code-new/quanta-gqlang-v2/docs/audits/2026-10-06-proof-input-retirement.md)을 참조한다.
+과거 PASS의 source/플랫폼/selector 범위는 그대로이며 새 qualification을 뜻하지 않는다.
+
 ## 현재 판정 — 2026-10-05 23:50 KST
 
 이 문서의 2026-10-04 snapshot·계획·실패 기록은 **이력**이다. 현재 source와
