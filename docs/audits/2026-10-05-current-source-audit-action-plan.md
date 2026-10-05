@@ -2,11 +2,11 @@
 
 ## 2026-10-06 source·receipt 재확인
 
-- Producer main `2987f54a6d17bf4fe9b5e657d0291cb73422882a`: tracked core/CI 입력은 검증 source `8675bcd`와 같다. Foreign CircleCI/RFC/BTree 파일은 이 변경에 포함하지 않는다.
-- Consumer main `33d1ba8ce8ad6c7b476bf7bf8b5c982a196351db`: CHECK work 수리4경로 중3개는 원래 proof bytes와 같고 `canonical_cbor.rs`에는 후속 변경이 있다. Foundation37/37은 원래 source 결과다. 최신 consumer 전체 GREEN이 아니다.
-- SDK 검증은 아직 미완료다. 담당 작업의 최신 보고는 URI normalizer 진단 뒤, PTA 인자 구조 변경 중 캡처된 소스에서 컴파일 오류76개로 테스트 전 중단이다. 최신 main의 해소 여부를 해당 owner가 확인 중이다. 이 captured-source RED를 현재 main 전체의 확정 결함으로 옮기지 않으며 PTA indexing/hydration 성공 및 Graph/CHECK actual query는 관측하지 못했다.
+- Producer 관측 HEAD `57313ae17ab38bc06af0e83ae7db355b3583999e`: tracked core/CI 입력은 검증 source `8675bcd`와 같다. Foreign CircleCI/RFC/BTree 파일은 이 변경에 포함하지 않는다.
+- Consumer fixture 대조 관측 HEAD `98141eff6e57f6557e1360b6b7161d5c00054ca8`: 공유 main은 계속 이동한다. CHECK work 수리의 Foundation37/37은 원래 source 결과이며 후속 `canonical_cbor.rs` 변경이나 최신 consumer 전체 GREEN을 증명하지 않는다.
+- SDK 검증은 아직 미완료다. 직접 확인한 최신 immutable run `20261005T164051.089530Z-b7cb2b38d81c`는 source `1c25c311…`에서 quarantine owner의 unused import로 컴파일 RED, 실행0건이다. 이전 captured source의76개 오류와 PTA 타입 가시성 오류2개 뒤의 결과다. 해당 경로는 담당 작업이 수정 중이다. PTA indexing/hydration 성공 및 Graph/CHECK actual query는 관측하지 못했다.
 - 끝난 FCP checkout24/branch25를 보관 후 정리했다. Dirty overlay4와 복구 ref156을 유지했다. [정리·복구 기록](/Users/songmin/Documents/code-new/quanta-gqlang-v2/docs/audits/2026-10-06-proof-input-retirement.md)을 참조한다. 이전 경로 링크는 historical source 위치이며 현재 실행 입력으로 사용하지 않는다.
-- 이번에는 문서/정리만 변경했다. 기존 local CI1514와 owner37/23을 현재 source의 새 product qualification으로 합산하지 않는다.
+- 후속 continuation에서 Graph/CHECK process fixture와 registry2경로를 수리했고 공유 snapshot `98141eff6e5`가 main에 흡수했다. CHECK는 source를 먼저 materialize하고 daemon configured root와 attach root를 일치시키며 Python3.12를 선언한다. Graph 성공은 Linux, worker 부재 거절은 non-Linux 별도 selector다. 독립 AST0/1/2·Rust 구문·boundary·topology·scoped registry4행 검사는 PASS지만 actual process는 NOT_RUN이다. 이 source checkpoint는 실행 qualification이 아니다. [후속 준비·차단 근거](2026-10-06-process-fixture-continuation.md)를 참조한다. 기존 local CI1514와 owner37/23을 현재 source의 새 product qualification으로 합산하지 않는다.
 
 관측: **2026-10-05 23:50 KST**. 문서 수정 전 producer main `7cf36e887397cfae317fb043118b7aa7e84c4091`, consumer main `65836a3adfcbee70b76a6617c0cec9349610d593`. CHECK work 수리 source와 QBC frozen owner 결과를 대조했다. 공유 main, 미커밋 overlay, 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 CI는 로컬 실행이다.
 
@@ -15,7 +15,7 @@
 | 구분 | 작업·근거 | 완료 조건 |
 | --- | --- | --- |
 | **원인 확인·수리 여부 판정 / P0** | **Product PTA bootstrap.** 실제 Mac/Linux 실패는 source4501 및 앞선 후보에서 query 이전 `PtaOccurrenceAuthorityRefused`다. 최신 main은 pre-key cohort에 `ProductCallGraphSeedConsumptionV1`을 보유하며 caller도 해당 consumption을 전달한다. 동일 최신 source의 bootstrap 성공은 확인하지 못했다. | 최초 거절 분기를 특정하고 기존 lifetime 수리로 해결되는지 owner QBC/실제 bootstrap으로 확인. 여전히 실패하면 그 owner만 수정. 현재 main의 확정 결함이나 수리 완료로 단정하지 않는다. |
-| **테스트 코드 통합 / P1** | **Graph/CHECK process fixture 수리와 Mac Graph refusal 회귀.** 격리 candidate에 있으나 실제 query oracle이 통과하지 않아 main 미통합이다. | 같은 clean tuple의 실제 성공/거절 회귀가 GREEN이면 검증된 test delta만 main checkpoint에 반영. 기존 실패 oracle을 완화하지 않는다. |
+| **회귀 실행 검증 / P1** | **Graph/CHECK process fixture 수리와 Mac Graph refusal 회귀.** Test/registry2경로는 source checkpoint `98141eff6e5`에 반영됐고 기존 AG5 harness/raw observation을 보존했다. 독립 fixture AST0/1/2 및 해당 boundary/topology/scoped registry는 PASS. 실제 query oracle은 NOT_RUN이다. | 공통 SDK/PTA 컴파일 closure를 담당 작업이 안정시킨 뒤 같은 source의 실제 성공/거절 회귀를 검증하고 qualified 결과를 기록한다. Source 통합 자체로 완료 처리하거나 실패 oracle을 완화하지 않는다. |
 | **설치·검증 전제** | Linux CHECK4501은 signed installed trust가 없어 서버 시작에서 거절됐다. Generic aarch64 bundle은 canonical x86_64 installed profile에도 맞지 않는다. 현재 근거로 trust 코드 결함을 확인한 것은 아니다. | 기존 release owner에서 공식 profile·root 소유 immutable slot·독립 approval/key·active generation 확보 후 actual process proof. |
 
 **Producer의 원래 구조·계약 정리에는 추가 production 코드 수정이 남아 있지 않다.**
