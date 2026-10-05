@@ -82,6 +82,22 @@ System Python3.9로 시도한 boundary 검사는 `zip(strict=True)`에서 중단
 - AG5 SDK의 별도 immutable run `20261005T193555.409816Z-33b000ebfa9b`도 exit101/actual0이다. Source `735039e37ad2774bd414298cae01f7026377030544599ecbac5948e7011f695b`에서 QMP pin `14cf0345`에 없는 `SessionHandle`·`open_session`·`retire_session`3개가 원인이다. 이 결과를 위 product31오류와 합산하지 않는다.
 - 기존 QMP 담당 작업은 source checkpoint `8c85dae`와 workspace900/feature18/document selector353 결과를 보고했고 추출 검증·host pin 통합을 진행 중이다. 이는 담당 작업의 보고이며 이번 Graph/CHECK 실행 proof가 아니다. Consumer manifest의 actual pin 갱신과 동일 source product를 확인한 뒤 다음 실행을 한다.
 
+## 2026-10-06 compile leaf 체크포인트
+
+- Consumer `d7d3416809506eda63afb7c6c34213b79d3f76a4`: preflight child가 기존 parent helper를 명시 import한다. Missing root는 기존 `MaterializationAdmission(MissingRootAdmission)` 거절로 유지한다.
+- Consumer `69b3502425609fb0e934f9983f2fbf55d0ec4a67`: decode child가 canonical owner의 admitted payload 타입을 import한다. Private Arc layout helper는 기존 `UnknownDemand`를 기존 typed admission variant로 전달하고, persisted manifest view를 bind해 required-owner borrow를 유지한다. Public visibility·wire·schema·authority를 추가하지 않았다. Private publication view에 소유 hunk만 넣고 foreign PTA overlay bytes를 보존했다.
+- Consumer `66a3a3cd21179eb3abf221b9d210fc8f3ccfbe15`: admitted durable reader에 기존 registry Arc의 `.as_ref()`를 전달한다. 원래 execution handle과 typed reader 거절 순서를 유지한다.
+- Consumer `f65d7fa95adabc74b1cdce0cdddab98b7e179b44`: 이미 제거된 rootless prepare의 stale facade export2곳을 삭제했다. 기존 cross-product 거절 UT는 committed canonical issuer와 MockQueryExecutor fixture에서 발급한 original handle을 기존 prepare API에 전달한다. 독립 `TargetHeadMismatch`·pristine resume-state 기대는 유지한다. Foreign lib/test overlay bytes를 보존했고 staged Rustfmt3·patch/safety는 PASS다. UT/compiler 실행은 아직 없다.
+- Consumer `9d0b9c80eb4d3b1dddef8e428061667043596d22`: semantic-root read의 `MaterializationAdmission`을 root hydration 거절과 기존 resolver의 같은 typed variant까지 전달한다. 기존 hydration 오류의 중첩 match를 평탄화해 동일한 오류 값·store failure 분류를 유지했다. Staged Rustfmt2·patch/safety PASS, foreign mapper overlay bytes 보존, claim/barrier 해제다. Coordinator의 기존 함수 complexity21→19, function LOC151→154, production LOC6527→6531이며 GOD baseline/allow 변경은 없다. Compiler/거절 실행 proof는 아직 없다.
+- Exact-index Rustfmt·patch integrity·changed safety fence는 각 위 체크포인트에서 PASS다. Live boundary source drift는 GREEN이 아니며 중단했다. Canonical frozen `69b35024256`의 resume3파일 boundary는 unique 정책25 PASS/1 RED, exit1이다. Source drift0이며 `query-executor-contract-frontier`의 postimage tuple/identity/migration successor/verdict 불일치가 원인이다. 이것은 새로운 compiler 결과가 아니다. 최신 compiler/product/process는 재실행하지 않았다.
+- GOD source 비교: preflight 기존3, decode 기존2, coordinator 기존33 findings는 동일하다. Committed publication view의 기존 reserve 함수는59→60줄, hydrate 함수는232→230줄이며 complexity18은 같다. Allow/baseline 변경은 없다. 이 기록은 전체 GOD PASS가 아니다.
+- QMP `472048a`는 기존 담당자의 실제 추출 검증 및 공개 예제5개 성공 보고가 있다. Consumer 두 Cargo root와 lockfile은 현재 dirty 상태로 같은 revision에 이행 중이다. Transcript 기존 UT의 string API 이행과 IRC original-session caller 통합은 별도 담당 작업에서 계속 진행한다. 마지막 product31 RED@693을 현재 main의 미해결 개수로 사용하지 않는다.
+
+## 미커밋 통합 source 진단
+
+- `mac-overlay-v11`은 consumer HEAD `bc8e2d666b140799f16c5388c09393bbbc97a352` + whole-worktree overlay `78f1c85da95721414d1b2da46ca23964` + sibling topology `3e7ffbbb723039344d62`를 canonical plain snapshot으로 캡처했다. QMP pin·transcript·IRC caller의 준비된 dirty source를 포함한다. Main source qualification이 아니며 foreign 변경을 게시하지 않는다.
+- Snapshot lease를 유지한 채 canonical four-role product를 jobs1/frontend1로 실행한다. 빌드가 통과할 때만 같은 source·build receipt·bundle의 Mac Graph/CHECK 거절 selector를 실행한다. Signed Linux success 범위는 제외한다. 실행 중이며 결과를 아직 판정하지 않았다.
+
 ## 남은 실행 전제
 
 1. 소비자 compile closure: 선행 수리에 더해 transcript/QMP pin 및 resume/publication caller·export·typed admission 연결을 기존 소유자가 main에 통합한다. 원래 session handle·refusal을 유지하고 같은 frozen source에서 compiler와 actual attach를 확인한다. 과거 compiler 실패는 원래 source에 보존하며 최신 main 전체 결함으로 합산하지 않는다. SDK owner의 검증을 중복하지 않는다.
