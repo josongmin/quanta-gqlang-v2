@@ -1,6 +1,6 @@
 # Graph/CHECK process fixture continuation
 
-재관측: 2026-10-06. Producer `648460c`(이번 문서 수정 전), fixture checkpoint `98141eff6e5`, local lane checkpoint `d224b7ead54`, ACK reader checkpoint `0b418d11b65`, curated binding checkpoint `f5028ee6c85`, ingress caller checkpoint `b576c57feec`, PTA caller checkpoint `62fc21be4fe`. 현재 재검증의 frozen consumer는 `cbbfe47ce212a38ffb2137592065bab631400070`이다. 공유 consumer HEAD와 foreign dirty는 계속 변경된다. 실행 증명은 아래의 frozen source별로 구분한다.
+재관측: 2026-10-06. Producer `9d32b86`(이번 문서 수정 전), fixture checkpoint `98141eff6e5`, local lane checkpoint `d224b7ead54`, ACK reader checkpoint `0b418d11b65`, curated binding checkpoint `f5028ee6c85`, ingress caller checkpoint `b576c57feec`, PTA caller checkpoint `62fc21be4fe`. 현재 재검증의 frozen consumer는 `693cd7e7eced7d0e82d11c3eaaa7268d9cacc2d7`이다. 공유 consumer HEAD와 foreign dirty는 계속 변경된다. 실행 증명은 아래의 frozen source별로 구분한다.
 
 ## 적용한 후보
 
@@ -71,13 +71,16 @@ System Python3.9로 시도한 boundary 검사는 `zip(strict=True)`에서 중단
 - 기존 main `c8e025531c2b0ce2982db63ec9e0670d6e9c65ae`가 `slot_assignment_error.rs`·`statement_membership.rs`·`typed_publication.rs`의 explicit owner imports를 이미 수리했다. 중복 source 수정 없이 모두 포함한 `14cd42b7ed9b2562f1971cc38c5ebb83a4b8ace7`를 다음 canonical product·process source로 고정한다.
 - `14cd42b7ed9`의 product run `20261005T192331.381715Z-22b70874a114`: source `24e319d755be82e926bf8490122434f38c99c267c8a00142845a9afe03e91c27`, exit101, 254,450ms. `native_generation_binding_index_v1.rs`가 exact FunctionRef index를 옛 parent에서 import해 `E0432`와 후속 `E0282`로 종료했다. Actual Graph/CHECK0건이다.
 - 기존 main `a384b1e6df87cb9c145c6b34c4ee648205a4a862`가 private `native_extracted_constraint_binding_v1` owner에서 기존 alias를 직접 import하도록 수리했다. 중복 source 수정·shim·type annotation을 추가하지 않았다. 그 수리를 포함한 `cbbfe47ce212a38ffb2137592065bab631400070`에서 canonical product·process를 재검증 중이다.
+- `cbbfe47ce21`의 product run `20261005T193141.649451Z-f2c5ebb1d4c1`: source `98d6a1f43d718cc00f0b22e3dcd22fe19718496e32cf93bffcec2883e6a95291`, exit101, 678,658ms. Runtime-analysis의 missing lease field1, delta helper generic mismatch2, packet view mismatch1, opaque snapshot field/후속 inference7, FunctionRef binding move-after-borrow1로 종료했다. Actual Graph/CHECK0건이다.
+- 기존 main `9a05e53cd37`의 delta helper generic, `99234f0bca1`의 snapshot `.as_ref()`·packet `.bytes_v1()`, `6be819ecd08`의 lease field·original source owner retention 수리를 해당6경로 readback으로 확인했다. 새 source 수정 없이 모두 포함한 `693cd7e7eced7d0e82d11c3eaaa7268d9cacc2d7`를 다음 canonical product·process 입력으로 고정했다.
 
 ## 남은 실행 전제
 
 1. SDK/PTA 공통 compile closure: 선행 borrow·kernel import 수리, ACK cfg·curated 오류 export·ingress caller·PTA facade/handoff 수리를 소비하는 같은 frozen source에서 compiler와 actual attach를 확인한다. 과거 compiler 실패는 원래 source에 보존하며 최신 main 전체 결함으로 합산하지 않는다. SDK owner의 검증을 중복하지 않는다.
 2. Mac non-Linux Graph/CHECK typed refusal: 최신 frozen source의 receipt-bound CLI/server/worker bundle과 executing test target을 맞춰 실행한다. 실패는 native boundary·empty payload·no receipt까지 관측해야 한다.
-3. Linux Graph Path/Reachability와 signed CHECK0/1/2: 2026-10-06 live Docker 재확인에서도 `aarch64`이고 `/etc/semantica-codegraph-v2/trust`는 없다. 공식 `quanta-cli-product.release-full.linux-installed-build`는 `x86_64-unknown-linux-gnu` 및 installed authority features를 요구한다. 공식 bundle/대상 환경·deployment approval·root protected key/active generation 입력을 요청했다. 입력은 아직 제공되지 않았다.
-4. Source checkpoint `98141eff6e5`의 회귀를 같은 frozen source에서 actual 검증하고 receipt를 기록한다. Consumer main 반영을 actual GREEN으로 계산하지 않는다. Graph Linux cfg 들여쓰기2줄도 후속 공유 snapshot에 흡수됐고 소유2경로는 clean이다. Source checkpoint 뒤 claim을 해제했다.
+3. Linux Graph Path/Reachability: generic aarch64 four-role product bundle로 별도 actual query proof를 실행할 수 있다. 기존 컨테이너에 lockfile의 `architecture-tooling`21개 package를 Python3.12 환경으로 오프라인 복원했다. Canonical source snapshot/lease·product·bundle·Graph exact selector 실행을 준비했으며 아직 product/process는 시작하지 않았다. 공식 설치형 qualification으로 확대하지 않는다.
+4. Signed Linux CHECK0/1/2: 2026-10-06 live Docker 재확인에서도 `aarch64`이고 `/etc/semantica-codegraph-v2/trust`는 없다. 공식 `quanta-cli-product.release-full.linux-installed-build`는 `x86_64-unknown-linux-gnu` 및 installed authority features를 요구한다. 공식 bundle/대상 환경·deployment approval·root protected key/active generation 입력을 요청했다. 입력은 아직 제공되지 않았다.
+5. Source checkpoint `98141eff6e5`의 회귀를 같은 frozen source에서 actual 검증하고 receipt를 기록한다. Consumer main 반영을 actual GREEN으로 계산하지 않는다. Graph Linux cfg 들여쓰기2줄도 후속 공유 snapshot에 흡수됐고 소유2경로는 clean이다. Source checkpoint 뒤 claim을 해제했다.
 
 ## 증거
 
@@ -98,3 +101,5 @@ System Python3.9로 시도한 boundary 검사는 `zip(strict=True)`에서 중단
 [DFG child import RED와 기존 main 수리](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v7/terminal-compile-result.json).
 
 [PTA private index import RED와 기존 main 수리](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v8/terminal-compile-result.json), [다음 frozen product 요청](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v9/request.json).
+
+[Runtime-analysis 타입/borrow compile RED](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/current-process-preparation-20261006/mac-final-v9/terminal-compile-result.json).
