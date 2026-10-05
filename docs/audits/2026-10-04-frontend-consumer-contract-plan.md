@@ -1,10 +1,10 @@
 # Frontend / Semantica contract repair plan
 
-## Current status — 2026-10-05 22:49 KST
+## Current status — 2026-10-05 23:50 KST
 
-Current producer source: `main@1ddeaacaa754c0d432c88dc25ba3feac83f47c1c`
+Current producer source: `main@7cf36e887397cfae317fb043118b7aa7e84c4091`
 before this documentation checkpoint. Consumer source:
-`main@3f037ea04eecd80606f045ad9b3a7709c5a17ee7`.
+`main@65836a3adfcbee70b76a6617c0cec9349610d593`.
 The current disposition and source/receipt boundaries are maintained in the
 [latest session audit](2026-10-05-current-source-audit-action-plan.md).
 The work packages and older verification entries below retain their original
@@ -14,7 +14,7 @@ source identities; they do not qualify the current shared checkout.
 | --- | --- |
 | Producer structure, request owners, local size/dependency/MSRV gates | Integrated in `e598a1d`; clean source867 local CI 1514/1514 and bounded fuzz PASS. Tracked code/tool inputs are unchanged at the current producer HEAD. |
 | Graph ingress profile, schema/vector pins, EXISTS independent results, conformance | Main checkpoints recorded in the latest audit. Rename is included in 19 facade families. No schema change beyond the intended 3/8/8 contract. |
-| Remaining confirmed code gap | Native Match canonical length and encoding traverse the artifact without original-request work admission. Existing memory reservations and later hash work do not cover these passes. |
+| CHECK canonical work repair | Integrated count/encode work authority through the existing Foundation owner and original serving control. Foundation QBC37/37 and Native Match23/23 PASS, including canonical child2 and no-transport controls. No wire/DTO/dependency change. |
 | PTA bootstrap investigation | Old Mac/Linux process attempts refused before query. Current cohort retains the seed consumption owner; current-source bootstrap resolution is unverified. Identify the exact refusal before deciding another repair. |
 | Process fixture integration | Candidate Graph/CHECK inputs and Mac Graph refusal regression remain outside main pending actual-query GREEN on one clean tuple. |
 | Linux installation | Generic aarch64 product GREEN does not satisfy the signed x86_64 installed profile/root/slot/approval prerequisites. This is an installation gap, not an established trust-code defect. |
@@ -44,7 +44,6 @@ as a test-only direct edge. There is no new external or production dependency.
 
 | Priority / kind | Work | Acceptance |
 | --- | --- | --- |
-| P0 / code | Meter Native Match canonical counting and encoding | Original request control charges visits/payload before work; exact/one-short and no-transport regressions; existing 4 MiB cap and typed refusal retained. Coordinate parser/foundation writers. |
 | P0 / diagnosis | Resolve Product PTA bootstrap refusal | Identify the first refused boundary and verify the already integrated seed-lifetime change on current clean source; repair only a remaining reached failure. |
 | P0 / installation | Establish canonical Linux installed inputs | Signed x86_64 profile, root-owned immutable slots, independent approval/key and active generation from the release owner. |
 | P1 / test integration | Prove actual Graph/CHECK and merge reviewed fixtures | One clean producer/consumer/index tuple, immutable product artifacts, actual query positive/rejection results; merge only GREEN scope and preserve historical RED attempts. |

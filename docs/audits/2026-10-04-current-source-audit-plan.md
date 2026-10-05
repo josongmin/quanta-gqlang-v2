@@ -1,15 +1,16 @@
 # 최신 소스 감사와 실행 계획
 
-## 현재 판정 — 2026-10-05 22:49 KST
+## 현재 판정 — 2026-10-05 23:50 KST
 
 이 문서의 2026-10-04 snapshot·계획·실패 기록은 **이력**이다. 현재 source와
 잔여 액션의 기준은 [2026-10-05 최신 세션 감사](2026-10-05-current-source-audit-action-plan.md)다.
-Producer `1ddeaac`, consumer `3f037ea04ee`의 source/hash를 재확인했다.
+Producer `7cf36e88739`, consumer `65836a3adfc`의 source/hash를 재확인했다.
 
 - Producer 구조 분할, scratch/request permit, dependency 방향, lint/MSRV,
   facade/pin 및 result-shape 진단 수정은 main에 통합됐다. Clean source867의
   CI1514/1514와 60초 fuzz PASS가 있으며 tracked code/tool input delta는 없다.
-- 확정 코드 잔여는 소비자 **CHECK canonical counting/encoding work admission**이다.
+- 소비자 **CHECK canonical counting/encoding work admission** 수리가 main에 반영됐다.
+  Foundation37/37, Native Match23/23와 producer 로컬 CI1514/1514 PASS다.
   Product PTA의 과거 bootstrap 거절은 최신 seed-lifetime 변경 이후 해결 여부를
   아직 검증하지 못했다. 실제 거절 분기를 특정한 뒤 수리 필요 여부를 판정한다.
 - Graph/CHECK fixture 통합은 same-source actual-query GREEN 이후다.

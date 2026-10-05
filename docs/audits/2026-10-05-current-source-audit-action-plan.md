@@ -1,12 +1,11 @@
 # 이 세션의 잔여 작업 — 최신 코드 감사
 
-관측: **2026-10-05 22:49 KST**. 문서 수정 전 producer main `1ddeaacaa754c0d432c88dc25ba3feac83f47c1c`, consumer main `3f037ea04eecd80606f045ad9b3a7709c5a17ee7`을 기준으로 committed source와 working bytes를 대조했다. 공유 main, 미커밋 overlay, clean 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 CI는 로컬 실행이다.
+관측: **2026-10-05 23:50 KST**. 문서 수정 전 producer main `7cf36e887397cfae317fb043118b7aa7e84c4091`, consumer main `65836a3adfcbee70b76a6617c0cec9349610d593`. CHECK work 수리 source와 QBC frozen owner 결과를 대조했다. 공유 main, 미커밋 overlay, 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 CI는 로컬 실행이다.
 
 ## 현재 남은 코드 작업
 
 | 구분 | 작업·근거 | 완료 조건 |
 | --- | --- | --- |
-| **확정 코드 공백 / P0** | **CHECK Native Match의 canonical 순회 work admission.** `native_worker_projection_v3.rs:627`은 전체 artifact 길이를 센 뒤 4 MiB를 검사하고 다시 인코딩한다. Foundation `canonical_cbor.rs::encoded_len_v1`에는 work callback이 없고, `NativeMatchCanonicalAdmitterV3`는 memory만 예약한다. 이후 hash copy/hash의 byte work는 이미 차감한다. | 기존 Match request control로 길이·인코딩의 visit/payload work를 작업 전에 차감하거나 하나의 bounded admitted pass로 구성. exact/one-short work, 거절 시 encoding/transport 미실행, 기존 cap·typed failure 보존. Parser parent와 foundation의 기존 AG5/IRC writer를 따른다. |
 | **원인 확인·수리 여부 판정 / P0** | **Product PTA bootstrap.** 실제 Mac/Linux 실패는 source4501 및 앞선 후보에서 query 이전 `PtaOccurrenceAuthorityRefused`다. 최신 main은 pre-key cohort에 `ProductCallGraphSeedConsumptionV1`을 보유하며 caller도 해당 consumption을 전달한다. 동일 최신 source의 bootstrap 성공은 확인하지 못했다. | 최초 거절 분기를 특정하고 기존 lifetime 수리로 해결되는지 owner QBC/실제 bootstrap으로 확인. 여전히 실패하면 그 owner만 수정. 현재 main의 확정 결함이나 수리 완료로 단정하지 않는다. |
 | **테스트 코드 통합 / P1** | **Graph/CHECK process fixture 수리와 Mac Graph refusal 회귀.** 격리 candidate에 있으나 실제 query oracle이 통과하지 않아 main 미통합이다. | 같은 clean tuple의 실제 성공/거절 회귀가 GREEN이면 검증된 test delta만 main checkpoint에 반영. 기존 실패 oracle을 완화하지 않는다. |
 | **설치·검증 전제** | Linux CHECK4501은 signed installed trust가 없어 서버 시작에서 거절됐다. Generic aarch64 bundle은 canonical x86_64 installed profile에도 맞지 않는다. 현재 근거로 trust 코드 결함을 확인한 것은 아니다. | 기존 release owner에서 공식 profile·root 소유 immutable slot·독립 approval/key·active generation 확보 후 actual process proof. |
@@ -14,10 +13,23 @@
 **Producer의 원래 구조·계약 정리에는 추가 production 코드 수정이 남아 있지 않다.**
 `8675bcd`와 현재 main의 tracked crates/manifests/Justfile/lint/architecture/external-consumer 입력에 committed delta가 없다.
 Foreign untracked `hir/src/btree_storage.rs`, CircleCI 및 RFC 변경은 이 증명에 포함하지 않는다.
-이번 재감사는 source/hash·caller와 기존 증거를 읽었으며 새 Rust/QBC/전체 CI/product 실행은 하지 않았다.
+22:49 재감사는 읽기 전용이었다. 후속 수리에서는 Foundation QBC37/37 PASS와 producer `just ci`1514/1514 PASS를 새로 실행했다. Producer CI는 보존된 dirty checkout의 로컬 관측이며 clean committed-HEAD qualification을 재발급한 것은 아니다. Native Match23/23도 PASS이며 실제 product/process 결과는 아래에서 구분한다.
 감사 source bytes와 상태는 [현재 source capture](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/current-session-source-audit-20261005.json)에 보존한다.
 
 후속 AG5의 전체 행/rollback/qualification 연결, IRC의 일반 Graph·Composition·FunctionRef 확장은 해당 소비자 계획의 별도 작업이다. 이번 bounded Graph/CHECK 유지보수의 미완료 항목과 합산하지 않는다.
+
+## CHECK work 수리와 실행 증거
+
+- 기존 Foundation canonical CBOR owner에 별도 work callback을 연결했다. 신규 라이브러리·wire format·DTO 필드 변경은 없다. Legacy memory-only API는 유지한다.
+- Count의 방문·UTF-8 payload, encoder의 출력/child/replacement copy, map 비교·row move를 원래 serving control에 선차감한다. Metered map 정렬은 typed refusal이 가능한 allocation-free heapsort `O(n log n)`이며 동일한 length/byte canonical order를 만든다.
+- Native Match는 count→4 MiB cap→bounded encoding→length equality→copy/hash budget→digest equality를 단일 admission owner에서 실행한다. Work 거절은 `WorkLimitExceeded`로 보존되고 transport 전 반환한다.
+- Foundation QBC **37/37 PASS**, failed/ignored0, source `05de953c…`, immutable run `20261005T143248.807581Z-ae96b315ef5b`. 독립 UTF-8·scalar 비용, traversal 조기 중단, sort 거절 전 mutation 미실행, duplicate-key 거절, 기존 bytes 동일성과 permit 반환을 검사했다.
+- Native Match caller/child QBC **23/23 PASS**, failed/ignored0, source `83679ab9…`, immutable run `20261005T143952.237226Z-56146657b5aa`. 이23개에 canonical admission2개와 transport0 회귀가 포함된다. Count-only·exact·one-short work, forged digest, memory peak/permit 반환 및 기존 Match frame identity를 확인했다. 기존 borrowed graph view의 임시 수명 오류도 view binding으로 수리했다.
+- 앞선 live-root QBC는 다른 writer의 source drift로 무효였다. Foundation 첫 frozen attempt의 누락 test import를 수리했다. 잘못된 별도 child-module selector는0건 실행으로 exit86 거절됐으며 증명으로 계산하지 않았다. 실제 child2개는 위23/23 receipt에서 성공을 확인했다. Raw logs와 immutable RED를 보존한다.
+- Producer **`just ci` exit0**, nextest1514/1514/skipped0, current/MSRV clippy·size283·architecture26/5/0·external consumer1 positive/23 negative·deny·semantic-honesty PASS. Source snapshot `84581100…`; 기존 foreign dirty를 보존했다.
+- 공유 snapshot checkpoints가 수리를 main에 먼저 흡수했다. 해당4경로의 실제 commit/hash는 readback JSON에 기록한다. Frozen owner proof가 최신 소비자 전체 product/설치형 qualification을 대신하지 않는다.
+
+[CHECK work 수리 closeout](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/match-canonical-work/closeout.json) — source/hash·명령·immutable receipt와 무효 시도를 별도로 기록한다.
 
 ## 완료한 구조·정책 정리
 
@@ -106,10 +118,11 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 
 ## 최종 잔여 액션
 
-1. **P0 코드: CHECK canonical work admission 연결.** 위 두 unmetered 순회를 기존 request control에 연결하고 독립 exact/one-short 및 no-transport 회귀를 검증한다. 기존 writer custody를 확인한 뒤 owner에서 수정한다.
-2. **P0 원인 확인: Product PTA bootstrap 거절.** 기존 AG5/IRC owner가 최초 거절 분기를 특정하고 최신 seed lifetime 수리를 같은 clean source에서 검증한다. 실패가 남으면 해당 owner만 수정한다.
-3. **P0 설치 전제: Linux installed authority.** Canonical x86_64 profile, root 소유 immutable slot, AG5 selected phase와 독립 deployment approval/key/active generation을 기존 release owner 경로로 확보한다. Generic aarch64/Mac 결과로 공식 설치 qualification을 대체하지 않는다.
-4. **P1 회귀·통합: 동일 tuple의 actual Graph/CHECK와 fixture checkpoint.** FIND PATH/Reachability, empty/budget/stale/foreign, signed CHECK zero/one/multi와 foreign/short를 실제 query까지 검증한다. GREEN인 test scope만 최신 main에 합치고 마지막 source/receipt 정합을 기록한다. Producer core는 입력 변경 없이 CI/fuzz를 반복하지 않는다.
+1. **P0 원인 확인: Product PTA bootstrap 거절.** 기존 AG5/IRC owner가 최초 거절 분기를 특정하고 최신 seed lifetime 수리를 같은 clean source에서 검증한다. 실패가 남으면 해당 owner만 수정한다.
+2. **P0 설치 전제: Linux installed authority.** Canonical x86_64 profile, root 소유 immutable slot, AG5 selected phase와 독립 deployment approval/key/active generation을 기존 release owner 경로로 확보한다. Generic aarch64/Mac 결과로 공식 설치 qualification을 대체하지 않는다.
+3. **P1 회귀·통합: 동일 tuple의 actual Graph/CHECK와 fixture checkpoint.** FIND PATH/Reachability, empty/budget/stale/foreign, signed CHECK zero/one/multi와 foreign/short를 실제 query까지 검증한다. GREEN인 test scope만 최신 main에 합치고 마지막 source/receipt 정합을 기록한다. Producer core는 입력 변경 없이 CI/fuzz를 반복하지 않는다.
+
+CHECK canonical work 수리는 main 반영과 소유자 proof를 완료해 잔여에서 제거했다.
 
 Fuzz 정기 실행은 로컬 운영 선택으로 남긴다. Hosted CI, 신규 엔진/컴파일러/SMT/library 도입은 잔여 액션에 없다.
 
