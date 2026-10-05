@@ -6,7 +6,7 @@
   완료된 producer 정리, 소비자 코드 잔여, source별 증거와 설치 전제
 - [GQLang·Semantica substrate 감사](audits/2026-10-06-substrate-ownership-and-usecase-audit.md):
   frontend/native/SDK·Index·filesystem owner, 중복·별도 계약,
-  수리 8건·중복 제거 7건, Slice PDG/CFG·agent 입력 계약·manifest 검증의 재반증과 checkpoint gate
+  수리 8건·중복 제거 7건, Slice block/statement 정합성·공개 의미·초기화/삭제 gate와 checkpoint
 - [Frontend/소비자 계약 계획](audits/2026-10-04-frontend-consumer-contract-plan.md):
   현재 판정과 원래 수리의 acceptance; 이전 source 기록은 이력
 
