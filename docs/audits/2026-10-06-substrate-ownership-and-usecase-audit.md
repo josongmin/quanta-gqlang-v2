@@ -9,20 +9,21 @@
 | 초기 Semantica runtime | `d801f15fe11feb08586190070957fa470294e8b4` |
 | Quanta Index selected provider | `66f92d210bbb9641a2f091d6e6ab42330b0a5ffb`; sibling path dependency, selected search/cache/cursor owner 추가 확인 |
 | 범위 | GQLang 실행, Rust/Python SDK, native CLI/daemon, MCP, FastAPI, native 분석, 공용 상태·권한·검색·mutation |
-| 증거 | 소스 caller→contract→owner, registry census, Python component. 초기·심층·설계 감사 이력 보존; 최신 넓은 반증은 §9.8·wide_final_audit, 현재 액션은 §9.1 |
+| 증거 | 소스 caller→contract→owner, registry census, Python component. 초기·심층·설계 감사 이력 보존; 최신 재반증은 §9.9·second_wide_final_audit, 현재 액션은 §9.1 |
 | 제외 | 진행 중인 foreign dirty의 완성도 판정, 모든 함수의 실행 증명, installed product qualification |
 
 - **Facade:** 기존 API/type 재노출. **Adapter:** wire·입력·결과 변환. **Policy:** 권한·예산·지원 범위 검사. **Orchestration:** owner 호출 순서. **Calculation:** 결과 의미 계산. **State:** 저장·cache·session·publication 관리.
 - **연결:** production caller가 소스에 존재. **조건부:** feature·port·authority·설치 조건이 필요. **준비:** 구현은 있으나 조사한 공개 경로에서 거절되거나 production caller가 미확인. **거절:** 명시적인 failure 경로. **Mock:** 고정/가공 응답.
 - 연결과 조건부는 설치된 제품의 실행 성공을 뜻하지 않는다. 같은 owner 구현과 같은 instance 공유를 구분한다.
 - 최종 재감사는 위 committed tuple을 고정하고 관련 live dirty를 별도 대조했다. Python·manifest·search producer 입력 35 hash 항목(29개 unique file)은 이전 component 실행 입력과 동일했다. 과거 component의 실제 실행 reference는 유지하고 현재 source 일치만 확인했다. Rust/daemon 실행 receipt로 확대하지 않는다.
-- 최신 넓은 감사 기준은 GQLang `262f3933`·Semantica `73c8f40b`이며 관찰 중 Semantica가 `28182d02`로 이동했다. 이전 직접 owner 40개 입력은 동일했다. 신규 Chop/Dice edge 구성(F9)·HTTP agent 요청 범위(F10)를 추가해 **수리 8건 + 중복 제거 7건**으로 갱신한다. 과거 13건·실행 source cut은 이력이며 §9.8의 판정이 우선한다.
+- 이전 넓은 감사 기준은 GQLang `262f3933`·Semantica `73c8f40b`이며 관찰 중 Semantica가 `28182d02`로 이동했다. 이전 직접 owner 40개 입력은 동일했다. 신규 Chop/Dice edge 구성(F9)·HTTP agent 요청 범위(F10)를 추가해 **수리 8건 + 중복 제거 7건**으로 갱신한다. 당시 13건·실행 source cut은 이력이다. 현재 수용 조건은 §9.1·9.9를 따른다.
+- 2차 넓은 감사는 GQLang `9326edf2`·Semantica `a3e72f7e`를 고정했다. F9의 PDG/CFG 출력 경계·직접 Q3 criterion 거절, F10의 startup root 고정·budget 입력 검증, D7의 canonical name 중복 검증을 보완한다. **수리 8건·중복 제거 7건, 15건**은 유지한다. 신규 독립 engine 작업은 추가하지 않는다. 상세 현재 source/foreign overlay는 §9.9와 second_wide_final_audit를 따른다.
 - 기능·수명·설정 결함과 확인된 계산/계약 코드 중복을 해결 목록에 함께 유지한다. 중복 구현의 존재를 wrong-result로 표현하지 않으며, 서로 다른 계약·단계·state instance를 중복 engine으로 세지 않는다. §9.1이 최종 해결 목록이고 §9.2는 제외·하향·수리 상태다.
 - 2차 반증 감사는 이전 해결 15건을 세 갈래로 대조했다. 당시 owner가 발행하지 않는 cursor와 소켓 연결 전 MCP 구성 실패를 독립 수리 목록에서 제외해 **당시 수리 6건 + 중복 제거 7건**을 남겼다. 항목 ID는 이력을 위해 유지한다. 중복 제거는 결과 오류의 재현 여부와 별개로 유지한다.
 - 이전 최종 재확인은 Semantica `5fa85198`→`d801f15f`의 committed 변경 33개를 대조했다. 인용 소스의 committed 변경은 없고 기존 component 입력 29개도 동일했다. 당시 Python owner component로 F1/F5/F6을 추가 실행해 아래의 좁은 범위를 재확인했다. 당시 해결 목록 13건을 보존하며 이전 component receipt의 source reference는 변경하지 않는다.
 - 이전 해결 13건의 직접 owner·ingress 소스는 component JSON의 `current_resolution_input_review`에 별도로 묶었다. 이 입력은 이전 committed source·현재 frozen source·live bytes가 모두 같고 다른 작업의 관련 dirty와 구분된다. 기록한 소스 범위의 판정이며 전체 upstream/downstream dependency의 실행 검증은 아니다.
-- 중복 owner 선택은 추가 병렬 감사에서 구현 전체·feature·outer ingress를 대조했다. Shape의 향후 lean owner, SCC의 core/analysis 계층, dormant export와 조건부 제품 경로를 정정했다. 계약 비교는 §7.1.1–7.1.2·`deep_duplicate_audit`, 당시 전환 설계는 §7.1.3·`architecture_decision_review`에 보존한다. 최신 판정·범위·순서는 §9.1·9.5·9.8 및 wide_final_audit가 우선한다.
-- 이전 독립 감사는 GQLang `d95e7ba5`·Semantica `79919b90` 기준이다. Root D6/D7 추가 관찰은 `0d3dbeb4`에서 19개 clean 입력을 기록했다. 직접 owner 40개와 추가 입력의 연속성은 최종 validation에 별도 기록한다. 아래의 과거 source cut·receipt를 최신 HEAD 실행으로 바꾸지 않는다. 당시 §9.6의 보완은 이력이며 최신 판정은 §9.8을 따른다.
+- 중복 owner 선택은 추가 병렬 감사에서 구현 전체·feature·outer ingress를 대조했다. Shape의 향후 lean owner, SCC의 core/analysis 계층, dormant export와 조건부 제품 경로를 정정했다. 계약 비교는 §7.1.1–7.1.2·`deep_duplicate_audit`, 당시 전환 설계는 §7.1.3·`architecture_decision_review`에 보존한다. 최신 판정·범위·순서는 §9.1·9.5·9.9 및 second_wide_final_audit가 우선한다.
+- 이전 독립 감사는 GQLang `d95e7ba5`·Semantica `79919b90` 기준이다. Root D6/D7 추가 관찰은 `0d3dbeb4`에서 19개 clean 입력을 기록했다. 직접 owner 40개와 추가 입력의 연속성은 최종 validation에 별도 기록한다. 아래의 과거 source cut·receipt를 최신 HEAD 실행으로 바꾸지 않는다. 당시 §9.6의 보완은 이력이며 최신 판정은 §9.9를 따른다.
 - 아래 링크는 live 작업 파일을 열므로 frozen 증거와 다를 수 있다. 관련 dirty·source delta·최신 HEAD는 component JSON에 기록한다. Registered search control 누락은 현재 기준의 ancestor인 `bc8e2d66`에서 수리돼 재수리 목록에서 제외했다. 실행 검증이 남은 것은 별도 표시한다.
 
 ## 2. 전체 구조
@@ -430,6 +431,7 @@ Repository 밖 소비자 부재는 증명하지 못했다. 다만 공개 export�
 - **수명:** Manifest preflight를 SDK construction/stdio 시작 전에 실행하고 import-time registry가 별도 source를 고정하지 않게 바꾼다. Explicit override는 authoritative이며 잘못된 파일은 거절한다. Source-checkout canonical default와 packaged explicit artifact를 유지한다. Fresh-process main import에서 registry/handler/adapter 미로드·SDK 미초기화를 확인했으므로 manifest preflight를 dependent imports 전에 둘 수 있다. 직접 module import 순서도 검증해야 한다. Manifest 예외와 caught SDK initialization 실패는 다르며 sdk_unavailable 재시도/typed 실패 동작을 이 통합에서 제거하지 않는다. `CODEGRAPH_REPO_PATH`는 분석 대상 repository이므로 MCP 계약 파일의 탐색 authority로 사용하지 않는다. 현재 MCP [capabilities](/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/mcp/main.py:243)는 tools listChanged를 선언하지 않고 watcher/변경 알림 caller도 없다. 변경은 process restart로 반영한다.
 - **Immutable 경계:** Current list_usecases/public filtering은 entry의 dict 타입을 검사한다. Private record를 MappingProxyType/tuple로 만든 뒤 그대로 반환하면 기존 소비자가 entry를 조용히 버릴 수 있다. Frozen storage와 public dict/list projection을 분리하거나 checked consumers를 함께 바꾸고 metadata/executable/deferred count를 검증한다. 새 저장 구조가 현재 결함이라는 뜻은 아니다.
 - **Gate:** Startup 기본/명시 경로, missing/corrupt/duplicate/stub schema 거절, cwd/repo/import-order 변형, file replacement 후 version/names/mapping/schema/dispatch가 한 captured digest를 유지, restart 후 새 source 사용. Snapshot digest는 bytes identity이며 `commit_unavailable` generator provenance를 source qualification으로 바꾸지 않는다.
+- **Duplicate gate 구체화:** Canonical tool name을 decoded entries에서 중복 검사한다. Same-usecase duplicate와 현재 search_symbol→find_symbol normalization collision도 거절한다. Current generated 54 entries는 중복이 없지만 제어한 주입에서 mapping 1개/public names 2개가 된다. Raw JSON duplicate key나 현재 manifest 장애를 재현한 것은 아니다. Adapter module의 import-time 목록 계산도 preflight 이후 같은 captured record를 사용한다.
 
 ### 7.2 독립 구현과 다른 계약
 
@@ -597,22 +599,25 @@ flowchart TD
 - **원인:** [Chop 교집합](/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-query-execution/src/queries/q3/slice/query.rs:205)과 [Dice 차집합](/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-query-execution/src/queries/q3/slice/query.rs:252)은 BFS discovery edge를 canonical edge처럼 취급한다. Backward traversal은 edge 방향을 뒤집고 discovery edge는 spanning-tree 부분집합이다.
 - **상한 없는 정적 반례:** Valid PDG `0→1→2`, Chop source=0/sink=2는 nodes `{0,1,2}`지만 forward `{0→1,1→2}`와 backward `{2→1,1→0}` edge 교집합이 비어 있다. Valid PDG `0→1`, Dice base=1/subtract=0은 nodes `{1}`인데 edge `(1,0)`이 남아 제거한 endpoint를 가리킨다. Default cap=None이며 F4 cap 위반과 별개다.
 - [Special bridge](/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/advanced/slice_query_bridge.rs:199) → [Special output](/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/advanced/slice_query_helpers/output_materialization.rs:284)에는 endpoint filter가 없고 SDK는 [canonical_output](/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/slice_builder/execution.rs:54)에 그대로 담는다. Standard output은 별도 CFG endpoint filter를 사용하며 standard prior 검증이 special-mode 보호막은 아니다.
-- **수리 owner:** Q3 special-mode의 node 집합 후, 같은 validated PDG의 eligible canonical `(src,dst,kind)`에서 두 endpoints가 살아 있는 edge를 원본 방향으로 유도한다. Data/control toggle과 Call/Return 정책을 보존한다. Backward edge 방향만 normalize하면 diamond/cycle의 non-discovery edge 누락이 남을 수 있다. Output만 숨기거나 새 graph engine을 만들지 않는다.
-- **Gate:** Independent node/edge expected의 path Chop, no-dangling Dice, nonempty edge, diamond/cycle/duplicate/filter; runtime/SDK canonical counts와 endpoint closure. 기존 special-mode tests는 nodes만 검사해 이 반례를 배제하지 못한다. 이 판정은 실제 코드의 정적 단계 추적이지 Rust fixture 실행 결과가 아니다.
+- **Q3 수리 owner:** Special-mode의 node 집합 후, 같은 PDG의 eligible canonical `(src,dst)`를 양 endpoint 생존 조건과 원본 방향으로 유도한다. PDG kind는 data/control toggle·Call/Return eligibility에 사용하며 현재 pair 결과에 새 kind wire를 추가하지 않는다. Backward 방향만 normalize하면 diamond/cycle의 non-discovery edge 누락이 남을 수 있다.
+- **Runtime 표현 경계:** [SliceOutput.edges](/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/advanced/slice_types.rs:363)는 CFG edge 계약이다. [Special codec](/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/advanced/slice_query_data.rs:57)는 PDG pair를 synthetic Sequential CFG edge로 바꾼다. 같은 admitted CFG의 실제 edges에서 양 endpoint가 살아 있는 것만 원본 kind로 투영한다. PDG dependency와 CFG adjacency는 다르므로 Q3 path edge가 있어도 runtime CFG edge가 비어 있을 수 있다. PDG public DTO·새 graph engine은 필요하지 않다.
+- **직접 Q3 검증:** Standard execute의 [CriterionNotFound 검사](/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-query-execution/src/queries/q3/slice/query.rs:173)를 Chop/Dice는 건너뛴다. Empty PDG·양 criterion 존재를 traversal 전에 기존 typed error로 검사한다. Missing criterion이 직접 API 성공에 phantom node를 만들 수 있는 정적 결함이며, runtime node 선택을 통과한 phantom 요청의 실행은 입증하지 않았다.
+- **Gate:** Independent Q3 node/PDG-pair expected의 path Chop·no-dangling Dice·diamond/cycle/duplicate/filter·empty/unknown primary/secondary typed refusal. Runtime/SDK는 실제 CFG edge provenance·원본 kind·endpoint closure·counts를 검증하며 Q3와 동일한 edge 수를 강제하지 않는다. PDG 1→3이 있지만 CFG 1→3은 없는 기존 fixture를 독립 expected에 활용한다. 정적 소스/fixture 추적이며 Rust 실행 결과가 아니다.
 
 ### 8.13 HTTP agent 요청 범위 — 신규 F10
 
 - Mounted [HTTP agent](/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/api/api/main.py:220)는 [AnalyzeRequest.repo_path/files](/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/api/api/routes/agent.py:41)를 받으며 저장소 또는 특정 파일 분석을 설명한다. 그러나 [_execute_search](/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/api/api/routes/agent.py:174)는 startup default client를 사용하고 repo_path는 log·response summary에만 쓰며 files는 소비하지 않는다.
 - **제어한 component:** 서로 다른 요청 repo A/B에 같은 startup client를 주면 두 요청 모두 `startup/file.py` hit를 반환한다. Current SDK-shaped fixture·fake client이며 실제 daemon/ASGI/auth 실행은 아니다. 요청을 실행 authority에 연결하지 않는 원인은 source caller로 확인했다.
-- **수리 owner:** HTTP agent request admission과 client binding. [기존 repo-scoped helper](/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/api/api/dependencies.py:140)를 재사용할 수 있으나 read scope를 먼저 확정한다. Current default-only 제품이면 startup bound repo mismatch를 명시적으로 거절하는 최소 수정이 가능하다. Mutation allowlist는 mutation 정책이므로 읽기 허용으로 자동 적용하지 않는다.
+- **수리 owner:** HTTP agent request admission과 startup binding. [Composition root](/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/api/api/main.py:32)에서 default root를 한 번 canonicalize·directory 검증하여 SDK construction과 lifetime에 같은 값으로 고정한다. 요청 root도 같은 경로 의미로 정규화하고 default-only 범위면 mismatch를 검색 전에 거절한다. SDK private `_repo_path`나 요청마다 바뀌는 env/cwd를 authority로 읽지 않는다. 다중 repo는 먼저 read admission을 확정한 뒤 [기존 repo-scoped helper](/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/api/api/dependencies.py:140)를 재사용한다. Mutation allowlist는 읽기 권한이 아니다.
 - **Files:** Native owner가 retrieval 전에 file scope를 지원하는 계약을 확인하지 못하면 authored files를 명시적으로 거절한다. Top-k 뒤 filter하여 지원·coverage를 주장하지 않는다. Repo/files label과 실행 source가 달라지는 fallback을 없앤다.
-- **Gate:** Default repo 정상, 허용된 다중 repo가 있다면 A/B 서로 다른 client/origin, mismatch·malformed/unsupported files 거절. F6 repo helper race는 별도 수리이며 통합 검증에서 같이 확인한다. 신규 authorization/search engine은 필요하지 않다.
+- **Budget 입력:** [AnalyzeRequest.budget_mode](/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/api/api/routes/agent.py:47)는 arbitrary string을 허용하고 [QueryAdapter](/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/mcp/adapters/search/query_adapter.py:404)는 unknown label을 500ms allocation으로 바꾼다. 실제 request model·router와 fake SDK에서 garbage→balanced allocation 실행을 확인했다. 지원 label fast/balanced/precise와 None 계약을 고정하고 unknown은 SDK 호출 전 typed 4xx로 거절한다. Allocation 값은 elapsed latency·SLO 증명이 아니다.
+- **Gate:** Default repo·canonical alias 정상, startup 후 env/cwd drift에도 binding 유지. 지원되는 다중 repo가 있다면 read admission 및 A/B 다른 origin 검증. Mismatch·미지원 files·unknown budget label은 SDK 호출 전 typed 거절, valid labels·None은 유지. F6 repo helper race는 통합 검증에서 같이 확인한다.
 
 ## 9. 후속 액션과 검증 범위
 
 ### 9.1 최종 해결 목록
 
-확인된 계약·수명·설정 및 special Slice 수리 8건과 중복 제거 7건, **총 15건**을 유지한다. F9/F10은 §9.8의 넓은 감사에서 추가했다. 번호는 작업 식별자이며 제품 전체 장애의 심각도 점수가 아니다. Native→SDK search 계약(F1)을 먼저 맞춘 뒤 app projection 중복(D6)을 정리한다. Conditional SDK/feature 경로는 해당 지원 범위 안에서만 수리한다. F3/F8은 §9.2로 옮겼다.
+확인된 계약·수명·설정 및 special Slice 수리 8건과 중복 제거 7건, **총 15건**을 유지한다. F9/F10은 §9.8에서 추가했고 §9.9에서 수리 범위를 보완했다. 번호는 작업 식별자이며 제품 전체 장애의 심각도 점수가 아니다. Native→SDK search 계약(F1)을 먼저 맞춘 뒤 app projection 중복(D6)을 정리한다. Conditional SDK/feature 경로는 해당 지원 범위 안에서만 수리한다. F3/F8은 §9.2로 옮겼다.
 
 | 구분 | 번호 | 항목 | 목적·완료 조건 |
 |---|---|---|---|
@@ -621,16 +626,16 @@ flowchart TD
 | 기능 | F4 | Slice node cap | Q3 삽입 전 hard cap·caller zero·exact-fit 의미 수리. Q3 limit summary는 runtime SliceOutput에 없으므로 실제 partial 노출 또는 typed incomplete 거절 계약을 정하고 SDK/native까지 검증. Rail clamp와 실제 truncation을 구분. Limited Chop/Dice operands를 complete set으로 처리하지 않음. Fan-out·cap0/1·duplicate/cycle·각 mode 회귀. |
 | 응답 metadata | F5 | Mutation 최상위 degraded status·reason | SDK/API 공개 결과에 typed outcome/reason wrapper를 보존. Owner가 실제 발행하는 정상/analysis-failed data로 회귀를 구성. `analysis_recompute_failed_closed` 등 이미 남은 data를 보존. 전체 freshness 손실·source mutation false success가 아니다. |
 | 조건부 수명 | F6 | API acquire/close 경합 | Closed 검사·repo factory·cache 삽입을 동일 lock에서 수행, closer는 lock 밖 유지. Close-first/acquire-first 양쪽 linearization·close-once·factory 실패 시 cache 불변·typed unavailable 검증. Barrier test가 불가능한 lock 순서를 기다리지 않게 구성. 자연 ASGI 누수·in-flight lease 개선으로 확대하지 않음. |
-| 직접 Rust SDK 설정 | F7 | AbstractInterpret timeout_ms | 기존 synchronous worklist에 cooperative monotonic deadline/cancel을 연결하며 timeout 시작·적용 phase를 명시. Graph precompute/SCC·fixpoint·narrowing 및 lowering→adapter→SDK stop cause 보존. Default 30000ms 정상 호출 유지. Async timeout wrapper만 추가하거나 typed stop을 generic InvalidCriterion/converged로 바꾸지 않음. Iteration exhaustion과 구분. |
-| 기능 | F9 | Chop/Dice canonical edge 구성 | Q3 special-mode node 집합 확정 후 동일 validated PDG에서 config상 eligible canonical edges를 양 endpoint 생존 조건으로 유도. BFS discovery edge의 방향·spanning-tree 부분집합으로 교집합/차집합하지 않음. Chop path·Dice dangling·diamond/cycle·duplicate/filter independent expected, runtime canonical output/count 검증. Standard 계산은 확대하지 않음. |
-| 요청 범위 | F10 | HTTP agent repo_path·files 계약 | HTTP agent 입력 repo와 실제 client/source authority 일치. 현재 default-bound scope면 mismatch 명시적 거절; 다중 repo는 기존 read admission이 허용하는 범위에서 repo-scoped lifecycle owner 재사용. Mutation allowlist를 읽기 권한으로 자동 적용하지 않음. 미지원 files는 거절하며 post-top-k filtering으로 지원을 위장하지 않음. Default/A-B/mismatch·files positive/negative 검증. |
+| 직접 Rust SDK 설정 | F7 | AbstractInterpret timeout_ms | 기존 synchronous worklist의 monotonic cooperative control을 precompute/SCC·fixpoint·narrowing에 연결하고 lowering→adapter→SDK stop cause 보존. Timeout 시작·phase·loop boundary를 명시하고 default 30000ms 정상 호출 유지. Iteration exhaustion과 deadline/cancel을 구분. Transfer callback 강제 중단·hard elapsed 보장, async wrapper만으로 완료, higher-tier core 의존·solver 교체를 요구하지 않음. |
+| 기능 | F9 | Chop/Dice 계산·출력 계약 | Q3는 양 criterion·empty PDG를 typed 거절하고 최종 nodes에서 eligible 원본 PDG pairs를 유도. Runtime SliceOutput.edges는 같은 admitted CFG의 생존 양단 edges·원본 CFG kind로 투영. PDG/CFG provenance 구분·dangling/unknown/diamond/cycle/filter/count 독립 expected. 새 PDG DTO·engine·standard 계산 확대 없음. |
+| 요청 범위 | F10 | HTTP agent 입력·실행 범위 | Startup canonical root를 SDK/lifetime에 동일하게 고정하고 canonical 요청 mismatch를 검색 전 거절. Read admission 없는 임의 다중 repo·mutation allowlist 재사용 금지. 미지원 authored files 거절, post-top-k 위장 금지. Budget 지원 label/None 유지·unknown typed 4xx 및 zero SDK calls. Repo alias·env/cwd drift·A/B·files·budget 회귀. |
 | 중복 제거 | D1 | Shape 계산 owner | 기존 standalone 계산 owner로 factory·concrete import/export 직접 전환, cost 복사본 삭제. Port·PTA authority·고유 회귀 보존. 두 Shape gate selector 전환. D1-B에서 SDK public export cfg·selector/builder/capability·overlay·pure/PTA-derived feature closure 검증. 새 wrapper/trait/crate 없음. |
 | 중복 제거 | D2 | SCC traversal kernel | Graph-utils tier/빈 default/query-HIR dependency 정책 후 borrowed indexed iterative kernel·Compute/Stop checkpoint 확장. Pre-allocation admission·order/ID·typed failure 보존. Kernel 이후 PTA/taint를 각각 전환 가능; PTA pilot은 권장 순서. Generic/PTA/taint 중복 해소 또는 근거 있는 계약 차이 판정 유지. Core Abstract Worklist는 별도 후보이며 강제 전환·새 universal crate 없음. |
 | 중복 제거 | D3 | MemoryIR build-input lowering | 활성 runtime pack 유지, 미사용 DFG build-input entry·고유 helper/export/tests 제거. canonical_ir.rs 전체와 PortDFG 공용 digest/policy/finalizer/sort helper는 삭제하지 않음. Orphan error fresh census. Pack authority·synthetic/real ID·explicit map·digest/typed failure 회귀. DFG→pack wrapper 없음. |
 | 중복 제거 | D4 | SCV2 RRF contribution | 활성 SCV2 contribution 수식만 기존 rrf_contribution_v1에 위임하고 SCV2 leaf dependency를 활성화. K/clamp·합산 순서·identity/tie-break·top-k·duplicate refusal 보존. Complete fusion owner는 각각 유지. |
 | 중복 제거 | D5 | PTA UnionFind | 현재 base와 실제 Steensgaard/pair session 유지. 새 consumer census 후 dormant Andersen UF module·공개 export·자체 tests 제거. Bool/root 호환 wrapper·새 UF trait 없음. Mahjong min-root·활성 Andersen solver는 유지. |
 | 중복 제거 | D6 | App current SDK row→hit 변환 | F1 truthful row variants·identity·optional location·summary 확정 후 existing shared Python package 공통 변환, API·agent 동시 전환. Authored location이 있으면 payload metadata span까지 유지하고 없으면 명시적 부재. Legacy readers 제거. API anchor·agent 요청·typed failure·GraphRAG file presentation 유지. 공개 MCP와 dormant third copy 구분. |
-| 중복 제거 | D7 | MCP manifest source 단일화 | 기존 registry bounded read/검증 1회·private deep immutable path/digest/entries source. 기존 dict/list/isinstance consumers는 명시적 projection 또는 checked type 전환으로 보존; MappingProxyType/tuple 단순 치환 금지. Metadata/executable/deferred projections 구분·같은 source 사용. Preflight/import order·invalid override·packaged·SDK unavailable·restart 검증. |
+| 중복 제거 | D7 | MCP manifest source 단일화 | 기존 registry bounded read/검증 1회·private immutable path/digest/entries source. Decoded canonical tool name 중복은 동일 usecase·alias collision도 거절. 기존 dict/list consumers는 명시적 projection 유지. 서로 다른 public projections·한 source·SDK/adapter import 전 preflight·override/packaged/unavailable/restart 회귀. |
 
 ### 9.2 제외·하향·이미 수리된 항목
 
@@ -724,19 +729,19 @@ flowchart LR
 
 | Work packet | 실제 선행 조건 | Checkpoint gate |
 |---|---|---|
-| D4 / D5 | 각각 독립 | SCV2 leaf·helper·순서/identity/duplicate refusal; UF fresh census·core 실제 solver 회귀. 별도 commit. |
+| D4 / D5 | 각각 독립 | SCV2 leaf helper/order·feature closure; S17/S19 cross-repo gate는 RRF 직접 rail이 아님. UF fresh census·core 실제 solver 회귀. 별도 commit. |
 | D1-A → D1-B | 계산 cutover 후 제품 feature 분리 | Port/PTA parity·고유 test·두 gate selector; SDK public export 포함 cfg·overlay·pure/PTA-derived closure. |
 | D2 정책 → kernel → PTA / taint 각각 | 공용 kernel 이후 독립 adapter 전환; PTA pilot은 권장 검증 순서 | Root policy authority, Compute/Stop·pre-allocation admission·order/ID·취소 parity. Generic/PTA/taint 완료 여부 명시. Core Andersen/CallGraph/Abstract Worklist는 별도 후보. |
 | D3 | 독립 | Build-input 고유 symbol만 삭제; PortDFG shared helper 보존·orphan error census·pack/DFG/selected taint owner rail. |
 | F1 → D6 | Truthful 현재 SDK 계약 확정 | Native variants/identity/location/summary, API·agent current-writer fixtures·typed refusal·GraphRAG presentation. |
-| D7 | 독립 | Preflight/import order·deep immutable source·서로 다른 projections·기본/명시/packaged 경로·replacement/restart·schema/dispatch. |
+| D7 | 독립 | Canonical name uniqueness·same-usecase/alias collision 거절, preflight/import order·immutable source·dict/list projection·replacement/restart·schema/dispatch. |
 | F2 / F4 / F5 / F6 / F7 / F9 / F10 | 서로 독립 | §9.1의 owner positive/negative 회귀. F4/F9는 같은 Q3 owner이므로 hunks/proof 조정. F10은 repo helper 사용 시 F6와 integration 회귀를 같이 확인하지만 의미적 선행으로 만들지 않음. |
 
 Affected owner rail은 첫 gate이며 기존 mandatory repository gate를 면제하지 않는다. Pure helper 수정마다 full product receipt를 요구하지 않으며 설치 제품 주장은 해당 통합 qualification 후 기록한다. Foreign dirty를 같은 commit에 섞지 않는다.
 
 ### 9.6 이전 최종 독립 반증과 설계 보완
 
-이 절은 이전 checkpoint 이력이며 최신 acceptance·DAG는 §9.1·9.5·9.8을 따른다.
+이 절은 이전 checkpoint 이력이며 최신 acceptance·DAG는 §9.1·9.5·9.9를 따른다.
 
 GQLang `d95e7ba5`·Semantica `79919b90`에서 새 reviewer 3명이 수리 6건, D1/D3/D5, D2/D4를 각각 대조했다. Root는 D6/D7와 checkpoint DAG를 반증했다. Root D6/D7 source capture는 `0d3dbeb4`; selected 19개 입력의 clean hash를 기록하고 최종 validator에서 이전 cut 및 live 연속성을 비교한다. Source cut이 다른 실행을 하나의 product qualification receipt로 합치지 않는다. D1 reviewer의 public_exports_head 입력은 SessionTranscript export의 foreign 포맷 overlay다. Committed bytes와 hash는 다르지만 whitespace 외 텍스트와 Shape cfg/import는 동일하다. 해당 입력을 clean committed source로 설명하지 않는다.
 
@@ -808,7 +813,7 @@ flowchart LR
 
 이 그림은 목표 구조다. D1의 Port/PTA authority, D2의 domain policy, D3의 PortDFG shared helper, D4의 fusion 전체, D5의 Mahjong identity, D6의 GraphRAG presentation, D7의 서로 다른 public projections는 각각 유지한다.
 
-### 9.8 넓은 최종 감사 — 신규 2건과 작업 보완
+### 9.8 이전 넓은 최종 감사 — 신규 2건과 작업 보완
 
 세 reviewer는 public operation/native-SDK 계약, 계산 중복·dependency·generated/gate 소비자, 앱 projection/manifest/lifetime을 각각 넓게 대조했다. Root는 F4/F7 제어 경계와 신규 반례를 독립 반증했다. GQLang `262f3933`·Semantica `73c8f40b` freeze; reviewer 관찰 종료 Semantica `28182d02`의 selected committed delta는 없다. 최종 문서 검증에서는 `a3e72f7e`를 관찰했으며 신규·직접 owner 입력의 연속성과 인용 구간 밖 mutation preflight overlay를 JSON에 구분 기록했다. 직접 owner 40개 입력도 동일하다. Foreign dirty 전체를 qualified 상태로 판정하지 않는다.
 
@@ -828,3 +833,24 @@ flowchart LR
 - **실행:** Public Python owner component 검증 항목 4개(F1 row negative/consumer control/empty summary, F5 wrapper)와 lifecycle components 4개(repo routing, controlled close race, projection/presentation control, naive frozen-container projection)를 실행했다. Script/raw/fixture·source hashes를 wide_final_audit에 보존한다. 앞선 41 Python tests는 기존 source-bound 이력이며 이번 새 F9/F10 회귀 통과로 세지 않는다.
 - **정적 근거:** F9는 두 reviewer의 valid graph 단계 추적과 실제 special-mode caller/SDK output 경계 확인이다. Rust/QBC·policy gate·daemon/HTTP/stdio·installed provider·timeout elapsed/performance는 미실행이다.
 - **작업 경계:** Audit/docs 변경만 수행했다. §9.1의 **수리 8건·중복 제거 7건** 런타임 코드 작업은 남아 있다. Checkpoint마다 affected owner rail을 확인한 뒤 owned 범위만 main에 합친다. 계획/문서 commit과 제품 qualification을 구분한다.
+
+### 9.9 2차 넓은 재반증 — 수리 경계와 증명 비용 보완
+
+GQLang `9326edf2`·Semantica `a3e72f7e` 고정 후 세 reviewer가 공개 GQLang/native 실행, D1–D5 계산 통합, SDK/API/MCP 입력·결과·수명을 각각 대조했다. Root는 source/independent expected를 반증하고 실제 Python request model/router·manifest helpers를 재실행했다. 관찰 중 Semantica는 `4a13c3fa`·`58770dbd`로 이동했다. 직접 owner 40개 입력과 root selected 27개는 동일하며 전체 dirty의 완성도를 판정하지 않는다. Public ingress와 D1 gate의 관련 foreign overlay는 JSON의 범위 대조에 기록한다.
+
+| 판정 | 최종 작업 보완 |
+|---|---|
+| F9 표현 경계 수정 | Q3는 canonical PDG pair, runtime은 실제 admitted CFG edge·원본 CFG kind. Synthetic Sequential 변환을 유지한 채 PDG pairs만 고치지 않음. Runtime CFG empty를 Q3 path-edge 누락으로 오판하지 않음. |
+| F9 직접 입력 수리 포함 | Empty PDG·unknown primary/secondary criterion을 기존 typed error로 거절. Direct Q3 API 결함이며 runtime phantom node 실행은 미입증. |
+| F10 기본 root 고정 | Composition startup에서 canonical root를 한 번 선택해 SDK/lifetime에 동일 binding. Raw string·SDK private field·재조회 env/cwd로 요청 scope를 판정하지 않음. |
+| F10 budget 입력 수리 포함 | Unknown budget label이 실제 model/router를 통과해 balanced allocation·SDK 호출로 진행. Supported labels와 None control을 유지하고 invalid label은 실행 전에 typed 4xx 거절. |
+| D7 duplicate 검증 구체화 | Same-usecase duplicate·canonical alias collision도 거절. 제어한 decoded-entry 주입 반례이며 현재 54-entry manifest 중복 장애는 아님. |
+| D2 유지 | Tier0/default-empty를 현재 정상 분류 완료로 오독하지 않음. Root policy에 근거한 planned tier1 분류와 Compute/Stop seam 유지; callback만으로 byte bound를 증명하지 않음. |
+| F7 비용·보장 범위 | Existing control semantics를 local worklist에 적용. Core에 higher-tier runtime/fixpoint 의존 추가나 전체 solver 교체 없음. Cooperative loop boundary이며 callback 강제 중단·hard wall-clock 약속 아님. |
+| D4 gate 범위 | S17/S19 cross-repo rail은 membership/history/durability용. RRF helper 변경의 필수 선행으로 만들지 않음. |
+| FIND-depth 후보 제외 | Portable exact-call graph는 member당 최대 16 functions·member 내부 edges. Distinct-endpoint shortest path ≤15여서 depth.min(16)의 현재 false negative 반례 불성립. Parser/cross-member scope 확대 시 이 근거를 다시 검증. |
+| FIND/EXISTS 기존 수리 제외 유지 | Public witness cap=1 연결과 SemiJoin/AntiJoin·mixed polarity error propagation 및 기존 회귀 소스 확인. 새 runtime 실행 통과로 바꾸지 않음. |
+
+- **Executed:** Reviewer Python components 2개 및 root budget valid/invalid/None 5개 검증 항목, root duplicate-name control 재실행. 실제 Python functions/model과 fake SDK·decoded-entry 주입 경계다. Script/raw/source hash를 second_wide_final_audit에 보존한다. Root 초기 harness의 QueryResult에 len 적용 오류는 수정한 fixture 진단이며 제품 실패가 아니다.
+- **Source proof:** F2·F9 caller-to-owner 및 producer scope, D1–D5의 실제 imports/features/gate selectors, F10 authority 경계 확인. Source/fixture inspection은 Rust/native/installed 실행 증명이 아니다.
+- **결론:** 기존 **수리 8건·중복 제거 7건**을 유지하며 F9/F10 내부 누락과 acceptance를 보완한다. 런타임 코드 수리는 아직 남아 있다. Rust/QBC·policy gates·daemon/HTTP/stdio·installed parser/provider·elapsed/performance는 이번에도 미실행이다. 감사 반복을 코드 완료나 qualification으로 세지 않는다.
