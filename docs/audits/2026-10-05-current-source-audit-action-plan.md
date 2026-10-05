@@ -1,6 +1,6 @@
 # 이 세션의 잔여 작업 — 최신 코드 감사
 
-관측: 2026-10-05 20:08 KST. 공유 main, 미커밋 overlay, clean 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 신규 엔진·컴파일러·SMT·production library 추가는 없다. CI는 로컬 실행이다.
+관측: 2026-10-05 20:48 KST. 공유 main, 미커밋 overlay, clean 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 신규 엔진·컴파일러·SMT·production library 추가는 없다. CI는 로컬 실행이다.
 
 ## 완료한 구조·정책 정리
 
@@ -43,7 +43,7 @@ Relation37은 EXISTS 두0행, 상관/중첩, foreign binding/root, typed source/
 
 Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct same-module return call을 bounded census로 연결한다. 미지원·부분 census는 typed Incomplete이며 기존 BFS/identity/root/generation/lease custody를 유지한다. 새로운 Graph engine은 없다.
 
-## 현재 실행 중인 최종 검증
+## 최종 검증 결과와 차단 전제
 
 ### Mac — product 완료, 실제 process proof는 bootstrap에서 RED
 
@@ -57,7 +57,7 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 - Signed pattern이 identifier 호출 전체를 매칭함을 확인했다. CHECK 양성 입력을 same-module declared return calls로 바꾼e0e는 독립 AST 기준0/1/2 호출과 모든 target 선언을 만족한다. 서명·query·예산·응답 및 foreign/short oracle은 그대로다. Actual Mac CHECK는 attribution을 통과하고 Graph와 같은 `PtaOccurrenceAuthorityRefused`로 RED0/1이다.
 - 추가로2f7의 Mac 거절 입력을 호출0개인 상수 반환 선언으로 한정했다. Linux 양성 Graph/CHECK 본문은 byte-identical이다. Mac2f7의4-binary product는 GREEN이나 Graph/CHECK는 각각 **RED0/1**, failed1/ignored0: 모두 query 이전 initial exact-six Product PTA에서 거절됐다. Immutable run별 stderr와 사후 clean3-repo digest join을 확인했다. 호출0개에서도 같은 오류이므로 단순 미선언 call target이 공통 거절을 설명하지 않는다. 어떤 authority check가 실패했는지는 현재 typed 오류만으로 특정하지 못한다.
 - Fixture/input 수리는 boundary before/after와 staged hooks를 통과한 **격리 candidate만**이며 main 미통합이다. 기존0/1/2 결과, foreign/short rejection, WorkerUnavailable 기대값, production RootScope/lowering 거절을 변경하지 않았다.
-- 두 실제 bootstrap 전제를 기존 AG5/initial Product 담당 작업에 전달했다. 해당 owner의 committed 수리와 proof를 소비한 뒤 동일 tuple로 설치형 query를 재검증한다. 새로운 builtin semantics/engine 지원은 이번 maintenance에 추가하지 않는다.
+- 실제 bootstrap 실패와 Linux 설치 authority 전제 부족을 기존 AG5/IRC 담당 작업에 전달했다. 해당 owner의 committed 수리·동일 source proof 및 설치 authority를 확보한 뒤 query를 재검증한다. 새로운 builtin semantics/engine 지원은 이번 maintenance에 추가하지 않는다.
 - **남은 통합 조건:** 실제 query까지 도달한 독립1/1 GREEN과 Linux0/1/2 결과 확인 후, 최신 main에 test fixture와 별도 Graph 거절 테스트를 scope별로 합친다.
 
 ### Linux — Graph owner 완료, native worker 컴파일 수리 검증
@@ -70,17 +70,30 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 - **Native worker whole target8/8 GREEN**, failed0/ignored0/filtered0@4501/867/07. 기존 Match3개와 finite/soft/hard/infinite guard 회귀를 포함한다. 이는 OS syscall·실제 Match process의 성공 증명과 구분한다.
 - 같은 clean4501/867/07의 generic4-binary product **GREEN/exit0**, 약21분39초. Immutable receipt `20261005T103957.985177Z-b08fc711c0b2`, 전체 primary digest798f152f, owner closure78e56da2. Canonical assembler가 네 바이너리·hash·동일 source/receipt를 검증했다.
 - Boundary before/after, staged hooks, coordinator claim/barrier/source-commit/require-head를 통과해 worker **2개 경로만 main17bdfd62c2f3에 통합**했다. Test fixture는 가져오지 않았다. Claim/barrier를 해제했고 두 경로는 clean이다.
-- **설치형 Graph RUNNING, CHECK NOT_RUN.** 같은 bundle로 Graph PATH/Reachability/empty/budget/stale/foreign 결과를 실행 중이다. Graph가 실패해도 CHECK zero/one/multi를 동일 tuple에서 독립 실행해 각 결과를 기록한다. Runtime bootstrap 전제는 해소되지 않았다.
+- **Linux Graph 실제 process RED0/1**, failed1/ignored0@4501. Immutable receipt `20261005T110342.809277Z-bbf07943cb01` 및 run별 stderr를 확인했다. `workspace.attach` initial exact-six Product가 Mac과 같은 `CallGraphPta/Pta/Execution(PtaOccurrenceAuthorityRefused)`로 거절되어 FIND query는 NOT_REACHED다.
+- **Linux CHECK 실제 process RED0/1**, failed1/ignored0@같은4501. Immutable receipt `20261005T113050.261563Z-971dcaa2b43d`다. 서버 시작의 Match worker 준비가 `daemon_gqlang.pattern_provider_config_invalid_v1 / ControlledNativeBudgetUnavailableV3`로 거절되어 attach/query는 NOT_REACHED다.
+- CHECK 경로는 `prepare_installed_match_worker_v3`→`from_installed_server_v3`→고정 root의 `verify_installed_product_v1`이다. 컨테이너에 `/etc/semantica-codegraph-v2/trust`가 없으며 canonical profile 검증도 generic bundle을 `copied build receipt differs from requested product build profile`로 거절했다. **정식 설치 authority/환경 전제 부족이며 예산 전달 코드 결함으로 판정하지 않는다.** Worker OS 제한 설치도 이 실행에서는 호출되지 않았다.
+- 두 process 종료 후 consumer4501/producer867/Index07의 clean HEAD와 primary798f152f/owner78e56da2를 canonical owner로 재계산했다. Run별 immutable stderr/stdout와 source join을 확인했다. Fixture는 main 미통합이며, 관련2개 claim을 해제해 격리 후보만 보존했다. Active QBC/우리 claim/barrier는 없다.
 - 기존 warm lane의 compile-env 변경과 미등록 새 lane은 QBC가 각각 빌드 전에 거절했다. 새 lane을 canonical issuer로 등록했고 기존 lane/cache/receipt를 reset하지 않았다. Product/process는 이미 설치된 Rust toolchain의 LLD shim과 같은 flags를 사용한다. Production source/recipe/feature/profile은 바꾸지 않았다.
 - aarch64 generic installed 후보와 공식 **x86_64 installed release profile**을 구분한다. 현재 환경의 PASS는 x86_64 release qualification이 아니다.
 
 ## 최신 main과 검증 후보의 차이
 
-- Consumer worker checkpoint HEAD **`17bdfd62c2f3d6624eed9523c6fcef5f72927110`**; 후속 관측 main **`36d804463829ea0a413e7aef10048283059e1bae`**. 다른 작업으로 main은 계속 이동한다. Worker2경로와 installed test 경로의 dirty overlay는0개다.
+- Consumer worker checkpoint HEAD **`17bdfd62c2f3d6624eed9523c6fcef5f72927110`**; 최종 관측 main **`fb58ca46257d2c1094c3824d13a7e0da4f9a6daf`**. 다른 작업으로 main은 계속 이동한다. Worker2경로와 installed test 경로의 dirty overlay는0개다.
 - Source digest 차이는 플랫폼 차이가 아니다. Product806의 전체 primary snapshot은55308640, owner806의 policy/Cargo sibling closure(consumer/producer/Index)는49e5414b다. 기존 canonical owner로 세 저장소의 byte-aware clean HEAD와 두 digest를 독립 재계산해 join을 확인했다. Digest 문자열을 같다고 가정하거나 receipt를 다른 소스로 합성하지 않는다.
 - 이후 다른 작업에서 portable parser/adapter의 metering/borrow/staging과 Graph test165줄 등을 수정했다. 원래 Graph owner11 및 parser10/adapter9 receipt는 원래 source에만 유효하다. 과거의 “소유17개 blob 모두 동일” 주장은 더 이상 현재 상태가 아니다.
 - 경로별 committed delta와 dirty 상태는 아래 custody JSON에 기록한다. 최신 main 전체 product/설치형 qualification은 **없다**. 검증 후보 결과와 최신 main 결과를 합성하지 않는다.
 - Semantic generation carrier3/3은 실제 semantic request 양성 clone/drop proof가 아니다. 기존 SDK source_admission→public ingress에서 Composition→UnsupportedFamily 선거절을 관측했으며, 새 configured-Semantic oracle과의 정합은 활성 소비자 작업에 전달했다. 해당 작업의 최신 source를 덮어쓰거나 새 Composition 기능을 이 maintenance에 추가하지 않는다.
+- 최신 main의 `ccd6efbf53` 이후 pre-key native DFG cohort가 `ProductCallGraphSeedConsumptionV1`을 `_seed_lifetime_v1`로 보유한다. 기존 owner의 수명/byte root 수정이며 해당 변경의 Rust 동작 proof는 아직 확인되지 않았다. 현재 bootstrap 거절의 원인 또는 해소라고 단정하지 않는다. Source4501의 receipt를 이 후속 변경이나 최신 main에 합성하지 않는다.
+
+## 최종 잔여 액션
+
+1. **P0: 소비자 Product bootstrap authority 수리·증명.** Mac 호출0개 및 Linux Graph attach에서 재현된 `PtaOccurrenceAuthorityRefused`의 실제 거절 분기를 기존 AG5/IRC owner에서 특정한다. 최신 seed lifetime 보유 변경은 후보이며, owner QBC와 실제 bootstrap의 동일 clean source 증거가 필요하다. 거절 우회나 추가 builtin 지원으로 해결하지 않는다.
+2. **P0: Linux 설치 proof의 기존 authority 전제 확보.** Generic aarch64 bundle로 정식 installed proof를 시도했던 환경 전제가 부족하다. Canonical x86_64 installed QBC profile, root 소유 immutable slot, AG5 selected phase와 독립 deployment approval/key/active generation을 기존 release owner의 경로로 확보한다. Key/approval/profile을 임의로 발급·대체하거나 trust 검사를 우회하지 않는다. 이 전제까지 갖추지 않은 실행은 설치 성공 qualification이 아니다.
+3. **P0: 동일 tuple의 설치형 Graph/CHECK 회귀를 통과시킨 후 fixture 통합.** Canonical4-binary bundle과 설치 authority를 확인하고 FIND PATH/Reachability, empty/budget/stale/foreign, signed CHECK zero/one/multi와 foreign/short를 실제 query까지 검증한다. 통과한 scope만 최신 main에 coordinator checkpoint로 합친다.
+4. **P1: 마지막 소비자 source를 고정하고 Product qualification 정합 확인.** 현재 owner·product receipt는 각 source에만 유효하다. 공식 x86_64 release qualification은 기존 release owner의 별도 rail이며 이번 aarch64/Mac 결과로 대체하지 않는다. Producer core의 clean CI/fuzz 증명은 완료됐고 Rust source가 바뀌지 않으면 반복하지 않는다.
+
+Fuzz 정기 실행은 로컬 운영 선택으로 남긴다. Hosted CI, 신규 엔진/컴파일러/SMT/library 도입은 잔여 액션에 없다.
 
 ## 잘못 남은 작업으로 계산하지 않을 것
 
@@ -107,3 +120,6 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 [Linux product unsafe compile RED](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/linux-installed-product-unsafe-compile-failure.json)
 [Native safe limit candidate](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/mac-native-owner-8be-20261005/native-safe-rlimit-preparation.json)
 [Native safe limit main checkpoint](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/native-safe-rlimit-checkpoint-result.json)
+[Linux Graph actual bootstrap RED](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/installed-linux-graph-bootstrap-failure.json)
+[Linux same-source process receipts](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/installed-linux-same-source-process-results.json)
+[Linux installed trust precondition gap](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/linux-installed-trust-precondition-gap.json)
