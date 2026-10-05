@@ -1,6 +1,6 @@
 # 이 세션의 잔여 작업 — 최신 코드 감사
 
-관측: 2026-10-05 17:31 KST. 공유 main, 미커밋 overlay, clean 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 신규 엔진·컴파일러·SMT·production library 추가는 없다. CI는 로컬 실행이다.
+관측: 2026-10-05 18:25 KST. 공유 main, 미커밋 overlay, clean 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 신규 엔진·컴파일러·SMT·production library 추가는 없다. CI는 로컬 실행이다.
 
 ## 완료한 구조·정책 정리
 
@@ -44,26 +44,31 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 
 ## 현재 실행 중인 최종 검증
 
-### Mac — product 완료, 설치형 거절 proof 진행 중
+### Mac — product 완료, 실제 process proof는 bootstrap에서 RED
 
-- Frozen tuple: consumer **`806f4a9da70bd902e0b61561115e78bbdcd46092`** + producer867 + Index **`07d212e4c89eb7e2ed1b712ffd4a5f16c5f44324`**, 모두 clean.
-- `quanta-cli-product.release-full.build` **GREEN/exit0**, immutable CLI/server/sql worker/native worker **4개**. 기존 owner assembler로 source/receipt/hash를 검증한 설치 bundle을 생성했다.
-- Mac source digest **`553086404e21f19272e689595f2b47464a9bd22829a6770bf9362cc8ee425ec8`**. Receipt run **`20261005T080826.848905Z-76730bdae5c7`**.
-- 실제 product 빌드에서 발견한 E0373/E0583/E0412/E0624/E0753/E0277/E0425는 담당 작업의 committed main 수리를 소비했다. 이 세션은 해당 파일을 중복 수정하거나 전체 dirty 후보를 합치지 않았다. E0432 canonical permit seam과 E0433/E0603 shared wire visibility는 위2개 checkpoint로 수리했다. 이전 RED receipt는 보존한다.
-- **Graph typed refusal process RUNNING**, CHECK typed refusal pending. Graph 신규 독립 테스트는 PATH/Reachability의 finite catalog rejection reason·빈 payload·receipt 미발급을 검증한다. 기존 양성 Graph 함수와 registry oracle을 변경하지 않았다.
-- **남은 통합:** 두 actual process rail의 exact1/1 GREEN, ignored0, bundle와 동일 source digest 확인 후 신규 Graph 거절 테스트68줄만 main에 합친다.
+- Product 기준 source는 consumer **`7ab464c843466c31cbb8cefac9a49bffb0a12c25`** + producer867 + Index07, 모두 clean. 기존806에서 production 변경 없이 CHECK integration fixture만 고친 후보다.
+- 기존806 및 새26dd/7ab의 `quanta-cli-product.release-full.build`는 모두 **GREEN/exit0**, immutable4-binary bundle 검증 완료. 최신 product receipt `/Volumes/Extreme SSD 1/gqlang-linux-check-proof-20261004/cache/fcp-mac-20261005/qbc-state/execution-roots/semantica-codegraph-v2-4ebe9d594fa5/lanes/fcp-final-mac-20261005/verification-results/20261005T091528.821620Z-24c696bcc087/receipt.json`.
+- 실제 SDK/product 컴파일 전제 E0373/E0583/E0412/E0624/E0753/E0277/E0425는 담당 작업의 committed 수리를 소비했다. Canonical permit seam과 shared wire visibility는 위2개 main checkpoint로 수리했다. 이전 RED는 보존한다.
+- **Graph806 actual process RED0/1**, ignored0. `workspace.attach`의 초기 exact-six 실행이 `CallGraphPta/Pta/Execution(PtaOccurrenceAuthorityRefused)`로 실패했다. Graph query 전 단계이며 유한 Graph catalog refusal oracle은 아직 검증되지 않았다. 신규68줄 테스트는 main 미통합이다.
+- CHECK 첫 실행은 fixture의 dense configured root와 attach root 불일치로 실패했고, 진단 Python import의 bytecode/cache-directory 생성 때문에 source guard에서도 **INVALID/exit125**였다. 이 시도를 owner proof로 계산하지 않는다. 후속 source probe에는 bytecode 생성을 금지했다.
+- CHECK fixture를 source-first/exact configured root/case별freshdaemon으로 고친26dd는 실제 RootScope 검사를 통과한 뒤 누락된 target Python authority로 **RED0/1**. 기존 Graph fixture와 같은 authored Python3.12/src 설정을 추가한7ab는 두 전제를 통과했다.
+- **CHECK7ab actual process RED0/1**, ignored0/sourceguard PASS. 초기 Product normalized attribution이 `UnsupportedConstraintKind/unresolved_direct_call_target_v1 caller=app;statement=1;slot=0`로 `print(1)`을 거절했다. CHECK query는 아직 실행되지 않았다. Graph의 PTA authority 실패와 다른 원인이다.
+- Fixture수리2건은 boundary before/after와 staged hooks를 통과한 **격리 candidate만**이며 main 미통합이다. 기존0/1/2 결과, foreign/short rejection, WorkerUnavailable 기대값, production RootScope/lowering 거절을 변경하지 않았다.
+- 두 실제 bootstrap 전제를 기존 AG5/initial Product 담당 작업에 전달했다. 해당 owner의 committed 수리와 proof를 소비한 뒤 동일 tuple로 설치형 query를 재검증한다. 새로운 builtin semantics/engine 지원은 이번 maintenance에 추가하지 않는다.
+- **남은 통합 조건:** 실제 query까지 도달한 독립1/1 GREEN과 Linux0/1/2 결과 확인 후, 최신 main에 test fixture와 별도 Graph 거절 테스트를 scope별로 합친다.
 
 ### Linux — 메모리 복구 후 Graph owner 재실행
 
 - 과거8GiB Docker 조건의 SIGKILL/OOM3회는 RED/테스트0으로 기록했다. Frontend1/codegen1 시도도 실패했으며 gate나 oracle을 약화하지 않았다.
 - 사용자 진행 승인 후 Docker 메모리를 **16GiB**로 변경·재시작했다. 중단 전 proof 컨테이너에 active child가 없음을 확인했고 기존 실행 컨테이너5개를 모두 복원했다. 이미지/volume 삭제는 없다.
-- 위와 같은 Git tuple의 native Linux **aarch64** source에서 Graph owner 재실행 **RUNNING**, jobs1/frontend1. Linux source digest **`49e5414ba161ad85ca74f284072bf368ba690131d9dc08c60db4888039cc1df3`**로 Mac digest와 구분한다.
-- **설치형 Graph/CHECK 양성 proof NOT_RUN.** Graph owner GREEN 후 같은 frozen source·physical target/lane에서 기존 generic product4-binary recipe→bundle→Graph PATH/Reachability/empty/budget/stale/foreign 및 signed CHECK zero/one/multi 실제 결과를 실행한다.
-- aarch64 generic installed 후보와 공식 **x86_64 installed release profile**을 구분한다. 현재 환경의 PASS는 x86_64 release qualification이 아니다.
+- Frozen806/867/07의 native Linux **aarch64** Graph owner는 **RUNNING/테스트0**, jobs1/frontend1. 컴파일 후 GNU ld가 약8.2GiB RSS로 장시간 link 중이다. 테스트 verdict가 아직 없다.
+- **설치형 Graph/CHECK 양성 proof NOT_RUN.** Graph owner 종료 후 reviewed CHECK-only fixture delta를 별도로 기록해 clean7ab/867/07로 freeze한다. 기존 generic product4-binary recipe→bundle→Graph PATH/Reachability/empty/budget/stale/foreign 및 signed CHECK zero/one/multi 실제 결과를 실행한다. Runtime bootstrap 전제는 해소되지 않았다.
+- aarch64 generic installed 후보와 공식 **x86_64 installed release profile**을 구분한다. 현재 환경의 PASS는 x86_64 release qualification이 아니다. 다음 product/process 묶음은 이미 설치된 Rust toolchain의 LLD shim을 명시하고 동일 flags를 bundle/test에 고정하도록 준비했다. 실행 중인 GNU owner rail은 변경하지 않았다.
 
 ## 최신 main과 검증 후보의 차이
 
-- Consumer 관측 HEAD **`dc2e2cb1a6e0b1886e0a0785a1fe9a4d63e4068f`**. 다른 작업으로 main은 계속 이동한다.
+- Consumer 관측 HEAD **`154c8ed0b897c9ba2d4b9ef99d61af7ad4c02549`**. 다른 작업으로 main은 계속 이동한다.
+- Source digest 차이는 플랫폼 차이가 아니다. Product806의 전체 primary snapshot은55308640, owner806의 policy/Cargo sibling closure(consumer/producer/Index)는49e5414b다. 기존 canonical owner로 세 저장소의 byte-aware clean HEAD와 두 digest를 독립 재계산해 join을 확인했다. Digest 문자열을 같다고 가정하거나 receipt를 다른 소스로 합성하지 않는다.
 - 이후 다른 작업에서 portable parser/adapter의 metering/borrow/staging과 Graph test165줄 등을 수정했다. 원래 Graph owner11 및 parser10/adapter9 receipt는 원래 source에만 유효하다. 과거의 “소유17개 blob 모두 동일” 주장은 더 이상 현재 상태가 아니다.
 - 경로별 committed delta와 dirty 상태는 아래 custody JSON에 기록한다. 최신 main 전체 product/설치형 qualification은 **없다**. 검증 후보 결과와 최신 main 결과를 합성하지 않는다.
 - Semantic generation carrier3/3은 실제 semantic request 양성 clone/drop proof가 아니다. 기존 SDK source_admission→public ingress에서 Composition→UnsupportedFamily 선거절을 관측했으며, 새 configured-Semantic oracle과의 정합은 활성 소비자 작업에 전달했다. 해당 작업의 최신 source를 덮어쓰거나 새 Composition 기능을 이 maintenance에 추가하지 않는다.
@@ -85,3 +90,7 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 [TemporaryPermit checkpoint](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/temporary-permit-checkpoint-result.json)
 [Shared wire checkpoint](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/shared-wire-checkpoint-result.json)
 [Docker restart recovery](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/docker-memory-restart-result.json)
+
+[Source identity closure join](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/source-identity-domain-join-806.json)
+[Graph actual attach RED](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/installed-mac-graph-attach-failure.json)
+[CHECK actual attribution RED](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/installed-mac-check-attribution-failure.json)
