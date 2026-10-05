@@ -1,6 +1,6 @@
 # 이 세션의 잔여 작업 — 최신 코드 감사
 
-관측: 2026-10-05 19:43 KST. 공유 main, 미커밋 overlay, clean 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 신규 엔진·컴파일러·SMT·production library 추가는 없다. CI는 로컬 실행이다.
+관측: 2026-10-05 20:08 KST. 공유 main, 미커밋 overlay, clean 검증 후보를 구분한다. 런타임/provider/SDK 변경은 소비자 소유이며 신규 엔진·컴파일러·SMT·production library 추가는 없다. CI는 로컬 실행이다.
 
 ## 완료한 구조·정책 정리
 
@@ -35,6 +35,7 @@
 | `00290be4535` | bounded top-level Python Graph census의 parser→adapter→host 연결 | Mac Graph owner11/11 PASS@27c; Linux parser10+adapter9 PASS@8be; Linux Graph owner11/11 PASS@806 |
 | `76922f834eb` | 기존 `ServingSourceIssuanceTemporaryPermitV1` canonical trait 재수출 | 실제 SDK 호출부 포함 Mac4-binary product PASS@806 |
 | `4305ac65652` | 공용 Match wire 상수4개 `pub(crate)`: library sibling·standalone binary 두 경로 컴파일 | library와 native binary 포함 Mac4-binary product PASS@806; 값/형식 변경 없음 |
+| `17bdfd62c2f3` | Linux worker의 unsafe libc 제한 호출을 기존 Rustix 안전 API로 교체 | native worker whole8/8 및 Linux aarch64 4-binary product GREEN@4501; dependency/version·wire 변경 없음 |
 
 모든 scoped 통합은 최신 main descendant에 replay하고 coordinator claim/barrier/source-commit/require-head, boundary before/after, staged hooks를 거쳤다. 다른 작업의 dirty/index를 합치지 않았다.
 
@@ -46,8 +47,8 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 
 ### Mac — product 완료, 실제 process proof는 bootstrap에서 RED
 
-- Product 기준 source는 consumer **`7ab464c843466c31cbb8cefac9a49bffb0a12c25`** + producer867 + Index07, 모두 clean. 기존806에서 production 변경 없이 CHECK integration fixture만 고친 후보다.
-- 기존806 및 새26dd/7ab의 `quanta-cli-product.release-full.build`는 모두 **GREEN/exit0**, immutable4-binary bundle 검증 완료. 최신 product receipt `/Volumes/Extreme SSD 1/gqlang-linux-check-proof-20261004/cache/fcp-mac-20261005/qbc-state/execution-roots/semantica-codegraph-v2-4ebe9d594fa5/lanes/fcp-final-mac-20261005/verification-results/20261005T091528.821620Z-24c696bcc087/receipt.json`.
+- 초기 Product 기준 source는 consumer **`7ab464c843466c31cbb8cefac9a49bffb0a12c25`** + producer867 + Index07, 모두 clean. 기존806에서 production 변경 없이 CHECK integration fixture만 고친 후보다. 후속 e0e/2f7도 아래에 source별로 기록한다.
+- 기존806 및 새26dd/7ab의 `quanta-cli-product.release-full.build`는 모두 **GREEN/exit0**, immutable4-binary bundle 검증 완료. 7ab product receipt는 `20261005T091528.821620Z-24c696bcc087`이고, 마지막 Mac2f7 product receipt는 `20261005T100319.030844Z-562fa13c7f6c`다.
 - 실제 SDK/product 컴파일 전제 E0373/E0583/E0412/E0624/E0753/E0277/E0425는 담당 작업의 committed 수리를 소비했다. Canonical permit seam과 shared wire visibility는 위2개 main checkpoint로 수리했다. 이전 RED는 보존한다.
 - **Graph806 actual process RED0/1**, ignored0. `workspace.attach`의 초기 exact-six 실행이 `CallGraphPta/Pta/Execution(PtaOccurrenceAuthorityRefused)`로 실패했다. Graph query 전 단계이며 유한 Graph catalog refusal oracle은 아직 검증되지 않았다. 신규68줄 테스트는 main 미통합이다.
 - CHECK 첫 실행은 fixture의 dense configured root와 attach root 불일치로 실패했고, 진단 Python import의 bytecode/cache-directory 생성 때문에 source guard에서도 **INVALID/exit125**였다. 이 시도를 owner proof로 계산하지 않는다. 후속 source probe에는 bytecode 생성을 금지했다.
@@ -55,7 +56,7 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 - **CHECK7ab actual process RED0/1**, ignored0/sourceguard PASS. 초기 Product normalized attribution이 `UnsupportedConstraintKind/unresolved_direct_call_target_v1 caller=app;statement=1;slot=0`로 `print(1)`을 거절했다. CHECK query는 아직 실행되지 않았다. Graph의 PTA authority 실패와 다른 원인이다.
 - Signed pattern이 identifier 호출 전체를 매칭함을 확인했다. CHECK 양성 입력을 same-module declared return calls로 바꾼e0e는 독립 AST 기준0/1/2 호출과 모든 target 선언을 만족한다. 서명·query·예산·응답 및 foreign/short oracle은 그대로다. Actual Mac CHECK는 attribution을 통과하고 Graph와 같은 `PtaOccurrenceAuthorityRefused`로 RED0/1이다.
 - 추가로2f7의 Mac 거절 입력을 호출0개인 상수 반환 선언으로 한정했다. Linux 양성 Graph/CHECK 본문은 byte-identical이다. Mac2f7의4-binary product는 GREEN이나 Graph/CHECK는 각각 **RED0/1**, failed1/ignored0: 모두 query 이전 initial exact-six Product PTA에서 거절됐다. Immutable run별 stderr와 사후 clean3-repo digest join을 확인했다. 호출0개에서도 같은 오류이므로 단순 미선언 call target이 공통 거절을 설명하지 않는다. 어떤 authority check가 실패했는지는 현재 typed 오류만으로 특정하지 못한다.
-- Fixture수리2건은 boundary before/after와 staged hooks를 통과한 **격리 candidate만**이며 main 미통합이다. 기존0/1/2 결과, foreign/short rejection, WorkerUnavailable 기대값, production RootScope/lowering 거절을 변경하지 않았다.
+- Fixture/input 수리는 boundary before/after와 staged hooks를 통과한 **격리 candidate만**이며 main 미통합이다. 기존0/1/2 결과, foreign/short rejection, WorkerUnavailable 기대값, production RootScope/lowering 거절을 변경하지 않았다.
 - 두 실제 bootstrap 전제를 기존 AG5/initial Product 담당 작업에 전달했다. 해당 owner의 committed 수리와 proof를 소비한 뒤 동일 tuple로 설치형 query를 재검증한다. 새로운 builtin semantics/engine 지원은 이번 maintenance에 추가하지 않는다.
 - **남은 통합 조건:** 실제 query까지 도달한 독립1/1 GREEN과 Linux0/1/2 결과 확인 후, 최신 main에 test fixture와 별도 Graph 거절 테스트를 scope별로 합친다.
 
@@ -66,14 +67,16 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 - Frozen806/867/07의 native Linux **aarch64** Graph owner는 **GREEN11/11**, failed0/ignored0, jobs1/frontend1. 전체 실행 약79분, peak child RSS9,051,304KiB였다. Immutable receipt: `20261005T080825.880997Z-31332bdffa29`, owner closure digest49e5414b. 이 결과는 설치형 query 증명이 아니다.
 - Clean7ab/867/07의 generic product는 **RED/exit101**이다. Linux native worker의 직접 `libc::setrlimit/getrlimit` unsafe4개가 workspace `deny(unsafe_code)`에 걸렸다. OOM0이며 Graph/CHECK 설치 실행은 아직 NOT_RUN이다.
 - Parser가 이미 직접 사용하는 pinned **rustix1.1.4**의 `process` feature를 native-worker에 활성화한 candidate4501을 준비했다. 안전한 setter와 fallible `prlimit`의 동일 ceiling 재설정/이전값 확인을 사용한다. AS/DATA 모두 유한한 soft/hard≤요청값, zero/infinity/overflow 거절, syscall 오류의 typed ResourceLimit, allocation 이전 적용, 비Linux 거절을 유지한다. dependency/version 추가나 unsafe lint 예외는 없다.
-- **Native worker whole target8/8 GREEN**, failed0/ignored0/filtered0@4501/867/07. 기존 Match3개와 finite/soft/hard/infinite guard 회귀를 포함한다. Boundary before/after 및 staged hooks PASS. 같은 source의 generic4-binary product 재실행은 RUNNING이다. 이 컴파일 수리는 아직 main 미통합이며 product 성공 후2개 경로만 별도 checkpoint로 합친다.
-- **설치형 Graph/CHECK 양성 proof NOT_RUN.** Product 성공 후 canonical bundle→Graph PATH/Reachability/empty/budget/stale/foreign→signed CHECK zero/one/multi 실제 결과를 실행한다. Runtime bootstrap 전제는 해소되지 않았다.
+- **Native worker whole target8/8 GREEN**, failed0/ignored0/filtered0@4501/867/07. 기존 Match3개와 finite/soft/hard/infinite guard 회귀를 포함한다. 이는 OS syscall·실제 Match process의 성공 증명과 구분한다.
+- 같은 clean4501/867/07의 generic4-binary product **GREEN/exit0**, 약21분39초. Immutable receipt `20261005T103957.985177Z-b08fc711c0b2`, 전체 primary digest798f152f, owner closure78e56da2. Canonical assembler가 네 바이너리·hash·동일 source/receipt를 검증했다.
+- Boundary before/after, staged hooks, coordinator claim/barrier/source-commit/require-head를 통과해 worker **2개 경로만 main17bdfd62c2f3에 통합**했다. Test fixture는 가져오지 않았다. Claim/barrier를 해제했고 두 경로는 clean이다.
+- **설치형 Graph RUNNING, CHECK NOT_RUN.** 같은 bundle로 Graph PATH/Reachability/empty/budget/stale/foreign 결과를 실행 중이다. Graph가 실패해도 CHECK zero/one/multi를 동일 tuple에서 독립 실행해 각 결과를 기록한다. Runtime bootstrap 전제는 해소되지 않았다.
 - 기존 warm lane의 compile-env 변경과 미등록 새 lane은 QBC가 각각 빌드 전에 거절했다. 새 lane을 canonical issuer로 등록했고 기존 lane/cache/receipt를 reset하지 않았다. Product/process는 이미 설치된 Rust toolchain의 LLD shim과 같은 flags를 사용한다. Production source/recipe/feature/profile은 바꾸지 않았다.
 - aarch64 generic installed 후보와 공식 **x86_64 installed release profile**을 구분한다. 현재 환경의 PASS는 x86_64 release qualification이 아니다.
 
 ## 최신 main과 검증 후보의 차이
 
-- Consumer 관측 HEAD **`363ca3172600d6ce64ba47d9a92814b06af31315`**. 다른 작업으로 main은 계속 이동한다. 현재 준비 중인 worker2경로와 installed test 경로의 dirty overlay는0개다.
+- Consumer worker checkpoint HEAD **`17bdfd62c2f3d6624eed9523c6fcef5f72927110`**; 후속 관측 main **`36d804463829ea0a413e7aef10048283059e1bae`**. 다른 작업으로 main은 계속 이동한다. Worker2경로와 installed test 경로의 dirty overlay는0개다.
 - Source digest 차이는 플랫폼 차이가 아니다. Product806의 전체 primary snapshot은55308640, owner806의 policy/Cargo sibling closure(consumer/producer/Index)는49e5414b다. 기존 canonical owner로 세 저장소의 byte-aware clean HEAD와 두 digest를 독립 재계산해 join을 확인했다. Digest 문자열을 같다고 가정하거나 receipt를 다른 소스로 합성하지 않는다.
 - 이후 다른 작업에서 portable parser/adapter의 metering/borrow/staging과 Graph test165줄 등을 수정했다. 원래 Graph owner11 및 parser10/adapter9 receipt는 원래 source에만 유효하다. 과거의 “소유17개 blob 모두 동일” 주장은 더 이상 현재 상태가 아니다.
 - 경로별 committed delta와 dirty 상태는 아래 custody JSON에 기록한다. 최신 main 전체 product/설치형 qualification은 **없다**. 검증 후보 결과와 최신 main 결과를 합성하지 않는다.
@@ -103,3 +106,4 @@ Graph 변경은 최대16 plain top-level Python 함수의 pass/decimal/direct sa
 [Mac zero-call bootstrap failures](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/installed-mac-zero-call-bootstrap-failures.json)
 [Linux product unsafe compile RED](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/linux-installed-product-unsafe-compile-failure.json)
 [Native safe limit candidate](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/mac-native-owner-8be-20261005/native-safe-rlimit-preparation.json)
+[Native safe limit main checkpoint](/Users/songmin/Documents/code-new/.frontend-contract-proof-evidence-20261004/consumer-execution-closure/graph-bounded-checkpoint-20261005/native-safe-rlimit-checkpoint-result.json)
