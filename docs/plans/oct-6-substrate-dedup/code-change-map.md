@@ -221,7 +221,7 @@ Before: factory/export는 cost crate의 concrete type, standalone는 별도 구�
 | [runtime structure checker](../../../../semantica-codegraph-v2/tools/rust-crate-boundary-guard/check_runtime_structure_source_contracts.py) / [QBC taxonomy](../../../../semantica-codegraph-v2/tools/quanta-build-cli/contracts/feature-taxonomy-v1.toml) | 수정·검증 | Shape owner/feature invariants와 실제 public closure 일치 |
 | [shape-only honesty](../../../../semantica-codegraph-v2/tools/ci/honesty/baselines/shape-only.json) | 재생성 | owning generator 출력으로 갱신; 비용 dependency를 숨기는 baseline 손편집 금지 |
 
-Current candidate `813857b73fc`의 SDK packet 전달 정리: `quanta-sdk-runtime-composition-owner/src/types.rs::sdk_orchestrator_packet_from_runtime_state_v1`의 feature별 Shape field transfer를 private `selected_shape_analyzer_from_runtime_state_v1`로 분리한다. Enabled feature에서는 기존 Option의 포트를 한 번 move하고 disabled에서는 None을 유지한다. Clone/API/schema 변화가 없다. 해당 단순 field transfer는 source+compile proof이며 session factory의 overlay 선택 테스트와 동일한 end-to-end 증거로 세지 않는다.
+Current candidate `60eaba860404` (base `10c902e74af6`, 92 paths)의 SDK packet 전달 정리: `quanta-sdk-runtime-composition-owner/src/types.rs::sdk_orchestrator_packet_from_runtime_state_v1`의 feature별 Shape field transfer를 private `selected_shape_analyzer_from_runtime_state_v1`로 분리했다. Enabled feature에서는 기존 Option의 포트를 한 번 move하고 disabled에서는 None을 유지한다. Clone/API/schema 변화가 없다. 현재 frozen QBC 실행 중이므로 source 연결을 session factory의 overlay 선택 증거로 세지 않는다.
 
 Before: `runtime/shape-analyzer → cost-analyzer → cost crate Shape`. After: `runtime/shape-analyzer → standalone Shape`와 필요한 factory feature; `cost-analyzer`는 Cost 소비자가 별도 선택. Shape-only lane에서 불필요한 Cost/regex 연결이 없어야 하고 Cost 자체가 regex를 쓰는 lane은 유지한다.
 
@@ -290,7 +290,20 @@ F1 이전에 D6 helper만 작성/전환하면 기존 broken assumptions가 공�
 | [PTA SCC tests](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc_tests.rs) | 수정 | normalized partition controls 유지, unnormalized output/ID·domain·checkpoint tests 보강 |
 | [Tarjan gate](../../../../semantica-codegraph-v2/tools/ci/gates/gate-tarjan-iterative.sh) | 수정 | generic core + PTA/taint adapter selectors, ignored 50k test 실제 실행 |
 
-Current candidate `813857b73fc`의 PTA owner 정리: 기존 `field_strong_update_refinement_v1.rs::allocation_call_graph_proof_v1`에서 SCC failure policy를 child `field_strong_update_refinement_v1/scc_failure_policy_v1.rs`로 이동한다. `Stop`은 원래 typed reason을 전파하고 `Compute`는 incomplete authority로 남긴다. Graph/classification/checkpoint ordering은 유지한다. 신규 function complexity12를 없애며, 기존 field-refinement owner tests의 recursive/missing receipt/각 checkpoint cancellation/positive controls를 실행한다. 직접 Compute caller fixture는 없으므로 그 가지는 source policy proof로 한정한다.
+Current candidate `60eaba860404`의 PTA owner 정리: `field_strong_update_refinement_v1.rs::allocation_call_graph_proof_v1`의 SCC failure policy를 child `field_strong_update_refinement_v1/scc_failure_policy_v1.rs`로 이동했다. `#[path]`는 실제 child 경로를 가리킨다. `Stop`은 원래 typed reason을 전파하고 `Compute`는 incomplete authority로 남긴다. Graph/classification/checkpoint ordering은 유지한다. 기존 field-refinement owner tests의 recursive/missing receipt/각 checkpoint cancellation/positive controls가 현재 source에서 실행돼야 한다. 직접 Compute caller fixture는 없으므로 그 가지는 source policy proof로 한정한다.
+
+| 현재 D2/PTA·선행 compile owner 파일 | Before | `60eaba860404`의 책임 / 남은 검증 |
+|---|---|---|
+| `precise_query_scc.rs`, `precise_query_summary_catalog/recursive_scc.rs`, `recursive_call_graph_census_v1.rs`, `precision_critical_selector_v1.rs` | 각 caller의 local SCC traversal·projection | 공통 borrowed core 호출; declared-key domain, component order/ID, typed Compute/Stop과 caller checkpoint를 각각 보존. Tarjan7의 현재 frozen QBC 결과 pending |
+| `field_strong_update_refinement_v1.rs` + `field_strong_update_refinement_v1/scc_failure_policy_v1.rs` | owner 함수에 SCC failure classification 동거 | child가 typed failure policy만 소유; 실제 nested module path 지정. Field-refinement caller QBC pending |
+| `solve_worker_uniqueness.rs` + `worker_file_identity_v1.rs` | worker admission과 same-artifact lookup이 한 파일 | file path/lookup-axis/Python module-stem fallback/error의 기존 본문을 child로 이동. 테스트 32개 ID·순서 유지; 생산 file lines 1255→1150. 기존 `WorkerCfgDfgCacheV1` 공개 메서드 11개는 별도 미등록 GOD debt |
+| `whole_program.rs` | 재귀 요약 함수가 adjacency 구축까지 수행 | `call_graph_scc_adjacency_v1` helper로 구축만 이동; SCC 호출·summary projection 순서 유지. 함수 84→73행, complexity 11→9는 정적 수치이며 현재 owner QBC pending |
+| `incremental/mod.rs` + `incremental/resume_clone_logical_cost_v1.rs` | portable/native resume의 논리 비용 순회가 갈라짐 | borrowed `LiveResumeCopyViewV1` 기반 비용 walk 1개를 양쪽 상태가 호출. 기존 `clone_native_trailing_v1.rs` 퇴역; byte/work 비용·Stop 순서의 현재 source proof pending |
+| `function_identity_matching.rs`와 W5 caller | 새 from-parts matcher 중복 제안 | upstream의 기존 borrowed matcher를 재사용; 중복 helper는 후보에서 버림. W5 caller의 typed admission 의미 유지 확인 필요 |
+| `interprocedural.rs` role facade | owner에 정의된 `RecoveredCallGraphRoleSourceAxesV1`이 facade에서 빠짐 | 기존 타입을 reexport; 새 role 타입·wire schema 없음 |
+| 6 fixture owners: `run_parts/alias_consumer_live_execution_v1_borrowed_refs_tests_v1.rs`, `precise_query/product_call_graph_authority_v1/committed_transition_custody_tests_v1.rs`, `precise_query/query_impl/{query_contract_tests.rs,run_impl_stages_tests_part2.rs,run_impl_stages_tests_part3.rs}`, `precise_query/session_state_tests.rs` | 이전 raw Vec/portable state/transition authority 생성자가 현재 admitted API와 어긋남 | 현 typed storage·admitted resume/transition 계약으로 fixture를 맞춤. Expected failure와 source authority를 약화하지 않았는지 각 owner test로 확인; 이전 `813857b73fc`의 87 compile diagnostics를 모두 D2 결함으로 간주하지 않음 |
+
+PTA compile prerequisite는 기존 selector 10개로 구성되며 정적 test 선택 최소치는 합계 14 cases다. 현재 frozen source에서 QBC completion마다 실제 nonzero 선택 수와 독립 assertion을 확인하기 전에는 fixture/API 수리를 검증 완료로 표시하지 않는다.
 
 ### Before: indexed entry가 있어도 공통 borrowed core는 없음
 
@@ -385,7 +398,16 @@ Python search checkpoint의 public SDK/HTTP/CLI output는 pre-release current sc
 | Runtime CostAnalysisWiringPort/framework injector/fluent snapshot pin | Shape 작업이 Cost feature에만 존재 | Shape feature에서 Shape port·pin operation 제공 |
 | Runtime `heap-analyzer` feature | Shape를 통해 Cost를 간접 활성화 | explicit Cost dependency 유지; Shape-only normal deps에서는 Cost 제외 |
 
+| 현재 D1-B runtime/SDK 파일 | Before | `60eaba860404`의 책임 / 남은 검증 |
+|---|---|---|
+| `quanta-runtime/src/sdk/capabilities_projection.rs` + `capabilities_projection/{default_context_v1.rs,sca_vulnerability_probe_v1.rs}` | capability projection 한 파일에 기본 context와 SCA probe 동거 | 기본 context·SCA authority probe만 각 child로 분리. Shape/Cost capability 표시와 typed unavailable 정책은 parent 유지; feature 조합별 consumer proof pending |
+| `quanta-runtime/src/orchestration/observation_feedback_runtime/product_bound_runtime.rs` + `product_bound_runtime/active_ruleset_digest_v1.rs` | active-ruleset digest admission이 큰 runtime owner 내부에 동거 | expected/observed digest admission·거절을 child로 분리하고 기존 호출 순서 유지. 관련 runtime 회귀 pending |
+| `quanta-runtime/src/sdk/orchestration.rs` + `orchestration/{gateway.rs,ingress_exports_v1.rs,test_support_v1.rs}` | 긴 평면 SDK public reexport 목록 | gateway·ingress·test support export를 feature cfg와 함께 child로 분리. Public 경로·feature surface 유지가 목표이며 현재 feature별 compile proof pending |
+| SDK backend→composition→executor Cargo/port 전달 | Shape path가 Cost feature 경유 | standalone Shape port와 `shape-analyzer` feature를 직접 전달. Cost-only 공개 Shape API는 `any(cost,shape)`로 유지; disabled lane과 Heap의 explicit Cost dependency도 보존. 실제 SDK factory/overlay proof pending |
+
 D2 admission은 실제 `TarjanFrameV1` 크기와 output header/member allocation을 포함하는 checked byte envelope로 보완한다. 작은 custom cap의 거절·경계 통과를 owner core 회귀로 고정한다. 이 변경의 proof는 기존 core19 결과와 별도로 실행한다.
+
+Generated GOD의 선택 4경로(Cost Shape source/tests, Taint `wire_recursion.rs`, PTA `whole_program.rs`)는 현재 정적 비교에서 baseline 14키→7키, 퇴역 7키, 신규·악화 0이다. 이 수치는 최종 source-bound witness와 owning generator의 scoped monotonic 갱신 대상이다. 전역 Honesty ratchet RED 및 선택 범위 밖 `WorkerCfgDfgCacheV1`의 기존 미등록 `impl_public_methods=11`은 이 갱신으로 통과되지 않는다.
 
 | Consumer compile prerequisite | Before | After |
 |---|---|---|

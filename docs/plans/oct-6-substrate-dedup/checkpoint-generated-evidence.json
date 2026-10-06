@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-06T03:54:53.600462+00:00",
+  "recorded_at_utc": "2026-10-06T07:28:10.806500+00:00",
   "initial_frozen_main": "39edfc1ca5bf143a09b66f0738c5f2b3987c7572",
   "execution_root": "/Users/songmin/.codex/worktrees/oct6-substrate-integrate/semantica-codegraph-v2",
   "proof_scope": "Generated/policy observations on frozen source only; raw full-sweep flags are not counted as demonstrated runtime defects",
@@ -402,5 +402,96 @@
     },
     "local_artifact_sha256": "74380968f78f2e4d9bc2de63be11a28090cbbcfdde2eff62d3e9dabd14121677",
     "main_baseline_written": false
+  },
+  "selected_followup_repairs": {
+    "proof_state": "clean frozen source; owning QBC running; generated baseline/topology writes NOT_RUN",
+    "shape_test_source": "01abc49b4e65101ebd7d9548fffec2c613436659",
+    "shape_test_scope": "two existing owner refusals now exact EngineError(reason); context fixture has admitted control before invalid carrier; overflow test name matches private helper actually invoked",
+    "shape_static_honesty": {
+      "shape-only": 0,
+      "relationship": 0,
+      "parse_errors": 0
+    },
+    "shape_honesty_prior_attribution_correction": "Both standalone keys already existed: overflow body hash unchanged at moved line; context authority body hash rewritten. They were not two new findings. Deleted Cost keys remain distinct retirement.",
+    "pta_structure_source": "bc1a10dd07b",
+    "pta_metrics": {
+      "solve_worker_uniqueness_file_lines": {
+        "before": 1255,
+        "after": 1150,
+        "baseline": 1188
+      },
+      "recursive_summary_function_lines": {
+        "before": 84,
+        "after": 73,
+        "baseline": 83
+      }
+    },
+    "pta_static_test_identity_control": "32 existing test identifiers/order unchanged; moved file-identity bodies unchanged except visibility",
+    "pta_preexisting_gate_blocker": "WorkerCfgDfgCacheV1 impl_public_methods=11 is unbaselined on original HEAD too; all11 methods have external impl callers, no safe visibility-only reduction",
+    "sdk_normal_hook": "Wildcard attempt rejected; explicit cfg-preserving64-name exports and same-path gateway/test helpers committed, normal rustfmt9/integrity/safety PASS; no waiver",
+    "source": "60eaba860404a2d1bcf4611d03140d97c4fbf55e",
+    "base": "10c902e74af63d054c8824c2ab5c8c4af0a19be7",
+    "sdk_metrics": {
+      "product_bound_file": [
+        3159,
+        3105,
+        3154
+      ],
+      "capabilities_file": [
+        1024,
+        983,
+        1013
+      ],
+      "capabilities_from_wiring_function": [
+        166,
+        143,
+        164
+      ],
+      "incremental_capabilities_function": [
+        125,
+        119,
+        120
+      ],
+      "capabilities_from_build_function": [
+        100,
+        87,
+        99
+      ],
+      "orchestration_file": [
+        1030,
+        947,
+        949
+      ]
+    },
+    "scoped_retirement_witness": {
+      "candidate_source": "60eaba860404a2d1bcf4611d03140d97c4fbf55e",
+      "witness_sha256": "d6a40300ab4cb3b17498b94063174e6ddcd76fbb6a8da3eb1b21fd81bfb4333d",
+      "paths": [
+        "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/whole_program.rs"
+      ],
+      "retired_keys": [
+        "rust:function_complexity:packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs:ShapeAnalyzerAdapter::analyze",
+        "rust:function_complexity:packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/whole_program.rs:compute_recursive_summary_state_with_index_v1",
+        "rust:function_complexity:packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs:check_recursion_cycle_policy",
+        "rust:function_lines:packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs:ShapeAnalyzerAdapter::analyze",
+        "rust:function_lines:packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs:strong_connect",
+        "rust:function_lines:packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs:tarjan_scc",
+        "rust:function_parameters:packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs:strong_connect"
+      ],
+      "summary": {
+        "retired_cost_shape_keys": 5,
+        "retired_pta_complexity_key": 1,
+        "retired_taint_recursion_key": 1,
+        "scoped_baseline_keys_before": 14,
+        "scoped_findings_after": 7
+      },
+      "allowed": 0,
+      "new": 0,
+      "worsened": 0,
+      "proof_kind": "read-only source/scanner; not generated-file write or Rust verdict"
+    }
   }
 }

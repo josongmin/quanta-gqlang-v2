@@ -11,6 +11,8 @@
 
 상태: **IN_PROGRESS — 별도 Semantica 워크트리에서 구현·owner 검증 중. Main 반영 및 항목별 DoD 미완료.**
 
+현재 D1/D2 통합 후보는 Semantica `60eaba860404a2d1bcf4611d03140d97c4fbf55e` (base `10c902e74af63d054c8824c2ab5c8c4af0a19be7`, 변경 92경로)다. 새 frozen-source QBC는 실행 중이며 결과를 아직 D1/D2 통과 증거로 세지 않는다. 아래 과거 checkpoint와 현재 후보의 증거 범위는 [구현 checkpoint 기록](execution-progress.md)에서 분리한다.
+
 ### 구체적인 실행 자료
 
 - [코드 변경 지도·Before/After](code-change-map.md): 저장소 tree, 실제 파일/symbol별 수정·삭제·추가·유지·재생성, 현재/목표 caller 연결과 코드 스케치.
@@ -157,6 +159,7 @@ GQLang frontend는 syntax/sema/normalized IR을 소유하고, 실행 substrate�
 - **직접 선행:** D1-A.
 - **변경:** runtime `shape-analyzer`의 불필요한 `cost-analyzer` 활성화 제거. Cargo뿐 아니라 selector/builder/capability/public cfg exports/overlays/QBC feature taxonomy/generated honesty 입력을 함께 정리한다.
 - **검증 lanes:** pure Shape, PTA-derived Shape, Shape disabled typed unavailable, 기존 Cost/Termination/Heap 조합. 실제 SDK feature closure와 두 Shape gate·mandatory feature-policy 확인.
+- **현재 추가 경계:** runtime capability의 Shape/Cost 표시와 SDK backend→composition→executor의 포트 전달을 같은 feature 조합에서 검사한다. `shape-analyzer`만 켠 경로와 Cost-only 공개 Shape API를 모두 보존하고 Heap의 명시적 Cost 의존성은 유지한다. Runtime digest admission과 SDK 공개 export 분리는 계산 owner 변경과 별도 책임으로 검증한다.
 - **DoD:** dependency closure로 shape-only 주장을 입증한다. D1-A 결과를 D1-B나 regex-free 제품 증명으로 확대하지 않는다. Generated 입력은 해당 owner generator로 갱신하고 baseline을 낮춰 통과시키지 않는다.
 
 ### F1 → D6 — 현재 search 계약과 app 변환 통합
@@ -202,6 +205,7 @@ GQLang frontend는 syntax/sema/normalized IR을 소유하고, 실행 substrate�
 #### D2-PTA / D2-Taint — 각각 caller cutover
 
 - **PTA:** [precise_query_scc](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc.rs)의 복제 Tarjan state/frame 순회를 삭제한다. PTA admission/domain/output projection만 남긴다.
+- **PTA 주변 소유:** field strong-update의 SCC 실패 판정은 별도 child에 두되 `Stop`의 typed reason과 `Compute`의 incomplete authority를 유지한다. Worker의 same-artifact 파일 식별은 child로 분리하고, whole-program 재귀 요약은 SCC adjacency 구성만 helper로 옮긴다. 이는 새 traversal 구현이나 공개 DTO 변경이 아니다.
 - **Taint:** [wire_recursion](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs)의 복제 순회/state와 전용 sentinel helper를 삭제한다. Opt-in cycle policy/budget/sorted output은 caller가 소유한다.
 - **gate:** [gate-tarjan-iterative.sh](../../../../semantica-codegraph-v2/tools/ci/gates/gate-tarjan-iterative.sh)를 새 core와 taint adapter tests에 연결한다. Ignored `deep_chain_50k`를 명시적으로 실행하고 empty selection을 거절한다.
 - **검증:** empty/isolated/self-loop/cycle/disconnected/target-only/invalid index, cancellation/compute error, pre-allocation admission failure, 50k deep chain. Partition만 같고 order/ID가 달라지면 실패다.
@@ -290,12 +294,12 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 | D5 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker PTA solver227 QBC GREEN |
 | D4 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker SCV2 leaf34 QBC GREEN; canonical main fences PASS |
 | D7 | MAIN_IMPLEMENTED | `b258f5919a5` | Final clean integration에서 6-file owner matrix70/70 GREEN; captured source·기존 parity/surface/DI. Full product qualification 별도 |
-| D1-A / D1-B | PRIVATE_COMMITTED / PENDING refreshed consumer proof | 없음 | Clean combined `813857b73fc`/base `8b44be65225`,75paths. Wire 선행 main `fddfb1e175e`. Standalone17은 earlier-source GREEN; fresh runtime/SDK/Cost-only/gates와 feature trees 필요 |
+| D1-A / D1-B | PRIVATE_COMMITTED / PENDING current-source owner proof | 없음 | Combined `60eaba860404`/base `10c902e74af6`,92 paths. Shape owner/factory/feature 연결과 runtime capability·SDK export 분리 구현. Earlier-source standalone17 GREEN은 현재 후보 proof가 아니다. Frozen QBC 실행 중; pure/PTA/disabled/Cost-only/Heap 및 runtime·SDK consumer 결과 pending |
 | F1 / D6 | MAIN_IMPLEMENTED | `c1f821db572` | SDK211 pass/2 skip; rebased consumers141 pass/1 skip; installed wheel1 + Granian/scripted daemon1 GREEN. Native daemon/product qualification 별도 |
 | D2-P / D2-K | MAIN_IMPLEMENTED | `df2a867ad70` | Final core20 QBC GREEN; actual frame/output bound·typed stop·order/ID controls. Rebased std-only owner source/toolchain unchanged |
-| D2 PTA | PRIVATE_COMMITTED / PENDING refreshed owner proof | 없음 | Combined `813857b73fc`는 current PTA lib-test prerequisites를 포함한다. Old54는 historical. Fresh Tarjan7 및 field-refinement caller controls pending. [Rust evidence/RCA](checkpoint-rust-evidence.json) |
-| D2 Taint | PRIVATE_COMMITTED / PENDING current-base owner proof | 없음 | Private regular35+deep1은 historical PASS. Wire main `fddfb1e175e`, frozen f6c serde65/default46+core20 sealed PASS. 이후 PTA/CBOR/QMP compile input drift로 remaining gate 취소, current-base `813857b73fc`의 Tarjan7와 main import pending |
-| Generated inputs | PARTIAL_MAIN / PENDING final census | GOD `0a86de35c28` | GOD17 keys 제거·fresh-base scoped19 files PASS. Topology generate/check PASS@39edfc 이후 source 이동; final 재생성 pending. Honesty full ratchet 거절, baseline 수정0. [Generated evidence/오탐 근거](checkpoint-generated-evidence.json) |
+| D2 PTA | PRIVATE_COMMITTED / PENDING current-source owner proof | 없음 | Combined `60eaba860404`의 SCC caller·field-policy child·worker identity·whole-program helper와 compile prerequisites 구현. 기존 10개 PTA prerequisite selector는 정적 최소 14 cases이며 현재 frozen QBC 결과 pending. `813857b73fc` Tarjan lib-test 0 cases/87 compile errors는 과거 실패다. 첫 진단 위치 2개는 D2 변경 파일, 85개는 해당 diff에서 수정하지 않은 파일이지만 후자를 모두 사전 결함으로 증명하지는 않는다. Field-refinement caller controls도 pending. [Rust evidence/RCA](checkpoint-rust-evidence.json) |
+| D2 Taint | PRIVATE_COMMITTED / PENDING current-source owner proof | 없음 | Private regular35+deep1은 historical PASS. Wire main `fddfb1e175e`, frozen f6c serde65/default46+core20 sealed PASS. 이후 input drift로 당시 remaining gate 취소. Combined `60eaba860404`의 Tarjan7/deep-chain 및 main import pending |
+| Generated inputs | PARTIAL_MAIN / PENDING final census | GOD `0a86de35c28` | GOD17 keys 제거·fresh-base scoped19 files PASS. 현 후보의 선택 4경로는 baseline14→현재7, retired7/new0/worse0 정적 비교; 최종 source에서 witness·topology 재생성과 owning gate 필요. 전역 Honesty RED와 기존 `WorkerCfgDfgCacheV1` 공개 메서드 11개 미등록 GOD debt는 별도. [Generated evidence/오탐 근거](checkpoint-generated-evidence.json) |
 
 ### 최종 Definition of Done
 
