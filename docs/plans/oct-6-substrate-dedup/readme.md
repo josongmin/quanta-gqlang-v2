@@ -294,6 +294,7 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 | F1 / D6 | MAIN_IMPLEMENTED | `c1f821db572` | SDK211 pass/2 skip; rebased consumers141 pass/1 skip; installed wheel1 + Granian/scripted daemon1 GREEN. Native daemon/product qualification 별도 |
 | D2-P / D2-K | MAIN_IMPLEMENTED | `df2a867ad70` | Final core20 QBC GREEN; actual frame/output bound·typed stop·order/ID controls. Rebased std-only owner source/toolchain unchanged |
 | D2 PTA / Taint | PRIVATE_COMMITTED / IN_PROGRESS | 없음 | PTA 이전 source owner QBC는 local API skew compile54 errors/0 cases; rebased7e에서도 missing owner exports/API 남음. Taint 이전 component proof와 current consumer proof 구분. [Rust evidence/RCA](checkpoint-rust-evidence.json) |
+| Generated inputs | PARTIAL_PROOF / PENDING import | 없음 | GOD17 keys 제거·scoped19 files PASS, topology generate/check PASS@39edfc 이후 source 이동. Honesty full ratchet는 global regressions로 거절, baseline 수정0. [Generated evidence/오탐 근거](checkpoint-generated-evidence.json) |
 
 ### 최종 Definition of Done
 

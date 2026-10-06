@@ -245,10 +245,10 @@ Gate before/after:
 |---|---|
 | cost `--lib shape_analyzer_adapter --features cost-analyzer` | standalone Shape unit tests; pta-rail converter cases separately selected |
 | SDK tests with cost-analyzer feature | D1-B exact Shape-only + PTA-derived recipe; feature-required cfg no empty pass |
-
-Cost-only actual overlay control은 기존 `runtime_ingress_shape_overlay_uses_standalone_adapter_v1` body를 재사용한다. Guard는 `any(cost-analyzer, shape-analyzer)`이며 command는 QBC를 통해 `cargo test -p quanta-runtime --lib runtime_ingress_shape_overlay_uses_standalone_adapter_v1 --no-default-features --features gateway-ingress-runtime-core,cost-analyzer --no-fail-fast --locked --offline`이다. 실제 1 case가 실행되어 Tree classification까지 도달해야 한다. Gate에 lane이 있다는 정적 확인은 이 행동 증명을 대신하지 않는다.
 | Cost `gate_cost_shape_integration`, `extract_traversal_kind` | remain Cost owner checks with port supplied by surviving Shape where applicable |
 | query-execution Heap integration | remain Heap owner checks; not deleted as Shape clone |
+
+Cost-only actual overlay control은 기존 `runtime_ingress_shape_overlay_uses_standalone_adapter_v1` body를 재사용한다. Guard는 `any(cost-analyzer, shape-analyzer)`이며 command는 QBC를 통해 `cargo test -p quanta-runtime --lib runtime_ingress_shape_overlay_uses_standalone_adapter_v1 --no-default-features --features gateway-ingress-runtime-core,cost-analyzer --no-fail-fast --locked --offline`이다. 실제 1 case가 실행되어 Tree classification까지 도달해야 한다. Gate에 lane이 있다는 정적 확인은 이 행동 증명을 대신하지 않는다.
 
 D1-A requires H1–H5 and relevant H8. D1-B additionally requires H6–H9, two retargeted Shape gates, feature policy/honesty regeneration. Factory cutover cannot close D1-B.
 

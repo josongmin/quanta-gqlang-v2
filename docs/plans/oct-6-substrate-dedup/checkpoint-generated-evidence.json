@@ -1,0 +1,245 @@
+{
+  "recorded_at_utc": "2026-10-06T03:54:53.600462+00:00",
+  "initial_frozen_main": "39edfc1ca5bf143a09b66f0738c5f2b3987c7572",
+  "execution_root": "/Users/songmin/.codex/worktrees/oct6-substrate-integrate/semantica-codegraph-v2",
+  "proof_scope": "Generated/policy observations on frozen source only; raw full-sweep flags are not counted as demonstrated runtime defects",
+  "initial_results": [
+    {
+      "name": "topology-generate",
+      "argv": [
+        "/tmp/oct6-substrate-python/bin/python",
+        "tools/ci/lint/topology_inventory_v2.py",
+        "generate",
+        "--repo-root",
+        ".",
+        "--output",
+        "tools/ci/lint/contracts/test-module-inventory-v2.json",
+        "--roster",
+        "tools/ci/lint/contracts/test-module-inventory-v2-roster.json"
+      ],
+      "exit": 0,
+      "seconds": 266.79,
+      "log": "/tmp/oct6-generated-topology-generate.log",
+      "log_sha256": "a96055a060366852c093d8fb7bb1b305d61c24e5948ac6650e4a47adcc69878d"
+    },
+    {
+      "name": "honesty-ratchet",
+      "argv": [
+        "bash",
+        "tools/ci/honesty/ratchet.sh",
+        "positive-negative-pair",
+        "relationship"
+      ],
+      "exit": 1,
+      "seconds": 569.43,
+      "log": "/tmp/oct6-generated-honesty-ratchet.log",
+      "log_sha256": "c9efee9c85a1769e373b370a1b8f21765708166c27632bfbf8f30163ad539f35",
+      "summaries": [
+        "[positive-negative-pair] surviving=1049 new=1632 rewritten=1056 cleared=17433 escape_tags=103",
+        "[relationship] surviving=217 new=1788 rewritten=485 cleared=2043 escape_tags=1"
+      ]
+    },
+    {
+      "name": "evidence-grounding",
+      "argv": [
+        "/tmp/oct6-substrate-python/bin/python",
+        "tools/ci/honesty/gates/gate_test_evidence_grounding.py",
+        "--mode",
+        "regression"
+      ],
+      "exit": 1,
+      "seconds": 174.65,
+      "log": "/tmp/oct6-generated-evidence-grounding.log",
+      "log_sha256": "ec4fc4f8ba2c129be1ff5d6fa1d8e723fe010cb2f33d3463daf4115f8915218f",
+      "summaries": [
+        "[evidence-grounding] surviving=71 new=711 rewritten=279 cleared=4236 escape_tags=35"
+      ]
+    }
+  ],
+  "initial_topology_check": {
+    "exit": 0,
+    "command": [
+      "tools/ci/lint/topology_inventory_v2.py",
+      "check",
+      "--repo-root",
+      ".",
+      "--inventory",
+      "tools/ci/lint/contracts/test-module-inventory-v2.json",
+      "--roster",
+      "tools/ci/lint/contracts/test-module-inventory-v2-roster.json"
+    ],
+    "log_sha256": "2414f0a078ecad3c4ca2aef77896076393f6cd32caeba21f921bb1d2f1d83497",
+    "targets": 1089,
+    "census_rows": 1008,
+    "main_import": "PENDING_FINAL_SOURCE_REGENERATION"
+  },
+  "god": {
+    "scope_paths": [
+      "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/canonical_ir.rs",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/error.rs",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/mod.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/src/scv2_exact_fusion.rs",
+      "packages/core/pta/engine/src/lib.rs",
+      "packages/core/pta/engine/src/solver/andersen/mod.rs",
+      "packages/core/pta/engine/src/solver/andersen/union_find.rs",
+      "apps/api/api/routes/agent.py",
+      "apps/api/api/routes/search.py",
+      "apps/cli/cli/main.py",
+      "apps/mcp/mcp/adapters/mcp/services.py",
+      "apps/mcp/mcp/adapters/search/__init__.py",
+      "apps/mcp/mcp/adapters/search/query_adapter.py",
+      "apps/mcp/mcp/adapters/search/symbol_retriever.py",
+      "packages/analysis/codegraph-shared/codegraph_shared/infra/search/agent_payloads.py",
+      "packages/analysis/codegraph-shared/codegraph_shared/infra/search/current_search_projection.py",
+      "packages/sdk/python/codegraph_sdk/_product_projection_values_v1.py",
+      "packages/sdk/python/codegraph_sdk/_product_search_projection_v1.py",
+      "packages/sdk/python/codegraph_sdk/queries/search.py",
+      "packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/lib.rs",
+      "packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs"
+    ],
+    "existing_paths": [
+      "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/canonical_ir.rs",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/error.rs",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/mod.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/src/scv2_exact_fusion.rs",
+      "packages/core/pta/engine/src/lib.rs",
+      "packages/core/pta/engine/src/solver/andersen/mod.rs",
+      "apps/api/api/routes/agent.py",
+      "apps/api/api/routes/search.py",
+      "apps/cli/cli/main.py",
+      "apps/mcp/mcp/adapters/mcp/services.py",
+      "apps/mcp/mcp/adapters/search/__init__.py",
+      "apps/mcp/mcp/adapters/search/query_adapter.py",
+      "packages/analysis/codegraph-shared/codegraph_shared/infra/search/agent_payloads.py",
+      "packages/analysis/codegraph-shared/codegraph_shared/infra/search/current_search_projection.py",
+      "packages/sdk/python/codegraph_sdk/_product_projection_values_v1.py",
+      "packages/sdk/python/codegraph_sdk/_product_search_projection_v1.py",
+      "packages/sdk/python/codegraph_sdk/queries/search.py",
+      "packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/lib.rs",
+      "packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs"
+    ],
+    "deleted_paths": [
+      "packages/core/pta/engine/src/solver/andersen/union_find.rs",
+      "apps/mcp/mcp/adapters/search/symbol_retriever.py"
+    ],
+    "findings": 21,
+    "baseline_entries_before": 14362,
+    "baseline_entries_after": 14345,
+    "removed_keys": [
+      "python:function_complexity:apps/api/api/routes/search.py:_extract_search_hits_v1",
+      "python:function_complexity:apps/api/api/routes/search.py:_extract_search_hits_v1::_symbol_to_hit_v1",
+      "python:function_complexity:apps/mcp/mcp/adapters/search/query_adapter.py:QueryAdapter::_execute_via_query_engine",
+      "python:function_complexity:apps/mcp/mcp/adapters/search/query_adapter.py:QueryAdapter::_extract_search_hits_v1",
+      "python:function_complexity:apps/mcp/mcp/adapters/search/query_adapter.py:QueryAdapter::_extract_search_hits_v1::_symbol_to_hit_v1",
+      "python:function_complexity:apps/mcp/mcp/adapters/search/symbol_retriever.py:SymbolRetrieverAdapter::_search_symbols",
+      "python:function_complexity:apps/mcp/mcp/adapters/search/symbol_retriever.py:SymbolRetrieverAdapter::_search_symbols::_symbol_from_canonical_row_v1",
+      "python:function_lines:apps/api/api/routes/search.py:_extract_search_hits_v1",
+      "python:function_lines:apps/api/api/routes/search.py:hybrid_search",
+      "python:function_lines:apps/cli/cli/main.py:search",
+      "python:function_lines:apps/mcp/mcp/adapters/search/symbol_retriever.py:SymbolRetrieverAdapter::_search_symbols",
+      "rust:function_complexity:packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs:strongly_connected_components_v1",
+      "rust:function_lines:packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/canonical_ir.rs:canonical_memory_ir_from_build_input",
+      "rust:function_lines:packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/canonical_ir.rs:lower_call_boundary_block_op_v1",
+      "rust:function_lines:packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs:strongly_connected_components_v1",
+      "rust:impl_methods:packages/core/pta/engine/src/solver/andersen/union_find.rs:UnionFind",
+      "rust:impl_public_methods:packages/core/pta/engine/src/solver/andersen/union_find.rs:UnionFind"
+    ],
+    "new": 0,
+    "growth": 0,
+    "outside_entries_unchanged": true,
+    "excluded_unbaselined_debt": [
+      "packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/summary_bound_resume_v3.rs",
+      "packages/sdk/python/codegraph_sdk/_receipt.py",
+      "packages/sdk/python/codegraph_sdk/client.py"
+    ],
+    "private_candidate": "7c3ec10828bfe09a34a03d9b0f1a38667bcce4fd",
+    "main_import": "PENDING_FOREIGN_CI_BARRIER",
+    "canonical_fences": "normal private commit staged patch integrity/safety PASS; source-scoped CLI19 files PASS before latest rebase"
+  },
+  "honesty_baselines_written": false,
+  "d3_honesty_attribution": {
+    "source_main": "c93b4ddd5ed22892e4b90ff41df86efe092b665b",
+    "path": "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs",
+    "function": "direct_port_dfg_to_canonical_memory_ir_preserves_copy_merged_base_identity",
+    "body_evidence": {
+      "initial_base": {
+        "commit": "5cb96ba45c8ed933e6511647ecd2ceb3a5d4e03a",
+        "line": 248,
+        "lines": 74,
+        "sha256": "5cd6eb6548240fe553ceeb26324d6b613ae50328e86e322183df3d7526dcc4e7"
+      },
+      "d3_parent": {
+        "commit": "9ab2f11584b183ab9374a82926d97fd45b235f44",
+        "line": 248,
+        "lines": 74,
+        "sha256": "5cd6eb6548240fe553ceeb26324d6b613ae50328e86e322183df3d7526dcc4e7"
+      },
+      "d3_commit": {
+        "commit": "d88f0a2ed7a64f38ae8ac97badbb9671a759e10c",
+        "line": 1,
+        "lines": 74,
+        "sha256": "5cd6eb6548240fe553ceeb26324d6b613ae50328e86e322183df3d7526dcc4e7"
+      },
+      "current": {
+        "commit": "c93b4ddd5ed22892e4b90ff41df86efe092b665b",
+        "line": 1,
+        "lines": 74,
+        "sha256": "5cd6eb6548240fe553ceeb26324d6b613ae50328e86e322183df3d7526dcc4e7"
+      }
+    },
+    "body_identical": true,
+    "positive_negative_pair": {
+      "retired_baseline_keys": [
+        "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:228:direct_port_dfg_to_canonical_memory_ir_preserves_copy_merged_base_identity:no_negative_twin",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:294:direct_canonical_memory_ir_matches_bridge_semantics_for_copy_alias_case:no_negative_twin",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:384:direct_port_dfg_ingress_promotes_exact_context_insensitive_authority:no_negative_twin",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:437:direct_canonical_memory_ir_surfaces_context_sensitive_memory_without_inventing_call_context:no_negative_twin",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:513:direct_canonical_memory_ir_maps_dynamic_attr_selector_to_widened_bucket:no_negative_twin",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:561:direct_canonical_memory_ir_lowers_delattr_literal_tombstone_to_strong_kill:no_negative_twin",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:604:direct_canonical_memory_ir_lowers_delattr_dynamic_tombstone_to_partial_kill:no_negative_twin",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:656:direct_canonical_memory_ir_lowers_hasattr_probe_to_address_use:no_negative_twin"
+      ],
+      "count": 8,
+      "current_gate_log_keys_for_path": [],
+      "interpretation": "Eight historical keys absent in current gate output; current path applicability excludes group_canonical_ir.rs. This is not proof of eight D3 deletions or added negative twins. Full-sweep ratchet failed and did not write baseline."
+    },
+    "relationship": {
+      "retired_baseline_keys": [
+        "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:294:direct_canonical_memory_ir_matches_bridge_semantics_for_copy_alias_case:unwrap_then_discard",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:384:direct_port_dfg_ingress_promotes_exact_context_insensitive_authority:unwrap_then_discard",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:437:direct_canonical_memory_ir_surfaces_context_sensitive_memory_without_inventing_call_context:unwrap_then_discard",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:705:strict_v2_ingress_rejects_context_sensitive_canonical_memory_without_call_context_authority:unwrap_then_discard"
+      ],
+      "retired_count": 4,
+      "moved_old_key": "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:228:direct_port_dfg_to_canonical_memory_ir_preserves_copy_merged_base_identity:unwrap_then_discard",
+      "current_key": "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:2:direct_port_dfg_to_canonical_memory_ir_preserves_copy_merged_base_identity:unwrap_then_discard",
+      "interpretation": "Verified test body is identical across initial base/D3 parent/D3/current. Initial body starts at line248, current at line1 (test attribute); function name is current line2. Historical baseline key uses line228 from an older snapshot, whose source was not recovered here. The current finding misses vec![def_a,...] use; cleared keys include prior renames and are not all D3 deletions."
+    },
+    "current_source_evidence": {
+      "def_a_construct_line": 8,
+      "def_a_consumed_by_vec_line": 20,
+      "defs_slice_passed_to_builder_line": 49,
+      "memory_ops_count_assert_line": 59,
+      "store_load_base_identity_assert_lines": [
+        68,
+        69
+      ],
+      "access_path_assert_lines": [
+        72,
+        73
+      ]
+    },
+    "log": "/tmp/oct6-generated-honesty-ratchet.log",
+    "scope": "read_only_d3_attribution",
+    "not_all_cleared_keys_are_d3_deletions": true
+  },
+  "mandatory_honesty_retirement": "BLOCKED: owning full-sweep ratchet rejects global new/rewritten findings; no blessing or threshold/scope change in this task",
+  "semantica_product_qualification": "NOT_RUN",
+  "foreign_barrier_observed": {
+    "task_id": "OCT6-LOCAL-STATIC-CI-01A10197",
+    "lease_id": "f4660517-7889-4adb-934b-bffa7ed72af6",
+    "created_at_utc": "2026-10-06T03:53:26.766731Z",
+    "stale": false,
+    "action": "not released or bypassed"
+  }
+}
