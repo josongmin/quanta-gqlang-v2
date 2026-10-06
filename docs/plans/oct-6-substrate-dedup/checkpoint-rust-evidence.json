@@ -5083,7 +5083,7 @@
       }
     }
   },
-  "latest_failed_composed_candidate": {
+  "previous_1330_failed_candidate": {
     "source": "1330ed88f568a16d37dd6eeb4ff91a1e7b366987",
     "base_main": "0098a9935621ee532fa48a460b83aa9d241bfd95",
     "parents": [
@@ -5214,7 +5214,7 @@
       "proof_kind": "source only; not included in frozen 1330"
     }
   },
-  "current_composed_candidate": {
+  "latest_failed_composed_candidate": {
     "source": "3fb6fb51be7218b95e9024e5f390d93fe1afadd4",
     "base_main": "884233758c41fda9ca7ebb9ba81f616c443e8aad",
     "parents": [
@@ -5332,5 +5332,94 @@
       "rust_owner": "NOT_RUN on repaired tuple",
       "proof_kind": "source only; not included in frozen 3fb"
     }
+  },
+  "current_composed_candidate": {
+    "source": "94262f71aa911d567b769449818c69d41ee3b739",
+    "base_main": "a5edbbd09f3b4c5d624f92207dadd8ce07e11191",
+    "parents": [
+      "a5edbbd09f3b4c5d624f92207dadd8ce07e11191",
+      "3fb6fb51be7218b95e9024e5f390d93fe1afadd4"
+    ],
+    "clean": true,
+    "owned_changed_paths": 87,
+    "candidate_state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/candidate-94262f71aa91-state.json",
+    "candidate_state_sha256": "94c88a0cf2678072c4c7057af1d2a82b3c1eb84e93e9e31a62626379f8b5a42d",
+    "merge_witness": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/merge-94262f71aa91-preservation-witness.json",
+    "merge_witness_sha256": "9c7690d6d0bc2c7fede8cc92aa499272777d6bcc09de5f3a2bf1bdae8529cf51",
+    "merge_review": {
+      "owned_body_paths_exact_second_parent": 87,
+      "main_only_paths_exact_first_parent": 23,
+      "overlap_paths": 0,
+      "normal_hooks": "PASS",
+      "proof_kind": "source merge only; no Rust/product verdict"
+    },
+    "next_sibling_pins": {
+      "quanta_gqlang_v2": "30b6efd06645762146479f8a5c89e81d6dc85af5",
+      "quanta_index": "ab87837f5d34de1d8f9de9dedcfd44032051a284"
+    },
+    "source_policy": {
+      "status": "PASS",
+      "input_paths": 102,
+      "passed_policies": 92,
+      "exit_code": 0,
+      "scope_complete": true,
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/94262f71aa91-boundary-policy102-state.json",
+      "state_sha256": "dcd99f84912e826ddd71afacfa6cc23dd3b603d13740e6cb08b157ad703586a7",
+      "log_sha256": "33002ff2948b028e55af464a88d1b1bbe1fa4f57ae701570865d8ddef5aa7828",
+      "proof_kind": "exact source policy; no Rust/product verdict"
+    },
+    "frozen_materialization": {
+      "status": "SEALED",
+      "topology_digest": "94262f71aa911d567b769449818c69d41ee3b739+ext-7c0966bc582839fd8230",
+      "source_snapshot_digest": "10cdc317514c9e10cba732ef2f02c259be81ed600a8ea2366169c55b7784dc18",
+      "sibling_overlays": "empty",
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/snapshot-94262f71aa91-state.json",
+      "state_sha256": "b179ccf47f50f2ef9425485e9252bd96a264c0403eb2dd848c214210248ee709",
+      "proof_kind": "source snapshot custody; no Rust execution"
+    },
+    "request_map": {
+      "status": "SEALED",
+      "request_count": 45,
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-owner-proof-request-map45-94262f71aa91.json",
+      "sha256": "9d71e34c4cbb04e7ca8185c10ca000a36b2f123f46732509944f50a611513d62"
+    },
+    "owner_launcher": {
+      "status": "SEALED; not run",
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-94262f71aa91.py",
+      "sha256": "5b1a9998d64f012061103cdfdbda5231aace4a196c279b2604e2244be5c9d069"
+    },
+    "pure_owner_projection": {
+      "status": "PASS",
+      "evidence": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/pure-validation-94262f71aa91.json",
+      "evidence_sha256": "7b2b152f7678a1ce6c8acbb47ba8ba9c789f5b2dce1c4463bde0c85283087bfe",
+      "proof_kind": "static projection; no Rust execution"
+    },
+    "locked_metadata": {
+      "status": "PASS",
+      "root_exit_code": 0,
+      "nested_exit_code": 0,
+      "source_and_locks_unchanged": true,
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/locked-metadata-94262f71aa91/state.json",
+      "state_sha256": "53df45bee9918e96ca4aa44ad3270e9f19372f42e34c1fcecc83778a38a01a51",
+      "proof_kind": "QBC auxiliary metadata only; no Rust compiler/test verdict"
+    },
+    "source_bound_sequence": {
+      "status": "RUNNING source-memory6",
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/source-bound-sequence-94262f71aa91-state.json",
+      "runner": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/run-source-bound-sequence-94262f71aa91.py",
+      "runner_sha256": "b765a29119fec9f22925f4c8654de1fc6693536db653567b92ec3366a7ab157f",
+      "order": [
+        "source-memory6",
+        "budget30",
+        "json16",
+        "formal9",
+        "owner45"
+      ],
+      "conditional": true,
+      "finalized_owner_results": 0
+    },
+    "d1_d2_main_body_import": "NOT_RUN",
+    "consumer_generated_product_qualification": "NOT_RUN",
+    "next": "Wait for source-memory6 receipt, then conditional budget30, JSON16, formal9 and canonical owner45 on exact 942 frozen tuple"
   }
 }
