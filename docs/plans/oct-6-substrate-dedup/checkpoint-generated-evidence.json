@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-06T09:14:44+00:00",
+  "recorded_at_utc": "2026-10-06T09:29:03+00:00",
   "initial_frozen_main": "39edfc1ca5bf143a09b66f0738c5f2b3987c7572",
   "execution_root": "/Users/songmin/.codex/worktrees/oct6-substrate-integrate/semantica-codegraph-v2",
   "proof_scope": "Generated/policy observations on frozen source only; raw full-sweep flags are not counted as demonstrated runtime defects",
@@ -495,25 +495,43 @@
     }
   },
   "current_source_refresh": {
-    "candidate_source": "d14a8760c0397a78765636728d38ce9c4cd3d82c",
-    "candidate_base": "3188fe799218cff227e7cfc4ae36598eb2c7eefa",
-    "candidate_paths": 86,
-    "gqlang_main": "809bf17bc7e70259b2d9dc46b537291213be4380",
-    "main_session_fixture_checkpoint": "3ce7f396346b6a532a2229c6ffe36b79cd351380",
-    "main_wire_retained_view_checkpoint": "3188fe799218cff227e7cfc4ae36598eb2c7eefa",
-    "a342_failed_receipt": "/tmp/oct6-current-substrate-proof-attempt7.json",
-    "proof_stage": "d14a Wire serde sealed 68 PASS; Wire default running; generated owner/policy NOT_RUN",
-    "boundary_policy": "12 impacted policies PASS after resume-cost conflict resolution; static only",
+    "candidate_source": "3fe43a60f4a9fbe962ee237fd6c2950b259e84c1",
+    "candidate_base": "5c8da1a4f2bc2bd61f301a6386713e331796d015",
+    "candidate_paths": 87,
+    "worktree": "/Users/songmin/.codex/worktrees/oct6-substrate-integrate/semantica-codegraph-v2",
+    "branch": "codex/oct6-substrate-current-main-sync",
+    "reviewed_main_merge": {
+      "main": "5c8da1a4f2bc2bd61f301a6386713e331796d015",
+      "main_only_paths": 14,
+      "same_file_overlap": "incremental/mod.rs; independent line changes from both sides retained",
+      "semantics": [
+        "all 14 main-only paths byte preserved",
+        "current FileId, projected snapshot and Java/PTA owners retained",
+        "candidate D1/D2 and exact feature class registry retained"
+      ]
+    },
+    "main_only_paths_preserved": 14,
+    "normal_merge_hooks": "rustfmt 12 files PASS, safety 12 files/235 lines PASS; static only",
+    "gqlang_doc_checkpoint": "4dd74c7e5fc6ec98bfc9de4e2f1e9d1c7cc75d7c",
+    "prior_source_witness": {
+      "source": "d20fe7ad7132246ab73cf4f659c838311034bf9c",
+      "base": "24f2b91d3f849cf245756f3039a936338aee1f0a",
+      "record_at_time": "/tmp/oct6-final-retirement-witness.json",
+      "record_now": "replaced by exact 3fe/base5c8 witness at same path",
+      "sha256": "d456044610b863f2a4e79ab9afb530d73a35eeb34b8041c066c6e5a88af5d337",
+      "baseline_findings_before": 14,
+      "findings_after": 7,
+      "retired_keys": 7,
+      "new": 0,
+      "worsened": 0,
+      "proof_kind": "read-only scanner/source, historical d20 tuple; not 3fe evidence"
+    },
     "current_retirement_witness": {
       "record": "/tmp/oct6-final-retirement-witness.json",
-      "source": "d14a8760c0397a78765636728d38ce9c4cd3d82c",
-      "base": "3188fe799218cff227e7cfc4ae36598eb2c7eefa",
-      "scoped_paths": [
-        "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs",
-        "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs",
-        "packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs",
-        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/whole_program.rs"
-      ],
+      "sha256": "7fd8018a24979ce8fc5dff5a99268e244a31bbd19ed5c29fffa79684258a8e56",
+      "source": "3fe43a60f4a9fbe962ee237fd6c2950b259e84c1",
+      "base": "5c8da1a4f2bc2bd61f301a6386713e331796d015",
+      "scoped_paths": 4,
       "baseline_findings_before": 14,
       "findings_after": 7,
       "retired_keys": 7,
@@ -521,36 +539,33 @@
       "worsened": 0,
       "active_cost_shape_symbols": 0,
       "allowances_unchanged": true,
-      "outside_baseline_entries_sha256": "f67d1154e882e0ed7265a6a94d93fb6609e3b4560bdbf1f994d6ebf88cd3dfaa",
-      "proof_kind": "read-only source/scanner witness; no generated write or global Honesty pass"
+      "proof_kind": "read-only source/scanner; no generated write or global Honesty pass"
     },
-    "prior_scoped_retirement_witness": "a342228343d437a5eea1c7ff0715d29b0b70b19e",
-    "prior_witness_status": "read-only scanner/source witness only; not d14a generated owner proof",
-    "global_honesty_retirement": "BLOCKED: owning full-sweep ratchet unresolved; no baseline waiver/write",
+    "proof_stage": "clean private 3fe/base5c8 static merge; normal hooks PASS; d20 boundary attempt withdrawn; canonical owner40, consumer and generated owner/policy NOT_RUN",
+    "legacy_qbc_authority": {
+      "authority_kind": "manual",
+      "restriction_reason_v1": "manual_invocation_comparison_only",
+      "reuse_eligible_v1": false,
+      "owner_execution_receipt_v1": false,
+      "e7_failure_archive": "/tmp/oct6-current-substrate-proof-attempt9.json"
+    },
+    "source_path_prerequisite": {
+      "private_source": "386871f0206d3206a7d992e28df9a67b9b3d48a1",
+      "main_checkpoint": "24f2b91d3f849cf245756f3039a936338aee1f0a",
+      "scope": "three source-authority module/test path literals across two files",
+      "state": "landed on Semantica main; no owner behavior verdict or D1/D2 body import"
+    },
+    "feature_isolation_registry": {
+      "private_source": "6927b23bad8b7fd52a6b035ef9e11ac148c59372",
+      "exact_classes": 20,
+      "owner_direct_requests": 40,
+      "state": "included in clean private 3fe merge; owner requests NOT_RUN"
+    },
+    "global_honesty_retirement": "BLOCKED: owning full-sweep ratchet unresolved; no waiver or generated baseline write",
     "native_full_product_qualification": "NOT_RUN",
-    "next": "complete immutable selected owner/consumer proof and current-main overlap reconciliation, then scoped generated topology/GOD gate and global Honesty review",
-    "frozen_topology_digest": "d14a8760c0397a78765636728d38ce9c4cd3d82c+ext-a5f1840e0a7b23f04d4c",
-    "frozen_execution_root": "/Users/songmin/.cache/semantica-codegraph-v2/casectl-snapshots/d14a8760c0397a78765636728d38ce9c4cd3d82c_ext-a5f1840e0a7b23f04d4c_mat-plain-v1/semantica-codegraph-v2",
-    "frozen_sibling_heads": [
-      {
-        "source": "/Users/songmin/Documents/code-new/quanta-gqlang-v2",
-        "head": "809bf17bc7e70259b2d9dc46b537291213be4380",
-        "overlay_digest": ""
-      },
-      {
-        "source": "/Users/songmin/Documents/code-new/quanta-index",
-        "head": "a80dc1ca5834ce69277c46a914bdf4f2fe518bcc",
-        "overlay_digest": ""
-      }
-    ],
-    "main_delta_review": {
-      "record": "/tmp/oct6-final-main-delta-review.json",
-      "reviewed_main": "03c9bfa8e926a36278c93a95cf3a0e9804e9800f",
-      "latest_observed_main": "0c823f3f68c81e11688056d8e9124660a310cc57",
-      "main_changed_paths": 76,
-      "three_way_overlaps": 5,
-      "qualification": "candidate-only proof not current-main proof"
-    }
+    "next": "freeze 3fe source with exact siblings, run canonical owner-direct40 and consumer gates, then owning generated topology/GOD gates and D1/D2 main import qualification",
+    "prior_failed_topology_digest": "e7bebbe0a86d73f56c3a62d096334cbf35ef7b2d+ext-ba823c5a7a0f40ab9fd3",
+    "prior_failed_index_archived_sibling": "e6b90ff61a02fd917cbd396bfc664b8eb497292d"
   },
   "prior_source_refresh": {
     "candidate_source": "5fe8de9549a9d4349117b9d01010eeddd9f8f6b0",
@@ -595,6 +610,38 @@
       "global_honesty_retirement": "BLOCKED: owning full-sweep ratchet rejects global new/rewritten findings; no blessing or threshold/scope change in this task",
       "native_full_product_qualification": "NOT_RUN",
       "next": "immutable selected owner/consumer proof on a342 tuple, then scoped topology/GOD regeneration and Honesty review"
+    },
+    {
+      "candidate_source": "d14a8760c0397a78765636728d38ce9c4cd3d82c",
+      "candidate_base": "3188fe799218cff227e7cfc4ae36598eb2c7eefa",
+      "current_retirement_witness": {
+        "record_at_time": "/tmp/oct6-final-retirement-witness.json",
+        "record_now": "replaced by exact e7/base858a witness at the same path",
+        "source": "d14a8760c0397a78765636728d38ce9c4cd3d82c",
+        "base": "3188fe799218cff227e7cfc4ae36598eb2c7eefa",
+        "scoped_paths": [
+          "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs",
+          "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs",
+          "packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs",
+          "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/whole_program.rs"
+        ],
+        "baseline_findings_before": 14,
+        "findings_after": 7,
+        "retired_keys": 7,
+        "new": 0,
+        "worsened": 0,
+        "active_cost_shape_symbols": 0,
+        "allowances_unchanged": true,
+        "outside_baseline_entries_sha256": "f67d1154e882e0ed7265a6a94d93fb6609e3b4560bdbf1f994d6ebf88cd3dfaa",
+        "proof_kind": "read-only source/scanner witness; no generated write or global Honesty pass"
+      },
+      "proof_stage": "historical d14 source; Wire68+49 PASS, later gates0"
+    },
+    {
+      "candidate_source": "689f4942da983e620cbaad92aad8c137f1300936",
+      "candidate_base": "858a120e2eb11237df1eabe1dad3b61b1fad1568",
+      "candidate_paths": 86,
+      "proof_stage": "clean integrated source before SDK source-gate repair; no owner receipt"
     }
   ]
 }
