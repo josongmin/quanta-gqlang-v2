@@ -11,6 +11,12 @@
 
 상태: **PLANNED — 문서 정리 완료, D1–D7 코드 구현·owner 검증 미완료.**
 
+### 구체적인 실행 자료
+
+- [코드 변경 지도·Before/After](code-change-map.md): 저장소 tree, 실제 파일/symbol별 수정·삭제·추가·유지·재생성, 현재/목표 caller 연결과 코드 스케치.
+- [테스트 플랜](test-plan.md): 기존/추가 case 구분, fixture 입력·독립 expected 결과, Rust QBC/Python 명령, owner/consumer/feature/retirement 통과 기준.
+- [상세화 소스·문서 검증](detail-source-state.json): 이번 작업의 HEAD/dirty와 input continuity. 기존 [source-state.json](source-state.json)은 `a660384` 문서 버전에 대한 이력이며 이후 문서 hash와 일치해야 하는 current receipt가 아니다.
+
 ## 2. 배경과 현재 근거
 
 GQLang frontend는 syntax/sema/normalized IR을 소유하고, 실행 substrate는 Semantica가 소유한다. 감사에서는 GQLang 전용 ingress뿐 아니라 native SDK, Python SDK, HTTP agent, 공개 MCP, Index 연계를 따라 실제 caller와 계산 owner를 비교했다.
@@ -39,6 +45,8 @@ GQLang frontend는 syntax/sema/normalized IR을 소유하고, 실행 substrate�
 - D6/D7 관련 app 입력 11개도 이전 감사 bytes와 동일한지 확인했다. 합계 116개 hash claim, 고유 입력 103개다. Caller·계약 판정은 누적 감사의 해당 evidence를 따른다. 현재 문서 검증·source capture는 [source-state.json](source-state.json)에 기록한다.
 - 소스·호출 관계의 정적 판정과 이전 component 관찰이 근거다. 이번 문서 정리에서 Rust/QBC, Python owner tests, daemon/HTTP/MCP stdio, installed product, 성능 검증은 실행하지 않았다.
 - Semantica의 dirty 작업은 이 계획의 구현 완료로 세지 않는다. 착수 직전 관련 bytes, caller, feature, 같은 파일의 hunks를 다시 확인한다.
+
+2026-10-06 상세화 초기에 GQLang `a660384`, Semantica `04aaa523`, Index `14175629`를 관찰했으며 위 116개 input hash는 동일했다. 이후 관찰 HEAD와 추가 파일 digest는 `detail-source-state.json`에 기록한다. 상세화는 실제 파일·test symbol·QBC 문법을 더 확인한 문서 작업이다. `owner resolve`/test enumeration/behavior rail은 아직 실행하지 않았으므로 [테스트 플랜의 resolve 조건](test-plan.md)을 착수 gate로 적용한다.
 
 근거 문서:
 
@@ -187,6 +195,7 @@ GQLang frontend는 syntax/sema/normalized IR을 소유하고, 실행 substrate�
 - **자원·실패:** graph/index/state allocation 전에 admission. Overflow/input/work/memory bound, traversal·edge/materialization checkpoint를 연결한다. Compute error와 caller `Stop<E>`를 구분한다. Callback 존재만으로 allocation bound를 주장하지 않는다.
 - **domain 정책:** generic closed domain의 unknown target은 거절. PTA의 declared-key projection, taint의 successor-only nodes 처리는 adapter가 명시적으로 보존한다.
 - **출력 정책:** component/member ordering·IDs·failure/cancel을 caller projection으로 보존한다. 새 universal graph trait/crate는 만들지 않는다.
+- **기존 indexed API:** 현재 wrapper의 neighbor sort/dedup을 보존한다. Unsorted/duplicate public 입력을 canonical로 가정하지 않으며, 필요한 normalization을 adapter에서 처리한 뒤 core가 빌린다. Exact dense IDs와 emission order를 회귀로 고정한다.
 - **DoD:** generic entry가 같은 core를 사용하고 독립 expected partition·exact order/ID·typed error·stop·admission 회귀 통과.
 
 #### D2-PTA / D2-Taint — 각각 caller cutover

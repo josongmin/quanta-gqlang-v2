@@ -1,0 +1,1574 @@
+{
+  "schema": "oct6_substrate_dedup_detail_source_v1",
+  "captured_at_utc": "2026-10-06T00:46:13.140378+00:00",
+  "observed_roots": {
+    "/Users/songmin/Documents/code-new/quanta-gqlang-v2": {
+      "head": "a660384839ef7cfc8e532913bcbf27f3ccde5637",
+      "branch": "main",
+      "dirty_count": 15
+    },
+    "/Users/songmin/Documents/code-new/semantica-codegraph-v2": {
+      "head": "ecbda7d761cb300536d97fc3dff5ff5cf80cf4cc",
+      "branch": "main",
+      "dirty_count": 396
+    },
+    "/Users/songmin/Documents/code-new/quanta-index": {
+      "head": "e6b1b7e9703fbace81c03a8b59b3168cf3715673",
+      "branch": "main",
+      "dirty_count": 0
+    }
+  },
+  "source_continuity": {
+    "reference": "source-state.json / source_hash_comparisons",
+    "reference_sha256": "fc9fcc89cc40e583ad82099f3e845688d0fc08705f009dd7d56cca0172bd132d",
+    "claims_checked": 116,
+    "unchanged_claims": 116,
+    "mismatches": [],
+    "historical_receipt_preserved": true
+  },
+  "linked_source_inputs": [
+    {
+      "root": "/Users/songmin/Documents/code-new/quanta-index",
+      "path": "crates/quanta-index-sdk/src/search.rs",
+      "live_sha256": "1fb9291cdf38a0c964a7e7b0604ec121d7c57533f2f9caa138a4b044b378607b",
+      "head_sha256": "1fb9291cdf38a0c964a7e7b0604ec121d7c57533f2f9caa138a4b044b378607b",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "Cargo.toml",
+      "live_sha256": "1d9517390db288733946da7f4d785d134b65b83cb36383d23e41fa6b73935a55",
+      "head_sha256": "b3deccd719f6d953e097e6897559a35875f473eac21ca5728aaf07295f758012",
+      "same_as_committed_head": false
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/api/api/routes/search.py",
+      "live_sha256": "082db78f8c4265b389b993fa14924a8c2a2639b707b0f8a65bdab2bac998cc38",
+      "head_sha256": "082db78f8c4265b389b993fa14924a8c2a2639b707b0f8a65bdab2bac998cc38",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/api/tests/test_search_route_canonical_surface.py",
+      "live_sha256": "b9f98777eba21041dc15699d0b0bb8e0cfdde27f1d7726152e01750d8d1154e5",
+      "head_sha256": "b9f98777eba21041dc15699d0b0bb8e0cfdde27f1d7726152e01750d8d1154e5",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/mcp/adapters/fluent_engine_sdk_query_adapter.py",
+      "live_sha256": "d4bcfd6024beb10b17bc65c9df981ecb034278ee588fc6ce4037185ca1b4a838",
+      "head_sha256": "d4bcfd6024beb10b17bc65c9df981ecb034278ee588fc6ce4037185ca1b4a838",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/mcp/adapters/mcp/services.py",
+      "live_sha256": "f8cf40e64c41cfc4695b55c537e456b0062196f526ff8e7a9ed3ddcb83914ce7",
+      "head_sha256": "f8cf40e64c41cfc4695b55c537e456b0062196f526ff8e7a9ed3ddcb83914ce7",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/mcp/adapters/search/__init__.py",
+      "live_sha256": "e89f4d09565d579476e4ddb32221451c430cf917612d6702015abe4cf8516100",
+      "head_sha256": "e89f4d09565d579476e4ddb32221451c430cf917612d6702015abe4cf8516100",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/mcp/adapters/search/query_adapter.py",
+      "live_sha256": "a027850ebccde1d29371adeb4427d219fbb554e5e7a233b3abd5e44ccbdd7848",
+      "head_sha256": "a027850ebccde1d29371adeb4427d219fbb554e5e7a233b3abd5e44ccbdd7848",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/mcp/adapters/search/symbol_retriever.py",
+      "live_sha256": "24e11c7974d6ee9666059a54077fb4ad7af73d6417b454ae7625cdcdb97120db",
+      "head_sha256": "24e11c7974d6ee9666059a54077fb4ad7af73d6417b454ae7625cdcdb97120db",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/mcp/domain/query_surface_registry.py",
+      "live_sha256": "099474913615bd1d4f08d4f9df188a16f9b39319f5faa35cad4dda163e95bbb9",
+      "head_sha256": "099474913615bd1d4f08d4f9df188a16f9b39319f5faa35cad4dda163e95bbb9",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/mcp/handlers/__init__.py",
+      "live_sha256": "73ad839158482fe33541f7cfbc6837f9bdd1d448854ba193aa50d3cf6a8ed663",
+      "head_sha256": "73ad839158482fe33541f7cfbc6837f9bdd1d448854ba193aa50d3cf6a8ed663",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/mcp/handlers/introspection.py",
+      "live_sha256": "477f8aa693df62d41068807047c36c8f62904ec7126cbd95b1c8cd614e890f6e",
+      "head_sha256": "477f8aa693df62d41068807047c36c8f62904ec7126cbd95b1c8cd614e890f6e",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/mcp/handlers/search.py",
+      "live_sha256": "45b3619aabecc2c184b8b978b4152066a587491a0afbed1020696894c6b0247f",
+      "head_sha256": "45b3619aabecc2c184b8b978b4152066a587491a0afbed1020696894c6b0247f",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/mcp/handlers/surface_config.py",
+      "live_sha256": "aecad497509d49c8e33e3f4b9eda5851af4516c2f2a6fcf160ddad6925f4ab0d",
+      "head_sha256": "aecad497509d49c8e33e3f4b9eda5851af4516c2f2a6fcf160ddad6925f4ab0d",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/mcp/main.py",
+      "live_sha256": "1ac221f442ff4b1c3e76ebaca1aefb49911a2c746eeebce8edbc111ee6bb8180",
+      "head_sha256": "1ac221f442ff4b1c3e76ebaca1aefb49911a2c746eeebce8edbc111ee6bb8180",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/tests/test_introspection.py",
+      "live_sha256": "e2149339071373da566e4204e12a16a082d90e043619904cec62d39a8c1d1afa",
+      "head_sha256": "e2149339071373da566e4204e12a16a082d90e043619904cec62d39a8c1d1afa",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/tests/test_mcp_capability_parity.py",
+      "live_sha256": "c26e548aa9a85cb0d4140bfdc2e9a9684efa1d083823f17ee25bfa723a66543a",
+      "head_sha256": "c26e548aa9a85cb0d4140bfdc2e9a9684efa1d083823f17ee25bfa723a66543a",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/tests/test_mcp_sdk_di_lifecycle.py",
+      "live_sha256": "2616d7ad6dfb26f07c99019b6301c288aae13a5f38bf4175df9c5e7b1377b2e5",
+      "head_sha256": "2616d7ad6dfb26f07c99019b6301c288aae13a5f38bf4175df9c5e7b1377b2e5",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/tests/test_query_adapter.py",
+      "live_sha256": "3d530a81af754fee6888fdd905bd28b0b66a743a9597c786970d787db09326e8",
+      "head_sha256": "3d530a81af754fee6888fdd905bd28b0b66a743a9597c786970d787db09326e8",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/tests/test_query_adapter_graphrag.py",
+      "live_sha256": "dfb8b4a2dc61336cf5d30b7008b33f0f930b320f1b766abf75b04a40da0345f3",
+      "head_sha256": "dfb8b4a2dc61336cf5d30b7008b33f0f930b320f1b766abf75b04a40da0345f3",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/tests/test_query_adapter_span.py",
+      "live_sha256": "762fcfd64ce1d39f0029efff83c0aaeda873ae229fac3adc14a93fa5bd35f58a",
+      "head_sha256": "762fcfd64ce1d39f0029efff83c0aaeda873ae229fac3adc14a93fa5bd35f58a",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/tests/test_query_surface_contract.py",
+      "live_sha256": "32cf43b34616663f2c2c97842ec2a6f7ff34db41ae1b146fdbdc6c967dd78a00",
+      "head_sha256": "32cf43b34616663f2c2c97842ec2a6f7ff34db41ae1b146fdbdc6c967dd78a00",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "apps/mcp/tests/test_surface_config.py",
+      "live_sha256": "9ec348605af047035724d500b56a0d14abb7e4184aace514ce6bd84048a7c055",
+      "head_sha256": "9ec348605af047035724d500b56a0d14abb7e4184aace514ce6bd84048a7c055",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/codegraph-shared/codegraph_shared/infra/search/__init__.py",
+      "live_sha256": "743041ca5592964781ffcfd87034559160d55ea0ff744c11274a7b8cd8b09440",
+      "head_sha256": "743041ca5592964781ffcfd87034559160d55ea0ff744c11274a7b8cd8b09440",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters/Cargo.toml",
+      "live_sha256": "9045e95215adede2deef1094e196e12888a0253c0aebb98bac1bfe93db404ecb",
+      "head_sha256": "9045e95215adede2deef1094e196e12888a0253c0aebb98bac1bfe93db404ecb",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters/src/analysis/mod.rs",
+      "live_sha256": "6bf862b8a9e04631d4528f62fcc80b1c0ec60ad4a2031d2e8229b0dd2e4da9bd",
+      "head_sha256": "6bf862b8a9e04631d4528f62fcc80b1c0ec60ad4a2031d2e8229b0dd2e4da9bd",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters/tests/pta_to_shape_input_contract_test.rs",
+      "live_sha256": "0efd3c2adf205c68aa71b57e14c08f66a39073d87cc8b1eee8e4f4d5fb73a223",
+      "head_sha256": "0efd3c2adf205c68aa71b57e14c08f66a39073d87cc8b1eee8e4f4d5fb73a223",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters-analysis-facade/Cargo.toml",
+      "live_sha256": "228cbdb49942ce6079aafed99a5696cb2336a77bc8f61b61d5960d73d7dc3c68",
+      "head_sha256": "228cbdb49942ce6079aafed99a5696cb2336a77bc8f61b61d5960d73d7dc3c68",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters-analysis-facade/src/lib.rs",
+      "live_sha256": "5af360639d68ce83259cce493dc5e064a614e940fbd48b2c14a4716422ec857e",
+      "head_sha256": "5af360639d68ce83259cce493dc5e064a614e940fbd48b2c14a4716422ec857e",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/lib.rs",
+      "live_sha256": "055ef9a3a1dd4456a6bc030525928b55206f45feaa1e09da837839548a88b49c",
+      "head_sha256": "055ef9a3a1dd4456a6bc030525928b55206f45feaa1e09da837839548a88b49c",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs",
+      "live_sha256": "7b7ca68d2a9fab8f46d4dcb4304a1a76146f678a4be0ca4ac1b75968559a955e",
+      "head_sha256": "7b7ca68d2a9fab8f46d4dcb4304a1a76146f678a4be0ca4ac1b75968559a955e",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs",
+      "live_sha256": "664aeec498ef16e2dddfa2d0792b953bafc0f1687da6196da398e046c7d4da8c",
+      "head_sha256": "664aeec498ef16e2dddfa2d0792b953bafc0f1687da6196da398e046c7d4da8c",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/canonical_ir.rs",
+      "live_sha256": "1ef4e3158814b7efd7c684a366a28f4cab43e82337ffac2ff659cce0b4d811e9",
+      "head_sha256": "1ef4e3158814b7efd7c684a366a28f4cab43e82337ffac2ff659cce0b4d811e9",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/error.rs",
+      "live_sha256": "96f9b315704232de508ba23bf6b095c5f271ea10b7ea92ef2315dce070194eca",
+      "head_sha256": "96f9b315704232de508ba23bf6b095c5f271ea10b7ea92ef2315dce070194eca",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/mod.rs",
+      "live_sha256": "83fd93beee47cc36de076e613ffe13a83b3248f25bd2f7947f8a766d82decdb4",
+      "head_sha256": "83fd93beee47cc36de076e613ffe13a83b3248f25bd2f7947f8a766d82decdb4",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters-pta/src/mahjong/equivalence.rs",
+      "live_sha256": "cfc501d016558021a70859a355bfbce960058d9996a20d31c47aab76eeb94a24",
+      "head_sha256": "cfc501d016558021a70859a355bfbce960058d9996a20d31c47aab76eeb94a24",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/Cargo.toml",
+      "live_sha256": "b8a3b0d2ffa4f5fa96bff36412d092fdb9357560c94038cd9ba7f811d1320219",
+      "head_sha256": "b8a3b0d2ffa4f5fa96bff36412d092fdb9357560c94038cd9ba7f811d1320219",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/src/analysis/mod.rs",
+      "live_sha256": "007a05ad8669d7218197a30547fb30ec9d174329c47af0cfc6d4717c65ab4897",
+      "head_sha256": "007a05ad8669d7218197a30547fb30ec9d174329c47af0cfc6d4717c65ab4897",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/lib.rs",
+      "live_sha256": "26f601ba0622d324f8ce0a8be691776c86fe51ed7f8ae435a040938ef93a9bb1",
+      "head_sha256": "26f601ba0622d324f8ce0a8be691776c86fe51ed7f8ae435a040938ef93a9bb1",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs",
+      "live_sha256": "9bd1d533b25014f5cd71c8c98c819bb4b6c00ac7a2042f44658d6602de526ad2",
+      "head_sha256": "9bd1d533b25014f5cd71c8c98c819bb4b6c00ac7a2042f44658d6602de526ad2",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/Cargo.toml",
+      "live_sha256": "7eb61ac7ff64903d9695db7e3d55dbf8be3836d1f6db628df77bc5bf438e8f2f",
+      "head_sha256": "7eb61ac7ff64903d9695db7e3d55dbf8be3836d1f6db628df77bc5bf438e8f2f",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs",
+      "live_sha256": "4dacdc6f5a26bf251133c59d50f37480ba411294646151b298067cbd07d38cad",
+      "head_sha256": "4dacdc6f5a26bf251133c59d50f37480ba411294646151b298067cbd07d38cad",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-retrieval-algo-v1/src/rrf.rs",
+      "live_sha256": "c162d4ed990e1af45ede28f24d0bec3f0408aabbdcde7a8a39e75c9098863b0c",
+      "head_sha256": "c162d4ed990e1af45ede28f24d0bec3f0408aabbdcde7a8a39e75c9098863b0c",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-runtime/Cargo.toml",
+      "live_sha256": "dc4c489de9725d5e9844f0a1edfef3adaa286b2b988dc78f0ae2755eca5e6057",
+      "head_sha256": "dc4c489de9725d5e9844f0a1edfef3adaa286b2b988dc78f0ae2755eca5e6057",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/shape_analysis_builder.rs",
+      "live_sha256": "1e88b13647df578c179a6f42221fec0138faf02cf280cd17bd4695ddc104fa7b",
+      "head_sha256": "1e88b13647df578c179a6f42221fec0138faf02cf280cd17bd4695ddc104fa7b",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-runtime/tests/sdk_python_shape_analysis_test.rs",
+      "live_sha256": "998ae1975fb00831e1a71fd3faf8211f673decdb473ac815031e3eb46dcebeb7",
+      "head_sha256": "998ae1975fb00831e1a71fd3faf8211f673decdb473ac815031e3eb46dcebeb7",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/Cargo.toml",
+      "live_sha256": "e8da3193a6259ac34dfd54fd57dbd923aebefa1ef3a9c2002c129e1060e0dca0",
+      "head_sha256": "e8da3193a6259ac34dfd54fd57dbd923aebefa1ef3a9c2002c129e1060e0dca0",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc.rs",
+      "live_sha256": "2235b450e72d593894e4a6e5089237e0984c246517243410e72b3e67f400056c",
+      "head_sha256": "2235b450e72d593894e4a6e5089237e0984c246517243410e72b3e67f400056c",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc_tests.rs",
+      "live_sha256": "02916ef6dd6066fd96e5daa95f85428148f748d56aea79655dfb40548b823046",
+      "head_sha256": "02916ef6dd6066fd96e5daa95f85428148f748d56aea79655dfb40548b823046",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress/tests.rs",
+      "live_sha256": "681ff003e98225916d4e6e280a5461d23cd9fe4ea152bd1e287c144b6bcad7a7",
+      "head_sha256": "681ff003e98225916d4e6e280a5461d23cd9fe4ea152bd1e287c144b6bcad7a7",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress.rs",
+      "live_sha256": "b4b608863538d850bcc7be2529dc9a1e23269ddd163b458201f30f3961dad037",
+      "head_sha256": "b4b608863538d850bcc7be2529dc9a1e23269ddd163b458201f30f3961dad037",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-runtime-query-hir-wire/Cargo.toml",
+      "live_sha256": "fbd4f581d0a9b06023f1dd9eb44be80abaf96c2929cee722b94c609a39b596e1",
+      "head_sha256": "fbd4f581d0a9b06023f1dd9eb44be80abaf96c2929cee722b94c609a39b596e1",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/Cargo.toml",
+      "live_sha256": "140bd01a7c85ee2f996cc21facb789ae427d5464744a1350ad4dbe0a98b68d31",
+      "head_sha256": "140bd01a7c85ee2f996cc21facb789ae427d5464744a1350ad4dbe0a98b68d31",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/src/scv2_exact_fusion.rs",
+      "live_sha256": "7027088cf1048d4aa70f9d3de7807ee7ff144b9e4f75b126d3f60a9a1bb79bc9",
+      "head_sha256": "7027088cf1048d4aa70f9d3de7807ee7ff144b9e4f75b126d3f60a9a1bb79bc9",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/daemon_search_execution.rs",
+      "live_sha256": "813af09389e9ea6aa50130480d0e170156bbf1183cfc74dfe951f49d030cb4fb",
+      "head_sha256": "813af09389e9ea6aa50130480d0e170156bbf1183cfc74dfe951f49d030cb4fb",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/Cargo.toml",
+      "live_sha256": "9ae25d936972604572367f14c8df9592318c316303cf26d1d1d5faa0e2306694",
+      "head_sha256": "9ae25d936972604572367f14c8df9592318c316303cf26d1d1d5faa0e2306694",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/adapter_surface.rs",
+      "live_sha256": "ee7e77d6322bc9b0eb1b64e9ab7c0f0d93de4437c52f2a86f6ff645a50c951c4",
+      "head_sha256": "ee7e77d6322bc9b0eb1b64e9ab7c0f0d93de4437c52f2a86f6ff645a50c951c4",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-taint-solver/Cargo.toml",
+      "live_sha256": "0114928d5ea70842d46203c99d299c671fe2c0fc16a236496b1f15758f872b86",
+      "head_sha256": "0114928d5ea70842d46203c99d299c671fe2c0fc16a236496b1f15758f872b86",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/adapter_solver_solve_v2_with_dfg/memssa_input_promotion.rs",
+      "live_sha256": "587bc656a0828bd79d8113c29f8c843623adc781a75f5a7f871e5e1605a23ebd",
+      "head_sha256": "587bc656a0828bd79d8113c29f8c843623adc781a75f5a7f871e5e1605a23ebd",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs",
+      "live_sha256": "99d4cc78bff14943256d0555d3d73ce1ba8a4f8f9b82af2244830e4d3b684192",
+      "head_sha256": "99d4cc78bff14943256d0555d3d73ce1ba8a4f8f9b82af2244830e4d3b684192",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/analysis/quanta-v2/crates/quanta-usecase/src/generated/crosswalk.json",
+      "live_sha256": "5d430e66c6e3e0421cff95d26b889004153ae753b3d065ddb6956d68eea84390",
+      "head_sha256": "5d430e66c6e3e0421cff95d26b889004153ae753b3d065ddb6956d68eea84390",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/core/pta/engine/src/lib.rs",
+      "live_sha256": "9fb051eafc5362ee36ee6cd454d02505368c018f83c3b61e6e8791acfaec2296",
+      "head_sha256": "9fb051eafc5362ee36ee6cd454d02505368c018f83c3b61e6e8791acfaec2296",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/core/pta/engine/src/solver/andersen/mod.rs",
+      "live_sha256": "bfd3c49448425383e9aa47011aa26fe6e7d67c7d97b23c408d71631be5a2462f",
+      "head_sha256": "bfd3c49448425383e9aa47011aa26fe6e7d67c7d97b23c408d71631be5a2462f",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/core/pta/engine/src/solver/andersen/union_find.rs",
+      "live_sha256": "f28ef0284a267054371a8db74de18e24069b976d01004d00219b33150a5b6ddd",
+      "head_sha256": "f28ef0284a267054371a8db74de18e24069b976d01004d00219b33150a5b6ddd",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/core/pta/engine/src/solver/andersen/union_find_tests.rs",
+      "live_sha256": "8e0c3688ef7bf25d4169602cab496361623f9d1331979be3be3e4d784d2156b7",
+      "head_sha256": "8e0c3688ef7bf25d4169602cab496361623f9d1331979be3be3e4d784d2156b7",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/core/pta/engine/src/solver/steensgaard_retained_pairs.rs",
+      "live_sha256": "0c205cc7eee081abc54d61bbb89f61bcbafa7ac12a305cc601597e524378f971",
+      "head_sha256": "0c205cc7eee081abc54d61bbb89f61bcbafa7ac12a305cc601597e524378f971",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/core/pta/engine/src/solver/steensgaard_retained_pairs_tests.rs",
+      "live_sha256": "123f03a0eb569d95260ab4a733be37793727ab4174ad4fc716eee555d6738dd8",
+      "head_sha256": "123f03a0eb569d95260ab4a733be37793727ab4174ad4fc716eee555d6738dd8",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/core/pta/engine/src/solver/steensgaard_solver_impl.rs",
+      "live_sha256": "6666fc3f69d5d2f141c67c47a60330a92b91934fc7fb3fa3fcd8bbb277265b37",
+      "head_sha256": "6666fc3f69d5d2f141c67c47a60330a92b91934fc7fb3fa3fcd8bbb277265b37",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/core/pta/engine/src/solver/steensgaard_tests/basic_and_soundness_v1.rs",
+      "live_sha256": "1871ec5e445cbec98fe01fc20024c07e8e948db2e7eb856a7b2ce06d1769afbd",
+      "head_sha256": "1871ec5e445cbec98fe01fc20024c07e8e948db2e7eb856a7b2ce06d1769afbd",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/core/pta/engine/src/solver/union_find_base.rs",
+      "live_sha256": "d764ea1fd178edc9ac47d6bdba6055bef96660ef06e938dde535001ae11eacf9",
+      "head_sha256": "d764ea1fd178edc9ac47d6bdba6055bef96660ef06e938dde535001ae11eacf9",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/core/pta/engine/src/solver/union_find_base_tests.rs",
+      "live_sha256": "dca424eff16873d1eeeee4cc60c95d392456dbff9318ebc6582ca908d7fb5ec3",
+      "head_sha256": "dca424eff16873d1eeeee4cc60c95d392456dbff9318ebc6582ca908d7fb5ec3",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/sdk/python/codegraph_sdk/_product_search_projection_v1.py",
+      "live_sha256": "3f347584050bcc85c76c882d130f8e0efb68212bbfcb9d138e77d02cf5d18e4e",
+      "head_sha256": "3f347584050bcc85c76c882d130f8e0efb68212bbfcb9d138e77d02cf5d18e4e",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/sdk/python/codegraph_sdk/tests/_current_product_response.py",
+      "live_sha256": "e6c1f0df5459857431b47766e26c9576cbeb41ae884de1e1cc7b52df5aed7ec2",
+      "head_sha256": "e6c1f0df5459857431b47766e26c9576cbeb41ae884de1e1cc7b52df5aed7ec2",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "packages/sdk/python/codegraph_sdk/tests/test_current_product_response.py",
+      "live_sha256": "bc0d6a37f8d2564f09801c8ef12a3bf8b64df99aeaf4a55c157fdbd894e98333",
+      "head_sha256": "bc0d6a37f8d2564f09801c8ef12a3bf8b64df99aeaf4a55c157fdbd894e98333",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "tools/ci/gates/gate-shape-analysis-ghiya-hendren.sh",
+      "live_sha256": "6884f6b4450805cedace2a2399bd27dd535b32ed3cc0cc20035b5848dea2bad2",
+      "head_sha256": "6884f6b4450805cedace2a2399bd27dd535b32ed3cc0cc20035b5848dea2bad2",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "tools/ci/gates/gate-shape-analysis-smoke.sh",
+      "live_sha256": "7befa2eba3f5e306c8d23615fa2cb33148926974319337574fc9393fde9ec71d",
+      "head_sha256": "7befa2eba3f5e306c8d23615fa2cb33148926974319337574fc9393fde9ec71d",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "tools/ci/gates/gate-tarjan-iterative.sh",
+      "live_sha256": "8ab8a31ebb41d55e75573986bfedc024a198204e18083d43d2b905fe467ccc3a",
+      "head_sha256": "8ab8a31ebb41d55e75573986bfedc024a198204e18083d43d2b905fe467ccc3a",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "tools/ci/honesty/baselines/shape-only.json",
+      "live_sha256": "f4fa6b119814c7e35f98c40066fc72fc4c4956050adaea51d46e52ebf198f2fc",
+      "head_sha256": "f4fa6b119814c7e35f98c40066fc72fc4c4956050adaea51d46e52ebf198f2fc",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "tools/ci/lint/contracts/test-module-inventory-v2.json",
+      "live_sha256": "4cf9efffd78a4417d6a767e0777dfc2b7a37d8ab720cf7f0501ce9547a902c11",
+      "head_sha256": "4cf9efffd78a4417d6a767e0777dfc2b7a37d8ab720cf7f0501ce9547a902c11",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "tools/ci/lint/god-surface-baseline.json",
+      "live_sha256": "73a0e0a0fe75eb6743ee0bdab1787bc562946095f63f9ead0ee9b4811948a546",
+      "head_sha256": "73a0e0a0fe75eb6743ee0bdab1787bc562946095f63f9ead0ee9b4811948a546",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "tools/quanta-build-cli/README.md",
+      "live_sha256": "5bb5634a9f095e132541a90f7b1a45f20b8fdf3b51ce3c73d05fab4fffd84c02",
+      "head_sha256": "5bb5634a9f095e132541a90f7b1a45f20b8fdf3b51ce3c73d05fab4fffd84c02",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "tools/quanta-build-cli/contracts/feature-taxonomy-v1.toml",
+      "live_sha256": "ecaaec759d793720eabb8d36a08ebec769af9be8c0d7db8b81f0c4f126e59d06",
+      "head_sha256": "ecaaec759d793720eabb8d36a08ebec769af9be8c0d7db8b81f0c4f126e59d06",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "tools/quanta-build-cli/qbc_request_scope_v1.py",
+      "live_sha256": "4d9755d91f5b172cc5f42737aeefc620aa0e37b2b5a4134c67cf95b70321908a",
+      "head_sha256": "4d9755d91f5b172cc5f42737aeefc620aa0e37b2b5a4134c67cf95b70321908a",
+      "same_as_committed_head": true
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "tools/rust-crate-boundary-guard/check_runtime_structure_source_contracts.py",
+      "live_sha256": "54bf167ff4c47f14d4abde674de42e45da41d2f8ffc5e38fb2eeac84c4ade628",
+      "head_sha256": "2f860074732fe353d2dc041545d9015edb6386c1f6208b39babcc51ab9b20bcc",
+      "same_as_committed_head": false
+    },
+    {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "path": "tools/rust-crate-boundary-guard/policies/quanta-memssa-runtime-surface-ingress-boundary.toml",
+      "live_sha256": "2f150140afa575da5f1679f885bbc42152d1dd21c8a5b7c94f823345eecc2ed4",
+      "head_sha256": "2f150140afa575da5f1679f885bbc42152d1dd21c8a5b7c94f823345eecc2ed4",
+      "same_as_committed_head": true
+    }
+  ],
+  "existing_function_symbols_checked": {
+    "_initialize_sdk": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/mcp/main.py"
+    ],
+    "call_tool": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/tests/test_mcp_capability_parity.py",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/mcp/main.py"
+    ],
+    "canonical_memory_ir_from_build_input_bare_entry_auto_remaps_synthetic_load_below_floor_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress/tests.rs"
+    ],
+    "canonical_memory_ir_from_build_input_bare_entry_preserves_real_load_value_def_id_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress/tests.rs"
+    ],
+    "canonical_memory_ir_from_build_input_bare_entry_skips_used_real_id_for_synthetic_surrogate_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress/tests.rs"
+    ],
+    "canonical_memory_ir_from_build_input_with_load_value_def_ids_allows_synthetic_load_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress/tests.rs"
+    ],
+    "canonical_memory_ir_from_build_input_with_load_value_def_ids_rejects_missing_synthetic_override_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress/tests.rs"
+    ],
+    "canonical_memory_ir_mem14_producer_permutation_preserves_identity_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress/tests.rs"
+    ],
+    "chain_tree": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs"
+    ],
+    "conflicting_duplicate_contribution_fails_closed_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/src/scv2_exact_fusion.rs"
+    ],
+    "contribution_permutation_is_byte_stable_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/src/scv2_exact_fusion.rs"
+    ],
+    "controlled_scc_every_checkpoint_stops_without_partial_result_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc_tests.rs"
+    ],
+    "controlled_scc_handles_empty_and_deep_graph_boundaries_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc_tests.rs"
+    ],
+    "cycle_detected": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs"
+    ],
+    "dag_two_incoming": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs"
+    ],
+    "deletion_adapter_bridge_preserves_kill_and_rejects_incoherent_map": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/canonical_ir.rs"
+    ],
+    "deterministic_across_input_order": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs"
+    ],
+    "exact_duplicate_contribution_collapses_once_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/src/scv2_exact_fusion.rs"
+    ],
+    "exact_fusion_equal_score_cross_owner_tie_uses_canonical_identity_order_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/src/scv2_exact_fusion.rs"
+    ],
+    "exact_fusion_truncates_and_renumbers_final_rank_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/src/scv2_exact_fusion.rs"
+    ],
+    "indexed_dag_yields_distinct_sccs": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs"
+    ],
+    "indexed_neighbor_outside_domain_is_an_error": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs"
+    ],
+    "pta_to_shape_input_cyclic": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters/tests/pta_to_shape_input_contract_test.rs"
+    ],
+    "pta_to_shape_input_dag_two_parents": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters/tests/pta_to_shape_input_contract_test.rs"
+    ],
+    "pta_to_shape_input_hard_orphan_field_loc": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters/tests/pta_to_shape_input_contract_test.rs"
+    ],
+    "pta_to_shape_input_tree_chain": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters/tests/pta_to_shape_input_contract_test.rs"
+    ],
+    "recursion_policy_preserves_independent_cycle_budgets": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs"
+    ],
+    "retained_alloc_copy_prefixes_match_legacy_native_oracle_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/core/pta/engine/src/solver/steensgaard_retained_pairs_tests.rs"
+    ],
+    "retained_projection_checks_control_before_member_and_pair_work_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/core/pta/engine/src/solver/steensgaard_retained_pairs_tests.rs"
+    ],
+    "retained_shared_allocation_updates_every_owner_without_reemitting_old_pairs_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/core/pta/engine/src/solver/steensgaard_retained_pairs_tests.rs"
+    ],
+    "retained_ten_thousand_plus_one_publishes_only_one_pair_v1": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/core/pta/engine/src/solver/steensgaard_retained_pairs_tests.rs"
+    ],
+    "self_loop_remains_cyclic_when_the_node_also_points_to_a_tail": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs"
+    ],
+    "single_node_tree": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs",
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs"
+    ],
+    "tarjan_iterative_deep_chain_50k": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs"
+    ],
+    "tarjan_iterative_disjoint_multi_root_determinism": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs"
+    ],
+    "tarjan_iterative_successor_only": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs"
+    ],
+    "test_chain_copy": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/core/pta/engine/src/solver/steensgaard_tests/basic_and_soundness_v1.rs"
+    ],
+    "test_copy_unification": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/core/pta/engine/src/solver/steensgaard_tests/basic_and_soundness_v1.rs"
+    ],
+    "test_explicit_mcp_public_inventory_matches_schema_inventory": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/tests/test_query_surface_contract.py"
+    ],
+    "test_fake_span_is_forbidden": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/tests/test_query_adapter_span.py"
+    ],
+    "test_graphrag_expansion_failure_surfaces_degraded_reason": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/tests/test_query_adapter_graphrag.py"
+    ],
+    "test_graphrag_expansion_with_no_graph_returns_seed_hits": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/tests/test_query_adapter_graphrag.py"
+    ],
+    "test_hybrid_search_accepts_canonical_symbol_projection_from_sdk": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/tests/test_query_adapter.py"
+    ],
+    "test_load_store": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/core/pta/engine/src/solver/steensgaard_tests/basic_and_soundness_v1.rs"
+    ],
+    "test_mcp_adapter_preserves_runtime_authority_envelope_without_local_authority": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/tests/test_query_surface_contract.py"
+    ],
+    "test_mcp_list_tools_matches_filtered_surface_config_ssot": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/tests/test_mcp_capability_parity.py"
+    ],
+    "test_no_alias": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/core/pta/engine/src/solver/steensgaard_tests/basic_and_soundness_v1.rs"
+    ],
+    "test_search_hybrid_uses_canonical_hybrid_surface": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/api/tests/test_search_route_canonical_surface.py"
+    ],
+    "test_search_route_rejects_removed_hits_projection": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/api/tests/test_search_route_canonical_surface.py"
+    ],
+    "test_surface_config_load_raises_when_crosswalk_unavailable": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/tests/test_surface_config.py"
+    ],
+    "test_to_dict_preserves_nested_metadata_structure": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/tests/test_query_adapter_span.py"
+    ],
+    "test_to_dict_without_span_metadata": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/apps/mcp/tests/test_query_adapter_span.py"
+    ],
+    "unregistered_generic_neighbor_is_not_silently_removed": [
+      "/Users/songmin/Documents/code-new/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs"
+    ]
+  },
+  "test_plan": {
+    "fixture_groups": 66,
+    "ids": [
+      "M1",
+      "M2",
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M7",
+      "M8",
+      "U1",
+      "U2",
+      "U3",
+      "U4",
+      "U5",
+      "U6",
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "R5",
+      "R6",
+      "R7",
+      "C1",
+      "C2",
+      "C3",
+      "C4",
+      "C5",
+      "C6",
+      "C7",
+      "C8",
+      "C9",
+      "C10",
+      "C11",
+      "C12",
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5",
+      "S6",
+      "S7",
+      "S8",
+      "S9",
+      "S10",
+      "S11",
+      "G1",
+      "G2",
+      "G3",
+      "G4",
+      "G5",
+      "G6",
+      "G7",
+      "G8",
+      "G9",
+      "G10",
+      "G11",
+      "G12",
+      "G13",
+      "H1",
+      "H2",
+      "H3",
+      "H4",
+      "H5",
+      "H6",
+      "H7",
+      "H8",
+      "H9"
+    ],
+    "existing_symbol_claims_checked": 53,
+    "owner_resolve_test_enumeration_behavior_execution": "NOT_RUN",
+    "command_grammar_flags_checked": [
+      "--package",
+      "--execution-kind",
+      "--target-kind",
+      "--target-name",
+      "--selector-mode",
+      "--selector",
+      "--compile-policy",
+      "--ignored-policy"
+    ],
+    "isolation_class_ids": "Resolve at implementation; not fabricated in the plan."
+  },
+  "decisions_refined": [
+    "Existing indexed SCC wrapper normalizes neighbor order/duplicates via BTreeMap/BTreeSet; adapter normalization and exact ID preservation required after core cutover.",
+    "Allowed PTA-to-Shape orphan field retains base node/no invented edge; not a missing-authority rejection.",
+    "Existing introspection fallback/missing-diagnostic fixtures must migrate to explicit captured source/refusal contract.",
+    "Existing SDK symbol-only fixtures are not native producer-variant proof."
+  ],
+  "implementation_status": {
+    "D1": "PLANNED",
+    "D2": "PLANNED",
+    "D3": "PLANNED",
+    "D4": "PLANNED",
+    "D5": "PLANNED",
+    "D6": "PLANNED",
+    "D7": "PLANNED",
+    "F1": "PLANNED_DIRECT_PREREQUISITE"
+  },
+  "validation": {
+    "captured_at_utc": "2026-10-06T00:46:13.140767+00:00",
+    "documents": {
+      "docs/plans/oct-6-substrate-dedup/readme.md": {
+        "sha256": "f81e72a4977863634b39ab8955678e886e51292a12dbcdf486c1ff4d88e5286a",
+        "lines": 327
+      },
+      "docs/plans/oct-6-substrate-dedup/code-change-map.md": {
+        "sha256": "483e2bd1675bd090ecb6f7bd7f838d5684f51d66f6a5fcc735302b2c3893836d",
+        "lines": 332
+      },
+      "docs/plans/oct-6-substrate-dedup/test-plan.md": {
+        "sha256": "3854c93ae91658b5170fbba52f5b5e4048ed2a7724ac455d2bec5312a71a1d7a",
+        "lines": 300
+      }
+    },
+    "local_links_checked": 130,
+    "links": [
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "code-change-map.md",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "test-plan.md",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "detail-source-state.json",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "source-state.json",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "source-state.json",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "test-plan.md",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../audits/2026-10-06-substrate-ownership-and-usecase-audit.md",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../audits/2026-10-06-substrate-component-observations.json",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../audits/2026-10-06-substrate-dedup-plan-source.json",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../audits/2026-10-06-substrate-ownership-and-usecase-audit.md",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/canonical_ir.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/tools/rust-crate-boundary-guard/policies/quanta-memssa-runtime-surface-ingress-boundary.toml",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/union_find_base.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/andersen/union_find.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-retrieval-algo-v1/src/rrf.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/src/scv2_exact_fusion.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/mcp/domain/query_surface_registry.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/apps/api/api/routes/search.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/mcp/adapters/search/query_adapter.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../../../semantica-codegraph-v2/tools/ci/gates/gate-tarjan-iterative.sh",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/readme.md",
+        "target": "../../audits/2026-10-06-substrate-dedup-implementation-plan.md",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "readme.md",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "test-plan.md",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "detail-source-state.json",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/canonical_ir.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/mod.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/error.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress/tests.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/adapter_solver_solve_v2_with_dfg/memssa_input_promotion.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/tools/rust-crate-boundary-guard/policies/quanta-memssa-runtime-surface-ingress-boundary.toml",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/andersen/union_find.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/andersen/union_find_tests.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/andersen/mod.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/core/pta/engine/src/lib.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/union_find_base.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/union_find_base_tests.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/steensgaard_solver_impl.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/steensgaard_retained_pairs.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-pta/src/mahjong/equivalence.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/src/scv2_exact_fusion.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/Cargo.toml",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-retrieval-algo-v1/src/rrf.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../quanta-index/crates/quanta-index-sdk/src/search.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/mcp/domain/query_surface_registry.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/mcp/handlers/introspection.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/mcp/handlers/surface_config.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/mcp/main.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/mcp/adapters/fluent_engine_sdk_query_adapter.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-usecase/src/generated/crosswalk.json",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/lib.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/lib.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/src/analysis/mod.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/Cargo.toml",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters/src/analysis/mod.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters/Cargo.toml",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-analysis-facade/src/lib.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-analysis-facade/Cargo.toml",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/adapter_surface.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/Cargo.toml",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime/Cargo.toml",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/shape_analysis_builder.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/tools/ci/gates/gate-shape-analysis-smoke.sh",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/tools/ci/gates/gate-shape-analysis-ghiya-hendren.sh",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/tools/rust-crate-boundary-guard/check_runtime_structure_source_contracts.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/tools/quanta-build-cli/contracts/feature-taxonomy-v1.toml",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/tools/ci/honesty/baselines/shape-only.json",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/daemon_search_execution.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/sdk/python/codegraph_sdk/_product_search_projection_v1.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/sdk/python/codegraph_sdk/tests/_current_product_response.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/sdk/python/codegraph_sdk/tests/test_current_product_response.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/codegraph-shared/codegraph_shared/infra/search/__init__.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/apps/api/api/routes/search.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/mcp/adapters/search/query_adapter.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/mcp/adapters/search/symbol_retriever.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/mcp/adapters/search/__init__.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/mcp/adapters/mcp/services.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/mcp/handlers/__init__.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/mcp/handlers/search.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/mcp/adapters/fluent_engine_sdk_query_adapter.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/Cargo.toml",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/Cargo.toml",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-query-hir-wire/Cargo.toml",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/Cargo.toml",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-taint-solver/Cargo.toml",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc_tests.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/tools/ci/gates/gate-tarjan-iterative.sh",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/tools/ci/lint/contracts/test-module-inventory-v2.json",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "../../../../semantica-codegraph-v2/tools/ci/lint/god-surface-baseline.json",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/code-change-map.md",
+        "target": "test-plan.md",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "readme.md",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "code-change-map.md",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/tools/quanta-build-cli/qbc_request_scope_v1.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/tools/quanta-build-cli/README.md",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress/tests.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/canonical_ir.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/union_find_base_tests.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/steensgaard_tests/basic_and_soundness_v1.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/steensgaard_retained_pairs_tests.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-retrieval-kernel/src/scv2_exact_fusion.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/tests/test_introspection.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/tests/test_surface_config.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/tests/test_mcp_capability_parity.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/tests/test_query_surface_contract.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/tests/test_mcp_sdk_di_lifecycle.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/sdk/python/codegraph_sdk/tests/_current_product_response.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/sdk/python/codegraph_sdk/tests/test_current_product_response.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/apps/api/tests/test_search_route_canonical_surface.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/tests/test_query_adapter.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/tests/test_query_adapter_span.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/tests/test_query_adapter_graphrag.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/apps/mcp/tests/test_query_surface_contract.py",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc_tests.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters/tests/pta_to_shape_input_contract_test.rs",
+        "exists": true
+      },
+      {
+        "document": "docs/plans/oct-6-substrate-dedup/test-plan.md",
+        "target": "../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime/tests/sdk_python_shape_analysis_test.rs",
+        "exists": true
+      }
+    ],
+    "source_inputs_captured": 85,
+    "mermaid_blocks": 3,
+    "checks": "path existence, existing function declarations, QBC parser flags, unique fixture IDs, heading/fence/whitespace, source continuity and historical receipt custody",
+    "failures": []
+  },
+  "proof_limits": [
+    "Documentation and static source only. No Rust/QBC owner resolve/run, enumeration, Python owner tests or behavior assertions were executed.",
+    "RRF mixed expected binary64 literal was computed with independent Python arithmetic for the test specification; this is not SCV2 runtime evidence.",
+    "All Before/After code snippets and new files/APIs are proposals, not applied runtime changes.",
+    "Source digest continuity does not upgrade old component receipts into product qualification.",
+    "Actual daemon/HTTP/MCP stdio/installed/performance proof remains NOT_RUN.",
+    "Foreign dirty remains outside the owned documentation checkpoint."
+  ]
+}
