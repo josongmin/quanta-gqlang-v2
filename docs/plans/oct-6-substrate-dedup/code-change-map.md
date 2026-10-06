@@ -6,7 +6,11 @@
 
 진행 중 diff/검증/main 반영은 [execution-progress.md](execution-progress.md)에서 별도로 관리한다.
 
-**2026-10-06 현재 변경 경계:** Semantica clean private `d056dd6`/base main `0dee483`는 `05fc` D1/D2·registry 본문과 main의 Java 5-arity 수리를 main-first merge한 87경로 후보다. Candidate-only 84·main-only 178경로는 바이트 보존되고 Cargo.lock 2개·ingress 1개 겹침은 검토됐다. GQLang `30b6efd`·Index `ab87837`을 포함한 frozen snapshot은 sealed됐고 exact source policy 90건은 PASS다. Read-only GOD 14→7/new0/worse0와 Wire 72 local crate 정적 closure도 확인됐다. Owner 45건은 PTA-first 1/45 실행 중이며 확정 receipt는 없다. [현재 실행](execution-progress.md).
+**2026-10-06 현재 변경 경계:** Semantica main `b8cf227`에는 parser 소유 3파일의 컴파일 선행 수리가 들어왔다. `parser-java` feature의 optional `quanta-runtime-execution` normal dependency, 사용하지 않는 ledger reexport 삭제, catalog `Ok(match ...)`가 범위다. 직전 clean private `6583c22`의 D1/D2 본문과 이 수리를 합친 새 후보는 아직 없다. 그 후보의 owner1/45는 parser dependency 오류 4건으로 RED/exit101/테스트0이었다. 다음 clean tuple의 Rust PASS는 NOT_RUN이다. [현재 실행](execution-progress.md).
+
+**2026-10-06 이전 `6583` 변경 경계:** Semantica clean private `6583c22`/base main `205c86d`는 Java projection visibility 수리와 `d056` D1/D2 본문을 main-first merge한 87경로 후보다. Candidate 87경로·main 전용 8경로는 부모 blob과 같고 겹침0이다. Exact source policy90 PASS, read-only GOD14→7/new0/worse0, Wire72 local crate 정적 closure가 있다. GQLang `30b6efd`·Index `ab87837` frozen snapshot은 sealed됐다. Owner1/45는 parser dependency 컴파일 오류 4건으로 RED/exit101/테스트0이며 나머지44 NOT_RUN이다. [이전 실행](execution-progress.md).
+
+**2026-10-06 이전 `d056` 변경 경계:** Semantica clean private `d056dd6`/base main `0dee483`는 `05fc` D1/D2·registry 본문과 main의 Java 5-arity 수리를 main-first merge한 87경로 후보다. Candidate-only 84·main-only 178경로는 바이트 보존되고 Cargo.lock 2개·ingress 1개 겹침은 검토됐다. GQLang `30b6efd`·Index `ab87837`을 포함한 frozen snapshot은 sealed됐고 exact source policy 90건은 PASS다. Read-only GOD 14→7/new0/worse0와 Wire 72 local crate 정적 closure도 확인됐다. PTA-first owner 1/45는 Java E0364/E0603으로 실패했고 나머지44건은 NOT_RUN이다. [이전 실행](execution-progress.md).
 
 **2026-10-06 이전 main 선행 수정:** Semantica `0dee483`에는 `1daa8f9`의 Java defuse extractor caller/helper 5-arity 수리와 `6efc64b` Cargo.lock edge가 committed다. D1/D2 본문은 아직 main에 들어오지 않았으며, 아래 `05fc` clean 후보는 Java 수리 전 source다. Live main의 foreign dirty 26경로와 Index `ab87837` drift를 새 source tuple에 묵시적으로 포함하지 않는다. 다음 sibling pin은 GQLang `30b6efd`·Index `ab87837`, Semantica fixed base는 `0dee483`다. Main-first merge의 새 candidate SHA·frozen snapshot·Rust owner receipt는 대기다. [현재 실행](execution-progress.md).
 

@@ -756,7 +756,35 @@
       "cause_boundary": "Lock resolution prerequisite under investigation; no Index root-cause claim"
     }
   },
-  "latest_failed_composed_candidate": {
+  "prior_live_prerequisite": {
+    "observed_at_utc": "2026-10-06T12:25:37Z",
+    "semantica_main": "0dee483535a938d774d5f6d5b8bcc9be9567952b",
+    "semantica_live_dirty_path_count": 26,
+    "semantica_dirty_custody": "foreign live overlay; excluded from any new tuple",
+    "java_owner_fix_commit": "1daa8f95c612d6f478bcda227b67ab9684f5ac59",
+    "java_owner_fix_source": "committed caller and helper both 5-arity; two Java files clean in live worktree",
+    "lock_edge_main_checkpoint": "6efc64be0c399f32445b2ef55b9f4d4717143d18",
+    "quanta_gqlang_main": "30b6efd06645762146479f8a5c89e81d6dc85af5",
+    "quanta_gqlang_main_clean": true,
+    "quanta_gqlang_ci_proof": "previous d600cab just ci PASS only; docs-only main30b not re-run",
+    "quanta_index_live_main": "ab87837f5d34de1d8f9de9dedcfd44032051a284",
+    "quanta_index_live_clean": true,
+    "previous_frozen_index": "1dd3f069f302d1324fe520f2c2d0c8addbceadfb",
+    "new_composed_candidate": "NOT_YET_FROZEN",
+    "new_canonical_owner_requests": "NOT_RUN; prior 05fc owner1 E0061/exit101/tests0 and 3fe PASS4 do not transfer",
+    "d1_d2_main_body_import": "NOT_RUN",
+    "consumer_generated_product_qualification": "NOT_RUN",
+    "next": "Complete source-owned main-first composition at fixed pins without dirty overlays; freeze candidate SHA/snapshot and run PTA-first canonical owner requests",
+    "next_proof_pins": {
+      "quanta_gqlang_v2": "30b6efd06645762146479f8a5c89e81d6dc85af5",
+      "quanta_index": "ab87837f5d34de1d8f9de9dedcfd44032051a284",
+      "semantica_fixed_base": "0dee483535a938d774d5f6d5b8bcc9be9567952b",
+      "semantica_private_input": "05fc94d17f78f3b0818dec00c0d13b0d0516d005",
+      "merge_order": "main-first; candidate SHA not yet available",
+      "moving_head_follow": false
+    }
+  },
+  "previous_05fc_failed_candidate": {
     "source": "05fc94d17f78f3b0818dec00c0d13b0d0516d005",
     "base_main": "578a5393721420bcf7d84d1f7ff5bbba32366f74",
     "branch": "codex/oct6-substrate-mainfirst-45",
@@ -841,35 +869,23 @@
     },
     "status_for_live_main": "historical failed frozen 05fc tuple; Java 5-arity source prerequisite later committed on Semantica main, no new owner proof"
   },
-  "prior_live_prerequisite": {
-    "observed_at_utc": "2026-10-06T12:25:37Z",
-    "semantica_main": "0dee483535a938d774d5f6d5b8bcc9be9567952b",
-    "semantica_live_dirty_path_count": 26,
-    "semantica_dirty_custody": "foreign live overlay; excluded from any new tuple",
-    "java_owner_fix_commit": "1daa8f95c612d6f478bcda227b67ab9684f5ac59",
-    "java_owner_fix_source": "committed caller and helper both 5-arity; two Java files clean in live worktree",
-    "lock_edge_main_checkpoint": "6efc64be0c399f32445b2ef55b9f4d4717143d18",
-    "quanta_gqlang_main": "30b6efd06645762146479f8a5c89e81d6dc85af5",
-    "quanta_gqlang_main_clean": true,
-    "quanta_gqlang_ci_proof": "previous d600cab just ci PASS only; docs-only main30b not re-run",
-    "quanta_index_live_main": "ab87837f5d34de1d8f9de9dedcfd44032051a284",
-    "quanta_index_live_clean": true,
-    "previous_frozen_index": "1dd3f069f302d1324fe520f2c2d0c8addbceadfb",
-    "new_composed_candidate": "NOT_YET_FROZEN",
-    "new_canonical_owner_requests": "NOT_RUN; prior 05fc owner1 E0061/exit101/tests0 and 3fe PASS4 do not transfer",
-    "d1_d2_main_body_import": "NOT_RUN",
-    "consumer_generated_product_qualification": "NOT_RUN",
-    "next": "Complete source-owned main-first composition at fixed pins without dirty overlays; freeze candidate SHA/snapshot and run PTA-first canonical owner requests",
-    "next_proof_pins": {
+  "previous_205c_prerequisite": {
+    "semantica_main": "205c86d5c2aca4a2c2b8f34ab1399cce27f12eb6",
+    "java_visibility_fix_path": "packages/core/codegraph-defuse-extractor-java/src/extractor/projection/definition/array_literal.rs",
+    "java_visibility_fix": "pub(in crate::extractor::projection)",
+    "import_state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/java-projection-visibility-import-state.json",
+    "proof_kind": "one-line committed source prerequisite with normal hooks; Rust owner proof pending",
+    "next_sibling_pins": {
       "quanta_gqlang_v2": "30b6efd06645762146479f8a5c89e81d6dc85af5",
-      "quanta_index": "ab87837f5d34de1d8f9de9dedcfd44032051a284",
-      "semantica_fixed_base": "0dee483535a938d774d5f6d5b8bcc9be9567952b",
-      "semantica_private_input": "05fc94d17f78f3b0818dec00c0d13b0d0516d005",
-      "merge_order": "main-first; candidate SHA not yet available",
-      "moving_head_follow": false
-    }
+      "quanta_index": "ab87837f5d34de1d8f9de9dedcfd44032051a284"
+    },
+    "new_composed_candidate": "NOT_YET_AVAILABLE",
+    "new_frozen_tuple": "NOT_RUN",
+    "canonical_owner_requests": "NOT_RUN on a visibility-fixed combined source; previous d056 FAILED owner1/45, 44 NOT_RUN",
+    "d1_d2_main_body_import": "NOT_RUN",
+    "consumer_generated_product_qualification": "NOT_RUN"
   },
-  "current_composed_candidate": {
+  "previous_d056_failed_candidate": {
     "source": "d056dd657119d9d2ed67dc6e99d6568cf913e427",
     "base_main": "0dee483535a938d774d5f6d5b8bcc9be9567952b",
     "parents": [
@@ -910,21 +926,19 @@
       "proof_kind": "source policy only; no Rust/product verdict"
     },
     "canonical_owner_requests": {
-      "status": "RUNNING PTA-first owner 1/45; zero finalized results at last check",
-      "request_count": 45,
-      "request_map": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-owner-proof-request-map45-d056.json",
-      "request_map_sha256": "74635631f920a54c8732b8a82405e91ad10cc43b92634d45af23fedc453920c9",
-      "launcher": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-d056.py",
-      "launcher_sha256": "322fc349e31a17856056f1c8ffe18d9ea8674817b9c99c11e734982d336b64e7",
-      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-d056-state.json",
+      "status": "FAILED owner 1/45, Java projection E0364/E0603, Rust dependency compile exit101/tests0, owner_recipe RED; remaining44 NOT_RUN",
+      "attempt_state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-d056-state.json",
+      "failure_archive_manifest": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-failed-owner-d056-20261006T123042.512934Z-9e86b631d07d-archive/manifest.json",
+      "failure_archive_manifest_sha256": "cb94b2a62798a5b2b50a4ff6340b256994c0b230ce10c3747a094384ca065aa7",
       "accepted_owner_passes": 0,
-      "proof_kind": "actual owner launch in progress; no PASS verdict",
-      "attempt_dir": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-canonical-owner-20261006T122950.279816Z-d056dd657119"
+      "failed_owner_requests": 1,
+      "not_run_owner_requests": 44,
+      "proof_kind": "actual frozen owner_recipe RED receipt; no Rust test execution"
     },
     "consumer_generated_product_qualification": "NOT_RUN",
     "d1_d2_main_body_import": "NOT_RUN",
     "prior_05fc_result": "historical E0061/exit101/tests0; not transferable",
-    "next": "Read actual d056 canonical owner results/receipts after run; then consumer/generated/product gates",
+    "next": "Compose new clean candidate from main205c plus D1/D2 body, freeze exact tuple and rerun PTA-first owner matrix",
     "scoped_retirement": {
       "witness": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/nextd056-import/scoped-retirement-d056.json",
       "baseline_findings_before": 14,
@@ -940,6 +954,138 @@
       "local_crates": 72,
       "lock_edges_outside_closure": 6,
       "proof_kind": "static lib/test closure comparison; no QBC"
-    }
+    },
+    "status_for_new_source": "historical d056 frozen result; no carryover after main Java visibility fix"
+  },
+  "latest_failed_composed_candidate": {
+    "source": "6583c221438b79a5e16c50dc75512497a12e8805",
+    "base_main": "205c86d5c2aca4a2c2b8f34ab1399cce27f12eb6",
+    "parents": [
+      "205c86d5c2aca4a2c2b8f34ab1399cce27f12eb6",
+      "d056dd657119d9d2ed67dc6e99d6568cf913e427"
+    ],
+    "clean": true,
+    "owned_changed_paths": 87,
+    "candidate_state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/candidate-6583-state.json",
+    "candidate_state_sha256": "0bb3b934280d31d14e94650d92df918502e852d6e459cff72a7c8314243e4bd4",
+    "merge_witness": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/merge-6583-preservation-witness.json",
+    "merge_witness_sha256": "2a0b76a0c333721feba39f758218960fc9f609674762e4548d7778a9039df997",
+    "merge_review": {
+      "candidate_paths_byte_equal_second_parent": 87,
+      "new_main_paths_byte_equal_first_parent": 8,
+      "overlap_paths": 0,
+      "visibility_owner_blob_equal_main": true,
+      "proof_kind": "committed source merge preservation; no Rust/product qualification"
+    },
+    "source_policy": {
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/6583c221438b-boundary-policy-state.json",
+      "passed_policies": 90,
+      "exit_code": 0,
+      "scope_complete": true,
+      "log_sha256": "e3ec53a536c9ad6abe2965870868b54cc9a34b044f27c01bc4a3ac1dc59abb81",
+      "proof_kind": "source policy only"
+    },
+    "scoped_retirement": {
+      "witness": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/next6583-import/scoped-retirement-6583.json",
+      "baseline_findings_before": 14,
+      "findings_after": 7,
+      "new_keys": 0,
+      "worsened_keys": 0,
+      "proof_kind": "read-only scoped source comparison"
+    },
+    "wire_static_closure": {
+      "witness": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/next6583-import/wire-owner-closure-6583.json",
+      "local_crates": 72,
+      "proof_kind": "static lib/test tree comparison"
+    },
+    "next_sibling_pins": {
+      "quanta_gqlang_v2": "30b6efd06645762146479f8a5c89e81d6dc85af5",
+      "quanta_index": "ab87837f5d34de1d8f9de9dedcfd44032051a284"
+    },
+    "frozen_materialization": {
+      "status": "SEALED",
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/snapshot-6583-state.json",
+      "state_sha256": "de56620fb466254dabe4372161a6fc0aeef266c1b311b04ea42f3eab94e72263",
+      "topology_digest": "6583c221438b79a5e16c50dc75512497a12e8805+ext-7c0966bc582839fd8230",
+      "source_snapshot_digest": "1d83971e5cd97872c4b9e463064013b8195a4988643721faecb76cbece985bda",
+      "proof_kind": "source snapshot custody only; no Rust owner verdict"
+    },
+    "canonical_owner_requests": {
+      "status": "FAILED owner 1/45; quanta-adapters-parser dependency compile exit101/tests0; owner_recipe RED; PASS0, remaining44 NOT_RUN",
+      "request_count": 45,
+      "request_map": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-owner-proof-request-map45-6583.json",
+      "accepted_owner_passes": 0,
+      "proof_kind": "actual frozen QBC owner_recipe RED receipt; zero tests; other requests not run",
+      "request_map_sha256": "26b606f3da962bfe9928d223ee5a932eb16d2f2ba76f5fabc4cebab9a7acb128",
+      "launcher": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-6583.py",
+      "launcher_sha256": "9870de4702a2b70742d642272528457f5702f1ae67bc3bfd7ddacc6ae8e9b362",
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-6583-state.json",
+      "attempt_dir": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-canonical-owner-20261006T124201.316430Z-6583c221438b",
+      "failed_owner_requests": 1,
+      "not_run_owner_requests": 44,
+      "run_id": "20261006T124308.674921Z-72d9126b2256",
+      "result_json": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-canonical-owner-20261006T124201.316430Z-6583c221438b/01-tarjan-pta.result.json",
+      "failure_diagnostics": [
+        {
+          "file": "controlled_java_tree_v3.rs",
+          "line": 67,
+          "code": "E0433",
+          "kind": "unresolved quanta_runtime_execution"
+        },
+        {
+          "file": "semantic_expression_identity_ledger_v1.rs",
+          "line": 46,
+          "code": "unused-imports",
+          "kind": "controlled_semantic_parse_binding_digest_v3 import denied"
+        },
+        {
+          "file": "java_function_semantic_identity_catalog_v1.rs",
+          "line": 550,
+          "code": "E0308",
+          "kind": "bare V2 instead of Result"
+        },
+        {
+          "file": "java_function_semantic_identity_catalog_v1.rs",
+          "line": 554,
+          "code": "E0308",
+          "kind": "bare V2 instead of Result"
+        }
+      ],
+      "failure_archive": "IMMUTABLE_COPY_CONFIRMED",
+      "failure_archive_manifest": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-failed-owner-6583-20261006T124308.674921Z-72d9126b2256-archive/manifest.json",
+      "failure_archive_manifest_sha256": "cd3fd7c8466fe63f7fa2d8de72c75f1bc36edfed0de7adfbe8efa9ecff4acb47",
+      "cause_scope": "four parser source files byte identical on 6583 and base main205c; not introduced by D1/D2 body merge"
+    },
+    "prior_d056_result": "historical Java E0364/E0603 owner RED exit101/tests0; not transferable",
+    "d1_d2_main_body_import": "NOT_RUN",
+    "consumer_generated_product_qualification": "NOT_RUN",
+    "next": "Compose clean candidate from mainb8cf and D1/D2 body, freeze exact tuple and rerun PTA-first owner matrix",
+    "status_for_new_source": "historical failed 6583 tuple; parser prerequisite later committed mainb8cf; no transfer to new source"
+  },
+  "current_live_prerequisite": {
+    "semantica_main": "b8cf227f265b75e88c7f12b057c1a1b59215bf15",
+    "parent_main": "99c950e8b6b6cd9a188ad09dbe4abbdda8d5638a",
+    "import_state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/parser-java-owner-prerequisite-import-state.json",
+    "paths": [
+      "packages/analysis/quanta-v2/crates/quanta-adapters-parser/Cargo.toml",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-parser/src/language_host_adapter/semantic_expression_identity_ledger_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-parser/src/language_host_adapter/java_function_semantic_identity_catalog_v1.rs"
+    ],
+    "source_changes": [
+      "parser-java enables optional normal dependency quanta-runtime-execution with default-features false",
+      "remove unused controlled_semantic_parse_binding_digest_v3 reexport",
+      "wrap catalog V2 kind result in Ok(match ...)"
+    ],
+    "architecture_cost": "parser-to-runtime dependency under parser-java feature; lower owner considered later, outside this checkpoint",
+    "proof_kind": "committed source prerequisite only; owning Rust proof pending",
+    "next_sibling_pins": {
+      "quanta_gqlang_v2": "30b6efd06645762146479f8a5c89e81d6dc85af5",
+      "quanta_index": "ab87837f5d34de1d8f9de9dedcfd44032051a284"
+    },
+    "new_composed_candidate": "NOT_YET_AVAILABLE",
+    "new_frozen_tuple": "NOT_RUN",
+    "canonical_owner_requests": "NOT_RUN on parser-fixed combined source; prior 6583 owner1 RED/tests0, remaining44 NOT_RUN",
+    "d1_d2_main_body_import": "NOT_RUN",
+    "consumer_generated_product_qualification": "NOT_RUN"
   }
 }
