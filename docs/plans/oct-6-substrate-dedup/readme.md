@@ -110,7 +110,7 @@ GQLang frontend는 syntax/sema/normalized IR을 소유하고, 실행 substrate�
 **목적:** 사용되지 않는 대체 UF와 public export를 제거한다.
 
 - **남길 owner:** [base UF](../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/union_find_base.rs), 실제 Steensgaard main/retained-pair session. 활성 Andersen solver와 Mahjong의 별도 min-root 계약은 유지한다.
-- **삭제:** [Andersen UF](../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/andersen/union_find.rs), `union_find_tests.rs`, Andersen `mod.rs` 등록/export, crate root의 해당 `UnionFind` re-export. `BaseUnionFind` alias는 유지한다.
+- **삭제:** `solver/andersen/union_find.rs` (main에서 삭제됨), `union_find_tests.rs`, Andersen `mod.rs` 등록/export, crate root의 해당 `UnionFind` re-export. `BaseUnionFind` alias는 유지한다.
 - **소비자 확인:** Semantica·Index·GQLang 및 확인 가능한 target/feature의 alias·glob까지 census. 알려진 consumer가 발견되면 같은 checkpoint에서 전환한다. In-repo census로 미확인 외부 consumer 부재를 주장하지 않는다.
 - **검증:** `codegraph-core-pta-engine`의 실제 Steensgaard/Andersen positive·negative 결과와 retained pair-session 회귀. 삭제한 UF 구현을 재현하는 mirror test는 추가하지 않는다.
 - **DoD:** 퇴역 module·정의·export·consumer 0; 실제 solver 회귀 통과. Bool/root 호환 wrapper나 새 UF trait를 남기지 않는다.
@@ -286,21 +286,21 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 
 | 항목 | 구현 상태 | main 코드 checkpoint | owner/gate proof |
 |---|---|---|---|
-| D3 | PLANNED | 없음 | NOT_RUN |
-| D5 | PLANNED | 없음 | NOT_RUN |
-| D4 | PLANNED | 없음 | NOT_RUN |
-| D7 | PLANNED | 없음 | NOT_RUN |
-| D1-A / D1-B | PLANNED / PLANNED | 없음 | NOT_RUN |
-| F1 / D6 | PLANNED / PLANNED | 없음 | NOT_RUN |
-| D2-P / D2-K / PTA / Taint | PLANNED | 없음 | NOT_RUN |
+| D3 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker DFG91/pack16/taint3 QBC GREEN; final combined main qualification 별도 |
+| D5 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker PTA solver227 QBC GREEN |
+| D4 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker SCV2 leaf34 QBC GREEN; canonical main fences PASS |
+| D7 | MAIN_IMPLEMENTED | `b258f5919a5` | root focused33 GREEN; full product qualification 별도 |
+| D1-A / D1-B | PRIVATE_COMMITTED / IN_PROGRESS | 없음 | A exact frozen selected1 GREEN; B static closure GREEN, runtime proof pending |
+| F1 / D6 | MAIN_IMPLEMENTED | `c1f821db572` | SDK211 pass/2 skip; rebased consumers141 pass/1 skip; installed wheel1 + Granian/scripted daemon1 GREEN. Native daemon/product qualification 별도 |
+| D2-P / D2-K / PTA / Taint | PRIVATE_COMMITTED / IN_PROGRESS | 없음 | core19 QBC GREEN; PTA lib check GREEN, existing lib-test13 compile errors; Taint proof 진행 |
 
 ### 최종 Definition of Done
 
 - [ ] D1: production Shape 정의 1개·알려진 factories 전환·D1-B 실제 feature closure proof.
 - [ ] D2: 선택한 generic/PTA/taint traversal core 1개·두 adapter 전환·order/ID/stop/admission/deep-chain proof.
-- [ ] D3/D5: 퇴역 entry/module·exports·active consumers 0·보존한 실제 owner 회귀 통과.
-- [ ] D4: SCV2 inline contribution 0·기존 helper 사용·leaf feature·score/order/refusal proof.
-- [ ] F1/D6: truthful current row/summary·shared app 변환 1개·active consumers 전환·old converter/import/export 0.
+- [x] D3/D5: 퇴역 entry/module·exports·active consumers 0·보존한 실제 owner 회귀 통과.
+- [x] D4: SCV2 inline contribution 0·기존 helper 사용·leaf feature·score/order/refusal proof.
+- [x] F1/D6: truthful current row/summary·shared app 변환 1개·active consumers 전환·old converter/import/export 0.
 - [ ] D7: captured source authority 1개·projection version/digest 일치·init/retry/duplicate/override/restart controls.
 - [ ] 모든 항목의 existing mandatory gates, regenerated inputs, actual selected cases를 기록.
 - [ ] 각 dependency가 닫힌 checkpoint의 owned 변경을 local main에 반영하고 문서 ledger 동기화.

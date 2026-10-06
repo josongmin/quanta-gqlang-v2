@@ -44,7 +44,7 @@ code-new/
 
 | 저장소 | 수정 책임 | 이번 계획에서의 코드 변화 |
 |---|---|---|
-| G | 계획·검증 기록 | 문서만. Frontend compiler/Execution DTO 변경 없음 |
+| G | 계획·검증 기록·로컬 gate | 문서와 typos opaque hex identifier 처리. Frontend compiler/Execution DTO 변경 없음 |
 | S | runtime/SDK/apps | D1–D7 및 F1의 실제 구현·consumer·tests·gates |
 | I | Index SDK/provider | selected search source 확인. 현재 D4 변경은 S 안에서 닫힘 |
 
@@ -126,7 +126,7 @@ Before: `MemSsaBuildInput → pack(active)`와 `MemSsaBuildInput → DFG(dormant
 
 | 파일 | 동작 | 구체적 변경 |
 |---|---|---|
-| [Andersen union_find.rs](../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/andersen/union_find.rs) / [union_find_tests.rs](../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/andersen/union_find_tests.rs) | 삭제 | dormant UF 구현과 그 구현 전용 tests |
+| `solver/andersen/union_find.rs` / `union_find_tests.rs` (main에서 삭제됨) | 삭제 | dormant UF 구현과 그 구현 전용 tests |
 | [andersen/mod.rs](../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/andersen/mod.rs) / [crate lib.rs](../../../../semantica-codegraph-v2/packages/core/pta/engine/src/lib.rs) | 수정 | `mod union_find`, 해당 public UF export 제거; 활성 Andersen solver·BaseUnionFind alias 유지 |
 | [base UF](../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/union_find_base.rs) / [base tests](../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/union_find_base_tests.rs) | 유지·검증 | 실제 root-returning 계약 유지 |
 | [Steensgaard implementation](../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/steensgaard_solver_impl.rs) / [retained pairs](../../../../semantica-codegraph-v2/packages/core/pta/engine/src/solver/steensgaard_retained_pairs.rs) | 유지·검증 | 현재 base consumer; bool-returning wrapper 추가 없음 |
@@ -263,7 +263,7 @@ After (native writer 확인으로 확정한 current SDK contract; 구현 진행 
 | [shared search exports](../../../../semantica-codegraph-v2/packages/analysis/codegraph-shared/codegraph_shared/infra/search/__init__.py) | 수정 | shared conversion의 필요한 export만 제공 |
 | [API routes/search.py](../../../../semantica-codegraph-v2/apps/api/api/routes/search.py) | 수정 | `_project_current_search_symbols`의 local field validation/mapping 삭제 후 shared 호출. Route admission/HTTP mapping 유지 |
 | [HTTP agent query_adapter.py](../../../../semantica-codegraph-v2/apps/mcp/mcp/adapters/search/query_adapter.py) | 수정 | `_extract_search_hits_v1`의 symbol conversion·legacy payload 탐색 제거. `_parse_normalized_hits_v1`은 앱 DTO assembly만 수행 |
-| [symbol_retriever.py](../../../../semantica-codegraph-v2/apps/mcp/mcp/adapters/search/symbol_retriever.py) | 삭제 제안 | fresh construction census 후 dormant module/converter 퇴역 |
+| `apps/mcp/mcp/adapters/search/symbol_retriever.py` (main에서 퇴역) | 삭제 | actual CLI caller 전환과 construction census 후 dormant module/converter 퇴역 |
 | [search package exports](../../../../semantica-codegraph-v2/apps/mcp/mcp/adapters/search/__init__.py) / [legacy services](../../../../semantica-codegraph-v2/apps/mcp/mcp/adapters/mcp/services.py) / [lazy handlers](../../../../semantica-codegraph-v2/apps/mcp/mcp/handlers/__init__.py) / [legacy search handler](../../../../semantica-codegraph-v2/apps/mcp/mcp/handlers/search.py) | 수정·조건부 삭제 | retired imports/export cleanup. 필요한 live `SymbolAuthorityUnavailableError`만 owner 이동; obsolete facade를 위한 shim 없음 |
 | [live public MCP adapter](../../../../semantica-codegraph-v2/apps/mcp/mcp/adapters/fluent_engine_sdk_query_adapter.py) | 유지·검증 | generated envelope path의 별도 control; HTTP agent converter에 강제로 합치지 않음 |
 
@@ -340,3 +340,28 @@ Core internal signature is a design decision to finalize in D2-K. Required I/O i
 | current SDK/app fixture·strict converter census | F1/D6 | current schema only; retired parser/module 재도입 방지 |
 
 파일 표는 시작 write set이다. Generated-source origin과 추가 caller가 발견되면 해당 owner만 보완한다. 모든 표의 After는 actual main commit과 [test-plan.md](test-plan.md)의 proof가 있을 때 ledger에서 완료로 바꾼다.
+
+
+## 구현에서 확정된 추가 write set
+
+이 표는 구현 중 actual caller 추적에서 추가된 범위다. [checkpoint ledger](execution-progress.md)의 실제 실행 상태와 함께 읽는다.
+
+| S 파일 | Before | After / 이유 |
+|---|---|---|
+| `apps/cli/cli/main.py` + `tests/test_current_search.py` | 퇴역 SymbolRetriever import, logical repo/path 혼합 | existing registered SDK symbol search + truthful `{hits,summary,outcome_status_v1,degraded_reasons}`. Unsupported authority는 attach 전 거절 |
+| `packages/sdk/python/codegraph_sdk/_receipt.py`, `client.py`, `_product_projection_values_v1.py` | with_status pair가 native degraded reason을 받지 못하고 absent receipt key도 손실 | existing pair에 reason tuple 전달; canonical ProductResponse metadata/receipt projection을 existing value owner로 이동. Receipt absence 그대로 보존 |
+| `apps/api/api/routes/search.py`, `apps/mcp/mcp/adapters/search/query_adapter.py` | local symbol-only reader + data-only status loss | shared data converter + explicit with_status. QueryAdapter는 canonical search, graph store composition, graph-created rows append를 분리 |
+| `apps/api/api/routes/agent.py`, shared `infra/search/agent_payloads.py` | absent file path가 fake file 후보, point-only/malformed range가 span | absent source 후보 제외, complete authored range만 보존, no-source analysis 명시 |
+| SDK `queries/search.py` | symbol-only result/location DTO | primary/supplemental discriminated variants + native summary; optional points, no invented end coordinates |
+| `apps/api/tests/test_product_client_di_lifecycle.py`, `test_agent_surface_smoke.py` | reachable HTTP positive test의 old symbols mock | actual current boundary pair/hits/summary fixture; negative503 controls 보존 |
+| SDK `tests/test_packaged_wheel_runtime.py`, API `test_packaged_api_process_runtime.py`, `tests/support/packaged_daemon_release.py` | stale native fields/generated nullable keys, systemPython3.9 hardcode | actual native row/summary + canonical null authorities; installed SDK identity check 유지, test interpreter 사용 |
+
+Python search checkpoint의 public SDK/HTTP/CLI output는 pre-release current schema로 교체한다. Old reader/dual schema/shim을 추가하지 않는다. 이는 compiled GQLang execution DTO 변경이나 새 graph engine 도입이 아니다.
+
+| 추가 D1-B 실제 caller | Before | After |
+|---|---|---|
+| SDK backend→runtime composition→executor Cargo features/Shape port | Shape-only가 Cost feature에 묶인 field/impl로 연결되지 않음 | Shape feature 전달과 field/impl을 분리; Cost methods는 Cost feature 유지 |
+| Runtime CostAnalysisWiringPort/framework injector/fluent snapshot pin | Shape 작업이 Cost feature에만 존재 | Shape feature에서 Shape port·pin operation 제공 |
+| Runtime `heap-analyzer` feature | Shape를 통해 Cost를 간접 활성화 | explicit Cost dependency 유지; Shape-only normal deps에서는 Cost 제외 |
+
+D2 admission은 실제 `TarjanFrameV1` 크기와 output header/member allocation을 포함하는 checked byte envelope로 보완한다. 작은 custom cap의 거절·경계 통과를 owner core 회귀로 고정한다. 이 변경의 proof는 기존 core19 결과와 별도로 실행한다.

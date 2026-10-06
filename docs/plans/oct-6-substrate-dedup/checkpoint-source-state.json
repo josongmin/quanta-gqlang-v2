@@ -1,0 +1,82 @@
+{
+  "at_utc": "2026-10-06T02:04:57.830329+00:00",
+  "scope": "D1-D7 plus F1; source-only/proof states are separate",
+  "repositories": {
+    "gqlang": {
+      "root": "/Users/songmin/Documents/code-new/quanta-gqlang-v2",
+      "head": "c943c0529e6a1a246da766b31f1b7a05290b84d0",
+      "dirty_record_sha256": "b5c28be9ed829ade1020c2197ad25711720510ad2a28d597855f49f36666b6c3",
+      "dirty_entries": 16
+    },
+    "semantica": {
+      "root": "/Users/songmin/Documents/code-new/semantica-codegraph-v2",
+      "head": "c1f821db572b2b1c1f433ba57bdaea3f6fc9b0f8",
+      "dirty_record_sha256": "b4cb9ecaf9c02695f4f93619c70802777e73eef8de55215ecaca0a93ae8dee5a",
+      "dirty_entries": 345
+    }
+  },
+  "main_checkpoints": {
+    "D7": "b258f5919a589611d21674c4e388e7ec70d8ed60",
+    "D3_D5_D4": "d88f0a2ed7a64f38ae8ac97badbb9671a759e10c",
+    "F1_D6": "c1f821db572b2b1c1f433ba57bdaea3f6fc9b0f8"
+  },
+  "proofs": {
+    "gqlang_local_ci": {
+      "result": "PASS",
+      "snapshot": "83f930a4bf86250e925e16386c28d3e8e03e12af315569b293e7a62479e031f9",
+      "log": "/tmp/oct6-gqlang-local-ci.log",
+      "scope": "Executed dirty source; later edits are plan/status documentation only."
+    },
+    "search_rebased_consumers": {
+      "source": "5cc4a2c9972b08f7b13963f8e8afa79251c1d9c1",
+      "tests": 142,
+      "passed": 141,
+      "skipped": 1,
+      "junit": "/tmp/oct6-d6-rebased-consumers-junit.xml",
+      "owned_input_delta_from_prior_proof": 0
+    },
+    "search_structure_delta": {
+      "base": "5cb96ba45c8ed933e6511647ecd2ceb3a5d4e03a",
+      "head": "5cc4a2c9972b08f7b13963f8e8afa79251c1d9c1",
+      "paths": 14,
+      "before_findings": 44,
+      "current_findings": 36,
+      "new": [],
+      "growth": [],
+      "existing_baseline_missing": [
+        "python:function_lines:packages/sdk/python/codegraph_sdk/_receipt.py:_parse_gqlang_execution_v3",
+        "python:function_complexity:packages/sdk/python/codegraph_sdk/client.py:_validate_sdk_response_operation_for_spec_v1",
+        "python:function_lines:packages/sdk/python/codegraph_sdk/client.py:_project_supported_product_response_v1",
+        "python:function_lines:packages/sdk/python/codegraph_sdk/client.py:_project_warmup_product_response_v1",
+        "python:function_complexity:packages/sdk/python/codegraph_sdk/client.py:_project_warmup_product_response_v1",
+        "python:function_lines:packages/sdk/python/codegraph_sdk/client.py:_project_gqlang_product_response_v1",
+        "python:function_complexity:packages/sdk/python/codegraph_sdk/client.py:_project_gqlang_product_response_v1",
+        "python:function_lines:packages/sdk/python/codegraph_sdk/client.py:SdkClient::preflight",
+        "python:function_complexity:packages/sdk/python/codegraph_sdk/client.py:SdkClient::preflight",
+        "python:function_parameters:packages/sdk/python/codegraph_sdk/client.py:SdkClient::execute_registered_query_v1",
+        "python:function_parameters:packages/sdk/python/codegraph_sdk/client.py:SdkClient::_execute_registered_query_product_v1",
+        "python:class_methods:packages/sdk/python/codegraph_sdk/client.py:SdkClient",
+        "python:class_public_methods:packages/sdk/python/codegraph_sdk/client.py:SdkClient"
+      ],
+      "retired_baseline_entries": [
+        "python:function_complexity:apps/api/api/routes/search.py:_extract_search_hits_v1",
+        "python:function_complexity:apps/api/api/routes/search.py:_extract_search_hits_v1::_symbol_to_hit_v1",
+        "python:function_complexity:apps/mcp/mcp/adapters/search/query_adapter.py:QueryAdapter::_execute_via_query_engine",
+        "python:function_complexity:apps/mcp/mcp/adapters/search/query_adapter.py:QueryAdapter::_extract_search_hits_v1",
+        "python:function_complexity:apps/mcp/mcp/adapters/search/query_adapter.py:QueryAdapter::_extract_search_hits_v1::_symbol_to_hit_v1",
+        "python:function_complexity:apps/mcp/mcp/adapters/search/symbol_retriever.py:SymbolRetrieverAdapter::_search_symbols",
+        "python:function_complexity:apps/mcp/mcp/adapters/search/symbol_retriever.py:SymbolRetrieverAdapter::_search_symbols::_symbol_from_canonical_row_v1",
+        "python:function_lines:apps/api/api/routes/search.py:_extract_search_hits_v1",
+        "python:function_lines:apps/api/api/routes/search.py:hybrid_search",
+        "python:function_lines:apps/cli/cli/main.py:search",
+        "python:function_lines:apps/mcp/mcp/adapters/search/symbol_retriever.py:SymbolRetrieverAdapter::_search_symbols"
+      ]
+    },
+    "semantica_product_qualification": "NOT_RUN"
+  },
+  "documentation_check": {
+    "links_checked": 136,
+    "missing_links": [],
+    "proof_type": "path/fence validation only"
+  }
+}

@@ -3,6 +3,10 @@
 #
 extend-exclude = ["target/**"]
 
+[default]
+# Source commits and artifact digests are opaque hexadecimal identifiers.
+extend-ignore-identifiers-re = ["^[0-9a-f]{7,64}$"]
+
 [default.extend-words]
 gqlang  = "gqlang"
 lsp     = "lsp"
