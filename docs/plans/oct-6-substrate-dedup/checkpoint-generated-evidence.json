@@ -153,8 +153,19 @@
       "packages/sdk/python/codegraph_sdk/client.py"
     ],
     "private_candidate": "7c3ec10828bfe09a34a03d9b0f1a38667bcce4fd",
-    "main_import": "PENDING_FOREIGN_CI_BARRIER",
-    "canonical_fences": "normal private commit staged patch integrity/safety PASS; source-scoped CLI19 files PASS before latest rebase"
+    "main_import": "COMPLETE",
+    "canonical_fences": "normal private/main commits: staged patch integrity/safety PASS; rebased actual scoped CLI19 files PASS",
+    "checkpoint": {
+      "base": "eff7192985631632cbd603df2bdcd1041d124240",
+      "source": "b869e104972e3d67767b2b48b31aa157f2221e46",
+      "main": "0a86de35c282195bed0a69456bf81a63e6b62bc7",
+      "paths": [
+        "tools/ci/lint/god-surface-baseline.json"
+      ]
+    },
+    "current_rebased_scoped_cli": "PASS files19 stale0 allowed0",
+    "original_owned_path_clean": true,
+    "claim_and_barrier_released": true
   },
   "honesty_baselines_written": false,
   "d3_honesty_attribution": {
@@ -240,6 +251,7 @@
     "lease_id": "f4660517-7889-4adb-934b-bffa7ed72af6",
     "created_at_utc": "2026-10-06T03:53:26.766731Z",
     "stale": false,
-    "action": "not released or bypassed"
+    "action": "not released or bypassed",
+    "outcome": "released by owner before God import; not bypassed"
   }
 }
