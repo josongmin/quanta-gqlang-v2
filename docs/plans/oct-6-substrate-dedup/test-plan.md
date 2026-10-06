@@ -84,8 +84,8 @@ cd /Users/songmin/.codex/worktrees/oct6-index-token-visitor/quanta-index
 ```
 
 - 기본 owner control은 roundtrip 및 malformed/missing/unknown/duplicate field 거절을 확인한다. Native feature rail은 해당 cfg를 컴파일하지만 native admission 정책 전체의 행동 증명으로 세지 않는다.
-- 각 실행은 실제 nonzero 선택·성공 결과가 필요하다. Resource admission 이전 timeout은 실행 0건의 `BLOCKED`다. 현재 두 시도는 각각 300초·60초 후 exit124로 종료됐다.
-- 성공 후 관련 source의 main 반영을 확인하고 새 canonical Semantica snapshot을 만든다. 오래된 Wire/core receipt를 새 sibling 조합의 결과로 재사용하지 않는다.
+- 각 실행은 실제 nonzero 선택·성공 결과가 필요하다. Resource admission 이전 timeout은 실행 0건의 `BLOCKED`다. 과거 두 시도는 각각 300초·60초 후 exit124로 종료됐다. Native owner는 현재 1800초 wait 설정으로 재시도 중이며 자원 게이트는 유지한다.
+- Impl 본문 보존의 정적 확인을 거친 한 파일은 main `a72a85df`에 선행 반영했다. 별도 owner verdict는 미완료로 유지하고, 수정된 committed Index를 포함한 canonical Semantica snapshot에서 consumer proof를 병행한다. 오래된 Wire/core receipt를 새 sibling 조합의 결과로 재사용하지 않는다.
 
 ### 2.4 PTA fixture·cost 선행 owner selectors
 
@@ -294,7 +294,7 @@ H5의 producer classification은 `runtime_ingress_shape_overlay_uses_standalone_
 
 ### D1 실행 순서와 중복 시험 제외
 
-Current candidate `1ac35525239`의 실행 계획에서 full `gate-shape-analysis-ghiya-hendren.sh`는15개 `cg_test`로 standalone17, core contract, PTA converter, runtime/SDK pure·PTA·disabled, actual overlay, session factory, Cost-only builder/capability/overlay, Cost/Heap owner를 선택한다. Smoke는8개 invocation 중 주요 경로를 반복한다. Smoke의 SOTA3개도 full의 owner17에 포함되거나 full이 선택한 Cost/Heap 테스트를 직접 호출한다. 따라서 Wire 선행 검증 뒤 같은 고정 소스에서 **full gate 한 번**을 실행하고 smoke·기존 leaf를 미리 반복하지 않는다. 이 문단은 실행 계획이며 GREEN 증거가 아니다.
+Current candidate `03ce6dec1ed`의 실행 계획에서 full `gate-shape-analysis-ghiya-hendren.sh`는15개 `cg_test`로 standalone17, core contract, PTA converter, runtime/SDK pure·PTA·disabled, actual overlay, session factory, Cost-only builder/capability/overlay, Cost/Heap owner를 선택한다. Smoke는8개 invocation 중 주요 경로를 반복한다. Smoke의 SOTA3개도 full의 owner17에 포함되거나 full이 선택한 Cost/Heap 테스트를 직접 호출한다. 따라서 Wire 선행 검증 뒤 같은 고정 소스에서 **full gate 한 번**을 실행하고 smoke·기존 leaf를 미리 반복하지 않는다. 이 문단은 실행 계획이며 GREEN 증거가 아니다.
 
 Full gate에 없는 증명만 추가한다:
 
