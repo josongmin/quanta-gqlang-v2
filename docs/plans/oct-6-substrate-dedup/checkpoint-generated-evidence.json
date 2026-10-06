@@ -1238,16 +1238,41 @@
       "proof_kind": "QBC auxiliary metadata only; no Rust compiler/test verdict"
     },
     "canonical_owner_requests": {
-      "status": "RUNNING",
-      "current": "tarjan-pta 1/45",
-      "completed": 0,
+      "status": "FAILED",
+      "accepted_pass": 0,
+      "failed": 1,
       "remaining_not_run": 44,
+      "first_owner": "tarjan-pta",
+      "first_owner_exit_code": 101,
+      "first_owner_tests_executed": 0,
+      "first_owner_seconds": 333.51,
+      "run_id": "20261006T133102.728992Z-d3c80dff26d8",
       "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-a162c51477a7-state.json",
-      "proof_kind": "live state only; no finalized Rust verdict"
+      "result_locator": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-canonical-owner-20261006T133003.905179Z-a162c51477a7/01-tarjan-pta.result.json",
+      "log_sha256": "1b352f1db059113ccf141d15f1442b273838b61102947dee71edc48a2cee078f",
+      "authority_kind": "owner_recipe",
+      "reuse_eligible": true,
+      "owner_verdict": "RED",
+      "compile_errors": [
+        "E0521",
+        "E0597",
+        "FnOnce not general enough"
+      ],
+      "error_count": 4,
+      "error_source": "packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/source_issuance_control_v3/json_decoder_scratch_v3.rs",
+      "error_lines": [
+        374,
+        384
+      ],
+      "error_source_in_owned_87_paths": false,
+      "baseline_commit": "224b77f",
+      "proof_kind": "actual canonical owner receipt; compiler failure before tests",
+      "failure_archive_manifest": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-failed-owner-a162-20261006T133102.728992Z-d3c80dff26d8-archive/manifest.json",
+      "failure_archive_manifest_sha256": "d3d9697047fc652178bae471e8a076f777a89f160a6f9765364e4c44a0104e26"
     },
     "d1_d2_main_body_import": "NOT_RUN",
     "consumer_generated_product_qualification": "NOT_RUN",
-    "next": "Wait for canonical PTA-first owner receipt, then remaining 44 requests if first PASS; no Rust PASS until source-bound receipts",
+    "next": "Compose fixed main 9983d87 with D1/D2 body, run exact source policy and focused JSON decoder QBC, then PTA-first canonical owner matrix on new frozen tuple",
     "merge_witness": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/merge-a162c51477a7-preservation-witness.json",
     "merge_witness_sha256": "f4855b30e0beaa6c454a39035f615fe3a294f84aae67f07e940d027042578bf9",
     "scoped_retirement": {
@@ -1278,7 +1303,7 @@
       "sha256": "bca542040cbee56e96c4e029c65be3d8aab3a60d755a89ce187bb06363766f93"
     },
     "owner_launcher": {
-      "status": "RUNNING; first owner 1/45",
+      "status": "completed with owner 1/45 RED; remaining 44 not run",
       "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-a162c51477a7.py",
       "sha256": "138307d1a21989c7edfba1b55ed590ec0ca5e13bb43328c62d4a22d8d7e10b86"
     },
@@ -1289,6 +1314,25 @@
       "evidence": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/pure-validation-a162c51477a7.json",
       "evidence_sha256": "da171f64263b212fb35ecba3c4803853af22c1a1f3af680184128f17faf99be6",
       "proof_kind": "pure request/driver preflight; no Rust owner execution"
+    },
+    "proposed_owner_repair": {
+      "status": "COMMITTED SOURCE ONLY; not QBC verified",
+      "main_commit": "731beeb8c6b675b8a80ab2acc7308ce7b3a3f551",
+      "approach": "replace T::deserialize function item with closure forwarding decoder argument",
+      "scope": "one runtime-execution JSON decoder file; public signature and typed error unchanged",
+      "import_state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/json-scratch-callback-prerequisite-import-state.json",
+      "focused_qbc": "NOT_RUN",
+      "pta_owner_rerun": "NOT_RUN"
+    },
+    "additional_source_prerequisite": {
+      "status": "COMMITTED SOURCE ONLY; no Rust verdict",
+      "main_commit": "9983d87a951ebad64cc5a3039aec01e8b2975537",
+      "scope": "four #[path] child module attributes, exact four source files",
+      "source_semantics": "child files already committed; cfg/privacy/module identities/bodies unchanged",
+      "import_state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/native-module-path-prerequisite-import-state.json",
+      "focused_python_resolver": "4 PASS; static only",
+      "focused_qbc": "NOT_RUN",
+      "pta_owner_rerun": "NOT_RUN"
     }
   },
   "previous_6583_failed_candidate": {

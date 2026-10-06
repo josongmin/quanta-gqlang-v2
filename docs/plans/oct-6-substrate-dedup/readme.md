@@ -12,7 +12,7 @@
 상태: **IN_PROGRESS.** GQLang 마지막 clean 문서 checkpoint는 `97b4135`다. 로컬 `just ci` PASS는 이전 `d600cab` 소스의 receipt다.
 
 - **현재 소스:** Semantica clean private `a162c51`/base main `2852932`의 main-first merge, owned 87경로. `3f5c`의 non-lock 본문 85경로와 main-only 40경로는 부모 blob을 보존하며, 두 lock의 package identity root953/nested914는 유지된다.
-- **검증:** Exact 92 input paths source policy는 92 PASS/exit0이다. Read-only GOD 14→7/new0/worse0와 Wire 72 local crate 정적 closure가 있다. `a162+ext-7c0966bc582839fd8230` snapshot은 GQLang `30b6efd`·Index `ab87837` overlay0으로 sealed됐다. Root·nested QBC locked metadata는 모두 PASS이며 Rust 검증과 별개다. Canonical owner 1/45 `tarjan-pta` 실행 중(완료 0건), 나머지44 NOT_RUN이다. 직전 `3f5c`의 owner1은 Cargo `--locked` exit101/테스트0·RED였다.
+- **검증:** Exact 92 input paths source policy는 92 PASS/exit0이다. Read-only GOD 14→7/new0/worse0와 Wire 72 local crate 정적 closure가 있다. `a162+ext-7c0966bc582839fd8230` snapshot은 GQLang `30b6efd`·Index `ab87837` overlay0으로 sealed됐다. Root·nested QBC locked metadata는 모두 PASS이며 Rust 검증과 별개다. Canonical owner 1/45 `tarjan-pta`는 runtime-execution JSON decoder의 lifetime/`FnOnce` 컴파일 오류 4건(E0521/E0597)으로 RED/exit101/테스트0이며 나머지44 NOT_RUN이다. Decoder와 `#[path]` child module 경로 선행 수리는 Semantica main `731beeb`·`9983d87`에 source-only 반영됐다. 새 통합 후보와 Rust 재검증은 대기다. 직전 `3f5c`의 owner1은 별도 Cargo `--locked` 실패였다.
 - **남은 범위:** D1/D2 본문 main 반영, downstream consumer, generated/global Honesty, native full product. [현재 증거](execution-progress.md).
 
 아래 두 단락은 `3fe` 실행 전의 병합·진단 이력이다. 당시의 `NOT_RUN`은 현재 판정이 아니다.
