@@ -53,7 +53,8 @@ scripts/quanta-build-cli owner run \
 | D1 PTA converter | `quanta-adapters` | integration / `pta_to_shape_input_contract_test` | test `required-features`와 inner cfg 함께 갱신 |
 | D2 generic/indexed | `quanta-graph-utils-v1` | lib / module `scc` | generic + indexed controls 모두 실행 |
 | D2 PTA | `quanta-runtime-analysis` | lib / selector matching `precise_query_scc` | current compiled module path·PTA feature closure를 resolve에서 확인 |
-| D2 taint | `quanta-taint-solver` | lib / selector matching `tarjan_iterative` | `cfg-dfg` 포함 owning closure; ignored deep case 별도 |
+| D2 taint | `quanta-taint-solver` | integration `tarjan_iterative` / SCC properties + lib `wire_recursion` | `cfg-dfg` 포함 owning closure; policy/resource unit과 ignored deep case 별도 |
+| D2 taint contract | `quanta-taint-solver-contract-tests` | integration `tarjan_scc_contract_test` | public Result caller와 successor-only domain proof |
 
 위 selector는 source namespace 또는 기존 gate substring에서 확인한 후보다. 이번 상세화에서 `owner resolve`/test enumeration은 실행하지 않았다. **resolve refusal, cfg로 0 cases, class 미등록이면 DoR 미충족**이다. 착수 시 registry/recipe owner에서 isolation class를 정리한 뒤 exact resolved command·test case count를 ledger에 저장한다. Broad all-features 성공으로 leaf closure를 대체하지 않는다.
 
@@ -156,7 +157,7 @@ Existing controls: `test_mcp_list_tools_matches_filtered_surface_config_ssot`, `
 
 | ID | native/current input | expected SDK + shared/app result |
 |---|---|---|
-| S1 | primary match, 실제 symbol authority 있음 | 실제 identity/name/kind 보존, score·count 의미 일치 |
+| S1 | primary match, 실제 symbol metadata 있음 | authored `symbol_fqn/symbol_kind/runtime_symbol_locator/symbol_discriminator` 보존, score·count 의미 일치. Runtime locator를 canonical symbol ID로 바꾸지 않음 |
 | S2 | primary file/text match, symbol 없음 | 정상 nonsymbol variant; fake symbol ID 없음, 허용된 file/content presentation |
 | S3 | supplemental-only | supplemental variant와 실제 identity 보존; primary로 오분류 없음 |
 | S4 | mixed primary+supplemental, distinct counts | native total/page/primary/supplemental count 정의 유지; 근거 없는 total>=all-row assertion 금지 |
@@ -208,7 +209,7 @@ Existing sources: [generic/indexed tests](../../../../semantica-codegraph-v2/pac
 | G8 | indexed neighbor >= node_count | typed compute error, no partial IDs/panic |
 | G9 | unsorted/duplicate neighbor permutations | current public indexed wrapper’s sort/dedup semantics and dense IDs preserved; borrowed core must not expose arbitrary edge order |
 | G10 | stop at each admitted indexing/traversal/materialization checkpoint | caller's exact typed Stop, no partial or late success; control observed before affected work |
-| G11 | node/edge bound +1, checked-size overflow, budget refusal | typed refusal before domain/index/state oversized allocation; resource admission != post-allocation callback |
+| G11 | node/edge bound +1, checked-size overflow, tiny workspace cap와 exact boundary | typed refusal before oversized dense traversal/result buffer allocation. Actual frame/header/member capacity를 계산; borrowed input·generic payload·allocator metadata/RSS까지 보장한다고 주장하지 않음 |
 | G12 | chain with 50,000 nodes | 50k singleton components/valid IDs, iterative completion without recursion; explicit ignored test execution |
 | G13 | taint cycle-policy fail_closed off/on and size/edge limits | original opt-in policy, independent size/edge refusal; output sort unchanged |
 
@@ -220,7 +221,7 @@ Existing cases to keep/extend:
 - PTA: `controlled_scc_every_checkpoint_stops_without_partial_result_v1`, `controlled_scc_handles_empty_and_deep_graph_boundaries_v1`. Existing normalized partition controls remain; add unnormalized G2/G4/G6.
 - taint: `tarjan_iterative_successor_only`, `tarjan_iterative_disjoint_multi_root_determinism`, `recursion_policy_preserves_independent_cycle_budgets`, `tarjan_iterative_deep_chain_50k`.
 
-Current gate includes `cg_test -p quanta-taint-solver tarjan_iterative --features cfg-dfg` and a second command with `tarjan_iterative_deep_chain_50k -- --ignored`. Retarget core/caller package/selectors while retaining actual ignored case execution. Nonzero regular and ignored case counts are mandatory. The script's stale textual test-count comment is not evidence of cases executed.
+Before gate는 taint `tarjan_iterative`와 ignored `tarjan_iterative_deep_chain_50k`만 선택했다. After gate는 core, PTA, taint iterative integration, SCC properties, `wire_recursion` lib policy/resource units, 별도 contract crate, ignored 50k의 7개 owner/selector를 선택한다. Integration target만 실행해 lib unit을 검증했다고 표시하지 않는다. Nonzero regular and ignored case counts are mandatory. Script comment의 test count는 실행 증거가 아니다.
 
 ## 9. D1 — Shape semantics와 feature closure
 
@@ -230,13 +231,13 @@ Current gate includes `cg_test -p quanta-taint-solver tarjan_iterative --feature
 | H2 | cost `self_loop_remains_cyclic_when_the_node_also_points_to_a_tail` | singleton self-loop + tail stays Cyclic; unique regression moves before cost deletion |
 | H3 | existing converter authority/overflow tests | canonical object authority preferred, digest-leak forbidden, overflow/context-stack mismatch typed refusal |
 | H4 | `pta_to_shape_input_tree_chain`, `pta_to_shape_input_dag_two_parents`, `pta_to_shape_input_cyclic`, `pta_to_shape_input_hard_orphan_field_loc` | actual PTA graph/classification. Orphan field fixture는 base node 유지·가짜 edge 없음·다른 유효 edge 유지·orphan Tree. 허용된 empty points-to를 missing authority 오류로 바꾸지 않음 |
-| H5 | actual SDK/factory fixture + V2 valid/missing/mismatch authority | standalone concrete owner selected; correct port result or typed refusal |
+| H5 | actual runtime overlay + SDK session factory fixture; V2 valid/missing/mismatch authority | existing gateway core producer → standalone concrete owner → SDK port; correct result or typed refusal |
 | H6 | pure Shape / PTA-derived Shape | both intended paths available with actual required features |
 | H7 | Shape disabled | typed unavailable, no fallback Cost Shape construction |
-| H8 | Cost / Termination / Heap active | original responsibilities/results remain reachable |
+| H8 | Cost / Termination / Heap active; Cost-only public Shape API control | original responsibilities/results remain reachable; existing Cost-only Shape API/capability preserved |
 | H9 | Shape-only resolved Cargo closure | no unnecessary cost-analyzer activation; public SDK cfg/capability matches actual available implementation |
 
-Existing locations: [standalone](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs), [cost unique cases](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs), [PTA contract](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters/tests/pta_to_shape_input_contract_test.rs), [SDK Shape](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime/tests/sdk_python_shape_analysis_test.rs).
+Owning locations: [standalone](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs), [PTA contract](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters/tests/pta_to_shape_input_contract_test.rs), [SDK Shape](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime/tests/sdk_python_shape_analysis_test.rs). Cost의 unique case는 최초 worker base의 `quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs`에서 standalone owner로 이동한다.
 
 Gate before/after:
 
@@ -248,6 +249,8 @@ Gate before/after:
 | query-execution Heap integration | remain Heap owner checks; not deleted as Shape clone |
 
 D1-A requires H1–H5 and relevant H8. D1-B additionally requires H6–H9, two retargeted Shape gates, feature policy/honesty regeneration. Factory cutover cannot close D1-B.
+
+H5의 producer classification은 `runtime_ingress_shape_overlay_uses_standalone_adapter_v1`에서 factory가 반환한 실제 `overlay.shape_analyzer`를 사용한다. SDK `session_shape_factory_selects_runtime_overlay_v1`는 selected feature의 factory reachability만 증명한다. Capability/compatibility는 `shape_analysis_builder_public_under_cost_or_shape_v1`, `shape_capability_requires_compiled_builder_and_installed_port_v1`로 구분한다. `shape_pin_failure_is_typed_and_operation_attributed_v1`는 missing authority를 성공으로 만들지 않는 control이다. 이 결과들은 별도 boundary proofs이며 하나의 end-to-end session 실행 결과가 아니다. `session-shape-analyzer-runtime`이 실제 선택하는 기존 `gateway-ingress-runtime-core` producer를 사용하며 넓은 coordination feature를 추가하지 않는다. 이미 주입한 Shape port의 단순 forwarding만으로 producer proof를 대신하지 않는다.
 
 ## 10. Python execution commands
 

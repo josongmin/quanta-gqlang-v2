@@ -25,10 +25,10 @@
 | D5 | private `49e532799c9`; active PTA solver QBC 227/227 GREEN | Main `d88f0a2ed7a`; dormant module/export 삭제, base/active solver 보존 |
 | D4 | private `c0396ef17c9`; no-default SCV2 owning QBC 34/34 GREEN; rank bits/mixed sum 및 algo-only closure 확인 | Main `d88f0a2ed7a`; actual canonical classifier/rustfmt/safety fences PASS |
 | D7 | root final focused 33/33 GREEN; captured source/duplicate/override/init controls | Main `b258f5919a5`; 7 owned paths만 checkout custody 갱신, canonical Ruff/safety PASS |
-| D1-A | private `8b35a93b2fe`; frozen sibling exact selected self-loop-tail QBC 1/1 GREEN, earlier module16/16은 diagnostic | 미반영. Full owner/consumer proof와 A/B feature closure 필요 |
-| D1-B | cfg/forwarding/SDK/gate cutover diff; metadata/structure checker GREEN. Runtime와 SDK executor Shape-only normal deps에서 Cost 부재 | 미반영. 실제 composition/executor Shape port 전달·trait/injector/snapshot pin 누락도 보완. Runtime/SDK owning QBC 대기 |
+| D1-A | final rebased private `56b22f2633d`; pts-only orphan와 self-loop-tail 포함 standalone owner QBC 17/17 GREEN | 미반영. Runtime/SDK consumer proof 필요 |
+| D1-B | final rebased private `5335da9cc8e`; metadata/structure checker GREEN. Runtime와 SDK session/executor Shape-only normal deps에서 Cost 부재 | 미반영. 실제 gateway core producer·composition/executor port·trait/injector/snapshot pin 보완. Cost-only 공개 Shape API 유지. Runtime/SDK owning QBC 진행 중 |
 | F1 / D6 | private `d0cb3969994` → rebased `5cc4a2c9972`; owned39 inputs unchanged. Affected SDK213 /211 pass /2 skip, rebased consumers142 /141 pass /1 skip, scripted installed SDK wheel1/1·actual Granian HTTP process+scripted daemon1/1 GREEN | Main `c1f821db572`;39 paths,+1434/-1399. Canonical Ruff38/safety PASS; original owned paths clean. Real native daemon/product qualification은 NOT_RUN |
-| D2-P/K | private `4715ff4c4e5`; graph-utils QBC 19/19 GREEN; shared borrowed iterative core | 미반영. PTA/Taint cutover/consumer proof 필요 |
+| D2-P/K | private `4715ff4c4e5` + final dirty; shared borrowed iterative core, actual frame/result bound 보완 후 QBC 20/20 GREEN | 미반영. PTA/Taint cutover/consumer proof 필요 |
 | D2 PTA | wrapper와 caller typed Result 전파 diff; owning lib check GREEN | lib-test compilation은 기존 13개 unrelated errors로 RED. SCC case 성공으로 세지 않음 |
 | D2 Taint | successor-only adapter / typed resource mapping / contract caller 보완 진행 | public integration QBC 진행 중. 별도 contract crate와 ignored 50k cases 필수 |
 
@@ -79,6 +79,11 @@ After SDK schema는 하나의 `data={"hits": [...native row fields...], "summary
 - D1-B actual runtime/SDK pure·PTA·disabled·Cost lanes, 두 Shape gates. Heap feature의 explicit Cost edge는 보존한다.
 - D2 PTA existing compile blockers의 committed-main/foreign-dirty 구분 및 owner rail, Taint public contract/lib policy/typed resource rejection/deep50k proof. 첫 Taint iterative5 pass/1 ignored·SCC14 pass 결과는 변경 전후 source별 component proof다.
 - D2 core admission의 workspace estimate는 actual frame/output allocation을 충분히 계산하지 않는 결함이 추가 확인됐다. Checked conservative bound와 tiny-limit refusal/positive control로 수정·core owner proof 재실행 후 반영한다. Default 실사용 OOM을 증명한 것은 아니다.
+- Final core owner QBC `20261006T022541.599406Z-8544c76c92a4`: 20/20 GREEN. Materialization checkpoint는 해당 member buffer allocation 전에 호출한다. 이 결과는 worker final dirty source에 묶이며 main import/PTA/Taint proof를 대신하지 않는다.
+- Gate 교차 검토에서 taint contract selector의 `cfg-dfg` 누락으로 0 tests가 선택됨을 확인했다. 실제 module guard와 맞춰 feature를 명시하고 nonzero contract proof를 확보한 뒤 닫는다.
+- Shape full gate의 `heap_shape`도 기본 feature/selector 조합에서 0 tests였다. 실제 generated `shape_analyzer_` port suite와 `analysis-contract-q2-analyzers`를 선택하도록 수정했다. SDK factory reachability와 runtime returned overlay의 실제 classification은 별도 proofs다.
+- D1 standalone pre-rebase owner QBC `20261006T022722.633931Z-9671477d7d91`: 16/16 GREEN. Main `c929c932` rebase가 resolved local closure의22 파일과 lock을 바꿨으므로 이 receipt를 현재 source GREEN으로 재사용하지 않는다. Rebased own source는 동일하지만 local dependencies는 달라 owner rail을 재실행한다.
+- Final rebased standalone owner QBC `20261006T024432.465548Z-ed4f5be512a1`: 17/17 GREEN. 별도 `acedbd2a491`은 frozen Index manifest가 요구하는 기존 `memchr`/`ciborium-ll` lock edge 2개만 보완한다. 새 package version이나 library 선택을 추가한 것이 아니다. Locked metadata PASS; actual runtime/SDK consumer proof는 진행 중이다.
 - F1/D6 main import와 rebased affected consumers proof 완료. Generated baseline의 퇴역 keys 정리는 전체 source checkpoint 후 수행한다. Actual native daemon/product proof는 NOT_RUN.
 - Shared generated inventories/baselines는 삭제/이동한 실제 keys만 retire/reconcile하고 새로운 scope waiver를 추가하지 않는다.
 - Repository/product-wide qualification은 별도다. Affected SDK의 rename/rollback selectors는 이 packet 밖의 기존 failures 때문에 제외한 rail이며 full SDK suite GREEN으로 표시하지 않는다. 별도 실행한 GQLang receipt-wins tests 4개도 기존 profile precheck에서 실패했으며 이 변경의 성공 receipt로 합산하지 않는다.
