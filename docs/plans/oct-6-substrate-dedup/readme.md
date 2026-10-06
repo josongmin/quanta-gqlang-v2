@@ -12,7 +12,7 @@
 상태: **IN_PROGRESS.** GQLang 마지막 clean 문서 checkpoint는 `5240400`이다. 로컬 `just ci` PASS는 이전 `d600cab` 소스의 receipt다.
 
 - **현재 소스:** Semantica clean private `02e00d7`/base main `9983d87`의 main-first merge, owned 87경로. `a162`의 본문 87경로와 main-only 43경로는 부모 blob을 보존하며 겹침은 0이다. 두 lock은 D1/D2의 5개 dependency edge를 유지하고 package identity root953/nested914는 같다.
-- **검증:** Exact 입력 97경로(owned87+선행10)의 source policy는 영향받은 92개 정책 PASS/exit0/scope complete다. `02e+ext-7c0966bc582839fd8230` snapshot은 GQLang `30b6efd`·Index `ab87837` overlay0으로 sealed됐다. Root·nested locked metadata는 PASS이며 Rust 판정과 별개다. JSON focused 16은 실행 중, canonical owner 45는 NOT_RUN이다. 직전 `a162` owner1은 runtime-execution JSON decoder 컴파일 오류로 RED/exit101/테스트0, 나머지44 NOT_RUN이었다. 해당 오류와 `#[path]` 경로 선행 수리는 새 후보 base `9983d87`에 source-only 반영됐다.
+- **검증:** Exact 입력 97경로(owned87+선행10)의 source policy는 영향받은 92개 정책 PASS/exit0/scope complete다. `02e+ext-7c0966bc582839fd8230` snapshot은 GQLang `30b6efd`·Index `ab87837` overlay0으로 sealed됐다. Root·nested locked metadata는 PASS이며 Rust 판정과 별개다. JSON focused 16은 의존성 `exact_formal_bindings.rs:84`의 E0700 컴파일 오류로 RED/exit101/테스트0이며 canonical owner 45는 모두 NOT_RUN이다. `use<>` signature capture 수리는 main `0098a99`에 source-only 반영됐고 새 후보 재검증은 대기다. 이전 `a162` owner1도 별도 decoder 오류로 RED였다.
 - **남은 범위:** D1/D2 본문 main 반영, downstream consumer, generated/global Honesty, native full product. [현재 증거](execution-progress.md).
 
 아래 두 단락은 `3fe` 실행 전의 병합·진단 이력이다. 당시의 `NOT_RUN`은 현재 판정이 아니다.
