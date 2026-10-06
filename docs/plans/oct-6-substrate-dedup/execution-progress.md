@@ -112,3 +112,9 @@ GQLang local `just ci` 재실행은 **all groups passed**, source snapshot `83f9
 
 - 명시적 ignored50k QBC `20261006T045031.586428Z-c83fd7d0cf12`:1/1 PASS,0 ignored, source `1ea51f05dc5`의 동일 digest, launcher 최종 exit0. Cargo의 Index lock 들여쓰기16행 변경만 독립 확인 후 원상복구했다.
 - 최신 committed base `05f755e1d31`에서 Taint9-path candidate `c3cb1918d02`를 구성했다. 원래 PTA 포함24-path source/gate7은 `codex/oct6-substrate-manifest`의 `1ea51f05dc5`에 보존한다. Candidate의7개 Taint source bytes는 이전 증거와 동일, lock은 Taint dependency1 hunk만, gate는 existing6 selectors다. Normal hooks Rustfmt6/safety PASS. Shipping toolchain을 고정하는 기존 gate6단계 실행 중이며 최종 QBC 증거 전 import하지 않는다.
+
+- 최신 후보 live gate의 첫 실행은 외부 `quanta-index` 변경으로 closure capture에서 종료(exit1/0 Rust tests), 재시도는 core20 Cargo tests 뒤 verification source changed로 immutable completion locator를 발급하지 못했다(exit74). Cargo receipt exit0을 gate GREEN으로 세지 않는다. 두 번째 closure 변경의 단일 member 귀속은 미확정이며 candidate에서 Index lock 들여쓰기16행 side effect를 별도 확인했다.
+- Candidate `9fe9fe4d5f7`는 해당16행만 Cargo의 canonical 형식으로 커밋했다(`--ignore-all-space` semantic delta0, normal safety fence PASS). `ensure_snapshot_worktree`/snapshot lease의 기존 owning API와 PLAIN_DIRECTORY 모드로 외부 sibling의 committed HEAD만 고정한다. Foreign dirty overlays는 제외한다. 같은 기존 gate6단계 실행 결과를 확보한 뒤 checkpoint한다; gate 우회·source drift 허용은 없다.
+
+- Frozen snapshot은 candidate `9fe9fe4d5f7`, gqlang `c402321`, Index `498cd46`의 committed HEAD를 고정했다: topology digest `9fe9fe4d5f7977b687a8e5e467eadc0857d9a86d+ext-0ab3db4d28be5675435a`, sibling dirty overlay0. 새 실행 root lane 미등록으로 첫 frozen gate는 exit74/0 tests/dirty0이었다. 정식 `lane-token issue` 후 같은 snapshot/gate를 재실행한다. Snapshot discovery는 private sibling symlink를 허용하지 않으므로 plain primary sibling layout에서 candidate SHA를 선택해 owning API로 생성했다.
+- 최신 `26ca0079ff2e` 독립 감사에서도 rebind/Product provider tuple는 미완성이다. PTA16-file 변경은 DFG/constructor custody이며 execution helper·Product enum을 제공하지 않는다. Current extraction_solve reexport는137행; runtime/SDK QBC 재실행 조건은 아직 미충족이다.

@@ -530,10 +530,45 @@
       "foreign_dirty_adopted": false,
       "current_compile_error_count": null,
       "next_required_tuple": "PTA/DFG rebind definitions+callers+exports and Product error definition+reexport at one committed HEAD"
+    },
+    {
+      "committed_head": "8454fbf78120bb9ad2ca42c8dc3b2639314f6852",
+      "proof_kind": "Read-only committed-source caller/owner/export trace; no new build",
+      "resolved_since_dbff": [
+        "Wire structural DTO now defined with serde module and root export",
+        "CALL_GRAPH_AUTHORITY_PACKET_FIELDS now public and root-exported"
+      ],
+      "remaining_mismatches": [
+        {
+          "consumer": "quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve.rs:135",
+          "owner": "extraction_solve/call_graph_exact_workspace_rebind.rs:151",
+          "mismatch": "new execution reexport vs old-only definition; fixpoint caller uses old name via extraction_solve"
+        },
+        {
+          "consumer": "extraction_solve/solve_worker_input.rs:235",
+          "owner": "extraction_solve/solve_worker_delta.rs:1086",
+          "mismatch": "new DFG execution call vs old-only definition"
+        },
+        {
+          "consumer": "queries/interprocedural.rs:90",
+          "owner": "interprocedural/output.rs and output_call_graph.rs",
+          "mismatch": "ProductRuntimeRebindErrorV1 has no committed definition/export chain"
+        }
+      ],
+      "foreign_dirty_adopted": false,
+      "current_compile_error_count": null,
+      "next_required_tuple": "PTA/DFG rebind definitions+callers+exports and Product error definition+reexport at one committed HEAD",
+      "delta_from_previous": "8f560b to 8454 changes PTA durable borrowed lookups only; remaining rebind/Product owner-export-caller files unchanged",
+      "independent_agent_confirmation": "dedup_shape_impl read-only committed-source audit; no build/rebase/source mutation",
+      "later_observation": {
+        "head": "05f755e1d31c83ec4ad0f38bdda9e7c3d1306680",
+        "relevant_provider_caller_src_delta_from_8454": 0,
+        "current_compile_error_count": null
+      }
     }
   ],
   "latest_static_provider_recheck": {
-    "committed_head": "8454fbf78120bb9ad2ca42c8dc3b2639314f6852",
+    "committed_head": "26ca0079ff2e4b045e8e50d2e98e18d2ec3f69de",
     "proof_kind": "Read-only committed-source caller/owner/export trace; no new build",
     "resolved_since_dbff": [
       "Wire structural DTO now defined with serde module and root export",
@@ -541,7 +576,7 @@
     ],
     "remaining_mismatches": [
       {
-        "consumer": "quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve.rs:135",
+        "consumer": "quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve.rs:137",
         "owner": "extraction_solve/call_graph_exact_workspace_rebind.rs:151",
         "mismatch": "new execution reexport vs old-only definition; fixpoint caller uses old name via extraction_solve"
       },
@@ -559,19 +594,14 @@
     "foreign_dirty_adopted": false,
     "current_compile_error_count": null,
     "next_required_tuple": "PTA/DFG rebind definitions+callers+exports and Product error definition+reexport at one committed HEAD",
-    "delta_from_previous": "8f560b to 8454 changes PTA durable borrowed lookups only; remaining rebind/Product owner-export-caller files unchanged",
-    "independent_agent_confirmation": "dedup_shape_impl read-only committed-source audit; no build/rebase/source mutation",
-    "later_observation": {
-      "head": "05f755e1d31c83ec4ad0f38bdda9e7c3d1306680",
-      "relevant_provider_caller_src_delta_from_8454": 0,
-      "current_compile_error_count": null
-    }
+    "delta_from_previous": "PTA16 files cover DFG/constructor custody and Java constructor authorities reexport; execution rebind and Product error definition/export still not closed",
+    "independent_agent_confirmation": "dedup_shape_impl read-only committed-source audit; no build/rebase/source mutation"
   },
   "taint_fresh_main_candidate": {
     "worktree": "/Users/songmin/.codex/worktrees/oct6-substrate-manifest/semantica-codegraph-v2",
     "branch": "codex/oct6-substrate-taint-ready",
     "base": "05f755e1d31c83ec4ad0f38bdda9e7c3d1306680",
-    "source": "c3cb1918d02a1728a1ae0b5eb3fa6274eb5b72c5",
+    "source": "9fe9fe4d5f7977b687a8e5e467eadc0857d9a86d",
     "private_full_source_preserved": "1ea51f05dc5929c2e01b970ed69be77e183a45db",
     "paths": [
       "packages/analysis/quanta-v2/crates/quanta-taint-solver/Cargo.toml",
@@ -584,7 +614,7 @@
       "Cargo.lock",
       "tools/ci/gates/gate-tarjan-iterative.sh"
     ],
-    "proof_status": "RUNNING existing 6-step gate via QBC; do not import until final result and launcher drain",
+    "proof_status": "Frozen existing6-step gate with normal lane registration RUNNING; do not import before final proof",
     "gate_log": "/tmp/oct6-taint-fresh-gate.log",
     "gate_shipping_toolchain": {
       "CODEGRAPH_CRANELIFT": 0,
@@ -595,6 +625,59 @@
       "regular_passed": 35,
       "explicit_ignored_50k_passed": 1
     },
-    "main_import": "NOT_YET"
+    "main_import": "NOT_YET",
+    "cutover_commit": "c3cb1918d02a1728a1ae0b5eb3fa6274eb5b72c5",
+    "lock_normalization": "Only16 Index dependency string indentation lines; git diff --ignore-all-space empty; no semantic dependency change. Needed to avoid Cargo mutating proof source during cg_test.",
+    "frozen_gate_state": "/tmp/oct6-taint-frozen-gate-state.json"
+  },
+  "taint_gate_attempts": [
+    {
+      "candidate_source": "c3cb1918d02a1728a1ae0b5eb3fa6274eb5b72c5",
+      "kind": "live-path-dependency gate",
+      "gate_exit_code": 1,
+      "rust_tests_executed": 0,
+      "failure": "Cargo source changed during closure capture: quanta-index",
+      "log": "/tmp/oct6-taint-fresh-gate-attempt1.log",
+      "log_sha256": "e348640d6520b4924a46f5a59e667cef00ca8770d24f737011313a2f55381fc5",
+      "qualified": false
+    },
+    {
+      "candidate_source": "c3cb1918d02a1728a1ae0b5eb3fa6274eb5b72c5",
+      "kind": "live-path-dependency gate retry",
+      "gate_exit_code": 74,
+      "cargo_core_passed": 20,
+      "qbc_run_id": "20261006T045937.501475Z-d4395034c003",
+      "failure": "verification source changed during QBC execution; immutable completion locator not published",
+      "observed_candidate_dirty": "Cargo.lock Index dependency strings16 indentation-only lines; git diff --ignore-all-space empty",
+      "attribution": "Second execution closure change is not isolated to one member; do not claim solely external Index drift or solely lock formatting",
+      "qualified": false,
+      "log": "/tmp/oct6-taint-fresh-gate.log",
+      "log_sha256": "a1e57cb56f038e6a63d7e3c5a9b9fbbcd5ed72c02866b077240b05c05bc44de2"
+    }
+  ],
+  "taint_frozen_snapshot": {
+    "topology_digest": "9fe9fe4d5f7977b687a8e5e467eadc0857d9a86d+ext-0ab3db4d28be5675435a",
+    "execution_root": "/Users/songmin/.cache/semantica-codegraph-v2/casectl-snapshots/9fe9fe4d5f7977b687a8e5e467eadc0857d9a86d_ext-0ab3db4d28be5675435a_mat-plain-v1/semantica-codegraph-v2",
+    "sibling_heads": [
+      {
+        "source": "/Users/songmin/Documents/code-new/quanta-gqlang-v2",
+        "head": "c40232142a65300297c5d16802b1be32cf4eed5b",
+        "overlay_digest": ""
+      },
+      {
+        "source": "/Users/songmin/Documents/code-new/quanta-index",
+        "head": "498cd46c4339fad0276fb7590c83e967753e0546",
+        "overlay_digest": ""
+      }
+    ],
+    "sibling_dirty_overlays_included": false,
+    "proof_status": "Existing gate retry using canonical new-root lane registration; no qualified result yet",
+    "prior_not_registered_attempt": {
+      "gate_exit_code": 74,
+      "rust_tests_executed": 0,
+      "post_gate_dirty": "",
+      "reason": "oct6-scc-core lane not registered for frozen root",
+      "admission_action": "canonical scripts/quanta-build-cli lane-token issue; existing gate unchanged"
+    }
   }
 }
