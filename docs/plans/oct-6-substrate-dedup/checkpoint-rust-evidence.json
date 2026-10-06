@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-06T06:01:05.969954+00:00",
+  "recorded_at_utc": "2026-10-06T06:53:12.565662+00:00",
   "proof_scope": "QBC owner/component results only; not combined current-main/shipping-gate/product qualification",
   "records": [
     {
@@ -984,7 +984,7 @@
     "attribution": "Local committed owner/consumer API migration is incomplete. Old 54 error count cannot be asserted for newer main. No diagnostic source locations were in the 24 D2 changed files; this alone is not proof against transitive effects.",
     "required_next_proof": "Freeze complete owner/consumer source tuple, then same nonzero PTA lib-test rail. Do not bump QMP or add compatibility shims based on this failure."
   },
-  "runtime_sdk_consumer_proof": "PENDING_FRESH_WIRE_PREREQUISITE_AND_REBASED_OWNER_QBC",
+  "runtime_sdk_consumer_proof": "PENDING fresh current-base frozen owner/gate proof; earlier source results retained separately",
   "semantica_product_qualification": "NOT_RUN",
   "parser_prerequisite_checkpoint": {
     "main": "39edfc1ca5bf143a09b66f0738c5f2b3987c7572",
@@ -1635,32 +1635,8 @@
   "combined_candidate": {
     "worktree": "/Users/songmin/.codex/worktrees/oct6-substrate-manifest/semantica-codegraph-v2",
     "branch": "codex/oct6-substrate-final-candidate",
-    "base": "ae423eac4b5d4f26543172d9c30f6168a21b544d",
-    "wire_prerequisite_source": "b0dbe01cd3516e4385e00e6108d7fa66dc3f1b56",
-    "phase": "updated clean final candidate; Wire projection test import fixed; proof pending",
-    "applied": [
-      {
-        "scope": "D2-PTA",
-        "original_source": "680305490fdb07942ba3c780f2d6cc33e8249c85",
-        "candidate_commit": "489731a999ead32e573c5387fc9f82198bdd17ab"
-      },
-      {
-        "scope": "D2-Taint",
-        "original_source": "c3cb1918d02a1728a1ae0b5eb3fa6274eb5b72c5",
-        "candidate_commit": "c427abd944c7074bcbe745035129d447b98d8828"
-      },
-      {
-        "scope": "D1-A",
-        "original_source": "de072b6c563",
-        "candidate_commit": "a7a8f40b4047c2ab05706737274f4ebdca7df540"
-      },
-      {
-        "scope": "D1-B",
-        "original_source": "734aab87d0a",
-        "candidate_commit": "b8c0ee0c52461671ba2abbd0d93440764d06c9a7"
-      }
-    ],
-    "source": "4bdbdf87ae32aae94b3709b1665423249b3c031e",
+    "base": "8b44be652250f483296bd1c3f8898ad5b06580fc",
+    "source": "813857b73fc738ab74d83ce5c0f07970ff49c093",
     "paths": [
       "Cargo.lock",
       "packages/analysis/quanta-v2/Cargo.lock",
@@ -1677,15 +1653,9 @@
       "packages/analysis/quanta-v2/crates/quanta-adapters/Cargo.toml",
       "packages/analysis/quanta-v2/crates/quanta-adapters/src/analysis/mod.rs",
       "packages/analysis/quanta-v2/crates/quanta-adapters/src/lib.rs",
-      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/Cargo.toml",
-      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1.rs",
-      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/clone_cost_methods_v1.rs",
-      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/packet_encoding_v1.rs",
-      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/packet_validation_v1.rs",
-      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/projection_validation_tests_v1.rs",
-      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1_serde/kinds_codec.rs",
       "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/Cargo.toml",
       "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/field_strong_update_refinement_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/field_strong_update_refinement_v1/scc_failure_policy_v1.rs",
       "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/recursive_call_graph_census_v1.rs",
       "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker_uniqueness.rs",
       "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/whole_program.rs",
@@ -1744,23 +1714,25 @@
       "tools/ci/gates/gate-shape-analysis-smoke.sh",
       "tools/ci/gates/gate-tarjan-iterative.sh"
     ],
-    "tarjan_gate": "Existing7 selectors restored exactly from pre-split1ea: core, PTA, Taint integration/properties/policy/public contract/explicitignored50k; cg_test nonzero required",
-    "previous_source": "835a334d91e6f493506e3be8b4a155cff7195d59",
-    "rust_proof": "NOT_RUN combined source; prepared snapshot waiting Wire tests and main checkpoint",
-    "static_patch_continuity": "D1 A/B range-diff equal; PTA9 and Taint6 Rust plus manifest byte-identical; lock additions are same-version direct edges with no package version/source replacement"
+    "wire_target_source": "8b44be652250f483296bd1c3f8898ad5b06580fc",
+    "previous_combined_source": "4bdbdf87ae32aae94b3709b1665423249b3c031e",
+    "new_owner_repairs": [
+      "PTA SCC Stop propagation vs Compute incomplete policy child; no behavior change",
+      "SDK Shape feature-dependent port move helper; no clone",
+      "Wire duplicate import removed after rebase"
+    ],
+    "phase": "clean refreshed source with current PTA fixtures, CBOR authority and QMP pin; QBC pending",
+    "normal_hooks": "staged rustfmt4/integrity/safety PASS",
+    "actual_new_GOD_findings_repaired": 2,
+    "previous_source": "f6c2907bc5e181159c3b17e0be58822fc8cff892",
+    "previous_base": "0d8bffc115b0b45f848f5159fc38ea4a80a1a5ca"
   },
   "wire_current_base_candidate": {
     "worktree": "/Users/songmin/.codex/worktrees/oct6-substrate-integrate/semantica-codegraph-v2",
-    "base": "2a25c00cef216489dbfe8fa9c37732b8c272bb12",
-    "source": "213799a85fe779befc670aa6c302a5187075c510",
-    "paths": [
-      "Cargo.lock",
-      "packages/analysis/quanta-v2/Cargo.lock",
-      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/Cargo.toml",
-      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1.rs",
-      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/projection_validation_tests_v1.rs"
-    ],
-    "purpose": "Remaining Wire default/serde lib-test scope and existing CBOR dependency; production repair already committed upstream db2f1461a5a",
+    "base": "8b44be652250f483296bd1c3f8898ad5b06580fc",
+    "source": "8b44be652250f483296bd1c3f8898ad5b06580fc",
+    "paths": [],
+    "purpose": "Wire prerequisite already committed at fddfb1e; exact current-main Wire baseline for freshly refreshed owner proof",
     "post_commit_dirty": "",
     "production_source_delta": 0,
     "prior_proof_candidate": {
@@ -1800,7 +1772,11 @@
     },
     "upstream_native_clone_input_change": "486964fbf22, seven Wire local owner Rust inputs changed; b0 proof is old-source only",
     "rebase_collision_repair": "Dropped duplicate projection_validation_v1 import created when upstream standalone import and old inner-super import both merged; exact upstream validation bytes restored in Wire and combined candidate",
-    "normal_hooks": "rustfmt1/staged integrity/safety PASS"
+    "normal_hooks": "rustfmt1/staged integrity/safety PASS",
+    "previous_source": "479d3de2d956ee3799a6e7fe9c6b2d325c56b65a",
+    "previous_base": "0d8bffc115b0b45f848f5159fc38ea4a80a1a5ca",
+    "phase": "clean current-CBOR-input refreshed source; QBC pending",
+    "branch": "codex/oct6-wire-current-main-owner"
   },
   "cancelled_combined_preparations": [
     {
@@ -1936,6 +1912,289 @@
       ],
       "topology_digest": "4bdbdf87ae32aae94b3709b1665423249b3c031e+ext-134e66c59e5836361c36",
       "execution_root": "/Users/songmin/.cache/semantica-codegraph-v2/casectl-snapshots/4bdbdf87ae32aae94b3709b1665423249b3c031e_ext-134e66c59e5836361c36_mat-plain-v1/semantica-codegraph-v2"
+    }
+  ],
+  "refreshed_wire_proof_history": {
+    "attempt1": {
+      "candidate_source": "482a1846f6287848c2d754e38c87153003bf3407",
+      "candidate_base": "2a25c00cef216489dbfe8fa9c37732b8c272bb12",
+      "execution_root": "/Users/songmin/.cache/semantica-codegraph-v2/casectl-snapshots/482a1846f6287848c2d754e38c87153003bf3407_ext-3333b6c2de8b88cdd51d_mat-plain-v1/semantica-codegraph-v2",
+      "topology_digest": "482a1846f6287848c2d754e38c87153003bf3407+ext-3333b6c2de8b88cdd51d",
+      "wire_results": [
+        {
+          "name": "wire-serde",
+          "exit_code": 0,
+          "seconds": 161.94,
+          "log": "/tmp/oct6-current-wire-serde-attempt1.log",
+          "completions": [
+            {
+              "run_id": "20261006T063612.323070Z-bc38ea80c1af",
+              "passed": 65,
+              "failed": 0,
+              "ignored": 0,
+              "qbc_exit_code": 0,
+              "process_exit_code": 0,
+              "source_snapshot_digest": "1212024e8851f59373077a6ceca33e88c2171bd9e8ac4005f227a0bd78040326",
+              "receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-cffe3200a2c3/lanes/oct6-scc-core/verification-results/20261006T063612.323070Z-bc38ea80c1af/receipt.json",
+              "receipt_sha256": "8cab031ed77cde9a2d0d20873af454dd4443f172cced04d52a4f2c12042bb15c"
+            }
+          ]
+        },
+        {
+          "name": "wire-default",
+          "exit_code": 0,
+          "seconds": 83.59,
+          "log": "/tmp/oct6-current-wire-default-attempt1.log",
+          "completions": [
+            {
+              "run_id": "20261006T063817.014281Z-ccc6ea576b07",
+              "passed": 46,
+              "failed": 0,
+              "ignored": 0,
+              "qbc_exit_code": 0,
+              "process_exit_code": 0,
+              "source_snapshot_digest": "1212024e8851f59373077a6ceca33e88c2171bd9e8ac4005f227a0bd78040326",
+              "receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-cffe3200a2c3/lanes/oct6-scc-core/verification-results/20261006T063817.014281Z-ccc6ea576b07/receipt.json",
+              "receipt_sha256": "18f0a3148681911e0183440ebbfe573441ffad269932dd17704971271d6755c2"
+            }
+          ]
+        }
+      ],
+      "consumer_results": [],
+      "partial_completions": [],
+      "phase": "Wire owners passed; consumer0 cancelled for main CBOR closure drift; snapshot lease released; no main import",
+      "cancellation_reason": "Current main CBOR inputs changed before Wire import; no main commit",
+      "proof_scope": "sealed exact frozen-source history; not current-main qualification"
+    },
+    "attempt2": {
+      "candidate_source": "f6c2907bc5e181159c3b17e0be58822fc8cff892",
+      "candidate_base": "0d8bffc115b0b45f848f5159fc38ea4a80a1a5ca",
+      "execution_root": "/Users/songmin/.cache/semantica-codegraph-v2/casectl-snapshots/f6c2907bc5e181159c3b17e0be58822fc8cff892_ext-3333b6c2de8b88cdd51d_mat-plain-v1/semantica-codegraph-v2",
+      "topology_digest": "f6c2907bc5e181159c3b17e0be58822fc8cff892+ext-3333b6c2de8b88cdd51d",
+      "wire_results": [
+        {
+          "name": "wire-serde",
+          "exit_code": 0,
+          "seconds": 100.1,
+          "log": "/tmp/oct6-current-wire-serde.log",
+          "completions": [
+            {
+              "run_id": "20261006T064539.589195Z-4bf242adbc86",
+              "passed": 65,
+              "failed": 0,
+              "ignored": 0,
+              "qbc_exit_code": 0,
+              "process_exit_code": 0,
+              "source_snapshot_digest": "9a0c5a5189cbfa5ecbbe5968fb366229cc5370403635d684a6aef124d2b88681",
+              "receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-bfeeefa15902/lanes/oct6-scc-core/verification-results/20261006T064539.589195Z-4bf242adbc86/receipt.json",
+              "receipt_sha256": "5df61479ffdf44a390d9ecf624f0546c6bf9732e231a2ac1c443ab11a5f66cbc"
+            }
+          ]
+        },
+        {
+          "name": "wire-default",
+          "exit_code": 0,
+          "seconds": 66.27,
+          "log": "/tmp/oct6-current-wire-default.log",
+          "completions": [
+            {
+              "run_id": "20261006T064715.084128Z-bcf34f90661b",
+              "passed": 46,
+              "failed": 0,
+              "ignored": 0,
+              "qbc_exit_code": 0,
+              "process_exit_code": 0,
+              "source_snapshot_digest": "9a0c5a5189cbfa5ecbbe5968fb366229cc5370403635d684a6aef124d2b88681",
+              "receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-bfeeefa15902/lanes/oct6-scc-core/verification-results/20261006T064715.084128Z-bcf34f90661b/receipt.json",
+              "receipt_sha256": "80587bdcc68e1490900390ce6aad61ae331e900714cee921b82193a2e474b7d0"
+            }
+          ]
+        }
+      ],
+      "consumer_results": [],
+      "partial_completions": [
+        {
+          "failed": 0,
+          "filtered_out": 0,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 20,
+          "process_exit_code": 0,
+          "qbc_exit_code": 0,
+          "receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-bfeeefa15902/lanes/oct6-scc-core/verification-results/20261006T064957.335680Z-f47e3efd3b0d/receipt.json",
+          "receipt_sha256": "97edf7c4f8a20ea809b9d7b85e0f5dd0e549a794bd56d4489b0ed37f1f8fe603",
+          "run_id": "20261006T064957.335680Z-f47e3efd3b0d",
+          "schema_version": "qbc-suite-completion/v1",
+          "source_snapshot_digest": "9a0c5a5189cbfa5ecbbe5968fb366229cc5370403635d684a6aef124d2b88681",
+          "witness_names": [
+            "scc::admission_tests::indexed_neighbor_outside_domain_is_an_error",
+            "scc::admission_tests::unregistered_generic_neighbor_is_not_silently_removed",
+            "scc::borrowed_core_tests::borrowed_core_preserves_exact_emission_order_and_indexed_ids",
+            "scc::borrowed_core_tests::bounds_and_overflow_refuse_before_state_allocation",
+            "scc::borrowed_core_tests::every_checkpoint_stops_with_original_caller_error",
+            "scc::borrowed_core_tests::indexed_unsorted_duplicate_edges_keep_canonical_ids",
+            "scc::borrowed_core_tests::invalid_target_refuses_before_traversal_state_or_partial_output",
+            "scc::borrowed_core_tests::logical_workspace_cap_includes_frames_and_exact_component_buffers",
+            "scc::indexed_tests::indexed_dag_yields_distinct_sccs",
+            "scc::indexed_tests::indexed_empty_adj_yields_empty_scc_of",
+            "scc::indexed_tests::indexed_mixed_graph_preserves_partition_and_dense_ids",
+            "scc::indexed_tests::indexed_three_node_cycle_yields_one_scc",
+            "scc::tests::complex_graph_with_two_cycles_and_bridge",
+            "scc::tests::deep_chain_no_stack_overflow",
+            "scc::tests::deterministic_across_input_order",
+            "scc::tests::empty_graph_returns_empty",
+            "scc::tests::linear_dag_three_components",
+            "scc::tests::self_loop_one_component",
+            "scc::tests::single_node_no_edges",
+            "scc::tests::two_node_cycle_one_component"
+          ]
+        }
+      ],
+      "phase": "cancelled after Wire111 and core20; PTA/Shape consumer verdict unavailable",
+      "cancellation_reason": "Current main added PTA lifetime/import prerequisites; frozen lib-test lacks BTreeSet import and has outdated lifecycle test imports. Candidate owner consumer verdict unavailable; do not compile-known-broken source as current.",
+      "proof_scope": "sealed exact frozen-source history; not current-main qualification"
+    }
+  },
+  "wire_main_checkpoint": {
+    "main": "fddfb1e175e48f5cf1c3d18d30630777d533d1fd",
+    "base": "0d8bffc115b0b45f848f5159fc38ea4a80a1a5ca",
+    "paths": [
+      "Cargo.lock",
+      "packages/analysis/quanta-v2/Cargo.lock",
+      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/Cargo.toml",
+      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/projection_validation_tests_v1.rs"
+    ],
+    "combined_proof_source": "f6c2907bc5e181159c3b17e0be58822fc8cff892",
+    "owner_evidence": {
+      "closure_witness_sha256": "394a11577006fc0eec73f7b0e29d133ff4b02121bef5a576d869dcf4ea85b8f0",
+      "import_source": "479d3de2d956ee3799a6e7fe9c6b2d325c56b65a",
+      "local_crates": 72,
+      "materialization_profile": "PLAIN_DIRECTORY clean committed siblings",
+      "proof_source": "f6c2907bc5e181159c3b17e0be58822fc8cff892",
+      "source_snapshot_digest": "9a0c5a5189cbfa5ecbbe5968fb366229cc5370403635d684a6aef124d2b88681"
+    },
+    "phase": "Wire owner checkpoint imported; combined main NOT qualified",
+    "foreign_overlay_preserved": true,
+    "own_barrier_released": true
+  },
+  "combined_candidate_history": [
+    {
+      "worktree": "/Users/songmin/.codex/worktrees/oct6-substrate-manifest/semantica-codegraph-v2",
+      "branch": "codex/oct6-substrate-final-candidate",
+      "base": "ae423eac4b5d4f26543172d9c30f6168a21b544d",
+      "wire_prerequisite_source": "b0dbe01cd3516e4385e00e6108d7fa66dc3f1b56",
+      "phase": "updated clean final candidate; Wire projection test import fixed; proof pending",
+      "applied": [
+        {
+          "scope": "D2-PTA",
+          "original_source": "680305490fdb07942ba3c780f2d6cc33e8249c85",
+          "candidate_commit": "489731a999ead32e573c5387fc9f82198bdd17ab"
+        },
+        {
+          "scope": "D2-Taint",
+          "original_source": "c3cb1918d02a1728a1ae0b5eb3fa6274eb5b72c5",
+          "candidate_commit": "c427abd944c7074bcbe745035129d447b98d8828"
+        },
+        {
+          "scope": "D1-A",
+          "original_source": "de072b6c563",
+          "candidate_commit": "a7a8f40b4047c2ab05706737274f4ebdca7df540"
+        },
+        {
+          "scope": "D1-B",
+          "original_source": "734aab87d0a",
+          "candidate_commit": "b8c0ee0c52461671ba2abbd0d93440764d06c9a7"
+        }
+      ],
+      "source": "4bdbdf87ae32aae94b3709b1665423249b3c031e",
+      "paths": [
+        "Cargo.lock",
+        "packages/analysis/quanta-v2/Cargo.lock",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-analysis-facade/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-analysis-facade/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/src/analysis/mod.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-adapters/src/analysis/mod.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/clone_cost_methods_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/packet_encoding_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/packet_validation_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/projection_validation_tests_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1_serde/kinds_codec.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/field_strong_update_refinement_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/recursive_call_graph_census_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker_uniqueness.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/whole_program.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc_tests.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_summary_catalog/recursive_scc.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_tests/delta_plan/group5_scc_reason_codes_parity.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precision_critical_selector_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/adapters/bootstrap.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/boundary_gqlang_runtime_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/boundary_gqlang_runtime_v1/orchestration_real.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/boundary_gqlang_runtime_v1/pta.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/boundary_gqlang_runtime_v1/pta_shape_bundle_builder.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_real.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_source_sink.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/observation_feedback_runtime/product_bound_memory_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/observation_feedback_runtime/product_bound_runtime.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ports/wiring.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/runtime_ingress_execution_budget_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/capabilities_projection.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/code/analysis_selector.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/code/domain_modeling_selector.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/fluent_pre_dispatch.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/mod.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/orchestration.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/pta_shape_bundle_builder.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/public_exports_head.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/rails_reexport.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/runtime_kernel_framework_injector.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/tests/gate_shape_analysis_ghiya_hendren_e2e_test.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/tests/sdk_python_shape_analysis_test.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/port_impls.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/types.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/adapter_surface.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/orchestration_bridge.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/orchestrator_session.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-sdk/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk/src/orchestration.rs",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver-contract-tests/tests/suite_quanta_taint_solver_contract_tests_a432dc132c/tarjan_scc_contract_test.rs",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/differential_scc_naive_vs_tarjan.rs",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/proptest_solver_properties.rs",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/structural_scc_properties.rs",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/tarjan_iterative_integration_test.rs",
+        "tools/ci/gates/gate-shape-analysis-ghiya-hendren.sh",
+        "tools/ci/gates/gate-shape-analysis-smoke.sh",
+        "tools/ci/gates/gate-tarjan-iterative.sh"
+      ],
+      "tarjan_gate": "Existing7 selectors restored exactly from pre-split1ea: core, PTA, Taint integration/properties/policy/public contract/explicitignored50k; cg_test nonzero required",
+      "previous_source": "835a334d91e6f493506e3be8b4a155cff7195d59",
+      "rust_proof": "NOT_RUN combined source; prepared snapshot waiting Wire tests and main checkpoint",
+      "static_patch_continuity": "D1 A/B range-diff equal; PTA9 and Taint6 Rust plus manifest byte-identical; lock additions are same-version direct edges with no package version/source replacement"
     }
   ]
 }

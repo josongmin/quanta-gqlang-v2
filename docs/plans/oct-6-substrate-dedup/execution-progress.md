@@ -141,3 +141,11 @@ GQLang local `just ci` 재실행은 **all groups passed**, source snapshot `83f9
 - 검증 중 committed main `db2f1461a5a`는 같은 production import/tuple 수리를 제공했고 `486964fbf22`는 native clone 계산을 변경했다. 이를 포함한 base `2a25c00cef2`로 Wire·통합 branch를 rebase했다. Native owner 입력이 바뀌었으므로 b0 GREEN을 현재 입력에 재사용하지 않는다. 사용 전4b snapshot도 Rust0/lease released로 취소했다.
 - 남은 Wire private source `213799a85fe`는5paths—test counter cfg, projection-test import, 기존 CBOR dev dependency, 양쪽 lock이다. Rebase 중 기존 standalone import와 옛 inner import가 함께 생긴 `projection_validation_v1` 중복은 upstream bytes로 복원했다. Production 기능/schema/visibility 변화0, normal Rustfmt1/safety PASS.
 - 실제 base→candidate GOD 비교는 stale baseline12건과 이번 신규2건을 분리했다. PTA SCC 실패정책과 SDK Shape port field 전달을 owner helper로 분리하며 Stop 전파/Compute incomplete/복제 없는 move를 유지한다. 이 수리의 Rust QBC는 아직 실행하지 않았다. 기존 field-refinement caller controls는 Tarjan의 SCC 필터 밖이므로 별도 owning rail을 추가한다.
+
+### Wire checkpoint and refreshed remaining implementation
+
+- 통합 `482a1846f62`의 Wire serde65/default46은 sealed PASS였으나 main의 공통 CBOR 입력4개가 바뀌어 import 전에 중단했다. Main 수정0, lease released, consumer tests0. 이후 `f6c2907bc5e`/base `0d8bffc115b`에서 두 owner를 다시 실행해 serde65/default46을 sealed PASS로 확인했다.
+- Wire 5개 파일은 main `fddfb1e175e48f5cf1c3d18d30630777d533d1fd`에 반영했다. Typed test import/cfg와 기존 Ciborium dev edge만 추가하며 schema/API/production authority 정책 변화0. Foreign dirty/index를 stage하지 않고 three-way replay로 보존했다. Own claim/barrier released.
+- 같은 f6c snapshot의 Tarjan gate는 core20 sealed PASS까지 완료됐다. Main에서 PTA lib-test의 `BTreeSet` import·lifecycle fixture/lifetime 수리, native evidence owner lifetime, CBOR authority와 QMP pin이 추가돼 나머지 실행을 취소했다(exit130/lease released). PTA/Taint/Shape의 새 consumer GREEN으로 세지 않는다.
+- 최신 통합 후보 `813857b73fc738ab74d83ce5c0f07970ff49c093`, committed base `8b44be652250f483296bd1c3f8898ad5b06580fc`, clean75paths다. Wire patch3개는 upstream에 이미 있어 rebase에서 drop됐다. Fresh Wire baseline은 같은8b main이며 새 engine/library/version 선택은 없다. 기존 main의 QMP pin 변경은 substrate dedup 변경과 구분한다.
+- 남은 검증은 Wire serde/default → Tarjan7 → PTA field-refinement caller → Shape full15 → typed pin·Termination·SDK authority controls → shape-only feature tree2. Generated retirement6keys/topology2와 final main import는 해당 proof 뒤 진행한다. Live main의 후속 변화는 reviewed delta와 영향받는 owner proof로 구분한다.

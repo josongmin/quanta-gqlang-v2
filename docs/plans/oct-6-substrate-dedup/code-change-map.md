@@ -221,6 +221,8 @@ Before: factory/export는 cost crate의 concrete type, standalone는 별도 구�
 | [runtime structure checker](../../../../semantica-codegraph-v2/tools/rust-crate-boundary-guard/check_runtime_structure_source_contracts.py) / [QBC taxonomy](../../../../semantica-codegraph-v2/tools/quanta-build-cli/contracts/feature-taxonomy-v1.toml) | 수정·검증 | Shape owner/feature invariants와 실제 public closure 일치 |
 | [shape-only honesty](../../../../semantica-codegraph-v2/tools/ci/honesty/baselines/shape-only.json) | 재생성 | owning generator 출력으로 갱신; 비용 dependency를 숨기는 baseline 손편집 금지 |
 
+Current candidate `813857b73fc`의 SDK packet 전달 정리: `quanta-sdk-runtime-composition-owner/src/types.rs::sdk_orchestrator_packet_from_runtime_state_v1`의 feature별 Shape field transfer를 private `selected_shape_analyzer_from_runtime_state_v1`로 분리한다. Enabled feature에서는 기존 Option의 포트를 한 번 move하고 disabled에서는 None을 유지한다. Clone/API/schema 변화가 없다. 해당 단순 field transfer는 source+compile proof이며 session factory의 overlay 선택 테스트와 동일한 end-to-end 증거로 세지 않는다.
+
 Before: `runtime/shape-analyzer → cost-analyzer → cost crate Shape`. After: `runtime/shape-analyzer → standalone Shape`와 필요한 factory feature; `cost-analyzer`는 Cost 소비자가 별도 선택. Shape-only lane에서 불필요한 Cost/regex 연결이 없어야 하고 Cost 자체가 regex를 쓰는 lane은 유지한다.
 
 ## 8. F1 / D6 — SDK·API·agent
@@ -287,6 +289,8 @@ F1 이전에 D6 helper만 작성/전환하면 기존 broken assumptions가 공�
 | [taint wire_recursion.rs](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs) / [Cargo](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-taint-solver/Cargo.toml) | 수정 | `tarjan_scc_v1` local 순회/state/sentinel 제거, common core와 successor-domain/sorted-output adapter 연결; cycle policy 유지 |
 | [PTA SCC tests](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc_tests.rs) | 수정 | normalized partition controls 유지, unnormalized output/ID·domain·checkpoint tests 보강 |
 | [Tarjan gate](../../../../semantica-codegraph-v2/tools/ci/gates/gate-tarjan-iterative.sh) | 수정 | generic core + PTA/taint adapter selectors, ignored 50k test 실제 실행 |
+
+Current candidate `813857b73fc`의 PTA owner 정리: 기존 `field_strong_update_refinement_v1.rs::allocation_call_graph_proof_v1`에서 SCC failure policy를 child `field_strong_update_refinement_v1/scc_failure_policy_v1.rs`로 이동한다. `Stop`은 원래 typed reason을 전파하고 `Compute`는 incomplete authority로 남긴다. Graph/classification/checkpoint ordering은 유지한다. 신규 function complexity12를 없애며, 기존 field-refinement owner tests의 recursive/missing receipt/각 checkpoint cancellation/positive controls를 실행한다. 직접 Compute caller fixture는 없으므로 그 가지는 source policy proof로 한정한다.
 
 ### Before: indexed entry가 있어도 공통 borrowed core는 없음
 
