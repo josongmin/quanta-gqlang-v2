@@ -55,10 +55,13 @@ scripts/quanta-build-cli owner run \
 | D2 PTA | `quanta-runtime-analysis` | lib / selector matching `precise_query_scc` | current compiled module path·PTA feature closure를 resolve에서 확인 |
 | D2 taint | `quanta-taint-solver` | integration `tarjan_iterative` / SCC properties + lib `wire_recursion` | `cfg-dfg` 포함 owning closure; policy/resource unit과 ignored deep case 별도 |
 | D2 taint contract | `quanta-taint-solver-contract-tests` | integration `tarjan_scc_contract_test` | public Result caller와 successor-only domain proof |
+| Wire compile prerequisite | `quanta-contract-call-graph-authority-wire` | lib / whole target | default와 `call-graph-authority-serde` 각각 실제 nonzero cases; 기존 roundtrip, malformed-field, stable digest, clone-cost/refusal controls |
 
 위 selector는 source namespace 또는 기존 gate substring에서 확인한 후보다. 이번 상세화에서 `owner resolve`/test enumeration은 실행하지 않았다. **resolve refusal, cfg로 0 cases, class 미등록이면 DoR 미충족**이다. 착수 시 registry/recipe owner에서 isolation class를 정리한 뒤 exact resolved command·test case count를 ledger에 저장한다. Broad all-features 성공으로 leaf closure를 대체하지 않는다.
 
 ### 2.2 feature closure를 위한 비컴파일 diagnostic
+
+Wire prerequisite는 frozen Taint gate의 실제 compile29 diagnostics에서 도출한 import/tuple 수리다. 새 schema/API/authority 정책이나 구현을 복제하는 테스트를 추가하지 않는다. 기존 lib controls를 두 feature 모드에서 실행하고 immutable QBC completion과 actual case count를 기록한다. 그 뒤 새 committed tuple의 Taint 게이트 및 D1/PTA 소비자 rail을 실행한다. Wire symbol/export 연결 확인만으로 crate compile 성공을 주장하지 않는다.
 
 이미 등록된 lane을 사용한다. 실행 전에 `DEDUP_EXISTING_LANE`을 실제 task lane 이름으로 설정한다. 이 문서 작업에서 새 lane을 만들지 않는다.
 
