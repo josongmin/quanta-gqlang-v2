@@ -9,11 +9,11 @@
 - 입력 authority, 결과·순서·ID, typed failure, 취소·예산 계약을 보존한다. 서로 다른 계약은 caller의 작은 admission/projection으로 유지한다.
 - 완료 결과는 **계산 owner 단일화 + 소비자 전환 + 퇴역 코드 삭제 + 로컬 증명 + 재발 방지 gate**다. 파일 이동, forwarding wrapper, 컴파일 성공만으로 완료 처리하지 않는다.
 
-상태: **IN_PROGRESS — Semantica D1/D2의 현재 clean private 후보는 `3fe43a6`/base `5c8da1a`(87경로)다. 정적 병합 hook은 통과했으나 canonical owner-direct 40건은 NOT_RUN이다. 이전 `e7be` Wire 68+49/core 20은 수동 QBC 진단 결과이고 PTA는 컴파일 실패101/0이었다. D1/D2 main 반영·DoD와 native product 검증은 미완료다. Index base native 63/63 PASS, corpus controls는 admission timeout 124/0이다.**
+상태: **IN_PROGRESS — Semantica D1/D2의 현재 clean private 후보는 `3fe43a6`/base `5c8da1a`(87경로)다. 정적 병합 hook과 해당 87경로의 source policy 90건은 통과했다. Canonical owner-direct 40건은 setup 실패 2회로 실행 0건이다. 이전 `e7be` Wire 68+49/core 20은 수동 QBC 진단 결과이고 PTA는 컴파일 실패101/0이었다. D1/D2 main 반영·DoD와 native product 검증은 미완료다. Index `38eda` snapshot의 native base 63/63 PASS이고 corpus controls는 admission timeout 124/0이다.**
 
-마지막 실패 검증의 D1/D2 후보는 Semantica `e7bebbe0a86d73f56c3a62d096334cbf35ef7b2d` (base `858a120e2eb11237df1eabe1dad3b61b1fad1568`, 변경 86경로, `codex/oct6-substrate-current-main-sync`)다. 검토된 병합은 main 전용 81경로의 바이트를 보존하고 7개 THREE_WAY 겹침(두 lock·runtime/SDK 5개)을 통합해 main의 memo GC·transcript와 후보 Shape wiring을 함께 유지했다. 이 후보에서 수동 `cg_test`가 Wire serde 68·default 49와 Tarjan core 20을 실행했지만, PTA는 `issued_parse_member_pinned_origin_v3.rs:191`의 잘못된 `controlled_single_source_v3` 경로로 컴파일 실패했다(101, 테스트 0). 수령 기록의 `authority_kind=manual`, `manual_invocation_comparison_only`, `reuse_eligible_v1=false`이므로 통과 건수는 진단용 비교 결과이며 owner qualification은 NOT_RUN이다. 이 선행 경로 수리 2파일·3곳은 Semantica main `24f2b91d3f8`에 반영됐으며 최신 private 병합에서 main의 FileId 변경을 보존했다. 정확한 20개 feature isolation class registry는 private `6927b23bad8`에 있으며 canonical owner-direct 40개 요청은 준비 중, 실행 결과는 없다. 두 선행 checkpoint를 새 full 후보의 qualification이나 D1/D2 main 반영으로 세지 않는다. 이전 `d14a` Wire 68+49도 같은 수동 비교 결과이고 후속 게이트 0건이었다. GQLang 문서 checkpoint `4dd74c7e5fc6`은 clean으로 확정됐다. Index `38eda80a5688` base native owner 63/63 PASS, corpus controls는 admission timeout 124/0 tests로 별도 판정 대기다. 현재 main은 후보 base 이후에도 이동했으므로 main 병합 및 영향받는 재검증은 별도다. [구현 checkpoint 기록](execution-progress.md).
+마지막 실패 검증의 D1/D2 후보는 Semantica `e7bebbe0a86d73f56c3a62d096334cbf35ef7b2d` (base `858a120e2eb11237df1eabe1dad3b61b1fad1568`, 변경 86경로, `codex/oct6-substrate-current-main-sync`)다. 검토된 병합은 main 전용 81경로의 바이트를 보존하고 7개 THREE_WAY 겹침(두 lock·runtime/SDK 5개)을 통합해 main의 memo GC·transcript와 후보 Shape wiring을 함께 유지했다. 이 후보에서 수동 `cg_test`가 Wire serde 68·default 49와 Tarjan core 20을 실행했지만, PTA는 `issued_parse_member_pinned_origin_v3.rs:191`의 잘못된 `controlled_single_source_v3` 경로로 컴파일 실패했다(101, 테스트 0). 수령 기록의 `authority_kind=manual`, `manual_invocation_comparison_only`, `reuse_eligible_v1=false`이므로 통과 건수는 진단용 비교 결과이며 owner qualification은 NOT_RUN이다. 이 선행 경로 수리 2파일·3곳은 Semantica main `24f2b91d3f8`에 반영됐으며 최신 private 병합에서 main의 FileId 변경을 보존했다. 정확한 20개 feature isolation class registry는 private `6927b23bad8`에 있으며 canonical owner-direct 40개 요청은 준비 중, 실행 결과는 없다. 두 선행 checkpoint를 새 full 후보의 qualification이나 D1/D2 main 반영으로 세지 않는다. 이전 `d14a` Wire 68+49도 같은 수동 비교 결과이고 후속 게이트 0건이었다. GQLang 문서 checkpoint `4dd74c7e5fc6`은 clean으로 확정됐다. Index `38eda80a5688` snapshot의 base native owner 63/63 PASS, corpus controls는 admission timeout 124/0 tests로 별도 판정 대기다. 현재 Index `4a5b59ef7d11`의 재검증 결과로 확장하지 않는다. 현재 main은 후보 base 이후에도 이동했으므로 main 병합 및 영향받는 재검증은 별도다. [구현 checkpoint 기록](execution-progress.md).
 
-현재 clean private 통합 후보는 `3fe43a60f4a9fbe962ee237fd6c2950b259e84c1`/base `5c8da1a4f2bc2bd61f301a6386713e331796d015`, 변경 87경로다. Main 전용 14경로는 바이트 보존됐고, 동일 파일 `incremental/mod.rs`에서 양쪽 줄 수정이 독립적으로 유지됐다. 기존 FileId·projected snapshot·Java/PTA source owner 변경도 보존했다. 정상 병합 hook은 rustfmt 12파일, safety 12파일/235행 PASS다. Registry의 exact feature class 20개가 포함됐지만 canonical owner-direct 40개 요청은 `NOT_RUN`이다. 철회된 `d20` boundary preflight는 현재 소스의 PASS로 세지 않는다. 이 정적 checkpoint는 D1/D2 main 반영이나 제품 qualification이 아니다.
+현재 clean private 통합 후보는 `3fe43a60f4a9fbe962ee237fd6c2950b259e84c1`/base `5c8da1a4f2bc2bd61f301a6386713e331796d015`, 변경 87경로다. Main 전용 14경로는 바이트 보존됐고, 동일 파일 `incremental/mod.rs`에서 양쪽 줄 수정이 독립적으로 유지됐다. 기존 FileId·projected snapshot·Java/PTA source owner 변경도 보존했다. 정상 병합 hook은 rustfmt 12파일, safety 12파일/235행 PASS다. 이 소스의 87경로 source policy 90건도 exit 0으로 통과했다(새 영구 로그와 state로 90개 PASS 재검증). Registry의 exact feature class 20개가 포함됐지만 canonical owner-direct 40개 요청은 setup 실패 2회 때문에 0건 실행됐다. 철회된 `d20` boundary preflight는 현재 소스의 PASS로 세지 않는다. 이 정적 checkpoint는 D1/D2 main 반영이나 제품 qualification이 아니다.
 
 ### 구체적인 실행 자료
 
@@ -292,11 +292,11 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 
 | 항목 | 구현 상태 | main 코드 checkpoint | owner/gate proof |
 |---|---|---|---|
-| D3 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker DFG91/pack16/taint3 QBC GREEN; final combined main qualification 별도 |
-| D5 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker PTA solver227 QBC GREEN |
-| D4 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker SCV2 leaf34 QBC GREEN; canonical main fences PASS |
+| D3 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | DFG91/pack16/taint3 실제 통과. 해당 세 역사적 Rust receipt의 권한은 `manual`이므로 canonical owner qualification은 미완료 |
+| D5 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | PTA solver227 실제 통과, manual comparison only. Canonical owner receipt 필요 |
+| D4 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | SCV2 leaf34 실제 통과, manual comparison only; canonical main source fences PASS. Canonical owner receipt 필요 |
 | D7 | MAIN_IMPLEMENTED | `b258f5919a5` | Final clean integration에서 6-file owner matrix70/70 GREEN; captured source·기존 parity/surface/DI. Full product qualification 별도 |
-| D1-A / D1-B | PRIVATE_COMMITTED / owner qualification NOT_RUN | 없음 | `3fe`/base `5c8`,87 paths에 Shape owner/factory/feature 연결과 runtime capability·SDK export 분리 구현. 현재 owner-direct40과 pure/PTA/disabled/Cost-only/Heap consumer rails NOT_RUN. `e7be` 수동 Wire68+49/core20은 comparison-only였고 PTA는 컴파일 실패101/0. 선행 경로 수리 main `24f2b91`; D1/D2 본체 main 미반영. Index base native63 PASS, corpus controls admission timeout124/0 |
+| D1-A / D1-B | PRIVATE_COMMITTED / owner qualification NOT_RUN | 없음 | `3fe`/base `5c8`,87 paths에 Shape owner/factory/feature 연결과 runtime capability·SDK export 분리 구현. 현재 owner-direct40과 pure/PTA/disabled/Cost-only/Heap consumer rails NOT_RUN. `e7be` 수동 Wire68+49/core20은 comparison-only였고 PTA는 컴파일 실패101/0. 선행 경로 수리 main `24f2b91`; D1/D2 본체 main 미반영. Index `38eda` snapshot native63 PASS, corpus controls admission timeout124/0 |
 | F1 / D6 | MAIN_IMPLEMENTED | `c1f821db572` | SDK211 pass/2 skip; rebased consumers141 pass/1 skip; installed wheel1 + Granian/scripted daemon1 GREEN. Native daemon/product qualification 별도 |
 | D2-P / D2-K | MAIN_IMPLEMENTED | `df2a867ad70` | Final core20 QBC GREEN; actual frame/output bound·typed stop·order/ID controls. Rebased std-only owner source/toolchain unchanged |
 | D2 PTA | PRIVATE_COMMITTED / owner qualification NOT_RUN | 없음 | `3fe` SCC caller·field-policy child·worker identity·whole-program helper 구현. 기존 10개 PTA prerequisite selector의 정적 최소치는 14 cases다. 과거 `e7be` Tarjan PTA는 source-authority module 경로 컴파일 실패101/0으로 RuntimeAnalysis에 도달하지 못했다. 선행 수리 main 반영 뒤 현재 후보의 canonical owner matrix는 NOT_RUN이다. `813857b73fc`의 87 compile errors는 별도 과거 실패다. [Rust evidence/RCA](checkpoint-rust-evidence.json) |
@@ -309,10 +309,11 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 
 - [ ] D1: production Shape 정의 1개·알려진 factories 전환·D1-B 실제 feature closure proof.
 - [ ] D2: 선택한 generic/PTA/taint traversal core 1개·두 adapter 전환·order/ID/stop/admission/deep-chain proof.
-- [x] D3/D5: 퇴역 entry/module·exports·active consumers 0·보존한 실제 owner 회귀 통과.
-- [x] D4: SCV2 inline contribution 0·기존 helper 사용·leaf feature·score/order/refusal proof.
+- [x] D3/D5: 퇴역 entry/module·exports·active consumers 0·역사적 component 회귀 통과.
+- [x] D4: SCV2 inline contribution 0·기존 helper 사용·역사적 manual leaf feature·score/order/refusal 관찰.
 - [x] F1/D6: truthful current row/summary·shared app 변환 1개·active consumers 전환·old converter/import/export 0.
 - [x] D7: captured source authority 1개·projection version/digest 일치·init/retry/duplicate/override/restart controls. Exact commands/cases는 [checkpoint-d7-evidence.json](checkpoint-d7-evidence.json).
+- [ ] D3/D4/D5의 과거 manual Rust 비교 5건을 reviewed canonical owner request/receipt로 재검증.
 - [ ] 모든 항목의 existing mandatory gates, regenerated inputs, actual selected cases를 기록.
 - [ ] 각 dependency가 닫힌 checkpoint의 owned 변경을 local main에 반영하고 문서 ledger 동기화.
 - [ ] source tuple·실행 증거·NOT_RUN·외부 compatibility/installed/perf의 남은 범위를 명시.

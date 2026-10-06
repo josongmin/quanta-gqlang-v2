@@ -3807,9 +3807,9 @@
     "feature_isolation_registry_private_commit": "6927b23bad8b7fd52a6b035ef9e11ac148c59372",
     "exact_feature_classes": 20,
     "canonical_owner_direct_requests": 40,
-    "owner_direct_results": "NOT_RUN",
+    "owner_direct_results": "NOT_RUN: two setup attempts, 0 of 40 executed",
     "d1_d2_consumer_results": "NOT_RUN on 3fe",
-    "current_source_boundary_preflight": "NOT_RUN; previous d20 attempt withdrawn after source changed",
+    "current_source_boundary_preflight": "PASS: fresh 3fe/base5c8 exact 87-path source policy, 90 checks, exit0; persistent log SHA 6c5616eb54ea0fcbcaab13f47829b9ae07a8f6e0ede7c77fa50fad5eeb309dc6; not Rust/product qualification",
     "scoped_god_retirement_witness": {
       "record": "/tmp/oct6-final-retirement-witness.json",
       "sha256": "7fd8018a24979ce8fc5dff5a99268e244a31bbd19ed5c29fffa79684258a8e56",
@@ -3840,5 +3840,320 @@
     ],
     "feature_diagnostic": "shape-tree-composition: quanta-sdk-runtime-composition-owner --no-default-features --features session-shape-analyzer-runtime",
     "final_named_result_guard": 10
+  },
+  "historical_d3_d4_d5_rust_authority_recovery": {
+    "schema": "oct6-historical-authority-recovery/v1",
+    "review_method": "Re-read five persisted run-specific QBC receipts and stdout/stderr logs on 2026-10-06; no build executed",
+    "records": [
+      {
+        "scope": "D3 DFG",
+        "run_id": "20261006T005838.828405Z-b2040885f25d",
+        "source_snapshot_digest": "1d03e8e36198c1022c447f735bb88ac24ff547236ffafd5e710e2c7500a59bd8",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "quanta-adapters-dfg",
+          "--lib",
+          "memssa_adapter::tests::",
+          "--",
+          "--nocapture"
+        ],
+        "command_cwd": "/Users/songmin/.codex/worktrees/oct6-substrate-leaf/semantica-codegraph-v2",
+        "default_features_enabled": true,
+        "explicit_features": [],
+        "result": {
+          "passed": 91,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 997,
+          "exit_code": 0
+        },
+        "receipt": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-093e8e082424/lanes/oct6-substrate-leaf/verification-results/20261006T005838.828405Z-b2040885f25d/receipt.json",
+        "receipt_sha256": "4afb376d7351f8216faecd55e87196233b99b24bdcc843134b7c03caf4968b05",
+        "stdout": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-093e8e082424/lanes/oct6-substrate-leaf/verification-results/20261006T005838.828405Z-b2040885f25d/stdout.log",
+        "stdout_sha256": "74e01a43602390ac21a3a37e7ae5858c21f1bb404c2a35a7f04842b5d3f16a73",
+        "stderr_sha256": "a4cf84b357ed6c5ce74734707c3921a3fb7ed36075ffc1e71eab784ceb46b31e",
+        "verification_authority_v1": {
+          "authority_kind": "manual",
+          "restriction_reason_v1": "manual_invocation_comparison_only",
+          "owner_execution_receipt_v1": false,
+          "execution_plan_receipt_v1": false,
+          "reuse_eligible_v1": false
+        },
+        "interpretation": "historical component test PASS on receipt source digest; canonical owner qualification absent"
+      },
+      {
+        "scope": "D3 pack",
+        "run_id": "20261006T010123.260879Z-f9aefde566fa",
+        "source_snapshot_digest": "19b5c4d86a1738ef0ea1959048acde470329e35c32a1469153e56fc98a2bf89c",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "quanta-runtime-memssa-pack",
+          "--lib",
+          "canonical_memory_ir_ingress::tests::",
+          "--",
+          "--nocapture"
+        ],
+        "command_cwd": "/Users/songmin/.codex/worktrees/oct6-substrate-leaf/semantica-codegraph-v2",
+        "default_features_enabled": true,
+        "explicit_features": [],
+        "result": {
+          "passed": 16,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 193,
+          "exit_code": 0
+        },
+        "receipt": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-093e8e082424/lanes/oct6-substrate-leaf/verification-results/20261006T010123.260879Z-f9aefde566fa/receipt.json",
+        "receipt_sha256": "c216b66952071022b995650a2fed5f439eb85ddeb87081a81b8d4b1883bd9ba5",
+        "stdout": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-093e8e082424/lanes/oct6-substrate-leaf/verification-results/20261006T010123.260879Z-f9aefde566fa/stdout.log",
+        "stdout_sha256": "a19d712c036c2b60da4e9735efd2c45b27aaf78b85d23e5a1666528d54230348",
+        "stderr_sha256": "c109afbe04c0529e18058990d3bb81a5d2bcdfa348ae8a4cea8aae2195fd66f7",
+        "verification_authority_v1": {
+          "authority_kind": "manual",
+          "restriction_reason_v1": "manual_invocation_comparison_only",
+          "owner_execution_receipt_v1": false,
+          "execution_plan_receipt_v1": false,
+          "reuse_eligible_v1": false
+        },
+        "interpretation": "historical component test PASS on receipt source digest; canonical owner qualification absent"
+      },
+      {
+        "scope": "D3 taint promotion",
+        "run_id": "20261006T011121.193111Z-83c72a327e68",
+        "source_snapshot_digest": "19b5c4d86a1738ef0ea1959048acde470329e35c32a1469153e56fc98a2bf89c",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "quanta-taint-solver",
+          "--lib",
+          "--features",
+          "cfg-dfg",
+          "memssa_w3_call_boundary_havoc_tests::",
+          "--",
+          "--nocapture"
+        ],
+        "command_cwd": "/Users/songmin/.codex/worktrees/oct6-substrate-leaf/semantica-codegraph-v2",
+        "default_features_enabled": true,
+        "explicit_features": [
+          "cfg-dfg"
+        ],
+        "result": {
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 5122,
+          "exit_code": 0
+        },
+        "receipt": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-093e8e082424/lanes/oct6-substrate-leaf/verification-results/20261006T011121.193111Z-83c72a327e68/receipt.json",
+        "receipt_sha256": "04bd8f10a5a77ca489be185e200ae6cabd2483e221eb9b165f2cd62a22dbca62",
+        "stdout": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-093e8e082424/lanes/oct6-substrate-leaf/verification-results/20261006T011121.193111Z-83c72a327e68/stdout.log",
+        "stdout_sha256": "6e45798470b6e24ded91cf033728cac62436d073c233465c3bf0a76748495816",
+        "stderr_sha256": "6995604be0457f339967f13dfb3d7eac82a3040089c590e33ad06c9242334aae",
+        "verification_authority_v1": {
+          "authority_kind": "manual",
+          "restriction_reason_v1": "manual_invocation_comparison_only",
+          "owner_execution_receipt_v1": false,
+          "execution_plan_receipt_v1": false,
+          "reuse_eligible_v1": false
+        },
+        "interpretation": "historical component test PASS on receipt source digest; canonical owner qualification absent"
+      },
+      {
+        "scope": "D5 PTA solver",
+        "run_id": "20261006T011434.988810Z-173aadaabd93",
+        "source_snapshot_digest": "914a320ec8117004f16af539dafc0c0dfb76124ec77fdd05c296c787b073b831",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "codegraph-core-pta-engine",
+          "--lib",
+          "solver::",
+          "--",
+          "--nocapture"
+        ],
+        "command_cwd": "/Users/songmin/.codex/worktrees/oct6-substrate-leaf/semantica-codegraph-v2",
+        "default_features_enabled": true,
+        "explicit_features": [],
+        "result": {
+          "passed": 227,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 0,
+          "exit_code": 0
+        },
+        "receipt": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-093e8e082424/lanes/oct6-substrate-leaf/verification-results/20261006T011434.988810Z-173aadaabd93/receipt.json",
+        "receipt_sha256": "0e435ee98a0c1af0fe81fa17d0f2a73bbd661aa0b7d0949d3442ba73e6d48a2f",
+        "stdout": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-093e8e082424/lanes/oct6-substrate-leaf/verification-results/20261006T011434.988810Z-173aadaabd93/stdout.log",
+        "stdout_sha256": "b3620f6dcf58c08ff64fc57e642030a3c621769131ef464a06bc1859f9f375a7",
+        "stderr_sha256": "8b019e94da57c7dff8c5c641b572beb3f3d16c2e674043e734929a95a3ae20a5",
+        "verification_authority_v1": {
+          "authority_kind": "manual",
+          "restriction_reason_v1": "manual_invocation_comparison_only",
+          "owner_execution_receipt_v1": false,
+          "execution_plan_receipt_v1": false,
+          "reuse_eligible_v1": false
+        },
+        "interpretation": "historical component test PASS on receipt source digest; canonical owner qualification absent"
+      },
+      {
+        "scope": "D4 SCV2 leaf",
+        "run_id": "20261006T011614.691261Z-a6fd76c83be5",
+        "source_snapshot_digest": "7a6ded4ec80ff5256192964374b1075c912689d852817a352ee8b6dcb62a28ea",
+        "command": [
+          "cargo",
+          "test",
+          "-p",
+          "quanta-runtime-retrieval-kernel",
+          "--lib",
+          "--no-default-features",
+          "--features",
+          "scv2-exact-owner-surface",
+          "scv2_exact_fusion::tests::",
+          "--",
+          "--nocapture"
+        ],
+        "command_cwd": "/Users/songmin/.codex/worktrees/oct6-substrate-leaf/semantica-codegraph-v2",
+        "default_features_enabled": false,
+        "explicit_features": [
+          "scv2-exact-owner-surface"
+        ],
+        "result": {
+          "passed": 34,
+          "failed": 0,
+          "ignored": 0,
+          "filtered": 108,
+          "exit_code": 0
+        },
+        "receipt": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-093e8e082424/lanes/oct6-substrate-leaf/verification-results/20261006T011614.691261Z-a6fd76c83be5/receipt.json",
+        "receipt_sha256": "b624b32ab65cb5f2e983eb25d7bb116629e1aea4234bb5261cb2e60afecee2d1",
+        "stdout": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-093e8e082424/lanes/oct6-substrate-leaf/verification-results/20261006T011614.691261Z-a6fd76c83be5/stdout.log",
+        "stdout_sha256": "08597b4919de7fff645af48bea6c51bdb50dcc8d08e14a91ebc6521e0c682e69",
+        "stderr_sha256": "efe7224f1c673659cc4eb16852a2f193a7d0ee7470c0a7a614e5d3c6e0342a6a",
+        "verification_authority_v1": {
+          "authority_kind": "manual",
+          "restriction_reason_v1": "manual_invocation_comparison_only",
+          "owner_execution_receipt_v1": false,
+          "execution_plan_receipt_v1": false,
+          "reuse_eligible_v1": false
+        },
+        "interpretation": "historical component test PASS on receipt source digest; canonical owner qualification absent"
+      }
+    ],
+    "main_code_checkpoint": "d88f0a2ed7a",
+    "main_code_state": "implemented and committed; code checkpoint independent of owner qualification",
+    "canonical_owner_qualification": "NOT_RUN for these five historical runs; any current-source owner conclusion requires reviewed owner requests and new receipts",
+    "source_identity_limit": "QBC source_snapshot_digest is present; receipt itself does not assert the historical private Git SHA"
+  },
+  "current_3fe_source_policy_and_owner_attempts": {
+    "source": "3fe43a60f4a9fbe962ee237fd6c2950b259e84c1",
+    "base": "5c8da1a4f2bc2bd61f301a6386713e331796d015",
+    "changed_paths": 87,
+    "source_policy": {
+      "observed_result": "PASS, fresh replay",
+      "passed_policies": 90,
+      "exit_code": 0,
+      "seconds": 21.63,
+      "kind": "source policy only",
+      "original_log_status": "fresh replay log and state persisted at recovery path",
+      "provenance": "fresh exact 87-path replay with Python 3.12; state/log verified and 90 PASS lines counted",
+      "historical_observation": {
+        "passed_policies": 90,
+        "seconds": 1296.1,
+        "provenance": "parent session JSONL lines 20082/20096; original /tmp log and state absent"
+      },
+      "state_path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/3fe-boundary-policy-state.json",
+      "log_path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/3fe-boundary-policy.log",
+      "log_sha256": "6c5616eb54ea0fcbcaab13f47829b9ae07a8f6e0ede7c77fa50fad5eeb309dc6"
+    },
+    "canonical_owner_attempts": [
+      {
+        "attempt_id": "20261006T102922.000550Z-3fe43a60f4a9",
+        "phase": "failed: materializing canonical exact snapshot",
+        "cause": "snapshot_cache_lifecycle_v1 active_reference_text_v1 lsof cwd scan timed out after 20 seconds",
+        "owner_results": 0,
+        "feature_diagnostics": 0,
+        "source_snapshot_digest": null,
+        "provenance": "parent session JSONL lines 20112, 20119 and 20158"
+      },
+      {
+        "attempt_id": "20261006T103244.082382Z-3fe43a60f4a9",
+        "phase": "failed: admitting canonical snapshot owner lane",
+        "cause": "launcher imported QBC driver from frozen root, causing exact snapshot to be classified as mutable live workspace",
+        "owner_results": 0,
+        "feature_diagnostics": 0,
+        "topology_digest": "3fe43a60f4a9fbe962ee237fd6c2950b259e84c1+ext-2bd8f42e56556e3a5fc2",
+        "source_snapshot_digest": "c0df6a8f9e097dbd81711ede83dc33398fdbcfbf5b03f4f1f311f558b0eceb78",
+        "provenance": "parent session JSONL lines 20289, 20311 and 20360"
+      }
+    ],
+    "diagnostic_lsof_retry": {
+      "exit_code": 0,
+      "seconds": 12.89,
+      "stdout_bytes": 47951,
+      "stdout_sha256": "15a69960f3f1fa8c6576a366c6754f5bae1a6c5d1fbbfcfce8ae8d604276f84b",
+      "interpretation": "resource diagnostic, not owner or Rust test"
+    },
+    "frozen_execution_root": "/Users/songmin/.cache/semantica-codegraph-v2/casectl-snapshots/3fe43a60f4a9fbe962ee237fd6c2950b259e84c1_ext-2bd8f42e56556e3a5fc2_mat-plain-v1/semantica-codegraph-v2",
+    "current_owner_result": "NOT_RUN: 0 of 40 canonical owner requests executed in these two setup attempts",
+    "source_import": "NOT_RUN for D1/D2 87-path candidate",
+    "provenance_file": "/Users/songmin/.codex/sessions/2026/10/06/rollout-2026-10-06T03-24-23-01a10d4f-4eaa-73d1-98de-1d7d53f13d3b.jsonl"
+  },
+  "historical_python_component_review": {
+    "source": "prior XML parsing observed in subagent session JSONL lines 11571 and 11798; raw /tmp JUnit files absent at this recovery",
+    "provenance_file": "/Users/songmin/.codex/sessions/2026/10/06/rollout-2026-10-06T09-52-35-01a10eb2-b7f7-7202-871d-0a1f3b3879f4.jsonl",
+    "results": [
+      {
+        "scope": "D7 worker owner matrix",
+        "selected": 70,
+        "passed": 70,
+        "skipped": 0,
+        "failed": 0,
+        "source_binding": "8304a0098a6; see checkpoint-d7-evidence.json",
+        "junit_original": "/tmp/oct6-d7-final-owner-matrix-junit.xml"
+      },
+      {
+        "scope": "F1 SDK",
+        "selected": 213,
+        "passed": 211,
+        "skipped": 2,
+        "failed": 0,
+        "source_binding": "historical private source from prior packet; XML did not embed exact source SHA",
+        "junit_original": "/tmp/oct6-f1-sdk-owned-junit.xml"
+      },
+      {
+        "scope": "D6 rebased consumers",
+        "selected": 142,
+        "passed": 141,
+        "skipped": 1,
+        "failed": 0,
+        "source_binding": "5cc4a2c9972; see checkpoint-source-state.json",
+        "junit_original": "/tmp/oct6-d6-rebased-consumers-junit.xml"
+      },
+      {
+        "scope": "F1 installed SDK wheel with scripted daemon",
+        "selected": 1,
+        "passed": 1,
+        "skipped": 0,
+        "failed": 0,
+        "source_binding": "XML did not embed exact source SHA",
+        "junit_original": "/tmp/oct6-scripted-search-boundaries-junit.xml"
+      },
+      {
+        "scope": "F1 Granian HTTP with scripted daemon",
+        "selected": 1,
+        "passed": 1,
+        "skipped": 0,
+        "failed": 0,
+        "source_binding": "XML did not embed exact source SHA",
+        "junit_original": "/tmp/oct6-scripted-search-api-junit.xml"
+      }
+    ],
+    "interpretation": "historical Python component results; QBC Rust authority is inapplicable, but installed native daemon/full product qualification remains NOT_RUN; XML needs reproduction if fresh exact-source evidence required"
   }
 }

@@ -541,7 +541,7 @@
       "allowances_unchanged": true,
       "proof_kind": "read-only source/scanner; no generated write or global Honesty pass"
     },
-    "proof_stage": "clean private 3fe/base5c8 static merge; normal hooks PASS; d20 boundary attempt withdrawn; canonical owner40, consumer and generated owner/policy NOT_RUN",
+    "proof_stage": "clean private 3fe/base5c8 static merge and fresh 90 source policies PASS; canonical Rust owner 0/40 because two earlier launcher setup attempts failed; consumers and generated owner/policy NOT_RUN",
     "legacy_qbc_authority": {
       "authority_kind": "manual",
       "restriction_reason_v1": "manual_invocation_comparison_only",
@@ -565,7 +565,21 @@
     "native_full_product_qualification": "NOT_RUN",
     "next": "freeze 3fe source with exact siblings, run canonical owner-direct40 and consumer gates, then owning generated topology/GOD gates and D1/D2 main import qualification",
     "prior_failed_topology_digest": "e7bebbe0a86d73f56c3a62d096334cbf35ef7b2d+ext-ba823c5a7a0f40ab9fd3",
-    "prior_failed_index_archived_sibling": "e6b90ff61a02fd917cbd396bfc664b8eb497292d"
+    "prior_failed_index_archived_sibling": "e6b90ff61a02fd917cbd396bfc664b8eb497292d",
+    "source_bound_boundary_preflight": {
+      "source": "3fe43a60f4a9fbe962ee237fd6c2950b259e84c1",
+      "base": "5c8da1a4f2bc2bd61f301a6386713e331796d015",
+      "paths": 87,
+      "policies_passed": 90,
+      "exit_code": 0,
+      "seconds": 21.63,
+      "kind": "source policy only; not Rust owner, generated owner, product, or full Honesty",
+      "recovery_status": "Fresh exact 87-path replay completed: persistent state/log, counted 90 PASS lines; previous /tmp 1296.1s run remains historical",
+      "provenance_file": "/Users/songmin/.codex/sessions/2026/10/06/rollout-2026-10-06T03-24-23-01a10d4f-4eaa-73d1-98de-1d7d53f13d3b.jsonl",
+      "state_path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/3fe-boundary-policy-state.json",
+      "log_path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/3fe-boundary-policy.log",
+      "log_sha256": "6c5616eb54ea0fcbcaab13f47829b9ae07a8f6e0ede7c77fa50fad5eeb309dc6"
+    }
   },
   "prior_source_refresh": {
     "candidate_source": "5fe8de9549a9d4349117b9d01010eeddd9f8f6b0",
