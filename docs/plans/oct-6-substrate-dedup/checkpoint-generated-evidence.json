@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-06T09:29:03+00:00",
+  "recorded_at_utc": "2026-10-06T11:49:14+00:00",
   "initial_frozen_main": "39edfc1ca5bf143a09b66f0738c5f2b3987c7572",
   "execution_root": "/Users/songmin/.codex/worktrees/oct6-substrate-integrate/semantica-codegraph-v2",
   "proof_scope": "Generated/policy observations on frozen source only; raw full-sweep flags are not counted as demonstrated runtime defects",
@@ -541,7 +541,7 @@
       "allowances_unchanged": true,
       "proof_kind": "read-only source/scanner; no generated write or global Honesty pass"
     },
-    "proof_stage": "clean private 3fe/base5c8 static merge and fresh 90 source policies PASS; canonical Rust owner 0/40 because two earlier launcher setup attempts failed; consumers and generated owner/policy NOT_RUN",
+    "proof_stage": "3fe/base5c8 source policy 90 PASS; later canonical owner run 4/40 PASS and fifth PTA compile101/0, requests6-40 NOT_RUN; generated owner/global Honesty/product NOT_RUN",
     "legacy_qbc_authority": {
       "authority_kind": "manual",
       "restriction_reason_v1": "manual_invocation_comparison_only",
@@ -559,11 +559,11 @@
       "private_source": "6927b23bad8b7fd52a6b035ef9e11ac148c59372",
       "exact_classes": 20,
       "owner_direct_requests": 40,
-      "state": "included in clean private 3fe merge; owner requests NOT_RUN"
+      "state": "included in clean private 3fe merge; later canonical owner run 4 PASS, fifth PTA compile101/0, remaining 35 NOT_RUN"
     },
     "global_honesty_retirement": "BLOCKED: owning full-sweep ratchet unresolved; no waiver or generated baseline write",
     "native_full_product_qualification": "NOT_RUN",
-    "next": "freeze 3fe source with exact siblings, run canonical owner-direct40 and consumer gates, then owning generated topology/GOD gates and D1/D2 main import qualification",
+    "next": "historical 3fe run stopped at request 5/40; c5bb composed candidate now exists; its PTA-first 45-owner matrix and generated gates are pending",
     "prior_failed_topology_digest": "e7bebbe0a86d73f56c3a62d096334cbf35ef7b2d+ext-ba823c5a7a0f40ab9fd3",
     "prior_failed_index_archived_sibling": "e6b90ff61a02fd917cbd396bfc664b8eb497292d",
     "source_bound_boundary_preflight": {
@@ -657,5 +657,92 @@
       "candidate_paths": 86,
       "proof_stage": "clean integrated source before SDK source-gate repair; no owner receipt"
     }
-  ]
+  ],
+  "latest_checkpoint": {
+    "status_for_c5bb": "historical 3fe Semantica status; GQLang d600 just ci remains source-bound valid",
+    "gqlang": {
+      "head": "d600cab757cd2b4fea2d31655f3e19e2509961c3",
+      "clean": true,
+      "command": "just ci",
+      "exit_code": 0,
+      "source_snapshot": "7ee03daf0fb99b8b2b26f40ee48cc9938071164886050d30857f210547974ee4",
+      "state_path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/gqlang-d600cab-ci-state.json",
+      "log_sha256": "3ab822bf577ea0382180e308bcb1b143fd4b53b2b8786d2d80a38a9753c87d60",
+      "scope": "GQLang local CI only"
+    },
+    "semantica_source_policy": {
+      "source": "3fe43a60f4a9fbe962ee237fd6c2950b259e84c1",
+      "changed_paths": 87,
+      "policies_passed": 90,
+      "exit_code": 0,
+      "state_path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/3fe-boundary-policy-state.json",
+      "kind": "source policy only"
+    },
+    "semantica_canonical_owner": {
+      "state_path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof-state.json",
+      "passed_requests": 4,
+      "failed_compile_request": "5/40 tarjan-pta E0433 exit101, 0 tests",
+      "not_run_requests": "6-40",
+      "source_fix_main_checkpoint": "578a5393721420bcf7d84d1f7ff5bbba32366f74",
+      "fixed_source_rust_requalification": "NOT_RUN"
+    },
+    "new_registry": {
+      "private_commit": "d6eb94b2820bfad1eafd17b314310d1c4939f5a1",
+      "classes_added": 3,
+      "suite_consumers_added": 3,
+      "scope": "static scoped checks and five owner resolves PASS; Rust execution NOT_RUN",
+      "full_parity_and_suite_lint": "FAIL on unchanged 3fe baseline casectl links and PTA module edge; not new-class acceptance"
+    },
+    "generated_owner_and_global_honesty": "NOT_RUN on composed current source; prior four-path GOD witness is read-only and source-bound to 3fe",
+    "d1_d2_main_body_import": "NOT_RUN",
+    "native_full_product_qualification": "NOT_RUN",
+    "next": "compose current Semantica main with source fix and new registry, freeze; PTA-first canonical owner matrix, downstream consumers, generated gates and product proof as required"
+  },
+  "current_composed_candidate": {
+    "observed_at_utc": "2026-10-06T11:49:14+00:00",
+    "source": "c5bb60ff56c3e067735902916ac629b9b0bbd49f",
+    "base_main": "578a5393721420bcf7d84d1f7ff5bbba32366f74",
+    "changed_paths": 87,
+    "clean": true,
+    "source_policy": {
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/c5bb60ff56c3-r2-boundary-policy-state.json",
+      "log": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/c5bb60ff56c3-r2-boundary-policy.log",
+      "log_sha256": "e3ec53a536c9ad6abe2965870868b54cc9a34b044f27c01bc4a3ac1dc59abb81",
+      "passed_policies": 90,
+      "scope_complete": true,
+      "exit_code": 0,
+      "proof_kind": "source policy only"
+    },
+    "prior_nonaccepted_policy_log": "first c5bb run log emitted PASS lines but wrapper failed after candidate metadata JSON mutated during run; excluded from accepted verdict",
+    "scoped_retirement": {
+      "witness": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/c5bb-scoped-retirement-witness.json",
+      "baseline_findings_before": 14,
+      "findings_after": 7,
+      "retired_keys": 7,
+      "new_keys": 0,
+      "worsened_keys": 0,
+      "allowed_findings": 0,
+      "generated_files_written": 0,
+      "outside_baseline_entries_sha256": "84a62c19c90319f88c289a6e164ff397bf4595faa6501f2193ea81066d8db186",
+      "proof_kind": "read-only source scanner comparison; no baseline write or full GOD/Honesty verdict"
+    },
+    "wire_static_closure": {
+      "witness": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/next45-import/wire-owner-closure-c5bb.json",
+      "local_crate_count": 72,
+      "claim": "static Wire lib/test dependency closure equal; no QBC claim",
+      "proof_kind": "read-only static dependency comparison"
+    },
+    "canonical_rust_owner_requests": "RUNNING PTA-first 1/45 on c5bb frozen snapshot; 0 completed receipts at last check",
+    "full_suite_and_parity": "FAIL with baseline casectl links and nested PTA module scanner findings; no waiver",
+    "generated_owner_and_global_honesty": "NOT_RUN; read-only scoped retirement is not an owning generated write or full Honesty verdict",
+    "native_full_product_qualification": "NOT_RUN",
+    "d1_d2_main_body_import": "NOT_RUN",
+    "next": "Read frozen c5bb owner matrix results, then downstream consumer and generated/global gates",
+    "canonical_owner_45_run": {
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-v2-state.json",
+      "snapshot": "c5bb60ff56c3e067735902916ac629b9b0bbd49f+ext-51a0b56268b11842364e",
+      "status_at_last_check": "RUNNING PTA-first 1/45; 0 completed owner receipts",
+      "proof_kind": "execution in progress; no PASS or FAIL verdict"
+    }
+  }
 }

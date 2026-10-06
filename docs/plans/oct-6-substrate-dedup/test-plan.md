@@ -4,6 +4,10 @@
 
 **이 문서는 required proof matrix다.** 아래 `기존`은 source에서 확인한 test 이름/파일이며 목록 자체는 통과 증거가 아니다. 구현 착수 후 실제 실행/receipt/main 상태는 [execution-progress.md](execution-progress.md)에 기록한다. `추가`는 계획상 새 회귀이며 진행 상태는 별도 ledger를 따른다. 기존 meaningful cases로 요구를 충족하면 동일 test를 다시 만들지 않는다.
 
+**이전 3fe 실행 판정:** `3fe43a6`의 canonical owner 40건 중 4건(source authority 66, Wire default 49·serde 68, SCC core 20)은 실제 owner receipt PASS다. Tarjan PTA는 dependency 자기 모듈 참조 E0433으로 compile exit 101/실행 0건이고 뒤의 35건은 NOT_RUN이다. 수정은 main `578a539`에 있지만 재검증되지 않았다. D3/D4/D5의 5개 추가 owner 요청은 `d6eb94b` private registry에서 resolve만 PASS이며 실행되지 않았다. 따라서 새 통합 소스에서 PTA를 먼저 실행하고, 통과하면 나머지 44개 owner 요청·실제 consumer·generated/global Honesty·필요한 제품 경계를 순서대로 판정한다. 이전 수동 QBC 91/16/3/227/34는 `authority_kind=manual`이므로 canonical 수량에 더하지 않는다. [실행 상세](execution-progress.md).
+
+**현재 소스 적용:** `c5bb60f`/base main `578a539`는 위 한 줄 수리와 private registry를 합친 clean 87경로 후보다. 이 소스의 source policy 90 PASS, read-only GOD 14→7/new0/worse0, Wire lib/test local crate 72개 정적 closure 비교는 T0/T3의 부분 증거다. **45개 canonical owner 요청은 frozen `c5bb+ext-51a0b56268b11842364e`에서 PTA-first 1/45 실행 중이며 완료 receipt는 0건이다.** [실행 state](/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-v2-state.json)의 결과를 기다리고 각 nonzero 선택 수·owner receipt·실패 분류를 기록한다. Full parity는 기존 casectl link 오류, full suite lint는 실제 존재하는 PTA nested child를 잘못 해석한 정적 roster 오류로 실패하므로 gate를 통과 처리하지 않는다. [현재 후보](execution-progress.md).
+
 ## 1. 실행 계약과 증거 단계
 
 | 단계 | 하는 일 | 무엇을 증명하는가 | 완료 판정 |

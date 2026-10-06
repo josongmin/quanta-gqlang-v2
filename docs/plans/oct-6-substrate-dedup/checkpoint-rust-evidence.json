@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-06T09:29:03+00:00",
+  "recorded_at_utc": "2026-10-06T11:49:14+00:00",
   "proof_scope": "QBC owner/component results only; not combined current-main/shipping-gate/product qualification",
   "records": [
     {
@@ -3391,7 +3391,13 @@
       "verdict": "diagnostic comparison only; canonical owner qualification NOT_RUN"
     },
     "archive": "/tmp/oct6-current-substrate-proof-attempt9.json",
-    "results": [{"name": "tarjan7", "exit_code": 101, "tests": 0}],
+    "results": [
+      {
+        "name": "tarjan7",
+        "exit_code": 101,
+        "tests": 0
+      }
+    ],
     "diagnostic_wire_case_count": 117,
     "downstream_selected_results": 0,
     "proof_state_file": "/tmp/oct6-current-substrate-proof-state.json",
@@ -3807,7 +3813,7 @@
     "feature_isolation_registry_private_commit": "6927b23bad8b7fd52a6b035ef9e11ac148c59372",
     "exact_feature_classes": 20,
     "canonical_owner_direct_requests": 40,
-    "owner_direct_results": "NOT_RUN: two setup attempts, 0 of 40 executed",
+    "owner_direct_results": "Later 3fe canonical run: four owner PASS, fifth PTA compile exit101/0 tests, requests 6-40 NOT_RUN; see latest_canonical_owner_checkpoint",
     "d1_d2_consumer_results": "NOT_RUN on 3fe",
     "current_source_boundary_preflight": "PASS: fresh 3fe/base5c8 exact 87-path source policy, 90 checks, exit0; persistent log SHA 6c5616eb54ea0fcbcaab13f47829b9ae07a8f6e0ede7c77fa50fad5eeb309dc6; not Rust/product qualification",
     "scoped_god_retirement_witness": {
@@ -4100,7 +4106,7 @@
       "interpretation": "resource diagnostic, not owner or Rust test"
     },
     "frozen_execution_root": "/Users/songmin/.cache/semantica-codegraph-v2/casectl-snapshots/3fe43a60f4a9fbe962ee237fd6c2950b259e84c1_ext-2bd8f42e56556e3a5fc2_mat-plain-v1/semantica-codegraph-v2",
-    "current_owner_result": "NOT_RUN: 0 of 40 canonical owner requests executed in these two setup attempts",
+    "current_owner_result": "HISTORICAL SETUP ATTEMPTS ONLY: 0 of 40; superseded by later 3fe run with four owner PASS and fifth compile failure",
     "source_import": "NOT_RUN for D1/D2 87-path candidate",
     "provenance_file": "/Users/songmin/.codex/sessions/2026/10/06/rollout-2026-10-06T03-24-23-01a10d4f-4eaa-73d1-98de-1d7d53f13d3b.jsonl"
   },
@@ -4155,5 +4161,122 @@
       }
     ],
     "interpretation": "historical Python component results; QBC Rust authority is inapplicable, but installed native daemon/full product qualification remains NOT_RUN; XML needs reproduction if fresh exact-source evidence required"
+  },
+  "latest_canonical_owner_checkpoint": {
+    "status_for_c5bb": "historical 3fe source-bound result; no carryover to current 45-request candidate",
+    "source": "3fe43a60f4a9fbe962ee237fd6c2950b259e84c1",
+    "base": "5c8da1a4f2bc2bd61f301a6386713e331796d015",
+    "topology_digest": "3fe43a60f4a9fbe962ee237fd6c2950b259e84c1+ext-2bd8f42e56556e3a5fc2",
+    "attempt_id": "20261006T112105.429449Z-3fe43a60f4a9",
+    "state_path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof-state.json",
+    "attempt_dir": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-canonical-owner-20261006T112105.429449Z-3fe43a60f4a9",
+    "planned_owner_requests": 40,
+    "completed_owner_requests": 4,
+    "owner_results": [
+      {
+        "name": "source-authority-full-owner",
+        "passed": 66,
+        "failed": 0,
+        "receipt_sha256": "2268cdc1bb9c3e69cf2af4008b3b6252e578a7c55e292470fed7798f5e707215",
+        "authority_kind": "owner_recipe",
+        "owner_execution_receipt_v1": true,
+        "reuse_eligible_v1": true
+      },
+      {
+        "name": "wire-default",
+        "passed": 49,
+        "failed": 0,
+        "receipt_sha256": "834f094e6d019d118a484ed4540452348f73e466834137dd6717eed6eb03e520",
+        "authority_kind": "owner_recipe",
+        "owner_execution_receipt_v1": true,
+        "reuse_eligible_v1": true
+      },
+      {
+        "name": "wire-serde",
+        "passed": 68,
+        "failed": 0,
+        "receipt_sha256": "d67206f14c99bd39f0e4a0765b124f941cc79723edfce2150f570305211421a1",
+        "authority_kind": "owner_recipe",
+        "owner_execution_receipt_v1": true,
+        "reuse_eligible_v1": true
+      },
+      {
+        "name": "tarjan-graph-core",
+        "passed": 20,
+        "failed": 0,
+        "receipt_sha256": "7a9b880118558e77c2fd180ab1a72d09601dc7bd315307d1177a64b7965d6c61",
+        "authority_kind": "owner_recipe",
+        "owner_execution_receipt_v1": true,
+        "reuse_eligible_v1": true
+      }
+    ],
+    "failure": {
+      "request_index": 5,
+      "name": "tarjan-pta",
+      "exit_code": 101,
+      "executed_tests": 0,
+      "error": "E0433 unresolved source_payload_demand_v1 self module reference in quanta-runtime-pta-core-shared/src/resume_state_types/call_source_payload_retention_v1/source_payload_demand_v1.rs:147",
+      "stderr": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-canonical-owner-20261006T112105.429449Z-3fe43a60f4a9/failed-pta-stderr.log"
+    },
+    "not_run_requests": "6-40",
+    "source_fix_private_commit": "a1016ab12bdeff0b104055c88fd4c9870473800d",
+    "source_fix_main_checkpoint": "578a5393721420bcf7d84d1f7ff5bbba32366f74",
+    "source_fix_qualification": "NOT_RUN on fixed source",
+    "new_registry_private_commit": "d6eb94b2820bfad1eafd17b314310d1c4939f5a1",
+    "new_registry_scope": "three isolation classes and three suite consumers; static scoped checks and five owner resolves PASS; Rust execution NOT_RUN",
+    "next": "compose current Semantica main with fixed source and registry; freeze source/siblings; run PTA first then remaining owner and consumer gates",
+    "d1_d2_main_body_import": "NOT_RUN",
+    "native_full_product": "NOT_RUN"
+  },
+  "current_composed_candidate": {
+    "observed_at_utc": "2026-10-06T11:49:14+00:00",
+    "source": "c5bb60ff56c3e067735902916ac629b9b0bbd49f",
+    "base_main": "578a5393721420bcf7d84d1f7ff5bbba32366f74",
+    "branch": "codex/oct6-substrate-mainfirst-45",
+    "worktree": "/Users/songmin/.codex/worktrees/oct6-substrate-integrate/semantica-codegraph-v2",
+    "clean": true,
+    "owned_changed_paths": 87,
+    "composition": [
+      "D1/D2 private body",
+      "main PTA self::demand_v1 source fix",
+      "D3/D4/D5 three isolation classes and three suite consumers"
+    ],
+    "prior_owner_attempt": "3fe source: four owner_recipe PASS, fifth PTA compile101/0; historical only",
+    "planned_canonical_owner_requests": 45,
+    "executed_canonical_owner_requests": 0,
+    "owner_verdict": "RUNNING on c5bb; 0 completed receipts at last check",
+    "source_policy": {
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/c5bb60ff56c3-r2-boundary-policy-state.json",
+      "passed_policies": 90,
+      "exit_code": 0,
+      "scope_complete": true,
+      "log_sha256": "e3ec53a536c9ad6abe2965870868b54cc9a34b044f27c01bc4a3ac1dc59abb81",
+      "proof_kind": "source policy only"
+    },
+    "source_readiness": {
+      "shape_owner": "standalone quanta-adapters-shape; cost implementation and tests absent",
+      "factory_exports": "runtime-surface, adapters, analysis facade, SDK session backend select standalone owner",
+      "shape_feature_lists": "direct runtime, SDK, session backend, composition, executor Shape-only feature lists do not activate Cost; Heap explicitly activates Cost; transitive Cargo closure unverified",
+      "scc_owner": "PTA and taint wrappers invoke graph-utils core; scoped local Tarjan frame/state definitions absent",
+      "method": "read-only source/caller/manifest inspection; no Rust/Cargo"
+    },
+    "full_registry_gates": {
+      "feature_isolation_parity": "FAIL: same IR-TAINT-01 and SQL-CG-03 casectl selector errors as 3fe",
+      "suite_registry": "FAIL: PTA nested module source scanner reports two unresolved edges despite child files existing at nested Rust paths; one edge already in base main; no waiver"
+    },
+    "wire_static_closure": {
+      "witness": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/next45-import/wire-owner-closure-c5bb.json",
+      "local_crates": 72,
+      "claim": "static lib/test local crate closure equal; not QBC"
+    },
+    "d1_d2_main_body_import": "NOT_RUN",
+    "consumer_product_qualification": "NOT_RUN",
+    "next": "Read canonical 45 owner receipts after run; then consumers and generated/product gates",
+    "canonical_owner_45_run": {
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-v2-state.json",
+      "snapshot": "c5bb60ff56c3e067735902916ac629b9b0bbd49f+ext-51a0b56268b11842364e",
+      "status_at_last_check": "RUNNING PTA-first 1/45; 0 completed owner receipts",
+      "proof_kind": "execution in progress; no PASS or FAIL verdict"
+    }
   }
 }
