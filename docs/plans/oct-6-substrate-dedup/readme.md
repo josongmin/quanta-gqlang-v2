@@ -294,7 +294,7 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 | F1 / D6 | MAIN_IMPLEMENTED | `c1f821db572` | SDK211 pass/2 skip; rebased consumers141 pass/1 skip; installed wheel1 + Granian/scripted daemon1 GREEN. Native daemon/product qualification 별도 |
 | D2-P / D2-K | MAIN_IMPLEMENTED | `df2a867ad70` | Final core20 QBC GREEN; actual frame/output bound·typed stop·order/ID controls. Rebased std-only owner source/toolchain unchanged |
 | D2 PTA | PRIVATE_COMMITTED / BLOCKED | 없음 | 이전 source owner QBC는 local API skew compile54 errors/0 cases. Main8f에서 wire tuple는 해결됐으나 execution rebind/Product error의 정의·export·caller 불일치가 남음. Current 오류 수는 미측정. [Rust evidence/RCA](checkpoint-rust-evidence.json) |
-| D2 Taint | PRIVATE_COMMITTED / IN_PROGRESS | 없음 | Private `1ea51f05dc5` current-source QBC: iterative5 pass/1 ignored, SCC property14/14, policy units13 pass/1 ignored. Public contract·명시적50k·기존 gate6단계·fresh-main import pending |
+| D2 Taint | PRIVATE_COMMITTED / IN_PROGRESS | 없음 | Private `1ea51f05dc5` QBC: iterative5 pass/1 ignored, SCC property14/14, policy units13 pass/1 ignored, public contract3/3. 명시적50k1/1 PASS. 최신 base `05f755e1d31`의 Taint-only 후보 `c3cb1918d02`에서 기존 gate6단계 실행 중; main import pending |
 | Generated inputs | PARTIAL_MAIN / PENDING final census | GOD `0a86de35c28` | GOD17 keys 제거·fresh-base scoped19 files PASS. Topology generate/check PASS@39edfc 이후 source 이동; final 재생성 pending. Honesty full ratchet 거절, baseline 수정0. [Generated evidence/오탐 근거](checkpoint-generated-evidence.json) |
 
 ### 최종 Definition of Done

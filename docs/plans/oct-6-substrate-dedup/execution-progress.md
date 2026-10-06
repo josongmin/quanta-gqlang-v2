@@ -30,7 +30,7 @@
 | F1 / D6 | private `d0cb3969994` → rebased `5cc4a2c9972`; owned39 inputs unchanged. Affected SDK213 /211 pass /2 skip, rebased consumers142 /141 pass /1 skip, scripted installed SDK wheel1/1·actual Granian HTTP process+scripted daemon1/1 GREEN | Main `c1f821db572`;39 paths,+1434/-1399. Canonical Ruff38/safety PASS; original owned paths clean. Real native daemon/product qualification은 NOT_RUN |
 | D2-P/K | final shared borrowed iterative core; actual frame/result bound 보완 후 QBC 20/20 GREEN. Rebase의 Cargo/lib/scc bytes 동일, deps 없음·toolchain1.92 동일 | Main `df2a867ad70`; core5 paths 반영. PTA/Taint cutover/consumer proof는 별도 pending |
 | D2 PTA | current private `1ea51f05dc5`, base `7e9447923d6`; wrapper/caller typed Result 전파와 최소 test prerequisites | 이전 `300ba0df508` QBC는 local owner/consumer skew로 lib-test compile54 errors/0 cases. New main에서 일부 해결됐으나 누락 export/API 남음; current nonzero owner proof BLOCKED |
-| D2 Taint | successor-only adapter / typed resource mapping / contract caller 보완. Current private `1ea51f05dc5`에서 iterative5 pass/1 ignored·SCC property14/14·policy units13 pass/1 ignored QBC 최종 GREEN | Contract·실제 ignored50k·기존 gate6단계 proof와 fresh-main import pending |
+| D2 Taint | successor-only adapter / typed resource mapping / contract caller 보완. Current private `1ea51f05dc5`에서 iterative5 pass/1 ignored·SCC property14/14·policy units13 pass/1 ignored QBC 최종 GREEN | Contract3/3 GREEN; 실제 ignored50k·기존 gate6단계 proof와 fresh-main import pending |
 
 
 숫자는 서로 다른 owner/snapshot의 component 결과다. 합산해 하나의 repository/product qualification 결과로 쓰지 않는다. Private commit의 main import는 exact fresh main의 owned path delta를 확인한 뒤 직렬 수행한다. Private branch commit에서 우회된 hook은 root import 전에 해당 canonical fence의 실제 결과를 확보한다.
@@ -106,3 +106,9 @@ After SDK schema는 하나의 `data={"hits": [...native row fields...], "summary
 - F2/F4/F5/F6/F7/F9/F10은 여전히 별도 기능·증명 backlog다.
 
 GQLang local `just ci` 재실행은 **all groups passed**, source snapshot `83f930a4bf86250e925e16386c28d3e8e03e12af315569b293e7a62479e031f9`다. 첫 실행은 historical audit의 SHA/digest를 typos가 단어로 분해한 4개 false positives에서 중단됐다. Hex identifier7–64 chars만 typos 식별에서 제외하고 ordinary prose typo 거절 control을 확인했다. 이 결과는 실행 시점의 GQLang dirty snapshot에 한정하며 Semantica runtime/product qualification 결과가 아니다. 실행 로그: `/tmp/oct6-gqlang-local-ci.log`.
+
+- 재개 시 committed main `8454fbf7812` 독립 정적 재확인: wire tuple는 닫혔고 PTA/DFG execution rebind 및 Product 오류형의 정의/export/caller 불일치는 유지된다. 8f 이후 관련 변경은 durable borrowed lookup이며 해당 경로는 미변경이다. 새 runtime 빌드·현재 오류 수 주장은 없다.
+- Taint public contract QBC `20261006T042220.648000Z-9ec7d6f82c40`: private `1ea51f05dc5`/기존 digest에서3/3 PASS. 최종 receipt finished/exit0과 launcher PID96905 종료를 root가 확인했다. 명시적 ignored50k와 최신 main의6단계 gate는 별도이며 과거 source 결과를 최신 main proof로 재사용하지 않는다.
+
+- 명시적 ignored50k QBC `20261006T045031.586428Z-c83fd7d0cf12`:1/1 PASS,0 ignored, source `1ea51f05dc5`의 동일 digest, launcher 최종 exit0. Cargo의 Index lock 들여쓰기16행 변경만 독립 확인 후 원상복구했다.
+- 최신 committed base `05f755e1d31`에서 Taint9-path candidate `c3cb1918d02`를 구성했다. 원래 PTA 포함24-path source/gate7은 `codex/oct6-substrate-manifest`의 `1ea51f05dc5`에 보존한다. Candidate의7개 Taint source bytes는 이전 증거와 동일, lock은 Taint dependency1 hunk만, gate는 existing6 selectors다. Normal hooks Rustfmt6/safety PASS. Shipping toolchain을 고정하는 기존 gate6단계 실행 중이며 최종 QBC 증거 전 import하지 않는다.

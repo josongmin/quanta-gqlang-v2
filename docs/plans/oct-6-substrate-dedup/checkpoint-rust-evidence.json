@@ -340,6 +340,81 @@
       "compile_failure": [],
       "launcher_completion": "Agent confirmed launcher drained; receipt finished exit0",
       "proof_scope": "Private component proof only; no main import yet"
+    },
+    {
+      "scope": "D2-taint-public-contract",
+      "run_id": "20261006T042220.648000Z-9ec7d6f82c40",
+      "execution_root": "/Users/songmin/.codex/worktrees/oct6-substrate-manifest/semantica-codegraph-v2",
+      "source_commit_if_known": "1ea51f05dc5929c2e01b970ed69be77e183a45db",
+      "source_snapshot_digest": "fb2e1b963212894428f3a2595fe57dd3f8d01427814f667f1becba9e378e7390",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "quanta-taint-solver-contract-tests",
+        "--test",
+        "suite_quanta_taint_solver_contract_tests_a432dc132c",
+        "tarjan_scc_contract_test",
+        "--features",
+        "cfg-dfg",
+        "--offline"
+      ],
+      "exit_code": 0,
+      "receipt_sha256": "2c73d4a04e9f6249389ae9b23822cc7e6c1b4ce9087a7a4de4b0d2c43bc43ad6",
+      "local_receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-3d1dc7c40e9b/lanes/oct6-scc-core/verification-results/20261006T042220.648000Z-9ec7d6f82c40/receipt.json",
+      "log_sha256": {
+        "stdout.log": "3dc6e57721244faefc1f988312e048fa2611652a31924249233ed36b6f1c0d13",
+        "stderr.log": "6d67d9194f4949b224027febe3760514c84a926e0e9c564d9f4ee08eb14ac20e"
+      },
+      "test_summaries": [
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.01s"
+      ],
+      "passed_case_names": [
+        "tarjan_scc_contract_test::tarjan_scc_condenses_only_the_cycle_members_v1",
+        "tarjan_scc_contract_test::tarjan_scc_includes_successor_only_node_v1",
+        "tarjan_scc_contract_test::tarjan_scc_is_deterministic_for_equivalent_graphs_v1"
+      ],
+      "compile_failure": [],
+      "launcher_completion": "Root confirmed launcher PID 96905 exited; receipt finished exit0",
+      "proof_scope": "Private 1ea51f05dc5 component proof only; fresh current-main gate remains required"
+    },
+    {
+      "scope": "D2-taint-explicit-ignored-50k",
+      "run_id": "20261006T045031.586428Z-c83fd7d0cf12",
+      "execution_root": "/Users/songmin/.codex/worktrees/oct6-substrate-manifest/semantica-codegraph-v2",
+      "source_commit_if_known": "1ea51f05dc5929c2e01b970ed69be77e183a45db",
+      "source_snapshot_digest": "fb2e1b963212894428f3a2595fe57dd3f8d01427814f667f1becba9e378e7390",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "quanta-taint-solver",
+        "--test",
+        "suite_quanta_taint_solver_7cfff3df32",
+        "tarjan_iterative_deep_chain_50k",
+        "--features",
+        "cfg-dfg",
+        "--offline",
+        "--",
+        "--ignored",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "receipt_sha256": "dd2ced3b511807bfdce88f3b7683738c1bd2ed05f114c4b06810d38b47341abc",
+      "local_receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-3d1dc7c40e9b/lanes/oct6-scc-core/verification-results/20261006T045031.586428Z-c83fd7d0cf12/receipt.json",
+      "log_sha256": {
+        "stdout.log": "16858d550bf9a0ca8ea04d0248969704a14443b05342decfcc5d01bf605163de",
+        "stderr.log": "6055fa22dd246e9967f42c98dbbb39f3734d39c7e0837d60cdee1ca177475224"
+      },
+      "test_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 30 filtered out; finished in 0.75s"
+      ],
+      "passed_case_names": [
+        "tarjan_iterative_integration_test::tarjan_iterative_deep_chain_50k"
+      ],
+      "compile_failure": [],
+      "launcher_completion": "Root exec session94635 completed exit0; receipt finished exit0",
+      "proof_scope": "Private 1ea51f05dc5 component proof only; fresh current-main gate remains required"
     }
   ],
   "pta_attribution": {
@@ -427,10 +502,38 @@
         "runtime_analysis_and_wire_src_delta_from_dbff": 0,
         "current_compile_error_count": null
       }
+    },
+    {
+      "committed_head": "8f560b0178c",
+      "proof_kind": "Read-only committed-source caller/owner/export trace; no new build",
+      "resolved_since_dbff": [
+        "Wire structural DTO now defined with serde module and root export",
+        "CALL_GRAPH_AUTHORITY_PACKET_FIELDS now public and root-exported"
+      ],
+      "remaining_mismatches": [
+        {
+          "consumer": "quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve.rs:135",
+          "owner": "extraction_solve/call_graph_exact_workspace_rebind.rs:151",
+          "mismatch": "new execution reexport vs old-only definition; fixpoint caller uses old name via extraction_solve"
+        },
+        {
+          "consumer": "extraction_solve/solve_worker_input.rs:235",
+          "owner": "extraction_solve/solve_worker_delta.rs:1086",
+          "mismatch": "new DFG execution call vs old-only definition"
+        },
+        {
+          "consumer": "queries/interprocedural.rs:90",
+          "owner": "interprocedural/output.rs and output_call_graph.rs",
+          "mismatch": "ProductRuntimeRebindErrorV1 has no committed definition/export chain"
+        }
+      ],
+      "foreign_dirty_adopted": false,
+      "current_compile_error_count": null,
+      "next_required_tuple": "PTA/DFG rebind definitions+callers+exports and Product error definition+reexport at one committed HEAD"
     }
   ],
   "latest_static_provider_recheck": {
-    "committed_head": "8f560b0178c",
+    "committed_head": "8454fbf78120bb9ad2ca42c8dc3b2639314f6852",
     "proof_kind": "Read-only committed-source caller/owner/export trace; no new build",
     "resolved_since_dbff": [
       "Wire structural DTO now defined with serde module and root export",
@@ -455,6 +558,43 @@
     ],
     "foreign_dirty_adopted": false,
     "current_compile_error_count": null,
-    "next_required_tuple": "PTA/DFG rebind definitions+callers+exports and Product error definition+reexport at one committed HEAD"
+    "next_required_tuple": "PTA/DFG rebind definitions+callers+exports and Product error definition+reexport at one committed HEAD",
+    "delta_from_previous": "8f560b to 8454 changes PTA durable borrowed lookups only; remaining rebind/Product owner-export-caller files unchanged",
+    "independent_agent_confirmation": "dedup_shape_impl read-only committed-source audit; no build/rebase/source mutation",
+    "later_observation": {
+      "head": "05f755e1d31c83ec4ad0f38bdda9e7c3d1306680",
+      "relevant_provider_caller_src_delta_from_8454": 0,
+      "current_compile_error_count": null
+    }
+  },
+  "taint_fresh_main_candidate": {
+    "worktree": "/Users/songmin/.codex/worktrees/oct6-substrate-manifest/semantica-codegraph-v2",
+    "branch": "codex/oct6-substrate-taint-ready",
+    "base": "05f755e1d31c83ec4ad0f38bdda9e7c3d1306680",
+    "source": "c3cb1918d02a1728a1ae0b5eb3fa6274eb5b72c5",
+    "private_full_source_preserved": "1ea51f05dc5929c2e01b970ed69be77e183a45db",
+    "paths": [
+      "packages/analysis/quanta-v2/crates/quanta-taint-solver/Cargo.toml",
+      "packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs",
+      "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/differential_scc_naive_vs_tarjan.rs",
+      "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/proptest_solver_properties.rs",
+      "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/structural_scc_properties.rs",
+      "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/tarjan_iterative_integration_test.rs",
+      "packages/analysis/quanta-v2/crates/quanta-taint-solver-contract-tests/tests/suite_quanta_taint_solver_contract_tests_a432dc132c/tarjan_scc_contract_test.rs",
+      "Cargo.lock",
+      "tools/ci/gates/gate-tarjan-iterative.sh"
+    ],
+    "proof_status": "RUNNING existing 6-step gate via QBC; do not import until final result and launcher drain",
+    "gate_log": "/tmp/oct6-taint-fresh-gate.log",
+    "gate_shipping_toolchain": {
+      "CODEGRAPH_CRANELIFT": 0,
+      "CODEGRAPH_RUSTC_THREADS": 0,
+      "CARGO_BUILD_JOBS": 1
+    },
+    "old_component_total": {
+      "regular_passed": 35,
+      "explicit_ignored_50k_passed": 1
+    },
+    "main_import": "NOT_YET"
   }
 }
