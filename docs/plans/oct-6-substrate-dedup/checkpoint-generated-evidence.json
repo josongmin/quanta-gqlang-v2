@@ -1062,7 +1062,7 @@
     "next": "Compose clean candidate from mainb8cf and D1/D2 body, freeze exact tuple and rerun PTA-first owner matrix",
     "status_for_new_source": "historical failed 6583 tuple; parser prerequisite later committed mainb8cf; no transfer to new source"
   },
-  "current_live_prerequisite": {
+  "previous_b8cf_prerequisite": {
     "semantica_main": "b8cf227f265b75e88c7f12b057c1a1b59215bf15",
     "parent_main": "99c950e8b6b6cd9a188ad09dbe4abbdda8d5638a",
     "import_state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/parser-java-owner-prerequisite-import-state.json",
@@ -1087,5 +1087,106 @@
     "canonical_owner_requests": "NOT_RUN on parser-fixed combined source; prior 6583 owner1 RED/tests0, remaining44 NOT_RUN",
     "d1_d2_main_body_import": "NOT_RUN",
     "consumer_generated_product_qualification": "NOT_RUN"
+  },
+  "historical_b15_static_gate": {
+    "source": "b15af9004b75b58ff8ef231bd85437cf803528e2",
+    "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/b15af9004b75-boundary-policy90-state.json",
+    "passed_policies": 91,
+    "failed_policies": 1,
+    "exit_code": 1,
+    "scope_complete": false,
+    "failed_policy": "quanta-adapters-parser.python-min-boundary.v1",
+    "rust_owner": "NOT_RUN on b15 due static gate",
+    "policy_fix_main": "7ba1cf120a652015cfc556bbd608e11042095a59",
+    "policy_fix_import_state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/parser-java-policy-prerequisite-import-state.json",
+    "focused_pytest": {
+      "tests_passed": 9,
+      "log": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/a9bfb97a99d-parser-java-policy-pytest.log",
+      "log_sha256": "585ba42829657b9e2d56f8614be6c3365a8405474eed008559511ab50f2ffcfb"
+    },
+    "owner_policy_build": {
+      "status": "PASS",
+      "log": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/a9bfb97a99d-parser-java-policy-check.log",
+      "log_sha256": "6af5d2cb0c54a7ccfdb5bcbc3e9cb3691dd94e462ea9e70049d0282c1cf3dbe8"
+    },
+    "proof_kind": "prior static source policy failure and focused policy fix; no b15 Rust verdict"
+  },
+  "current_composed_candidate": {
+    "source": "3f5c4ac556aca498924c4f487fac90daccba5c66",
+    "base_main": "7ba1cf120a652015cfc556bbd608e11042095a59",
+    "parents": [
+      "7ba1cf120a652015cfc556bbd608e11042095a59",
+      "b15af9004b75b58ff8ef231bd85437cf803528e2"
+    ],
+    "clean": true,
+    "owned_changed_paths": 87,
+    "candidate_state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/candidate-3f5c4ac556ac-state.json",
+    "candidate_state_sha256": "244a5c01ff4c5f994146b0ef42a3764a857cc28d019acf7db47df448c2c32c73",
+    "merge_witness": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/merge-3f5c4ac556ac-preservation-witness.json",
+    "merge_witness_sha256": "add013cf552589c43d35eaddf69ab050fd08242dacb5a5e5558b91c012b0b90b",
+    "merge_review": {
+      "source_only_paths_byte_equal_second_parent": 83,
+      "main_only_paths_byte_equal_first_parent": 38,
+      "overlap_paths": 4,
+      "overlap_toml_changed_keys_preserved": true,
+      "parser_and_policy_prerequisites_exact_first_parent": true,
+      "normal_hooks": "PASS",
+      "proof_kind": "committed source merge preservation only"
+    },
+    "source_policy": {
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/3f5c4ac556ac-boundary-policy92-state.json",
+      "input_paths": 92,
+      "passed_policies": 92,
+      "exit_code": 0,
+      "scope_complete": true,
+      "log_sha256": "cc188e789958dee6232d74a20f01a66fabd297cc411dd42a6bd73c00327044f2",
+      "proof_kind": "source boundary policy only; no Rust/product verdict"
+    },
+    "scoped_retirement": {
+      "witness": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/next3f5c4ac556ac-import/scoped-retirement-3f5c4ac556ac.json",
+      "witness_sha256": "341af7413cbba25e865775f84b94814770337ed7f38f48e17e6a1e2ebd7b4a46",
+      "baseline_findings_before": 14,
+      "findings_after": 7,
+      "new_keys": 0,
+      "worsened_keys": 0,
+      "staged_baseline": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/next3f5c4ac556ac-import/staged-god-baseline-3f5c4ac556ac.json",
+      "staged_baseline_sha256": "b814558539db6379a71b968c64542c436abab80aa12c7c10c0d824dadac708bf",
+      "proof_kind": "read-only source scanner and staged baseline; no write/full Honesty"
+    },
+    "wire_static_closure": {
+      "witness": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/next3f5c4ac556ac-import/wire-owner-closure-3f5c4ac556ac.json",
+      "witness_sha256": "6d28bcc81f1c19cefcf56840b5151d9c9fb71ff82817273551c25513c161c76b",
+      "local_crates": 72,
+      "proof_kind": "static lib/test tree comparison"
+    },
+    "frozen_materialization": {
+      "status": "SEALED",
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/snapshot-3f5c4ac556ac-state.json",
+      "state_sha256": "5e7bc98081ddaeb287b7f1a60ea59ba3a3f2a6a52e0083c33270e261659ff536",
+      "topology_digest": "3f5c4ac556aca498924c4f487fac90daccba5c66+ext-7c0966bc582839fd8230",
+      "source_snapshot_digest": "8176379d27fd22867f414a3043826a2ef95ac1967aec8435a05ef9b818846c71",
+      "siblings": {
+        "quanta_gqlang_v2": "30b6efd06645762146479f8a5c89e81d6dc85af5",
+        "quanta_index": "ab87837f5d34de1d8f9de9dedcfd44032051a284"
+      },
+      "sibling_dirty_overlays_included": false,
+      "proof_kind": "source snapshot custody only"
+    },
+    "canonical_owner_requests": {
+      "status": "RUNNING PTA-first owner 1/45; zero finalized results at last check",
+      "request_count": 45,
+      "request_map": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-owner-proof-request-map45-3f5c4ac556ac.json",
+      "request_map_sha256": "a4a6daa5f2fc7c6cd0830a9d0c3df13f3f7bb0ce2f5196927fe261384e9b4a5f",
+      "launcher": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-3f5c4ac556ac.py",
+      "launcher_sha256": "21efd7797039036865e96754bae53c3a56e11b0f8a60cefc729092714e760885",
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-3f5c4ac556ac-state.json",
+      "attempt_dir": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-canonical-owner-20261006T130954.430970Z-3f5c4ac556ac",
+      "pure_preflight": "45 request resolutions and 12 driver identities PASS",
+      "accepted_owner_passes": 0,
+      "proof_kind": "actual canonical run in progress, no finalized verdict"
+    },
+    "d1_d2_main_body_import": "NOT_RUN",
+    "consumer_generated_product_qualification": "NOT_RUN",
+    "next": "Read actual PTA-first/45 owner receipts, then consumers and generated/product gates"
   }
 }

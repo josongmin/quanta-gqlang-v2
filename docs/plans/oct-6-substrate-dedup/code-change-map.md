@@ -6,7 +6,7 @@
 
 진행 중 diff/검증/main 반영은 [execution-progress.md](execution-progress.md)에서 별도로 관리한다.
 
-**2026-10-06 현재 변경 경계:** Semantica main `b8cf227`에는 parser 소유 3파일의 컴파일 선행 수리가 들어왔다. `parser-java` feature의 optional `quanta-runtime-execution` normal dependency, 사용하지 않는 ledger reexport 삭제, catalog `Ok(match ...)`가 범위다. 직전 clean private `6583c22`의 D1/D2 본문과 이 수리를 합친 새 후보는 아직 없다. 그 후보의 owner1/45는 parser dependency 오류 4건으로 RED/exit101/테스트0이었다. 다음 clean tuple의 Rust PASS는 NOT_RUN이다. [현재 실행](execution-progress.md).
+**2026-10-06 현재 변경 경계:** Semantica clean private `3f5c4ac`/base main `7ba1cf1`은 D1/D2 본문과 parser 수리·boundary policy를 main-first merge한 87경로 후보다. Source-only 83·main-only 38경로는 부모 blob과 같고 겹친 lock 2개·manifest 2개는 key union을 보존한다. Exact 92 input paths source policy는 92 PASS/exit0, read-only GOD14→7/new0/worse0와 Wire72 정적 closure가 있다. Frozen sibling은 GQLang `30b6efd`·Index `ab87837`이다. Owner 45건은 PTA-first 1/45 실행 중이며 확정 결과는 아직 없다. [현재 실행](execution-progress.md).
 
 **2026-10-06 이전 `6583` 변경 경계:** Semantica clean private `6583c22`/base main `205c86d`는 Java projection visibility 수리와 `d056` D1/D2 본문을 main-first merge한 87경로 후보다. Candidate 87경로·main 전용 8경로는 부모 blob과 같고 겹침0이다. Exact source policy90 PASS, read-only GOD14→7/new0/worse0, Wire72 local crate 정적 closure가 있다. GQLang `30b6efd`·Index `ab87837` frozen snapshot은 sealed됐다. Owner1/45는 parser dependency 컴파일 오류 4건으로 RED/exit101/테스트0이며 나머지44 NOT_RUN이다. [이전 실행](execution-progress.md).
 
