@@ -1,5 +1,13 @@
 # GQLang · Semantica substrate 아키텍처 감사
 
+## 구현 상태와 증거의 기준
+
+이 문서의 source cut과 발견 목록은 구현 전 감사 이력이다. D1–D7·F1의 최신 소스, main 반영, 실행 결과와 남은 DoD는 [구현 진행 기록](../plans/oct-6-substrate-dedup/execution-progress.md)과 [계획 상태 ledger](../plans/oct-6-substrate-dedup/readme.md#9-상태-ledger와-최종-dod)에서 관리한다.
+
+- D3/D4/D5/D7·F1/D6는 main에 구현됐다. 각 checkpoint의 실행 증거와 현재 소스의 qualification 범위는 진행 기록에 구분돼 있다.
+- D1/D2 본문은 private 후보에서 검증 중이다. Main의 선행 수리나 이전 소스의 PASS를 본문 통합 완료로 세지 않는다.
+- F2/F4/F5/F6/F7/F9/F10은 별도 기능 수리 범위다. 이 문서 §9.1의 발견 목록과 D1–D7·F1 구현 packet의 완료 범위를 구분한다.
+
 ## 1. 기준과 판정
 
 | 항목 | 기준 |
