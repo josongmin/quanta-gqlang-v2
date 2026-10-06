@@ -212,7 +212,7 @@
       ],
       "count": 8,
       "current_gate_log_keys_for_path": [],
-      "interpretation": "Eight historical keys absent in current gate output; current path applicability excludes group_canonical_ir.rs. This is not proof of eight D3 deletions or added negative twins. Full-sweep ratchet failed and did not write baseline."
+      "interpretation": "Current gate policy only scans contract/gate/e2e-named paths; this group_canonical_ir path is outside that policy. Retired keys do not prove negative twins were added."
     },
     "relationship": {
       "retired_baseline_keys": [
@@ -224,7 +224,20 @@
       "retired_count": 4,
       "moved_old_key": "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:228:direct_port_dfg_to_canonical_memory_ir_preserves_copy_merged_base_identity:unwrap_then_discard",
       "current_key": "packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/tests/group_canonical_ir.rs:2:direct_port_dfg_to_canonical_memory_ir_preserves_copy_merged_base_identity:unwrap_then_discard",
-      "interpretation": "Verified test body is identical across initial base/D3 parent/D3/current. Initial body starts at line248, current at line1 (test attribute); function name is current line2. Historical baseline key uses line228 from an older snapshot, whose source was not recovered here. The current finding misses vec![def_a,...] use; cleared keys include prior renames and are not all D3 deletions."
+      "interpretation": "Historical baseline key uses fn line 228, but frozen base and D3 parent source have #[test] at line 248 and fn at line 249; D3 removal of preceding legacy tests moved unchanged body to #[test] line 1 and fn line 2. The scanner misses vec![def_a,...] as meaningful use. The four retired keys are obsolete baseline identities, not four D3-deleted tests.",
+      "line_custody": {
+        "historical_baseline_fn_line": 228,
+        "verified_initial_and_parent_attribute_line": 248,
+        "verified_initial_and_parent_fn_line": 249,
+        "verified_current_attribute_line": 1,
+        "verified_current_fn_line": 2
+      },
+      "retired_key_attribution": {
+        "direct_canonical_memory_ir_matches_bridge_semantics_for_copy_alias_case": "D3-deleted bridge equivalence test",
+        "direct_port_dfg_ingress_promotes_exact_context_insensitive_authority": "Test retained; old line-key stale",
+        "direct_canonical_memory_ir_surfaces_context_sensitive_memory_without_inventing_call_context": "Test retained; old line-key stale",
+        "strict_v2_ingress_rejects_context_sensitive_canonical_memory_without_call_context_authority": "Renamed before D3; old baseline key already stale"
+      }
     },
     "current_source_evidence": {
       "def_a_construct_line": 8,
@@ -242,7 +255,8 @@
     },
     "log": "/tmp/oct6-generated-honesty-ratchet.log",
     "scope": "read_only_d3_attribution",
-    "not_all_cleared_keys_are_d3_deletions": true
+    "not_all_cleared_keys_are_d3_deletions": true,
+    "local_artifact_sha256": "f7230dc73fd9cd004b144a43511872bf4243cf3ac023c1a2ba9e7e59c7764b58"
   },
   "mandatory_honesty_retirement": "BLOCKED: owning full-sweep ratchet rejects global new/rewritten findings; no blessing or threshold/scope change in this task",
   "semantica_product_qualification": "NOT_RUN",
@@ -253,5 +267,140 @@
     "stale": false,
     "action": "not released or bypassed",
     "outcome": "released by owner before God import; not bypassed"
+  },
+  "taint_god_read_only": {
+    "baseline_sha256": "f3306d0a22457f78a3cd368734bb2addc81e8d1fb5499981d0fa3ba852548718",
+    "files": [
+      {
+        "baseline_keys": {},
+        "current_keys": {},
+        "grown_keys": {},
+        "main_sha256": "0114928d5ea70842d46203c99d299c671fe2c0fc16a236496b1f15758f872b86",
+        "new_keys": [],
+        "path": "packages/analysis/quanta-v2/crates/quanta-taint-solver/Cargo.toml",
+        "private_sha256": "2b872136858ed381c7f6e7522931c967d37dc7f47348d4d715b7e18b8223f519",
+        "retired_keys": [],
+        "same_keys": [],
+        "scanner_applicable": false,
+        "shrunk_keys": {}
+      },
+      {
+        "baseline_keys": {
+          "rust:function_complexity:packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs:check_recursion_cycle_policy": 11,
+          "rust:function_complexity:packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs:tarjan_scc_v1": 15,
+          "rust:function_lines:packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs:check_recursion_cycle_policy": 100,
+          "rust:function_lines:packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs:tarjan_scc_v1": 145
+        },
+        "current_keys": {
+          "rust:function_complexity:packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs:tarjan_scc_v1": 14,
+          "rust:function_lines:packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs:check_recursion_cycle_policy": 89,
+          "rust:function_lines:packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs:tarjan_scc_v1": 68
+        },
+        "grown_keys": {},
+        "main_sha256": "99d4cc78bff14943256d0555d3d73ce1ba8a4f8f9b82af2244830e4d3b684192",
+        "new_keys": [],
+        "path": "packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs",
+        "private_sha256": "33c3f1d04c0e5cbfb521a4b621176810d0519bdbc2bc3f258846b4f0f31754f9",
+        "retired_keys": [
+          "rust:function_complexity:packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs:check_recursion_cycle_policy"
+        ],
+        "same_keys": [],
+        "scanner_applicable": true,
+        "shrunk_keys": {
+          "rust:function_complexity:packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs:tarjan_scc_v1": {
+            "baseline": 15,
+            "current": 14
+          },
+          "rust:function_lines:packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs:check_recursion_cycle_policy": {
+            "baseline": 100,
+            "current": 89
+          },
+          "rust:function_lines:packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs:tarjan_scc_v1": {
+            "baseline": 145,
+            "current": 68
+          }
+        }
+      },
+      {
+        "baseline_keys": {},
+        "current_keys": {},
+        "grown_keys": {},
+        "main_sha256": "ad9c01e130ed5a5510bac258e64ff1b21227831da2add393bc2256a5b568d413",
+        "new_keys": [],
+        "path": "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/differential_scc_naive_vs_tarjan.rs",
+        "private_sha256": "361b30ca185fadcf8412ca07f13fcd90c75aa6bcbba162fee87c92d5af827220",
+        "retired_keys": [],
+        "same_keys": [],
+        "scanner_applicable": true,
+        "shrunk_keys": {}
+      },
+      {
+        "baseline_keys": {},
+        "current_keys": {},
+        "grown_keys": {},
+        "main_sha256": "5d5432413f0b2555b89dbe01895f50c264ee78d97ee72f06ef57d2b0dc1bb4d2",
+        "new_keys": [],
+        "path": "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/proptest_solver_properties.rs",
+        "private_sha256": "f9708bc37868fb76b9045b7e5687b7d8b148939808a9432af4522a3a1e0303e4",
+        "retired_keys": [],
+        "same_keys": [],
+        "scanner_applicable": true,
+        "shrunk_keys": {}
+      },
+      {
+        "baseline_keys": {},
+        "current_keys": {},
+        "grown_keys": {},
+        "main_sha256": "f6b4e37b9c34f0e67613341976ddf68f26593708e35b6306a8d91857d229b4bc",
+        "new_keys": [],
+        "path": "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/structural_scc_properties.rs",
+        "private_sha256": "3a847a30e158c687676eb5f93df13cf47fdbcbfc93a08ef3ba7ddadc869c4f6f",
+        "retired_keys": [],
+        "same_keys": [],
+        "scanner_applicable": true,
+        "shrunk_keys": {}
+      },
+      {
+        "baseline_keys": {},
+        "current_keys": {},
+        "grown_keys": {},
+        "main_sha256": "15d4eebf032059fb054fa56dd00be86c2828c4272112db534f38ff875945eb1f",
+        "new_keys": [],
+        "path": "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/tarjan_iterative_integration_test.rs",
+        "private_sha256": "9e820d19fe4378928758b510f5fd7c6e103ac78892372736f31b59b828e6cab6",
+        "retired_keys": [],
+        "same_keys": [],
+        "scanner_applicable": true,
+        "shrunk_keys": {}
+      },
+      {
+        "baseline_keys": {},
+        "current_keys": {},
+        "grown_keys": {},
+        "main_sha256": "cfa9bb5d032ff5c61d7419612fdca9e18dc22c85e6056c43c278282cade44380",
+        "new_keys": [],
+        "path": "packages/analysis/quanta-v2/crates/quanta-taint-solver-contract-tests/tests/suite_quanta_taint_solver_contract_tests_a432dc132c/tarjan_scc_contract_test.rs",
+        "private_sha256": "b02ceb272239d39b12d87d96e13ae7240ef86d87241fa9793a47bc1d12c8bdca",
+        "retired_keys": [],
+        "same_keys": [],
+        "scanner_applicable": true,
+        "shrunk_keys": {}
+      }
+    ],
+    "main_committed_head": "dbffb79db15cdcd5f68e87d9c103fb1ca84ec4d6",
+    "private_head": "1ea51f05dc5929c2e01b970ed69be77e183a45db",
+    "scanner_source": "main tools/ci/lint/lint_god_surface.py collect_findings",
+    "scope": "seven D2 taint files; no source/gate mutation",
+    "totals": {
+      "baseline_keys": 4,
+      "current_keys": 3,
+      "grown": 0,
+      "new": 0,
+      "retired": 1,
+      "same": 0,
+      "shrunk": 3
+    },
+    "local_artifact_sha256": "74380968f78f2e4d9bc2de63be11a28090cbbcfdde2eff62d3e9dabd14121677",
+    "main_baseline_written": false
   }
 }
