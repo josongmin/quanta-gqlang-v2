@@ -296,6 +296,8 @@ Execute new focused files after they exist: `test_crosswalk_source_snapshot.py`,
 
 Use symbol-aware existing structural gates and fresh caller census. `rg` zero-match exit 1 is normal search output; exit 2 is a search error and cannot prove absence. Blanket identifier bans would incorrectly remove pack symbols, port types, historical docs, or independent test oracles.
 
+Generated retirement도 확인한다. Final clean source에서 topology inventory/roster를 owning generator로 갱신하고 GOD baseline은 reviewed owned paths만 reconcile한다. Honesty의 `shape-only`, `positive-negative-pair`, `relationship`에는 삭제한 Cost Shape/DFG tests의 stale keys가 남아 있으므로 owning `tools/ci/honesty/ratchet.sh`로 감소·line-drift 갱신한다. `evidence-grounding`의 scoped keys는 live test 이름이므로 regression 결과로 구분하며 일괄 삭제하지 않는다. Ratchet이 신규 위반을 발견하면 실패를 유지하며 threshold·scope·escape를 완화하지 않는다.
+
 ## 12. Required checkpoint record
 
 For each C1–C8: source root/HEAD/dirty digest, resolved command and feature closure, fixture provenance, independent expected, actual selected test names/count (including ignored), exit/receipt, retirement/generator/policy result, main commit, NOT_RUN/T4 gaps. Link to the record from the readme ledger.

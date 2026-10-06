@@ -24,13 +24,13 @@
 | D3 | private `fd69cb7686d`; DFG QBC 91/91, pack QBC 16/16, actual taint promotion 3/3 GREEN | Main `d88f0a2ed7a`; source imported. Worker receipt는 그 source/dependency snapshot에 한정 |
 | D5 | private `49e532799c9`; active PTA solver QBC 227/227 GREEN | Main `d88f0a2ed7a`; dormant module/export 삭제, base/active solver 보존 |
 | D4 | private `c0396ef17c9`; no-default SCV2 owning QBC 34/34 GREEN; rank bits/mixed sum 및 algo-only closure 확인 | Main `d88f0a2ed7a`; actual canonical classifier/rustfmt/safety fences PASS |
-| D7 | root final focused 33/33 GREEN; captured source/duplicate/override/init controls | Main `b258f5919a5`; 7 owned paths만 checkout custody 갱신, canonical Ruff/safety PASS |
-| D1-A | final rebased private `56b22f2633d`; pts-only orphan와 self-loop-tail 포함 standalone owner QBC 17/17 GREEN | 미반영. Runtime/SDK consumer proof 필요 |
-| D1-B | final rebased private `5335da9cc8e`; metadata/structure checker GREEN. Runtime와 SDK session/executor Shape-only normal deps에서 Cost 부재 | 미반영. 실제 gateway core producer·composition/executor port·trait/injector/snapshot pin 보완. Cost-only 공개 Shape API 유지. Runtime/SDK owning QBC 진행 중 |
+| D7 | root final clean 6-file owner matrix70/70 GREEN; captured source/duplicate/override/init/parity/surface/DI controls | Main `b258f5919a5`; 7 owned paths만 checkout custody 갱신, canonical Ruff/safety PASS |
+| D1-A | current rebased private `fd00677d059`; 이전 source pts-only orphan/self-loop-tail 포함 owner QBC17/17 GREEN | 미반영. Rebase가 compiled fallible-sort dependency를 바꿔 owner rerun 필요; Runtime/SDK consumer proof 필요 |
+| D1-B | current rebased private `8744dddc5aa`; locked metadata GREEN. Runtime와 SDK session/executor Shape-only normal deps에서 Cost 부재 | 미반영. Gateway core producer·composition/executor port·trait/injector/snapshot pin 보완. Cost-only 공개 Shape API 유지. Parser cfg prerequisite `661a7dab24b`; actual consumer QBC 대기 |
 | F1 / D6 | private `d0cb3969994` → rebased `5cc4a2c9972`; owned39 inputs unchanged. Affected SDK213 /211 pass /2 skip, rebased consumers142 /141 pass /1 skip, scripted installed SDK wheel1/1·actual Granian HTTP process+scripted daemon1/1 GREEN | Main `c1f821db572`;39 paths,+1434/-1399. Canonical Ruff38/safety PASS; original owned paths clean. Real native daemon/product qualification은 NOT_RUN |
-| D2-P/K | private `4715ff4c4e5` + final dirty; shared borrowed iterative core, actual frame/result bound 보완 후 QBC 20/20 GREEN | 미반영. PTA/Taint cutover/consumer proof 필요 |
-| D2 PTA | wrapper와 caller typed Result 전파 diff; owning lib check GREEN | lib-test compilation은 기존 13개 unrelated errors로 RED. SCC case 성공으로 세지 않음 |
-| D2 Taint | successor-only adapter / typed resource mapping / contract caller 보완 진행 | public integration QBC 진행 중. 별도 contract crate와 ignored 50k cases 필수 |
+| D2-P/K | final shared borrowed iterative core; actual frame/result bound 보완 후 QBC 20/20 GREEN. Rebase의 Cargo/lib/scc bytes 동일, deps 없음·toolchain1.92 동일 | Main `df2a867ad70`; core5 paths 반영. PTA/Taint cutover/consumer proof는 별도 pending |
+| D2 PTA | wrapper와 caller typed Result 전파. Fresh main이 기존 compile errors 일부를 해결했고 남은 5개 test prerequisite를 별도 private commit으로 수정 | Clean `300ba0df508`에서 owning SCC QBC 진행 중. 이전 lib check와 compile failure는 이전 source 증거로 유지 |
+| D2 Taint | successor-only adapter / typed resource mapping / contract caller 보완. 이전 source iterative5 pass/1 ignored·SCC property14 pass | Current-main consumer proof pending. 별도 contract crate와 ignored 50k cases 필수 |
 
 
 숫자는 서로 다른 owner/snapshot의 component 결과다. 합산해 하나의 repository/product qualification 결과로 쓰지 않는다. Private commit의 main import는 exact fresh main의 owned path delta를 확인한 뒤 직렬 수행한다. Private branch commit에서 우회된 hook은 root import 전에 해당 canonical fence의 실제 결과를 확보한다.
@@ -65,8 +65,11 @@ After SDK schema는 하나의 `data={"hits": [...native row fields...], "summary
 ## 5. 실제 checkpoint와 추가 발견
 
 - D7 main import: `b258f5919a589611d21674c4e388e7ec70d8ed60`. 정식 hook의 SIM117 거절을 수정한 뒤 재실행·반영했다. Root focused33는 rebased integration source에서 실행했다.
+- D7 추가 consumer matrix: integration `8304a0098a6`에서 기존 parity/surface/DI 3 files 37 selected, 35 pass/2 skip. 두 startup skip은 test `PYTHONPATH=...:apps/mcp:...`가 설치된 `mcp.server`를 가린 실행 환경 문제였다. SDK/shared/repo roots만 사용한 exact startup selectors 재실행은 2/2 PASS. Source/dependency 변경 없음; D7 owned bytes는 첫33 proof 이후 동일. Commands/cases/skip reason/JUnit digest는 [checkpoint-d7-evidence.json](checkpoint-d7-evidence.json)에 보존했다.
+- Final D7 owner matrix는 SDK/shared/repo roots만 사용해 focused controls와 기존 5 files를 함께 실행했다: `8304a0098a6` clean, 70 selected/70 passed/0 skipped. Source tree는 core checkpoint `df2a867ad70`과 동일하다. 기록 시 main은 외부 commit `c00d98f63d4`로 이동했지만 relevant MCP/SDK/shared Python paths·pyproject·uv.lock delta는 0이다. 전체 current tree qualification으로 확대하지 않는다. 이전33의 original argv를 보존 log에서 복원할 수 없어 replay command와 executed final70 command를 구분했다.
 - F1/D6 main import: `c1f821db572b2b1c1f433ba57bdaea3f6fc9b0f8`. Rebase 후 owned39 파일 bytes 동일; MCP registry가 갱신된 조합에서 consumer142를 재실행했다. SDK/installed scripted receipts는 이전 source 결과로 유지하며 actual native daemon proof로 확대하지 않는다.
 - D3/D5/D4 main import: `d88f0a2ed7a64f38ae8ac97badbb9671a759e10c`. 14 paths, +65/-1667. Foreign dirty를 stage하지 않았다. Deleted 파일도 이전 committed bytes를 확인한 후 original checkout에서 퇴역시켰다.
+- D2 core main import: `df2a867ad70dd1e1a71fea1abd4397bd9bcb2174`. 5 paths, +481/-200; integration source `8304a0098a6`, base `3c6a04ebc47`. Classifier/rustfmt2/safety PASS. Original root Cargo의 foreign QMP rev 변경은 three-way replay로 보존했다. PTA/Taint local 순회 제거는 이 checkpoint에 포함하지 않았다.
 - Search의 CLI는 퇴역 reader를 실제 사용했다. Current registered SDK ingress로 전환하고 logical repo ID와 attached repo path를 구분했다. Unsupported repo/snapshot/type를 attach 전에 거절한다.
 - SDK `with_status=True`의 native receipt absence가 중간 projection에서 빠져 호출이 실패했다. Existing ProductResponse metadata/receipt owner로 `receipt=None`를 정확히 보존하고 native degraded reason을 existing receipt pair에 전달한다. Receipt를 발급하거나 owner truth를 합성하지 않는다.
 - HTTP search/QueryAdapter/CLI가 native degraded outcome/reason을 보존한다. Shared converter는 data-only `{hits,summary}`만 받으며 transport/envelope parser가 아니다.
@@ -78,12 +81,14 @@ After SDK schema는 하나의 `data={"hits": [...native row fields...], "summary
 
 - D1-B actual runtime/SDK pure·PTA·disabled·Cost lanes, 두 Shape gates. Heap feature의 explicit Cost edge는 보존한다.
 - D2 PTA existing compile blockers의 committed-main/foreign-dirty 구분 및 owner rail, Taint public contract/lib policy/typed resource rejection/deep50k proof. 첫 Taint iterative5 pass/1 ignored·SCC14 pass 결과는 변경 전후 source별 component proof다.
-- D2 core admission의 workspace estimate는 actual frame/output allocation을 충분히 계산하지 않는 결함이 추가 확인됐다. Checked conservative bound와 tiny-limit refusal/positive control로 수정·core owner proof 재실행 후 반영한다. Default 실사용 OOM을 증명한 것은 아니다.
+- D2 core admission의 workspace estimate가 actual frame/output allocation을 충분히 계산하지 않는 결함은 checked conservative bound와 tiny-limit refusal/positive control로 수정했다. Final core20 proof 후 main `df2a867ad70`에 반영됐다. Default 실사용 OOM을 증명한 것은 아니다.
 - Final core owner QBC `20261006T022541.599406Z-8544c76c92a4`: 20/20 GREEN. Materialization checkpoint는 해당 member buffer allocation 전에 호출한다. 이 결과는 worker final dirty source에 묶이며 main import/PTA/Taint proof를 대신하지 않는다.
 - Gate 교차 검토에서 taint contract selector의 `cfg-dfg` 누락으로 0 tests가 선택됨을 확인했다. 실제 module guard와 맞춰 feature를 명시하고 nonzero contract proof를 확보한 뒤 닫는다.
 - Shape full gate의 `heap_shape`도 기본 feature/selector 조합에서 0 tests였다. 실제 generated `shape_analyzer_` port suite와 `analysis-contract-q2-analyzers`를 선택하도록 수정했다. SDK factory reachability와 runtime returned overlay의 실제 classification은 별도 proofs다.
 - D1 standalone pre-rebase owner QBC `20261006T022722.633931Z-9671477d7d91`: 16/16 GREEN. Main `c929c932` rebase가 resolved local closure의22 파일과 lock을 바꿨으므로 이 receipt를 현재 source GREEN으로 재사용하지 않는다. Rebased own source는 동일하지만 local dependencies는 달라 owner rail을 재실행한다.
 - Final rebased standalone owner QBC `20261006T024432.465548Z-ed4f5be512a1`: 17/17 GREEN. 별도 `acedbd2a491`은 frozen Index manifest가 요구하는 기존 `memchr`/`ciborium-ll` lock edge 2개만 보완한다. 새 package version이나 library 선택을 추가한 것이 아니다. Locked metadata PASS; actual runtime/SDK consumer proof는 진행 중이다.
+- Runtime Shape-only QBC `20261006T024835.289983Z-31fce94661f2`는 parser compile E0425로 실패했다. `core_native_aug.rs`의 unconditional Go branch가 `parser-java`에만 정의된 import-binding helper를 호출한다. Helper의 잘못된 cfg를 제거하는 owner prerequisite를 최소 수정하며 Java feature를 추가하지 않는다. Runtime/SDK 결과는 아직 GREEN이 아니다.
+- Shape range는 core main `df2a867ad70`에 rebase했다. 기존 Index lock edge는 이미 main에 있어 별도 lock commit이 skip됐다. Locked metadata PASS. 실제 compiled `quanta-runtime-context-shared/src/fallible_sort_v1.rs`가 달라 owner17 receipt는 이전 source로 유지하고 재실행한다. Parser prerequisite는 helper cfg 1줄 삭제이며 기존 diagnostic context 문자열을 보존했다.
 - F1/D6 main import와 rebased affected consumers proof 완료. Generated baseline의 퇴역 keys 정리는 전체 source checkpoint 후 수행한다. Actual native daemon/product proof는 NOT_RUN.
 - Shared generated inventories/baselines는 삭제/이동한 실제 keys만 retire/reconcile하고 새로운 scope waiver를 추가하지 않는다.
 - Repository/product-wide qualification은 별도다. Affected SDK의 rename/rollback selectors는 이 packet 밖의 기존 failures 때문에 제외한 rail이며 full SDK suite GREEN으로 표시하지 않는다. 별도 실행한 GQLang receipt-wins tests 4개도 기존 profile precheck에서 실패했으며 이 변경의 성공 receipt로 합산하지 않는다.

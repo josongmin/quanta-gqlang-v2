@@ -289,10 +289,11 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 | D3 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker DFG91/pack16/taint3 QBC GREEN; final combined main qualification 별도 |
 | D5 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker PTA solver227 QBC GREEN |
 | D4 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker SCV2 leaf34 QBC GREEN; canonical main fences PASS |
-| D7 | MAIN_IMPLEMENTED | `b258f5919a5` | root focused33 GREEN; full product qualification 별도 |
-| D1-A / D1-B | PRIVATE_COMMITTED / IN_PROGRESS | 없음 | A exact frozen selected1 GREEN; B static closure GREEN, runtime proof pending |
+| D7 | MAIN_IMPLEMENTED | `b258f5919a5` | Final clean integration에서 6-file owner matrix70/70 GREEN; captured source·기존 parity/surface/DI. Full product qualification 별도 |
+| D1-A / D1-B | PRIVATE_COMMITTED / IN_PROGRESS | 없음 | Final rebased standalone owner17 GREEN; static Shape-only closure에서 Cost 부재. Runtime owning QBC는 parser feature guard compile failure; 최소 owner prerequisite와 consumer proof 진행 |
 | F1 / D6 | MAIN_IMPLEMENTED | `c1f821db572` | SDK211 pass/2 skip; rebased consumers141 pass/1 skip; installed wheel1 + Granian/scripted daemon1 GREEN. Native daemon/product qualification 별도 |
-| D2-P / D2-K / PTA / Taint | PRIVATE_COMMITTED / IN_PROGRESS | 없음 | core19 QBC GREEN; PTA lib check GREEN, existing lib-test13 compile errors; Taint proof 진행 |
+| D2-P / D2-K | MAIN_IMPLEMENTED | `df2a867ad70` | Final core20 QBC GREEN; actual frame/output bound·typed stop·order/ID controls. Rebased std-only owner source/toolchain unchanged |
+| D2 PTA / Taint | PRIVATE_COMMITTED / IN_PROGRESS | 없음 | Fresh main 기반 PTA owning SCC QBC 진행; 남은 test compile prerequisites 5개 별도 수정. Taint 이전 source component proof와 current consumer proof 구분 |
 
 ### 최종 Definition of Done
 
@@ -301,7 +302,7 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 - [x] D3/D5: 퇴역 entry/module·exports·active consumers 0·보존한 실제 owner 회귀 통과.
 - [x] D4: SCV2 inline contribution 0·기존 helper 사용·leaf feature·score/order/refusal proof.
 - [x] F1/D6: truthful current row/summary·shared app 변환 1개·active consumers 전환·old converter/import/export 0.
-- [ ] D7: captured source authority 1개·projection version/digest 일치·init/retry/duplicate/override/restart controls.
+- [x] D7: captured source authority 1개·projection version/digest 일치·init/retry/duplicate/override/restart controls. Exact commands/cases는 [checkpoint-d7-evidence.json](checkpoint-d7-evidence.json).
 - [ ] 모든 항목의 existing mandatory gates, regenerated inputs, actual selected cases를 기록.
 - [ ] 각 dependency가 닫힌 checkpoint의 owned 변경을 local main에 반영하고 문서 ledger 동기화.
 - [ ] source tuple·실행 증거·NOT_RUN·외부 compatibility/installed/perf의 남은 범위를 명시.

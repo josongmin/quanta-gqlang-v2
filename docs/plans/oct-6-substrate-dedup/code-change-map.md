@@ -313,7 +313,19 @@ taint: successor-domain admission + policy control ──────┘
   → taint: original sorted members/components + cycle budget decisions
 ```
 
-Core internal signature is a design decision to finalize in D2-K. Required I/O is borrowed admitted indexed adjacency, typed stop/compute separation, deterministic component result. Allocate domain/index/state only after admission; checkpoint indexing, loop/edge work and materialization. Do not create a fourth Tarjan body inside the new API.
+Landed core signature:
+
+```rust
+pub fn strongly_connected_components_borrowed_with_checkpoint_v1<E, F>(
+    adjacency: &[Vec<usize>],
+    limits: SccLimitsV1,
+    checkpoint: F,
+) -> Result<Vec<Vec<usize>>, SccRunError<E>>
+where
+    F: FnMut() -> Result<(), E>;
+```
+
+Core traversal state는 borrowed domain/resource admission 후 할당한다. Domain adapters의 자체 indexing allocation과 generic value clone은 별도이며 core workspace byte cap에 포함되지 않는다. Indexing·loop/edge work·member materialization에는 checkpoint를 유지한다. Compute error와 caller stop을 구분하고 deterministic component result를 반환한다. Main `df2a867ad70`에는 공통 core가 반영됐고 PTA/Taint adapters는 별도 검증·checkpoint 대상이다.
 
 현재 indexed public wrapper는 BTreeSet 변환으로 neighbor 순서 정렬·중복 제거도 수행한다. After에서 public 입력이 이미 canonical이라고 가정하지 않는다. Adapter가 필요할 때만 sorted/deduplicated adjacency를 만들고, core는 그 admitted adjacency를 빌린다. Unsorted/duplicate edge 입력도 현재 dense ID·emission order를 유지해야 한다. BTreeMap boxing 제거를 zero-allocation 주장으로 확대하지 않는다.
 
@@ -332,6 +344,7 @@ Core internal signature is a design decision to finalize in D2-K. Required I/O i
 | 입력 | 적용 항목 | 변경 방식 |
 |---|---|---|
 | [test-module inventory](../../../../semantica-codegraph-v2/tools/ci/lint/contracts/test-module-inventory-v2.json) | D1/D2/D3/D5 | 삭제·이동 module/selector를 owning generator로 갱신 |
+| Honesty baselines `positive-negative-pair.json`, `relationship.json`, `shape-only.json`; `evidence-grounding.json`은 별도 regression 확인 | D1/D3 | 퇴역 DFG tests와 Cost Shape tests의 stale keys를 owning ratchet로 제거. Live evidence-grounding keys는 삭제 근거가 없으면 유지. 신규 위반을 baseline에 추가하지 않음 |
 | [god-surface baseline](../../../../semantica-codegraph-v2/tools/ci/lint/god-surface-baseline.json) | D3/D5 및 실제 변화 | deleted symbols의 stale inventory 제거; unrelated allowance 완화 없음 |
 | Shape gate/feature taxonomy/honesty | D1 | standalone + actual SDK closure, nonzero test selection |
 | Tarjan gate | D2 | surviving core + caller contracts + ignored deep chain |
@@ -365,3 +378,7 @@ Python search checkpoint의 public SDK/HTTP/CLI output는 pre-release current sc
 | Runtime `heap-analyzer` feature | Shape를 통해 Cost를 간접 활성화 | explicit Cost dependency 유지; Shape-only normal deps에서는 Cost 제외 |
 
 D2 admission은 실제 `TarjanFrameV1` 크기와 output header/member allocation을 포함하는 checked byte envelope로 보완한다. 작은 custom cap의 거절·경계 통과를 owner core 회귀로 고정한다. 이 변경의 proof는 기존 core19 결과와 별도로 실행한다.
+
+| Consumer compile prerequisite | Before | After |
+|---|---|---|
+| [parser core_native_aug.rs](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-parser/src/language_host_adapter/semantic_module_v3/core/core_native_aug.rs) | Unconditional Go branch가 `parser-java` cfg helper 호출; Shape-only runtime QBC E0425 | Shared helper의 cfg 1줄 제거. 같은 conversion body/diagnostic strings 유지; Java feature 추가 없음 |
