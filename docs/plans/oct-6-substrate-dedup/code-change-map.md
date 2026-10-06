@@ -6,7 +6,7 @@
 
 진행 중 diff/검증/main 반영은 [execution-progress.md](execution-progress.md)에서 별도로 관리한다.
 
-**2026-10-06 현재 변경 경계:** Semantica clean private `3f5c4ac`/base main `7ba1cf1`은 D1/D2 본문과 parser 수리·boundary policy를 main-first merge한 87경로 후보다. Source-only 83·main-only 38경로는 부모 blob과 같고 겹친 lock 2개·manifest 2개는 key union을 보존한다. Exact 92 input paths source policy는 92 PASS/exit0, read-only GOD14→7/new0/worse0와 Wire72 정적 closure가 있다. Frozen sibling은 GQLang `30b6efd`·Index `ab87837`이다. Owner 45건은 PTA-first 1/45 실행 중이며 확정 결과는 아직 없다. [현재 실행](execution-progress.md).
+**2026-10-06 현재 변경 경계:** Semantica clean private `3f5c4ac`/base main `7ba1cf1`은 D1/D2 본문과 parser 수리·boundary policy를 main-first merge한 87경로 후보다. Source-only 83·main-only 38경로는 부모 blob과 같고 겹친 lock 2개·manifest 2개는 key union을 보존한다. Exact 92 input paths source policy는 92 PASS/exit0, read-only GOD14→7/new0/worse0와 Wire72 정적 closure가 있다. Frozen sibling은 GQLang `30b6efd`·Index `ab87837`이다. Owner 1/45는 Cargo `--locked` 선행 단계에서 exit101/테스트0·RED로 실패했고 나머지44 NOT_RUN이다. Disposable metadata 기준 root lock edge 1개와 nested lock edge 5개가 빠졌다. 두 lock의 공통 runtime-execution→index-contract edge는 main `2852932`에 각 한 줄씩 반영됐다. Nested의 Shape 3개·taint→graph-utils 1개 edge는 private 본문 병합에 남아 있고 SQLite indentation-only diff는 제외했다. [현재 실행](execution-progress.md).
 
 **2026-10-06 이전 `6583` 변경 경계:** Semantica clean private `6583c22`/base main `205c86d`는 Java projection visibility 수리와 `d056` D1/D2 본문을 main-first merge한 87경로 후보다. Candidate 87경로·main 전용 8경로는 부모 blob과 같고 겹침0이다. Exact source policy90 PASS, read-only GOD14→7/new0/worse0, Wire72 local crate 정적 closure가 있다. GQLang `30b6efd`·Index `ab87837` frozen snapshot은 sealed됐다. Owner1/45는 parser dependency 컴파일 오류 4건으로 RED/exit101/테스트0이며 나머지44 NOT_RUN이다. [이전 실행](execution-progress.md).
 
