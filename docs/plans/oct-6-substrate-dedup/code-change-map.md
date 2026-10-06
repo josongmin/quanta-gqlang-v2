@@ -327,7 +327,9 @@ where
 
 Core traversal state는 borrowed domain/resource admission 후 할당한다. Domain adapters의 자체 indexing allocation과 generic value clone은 별도이며 core workspace byte cap에 포함되지 않는다. Indexing·loop/edge work·member materialization에는 checkpoint를 유지한다. Compute error와 caller stop을 구분하고 deterministic component result를 반환한다. Main `df2a867ad70`에는 공통 core가 반영됐고 PTA/Taint adapters는 별도 검증·checkpoint 대상이다.
 
-현재 indexed public wrapper는 BTreeSet 변환으로 neighbor 순서 정렬·중복 제거도 수행한다. After에서 public 입력이 이미 canonical이라고 가정하지 않는다. Adapter가 필요할 때만 sorted/deduplicated adjacency를 만들고, core는 그 admitted adjacency를 빌린다. Unsorted/duplicate edge 입력도 현재 dense ID·emission order를 유지해야 한다. BTreeMap boxing 제거를 zero-allocation 주장으로 확대하지 않는다.
+Taint의 `tarjan_scc_v1`은 `Vec<Vec<String>>`에서 `Result<Vec<Vec<String>>, SccComputeError>`로 변경한다. 알려진 직접 consumer는 production policy와 같은 파일의 units, SCC integration 4 files, public contract 1 file이며 같은 checkpoint에서 Result를 처리한다. Pre-release 내부 Rust API 변경이고 frontend Execution DTO schema 변경은 없다.
+
+착수 전 indexed public wrapper는 BTreeSet 변환으로 neighbor 순서 정렬·중복 제거도 수행했다. After에서도 public 입력이 이미 canonical이라고 가정하지 않는다. Adapter가 필요할 때만 sorted/deduplicated adjacency를 만들고, core는 그 admitted adjacency를 빌린다. Unsorted/duplicate edge 입력도 기존 dense ID·emission order를 유지해야 한다. BTreeMap boxing 제거를 zero-allocation 주장으로 확대하지 않는다.
 
 | Domain / output | Before | After requirement |
 |---|---|---|

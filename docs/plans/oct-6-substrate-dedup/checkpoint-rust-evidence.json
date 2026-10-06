@@ -294,6 +294,52 @@
       "compile_failure": [],
       "launcher_completion": "Agent confirmed launcher drained; receipt finished exit0",
       "proof_scope": "Private 1ea51f05dc5 component proof only; no main import yet"
+    },
+    {
+      "scope": "D2-taint-policy-units",
+      "run_id": "20261006T040639.717643Z-38f0918b7a0b",
+      "execution_root": "/Users/songmin/.codex/worktrees/oct6-substrate-manifest/semantica-codegraph-v2",
+      "source_commit_if_known": "1ea51f05dc5929c2e01b970ed69be77e183a45db",
+      "source_snapshot_digest": "fb2e1b963212894428f3a2595fe57dd3f8d01427814f667f1becba9e378e7390",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "quanta-taint-solver",
+        "--lib",
+        "wire_recursion",
+        "--features",
+        "cfg-dfg",
+        "--offline"
+      ],
+      "exit_code": 0,
+      "receipt_sha256": "9ed5f6873194a62951bf411cb5a4a9644ccc2a19ce6a0e6fd6d3a007b10dbcc1",
+      "local_receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-3d1dc7c40e9b/lanes/oct6-scc-core/verification-results/20261006T040639.717643Z-38f0918b7a0b/receipt.json",
+      "log_sha256": {
+        "stdout.log": "018e8dfe929738ab3e7aa173d443fe1d9f87e620d0c53c8ea7688aad2c771754",
+        "stderr.log": "e3b58ceaeb57e25b14673b574db176d8e0a97e313022de9e683dfd6df32aab8c"
+      },
+      "test_summaries": [
+        "test result: ok. 13 passed; 0 failed; 1 ignored; 0 measured; 5113 filtered out; finished in 0.01s"
+      ],
+      "passed_case_names": [
+        "analysis::taint::interproc::wire_recursion::tests::scc_resource_refusal_keeps_typed_budget_reason_v1",
+        "analysis::taint::interproc::wire_recursion::tests::tarjan_iterative_cycle",
+        "analysis::taint::interproc::wire_recursion::tests::tarjan_iterative_three_cycle",
+        "analysis::taint::interproc::wire_recursion::tests::tarjan_iterative_two_disjoint_2cycles",
+        "analysis::taint::interproc::wire_recursion::tests::tarjan_iterative_disjoint_multi_root_determinism",
+        "analysis::taint::interproc::wire_recursion::tests::tarjan_iterative_scc_dag_chain",
+        "analysis::taint::interproc::wire_recursion::tests::successor_only_node_has_exact_sorted_output_v1",
+        "analysis::taint::interproc::wire_recursion::tests::tarjan_iterative_self_loop",
+        "analysis::taint::interproc::wire_recursion::tests::tarjan_iterative_linear",
+        "analysis::taint::interproc::wire_recursion::tests::tarjan_iterative_entry_into_body_scc",
+        "analysis::taint::interproc::wire_recursion::tests::recursion_policy_preserves_independent_cycle_budgets",
+        "analysis::taint::interproc::wire_recursion::tests::tarjan_iterative_successor_only",
+        "analysis::taint::interproc::wire_recursion::tests::tarjan_iterative_nested_cycles_merge"
+      ],
+      "compile_failure": [],
+      "launcher_completion": "Agent confirmed launcher drained; receipt finished exit0",
+      "proof_scope": "Private component proof only; no main import yet"
     }
   ],
   "pta_attribution": {
@@ -361,6 +407,24 @@
     ],
     "foreign_dirty": "Corresponding functions/type/export chain visible but not adopted",
     "current_compile_error_count": null,
-    "rerun_precondition": "Coherent committed provider/caller/export/serde tuple at one HEAD, then selected owner QBC"
+    "rerun_precondition": "Coherent committed provider/caller/export/serde tuple at one HEAD, then selected owner QBC",
+    "later_observation": {
+      "head": "5bb7109ffc2",
+      "runtime_analysis_and_wire_src_delta_from_dbff": 0,
+      "current_compile_error_count": null
+    }
+  },
+  "taint_current_main_dependency_drift": {
+    "worker_base": "7e9447923d6",
+    "observed_main": "fb74105a04c",
+    "source_snapshot_digest_old": "fb2e1b963212894428f3a2595fe57dd3f8d01427814f667f1becba9e378e7390",
+    "paths": [
+      "packages/analysis/quanta-v2/crates/quanta-analysis-interproc-contract/src/ports/pta_solver/semantic_floor_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-context-shared/src/runtime_execution_session_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-context-shared/src/runtime_execution_session_v1/handle_identity_v1.rs"
+    ],
+    "evidence": "Agent observed semantic_floor_v1 and runtime_execution_session_v1 in four old-lane compiled dep-info files each; source changes are compiled inputs, not solely disabled source",
+    "old_component_receipts_reused_as_current_main": false,
+    "next_required_proof": "Fresh committed-base Taint-only candidate and affected owner/contract/6-step gate QBC before main import"
   }
 }

@@ -223,6 +223,8 @@ Existing cases to keep/extend:
 
 Before gate는 taint `tarjan_iterative`와 ignored `tarjan_iterative_deep_chain_50k`만 선택했다. After gate는 core, PTA, taint iterative integration, SCC properties, `wire_recursion` lib policy/resource units, 별도 contract crate, ignored 50k의 7개 owner/selector를 선택한다. Integration target만 실행해 lib unit을 검증했다고 표시하지 않는다. Nonzero regular and ignored case counts are mandatory. Script comment의 test count는 실행 증거가 아니다.
 
+단계별 main 반영에서는 먼저 landed core와 Taint의 6개 selector를 기존 gate에 편입한다. PTA owner/consumer tuple이 정합화되고 cutover proof가 통과하면 PTA selector를 일곱 번째로 추가한다. 새 임시 gate나 skip/empty-selection 성공 정책을 만들지 않는다. 현재 gate의 실제 실행 여부는 [checkpoint 기록](execution-progress.md)을 따른다.
+
 ## 9. D1 — Shape semantics와 feature closure
 
 | ID | existing / new fixture | expected |
