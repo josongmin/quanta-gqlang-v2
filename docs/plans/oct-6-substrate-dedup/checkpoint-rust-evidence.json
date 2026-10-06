@@ -604,6 +604,51 @@
       "passed_case_names": [],
       "attribution": "Production29 diagnostics gone; default lib-test compilation stopped at one unused RAW_PACKET counter import whose only test reads are inside serde-gated blocks. Serde owner run NOT_RUN because first step failed. Snapshot clean, launcher drained exit101.",
       "proof_scope": "Failed component compile proof only, no owner GREEN or main/product qualification"
+    },
+    {
+      "scope": "Wire-serde-lib-test-compile-prerequisite",
+      "run_id": "20261006T060427.100331Z-d650cf957933",
+      "execution_root": "/Users/songmin/.cache/semantica-codegraph-v2/casectl-snapshots/fae420827a4391d5505e4b5857179103e56c01bf_ext-aba91878bd69a16d6d64_mat-plain-v1/semantica-codegraph-v2",
+      "source_commit_if_known": "fae420827a4391d5505e4b5857179103e56c01bf",
+      "source_snapshot_digest": "c5503ecbebe8d07703e1a11fffa9f150ffdae05d53b7380f10eb5e8b033e9a8a",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "quanta-contract-call-graph-authority-wire",
+        "--lib",
+        "--features",
+        "call-graph-authority-serde",
+        "--",
+        "--nocapture"
+      ],
+      "exit_code": 101,
+      "receipt_sha256": "d98923c7d006def4de5d8e68e514dc07ecf474d5a84ab2aa4bc385aaddc22079",
+      "local_receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-066fb2a52cd6/lanes/oct6-scc-core/verification-results/20261006T060427.100331Z-d650cf957933/receipt.json",
+      "log_sha256": {
+        "stdout.log": "e12c646f4699e92265b945a5eaae720b2f341f853d7282e32d4859be6f0e8a85",
+        "stderr.log": "6378ec722f0dbf3368d5f6d16b6598e58ed275c7ce3ab2b00e1f3d69dd7621a1"
+      },
+      "immutable_suite_completion": {
+        "failed": 0,
+        "filtered_out": 0,
+        "ignored": 0,
+        "measured": 0,
+        "passed": 0,
+        "process_exit_code": 101,
+        "qbc_exit_code": 101,
+        "receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-066fb2a52cd6/lanes/oct6-scc-core/verification-results/20261006T060427.100331Z-d650cf957933/receipt.json",
+        "receipt_sha256": "d98923c7d006def4de5d8e68e514dc07ecf474d5a84ab2aa4bc385aaddc22079",
+        "run_id": "20261006T060427.100331Z-d650cf957933",
+        "schema_version": "qbc-suite-completion/v1",
+        "source_snapshot_digest": "c5503ecbebe8d07703e1a11fffa9f150ffdae05d53b7380f10eb5e8b033e9a8a",
+        "witness_names": []
+      },
+      "tests_executed": 0,
+      "test_summaries": [],
+      "passed_case_names": [],
+      "attribution": "Serde lib-test failed with one E0425 canonical_encode import: a private import in sibling tests module is not reexported by tests::*. Direct import restored in existing serde block. Default NOT_RUN for this attempt. Snapshot clean and launcher drained exit101.",
+      "proof_scope": "Failed component compile proof only; no owner GREEN or main/product qualification"
     }
   ],
   "pta_attribution": {
@@ -909,7 +954,8 @@
       "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1_serde/kinds_codec.rs",
       "Cargo.lock",
       "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/Cargo.toml",
-      "packages/analysis/quanta-v2/Cargo.lock"
+      "packages/analysis/quanta-v2/Cargo.lock",
+      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/projection_validation_tests_v1.rs"
     ],
     "purpose": "wire owner compilation prerequisites for Taint gate; no DTO/schema/authority policy change",
     "acceptance": "default and call-graph-authority-serde owner tests, then selected Taint owning gate; no weakened lint",
@@ -919,18 +965,18 @@
       "wire_lib_errors": 29,
       "taint_tests_executed": 0
     },
-    "source": "fae420827a4391d5505e4b5857179103e56c01bf",
+    "source": "b0dbe01cd3516e4385e00e6108d7fa66dc3f1b56",
     "post_commit_dirty": "",
     "previous_source": "6e2af852a1ed6b962c37b19ce49960d431c00da6",
     "previous_base": "7418bf2b58b88d64cd17fe7c8dd7e2545c44adc1",
     "wire_fix_commit": "7d611039d0f042b619b5a6db264cee92664de5d5",
     "lock_normalization": "Exact16 whitespace-only Index dependency indentation lines from already reviewed9fe commit; ignore-all-space delta empty; avoids Cargo rewriting proof snapshot",
     "prior_proof_sources": [
-      "060a2f2b42603c0594bd013dd2dc3df58257dfed"
+      "060a2f2b42603c0594bd013dd2dc3df58257dfed",
+      "fae420827a4391d5505e4b5857179103e56c01bf"
     ],
     "test_compilation_repair": "RAW counter import gated by test+serde, only actual reads are inside serde blocks; existing serde tests call ciborium::de, add existing workspace dev-dependency and two same-version lock edges. No production dependency/schema/policy change",
-    "proof_status": "IN_PROGRESS retry serde then default after cfg import/direct existing test dependency repair; both nonzero required",
-    "serde_direct_dependency_evidence": "Existing tests at projection_validation_tests_v1.rs:359,383 call ciborium::de but prior Wire Cargo.dev omitted it; existing workspace0.2 dev edge plus two package lock entries, no new package version or production dependency",
+    "projection_test_scope_repair": "Explicit canonical_encode import inside existing serde-only block; a private sibling tests module import is not exported by tests::*",
     "failed_attempt": {
       "candidate": {
         "worktree": "/Users/songmin/.codex/worktrees/oct6-substrate-integrate/semantica-codegraph-v2",
@@ -984,7 +1030,69 @@
       "execution_root": "/Users/songmin/.cache/semantica-codegraph-v2/casectl-snapshots/060a2f2b42603c0594bd013dd2dc3df58257dfed_ext-bd6a005ce7c826a037c3_mat-plain-v1/semantica-codegraph-v2",
       "lane_admission": "canonical lane-token issue; token not persisted",
       "post_run_dirty": ""
-    }
+    },
+    "failed_serde_attempt": {
+      "candidate": {
+        "worktree": "/Users/songmin/.codex/worktrees/oct6-substrate-integrate/semantica-codegraph-v2",
+        "base": "ae423eac4b5d4f26543172d9c30f6168a21b544d",
+        "paths": [
+          "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1.rs",
+          "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/clone_cost_methods_v1.rs",
+          "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/packet_encoding_v1.rs",
+          "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/packet_validation_v1.rs",
+          "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1_serde/kinds_codec.rs",
+          "Cargo.lock",
+          "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/Cargo.toml",
+          "packages/analysis/quanta-v2/Cargo.lock"
+        ],
+        "purpose": "wire owner compilation prerequisites for Taint gate; no DTO/schema/authority policy change",
+        "acceptance": "default and call-graph-authority-serde owner tests, then selected Taint owning gate; no weakened lint",
+        "observed_failure": {
+          "snapshot": "9fe9fe4d5f7",
+          "run_id": "20261006T052441.019294Z-a7a791d54c79",
+          "wire_lib_errors": 29,
+          "taint_tests_executed": 0
+        },
+        "source": "fae420827a4391d5505e4b5857179103e56c01bf",
+        "post_commit_dirty": "",
+        "previous_source": "6e2af852a1ed6b962c37b19ce49960d431c00da6",
+        "previous_base": "7418bf2b58b88d64cd17fe7c8dd7e2545c44adc1",
+        "wire_fix_commit": "7d611039d0f042b619b5a6db264cee92664de5d5",
+        "lock_normalization": "Exact16 whitespace-only Index dependency indentation lines from already reviewed9fe commit; ignore-all-space delta empty; avoids Cargo rewriting proof snapshot",
+        "prior_proof_sources": [
+          "060a2f2b42603c0594bd013dd2dc3df58257dfed"
+        ],
+        "test_compilation_repair": "RAW counter import gated by test+serde, only actual reads are inside serde blocks; existing serde tests call ciborium::de, add existing workspace dev-dependency and two same-version lock edges. No production dependency/schema/policy change"
+      },
+      "phase": "wire proof failed",
+      "sibling_dirty_overlays_included": false,
+      "results": [
+        {
+          "name": "serde",
+          "exit_code": 101,
+          "seconds": 563.65,
+          "log": "/tmp/oct6-wire-owner-serde-attempt2.log"
+        }
+      ],
+      "sibling_heads": [
+        {
+          "source": "/Users/songmin/Documents/code-new/quanta-gqlang-v2",
+          "head": "f7fab134c76942bbfe85f744d3a7bc0cbec5f363",
+          "overlay_digest": ""
+        },
+        {
+          "source": "/Users/songmin/Documents/code-new/quanta-index",
+          "head": "98b4e46b531f0e29bc0562a75a56b5e8fe0a48e1",
+          "overlay_digest": ""
+        }
+      ],
+      "topology_digest": "fae420827a4391d5505e4b5857179103e56c01bf+ext-aba91878bd69a16d6d64",
+      "execution_root": "/Users/songmin/.cache/semantica-codegraph-v2/casectl-snapshots/fae420827a4391d5505e4b5857179103e56c01bf_ext-aba91878bd69a16d6d64_mat-plain-v1/semantica-codegraph-v2",
+      "lane_admission": "canonical lane-token issue; token not persisted",
+      "post_run_dirty": ""
+    },
+    "proof_status": "IN_PROGRESS b0 serde then default after direct projection-test scope import; both nonzero required",
+    "serde_direct_dependency_evidence": "Existing tests at projection_validation_tests_v1.rs:359,383 call ciborium::de but prior Wire Cargo.dev omitted it; existing workspace0.2 dev edge plus two package lock entries, no new package version or production dependency"
   },
   "prepared_consumers": {
     "D1": {
@@ -1003,5 +1111,122 @@
       "rust_proof": "NOT_RUN refreshed candidate; Wire prerequisite pending",
       "old_current_exports_preserved": true
     }
+  },
+  "combined_candidate": {
+    "worktree": "/Users/songmin/.codex/worktrees/oct6-substrate-manifest/semantica-codegraph-v2",
+    "branch": "codex/oct6-substrate-final-candidate",
+    "base": "ae423eac4b5d4f26543172d9c30f6168a21b544d",
+    "wire_prerequisite_source": "b0dbe01cd3516e4385e00e6108d7fa66dc3f1b56",
+    "phase": "updated clean final candidate; Wire projection test import fixed; proof pending",
+    "applied": [
+      {
+        "scope": "D2-PTA",
+        "original_source": "680305490fdb07942ba3c780f2d6cc33e8249c85",
+        "candidate_commit": "489731a999ead32e573c5387fc9f82198bdd17ab"
+      },
+      {
+        "scope": "D2-Taint",
+        "original_source": "c3cb1918d02a1728a1ae0b5eb3fa6274eb5b72c5",
+        "candidate_commit": "c427abd944c7074bcbe745035129d447b98d8828"
+      },
+      {
+        "scope": "D1-A",
+        "original_source": "de072b6c563",
+        "candidate_commit": "a7a8f40b4047c2ab05706737274f4ebdca7df540"
+      },
+      {
+        "scope": "D1-B",
+        "original_source": "734aab87d0a",
+        "candidate_commit": "b8c0ee0c52461671ba2abbd0d93440764d06c9a7"
+      }
+    ],
+    "source": "4bdbdf87ae32aae94b3709b1665423249b3c031e",
+    "paths": [
+      "Cargo.lock",
+      "packages/analysis/quanta-v2/Cargo.lock",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-analysis-facade/Cargo.toml",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-analysis-facade/src/lib.rs",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/lib.rs",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/Cargo.toml",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/src/analysis/mod.rs",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/src/lib.rs",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/lib.rs",
+      "packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs",
+      "packages/analysis/quanta-v2/crates/quanta-adapters/Cargo.toml",
+      "packages/analysis/quanta-v2/crates/quanta-adapters/src/analysis/mod.rs",
+      "packages/analysis/quanta-v2/crates/quanta-adapters/src/lib.rs",
+      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/Cargo.toml",
+      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/clone_cost_methods_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/packet_encoding_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/packet_validation_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/projection_validation_tests_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1_serde/kinds_codec.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/Cargo.toml",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/field_strong_update_refinement_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/recursive_call_graph_census_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker_uniqueness.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/whole_program.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc_tests.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_summary_catalog/recursive_scc.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_tests/delta_plan/group5_scc_reason_codes_parity.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precision_critical_selector_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/Cargo.toml",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/adapters/bootstrap.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/boundary_gqlang_runtime_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/boundary_gqlang_runtime_v1/orchestration_real.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/boundary_gqlang_runtime_v1/pta.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/boundary_gqlang_runtime_v1/pta_shape_bundle_builder.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/lib.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_real.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_source_sink.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/observation_feedback_runtime/product_bound_memory_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/observation_feedback_runtime/product_bound_runtime.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ports/wiring.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/runtime_ingress_execution_budget_v1.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/capabilities_projection.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/code/analysis_selector.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/code/domain_modeling_selector.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/fluent_pre_dispatch.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/mod.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/orchestration.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/pta_shape_bundle_builder.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/public_exports_head.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/rails_reexport.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/runtime_kernel_framework_injector.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/tests/gate_shape_analysis_ghiya_hendren_e2e_test.rs",
+      "packages/analysis/quanta-v2/crates/quanta-runtime/tests/sdk_python_shape_analysis_test.rs",
+      "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/Cargo.toml",
+      "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/lib.rs",
+      "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/port_impls.rs",
+      "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/types.rs",
+      "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/Cargo.toml",
+      "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/Cargo.toml",
+      "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/adapter_surface.rs",
+      "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/lib.rs",
+      "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/orchestration_bridge.rs",
+      "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/orchestrator_session.rs",
+      "packages/analysis/quanta-v2/crates/quanta-sdk/Cargo.toml",
+      "packages/analysis/quanta-v2/crates/quanta-sdk/src/lib.rs",
+      "packages/analysis/quanta-v2/crates/quanta-sdk/src/orchestration.rs",
+      "packages/analysis/quanta-v2/crates/quanta-taint-solver-contract-tests/tests/suite_quanta_taint_solver_contract_tests_a432dc132c/tarjan_scc_contract_test.rs",
+      "packages/analysis/quanta-v2/crates/quanta-taint-solver/Cargo.toml",
+      "packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs",
+      "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/differential_scc_naive_vs_tarjan.rs",
+      "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/proptest_solver_properties.rs",
+      "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/structural_scc_properties.rs",
+      "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/tarjan_iterative_integration_test.rs",
+      "tools/ci/gates/gate-shape-analysis-ghiya-hendren.sh",
+      "tools/ci/gates/gate-shape-analysis-smoke.sh",
+      "tools/ci/gates/gate-tarjan-iterative.sh"
+    ],
+    "tarjan_gate": "Existing7 selectors restored exactly from pre-split1ea: core, PTA, Taint integration/properties/policy/public contract/explicitignored50k; cg_test nonzero required",
+    "previous_source": "835a334d91e6f493506e3be8b4a155cff7195d59",
+    "rust_proof": "NOT_RUN combined source; prepared snapshot waiting Wire tests and main checkpoint",
+    "static_patch_continuity": "D1 A/B range-diff equal; PTA9 and Taint6 Rust plus manifest byte-identical; lock additions are same-version direct edges with no package version/source replacement"
   }
 }
