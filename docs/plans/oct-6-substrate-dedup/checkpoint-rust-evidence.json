@@ -380,40 +380,6 @@
     "current_main_static_audit": "39edfc1ca5b still lacks rebind execution helper, ProductRuntimeRebindErrorV1 provider and structural wire public provider",
     "product_qualification": "NOT_RUN"
   },
-  "latest_static_provider_recheck": {
-    "committed_head": "dbffb79db15cdcd5f68e87d9c103fb1ca84ec4d6",
-    "proof_kind": "Read-only committed-source caller/owner/export trace; no new build",
-    "missing_tuples": [
-      {
-        "consumer": "quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve.rs:135",
-        "owner": "extraction_solve/call_graph_exact_workspace_rebind.rs:151",
-        "mismatch": "execution export required; only old rebind function committed; fixpoint caller still old name via extraction_solve"
-      },
-      {
-        "consumer": "extraction_solve/solve_worker_input.rs:235",
-        "owner": "extraction_solve/solve_worker_delta.rs:1086",
-        "mismatch": "DFG execution rebind required; only old owner function committed"
-      },
-      {
-        "consumer": "quanta-runtime-analysis/src/queries/interprocedural.rs:90",
-        "owner": "interprocedural/output.rs and output_call_graph.rs",
-        "mismatch": "ProductRuntimeRebindErrorV1 import has no committed definition/export chain"
-      },
-      {
-        "consumer": "interprocedural/call_graph_durable_role_contribution_v1.rs:13,826,1583",
-        "owner": "quanta-contract-call-graph-authority-wire/src/lib.rs and call_graph_authority_packet_v1.rs",
-        "mismatch": "StructuralWireV1 absent; CALL_GRAPH_AUTHORITY_PACKET_FIELDS private; root exports missing despite selected serde feature"
-      }
-    ],
-    "foreign_dirty": "Corresponding functions/type/export chain visible but not adopted",
-    "current_compile_error_count": null,
-    "rerun_precondition": "Coherent committed provider/caller/export/serde tuple at one HEAD, then selected owner QBC",
-    "later_observation": {
-      "head": "5bb7109ffc2",
-      "runtime_analysis_and_wire_src_delta_from_dbff": 0,
-      "current_compile_error_count": null
-    }
-  },
   "taint_current_main_dependency_drift": {
     "worker_base": "7e9447923d6",
     "observed_main": "fb74105a04c",
@@ -426,5 +392,69 @@
     "evidence": "Agent observed semantic_floor_v1 and runtime_execution_session_v1 in four old-lane compiled dep-info files each; source changes are compiled inputs, not solely disabled source",
     "old_component_receipts_reused_as_current_main": false,
     "next_required_proof": "Fresh committed-base Taint-only candidate and affected owner/contract/6-step gate QBC before main import"
+  },
+  "static_provider_recheck_history": [
+    {
+      "committed_head": "dbffb79db15cdcd5f68e87d9c103fb1ca84ec4d6",
+      "proof_kind": "Read-only committed-source caller/owner/export trace; no new build",
+      "missing_tuples": [
+        {
+          "consumer": "quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve.rs:135",
+          "owner": "extraction_solve/call_graph_exact_workspace_rebind.rs:151",
+          "mismatch": "execution export required; only old rebind function committed; fixpoint caller still old name via extraction_solve"
+        },
+        {
+          "consumer": "extraction_solve/solve_worker_input.rs:235",
+          "owner": "extraction_solve/solve_worker_delta.rs:1086",
+          "mismatch": "DFG execution rebind required; only old owner function committed"
+        },
+        {
+          "consumer": "quanta-runtime-analysis/src/queries/interprocedural.rs:90",
+          "owner": "interprocedural/output.rs and output_call_graph.rs",
+          "mismatch": "ProductRuntimeRebindErrorV1 import has no committed definition/export chain"
+        },
+        {
+          "consumer": "interprocedural/call_graph_durable_role_contribution_v1.rs:13,826,1583",
+          "owner": "quanta-contract-call-graph-authority-wire/src/lib.rs and call_graph_authority_packet_v1.rs",
+          "mismatch": "StructuralWireV1 absent; CALL_GRAPH_AUTHORITY_PACKET_FIELDS private; root exports missing despite selected serde feature"
+        }
+      ],
+      "foreign_dirty": "Corresponding functions/type/export chain visible but not adopted",
+      "current_compile_error_count": null,
+      "rerun_precondition": "Coherent committed provider/caller/export/serde tuple at one HEAD, then selected owner QBC",
+      "later_observation": {
+        "head": "5bb7109ffc2",
+        "runtime_analysis_and_wire_src_delta_from_dbff": 0,
+        "current_compile_error_count": null
+      }
+    }
+  ],
+  "latest_static_provider_recheck": {
+    "committed_head": "8f560b0178c",
+    "proof_kind": "Read-only committed-source caller/owner/export trace; no new build",
+    "resolved_since_dbff": [
+      "Wire structural DTO now defined with serde module and root export",
+      "CALL_GRAPH_AUTHORITY_PACKET_FIELDS now public and root-exported"
+    ],
+    "remaining_mismatches": [
+      {
+        "consumer": "quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve.rs:135",
+        "owner": "extraction_solve/call_graph_exact_workspace_rebind.rs:151",
+        "mismatch": "new execution reexport vs old-only definition; fixpoint caller uses old name via extraction_solve"
+      },
+      {
+        "consumer": "extraction_solve/solve_worker_input.rs:235",
+        "owner": "extraction_solve/solve_worker_delta.rs:1086",
+        "mismatch": "new DFG execution call vs old-only definition"
+      },
+      {
+        "consumer": "queries/interprocedural.rs:90",
+        "owner": "interprocedural/output.rs and output_call_graph.rs",
+        "mismatch": "ProductRuntimeRebindErrorV1 has no committed definition/export chain"
+      }
+    ],
+    "foreign_dirty_adopted": false,
+    "current_compile_error_count": null,
+    "next_required_tuple": "PTA/DFG rebind definitions+callers+exports and Product error definition+reexport at one committed HEAD"
   }
 }
