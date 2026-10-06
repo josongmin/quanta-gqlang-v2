@@ -5157,7 +5157,7 @@
       "evidence_sha256": "6affcd3ac5714191a658c709fa1c86089ef4c163c85f42f734ea97f2b3912e74"
     },
     "source_bound_sequence": {
-      "status": "RUNNING json16 after formal9 PASS",
+      "status": "FAILED at json16; formal9 PASS; owner45 not run",
       "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/source-bound-sequence-1330ed88f568-state.json",
       "formal9_runner_sha256": "c53b0df9d9074696d48f96d4f4a8e030e6311f270b5f4b717c7a0a490ef0cadf",
       "json16_runner_sha256": "701596c91a9cf5118692aa9dbd8585a875a59db38fa57a91a3b3f16000cb26c3"
@@ -5178,16 +5178,40 @@
       "archive_manifest_sha256": "757b5056dd1fac72e9fe945a3444605031bf48df4c59ad83d1131f1258a302d0",
       "archive_original_artifacts": 7
     },
-    "json16": "RUNNING; no finalized result",
-    "canonical_owner_requests": "NOT_RUN; conditional on JSON16 PASS",
+    "json16": {
+      "status": "FAILED",
+      "exit_code": 101,
+      "tests_executed": 0,
+      "failure_stage": "dependency lib test Rust compilation",
+      "compiler_errors": [
+        "E0433 stale codegraph_core_ir::ssot_hash at budget_handle.rs:1028",
+        "E0433 stale codegraph_core_ir::ssot_hash at original_issuer_projection_tests_v1.rs:2"
+      ],
+      "run_id": "20261006T141247.220606Z-8ed2e2bda0c4",
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/json-scratch-owner16-1330ed88f568/state.json",
+      "state_sha256": "6bfa44086fba8c8dec3efd3f676ac96a846fbd8f17d016e6c37932d2b2342e4e",
+      "archive_manifest": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-json-owner16-1330-20261006T141247.220606Z-8ed2e2bda0c4-archive/manifest.json",
+      "archive_manifest_sha256": "b76e9293f7fd4e292373aa79b6f2a9b89e60028f6c5422c110872d3e80b5a64a",
+      "proof_kind": "actual owner compile failure; JSON test assertions did not execute"
+    },
+    "canonical_owner_requests": "NOT_RUN 45/45 due JSON16 dependency compile failure",
     "d1_d2_main_body_import": "NOT_RUN",
     "consumer_generated_product_qualification": "NOT_RUN",
-    "next": "Wait for JSON16 source-bound owner result, then conditional canonical owner45",
+    "next": "Compose clean main with 1330 D1/D2 body; run budget30, JSON16, then canonical owner45 on new frozen tuple. Formal9 PASS remains scoped to 1330; rerun only if its owning closure changed.",
     "supplemental_pure_validation": {
       "status": "PASS",
       "evidence": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/supplemental-pure-validation-1330ed88f568.json",
       "evidence_sha256": "7a6b5727aa1f02633e4ae3790dc0bf813533585d2e583a581b39bd32ce01c570",
       "proof_kind": "static request projection; no Rust execution"
+    },
+    "post_base_main_prerequisite": {
+      "commit": "884233758c41fda9ca7ebb9ba81f616c443e8aad",
+      "scope": "two test namespace references only; production foundation path",
+      "import_state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-test-foundation-prerequisite-r2-import-state.json",
+      "import_state_sha256": "290e5a2bcd4bafd07bd1811373ee33c1f10c78adeea9e29a5491f096ce2d42d1",
+      "dependency_lock_feature_changes": 0,
+      "rust_proof": "NOT_RUN on repaired tuple",
+      "proof_kind": "source only; not included in frozen 1330"
     }
   }
 }

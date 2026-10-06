@@ -6,7 +6,7 @@
 
 진행 중 diff/검증/main 반영은 [execution-progress.md](execution-progress.md)에서 별도로 관리한다.
 
-**2026-10-06 현재 변경 경계:** Semantica clean private `1330ed8`/base main `0098a99`는 `02e` D1/D2 본문과 casectl link·formal `use<>` 선행 수리를 합친 87경로 후보다. Owned87·main-only15경로는 부모 blob과 같고 겹침0이다. Exact 입력98경로의 영향받은 source policy92개가 PASS/exit0/scope complete다. GQLang `30b6efd`·Index `ab87837` overlay0의 `1330+ext-7c0966bc582839fd8230` snapshot은 sealed됐다. Root·nested locked metadata PASS는 auxiliary 증거다. Supplemental formal owner9 PASS, JSON16 실행 중, canonical owner45는 NOT_RUN이다. [현재 실행](execution-progress.md).
+**2026-10-06 현재 변경 경계:** Semantica clean private `1330ed8`/base main `0098a99`는 `02e` D1/D2 본문과 casectl link·formal `use<>` 선행 수리를 합친 87경로 후보다. Owned87·main-only15경로는 부모 blob과 같고 겹침0이다. Exact 입력98경로의 영향받은 source policy92개가 PASS/exit0/scope complete다. GQLang `30b6efd`·Index `ab87837` overlay0의 `1330+ext-7c0966bc582839fd8230` snapshot은 sealed됐다. Root·nested locked metadata PASS는 auxiliary 증거다. Supplemental formal owner9 PASS, JSON16은 test dependency E0433 컴파일 RED/테스트0, canonical owner45는 NOT_RUN이다. 해당 테스트 namespace 수리는 이후 main `8842337`에 source-only 반영됐고 새 후보에서 재검증해야 한다. [현재 실행](execution-progress.md).
 
 **2026-10-06 이전 `3f5c` 변경 경계:** Semantica clean private `3f5c4ac`/base main `7ba1cf1`은 D1/D2 본문과 parser 수리·boundary policy를 main-first merge한 87경로 후보다. Exact 92 input paths source policy92 PASS였으나 owner1/45는 Cargo `--locked` 선행 단계에서 exit101/테스트0·RED였고 나머지44 NOT_RUN이다. Root/nested lock 누락 edge는 이후 main `2852932`와 private `a162` 소스로 수리됐다. [이전 실행](execution-progress.md).
 

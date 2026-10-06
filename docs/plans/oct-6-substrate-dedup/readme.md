@@ -9,10 +9,10 @@
 - 입력 authority, 결과·순서·ID, typed failure, 취소·예산 계약을 보존한다. 서로 다른 계약은 caller의 작은 admission/projection으로 유지한다.
 - 완료 결과는 **계산 owner 단일화 + 소비자 전환 + 퇴역 코드 삭제 + 로컬 증명 + 재발 방지 gate**다. 파일 이동, forwarding wrapper, 컴파일 성공만으로 완료 처리하지 않는다.
 
-상태: **IN_PROGRESS.** GQLang 마지막 clean 문서 checkpoint는 `1b8f917`이다. 로컬 `just ci` PASS는 이전 `d600cab` 소스의 receipt다.
+상태: **IN_PROGRESS.** GQLang 마지막 clean 문서 checkpoint는 `7956e796`이다. 로컬 `just ci` PASS는 이전 `d600cab` 소스의 receipt다.
 
 - **현재 소스:** Semantica clean private `1330ed8`/base main `0098a99`의 main-first merge, owned 87경로. `02e`의 본문 87경로와 main-only 15경로는 부모 blob을 보존하며 겹침은 0이다. `04af4c3` casectl link와 `0098a99` formal iterator capture 선행 수정이 base에 포함된다.
-- **검증:** Exact 입력 98경로(owned87+선행11)의 source policy는 영향받은 92개 정책 PASS/exit0/scope complete다. `1330+ext-7c0966bc582839fd8230` snapshot은 GQLang `30b6efd`·Index `ab87837` overlay0으로 sealed됐고 root·nested locked metadata는 PASS다. Formal owning QBC 9/9 PASS; JSON16 실행 중이며 canonical owner45는 NOT_RUN이다. 직전 `02e` JSON16은 의존성 E0700 컴파일 오류로 RED/테스트0이었다.
+- **검증:** Exact 입력 98경로(owned87+선행11)의 source policy는 영향받은 92개 정책 PASS/exit0/scope complete다. `1330+ext-7c0966bc582839fd8230` snapshot은 GQLang `30b6efd`·Index `ab87837` overlay0으로 sealed됐고 root·nested locked metadata는 PASS다. Formal owning QBC 9/9 PASS는 유지된다. JSON16은 두 테스트 파일의 stale `codegraph_core_ir::ssot_hash` 참조 E0433으로 의존성 컴파일 RED/exit101/테스트0이며 canonical owner45는 모두 NOT_RUN이다. 두 테스트 파일 수리는 이후 Semantica main `8842337`에 source-only 반영됐고 재검증 대기다.
 - **남은 범위:** D1/D2 본문 main 반영, downstream consumer, generated/global Honesty, native full product. [현재 증거](execution-progress.md).
 
 아래 두 단락은 `3fe` 실행 전의 병합·진단 이력이다. 당시의 `NOT_RUN`은 현재 판정이 아니다.
@@ -302,10 +302,10 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 | D5 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | PTA solver227 실제 통과, manual comparison only. Canonical owner receipt 필요 |
 | D4 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | SCV2 leaf34 실제 통과, manual comparison only; canonical main source fences PASS. Canonical owner receipt 필요 |
 | D7 | MAIN_IMPLEMENTED | `b258f5919a5` | Final clean integration에서 6-file owner matrix70/70 GREEN; captured source·기존 parity/surface/DI. Full product qualification 별도 |
-| D1-A / D1-B | PRIVATE_COMMITTED / current owner qualification PARTIAL | 없음 | 현재 `1330`/base `0098a99`, owned87 paths에 Shape owner/factory/feature 연결과 runtime capability·SDK export 분리 구현. Source policy는 입력98경로 중 영향 정책92 PASS; frozen snapshot sealed, formal supplemental9 PASS, JSON16 실행 중, owner45 NOT_RUN. D1/D2 본체 main 미반영. [현재 증거](execution-progress.md) |
+| D1-A / D1-B | PRIVATE_COMMITTED / current owner qualification PARTIAL | 없음 | 현재 `1330`/base `0098a99`, owned87 paths에 Shape owner/factory/feature 연결과 runtime capability·SDK export 분리 구현. Source policy는 입력98경로 중 영향 정책92 PASS; frozen snapshot sealed, formal supplemental9 PASS. JSON16은 test dependency compile RED/테스트0, owner45 NOT_RUN. D1/D2 본체 main 미반영. [현재 증거](execution-progress.md) |
 | F1 / D6 | MAIN_IMPLEMENTED | `c1f821db572` | SDK211 pass/2 skip; rebased consumers141 pass/1 skip; installed wheel1 + Granian/scripted daemon1 GREEN. Native daemon/product qualification 별도 |
 | D2-P / D2-K | MAIN_IMPLEMENTED | `df2a867ad70` | Final core20 QBC GREEN; actual frame/output bound·typed stop·order/ID controls. Rebased std-only owner source/toolchain unchanged |
-| D2 PTA | PRIVATE_COMMITTED / current PTA owner qualification NOT_RUN | 없음 | 현재 `1330`의 SCC caller·field-policy child·worker identity·whole-program helper 본문은 `02e`와 byte exact다. `02e` JSON16은 formal dependency compile RED/테스트0; formal `use<>` 수리는 `1330` base에 반영됐다. Supplemental formal9는 owner QBC PASS이고 PTA owner45는 NOT_RUN이다. [Rust evidence/RCA](checkpoint-rust-evidence.json) |
+| D2 PTA | PRIVATE_COMMITTED / current PTA owner qualification NOT_RUN | 없음 | 현재 `1330`의 SCC caller·field-policy child·worker identity·whole-program helper 본문은 `02e`와 byte exact다. Supplemental formal9는 owner QBC PASS다. JSON16은 별도 두 테스트 파일의 stale ssot_hash 참조로 컴파일 RED/테스트0이며 PTA owner45는 NOT_RUN이다. [Rust evidence/RCA](checkpoint-rust-evidence.json) |
 | D2 Taint | PRIVATE_COMMITTED / current owner qualification NOT_RUN | 없음 | Private regular35+deep1은 historical PASS. 현재 `1330` Taint 본문은 `02e`와 byte exact이며 owner45의 Taint/deep-chain은 NOT_RUN; main import pending. 이전 `e7be` 수동 Wire68+49/core20은 comparison-only다 |
 | Generated inputs | PARTIAL_MAIN / PENDING final census | GOD `0a86de35c28` | GOD17 keys 제거·fresh-base scoped19 files PASS는 이력이다. 이전 `a162` 선택 4경로 read-only GOD witness는 baseline14→7, new0/worse0; `1330`의 final generator/topology·global Honesty census는 NOT_RUN이다. Generated 파일은 아직 변경하지 않았다. 기존 `WorkerCfgDfgCacheV1` 공개 메서드 11개 미등록 GOD debt는 별도다. [Generated evidence](checkpoint-generated-evidence.json) |
 
