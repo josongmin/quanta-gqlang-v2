@@ -383,4 +383,4 @@ D2 admission은 실제 `TarjanFrameV1` 크기와 output header/member allocation
 
 | Consumer compile prerequisite | Before | After |
 |---|---|---|
-| [parser core_native_aug.rs](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-parser/src/language_host_adapter/semantic_module_v3/core/core_native_aug.rs) | Unconditional Go branch가 `parser-java` cfg helper 호출; Shape-only runtime QBC E0425 | Shared helper의 cfg 1줄 제거. 같은 conversion body/diagnostic strings 유지; Java feature 추가 없음 |
+| [parser core_native_aug.rs](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-parser/src/language_host_adapter/semantic_module_v3/core/core_native_aug.rs) | Unconditional Go branch가 `parser-java` cfg helper 호출; Shape-only runtime QBC E0425 | Main `39edfc1ca5b`: shared helper의 cfg 1줄 제거. Conversion body/diagnostic strings 유지; Java feature 추가 없음. Parser artifact `fresh=false` 확인; enclosing runtime은 analysis API 오류로 실패 |

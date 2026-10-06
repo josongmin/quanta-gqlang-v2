@@ -290,7 +290,7 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 | D5 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker PTA solver227 QBC GREEN |
 | D4 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker SCV2 leaf34 QBC GREEN; canonical main fences PASS |
 | D7 | MAIN_IMPLEMENTED | `b258f5919a5` | Final clean integration에서 6-file owner matrix70/70 GREEN; captured source·기존 parity/surface/DI. Full product qualification 별도 |
-| D1-A / D1-B | PRIVATE_COMMITTED / IN_PROGRESS | 없음 | Final rebased standalone owner17 GREEN; static Shape-only closure에서 Cost 부재. Runtime owning QBC는 parser feature guard compile failure; 최소 owner prerequisite와 consumer proof 진행 |
+| D1-A / D1-B | PRIVATE_COMMITTED / BLOCKED consumer proof | 없음 | Standalone owner17 GREEN; static Shape-only closure에서 Cost 부재. Parser 선행 수정은 main `39edfc1ca5b`. Runtime consumer QBC는 shared analysis API compile13 errors/0 cases; SDK/Cost-only/gates 미증명 |
 | F1 / D6 | MAIN_IMPLEMENTED | `c1f821db572` | SDK211 pass/2 skip; rebased consumers141 pass/1 skip; installed wheel1 + Granian/scripted daemon1 GREEN. Native daemon/product qualification 별도 |
 | D2-P / D2-K | MAIN_IMPLEMENTED | `df2a867ad70` | Final core20 QBC GREEN; actual frame/output bound·typed stop·order/ID controls. Rebased std-only owner source/toolchain unchanged |
 | D2 PTA / Taint | PRIVATE_COMMITTED / IN_PROGRESS | 없음 | PTA 이전 source owner QBC는 local API skew compile54 errors/0 cases; rebased7e에서도 missing owner exports/API 남음. Taint 이전 component proof와 current consumer proof 구분. [Rust evidence/RCA](checkpoint-rust-evidence.json) |

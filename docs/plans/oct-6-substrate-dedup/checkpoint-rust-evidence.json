@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-06T03:22:53.608450+00:00",
+  "recorded_at_utc": "2026-10-06T03:38:27.894505+00:00",
   "proof_scope": "QBC owner/component results only; not combined current-main/shipping-gate/product qualification",
   "records": [
     {
@@ -129,6 +129,84 @@
       "compile_failure": [
         "could not compile `quanta-runtime-analysis` (lib test) due to 54 previous errors; 49 warnings emitted"
       ]
+    },
+    {
+      "scope": "D1-runtime-Shape-only-consumer-blocked",
+      "run_id": "20261006T031607.551813Z-7570fb8c0144",
+      "execution_root": "/Users/songmin/.codex/worktrees/oct6-substrate-shape/semantica-codegraph-v2",
+      "source_commit_if_known": "72e34005917",
+      "source_snapshot_digest": "70bf23ecf022b6e5c453a2ecbabbb1b5fe5def6a970517d9cffc15beff85ab52",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "quanta-runtime",
+        "--lib",
+        "runtime_ingress_shape_overlay_uses_standalone_adapter_v1",
+        "--no-default-features",
+        "--features",
+        "gateway-ingress-runtime-core,shape-analyzer",
+        "--no-fail-fast",
+        "--locked",
+        "--offline"
+      ],
+      "exit_code": 101,
+      "receipt_sha256": "04665f6f83b3495d32c34c2f0b362c67127b7044101edaa9f1e3df4079863739",
+      "local_receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-38b9b614c664/lanes/oct6-shape-consumer/verification-results/20261006T031607.551813Z-7570fb8c0144/receipt.json",
+      "log_sha256": {
+        "stdout.log": "ecc1e6d8ba77afdb553e738a7eb5b250df690aa0523eeea6e0e37969f7826fd4",
+        "stderr.log": "d190c401dea795117c7420affb1af72aee9640d78bc4c1de1ef48fb402f072c7"
+      },
+      "test_summaries": [],
+      "passed_case_names": [],
+      "compile_failure": [
+        "error[E0432]: unresolved import `call_graph_exact_workspace_rebind::rebind_refined_worker_call_graph_to_exact_workspace_runtime_authority_under_execution_v1`",
+        "error[E0432]: unresolved import `super::interprocedural_owner::output::ProductRuntimeRebindErrorV1`",
+        "error[E0432]: unresolved import `quanta_contract_call_graph_authority_wire::CallGraphAuthorityPacketStructuralWireV1`",
+        "error[E0425]: cannot find function `rebind_refined_worker_call_graph_to_exact_workspace_runtime_authority_v1` in module `crate::queries::pta::precise_query::extraction_solve`",
+        "error[E0425]: cannot find function `rebind_call_graph_to_exact_workspace_dfg_authority_under_execution_v1` in module `solve_worker_delta`",
+        "error[E0425]: cannot find value `CALL_GRAPH_AUTHORITY_PACKET_FIELDS` in crate `quanta_contract_call_graph_authority_wire`",
+        "error[E0603]: function `call_graph_has_persisted_constructor_edge_v1` is private",
+        "error[E0308]: mismatched types",
+        "error[E0282]: type annotations needed",
+        "error[E0599]: no method named `borrow_admitted_wire_with_work_v1` found for struct `quanta_contract_types_core::CallGraphAuthorityPacketV1` in the current scope",
+        "error[E0599]: no method named `try_reserve_rebind_work_v1` found for struct `AdmittedCallGraphLiveResumeV1` in the current scope",
+        "error[E0061]: this method takes 3 arguments but 2 arguments were supplied",
+        "error[E0599]: no method named `try_reserve_reattest_work_v1` found for struct `AdmittedCallGraphLiveResumeV1` in the current scope",
+        "error: could not compile `quanta-runtime-analysis` (lib) due to 13 previous errors; 25 warnings emitted"
+      ],
+      "parser_compiler_artifact": {
+        "reason": "compiler-artifact",
+        "package_id": "path+file:///Users/songmin/.codex/worktrees/oct6-substrate-shape/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-parser#0.1.0",
+        "target": {
+          "kind": [
+            "lib"
+          ],
+          "crate_types": [
+            "lib"
+          ],
+          "name": "quanta_adapters_parser",
+          "src_path": "/Users/songmin/.codex/worktrees/oct6-substrate-shape/semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-parser/src/lib.rs",
+          "edition": "2021",
+          "doc": true,
+          "doctest": true,
+          "test": true
+        },
+        "features": [
+          "language-host-python-min",
+          "parser-authority-rust-min",
+          "parser-python-min",
+          "parser-rust",
+          "present-host-rust-min",
+          "semantic-authority-python-min",
+          "semantic-expression-identity-core",
+          "semantic-expression-identity-python-min",
+          "semantic-module-python-min"
+        ],
+        "fresh": false
+      },
+      "runtime_tests_executed": 0,
+      "attribution": "Independent D1 caller source, without D2 PTA adapter cutover, also fails on shared runtime-analysis owner/consumer API migration. Parser compiled; runtime Shape behavior remains unverified."
     }
   ],
   "pta_attribution": {
@@ -154,6 +232,19 @@
     "attribution": "Local committed owner/consumer API migration is incomplete. Old 54 error count cannot be asserted for newer main. No diagnostic source locations were in the 24 D2 changed files; this alone is not proof against transitive effects.",
     "required_next_proof": "Freeze complete owner/consumer source tuple, then same nonzero PTA lib-test rail. Do not bump QMP or add compatibility shims based on this failure."
   },
-  "runtime_sdk_consumer_proof": "IN_PROGRESS",
-  "semantica_product_qualification": "NOT_RUN"
+  "runtime_sdk_consumer_proof": "BLOCKED_ON_SHARED_RUNTIME_ANALYSIS_API_SOURCE_TUPLE",
+  "semantica_product_qualification": "NOT_RUN",
+  "parser_prerequisite_checkpoint": {
+    "main": "39edfc1ca5bf143a09b66f0738c5f2b3987c7572",
+    "base": "b42b84465fbe2076feec54aee7774b4966fb8d23",
+    "source": "bb2b88dd137d70444a6cf37297dbc8f61e22308d",
+    "paths": [
+      "packages/analysis/quanta-v2/crates/quanta-adapters-parser/src/language_host_adapter/semantic_module_v3/core/core_native_aug.rs"
+    ],
+    "change": "remove helper-only parser-java cfg; unconditional caller and existing diagnostic context preserved",
+    "canonical_fences": "rustfmt1/safety PASS",
+    "parser_compilation_proof": "compiler-artifact fresh=false without parser-java or languages-go; enclosing runtime run failed later",
+    "current_main_static_audit": "39edfc1ca5b still lacks rebind execution helper, ProductRuntimeRebindErrorV1 provider and structural wire public provider",
+    "product_qualification": "NOT_RUN"
+  }
 }
