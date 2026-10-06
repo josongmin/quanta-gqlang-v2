@@ -4974,7 +4974,7 @@
       "pta_owner_rerun": "NOT_RUN"
     }
   },
-  "latest_failed_composed_candidate": {
+  "previous_02e_failed_candidate": {
     "source": "02e00d76e1a9dbe48f5e8a5bca4fb05a3ac69c05",
     "base_main": "9983d87a951ebad64cc5a3039aec01e8b2975537",
     "parents": [
@@ -5083,7 +5083,7 @@
       }
     }
   },
-  "current_composed_candidate": {
+  "latest_failed_composed_candidate": {
     "source": "1330ed88f568a16d37dd6eeb4ff91a1e7b366987",
     "base_main": "0098a9935621ee532fa48a460b83aa9d241bfd95",
     "parents": [
@@ -5213,5 +5213,93 @@
       "rust_proof": "NOT_RUN on repaired tuple",
       "proof_kind": "source only; not included in frozen 1330"
     }
+  },
+  "current_composed_candidate": {
+    "source": "3fb6fb51be7218b95e9024e5f390d93fe1afadd4",
+    "base_main": "884233758c41fda9ca7ebb9ba81f616c443e8aad",
+    "parents": [
+      "884233758c41fda9ca7ebb9ba81f616c443e8aad",
+      "1330ed88f568a16d37dd6eeb4ff91a1e7b366987"
+    ],
+    "clean": true,
+    "owned_changed_paths": 87,
+    "candidate_state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/candidate-3fb6fb51be72-state.json",
+    "candidate_state_sha256": "c88ecea224619991a6cc520de447a253b76d9457bab73569d7be45188f692c76",
+    "merge_witness": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/merge-3fb6fb51be72-preservation-witness.json",
+    "merge_witness_sha256": "25142441ff2024caf2b98398d57a671f8d74d418811cf8d44ebb015e922aaf12",
+    "merge_review": {
+      "owned_body_paths_exact_second_parent": 87,
+      "main_only_paths_exact_first_parent": 31,
+      "overlap_paths": 0,
+      "normal_hooks": "PASS",
+      "proof_kind": "source merge only; no Rust/product verdict"
+    },
+    "next_sibling_pins": {
+      "quanta_gqlang_v2": "30b6efd06645762146479f8a5c89e81d6dc85af5",
+      "quanta_index": "ab87837f5d34de1d8f9de9dedcfd44032051a284"
+    },
+    "source_policy": {
+      "status": "PASS",
+      "input_paths": 100,
+      "passed_policies": 92,
+      "exit_code": 0,
+      "scope_complete": true,
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/3fb6fb51be72-boundary-policy100-state.json",
+      "state_sha256": "4c36aaaaa90c5b25f992230c55b9d0e848c456711500e2bebdf4139a69e68044",
+      "log_sha256": "54036f2adc3ab186aa7d748ae8a693414bff68d9ebc42c24a385f4a1349af2a2",
+      "proof_kind": "exact source policy; no Rust/product verdict"
+    },
+    "frozen_materialization": {
+      "status": "SEALED",
+      "topology_digest": "3fb6fb51be7218b95e9024e5f390d93fe1afadd4+ext-7c0966bc582839fd8230",
+      "source_snapshot_digest": "48e6471ad6560e9eeb9c7f613034219564e94457bf52bf8a4fefe1ccf5d2408e",
+      "sibling_overlays": "empty",
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/snapshot-3fb6fb51be72-state.json",
+      "state_sha256": "be957450d46be7e0c18beeaed3cf00882dae67ae431e0be2362d71763a433ec5",
+      "proof_kind": "source snapshot custody; no Rust execution"
+    },
+    "request_map": {
+      "status": "SEALED",
+      "request_count": 45,
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-owner-proof-request-map45-3fb6fb51be72.json",
+      "sha256": "c77838356f898bcab7bfe26d82128b43b6f898945ec196464b5cda4e325c48b2"
+    },
+    "owner_launcher": {
+      "status": "SEALED; not run",
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-3fb6fb51be72.py",
+      "sha256": "d7d4422f91769059a612c843e3678b9d989ff306796da51367d8f05ea36ea298"
+    },
+    "pure_owner_projection": {
+      "status": "PASS",
+      "evidence": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/pure-validation-3fb6fb51be72.json",
+      "evidence_sha256": "82550a72cfa2d6ce48c98609bdda90940d4d1d9a18790c88d75766cf5d7ca2ba",
+      "proof_kind": "static projection; no Rust execution"
+    },
+    "locked_metadata": {
+      "status": "PASS",
+      "root_exit_code": 0,
+      "nested_exit_code": 0,
+      "source_and_locks_unchanged": true,
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/locked-metadata-3fb6fb51be72/state.json",
+      "state_sha256": "47b760ca3f3aae79a37c6fc93499aa85a11b42599bc56df8d653ee9027bee62d",
+      "proof_kind": "QBC auxiliary metadata only; no Rust compiler/test verdict"
+    },
+    "source_bound_sequence": {
+      "status": "RUNNING budget30",
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/source-bound-sequence-3fb6fb51be72-state.json",
+      "runner": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/run-source-bound-sequence-3fb6fb51be72.py",
+      "runner_sha256": "215eefc5d3b9ed73b9024572f97ef6247ff6c01e003582b1a76bba99fe9981bc",
+      "order": [
+        "budget30",
+        "json16",
+        "formal9",
+        "owner45"
+      ],
+      "conditional": true,
+      "finalized_owner_results": 0
+    },
+    "d1_d2_main_body_import": "NOT_RUN",
+    "consumer_generated_product_qualification": "NOT_RUN",
+    "next": "Wait for budget30 receipt, then conditional JSON16, formal9 and canonical owner45 on exact 3fb frozen tuple"
   }
 }
