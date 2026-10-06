@@ -6,7 +6,9 @@
 
 진행 중 diff/검증/main 반영은 [execution-progress.md](execution-progress.md)에서 별도로 관리한다.
 
-**2026-10-06 현재 변경 경계:** `c5bb60f`/base main `578a539` clean private 후보가 D1/D2 본문, PTA `self::demand_v1` 수리, D3/D4/D5의 isolation class·suite consumer 3개씩을 합친 87경로 diff다. D1 Shape의 cost 구현·test는 삭제되고 factory/export는 standalone owner를 사용한다. D2 PTA·taint wrapper는 graph-utils SCC core로 연결되며 local traversal frame/state는 퇴역했다. Shape-only 직접 feature 목록은 Cost를 켜지 않고 Heap은 Cost를 명시한다. Source policy 90 PASS와 read-only GOD 14→7/new0/worse0만 현재 후보의 증거다. **45개 canonical owner는 frozen `c5bb`에서 PTA-first 실행 중이며 완료 receipt 0건; main 본문 import는 NOT_RUN**이며 이전 `3fe`의 4개 PASS는 이월하지 않는다. [영구 증거와 남은 게이트](execution-progress.md).
+**2026-10-06 현재 변경 경계:** `05fc94d`/base main `578a539` clean 87경로 후보는 아래 `c5bb` D1/D2·registry 본문에 Cargo.lock의 parser→codegraph-core-dfg dependency edge만 추가했다. Cargo 1.92 offline full metadata에서 식별된 lock prerequisite이며 edge는 Semantica main `6efc64b`에 먼저 반영됐다. Exact `05fc` source policy 90 PASS, read-only GOD 14→7/new0/worse0, Wire 72 local crate 정적 closure가 있다. Frozen `05fc+ext-51a0b56268b11842364e`의 owner 1/45는 Java defuse extractor E0061/exit101/테스트0으로 실패했다. PASS0, 나머지44 NOT_RUN이다. D1/D2 본문 main import와 소비자·제품 검증은 대기다. [현재 실행](execution-progress.md).
+
+**2026-10-06 이전 `c5bb` 변경 경계:** `c5bb60f`/base main `578a539` clean private 후보가 D1/D2 본문, PTA `self::demand_v1` 수리, D3/D4/D5의 isolation class·suite consumer 3개씩을 합친 87경로 diff다. D1 Shape의 cost 구현·test는 삭제되고 factory/export는 standalone owner를 사용한다. D2 PTA·taint wrapper는 graph-utils SCC core로 연결되며 local traversal frame/state는 퇴역했다. Shape-only 직접 feature 목록은 Cost를 켜지 않고 Heap은 Cost를 명시한다. Source policy 90 PASS와 read-only GOD 14→7/new0/worse0만 현재 후보의 증거다. **45개 canonical owner 중 PTA-first 1/45는 Cargo `--locked` 단계에서 실패101/테스트0; PASS0·나머지44 NOT_RUN이고 main 본문 import는 NOT_RUN**이며 이전 `3fe`의 4개 PASS는 이월하지 않는다. [영구 증거와 남은 게이트](execution-progress.md).
 
 ## 1. 저장소 지도
 

@@ -9,7 +9,7 @@
 - 입력 authority, 결과·순서·ID, typed failure, 취소·예산 계약을 보존한다. 서로 다른 계약은 caller의 작은 admission/projection으로 유지한다.
 - 완료 결과는 **계산 owner 단일화 + 소비자 전환 + 퇴역 코드 삭제 + 로컬 증명 + 재발 방지 gate**다. 파일 이동, forwarding wrapper, 컴파일 성공만으로 완료 처리하지 않는다.
 
-상태: **IN_PROGRESS.** GQLang `d600cab`의 로컬 `just ci` 전체가 통과했다. Semantica의 새 clean 통합 후보는 `c5bb60f`/base main `578a539`(87경로)이며 D1/D2 본문, PTA 한 줄 경로 수리, D3/D4/D5의 isolation class·suite consumer 3개씩을 함께 담았다. 이 정확한 후보의 source policy 90건은 통과했고, read-only GOD 비교는 baseline 14→7·new/worsened 0이다. **45개 canonical Rust owner 요청은 frozen `c5bb` source tuple에서 시작됐으며 PTA-first 1/45 실행 중이다. 현재 완료 receipt는 0건이다.** 이전 `3fe` 후보의 owner 4건 PASS와 PTA compile 101/0은 그 소스에만 유효하다. Full suite/parity gate는 기존 정적 오류로 FAIL이고, downstream consumer, generated/global Honesty, D1/D2 본문 main 반영, native full product는 미완료다. [현재 증거](execution-progress.md).
+상태: **IN_PROGRESS.** GQLang `d600cab`의 로컬 `just ci` 전체가 통과했다. Semantica의 현재 clean private 후보는 `05fc94d`/base main `578a539`(87경로)다. `c5bb`의 D1/D2·registry 본문에 Cargo.lock의 parser→codegraph-core-dfg dependency edge를 추가해 Cargo.lock 선행 조건을 수리했다. 해당 edge는 main `6efc64b`에 반영됐다. 정확한 `05fc` 후보의 source policy 90건은 PASS, read-only GOD 비교는 14→7·new/worsened 0이다. **45개 canonical owner 요청 중 frozen `05fc+ext-51a0b56268b11842364e`의 PTA-first 1/45는 Java defuse extractor의 호출 인자 E0061로 Rust 컴파일 exit101/테스트0·owner RED였다. PASS0, 나머지44 NOT_RUN이다.** 이전 `c5bb`의 Cargo `--locked` 실패101/테스트0과 `3fe`의 owner 4건 PASS는 각 이전 소스의 이력이다. D1/D2 본문 main 반영, downstream consumer, generated/global Honesty, native full product는 대기다. Full suite/parity의 기존 정적 오류는 별도다. [현재 증거](execution-progress.md).
 
 아래 두 단락은 `3fe` 실행 전의 병합·진단 이력이다. 당시의 `NOT_RUN`은 현재 판정이 아니다.
 
