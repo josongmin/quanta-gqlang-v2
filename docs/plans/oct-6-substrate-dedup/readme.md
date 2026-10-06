@@ -186,14 +186,14 @@ GQLang frontend는 syntax/sema/normalized IR을 소유하고, 실행 substrate�
 
 #### D2-P — policy landing 조건
 
-- 현재 `quanta-graph-utils-v1`은 `tier0-shared`, empty default이며 root mapping도 같다. Root Cargo policy를 기준으로 proposed tier1 분류와 필요한 edge/default-feature 설정을 검증·적용한다.
+- Before `quanta-graph-utils-v1`은 `tier0-shared`, empty default였다. Main `df2a867ad70`에서는 crate/root mapping을 `tier1-adapter`로 맞추고 empty default와 query-HIR explicit default-feature edge policy를 유지했다.
 - `quanta-runtime-query-hir-wire` dependency도 함께 확인한다. Foreign root Cargo hunk를 섞지 않는다.
 - **DoD:** 관련 layer/feature policy 통과. Unrelated baseline blocker가 있으면 경계·영향을 기록하고 미완료로 유지한다. 정책 검증은 landing 조건이며 algorithm parity 증명이 아니다.
 
 #### D2-K — 기존 core 확장
 
 - **남길 owner:** [quanta-graph-utils-v1 SCC](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-graph-utils-v1/src/scc.rs)의 borrowed indexed iterative traversal. 기존 generic entry도 이 core를 사용한다.
-- **자원·실패:** graph/index/state allocation 전에 admission. Overflow/input/work/memory bound, traversal·edge/materialization checkpoint를 연결한다. Compute error와 caller `Stop<E>`를 구분한다. Callback 존재만으로 allocation bound를 주장하지 않는다.
+- **자원·실패:** adapter indexing 전에 dimension admission, core traversal/result state allocation 전에 checked logical byte admission. Default cap은 nodes1,000,000·edges10,000,000·core workspace512MiB다. Borrowed input, domain projection/generic clone, allocator metadata와 RSS는 byte cap 범위 밖이다. Overflow/input/work bound, traversal·edge/materialization checkpoint를 연결하고 Compute error와 caller `Stop<E>`를 구분한다. Callback 존재만으로 allocation bound를 주장하지 않는다.
 - **domain 정책:** generic closed domain의 unknown target은 거절. PTA의 declared-key projection, taint의 successor-only nodes 처리는 adapter가 명시적으로 보존한다.
 - **출력 정책:** component/member ordering·IDs·failure/cancel을 caller projection으로 보존한다. 새 universal graph trait/crate는 만들지 않는다.
 - **기존 indexed API:** 현재 wrapper의 neighbor sort/dedup을 보존한다. Unsorted/duplicate public 입력을 canonical로 가정하지 않으며, 필요한 normalization을 adapter에서 처리한 뒤 core가 빌린다. Exact dense IDs와 emission order를 회귀로 고정한다.
@@ -293,7 +293,7 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 | D1-A / D1-B | PRIVATE_COMMITTED / IN_PROGRESS | 없음 | Final rebased standalone owner17 GREEN; static Shape-only closure에서 Cost 부재. Runtime owning QBC는 parser feature guard compile failure; 최소 owner prerequisite와 consumer proof 진행 |
 | F1 / D6 | MAIN_IMPLEMENTED | `c1f821db572` | SDK211 pass/2 skip; rebased consumers141 pass/1 skip; installed wheel1 + Granian/scripted daemon1 GREEN. Native daemon/product qualification 별도 |
 | D2-P / D2-K | MAIN_IMPLEMENTED | `df2a867ad70` | Final core20 QBC GREEN; actual frame/output bound·typed stop·order/ID controls. Rebased std-only owner source/toolchain unchanged |
-| D2 PTA / Taint | PRIVATE_COMMITTED / IN_PROGRESS | 없음 | Fresh main 기반 PTA owning SCC QBC 진행; 남은 test compile prerequisites 5개 별도 수정. Taint 이전 source component proof와 current consumer proof 구분 |
+| D2 PTA / Taint | PRIVATE_COMMITTED / IN_PROGRESS | 없음 | PTA 이전 source owner QBC는 local API skew compile54 errors/0 cases; rebased7e에서도 missing owner exports/API 남음. Taint 이전 component proof와 current consumer proof 구분. [Rust evidence/RCA](checkpoint-rust-evidence.json) |
 
 ### 최종 Definition of Done
 

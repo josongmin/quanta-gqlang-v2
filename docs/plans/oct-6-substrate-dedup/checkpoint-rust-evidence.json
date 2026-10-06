@@ -1,0 +1,159 @@
+{
+  "recorded_at_utc": "2026-10-06T03:22:53.608450+00:00",
+  "proof_scope": "QBC owner/component results only; not combined current-main/shipping-gate/product qualification",
+  "records": [
+    {
+      "scope": "D2-core",
+      "run_id": "20261006T022541.599406Z-8544c76c92a4",
+      "execution_root": "/Users/songmin/.codex/worktrees/oct6-substrate-manifest/semantica-codegraph-v2",
+      "source_commit_if_known": null,
+      "source_snapshot_digest": "7b694120b1bd5bb453d4b52eb8c5a1ea8b04520f7f40976893ac856727e7344a",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "quanta-graph-utils-v1",
+        "--lib",
+        "--offline"
+      ],
+      "exit_code": 0,
+      "receipt_sha256": "b4f7e1f06f360e285730a73f31706863929505034dcc8ac987f524097cf23f7e",
+      "local_receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-3d1dc7c40e9b/lanes/oct6-scc-core/verification-results/20261006T022541.599406Z-8544c76c92a4/receipt.json",
+      "log_sha256": {
+        "stdout.log": "d7d3a96fdfd34166ca60cf89d519b0c2887a125a5f629757358c9f6acbb059c8",
+        "stderr.log": "3a8d2763e02b0366bbfc9e9cc07ae82bcca2c7eb3813c392b8aec6d3d0c393ef"
+      },
+      "test_summaries": [
+        "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s"
+      ],
+      "passed_case_names": [
+        "scc::admission_tests::indexed_neighbor_outside_domain_is_an_error",
+        "scc::admission_tests::unregistered_generic_neighbor_is_not_silently_removed",
+        "scc::borrowed_core_tests::borrowed_core_preserves_exact_emission_order_and_indexed_ids",
+        "scc::borrowed_core_tests::bounds_and_overflow_refuse_before_state_allocation",
+        "scc::borrowed_core_tests::indexed_unsorted_duplicate_edges_keep_canonical_ids",
+        "scc::indexed_tests::indexed_dag_yields_distinct_sccs",
+        "scc::tests::empty_graph_returns_empty",
+        "scc::tests::self_loop_one_component",
+        "scc::tests::two_node_cycle_one_component",
+        "scc::borrowed_core_tests::every_checkpoint_stops_with_original_caller_error",
+        "scc::borrowed_core_tests::invalid_target_refuses_before_traversal_state_or_partial_output",
+        "scc::borrowed_core_tests::logical_workspace_cap_includes_frames_and_exact_component_buffers",
+        "scc::indexed_tests::indexed_empty_adj_yields_empty_scc_of",
+        "scc::indexed_tests::indexed_three_node_cycle_yields_one_scc",
+        "scc::indexed_tests::indexed_mixed_graph_preserves_partition_and_dense_ids",
+        "scc::tests::complex_graph_with_two_cycles_and_bridge",
+        "scc::tests::deterministic_across_input_order",
+        "scc::tests::linear_dag_three_components",
+        "scc::tests::single_node_no_edges",
+        "scc::tests::deep_chain_no_stack_overflow"
+      ],
+      "compile_failure": []
+    },
+    {
+      "scope": "D1-standalone-owner",
+      "run_id": "20261006T031048.999998Z-0bacfa6f1868",
+      "execution_root": "/Users/songmin/.codex/worktrees/oct6-substrate-shape/semantica-codegraph-v2",
+      "source_commit_if_known": "661a7dab24b",
+      "source_snapshot_digest": "1b4d5553bafca4f181d39f077299bed2b6c3767788b8c24266afecc179f333e9",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "quanta-adapters-shape",
+        "--lib",
+        "shape_analyzer_adapter",
+        "--features",
+        "shape",
+        "--no-fail-fast",
+        "--locked",
+        "--offline"
+      ],
+      "exit_code": 0,
+      "receipt_sha256": "53c4654457b5885fdc212db09b8f537ab8e67a19db279b9e700ae8b57f75e638",
+      "local_receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-38b9b614c664/lanes/oct6-shape-owner-b/verification-results/20261006T031048.999998Z-0bacfa6f1868/receipt.json",
+      "log_sha256": {
+        "stdout.log": "fe9115a6490b3b758a842381eba3ca7933d4cdfeb43bd3382c91dd8c9db3df26",
+        "stderr.log": "9fe5816a3884f97c575503592e99758fe05201dcd5ce978216b75bddba068a84"
+      },
+      "test_summaries": [
+        "test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "passed_case_names": [
+        "shape_analyzer_adapter::tests::points_to_result_to_shape_input_rejects_index_overflow",
+        "shape_analyzer_adapter::tests::empty_input_returns_empty_result",
+        "shape_analyzer_adapter::tests::single_node_self_loop_is_cyclic",
+        "shape_analyzer_adapter::tests::cycle_detected",
+        "shape_analyzer_adapter::tests::self_loop_remains_cyclic_when_the_node_also_points_to_a_tail",
+        "shape_analyzer_adapter::tests::context_sensitive_points_to_v2_points_to_result_prefers_flattened_projection",
+        "shape_analyzer_adapter::tests::context_sensitive_points_to_shape_input_rejects_context_stack_hpts_authority",
+        "shape_analyzer_adapter::tests::single_node_tree",
+        "shape_analyzer_adapter::tests::points_to_result_orphan_allocation_is_a_tree_without_invented_edges",
+        "shape_analyzer_adapter::tests::context_sensitive_points_to_shape_input_prefers_native_object_authority",
+        "shape_analyzer_adapter::tests::points_to_result_to_shape_input_tree",
+        "shape_analyzer_adapter::tests::points_to_result_to_shape_input_cyclic",
+        "shape_analyzer_adapter::tests::chain_tree",
+        "shape_analyzer_adapter::tests::context_sensitive_points_to_v2_shape_input_collapses_common_context_graph",
+        "shape_analyzer_adapter::tests::points_to_result_to_shape_input_contract_no_var_loc_digest_leak",
+        "shape_analyzer_adapter::tests::gate_shape_sota_master_points_to_shape_input",
+        "shape_analyzer_adapter::tests::dag_two_incoming"
+      ],
+      "compile_failure": []
+    },
+    {
+      "scope": "D2-PTA-owner-blocked",
+      "run_id": "20261006T030029.078651Z-4e0d283d3eed",
+      "execution_root": "/Users/songmin/.codex/worktrees/oct6-substrate-manifest/semantica-codegraph-v2",
+      "source_commit_if_known": "300ba0df508884f03f3840808728aaeb02dcb9f9",
+      "source_snapshot_digest": "cc93df7e5b59ed506be2c5f36a3aeb3c996ccdad5a3c3cba33692ca60296b171",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "quanta-runtime-analysis",
+        "--lib",
+        "--features",
+        "pta-rail-test-support",
+        "precise_query_scc",
+        "--offline"
+      ],
+      "exit_code": 101,
+      "receipt_sha256": "7264a0edb9d2fe697fb0c4412449e6c9bb568f9f145b386658303f21e3b27f83",
+      "local_receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-3d1dc7c40e9b/lanes/oct6-scc-core/verification-results/20261006T030029.078651Z-4e0d283d3eed/receipt.json",
+      "log_sha256": {
+        "stdout.log": "9c1f797e5a75d2bdcf1bf3b37919f28adb9ab72eaf87f5644832071e7964b56c",
+        "stderr.log": "fd66bd13ed41222312872a08106ad3e7d92595461ddb24aff6d03851db2d474d"
+      },
+      "test_summaries": [],
+      "passed_case_names": [],
+      "compile_failure": [
+        "could not compile `quanta-runtime-analysis` (lib test) due to 54 previous errors; 49 warnings emitted"
+      ]
+    }
+  ],
+  "pta_attribution": {
+    "failed_worker": "300ba0df508884f03f3840808728aaeb02dcb9f9",
+    "observed_rebased_worker": "1ea51f05dc5",
+    "rebased_main_base": "7e9447923d6",
+    "errors_54_are_old_executed_source_only": true,
+    "tests_executed_in_failed_run": 0,
+    "qmp_pin": "14cf0345004d0703c7d32da34055af5367a9212d",
+    "qmp_pin_matches_committed_main": true,
+    "foreign_dirty_qmp_rev_not_part_of_failed_run": "472048ac849c7450660b87c4476f5b687e8b389b",
+    "already_fixed_after_failed_source": [
+      "CallGraphCloneLogicalCostCoreV1 owner in edges.rs",
+      "Residual disclosure Ref definitions in wire crate; quality facade still incomplete"
+    ],
+    "still_missing_in_rebased_main_static_audit": [
+      "extraction_solve reexport rebind_refined_worker_call_graph_to_exact_workspace_runtime_authority_under_execution_v1 but owner defines only _v1",
+      "interprocedural reexport ProductRuntimeRebindErrorV1 without defining enum",
+      "CallGraphAuthorityPacketStructuralWireV1 and public packet-fields export",
+      "quality_wire residual disclosure Ref reexports",
+      "AdmittedCallGraphLiveResumeV1 try_reserve_rebind_work_v1 and try_reserve_reattest_work_v1 methods"
+    ],
+    "attribution": "Local committed owner/consumer API migration is incomplete. Old 54 error count cannot be asserted for newer main. No diagnostic source locations were in the 24 D2 changed files; this alone is not proof against transitive effects.",
+    "required_next_proof": "Freeze complete owner/consumer source tuple, then same nonzero PTA lib-test rail. Do not bump QMP or add compatibility shims based on this failure."
+  },
+  "runtime_sdk_consumer_proof": "IN_PROGRESS",
+  "semantica_product_qualification": "NOT_RUN"
+}

@@ -339,6 +339,8 @@ Core traversal state는 borrowed domain/resource admission 후 할당한다. Dom
 | PTA/generic output | traversal emission order | same exact order, not just normalized partition |
 | cancel/budget | caller-specific control/error | no late partial success, original typed caller error preserved |
 
+Behavior/compatibility delta: 기존 generic core에는 node/edge/workspace cap이 없었다. 새 default는 nodes1,000,000·edges10,000,000·core logical workspace512MiB를 넘으면 typed `ResourceLimit`/`SizeOverflow`로 거절한다. `SccComputeError`의 새 variants를 소비자 match/error projection에서 처리해야 한다. Taint의 resource 거절은 typed NotComputed budget reason으로, PTA는 기존 QueryFailed owner projection으로 전달한다. Host-agnostic frontend Execution DTO schema를 변경하는 작업은 아니다.
+
 ## 10. Generated / gate 변경 지도
 
 | 입력 | 적용 항목 | 변경 방식 |
