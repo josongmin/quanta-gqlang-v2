@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-06T08:18:13.067787+00:00",
+  "recorded_at_utc": "2026-10-06T08:47:14.564646+00:00",
   "initial_frozen_main": "39edfc1ca5bf143a09b66f0738c5f2b3987c7572",
   "execution_root": "/Users/songmin/.codex/worktrees/oct6-substrate-integrate/semantica-codegraph-v2",
   "proof_scope": "Generated/policy observations on frozen source only; raw full-sweep flags are not counted as demonstrated runtime defects",
@@ -493,5 +493,48 @@
       "worsened": 0,
       "proof_kind": "read-only source/scanner; not generated-file write or Rust verdict"
     }
+  },
+  "current_source_refresh": {
+    "candidate_source": "a342228343d437a5eea1c7ff0715d29b0b70b19e",
+    "candidate_base": "968e57361399c2066c165479222189bbdfb40a46",
+    "candidate_paths": 86,
+    "canonical_lock_main": "968e57361399c2066c165479222189bbdfb40a46",
+    "canonical_lock_proof": "exact source identity normalization only; no immutable test verdict",
+    "proof_stage": "running selected proof wire-serde; no accepted current Rust or generated policy verdict yet",
+    "current_retirement_witness": {
+      "file": "/tmp/oct6-final-retirement-witness.json",
+      "sha256": "48c83b37196f6bb8d7385dcbdbcb70a4955133e55d880a6bb3614b925d04093c",
+      "candidate_source": "a342228343d437a5eea1c7ff0715d29b0b70b19e",
+      "scope": "4files, exact retired7, new0, worsened0; read-only scanner; generated writes0"
+    },
+    "prior_scoped_retirement_witness": "03ce6dec1eddd7dcd5684b459d7394f626251899",
+    "prior_witness_status": "read-only source/scanner at old tuple only, not current generated write",
+    "global_honesty_retirement": "BLOCKED: owning full-sweep ratchet rejects global new/rewritten findings; no blessing or threshold/scope change in this task",
+    "native_full_product_qualification": "NOT_RUN",
+    "next": "immutable selected owner/consumer proof on a342 tuple, then scoped topology/GOD regeneration and Honesty review"
+  },
+  "prior_source_refresh": {
+    "candidate_source": "5fe8de9549a9d4349117b9d01010eeddd9f8f6b0",
+    "candidate_base": "2d439969e494071779648a2b48a29e477c57d62f",
+    "candidate_paths": 86,
+    "sibling_heads": [
+      {
+        "source": "/Users/songmin/Documents/code-new/quanta-gqlang-v2",
+        "head": "614d9de1dfb304d1721d59d6f8a1f0c124574176",
+        "overlay_digest": ""
+      },
+      {
+        "source": "/Users/songmin/Documents/code-new/quanta-index",
+        "head": "8fdaa95115e03a721376c25e63d7df77d1cf7f66",
+        "overlay_digest": ""
+      }
+    ],
+    "proof_stage": "Wire serde snapshot custody exit74, no immutable completion; generated owner/policy runs NOT_RUN",
+    "current_retirement_witness": "NOT_REGENERATED for 5fe8de after external lock drift",
+    "prior_scoped_retirement_witness": "03ce6dec1eddd7dcd5684b459d7394f626251899",
+    "prior_witness_status": "read-only source/scanner at old tuple only, not current generated write",
+    "global_honesty_retirement": "BLOCKED: owning full-sweep ratchet rejects global new/rewritten findings; no blessing or threshold/scope change in this task",
+    "native_full_product_qualification": "NOT_RUN",
+    "next": "new canonical committed S/Index/G source tuple, selected owner proof, then scoped topology/GOD regeneration and Honesty review"
   }
 }

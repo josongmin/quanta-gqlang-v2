@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-06T08:20:56.201638+00:00",
+  "recorded_at_utc": "2026-10-06T08:47:14.564646+00:00",
   "proof_scope": "QBC owner/component results only; not combined current-main/shipping-gate/product qualification",
   "records": [
     {
@@ -984,7 +984,7 @@
     "attribution": "Local committed owner/consumer API migration is incomplete. Old 54 error count cannot be asserted for newer main. No diagnostic source locations were in the 24 D2 changed files; this alone is not proof against transitive effects.",
     "required_next_proof": "Freeze complete owner/consumer source tuple, then same nonzero PTA lib-test rail. Do not bump QMP or add compatibility shims based on this failure."
   },
-  "runtime_sdk_consumer_proof": "PENDING fresh current-base frozen owner/gate proof; earlier source results retained separately",
+  "runtime_sdk_consumer_proof": "NOT_RUN on current a3422283 candidate; previous 5fe8de Wire custody exit74 has no immutable verdict",
   "semantica_product_qualification": "NOT_RUN",
   "parser_prerequisite_checkpoint": {
     "main": "39edfc1ca5bf143a09b66f0738c5f2b3987c7572",
@@ -1635,8 +1635,8 @@
   "combined_candidate": {
     "worktree": "/Users/songmin/.codex/worktrees/oct6-substrate-manifest/semantica-codegraph-v2",
     "branch": "codex/oct6-substrate-final-candidate",
-    "base": "7a887ec6cc0a43c751225983a3dd3fa20eff6297",
-    "source": "03ce6dec1eddd7dcd5684b459d7394f626251899",
+    "base": "968e57361399c2066c165479222189bbdfb40a46",
+    "source": "a342228343d437a5eea1c7ff0715d29b0b70b19e",
     "paths": [
       "Cargo.lock",
       "packages/analysis/quanta-v2/Cargo.lock",
@@ -1654,7 +1654,6 @@
       "packages/analysis/quanta-v2/crates/quanta-adapters/src/analysis/mod.rs",
       "packages/analysis/quanta-v2/crates/quanta-adapters/src/lib.rs",
       "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/Cargo.toml",
-      "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural.rs",
       "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/clone_native_trailing_v1.rs",
       "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/mod.rs",
       "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/resume_clone_logical_cost_v1.rs",
@@ -1726,7 +1725,7 @@
       "tools/ci/gates/gate-shape-analysis-smoke.sh",
       "tools/ci/gates/gate-tarjan-iterative.sh"
     ],
-    "wire_target_source": "7a887ec6cc0a43c751225983a3dd3fa20eff6297",
+    "wire_target_source": "968e57361399c2066c165479222189bbdfb40a46",
     "previous_combined_source": "4bdbdf87ae32aae94b3709b1665423249b3c031e",
     "new_owner_repairs": [
       "PTA field SCC child explicit source path",
@@ -1736,11 +1735,11 @@
       "Live and portable resume logical cost share existing borrowed walk; upstream matcher reused",
       "Expose existing recovered callgraph role source axes through engine-gated public facade"
     ],
-    "phase": "clean candidate rebased to7a887; fixed Index sibling a72 main; current QBC pending",
+    "phase": "clean86-path candidate; role export and canonical Unicode source-identity lock prerequisites main; fresh owner proof pending",
     "normal_hooks": "normal staged rustfmt/integrity/safety passed on prerequisite commits; rebase dropped already-upstream module path patch",
     "actual_new_GOD_findings_repaired": 2,
-    "previous_source": "1ac35525239a92ea7d875bbd991337d68891454f",
-    "previous_base": "6078f9282cb562040fa12d8883c6108b4052cfcb",
+    "previous_source": "5fe8de9549a9d4349117b9d01010eeddd9f8f6b0",
+    "previous_base": "2d439969e494071779648a2b48a29e477c57d62f",
     "upstream_overlap_reconciliation": {
       "retained_main_fixture_paths": 5,
       "moved_upstream_test_children": 2,
@@ -1748,12 +1747,22 @@
       "decision": "retain stronger committed main fixture/control bodies, no old overwrite",
       "old_compile_failure": "source60e archived Index318 plain nested Visitor impl; PTA0"
     },
-    "upstream_retention": "No committed path intersection; retain all29 main paths; original primary11 dirty overlaps excluded"
+    "upstream_retention": "No committed path intersection; retain all29 main paths; original primary11 dirty overlaps excluded",
+    "history": [
+      {
+        "source": "5fe8de9549a9d4349117b9d01010eeddd9f8f6b0",
+        "base": "2d439969e494071779648a2b48a29e477c57d62f",
+        "path_count": 86,
+        "phase": "Wire admission failed74; canonical Cargo rootlock normalization changed execution source; zero immutable test receipts"
+      }
+    ],
+    "unicode_lock_main_checkpoint": "968e57361399c2066c165479222189bbdfb40a46",
+    "rebase_scope_check": "85 other owned paths byte-identical; rootlock exact canonical source-identity normalization"
   },
   "wire_current_base_candidate": {
     "worktree": "/Users/songmin/.codex/worktrees/oct6-substrate-integrate/semantica-codegraph-v2",
-    "base": "8b44be652250f483296bd1c3f8898ad5b06580fc",
-    "source": "8b44be652250f483296bd1c3f8898ad5b06580fc",
+    "base": "968e57361399c2066c165479222189bbdfb40a46",
+    "source": "968e57361399c2066c165479222189bbdfb40a46",
     "paths": [],
     "purpose": "Wire prerequisite already committed at fddfb1e; exact current-main Wire baseline for freshly refreshed owner proof",
     "post_commit_dirty": "",
@@ -1796,10 +1805,10 @@
     "upstream_native_clone_input_change": "486964fbf22, seven Wire local owner Rust inputs changed; b0 proof is old-source only",
     "rebase_collision_repair": "Dropped duplicate projection_validation_v1 import created when upstream standalone import and old inner-super import both merged; exact upstream validation bytes restored in Wire and combined candidate",
     "normal_hooks": "rustfmt1/staged integrity/safety PASS",
-    "previous_source": "479d3de2d956ee3799a6e7fe9c6b2d325c56b65a",
-    "previous_base": "0d8bffc115b0b45f848f5159fc38ea4a80a1a5ca",
-    "phase": "clean current-CBOR-input refreshed source; QBC pending",
-    "branch": "codex/oct6-wire-current-main-owner"
+    "previous_source": "8b44be652250f483296bd1c3f8898ad5b06580fc",
+    "previous_base": "8b44be652250f483296bd1c3f8898ad5b06580fc",
+    "phase": "existing Wire prerequisite main; exact rebased current-main baseline; fresh QBC pending",
+    "branch": "detached frozen baseline"
   },
   "cancelled_combined_preparations": [
     {
@@ -2428,6 +2437,124 @@
       "actual_new_GOD_findings_repaired": 2,
       "previous_source": "358b3c7b02e0c09452c2ac50a4180ba94184bcd7",
       "previous_base": "8b44be652250f483296bd1c3f8898ad5b06580fc"
+    },
+    {
+      "worktree": "/Users/songmin/.codex/worktrees/oct6-substrate-manifest/semantica-codegraph-v2",
+      "branch": "codex/oct6-substrate-final-candidate",
+      "base": "7a887ec6cc0a43c751225983a3dd3fa20eff6297",
+      "source": "03ce6dec1eddd7dcd5684b459d7394f626251899",
+      "paths": [
+        "Cargo.lock",
+        "packages/analysis/quanta-v2/Cargo.lock",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-analysis-facade/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-analysis-facade/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/src/analysis/mod.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-runtime-surface/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters-shape/src/shape_analyzer_adapter.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-adapters/src/analysis/mod.rs",
+        "packages/analysis/quanta-v2/crates/quanta-adapters/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/clone_native_trailing_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/mod.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/incremental/resume_clone_logical_cost_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural/run_parts/alias_consumer_live_execution_v1_borrowed_refs_tests_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/field_strong_update_refinement_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/field_strong_update_refinement_v1/scc_failure_policy_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/recursive_call_graph_census_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/solve_worker_uniqueness.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/extraction_solve/worker_file_identity_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query/whole_program.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_scc_tests.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_summary_catalog/recursive_scc.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precise_query_tests/delta_plan/group5_scc_reason_codes_parity.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/pta/precision_critical_selector_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/adapters/bootstrap.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/boundary_gqlang_runtime_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/boundary_gqlang_runtime_v1/orchestration_real.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/boundary_gqlang_runtime_v1/pta.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/boundary_gqlang_runtime_v1/pta_shape_bundle_builder.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_real.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ingress_session_source_sink.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/observation_feedback_runtime/product_bound_memory_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/observation_feedback_runtime/product_bound_runtime.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/observation_feedback_runtime/product_bound_runtime/active_ruleset_digest_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/ports/wiring.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/runtime_ingress_execution_budget_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/capabilities_projection.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/capabilities_projection/default_context_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/capabilities_projection/sca_vulnerability_probe_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/code/analysis_selector.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/code/domain_modeling_selector.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/fluent_pre_dispatch.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/mod.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/orchestration.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/orchestration/gateway.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/orchestration/ingress_exports_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/orchestration/test_support_v1.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/pta_shape_bundle_builder.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/public_exports_head.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/rails_reexport.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/runtime_kernel_framework_injector.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/tests/gate_shape_analysis_ghiya_hendren_e2e_test.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/tests/sdk_python_shape_analysis_test.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/port_impls.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-composition-owner/src/types.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/adapter_surface.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/orchestration_bridge.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk-session-backend-owner/src/orchestrator_session.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-sdk/src/lib.rs",
+        "packages/analysis/quanta-v2/crates/quanta-sdk/src/orchestration.rs",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver-contract-tests/tests/suite_quanta_taint_solver_contract_tests_a432dc132c/tarjan_scc_contract_test.rs",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver/src/analysis/taint/interproc/wire_recursion.rs",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/differential_scc_naive_vs_tarjan.rs",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/proptest_solver_properties.rs",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/structural_scc_properties.rs",
+        "packages/analysis/quanta-v2/crates/quanta-taint-solver/tests/suite_quanta_taint_solver_7cfff3df32/tarjan_iterative_integration_test.rs",
+        "tools/ci/gates/gate-shape-analysis-ghiya-hendren.sh",
+        "tools/ci/gates/gate-shape-analysis-smoke.sh",
+        "tools/ci/gates/gate-tarjan-iterative.sh"
+      ],
+      "wire_target_source": "7a887ec6cc0a43c751225983a3dd3fa20eff6297",
+      "previous_combined_source": "4bdbdf87ae32aae94b3709b1665423249b3c031e",
+      "new_owner_repairs": [
+        "PTA field SCC child explicit source path",
+        "PTA worker file identity and recursive SCC graph responsibility extraction below current GOD ceiling",
+        "Runtime active rule digest and capabilities helpers; explicit flat SDK export parity",
+        "Test fixtures use current admitted and retained owner APIs",
+        "Live and portable resume logical cost share existing borrowed walk; upstream matcher reused",
+        "Expose existing recovered callgraph role source axes through engine-gated public facade"
+      ],
+      "phase": "clean candidate rebased to7a887; fixed Index sibling a72 main; current QBC pending",
+      "normal_hooks": "normal staged rustfmt/integrity/safety passed on prerequisite commits; rebase dropped already-upstream module path patch",
+      "actual_new_GOD_findings_repaired": 2,
+      "previous_source": "1ac35525239a92ea7d875bbd991337d68891454f",
+      "previous_base": "6078f9282cb562040fa12d8883c6108b4052cfcb",
+      "upstream_overlap_reconciliation": {
+        "retained_main_fixture_paths": 5,
+        "moved_upstream_test_children": 2,
+        "candidate_fixture_paths_remaining": 1,
+        "decision": "retain stronger committed main fixture/control bodies, no old overwrite",
+        "old_compile_failure": "source60e archived Index318 plain nested Visitor impl; PTA0"
+      },
+      "upstream_retention": "No committed path intersection; retain all29 main paths; original primary11 dirty overlaps excluded"
     }
   ],
   "fresh_frozen_failed_proof": {
@@ -2716,42 +2843,22 @@
     "remaining_gates": "NOT_RUN after PTA compile87/0tests"
   },
   "latest_private_refresh": {
-    "source": "03ce6dec1eddd7dcd5684b459d7394f626251899",
-    "base": "7a887ec6cc0a43c751225983a3dd3fa20eff6297",
-    "paths": 87,
-    "source_state": "clean committed candidate; frozen owning QBC running",
-    "prerequisite": {
-      "base_main": "f0f46ba828cc9cd968dd7c97f5a745f483c66f45",
-      "private_source": "93c85cf2963c2d3e89bd560b9e8fa3c69456dda1",
-      "owned_path": "crates/quanta-index-contract-base/src/activation_token.rs",
-      "foreign_hashes": {
-        "docs/plans/oct-4-parallel-closure/WAVES.md": "8d7627b49c257632ba677f61216db0917185150fb173a414d1c62eff96d944d8",
-        "docs/plans/oct-4-parallel-closure/tickets/INDEX.md": "9c5878f3e23253036333ce3b59ed9244cea3c7277aef6a9f96462a0a37f993fd"
-      },
-      "phase": "main checkpoint committed; owner verification pending canonical resource admission",
-      "owner_qualification": "NOT_RUN on repaired source",
-      "main": "a72a85df2f70e1e2ca943afb5f62ad62dcae9b6d"
+    "source": "a342228343d437a5eea1c7ff0715d29b0b70b19e",
+    "base": "968e57361399c2066c165479222189bbdfb40a46",
+    "paths": 86,
+    "source_state": "clean committed private candidate; remaining D1/D2 paths not imported to main",
+    "canonical_lock_main": "968e57361399c2066c165479222189bbdfb40a46",
+    "canonical_lock_scope": "eight workspace Unicode dependency source qualifications and existing Index path package identity; zero package versions/checksums changed",
+    "role_axes_prerequisite_main": "65d1d94ed96b6b1a471cd01c5a728a45a6713aa3",
+    "external_index_code": "38eda80a5688c6b8de6ccd0faef886179c9ddb0f",
+    "external_index_archived_sibling": "8fdaa95115e03a721376c25e63d7df77d1cf7f66",
+    "index_38eda_to_8fdaa_delta": "two documentation files only; no code delta",
+    "index_owner_state": {
+      "state_file": "/tmp/oct6-index-current-owner-proof-state.json",
+      "phase": "waiting/running base-native",
+      "results": 0
     },
-    "native_owner_command": "QUANTA_INDEX_RESOURCE_WAIT_SECONDS=1800 ./scripts/cargow test --locked -p quanta-index-contract-base --lib --features quanta-native-identity-v1",
-    "native_owner_outcome": "RUNNING: canonical resource admission waiting; tests0 observed",
-    "owner_qualification": "NOT_RUN on repaired Index source",
-    "previous_owner_attempts": [
-      {
-        "command": "./scripts/cargow test --locked -p quanta-index-contract-base --lib --features quanta-native-identity-v1",
-        "outcome": "BLOCKED: admission timeout124 after300seconds, tests0"
-      },
-      {
-        "command": "QUANTA_INDEX_RESOURCE_WAIT_SECONDS=60 ./scripts/cargow test -p quanta-index-contract-base --lib --locked activation_token_round_trips_and_rejects_invalid_wire",
-        "outcome": "BLOCKED: admission timeout124 after60seconds, tests0"
-      }
-    ],
-    "overlap_review": {
-      "committed_path_intersection": 0,
-      "main_paths_since_base6078": 29,
-      "primary_dirty_overlapping_paths": 11,
-      "disposition": "rebase retains committed main; primary overlays excluded and must be preserved at import"
-    },
-    "qualification": "current frozen owner proof running; combined main NOT_RUN"
+    "qualification": "NOT_RUN: current a342 owner/consumer and product rails lack accepted receipts"
   },
   "fresh_frozen_failure_history": [
     {
@@ -3030,9 +3137,176 @@
         "static_body_control": "VERIFIED static only: one Visitor impl, body tokens unchanged, private HEAD matches committed93c85cf2; no compile/test verdict"
       },
       "qualification": "NOT_RUN on current candidate; failed60e dependency compile did not reach RuntimeAnalysis"
+    },
+    {
+      "source": "03ce6dec1eddd7dcd5684b459d7394f626251899",
+      "base": "7a887ec6cc0a43c751225983a3dd3fa20eff6297",
+      "paths": 87,
+      "source_state": "clean committed candidate; frozen owning QBC running",
+      "prerequisite": {
+        "base_main": "f0f46ba828cc9cd968dd7c97f5a745f483c66f45",
+        "private_source": "93c85cf2963c2d3e89bd560b9e8fa3c69456dda1",
+        "owned_path": "crates/quanta-index-contract-base/src/activation_token.rs",
+        "foreign_hashes": {
+          "docs/plans/oct-4-parallel-closure/WAVES.md": "8d7627b49c257632ba677f61216db0917185150fb173a414d1c62eff96d944d8",
+          "docs/plans/oct-4-parallel-closure/tickets/INDEX.md": "9c5878f3e23253036333ce3b59ed9244cea3c7277aef6a9f96462a0a37f993fd"
+        },
+        "phase": "main checkpoint committed; owner verification pending canonical resource admission",
+        "owner_qualification": "NOT_RUN on repaired source",
+        "main": "a72a85df2f70e1e2ca943afb5f62ad62dcae9b6d"
+      },
+      "native_owner_command": "QUANTA_INDEX_RESOURCE_WAIT_SECONDS=1800 ./scripts/cargow test --locked -p quanta-index-contract-base --lib --features quanta-native-identity-v1",
+      "native_owner_outcome": "RUNNING: canonical resource admission waiting; tests0 observed",
+      "owner_qualification": "NOT_RUN on repaired Index source",
+      "previous_owner_attempts": [
+        {
+          "command": "./scripts/cargow test --locked -p quanta-index-contract-base --lib --features quanta-native-identity-v1",
+          "outcome": "BLOCKED: admission timeout124 after300seconds, tests0"
+        },
+        {
+          "command": "QUANTA_INDEX_RESOURCE_WAIT_SECONDS=60 ./scripts/cargow test -p quanta-index-contract-base --lib --locked activation_token_round_trips_and_rejects_invalid_wire",
+          "outcome": "BLOCKED: admission timeout124 after60seconds, tests0"
+        }
+      ],
+      "overlap_review": {
+        "committed_path_intersection": 0,
+        "main_paths_since_base6078": 29,
+        "primary_dirty_overlapping_paths": 11,
+        "disposition": "rebase retains committed main; primary overlays excluded and must be preserved at import"
+      },
+      "qualification": "current frozen owner proof running; combined main NOT_RUN"
+    },
+    {
+      "source": "5fe8de9549a9d4349117b9d01010eeddd9f8f6b0",
+      "base": "2d439969e494071779648a2b48a29e477c57d62f",
+      "paths": 86,
+      "source_state": "clean committed private candidate; remaining D1/D2 paths not imported to main",
+      "role_axes_prerequisite_main": "65d1d94ed96b6b1a471cd01c5a728a45a6713aa3",
+      "external_index_code": "38eda80a5688c6b8de6ccd0faef886179c9ddb0f",
+      "external_index_archived_sibling": "8fdaa95115e03a721376c25e63d7df77d1cf7f66",
+      "index_38eda_to_8fdaa_delta": "two documentation files only; no code delta",
+      "index_owner_state": {
+        "state_file": "/tmp/oct6-index-current-owner-proof-state.json",
+        "phase": "waiting/running base-native",
+        "results": 0
+      },
+      "qualification": "NOT_RUN: current-source Rust owner/consumer and product rails lack accepted receipts"
     }
   ],
   "active_frozen_proof": {
+    "phase": "running selected proof wire-serde",
+    "source": "a342228343d437a5eea1c7ff0715d29b0b70b19e",
+    "base": "968e57361399c2066c165479222189bbdfb40a46",
+    "execution_root": "/Users/songmin/.cache/semantica-codegraph-v2/casectl-snapshots/a342228343d437a5eea1c7ff0715d29b0b70b19e_ext-2b460d8597fc36d4df41_mat-plain-v1/semantica-codegraph-v2",
+    "topology_digest": "a342228343d437a5eea1c7ff0715d29b0b70b19e+ext-2b460d8597fc36d4df41",
+    "results": [],
+    "accepted_test_verdicts": 0,
+    "prior_failed_attempt_record": "/tmp/oct6-current-substrate-proof-attempt6.json",
+    "next": "freeze exact GQLang/Index sibling tuple, run Wire2 and remaining selected owner/consumer gates; record immutable receipts",
+    "sibling_heads": [
+      {
+        "source": "/Users/songmin/Documents/code-new/quanta-gqlang-v2",
+        "head": "614d9de1dfb304d1721d59d6f8a1f0c124574176",
+        "overlay_digest": ""
+      },
+      {
+        "source": "/Users/songmin/Documents/code-new/quanta-index",
+        "head": "8fdaa95115e03a721376c25e63d7df77d1cf7f66",
+        "overlay_digest": ""
+      }
+    ],
+    "wire_results": [],
+    "proof_state_file": "/tmp/oct6-current-substrate-proof-state.json"
+  },
+  "role_axes_main_checkpoint": {
+    "task": "OCT6-ROLE-AXES-FACADE-PREREQUISITE",
+    "candidate": "03ce6dec1eddd7dcd5684b459d7394f626251899",
+    "path": "packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural.rs",
+    "proof": "static existing owner/type/caller linkage; owning QBC running, not yet a compile/test verdict",
+    "base_main": "c4f7d6e36ade7901a0c9e906b0217f40b704eb2b",
+    "synthetic_source": "b652c680d7861327b91b837542bd077116dbae24",
+    "reconciles": [
+      "IRC-R4-R5-SNAPSHOT-REBIND-CONTINUATION-20261006",
+      "PTA-DURABLE-COHERENT-CHECKPOINT-20261006"
+    ],
+    "main": "65d1d94ed96b6b1a471cd01c5a728a45a6713aa3",
+    "phase": "main checkpoint imported; source matches candidate; owner proof pending",
+    "boundary_preflight": {
+      "command": "python tools/rust-crate-boundary-guard/cli.py preflight --changed-path packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/interprocedural.rs",
+      "pre_change_source": "7a887ec6cc0a43c751225983a3dd3fa20eff6297",
+      "post_change_source": "03ce6dec1eddd7dcd5684b459d7394f626251899",
+      "policies": 11,
+      "outcome": "PASS on both source states; checks executed after main checkpoint"
+    }
+  },
+  "failure_history": [
+    {
+      "source": "03ce6dec1eddd7dcd5684b459d7394f626251899",
+      "base": "7a887ec6cc0a43c751225983a3dd3fa20eff6297",
+      "record": "/tmp/oct6-current-substrate-proof-attempt5.json",
+      "sibling_heads": [
+        {
+          "source": "/Users/songmin/Documents/code-new/quanta-gqlang-v2",
+          "head": "2e8693e82049a5d545f2045b382c6fb149a5c977",
+          "overlay_digest": ""
+        },
+        {
+          "source": "/Users/songmin/Documents/code-new/quanta-index",
+          "head": "a72a85df2f70e1e2ca943afb5f62ad62dcae9b6d",
+          "overlay_digest": ""
+        }
+      ],
+      "topology_digest": "03ce6dec1eddd7dcd5684b459d7394f626251899+ext-be67ee1a4a9443242c3b",
+      "sealed_components": {
+        "wire_serde_passed": 65,
+        "wire_default_passed": 46,
+        "scc_core_passed": 20
+      },
+      "failed_stage": "tarjan7 PTA compile",
+      "exit_code": 101,
+      "diagnostic": {
+        "crate": "quanta-index-contract",
+        "path": "crates/quanta-index-contract/src/ipc/control/native_decode_v1.rs",
+        "line": 190,
+        "error": "direct nested Visitor impl for module-scope CorpusKeySeedV1 rejected by non_local_definitions",
+        "runtime_analysis_compilation": "NOT_REACHED",
+        "pta_tests": 0,
+        "launcher_exit": 101,
+        "execution_lease": "released by context drain"
+      },
+      "later_pta_shape_sdk": "NOT_RUN",
+      "verdict_scope": "historical tuple only"
+    },
+    {
+      "source": "5fe8de9549a9d4349117b9d01010eeddd9f8f6b0",
+      "base": "2d439969e494071779648a2b48a29e477c57d62f",
+      "record": "/tmp/oct6-current-substrate-proof-attempt6.json",
+      "sibling_heads": [
+        {
+          "source": "/Users/songmin/Documents/code-new/quanta-gqlang-v2",
+          "head": "614d9de1dfb304d1721d59d6f8a1f0c124574176",
+          "overlay_digest": ""
+        },
+        {
+          "source": "/Users/songmin/Documents/code-new/quanta-index",
+          "head": "8fdaa95115e03a721376c25e63d7df77d1cf7f66",
+          "overlay_digest": ""
+        }
+      ],
+      "topology_digest": "5fe8de9549a9d4349117b9d01010eeddd9f8f6b0+ext-2b460d8597fc36d4df41",
+      "failed_stage": "wire-serde receipt custody",
+      "exit_code": 74,
+      "diagnostic": "verification source changed during QBC execution; snapshot Cargo.lock mutated; immutable completion locator absent",
+      "log": "/tmp/oct6-current-wire-serde.log",
+      "post_run_dirty": " M Cargo.lock\n",
+      "accepted_tests": 0,
+      "later_wire_tarjan_pta_shape_sdk": "NOT_RUN",
+      "verdict_scope": "no current-source PASS",
+      "canonical_lock_checkpoint_after_failure": "968e57361399c2066c165479222189bbdfb40a46",
+      "accepted_test_verdicts": 0
+    }
+  ],
+  "archived_prior_active_frozen_proof": {
     "phase": "running selected proof tarjan7",
     "execution_root": "/Users/songmin/.cache/semantica-codegraph-v2/casectl-snapshots/03ce6dec1eddd7dcd5684b459d7394f626251899_ext-be67ee1a4a9443242c3b_mat-plain-v1/semantica-codegraph-v2",
     "topology_digest": "03ce6dec1eddd7dcd5684b459d7394f626251899+ext-be67ee1a4a9443242c3b",
@@ -3211,5 +3485,39 @@
     ],
     "results": [],
     "prerequisite_results": []
+  },
+  "unicode_lock_main_checkpoint": {
+    "task": "OCT6-UNICODE-LOCK-CUSTODY-PREREQUISITE",
+    "path": "Cargo.lock",
+    "canonical_patch_sha256": "8eb4f8363e04f41d4ec348f061e6b744168595fe6c82a7511504215b6f9c6f8d",
+    "proof": "exact canonical Cargo source-identity normalization; no immutable test verdict",
+    "base_main": "389fab416fdb2140e1b3bf7967d85494229deba0",
+    "dependency_qualifications": [
+      "codegraph-lang-common",
+      "quanta-change-event-contract",
+      "quanta-contract-canonical",
+      "quanta-contract-ids",
+      "quanta-contract-semantic-identity-shared",
+      "quanta-index-contract-base",
+      "quanta-index-lq-text-normalizer",
+      "quanta-query-execution"
+    ],
+    "package_versions_changed": 0,
+    "synthetic_source": "75973c8cf432688ba8ecdf99a2b4d4ae0fc0b32b",
+    "reconciles": [
+      "IRC-C-SCC-PLANNER-FIRST-BIRTH-20261004",
+      "IRC-P0-040-00-INTEGRATION-20261006",
+      "OCT4-ROOT-GO-GENERATION-20261006",
+      "OCT4-RTEST-01-03-RUNTIME",
+      "OCT6-SUBSTRATE-SCC",
+      "PTA-DURABLE-COHERENT-CHECKPOINT-20261006",
+      "PTA-INDEX-SOURCE-BYTE-PIN-CUTOVER-20261006",
+      "PTA-PACKET-DURABLE-CONTRACT-CUTOVER-20261006",
+      "T-INT-QMP-P0-HOST-20261006",
+      "TAINT-TEST-HARDENING-C52-NATIVE-DEPENDENCY-CUTOVER",
+      "TAINT-TEST-HARDENING-C56-LOCK-RESOLUTION"
+    ],
+    "main": "968e57361399c2066c165479222189bbdfb40a46",
+    "phase": "main checkpoint imported; canonical lock normalization; fresh owner proof pending"
   }
 }
