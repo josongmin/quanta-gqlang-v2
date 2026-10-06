@@ -294,7 +294,7 @@ H5의 producer classification은 `runtime_ingress_shape_overlay_uses_standalone_
 
 ### D1 실행 순서와 중복 시험 제외
 
-Current candidate `a342228343d4`의 실행 계획에서 full `gate-shape-analysis-ghiya-hendren.sh`는15개 `cg_test`로 standalone17, core contract, PTA converter, runtime/SDK pure·PTA·disabled, actual overlay, session factory, Cost-only builder/capability/overlay, Cost/Heap owner를 선택한다. Smoke는8개 invocation 중 주요 경로를 반복한다. Smoke의 SOTA3개도 full의 owner17에 포함되거나 full이 선택한 Cost/Heap 테스트를 직접 호출한다. 따라서 Wire 선행 검증 뒤 같은 고정 소스에서 **full gate 한 번**을 실행하고 smoke·기존 leaf를 미리 반복하지 않는다. 이 문단은 실행 계획이며 GREEN 증거가 아니다.
+Current candidate `d14a8760c039`의 실행 계획에서 full `gate-shape-analysis-ghiya-hendren.sh`는15개 `cg_test`로 standalone17, core contract, PTA converter, runtime/SDK pure·PTA·disabled, actual overlay, session factory, Cost-only builder/capability/overlay, Cost/Heap owner를 선택한다. Smoke는8개 invocation 중 주요 경로를 반복한다. Smoke의 SOTA3개도 full의 owner17에 포함되거나 full이 선택한 Cost/Heap 테스트를 직접 호출한다. 따라서 Wire 선행 검증 뒤 같은 고정 소스에서 **full gate 한 번**을 실행하고 smoke·기존 leaf를 미리 반복하지 않는다. 이 문단은 실행 계획이며 GREEN 증거가 아니다.
 
 Full gate에 없는 증명만 추가한다:
 
@@ -364,7 +364,23 @@ Stop optional testing when the concrete risk and required gates are covered. Com
 |---|---|---|
 | S `03ce6dec1ed` + G `2e8693e` + Index `a72a85df` | Wire serde 65, default 46, SCC core 20 sealed PASS; Tarjan PTA 0 cases, exit 101 at Index nested corpus-key Visitor | Historical owner successes apply only to that archived tuple. Index compiler failure does not prove RuntimeAnalysis or Shape behavior. |
 | S `5fe8de9549a9`/base `2d439969` + G `614d9de` + Index `8fdaa951` | Wire serde exit 74; snapshot `Cargo.lock` changed during receipt finalization; immutable completion absent | Historical failure only. No selected test PASS on this tuple. |
-| S `a342228343d4`/base `968e57361399` | Canonical lock checkpoint imported; new source is clean, selected QBC result pending | Run Wire default/serde before Tarjan/PTA/Shape/SDK; accept only immutable receipts from the same frozen source and sibling tuple. |
+| S `a342228343d4`/base `968e57361399` | Canonical lock checkpoint imported; later Wire serde compile E0599, 0 tests/exit 101 | Historical failed completion. Use the main3188 owner fix and freeze a new source before any behavioral claim. |
 | Index `38eda80a5688` code (also in doc-only `8fdaa951`) | Current native owner state waiting/running; results 0 | `native_corpus_seed_uses_borrowed_identity_policy_and_rejects_invalid_wire` proves valid head, borrowed ID policy, noncanonical ID and unknown field; base `native_raw_identity_tests_v1` covers scratch birth/refusal. Existing native corpus selector does not assert exact field work, duplicate/missing/semantic typed causes, or escaped field backing. Record these as coverage limits, not observed product defects. |
 
 Index native/base owner tests run separately through canonical admission. The S restart order is source custody → Wire2 → Tarjan7 and PTA prerequisites → D1 Shape full/typed/feature controls → generated/policy checks. The lock prerequisite is committed at `968e57361399`. A `RUNNING` state, compiler success, or prior source receipt does not count as a nonzero current-source result. Native full-product and global Honesty retirement remain separate NOT_RUN/BLOCKED obligations.
+
+## 14. Latest Wire and owner source qualification
+
+| source | observed selected result | next control |
+|---|---|---|
+| S `a342228343d4`/base `968e57361399` | Wire serde compile E0599 at borrowed `&[String].capacity()`; immutable failed receipt, exit 101, 0 tests | Historical failure. Main `3188fe799218` retains owned `Vec` capacity and the existing independent spare-capacity regression. |
+| S `d14a8760c039`/base `3188fe799218` | Clean 86-path private candidate; fresh full QBC started, selected verdict 0 pending | Wire2 first, then Tarjan/PTA, Shape full/typed, Taint and generated owner checks on one admitted tuple. Do not compose old-source receipts. |
+| Index `38eda80a5688` | Base native owner 63 passed, 0 failed, 0 ignored, 0 filtered; corpus controls waiting | Preserve separate Index source/control verdict and exact feature closure. No Semantica native full-product inference. |
+
+The existing `selected_java_parameter_spare_capacity_is_retained_but_not_cloned_v1` test compares same wire value with different measured `Vec` capacities. The source-bound expected retained delta is capacity difference times `size_of::<String>()`, while clone demand and logical/work counts remain equal. The test is a selected owner control, not a current `d14a` PASS until its frozen receipt exists.
+
+## 15. Source-bound witness and main-overlap control
+
+- `d14a` Wire serde has an immutable 68-case PASS (`20261006T091201.973825Z-7fead918cc19`, source digest `f5d1baca4b21fa86c9595f110ad8c617eeb050934c4de0a8e2a9a46aed39966a`); Wire default is running. PTA/Taint/Shape/runtime/SDK remain pending on the same frozen tuple.
+- `d14a` read-only retirement witness (`/tmp/oct6-final-retirement-witness.json`) proves only four selected source paths: 14 baseline findings → 7, retired 7, new/worsened 0, allowances unchanged. Run the owning generator/topology policy after source proof; keep global Honesty retirement BLOCKED until the owning full sweep.
+- Before the remaining 86-path main import, compare the latest main to base `3188fe79`. The `03c9` review found 5 three-way overlaps among 76 main changes; main then moved to `0c823`. Reconcile exact bytes and preserve new memo/transcript/SDK behavior. Re-run affected owner/consumer rails on the merged source; `d14a` frozen receipts qualify only `d14a` and its archived siblings.
