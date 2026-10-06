@@ -73,6 +73,39 @@ scripts/quanta-build-cli cargo --lane "$DEDUP_EXISTING_LANE" -- tree --locked \
 
 D4 expected: algo helper dependency는 활성, `identity-collapse-surface`는 비활성. 실제 package graph를 함께 확인한다. 이 tree 결과는 feature 진단이며 Rust test receipt가 아니다. D1-B도 해당 resolved Shape-only recipe의 same-feature dependency tree와 SDK tests를 함께 기록한다.
 
+### 2.3 Index 선행 컴파일 수리 — owner 계약
+
+Frozen `60eaba`의 Tarjan PTA는 외부 Index `activation_token.rs`의 nested `Visitor` impl에서 `non_local_definitions` 오류로 중단했다. Private Index `93c85cf2`는 같은 impl 본문을 모듈 범위로 이동한다. 이 선행 작업은 Index의 canonical `scripts/cargow`를 사용한다.
+
+```bash
+cd /Users/songmin/.codex/worktrees/oct6-index-token-visitor/quanta-index
+./scripts/cargow test --locked -p quanta-index-contract-base --lib --features quanta-native-identity-v1
+./scripts/cargow test --locked -p quanta-index-contract-base --lib activation_token_round_trips_and_rejects_invalid_wire
+```
+
+- 기본 owner control은 roundtrip 및 malformed/missing/unknown/duplicate field 거절을 확인한다. Native feature rail은 해당 cfg를 컴파일하지만 native admission 정책 전체의 행동 증명으로 세지 않는다.
+- 각 실행은 실제 nonzero 선택·성공 결과가 필요하다. Resource admission 이전 timeout은 실행 0건의 `BLOCKED`다. 현재 두 시도는 각각 300초·60초 후 exit124로 종료됐다.
+- 성공 후 관련 source의 main 반영을 확인하고 새 canonical Semantica snapshot을 만든다. 오래된 Wire/core receipt를 새 sibling 조합의 결과로 재사용하지 않는다.
+
+### 2.4 PTA fixture·cost 선행 owner selectors
+
+Tarjan7 다음에 아래 기존 selector를 `cg_test -p quanta-runtime-analysis --lib <selector> --features pta-rail-test-support -- --nocapture`로 각각 실행한다. 각 completion의 실제 성공 수가 최소치를 충족해야 한다. 이 표는 정적 선택 계획이며 통과 증거가 아니다.
+
+| selector | 최소 cases | 검증 경계 |
+|---|---:|---|
+| `raw_call_graph_owner_survives_output_overlay_clone_and_last_drop_v1` | 1 | retained owner 수명 |
+| `source_restart_transition_` | 3 | restart/transition authority |
+| `committed_transition_reader_rejects_foreign_cell_and_missing_session_v1` | 1 | foreign/missing authority 거절 |
+| `pta_resume_state_from_runtime_ctx_selects_transition_admitted_bundle_entry_v1` | 1 | admitted resume 선택 |
+| `portable_backed_restart_` | 2 | portable predecessor 경계 |
+| `precise_query_resume_state_uses_committed_predecessor_runtime_ctx_portable_prior_v1` | 1 | committed prior 선택 |
+| `admission_selector_loaded_portable_without_runtime_prior_stays_unadmitted_v1` | 1 | portable-only admission 거절 |
+| `borrowed_refs_tests_v1` | 2 | borrowed alias fixture |
+| `rooted_graph_birth_retains_one_immutable_live_resume_owner_v1` | 1 | live owner·rebind·취소·foreign authority |
+| `registered_reason_clone_debt_is_counted_by_portable_and_delta_native_owner_v1` | 1 | 공통 논리 비용에 reason bytes 포함 |
+
+10개 completion, 정적 최소 합계 14 cases다. 일부 완료 후 compile 실패 또는 0 cases이면 나머지는 `NOT_RUN`으로 남긴다. 이어서 field-refinement와 Shape full/추가 경계 검증을 실행한다.
+
 ## 3. D3 — MemoryIR
 
 Existing location: [pack ingress tests](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-runtime-memssa-pack/src/canonical_memory_ir_ingress/tests.rs). DFG의 PortDFG controls는 [canonical_ir.rs](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-adapters-dfg/src/memssa_adapter/canonical_ir.rs)에 남긴다.
@@ -261,7 +294,7 @@ H5의 producer classification은 `runtime_ingress_shape_overlay_uses_standalone_
 
 ### D1 실행 순서와 중복 시험 제외
 
-Refreshed candidate `734aab87d0a` 정적 검사 기준 full `gate-shape-analysis-ghiya-hendren.sh`는15개 `cg_test`로 standalone17, core contract, PTA converter, runtime/SDK pure·PTA·disabled, actual overlay, session factory, Cost-only builder/capability/overlay, Cost/Heap owner를 선택한다. Smoke는8개 invocation 중 주요 경로를 반복한다. Smoke의 SOTA3개도 full의 owner17에 포함되거나 full이 선택한 Cost/Heap 테스트를 직접 호출한다. 따라서 Wire 선행 검증 뒤 같은 고정 소스에서 **full gate 한 번**을 실행하고 smoke·기존 leaf를 미리 반복하지 않는다. 이 문단은 실행 계획이며 GREEN 증거가 아니다.
+Current candidate `1ac35525239`의 실행 계획에서 full `gate-shape-analysis-ghiya-hendren.sh`는15개 `cg_test`로 standalone17, core contract, PTA converter, runtime/SDK pure·PTA·disabled, actual overlay, session factory, Cost-only builder/capability/overlay, Cost/Heap owner를 선택한다. Smoke는8개 invocation 중 주요 경로를 반복한다. Smoke의 SOTA3개도 full의 owner17에 포함되거나 full이 선택한 Cost/Heap 테스트를 직접 호출한다. 따라서 Wire 선행 검증 뒤 같은 고정 소스에서 **full gate 한 번**을 실행하고 smoke·기존 leaf를 미리 반복하지 않는다. 이 문단은 실행 계획이며 GREEN 증거가 아니다.
 
 Full gate에 없는 증명만 추가한다:
 

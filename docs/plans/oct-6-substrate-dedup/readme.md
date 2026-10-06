@@ -9,9 +9,9 @@
 - 입력 authority, 결과·순서·ID, typed failure, 취소·예산 계약을 보존한다. 서로 다른 계약은 caller의 작은 admission/projection으로 유지한다.
 - 완료 결과는 **계산 owner 단일화 + 소비자 전환 + 퇴역 코드 삭제 + 로컬 증명 + 재발 방지 gate**다. 파일 이동, forwarding wrapper, 컴파일 성공만으로 완료 처리하지 않는다.
 
-상태: **IN_PROGRESS — 별도 Semantica 워크트리에서 구현·owner 검증 중. Main 반영 및 항목별 DoD 미완료.**
+상태: **IN_PROGRESS / 검증 BLOCKED — D1/D2 후보는 별도 Semantica 워크트리에 보존. Index 선행 수정의 resource admission이 차단돼 현재 검증 프로세스는 종료됐으며, main 반영·DoD는 미완료.**
 
-현재 D1/D2 통합 후보는 Semantica `60eaba860404a2d1bcf4611d03140d97c4fbf55e` (base `10c902e74af63d054c8824c2ab5c8c4af0a19be7`, 변경 92경로)다. 새 frozen-source QBC는 실행 중이며 결과를 아직 D1/D2 통과 증거로 세지 않는다. 아래 과거 checkpoint와 현재 후보의 증거 범위는 [구현 checkpoint 기록](execution-progress.md)에서 분리한다.
+현재 D1/D2 통합 후보는 Semantica `1ac35525239a92ea7d875bbd991337d68891454f` (base `6078f9282cb562040fa12d8883c6108b4052cfcb`, 변경 87경로)다. 이전 `60eaba860404` frozen QBC에서 Wire serde 65건·default 46건과 SCC core 20건은 통과했다. Tarjan PTA는 Quanta Index `activation_token.rs:187`의 `deny(warnings)` 컴파일 오류에서 0건 선택으로 중단됐으며, downstream D1/D2 rail은 미실행이다. Index owner의 별도 수리 `93c85cf2`는 native/default owner test가 resource admission에서 각각 300초·60초 후 timeout(124), 실행 0건으로 차단됐고 main 미반영이다. 이 결과를 현재 `1ac355`의 통과 증거로 옮기지 않는다. [구현 checkpoint 기록](execution-progress.md)에 source tuple별로 기록한다.
 
 ### 구체적인 실행 자료
 
@@ -294,12 +294,12 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 | D5 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker PTA solver227 QBC GREEN |
 | D4 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | worker SCV2 leaf34 QBC GREEN; canonical main fences PASS |
 | D7 | MAIN_IMPLEMENTED | `b258f5919a5` | Final clean integration에서 6-file owner matrix70/70 GREEN; captured source·기존 parity/surface/DI. Full product qualification 별도 |
-| D1-A / D1-B | PRIVATE_COMMITTED / PENDING current-source owner proof | 없음 | Combined `60eaba860404`/base `10c902e74af6`,92 paths. Shape owner/factory/feature 연결과 runtime capability·SDK export 분리 구현. Earlier-source standalone17 GREEN은 현재 후보 proof가 아니다. Frozen QBC 실행 중; pure/PTA/disabled/Cost-only/Heap 및 runtime·SDK consumer 결과 pending |
+| D1-A / D1-B | PRIVATE_COMMITTED / BLOCKED current-source owner proof | 없음 | Combined `1ac35525239`/base `6078f9282cb`,87 paths. Shape owner/factory/feature 연결과 runtime capability·SDK export 분리 구현. Earlier-source standalone17 및 `60eaba`의 Wire65+46/core20은 현재 후보의 runtime·SDK proof가 아니다. Index compile prerequisite owner test·main 반영 뒤 pure/PTA/disabled/Cost-only/Heap 및 consumer rails 필요 |
 | F1 / D6 | MAIN_IMPLEMENTED | `c1f821db572` | SDK211 pass/2 skip; rebased consumers141 pass/1 skip; installed wheel1 + Granian/scripted daemon1 GREEN. Native daemon/product qualification 별도 |
 | D2-P / D2-K | MAIN_IMPLEMENTED | `df2a867ad70` | Final core20 QBC GREEN; actual frame/output bound·typed stop·order/ID controls. Rebased std-only owner source/toolchain unchanged |
-| D2 PTA | PRIVATE_COMMITTED / PENDING current-source owner proof | 없음 | Combined `60eaba860404`의 SCC caller·field-policy child·worker identity·whole-program helper와 compile prerequisites 구현. 기존 10개 PTA prerequisite selector는 정적 최소 14 cases이며 현재 frozen QBC 결과 pending. `813857b73fc` Tarjan lib-test 0 cases/87 compile errors는 과거 실패다. 첫 진단 위치 2개는 D2 변경 파일, 85개는 해당 diff에서 수정하지 않은 파일이지만 후자를 모두 사전 결함으로 증명하지는 않는다. Field-refinement caller controls도 pending. [Rust evidence/RCA](checkpoint-rust-evidence.json) |
-| D2 Taint | PRIVATE_COMMITTED / PENDING current-source owner proof | 없음 | Private regular35+deep1은 historical PASS. Wire main `fddfb1e175e`, frozen f6c serde65/default46+core20 sealed PASS. 이후 input drift로 당시 remaining gate 취소. Combined `60eaba860404`의 Tarjan7/deep-chain 및 main import pending |
-| Generated inputs | PARTIAL_MAIN / PENDING final census | GOD `0a86de35c28` | GOD17 keys 제거·fresh-base scoped19 files PASS. 현 후보의 선택 4경로는 baseline14→현재7, retired7/new0/worse0 정적 비교; 최종 source에서 witness·topology 재생성과 owning gate 필요. 전역 Honesty RED와 기존 `WorkerCfgDfgCacheV1` 공개 메서드 11개 미등록 GOD debt는 별도. [Generated evidence/오탐 근거](checkpoint-generated-evidence.json) |
+| D2 PTA | PRIVATE_COMMITTED / BLOCKED current-source owner proof | 없음 | Combined `1ac35525239`의 SCC caller·field-policy child·worker identity·whole-program helper 구현. 기존 10개 PTA prerequisite selector의 정적 최소치는 14 cases다. `60eaba` Tarjan PTA는 Index `activation_token.rs:187` 컴파일 오류로 0 cases; Index owner 수리 검증·main 반영 후 현재 소스에서 재실행한다. `813857b73fc`의 87 compile errors는 별도 과거 실패이며 첫 진단 위치 2개가 D2 변경 파일이라는 사실로 나머지 85개 원인을 단정하지 않는다. [Rust evidence/RCA](checkpoint-rust-evidence.json) |
+| D2 Taint | PRIVATE_COMMITTED / BLOCKED current-source owner proof | 없음 | Private regular35+deep1은 historical PASS. `60eaba` frozen Wire serde65/default46 및 SCC core20 sealed PASS; Tarjan PTA 앞 Index compile 오류로 downstream Taint/deep-chain 미실행. Combined `1ac35525239`의 owner gates와 main import pending |
+| Generated inputs | PARTIAL_MAIN / PENDING final census | GOD `0a86de35c28` | GOD17 keys 제거·fresh-base scoped19 files PASS. `1ac355`에 다시 묶은 선택 4경로 정적 witness는 baseline14→현재7, retired7/new0/worse0; generated 파일은 아직 변경하지 않았다. 최종 source에서 owning generator/topology gate 필요. 전역 Honesty RED와 기존 `WorkerCfgDfgCacheV1` 공개 메서드 11개 미등록 GOD debt는 별도. [Generated evidence/오탐 근거](checkpoint-generated-evidence.json) |
 
 ### 최종 Definition of Done
 

@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-06T07:28:10.806500+00:00",
+  "recorded_at_utc": "2026-10-06T07:46:50.936309+00:00",
   "initial_frozen_main": "39edfc1ca5bf143a09b66f0738c5f2b3987c7572",
   "execution_root": "/Users/songmin/.codex/worktrees/oct6-substrate-integrate/semantica-codegraph-v2",
   "proof_scope": "Generated/policy observations on frozen source only; raw full-sweep flags are not counted as demonstrated runtime defects",
@@ -404,7 +404,7 @@
     "main_baseline_written": false
   },
   "selected_followup_repairs": {
-    "proof_state": "clean frozen source; owning QBC running; generated baseline/topology writes NOT_RUN",
+    "proof_state": "clean refreshed1ac source; QBC waits fixed sibling owner proof; generated writes NOT_RUN",
     "shape_test_source": "01abc49b4e65101ebd7d9548fffec2c613436659",
     "shape_test_scope": "two existing owner refusals now exact EngineError(reason); context fixture has admitted control before invalid carrier; overflow test name matches private helper actually invoked",
     "shape_static_honesty": {
@@ -429,8 +429,8 @@
     "pta_static_test_identity_control": "32 existing test identifiers/order unchanged; moved file-identity bodies unchanged except visibility",
     "pta_preexisting_gate_blocker": "WorkerCfgDfgCacheV1 impl_public_methods=11 is unbaselined on original HEAD too; all11 methods have external impl callers, no safe visibility-only reduction",
     "sdk_normal_hook": "Wildcard attempt rejected; explicit cfg-preserving64-name exports and same-path gateway/test helpers committed, normal rustfmt9/integrity/safety PASS; no waiver",
-    "source": "60eaba860404a2d1bcf4611d03140d97c4fbf55e",
-    "base": "10c902e74af63d054c8824c2ab5c8c4af0a19be7",
+    "source": "1ac35525239a92ea7d875bbd991337d68891454f",
+    "base": "6078f9282cb562040fa12d8883c6108b4052cfcb",
     "sdk_metrics": {
       "product_bound_file": [
         3159,
@@ -464,8 +464,8 @@
       ]
     },
     "scoped_retirement_witness": {
-      "candidate_source": "60eaba860404a2d1bcf4611d03140d97c4fbf55e",
-      "witness_sha256": "d6a40300ab4cb3b17498b94063174e6ddcd76fbb6a8da3eb1b21fd81bfb4333d",
+      "candidate_source": "1ac35525239a92ea7d875bbd991337d68891454f",
+      "witness_sha256": "b881764ab9988b5666c09a6178fec2e3c9f2308831675b63be48bfe03e9c9856",
       "paths": [
         "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter.rs",
         "packages/analysis/quanta-v2/crates/quanta-adapters-cost/src/shape_analyzer_adapter_tests.rs",
