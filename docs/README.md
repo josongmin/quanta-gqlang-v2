@@ -7,8 +7,8 @@
 - [GQLang·Semantica substrate 감사](audits/2026-10-06-substrate-ownership-and-usecase-audit.md):
   frontend/native/SDK·Index·filesystem owner, 중복·별도 계약,
   수리 8건·중복 제거 7건, Slice block/statement 정합성·공개 의미·초기화/삭제 gate와 checkpoint
-- [Substrate 중복 제거 실행 계획](audits/2026-10-06-substrate-dedup-implementation-plan.md):
-  D1–D7의 surviving owner·삭제 범위·consumer cutover·로컬 gate·main checkpoint
+- [Substrate 중복 제거 실행 계획](plans/oct-6-substrate-dedup/readme.md):
+  목적·배경·D1–D7/F1 작업 범위·consumer cutover·로컬 gate·main checkpoint·DoD
 - [Frontend/소비자 계약 계획](audits/2026-10-04-frontend-consumer-contract-plan.md):
   현재 판정과 원래 수리의 acceptance; 이전 source 기록은 이력
 
