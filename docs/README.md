@@ -23,6 +23,8 @@
 - [AI 탐색 프로필 상태](language/ai-profile.md): 현재 별도 공개 API 없음
 - [아키텍처 결정 기록](adr/README.md): 폐기된 캠페인에서 보존한 현재 결정과
   권위 경계
+- [CodeQL급 질의 DSL·실행 경계 RFC](rfcs/2026-10-04-code-query-dsl-and-substrate.md):
+  미구현 설계안과 적대 감사, SOTA 참고 기준, 단계별 액션·통과 조건
 
 현재 구현·지원 범위는 위 문서와 코드에서 확인하고, clean committed HEAD 검증
 방법은 [local qualification 안내](../tools/qualification/README.md)를 따른다. 폐기된

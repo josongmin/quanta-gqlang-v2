@@ -1,4 +1,5 @@
 /target/
+/tools/frontend_external_consumer/target/
 /.idea/
 .DS_Store
 
