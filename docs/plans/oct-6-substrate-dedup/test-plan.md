@@ -266,6 +266,7 @@ Refreshed candidate `734aab87d0a` 정적 검사 기준 full `gate-shape-analysis
 Full gate에 없는 증명만 추가한다:
 
 - H5 typed pin: `cg_test -p quanta-runtime --lib shape_pin_failure_is_typed_and_operation_attributed_v1 --features shape-analyzer --no-fail-fast`. `shape-analyzer`가 `pta-rail`을 포함하므로 같은 feature를 반복 지정하지 않는다. 해당 gate recipe의 실제 default/target 설정을 completion에 기록한다.
+- H5 SDK bundle V2 authority: `cg_test -p quanta-runtime --lib shape_analysis_from_ --features shape-analyzer --no-fail-fast`. 기존 valid policy disclosure, profile/receiver mismatch, missing consumer evidence3 controls를 실행한다. Full gate lib filters에는 포함되지 않으며 typed pin과 별도 거절 경계다.
 - H8 Termination: `cg_test -p quanta-adapters-cost --lib termination_analyzer_adapter --features cost-analyzer --no-fail-fast`. 현재5개 source cases이며 실제 nonzero count를 확인한다. `cfg-dfg`는 이 owner module에 필요하지 않다.
 - H9: 등록된 QBC lane의 locked feature tree2개—runtime `--no-default-features --features gateway-ingress-runtime-core,shape-analyzer`, session backend `--no-default-features --features session-shape-analyzer-runtime`. Standalone Shape 도달과 불필요한 `quanta-adapters-cost`/runtime `cost-analyzer` 비활성화를 확인한다. Tree는 진단이며 행동 test receipt가 아니다.
 
