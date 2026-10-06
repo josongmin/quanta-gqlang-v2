@@ -265,6 +265,7 @@ Refreshed candidate `734aab87d0a` 정적 검사 기준 full `gate-shape-analysis
 
 Full gate에 없는 증명만 추가한다:
 
+- D2 PTA 실제 field-refinement caller: `cg_test -p quanta-runtime-analysis --lib field_strong_update_refinement_v1 --features pta-rail-test-support --no-fail-fast`. 기존 recursive/missing receipt→explicit unknown, every-checkpoint cancellation, positive strong-update controls. Tarjan SCC 필터 밖이다. 직접 Compute 오류를 강제하는 caller fixture는 없어 그 부분은 source policy proof로 한정한다.
 - H5 typed pin: `cg_test -p quanta-runtime --lib shape_pin_failure_is_typed_and_operation_attributed_v1 --features shape-analyzer --no-fail-fast`. `shape-analyzer`가 `pta-rail`을 포함하므로 같은 feature를 반복 지정하지 않는다. 해당 gate recipe의 실제 default/target 설정을 completion에 기록한다.
 - H5 SDK bundle V2 authority: `cg_test -p quanta-runtime --lib shape_analysis_from_ --features shape-analyzer --no-fail-fast`. 기존 valid policy disclosure, profile/receiver mismatch, missing consumer evidence3 controls를 실행한다. Full gate lib filters에는 포함되지 않으며 typed pin과 별도 거절 경계다.
 - H8 Termination: `cg_test -p quanta-adapters-cost --lib termination_analyzer_adapter --features cost-analyzer --no-fail-fast`. 현재5개 source cases이며 실제 nonzero count를 확인한다. `cfg-dfg`는 이 owner module에 필요하지 않다.

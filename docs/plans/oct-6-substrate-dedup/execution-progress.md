@@ -134,3 +134,10 @@ GQLang local `just ci` 재실행은 **all groups passed**, source snapshot `83f9
 - 기존 serde 블록에 직접 import한 clean Wire source `b0dbe01cd35`는9paths다: production import/tuple5Rust, test scope1Rust, 기존 CBOR dev edge와 outer/inner lock3files. Public schema/visibility/authority 정책 변화0. Normal Rustfmt1/safety PASS. 새 frozen snapshot에서 serde→default 두 owner lib targets 검증 중이다.
 - 통합 clean candidate `4bdbdf87ae32aae94b3709b1665423249b3c031e`, base `ae423eac4b5`,81paths에 Wire·PTA·Taint·D1-A/B와 기존 Tarjan7 selectors를 합쳤다. 독립 정적 감사는 D1 range-diff 동일, PTA9Rust와 Taint6Rust+manifest bytes 동일, lock version/source replacement0을 확인했다. Rust GREEN으로 세지 않는다. Wire owner 통과·main checkpoint 뒤 같은 frozen tuple에서 Tarjan7→Shape full15→typed pin→Termination→Shape-only trees를 실행한다.
 - 사용하지 않은 이전 통합 `835a334d91e` snapshot은 Wire 실패 뒤 lease를 해제했으며 Rust 테스트0개다. 수정된 통합 source의 snapshot을 다시 준비한다.
+
+### Current-base refresh after concurrent owner checkpoint
+
+- Frozen Wire `b0dbe01cd35` 두 owner modes는 sealed QBC PASS: serde64 (`20261006T061734.096713Z-46bca73b89d7`), default45 (`20261006T062347.176031Z-b3a7bddfa23b`), dirty0, launcher exit0. 총109 cases는 해당 정확한 source 증거다.
+- 검증 중 committed main `db2f1461a5a`는 같은 production import/tuple 수리를 제공했고 `486964fbf22`는 native clone 계산을 변경했다. 이를 포함한 base `2a25c00cef2`로 Wire·통합 branch를 rebase했다. Native owner 입력이 바뀌었으므로 b0 GREEN을 현재 입력에 재사용하지 않는다. 사용 전4b snapshot도 Rust0/lease released로 취소했다.
+- 남은 Wire private source `213799a85fe`는5paths—test counter cfg, projection-test import, 기존 CBOR dev dependency, 양쪽 lock이다. Rebase 중 기존 standalone import와 옛 inner import가 함께 생긴 `projection_validation_v1` 중복은 upstream bytes로 복원했다. Production 기능/schema/visibility 변화0, normal Rustfmt1/safety PASS.
+- 실제 base→candidate GOD 비교는 stale baseline12건과 이번 신규2건을 분리했다. PTA SCC 실패정책과 SDK Shape port field 전달을 owner helper로 분리하며 Stop 전파/Compute incomplete/복제 없는 move를 유지한다. 이 수리의 Rust QBC는 아직 실행하지 않았다. 기존 field-refinement caller controls는 Tarjan의 SCC 필터 밖이므로 별도 owning rail을 추가한다.
