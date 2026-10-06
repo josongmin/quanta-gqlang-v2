@@ -259,6 +259,18 @@ D1-A requires H1–H5 and relevant H8. D1-B additionally requires H6–H9, two r
 
 H5의 producer classification은 `runtime_ingress_shape_overlay_uses_standalone_adapter_v1`에서 factory가 반환한 실제 `overlay.shape_analyzer`를 사용한다. SDK `session_shape_factory_selects_runtime_overlay_v1`는 selected feature의 factory reachability만 증명한다. Capability/compatibility는 `shape_analysis_builder_public_under_cost_or_shape_v1`, `shape_capability_requires_compiled_builder_and_installed_port_v1`로 구분한다. `shape_pin_failure_is_typed_and_operation_attributed_v1`는 missing authority를 성공으로 만들지 않는 control이다. 이 결과들은 별도 boundary proofs이며 하나의 end-to-end session 실행 결과가 아니다. `session-shape-analyzer-runtime`이 실제 선택하는 기존 `gateway-ingress-runtime-core` producer를 사용하며 넓은 coordination feature를 추가하지 않는다. 이미 주입한 Shape port의 단순 forwarding만으로 producer proof를 대신하지 않는다.
 
+### D1 실행 순서와 중복 시험 제외
+
+Refreshed candidate `734aab87d0a` 정적 검사 기준 full `gate-shape-analysis-ghiya-hendren.sh`는15개 `cg_test`로 standalone17, core contract, PTA converter, runtime/SDK pure·PTA·disabled, actual overlay, session factory, Cost-only builder/capability/overlay, Cost/Heap owner를 선택한다. Smoke는8개 invocation 중 주요 경로를 반복한다. Smoke의 SOTA3개도 full의 owner17에 포함되거나 full이 선택한 Cost/Heap 테스트를 직접 호출한다. 따라서 Wire 선행 검증 뒤 같은 고정 소스에서 **full gate 한 번**을 실행하고 smoke·기존 leaf를 미리 반복하지 않는다. 이 문단은 실행 계획이며 GREEN 증거가 아니다.
+
+Full gate에 없는 증명만 추가한다:
+
+- H5 typed pin: `cg_test -p quanta-runtime --lib shape_pin_failure_is_typed_and_operation_attributed_v1 --features shape-analyzer --no-fail-fast`. `shape-analyzer`가 `pta-rail`을 포함하므로 같은 feature를 반복 지정하지 않는다. 해당 gate recipe의 실제 default/target 설정을 completion에 기록한다.
+- H8 Termination: `cg_test -p quanta-adapters-cost --lib termination_analyzer_adapter --features cost-analyzer --no-fail-fast`. 현재5개 source cases이며 실제 nonzero count를 확인한다. `cfg-dfg`는 이 owner module에 필요하지 않다.
+- H9: 등록된 QBC lane의 locked feature tree2개—runtime `--no-default-features --features gateway-ingress-runtime-core,shape-analyzer`, session backend `--no-default-features --features session-shape-analyzer-runtime`. Standalone Shape 도달과 불필요한 `quanta-adapters-cost`/runtime `cost-analyzer` 비활성화를 확인한다. Tree는 진단이며 행동 test receipt가 아니다.
+
+기존 pure17의 Shape crate·직접 사용하는 port/PointsTo/context/AllocLoc 소스는 rebase 뒤 동일하지만 interproc contract·runtime error 모듈과 lock은 변경됐다. 과거 algorithm 증거는 보존하고 fresh full gate의 owner17에서 현재 compilation을 검증한다.
+
 ## 10. Python execution commands
 
 These commands target existing files. They are runnable selectors, **not executed results**. Use the installed Semantica SDK Python environment; if imports/toolchain/plugins fail, report that blocker instead of changing tests to mocks.

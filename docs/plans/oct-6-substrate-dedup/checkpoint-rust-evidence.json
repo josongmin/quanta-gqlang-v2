@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-06T05:44:51.889451+00:00",
+  "recorded_at_utc": "2026-10-06T06:01:05.969954+00:00",
   "proof_scope": "QBC owner/component results only; not combined current-main/shipping-gate/product qualification",
   "records": [
     {
@@ -561,6 +561,49 @@
       },
       "launcher_completion": "finished registered gate exit101; launcher drained; source stayed clean",
       "proof_scope": "Failed fresh candidate component run; stage1 core20 sealed PASS, stage2 compile failure, stages3-6 NOT_RUN; no whole-gate/current-main/product qualification"
+    },
+    {
+      "scope": "Wire-default-lib-test-compile-prerequisite",
+      "run_id": "20261006T054939.888945Z-ff446fdae925",
+      "execution_root": "/Users/songmin/.cache/semantica-codegraph-v2/casectl-snapshots/060a2f2b42603c0594bd013dd2dc3df58257dfed_ext-bd6a005ce7c826a037c3_mat-plain-v1/semantica-codegraph-v2",
+      "source_commit_if_known": "060a2f2b42603c0594bd013dd2dc3df58257dfed",
+      "source_snapshot_digest": "96bbde716e197e4513cb588510658665af6b4ceb1260344589e2f8843951f5e4",
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "quanta-contract-call-graph-authority-wire",
+        "--lib",
+        "--",
+        "--nocapture"
+      ],
+      "exit_code": 101,
+      "receipt_sha256": "32c2d95899bab29b7ffe25eb725b27cfa81100eab3c7722a083fead27f990412",
+      "local_receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-c1403ddeca66/lanes/oct6-scc-core/verification-results/20261006T054939.888945Z-ff446fdae925/receipt.json",
+      "log_sha256": {
+        "stdout.log": "1eb7d1454f6b84368dae8be528be6fc1c3dfc63fd507a16c63238d3baa9363f2",
+        "stderr.log": "09abfa9a24099a8dbe3c0d226ecf87de0da6314f3dd85ae7f93e511f4b317535"
+      },
+      "immutable_suite_completion": {
+        "failed": 0,
+        "filtered_out": 0,
+        "ignored": 0,
+        "measured": 0,
+        "passed": 0,
+        "process_exit_code": 101,
+        "qbc_exit_code": 101,
+        "receipt_path": "/Users/songmin/Library/Caches/semantica-codegraph-v2-target/quanta-build-cli/_state/execution-roots/semantica-codegraph-v2-c1403ddeca66/lanes/oct6-scc-core/verification-results/20261006T054939.888945Z-ff446fdae925/receipt.json",
+        "receipt_sha256": "32c2d95899bab29b7ffe25eb725b27cfa81100eab3c7722a083fead27f990412",
+        "run_id": "20261006T054939.888945Z-ff446fdae925",
+        "schema_version": "qbc-suite-completion/v1",
+        "source_snapshot_digest": "96bbde716e197e4513cb588510658665af6b4ceb1260344589e2f8843951f5e4",
+        "witness_names": []
+      },
+      "tests_executed": 0,
+      "test_summaries": [],
+      "passed_case_names": [],
+      "attribution": "Production29 diagnostics gone; default lib-test compilation stopped at one unused RAW_PACKET counter import whose only test reads are inside serde-gated blocks. Serde owner run NOT_RUN because first step failed. Snapshot clean, launcher drained exit101.",
+      "proof_scope": "Failed component compile proof only, no owner GREEN or main/product qualification"
     }
   ],
   "pta_attribution": {
@@ -864,7 +907,9 @@
       "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/packet_encoding_v1.rs",
       "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/packet_validation_v1.rs",
       "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1_serde/kinds_codec.rs",
-      "Cargo.lock"
+      "Cargo.lock",
+      "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/Cargo.toml",
+      "packages/analysis/quanta-v2/Cargo.lock"
     ],
     "purpose": "wire owner compilation prerequisites for Taint gate; no DTO/schema/authority policy change",
     "acceptance": "default and call-graph-authority-serde owner tests, then selected Taint owning gate; no weakened lint",
@@ -874,12 +919,89 @@
       "wire_lib_errors": 29,
       "taint_tests_executed": 0
     },
-    "source": "060a2f2b42603c0594bd013dd2dc3df58257dfed",
+    "source": "fae420827a4391d5505e4b5857179103e56c01bf",
     "post_commit_dirty": "",
     "previous_source": "6e2af852a1ed6b962c37b19ce49960d431c00da6",
     "previous_base": "7418bf2b58b88d64cd17fe7c8dd7e2545c44adc1",
     "wire_fix_commit": "7d611039d0f042b619b5a6db264cee92664de5d5",
     "lock_normalization": "Exact16 whitespace-only Index dependency indentation lines from already reviewed9fe commit; ignore-all-space delta empty; avoids Cargo rewriting proof snapshot",
-    "proof_status": "IN_PROGRESS canonical frozen owner default and serde tests; no main import yet"
+    "prior_proof_sources": [
+      "060a2f2b42603c0594bd013dd2dc3df58257dfed"
+    ],
+    "test_compilation_repair": "RAW counter import gated by test+serde, only actual reads are inside serde blocks; existing serde tests call ciborium::de, add existing workspace dev-dependency and two same-version lock edges. No production dependency/schema/policy change",
+    "proof_status": "IN_PROGRESS retry serde then default after cfg import/direct existing test dependency repair; both nonzero required",
+    "serde_direct_dependency_evidence": "Existing tests at projection_validation_tests_v1.rs:359,383 call ciborium::de but prior Wire Cargo.dev omitted it; existing workspace0.2 dev edge plus two package lock entries, no new package version or production dependency",
+    "failed_attempt": {
+      "candidate": {
+        "worktree": "/Users/songmin/.codex/worktrees/oct6-substrate-integrate/semantica-codegraph-v2",
+        "base": "ae423eac4b5d4f26543172d9c30f6168a21b544d",
+        "paths": [
+          "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1.rs",
+          "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/clone_cost_methods_v1.rs",
+          "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/packet_encoding_v1.rs",
+          "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1/packet_validation_v1.rs",
+          "packages/analysis/quanta-v2/crates/quanta-contract-call-graph-authority-wire/src/call_graph_authority_packet_v1_serde/kinds_codec.rs",
+          "Cargo.lock"
+        ],
+        "purpose": "wire owner compilation prerequisites for Taint gate; no DTO/schema/authority policy change",
+        "acceptance": "default and call-graph-authority-serde owner tests, then selected Taint owning gate; no weakened lint",
+        "observed_failure": {
+          "snapshot": "9fe9fe4d5f7",
+          "run_id": "20261006T052441.019294Z-a7a791d54c79",
+          "wire_lib_errors": 29,
+          "taint_tests_executed": 0
+        },
+        "source": "060a2f2b42603c0594bd013dd2dc3df58257dfed",
+        "post_commit_dirty": "",
+        "previous_source": "6e2af852a1ed6b962c37b19ce49960d431c00da6",
+        "previous_base": "7418bf2b58b88d64cd17fe7c8dd7e2545c44adc1",
+        "wire_fix_commit": "7d611039d0f042b619b5a6db264cee92664de5d5",
+        "lock_normalization": "Exact16 whitespace-only Index dependency indentation lines from already reviewed9fe commit; ignore-all-space delta empty; avoids Cargo rewriting proof snapshot"
+      },
+      "phase": "wire proof failed",
+      "sibling_dirty_overlays_included": false,
+      "results": [
+        {
+          "name": "default",
+          "exit_code": 101,
+          "seconds": 433.84,
+          "log": "/tmp/oct6-wire-owner-default-attempt1.log"
+        }
+      ],
+      "sibling_heads": [
+        {
+          "source": "/Users/songmin/Documents/code-new/quanta-gqlang-v2",
+          "head": "86a3202a1342d641403c9958506cde4294393156",
+          "overlay_digest": ""
+        },
+        {
+          "source": "/Users/songmin/Documents/code-new/quanta-index",
+          "head": "d192d1f652d47dce839eb91b796b7929e2491040",
+          "overlay_digest": ""
+        }
+      ],
+      "topology_digest": "060a2f2b42603c0594bd013dd2dc3df58257dfed+ext-bd6a005ce7c826a037c3",
+      "execution_root": "/Users/songmin/.cache/semantica-codegraph-v2/casectl-snapshots/060a2f2b42603c0594bd013dd2dc3df58257dfed_ext-bd6a005ce7c826a037c3_mat-plain-v1/semantica-codegraph-v2",
+      "lane_admission": "canonical lane-token issue; token not persisted",
+      "post_run_dirty": ""
+    }
+  },
+  "prepared_consumers": {
+    "D1": {
+      "base": "45eec3966f7db5d42b0a7e9e69242125f91cf662",
+      "source": "734aab87d0a",
+      "paths": 55,
+      "clean": true,
+      "rust_proof": "NOT_RUN refreshed consumer; Wire prerequisite pending"
+    },
+    "D2_PTA": {
+      "base": "45eec3966f7db5d42b0a7e9e69242125f91cf662",
+      "source": "680305490fdb07942ba3c780f2d6cc33e8249c85",
+      "paths": 12,
+      "clean": true,
+      "normal_hooks": "rustfmt9/classifier/staged integrity/safety PASS",
+      "rust_proof": "NOT_RUN refreshed candidate; Wire prerequisite pending",
+      "old_current_exports_preserved": true
+    }
   }
 }
