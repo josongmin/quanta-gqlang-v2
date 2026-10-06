@@ -9,12 +9,13 @@
 - 입력 authority, 결과·순서·ID, typed failure, 취소·예산 계약을 보존한다. 서로 다른 계약은 caller의 작은 admission/projection으로 유지한다.
 - 완료 결과는 **계산 owner 단일화 + 소비자 전환 + 퇴역 코드 삭제 + 로컬 증명 + 재발 방지 gate**다. 파일 이동, forwarding wrapper, 컴파일 성공만으로 완료 처리하지 않는다.
 
-상태: **PLANNED — 문서 정리 완료, D1–D7 코드 구현·owner 검증 미완료.**
+상태: **IN_PROGRESS — 별도 Semantica 워크트리에서 구현·owner 검증 중. Main 반영 및 항목별 DoD 미완료.**
 
 ### 구체적인 실행 자료
 
 - [코드 변경 지도·Before/After](code-change-map.md): 저장소 tree, 실제 파일/symbol별 수정·삭제·추가·유지·재생성, 현재/목표 caller 연결과 코드 스케치.
 - [테스트 플랜](test-plan.md): 기존/추가 case 구분, fixture 입력·독립 expected 결과, Rust QBC/Python 명령, owner/consumer/feature/retirement 통과 기준.
+- [구현 checkpoint 기록](execution-progress.md): 작업 root/base/branch, 실제 diff·실행 결과·main 반영·남은 proof. 아래 계획표의 목표를 구현 완료와 혼동하지 않는다.
 - [상세화 소스·문서 검증](detail-source-state.json): 이번 작업의 HEAD/dirty와 input continuity. 기존 [source-state.json](source-state.json)은 `a660384` 문서 버전에 대한 이력이며 이후 문서 hash와 일치해야 하는 current receipt가 아니다.
 
 ## 2. 배경과 현재 근거

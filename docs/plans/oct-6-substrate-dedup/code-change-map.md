@@ -4,6 +4,8 @@
 
 **Before는 현재 선택 소스의 정적 연결이며 After는 구현할 목표다. 이 문서의 코드 스케치는 적용된 diff가 아니다.** 자세한 source capture는 [detail-source-state.json](detail-source-state.json)을 따른다.
 
+진행 중 diff/검증/main 반영은 [execution-progress.md](execution-progress.md)에서 별도로 관리한다.
+
 ## 1. 저장소 지도
 
 아래 경로 축약을 사용한다. 각 파일 표의 링크는 실제 소스로 연결한다.
@@ -15,6 +17,7 @@ code-new/
 │       ├── readme.md                        범위·순서·DoD·ledger
 │       ├── code-change-map.md               이 지도와 Before/After
 │       ├── test-plan.md                     fixture·oracle·selector·통과 기준
+│       ├── execution-progress.md            worker diff·실행·main checkpoint
 │       ├── source-state.json                최초 계획 source/문서 검증 이력
 │       └── detail-source-state.json         이번 상세화의 source/문서 검증
 ├── semantica-codegraph-v2/                   [S: runtime 코드 변경]
@@ -228,6 +231,8 @@ Before: `runtime/shape-analyzer → cost-analyzer → cost crate Shape`. After: 
 |---|---|---|
 | [native search execution](../../../../semantica-codegraph-v2/packages/analysis/quanta-v2/crates/quanta-sdk-runtime-executor/src/client/daemon_search_execution.rs) | 유지·검증 / 필요 시 수정 | actual match/supplemental identity/location/count authority. Consumer 편의를 위해 fake symbol/coordinates 생성 없음 |
 | [Python search projector](../../../../semantica-codegraph-v2/packages/sdk/python/codegraph_sdk/_product_search_projection_v1.py) | 수정 | symbol-only row requirement, fabricated span, old summary key assumptions를 current variants/schema로 전환 |
+| [native Product search writer](../../../../semantica-codegraph-v2/crates/quanta-cli-ingress-runtime/src/project/search_projection.rs) | 유지·검증 | `match`/`supplemental` row와 primary/supplemental count 의미의 oracle. Runtime locator를 canonical symbol ID로 변환하지 않음 |
+| [typed LexicalSearch DTO](../../../../semantica-codegraph-v2/packages/sdk/python/codegraph_sdk/queries/search.py) | 수정 | `symbols: list[Symbol]`/full location → native discriminated `hits`와 `summary`; optional source coordinates 보존 |
 | [current SDK fixture owner](../../../../semantica-codegraph-v2/packages/sdk/python/codegraph_sdk/tests/_current_product_response.py) / [current response tests](../../../../semantica-codegraph-v2/packages/sdk/python/codegraph_sdk/tests/test_current_product_response.py) | 수정 | consumer가 만든 symbol-only fixture를 native serializer/typed writer 기준으로 갱신; variant·summary negative controls 추가 |
 | SDK current public result DTO/export / API hit DTO / agent SearchHitResult | 필요 시 수정 | truthful optional identity/location·row variant를 표현. 정확한 public field 이름은 F1 contract에서 한 번 확정하고 producer/consumer 동시 전환 |
 
@@ -238,11 +243,16 @@ Before
        start_column=0, end_line=line, end_column=0
        reads total/truncated; if absent defaults to row count/false
 
-After (contract requirement; final wire field names follow the current producer)
-  SDK: preserve actual native identity and row variant
-       location absent stays absent; authored range stays exact
-       project total_count/page_count/match_count/supplemental_match_count/result_truncated
-       malformed required fields → typed SDK refusal; no old-reader fallback
+After (native writer 확인으로 확정한 current SDK contract; 구현 진행 중)
+  data = {hits: [native match | supplemental fields], summary: {native scalar fields}}
+  match: snippet, optional file_path/line/column,
+         optional symbol_fqn/symbol_kind/runtime_symbol_locator, score/provenance
+  supplemental: entity_id/entity_kind, score/projection_reason/provenance
+  summary: total_count/page_count/match_count는 primary domain
+           supplemental_match_count는 separate count; result_truncated 그대로 보존
+  optional absent → None; authored byte highlights → array 그대로
+  missing end coordinates는 생성하지 않음
+  malformed required fields → typed SDK refusal; no old-reader fallback
 ```
 
 ### D6: app conversion write set

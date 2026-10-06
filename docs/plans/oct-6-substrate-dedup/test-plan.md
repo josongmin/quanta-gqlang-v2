@@ -2,7 +2,7 @@
 
 상위 계획: [readme.md](readme.md). Write set / Before·After: [code-change-map.md](code-change-map.md).
 
-**모든 실행은 현재 NOT_RUN이다.** 아래 `기존`은 source에서 확인한 test 이름/파일이고 통과 관찰이 아니다. `추가`는 아직 작성하지 않은 회귀다. 기존 meaningful cases로 요구를 충족하면 동일 test를 다시 만들지 않는다.
+**이 문서는 required proof matrix다.** 아래 `기존`은 source에서 확인한 test 이름/파일이며 목록 자체는 통과 증거가 아니다. 구현 착수 후 실제 실행/receipt/main 상태는 [execution-progress.md](execution-progress.md)에 기록한다. `추가`는 계획상 새 회귀이며 진행 상태는 별도 ledger를 따른다. 기존 meaningful cases로 요구를 충족하면 동일 test를 다시 만들지 않는다.
 
 ## 1. 실행 계약과 증거 단계
 
@@ -150,7 +150,7 @@ Existing controls: `test_mcp_list_tools_matches_filtered_surface_config_ssot`, `
 - 추가 제안: `S/packages/sdk/python/codegraph_sdk/tests/test_search_product_current_variants.py`, `fixtures/search_primary_file_product_v1.json`, `fixtures/search_supplemental_product_v1.json`, `fixtures/search_mixed_product_v1.json`.
 - App shared test 제안: `S/packages/analysis/codegraph-shared/tests/test_current_search_projection.py`.
 - Golden fields는 실제 native ProductResponse typed writer/serializer에서 확인한 variant/type/tag로 만든다. 예상 결과는 hard-coded identity/span/summary assertion으로 검증한다. Consumer가 요구하는 `symbol_id`를 producer fixture에 임의로 추가하지 않는다.
-- Wire field·public DTO 이름은 F1에서 확정한다. 다음 표는 contract requirement이며 final JSON schema를 미리 발급한 것이 아니다.
+- F1의 writer 확인으로 current SDK `data={hits,summary}`를 확정했다. Native field 이름/optional values/variants를 보존한다. `page_count=match_count=primary returned rows`, supplemental은 별도 count다. 전체 상세 계약과 현재 diff 상태는 [checkpoint §3](execution-progress.md#3-f1에서-확인한-구체적인-계약)를 따른다.
 
 ### 7.2 required fixture matrix
 
@@ -162,7 +162,7 @@ Existing controls: `test_mcp_list_tools_matches_filtered_surface_config_ssot`, `
 | S4 | mixed primary+supplemental, distinct counts | native total/page/primary/supplemental count 정의 유지; 근거 없는 total>=all-row assertion 금지 |
 | S5 | page rows empty but overall total nonzero; result_truncated true | SDK/app summary에 authored total/truncation 보존; `len(rows)`/false fallback 금지 |
 | S6 | line/range 없음 | missing/optional 상태 보존; line 0/end_line/start_column fabrication 없음 |
-| S7 | authored span `{start:10:3, end:12:7}` in typed fixture | final app metadata의 exact authored range, payload builder가 같은 span 사용 |
+| S7 | native `line=10,column=3`, optional `highlights=[{start:4,end:9}]`; 별도 app metadata full span `{start:10:3,end:12:7}` control | native coordinates/byte offsets 정확 보존, end coordinates 생성 없음; 이미 authored된 app full span은 PayloadBuilder까지 정확 보존. Native writer는 full source span을 발급하지 않음 |
 | S8 | wrong operation/status/field variant/type; malformed required identity | typed SDK/app rejection; 정상 empty success로 전환 없음 |
 | S9 | degraded/not_computed/failed native response | 기존 status/reason/failure projection 보존 |
 | S10 | GraphRAG seed file IDs, configured no-graph / graph failure | seed identity/file presentation·existing typed degradation 보존 |
