@@ -9,6 +9,26 @@ This supplement reconciles work after the `d0e303223c67` source observation in
 owner proof and product qualification are separate states. Unfinished D1–D7
 consumer/policy/product acceptance remains in that index.
 
+## Current status
+
+- Fourteen local main checkpoints are integrated below. The current private
+  candidate is Semantica `c5b62a3f9ba1919440b1b30527b3619c523550ca`, with
+  committed QGLang `68ff02ef443f` and Index `6a3f6afc8c28` pins; foreign overlays
+  are excluded.
+- Remaining code acceptance: original lifecycle/composition interface2,
+  quarantine import1, SDK timeout conversion1, native Rename binding/proof2.
+  R19 source digest is
+  `fd55c4b1cd2e518bd3f12886f1e5e18c2375085cbce716ee0df155381e88047f`.
+- All six candidate Rust paths pass 21 impacted static boundary policies. JSON,
+  quarantine, SDK and native owners are running sequentially on this fixed tuple.
+  No pending group is called integrated before its guarded main checkpoint.
+- All 45 D1–D7 requests resolve unchanged on R19. Their source-bound matrix is
+  queued after the six consumer requests, with nonzero counts, original minimums,
+  required witnesses and the ignored-only 50k case enforced. Resolution is not
+  execution evidence.
+- Rename Apply's missing production response/replay issuer, native/installed
+  product acceptance and global policy failures remain separate obligations.
+
 ## Integrated repairs
 
 All SHAs below are local Semantica main ancestors. No remote publication is
@@ -28,8 +48,8 @@ claimed.
 | `4518fd6fec5` — Parser cfg | Java raw helper and raw-error facade compiled outside their active caller feature set → both mirror the exact existing caller predicate. | The same three owner checks passed. Only two cfg hunks integrated. Every foreign working/index change was retained; no Java feature was enabled to make Python minimum pass. |
 | `0dd691a651c` — analysis test closure | Engine-only test reexport escaped its feature, and 14 ordinary CFG fixture inputs omitted the new source-control field → mirror the defining module predicate and the existing ordinary production constructor. | Frozen `9b5ea151425`: complete affected CFG owner 47/47 passed, zero skips. Runtime Slice owner also compiled and executed on the same tuple. Four paths integrated first. |
 | `1a5cb6b0d29` — F4/F9 runtime | Bounded prefixes could publish success; PDG discovery pairs fabricated CFG direction/kinds; removed Dice statements retained occurrence metadata → typed partial refusal, finite-bound recomputation, original CFG edges on final membership, included occurrence metadata with retained parameter provenance. | R14 canonical Slice helper 6/6 passed, zero skips; all four independent output/membership regressions executed. Five paths integrated after the verified dependency checkpoint. |
-
 | `375173d94dc` — receipt visibility | Four internal decoder targets/seeds were public inside a private module, failing minimal compilation → keep those targets, seeds, constructors and internal reexports crate-visible; public generic decoding API and wire schema unchanged. | R15 complete minimal receipt owner 69/69 passed, zero failures/skips/nonselected; shape parity and malformed-input controls executed. Three paths integrated with normal hooks. |
+| `669a4608343` — locked dependency closure | Committed parser/source-transition/symbol/executor manifest edges and Python vendor patch were absent from outer/inner lock rows → reconcile exactly five package rows per lock, retaining foreign changes and package versions. | Same committed source/siblings: full outer and inner `cargo metadata --locked --offline` each exit0. Dependency resolution proof only; Rust owner execution follows separately. |
 
 ### Code owners
 
@@ -248,8 +268,80 @@ R15 candidate is `e3848ef6dd35406d6c9016929236215e1b4b0d0d`, source digest
 `5e4c3d025dacc807e99fb356b6e96f96cef6604561d615153f5b6f19da6c8085`.
 The complete minimal receipt owner passed 69/69 with zero failures, skips or
 nonselected tests, and three files reached main `375173d94dc`. SDK conversion
-and minimal/native Full owners remain RUNNING; their PASS is not claimed yet. Its committed sibling pins remain
+failed before tests on one current quarantine digest unused import; pending
+native jobs were cancelled with no verdict. Their PASS is not claimed. Its committed sibling pins remain
 QGLang `68ff02ef443f` and Index `6a3f6afc8c28`, with foreign dirty excluded.
+
+### Current-main adoption and quarantine prerequisite
+
+R15 SDK reached `quanta-sdk-exact-repo-quarantine-owner::record_digest_v1`
+and failed on its unused `std::fmt::Write` trait import. The digest writer takes
+`impl std::fmt::Write`, so the trait is already supplied by the bound; its body,
+field order and separators are unchanged by removing the unused import. The
+failure archive contains zero SDK tests. Receipt69 remains valid at its source
+and integrated three-file checkpoint; pending native cancellation is no verdict.
+
+R16 source `20bdc8ea84c8ce165d78c3c2bb4e52cc4dd0d7a9` adopts committed
+main `522c94ac2648b4727f77f9829f33d57c55d6f26c`, digest
+`8609bd5080e8ad96870968eb5000d5d204ba70cc91b4a0090ef9c1c4a212ddc7`.
+The candidate's complete difference from that main input is exactly four files:
+quarantine import1, SDK deadline1, native Rename2. All earlier repairs are already
+in the adopted main source; no foreign dirty bytes are included. Whole quarantine
+owner, SDK conversion and the minimal/full native owners retain separate guards.
+The quarantine owner checkpoint must precede SDK integration.
+
+### Locked dependency closure and current retry
+
+R16's first quarantine owner was rejected by `--locked` before compilation or
+tests. Separate full Cargo metadata diagnostics on archived committed source and
+the same pinned siblings identified five package rows in both lockfiles:
+`quanta-adapters-parser`, `quanta-contract-source-transition`,
+`quanta-java-binary-symbol-authority`, `quanta-sdk-runtime-executor` and
+`tree-sitter-python`. Seven declared dependency entries per lock were missing;
+the already committed Python vendor patch still carried registry/checksum fields.
+No package/version set changed. Metadata with `--no-deps` does not establish
+resolution; the recorded acceptance uses full metadata with `--locked --offline`
+for both workspaces, each exit0. This is dependency proof, not a Rust verdict.
+
+Only those five rows in each lockfile were reconciled into main `669a4608343`.
+Other committed rows and all foreign working/index work, including separate
+PTA and compression-library changes, are retained. Normal hooks and coordinator
+completed and the lock write claim/barrier were released.
+
+R17 source `497bfea5a4d7ce9387b26293c1d8287c862a75ef`, digest
+`124cd4a26ccb4d1f659e321ae3e202908c87ec6e3d1c701392186976b90b4e55`,
+adds those generated locks to the R16 candidate. Quarantine and SDK reached
+RuntimeExecution but stopped before tests on four E0624 errors and a dependent
+E0282 error: the relation control moved to SourceAuthorityWire in committed main
+`7681aa7a875`, while its existing `lifecycle_v3` accessor remained crate-private.
+The JSON terminal consumer remained in RuntimeExecution and therefore lost
+access. Both failure receipts are archived; remaining native jobs were cancelled
+without a test verdict. This was a module-move interface defect, not a JSON or
+budget calculation failure.
+
+R18 exposes the existing immutable borrowed lifecycle at its canonical owner,
+with no replacement lifecycle, changed authority, wire schema or allocation.
+The original lifetime is retained. Existing JSON terminal regressions cover
+original/reconstructed lifecycle, distinct zero-sized lifecycle, unrelated root,
+cancellation/timeout, allocation checkpoints and nonrefundable work. The actual
+integration target is `gqlang_relation_execution_v3`, module `json_projection`,
+under the registered relational-composition feature class. It precedes whole
+quarantine, SDK conversion and minimal/real Full native owners. Acceptance and
+main integration remain pending until their source-bound receipts are green.
+R18 also exposed four missing canonical identity-control import uses in
+`gqlang/composition_plan_v3.rs` when the relational feature was activated. Its
+compiler log is diagnostic only: a concurrent model inspection imported frozen
+QBC modules without Python cache suppression, changing protected directory
+metadata and invalidating exact custody. No R18 owner success is claimed. The
+invalid-custody record and logs are archived; later requests were not executed.
+
+R19 adds only that canonical import to the R18 repair. Python cache writes are
+disabled for all frozen-module inspection (`-B`/`PYTHONDONTWRITEBYTECODE`). The
+existing semantic owner remains unchanged; no separate identity implementation
+is added. All six Rust candidate paths pass the impacted boundary preflight;
+actual source-bound tests and main integration remain pending. The 45 D1–D7
+owner requests were also reprojected on R18 with unchanged requests/commands;
+that result is resolution only and requires rebinding to R19 before execution.
 
 ### Residual code map and completion conditions
 
@@ -262,6 +354,8 @@ whole-repository result.
 | Analysis test feature/input closure — complete | `packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/`: `interprocedural.rs`, `intraprocedural/cfg_query_tests.rs`, its `reuse_authority.rs` and `unreachable_policy.rs` children | Complete CFG owner 47/47 and Slice helper 6/6 passed; four paths integrated at `0dd691a651c` before the Runtime Slice consumer. |
 | Runtime Slice — complete | `quanta-runtime-analysis/src/queries/advanced/`: `slice_query_bridge.rs`, `slice_query_helpers/output_materialization.rs`, `slice_query_helpers/output_final_membership_tests.rs`, `slice_statement_projection.rs`, `slice_statement_projection/occurrence_projection.rs` (crate under `packages/analysis/quanta-v2/crates/`) | Actual canonical helper 6/6 passed with `slice-runtime`, including all four direction/kind/multiplicity, partial and membership regressions. Five paths integrated at `1a5cb6b0d29`. |
 | Receipt private visibility — complete | `packages/analysis/quanta-v2/crates/quanta-runtime-receipt-wire/src/`: `canonical_receipt_seed_v1.rs`, its `receipt_gqlang_seed_v1.rs` and `receipt_nested_seed_v1.rs` children | Whole minimal receipt owner 69/69 passed; three-file prerequisite integrated at `375173d94dc` before the SDK caller. SDK conversion retains separate acceptance. |
+| Relation lifecycle interface | `packages/analysis/quanta-v2/crates/quanta-runtime-source-authority-wire/src/original_source_control_v3/relation_control_v3.rs` | Existing JSON projection integration module executes all original-root/lifecycle, cancellation/timeout and allocation controls; immutable accessor visibility plus canonical `gqlang/composition_plan_v3.rs` identity-control import, no owner or schema duplication. |
+| Quarantine digest import | `packages/analysis/quanta-v2/crates/quanta-sdk-exact-repo-quarantine-owner/src/record_digest_v1.rs` | Remove only the proven unused trait import; whole quarantine owner executes, digest framing remains unchanged, then integrate one path before SDK. |
 | SDK deadline | `packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/abstract_interpret_builder.rs` | Native finite timeout survives actual port conversion; non-timeout errors retain their prior rejection. Import one path after owning tests. |
 | Native Rename | `crates/quanta-cli-ingress-runtime/src/dispatch/operation_binding_registry_v1.rs`, `dispatch/mutation.rs` | Exact inventory plus minimal refusal and real `dist-full` admission; whole registry and mutation owners including admitted context → registry → worker → Preview backend. Import both paths together; production Apply remains unavailable until its real issuer exists. |
 | PTA dependency repair — complete | `packages/analysis/quanta-v2/crates/quanta-adapters-pta/src/`: `production_live_native_workspace_generation_v1.rs`, its `original_java_workspace_v1.rs` and `original_java_evidence_v1.rs` children, `production_live_captured_semantic_workspace_generation_v1.rs`, `production_native_lowering_relation_output_v1/admitted_storage_v1.rs`, `native_function_build_generation_authority_binding_v1.rs` | Three canonical feature owner checks passed; six-file delta integrated at `7bbdcc1d4e3`. |
