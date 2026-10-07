@@ -168,8 +168,11 @@ Final source `ff8f2ce935f` requires these SCC map repairs:
 | Reuse existing PTA engine request | `historical-d5-pta` selects `codegraph-core-pta-engine` lib/module `solver::`; re-resolve changed dependencies and require actual SCC governance witnesses, including cancel/deadline, unlaundered failure and resource refusal. No duplicate extra engine run |
 
 Core/facade split changes45→46; adding the missing adapter changes46→47 if all
-other requests remain. The current Tarjan gate has8 steps but excludes that
-PTA adapter owner. Update request inventory/cardinality/witnesses together;
+other requests remain. At `5f76eca7812`, the Tarjan gate source has ten steps,
+including the PTA adapter and Andersen owners. This closes the gate-source
+omission; its execution and the historical map repair remain pending. Review
+added SCC consumers, including concurrency deadlocks, before freezing the final
+request inventory/cardinality/witnesses together;
 do not lower old minima or retain the graph-utils `scc` selector (now zero cases).
 
 - PTA prerequisite requests precede PTA callers; retain actual Shape feature

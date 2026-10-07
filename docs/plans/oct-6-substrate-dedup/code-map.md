@@ -8,6 +8,13 @@ All paths below are relative to `semantica-codegraph-v2` unless marked QGLang.
 `packages/analysis/quanta-v2/crates/`. Subtrees indicate reachable files to
 review, not authority to replace every file. Final claims enumerate exact paths.
 
+Current scheduling overlay at `5f76eca7812cdbed3cdd66dd6d0f6533ce9b1c9c`:
+Rust/Go/Kotlin plugins, Rust/Java DefUse and the coupled S0-CALLBACK repair are
+integrated. Their before/after cuts below retain the audit baseline and acceptance
+requirements; they are no longer new implementation assignments. The remaining
+getter migrations are TypeScript plugin and Python/TypeScript DefUse. Follow the
+[current allocation](readme.md#maximum-parallel-scheduling) before assigning work.
+
 ## Before / after at the real caller
 
 | Boundary | Before on audited source | Required after |

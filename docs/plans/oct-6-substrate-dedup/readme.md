@@ -30,8 +30,8 @@ mechanics in that resource cut, preserve semantics, and qualify actual callers.
 
 | Input | Identity / interpretation |
 | --- | --- |
-| QGLang | `cb430525cfede1a21a8b599fe34a4a430284bb30`, clean at audit |
-| Semantica | `ff8f2ce935fc470351d1dbc6c819173a47f6d65e`, final committed-source audit; supplier paths unchanged since `070f4f96770`, SCC owner/PTA cut additionally reconciled; foreign dirty work excluded |
+| QGLang | `784bba129970cbdd1b18b13db4c21ff04c7e3aff`, clean before this status update |
+| Semantica | `5f76eca7812cdbed3cdd66dd6d0f6533ce9b1c9c`, progress readback at `93fb840b` plus reviewed concurrency/SCC gate delta; foreign dirty work excluded |
 | Index | observed `5bf6b15216968afde597606033870cc710cb9bc8`; observation is not an execution pin |
 | Source/claims evidence | `remaining-r46-plan-audit-state.json` at initial `070f4f9`; `remaining-r46-main-reconciliation.json` records final `ff8f2ce`, unchanged supplier scope and SCC request repair |
 | Existing execution evidence | R38/R44 and other receipts keep their original source tuples; none qualifies this audited main |
@@ -39,23 +39,28 @@ mechanics in that resource cut, preserve semantics, and qualify actual callers.
 Evidence root:
 `/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/query-owner-build-r1`.
 
-Typed receiver census: **12 retired production carrier getter calls** remain:
-four language plugins × two, four DefUse consumers × one. The live
+Typed receiver census: **4 retired production carrier getter calls** remain:
+TypeScript plugin × two, Python/TypeScript DefUse × one. The live
 `ParseResult::tree_sitter_tree_v1()` API, constructors and test code are excluded.
 This count measures entrypoints, not the size of their reachable helper graphs.
+R45's 17 calls are now 4: 13/17 entrypoint calls migrated (about 76%). This is a
+bounded source metric, not overall task completion or runtime qualification.
 The final SCC cut uses `codegraph-graph-scc` as calculation owner;
 `quanta-graph-utils-v1` is a compatibility facade. The old source is renamed,
 not a remaining dead copy. Historical owner45 requires a successor request map:
 core/facade split plus the uncovered PTA adapter owner gives 47 requests if all
 other rows remain. Resolve that map before execution; no 47 runs occurred here.
+The latest concurrency deadlock cut also reuses this SCC owner. Tarjan gate
+source now includes the PTA adapter and Andersen owners across ten rails;
+execution and the expanded consumer/request inventory still require review.
 
 | Work | Current source / ownership | Scheduling disposition |
 | --- | --- | --- |
-| Rust plugin + Rust DefUse | T1 claims `source216-rust-parser-checked-read` / `source215-rust-checked-defuse`; foreign WIP | Existing writer completes the coupled language cut |
-| Go plugin | T1 claim `source217-go-parser-checked-read`; foreign WIP | Existing writer; remove controlled-input fallback as part of its cut |
-| Java DefUse | D0 frontdoor/dispatch, C66 callable binding, C65 projection/event claims | Existing owners; one reviewed coupled bundle, no blanket restaging |
+| Rust plugin + Rust DefUse | Source integrated `ed94af892c0` | Existing owner acceptance; no repeated migration |
+| Go plugin | Source integrated `ed94af892c0` | Existing owner acceptance; no repeated migration |
+| Java DefUse | Source integrated `e14eeda8604`; separate lvalue working change observed | Owner acceptance; preserve the foreign lvalue change |
 | Python DefUse | D0 frontdoor and helper claims; foreign WIP | Existing owner; split only after explicit path/symbol handoff |
-| Kotlin plugin | Two retired calls; targeted paths clean/unclaimed at audit | New independent consumer lane |
+| Kotlin plugin | Source integrated `ecc0c5784b4`, sharing checked nodes with DefUse | Owner/control acceptance; cancel its new-migration assignment |
 | TypeScript plugin | Two retired calls; targeted paths clean/unclaimed | New independent consumer lane |
 | TypeScript DefUse | One retired call; targeted paths clean/unclaimed | New independent consumer lane |
 | C plugin / C DefUse | Source cuts `801fbd6777a` / `480b5fb445d` integrated | Verify and repair the concrete control gaps below; do not repeat getter migration |
@@ -64,8 +69,9 @@ other rows remain. Resolve that map before execution; no 47 runs occurred here.
 
 Claims are observations, not exclusive locks or proof of completion. Refresh
 HEAD, dirty paths, claims and barriers immediately before every assignment.
-Shared `syntax_authority_v1.rs` has two owner tokens and `current_read_v1.rs`
-has three. D0 is the proposed interface steward; the existing metadata,
+The earlier audit found shared `syntax_authority_v1.rs` and `current_read_v1.rs`
+co-owned. Re-query claims before assigning current edits. D0 is the proposed
+output-interface steward; the existing metadata,
 incremental and Java error owners must reconcile their hunks first. Adding
 another shared-file writer would increase overlap.
 
@@ -81,29 +87,29 @@ The bridge itself still returns `Err(E)`. The confirmed defect is the later
 poll side effect and changed first-refusal chronology, not a demonstrated
 standalone replacement of its returned error.
 
-Add **S0-CALLBACK** before shared-interface closeout: the existing object-safe
+**S0-CALLBACK source is now integrated as `aac43629734`**, including the
+consumer-stop disposition, ordinary/controlled implementations, Kernel success-only
+postcheck and source fixtures. Current-source execution acceptance is not supplied
+by this readback. Its required contract remains: the existing object-safe
 protocol must express consumer failure without inventing a Native allocation
 cause. Both actual implementations and Kernel skip postvalidation after that
 failure; successful callbacks retain all current/grant/metadata checks. Preserve
 already-recorded refusal through the existing passive issuer/finisher boundary;
 zero-work polling cannot substitute for passive observation.
 
-The corrected coordination assigns the bounded common/infra bridge and source
-fixtures to 83, and Kernel counterpart to 31. This task remains read-only for
-Semantica. This is assignment information, not proof of path
-handoff: refresh normal claims and reconcile retained metadata/custody hunks
-before editing. A Kernel-only working hunk is already present and does not
-complete the coupled bridge repair. No Rust/compiler/QBC/product execution is
-authorized by that source delegation; this follow-up is source/plan work only.
+The earlier 83/31 source handoff is integrated; do not repeat that repair.
+This task remains read-only for Semantica. The source delegation supplied no
+new Rust/compiler/QBC/product execution authority; focused acceptance remains
+separate from committed source and authored fixtures.
 
 | Batch | Concrete result | Preconditions / owner |
 | --- | --- | --- |
-| S0-CALLBACK | Real consumer-failure disposition through the existing bridge, ordinary/controlled owners and Kernel; no poll after failure | Existing 83 bridge/fixture and 31 Kernel handoff; this task reviews read-only, preserving all co-owned hunks |
+| S0-CALLBACK | Source integrated `aac43629734`; prove actual callback-failure chronology | Existing owner proof when execution is authorized; no duplicate source repair |
 | S0 | Reconcile checked reads; implement actual adapter→context→extractor output-admission bridge using existing interfaces; centralize source/backend admission policy | Existing shared owners, steward D0; no new parallel shared-file editor |
-| P-KOTLIN | Move both from-tree entrypoints and reachable HIR/item/scope/span/call helpers to scoped checked reads | Existing public read API; Kotlin plugin writer |
+| P-KOTLIN | Source integrated `ecc0c5784b4`; prove shared checked-node/bundle behavior | Existing owning tests; no duplicate migration |
 | P-TS | Move both from-tree entrypoints and reachable HIR/identity/dispatch/type helpers | Existing public read API; TS plugin writer |
 | D-TS | Move retained extraction and the full binding/assignment/traversal graph | Shared admission contract; TS DefUse writer |
-| Existing cuts | Complete Rust/Go plugins and Rust/Java/Python DefUse WIP with their actual owners | No replacement implementation or copied foreign postimages |
+| Existing cuts | Python DefUse remains WIP; Rust/Go and Java source cuts are integrated | Python existing owner; other cuts require proof, not redevelopment |
 | CONTROL-CGO | Account snapshot materialization and subsequent fact calculation under the actual original owner; resolve duplicated cap/overflow mechanics within this cut | C/Go consumers + shared admission mechanics, one writer; S0 output custody seam |
 | CONTROL-KOTLIN | Check exact retained source/backend binding and exercise original current failure priority | Kotlin DefUse writer, S0 contract |
 | SDK-DEADLINE | Add result-based deadline acceptance through the real fluent SDK caller; retain existing mapper tests | Runtime SDK test owner; Native adapter/deadline behavior is already implemented |
@@ -147,13 +153,15 @@ assignments by this packet. Do not infer that they have unlimited capacity.
 
 | Wave | Integrator | Worker 1 | Worker 2 | Worker 3 |
 | --- | --- | --- | --- | --- |
-| W0 | Refresh claims; reconcile S0 owners/signatures and complete source inventory | Audit Kotlin plugin cut | Audit TS plugin cut | Audit TS DefUse cut |
-| W1 | Review completed bundles; serialize main checkpoints | P-KOTLIN implementation + owner proof | P-TS implementation + owner proof | D-TS implementation + owner proof |
+| W0 | Refresh claims; reconcile S0 output signatures and source inventory | Review Kotlin control acceptance | Audit TS plugin cut | Audit TS DefUse cut |
+| W1 | Review Python WIP and completed bundles; serialize main checkpoints | CONTROL-KOTLIN review/affected repair | P-TS implementation + owner proof | D-TS implementation + owner proof |
 | W2 | Review control/output custody; reconcile existing WIP | CONTROL-CGO coupled C/Go + common budget helper | CONTROL-KOTLIN admission/regressions | SDK-DEADLINE real SDK tests |
 | W3 | Freeze complete committed source tuple; serialize heavy QBC logical lane | D1–D7 request/feature review | Affected policy reports/fixes in owned paths | QG-DIAG consumer decision / frontend change if required |
 | W4 | Execute owner matrix and F2/F7 on the frozen tuple | Review immutable receipts / witness coverage | Product artifact and process preparation | Documentation / installed trust prerequisite inventory |
 
-W0 is complete for this planning revision except the shared owners' interface
+The read-migration portion of Kotlin/Rust/Go/Java is integrated. Python remains
+with its existing writer. Do not spawn a replacement writer for those source cuts.
+W0 audit is complete except the shared owners' output-interface
 reconciliation. W1 read migration may use the existing interface immediately;
 an S0 signature change must be handed off before the dependent source bundle.
 TS plugin and TS DefUse are disjoint write sets, but D-TS owner compilation may
@@ -162,8 +170,8 @@ need the plugin cut first. Worker 3 can finish static review while waiting.
 ```mermaid
 flowchart TD
     S0[Existing shared owners reconcile read and output contracts]
-    E[Existing Rust Go Java Python writers finish their cuts]
-    K[Kotlin plugin]
+    E[Existing Python writer finishes its cut]
+    K[Integrated Kotlin plugin owner acceptance]
     T[TypeScript plugin]
     D[TypeScript DefUse]
     C[C Go snapshot admission and fact controls]

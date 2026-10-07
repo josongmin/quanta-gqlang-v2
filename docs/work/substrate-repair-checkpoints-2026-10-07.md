@@ -8,14 +8,15 @@ owns integrated decisions. This handoff issues no runtime or qualification claim
 ## Current source and next execution input
 
 Read-only successor audit: committed Semantica
-`ff8f2ce935fc470351d1dbc6c819173a47f6d65e`, QGLang
-`cb430525cfede1a21a8b599fe34a4a430284bb30`. Foreign dirty work is not a
+`5f76eca7812cdbed3cdd66dd6d0f6533ce9b1c9c`, QGLang
+`784bba129970cbdd1b18b13db4c21ff04c7e3aff`. Foreign dirty work is not a
 committed-source verdict. The [execution plan](../plans/oct-6-substrate-dedup/readme.md)
 and [test plan](../plans/oct-6-substrate-dedup/test-plan.md) own the next work
 allocation and exact request/oracle review; a final execution tuple is not yet frozen.
 
-- C plugin/C DefUse, Kotlin DefUse and Go DefUse getter cuts are integrated.
-  Remaining retired carrier calls are plugins8 + DefUse4, not R45's older17.
+- C/Go/Kotlin/Rust/Java completed source cuts are integrated. Current retired
+  carrier calls are TypeScript plugin 2 + Python/TypeScript DefUse 2 = 4, versus
+  R45's 17. This is an entrypoint source count, not full control qualification.
 - All thirteen reviewed R43 source postimages, including cursor3, are already
   absorbed on main. The original issuer5 acceptance remains open. Historical
   statements below about private/import-pending cursor source apply only to
@@ -29,18 +30,20 @@ allocation and exact request/oracle review; a final execution tuple is not yet f
   facade. Old owner45's graph-utils `scc` selector is stale. Reconcile core/facade
   and uncovered PTA adapter requests (successor47 if other rows remain), and the
   existing PTA engine witnesses. The three Shape feature-tree diagnostics remain.
+  Latest concurrency deadlock source reuses that owner; Tarjan gate source now
+  includes PTA adapter/Andersen in ten rails. This is source progress, with
+  execution and added consumer/request coverage still pending.
 - Source/claim observation: `remaining-r46-plan-audit-state.json`; final source
   continuity/SCC review: `remaining-r46-main-reconciliation.json`, at the evidence
   root below. This revision executes no Rust or product tests. No private root
   source checkout is an active execution candidate for these next tasks.
 
-Source-only follow-up at `65036b7221a` adds CHECKED-CALLBACK-FIRST-CAUSE: the
-typed owned-syntax bridge hides consumer failure from its object-safe owners,
-so native post-polls can occur after that failure. Kernel Err metadata postcheck
-has a foreign working repair, not a complete committed coupled fix. The
+Source-only follow-up at `65036b7221a` found CHECKED-CALLBACK-FIRST-CAUSE;
+the coupled protocol/common/infra/Kernel repair and fixtures are now integrated
+as `aac43629734`. Current-source execution acceptance remains pending. The
 [plan's callback audit](../plans/oct-6-substrate-dedup/readme.md#additional-checked-read-chronology-audit)
 records the corrected 83 bridge/fixture and 31 Kernel handoff; this task is
-read-only for Semantica and no runtime execution occurred.
+read-only for Semantica and this progress readback executed no runtime tests.
 
 ## Historical source-bound proof inputs
 
