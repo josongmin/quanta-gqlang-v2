@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-07T01:31:00Z",
+  "recorded_at_utc": "2026-10-07T01:55:57.550370+00:00",
   "proof_scope": "QBC owner/component results only; not combined current-main/shipping-gate/product qualification",
   "records": [
     {
@@ -5609,8 +5609,6 @@
     "intermediate_4f9_policy_result": "94 PASS, 1 stale Stage B anchor FAIL; preserved; superseded by aadf95 PASS"
   },
   "current_main_closeout": {
-    "source": "6cc766f2b30319a0b7772691543f1c0caddb3840",
-    "source_kind": "committed main with source prerequisites; budget actual PASS; remaining current-tuple proof pending",
     "body_main_import": {
       "commit": "712b5e8c61204bc07c4a84ae9bec21ce9c1e5a15",
       "owned_paths": 87,
@@ -5631,57 +5629,6 @@
       "sha256": "37047db93476f16d05f3fb180759e0049aeaf14cd1860cf9c4bb512d9a7b301a",
       "change": "test fixture accounts known root backing; exact-limit positive plus same OutputBytes overflow/zero partial charge assertions",
       "owning_Rust_result": "actual39/39 canonical PASS on6cc; original aadf fixture FAIL and5d interrupted history retained separately"
-    },
-    "source_state": {
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/candidate-6cc766f2b303-state.json",
-      "sha256": "c2a5eae5f8ff007316a239f569bff618fb88ed212946b9ea5ff4f35e2349e5ff"
-    },
-    "source_freeze": {
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/main-closeout-6cc766f2b303-source-freeze.json",
-      "sha256": "31a56fa0b4813d9f4d4b77a4da986c88d782910bf6a6c7b6c653887c23856989"
-    },
-    "source_policy": {
-      "status": "RED",
-      "passed_policies": 99,
-      "impacted_policies": 100,
-      "input_paths": 177,
-      "failure_owner": "query-executor-contract-frontier memo private test census and root fixture; independently owned repair pending",
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/6cc766f2b303-boundary-policy-current-state.json",
-      "sha256": "59371f32bc137c37f1468d528d62a780aba9b76922f7db06329fbfda70a06689"
-    },
-    "snapshot": {
-      "status": "SEALED",
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/snapshot-6cc766f2b303-state.json",
-      "sha256": "1a43e04e242dd71f6a08e03828420aee4ff7ee4fd60922ff6ca2d97961930c24"
-    },
-    "pure_projection": {
-      "status": "PASS pure projections only",
-      "owner_requests": 45,
-      "supplemental_requests": 6,
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/pure-validation-6cc766f2b303.json",
-      "sha256": "7cbaa59506ca504eb596e655c0b4f9c5aa03f950f579df2c96a1a8abfbe664d7"
-    },
-    "locked_metadata": {
-      "status": "PASS root/nested, auxiliary only",
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/locked-metadata-6cc766f2b303/state.json",
-      "sha256": "870bf418915f748df772a0e83bb5f7bead6530eaa22934bd6be30ebc875ddacc"
-    },
-    "owning_Rust_results": {
-      "budget": {
-        "status": "PASS",
-        "passed": 39,
-        "failed": 0,
-        "run_id": "20261007T012003.172659Z-d4d58eacbcf6",
-        "state": {
-          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-handle-owner30-6cc766f2b303/state.json",
-          "sha256": "f9afb5310f990d3004bf545f15d6061c21f084eaf7ea6fa44904fb937fbaed06"
-        },
-        "archive": {
-          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-handle-owner30-6cc766f2b303-artifact-archive/manifest.json",
-          "sha256": "601f8b32c6f7c2a399e068bb46200bdc9bb0266d2fc091ae6800b796e0c943a9"
-        }
-      },
-      "remaining_current_source": "NOT_RUN source6/relation/JSON16/formal9/owner45/graph2"
     },
     "module_path_prerequisite": {
       "main": "35970e4292d8a60c09b13b0bf08075c918471034",
@@ -5714,43 +5661,202 @@
       "main": "52f134bca18876d29c7ca545e51107f6977b301a",
       "change": "one nested runtime-analysis dev dependency edge; observed already landed, no duplicate import"
     },
+    "source": "dfc48c59e0b2ab345667bf2edcddcc0dbda88196",
+    "source_kind": "frozen committed source; actual PTA dependency compile RED; generated current-main checkpoint is separate",
+    "source_state": {
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/candidate-dfc48c59e0b2-state.json",
+      "sha256": "876d962f797734cf3abd04049f40415cd1f91c2c24123b83c19404e81abc98b6"
+    },
+    "source_freeze": {
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/main-closeout-dfc48c59e0b2-source-freeze.json",
+      "sha256": "854868fcff20c48637e32c75842e226a16b96d2fbc201cceb749ea287da4da0f"
+    },
+    "source_policy": {
+      "status": "RED",
+      "inputs": 279,
+      "policies": 104,
+      "passed": 102,
+      "failed": 2,
+      "evidence": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/dfc48c59e0b2-boundary-policy-current-state.json",
+        "sha256": "5fb17d7a3c6817528c5bb36e338f869c2e0257b27fe4355bdfca63bc23e3c42b"
+      },
+      "later_gateway_repair_main": "52c0d1f4464129d6778f119c9aa759838ab7e777",
+      "gateway_controls": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/gateway-policy-pair-r1-focused-proof.json",
+        "sha256": "34af889f6fd7c80f2cb7c708b9739c1a1fa808e0204a349c57baf4a2b098a3e1"
+      },
+      "other_owner": "memo test root fixture/private oracle census; no overall policy PASS"
+    },
+    "snapshot": {
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/snapshot-dfc48c59e0b2-state.json",
+      "sha256": "a8586add4b958b8d7f696a64bc520312b7246dadfb032aca66c3d61b1ec695eb"
+    },
+    "pure_projection": {
+      "status": "PASS 45+6 canonical projections",
+      "evidence": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/pure-validation-dfc48c59e0b2.json",
+        "sha256": "20ae9326c0ed5ba7722e484a38a7def34a713a22dc1e5c7c95220e04efcbc12f"
+      }
+    },
+    "locked_metadata": {
+      "status": "PASS root/nested, auxiliary only",
+      "evidence": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/locked-metadata-dfc48c59e0b2/state.json",
+        "sha256": "2abd95b75664c30e4421cb5300dbb8e36a8fb3f8fbc1a1542776250a02b081dc"
+      }
+    },
+    "owning_Rust_results": {
+      "owner45": {
+        "status": "RED at 1/45",
+        "name": "tarjan-pta",
+        "exit_code": 101,
+        "tests_executed": 0,
+        "remaining_44": "NOT_RUN",
+        "compile_errors": 7,
+        "failure_owner": "quanta-adapters-dfg lib dependency",
+        "run_id": "20261007T014544.121922Z-0e09f203a022",
+        "state": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-dfc48c59e0b2-state.json",
+          "sha256": "31c722e1563f1f16286d76f76f872325e5e413bd9e658b95ec20c9c9ce6055fc"
+        },
+        "archive": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-failed-owner-dfc48c59-20261007T014544.121922Z-0e09f203a022-archive/manifest.json",
+          "sha256": "a86c8d34e12b7f4c7187057819ad5bf14883d157560e8142a36a351977ed3171"
+        }
+      },
+      "historical_budget": {
+        "status": "PASS",
+        "passed": 39,
+        "failed": 0,
+        "run_id": "20261007T012003.172659Z-d4d58eacbcf6",
+        "state": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-handle-owner30-6cc766f2b303/state.json",
+          "sha256": "f9afb5310f990d3004bf545f15d6061c21f084eaf7ea6fa44904fb937fbaed06"
+        },
+        "archive": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-handle-owner30-6cc766f2b303-artifact-archive/manifest.json",
+          "sha256": "601f8b32c6f7c2a399e068bb46200bdc9bb0266d2fc091ae6800b796e0c943a9"
+        },
+        "source": "6cc766f2b30319a0b7772691543f1c0caddb3840",
+        "current_source_verdict": "NOT_RUN"
+      },
+      "supplementals": {
+        "status": "formal9 PASS; independent JSON16/source6/relation running",
+        "live_state_path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/dfc-supplemental-independent-r1/state.json"
+      },
+      "graph2": "NOT_RUN",
+      "formal9": {
+        "status": "PASS",
+        "source": "dfc48c59e0b2ab345667bf2edcddcc0dbda88196",
+        "counts": {
+          "failed": 0,
+          "filtered_out": 219,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 9
+        },
+        "run_id": "20261007T015442.302258Z-703d92b92eab",
+        "required_witnesses_observed": 9,
+        "state": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/dfg-formal-owner9-dfc48c59e0b2/state.json",
+          "sha256": "00180a5bba1e31210c663b5ed3439758cd8d91e9d7778893015a8ddd79820863"
+        },
+        "archive": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/dfg-formal-owner9-dfc48c59e0b2-artifact-archive/manifest.json",
+          "sha256": "2d73b1cf8b74d13b54becb586b37e6e84eaa6c4718b540a5843033d255934995"
+        }
+      }
+    },
+    "test_mount_single_owner": {
+      "main": "d3e2cee0257fcf984bee83ec88ab0c4f72220850",
+      "paths": 3,
+      "Python_tests": 14,
+      "definitions_preserved": 65,
+      "evidence": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/test-mount-single-owner-r1-proof.json",
+        "sha256": "afa771c25468f336469502e3074de6445b833c0b6d64d8a7cc9f6202346565e8"
+      },
+      "interpretation": "65 gate reports, not observed duplicate executions; gateway conservative overlap cap contributes reports; original definitions each retain one owner; no scanner weakening"
+    },
+    "macro_parser": {
+      "main": "bacc30b45ebe46c44d37473982f033c2535d161a",
+      "paths": 2,
+      "Python_tests": 46,
+      "scope": "tilde punctuation only inside macro invocation token tree; offsets/body preserved; malformed syntax still rejected"
+    },
     "GOD_retirement_stage": {
+      "status": "MAIN exact7 retired",
+      "main": "dfc48c59e0b2ab345667bf2edcddcc0dbda88196",
       "before": 14,
       "after": 7,
       "retired": 7,
       "new": 0,
       "worsened": 0,
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/god-retirement-5d9f490fb4dd.json",
-      "sha256": "455f86275e53e7673d060c615ad0ef24aef7c9f50a30e66face63ac613ea6123",
-      "status": "READ_ONLY stage PASS; baseline not written"
+      "outside_entries_changed": 0,
+      "evidence": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/god-exact-retirement-r1-import-state.json",
+        "sha256": "5228d610e5c10ad95276d1fdde0e5f8023f77ad9890857e194c25a72d3bb486b"
+      },
+      "full_read_only": {
+        "status": "RED",
+        "new": 5824,
+        "worsened": 1484,
+        "evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/god-all-dfc48c59e0b2/state.json",
+          "sha256": "61e7cddb60b678479c773d3fa893c98c84f126bef2e4d1aebf170f7b5c5b93d1"
+        },
+        "baseline_updates": 0
+      }
     },
     "topology_attempt": {
-      "status": "RED before install, dirty_paths0; unresolved two SDK module children; owning source repair main35970e4; rerun pending",
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/generated-closeout-5d9f490fb4dd/topology-state.json",
-      "sha256": "743e74fe74fca0d35d7030a317a0c0a2ba344b962eee3f236c0e49dfcf66d2c5"
-    },
-    "generated_Honesty_product_qualification": "NOT_RUN after repairs; no product/Rust PASS composed",
-    "next": "Freeze committed main6cc with module/taxonomy repairs; rerun failing budget owning rail and remaining owner/consumer requests; topology/GOD/Honesty retirement and source gates",
-    "test_mount_single_owner": {
-      "status": "source overlay full topology PASS and Python14 PASS; preserved identity and main import pending",
-      "paths": [
-        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/mod.rs",
-        "packages/analysis/quanta-v2/crates/quanta-runtime/Cargo.toml",
-        "packages/analysis/quanta-v2/crates/quanta-runtime/tests/sec_no_model_honesty_e2e_test.rs"
-      ],
-      "spec": {
-        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/test-mount-single-owner-r1-source-spec.json",
-        "sha256": "6bf76a9eceeb263f1820cdb12fa61368cd8341251c6fdfbf0b9fc3f215703551"
+      "status": "PASS full regeneration; exact5 MAIN",
+      "main": "ff784c50ce181850d72c23751a50fddd33a55fb3",
+      "source": "e1f06e2cbfadc97653f79a553425fccf573075cd",
+      "paths": 5,
+      "evidence": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/topology-head-custody-r3/state.json",
+        "sha256": "14671b9a4671812658be6c3a8fe9e50b90e8e3ba4ed0de1978abe5aeb200e5e8"
       },
-      "topology": {
-        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/generated-closeout-test-mount-single-owner-r1/state.json",
-        "sha256": "12c8146c6b715c89f0a03b869aa53fdd6303776dd2d665dc5a481479fe10eebf"
-      },
-      "prior_defects": {
-        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/topology-single-owner-6cc766f2b303-audit.json",
-        "sha256": "4539903c1926e823f071ff31325cf5d1a35a6863730484c8d71d2b57542d6e72"
+      "source_custody": "committed HEAD unchanged across regeneration/import; normal hooks PASS; exact5 clean; claim and barrier released",
+      "product_qualification": "not claimed; admission still proposed-pending-pilot",
+      "later_main_delta": {
+        "head": "04a3706c7d2948182cda177654ce5b1b1a4aff70",
+        "path_count": 43,
+        "full_regeneration_inputs_changed": 0,
+        "cheap_header_inputs_changed": 0,
+        "evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/topology-main-delta-04a3706c7d29.json",
+          "sha256": "c873a1e362e9ea391478cfcd4155f622b4e13dc99320656a1d749660c2a4219a"
+        },
+        "scope": "generator input classification only; not Rust, new unit ownership, dirty source or product proof"
       }
-    }
+    },
+    "global_Honesty": {
+      "status": "RED full sweep / baseline retirement BLOCKED",
+      "source": "dfc48c59e0b2ab345667bf2edcddcc0dbda88196",
+      "evidence": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/honesty-retirement-dfc48c59e0b2/state.json",
+        "sha256": "efef88258f52dfea6791a928e249ffd7d9698d496b73ee7bba05a6dd09ccec61"
+      },
+      "parse_errors": 0,
+      "baseline_paths_changed": 0,
+      "shape_only": {
+        "new": 5796,
+        "rewritten": 2029
+      },
+      "positive_negative_pair": {
+        "new": 1708,
+        "rewritten": 1056
+      },
+      "relationship": {
+        "new": 1258,
+        "rewritten": 360
+      },
+      "interpretation": "baseline ratchet reports, not adjudicated runtime defects; no baseline blessing, scope narrowing or allows"
+    },
+    "generated_Honesty_product_qualification": "generated5/retired GOD7 main complete; global Honesty/GOD RED; owning Rust and actual downstream qualification incomplete",
+    "next": "Wait for the independent DFG consumer source checkpoint; review source and freeze it before owning PTA/consumer proof. Resolve global baseline reconciliation independently; do not duplicate imported body/generated files or widen debt into this code change."
   },
   "main_closeout_history": [
     {
@@ -5945,6 +6051,150 @@
       },
       "generated_Honesty_product_qualification": "NOT_RUN after repairs; no product/Rust PASS composed",
       "next": "Freeze committed main6cc with module/taxonomy repairs; rerun failing budget owning rail and remaining owner/consumer requests; topology/GOD/Honesty retirement and source gates"
+    },
+    {
+      "source": "6cc766f2b30319a0b7772691543f1c0caddb3840",
+      "source_kind": "committed main with source prerequisites; budget actual PASS; remaining current-tuple proof pending",
+      "body_main_import": {
+        "commit": "712b5e8c61204bc07c4a84ae9bec21ce9c1e5a15",
+        "owned_paths": 87,
+        "observation": "already committed in shared main; no duplicate import by this helper",
+        "later_main_census": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/nextaadf0d4148db-import/owned-87-current-main-body-census.json",
+          "sha256": "e33a796d7a37dfbb017ad3a7048d339865ab1e304f0028f305d14a2e3b547a5b"
+        },
+        "reviewed_frozen_fb0_main": {
+          "exact_owned": 82,
+          "changed_manifest_lock_paths": 5,
+          "qualification": "source observation only"
+        }
+      },
+      "budget_fixture_repair": {
+        "main": "63ddf8cca45a1546514d5bb344520be2086b12b9",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-summed-overflow-fixture-r2-import-state.json",
+        "sha256": "37047db93476f16d05f3fb180759e0049aeaf14cd1860cf9c4bb512d9a7b301a",
+        "change": "test fixture accounts known root backing; exact-limit positive plus same OutputBytes overflow/zero partial charge assertions",
+        "owning_Rust_result": "actual39/39 canonical PASS on6cc; original aadf fixture FAIL and5d interrupted history retained separately"
+      },
+      "source_state": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/candidate-6cc766f2b303-state.json",
+        "sha256": "c2a5eae5f8ff007316a239f569bff618fb88ed212946b9ea5ff4f35e2349e5ff"
+      },
+      "source_freeze": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/main-closeout-6cc766f2b303-source-freeze.json",
+        "sha256": "31a56fa0b4813d9f4d4b77a4da986c88d782910bf6a6c7b6c653887c23856989"
+      },
+      "source_policy": {
+        "status": "RED",
+        "passed_policies": 99,
+        "impacted_policies": 100,
+        "input_paths": 177,
+        "failure_owner": "query-executor-contract-frontier memo private test census and root fixture; independently owned repair pending",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/6cc766f2b303-boundary-policy-current-state.json",
+        "sha256": "59371f32bc137c37f1468d528d62a780aba9b76922f7db06329fbfda70a06689"
+      },
+      "snapshot": {
+        "status": "SEALED",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/snapshot-6cc766f2b303-state.json",
+        "sha256": "1a43e04e242dd71f6a08e03828420aee4ff7ee4fd60922ff6ca2d97961930c24"
+      },
+      "pure_projection": {
+        "status": "PASS pure projections only",
+        "owner_requests": 45,
+        "supplemental_requests": 6,
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/pure-validation-6cc766f2b303.json",
+        "sha256": "7cbaa59506ca504eb596e655c0b4f9c5aa03f950f579df2c96a1a8abfbe664d7"
+      },
+      "locked_metadata": {
+        "status": "PASS root/nested, auxiliary only",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/locked-metadata-6cc766f2b303/state.json",
+        "sha256": "870bf418915f748df772a0e83bb5f7bead6530eaa22934bd6be30ebc875ddacc"
+      },
+      "owning_Rust_results": {
+        "budget": {
+          "status": "PASS",
+          "passed": 39,
+          "failed": 0,
+          "run_id": "20261007T012003.172659Z-d4d58eacbcf6",
+          "state": {
+            "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-handle-owner30-6cc766f2b303/state.json",
+            "sha256": "f9afb5310f990d3004bf545f15d6061c21f084eaf7ea6fa44904fb937fbaed06"
+          },
+          "archive": {
+            "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-handle-owner30-6cc766f2b303-artifact-archive/manifest.json",
+            "sha256": "601f8b32c6f7c2a399e068bb46200bdc9bb0266d2fc091ae6800b796e0c943a9"
+          }
+        },
+        "remaining_current_source": "NOT_RUN source6/relation/JSON16/formal9/owner45/graph2"
+      },
+      "module_path_prerequisite": {
+        "main": "35970e4292d8a60c09b13b0bf08075c918471034",
+        "changed_paths": 1,
+        "change": "two explicit child module paths; unchanged SDK behavior/API/cfg",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/sdk-capability-projection-child-paths-r1-import-state.json",
+        "sha256": "4fa1eb5aedbe4b08dcd6f9aed0c9167e7ee6ce92ed511382c6957791fef0badc",
+        "actual_static_RED_to_PASS": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/sdk-capability-projection-child-paths-owner-resolution.json",
+          "sha256": "f89ce389155307dabf23ae10609dbca05dde3e19f656d393cf63cf57c8df96ac"
+        }
+      },
+      "feature_taxonomy_prerequisite": {
+        "main": "6cc766f2b30319a0b7772691543f1c0caddb3840",
+        "changed_paths": 6,
+        "change": "two existing product owners exhaustively classified; 37 missing rows added, CLI forwarding consumer corrected; source binary required-features derived; taint rejection unit file renamed preserving body/cfg/logical test IDs; no feature/dependency/engine changes",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/feature-taxonomy-owner-completion-r3-import-state.json",
+        "sha256": "8b9ad9fc887397b04f32fb241cfaf9372b82e9a81e58c39379e8dde0f3dd883e",
+        "lint_PASS": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/feature-taxonomy-owner-completion-r2-lint-state.json",
+          "sha256": "e67f9a53d4a73896a2de96dc3a069ee3cad555d0fd6c38db65b22999fb662d4f"
+        },
+        "Python_tests_PASS20": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/feature-taxonomy-owner-completion-r2-tests-state.json",
+          "sha256": "385102f378e1287a502fff13b85f0a4c6128716fb758f845a60c1dfa2724e7f8"
+        },
+        "proof_delta": "normal-hook import ordering only after tests; normal hooks PASS"
+      },
+      "lock_prerequisite": {
+        "main": "52f134bca18876d29c7ca545e51107f6977b301a",
+        "change": "one nested runtime-analysis dev dependency edge; observed already landed, no duplicate import"
+      },
+      "GOD_retirement_stage": {
+        "before": 14,
+        "after": 7,
+        "retired": 7,
+        "new": 0,
+        "worsened": 0,
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/god-retirement-5d9f490fb4dd.json",
+        "sha256": "455f86275e53e7673d060c615ad0ef24aef7c9f50a30e66face63ac613ea6123",
+        "status": "READ_ONLY stage PASS; baseline not written"
+      },
+      "topology_attempt": {
+        "status": "RED before install, dirty_paths0; unresolved two SDK module children; owning source repair main35970e4; rerun pending",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/generated-closeout-5d9f490fb4dd/topology-state.json",
+        "sha256": "743e74fe74fca0d35d7030a317a0c0a2ba344b962eee3f236c0e49dfcf66d2c5"
+      },
+      "generated_Honesty_product_qualification": "NOT_RUN after repairs; no product/Rust PASS composed",
+      "next": "Freeze committed main6cc with module/taxonomy repairs; rerun failing budget owning rail and remaining owner/consumer requests; topology/GOD/Honesty retirement and source gates",
+      "test_mount_single_owner": {
+        "status": "source overlay full topology PASS and Python14 PASS; preserved identity and main import pending",
+        "paths": [
+          "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/mod.rs",
+          "packages/analysis/quanta-v2/crates/quanta-runtime/Cargo.toml",
+          "packages/analysis/quanta-v2/crates/quanta-runtime/tests/sec_no_model_honesty_e2e_test.rs"
+        ],
+        "spec": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/test-mount-single-owner-r1-source-spec.json",
+          "sha256": "6bf76a9eceeb263f1820cdb12fa61368cd8341251c6fdfbf0b9fc3f215703551"
+        },
+        "topology": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/generated-closeout-test-mount-single-owner-r1/state.json",
+          "sha256": "12c8146c6b715c89f0a03b869aa53fdd6303776dd2d665dc5a481479fe10eebf"
+        },
+        "prior_defects": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/topology-single-owner-6cc766f2b303-audit.json",
+          "sha256": "4539903c1926e823f071ff31325cf5d1a35a6863730484c8d71d2b57542d6e72"
+        }
+      }
     }
   ]
 }

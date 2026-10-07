@@ -11,13 +11,22 @@
 
 상태: **IN_PROGRESS.** 이번 문서 갱신의 base GQLang commit은 `0644614`다. 로컬 `just ci` PASS는 이전 `d600cab` 소스의 receipt다.
 
-- **현재 checkpoint (`6cc766f`):** Shape·SCC 본문87경로는 main `712b5e8c`에 반영돼 있다. Budget fixture `63dd`, nested lock `52f`, SDK child 경로 `35970e4`, feature taxonomy `6cc766f`도 main에 있다. **수정된 budget owner는 canonical QBC39/39 PASS**다(run `20261007T012003.172659Z-d4d58eacbcf6`, 원본7개 archive). GQLang `40fad1e`·Index `9221d77` committed pin/overlay0 snapshot과 root/nested locked metadata를 확인했다.
+- **현재 main 반영:** D1/D2 본문87경로는 `712b5e8c`에 있다. Test mount 3파일은 `d3e2cee`, Honesty macro token parser 2파일은 `bacc30b`, GOD exact7 retirement는 `dfc48c5`, gateway 정책 2파일은 `52c0d1f`에 반영됐다. **Topology 5파일은 committed source `e1f06e2`에서 전체 재생성 PASS 후 main `ff784c50`에 반영했다.** 재생성과 import 사이 HEAD를 유지했고 normal hooks PASS·exact5 clean·claim/barrier 해제를 확인했다. 신규 엔진·라이브러리·public 계약 변경은 없다.
 
-영향 정책은177입력/100개 중99 PASS·1 RED다. RED는 다른 owner가 수정 중인 memo 테스트의 root fixture와 private oracle census다. 전체 게이트 PASS로 세지 않는다. 원본 topology의65 physical test 중복은 runtime gateway cfg, path 정규화의 단독+묶음 등록, taint helper 재포함으로 분류했다. **3파일 수정 overlay에서 전체 topology 재생성 PASS·Python14 PASS**이며, unique definition 보존 확인과 main import를 진행한다. 신규 엔진·라이브러리·public 계약 변경은 없다.
+- **추가 main 비교 (`2026-10-07`, frozen Semantica `e5c3bc6`, GQLang `5d1e485`, Index `9221d77`):** D1/D2의 `712b5e8c`, D3/D4/D5의 `d88f0a2`, D7의 `b258f59`, F1/D6의 `c1f821d`는 모두 Semantica main 조상이다. Clean triplet의 root/nested locked metadata와 영향 boundary 정책90개는 PASS. Canonical QBC SCC core20/20 GREEN(`20261007T013408.881609Z-59aa6c4a3d8d`), standalone Shape17/17 GREEN(`20261007T014748.184126Z-fb83a5fb3c7a`), D3 runtime pack16/16 GREEN(`20261007T014920.013304Z-1697d7e14d9f`); PTA SCC는 `quanta-adapters-dfg` 컴파일 오류7건으로 테스트0 RED(`20261007T013528.678837Z-475d8c0934fd`); D3 taint는 `quanta-adapters-parser` 컴파일 오류2건으로 테스트0 RED(`20261007T015112.070604Z-a1b1590ffea5`); SCV2는 `quanta-contract-retrieval` 컴파일 오류7건으로 테스트0 RED(`20261007T014306.765248Z-ef2dffc2a4d3`); D5 solver는 225/227 통과, compile-fail 테스트2건이 해당 QBC lane에서 자체 rlib를 찾지 못해 RED(`20261007T014622.544326Z-d78700f5a209`). 이 RED들은 중복 구현의 행동 회귀 판정이 아니라 현재 canonical proof의 실제 차단점이다. 이 frozen receipt를 이후 이동한 main의 GREEN으로 이월하지 않는다.
+- **후속 HEAD 비교 (`c119d3b`, dirty overlap0):** D1/D2 landing 87경로 중 10경로가 commit 이후 변경됐다(두 lock, 두 manifest, runtime-analysis manifest·incremental/worker identity, runtime capability, session bridge, taint wire recursion). D3/D4/D5 landing14경로, D7 landing7경로, F1/D6 landing39경로는 commit 이후 변경0·현재 dirty 겹침0이다. 후속 변경이 있는 D1/D2 소비자와 feature closure는 이 HEAD에 맞춘 재검증이 필요하다.
 
-`5d9f490` budget은 후속 dispatch 중지 때 tool cleanup으로 끝난 **INTERRUPTED/no completed receipt** 이력이다. 현재39 PASS와 섞지 않는다. GOD read-only14→7/retired7/new0/worsened0은 baseline 작성 전이다. Source6/relation/JSON16/formal9/owner45/graph2와 generated/global Honesty의 최종 tuple proof는 아직 완료되지 않았다.
+Test mount의 Python14 PASS와 정의65개 보존/수정 후 각 owner1개를 확인했다. **65는 single-owner 게이트 신고 수이며 65개 실제 중복 실행을 관찰한 수가 아니다.** Gateway49 신고에는 feature 변수16개 초과 시 overlap을 보수적으로 판정한 경우가 포함된다. Plain-test branch의 fallback 겹침, path 정규화11개의 단독+묶음 등록, taint helper5개의 재포함은 소스에서 확인했다. 중복 mount와 함의된 outer guard를 제거했고 full/core feature 조건·테스트 정의는 보존했다. 게이트의 overlap 판정이나 한도를 완화하지 않았다.
+
+**Rust 검증 source는 `dfc48c5`로 별도 동결했다**(GQLang `40fad1e`·Index `9221d77`, overlay0). Root/nested locked metadata와 canonical pure projection45+6은 PASS다. 실제 owner45의 PTA-first는 `quanta-adapters-dfg` 연결 오류7건으로 **compile RED/실행0**, 나머지44건은 NOT_RUN이다(run `20261007T014544.121922Z-0e09f203a022`, 원본7개 archive). Java predicate reexport, sealed authority 소비자, checked syntax-read 소비자가 차단점이며 동시 수정 중인 소스를 덮어쓰지 않는다. 같은 frozen source의 **formal9는 canonical QBC9/9 PASS**다(run `20261007T015442.302258Z-703d92b92eab`, 원본7개 archive). 독립 JSON16/source6/relation 요청은 별도 source-bound 실행으로 기록한다. Budget39 PASS는 `6cc766f`의 결과이며 새 source의 PASS로 세지 않는다.
+
+`dfc48c5` 영향 정책은279입력/104개 중102 PASS·2 RED다. Gateway 정책의 제거된 outer guard 요구는 이후 `52c0d1f`에서 수정하고 positive1/negative3 Python controls PASS를 확인했다. 나머지 memo root fixture/private census는 해당 owner의 별도 작업이다. 전체 정책 PASS로 표시하지 않는다.
+
+**Global baseline 검사:** `dfc48c5`의 Honesty3 전체 스캔은 parser 오류 없이 완료됐지만 모두 ratchet RED다. Shape-only new5796/rewritten2029, positive-negative-pair new1708/rewritten1056, relationship new1258/rewritten360이며 baseline 변경0이다. 이는 baseline 대비 신고 수이며 확인된 runtime 결함 건수가 아니다. Global GOD도 new5824/worsened1484로 RED다. 이번 exact7 retirement는 scoped14→7/new0/worsened0/outside 변경0으로 main에 반영됐다. Honesty exact2/6/3 retirement는 전체 baseline 정합성 문제로 BLOCKED다. Baseline 전체 재승인·allow 추가·scope 축소로 통과시키지 않는다.
+
+`5d9f490` budget은 INTERRUPTED/no completed receipt 이력이다. 이후 main 변경과 위 frozen source의 결과를 합쳐 현재 main qualification을 주장하지 않는다. [Rust 증거](checkpoint-rust-evidence.json)와 [generated 증거](checkpoint-generated-evidence.json)는 source와 실행 범위를 각각 기록한다.
 - 이전 `aadf`는 source-memory6·relation owner5 actual canonical PASS, budget39 중38 PASS/1 FAIL다. Overflow fixture가 root backing을 누락한 것이 원인이며 기존 exact OutputBytes refusal·atomic rollback assertion을 유지하고 positive boundary control을 추가했다. JSON16/formal9/owner45/graph2는 그 tuple에서 NOT_RUN이다.
-- **남은 순서:** repaired committed main owner/consumer 증명 → topology5/GOD7-key/Honesty3 retirement와 Shape/Tarjan·feature/layer gate. 이미 반영된 본문을 다시 import하지 않는다.
+- **남은 순서:** DFG 소비자 compile 수리 checkpoint → 같은 committed source의 PTA/Shape/taint/SDK owner·consumer proof → Honesty baseline 정합성 및 exact retirement. Topology5/GOD7과 본문은 main에 있으므로 다시 import하지 않는다. 전역 baseline의 신고를 새로운 중복 제거 구현 범위로 확대하지 않는다.
 
 아래 두 단락은 `3fe` 실행 전의 병합·진단 이력이다. 당시의 `NOT_RUN`은 현재 판정이 아니다.
 
@@ -306,14 +315,14 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 | D5 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | PTA solver227 실제 통과, manual comparison only. Canonical owner receipt 필요 |
 | D4 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | SCV2 leaf34 실제 통과, manual comparison only; canonical main source fences PASS. Canonical owner receipt 필요 |
 | D7 | MAIN_IMPLEMENTED | `b258f5919a5` | Final clean integration에서 6-file owner matrix70/70 GREEN; captured source·기존 parity/surface/DI. Full product qualification 별도 |
-| D1-A / D1-B | PRIVATE_COMMITTED / current owner qualification NOT_RUN | 없음 | 현재 `942`/base `a5edbbd`, owned87 paths에 Shape owner/factory/feature 연결과 runtime capability·SDK export 분리 구현. Source policy는 입력102경로 중 영향 정책92 PASS; snapshot sealed, metadata PASS auxiliary, source-memory6 실행 중, budget30→JSON16→formal9→owner45는 NOT_RUN. D1/D2 본체 main 미반영. [현재 증거](execution-progress.md) |
+| D1-A / D1-B | MAIN_IMPLEMENTED / current owner qualification incomplete | `712b5e8c` | Cost Shape 복제 구현·tests 삭제, standalone factory/export 및 shape-only feature 연결이 main에 반영됐다. 최신 main의 실제 SDK consumer·pure/PTA/disabled/Cost feature 조합과 두 Shape gate는 아직 완료 증거가 없다. [현재 증거](execution-progress.md) |
 | F1 / D6 | MAIN_IMPLEMENTED | `c1f821db572` | SDK211 pass/2 skip; rebased consumers141 pass/1 skip; installed wheel1 + Granian/scripted daemon1 GREEN. Native daemon/product qualification 별도 |
 | D2-P / D2-K | MAIN_IMPLEMENTED | `df2a867ad70` | Final core20 QBC GREEN; actual frame/output bound·typed stop·order/ID controls. Rebased std-only owner source/toolchain unchanged |
-| D2 PTA | PRIVATE_COMMITTED / current PTA owner qualification NOT_RUN | 없음 | 현재 `942`의 SCC caller·field-policy child·worker identity·whole-program helper 본문은 `3fb`과 byte exact다. 이전 `3fb` budget30은 test dependency compile RED/테스트0이었다. 새 tuple의 source-memory6→budget30→JSON16→formal9→PTA owner45는 NOT_RUN이다. [Rust evidence/RCA](checkpoint-rust-evidence.json) |
-| D2 Taint | PRIVATE_COMMITTED / current owner qualification NOT_RUN | 없음 | Private regular35+deep1은 historical PASS. 현재 `942` Taint 본문은 `3fb`과 byte exact이며 owner45의 Taint/deep-chain은 NOT_RUN; main import pending. 이전 `e7be` 수동 Wire68+49/core20은 comparison-only다 |
-| Generated inputs | PARTIAL_MAIN / PENDING final census | GOD `0a86de35c28` | GOD17 keys 제거·fresh-base scoped19 files PASS는 이력이다. 이전 `a162` 선택 4경로 read-only GOD witness는 baseline14→7, new0/worse0; `942`의 final generator/topology·global Honesty census는 NOT_RUN이다. Generated 파일은 아직 변경하지 않았다. 기존 `WorkerCfgDfgCacheV1` 공개 메서드 11개 미등록 GOD debt는 별도다. [Generated evidence](checkpoint-generated-evidence.json) |
+| D2 PTA | MAIN_IMPLEMENTED / current PTA owner qualification incomplete | `712b5e8c` | PTA의 복제 Tarjan 순회가 공통 graph-utils core 호출로 바뀌었다. 최신 main의 PTA owner·caller 결과 순서/ID·typed stop·admission 증명은 별도다. 이전 후보의 compile RED를 현재 main 판정으로 이월하지 않는다. [Rust evidence/RCA](checkpoint-rust-evidence.json) |
+| D2 Taint | MAIN_IMPLEMENTED / current owner qualification incomplete | `712b5e8c` | Taint의 복제 순회는 제거되고 successor-only projection이 공통 core를 호출한다. 최신 main의 Taint owner·public contract·ignored 50k·Tarjan gate 증명은 별도다. 이전 private/manual 결과는 현재 main 판정이 아니다 |
+| Generated inputs | MAIN topology5 / GOD exact7; GLOBAL_BASELINE_BLOCKED | `ff784c50` / `dfc48c5` | 전체 canonical topology 재생성 PASS 후 source custody와 normal hooks로 exact5 반영. GOD scoped14→7/new0/worse0/outside 변경0. Honesty3·global GOD 스캔은 완료됐지만 baseline ratchet RED; Honesty baseline 변경0. Rust/PTA proof와 구분. [Generated evidence](checkpoint-generated-evidence.json) |
 
-과거 base `3188`→main `03c9`의 76경로 delta와 THREE_WAY 5경로, `e7be`/base `858a`의 7개 겹침은 현재 병합 이전 기록이다. 직전 private `d20`/base `24f2`는 main 전용 17경로를, 이전 `3fe`/base `5c8`은 main 전용 14경로를 바이트 보존했다. 현재 `942`/base `a5ed`는 owned87·main-only23경로가 부모와 byte exact이고 겹침0이다. Base 이후 이동한 main과 다시 비교하고 영향받는 canonical owner·consumer 검증을 완료해야 D1/D2 main 반영을 판단할 수 있다. `d14a`와 `e7be` 수동 receipt는 각 frozen tuple의 비교 결과다.
+과거 base `3188`→main `03c9`의 76경로 delta와 THREE_WAY 5경로, `e7be`/base `858a`의 7개 겹침은 현재 병합 이전 기록이다. 직전 private `d20`/base `24f2`는 main 전용 17경로를, 이전 `3fe`/base `5c8`은 main 전용 14경로를 바이트 보존했다. `942`/base `a5ed`의 owned87·main-only23경로 보존은 `712b5e8c` main import 이전의 병합 증거다. 이후 main 변경과 관련 dirty 입력을 분리해 canonical owner·consumer 검증을 완료해야 D1/D2 종료를 판단할 수 있다. `d14a`와 `e7be` 수동 receipt는 각 frozen tuple의 비교 결과다.
 
 ### 최종 Definition of Done
 
@@ -325,7 +334,7 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 - [x] D7: captured source authority 1개·projection version/digest 일치·init/retry/duplicate/override/restart controls. Exact commands/cases는 [checkpoint-d7-evidence.json](checkpoint-d7-evidence.json).
 - [ ] D3/D4/D5의 과거 manual Rust 비교 5건을 reviewed canonical owner request/receipt로 재검증.
 - [ ] 모든 항목의 existing mandatory gates, regenerated inputs, actual selected cases를 기록.
-- [ ] 각 dependency가 닫힌 checkpoint의 owned 변경을 local main에 반영하고 문서 ledger 동기화.
+- [x] 본문·source prerequisites·topology5·GOD exact7을 local main에 반영. 남은 compile/qualification checkpoint는 별도 기록.
 - [ ] source tuple·실행 증거·NOT_RUN·외부 compatibility/installed/perf의 남은 범위를 명시.
 
 이 조건이 모두 충족될 때 **선택한 D1–D7 중복 제거 완료**로 표시한다. 다른 F 기능 수리와 전체 제품 qualification 완료를 뜻하지 않는다.
