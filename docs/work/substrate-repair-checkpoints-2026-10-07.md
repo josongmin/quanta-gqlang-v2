@@ -27,6 +27,9 @@ claimed.
 | `7bbdcc1d4e3` — dependency owner | Shared generation result was stranded in a Java-only child; row iterator and semantic view lifetimes were insufficient; backing import was narrower than its unconditional binding users → restore one shared result owner and exact source borrows/import closure. | Frozen `1cfc4c41d7a`: canonical Java, Python-only and cfg-dfg owning library checks all passed. Six reviewed paths integrated; no new calculation or dependency. |
 | `4518fd6fec5` — Parser cfg | Java raw helper and raw-error facade compiled outside their active caller feature set → both mirror the exact existing caller predicate. | The same three owner checks passed. Only two cfg hunks integrated. Every foreign working/index change was retained; no Java feature was enabled to make Python minimum pass. |
 
+| `0dd691a651c` — analysis test closure | Engine-only test reexport escaped its feature, and 14 ordinary CFG fixture inputs omitted the new source-control field → mirror the defining module predicate and the existing ordinary production constructor. | Frozen `9b5ea151425`: complete affected CFG owner 47/47 passed, zero skips. Runtime Slice owner also compiled and executed on the same tuple. Four paths integrated first. |
+| `1a5cb6b0d29` — F4/F9 runtime | Bounded prefixes could publish success; PDG discovery pairs fabricated CFG direction/kinds; removed Dice statements retained occurrence metadata → typed partial refusal, finite-bound recomputation, original CFG edges on final membership, included occurrence metadata with retained parameter provenance. | R14 canonical Slice helper 6/6 passed, zero skips; all four independent output/membership regressions executed. Five paths integrated after the verified dependency checkpoint. |
+
 ### Code owners
 
 Paths are relative to `semantica-codegraph-v2/`.
@@ -41,13 +44,14 @@ Paths are relative to `semantica-codegraph-v2/`.
 
 ## Remaining repair candidates
 
-Native, runtime Slice and affected test/feature closure source changes are on the private branch
-`codex/oct7-substrate-query-owner-build-r1`; they are not yet claimed integrated.
+Only native Rename and the SDK deadline caller remain candidate source changes
+on `codex/oct7-substrate-query-owner-build-r1`. Runtime Slice and its
+feature/input dependency are integrated at the checkpoints above.
 
 | ID | Structural change | Acceptance still required |
 | --- | --- | --- |
 | F2 native | Add the missing canonical `mutation.refactor-rename` runtime binding. Retain existing typed backend, provider checks and Preview/Apply controls. Exact mutation inventory is the oracle, not a refreshed numeric count. | Execute native binding parity and feature-off refusal; prove public Preview reaches existing dispatch/backend; preserve phase/cap/host refusals. |
-| F4/F9 | Admit each new eligible PDG node before insertion; distinguish zero cap, exact fit and omitted work. Composite bounded prefixes return typed Incomplete. Derive Chop/Dice PDG edges from final membership in original orientation. Runtime derives CFG blocks and occurrence metadata from final membership and retains original CFG edge kinds/counts. Included parameter provenance remains available while authored-statement display excludes parameter-only rows. | Q3 owner: 37 passed, including 8 new regressions. Q3 is integrated at `8edd1b0733c`; original traversal failed the independent cap oracle. Execute runtime output/statement and SDK refusal oracles on final source. |
+
 | F7 native | Solver/lowering/adapter are integrated. Append a payload-free RuntimeError deadline refusal and preserve it through native SDK plus exhaustive timeout/category mappings; do not invent QueryId. | Engine owner: 73 passed; lowering owner: 58 passed. Whole adapter owner: 21 passed. Native wire integration 2/2 and timeout/category projection 1/1 passed on their recorded frozen sources; SDK projection proof remains pending. Check default30s, iteration distinction, all domains, zero/past deadline and non-timeout rejection controls. |
 
 F7 does not promise hard interruption inside user callbacks, collection sorting
@@ -170,10 +174,18 @@ and adds these scoped repairs:
   unavailable. This migration neither issues fake authority nor relaxes that
   production boundary.
 
-R13 executes Runtime Slice output, separate occurrence final-membership,
-complete affected CFG input owner, SDK deadline, native Rename binding with
-providers off/on, and admitted-context joined Preview. The output-helper
-selector alone does not cover occurrence tests. Exact witness names,
+The first R13 selector used a public facade name and selected zero tests.
+QBC rejected it with exit86 and RED; its archive records 0 passed / 1573
+nonselected. The source compiled, but that run supplies no runtime proof.
+Remaining queued jobs were superseded without a verdict.
+
+R14 reuses the exact same frozen source and actual canonical Rust modules:
+`queries::advanced_owner::slice_query::slice_query_helpers` includes both
+output and occurrence regressions;
+`queries::intraprocedural_owner::cfg_query::tests` owns the CFG input cases.
+They passed 6/6 and 47/47 respectively, with 1567/1526 nonselected cases and
+zero skips. SDK deadline and native provider-off/on/joined Preview follow on
+that tuple. Exact witness names,
 nonzero pass/zero failure/zero skip counts, archive hashes and source digest
 are checked before each import.
 
@@ -195,8 +207,8 @@ whole-repository result.
 
 | Group | Exact owning files | Completion condition |
 | --- | --- | --- |
-| Analysis test feature/input closure | `packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/`: `interprocedural.rs`, `intraprocedural/cfg_query_tests.rs`, its `reuse_authority.rs` and `unreachable_policy.rs` children | Execute the complete affected CFG input owner plus feature-off Runtime Slice compilation/tests. Import four paths before Runtime Slice. |
-| Runtime Slice | `quanta-runtime-analysis/src/queries/advanced/`: `slice_query_bridge.rs`, `slice_query_helpers/output_materialization.rs`, `slice_query_helpers/output_final_membership_tests.rs`, `slice_statement_projection.rs`, `slice_statement_projection/occurrence_projection.rs` (crate under `packages/analysis/quanta-v2/crates/`) | Execute final CFG direction/kind/multiplicity oracle, typed partial refusal, and occurrence-membership tests with `slice-runtime` enabled; then import five paths. |
+| Analysis test feature/input closure — complete | `packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/`: `interprocedural.rs`, `intraprocedural/cfg_query_tests.rs`, its `reuse_authority.rs` and `unreachable_policy.rs` children | Complete CFG owner 47/47 and Slice helper 6/6 passed; four paths integrated at `0dd691a651c` before the Runtime Slice consumer. |
+| Runtime Slice — complete | `quanta-runtime-analysis/src/queries/advanced/`: `slice_query_bridge.rs`, `slice_query_helpers/output_materialization.rs`, `slice_query_helpers/output_final_membership_tests.rs`, `slice_statement_projection.rs`, `slice_statement_projection/occurrence_projection.rs` (crate under `packages/analysis/quanta-v2/crates/`) | Actual canonical helper 6/6 passed with `slice-runtime`, including all four direction/kind/multiplicity, partial and membership regressions. Five paths integrated at `1a5cb6b0d29`. |
 | SDK deadline | `packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/abstract_interpret_builder.rs` | Native finite timeout survives actual port conversion; non-timeout errors retain their prior rejection. Import one path after owning tests. |
 | Native Rename | `crates/quanta-cli-ingress-runtime/src/dispatch/operation_binding_registry_v1.rs`, `dispatch/mutation.rs` | Exact native inventory plus provider-off/on admission; admitted context → registry → worker → Preview backend. Import both paths together; production Apply remains unavailable until its real issuer exists. |
 | PTA dependency repair — complete | `packages/analysis/quanta-v2/crates/quanta-adapters-pta/src/`: `production_live_native_workspace_generation_v1.rs`, its `original_java_workspace_v1.rs` and `original_java_evidence_v1.rs` children, `production_live_captured_semantic_workspace_generation_v1.rs`, `production_native_lowering_relation_output_v1/admitted_storage_v1.rs`, `native_function_build_generation_authority_binding_v1.rs` | Three canonical feature owner checks passed; six-file delta integrated at `7bbdcc1d4e3`. |
