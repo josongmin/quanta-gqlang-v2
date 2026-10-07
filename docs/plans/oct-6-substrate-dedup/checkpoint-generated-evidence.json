@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-07T01:13:16.582599+00:00",
+  "recorded_at_utc": "2026-10-07T01:31:00Z",
   "initial_frozen_main": "39edfc1ca5bf143a09b66f0738c5f2b3987c7572",
   "execution_root": "/Users/songmin/.codex/worktrees/oct6-substrate-integrate/semantica-codegraph-v2",
   "proof_scope": "Generated/policy observations on frozen source only; raw full-sweep flags are not counted as demonstrated runtime defects",
@@ -2075,8 +2075,8 @@
     "intermediate_4f9_policy_result": "94 PASS, 1 stale Stage B anchor FAIL; preserved; superseded by aadf95 PASS"
   },
   "current_main_closeout": {
-    "source": "5d9f490fb4ddd3e28867ac85e7ee2aeef1ec93d8",
-    "source_kind": "frozen committed post-body main; superseded for further dispatch by source module prerequisite",
+    "source": "6cc766f2b30319a0b7772691543f1c0caddb3840",
+    "source_kind": "committed main with source prerequisites; budget actual PASS; remaining current-tuple proof pending",
     "body_main_import": {
       "commit": "712b5e8c61204bc07c4a84ae9bec21ce9c1e5a15",
       "owned_paths": 87,
@@ -2096,44 +2096,58 @@
       "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-summed-overflow-fixture-r2-import-state.json",
       "sha256": "37047db93476f16d05f3fb180759e0049aeaf14cd1860cf9c4bb512d9a7b301a",
       "change": "test fixture accounts known root backing; exact-limit positive plus same OutputBytes overflow/zero partial charge assertions",
-      "owning_Rust_result": "Previous aadf actual38PASS/1fixtureFAIL; new5d run INTERRUPTED without completed result; repaired tuple retry pending"
+      "owning_Rust_result": "actual39/39 canonical PASS on6cc; original aadf fixture FAIL and5d interrupted history retained separately"
     },
     "source_state": {
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/candidate-5d9f490fb4dd-state.json",
-      "sha256": "a6b2ec5e61fde74f55550d3d6b86fd715d46dbb6d83edc54a9206a3facd660f7"
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/candidate-6cc766f2b303-state.json",
+      "sha256": "c2a5eae5f8ff007316a239f569bff618fb88ed212946b9ea5ff4f35e2349e5ff"
     },
     "source_freeze": {
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/main-closeout-5d9f490fb4dd-source-freeze.json",
-      "sha256": "014093fb2776360c194cd1038c6bb848a4a1ed7024fcd6bb76ec75134cd9e9b6"
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/main-closeout-6cc766f2b303-source-freeze.json",
+      "sha256": "31a56fa0b4813d9f4d4b77a4da986c88d782910bf6a6c7b6c653887c23856989"
     },
     "source_policy": {
-      "status": "PASS",
-      "passed_policies": 95,
-      "input_paths": 126,
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/5d9f490fb4dd-boundary-policy-current-state.json",
-      "sha256": "bcd924c99685a29603a39e9aa95af20cedd3747f776bdd9350f0c4b04b6bdb0e"
+      "status": "RED",
+      "passed_policies": 99,
+      "impacted_policies": 100,
+      "input_paths": 177,
+      "failure_owner": "query-executor-contract-frontier memo private test census and root fixture; independently owned repair pending",
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/6cc766f2b303-boundary-policy-current-state.json",
+      "sha256": "59371f32bc137c37f1468d528d62a780aba9b76922f7db06329fbfda70a06689"
     },
     "snapshot": {
       "status": "SEALED",
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/snapshot-5d9f490fb4dd-state.json",
-      "sha256": "2c8d02a562e134509e524e6509b1aa3a51a4f01177226fcb580ddd4947b02131"
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/snapshot-6cc766f2b303-state.json",
+      "sha256": "1a43e04e242dd71f6a08e03828420aee4ff7ee4fd60922ff6ca2d97961930c24"
     },
     "pure_projection": {
-      "status": "PASS",
+      "status": "PASS pure projections only",
       "owner_requests": 45,
       "supplemental_requests": 6,
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/pure-validation-5d9f490fb4dd.json",
-      "sha256": "58e930dfbccb3454e2183973e83fa669f35409ff67d4a36b3f4a7189ef32ec7f"
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/pure-validation-6cc766f2b303.json",
+      "sha256": "7cbaa59506ca504eb596e655c0b4f9c5aa03f950f579df2c96a1a8abfbe664d7"
     },
     "locked_metadata": {
       "status": "PASS root/nested, auxiliary only",
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/locked-metadata-5d9f490fb4dd/state.json",
-      "sha256": "c15e5a98ced82a0574c519be19461672d9c5e9a908e53e8ffa50d6440c07a779"
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/locked-metadata-6cc766f2b303/state.json",
+      "sha256": "870bf418915f748df772a0e83bb5f7bead6530eaa22934bd6be30ebc875ddacc"
     },
-    "owning_Rust_results": "Budget run INTERRUPTED without completed result; later requests NOT_RUN",
-    "dispatch_stop": {
-      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/source-bound-sequence-5d9f490fb4dd-interruption-audit.json",
-      "sha256": "750f3763b057565d0a0fd5afdb083b5616b00b1ce56ba2805116f52ef838a139"
+    "owning_Rust_results": {
+      "budget": {
+        "status": "PASS",
+        "passed": 39,
+        "failed": 0,
+        "run_id": "20261007T012003.172659Z-d4d58eacbcf6",
+        "state": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-handle-owner30-6cc766f2b303/state.json",
+          "sha256": "f9afb5310f990d3004bf545f15d6061c21f084eaf7ea6fa44904fb937fbaed06"
+        },
+        "archive": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-handle-owner30-6cc766f2b303-artifact-archive/manifest.json",
+          "sha256": "601f8b32c6f7c2a399e068bb46200bdc9bb0266d2fc091ae6800b796e0c943a9"
+        }
+      },
+      "remaining_current_source": "NOT_RUN source6/relation/JSON16/formal9/owner45/graph2"
     },
     "module_path_prerequisite": {
       "main": "35970e4292d8a60c09b13b0bf08075c918471034",
@@ -2182,7 +2196,27 @@
       "sha256": "743e74fe74fca0d35d7030a317a0c0a2ba344b962eee3f236c0e49dfcf66d2c5"
     },
     "generated_Honesty_product_qualification": "NOT_RUN after repairs; no product/Rust PASS composed",
-    "next": "Freeze committed main6cc with module/taxonomy repairs; rerun failing budget owning rail and remaining owner/consumer requests; topology/GOD/Honesty retirement and source gates"
+    "next": "Freeze committed main6cc with module/taxonomy repairs; rerun failing budget owning rail and remaining owner/consumer requests; topology/GOD/Honesty retirement and source gates",
+    "test_mount_single_owner": {
+      "status": "source overlay full topology PASS and Python14 PASS; preserved identity and main import pending",
+      "paths": [
+        "packages/analysis/quanta-v2/crates/quanta-runtime/src/orchestration/mod.rs",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/Cargo.toml",
+        "packages/analysis/quanta-v2/crates/quanta-runtime/tests/sec_no_model_honesty_e2e_test.rs"
+      ],
+      "spec": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/test-mount-single-owner-r1-source-spec.json",
+        "sha256": "6bf76a9eceeb263f1820cdb12fa61368cd8341251c6fdfbf0b9fc3f215703551"
+      },
+      "topology": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/generated-closeout-test-mount-single-owner-r1/state.json",
+        "sha256": "12c8146c6b715c89f0a03b869aa53fdd6303776dd2d665dc5a481479fe10eebf"
+      },
+      "prior_defects": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/topology-single-owner-6cc766f2b303-audit.json",
+        "sha256": "4539903c1926e823f071ff31325cf5d1a35a6863730484c8d71d2b57542d6e72"
+      }
+    }
   },
   "main_closeout_history": [
     {
@@ -2267,6 +2301,116 @@
       "owning_Rust_results": "NOT_RUN on 63dd repaired main",
       "generated_Honesty_product_qualification": "NOT_RUN; no earlier PASS composed",
       "next": "review exact diagnostic lock delta at canonical owner; commit minimal prerequisite; rebind affected main owner gates; retire topology/GOD/Honesty without weakening"
+    },
+    {
+      "source": "5d9f490fb4ddd3e28867ac85e7ee2aeef1ec93d8",
+      "source_kind": "frozen committed post-body main; superseded for further dispatch by source module prerequisite",
+      "body_main_import": {
+        "commit": "712b5e8c61204bc07c4a84ae9bec21ce9c1e5a15",
+        "owned_paths": 87,
+        "observation": "already committed in shared main; no duplicate import by this helper",
+        "later_main_census": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/nextaadf0d4148db-import/owned-87-current-main-body-census.json",
+          "sha256": "e33a796d7a37dfbb017ad3a7048d339865ab1e304f0028f305d14a2e3b547a5b"
+        },
+        "reviewed_frozen_fb0_main": {
+          "exact_owned": 82,
+          "changed_manifest_lock_paths": 5,
+          "qualification": "source observation only"
+        }
+      },
+      "budget_fixture_repair": {
+        "main": "63ddf8cca45a1546514d5bb344520be2086b12b9",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-summed-overflow-fixture-r2-import-state.json",
+        "sha256": "37047db93476f16d05f3fb180759e0049aeaf14cd1860cf9c4bb512d9a7b301a",
+        "change": "test fixture accounts known root backing; exact-limit positive plus same OutputBytes overflow/zero partial charge assertions",
+        "owning_Rust_result": "Previous aadf actual38PASS/1fixtureFAIL; new5d run INTERRUPTED without completed result; repaired tuple retry pending"
+      },
+      "source_state": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/candidate-5d9f490fb4dd-state.json",
+        "sha256": "a6b2ec5e61fde74f55550d3d6b86fd715d46dbb6d83edc54a9206a3facd660f7"
+      },
+      "source_freeze": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/main-closeout-5d9f490fb4dd-source-freeze.json",
+        "sha256": "014093fb2776360c194cd1038c6bb848a4a1ed7024fcd6bb76ec75134cd9e9b6"
+      },
+      "source_policy": {
+        "status": "PASS",
+        "passed_policies": 95,
+        "input_paths": 126,
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/5d9f490fb4dd-boundary-policy-current-state.json",
+        "sha256": "bcd924c99685a29603a39e9aa95af20cedd3747f776bdd9350f0c4b04b6bdb0e"
+      },
+      "snapshot": {
+        "status": "SEALED",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/snapshot-5d9f490fb4dd-state.json",
+        "sha256": "2c8d02a562e134509e524e6509b1aa3a51a4f01177226fcb580ddd4947b02131"
+      },
+      "pure_projection": {
+        "status": "PASS",
+        "owner_requests": 45,
+        "supplemental_requests": 6,
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/pure-validation-5d9f490fb4dd.json",
+        "sha256": "58e930dfbccb3454e2183973e83fa669f35409ff67d4a36b3f4a7189ef32ec7f"
+      },
+      "locked_metadata": {
+        "status": "PASS root/nested, auxiliary only",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/locked-metadata-5d9f490fb4dd/state.json",
+        "sha256": "c15e5a98ced82a0574c519be19461672d9c5e9a908e53e8ffa50d6440c07a779"
+      },
+      "owning_Rust_results": "Budget run INTERRUPTED without completed result; later requests NOT_RUN",
+      "dispatch_stop": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/source-bound-sequence-5d9f490fb4dd-interruption-audit.json",
+        "sha256": "750f3763b057565d0a0fd5afdb083b5616b00b1ce56ba2805116f52ef838a139"
+      },
+      "module_path_prerequisite": {
+        "main": "35970e4292d8a60c09b13b0bf08075c918471034",
+        "changed_paths": 1,
+        "change": "two explicit child module paths; unchanged SDK behavior/API/cfg",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/sdk-capability-projection-child-paths-r1-import-state.json",
+        "sha256": "4fa1eb5aedbe4b08dcd6f9aed0c9167e7ee6ce92ed511382c6957791fef0badc",
+        "actual_static_RED_to_PASS": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/sdk-capability-projection-child-paths-owner-resolution.json",
+          "sha256": "f89ce389155307dabf23ae10609dbca05dde3e19f656d393cf63cf57c8df96ac"
+        }
+      },
+      "feature_taxonomy_prerequisite": {
+        "main": "6cc766f2b30319a0b7772691543f1c0caddb3840",
+        "changed_paths": 6,
+        "change": "two existing product owners exhaustively classified; 37 missing rows added, CLI forwarding consumer corrected; source binary required-features derived; taint rejection unit file renamed preserving body/cfg/logical test IDs; no feature/dependency/engine changes",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/feature-taxonomy-owner-completion-r3-import-state.json",
+        "sha256": "8b9ad9fc887397b04f32fb241cfaf9372b82e9a81e58c39379e8dde0f3dd883e",
+        "lint_PASS": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/feature-taxonomy-owner-completion-r2-lint-state.json",
+          "sha256": "e67f9a53d4a73896a2de96dc3a069ee3cad555d0fd6c38db65b22999fb662d4f"
+        },
+        "Python_tests_PASS20": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/feature-taxonomy-owner-completion-r2-tests-state.json",
+          "sha256": "385102f378e1287a502fff13b85f0a4c6128716fb758f845a60c1dfa2724e7f8"
+        },
+        "proof_delta": "normal-hook import ordering only after tests; normal hooks PASS"
+      },
+      "lock_prerequisite": {
+        "main": "52f134bca18876d29c7ca545e51107f6977b301a",
+        "change": "one nested runtime-analysis dev dependency edge; observed already landed, no duplicate import"
+      },
+      "GOD_retirement_stage": {
+        "before": 14,
+        "after": 7,
+        "retired": 7,
+        "new": 0,
+        "worsened": 0,
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/god-retirement-5d9f490fb4dd.json",
+        "sha256": "455f86275e53e7673d060c615ad0ef24aef7c9f50a30e66face63ac613ea6123",
+        "status": "READ_ONLY stage PASS; baseline not written"
+      },
+      "topology_attempt": {
+        "status": "RED before install, dirty_paths0; unresolved two SDK module children; owning source repair main35970e4; rerun pending",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/generated-closeout-5d9f490fb4dd/topology-state.json",
+        "sha256": "743e74fe74fca0d35d7030a317a0c0a2ba344b962eee3f236c0e49dfcf66d2c5"
+      },
+      "generated_Honesty_product_qualification": "NOT_RUN after repairs; no product/Rust PASS composed",
+      "next": "Freeze committed main6cc with module/taxonomy repairs; rerun failing budget owning rail and remaining owner/consumer requests; topology/GOD/Honesty retirement and source gates"
     }
   ]
 }
