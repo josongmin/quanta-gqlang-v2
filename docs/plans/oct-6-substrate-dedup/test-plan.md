@@ -25,6 +25,17 @@ not an execution receipt. Old selectors below are inputs to re-resolution.
 
 ## Consumer regression oracles
 
+S0-CALLBACK additionally needs a discriminating owner regression through the
+**actual bridge**, not just existing finisher tests: callback `Err(E)` retains
+its exact identity and triggers zero owner/Kernel post-polls; pre-recorded
+original refusal retains priority; callback success still executes the required
+postvalidation and returns its typed failure. Common protocol/ordinary, infra
+controlled syntax and Kernel tests retain their own owners. Existing
+`language_plugin_port/callback_finish_tests_v1.rs` checks the finisher alone and
+does not prove this bridge path. A diagnostic poll-counter test may prove local
+control flow; actual original-control proof remains separate and requires its
+normal execution authority. The source-only follow-up did not execute tests.
+
 | Owner scope | Positive result | Discriminating rejection / resource oracle |
 | --- | --- | --- |
 | Each changed plugin | Existing authored HIR/item/scope/span/bundle expected values and ordinary from-tree/facade parity; actual module assembly | Recoverable parse quarantine, malformed/empty authority, stable order/IDs; controlled carrier without current-capable API has exact typed refusal; no retained-tree substitution |

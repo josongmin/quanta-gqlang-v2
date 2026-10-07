@@ -34,6 +34,14 @@ allocation and exact request/oracle review; a final execution tuple is not yet f
   root below. This revision executes no Rust or product tests. No private root
   source checkout is an active execution candidate for these next tasks.
 
+Source-only follow-up at `65036b7221a` adds CHECKED-CALLBACK-FIRST-CAUSE: the
+typed owned-syntax bridge hides consumer failure from its object-safe owners,
+so native post-polls can occur after that failure. Kernel Err metadata postcheck
+has a foreign working repair, not a complete committed coupled fix. The
+[plan's callback audit](../plans/oct-6-substrate-dedup/readme.md#additional-checked-read-chronology-audit)
+records the corrected 83 bridge/fixture and 31 Kernel handoff; this task is
+read-only for Semantica and no runtime execution occurred.
+
 ## Historical source-bound proof inputs
 
 | Input | Exact identity |

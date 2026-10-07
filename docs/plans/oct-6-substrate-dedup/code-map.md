@@ -20,6 +20,14 @@ review, not authority to replace every file. Final claims enumerate exact paths.
 
 ## S0: existing common interfaces, one coordinated change
 
+- S0-CALLBACK follow-up source `65036b7221a`: existing
+  `core/codegraph-lang-common/src/tree_sitter_host/owned_syntax_v1.rs` protocol,
+  typed bridge and ordinary implementation; controlled implementation in
+  `packages/infra/parsers/src/engines/tree_sitter/parser/controlled_native_tree_v1.rs`;
+  Kernel metadata postvalidation in `syntax_authority_v1.rs` below. Change the
+  same canonical callback protocol and its two actual implementations together.
+  Preserve the success-only checkpoint/box/backing checks. No duplicate bridge,
+  invented native error, cleared sticky cause, new Root or issuer-phase capture.
 - `core/codegraph-cfg-dfg-kernel/src/ports/cfg_parsed_tree.rs`: source/backend
   metadata projection.
 - `core/codegraph-cfg-dfg-kernel/src/ports/cfg_parsed_tree/syntax_authority_v1.rs`:

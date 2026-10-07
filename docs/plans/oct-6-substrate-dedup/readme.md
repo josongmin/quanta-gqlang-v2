@@ -71,8 +71,34 @@ another shared-file writer would increase overlap.
 
 ## Remaining code and contract work
 
+### Additional checked-read chronology audit
+
+Source-only follow-up at Semantica `65036b7221a882ff45968ee20b9938a31abee53c`:
+the canonical typed owned-syntax bridge saves callback `Err(E)` but tells the
+object-safe owner `Ok(())`. Ordinary and controlled owners can consequently
+post-poll after failure; Kernel also postvalidates metadata on the Err branch.
+The bridge itself still returns `Err(E)`. The confirmed defect is the later
+poll side effect and changed first-refusal chronology, not a demonstrated
+standalone replacement of its returned error.
+
+Add **S0-CALLBACK** before shared-interface closeout: the existing object-safe
+protocol must express consumer failure without inventing a Native allocation
+cause. Both actual implementations and Kernel skip postvalidation after that
+failure; successful callbacks retain all current/grant/metadata checks. Preserve
+already-recorded refusal through the existing passive issuer/finisher boundary;
+zero-work polling cannot substitute for passive observation.
+
+The corrected coordination assigns the bounded common/infra bridge and source
+fixtures to 83, and Kernel counterpart to 31. This task remains read-only for
+Semantica. This is assignment information, not proof of path
+handoff: refresh normal claims and reconcile retained metadata/custody hunks
+before editing. A Kernel-only working hunk is already present and does not
+complete the coupled bridge repair. No Rust/compiler/QBC/product execution is
+authorized by that source delegation; this follow-up is source/plan work only.
+
 | Batch | Concrete result | Preconditions / owner |
 | --- | --- | --- |
+| S0-CALLBACK | Real consumer-failure disposition through the existing bridge, ordinary/controlled owners and Kernel; no poll after failure | Existing 83 bridge/fixture and 31 Kernel handoff; this task reviews read-only, preserving all co-owned hunks |
 | S0 | Reconcile checked reads; implement actual adapter→context→extractor output-admission bridge using existing interfaces; centralize source/backend admission policy | Existing shared owners, steward D0; no new parallel shared-file editor |
 | P-KOTLIN | Move both from-tree entrypoints and reachable HIR/item/scope/span/call helpers to scoped checked reads | Existing public read API; Kotlin plugin writer |
 | P-TS | Move both from-tree entrypoints and reachable HIR/identity/dispatch/type helpers | Existing public read API; TS plugin writer |
