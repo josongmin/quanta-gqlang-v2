@@ -41,7 +41,7 @@ Paths are relative to `semantica-codegraph-v2/`.
 
 ## Remaining repair candidates
 
-Native and runtime Slice candidate source changes are on the private branch
+Native, runtime Slice and affected test/feature closure source changes are on the private branch
 `codex/oct7-substrate-query-owner-build-r1`; they are not yet claimed integrated.
 
 | ID | Structural change | Acceptance still required |
@@ -146,18 +146,42 @@ repair was already committed on main at `cf5f5c76503`; no duplicate repair was
 authored. Its failure receipt is archived; pending R11 jobs were cancelled
 with no verdict.
 
-Current consumer source is `d2861f04395528d5b9753c71391d9ccb4e12362b`,
-which merges committed main `2de55f286588953de2b2d017d21d930f59fdc8c2`;
-the eight remaining candidate file bytes are unchanged. Source digest:
-`eecd775762a2bbedd88606837f3733e3e40ff353f5540c1290e8d506d0d08d15`.
-Concurrent Parser working changes are excluded from this frozen source.
+R12 source `d2861f04395528d5b9753c71391d9ccb4e12362b` adopted that
+committed Parser repair and reached Runtime analysis test compilation. It
+executed zero tests: 15 errors comprised one incorrect StatementId import in
+the new regression, one test facade exporting an engine-only module without
+its feature, and 13 compiled CFG input literals missing a newly added field.
+The original failure receipt is archived; pending jobs were cancelled without
+a verdict.
 
-R12 acceptance runs the actual Runtime Slice output owner, SDK deadline owner,
-native Rename binding with providers off/on, and admitted-context joined
-Preview. Slice occurrence final-membership tests are a separate module and
-must also execute; the output-helper selector alone does not cover them.
-Import guards require both Slice modules, each group's archived receipt, and
-unchanged owned source before local main integration.
+Current consumer source is `9b5ea1514259354aaa8cfbddb07d12ad95a8021e`,
+digest `0550b5ffe05374d689f0d21ffddeee3c3bc31485a3c13b3a56a227f7f65491db`.
+It retains the committed main input `2de55f286588953de2b2d017d21d930f59fdc8c2`
+and adds these scoped repairs:
+
+- The regression imports StatementId from its canonical existing analysis
+  contract, matching the actual projection owner; no dependency is added.
+- The test-only recovered-role reexport requires its defining module's
+  `interprocedural-engine` feature. No feature is enabled to mask a failure.
+- All 14 affected CFG fixture input literals explicitly set
+  `current_source_control_v3: None`, matching the existing ordinary-profile
+  production constructor. Controlled sessions continue to obtain their actual
+  source control through the existing session callback and fail closed when
+  unavailable. This migration neither issues fake authority nor relaxes that
+  production boundary.
+
+R13 executes Runtime Slice output, separate occurrence final-membership,
+complete affected CFG input owner, SDK deadline, native Rename binding with
+providers off/on, and admitted-context joined Preview. The output-helper
+selector alone does not cover occurrence tests. Exact witness names,
+nonzero pass/zero failure/zero skip counts, archive hashes and source digest
+are checked before each import.
+
+The four-file analysis feature/input dependency checkpoint must pass its own
+CFG owner and reach local main before the five-file Runtime Slice consumer
+checkpoint. This preserves compilation closure at each checkpoint. Native
+Rename and SDK deadline imports retain their independent acceptance guards.
+Concurrent Parser working changes remain excluded from the frozen source.
 
 The old `OCT6-SUBSTRATE-SCC` write claim was released after confirming no
 unintegrated candidate delta in any of its 24 paths. This retires write
@@ -171,6 +195,7 @@ whole-repository result.
 
 | Group | Exact owning files | Completion condition |
 | --- | --- | --- |
+| Analysis test feature/input closure | `packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/`: `interprocedural.rs`, `intraprocedural/cfg_query_tests.rs`, its `reuse_authority.rs` and `unreachable_policy.rs` children | Execute the complete affected CFG input owner plus feature-off Runtime Slice compilation/tests. Import four paths before Runtime Slice. |
 | Runtime Slice | `quanta-runtime-analysis/src/queries/advanced/`: `slice_query_bridge.rs`, `slice_query_helpers/output_materialization.rs`, `slice_query_helpers/output_final_membership_tests.rs`, `slice_statement_projection.rs`, `slice_statement_projection/occurrence_projection.rs` (crate under `packages/analysis/quanta-v2/crates/`) | Execute final CFG direction/kind/multiplicity oracle, typed partial refusal, and occurrence-membership tests with `slice-runtime` enabled; then import five paths. |
 | SDK deadline | `packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/abstract_interpret_builder.rs` | Native finite timeout survives actual port conversion; non-timeout errors retain their prior rejection. Import one path after owning tests. |
 | Native Rename | `crates/quanta-cli-ingress-runtime/src/dispatch/operation_binding_registry_v1.rs`, `dispatch/mutation.rs` | Exact native inventory plus provider-off/on admission; admitted context → registry → worker → Preview backend. Import both paths together; production Apply remains unavailable until its real issuer exists. |
