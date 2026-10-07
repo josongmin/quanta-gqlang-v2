@@ -444,6 +444,13 @@ Evidence: `r74-remaining-source-inventory.json`,
 `r74-product-prerequisite-readback.json`. Existing612 and independent77 receipts
 retain their original sources and qualification scopes.
 
+Later R74 shared-WIP readback confirms the fallible paid observer factory,
+token-wrapper result propagation and borrowed first-cause reads in normalization
+and authority-copy error conversion. The [supplier code map](../plans/oct-6-substrate-dedup/code-map.md#coupled-shared-backing-supplier-closure)
+includes this existing FCP-COMPILE packet. Evidence is
+`r74-concurrent-observer-handoff-readback.json`; source changes are concurrent
+work, with no root edit, owner test or new ticket assigned by this audit.
+
 ## Historical source-bound proof inputs
 
 | Input | Exact identity |

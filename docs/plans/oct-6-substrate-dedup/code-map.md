@@ -124,6 +124,16 @@ The existing source path is:
    `qv2/quanta-runtime-source-authority-wire/src/{lib.rs,original_operation_custody_v3.rs}`.
    Include other mounted module changes required by the selected owner closure.
 
+R74 follow-up also observes SourceWire's first-refusal observer handoff in shared
+WIP. Its observer factory is fallible and charges work before retaining the
+existing root; `token_refusal_observer_v3.rs` propagates that result. Immediate
+normalization and authority-copy error conversion now read the authenticated
+admission's borrowed `source_first_refusal_v3()` instead of retaining an observer
+while reporting failure. Keep these callers and the factory in the same compatible
+packet and preserve the first recorded cause. This is an authored source readback,
+not execution acceptance or main integration; it adds no separate ticket.
+`r74-concurrent-observer-handoff-readback.json` records exact postimages.
+
 These are dependency-review paths, not a whole-file staging authorization.
 Freeze the complete compatible postimages, resolve the real owner profiles and
 prove them before serial integration. Importing only the backing/export files
