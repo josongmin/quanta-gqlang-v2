@@ -6,13 +6,13 @@
 
 진행 중 diff/검증/main 반영은 [execution-progress.md](execution-progress.md)에서 별도로 관리한다.
 
-**현재 main 반영:** D1/D2 본문87경로는 `712b5e8c`에 있다. Test mount 3파일은 `d3e2cee`, Honesty macro token parser 2파일은 `bacc30b`, GOD exact7 retirement는 `dfc48c5`, gateway 정책 2파일은 `52c0d1f`에 반영됐다. **Topology 5파일은 committed source `e1f06e2`에서 전체 재생성 PASS 후 main `ff784c50`에 반영했다.** 재생성과 import 사이 HEAD를 유지했고 normal hooks PASS·exact5 clean·claim/barrier 해제를 확인했다. 신규 엔진·라이브러리·public 계약 변경은 없다.
+**현재 main 반영:** D1/D2 본문87경로는 `712b5e8c`에 있다. Test mount 3파일은 `d3e2cee`, Honesty macro token parser 2파일은 `bacc30b`, GOD exact7 retirement는 `dfc48c5`, gateway 정책 2파일은 `52c0d1f`에 반영됐다. **Topology 5파일은 committed source `0fbfe754`에서 전체 재생성 PASS, 기존 main `ff784c50`의 생성물과 바이트가 같음을 확인했다.** 앞선 `c964115` 재생성은 coordinator child 경로2곳을 찾지 못해 RED였고 설치·import0이다. 경로2개 명시 수리는 main `0fbfe754`에 반영했다. 재생성 중 HEAD 유지, source 수리 normal hooks PASS·exact5 clean·claim/barrier 해제를 확인했다. 생성물 추가 커밋0이다. 신규 엔진·라이브러리·public 계약 변경은 없다.
 
 Test mount의 Python14 PASS와 정의65개 보존/수정 후 각 owner1개를 확인했다. **65는 single-owner 게이트 신고 수이며 65개 실제 중복 실행을 관찰한 수가 아니다.** Gateway49 신고에는 feature 변수16개 초과 시 overlap을 보수적으로 판정한 경우가 포함된다. Plain-test branch의 fallback 겹침, path 정규화11개의 단독+묶음 등록, taint helper5개의 재포함은 소스에서 확인했다. 중복 mount와 함의된 outer guard를 제거했고 full/core feature 조건·테스트 정의는 보존했다. 게이트의 overlap 판정이나 한도를 완화하지 않았다.
 
-**Rust 검증 source는 `dfc48c5`로 별도 동결했다**(GQLang `40fad1e`·Index `9221d77`, overlay0). Root/nested locked metadata와 canonical pure projection45+6은 PASS다. 실제 owner45의 PTA-first는 `quanta-adapters-dfg` 연결 오류7건으로 **compile RED/실행0**, 나머지44건은 NOT_RUN이다(run `20261007T014544.121922Z-0e09f203a022`, 원본7개 archive). Java predicate reexport, sealed authority 소비자, checked syntax-read 소비자가 차단점이며 동시 수정 중인 소스를 덮어쓰지 않는다. 같은 frozen source의 **formal9는 canonical QBC9/9 PASS**다(run `20261007T015442.302258Z-703d92b92eab`, 원본7개 archive). 독립 JSON16/source6/relation 요청은 별도 source-bound 실행으로 기록한다. Budget39 PASS는 `6cc766f`의 결과이며 새 source의 PASS로 세지 않는다.
+**Rust 검증 source는 `dfc48c5`로 별도 동결했다**(GQLang `40fad1e`·Index `9221d77`, overlay0). Root/nested locked metadata와 canonical pure projection45+6은 PASS다. 실제 owner45의 PTA-first는 `quanta-adapters-dfg` 연결 오류7건으로 **compile RED/실행0**, 나머지44건은 NOT_RUN이다(run `20261007T014544.121922Z-0e09f203a022`, 원본7개 archive). 해당 DFG 소스 수리는 이후 main `59e5e612`에 반영됐고 독립 정적 재검토 PASS다. 같은 frozen source의 독립 canonical QBC는 **formal9·JSON16·source6·relation5 모두 PASS, 실제36개**다. 각각의 run ID·원본7개 archive는 [Rust 증거](checkpoint-rust-evidence.json)에 기록했다. Budget39 PASS는 `6cc766f`의 결과다. 이 receipt들을 이동한 main이나 전체 owner45의 PASS로 합치지 않는다.
 
-`dfc48c5` 영향 정책은279입력/104개 중102 PASS·2 RED다. Gateway 정책의 제거된 outer guard 요구는 이후 `52c0d1f`에서 수정하고 positive1/negative3 Python controls PASS를 확인했다. 나머지 memo root fixture/private census는 해당 owner의 별도 작업이다. 전체 정책 PASS로 표시하지 않는다.
+`dfc48c5` 영향 정책은279입력/104개 중102 PASS·2 RED였다. Gateway 정책은 이후 `52c0d1f`에서 수정하고 positive1/negative3 Python controls PASS를 확인했다. Memo root fixture/private census와 DFG 수리는 후속 main에 반영됐다. `c964115`의 명시적9경로 선행 source policy 재검사는 PASS다. 이는 해당 subset의 정적 결과이며 full87/104 정책이나 Rust PASS로 확대하지 않는다.
 
 **Global baseline 검사:** `dfc48c5`의 Honesty3 전체 스캔은 parser 오류 없이 완료됐지만 모두 ratchet RED다. Shape-only new5796/rewritten2029, positive-negative-pair new1708/rewritten1056, relationship new1258/rewritten360이며 baseline 변경0이다. 이는 baseline 대비 신고 수이며 확인된 runtime 결함 건수가 아니다. Global GOD도 new5824/worsened1484로 RED다. 이번 exact7 retirement는 scoped14→7/new0/worsened0/outside 변경0으로 main에 반영됐다. Honesty exact2/6/3 retirement는 전체 baseline 정합성 문제로 BLOCKED다. Baseline 전체 재승인·allow 추가·scope 축소로 통과시키지 않는다.
 
@@ -477,3 +477,14 @@ Generated GOD의 선택 4경로(Cost Shape source/tests, Taint `wire_recursion.r
 ### Historical leaf qualification authority
 
 D3 DFG 91, pack 16, taint promotion 3, D5 PTA 227, D4 SCV2 34 cases는 각 저장된 QBC stdout에서 모두 exit 0/failed 0으로 확인했다. 다섯 receipt의 authority는 모두 `manual_invocation_comparison_only`이고 owner execution receipt와 reuse 권한은 false다. `d88f0a2ed7a`의 main 코드 반영은 유효하지만, 이 다섯 실행으로 canonical owner qualification을 주장하지 않는다. Exact current-source owner class 선행 조건은 [테스트 플랜](test-plan.md), receipt별 hash/source digest는 [Rust evidence](checkpoint-rust-evidence.json)에 기록했다.
+
+
+### 2026-10-07 — Coordinator 경로 수리와 topology 재검증
+
+- Source owner: Semantica `quanta-runtime::lib`. `atomic_change_coordinator.rs`가 `types.rs`를 명시적 경로로 가져오며, child 파일은 `atomic_change_coordinator/types/`에 있다.
+- Before: `mod budget_resolution_v1; mod result_classification_v1;`에서 source authority가 두 child 경로를 찾지 못해 full regeneration RED였다. After: 각각 `#[path = "types/budget_resolution_v1.rs"]`, `#[path = "types/result_classification_v1.rs"]`를 명시했다. 파일1개/속성2개, body·API·cfg·feature·lock 변경0이다.
+
+- 완료 기준: 기존 child2개 source authority 해석·전체 generator PASS·exact1/5 main checkpoint. Public 계약과 실행 의미는 변경하지 않는다.
+
+
+**생성 계약 후속 source 비교:** R5 source `0fbfe754` 이후 관찰 main `fe38d882`의 committed delta는21경로다. Canonical classifier의 full-regeneration 입력0·cheap-header 입력0이다. 이는 generator 입력 영향 분류이며 Rust body·새 unit authority·dirty source·consumer proof를 검증한 결과가 아니다.

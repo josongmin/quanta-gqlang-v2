@@ -1,5 +1,5 @@
 {
-  "recorded_at_utc": "2026-10-07T01:55:57.550370+00:00",
+  "recorded_at_utc": "2026-10-07T02:14:08.393872+00:00",
   "proof_scope": "QBC owner/component results only; not combined current-main/shipping-gate/product qualification",
   "records": [
     {
@@ -5686,7 +5686,17 @@
         "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/gateway-policy-pair-r1-focused-proof.json",
         "sha256": "34af889f6fd7c80f2cb7c708b9739c1a1fa808e0204a349c57baf4a2b098a3e1"
       },
-      "other_owner": "memo test root fixture/private oracle census; no overall policy PASS"
+      "other_owner": "memo fixture/private census checkpoint landed in c964; selected prerequisite policy subset PASS",
+      "later_prerequisite_subset": {
+        "source": "c96411578995d2422bea56ff93cb58a16aa35cac",
+        "status": "PASS",
+        "explicit_paths": 9,
+        "evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/boundary-prerequisite-recheck-c96411578995/state.json",
+          "sha256": "734615b421ea5b5b01bd9e6085ed36ffc549fddf2b360abab7110d7fb7a6288e"
+        },
+        "scope": "DFG/gateway/memo source-only prerequisite subset; not full87/104 or Rust proof"
+      }
     },
     "snapshot": {
       "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/snapshot-dfc48c59e0b2-state.json",
@@ -5742,8 +5752,13 @@
         "current_source_verdict": "NOT_RUN"
       },
       "supplementals": {
-        "status": "formal9 PASS; independent JSON16/source6/relation running",
-        "live_state_path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/dfc-supplemental-independent-r1/state.json"
+        "status": "PASS: formal9, JSON16, source6, relation5; 36 actual tests",
+        "source": "dfc48c59e0b2ab345667bf2edcddcc0dbda88196",
+        "evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/dfc-supplemental-independent-r1/state.json",
+          "sha256": "95d48c3eaa6b3f3324cfc7b72678a7652d145d35749ea3f6d8654e6291fafe86"
+        },
+        "scope": "four independent canonical owner requests; not owner45/latest-main qualification"
       },
       "graph2": "NOT_RUN",
       "formal9": {
@@ -5757,7 +5772,18 @@
           "passed": 9
         },
         "run_id": "20261007T015442.302258Z-703d92b92eab",
-        "required_witnesses_observed": 9,
+        "required_minimum": 9,
+        "observed_witnesses": [
+          "build_result::exact_formal_bindings::tests::borrowed_exact_formals_reject_distinct_bindings_with_duplicate_definition_id_v1",
+          "build_result::exact_formal_bindings::tests::controlled_iterator_checks_after_lookup_before_exposing_row_v1",
+          "build_result::exact_formal_bindings::tests::controlled_iterator_fuses_on_first_refusal_v1",
+          "build_result::exact_formal_bindings::tests::controlled_mapper_fuses_on_first_mapper_error_v1",
+          "build_result::exact_formal_bindings::tests::controlled_mapper_propagates_row_callback_refusal_v1",
+          "build_result::exact_formal_bindings::tests::controlled_view_checks_complete_join_and_preserves_callback_cause_v1",
+          "build_result::exact_formal_bindings::tests::exact_formals_join_binding_ids_without_definition_sort_v1",
+          "build_result::exact_formal_bindings::tests::exact_formals_reject_invalid_or_foreign_canonical_source_proof_v1",
+          "build_result::exact_formal_bindings::tests::exact_formals_reject_missing_foreign_and_duplicate_binding_v1"
+        ],
         "state": {
           "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/dfg-formal-owner9-dfc48c59e0b2/state.json",
           "sha256": "00180a5bba1e31210c663b5ed3439758cd8d91e9d7778893015a8ddd79820863"
@@ -5765,6 +5791,102 @@
         "archive": {
           "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/dfg-formal-owner9-dfc48c59e0b2-artifact-archive/manifest.json",
           "sha256": "2d73b1cf8b74d13b54becb586b37e6e84eaa6c4718b540a5843033d255934995"
+        }
+      },
+      "JSON16": {
+        "status": "PASS",
+        "source": "dfc48c59e0b2ab345667bf2edcddcc0dbda88196",
+        "counts": {
+          "failed": 0,
+          "filtered_out": 784,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 16
+        },
+        "run_id": "20261007T015625.412168Z-63868f04e7c1",
+        "required_minimum": 16,
+        "observed_witnesses": [
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::admitted_string_exact_grant_moves_same_native_pointer_to_serde_visitor_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::admitted_string_one_short_refuses_before_string_birth_and_keeps_original_cause_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::canonical_decoder_refunds_scratch_and_preserves_typed_short_before_birth_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::completed_syntax_and_data_errors_precede_late_cancel_but_success_checks_lifecycle_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::empty_owned_string_authenticates_original_group_without_native_node_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::escaped_owned_string_keeps_separate_scratch_and_retained_grants_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::failed_native_growth_refunds_pending_and_keeps_old_backing_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::failed_native_string_birth_refunds_pending_while_external_group_stays_live_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::foreign_owned_string_grant_is_rejected_before_parser_and_native_birth_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::late_string_cancel_drops_payload_but_retains_committed_grant_and_shared_cause_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::one_short_reallocation_keeps_old_pointer_grant_and_first_cause_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::original_string_batch_admits_exact_native_copies_and_keeps_group_after_control_drop_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::original_string_batch_short_and_foreign_group_never_escape_values_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::retained_vector_exact_and_one_short_admit_old_new_peak_before_reallocation_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::retained_vector_native_false_refunds_delta_and_old_peak_without_control_fabrication_v3",
+          "source_issuance_control_v3::json_decoder_scratch_v3::tests::scratch_growth_admits_old_and_new_peak_and_refunds_after_buffer_drop_v3"
+        ],
+        "state": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/json-scratch-owner16-dfc48c59e0b2/state.json",
+          "sha256": "d668a98fe48e0acf7c1f87c6745b45a399943b330df5ea02a8942ee40755d415"
+        },
+        "archive": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/json-scratch-owner16-dfc48c59e0b2-artifact-archive/manifest.json",
+          "sha256": "c1f92ca4e4aae62ce8387096c0063321b7d9494bf0044e82c60091fad569689f"
+        }
+      },
+      "source6": {
+        "status": "PASS",
+        "source": "dfc48c59e0b2ab345667bf2edcddcc0dbda88196",
+        "counts": {
+          "failed": 0,
+          "filtered_out": 794,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 6
+        },
+        "run_id": "20261007T020038.559600Z-80335327cc9b",
+        "required_minimum": 6,
+        "observed_witnesses": [
+          "source_issuance_control_v3::source_memory_lease_v3::tests::exact_nodes_and_bootstrap_remain_until_last_lease_drop_v3",
+          "source_issuance_control_v3::source_memory_lease_v3::tests::first_source_refusal_survives_sibling_projection_and_owned_refund_v3",
+          "source_issuance_control_v3::source_memory_lease_v3::tests::large_retained_chain_drops_on_small_stack_even_after_poison_v3",
+          "source_issuance_control_v3::source_memory_lease_v3::tests::lease_refuses_foreign_root_before_work_or_memory_charge_v3",
+          "source_issuance_control_v3::source_memory_lease_v3::tests::node_overflow_is_rejected_before_mutation_v3",
+          "source_issuance_control_v3::source_memory_lease_v3::tests::one_short_bootstrap_and_first_node_refuse_without_retained_growth_v3"
+        ],
+        "state": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/source-memory-owner6-dfc48c59e0b2/state.json",
+          "sha256": "e927f36689b4393eda061f51f3a346a896fed2ed85a500e49ecb6aecac1971ca"
+        },
+        "archive": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/source-memory-owner6-dfc48c59e0b2-artifact-archive/manifest.json",
+          "sha256": "a4227a5b45d11b51287f93b00653322ef719c2baa72031ab59dd0c471a17d502"
+        }
+      },
+      "relation3": {
+        "status": "PASS",
+        "source": "dfc48c59e0b2ab345667bf2edcddcc0dbda88196",
+        "counts": {
+          "failed": 0,
+          "filtered_out": 795,
+          "ignored": 0,
+          "measured": 0,
+          "passed": 5
+        },
+        "run_id": "20261007T020258.705481Z-453c3f25fb4b",
+        "required_minimum": 3,
+        "observed_witnesses": [
+          "source_issuance_control_v3::relation_control_v3::source_identity_tests_v3::borrowed_identity_bootstrap_is_exact_and_refuses_one_short_v3",
+          "source_issuance_control_v3::relation_control_v3::source_identity_tests_v3::borrowed_native_cell_observer_uses_same_root_and_keeps_first_refusal_v3",
+          "source_issuance_control_v3::relation_control_v3::source_identity_tests_v3::graph_and_owned_source_carriers_keep_send_sync_contract_v3",
+          "source_issuance_control_v3::relation_control_v3::source_identity_tests_v3::retained_ledger_rejects_foreign_root_and_preserves_first_refusal_v3",
+          "source_issuance_control_v3::relation_control_v3::source_identity_tests_v3::retained_request_ledger_projection_needs_no_second_bootstrap_v3"
+        ],
+        "state": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/relation-refusal-owner3-dfc48c59e0b2/state.json",
+          "sha256": "d13d668782f1a369215279627cb0908113533d4fa1be801475dd67711de0c6eb"
+        },
+        "archive": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/relation-refusal-owner3-dfc48c59e0b2-artifact-archive/manifest.json",
+          "sha256": "ebda4a646b9e231636891847ae52a1bb83095db42ecc2fcbc836b71e24a28492"
         }
       }
     },
@@ -5810,26 +5932,65 @@
       }
     },
     "topology_attempt": {
-      "status": "PASS full regeneration; exact5 MAIN",
+      "status": "PASS full regeneration; existing exact5 MAIN unchanged",
       "main": "ff784c50ce181850d72c23751a50fddd33a55fb3",
-      "source": "e1f06e2cbfadc97653f79a553425fccf573075cd",
+      "source": "0fbfe754128f87241209a338bf51424f9a062a6f",
       "paths": 5,
       "evidence": {
-        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/topology-head-custody-r3/state.json",
-        "sha256": "14671b9a4671812658be6c3a8fe9e50b90e8e3ba4ed0de1978abe5aeb200e5e8"
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/topology-head-custody-r5/state.json",
+        "sha256": "d152e1b28e663f1c4a15778582047278f7d2d8526418ef09c707e8e1f13166d8"
       },
-      "source_custody": "committed HEAD unchanged across regeneration/import; normal hooks PASS; exact5 clean; claim and barrier released",
+      "source_custody": "HEAD held across generation; exact5 equal source0fb and prior ff784c50 blobs; no new commit; barrier/claim released",
+      "no_change_orchestration_history": {
+        "phase": "failed before commit; generated private bytes preserved",
+        "failure_type": "AssertionError",
+        "failure_detail": "set()",
+        "cause": "import helper required a nonempty diff after a successful generator; no source/gate failure"
+      },
       "product_qualification": "not claimed; admission still proposed-pending-pilot",
-      "later_main_delta": {
-        "head": "04a3706c7d2948182cda177654ce5b1b1a4aff70",
-        "path_count": 43,
-        "full_regeneration_inputs_changed": 0,
-        "cheap_header_inputs_changed": 0,
+      "preceding_failed_attempt": {
+        "source": "c96411578995d2422bea56ff93cb58a16aa35cac",
+        "status": "RED: two unresolved coordinator child module edges; no install/import",
         "evidence": {
-          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/topology-main-delta-04a3706c7d29.json",
-          "sha256": "c873a1e362e9ea391478cfcd4155f622b4e13dc99320656a1d749660c2a4219a"
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/topology-head-custody-r4/state.json",
+          "sha256": "7c029fbefde71986eeee0193e503a7f5325925372800e0a8c5c2e1aacddc4193"
+        }
+      },
+      "module_prerequisite": {
+        "main": "0fbfe754128f87241209a338bf51424f9a062a6f",
+        "changed_paths": 1,
+        "change": "two explicit child module path attributes; no body/API/cfg/feature changes",
+        "static_proof": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/coordinator-child-paths-r1-proof.json",
+          "sha256": "f05fc2f6c0a4344ae1ee5a768fdff574f999d14b4420f2c5222c7b0550912a09"
         },
-        "scope": "generator input classification only; not Rust, new unit ownership, dirty source or product proof"
+        "import_evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/coordinator-child-paths-r1-import-state.json",
+          "sha256": "a07f5adb1b2f027008293fd1b6647c05fddbc03063f41adeecaf7de12d41b539"
+        },
+        "Rust_compile_test": "NOT_RUN on repaired source"
+      },
+      "reason_for_refresh": {
+        "source": "c96411578995d2422bea56ff93cb58a16aa35cac",
+        "changed_full_regeneration_inputs": 3,
+        "evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/topology-main-delta-c96411578995.json",
+          "sha256": "f71fbf4017fb458bda606b13ea0f5b808e0f5c5f41095bff609d69e22da63e1c"
+        }
+      },
+      "later_main_delta": {
+        "head": "fe38d88295a305287face2227d140b693c11050a",
+        "paths": 21,
+        "classification": {
+          "irrelevant": 21,
+          "cheap-header-check": 0,
+          "full-target-row-regeneration-required": 0
+        },
+        "evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/topology-r5-later-main-delta-fe38d88295a3.json",
+          "sha256": "a28903d510cec88eb27b31b7f7658307036aa1db00370aaf8ab869b7e83d29d1"
+        },
+        "scope": "committed path impact only; no changed Rust bodies/unit ownership/dirty overlay/consumer verdict"
       }
     },
     "global_Honesty": {
@@ -5856,7 +6017,15 @@
       "interpretation": "baseline ratchet reports, not adjudicated runtime defects; no baseline blessing, scope narrowing or allows"
     },
     "generated_Honesty_product_qualification": "generated5/retired GOD7 main complete; global Honesty/GOD RED; owning Rust and actual downstream qualification incomplete",
-    "next": "Wait for the independent DFG consumer source checkpoint; review source and freeze it before owning PTA/consumer proof. Resolve global baseline reconciliation independently; do not duplicate imported body/generated files or widen debt into this code change."
+    "next": "DFG prerequisite is already main59e5e612. Freeze one committed triplet; run affected PTA/parser/Shape/SDK owning consumer recipes and repair demonstrated blockers at their owners. The independent D5 compile-fail proof still has an implicit prior-rlib build assumption. Global Honesty reconciliation and exact2/6/3 retirement remain blocked; do not bless the full baseline or duplicate imported body/generated files.",
+    "DFG_compile_prerequisite": {
+      "main": "59e5e612c1b97581f5df746603eaf715935b5a4f",
+      "evidence": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/dfg-compile-prerequisite-59e5e612c1b-static-recheck.json",
+        "sha256": "2bb16876bdd8324e082fe793abdd4f02ebb837b939f2332afba829566b56db89"
+      },
+      "status": "source repair landed; independent static review PASS; no new Rust verdict"
+    }
   },
   "main_closeout_history": [
     {
@@ -6195,6 +6364,256 @@
           "sha256": "4539903c1926e823f071ff31325cf5d1a35a6863730484c8d71d2b57542d6e72"
         }
       }
+    },
+    {
+      "body_main_import": {
+        "commit": "712b5e8c61204bc07c4a84ae9bec21ce9c1e5a15",
+        "owned_paths": 87,
+        "observation": "already committed in shared main; no duplicate import by this helper",
+        "later_main_census": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/nextaadf0d4148db-import/owned-87-current-main-body-census.json",
+          "sha256": "e33a796d7a37dfbb017ad3a7048d339865ab1e304f0028f305d14a2e3b547a5b"
+        },
+        "reviewed_frozen_fb0_main": {
+          "exact_owned": 82,
+          "changed_manifest_lock_paths": 5,
+          "qualification": "source observation only"
+        }
+      },
+      "budget_fixture_repair": {
+        "main": "63ddf8cca45a1546514d5bb344520be2086b12b9",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-summed-overflow-fixture-r2-import-state.json",
+        "sha256": "37047db93476f16d05f3fb180759e0049aeaf14cd1860cf9c4bb512d9a7b301a",
+        "change": "test fixture accounts known root backing; exact-limit positive plus same OutputBytes overflow/zero partial charge assertions",
+        "owning_Rust_result": "actual39/39 canonical PASS on6cc; original aadf fixture FAIL and5d interrupted history retained separately"
+      },
+      "module_path_prerequisite": {
+        "main": "35970e4292d8a60c09b13b0bf08075c918471034",
+        "changed_paths": 1,
+        "change": "two explicit child module paths; unchanged SDK behavior/API/cfg",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/sdk-capability-projection-child-paths-r1-import-state.json",
+        "sha256": "4fa1eb5aedbe4b08dcd6f9aed0c9167e7ee6ce92ed511382c6957791fef0badc",
+        "actual_static_RED_to_PASS": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/sdk-capability-projection-child-paths-owner-resolution.json",
+          "sha256": "f89ce389155307dabf23ae10609dbca05dde3e19f656d393cf63cf57c8df96ac"
+        }
+      },
+      "feature_taxonomy_prerequisite": {
+        "main": "6cc766f2b30319a0b7772691543f1c0caddb3840",
+        "changed_paths": 6,
+        "change": "two existing product owners exhaustively classified; 37 missing rows added, CLI forwarding consumer corrected; source binary required-features derived; taint rejection unit file renamed preserving body/cfg/logical test IDs; no feature/dependency/engine changes",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/feature-taxonomy-owner-completion-r3-import-state.json",
+        "sha256": "8b9ad9fc887397b04f32fb241cfaf9372b82e9a81e58c39379e8dde0f3dd883e",
+        "lint_PASS": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/feature-taxonomy-owner-completion-r2-lint-state.json",
+          "sha256": "e67f9a53d4a73896a2de96dc3a069ee3cad555d0fd6c38db65b22999fb662d4f"
+        },
+        "Python_tests_PASS20": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/feature-taxonomy-owner-completion-r2-tests-state.json",
+          "sha256": "385102f378e1287a502fff13b85f0a4c6128716fb758f845a60c1dfa2724e7f8"
+        },
+        "proof_delta": "normal-hook import ordering only after tests; normal hooks PASS"
+      },
+      "lock_prerequisite": {
+        "main": "52f134bca18876d29c7ca545e51107f6977b301a",
+        "change": "one nested runtime-analysis dev dependency edge; observed already landed, no duplicate import"
+      },
+      "source": "dfc48c59e0b2ab345667bf2edcddcc0dbda88196",
+      "source_kind": "frozen committed source; actual PTA dependency compile RED; generated current-main checkpoint is separate",
+      "source_state": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/candidate-dfc48c59e0b2-state.json",
+        "sha256": "876d962f797734cf3abd04049f40415cd1f91c2c24123b83c19404e81abc98b6"
+      },
+      "source_freeze": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/main-closeout-dfc48c59e0b2-source-freeze.json",
+        "sha256": "854868fcff20c48637e32c75842e226a16b96d2fbc201cceb749ea287da4da0f"
+      },
+      "source_policy": {
+        "status": "RED",
+        "inputs": 279,
+        "policies": 104,
+        "passed": 102,
+        "failed": 2,
+        "evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/dfc48c59e0b2-boundary-policy-current-state.json",
+          "sha256": "5fb17d7a3c6817528c5bb36e338f869c2e0257b27fe4355bdfca63bc23e3c42b"
+        },
+        "later_gateway_repair_main": "52c0d1f4464129d6778f119c9aa759838ab7e777",
+        "gateway_controls": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/gateway-policy-pair-r1-focused-proof.json",
+          "sha256": "34af889f6fd7c80f2cb7c708b9739c1a1fa808e0204a349c57baf4a2b098a3e1"
+        },
+        "other_owner": "memo test root fixture/private oracle census; no overall policy PASS"
+      },
+      "snapshot": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/snapshot-dfc48c59e0b2-state.json",
+        "sha256": "a8586add4b958b8d7f696a64bc520312b7246dadfb032aca66c3d61b1ec695eb"
+      },
+      "pure_projection": {
+        "status": "PASS 45+6 canonical projections",
+        "evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/pure-validation-dfc48c59e0b2.json",
+          "sha256": "20ae9326c0ed5ba7722e484a38a7def34a713a22dc1e5c7c95220e04efcbc12f"
+        }
+      },
+      "locked_metadata": {
+        "status": "PASS root/nested, auxiliary only",
+        "evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/locked-metadata-dfc48c59e0b2/state.json",
+          "sha256": "2abd95b75664c30e4421cb5300dbb8e36a8fb3f8fbc1a1542776250a02b081dc"
+        }
+      },
+      "owning_Rust_results": {
+        "owner45": {
+          "status": "RED at 1/45",
+          "name": "tarjan-pta",
+          "exit_code": 101,
+          "tests_executed": 0,
+          "remaining_44": "NOT_RUN",
+          "compile_errors": 7,
+          "failure_owner": "quanta-adapters-dfg lib dependency",
+          "run_id": "20261007T014544.121922Z-0e09f203a022",
+          "state": {
+            "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-dfc48c59e0b2-state.json",
+            "sha256": "31c722e1563f1f16286d76f76f872325e5e413bd9e658b95ec20c9c9ce6055fc"
+          },
+          "archive": {
+            "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-failed-owner-dfc48c59-20261007T014544.121922Z-0e09f203a022-archive/manifest.json",
+            "sha256": "a86c8d34e12b7f4c7187057819ad5bf14883d157560e8142a36a351977ed3171"
+          }
+        },
+        "historical_budget": {
+          "status": "PASS",
+          "passed": 39,
+          "failed": 0,
+          "run_id": "20261007T012003.172659Z-d4d58eacbcf6",
+          "state": {
+            "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-handle-owner30-6cc766f2b303/state.json",
+            "sha256": "f9afb5310f990d3004bf545f15d6061c21f084eaf7ea6fa44904fb937fbaed06"
+          },
+          "archive": {
+            "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-handle-owner30-6cc766f2b303-artifact-archive/manifest.json",
+            "sha256": "601f8b32c6f7c2a399e068bb46200bdc9bb0266d2fc091ae6800b796e0c943a9"
+          },
+          "source": "6cc766f2b30319a0b7772691543f1c0caddb3840",
+          "current_source_verdict": "NOT_RUN"
+        },
+        "supplementals": {
+          "status": "formal9 PASS; independent JSON16/source6/relation running",
+          "live_state_path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/dfc-supplemental-independent-r1/state.json"
+        },
+        "graph2": "NOT_RUN",
+        "formal9": {
+          "status": "PASS",
+          "source": "dfc48c59e0b2ab345667bf2edcddcc0dbda88196",
+          "counts": {
+            "failed": 0,
+            "filtered_out": 219,
+            "ignored": 0,
+            "measured": 0,
+            "passed": 9
+          },
+          "run_id": "20261007T015442.302258Z-703d92b92eab",
+          "required_witnesses_observed": 9,
+          "state": {
+            "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/dfg-formal-owner9-dfc48c59e0b2/state.json",
+            "sha256": "00180a5bba1e31210c663b5ed3439758cd8d91e9d7778893015a8ddd79820863"
+          },
+          "archive": {
+            "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/dfg-formal-owner9-dfc48c59e0b2-artifact-archive/manifest.json",
+            "sha256": "2d73b1cf8b74d13b54becb586b37e6e84eaa6c4718b540a5843033d255934995"
+          }
+        }
+      },
+      "test_mount_single_owner": {
+        "main": "d3e2cee0257fcf984bee83ec88ab0c4f72220850",
+        "paths": 3,
+        "Python_tests": 14,
+        "definitions_preserved": 65,
+        "evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/test-mount-single-owner-r1-proof.json",
+          "sha256": "afa771c25468f336469502e3074de6445b833c0b6d64d8a7cc9f6202346565e8"
+        },
+        "interpretation": "65 gate reports, not observed duplicate executions; gateway conservative overlap cap contributes reports; original definitions each retain one owner; no scanner weakening"
+      },
+      "macro_parser": {
+        "main": "bacc30b45ebe46c44d37473982f033c2535d161a",
+        "paths": 2,
+        "Python_tests": 46,
+        "scope": "tilde punctuation only inside macro invocation token tree; offsets/body preserved; malformed syntax still rejected"
+      },
+      "GOD_retirement_stage": {
+        "status": "MAIN exact7 retired",
+        "main": "dfc48c59e0b2ab345667bf2edcddcc0dbda88196",
+        "before": 14,
+        "after": 7,
+        "retired": 7,
+        "new": 0,
+        "worsened": 0,
+        "outside_entries_changed": 0,
+        "evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/god-exact-retirement-r1-import-state.json",
+          "sha256": "5228d610e5c10ad95276d1fdde0e5f8023f77ad9890857e194c25a72d3bb486b"
+        },
+        "full_read_only": {
+          "status": "RED",
+          "new": 5824,
+          "worsened": 1484,
+          "evidence": {
+            "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/god-all-dfc48c59e0b2/state.json",
+            "sha256": "61e7cddb60b678479c773d3fa893c98c84f126bef2e4d1aebf170f7b5c5b93d1"
+          },
+          "baseline_updates": 0
+        }
+      },
+      "topology_attempt": {
+        "status": "PASS full regeneration; exact5 MAIN",
+        "main": "ff784c50ce181850d72c23751a50fddd33a55fb3",
+        "source": "e1f06e2cbfadc97653f79a553425fccf573075cd",
+        "paths": 5,
+        "evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/topology-head-custody-r3/state.json",
+          "sha256": "14671b9a4671812658be6c3a8fe9e50b90e8e3ba4ed0de1978abe5aeb200e5e8"
+        },
+        "source_custody": "committed HEAD unchanged across regeneration/import; normal hooks PASS; exact5 clean; claim and barrier released",
+        "product_qualification": "not claimed; admission still proposed-pending-pilot",
+        "later_main_delta": {
+          "head": "04a3706c7d2948182cda177654ce5b1b1a4aff70",
+          "path_count": 43,
+          "full_regeneration_inputs_changed": 0,
+          "cheap_header_inputs_changed": 0,
+          "evidence": {
+            "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/topology-main-delta-04a3706c7d29.json",
+            "sha256": "c873a1e362e9ea391478cfcd4155f622b4e13dc99320656a1d749660c2a4219a"
+          },
+          "scope": "generator input classification only; not Rust, new unit ownership, dirty source or product proof"
+        }
+      },
+      "global_Honesty": {
+        "status": "RED full sweep / baseline retirement BLOCKED",
+        "source": "dfc48c59e0b2ab345667bf2edcddcc0dbda88196",
+        "evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/honesty-retirement-dfc48c59e0b2/state.json",
+          "sha256": "efef88258f52dfea6791a928e249ffd7d9698d496b73ee7bba05a6dd09ccec61"
+        },
+        "parse_errors": 0,
+        "baseline_paths_changed": 0,
+        "shape_only": {
+          "new": 5796,
+          "rewritten": 2029
+        },
+        "positive_negative_pair": {
+          "new": 1708,
+          "rewritten": 1056
+        },
+        "relationship": {
+          "new": 1258,
+          "rewritten": 360
+        },
+        "interpretation": "baseline ratchet reports, not adjudicated runtime defects; no baseline blessing, scope narrowing or allows"
+      },
+      "generated_Honesty_product_qualification": "generated5/retired GOD7 main complete; global Honesty/GOD RED; owning Rust and actual downstream qualification incomplete",
+      "next": "Wait for the independent DFG consumer source checkpoint; review source and freeze it before owning PTA/consumer proof. Resolve global baseline reconciliation independently; do not duplicate imported body/generated files or widen debt into this code change."
     }
   ]
 }
