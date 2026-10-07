@@ -41,15 +41,19 @@ active closeout IDs plus resolved QG-DIAG; proposed A-series work remains a sepa
   Source reuse is integrated; current execution acceptance remains unverified.
 - Source/claim observation: `remaining-r46-plan-audit-state.json`; final source
   continuity/SCC review: `remaining-r46-main-reconciliation.json`, at the evidence
-  root below. This revision executes no Rust or product tests. No private root
-  source checkout is an active execution candidate for these next tasks.
+  root below. That R46 inventory executed no Rust or product tests and had no
+  private root source checkout as an active execution candidate.
   `remaining-r48-final-ticket-audit.json` records the latest committed-source
   readback, producer pins, one remaining getter and20 active states. Current
   claims were not refreshed; refresh them before edits or source assignment.
 
-Latest successor input is R60 after Semantica `73f2483f800e` plus
-the issued dirty overlay and sibling tuple. Its locator, not this initial
-audit baseline, owns the source identity. GQLang's docs input is `85d35415a46`;
+R60–R61 dirty-overlay attempts are historical. Latest independent candidate is
+R63, committed Semantica `318a1caa941` plus only the rule/community test
+postimages and generated lock records. Its separate checkout is
+`/Users/songmin/Documents/code-new/.semantica-gqlang-leaf-proof-oct8`.
+The live shared main retains other owners' dirty source; it is not copied into
+this independent candidate. Its locator, not this initial
+audit baseline, owns the source identity. GQLang's docs checkpoint is `5cd94d025403`;
 the preceding local `just ci` passed1514 Rust tests,10 doctests and10 frontdoor
 parity tests. Later edits are documentation only and issue no downstream claim.
 
@@ -57,8 +61,9 @@ Source-only follow-up at `65036b7221a` found CHECKED-CALLBACK-FIRST-CAUSE;
 the coupled protocol/common/infra/Kernel repair and fixtures are now integrated
 as `aac43629734`. Current-source execution acceptance remains pending. The
 [plan's callback audit](../plans/oct-6-substrate-dedup/readme.md#additional-checked-read-chronology-audit)
-records the corrected 83 bridge/fixture and 31 Kernel handoff; this task is
-read-only for Semantica and this progress readback executed no runtime tests.
+records the corrected 83 bridge/fixture and 31 Kernel handoff. That historical
+source-only readback executed no runtime tests; R54 later accepted the common
+callback and Kernel finisher scopes listed below.
 
 ## R49 authored source and current attempts
 
@@ -113,7 +118,8 @@ then stopped before tests at two test-only faults: nested `tests_v3` path and
 private fixture-module import. Explicit test mount and test-only reexport of the
 existing fixture are authored; production authority visibility stays private.
 
-SDK deadline2, community2 and same-IR recursive rule1 are authored, not executed.
+At R52, SDK deadline2, community2 and same-IR recursive rule1 were authored, not
+executed. Later leaf acceptance is recorded in R60–R63 below.
 R49 counter2 continuity was checked against all5 actual overlay file hashes;
 committing that same postimage as `f2d85a9` is not a later behavioral change.
 R49 engine77 contains all7 deadline witnesses. Preserve these scoped results
@@ -161,8 +167,8 @@ pointer receipts have immutable per-run publication and logs; mutable lane
   Steensgaard compile-fail target. R59 root frozen metadata caught a later lock
   mismatch before Rust launched. Offline projection changed only DFG and SDK
   session-backend dependency records, with no added/removed package identities;
-  root and nested locked metadata passed. R60 retries that corrected tuple. Its
-  actual results remain pending.
+  root and nested locked metadata passed. R60 retried that corrected tuple and
+  stopped before tests at two unused imports; the successor source is below.
   Unchanged R49 SCC core20/facade1 inputs were verified against actual overlay
   custody and are retained without duplicate runs. Request resolution and a
   pending launch are not PASS.
@@ -175,6 +181,101 @@ Evidence: `r54-owned-proof-results.json`, `normalization-oracle-r54-rca.json`,
 `r57-scc-r49-continuity-and-d5-request-reconciliation.json` `lock-projection-r59/results.json` and R58–R60 custody/results
 at the evidence
 root above. Preserve each attempt's immutable publication and archived logs.
+
+
+## R60–R63 source stability and clean candidate
+
+R60 stopped before tests at two imports left unused by the co-owned manifest
+module split. Removing those imports changes no contract or calculation. R61
+could not issue an execution snapshot because untracked content moved during
+capture/copy. No Rust test or owner receipt exists for that attempt.
+
+R62 separated committed main and the two owned leaf regressions from that moving
+overlay. Frozen root metadata caught stale committed lock records before Rust.
+Offline projection preserved every package version/source/checksum; only current
+committed dependency records changed. Root and nested locked metadata passed.
+R63 uses existing reviewed rule no-default and runtime Python/community feature
+classes. Rule execution is accepted GREEN34/34,2007 filtered and0 ignored,
+including the new same-IR SCC/admission/exact-result witness. Immutable
+publication hash and live/candidate/frozen file equality were checked before
+local main integration `a23ced26e09`. Community stopped before tests at56
+`quanta-adapters-parser` compile errors on this committed candidate. It has no
+execution acceptance and is not integrated. These scoped results do not remove
+all-features requirements. R64 reuses the same issued snapshot for five reviewed
+independent JSON, D5 solver/API and Shape/Cost owner requests. JSON projection
+is accepted13/13,24 filtered and0 ignored. D5 solver225/225 and the separate
+Steensgaard API-absence2/2 are also accepted, both0 filtered/ignored. Shape
+projection20/20 and Cost heap projection20/20 passed, including the independent
+orphan/endpoint and canonical-first-allocation truncation oracles. These requests
+share the issued R63 snapshot, not a new mixed source tuple.
+
+R65 reuses that immutable snapshot for five existing parser-free SCC caller
+requests: dominance, concurrency engine/domain, metrics and core-CFG call graph.
+Each was re-resolved before its serial run. All five have accepted immutable
+publication: dominance3/3, concurrency engine38/38, concurrency domain6/6,
+metrics14/14 and core-CFG call graph30/30, all0 ignored. The earlier source-only
+counts were estimates; these are actual selected passes. Current-target
+and navigation remain blocked by their real feature closures; import graph has
+a separate external owner receipt without demonstrated source equivalence and
+is not folded into this tuple. The external checkout was rebased after its
+receipt; current-byte equality cannot prove receipt-time inputs. R66 therefore
+runs import graph on this issued snapshot and adds a separately reviewed
+`codegraph-core-engine-taint` `zipper_preanalysis` request for the actual
+criticality/SCC consumer omitted from the old map. The31 Zipper source tests
+include independent selection and malformed-index oracles; they do not all
+prove exact SCC membership/order. R66 import graph is accepted32/32,163 filtered
+and0 ignored. Its actual
+required cycle/order/resource witnesses match. Zipper is accepted32/32,568
+filtered and0 ignored; the actual criticality, final selection and both malformed
+index witnesses executed. Its source estimate31 was not the execution count.
+R63–R66 now retain13 accepted owner requests on source digest
+`1dd153c21ca52c58ead0bae5438d0e54e8ba93cd55a359b6511f96f522fc76de`.
+This does not close blocked callers, shared original custody or product proof.
+
+A separate clean-main SDK blocker is source-confirmed: committed Java
+`original_generated_callable_candidate_v3.rs` imports
+`OriginalSemanticSharedBackingV3`, but committed Foundation has no definition or
+export. The implementation exists only in an untracked shared-backing module and
+a dirty export. SDK's current `package-all-features` enables that Java path.
+Complete and verify the owning Foundation/Java bundle before all-features SDK
+acceptance; copying that WIP into the leaf candidate would hide the main gap.
+No narrower SDK policy was substituted for this obligation.
+The actual supplier trace starts at tree-sitter's `NativeSharedValueV3`
+(`binding_rust/lib.rs`, `native_shared_birth_v3.rs`), Kernel's canonical shared
+value admission (`canonical_output_api_v1.rs`, `shared_value_admission_v3.rs`,
+`type_copy_admission_v1.rs`), then Foundation's original admission parent and
+`shared_backing_v3.rs`. Existing related feature/error/input hunks are co-owned;
+this is a coupled supplier closure, not permission to commit these seven files
+as a sufficient standalone fix.
+
+R63's parser failure is32 symbol/type/module/trait errors plus24 denied unused
+imports. Most corresponding live repairs already belong to other active owners;
+this task does not implement them again. One remaining feature-boundary defect
+was independently traced: Java-only
+`ExistingFileSemanticModuleTransitionFallbackV2` was unconditionally reexported.
+R64 authors only its move into the existing Java-gated export group, preserving
+Java's API and the two genuinely ungated view/consumption types. The exact hunk
+has independent review and a reconciled claim; execution acceptance and whole
+parser integration remain pending under root hunk claim
+`OCT8-GQLANG-PARSER-NOJAVA-EXPORT-R64`, reconciled with the current coowners.
+Do not stage the co-owned `lib.rs` wholesale.
+
+Evidence: `sourcewire-whole-owner-r60.json`, the R61 capture failure,
+`r62-leaf-candidate.json`, `lock-projection-r62-clean/results.json`,
+`r63-proof-custody.json`, `r63-owned-proof-results.json` and
+`rule-execution-owner-r63.acceptance.json`; `community-owner-r63.json` and its
+archived stderr own the reached parser compile failure. Its publication marker
+is incomplete, so this is a reached compiler diagnostic, not an accepted
+finished owner verdict.
+`parser-no-java-reexport-r64.patch` owns only the reviewed feature correction;
+R64 per-owner locators, acceptance files and `r64-owned-proof-results.json`
+record the accepted projection/D5 scopes. `r65-owned-proof-results.json` and
+`r63-r65-immutable-proof-archive.json` retain accepted caller publications;
+`r65-external-importgraph-reuse-audit.json` records the refused cross-source
+reuse. R66 custody, results and `r66-immutable-proof-archive.json` retain their own
+request IDs and verified publication hashes. Source acceptance, leaf
+proof and installed product remain
+separate. The candidate stays available until reviewed integration is complete.
 
 ## Historical source-bound proof inputs
 
@@ -501,6 +602,9 @@ frontend clean-HEAD qualification and signed installed Linux CHECK retain
 their separate requirements. R38/R40 results retain their original inputs.
 
 ## Latest source absorption — all reviewed source integrated
+
+Historical R43 absorption only. Later authored repairs and pending execution
+scopes are recorded above; this heading does not close them.
 
 Final source reconciliation observed Semantica main
 `3bf86a4735c989c051e1c143f529dc5f9b24c45e`. The three cursor postimages were already integrated by

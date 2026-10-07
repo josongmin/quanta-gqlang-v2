@@ -2,9 +2,9 @@
 
 Status: implementation in progress; source edits and execution attempts are
 recorded in the R49 update below and the
-[current execution handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r53r60-reached-repairs-and-successor-input).
+[current execution handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r60r63-source-stability-and-clean-candidate).
 No product qualification is claimed.
-Updated: 2026-10-07.
+Updated: 2026-10-08.
 
 This is a successor to the retired Oct-6 implementation packet. It schedules
 unfinished acceptance from [remaining work](../../work/remaining.md); it does not
@@ -116,7 +116,7 @@ already-recorded refusal through the existing passive issuer/finisher boundary;
 zero-work polling cannot substitute for passive observation.
 
 The earlier 83/31 source handoff is integrated. That source audit ran no tests.
-R49 now edits independent consumer/ledger scopes under downstream claims;
+R49 authored independent consumer/ledger scopes under downstream claims;
 execution acceptance requires normal source/lane admission and receipts.
 
 | Batch | Concrete result | Preconditions / owner |
@@ -129,7 +129,7 @@ execution acceptance requires normal source/lane admission and receipts.
 | Existing cuts | Python DefUse integrated `27d9505015e`; other source cuts already integrated | Existing owner proof, not redevelopment |
 | CONTROL-SNAPSHOTS (former CONTROL-CGO) | Account snapshot materialization and subsequent fact calculation under the actual original owner; preserve the integrated shared cap/overflow counter (`f2d85a9`, QBC2/2) | C/Go/TypeScript consumers + shared admission mechanics, one writer; S0 output custody seam |
 | CONTROL-KOTLIN | Exact source/backend binding integrated `df315e6` (QBC70/70); exercise original current failure priority | Kotlin DefUse writer, S0 contract |
-| SDK-DEADLINE | Add result-based deadline acceptance through the real fluent SDK caller; retain existing mapper tests | Runtime SDK test owner; Native adapter/deadline behavior is already implemented |
+| SDK-DEADLINE | Execute and qualify the authored result-based deadline tests through the real fluent SDK caller; retain existing mapper tests | Runtime SDK test owner; Native adapter/deadline behavior is already implemented |
 | QG-DIAG — resolved | Existing parity and NDJSON consumers require primary-only exact fields | ADR-0008 documents the existing private contract; no wire change |
 
 ### Contract constraints before implementation

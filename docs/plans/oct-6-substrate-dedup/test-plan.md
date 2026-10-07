@@ -2,7 +2,9 @@
 
 Parent: [execution plan](readme.md). This is a request/oracle specification,
 not an execution receipt. Old selectors below are inputs to re-resolution.
-Latest caller/request audit: Semantica `871224b2059422a8f36eca91ffb0c9119238ac9c`.
+Historical caller/request audit: Semantica `871224b2059422a8f36eca91ffb0c9119238ac9c`.
+Current issued requests/results and the clean committed candidate are recorded
+in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r60r63-source-stability-and-clean-candidate).
 `qv2/` abbreviates Semantica `packages/analysis/quanta-v2/crates/`.
 
 ## Execution contract
@@ -23,6 +25,16 @@ Latest caller/request audit: Semantica `871224b2059422a8f36eca91ffb0c9119238ac9c
 5. R38 common7/Java139, R44 445, R40 quarantine130 and historical D4/D5 evidence
    retain their different sources. Rebind unchanged owner inputs explicitly or
    rerun changed owners; never sum these as a current product verdict.
+
+## Reached parser compile obligation
+
+R63's existing runtime Python/community feature class stops before tests at
+parser compilation. The enum-export repair in the [code map](code-map.md#reached-parser-feature-boundary-repair)
+requires the same profile to compile and execute its actual community oracles;
+Java's owner profile must retain the same export. Resolve both from the complete
+coupled parser source. Do not disable imports/warnings, copy unfinished supplier
+WIP into a committed-source proof, or substitute a narrower SDK policy. This
+compile obligation belongs to FCP-COMPILE, not a new defect or engine queue.
 
 ## Consumer regression oracles
 
@@ -221,10 +233,14 @@ minimal R56 compile repairs; inspect real test names, refusals and exact counts.
   lives in the separate2-case `steensgaard_public_surface_compile_fail` target
   (resolved QBC request `30f59ac8010233b78108debf95dc6ca1`). Execute it in the
   same isolated QBC target custody; its fixture invokes `rustc`, not Cargo.
-  Reconcile actual counts and old deep-chain/cycle replacements explicitly.
+  Reconcile actual counts and old deep-chain/cycle replacements explicitly. R64
+  accepted the actual solver225/225 and this separate API-absence2/2 on one issued
+  frozen candidate; final aggregate custody remains a separate claim.
 - Old Cost `termination_analyzer_adapter` GREEN5 does not exercise the changed
   allocation projection. Execute `heap_domain_adapter` and Shape's
-  `shape_analyzer_adapter` under their current reviewed feature classes.
+  `shape_analyzer_adapter` under their current reviewed feature classes. R64
+  accepted20/20 each, including canonical orphan/endpoint and first-allocation
+  truncation result witnesses; this is not whole D1 acceptance.
 - Shared PTA allocation feature classes are compile-closure evidence only.
   Actual Shape/Cost consumer results own the behavior oracles.
 - Navigation and metrics use the canonical SCC default limits and propagate its
@@ -232,10 +248,26 @@ minimal R56 compile repairs; inspect real test names, refusals and exact counts.
   outputs; no test-only small-budget injection is required at those callers.
 - Community adds2 literal empty/cyclic plan regressions, including independent
   CBOR/BLAKE3 cluster IDs and exact publication counts. Rule already has result
-  tests; the same-IR SCC→recursive admission→exact-result regression is now authored
-  alongside the community2 tests, awaiting execution. Neither is a new engine project.
+  tests; R63 accepted34/34 rule-owner tests including the new same-IR
+  SCC→recursive admission→exact-result regression, integrated `a23ced26e09`.
+  Community2 awaits execution after its reached parser compile closure.
+  Neither is a new engine project.
 
 ### Added SCC caller coverage
+
+R65 accepted the existing dominance, concurrency engine/domain, metrics and
+core-CFG requests on the issued R63 candidate. R66 explicitly adds
+`codegraph-core-engine-taint` lib/module `zipper_preanalysis`,
+`package-all-features`, after its source/manifest review found31 candidate tests.
+Require real SCC-derived criticality and final selector outputs, including
+`test_scc_propagation_container`, `test_full_pipeline`,
+`test_full_pipeline_end_to_end` and both missing-index refusals. Do not mistake
+its component-count tests for exact membership/order proof. An external import
+graph GREEN32 cannot be rebound from a checkout rebased after publication;
+R66 ran its existing request on the same issued candidate instead. Import
+graph32/32 and Zipper32/32 are accepted, all0 ignored. The Zipper source estimate31
+is not its actual selected count. Their immutable publication and required
+witness checks are in the handoff; this does not execute the blocked callers.
 
 [D2-CALLER-COVERAGE](tickets.md#d2-caller-coverage) records eleven additional
 package/scope pairs and their actual source paths: current-target planner,

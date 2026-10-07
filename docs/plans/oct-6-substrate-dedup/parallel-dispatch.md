@@ -1,9 +1,9 @@
 # Parallel closeout dispatch
 
-Updated: 2026-10-07. Initial source audit: Semantica
+Updated: 2026-10-08. Initial source audit: Semantica
 `871224b2059422a8f36eca91ffb0c9119238ac9c`, GQLang code input
 `01cfe39ca0571b4fc099d41b24628fda70e754fe`. Current execution attempts and accepted
-scopes are in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r53r60-reached-repairs-and-successor-input).
+scopes are in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r60r63-source-stability-and-clean-candidate).
 Refreshed source/claims are required
 before writing. This document is an execution plan; no implementation or runtime
 result is claimed by its publication.

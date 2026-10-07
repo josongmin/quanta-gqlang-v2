@@ -17,11 +17,12 @@ TypeScript's original control/output scope joins C/Go below. Follow the
 
 Kotlin exact1/whole70 and local counter2 have accepted scoped R49 owner results.
 Their actual tested files were checked for continuity; this does not qualify
-original output custody. SDK deadline2, community2 and rule connection1 are
-currently authored test changes awaiting owner execution. Minimal compile repairs
+original output custody. SDK deadline2 and community2 await execution acceptance.
+R63 rule owner34/34 includes the same-IR connection regression, integrated as
+`a23ced26e09`. Minimal compile repairs
 remain in their coowners' source bundles; R52 semantic contract55 passed.
 R54 also accepted common callback2 and Kernel finisher5. The
-[current handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r53r60-reached-repairs-and-successor-input)
+[current handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r60r63-source-stability-and-clean-candidate)
 records later SourceWire/DFG compile repairs and preserves their coupled ownership.
 
 ## Before / after at the real caller
@@ -33,6 +34,25 @@ records later SourceWire/DFG compile repairs and preserves their coupled ownersh
 | C/Go/TypeScript facts | Checked read builds scalar snapshot → callback ends → fact calculation without original current; three local 128 MiB snapshot ledgers | Original admission covers temporary snapshot births, traversals and output lifetime; owned scalar grammar projections retained; shared accounting mechanics |
 | Kotlin facts | Exact source/backend guard integrated `df315e6`, whole owner70 passed; original output custody remains separate | Preserve that guard and ordinary compatibility; prove original output births, work/cancel refusal and final lifetime |
 | SDK deadline | Real builder passes timeout to adapter; five existing tests cover error mapping/authority/input/cancel | Same execution code with result-based real SDK deadline tests; existing mapping five remain distinct from domain/deadline behavioral proof |
+
+## Reached parser feature-boundary repair
+
+- Owner file: `qv2/quanta-adapters-parser/src/lib.rs`.
+- Before: the unconditional export group names
+  `ExistingFileSemanticModuleTransitionFallbackV2`, whose definition and only
+  consuming mapper are Java-gated. R63's existing no-Java community profile
+  reaches `E0432` before tests.
+- Authored after: move only that enum into the existing `parser-java` export
+  group. Keep `ExactIncrementalParseConsumptionPortV1` and the materialized view
+  unconditional. Java's public export and wire representation are unchanged.
+- Claim: `OCT8-GQLANG-PARSER-NOJAVA-EXPORT-R64`, reconciled with the existing
+  parser coowners. Its recorded diff is one symbol move; never stage the whole
+  dirty `lib.rs` as this repair.
+- DoD: complete the owning parser/dependency/module bundle and verify the same
+  no-Java owner profile plus Java feature closure. The static hunk review is
+  accepted; parser compile and community execution are still pending. The other
+  R63 errors have existing concurrent repairs and do not authorize duplicate
+  implementation.
 
 ## S0: existing common interfaces, one coordinated change
 

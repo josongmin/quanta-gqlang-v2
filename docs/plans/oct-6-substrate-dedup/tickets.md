@@ -125,9 +125,10 @@ number after SCC caller reconciliation.
   now includes R49 real `execute()` timeout0 and literal normal-result tests
   for Sign/Interval/Constant; their owner execution is pending.
   Builder default is 30_000; existing mapper five assert a different boundary.
-- Change: add real fluent `execute()` cases for timeout0, live expected results
-  across sign/interval/constant, exact typed error and distinct iteration failure.
-  Retain deterministic engine/adapter final-publication checks. No sleeping oracle.
+- Authored scope to qualify: real fluent `execute()` cases for timeout0 and
+  literal expected results across sign/interval/constant, with exact typed error.
+  Retain distinct iteration failure and deterministic engine/adapter
+  final-publication checks at their existing behavioral owners. No sleeping oracle.
 - DoD: SDK integration target plus engine/lowering/adapter/wire and mapper owners
   have separate accepted results; revalidate affected original custody/JSON/
   quarantine. Deadline begins at adapter `analyze`; do not claim whole-request
@@ -178,6 +179,10 @@ number after SCC caller reconciliation.
   (without Java metadata) / `3d4e77a3e18b` (with metadata) in current resolution.
   Their policy definitions alone are not execution proof.
 
+R64 accepted Shape projection20 and Cost heap projection20 on one independent
+frozen source, with exact orphan/endpoint and truncation outputs. This does not
+execute the runtime/SDK/gate matrix or both shared-allocation feature closures.
+
 ## D2-PTA-PROOF
 
 - Core is `codegraph-graph-scc`; graph-utils is compatibility reexports. Owner
@@ -215,6 +220,14 @@ owner targets/features and match existing accepted receipts before adding runs.
 | `codegraph-core-cfg` | `cfg/schema/src/domain/call_graph/record.rs::scc_tests` and call-graph stats; canonical SCC reuse `6a795b466f2` preserves historical component order. Independent exact graph, 12k chain, one-byte-short and inconsistent reverse-index oracles; taint Zipper consumes the same schema surface and needs its real criticality result proof |
 | `codegraph-core-abstract-engine` | `abstract/engine/src/solver/worklist.rs::scc_tests`: independent all3-node cyclic-edge oracle, deep cycle, one-byte-short workspace and unregistered successor; actual solve deadline/widening/determinism consumers. Integrated `90e6bb0ea3d` intentionally adds canonical resource bounds and typed `RejectedGraph`; source presence is not accepted execution proof |
 
+R63 accepted rule34 and R65 accepted dominance3, concurrency engine38/domain6,
+metrics14 and core-CFG call graph30 on one issued input. Current-target/navigation
+and community keep their compile prerequisites. R66 explicitly adds the actual
+taint-Zipper consumer result request and source-bound import graph request; no
+new SCC implementation or feature policy is assigned. Both are accepted32/32
+on the same issued source, including the actual Zipper criticality/selector and
+malformed-index outputs. Blocked callers and final aggregate proof stay open.
+
 DoD: each affected owner has accepted matching evidence or a resolved request
 with actual required witnesses. Freeze the complete request count afterwards.
 Do not rerun Shape/PTA/taint work twice or mistake the facade type test for caller
@@ -231,7 +244,9 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
 
 - SCV2 uses common RRF; base UnionFind/active solvers retained, dormant Andersen
   UnionFind removed. Historical SCV2 leaf34 and isolated225+API-absence2 are accepted
-  on their original sources.
+  on their original sources. R64 additionally accepted solver225/225 and the
+  separate API-absence2/2 on the independent R63 frozen candidate; SCV2 and final
+  aggregate custody remain open.
 - DoD: attest unchanged owner/dependency inputs or rerun changed owners for the
   final tuple. No second RRF implementation, new UnionFind trait or redundant run.
 
@@ -257,7 +272,12 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
 - Current reached closure is recorded in the
   [R53–R60 handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r53r60-reached-repairs-and-successor-input).
   R52 semantic contract55 passed, but later SourceWire pre-test errors and
-  unexecuted SDK/product consumers prevent whole product acceptance.
+  unexecuted SDK/product consumers prevent whole product acceptance. R63 rule
+  execution is accepted34/34 and integrated `a23ced26e09`; community stopped
+  before tests at56 committed parser errors. Clean
+  main's all-features Java path references missing Foundation
+  `OriginalSemanticSharedBackingV3`; its dirty implementation/export must be
+  integrated as the complete owning bundle, not hidden in a test overlay.
 - DoD: freeze committed Semantica/GQLang/Index and actual original-session/QMP
   closure, resolved toolchain/features/root; canonical SDK/runtime product build
   succeeds. Record current diagnostics if it fails and open only the reached owner

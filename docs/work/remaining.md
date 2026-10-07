@@ -1,15 +1,24 @@
 # Remaining work
 
-Updated: 2026-10-07. Initial committed-source audit input:
+Updated: 2026-10-08. Initial committed-source audit input:
 Semantica `871224b2059422a8f36eca91ffb0c9119238ac9c`, with QGLang audit input
 `01cfe39ca0571b4fc099d41b24628fda70e754fe`; foreign dirty overlays are
 excluded from that audit. R49 source integration is listed below; source
 integration and runtime qualification remain separate.
-Latest attempts retain separate issued overlays on Semantica
+Earlier dirty-overlay attempts retain separate issued overlays on Semantica
 `af563ffa29bd`, `35183fbdba80` and `73f2483f800e`; the
 [R53–R60 handoff](substrate-repair-checkpoints-2026-10-07.md#r53r60-reached-repairs-and-successor-input)
-records actual blockers and accepted scopes. GQLang `just ci` passed locally;
-this does not qualify Semantica runtime or installed product.
+records actual blockers and accepted scopes; the
+[R60–R63 candidate](substrate-repair-checkpoints-2026-10-07.md#r60r63-source-stability-and-clean-candidate)
+isolated rule/community from moving co-owned source. R63 rule execution is
+accepted34/34 and integrated as `a23ced26e09`; community stopped before tests at56
+committed parser compile errors. R64 JSON projection13/13 is accepted; its other
+independent D5 solver225/225 and API-absence2/2 proofs are accepted. Shape/Cost
+passed20/20 each. R65 accepted dominance3, concurrency engine38/domain6,
+metrics14 and core-CFG call graph30. R66 import graph32/32 is accepted; actual
+taint-Zipper32/32 is accepted on the same issued source.
+The parser enum-export correction is authored and reviewed, not execution-qualified or independently integrated.
+GQLang `just ci` passed locally; this does not qualify Semantica runtime or installed product.
 Original consolidation provenance is retained in ADR-0001/ADR-0005.
 
 Only unfinished work belongs here. Integrated architecture is recorded in
@@ -45,7 +54,7 @@ before claiming completion. Broader AG5/IRC releases remain downstream-owned.
 
 | ID / state | Required work | Acceptance |
 | --- | --- | --- |
-| FCP-COMPILE / UNVERIFIED | Re-freeze original-session/QMP pin and SDK/PTA/runtime-analysis integration on committed main. R49 reached working-tree serde `E0403` and SourceWire module `E0583`; minimal fixes are authored. R50 stopped at stale dependency lock records; both locked metadata checks passed after identity-preserving regeneration. R51 reached an `E0308` relation-test fixture; its literal constructor correction is authored. Successor proof and coupled owner integration remain required. Earlier unrelated failures stay historical. | Canonical product build and SDK owner rails on one source tuple; report actual current diagnostics, not the old 31/5 error counts. |
+| FCP-COMPILE / UNVERIFIED | Re-freeze original-session/QMP pin and SDK/PTA/runtime-analysis integration on committed main. R49 reached working-tree serde `E0403` and SourceWire module `E0583`; minimal fixes are authored. R50 stopped at stale dependency lock records; both locked metadata checks passed after identity-preserving regeneration. R51 reached an `E0308` relation-test fixture; its literal constructor correction is authored. Successor proof and coupled owner integration remain required. Clean committed main also references `OriginalSemanticSharedBackingV3` from Java DFG without its committed Foundation definition/export; the owning tree-sitter→Kernel→Foundation bundle remains WIP. R63 community additionally reached56 committed parser compile errors and0 tests on the independent candidate. Earlier unrelated failures stay historical. | Canonical product build and SDK owner rails on one source tuple; report actual current diagnostics, not the old 31/5 error counts. |
 | FCP-PTA / REVERIFY | Verify the seed-consumption lifetime repair against the historical first `PtaOccurrenceAuthorityRefused` boundary; no current reproduction is claimed. | Current owner/bootstrap succeeds, or a reached refusal identifies the exact remaining owner repair. Source changes alone do not close it. |
 | FCP-PROCESS / NOT_RUN | Execute integrated Graph/CHECK positive and refusal fixtures. | Same tuple/artifacts; Linux Graph success, non-Linux Graph refusal, signed Linux CHECK and relevant non-Linux controls; record selected/executed/pass/skip/leak counts and exact output oracle. |
 | FCP-INSTALL / EXTERNAL_PREREQUISITE | Obtain release-owned signed x86_64 profile, root-owned immutable slots, independent approval/key and active generation. | Actual installed CHECK proof. Generic aarch64 artifacts and scripted daemon evidence do not satisfy this gate. |
@@ -65,12 +74,12 @@ are unfinished proof scopes, not instructions to reimplement those changes.
 | ID / state | Owner and remaining acceptance |
 | --- | --- |
 | CHECKED-CALLBACK-FIRST-CAUSE / PROOF_PENDING | Source repair and fixtures integrated `aac43629734`: actual ConsumerStopped disposition through common/infra owners, Kernel success-only metadata postcheck. R54 accepted common callback2 and Kernel finisher5; parser callback chronology remains pending on the successor compile closure. Preserve first recorded cause and success custody checks. These focused scopes do not close all consumers. |
-| D1-PROOF / INCOMPLETE | `quanta-adapters-shape`, runtime SDK and converter: actual factory/export plus pure/PTA-derived/disabled/Cost feature combinations and both Shape gates. Latest `07093dbe72a` shares Shape/Cost allocation-reference projection through `quanta-contract-pta-result-shared`; include real consumer oracles and no-Java/Java feature closure. Preserve port/PTA authority and exact output. |
+| D1-PROOF / INCOMPLETE | `quanta-adapters-shape`, runtime SDK and converter: actual factory/export plus pure/PTA-derived/disabled/Cost feature combinations and both Shape gates. Latest `07093dbe72a` shares Shape/Cost allocation-reference projection through `quanta-contract-pta-result-shared`; R64 accepted Shape20 and Cost heap20 with independent allocation/truncation result oracles. Runtime/gates and no-Java/Java feature closure remain open. Preserve port/PTA authority and exact output. |
 | D2-PTA-PROOF / INCOMPLETE | `codegraph-graph-scc` owns calculation; graph-utils reexports compatibility paths. Resolve core/facade and actual PTA adapter/Andersen/runtime-analysis proofs of order/IDs, closure, admission and typed stop. Old owner45's graph-utils `scc` selector is zero-case. Core/facade/PTA repairs produce47 only if other rows remain; added callers belong to D2-CALLER-COVERAGE. Tarjan10 source includes PTA adapter/Andersen; execution is unverified. Earlier compile RED stays historical. |
 | D2-TAINT-PROOF / INCOMPLETE | `quanta-taint-solver` and contract tests: successor-only domain, order/IDs/resource/stop controls, Tarjan gate and explicitly selected ignored `deep_chain_50k`. A zero-test selector fails. |
-| D2-CALLER-COVERAGE / PROOF_PENDING | Account for eleven SCC consumer scopes omitted by historical45/Tarjan10: current-target planner, dominance, concurrency engine and schema, navigation import graph, rule execution, metrics max-depth, runtime community clustering, distinct `codegraph-import-graph` (`daf8bb00bfa`), `codegraph-core-cfg` call-graph schema (`6a795b466f2`, including stats/Zipper consumers) and abstract worklist (`90e6bb0ea3d`). Source reuse is integrated. Reuse accepted matching receipts or resolve actual owner requests with independent order/identity/resource/refusal oracles; freeze final cardinality afterwards. Existing D1 Shape and D2 PTA/taint owners are not duplicate assignments. |
+| D2-CALLER-COVERAGE / PROOF_PENDING | Account for eleven SCC consumer scopes omitted by historical45/Tarjan10: current-target planner, dominance, concurrency engine and schema, navigation import graph, rule execution, metrics max-depth, runtime community clustering, distinct `codegraph-import-graph` (`daf8bb00bfa`), `codegraph-core-cfg` call-graph schema (`6a795b466f2`, including stats/Zipper consumers) and abstract worklist (`90e6bb0ea3d`). Source reuse is integrated. Reuse accepted matching receipts or resolve actual owner requests with independent order/identity/resource/refusal oracles; freeze final cardinality afterwards. R63 rule owner34/34 includes the new same-IR SCC→admission→exact-result regression, integrated `a23ced26e09`; R65 additionally accepted dominance3, concurrency engine38/domain6, metrics14 and core-CFG call graph30 on that same independent frozen source. R66 accepted import graph32 and actual taint-Zipper32; current-target, navigation and community stay blocked. Other callers remain open. Existing D1 Shape and D2 PTA/taint owners are not duplicate assignments. |
 | D3-PROOF / INCOMPLETE | `quanta-adapters-dfg` PortDFG and actual taint promotion: remaining canonical owner requests. Pack16 already has a historical canonical result; earlier DFG/taint compile RED executed zero cases. |
-| D4/D5-CUSTODY / UNVERIFIED | SCV2 leaf34 and isolated solver225+API-absence2 have canonical historical results. Rebind unchanged owners or rerun changed inputs for the final integration tuple; do not repeat the old manual-only gap as if canonical results were absent. |
+| D4/D5-CUSTODY / UNVERIFIED | SCV2 leaf34 and isolated solver225+API-absence2 have canonical historical results. R64 accepted solver225 and API-absence2 on the independent R63 frozen input. SCV2 remains to rebind. Rebind unchanged owners or rerun changed inputs for the final integration tuple; do not repeat the old manual-only gap as if canonical results were absent. |
 | SUBSTRATE-POLICY / INCOMPLETE | Complete affected mandatory gates and consumer feature/dependency checks. Topology5 and scoped GOD retirement are integrated; earlier global Honesty/GOD RED is historical and current results are unverified. Resolve reproduced attributable baseline/identity drift without global reapproval, allow growth or scope reduction. |
 | SUBSTRATE-PRODUCT / UNVERIFIED | Aggregate F1/D6 and D7 consumer acceptance. Python/component evidence retains its original sources. Reuse FCP-PROCESS/FCP-INSTALL runs for the same product boundary; do not schedule a second daemon/installed proof. |
 | CHECKED-DEFUSE / PROOF_PENDING | Python checked extraction is integrated `27d9505015e`; production retired-carrier getter census is now0 across the inventoried owners. Its145 package files and manifest match the R49 frozen source. Source migration is complete; actual owner walk/control/binding proof remains open. Rust/Java/C/Kotlin/Go/TypeScript cuts are already integrated; no new migration writer. |
@@ -93,7 +102,7 @@ proof. R49 adds real SDK deadline regressions; their execution is pending:
 | ID / state | Owning source and required acceptance |
 | --- | --- |
 | F2 / PROOF_PENDING | Run complete Native minimal/full registry and mutation owners, including admitted context → worker → Preview backend, exact operation parity and provider-off refusal. Preserve PreviewPatch and missing Apply-issuer refusals. |
-| F7 / ACCEPTANCE_OPEN | Run existing SDK mapper five (`sdk::abstract_interpret_builder::non_query_error_tests`), plus the existing engine/lowering/adapter/wire behavioral owners. R49 authors real fluent SDK timeout0 and literal normal-output tests for Sign/Interval/Constant; these tests await owner execution. The existing mapper five do not prove default30s/three domains/zero-past/final publication behavior. Preserve the adapter-start cooperative deadline contract. Revalidate original output-custody eight, JSON and quarantine after affected memory-owner changes on the frozen tuple. |
+| F7 / ACCEPTANCE_OPEN | Run existing SDK mapper five (`sdk::abstract_interpret_builder::non_query_error_tests`), plus the existing engine/lowering/adapter/wire behavioral owners. R49 authors real fluent SDK timeout0 and literal normal-output tests for Sign/Interval/Constant; these tests await owner execution. The existing mapper five do not prove default30s/three domains/zero-past/final publication behavior. Preserve the adapter-start cooperative deadline contract. R64 JSON projection13/13 passed on the independent frozen tuple; this does not execute whole DurableReplay. Revalidate original output-custody eight and quarantine after affected memory-owner changes on the frozen tuple. |
 
 F2 and F7 acceptance remain independent; D2 cutover is not a prerequisite for
 the deadline repair. Native Slice/product compatibility remains covered by
