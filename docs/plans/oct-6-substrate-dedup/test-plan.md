@@ -203,11 +203,25 @@ Evidence-root inventories `r50-scc-owner-request-inventory.json`,
 `r50-d1-owner-request-inventory.json` and `r50-f7-owner-request-inventory.json`
 record resolve-only requests at `59f7f8d33a22`; they are not passing runs.
 
+The [R53–R60 execution handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r53r60-reached-repairs-and-successor-input)
+owns later actual results. Each successor first checks frozen root and nested
+locked metadata, then runs its owning QBC requests under one snapshot lease.
+Zero-case compile failure stops that dependent sequence. Preserve accepted
+unchanged input scopes rather than repeating them to inflate a campaign count.
+SourceWire's whole owner includes normalization and codec users after the
+minimal R56 compile repairs; inspect real test names, refusals and exact counts.
+
 - SCC inventory resolves14 replacement/addition scopes and reuses2 existing PTA
   requests. Historical45 stays immutable; final campaign cardinality is pending.
 - The old D5 minimum227 differs from its historical accepted225 and includes2
   removed witness names. Reconcile current source/tests explicitly before execution;
-  one actual `solver::` run covers both Andersen and Steensgaard.
+  one actual `solver::` run covers both Andersen and Steensgaard. Static default
+  source census is225 candidates, not an executed selection count. The required
+  `steensgaard_cannot_silently_drop_distinct_field_ids` witness is not removed: it
+  lives in the separate2-case `steensgaard_public_surface_compile_fail` target
+  (resolved QBC request `30f59ac8010233b78108debf95dc6ca1`). Execute it in the
+  same isolated QBC target custody; its fixture invokes `rustc`, not Cargo.
+  Reconcile actual counts and old deep-chain/cycle replacements explicitly.
 - Old Cost `termination_analyzer_adapter` GREEN5 does not exercise the changed
   allocation projection. Execute `heap_domain_adapter` and Shape's
   `shape_analyzer_adapter` under their current reviewed feature classes.

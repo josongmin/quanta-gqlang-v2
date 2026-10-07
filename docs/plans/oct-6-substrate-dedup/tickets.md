@@ -149,6 +149,9 @@ number after SCC caller reconciliation.
 - Alias: `S0-CALLBACK`. Source and fixtures integrated `aac43629734`.
 - Owners: common typed/ordinary bridge, infra controlled syntax and Kernel
   metadata boundary; original controlled fixtures belong to `quanta-adapters-parser`.
+- Focused evidence: R54 common callback2 and Kernel finisher5 passed. Parser
+  chronology still requires its actual original-control owner result; retain
+  `PROOF_PENDING` until that consumer scope passes on the accepted input.
 - DoD: actual callback error keeps identity and causes zero owner/Kernel post-polls;
   recorded original refusal retains priority; success still postvalidates custody.
   Execute the existing chronology fixtures. A finisher-only or fake poll test
@@ -251,6 +254,10 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
 
 ## FCP-COMPILE
 
+- Current reached closure is recorded in the
+  [R53–R60 handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r53r60-reached-repairs-and-successor-input).
+  R52 semantic contract55 passed, but later SourceWire pre-test errors and
+  unexecuted SDK/product consumers prevent whole product acceptance.
 - DoD: freeze committed Semantica/GQLang/Index and actual original-session/QMP
   closure, resolved toolchain/features/root; canonical SDK/runtime product build
   succeeds. Record current diagnostics if it fails and open only the reached owner

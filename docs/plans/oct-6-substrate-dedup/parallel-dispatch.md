@@ -1,9 +1,10 @@
 # Parallel closeout dispatch
 
-Updated: 2026-10-07. Source audit: Semantica
+Updated: 2026-10-07. Initial source audit: Semantica
 `871224b2059422a8f36eca91ffb0c9119238ac9c`, GQLang code input
-`01cfe39ca0571b4fc099d41b24628fda70e754fe`; latest local ticket checkpoint
-`ddec3509cf7975018b572c4e4291d3bb5a9b90e0`. Refreshed source/claims are required
+`01cfe39ca0571b4fc099d41b24628fda70e754fe`. Current execution attempts and accepted
+scopes are in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r53r60-reached-repairs-and-successor-input).
+Refreshed source/claims are required
 before writing. This document is an execution plan; no implementation or runtime
 result is claimed by its publication.
 
@@ -91,6 +92,9 @@ Paths below are Semantica-relative; `core/` means `packages/core/`, `qv2/` means
   erased Native control has no source-operation/memory lease projection; the
   parser Java issuer is not a DFG facts issuer. Reuse canonical output/temporary
   interfaces and carry the actual original source control from outer ingress.
+  The Java generated-field candidate is a partial precursor: CFG/facts creation
+  exists but publication still refuses. Preserve that owner's implementation and
+  finish its actual keeper/caller path rather than adding a second candidate.
   If the issuance handoff is absent, include that upstream bridge and all callers
   in S0 before controlled-success acceptance. No diagnostic grant, downcast of
   unavailable authority or post-allocation wrapping can authorize original custody.

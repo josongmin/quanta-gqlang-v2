@@ -1,7 +1,9 @@
 # Substrate closeout execution plan
 
 Status: implementation in progress; source edits and execution attempts are
-recorded in the R49 update below. No product qualification is claimed.
+recorded in the R49 update below and the
+[current execution handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r53r60-reached-repairs-and-successor-input).
+No product qualification is claimed.
 Updated: 2026-10-07.
 
 This is a successor to the retired Oct-6 implementation packet. It schedules
@@ -32,6 +34,10 @@ mechanics in that resource cut, preserve semantics, and qualify actual callers.
 - All verification is local. Hosted CI is not part of this plan.
 
 ## Audited source and ownership
+
+The table retains the initial committed-source audit. Later source integrations
+and R49–R60 issued overlays have separate receipt identities in the active
+handoff; do not substitute this baseline for a current runtime result.
 
 | Input | Identity / interpretation |
 | --- | --- |

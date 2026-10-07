@@ -20,6 +20,9 @@ Their actual tested files were checked for continuity; this does not qualify
 original output custody. SDK deadline2, community2 and rule connection1 are
 currently authored test changes awaiting owner execution. Minimal compile repairs
 remain in their coowners' source bundles; R52 semantic contract55 passed.
+R54 also accepted common callback2 and Kernel finisher5. The
+[current handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r53r60-reached-repairs-and-successor-input)
+records later SourceWire/DFG compile repairs and preserves their coupled ownership.
 
 ## Before / after at the real caller
 
@@ -28,10 +31,24 @@ remain in their coowners' source bundles; R52 semantic contract55 passed.
 | Plugin facade | `build_semantic_surface_bundle_with_profile_v1` / `assemble_semantic_module_v1` → from-tree plugin → retired carrier getter → raw helper calculations | Same facade → ordinary scoped read → checked HIR/item/scope/span/dispatch calculation → same validated bundle. Controlled carrier without current-capable contract returns typed refusal |
 | Native facts | `FactExtractionRequestV1` passes source/tree/current → `DefUseFactsParseContextV1::single_parse` → historical raw getter consumers; output admission is absent | Same ingress/context → exact binding admission → real extraction under checked read and original output custody → ordered facts or first typed refusal |
 | C/Go/TypeScript facts | Checked read builds scalar snapshot → callback ends → fact calculation without original current; three local 128 MiB snapshot ledgers | Original admission covers temporary snapshot births, traversals and output lifetime; owned scalar grammar projections retained; shared accounting mechanics |
-| Kotlin facts | Checked node wrapper and first-refusal latch; root bounds but no exact retained source comparison in frontdoor | Exact source/backend admission before calculation; original current tests, first refusal retained, no controlled no-tree reparse |
+| Kotlin facts | Exact source/backend guard integrated `df315e6`, whole owner70 passed; original output custody remains separate | Preserve that guard and ordinary compatibility; prove original output births, work/cancel refusal and final lifetime |
 | SDK deadline | Real builder passes timeout to adapter; five existing tests cover error mapping/authority/input/cancel | Same execution code with result-based real SDK deadline tests; existing mapping five remain distinct from domain/deadline behavioral proof |
 
 ## S0: existing common interfaces, one coordinated change
+
+- Latest caller audit at Semantica `4f5e5a0485fe` narrows the missing-authority
+  statement to general facts production.
+  `qv2/quanta-adapters-dfg/src/multi_lang_dfg_adapter/build_pipeline/fact_extraction.rs`
+  still passes erased Native control into
+  `DefUseFactsParseContextV1::single_parse`; its ordinary output keeper has no
+  original output admission. The Java sidecar's
+  `original_generated_callable_candidate_v3.rs` does prepare an admitted CFG/facts
+  pair, but explicitly refuses public publication. Existing
+  `OriginalDfgFunctionEvidenceBackingV1::try_issue_original_v1` has no live caller.
+  The shared backing and original assignment-index constructors are co-owned
+  precursors, not a demonstrated successful general issuer/final keeper. Finish
+  the producer, storage births and final publication together; do not duplicate
+  the active Python-original-port implementation.
 
 - S0-CALLBACK follow-up source `65036b7221a`: existing
   `core/codegraph-lang-common/src/tree_sitter_host/owned_syntax_v1.rs` protocol,

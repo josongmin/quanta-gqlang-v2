@@ -7,7 +7,7 @@ owns integrated decisions. This handoff issues no runtime or qualification claim
 
 ## Current source and next execution input
 
-Latest committed-source audit: Semantica
+Initial committed-source audit: Semantica
 `871224b2059422a8f36eca91ffb0c9119238ac9c`, QGLang
 `01cfe39ca0571b4fc099d41b24628fda70e754fe`. Foreign dirty work is not a
 committed-source verdict. The [execution plan](../plans/oct-6-substrate-dedup/readme.md)
@@ -46,6 +46,12 @@ active closeout IDs plus resolved QG-DIAG; proposed A-series work remains a sepa
   `remaining-r48-final-ticket-audit.json` records the latest committed-source
   readback, producer pins, one remaining getter and20 active states. Current
   claims were not refreshed; refresh them before edits or source assignment.
+
+Latest successor input is R60 after Semantica `73f2483f800e` plus
+the issued dirty overlay and sibling tuple. Its locator, not this initial
+audit baseline, owns the source identity. GQLang's docs input is `85d35415a46`;
+the preceding local `just ci` passed1514 Rust tests,10 doctests and10 frontdoor
+parity tests. Later edits are documentation only and issue no downstream claim.
 
 Source-only follow-up at `65036b7221a` found CHECKED-CALLBACK-FIRST-CAUSE;
 the coupled protocol/common/infra/Kernel repair and fixtures are now integrated
@@ -114,6 +120,61 @@ R49 engine77 contains all7 deadline witnesses. Preserve these scoped results
 without calling them current whole-workspace qualification. R52 and earlier
 pointer receipts have immutable per-run publication and logs; mutable lane
 `last-completed-run` aliases are not the archival evidence source.
+
+## R53–R60 reached repairs and successor input
+
+- R53 SourceWire stopped before tests at a missing existing control-trait import
+  in its new normalization fixture. The import is authored.
+- R54 normalization ran4 cases:3 passed and1 failed. The failure was an
+  overbroad new oracle, not a demonstrated production defect: foreign root/group
+  rejection occurs before authentication and must leave both roots' recorded
+  cause unset. Existing authenticated-dispatch regressions independently require
+  that behavior. The corrected fixture retains exact `AuthorityRejected`, both
+  memory totals unchanged, both first refusals `None` and both work totals0.
+- R54 accepted common callback2 and Kernel finisher5 on their frozen source.
+  Parser callback chronology and original cursor controls remain unexecuted.
+  Abstract adapter then stopped at a missing existing `BindingStableIdV1` import
+  in the co-owned DFG facts copy file; a one-line import is authored.
+- R55 stopped before tests at new foreign SourceWire dependency-record drift.
+  Both locks were regenerated offline without package version/source/checksum
+  drift. R56 then passed frozen root and nested locked metadata checks but
+  stopped before tests at new SourceWire imports, visibility and error inference.
+- R56 repairs use already depended-on Foundation canonical visitors instead of
+  a disabled facade feature; preserve typed first-refusal wrapping and generic
+  stream error `E`; restrict the ordinary decoder visibility to its actual caller.
+  No dependency, issuer, algorithm or public wire is added. These minimal hunks
+  remain in their coowners' unfinished source bundle and are not independently
+  staged as whole foreign files.
+- R57 whole SourceWire compiled and ran226 cases:225 passed,1 failed. All4
+  normalization witnesses passed within that RED whole receipt; they are not a
+  separate accepted GREEN. The failure was another no-op fixture: a digits-only
+  parser ref stays unchanged under uppercase conversion. The test now proves a
+  letter-bearing lowercase ref succeeds, then changed uppercase returns the
+  same exact `InvalidDigest("content_ref")`. Production decoding is unchanged.
+  The Abstract adapter next stopped before tests at a generic formal-ledger
+  search callback; explicit `Result<Ordering, E>` preserves its original error.
+- R58 frozen root/nested locked metadata passed but SourceWire stopped before
+  tests at one new comparator inference error in the co-owned manifest policy.
+  The existing borrowed predecessor is now explicitly `Option<&str>`; comparison
+  work and typed refusal are unchanged. R59 retries whole SourceWire and the
+  remaining adapter/parser/rule/community/D1/SDK requests, including the missing
+  Steensgaard compile-fail target. R59 root frozen metadata caught a later lock
+  mismatch before Rust launched. Offline projection changed only DFG and SDK
+  session-backend dependency records, with no added/removed package identities;
+  root and nested locked metadata passed. R60 retries that corrected tuple. Its
+  actual results remain pending.
+  Unchanged R49 SCC core20/facade1 inputs were verified against actual overlay
+  custody and are retained without duplicate runs. Request resolution and a
+  pending launch are not PASS.
+
+Evidence: `r54-owned-proof-results.json`, `normalization-oracle-r54-rca.json`,
+`r55-owned-proof-results.json`, `lock-projection-r55/results.json`,
+`r56-owned-proof-results.json`, `sourcewire-compile-r56-before.json`,
+`sourcewire-compile-r56-after.json`, `r57-owned-proof-results.json`,
+`manifest-uppercase-r57-rca.json`,
+`r57-scc-r49-continuity-and-d5-request-reconciliation.json` `lock-projection-r59/results.json` and R58–R60 custody/results
+at the evidence
+root above. Preserve each attempt's immutable publication and archived logs.
 
 ## Historical source-bound proof inputs
 
