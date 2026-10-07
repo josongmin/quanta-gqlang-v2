@@ -114,7 +114,7 @@ receipts, not repository-distributed or installed-product evidence.
   It adopts committed main DFG import repair `c26a43639b6`; the older Q3
   `b8644ab5c6b` compile failure is superseded, not a current source defect.
 - The older R4 runtime jobs were cancelled after that dependency was superseded;
-  pending consumer work was superseded again by the current R11 source.
+  pending consumer work was superseded again by the current R12 source.
   Cancellation supplies no test verdict.
 - Rename provider proof now additionally enters the actual admitted context,
   registry and worker before the existing backend. Its source is `7eea70e4a06`;
@@ -140,13 +140,19 @@ Both dependency checkpoint claims and barriers were released normally.
 
 The queued R10 consumer jobs were cancelled before completion to adopt newer
 committed interprocedural/semantic repairs; cancellation supplies no verdict.
-Current consumer source is `462fe9bb5c66831e522a4cfcf63292a42aa11aa3`,
-which merges committed main `4518fd6fec5`; the eight remaining candidate file
-bytes are unchanged. Source digest:
-`f63b9d06538bcaa259c90ff976d3839ef78b30a5731dc892eaebcfdc8734cd04`.
+R11 on `462fe9bb5c66831e522a4cfcf63292a42aa11aa3` reached one Parser
+unused recoverable-health import error and executed zero Slice tests. That
+repair was already committed on main at `cf5f5c76503`; no duplicate repair was
+authored. Its failure receipt is archived; pending R11 jobs were cancelled
+with no verdict.
+
+Current consumer source is `d2861f04395528d5b9753c71391d9ccb4e12362b`,
+which merges committed main `2de55f286588953de2b2d017d21d930f59fdc8c2`;
+the eight remaining candidate file bytes are unchanged. Source digest:
+`eecd775762a2bbedd88606837f3733e3e40ff353f5540c1290e8d506d0d08d15`.
 Concurrent Parser working changes are excluded from this frozen source.
 
-R11 acceptance runs the actual Runtime Slice output owner, SDK deadline owner,
+R12 acceptance runs the actual Runtime Slice output owner, SDK deadline owner,
 native Rename binding with providers off/on, and admitted-context joined
 Preview. Slice occurrence final-membership tests are a separate module and
 must also execute; the output-helper selector alone does not cover them.
