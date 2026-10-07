@@ -5404,7 +5404,7 @@
       "proof_kind": "QBC auxiliary metadata only"
     },
     "source_bound_sequence": {
-      "status": "RUNNING relation-refusal3 r2; source-memory6 accepted PASS",
+      "status": "FAILED budget30 actual 38 PASS/1 FAIL",
       "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/source-bound-sequence-aadf0d4148db-r2-state.json",
       "runner": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/run-source-bound-sequence-aadf0d4148db-r2.py",
       "runner_sha256": "916eca05e706a0b270237f16679c046b562c93c5dccf5b19a8c44668de4363b8",
@@ -5418,11 +5418,13 @@
         "graph-birth2"
       ],
       "conditional": true,
-      "finalized_owner_results": 1
+      "finalized_owner_results": 3,
+      "executed_test_failures": 1,
+      "state_sha256": "aac0dd74411190f70c8936bb931b369514846d8a75a4cebf9cc901c2a27b8e9c"
     },
-    "d1_d2_main_body_import": "NOT_RUN",
+    "d1_d2_main_body_import": "OBSERVED committed 712b5e8c; prepared aadf importer obsolete/NOT_RUN",
     "consumer_generated_product_qualification": "NOT_RUN",
-    "next": "Continue relation-refusal3 r2, budget30, JSON16, formal9, canonical45 and graph-birth2 r2 on same sealed aadf tuple",
+    "next": "superseded for further owning proof by committed main closeout source 63dd; old actual results retained only at aadf",
     "source_memory_owner6": {
       "status": "PASS",
       "run_id": "20261007T004023.356635Z-73511ca4726f",
@@ -5455,6 +5457,29 @@
       },
       "source_changed": false,
       "source6_receipt_replayed_on_same_tuple": true
+    },
+    "relation_refusal_owner": {
+      "status": "PASS",
+      "selected": 5,
+      "required_witnesses": 3,
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/relation-refusal-owner3-aadf0d4148db-r2/state.json",
+      "sha256": "ce6f348438b74b8caa46f341cfbffc4c6bcba192f3c213b4a8e19466261bb0d5"
+    },
+    "budget_owner_failure": {
+      "status": "RED",
+      "selected": 39,
+      "passed": 38,
+      "failed": 1,
+      "run_id": "20261007T004821.736248Z-22d4bc8f68f2",
+      "state": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-handle-owner30-aadf0d4148db/state.json",
+        "sha256": "b02583abf9ee77cdc11b9b01eccd9cc1bea306bda6fe953785446a777a8ee30a"
+      },
+      "archive": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-budget30-aadf0d4148db-r2-artifact-archive/manifest.json",
+        "sha256": "4d5919790a45e64f13140480d515e0d26020073e72b603aae38564e5e5d0b0b3"
+      },
+      "root_cause": "fixture omitted existing root backing, so first demand overflows before intended second-axis assertion"
     }
   },
   "previous_942_failed_candidate": {
@@ -5582,5 +5607,88 @@
       }
     },
     "intermediate_4f9_policy_result": "94 PASS, 1 stale Stage B anchor FAIL; preserved; superseded by aadf95 PASS"
+  },
+  "current_main_closeout": {
+    "source": "63ddf8cca45a1546514d5bb344520be2086b12b9",
+    "source_kind": "clean committed main closeout freeze; private checkout at exact main commit",
+    "body_main_import": {
+      "commit": "712b5e8c61204bc07c4a84ae9bec21ce9c1e5a15",
+      "owned_paths": 87,
+      "observation": "already committed in shared main; no duplicate import by this helper",
+      "later_main_census": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/nextaadf0d4148db-import/owned-87-current-main-body-census.json",
+        "sha256": "e33a796d7a37dfbb017ad3a7048d339865ab1e304f0028f305d14a2e3b547a5b"
+      },
+      "reviewed_frozen_fb0_main": {
+        "exact_owned": 82,
+        "changed_manifest_lock_paths": 5,
+        "qualification": "source observation only"
+      }
+    },
+    "budget_fixture_repair": {
+      "main": "63ddf8cca45a1546514d5bb344520be2086b12b9",
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/budget-summed-overflow-fixture-r2-import-state.json",
+      "sha256": "37047db93476f16d05f3fb180759e0049aeaf14cd1860cf9c4bb512d9a7b301a",
+      "change": "test fixture accounts known root backing; exact-limit positive plus same OutputBytes overflow/zero partial charge assertions",
+      "owning_Rust_result": "NOT_RUN repaired main"
+    },
+    "source_state": {
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/candidate-63ddf8cca45a-state.json",
+      "sha256": "49fa926c49f5b82f735d675e8fc6a59086cb919896f85d9986397433db33f523"
+    },
+    "source_freeze": {
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/main-closeout-63ddf8cca45a-source-freeze.json",
+      "sha256": "9f8fe77f58b98ae94529aa5dc66f8adef85e70ae1676f661a31d7fad55972efa"
+    },
+    "source_policy": {
+      "status": "PASS",
+      "input_paths": 115,
+      "passed_policies": 95,
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/63ddf8cca45a-boundary-policy-current-state.json",
+      "sha256": "67598702ac947e8906035201d85f5c403fc8534e7653958332b2962aeed433a4",
+      "scope": "reviewed imported owner87 plus prerequisites; not all main/global qualification"
+    },
+    "snapshot": {
+      "status": "SEALED",
+      "source_snapshot_digest": "25502656a86c553ce9e60e74b9c910e4a26a4b15d84398c008eec6946d2016f1",
+      "topology_digest": "63ddf8cca45a1546514d5bb344520be2086b12b9+ext-4e857148332d7964e5aa",
+      "sibling_committed_pins": [
+        {
+          "head": "40fad1e0eab36f47c793c178d3198f6eb200ec0e",
+          "overlay_digest": "",
+          "source": "quanta-gqlang-v2"
+        },
+        {
+          "head": "9221d7715926f5d298d1e8fdcf6d1552753b7c60",
+          "overlay_digest": "",
+          "source": "quanta-index"
+        }
+      ],
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/snapshot-63ddf8cca45a-state.json",
+      "sha256": "1270c9f0cbf33e17798d3737735518e7a9aec3c604deae67594cebc0d601adc4"
+    },
+    "pure_projection": {
+      "status": "PASS",
+      "request_count": 45,
+      "supplemental_count": 6,
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/pure-validation-63ddf8cca45a.json",
+      "sha256": "9e21709d6c133b37e9317ba1e5a784687a8f124e03be3251acb776fb8ee1ec5e",
+      "proof_kind": "pure projection only; no Rust verdict"
+    },
+    "locked_metadata": {
+      "status": "FAILED nested/root PASS",
+      "root_exit_code": 0,
+      "nested_exit_code": 101,
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/locked-metadata-63ddf8cca45a/state.json",
+      "sha256": "f5e7ea1725aa86381c762c8737b397215a58c0d98b0de089e8336c7afcac13ce",
+      "actual_nested_stderr": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/locked-metadata-63ddf8cca45a/nested.qbc.actual.stderr.log",
+        "sha256": "e25c6293067879bb46a74ebddf10babf1db5ea444058ed28793c217da89134c9"
+      },
+      "cause": "nested Cargo.lock needs update; disposable diagnostic clone only; canonical snapshot unchanged"
+    },
+    "owning_Rust_results": "NOT_RUN on 63dd repaired main",
+    "generated_Honesty_product_qualification": "NOT_RUN; no earlier PASS composed",
+    "next": "review exact diagnostic lock delta at canonical owner; commit minimal prerequisite; rebind affected main owner gates; retire topology/GOD/Honesty without weakening"
   }
 }

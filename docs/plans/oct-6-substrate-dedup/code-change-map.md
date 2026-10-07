@@ -6,7 +6,11 @@
 
 진행 중 diff/검증/main 반영은 [execution-progress.md](execution-progress.md)에서 별도로 관리한다.
 
-**현재 `aadf` 후보:** Semantica clean private `aadf0d4`/base main `bbd8c1c`는 refusal assertion 수리와 canonical-path 정책 수리를 포함한다. D1/D2 본문87·이번 merge의 main 전용4경로는 부모 blob과 같고 겹침0이다. Exact 입력115경로의 영향 정책95개 PASS/exit0/scope complete, GQLang `30b6efd`·Index `ab87837` overlay0 snapshot sealed, locked metadata PASS(auxiliary)다. Source-memory6은 actual canonical owner 6/6 PASS다. Relation-refusal3 r2 요청 실행 중이며 이후 budget30→JSON16→formal9→owner45→graph-birth2 r2는 NOT_RUN이다. D1/D2 본체 main import·generated/global Honesty·제품 검증은 대기다.
+**현재 main closeout:** Shape·SCC 본문87경로는 Semantica main `712b5e8c`에 이미 반영됐다. 관찰한 `fb0e4b6`의82경로는 후보와 같고5개 lock/manifest는 후속 consumer 변경을 유지한다. Budget overflow fixture 수리는 main `63ddf8cc`에 반영됐으며 production 로직 변경은 없다. 이 clean committed main과 GQLang `40fad1e`·Index `9221d77`을 고정했다. 영향 정책95개 PASS, snapshot sealed, root locked metadata PASS/nested metadata RED다. 새 tuple Rust·generated/global Honesty·제품 검증은 NOT_RUN이다.
+
+이전 `aadf`는 source-memory6·relation owner5 actual canonical PASS, budget39 중38 PASS/1 FAIL다. Overflow fixture가 root backing을 누락한 것이 원인이며 기존 exact OutputBytes refusal·atomic rollback assertion을 유지하고 positive boundary control을 추가했다. JSON16/formal9/owner45/graph2는 그 tuple에서 NOT_RUN이다.
+
+**이전 `aadf` 후보:** Semantica clean private `aadf0d4`/base main `bbd8c1c`는 refusal assertion 수리와 canonical-path 정책 수리를 포함한다. D1/D2 본문87·이번 merge의 main 전용4경로는 부모 blob과 같고 겹침0이다. Exact 입력115경로의 영향 정책95개 PASS/exit0/scope complete, GQLang `30b6efd`·Index `ab87837` overlay0 snapshot sealed, locked metadata PASS(auxiliary)다. Source-memory6·relation owner5는 actual canonical PASS이고 budget owner39는38 PASS/1 FAIL다. 이후 JSON16/formal9/owner45/graph-birth2는 NOT_RUN이다. D1/D2 본체는 이후 main `712b5e8c`에 반영됐고 generated/global Honesty·제품 검증은 대기다.
 
 이전 `942` source-memory6는 run `20261006T150959.051584Z-459d48cff685`에서 test lib compile exit101/실행0·`unused-must-use` 1건으로 실패했다. 원본 7개를 archive에 보존했다. 테스트 반환값 assertion과 owning-hook rustfmt는 main `7754405`, 기존 verified canonical path의 move를 요구하는 정책 anchor 수리는 main `bbd8c1c`에 반영됐다. 정책 회귀28개 PASS는 Python 결과이며 repaired Rust PASS가 아니다. [기록](/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/94262f71aa91-source6-failure-and-prerequisite-state.json).
 

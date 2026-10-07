@@ -9,11 +9,11 @@
 - 입력 authority, 결과·순서·ID, typed failure, 취소·예산 계약을 보존한다. 서로 다른 계약은 caller의 작은 admission/projection으로 유지한다.
 - 완료 결과는 **계산 owner 단일화 + 소비자 전환 + 퇴역 코드 삭제 + 로컬 증명 + 재발 방지 gate**다. 파일 이동, forwarding wrapper, 컴파일 성공만으로 완료 처리하지 않는다.
 
-상태: **IN_PROGRESS.** 이번 문서 갱신 기준 GQLang commit은 `b87319c`다. 로컬 `just ci` PASS는 이전 `d600cab` 소스의 receipt다.
+상태: **IN_PROGRESS.** 이번 문서 갱신 기준 GQLang commit은 `40fad1e`다. 로컬 `just ci` PASS는 이전 `d600cab` 소스의 receipt다.
 
-- **현재 `aadf` 후보:** Semantica clean private `aadf0d4`/base main `bbd8c1c`는 refusal assertion 수리와 canonical-path 정책 수리를 포함한다. D1/D2 본문87·이번 merge의 main 전용4경로는 부모 blob과 같고 겹침0이다. Exact 입력115경로의 영향 정책95개 PASS/exit0/scope complete, GQLang `30b6efd`·Index `ab87837` overlay0 snapshot sealed, locked metadata PASS(auxiliary)다. Source-memory6은 actual canonical owner 6/6 PASS다. Relation-refusal3 r2 요청 실행 중이며 이후 budget30→JSON16→formal9→owner45→graph-birth2 r2는 NOT_RUN이다. D1/D2 본체 main import·generated/global Honesty·제품 검증은 대기다.
-- 이전 `942` source-memory6는 run `20261006T150959.051584Z-459d48cff685`에서 test lib compile exit101/실행0·`unused-must-use` 1건으로 실패했다. 원본 7개를 archive에 보존했다. 테스트 반환값 assertion과 owning-hook rustfmt는 main `7754405`, 기존 verified canonical path의 move를 요구하는 정책 anchor 수리는 main `bbd8c1c`에 반영됐다. 정책 회귀28개 PASS는 Python 결과이며 repaired Rust PASS가 아니다.
-- **다음 완료 작업:** owning sequence → 검토된87경로 main 반영 → topology5/GOD7-key/Honesty3 retirement → Shape/Tarjan gate와 feature/layer 검사. 신규 engine/library 추가 없음.
+- **현재 main closeout:** Shape·SCC 본문87경로는 Semantica main `712b5e8c`에 이미 반영됐다. 관찰한 `fb0e4b6`의82경로는 후보와 같고5개 lock/manifest는 후속 consumer 변경을 유지한다. Budget overflow fixture 수리는 main `63ddf8cc`에 반영됐으며 production 로직 변경은 없다. 이 clean committed main과 GQLang `40fad1e`·Index `9221d77`을 고정했다. 영향 정책95개 PASS, snapshot sealed, root locked metadata PASS/nested metadata RED다. 새 tuple Rust·generated/global Honesty·제품 검증은 NOT_RUN이다.
+- 이전 `aadf`는 source-memory6·relation owner5 actual canonical PASS, budget39 중38 PASS/1 FAIL다. Overflow fixture가 root backing을 누락한 것이 원인이며 기존 exact OutputBytes refusal·atomic rollback assertion을 유지하고 positive boundary control을 추가했다. JSON16/formal9/owner45/graph2는 그 tuple에서 NOT_RUN이다.
+- **남은 순서:** nested lock 원인 수리 → 해당 committed main의 owner/consumer 증명 → topology5/GOD7-key/Honesty3 retirement와 Shape/Tarjan·feature/layer gate. 이미 반영된 본문을 다시 import하지 않는다.
 
 아래 두 단락은 `3fe` 실행 전의 병합·진단 이력이다. 당시의 `NOT_RUN`은 현재 판정이 아니다.
 
