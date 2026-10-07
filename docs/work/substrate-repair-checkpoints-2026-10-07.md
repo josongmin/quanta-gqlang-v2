@@ -24,6 +24,8 @@ claimed.
 | `e46cf07f5b1` — F2 Python | Current closed contract requires cap on every phase; SDK omitted it and Apply exposed no caller limits → Preview/Rollback retain null; Apply takes explicit typed positive u64 output/live limits and rejects absent/invalid limits before Preview. | 321 cases across the SDK execute owner and new cap/phase contract tests passed, no skips. Original Preview producer fails generated contract admission. |
 | `8edd1b0733c` — F4/F9 Q3 | Cap was checked after neighbor insertion; composite slices retained BFS discovery direction and could accept bounded prefixes → admit before insertion, typed Incomplete, original induced eligible PDG edges. Empty-PDG failure precedence is retained. | Fresh frozen `a620b157998`: Q3 module 37/37 passed. Original cap oracle executes 1 and fails with root incorrectly admitted at cap0. Runtime projection acceptance remains separate. |
 | `ecf12903bf3` — F7 native wire | Deadline stop lost its finite error/category contract → append payload-free RuntimeError stop, preserve old wire tags, map to AnalysisTimeout/ResourceLimit and close minimal serde feature. | Wire integration 2/2 and timeout/category projection 1/1 passed on their frozen owner sources. Concurrent main PTA feature ownership change is preserved; whole latest-main qualification is not claimed. SDK caller conversion remains a separate candidate. |
+| `7bbdcc1d4e3` — dependency owner | Shared generation result was stranded in a Java-only child; row iterator and semantic view lifetimes were insufficient; backing import was narrower than its unconditional binding users → restore one shared result owner and exact source borrows/import closure. | Frozen `1cfc4c41d7a`: canonical Java, Python-only and cfg-dfg owning library checks all passed. Six reviewed paths integrated; no new calculation or dependency. |
+| `4518fd6fec5` — Parser cfg | Java raw helper and raw-error facade compiled outside their active caller feature set → both mirror the exact existing caller predicate. | The same three owner checks passed. Only two cfg hunks integrated. Every foreign working/index change was retained; no Java feature was enabled to make Python minimum pass. |
 
 ### Code owners
 
@@ -153,6 +155,17 @@ receipts, not repository-distributed or installed-product evidence.
   foreign dirty bodies/imports remain untouched. R10 freezes this source for
   three adapter checks and actual Slice, SDK deadline and native Rename tests.
 
+The three R10 adapter owner checks all passed on `1cfc4c41d7a`, digest
+`435e5a731ce4225299569a60052ac8d97d0f93da258289fb15725aa8c5a6d5ba`.
+The dependency repairs above are integrated at `7bbdcc1d4e3` and
+`4518fd6fec5`. Both scoped claims and barriers were released normally.
+Later consumer jobs in that queue were cancelled before completion, with no
+verdict: newer committed interprocedural/semantic dependency repairs were
+adopted first. Consumer successor `462fe9bb5c6` merges committed main
+`4518fd6fec5`; the eight remaining candidate file bytes are unchanged. R11
+executes actual Runtime Slice, SDK deadline and native Rename owners on that
+tuple. Concurrent Parser working changes are excluded from the frozen source.
+
 ### Residual code map and completion conditions
 
 Paths below are relative to Semantica. Each group is imported independently
@@ -164,8 +177,8 @@ whole-repository result.
 | Runtime Slice | `quanta-runtime-analysis/src/queries/advanced/`: `slice_query_bridge.rs`, `slice_query_helpers/output_materialization.rs`, `slice_query_helpers/output_final_membership_tests.rs`, `slice_statement_projection.rs`, `slice_statement_projection/occurrence_projection.rs` (crate under `packages/analysis/quanta-v2/crates/`) | Execute final CFG direction/kind/multiplicity oracle, typed partial refusal, and occurrence-membership tests with `slice-runtime` enabled; then import five paths. |
 | SDK deadline | `packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/abstract_interpret_builder.rs` | Native finite timeout survives actual port conversion; non-timeout errors retain their prior rejection. Import one path after owning tests. |
 | Native Rename | `crates/quanta-cli-ingress-runtime/src/dispatch/operation_binding_registry_v1.rs`, `dispatch/mutation.rs` | Exact native inventory plus provider-off/on admission; admitted context → registry → worker → Preview backend. Import both paths together; production Apply remains unavailable until its real issuer exists. |
-| PTA dependency repair | `packages/analysis/quanta-v2/crates/quanta-adapters-pta/src/`: `production_live_native_workspace_generation_v1.rs`, its `original_java_workspace_v1.rs` and `original_java_evidence_v1.rs` children, `production_live_captured_semantic_workspace_generation_v1.rs`, `production_native_lowering_relation_output_v1/admitted_storage_v1.rs`, `native_function_build_generation_authority_binding_v1.rs` | Canonical Java, Python and `cfg-dfg` feature owner compilation; retain one result owner and existing field/API shapes. Import only reviewed six-file delta. |
-| Parser feature closure | `packages/analysis/quanta-v2/crates/quanta-adapters-parser/src/language_host_adapter/semantic_module_v3/core/mod.rs`, `semantic_module_v3/mod.rs` | Java helper and raw-error reexport use the exact existing caller cfg predicate. Java, Python-only and cfg-dfg owners compile. Import only those two cfg hunks, retaining every foreign staged/working change. |
+| PTA dependency repair — complete | `packages/analysis/quanta-v2/crates/quanta-adapters-pta/src/`: `production_live_native_workspace_generation_v1.rs`, its `original_java_workspace_v1.rs` and `original_java_evidence_v1.rs` children, `production_live_captured_semantic_workspace_generation_v1.rs`, `production_native_lowering_relation_output_v1/admitted_storage_v1.rs`, `native_function_build_generation_authority_binding_v1.rs` | Three canonical feature owner checks passed; six-file delta integrated at `7bbdcc1d4e3`. |
+| Parser feature closure — complete | `packages/analysis/quanta-v2/crates/quanta-adapters-parser/src/language_host_adapter/semantic_module_v3/core/mod.rs`, `semantic_module_v3/mod.rs` | Three canonical feature owner checks passed; only two cfg hunks integrated at `4518fd6fec5`, retaining all foreign working/index bytes. Later retirement of legacy callers may remove or narrow those items further. |
 
 ## Final acceptance order
 
