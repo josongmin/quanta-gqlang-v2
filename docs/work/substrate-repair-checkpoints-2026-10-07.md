@@ -706,3 +706,54 @@ The private recovery checkout has no future root execution/write planned;
 cleanup must preserve recovery refs/immutable receipts and independently check
 process, lease, dirty and canonical reference custody. DefUse consumer writers,
 Native/SDK execution and remaining owner/policy/product gates stay open.
+
+## Additional checked-read supplier inventory — R45
+
+Frozen source inventory: Semantica `e7bae76f70b0e771c12ac50b839e3dd8dd1abc43`. Production receivers were checked
+against their signatures; this is not a count of every matching method name.
+
+| Consumer | Retired production calls | Source entrypoints |
+| --- | ---: | --- |
+| Rust language-plugin | 2 | `packages/core/codegraph-lang-rust/src/language_parser_plugin/mod.rs:1414, 1465` |
+| Go language-plugin | 2 | `packages/core/codegraph-lang-go/src/language_parser_plugin/parse_ports.rs:427, 478` |
+| Kotlin language-plugin | 2 | `packages/core/codegraph-lang-kotlin/src/language_parser_plugin/parse_ports.rs:304, 354` |
+| C language-plugin | 2 | `packages/core/codegraph-lang-c/src/language_parser_plugin/parse_ports.rs:420, 470` |
+| TypeScript language-plugin | 2 | `packages/core/codegraph-lang-typescript/src/language_parser_plugin/mod.rs:1184, 1221` |
+| Rust defuse | 1 | `packages/core/codegraph-defuse-extractor-rust/src/extractor/mod.rs:2526` |
+| Java defuse | 1 | `packages/core/codegraph-defuse-extractor-java/src/extractor/extraction_frontdoor/mod.rs:107` |
+| Python defuse | 1 | `packages/core/codegraph-defuse-extractor-python/src/extractor/mod.rs:1031` |
+| Go defuse | 1 | `packages/core/codegraph-defuse-extractor-go/src/extractor/traversal/fact_helpers.rs:94` |
+| Kotlin defuse | 1 | `packages/core/codegraph-defuse-extractor-kotlin/src/extractor/mod.rs:1306` |
+| C defuse | 1 | `packages/core/codegraph-defuse-extractor-c/src/extractor/mod.rs:175` |
+| TypeScript defuse | 1 | `packages/core/codegraph-defuse-extractor-typescript/src/extractor/mod.rs:956` |
+
+Total: five language-plugin owners have ten retired `CfgParsedTree` calls;
+seven DefUse owners have seven preparsed-carrier calls. Existing
+`ParseResult::tree_sitter_tree_v1` is a different, still-declared API and is
+excluded from this removal inventory, as are constructors and test fixtures.
+
+The existing canonical T1 Rust owner receipt is compile RED, exit 101, zero
+executed tests. It reaches Rust plugin lines 1414/1465 and Go lines 427/478
+with E0599. Run `20261007T110706.310772Z-efeceed59a15`, digest
+`feb6376939ee4dc7b103f765f404e321f2acff5a4324d762f2429b54325d1bef`; source is committed dc261 plus
+the ten Rust DefUse postimages. This is readback of that actual receipt, not
+a new execution by this task. C/Kotlin/TypeScript and other DefUse entries
+above are static source findings; no runtime failure is inferred for them.
+
+Rust/Go supplier hardcut is assigned to T1 by the incoming coordinator.
+Assignment, an active exact-path claim, source completion and owner execution
+are separate observations; the inventory JSON records actual current claims.
+No consumer implementation or shared API change is authored by this update.
+
+Acceptance covers both real from-tree HIR/semantic-bundle calculations and
+actual extraction walks, preserving existing outputs, quarantine, ordering,
+source/function binding and original current refusal. Reuse public scoped
+read APIs. No raw getter shim, uncontrolled reparse, controlled-input
+ParseResult fallback or error-to-None conversion is allowed. Compile and
+execute the affected owner/feature combinations with nonzero tests and
+existing authority/work/memory/cancel oracles before closing these owners.
+
+`supplier-r45-source-inventory.json` records committed path hashes, entrypoints,
+ownership and scoped acceptance; `supplier-r45-peer-owner-archive/manifest.json`
+binds archived receipt/result/summary hashes. R38 common/Java, R44 445 and
+cursor source absorption do not qualify these remaining supplier owners.
