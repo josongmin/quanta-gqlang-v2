@@ -2,6 +2,7 @@
 
 Parent: [execution plan](readme.md). This is a request/oracle specification,
 not an execution receipt. Old selectors below are inputs to re-resolution.
+Latest caller/request audit: Semantica `b32361e9d8373143a6bb725b72a6d48da00519eb`.
 `qv2/` abbreviates Semantica `packages/analysis/quanta-v2/crates/`.
 
 ## Execution contract
@@ -40,7 +41,7 @@ normal execution authority. The source-only follow-up did not execute tests.
 | --- | --- | --- |
 | Each changed plugin | Existing authored HIR/item/scope/span/bundle expected values and ordinary from-tree/facade parity; actual module assembly | Recoverable parse quarantine, malformed/empty authority, stable order/IDs; controlled carrier without current-capable API has exact typed refusal; no retained-tree substitution |
 | Each changed DefUse | Reviewed explicit definitions/uses/assignments/block bindings/order; source-only vs retained parity is supplemental | Same-length foreign source and missing required authority on Native source-sealed input, foreign backend, stale CFG/callable binding; current/no-tree only if reachable; exact first refusal and function ID |
-| C/Go snapshots | Exact C/Go scalar relationships preserved; one actual original-admission contract used by both | Cap/overflow/physical-birth refusal before growth, original temporary grant/refund, low-budget refusal during post-snapshot calculation, cancellation before publication; no partial output |
+| C/Go/TypeScript snapshots | Exact language-specific scalar relationships preserved; one actual original-admission contract used by all three | Cap/overflow/physical-birth refusal before growth, original temporary grant/refund, low-budget refusal during post-snapshot calculation, cancellation before publication; no partial output |
 | Kotlin current | Real checked walk and existing expected facts | First callback failure remains first; prune/leave failure priority, cancellation/work stop, exact source/backend rejection and output lifetime |
 | Native facts ingress | Actual adapter sends original tree/source/current; facts projected through real extractor | Exact NativeRefused → RuntimeError type/category; unsupported/missing authority never reparsed into success |
 
@@ -174,6 +175,29 @@ omission; its execution and the historical map repair remain pending. Review
 added SCC consumers, including concurrency deadlocks, before freezing the final
 request inventory/cardinality/witnesses together;
 do not lower old minima or retain the graph-utils `scc` selector (now zero cases).
+
+### Added SCC caller coverage
+
+[D2-CALLER-COVERAGE](tickets.md#d2-caller-coverage) records eight additional
+package/scope pairs and their actual source paths: current-target planner,
+dominance, concurrency engine/schema, navigation, rule execution, metrics and
+runtime community clustering. The old45 map and Tarjan10 filters omit these
+specific scopes; the runtime-analysis PTA request is not a planner request,
+and runtime Shape selectors do not cover community clustering.
+
+- Discover real test targets/witnesses under the owning feature closure. Reuse
+  existing accepted source-equivalent receipts where present; add only uncovered
+  owner requests. Report the final count after this reconciliation, not47 as a
+  whole-campaign inventory. One concurrency-engine proof covers its two consumers.
+- Preserve actual domain outputs: SCC membership/order and IDs are not enough
+  to prove planner partition, virtual-exit dominance, real cycle edges, import
+  grouping, rule execution, max depth or community projection.
+- Require the relevant malformed/unregistered graph, one-byte-short resource
+  refusal, deep iterative cycle and original Stop oracles. Controlled consumers
+  retain current/refund/last-drop obligations; ordinary APIs retain their own
+  supported limits and error contract. No new generic adapter is assigned.
+- D1 owns Shape and D2 PTA/taint keep their current owners. Serialize shared
+  compile classes and avoid duplicate owner runs for overlapping proof rows.
 
 - PTA prerequisite requests precede PTA callers; retain actual Shape feature
   combinations, DFG/taint, SCV2 and isolated solver/API absence acceptance.

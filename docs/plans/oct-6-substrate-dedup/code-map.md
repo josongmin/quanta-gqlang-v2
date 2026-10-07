@@ -8,20 +8,21 @@ All paths below are relative to `semantica-codegraph-v2` unless marked QGLang.
 `packages/analysis/quanta-v2/crates/`. Subtrees indicate reachable files to
 review, not authority to replace every file. Final claims enumerate exact paths.
 
-Current scheduling overlay at `5f76eca7812cdbed3cdd66dd6d0f6533ce9b1c9c`:
-Rust/Go/Kotlin plugins, Rust/Java DefUse and the coupled S0-CALLBACK repair are
+Current scheduling overlay at `b32361e9d8373143a6bb725b72a6d48da00519eb`:
+Rust/Go/Kotlin/TypeScript plugins, Rust/Java/TypeScript DefUse and the coupled S0-CALLBACK repair are
 integrated. Their before/after cuts below retain the audit baseline and acceptance
 requirements; they are no longer new implementation assignments. The remaining
-getter migrations are TypeScript plugin and Python/TypeScript DefUse. Follow the
+getter migration is Python DefUse. TypeScript's shared scalar control/output
+scope joins C/Go below. Follow the
 [current allocation](readme.md#maximum-parallel-scheduling) before assigning work.
 
 ## Before / after at the real caller
 
-| Boundary | Before on audited source | Required after |
+| Boundary | Boundary being closed; see current overlay | Required after |
 | --- | --- | --- |
 | Plugin facade | `build_semantic_surface_bundle_with_profile_v1` / `assemble_semantic_module_v1` → from-tree plugin → retired carrier getter → raw helper calculations | Same facade → ordinary scoped read → checked HIR/item/scope/span/dispatch calculation → same validated bundle. Controlled carrier without current-capable contract returns typed refusal |
-| Native facts | `FactExtractionRequestV1` already passes source/tree/current → `DefUseFactsParseContextV1::single_parse` → four remaining raw getter consumers | Same ingress/context → exact binding admission → real extraction under checked read and original output custody → ordered facts or first typed refusal |
-| C/Go facts | Checked read builds scalar snapshot → callback ends → uncontrolled scalar fact calculation; local 128 MiB snapshot ledger | Original admission covers temporary snapshot births, traversals and output lifetime; owned scalar grammar projections retained; one shared local cap/overflow mechanism |
+| Native facts | `FactExtractionRequestV1` passes source/tree/current → `DefUseFactsParseContextV1::single_parse` → one remaining Python raw getter consumer; output admission is absent | Same ingress/context → exact binding admission → real extraction under checked read and original output custody → ordered facts or first typed refusal |
+| C/Go/TypeScript facts | Checked read builds scalar snapshot → callback ends → fact calculation without original current; three local 128 MiB snapshot ledgers | Original admission covers temporary snapshot births, traversals and output lifetime; owned scalar grammar projections retained; shared accounting mechanics |
 | Kotlin facts | Checked node wrapper and first-refusal latch; root bounds but no exact retained source comparison in frontdoor | Exact source/backend admission before calculation; original current tests, first refusal retained, no controlled no-tree reparse |
 | SDK deadline | Real builder passes timeout to adapter; five existing tests cover error mapping/authority/input/cancel | Same execution code with result-based real SDK deadline tests; existing mapping five remain distinct from domain/deadline behavioral proof |
 
@@ -65,19 +66,23 @@ implement the actual issuer/adapter→context→extractor bridge, borrowing the
 already-issued output/temporary authority. The lower-level snapshot boundary
 uses NativeAllocationControl or admitted backing callbacks, not a kernel import.
 
-## Existing WIP: retain actual writers
+## Existing owners: integrated cuts and remaining Python WIP
+
+The earlier T1/D0/C65/C66 labels below record ownership observations at the
+baseline. Current claims require refresh; integrated read cuts are acceptance
+boundaries, not instructions to assign their implementation again.
 
 ### Rust plugin + DefUse — T1
 
 - Plugin: `core/codegraph-lang-rust/src/language_parser_plugin/`, including
   `mod.rs`, `hir_lowering.rs`, `identity_extract.rs`, `item_extract.rs`,
   `scope_extract.rs`, `span_extract.rs`, dispatch/call helpers and the new
-  checked modules already present in T1's working set.
+  checked modules integrated in `ed94af892c0`.
 - DefUse: `core/codegraph-defuse-extractor-rust/src/extractor/`, including
   `mod.rs`, `projection.rs` and T1's new frontdoor/read-selection/body/branch/
   statement/pattern/value modules.
-- Complete the authored WIP. Do not create a second frontdoor or stage a
-  partial subset of the dependent helper files.
+- Source read cut integrated `ed94af892c0`; verify the full owner closure.
+  Do not create a second frontdoor or a partial replacement helper graph.
 
 ### Go plugin — T1
 
@@ -85,12 +90,15 @@ uses NativeAllocationControl or admitted backing callbacks, not a kernel import.
   `language_parser_plugin/{constructors,helpers,language_plugin_impl,parse_ports,types}.rs`.
 - `language_parser_plugin/parse_ports/`: call authority/extraction, HIR,
   identity, item index/conversion, scope and span helpers.
-- Remove `parse_ports.rs`'s retained-tree → ParseResult-tree fallback when it
-  would substitute another tree for the caller's retained authority.
-- Go DefUse migration is already committed. Its new control work is CONTROL-CGO.
+- Source read cut integrated `ed94af892c0`; prove retained authority is never
+  substituted by a ParseResult tree. No new fallback-removal assignment.
+- Go DefUse migration is committed. Its control work is CONTROL-SNAPSHOTS.
 
 ### Java DefUse — D0 + C66 + C65
 
+- Read cut is integrated `e14eeda8604`; the earlier shared claims below are
+  historical handoff inputs. Preserve any remaining foreign lvalue/WIP and
+  verify actual binding/assignment/output acceptance.
 - D0: `core/codegraph-defuse-extractor-java/src/extractor/extraction_frontdoor/mod.rs`,
   `extract_ctx.rs`, `node_dispatch/`, owner projection and module selectors.
 - C66: `extraction_frontdoor/{callable_binding,cfg_callable_bind}.rs`, related
@@ -114,7 +122,12 @@ uses NativeAllocationControl or admitted backing callbacks, not a kernel import.
 - Python `tests.rs` also has a separate generated-statement claim. No blanket
   Python crate staging; tests require that owner's handoff.
 
-## New independent consumers
+## Integrated Kotlin/TypeScript acceptance boundaries
+
+Kotlin plugin is integrated `ecc0c5784b4`; TypeScript plugin and DefUse share
+the integrated scalar syntax owner in `b32361e9d83`. The baseline line numbers
+below identify the repaired cuts. Only their actual owner acceptance and shared
+CONTROL-SNAPSHOTS work remain; no new read-migration workers are assigned.
 
 ### P-KOTLIN
 
@@ -149,22 +162,25 @@ uses NativeAllocationControl or admitted backing callbacks, not a kernel import.
 - Separate crate/write set from P-TS. Coordinate compilation and field
   semantics by contract, not by sharing raw nodes or copying its implementation.
 
-## CONTROL-CGO: shared mechanics, distinct language projections
+## CONTROL-SNAPSHOTS: shared mechanics, distinct language projections
 
-- `core/codegraph-lang-common/src/{c,go}_syntax_snapshot_v1.rs`: duplicate
+- `core/codegraph-lang-common/src/{c,go,typescript}_syntax_snapshot_v1.rs`: three duplicate
   `SnapshotHeapBudgetV1::charge_v1`, checked addition and 128 MiB local cap.
 - Resolve these small duplicate ledgers inside the original-admission change.
   Reuse an existing helper or extract shared birth/overflow mechanics when they
   have the same contract. Record a justified retention of different local caps;
   a standalone generic helper is not a prerequisite for fixing custody.
 - Retain distinct C and Go node data: Go repeated fields/sibling index/error
-  metadata differ from C grammar facts. No generic semantic visitor.
+  metadata differ from C grammar facts; TypeScript retains its binding/field
+  projections. No generic semantic visitor.
 - `core/codegraph-defuse-extractor-c/src/extractor/mod.rs`, its scalar traversal/
   projection helpers and tests.
 - `core/codegraph-defuse-extractor-go/src/extractor/traversal/{fact_helpers,extract_core}.rs`,
   scalar traversal/projection helpers and tests.
+- `core/codegraph-defuse-extractor-typescript/src/extractor/mod.rs`, shared scalar
+  extraction/binding/assignment helpers and tests on the integrated `b32361e9d83` cut.
 - S0 owns the missing original output context bridge. Couple that producer
-  and both consumers before controlled-success proof; a local cap alone cannot
+  and all three consumers before controlled-success proof; a local cap alone cannot
   issue output authority. Missing required custody returns typed refusal.
 - Account before storage growth, retain temporary permits until buffers are
   freed, account post-snapshot work, recheck before publication and test exact

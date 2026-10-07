@@ -20,7 +20,7 @@ not qualification of today's downstream checkout.
 | ID | Durable decision | Recorded main checkpoint |
 | --- | --- | --- |
 | D1 | Standalone Shape is the calculation owner. Factories and concrete imports/exports use it; Cost retains Cost responsibilities. Shape-only and PTA-derived feature closure require their own consumer proof. | `712b5e8c` |
-| D2 | Existing graph-utils owns the borrowed iterative SCC traversal. Generic, PTA and taint callers share the kernel; domain projection, output order/IDs and typed Compute/Stop remain explicit. Admit work/frame/output allocation before growth. | Core `df2a867ad70`; adapters `712b5e8c` |
+| D2 | `codegraph-graph-scc` owns the borrowed iterative SCC traversal; graph-utils reexports compatibility paths. Generic, PTA, taint and later consumers share the kernel; domain projection, output order/IDs and typed Compute/Stop remain explicit. Admit work/frame/output allocation before growth. | Initial graph-utils core `df2a867ad70`; adapters `712b5e8c`; owner move `ff8f2ce935f` |
 | D3 | Keep active runtime MemSSA pack lowering; remove dormant DFG build-input entry and exclusive helpers/exports. Preserve PortDFG and shared digest/policy/finalizer/sort. | `d88f0a2ed7a` |
 | D4 | SCV2 contribution calls existing `rrf_contribution_v1`. Preserve K/clamp, accumulation order, identity/ties, top-k and duplicate refusal. Separate fusion contracts retain their own owners. | `d88f0a2ed7a` |
 | D5 | Keep base UnionFind, active solvers and retained pair sessions. Remove dormant Andersen UnionFind module/export after consumer census; do not add a compatibility wrapper or new trait. | `d88f0a2ed7a`; self-contained proof/topology `6dd27ad5f05` |
@@ -51,7 +51,7 @@ Use the fixed commit when reproducing this observation.
 | Decision | Retained implementation authority |
 | --- | --- |
 | D1 | `qv2/quanta-adapters-shape/src/shape_analyzer_adapter.rs`; runtime-surface `src/analysis/mod.rs` factory/export use standalone Shape, while Heap/Cost remain separate |
-| D2 | `qv2/quanta-graph-utils-v1/src/scc.rs`; runtime-analysis `src/queries/pta/precise_query_scc.rs` and taint-solver `src/analysis/taint/interproc/wire_recursion.rs` consume its admitted borrowed SCC traversal |
+| D2 | `packages/core/codegraph-graph-scc/src/scc.rs` owns calculation; `qv2/quanta-graph-utils-v1/src/lib.rs` reexports. PTA/runtime-analysis/taint and later domain consumers preserve their own projections |
 | D3 | `qv2/quanta-adapters-dfg/src/lib.rs` retains PortDFG-facing MemSSA exports; the retired build-input entry is absent |
 | D4/D5 | Retrieval-kernel `src/scv2_exact_fusion.rs` calls `rrf_contribution_v1`; `packages/core/pta/engine/src/solver/mod.rs` retains base UnionFind and has no retired Andersen UnionFind module |
 | F1/D6 | SDK `_product_search_projection_v1.py` precedes shared `current_search_projection.py`, consumed by API search and MCP QueryAdapter |
@@ -130,10 +130,10 @@ zero tests; the other entries are static source findings. Shared cursor/source
 integration and focused R38/R44 results do not qualify these consumer graphs.
 Existing `ParseResult` getters are distinct from the retired carrier API.
 
-The successor read-only audit through committed Semantica `ff8f2ce935f` confirms C
+The historical successor read-only audit through committed Semantica `ff8f2ce935f` confirmed C
 plugin (`801fbd6777a`), C DefUse (`480b5fb445d`), Kotlin DefUse (`736a8047245`)
 and Go DefUse (`070f4f96770`) source integration. Remaining carrier calls are
-eight plugin and four DefUse entrypoints; current WIP and claims remain separate
+eight plugin and four DefUse entrypoints at that source; WIP and claims remain separate
 from committed behavior. D1–D7 source checkpoints are ancestors of this source
 and retain their integrated decisions. The later `ff8f2ce935f` cut moves SCC
 calculation into `codegraph-graph-scc`, leaves graph-utils as compatibility
@@ -141,7 +141,19 @@ reexports, and migrates PTA adapter/Andersen consumers. The old SCC file was
 renamed, not retained as dead duplicate source. Its owner/caller verification
 requires current selectors rather than the retired graph-utils `scc` request.
 
-C/Go grammar snapshots are distinct scalar projections. Their duplicate local
+The final ticket audit through committed Semantica `b32361e9d83` additionally confirms
+Kotlin plugin (`ecc0c5784b4`), Rust/Go plugins and Rust DefUse (`ed94af892c0`),
+Java DefUse (`e14eeda8604`), TypeScript plugin/DefUse (`b32361e9d83`) and the coupled
+callback chronology repair (`aac43629734`) are integrated. The sole remaining
+retired carrier call is Python DefUse. Checked-read migration does not alone
+prove exact binding, original output admission or runtime acceptance.
+The current-target planner, dominance and concurrency engine/schema deadlocks
+also reuse the canonical SCC. Tarjan10 includes PTA adapter/Andersen, but its
+selectors and historical45 do not cover all callers. The
+[current tickets](../plans/oct-6-substrate-dedup/tickets.md#d2-caller-coverage)
+retain the expanded caller proof without assigning new SCC implementations.
+
+C/Go/TypeScript grammar snapshots are distinct scalar projections. Their three duplicate local
 cap/overflow mechanics and original-control/output acceptance remain in
 [CHECKED-RETAINED-CONTROL](../work/remaining.md#substrate-verification).
 The five SDK mapper tests are distinct from engine/adapter deadline behavior and

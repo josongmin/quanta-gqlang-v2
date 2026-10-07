@@ -8,20 +8,22 @@ owns integrated decisions. This handoff issues no runtime or qualification claim
 ## Current source and next execution input
 
 Read-only successor audit: committed Semantica
-`5f76eca7812cdbed3cdd66dd6d0f6533ce9b1c9c`, QGLang
-`784bba129970cbdd1b18b13db4c21ff04c7e3aff`. Foreign dirty work is not a
+`b32361e9d8373143a6bb725b72a6d48da00519eb`, QGLang
+`01cfe39ca0571b4fc099d41b24628fda70e754fe`. Foreign dirty work is not a
 committed-source verdict. The [execution plan](../plans/oct-6-substrate-dedup/readme.md)
 and [test plan](../plans/oct-6-substrate-dedup/test-plan.md) own the next work
 allocation and exact request/oracle review; a final execution tuple is not yet frozen.
+The [ticket index](../plans/oct-6-substrate-dedup/tickets.md) reconciles all20
+active closeout IDs; proposed A-series work remains a separate roadmap.
 
-- C/Go/Kotlin/Rust/Java completed source cuts are integrated. Current retired
-  carrier calls are TypeScript plugin 2 + Python/TypeScript DefUse 2 = 4, versus
-  R45's 17. This is an entrypoint source count, not full control qualification.
+- C/Go/Kotlin/Rust/Java and latest TypeScript (`b32361e9d83`) source cuts are
+  integrated. Python DefUse retains the sole carrier call, versus R45's 17.
+  This is an entrypoint source count, not full control qualification.
 - All thirteen reviewed R43 source postimages, including cursor3, are already
   absorbed on main. The original issuer5 acceptance remains open. Historical
   statements below about private/import-pending cursor source apply only to
   their recorded checkpoint; they are not current import instructions.
-- C/Go snapshot control/budget mechanics and Kotlin retained admission need
+- C/Go/TypeScript snapshot control/budget mechanics and Kotlin retained admission need
   their concrete control acceptance. Existing shared files are co-owned; no
   additional shared writer or repeated Go migration is assigned.
 - SDK mapper5 exists, but the old five-behavior wording conflated distinct
@@ -31,12 +33,16 @@ allocation and exact request/oracle review; a final execution tuple is not yet f
   and uncovered PTA adapter requests (successor47 if other rows remain), and the
   existing PTA engine witnesses. The three Shape feature-tree diagnostics remain.
   Latest concurrency deadlock source reuses that owner; Tarjan gate source now
-  includes PTA adapter/Andersen in ten rails. This is source progress, with
-  execution and added consumer/request coverage still pending.
+  includes PTA adapter/Andersen in ten rails. D2-CALLER-COVERAGE adds eight
+  omitted consumer scopes;47 is not a final request count after that repair.
+  Source reuse is integrated; current execution acceptance remains unverified.
 - Source/claim observation: `remaining-r46-plan-audit-state.json`; final source
   continuity/SCC review: `remaining-r46-main-reconciliation.json`, at the evidence
   root below. This revision executes no Rust or product tests. No private root
   source checkout is an active execution candidate for these next tasks.
+  `remaining-r48-final-ticket-audit.json` records the latest committed-source
+  readback, producer pins, one remaining getter and20 active states. Current
+  claims were not refreshed; refresh them before edits or source assignment.
 
 Source-only follow-up at `65036b7221a` found CHECKED-CALLBACK-FIRST-CAUSE;
 the coupled protocol/common/infra/Kernel repair and fixtures are now integrated
