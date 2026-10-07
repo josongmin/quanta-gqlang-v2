@@ -114,57 +114,48 @@ receipts, not repository-distributed or installed-product evidence.
   It adopts committed main DFG import repair `c26a43639b6`; the older Q3
   `b8644ab5c6b` compile failure is superseded, not a current source defect.
 - The older R4 runtime jobs were cancelled after that dependency was superseded;
-  pending work is rerun on R6. Cancellation supplies no test verdict.
+  pending consumer work was superseded again by the current R11 source.
+  Cancellation supplies no test verdict.
 - Rename provider proof now additionally enters the actual admitted context,
   registry and worker before the existing backend. Its source is `7eea70e4a06`;
   an isolated handler receipt alone does not close that path.
 
-### Successor compile recovery
+### Compile recovery and current acceptance source
 
-- R6 Runtime analysis at `a620b157998` compiled zero tests and failed with 84
-  errors in PTA/call-graph production and test code. Its selected class enabled
-  `pta-rail-test-support`, **not** `slice-runtime`; it cannot validate Slice.
-  R8 selects the registered Slice owner class
-  `quanta-runtime-analysis.no-default.8a9cf0054bb7`
-  (`cfg-query-test-support,slice-runtime`). This corrects the proof target;
-  it does not waive the separate PTA compile failures.
-- R7 joined Rename Preview at `7eea70e4a06` compiled zero tests: 12 PTA adapter
-  errors, including a shared result type stranded inside the Java-only child
-  module. The result is also consumed by the Python issuer and exported by the
-  adapter facade. One language-neutral workspace owner must define it.
-- Private successor `9f83e5b8f23` restores that existing type to its shared
-  owner, imports Python's canonical consumer binding explicitly, captures the
-  admitted row iterator's source lifetime, and retains the semantic view while
-  counting rows. Five paths; no added dependency, second calculation or new
-  authority. Java/Python owner compilation and downstream Preview acceptance
-  are pending on this frozen source; no main integration is claimed yet.
-- R6 SDK deadline proof compiled zero tests on `a620b157998`: three references
-  to `NativeLoweringOutputBackingV1` failed because its import was conditional
-  while the binding fields and accessors were unconditional. Successor
-  `89a58900de4` imports the same existing type on every binding compile path;
-  it enables no new Cargo feature or dependency. The final dependency repair
-  therefore spans six paths. R9 checks the exact `cfg-dfg` feature class and
-  reruns affected SDK/Slice/native consumers on this source. Superseded queued
-  native jobs supply no verdict.
-- R8 Python-only and R9 `cfg-dfg` checks reached the same Parser dependency
-  failure: an ungated Java raw helper referenced an augmentation type absent
-  in Python minimum, and its facade exported an error with no active caller.
-  Private successor `1cfc4c41d7a` applies the exact existing caller feature
-  predicate to those two items. No Java feature is enabled to mask the error.
-  Its two cfg hunks are recorded separately from concurrent Parser work;
-  foreign dirty bodies/imports remain untouched. R10 freezes this source for
-  three adapter checks and actual Slice, SDK deadline and native Rename tests.
+Historical compilation failures executed zero tests. They are retained as
+failure evidence, not as error counts for current main.
 
-The three R10 adapter owner checks all passed on `1cfc4c41d7a`, digest
+| Attempt | Reached failure | Canonical repair / successor |
+| --- | --- | --- |
+| R6 Runtime Slice, `a620b157998` | 84 PTA/call-graph errors under `pta-rail-test-support`; that class did not enable `slice-runtime` and could not validate Slice. | Actual Slice owner class is `quanta-runtime-analysis.no-default.8a9cf0054bb7`, features `cfg-query-test-support,slice-runtime`. Separate PTA acceptance remains open. |
+| R7 joined Rename Preview, `7eea70e4a06` | 12 PTA adapter errors, including a shared Java/Python generation result stranded in a Java-only child. | Shared generation owner, explicit Python binding import, exact row iterator lifetime and retained semantic view; six-file dependency checkpoint `7bbdcc1d4e3`. |
+| R6 SDK deadline, `a620b157998` | Three references to `NativeLoweringOutputBackingV1` failed because its import was narrower than its unconditional binding users. | Existing backing type imported on all active binding compile paths; part of the same six-file checkpoint. No new feature or dependency. |
+| R8 Python-only / R9 `cfg-dfg` | Ungated Java helper referenced an absent augmentation type; raw-error facade had no active consumer. | Two items mirror the existing caller predicate, integrated at `4518fd6fec5`. Foreign Parser working/index bytes were retained. |
+
+All three R10 canonical Java, Python-only and `cfg-dfg` adapter checks passed
+on `1cfc4c41d7a`, digest
 `435e5a731ce4225299569a60052ac8d97d0f93da258289fb15725aa8c5a6d5ba`.
-The dependency repairs above are integrated at `7bbdcc1d4e3` and
-`4518fd6fec5`. Both scoped claims and barriers were released normally.
-Later consumer jobs in that queue were cancelled before completion, with no
-verdict: newer committed interprocedural/semantic dependency repairs were
-adopted first. Consumer successor `462fe9bb5c6` merges committed main
-`4518fd6fec5`; the eight remaining candidate file bytes are unchanged. R11
-executes actual Runtime Slice, SDK deadline and native Rename owners on that
-tuple. Concurrent Parser working changes are excluded from the frozen source.
+These are complete production-library compile checks, not runtime tests.
+Both dependency checkpoint claims and barriers were released normally.
+
+The queued R10 consumer jobs were cancelled before completion to adopt newer
+committed interprocedural/semantic repairs; cancellation supplies no verdict.
+Current consumer source is `462fe9bb5c66831e522a4cfcf63292a42aa11aa3`,
+which merges committed main `4518fd6fec5`; the eight remaining candidate file
+bytes are unchanged. Source digest:
+`f63b9d06538bcaa259c90ff976d3839ef78b30a5731dc892eaebcfdc8734cd04`.
+Concurrent Parser working changes are excluded from this frozen source.
+
+R11 acceptance runs the actual Runtime Slice output owner, SDK deadline owner,
+native Rename binding with providers off/on, and admitted-context joined
+Preview. Slice occurrence final-membership tests are a separate module and
+must also execute; the output-helper selector alone does not cover them.
+Import guards require both Slice modules, each group's archived receipt, and
+unchanged owned source before local main integration.
+
+The old `OCT6-SUBSTRATE-SCC` write claim was released after confirming no
+unintegrated candidate delta in any of its 24 paths. This retires write
+ownership; D2 consumer/product qualification is still open.
 
 ### Residual code map and completion conditions
 
