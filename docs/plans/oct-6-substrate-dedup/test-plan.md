@@ -218,8 +218,8 @@ record resolve-only requests at `59f7f8d33a22`; they are not passing runs.
   outputs; no test-only small-budget injection is required at those callers.
 - Community adds2 literal empty/cyclic plan regressions, including independent
   CBOR/BLAKE3 cluster IDs and exact publication counts. Rule already has result
-  tests; only the same-IR SCC→recursive admission→exact-result connection needs
-  the narrow additional regression. Neither is a new engine project.
+  tests; the same-IR SCC→recursive admission→exact-result regression is now authored
+  alongside the community2 tests, awaiting execution. Neither is a new engine project.
 
 ### Added SCC caller coverage
 

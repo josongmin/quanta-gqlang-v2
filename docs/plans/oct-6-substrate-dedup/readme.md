@@ -121,8 +121,8 @@ execution acceptance requires normal source/lane admission and receipts.
 | P-TS | Source integrated `b32361e9d83`; prove actual helper/bundle behavior | Existing owner proof; no new migration |
 | D-TS | Source integrated `b32361e9d83`; prove binding/assignment/fact semantics | Existing owner proof; controls covered by S0/snapshot cut |
 | Existing cuts | Python DefUse integrated `27d9505015e`; other source cuts already integrated | Existing owner proof, not redevelopment |
-| CONTROL-SNAPSHOTS (former CONTROL-CGO) | Account snapshot materialization and subsequent fact calculation under the actual original owner; resolve three duplicate cap/overflow ledgers | C/Go/TypeScript consumers + shared admission mechanics, one writer; S0 output custody seam |
-| CONTROL-KOTLIN | Check exact retained source/backend binding and exercise original current failure priority | Kotlin DefUse writer, S0 contract |
+| CONTROL-SNAPSHOTS (former CONTROL-CGO) | Account snapshot materialization and subsequent fact calculation under the actual original owner; preserve the integrated shared cap/overflow counter (`f2d85a9`, QBC2/2) | C/Go/TypeScript consumers + shared admission mechanics, one writer; S0 output custody seam |
+| CONTROL-KOTLIN | Exact source/backend binding integrated `df315e6` (QBC70/70); exercise original current failure priority | Kotlin DefUse writer, S0 contract |
 | SDK-DEADLINE | Add result-based deadline acceptance through the real fluent SDK caller; retain existing mapper tests | Runtime SDK test owner; Native adapter/deadline behavior is already implemented |
 | QG-DIAG — resolved | Existing parity and NDJSON consumers require primary-only exact fields | ADR-0008 documents the existing private contract; no wire change |
 
@@ -161,7 +161,7 @@ execution acceptance requires normal source/lane admission and receipts.
 
 The scheduling template uses four slots: one integrator and three workers.
 Earlier external T1/D0/C65/C66 claims must be refreshed before source assignment.
-R49 dispatches independent Kotlin, SDK, common-ledger and documentation work;
+R49 integrated Kotlin binding and the common counter; SDK test acceptance and original controls remain;
 foreign Python/output-custody hunks remain with their current owners.
 
 | Wave | Integrator | Worker 1 | Worker 2 | Worker 3 |
@@ -184,13 +184,13 @@ is assigned. Serialize matching compile closures and retain distinct oracles.
 ```mermaid
 flowchart TD
     S0[Existing shared owners reconcile read and output contracts]
-    E[Existing Python writer finishes its cut]
+    E[Integrated Python owner acceptance]
     K[Integrated Kotlin plugin owner acceptance]
     T[Integrated TypeScript plugin acceptance]
     D[Integrated TypeScript DefUse acceptance]
     C[C Go TypeScript snapshot admission and fact controls]
     N[Kotlin source and current controls]
-    F[SDK deadline result tests]
+    F[Authored SDK deadline result owner acceptance]
     M[Serial complete-bundle main checkpoints]
     O[Original issuer 5 and affected owner proofs]
     Q[Rebound D1 to D7 matrix and affected policies]

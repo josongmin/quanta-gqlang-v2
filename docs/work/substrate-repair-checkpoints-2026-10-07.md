@@ -97,6 +97,24 @@ result tests and common SCC bounds narrowed the extra test scope. Community's
 independent ID oracle and2 pending regressions are recorded separately. All
 minimal compile repairs remain coupled to their owners' dirty source bundles.
 
+## R52 accepted contract scope and pending consumers
+
+R52 source `9eb4ba8fc07`, reviewed overlay and digest
+`2c9c03ba915e67d26eeeb00f92e6b97058b5296b56c9a03d23086366d53a1bbe`
+produced accepted semantic contract55/55,123 filtered and0 ignored. The lexical
+serde fix and subtype fixture correction match that frozen source. SourceWire
+then stopped before tests at two test-only faults: nested `tests_v3` path and
+private fixture-module import. Explicit test mount and test-only reexport of the
+existing fixture are authored; production authority visibility stays private.
+
+SDK deadline2, community2 and same-IR recursive rule1 are authored, not executed.
+R49 counter2 continuity was checked against all5 actual overlay file hashes;
+committing that same postimage as `f2d85a9` is not a later behavioral change.
+R49 engine77 contains all7 deadline witnesses. Preserve these scoped results
+without calling them current whole-workspace qualification. R52 and earlier
+pointer receipts have immutable per-run publication and logs; mutable lane
+`last-completed-run` aliases are not the archival evidence source.
+
 ## Historical source-bound proof inputs
 
 | Input | Exact identity |
