@@ -204,6 +204,24 @@ Diagnostics stdio:
 5. it is bounded NDJSON with exact request fields, not JSON-RPC or LSP; it does
    not implement `initialize` or document lifecycle methods
 
+`v3_diagnostics` is a private, primary-location analysis protocol. Its request
+has exactly `id` (string or number), `method`, `source_id` (`u32`), and `source`.
+A successful response has exactly `id`, `ok`, `method`, `analysis_status`, and
+`diagnostics`. Each diagnostic has exactly `stage`, `code`, `severity`, `message`,
+`source_id`, `span_start`, and `span_end`; the span is a half-open byte range in
+the submitted source. The analysis status may be `complete`, `incomplete`, or
+`error`; a semantic error is still a successful protocol response. A protocol
+error has `id`, `ok: false`, and `error` with `code` and `message`.
+
+The semantic diagnostic owner retains sorted secondary locations, but this
+wire exports only the primary location. Authority failures use the protocol
+`authority_error` code rather than a successful analysis diagnostic; its message
+is human-readable and is not a structured authority identity. The repository's
+parity consumer requires the exact fields
+above. No external client requiring secondary locations or a typed authority
+identity is registered here. Such a requirement needs a versioned wire and
+consumer change, with response-budget and process coverage.
+
 ## Examples
 
 The [examples index](examples_index.md) is the single maintained list of
