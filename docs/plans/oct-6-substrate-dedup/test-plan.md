@@ -6,7 +6,9 @@
 
 **이전 3fe 실행 판정:** `3fe43a6`의 canonical owner 40건 중 4건(source authority 66, Wire default 49·serde 68, SCC core 20)은 실제 owner receipt PASS다. Tarjan PTA는 dependency 자기 모듈 참조 E0433으로 compile exit 101/실행 0건이고 뒤의 35건은 NOT_RUN이다. 수정은 main `578a539`에 있지만 재검증되지 않았다. D3/D4/D5의 5개 추가 owner 요청은 `d6eb94b` private registry에서 resolve만 PASS이며 실행되지 않았다. 따라서 새 통합 소스에서 PTA를 먼저 실행하고, 통과하면 나머지 44개 owner 요청·실제 consumer·generated/global Honesty·필요한 제품 경계를 순서대로 판정한다. 이전 수동 QBC 91/16/3/227/34는 `authority_kind=manual`이므로 canonical 수량에 더하지 않는다. [실행 상세](execution-progress.md).
 
-**현재 main closeout:** Shape·SCC 본문87경로는 Semantica main `712b5e8c`에 이미 반영됐다. 관찰한 `fb0e4b6`의82경로는 후보와 같고5개 lock/manifest는 후속 consumer 변경을 유지한다. Budget overflow fixture 수리는 main `63ddf8cc`에 반영됐으며 production 로직 변경은 없다. 이 clean committed main과 GQLang `40fad1e`·Index `9221d77`을 고정했다. 영향 정책95개 PASS, snapshot sealed, root locked metadata PASS/nested metadata RED다. 새 tuple Rust·generated/global Honesty·제품 검증은 NOT_RUN이다.
+**현재 checkpoint:** Shape·SCC 본문87경로는 main `712b5e8c`에 반영돼 있다. Budget fixture(main `63dd`), nested lock 1줄(main `52f`), SDK 분할 child 경로2개(main `35970e4`), source-bound feature taxonomy/main `6cc766f`까지 반영됐다. 마지막 두 수리는 각각 canonical static module RED→PASS와 전체 taxonomy lint/owner Python20 PASS를 확인했다. Production 계산·feature/dependency 변경은 없다.
+
+`5d9f490` frozen tuple은 영향 정책95·root/nested locked metadata PASS다. Topology는 unresolved SDK child2개 때문에 설치 전 RED였고 generated overlay0을 보존했다. 후속 dispatch를 멈추는 과정에서 budget owner도 tool cleanup으로 종료돼 completed receipt가 없다. **INTERRUPTED이며 Rust PASS/RED가 아니다.** 수정된 committed source에서 budget→나머지 owner/consumer를 다시 실행한다. GOD는 read-only 14→7/retired7/new0/worsened0이며 baseline 작성 전이다.
 
 이전 `aadf`는 source-memory6·relation owner5 actual canonical PASS, budget39 중38 PASS/1 FAIL다. Overflow fixture가 root backing을 누락한 것이 원인이며 기존 exact OutputBytes refusal·atomic rollback assertion을 유지하고 positive boundary control을 추가했다. JSON16/formal9/owner45/graph2는 그 tuple에서 NOT_RUN이다.
 

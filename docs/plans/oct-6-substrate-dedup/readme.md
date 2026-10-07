@@ -9,11 +9,13 @@
 - 입력 authority, 결과·순서·ID, typed failure, 취소·예산 계약을 보존한다. 서로 다른 계약은 caller의 작은 admission/projection으로 유지한다.
 - 완료 결과는 **계산 owner 단일화 + 소비자 전환 + 퇴역 코드 삭제 + 로컬 증명 + 재발 방지 gate**다. 파일 이동, forwarding wrapper, 컴파일 성공만으로 완료 처리하지 않는다.
 
-상태: **IN_PROGRESS.** 이번 문서 갱신 기준 GQLang commit은 `40fad1e`다. 로컬 `just ci` PASS는 이전 `d600cab` 소스의 receipt다.
+상태: **IN_PROGRESS.** 이번 문서 갱신 기준 GQLang commit은 `980f411`다. 로컬 `just ci` PASS는 이전 `d600cab` 소스의 receipt다.
 
-- **현재 main closeout:** Shape·SCC 본문87경로는 Semantica main `712b5e8c`에 이미 반영됐다. 관찰한 `fb0e4b6`의82경로는 후보와 같고5개 lock/manifest는 후속 consumer 변경을 유지한다. Budget overflow fixture 수리는 main `63ddf8cc`에 반영됐으며 production 로직 변경은 없다. 이 clean committed main과 GQLang `40fad1e`·Index `9221d77`을 고정했다. 영향 정책95개 PASS, snapshot sealed, root locked metadata PASS/nested metadata RED다. 새 tuple Rust·generated/global Honesty·제품 검증은 NOT_RUN이다.
+- **현재 checkpoint:** Shape·SCC 본문87경로는 main `712b5e8c`에 반영돼 있다. Budget fixture(main `63dd`), nested lock 1줄(main `52f`), SDK 분할 child 경로2개(main `35970e4`), source-bound feature taxonomy/main `6cc766f`까지 반영됐다. 마지막 두 수리는 각각 canonical static module RED→PASS와 전체 taxonomy lint/owner Python20 PASS를 확인했다. Production 계산·feature/dependency 변경은 없다.
+
+`5d9f490` frozen tuple은 영향 정책95·root/nested locked metadata PASS다. Topology는 unresolved SDK child2개 때문에 설치 전 RED였고 generated overlay0을 보존했다. 후속 dispatch를 멈추는 과정에서 budget owner도 tool cleanup으로 종료돼 completed receipt가 없다. **INTERRUPTED이며 Rust PASS/RED가 아니다.** 수정된 committed source에서 budget→나머지 owner/consumer를 다시 실행한다. GOD는 read-only 14→7/retired7/new0/worsened0이며 baseline 작성 전이다.
 - 이전 `aadf`는 source-memory6·relation owner5 actual canonical PASS, budget39 중38 PASS/1 FAIL다. Overflow fixture가 root backing을 누락한 것이 원인이며 기존 exact OutputBytes refusal·atomic rollback assertion을 유지하고 positive boundary control을 추가했다. JSON16/formal9/owner45/graph2는 그 tuple에서 NOT_RUN이다.
-- **남은 순서:** nested lock 원인 수리 → 해당 committed main의 owner/consumer 증명 → topology5/GOD7-key/Honesty3 retirement와 Shape/Tarjan·feature/layer gate. 이미 반영된 본문을 다시 import하지 않는다.
+- **남은 순서:** repaired committed main owner/consumer 증명 → topology5/GOD7-key/Honesty3 retirement와 Shape/Tarjan·feature/layer gate. 이미 반영된 본문을 다시 import하지 않는다.
 
 아래 두 단락은 `3fe` 실행 전의 병합·진단 이력이다. 당시의 `NOT_RUN`은 현재 판정이 아니다.
 
