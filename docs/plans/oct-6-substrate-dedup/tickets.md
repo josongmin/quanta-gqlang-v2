@@ -98,16 +98,17 @@ number after SCC caller reconciliation.
 - **C/Go/TypeScript controls and dedup:** `core/codegraph-lang-common/src/{c,go,typescript}_syntax_snapshot_v1.rs`
   had identical 128 MiB cap/checked-add ledgers. R49 extracts those mechanics
   into private `syntax_snapshot_budget_v1.rs`, preserving all charge sites;
-  both boundary tests await owner execution. C extractor `mod.rs:221`, Go
+  both boundary tests passed under QBC; checkpoint `f2d85a9` is integrated. C extractor `mod.rs:221`, Go
   `traversal/fact_helpers.rs:147` and TypeScript `mod.rs:1068,1100` calculate facts
   after the checked snapshot callback, without original current in that calculation.
-  Resolve the three duplicated accounting
-  mechanics inside the common admission cut; retain distinct grammar projections.
+  The common counter removes the three duplicated accounting mechanics; original
+  admission remains a coupled cut. Retain distinct grammar projections.
   A local cap does not prove original temporary/output custody.
 - **Kotlin binding:** `core/codegraph-defuse-extractor-kotlin/src/extractor/mod.rs:1338`
   R49 authors a checked-callback source/backend guard and same-length foreign
   source/backend regression. Exact-source output and ordinary unsealed
-  compatibility remain required; current owner execution is pending.
+  compatibility passed in exact1/whole70 owner tests; checkpoint `df315e6` is
+  integrated. Original current/output lifetime acceptance remains open.
 - DoD: same-length foreign source/backend and missing required Native authority
   refuse before calculation; original low-budget/cancel/work/first-refusal cases
   fail before publication; temporary and output grants survive producer drop and

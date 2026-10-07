@@ -194,7 +194,32 @@ including the PTA adapter and Andersen owners. This closes the gate-source
 omission; its execution and the historical map repair remain pending. Review
 added SCC consumers, including concurrency deadlocks, before freezing the final
 request inventory/cardinality/witnesses together;
-do not lower old minima or retain the graph-utils `scc` selector (now zero cases).
+Do not retain the graph-utils `scc` selector (now zero cases). Discover current
+expected counts and document replaced witnesses; do not silently lower minima.
+
+### R50 request reconciliation
+
+Evidence-root inventories `r50-scc-owner-request-inventory.json`,
+`r50-d1-owner-request-inventory.json` and `r50-f7-owner-request-inventory.json`
+record resolve-only requests at `59f7f8d33a22`; they are not passing runs.
+
+- SCC inventory resolves14 replacement/addition scopes and reuses2 existing PTA
+  requests. Historical45 stays immutable; final campaign cardinality is pending.
+- The old D5 minimum227 differs from its historical accepted225 and includes2
+  removed witness names. Reconcile current source/tests explicitly before execution;
+  one actual `solver::` run covers both Andersen and Steensgaard.
+- Old Cost `termination_analyzer_adapter` GREEN5 does not exercise the changed
+  allocation projection. Execute `heap_domain_adapter` and Shape's
+  `shape_analyzer_adapter` under their current reviewed feature classes.
+- Shared PTA allocation feature classes are compile-closure evidence only.
+  Actual Shape/Cost consumer results own the behavior oracles.
+- Navigation and metrics use the canonical SCC default limits and propagate its
+  typed error. Reuse core limit/refusal proof and execute their existing domain
+  outputs; no test-only small-budget injection is required at those callers.
+- Community adds2 literal empty/cyclic plan regressions, including independent
+  CBOR/BLAKE3 cluster IDs and exact publication counts. Rule already has result
+  tests; only the same-IR SCC→recursive admission→exact-result connection needs
+  the narrow additional regression. Neither is a new engine project.
 
 ### Added SCC caller coverage
 

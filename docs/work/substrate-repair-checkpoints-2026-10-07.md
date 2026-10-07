@@ -74,6 +74,29 @@ stopped at normalization module `E0583`. Minimal lexical/path fixes are authored
 not yet qualified or integrated with their coowners. The immutable receipts and
 `r49-owned-proof-results3.json` retain each tuple; a successor must prove these fixes.
 
+## R50–R51 proof recovery and request correction
+
+R50 frozen source `d91ac1412a0` stopped before tests at dependency lock mismatch.
+The obsolete sequence was interrupted after3 blocked receipts; no behavioral
+failure or success is claimed. Offline regeneration kept every surviving package
+version/source/checksum unchanged. Root records changed for SourceWire and SDK
+executor; nested records also caught up committed Abstract/Kotlin dependencies.
+Both root and nested locked metadata checks passed.
+
+R51 frozen source `59f7f8d33a22`, digest
+`524e387da08e3edf014b41a6bb717fb6ead91a6304553bf4f548e9c5990c3277`,
+reached one relation fixture `E0308` before tests: the subtype constructor remained
+`Result` while the other fixtures were relation values. Its valid literal is now
+unwrapped like the neighboring copy test. This corrects test compilation and adds
+no production behavior. The actual source digest is retained in
+`semantic-serde-owner-r51.json`; that locator governs over prose.
+
+The14-scope SCC,4-request D1 and9-request F7 inventories are resolve-only inputs;
+overlap prevents treating their sum as a whole campaign count. Existing rule
+result tests and common SCC bounds narrowed the extra test scope. Community's
+independent ID oracle and2 pending regressions are recorded separately. All
+minimal compile repairs remain coupled to their owners' dirty source bundles.
+
 ## Historical source-bound proof inputs
 
 | Input | Exact identity |
