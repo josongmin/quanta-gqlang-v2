@@ -8,7 +8,7 @@ owns integrated decisions. This handoff issues no runtime or qualification claim
 ## Current source and next execution input
 
 Read-only successor audit: committed Semantica
-`b32361e9d8373143a6bb725b72a6d48da00519eb`, QGLang
+`daf8bb00bfa95e410e114910ce7f3dc495ace7b1`, QGLang
 `01cfe39ca0571b4fc099d41b24628fda70e754fe`. Foreign dirty work is not a
 committed-source verdict. The [execution plan](../plans/oct-6-substrate-dedup/readme.md)
 and [test plan](../plans/oct-6-substrate-dedup/test-plan.md) own the next work
@@ -31,9 +31,11 @@ active closeout IDs; proposed A-series work remains a separate roadmap.
 - SCC now calculates in `codegraph-graph-scc`; graph-utils is its compatibility
   facade. Old owner45's graph-utils `scc` selector is stale. Reconcile core/facade
   and uncovered PTA adapter requests (successor47 if other rows remain), and the
-  existing PTA engine witnesses. The three Shape feature-tree diagnostics remain.
+  existing PTA engine witnesses. Re-resolve the three Shape feature-tree
+  diagnostic requests after `07093dbe72a`; their old failures are historical,
+  not current-source results. Include both new shared-allocation feature classes.
   Latest concurrency deadlock source reuses that owner; Tarjan gate source now
-  includes PTA adapter/Andersen in ten rails. D2-CALLER-COVERAGE adds eight
+  includes PTA adapter/Andersen in ten rails. D2-CALLER-COVERAGE adds nine
   omitted consumer scopes;47 is not a final request count after that repair.
   Source reuse is integrated; current execution acceptance remains unverified.
 - Source/claim observation: `remaining-r46-plan-audit-state.json`; final source

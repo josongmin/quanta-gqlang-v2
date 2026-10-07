@@ -8,7 +8,7 @@ All paths below are relative to `semantica-codegraph-v2` unless marked QGLang.
 `packages/analysis/quanta-v2/crates/`. Subtrees indicate reachable files to
 review, not authority to replace every file. Final claims enumerate exact paths.
 
-Current scheduling overlay at `b32361e9d8373143a6bb725b72a6d48da00519eb`:
+Current scheduling overlay at `daf8bb00bfa95e410e114910ce7f3dc495ace7b1`:
 Rust/Go/Kotlin/TypeScript plugins, Rust/Java/TypeScript DefUse and the coupled S0-CALLBACK repair are
 integrated. Their before/after cuts below retain the audit baseline and acceptance
 requirements; they are no longer new implementation assignments. The remaining
@@ -63,7 +63,13 @@ grant that a language helper may issue. Common language code must not import
 the kernel back into itself. `FactExtractionRequestV1` and
 `DefUseFactsParseContextV1` currently have no output-admission field: S0 must
 implement the actual issuer/adapter→context→extractor bridge, borrowing the
-already-issued output/temporary authority. The lower-level snapshot boundary
+output/temporary authority only after its original issuer is traced. DFG's
+erased `NativeAllocationControlV1` cannot project the source-operation/memory
+lease required by the generic original output admission. The current Java
+semantic wrapper does not prove DFG issuance. Include the actual upstream
+ingress/source-control handoff and final-retainer caller closure in S0; the
+write set can exceed these two structs. Required missing authority refuses.
+The lower-level snapshot boundary
 uses NativeAllocationControl or admitted backing callbacks, not a kernel import.
 
 ## Existing owners: integrated cuts and remaining Python WIP

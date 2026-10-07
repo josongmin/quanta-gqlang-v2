@@ -141,17 +141,23 @@ reexports, and migrates PTA adapter/Andersen consumers. The old SCC file was
 renamed, not retained as dead duplicate source. Its owner/caller verification
 requires current selectors rather than the retired graph-utils `scc` request.
 
-The final ticket audit through committed Semantica `b32361e9d83` additionally confirms
+The final ticket audit through committed Semantica `daf8bb00bfa` additionally confirms
 Kotlin plugin (`ecc0c5784b4`), Rust/Go plugins and Rust DefUse (`ed94af892c0`),
 Java DefUse (`e14eeda8604`), TypeScript plugin/DefUse (`b32361e9d83`) and the coupled
 callback chronology repair (`aac43629734`) are integrated. The sole remaining
 retired carrier call is Python DefUse. Checked-read migration does not alone
 prove exact binding, original output admission or runtime acceptance.
+Java's local lvalue lifetime repair `909ad96cc56` is integrated. Shape/Cost share
+the PTA allocation-reference projection in `07093dbe72a`; feature combinations
+and actual consumer outputs still require D1 acceptance. No duplicate source
+repair is assigned for these follow-ups.
 The current-target planner, dominance and concurrency engine/schema deadlocks
 also reuse the canonical SCC. Tarjan10 includes PTA adapter/Andersen, but its
 selectors and historical45 do not cover all callers. The
 [current tickets](../plans/oct-6-substrate-dedup/tickets.md#d2-caller-coverage)
 retain the expanded caller proof without assigning new SCC implementations.
+The distinct `codegraph-import-graph` cycle substrate joins that owner as
+`daf8bb00bfa`; its cycle domain oracles remain separate from navigation.
 
 C/Go/TypeScript grammar snapshots are distinct scalar projections. Their three duplicate local
 cap/overflow mechanics and original-control/output acceptance remain in

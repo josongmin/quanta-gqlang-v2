@@ -10,6 +10,8 @@ reopen integrated decisions in [ADR-0005](../../adr/0005-substrate-reuse-and-con
 [Test plan](test-plan.md) defines owner requests and completion evidence.
 The [current tickets](tickets.md) cover every active closeout ID and alias;
 the proposed code-query roadmap is outside this repair campaign.
+[Parallel dispatch](parallel-dispatch.md) defines four-slot work allocation,
+shared-file stewardship, checkpoint acceptance and final local proof ordering.
 
 ## Purpose and scope
 
@@ -33,7 +35,7 @@ mechanics in that resource cut, preserve semantics, and qualify actual callers.
 | Input | Identity / interpretation |
 | --- | --- |
 | QGLang | `01cfe39ca0571b4fc099d41b24628fda70e754fe`, clean before this final ticket audit |
-| Semantica | `b32361e9d8373143a6bb725b72a6d48da00519eb`, frozen committed-source audit; foreign dirty work excluded |
+| Semantica | `daf8bb00bfa95e410e114910ce7f3dc495ace7b1`, frozen committed-source audit; foreign dirty work excluded |
 | Index | observed `5bf6b15216968afde597606033870cc710cb9bc8`; observation is not an execution pin |
 | Earlier source/claims evidence | `remaining-r46-plan-audit-state.json` at initial `070f4f9`; `remaining-r46-main-reconciliation.json` records that audit's `ff8f2ce`, supplier scope and SCC request repair |
 | Final ticket/source evidence | `remaining-r48-final-ticket-audit.json` records committed source, getter classification, producer pin match and all20 states; current claims not rechecked |
@@ -55,15 +57,18 @@ core/facade split plus the uncovered PTA adapter owner gives 47 requests if all
 other rows remain. Resolve that map before execution; no 47 runs occurred here.
 The concurrency engine and schema deadlock cuts also reuse this SCC owner.
 Tarjan gate source includes the PTA adapter and Andersen across ten rails.
-[D2-CALLER-COVERAGE](tickets.md#d2-caller-coverage) records eight additional
+[D2-CALLER-COVERAGE](tickets.md#d2-caller-coverage) records nine additional
 consumer scopes omitted by the historical45/Tarjan10 selectors; final request
 cardinality is pending that reconciliation. None is a new SCC implementation.
+The `07093dbe72a` follow-up shares Shape/Cost allocation-reference projection
+through `quanta-contract-pta-result-shared`; D1 retains no-Java/Java feature
+closure and real consumer proof. Feature policy entries alone are not run results.
 
 | Work | Current source / ownership | Scheduling disposition |
 | --- | --- | --- |
 | Rust plugin + Rust DefUse | Source integrated `ed94af892c0` | Existing owner acceptance; no repeated migration |
 | Go plugin | Source integrated `ed94af892c0` | Existing owner acceptance; no repeated migration |
-| Java DefUse | Source integrated `e14eeda8604`; separate lvalue working change observed | Owner acceptance; preserve the foreign lvalue change |
+| Java DefUse | Read cut `e14eeda8604` and lvalue lifetime follow-up `909ad96cc56` integrated | Current owner acceptance; no repeated lifetime repair |
 | Python DefUse | D0 frontdoor and helper claims; foreign WIP | Existing owner; split only after explicit path/symbol handoff |
 | Kotlin plugin | Source integrated `ecc0c5784b4`, sharing checked nodes with DefUse | Owner/control acceptance; cancel its new-migration assignment |
 | TypeScript plugin | Source integrated `b32361e9d83`; checked scalar snapshot | Owner acceptance; cancel new-migration assignment |

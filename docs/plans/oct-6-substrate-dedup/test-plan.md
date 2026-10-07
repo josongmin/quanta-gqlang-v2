@@ -2,7 +2,7 @@
 
 Parent: [execution plan](readme.md). This is a request/oracle specification,
 not an execution receipt. Old selectors below are inputs to re-resolution.
-Latest caller/request audit: Semantica `b32361e9d8373143a6bb725b72a6d48da00519eb`.
+Latest caller/request audit: Semantica `daf8bb00bfa95e410e114910ce7f3dc495ace7b1`.
 `qv2/` abbreviates Semantica `packages/analysis/quanta-v2/crates/`.
 
 ## Execution contract
@@ -47,6 +47,8 @@ normal execution authority. The source-only follow-up did not execute tests.
 
 Use existing real original-control issuers for resource proof. Diagnostic/fake
 controls may test a local mapper but do not establish original-root custody.
+For DFG facts, first trace the actual original issuer and final retainer:
+the erased Native control and Java parser issuer do not establish that handoff.
 Keep syntax/facts fixtures small except where depth/allocation mechanisms require
 scale. No sleep-based timing oracle, self-equality or bare `is_ok` success claim.
 
@@ -178,10 +180,10 @@ do not lower old minima or retain the graph-utils `scc` selector (now zero cases
 
 ### Added SCC caller coverage
 
-[D2-CALLER-COVERAGE](tickets.md#d2-caller-coverage) records eight additional
+[D2-CALLER-COVERAGE](tickets.md#d2-caller-coverage) records nine additional
 package/scope pairs and their actual source paths: current-target planner,
-dominance, concurrency engine/schema, navigation, rule execution, metrics and
-runtime community clustering. The old45 map and Tarjan10 filters omit these
+dominance, concurrency engine/schema, navigation, distinct `codegraph-import-graph`,
+rule execution, metrics and runtime community clustering. The old45 map and Tarjan10 filters omit these
 specific scopes; the runtime-analysis PTA request is not a planner request,
 and runtime Shape selectors do not cover community clustering.
 
@@ -208,6 +210,11 @@ and runtime Shape selectors do not cover community clustering.
   `shape-tree-composition` (`quanta-sdk-runtime-composition-owner`,
   `session-shape-analyzer-runtime`). These prove dependency/feature closure,
   not three additional Rust behavioral executions.
+- The `07093dbe72a` shared Shape/Cost allocation projection adds two
+  `quanta-contract-pta-result-shared` no-default feature classes `399e8a289332`
+  (features[]) and `3d4e77a3e18b` (`java-allocation-metadata`). Re-resolve both
+  and the actual Shape/Cost output owners. The feature-policy hash changed;
+  the historical45 hash is not current approval or dependency continuity.
 - Preserve every reviewed minimum and literal witness. Explicitly ignored-only
   `deep_chain_50k` is its own request; other requests exclude ignored cases.
 - Reuse unchanged inputs only with an explicit source/dependency continuity

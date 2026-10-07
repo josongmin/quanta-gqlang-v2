@@ -1,7 +1,7 @@
 # Substrate closeout tickets
 
 Updated: 2026-10-07. Audit inputs: QGLang `01cfe39ca0571b4fc099d41b24628fda70e754fe`,
-Semantica `b32361e9d8373143a6bb725b72a6d48da00519eb`. Committed source was read;
+Semantica `daf8bb00bfa95e410e114910ce7f3dc495ace7b1`. Committed source was read;
 foreign dirty overlays are excluded from implementation conclusions. This audit
 ran no Rust, QBC or product tests. All execution is local.
 
@@ -27,7 +27,7 @@ Semantica; `core/` means `packages/core/`, `qv2/` means
 | D1-PROOF | P1 | INCOMPLETE | Shape factory/SDK/features; adapter + consumer owners |
 | D2-PTA-PROOF | P1 | INCOMPLETE | Core/facade/PTA owner and request repair |
 | D2-TAINT-PROOF | P1 | INCOMPLETE | Taint domain/public contract and 50k depth owner |
-| D2-CALLER-COVERAGE | P1 | PROOF_PENDING | Eight additional SCC consumer scopes; added by this audit |
+| D2-CALLER-COVERAGE | P1 | PROOF_PENDING | Nine additional SCC consumer scopes; added by this audit |
 | D3-PROOF | P1 | INCOMPLETE | PortDFG MemSSA and taint promotion |
 | D4/D5-CUSTODY | P1 | UNVERIFIED | Rebind historical SCV2/UnionFind accepted inputs |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Affected feature/topology/Honesty/GOD policies |
@@ -77,6 +77,16 @@ number after SCC caller reconciliation.
 - Aliases: `S0`, `CONTROL-SNAPSHOTS` (former `CONTROL-CGO`), `CONTROL-KOTLIN`. Coordinate with the existing
   downstream D0 facts/output and S0 final-output work; these are shared handoff
   boundaries, not extra writers or replacement Native allocation issuers.
+- **S0 issuer prerequisite:** the DFG controlled ingress carries only erased
+  `NativeAllocationControlV1`; ordinary file/source-only callers pass None.
+  No canonical output-admission construction was found in its committed pipeline.
+  The trait exposes reserve/work/grant validation, without source-operation lease
+  projection or downcast. The generic original output admission needs actual
+  `ServingSourceIssuanceControlV1` and a validated operation/memory lease.
+  Its parser Java wrapper does not establish DFG facts issuance. Trace the outer
+  retained ingress and final keeper before choosing the signature. If DFG lacks
+  the handoff, include the upstream source/output bridge in this coupled scope;
+  unavailable required authority refuses, ordinary compatibility stays explicit.
 - **S0 output bridge:** `qv2/quanta-adapters-dfg/src/multi_lang_dfg_adapter/build_pipeline/fact_extraction.rs:14`
   and `core/codegraph-defuse-extractor-contract/src/lib.rs:492` carry tree/source/current
   but no output-admission interface. Carry the existing canonical admission through
@@ -151,6 +161,11 @@ number after SCC caller reconciliation.
 - DoD: pure Shape, PTA-derived Shape, disabled and Cost-only combinations pass
   exact expected output and typed absent-port refusal; both existing Shape gates
   and the three feature-tree diagnostics have matching current inputs.
+- Latest `07093dbe72a` shares `PointsToResult::referenced_allocations_v1` through
+  `quanta-contract-pta-result-shared`. Include actual Shape/Cost allocation
+  projection oracles and the new no-default feature classes `399e8a289332`
+  (without Java metadata) / `3d4e77a3e18b` (with metadata) in current resolution.
+  Their policy definitions alone are not execution proof.
 
 ## D2-PTA-PROOF
 
@@ -171,7 +186,7 @@ number after SCC caller reconciliation.
 
 ## D2-CALLER-COVERAGE
 
-The historical45 map and Tarjan10 filters do not select these eight consumer
+The historical45 map and Tarjan10 filters do not select these nine consumer
 scopes. This is a proof-inventory gap; source reuse is integrated. Resolve current
 owner targets/features and match existing accepted receipts before adding runs.
 
@@ -185,6 +200,7 @@ owner targets/features and match existing accepted receipts before adding runs.
 | `quanta-runtime-execution` | `gqlang/rule_exec_v1`: real rule partition/strata/result semantics and typed SCC stop |
 | `quanta-runtime-metrics-wire` | `max_call_depth_compute_v1.rs`: computed depth across SCCs, recursion/unregistered graph and resource refusal |
 | `quanta-runtime` | `retrieval/port_impls/index_projection_writer/scv2_orchestration/generation_index/community_cluster.rs`: exact membership/order/identity and empty/cyclic input |
+| `codegraph-import-graph` | `src/substrate.rs` and `src/substrate/cycle_work_tests.rs`, integrated `daf8bb00bfa`: bounded cycle partition, actual edge witness/lexical choice, missing return/malformed graph and typed resource refusal before partition publication. Separate from navigation |
 
 DoD: each affected owner has accepted matching evidence or a resolved request
 with actual required witnesses. Freeze the complete request count afterwards.
