@@ -653,3 +653,34 @@ therefore qualify that candidate, not the entire integration checkpoint. Native
 minimum/full, SDK deadlines, D1–D7 owner45, mandatory policies, daemon/installed
 Linux CHECK and clean committed-HEAD qualification retain their own acceptance.
 The latest status in this section supersedes older preparation notes above.
+
+## R44 acceptance on the integration checkpoint
+
+The four canonical owners also executed on committed integration checkpoint
+`26f165989053b911bf28ce8296aa9c38bea99445`, with no private cursor files:
+wire comparison 14, Parse paths 5, whole CFG 413, JSON integration 13;
+**445 passed, zero failed or ignored**. Digest:
+`01074dee1916762231c18af13914ac9d133416f6eea2f373a53010d4d1c46e6a`.
+Committed siblings remain QGLang `7ff7ed8290ed872863daa6e83cdb01b338c27160`
+and Index `8642fa9b3b47ac58e4b3d9f2feaea66c599be29d`.
+
+This closes the ten-path checkpoint's four stated execution rails without
+using its private cursor prerequisite. It supersedes R43's candidate-only
+caveat for these four rails. Actual requests, witness names, result/receipt
+hashes and immutable archives are in `remaining-r44-owner-state.json` and
+`remaining-r44-snapshot-state.json` at the recorded evidence root.
+
+The three cursor paths still need the original issuer's five unchanged
+memory/work/cancellation controls. Original traversal and Native minimum previously stopped before cases at
+DefUse's retired raw-tree consumer boundary. Native Full and SDK deadline
+execution on this checkpoint remains unperformed; consumer source writers
+are active independently. No DefUse body is authored
+by this checkpoint, no raw getter/reparse fallback is introduced, and no
+original-issued, whole-product or installed CHECK qualification is claimed.
+
+Moving main has subsequent commits and foreign Parse/HIR overlays. These 445
+passes apply to the fixed checkpoint and committed sibling tuple above;
+source-byte continuity is recorded separately in
+`r44-current-main-bundle-continuity.json`. Final mandatory policy/owner45,
+frontend clean-HEAD qualification and signed installed Linux CHECK retain
+their separate requirements. R38/R40 results retain their original inputs.
