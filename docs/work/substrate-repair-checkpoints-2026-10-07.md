@@ -20,12 +20,9 @@ claimed.
 | `5d3f87f47ab` — query production | Generic query owners referenced a feature-gated GQLang JSON control and lacked production imports/dependencies → existing JSON control moved byte-for-byte to neutral source-issuance owner; old GQLang path reexports it; scoped dependencies/imports/rollback bounds repaired. | Frozen QBC production check passed. This is compilation evidence, not PTA or product execution. |
 | `457868f1c4f` — F10 | Agent requests could use a different root and ignored file/budget restrictions → startup captures one canonical directory; request admission rejects root mismatch, authored file lists and unknown budgets before SDK work. | Affected API/lifetime suite: 37 passed. Original wrong-root HTTP success fails the regression. |
 | `0c3c26c90bc` — F5 | Public apply-changes discarded degradation, API emitted `ok=True`, projection lost native codes → SDK preserves typed outcome plus code/detail reasons; API reports degraded `ok=False` with applied data. | 43 affected cases passed, no skips. Three independent original-behavior regressions fail as expected. A broader unchanged suite exposed real Rename producer drift plus transport fixture drift. Rename request drift is repaired below; that earlier broad suite is not claimed green. |
-
 | `975d1a3a41a` — F7 engine | Caller timeout ignored → one absolute deadline across existing SCC/worklist/narrowing and final result publication; lowering keeps typed stop and adapter covers all three domains. | Whole owning libraries: engine 73, lowering 58, adapter 21 passed; no filters or skips. |
 | `e46cf07f5b1` — F2 Python | Current closed contract requires cap on every phase; SDK omitted it and Apply exposed no caller limits → Preview/Rollback retain null; Apply takes explicit typed positive u64 output/live limits and rejects absent/invalid limits before Preview. | 321 cases across the SDK execute owner and new cap/phase contract tests passed, no skips. Original Preview producer fails generated contract admission. |
-
 | `8edd1b0733c` — F4/F9 Q3 | Cap was checked after neighbor insertion; composite slices retained BFS discovery direction and could accept bounded prefixes → admit before insertion, typed Incomplete, original induced eligible PDG edges. Empty-PDG failure precedence is retained. | Fresh frozen `a620b157998`: Q3 module 37/37 passed. Original cap oracle executes 1 and fails with root incorrectly admitted at cap0. Runtime projection acceptance remains separate. |
-
 | `ecf12903bf3` — F7 native wire | Deadline stop lost its finite error/category contract → append payload-free RuntimeError stop, preserve old wire tags, map to AnalysisTimeout/ResourceLimit and close minimal serde feature. | Wire integration 2/2 and timeout/category projection 1/1 passed on their frozen owner sources. Concurrent main PTA feature ownership change is preserved; whole latest-main qualification is not claimed. SDK caller conversion remains a separate candidate. |
 
 ### Code owners
@@ -55,7 +52,7 @@ F7 does not promise hard interruption inside user callbacks, collection sorting
 or lowering/projection calls. The deadline is checked at cooperative work
 boundaries and after those calls; an overdue result is never published as success.
 
-The candidate native wire stop appends `AbstractInterpretDeadlineExceeded` as
+The integrated native wire stop appends `AbstractInterpretDeadlineExceeded` as
 variant 39. Existing variants 0–38 keep their identities and shapes. Older readers
 reject the new variant; frontend ExecutionDoc schema/digests are unaffected.
 
@@ -119,6 +116,39 @@ receipts, not repository-distributed or installed-product evidence.
 - Rename provider proof now additionally enters the actual admitted context,
   registry and worker before the existing backend. Its source is `7eea70e4a06`;
   an isolated handler receipt alone does not close that path.
+
+### Successor compile recovery
+
+- R6 Runtime analysis at `a620b157998` compiled zero tests and failed with 84
+  errors in PTA/call-graph production and test code. Its selected class enabled
+  `pta-rail-test-support`, **not** `slice-runtime`; it cannot validate Slice.
+  R8 selects the registered Slice owner class
+  `quanta-runtime-analysis.no-default.8a9cf0054bb7`
+  (`cfg-query-test-support,slice-runtime`). This corrects the proof target;
+  it does not waive the separate PTA compile failures.
+- R7 joined Rename Preview at `7eea70e4a06` compiled zero tests: 12 PTA adapter
+  errors, including a shared result type stranded inside the Java-only child
+  module. The result is also consumed by the Python issuer and exported by the
+  adapter facade. One language-neutral workspace owner must define it.
+- Private successor `9f83e5b8f23` restores that existing type to its shared
+  owner, imports Python's canonical consumer binding explicitly, captures the
+  admitted row iterator's source lifetime, and retains the semantic view while
+  counting rows. Five paths; no added dependency, second calculation or new
+  authority. Java/Python owner compilation and downstream Preview acceptance
+  are pending on this frozen source; no main integration is claimed yet.
+
+### Residual code map and completion conditions
+
+Paths below are relative to Semantica. Each group is imported independently
+only after its own acceptance; historical receipts are not composed into a
+whole-repository result.
+
+| Group | Exact owning files | Completion condition |
+| --- | --- | --- |
+| Runtime Slice | `quanta-runtime-analysis/src/queries/advanced/`: `slice_query_bridge.rs`, `slice_query_helpers/output_materialization.rs`, `slice_query_helpers/output_final_membership_tests.rs`, `slice_statement_projection.rs`, `slice_statement_projection/occurrence_projection.rs` (crate under `packages/analysis/quanta-v2/crates/`) | Execute final CFG direction/kind/multiplicity oracle, typed partial refusal, and occurrence-membership tests with `slice-runtime` enabled; then import five paths. |
+| SDK deadline | `packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/abstract_interpret_builder.rs` | Native finite timeout survives actual port conversion; non-timeout errors retain their prior rejection. Import one path after owning tests. |
+| Native Rename | `crates/quanta-cli-ingress-runtime/src/dispatch/operation_binding_registry_v1.rs`, `dispatch/mutation.rs` | Exact native inventory plus provider-off/on admission; admitted context → registry → worker → Preview backend. Import both paths together; production Apply remains unavailable until its real issuer exists. |
+| PTA dependency repair | `packages/analysis/quanta-v2/crates/quanta-adapters-pta/src/`: `production_live_native_workspace_generation_v1.rs`, its `original_java_workspace_v1.rs` and `original_java_evidence_v1.rs` children, `production_live_captured_semantic_workspace_generation_v1.rs`, `production_native_lowering_relation_output_v1/admitted_storage_v1.rs` | Canonical Java and Python feature owner compilation; retain one result owner and existing field/API shapes. Import only reviewed five-file delta. |
 
 ## Final acceptance order
 
