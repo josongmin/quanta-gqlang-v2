@@ -15,6 +15,7 @@
 
 - **추가 main 비교 (`2026-10-07`, frozen Semantica `e5c3bc6`, GQLang `5d1e485`, Index `9221d77`):** D1/D2의 `712b5e8c`, D3/D4/D5의 `d88f0a2`, D7의 `b258f59`, F1/D6의 `c1f821d`는 모두 Semantica main 조상이다. Clean triplet의 root/nested locked metadata와 영향 boundary 정책90개는 PASS. Canonical QBC SCC core20/20 GREEN(`20261007T013408.881609Z-59aa6c4a3d8d`), standalone Shape17/17 GREEN(`20261007T014748.184126Z-fb83a5fb3c7a`), D3 runtime pack16/16 GREEN(`20261007T014920.013304Z-1697d7e14d9f`); PTA SCC는 `quanta-adapters-dfg` 컴파일 오류7건으로 테스트0 RED(`20261007T013528.678837Z-475d8c0934fd`); D3 taint는 `quanta-adapters-parser` 컴파일 오류2건으로 테스트0 RED(`20261007T015112.070604Z-a1b1590ffea5`); SCV2는 `quanta-contract-retrieval` 컴파일 오류7건으로 테스트0 RED(`20261007T014306.765248Z-ef2dffc2a4d3`); D5 solver는 225/227 통과, compile-fail 테스트2건이 해당 QBC lane에서 자체 rlib를 찾지 못해 RED(`20261007T014622.544326Z-d78700f5a209`). 이 RED들은 중복 구현의 행동 회귀 판정이 아니라 현재 canonical proof의 실제 차단점이다. 이 frozen receipt를 이후 이동한 main의 GREEN으로 이월하지 않는다.
 - **후속 HEAD 비교 (`c119d3b`, dirty overlap0):** D1/D2 landing 87경로 중 10경로가 commit 이후 변경됐다(두 lock, 두 manifest, runtime-analysis manifest·incremental/worker identity, runtime capability, session bridge, taint wire recursion). D3/D4/D5 landing14경로, D7 landing7경로, F1/D6 landing39경로는 commit 이후 변경0·현재 dirty 겹침0이다. 후속 변경이 있는 D1/D2 소비자와 feature closure는 이 HEAD에 맞춘 재검증이 필요하다.
+- **컴파일 선행 수리와 후보 proof:** DFG retained Java read/authority 컴파일 수리는 Semantica main `59e5e612`에 반영됐다. Retrieval V3 serializer/invalid repr 수리는 main `c964115`에 반영됐다. 두 패치를 적용한 frozen `e5c3bc6` 기반 triplet(source digest `feefe2b7…`)에서 D4 SCV2 canonical QBC34/34 GREEN(`20261007T015927.867768Z-1324f59be240`), D5 solver는 같은 QBC lane의 lib 선행 빌드 후227/227 GREEN(`20261007T020506.341459Z-dc9aa41770e5`)이다. D5 compile-fail 2건은 선행 rlib가 없는 독립 owner 실행에서 실패했으므로 테스트 구조의 산출물 가정은 남는다. DFG lib는 PTA 조합에서 컴파일을 통과했지만 PTA adapter 자체 오류17건으로 PTA SCC 테스트0; 기본 DFG와 D3 taint는 parser crate 오류2건으로 테스트0이다. 이 proof를 최신 main·Index 후속 HEAD의 qualification으로 이월하지 않는다.
 
 Test mount의 Python14 PASS와 정의65개 보존/수정 후 각 owner1개를 확인했다. **65는 single-owner 게이트 신고 수이며 65개 실제 중복 실행을 관찰한 수가 아니다.** Gateway49 신고에는 feature 변수16개 초과 시 overlap을 보수적으로 판정한 경우가 포함된다. Plain-test branch의 fallback 겹침, path 정규화11개의 단독+묶음 등록, taint helper5개의 재포함은 소스에서 확인했다. 중복 mount와 함의된 outer guard를 제거했고 full/core feature 조건·테스트 정의는 보존했다. 게이트의 overlap 판정이나 한도를 완화하지 않았다.
 
@@ -311,9 +312,9 @@ PTA→taint는 권장 pilot 순서이며 hard dependency가 아니다. Search �
 
 | 항목 | 구현 상태 | main 코드 checkpoint | owner/gate proof |
 |---|---|---|---|
-| D3 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | DFG91/pack16/taint3 실제 통과. 해당 세 역사적 Rust receipt의 권한은 `manual`이므로 canonical owner qualification은 미완료 |
-| D5 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | PTA solver227 실제 통과, manual comparison only. Canonical owner receipt 필요 |
-| D4 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | SCV2 leaf34 실제 통과, manual comparison only; canonical main source fences PASS. Canonical owner receipt 필요 |
+| D3 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | 현재 frozen main triplet의 runtime pack16/16 canonical GREEN. DFG/taint는 parser compile RED·테스트0; 과거 DFG91/pack16/taint3 manual 결과는 비교용 |
+| D5 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | patched frozen triplet에서 선행 lib build 후 solver227/227 canonical GREEN. 독립 실행은 rlib 탐색 테스트2건 RED였고 최신 main 재검증·테스트 구조 수리 필요 |
+| D4 | MAIN_IMPLEMENTED | `d88f0a2ed7a` | retrieval 컴파일 수리 적용 frozen triplet에서 SCV2 leaf34/34 canonical GREEN. 최신 main·Index 후속 HEAD 재검증 필요 |
 | D7 | MAIN_IMPLEMENTED | `b258f5919a5` | Final clean integration에서 6-file owner matrix70/70 GREEN; captured source·기존 parity/surface/DI. Full product qualification 별도 |
 | D1-A / D1-B | MAIN_IMPLEMENTED / current owner qualification incomplete | `712b5e8c` | Cost Shape 복제 구현·tests 삭제, standalone factory/export 및 shape-only feature 연결이 main에 반영됐다. 최신 main의 실제 SDK consumer·pure/PTA/disabled/Cost feature 조합과 두 Shape gate는 아직 완료 증거가 없다. [현재 증거](execution-progress.md) |
 | F1 / D6 | MAIN_IMPLEMENTED | `c1f821db572` | SDK211 pass/2 skip; rebased consumers141 pass/1 skip; installed wheel1 + Granian/scripted daemon1 GREEN. Native daemon/product qualification 별도 |
