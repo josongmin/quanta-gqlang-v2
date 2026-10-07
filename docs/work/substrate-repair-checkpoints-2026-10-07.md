@@ -29,6 +29,8 @@ claimed.
 | `0dd691a651c` — analysis test closure | Engine-only test reexport escaped its feature, and 14 ordinary CFG fixture inputs omitted the new source-control field → mirror the defining module predicate and the existing ordinary production constructor. | Frozen `9b5ea151425`: complete affected CFG owner 47/47 passed, zero skips. Runtime Slice owner also compiled and executed on the same tuple. Four paths integrated first. |
 | `1a5cb6b0d29` — F4/F9 runtime | Bounded prefixes could publish success; PDG discovery pairs fabricated CFG direction/kinds; removed Dice statements retained occurrence metadata → typed partial refusal, finite-bound recomputation, original CFG edges on final membership, included occurrence metadata with retained parameter provenance. | R14 canonical Slice helper 6/6 passed, zero skips; all four independent output/membership regressions executed. Five paths integrated after the verified dependency checkpoint. |
 
+| `375173d94dc` — receipt visibility | Four internal decoder targets/seeds were public inside a private module, failing minimal compilation → keep those targets, seeds, constructors and internal reexports crate-visible; public generic decoding API and wire schema unchanged. | R15 complete minimal receipt owner 69/69 passed, zero failures/skips/nonselected; shape parity and malformed-input controls executed. Three paths integrated with normal hooks. |
+
 ### Code owners
 
 Paths are relative to `semantica-codegraph-v2/`.
@@ -41,11 +43,31 @@ Paths are relative to `semantica-codegraph-v2/`.
   and `quanta-runtime-query-executor-owner/src/query_executor/` consumers.
   The calculation is retained; moving its module does not add a second owner.
 
+## Earlier frontend/consumer actions — source recheck
+
+At committed Semantica `60211acdb1a62d0ae5f18d677211cf1c4b63c63a` and QGLang `c3b84ab`, the earlier
+Graph contract, golden and EXISTS/conformance code repairs are present:
+
+- Public ingress selects the bounded product Graph profile; host validates
+  witness cap1, Reachability Endpoints and Path NodeSequence. Independent public
+  family fixtures assert cap1 for both kinds.
+- Consumer golden asserts contract/qualification schema8 against the current
+  frontend vector. Source pin/gate presence is not execution qualification.
+- The mixed EXISTS owner contains both false first-term and false second-term
+  nonempty-input cases with independent expected empty results.
+- Frontend conformance includes Rename; authored result shapes remain explicitly
+  rejected at sema. Document/execution are split into owning modules, and local
+  static composes size-lint plus clippy-msrv.
+
+These are current-source observations, not new code written by this recovery or
+new downstream runtime verdicts. Retain actual product proof in the remaining
+index instead of reintroducing those repairs.
+
 ## Remaining repair candidates
 
 Native Rename and the SDK deadline caller remain candidate source changes
-on `codex/oct7-substrate-query-owner-build-r1`, with a three-file private
-receipt-decoder visibility prerequisite exposed by the SDK compile. Runtime
+on `codex/oct7-substrate-query-owner-build-r1`, after the three-file private
+receipt-decoder visibility prerequisite was integrated at `375173d94dc`. Runtime
 Slice and its feature/input dependency are integrated above.
 
 | ID | Structural change | Acceptance still required |
@@ -224,8 +246,9 @@ native Mutation ID oracle detect omissions without another drifting number.
 
 R15 candidate is `e3848ef6dd35406d6c9016929236215e1b4b0d0d`, source digest
 `5e4c3d025dacc807e99fb356b6e96f96cef6604561d615153f5b6f19da6c8085`.
-Receipt owner and SDK conversion, then minimal/native Full owners are RUNNING;
-no R15 PASS or main import is claimed yet. Its committed sibling pins remain
+The complete minimal receipt owner passed 69/69 with zero failures, skips or
+nonselected tests, and three files reached main `375173d94dc`. SDK conversion
+and minimal/native Full owners remain RUNNING; their PASS is not claimed yet. Its committed sibling pins remain
 QGLang `68ff02ef443f` and Index `6a3f6afc8c28`, with foreign dirty excluded.
 
 ### Residual code map and completion conditions
@@ -238,7 +261,7 @@ whole-repository result.
 | --- | --- | --- |
 | Analysis test feature/input closure — complete | `packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/`: `interprocedural.rs`, `intraprocedural/cfg_query_tests.rs`, its `reuse_authority.rs` and `unreachable_policy.rs` children | Complete CFG owner 47/47 and Slice helper 6/6 passed; four paths integrated at `0dd691a651c` before the Runtime Slice consumer. |
 | Runtime Slice — complete | `quanta-runtime-analysis/src/queries/advanced/`: `slice_query_bridge.rs`, `slice_query_helpers/output_materialization.rs`, `slice_query_helpers/output_final_membership_tests.rs`, `slice_statement_projection.rs`, `slice_statement_projection/occurrence_projection.rs` (crate under `packages/analysis/quanta-v2/crates/`) | Actual canonical helper 6/6 passed with `slice-runtime`, including all four direction/kind/multiplicity, partial and membership regressions. Five paths integrated at `1a5cb6b0d29`. |
-| Receipt private visibility | `packages/analysis/quanta-v2/crates/quanta-runtime-receipt-wire/src/`: `canonical_receipt_seed_v1.rs`, its `receipt_gqlang_seed_v1.rs` and `receipt_nested_seed_v1.rs` children | Whole minimal receipt owner and SDK consumer pass. Integrate the three-file prerequisite before the SDK caller. |
+| Receipt private visibility — complete | `packages/analysis/quanta-v2/crates/quanta-runtime-receipt-wire/src/`: `canonical_receipt_seed_v1.rs`, its `receipt_gqlang_seed_v1.rs` and `receipt_nested_seed_v1.rs` children | Whole minimal receipt owner 69/69 passed; three-file prerequisite integrated at `375173d94dc` before the SDK caller. SDK conversion retains separate acceptance. |
 | SDK deadline | `packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/abstract_interpret_builder.rs` | Native finite timeout survives actual port conversion; non-timeout errors retain their prior rejection. Import one path after owning tests. |
 | Native Rename | `crates/quanta-cli-ingress-runtime/src/dispatch/operation_binding_registry_v1.rs`, `dispatch/mutation.rs` | Exact inventory plus minimal refusal and real `dist-full` admission; whole registry and mutation owners including admitted context → registry → worker → Preview backend. Import both paths together; production Apply remains unavailable until its real issuer exists. |
 | PTA dependency repair — complete | `packages/analysis/quanta-v2/crates/quanta-adapters-pta/src/`: `production_live_native_workspace_generation_v1.rs`, its `original_java_workspace_v1.rs` and `original_java_evidence_v1.rs` children, `production_live_captured_semantic_workspace_generation_v1.rs`, `production_native_lowering_relation_output_v1/admitted_storage_v1.rs`, `native_function_build_generation_authority_binding_v1.rs` | Three canonical feature owner checks passed; six-file delta integrated at `7bbdcc1d4e3`. |
