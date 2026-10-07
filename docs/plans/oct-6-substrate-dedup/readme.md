@@ -11,7 +11,7 @@
 
 상태: **IN_PROGRESS.** 이번 문서 갱신 기준 GQLang commit은 `b87319c`다. 로컬 `just ci` PASS는 이전 `d600cab` 소스의 receipt다.
 
-- **현재 `aadf` 후보:** Semantica clean private `aadf0d4`/base main `bbd8c1c`는 refusal assertion 수리와 canonical-path 정책 수리를 포함한다. D1/D2 본문87·이번 merge의 main 전용4경로는 부모 blob과 같고 겹침0이다. Exact 입력115경로의 영향 정책95개 PASS/exit0/scope complete, GQLang `30b6efd`·Index `ab87837` overlay0 snapshot sealed, locked metadata PASS(auxiliary)다. Source-memory6 요청 실행 중이며 이후 relation-refusal3→budget30→JSON16→formal9→owner45→graph-birth2는 NOT_RUN이다. D1/D2 본체 main import·generated/global Honesty·제품 검증은 대기다.
+- **현재 `aadf` 후보:** Semantica clean private `aadf0d4`/base main `bbd8c1c`는 refusal assertion 수리와 canonical-path 정책 수리를 포함한다. D1/D2 본문87·이번 merge의 main 전용4경로는 부모 blob과 같고 겹침0이다. Exact 입력115경로의 영향 정책95개 PASS/exit0/scope complete, GQLang `30b6efd`·Index `ab87837` overlay0 snapshot sealed, locked metadata PASS(auxiliary)다. Source-memory6은 actual canonical owner 6/6 PASS다. Relation-refusal3 r2 요청 실행 중이며 이후 budget30→JSON16→formal9→owner45→graph-birth2 r2는 NOT_RUN이다. D1/D2 본체 main import·generated/global Honesty·제품 검증은 대기다.
 - 이전 `942` source-memory6는 run `20261006T150959.051584Z-459d48cff685`에서 test lib compile exit101/실행0·`unused-must-use` 1건으로 실패했다. 원본 7개를 archive에 보존했다. 테스트 반환값 assertion과 owning-hook rustfmt는 main `7754405`, 기존 verified canonical path의 move를 요구하는 정책 anchor 수리는 main `bbd8c1c`에 반영됐다. 정책 회귀28개 PASS는 Python 결과이며 repaired Rust PASS가 아니다.
 - **다음 완료 작업:** owning sequence → 검토된87경로 main 반영 → topology5/GOD7-key/Honesty3 retirement → Shape/Tarjan gate와 feature/layer 검사. 신규 engine/library 추가 없음.
 

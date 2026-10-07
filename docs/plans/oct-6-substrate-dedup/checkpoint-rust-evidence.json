@@ -5404,10 +5404,10 @@
       "proof_kind": "QBC auxiliary metadata only"
     },
     "source_bound_sequence": {
-      "status": "RUNNING source-memory6",
-      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/source-bound-sequence-aadf0d4148db-state.json",
-      "runner": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/run-source-bound-sequence-aadf0d4148db.py",
-      "runner_sha256": "2bc721eaaddac9b408dc28a0055cf657c2504cff749e99d291d61e5aaabd20f3",
+      "status": "RUNNING relation-refusal3 r2; source-memory6 accepted PASS",
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/source-bound-sequence-aadf0d4148db-r2-state.json",
+      "runner": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/run-source-bound-sequence-aadf0d4148db-r2.py",
+      "runner_sha256": "916eca05e706a0b270237f16679c046b562c93c5dccf5b19a8c44668de4363b8",
       "order": [
         "source-memory6",
         "relation-refusal3",
@@ -5418,11 +5418,44 @@
         "graph-birth2"
       ],
       "conditional": true,
-      "finalized_owner_results": 0
+      "finalized_owner_results": 1
     },
     "d1_d2_main_body_import": "NOT_RUN",
     "consumer_generated_product_qualification": "NOT_RUN",
-    "next": "Wait for source6 actual result, then affected owning sequence on exact aadf source; bind final import and post-body gates to actual committed main"
+    "next": "Continue relation-refusal3 r2, budget30, JSON16, formal9, canonical45 and graph-birth2 r2 on same sealed aadf tuple",
+    "source_memory_owner6": {
+      "status": "PASS",
+      "run_id": "20261007T004023.356635Z-73511ca4726f",
+      "counts": {
+        "failed": 0,
+        "filtered_out": 790,
+        "ignored": 0,
+        "measured": 0,
+        "passed": 6
+      },
+      "state": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/source-memory-owner6-aadf0d4148db/state.json",
+        "sha256": "f2ebd0056ed6f3fae966c2266f2d825f55b81b78609bd13d58db8cdcc8d6ae5a"
+      },
+      "archive": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-source6-aadf0d4148db-artifact-archive/manifest.json",
+        "sha256": "c506630e87c86a91f9a1bf59dedd7b90de65f3bd1c74632d7256beb6b36566d6"
+      },
+      "proof_kind": "actual canonical owning QBC; frozen aadf tuple only"
+    },
+    "supplemental_request_revision": {
+      "reason": "extra relation/graph request metadata omitted owner_resolve_argv; relation r1 setup failed before Rust invocation; corrected r2 files preserve exact recipe/features/named witnesses",
+      "record": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/supplemental-aadf0d4148db-extra-request-r2-preparation.json",
+        "sha256": "43582193b7fdd38cf2f9b45adef10e407ca58c724c07925a7696d6fe94d84012"
+      },
+      "failed_setup_state": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/relation-refusal-owner3-aadf0d4148db/state.json",
+        "sha256": "fa7b6f5d8eff81ec1eafc5da5691bd8e88d4beac9b66123dd4d8506d478649be"
+      },
+      "source_changed": false,
+      "source6_receipt_replayed_on_same_tuple": true
+    }
   },
   "previous_942_failed_candidate": {
     "source": "94262f71aa911d567b769449818c69d41ee3b739",
