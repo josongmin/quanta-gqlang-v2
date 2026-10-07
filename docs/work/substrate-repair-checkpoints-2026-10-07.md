@@ -11,31 +11,53 @@ consumer/policy/product acceptance remains in that index.
 
 ## Current status
 
-- Seventeen local main checkpoints/source packets are reconciled below. Event
-  two-file checkpoint `00a54727baed` and lifecycle three-file checkpoint
-  `8fe0dc8ca3a6` are integrated. The remaining nine source paths were absorbed at
-  `33ff8c41b3ba3de26ff63406c1eab69dc5994daf` by the shared source queue.
-- Latest observed Semantica main: `dd7aa33b2b9d905d793f678361a574d1e898204c`.
-  All nine packet paths match the reviewed candidate byte-for-byte in committed
-  HEAD and working files; all nine are clean. No duplicate commit was created.
-  Every source/proof write claim owned by this task was released normally.
-- Executed owner results: event 173/173 and JSON 13/13 on R22; quarantine 130/130
-  on R24, including the original ten-point allocation-failure refund and
-  last-clone custody controls. These retain their exact source tuples.
-- SDK R24 reached dependency compile RED101: `quanta-contract-ports` forbids
-  unsafe code but declares two unsafe output-custody methods. No SDK cases ran.
-  Both declarations and the forbid policy are unchanged in committed latest
-  main. Related foreign working changes are active and were preserved.
-- Native minimal/full requests remain NOT_RUN. All 45 D1–D7 requests resolved
-  on R24 but executed zero cases. Final execution must use a frozen committed
-  main tuple: canonical memory admission changed in seven owner paths since
-  the old private candidate. No old receipt is relabelled as current main.
-- The private query-owner worktree was removed by the concurrent cleanup
-  (observed absent); this task did not delete it. No root Rust proof is active.
-  Historical receipts/logs are retained under the evidence directory below.
-- Mandatory GOD/changed Honesty retain their recorded RED states. No baseline,
-  threshold, allow or scope relaxation was made. Native/installed product proof
-  and Rename Apply's missing production response/replay issuer remain separate.
+- The local main checkpoints/source packets are reconciled below. Event
+  `00a54727baed`, lifecycle `8fe0dc8ca3a6`, and the nine source paths absorbed at
+  `33ff8c41b3ba` remain integrated. This task added lock closure at
+  `931b2ed9db820d4735732b8e1898837621e5f4e4` through the normal coordinator/hooks;
+  its commit attestation is present. No push is claimed.
+- R31 requalification freezes committed main
+  `b7fe68c10aa2114e2ccba4ae78b56a39be4ccd76`, with
+  committed gqlang `7ff7ed8290ed` and Index `8642fa9b3b47`. Its source digest is
+  `4145303d4614a8a544cd68f6c88fb30c5356e6c8f9a01cfd930c562acee94859`.
+  Moving foreign overlays are excluded; executions apply only to this tuple.
+- Historical GREEN results remain event 173/173 and JSON 13/13 on R22,
+  quarantine 130/130 on R24. Canonical memory-owner changes require affected
+  JSON/quarantine execution on the new source; old receipts are not relabelled.
+- The R24 SDK unsafe/forbid compilation conflict is historical: main `3ad1d3976d9`
+  changed the crate to deny unsafe with a scoped output-custody override.
+  Actual SDK execution on that replacement source is still pending.
+- R25 Native minimal failed before tests because the committed lock lacked
+  current manifest edges: zero executed cases. Root/nested lock closure now adds
+  13/11 existing dependency edges, with no package/version/checksum changes.
+  Both private-source `metadata --locked --offline` diagnostics passed; the
+  lock checkpoint preserves both foreign lock deltas. This is no Rust verdict.
+- R26 Native minimal reached dependency compilation and failed on an unused
+  `serde::Serialize` import in the existing generation-row serializer: zero
+  cases. Checkpoint `e73d3274f80` removes that import only; warning policy,
+  serializer tuple/preimage and public signatures are unchanged.
+- Checkpoint `400db0750c2` narrows the existing unsafe allowance from the whole
+  custody module to its two documented methods plus test module. The existing
+  exact override inventory now pins their containing source file. Both method
+  signatures/bodies are byte-identical; no unsafe precondition is removed.
+  Six affected boundary policies and the canonical scoped inventory passed.
+- R27 Native and quarantine both stopped on four invalid PathBuf operations;
+  R28 then exposed test-module path/import closure errors. All stopped before
+  tests. R29 then stopped on a relocated vendored build script, also zero cases.
+  R30 repairs the seed owner: path 5/5, parser mapping 4/4, parse 15/15 and
+  file identity 6/6 passed, with zero ignored cases. The five paths were imported
+  normally at `933daac0014` and `b7fe68c10aa`. R31 revalidates the same owners
+  and remaining consumers on frozen main before D1–D7. No matrix cases yet.
+- Old query-owner and absorbed lock-repair worktrees were archived/removed by
+  concurrent cleanup. Active private source is
+  `codex/oct7-substrate-managed-path-r27`; frozen execution and immutable evidence
+  are separate. Worktree removal does not imply proof or absorption.
+- Mandatory GOD/changed Honesty retain recorded RED states. The R25 missing
+  contract-ports override pin is repaired with narrower allowance. The unrelated
+  analysis-probe FFI pin remains separate. Whole live-tree unsafe scan stopped
+  on another writer's missing tracked input; that stop is not reported GREEN.
+  Native/installed product proof and Rename Apply's missing production
+  response/replay issuer remain separate.
 
 ## Integrated repairs
 
@@ -44,6 +66,12 @@ claimed.
 
 | Checkpoint | Before → after | Focused evidence |
 | --- | --- | --- |
+| `933daac0014` — managed TARGET path | Invalid String operations on PathBuf → one allocation-free native-byte validator, checked work addition and original-control charge before exact path comparison. Lossy/component aliases retain the existing typed phase-specific refusal. | R30 new path module 5/5, zero ignored. Positive UTF-8 and four rejection/precedence controls executed. Two paths imported with normal main coordinator/hooks; foreign index preserved. |
+| `b7fe68c10aa` — parse test imports | Extracted test modules retained duplicate imports and old sibling/control paths → refer to the existing canonical owners, plus explicit new child-module file path. No existing assertion or production mapper body is weakened. | R30 error mapper 4/4, parse 15/15 and file identity 6/6, zero ignored. Three test import paths imported normally after their whole affected modules passed. |
+| `b453a31eb84` — cross-source seed closure | Metadata with `--no-deps` omitted local `[patch.crates-io]` dependencies; a cloned tree-sitter build script retained the removed donor path → full locked/offline resolution admits all local packages to existing cleanup, while registry artifacts remain reusable. No vendored code or compiler flag changes. | Complete sanitizer owner 13/13 passed, no skips. Actual donor-removal regression produces output `new` after repair; the original sanitizer fails with a missing donor path. Normal main coordinator/hooks; foreign index retained. |
+| `931b2ed9db8` — lock closure | Current manifests added existing internal dependency edges while root/nested lock rows stayed stale → add only 13/11 missing edges. No new package or version change; two foreign working dependency additions remain outside this commit. | Both private-source locked/offline metadata diagnostics passed. Normal main commit attestation is present. R25 actual Native minimal reached RED101 before tests; R26 then advanced to the serializer import failure; consumer acceptance remains source-bound. |
+| `400db0750c2` — port policy | A module-wide unsafe allowance was unpinned → two explicit contract-method allowances plus test-only allowance, pinned by exact method-file hash. Root remains deny unsafe; every signature/body/precondition is preserved. | Six boundary policies and canonical scoped inventory passed. Eight original-control custody cases remain pending on R31. |
+| `e73d3274f80` — serializer compile closure | The native minimum rejected redundant `use serde::Serialize` under `-D unused-imports` → remove that one import inside its existing trait impl. Tuple/framing and method body are otherwise identical. | Actual R26 failure is retained with zero executed cases. Native minimum requalification is active on R30; R31 freezes the integrated main tuple. |
 | `fdda8a5e997` — F6 | Client factory/cache publication could race terminal close → open check, factory and cache insertion share the lifetime lock; close invokes callbacks outside it; failed factories publish nothing. | Complete affected Python owner: 12 passed. Original close-first behavior fails the independent regression. |
 | `5d3f87f47ab` — query production | Generic query owners referenced a feature-gated GQLang JSON control and lacked production imports/dependencies → existing JSON control moved byte-for-byte to neutral source-issuance owner; old GQLang path reexports it; scoped dependencies/imports/rollback bounds repaired. | Frozen QBC production check passed. This is compilation evidence, not PTA or product execution. |
 | `457868f1c4f` — F10 | Agent requests could use a different root and ignored file/budget restrictions → startup captures one canonical directory; request admission rejects root mismatch, authored file lists and unknown budgets before SDK work. | Affected API/lifetime suite: 37 passed. Original wrong-root HTTP success fails the regression. |
@@ -96,7 +124,7 @@ index instead of reintroducing those repairs.
 
 ## Remaining repair candidates
 
-Native Rename and the SDK deadline caller remain candidate source changes
+Native Rename and the SDK deadline caller are absorbed source changes
 on `codex/oct7-substrate-query-owner-build-r1`, after the three-file private
 receipt-decoder visibility prerequisite was integrated at `375173d94dc`. Runtime
 Slice and its feature/input dependency are integrated above.
@@ -486,37 +514,81 @@ whole-repository result.
    needs release-owned signed immutable slots and independent approval; helper
    tests and compiler success do not supply those prerequisites.
 
-## Current compile blocker and final proof handoff
+## Source-bound proof handoff
 
-Actual SDK request: package `quanta-runtime`, lib module
-`sdk::abstract_interpret_builder::non_query_error_tests`, compile class
-`quanta-runtime.no-default.e8963e85866e`. R24 failed compiling
-`quanta-contract-ports`; zero selected SDK cases executed. Its committed
-`src/lib.rs:18` still has `#![forbid(unsafe_code)]`, while
-`src/cfg_dfg_pipeline_port/original_output_custody_v3.rs:55,79` declares
-`try_retain_original_output_grants_v3` and `with_original_output_v3` unsafe.
+Historical blockers are preserved in immutable archives: SDK R24 stopped on
+unsafe/forbid declarations; Native R25 stopped on committed lock drift; Native
+R26 stopped on a redundant generation-row import. All three executed zero cases.
+The current source includes the narrow policy fix, root/nested lock closure and
+single-import removal; these source repairs alone do not establish execution.
 
-The active writers are `OCT7-MUTATION-RECOVERY-SOURCE-CUSTODY` (crate policy)
-and `OCT7-DFG-FINAL-OUTPUT-CUSTODY` (output custody). Their dirty changes are not
-included or approved here. Repair must keep actual producer birth admission,
-original group/operation identity, borrowed row containment and derived
-allocation custody coherent. A global lint relaxation or removing an unsafe
-obligation merely to make compilation pass is not this task's resolution.
+R27's Native and quarantine owners stopped on four PathBuf type errors, with
+zero executed cases. R28's managed-path owner stopped on the new child module
+path plus existing parse/identity imports, also with zero executed cases.
+R30 binds private candidate `7ba2d42e31a66271d114f212484104d2ce721882`, gqlang
+`7ff7ed8290ed872863daa6e83cdb01b338c27160` and Index
+`8642fa9b3b47ac58e4b3d9f2feaea66c599be29d`. It is a scoped candidate proof,
+not qualification of moving main. Public custody methods retain actual producer
+birth admission, original group/operation identity, borrowed row containment and
+derived-allocation obligations; only their lint scope narrows.
+
+### Cross-source build seed — repaired owner
+
+R29 imported a cached tree-sitter build script that embeds compile-time
+`CARGO_MANIFEST_DIR`; its donor snapshot was removed. The destination's source
+files were present, but the executable read the old absolute path. Existing
+sanitization enumerated workspace members and explicit dependency paths from
+`metadata --no-deps`, omitting patched registry dependencies such as tree-sitter.
+This is build-cache correctness, not a parser/product behavior defect.
+
+The sanitizer now uses full locked/offline metadata and starts from packages
+whose Cargo `source` is null. Existing cleanup and verified clean-cache shape
+reuse remain the owners. The change covers all resolved local patches, not an
+exception for one library. Metadata resolution reads more package records;
+registry compile artifacts remain reusable and resolution still fails closed.
+The actual temporary-Cargo fixture deletes the donor, exposes the stale script,
+and verifies the rebuilt destination prints `new`. All 13 sanitizer cases pass.
+Normal main checkpoint: `b453a31eb8470771c8cb81c8b4613277923d7384`.
+
+### Managed TARGET path — integrated scope and acceptance
+
+Owner: `quanta-runtime-query-surface-foundation/src/parse/managed_target_v3.rs`.
+Consumer: ParseQuery pre-key admission, execution and cache admission for the
+original retained TARGET. Two invalid String-style PathBuf checks become one
+private helper that borrows native encoded bytes, checks work addition, charges
+the original control before comparison, and returns the existing phase-specific
+`RUNTIME.GRAPH_PARSE_TARGET_PATH_MISMATCH_V3`. No String allocation, lossy path
+conversion, component normalization, new authority or public contract change.
+
+Integrated files: the managed-target owner and its `path_binding_tests_v3.rs`
+child, plus test-only import repairs in `file_text.rs`, `parse.rs` and
+`parse/parser_port_error_boundary_tests_v3.rs`. Production parser mappings are
+unchanged. Old imports are redirected to their existing owners; test assertions
+and warning policy are retained.
+
+Executed R30 acceptance: five new cases (exact UTF-8 in both phases; different member; component
+alias; original work refusal precedence; non-UTF-8 versus replacement-character
+alias) passed with zero ignored cases. Existing parser error mapping 4, parse 15
+and file identity 6 also passed. Main checkpoints `933daac0014` and `b7fe68c10aa`
+preserve foreign source/index bytes through the normal coordinator. R31 binds
+those integrated files and later common-owner changes to one main tuple; consumer
+execution remains a separate acceptance boundary.
 
 | Next action | Acceptance |
 | --- | --- |
-| Complete the canonical port policy/API packet at its existing owners. | SDK dependency compiles under the intended unsafe policy; producer/consumer custody obligations remain explicit and testable. No compatibility alias or alternative allocator/observer. |
-| Run the SDK five error controls and Native minimal/full registry/mutation requests on frozen committed main. | Exact feature classes, nonzero selected cases, zero failures/ignored; exact typed timeout/non-timeout errors; literal native inventory, provider-off refusal, admitted Preview backend path and Apply refusals. Minimal request is independently NOT_RUN, not claimed blocked by the Full dependency. |
-| Recheck JSON/quarantine after canonical memory-owner drift and execute D1–D7 owner45. | New source-bound receipts or justified unchanged-input reuse; preserve PTA-first ordering, all reviewed witnesses/minima and ignored policies. Resolved maps alone do not count as execution. |
-| Close affected mandatory policies and actual product acceptance. | Retain GOD/Honesty RED until the policy owner resolves attributable findings. Native daemon/installed acceptance stays separate; Linux CHECK requires its signed immutable slots/independent approval. |
+| Revalidate integrated path/parse/identity owners, Native minimal, original output-custody eight, JSON/quarantine, SDK five controls and Native Full registry/mutation on R31. | Exact owning targets/features; nonzero selected cases, zero failures/ignored; original identity/refusal/refund, exact typed errors, literal inventory, provider-off refusal, admitted Preview and Apply refusals. |
+| Execute D1–D7 owner45 on the same source. | Preserve PTA-first ordering, reviewed witnesses/minima and ignored policies. Resolve-only maps and compile success do not count as execution. |
+| Close attributable mandatory policies and actual product acceptance. | Retain unrelated GOD/Honesty/FFI/input findings until their owners resolve them. Native daemon/installed acceptance stays separate; Linux CHECK requires signed immutable slots/independent approval. |
 
 Evidence root:
 `/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/query-owner-build-r1`.
-`final-source-absorption-review.json` pins the current source and nine exact
-hashes. `consumer-integration-r24-source-absorption.json` records code absorption,
-not proof closure. R22/R23/R24 immutable owner archives preserve actual GREEN
-and RED observations. No proof process remains active; no current owner45 root
-is claimed to be running. Private worktree deletion is not absorption evidence.
+`final-source-absorption-review.json` is the historical main `dd7aa33` nine-path
+observation. `lock-r25-r2-import-state.json` and
+`port-policy-and-import-r26-commit-state.json` record the normal new checkpoints.
+`remaining-r31-snapshot-state.json` and its owner state/map bind integrated-main
+acceptance. `remaining-r30-owner-state.json` and archives retain the actual 30
+focused passes used for main import; R27/R28 failed receipts retain their original tuples. Historical receipts keep their original source roots.
+Private worktree deletion is not absorption or proof evidence.
 
 ## Frontend local CI
 
