@@ -1,7 +1,7 @@
 # Remaining work
 
 Updated: 2026-10-07. Latest read-only implementation reconciliation: committed
-Semantica `577a225c3459c27f566643ea2c9bcb95cac71cca`; foreign dirty overlays are
+Semantica `ff8f2ce935fc470351d1dbc6c819173a47f6d65e`; foreign dirty overlays are
 excluded. Source integration and runtime qualification remain separate.
 Original consolidation provenance is retained in ADR-0001/ADR-0005.
 
@@ -15,6 +15,8 @@ Current frozen execution inputs, witness selectors and receipt locations are
 in the [active proof handoff](substrate-repair-checkpoints-2026-10-07.md).
 Its current candidate and historical receipts retain their own source tuples;
 failed zero-case compilations do not become execution proof.
+The [current execution plan](../plans/oct-6-substrate-dedup/readme.md) contains
+non-overlapping write sets, before/after changes, tests and serial main checkpoints.
 Completed repair decisions belong to
 [ADR-0005](../adr/0005-substrate-reuse-and-consumer-projection.md#subsequent-integrated-repair-decisions).
 
@@ -60,15 +62,16 @@ are unfinished proof scopes, not instructions to reimplement those changes.
 | ID / state | Owner and remaining acceptance |
 | --- | --- |
 | D1-PROOF / INCOMPLETE | `quanta-adapters-shape`, runtime SDK and converter: actual factory/export plus pure/PTA-derived/disabled/Cost feature combinations and both Shape gates. Preserve port/PTA authority and exact output. |
-| D2-PTA-PROOF / INCOMPLETE | `quanta-runtime-analysis` precise-query SCC: current canonical owner/caller proof of order/IDs, closure, admission and typed stop. Earlier PTA-first compilation RED is historical. |
+| D2-PTA-PROOF / INCOMPLETE | `codegraph-graph-scc` now owns calculation; graph-utils reexports compatibility paths. Resolve core/facade and actual runtime-analysis/taint plus moved PTA adapter/Andersen caller proofs of order/IDs, closure, admission and typed stop. Old owner45's graph-utils `scc` selector is now zero-case; successor map is47 if other rows remain. The PTA adapter owner is absent from both the old map and current Tarjan8. Earlier compile RED stays historical. |
 | D2-TAINT-PROOF / INCOMPLETE | `quanta-taint-solver` and contract tests: successor-only domain, order/IDs/resource/stop controls, Tarjan gate and explicitly selected ignored `deep_chain_50k`. A zero-test selector fails. |
 | D3-PROOF / INCOMPLETE | `quanta-adapters-dfg` PortDFG and actual taint promotion: remaining canonical owner requests. Pack16 already has a historical canonical result; earlier DFG/taint compile RED executed zero cases. |
 | D4/D5-CUSTODY / UNVERIFIED | SCV2 leaf34 and isolated solver225+API-absence2 have canonical historical results. Rebind unchanged owners or rerun changed inputs for the final integration tuple; do not repeat the old manual-only gap as if canonical results were absent. |
 | SUBSTRATE-POLICY / INCOMPLETE | Complete affected mandatory gates and consumer feature/dependency checks. Topology5 and scoped GOD retirement are integrated; global Honesty/GOD ratchets remained RED. Resolve attributable baseline/identity drift without global reapproval, allow growth or scope reduction. |
 | SUBSTRATE-PRODUCT / UNVERIFIED | F1/D6 and D7 have Python/component evidence; native daemon and product compatibility/installed acceptance remain distinct. Reuse the FCP frozen tuple when the same product boundary is tested. |
-| CHECKED-DEFUSE / OPEN | Committed Rust/Python/Java/C/Go/Kotlin/TypeScript DefUse frontdoors retain seven retired preparsed-carrier getters; active working migrations do not close committed-source or execution acceptance. Migrate the real extraction walks to the existing scoped read and actual current control, retaining exact CFG binding, facts, deterministic order and first refusal. Java initializer regions must remain checked nodes. Do not restore raw getters or reparse controlled input. |
-| CHECKED-LANG-SUPPLIERS / OPEN | Rust/Go/Kotlin/C/TypeScript plugin from-tree HIR and semantic-bundle entrypoints retain ten retired `CfgParsedTree` getter calls (two per owner). T1’s canonical Rust owner reached Rust/Go E0599 and executed zero tests; the other three are static findings. Rust/Go hardcut is assigned to T1; exact claims/source/proof remain separate. Migrate the real calculations through existing scoped checked reads, retaining quarantine, output/order and current refusal. No raw shim, uncontrolled reparse or controlled-input ParseResult fallback. Execute affected owner/feature rails before closing. |
-| CHECKED-CURSOR / PROOF_PENDING | Three common/vendor cursor paths are integrated as `dc2611b96e1`; their original-issued execution acceptance remains open. Common 7 and Java 139 passed on R38; original issuer's five memory/work/cancel cases are blocked before execution by CHECKED-DEFUSE. Keep their no-backing-growth and first-refusal oracles before import. Java ten paths, CFG six paths and the ten-path R43 path/CFG/manifest bundle (`26f16598905`) are integrated; do not import them twice. R44 confirmed the ten-path checkpoint on committed main without private cursor files: 14/5/413/13, zero failed or ignored. That result does not discharge these three cursor paths or the original-issued five controls. |
+| CHECKED-DEFUSE / OPEN | Committed Rust/Java/Python/TypeScript DefUse frontdoors retain four retired preparsed-carrier getters. Existing Rust/Java/Python writers own their WIP; TypeScript is an independent cut after refreshed claims. Migrate the full extraction walks, retaining exact CFG binding, ordered facts, original current and first refusal. C (`480b5fb`), Kotlin (`736a804`) and Go (`070f4f9`) getter migrations are integrated; do not assign them again. Their control/binding acceptance remains in CHECKED-RETAINED-CONTROL. |
+| CHECKED-LANG-SUPPLIERS / OPEN | Rust/Go/Kotlin/TypeScript plugin from-tree HIR and semantic-bundle entrypoints retain eight retired `CfgParsedTree` calls. Rust/Go have current T1 claims and foreign WIP; Kotlin/TypeScript have independent write sets. C is source-integrated (`801fbd6`) with owner acceptance still pending. Migrate the real helper calculations, preserving quarantine/output/order; no raw shim, uncontrolled reparse or retained-tree substitution. The current public plugin trait has no current parameter: ordinary reads and controlled-carrier refusal are separate acceptance. |
+| CHECKED-RETAINED-CONTROL / OPEN | Implement the missing adapter→context→extractor original-output bridge using existing admission interfaces; centralize Native source/backend policy. C/Go scalar snapshots have small duplicate 128 MiB cap/overflow ledgers and fact calculation after the checked callback without current; resolve duplicate mechanics within the actual birth/work/custody cut, keeping distinct grammar projections. Kotlin needs exact Native retained admission. Add sealed mismatch/missing authority and original low-budget/cancel/first-refusal/output-lifetime oracles. Preserve ordinary unsealed compatibility; current/no-tree uses existing test-support context, with no claimed production path. |
+| CHECKED-CURSOR / PROOF_PENDING | Three common/vendor cursor paths are integrated as `dc2611b96e1`; only their original-issued execution acceptance remains open. Common 7 and Java 139 passed on R38; original issuer's five memory/work/cancel cases previously stopped before execution at DefUse compilation. Retain no-backing-growth and first-refusal oracles on the successor source. Java ten paths, CFG six paths and R43 path/CFG/manifest bundle (`26f16598905`) are integrated; do not import them twice. R44 confirmed 14/5/413/13 on its fixed committed checkpoint, not these five controls or current main. |
 
 Semantica Rust acceptance uses `scripts/quanta-build-cli` owner resolve/run.
 Record execution root, recipe, features, source/dependency pins, actual counts
@@ -79,12 +82,13 @@ turn every pure helper run into a full installed qualification.
 
 ## Downstream consumer execution acceptance
 
-F2/F7 code is integrated. The remaining obligations are execution proof:
+F2/F7 production code is integrated. Remaining obligations include execution
+proof and missing real SDK deadline regression coverage:
 
 | ID / state | Owning source and required acceptance |
 | --- | --- |
 | F2 / PROOF_PENDING | Run complete Native minimal/full registry and mutation owners, including admitted context → worker → Preview backend, exact operation parity and provider-off refusal. Preserve PreviewPatch and missing Apply-issuer refusals. |
-| F7 / PROOF_PENDING | Run the five SDK exact timeout/non-timeout controls. Revalidate original output-custody eight, JSON and quarantine on the same frozen source after canonical memory-owner changes. Source/policy repair and older engine/wire results do not supply those executions. |
+| F7 / ACCEPTANCE_OPEN | Run existing SDK mapper five (`sdk::abstract_interpret_builder::non_query_error_tests`), plus the existing engine/lowering/adapter/wire behavioral owners. Add real fluent SDK deadline result coverage; the current mapper five do not prove default30s/three domains/zero-past/final publication behavior. Preserve the adapter-start cooperative deadline contract. Revalidate original output-custody eight, JSON and quarantine after affected memory-owner changes on the frozen tuple. |
 
 F2 and F7 acceptance remain independent; D2 cutover is not a prerequisite for
 the deadline repair. Native Slice/product compatibility remains covered by

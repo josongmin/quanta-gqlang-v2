@@ -1,6 +1,7 @@
 # QGLang documentation
 
 - [잔여 작업](work/remaining.md): 미완료 frontend 계약 검토, downstream 검증·설치 전제와 제안 작업
+- [Substrate 병렬 실행 계획](plans/oct-6-substrate-dedup/readme.md): 현재 소스·작성 소유권, 변경 범위, 테스트·완료 조건과 메인 checkpoint
 - [아키텍처 결정 기록](adr/README.md): 완료된 조사·수리·티켓의 결정과 증거 경계
 - [언어와 owner stack](language/README.md): 현재 지원 범위와 CLI·diagnostics 경계
 - [Frontend execution V3](contracts/frontend-execution-v3.md): 공개 DTO·digest·발행 권한

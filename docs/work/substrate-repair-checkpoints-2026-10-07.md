@@ -5,7 +5,36 @@ host-agnostic contract. Only outstanding execution inputs belong here.
 [Remaining work](remaining.md) owns IDs and acceptance; [ADR-0005](../adr/0005-substrate-reuse-and-consumer-projection.md)
 owns integrated decisions. This handoff issues no runtime or qualification claim.
 
-## Source-bound proof inputs
+## Current source and next execution input
+
+Read-only successor audit: committed Semantica
+`ff8f2ce935fc470351d1dbc6c819173a47f6d65e`, QGLang
+`cb430525cfede1a21a8b599fe34a4a430284bb30`. Foreign dirty work is not a
+committed-source verdict. The [execution plan](../plans/oct-6-substrate-dedup/readme.md)
+and [test plan](../plans/oct-6-substrate-dedup/test-plan.md) own the next work
+allocation and exact request/oracle review; a final execution tuple is not yet frozen.
+
+- C plugin/C DefUse, Kotlin DefUse and Go DefUse getter cuts are integrated.
+  Remaining retired carrier calls are plugins8 + DefUse4, not R45's older17.
+- All thirteen reviewed R43 source postimages, including cursor3, are already
+  absorbed on main. The original issuer5 acceptance remains open. Historical
+  statements below about private/import-pending cursor source apply only to
+  their recorded checkpoint; they are not current import instructions.
+- C/Go snapshot control/budget mechanics and Kotlin retained admission need
+  their concrete control acceptance. Existing shared files are co-owned; no
+  additional shared writer or repeated Go migration is assigned.
+- SDK mapper5 exists, but the old five-behavior wording conflated distinct
+  test owners. Real SDK deadline output coverage is a separate code/test task.
+- SCC now calculates in `codegraph-graph-scc`; graph-utils is its compatibility
+  facade. Old owner45's graph-utils `scc` selector is stale. Reconcile core/facade
+  and uncovered PTA adapter requests (successor47 if other rows remain), and the
+  existing PTA engine witnesses. The three Shape feature-tree diagnostics remain.
+- Source/claim observation: `remaining-r46-plan-audit-state.json`; final source
+  continuity/SCC review: `remaining-r46-main-reconciliation.json`, at the evidence
+  root below. This revision executes no Rust or product tests. No private root
+  source checkout is an active execution candidate for these next tasks.
+
+## Historical source-bound proof inputs
 
 | Input | Exact identity |
 | --- | --- |
@@ -30,9 +59,9 @@ are excluded from each fixed receipt. Freeze a successor before executing again.
 
 | Scope | Required acceptance |
 | --- | --- |
-| Java/common/original traversal | Complete the owner criteria below before importing only reviewed paths. Normal coordinator/hooks and immediate source-drift review remain required. |
+| Java/common/original traversal | Source import is complete; execute original issuer5 on the successor compile closure. Preserve the unchanged no-growth and first-refusal witnesses; normal coordinator/hooks and source-drift review govern new consumer changes. |
 | F2 Native minimum / Full | Whole registry and mutation owners; literal contract→ID/service parity, duplicates, six Mutation IDs, feature-off refusal and admitted context→registry→worker→Preview backend. Provider-only Interactive class or isolated handler proof is insufficient. Full class: `quanta-cli-ingress-runtime.no-default.9d4f950584d2`. |
-| F7 SDK deadline | Five exact timeout/non-timeout controls: default 30s, iteration distinction, all domains, zero/past deadline and non-timeout rejection. Preserve original QueryId/error identity. A cooperative deadline never publishes an overdue result as success. |
+| F7 SDK deadline | Existing SDK mapper5 covers typed error/authority/input/cancellation, not five deadline behaviors. Resolve engine/lowering/adapter/wire owners and add real SDK deadline result coverage. Preserve QueryId/error identity, iteration distinction, supported domains and final publication refusal; timeout begins at adapter analyze, not SDK source read. |
 | Original custody / JSON / quarantine | Revalidate eight original output-custody controls, canonical JSON integration and whole quarantine after affected memory-owner changes. Preserve original-root/lifecycle, first refusal, cancelled/timed-out work, retained births/refunds, poison/storage, last-clone retention and exact durable replay. |
 | D1–D7 owner45 | Same-source owner matrix, PTA-first order, reviewed witnesses/minima and deliberate ignored-test selectors. Resolve-only maps and zero selected tests fail acceptance. |
 | Mandatory policies / product | Close attributable gates without global reapproval, allow growth or scope reduction. Recorded GOD/Honesty/FFI/input findings retain their owners. Actual native daemon and installed Linux CHECK are separate; CHECK needs release-owned signed immutable slots and independent approval. |

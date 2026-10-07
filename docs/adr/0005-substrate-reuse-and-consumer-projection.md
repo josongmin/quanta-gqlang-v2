@@ -123,12 +123,31 @@ to compile; these historical passes do not discharge that acceptance. DefUse's r
 separate checked-node consumer migration, not justification to restore raw
 syntax projection or reparse an original-controlled input.
 
-Later supplier inventory separates five plugin owners (Rust/Go/Kotlin/C/TypeScript,
+Historical R45 supplier inventory at `e7bae76f70b0` separates five plugin owners (Rust/Go/Kotlin/C/TypeScript,
 ten retired `CfgParsedTree` getters) and seven DefUse owners (seven preparsed
 carrier getters). T1’s canonical Rust owner reaches Rust/Go E0599, exit 101 and
 zero tests; the other entries are static source findings. Shared cursor/source
 integration and focused R38/R44 results do not qualify these consumer graphs.
 Existing `ParseResult` getters are distinct from the retired carrier API.
+
+The successor read-only audit through committed Semantica `ff8f2ce935f` confirms C
+plugin (`801fbd6777a`), C DefUse (`480b5fb445d`), Kotlin DefUse (`736a8047245`)
+and Go DefUse (`070f4f96770`) source integration. Remaining carrier calls are
+eight plugin and four DefUse entrypoints; current WIP and claims remain separate
+from committed behavior. D1–D7 source checkpoints are ancestors of this source
+and retain their integrated decisions. The later `ff8f2ce935f` cut moves SCC
+calculation into `codegraph-graph-scc`, leaves graph-utils as compatibility
+reexports, and migrates PTA adapter/Andersen consumers. The old SCC file was
+renamed, not retained as dead duplicate source. Its owner/caller verification
+requires current selectors rather than the retired graph-utils `scc` request.
+
+C/Go grammar snapshots are distinct scalar projections. Their duplicate local
+cap/overflow mechanics and original-control/output acceptance remain in
+[CHECKED-RETAINED-CONTROL](../work/remaining.md#substrate-verification).
+The five SDK mapper tests are distinct from engine/adapter deadline behavior and
+missing real SDK deadline result coverage. These unfinished tasks are scheduled
+in the [successor execution plan](../plans/oct-6-substrate-dedup/readme.md);
+this audit is source evidence, not a new owner or product execution receipt.
 
 The checkpoint record reports separate original-source results:
 
