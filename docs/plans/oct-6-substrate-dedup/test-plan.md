@@ -3,8 +3,8 @@
 Parent: [execution plan](readme.md). This is a request/oracle specification,
 not an execution receipt. Old selectors below are inputs to re-resolution.
 Historical caller/request audit: Semantica `871224b2059422a8f36eca91ffb0c9119238ac9c`.
-Current issued requests/results and the clean committed candidate are recorded
-in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r60r63-source-stability-and-clean-candidate).
+Current issued requests/results and the issued candidate are recorded
+in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair).
 `qv2/` abbreviates Semantica `packages/analysis/quanta-v2/crates/`.
 
 ## Execution contract
@@ -185,6 +185,32 @@ Re-resolve existing R31/R38 requests on the changed memory-owner source:
   merely to bypass a failing count.
 
 ## D1–D7 matrix and policies
+
+### Ordinary language owner and missing-test acceptance
+
+Use whole library `package-all-features` requests for existing
+`codegraph-lang-{c,go,rust,typescript,kotlin}`. R67 actual counts were
+57/54/76/120/43, all0 ignored/filtered. Check required test names in the finished
+owner receipt: Rust's apparent retained-source test was inside a raw string and
+absent from that run. The integrated repair moves that test to module scope and
+preserves foreign-backend/same-length-source HIR and bundle refusal oracles. Require
+both the activated test and the original bundle test. R70 passed77/77 after
+projecting the changed committed IR build dependency; source integration is
+`f574fa82bf1`. R71 accepts C57/Go54/TypeScript120/Kotlin43 on that same successor
+input; all five active owner dependency closures match committed main.
+This proves ordinary outputs and the actually observed refusal cases; original
+current/output custody and controlled-carrier refusal keep their own owner rails.
+
+R68 accepted `quanta-runtime-retrieval-kernel` lib/module
+`scv2_exact_fusion::tests::`, existing no-default feature class `dd907a9a0a0e`:
+34 passed,108 filtered,0 ignored. Require entity-kind separation, joint-generation
+refusal, duplicate-path authority, byte-stable contribution permutations, exact
+rank truncation and no mutation on conflicting identity. R71 accepts that same
+34-case scope on the successor input, with main/external-pin dependency closure
+matched. R70/R71 total385 cases and32 required witnesses across six terminal
+requests; do not count predecessor runs again. Reuse these receipts when source
+and recipe custody match. Controlled original custody, SDK and product rails
+still have separate acceptance.
 
 `remaining-r34-substrate-owner-map45.json` is **45 historical resolve-only
 requests**, not 45 passing runs. Reconcile the changed request definitions before

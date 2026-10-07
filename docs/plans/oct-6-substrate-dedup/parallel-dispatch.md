@@ -3,10 +3,19 @@
 Updated: 2026-10-08. Initial source audit: Semantica
 `871224b2059422a8f36eca91ffb0c9119238ac9c`, GQLang code input
 `01cfe39ca0571b4fc099d41b24628fda70e754fe`. Current execution attempts and accepted
-scopes are in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r60r63-source-stability-and-clean-candidate).
+scopes are in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair).
 Refreshed source/claims are required
 before writing. This document is an execution plan; no implementation or runtime
 result is claimed by its publication.
+
+Latest [R67–R71 checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair):
+Kotlin/local-ledger/rule checkpoints remain on main; Rust's hidden fixture test
+is activated and integrated `f574fa82bf1` after actual77-case proof. R70/R71 accepts385
+ordinary language/SCV2 cases with main-matched active dependencies. SDK2/community2
+remain owned pending changes. Shared backing, SourceWire operation validation,
+facts context and existing member/cohort keeper are already co-owned work;
+assign no second implementation. The integrator owns exact request/witness
+reconciliation and the complete coupled handoff before staged source integration.
 
 [Current ticket states](../../work/remaining.md), [scope and DoD](tickets.md),
 [code boundaries](code-map.md) and [test requests](test-plan.md) remain authoritative

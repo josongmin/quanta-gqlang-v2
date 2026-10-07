@@ -2,7 +2,7 @@
 
 Status: implementation in progress; source edits and execution attempts are
 recorded in the R49 update below and the
-[current execution handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r60r63-source-stability-and-clean-candidate).
+[current execution handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair).
 No product qualification is claimed.
 Updated: 2026-10-08.
 
@@ -51,6 +51,17 @@ handoff; do not substitute this baseline for a current runtime result.
 
 Evidence root:
 `/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/query-owner-build-r1`.
+
+The [R67–R71 checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair)
+confirms Kotlin/local-ledger/rule changes remain integrated and records the
+additional one-file Rust regression activation `f574fa82bf1`. R70/R71 accepts385
+cases across ordinary language libraries and exact SCV2 on one issued source;
+their active dependency closures match that main commit. SDK2/community2 remain pending.
+The canonical supplier implementation already exists in other owners' WIP;
+complete its tree-sitter→Kernel→Foundation→SourceWire closure and general facts
+handoff rather than creating another holder or facts ingress. Those two source
+obligations and unexecuted product acceptance are distinct from the completed
+duplicate accounting removal.
 
 Typed receiver census: **0 retired production carrier getter calls** at R49
 Semantica `f2d85a9c430`. Python checked extraction is integrated as `27d9505015e`;

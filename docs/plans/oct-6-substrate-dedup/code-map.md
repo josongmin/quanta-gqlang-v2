@@ -22,7 +22,7 @@ R63 rule owner34/34 includes the same-IR connection regression, integrated as
 `a23ced26e09`. Minimal compile repairs
 remain in their coowners' source bundles; R52 semantic contract55 passed.
 R54 also accepted common callback2 and Kernel finisher5. The
-[current handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r60r63-source-stability-and-clean-candidate)
+[current handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair)
 records later SourceWire/DFG compile repairs and preserves their coupled ownership.
 
 ## Before / after at the real caller
@@ -56,19 +56,66 @@ records later SourceWire/DFG compile repairs and preserves their coupled ownersh
 
 ## S0: existing common interfaces, one coordinated change
 
-- Latest caller audit at Semantica `4f5e5a0485fe` narrows the missing-authority
-  statement to general facts production.
+- Caller audit at committed Semantica `f574fa82bf1` plus separately observed dirty
+  DFG source narrows the missing-authority statement to general facts production.
   `qv2/quanta-adapters-dfg/src/multi_lang_dfg_adapter/build_pipeline/fact_extraction.rs`
   still passes erased Native control into
   `DefUseFactsParseContextV1::single_parse`; its ordinary output keeper has no
   original output admission. The Java sidecar's
   `original_generated_callable_candidate_v3.rs` does prepare an admitted CFG/facts
-  pair, but explicitly refuses public publication. Existing
-  `OriginalDfgFunctionEvidenceBackingV1::try_issue_original_v1` has no live caller.
+  pair, but explicitly refuses public publication. The dirty
+  `original_workspace_evidence_issue_v3.rs` now calls the existing keeper's
+  `OriginalDfgFunctionEvidenceBackingV1::try_issue_member_original_v3` and
+  `try_issue_original_members_v3` internally. Its producer entrypoint
+  `try_issue_original_java_workspace_evidence_v3` has no actual ingress caller;
+  retained workspace publication still returns `UnsupportedOperation`. Its retained
+  workspace validator consumes existing evidence; it does not issue that evidence.
   The shared backing and original assignment-index constructors are co-owned
   precursors, not a demonstrated successful general issuer/final keeper. Finish
   the producer, storage births and final publication together; do not duplicate
   the active Python-original-port implementation.
+
+### Coupled shared-backing supplier closure
+
+At observed main `f574fa82bf1`, the Java DFG candidate already consumes
+`OriginalSemanticSharedBackingV3`, but the canonical shared-backing definition
+and export remain in other owners' dirty/untracked source. This is a committed
+consumer versus uncommitted supplier gap, not a reason to build a second holder.
+The existing source path is:
+
+1. `third_party/tree-sitter/binding_rust/{lib.rs,native_shared_birth_v3.rs}`:
+   actual shared native birth and fallible retain.
+2. `core/codegraph-cfg-dfg-kernel/src/ports/language_plugin_port/`:
+   `canonical_output_api_v1.rs`, `type_copy_admission_v1.rs` and
+   `shared_value_admission_v3.rs` bind paid birth/retain to canonical admission.
+3. `qv2/quanta-runtime-query-surface-foundation/`: its manifest, `src/lib.rs`,
+   `native_allocation_refusal_v3.rs`, `original_semantic_output_admission_v3.rs`
+   and that module's `shared_backing_v3.rs`, `typed_input_v3.rs`,
+   `std_btree_consumer_v3.rs`, `operation_v3.rs` and same-output tests.
+4. `operation_v3.rs` now consumes SourceWire's `validate_operation_v3` through
+   `qv2/quanta-runtime-source-authority-wire/src/{lib.rs,original_operation_custody_v3.rs}`.
+   Include other mounted module changes required by the selected owner closure.
+
+These are dependency-review paths, not a whole-file staging authorization.
+Freeze the complete compatible postimages, resolve the real owner profiles and
+prove them before serial integration. Importing only the backing/export files
+does not close the current compile graph. Supplier integration also does not
+wire the missing general facts producer: that remains the separate S0 handoff
+above, using the existing member/cohort keeper.
+
+The current read-only supplier/parser inventory is
+`supplier-foundation-parser-f574-readonly-inventory.json` at the evidence root.
+It records existing postimages and overlaps, not a proven transitive Rust
+closure. R63's56 parser errors remain an old-source result. Live source repairs
+several symbols, but the unconditional `std::path::Path` import in
+`quanta-adapters-parser/src/semantic_attribution_normal_edit_materialization.rs`
+is consumed by a Java-gated production request; its test module has its own
+import. This is a no-Java boundary risk, not evidence that an R63 all-features
+error remains. Check the existing no-Java owner before marking it repaired;
+do not gate that production import only with `cfg(test)` or stage partial
+Foundation/SourceWire mounts to obtain a narrower pass.
+
+### Existing S0 protocol owners
 
 - S0-CALLBACK follow-up source `65036b7221a`: existing
   `core/codegraph-lang-common/src/tree_sitter_host/owned_syntax_v1.rs` protocol,

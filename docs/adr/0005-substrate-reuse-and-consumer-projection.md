@@ -159,13 +159,30 @@ retain the expanded caller proof without assigning new SCC implementations.
 The distinct `codegraph-import-graph` cycle substrate joins that owner as
 `daf8bb00bfa`; its cycle domain oracles remain separate from navigation.
 
-C/Go/TypeScript grammar snapshots are distinct scalar projections. Their three duplicate local
-cap/overflow mechanics and original-control/output acceptance remain in
+C/Go/TypeScript grammar snapshots are distinct scalar projections. Their local
+cap/overflow accounting now shares private `syntax_snapshot_budget_v1.rs`,
+integrated `f2d85a9c430` with two scoped boundary proofs. Preserve language
+projections; this local ceiling does not establish original grant/output custody.
+The remaining original-control/output acceptance belongs to
 [CHECKED-RETAINED-CONTROL](../work/remaining.md#substrate-verification).
 The five SDK mapper tests are distinct from engine/adapter deadline behavior and
 missing real SDK deadline result coverage. These unfinished tasks are scheduled
 in the [successor execution plan](../plans/oct-6-substrate-dedup/readme.md);
 this audit is source evidence, not a new owner or product execution receipt.
+
+### Executable regression custody — 2026-10-08
+
+Rust's retained HIR/bundle authority regression was accidentally fixture text
+inside another test's raw string. Source grep counted it; the executable owner
+did not. `f574fa82bf1` moves the existing regression to module scope without
+changing production code or public API. Actual77/77 acceptance includes both
+the restored ordinary bundle test and foreign-backend/same-length-source typed
+refusals, with committed IR dependencies matched before integration. Required
+witness names must be observed in finished owner results. A source `#[test]`
+count alone cannot close coverage. Current proof inputs and remaining controlled
+custody are recorded in the active handoff, not defined by this ADR.
+
+### Historical focused proof record
 
 The checkpoint record reports separate original-source results:
 
@@ -183,7 +200,7 @@ The original preissuer allocation failure was reached before its repair; its
 RED receipt is retained. Metadata resolution and scoped policy checks are not
 Rust test execution. Historical zero-case build failures remain historical.
 
-Native Rename and SDK deadline source integration do not close their execution
+Native Rename and deadline engine/adapter source integration do not close SDK execution
 acceptance. Revalidation after memory-owner changes, D1–D7 owner45, mandatory
 policies, native process and installed acceptance remain in the
 [remaining-work index](../work/remaining.md). The

@@ -19,7 +19,7 @@ Semantica; `core/` means `packages/core/`, `qv2/` means
 
 | ID | Priority | State | Remaining kind / owner |
 | --- | --- | --- | --- |
-| CHECKED-LANG-SUPPLIERS | P1 | PROOF_PENDING | All inventoried plugin cuts integrated; owner acceptance |
+| CHECKED-LANG-SUPPLIERS | P1 | PARTIAL | Ordinary owners accepted and Rust regression integrated; controlled refusal/custody remain |
 | CHECKED-DEFUSE | P0 | PROOF_PENDING | All inventoried source cuts integrated, including Python27d950; actual owner proof remains |
 | CHECKED-RETAINED-CONTROL | P0 | OPEN | Shared output admission, C/Go/TypeScript controls and Kotlin binding; existing downstream owners |
 | F7 | P1 | ACCEPTANCE_OPEN | Real SDK deadline regression plus existing owner proof |
@@ -31,7 +31,7 @@ Semantica; `core/` means `packages/core/`, `qv2/` means
 | D2-TAINT-PROOF | P1 | INCOMPLETE | Taint domain/public contract and 50k depth owner |
 | D2-CALLER-COVERAGE | P1 | PROOF_PENDING | Eleven additional SCC consumer scopes; added by this audit |
 | D3-PROOF | P1 | INCOMPLETE | PortDFG MemSSA and taint promotion |
-| D4/D5-CUSTODY | P1 | UNVERIFIED | Rebind historical SCV2/UnionFind accepted inputs |
+| D4/D5-CUSTODY | P1 | UNVERIFIED | Exact SCV2 accepted; solver/API-absence final-tuple custody remains |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Affected feature/topology/Honesty/GOD policies |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
 | FCP-COMPILE | P1 | UNVERIFIED | Current committed SDK/runtime product build |
@@ -52,6 +52,14 @@ number after SCC caller reconciliation.
 - Source: TypeScript `snapshot_from_cfg_tree_v1` performs the retained checked read
   and feeds the shared scalar snapshot to HIR/dispatch/type/identity calculations.
   Its remaining `ParseResult` getter at684 is a separate live API.
+- Execution: R67 whole libraries passed C57/Go54/Rust76/TypeScript120/Kotlin43,
+  but Rust's retained-source witness was raw-string text and never ran. The
+  one-file repair `f574fa82bf1` activates it; R70 actual Rust77/77 also verifies
+  the committed IR dependency change. R71 accepts C57/Go54/TypeScript120/Kotlin43
+  on that same source, whose active dependency closures match main. Ordinary
+  libraries are accepted; controlled original-carrier refusal remains open.
+  Use terminal receipts and actual witness names; a grep-based
+  `#[test]` census does not establish executable discovery.
 - DoD: exact bundle/HIR/quarantine/ID/order/spans and ordinary parity plus typed
   controlled-carrier refusal pass at the actual owners. The public trait has no
   current parameter. No TypeScript or other integrated migration is assigned again.
@@ -245,8 +253,10 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
 - SCV2 uses common RRF; base UnionFind/active solvers retained, dormant Andersen
   UnionFind removed. Historical SCV2 leaf34 and isolated225+API-absence2 are accepted
   on their original sources. R64 additionally accepted solver225/225 and the
-  separate API-absence2/2 on the independent R63 frozen candidate; SCV2 and final
-  aggregate custody remain open.
+  separate API-absence2/2 on the independent R63 frozen candidate. R71 accepts
+  SCV2 exact fusion34/34 on the current successor source, with its active
+  Semantica and external index closure matched. Solver/API-absence final-tuple
+  custody and the final aggregate remain open.
 - DoD: attest unchanged owner/dependency inputs or rerun changed owners for the
   final tuple. No second RRF implementation, new UnionFind trait or redundant run.
 

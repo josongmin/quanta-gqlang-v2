@@ -1,7 +1,8 @@
 # Substrate remaining proof handoff — 2026-10-07
 
 Owner: Semantica runtime/SDK/API. QGLang owns frontend compilation and its
-host-agnostic contract. Only outstanding execution inputs belong here.
+host-agnostic contract. This handoff records current inputs and their source-bound
+proof history.
 [Remaining work](remaining.md) owns IDs and acceptance; [ADR-0005](../adr/0005-substrate-reuse-and-consumer-projection.md)
 owns integrated decisions. This handoff issues no runtime or qualification claim.
 
@@ -47,13 +48,16 @@ active closeout IDs plus resolved QG-DIAG; proposed A-series work remains a sepa
   readback, producer pins, one remaining getter and20 active states. Current
   claims were not refreshed; refresh them before edits or source assignment.
 
-R60–R61 dirty-overlay attempts are historical. Latest independent candidate is
-R63, committed Semantica `318a1caa941` plus only the rule/community test
-postimages and generated lock records. Its separate checkout is
+R60–R61 dirty-overlay attempts are historical. The independent checkout is
 `/Users/songmin/Documents/code-new/.semantica-gqlang-leaf-proof-oct8`.
-The live shared main retains other owners' dirty source; it is not copied into
-this independent candidate. Its locator, not this initial
-audit baseline, owns the source identity. GQLang's docs checkpoint is `5cd94d025403`;
+R63 used committed Semantica `318a1caa941` plus the rule/community test
+postimages and generated lock records. The R70/R71 successor adds the activated
+Rust regression and the committed IR-build manifest/source and lockfiles;
+its six accepted owner scopes match committed main `f574fa82bf1` at their active
+dependencies. See the [latest checkpoint](#r67r71-main-integration-and-missing-test-repair)
+for exact input and terminal results. The live shared main retains other owners'
+dirty source; that work is not copied into this candidate. Its locator, not this
+initial audit baseline, owns the source identity. GQLang's earlier docs checkpoint is `5cd94d025403`;
 the preceding local `just ci` passed1514 Rust tests,10 doctests and10 frontdoor
 parity tests. Later edits are documentation only and issue no downstream claim.
 
@@ -276,6 +280,87 @@ reuse. R66 custody, results and `r66-immutable-proof-archive.json` retain their 
 request IDs and verified publication hashes. Source acceptance, leaf
 proof and installed product remain
 separate. The candidate stays available until reviewed integration is complete.
+
+## R67–R71 main integration and missing-test repair
+
+Main readback at `77bc829ad70b` confirms `df315e6530f` (Kotlin exact source/backend),
+`f2d85a9c430` (one C/Go/TypeScript snapshot ledger) and `a23ced26e09`
+(same-IR rule result regression) are ancestors. SDK deadline2 and community2
+remain dirty, with unchanged postimage hashes and no execution acceptance.
+The source/claim audit adds no competing facts, shared-backing or parser writer.
+The existing supplier packet also includes Foundation's typed-input/error/operation
+changes and SourceWire's `validate_operation_v3`; the
+[code map](../plans/oct-6-substrate-dedup/code-map.md#coupled-shared-backing-supplier-closure)
+records that complete dependency path. General facts still carries Native control
+without original output admission. Current dirty workspace-issuer code calls
+the existing member/cohort keeper internally; that producer API has no actual
+ingress caller, and retained workspace publication still refuses. Those are
+source gaps, distinct from unfinished proof.
+
+R67 executed whole library owners on the R63 issued source: C57, Go54, Rust76,
+TypeScript120 and Kotlin43, all0 failed/ignored/filtered. Actual required witnesses
+were checked against owner results. Rust's apparent retained-source regression
+was inside a raw string fixture and therefore was **not executed**. Its76/76
+result cannot discharge that required witness. R68 accepted SCV2 exact fusion34,
+108 filtered,0 ignored, with identity/path/generation/order/refusal witnesses.
+
+The Rust repair moves the existing regression to module scope and restores the
+outer bundle fixture to its import and `greet` function. It preserves ordinary
+HIR/bundle equality and independently rejects a foreign backend and same-length
+foreign source for both HIR and bundle. Production code and public API are unchanged.
+R69 executes77/77 including this test. Since actual dependencies include the
+IR build changed at `54d27070d5b`, R70 projects that **committed** manifest/source
+pair and both committed lockfiles into the independent candidate, then repeats
+only the affected Rust owner:77/77,0 ignored/filtered. The active27 local package
+closure, workspace manifests, toolchain and feature policy match main `77bc829`,
+apart from this intended test. R69's removed `thiserror` dependency tree is not
+substituted for R70's actual tree.
+
+Rust's tested postimage SHA256 is
+`5f2aa96119a2a44cb54758e75727b593523cde8e93b7d79f3d6fdf329c055eeb`;
+live, candidate and issued source match. Serial shared-main integration is
+`f574fa82bf123c817e80fc3afc795b4dd033ea3f`, one test file only, with normal
+patch/format/safety hooks passing and the source claim released. R70's campaign
+source digest is `4b2d155632d61ed6e9a47f0091216b2b884901d1299212422c15138b4d46459f`.
+R71 accepts the other language/SCV2 scopes on that same issued source. The six
+terminal requests execute **385 cases**,0 failed/ignored, with32 required witness
+names observed; predecessor runs are not added to that total:
+
+| Run / scope | Passed | Filtered |
+| --- | ---: | ---: |
+| R70 Rust whole library, all-features | 77 | 0 |
+| R71 C whole library, all-features | 57 | 0 |
+| R71 Go whole library, all-features | 54 | 0 |
+| R71 TypeScript whole library, all-features | 120 | 0 |
+| R71 Kotlin whole library, all-features | 43 | 0 |
+| R71 SCV2 exact-fusion module, existing no-default feature class | 34 | 108 |
+
+All six have finished owner GREEN and hash-verified publication. A separate
+offline/locked Cargo-tree audit compares their active Semantica path packages
+against committed main `f574fa82bf1`: Rust27, C27, Go28, TypeScript26, Kotlin28,
+SCV2 49, no changed file. SCV2's eight external quanta-index paths also match the
+clean pin `f60609fe2d28`,280 tracked files. This supports these exact recipe scopes
+on that main source; it is not whole-runtime or installed-product qualification.
+
+Evidence: `r67-main-integration-audit.json`, `r67-owned-proof-results.json`,
+`r67-r68-required-witness-check.json`, `r68-owned-proof-results.json`,
+`rust-retained-test-r69.source.json`/`.patch`, the R69/R70 Rust acceptance files,
+`r70-committed-dependency-projection.json`, `r70-rust-main-closure-audit.json`,
+`r71-main-closure-audit.json`, `r71-owned-proof-results.json` and
+`r70-r71-required-witness-check.json`. Both runs retain immutable receipts,
+publication markers, source custody manifests and actual logs.
+`supplier-foundation-parser-f574-readonly-inventory.json` separately records the
+current co-owned supplier/parser postimages. It does not establish their compile
+closure or resolve all56 historical parser errors; the no-Java import boundary
+and full coupled owner acceptance remain open.
+R67 Rust's missing witness remains explicitly incomplete in its archive; R70
+supersedes it for that test. Finished receipts and publication hashes remain
+archived after normal temporary-snapshot collection. The independent checkout
+is retained; its newer source is not a byte-continuity claim for the collected
+R63 source. Existing R63–R66 results keep their original source, and changed
+main dependencies prevent promoting all13 to current-main qualification.
+SDK/community, original custody, affected remaining policies and installed
+Graph/CHECK retain their own open acceptance. No push or product claim is issued.
 
 ## Historical source-bound proof inputs
 
