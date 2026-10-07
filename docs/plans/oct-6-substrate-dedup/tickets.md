@@ -34,13 +34,13 @@ Semantica; `core/` means `packages/core/`, `qv2/` means
 | D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Affected feature/topology/Honesty/GOD policies |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P1 | BLOCKED_COMPILE | Clean f574 parser pretest diagnostic; complete supplier/module bundle, then SDK/runtime proof |
+| FCP-COMPILE | P0 | BLOCKED_COMPILE | Clean f574 parser pretest diagnostic; complete supplier/module bundle, then SDK/runtime proof |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |
 | SUBSTRATE-PRODUCT | P1 | UNVERIFIED | F1/D6/D7 acceptance rollup; reuse FCP product proof |
 
-P0 reflects a confirmed source migration/custody seam. A pending proof row does
+P0 reflects a confirmed source migration/custody seam or prerequisite compile block. A pending proof row does
 not assert a current runtime defect. Old compile failures and policy RED remain
 historical until reproduced. Request47 is a partial map repair, not the final
 number after SCC caller reconciliation.
@@ -103,6 +103,14 @@ number after SCC caller reconciliation.
   but no output-admission interface. Carry the existing canonical admission through
   adapter→context→actual extractor and final facts retainer. Admit before physical
   growth; retain permits through the last consumer and refund on final drop.
+- **R74 actual Java callers:** dirty runtime-analysis→PTA workspace producer→DFG
+  original issuer is now present. The producer adds `members_v3`, but runtime
+  production and SDK fixture calls omit it. Complete that real argument handoff
+  and the existing workspace transaction formal/alias/catalog/extraction births;
+  transaction issuance and retained DFG publication still intentionally refuse
+  UnsupportedOperation. This narrows the earlier missing-caller claim without
+  closing compile or runtime acceptance. [Code map](code-map.md#existing-java-producer-callers-and-remaining-refusal--r74)
+  records the complete caller paths; no second issuer/keeper is assigned.
 - **C/Go/TypeScript controls and dedup:** `core/codegraph-lang-common/src/{c,go,typescript}_syntax_snapshot_v1.rs`
   had identical 128 MiB cap/checked-add ledgers. R49 extracts those mechanics
   into private `syntax_snapshot_budget_v1.rs`, preserving all charge sites;

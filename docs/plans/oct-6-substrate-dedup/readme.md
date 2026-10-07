@@ -13,6 +13,100 @@ D4/D5. Reuse the separately published current abstract worklist77. The complete
 supplier/parser source bundle and general DFG ingress are still open; no partial
 source import or second implementation is assigned.
 
+## Current remaining audit — R74
+
+Observed committed sources: GQLang `7d0c2ccbdb61` (clean before this documentation
+update), Semantica `f574fa82bf1`. Separately inventoried Semantica dirty postimages
+are not committed behavior or execution proof. The 18 active ticket IDs map to
+six execution groups below; they are not 18 new implementation defects.
+
+| Group / priority | Exact active IDs | Remaining work / exit condition |
+| --- | --- | --- |
+| 1. Compile closure / P0 | FCP-COMPILE | Finish the existing tree-sitter→Kernel→Foundation→SourceWire/parser packet and all changed callers; default/no-Java and Java/product owners compile on one frozen source. Existing patches are co-owned; integrate the complete accepted bundle |
+| 2. Original output handoff / P0 | CHECKED-RETAINED-CONTROL, CHECKED-DEFUSE, CHECKED-LANG-SUPPLIERS, CHECKED-CALLBACK-FIRST-CAUSE, CHECKED-CURSOR | Complete the existing producer/context/extractor/final keeper path; then prove literal facts/binding, controlled refusal, low-budget/work/cancel/first-cause and final-drop lifetime. Ordinary language libraries are already accepted; cursor source and callback source are integrated |
+| 3. Analysis and SCC consumers / P1 | D1-PROOF, D2-PTA-PROOF, D2-TAINT-PROOF, D2-CALLER-COVERAGE, D3-PROOF, FCP-PTA | Reconcile existing owner inputs/features and accept Shape/Cost SDK matrix, PTA adapter/runtime, taint including the explicitly ignored 50k-depth case, DFG/taint promotion and the remaining SCC callers. Reuse D5 and abstract worklist proofs; reproduce the historical PTA bootstrap refusal before assigning a new fix |
+| 4. Consumer regressions / P1 | F2, F7, SUBSTRATE-PRODUCT | Execute Native registry→worker→Preview/provider-off and real SDK deadline/result owners; qualify and integrate the authored two SDK and two community tests; attest existing Python/API/MCP consumer projections. Roll up existing results rather than starting a second daemon/product run |
+| 5. Policy gates / P1 | SUBSTRATE-POLICY | Affected feature/topology, honesty/GOD, FFI/input and generated-source gates pass on the frozen accepted source. Earlier failures require current attribution; no global baseline reapproval |
+| 6. Process and installed acceptance / P1 | FCP-PROCESS, FCP-INSTALL | Receipt-bound actual Graph/CHECK process output and cleanup; installed positive CHECK additionally requires release-owned signed Linux artifacts, immutable slots, independent key/approval and active generation |
+
+### Concrete source obligations and prepared changes
+
+1. **Coupled supplier/module integration:** clean committed f574 parser
+   all-features check has a 105-error pretest diagnostic. Existing shared-backing,
+   SourceWire, parser and module definitions are dirty/untracked. This is one
+   compatible source packet to validate, not 105 independent bug tickets or a
+   request to author another shared holder.
+2. **Existing runtime→PTA→DFG contract handoff:** current dirty source now calls
+   the DFG workspace issuer from PTA. The Java workspace producer requires
+   `members_v3`; the runtime production helper and SDK fixture still omit that
+   additional argument. Supply genuine source/ingress members through the
+   existing path and compile both callers. This is a static current-WIP contract
+   mismatch, not a claimed fresh compiler verdict.
+3. **Successful Original publication:** the existing PTA
+   `issue_workspace_transactions_v1` intentionally returns `UnsupportedOperation`
+   until formal/alias/catalog births and canonical extraction phases are admitted.
+   DFG retained-workspace publication separately refuses ordinary source-world/
+   digest-map births. Complete these owners and retain the same operation/output
+   permits through final publication; passing the new argument alone cannot
+   close this scope.
+4. **General facts output authority:** `FactExtractionRequestV1`→
+   `DefUseFactsParseContextV1::single_parse` still carries erased Native control,
+   without original output admission. Complete that canonical adapter→context→
+   actual extractor→facts retainer handoff. The new Java issuer caller does not
+   establish this general boundary.
+5. **Prepared integration cuts:** two real SDK deadline/result tests, two empty/cyclic
+   community tests and the one-symbol parser no-Java export correction are already
+   authored. Validate their complete dependency closure and exact witnesses, then
+   integrate only their owned postimages. Their current source presence is not
+   accepted execution or main integration.
+
+These obligations belong to the existing 18 IDs. Items 2–4 are one coordinated
+Original source/output change, not three independent replacement engines.
+Actual low-budget/cancellation/refusal oracles must continue to fail before
+unauthorized allocation or publication. Missing required authority stays typed
+failure; an empty member slice, ordinary allocation fallback or fabricated
+fixture admission cannot turn the pipeline into success.
+
+### Completed boundaries and scheduling exclusions
+
+- GQLang `static` already includes size lint and MSRV clippy; large files have
+  module cuts. At this source, `document.rs` is 672 lines, `execution.rs` 1375,
+  `test_support.rs` 2348, `types/check.rs` 1197 and `types/solver.rs` 1136. These are
+  source measurements, not a new size-gate run or a claim that all files are tiny.
+- Earlier mega integration suites have module cuts; the largest current Rust
+  integration file is `types/tests/v3_types_check_edges.rs` at 2396 physical lines.
+  Conformance checks all 18 shipped examples under closed authority, with explicit
+  plan/non-plan/refusal outcomes. The contract document contains the
+  [public DTO field map](../../contracts/frontend-execution-v3.md#public-dto-field-map).
+- Downstream's public DTO entry is the curated `frontend-contract` facade.
+  `ExecutionDocumentV3` remains declared in Pipeline and reexported by that
+  facade; a literal declaration move is not completed or required by this
+  remaining substrate scope. Any further ownership extraction needs its own
+  consumer/cycle/compatibility design, not a blanket "DTO moved" claim.
+- Source checks confirm the Graph witness cap/dedup fix, matching producer/
+  consumer contract trees and vector pin, mixed-EXISTS false-term regressions,
+  and Rename preview/apply plus authored-result-shape rejection coverage.
+  These are not new implementation assignments; downstream execution keeps its
+  separate owner evidence. Authored result shapes remain unsupported by contract.
+- Five ordinary language libraries, exact SCV2 and D5 have 612 accepted cases on
+  the R70/R71/R73 issued source. Separate published abstract worklist 77 is reused.
+  D4/D5 and QG-DIAG are closed; proposed A-series, a new optimizer/SMT engine,
+  hosted CI and automatic fuzz scheduling are outside this closeout queue.
+
+Order: complete Group 1's compatible source/feature packet, finish Group 2's
+Original publication, accept each affected Group 3/4 owner, run Group 5 on that
+committed tuple, and reuse the same artifacts for Group 6. Independent owner
+proof may proceed before Group 2 only if its actual dependency/authority closure
+does not cross that incomplete handoff. Current auditor host is Darwin arm64;
+required process artifacts are not exposed in this process (0/10 environment
+keys), which does not prove another runner lacks them.
+
+Evidence at the existing root: `r74-remaining-source-inventory.json`,
+`r74-current-shared-main-status.json`,
+`r74-current-caller-and-original-obligations.json` and
+`r74-product-prerequisite-readback.json`. This audit runs no Rust owner, policy,
+daemon or installed test and sends no messages to other chats.
+
 This is a successor to the retired Oct-6 implementation packet. It schedules
 unfinished acceptance from [remaining work](../../work/remaining.md); it does not
 reopen integrated decisions in [ADR-0005](../../adr/0005-substrate-reuse-and-consumer-projection.md).

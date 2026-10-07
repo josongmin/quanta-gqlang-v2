@@ -29,9 +29,9 @@ records later SourceWire/DFG compile repairs and preserves their coupled ownersh
 
 | Boundary | Boundary being closed; see current overlay | Required after |
 | --- | --- | --- |
-| Plugin facade | `build_semantic_surface_bundle_with_profile_v1` / `assemble_semantic_module_v1` → from-tree plugin → retired carrier getter → raw helper calculations | Same facade → ordinary scoped read → checked HIR/item/scope/span/dispatch calculation → same validated bundle. Controlled carrier without current-capable contract returns typed refusal |
-| Native facts | `FactExtractionRequestV1` passes source/tree/current → `DefUseFactsParseContextV1::single_parse` → historical raw getter consumers; output admission is absent | Same ingress/context → exact binding admission → real extraction under checked read and original output custody → ordered facts or first typed refusal |
-| C/Go/TypeScript facts | Checked read builds scalar snapshot → callback ends → fact calculation without original current; three local 128 MiB snapshot ledgers | Original admission covers temporary snapshot births, traversals and output lifetime; owned scalar grammar projections retained; shared accounting mechanics |
+| Plugin facade | Facade→from-tree plugin→checked reads is integrated; ordinary owners accepted | Preserve that validated bundle; prove controlled-carrier refusal under the actual current-capable boundary |
+| Native facts | `FactExtractionRequestV1` passes source/tree/current → `DefUseFactsParseContextV1::single_parse` → integrated checked consumers; output admission is absent | Same ingress/context → exact binding admission → real extraction under checked read and original output custody → ordered facts or first typed refusal |
+| C/Go/TypeScript facts | Checked read builds scalar snapshot → callback ends → fact calculation without original current; one shared local128MiB ledger is integrated | Original admission covers temporary snapshot births, traversals and output lifetime; owned scalar grammar projections retained |
 | Kotlin facts | Exact source/backend guard integrated `df315e6`, whole owner70 passed; original output custody remains separate | Preserve that guard and ordinary compatibility; prove original output births, work/cancel refusal and final lifetime |
 | SDK deadline | Real builder passes timeout to adapter; five existing tests cover error mapping/authority/input/cancel | Same execution code with result-based real SDK deadline tests; existing mapping five remain distinct from domain/deadline behavioral proof |
 
@@ -66,14 +66,42 @@ records later SourceWire/DFG compile repairs and preserves their coupled ownersh
   pair, but explicitly refuses public publication. The dirty
   `original_workspace_evidence_issue_v3.rs` now calls the existing keeper's
   `OriginalDfgFunctionEvidenceBackingV1::try_issue_member_original_v3` and
-  `try_issue_original_members_v3` internally. Its producer entrypoint
-  `try_issue_original_java_workspace_evidence_v3` has no actual ingress caller;
-  retained workspace publication still returns `UnsupportedOperation`. Its retained
+  `try_issue_original_members_v3` internally. R74 additionally finds the existing
+  dirty runtime-analysis→PTA original Java evidence path calling
+  `try_issue_original_java_workspace_evidence_v3`. This corrects the earlier
+  "no actual ingress caller" statement; successful publication is still absent.
+  The workspace producer's new `members_v3` argument is omitted by the runtime
+  production helper and SDK fixture, and PTA transaction issuance plus retained
+  DFG workspace publication still return `UnsupportedOperation`. Its retained
   workspace validator consumes existing evidence; it does not issue that evidence.
   The shared backing and original assignment-index constructors are co-owned
   precursors, not a demonstrated successful general issuer/final keeper. Finish
   the producer, storage births and final publication together; do not duplicate
   the active Python-original-port implementation.
+
+### Existing Java producer callers and remaining refusal — R74
+
+Semantica-relative paths:
+
+1. `qv2/quanta-runtime-analysis/src/queries/intraprocedural/production_live_native_lowering_generation_parts_v1.rs`
+   calls the exported PTA workspace producer under `live-native-java-generation`.
+2. `qv2/quanta-adapters-pta/src/production_live_native_workspace_generation_v1/original_java_workspace_v1.rs`
+   now accepts genuine `members_v3` and calls `original_java_evidence_v1.rs`;
+   that helper invokes the existing DFG workspace issuer under the same cohort.
+3. The runtime call and
+   `qv2/quanta-sdk-session-backend-owner/src/production_normal_source_java_workspace_generation_port_v1_tests/original_native_parts_v1.rs`
+   still omit that added member argument. Validate and update these actual callers
+   in the same complete source bundle; no alternate issuer is needed.
+4. PTA `issue_workspace_transactions_v1` currently refuses the nonempty workspace
+   pending admitted formal/alias/catalog births and canonical extraction phases.
+   `retained_workspace_issuance_v1.rs` separately refuses the original DFG source
+   world before ordinary births. These source refusals must be completed before
+   declaring live Original output success.
+
+This is static dirty-source inspection, not a current build or product receipt.
+General `FactExtractionRequestV1`/`single_parse` output admission remains the
+separate missing seam inside the same coordinated change. Preserve missing-
+authority refusal, operation binding and final-drop grant lifetime.
 
 ### Coupled shared-backing supplier closure
 

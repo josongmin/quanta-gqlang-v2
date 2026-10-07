@@ -293,10 +293,12 @@ The existing supplier packet also includes Foundation's typed-input/error/operat
 changes and SourceWire's `validate_operation_v3`; the
 [code map](../plans/oct-6-substrate-dedup/code-map.md#coupled-shared-backing-supplier-closure)
 records that complete dependency path. General facts still carries Native control
-without original output admission. Current dirty workspace-issuer code calls
-the existing member/cohort keeper internally; that producer API has no actual
-ingress caller, and retained workspace publication still refuses. Those are
-source gaps, distinct from unfinished proof.
+without original output admission. At that R67 observation, dirty workspace-issuer
+code called the existing member/cohort keeper internally without an observed
+outer caller. The later [R74 caller audit](../plans/oct-6-substrate-dedup/code-map.md#existing-java-producer-callers-and-remaining-refusal--r74)
+finds an existing runtime→PTA→DFG path and supersedes that missing-caller claim;
+its changed member argument and admitted transactions/publication remain open.
+These are source gaps, distinct from unfinished proof.
 
 R67 executed whole library owners on the R63 issued source: C57, Go54, Rust76,
 TypeScript120 and Kotlin43, all0 failed/ignored/filtered. Actual required witnesses
@@ -409,6 +411,38 @@ GQLang docs checkpoint `081fbd8fa8c8` includes the reviewed R70/R71 and concurre
 R72 observations. No supplier, SDK or community source is imported by these
 proof/doc checkpoints; their complete compiling bundle and execution acceptance
 remain open.
+
+## R74 remaining-work and caller audit
+
+Committed main is unchanged at Semantica `f574fa82bf1`; GQLang input is clean
+`7d0c2ccbdb61` before this docs update. A fresh source/claim inventory records
+co-owned dirty postimages separately. It does not authorize partial integration.
+The [remaining audit](../plans/oct-6-substrate-dedup/readme.md#current-remaining-audit--r74)
+maps all18 active IDs into six groups with their remaining source/proof/product
+exit conditions. No new issue count or replacement implementation is added.
+
+Current dirty source already connects runtime-analysis's Java native helper to
+PTA's workspace producer and the DFG original evidence issuer. The producer's
+new `members_v3` input is not yet passed by runtime and SDK fixture callers.
+PTA transaction issuance intentionally refuses pending admitted formal/alias/
+catalog/extraction births; retained DFG publication separately refuses ordinary
+source-world/digest-map births. The general facts context still has no original
+output admission. These are the exact remaining source boundaries; the older
+"no actual ingress caller" statement no longer describes current WIP.
+
+Static frontend/consumer checks confirm local MSRV/size rails, module splits,
+matching contract trees/vector pin, Graph cap/dedup policy and the authored
+EXISTS/Rename/result-shape regressions. DTO declarations remain Pipeline-owned
+and publicly reexported by frontend-contract; do not claim a physical declaration
+move. No Rust tests or policy gates ran in R74. Auditor process is Darwin arm64 with 0/10
+required process artifact environment keys exposed; availability elsewhere is
+not inferred.
+
+Evidence: `r74-remaining-source-inventory.json`,
+`r74-current-shared-main-status.json`,
+`r74-current-caller-and-original-obligations.json`,
+`r74-product-prerequisite-readback.json`. Existing612 and independent77 receipts
+retain their original sources and qualification scopes.
 
 ## Historical source-bound proof inputs
 
