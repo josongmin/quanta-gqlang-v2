@@ -11,27 +11,29 @@ consumer/policy/product acceptance remains in that index.
 
 ## Current status
 
-- Sixteen local main checkpoints are integrated below. Current private
-  Semantica candidate: `8e625175b91dbad1bb62b0b2bb29057e4d2c02fd`, with committed
-  QGLang `68ff02ef443f` and Index `6a3f6afc8c28`. The private branch is proof
-  input only; no whole-branch import is planned.
-- Event fingerprint extraction and phase oracle are integrated at
-  `00a54727baed`: whole canonical owner 173/173, zero skips.
-- The three-file lifecycle/composition/root-identity interface is integrated at
-  `8fe0dc8ca3a6`: canonical JSON projection module 13/13, zero skips.
-- Remaining acceptance: quarantine reason-custody and test closure6,
-  SDK timeout conversion1 and native Rename2. R24 digest:
-  `692778b66bf70c0d73c37fe132003e7eb0f9c5e10183a40dba8284fc47c3f446`.
-- All fourteen Rust paths pass the impacted static boundary policies. Event and JSON owners passed on R22 and are already integrated. Quarantine,
-  SDK and native requests execute on R24. Pending groups
-  require source-bound receipts and guarded main checkpoints.
-- R21's event owner compiled: 172 passed, one failed, zero ignored. The failed
-  expectation confused Visible with Committed before lease commit. R22 proves
-  both terminal refusals independently; production transitions are unchanged.
-- All 45 D1–D7 typed requests and Cargo projections resolved unchanged on R24.
-  Actual matrix execution waits for the five pending consumer owner requests;
-  resolution alone is not an executed result.
-- GOD and changed Honesty retain their recorded RED states. No baseline,
+- Seventeen local main checkpoints/source packets are reconciled below. Event
+  two-file checkpoint `00a54727baed` and lifecycle three-file checkpoint
+  `8fe0dc8ca3a6` are integrated. The remaining nine source paths were absorbed at
+  `33ff8c41b3ba3de26ff63406c1eab69dc5994daf` by the shared source queue.
+- Latest observed Semantica main: `dd7aa33b2b9d905d793f678361a574d1e898204c`.
+  All nine packet paths match the reviewed candidate byte-for-byte in committed
+  HEAD and working files; all nine are clean. No duplicate commit was created.
+  Every source/proof write claim owned by this task was released normally.
+- Executed owner results: event 173/173 and JSON 13/13 on R22; quarantine 130/130
+  on R24, including the original ten-point allocation-failure refund and
+  last-clone custody controls. These retain their exact source tuples.
+- SDK R24 reached dependency compile RED101: `quanta-contract-ports` forbids
+  unsafe code but declares two unsafe output-custody methods. No SDK cases ran.
+  Both declarations and the forbid policy are unchanged in committed latest
+  main. Related foreign working changes are active and were preserved.
+- Native minimal/full requests remain NOT_RUN. All 45 D1–D7 requests resolved
+  on R24 but executed zero cases. Final execution must use a frozen committed
+  main tuple: canonical memory admission changed in seven owner paths since
+  the old private candidate. No old receipt is relabelled as current main.
+- The private query-owner worktree was removed by the concurrent cleanup
+  (observed absent); this task did not delete it. No root Rust proof is active.
+  Historical receipts/logs are retained under the evidence directory below.
+- Mandatory GOD/changed Honesty retain their recorded RED states. No baseline,
   threshold, allow or scope relaxation was made. Native/installed product proof
   and Rename Apply's missing production response/replay issuer remain separate.
 
@@ -58,6 +60,7 @@ claimed.
 | `669a4608343` — locked dependency closure | Committed parser/source-transition/symbol/executor manifest edges and Python vendor patch were absent from outer/inner lock rows → reconcile exactly five package rows per lock, retaining foreign changes and package versions. | Same committed source/siblings: full outer and inner `cargo metadata --locked --offline` each exit0. Dependency resolution proof only; Rust owner execution follows separately. |
 | `00a54727bae` — event extraction and phase oracle | Extracted free helpers retained `Self` and redundant mutable reborrows; the new observation test skipped canonical lease commit → qualify original enum, reuse original mutable hasher, and assert Visible then Committed after original lease commit. | Whole event owner 173/173 passed with zero ignored/filtered cases; identity/terminal/replay and exact phase witnesses executed. Only two paths imported with normal hooks and claim/barrier release. |
 | `8fe0dc8ca3a` — original lifecycle interface | Getter moved across crate ownership remained private, identity-control import was missing, and an internal root identity was unnecessarily public → expose the original immutable borrowed lifecycle, import canonical control, and keep root identity crate-visible. | Canonical JSON integration module 13/13 passed (24 other target cases filtered by module), zero skips; original lifecycle/root, cancellation, exact work and memory cleanup controls executed. Three paths integrated normally. |
+| `33ff8c41b3b` — source queue absorption | Six-file quarantine repair, SDK timeout conversion and two-file Rename binding/proof source match the reviewed candidate exactly. | Source absorption verified again at main `dd7aa33b2b9`; quarantine 130/130 at R24, SDK compile blocked, Native NOT_RUN. Adoption creates no duplicate commit. External absorption hook/coordinator attestation was not observed; this records ancestry/bytes, not final qualification. |
 
 ### Code owners
 
@@ -466,9 +469,9 @@ whole-repository result.
 | Receipt private visibility — complete | `packages/analysis/quanta-v2/crates/quanta-runtime-receipt-wire/src/`: `canonical_receipt_seed_v1.rs`, its `receipt_gqlang_seed_v1.rs` and `receipt_nested_seed_v1.rs` children | Whole minimal receipt owner 69/69 passed; three-file prerequisite integrated at `375173d94dc` before the SDK caller. SDK conversion retains separate acceptance. |
 | Event fingerprint extraction and phase oracle — complete | `packages/analysis/quanta-v2/crates/quanta-change-event-contract/src/ports/`: `ide_source_lifecycle_port/identity_fingerprint_v1.rs`, `operation_context.rs` | Adopt the reviewed helper repair; test Visible before lease commit and Committed afterward. Whole event library and identity/terminal/replay controls; production framing, tags and transitions remain unchanged. Whole owner 173/173, source-only two-file main checkpoint `00a54727bae`. |
 | Relation lifecycle interface — complete | `packages/analysis/quanta-v2/crates/quanta-runtime-source-authority-wire/src/original_source_control_v3/relation_control_v3.rs` | Existing JSON projection integration module executes all original-root/lifecycle, cancellation/timeout and allocation controls; immutable accessor visibility plus canonical `gqlang/composition_plan_v3.rs` identity-control import and internal `budget_handle.rs` root-identity import, no owner or schema duplication. Canonical module 13/13, main checkpoint `8fe0dc8ca3a`. |
-| Quarantine reason custody and test closure | `packages/analysis/quanta-v2/crates/quanta-sdk-exact-repo-quarantine-owner/src/`: `record_digest_v1.rs`, `committed_terminal.rs`, `publication_lifecycle.rs`, `hellgate_tests.rs`, `original_setup_admission_v3.rs`, `publication_lifecycle/terminal_preissue_v3.rs` | Release failed reason storage independently of a live fingerprint, using the same original control. Retain original group validation, remove the now-unused shared-group constructor and migrate tests. Whole owner plus all 10 allocation-refusal points, last-clone retention, poison/storage/cancellation/durable replay witnesses precede six-file import. |
-| SDK deadline | `packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/abstract_interpret_builder.rs` | Native finite timeout survives actual port conversion; non-timeout errors retain their prior rejection. Import one path after owning tests. |
-| Native Rename | `crates/quanta-cli-ingress-runtime/src/dispatch/operation_binding_registry_v1.rs`, `dispatch/mutation.rs` | Exact inventory plus minimal refusal and real `dist-full` admission; whole registry and mutation owners including admitted context → registry → worker → Preview backend. Import both paths together; production Apply remains unavailable until its real issuer exists. |
+| Quarantine reason custody and test closure — source absorbed | `packages/analysis/quanta-v2/crates/quanta-sdk-exact-repo-quarantine-owner/src/`: `record_digest_v1.rs`, `committed_terminal.rs`, `publication_lifecycle.rs`, `hellgate_tests.rs`, `original_setup_admission_v3.rs`, `publication_lifecycle/terminal_preissue_v3.rs` | Release failed reason storage independently of a live fingerprint, using the same original control. Retain original group validation, remove the now-unused shared-group constructor and migrate tests. Whole owner 130/130 on R24 includes all 10 allocation-refusal points, last-clone retention, poison/storage/cancellation/durable replay witnesses. Six-file source absorbed at `33ff8c41b3b`; current-main proof remains separate. |
+| SDK deadline — source absorbed, proof blocked | `packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/abstract_interpret_builder.rs` | Native finite timeout survives actual port conversion; non-timeout errors retain their prior rejection. One-path source absorbed at `33ff8c41b3b`; actual SDK tests are blocked by the contract-port dependency. |
+| Native Rename — source absorbed, proof pending | `crates/quanta-cli-ingress-runtime/src/dispatch/operation_binding_registry_v1.rs`, `dispatch/mutation.rs` | Exact inventory plus minimal refusal and real `dist-full` admission; whole registry and mutation owners including admitted context → registry → worker → Preview backend. Both source paths are absorbed at `33ff8c41b3b`; actual native proof remains pending. Production Apply remains unavailable until its real issuer exists. |
 | PTA dependency repair — complete | `packages/analysis/quanta-v2/crates/quanta-adapters-pta/src/`: `production_live_native_workspace_generation_v1.rs`, its `original_java_workspace_v1.rs` and `original_java_evidence_v1.rs` children, `production_live_captured_semantic_workspace_generation_v1.rs`, `production_native_lowering_relation_output_v1/admitted_storage_v1.rs`, `native_function_build_generation_authority_binding_v1.rs` | Three canonical feature owner checks passed; six-file delta integrated at `7bbdcc1d4e3`. |
 | Parser feature closure — complete | `packages/analysis/quanta-v2/crates/quanta-adapters-parser/src/language_host_adapter/semantic_module_v3/core/mod.rs`, `semantic_module_v3/mod.rs` | Three canonical feature owner checks passed; only two cfg hunks integrated at `4518fd6fec5`, retaining all foreign working/index bytes. Later retirement of legacy callers may remove or narrow those items further. |
 
@@ -482,6 +485,38 @@ whole-repository result.
 5. Execute actual native daemon/product acceptance. Installed Linux CHECK still
    needs release-owned signed immutable slots and independent approval; helper
    tests and compiler success do not supply those prerequisites.
+
+## Current compile blocker and final proof handoff
+
+Actual SDK request: package `quanta-runtime`, lib module
+`sdk::abstract_interpret_builder::non_query_error_tests`, compile class
+`quanta-runtime.no-default.e8963e85866e`. R24 failed compiling
+`quanta-contract-ports`; zero selected SDK cases executed. Its committed
+`src/lib.rs:18` still has `#![forbid(unsafe_code)]`, while
+`src/cfg_dfg_pipeline_port/original_output_custody_v3.rs:55,79` declares
+`try_retain_original_output_grants_v3` and `with_original_output_v3` unsafe.
+
+The active writers are `OCT7-MUTATION-RECOVERY-SOURCE-CUSTODY` (crate policy)
+and `OCT7-DFG-FINAL-OUTPUT-CUSTODY` (output custody). Their dirty changes are not
+included or approved here. Repair must keep actual producer birth admission,
+original group/operation identity, borrowed row containment and derived
+allocation custody coherent. A global lint relaxation or removing an unsafe
+obligation merely to make compilation pass is not this task's resolution.
+
+| Next action | Acceptance |
+| --- | --- |
+| Complete the canonical port policy/API packet at its existing owners. | SDK dependency compiles under the intended unsafe policy; producer/consumer custody obligations remain explicit and testable. No compatibility alias or alternative allocator/observer. |
+| Run the SDK five error controls and Native minimal/full registry/mutation requests on frozen committed main. | Exact feature classes, nonzero selected cases, zero failures/ignored; exact typed timeout/non-timeout errors; literal native inventory, provider-off refusal, admitted Preview backend path and Apply refusals. Minimal request is independently NOT_RUN, not claimed blocked by the Full dependency. |
+| Recheck JSON/quarantine after canonical memory-owner drift and execute D1–D7 owner45. | New source-bound receipts or justified unchanged-input reuse; preserve PTA-first ordering, all reviewed witnesses/minima and ignored policies. Resolved maps alone do not count as execution. |
+| Close affected mandatory policies and actual product acceptance. | Retain GOD/Honesty RED until the policy owner resolves attributable findings. Native daemon/installed acceptance stays separate; Linux CHECK requires its signed immutable slots/independent approval. |
+
+Evidence root:
+`/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/query-owner-build-r1`.
+`final-source-absorption-review.json` pins the current source and nine exact
+hashes. `consumer-integration-r24-source-absorption.json` records code absorption,
+not proof closure. R22/R23/R24 immutable owner archives preserve actual GREEN
+and RED observations. No proof process remains active; no current owner45 root
+is claimed to be running. Private worktree deletion is not absorption evidence.
 
 ## Frontend local CI
 
