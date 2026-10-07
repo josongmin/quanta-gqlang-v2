@@ -136,6 +136,22 @@ receipts, not repository-distributed or installed-product evidence.
   counting rows. Five paths; no added dependency, second calculation or new
   authority. Java/Python owner compilation and downstream Preview acceptance
   are pending on this frozen source; no main integration is claimed yet.
+- R6 SDK deadline proof compiled zero tests on `a620b157998`: three references
+  to `NativeLoweringOutputBackingV1` failed because its import was conditional
+  while the binding fields and accessors were unconditional. Successor
+  `89a58900de4` imports the same existing type on every binding compile path;
+  it enables no new Cargo feature or dependency. The final dependency repair
+  therefore spans six paths. R9 checks the exact `cfg-dfg` feature class and
+  reruns affected SDK/Slice/native consumers on this source. Superseded queued
+  native jobs supply no verdict.
+- R8 Python-only and R9 `cfg-dfg` checks reached the same Parser dependency
+  failure: an ungated Java raw helper referenced an augmentation type absent
+  in Python minimum, and its facade exported an error with no active caller.
+  Private successor `1cfc4c41d7a` applies the exact existing caller feature
+  predicate to those two items. No Java feature is enabled to mask the error.
+  Its two cfg hunks are recorded separately from concurrent Parser work;
+  foreign dirty bodies/imports remain untouched. R10 freezes this source for
+  three adapter checks and actual Slice, SDK deadline and native Rename tests.
 
 ### Residual code map and completion conditions
 
@@ -148,7 +164,8 @@ whole-repository result.
 | Runtime Slice | `quanta-runtime-analysis/src/queries/advanced/`: `slice_query_bridge.rs`, `slice_query_helpers/output_materialization.rs`, `slice_query_helpers/output_final_membership_tests.rs`, `slice_statement_projection.rs`, `slice_statement_projection/occurrence_projection.rs` (crate under `packages/analysis/quanta-v2/crates/`) | Execute final CFG direction/kind/multiplicity oracle, typed partial refusal, and occurrence-membership tests with `slice-runtime` enabled; then import five paths. |
 | SDK deadline | `packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/abstract_interpret_builder.rs` | Native finite timeout survives actual port conversion; non-timeout errors retain their prior rejection. Import one path after owning tests. |
 | Native Rename | `crates/quanta-cli-ingress-runtime/src/dispatch/operation_binding_registry_v1.rs`, `dispatch/mutation.rs` | Exact native inventory plus provider-off/on admission; admitted context → registry → worker → Preview backend. Import both paths together; production Apply remains unavailable until its real issuer exists. |
-| PTA dependency repair | `packages/analysis/quanta-v2/crates/quanta-adapters-pta/src/`: `production_live_native_workspace_generation_v1.rs`, its `original_java_workspace_v1.rs` and `original_java_evidence_v1.rs` children, `production_live_captured_semantic_workspace_generation_v1.rs`, `production_native_lowering_relation_output_v1/admitted_storage_v1.rs` | Canonical Java and Python feature owner compilation; retain one result owner and existing field/API shapes. Import only reviewed five-file delta. |
+| PTA dependency repair | `packages/analysis/quanta-v2/crates/quanta-adapters-pta/src/`: `production_live_native_workspace_generation_v1.rs`, its `original_java_workspace_v1.rs` and `original_java_evidence_v1.rs` children, `production_live_captured_semantic_workspace_generation_v1.rs`, `production_native_lowering_relation_output_v1/admitted_storage_v1.rs`, `native_function_build_generation_authority_binding_v1.rs` | Canonical Java, Python and `cfg-dfg` feature owner compilation; retain one result owner and existing field/API shapes. Import only reviewed six-file delta. |
+| Parser feature closure | `packages/analysis/quanta-v2/crates/quanta-adapters-parser/src/language_host_adapter/semantic_module_v3/core/mod.rs`, `semantic_module_v3/mod.rs` | Java helper and raw-error reexport use the exact existing caller cfg predicate. Java, Python-only and cfg-dfg owners compile. Import only those two cfg hunks, retaining every foreign staged/working change. |
 
 ## Final acceptance order
 
