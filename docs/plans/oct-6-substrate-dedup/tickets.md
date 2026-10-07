@@ -20,7 +20,7 @@ Semantica; `core/` means `packages/core/`, `qv2/` means
 | ID | Priority | State | Remaining kind / owner |
 | --- | --- | --- | --- |
 | CHECKED-LANG-SUPPLIERS | P1 | PROOF_PENDING | All inventoried plugin cuts integrated; owner acceptance |
-| CHECKED-DEFUSE | P0 | OPEN | Python source; all other inventoried DefUse owners need proof |
+| CHECKED-DEFUSE | P0 | PROOF_PENDING | All inventoried source cuts integrated, including Python27d950; actual owner proof remains |
 | CHECKED-RETAINED-CONTROL | P0 | OPEN | Shared output admission, C/Go/TypeScript controls and Kotlin binding; existing downstream owners |
 | F7 | P1 | ACCEPTANCE_OPEN | Real SDK deadline regression plus existing owner proof |
 | QG-DIAG | P2 | RESOLVED | Existing private exact-field consumer contract; ADR-0008 |
@@ -61,16 +61,17 @@ number after SCC caller reconciliation.
 
 ## CHECKED-DEFUSE
 
-- Alias: existing Python cut; `D-TS` is now proof-only. Python remains with its
-  existing writer; TypeScript is integrated `b32361e9d83` with the shared snapshot.
-- Source: Python `src/extractor/mod.rs:1031` retains the sole production removed
-  carrier call. Python dirty WIP is not committed completion.
-- Change: finish Python's reachable extraction/binding/assignment/helper graph;
-  preserve exact CFG/function binding, fact order, assignments and typed failure.
+- Alias: integrated Python cut; `D-TS` is proof-only. Python is committed
+  `27d9505015e`; TypeScript is integrated `b32361e9d83` with the shared snapshot.
+- Source: zero production retired-carrier calls remain across the inventoried
+  owners. Python enters checked extraction through `extract_facts_with_context_v1`
+  and `frontdoor_phases_v1`; its145 package files and manifest match the R49 snapshot.
+- Change: accept the integrated extraction/binding/assignment/helper graph with
+  owner tests; preserve exact CFG/function binding, fact order, assignments and typed failure.
   A raw shim or reparsing an original-controlled retained input fails acceptance.
 - Dependency: shared output signatures must be coordinated with
   CHECKED-RETAINED-CONTROL. No replacement Python or TypeScript migration writer.
-- DoD: the committed Python call is gone and independent expected facts plus
+- DoD: the committed Python call is gone; independent expected facts plus
   mismatch/resource/first-refusal tests pass. Integrated C/Go/Kotlin/Rust/Java
   and TypeScript owner acceptance remains required, without duplicate implementation.
 

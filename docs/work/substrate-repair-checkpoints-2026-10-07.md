@@ -17,7 +17,8 @@ The [ticket index](../plans/oct-6-substrate-dedup/tickets.md) reconciles 19
 active closeout IDs plus resolved QG-DIAG; proposed A-series work remains a separate roadmap.
 
 - C/Go/Kotlin/Rust/Java and latest TypeScript (`b32361e9d83`) source cuts are
-  integrated. Python DefUse retains the sole carrier call, versus R45's 17.
+  integrated. Python checked extraction joined main as `27d9505015e`: zero retired carrier
+  calls remain, versus R45's17.
   This is an entrypoint source count, not full control qualification.
 - All thirteen reviewed R43 source postimages, including cursor3, are already
   absorbed on main. The original issuer5 acceptance remains open. Historical
@@ -26,8 +27,8 @@ active closeout IDs plus resolved QG-DIAG; proposed A-series work remains a sepa
 - C/Go/TypeScript snapshot control/budget mechanics and Kotlin retained admission need
   their concrete control acceptance. Existing shared files are co-owned; no
   additional shared writer or repeated Go migration is assigned.
-- SDK mapper5 exists, but the old five-behavior wording conflated distinct
-  test owners. Real SDK deadline output coverage is a separate code/test task.
+- SDK mapper5 exists; R49 authors real deadline/error and literal output tests.
+  SDK acceptance remains separate from mapper, engine and adapter evidence.
 - SCC now calculates in `codegraph-graph-scc`; graph-utils is its compatibility
   facade. Old owner45's graph-utils `scc` selector is stale. Reconcile core/facade
   and uncovered PTA adapter requests (successor47 if other rows remain), and the
@@ -64,10 +65,14 @@ source bundles; original grant handoff is still open. QG-DIAG is resolved in
 Both Semantica workspace lockfiles were regenerated offline: duplicate registry
 Unicode was removed without surviving package version/source/checksum changes.
 Foreign dependency records were preserved. Both locked metadata checks passed.
-Kotlin owner attempts stopped before tests at source movement, lock mismatch and
-sibling movement during capture. They are not failed behavior tests or accepted
-execution proof. `implementation-r49-state.json` at the evidence root preserves
-these attempts; subsequent results must identify their own frozen tuple.
+Early Kotlin attempts stopped before tests at source movement, lock mismatch and
+sibling movement during capture. Successor R49 accepted exact1/whole70 Kotlin
+tests, shared snapshot-counter2, Abstract solver77, canonical SCC20 and facade1.
+Kotlin `df315e6` and counter `f2d85a9` are integrated on local main. SDK/parser
+owners stopped before tests at working-tree serde `E0403`; the Abstract adapter
+stopped at normalization module `E0583`. Minimal lexical/path fixes are authored,
+not yet qualified or integrated with their coowners. The immutable receipts and
+`r49-owned-proof-results3.json` retain each tuple; a successor must prove these fixes.
 
 ## Historical source-bound proof inputs
 

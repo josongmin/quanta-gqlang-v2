@@ -28,7 +28,7 @@ local ledger explicitly does not issue original allocation grants.
 | Boundary | Boundary being closed; see current overlay | Required after |
 | --- | --- | --- |
 | Plugin facade | `build_semantic_surface_bundle_with_profile_v1` / `assemble_semantic_module_v1` → from-tree plugin → retired carrier getter → raw helper calculations | Same facade → ordinary scoped read → checked HIR/item/scope/span/dispatch calculation → same validated bundle. Controlled carrier without current-capable contract returns typed refusal |
-| Native facts | `FactExtractionRequestV1` passes source/tree/current → `DefUseFactsParseContextV1::single_parse` → one remaining Python raw getter consumer; output admission is absent | Same ingress/context → exact binding admission → real extraction under checked read and original output custody → ordered facts or first typed refusal |
+| Native facts | `FactExtractionRequestV1` passes source/tree/current → `DefUseFactsParseContextV1::single_parse` → historical raw getter consumers; output admission is absent | Same ingress/context → exact binding admission → real extraction under checked read and original output custody → ordered facts or first typed refusal |
 | C/Go/TypeScript facts | Checked read builds scalar snapshot → callback ends → fact calculation without original current; three local 128 MiB snapshot ledgers | Original admission covers temporary snapshot births, traversals and output lifetime; owned scalar grammar projections retained; shared accounting mechanics |
 | Kotlin facts | Checked node wrapper and first-refusal latch; root bounds but no exact retained source comparison in frontdoor | Exact source/backend admission before calculation; original current tests, first refusal retained, no controlled no-tree reparse |
 | SDK deadline | Real builder passes timeout to adapter; five existing tests cover error mapping/authority/input/cancel | Same execution code with result-based real SDK deadline tests; existing mapping five remain distinct from domain/deadline behavioral proof |
@@ -79,7 +79,7 @@ write set can exceed these two structs. Required missing authority refuses.
 The lower-level snapshot boundary
 uses NativeAllocationControl or admitted backing callbacks, not a kernel import.
 
-## Existing owners: integrated cuts and remaining Python WIP
+## Existing owners: integrated cuts and remaining acceptance
 
 The earlier T1/D0/C65/C66 labels below record ownership observations at the
 baseline. Current claims require refresh; integrated read cuts are acceptance
@@ -130,10 +130,11 @@ boundaries, not instructions to assign their implementation again.
   `import_resolution*`, `parameters*`, `projection_semantics/`,
   `extraction_core/` and authored checked helpers.
 - Preserve `PreserveMayBranches`, source-closed module policy, exact semantic
-  inventory, scopes and closure/capture behavior. Migrate the full walk;
-  current getter removal alone is insufficient.
-- Python `tests.rs` also has a separate generated-statement claim. No blanket
-  Python crate staging; tests require that owner's handoff.
+  inventory, scopes and closure/capture behavior. The complete checked walk is
+  integrated `27d9505015e`; zero retired production calls remain. Its145 package
+  files and manifest match the R49 frozen source; owner execution is still required.
+- Refresh ownership before any further Python edits. No new migration writer or
+  blanket crate staging; source integration alone does not discharge control proof.
 
 ## Integrated Kotlin/TypeScript acceptance boundaries
 

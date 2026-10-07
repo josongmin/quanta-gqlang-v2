@@ -52,16 +52,17 @@ the erased Native control and Java parser issuer do not establish that handoff.
 Keep syntax/facts fixtures small except where depth/allocation mechanisms require
 scale. No sleep-based timing oracle, self-equality or bare `is_ok` success claim.
 
-The current dirty Kotlin candidate adds
+The Kotlin checkpoint `df315e6` adds
 `retained_kotlin_binding_rejects_same_length_foreign_source_and_backend_v1`
-with an exact-source positive and two typed, function-bound refusals. It does
+with an exact-source positive and two typed, function-bound refusals. R49 accepted
+the exact regression1/1 and whole Kotlin owner70/70. It does
 not discharge original current, output lifetime or all traversal controls.
-The current dirty C/Go/TypeScript candidate moves the identical local
+The C/Go/TypeScript checkpoint `f2d85a9` moves the identical local
 128 MiB/checked-add counter into `codegraph-lang-common/src/syntax_snapshot_budget_v1.rs`;
-its exact-cap and overflow tests cover only that local counter. The helper does
+its2 accepted exact-cap and overflow tests cover only that local counter. The helper does
 not issue original grants or account post-snapshot calculation. Review the
-complete producer/consumer cut and run its owners before accepting custody or
-duplicate-removal completion.
+complete producer/consumer cut and run its owners before accepting original
+custody. Local scalar-counter duplication is removed; grant/control custody stays open.
 
 ### Changed language owners
 

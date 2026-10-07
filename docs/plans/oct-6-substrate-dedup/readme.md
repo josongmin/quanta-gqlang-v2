@@ -46,12 +46,12 @@ mechanics in that resource cut, preserve semantics, and qualify actual callers.
 Evidence root:
 `/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/query-owner-build-r1`.
 
-Typed receiver census: **1 retired production carrier getter call** remains:
-Python DefUse. TypeScript plugin/DefUse are integrated as `b32361e9d83`. The live
-`ParseResult::tree_sitter_tree_v1()` API, constructors and test code are excluded.
-This count measures entrypoints, not the size of their reachable helper graphs.
-R45's 17 calls are now 1: 16/17 entrypoint calls migrated (about 94%). This is a
-bounded source metric, not overall task completion or runtime qualification.
+Typed receiver census: **0 retired production carrier getter calls** at R49
+Semantica `f2d85a9c430`. Python checked extraction is integrated as `27d9505015e`;
+its145 package files match the captured R49 source. TypeScript plugin/DefUse were
+already integrated as `b32361e9d83`. Live ParseResult APIs, constructors and test
+code are excluded. R45's17 inventoried entrypoint calls are all migrated. This
+bounded source metric does not establish runtime/control qualification.
 The final SCC cut uses `codegraph-graph-scc` as calculation owner;
 `quanta-graph-utils-v1` is a compatibility facade. The old source is renamed,
 not a remaining dead copy. Historical owner45 requires a successor request map:
@@ -71,7 +71,7 @@ closure and real consumer proof. Feature policy entries alone are not run result
 | Rust plugin + Rust DefUse | Source integrated `ed94af892c0` | Existing owner acceptance; no repeated migration |
 | Go plugin | Source integrated `ed94af892c0` | Existing owner acceptance; no repeated migration |
 | Java DefUse | Read cut `e14eeda8604` and lvalue lifetime follow-up `909ad96cc56` integrated | Current owner acceptance; no repeated lifetime repair |
-| Python DefUse | D0 frontdoor and helper claims; foreign WIP | Existing owner; split only after explicit path/symbol handoff |
+| Python DefUse | Source integrated `27d9505015e`; R49 captured package identical | Existing owner acceptance; no repeated migration |
 | Kotlin plugin | Source integrated `ecc0c5784b4`, sharing checked nodes with DefUse | Owner/control acceptance; cancel its new-migration assignment |
 | TypeScript plugin | Source integrated `b32361e9d83`; checked scalar snapshot | Owner acceptance; cancel new-migration assignment |
 | TypeScript DefUse | Source integrated `b32361e9d83`; shares checked scalar owner | Owner/control acceptance; cancel new-migration assignment |
@@ -120,7 +120,7 @@ execution acceptance requires normal source/lane admission and receipts.
 | P-KOTLIN | Source integrated `ecc0c5784b4`; prove shared checked-node/bundle behavior | Existing owning tests; no duplicate migration |
 | P-TS | Source integrated `b32361e9d83`; prove actual helper/bundle behavior | Existing owner proof; no new migration |
 | D-TS | Source integrated `b32361e9d83`; prove binding/assignment/fact semantics | Existing owner proof; controls covered by S0/snapshot cut |
-| Existing cuts | Python DefUse remains WIP; Rust/Go and Java source cuts are integrated | Python existing owner; other cuts require proof, not redevelopment |
+| Existing cuts | Python DefUse integrated `27d9505015e`; other source cuts already integrated | Existing owner proof, not redevelopment |
 | CONTROL-SNAPSHOTS (former CONTROL-CGO) | Account snapshot materialization and subsequent fact calculation under the actual original owner; resolve three duplicate cap/overflow ledgers | C/Go/TypeScript consumers + shared admission mechanics, one writer; S0 output custody seam |
 | CONTROL-KOTLIN | Check exact retained source/backend binding and exercise original current failure priority | Kotlin DefUse writer, S0 contract |
 | SDK-DEADLINE | Add result-based deadline acceptance through the real fluent SDK caller; retain existing mapper tests | Runtime SDK test owner; Native adapter/deadline behavior is already implemented |
@@ -167,13 +167,13 @@ foreign Python/output-custody hunks remain with their current owners.
 | Wave | Integrator | Worker 1 | Worker 2 | Worker 3 |
 | --- | --- | --- | --- | --- |
 | W0 | Refresh claims; reconcile S0 output signatures and source inventory | Review Kotlin control acceptance | Review integrated TS plugin | Review integrated TS DefUse |
-| W1 | Review existing Python WIP and completed bundles; serialize main checkpoints | CONTROL-KOTLIN review/affected repair | Integrated plugin owner acceptance | Integrated DefUse owner acceptance |
+| W1 | Accept integrated Python source and completed bundles; serialize main checkpoints | CONTROL-KOTLIN review/affected repair | Integrated plugin owner acceptance | Integrated DefUse owner acceptance |
 | W2 | Review control/output custody; reconcile existing WIP | CONTROL-SNAPSHOTS coupled C/Go/TS + common budget mechanics | CONTROL-KOTLIN admission/regressions | SDK-DEADLINE real SDK tests |
 | W3 | Freeze complete committed source tuple; serialize heavy QBC logical lane | D1–D7 and added SCC caller request/feature review | Affected policy reports/fixes in owned paths | Product and installed-trust prerequisite review |
 | W4 | Execute owner matrix and F2/F7 on the frozen tuple | Review immutable receipts / witness coverage | Product artifact and process preparation | Documentation / installed trust prerequisite inventory |
 
-The read-migration portion of Kotlin/Rust/Go/Java/TypeScript is integrated. Python remains
-with its existing writer. Do not spawn a replacement writer for those source cuts.
+The read-migration portion of Kotlin/Rust/Go/Java/TypeScript is integrated. Python source is integrated;
+its existing owner remains responsible for acceptance. Do not spawn a replacement writer for those source cuts.
 W0 audit is complete except the shared owners' output-interface
 reconciliation. W1 read migration may use the existing interface immediately;
 an S0 signature change must be handed off before the dependent source bundle.
@@ -275,7 +275,11 @@ this is not a clean committed-HEAD qualification receipt.
 Kotlin exact binding regression passed1/1 with an accepted QBC owner result on
 Semantica base `90e6bb0ea3d`, captured dirty source digest
 `40d2092ddda2012522722442adf83a8270987b57d2dd56ff3605a7ed0768ba36`.
-Whole Kotlin and common/SDK owner results are still pending.
+Whole Kotlin QBC70/70 and common ledger QBC2/2 passed; these complete source
+bundles are integrated as `df315e6530f` and `f2d85a9c430`. Abstract solver77,
+canonical SCC core20 and facade1 also passed on the captured tuple. SDK, parser
+original5 and callback5 stopped before tests at working-tree compile blockers;
+no behavior-failure claim is made.
 
 - Authored Kotlin retained source/backend admission inside the checked callback.
   Regression includes exact-source facts, equal-length foreign source and foreign
@@ -301,3 +305,10 @@ source inputs. Original DFG output admission remains a coupled upstream/request/
 context/facts-storage/final-keeper change with existing shared owners. The generic
 retained frontdoor currently refuses unadmitted original output; do not remove
 that guard or attach grants to finished rows. No whole-product result is claimed.
+
+R49 reached two working-tree compile defects: duplicate outer/serializer generic
+`S` in semantic snapshot serde, and a missing explicit path to the existing
+SourceWire repo-relative normalization module. Minimal fixes preserve other
+workers' storage/issuer edits; successor owner proof and coupled integration
+remain required. Unicode manifest/lock projection likewise awaits its complete
+coowned checkpoint; metadata coherence on the dirty tree is not clean-main proof.

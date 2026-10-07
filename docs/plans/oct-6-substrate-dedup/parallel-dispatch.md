@@ -17,7 +17,7 @@ Finish existing canonical-owner migrations and budget/output custody, remove
 demonstrated duplicate accounting mechanics, and prove the real consumers on a
 single accepted source tuple. Use the current owners and interfaces.
 
-1. **P0:** finish the existing Python checked-read cut; complete output/binding/
+1. **P0:** accept the integrated checked-read owners; complete output/binding/
    resource custody through adapter→context→extractors.
 2. **P1:** real SDK deadline tests, integrated callback/cursor/language acceptance,
    D1–D7 and added SCC callers, affected policies and actual Native/product proof.
@@ -26,8 +26,9 @@ single accepted source tuple. Use the current owners and interfaces.
 4. **External:** signed installed Linux CHECK trust. Inventory prerequisites early;
    its unavailability leaves FCP-INSTALL open without preventing local owner work.
 
-All inventoried plugins and TypeScript DefUse are integrated. Python retains one
-retired production getter. TypeScript joins C/Go's snapshot/control cut, not a new
+All inventoried plugins and DefUse source cuts are integrated, including Python
+`27d9505015e`; the production retired-carrier census is0. TypeScript joins C/Go's
+snapshot/control cut, not a new
 read-migration assignment. Proposed A-series query/optimizer work remains separate.
 
 ## Four slots and existing writers
@@ -35,7 +36,7 @@ read-migration assignment. Proposed A-series query/optimizer work remains separa
 | Slot | Accountability | Write constraint |
 | --- | --- | --- |
 | I — integrator | Source/claims freeze, shared-signature agreement, independent review, serial main checkpoints, proof receipts and ticket states | Only reviewed complete bundles; no blanket staging or resetting foreign work |
-| A — existing facts owner | Existing Python work first, then common DefUse/output producer handoff | Reuse the existing D0 facts/context writer; another agent reviews while that writer owns the cut |
+| A — existing facts owner | Integrated Python acceptance, then common DefUse/output producer handoff | Reuse the existing D0 facts/context writer; another agent reviews while that writer owns the cut |
 | B — independent consumer/test owner | SDK deadline tests first, then C/Go/TypeScript snapshot control consumers | Consumer files only; shared contract/module registration goes through A |
 | C — independent binding/proof owner | Kotlin admission/oracles, then SCC caller and policy request review | Consumer files only; no shared issuer/context writer |
 
@@ -50,8 +51,8 @@ owner is busy, use the slot for independent request/oracle review until handoff.
 | Wave | I | A | B | C | Exit / checkpoint |
 | --- | --- | --- | --- | --- | --- |
 | W0 — ownership and design | Record HEAD/tree/dirty/claims, affected caller closure and shared signatures | Existing Python/facts writer identifies complete bundle; trace actual DFG source/operation issuer and output retainer | Confirm real SDK caller and deterministic deadline oracles; inspect three snapshot ledgers | Review Kotlin exact source/backend contract and eleven SCC coverage scopes | Real DFG authority witness plus exact paths/symbols, lifetime, compatibility and rejection; no overlapping shared writer |
-| W1 — independent completion | Review and integrate complete independent bundles serially | Finish existing Python scoped-read/binding helpers and tests | Review authored real fluent SDK timeout0/domain/value tests; execution pending | Review authored Kotlin exact source/backend binding test; QG-DIAG is resolved by ADR-0008 | CP1 Python complete closure; CP2 SDK test bundle. Kotlin shared-source repair waits for agreed admission interface |
-| W2 — coupled resource repair | Verify producer→all consumers→final retainer; integrate one complete contract bundle | Existing steward implements missing output/context/source-admission seam and actual original issuer/retainer wiring | Review dirty shared local snapshot ledger extraction; finish C/Go/TypeScript original birth, post-snapshot work/output | Wire Kotlin exact Native binding/current/output and tests to the same admitted contract | CP3 coupled producer + consumer compatibility; all signatures/callers compile and independent resource oracles pass |
+| W1 — independent completion | Review and integrate complete independent bundles serially | Accept committed Python checked extraction and binding tests | Review authored real fluent SDK timeout0/domain/value tests; execution pending | Kotlin binding is committed `df315e6` with exact1/whole70 owner passes; QG-DIAG is resolved by ADR-0008 | CP1 Python source integrated; CP2 SDK test bundle pending actual execution. Original Kotlin output custody still needs the agreed admission interface |
+| W2 — coupled resource repair | Verify producer→all consumers→final retainer; integrate one complete contract bundle | Existing steward implements missing output/context/source-admission seam and actual original issuer/retainer wiring | Shared local counter integrated `f2d85a9` with2 owner passes; finish C/Go/TypeScript original birth, post-snapshot work/output | Wire Kotlin exact Native binding/current/output and tests to the same admitted contract | CP3 coupled producer + consumer compatibility; all signatures/callers compile and independent resource oracles pass |
 | W3 — owner map and local proof | Freeze committed tuple and run admitted heavy owner jobs serially | Review all changed language, callback, original5 and custody witnesses/receipts | Reconcile D1–D7 feature classes and accepted historical inputs; include latest Shape/Cost projection | Reconcile eleven SCC caller scopes, affected policies and product/install prerequisites | CP4 current affected owner + feature/policy verdicts; only reproduced failures reopen source |
 | W4 — real product closeout | Run/attest current product build, SDK/Native and process owners on same tuple | Review original source/first-refusal/custody closure | Review actual SDK/Preview/Graph result oracle and cleanup counts | Verify release-owned installed trust, then installed CHECK when available | CP5 process proof; CP6 installed proof if prerequisites exist; close only accepted ticket rows |
 
