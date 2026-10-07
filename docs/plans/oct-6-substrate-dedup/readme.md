@@ -9,11 +9,11 @@
 - 입력 authority, 결과·순서·ID, typed failure, 취소·예산 계약을 보존한다. 서로 다른 계약은 caller의 작은 admission/projection으로 유지한다.
 - 완료 결과는 **계산 owner 단일화 + 소비자 전환 + 퇴역 코드 삭제 + 로컬 증명 + 재발 방지 gate**다. 파일 이동, forwarding wrapper, 컴파일 성공만으로 완료 처리하지 않는다.
 
-상태: **IN_PROGRESS.** 이번 문서 갱신 기준 GQLang commit은 `43c9ce2`다. 로컬 `just ci` PASS는 이전 `d600cab` 소스의 receipt다.
+상태: **IN_PROGRESS.** 이번 문서 갱신 기준 GQLang commit은 `b87319c`다. 로컬 `just ci` PASS는 이전 `d600cab` 소스의 receipt다.
 
-- **현재 소스:** Semantica clean private `94262f7`/base main `a5edbbd`의 main-first merge, owned 87경로. `3fb`의 본문 87경로와 main-only 23경로는 부모 blob을 보존하며 겹침0이다. Budget30을 막았던 두 테스트 파일의 trait import 수리가 base에 포함된다.
-- **검증:** Exact 입력 102경로(owned87+선행15)의 source policy는 영향받은 92개 정책 PASS/exit0/scope complete다. `942+ext-7c0966bc582839fd8230` snapshot은 GQLang `30b6efd`·Index `ab87837` overlay0으로 sealed됐다. Root·nested locked metadata PASS는 auxiliary 증거다. Source-memory6 실행 중이고 budget30→JSON16→formal9→owner45는 NOT_RUN이다. 이전 `3fb` budget30 컴파일 RED와 `1330` formal9 PASS는 이 소스에 이월하지 않는다.
-- **남은 범위:** D1/D2 본문 main 반영, downstream consumer, generated/global Honesty, native full product. [현재 증거](execution-progress.md).
+- **현재 `aadf` 후보:** Semantica clean private `aadf0d4`/base main `bbd8c1c`는 refusal assertion 수리와 canonical-path 정책 수리를 포함한다. D1/D2 본문87·이번 merge의 main 전용4경로는 부모 blob과 같고 겹침0이다. Exact 입력115경로의 영향 정책95개 PASS/exit0/scope complete, GQLang `30b6efd`·Index `ab87837` overlay0 snapshot sealed, locked metadata PASS(auxiliary)다. Source-memory6 요청 실행 중이며 이후 relation-refusal3→budget30→JSON16→formal9→owner45→graph-birth2는 NOT_RUN이다. D1/D2 본체 main import·generated/global Honesty·제품 검증은 대기다.
+- 이전 `942` source-memory6는 run `20261006T150959.051584Z-459d48cff685`에서 test lib compile exit101/실행0·`unused-must-use` 1건으로 실패했다. 원본 7개를 archive에 보존했다. 테스트 반환값 assertion과 owning-hook rustfmt는 main `7754405`, 기존 verified canonical path의 move를 요구하는 정책 anchor 수리는 main `bbd8c1c`에 반영됐다. 정책 회귀28개 PASS는 Python 결과이며 repaired Rust PASS가 아니다.
+- **다음 완료 작업:** owning sequence → 검토된87경로 main 반영 → topology5/GOD7-key/Honesty3 retirement → Shape/Tarjan gate와 feature/layer 검사. 신규 engine/library 추가 없음.
 
 아래 두 단락은 `3fe` 실행 전의 병합·진단 이력이다. 당시의 `NOT_RUN`은 현재 판정이 아니다.
 

@@ -5334,6 +5334,97 @@
     }
   },
   "current_composed_candidate": {
+    "source": "aadf0d4148db17109ff6452f057f25467a4ebdb5",
+    "base_main": "bbd8c1cf91336e702742aec738275ed5a93e6332",
+    "parents": [
+      "bbd8c1cf91336e702742aec738275ed5a93e6332",
+      "4f9e5c2519f99469482024382e0860ff59e80447"
+    ],
+    "clean": true,
+    "owned_changed_paths": 87,
+    "candidate_state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/candidate-aadf0d4148db-state.json",
+    "candidate_state_sha256": "8a6d0d40b002598131f70e7a587ce8193d0900e1006226310d868173d91cc8e0",
+    "merge_witness": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/merge-aadf0d4148db-preservation-witness.json",
+    "merge_witness_sha256": "0c590b738dfe81cac53459b2fda3ed773b19815145f68650ac3c67f6eea3011b",
+    "merge_review": {
+      "owned_body_paths_exact_second_parent": 87,
+      "main_only_paths_exact_first_parent": 4,
+      "overlap_paths": 0,
+      "normal_hooks": "PASS",
+      "proof_kind": "source merge only; no Rust verdict"
+    },
+    "next_sibling_pins": {
+      "quanta_gqlang_v2": "30b6efd06645762146479f8a5c89e81d6dc85af5",
+      "quanta_index": "ab87837f5d34de1d8f9de9dedcfd44032051a284"
+    },
+    "source_policy": {
+      "status": "PASS",
+      "input_paths": 115,
+      "passed_policies": 95,
+      "exit_code": 0,
+      "scope_complete": true,
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/aadf0d4148db-boundary-policy-current-state.json",
+      "state_sha256": "a0b7ebf0e0cf8b7c7ca2d5d3fdddf6d1dda883f73fd799ec607ad01cd9660867",
+      "log_sha256": "c47b2601fec4b90fedcf0c5c32046a234276f9ac68f62349f2ac02aa201a4716",
+      "proof_kind": "exact source policy; no Rust/product verdict"
+    },
+    "frozen_materialization": {
+      "status": "SEALED",
+      "topology_digest": "aadf0d4148db17109ff6452f057f25467a4ebdb5+ext-7c0966bc582839fd8230",
+      "source_snapshot_digest": "b70d9e46c1b4ee0a7f45fda75efa490752e74efa0cad5f8eebc2c1f8e99eb026",
+      "sibling_overlays": "empty",
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/snapshot-aadf0d4148db-state.json",
+      "state_sha256": "352a053c6ee95419cddc72d256da9363f861b9f3324e4e819f7e2d8b3001f34d",
+      "proof_kind": "source custody only"
+    },
+    "request_map": {
+      "status": "SEALED",
+      "request_count": 45,
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-owner-proof-request-map45-aadf0d4148db.json",
+      "sha256": "7fcac65d7abd9098eea67ca4ffd5ea2103a7452843e58bb7c8f7c25458d51d8d"
+    },
+    "owner_launcher": {
+      "status": "SEALED; not run",
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-current-canonical-owner-proof45-aadf0d4148db.py",
+      "sha256": "009777b73bdd521c284e2877adc75fad8697ec9b37e9f3722ecec9dcad73ec4c"
+    },
+    "pure_owner_projection": {
+      "status": "PASS",
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/pure-validation-aadf0d4148db.json",
+      "sha256": "b74162fad4ee785c0160315c821a2c79d63779af073f69bd86003f27dd477f6a",
+      "proof_kind": "45 canonical and 6 supplemental projections; no Rust run"
+    },
+    "locked_metadata": {
+      "status": "PASS",
+      "root_exit_code": 0,
+      "nested_exit_code": 0,
+      "source_and_locks_unchanged": true,
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/locked-metadata-aadf0d4148db/state.json",
+      "state_sha256": "d7942e6a98e775e9c254706c8dabab4b4d69bc036ae0b81b376070229fb537f4",
+      "proof_kind": "QBC auxiliary metadata only"
+    },
+    "source_bound_sequence": {
+      "status": "RUNNING source-memory6",
+      "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/source-bound-sequence-aadf0d4148db-state.json",
+      "runner": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/run-source-bound-sequence-aadf0d4148db.py",
+      "runner_sha256": "2bc721eaaddac9b408dc28a0055cf657c2504cff749e99d291d61e5aaabd20f3",
+      "order": [
+        "source-memory6",
+        "relation-refusal3",
+        "budget30",
+        "json16",
+        "formal9",
+        "owner45",
+        "graph-birth2"
+      ],
+      "conditional": true,
+      "finalized_owner_results": 0
+    },
+    "d1_d2_main_body_import": "NOT_RUN",
+    "consumer_generated_product_qualification": "NOT_RUN",
+    "next": "Wait for source6 actual result, then affected owning sequence on exact aadf source; bind final import and post-body gates to actual committed main"
+  },
+  "previous_942_failed_candidate": {
     "source": "94262f71aa911d567b769449818c69d41ee3b739",
     "base_main": "a5edbbd09f3b4c5d624f92207dadd8ce07e11191",
     "parents": [
@@ -5404,7 +5495,7 @@
       "proof_kind": "QBC auxiliary metadata only; no Rust compiler/test verdict"
     },
     "source_bound_sequence": {
-      "status": "RUNNING source-memory6",
+      "status": "FAILED source-memory6 compile",
       "state": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/source-bound-sequence-94262f71aa91-state.json",
       "runner": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/run-source-bound-sequence-94262f71aa91.py",
       "runner_sha256": "b765a29119fec9f22925f4c8654de1fc6693536db653567b92ec3366a7ab157f",
@@ -5416,10 +5507,47 @@
         "owner45"
       ],
       "conditional": true,
-      "finalized_owner_results": 0
+      "finalized_owner_results": 1,
+      "executed_tests": 0,
+      "state_sha256": "ff9cef0e1ab3ae1070210ccccbd717e9e6de7c59b34885cae329496e27e36756",
+      "failed_result": {
+        "exit_code": 101,
+        "tests": 0,
+        "compiler_errors": 1,
+        "run_id": "20261006T150959.051584Z-459d48cff685",
+        "archive": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/oct6-source6-94262f71aa91-artifact-archive/manifest.json",
+          "sha256": "6d151e00a273c45c4fd497c332523404c5e653a61f940790a54296cf2fc6efc4"
+        },
+        "reason": "test record_first_refusal_v3 result unused under deny unused-must-use"
+      }
     },
     "d1_d2_main_body_import": "NOT_RUN",
     "consumer_generated_product_qualification": "NOT_RUN",
-    "next": "Wait for source-memory6 receipt, then conditional budget30, JSON16, formal9 and canonical owner45 on exact 942 frozen tuple"
+    "next": "Superseded by aadf repaired-source candidate; no accepted PASS inherited"
+  },
+  "source6_failure_prerequisite_recovery": {
+    "failure": {
+      "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/94262f71aa91-source6-failure-and-prerequisite-state.json",
+      "sha256": "0615e5a0ad437d57824c154730a60580b26933996760a9a15ba8c50117399412"
+    },
+    "fixes": {
+      "relation_refusal_test": {
+        "main": "7754405be96b447e0ad44bbd7f8dd9fcb44b8449",
+        "assertion": "record_first_refusal_v3 returns WorkLimitExceeded",
+        "formatting": "owning normal-hook rustfmt only",
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/relation-refusal-must-use-prerequisite-r2-import-state.json",
+        "sha256": "65e62ec5d887308a8cb4d01ee3da2e0a777d2332a8b35b00a569d00199c83ac3",
+        "owning_Rust_result": "NOT_RUN repaired source"
+      },
+      "canonical_path_policy": {
+        "main": "bbd8c1cf91336e702742aec738275ed5a93e6332",
+        "change": "exact clone anchor to move from same verified observation",
+        "Python_regressions": 28,
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/canonical-path-policy-prerequisite-owner28-state.json",
+        "sha256": "291582ad48e55a35f4eb3674c2b8940e7e28f2871c26583a17551e8077521a84"
+      }
+    },
+    "intermediate_4f9_policy_result": "94 PASS, 1 stale Stage B anchor FAIL; preserved; superseded by aadf95 PASS"
   }
 }

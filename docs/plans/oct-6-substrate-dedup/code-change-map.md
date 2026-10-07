@@ -6,7 +6,11 @@
 
 진행 중 diff/검증/main 반영은 [execution-progress.md](execution-progress.md)에서 별도로 관리한다.
 
-**2026-10-07 현재 변경 경계:** Semantica clean private `94262f7`/base main `a5edbbd`는 `3fb` D1/D2 본문과 두 test trait import 선행 수리를 합친 87경로 후보다. Owned87·main-only23경로는 부모 blob과 같고 겹침0이다. Exact 입력102경로의 영향받은 source policy92개가 PASS/exit0/scope complete다. GQLang `30b6efd`·Index `ab87837` overlay0의 `942+ext-7c0966bc582839fd8230` snapshot은 sealed됐다. Root·nested locked metadata PASS는 auxiliary 증거다. Source-memory6 실행 중, budget30→JSON16→formal9→owner45는 NOT_RUN이다. 이전 `3fb` budget RED는 이월하지 않는다. [현재 실행](execution-progress.md).
+**현재 `aadf` 후보:** Semantica clean private `aadf0d4`/base main `bbd8c1c`는 refusal assertion 수리와 canonical-path 정책 수리를 포함한다. D1/D2 본문87·이번 merge의 main 전용4경로는 부모 blob과 같고 겹침0이다. Exact 입력115경로의 영향 정책95개 PASS/exit0/scope complete, GQLang `30b6efd`·Index `ab87837` overlay0 snapshot sealed, locked metadata PASS(auxiliary)다. Source-memory6 요청 실행 중이며 이후 relation-refusal3→budget30→JSON16→formal9→owner45→graph-birth2는 NOT_RUN이다. D1/D2 본체 main import·generated/global Honesty·제품 검증은 대기다.
+
+이전 `942` source-memory6는 run `20261006T150959.051584Z-459d48cff685`에서 test lib compile exit101/실행0·`unused-must-use` 1건으로 실패했다. 원본 7개를 archive에 보존했다. 테스트 반환값 assertion과 owning-hook rustfmt는 main `7754405`, 기존 verified canonical path의 move를 요구하는 정책 anchor 수리는 main `bbd8c1c`에 반영됐다. 정책 회귀28개 PASS는 Python 결과이며 repaired Rust PASS가 아니다. [기록](/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/94262f71aa91-source6-failure-and-prerequisite-state.json).
+
+**2026-10-07 이전 변경 경계:** Semantica clean private `94262f7`/base main `a5edbbd`는 `3fb` D1/D2 본문과 두 test trait import 선행 수리를 합친 87경로 후보다. Owned87·main-only23경로는 부모 blob과 같고 겹침0이다. Exact 입력102경로의 영향받은 source policy92개가 PASS/exit0/scope complete다. GQLang `30b6efd`·Index `ab87837` overlay0의 `942+ext-7c0966bc582839fd8230` snapshot은 sealed됐다. Root·nested locked metadata PASS는 auxiliary 증거다. Source-memory6 compile RED/실행0, budget30→JSON16→formal9→owner45는 NOT_RUN이다. 이전 `3fb` budget RED는 이월하지 않는다. [현재 실행](execution-progress.md).
 
 **2026-10-06 이전 `3f5c` 변경 경계:** Semantica clean private `3f5c4ac`/base main `7ba1cf1`은 D1/D2 본문과 parser 수리·boundary policy를 main-first merge한 87경로 후보다. Exact 92 input paths source policy92 PASS였으나 owner1/45는 Cargo `--locked` 선행 단계에서 exit101/테스트0·RED였고 나머지44 NOT_RUN이다. Root/nested lock 누락 edge는 이후 main `2852932`와 private `a162` 소스로 수리됐다. [이전 실행](execution-progress.md).
 
