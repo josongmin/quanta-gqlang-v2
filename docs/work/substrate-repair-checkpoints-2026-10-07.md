@@ -24,6 +24,10 @@ claimed.
 | `975d1a3a41a` — F7 engine | Caller timeout ignored → one absolute deadline across existing SCC/worklist/narrowing and final result publication; lowering keeps typed stop and adapter covers all three domains. | Whole owning libraries: engine 73, lowering 58, adapter 21 passed; no filters or skips. |
 | `e46cf07f5b1` — F2 Python | Current closed contract requires cap on every phase; SDK omitted it and Apply exposed no caller limits → Preview/Rollback retain null; Apply takes explicit typed positive u64 output/live limits and rejects absent/invalid limits before Preview. | 321 cases across the SDK execute owner and new cap/phase contract tests passed, no skips. Original Preview producer fails generated contract admission. |
 
+| `8edd1b0733c` — F4/F9 Q3 | Cap was checked after neighbor insertion; composite slices retained BFS discovery direction and could accept bounded prefixes → admit before insertion, typed Incomplete, original induced eligible PDG edges. Empty-PDG failure precedence is retained. | Fresh frozen `a620b157998`: Q3 module 37/37 passed. Original cap oracle executes 1 and fails with root incorrectly admitted at cap0. Runtime projection acceptance remains separate. |
+
+| `ecf12903bf3` — F7 native wire | Deadline stop lost its finite error/category contract → append payload-free RuntimeError stop, preserve old wire tags, map to AnalysisTimeout/ResourceLimit and close minimal serde feature. | Wire integration 2/2 and timeout/category projection 1/1 passed on their frozen owner sources. Concurrent main PTA feature ownership change is preserved; whole latest-main qualification is not claimed. SDK caller conversion remains a separate candidate. |
+
 ### Code owners
 
 Paths are relative to `semantica-codegraph-v2/`.
@@ -38,14 +42,14 @@ Paths are relative to `semantica-codegraph-v2/`.
 
 ## Remaining repair candidates
 
-Native and Slice candidate source changes are on the private branch
+Native and runtime Slice candidate source changes are on the private branch
 `codex/oct7-substrate-query-owner-build-r1`; they are not yet claimed integrated.
 
 | ID | Structural change | Acceptance still required |
 | --- | --- | --- |
 | F2 native | Add the missing canonical `mutation.refactor-rename` runtime binding. Retain existing typed backend, provider checks and Preview/Apply controls. Exact mutation inventory is the oracle, not a refreshed numeric count. | Execute native binding parity and feature-off refusal; prove public Preview reaches existing dispatch/backend; preserve phase/cap/host refusals. |
-| F4/F9 | Admit each new eligible PDG node before insertion; distinguish zero cap, exact fit and omitted work. Composite bounded prefixes return typed Incomplete. Derive Chop/Dice PDG edges from final membership in original orientation. Runtime derives CFG blocks and occurrence metadata from final membership and retains original CFG edge kinds/counts. Included parameter provenance remains available while authored-statement display excludes parameter-only rows. | Q3 owner: 37 passed, including 8 new regressions. Execute runtime output/statement and SDK refusal oracles on the final source; original traversal must fail the independent cap oracle. |
-| F7 native | Solver/lowering/adapter are integrated. Append a payload-free RuntimeError deadline refusal and preserve it through native SDK plus exhaustive timeout/category mappings; do not invent QueryId. | Engine owner: 73 passed; lowering owner: 58 passed. Whole adapter owner: 21 passed. Native wire and SDK projection proof still pending. Check default30s, iteration distinction, all domains, zero/past deadline and non-timeout rejection controls. |
+| F4/F9 | Admit each new eligible PDG node before insertion; distinguish zero cap, exact fit and omitted work. Composite bounded prefixes return typed Incomplete. Derive Chop/Dice PDG edges from final membership in original orientation. Runtime derives CFG blocks and occurrence metadata from final membership and retains original CFG edge kinds/counts. Included parameter provenance remains available while authored-statement display excludes parameter-only rows. | Q3 owner: 37 passed, including 8 new regressions. Q3 is integrated at `8edd1b0733c`; original traversal failed the independent cap oracle. Execute runtime output/statement and SDK refusal oracles on final source. |
+| F7 native | Solver/lowering/adapter are integrated. Append a payload-free RuntimeError deadline refusal and preserve it through native SDK plus exhaustive timeout/category mappings; do not invent QueryId. | Engine owner: 73 passed; lowering owner: 58 passed. Whole adapter owner: 21 passed. Native wire integration 2/2 and timeout/category projection 1/1 passed on their recorded frozen sources; SDK projection proof remains pending. Check default30s, iteration distinction, all domains, zero/past deadline and non-timeout rejection controls. |
 
 F7 does not promise hard interruption inside user callbacks, collection sorting
 or lowering/projection calls. The deadline is checked at cooperative work
@@ -99,6 +103,22 @@ Local custody directory:
 `~/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/query-owner-build-r1/`.
 Original logs and source specifications are archived there; they are local
 receipts, not repository-distributed or installed-product evidence.
+
+### Successor proof inputs
+
+- Native wire `f7addd36e49`: 2/2 tests passed with the canonical minimal
+  `input-cell-surface,wire-base-identity` class. The feature's missing
+  `serde/derive` edge was repaired at its owner; no new dependency was added.
+- Timeout/category mapping `b8644ab5c6b`: 1/1 passed with 33 nonselected cases.
+- Q3 successor `a620b157998`: source digest
+  `ffbc26a108204a4585a2c5ca3814cc893d434756cd120cf4bfe75e10a5b2aad8`.
+  It adopts committed main DFG import repair `c26a43639b6`; the older Q3
+  `b8644ab5c6b` compile failure is superseded, not a current source defect.
+- The older R4 runtime jobs were cancelled after that dependency was superseded;
+  pending work is rerun on R6. Cancellation supplies no test verdict.
+- Rename provider proof now additionally enters the actual admitted context,
+  registry and worker before the existing backend. Its source is `7eea70e4a06`;
+  an isolated handler receipt alone does not close that path.
 
 ## Final acceptance order
 
