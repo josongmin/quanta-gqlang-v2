@@ -2457,6 +2457,16 @@
           "sha256": "a28903d510cec88eb27b31b7f7658307036aa1db00370aaf8ab869b7e83d29d1"
         },
         "scope": "committed path impact only; no changed Rust bodies/unit ownership/dirty overlay/consumer verdict"
+      },
+      "later_D5_generated_main": {
+        "main": "6dd27ad5f05a5775132d94276c3fa93a4dba581c",
+        "paths": 5,
+        "source_changes": 2,
+        "evidence": {
+          "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/d5-6dd-verified-owner-evidence-r1/manifest.json",
+          "sha256": "83d5ff9aeba9e59434484aa92341e8aa430cef2d4791d283c23f548e8bd7746d"
+        },
+        "root_R5_retained_as_history": true
       }
     },
     "global_Honesty": {
@@ -2483,7 +2493,7 @@
       "interpretation": "baseline ratchet reports, not adjudicated runtime defects; no baseline blessing, scope narrowing or allows"
     },
     "generated_Honesty_product_qualification": "generated5/retired GOD7 main complete; global Honesty/GOD RED; owning Rust and actual downstream qualification incomplete",
-    "next": "DFG prerequisite is already main59e5e612. Freeze one committed triplet; run affected PTA/parser/Shape/SDK owning consumer recipes and repair demonstrated blockers at their owners. The independent D5 compile-fail proof still has an implicit prior-rlib build assumption. Global Honesty reconciliation and exact2/6/3 retirement remain blocked; do not bless the full baseline or duplicate imported body/generated files.",
+    "next": "Freeze one committed triplet; run affected PTA/parser/Shape/SDK owning consumer recipes and repair demonstrated blockers. D5 self-contained proof fix is main6dd; use two owners lib225 and integration2 instead of historical lib227. Global Honesty reconciliation and exact2/6/3 retirement remain blocked; do not bless full baselines or duplicate imported body/generated files.",
     "DFG_compile_prerequisite": {
       "main": "59e5e612c1b97581f5df746603eaf715935b5a4f",
       "evidence": {
@@ -2491,6 +2501,16 @@
         "sha256": "2bb16876bdd8324e082fe793abdd4f02ebb837b939f2332afba829566b56db89"
       },
       "status": "source repair landed; independent static review PASS; no new Rust verdict"
+    },
+    "D5_self_contained_proof_repair": {
+      "status": "MAIN; independently verified canonical candidate lib225+integration2 PASS",
+      "main": "6dd27ad5f05a5775132d94276c3fa93a4dba581c",
+      "evidence": {
+        "path": "/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/d5-6dd-verified-owner-evidence-r1/manifest.json",
+        "sha256": "83d5ff9aeba9e59434484aa92341e8aa430cef2d4791d283c23f548e8bd7746d"
+      },
+      "source_snapshot_digest": "286aa0e948cb26a4a2b1badf823e53da17ddeaf270836b97b4c011af31d950ff",
+      "current_main_triplet_qualification": "NOT_RUN; no receipt composition"
     }
   },
   "main_closeout_history": [

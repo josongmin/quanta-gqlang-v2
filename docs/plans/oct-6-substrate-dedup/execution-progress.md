@@ -4,7 +4,7 @@
 
 ## 현재 source와 generated closeout — 2026-10-07 (`dfc48c5` / `ff784c50`)
 
-**현재 main 반영:** D1/D2 본문87경로는 `712b5e8c`에 있다. Test mount 3파일은 `d3e2cee`, Honesty macro token parser 2파일은 `bacc30b`, GOD exact7 retirement는 `dfc48c5`, gateway 정책 2파일은 `52c0d1f`에 반영됐다. **Topology 5파일은 committed source `0fbfe754`에서 전체 재생성 PASS, 기존 main `ff784c50`의 생성물과 바이트가 같음을 확인했다.** 앞선 `c964115` 재생성은 coordinator child 경로2곳을 찾지 못해 RED였고 설치·import0이다. 경로2개 명시 수리는 main `0fbfe754`에 반영했다. 재생성 중 HEAD 유지, source 수리 normal hooks PASS·exact5 clean·claim/barrier 해제를 확인했다. 생성물 추가 커밋0이다. 신규 엔진·라이브러리·public 계약 변경은 없다.
+**현재 main 반영:** D1/D2 본문87경로는 `712b5e8c`에 있다. Test mount 3파일은 `d3e2cee`, Honesty macro token parser 2파일은 `bacc30b`, GOD exact7 retirement는 `dfc48c5`, gateway 정책 2파일은 `52c0d1f`에 반영됐다. **Topology 5파일은 committed source `0fbfe754`에서 전체 재생성 PASS, 기존 main `ff784c50`의 생성물과 바이트가 같음을 확인했다.** 앞선 `c964115` 재생성은 coordinator child 경로2곳을 찾지 못해 RED였고 설치·import0이다. 경로2개 명시 수리는 main `0fbfe754`에 반영했다. 재생성 중 HEAD 유지, source 수리 normal hooks PASS·exact5 clean·claim/barrier 해제를 확인했다. R5에서는 생성물 추가 커밋0이었다. 이후 D5 source2개와 topology5 갱신은 main `6dd27ad5`에 반영됐다. 신규 엔진·라이브러리·public 계약 변경은 없다.
 
 Test mount의 Python14 PASS와 정의65개 보존/수정 후 각 owner1개를 확인했다. **65는 single-owner 게이트 신고 수이며 65개 실제 중복 실행을 관찰한 수가 아니다.** Gateway49 신고에는 feature 변수16개 초과 시 overlap을 보수적으로 판정한 경우가 포함된다. Plain-test branch의 fallback 겹침, path 정규화11개의 단독+묶음 등록, taint helper5개의 재포함은 소스에서 확인했다. 중복 mount와 함의된 outer guard를 제거했고 full/core feature 조건·테스트 정의는 보존했다. 게이트의 overlap 판정이나 한도를 완화하지 않았다.
 
@@ -385,3 +385,6 @@ GQLang local `just ci` 재실행은 **all groups passed**, source snapshot `83f9
 
 
 **생성 계약 후속 source 비교:** R5 source `0fbfe754` 이후 관찰 main `fe38d882`의 committed delta는21경로다. Canonical classifier의 full-regeneration 입력0·cheap-header 입력0이다. 이는 generator 입력 영향 분류이며 Rust body·새 unit authority·dirty source·consumer proof를 검증한 결과가 아니다.
+
+
+**D5 후속 완료 (`6dd27ad5`):** compile-fail2개를 `tests/steensgaard_public_surface_compile_fail.rs` integration target으로 옮겨 Cargo가 자체 library를 빌드하게 했다. 기존 API-absence 진단과 infrastructure 오류 거절 assertion을 보존했다. 격리 후보의 canonical owner receipts는 lib225/225와 integration2/2 PASS이며 source digest는 `286aa0e948cb…`다. 두 소스 파일이 main과 byte exact이고 topology5도 같은 commit에 반영됐다. 총227개를 두 owner로 나눈 것이며 historical lib227 selector를 그대로 재실행하거나 검증 수량을225로 낮추지 않는다. 이 후보 receipt는 최신 전체 triplet·consumer qualification이 아니다.
