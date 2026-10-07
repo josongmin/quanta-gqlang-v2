@@ -600,3 +600,56 @@ external-consumer positive 1 and negative compile-fail 23.
 Subsequent edits here and to the remaining-work/ADR reconciliation are prose
 updates; the receipt is retained at its original source. This is local CI,
 not a clean committed-HEAD qualification receipt.
+
+## Verified R43 checkpoint — integrated 10 paths, cursor acceptance open
+
+Semantica main checkpoint: `26f165989053b911bf28ce8296aa9c38bea99445`.
+Normal shared-main coordinator/hooks, exact saved preimages, committed postimages
+and preservation of foreign staging were verified; the barrier and completed
+path/CFG/manifest claims were released. No push is claimed.
+
+| Changed owner | Resulting behavior |
+| --- | --- |
+| Source-authority wire, Parse TARGET and HIR | Reuse one admitted native-path byte comparator. Checked combined work, literal path components, original refusal and non-UTF-8 rejection are preserved; no copied or lossy path is created. |
+| CFG checked-root entry | Backend validation remains first; a supplied current stop is checked before ordinary custody can replace it with authority rejection. A live control cannot upgrade ordinary syntax. |
+| Symbol owner manifest and CFG fixtures | Promote an existing production dependency from dev dependencies and migrate three fixtures to their existing checked APIs. No package, version, feature, engine or test oracle is replaced. |
+
+The canonical owners executed on candidate
+`c55a232607c0284116e31e26d76a21150f773d6e`, based on committed main
+`235cd4c48ff89bfbe8cea701dfd61ed5c93ee5db`. Source digest:
+`6d9166fc6a2bedc5c891b14983c1981aa4f49fdf11f7189b8ba77bbcdaad06fe`.
+Committed siblings: QGLang `7ff7ed8290ed872863daa6e83cdb01b338c27160`,
+Index `8642fa9b3b47ac58e4b3d9f2feaea66c599be29d`.
+
+| Canonical owner | Passed | Failed / ignored |
+| --- | ---: | ---: |
+| Wire borrowed-byte comparison | 14 | 0 / 0 |
+| Parse managed-path owner | 5 | 0 / 0 |
+| Whole CFG library | 413 | 0 / 0 |
+| Actual relation-execution JSON integration | 13 | 0 / 0 |
+
+All 445 passes share this candidate. Scoped GOD scan of the changed production
+paths reports six scanned, zero stale or allowed entries. Test/vendor paths are
+excluded by that policy; this is not a global policy verdict.
+
+Evidence at the recorded recovery directory:
+`remaining-r43-snapshot-state.json`, `remaining-r43-owner-state.json`,
+`current-r43-main-import-state.json`, `current-r43-final-absorption-review.json`,
+and `current-r43-owned-god.log`. Earlier R38 common 7/Java 139 and R40 quarantine
+130 results retain their own tuples and are not added to this same-source total.
+
+Exactly three reviewed cursor files remain different between the candidate and
+the integration checkpoint: common checked-read walk, its traversal tests, and
+vendor native cursor continuation. Keep the private checkout/branch
+`codex/oct7-substrate-current-owner-r43` until the original issuer's five
+memory/work/cancellation controls execute with their existing oracles.
+The genuine adapter owner currently stops before cases at Java DefUse; Java and
+Python still consume the retired raw-tree getter in committed main. Rust
+consumer source is under a distinct active writer claim. This task has authored
+no DefUse consumer body and will not restore raw getters or reparse controlled input.
+
+The candidate includes these three private cursor files. The four owner results
+therefore qualify that candidate, not the entire integration checkpoint. Native
+minimum/full, SDK deadlines, D1–D7 owner45, mandatory policies, daemon/installed
+Linux CHECK and clean committed-HEAD qualification retain their own acceptance.
+The latest status in this section supersedes older preparation notes above.
