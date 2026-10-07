@@ -1,605 +1,249 @@
-# Substrate repair checkpoints — 2026-10-07
+# Substrate remaining proof handoff — 2026-10-07
 
 Owner: Semantica runtime/SDK/API. QGLang owns frontend compilation and its
-host-agnostic contract; the downstream repairs below introduce no new engine,
-compiler, external library or hosted CI.
+host-agnostic contract. Only outstanding execution inputs belong here.
+[Remaining work](remaining.md) owns IDs and acceptance; [ADR-0005](../adr/0005-substrate-reuse-and-consumer-projection.md)
+owns integrated decisions. This handoff issues no runtime or qualification claim.
 
-This supplement reconciles work after the `d0e303223c67` source observation in
-`docs/work/remaining.md`. Main integration, private source changes,
-owner proof and product qualification are separate states. Unfinished D1–D7
-consumer/policy/product acceptance remains in that index.
+## Source-bound proof inputs
 
-## Current status
+| Input | Exact identity |
+| --- | --- |
+| Recorded R37 candidate | `a81985184870709fce9f68926498204ab9fe0b7a` |
+| Candidate base | `0dfb56c07e0bbeec1289e58dd2c98a565ab54b3f` |
+| Source snapshot digest | `7aaedff951bafa21bd8c4d0993bceacddd8e57b81cb3b8e570f75eabcf4dd63a` |
+| Committed QGLang sibling | `7ff7ed8290ed872863daa6e83cdb01b338c27160` |
+| Committed Index sibling | `8642fa9b3b47ac58e4b3d9f2feaea66c599be29d` |
 
-- The local main checkpoints/source packets are reconciled below. Event
-  `00a54727baed`, lifecycle `8fe0dc8ca3a6`, and the nine source paths absorbed at
-  `33ff8c41b3ba` remain integrated. This task added lock closure at
-  `931b2ed9db820d4735732b8e1898837621e5f4e4` through the normal coordinator/hooks;
-  its commit attestation is present. No push is claimed.
-- R31 requalification freezes committed main
-  `b7fe68c10aa2114e2ccba4ae78b56a39be4ccd76`, with
-  committed gqlang `7ff7ed8290ed` and Index `8642fa9b3b47`. Its source digest is
-  `4145303d4614a8a544cd68f6c88fb30c5356e6c8f9a01cfd930c562acee94859`.
-  Moving foreign overlays are excluded; executions apply only to this tuple.
-- Historical GREEN results remain event 173/173 and JSON 13/13 on R22,
-  quarantine 130/130 on R24. Canonical memory-owner changes require affected
-  JSON/quarantine execution on the new source; old receipts are not relabelled.
-- The R24 SDK unsafe/forbid compilation conflict is historical: main `3ad1d3976d9`
-  changed the crate to deny unsafe with a scoped output-custody override.
-  Actual SDK execution on that replacement source is still pending.
-- R25 Native minimal failed before tests because the committed lock lacked
-  current manifest edges: zero executed cases. Root/nested lock closure now adds
-  13/11 existing dependency edges, with no package/version/checksum changes.
-  Both private-source `metadata --locked --offline` diagnostics passed; the
-  lock checkpoint preserves both foreign lock deltas. This is no Rust verdict.
-- R26 Native minimal reached dependency compilation and failed on an unused
-  `serde::Serialize` import in the existing generation-row serializer: zero
-  cases. Checkpoint `e73d3274f80` removes that import only; warning policy,
-  serializer tuple/preimage and public signatures are unchanged.
-- Checkpoint `400db0750c2` narrows the existing unsafe allowance from the whole
-  custody module to its two documented methods plus test module. The existing
-  exact override inventory now pins their containing source file. Both method
-  signatures/bodies are byte-identical; no unsafe precondition is removed.
-  Six affected boundary policies and the canonical scoped inventory passed.
-- R27 Native and quarantine both stopped on four invalid PathBuf operations;
-  R28 then exposed test-module path/import closure errors. All stopped before
-  tests. R29 then stopped on a relocated vendored build script, also zero cases.
-  R30 repairs the seed owner: path 5/5, parser mapping 4/4, parse 15/15 and
-  file identity 6/6 passed, with zero ignored cases. The five paths were imported
-  normally at `933daac0014` and `b7fe68c10aa`. R31 revalidates the same owners
-  and remaining consumers on frozen main before D1–D7. No matrix cases yet.
-- Old query-owner and absorbed lock-repair worktrees were archived/removed by
-  concurrent cleanup. Active private source is
-  `codex/oct7-substrate-managed-path-r27`; frozen execution and immutable evidence
-  are separate. Worktree removal does not imply proof or absorption.
-- Mandatory GOD/changed Honesty retain recorded RED states. The R25 missing
-  contract-ports override pin is repaired with narrower allowance. The unrelated
-  analysis-probe FFI pin remains separate. Whole live-tree unsafe scan stopped
-  on another writer's missing tracked input; that stop is not reported GREEN.
-  Native/installed product proof and Rename Apply's missing production
-  response/replay issuer remain separate.
+The fixed execution root and custody manifest are in
+`remaining-r37-snapshot-state.json`; actual results/commands/receipt locators are
+in `remaining-r37-owner-state.json`. Evidence root:
+`/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/query-owner-build-r1`.
 
-## Integrated repairs
+R31 is the earlier integrated-main input `b7fe68c10aa2114e2ccba4ae78b56a39be4ccd76`,
+digest `4145303d4614a8a544cd68f6c88fb30c5356e6c8f9a01cfd930c562acee94859`,
+with those same committed siblings. Its `remaining-r31-snapshot-state.json` and
+owner state/map retain that scope. Moving main, foreign overlays and this prose
+are excluded from each fixed receipt. Freeze a successor before executing again.
 
-All SHAs below are local Semantica main ancestors. No remote publication is
-claimed.
+## Remaining consumer guards
 
-| Checkpoint | Before → after | Focused evidence |
-| --- | --- | --- |
-| `933daac0014` — managed TARGET path | Invalid String operations on PathBuf → one allocation-free native-byte validator, checked work addition and original-control charge before exact path comparison. Lossy/component aliases retain the existing typed phase-specific refusal. | R30 new path module 5/5, zero ignored. Positive UTF-8 and four rejection/precedence controls executed. Two paths imported with normal main coordinator/hooks; foreign index preserved. |
-| `b7fe68c10aa` — parse test imports | Extracted test modules retained duplicate imports and old sibling/control paths → refer to the existing canonical owners, plus explicit new child-module file path. No existing assertion or production mapper body is weakened. | R30 error mapper 4/4, parse 15/15 and file identity 6/6, zero ignored. Three test import paths imported normally after their whole affected modules passed. |
-| `b453a31eb84` — cross-source seed closure | Metadata with `--no-deps` omitted local `[patch.crates-io]` dependencies; a cloned tree-sitter build script retained the removed donor path → full locked/offline resolution admits all local packages to existing cleanup, while registry artifacts remain reusable. No vendored code or compiler flag changes. | Complete sanitizer owner 13/13 passed, no skips. Actual donor-removal regression produces output `new` after repair; the original sanitizer fails with a missing donor path. Normal main coordinator/hooks; foreign index retained. |
-| `931b2ed9db8` — lock closure | Current manifests added existing internal dependency edges while root/nested lock rows stayed stale → add only 13/11 missing edges. No new package or version change; two foreign working dependency additions remain outside this commit. | Both private-source locked/offline metadata diagnostics passed. Normal main commit attestation is present. R25 actual Native minimal reached RED101 before tests; R26 then advanced to the serializer import failure; consumer acceptance remains source-bound. |
-| `400db0750c2` — port policy | A module-wide unsafe allowance was unpinned → two explicit contract-method allowances plus test-only allowance, pinned by exact method-file hash. Root remains deny unsafe; every signature/body/precondition is preserved. | Six boundary policies and canonical scoped inventory passed. Eight original-control custody cases remain pending on R31. |
-| `e73d3274f80` — serializer compile closure | The native minimum rejected redundant `use serde::Serialize` under `-D unused-imports` → remove that one import inside its existing trait impl. Tuple/framing and method body are otherwise identical. | Actual R26 failure is retained with zero executed cases. Native minimum requalification is active on R30; R31 freezes the integrated main tuple. |
-| `fdda8a5e997` — F6 | Client factory/cache publication could race terminal close → open check, factory and cache insertion share the lifetime lock; close invokes callbacks outside it; failed factories publish nothing. | Complete affected Python owner: 12 passed. Original close-first behavior fails the independent regression. |
-| `5d3f87f47ab` — query production | Generic query owners referenced a feature-gated GQLang JSON control and lacked production imports/dependencies → existing JSON control moved byte-for-byte to neutral source-issuance owner; old GQLang path reexports it; scoped dependencies/imports/rollback bounds repaired. | Frozen QBC production check passed. This is compilation evidence, not PTA or product execution. |
-| `457868f1c4f` — F10 | Agent requests could use a different root and ignored file/budget restrictions → startup captures one canonical directory; request admission rejects root mismatch, authored file lists and unknown budgets before SDK work. | Affected API/lifetime suite: 37 passed. Original wrong-root HTTP success fails the regression. |
-| `0c3c26c90bc` — F5 | Public apply-changes discarded degradation, API emitted `ok=True`, projection lost native codes → SDK preserves typed outcome plus code/detail reasons; API reports degraded `ok=False` with applied data. | 43 affected cases passed, no skips. Three independent original-behavior regressions fail as expected. A broader unchanged suite exposed real Rename producer drift plus transport fixture drift. Rename request drift is repaired below; that earlier broad suite is not claimed green. |
-| `975d1a3a41a` — F7 engine | Caller timeout ignored → one absolute deadline across existing SCC/worklist/narrowing and final result publication; lowering keeps typed stop and adapter covers all three domains. | Whole owning libraries: engine 73, lowering 58, adapter 21 passed; no filters or skips. |
-| `e46cf07f5b1` — F2 Python | Current closed contract requires cap on every phase; SDK omitted it and Apply exposed no caller limits → Preview/Rollback retain null; Apply takes explicit typed positive u64 output/live limits and rejects absent/invalid limits before Preview. | 321 cases across the SDK execute owner and new cap/phase contract tests passed, no skips. Original Preview producer fails generated contract admission. |
-| `8edd1b0733c` — F4/F9 Q3 | Cap was checked after neighbor insertion; composite slices retained BFS discovery direction and could accept bounded prefixes → admit before insertion, typed Incomplete, original induced eligible PDG edges. Empty-PDG failure precedence is retained. | Fresh frozen `a620b157998`: Q3 module 37/37 passed. Original cap oracle executes 1 and fails with root incorrectly admitted at cap0. Runtime projection acceptance remains separate. |
-| `ecf12903bf3` — F7 native wire | Deadline stop lost its finite error/category contract → append payload-free RuntimeError stop, preserve old wire tags, map to AnalysisTimeout/ResourceLimit and close minimal serde feature. | Wire integration 2/2 and timeout/category projection 1/1 passed on their frozen owner sources. Concurrent main PTA feature ownership change is preserved; whole latest-main qualification is not claimed. SDK caller conversion remains a separate candidate. |
-| `7bbdcc1d4e3` — dependency owner | Shared generation result was stranded in a Java-only child; row iterator and semantic view lifetimes were insufficient; backing import was narrower than its unconditional binding users → restore one shared result owner and exact source borrows/import closure. | Frozen `1cfc4c41d7a`: canonical Java, Python-only and cfg-dfg owning library checks all passed. Six reviewed paths integrated; no new calculation or dependency. |
-| `4518fd6fec5` — Parser cfg | Java raw helper and raw-error facade compiled outside their active caller feature set → both mirror the exact existing caller predicate. | The same three owner checks passed. Only two cfg hunks integrated. Every foreign working/index change was retained; no Java feature was enabled to make Python minimum pass. |
-| `0dd691a651c` — analysis test closure | Engine-only test reexport escaped its feature, and 14 ordinary CFG fixture inputs omitted the new source-control field → mirror the defining module predicate and the existing ordinary production constructor. | Frozen `9b5ea151425`: complete affected CFG owner 47/47 passed, zero skips. Runtime Slice owner also compiled and executed on the same tuple. Four paths integrated first. |
-| `1a5cb6b0d29` — F4/F9 runtime | Bounded prefixes could publish success; PDG discovery pairs fabricated CFG direction/kinds; removed Dice statements retained occurrence metadata → typed partial refusal, finite-bound recomputation, original CFG edges on final membership, included occurrence metadata with retained parameter provenance. | R14 canonical Slice helper 6/6 passed, zero skips; all four independent output/membership regressions executed. Five paths integrated after the verified dependency checkpoint. |
-| `375173d94dc` — receipt visibility | Four internal decoder targets/seeds were public inside a private module, failing minimal compilation → keep those targets, seeds, constructors and internal reexports crate-visible; public generic decoding API and wire schema unchanged. | R15 complete minimal receipt owner 69/69 passed, zero failures/skips/nonselected; shape parity and malformed-input controls executed. Three paths integrated with normal hooks. |
-| `669a4608343` — locked dependency closure | Committed parser/source-transition/symbol/executor manifest edges and Python vendor patch were absent from outer/inner lock rows → reconcile exactly five package rows per lock, retaining foreign changes and package versions. | Same committed source/siblings: full outer and inner `cargo metadata --locked --offline` each exit0. Dependency resolution proof only; Rust owner execution follows separately. |
-| `00a54727bae` — event extraction and phase oracle | Extracted free helpers retained `Self` and redundant mutable reborrows; the new observation test skipped canonical lease commit → qualify original enum, reuse original mutable hasher, and assert Visible then Committed after original lease commit. | Whole event owner 173/173 passed with zero ignored/filtered cases; identity/terminal/replay and exact phase witnesses executed. Only two paths imported with normal hooks and claim/barrier release. |
-| `8fe0dc8ca3a` — original lifecycle interface | Getter moved across crate ownership remained private, identity-control import was missing, and an internal root identity was unnecessarily public → expose the original immutable borrowed lifecycle, import canonical control, and keep root identity crate-visible. | Canonical JSON integration module 13/13 passed (24 other target cases filtered by module), zero skips; original lifecycle/root, cancellation, exact work and memory cleanup controls executed. Three paths integrated normally. |
-| `33ff8c41b3b` — source queue absorption | Six-file quarantine repair, SDK timeout conversion and two-file Rename binding/proof source match the reviewed candidate exactly. | Source absorption verified again at main `dd7aa33b2b9`; quarantine 130/130 at R24, SDK compile blocked, Native NOT_RUN. Adoption creates no duplicate commit. External absorption hook/coordinator attestation was not observed; this records ancestry/bytes, not final qualification. |
+| Scope | Required acceptance |
+| --- | --- |
+| Java/common/original traversal | Complete the owner criteria below before importing only reviewed paths. Normal coordinator/hooks and immediate source-drift review remain required. |
+| F2 Native minimum / Full | Whole registry and mutation owners; literal contract→ID/service parity, duplicates, six Mutation IDs, feature-off refusal and admitted context→registry→worker→Preview backend. Provider-only Interactive class or isolated handler proof is insufficient. Full class: `quanta-cli-ingress-runtime.no-default.9d4f950584d2`. |
+| F7 SDK deadline | Five exact timeout/non-timeout controls: default 30s, iteration distinction, all domains, zero/past deadline and non-timeout rejection. Preserve original QueryId/error identity. A cooperative deadline never publishes an overdue result as success. |
+| Original custody / JSON / quarantine | Revalidate eight original output-custody controls, canonical JSON integration and whole quarantine after affected memory-owner changes. Preserve original-root/lifecycle, first refusal, cancelled/timed-out work, retained births/refunds, poison/storage, last-clone retention and exact durable replay. |
+| D1–D7 owner45 | Same-source owner matrix, PTA-first order, reviewed witnesses/minima and deliberate ignored-test selectors. Resolve-only maps and zero selected tests fail acceptance. |
+| Mandatory policies / product | Close attributable gates without global reapproval, allow growth or scope reduction. Recorded GOD/Honesty/FFI/input findings retain their owners. Actual native daemon and installed Linux CHECK are separate; CHECK needs release-owned signed immutable slots and independent approval. |
 
-### Code owners
+Slice/CFG historical owner selectors remain
+`queries::advanced_owner::slice_query::slice_query_helpers` and
+`queries::intraprocedural_owner::cfg_query::tests`; actual Slice class is
+`quanta-runtime-analysis.no-default.8a9cf0054bb7` with
+`cfg-query-test-support,slice-runtime`. They are not substituted for PTA proof.
+Current commands/features/selectors must resolve against the successor source.
 
-Paths are relative to `semantica-codegraph-v2/`.
-
-- F6/F10: `apps/api/api/dependencies.py`, `main.py`, `routes/agent.py`.
-- F5: `packages/sdk/python/codegraph_sdk/client.py`,
-  `_product_apply_changes_projection_v1.py`, `apps/api/api/routes/indexing.py`.
-- Query production:
-  `packages/analysis/quanta-v2/crates/quanta-runtime-execution/src/source_issuance_control_v3/json_projection_v3.rs`
-  and `quanta-runtime-query-executor-owner/src/query_executor/` consumers.
-  The calculation is retained; moving its module does not add a second owner.
-
-## Earlier frontend/consumer actions — source recheck
-
-At committed Semantica `60211acdb1a62d0ae5f18d677211cf1c4b63c63a` and QGLang `c3b84ab`, the earlier
-Graph contract, golden and EXISTS/conformance code repairs are present:
-
-- Public ingress selects the bounded product Graph profile; host validates
-  witness cap1, Reachability Endpoints and Path NodeSequence. Independent public
-  family fixtures assert cap1 for both kinds.
-- Consumer golden asserts contract/qualification schema8 against the current
-  frontend vector. Source pin/gate presence is not execution qualification.
-- The mixed EXISTS owner contains both false first-term and false second-term
-  nonempty-input cases with independent expected empty results.
-- Frontend conformance includes Rename; authored result shapes remain explicitly
-  rejected at sema. Document/execution are split into owning modules, and local
-  static composes size-lint plus clippy-msrv.
-
-These are current-source observations, not new code written by this recovery or
-new downstream runtime verdicts. Retain actual product proof in the remaining
-index instead of reintroducing those repairs.
-
-## Remaining repair candidates
-
-Native Rename and the SDK deadline caller are absorbed source changes
-on `codex/oct7-substrate-query-owner-build-r1`, after the three-file private
-receipt-decoder visibility prerequisite was integrated at `375173d94dc`. Runtime
-Slice and its feature/input dependency are integrated above.
-
-| ID | Structural change | Acceptance still required |
-| --- | --- | --- |
-| F2 native | Add the missing canonical `mutation.refactor-rename` runtime binding. Retain existing typed backend, provider checks and Preview/Apply controls. Exact mutation inventory is the oracle, not a refreshed numeric count. | Execute native binding parity and feature-off refusal; prove public Preview reaches existing dispatch/backend; preserve phase/cap/host refusals. |
-| F7 native | Solver/lowering/adapter are integrated. Append a payload-free RuntimeError deadline refusal and preserve it through native SDK plus exhaustive timeout/category mappings; do not invent QueryId. | Engine owner: 73 passed; lowering owner: 58 passed. Whole adapter owner: 21 passed. Native wire integration 2/2 and timeout/category projection 1/1 passed on their recorded frozen sources; SDK projection proof remains pending. Check default30s, iteration distinction, all domains, zero/past deadline and non-timeout rejection controls. |
-
-F7 does not promise hard interruption inside user callbacks, collection sorting
-or lowering/projection calls. The deadline is checked at cooperative work
-boundaries and after those calls; an overdue result is never published as success.
-
-The integrated native wire stop appends `AbstractInterpretDeadlineExceeded` as
-variant 39. Existing variants 0–38 keep their identities and shapes. Older readers
-reject the new variant; frontend ExecutionDoc schema/digests are unaffected.
-
-### Rename Apply support boundary
+### Rename Apply boundary
 
 `crates/quanta-cli-ingress-runtime/src/dispatch/mutation.rs::execute_standard_mutation_v1`
-currently returns `mutation_refactor_rename_apply_response_owner_unavailable_v1`
-before SDK effects for Apply: no production terminal/replay response issuer is
-installed. A caller cap is necessary but does not create that owner. Preview,
-Rollback and feature-off native binding acceptance are separate checks.
-
-Public explicit caller limits, shared by `refactor()` and `code_agent()`:
-
-```python
-from codegraph_sdk.refactor import MutationMaterializationCapV1
-
-request.execute(materialization_cap_v1=MutationMaterializationCapV1(
-    max_live_bytes_v1=4096, max_output_bytes_v1=1024,
-))
-```
-
-Existing zero-argument `execute()` now rejects before Preview instead of sending
-an unrepresentable Apply request. Preview/WorkspaceEdit signatures are unchanged.
-The example demonstrates request authority, not production Apply success.
-
-## Proof and failure discipline
-
-- Frozen QBC owner source `0f36a0bae935`: Q3 module 37/37 passed. Original query source `4f5ec1a1509` executes one independent zero-cap fanout test and fails: returned `{root}` instead of `{}`. The first Q3
-  attempt compiled zero tests because an existing test read private `file_id`;
-  its accessor repair is included in the private candidate.
-- Frozen QBC owner source `de5b7683ae40`: whole engine 73/73 and whole lowering
-  58/58 plus whole adapter 21/21 passed. These receipts do not prove later native SDK wire edits.
-- Rename attempt on `0f36a0bae935`: zero tests; foundation failed on three
-  unused memo trait imports. Those imports are already removed on newer main.
-  A fresh private candidate imports committed main rather than modifying a
-  stale snapshot or weakening warnings.
-- Earlier PTA run on `f8b73032d50`: zero executed tests, 13 adapter compile
-  errors. That is a historical blocker, not an asserted error count for current
-  main. Recheck its successor source before remediation.
-- Record source SHA/digest, committed sibling pins, recipe/features, actual
-  selected/executed/pass/skip counts and immutable original receipts. Never
-  compose receipt counts into a whole-current qualification claim.
-
-Local custody directory:
-`~/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/query-owner-build-r1/`.
-Original logs and source specifications are archived there; they are local
-receipts, not repository-distributed or installed-product evidence.
-
-### Successor proof inputs
-
-- Native wire `f7addd36e49`: 2/2 tests passed with the canonical minimal
-  `input-cell-surface,wire-base-identity` class. The feature's missing
-  `serde/derive` edge was repaired at its owner; no new dependency was added.
-- Timeout/category mapping `b8644ab5c6b`: 1/1 passed with 33 nonselected cases.
-- Q3 successor `a620b157998`: source digest
-  `ffbc26a108204a4585a2c5ca3814cc893d434756cd120cf4bfe75e10a5b2aad8`.
-  It adopts committed main DFG import repair `c26a43639b6`; the older Q3
-  `b8644ab5c6b` compile failure is superseded, not a current source defect.
-- The older R4 runtime jobs were cancelled after that dependency was superseded;
-  pending consumer work was superseded again by the current R12 source.
-  Cancellation supplies no test verdict.
-- Rename provider proof now additionally enters the actual admitted context,
-  registry and worker before the existing backend. Its source is `7eea70e4a06`;
-  an isolated handler receipt alone does not close that path.
-
-### Compile recovery and current acceptance source
-
-Historical compilation failures executed zero tests. They are retained as
-failure evidence, not as error counts for current main.
-
-| Attempt | Reached failure | Canonical repair / successor |
-| --- | --- | --- |
-| R6 Runtime Slice, `a620b157998` | 84 PTA/call-graph errors under `pta-rail-test-support`; that class did not enable `slice-runtime` and could not validate Slice. | Actual Slice owner class is `quanta-runtime-analysis.no-default.8a9cf0054bb7`, features `cfg-query-test-support,slice-runtime`. Separate PTA acceptance remains open. |
-| R7 joined Rename Preview, `7eea70e4a06` | 12 PTA adapter errors, including a shared Java/Python generation result stranded in a Java-only child. | Shared generation owner, explicit Python binding import, exact row iterator lifetime and retained semantic view; six-file dependency checkpoint `7bbdcc1d4e3`. |
-| R6 SDK deadline, `a620b157998` | Three references to `NativeLoweringOutputBackingV1` failed because its import was narrower than its unconditional binding users. | Existing backing type imported on all active binding compile paths; part of the same six-file checkpoint. No new feature or dependency. |
-| R8 Python-only / R9 `cfg-dfg` | Ungated Java helper referenced an absent augmentation type; raw-error facade had no active consumer. | Two items mirror the existing caller predicate, integrated at `4518fd6fec5`. Foreign Parser working/index bytes were retained. |
-
-All three R10 canonical Java, Python-only and `cfg-dfg` adapter checks passed
-on `1cfc4c41d7a`, digest
-`435e5a731ce4225299569a60052ac8d97d0f93da258289fb15725aa8c5a6d5ba`.
-These are complete production-library compile checks, not runtime tests.
-Both dependency checkpoint claims and barriers were released normally.
-
-The queued R10 consumer jobs were cancelled before completion to adopt newer
-committed interprocedural/semantic repairs; cancellation supplies no verdict.
-R11 on `462fe9bb5c66831e522a4cfcf63292a42aa11aa3` reached one Parser
-unused recoverable-health import error and executed zero Slice tests. That
-repair was already committed on main at `cf5f5c76503`; no duplicate repair was
-authored. Its failure receipt is archived; pending R11 jobs were cancelled
-with no verdict.
-
-R12 source `d2861f04395528d5b9753c71391d9ccb4e12362b` adopted that
-committed Parser repair and reached Runtime analysis test compilation. It
-executed zero tests: 15 errors comprised one incorrect StatementId import in
-the new regression, one test facade exporting an engine-only module without
-its feature, and 13 compiled CFG input literals missing a newly added field.
-The original failure receipt is archived; pending jobs were cancelled without
-a verdict.
-
-The Runtime Slice/CFG acceptance source is
-`9b5ea1514259354aaa8cfbddb07d12ad95a8021e`,
-digest `0550b5ffe05374d689f0d21ffddeee3c3bc31485a3c13b3a56a227f7f65491db`.
-It retains the committed main input `2de55f286588953de2b2d017d21d930f59fdc8c2`
-and adds these scoped repairs:
-
-- The regression imports StatementId from its canonical existing analysis
-  contract, matching the actual projection owner; no dependency is added.
-- The test-only recovered-role reexport requires its defining module's
-  `interprocedural-engine` feature. No feature is enabled to mask a failure.
-- All 14 affected CFG fixture input literals explicitly set
-  `current_source_control_v3: None`, matching the existing ordinary-profile
-  production constructor. Controlled sessions continue to obtain their actual
-  source control through the existing session callback and fail closed when
-  unavailable. This migration neither issues fake authority nor relaxes that
-  production boundary.
-
-The first R13 selector used a public facade name and selected zero tests.
-QBC rejected it with exit86 and RED; its archive records 0 passed / 1573
-nonselected. The source compiled, but that run supplies no runtime proof.
-Remaining queued jobs were superseded without a verdict.
-
-R14 reuses the exact same frozen source and actual canonical Rust modules:
-`queries::advanced_owner::slice_query::slice_query_helpers` includes both
-output and occurrence regressions;
-`queries::intraprocedural_owner::cfg_query::tests` owns the CFG input cases.
-They passed 6/6 and 47/47 respectively, with 1567/1526 nonselected cases and
-zero skips. The SDK attempt and native successor are recorded below.
-Exact witness names,
-nonzero pass/zero failure/zero skip counts, archive hashes and source digest
-are checked before each import.
-
-The four-file analysis feature/input dependency checkpoint must pass its own
-CFG owner and reach local main before the five-file Runtime Slice consumer
-checkpoint. This preserves compilation closure at each checkpoint. Native
-Rename and SDK deadline imports retain their independent acceptance guards.
-Concurrent Parser working changes remain excluded from the frozen source.
-
-The old `OCT6-SUBSTRATE-SCC` write claim was released after confirming no
-unintegrated candidate delta in any of its 24 paths. This retires write
-ownership; D2 consumer/product qualification is still open.
-
-### SDK receipt visibility and actual distribution proof
-
-R14 SDK deadline failed during receipt-wire dependency compilation with 10
-`unreachable_pub` errors; zero SDK tests executed. The original failure archive
-is retained. Remaining R14 native requests were cancelled without a verdict.
-
-The four reported decoder types have no external callers and already live in a
-private module. The repair keeps the owned target and nested command/hop/partiality
-seeds plus constructors/reexports `pub(crate)`. Public generic decoder targets,
-SDK receipt seed, schema and wire bytes are unchanged. No public API or decoder
-implementation is added.
-
-The previous providers-only class (`provider-gqlang,provider-mutation`) uses the
-Interactive distribution manifest. It cannot establish positive public Mutation
-support. R15 uses the registered minimal feature-off class and actual `dist-full`
-class `quanta-cli-ingress-runtime.no-default.9d4f950584d2`; whole registry and
-mutation owners replace a provider-only claim or isolated Preview result.
-Existing Apply no-effects/absent-issuer refusals remain required witnesses.
-
-The stale five-service numeric count test is removed. The surviving canonical
-contract-to-registry exact ID/service map, duplicate checks and independent six
-native Mutation ID oracle detect omissions without another drifting number.
-
-R15 candidate is `e3848ef6dd35406d6c9016929236215e1b4b0d0d`, source digest
-`5e4c3d025dacc807e99fb356b6e96f96cef6604561d615153f5b6f19da6c8085`.
-The complete minimal receipt owner passed 69/69 with zero failures, skips or
-nonselected tests, and three files reached main `375173d94dc`. SDK conversion
-failed before tests on one current quarantine digest unused import; pending
-native jobs were cancelled with no verdict. Their PASS is not claimed. Its committed sibling pins remain
-QGLang `68ff02ef443f` and Index `6a3f6afc8c28`, with foreign dirty excluded.
-
-### Current-main adoption and quarantine prerequisite
-
-R15 SDK reached `quanta-sdk-exact-repo-quarantine-owner::record_digest_v1`
-and failed on its unused `std::fmt::Write` trait import. The digest writer takes
-`impl std::fmt::Write`, so the trait is already supplied by the bound; its body,
-field order and separators are unchanged by removing the unused import. The
-failure archive contains zero SDK tests. Receipt69 remains valid at its source
-and integrated three-file checkpoint; pending native cancellation is no verdict.
-
-R16 source `20bdc8ea84c8ce165d78c3c2bb4e52cc4dd0d7a9` adopts committed
-main `522c94ac2648b4727f77f9829f33d57c55d6f26c`, digest
-`8609bd5080e8ad96870968eb5000d5d204ba70cc91b4a0090ef9c1c4a212ddc7`.
-The candidate's complete difference from that main input is exactly four files:
-quarantine import1, SDK deadline1, native Rename2. All earlier repairs are already
-in the adopted main source; no foreign dirty bytes are included. Whole quarantine
-owner, SDK conversion and the minimal/full native owners retain separate guards.
-The quarantine owner checkpoint must precede SDK integration.
-
-### Locked dependency closure and current retry
-
-R16's first quarantine owner was rejected by `--locked` before compilation or
-tests. Separate full Cargo metadata diagnostics on archived committed source and
-the same pinned siblings identified five package rows in both lockfiles:
-`quanta-adapters-parser`, `quanta-contract-source-transition`,
-`quanta-java-binary-symbol-authority`, `quanta-sdk-runtime-executor` and
-`tree-sitter-python`. Seven declared dependency entries per lock were missing;
-the already committed Python vendor patch still carried registry/checksum fields.
-No package/version set changed. Metadata with `--no-deps` does not establish
-resolution; the recorded acceptance uses full metadata with `--locked --offline`
-for both workspaces, each exit0. This is dependency proof, not a Rust verdict.
-
-Only those five rows in each lockfile were reconciled into main `669a4608343`.
-Other committed rows and all foreign working/index work, including separate
-PTA and compression-library changes, are retained. Normal hooks and coordinator
-completed and the lock write claim/barrier were released.
-
-R17 source `497bfea5a4d7ce9387b26293c1d8287c862a75ef`, digest
-`124cd4a26ccb4d1f659e321ae3e202908c87ec6e3d1c701392186976b90b4e55`,
-adds those generated locks to the R16 candidate. Quarantine and SDK reached
-RuntimeExecution but stopped before tests on four E0624 errors and a dependent
-E0282 error: the relation control moved to SourceAuthorityWire in committed main
-`7681aa7a875`, while its existing `lifecycle_v3` accessor remained crate-private.
-The JSON terminal consumer remained in RuntimeExecution and therefore lost
-access. Both failure receipts are archived; remaining native jobs were cancelled
-without a test verdict. This was a module-move interface defect, not a JSON or
-budget calculation failure.
-
-R18 exposes the existing immutable borrowed lifecycle at its canonical owner,
-with no replacement lifecycle, changed authority, wire schema or allocation.
-The original lifetime is retained. Existing JSON terminal regressions cover
-original/reconstructed lifecycle, distinct zero-sized lifecycle, unrelated root,
-cancellation/timeout, allocation checkpoints and nonrefundable work. The actual
-integration target is `gqlang_relation_execution_v3`, module `json_projection`,
-under the registered relational-composition feature class. It precedes whole
-quarantine, SDK conversion and minimal/real Full native owners. Acceptance and
-main integration remain pending until their source-bound receipts are green.
-R18 also exposed four missing canonical identity-control import uses in
-`gqlang/composition_plan_v3.rs` when the relational feature was activated. Its
-compiler log is diagnostic only: a concurrent model inspection imported frozen
-QBC modules without Python cache suppression, changing protected directory
-metadata and invalidating exact custody. No R18 owner success is claimed. The
-invalid-custody record and logs are archived; later requests were not executed.
-
-R19 adds only that canonical import to the R18 repair. Python cache writes are
-disabled for all frozen-module inspection (`-B`/`PYTHONDONTWRITEBYTECODE`). The
-existing semantic owner remains unchanged; no separate identity implementation
-is added. All six Rust candidate paths pass the impacted boundary preflight;
-actual source-bound tests and main integration remain pending. The 45 D1–D7
-owner requests were also reprojected on R18 with unchanged requests/commands;
-that result is resolution only and requires rebinding to R19 before execution.
-
-### R19 budget facade visibility and R20 successor
-
-R19 has a canonical archived compile failure, zero tests: the now canonical
-`ExecutionMaterializationRootIdentityV3` import was `pub` in private
-`budget_handle.rs`, although the crate root does not export it. It is used only
-by the internal exact-mutation binding. R20 makes that import crate-visible;
-all existing public budget exports remain unchanged. The lifecycle/composition
-boundary checkpoint therefore consists of exactly three files.
-
-The configured six-path GOD gate is RED (new27/worsened1 against its stored
-baseline). Running the same canonical scanner against reviewed committed main
-`522c94ac2648` versus R19 proves introduced findings0 and worsened0 in this
-candidate. Those recorded failures are preexisting source/baseline debt, not 28
-new defects introduced by the repair. The gate remains RED; no baseline, allow
-or threshold was changed. Current-main acceptance still needs its policy owner.
-
-### R20 event dependency and R21 proof oracles
-
-R20's canonical JSON target stopped in `quanta-change-event-contract` with four
-compiler errors and zero tests. A fingerprint helper extracted from an enum impl
-retained three `Self` variant names in a free function and attempted to borrow
-an already mutable hasher parameter as `&mut hasher_v1`. The current main working
-file already has the exact repair. R21 adopts only that reviewed file, reconciling
-`OCT7-MUTATION-RECOVERY-SOURCE-CUSTODY`; it is not claimed as newly authored
-fingerprint logic. All tags, hash framing, field order and schema bytes remain.
-The complete event library must execute its independent identity, terminal and
-replay controls before its one-file main import.
-
-Changed-scope Honesty on R20 completed: 11 gates passed, five failed (shape-only,
-relationship, determinism, registry-honesty, unverified-early-success), with zero
-bad invocations. The new non-timeout SDK regression had a real weak oracle:
-partial `contains` assertions. R21 compares the entire typed error and exact
-expected value for non-timeout, missing authority, invalid input and cancellation.
-The SDK shape-only scan now reports only the unchanged
-`empty_pipeline_dfg_propagates_direct_recovery_error`; all four strengthened
-operation-error cases have no shape-only finding. The configured gate remains
-RED on that residual case; no blanket baseline update is performed. Remaining
-Honesty reports require source-specific attribution, not conversion into alleged
-runtime defects by raw report count.
-
-### Residual code map and completion conditions
-
-### R21 terminal-phase oracle and R22 successor
-
-The complete event library compiled and executed 173 cases on R21: 172 passed,
-one failed, no ignored or filtered cases. The new executing-observation test
-expected `PublicationAlreadyCommitted` immediately after the irreversible
-publication callback. The canonical owner explicitly records
-`PublicationVisible` there; only `OperationPublicationLeaseV1::commit_v1`
-records `PublicationCommitted`. An existing independent materialization test
-already proves both states. R22 corrects the new test to assert Visible,
-commit the original lease, then assert Committed. No production state transition
-or failure contract changed. The R21 receipt and failure logs are archived;
-the six later requests were cancelled without a verdict. Event acceptance
-requires the full owner and this phase witness on R22 before two-file import.
-
-The shared-parent writer remains canonical change-event owner; JSON reads its
-original lifecycle, SDK projects its existing finite errors, and Rename retains
-existing dispatch/backend contracts. No alternate observer, issuer or solver is
-introduced. Exact paths, source closure and source-bound receipts are recorded
-in this report and each guarded import artifact.
-
-### R23 quarantine test migration
-
-R22 quarantine failed before running any cases: six unresolved test `Arc`
-references, one test call to removed `prepare_terminal_identity_before_apply_original_v3`,
-and one unused local test trait import. R23 imports Arc in the test module,
-uses the existing `prepare_terminal_identity_before_apply_controlled_v3`
-with the same original control, and removes the unused import. These three
-one-line repairs preserve the poison test's exact first-refusal and unpublished
-slot assertions. No compatibility alias, fabricated issuer or new preissuer
-implementation was added. The existing record-digest import cleanup joins these
-three files in one four-file owner checkpoint. Required witnesses include
-poisoned slots, reused committed storage, cancellation preserving pending state,
-digest tamper and exact durable response replay. All four still require actual
-whole-owner success before import; compiler success alone is insufficient.
-
-Event 173/173 and JSON 13/13 remain R22 results at their recorded source. Their
-five owning paths did not change in R23; already-integrated checkpoints are not
-replayed or relabelled as new R23 runs. The remaining five owner requests and
-45-request matrix bind to the R23 source/digest above.
-
-### R23 reachable preissuer refund defect and R24 repair
-
-R23's full quarantine library executed 130 cases: 129 passed and one failed,
-zero ignored or filtered. The existing native-birth failure matrix detected
-40 live intermediate bytes remaining above the original baseline while the
-fingerprint stayed alive. `original_reason_admission_v3` reused the fingerprint's
-long-lived memory group. If the reason String was born but its final retained
-owner birth failed, dropping temporary values could not release that String's
-charge because the fingerprint still retained the group.
-
-R24 keeps original marker/group validation, then asks that same control for an
-independent owned group through the existing `OriginalSetupAdmissionV3::try_new_v3`.
-Failure drops that group; successful reason custody keeps it through its last
-clone. The only old `try_from_group_v3` caller is retired with its now-unused
-private constructor. No new budget/root, issuer or allocator contract is added.
-The existing ten-point allocation-refusal regression keeps its exact zero
-residual-memory expectation; a diagnostic labels the refused birth index.
-Existing detached-reason retention, poison/refusal and replay controls remain
-mandatory. Actual whole-owner success and source-only main import are pending.
-This is a reachable resource-lifetime defect, separate from the earlier test
-compile migration; R23 RED is not rewritten as a passing result.
-
-Paths below are relative to Semantica. Each group is imported independently
-only after its own acceptance; historical receipts are not composed into a
-whole-repository result.
-
-| Group | Exact owning files | Completion condition |
-| --- | --- | --- |
-| Analysis test feature/input closure — complete | `packages/analysis/quanta-v2/crates/quanta-runtime-analysis/src/queries/`: `interprocedural.rs`, `intraprocedural/cfg_query_tests.rs`, its `reuse_authority.rs` and `unreachable_policy.rs` children | Complete CFG owner 47/47 and Slice helper 6/6 passed; four paths integrated at `0dd691a651c` before the Runtime Slice consumer. |
-| Runtime Slice — complete | `quanta-runtime-analysis/src/queries/advanced/`: `slice_query_bridge.rs`, `slice_query_helpers/output_materialization.rs`, `slice_query_helpers/output_final_membership_tests.rs`, `slice_statement_projection.rs`, `slice_statement_projection/occurrence_projection.rs` (crate under `packages/analysis/quanta-v2/crates/`) | Actual canonical helper 6/6 passed with `slice-runtime`, including all four direction/kind/multiplicity, partial and membership regressions. Five paths integrated at `1a5cb6b0d29`. |
-| Receipt private visibility — complete | `packages/analysis/quanta-v2/crates/quanta-runtime-receipt-wire/src/`: `canonical_receipt_seed_v1.rs`, its `receipt_gqlang_seed_v1.rs` and `receipt_nested_seed_v1.rs` children | Whole minimal receipt owner 69/69 passed; three-file prerequisite integrated at `375173d94dc` before the SDK caller. SDK conversion retains separate acceptance. |
-| Event fingerprint extraction and phase oracle — complete | `packages/analysis/quanta-v2/crates/quanta-change-event-contract/src/ports/`: `ide_source_lifecycle_port/identity_fingerprint_v1.rs`, `operation_context.rs` | Adopt the reviewed helper repair; test Visible before lease commit and Committed afterward. Whole event library and identity/terminal/replay controls; production framing, tags and transitions remain unchanged. Whole owner 173/173, source-only two-file main checkpoint `00a54727bae`. |
-| Relation lifecycle interface — complete | `packages/analysis/quanta-v2/crates/quanta-runtime-source-authority-wire/src/original_source_control_v3/relation_control_v3.rs` | Existing JSON projection integration module executes all original-root/lifecycle, cancellation/timeout and allocation controls; immutable accessor visibility plus canonical `gqlang/composition_plan_v3.rs` identity-control import and internal `budget_handle.rs` root-identity import, no owner or schema duplication. Canonical module 13/13, main checkpoint `8fe0dc8ca3a`. |
-| Quarantine reason custody and test closure — source absorbed | `packages/analysis/quanta-v2/crates/quanta-sdk-exact-repo-quarantine-owner/src/`: `record_digest_v1.rs`, `committed_terminal.rs`, `publication_lifecycle.rs`, `hellgate_tests.rs`, `original_setup_admission_v3.rs`, `publication_lifecycle/terminal_preissue_v3.rs` | Release failed reason storage independently of a live fingerprint, using the same original control. Retain original group validation, remove the now-unused shared-group constructor and migrate tests. Whole owner 130/130 on R24 includes all 10 allocation-refusal points, last-clone retention, poison/storage/cancellation/durable replay witnesses. Six-file source absorbed at `33ff8c41b3b`; current-main proof remains separate. |
-| SDK deadline — source absorbed, proof blocked | `packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/abstract_interpret_builder.rs` | Native finite timeout survives actual port conversion; non-timeout errors retain their prior rejection. One-path source absorbed at `33ff8c41b3b`; actual SDK tests are blocked by the contract-port dependency. |
-| Native Rename — source absorbed, proof pending | `crates/quanta-cli-ingress-runtime/src/dispatch/operation_binding_registry_v1.rs`, `dispatch/mutation.rs` | Exact inventory plus minimal refusal and real `dist-full` admission; whole registry and mutation owners including admitted context → registry → worker → Preview backend. Both source paths are absorbed at `33ff8c41b3b`; actual native proof remains pending. Production Apply remains unavailable until its real issuer exists. |
-| PTA dependency repair — complete | `packages/analysis/quanta-v2/crates/quanta-adapters-pta/src/`: `production_live_native_workspace_generation_v1.rs`, its `original_java_workspace_v1.rs` and `original_java_evidence_v1.rs` children, `production_live_captured_semantic_workspace_generation_v1.rs`, `production_native_lowering_relation_output_v1/admitted_storage_v1.rs`, `native_function_build_generation_authority_binding_v1.rs` | Three canonical feature owner checks passed; six-file delta integrated at `7bbdcc1d4e3`. |
-| Parser feature closure — complete | `packages/analysis/quanta-v2/crates/quanta-adapters-parser/src/language_host_adapter/semantic_module_v3/core/mod.rs`, `semantic_module_v3/mod.rs` | Three canonical feature owner checks passed; only two cfg hunks integrated at `4518fd6fec5`, retaining all foreign working/index bytes. Later retirement of legacy callers may remove or narrow those items further. |
-
-## Final acceptance order
-
-1. Complete independent owner regressions and preserve typed failures.
-2. Import only reviewed, owned paths into local main with normal hooks and
-   shared-main coordination; recheck drift immediately before import.
-3. Retire only source-confirmed integrated repairs from the remaining-work index.
-4. Execute affected mandatory consumer/policy gates on one frozen main tuple.
-5. Execute actual native daemon/product acceptance. Installed Linux CHECK still
-   needs release-owned signed immutable slots and independent approval; helper
-   tests and compiler success do not supply those prerequisites.
-
-## Source-bound proof handoff
-
-Historical blockers are preserved in immutable archives: SDK R24 stopped on
-unsafe/forbid declarations; Native R25 stopped on committed lock drift; Native
-R26 stopped on a redundant generation-row import. All three executed zero cases.
-The current source includes the narrow policy fix, root/nested lock closure and
-single-import removal; these source repairs alone do not establish execution.
-
-R27's Native and quarantine owners stopped on four PathBuf type errors, with
-zero executed cases. R28's managed-path owner stopped on the new child module
-path plus existing parse/identity imports, also with zero executed cases.
-R30 binds private candidate `7ba2d42e31a66271d114f212484104d2ce721882`, gqlang
-`7ff7ed8290ed872863daa6e83cdb01b338c27160` and Index
-`8642fa9b3b47ac58e4b3d9f2feaea66c599be29d`. It is a scoped candidate proof,
-not qualification of moving main. Public custody methods retain actual producer
-birth admission, original group/operation identity, borrowed row containment and
-derived-allocation obligations; only their lint scope narrows.
-
-### Cross-source build seed — repaired owner
-
-R29 imported a cached tree-sitter build script that embeds compile-time
-`CARGO_MANIFEST_DIR`; its donor snapshot was removed. The destination's source
-files were present, but the executable read the old absolute path. Existing
-sanitization enumerated workspace members and explicit dependency paths from
-`metadata --no-deps`, omitting patched registry dependencies such as tree-sitter.
-This is build-cache correctness, not a parser/product behavior defect.
-
-The sanitizer now uses full locked/offline metadata and starts from packages
-whose Cargo `source` is null. Existing cleanup and verified clean-cache shape
-reuse remain the owners. The change covers all resolved local patches, not an
-exception for one library. Metadata resolution reads more package records;
-registry compile artifacts remain reusable and resolution still fails closed.
-The actual temporary-Cargo fixture deletes the donor, exposes the stale script,
-and verifies the rebuilt destination prints `new`. All 13 sanitizer cases pass.
-Normal main checkpoint: `b453a31eb8470771c8cb81c8b4613277923d7384`.
-
-### Managed TARGET path — integrated scope and acceptance
-
-Owner: `quanta-runtime-query-surface-foundation/src/parse/managed_target_v3.rs`.
-Consumer: ParseQuery pre-key admission, execution and cache admission for the
-original retained TARGET. Two invalid String-style PathBuf checks become one
-private helper that borrows native encoded bytes, checks work addition, charges
-the original control before comparison, and returns the existing phase-specific
-`RUNTIME.GRAPH_PARSE_TARGET_PATH_MISMATCH_V3`. No String allocation, lossy path
-conversion, component normalization, new authority or public contract change.
-
-Integrated files: the managed-target owner and its `path_binding_tests_v3.rs`
-child, plus test-only import repairs in `file_text.rs`, `parse.rs` and
-`parse/parser_port_error_boundary_tests_v3.rs`. Production parser mappings are
-unchanged. Old imports are redirected to their existing owners; test assertions
-and warning policy are retained.
-
-Executed R30 acceptance: five new cases (exact UTF-8 in both phases; different member; component
-alias; original work refusal precedence; non-UTF-8 versus replacement-character
-alias) passed with zero ignored cases. Existing parser error mapping 4, parse 15
-and file identity 6 also passed. Main checkpoints `933daac0014` and `b7fe68c10aa`
-preserve foreign source/index bytes through the normal coordinator. R31 binds
-those integrated files and later common-owner changes to one main tuple; consumer
-execution remains a separate acceptance boundary.
-
-| Next action | Acceptance |
+refuses Apply before SDK effects with
+`mutation_refactor_rename_apply_response_owner_unavailable_v1` while its production
+terminal/replay issuer is absent. Caller materialization caps and host ceilings
+do not issue that owner. Preview/Rollback and feature-off witnesses stay separate.
+No-effects/absent-issuer refusals must survive Native acceptance.
+
+## Evidence and retirement
+
+Record source SHA/digest, committed sibling pins, execution root, recipe/features,
+selected/executed/pass/skip/leak counts, exact output oracle and immutable receipts.
+Do not relabel a historical pass or a zero-case build failure as current proof.
+Private worktree deletion is neither integration nor execution evidence.
+
+The completed repair tables, R6–R30 retry history and old frontend CI prose were
+removed from this active handoff after retaining durable decisions in ADR-0005.
+Full prior bytes (675 lines), original selectors/tuples and SHA-256 manifest remain
+at `/Users/songmin/.codex/task-evidence/doc-consolidation-20261007-01a1142d/checkpoint-compression-pass/before/`
+and `before-state.json`. Original runtime archives remain at the evidence root
+above; `r37-observed-receipts.json` in the consolidation directory binds the
+read-only receipt reconciliation. Recovery copies are not new test results.
+
+## Java consumer closure — integrated source and private traversal acceptance
+
+Java fixture migration is integrated on Semantica main as
+`35f1c81946eb1f8a61a31ff4e1ba69a163e3dfff`; the checked canonical bundle is
+integrated as `a8778714805906346b82d0064ecdd501ef5a0f15`. Those ten paths are
+already absorbed. R37/R38 whole-Java results include the still-private common
+cursor prerequisite; they do not qualify main without that prerequisite.
+
+R31 Native minimal stopped before cases at the same Java production owner:
+
+- `identity_extract::anonymous_names_from_read_v1` was private to its child while
+  two actual sibling callers required it.
+- The diagnostic bundle facade called the removed
+  `CfgParsedTree::tree_sitter_tree_v1` raw getter.
+
+The candidate retains the existing canonical `bundle::surfaces_v1` calculation:
+
+- Widen only sibling-owner visibility within `language_parser_plugin`.
+- Bind `CfgParsedTree` to one checked read through `with_read_context_v1`.
+- Validate supplied source boundaries before calculation, including empty source.
+- Keep missing authority and non-clean parse health as typed refusals.
+- Reuse existing diagnostic output admission and stable identity hashing.
+  No original control, root, allocator or successful plan is fabricated.
+- Retire the separate facade bundle assembly; public signatures/DTOs are unchanged.
+
+Tests assert literal authored items, empty-source refusal, malformed-health refusal
+and existing whole-bundle parity. Existing fixtures are migrated to checked node,
+fallible FileId and explicit canonical admission/error types; their expected
+semantic outputs and refusal assertions are unchanged.
+
+### Actual recovery observations
+
+| Source / rail | Observed result |
 | --- | --- |
-| Revalidate integrated path/parse/identity owners, Native minimal, original output-custody eight, JSON/quarantine, SDK five controls and Native Full registry/mutation on R31. | Exact owning targets/features; nonzero selected cases, zero failures/ignored; original identity/refusal/refund, exact typed errors, literal inventory, provider-off refusal, admitted Preview and Apply refusals. |
-| Execute D1–D7 owner45 on the same source. | Preserve PTA-first ordering, reviewed witnesses/minima and ignored policies. Resolve-only maps and compile success do not count as execution. |
-| Close attributable mandatory policies and actual product acceptance. | Retain unrelated GOD/Honesty/FFI/input findings until their owners resolve them. Native daemon/installed acceptance stays separate; Linux CHECK requires signed immutable slots/independent approval. |
+| R32 `722ef2a663ff` output custody | 8/8 passed, zero ignored, including original retention/refusal controls. This remains R32 proof. |
+| R32 Java natural lib | Compilation failed on nine existing test API migration errors; zero cases. |
+| R33 `b35d00a807b2` Java natural lib | One unconstrained fixture error type prevented compilation; zero cases. |
+| R34 `a8aa482b9962` Java natural lib | Compiled; two existing cases continued using CPU without completing. Root cancelled the run; no passing whole-owner verdict. |
+| R35 `8cb67a15e7d5` diagnostic source | The short recoverable Java input stalled after parse, at item-index traversal. Cancelled; diagnostic prints were subsequently removed and are not an import candidate. |
+| R36 `56a97b5d4e20` common traversal | 6/6 passed, zero ignored. Named/unnamed order, exact subtree, pruning and consumer stop are preserved. |
+| R36 Java natural lib | 138 passed / 1 failed / zero ignored in 2.96s. Both formerly unfinished existing cases completed. The new fixture incorrectly assumed a zero-width node in the general ERROR input; this is a test-fixture failure, not a passing owner verdict. |
+| R37 `a81985184870` common traversal | Existing canonical receipt: 6/6 passed, 140 nonselected, zero ignored. |
+| R37 whole Java | Existing canonical receipt: 139/139 passed, zero nonselected/ignored. |
+| R37 original-issued traversal | Dependency compilation exited 101; zero tests executed. Original traversal remains unproved; this is not a failing-test verdict. |
+| R37 Native minimum | Actual retry exited 101 at nine CFG adapter compilation errors; zero cases. The other five consumer requests were cancelled without verdict. |
+| R38 `48e525ccb5fa` common / whole Java | 7/7 and 139/139 passed, zero ignored; digest `4758a49dec4e8dda6ec2ee434242d1ce3b8987fe0eef3f38868788cbc7eb6e3f`. Includes the named leaf whose only children are unnamed. |
+| R39 `65c13953c173` Native minimum | The repaired CFG library compiled; Java DefUse dependency compilation failed on 11 errors, zero cases. Digest `f35587e8531a5a115db89869126b9d85b5851f2278c2db682ea8c5db5786ed40`. Independent JSON/quarantine retry is recorded separately. |
 
-Evidence root:
-`/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/query-owner-build-r1`.
-`final-source-absorption-review.json` is the historical main `dd7aa33` nine-path
-observation. `lock-r25-r2-import-state.json` and
-`port-policy-and-import-r26-commit-state.json` record the normal new checkpoints.
-`remaining-r31-snapshot-state.json` and its owner state/map bind integrated-main
-acceptance. `remaining-r30-owner-state.json` and archives retain the actual 30
-focused passes used for main import; R27/R28 failed receipts retain their original tuples. Historical receipts keep their original source roots.
-Private worktree deletion is not absorption or proof evidence.
+### Common traversal owner repair and acceptance
 
-## Frontend local CI
+The old checked traversal repeatedly reconstructs parents/siblings from nodes.
+The replacement retains one existing `NativeTreeCursorV1`, anchored at the exact
+requested root. Ordinary and controlled entrypoints share the same walk.
 
-`just ci` completed on QGLang HEAD `68ff02ef443f` with its then-current
-working overlay. The runner recorded source snapshot
-`f3a565f81f5d412a2aefd011319c6db0946b35f4706f786e3b321cff7b485dd6`:
-all groups passed; nextest 1514/1514 with zero skips, doctest 10,
-external-consumer positive 1 and negative compile-fail 23.
-Subsequent edits here and to the remaining-work/ADR reconciliation are prose
-updates; the receipt is retained at its original source. This is local CI,
-not a clean committed-HEAD qualification receipt.
+- Wrapper methods use the existing optional-control/native cursor owner. `None`
+  still refuses controlled custody; the actual current control is borrowed per step.
+- Every exposed node and movement checks the original read context.
+- Native continuation allocation uses the original fallible cursor owner; no
+  unaccounted Rust continuation stack or recursion is introduced.
+- Named selection skips unnamed siblings, pruning omits their subtree, and the
+  anchored cursor cannot visit the requested root's siblings.
+- Native refusal, consumer error and cursor drop preserve typed failure and cleanup.
+
+Three owning paths:
+
+1. `packages/core/codegraph-lang-common/src/tree_sitter_host/current_read_v1.rs`
+2. `packages/core/codegraph-lang-common/src/tree_sitter_host/current_read_v1/traversal_tests_v1.rs`
+3. `third_party/tree-sitter/binding_rust/native_custody_v1/node_read_v1.rs`
+
+The Java recovery oracle compares enter/leave events against independent indexed
+raw-child traversal and rejects more visits than the reference. Missing-delimiter
+input additionally requires a zero-width node. The existing 60,000-parenthesis
+regression stays enabled and retains all public surface output assertions.
+
+DoD: common 7, whole Java with all four new tests and existing parity, and all
+five original-issued subtree memory/work/cancellation controls must execute with
+zero ignored cases. Source integration follows verified owning results. Do not
+weaken the existing no-backing-growth or first-refusal assertions for the cursor.
+
+Immutable archives are in the existing recovery evidence directory, with
+`remaining-r37-snapshot-state.json` and `remaining-r37-owner-state.json` binding
+the recorded R37 candidate. A successor must freeze its own tuple; these receipts
+do not apply to later source. The 45-request D1–D7 matrix and product acceptance
+remain separate. Java's ten paths are integrated; the three common/native
+cursor paths remain private until the five original-issued controls execute.
+
+### CFG compile closure and remaining DefUse boundary
+
+R39 additionally repairs six CFG owner paths: remove a stale Go import, expose
+the existing text-access trait at the crate boundary, bind Java/TypeScript
+checked-node return lifetimes, remove an extra Java switch reference, and avoid
+TypeScript helper-name shadowing. No algorithm, test oracle, public DTO or
+feature is changed. All CFG language features compiled in the actual R39 Native
+build before the distinct DefUse failure. These six paths are integrated on
+Semantica main as `6580317bb840ace444b025d3df9fec11243f3578` through the normal
+coordinator/hooks, with foreign staging preserved. This closes their compilation
+repair; it does not claim passing Native cases or whole-CFG test execution.
+
+The original traversal and Native graphs reach the same Java DefUse blocker:
+its frontdoor still calls the removed `CfgParsedTree::tree_sitter_tree_v1`, and
+initializer readers mix raw nodes with canonical checked-node regions. Current
+Python and Rust DefUse frontdoors also retain that removed getter. Closing this
+boundary requires the actual extraction walk to consume callback-scoped checked
+nodes and the caller's current control; adding a raw getter or ordinary reparse
+would discard the original custody contract. No such fallback is proposed.
+
+Active private source:
+`/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/query-owner-build-r1/managed-source-r27/semantica-codegraph-v2`,
+branch `codex/oct7-substrate-remaining-proof-r31`, HEAD `65c13953c1733dc2e5eaa0f011cb474c9b08fd61`.
+R38/R39 state and immutable result archives at the evidence root bind each
+individual verdict. They are not same-source main or product qualification.
+
+### Successors for reached owner build failures
+
+- R39 JSON compilation reached a production import whose source-authority wire
+  dependency was declared only under dev dependencies. R40
+  `e8f996e0ff6a1f0ef3d89fff97e53ac5e959765e` moves that existing dependency into
+  production dependencies; no package, version or feature is added. The working
+  main already contains the exact same isolated fix. The source-bound JSON and
+  quarantine requests are recorded in `remaining-r40-light-state.json`.
+- R39 whole-CFG library tests stopped on four existing fixture API omissions:
+  Java labeled-statement outcome, Kotlin scoped tree read and fallible carrier
+  overlay, and TypeScript's ordinary control argument. R41
+  `506d77118b74a0ed9fe798ab46d26ffceff25fd1` repairs those three test files while
+  retaining every literal semantic/refusal assertion. Whole-owner acceptance is
+  recorded in `remaining-r41-cfg-owner-state.json`; no PASS is implied by this
+  preparation note.
+
+The active private worktree is now at the R41 successor. Frozen R38/R39/R40
+results retain their individual source identities. Manifest and CFG fixture
+imports require their own reviewed checkpoint; the three cursor paths retain
+the original-issued-control stop above.
+
+### R42 canonical path comparison and current refusal
+
+R40 quarantine executed 130/130, zero ignored. R40 JSON still executed zero
+cases: the dependency correction exposed two HIR `PathBuf`/string compile errors.
+R41 CFG executed 411 passed / 1 failed / zero ignored. The failing existing
+ten-cause control test reached `AuthorityRejected` before its supplied current
+refusal; its expected causes and allocation/grant assertions are retained.
+
+Candidate `c521f7e2e712c47a583c2943454ac43b1c24097a` changes six owner paths:
+
+| Before | After / acceptance |
+| --- | --- |
+| Parse compares borrowed path bytes locally; HIR applies String operations to `PathBuf`. | Both call `BorrowedByteMatchV1::match_native_path_admitted_v3` at the existing wire owner. It borrows OS bytes, checks combined work arithmetic and admits before comparison. No lossy alias, normalization or path copy is introduced. Caller-specific mismatch errors remain at Parse/HIR. |
+| CFG validates backend, then ordinary syntax custody can replace a current stop with authority rejection. | After backend validation, the common checked-root boundary visits the supplied control with zero work before syntax reading. Native cause survives before traversal/allocation; a live control still cannot upgrade ordinary syntax. |
+
+Four independent path regressions assert literal UTF-8 work totals, exact dot
+components, work/cancel precedence, overflow without charging, and non-UTF-8
+rejection on Unix. The existing ten-cause CFG regression is kept; an additional
+live-control case requires authority rejection without allocation or grant visits.
+
+Required R42 rails: wire comparison owner (14), existing Parse path owner (5),
+whole CFG (413 including the former failure and new rejection), and actual JSON
+integration (13). `remaining-r42-owner-state.json` binds source/digest, owner
+commands, witnesses and immutable archives. Prepared changes do not imply PASS.
+The active private worktree is now at R42; main cursor adoption and DefUse's
+three-language scoped-read migration remain separate acceptance boundaries.
+
+### Current-main aligned verification — R43
+
+R42's wire owner build stopped on four historical helper visibility errors.
+Current committed main already contains their owner-scoped repair at
+`8e370560577`; no second repair was authored. R43 reapplies exactly the 13 still
+pending paths onto current committed main `235cd4c48ff89bfbe8cea701dfd61ed5c93ee5db`
+after checking all saved preimages. Source is
+`c55a232607c0284116e31e26d76a21150f773d6e`, branch
+`codex/oct7-substrate-current-owner-r43`, at the same private checkout path.
+
+Ten pending path/CFG/manifest paths form the reviewed integration bundle; three
+cursor paths remain subject to original-issued control acceptance. R43 uses the
+same four owner selectors, counts and witnesses as R42. Its snapshot and actual
+result state are `remaining-r43-snapshot-state.json` and
+`remaining-r43-owner-state.json`. Older results retain their recorded source
+identities, including the zero-case historical wire build failure.
 
 ## Verified R43 checkpoint — integrated 10 paths, cursor acceptance open
 

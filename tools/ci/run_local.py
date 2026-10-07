@@ -110,7 +110,16 @@ def source_snapshot() -> str:
         digest.update(b"\0")
     for directory in sorted(path for path in directories if path == ROOT or ROOT in path.parents):
         digest.update(os.fsencode(str(directory.relative_to(ROOT))))
-        digest.update(str(directory.stat().st_ctime_ns).encode("ascii"))
+        try:
+            metadata = directory.stat()
+        except FileNotFoundError:
+            # Removing a tracked subtree also removes its containing directories.
+            # Preserve that absence so recreating a directory still causes drift.
+            digest.update(b"MISSING\0")
+        except OSError as error:
+            raise LocalCiError("cannot inspect source directory %s: %s" % (directory, error)) from error
+        else:
+            digest.update(str(metadata.st_ctime_ns).encode("ascii"))
     return digest.hexdigest()
 
 

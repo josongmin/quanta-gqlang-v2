@@ -19,6 +19,45 @@ source-bound receipts.
 
 ## Decision
 
+### Supported V3 relations share one downstream owner
+
+Composition bodies and standalone admitted relations share the bounded
+runtime-owned relation compiler/evaluator. It consumes sealed operator,
+expression, polarity and correlation facts rather than reparsing source or
+using HIR/operator spelling as execution authority. The admitted RepoPath
+subset is distinct from proposed general typed multi-column join.
+
+EXISTS/NOT EXISTS preserve the exact outer environment and right predicate,
+left multiplicity and stable order. Right duplicates do not multiply left rows.
+Multiple terms retain flat authored-order term/right-child pairing. Failure
+cannot become empty right input or successful absence. Unsupported operators
+reject before producer acquisition.
+
+The original request root owns memory permits and cumulative work across
+producer, nested evaluation and output. Plan positions are private execution
+identities; source-stage provenance keys may repeat. Receipts bind actual
+plan/input authority/output, with downstream versioning if those bytes change.
+
+### CHECK work and process proof retain their original owners
+
+Canonical count/encode work runs in the existing Foundation owner and serving
+control. Native Match checks count, bounded encoding, length, copy/hash work and
+digest before transport. Typed work refusal stays non-success. Historical
+Foundation37 and Native Match23 passes are proof at their original source.
+
+Graph/CHECK fixtures materialize source before daemon startup and use the same
+configured/attached root. Linux Graph success and non-Linux refusal are separate
+selectors. Signed Linux CHECK requires its release profile, installed trust,
+immutable slot, approval/key and active generation. Generic artifacts,
+readiness, a scripted daemon or integrated fixtures do not prove actual queries.
+
+Original-session admission, borrowed-to-owned handoff and curated SDK type
+exports remain downstream contracts. Missing wiring is repaired there, without
+another frontend engine or default session.
+
+The Oct-4/Oct-5 repair packet and Oct-6 process continuation are retired.
+Unfinished acceptance remains in [remaining work](../work/remaining.md).
+
 ### The frontend contract is the only public downstream seam
 
 `quanta-gqlang-v2-frontend-contract` is the product-facing integration boundary.

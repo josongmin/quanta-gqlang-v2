@@ -48,7 +48,9 @@ Before running groups it rejects any indexed path excluded by a repository
 `.gitignore`, including force-added files. This check uses repository ignore
 files only, not personal global or `.git/info/exclude` rules. Put local audit
 snapshots and repro build trees under the ignored `.audit/` directory; keep
-durable audit reports and source provenance under `docs/audits/`. Ignoring a
+durable decisions under `docs/adr/` and unfinished acceptance under `docs/work/`.
+Keep raw source-bound receipts in the evidence directory; ADR-0001 records Git
+recovery of retired tracked reports. Ignoring a
 path does not remove it from Git: existing generated files must be removed
 from the index while preserving the local evidence when it is still needed.
 It removes caller-controlled Rust/Cargo/Nextest/property-test settings and

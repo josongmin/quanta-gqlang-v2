@@ -6,6 +6,12 @@ Status: producer contract for the breaking, pre-release qglang/Semantica source-
 
 `compile_source_document_v3(SourceIdV2, &str, &ClosedFrontendAuthorityV2) -> Result<CompiledSourceDocumentV3, FrontendTransactionErrorV2>` is the direct closed source entry that issues an `ExecutionDocumentV3`. The result retains the source-ordered compiled item dispositions and exposes one immutable execution document. `compile_source_document_with_lexical_owner_v1` performs the same closed compile while retaining a source-bound permit for lexer and top-level parser storage in `AdmittedLexicalCompiledSourceDocumentV1`; its permit does **not** cover nested HIR, semantic, planning, or execution allocations. Neither entry grants downstream runtime admission or complete frontend memory qualification. No public constructor accepts preassembled execution items or a caller-supplied digest. `compile_resolved_document_v2` can check a sealed semantic document without original bytes, but its result exposes **no** execution document or source/qualification digest. Open analysis is never promoted to closed execution.
 
+The facade also exports the two [bounded scalar request entries](#bounded-scalar-request-entry).
+They issue the same V3 projection inside `AdmittedScalarExecutionDocumentV3`
+for their finite Source→Project subset, retaining request-owned storage.
+Lexical-only ownership and scalar execution ownership cover different storage;
+neither represents complete frontend or runtime memory qualification.
+
 `classify_single_source_root_v3(SourceIdV2, &str, &FrontendBudgetV2)` is a
 canonical parse-only routing aid. It requires exactly one source item and
 returns only its closed root-family enum; it does not resolve semantic catalogs,

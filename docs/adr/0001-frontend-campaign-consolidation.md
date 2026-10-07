@@ -56,10 +56,15 @@ creating another product-facing contract.
 
 ### Closed source compilation owns execution documents
 
-`compile_source_document_v3` is the only closed source entry that can issue an
-`ExecutionDocumentV3`. Resolved-only and open-analysis paths cannot mint source
-or qualification digests. Public callers cannot assemble execution items or
-supply their own digests.
+The public facade issues source-bound execution through
+`compile_source_document_v3`, its lexical-owner variant, and the two bounded
+scalar request-owner entries. The scalar entries accept only the documented
+Source→Project subset and retain the source's issued storage owner; they do
+not fall back to unrestricted compilation. See the
+[V3 entry contracts](../contracts/frontend-execution-v3.md#bounded-scalar-request-entry).
+Resolved-only and open-analysis paths cannot mint source or qualification
+digests. Public callers cannot assemble execution items or supply their own
+digests.
 
 ### Deterministic, fail-closed semantics
 
@@ -178,3 +183,100 @@ the following:
 4. a missing executable oracle for a current public claim
 
 Historical plan prose alone is not a reopen condition.
+
+## 2026-10-07 consolidation
+
+Consolidation input is clean QGLang `main` at
+`68ff02ef443fcb5aecccb885adad2cb24af8e719`. Later campaign trees accumulated
+duplicated audit/status authorities. Retire them after routing decisions and
+unfinished acceptance as follows:
+
+| Retired records | Retained authority |
+| --- | --- |
+| Sep-26 test-audit reports and closed TA/RA actions | [ADR-0002](0002-test-authority-and-adversarial-oracles.md), [ADR-0004](0004-sealed-owner-facts-and-bounded-projection.md), executable tests and current coverage ledger |
+| Sep-27 lane/findings reports, follow-up owner repairs and scenario checklist | ADR-0004, current contracts; unclosed transport decision in remaining work |
+| Oct-4/Oct-5 producer/consumer maintenance and Oct-6 process continuation | [ADR-0003](0003-frontend-downstream-integration-boundary.md), ADR-0004; remaining compile/bootstrap/process/install acceptance |
+| Oct-6 substrate audit, completed D1–D7/F1/D6 work orders, repeated source/JSON checkpoint ledgers | [ADR-0005](0005-substrate-reuse-and-consumer-projection.md); remaining owner/policy/product proof and independent F repairs |
+| Ten reference audits and Index worker prompt | [ADR-0006](0006-code-query-evaluation-boundary.md); Proposed ADR-0007 and open action IDs |
+
+The one entry for unfinished work is [remaining.md](../work/remaining.md).
+The Proposed ADR-0007 remains a proposal; consolidating a completed investigation
+does not accept its unimplemented public contract. Normative language,
+contracts, release discipline, examples and coverage documents are retained.
+
+The follow-up at producer `7ff7ed8290ed872863daa6e83cdb01b338c27160`
+also retires the unreferenced `docs/ssot/README.md` routing stub and
+`docs/language/ai-profile.md` status note. The main docs index already routes
+living contracts, and the
+[exploration boundary](../language/README.md#exploration-profile-boundary)
+now belongs to the language reference. Both original files remain recoverable
+with `git show` at that producer commit.
+
+Subsequent integrated runtime repair decisions are consolidated into
+[ADR-0005](0005-substrate-reuse-and-consumer-projection.md#subsequent-integrated-repair-decisions).
+The active proof handoff retains unfinished execution inputs while its owner task
+is running; it is not retired as a completed packet.
+
+### 2026-10-07 final RFC and ticket pass
+
+At QGLang `50d4a6710b542eaf51a2e2ee70c4db5acb5a09d6`, the remaining code-query
+RFC and separate action list are retired. [ADR-0007](0007-typed-code-query-contract-proposal.md)
+preserves the proposed semantics and failure/compatibility laws;
+[remaining.md](../work/remaining.md#proposed-code-query-work) preserves every
+A00–A15, optional Index and A06/A12/A13 sub-batch ID with owner/dependency/gate.
+No proposed feature is marked implemented or qualified. The retired V1 algebra
+stub's disposition and only source reference now belong to ADR-0002.
+
+The tracked RFC and V1 stub are recoverable with `git show` at this producer
+commit. Their dirty versions, the untracked action list and the complete active
+proof handoff were captured before consolidation in
+`/Users/songmin/.codex/task-evidence/doc-consolidation-20261007-01a1142d/final-rfc-pass/before/`;
+`before-state.json` records the document hashes. This local recovery copy is
+provenance, not test evidence. The active Java/traversal candidate and its
+source-bound execution inputs remain at their existing path while the owner runs.
+
+### Active handoff compression and duplicate status retirement
+
+The final residual pass removes the duplicate `docs/ssot/engine-status-v1.md`;
+its support/refusal table and executable-owner links now belong to
+[language reference](../language/README.md#supported-and-refused-frontend-entries).
+The original tracked file is recoverable at `50d4a6710b542eaf51a2e2ee70c4db5acb5a09d6`.
+
+The active substrate handoff keeps its path but shrinks from 675 to 146 lines.
+Completed repair tables, superseded R6–R30 retry prose and old frontend CI text
+leave the execution surface. ADR-0005 retains the decisions; the handoff retains
+R37/R31 identities, receipt roots, exact consumer guards and the pending
+Java/common/original traversal scope. Existing R37 receipts establish common
+6/6 and whole Java 139/139 at their candidate; original traversal compilation
+exited 101 with zero tests, and six consumer requests were cancelled without
+verdict. This correction issues no successor proof or main-integration claim.
+
+Before-edit bytes, source hash manifest and copies of the three original R37
+receipts are under
+`/Users/songmin/.codex/task-evidence/doc-consolidation-20261007-01a1142d/checkpoint-compression-pass/`.
+`before/docs/work/substrate-repair-checkpoints-2026-10-07.md` recovers the full
+dirty handoff, including every retired selector and tuple. The active owner
+scope is preserved; local archives are provenance and are not shipped contracts.
+
+### Recover original source-bound records
+
+All removed tracked records, including raw JSON provenance and test selectors,
+remain recoverable from the exact baseline above. For example:
+
+```sh
+git show 68ff02ef443fcb5aecccb885adad2cb24af8e719:docs/plans/oct-6-substrate-dedup/checkpoint-rust-evidence.json
+git show 68ff02ef443fcb5aecccb885adad2cb24af8e719:docs/audits/2026-10-05-current-source-audit-action-plan.md
+git ls-tree -r --name-only 68ff02ef443fcb5aecccb885adad2cb24af8e719 docs/audits docs/bugbash docs/bubgash docs/misc docs/plans
+```
+
+Recover into a separate scratch path. Historical snapshots/build-cache links
+may be retired. Previous FCP input cleanup retained Git recovery refs under
+`refs/archive/fcp-retired-20261006`, with recovery instructions at
+`../.frontend-contract-proof-evidence-20261004/consumer-execution-closure/retirement-20261006/README.md`
+relative to the repository root. This consolidation deletes no external
+evidence, checkout, branch or tracker entry.
+
+Future execution documents contain only outstanding work. At closeout, merge
+the durable outcome into its ADR/contract and remove the completed work order.
+Preserve original IDs for remaining acceptance; a pass from another source
+tuple does not replace an old failed receipt.

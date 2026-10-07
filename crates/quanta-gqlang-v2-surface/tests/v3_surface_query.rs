@@ -238,7 +238,7 @@ fn relation_pipeline_stage_set_is_closed() {
     // open-tagged operators must NOT parse: silently accepting `union`,
     // `limit`, `sort`, or `apply` would reopen capability the closed HIR can no
     // longer represent, and their algebra handlers are already unreachable from
-    // public HIR (see algebra/tests/RETIRED_LAWS.md for the disposition).
+    // public HIR (see docs/adr/0002-test-authority-and-adversarial-oracles.md).
     let builder = HirBuilderV1::new();
 
     // STAGE-01: the closed six-token vocabulary owns both parsing and the

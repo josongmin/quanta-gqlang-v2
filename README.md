@@ -2,6 +2,8 @@
 
 `quanta-gqlang-v2`는 QGLang v3 언어 프론트엔드의 owner repo다.
 
+[문서 인덱스](docs/README.md) · [ADR](docs/adr/README.md) · [잔여 작업](docs/work/remaining.md)
+
 범위:
 
 1. syntax, formatting, HIR, binding, types, modules
@@ -62,11 +64,10 @@ algebra·logic, planning의 checked 결과를 조립한다. 각 stage의 책임�
 주요 문서:
 
 1. [docs/language/README.md](docs/language/README.md)
-2. [docs/ssot/engine-status-v1.md](docs/ssot/engine-status-v1.md)
-3. [docs/contracts/frontend-execution-v3.md](docs/contracts/frontend-execution-v3.md)
-4. [docs/language/examples_index.md](docs/language/examples_index.md)
-5. [docs/language/test_hellgate_ledger.md](docs/language/test_hellgate_ledger.md)
-6. [docs/language/release_discipline.md](docs/language/release_discipline.md)
+2. [docs/contracts/frontend-execution-v3.md](docs/contracts/frontend-execution-v3.md)
+3. [docs/language/examples_index.md](docs/language/examples_index.md)
+4. [docs/language/test_hellgate_ledger.md](docs/language/test_hellgate_ledger.md)
+5. [docs/language/release_discipline.md](docs/language/release_discipline.md)
 
 예제:
 

@@ -328,6 +328,26 @@ class LocalGateTest(unittest.TestCase):
                 tracked.write_text("present\n", encoding="utf-8")
                 self.assertNotEqual(before, run_local.source_snapshot())
 
+    def test_source_snapshot_represents_deleted_containing_directories(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="qglang-source-snapshot-") as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            tracked = root / "docs/campaign/nested/record.md"
+            tracked.parent.mkdir(parents=True)
+            tracked.write_text("historical record\n", encoding="utf-8")
+            subprocess.run(["git", "add", "docs"], cwd=root, check=True)
+            with patch.object(run_local, "ROOT", root):
+                tracked.unlink()
+                file_missing = run_local.source_snapshot()
+                tracked.parent.rmdir()
+                (root / "docs/campaign").rmdir()
+                (root / "docs").rmdir()
+                directories_missing = run_local.source_snapshot()
+                self.assertNotEqual(file_missing, directories_missing)
+                self.assertEqual(directories_missing, run_local.source_snapshot())
+                tracked.parent.mkdir(parents=True)
+                self.assertNotEqual(directories_missing, run_local.source_snapshot())
+
     def test_source_snapshot_rejects_external_tracked_symlink(self) -> None:
         with tempfile.TemporaryDirectory(prefix="qglang-source-snapshot-") as directory:
             root = Path(directory) / "repo"

@@ -9,7 +9,8 @@ The legacy monolithic `syntax -> sema -> ir` path is gone. The current
 public downstream entrypoint; the deleted legacy syntax/IR crate contracts are
 not compatibility surfaces.
 
-Code status (2026-10-05, source authority over this prose):
+Code status (2026-10-07, producer `50d4a6710b542eaf51a2e2ee70c4db5acb5a09d6`,
+source authority over this prose):
 `compile_source_document_v3` is a live transformer stack (surface → HIR →
 binder/types/modules → algebra → logic/Tarjan → planning classify →
 `ExecutionDocumentV3`). Conformance registers 19 source families, including
@@ -20,7 +21,42 @@ and sema-RED. The specialized one-shot `admit_show_planned_source_v2`
 still refuses before lexing. Pipeline staged SHOW syntax → declaration → plan
 → Execution DTO is live under the same retained root; only the syntax owner is
 exported by the frontend facade. Neither path grants downstream runtime authority.
-Index: [engine status](../ssot/engine-status-v1.md).
+The facade also exports ordinary closed compilation with a lexical storage
+owner and two request-owned scalar Source→Project compilation entries.
+Their storage coverage, typed refusals and finite shape are specified in the
+[V3 contract](../contracts/frontend-execution-v3.md#bounded-scalar-request-entry).
+
+### Supported and refused frontend entries
+
+| Entry | Current source boundary |
+| --- | --- |
+| Closed source compilation | Source-bound V3 execution; lexical-owner variant covers lexer/top-level parser storage only |
+| Scalar request-owner compilation | Bare Query Source→Project; source/issued-root/budget checks and retained execution storage. Unsupported roots/shapes refuse without unrestricted fallback |
+| Authored `query.result_shape` | Parse/format live; closed `materialize_query` rejects with typed diagnostics |
+| `admit_show_planned_source_v2` | Source-cap refusal or `IncompleteSourceDiagnostics` before lexing; no diagnostic debit is issued |
+| Open analysis / Rename without catalog | Typed Incomplete; no execution document |
+| SHOW syntax owner | Facade-exported syntax admission; syntax alone grants no semantic plan |
+| Staged SHOW owners | Syntax→declaration→plan→Execution DTO retains one root. Later stages are Pipeline owners, not facade exports or runtime authority |
+
+The [facade](../../crates/quanta-gqlang-v2-frontend-contract/src/lib.rs) and
+[V3 contract](../contracts/frontend-execution-v3.md) own exact entry coverage.
+[Scalar request regressions](../../crates/quanta-gqlang-v2-pipeline/tests/v3_compiled_document_assembly/scalar_request_tests.rs)
+compare execution, digests and stage debits with independent expectations and
+reject foreign source/root, mismatched budget, unsupported roots and short
+reservations. The [external consumer](../../tools/frontend_external_consumer/src/main.rs)
+uses both scalar entries and lexical-owner compilation through the facade.
+Conformance also preserves Rename preview/apply intent and result-shape refusals;
+these frontend oracles grant no runtime mutation or installation authority.
+Unfinished acceptance belongs to [remaining work](../work/remaining.md), and
+completed owner decisions to [ADR-0004](../adr/0004-sealed-owner-facts-and-bounded-projection.md).
+
+### Exploration profile boundary
+
+The frontend ships no separate AI exploration profile or provider lane.
+`FIND`, `EXPLAIN`, `SAMPLE`, `COMPARE` and `EXPORT` retain their existing checked
+language/presentation contracts; they do not issue AI-provider or runtime
+execution authority. Retired exploration carriers and their deleted-crate test
+command remain historical, with no compatibility or proof surface.
 
 The live owner stack is:
 

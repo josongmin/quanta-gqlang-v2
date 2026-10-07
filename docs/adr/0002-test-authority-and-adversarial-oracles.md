@@ -145,3 +145,43 @@ prove hosted CI, downstream runtime admission, deployment, or activation.
   cited as current-source qualification.
 - Adding test count alone is not progress; stronger independent behavior
   discrimination is the acceptance criterion.
+
+## Sep-26 test-audit consolidation
+
+Completed TA/RA work is retained by exact owner assertions:
+
+- Process oracles inspect full diagnostics, canonical stdout, stderr and exit
+  status; decoding checks required fields and exact item cardinality.
+- Signature/host projection preserves non-default effect axes. EXPORT tests
+  pin identity, authored use, declaration order and wrong-kind/missing rejection.
+- Composition tests inspect schema, binding/item identity, relation and
+  expression closure. Aggregate tests inspect builtin/argument/binding shape;
+  item lookup has distinct positive and absent-ID cases.
+- Mutable counters and “types kernel called exactly once” claims are removed
+  when the test only proves ordered item assembly.
+- UTF-8 limits count bytes, oversized EOF frames reject, process child tests
+  prove post-assertion execution, and selectors reject zero executed cases.
+- Execution digest proof uses independent stream/vector expectations. A vector
+  emitted by the production encoder alone cannot prove that encoder correct.
+
+These decisions consolidate TA-01/05/06/07/08/09/10, RA-01–05 and subsequent
+transport/custody review outcomes. Historical mutations/counts remain
+source-bound Git history; none becomes current qualification. An unclosed
+diagnostics-wire decision remains in [remaining work](../work/remaining.md#qg-diag).
+
+Deleting a tracked subtree is valid dirty-checkout input. The CI source snapshot
+records missing files and containing directories explicitly, still detects
+directory recreation and source changes between groups, and rejects other
+inspection errors. The consolidation exposed and repaired the earlier
+file-only deletion handling; its regression retains stable absence and
+recreation controls without relaxing source custody.
+
+## Retired V1 algebra laws
+
+The open-tagged V1 normalization API and snippets for `normalize_relation`,
+`NormalizeOptionsV1`, `CompositionV1`, `union`, `limit` and `apply` are retired.
+They cannot compile and are not current test templates. The current algebra
+accepts sealed V2 semantic relations through `lower_relation_item` and
+`lower_nested_relation_v2`. Its closed stages are `where`, `project`, `join`,
+`cross`, `group` and `order`; executable surface/algebra suites own their behavior.
+The source disposition points here instead of a separate historical Markdown stub.
