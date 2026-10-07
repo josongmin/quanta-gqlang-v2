@@ -103,8 +103,8 @@ Paths below are Semantica-relative; `core/` means `packages/core/`, `qv2/` means
   is integrated; change it only if the regression reaches a reproducible defect.
 - W2: `core/codegraph-lang-common/src/{c,go,typescript}_syntax_snapshot_v1.rs`,
   C/Go/TypeScript extractor scalar calculations and their affected owner tests.
-- The dirty `syntax_snapshot_budget_v1.rs` candidate shares the old 128 MiB
-  local cap/overflow logic and tests it, but grants no original authority and
+- Integrated `syntax_snapshot_budget_v1.rs` (`f2d85a9`, QBC2/2) shares the 128 MiB
+  local cap/overflow logic, but grants no original authority and
   charges no post-snapshot work. Shared ledger/helper mechanics belong to one
   birth/admission contract; grammar
   fields, binding/order and language interpretations remain distinct. Register any
