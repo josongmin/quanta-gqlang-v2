@@ -2,7 +2,7 @@
 
 Parent: [execution plan](readme.md). This is a request/oracle specification,
 not an execution receipt. Old selectors below are inputs to re-resolution.
-Latest caller/request audit: Semantica `daf8bb00bfa95e410e114910ce7f3dc495ace7b1`.
+Latest caller/request audit: Semantica `871224b2059422a8f36eca91ffb0c9119238ac9c`.
 `qv2/` abbreviates Semantica `packages/analysis/quanta-v2/crates/`.
 
 ## Execution contract
@@ -51,6 +51,17 @@ For DFG facts, first trace the actual original issuer and final retainer:
 the erased Native control and Java parser issuer do not establish that handoff.
 Keep syntax/facts fixtures small except where depth/allocation mechanisms require
 scale. No sleep-based timing oracle, self-equality or bare `is_ok` success claim.
+
+The current dirty Kotlin candidate adds
+`retained_kotlin_binding_rejects_same_length_foreign_source_and_backend_v1`
+with an exact-source positive and two typed, function-bound refusals. It does
+not discharge original current, output lifetime or all traversal controls.
+The current dirty C/Go/TypeScript candidate moves the identical local
+128 MiB/checked-add counter into `codegraph-lang-common/src/syntax_snapshot_budget_v1.rs`;
+its exact-cap and overflow tests cover only that local counter. The helper does
+not issue original grants or account post-snapshot calculation. Review the
+complete producer/consumer cut and run its owners before accepting custody or
+duplicate-removal completion.
 
 ### Changed language owners
 
@@ -119,19 +130,25 @@ host limits and caller caps do not justify an Apply-success oracle.
   are not executed counts. Assert exact deadline type versus iteration outcome,
   all supported domains and final publication refusal on the actual owner.
 
-### Missing real SDK acceptance
+### Authored real SDK regressions; execution acceptance pending
 
 Use `Code::verification().abstract_interpret().execute()` and the real adapter
 in `quanta-runtime/tests/abstract_interpret_fluent_api_e2e_test.rs`; manifest
 requires `abstract-interp,parser-python,test-utils`.
 
-- Deterministic `.timeout_ms(0)` reaches typed
-  `RuntimeError::AbstractInterpretDeadlineExceeded`, rather than success or a
-  generic QueryFailed. Check exact error/category/operation identity.
-- Existing positive real-domain results retain exact computed values under a
-  live default/explicit deadline; confirm default 30_000 params at its builder
-  owner rather than sleeping for 30 seconds.
-- Iterate the three domain choices where the same deadline contract applies.
+- Dirty source now authors `test_e2e_sdk_deadline_zero_is_typed_for_all_domains`:
+  deterministic `.timeout_ms(0)` on Sign, Interval and Constant must return
+  `RuntimeError::AbstractInterpretDeadlineExceeded` with the exact structured
+  reason and execution phase, rather than success or a generic error. The SDK
+  variant exposes no separate operation-identity field.
+- Dirty source also authors
+  `test_e2e_sdk_explicit_deadline_preserves_all_domain_values`: on real Python
+  `i = 0`, an explicit 30_000 ms deadline must converge and return Sign(Zero),
+  Interval `[0,0]` and Constant `Some(0)`. Confirm the default 30_000 ms
+  parameter at its builder owner rather than sleeping for 30 seconds.
+- These are authored assertions, not executed or qualified results. Resolve the
+  current integration target and features, then run its owner proof on the
+  frozen source tuple. Keep the existing mapper five separate.
 - Iteration exhaustion and non-timeout failures preserve their distinct types/
   result posture. An overdue lowering/projection result cannot publish success;
   retain the deterministic engine/adapter final-check oracle.
@@ -180,12 +197,20 @@ do not lower old minima or retain the graph-utils `scc` selector (now zero cases
 
 ### Added SCC caller coverage
 
-[D2-CALLER-COVERAGE](tickets.md#d2-caller-coverage) records nine additional
+[D2-CALLER-COVERAGE](tickets.md#d2-caller-coverage) records eleven additional
 package/scope pairs and their actual source paths: current-target planner,
 dominance, concurrency engine/schema, navigation, distinct `codegraph-import-graph`,
-rule execution, metrics and runtime community clustering. The old45 map and Tarjan10 filters omit these
-specific scopes; the runtime-analysis PTA request is not a planner request,
-and runtime Shape selectors do not cover community clustering.
+`codegraph-core-cfg` call-graph SCC, rule execution, metrics and runtime
+community clustering, plus abstract worklist (`90e6bb0ea3d`). The old45 map and Tarjan10 filters omit these specific
+scopes; the runtime-analysis PTA request is not a planner request, and runtime
+Shape selectors do not cover community clustering. The call-graph schema owner
+needs exact component order, 12k-chain, one-byte-short and inconsistent
+reverse-index controls; taint Zipper's criticality result is a separate consumer
+oracle, not proof from an SCC type assertion. The abstract worklist additionally
+needs independent cyclic-edge/deep-cycle/resource/graph-rejection oracles and
+actual solve deadline/widening results; its newly canonical limits deliberately
+add bounded rejection. Preexisting HIR stratification has a dedicated gate and
+is not counted as a new migration.
 
 - Discover real test targets/witnesses under the owning feature closure. Reuse
   existing accepted source-equivalent receipts where present; add only uncovered

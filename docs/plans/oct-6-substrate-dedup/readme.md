@@ -1,6 +1,7 @@
 # Substrate closeout execution plan
 
-Status: planned; read-only audit, no runtime execution in this revision.
+Status: implementation in progress; source edits and execution attempts are
+recorded in the R49 update below. No product qualification is claimed.
 Updated: 2026-10-07.
 
 This is a successor to the retired Oct-6 implementation packet. It schedules
@@ -35,10 +36,11 @@ mechanics in that resource cut, preserve semantics, and qualify actual callers.
 | Input | Identity / interpretation |
 | --- | --- |
 | QGLang | `01cfe39ca0571b4fc099d41b24628fda70e754fe`, clean before this final ticket audit |
-| Semantica | `daf8bb00bfa95e410e114910ce7f3dc495ace7b1`, frozen committed-source audit; foreign dirty work excluded |
+| Semantica | `871224b2059422a8f36eca91ffb0c9119238ac9c`, frozen committed-source audit; foreign dirty work excluded |
 | Index | observed `5bf6b15216968afde597606033870cc710cb9bc8`; observation is not an execution pin |
 | Earlier source/claims evidence | `remaining-r46-plan-audit-state.json` at initial `070f4f9`; `remaining-r46-main-reconciliation.json` records that audit's `ff8f2ce`, supplier scope and SCC request repair |
 | Final ticket/source evidence | `remaining-r48-final-ticket-audit.json` records committed source, getter classification, producer pin match and all20 states; current claims not rechecked |
+| Implementation evidence | `implementation-r49-state.json` records authored consumer/ledger changes, current claims and exact owner attempts; QG-DIAG is resolved, leaving19 active IDs |
 | Existing execution evidence | R38/R44 and other receipts keep their original source tuples; none qualifies this audited main |
 
 Evidence root:
@@ -57,8 +59,8 @@ core/facade split plus the uncovered PTA adapter owner gives 47 requests if all
 other rows remain. Resolve that map before execution; no 47 runs occurred here.
 The concurrency engine and schema deadlock cuts also reuse this SCC owner.
 Tarjan gate source includes the PTA adapter and Andersen across ten rails.
-[D2-CALLER-COVERAGE](tickets.md#d2-caller-coverage) records nine additional
-consumer scopes omitted by the historical45/Tarjan10 selectors; final request
+[D2-CALLER-COVERAGE](tickets.md#d2-caller-coverage) records eleven additional
+consumer scopes, including the later abstract worklist cut, omitted by the historical45/Tarjan10 selectors; final request
 cardinality is pending that reconciliation. None is a new SCC implementation.
 The `07093dbe72a` follow-up shares Shape/Cost allocation-reference projection
 through `quanta-contract-pta-result-shared`; D1 retains no-Java/Java feature
@@ -107,9 +109,9 @@ failure; successful callbacks retain all current/grant/metadata checks. Preserve
 already-recorded refusal through the existing passive issuer/finisher boundary;
 zero-work polling cannot substitute for passive observation.
 
-The earlier 83/31 source handoff is integrated. This audit reads Semantica
-without editing its source or running Rust/compiler/QBC/product commands.
-Execution acceptance requires its normal source/lane admission and receipts.
+The earlier 83/31 source handoff is integrated. That source audit ran no tests.
+R49 now edits independent consumer/ledger scopes under downstream claims;
+execution acceptance requires normal source/lane admission and receipts.
 
 | Batch | Concrete result | Preconditions / owner |
 | --- | --- | --- |
@@ -122,7 +124,7 @@ Execution acceptance requires its normal source/lane admission and receipts.
 | CONTROL-SNAPSHOTS (former CONTROL-CGO) | Account snapshot materialization and subsequent fact calculation under the actual original owner; resolve three duplicate cap/overflow ledgers | C/Go/TypeScript consumers + shared admission mechanics, one writer; S0 output custody seam |
 | CONTROL-KOTLIN | Check exact retained source/backend binding and exercise original current failure priority | Kotlin DefUse writer, S0 contract |
 | SDK-DEADLINE | Add result-based deadline acceptance through the real fluent SDK caller; retain existing mapper tests | Runtime SDK test owner; Native adapter/deadline behavior is already implemented |
-| QG-DIAG | Locate the actual stdio consumer and settle the required diagnostic wire fields | Frontend diagnostic owner; narrower contract documentation or a versioned coupled DTO/consumer change |
+| QG-DIAG — resolved | Existing parity and NDJSON consumers require primary-only exact fields | ADR-0008 documents the existing private contract; no wire change |
 
 ### Contract constraints before implementation
 
@@ -158,15 +160,16 @@ Execution acceptance requires its normal source/lane admission and receipts.
 ## Maximum parallel scheduling
 
 The scheduling template uses four slots: one integrator and three workers.
-Earlier external T1/D0/C65/C66 claims must be refreshed before source assignment;
-they are not new assignments by this packet. This audit dispatches no workers.
+Earlier external T1/D0/C65/C66 claims must be refreshed before source assignment.
+R49 dispatches independent Kotlin, SDK, common-ledger and documentation work;
+foreign Python/output-custody hunks remain with their current owners.
 
 | Wave | Integrator | Worker 1 | Worker 2 | Worker 3 |
 | --- | --- | --- | --- | --- |
 | W0 | Refresh claims; reconcile S0 output signatures and source inventory | Review Kotlin control acceptance | Review integrated TS plugin | Review integrated TS DefUse |
 | W1 | Review existing Python WIP and completed bundles; serialize main checkpoints | CONTROL-KOTLIN review/affected repair | Integrated plugin owner acceptance | Integrated DefUse owner acceptance |
 | W2 | Review control/output custody; reconcile existing WIP | CONTROL-SNAPSHOTS coupled C/Go/TS + common budget mechanics | CONTROL-KOTLIN admission/regressions | SDK-DEADLINE real SDK tests |
-| W3 | Freeze complete committed source tuple; serialize heavy QBC logical lane | D1–D7 and added SCC caller request/feature review | Affected policy reports/fixes in owned paths | QG-DIAG consumer decision / frontend change if required |
+| W3 | Freeze complete committed source tuple; serialize heavy QBC logical lane | D1–D7 and added SCC caller request/feature review | Affected policy reports/fixes in owned paths | Product and installed-trust prerequisite review |
 | W4 | Execute owner matrix and F2/F7 on the frozen tuple | Review immutable receipts / witness coverage | Product artifact and process preparation | Documentation / installed trust prerequisite inventory |
 
 The read-migration portion of Kotlin/Rust/Go/Java/TypeScript is integrated. Python remains
@@ -261,5 +264,40 @@ successor. Do not discard others' work or restore retired getters as a shortcut.
 7. Remaining-work IDs are closed only by their own acceptance, durable choices
    move to ADR/contracts, and this execution packet retires after closeout.
 
-This revision ran no Rust owner or process tests. It records source/claim audits
-and a concrete execution plan, not completed implementation or qualification.
+## R49 implementation checkpoint
+
+GQLang `just ci` passed on source digest
+`752824c448d59280a887a86c2887685ff14fa6c4d6ff0b619e5e460669887a67`: Rust1514,
+doctest10, external positive1/negative23 and all policy groups. Later prose-only
+status updates retain that code result with an explicit documentation delta;
+this is not a clean committed-HEAD qualification receipt.
+
+Kotlin exact binding regression passed1/1 with an accepted QBC owner result on
+Semantica base `90e6bb0ea3d`, captured dirty source digest
+`40d2092ddda2012522722442adf83a8270987b57d2dd56ff3605a7ed0768ba36`.
+Whole Kotlin and common/SDK owner results are still pending.
+
+- Authored Kotlin retained source/backend admission inside the checked callback.
+  Regression includes exact-source facts, equal-length foreign source and foreign
+  backend. Ordinary unsealed retained input remains compatible.
+- Authored real fluent SDK timeout0 typed-error and Sign/Interval/Constant literal
+  normal-result tests. Production deadline behavior is unchanged.
+- Extracted three identical snapshot cap/overflow ledgers into one private
+  lang-common module. Existing charge sites and grammar projections are unchanged;
+  this does not issue original allocation grants.
+- Resolved QG-DIAG through the actual exact-field private client contract;
+  [ADR-0008](../../adr/0008-private-diagnostics-primary-location-contract.md) owns the decision.
+- Recovered root/nested lock projection with the offline Cargo generator. Only the
+  duplicate registry Unicode package identity was removed; no surviving package
+  version/source/checksum changed. Foreign dependency-record changes were retained.
+  Both workspaces passed `cargo metadata --offline --locked`; this is metadata
+  coherence, not a Rust or runtime verdict.
+- Owner attempts so far: mutable-source guard; locked-input refusal; sibling
+  overlay change during CAS capture. All stopped before Kotlin tests. Freeze the
+  sibling before the successful exact retry; subsequent requests reuse that captured tuple.
+
+`implementation-r49-state.json` at the evidence root records exact attempts and
+source inputs. Original DFG output admission remains a coupled upstream/request/
+context/facts-storage/final-keeper change with existing shared owners. The generic
+retained frontdoor currently refuses unadmitted original output; do not remove
+that guard or attach grants to finished rows. No whole-product result is claimed.

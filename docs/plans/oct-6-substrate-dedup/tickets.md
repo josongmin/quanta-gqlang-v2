@@ -1,12 +1,14 @@
 # Substrate closeout tickets
 
 Updated: 2026-10-07. Audit inputs: QGLang `01cfe39ca0571b4fc099d41b24628fda70e754fe`,
-Semantica `daf8bb00bfa95e410e114910ce7f3dc495ace7b1`. Committed source was read;
-foreign dirty overlays are excluded from implementation conclusions. This audit
-ran no Rust, QBC or product tests. All execution is local.
+Semantica `871224b2059422a8f36eca91ffb0c9119238ac9c`. Committed source was read;
+foreign dirty overlays were excluded from that audit. R49 authored source and
+execution attempts are recorded separately in the plan; they are not passing
+Rust or product results. All execution is local.
 
 [Remaining work](../../work/remaining.md) owns current states. This index adds
-scope, priority, owner and DoD for its **20 active closeout IDs**. Proposed
+scope, priority, owner and DoD for its **19 active closeout IDs**, plus the
+resolved QG-DIAG decision. Proposed
 A00–A15, optional Index and optimizer/incremental batches remain in their
 [separate roadmap](../../work/remaining.md#proposed-code-query-work); they are
 not defects or prerequisites for these tickets. Paths below are relative to
@@ -21,13 +23,13 @@ Semantica; `core/` means `packages/core/`, `qv2/` means
 | CHECKED-DEFUSE | P0 | OPEN | Python source; all other inventoried DefUse owners need proof |
 | CHECKED-RETAINED-CONTROL | P0 | OPEN | Shared output admission, C/Go/TypeScript controls and Kotlin binding; existing downstream owners |
 | F7 | P1 | ACCEPTANCE_OPEN | Real SDK deadline regression plus existing owner proof |
-| QG-DIAG | P2 | CONTRACT_DECISION | Actual stdio consumer requirement; QGLang diagnostics |
+| QG-DIAG | P2 | RESOLVED | Existing private exact-field consumer contract; ADR-0008 |
 | CHECKED-CALLBACK-FIRST-CAUSE | P1 | PROOF_PENDING | Integrated bridge/Kernel repair; common + parser owners |
 | CHECKED-CURSOR | P1 | PROOF_PENDING | Original-issued traversal five; parser owner |
 | D1-PROOF | P1 | INCOMPLETE | Shape factory/SDK/features; adapter + consumer owners |
 | D2-PTA-PROOF | P1 | INCOMPLETE | Core/facade/PTA owner and request repair |
 | D2-TAINT-PROOF | P1 | INCOMPLETE | Taint domain/public contract and 50k depth owner |
-| D2-CALLER-COVERAGE | P1 | PROOF_PENDING | Nine additional SCC consumer scopes; added by this audit |
+| D2-CALLER-COVERAGE | P1 | PROOF_PENDING | Eleven additional SCC consumer scopes; added by this audit |
 | D3-PROOF | P1 | INCOMPLETE | PortDFG MemSSA and taint promotion |
 | D4/D5-CUSTODY | P1 | UNVERIFIED | Rebind historical SCV2/UnionFind accepted inputs |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Affected feature/topology/Honesty/GOD policies |
@@ -93,16 +95,18 @@ number after SCC caller reconciliation.
   adapter→context→actual extractor and final facts retainer. Admit before physical
   growth; retain permits through the last consumer and refund on final drop.
 - **C/Go/TypeScript controls and dedup:** `core/codegraph-lang-common/src/{c,go,typescript}_syntax_snapshot_v1.rs`
-  each owns a 128 MiB cap/checked-add ledger. C extractor `mod.rs:221`, Go
+  had identical 128 MiB cap/checked-add ledgers. R49 extracts those mechanics
+  into private `syntax_snapshot_budget_v1.rs`, preserving all charge sites;
+  both boundary tests await owner execution. C extractor `mod.rs:221`, Go
   `traversal/fact_helpers.rs:147` and TypeScript `mod.rs:1068,1100` calculate facts
   after the checked snapshot callback, without original current in that calculation.
   Resolve the three duplicated accounting
   mechanics inside the common admission cut; retain distinct grammar projections.
   A local cap does not prove original temporary/output custody.
 - **Kotlin binding:** `core/codegraph-defuse-extractor-kotlin/src/extractor/mod.rs:1338`
-  admits a checked read, but its frontdoor/context does not compare the supplied
-  source/backend to retained Native authority. Root bounds alone are insufficient.
-  Use one existing context/authority owner; preserve ordinary unsealed compatibility.
+  R49 authors a checked-callback source/backend guard and same-length foreign
+  source/backend regression. Exact-source output and ordinary unsealed
+  compatibility remain required; current owner execution is pending.
 - DoD: same-length foreign source/backend and missing required Native authority
   refuse before calculation; original low-budget/cancel/work/first-refusal cases
   fail before publication; temporary and output grants survive producer drop and
@@ -116,7 +120,8 @@ number after SCC caller reconciliation.
 - Alias: `SDK-DEADLINE`. Owner: `quanta-runtime` SDK tests. Production absolute
   cooperative deadline and typed mapping are integrated.
 - Source: `qv2/quanta-runtime/tests/abstract_interpret_fluent_api_e2e_test.rs`
-  has a `.timeout_ms(10_000)` builder example, but no real deadline result oracle.
+  now includes R49 real `execute()` timeout0 and literal normal-result tests
+  for Sign/Interval/Constant; their owner execution is pending.
   Builder default is 30_000; existing mapper five assert a different boundary.
 - Change: add real fluent `execute()` cases for timeout0, live expected results
   across sign/interval/constant, exact typed error and distinct iteration failure.
@@ -128,13 +133,14 @@ number after SCC caller reconciliation.
 
 ## QG-DIAG
 
-- Owner: QGLang diagnostics stdio and an actual consuming client.
-- Source: `WireDiagnosticV2` exposes primary locations; projection omits secondary
-  locations and authority errors become `authority_error`. This is a contract
-  decision, not a demonstrated consumer failure or automatic V3 wire migration.
-- DoD: identify the real consumer's required fields. Document a justified narrower
-  contract, or version DTO and consumer together with exact positive/refusal process
-  oracles. Preserve deterministic order and bounded NDJSON. No LSP rollout is implied.
+- State: RESOLVED as a contract decision, with no executable change.
+- Actual parity/NDJSON consumers require the exact primary-only seven-field
+  diagnostic projection. No registered client requires secondary locations or
+  structured authority identity. Protocol `authority_error` remains a failure.
+- The [language reference](../../language/README.md#cli-and-diagnostics-stdio) documents
+  the current private wire; [ADR-0008](../../adr/0008-private-diagnostics-primary-location-contract.md)
+  owns the durable decision. Existing binary/NDJSON/parity tests own execution
+  proof; this source readback does not fabricate a current test receipt.
 
 ## CHECKED-CALLBACK-FIRST-CAUSE
 
@@ -186,7 +192,7 @@ number after SCC caller reconciliation.
 
 ## D2-CALLER-COVERAGE
 
-The historical45 map and Tarjan10 filters do not select these nine consumer
+The historical45 map and Tarjan10 filters do not select these eleven consumer
 scopes. This is a proof-inventory gap; source reuse is integrated. Resolve current
 owner targets/features and match existing accepted receipts before adding runs.
 
@@ -201,6 +207,8 @@ owner targets/features and match existing accepted receipts before adding runs.
 | `quanta-runtime-metrics-wire` | `max_call_depth_compute_v1.rs`: computed depth across SCCs, recursion/unregistered graph and resource refusal |
 | `quanta-runtime` | `retrieval/port_impls/index_projection_writer/scv2_orchestration/generation_index/community_cluster.rs`: exact membership/order/identity and empty/cyclic input |
 | `codegraph-import-graph` | `src/substrate.rs` and `src/substrate/cycle_work_tests.rs`, integrated `daf8bb00bfa`: bounded cycle partition, actual edge witness/lexical choice, missing return/malformed graph and typed resource refusal before partition publication. Separate from navigation |
+| `codegraph-core-cfg` | `cfg/schema/src/domain/call_graph/record.rs::scc_tests` and call-graph stats; canonical SCC reuse `6a795b466f2` preserves historical component order. Independent exact graph, 12k chain, one-byte-short and inconsistent reverse-index oracles; taint Zipper consumes the same schema surface and needs its real criticality result proof |
+| `codegraph-core-abstract-engine` | `abstract/engine/src/solver/worklist.rs::scc_tests`: independent all3-node cyclic-edge oracle, deep cycle, one-byte-short workspace and unregistered successor; actual solve deadline/widening/determinism consumers. Integrated `90e6bb0ea3d` intentionally adds canonical resource bounds and typed `RejectedGraph`; source presence is not accepted execution proof |
 
 DoD: each affected owner has accepted matching evidence or a resolved request
 with actual required witnesses. Freeze the complete request count afterwards.

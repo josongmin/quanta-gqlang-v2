@@ -1,7 +1,7 @@
 # Parallel closeout dispatch
 
 Updated: 2026-10-07. Source audit: Semantica
-`daf8bb00bfa95e410e114910ce7f3dc495ace7b1`, GQLang code input
+`871224b2059422a8f36eca91ffb0c9119238ac9c`, GQLang code input
 `01cfe39ca0571b4fc099d41b24628fda70e754fe`; latest local ticket checkpoint
 `ddec3509cf7975018b572c4e4291d3bb5a9b90e0`. Refreshed source/claims are required
 before writing. This document is an execution plan; no implementation or runtime
@@ -21,8 +21,8 @@ single accepted source tuple. Use the current owners and interfaces.
    resource custody through adapter→context→extractors.
 2. **P1:** real SDK deadline tests, integrated callback/cursor/language acceptance,
    D1–D7 and added SCC callers, affected policies and actual Native/product proof.
-3. **P2:** decide the stdio diagnostic consumer contract. A source/wire change is
-   conditional on a demonstrated consumer requirement.
+3. **Resolved:** QG-DIAG keeps the private primary-only wire required by the actual
+   parity/NDJSON consumers; ADR-0008 records the decision. No new wire work is queued.
 4. **External:** signed installed Linux CHECK trust. Inventory prerequisites early;
    its unavailability leaves FCP-INSTALL open without preventing local owner work.
 
@@ -49,10 +49,10 @@ owner is busy, use the slot for independent request/oracle review until handoff.
 
 | Wave | I | A | B | C | Exit / checkpoint |
 | --- | --- | --- | --- | --- | --- |
-| W0 — ownership and design | Record HEAD/tree/dirty/claims, affected caller closure and shared signatures | Existing Python/facts writer identifies complete bundle; trace actual DFG source/operation issuer and output retainer | Confirm real SDK caller and deterministic deadline oracles; inspect three snapshot ledgers | Review Kotlin exact source/backend contract and nine SCC coverage scopes | Real DFG authority witness plus exact paths/symbols, lifetime, compatibility and rejection; no overlapping shared writer |
-| W1 — independent completion | Review and integrate complete independent bundles serially | Finish existing Python scoped-read/binding helpers and tests | Author real fluent SDK timeout0/domain/error result tests | Author Kotlin independent binding/refusal oracles; settle QG-DIAG requirement by consumer readback | CP1 Python complete closure; CP2 SDK test bundle. Kotlin shared-source repair waits for agreed admission interface |
-| W2 — coupled resource repair | Verify producer→all consumers→final retainer; integrate one complete contract bundle | Existing steward implements missing output/context/source-admission seam and actual original issuer/retainer wiring | Repair C/Go/TypeScript snapshot births, post-snapshot work/output and shared ledger mechanics | Wire Kotlin exact Native binding/current/output and tests to the same admitted contract | CP3 coupled producer + consumer compatibility; all signatures/callers compile and independent resource oracles pass |
-| W3 — owner map and local proof | Freeze committed tuple and run admitted heavy owner jobs serially | Review all changed language, callback, original5 and custody witnesses/receipts | Reconcile D1–D7 feature classes and accepted historical inputs; include latest Shape/Cost projection | Reconcile nine SCC caller scopes, affected policies and product/install prerequisites | CP4 current affected owner + feature/policy verdicts; only reproduced failures reopen source |
+| W0 — ownership and design | Record HEAD/tree/dirty/claims, affected caller closure and shared signatures | Existing Python/facts writer identifies complete bundle; trace actual DFG source/operation issuer and output retainer | Confirm real SDK caller and deterministic deadline oracles; inspect three snapshot ledgers | Review Kotlin exact source/backend contract and eleven SCC coverage scopes | Real DFG authority witness plus exact paths/symbols, lifetime, compatibility and rejection; no overlapping shared writer |
+| W1 — independent completion | Review and integrate complete independent bundles serially | Finish existing Python scoped-read/binding helpers and tests | Review authored real fluent SDK timeout0/domain/value tests; execution pending | Review authored Kotlin exact source/backend binding test; QG-DIAG is resolved by ADR-0008 | CP1 Python complete closure; CP2 SDK test bundle. Kotlin shared-source repair waits for agreed admission interface |
+| W2 — coupled resource repair | Verify producer→all consumers→final retainer; integrate one complete contract bundle | Existing steward implements missing output/context/source-admission seam and actual original issuer/retainer wiring | Review dirty shared local snapshot ledger extraction; finish C/Go/TypeScript original birth, post-snapshot work/output | Wire Kotlin exact Native binding/current/output and tests to the same admitted contract | CP3 coupled producer + consumer compatibility; all signatures/callers compile and independent resource oracles pass |
+| W3 — owner map and local proof | Freeze committed tuple and run admitted heavy owner jobs serially | Review all changed language, callback, original5 and custody witnesses/receipts | Reconcile D1–D7 feature classes and accepted historical inputs; include latest Shape/Cost projection | Reconcile eleven SCC caller scopes, affected policies and product/install prerequisites | CP4 current affected owner + feature/policy verdicts; only reproduced failures reopen source |
 | W4 — real product closeout | Run/attest current product build, SDK/Native and process owners on same tuple | Review original source/first-refusal/custody closure | Review actual SDK/Preview/Graph result oracle and cleanup counts | Verify release-owned installed trust, then installed CHECK when available | CP5 process proof; CP6 installed proof if prerequisites exist; close only accepted ticket rows |
 
 W1 source/test authoring can run independently; Rust execution remains subject to
@@ -96,12 +96,16 @@ Paths below are Semantica-relative; `core/` means `packages/core/`, `qv2/` means
 
 ### B — SDK tests then scalar snapshots
 
-- W1: `qv2/quanta-runtime/tests/abstract_interpret_fluent_api_e2e_test.rs` and
-  specifically required SDK owner fixtures. Production behavior is already
-  integrated; change it only if the regression reaches a reproducible defect.
+- W1: `qv2/quanta-runtime/tests/abstract_interpret_fluent_api_e2e_test.rs`
+  has dirty authored timeout-zero and explicit live-deadline regressions for
+  all three domains; execution/owner acceptance is pending. Production behavior
+  is integrated; change it only if the regression reaches a reproducible defect.
 - W2: `core/codegraph-lang-common/src/{c,go,typescript}_syntax_snapshot_v1.rs`,
   C/Go/TypeScript extractor scalar calculations and their affected owner tests.
-- Shared ledger/helper mechanics belong to one birth/admission contract; grammar
+- The dirty `syntax_snapshot_budget_v1.rs` candidate shares the old 128 MiB
+  local cap/overflow logic and tests it, but grants no original authority and
+  charges no post-snapshot work. Shared ledger/helper mechanics belong to one
+  birth/admission contract; grammar
   fields, binding/order and language interpretations remain distinct. Register any
   justified common module via A. Do not introduce a generic language visitor or
   an extra output issuer. Coordinate existing common/TypeScript writer claims.
@@ -114,9 +118,13 @@ Paths below are Semantica-relative; `core/` means `packages/core/`, `qv2/` means
 - W1/W2: `core/codegraph-defuse-extractor-kotlin/src/extractor/{mod,checked_node_v1}.rs`,
   affected facts/output helpers and specifically owned tests. No public plugin trait
   extension without an actual controlled-success caller.
+- Dirty Kotlin source now checks retained backend and exact source before fact
+  extraction; its authored same-length foreign-source/backend test covers the
+  ordinary retained case. Native current, first refusal and output custody
+  remain unqualified.
 - W3: read/reconcile current-target planner, dominance, concurrency engine/schema,
-  navigation, distinct `codegraph-import-graph`, rule execution, metrics and runtime
-  community-cluster owner evidence.
+  navigation, distinct `codegraph-import-graph`, `codegraph-core-cfg` call-graph
+  SCC, rule execution, metrics and runtime community-cluster owner evidence.
   Request/oracle changes require real discovery; integrated source is not new work.
 - Deliverable: Native same-length foreign source/backend/missing authority refusal,
   traversal/cancel/work/first cause and output lifetime; current/no-tree guarded with
@@ -143,7 +151,7 @@ Paths below are Semantica-relative; `core/` means `packages/core/`, `qv2/` means
 3. Execute actual callback chronology, original5, affected language/custody owners;
    keep original8/JSON13/quarantine discovery and witnesses distinct. Reuse accepted
    source-equivalent inputs; changed manifests/dependencies require re-resolution.
-4. Repair old45 into core/facade/PTA requests, then reconcile nine SCC consumers
+4. Repair old45 into core/facade/PTA requests, then reconcile eleven SCC consumers
    before fixing total cardinality. One concurrency-engine owner covers its two
    consumers; no duplicate solver/Shape/PTA/taint requests. Tarjan10 alone omits
    additional callers. Include current Shape/Cost shared allocation feature closure.
@@ -170,7 +178,7 @@ then rerun the affected gate on a successor tuple.
 All committed retired carrier calls are gone; duplicate resource mechanics have
 an explicit disposition; actual source/backend binding and original resource
 lifetime survive the entire product path. Every required local owner/policy and
-real product result has accepted matching evidence. External installed trust and
-QG-DIAG contract decision retain their own states until their DoD is met.
+real product result has accepted matching evidence. External installed trust
+retains its own state until its DoD is met; QG-DIAG is already resolved.
 Move completed decisions to ADR/contracts and retire the packet only after its
 own acceptance. Proposed query/optimizer development is not included in this exit.

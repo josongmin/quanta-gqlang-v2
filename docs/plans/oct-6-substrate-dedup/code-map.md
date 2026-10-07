@@ -8,13 +8,20 @@ All paths below are relative to `semantica-codegraph-v2` unless marked QGLang.
 `packages/analysis/quanta-v2/crates/`. Subtrees indicate reachable files to
 review, not authority to replace every file. Final claims enumerate exact paths.
 
-Current scheduling overlay at `daf8bb00bfa95e410e114910ce7f3dc495ace7b1`:
+Current scheduling overlay at `871224b2059422a8f36eca91ffb0c9119238ac9c`:
 Rust/Go/Kotlin/TypeScript plugins, Rust/Java/TypeScript DefUse and the coupled S0-CALLBACK repair are
 integrated. Their before/after cuts below retain the audit baseline and acceptance
 requirements; they are no longer new implementation assignments. The remaining
 getter migration is Python DefUse. TypeScript's shared scalar control/output
 scope joins C/Go below. Follow the
 [current allocation](readme.md#maximum-parallel-scheduling) before assigning work.
+
+Current Semantica dirty candidates, excluded from committed-source conclusions:
+Kotlin exact retained source/backend admission and its one regression;
+two SDK fluent deadline/domain-value regressions; and a shared local
+`syntax_snapshot_budget_v1.rs` cap/overflow ledger replacing three copied
+language counters. None has an accepted owner execution receipt. The shared
+local ledger explicitly does not issue original allocation grants.
 
 ## Before / after at the real caller
 
@@ -170,9 +177,13 @@ CONTROL-SNAPSHOTS work remain; no new read-migration workers are assigned.
 
 ## CONTROL-SNAPSHOTS: shared mechanics, distinct language projections
 
-- `core/codegraph-lang-common/src/{c,go,typescript}_syntax_snapshot_v1.rs`: three duplicate
-  `SnapshotHeapBudgetV1::charge_v1`, checked addition and 128 MiB local cap.
-- Resolve these small duplicate ledgers inside the original-admission change.
+- `core/codegraph-lang-common/src/{c,go,typescript}_syntax_snapshot_v1.rs`: the
+  committed baseline has three duplicate `SnapshotHeapBudgetV1::charge_v1`
+  implementations, checked addition and 128 MiB local caps. The dirty candidate
+  extracts the identical local mechanics into `syntax_snapshot_budget_v1.rs`
+  and registers it in `lib.rs`, with exact-cap and overflow tests; it remains
+  uncommitted and unqualified.
+- Finish the original-admission change separately from this local dedup.
   Reuse an existing helper or extract shared birth/overflow mechanics when they
   have the same contract. Record a justified retention of different local caps;
   a standalone generic helper is not a prerequisite for fixing custody.
@@ -198,7 +209,11 @@ CONTROL-SNAPSHOTS work remain; no new read-migration workers are assigned.
   `checked_node_v1.rs`, affected facts/output helpers and `tests.rs`.
 - Retain the checked node wrapper and first-failure latch. Use S0's Native
   source/backend admission; root bounds do not prove exact binding.
-- Add same-length foreign source and foreign backend on source-sealed input,
+- A dirty candidate validates retained source/backend in the read callback
+  before extracting facts and adds an ordinary retained positive plus same-length
+  foreign-source and foreign-backend typed refusals. Its current source/test
+  status is authored, not accepted original-current or output-custody proof.
+- Complete source-sealed Native rejection and
   cancellation/work refusal during traversal and publication tests. Current/no-tree
   uses existing test-support context/current mutation; no new constructor or
   invented production reachability is needed.
@@ -208,17 +223,20 @@ CONTROL-SNAPSHOTS work remain; no new read-migration workers are assigned.
 
 - SDK: `qv2/quanta-runtime/tests/abstract_interpret_fluent_api_e2e_test.rs`
   (`abstract-interp,parser-python,test-utils` required features), existing real
-  harness in `tests/support/`. Add result tests here or the smallest existing
-  owning target that exercises this **real** builder/adapter path.
+  harness in `tests/support/`. Dirty candidate tests now assert zero-timeout
+  typed error/reason/phase and exact Sign/Interval/Constant values under an
+  explicit live deadline. Owner execution and complete F7 acceptance are pending.
 - Existing SDK mapping owner:
   `qv2/quanta-runtime/src/sdk/abstract_interpret_builder.rs::non_query_error_tests`.
   Do not rename these five mapping tests as end-to-end deadline proof.
 - Behavior code changes only for a reached failing oracle, at builder/adapter/
   lowering/engine owner as appropriate. Deadline currently starts at adapter
   `analyze`, not before SDK source-read/CFG work.
-- QGLang: `crates/quanta-gqlang-v2-diagnostics-stdio/src/server.rs`,
-  `src/handlers/v3_diagnostics.rs`, process contract tests and actual consuming
-  client if discovered. Resolve the required wire fields before versioning it.
+- QG-DIAG is resolved as the existing primary-only private wire, not a new
+  schema task. [ADR-0008](../../adr/0008-private-diagnostics-primary-location-contract.md)
+  records the actual parity/NDJSON consumer requirement; the
+  [language contract](../../language/README.md#cli-and-diagnostics-stdio)
+  fixes the exact fields. Execution receipts remain separate.
 
 ## D1–D7: retain canonical owners; no duplicate redevelopment
 

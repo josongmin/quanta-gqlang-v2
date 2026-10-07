@@ -7,14 +7,14 @@ owns integrated decisions. This handoff issues no runtime or qualification claim
 
 ## Current source and next execution input
 
-Read-only successor audit: committed Semantica
-`daf8bb00bfa95e410e114910ce7f3dc495ace7b1`, QGLang
+Latest committed-source audit: Semantica
+`871224b2059422a8f36eca91ffb0c9119238ac9c`, QGLang
 `01cfe39ca0571b4fc099d41b24628fda70e754fe`. Foreign dirty work is not a
 committed-source verdict. The [execution plan](../plans/oct-6-substrate-dedup/readme.md)
 and [test plan](../plans/oct-6-substrate-dedup/test-plan.md) own the next work
 allocation and exact request/oracle review; a final execution tuple is not yet frozen.
-The [ticket index](../plans/oct-6-substrate-dedup/tickets.md) reconciles all20
-active closeout IDs; proposed A-series work remains a separate roadmap.
+The [ticket index](../plans/oct-6-substrate-dedup/tickets.md) reconciles 19
+active closeout IDs plus resolved QG-DIAG; proposed A-series work remains a separate roadmap.
 
 - C/Go/Kotlin/Rust/Java and latest TypeScript (`b32361e9d83`) source cuts are
   integrated. Python DefUse retains the sole carrier call, versus R45's 17.
@@ -35,8 +35,8 @@ active closeout IDs; proposed A-series work remains a separate roadmap.
   diagnostic requests after `07093dbe72a`; their old failures are historical,
   not current-source results. Include both new shared-allocation feature classes.
   Latest concurrency deadlock source reuses that owner; Tarjan gate source now
-  includes PTA adapter/Andersen in ten rails. D2-CALLER-COVERAGE adds nine
-  omitted consumer scopes;47 is not a final request count after that repair.
+  includes PTA adapter/Andersen in ten rails. D2-CALLER-COVERAGE adds eleven
+  omitted consumer scopes, including core-cfg schema/stats/Zipper;47 is not a final request count after that repair.
   Source reuse is integrated; current execution acceptance remains unverified.
 - Source/claim observation: `remaining-r46-plan-audit-state.json`; final source
   continuity/SCC review: `remaining-r46-main-reconciliation.json`, at the evidence
@@ -52,6 +52,22 @@ as `aac43629734`. Current-source execution acceptance remains pending. The
 [plan's callback audit](../plans/oct-6-substrate-dedup/readme.md#additional-checked-read-chronology-audit)
 records the corrected 83 bridge/fixture and 31 Kernel handoff; this task is
 read-only for Semantica and this progress readback executed no runtime tests.
+
+## R49 authored source and current attempts
+
+The [plan checkpoint](../plans/oct-6-substrate-dedup/readme.md#r49-implementation-checkpoint)
+records Kotlin source/backend guards, two real SDK deadline/result regressions,
+and shared C/Go/TypeScript cap/overflow mechanics. These are independent authored
+source bundles; original grant handoff is still open. QG-DIAG is resolved in
+[ADR-0008](../adr/0008-private-diagnostics-primary-location-contract.md).
+
+Both Semantica workspace lockfiles were regenerated offline: duplicate registry
+Unicode was removed without surviving package version/source/checksum changes.
+Foreign dependency records were preserved. Both locked metadata checks passed.
+Kotlin owner attempts stopped before tests at source movement, lock mismatch and
+sibling movement during capture. They are not failed behavior tests or accepted
+execution proof. `implementation-r49-state.json` at the evidence root preserves
+these attempts; subsequent results must identify their own frozen tuple.
 
 ## Historical source-bound proof inputs
 
