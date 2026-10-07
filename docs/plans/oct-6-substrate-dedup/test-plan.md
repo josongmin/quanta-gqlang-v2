@@ -260,8 +260,13 @@ minimal R56 compile repairs; inspect real test names, refusals and exact counts.
   (resolved QBC request `30f59ac8010233b78108debf95dc6ca1`). Execute it in the
   same isolated QBC target custody; its fixture invokes `rustc`, not Cargo.
   Reconcile actual counts and old deep-chain/cycle replacements explicitly. R64
-  accepted the actual solver225/225 and this separate API-absence2/2 on one issued
-  frozen candidate; final aggregate custody remains a separate claim.
+  accepted the actual solver225/225 and this separate API-absence2/2 on the earlier
+  issued input. R73 reruns both after the active IR-build dependency change:
+  225/225 +2/2,0 ignored/filtered, all227 prior executable names retained and
+  publication hashes verified. Their active22 local package closure matches
+  main `f574fa82bf1`. Alongside R71 SCV2 34, this closes D4/D5-CUSTODY for the
+  current input; future changed-source validation and product rollup retain their
+  common gates. Reuse matching receipts, without another solver or RRF run.
 - Old Cost `termination_analyzer_adapter` GREEN5 does not exercise the changed
   allocation projection. Execute `heap_domain_adapter` and Shape's
   `shape_analyzer_adapter` under their current reviewed feature classes. R64

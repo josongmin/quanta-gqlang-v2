@@ -25,8 +25,12 @@ fixed a Rust regression hidden inside a raw string fixture: actual77/77 owner
 acceptance and one-file integration `f574fa82bf1`. Existing supplier/facts work
 is not implemented a second time. R70/R71 accepts385 cases across the five
 ordinary language libraries and exact SCV2 module on one issued source matching
-main `f574fa82bf1` at active dependencies. SDK2/community2 remain unintegrated;
-these scoped results do not close original custody or whole product.
+main `f574fa82bf1` at active dependencies. The
+[R72/R73 follow-up](substrate-repair-checkpoints-2026-10-07.md#r72r73-d5-closeout-and-independent-main-diagnostics)
+accepts D5 solver225/API2 on that same source and closes D4/D5-CUSTODY. The eight
+requests total612 cases; the separate R72 worklist77 is not added to that total.
+SDK2/community2 remain unintegrated; these scopes do not close original custody
+or whole product.
 Original consolidation provenance is retained in ADR-0001/ADR-0005.
 
 Only unfinished work belongs here. Integrated architecture is recorded in
@@ -41,7 +45,7 @@ Its current candidate and historical receipts retain their own source tuples;
 failed zero-case compilations do not become execution proof.
 The [current execution plan](../plans/oct-6-substrate-dedup/readme.md) contains
 non-overlapping write sets, before/after changes, tests and serial main checkpoints.
-The [ticket index](../plans/oct-6-substrate-dedup/tickets.md) maps all 19 active
+The [ticket index](../plans/oct-6-substrate-dedup/tickets.md) maps all 18 active
 closeout IDs to priorities, code/proof boundaries, owners, dependencies and DoD.
 The proposed A-series below is a separate roadmap, not an implementation defect
 or a prerequisite for this campaign. This file owns current ticket states.
@@ -53,6 +57,11 @@ Completed repair decisions belong to
 QG-DIAG is resolved by the existing exact-field consumer contract; its durable
 decision is [ADR-0008](../adr/0008-private-diagnostics-primary-location-contract.md).
 The private wire is unchanged. Runtime execution remains a separate claim.
+D4/D5-CUSTODY is scoped accepted: SCV2 34 and solver225/API2 have source-matched
+finished receipts and publication on the successor input. Its
+[ticket](../plans/oct-6-substrate-dedup/tickets.md#d4d5-custody) retains DoD and
+evidence. Later affected-source revalidation is a common gate, not unfinished
+D4/D5 implementation.
 
 ## V3 downstream product proof
 
@@ -62,7 +71,7 @@ before claiming completion. Broader AG5/IRC releases remain downstream-owned.
 
 | ID / state | Required work | Acceptance |
 | --- | --- | --- |
-| FCP-COMPILE / UNVERIFIED | Re-freeze original-session/QMP pin and SDK/PTA/runtime-analysis integration on committed main. R49 reached working-tree serde `E0403` and SourceWire module `E0583`; minimal fixes are authored. R50 stopped at stale dependency lock records; both locked metadata checks passed after identity-preserving regeneration. R51 reached an `E0308` relation-test fixture; its literal constructor correction is authored. Successor proof and coupled owner integration remain required. Clean committed main also references `OriginalSemanticSharedBackingV3` from Java DFG without its committed Foundation definition/export; the owning tree-sitter→Kernel→Foundation bundle remains WIP. R63 community additionally reached56 committed parser compile errors and0 tests on the independent candidate. Earlier unrelated failures stay historical. | Canonical product build and SDK owner rails on one source tuple; report actual current diagnostics, not the old 31/5 error counts. |
+| FCP-COMPILE / BLOCKED_COMPILE | Current clean committed f574 parser all-features lib check reaches105 compiler errors/exit101,0 tests on R72's fixed sibling tuple. Its publication is incomplete: this is an archived pretest diagnostic, not an accepted qualification. Supplier/module postimages remain co-owned WIP. The committed Java DFG consumer also lacks its complete committed Foundation shared-backing supplier. Freeze and validate the complete tree-sitter→Kernel→Foundation→SourceWire/parser bundle and actual SDK/PTA/runtime-analysis owners before integration. Earlier R49–R63 failures keep their original inputs. | Canonical product build and SDK owner rails on one source tuple; actual current diagnostics and finished publication, not old error counts or partial source imports. |
 | FCP-PTA / REVERIFY | Verify the seed-consumption lifetime repair against the historical first `PtaOccurrenceAuthorityRefused` boundary; no current reproduction is claimed. | Current owner/bootstrap succeeds, or a reached refusal identifies the exact remaining owner repair. Source changes alone do not close it. |
 | FCP-PROCESS / NOT_RUN | Execute integrated Graph/CHECK positive and refusal fixtures. | Same tuple/artifacts; Linux Graph success, non-Linux Graph refusal, signed Linux CHECK and relevant non-Linux controls; record selected/executed/pass/skip/leak counts and exact output oracle. |
 | FCP-INSTALL / EXTERNAL_PREREQUISITE | Obtain release-owned signed x86_64 profile, root-owned immutable slots, independent approval/key and active generation. | Actual installed CHECK proof. Generic aarch64 artifacts and scripted daemon evidence do not satisfy this gate. |
@@ -85,9 +94,8 @@ are unfinished proof scopes, not instructions to reimplement those changes.
 | D1-PROOF / INCOMPLETE | `quanta-adapters-shape`, runtime SDK and converter: actual factory/export plus pure/PTA-derived/disabled/Cost feature combinations and both Shape gates. Latest `07093dbe72a` shares Shape/Cost allocation-reference projection through `quanta-contract-pta-result-shared`; R64 accepted Shape20 and Cost heap20 with independent allocation/truncation result oracles. Runtime/gates and no-Java/Java feature closure remain open. Preserve port/PTA authority and exact output. |
 | D2-PTA-PROOF / INCOMPLETE | `codegraph-graph-scc` owns calculation; graph-utils reexports compatibility paths. Resolve core/facade and actual PTA adapter/Andersen/runtime-analysis proofs of order/IDs, closure, admission and typed stop. Old owner45's graph-utils `scc` selector is zero-case. Core/facade/PTA repairs produce47 only if other rows remain; added callers belong to D2-CALLER-COVERAGE. Tarjan10 source includes PTA adapter/Andersen; execution is unverified. Earlier compile RED stays historical. |
 | D2-TAINT-PROOF / INCOMPLETE | `quanta-taint-solver` and contract tests: successor-only domain, order/IDs/resource/stop controls, Tarjan gate and explicitly selected ignored `deep_chain_50k`. A zero-test selector fails. |
-| D2-CALLER-COVERAGE / PROOF_PENDING | Account for eleven SCC consumer scopes omitted by historical45/Tarjan10: current-target planner, dominance, concurrency engine and schema, navigation import graph, rule execution, metrics max-depth, runtime community clustering, distinct `codegraph-import-graph` (`daf8bb00bfa`), `codegraph-core-cfg` call-graph schema (`6a795b466f2`, including stats/Zipper consumers) and abstract worklist (`90e6bb0ea3d`). Source reuse is integrated. Reuse accepted matching receipts or resolve actual owner requests with independent order/identity/resource/refusal oracles; freeze final cardinality afterwards. R63 rule owner34/34 includes the new same-IR SCC→admission→exact-result regression, integrated `a23ced26e09`; R65 additionally accepted dominance3, concurrency engine38/domain6, metrics14 and core-CFG call graph30 on that same independent frozen source. R66 accepted import graph32 and actual taint-Zipper32; current-target, navigation and community stay blocked. Other callers remain open. Existing D1 Shape and D2 PTA/taint owners are not duplicate assignments. |
+| D2-CALLER-COVERAGE / PROOF_PENDING | Account for eleven SCC consumer scopes omitted by historical45/Tarjan10: current-target planner, dominance, concurrency engine and schema, navigation import graph, rule execution, metrics max-depth, runtime community clustering, distinct `codegraph-import-graph` (`daf8bb00bfa`), `codegraph-core-cfg` call-graph schema (`6a795b466f2`, including stats/Zipper consumers) and abstract worklist (`90e6bb0ea3d`). Source reuse is integrated. Reuse accepted matching receipts or resolve actual owner requests with independent order/identity/resource/refusal oracles; freeze final cardinality afterwards. R63 rule34 and R65 dominance3/concurrency38/domain6/metrics14/core-CFG30 retain their earlier frozen source. R66 accepted import graph32 and actual taint-Zipper32 there. R72 accepts current f574 abstract worklist77, including its four SCC witnesses and publication; do not assign a second run. Current-target, navigation and community stay blocked; other final-input custody remains open. Existing D1 Shape and D2 PTA/taint owners are not duplicate assignments. |
 | D3-PROOF / INCOMPLETE | `quanta-adapters-dfg` PortDFG and actual taint promotion: remaining canonical owner requests. Pack16 already has a historical canonical result; earlier DFG/taint compile RED executed zero cases. |
-| D4/D5-CUSTODY / UNVERIFIED | R71 accepts exact SCV2 fusion34/34 on the R70/R71 source; its active dependency closure matches main `f574fa82bf1` and external index pin. R64 solver225/API-absence2 retain their earlier R63 source and need final-tuple custody reconciliation. Rebind unchanged owners or rerun changed inputs for that final integration tuple; do not repeat the old manual-only gap or assign an already accepted SCV2 run again. |
 | SUBSTRATE-POLICY / INCOMPLETE | Complete affected mandatory gates and consumer feature/dependency checks. Topology5 and scoped GOD retirement are integrated; earlier global Honesty/GOD RED is historical and current results are unverified. Resolve reproduced attributable baseline/identity drift without global reapproval, allow growth or scope reduction. |
 | SUBSTRATE-PRODUCT / UNVERIFIED | Aggregate F1/D6 and D7 consumer acceptance. Python/component evidence retains its original sources. Reuse FCP-PROCESS/FCP-INSTALL runs for the same product boundary; do not schedule a second daemon/installed proof. |
 | CHECKED-DEFUSE / PROOF_PENDING | Python checked extraction is integrated `27d9505015e`; production retired-carrier getter census is now0 across the inventoried owners. Its145 package files and manifest match the R49 frozen source. Source migration is complete; actual owner walk/control/binding proof remains open. Rust/Java/C/Kotlin/Go/TypeScript cuts are already integrated; no new migration writer. |
@@ -101,8 +109,10 @@ clean committed sibling tuple. QBC `codegraph-core-abstract-engine` whole-lib
 package-all-features passed 77/77, including four SCC worklist oracles, with
 zero ignored or filtered. Its request ID is `96dabfdcf7563603c9ed3686549d24e7`.
 On the same source digest `8c32be4f140bab2bea0c25ce4e1274a7cfe3c835a71b3c42998fb20599ed308f`,
-`quanta-adapters-parser` all-features lib check is RED (exit 101, 105
+`quanta-adapters-parser` all-features lib check reaches RED (exit 101, 105
 compiler errors, zero tests); request ID `d3e8b5e5b2506be77ba2660c4b36afc4`.
+The worklist publication is verified. Parser's `publication-complete.json` is
+absent, so its compile failure is a pretest diagnostic, not finished qualification.
 The accepted worklist scope does not qualify PTA, DefUse, or product.
 Local immutable locators: `/Users/songmin/.codex/task-evidence/oct8-f574-pair/abstract-worklist-f574-r1.json`
 and `/Users/songmin/.codex/task-evidence/oct8-f574-pair/parser-f574-owner-r1.json`.

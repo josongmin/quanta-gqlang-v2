@@ -1,14 +1,14 @@
 # Substrate closeout tickets
 
-Updated: 2026-10-07. Audit inputs: QGLang `01cfe39ca0571b4fc099d41b24628fda70e754fe`,
+Updated: 2026-10-08. Initial audit inputs: QGLang `01cfe39ca0571b4fc099d41b24628fda70e754fe`,
 Semantica `871224b2059422a8f36eca91ffb0c9119238ac9c`. Committed source was read;
 foreign dirty overlays were excluded from that audit. R49 authored source and
 execution attempts are recorded separately in the plan; they are not passing
 Rust or product results. All execution is local.
 
 [Remaining work](../../work/remaining.md) owns current states. This index adds
-scope, priority, owner and DoD for its **19 active closeout IDs**, plus the
-resolved QG-DIAG decision. Proposed
+scope, priority, owner and DoD for its **18 active closeout IDs**, plus the
+resolved QG-DIAG decision and accepted D4/D5 scope. Proposed
 A00–A15, optional Index and optimizer/incremental batches remain in their
 [separate roadmap](../../work/remaining.md#proposed-code-query-work); they are
 not defects or prerequisites for these tickets. Paths below are relative to
@@ -31,10 +31,10 @@ Semantica; `core/` means `packages/core/`, `qv2/` means
 | D2-TAINT-PROOF | P1 | INCOMPLETE | Taint domain/public contract and 50k depth owner |
 | D2-CALLER-COVERAGE | P1 | PROOF_PENDING | Eleven additional SCC consumer scopes; added by this audit |
 | D3-PROOF | P1 | INCOMPLETE | PortDFG MemSSA and taint promotion |
-| D4/D5-CUSTODY | P1 | UNVERIFIED | Exact SCV2 accepted; solver/API-absence final-tuple custody remains |
+| D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Affected feature/topology/Honesty/GOD policies |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P1 | UNVERIFIED | Current committed SDK/runtime product build |
+| FCP-COMPILE | P1 | BLOCKED_COMPILE | Clean f574 parser pretest diagnostic; complete supplier/module bundle, then SDK/runtime proof |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |
@@ -98,8 +98,8 @@ number after SCC caller reconciliation.
   retained ingress and final keeper before choosing the signature. If DFG lacks
   the handoff, include the upstream source/output bridge in this coupled scope;
   unavailable required authority refuses, ordinary compatibility stays explicit.
-- **S0 output bridge:** `qv2/quanta-adapters-dfg/src/multi_lang_dfg_adapter/build_pipeline/fact_extraction.rs:14`
-  and `core/codegraph-defuse-extractor-contract/src/lib.rs:492` carry tree/source/current
+- **S0 output bridge:** `qv2/quanta-adapters-dfg/src/multi_lang_dfg_adapter/build_pipeline/fact_extraction.rs`
+  and `core/codegraph-defuse-extractor-contract/src/lib.rs::DefUseFactsParseContextV1::single_parse` carry tree/source/current
   but no output-admission interface. Carry the existing canonical admission through
   adapter→context→actual extractor and final facts retainer. Admit before physical
   growth; retain permits through the last consumer and refund on final drop.
@@ -226,7 +226,7 @@ owner targets/features and match existing accepted receipts before adding runs.
 | `quanta-runtime` | `retrieval/port_impls/index_projection_writer/scv2_orchestration/generation_index/community_cluster.rs`: exact membership/order/identity and empty/cyclic input |
 | `codegraph-import-graph` | `src/substrate.rs` and `src/substrate/cycle_work_tests.rs`, integrated `daf8bb00bfa`: bounded cycle partition, actual edge witness/lexical choice, missing return/malformed graph and typed resource refusal before partition publication. Separate from navigation |
 | `codegraph-core-cfg` | `cfg/schema/src/domain/call_graph/record.rs::scc_tests` and call-graph stats; canonical SCC reuse `6a795b466f2` preserves historical component order. Independent exact graph, 12k chain, one-byte-short and inconsistent reverse-index oracles; taint Zipper consumes the same schema surface and needs its real criticality result proof |
-| `codegraph-core-abstract-engine` | `abstract/engine/src/solver/worklist.rs::scc_tests`: independent all3-node cyclic-edge oracle, deep cycle, one-byte-short workspace and unregistered successor; actual solve deadline/widening/determinism consumers. Integrated `90e6bb0ea3d` intentionally adds canonical resource bounds and typed `RejectedGraph`; source presence is not accepted execution proof |
+| `codegraph-core-abstract-engine` | `abstract/engine/src/solver/worklist.rs::scc_tests`: independent all3-node cyclic-edge oracle, deep cycle, one-byte-short workspace and unregistered successor; actual solve deadline/widening/determinism consumers. Integrated `90e6bb0ea3d`; R72 whole-lib77 observes all four witnesses with finished/hash-verified publication on its clean f574 sibling tuple |
 
 R63 accepted rule34 and R65 accepted dominance3, concurrency engine38/domain6,
 metrics14 and core-CFG call graph30 on one issued input. Current-target/navigation
@@ -235,6 +235,9 @@ taint-Zipper consumer result request and source-bound import graph request; no
 new SCC implementation or feature policy is assigned. Both are accepted32/32
 on the same issued source, including the actual Zipper criticality/selector and
 malformed-index outputs. Blocked callers and final aggregate proof stay open.
+R72's existing abstract worklist77 result is accepted for that owner scope;
+its separate input is not added to the R70/R71/R73 same-source total. Reuse it
+when source/recipe custody match; no duplicate worklist run is assigned.
 
 DoD: each affected owner has accepted matching evidence or a resolved request
 with actual required witnesses. Freeze the complete request count afterwards.
@@ -253,12 +256,16 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
 - SCV2 uses common RRF; base UnionFind/active solvers retained, dormant Andersen
   UnionFind removed. Historical SCV2 leaf34 and isolated225+API-absence2 are accepted
   on their original sources. R64 additionally accepted solver225/225 and the
-  separate API-absence2/2 on the independent R63 frozen candidate. R71 accepts
-  SCV2 exact fusion34/34 on the current successor source, with its active
-  Semantica and external index closure matched. Solver/API-absence final-tuple
-  custody and the final aggregate remain open.
-- DoD: attest unchanged owner/dependency inputs or rerun changed owners for the
-  final tuple. No second RRF implementation, new UnionFind trait or redundant run.
+  separate API-absence2/2 on the independent R63 frozen candidate. R71 SCV2
+  fusion34/34 and R73 solver225/225 + API-absence2/2 are now accepted on one issued
+  source. All three have finished GREEN, verified publication hashes and active
+  dependency closures matching main `f574fa82bf1`; SCV2's external index pin also
+  matches. State: **SCOPED_ACCEPTED**.
+- DoD met: changed active IR-build dependency was projected from committed main
+  and D5 rerun, with all227 prior executable witness names retained. No second
+  RRF implementation, new UnionFind trait or redundant run. Future changed-input
+  revalidation belongs to common policy gates; product aggregate stays in
+  SUBSTRATE-PRODUCT/FCP rather than keeping this accepted scope indefinitely open.
 
 ## SUBSTRATE-POLICY
 
@@ -279,7 +286,7 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
 
 ## FCP-COMPILE
 
-- Current reached closure is recorded in the
+- Earlier reached closure is recorded in the
   [R53–R60 handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r53r60-reached-repairs-and-successor-input).
   R52 semantic contract55 passed, but later SourceWire pre-test errors and
   unexecuted SDK/product consumers prevent whole product acceptance. R63 rule
@@ -288,6 +295,12 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
   main's all-features Java path references missing Foundation
   `OriginalSemanticSharedBackingV3`; its dirty implementation/export must be
   integrated as the complete owning bundle, not hidden in a test overlay.
+- Current clean-main R72 parser all-features lib check reaches105 errors/exit101,
+ 0 tests on the fixed f574 sibling tuple. Its missing publication marker keeps
+ it a pretest compile diagnostic. The [R72/R73 handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r72r73-d5-closeout-and-independent-main-diagnostics)
+ separates that current block from independently published worklist and D4/D5
+ acceptance. State: BLOCKED_COMPILE; existing module/supplier postimages remain
+ co-owned, and full SDK/runtime build is unqualified.
 - DoD: freeze committed Semantica/GQLang/Index and actual original-session/QMP
   closure, resolved toolchain/features/root; canonical SDK/runtime product build
   succeeds. Record current diagnostics if it fails and open only the reached owner

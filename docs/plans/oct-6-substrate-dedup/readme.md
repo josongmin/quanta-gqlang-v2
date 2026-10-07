@@ -6,6 +6,13 @@ recorded in the R49 update below and the
 No product qualification is claimed.
 Updated: 2026-10-08.
 
+Latest [R72/R73 follow-up](../../work/substrate-repair-checkpoints-2026-10-07.md#r72r73-d5-closeout-and-independent-main-diagnostics)
+closes D4/D5-CUSTODY after solver225/API2 reruns with current committed IR
+dependencies. There are18 active IDs, plus resolved QG-DIAG and scoped accepted
+D4/D5. Reuse the separately published current abstract worklist77. The complete
+supplier/parser source bundle and general DFG ingress are still open; no partial
+source import or second implementation is assigned.
+
 This is a successor to the retired Oct-6 implementation packet. It schedules
 unfinished acceptance from [remaining work](../../work/remaining.md); it does not
 reopen integrated decisions in [ADR-0005](../../adr/0005-substrate-reuse-and-consumer-projection.md).
@@ -46,7 +53,7 @@ handoff; do not substitute this baseline for a current runtime result.
 | Index | observed `5bf6b15216968afde597606033870cc710cb9bc8`; observation is not an execution pin |
 | Earlier source/claims evidence | `remaining-r46-plan-audit-state.json` at initial `070f4f9`; `remaining-r46-main-reconciliation.json` records that audit's `ff8f2ce`, supplier scope and SCC request repair |
 | Final ticket/source evidence | `remaining-r48-final-ticket-audit.json` records committed source, getter classification, producer pin match and all20 states; current claims not rechecked |
-| Implementation evidence | `implementation-r49-state.json` records authored consumer/ledger changes, current claims and exact owner attempts; QG-DIAG is resolved, leaving19 active IDs |
+| Implementation evidence | `implementation-r49-state.json` records authored consumer/ledger changes, claims and exact owner attempts; QG-DIAG resolution left19 active IDs at that R49 checkpoint |
 | Existing execution evidence | R38/R44 and other receipts keep their original source tuples; none qualifies this audited main |
 
 Evidence root:

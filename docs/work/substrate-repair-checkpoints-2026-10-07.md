@@ -14,8 +14,9 @@ Initial committed-source audit: Semantica
 committed-source verdict. The [execution plan](../plans/oct-6-substrate-dedup/readme.md)
 and [test plan](../plans/oct-6-substrate-dedup/test-plan.md) own the next work
 allocation and exact request/oracle review; a final execution tuple is not yet frozen.
-The [ticket index](../plans/oct-6-substrate-dedup/tickets.md) reconciles 19
-active closeout IDs plus resolved QG-DIAG; proposed A-series work remains a separate roadmap.
+The [ticket index](../plans/oct-6-substrate-dedup/tickets.md) reconciles18 active
+closeout IDs plus resolved QG-DIAG and scoped accepted D4/D5; proposed A-series
+work remains a separate roadmap.
 
 - C/Go/Kotlin/Rust/Java and latest TypeScript (`b32361e9d83`) source cuts are
   integrated. Python checked extraction joined main as `27d9505015e`: zero retired carrier
@@ -361,6 +362,53 @@ R63 source. Existing R63–R66 results keep their original source, and changed
 main dependencies prevent promoting all13 to current-main qualification.
 SDK/community, original custody, affected remaining policies and installed
 Graph/CHECK retain their own open acceptance. No push or product claim is issued.
+
+## R72/R73 D5 closeout and independent main diagnostics
+
+R73 reuses the R70/R71 issued source and existing D5 compile policy
+`codegraph-core-pta-engine.default.e94ff67733f4`. Since committed `54d27070d5b`
+changes D5's active IR-build dependency, the earlier R64 result is not promoted.
+Two normal owner requests actually execute:
+
+| Scope | Request | Passed / failed / ignored / filtered |
+| --- | --- | --- |
+| `codegraph-core-pta-engine` lib, `solver::` | `df01c80b3a8ad5dba0438bf6571e1d14` | 225 / 0 / 0 / 0 |
+| `steensgaard_public_surface_compile_fail` integration whole target | `30f59ac8010233b78108debf95dc6ca1` | 2 / 0 / 0 / 0 |
+
+Both are finished GREEN with hash-verified publication and all227 prior
+executable names retained. Their active22 local package closure and workspace
+manifests/locks/toolchain/feature policy match committed main `f574fa82bf1`.
+Their source digest is the same `4b2d155632d61ed6e9a47f0091216b2b884901d1299212422c15138b4d46459f`
+as R70/R71. Eight terminal requests total612 cases; predecessors are not added.
+Alongside R71 exact SCV2 34, this fulfills D4/D5-CUSTODY's stated owner-input
+DoD. Mark it **SCOPED_ACCEPTED**. Future affected-source revalidation uses the
+common policy gates; full product aggregate remains SUBSTRATE-PRODUCT/FCP.
+
+Separate existing local R72 evidence was read, archived and reused without
+messaging another chat or executing another worklist run. Its clean sibling
+tuple is Semantica `f574fa82bf1`, GQLang `e9a268145ca3`, Index `f60609fe2d28`,
+QMP `8ea774894335`; source digest
+`8c32be4f140bab2bea0c25ce4e1274a7cfe3c835a71b3c42998fb20599ed308f`.
+`codegraph-core-abstract-engine` all-features whole lib passed77/77, including
+four required SCC worklist oracles, with hash-verified publication. This is a
+separate source-bound scope, not part of the612-case total.
+
+The same tuple's parser all-features lib check reached105 compiler errors,
+exit101 and0 tests. Its underlying receipt is RED, but publication-complete is
+absent: retain it as a **pretest compile diagnostic**, not accepted qualification.
+The clean committed source still lacks complete supplier/module contracts;
+existing fixes remain co-owned dirty postimages. This does not classify the old
+R63 56 errors as current or evaluate the distinct default/no-Java feature class.
+
+Evidence: `r73-d5-request-audit.json`, `r73-owned-proof-results.json`,
+`r73-required-witness-check.json`, `r73-immutable-proof-archive.json`, both D5
+immutable receipts/publications and `r73-snapshot-custody-manifest.json`.
+`r72-concurrent-proof-observation.json` records independent sibling source,
+publication status, four observed worklist witnesses and archived compile logs.
+GQLang docs checkpoint `081fbd8fa8c8` includes the reviewed R70/R71 and concurrent
+R72 observations. No supplier, SDK or community source is imported by these
+proof/doc checkpoints; their complete compiling bundle and execution acceptance
+remain open.
 
 ## Historical source-bound proof inputs
 

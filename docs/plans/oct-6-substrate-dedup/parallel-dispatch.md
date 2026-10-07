@@ -17,6 +17,12 @@ facts context and existing member/cohort keeper are already co-owned work;
 assign no second implementation. The integrator owns exact request/witness
 reconciliation and the complete coupled handoff before staged source integration.
 
+[R72/R73](../../work/substrate-repair-checkpoints-2026-10-07.md#r72r73-d5-closeout-and-independent-main-diagnostics)
+closes D4/D5's three owner scopes on current matched inputs. Current abstract
+worklist77 also has existing finished evidence. Assign neither again unless
+its actual input/recipe changes. The fixed-main parser compile diagnostic still
+blocks dependent proof; complete the co-owned source bundle before SDK/community.
+
 [Current ticket states](../../work/remaining.md), [scope and DoD](tickets.md),
 [code boundaries](code-map.md) and [test requests](test-plan.md) remain authoritative
 for their own subjects. This dispatch adds no new defect queue or engine project.
