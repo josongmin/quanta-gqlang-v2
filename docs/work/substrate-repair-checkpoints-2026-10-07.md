@@ -12,24 +12,24 @@ consumer/policy/product acceptance remains in that index.
 ## Current status
 
 - Sixteen local main checkpoints are integrated below. Current private
-  Semantica candidate: `ff2bb4c0be93c33152669863a7b0d2191c56865d`, with committed
+  Semantica candidate: `8e625175b91dbad1bb62b0b2bb29057e4d2c02fd`, with committed
   QGLang `68ff02ef443f` and Index `6a3f6afc8c28`. The private branch is proof
   input only; no whole-branch import is planned.
 - Event fingerprint extraction and phase oracle are integrated at
   `00a54727baed`: whole canonical owner 173/173, zero skips.
 - The three-file lifecycle/composition/root-identity interface is integrated at
   `8fe0dc8ca3a6`: canonical JSON projection module 13/13, zero skips.
-- Remaining acceptance: quarantine import1,
-  SDK timeout conversion1 and native Rename2. R22 digest:
-  `b176a91af7f9a99fff742f05a6bf07bbde2019b482938859a28c14a26534402f`.
-- All nine Rust paths pass the impacted static boundary policies. The event
-  owner precedes JSON, quarantine, SDK and native owner requests. Pending groups
+- Remaining acceptance: quarantine reason-custody and test closure6,
+  SDK timeout conversion1 and native Rename2. R24 digest:
+  `692778b66bf70c0d73c37fe132003e7eb0f9c5e10183a40dba8284fc47c3f446`.
+- All fourteen Rust paths pass the impacted static boundary policies. Event and JSON owners passed on R22 and are already integrated. Quarantine,
+  SDK and native requests execute on R24. Pending groups
   require source-bound receipts and guarded main checkpoints.
 - R21's event owner compiled: 172 passed, one failed, zero ignored. The failed
   expectation confused Visible with Committed before lease commit. R22 proves
   both terminal refusals independently; production transitions are unchanged.
-- All 45 D1–D7 typed requests and Cargo projections resolved unchanged on R22.
-  Actual matrix execution waits for the seven consumer prerequisite requests;
+- All 45 D1–D7 typed requests and Cargo projections resolved unchanged on R24.
+  Actual matrix execution waits for the five pending consumer owner requests;
   resolution alone is not an executed result.
 - GOD and changed Honesty retain their recorded RED states. No baseline,
   threshold, allow or scope relaxation was made. Native/installed product proof
@@ -413,6 +413,48 @@ existing dispatch/backend contracts. No alternate observer, issuer or solver is
 introduced. Exact paths, source closure and source-bound receipts are recorded
 in this report and each guarded import artifact.
 
+### R23 quarantine test migration
+
+R22 quarantine failed before running any cases: six unresolved test `Arc`
+references, one test call to removed `prepare_terminal_identity_before_apply_original_v3`,
+and one unused local test trait import. R23 imports Arc in the test module,
+uses the existing `prepare_terminal_identity_before_apply_controlled_v3`
+with the same original control, and removes the unused import. These three
+one-line repairs preserve the poison test's exact first-refusal and unpublished
+slot assertions. No compatibility alias, fabricated issuer or new preissuer
+implementation was added. The existing record-digest import cleanup joins these
+three files in one four-file owner checkpoint. Required witnesses include
+poisoned slots, reused committed storage, cancellation preserving pending state,
+digest tamper and exact durable response replay. All four still require actual
+whole-owner success before import; compiler success alone is insufficient.
+
+Event 173/173 and JSON 13/13 remain R22 results at their recorded source. Their
+five owning paths did not change in R23; already-integrated checkpoints are not
+replayed or relabelled as new R23 runs. The remaining five owner requests and
+45-request matrix bind to the R23 source/digest above.
+
+### R23 reachable preissuer refund defect and R24 repair
+
+R23's full quarantine library executed 130 cases: 129 passed and one failed,
+zero ignored or filtered. The existing native-birth failure matrix detected
+40 live intermediate bytes remaining above the original baseline while the
+fingerprint stayed alive. `original_reason_admission_v3` reused the fingerprint's
+long-lived memory group. If the reason String was born but its final retained
+owner birth failed, dropping temporary values could not release that String's
+charge because the fingerprint still retained the group.
+
+R24 keeps original marker/group validation, then asks that same control for an
+independent owned group through the existing `OriginalSetupAdmissionV3::try_new_v3`.
+Failure drops that group; successful reason custody keeps it through its last
+clone. The only old `try_from_group_v3` caller is retired with its now-unused
+private constructor. No new budget/root, issuer or allocator contract is added.
+The existing ten-point allocation-refusal regression keeps its exact zero
+residual-memory expectation; a diagnostic labels the refused birth index.
+Existing detached-reason retention, poison/refusal and replay controls remain
+mandatory. Actual whole-owner success and source-only main import are pending.
+This is a reachable resource-lifetime defect, separate from the earlier test
+compile migration; R23 RED is not rewritten as a passing result.
+
 Paths below are relative to Semantica. Each group is imported independently
 only after its own acceptance; historical receipts are not composed into a
 whole-repository result.
@@ -424,7 +466,7 @@ whole-repository result.
 | Receipt private visibility — complete | `packages/analysis/quanta-v2/crates/quanta-runtime-receipt-wire/src/`: `canonical_receipt_seed_v1.rs`, its `receipt_gqlang_seed_v1.rs` and `receipt_nested_seed_v1.rs` children | Whole minimal receipt owner 69/69 passed; three-file prerequisite integrated at `375173d94dc` before the SDK caller. SDK conversion retains separate acceptance. |
 | Event fingerprint extraction and phase oracle — complete | `packages/analysis/quanta-v2/crates/quanta-change-event-contract/src/ports/`: `ide_source_lifecycle_port/identity_fingerprint_v1.rs`, `operation_context.rs` | Adopt the reviewed helper repair; test Visible before lease commit and Committed afterward. Whole event library and identity/terminal/replay controls; production framing, tags and transitions remain unchanged. Whole owner 173/173, source-only two-file main checkpoint `00a54727bae`. |
 | Relation lifecycle interface — complete | `packages/analysis/quanta-v2/crates/quanta-runtime-source-authority-wire/src/original_source_control_v3/relation_control_v3.rs` | Existing JSON projection integration module executes all original-root/lifecycle, cancellation/timeout and allocation controls; immutable accessor visibility plus canonical `gqlang/composition_plan_v3.rs` identity-control import and internal `budget_handle.rs` root-identity import, no owner or schema duplication. Canonical module 13/13, main checkpoint `8fe0dc8ca3a`. |
-| Quarantine digest import | `packages/analysis/quanta-v2/crates/quanta-sdk-exact-repo-quarantine-owner/src/record_digest_v1.rs` | Remove only the proven unused trait import; whole quarantine owner executes, digest framing remains unchanged, then integrate one path before SDK. |
+| Quarantine reason custody and test closure | `packages/analysis/quanta-v2/crates/quanta-sdk-exact-repo-quarantine-owner/src/`: `record_digest_v1.rs`, `committed_terminal.rs`, `publication_lifecycle.rs`, `hellgate_tests.rs`, `original_setup_admission_v3.rs`, `publication_lifecycle/terminal_preissue_v3.rs` | Release failed reason storage independently of a live fingerprint, using the same original control. Retain original group validation, remove the now-unused shared-group constructor and migrate tests. Whole owner plus all 10 allocation-refusal points, last-clone retention, poison/storage/cancellation/durable replay witnesses precede six-file import. |
 | SDK deadline | `packages/analysis/quanta-v2/crates/quanta-runtime/src/sdk/abstract_interpret_builder.rs` | Native finite timeout survives actual port conversion; non-timeout errors retain their prior rejection. Import one path after owning tests. |
 | Native Rename | `crates/quanta-cli-ingress-runtime/src/dispatch/operation_binding_registry_v1.rs`, `dispatch/mutation.rs` | Exact inventory plus minimal refusal and real `dist-full` admission; whole registry and mutation owners including admitted context → registry → worker → Preview backend. Import both paths together; production Apply remains unavailable until its real issuer exists. |
 | PTA dependency repair — complete | `packages/analysis/quanta-v2/crates/quanta-adapters-pta/src/`: `production_live_native_workspace_generation_v1.rs`, its `original_java_workspace_v1.rs` and `original_java_evidence_v1.rs` children, `production_live_captured_semantic_workspace_generation_v1.rs`, `production_native_lowering_relation_output_v1/admitted_storage_v1.rs`, `native_function_build_generation_authority_binding_v1.rs` | Three canonical feature owner checks passed; six-file delta integrated at `7bbdcc1d4e3`. |
