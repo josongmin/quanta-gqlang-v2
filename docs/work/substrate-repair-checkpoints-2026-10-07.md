@@ -684,3 +684,25 @@ source-byte continuity is recorded separately in
 `r44-current-main-bundle-continuity.json`. Final mandatory policy/owner45,
 frontend clean-HEAD qualification and signed installed Linux CHECK retain
 their separate requirements. R38/R40 results retain their original inputs.
+
+## Latest source absorption — all reviewed source integrated
+
+Final source reconciliation observed Semantica main
+`3bf86a4735c989c051e1c143f529dc5f9b24c45e`. The three cursor postimages were already integrated by
+the main queue at `dc2611b96e12aea4ebc3cb15328b528806e6b548`; all 13 reviewed
+candidate postimages now match committed main exactly. The root cursor source
+claim is released. This supersedes earlier statements that these files remain
+private or require another source import.
+
+Source absorption does not complete original-issued execution acceptance. The
+five unchanged issuer memory/work/cancellation controls remain PROOF_PENDING
+after a reached DefUse dependency compilation failure. Existing common 7 and
+Java 139 passes retain R38's source; R44's 445 passes retain integration
+checkpoint `26f165989053b911bf28ce8296aa9c38bea99445` and its paired pins.
+No original-issued or whole-product pass is inferred from this reconciliation.
+
+`r44-all-source-absorbed-state.json` binds exact path equality and claim release.
+The private recovery checkout has no future root execution/write planned;
+cleanup must preserve recovery refs/immutable receipts and independently check
+process, lease, dirty and canonical reference custody. DefUse consumer writers,
+Native/SDK execution and remaining owner/policy/product gates stay open.
