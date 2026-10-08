@@ -17,6 +17,13 @@ Original positive, SDK behavior and product acceptance remain open. See the
 [R201–R206 successor](../../work/substrate-repair-checkpoints-2026-10-07.md#r201r206-final-batch-and-sdk-capture-checkpoint).
 Updated: 2026-10-08.
 
+R220 authors the QRA component-copy/input-visitor producer in four Semantica
+source files. Partial fields and complete components use external slots; the
+actual canonical encoder and highest caller receiving cut remain pending.
+AST/format/LLM/diff pass; God remains RED on three existing parent legacy
+allowances. No Rust, runtime or integration claim follows. See the
+[physical producer ABI](code-map.md#r220-physical-qra-input-producer-abi).
+
 Latest local execution is the [R79 onward closeout record](execution-r79.md).
 Two parser repairs are integrated on Semantica `main` as `d29ac508b4d`;
 the native allocation supplier and Original publication changes remain WIP.

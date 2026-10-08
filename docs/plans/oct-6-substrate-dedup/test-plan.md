@@ -577,3 +577,12 @@ installed-positive or whole-main qualification.
   retained group lease alone establish neither early refund nor correct final
   refund. Reuse the existing SDK three-case and DFG two-case owners after their
   compile prerequisite; they do not replace the multirow late-refusal oracle.
+
+R220's physical four-file producer passes AST parsing, exact-file rustfmt,
+changed-file LLM guardrails and diff checks. The new visitor length finding and
+wildcard import were repaired. God reports zero unallowed structural findings
+but remains **RED** for three pre-existing parent legacy allow-policy entries:
+Digest impl method/public-method counts and the exact-authority function's six
+parameters. No allowance, baseline or scan scope was weakened. Encoder and
+highest caller receiving, all Rust checks/tests and product proof remain open;
+this source cut has no new captured owner tuple or publication.

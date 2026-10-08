@@ -558,6 +558,19 @@ final output with paid rows. The generic Fresh owner now invokes only a genuine
 query-owned paid pair; FileText has its real selected provider route. Source changes
 remain unqualified until executed affected owners and complete compatible integration.
 
+## R220 QRA input producer source state
+
+The existing QRA copier and input visitor now use external partial-field and
+complete-component slots in four claimed source files. The physical
+[producer ABI](../plans/oct-6-substrate-dedup/code-map.md#r220-physical-qra-input-producer-abi)
+is authored WIP within `CHECKED-RETAINED-CONTROL`. Canonical encoder receiving
+and highest QRA/SDK caller state still need the same compatible cut, including
+retention of every completed input and retired/partial encoder/row backing.
+AST/format/LLM/diff pass; God stays RED for three existing parent legacy
+allowances. No Rust build/test, snapshot, Semantica source integration or
+product proof ran for this cut. The earlier R194/R206 observations below keep
+their own frozen or refused inputs.
+
 ## R201–R206 final batch and SDK capture state
 
 R201 completes the R107 held-lease postflight on frozen `1dff82deb346…`:

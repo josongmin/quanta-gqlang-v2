@@ -49,7 +49,7 @@ scope. Implementation, frozen owner proof and product qualification are separate
 | --- | --- | --- | --- |
 | CHECKED-LANG-SUPPLIERS | P1 | PARTIAL | Ordinary owners accepted and Rust regression integrated; controlled refusal/custody remain |
 | CHECKED-DEFUSE | P0 | PROOF_PENDING | All inventoried source cuts integrated, including Python27d950; actual owner proof remains |
-| CHECKED-RETAINED-CONTROL | P0 | OPEN | Genuine member handoff, admitted PTA/DFG publication and general facts output authority; QRA input/component/encode and outer Source birth [co-cut](code-map.md#qra-function-input-custody-co-cut--r212r213); local-ledger/Kotlin source repairs integrated |
+| CHECKED-RETAINED-CONTROL | P0 | OPEN | Genuine member handoff, admitted PTA/DFG publication and general facts output authority; R220 QRA copy/visitor [producer authored](code-map.md#r220-physical-qra-input-producer-abi), canonical encoder and highest Source caller co-cut pending; local-ledger/Kotlin source repairs integrated |
 | F7 | P1 | ACCEPTANCE_OPEN | Real SDK deadline regression plus existing owner proof |
 | QG-DIAG | P2 | RESOLVED | Existing private exact-field consumer contract; ADR-0008 |
 | CHECKED-CALLBACK-FIRST-CAUSE | P1 | PROOF_PENDING | Integrated bridge/Kernel repair; common + parser owners |

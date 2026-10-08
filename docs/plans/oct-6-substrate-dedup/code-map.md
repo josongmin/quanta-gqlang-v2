@@ -515,3 +515,40 @@ claims; this audit makes no competing source edit. Revalidate their resulting
 ABI before editing the visitor, and remove the superseded Original owned-return
 path with its callers. Ordinary APIs retain their distinct existing contract.
 See the [test obligations](test-plan.md#qra-function-input-custody-acceptance--r212r213).
+
+### R220 physical QRA input producer ABI
+
+The normal R90 claim is reconciled with the existing component-helper owner.
+Four source files above now contain this producer cut; no encoder body or
+highest SDK/QRA caller was edited by this lane:
+
+```rust
+// Allocation-free Default; field storage stays outside the Source loan.
+OriginalFunctionBuildInputComponentsSlotsV3
+OriginalFunctionBuildInputAssemblySlotsV3 {
+    components_copy_v3: OriginalFunctionBuildInputComponentsSlotsV3,
+    components_v3: Option<FunctionBuildInputComponentsV1>,
+}
+visit_function_build_inputs_from_admitted_request_v3(
+    request, output, &mut assembly_slots,
+    emit: FnMut(&StableDeclarationIdV1, &mut Option<Components>) -> Result<(), E>,
+) -> Result<(), E>
+```
+
+Existing runtime-function/provenance copiers now take `&mut ComponentsSlots`
+and return `Result<(), OriginalFunctionBuildInputErrorV3>`.
+`copy_components_v3(source, output, &mut slots, &mut Option<Components>)`
+does the same. `try_finish_components_v3` guards first, then moves backing
+without a fallible step. The ordinary and admitted assembly paths share one
+nine-field selection and one ten-field component mapping; optional fallback
+presence remains distinct. Occupied or failed slots are never replaced.
+
+The actual QRA emit callback must invoke the **same canonical constructor**
+using external encoder/input slots, then retain every completed input and
+partial/retired encoder or row backing until highest Source finish. It consumes
+components only after successful canonical construction. No arbitrary builder
+callback, serializer, issuer or guessed Core scratch type is added. The prior
+encoder/QRA receiving signatures remain a pending compatible cut, not a
+compiling or qualified result. Evidence:
+`r220-qra-input-producer-source-packet.json` and
+`r220-qra-input-producer-owned.diff` at the existing recovery root.

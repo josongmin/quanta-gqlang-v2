@@ -1392,3 +1392,22 @@ No competing helper, serializer or issuer is introduced. Evidence:
 `r212-qra-input-caller-readonly.json`,
 `r213-qra-input-components-readonly.json` and
 `r214-shared-main-status-readonly.json` at the existing recovery root.
+
+## R220 QRA input producer source checkpoint
+
+The four-file R90 producer now stores runtime-function, provenance, partial
+field backing and complete components externally. The same field selection
+and component mapping serve ordinary and Original assembly. Emit receives a
+mutable complete-component Option and returns full typed `Result<(), E>`;
+canonical construction belongs in the same actual QRA row callback with
+external encoder/input state. Every completed input and retired/partial
+backing must survive the highest Source finisher. No competing serializer or
+issuer is introduced. See the [physical API](../plans/oct-6-substrate-dedup/code-map.md#r220-physical-qra-input-producer-abi).
+
+AST4, format4, LLM4 and diff4 pass. God has zero unallowed structural findings
+and three pre-existing parent legacy allow-policy failures. No allowance or
+baseline changed. Encoder/QRA/SDK receiving remains pending; no Rust compile,
+test, QBC, source capture, Semantica commit/push or runtime/product proof ran.
+Evidence: `r218-qra-components-producer-source.json`,
+`r220-qra-input-producer-source-packet.json` and its owned diff at the existing
+recovery root. The earlier R212/R213 section remains the pre-change audit.
