@@ -92,6 +92,8 @@ source is missing. Source tracing alone supplies no runtime verdict.
 | A+B / contract types | Constraint sibling comparator visibility, current five-argument callback completion, and three precisely typed cursor callbacks | Authored after parser-no-Java R87's nine diagnostics; leaf format and affected boundary policy PASS; successor compile required |
 | A / test relationship | Exact synthetic retrieval wire and Source path assertions precede the existing positive Arc-demand checks | Scoped Honesty16/16 and exact Foundation owner1 pass; the source belongs to the coupled Native WIP packet |
 | A+I / feature policy | Remove redundant Python-search floor root, reuse the exact three-root isolation class, retain parser activation guard and synchronize its registry/inventory | Seven-file HEAD-only candidate verified and integrated on local Semantica main as `3b8f86dd9ea`; foreign manifest bytes preserved |
+| B / interproc hierarchy | Five explicit child paths under the existing `delta_result_carrier_v1` owner | Authored WIP; physical paths, leaf rustfmt and scoped diff checks PASS; no successor owner compile inferred |
+| I / interproc controls | Tie retained metadata owner and iterator callback loans to their existing lifetimes; checked `usize`→`u64` work conversion records first overflow before the visitor | Three-file narrow normal claim, compatible incidence-owner reconciliation; leaf rustfmt/scoped diff PASS after one local formatting correction; coupled owner compile pending |
 | B / Original | Readback of authenticated member handoff, admitted relation/index/prepared rows and remaining final refusals | Existing coowner progress verified statically; no duplicate producer or fabricated grant added |
 | C / consumer | Nine exact SCC/F2/F7 owner requests resolved; SDK2/community2 and eleven SCC scopes reconciled | `RESOLVED_ONLY`; no test acceptance inferred |
 | C / lock | Root and nested lock add the existing DFG package to SDK executor's dev-dependency list | Exact one-line delta each; full locked metadata PASS; coupled manifest WIP not separately committed |
@@ -141,6 +143,15 @@ Its required witnesses are
 | R88 parser no-Java and F2 / same source digest | Finished RED, exit101, zero tests each | The previous contract-types and DFG nominal compile blocks pass; both reach three filesystem descriptor module mounts (`E0583`). Their existing exact coowner adds explicit parent/child paths in the live successor |
 | R89 parser no-Java / `3e7bccb294d9a229d49883c000938667e2506bd7c9a9f7d3cde1b3a632b763ca` | Finished RED, exit101, zero tests | Descriptor mounts pass; SourceWire reaches four import/unused/projection-Clone diagnostics |
 | R89 F2 / same source digest | Finished RED, exit101, zero tests | Its broader feature closure reaches18 SourceWire diagnostics: module/constant/native-owner imports, one missing local, callback bounds, shared-payload generic error mappings and work-charge type, plus overlapping parser diagnostics |
+| R90 parser / `e67525feeae7bddd535ba40468aea699a2ced0f3ff3f825cb4b2cd79be184d1f` | Finished RED, exit101, zero tests | Earlier SourceWire type/path causes pass; two private-module constants have unreachable public visibility |
+| R90 F2 / same R90 input | Finished RED, exit101, zero tests | Same two visibility errors plus one unused child-module JSON document import; current coowner already removes that import |
+| R91 parser/F2 / `cf8747e9793cd1912543a479c036199495de8d4c3acf7b86087e4d6961cfef60` | Finished RED, exit101, zero tests each | SourceWire compiles; ports `BootstrapInputMutationV1` derives Eq/PartialEq over a retained candidate that deliberately has no uncontrolled content equality |
+| R92 parser / `25647d56744a6563f5fb39eb6b4173c26e1e8dd0aba568c59d3838599701988a` | Finished RED, exit101, zero tests | Ports compiles; two error-shared matches omit `OriginalGenerationSourceInputRefusedV3` and `SourceAuthorityRefusedV3` (`E0004`) |
+| R92 F2 / same source digest | Finished RED, exit101, zero tests | Broader closure reaches91 interproc-contract diagnostics; opaque result consumer migration51, imports10, incidence API/derives9, visibility8, module mounts5, replay derives3, factory APIs2, overlay/private storage1, unsized generic1 and callback lifetime1 |
+| R93 error-shared / `a41f3dd16d675c65f7046180d00f08d52cabdbdb5d094aa2e663f0d7ad3d0761` | Published GREEN, exit0, exact regression1;34 filtered | Eight independent finite cause/category/phase cases pass; not the whole library or later parser |
+| R95 parser bootstrap / no issued owner input | Operational failure, exit1; compiler not started | Dynamic dataclass module missing from `sys.modules`; retained separately, fixed in fresh R96 bootstrap |
+| R96 parser / `5568d127379b48bf489487fcfaf1cda600c519ee7242857409cdaeab0f889c2c` | Finished RED, exit101, zero tests | Error-shared passes; Kernel contract reaches18 errors (15 coded, three denied imports) in its current producer/consumer cut; later leaf repairs have separate postimages |
+| R97 parser / `9c838b5e83abd78f6e05d523b23079fe576a233a3a60fa28511adcaa000a16bc` | Finished RED, exit101, zero tests | All four authored Kernel postimages captured; their four R96 diagnostics disappear. Remaining14 belong to this input; later three diagnostic files change under the existing minimal-import owner |
 
 Each F2 run has its own `f2-native-owner-rNN.json`, `owned-proof-results-rNN.json`
 and archived stdout/stderr. No required F2 witness ran. These are compile failures,
@@ -296,6 +307,185 @@ R90 captures those compatible current postimages for parser/F2 successor proof.
 Its own source identity/results stay separate from R89's failed diagnostics.
 No full Native or Original source packet is integrated from this readback.
 
+R90's two constants are private implementation data: their only consumers are
+local auxiliary-policy functions, which the parent reexports. B removes only
+`pub`, retaining values/order and passing leaf format; postimage SHA256
+`48b3c8debd29682f81ebc4e7ebb0671a6d696135c5927b2ff229cee1c183319d`.
+R90/R91 postflight hashes are respectively
+`554257c03e4ed0cd73ede4bc40b5b53448e468a7bf7f5b05cb87c018049f87fe` and
+`714d8284c9e403b071b24701212a4e7dbeaa527ec524cabd98c32851ff8f3bce`;
+both preserve the failed receipts without accepting zero-test compiles.
+
+R91's wrapper equality cannot be repaired by adding an ordinary Eq implementation
+to retained content. Candidate values expose an ordinary-only fallible comparison;
+Original content requires an authenticated read. B removes only wrapper Eq and
+PartialEq, retaining Debug, the existing fallible clone path and outcome/receipt
+equality. No workspace equality consumer is found. Its postimage SHA256 is
+`fa7d10e074c9b24114cdf2a5f179d414c37ae228c4e7ec51a0ce87e03dd32092`;
+leaf format/diff pass. This public trait-availability change remains inside the
+unintegrated compatible Native packet and needs its consumer/compatibility review.
+R92's parser passes that ports boundary and reaches the two exhaustive error
+projections above. The existing `OCT8-ERROR-SHARED-R115-SOURCE-REFUSAL-MAPPING`
+owner has already added both arms in current WIP. The successor preserves the
+finite nested cause and phase rather than projecting every refusal to InternalBug.
+Its regression contains eight independent cases: cancellation, deadline, memory,
+allocation, missing head, timed-out I/O, stale generation and copied authority.
+This authored mapping is not inferred to pass from its source presence. R92 F2
+also ends before tests, on the broader interproc-contract boundary above. Its
+postflight SHA256 is `d3f7fa98953d4035fbcdf04a8784ffa5d3d8d51ff56e5275fe503045c0ccd7a4`;
+both failed receipts/logs are archived under lease without publication acceptance.
+After-run disk cleanup completes normally; no artifact admission floor is lowered.
+
+Before the bounded successor repairs, readback of all22 diagnostic-bearing
+interproc files matched R92's frozen bytes.
+The51 opaque-result diagnostics include cascades from direct fields, result
+literals and Clone/Eq assumptions. They are a producer/consumer migration, not
+51 isolated bugs. Canonical ordinary projections already return typed storage
+errors; retained data requires authenticated controls. Public heap/domain and
+context-sensitive result carriers plus bare tuple/set/vector/Option APIs and
+their real taint consumers must change together. Returning empty/None on missing
+authority would fabricate a successful analysis. Explicit module mounts and
+private signature/import repairs can proceed independently, but do not close
+this cross-crate contract cut. Exact cause/path/claim data are retained in
+`r92-f2-live-reconciliation-r93.json`; source-only Native/Original readiness uses
+44 stable selected files in `supplier-final-readiness-r93.json`.
+
+The bounded source successors retain their own postimages: five hierarchy mounts
+in `interproc-carrier-mount-r92-b.json` and three control signatures/work count
+in `root-interproc-control-final-r93.json`. Their formatting/whitespace checks
+pass. The R93 capture predates these edits, so its error-projection proof cannot
+qualify them. Two factory-method errors also originate from the missing ordinary
+child mount; no new fallback factory is introduced. A new compiler diagnostic
+count must be executed rather than inferred by subtracting edited lines from91.
+
+The ordinary PointsToResult cut exceeds the initial nine-file assignment.
+`ContextSensitivePtaSolutionV2::from_legacy_projection_v1` has17 caller files
+across PTA adapters, runtime, runtime-analysis and tests. The real facts caller
+`adapter_solver_facts_entry.rs` returned `()` through its append helper at this
+R93 readback, and the access-path API has about30 taint-solver consumers. The
+canonical storage owner `OCT8-POINTS-TO-RETAINED-STORAGE-72` covers the producer;
+no active claim then covered the complete consumer migration. A retains the source rather than
+installing partial projections that return empty data for missing authority.
+The exact expanded path/claim inventory is
+`r92-f2-points-to-consumer-cut-r93.json`.
+
+### R93 exact finite error projection acceptance
+
+Canonical owner request `21efcd49eb4af2faa7cd856d7622bc8d` passes the exact
+`failure_category_ext::tests::nested_original_and_source_authority_refusals_preserve_finite_cause_v3`
+libtest: one passed, zero failed/ignored,34 filtered, with all eight cause/category/
+phase expectations checked. Its guarded input is Semantica `3b8f86dd9ea` WIP plus
+committed siblings, campaign source digest
+`a41f3dd16d675c65f7046180d00f08d52cabdbdb5d094aa2e663f0d7ad3d0761`.
+The finished receipt SHA256 is
+`143e1661ca06cd111f38789b1c5ae5817be8d99e7af9f4f9cc366c2024846200`;
+the immutable publication marker binds it. Postflight runs under the held source
+lease and archives the exact witness, receipt, stdout/stderr and marker; report
+SHA256 `021b139ad4b4718a7002f86d3de6fb921287137d8a08b9e4c9e54ab63f6dfcca`.
+Composite topology identity and hashed campaign source identity are validated
+separately, rather than comparing these different representations as strings.
+
+This accepts that finite projection on its own input. It does not qualify later
+interproc edits, the entire error library, the latest parser, SDK or Original
+success. R94's full parser/F2 replay is not run against the known unfinished F2
+consumer cut. R95's parser-only bootstrap stops before owner resolution or
+compiler execution: its dynamic Python dataclass module was not registered in
+`sys.modules`. `parser-r95-operational-failure.json` retains this operational
+failure separately from Rust RED. R96 corrects the module import, verifies it
+with configured Python3.12 and captures a new guarded parser-only input; no
+failed R95 input or result is rewritten into a passing receipt.
+
+### R96 parser successor and current consumer reconciliation
+
+The parser-noJava whole-library `check` finishes RED101 on campaign source
+`5568d127379b48bf489487fcfaf1cda600c519ee7242857409cdaeab0f889c2c`:
+Semantica `3b8f86dd9ea7` with guarded WIP and all discovered sibling committed
+HEADs, including QGLang `b1957acef70b`, with empty sibling overlays. It passes
+the earlier error-shared projection boundary and reaches18 errors in
+`quanta-runtime-kernel-contract`:15 coded diagnostics and three denied unused
+imports, across13 files. No tests execute. The finished receipt SHA256 is
+`2e975d44888d93a5bb9319cd18875b1979bf4a20af0a1ea2dc93ad637ad2f14f`;
+the leased custody/postflight archive report SHA256 is
+`5991dc76efd065f3b7de573d1e4fe9a102f777114112a01488425d6f812170cb`.
+RED has no passing publication or reuse authority.
+
+`r96-parser-full-reconciliation.json` retains the exact diagnostics and current
+claim/path hashes. Reached causes are feature-scoped source authority imports,
+source-text/context consumer APIs, generic callback error propagation, finite
+identity-material/observer errors, output trait bounds, an empty feature-off
+storage match and a moved envelope. These are the reached Kernel closure;
+R92's91 F2 diagnostics remain a different historical input, not the current
+residual count. The owned envelope successor changes only the private helper
+and sole caller to borrow `VerifiedCanonicalOutputEnvelopeV1`. Decoder ownership,
+admission and rejection remain unchanged; exact reverse reconstruction,
+scoped formatting and whitespace checks pass. Its postimage is
+`6c76d4f9a67278cc03f77777341c5f3ab562d4dac5ff5b7691048947da40122b`.
+`r96-kernel-envelope-borrow-a.json` records the reconciled and released claim.
+This later source repair is WIP and has no successor Rust compile acceptance.
+
+Two additional bounded Kernel repairs retain separate postimages. The exhaustive
+committed/pinned identity wrapper now returns the same existing
+`CanonicalIdentityMaterialErrorV3` as both SourceWire producers; its forwarding
+body is byte-unchanged. The two observer consumers now propagate issuance refusal
+as `SourceIssuanceControlRefusedV3` before payload/row visitation, with `E::from`
+at the generic resource boundary. Callback and first-refusal order are unchanged.
+Their exact patches/claims and leaf checks are in
+`r96-kernel-identity-material-error-a.json` and
+`r96-kernel-observer-issuance-consumers-b.json`; all narrow claims are released.
+The independent four-file static readback is
+`r96-kernel-leaf-independent-review.json` (SHA256
+`29a0b62f856ccb6dd717607e1c1720366a68d6df7754de04ab366f1552f009f8`).
+R97 captures their later complete guarded input for a parser-only successor;
+neither R96's failed receipt nor these leaf checks establish its result.
+
+R97 then finishes RED101 on campaign source
+`9c838b5e83abd78f6e05d523b23079fe576a233a3a60fa28511adcaa000a16bc`,
+with the same declared committed sibling heads and a fresh Semantica overlay.
+The four authored postimages are present; none of their four R96 diagnostics
+is reported. The actual remaining Kernel count is14 (11 coded errors and three
+denied imports), zero tests. Finished receipt SHA256
+`d9c0106d8a01c8a332ff3319c00bc34077ca4bee937e1600d5efdc8fff24c16a`;
+leased postflight/archive report SHA256
+`ae89ba9412d3917df38da23741dd4b267881738735c4ffdd87126bac3d04e8e9`.
+This confirms diagnostic progression, not a passing owner or product result.
+
+`r97-parser-full-reconciliation.json` (SHA256
+`e331458209baa5f7664e5527c99e613abad36749caf9deb9efe5a70d2b0fe3a0`)
+records9 remaining diagnostic files. Six still match the frozen input at readback;
+three have later postimages under `OCT8-KERNEL-R127-MINIMAL-IMPORT-CLOSURE-ROOT`
+alongside their existing owners. The14 count is therefore not claimed as the
+latest live-main residual. Complete that existing feature/import cut and the
+remaining context/text, generic callback error, output bound and feature-off
+storage consumers before a new broad acceptance capture. Keep both source
+identities and the unfinished Native/Original implementation boundaries separate.
+
+The parallel source-only readback in
+`r92-nonopaque-current-reconciliation-r96.json` finds11 of13 non-opaque
+interproc files changed since R92. Pair exports/journal, PtaError import,
+state derives and factory repair are under
+`OCT8-PTA-PORTS-DELTA-INCIDENCE-CONSUMER-MIGRATION`; retained overlay and unsized
+retraction remain in its coordinated boundary. KCFA replay receipt traits also
+reach runtime's `frontier_v1.clone()` and require fallible ordinary or authenticated
+retained copy with typed admission failure. No independent derive-only repair is
+assigned, and the old count is not reduced arithmetically.
+
+`r96-opaque-points-to-consumer-current-partition.json` freezes13 selected path
+hashes and current claims. V1/V2 copy and facts/taint append migrations now have
+active child owners; the R93 absence of a complete consumer claim does not mean
+these later sub-boundaries are unowned. V2's public legacy conversion is now
+fallible in WIP and still requires all17 distributed caller files to change
+compatibly. Facts projection/append must preserve storage and digest causes,
+avoid partial facts and retain the original first error. Alias/access-path/
+indirect-call APIs and real consumers must distinguish `Ok(None)` from refused
+storage, with deterministic output and no empty/default success on refusal.
+The artifact is moving-WIP source evidence, not compile or product acceptance.
+
+Next capture requires the complete compatible Kernel/source-authority and
+interproc producer/consumer postimages. Resolve parser no-Java/Java, F2 and
+actual runtime/SDK owners on that declared tuple before integrating the coupled
+Native packet. Existing claims and foreign manifests/locks are preserved;
+neither a partial child file nor a typed refusal is removed to manufacture GREEN.
+
 ## Current Original source boundary
 
 The [proof handoff](../../work/substrate-repair-checkpoints-2026-10-07.md)
@@ -342,6 +532,19 @@ retained-syntax, facts-storage, source-world, Java-callable and PTA transaction
 claims cover those seams; this queue does not install a second authority issuer
 or treat refusal deletion as a success implementation.
 
+The final selected-source readback at `3b8f86dd9ea` confirms all three general
+success seams remain open and reachable. Runtime
+`cfg_dfg_authority_issuance.rs:1012` reaches the DFG source-world guard, and the
+controlled file batch reaches Tree C's loan-time refusal. The real Java facts
+frontdoor rejects controlled input before its ordinary result constructor;
+the generated-field keeper is a specialized private candidate. PTA workspace
+generation reaches its nonempty relation guard and final owner materializer;
+the general transaction still refuses, while its success entry is void-return
+only with zero definitions/uses/callsites. Stable selected hashes and existing
+first-facts/DFG/PTA owner claims do not turn these into success implementations.
+Closing this scope requires actual admitted producer-to-final-output APIs and
+their regressions, beyond the already committed Shape/SCC dedup source.
+
 ## Remaining execution and completion criteria
 
 1. **FCP-COMPILE / P0:** repair only newly reached owning compile causes; capture
@@ -350,8 +553,9 @@ or treat refusal deletion as a success implementation.
 2. **CHECKED-RETAINED-CONTROL / P0:** finish the three success boundaries above;
    prove same-operation loans, admission before growth, first refusal, cancellation
    and final-drop refund through actual producers.
-3. **Independent owner proof / P1:** execute Shape/Cost, PTA/taint/DFG, the three
-   pending SCC scopes, SDK2/community2 and F2/F7 after each complete closure is
+3. **Independent owner proof / P1:** execute Shape/Cost, PTA/taint/DFG, the five
+   pending SCC consumers (rule, metrics, current-target, navigation and community),
+   SDK2/community2 and F2/F7 after each complete closure is
    available. The C request map (`c-consumer-owner-request-map-r79.json`) is not
    a result. `c-scc-continuity-d29-r83.json` verifies the eight earlier receipts'
    publication hashes: dominance3 and worklist77 match pinned committed `d29`,
@@ -359,8 +563,9 @@ or treat refusal deletion as a success implementation.
    metrics14, import graph32 and core CFG30 have changed IR-build dependency
    closure at that older checkpoint. R87 now supplies accepted successors for
    core CFG30, concurrency domain6/engine38 and import graph32; rule34/metrics14
-   remain open, and import graph needs revalidation after its later admission
-   dependency change. This older continuity
+   remain open. Import graph's later admission dependency change is reaccepted
+   by R89's32 executed witnesses; that successor retains its own input rather
+   than updating R87's identity. This older continuity
    does not qualify moving WIP or later `6bab`. Existing accepted core/facade and scoped
    D4/D5 are not reassigned as source repairs.
 4. **Policies and product:** run affected mandatory gates and receipt-bound real

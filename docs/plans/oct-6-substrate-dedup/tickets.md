@@ -48,7 +48,7 @@ scope. Implementation, frozen owner proof and product qualification are separate
 | D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Scoped Honesty/GOD/boundary checks pass; Python-search floor policy bundle integrated as3b8f86d; whole affected policy closure remains |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P0 | BLOCKED_COMPILE | Native packet remains WIP; frozen R89 parser/F2 reach SourceWire4/18 diagnostics with zero tests; owning successors are authored separately, current broad compile acceptance remains |
+| FCP-COMPILE | P0 | BLOCKED_COMPILE | Native packet remains WIP; R93 exact finite error regression1 is accepted on its own source. R97 parser captures four Kernel repairs and stops on14 errors, zero tests; later minimal-import postimages require a fresh capture. R92 F2's91 is historical. Complete current V1/V2/facts/taint caller/authority migration, broad compile and compatible integration |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |
@@ -375,6 +375,39 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
 
 ## FCP-COMPILE
 
+- **Latest reached owning cut:** R92 parser stops on two finite error projections
+  whose existing owner has authored the successor; R93 exact regression1 is
+  accepted with immutable publication on its own input. R96 parser passes that
+  boundary and reaches18 Kernel errors before tests. Its guarded source and
+  archived RED remain separate from authored successors. F2's R92 closure stops
+  on91 interproc-contract diagnostics across22 files. Five hierarchy mounts and
+  three private control signature/work-width repairs are authored with leaf
+  checks, not accepted by a successor compile. See the exact [execution](execution-r79.md).
+- **Coherent consumer migration:** use the canonical opaque result owner and
+  existing ordinary/retained read contracts. Public heap/context-sensitive
+  carriers cannot keep unconditional Clone/Eq over authenticated retained data.
+  Propagate typed fallibility through V2 legacy/common projection, its17 caller
+  files in PTA/runtime/runtime-analysis, the actual facts append path and taint
+  access/call-resolution APIs. Missing current authority must never become
+  empty facts, an empty call list or None. Include affected public trait/signature
+  compatibility, independent ordinary result oracles and retained refusal tests.
+  The existing producer claim does not cover this complete consumer cut. R96's
+  source-only reconciliation finds active V1/V2 copy and facts/taint child owners;
+  preserve their work and finish distributed callers rather than duplicating it.
+  In-progress facts append must preserve storage/digest causes, atomic output
+  and the original first error; alias/access/call consumers must distinguish
+  missing rows from authority refusal. See the current partition in the execution.
+- **Kernel successor:** finish source-authority feature mounts/imports and typed
+  identity/observer error propagation; context/source-text/output contract consumers,
+  callback generic error and feature-off empty storage must compile coherently.
+  The owned envelope borrow, finite identity error forwarding and two observer
+  issuance consumers have leaf checks and separate source postimages. R97 captures
+  all four, no longer reports their diagnostics, and stops on14 other errors before
+  tests. Three diagnostic files then change under the existing minimal-import
+  owner;14 is not claimed as current live-main residual. These source repairs
+  have no independent main commit of their co-owned files.
+  Capture complete compatible postimages before parser no-Java/Java and actual
+  SDK/runtime owners; keep R92 F2 and R96 parser counts bound to their own inputs.
 - R79 integrates the three hierarchy mount corrections and feature-scoped imports
   in Semantica `d29ac508b4d`. The live Foundation native-copy alias now uses the
   existing public root export. Its native-core supplier/manifests and the two

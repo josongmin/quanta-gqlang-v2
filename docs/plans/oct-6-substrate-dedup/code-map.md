@@ -392,7 +392,7 @@ CONTROL-SNAPSHOTS work remain; no new read-migration workers are assigned.
 | ID | Existing owner / actual consumer |
 | --- | --- |
 | D1 | `qv2/quanta-adapters-shape/src/shape_analyzer_adapter.rs` → `quanta-adapters` / `quanta-adapters-runtime-surface` factories/exports → SDK/converter |
-| D2 | `core/codegraph-graph-scc/src/scc.rs` owns bounded traversal; graph-utils `src/lib.rs` reexports compatibility paths → runtime-analysis `precise_query_scc.rs` / taint `wire_recursion.rs`; PTA adapter `scc_collapsing.rs` / Andersen `scc.rs` use core directly |
+| D2 | `core/codegraph-graph-scc/src/scc.rs` owns bounded traversal; `qv2/quanta-graph-utils-v1/src/lib.rs` reexports compatibility paths → runtime-analysis `precise_query_scc.rs` / taint `wire_recursion.rs`; PTA adapter `scc_collapsing.rs` / Andersen `scc.rs` use core directly |
 | D3 | `qv2/quanta-adapters-dfg/src/memssa_adapter/` active PortDFG path; retired build-input entry remains absent |
 | D4 | retrieval kernel `scv2_exact_fusion.rs` → `quanta-retrieval-algo-v1/src/rrf.rs` |
 | D5 | `core/pta/engine/src/solver/union_find_base.rs` and active Steensgaard; retired Andersen export remains absent |

@@ -21,6 +21,36 @@ the later complete resolution and two reached pretest failures have separate inp
 - R89 passes those mounts, then parser/F2 reach SourceWire4/18 diagnostics on
   their different feature closures. Current owning postimages repair those
   reached causes; R90 supplies the successor input, not an inferred result.
+- R90 then reaches private constant visibility/unused import; R91 passes
+  SourceWire and reaches ports wrapper equality. Its retained candidate requires
+  authenticated content reads; adding uncontrolled Eq is invalid. The wrapper
+  trait change is authored inside the coupled Native packet, with compatibility
+  and successor compile acceptance still open.
+- R92 parser passes ports and reaches two exhaustive error-shared projections
+  missing the new source-input/authority refusal variants. Their existing owner
+  has authored finite cause/phase-preserving arms and an eight-case regression;
+  R93 accepts that exact regression on its own source with finished immutable
+  publication. Broader parser/F2 acceptance is separate.
+- R92 F2's different feature closure stops on91 interproc-contract diagnostics.
+  Before the bounded successor repairs, all22 diagnostic-bearing consumer files
+  matched the frozen bytes. The largest class (51) comes from the opaque
+  PointsToResult contract cut: ordinary
+  field/Clone/Eq callers and infallible tuple/set/vector/Option APIs have not yet
+  migrated. Existing fallible ordinary readers and authenticated retained reads
+  must propagate refusal through actual taint consumers. Empty/default fallback
+  would hide missing authority. Five hierarchy mounts are an independent repair;
+  narrowing a test selector does not narrow this Cargo compile closure.
+- R96 parser passes the error-shared projection boundary, then stops on18 Kernel
+  errors (15 coded, three denied imports), before tests. Source authority and
+  context/text/output consumers are not yet a compatible captured closure.
+  Four bounded Kernel repairs are captured at R97, whose compiler no longer
+  reports their four diagnostics but still stops on14 errors. Three remaining
+  diagnostic files then change under the existing minimal-import owner;14 is
+  that frozen input's count, not a current-main residual. Broad compile remains
+  open. Current V1/V2 and facts/taint child owners are migrating
+  the opaque result consumers. R92's91 is historical rather than a current
+  residual count; public fallibility, finite cause and first-error continuity
+  must be accepted across the complete caller cut.
 - The independent SDK Python search policy RED comes from a redundant direct
   feature-floor root. Its transitive parser/floor closure is unchanged83/83;
   the complete registry/guard/inventory repair is committed as `3b8f86d`.
@@ -109,7 +139,7 @@ execution plan and does not create a new implementation ticket.
 
 ### 3. Original output success still has three source obligations
 
-| Boundary | Current source evidence | Required change |
+| Boundary | R77 source evidence | Required change |
 | --- | --- | --- |
 | Runtime/SDK → PTA | `original_java_workspace_v1.rs::produce_live_native_workspace_generation_v1` requires five arguments, including genuine `members_v3`; runtime-analysis production and SDK fixture calls still pass four | Carry actual source/`AnalysisFileIngressV1` members through both callers and preserve source/operation identity |
 | PTA and retained DFG publication | PTA `issue_workspace_transactions_v1` prepares the workspace but deliberately returns `UnsupportedOperation`; retained DFG refuses ordinary source-world/digest-map births under Original custody | Complete controlled extraction/transaction output and source-world/publication births under the same operation/group; retain temporary/final permits until their actual last owner |

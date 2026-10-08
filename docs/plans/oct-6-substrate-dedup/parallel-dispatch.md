@@ -15,6 +15,16 @@ Semantica main as3b8f86d. B observes an existing descriptor-mount owner and avoi
 a competing edit. The single heavy-build queue runs parser/F2 successors on
 captured inputs; failed prerequisites do not erase independent accepted scopes.
 
+R96's parser successor reaches the Kernel contract before tests. A/B then author
+four bounded Kernel file repairs with narrow reconciled claims and leaf checks;
+I captures their R97 parser successor in the same serial heavy-build queue;
+it stops on14 other Kernel errors before tests. Later minimal-import changes
+retain their existing owner and need the next compatible source capture.
+Current V1/V2 copy, facts/taint and delta/incidence migrations have existing child
+owners. Their distributed caller and first-cause obligations remain coordinated
+in FCP-COMPILE; no second opaque-result implementation is dispatched. Exact
+postimages, observed claims and owner outcomes remain in the execution record.
+
 ## Planning inputs and capacity
 
 - QGLang: clean `main` at `9eee2bee1728c67abfae26f74804bd2ce9e5fd67` before
