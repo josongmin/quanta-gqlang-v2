@@ -49,7 +49,7 @@ scope. Implementation, frozen owner proof and product qualification are separate
 | --- | --- | --- | --- |
 | CHECKED-LANG-SUPPLIERS | P1 | PARTIAL | Ordinary owners accepted and Rust regression integrated; controlled refusal/custody remain |
 | CHECKED-DEFUSE | P0 | PROOF_PENDING | All inventoried source cuts integrated, including Python27d950; actual owner proof remains |
-| CHECKED-RETAINED-CONTROL | P0 | OPEN | Genuine member handoff, admitted PTA/DFG publication and general facts output authority; local-ledger/Kotlin source repairs integrated |
+| CHECKED-RETAINED-CONTROL | P0 | OPEN | Genuine member handoff, admitted PTA/DFG publication and general facts output authority; QRA input/component/encode and outer Source birth [co-cut](code-map.md#qra-function-input-custody-co-cut--r212r213); local-ledger/Kotlin source repairs integrated |
 | F7 | P1 | ACCEPTANCE_OPEN | Real SDK deadline regression plus existing owner proof |
 | QG-DIAG | P2 | RESOLVED | Existing private exact-field consumer contract; ADR-0008 |
 | CHECKED-CALLBACK-FIRST-CAUSE | P1 | PROOF_PENDING | Integrated bridge/Kernel repair; common + parser owners |
@@ -82,7 +82,7 @@ is complete; blanket serialization behind unrelated Original work is unnecessary
 | Active ID | Remaining assignment | Prerequisite / completion boundary |
 | --- | --- | --- |
 | FCP-COMPILE | Finish compatible module/API/supplier/caller bundle | Exact tuple capture, no-Java/Java and actual SDK/runtime compile, coordinated integration |
-| CHECKED-RETAINED-CONTROL | Finish real Original producer and final output | Complete owning supplier closure; members, admitted transactions/publication and general facts keeper |
+| CHECKED-RETAINED-CONTROL | Finish real Original producer and final output | Complete owning supplier closure; members, admitted transactions/publication and general facts keeper. R212/R213 add concrete QRA partial-input/encode custody and both outer Source callers within this same ticket; no extra runtime-defect count. |
 | CHECKED-DEFUSE | Accept integrated language extraction | Affected context/output closure; exact facts/binding and rejection at actual extractors |
 | CHECKED-LANG-SUPPLIERS | Accept controlled carrier and custody | Ordinary libraries already accepted; controlled source/output handoff required for remaining cases |
 | CHECKED-CALLBACK-FIRST-CAUSE | Accept parser chronology | Callback repair integrated; affected parser compile and real bridge witnesses |

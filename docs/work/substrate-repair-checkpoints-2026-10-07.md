@@ -1377,3 +1377,18 @@ DoDs remain in force. Evidence: `r201-r107-final-batch-readback.json`,
 `r205-sdk-kernel-type-reconciliation.json`,
 `r200-sdk-dfg-owner-ready.json`, and
 `r206-sdk-capture-guard-refusal.json` at the recovery evidence root.
+
+## R212/R213 QRA custody source audit
+
+On observed dirty Semantica `3b8f86dd`, owned visitor inputs and partially
+constructed component fields can drop before the enclosing Source finisher.
+Analysis also creates the existing QRA birth inside that Source callback.
+The group lease remains retained, so early refund, partial publication, wrong
+digest and leak are **not confirmed**. No source edit or Rust proof follows
+from this audit. The existing `CHECKED-RETAINED-CONTROL` ticket now links the
+[complete helper/caller co-cut](../plans/oct-6-substrate-dedup/code-map.md#qra-function-input-custody-co-cut--r212r213)
+and its [multirow acceptance obligations](../plans/oct-6-substrate-dedup/test-plan.md#qra-function-input-custody-acceptance--r212r213).
+No competing helper, serializer or issuer is introduced. Evidence:
+`r212-qra-input-caller-readonly.json`,
+`r213-qra-input-components-readonly.json` and
+`r214-shared-main-status-readonly.json` at the existing recovery root.

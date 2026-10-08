@@ -491,3 +491,27 @@ after one complete source tuple is frozen. Nonempty PTA publication remains
 explicitly unsupported by the current composer; general Original facts and
 output publication require implementation. See the
 [R201–R206 checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r201r206-final-batch-and-sdk-capture-checkpoint).
+
+## QRA function-input custody co-cut — R212/R213
+
+This is additional detail within `CHECKED-RETAINED-CONTROL`, observed on
+Semantica `3b8f86dd` plus dirty source. Source ownership shows payload drop
+before the outer Source finisher; it does not establish early budget refund,
+wrong output, partial publication or a leak. The output group lease is retained.
+The following changes must preserve the existing canonical encoder, field
+order, digest preimage, work charges and typed Source/Portable causes.
+
+| Existing owner / caller | Before, observed source | Required after |
+| --- | --- | --- |
+| `qv2/quanta-runtime-analysis/src/queries/intraprocedural/intraprocedural_artifact_digest_v1/original_components_copy_v3.rs` | Function ID/provenance and component copiers return owned values; a later fallible field can destroy earlier paid fields. | Extend the same copier owner with external field sinks/slots, using existing `copy_string_into_v3` and identity sink primitives. Preserve partial backing on failure. |
+| Same crate, `intraprocedural_artifact_input_assembly_v1.rs::function_input_components_v3` and `intraprocedural_artifact_input_assembly_v1/original_v3.rs::visit_function_build_inputs_from_admitted_request_v3` | Struct-literal field copies use `?`; the visitor emits an owned digest. A single replacement Option would also destroy previous inputs. | Build through external component slots; visit borrowed input. Keep pending input plus every completed input in the QRA birth through Source finish, admitting any retained Vec growth at its existing owner. |
+| Same crate, `intraprocedural_artifact_digest_v1/original_encode_v3.rs` | `try_new_with_original_v3` consumes components; portable bytes and encoder scratch are returned or dropped inside the call. | Borrow components through fallible canonical work, then transfer them into a completed input. Retain partial encode/output state through the existing encoder owner; do not introduce a serializer or a second digest calculation. |
+| Same crate, `pre_native_function_build_authority_owner_v1/original_workspace_rows_v3/{birth_v3,result_v3}.rs` | Row construction/portable copying can fail after owned emit; state has no input/component/portable scratch slots. | Store partial row, portable backing, pending input and completed inputs in existing birth state; preserve full typed cause at the existing unit-status transaction boundary. |
+| Same crate, `production_live_native_lowering_generation_parts_v1.rs`; `qv2/quanta-sdk-runtime-executor/src/client/production_live_native_lowering_generation_parts_authority_v1.rs`; `qv2/quanta-runtime-test-support-pta/src/exact_native_generation_fixture_v1/original_execution_v1.rs` | Analysis creates QRA birth inside the SDK or test-support Source callback, before context `finish_original_source_result_v3`. | Move that existing birth to each actual caller outside the Source loan, pass it by mutable borrow and consume the completed result by borrow until finish. Migrate both actual callers and the three direct SDK QRA test callers in one compatible cut. |
+
+These are existing owner extensions, not separate engines or duplicate tasks.
+The component/encode helper and upper caller have active overlapping source
+claims; this audit makes no competing source edit. Revalidate their resulting
+ABI before editing the visitor, and remove the superseded Original owned-return
+path with its callers. Ordinary APIs retain their distinct existing contract.
+See the [test obligations](test-plan.md#qra-function-input-custody-acceptance--r212r213).

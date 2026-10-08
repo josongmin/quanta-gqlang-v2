@@ -555,3 +555,25 @@ installed-positive or whole-main qualification.
   Original producer/consumer oracles on a compatible frozen tuple. Preserve
   R182's exact `.gitignore` source exception; do not bypass ignored-file
   custody or claim current-main/product acceptance from scoped results.
+
+### QRA function-input custody acceptance — R212/R213
+
+- This audit runs no Rust compile or behavior test. Treat the
+  [co-cut map](code-map.md#qra-function-input-custody-co-cut--r212r213) as a
+  source-level custody obligation within `CHECKED-RETAINED-CONTROL`.
+- Compile the same helper/visitor/QRA/SDK/test-support cut on one source tuple.
+  Migrate the two actual product/support callers and three direct SDK QRA test
+  callers; no Original compatibility shim or fake source authority.
+- Preserve independent expected function identities, body provenance, canonical
+  digest/portable bytes and stable row order. Include multiple function rows so
+  replacement of a single pending input cannot silently retire the first row.
+- Design a deterministic owning late-refusal seam before claiming that proof:
+  retain the first completed input and the second row's partial fields/encoded
+  backing through Source finish, preserve the first typed cause and publish no
+  success. R186 found no suitable genuine mid-QRA failure hook in the existing
+  SDK fixture; arbitrary memory thresholds and racing cancellation are not an
+  independent oracle. The seam and its execution remain pending.
+- Check the actual last-owner refund separately. Static Rust drop order and a
+  retained group lease alone establish neither early refund nor correct final
+  refund. Reuse the existing SDK three-case and DFG two-case owners after their
+  compile prerequisite; they do not replace the multirow late-refusal oracle.
