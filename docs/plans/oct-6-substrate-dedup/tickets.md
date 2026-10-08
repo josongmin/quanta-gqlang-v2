@@ -208,6 +208,9 @@ execute the runtime/SDK/gate matrix or both shared-allocation feature closures.
   verified publication on Semantica `f574fa82bf1`; locators and source digest are in
   [remaining work](../../work/remaining.md#substrate-verification). This does
   not cover PTA consumers.
+- The PTA adapter `scc_collapsing::tests` owner request on the same input is
+  RED before execution: parser compilation reports 105 errors and selects zero
+  tests. Repair the coupled supplier/parser closure before repeating it.
 - DoD: core/facade, PTA adapter, Andersen and runtime precise-query results retain
   membership/order/IDs, graph closure, preallocation limits and original typed stop.
   Reuse the existing PTA engine solver request for its SCC governance witnesses.
