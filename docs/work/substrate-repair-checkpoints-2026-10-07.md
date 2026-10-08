@@ -73,7 +73,7 @@ Evidence at the existing recovery root: `r78-lock-closure-applied.json`,
 `r79-native-supplier-postimage.json`, `r82-source-capture.json`,
 `r82-fixed-input-pins.json` and `r85-parallel-source-checkpoint.json`.
 
-## R87–R127 fixed-candidate compile and ownership checkpoint
+## R87–R136 fixed-candidate compile and ownership checkpoint
 
 Live source observed at Semantica `6bab127740a3`; candidate source retains the
 R82 fixed topology and explicit later file captures. No coupled new source
@@ -103,7 +103,11 @@ bundle is integrated by this checkpoint.
 | R121 successor Kernel CHECK | Exit101 at two contract-ports `BootstrapInputMutationV1` equality derives on a controlled indexed input; same source `0452578af7dd9d779be4d140dd3ae994a1aba0d75eaddcab9359b33ec783c058`. | Runtime-error mapping boundary passes; zero tests. |
 | R123 narrow PTA SCC owner request | Exit101 at a private SourceWire helper reexport unused with repository-FD capture disabled; source `0452578af7dd9d779be4d140dd3ae994a1aba0d75eaddcab9359b33ec783c058`. | Zero tests; current live source already has the relevant feature guard. Normal after-run cache maintenance delayed the finished failure publication. |
 | R125 compatible successor PTA SCC request | Exit101, source `23e7aff38446fcc28d85eca4e7618db33dd81d2a8289f3dab950324dd9893bee`; 91 diagnostics in 26 interproc files. | SourceWire helper and contract-ports boundary pass; zero tests. Twenty-two affected files match live source. Consumer migration remains open. |
-| R127 Foundation bootstrap evidence owner regression | Exit101 on the same candidate source; one invalid Kernel facade import plus three unused imports in the minimal input-store feature closure. | Zero tests; the changed evidence fixture oracle has not executed. No product or fixture-failure verdict. |
+| R127 Foundation bootstrap evidence owner regression | Exit101 on the same candidate source; full archived stderr has fifteen diagnostics. The short excerpt displayed only the first four import diagnostics. | Zero tests; the changed evidence fixture oracle has not executed. No product or fixture-failure verdict. |
+| R130 successor Foundation evidence owner regression | Exit101, ten diagnostics, source `6e9ee0e9697f42c6c0c723a6e64e8f0cb52eefedac686ad6905ba768e519fdb7`. | Four compatible import/feature hunks captured; zero tests. Three diagnostics already fixed in live source, seven pending canonical owners. |
+| R133 interproc lib/all-features CHECK | Exit101 at HRTB string-loan escape; source `a0511f05f9263d71a7aa3b71b149b4cddc7d941ed8445ead7ee7af1a4495ea1a`. | Twenty-nine existing interproc files captured; zero tests. External heap/taint/SDK consumers are not qualified by this request. |
+| R135 whole interproc lib/all-features test target | Exit101 at eighty diagnostics in eight fixture files; source `182cbff82a69f684deb38e79f02fe520980bdf14c45b85bbc74b36108b8f396d`. | Paid temporary digest repair passes the reached production lifetime boundary; whole target remains RED, zero executed tests. |
+| R136 successor whole interproc lib test target | Exit101, three fixture diagnostics, source `fc023ca44fd658e4f39b84fa65b74cca58d3b7e975c6305ec7b50beb6d0d7354`. | Zero tests. Two metadata accessor paths and one obsolete incidence insertion remain; successor also restores the independently reviewed empty-gap completeness input. |
 
 The root span-reader annotation preserves every foreign postimage byte outside
 its one closure parameter. Core DFG fact files already have active supplier
@@ -295,8 +299,23 @@ stdout/stderr archives are under the same evidence root as earlier requests.
 - Genuine retained positive handoff remains `CHECKED-RETAINED-CONTROL`; no fake
   validator, uncontrolled temporary output, error-to-default or new engine.
 
-This is authored WIP in live Semantica and is not accepted as compiled,
-qualified or integrated. R125's compile inventory is not a defect-count score.
+This is authored WIP in live Semantica and is not accepted or integrated.
+R125/R135 compiler diagnostics are not a defect-count score. The eight fixture
+successors use ordinary checked metadata/frontier/result APIs; they retain
+independent completeness, alias, wire and failed-projection expectations.
+`r136-fixed-interproc-eight-test-source-capture.json` binds all eight postimages;
+R136 is compile RED; its result/readback/full stdout/stderr are retained. A
+matching successor must execute tests and publish its result before acceptance.
+Full stderr is the diagnostic source; short
+`result_lines` excerpts must not be treated as complete inventories.
+
+Taint direct consumers are a separate coupled WIP cut. Existing structural
+failure and fallible V2 seed views carry PTA storage refusal; the final result
+owner must reject those causes even in non-strict mode. Budget/truncation keeps
+its existing typed incomplete behavior. A bare set-returning flow API cannot
+by itself establish failure propagation: its admitted wrapper, IFDS engine and
+final result owner are required proof points. No new engine, library or legacy
+seed interface is assigned.
 
 
 The remaining explicit 50k taint depth rail is resolved without execution in

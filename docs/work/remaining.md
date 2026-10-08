@@ -18,7 +18,7 @@ commit are recorded in the execution record. General Original facts/DFG/PTA
 success and the Native source packet remain separate open implementation work.
 
 Latest observed source: Semantica `3b8f86dd9ea7` plus separately claimed WIP.
-The R78–R127 candidate receipts retain their own fixed input; none establishes
+The R78–R136 candidate receipts retain their own fixed input; none establishes
 whole-main runtime completion. Native allocation core all-features CHECK is
 GREEN with committed QBC publication (R87, zero tests). DFG keeper and Kernel
 checks stopped in dependency compilation before cases. R93 passed the previously
@@ -64,9 +64,30 @@ helper feature guard. The narrow PTA owner request passes that boundary and
 stops at 91 interproc diagnostics in 26 files, zero tests. Twenty-two error
 files are byte-identical in the fixed candidate and live Semantica; this is an
 unfinished consumer migration, not 91 independently established defects.
-R127 Foundation input-store evidence regression also executes zero tests: its
-minimal feature closure stops at one invalid Kernel facade import and three
-unused imports. These are separate compile inputs, not regression failures.
+R127 Foundation input-store evidence regression also executes zero tests.
+Its full archived stderr contains fifteen diagnostics; the short result excerpt
+showed only one invalid Kernel facade import and three unused imports. R129
+captures four compatible import/feature hunks. R130 then reports ten diagnostics,
+zero tests, source `6e9ee0e9697f42c6c0c723a6e64e8f0cb52eefedac686ad6905ba768e519fdb7`.
+Live-source reconciliation finds three already repaired and seven still pending
+in Kernel/SourceText/RuntimeCtx ownership. This is a separate minimal feature
+closure; it does not establish a regression failure or ten live defects.
+
+R132 captures twenty-nine existing interproc files, including the coupled
+consumer migration. R133 all-features lib CHECK is RED at one HRTB string-loan
+escape, zero tests. R134 captures a paid owned temporary string buffer while
+retaining callback loan bounds, order and digest bytes. R135 whole interproc lib
+test compilation passes that reached production boundary but reports eighty
+diagnostics in eight test files, zero tests executed, source
+`182cbff82a69f684deb38e79f02fe520980bdf14c45b85bbc74b36108b8f396d`.
+R136 captures the eight fixture migrations to canonical checked ordinary APIs
+without restoring public fields or `Clone/Eq`. Its whole-lib owner request is
+RED at three fixture compilation diagnostics,
+zero tests, source `fc023ca44fd658e4f39b84fa65b74cca58d3b7e975c6305ec7b50beb6d0d7354`.
+Two use the wrong path to an already public metadata accessor; one still uses
+an obsolete incidence insertion call. Independent review also found a narrowed
+empty-gap completeness input and restores that input for the successor.
+These are fixture/API repairs; no test success is claimed.
 
 The current interproc consumer cut is being migrated in this chat across facts,
 context/heap, PTA delta/incidence, alias/attempt and direct taint callers. Reuse
@@ -77,7 +98,8 @@ failure where their old signatures could not represent refusal. Retained
 positive paths still require real read and output controls under
 CHECKED-RETAINED-CONTROL. Source edits, static formatting, owner compilation,
 nonzero regression execution, QBC publication and main integration remain
-separate acceptance steps. This cut is not yet compiled or integrated.
+separate acceptance steps. The R136 whole target remains compile RED; this cut
+is not accepted or integrated.
 
 Latest authored checkpoint: R78–R85 on Semantica `d29ac508b4d` plus separately
 claimed WIP. Java FileId handoff now borrows the parser's authenticated member;
