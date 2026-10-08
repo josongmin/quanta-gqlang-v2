@@ -1533,3 +1533,84 @@ AST2, new-module format, changed-file guard2, new-module God and parent diff
 check pass. The per-ID caller cuts remain in progress at this checkpoint.
 No Rust compilation/test, Semantica source capture/stage/commit/push, SDK or
 product qualification ran. QGLang's historical R167 CI receipt is not rerun.
+
+## R266–R271 Native owner and Python module receiving
+
+Semantica committed base remains `3b8f86dd9ea7f94a2426277311037ea9d6480a6a`
+with changing shared WIP. R266 moves the same R259 generic ledger into existing
+SourceWire: Port can reuse it without a dependency on Parser or a second ledger.
+NativeCore is already mandatory there. The old root-authored Parser file is
+removed; Parser keeps an exact module reexport. No Cargo/feature edits.
+R270 makes the public custody tuple explicit and restricts that Parser reexport
+to Java/Python Original configurations. AST3, changed-file guard3, new-ledger
+format/God and parent diff check pass. R268 independent source review finds no
+concrete functional defect. Extra Box admission can change tiny-budget refusal
+chronology; canonical serializer/domain/ID/order are unchanged.
+
+R260/R261 author Lang/semantic leaves and Java external/hierarchy/materialization
+receiving. R268 creates Java incremental DATA before the SDK Store's public
+Source session and threads it through member loans into Parser. Its public
+Parser reexport is present. R269 Java owner decomposition removes the introduced God findings, leaving
+two pre-existing cache/Python findings. R274 independent review finds no new
+concrete defect; one shared test postimage drift is recorded. No allowance or
+baseline refresh was applied. Seven mounted ordinary-request
+fixture calls need genuine generation/member/current receiving.
+
+R269 adds only stable/semantic DATA fields and mandatory hash receiver arguments
+to existing Python module materialization. The SourceProjection frame already
+contains that birth before issued-tree and registered reads; existing header,
+metadata/import/native-parts/error and funding-last hunks are preserved.
+AST1, rustfmt, changed-file guard, God and diff pass. R271 independent source
+review finds no concrete defect in those three hunks. Python import and provider
+augmentation need separate earlier semantic ledgers; module receiving does not
+close them. R272 independently reviews statement Port/Parser/caller ID
+receiving without finding a concrete defect. Q1 public V3 now requires an
+external caller frame; no direct product caller is located.
+
+Receipts: `r270-native-ledger-source-packet.json`,
+`r268-java-incremental-outer-birth-source-packet.json`,
+`r266-semantic-source-interim.json`, `r269-python-materialization-source-packet.json`
+and `r271-python-receiving-source-review.json` at the existing recovery root.
+They identify local source postimages, not a frozen complete consumer tuple.
+Compiler/tests/QBC/runtime/source capture and Semantica Git: **NOT_RUN**.
+No cross-chat message was sent; no new engine/library or ticket was introduced.
+
+## R273–R276 final receiving source review
+
+R273 replaces SourceWire's consumed `try_select_member_v3(self,...)` with
+`OriginalGenerationSourceInputV3::try_select_member_into_slot_v3(input_slot,
+path, current, selected_slot) -> Result<(), Error>`. The same canonical index/
+member/authenticated Source read runs while the genuine FULL stays in external
+input DATA. Only successful validation moves it to external selected DATA. No
+new issuer, ordinal supplied by caller, owned shim or allocation owner is added.
+Three existing Store/pin fixture calls migrate; a new occupied-destination case
+adds two calls. Existing Store-drop census/text/digest and foreign-current
+oracles remain; absent selection now proves the same FULL stays usable after
+Source finish. Tests are authored, **NOT_RUN**. AST2/rustfmt2/diff2/changed guard2
+and selection-source God pass. R275 independent source review finds no concrete
+defect. Actual production target binder is still not a selection caller; genuine
+hydration into an earlier external input slot remains its owner prerequisite.
+
+Statement final source is `r271-native4-statement-source-cut.json`, 27 paths.
+`r275-native4-final-static-readback.json` records rustfmt parsing27/diff and
+changed-file LLM26 pass; one file is a normal test exemption. R276 rechecks all
+27 SHAs and independently reviews eight new/changed paths after R272. Q1 public
+V3 now requires a caller-owned frame and has no located direct product caller.
+No new ID custody defect is found statically. Shared symbol-query God remains
+RED: file802/800, foreign function140/50 and another shared function117 versus
+baseline104. File size partly includes this handoff and remains an active policy
+gap; no broad foreign refactor, allowance or baseline reset was applied. Non-ID
+partial HIR and parent/sibling scratch remain outside this ID cut.
+
+Current implementation gaps: Python import/provider external semantic ledgers,
+seven mounted Java genuine fixture calls, QRA direct SDK/positive test-support
+receiving, SDK hydration/target binder and broader facts/final-output ownership.
+Final compatible owner/feature tests, QBC publication, process/installed proof
+and complete Semantica integration remain separate. Neither source-only review
+nor this QGLang documentation checkpoint closes those obligations.
+
+Receipts: `r273-selection-source-packet.json`,
+`r275-selection-independent-source-review.json`,
+`r275-native4-final-static-readback.json`,
+`r276-statement-final-delta-review.json`. Compiler/tests/QBC/runtime/source
+capture/Semantica Git: **NOT_RUN**. QGLang historical R167 `just ci` was not rerun.

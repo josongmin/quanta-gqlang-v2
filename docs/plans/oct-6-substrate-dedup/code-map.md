@@ -724,6 +724,47 @@ The three per-ID lanes are in progress. No helper-only completion, complete
 Python receiving, full statement scratch/HIR custody or product proof is claimed.
 R228/R245 below retain their historical read-only observations.
 
+### R270 shared owner and R269 Python module receiving
+
+R266/R270 supersede the helper's initial placement: the same generic
+`OriginalIdentityMintLedgerV3<T>` lives in
+`quanta-runtime-source-authority-wire/src/original_identity_mint_ledger_v3.rs`.
+SourceWire already has mandatory NativeCore; contract-ports already depends on
+SourceWire. Parser reexports the module under its Java/Python Original cfg and
+the old Parser implementation is removed. This avoids a Port→Parser dependency
+cycle and a second ledger. The admitted physical Box birth is unchanged; one
+additional paid node per mint can change tiny-budget refusal chronology.
+
+R260/R261 author Lang and semantic lower slots plus actual Java callers.
+R268 places `JavaOriginalIdentityMintBirthV3` before the SDK Store's outer
+`with_original_source_session_v3`; the earlier Parser-local birth was too late
+for that path. R269 adds stable/semantic DATA to the existing nested Python
+materialization frame and receives both mandatory hash APIs. R271 checks the
+actual SourceProjection→issued-tree→registered-parse caller: no local fallback
+or new authority is introduced. Module-local owned materialization has no
+located caller and is not product custody proof.
+
+Statement receiving uses the host-agnostic contract-ports frame, external
+`Vec<Option<Id>>`, completed item/HIR storage and validate-before-take binder;
+R272 independent source review finds no concrete ID custody defect. Q1 public
+V3 now requires an external caller frame; no direct product caller is located. Python import and provider augmentation
+require distinct external semantic ledgers. Seven mounted Java `part_6.rs`
+fixtures still need genuine Original inputs and the shared birth. R269 Java
+God decomposition leaves only two pre-existing cache/Python findings; no build/test/source
+capture or Semantica Git publication ran. The
+[current receiving map](native-identity-boundary.md#current-receiving-map)
+records exact purpose, ABI, exclusions and DoD. R273 replaces canonical
+FULL selection with caller-owned input/result slots and migrates the three
+existing Store/pin fixture calls; R275 independent review finds no concrete
+defect. Actual SDK target binder hydration/receiving is still required.
+R270 root AST3/LLM3/new-ledger
+format/God/diff and R269 Python AST1/format/LLM/God/diff pass separately.
+Statement final27 format/diff and LLM26 pass, with one normal test exemption;
+R276 independently reviews final new/changed paths and all27 SHAs still match.
+Shared symbol-query God remains RED (file802/800 and two shared function
+findings), including a file-size delta partly introduced by this handoff. This
+policy gap remains open, alongside non-ID HIR scratch and complete owner proof.
+
 ### R245 external binary and Python import mint boundaries
 
 - External binary: `java_workspace_resolution_syntax_v1/workspace_original_build_type_owner_v3.rs`

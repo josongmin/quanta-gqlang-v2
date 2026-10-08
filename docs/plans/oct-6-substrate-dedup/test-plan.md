@@ -697,3 +697,34 @@ and payload-before-grant destruction checks to CHECKED-RETAINED-CONTROL.
 Use the existing owning rails after complete compatible caller receiving; no
 new engine, mock genuine-positive qualification or weakened golden is assigned.
 Current source/static receipts do not execute these tests: **NOT_RUN**.
+
+R266–R271 add receiving witnesses to that same matrix:
+
+- SDK Java incremental: create one birth before the public Store Source session,
+  run both selected-member materializations, then fail a later Source check.
+  Every earlier identity backing and full cause must remain until finish.
+- Python module: exercise the actual external SourceProjection frame and both
+  stable/semantic hash paths. Separate import-binding and provider-completion
+  tests must lend their own earlier frame; a passing module test cannot cover them.
+- Statement: fail after an ID moves into an earlier projected item, during call
+  projection, and in final binder validation. Check that the same ID backing
+  remains in the external ID/item/HIR/bound slots, including zero-item and first
+  allocation refusal. A retained copy in the cache is insufficient.
+- Compatibility: migrate seven mounted Java `part_6.rs` fixtures using genuine
+  Original inputs. Preserve independent positive results and rejection oracles.
+  Run actual no-Java/Java/Python features and all target-trait implementers on
+  one compatible source; AST and changed-file checks do not verify Rust types.
+
+R269 Python scoped static checks pass; Java owner decomposition removes the
+introduced God violations while retaining two foreign findings. R273 genuine
+FULL selection tests add absent-path retained-owner and occupied-destination
+lifecycle witnesses; the real SDK target binder must receive external input/
+result slots before its highest Source and preserve upstream typed refusal.
+No allowances, golden weakening or silent skip satisfies DoD.
+Compiler, owner/publication and product witnesses remain **NOT_RUN** in this lane.
+
+Statement final27 format parsing/diff and LLM26 pass, with one normal test-file
+exemption. R276 reviews the final source delta independently. Shared symbol
+query God remains RED (802/800 lines and two shared function findings); its
+file-size delta partly includes this cut. Complete that owner policy repair
+without moving active foreign algorithms blindly or refreshing the baseline.

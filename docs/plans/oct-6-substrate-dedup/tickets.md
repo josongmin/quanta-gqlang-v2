@@ -1,6 +1,6 @@
 # Substrate closeout tickets
 
-Updated: 2026-10-08. Initial audit inputs: QGLang `01cfe39ca0571b4fc099d41b24628fda70e754fe`,
+Updated: 2026-10-09. Initial audit inputs: QGLang `01cfe39ca0571b4fc099d41b24628fda70e754fe`,
 Semantica `871224b2059422a8f36eca91ffb0c9119238ac9c`. Committed source was read;
 foreign dirty overlays were excluded from that audit. R49 authored source and
 execution attempts are recorded separately in the plan; they are not passing
@@ -49,7 +49,7 @@ scope. Implementation, frozen owner proof and product qualification are separate
 | --- | --- | --- | --- |
 | CHECKED-LANG-SUPPLIERS | P1 | PARTIAL | Ordinary owners accepted and Rust regression integrated; controlled refusal/custody remain |
 | CHECKED-DEFUSE | P0 | PROOF_PENDING | All inventoried source cuts integrated, including Python27d950; actual owner proof remains |
-| CHECKED-RETAINED-CONTROL | P0 | OPEN | Genuine member handoff, admitted PTA/DFG publication and general facts output authority; R220 copy/visitor and R230 encoder source authored; R239 [result receiving10 authored](code-map.md#r239-qra-result-receiving-source-cut), R246 controlled QRA axes receiving authored; SDK4 migration and [genuine positive test-support co-cut](code-map.md#r249-ordinary-receiving-and-positive-fixture-co-cut)/ordinary receiving and whole owner proof pending; native ID [source cut](native-identity-boundary.md) in progress: shared R259 ledger authored/static-checked, per-ID and Python receiving/owner proof open; local-ledger/Kotlin source repairs integrated |
+| CHECKED-RETAINED-CONTROL | P0 | OPEN | Genuine member handoff, admitted PTA/DFG publication and general facts output authority; R220 copy/visitor and R230 encoder source authored; R239 [result receiving10 authored](code-map.md#r239-qra-result-receiving-source-cut), R246 controlled QRA axes receiving authored; SDK4 migration and [genuine positive test-support co-cut](code-map.md#r249-ordinary-receiving-and-positive-fixture-co-cut)/ordinary receiving and whole owner proof pending; native ID [source cut](native-identity-boundary.md): shared ledger moved to SourceWire at R270, Lang/semantic/Java SDK and Python module receiving authored, statement source reviewed; Java introduced God findings repaired with foreign RED retained; R273 genuine FULL selection externalized; Python import/provider and seven genuine fixture calls plus owner proof open; local-ledger/Kotlin source repairs integrated |
 | F7 | P1 | ACCEPTANCE_OPEN | Real SDK deadline regression plus existing owner proof |
 | QG-DIAG | P2 | RESOLVED | Existing private exact-field consumer contract; ADR-0008 |
 | CHECKED-CALLBACK-FIRST-CAUSE | P1 | PROOF_PENDING | Integrated bridge/Kernel repair; common + parser owners |

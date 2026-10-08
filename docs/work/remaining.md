@@ -602,12 +602,24 @@ per-ID external state in Java/Python/hierarchy frames, coupled semantic symbol
 and occurrence mint, and statement partial/complete text custody. This extends
 the existing retained-control change map; no new product defect is asserted.
 These extra leaves now enter the [Native identity source cut](../plans/oct-6-substrate-dedup/native-identity-boundary.md):
-R259 shared admitted ledger authored/static-checked; per-ID caller and Python
-receiving lanes are in progress. External/import/augment semantic mint exhaustive
-highest Source boundaries remain unproved. R245
-traces the external batch's prior request loan and the Python import enclosing
-registered-tree loan: batch-only storage is too late, and import read slots
-lack a mint ledger. Dedicated prior-loan storage is unimplemented; compile/tests
+R266/R270 move the same shared admitted ledger from Parser to SourceWire;
+Parser reexports it without a dependency/feature change. Lang/semantic and Java
+SDK receiving are authored, including a birth before the Store's outer Source.
+R269 connects the existing Python module birth to both mandatory hash receivers;
+AST/format/LLM/God/diff pass and R271 independent source review finds no concrete
+hunk defect. R272 reviews statement Port/Parser/caller ID receiving; Q1 public
+V3 also requires an external caller frame. R276 checks final27 SHA continuity
+and the final statement delta; format/diff and LLM26 pass. Shared symbol-query
+God remains RED (802/800 file size partly from this handoff and two shared
+function findings). Java God decomposition removes introduced findings,
+retaining two foreign cache/Python findings. R273 replaces
+consumed FULL source selection with external slots plus genuine fixture
+receiving, with static checks and R275 source review. Actual SDK target binder
+hydration/receiving remains open. Python import/provider completion still need distinct
+external semantic ledgers, and seven mounted Java `part_6.rs` calls need genuine
+Original fixtures. The R245 external request/member boundary now has receiving
+source; its import boundary remains separate. Exhaustive highest Source/runtime
+custody is unproved. Compiler/tests, source capture and Semantica Git publication
 are NOT_RUN.
 
 ## R201–R206 final batch and SDK capture state

@@ -36,8 +36,21 @@ The [producer ABI](code-map.md#r220-physical-qra-input-producer-abi) retains its
 separate R220 receipt and three legacy allowances.
 R223–R228 also maps the existing native ID [caller co-cut](code-map.md#native-id-caller-co-cut--r228);
 its additional leaves entered the [Native identity source cut](native-identity-boundary.md)
-at R259. The shared admitted per-attempt ledger is authored and statically checked;
-per-ID callers and Python receiving remain in progress, without Rust qualification.
+at R259. R266/R270 move the same paid ledger to the existing SourceWire owner
+without a new dependency or feature. Lang/semantic and Java SDK receiving are
+authored; R269 connects Python module stable/semantic fields on the existing
+external birth. Its AST/format/LLM/God/diff pass, and R271 independent source
+review finds no concrete defect. Java owner decomposition removes its introduced
+God findings; two foreign cache/Python findings remain. Statement Port/Parser/
+caller receiving has R272 independent source review; final27 format/diff and
+LLM26 pass. R276 reviews the final eight changed/new paths. Shared symbol-query
+God remains RED, including 802/800 file size partly increased by this handoff.
+R273 also
+replaces consumed FULL selection with external slots and migrates genuine
+fixture callers; the actual SDK target binder receiving remains open.
+Python import/provider receiving,
+seven genuine Java fixture calls and complete owner execution remain open.
+No Rust qualification or Semantica source publication follows these edits.
 R245 traced two more enclosing mint boundaries: an external binary batch is born
 inside Source, and the Python import read carrier lacks per-mint encoder storage.
 
