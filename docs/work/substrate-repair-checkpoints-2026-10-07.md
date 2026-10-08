@@ -481,6 +481,42 @@ refuses a changed external sibling overlay. These attempts execute no SDK tests,
 produce no accepted publication, and close no F7/FCP ticket. Freeze the complete
 compatible source tuple before retrying; do not bypass the source guards.
 
+## R77 root-cause and final-ticket reconciliation
+
+The [R77 RCA](../plans/oct-6-substrate-dedup/rca.md) now routes all 18 active IDs
+by cause, source obligation and prerequisite. QGLang documentation input is clean
+`b8dd3c29e43a`; committed Semantica remains `f574fa82bf1`. Static WIP readbacks
+move from2,723 to2,742 dirty/untracked entries. Of54 sampled file hashes, one
+Java parser file changes; this is not an atomic WIP source or execution proof.
+
+The fixed tuple's parser and actual PTA SCC requests have the same105 parser
+diagnostics: missing module mounts11, missing/private names32, declaration/trait
+diagnostics4 and denied unused imports58. Both execute zero tests. Source review
+finds eight explicit corrected WIP mounts and three remaining hierarchy mount
+risks. The committed generated-callable consumer and uncommitted Foundation
+shared-backing supplier remain one compatible integration packet.
+
+R77 offline locked all-features metadata succeeds with447 workspace members,
+with unchanged Foundation manifest and root lock hashes. The alias repair closes
+manifest discovery only; current compiler/runtime acceptance is absent. Source
+capture failures retain their own pretest classification. The RCA assigns no
+second SCC core, issuer, language migration or local counter implementation.
+Fixed-tuple core20/facade1 publication hashes are rechecked, not new test runs.
+
+Current source still shows the member-argument mismatch, deliberate PTA and
+retained DFG publication refusals, and general facts' missing output admission.
+Their exact caller→producer→final keeper paths, required behavior and execution
+dependencies are in the RCA/code map. The execution plan, ticket index, dispatch,
+test plan and remaining list are reconciled to those findings. Full product and
+installed CHECK remain open under their existing IDs.
+
+Evidence root: `/Users/songmin/.codex/task-evidence/oct8-substrate-rca-r77/`.
+See `parser-diagnostic-breakdown.json`, `module-mount-readback.json`,
+`receipt-readback.json`, `metadata-observation.json`,
+`source-readback-{before,after}.json`, `ownership-readback.json` and
+`doc-validation.json`. This RCA runs no Rust owner, policy, daemon or installed
+test; it changes campaign documentation only.
+
 ## Historical source-bound proof inputs
 
 | Input | Exact identity |

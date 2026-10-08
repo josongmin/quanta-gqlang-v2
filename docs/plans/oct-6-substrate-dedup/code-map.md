@@ -8,6 +8,11 @@ All paths below are relative to `semantica-codegraph-v2` unless marked QGLang.
 `packages/analysis/quanta-v2/crates/`. Subtrees indicate reachable files to
 review, not authority to replace every file. Final claims enumerate exact paths.
 
+Latest cause/source classification is [R77 RCA](rca.md): committed parser/module
+closure, live capture rejection and three unfinished Original output boundaries.
+The source paths below retain their historical observations; R77's per-file
+hashes identify current readbacks separately from the fixed proof tuple.
+
 Current scheduling overlay includes Python `27d9505015e`, Kotlin binding
 `df315e6` and common local counter `f2d85a9`. All inventoried plugin/DefUse
 read cuts and S0-CALLBACK source are integrated; the retired production carrier
@@ -37,6 +42,11 @@ records later SourceWire/DFG compile repairs and preserves their coupled ownersh
 
 ## Reached parser feature-boundary repair
 
+- This no-Java export correction is one prepared cut within FCP-COMPILE.
+  [R77's diagnostic breakdown](rca.md#1-the-committed-parser-packet-is-incomplete)
+  additionally maps the fixed all-features parser's 11 module lookup failures,
+  32 missing/private names, four declaration/trait diagnostics and 58 denied
+  unused imports. The two feature profiles must both compile on one complete packet.
 - Owner file: `qv2/quanta-adapters-parser/src/lib.rs`.
 - Before: the unconditional export group names
   `ExistingFileSemanticModuleTransitionFallbackV2`, whose definition and only
@@ -105,10 +115,13 @@ authority refusal, operation binding and final-drop grant lifetime.
 
 ### Coupled shared-backing supplier closure
 
-At observed main `f574fa82bf1`, the Java DFG candidate already consumes
+At observed main `f574fa82bf1`, the committed Java DFG generated-callable candidate
+`semantic_identity_sidecar_v1/original_generated_callable_candidate_v3.rs` consumes
 `OriginalSemanticSharedBackingV3`, but the canonical shared-backing definition
 and export remain in other owners' dirty/untracked source. This is a committed
 consumer versus uncommitted supplier gap, not a reason to build a second holder.
+The separate `original_evidence_backing_v1.rs` migration to that holder is WIP;
+its source presence is not committed consumer integration.
 The existing source path is:
 
 1. `third_party/tree-sitter/binding_rust/{lib.rs,native_shared_birth_v3.rs}`:
@@ -123,6 +136,14 @@ The existing source path is:
 4. `operation_v3.rs` now consumes SourceWire's `validate_operation_v3` through
    `qv2/quanta-runtime-source-authority-wire/src/{lib.rs,original_operation_custody_v3.rs}`.
    Include other mounted module changes required by the selected owner closure.
+
+R76's manifest forwarding repair uses the existing dependency alias
+`quanta_runtime_query_floor/original-repository-fd-capture-v3`. R77 metadata passes;
+include that owned hunk with this compatible supplier packet. Separately review
+the three current hierarchy module mount pairs under
+`java_workspace_resolution_syntax_v1/hierarchy_authority_v1/` described in the
+RCA. Eight other historical `E0583` mounts have explicit corrected WIP paths.
+None of these static observations replaces the actual no-Java/Java compiler proof.
 
 R74 follow-up also observes SourceWire's first-refusal observer handoff in shared
 WIP. Its observer factory is fallible and charges work before retaining the

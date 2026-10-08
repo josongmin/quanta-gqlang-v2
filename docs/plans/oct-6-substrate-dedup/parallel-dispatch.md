@@ -8,7 +8,13 @@ Refreshed source/claims are required
 before writing. This document is an execution plan; no implementation or runtime
 result is claimed by its publication.
 
-Latest [R67–R71 checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair):
+Current routing is [R77 RCA](rca.md) and its [final execution order](rca.md#final-execution-order).
+The first shared prerequisite is a compatible captured supplier/module/caller
+tuple. Fixed parser compilation, live source-capture rejection and unfinished
+Original publication are separate blockers. SCC core20/facade1 are accepted on
+the fixed tuple and are not reassigned.
+
+Historical [R67–R71 checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair):
 Kotlin/local-ledger/rule checkpoints remain on main; Rust's hidden fixture test
 is activated and integrated `f574fa82bf1` after actual77-case proof. R70/R71 accepts385
 ordinary language/SCV2 cases with main-matched active dependencies. SDK2/community2
@@ -33,8 +39,9 @@ Finish existing canonical-owner migrations and budget/output custody, remove
 demonstrated duplicate accounting mechanics, and prove the real consumers on a
 single accepted source tuple. Use the current owners and interfaces.
 
-1. **P0:** accept the integrated checked-read owners; complete output/binding/
-   resource custody through adapter→context→extractors.
+1. **P0:** reconcile/capture and compile the existing supplier/module/caller bundle;
+   complete genuine member forwarding, admitted PTA/DFG publication and general
+   facts output custody through adapter→context→extractors→final keeper.
 2. **P1:** real SDK deadline tests, integrated callback/cursor/language acceptance,
    D1–D7 and added SCC callers, affected policies and actual Native/product proof.
 3. **Resolved:** QG-DIAG keeps the private primary-only wire required by the actual
@@ -117,7 +124,7 @@ Paths below are Semantica-relative; `core/` means `packages/core/`, `qv2/` means
 ### B — SDK tests then scalar snapshots
 
 - W1: `qv2/quanta-runtime/tests/abstract_interpret_fluent_api_e2e_test.rs`
-  has dirty authored timeout-zero and explicit live-deadline regressions for
+  has dirty authored timeout-zero and exact domain-value regressions for
   all three domains; execution/owner acceptance is pending. Production behavior
   is integrated; change it only if the regression reaches a reproducible defect.
 - W2: `core/codegraph-lang-common/src/{c,go,typescript}_syntax_snapshot_v1.rs`,
@@ -138,10 +145,10 @@ Paths below are Semantica-relative; `core/` means `packages/core/`, `qv2/` means
 - W1/W2: `core/codegraph-defuse-extractor-kotlin/src/extractor/{mod,checked_node_v1}.rs`,
   affected facts/output helpers and specifically owned tests. No public plugin trait
   extension without an actual controlled-success caller.
-- Dirty Kotlin source now checks retained backend and exact source before fact
-  extraction; its authored same-length foreign-source/backend test covers the
-  ordinary retained case. Native current, first refusal and output custody
-  remain unqualified.
+- Kotlin retained backend/exact-source guard and its same-length foreign-source/
+  backend regression are integrated as `df315e6`, with scoped ordinary acceptance.
+  Preserve that implementation. Native current, first refusal and output custody
+  remain unqualified; assign those real producer/consumer controls only.
 - W3: read/reconcile current-target planner, dominance, concurrency engine/schema,
   navigation, distinct `codegraph-import-graph`, `codegraph-core-cfg` call-graph
   SCC, rule execution, metrics and runtime community-cluster owner evidence.

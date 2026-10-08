@@ -1,6 +1,38 @@
 # Remaining work
 
-Updated: 2026-10-08. Initial committed-source audit input:
+Updated: 2026-10-08. Current RCA input: clean QGLang `b8dd3c29e43a`,
+committed Semantica `f574fa82bf1` and separately inventoried moving WIP.
+The [R77 RCA](../plans/oct-6-substrate-dedup/rca.md) owns the cause/dependency
+analysis; this file owns the 18 active states.
+
+## Current required work — R77
+
+1. **P0 / FCP-COMPILE:** reconcile and capture the compatible supplier/module/
+   caller tuple, then compile no-Java, Java and actual SDK/runtime owners. The
+   fixed tuple's 105 parser diagnostics have four cause classes. The live alias
+   metadata prerequisite is repaired; live compilation remains unqualified.
+2. **P0 / CHECKED-RETAINED-CONTROL:** forward genuine members through runtime/SDK,
+   finish admitted PTA transactions and DFG publication, and carry canonical
+   output admission through general facts extraction and its final keeper.
+3. **P0–P1 / controlled-language proof:** actual DefUse, supplier, callback and
+   cursor rejection/resource/lifetime witnesses pass on the complete closure.
+4. **P1 / analysis proof:** Shape/Cost SDK matrix, PTA/Andersen/runtime, taint
+   including explicit ignored 50k depth, DFG promotion and remaining SCC callers.
+   Reuse core20/facade1, worklist77 and other matching accepted scopes.
+5. **P1 / consumer proof:** Native registry→worker→Preview/provider-off and actual
+   SDK deadline/domain results; qualify and integrate authored SDK2/community2.
+6. **P1 / policy:** affected mandatory gates pass on the integrated source tuple.
+7. **P1 / product:** receipt-bound Graph/CHECK processes and release-owned installed
+   CHECK trust; reuse those results for SUBSTRATE-PRODUCT.
+
+The [final order](../plans/oct-6-substrate-dedup/rca.md#final-execution-order)
+allows independent owner closures to proceed. Source capture failures are pretest
+rejections, and pending consumer/product proof does not assert a runtime defect.
+No further SCC core, ordinary language migration or local-budget dedup is assigned.
+
+## Historical integration and evidence
+
+Initial committed-source audit input:
 Semantica `871224b2059422a8f36eca91ffb0c9119238ac9c`, with QGLang audit input
 `01cfe39ca0571b4fc099d41b24628fda70e754fe`; foreign dirty overlays are
 excluded from that audit. R49 source integration is listed below; source
@@ -77,7 +109,7 @@ before claiming completion. Broader AG5/IRC releases remain downstream-owned.
 
 | ID / state | Required work | Acceptance |
 | --- | --- | --- |
-| FCP-COMPILE / BLOCKED_COMPILE | Current clean committed f574 parser all-features lib check reaches105 compiler errors/exit101,0 tests on R72's fixed sibling tuple. Its publication is incomplete: this is an archived pretest diagnostic, not an accepted qualification. Supplier/module postimages remain co-owned WIP. The committed Java DFG consumer also lacks its complete committed Foundation shared-backing supplier. Freeze and validate the complete tree-sitter→Kernel→Foundation→SourceWire/parser bundle and actual SDK/PTA/runtime-analysis owners before integration. Earlier R49–R63 failures keep their original inputs. | Canonical product build and SDK owner rails on one source tuple; actual current diagnostics and finished publication, not old error counts or partial source imports. |
+| FCP-COMPILE / BLOCKED_COMPILE | Fixed f574 parser and PTA SCC both stop at the same105 parser diagnostics/exit101,0 tests: module mounts11, unresolved/private names32, declaration/trait4 and denied unused imports58. Supplier/module postimages remain co-owned WIP; three hierarchy mounts need current review. The committed Java generated-callable candidate lacks its complete committed Foundation shared-backing supplier. R77 current WIP metadata succeeds with447 workspace members after the alias repair, but source capture/compile remains unqualified. Reconcile, capture and validate the complete tree-sitter→Kernel→Foundation→SourceWire/parser/DFG and actual SDK/runtime caller bundle before integration. | Canonical product build and SDK owner rails on one captured compatible source tuple; verified publication and coordinated integration. Historical failures retain their exact inputs. |
 | FCP-PTA / REVERIFY | Verify the seed-consumption lifetime repair against the historical first `PtaOccurrenceAuthorityRefused` boundary; no current reproduction is claimed. | Current owner/bootstrap succeeds, or a reached refusal identifies the exact remaining owner repair. Source changes alone do not close it. |
 | FCP-PROCESS / NOT_RUN | Execute integrated Graph/CHECK positive and refusal fixtures. | Same tuple/artifacts; Linux Graph success, non-Linux Graph refusal, signed Linux CHECK and relevant non-Linux controls; record selected/executed/pass/skip/leak counts and exact output oracle. |
 | FCP-INSTALL / EXTERNAL_PREREQUISITE | Obtain release-owned signed x86_64 profile, root-owned immutable slots, independent approval/key and active generation. | Actual installed CHECK proof. Generic aarch64 artifacts and scripted daemon evidence do not satisfy this gate. |

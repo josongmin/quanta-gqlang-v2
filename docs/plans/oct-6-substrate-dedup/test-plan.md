@@ -7,6 +7,11 @@ Current issued requests/results and the issued candidate are recorded
 in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair).
 `qv2/` abbreviates Semantica `packages/analysis/quanta-v2/crates/`.
 
+Latest [R77 RCA](rca.md) identifies prerequisite causes; its
+[final order](rca.md#final-execution-order) routes all 18 IDs. Fixed-tuple SCC
+core20/facade1 and abstract worklist77 are already accepted. Current shared WIP
+has no accepted compile/runtime result from this RCA.
+
 ## Execution contract
 
 1. Use Semantica `scripts/quanta-build-cli owner resolve` then the matching
@@ -25,6 +30,21 @@ in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r6
 5. R38 common7/Java139, R44 445, R40 quarantine130 and historical D4/D5 evidence
    retain their different sources. Rebind unchanged owner inputs explicitly or
    rerun changed owners; never sum these as a current product verdict.
+
+### Source capture and compile preflight
+
+- Reconcile the complete source packet and external path-dependency inputs before
+  capture; use the normal source snapshot route and retain its execution lease.
+  Hash/materialization drift aborts before compilation and selects zero tests.
+- Metadata validates the manifest graph only. R77 offline locked all-features
+  metadata passes with 447 workspace members and unchanged Foundation manifest/
+  root lock hashes. The feature-alias repair is WIP, not an accepted compiler run.
+- Resolve the real parser no-Java and Java owners and actual SDK/runtime callers
+  against the same complete tuple. Parser and PTA SCC's fixed-tuple 105 diagnostics
+  share one parser prerequisite; their raw counts are not two repair queues.
+- Preserve required features, unused-import denies, source custody guards and
+  nonzero witness requirements. After frozen compilation, run the actual owners
+  below and record finished publication before accepting a ticket.
 
 ## Reached parser compile obligation
 
@@ -80,7 +100,9 @@ custody. Local scalar-counter duplication is removed; grant/control custody stay
 
 - Resolve the owning `codegraph-lang-{rust,go,kotlin,typescript}` target under
   its current reviewed all-features closure, including existing bundle/dispatch
-  and quarantine tests. C source is integrated, but its owner acceptance remains.
+  and quarantine tests. R70/R71 accepts ordinary Rust77/C57/Go54/TypeScript120/
+  Kotlin43 on its issued source. Reuse unchanged qualified inputs; controlled
+  Original refusal/output cases remain separate owner obligations.
 - Resolve `codegraph-defuse-extractor-{rust,java,python,typescript,c,kotlin,go}`
   affected targets. New tests live at these owners; no cheaper substitute crate.
 - Fresh selected minima/witnesses come from source discovery and reviewed
@@ -185,6 +207,16 @@ Re-resolve existing R31/R38 requests on the changed memory-owner source:
   merely to bypass a failing count.
 
 ## D1–D7 matrix and policies
+
+### R75 accepted SCC core and facade
+
+On the fixed f574 sibling tuple, QBC whole-lib/all-features accepts
+`codegraph-graph-scc`20/20 and `quanta-graph-utils-v1`1/1, with zero ignored or
+filtered and hash-verified publication. Preserve their actual observed witness
+names and source digest in [R77 evidence](rca.md#inputs-and-evidence-limits).
+They do not discharge PTA adapter/Andersen/runtime consumer results. The actual
+PTA `scc_collapsing::tests` request stops at parser compilation,105 errors and
+zero tests; re-run that consumer after the coupled compile prerequisite is repaired.
 
 ### Ordinary language owner and missing-test acceptance
 

@@ -6,14 +6,34 @@ recorded in the R49 update below and the
 No product qualification is claimed.
 Updated: 2026-10-08.
 
-Latest [R72/R73 follow-up](../../work/substrate-repair-checkpoints-2026-10-07.md#r72r73-d5-closeout-and-independent-main-diagnostics)
-closes D4/D5-CUSTODY after solver225/API2 reruns with current committed IR
-dependencies. There are18 active IDs, plus resolved QG-DIAG and scoped accepted
-D4/D5. Reuse the separately published current abstract worklist77. The complete
-supplier/parser source bundle and general DFG ingress are still open; no partial
-source import or second implementation is assigned.
+Latest routing is the [R77 root-cause analysis](rca.md). There are 18 active IDs,
+plus resolved QG-DIAG and scoped accepted D4/D5. Fixed-tuple SCC core20/facade1
+and abstract worklist77 are accepted. The parser's 105 diagnostics, live source
+capture rejection and unfinished Original output are separate causes. R76's
+manifest alias is repaired in WIP; R77 metadata succeeds, but current compilation
+and SDK execution remain unqualified.
+
+## Current remaining audit — R77
+
+Documentation input is clean QGLang `b8dd3c29e43a`; Semantica committed main is
+`f574fa82bf1`, with separately changing shared WIP. The RCA maps diagnostic
+classes, exact producer/consumer seams, accepted scopes and all active ticket
+dependencies. Its [final execution order](rca.md#final-execution-order) governs
+the next work: source capture/compile, Original success, affected owner proofs,
+consumer regressions, policy gates, then actual process/installed acceptance.
+
+Complete the existing packet under its current owners. The required source edits
+are module/API/supplier closure, genuine member forwarding, admitted PTA/DFG
+publication and the general facts output admission. SDK2/community2 and the
+no-Java export correction are prepared cuts awaiting proof and integration.
+No further language migration, SCC core implementation or local-ledger dedup is
+assigned. Hosted CI, automatic fuzz scheduling and A-series features remain outside
+this queue. This turn's RCA performs static/receipt analysis and metadata only.
 
 ## Current remaining audit — R74
+
+The following section retains the historical R74 observation. Use R77 above for
+current source risks, completed proof scopes and execution dependencies.
 
 Observed committed sources: GQLang `7d0c2ccbdb61` (clean before this documentation
 update), Semantica `f574fa82bf1`. Separately inventoried Semantica dirty postimages

@@ -15,26 +15,30 @@ not defects or prerequisites for these tickets. Paths below are relative to
 Semantica; `core/` means `packages/core/`, `qv2/` means
 `packages/analysis/quanta-v2/crates/`.
 
+Latest source/diagnostic RCA and execution order: [R77](rca.md). Historical
+observations below keep their original inputs. Core20/facade1 are accepted on
+the fixed f574 tuple; current WIP compilation is not accepted.
+
 ## Queue and state snapshot
 
 | ID | Priority | State | Remaining kind / owner |
 | --- | --- | --- | --- |
 | CHECKED-LANG-SUPPLIERS | P1 | PARTIAL | Ordinary owners accepted and Rust regression integrated; controlled refusal/custody remain |
 | CHECKED-DEFUSE | P0 | PROOF_PENDING | All inventoried source cuts integrated, including Python27d950; actual owner proof remains |
-| CHECKED-RETAINED-CONTROL | P0 | OPEN | Shared output admission, C/Go/TypeScript controls and Kotlin binding; existing downstream owners |
+| CHECKED-RETAINED-CONTROL | P0 | OPEN | Genuine member handoff, admitted PTA/DFG publication and general facts output authority; local-ledger/Kotlin source repairs integrated |
 | F7 | P1 | ACCEPTANCE_OPEN | Real SDK deadline regression plus existing owner proof |
 | QG-DIAG | P2 | RESOLVED | Existing private exact-field consumer contract; ADR-0008 |
 | CHECKED-CALLBACK-FIRST-CAUSE | P1 | PROOF_PENDING | Integrated bridge/Kernel repair; common + parser owners |
 | CHECKED-CURSOR | P1 | PROOF_PENDING | Original-issued traversal five; parser owner |
 | D1-PROOF | P1 | INCOMPLETE | Shape factory/SDK/features; adapter + consumer owners |
-| D2-PTA-PROOF | P1 | INCOMPLETE | Core/facade/PTA owner and request repair |
+| D2-PTA-PROOF | P1 | INCOMPLETE | Core20/facade1 accepted; PTA/Andersen/runtime consumer proof remains |
 | D2-TAINT-PROOF | P1 | INCOMPLETE | Taint domain/public contract and 50k depth owner |
 | D2-CALLER-COVERAGE | P1 | PROOF_PENDING | Eleven additional SCC consumer scopes; added by this audit |
 | D3-PROOF | P1 | INCOMPLETE | PortDFG MemSSA and taint promotion |
 | D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Affected feature/topology/Honesty/GOD policies |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P0 | BLOCKED_COMPILE | Clean f574 parser pretest diagnostic; complete supplier/module bundle, then SDK/runtime proof |
+| FCP-COMPILE | P0 | BLOCKED_COMPILE | Committed parser/module/supplier closure plus stable live source capture; alias metadata prerequisite repaired in WIP |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |
@@ -44,6 +48,37 @@ P0 reflects a confirmed source migration/custody seam or prerequisite compile bl
 not assert a current runtime defect. Old compile failures and policy RED remain
 historical until reproduced. Request47 is a partial map repair, not the final
 number after SCC caller reconciliation.
+
+## R77 dependencies and assignment
+
+Source capture is an execution prerequisite of FCP-COMPILE. It is not another
+product defect or ticket. An independent owner can proceed when its own closure
+is complete; blanket serialization behind unrelated Original work is unnecessary.
+
+| Active ID | Remaining assignment | Prerequisite / completion boundary |
+| --- | --- | --- |
+| FCP-COMPILE | Finish compatible module/API/supplier/caller bundle | Exact tuple capture, no-Java/Java and actual SDK/runtime compile, coordinated integration |
+| CHECKED-RETAINED-CONTROL | Finish real Original producer and final output | Complete owning supplier closure; members, admitted transactions/publication and general facts keeper |
+| CHECKED-DEFUSE | Accept integrated language extraction | Affected context/output closure; exact facts/binding and rejection at actual extractors |
+| CHECKED-LANG-SUPPLIERS | Accept controlled carrier and custody | Ordinary libraries already accepted; controlled source/output handoff required for remaining cases |
+| CHECKED-CALLBACK-FIRST-CAUSE | Accept parser chronology | Callback repair integrated; affected parser compile and real bridge witnesses |
+| CHECKED-CURSOR | Run original-issued five controls | Cursor source integrated; parser/Original issuer closure |
+| D1-PROOF | Accept Shape/Cost SDK and feature matrix | Actual adapter/SDK features compile; existing Shape20/Cost20 scopes reused |
+| D2-PTA-PROOF | Accept PTA adapter, Andersen and runtime-analysis | Core20/facade1 reused; actual PTA request blocked by fixed-tuple parser compile |
+| D2-TAINT-PROOF | Accept taint contracts and ignored 50k depth | Actual solver closure and explicit ignored selector; zero cases fail |
+| D2-CALLER-COVERAGE | Reconcile eleven additional consumer scopes | Reuse matching receipts; current-target/navigation/community and final input continuity remain |
+| D3-PROOF | Accept PortDFG/MemSSA and real promotion | Actual DFG/taint owner closure; integrated Pack16 retains its own input |
+| FCP-PTA | Reverify historical bootstrap refusal | Real bootstrap owner; a current reached refusal determines any new repair |
+| F2 | Accept Native registry→worker→Preview/provider-off | Existing minimal/full feature closures; preserve Apply refusal |
+| F7 | Accept actual SDK deadline/domain behavior | Frozen SDK compile closure; mapper5 and deadline2 are distinct; integrate authored tests after proof |
+| SUBSTRATE-POLICY | Run final affected mandatory gates | Integrated tuple and exact policy scope; retain gate strength |
+| FCP-PROCESS | Run actual Graph/CHECK process oracles | Receipt-bound binaries/host; installed positive CHECK also requires FCP-INSTALL |
+| FCP-INSTALL | Supply and verify release-owned trust assets | Signed x86_64 Linux profile, immutable slots, independent approval/key and active generation |
+| SUBSTRATE-PRODUCT | Roll up F1/D6/D7 and actual product evidence | Reuse the same FCP process/install results and qualified public projections |
+
+The [RCA](rca.md#confirmed-causes) defines the cause evidence and source boundaries;
+the [test plan](test-plan.md) defines executable witnesses. Eighteen IDs are not
+eighteen unfinished implementations. No percentage is inferred from their count.
 
 ## CHECKED-LANG-SUPPLIERS
 
@@ -301,6 +336,13 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
 
 ## FCP-COMPILE
 
+- R77 groups the fixed tuple's 105 parser diagnostics as 11 missing module mounts,
+  32 unresolved/private names, four declaration/trait diagnostics and 58 denied
+  unused imports. Parser and PTA SCC reach the same diagnostic set. Eight mounts
+  have explicit corrected WIP paths; three hierarchy mounts still require review.
+  The current alias metadata check succeeds with 447 workspace members, with
+  unchanged manifest/lock hashes. This closes only that manifest prerequisite.
+  See [cause and ownership](rca.md#1-the-committed-parser-packet-is-incomplete).
 - R76 SDK attempt reaches a new dirty-source manifest prerequisite:
   Foundation's `semantic-original-admission` forwarded a query-floor feature
   using the package name instead of its existing `quanta_runtime_query_floor`
