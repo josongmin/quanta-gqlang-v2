@@ -202,12 +202,12 @@ execute the runtime/SDK/gate matrix or both shared-allocation feature closures.
 ## D2-PTA-PROOF
 
 - Core is `codegraph-graph-scc`; graph-utils is compatibility reexports. The
-  old graph-utils `scc` selector selects zero cases. Resolve the facade
-  `facade` owner and actual PTA adapter `scc_collapsing::tests` next.
-- Fixed-pair R75 accepts core whole-lib20/20 with verified publication on
-  Semantica `f574fa82bf1`; the locator and source digest are in
+  old graph-utils `scc` selector selects zero cases. Resolve the actual PTA
+  adapter `scc_collapsing::tests` next.
+- Fixed-pair R75 accepts core whole-lib20/20 and facade whole-lib1/1 with
+  verified publication on Semantica `f574fa82bf1`; locators and source digest are in
   [remaining work](../../work/remaining.md#substrate-verification). This does
-  not cover the facade or PTA consumers.
+  not cover PTA consumers.
 - DoD: core/facade, PTA adapter, Andersen and runtime precise-query results retain
   membership/order/IDs, graph closure, preallocation limits and original typed stop.
   Reuse the existing PTA engine solver request for its SCC governance witnesses.
