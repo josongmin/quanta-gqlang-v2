@@ -73,7 +73,7 @@ Evidence at the existing recovery root: `r78-lock-closure-applied.json`,
 `r79-native-supplier-postimage.json`, `r82-source-capture.json`,
 `r82-fixed-input-pins.json` and `r85-parallel-source-checkpoint.json`.
 
-## R87–R117 fixed-candidate compile and ownership checkpoint
+## R87–R121 fixed-candidate compile and ownership checkpoint
 
 Live source observed at Semantica `6bab127740a3`; candidate source retains the
 R82 fixed topology and explicit later file captures. No coupled new source
@@ -99,6 +99,8 @@ bundle is integrated by this checkpoint.
 | R113 whole SourceWire contract target | Exit101, owner RED; 235 passed, one failed, zero ignored/filtered; same source `82ce719bdd5c0538d87e81547d3927e86e2459565e50d2ad463ebc356949db07`. | Stale absolute work-zero assertion in temporary backing test; whole target is not GREEN. |
 | R115 successor Kernel CHECK | Exit101 at two non-exhaustive `quanta-contract-error-shared` runtime-error mappings; source `82ce719bdd5c0538d87e81547d3927e86e2459565e50d2ad463ebc356949db07`. | Earlier SourceWire/PTA import/access-policy boundaries pass; zero tests. |
 | R117 whole SourceWire contract target | Exit0, owner GREEN, publication committed; 236 passed, zero failed/ignored/filtered; source `9f38002d01d6b44f0fb40074361f84f602fad03524cf0867e8437c3c30f499d1`. | Qualifies the compatible fixed SourceWire owner cut, not the newer live auxiliary/text closure or SDK first-FD ingress. |
+| R119 whole error-shared contract target | Exit0, owner GREEN, publication committed; 35 passed, zero failed/ignored/filtered; source `0452578af7dd9d779be4d140dd3ae994a1aba0d75eaddcab9359b33ec783c058`. | Includes the eight-case nested-cause regression; no Kernel/SDK execution verdict. |
+| R121 successor Kernel CHECK | Exit101 at two contract-ports `BootstrapInputMutationV1` equality derives on a controlled indexed input; same source `0452578af7dd9d779be4d140dd3ae994a1aba0d75eaddcab9359b33ec783c058`. | Runtime-error mapping boundary passes; zero tests. |
 
 The root span-reader annotation preserves every foreign postimage byte outside
 its one closure parameter. Core DFG fact files already have active supplier
@@ -241,11 +243,36 @@ The registry was initially pending despite an immutable completion marker;
 normal global QBC status maintenance reconciled it. No cache/registry was
 manually rewritten. Historical R113 remains RED on its own source.
 
+R119 captures the four-file finite source-refusal mapping and only the existing
+local Kernel dependency in both root/nested lock records; registry pins remain
+unchanged. `r119-error-shared-source-capture.json` binds exact bytes/claims.
+Nested control and native allocation refusals reuse their existing projection;
+non-nested source/authority cases retain typed causes and finite reason/phase
+families. Existing identical generic projection arms are shared. No new library,
+engine or authority constructor is introduced. The whole owner runs35 cases,
+including the independent eight-case cause/category/reason/phase matrix, and
+has committed publication `20261008T052833.139617Z-e0991dbdb929`.
+`r119-error-shared-owner-publication-readback.json` and both archived logs bind
+this result. Scoped GOD checks add no new violation; the contract projection's
+pre-existing stale baseline/expired allowance remains separate policy debt.
+R121 now reaches the contract-ports equality boundary. The typed supplier and
+consumer source bundle remains coupled WIP; these results do not authorize a
+partial main integration of its mapper alone.
+
 The remaining explicit 50k taint depth rail is resolved without execution in
 `r112-taint-50k-owner-readback.json`. The ignored integration target and separate
 same-named lib test must not be conflated. Its assertion is singleton count/size,
 with identity/order covered by existing smaller cases; logical SCC caps exclude
-caller graph storage and RSS. This resolve record is not taint qualification.
+caller graph storage and RSS. R120 resolves the smaller registered cfg-dfg
+feature class on fixed F: `feature-isolation:quanta-taint-solver.no-default.35fa2694fa25`,
+exact ignored selector `tarjan_iterative_integration_test::tarjan_iterative_deep_chain_50k`,
+integration target `suite_quanta_taint_solver_7cfff3df32`, request
+`eb204f9f6c57bb68691a36d149276ddf`. It supersedes the broader R112 recipe choice;
+both records remain resolve-only. `r120-d2-proof-queue.json` records13 independent
+owner requests with source equality and dependency blockers. Historical PTA
+adapter R75 used all-features and failed before cases; the existing narrower
+`pta-core-engine` class avoids parser compilation and does not retroactively
+change that failure. No second SCC implementation is assigned.
 
 ## Historical next-input observations
 

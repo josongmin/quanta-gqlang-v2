@@ -12,7 +12,7 @@ Parser hierarchy mounts and feature imports are integrated as Semantica
 The R77 observations below retain their historical input.
 
 Latest observed source: Semantica `3b8f86dd9ea7` plus separately claimed WIP.
-The R78–R117 candidate receipts retain their own fixed input; none establishes
+The R78–R121 candidate receipts retain their own fixed input; none establishes
 whole-main runtime completion. Native allocation core all-features CHECK is
 GREEN with committed QBC publication (R87, zero tests). DFG keeper and Kernel
 checks stopped in dependency compilation before cases. R93 passed the previously
@@ -46,8 +46,13 @@ This proves that compatible fixed owner cut; its newer live auxiliary/text closu
 and actual first-FD SDK positive remain separate unqualified inputs.
 R115 Kernel CHECK advances beyond the SourceWire/PTA policy boundaries and
 stops at two non-exhaustive downstream runtime-error mappings. Their owner cut
-must preserve typed source/control/native reasons and categories; focused mapping
-regressions and successor Kernel CHECK remain pending.
+preserves typed source/control/native reasons and categories. R119 whole
+error-shared lib is GREEN with committed QBC publication: 35 passed, zero
+failed/ignored/filtered, including the eight-case nested-cause regression, source
+`0452578af7dd9d779be4d140dd3ae994a1aba0d75eaddcab9359b33ec783c058`.
+R121 successor Kernel CHECK passes that mapping and stops at two contract-ports
+`BootstrapInputMutationV1` equality derives on a controlled indexed input;
+zero tests. Current canonical repairs must be compared before another writer.
 
 Latest authored checkpoint: R78–R85 on Semantica `d29ac508b4d` plus separately
 claimed WIP. Java FileId handoff now borrows the parser's authenticated member;
