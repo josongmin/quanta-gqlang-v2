@@ -91,8 +91,8 @@ issue authority or introduce another query/runtime engine.
 | Java module, hierarchy and external binary | R260/R261 lend stable and semantic ledgers from before workspace request/member loans through materialization, finalization and classification. | R269 Java owner decomposition removes the introduced parameter/size findings; two foreign cache/Python findings remain RED. R274 source review finds no concrete new defect. Complete owner execution remains open. |
 | Java incremental SDK entry | R268 `Store::issue_exact_edit_transition_from_persisted_closures_original_v3` creates `JavaOriginalIdentityMintBirthV3` before `with_original_source_session_v3`, then lends it through selected-member loans into Parser. Parser public reexport is present. | Same existing Java birth now bundles stable/semantic lenders throughout Java callers. Actual SDK owner regression is NOT_RUN. |
 | Python module | R269 adds stable/semantic DATA fields to existing `OriginalPythonMaterializationBirthV3`, nested in `OriginalPythonSourceProjectionBirthSlotsV3`. `canonical_module_into_slots_v3` and `admitted_modules_into_slots_v3` lend those fields to the mandatory hash APIs. | Caller must keep that SourceProjection frame outside its highest Source; module-local owned convenience entry is not proof for a higher enclosing caller. Import/provider completion are separate rows. |
-| Python import binding | R265 traces `controlled_python_tree_v3.rs` → `retained_python_semantic_projection_v1/original_import_output_v3.rs`. | Existing receiving owner must lend semantic ledger from before `with_issued_python_tree_binding_v3`; constructor-local Default is invalid. |
-| Python provider completion | R265 traces `OriginalPythonProviderCompletionFrameV3` → `augment.rs` → `native_import_transaction_v3.rs` → `mint_context_v3.rs`. | External completion frame lends semantic ledger through the actual augmentation call. Preserve the existing owner's active producer hunks. |
+| Python import binding | R295 introduces adjacent DATA-only `OriginalPythonImportBindingsBirthV3`; caller lends it through `controlled_python_tree_v3.rs` → registered collector. It holds the semantic ledger and partial/completed workspace before retained output/operation grants. | Actual direct and framework fixtures create DATA before their highest Source. Full import payload/error receiving and complete owner execution remain separate. R298 corrects fresh request validation order. |
+| Python provider completion | R292 lends external provider-frame and direct-cohort ledger plus workspace sinks through actual augmentation into the canonical mint. R297 fixes direct-cohort data/grant drop order and guards terminal reuse before new Current validation. | Source cut and static checks pass; whole feature/type and genuine completion execution remain NOT_RUN. Test-only owned completion shim is removed in R297; product closure already used external frames. |
 | Statement → portable HIR | The Port-frame cut uses `PortStatementProjectionBirthV3` from contract-ports, with no Parser type in the public trait. Actual ID backings move external ID slots → external completed items → external HIR → external bound HIR. Binder validates before taking HIR. | R272 independent source review finds no concrete ID custody defect. Q1 public V3 now requires a caller-supplied frame; no direct product caller was located. Final caller/test/feature compilation and shared query God remain open. Non-ID partial HIR fields and parent/sibling scratch are excluded below. |
 
 ### Mandatory receiving ABI
@@ -141,11 +141,15 @@ HIR item/call fields remain separate current owners. The current cut includes
 the actual ID backing through completed item projection and final binder;
 it does not establish custody for every other partial HIR field.
 
-Seven mounted `java_workspace_resolution_syntax_v1/part_6.rs` calls still pass
-an ordinary request to the genuine Original materialization entry. This is a
-source compatibility gap; no compiler run reproduced it in this lane. Receive
-real generation/member/current fixtures and the external birth. Do not replace
-positive assertions with empty/refused results or invent authority.
+R299 traces nine mounted positive tests in `java_workspace_resolution_syntax_v1/part_6.rs`:
+seven old ordinary-request unsealed calls, five old batch calls, four removed
+member takes, two removed parts takes and three nominal getters. They form one
+fixture migration, using the existing genuine sorted-batch Source fixture and
+external Java identity birth. The getter-contract helper separately has one
+old two-argument semantic hash constructor. These are source compatibility
+gaps, not executed product failures. Do not replace positive assertions with
+empty/refused results or invent authority. `literal_receiver_tests.rs` also
+contains old APIs and remains a separately recorded receiving obligation.
 
 Genuine positive SDK fixture migration, QRA direct test receiving, Store target
 hydration/selection and actual SDK→Parser/QRA→PTA proof stay coupled with their
@@ -227,7 +231,9 @@ Terminal rejection deliberately precedes later cancellation or foreign-admission
 failure. `stop_v3()` retains lower typed error DATA; when no ledger-native first
 cause exists, reuse returns `InvalidBoundary`. No later output is asked to record
 that static refusal. Successful repeated factory calls remain allowed. Statement
-issue/copy already call `begin_v3` before output methods and need no extra guard.
+leaf issue/copy already begin first. R294 later traces earlier receiving-entry
+Source/output access; R295 adds those guards and records the two direct D4
+entry boundaries still requiring their own co-cut.
 Hash axes, canonical bytes, ID domains and allocation ownership are unchanged.
 Prebirth factory admission failures before a mint begins are outside this
 terminal-ledger acceptance; R285 does not classify them as another defect.
@@ -287,3 +293,77 @@ not independently adopted as this lane's current product proof.
 
 Receipts: `r288-private-join-and-full-source-hunk-map.json`,
 `r289-native4-target-frame-forward-source.json`.
+
+## Python receiving and higher terminal guards — R291–R298
+
+These are source changes on the same Semantica dirty-main base, not a new
+engine, hash format, source issuer or qualified integration.
+
+| Owner / actual route | Before | Authored after |
+| --- | --- | --- |
+| Parser `semantic_scope_identity.rs` | The admitted workspace helper returns an owned String; a late copy refusal destroys partial text inside Source. | Extend this canonical owner with `workspace_owner_identity_namespace_digest_into_with_output_admission_v3(authority, output, (partial, completed))`. Both entry forms share one fixed64 hex preparation and unchanged domain/work accounting. NativeCore performs the paid external copy; success moves text only after fallibility. Occupied sinks refuse without output polling or replacement. |
+| Parser import `controlled_python_tree_v3.rs` → `original_import_output_v3.rs` | Import hash still uses the old two-argument constructor and has no outer mint attempts owner. | Public entry accepts `(request, generation, member)`, Current and caller `OriginalPythonImportBindingsBirthV3`. Empty Default is DATA only. Terminal guard precedes new Source; fresh registered request validation precedes output-grant acquisition. Partial/completed workspace and semantic attempts precede their actual retained group/operation grants. |
+| Parser completion frame and direct Python cohort → `augment.rs` → `native_import_transaction_v3.rs` → `mint_context_v3.rs` | Provider/cohort calls do not lend the mandatory semantic ledger; workspace digest is local. | Existing external frames hold ledger and both workspace sinks, and lend references to the canonical three-argument hash. Direct public augmentation and provider preparation reject terminal ledger before new Current/output work. In the direct cohort, those DATA fields precede both assembly and final owner fields, whose grants must outlive them. |
+| SDK old postorder completion → Parser resolver/raw provider shim | Exactly one genuine test caller reaches an owned helper that creates a completion frame inside Source. Product closure already calls `complete_final_into_slots_v3`. | Migrate that fixture to the existing external work/index/postorder/completion pool born before `with_production_fixture_members_v3`; retire both `complete_final_v3` methods, resolver `try_complete_original_provider_v3` and raw `try_complete_with_original_imports_v3`. Removed call search is zero. Product route is unchanged. |
+| Port statement birth → managed target lower and Parser Java conversion/projection | Higher APIs acquire/read Source or output before the later issue/copy `begin_v3` rejects reused DATA; occupied-state refusal can mask stored Native cause. | `PortStatementProjectionBirthV3::ensure_open_v3` checks mint first then the existing occupied predicate; begin delegates. Managed target lower, Java batch/direct conversion and original projection guard before their own Source/output work. Fresh validation remains. Direct D4 member-view/materialize and target syntax trait entries remain a separate finite receiving cut. |
+
+Import birth retains the actual output group and operation before paid text.
+These two lease acquisitions add two work units on successful entry; canonical
+hash charges/preimage are unchanged. Tiny-budget acceptance must be executed
+on the complete owner tuple before treating that compatibility impact as closed.
+
+R291 adds a genuine same-root regression: two distinct currents/output groups
+are issued from one root before the first failure. A real mint and first-current
+cancellation precede second-current reuse. The oracle checks the retained Native
+cause, zero later polls/work/bytes/cause changes, backing retention and final
+refund. This is not fresh issuance after sticky root failure. The five terminal
+regressions now authored across R279/R284/R291 remain **NOT_RUN**.
+
+R295 strengthens the existing genuine workspace test with independent literal
+BLAKE3 preimage parity, absent-axis nonallocation and occupied-sink no-new-work /
+no-new-refusal assertions. Genuine import and framework fixture results and SDK
+retained-provider / foreign-current assertions are retained. These are authored
+oracles, not executed results. Full import carrier/payload/error receiving,
+non-ID HIR scratch, Java fixture migration, shared query God and complete
+feature/owner/product gates remain distinct obligations.
+
+Root R295 AST11, scoped changed-file LLM and God pass. Eight owned child files
+pass rustfmt; three shared parents retain pre-existing foreign formatting only.
+Tracked diff-check passes; independent owned preimage patches cover untracked
+files. Provider R292/R297 and old-SDK R297 static checks pass on their scoped
+postimages. R298 independent review corrected the request/grant ordering before
+final readback. R300 current readback matches all25 current source postimages across the four
+receiving cuts. R302 statement AST4/LLM4/God4 pass; one pre-existing foreign
+retained-target formatting blank line remains. These receipts still do not
+establish Rust type or product compatibility. No compiler/test/QBC/runtime/
+source capture or Semantica Git ran.
+
+Receipts: `r291-same-root-terminal-genuine-source.json`,
+`r292-python-provider-native-id-source-cut.json`,
+`r295-native-python-import-owner-decision.json`,
+`r295-static-source-manifest.json`, `r295-native-python-import-owned.patch`,
+`r295-statement-terminal-guard-source-cut.json`,
+`r295-statement-terminal-d4-residual.json`,
+`r297-python-terminal-order-source.json`,
+`r297-old-sdk-python-completion-source-cut.json`,
+`r298-native-python-import-independent-review.json`,
+`r300-native-id-receiving-source-readback.json`,
+`r302-statement-terminal-final-static.json`.
+
+## Replay upper callers and ownership — R301
+
+The seven audited Replay upper paths have zero overlap with the R271 Native4
+27-file cut and R295 statement guard four-file cut, and no statement birth/mint
+references. This lane has **zero authored signature/forwarding hunks** there.
+Their actual earliest controls differ: installed execution-session capture,
+ChangeEvent materialization operation, daemon request control, installed
+RuntimeCtx search control and admitted dense materialization budget. The
+attribution-port test setup does not itself issue Source control.
+`prepare_daemon_search_code_v2` must not be treated as universally highest.
+
+Preserve the separate R288 Native4 lowering hunk and R273 canonical selection;
+private SDK join/FULL receiving stays with its existing owner. Replay may carry
+its existing canonical read DATA from each actual highest control wrapper; no
+new control or local owned Result shim is authorized by this audit. Exact
+paths/SHAs and hunk0 map: `r301-replay-upper-native4-hunk-map.json`. No source
+edit, claim or outbound app message was made for this read-only mapping.

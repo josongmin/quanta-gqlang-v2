@@ -1602,7 +1602,7 @@ baseline104. File size partly includes this handoff and remains an active policy
 gap; no broad foreign refactor, allowance or baseline reset was applied. Non-ID
 partial HIR and parent/sibling scratch remain outside this ID cut.
 
-Current implementation gaps: Python import/provider external semantic ledgers,
+Implementation gaps at R276: Python import/provider external semantic ledgers,
 seven mounted Java genuine fixture calls, QRA direct SDK/positive test-support
 receiving, SDK hydration/target binder and broader facts/final-output ownership.
 Final compatible owner/feature tests, QBC publication, process/installed proof
@@ -1621,8 +1621,9 @@ SourceWire `begin_v3` originally polled the supplied output before its terminal
 state check. R278 moves that guard first. R280 independent review then locates
 semantic bridge preparation before begin. R281 extends the same ledger owner
 with read-only `ensure_open_v3`; semantic exact-output/canonical preparation and
-stable factory/callbacks reuse it before output access. Statement issue/copy
-already begin first and need no additional state check. R283 splits semantic
+stable factory/callbacks reuse it before output access. Statement leaf issue/copy
+already begin first; R294 later finds earlier Source access in receiving APIs
+and R295 adds higher guards, with direct D4 boundaries recorded separately. R283 splits semantic
 post-ledger result finishing in place, preserving exact typed-error projection,
 missing-result and final-checkpoint order; scoped God passes with no allowance.
 
@@ -1667,3 +1668,57 @@ diff, God and LLM pass; actual forwarding readback finds no further confirmed
 same-pattern defect. This is a successor postimage, not renewed final27 or
 whole-consumer qualification. Compiler/tests/QBC/source capture/Semantica Git
 remain NOT_RUN; FULL Source capability and complete receiving stay open.
+
+## R291–R298 Python NativeID4 receiving and higher terminal ordering
+
+The [current receiving map](../plans/oct-6-substrate-dedup/native-identity-boundary.md#python-receiving-and-higher-terminal-guards--r291r298)
+now distinguishes authored Python import/provider/cohort source from remaining
+full-payload and executed proof. Source base remains Semantica `3b8f86dd9ea7f94a2426277311037ea9d6480a6a`
+with shared dirty work; this lane performs no Semantica Git publication.
+
+- R291 authors the missing same-root sticky-cause oracle using two genuine
+  preissued currents/output groups. It checks terminal reuse without later
+  poll/work/byte/cause changes and final refund. Execution is NOT_RUN.
+- R292 connects the existing provider completion and direct cohort frames to
+  mandatory semantic mint attempts and external partial/completed workspace.
+  R295 extends the canonical namespace owner with an into-sink operation and
+  connects the distinct import owner plus actual fixture callers. No copied
+  hash/serializer or constructor-local ledger is introduced.
+- R297 source review fixes direct-cohort declaration order: workspace/semantic
+  DATA drop before assembly/final owner fields that contain their grants.
+  Direct augmentation and provider preparation check terminal state before
+  new Current/output validation. R298 fixes fresh import authority precedence:
+  static birth guard, original request validation, actual grant retention,
+  then paid workspace/mint work.
+- The old SDK completion chain has one test-only caller. R297 moves that
+  genuine fixture to the already implemented external work/completion pool
+  and removes the owned postorder/resolver/raw shim. Current production
+  closure already used into-slots and is not counted as a new product repair.
+- R294 traces statement higher-entry reuse before issue/copy. R295 guards
+  managed target lowering, Java conversion and original projection, and
+  preserves stored Native cause before occupied-state refusal. Two direct
+  D4 entries remain a finite owner co-cut; exact guard/error mappings and
+  SHAs are in `r295-statement-terminal-d4-residual.json`.
+
+R300 current readback matches25/25 latest receiving postimages. R302 statement
+AST4/LLM4/God4 pass without allowances. Scoped AST/LLM/God and owned-child
+formatting pass; shared parent foreign formatting remains explicit. Compiler/tests/QBC/runtime/refund/source capture
+and Semantica source integration are NOT_RUN; no qualified completion is
+claimed. Remaining work includes genuine Java fixture receiving, direct D4
+entry guards, QRA positive receiving, FULL target capability, broader payload/
+error/HIR custody and the existing query God violation. Current per-path SHAs,
+normal claims, independent reviews and owned patches are recorded in the local
+R291/R292/R295/R297/R298 packets. Historical QGLang R167 `just ci` remains an
+older receipt; it was not rerun for this documentation-only checkpoint.
+
+R299 expands the Java fixture remainder to its complete mounted same-file
+migration: nine positive tests, including old batch/materialization and removed
+member/parts/getter APIs. The existing genuine sorted-batch fixture is the
+candidate; pending output must not be accepted as sealed. One separate getter
+hash constructor and literal-receiver residue are tracked explicitly.
+
+R301 audits seven Replay upper callers: Native4 authored signature/forwarding
+hunks are zero in those exact files. Actual earliest control differs per route;
+shared daemon preparation is not a universal highest Source. The finite SHA/
+hunk0/custody map is ready for the authorized courier; no outbound message was
+sent and no Replay source was edited by this lane.
