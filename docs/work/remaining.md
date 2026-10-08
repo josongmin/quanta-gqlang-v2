@@ -564,12 +564,16 @@ The existing QRA copier and input visitor now use external partial-field and
 complete-component slots in four claimed source files. The physical
 [producer ABI](../plans/oct-6-substrate-dedup/code-map.md#r220-physical-qra-input-producer-abi)
 is authored WIP within `CHECKED-RETAINED-CONTROL`. R230 statically confirms
-matching authored encoder receiving; highest QRA/SDK caller state still needs
-the same compatible cut, including
-retention of every completed input and retired/partial encoder/row backing.
-AST/format/LLM/diff pass; God stays RED for three existing parent legacy
-allowances. No Rust build/test, snapshot, Semantica source integration or
-product proof ran for this cut. The earlier R194/R206 observations below keep
+matching authored encoder receiving. R239 now authors the
+[QRA result receiving10](../plans/oct-6-substrate-dedup/code-map.md#r239-qra-result-receiving-source-cut):
+external per-row input/encoder/portable/row custody, exact-count retained storage,
+public birth mounts and removal of the owned Original issuer. Production SDK's
+composite already uses an external birth. Four direct SDK test calls still need
+migration; R246 receives the controlled axes-only loan in genuine preflight.
+Ordinary handoff receiving and complete compatible owner proof remain pending. R239 AST/format/LLM/diff10 and new-module God2 pass; whole God
+stays RED for four pre-existing findings and two legacy allowances. R220 retains
+its separate three-legacy receipt. No Rust build/test, snapshot, Semantica
+source integration or product proof ran for these source cuts. The earlier R194/R206 observations below keep
 their own frozen or refused inputs.
 
 R223–R228 maps the existing native ID [caller scope](../plans/oct-6-substrate-dedup/code-map.md#native-id-caller-co-cut--r228):
@@ -577,7 +581,11 @@ per-ID external state in Java/Python/hierarchy frames, coupled semantic symbol
 and occurrence mint, and statement partial/complete text custody. This extends
 the existing retained-control change map; no new product defect is asserted.
 These extra leaves are read-only audited, not implemented. External/import/augment
-semantic mint highest Source boundaries remain unproved; compile/tests are NOT_RUN.
+semantic mint exhaustive highest Source boundaries remain unproved. R245
+traces the external batch's prior request loan and the Python import enclosing
+registered-tree loan: batch-only storage is too late, and import read slots
+lack a mint ledger. Dedicated prior-loan storage is unimplemented; compile/tests
+are NOT_RUN.
 
 ## R201–R206 final batch and SDK capture state
 

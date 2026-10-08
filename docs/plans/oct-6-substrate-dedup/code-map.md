@@ -494,8 +494,11 @@ output publication require implementation. See the
 
 ## QRA function-input custody co-cut — R212/R213
 
-This is additional detail within `CHECKED-RETAINED-CONTROL`, observed on
-Semantica `3b8f86dd` plus dirty source. Source ownership shows payload drop
+This section records the R212/R213 **before** audit within
+`CHECKED-RETAINED-CONTROL`, observed on Semantica `3b8f86dd` plus then-dirty
+source. R220/R230/R239/R246 below supersede the affected producer/encoder/QRA
+caller observations; R237 also confirms the current production SDK birth is
+already outside Source. Source ownership shows payload drop
 before the outer Source finisher; it does not establish early budget refund,
 wrong output, partial publication or a leak. The output group lease is retained.
 The following changes must preserve the existing canonical encoder, field
@@ -507,7 +510,7 @@ order, digest preimage, work charges and typed Source/Portable causes.
 | Same crate, `intraprocedural_artifact_input_assembly_v1.rs::function_input_components_v3` and `intraprocedural_artifact_input_assembly_v1/original_v3.rs::visit_function_build_inputs_from_admitted_request_v3` | Struct-literal field copies use `?`; the visitor emits an owned digest. A single replacement Option would also destroy previous inputs. | Build through external component slots; visit borrowed input. Keep pending input plus every completed input in the QRA birth through Source finish, admitting any retained Vec growth at its existing owner. |
 | Same crate, `intraprocedural_artifact_digest_v1/original_encode_v3.rs` | `try_new_with_original_v3` consumes components; portable bytes and encoder scratch are returned or dropped inside the call. | Borrow components through fallible canonical work, then transfer them into a completed input. Retain partial encode/output state through the existing encoder owner; do not introduce a serializer or a second digest calculation. |
 | Same crate, `pre_native_function_build_authority_owner_v1/original_workspace_rows_v3/{birth_v3,result_v3}.rs` | Row construction/portable copying can fail after owned emit; state has no input/component/portable scratch slots. | Store partial row, portable backing, pending input and completed inputs in existing birth state; preserve full typed cause at the existing unit-status transaction boundary. |
-| Same crate, `production_live_native_lowering_generation_parts_v1.rs`; `qv2/quanta-sdk-runtime-executor/src/client/production_live_native_lowering_generation_parts_authority_v1.rs`; `qv2/quanta-runtime-test-support-pta/src/exact_native_generation_fixture_v1/original_execution_v1.rs` | Analysis creates QRA birth inside the SDK or test-support Source callback, before context `finish_original_source_result_v3`. | Move that existing birth to each actual caller outside the Source loan, pass it by mutable borrow and consume the completed result by borrow until finish. Migrate both actual callers and the three direct SDK QRA test callers in one compatible cut. |
+| Same crate, `production_live_native_lowering_generation_parts_v1.rs`; `qv2/quanta-sdk-runtime-executor/src/client/production_live_native_lowering_generation_parts_authority_v1.rs`; `qv2/quanta-runtime-test-support-pta/src/exact_native_generation_fixture_v1/original_execution_v1.rs` | Analysis creates QRA birth inside the SDK or test-support Source callback, before context `finish_original_source_result_v3`. | Move that existing birth to each actual caller outside the Source loan, pass it by mutable borrow and consume the completed result by borrow until finish. Reconcile the two actual caller routes and direct SDK test calls in one compatible cut; R241 corrects the direct-call census to four. R237 finds the actual production composite already external and test support ordinary. |
 
 These are existing owner extensions, not separate engines or duplicate tasks.
 The component/encode helper and upper caller have active overlapping source
@@ -549,12 +552,89 @@ partial/retired encoder or row backing until highest Source finish. It consumes
 components only after successful canonical construction. No arbitrary builder
 callback, serializer, issuer or guessed Core scratch type is added. The prior
 encoder/QRA receiving signatures remained pending at R220. R230 subsequently
-checks the authored matching encoder; the QRA result caller still uses the old
-portable owned-return call and must receive external PortableSlots/unit status.
-No compiling or qualified result follows. Evidence:
+checks the authored matching encoder. R239 subsequently receives external
+PortableSlots/unit status in the actual QRA result caller, as described below.
+Neither source cut establishes a compiling or qualified result. Evidence:
 `r220-qra-input-producer-source-packet.json` and
 `r220-qra-input-producer-owned.diff` at the existing recovery root.
 
+
+### R239 QRA result receiving source cut
+
+The normal reconciled claim covers ten files in the existing Analysis owner.
+The existing request/axes/Parser authority bodies and PTA/SDK foreign hunks are
+preserved. This is source work on shared dirty Semantica `3b8f86d…`, not a
+committed source bundle or Rust result.
+
+| Repository path under `packages/analysis/quanta-v2/crates/` | Before | Authored after |
+| --- | --- | --- |
+| `quanta-runtime-analysis/src/queries/intraprocedural/pre_native_function_build_authority_owner_v1/original_workspace_rows_v3.rs` | Glob imports and owned Original issuer export. | Explicit owner imports and two result child modules; only into-birth issuer dispatch. |
+| Same `original_workspace_rows_v3/birth_v3.rs` | No per-row encoder/input/portable keeper or one-shot issuer guard. | Outer birth retains result-input state and a begun flag; rejected reuse preserves the first accepted result and existing failure. |
+| Same `original_workspace_rows_v3/result_v3.rs` | Local owned input/portable/row construction; 69-line collector. | Same canonical visitor delegates to external row state; paid map/seal remain the existing owners. Owned Original issuer removed. |
+| Same `original_workspace_rows_v3/result_input_v3.rs` (new) | No module. | Allocation-free pending row birth, exact-count retained Vec, and separate canonical input/portable state for every row. Both paid pushes guard spare capacity, so no previous backing is replaced. |
+| Same `original_workspace_rows_v3/result_row_v3.rs` (new) | No module. | Partial runtime/key/identity text, portable copy, complete row and full constructor error use external sinks and the existing Kernel row constructor. |
+| Same `original_workspace_rows_v3/copy_v3.rs` | Owned text/identity/Vec wrappers. | Existing identity sink bridge shared with binding copy; partial text remains external. Explicit defining work-trait import retained. |
+| `quanta-runtime-analysis/src/queries/intraprocedural/pre_native_function_build_authority_owner_v1.rs` | Public owned Original issuer; crate-private unit API. | Public existing into-birth API; owned Original API removed. Ordinary issuer unchanged. |
+| `quanta-runtime-analysis/src/queries/intraprocedural/production_live_native_lowering_generation_parts_v1.rs` | V1 fallback created the composite birth inside Source. | V1 remains ordinary-only and rejects Original as typed `InvalidFunctionBinding`; genuine Original composite already uses the existing external-birth API. |
+| `quanta-runtime-analysis/src/queries/intraprocedural/mod.rs` and `quanta-runtime-analysis/src/queries/intraprocedural.rs` | Birth not reachable from SDK public facade. | Feature-gated reexports connect the same birth through owner → query surface → `runtime_intraprocedural_owner_facade`. |
+
+The direct SDK receiving contract is:
+
+```rust
+// Allocate this empty state before entering the actual Source loan.
+let mut birth = runtime_intraprocedural_owner_facade::OriginalWorkspaceIssuerBirthV3::new_empty_v3();
+// Inside the loan: same issuer, request, pin and authentic control; status only.
+issuer.issue_workspace_batch_original_into_birth_v3(batch, pinned, control, &mut birth)
+// After the actual Source finisher: take_result_v3() or take_failure_v3().
+```
+
+No serializer, engine, source issuer, authority shim or fabricated ordinary
+catalog is introduced. The fixed identity/digest preimage and BTree projection
+order remain unchanged. Per-row retention and append work have real admitted
+memory/work cost; historical budget-success thresholds are not promised.
+
+R237 confirms the actual SDK production composite already owns its QRA/PTA birth
+outside the callback. R241 finds **four** old API calls in
+`quanta-sdk-runtime-executor/src/client/product_java_exact_build_authority_owner_v1/original_java_build_input_v3/tests/genuine_original_pre_native_authority_v3.rs`
+(observed lines198/350/439/473); helper198 also feeds three final PTA regressions.
+Their T1-owned migration remains pending. Ordinary test support is a separate
+ordinary fixture, not an Original-positive result. The controlled Original
+handoff contract and production ordinary consumers need their compatible
+receiving step; missing or Original-only catalogs must typed-refuse. R246 below
+receives the existing axes-only API in genuine QRA preflight.
+
+Static checks: AST10, format10, changed-file LLM10 and diff10 pass; new-module
+God2 passes without allowances. Whole God remains RED for four pre-existing
+findings plus two legacy allowances. The beforeimage had five findings: the
+old result collector finding is removed, and the ordinary production wrapper
+shrinks76→58 lines. No baseline, allowance or scope was weakened. R240/R242
+found and reviewed the reentry/trait-import fixes; R241 verifies the public
+mounts. Compiler, QBC, SDK regressions, late-refusal and last-owner refund are
+**NOT_RUN**. Evidence: `r239-qra-result-receiving-source-packet.json`,
+`r239-qra-result-receiving-owned.diff` and R240–R242 review records at the
+existing recovery root.
+
+### R246 genuine QRA axes receiving
+
+The same normal claim adds
+`quanta-runtime-analysis/src/queries/intraprocedural/pre_native_function_build_authority_owner_v1/original_workspace_rows_v3/axes_v3.rs`;
+the parent only drops its now-unused trait import. Preflight preserves the
+existing pin/member/path/source and handoff-context checks, then uses Parser's
+physical `with_original_function_axes_v3(current, &mut failures[2], callback)`.
+It compares the borrowed admitted catalog context/world under actual custody.
+Full consumer errors remain in the existing outer consumer slot; Parser and
+custody errors remain in the prefix2 of outer parser errors[3]. Preflight exits
+on error; successful loans leave slots empty before the existing request's
+three-slot authority read. No state reset, new catalog or authority adapter.
+
+Missing catalog now preserves typed Parser `NativeRefused(InvalidBoundary)`
+instead of the earlier census error. Comparing the admitted context adds
+checked context-length work alongside the32 world bytes and controlled read
+cost; unchanged historical budget admission is not asserted. R244/R247 review
+the actual Parser contract and receiving delta. Combined R239/R246
+AST11/format11/LLM11/diff11 and axes-only God pass; whole-scope God remains RED
+on the same four existing findings/two legacy allowances. No build/test result.
+Evidence: `r246-qra-controlled-axes-source-packet.json` and owned diff.
 
 ### Native ID caller co-cut — R228
 
@@ -591,8 +671,33 @@ may change budget admission; do not promise success at historical limits.
 No source edit or compile/test of these additional leaves was made by this
 read-only audit. The descriptor owner has an existing live schema-v2 claim;
 resolve overlapping hunks and normal claim reconciliation before mutation.
-The symbol/occurrence audit does not yet prove every highest Source boundary
-for external/import/augment entry paths. Evidence: `r223-lang-id-native-caller-audit.json`,
+R245 narrows two actual enclosing boundaries, as detailed below; an exclusive
+global highest boundary and every SDK origin are still not proved. Evidence: `r223-lang-id-native-caller-audit.json`,
 `r224-canonical-symbol-native-caller-audit.json`,
 `r225-statement-native-caller-audit.json` and `r228-native-id-caller-co-cut.json`
 at the existing recovery root.
+
+
+### R245 external binary and Python import mint boundaries
+
+- External binary: `java_workspace_resolution_syntax_v1/workspace_original_build_type_owner_v3.rs`
+  enters `requests.with_original_source_control_v3` before creating
+  `JavaParserWorkspaceResolutionBatchV1`. A new batch field alone is too late.
+  Normal entry needs a dedicated per-mint keeper before that request loan;
+  edited-member entry needs it before the earlier
+  `with_original_selected_member_and_ordinal_v3`. Pass it through finalization
+  and external identity/surface validation. That path newly mints symbol IDs;
+  the call occurrence comes from existing call-target facts, not a fresh
+  occurrence mint at external finalization.
+- Python import: `adapter_impl/controlled_python_tree_v3.rs::issue_original_python_import_bindings_v3`
+  encloses mint in the controlled registered-tree read and nested retained parse
+  read. Existing `IssuedTreeReadSlotsV3` precedes the enclosing read and retains
+  the result/error, but has no per-mint encoder/byte ledger. Put dedicated mint
+  storage before `with_issued_python_tree_binding_v3` and pass it through those
+  loans. The generic Python source-projection birth belongs to a different
+  path and is not evidence for import binding.
+
+This proves the reviewed enclosing loan chronology, not an exhaustive or
+exclusive global-highest Source claim. Both caller/storage repairs are
+**unimplemented**; no refund, compile or product result follows. Evidence:
+`r245-semantic-mint-highest-boundary-readonly.json` at the existing recovery root.

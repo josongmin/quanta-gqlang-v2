@@ -1443,3 +1443,62 @@ owned-return call, so the compatible caller cut remains incomplete. This is a
 source API mismatch, not an executed compiler result. No additional confirmed
 receiving-owner defect, Rust compile/test or product proof follows. Evidence:
 `r230-qra-encode-receiving-readonly.json` at the existing recovery root.
+
+
+## R239 QRA result receiving source checkpoint
+
+The reconciled Source-only claim now covers ten Analysis files. The actual
+result visitor uses the existing canonical input/portable encoder and Kernel
+row constructor with outer partial/complete per-row state. Exact-count retained
+Vecs plus capacity guards avoid replacing backing before Source finish. The
+owned Original issuer is removed; the existing into-birth API is public, with
+the same birth exported through owner and SDK facade. The ordinary V1 wrapper
+rejects Original instead of creating an inner birth; the real SDK production
+composite already retains its birth outside Source (R237).
+
+Three independent static reviews caught a reentry accepted-state regression,
+a missing SDK birth export and a work-trait import lost during explicit import
+cleanup. All are repaired and read back. A rejected second issue preserves the
+first accepted result/error/backing. Four old direct SDK test calls remain
+T1-owned receiving work; helper198 also feeds three final PTA regressions.
+The controlled Original handoff and QRA axes/production ordinary consumers need
+their exact compatible contract; no ordinary catalog/authority is fabricated.
+
+AST10/format10/LLM10/diff10 pass. God2 on the new modules passes without an
+allowance. Whole God stays RED: four pre-existing findings and two legacy
+allowances. The beforeimage had five findings; the old result collector's69-line
+finding is eliminated and ordinary composition shrinks76→58. No waiver or
+baseline/scope change. Source hashes stayed stable during the final checks;
+Semantica HEAD remains3b8f86d with shared dirt and an empty index. No Semantica
+capture/compiler/Cargo/QBC/test/stage/commit/push or runtime/product proof ran.
+
+The existing18 active ticket IDs remain; `CHECKED-RETAINED-CONTROL` is OPEN.
+Native ID extra leaves remain audit-only, and the deterministic mid-QRA late
+refusal seam, SDK3/DFG2 and remaining owner/product/installed gates remain open.
+Evidence at the existing recovery root:
+`r239-qra-result-receiving-source-packet.json`, its owned diff, R240 custody,
+R241 caller/public-mount addendum and R242 signature/import review records.
+
+
+## R245/R246 enclosing mint audit and QRA axes source checkpoint
+
+R245 traces the external binary batch inside the outer request Source: a
+batch-only mint keeper is too late, and the edited-member route has an earlier
+selected-member loan. External finalization newly mints symbols while reading
+an existing call occurrence. Python import has result/error read slots before
+its enclosing registered-tree loan, but no mint encoder/byte ledger. Dedicated
+prior-loan storage remains unimplemented; the traced enclosing boundaries do
+not establish exclusive global-highest coverage.
+
+R246 receives Parser's physical controlled axes-only API in genuine QRA
+preflight, preserving earlier pin/path/source/handoff-context checks and full
+outer error slots. It additionally checks admitted context/world. Missing
+catalog now retains Parser NativeRefused(InvalidBoundary); added admitted
+context comparison carries checked work. The parent removes an unused trait
+import after leaf owners import the defining allocation trait explicitly.
+Combined R239/R246 source AST11/format11/LLM11/diff11 and axes-only God pass;
+whole God remains RED on the unchanged four pre-existing findings/two legacy
+allowances. No Parser mutation, compiler/test, Semantica Git or runtime proof.
+SDK4 tests, ordinary handoff receiving and whole compatible owner proof remain
+open. Evidence: `r245-semantic-mint-highest-boundary-readonly.json`,
+`r246-qra-controlled-axes-source-packet.json` and R247 receiving review.

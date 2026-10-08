@@ -17,15 +17,24 @@ Original positive, SDK behavior and product acceptance remain open. See the
 [R201–R206 successor](../../work/substrate-repair-checkpoints-2026-10-07.md#r201r206-final-batch-and-sdk-capture-checkpoint).
 Updated: 2026-10-08.
 
-R220 authors the QRA component-copy/input-visitor producer in four Semantica
-source files. Partial fields and complete components use external slots. R230
-confirms matching encoder receiving source; highest caller wiring and complete
-compatible verification remain pending.
-AST/format/LLM/diff pass; God remains RED on three existing parent legacy
-allowances. No Rust, runtime or integration claim follows. See the
-[physical producer ABI](code-map.md#r220-physical-qra-input-producer-abi).
+R220 authors the four-file QRA component-copy/input-visitor producer; R230
+confirms matching encoder receiving source. R239 now authors the
+[ten-file result/caller receiving cut](code-map.md#r239-qra-result-receiving-source-cut):
+per-row external encoder/input/portable/row state, exact-count retained storage,
+public birth mounts, and removal of the owned Original issuer. The actual SDK
+production composite already keeps its birth beyond Source finish. Four direct
+SDK test calls still need the public into-birth API. R246 also receives the
+existing controlled axes loan in genuine QRA preflight; ordinary handoff
+receiving and complete compatible owner verification remain open.
+R239 AST/format/LLM/diff10 and God on the two new modules pass. Whole-scope God
+remains RED on four pre-existing findings and two legacy allowances; none were
+waived. This is dirty Semantica source, with no Rust/runtime/integration proof.
+The [producer ABI](code-map.md#r220-physical-qra-input-producer-abi) retains its
+separate R220 receipt and three legacy allowances.
 R223–R228 also maps the existing native ID [caller co-cut](code-map.md#native-id-caller-co-cut--r228);
-its additional leaves are audited, not implemented or qualified.
+its additional leaves are audited, not implemented or qualified. R245 traces
+two more enclosing mint boundaries: an external binary batch is born inside
+Source, and the Python import read carrier lacks per-mint encoder storage.
 
 Latest local execution is the [R79 onward closeout record](execution-r79.md).
 Two parser repairs are integrated on Semantica `main` as `d29ac508b4d`;

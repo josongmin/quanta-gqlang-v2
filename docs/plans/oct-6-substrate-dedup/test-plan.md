@@ -562,8 +562,10 @@ installed-positive or whole-main qualification.
   [co-cut map](code-map.md#qra-function-input-custody-co-cut--r212r213) as a
   source-level custody obligation within `CHECKED-RETAINED-CONTROL`.
 - Compile the same helper/visitor/QRA/SDK/test-support cut on one source tuple.
-  Migrate the two actual product/support callers and three direct SDK QRA test
-  callers; no Original compatibility shim or fake source authority.
+  Reconcile both actual product/support routes and the **four** direct SDK QRA
+  test calls confirmed by R241. R237 finds the production composite already
+  external; test support remains ordinary. No Original compatibility shim or
+  fake source authority.
 - Preserve independent expected function identities, body provenance, canonical
   digest/portable bytes and stable row order. Include multiple function rows so
   replacement of a single pending input cannot silently retire the first row.
@@ -620,6 +622,56 @@ refusal and refund tests do not establish the new late-refusal assertions.
 
 
 R230 separately reviews the now-authored Analysis/Kernel encoder receiving and
-finds it consistent with R220's component ABI. The QRA result caller still uses
-the old portable owned-return signature. This static receiving read is not a
-compiler pass; the full caller cut and all custody/owner tests above remain open.
+finds it consistent with R220's component ABI. The old QRA portable signature
+observed at R230 is received by the R239 source cut below. This static source
+work is not a compiler pass; SDK migration and all custody/owner tests remain open.
+
+
+### QRA result receiving acceptance — R239
+
+The [ten-file source cut](code-map.md#r239-qra-result-receiving-source-cut)
+passes AST/format/LLM/diff; new-module God2 passes. Whole God is still RED on
+four existing findings and two legacy allowances. No compiler or behavior
+regression runs in this source-only lane. Required completion:
+
+1. Migrate all four genuine SDK issuer calls to the public birth before their
+   real Source loan, returning only status inside and taking result/full error
+   after the actual finisher. Compile the complete producer/encoder/QRA/SDK
+   and controlled-handoff receiving tuple through its existing owner.
+2. Use independent existing expected identities, digest/portable bytes and
+   sorted rows for at least two functions. Assert all first-row input/encoder
+   backing remains alongside the pending second row through actual finish.
+3. Exercise refusal during component/input encoding, portable copy, identity
+   copy after a complete row, each paid append, map admission and final seal.
+   Keep pending partial state and already appended rows, publish no success,
+   preserve the earliest typed cause and prove exact last-owner refund.
+   The deterministic genuine mid-QRA seam is still pending; arbitrary budget
+   guesses or racing threads do not supply that oracle.
+4. Reissue with the same birth after success and after failure: reject the
+   second issue without replacing first accepted result, partial storage,
+   authentic leases or earlier full error. Check occupied outputs, empty
+   census, initial allocation refusal and different-output/same-group entry.
+5. Keep ordinary V1 behavior and typed Original refusal distinct. An ordinary
+   handoff cannot borrow a fabricated ordinary view of an Original catalog.
+   Run existing SDK3/DFG2 owners only once the complete target compiles; retain
+   historical pretest RED/zero-executed receipts separately.
+
+Retaining a group lease, static drop reasoning, API visibility or passing source
+lint does not establish a runtime refund or Original-positive result.
+
+
+R246 genuine QRA axes receiving additionally requires missing/unfinalized
+catalog typed `NativeRefused(InvalidBoundary)`, wrong admitted context/world
+rejection even when retained handoff metadata matches, and authentic
+current/output binding rejection. Retain full consumer and Parser/custody
+causes through actual Source finish; successful preflight must leave its two
+error slots empty before the request's three-slot loan. Combined source
+AST/format/LLM/diff11 and axes God pass; these behavior assertions are NOT_RUN.
+
+For R245 mint acceptance, place external-binary normal/edited-member keepers
+before their respective request loans; adding only batch storage fails the
+chronology requirement. Python import needs storage before its enclosing
+controlled-tree read, independent of generic Python projection storage. Test
+the symbol minted by external finalization and the separately sourced existing
+call occurrence; do not invent an external fresh-occurrence test path. The
+review proves enclosing chronology only, not every global SDK Source origin.
