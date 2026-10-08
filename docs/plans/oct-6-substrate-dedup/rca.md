@@ -242,3 +242,12 @@ Compile/source capture is the first blocker for the affected broad owners.
 FCP-INSTALL is required for full installed-product completion, not for pure SCC
 or frontend acceptance. Do not calculate a completion percentage from mixed
 source, test and installation states.
+
+## R107 successor RCA
+
+- Kernel fixture/session issuer and caller diagnostic-rail repairs execute successfully on R107:569/569 whole lib and11/11 recursive integration, with committed publication and archived postflight.
+- PTA/Taint/navigation share one reached DFG module-resolution defect, not three independent algorithm defects. The existing child needs an explicit path under `storage_mode_v3`; the successor is source-ready after capture.
+- Metrics advances past Parse feature-off retention and reaches the same class in HirArgs: an unconditional override references Foundation's feature-gated Original owner. Gate the override with its actual owning feature; retain the trait default's typed refusal. Successor source is ready, not executed.
+- Root Fresh accepts only the query family's actual paid typed/wire pair and verifies it under exact Source B/output A. FileText now connects its actual installed selected-source provider to its existing paid output producer; missing/deleted/unsupported query profiles refuse. These source packets are not a whole executor success: snapshot, dependency drift and memo custody still need paid owners.
+
+Exact source, counts and receipt/publication hashes: [R107 completed postflight](execution-r79.md#r107-completed-owner-postflight).

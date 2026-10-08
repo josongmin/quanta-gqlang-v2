@@ -273,3 +273,14 @@ Missing authority/unsupported operations never fabricate success. Installed trus
 retains its state until DoD is met. Move accepted durable decisions to ADR/contracts
 and retire this packet only after its acceptance; proposed query/optimizer work
 remains separate.
+
+## R107 closed proof and R108 source handoff
+
+- Completed proof: Kernel whole lib569/569 and recursive integration11/11 GREEN, exact R107 publications and45-file archive verified.
+- Next serial proof: DFG-mount and HirArgs feature-off successors; whole Kernel checked hooks; runtime trace/context/rule; SDK source cold-baseline; PTA/Taint/metrics/navigation; source-wire OS-path prebirth regression. Freeze one coherent source tuple before owner resolve.
+- A owns paid dependency-drift/result custody across classifier, packet, retainer and public output. Prebirth refusal remains until all real allocations have retained grants.
+- B owns actual HIR Source B/output A split, borrowed canonical encoding/pair and the bounded ItemIndex query keeper plus reachable consumers. Preserve ordinary DTO/wire schema.
+- SDK/PTA lane owns genuine selected-provider FileText carrier regression and actual parser/QRA-to-PTA final output copying; stale synthetic fixture issuers cannot prove this chain.
+- I owns canonical Fresh routing, selected-source FileText producer, immutable capture/owner queue, receipts and document reconciliation. Full co-owned Native bundle integrates only after compatible affected proof.
+
+[R107 source/result authority](execution-r79.md#r107-completed-owner-postflight).

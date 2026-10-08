@@ -760,3 +760,28 @@ general Original success obligations remain open. Evidence:
 No ticket closes from static readback, request resolution, a failed compile or
 mixed-source counts. Hosted CI, push and installed release publication are not
 performed. Full closeout remains incomplete.
+
+## R107 completed owner postflight
+
+R107 froze Semantica `3b8f86dd9ea7f94a2426277311037ea9d6480a6a` full WIP
+with committed sibling HEADs, including QGLang `d9708f647ed8ec7dcbf3660d6db14afebfe62dde`.
+Its source digest is `1dff82deb346ec204b7eb3d4e0dda2017043d1980f574e9b0d299f05c6592554`.
+The held-lease postflight completed; all45 archived file hashes independently match.
+`owner-postflight-r107.json` SHA-256 is `f813bd24ff1096f748f998b6218faefd2910cc09f2a4a421f82850b1dd38b6e7`.
+
+| Scope | Executed result | Publication / reached boundary |
+| --- | --- | --- |
+| Kernel whole lib, all features | GREEN569/569; zero failed/ignored/filtered | receipt `f93130d145e767eb653415bd50320dd298536373bbe9a7b95fadb294884dfa91`; publication `e2e16e528701ccd1f8dd66359db08c4d1986b72ce0176c3a461ed47e707c6888` |
+| Kernel recursive integration | GREEN11/11;27 filtered, zero failed/ignored | receipt `971856869aefc20a6183262263b7f2cc2bd4cf1128d72efbdf9cfe4f6b2a434a`; publication `a98ea1b12cc959def46871111e99c00e88fe9cddbc3e5519c3864ed48f5a0245` |
+| PTA retained exact | RED compile; zero tests | missing `storage_mode_v3/original_writes_v3.rs` child mount |
+| Taint MemSSA exact | RED compile; zero tests | same DFG child mount |
+| Metrics max-depth module | RED compile; zero tests | feature-off HirArgs retain calls cfg-disabled Foundation Original module |
+| Navigation import module | RED compile; zero tests | same DFG child mount |
+| PTA SCC; Taint seed/heap-gap | NOT_RUN | shared compile blocker, three scopes |
+
+The source-level successors fix the DFG explicit child mount and gate HirArgs'
+Original retain override with its owning feature. They postdate R107 and require
+fresh owner execution. R106's557/11 and R185's publication-pending driver observation
+retain their historical inputs; the completed R107 publications above supersede them
+for these two scopes only. Whole Native/Original integration and product acceptance
+remain open.

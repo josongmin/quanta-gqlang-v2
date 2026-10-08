@@ -529,3 +529,18 @@ or Original-positive result. R186 also found no deterministic genuine
 mid-QRA refusal fixture in the current Budget API. FCP-COMPILE, SDK behavior,
 the remaining Original caller closure and product gates remain open. See the
 [checkpoint](substrate-repair-checkpoints-2026-10-07.md#r190r193-owner-and-sdk-capture-successor).
+
+## R107 completed postflight and next source cut
+
+Whole Kernel569/569 and recursive integration11/11 have committed QBC publication
+and an independently verified45-file held-lease archive. PTA/Taint/navigation
+compile-stop at one DFG child mount; metrics reaches feature-off HirArgs retention.
+Their successors are source-ready after R107; four RED owners/three NOT_RUN selectors
+remain unaccepted. [Exact R107 source and authority](../plans/oct-6-substrate-dedup/execution-r79.md#r107-completed-owner-postflight).
+
+Next work is the actual coupled Original producer/consumer cut: HIR B/A custody and
+ItemIndex checked keeper, paid dependency-drift/snapshot/memo/public result custody,
+SDK selected-provider FileText carrier regression, and parser/QRA→DFG→PTA nonempty
+final output with paid rows. The generic Fresh owner now invokes only a genuine
+query-owned paid pair; FileText has its real selected provider route. Source changes
+remain unqualified until executed affected owners and complete compatible integration.

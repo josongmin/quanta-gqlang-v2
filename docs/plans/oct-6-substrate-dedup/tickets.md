@@ -578,3 +578,16 @@ R186 found no deterministic real mid-QRA refusal fixture in the current SDK
 Budget API. The SDK owner rail, Native build, Original positive path and
 product gates still need execution on one compatible source tuple. See the
 [checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r190r193-owner-and-sdk-capture-successor).
+
+## R107 final proof checkpoint
+
+R107's completed held-lease postflight accepts whole Kernel569/569 and recursive
+integration11/11 with committed QBC publication. Four other owners are RED at compile
+with zero tests: three share the DFG child mount and metrics reaches feature-off HirArgs
+retention; three dependent selectors are NOT_RUN. The two root causes have source
+successors for the next frozen run. FCP-COMPILE remains open; do not carry R185's
+earlier publication-pending observation forward as the final driver state.
+
+Actual paid Fresh/FileText producer source is connected, while HIR/ItemIndex, paid
+drift/snapshot/memo and genuine PTA nonempty final output remain implementation/proof
+work. [Source, counts and hashes](execution-r79.md#r107-completed-owner-postflight).
