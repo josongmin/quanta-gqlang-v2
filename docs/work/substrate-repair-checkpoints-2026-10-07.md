@@ -1777,3 +1777,34 @@ identity birth must receive actual canonical raw-module DATA through a disjoint
 borrow once its concrete ABI exists; no guessed type or dummy ledger is added.
 No source edits, compiler/tests/QBC/source capture/Semantica Git or outbound
 messages ran. The existing receiving/qualified-proof obligations remain open.
+
+## R318–R319 borrowed descriptor storage receiving
+
+The [borrowed descriptor API and receiver map](../plans/oct-6-substrate-dedup/native-identity-boundary.md#borrowed-descriptor-transport--r318r319)
+records nine authored Semantica paths: Core4 and Parser5. The canonical owner
+adds an indexed borrowed scope view; old public slice mint/verify and the three
+Parser slice entries remain. Both object-safe hash bridge implementations use
+the same concrete view descriptor and canonical owner. The existing temporary
+rooted `Vec<&str>` is removed without another hash, encoder, issuer or engine.
+
+Final readback matches9/9 postimages; AST9/rustfmt9, production LLM7/God7,
+tracked diff7 and manual whitespace9 pass. Independent source reviews cover
+slice compatibility, lifetime and first-cause flow. Three Core regression tests
+are authored and the genuine Parser legacy-oracle test is extended; tests and
+compiler are NOT_RUN. This source-only check does not prove executable parity.
+
+Remaining receiver scope is explicit: `original_projection_v3.rs` has two
+descriptor-only pointer vectors plus name vectors, one shared with descriptor
+construction. Root92 owns that raw receiving and full name/error DATA before
+highest Source; this lane writes zero hunks there. The temporary file-axis
+String also remains. Root3a lower primitive hunks are zero. Removing rooted
+allocation changes allocation refusal/work checkpoints; total budget traces
+are not claimed identical. Canonical axes/domain/order and hash stay unchanged.
+
+The earlier current-remaining list stays open, including genuine PTA fixture
+issuer/finalization, D4 terminal/guard receiving, SDK FULL capability, shared
+query God and broader qualified proof. Semantica source remains uncommitted
+shared-main WIP. This checkpoint commits only the two owned QGLang documents;
+no compiler/tests/QBC/runtime/source capture/Semantica Git or outbound app
+messages run. The local finite API packet and owned patch are listed in the
+linked boundary document for same-chat handoff.

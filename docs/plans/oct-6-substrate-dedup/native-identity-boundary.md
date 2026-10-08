@@ -466,3 +466,124 @@ Receipts: `r316-terminal-abi-current-drift.json`,
 `r316-terminal-export-hunk-map.json`, `r316-terminal-native-hunk-contract.json`.
 This is read-only collision mapping; Semantica edits/build/test/QBC/Git and
 outbound app messages are zero. It does not close the broader receiving row.
+
+## Borrowed descriptor transport — R318–R319
+
+R318–R319 authors nine Semantica paths on shared dirty main at the committed
+base above. Final readback matches all9 recorded postimages. These changes are
+uncommitted Semantica source, independently reviewed and statically checked;
+they are not compiled, executed or qualified. The R316 paragraph's zero source
+edits applies only to that earlier read-only map.
+
+### Purpose and before/after
+
+The existing descriptor fixes scope storage to a borrowed slice. Rooting that
+slice previously allocated a temporary `Vec<&str>` for workspace/file/tail.
+External raw-owner DATA cannot retain such a vector borrowing its own Strings
+without a self-reference. The canonical owner now accepts an indexed borrowed
+view over existing storage. It keeps the same descriptor axes, validation,
+canonical encoding and hash owner; it adds no identity algorithm or authority.
+
+| Owner / exact source scope | Before | Authored after |
+| --- | --- | --- |
+| `packages/core/ir/canonical-symbol-id/src/canonical_symbol_id_v2.rs` | Borrowed slice descriptor and fixed scope storage in the private axes helper. | Add `BorrowedResolvedSymbolDescriptorViewV3` using the same generic `ResolvedSymbolDescriptorV2`; add slice `as_scope_view_v3`; generalize only scope storage in the same seven-axis tuple. |
+| Same owner's `canonical_symbol_id_v2/borrowed_mint_v3.rs` | Slice validation and ordinary/Original mint entrypoints. | Add two view entrypoints; old slice and new view share private validation/mint bodies. Existing public slice mint/verify APIs remain. |
+| Same owner's `canonical_symbol_id_v2/scope_path_view_v3.rs` and `scope_path_view_v3/tests.rs` | No segmented storage adapter. | Add allocation-free slice access and workspace/file/tail view, checked total length, missing-index refusal, existing-serde sequence serialization, and three parity/rejection tests. |
+| `parser/semantic_identity_mint/original_mint_v3.rs` | `rooted_path_v3` allocates a pointer vector. | Borrow a rooted view; preserve explicit per-segment preparation work. Preserve three old `&[&str]` entry signatures and forward to explicit indexed-view entries. |
+| `parser/semantic_identity_mint/{original_hash_v3,diagnostic_hash_v3}.rs` | Object-safe bridge accepts only the default slice descriptor. | Both implementations accept the concrete view descriptor. Original uses existing external slots/ledger; diagnostic admission remains diagnostic. Existing concrete generic Original `hash_symbol_with_axes_v3` remains. |
+| `parser/semantic_identity_mint/{external_subject,original_mint_v3_tests}.rs` | Direct bridge calls supply slice descriptors. | Adapt direct calls with `as_scope_view_v3`; extend the genuine Original test with pre-Source String slices and the independent legacy CBOR/BLAKE3 expected IDs. |
+
+### Finite receiving API
+
+Core module: `codegraph_core_canonical_symbol_id::canonical_symbol_id_v2`.
+
+```rust
+pub trait ScopePathAccessV3 {
+    fn len_v3(&self) -> usize;
+    fn segment_v3(&self, index_v3: usize) -> Option<&str>;
+}
+```
+
+`impl<S: AsRef<str>> ScopePathAccessV3 for &[S]` lets a receiver borrow an
+existing String slice: bind `let tail: &[String] = ...`, then pass `&tail` to
+the dyn parameter. Keep this local slice witness alive for the synchronous
+mint. Neither the view nor the witness owns its backing or grants authority.
+
+- `BorrowedScopePathViewV3::unrooted_v3(&dyn ScopePathAccessV3)` and
+  `try_rooted_v3(Option<&str>, Option<&str>, &dyn ScopePathAccessV3)` preserve
+  workspace → file → tail order; the latter checks length arithmetic.
+- `CanonicalSymbolIdV2::from_borrowed_descriptor_view_v3` and
+  `from_borrowed_descriptor_view_into_with_v3` reuse the ordinary and external
+  Original mint owners respectively.
+- Parser `scope_symbol_id_with_scope_path_v3`,
+  `projected_symbol_id_with_scope_path_v3` and
+  `file_scoped_symbol_id_with_scope_path_v3` receive indexed storage explicitly.
+  The old three slice entrypoints remain thin same-owner forwarding methods.
+  An intermediate generic-entry candidate was corrected because existing
+  untyped `&[]` calls could lose inference. Those callers require no migration.
+
+`ScopePathAccessV3` requires stable length/segment bytes across validation and
+all encoding passes, bounded allocation-free access, and live backing DATA.
+The current production adapter uses immutable slices. Arbitrary external trait
+implementations must honor this contract; static review does not prove that
+for future implementations. Missing indexed segments are refused, not omitted.
+
+### Behavior, resource and compatibility limits
+
+The canonical seven-axis tuple, CBOR owner, domain
+`codegraph.semantic-symbol.v2\0`, BLAKE3 and16-byte prefix stay unchanged.
+Original `require_output_v3`, `with_canonical_v3` and
+`finish_canonical_result_v3` function bodies match their beforeimages exactly.
+No `borrowed_verify_v1.rs`, Foundation/Core allocation primitive, raw projection
+receiver, Cargo dependency, issuer or owned Original shim is changed here.
+
+Rooted pointer-vector backing demand changes from
+`Layout::array::<&str>(rooted_len).size()` to zero for that temporary vector.
+Its allocation-admission work/checkpoints and allocation refusal points also
+disappear. Explicit `consume_semantic_work_v1(rooted.len_v3())` remains, as do
+canonical validation/encoding/hash work. Total work and refusal traces are not
+claimed identical; a tiny memory budget may now permit a formerly refused
+attempt. No runtime or performance measurement ran.
+
+### Exact remaining receiver work and DoD
+
+The [current remaining list](#current-remaining-work--r314) stays open. This cut
+removes the rooted vector through current production wrappers; it does not
+remove every upstream scope/name transport vector or close whole Original
+payload/error lifetime.
+
+- Raw receiving remains with its existing owner, Root92; this lane's write
+  hunks there are0. `parser/semantic_scope_identity/original_projection_v3.rs`
+  still calls `scope_path_refs_v3` four times, at277/552/561/589 in this snapshot.
+  The vectors at277/561 serve descriptor transport only. The vector at589 is
+  shared by descriptor and fq-name construction;552 serves fq-name construction.
+  Removing the descriptor use at589 alone cannot delete its storage.
+- Receive the new explicit view API over the actual external raw-owner slice;
+  move fq-name and partial/full error storage coherently before the highest
+  Java Source using its real disjoint-borrow ABI. Existing temporary
+  `file:{canonical_path}` String in `original_mint_v3.rs` also remains to receive.
+- Lower allocation primitive receiving stays with Root3a; this cut's write
+  hunks there are0. No second raw owner or local authority substitutes for it.
+- Source DoD: actual raw Strings/name/result/error DATA precedes highest Source;
+  views stay synchronous, immutable and non-owning; canonical bytes/IDs stay
+  identical; first cause stays terminal; backing drops before retained grants.
+- Executed proof: AST9, rustfmt9, effective production LLM7/God7, tracked diff7
+  and manual whitespace9 pass; no allowances or baseline reset. Two independent
+  source reviews complete. These do not establish Rust type correctness.
+- Next owner proof: run the three Core view tests (exact CBOR/ID and UTF8/order,
+  String/empty slice, blank/missing/overflow refusal), then the genuine Parser
+  legacy-oracle and first/late-refusal/foreign-output/no-later-poll/refund tests.
+  Follow with the complete coupled owner/feature/process/product gates on a
+  compatible committed tuple. Compiler/tests/QBC/runtime/source capture and
+  Semantica Git publication remain NOT_RUN in this source-only lane.
+
+Receipts: `r318-descriptor-transport-owner-decision.json`,
+`r318-normal-claim.json`, `r319-descriptor-scope-view-owned.patch`,
+`r319-descriptor-scope-view-postimages.json`,
+`r319-descriptor-static-ast-first-cause.json`,
+`r319-descriptor-view-independent-review.json`,
+`r319-parser-view-independent-review.json`,
+`r319-final-source-readback.json`, and the finite
+`r319-descriptor-scope-view-receiving-packet.json` in the existing local evidence
+directory. This QGLang documentation checkpoint records Semantica source WIP;
+it does not merge or qualify that source.
