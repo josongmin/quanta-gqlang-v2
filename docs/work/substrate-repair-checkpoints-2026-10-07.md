@@ -73,7 +73,7 @@ Evidence at the existing recovery root: `r78-lock-closure-applied.json`,
 `r79-native-supplier-postimage.json`, `r82-source-capture.json`,
 `r82-fixed-input-pins.json` and `r85-parallel-source-checkpoint.json`.
 
-## R87–R111 fixed-candidate compile and ownership checkpoint
+## R87–R117 fixed-candidate compile and ownership checkpoint
 
 Live source observed at Semantica `6bab127740a3`; candidate source retains the
 R82 fixed topology and explicit later file captures. No coupled new source
@@ -96,6 +96,9 @@ bundle is integrated by this checkpoint.
 | R107 exact SourceWire pin/cancel test | Exit101 at twenty-three test-API diagnostics; source `879c1b8ccee26ec793b8388596d0e95bd2c8aeb4ed1196baeeb287dbd5757ec1`. | A lib test target compiles all fixtures before exact filtering; zero tests. |
 | R109 successor Kernel CHECK | Exit101 at five import/access-policy diagnostics; same source `879c1b8ccee26ec793b8388596d0e95bd2c8aeb4ed1196baeeb287dbd5757ec1`. | Previous R105 library errors pass their reached boundaries; zero tests. |
 | R111 exact SourceWire pin/cancel test | Exit0, owner GREEN, publication committed; one passed, zero failed/ignored, 235 filtered; source `82ce719bdd5c0538d87e81547d3927e86e2459565e50d2ad463ebc356949db07`. | Ordinary-pin refusal and prior-cancel preservation only; no first-FD positive or SDK execution verdict. |
+| R113 whole SourceWire contract target | Exit101, owner RED; 235 passed, one failed, zero ignored/filtered; same source `82ce719bdd5c0538d87e81547d3927e86e2459565e50d2ad463ebc356949db07`. | Stale absolute work-zero assertion in temporary backing test; whole target is not GREEN. |
+| R115 successor Kernel CHECK | Exit101 at two non-exhaustive `quanta-contract-error-shared` runtime-error mappings; source `82ce719bdd5c0538d87e81547d3927e86e2459565e50d2ad463ebc356949db07`. | Earlier SourceWire/PTA import/access-policy boundaries pass; zero tests. |
+| R117 whole SourceWire contract target | Exit0, owner GREEN, publication committed; 236 passed, zero failed/ignored/filtered; source `9f38002d01d6b44f0fb40074361f84f602fad03524cf0867e8437c3c30f499d1`. | Qualifies the compatible fixed SourceWire owner cut, not the newer live auxiliary/text closure or SDK first-FD ingress. |
 
 The root span-reader annotation preserves every foreign postimage byte outside
 its one closure parameter. Core DFG fact files already have active supplier
@@ -187,7 +190,7 @@ Compiler counts must not be recast as twenty-four confirmed current defects.
 Read-only owner resolution also fixes the next behavioral selectors in
 `r104-sdk-sourcewire-dfg-owner-selectors.json`: SDK first-FD QRA module (three
 expected tests), SourceWire ordinary-pin/prior-cancel case (one), and the
-existing SDK DFG keeper positive (one). No selector has executed yet. The DFG
+existing SDK DFG keeper positive (one). The SourceWire exact selector has executed in R111; SDK QRA/DFG selectors remain pending. The DFG
 fixture has an ordinary indexed pin and must not qualify first-FD authority.
 Retained digest byte parity still lacks an executed native fixture; shared
 serializer structure alone is not proof of native/ordinary digest equality.
@@ -218,6 +221,31 @@ are retained as `r111-fixed-sourcewire-pin-test-result.json` and
 digest and refund oracles still require the same-input contract target rail.
 The fixed candidate intentionally differs from the newer live auxiliary closure;
 this one-test GREEN must not be promoted to a moving-main or product verdict.
+
+R113 executes all 236 selected SourceWire lib cases. The single failure is
+`genuine_temporary_demand_authenticates_and_refunds_without_retained_growth_v3`:
+it asserts global work zero after admission construction already consumes 2+3
+units. Independent tracing and the existing exact +5 constructor regression
+confirm this setup charge. Temporary reservation/validation perform zero-work
+checkpoints; no product-cost defect is inferred. The authored correction records
+work immediately after admission and requires reserve, validation and drop to
+preserve it, while keeping exact temporary bytes/refund/final-zero assertions.
+The failed owner receipt and both logs are retained at
+`r113-fixed-sourcewire-contract-tests-result.json`. R117 captures the delta-only
+oracle correction as `r117-sourcewire-temporary-work-source-capture.json` and
+passes the whole target, 236/236 with no filtered or ignored tests. Run
+`20261008T051406.063709Z-4d48fd17b2d5` has matching committed central publication,
+retained in `r117-sourcewire-owner-publication-readback.json`; result and logs
+are `r117-fixed-sourcewire-contract-tests-result.json` and its stdout/stderr.
+The registry was initially pending despite an immutable completion marker;
+normal global QBC status maintenance reconciled it. No cache/registry was
+manually rewritten. Historical R113 remains RED on its own source.
+
+The remaining explicit 50k taint depth rail is resolved without execution in
+`r112-taint-50k-owner-readback.json`. The ignored integration target and separate
+same-named lib test must not be conflated. Its assertion is singleton count/size,
+with identity/order covered by existing smaller cases; logical SCC caps exclude
+caller graph storage and RSS. This resolve record is not taint qualification.
 
 ## Historical next-input observations
 

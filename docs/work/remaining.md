@@ -12,7 +12,7 @@ Parser hierarchy mounts and feature imports are integrated as Semantica
 The R77 observations below retain their historical input.
 
 Latest observed source: Semantica `3b8f86dd9ea7` plus separately claimed WIP.
-The R78–R111 candidate receipts retain their own fixed input; none establishes
+The R78–R117 candidate receipts retain their own fixed input; none establishes
 whole-main runtime completion. Native allocation core all-features CHECK is
 GREEN with committed QBC publication (R87, zero tests). DFG keeper and Kernel
 checks stopped in dependency compilation before cases. R93 passed the previously
@@ -34,6 +34,20 @@ pin refusal and preservation of a prior cancellation on source
 `82ce719bdd5c0538d87e81547d3927e86e2459565e50d2ad463ebc356949db07`.
 All CHECK outcomes execute zero tests; this one test is not whole-main or SDK
 qualification. SourceWire positive/material/refund coverage is a separate rail.
+That R113 whole target is RED: 235 passed, one failed, zero ignored/filtered.
+The failure expects global work zero after an admission constructor that already
+charges 2+3 units. Independent owner tracing confirms temporary reserve/validate
+adds zero work; its authored fix checks the operation delta against the setup
+baseline and preserves exact memory/refund assertions. The captured successor
+R117 whole SourceWire target is GREEN: 236 passed, zero failed/ignored/filtered,
+QBC publication committed, source
+`9f38002d01d6b44f0fb40074361f84f602fad03524cf0867e8437c3c30f499d1`.
+This proves that compatible fixed owner cut; its newer live auxiliary/text closure
+and actual first-FD SDK positive remain separate unqualified inputs.
+R115 Kernel CHECK advances beyond the SourceWire/PTA policy boundaries and
+stops at two non-exhaustive downstream runtime-error mappings. Their owner cut
+must preserve typed source/control/native reasons and categories; focused mapping
+regressions and successor Kernel CHECK remain pending.
 
 Latest authored checkpoint: R78–R85 on Semantica `d29ac508b4d` plus separately
 claimed WIP. Java FileId handoff now borrows the parser's authenticated member;
