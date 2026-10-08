@@ -281,3 +281,32 @@ counts cannot be summed with older sources into whole-main acceptance.
 
 No additional Shape/SCC traversal implementation is assigned. Remaining work is
 the coupled Native owner/caller cut and its actual owner/product evidence.
+
+## R79 root R117–R120 successor RCA
+
+[Current frozen results](execution-r79.md#r79-root-r117r120-lower-owner-closure)
+separate three completed lower owners from SourceWire's remaining fixture and
+higher Native producer work. No new Shape/SCC traversal defect was found.
+
+- Lock failure was missing dependency edges from committed sibling/trace
+  manifests, not a package-version conflict. Edge-only updates preserve every
+  package source/version/checksum; locked metadata now resolves.
+- SymbolUID's capacity test counted callbacks rather than checking the independent
+  grant/refusal invariant. R117 whole82 accepts the repaired oracle.
+- SourceWire's Original URI tests initially never reached birth: wrappers omitted
+  the genuine control loan. After forwarding it, the normalizer correctly selects
+  the actual issuer and bypasses an unauthenticated native override. The remaining
+  late-stop fixture therefore never cancelled. Inject at the genuine loan return;
+  preserve born capacity, first cause and final-group refund checks.
+- An ItemIndex positive fixture is blocked by actual SDK source, beyond a missing
+  test: original transition hydration and preparation explicitly refuse unpaid
+  generation decode/receipt copies. The exact-edit binder has no caller. Reusing
+  the Java parser's genuine target requires repairing that producer path before
+  issuing managed HirArgs/ItemIndexArgs; a synthetic issuer would hide the cause.
+- Original runtime trace and snapshot need checked non-Clone owners through
+  actual context, recorder, packet and memo consumers. A bare snapshot digest,
+  an ordinary RuntimeCtx copy or removal of the late fence grants no authority.
+
+Acceptance remains owner-scoped. New19-path snapshot and active trace/ItemIndex
+encoder changes need compatible frozen proof; existing digest GREENs do not
+qualify those later sources.

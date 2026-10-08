@@ -583,13 +583,18 @@ product gates still need execution on one compatible source tuple. See the
 
 ## R107 final proof checkpoint
 
-Latest successor: [R79 root R111](execution-r79.md#r79-root-r111-completed-owner-postflight)
-accepts Kernel579, Navigation13 and SourceWire OS-path1 on source `e3279f15ffcc…`.
-FCP-COMPILE remains BLOCKED_COMPILE: six compile RED scopes/five dependent NOT_RUN;
-their four reached causes have released repairs that need new-source proof.
-CHECKED-RETAINED-CONTROL remains open for canonical URI slots, paid trace/snapshot
-recording/finalization, coherent managed ItemIndex/join ownership, and genuine
-SDK→Parser/QRA→PTA positive/negative/refund execution. Source-ready is not accepted.
+Latest root successor: [R117–R120](execution-r79.md#r79-root-r117r120-lower-owner-closure).
+ContractIds82, ContractBase58 and value-carriers98 are whole-target GREEN on the
+recorded R117 source. R119 SourceWire was258/1; R120 accepts the genuine late-stop successor at259/259
+on frozen source `c4134fbcfb18…` with verified publication. R111's six compile RED/five NOT_RUN are
+historical, not current defect counts. FCP-COMPILE remains open until the full
+coupled producer/consumer closure is executed and integrated.
+CHECKED-RETAINED-CONTROL remains open for genuine SDK generation hydration and
+exact-edit binder issuance, managed ItemIndex fresh encode, paid trace/snapshot
+and packet/memo, and actual SDK→Parser/QRA→PTA execution. The minimal reachable
+managed parser profile is Java; upstream hydration currently refuses before
+TARGET issuance. Source-ready19-path snapshot and active trace work are not
+accepted by the earlier digest tests.
 
 R107's completed held-lease postflight accepts whole Kernel569/569 and recursive
 integration11/11 with committed QBC publication. Four other owners are RED at compile

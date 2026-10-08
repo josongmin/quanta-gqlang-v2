@@ -840,3 +840,79 @@ consumers are still a coupled active migration. Trace recording and snapshot
 finalization contain unpaid Original births before the late fence, so removing
 that fence cannot establish success. No Semantica WIP bundle is committed from
 these scoped results. Hosted CI, push and installed product proof are absent.
+
+## R79 root R117–R120 lower-owner closure
+
+Updated: 2026-10-09 KST. These root round IDs are independent of the numbered
+Source/caller campaign elsewhere in the packet. Semantica HEAD remains
+`3b8f86dd9ea7f94a2426277311037ea9d6480a6a` plus canonical captured WIP.
+All discovered Cargo siblings use committed HEADs. Original Shape/SCC source
+is already on main; this is the subsequently added Native/Original owner work.
+
+| Frozen source / request | Executed result | Publication |
+| --- | --- | --- |
+| R117 `45051e94534a32cd7008b7da2e0e65e58d1884e2ea3118cd6a1cba387ed346b5`, ContractIds whole lib/all features | GREEN82/82, zero ignored/filtered | Verified committed marker |
+| Same R117 source, ContractBase whole lib/all features | GREEN58/58, zero ignored/filtered; includes independent trace hash/fixed-scope byte oracles | Verified committed marker |
+| Same R117 source, R118 value-carriers whole lib/all features | GREEN98/98, zero ignored/filtered; includes streaming snapshot digest oracles | Verified committed marker |
+| Same R117 source, SourceWire whole lib/all features | RED256/259: three fixture setup authority refusals | None |
+| R119 `15f37055730a9933d8bb86c9ff8e0eab16e15918787ce27b93e294aa54c8f8ea`, SourceWire whole lib/all features | RED258/259: one late-refusal fixture does not inject cancellation into authenticated dispatch | None |
+| R120 `c4134fbcfb1892ab16b28abf6677ece290194e90b8a0ee7c83f1b41dd6e2d261`, SourceWire whole lib/all features | GREEN259/259, zero ignored/filtered | Verified committed marker |
+
+R117 postflight SHA-256 `3cdf53e60097560009ffe3a1ce1dfd81c963f6ef0f214f9735cb2c15fa2d4bc2`
+has independent24-file archive readback. R118 postflight
+`1aebe2458999f84d4e030b5e492c44a5b5a5dd2635f11b7221fe29696cd744b4`
+has independent9-file readback. R119 postflight
+`d6ad80c41bc6d0ba70e1248c6c891fd8033d25522a92a0c3d3fc6387e26250a6`
+has independent8-file readback. R120 postflight
+`ffaa22f6d217be8205b1385991c6da0dfd900be3378a3001483cb8cf57437cb4`
+has independent9-file readback. Every run uses frozen resolver inputs, the bound
+owner lane, a held snapshot lease and final source/custody validation. Evidence:
+`/Users/songmin/.codex/task-evidence/oct8-closeout-execution-r79/`.
+
+Reached causes and owned successor cuts:
+
+- R113 locked resolution refused before tests. R114 adds the committed Index SDK's
+  missing `ciborium`/`sha2` lock edges; R117 adds PortObservability's two trace
+  dependency edges. Package versions, sources and checksums remain unchanged.
+- R115 SymbolUID81/82 failed a stale callback-count fixture after a real zero-work
+  checkpoint was added. The oracle now checks the exact grant and no emission
+  after refusal; R117's whole82 result accepts it.
+- SourceWire's denied unused imports are removed at their owners. R117 reaches
+  all259 tests, replacing that compile blocker with three actual fixture failures.
+- R118 forwards the actual issued HRTB control loan instead of default refusal.
+  R119 accepts Unicode/foreign-group and vector late-refusal cases. Its remaining
+  URI probe uses an unauthenticated override correctly bypassed by canonical
+  dispatch. R120 injects cancellation only after a genuine owner loan returns
+  with an increased actual ledger; external slot capacity/refund oracles remain.
+- Call graph/DFG asynchronous readers now retain the canonical ordinary ItemIndex
+  owner across await. Original rejects before DTO exposure. Its regression and
+  the managed ItemIndex chain still need compatible owner execution.
+
+Current implementation boundaries, without inferred acceptance:
+
+1. Managed ItemIndex/HIR producer and wrapper use one atomic retained backing;
+   the reachable minimal profile is Java `src/A.java: class A {}`. Python is
+   explicitly unsupported. Genuine TARGET issuance is blocked upstream by SDK
+   `hydrate_exact_transition_pair_original_v3` and preparation's explicit
+   `UnsupportedAllocation`; `bind_original_exact_edit_target_v3` has no caller.
+   Paid decode/evidence/build-context issuance and its actual binder caller are
+   required before an authentic ItemIndex positive test can run.
+2. ItemIndex's fresh encoder must receive the coowner's external nine-phase birth
+   API. Full errors, partials and retired buffers must outlive highest Source
+   loans. This is active source migration, not a passed runtime claim.
+3. Trace has accepted canonical digest folds and released admitted guard cleanup.
+   The concrete paid TaskLocal stack/context producer is still active WIP.
+4. A separate19-path snapshot packet wires actual selected FileText B into a paid
+   A recorder, checked opaque snapshot and genuine SDK literal regression. It is
+   source-ready, not executed. R118 only accepts the earlier streaming digest,
+   not this later recorder or full executor success.
+5. Trace/snapshot/output packet, ephemeral read authority, persistence and memo
+   still require one compatible admitted carrier cut. The post-query Original
+   fence remains. Historical R111 compile REDs are retained as historical inputs;
+   their repairs are not whole-current-main acceptance.
+
+QGLang non-document source is unchanged since `just ci` GREEN at
+`67377d561da8428b8abec7214ef5e3da46922d46`; current exact-HEAD CI is not claimed.
+No Semantica partial WIP bundle is staged or committed by this root. Local-main
+source integration, installed Linux CHECK/product proof, hosted CI and push
+remain distinct; hosted execution and push are not requested.

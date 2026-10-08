@@ -304,3 +304,22 @@ remains separate.
   held-lease postflight, then coordinate compatible local-main integration.
 
 [Exact current scoped proof and remaining boundaries](execution-r79.md#r79-root-r111-completed-owner-postflight).
+
+## R79 root R120 dispatch successor
+
+- Root: close SourceWire's one reached genuine-loan fixture; freeze and run only
+  affected owners, then independent archive/publication readback. Preserve
+  GREEN@R117 ContractIds82/ContractBase58 and R118 value-carriers98 with delta
+  boundaries. Narrow QCP/snapshot proof may proceed before unrelated trace WIP.
+- A: finish concrete paid TaskLocal stack and checked Original RuntimeCtx owner;
+  release coherent start/record/finalizer source. Keep packet/memo fence intact.
+- B: receive canonical external nine-phase fresh encode at ItemIndex's actual
+  lender path. Reuse existing managed HIR phase enum; keep full errors/retired
+  buffers outside highest Source. Genuine Java positive requires SDK hydration,
+  evidence/build context and an actual exact-edit binder caller first.
+- C: released19-path selected FileText/snapshot source and actual SDK regression;
+  review highest-loan error custody, then qualify the compatible owning closure.
+  Full snapshot packet/persist/memo receiving depends on A's trace contract.
+- Integration: no partial Semantica Native commit. Review released postimages,
+  freeze the complete compatible closure, run affected owner rails, then serialize
+  local-main integration. Installed product acceptance remains separate.

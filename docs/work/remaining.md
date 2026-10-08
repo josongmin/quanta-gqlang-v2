@@ -1,19 +1,35 @@
 # Remaining work
 
-Updated: 2026-10-08. Current RCA input: clean QGLang `b8dd3c29e43a`,
+Updated: 2026-10-09. Historical R77 RCA input: clean QGLang `b8dd3c29e43a`,
 committed Semantica `f574fa82bf1` and separately inventoried moving WIP.
 The [R77 RCA](../plans/oct-6-substrate-dedup/rca.md) owns the cause/dependency
 analysis; this file owns the 18 active states.
 
-Latest root proof: [R79 root R111](../plans/oct-6-substrate-dedup/execution-r79.md#r79-root-r111-completed-owner-postflight),
-Semantica `3b8f86dd9ea7` plus frozen WIP digest `e3279f15ffcc…`, committed
-sibling HEADs. Kernel579, Navigation13 and SourceWire OS-path1 are GREEN with
-verified publication; six scopes compile RED and five are NOT_RUN. All67 archive
-hashes match. Four reached compile causes have released repairs after that
-snapshot, not new accepted results. Original Shape/SCC implementation is already
-on main; broader Native/Original completion remains open for URI-slot proof,
-managed ItemIndex/join ownership, paid trace/snapshot owners and genuine SDK PTA
-execution. The historical checkpoints below retain their own inputs and scopes.
+Latest root proof: [R79 root R117–R120](../plans/oct-6-substrate-dedup/execution-r79.md#r79-root-r117r120-lower-owner-closure).
+On frozen source `45051e94534a…`, whole ContractIds82, ContractBase58 and
+value-carriers98 are GREEN with verified publication and archived postflight.
+SourceWire R120 successor `c4134fbcfb18…` is whole-target GREEN259/259 with
+verified publication and independent9-file archive readback. It accepts the
+genuine-loan late-cancel, born-capacity and refund regression.
+The older R111 compile failures retain their historical input; they are not a
+current live defect total. Original Shape/SCC source is already on main.
+
+Current required implementation/proof, within the existing tickets:
+
+- Receive ItemIndex's external fresh-encode ABI; retain full errors and partials
+  outside highest Source, then execute the coupled managed output/reader scope.
+- Repair genuine SDK Original generation hydration/evidence/build-context and
+  install the exact-edit binder caller. It currently refuses before Java TARGET
+  issuance; no synthetic positive fixture substitutes for this producer.
+- Finish actual paid trace/context producer. The19-path selected FileText paid
+  snapshot successor is source-ready and needs compatible owner/SDK execution.
+- Carry admitted trace/snapshot/output through packet, ephemeral authority,
+  persistence and memo; keep the Original fence until the complete cut is ready.
+- Freeze affected owners, validate publication/custody, integrate the complete
+  local-main bundle, then run separate installed Graph/CHECK product gates.
+
+The historical checkpoints below retain their own sources and scopes. No hosted
+CI or push is part of this local-only work.
 
 Latest local repairs, integration and frozen owner outcomes are in the
 [R79 onward execution record](../plans/oct-6-substrate-dedup/execution-r79.md).
