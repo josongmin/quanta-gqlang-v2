@@ -6,8 +6,14 @@ All execution is local. [R77 RCA](rca.md) owns cause analysis;
 owns current states.
 
 Executed handoffs, source custody, serial main integration and owner outcomes
-are in [R79–R81 execution](execution-r79.md). The capacity/error observations
+are in [R79 onward execution](execution-r79.md). The capacity/error observations
 below are planning history; three replacement workers executed A/B/C afterward.
+
+Actual independent work accepts four R87 SCC scopes106 and the R88 Foundation
+exact test1. A's complete feature-policy correction is integrated serially on
+Semantica main as3b8f86d. B observes an existing descriptor-mount owner and avoids
+a competing edit. The single heavy-build queue runs parser/F2 successors on
+captured inputs; failed prerequisites do not erase independent accepted scopes.
 
 ## Planning inputs and capacity
 

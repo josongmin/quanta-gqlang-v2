@@ -14,6 +14,11 @@ separate states. The [R77 RCA](rca.md) retains its original inputs.
   search-evidence change) and QGLang to `753a2054f637` (nine-document checkpoint).
   The parser repair remains an ancestor; subsequent proof captures bind their
   own HEAD/overlay/sibling tuple. Neither external commit is this queue's test result.
+- Later coowner commits `6e77122b888` (canonical callsite reads/equality) and
+  `109fd7575d2` (Python exception proof) are observed separately. The new Native
+  crate still has zero committed files at `109fd7575d2`; its compatible supplier
+  and consumer packet remains WIP. R87 execution retains its original `6bab`
+  snapshot rather than borrowing these later commits' identity.
 - Other Semantica changes remain separately claimed shared WIP. Their source
   presence is not a main commit or current qualified result. Compatible reads
   below record particular files; only the leased snapshots bind execution inputs.
@@ -30,9 +35,48 @@ separate states. The [R77 RCA](rca.md) retains its original inputs.
   required sibling code overlays and Semantica WIP remain captured. Exact
   materialization validation and the execution lease are retained. This selects
   a different declared input; it does not qualify the excluded document WIP.
+- R86 rejects a changing `quanta-index` overlay before issuing an owner input.
+  The successor R87 selects the normal committed-HEAD policy for every discovered
+  sibling: QGLang `0bde21d855b17f9c22bee6f1bb679195b4dbff0f` and Index
+  `703d0e6899599ab4ab69c051089a9e4eda497ab0`, both with empty overlays.
+  Semantica remains a complete guarded WIP capture at `6bab127740a3`.
+  This different input excludes sibling WIP; it is not its qualification.
 - Evidence root: `/Users/songmin/.codex/task-evidence/oct8-closeout-execution-r79/`.
   The normal lane is `gqlang-closeout-r79-snapshot-artifact`, one heavy owner at a
   time in this execution queue. Source drift rejects a mixed input before tests.
+
+### QGLang repository gate
+
+`just ci` passes on clean committed `67377d561da8428b8abec7214ef5e3da46922d46`
+in a managed verification worktree. The local CI source digest is
+`c57fce68aa7b5df516bae61178fc8f7f706895515aa263b027e541e84b3528c4`.
+Doctor, offline external-consumer preflight, static, test and policy all pass.
+Nextest discovers/selects/executes/passes 1,514 cases with zero failures,
+ignored cases or leaks. Current Clippy and MSRV Clippy are included in static;
+the size gate checks 283 Rust files. The external facade executes its one
+positive program and all 23 negative cases, with 156/156 pinned public API roots.
+
+The earlier mutable-main attempt exits2 because the document source changes
+during static; its partial leaves are not a passing repository gate. The clean
+worktree successor exits0, validates the current-run Nextest stream and is then
+archived. Its log, inventory, events and hashes are retained outside the worktree
+in `qglang-ci-67377d5-receipt.json`. This is QGLang local CI acceptance at that
+HEAD, not downstream Semantica or installed product acceptance.
+
+## Original Shape/SCC objective on main
+
+Read-only caller tracing at Semantica `3b8f86dd9ea` confirms the original
+deduplication and ownership change is committed. Runtime heap analysis reaches
+`ShapeAnalyzerPort` and the Shape adapter's PTS/component classification; its
+graph facade reexports `codegraph-graph-scc`'s bounded iterative Tarjan owner.
+PTA Andersen, the PTA SCC adapter and abstract worklist also call that core.
+These implementation paths have no live diff against main. The separate dirty
+Shape port refusal projection belongs to an existing runtime-custody claim.
+
+Thus no additional Shape/SCC traversal implementation is assigned. Pending
+owner acceptance, Native/Original publication and product qualification below
+are separate completion obligations; they do not mean the committed dedup
+source is missing. Source tracing alone supplies no runtime verdict.
 
 ## Actual parallel work and integration
 
@@ -44,6 +88,10 @@ separate states. The [R77 RCA](rca.md) retains its original inputs.
 | A / paid row type | Public opaque nominal `PaidBoolRowsV3<T>` for the sealed storage trait's associated type | Authored after R82 `E0446`; private fields and domain-only constructors/loan methods retained; leaf format/diff PASS |
 | A+B / facts compile | Canonical FileId error import, two value-loan lifetimes and receiver checkpoint's typed unpublished-refusal mapping | Authored after R83; leaf formatting/whitespace checks PASS; general producer/output proof still open |
 | A+B / core DFG compile | Existing sibling read import, common internal reader visibility and canonical `UnsupportedOperation` refusal | Authored after R85; companion Source/Dynamic rejection test corrected with zero-birth and cancellation assertions preserved; successor owner proof required |
+| Coowner / core DFG nominal | `OriginalDfgIdPathV3` becomes an opaque public nominal, retaining private fields and internal methods | Live successor of R87 `E0446`; B observes the existing exact claim/source repair and adds no competing edit |
+| A+B / contract types | Constraint sibling comparator visibility, current five-argument callback completion, and three precisely typed cursor callbacks | Authored after parser-no-Java R87's nine diagnostics; leaf format and affected boundary policy PASS; successor compile required |
+| A / test relationship | Exact synthetic retrieval wire and Source path assertions precede the existing positive Arc-demand checks | Scoped Honesty16/16 and exact Foundation owner1 pass; the source belongs to the coupled Native WIP packet |
+| A+I / feature policy | Remove redundant Python-search floor root, reuse the exact three-root isolation class, retain parser activation guard and synchronize its registry/inventory | Seven-file HEAD-only candidate verified and integrated on local Semantica main as `3b8f86dd9ea`; foreign manifest bytes preserved |
 | B / Original | Readback of authenticated member handoff, admitted relation/index/prepared rows and remaining final refusals | Existing coowner progress verified statically; no duplicate producer or fabricated grant added |
 | C / consumer | Nine exact SCC/F2/F7 owner requests resolved; SDK2/community2 and eleven SCC scopes reconciled | `RESOLVED_ONLY`; no test acceptance inferred |
 | C / lock | Root and nested lock add the existing DFG package to SDK executor's dev-dependency list | Exact one-line delta each; full locked metadata PASS; coupled manifest WIP not separately committed |
@@ -86,11 +134,20 @@ Its required witnesses are
 | R83 / `f7b6f8d91a73780e7a8ef5574d34c28a74555bbb9816ed7609fe88d9325e15fc` | Finished RED, exit101, zero tests | Passed CFG prerequisites; facts crate reaches one canonical import, two borrowed-projection lifetimes and one typed checkpoint-error conversion; A/B repairs authored in disjoint owning hunks |
 | R84 / no issued owner input | Source capture rejects, exit1; compiler not started, zero tests | External QGLang document overlay changed after capture; `source-capture-r84-failure.json` records the rejection; successor chooses committed frontend input |
 | R85 / `68024eb04f3f7413dbf08f92b7d15d7a5bb3db3f9c4076f91262962664366a7c` | Finished RED, exit101, zero tests | Committed frontend capture succeeds; facts compiles. Core DFG reaches internal read import/visibility and a nonexistent native refusal variant; three repairs authored, companion test expectation follows the canonical enum |
+| R86 / no issued owner input | Source capture rejects, exit1; compiler not started, zero tests | Index overlay changes after capture; successor uses normal committed sibling inputs, preserving exact validation |
+| R87 F2 / `70945899e8f1ef1ea343d138a38646aff84cc7488631e326e2bedc38d8865bc5` | Finished RED, exit101, zero tests | Earlier repairs pass; Core DFG reaches one restricted nominal associated-type leak (`E0446`); existing coowner repairs the live successor |
+| R87 parser no-Java / same source digest | Finished RED, exit101, zero tests | Independent owner reaches contract-types: comparator scope, stale three-argument callback completion and three callback loan generalities (nine diagnostics); A/B repairs authored |
+| R88 Foundation / `7c072270d830bff173ad5e07291f281d36275178795e52458aac3db5258fefe9` | Published GREEN, exit0, exact required test1 | Fixed-wire and Source semantic assertions execute with the existing positive Arc-demand checks |
+| R88 parser no-Java and F2 / same source digest | Finished RED, exit101, zero tests each | The previous contract-types and DFG nominal compile blocks pass; both reach three filesystem descriptor module mounts (`E0583`). Their existing exact coowner adds explicit parent/child paths in the live successor |
+| R89 parser no-Java / `3e7bccb294d9a229d49883c000938667e2506bd7c9a9f7d3cde1b3a632b763ca` | Finished RED, exit101, zero tests | Descriptor mounts pass; SourceWire reaches four import/unused/projection-Clone diagnostics |
+| R89 F2 / same source digest | Finished RED, exit101, zero tests | Its broader feature closure reaches18 SourceWire diagnostics: module/constant/native-owner imports, one missing local, callback bounds, shared-payload generic error mappings and work-charge type, plus overlapping parser diagnostics |
 
-Each run has its own `f2-native-owner-rNN.json`, `owned-proof-results-rNN.json`
-and archived stdout/stderr. No required witness ran. These are compile failures,
-not registry, Preview or deadline behavior failures. Dependent parser checks are
-not launched after a failed first owner. The parser no-Java request is
+Each F2 run has its own `f2-native-owner-rNN.json`, `owned-proof-results-rNN.json`
+and archived stdout/stderr. No required F2 witness ran. These are compile failures,
+not registry, Preview or deadline behavior failures. R79–R85 stop the sequence
+after the failed first owner. R87 also runs independently owned parser and SCC
+requests on the same leased input, preserving each scope's result. The parser
+no-Java request is
 `f3e26abbbf692f6d7ce8b84d44a5d9e2`; all-features is
 `d3e8b5e5b2506be77ba2660c4b36afc4`.
 
@@ -106,11 +163,145 @@ The root lock postimage is `622c2e7e9a3bade55c4165d6a5f2b37d56ac0ee8d7e80a7cdbec
 nested is `333b6a66f51634a438acde73ae836f8ce4d096d520c5f2a4d768ba5f6d293a7d`.
 R77's no-deps metadata result did not establish this full resolution.
 
+### Source-bound policy checks
+
+The narrow Honesty regression first rejects the fixed-backing test's generated
+retrieval value because it is never asserted. The additive semantic identity
+assertions preserve all existing Arc-demand checks; Honesty then passes16/16,
+exit0, with 70 selected path/config hashes stable before/after
+(`6b18b5403ee52277e0489174eff6ebc720c9b06c2e76188eb6265594cb34f319`).
+The exact reachable Foundation test request is
+`547b318cdbdcb2d856aaeb46fdb26728`, lib/exact/package-all-features.
+R88 executes and passes its one required test, with zero failed/ignored cases.
+`owner-postflight-r88.json` independently validates the normal lease/custody,
+exact projection, source digest, witness, finished authority and immutable
+publication marker. Its SHA256 is
+`4891c87427e9ba3e0aa9b79c4e2a37f68e490ba2abc3ae457352f6db6df172f6`.
+The two RED compiler receipts have no publication-complete marker; they are
+archived as failed diagnostics and are not accepted owner scopes.
+
+Stable scoped checks also pass six impacted build-phase boundary policies,
+feature coverage and the one registered serde edge (80 selected inputs), and
+GOD checks for24 Native/core/facade plus13 Shape/SCC files (46 selected inputs).
+The two contract-types source fixes pass seven affected build-phase boundary
+policies. These are source/static checks, not compiler or product acceptance.
+`supplier-policy-{gates,god,honesty,selected-inputs,claim}-r87.json` retains the
+exact arguments, selected manifests and claim record as a session-output
+transcription, explicitly not a QBC receipt.
+
+The language-substrate literal/build backstop passes; its authoritative
+Cargo-tree gate/test phase is not run. The root-test topology command selects
+no governed files here and supplies no proof. Required-feature-floor vacuity
+initially exits2 for the SDK Python search test on both WIP and committed HEAD.
+The redundant direct floor root is repaired as a separate complete policy bundle:
+`search-runtime` already reaches `parser-python` and the floor transitively.
+The before/after local feature closure is exactly83/83; the existing registered
+three-root class remains equal to Cargo's required features. Both integration
+and subtest dispatch links are retained. The new guard rejects removal of the
+transitive parser edge instead of requiring a redundant root.
+
+The seven-file isolated HEAD candidate passes floor-vacuity33 and guard6 tests.
+Live selected casectl tests pass2; the isolated archive passes1, while its
+metadata-dependent test is NOT_QUALIFIED because archived sibling topology is
+absent. Static target/link resolution passes2 with zero unresolved links.
+No search Rust execution or feature fan-in reduction is claimed.
+Normal shared-main source-commit integration creates `3b8f86dd9ea7f94a2426277311037ea9d6480a6a`;
+exact-index Ruff, staged integrity and safety hooks pass. All seven live
+postimages remain byte-identical, including excluded foreign runtime feature
+and dev-dependency hunks. `policy-integration-postflight-r88.json` retains the
+append-only commit attestation and preservation hashes. Whole-repository
+Semantica policy acceptance remains incomplete.
+
+## Independently accepted SCC scopes
+
+On the same R87 frozen source digest, core CFG30, concurrency domain6 and
+concurrency engine38 pass with zero failures/ignored cases. The postflight
+verifies all74 required prior witness names, distinct run IDs, exact owner
+projections and immutable publication marker/receipt hashes while holding the
+normal snapshot lease. `c-independent-postflight-r87.json` has SHA256
+`20affed23adf428087a88f5007c1e15aeee2f0cc3933c8cf27f71e72b000d940`;
+`c-independent-r87-archive/manifest.json` preserves their logs and receipts.
+These three scopes are GREEN at this input; this is not product qualification.
+
+Import graph32 also runs independently and passes on the same R87 input. Its
+receipt SHA256 is `2cfa67568530f47dbe2e6a0a6f3ab3aa4d87fcb74f51a7c7e6a389970f0c685e`;
+`c-consumer-run-r87-import-graph/state.json` verifies all32 prior witnesses,
+minimum count, exact owner projection and immutable publication. Four accepted
+SCC scopes total106 executed tests, with no failed/ignored cases.
+
+The later continuity scan to live `109fd7575d2` finds matching selected compile
+inputs for core CFG/domain/engine, with only a transitive Foundation cfg(test)
+file changed. This is scoped source continuity, not a new GREEN run. Import
+graph's closure changes at the language-plugin output-admission boundary, so its
+R87 success is not transferred to current WIP. Metrics14 and the other seven
+queued scopes still need their own successor owner results; unrun targets stay
+NOT_RUN rather than RED.
+
+The changed import-graph dependency/source gets a new R89 run and passes32,
+with all32 prior required names, zero failed/ignored cases and immutable
+publication validated. `c-consumer-run-r89-import-graph/state.json` preserves
+its exact queue/source/witness projection; the new receipt SHA256 is
+`637498442b7e1555c724454b39fab16db9226fdd360a76cbda3f9f9dfbcb49fc`.
+This supersedes import-graph's older input for that scope without combining
+unexecuted metrics/rule/runtime owners into its verdict.
+
+### R89 successor input
+
+After policy integration, R89 captures Semantica `3b8f86dd9ea` plus its complete
+guarded WIP and committed siblings QGLang `ec196f60e8b0` / Index `9a47d86a5cd0`.
+The topology identity is
+`3b8f86dd9ea7f94a2426277311037ea9d6480a6a+ovl-303ae30a997cb629c3c0ec9025c4f50e+ext-c3fd5f77c68e6c60d09a`.
+Its parser/F2 runs and postflight retain a normal lease. Results are not accepted
+until the finished source-bound receipt, publication and required witnesses agree.
+
+Parser no-Java finishes RED101 with zero tests after passing the descriptor
+mounts. The reached SourceWire diagnostics are an obsolete capacity import,
+two unused reexports/imports and a projection's ordinary Clone derive over a
+deliberately non-Clone generation authority. Current source must be reconciled
+with existing writers; adding ordinary Clone to authority is not a repair.
+The 12 consumer requests are re-resolved on this exact frozen input and preserve
+all request IDs, complete projections, minima and required witness names.
+`c-frozen-consumer-queue-r89.json` binds its HEAD, topology and every sibling SHA.
+Resolve success remains distinct from execution.
+
+Both R89 owners finish RED with zero tests. `owner-postflight-r89.json` has
+SHA256 `2d543539a17577925c42f98a42108bc78dc70d441fdf940ecac4989534433fb5`;
+the failed receipts/output pairs are archived without a GREEN publication
+claim. The broader F2 input reaches18 diagnostics, not the parser's four.
+
+Current coowners remove the obsolete import, unused classifier import and
+projection Clone derive. B scopes the remaining text-copy reexport to
+`original-repository-fd-capture-v3`, matching its only caller; leaf format and
+diff checks pass. The authority remains non-Clone. Its owning postimage is
+`ed7cba0afb3d661d9b2bc97b6cb5964ea7d133f268227f23cba5f57af2d646d3`.
+These authored fixes require a new input and compiler result.
+
+Feature-aware locked/offline trees on this frozen input show import graph
+avoids SourceWire, while metrics/rule/current-target/navigation/community/F7
+all reach it. `c-tree-r89.json` binds exact argv, selected package manifests,
+root/lock and output hashes. It routes the next execution rather than treating
+dependency reachability as a passing or failed test.
+
+The remaining broader F2 diagnostics are also absent from inspected current
+postimages: explicit header mount/mapped births, canonical native dependency,
+fixed receipt size and magic-constant paths, adapter callback loan bounds,
+explicit pin/shared-payload error transport and checked usize-to-u64 work charge.
+The header child's use of `Cause` makes its parent import necessary; its old
+unused diagnostic follows the missing module and must not trigger deletion.
+A/B preserve existing owning edits rather than add duplicate fixes.
+The manifest subtree's unrelated existing rustfmt differences remain; they are
+not hidden by the leaf checks or formatted over foreign WIP.
+
+R90 captures those compatible current postimages for parser/F2 successor proof.
+Its own source identity/results stay separate from R89's failed diagnostics.
+No full Native or Original source packet is integrated from this readback.
+
 ## Current Original source boundary
 
 The [proof handoff](../../work/substrate-repair-checkpoints-2026-10-07.md)
 keeps independent historical and coowner source observations separate.
-The B-lane fresh readback at `d29ac508` distinguishes these authored parts:
+The B-lane readback at `d29ac508`, refreshed against `6bab127740a3` and its
+current overlay, distinguishes these authored parts:
 
 - Parser `original_inputs_v3.rs` lends path/source/Tree C/semantic projections/
   authenticated FileId/output from the same member. DFG
@@ -141,6 +332,16 @@ It does not prove the general callable, DFG source-world/Tree C or PTA transacti
 Wrapping already allocated ordinary results or dropping rows cannot close these
 boundaries. Preserve first typed refusal and publish no partial output.
 
+The latest source readback also confirms that runtime and SDK use the current
+four-argument native workspace API; the earlier external `members_v3` mismatch
+does not apply. The generic `FactExtractionRequestV1` and
+`DefUseFactsParseContextV1` still carry only `current_control_v1`, and their
+extractor returns ordinary `DefUseFactsV1`. General admission/keeper propagation
+therefore requires a coupled producer/consumer API change. Existing first-facts,
+retained-syntax, facts-storage, source-world, Java-callable and PTA transaction
+claims cover those seams; this queue does not install a second authority issuer
+or treat refusal deletion as a success implementation.
+
 ## Remaining execution and completion criteria
 
 1. **FCP-COMPILE / P0:** repair only newly reached owning compile causes; capture
@@ -156,8 +357,11 @@ boundaries. Preserve first typed refusal and publish no partial output.
    publication hashes: dominance3 and worklist77 match pinned committed `d29`,
    with no external path dependencies. Rule34, concurrency engine38/domain6,
    metrics14, import graph32 and core CFG30 have changed IR-build dependency
-   closure and require successor owner proof. This continuity does not qualify
-   moving WIP or later `6bab`. Existing accepted core/facade and scoped
+   closure at that older checkpoint. R87 now supplies accepted successors for
+   core CFG30, concurrency domain6/engine38 and import graph32; rule34/metrics14
+   remain open, and import graph needs revalidation after its later admission
+   dependency change. This older continuity
+   does not qualify moving WIP or later `6bab`. Existing accepted core/facade and scoped
    D4/D5 are not reassigned as source repairs.
 4. **Policies and product:** run affected mandatory gates and receipt-bound real
    Graph/CHECK process oracles. Positive installed CHECK requires release-owned

@@ -15,7 +15,7 @@ not defects or prerequisites for these tickets. Paths below are relative to
 Semantica; `core/` means `packages/core/`, `qv2/` means
 `packages/analysis/quanta-v2/crates/`.
 
-Latest repair, integration and owner results: [R79–R81 execution](execution-r79.md).
+Latest repair, integration and owner results: [R79 onward execution](execution-r79.md).
 R77 source/diagnostic RCA and execution order: [R77](rca.md). Historical
 observations below keep their original inputs. Core20/facade1 are accepted on
 the fixed f574 tuple; current WIP compilation is not accepted.
@@ -25,6 +25,11 @@ Its write boundaries and actual capacity constrain parallel execution; ticket
 assignment alone does not transfer another owner's files.
 
 ## Queue and state snapshot
+
+The original Shape/SCC dedup source and owner routing are committed on main;
+no additional traversal implementation is assigned. Rows below retain their
+acceptance/publication obligations and the subsequently added Native/Original
+scope. Implementation, frozen owner proof and product qualification are separate.
 
 | ID | Priority | State | Remaining kind / owner |
 | --- | --- | --- | --- |
@@ -38,12 +43,12 @@ assignment alone does not transfer another owner's files.
 | D1-PROOF | P1 | INCOMPLETE | Shape factory/SDK/features; adapter + consumer owners |
 | D2-PTA-PROOF | P1 | INCOMPLETE | Core20/facade1 accepted; PTA/Andersen/runtime consumer proof remains |
 | D2-TAINT-PROOF | P1 | INCOMPLETE | Taint domain/public contract and 50k depth owner |
-| D2-CALLER-COVERAGE | P1 | PROOF_PENDING | Eleven additional SCC consumer scopes; added by this audit |
+| D2-CALLER-COVERAGE | P1 | PROOF_PENDING | R87 core CFG30/domain6/engine38 accepted; changed import graph32 reaccepted atR89; rule/metrics/current-target/navigation/community and final-input continuity remain |
 | D3-PROOF | P1 | INCOMPLETE | PortDFG MemSSA and taint promotion |
 | D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
-| SUBSTRATE-POLICY | P1 | INCOMPLETE | Affected feature/topology/Honesty/GOD policies |
+| SUBSTRATE-POLICY | P1 | INCOMPLETE | Scoped Honesty/GOD/boundary checks pass; Python-search floor policy bundle integrated as3b8f86d; whole affected policy closure remains |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P0 | BLOCKED_COMPILE | Parser repairs integrated; native supplier/caller migration remains WIP; frozen F2 passes facts and reaches core DFG internal scope/refusal projection |
+| FCP-COMPILE | P0 | BLOCKED_COMPILE | Native packet remains WIP; frozen R89 parser/F2 reach SourceWire4/18 diagnostics with zero tests; owning successors are authored separately, current broad compile acceptance remains |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |

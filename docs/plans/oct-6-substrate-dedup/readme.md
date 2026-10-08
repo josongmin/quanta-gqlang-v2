@@ -6,23 +6,36 @@ recorded in the R49 update below and the
 No product qualification is claimed.
 Updated: 2026-10-08.
 
-Latest local execution is the [R79–R81 closeout record](execution-r79.md).
+Latest local execution is the [R79 onward closeout record](execution-r79.md).
 Two parser repairs are integrated on Semantica `main` as `d29ac508b4d`;
 the native allocation supplier and Original publication changes remain WIP.
 The [R77 root-cause analysis](rca.md) retains its historical input. There are 18 active IDs,
 plus resolved QG-DIAG and scoped accepted D4/D5. Fixed-tuple SCC core20/facade1
-and abstract worklist77 are accepted. The parser's 105 diagnostics, live source
-capture rejection and unfinished Original output are separate causes. R76's
-manifest alias is repaired in WIP; R77 metadata succeeds, but current compilation
-and SDK execution remain unqualified.
+and abstract worklist77 retain their accepted input. R77's 105-parser-diagnostic
+inventory, subsequent source-capture rejection and unfinished Original output
+are separate causes. Later owning compile repairs and full locked metadata are
+recorded in the current execution record. QGLang's local `just ci` passes at
+`67377d5`; downstream compilation and SDK execution remain unqualified in this run.
+
+R87 separately accepts core CFG30, concurrency domain6/engine38 and import
+graph32 on one frozen WIP tuple. R88 accepts the exact Foundation regression1;
+parser/F2 reach descriptor module mounts after the earlier owning compile fixes.
+The independent seven-file Python-search feature policy is integrated on local
+Semantica main as `3b8f86d`, with the same83-feature closure and parser guard.
+The Native/Original source packet and downstream product qualification remain open.
+
+The original Shape/SCC implementation and owner cleanup are already committed
+on Semantica main: runtime Shape, PTA Andersen/adapter and abstract worklist
+reach the canonical iterative SCC core, with no live diff in those implementation
+paths at3b8f86d. Remaining proof and Native/Original work are tracked separately.
 
 The [R78 parallel dispatch](parallel-dispatch.md) splits work into one integrator
 and three existing-owner slots: supplier/contracts, Original producer/analysis,
 and independent consumer/oracles. It maps all18 active IDs to dependency waves,
 exclusive write sets, immutable capture and one heavy Rust build queue. Existing
 child-agent errors describe the planning input. Three replacement workers
-executed supplier, Original and consumer lanes in R79–R81. Local-main integration is serial per complete
-compatible bundle.
+executed supplier, Original and consumer lanes from R79 onward. Local-main
+integration is serial per complete compatible bundle.
 
 ## Current remaining audit — R77
 
@@ -39,7 +52,8 @@ publication and the general facts output admission. SDK2/community2 and the
 no-Java export correction are prepared cuts awaiting proof and integration.
 No further language migration, SCC core implementation or local-ledger dedup is
 assigned. Hosted CI, automatic fuzz scheduling and A-series features remain outside
-this queue. This turn's RCA performs static/receipt analysis and metadata only.
+this queue. R77's RCA performs static/receipt analysis and metadata only; the
+successor execution record contains actual owner attempts.
 
 ## Current remaining audit — R74
 

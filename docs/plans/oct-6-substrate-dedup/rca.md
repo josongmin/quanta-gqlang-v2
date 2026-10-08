@@ -4,12 +4,31 @@ Updated: 2026-10-08. This records the R77 cause and dependency map for the
 [18 active tickets](tickets.md). [Remaining work](../../work/remaining.md)
 owns their states. All execution is local.
 
-Successor repairs and actual runs are recorded in [R79–R81 execution](execution-r79.md).
+Successor repairs and actual runs are recorded in [R79 onward execution](execution-r79.md).
 The hierarchy mounts are integrated in `d29ac508b4d`; live Java member handoff
 now borrows the parser's authenticated FileId internally and no longer needs the
 external `members_v3` argument. Preserve the R77 observations below as history.
 Its `--no-deps` metadata result did not prove full locked dependency resolution;
 the later complete resolution and two reached pretest failures have separate inputs.
+
+## Successor cause reconciliation
+
+- R87 reaches Core DFG's opaque nominal associated type and contract-types'
+  comparator/callback signatures; their owning successor repairs pass those
+  reached compile stages in R88.
+- R88 parser/F2 then both stop before tests on three descriptor module mounts.
+  The existing filesystem owner adds explicit paths; R89 is the successor proof.
+- R89 passes those mounts, then parser/F2 reach SourceWire4/18 diagnostics on
+  their different feature closures. Current owning postimages repair those
+  reached causes; R90 supplies the successor input, not an inferred result.
+- The independent SDK Python search policy RED comes from a redundant direct
+  feature-floor root. Its transitive parser/floor closure is unchanged83/83;
+  the complete registry/guard/inventory repair is committed as `3b8f86d`.
+- Core CFG/domain/engine/import-graph SCC106 and Foundation1 pass on their
+  declared frozen inputs. They do not accept an unfinished Original producer,
+  current mutable WIP, or the installed Graph/CHECK process.
+
+The sections below retain the R77 input. They are not the current compile queue.
 
 ## Inputs and evidence limits
 

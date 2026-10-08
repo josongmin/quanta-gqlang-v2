@@ -7,10 +7,18 @@ Current issued requests/results and the issued candidate are recorded
 in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair).
 `qv2/` abbreviates Semantica `packages/analysis/quanta-v2/crates/`.
 
-Latest frozen owner requests/results are in [R79–R81 execution](execution-r79.md).
+Latest frozen owner requests/results are in [R79 onward execution](execution-r79.md).
 The nine C-lane resolves are request discovery only. F2 minimal has two required
 witnesses; parser checks are compilation only. The generated-getter facts keeper
 does not cover general callable, DFG source-world/Tree C or PTA transaction output.
+
+Current executed evidence: QGLang `just ci` passes at67377d5 (Nextest1514,
+external facade positive1/negative23); SCC core CFG30/domain6/engine38/import
+graph32 pass at R87; Foundation exact1 passes at R88. Minimum counts, required
+names and publication hashes are validated independently. R88 parser/F2 are
+RED compiler diagnostics with zero tests. Their R89 successor and the remaining
+SDK/runtime owners require their own finished receipts; static gate success is
+not substituted for them.
 
 The [R77 RCA](rca.md) identifies prerequisite causes; its
 [final order](rca.md#final-execution-order) routes all 18 IDs. Fixed-tuple SCC
