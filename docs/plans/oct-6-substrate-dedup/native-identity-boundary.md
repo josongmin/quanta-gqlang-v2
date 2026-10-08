@@ -431,7 +431,38 @@ Receipts: `r299-java-native-id-callers-source-cut.json`,
 | Broader receiving and qualification | Full payload/error births, non-ID HIR fields, other coupled producer/consumer callers and complete owner/feature/process/product execution are outside the current Native identity evidence. | Compatible committed tuple, affected owner/feature tests, first/late refusal and real refund oracles, QBC publication and product proof under their owning gates. Current static checks cannot close this row. |
 
 Semantica remains shared dirty main; this lane performs no compilation/tests/
-QBC/runtime/source capture/stage/commit/push. This QGLang documentation checkpoint updates the two owned paths and only
+QBC/runtime/source capture/stage/commit/push. The R315 QGLang documentation checkpoint updates the two owned paths and only
 Native status hunks in the shared tickets/remaining files. Historical R167 `just ci` remains an
 older receipt and was not rerun here. No new engine, dependency, wire schema or
 identity algorithm was introduced.
+
+
+## Concurrent terminal ABI receiving — R316
+
+After R315, two shared Parser export files change: `language_host_adapter/mod.rs`
+and `lib.rs` each add `JavaWorkspaceSyntaxTerminalBirthV3`. Exact R314-to-current
+reconstruction finds only that reexport delta. Native Python birth exports and
+all three statement guards in `conversion.rs` are unchanged. Delta AST2 passes;
+28 other receiving postimages still match R314. R314/R315's earlier30/30 receipt
+is not transferred to the changing dependency tuple.
+
+The existing D4 syntax-terminal producer now exposes borrowed
+`project_runtime_error_into_birth_v3`; its owned `into_runtime_error_v3` method
+is removed. Readback still finds the old calls in Parser `part_5.rs:76`,
+`conversion.rs:280` and `semantic_attribution_java_nominal_source_closure_v1.rs:65`.
+These are an existing D4 receiving compatibility gap, not three new runtime
+failures or another Native writer. Preserve the earlier statement guard before
+Current/Source while receiving the new external terminal birth, full cause and
+message custody. The independently owned DFG terminal caller cut remains with
+its existing receiver. No terminal formatter, message owner or shim was added.
+
+The Java higher identity birth still contains the existing stable and semantic
+ledgers and their disjoint-borrow methods. A coherent additional raw-module DATA
+borrow must use the actual canonical raw-owner ABI in that same outer birth.
+The ABI has not been delivered to this lane; no placeholder field, local dummy
+ledger, authority, generic dyn contract or second serializer is invented.
+
+Receipts: `r316-terminal-abi-current-drift.json`,
+`r316-terminal-export-hunk-map.json`, `r316-terminal-native-hunk-contract.json`.
+This is read-only collision mapping; Semantica edits/build/test/QBC/Git and
+outbound app messages are zero. It does not close the broader receiving row.

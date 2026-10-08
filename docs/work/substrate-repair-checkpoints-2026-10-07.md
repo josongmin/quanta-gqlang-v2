@@ -1760,3 +1760,20 @@ payload/error/HIR receiving and complete qualified execution. No new engine or
 dependency. Semantica source is uncommitted shared-main WIP; compiler/tests/QBC/
 runtime/source capture/Git publication are NOT_RUN. This QGLang documentation
 checkpoint does not merge or qualify that Semantica source.
+
+
+## R316 concurrent terminal ABI collision readback
+
+The [terminal ABI receiving map](../plans/oct-6-substrate-dedup/native-identity-boundary.md#concurrent-terminal-abi-receiving--r316)
+records two foreign export successors after R315. Their only delta adds
+`JavaWorkspaceSyntaxTerminalBirthV3`; Native import exports and statement guard
+hunks stay unchanged. AST2 passes and the other28 R314 paths still match.
+This does not transfer the earlier30/30 receipt to current dependency proof.
+
+Three Parser callsites still use the removed owned terminal method and require
+the existing D4 external receiving cut; the DFG caller cut remains separately
+owned. No duplicate receiver, formatter or issuer was authored. The higher Java
+identity birth must receive actual canonical raw-module DATA through a disjoint
+borrow once its concrete ABI exists; no guessed type or dummy ledger is added.
+No source edits, compiler/tests/QBC/source capture/Semantica Git or outbound
+messages ran. The existing receiving/qualified-proof obligations remain open.
