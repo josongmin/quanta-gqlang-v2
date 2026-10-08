@@ -1808,3 +1808,36 @@ shared-main WIP. This checkpoint commits only the two owned QGLang documents;
 no compiler/tests/QBC/runtime/source capture/Semantica Git or outbound app
 messages run. The local finite API packet and owned patch are listed in the
 linked boundary document for same-chat handoff.
+
+## R320–R324 canonical temporary DATA and mid-attempt first cause
+
+The [canonical temporary receiver map](../plans/oct-6-substrate-dedup/native-identity-boundary.md#external-temporary-descriptor-data--r320r324)
+supersedes R319's local canonical file-axis/temporary-group source remainder.
+Seven authored Semantica paths keep that String, actual temporary-group funding,
+preparation Native and existing full canonical slots in the SAME external mint
+ledger. The Java wrapper directly delegates its private Core's existing unit
+API. Ordinary diagnostic storage is explicit; existing scope/file slice/view
+API, canonical axes/order/domain/encoder/hash remain unchanged.
+
+Review finds one concrete terminal gap: Native refusal after successful ledger
+begin was stopped without its first cause; the next output got InvalidBoundary.
+SourceWire now retains the actual first Native through a pure DATA operation;
+Parser observes the existing output cause before dropping RefMut. No later
+Current poll, new ledger, authority or cause replacement is introduced.
+
+Two genuine regressions are authored: Unicode legacy-ID parity plus actual
+file-axis/full-failure retention after Current ends, and mid-file-scope
+cancellation followed by same-root other-Current retry with unchanged cause/
+poll/work/memory and final refund. They are NOT_RUN. AST7/rustfmt7/LLM6/God6/
+tracked diff6/manual whitespace7 pass. The earlier God RED is repaired by
+same-owner terminal extraction without allowances or baseline reset; independent
+static reviews cover final source. Actual budget thresholds may change because
+attempt DATA grows and genuine temporary funding remains retained.
+
+Root92 raw/fq-name/full-error and highest Source receiving remains open. This
+lane writes zero hunks in raw receiving, JavaIdentityBirth fields, Root3a lower
+primitives,83's R56 unique-count co-cut, R60 parent reexports and31's Debug
+derive. Finite API/hunk map, exact7 source SHAs and owned patch are listed in the
+linked boundary document. Semantica source remains uncommitted shared-main WIP;
+compiler/tests/QBC/runtime/source capture/Semantica Git and outbound messages
+are NOT_RUN. Only the two owned QGLang documents form this local-main checkpoint.

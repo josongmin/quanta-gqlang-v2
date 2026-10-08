@@ -587,3 +587,104 @@ Receipts: `r318-descriptor-transport-owner-decision.json`,
 `r319-descriptor-scope-view-receiving-packet.json` in the existing local evidence
 directory. This QGLang documentation checkpoint records Semantica source WIP;
 it does not merge or qualify that source.
+
+## External temporary descriptor DATA — R320–R324
+
+This successor receives the file-axis/temporary-group remainder recorded in
+R319. Seven Semantica paths are authored, uncommitted shared-main WIP at the
+same committed base. It also fixes one source-confirmed first-cause gap found
+while reviewing the new mid-attempt refusal path. No runtime failure is claimed
+reproduced; compiler/tests/QBC/runtime remain NOT_RUN.
+
+### Canonical owner and finite code map
+
+| Path / owner | Before | Authored after |
+| --- | --- | --- |
+| `parser/semantic_identity_mint/original_mint_v3.rs` | Scope/file methods own local temporary dispatch; file path creates owned formatted String. | Existing slice/view signatures remain. Send the unrooted descriptor plus existing workspace/file axes through object-safe `hash_scoped_symbol_v3`. Same-owner `prepare_scope_path_v3` uses existing count → exact String into-birth → bounded write, then the same rooted view/work charge. |
+| `parser/semantic_identity_mint/original_hash_v3.rs` | External ledger holds only canonical mint slots. Native failure after successful `begin_v3` can stop without saving its first cause. | Same ledger holds `OriginalSemanticMintAttemptV3`: canonical slots, file-axis String, exact preparation Native, and genuine temporary-group birth LAST. One RefMut covers the attempt; no recursive bridge borrow. Existing canonical mint/projection remains. Terminal helper saves observed first Native before releasing RefMut. |
+| `parser/semantic_identity_mint/original_hash_v3/scoped_symbol_v3.rs` | No external preparation receiver. | Borrow the actual temporary Core through a unit callback, prepare into that attempt's String, call the same Core descriptor mint directly into its canonical slots, then honor temporary/parent finishers. Contains a genuine retained-file-axis/full-failure/legacy-byte/refund regression. |
+| `parser/semantic_identity_mint/diagnostic_hash_v3.rs` | Diagnostic bridge uses ordinary canonical mint. | Add the corresponding scoped bridge using the same preparation owner and explicit ordinary temporary storage. Native refusal cannot select this rail. |
+| `parser/language_host_adapter/semantic_module_v3/controlled_java_output_admission_v3/temporary_callback_v3.rs` | Java wrapper exposes only owned-result temporary convenience. | Add direct `self.core_v3.with_temporary_into_v3` delegation to the existing Foundation external unit owner; callback borrows Core, not a constructed/cloned Java wrapper. |
+| `packages/analysis/quanta-v2/crates/quanta-runtime-source-authority-wire/src/original_identity_mint_ledger_v3.rs` | `stop_v3` sets only the terminal bit; native `first` is populated only by `begin_v3` failures. | Add pure DATA `stop_with_native_refusal_v3(actual_cause)` with first `get_or_insert`; no Current, allocation, cause projection or rearm. Semantic-only stop remains unchanged. |
+| `parser/semantic_identity_mint/original_mint_v3_tests.rs` | Existing independent legacy oracle and pre-begin/terminal tests. | Reuse the oracle from the child test; add genuine mid-file-scope cancellation and same-root other-Current retry that rejects the faulty `InvalidBoundary` result. |
+
+The Java delegate's finite signature is:
+
+```rust
+with_temporary_into_v3(
+    &self,
+    born: &mut OriginalSemanticTemporaryGroupBirthV3,
+    operation: impl FnOnce(&OriginalSemanticOutputAdmissionV3<'_>) -> Result<(), ()>,
+) -> Result<Result<(), ()>, NativeAllocationErrorV1>
+```
+
+Both types inside this signature belong to the existing Foundation original
+semantic output owner. Java's private `core_v3` delegates directly. No downcast,
+alternate group issuer, owned-return bridge, encoder or authority is introduced.
+Root92 may use this exact delegate for its bounded raw receiver. The existing
+scope/file methods automatically receive the external mint preparation through
+the Original hash bridge; their caller-facing signatures do not change.
+
+### Failure and custody behavior
+
+The temporary callback returns only unit or unit failure. File String backing,
+canonical partial/completed bytes, full existing canonical error, exact Native
+preparation refusal and genuine temporary funding remain in external DATA.
+The same Core mint runs inside the one ledger borrow. Its full canonical error
+is not replaced by a summary or formatter failure. A temporary-finisher Native
+refusal rejects an already minted ID; the parent final checkpoint still runs on
+successful completion. Existing semantic error projection occurs after the
+temporary finisher/ledger borrow; higher full-error receiving remains required.
+
+The found first-cause gap is specific: successful ledger begin → later Native
+failure → `stop_v3` left `first=None` → fresh output was rejected as
+`InvalidBoundary`. The new terminal helper observes actual
+`output.first_refusal_v1()` before dropping RefMut and stores that selected
+cause. The observer reads existing refusal DATA without polling Current. A
+semantic-only canonical failure with no Native cause still keeps its full
+canonical error and the existing generic terminal refusal.
+
+Drop order is canonical DATA → file String → preparation cause → temporary
+group funding, then the enclosing ledger Node backing before its operation/
+output grants. Canonical seven-axis bytes, root/file/tail order, hash domain,
+BLAKE3 and16-byte prefix stay unchanged. The ledger Node grows; temporary
+funding now stays until external DATA retires. Foundation's unit owner charges
+one explicit work unit. Peak retained demand and exact budget thresholds may
+change; no identical budget trace or performance claim is made.
+
+### Proof, remaining work and hunk coordination
+
+- Authored regression1 uses actual Original Current/output/group and a literal
+  Unicode seven-axis legacy CBOR/BLAKE3 oracle. It checks both successful ID
+  and full invalid-kind error, reads the actual file-axis String after Current
+  ends, then checks genuine final refund.
+- Authored regression2 issues two genuine Currents/output groups on the same
+  root before refusal. Stable scope bytes trigger real lifecycle cancellation
+  at canonical tail read after file-axis birth. Retry with the other Current
+  must return `Cancelled`, with unchanged polls/work/memory/source/output cause;
+  final refund remains required. The earlier faulty stop returns
+  `InvalidBoundary`, so this is an independent rejection oracle.
+- Static proof: AST7/rustfmt7, effective production LLM6/God6, tracked diff6 and
+  manual whitespace7 pass. Two independent reviewers find no additional
+  concrete source defect. R323's God RED (52 lines / complexity12) is preserved;
+  R324 extracts the same owner's terminal operation and passes without an
+  allowance or baseline reset. Compiler and both regressions are NOT_RUN.
+- This supersedes R319's canonical file-axis/local-temporary source remainder.
+  Actual raw/fq-name/result/full-error DATA receiving before highest Java Source
+  remains with Root92; no raw receiver or higher Java identity birth field is
+  written here. Its stable/semantic ledgers and disjoint borrows are preserved.
+- Exact write hunks remain0 for Root3a primitives/Foundation temporary owner,
+  R56 `manifest_json_policy_v3::unique_count` (active83), R60 three parent
+  reexports already received elsewhere, and31's terminal-error Debug derive.
+  No whole-claim release or overwrite is needed for these unrelated hunks.
+- The broader [remaining list](#current-remaining-work--r314) and complete
+  compatible committed tuple/owner/feature/process/product proof stay open.
+  Refresh those older inventory rows against source before asserting closure.
+
+Finite packet: `r324-canonical-descriptor-temporary-receiving.json`; owned patch
+and final source SHAs: `r324-scoped-symbol-owned.patch` and
+`r324-scoped-symbol-postimages.json`. Claims/decisions/reviews: R320 normal claim
+and semantic reuse decision, R322 normal claim/owner decision/confirmed native
+cause audit, R321 two bridge reviews and R323 two refusal/regression reviews.
+R324 static receipts retain the final checks. These are local source evidence,
+not compilation, execution, source capture, Semantica integration or publication.
