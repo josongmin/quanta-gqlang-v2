@@ -141,19 +141,18 @@ HIR item/call fields remain separate current owners. The current cut includes
 the actual ID backing through completed item projection and final binder;
 it does not establish custody for every other partial HIR field.
 
-R299 traces nine mounted positive tests in `java_workspace_resolution_syntax_v1/part_6.rs`:
-seven old ordinary-request unsealed calls, five old batch calls, four removed
-member takes, two removed parts takes and three nominal getters. They form one
-fixture migration, using the existing genuine sorted-batch Source fixture and
-external Java identity birth. The getter-contract helper separately has one
-old two-argument semantic hash constructor. These are source compatibility
-gaps, not executed product failures. Do not replace positive assertions with
-empty/refused results or invent authority. `literal_receiver_tests.rs` also
-contains old APIs and remains a separately recorded receiving obligation.
+R299 migrates the nine Source-backed tests in `java_workspace_resolution_syntax_v1/part_6.rs`
+and the getter helper; R304 migrates `literal_receiver_tests.rs`. These are
+current authored source with preserved positive assertions, not executed proof.
+Existing other Java batch-wrapper/full-output consumers remain a separate
+coupled receiving scope. The detailed current remaining list below governs.
 
-Genuine positive SDK fixture migration, QRA direct test receiving, Store target
-hydration/selection and actual SDK→Parser/QRA→PTA proof stay coupled with their
-existing owners. The identity ledger does not implement these prerequisites.
+R304 current audit confirms all four SDK direct QRA calls already use external
+`into_birth` receiving; they are removed from remaining source work. Their
+current owner tests are still NOT_RUN. R308 repairs the distinct PTA fixture
+QRA call, but its upstream type-finalization/retained-output frontier remains.
+The shared identity ledger does not implement genuine FULL hydration, binary
+input issuance or complete fixture consumer migration.
 
 ## Source receipts
 
@@ -367,3 +366,72 @@ its existing canonical read DATA from each actual highest control wrapper; no
 new control or local owned Result shim is authorized by this audit. Exact
 paths/SHAs and hunk0 map: `r301-replay-upper-native4-hunk-map.json`. No source
 edit, claim or outbound app message was made for this read-only mapping.
+
+## Java fixtures and PTA QRA receiving — R299–R313
+
+- Java `part_6.rs`: keep all12 original test names; migrate the nine source-backed
+  cases to the existing genuine sorted Session/batch fixture. Java identity
+  birth precedes the whole fixture. Five batch cases call the canonical
+  in-original-context owner; unsealed cases use authenticated member reads and
+  the existing local-type issuer. One64-hex build-context constant serves all
+  nine cases. The old-to-new oracle matrix preserves packaged/wildcard nominal
+  census, exact getClass/constructor callable identity, same-package/anonymous/
+  instanceof/parameterized/fully-qualified type and provenance assertions.
+- Getter helper: lend the external semantic ledger to the mandatory third hash
+  argument and keep it beyond hash/output drop. Existing getter results,
+  Unicode names and refund assertion remain. Literal receiver: genuine external
+  birth plus checked member read retains equals / `java.lang.String` / non-static
+  `ExternalBinaryAuthorityRequired` expectations.
+- R306 identifies the actual highest Source in the fixture's production batch
+  publication. Calling the public owned batch wrapper inside that callback
+  creates identity DATA too late. Both test lanes instead lend earlier DATA to
+  the existing in-original-context owner. No new issuer or local owned shim.
+- Callsite sealing and binary finalization are separate. The getClass/constructor
+  cases compare the same sealed callsite/signature fields while explicitly
+  retaining binary `pending_finalization_count_v3`. They do not prove a fully
+  finalized cohort or authorize pending finalization as completed.
+- PTA `original_execution_v1.rs` and `owner_stages_v1.rs`: pass the real first-FD
+  pin and external retained-group/setup-error/parts birth into existing
+  `produce_live_native_lowering_generation_parts_into_birth_v3`. The earlier
+  first-FD Source finishes before this separate QRA Source. Producer result or
+  full typed failure is taken only after its finisher; birth drops before group.
+  Original input no longer goes through the ordinary-only producer. R310's
+  upstream type frontier still prevents a current positive fixture claim.
+
+Independent source reviews R308/R312/R313 find no additional concrete defect in
+these five source paths. New-five AST and scoped static rails pass; test-only
+LLM/God exemptions are reported as N/A, never as executed behavioral proof.
+R311 records two foreign successor hunks: ordinary join callbacks now receive
+an origin argument and Parser exports Source-phase DATA. Native workspace hash
+and import exports are unchanged; delta AST2/LLM2/God2 pass without overwriting
+those hunks. R314 matches all30 latest receiving postimages and checks all26
+Parser semantic-hash constructors have the mandatory three arguments. This is
+source/arity evidence, not Rust type checking or a frozen dependency tuple.
+
+Receipts: `r299-java-native-id-callers-source-cut.json`,
+`r304-java-literal-receiver-source-cut.json`,
+`r304-qra-direct-receiving-current-audit.json`,
+`r306-java-fixture-highest-source-trace.json`,
+`r308-java-literal-independent-source-review.json`,
+`r308-pta-qra-receiving-source-cut.json`,
+`r310-pta-type-finalization-owner-frontier.json`,
+`r311-delta-independent-source-review.json`,
+`r312-pta-qra-independent-review.json`,
+`r313-java-native-id-independent-review.json`,
+`r314-native-id-final-source-readback.json`.
+
+## Current remaining work — R314
+
+| Work | Concrete scope / purpose | Completion condition |
+| --- | --- | --- |
+| PTA Original fixture producer and consumers | `exact_native_generation_fixture_v1/{owner_first_source_v3,owner_stages_v1,type_identities_v3}.rs` and final fixture parts still use legacy single-member APIs and diagnostic V1 handoff. The removed handoff finalizer cannot be replaced by a method rename. Current canonical finalization requires a genuine `JavaOriginalBinaryResolutionInputPortV3` tied to this fixture pin/session; SDK's implementation is private and the legacy synthetic class catalog is insufficient. | Reuse the existing request-scoped binary owner to issue genuine whole cohort; identity DATA before highest Source; canonical full finalization/seal to retained Original inventory; migrate V1 handoff consumers to checked Original reads. Preserve alias/lambda/callable/topology and foreign-source refusal oracles. Existing QRA into-birth receiving then consumes that actual inventory. No fabricated V1/V3 adapter or empty success. |
+| D4 direct terminal entries | Two Parser files / three entries: member-view `with_original_portable_hir_result_v3`, `materialize_original_portable_hir_v3`, and target trait `lower_target_hir_v3`. They still perform finalized/Source checks before the frame guard; higher managed/batch entries are already guarded. | Add the existing `ensure_open_v3` before each own Source/output access with existing typed Native projector; preserve first cause and fresh validation. Genuine same-root/foreign Current retry must show no later polling/work/backing replacement. Exact R295 residual SHAs still match on final readback. |
+| SDK FULL/private join | R288 map separates existing Native4 forwarding/R273 selection from genuine FULL factory/head/parent/private join receiving owned elsewhere. | Actual genuine hydration→selection→target admission, external input/result/full errors before highest Source, late refusal/custody preservation; retain Unsupported until capability exists. |
+| Shared query God | `quanta-runtime-query-surface-symbol-owner/src/symbol_query_rail/hir/query.rs`. R305 re-run is RED: production file802/800; managed function140/50; shared function117 vs baseline104. Source matches R271. | Split responsibilities at the existing query owner together with active D4 receiver changes, preserve Source/error behavior; scoped God passes without allowance/baseline reset. |
+| Broader receiving and qualification | Full payload/error births, non-ID HIR fields, other coupled producer/consumer callers and complete owner/feature/process/product execution are outside the current Native identity evidence. | Compatible committed tuple, affected owner/feature tests, first/late refusal and real refund oracles, QBC publication and product proof under their owning gates. Current static checks cannot close this row. |
+
+Semantica remains shared dirty main; this lane performs no compilation/tests/
+QBC/runtime/source capture/stage/commit/push. This QGLang documentation checkpoint updates the two owned paths and only
+Native status hunks in the shared tickets/remaining files. Historical R167 `just ci` remains an
+older receipt and was not rerun here. No new engine, dependency, wire schema or
+identity algorithm was introduced.

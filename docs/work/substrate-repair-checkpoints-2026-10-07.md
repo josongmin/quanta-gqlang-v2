@@ -1722,3 +1722,41 @@ hunks are zero in those exact files. Actual earliest control differs per route;
 shared daemon preparation is not a universal highest Source. The finite SHA/
 hunk0/custody map is ready for the authorized courier; no outbound message was
 sent and no Replay source was edited by this lane.
+
+## R299–R314 current receiving closeout and actual remainder
+
+The [current remaining list](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-remaining-work--r314)
+supersedes earlier Java-fixture / SDK4 source gaps in this log.
+
+R299 migrates nine Java Source-backed tests and the getter hash constructor;
+R304 migrates the literal receiver. Existing positive semantic/Unicode/type/
+provenance assertions remain. R306 catches the earlier fixture Source wrapper:
+all identity DATA must precede the entire fixture, and the canonical in-context
+owner receives it. Pending binary finalization remains explicitly distinct
+from sealed callsite identity. R308/R313 independent source reviews find no new
+concrete defect; test execution stays NOT_RUN.
+
+R304 current audit confirms SDK direct QRA four-call receiving is already
+external into-birth. Remove that stale source item; preserve its unrun owner
+proof. R308 separately fixes PTA fixture Original QRA receiving with actual
+first-FD pin, real group and external birth; R312 verifies Source/error/drop
+ordering. Positive execution is still blocked upstream: R310 locates removed
+single-member APIs and diagnostic V1 handoff consumers, and no authenticated
+binary provider tied to this fixture pin/session. Genuine whole-cohort issuer,
+finalizer and retained V3 consumers must move together; no method rename or
+fabricated adapter closes this contract.
+
+R311 preserves/reviews two foreign source successors without overwriting:
+ordinary join origin arguments and Parser Source DATA exports. Delta static
+checks pass. R314 current readback matches30/30 receiving paths; new-five AST
+passes, and all26 exact Parser semantic hash calls have3 arguments. These are
+static/current-source facts, not type or runtime qualification. R305 confirms
+shared query God remains RED; D4 direct terminal guards remain in two files /
+three entries with unchanged residual SHAs.
+
+Remaining: genuine PTA whole-cohort fixture/consumer co-cut, D4 direct guards,
+SDK FULL/private join capability, shared query owner decomposition, broader
+payload/error/HIR receiving and complete qualified execution. No new engine or
+dependency. Semantica source is uncommitted shared-main WIP; compiler/tests/QBC/
+runtime/source capture/Git publication are NOT_RUN. This QGLang documentation
+checkpoint does not merge or qualify that Semantica source.

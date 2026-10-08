@@ -584,8 +584,11 @@ matching authored encoder receiving. R239 now authors the
 [QRA result receiving10](../plans/oct-6-substrate-dedup/code-map.md#r239-qra-result-receiving-source-cut):
 external per-row input/encoder/portable/row custody, exact-count retained storage,
 public birth mounts and removal of the owned Original issuer. Production SDK's
-composite already uses an external birth. Four direct SDK test calls still need
-migration; R246 receives the controlled axes-only loan in genuine preflight.
+composite already uses an external birth. R304 current source confirms all four
+direct SDK test calls already use external into-birth receiving; their owner
+proof remains NOT_RUN. R246 receives the controlled axes-only loan in genuine
+preflight. R308 authors PTA Original QRA receiving; R310 still requires the
+genuine binary provider/whole-cohort finalizer and V3 fixture consumers.
 Ordinary handoff receiving and complete compatible owner proof remain pending.
 R250/R251 trace the sole V1 caller into positive test-support fixtures and a
 removed type-finalizer call. Genuine Original migration must accompany
@@ -615,12 +618,17 @@ function findings). Java God decomposition removes introduced findings,
 retaining two foreign cache/Python findings. R273 replaces
 consumed FULL source selection with external slots plus genuine fixture
 receiving, with static checks and R275 source review. Actual SDK target binder
-hydration/receiving remains open. Python import/provider completion still need distinct
-external semantic ledgers, and seven mounted Java `part_6.rs` calls need genuine
-Original fixtures. The R245 external request/member boundary now has receiving
-source; its import boundary remains separate. Exhaustive highest Source/runtime
-custody is unproved. Compiler/tests, source capture and Semantica Git publication
-are NOT_RUN.
+hydration/receiving remains open. R295/R297 author distinct external semantic
+ledgers for Python import/provider completion. R299/R304 migrate nine mounted
+Java Source-backed fixtures, the getter helper and literal receiver while
+preserving positive assertions. R314 current readback matches all30 receiving
+postimages; this is source evidence only. The [current Native remainder](../plans/oct-6-substrate-dedup/native-identity-boundary.md#current-remaining-work--r314)
+is genuine PTA binary provider/whole-cohort finalization and V3 fixture consumers,
+D4 direct terminal guards in two files/three entries, SDK FULL/private join,
+shared query God RED and broader payload/error/HIR receiving with qualified
+owner execution. R291 adds the fifth genuine terminal regression, still NOT_RUN.
+Exhaustive highest Source/runtime custody is unproved. Compiler/tests, source
+capture and Semantica Git publication are NOT_RUN.
 
 
 R278–R286 [terminal reuse](../plans/oct-6-substrate-dedup/native-identity-boundary.md#terminal-reuse-ordering--r278r286)
