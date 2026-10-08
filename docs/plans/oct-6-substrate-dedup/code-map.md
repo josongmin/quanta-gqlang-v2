@@ -548,7 +548,51 @@ using external encoder/input slots, then retain every completed input and
 partial/retired encoder or row backing until highest Source finish. It consumes
 components only after successful canonical construction. No arbitrary builder
 callback, serializer, issuer or guessed Core scratch type is added. The prior
-encoder/QRA receiving signatures remain a pending compatible cut, not a
-compiling or qualified result. Evidence:
+encoder/QRA receiving signatures remained pending at R220. R230 subsequently
+checks the authored matching encoder; the QRA result caller still uses the old
+portable owned-return call and must receive external PortableSlots/unit status.
+No compiling or qualified result follows. Evidence:
 `r220-qra-input-producer-source-packet.json` and
 `r220-qra-input-producer-owned.diff` at the existing recovery root.
+
+
+### Native ID caller co-cut — R228
+
+R223–R225 audit four additional native hash leaves under the existing
+`CHECKED-RETAINED-CONTROL` obligation. These are caller/lifetime repairs to the
+**same** canonical serializer, not four new engines or reproduced product bugs.
+The Foundation external-state ABI is physical WIP; the Core facade now reexports
+it and its state. R227's earlier missing-export observation is superseded by
+`r227-native-hash-supplier-successor-readonly.json`.
+
+| Current owner / before | Required after / complete change scope |
+| --- | --- |
+| `core/codegraph-lang-common/src/stable_span_map_entry_id_v1/native_v3.rs` and `stable_symbol_id_v2/native_hash_v3.rs` keep admitted encoded bytes locally. | Borrow one fresh external Core state + completed-byte slot **per ID**. Thread paid pending/retained slots through parser `OriginalStableHashV3`, Java/Python hash factories and hierarchy projection; preserve existing validation, preimage and BLAKE3 visits. |
+| `core/ir/canonical-symbol-id/src/canonical_symbol_id_v2/borrowed_mint_v3.rs::hash_axes_v3` serves both symbol and occurrence Original mint. | Change both borrowed mint leaves, including `semantic_occurrence_id_v1/borrowed_mint_v3.rs`, and parser `semantic_identity_mint/{original_hash_v3,original_mint_v3}.rs` with their actual consumers. Keep the same domains, tuple axes and 16-byte prefix; retain each mint's encoding state externally. |
+| `qv2/quanta-contract-statement-shared/src/statement_identity/native_structural_path_v3.rs` owns encoded bytes; `copy_checked_v3` owns a copied String across fallible charged comparison. | Preserve partial **and complete** temporary/output text externally, as well as encoder state/bytes. Co-cut parser `statement_id_issuer/{original_hash_v3,admitted_v3}.rs`, `hir_port_projection/original_v3.rs`, and the workspace/registered-target callers. Keep the existing issuer and mismatch rejection. |
+
+For Lang hash factories, the Java outer storage is
+`qv2/quanta-adapters-parser/src/language_host_adapter/semantic_expression_identity_ledger_v1/original_java_inputs_v3.rs::JavaOriginalMaterializationBirthV3`;
+the Python storage is
+`adapter_impl/native_typed_surface/retained_python_execution/original_source_projection_v3/birth_slots_v3.rs::OriginalPythonSourceProjectionBirthSlotsV3`
+under that crate's `language_host_adapter/`. Hierarchy slots must precede
+`java_workspace_resolution_syntax_v1/workspace_hierarchy_projection_v3.rs`'s
+output loan. Declaring slots inside `materialize_v3` is too late when that
+function itself runs inside the registered parse loan. Direct test fixtures
+need their own outer slots.
+
+One reused `Option` or resetting a Core state is insufficient: Core state is
+single-use, and every successful, partial and retired backing must survive
+the highest actual Source finisher. Collector growth must use existing paid
+slot-growth primitives. Keep full typed failure/first-cause behavior and
+ordinary diagnostic paths distinct. Additional retained metadata/peak demand
+may change budget admission; do not promise success at historical limits.
+
+No source edit or compile/test of these additional leaves was made by this
+read-only audit. The descriptor owner has an existing live schema-v2 claim;
+resolve overlapping hunks and normal claim reconciliation before mutation.
+The symbol/occurrence audit does not yet prove every highest Source boundary
+for external/import/augment entry paths. Evidence: `r223-lang-id-native-caller-audit.json`,
+`r224-canonical-symbol-native-caller-audit.json`,
+`r225-statement-native-caller-audit.json` and `r228-native-id-caller-co-cut.json`
+at the existing recovery root.

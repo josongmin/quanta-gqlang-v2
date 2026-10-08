@@ -1411,3 +1411,35 @@ test, QBC, source capture, Semantica commit/push or runtime/product proof ran.
 Evidence: `r218-qra-components-producer-source.json`,
 `r220-qra-input-producer-source-packet.json` and its owned diff at the existing
 recovery root. The earlier R212/R213 section remains the pre-change audit.
+
+
+## R228 native ID caller audit checkpoint
+
+Three read-only lanes traced the four native ID hash leaves through their
+actual parser consumers. The Core facade export prerequisite is now supplied
+at its newer `0cdd025a…` hash. Remaining scope includes per-ID single-use state
+in outer Java/Python/hierarchy frames, both semantic symbol and occurrence
+mints, and statement partial/complete text during fallible byte comparison.
+The [change map](../plans/oct-6-substrate-dedup/code-map.md#native-id-caller-co-cut--r228)
+and [acceptance](../plans/oct-6-substrate-dedup/test-plan.md#native-id-custody-acceptance--r228)
+record the compatible boundary. No four-leaf-only closure, early-refund defect
+or product failure is claimed; external/import/augment semantic mint highest
+Source boundaries still need tracing. No additional Semantica source change,
+compiler/test, QBC, capture, stage/commit/push or product proof ran. Evidence:
+`r223-lang-id-native-caller-audit.json`,
+`r224-canonical-symbol-native-caller-audit.json`,
+`r225-statement-native-caller-audit.json` and `r228-native-id-caller-co-cut.json`.
+
+
+## R230 QRA encoder receiving source read
+
+Independent read-only review confirms the new Analysis `try_new`/`try_copy`
+receiver matches R220's component slots. It retains native backing externally
+and takes components only after the final fallible digest-hex copy; a prior
+output cause preserves the losing native error in its external slot. The
+portable encoder now returns unit into external PortableSlots. The actual QRA
+`original_workspace_rows_v3/result_v3.rs` caller still uses the old one-argument
+owned-return call, so the compatible caller cut remains incomplete. This is a
+source API mismatch, not an executed compiler result. No additional confirmed
+receiving-owner defect, Rust compile/test or product proof follows. Evidence:
+`r230-qra-encode-receiving-readonly.json` at the existing recovery root.

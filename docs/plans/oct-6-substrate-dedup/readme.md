@@ -18,11 +18,14 @@ Original positive, SDK behavior and product acceptance remain open. See the
 Updated: 2026-10-08.
 
 R220 authors the QRA component-copy/input-visitor producer in four Semantica
-source files. Partial fields and complete components use external slots; the
-actual canonical encoder and highest caller receiving cut remain pending.
+source files. Partial fields and complete components use external slots. R230
+confirms matching encoder receiving source; highest caller wiring and complete
+compatible verification remain pending.
 AST/format/LLM/diff pass; God remains RED on three existing parent legacy
 allowances. No Rust, runtime or integration claim follows. See the
 [physical producer ABI](code-map.md#r220-physical-qra-input-producer-abi).
+R223–R228 also maps the existing native ID [caller co-cut](code-map.md#native-id-caller-co-cut--r228);
+its additional leaves are audited, not implemented or qualified.
 
 Latest local execution is the [R79 onward closeout record](execution-r79.md).
 Two parser repairs are integrated on Semantica `main` as `d29ac508b4d`;

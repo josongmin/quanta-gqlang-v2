@@ -586,3 +586,40 @@ Digest impl method/public-method counts and the exact-authority function's six
 parameters. No allowance, baseline or scan scope was weakened. Encoder and
 highest caller receiving, all Rust checks/tests and product proof remain open;
 this source cut has no new captured owner tuple or publication.
+
+
+### Native ID custody acceptance — R228
+
+The [caller change map](code-map.md#native-id-caller-co-cut--r228) is source
+planning under the existing retained-control ticket. Required proof after the
+whole producer/caller cut is stable:
+
+- Compare native symbol, span, semantic symbol/occurrence and statement IDs
+  against independent existing deterministic values, including Unicode/NUL,
+  unchanged domains and tuple order. Preserve malformed-input and feature-off
+  typed rejection before any success publication.
+- Exercise at least two hashes/mints in one genuine Source cohort. Keep each
+  single-use encoder state and completed bytes until the highest finisher;
+  reject occupied-state reuse without replacing prior backing.
+- Inject refusal after partial encoding, after a completed first ID, during
+  statement text copy/comparison and at postvalidation. Observe retained
+  backing through finish and exact last-owner refund; cancellation or later
+  validation must not replace an earlier typed cause. A lease or ID parity
+  test alone does not prove this custody.
+- Retain the different-output-object/same-group negative before encoder entry;
+  ordinary diagnostic entry paths must remain ordinary. Cover Java, Python,
+  hierarchy and statement workspace/registered-target routes. Resolve external
+  symbol/import/augment highest boundaries before claiming complete coverage.
+- Run affected owner rails through QBC on one captured compatible source tuple,
+  using the existing warm lane after static review. Keep source/owner/QBC
+  publication/product claims separate; no extra hosted CI is needed.
+
+R223–R228 executed read-only source/hash checks only. These new regressions,
+Rust compilation and runtime/product proof are **NOT_RUN**. Existing parity,
+refusal and refund tests do not establish the new late-refusal assertions.
+
+
+R230 separately reviews the now-authored Analysis/Kernel encoder receiving and
+finds it consistent with R220's component ABI. The QRA result caller still uses
+the old portable owned-return signature. This static receiving read is not a
+compiler pass; the full caller cut and all custody/owner tests above remain open.
