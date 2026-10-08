@@ -9,14 +9,16 @@ Latest local repairs, integration and frozen owner outcomes are in the
 [R79 onward execution record](../plans/oct-6-substrate-dedup/execution-r79.md).
 The [R98–R103 local checkpoint](../plans/oct-6-substrate-dedup/execution-r79.md#r98r103-local-owner-and-caller-closure)
 records actual PTA result storage37/37, finite PTA error1 and successor
-Core447/447 GREEN. R106 reaches whole Kernel execution:557 passed/11 failed;
-its session/permit fixtures, stale registry path and caller diagnostic rail have
-released repairs pending R107. Recursive integration has one released borrow
+Core447/447 GREEN. R106's whole Kernel557 passed/11 failed is historical;
+R183 accepts the R107 frozen Kernel whole-lib569/569 with zero ignored/filtered
+and committed QBC publication on source `1dff82deb346…`. R192 confirms
+committed central publication for the separate driver11 on the same frozen
+source; other R107 batch owners and postflight remain open. Recursive integration has one released borrow
 repair. Runtime symbol-view and Java borrowed-byte lifetime successors are
 source-ready and unexecuted. R106 Taint shares the Java compile blocker; metrics
 stops at the feature-off
 Parse keeper and navigation at a DFG child mount. Seven RED/three skipped results
-have archived postflight. R107's38-postimage successor queue is running. These are
+have archived postflight. Other R107 successor owners remain unaccepted. These are
 separate from the R82 recovery's independently validated R142 interproc1,104/1,104 GREEN.
 Parser hierarchy mounts and feature imports are integrated as Semantica
 `d29ac508b4d`; native allocation and Original success remain co-owned WIP.
@@ -335,7 +337,7 @@ before claiming completion. Broader AG5/IRC releases remain downstream-owned.
 
 | ID / state | Required work | Acceptance |
 | --- | --- | --- |
-| FCP-COMPILE / BLOCKED_COMPILE | The canonical Native supplier/manifests/locks/Original callers remain co-owned WIP. Earlier R79-family attempts retain the [execution record](../plans/oct-6-substrate-dedup/execution-r79.md). The separate R82 candidate accepts interproc1,104 at R142 and the actual failed-fallback regression1 at R154, with committed QBC publication. R166 renews interproc whole-owner acceptance at1,105 on the later fixed source. R157 captures the existing canonical storage-error and ordinary-copy owner; R158 Taint CHECK passes that import boundary and stops at thirteen Kernel diagnostics, zero tests. Reconcile live Kernel/SourceText/RuntimeCtx successors before another capture; their static presence and fixed-owner successes do not establish live compilation. | Canonical product build and SDK owner rails on one complete compatible source tuple; verified publication and coordinated integration. Preserve typed cause, first refusal, atomic facts and public compatibility across the entire consumer cut. Historical failures retain their exact inputs. |
+| FCP-COMPILE / BLOCKED_COMPILE | The canonical Native supplier/manifests/locks/Original callers remain co-owned WIP. R79-family R183 accepts R107 frozen Kernel whole-lib569/569 and R192 separate driver11 with committed QBC publication on the same frozen source after R106's historical557/11; other batch owners/postflight remain open. The separate R82 candidate accepts interproc1,104 at R142 and failed-fallback regression1 at R154; R166 renews interproc acceptance at1,105. R158 Taint CHECK stops at thirteen Kernel diagnostics, zero tests. R190's frozen PTA/DFG mount error ran zero tests and the mount is fixed in live/R191 source; R193's mounted 14-path static review found no concrete regression. R191 resolves the three-case SDK owner request on a fresh captured tuple, but execution is pending. Fixed owner successes do not establish live compilation. | Canonical product build and SDK owner rails on one complete compatible source tuple; verified publication and coordinated integration. Preserve typed cause, first refusal, atomic facts and public compatibility across the entire consumer cut. Historical failures retain their exact inputs. |
 | FCP-PTA / REVERIFY | Verify the seed-consumption lifetime repair against the historical first `PtaOccurrenceAuthorityRefused` boundary; no current reproduction is claimed. | Current owner/bootstrap succeeds, or a reached refusal identifies the exact remaining owner repair. Source changes alone do not close it. |
 | FCP-PROCESS / NOT_RUN | Execute integrated Graph/CHECK positive and refusal fixtures. | Same tuple/artifacts; Linux Graph success, non-Linux Graph refusal, signed Linux CHECK and relevant non-Linux controls; record selected/executed/pass/skip/leak counts and exact output oracle. |
 | FCP-INSTALL / EXTERNAL_PREREQUISITE | Obtain release-owned signed x86_64 profile, root-owned immutable slots, independent approval/key and active generation. | Actual installed CHECK proof. Generic aarch64 artifacts and scripted daemon evidence do not satisfy this gate. |
@@ -488,3 +490,42 @@ found no proven early-refund defect; QRA's initial owned callback return was the
 specific source boundary repaired. All18 IDs remain at their prior product DoD.
 See [current checkpoint](substrate-repair-checkpoints-2026-10-07.md#source-callback-and-caller-checkpoint--r169r178)
 and [proof order](../plans/oct-6-substrate-dedup/test-plan.md#source-callback-and-caller-proof-order).
+
+## R180–R187 scoped source and owner checkpoint
+
+R182 exposes two mounted QRA Rust modules previously hidden by the broad
+`target*/` ignore; four build-artifact negative checks pass. The R185 bounded
+`packages/**/src/**/*.rs` census finds zero further ignored source among 1,026
+untracked Rust files on that observed tree. R180's in-house honesty rail passes
+one selected SDK test source, while Semgrep selects zero targets for these paths.
+
+R183 accepts R107 frozen Kernel whole-lib569/569, zero failed/ignored/filtered,
+with committed QBC publication on `1dff82deb346…`; the earlier R106 557/11
+retains its own input. R185's separate driver11 has inner passes but central
+publication `pending`; other R107 batch owners/postflight are still open. R184
+SDK capture refuses concurrently changed PTA producer and caller postimages
+before owner resolve or tests. R187 records their drift for review. No SDK,
+Original positive, current-main or product acceptance follows. See the
+[checkpoint](substrate-repair-checkpoints-2026-10-07.md#r180r187-owner-proof-and-capture-checkpoint).
+
+## R190–R193 owner and SDK capture successor
+
+R192's normal QBC status confirms committed central publication for the R107
+frozen Kernel driver11: zero failed/ignored, 27 filtered, run
+`20261008T090251.535162Z-a60c806aef33` on source `1dff82deb346…`.
+R185's pending status remains its historical readback. Other R107 owners and
+batch postflight remain open. R190's frozen PTA/DFG `original_writes_v3`
+mount error ran zero tests; that mount is present in live source and R191's
+fresh captured tuple. The Taint dependency does not become a separate defect.
+
+R191 captures six required SDK postimages, including the two previously
+ignored QRA children, with digest
+`8537a14ae7486bc78df64b7e8b8eafcce4ec15b4cffc9c2d3a57defdcac3fb6a`.
+The feature-isolated owner request `8228f57b83295f2c46747d2e12d48b75`
+resolves to three expected tests; result **NOT_RUN** until serial execution.
+R193 matches all 20 captured paths, including the 14-path mounted PTA
+successor, without finding a concrete static regression. This is no compile
+or Original-positive result. R186 also found no deterministic genuine
+mid-QRA refusal fixture in the current Budget API. FCP-COMPILE, SDK behavior,
+the remaining Original caller closure and product gates remain open. See the
+[checkpoint](substrate-repair-checkpoints-2026-10-07.md#r190r193-owner-and-sdk-capture-successor).

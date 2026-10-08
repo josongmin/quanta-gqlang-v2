@@ -476,9 +476,57 @@ successful executions.
 5. A deterministic mid-QRA Source-refusal hook is not established in the current
    genuine fixture. Partial sink refusal has nominal9 evidence; QRA late Source
    postvalidation, first-cause and partial-copy refund remain a separate gap.
-   Add that rail through the genuine lifecycle/work owner when its actual input
-   can reproduce the boundary; no fake issuer or delegated authority fixture.
+   R186 confirms the installed SDK `Budget` has no work axis, repository work is
+   `UnboundedByPolicy`, and the fixture has no callback between request and
+   result. A memory threshold or racing cancellation would not be a stable
+   independent oracle. Add that rail only through an authenticated owner seam
+   with a deterministic stage boundary; no fake issuer, magic cap or race.
 
 All R169/R171/R175/R176 consumer changes have formatter/static source checks
 only at this checkpoint. Compile success and nominal9 cannot close SDK, process,
 installed-positive or whole-main qualification.
+
+### R180–R187 reached rails
+
+- R180 `gate-test-honesty.sh --changed-scope-only --require-scope` passes the
+  selected genuine SDK test source. Its four Semgrep E2E rules select zero
+  targets under their path filters; `quanta-runtime-analysis/src/testing.rs`
+  is a helper, not a selected test root. This is one scoped static rail, not
+  global honesty, SDK execution or Semgrep coverage of these paths.
+- R183 R107 frozen `quanta-runtime-kernel-contract` whole lib/all-features
+  executes 569/569 with zero ignored/filtered and committed QBC publication,
+  source `1dff82deb346…`, run `20261008T085343.555325Z-70aa04bce4b2`.
+  The older R106 557/11 failure is source-bound history. At R185 the separate
+  `stack_independent_subqueries` driver executes 11 passes with 27 filtered,
+  but central QBC publication is `pending`; do not accept that owner or infer
+  the batch postflight from its inner test result.
+- R182 source discovery reveals two mounted QRA modules; four build-artifact
+  ignore probes pass. R185's bounded Rust-source census finds zero additional
+  ignored files among 1,026 untracked Rust source files at that observation.
+  Freeze and verify both module bytes in the next complete capture.
+- R184 refuses the SDK candidate capture on changed PTA producer/caller
+  postimages before resolve or execution. R187's 14-path PTA static review finds
+  no concrete defect; R191 captures the reviewed successor with six exact
+  SDK/QRA required postimages. No R184 SDK result exists.
+
+### R190–R193 successor requests
+
+- R192 updates R185's historical central `pending` observation: normal QBC
+  status and central registry now commit the R107 frozen Kernel driver11,
+  zero failed/ignored, 27 filtered, run
+  `20261008T090251.535162Z-a60c806aef33`. The whole-lib569 is a separate
+  accepted owner on the same `1dff82deb346…` input; the other batch owners
+  and postflight are not inferred.
+- R190 PTA executes zero tests on frozen R107 because the DFG
+  `original_writes_v3` mount resolves to the wrong directory. Current source
+  already has the explicit child path, so refresh the owning input rather than
+  duplicate that repair. Taint shares this compile prerequisite.
+- R191 canonical SDK capture source `8537a14ae7486bc78df64b7e8b8eafcce4ec15b4cffc9c2d3a57defdcac3fb6a`
+  has Semantica `3b8f86d` plus reviewed WIP, GQLang `18e0576`, Index
+  `09387a9`; all six required postimages include the two formerly ignored QRA
+  modules. R193 verifies 20 captured paths and finds no concrete static
+  producer regression. Owner request `8228f57b83295f2c46747d2e12d48b75`
+  resolves the existing SDK module3 under
+  `feature-isolation:quanta-sdk-runtime-executor.no-default.0415f206f0e0`.
+  **NOT_RUN:** compile, the three actual SDK outcomes, genuine PTA behavior
+  and product proof await the serialized owner queue.

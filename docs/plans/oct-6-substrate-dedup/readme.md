@@ -8,7 +8,10 @@ Latest QGLang local CI is R167: `just ci` passes Nextest1,514 and external
 facade positive1/negative23 at `b559c49…` plus documentation dirt. The
 [fixed-candidate checkpoints](../../work/substrate-repair-checkpoints-2026-10-07.md#fixed-candidate-compile-and-ownership-checkpoints)
 accept interproc1,105 and the scoped storage-error/copy owners separately.
-Kernel/context/caller, Original positive and SDK/product acceptance remain open.
+R183 accepts R107 frozen Kernel whole-lib569, and R192 confirms the separate
+Kernel driver11 has committed QBC publication on the same source. Other batch
+owners/postflight, Original positive and SDK/product acceptance remain open.
+See the [R190–R193 successor](../../work/substrate-repair-checkpoints-2026-10-07.md#r190r193-owner-and-sdk-capture-successor).
 Updated: 2026-10-08.
 
 Latest local execution is the [R79 onward closeout record](execution-r79.md).
@@ -498,3 +501,41 @@ remain uncompiled on a complete current consumer tuple. See the
 [checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#source-callback-and-caller-checkpoint--r169r178)
 and [proof order](test-plan.md#source-callback-and-caller-proof-order).
 All18 active IDs retain their existing acceptance boundaries.
+
+## R180–R187 owner proof and capture checkpoint
+
+R183 accepts the R107 frozen Kernel whole-lib owner: 569 passed, zero
+failed/ignored/filtered, committed QBC publication on source `1dff82deb346…`.
+The earlier R106 557 passed/11 failed belongs to its older frozen input. At
+R185 the separate Kernel driver selected 11 passing cases, but the central
+publication record remained `pending`; the rest of the batch and postflight
+were not accepted by that observation.
+
+R182 makes two existing QRA Rust modules under `target_authority/` visible to
+Git source discovery while retaining build-artifact ignores. R180's scoped
+honesty rail passes for one SDK test source; Semgrep scans zero targets under
+its path filters, and the QRA helper is outside the selected test root. R184's
+SDK capture guard refuses two concurrently changed PTA producer/caller files
+before owner resolve or test. R187 records their new hashes for review. No
+SDK or Original positive claim follows. The [checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r180r187-owner-proof-and-capture-checkpoint)
+keeps these source and proof scopes separate.
+
+## R190–R193 owner and SDK capture successor
+
+R192's normal QBC status records the R107 Kernel driver as committed: 11
+passed, zero failed/ignored, 27 filtered, run
+`20261008T090251.535162Z-a60c806aef33` on frozen source `1dff82deb346…`.
+R185's earlier central `pending` readback remains its historical observation;
+the remaining R107 batch owners and postflight are separate.
+
+R190 PTA stops before tests on a DFG `original_writes_v3` module mount absent
+from that frozen input; the current explicit mount already exists. Taint shares
+that prerequisite, so neither result identifies a new live source defect.
+R191 captures a fresh canonical SDK input `8537a14ae748…` with six exact
+required postimages, including both formerly ignored QRA children, and the
+current PTA successor. R193 checks all 20 captured paths and finds no concrete
+static regression in the reviewed PTA producer/caller; the three-case SDK
+owner request is resolved but **not run**. R186 finds no deterministic genuine
+mid-QRA refusal injection in the present SDK fixture; the positive/refusal and
+last-drop tests still require execution. No current-main or product verdict
+follows from capture or static review.

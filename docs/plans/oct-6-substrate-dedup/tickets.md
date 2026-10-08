@@ -20,8 +20,12 @@ Its [R98–R103 checkpoint](execution-r79.md#r98r103-local-owner-and-caller-clos
 accepts PTA result storage37, the separate eighteen-cause error regression1
 and successor Core447/447. Kernel fixture/import, typed Taint/MemSSA,
 ordinary trace and owned runtime context/caller repairs need fresh execution and coupled
-integration. R106 reaches557/11 whole Kernel execution; its fixture/registry/rail
-successors await R107. Runtime symbol checked-view migration and actual SDK
+integration. R106's 557/11 whole Kernel result is historical; R183 accepts the
+R107 frozen whole-lib successor at 569/569 with committed QBC publication.
+R185's separate Kernel driver inner11 was publication-pending at that
+observation; R192 confirms committed central publication on the same frozen
+source. Other R107 batch owners/postflight remain open. Runtime symbol
+checked-view migration and actual SDK
 source/pin/cold-baseline regression remain separate current execution scopes.
 Round numbers from the separate R82 recovery retain their own input.
 R77 source/diagnostic RCA and execution order: [R77](rca.md). Historical
@@ -56,7 +60,7 @@ scope. Implementation, frozen owner proof and product qualification are separate
 | D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Scoped Honesty/GOD/boundary checks pass; Python-search floor policy bundle integrated as3b8f86d; whole affected policy closure remains |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P0 | BLOCKED_COMPILE | Native packet remains WIP. R79-family R98 finite PTA error1, R99 PTA result37 and R103 whole Core447 are accepted on separate frozen sources. R106 whole Kernel executes557 passed/11 failed; fixture, registry and caller-rail repairs await R107. Runtime trace reaches34 symbol checked-carrier errors; PTA/Taint share one now-repaired Java lifetime error. SCC feature-off Parse retention is repaired. SDK source/pin/cold-baseline coupled source is ready but unexecuted. Complete the whole external caller/authority cut and compatible integration; historical diagnostic counts are not current live defect totals. Separate R82 candidate: interproc1105 and actual fallback1 have committed owner receipts; R155 canonical-error capture is superseded, and R158 Taint CHECK now stops at thirteen Kernel diagnostics with zero tests. Live caller closure and coupled integration remain open. |
+| FCP-COMPILE | P0 | BLOCKED_COMPILE | Native packet remains WIP. R79-family R98 finite PTA error1, R99 PTA result37 and R103 whole Core447 are accepted on separate frozen sources. R106 Kernel557/11 is historical; R183 R107 frozen Kernel whole-lib569/569 and R192 separate driver11 have committed QBC publication on the same frozen source; other batch owners/postflight remain open. Runtime trace reaches34 symbol checked-carrier errors; PTA/Taint share one now-repaired Java lifetime error. SCC feature-off Parse retention is repaired. R190's frozen PTA/DFG mount failure is fixed in live source and the R191 capture; R193 found no concrete static regression in the mounted 14-path PTA successor. R191 resolved the three-case SDK owner request but has no test result. Complete the whole external caller/authority cut and compatible integration; historical diagnostic counts are not current live defect totals. Separate R82 candidate: interproc1105 and actual fallback1 have committed owner receipts; R155 canonical-error capture is superseded, and R158 Taint CHECK stops at thirteen Kernel diagnostics with zero tests. Live caller closure and coupled integration remain open. |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |
@@ -539,3 +543,38 @@ review did not establish early reservation refund or a runtime safety defect.
 Its comment was narrowed to the demonstrated lease/publication behavior.
 Remaining owner/consumer/product oracles follow the
 [proof order](test-plan.md#source-callback-and-caller-proof-order).
+
+## R180–R187 scoped follow-up
+
+R182 restores Git discovery of two existing mounted QRA Rust modules; its four
+build-artifact negative checks pass, and the bounded R185 source census finds
+no other ignored Rust source among 1,026 untracked files at that checkpoint.
+R180 passes one SDK-source in-house honesty rail; Semgrep selects zero targets
+for these paths. R183 accepts only R107 frozen Kernel whole-lib569, while the
+separate R185 driver11 remains publication-pending. R184 refuses SDK capture
+before tests when two PTA owner files drift; R187's static review is pending.
+These were the observations at that checkpoint; R192 and R191/R193 have
+successor evidence below. They do not close FCP-COMPILE, Original custody,
+SDK, policy or product DoD.
+
+## R190–R193 owner and SDK capture successor
+
+R192 confirms normal QBC central committed publication for the R107 frozen
+Kernel driver: 11 passed, zero failed/ignored, 27 filtered, run
+`20261008T090251.535162Z-a60c806aef33` on the same `1dff82deb346…` source
+as R183's whole-lib569. R185's pending state remains a historical readback;
+the other R107 owners and batch postflight are open. R190's frozen PTA/DFG
+`original_writes_v3` mount error ran zero tests; the mount is present in live
+source and R191's fresh capture. It does not independently qualify PTA/Taint.
+
+R191 captures the canonical SDK source tuple with digest
+`8537a14ae7486bc78df64b7e8b8eafcce4ec15b4cffc9c2d3a57defdcac3fb6a`,
+including six required postimages and both QRA `target_authority/` children.
+The feature-isolated owner request `8228f57b83295f2c46747d2e12d48b75`
+resolves to three expected tests and remains **NOT_RUN**. R193 checks the
+mounted PTA successor's 20 captured paths, including 14 producer paths, and
+finds no concrete static regression; no compile or runtime result follows.
+R186 found no deterministic real mid-QRA refusal fixture in the current SDK
+Budget API. The SDK owner rail, Native build, Original positive path and
+product gates still need execution on one compatible source tuple. See the
+[checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r190r193-owner-and-sdk-capture-successor).

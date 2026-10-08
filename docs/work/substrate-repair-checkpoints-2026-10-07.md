@@ -1293,3 +1293,66 @@ closure before the next owning CHECK. The
 [remaining IDs](remaining.md) and
 [Source/caller proof order](../plans/oct-6-substrate-dedup/test-plan.md#source-callback-and-caller-proof-order)
 retain actual unresolved acceptance; no new engine/library was introduced.
+
+## R180–R187 owner proof and capture checkpoint
+
+The R79-family R107 frozen source is `1dff82deb346ec204b7eb3d4e0dda2017043d1980f574e9b0d299f05c6592554`.
+It is separate from R82 fixed-candidate and Semantica live-main claims. At
+R179 the released R107 postimage inventory matches 38/38 paths; that source
+continuity is an input check, not owner execution.
+
+| Scope | Observed result | Limit / next step |
+| --- | --- | --- |
+| R180 scoped honesty | In-house rail passes for the selected genuine SDK test source; QRA `src/testing.rs` is outside the selected test root. Four Semgrep E2E rules scan zero targets under their path filters. | No SDK behavior, global honesty recurrence or Semgrep path coverage claim. |
+| R182 Git source discovery | Exact `.gitignore` exception exposes two referenced QRA `target_authority/` Rust modules. Four root/nested build-artifact negative checks pass. R185 bounded source walk finds zero other ignored Rust files among 1,026 untracked Rust source files. | Discovery does not commit, capture or compile modules; retain exact source bytes and normal build ignores. |
+| R183 R107 Kernel whole lib | **569 passed**, zero failed/ignored/filtered; QBC central publication **committed**, marker receipt SHA matches; run `20261008T085343.555325Z-70aa04bce4b2`. | The earlier R106 557 passed/11 failed remains RED on a different frozen input. One Kernel owner result is not whole-batch/current-main/Original/SDK proof. |
+| R185 R107 Kernel driver | Inner test result 11 passed, zero failed/ignored, 27 filtered; marker receipt SHA matches. Central `publication_state_v1=pending` at readback. | Do not accept the driver until committed publication is confirmed. Other owners and batch postflight are not established by these two results. |
+| R184 SDK capture guard and R187 source review | Guard refuses the changed PTA relation producer and Java caller postimages before owner resolve/test. R187 records their current hashes for review. | Reconcile the complete two-file owner cut and recapture one immutable tuple; no SDK compile or behavior result. |
+
+Evidence: `r180-scoped-test-honesty.json`, `r182-qra-source-discovery-repair.json`,
+`r185-ignored-rust-module-discovery-readonly.json`,
+`r183-existing-kernel-owner-readback.json`,
+`r185-existing-r107-owner-progress-readback.json`,
+`r184-capture-guard-refusal.json` and `r187-current-own-source-drift.json`
+at the existing recovery evidence root. All 18 active IDs and their product
+acceptance criteria remain unchanged.
+
+## R190–R193 owner and SDK capture successor
+
+R192 supersedes the R185 pending readback for the separate R107 frozen Kernel
+driver. Normal QBC central status is **committed GREEN**, 11 passed, zero
+failed/ignored, 27 filtered, run
+`20261008T090251.535162Z-a60c806aef33` on source `1dff82deb346…`.
+R183 whole-lib569 and R192 driver11 share that frozen source; other R107
+owners and batch postflight remain open. This is not current-main or whole
+product acceptance. Evidence: `r192-r107-kernel-central-publication-readback.json`.
+
+R190's R107 PTA owner reached an E0583 `original_writes_v3` mount error and
+ran zero tests. The mount exists in current live source and in R191's fresh
+capture; Taint's shared dependency does not add an independent source fix.
+R191's canonical SDK capture records digest
+`8537a14ae7486bc78df64b7e8b8eafcce4ec15b4cffc9c2d3a57defdcac3fb6a`
+for Semantica `3b8f…` plus inventoried WIP, GQLang `18e057…` and Index
+`09387a9…`. Its six required postimages include both QRA
+`target_authority/` children, with no ignored-file bypass. The captured
+boundary includes QRA workspace, test executor and SDK positive paths.
+The feature-isolated SDK owner request
+`8228f57b83295f2c46747d2e12d48b75` resolves to three expected tests;
+execution remains **NOT_RUN**. Evidence: `r191-sdk-proof-source-capture.json`
+and `r191-sdk-owner-resolve.json`.
+
+R187's 14-path PTA source audit found unit/status callbacks and birth slot,
+with no concrete static defect. R193 checks all 20 frozen R191 paths, including
+that producer, with no concrete static regression. Neither is a compile or
+behavior proof; the earlier R184 two-file refusal is historical. R186 found
+no deterministic genuine mid-QRA refusal fixture in the present SDK Budget:
+no work axis, `UnboundedByPolicy` profile work, and no callback between
+request and result. No arbitrary memory cap, racing cancellation or fabricated
+refusal is needed for this checkpoint. Evidence:
+`r187-pta-successor-static-review.json`,
+`r193-fixed-sdk-input-static-review.json` and
+`r186-qra-late-refusal-oracle-feasibility.json`.
+
+All 18 closeout IDs retain their product acceptance criteria. SDK owner
+execution, compatible Native/Original integration and product process gates
+remain pending on the captured or a newly reconciled source tuple.

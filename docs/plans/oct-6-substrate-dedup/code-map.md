@@ -429,3 +429,40 @@ member/projection sink APIs. Capturing the QRA file alone cannot establish it.
 Kernel methods moved to child impls are not automatically removed APIs; compare
 the actual definition, signature and consumer. Current source hash drift keeps
 the complete carrier/context/SDK integration outside the accepted nominal9 proof.
+
+## R180–R187 discovery and changed source cut
+
+Semantica `.gitignore`'s broad `target*/` rule hid two referenced QRA Rust
+modules under `quanta-runtime-analysis/src/queries/pta/domain/precise_query_types/target_authority/`.
+R182 adds the exact source-directory exception; both files are visible as
+untracked source, while four root/nested build-artifact probes remain ignored.
+The R185 bounded `packages/**/src/**/*.rs` census found no other ignored Rust
+source among 1,026 untracked Rust files on that observed tree. Discovery alone
+does not put those files in an immutable capture or compile them.
+
+R184's SDK capture guard stops before owner resolve: the PTA relation producer
+and Java caller changed from the R179 expected postimages. R187 records their
+new hashes. Its successor is the mounted 14-path PTA source cut, not just two
+files. R191 later captures that cut with the six SDK/QRA required postimages;
+R193 verifies 20 captured paths and reviews the changed producer statically.
+The R184 guard is an input-identity refusal, not an SDK compiler or behavior result.
+See the [R180–R187 checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r180r187-owner-proof-and-capture-checkpoint).
+
+## R190–R193 mounted PTA and SDK capture
+
+R187's current PTA relation producer uses unit/status callbacks and
+`OriginalRelationBirthSlotsV3` to retain paid output and typed error until
+Source postvalidation. Its Java caller parks output after the Parser callback.
+The 14-path static review found no concrete defect; the source changed during
+review, so R191 captures the later complete postimage. R193 verifies all 20
+frozen paths and the producer's operation, group, census and error chronology
+statically; no owner execution follows from this review. The producer can
+project nonempty relations, while the current composer still refuses their
+publication with typed `UnsupportedOperation`.
+
+R190's frozen PTA error is a missing DFG `original_writes_v3` mount. The
+current source already points to the existing child explicitly; do not assign
+another mount repair without a fresh failure. R191's six required SDK postimages
+include `.gitignore`, the two QRA child modules, QRA axes, the SDK positive test
+and test executor. The new capture digest is `8537a14ae748…`; owner behavior
+remains unexecuted. See the [successor checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r190r193-owner-and-sdk-capture-successor).
