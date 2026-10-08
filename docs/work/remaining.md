@@ -5,6 +5,16 @@ committed Semantica `f574fa82bf1` and separately inventoried moving WIP.
 The [R77 RCA](../plans/oct-6-substrate-dedup/rca.md) owns the cause/dependency
 analysis; this file owns the 18 active states.
 
+Latest root proof: [R79 root R111](../plans/oct-6-substrate-dedup/execution-r79.md#r79-root-r111-completed-owner-postflight),
+Semantica `3b8f86dd9ea7` plus frozen WIP digest `e3279f15ffcc…`, committed
+sibling HEADs. Kernel579, Navigation13 and SourceWire OS-path1 are GREEN with
+verified publication; six scopes compile RED and five are NOT_RUN. All67 archive
+hashes match. Four reached compile causes have released repairs after that
+snapshot, not new accepted results. Original Shape/SCC implementation is already
+on main; broader Native/Original completion remains open for URI-slot proof,
+managed ItemIndex/join ownership, paid trace/snapshot owners and genuine SDK PTA
+execution. The historical checkpoints below retain their own inputs and scopes.
+
 Latest local repairs, integration and frozen owner outcomes are in the
 [R79 onward execution record](../plans/oct-6-substrate-dedup/execution-r79.md).
 The [R98–R103 local checkpoint](../plans/oct-6-substrate-dedup/execution-r79.md#r98r103-local-owner-and-caller-closure)

@@ -785,3 +785,58 @@ fresh owner execution. R106's557/11 and R185's publication-pending driver observ
 retain their historical inputs; the completed R107 publications above supersede them
 for these two scopes only. Whole Native/Original integration and product acceptance
 remain open.
+
+## R79 root R111 completed owner postflight
+
+This root campaign is distinct from the independently numbered SourceWire R111
+checkpoint elsewhere in the ledger. Canonical Semantica HEAD is
+`3b8f86dd9ea7f94a2426277311037ea9d6480a6a` plus the captured full WIP;
+all discovered path-dependency siblings use committed HEADs. Source digest:
+`e3279f15ffcc095d37ff063cf5c32522f206e6170efc49155bb6603b628734bc`.
+The snapshot lease covered execution and final source/custody validation.
+
+`owner-postflight-r111.json` SHA-256:
+`89092def93195f3aaaf84b73d6e49447aabc363397c9b3d571a193f786ba5ef6`.
+The independent readback verifies all67 archived files and manifest SHA-256
+`4310b6fe28b01af7efb6c2581c1cf0baea18787fccefff5812f33d9b79abe9b5`.
+Evidence directory: `/Users/songmin/.codex/task-evidence/oct8-closeout-execution-r79/`.
+
+| Scope | Executed result | Receipt / publication SHA-256 or first compile cause |
+| --- | --- | --- |
+| Kernel whole lib, all features | GREEN579/579, zero failed/ignored/filtered; R110 result revalidated on identical R111 source | `0f30512977ad63854b0cdda321e6aba22e534bd92cc1e671649b8ff234742c04` / `53f4609619a2bc0c86e468d11c5890b0eb9d5afa202e7f05faa84b13fe8c8fb9` |
+| SourceWire OS-path prebirth exact | GREEN1,251 filtered, zero failed/ignored | `3f8a28c73cd7ae2b6ad9bb73aed8a58dc81519c82c13c9076a59200160a74de8` / `a2acfb73035e8ad3b1b29a715fa7f1bc7f0785a2dab6ae27ec2a3a9d547e6249` |
+| Navigation import module | GREEN13,225 filtered, zero failed/ignored | `eba4b8b109c6cdb2289379ee3c12706a09485dd8d4fd5d4e8d85eb1f7eeb22da` / `7af7dcdf8605593652bb41dc446a23220c97e61daeab1940ecfe9535cb6ed719` |
+| ContractBase drift classifier exact | RED compile, zero tests | ContractKernel `kernel-serde` omits `serde/derive` |
+| Runtime trace; SDK FileText exact | Both RED compile, zero tests | Eight storage opaque-text/equality/copy diagnostics |
+| PTA retained-copy; Taint MemSSA exact | Both RED compile, zero tests | Three feature-off RuntimeExecution imports |
+| Metrics max-depth module | RED compile, zero tests | Query-floor unconditionally reexports Kernel's Original-only source-text reader |
+| Runtime owned-context/rule; PTA SCC; Taint seed/heap-gap | Five NOT_RUN | Their respective shared package compile failed; no result inferred |
+
+All four reached compile causes have released source repairs after this snapshot:
+the serde feature edge, explicit checked ordinary storage copies, cfg import
+cleanup, and the matching query-floor feature guard. None is requalified by the
+older frozen results. Storage retained text explicitly refuses; it never silently
+copies to ordinary storage.
+
+Capture/tool RCA: R108 refused a reviewed additive Fresh coowner delta before
+tests; R109 refused a new lane identity already bound to this task. R110 ran Kernel
+successfully, then a resolver launched from the live CLI indexed changing live
+manifests despite frozen cwd. R111 resolves through the frozen CLI and runs with
+its explicit frozen execution root. It completes the same-source postflight;
+the failed attempts retain their original evidence.
+
+Released successor source includes root R112's canonical URI normalization slots:
+both partially born Strings remain outside Source B loans, and FileText uses the
+same normalizer. Three genuine Root/group tests cover late cancellation, vector
+birth retention, exact Unicode normalization, foreign group rejection and refund.
+Twelve leaf format checks and five impacted boundary policies pass. The honesty
+front door selects no targets (exit2, NOT_OBSERVED); QBC is NOT_RUN for this packet.
+
+Other successor cuts remain separate: the canonical drift holder is moved to
+Kernel and actual consumers migrated, but post-query Original success is still
+fenced; genuine SDK Parser/QRA/PTA void-method positive/negative fixtures are
+source-ready and unexecuted; ItemIndex managed args/key/output and retained join
+consumers are still a coupled active migration. Trace recording and snapshot
+finalization contain unpaid Original births before the late fence, so removing
+that fence cannot establish success. No Semantica WIP bundle is committed from
+these scoped results. Hosted CI, push and installed product proof are absent.

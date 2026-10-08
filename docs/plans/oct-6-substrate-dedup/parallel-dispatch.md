@@ -284,3 +284,23 @@ remains separate.
 - I owns canonical Fresh routing, selected-source FileText producer, immutable capture/owner queue, receipts and document reconciliation. Full co-owned Native bundle integrates only after compatible affected proof.
 
 [R107 source/result authority](execution-r79.md#r107-completed-owner-postflight).
+
+## R79 root R111 next dispatch
+
+- Root: completed67-file archived proof readback; owns serial frozen QBC queue,
+  root R112 URI slots and document reconciliation. First independent proof:
+  ContractIds/SourceWire canonical normalization and genuine late-refusal tests.
+- A: released serde/storage/runtime-import/query-floor compile repairs; owns the
+  next actual trace/snapshot recorder contract cut. Retain current/group across
+  record growth, finalization, packet/memo and error-guard cleanup.
+- B: finishes ItemIndex managed HirArgs/key/output plus retained checked joins.
+  Stable IDs replace escaping DTO/ItemEntry references; preserve keeper mismatch
+  rejection and exact scratch/node admission. Partial source is not integrated.
+- SDK/PTA lane: released genuine parser root/void-method final owner and actual
+  SDK positive/foreign/forwarded-control/refund fixtures; owns independent static
+  review and newly reached owner repairs. Synthetic issuers are not reinstated.
+- After each complete cut: verify exact released postimages, freeze canonical
+  source/sibling tuple, execute affected owner rails, validate publication and
+  held-lease postflight, then coordinate compatible local-main integration.
+
+[Exact current scoped proof and remaining boundaries](execution-r79.md#r79-root-r111-completed-owner-postflight).

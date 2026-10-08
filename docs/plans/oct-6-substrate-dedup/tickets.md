@@ -583,6 +583,14 @@ product gates still need execution on one compatible source tuple. See the
 
 ## R107 final proof checkpoint
 
+Latest successor: [R79 root R111](execution-r79.md#r79-root-r111-completed-owner-postflight)
+accepts Kernel579, Navigation13 and SourceWire OS-path1 on source `e3279f15ffcc…`.
+FCP-COMPILE remains BLOCKED_COMPILE: six compile RED scopes/five dependent NOT_RUN;
+their four reached causes have released repairs that need new-source proof.
+CHECKED-RETAINED-CONTROL remains open for canonical URI slots, paid trace/snapshot
+recording/finalization, coherent managed ItemIndex/join ownership, and genuine
+SDK→Parser/QRA→PTA positive/negative/refund execution. Source-ready is not accepted.
+
 R107's completed held-lease postflight accepts whole Kernel569/569 and recursive
 integration11/11 with committed QBC publication. Four other owners are RED at compile
 with zero tests: three share the DFG child mount and metrics reaches feature-off HirArgs

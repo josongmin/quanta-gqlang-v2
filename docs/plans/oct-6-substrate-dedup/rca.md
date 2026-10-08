@@ -251,3 +251,33 @@ source, test and installation states.
 - Root Fresh accepts only the query family's actual paid typed/wire pair and verifies it under exact Source B/output A. FileText now connects its actual installed selected-source provider to its existing paid output producer; missing/deleted/unsupported query profiles refuse. These source packets are not a whole executor success: snapshot, dependency drift and memo custody still need paid owners.
 
 Exact source, counts and receipt/publication hashes: [R107 completed postflight](execution-r79.md#r107-completed-owner-postflight).
+
+## R79 root R111 successor causes
+
+The [completed frozen owner postflight](execution-r79.md#r79-root-r111-completed-owner-postflight)
+accepts Kernel579, Navigation13 and SourceWire OS-path1 on one recorded source.
+Six other scopes fail compilation and five dependent scopes are not run. These
+counts cannot be summed with older sources into whole-main acceptance.
+
+- Compile causes are dependency/feature and opaque-owner migrations: missing
+  `serde/derive`, storage blanket Clone/Eq/read APIs, feature-off runtime imports,
+  and a query-floor reexport with a missing Original cfg. Released successors
+  repair these owners; execution on their new source remains required.
+- URI lifetime cause: assigning a returned URI into an outer Option happens too
+  late if normalization refuses after native String birth. R112 writes both
+  canonical normalization Strings directly into caller-owned slots. It reuses
+  the canonical normalizer and existing native admission; it issues no authority.
+- ItemIndex ownership cause: a managed output cannot supply a raw DTO/ItemEntry
+  reference beyond its checked loan. Retain the verified carrier and represent
+  longer-lived joins with stable IDs and admitted owned projections. Managed
+  HirArgs, family key identity and all reachable readers must migrate together.
+- Runtime success cause: trace record BTree births, trace clone finalization and
+  infallible bare snapshot finalization precede the post-query fence. They need
+  the same paid current/group and retained output contract across recorder,
+  adapter, packet and memo. Moving the fence would leave unpaid allocations.
+- Proof tooling cause: frozen cwd does not make a live-path CLI resolver index
+  frozen inputs. Resolve with the frozen CLI; run with explicit execution root;
+  retain the task's bound lane and verify final source/custody plus publication.
+
+No additional Shape/SCC traversal implementation is assigned. Remaining work is
+the coupled Native owner/caller cut and its actual owner/product evidence.
