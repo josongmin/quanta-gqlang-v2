@@ -57,6 +57,52 @@ the later complete resolution and two reached pretest failures have separate inp
 - Core CFG/domain/engine/import-graph SCC106 and Foundation1 pass on their
   declared frozen inputs. They do not accept an unfinished Original producer,
   current mutable WIP, or the installed Graph/CHECK process.
+- R79-family R98 accepts the eighteen-cause finite PTA storage error regression;
+  R99 accepts the whole PTA result storage library37. R99 whole Core executes
+  443 pass/three fail: two DFG index reasons were registered in the vocabulary
+  without updating the reviewed Transient/nonmemoizable partition. The existing
+  classifier and actual missing-session/admission producers govern the successor
+  regression; increasing counts without reviewing those reasons would weaken
+  the cache-poisoning guard. R103 accepts whole Core447/447 after the actual
+  producer/reason-map correction. It reaches 58 stale Kernel fixture diagnostics
+  and two production unused imports; the fixture/import successor is authored.
+  Adapter PTA and Taint execute zero cases on that frozen R103 closure.
+- Exact owned runtime context must reach both recursive execution and its
+  receipt. Copying a borrowed context loses ownership for Original or ambiguous
+  erased payloads. The successor reuses one owned queue/budget/session path and
+  rejects an extra retained context holder; role-free erased payloads refuse
+  before sharing. Typed DI interfaces require their actual port contracts to be
+  reviewed, rather than treating every trait object as retained source data.
+- The actual product attaches pre-key trace custody before ordinary memo paths.
+  Rejecting every erased trace handle would break that positive route. A typed
+  ordinary retainer checks nested source/backing and reuses one concrete Arc;
+  recursive ambient value traces use the same owner. Unknown erasure still
+  refuses before retain. The actual Original nested-source oracle and paid
+  Original memo success-packet retention are separate unfinished dependencies.
+- R106 reaches real Kernel execution:557 passed/11 failed. Nine failures use
+  fixture session payloads/permit issuers that no longer meet the production
+  role contract; the repair binds exact backing and real canonical issuer and
+  preserves refund/negative assertions. One registry path still names a pre-split
+  Python extractor and one checked extraction drops the actual caller diagnostic
+  rail. These are repaired at their fixture/registry/canonical extraction owners;
+  their successor owner result is pending.
+- R106 runtime trace reaches34 symbol checked-carrier diagnostics; PTA/Taint
+  share one Java borrowed-byte lifetime error. SCC metrics reaches an ordinary
+  feature-off ParseArgs override that calls a cfg-disabled Original keeper.
+  The lifetime and feature boundary have released repairs. Caller migration
+  keeps managed views authenticated and Original refusal typed.
+- The SDK seed producer previously tried to retain Original through an ordinary
+  availability wrapper, while the paid committed pin was discarded and the cold
+  baseline stats always carried no committed source. The coupled successor uses
+  the existing source-text keeper, returns the already paid pin and hydrates the
+  exact committed Store HEAD under actual B current. The installed regression
+  covers normal/cold source mounts, foreign operation refusal and no extra
+  trace retain. All are source-ready; SDK owner execution is still pending.
+- Latest Original source refresh: workspace transactions now construct the
+  admitted void-only subset, but nonempty relations and the final materializer
+  still refuse. General Java facts and DFG source-world/Tree C/callable births
+  are unchanged and incomplete. Removing a refusal or wrapping already grown
+  ordinary data does not implement these owning births.
 
 The sections below retain the R77 input. They are not the current compile queue.
 

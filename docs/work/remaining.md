@@ -7,6 +7,17 @@ analysis; this file owns the 18 active states.
 
 Latest local repairs, integration and frozen owner outcomes are in the
 [R79 onward execution record](../plans/oct-6-substrate-dedup/execution-r79.md).
+The [R98–R103 local checkpoint](../plans/oct-6-substrate-dedup/execution-r79.md#r98r103-local-owner-and-caller-closure)
+records actual PTA result storage37/37, finite PTA error1 and successor
+Core447/447 GREEN. R106 reaches whole Kernel execution:557 passed/11 failed;
+its session/permit fixtures, stale registry path and caller diagnostic rail have
+released repairs pending R107. Recursive integration has one released borrow
+repair. Runtime symbol-view and Java borrowed-byte lifetime successors are
+source-ready and unexecuted. R106 Taint shares the Java compile blocker; metrics
+stops at the feature-off
+Parse keeper and navigation at a DFG child mount. Seven RED/three skipped results
+have archived postflight. R107's38-postimage successor queue is running. These are
+separate from the R82 recovery's independently validated R142 interproc1,104/1,104 GREEN.
 Parser hierarchy mounts and feature imports are integrated as Semantica
 `d29ac508b4d`; native allocation and Original success remain co-owned WIP.
 The R77 observations below retain their historical input.

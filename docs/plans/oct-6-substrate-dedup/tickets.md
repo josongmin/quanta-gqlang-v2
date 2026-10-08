@@ -16,6 +16,14 @@ Semantica; `core/` means `packages/core/`, `qv2/` means
 `packages/analysis/quanta-v2/crates/`.
 
 Latest repair, integration and owner results: [R79 onward execution](execution-r79.md).
+Its [R98–R103 checkpoint](execution-r79.md#r98r103-local-owner-and-caller-closure)
+accepts PTA result storage37, the separate eighteen-cause error regression1
+and successor Core447/447. Kernel fixture/import, typed Taint/MemSSA,
+ordinary trace and owned runtime context/caller repairs need fresh execution and coupled
+integration. R106 reaches557/11 whole Kernel execution; its fixture/registry/rail
+successors await R107. Runtime symbol checked-view migration and actual SDK
+source/pin/cold-baseline regression remain separate current execution scopes.
+Round numbers from the separate R82 recovery retain their own input.
 R77 source/diagnostic RCA and execution order: [R77](rca.md). Historical
 observations below keep their original inputs. Core20/facade1 are accepted on
 the fixed f574 tuple; current WIP compilation is not accepted.
@@ -48,7 +56,7 @@ scope. Implementation, frozen owner proof and product qualification are separate
 | D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Scoped Honesty/GOD/boundary checks pass; Python-search floor policy bundle integrated as3b8f86d; whole affected policy closure remains |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P0 | BLOCKED_COMPILE | Native packet remains WIP; R93 exact finite error regression1 is accepted on its own source. R97 parser captures four Kernel repairs and stops on14 errors, zero tests; later minimal-import postimages require a fresh capture. R92 F2's91 is historical. Complete current V1/V2/facts/taint caller/authority migration, broad compile and compatible integration. Separate R82 candidate: interproc1105 and actual fallback1 have committed owner receipts; R155 canonical-error capture is superseded, and R158 Taint CHECK now stops at thirteen Kernel diagnostics with zero tests. Live caller closure and coupled integration remain open. |
+| FCP-COMPILE | P0 | BLOCKED_COMPILE | Native packet remains WIP. R79-family R98 finite PTA error1, R99 PTA result37 and R103 whole Core447 are accepted on separate frozen sources. R106 whole Kernel executes557 passed/11 failed; fixture, registry and caller-rail repairs await R107. Runtime trace reaches34 symbol checked-carrier errors; PTA/Taint share one now-repaired Java lifetime error. SCC feature-off Parse retention is repaired. SDK source/pin/cold-baseline coupled source is ready but unexecuted. Complete the whole external caller/authority cut and compatible integration; historical diagnostic counts are not current live defect totals. Separate R82 candidate: interproc1105 and actual fallback1 have committed owner receipts; R155 canonical-error capture is superseded, and R158 Taint CHECK now stops at thirteen Kernel diagnostics with zero tests. Live caller closure and coupled integration remain open. |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |
@@ -174,6 +182,13 @@ eighteen unfinished implementations. No percentage is inferred from their count.
   create a second attribution issuer. The older sealed Parser fixture has an
   ordinary generation pin and cannot prove Original pin custody. Evidence:
   `r96-original-sdk-caller-boundaries.json` at the existing recovery root.
+- **Original memo retention:** `qv2/quanta-runtime-execution/src/execution_packet_v1.rs::QueryExecutionSuccessV1::try_retain_with_current_v3`
+  accepts only ordinary output context. Typed output and issued wire owners have
+  authenticated Original retain operations; memo metadata, drift/budget carriers,
+  erased overlays, persist holder and output witness still lack a complete
+  nested packet keeper. The actual leader/waiter route must retain these under
+  the same genuine current before publishing a shared success. Exact owned
+  context plumbing and typed trace compatibility do not establish this role.
 - **C/Go/TypeScript controls and dedup:** `core/codegraph-lang-common/src/{c,go,typescript}_syntax_snapshot_v1.rs`
   had identical 128 MiB cap/checked-add ledgers. R49 extracts those mechanics
   into private `syntax_snapshot_budget_v1.rs`, preserving all charge sites;

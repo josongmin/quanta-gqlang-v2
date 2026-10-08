@@ -486,6 +486,177 @@ actual runtime/SDK owners on that declared tuple before integrating the coupled
 Native packet. Existing claims and foreign manifests/locks are preserved;
 neither a partial child file nor a typed refusal is removed to manufacture GREEN.
 
+## R98–R103 local owner and caller closure
+
+This section belongs to the **R79 execution family**. The separate R82 fixed
+recovery's R142 interproc result retains its own source and evidence directory;
+matching round numbers across those families do not identify the same input.
+
+R99 captures Semantica main `3b8f86dd9ea7f94a2426277311037ea9d6480a6a`
+plus its guarded complete source overlay and every discovered sibling's
+committed HEAD with empty sibling overlays. QGLang is `a78580606bbf`; its later
+`b559c49f9b43` changes are documentation only. Canonical snapshot custody and
+the execution lease remain held through all runs, archival and postflight.
+Source: `cad4b6d1b0c8245b1ab493dc3dddc11729726569e9e27703b8d39b5029ae589b`.
+
+| Owner request | Finished R99 outcome | Acceptance boundary |
+| --- | --- | --- |
+| Core types, whole lib/all-features | RED: 443 passed, three failed, zero ignored/filtered | All three failures are the reviewed absence-memoizability map/count missing two newly registered DFG index reasons. Their actual producers and existing classifier require Transient; the successor adds independent nonmemoization and deterministic-sibling expectations. Not whole-owner GREEN. |
+| PTA result storage, whole lib/all-features | **37/37 GREEN**, zero failed/ignored/filtered; immutable QBC publication verified | Canonical `try_copy_ordinary_v3` preserves the nine ordinary evidence axes and digest; destination mutation remains independent. The interproc helper delegates to this owner. Genuine retained copying requires its separate adapter fixture. |
+| Kernel recursive driver module | RED compilation, zero tests | Newly reached import, generic output-copy bound, static `Cow` and callback error-type repairs are authored with scoped checks. No driver behavior acceptance follows yet. |
+| PTA genuine retained-copy fixture | RED in the Kernel dependency, zero tests | Real issued source/output controls and exact pre-birth refusal/refund expectations are authored; no executed retained result yet. |
+| Taint best-effort MemSSA refusal fixture | RED in the Kernel dependency, zero tests | Exact seed and heap-gap requests are NOT_RUN under the same compile blocker. No permissive degraded-success acceptance follows. |
+
+R99 PTA result receipt SHA:
+`19d2cddddc62f8a76acedee1390e9ad71b455d8685ecef9dd9f50ffc3def342b`;
+publication SHA:
+`6856e64a308d456f08d6ec439c5b04f0326d09966ef12b651a76ae99c20b70c8`.
+R99 postflight SHA:
+`d90c97a15a9a055bb99547b76da095bffe844815e95f4b78b5dd17b1c3ef7da9`.
+Archived full logs and per-request receipts are under
+`/Users/songmin/.codex/task-evidence/oct8-closeout-execution-r79/owner-r99-typed-pta-archive/`.
+
+R98 separately executes the finite PTA storage error-shared regression:
+**one GREEN witness**, all eighteen causes retain category and external context,
+35 filtered. Its receipt/publication hashes are respectively
+`e20cd14f1a392a5feb560336ee28d34bf0eb7a9435c1f4b7b0bde59c92702b86`
+and `d4b0f1b5b627271978601ec8223b58a033f26e577c9d4e9883b90312ebdd9f7d`;
+its source is `f58ee384ba3d05cf861efefffb030ea6fb49fe07986c5aea120c3ffd5cd42071`.
+It is independent of the R99 whole-Core RED.
+
+The compatible successor source work includes:
+
+- One nominal `PointsToStorageErrorV3` owner in Core types, with the former PTA
+  result path reexported. Runtime and error-shared preserve its finite cause;
+  eighteen literal wire goldens and malformed-wire rejection execute in the
+  R103 successor Core result below.
+- Taint seed, facts, HOF and MemSSA consumers propagate storage refusal through
+  their real callers. MemSSA uses an explicit refused outcome before permissive
+  degraded handling. A missing ordinary row remains distinct from present-empty
+  and from missing retained authority; no error becomes an empty success.
+- Recursive preparation transfers the exact owned `RuntimeCtx` through one
+  queue, then returns it for the receipt. An extra holder is rejected; it does
+  not trigger a context clone. The old envelope-only driver delegates to the
+  same owner. The public preparation hook/signature changes require the coupled
+  downstream caller packet and behavior regressions.
+- Budget/session/invalidation paths use owned context APIs when they already
+  own the context. Borrowed ordinary-copy compatibility must preserve explicit
+  source/session/lifecycle guards and refuse ambiguous erased payloads before
+  sharing. Typed DI services require contract review rather than a blanket
+  `dyn`-based classification. These successor postimages are absent from R99.
+
+### R103 successor: Core accepted, consumer fixtures reached
+
+R103 captures Semantica `3b8f86dd9ea7f94a2426277311037ea9d6480a6a`,
+QGLang committed `b559c49f9b435633bc2e21ca78b339f2e4b5840b` and empty
+sibling overlays. Its source digest is
+`1bc1709199786fc0a9e7f29dd27caf7e3ee54aa3e6b5a44d596d9572efbe4161`.
+The whole Core library/all-features is **447/447 GREEN**, zero failed,
+ignored or filtered. Receipt/publication hashes are respectively
+`ba8298bc5e14352529129c338f82cdb01e4f5483c400e4ddb0a408d5f0c96c5f`
+and `c23b595ce28e75b465b93c3bd928755bec850f4d9f4cda001b9427963deb5ef7`.
+This accepts the corrected reason partition, independent nonmemoization
+regression and finite storage-error wire goldens; it supersedes R99 Core RED.
+
+Kernel lib(test) reaches 58 stale fixture API diagnostics, zero tests. The
+driver, PTA and Taint requests stop at two unused Kernel imports, zero tests;
+the other Taint requests remain unrun under that shared compile blocker.
+The source successor migrates the Kernel fixtures, removes those two imports
+and migrates PTA legacy projection, alias/evaluator and core golden fixtures
+to canonical checked ordinary loans. Literal result/rejection expectations
+remain independent. These repairs require their successor owner execution.
+
+The intended R103 preimage preflight detected a coowner change in
+`query_executor_port.rs`; a shell sequencing error nevertheless started the
+original seven-request helper. Thus the proposed expanded queue and complete
+postimage-match claim were not executed. Canonical capture/custody and the
+finished owner results above are valid. The frozen reconciliation verifies
+seven of eight Kernel production postimages unchanged and confirms the
+remaining method-bound repair survives the coowner's consuming-output change.
+The reconciliation SHA is
+`7aa898af1749ced06b234ddb8559c30f8840a23b48a4becf596735eb525b27c4`;
+R103 postflight SHA is
+`080ea867344a03a24d20616ac4bf96b9da0af631d0e41e35a760080d8a115ee4`.
+Archive: `/Users/songmin/.codex/task-evidence/oct8-closeout-execution-r79/owner-r103-typed-pta-archive/`.
+
+Trace compatibility is repaired at its actual typed owner. Typed ordinary
+pre-key handles validate their nested canonical source and exact backing before
+retaining; recursive ambient trace stacks share the same value-only stack.
+Unknown erased handles and genuine Original lifecycle contexts refuse before
+retaining. Typed and erased views originate from the same concrete Arc.
+This is a trusted Rust producer contract, not external-input attestation.
+The actual nested Original Source integration oracle and Original memo
+success-packet retention remain open: the current packet retainer admits only
+ordinary output context. Owned-context plumbing alone does not close that role.
+
+### R105 reached caller and feature boundaries
+
+R105 completes ten requested scopes on source
+`ce64cc2eb8f500eb63b77f0fb2fc6a764c99623d62873879c2812a4574cd46de`:
+seven finished compile RED requests and three skipped under the identical
+compile blocker, zero executed tests. All ten selected latest postimages match
+the frozen capture; held-lease postflight and archives are valid. Postflight SHA:
+`56624e90c1bb2428421d1c9a185fd45bd317e265af7b0b28cc44c364c50069f4`.
+
+| Request | Actual compile boundary | Source successor |
+| --- | --- | --- |
+| Kernel lib ordinary-copy module | The prior 58 diagnostics pass; one new lifecycle fixture Arc coercion remains | Concrete Arc clone preserves the same backing/count oracle |
+| Kernel recursive integration module | 24 stale request/output/context fixture APIs | Checked request loan, authenticated output view and guarded ordinary context copies; depth2048, cross-thread and round-robin literal oracles preserved |
+| Runtime trace module | 15 query-surface production diagnostics | Canonical source-current import, paid streaming digest, checked FileText/FileMeta fields, typed error conversion and authenticated pre-key identity comparison |
+| PTA retained-copy and Taint MemSSA | One Java hierarchy error-rehome call lacks the actual temporary admission | Existing temporary→output owner contract is passed through; PTA SCC and two other Taint requests are skipped before tests |
+| Metrics depth and navigation import graph | Three Kernel no-Original feature diagnostics | Original-only input-store type/argument/error gates and the pre-key import use the existing feature; no global feature enable |
+
+The authenticated pre-key comparison checks source role/material/backing,
+owner bytes and ordered artifact Arc identities under the actual current.
+It propagates authentication errors; erased authority does not acquire content
+equality. Independent equal-backing, equal-value foreign-backing and artifact
+mismatch expectations are authored at the canonical owner.
+
+R106 captures Semantica `3b8f86dd9ea7f94a2426277311037ea9d6480a6a`,
+QGLang committed `d9708f647ed8ec7dcbf3660d6db14afebfe62dde` and empty
+sibling overlays; source digest
+`790032f680991c7c24d8bf452b228ab75f66622c764ae5d804c0e195e6c597fe`.
+Its preflight and frozen comparison match all31 declared released postimages.
+The queue executes whole Kernel lib plus the recursive, trace, PTA, Taint and
+two SCC consumer scopes. Reached whole Kernel execution is RED: 557 passed,
+11 failed, zero ignored/filtered. Nine failures are test session/permit fixture
+drift; one is a stale split-module registry path and one loses the caller's
+missing-witness diagnostic rail. Recursive integration stops at one owned
+context borrow conversion. Runtime trace stops at34 symbol-owner compile
+diagnostics; PTA stops at one Java borrowed-byte lifetime error. The completed
+queue archives seven RED results and three shared-compile skips;
+only Kernel executes tests. Its held-lease postflight SHA is
+`41d8e60faf414a32359d4e5f1b0c9458aed38c1c4e172341a39d98f23680f73f`;
+all50 archived file hashes match. Navigation separately reaches one missing DFG
+child module mount. These results do not establish a whole-main verdict. An
+unchanged Core447 or PTS37 owner is not rerun
+solely for documentation drift.
+
+The Kernel successors are authored and released under narrow reconciled claims:
+fixture sessions use the actual backing and canonical permit issuer, retain
+independent refund assertions and add a foreign-payload negative; registry
+entries point to the actual split Python producer; checked extraction forwards
+the existing caller rail without changing its authority/witness checks; the
+recursive driver borrows its one owned context. Java integer bytes now borrow
+with the explicit input lifetime. R107's38 declared postimages match live and
+frozen source. Its canonical digest
+is `1dff82deb346ec204b7eb3d4e0dda2017043d1980f574e9b0d299f05c6592554`,
+with the same Semantica/QGLang committed heads and empty sibling overlays.
+Its whole Kernel, recursive, PTA/Taint and two SCC owner queue is running.
+No R107 result is accepted before completed receipt/publication/postflight.
+The late navigation mount repair is not part of that captured input. Runtime
+symbol checked-view migration remains a separate coupled
+consumer cut, rather than restoring public fields or unconditional dereference.
+
+The root also validates the separate R82-family R142 interproc receipt,
+all 1,104 observed witnesses, immutable marker and owner authority. Receipt SHA
+`df367697d18e98223d4966b5362c4bb5dcb655eca63584499d9ed700dfcda6fb`,
+publication SHA
+`4c50ba20bc8f27160458cc7a71b5fe23c4c4f24d750e3d535666d0f2d4ab0710`;
+source `e33930b2c05cdc0825447ddf467a808b92631e8f731d6a001f46c38f6f81ff6b`.
+This accepts that fixed interproc cut. It does not accept the newer external
+Taint/runtime/SDK callers or integrate the Native packet onto main.
+
 ## Current Original source boundary
 
 The [proof handoff](../../work/substrate-repair-checkpoints-2026-10-07.md)
@@ -544,6 +715,18 @@ only with zero definitions/uses/callsites. Stable selected hashes and existing
 first-facts/DFG/PTA owner claims do not turn these into success implementations.
 Closing this scope requires actual admitted producer-to-final-output APIs and
 their regressions, beyond the already committed Shape/SCC dedup source.
+
+R101's latest source refresh compares thirteen prior owner files: eleven are
+unchanged and two PTA workspace/transaction files have advanced. The workspace
+now invokes `extract_original_void_constraint_transaction_v3` with Original
+binding custody. Its positive subset requires zero definitions, uses, callsites
+and joins plus exactly one `Ret(None)`. Nonempty relation rows are still rejected,
+and the actual final `original_owner_output_v1.rs` materializer still returns
+`UnsupportedOperation` under the lowering loan. This supersedes the old claim
+that the workspace transaction function itself always refuses; all three
+general Original success obligations remain open. Evidence:
+`c-original-success-boundary-refresh-r101.json`, SHA
+`65ebe096dd6bacc48d3888697ff963b56d5d6fe0b2fce2b55bf60f85c59a0464`.
 
 ## Remaining execution and completion criteria
 

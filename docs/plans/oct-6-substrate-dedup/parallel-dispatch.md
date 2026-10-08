@@ -25,6 +25,28 @@ owners. Their distributed caller and first-cause obligations remain coordinated
 in FCP-COMPILE; no second opaque-result implementation is dispatched. Exact
 postimages, observed claims and owner outcomes remain in the execution record.
 
+R98–R105 dispatch history: A closes exact owned runtime context/budget/session
+callers and reviews erased-slot compatibility; B repairs the reached Core reason
+intent-lock and maps remaining independent owner requests; C closes the reached
+Kernel contract and typed MemSSA boundaries. I runs the canonical captured
+owner queue serially and updates source-bound evidence. R98 error1 and R99 PTA
+result37 and R103 Core447 are accepted. R103 reaches Kernel fixture errors and
+two unused production imports; those and PTA fixture successors are authored.
+A closes typed ordinary pre-key/recursive trace; B migrates ordinary PTA
+fixtures without changing literal expected results. I runs the frozen R105
+consumer queue. No worker starts Cargo, stages shared files or integrates part of the
+coupled Native contract. Existing Original producer writers retain their exact
+birth/materializer seams; the void-only candidate is not general success.
+
+R106's whole Kernel executes557 pass/11 fail. A repairs genuine fixture backing
+and issuer custody; I preserves the caller error rail and prepares R107 whole
+Kernel/recursive plus PTA/Taint/SCC owners. B migrates the reached symbol checked
+views. The separate SDK worker repairs the real source keeper, paid pin and cold
+committed baseline handoff and authors the installed source/foreign-current
+regression. A continues the actual checked binding/overlay/paid packet producer
+cut; the SDK worker next traces PTA nonempty transaction/final materializer.
+No Original success is inferred from a source-ready packet or a removed refusal.
+
 ## Planning inputs and capacity
 
 - QGLang: clean `main` at `9eee2bee1728c67abfae26f74804bd2ce9e5fd67` before
