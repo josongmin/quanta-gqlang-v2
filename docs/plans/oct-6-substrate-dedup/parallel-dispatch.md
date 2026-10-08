@@ -1,211 +1,231 @@
-# Parallel closeout dispatch
+# Parallel closeout dispatch — R78
 
-Updated: 2026-10-08. Initial source audit: Semantica
-`871224b2059422a8f36eca91ffb0c9119238ac9c`, GQLang code input
-`01cfe39ca0571b4fc099d41b24628fda70e754fe`. Current execution attempts and accepted
-scopes are in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair).
-Refreshed source/claims are required
-before writing. This document is an execution plan; no implementation or runtime
-result is claimed by its publication.
+Updated: 2026-10-08. This is a plan, not an implementation or runtime verdict.
+All execution is local. [R77 RCA](rca.md) owns cause analysis;
+[tickets](tickets.md) own scope/DoD and [remaining work](../../work/remaining.md)
+owns current states.
 
-Current routing is [R77 RCA](rca.md) and its [final execution order](rca.md#final-execution-order).
-The first shared prerequisite is a compatible captured supplier/module/caller
-tuple. Fixed parser compilation, live source-capture rejection and unfinished
-Original publication are separate blockers. SCC core20/facade1 are accepted on
-the fixed tuple and are not reassigned.
+## Planning inputs and capacity
 
-Historical [R67–R71 checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair):
-Kotlin/local-ledger/rule checkpoints remain on main; Rust's hidden fixture test
-is activated and integrated `f574fa82bf1` after actual77-case proof. R70/R71 accepts385
-ordinary language/SCV2 cases with main-matched active dependencies. SDK2/community2
-remain owned pending changes. Shared backing, SourceWire operation validation,
-facts context and existing member/cohort keeper are already co-owned work;
-assign no second implementation. The integrator owns exact request/witness
-reconciliation and the complete coupled handoff before staged source integration.
-
-[R72/R73](../../work/substrate-repair-checkpoints-2026-10-07.md#r72r73-d5-closeout-and-independent-main-diagnostics)
-closes D4/D5's three owner scopes on current matched inputs. Current abstract
-worklist77 also has existing finished evidence. Assign neither again unless
-its actual input/recipe changes. The fixed-main parser compile diagnostic still
-blocks dependent proof; complete the co-owned source bundle before SDK/community.
-
-[Current ticket states](../../work/remaining.md), [scope and DoD](tickets.md),
-[code boundaries](code-map.md) and [test requests](test-plan.md) remain authoritative
-for their own subjects. This dispatch adds no new defect queue or engine project.
+- QGLang: clean `main` at `9eee2bee1728c67abfae26f74804bd2ce9e5fd67` before
+  this documentation change.
+- Semantica: committed `main` at `f574fa82bf123c817e80fc3afc795b4dd033ea3f`.
+  Separate planning reads observe 2,750 dirty/untracked entries, 458 claims and
+  no integration barrier. This is not an atomic source snapshot.
+- Existing child agents `consumer_proof`, `python_defuse` and `rust_java_defuse`
+  report usage-limit errors. The slots below are the intended allocation, not
+  three running workers. Reconcile actual capacity before dispatch. With one
+  available worker, retain the same ownership boundaries and execute ready tasks
+  in dependency order.
+- Refresh HEAD, index, dirty postimages, claims and path-dependency siblings at
+  dispatch. Existing supplier/S0/D0 writers occupy these roles; ticket assignment
+  does not transfer their files to another writer.
 
 ## Objective and priority
 
-Finish existing canonical-owner migrations and budget/output custody, remove
-demonstrated duplicate accounting mechanics, and prove the real consumers on a
-single accepted source tuple. Use the current owners and interfaces.
+Finish the existing canonical-owner and Original-output packet, prove real
+consumers on compatible captured inputs, and integrate complete bundles into
+local `main` through the normal coordinator.
 
-1. **P0:** reconcile/capture and compile the existing supplier/module/caller bundle;
-   complete genuine member forwarding, admitted PTA/DFG publication and general
-   facts output custody through adapter→context→extractors→final keeper.
-2. **P1:** real SDK deadline tests, integrated callback/cursor/language acceptance,
-   D1–D7 and added SCC callers, affected policies and actual Native/product proof.
-3. **Resolved:** QG-DIAG keeps the private primary-only wire required by the actual
-   parity/NDJSON consumers; ADR-0008 records the decision. No new wire work is queued.
-4. **External:** signed installed Linux CHECK trust. Inventory prerequisites early;
-   its unavailability leaves FCP-INSTALL open without preventing local owner work.
+1. **P0 compile:** supplier/module/API closure and every changed caller;
+   capture and prove no-Java/Java plus actual runtime/SDK compilation.
+2. **P0 Original:** genuine member forwarding, admitted PTA transactions/DFG
+   publication and adapter→context→extractor→final-facts output custody.
+3. **Acceptance:** controlled language/callback/cursor, Shape/Cost, PTA/taint/DFG,
+   additional SCC consumers, real SDK/Preview and affected policies.
+4. **Product:** receipt-bound Graph/CHECK results and release-owned installed
+   trust. Inspect external prerequisites early; unavailable installed trust does
+   not block unrelated local owners.
 
-All inventoried plugins and DefUse source cuts are integrated, including Python
-`27d9505015e`; the production retired-carrier census is0. TypeScript joins C/Go's
-snapshot/control cut, not a new
-read-migration assignment. Proposed A-series query/optimizer work remains separate.
+Reuse integrated Python/TypeScript migrations, scalar counter, Kotlin binding,
+SCC core20/facade1, ordinary-language owners, worklist77 and scoped D4/D5 evidence
+when inputs match. Their remaining acceptance does not authorize another source
+migration. Hosted CI, automatic fuzz scheduling, A-series features and a new
+library/engine are outside this closeout.
 
 ## Four slots and existing writers
 
-| Slot | Accountability | Write constraint |
+| Slot | Accountability | Exclusive write boundary |
 | --- | --- | --- |
-| I — integrator | Source/claims freeze, shared-signature agreement, independent review, serial main checkpoints, proof receipts and ticket states | Only reviewed complete bundles; no blanket staging or resetting foreign work |
-| A — existing facts owner | Integrated Python acceptance, then common DefUse/output producer handoff | Reuse the existing D0 facts/context writer; another agent reviews while that writer owns the cut |
-| B — independent consumer/test owner | SDK deadline tests first, then C/Go/TypeScript snapshot control consumers | Consumer files only; shared contract/module registration goes through A |
-| C — independent binding/proof owner | Kotlin admission/oracles, then SCC caller and policy request review | Consumer files only; no shared issuer/context writer |
+| I — integrator | Claims, shared-signature decisions, capture, build queue, serial main integration and receipts/states | Shared registries/manifests/locks through existing owners; stage complete reviewed bundles |
+| A — supplier and contract steward | FCP-COMPILE; shared admission/context; controlled language/callback/cursor proof | Supplier/parser module/API closure and canonical facts context; coordinate existing S0/D0 authors |
+| B — Original producer and analysis owner | Real runtime/SDK→PTA→DFG publication; Shape/PTA/taint/DFG acceptance | Actual producer/caller/retainer and handed-off language consumer hunks; request shared contract edits from A |
+| C — consumer and oracle owner | Authored SDK2/community2, F2/F7, additional SCC consumers and policy review | Handed-off test files/request definitions; no shared contract, producer or manifest edits |
 
-This is a ceiling of one integrator plus three workers, not four fresh workers
-in addition to the active Python/shared owners. Existing writers occupy the
-corresponding slot; a review-only agent can audit their result. Refresh external
-claims/barriers and reconcile actual capacity before dispatch. If a required
-owner is busy, use the slot for independent request/oracle review until handoff.
+One integrator plus three workers is the ceiling, including existing workers.
+When another active owner holds a file, review their result or prepare independent
+tests until an explicit hunk/symbol handoff. Do not add a second implementation.
 
 ## Wave schedule
 
-| Wave | I | A | B | C | Exit / checkpoint |
-| --- | --- | --- | --- | --- | --- |
-| W0 — ownership and design | Record HEAD/tree/dirty/claims, affected caller closure and shared signatures | Existing Python/facts writer identifies complete bundle; trace actual DFG source/operation issuer and output retainer | Confirm real SDK caller and deterministic deadline oracles; inspect three snapshot ledgers | Review Kotlin exact source/backend contract and eleven SCC coverage scopes | Real DFG authority witness plus exact paths/symbols, lifetime, compatibility and rejection; no overlapping shared writer |
-| W1 — independent completion | Review and integrate complete independent bundles serially | Accept committed Python checked extraction and binding tests | Review authored real fluent SDK timeout0/domain/value tests; execution pending | Kotlin binding is committed `df315e6` with exact1/whole70 owner passes; QG-DIAG is resolved by ADR-0008 | CP1 Python source integrated; CP2 SDK test bundle pending actual execution. Original Kotlin output custody still needs the agreed admission interface |
-| W2 — coupled resource repair | Verify producer→all consumers→final retainer; integrate one complete contract bundle | Existing steward implements missing output/context/source-admission seam and actual original issuer/retainer wiring | Shared local counter integrated `f2d85a9` with2 owner passes; finish C/Go/TypeScript original birth, post-snapshot work/output | Wire Kotlin exact Native binding/current/output and tests to the same admitted contract | CP3 coupled producer + consumer compatibility; all signatures/callers compile and independent resource oracles pass |
-| W3 — owner map and local proof | Freeze committed tuple and run admitted heavy owner jobs serially | Review all changed language, callback, original5 and custody witnesses/receipts | Reconcile D1–D7 feature classes and accepted historical inputs; include latest Shape/Cost projection | Reconcile eleven SCC caller scopes, affected policies and product/install prerequisites | CP4 current affected owner + feature/policy verdicts; only reproduced failures reopen source |
-| W4 — real product closeout | Run/attest current product build, SDK/Native and process owners on same tuple | Review original source/first-refusal/custody closure | Review actual SDK/Preview/Graph result oracle and cleanup counts | Verify release-owned installed trust, then installed CHECK when available | CP5 process proof; CP6 installed proof if prerequisites exist; close only accepted ticket rows |
+| Wave | A | B | C | I / exit |
+| --- | --- | --- | --- | --- |
+| W0 — ownership/design | Inventory supplier postimages, parser mounts/exports and shared contracts | Trace members, transaction/publication births and last retainers; agree signatures with A | Reconcile SDK2/community2, eleven SCC scopes and policy/product oracles; inspect installed prerequisites | Record owners, exact coupled paths/siblings, invariants and acceptance before edits |
+| W1 — compile/preparation | Finish existing tree-sitter→Kernel→Foundation→SourceWire/parser closure; preserve lint strength | Complete genuine member arguments at both actual callers; prepare admitted-success changes | Review existing SDK2/community2 oracles and deduplicate owner requests | Capture supplier + changed callers; metadata and owning no-Java/Java/runtime/SDK compile pass. CP1 |
+| W2 — Original success | Carry canonical output admission through existing context/supplier contracts | Complete admitted PTA transactions, DFG publication and language/facts keepers | Prepare independent exact facts, rejection, deadline/value and lifetime expectations | Capture/prove complete producer + consumers: success, typed rejection and last-drop/refund. CP2 |
+| W3 — owner acceptance | Controlled DefUse/language/callback/cursor witnesses | Shape/Cost features, PTA/Andersen/runtime, taint50k, DFG promotion and current bootstrap | Real SDK/Preview and eleven SCC consumers, including community2; policy coverage | One heavy owner at a time; unique source-bound receipts and test integration CP3; final affected policies CP4 |
+| W4 — product/closeout | Review first-refusal/output custody through actual callers | Review analysis/public projections and cleanup | Review SDK/Preview/Graph/CHECK results and installed assets | Receipt-bound product/process CP5; installed positive CHECK CP6 when available; all18-state reconciliation CP7 |
 
-W1 source/test authoring can run independently; Rust execution remains subject to
-normal lane/cache/resource admission. At this campaign's default, one heavy
-logical build lane runs at a time. Read reviews and unconflicted test authoring
-can continue while the lane builds. A module filter does not reduce `lib(test)`
-compile cost. Kotlin and scalar consumers may proceed with a reviewed stable
-signature, but the public contract bundle integrates together.
+W1/W2 order the coupled shared changes. Test authoring, request review and an
+independent owner whose complete closure is captured may proceed in any wave.
+CP1 may compile while Original deliberately still refuses; it cannot close CP2
+or product acceptance. CP2 is not a blanket prerequisite for unrelated SCC,
+Shape or SDK proof.
 
-W2 is the critical shared dependency. Do not block SDK test authoring, D1/D2 map
-review or F2 minimal registry review behind unrelated resource/solver work.
-Never leave dependent callers uncompilable at a main checkpoint.
+Parallelize disjoint authoring/review; run **one heavy native Rust build at a
+time**, including nested fixture builds. A filter does not reduce `lib(test)`
+compilation. I owns one deduplicated execution queue; workers do not start
+competing Cargo jobs. Lightweight checks can run independently when their source
+and resource admission permit them.
 
 ## Exact write-set handoffs
 
-Paths below are Semantica-relative; `core/` means `packages/core/`, `qv2/` means
-`packages/analysis/quanta-v2/crates/`. Refresh existing ownership before editing.
+Paths are Semantica-relative; `core/` means `packages/core/`, `qv2/` means
+`packages/analysis/quanta-v2/crates/`. These boundaries do not authorize whole-file
+staging of foreign WIP. Refresh claims/hunks before edits.
 
-### A — single shared steward and existing Python owner
+### A — supplier and canonical contract
 
-- Existing Python: `core/codegraph-defuse-extractor-python/src/extractor/` reachable
-  checked frontdoor, binding/callable/assignment/traversal/projection helpers and
-  specifically handed-off tests. Preserve current foreign generated-test hunks.
-- Shared seam: `core/codegraph-defuse-extractor-contract/src/lib.rs`,
-  `qv2/quanta-adapters-dfg/src/multi_lang_dfg_adapter/build_pipeline/fact_extraction.rs`
-  and actual request construction/error/output-retainer callers discovered there.
-- Existing authority interfaces: Kernel `cfg_parsed_tree/syntax_authority_v1.rs`,
-  `language_plugin_port/{output_admission,temporary_backing_v1}.rs`, shared
-  `current_read_v1.rs`. These are existing co-owned paths. Name one symbol/hunk
-  steward for required edits and integrate the existing owner's changes first.
-- Shared module registration, Cargo manifests/lockfiles and feature-policy changes
-  go through I/A once, using their owning tools. B/C do not patch shared registries.
-- Deliverable: real issuer→borrowed admission→physical producer→final keeper with
-  exact source/backend authority and preserved ordinary compatibility. DFG's
-  erased Native control has no source-operation/memory lease projection; the
-  parser Java issuer is not a DFG facts issuer. Reuse canonical output/temporary
-  interfaces and carry the actual original source control from outer ingress.
-  The Java generated-field candidate is a partial precursor: CFG/facts creation
-  exists but publication still refuses. Preserve that owner's implementation and
-  finish its actual keeper/caller path rather than adding a second candidate.
-  If the issuance handoff is absent, include that upstream bridge and all callers
-  in S0 before controlled-success acceptance. No diagnostic grant, downcast of
-  unavailable authority or post-allocation wrapping can authorize original custody.
+- Existing backing packet: `third_party/tree-sitter/binding_rust/`,
+  `core/codegraph-cfg-dfg-kernel/src/ports/language_plugin_port/`,
+  `qv2/quanta-runtime-query-surface-foundation/` and
+  `qv2/quanta-runtime-source-authority-wire/`; follow the
+  [coupled supplier closure](code-map.md#coupled-shared-backing-supplier-closure).
+- Parser: `qv2/quanta-adapters-parser/src/lib.rs` and exact hierarchy mount pairs
+  under `language_host_adapter/java_workspace_resolution_syntax_v1/`.
+  Review the three R77 mount risks and owned no-Java enum export hunk. The105
+  diagnostics are fixed-tuple evidence, not a current WIP count.
+- Facts context: `core/codegraph-defuse-extractor-contract/src/lib.rs` and its
+  owning admission interfaces/construction. A coordinates canonical semantics
+  and signatures; B implements adapter/extractor consumers. Required shared
+  module/manifest/lock edits go through I and existing owners once.
 
-### B — SDK tests then scalar snapshots
+### B — actual producer, consumer and keeper
 
-- W1: `qv2/quanta-runtime/tests/abstract_interpret_fluent_api_e2e_test.rs`
-  has dirty authored timeout-zero and exact domain-value regressions for
-  all three domains; execution/owner acceptance is pending. Production behavior
-  is integrated; change it only if the regression reaches a reproducible defect.
-- W2: `core/codegraph-lang-common/src/{c,go,typescript}_syntax_snapshot_v1.rs`,
-  C/Go/TypeScript extractor scalar calculations and their affected owner tests.
-- Integrated `syntax_snapshot_budget_v1.rs` (`f2d85a9`, QBC2/2) shares the 128 MiB
-  local cap/overflow logic, but grants no original authority and
-  charges no post-snapshot work. Shared ledger/helper mechanics belong to one
-  birth/admission contract; grammar
-  fields, binding/order and language interpretations remain distinct. Register any
-  justified common module via A. Do not introduce a generic language visitor or
-  an extra output issuer. Coordinate existing common/TypeScript writer claims.
-- Deliverable: admitted storage before growth, actual post-snapshot charged work,
-  original current/first-refusal checks before publication, temporary/final grant
-  retention and refunds, and a remove/share/retain record for all three ledgers.
+- Member callers:
+  `qv2/quanta-runtime-analysis/src/queries/intraprocedural/production_live_native_lowering_generation_parts_v1.rs`
+  and `qv2/quanta-sdk-session-backend-owner/src/production_normal_source_java_workspace_generation_port_v1_tests/original_native_parts_v1.rs`.
+- Producer: `qv2/quanta-adapters-pta/src/production_live_native_workspace_generation_v1/original_java_workspace_v1.rs`
+  and existing `original_java_evidence_v1.rs`.
+- DFG: `qv2/quanta-adapters-dfg/src/multi_lang_dfg_adapter/adapter/java_source_closure/retained_workspace_issuance_v1.rs`,
+  existing workspace issuer/member/cohort keeper, and general adapter/final-output
+  bridge in `build_pipeline/fact_extraction.rs`.
+- Handed-off language extractor consumers and
+  `core/codegraph-lang-common/src/{c,go,typescript}_syntax_snapshot_v1.rs`
+  use A's existing admission. Preserve integrated counter/binding guards and
+  distinct grammar projections; coordinate each current language writer.
+- DoD: real members/operation identity; admission before physical growth; charged
+  post-snapshot work; current/first refusal before publication; temporary/final
+  permits until last owner and refund on final drop. Missing required authority
+  refuses; ordinary unsealed compatibility stays explicit. No empty member slice,
+  second issuer, post-allocation grant wrapping or unnecessary public trait.
 
-### C — Kotlin then caller/policy evidence
+### C — independent tests and owner requests
 
-- W1/W2: `core/codegraph-defuse-extractor-kotlin/src/extractor/{mod,checked_node_v1}.rs`,
-  affected facts/output helpers and specifically owned tests. No public plugin trait
-  extension without an actual controlled-success caller.
-- Kotlin retained backend/exact-source guard and its same-length foreign-source/
-  backend regression are integrated as `df315e6`, with scoped ordinary acceptance.
-  Preserve that implementation. Native current, first refusal and output custody
-  remain unqualified; assign those real producer/consumer controls only.
-- W3: read/reconcile current-target planner, dominance, concurrency engine/schema,
-  navigation, distinct `codegraph-import-graph`, `codegraph-core-cfg` call-graph
-  SCC, rule execution, metrics and runtime community-cluster owner evidence.
-  Request/oracle changes require real discovery; integrated source is not new work.
-- Deliverable: Native same-length foreign source/backend/missing authority refusal,
-  traversal/cancel/work/first cause and output lifetime; current/no-tree guarded with
-  existing test-support context, without inventing a production caller.
+- `qv2/quanta-runtime/tests/abstract_interpret_fluent_api_e2e_test.rs` already has
+  the SDK two-case timeout0 and exact Sign/Interval/Constant regression. Review
+  the owned cut; change production only after a reached reproducible defect.
+- Existing community empty/cycle two-case cut: discover current owner/target from
+  the [consumer oracles](test-plan.md#consumer-regression-oracles), preserve foreign
+  hunks and require actual test discovery. Do not author a second copy.
+- Reconcile eleven additional SCC consumers with B's PTA/taint requests. One
+  executed request can satisfy several ticket obligations; record aliases and
+  matching witnesses rather than another solver run. Discover selectors/features
+  and expected counts before freezing request cardinality.
+- F2 covers real Native registry→worker→Preview/provider-off and preserves Apply
+  refusal. F7 mapper5 is separate from actual deadline2. Policy/product review
+  uses existing rails; tests/request changes do not create a new engine.
 
-### I — serial integration and proof publication
+### I — compatible capture and serial integration
 
-- Stage only complete reviewed bundles, inspect current foreign index/dirty hunks,
-  `git diff --cached --check`, commit locally and record exact postimage/HEAD.
-  Use the downstream normal coordinator/hooks for Semantica checkpoints.
-- Producer→consumer signature changes, contract semantics and feature manifests
-  ship in one compatible checkpoint. No partial cherry-pick or retired getter restore.
-- GQLang documentation/contract changes stay in this repository; Semantica runtime
-  source stays downstream. Push is a separate publication step.
+1. Record HEAD, claims, index and exact tracked/untracked postimages for the full
+   changed closure and participating path-dependency siblings; agree shared ABI.
+2. Coordinate bounded quiet capture with relevant writers through normal
+   shared-main custody/barrier handling. Capture compatible reviewed postimages
+   into the supported immutable tuple and hold the snapshot execution lease.
+   Writers may resume live main after capture without modifying the frozen root.
+3. If capture rejects changing input, retain the failed attempt and identify its
+   path/owner. Retry after addressing that cause; do not loop on mutable main,
+   bypass guards or label capture failure as compilation. Once compilation runs,
+   repair only reached owning causes and recapture the successor tuple.
+4. Recheck base/head, foreign staged hunks and claims before integration. Stage
+   only the complete reviewed compatible packet with the normal coordinator,
+   `git diff --cached --check`, commit locally and record postimages/HEAD. Changed
+   signatures and every dependent caller ship together; preserve unrelated WIP.
+5. Reconcile candidate proof-to-main input continuity, including manifests and
+   siblings. Changed inputs require the affected successor proof. A snapshot
+   result is not automatically an integrated-main or whole-product result.
 
-## Local proof sequence and reuse
+GQLang documentation/contracts stay here; runtime edits stay downstream. A push
+is separate; this dispatch requests local-main integration.
 
-1. Resolve actual owning features/target/selector on the committed source using
-   `scripts/quanta-build-cli owner resolve`; execute its admitted `owner run`.
-   Do not copy historical feature classes or use raw Cargo as accepted owner proof.
-2. Use the smallest affected owner oracle for each independent CP1/CP2; CP3 must
-   prove the full changed producer/consumer closure. Require exact expected output
-   and discriminating rejection, physical birth/lifetime and first-refusal witnesses.
-3. Execute actual callback chronology, original5, affected language/custody owners;
-   keep original8/JSON13/quarantine discovery and witnesses distinct. Reuse accepted
-   source-equivalent inputs; changed manifests/dependencies require re-resolution.
-4. Repair old45 into core/facade/PTA requests, then reconcile eleven SCC consumers
-   before fixing total cardinality. One concurrency-engine owner covers its two
-   consumers; no duplicate solver/Shape/PTA/taint requests. Tarjan10 alone omits
-   additional callers. Include current Shape/Cost shared allocation feature closure.
-5. Run affected mandatory feature/topology/Honesty/GOD and source policies. Earlier
-   RED is historical until current reproduction. Repair attributable causes;
-   baseline reapproval, new allows or reduced scope cannot discharge acceptance.
-6. Re-freeze final dependency/source tuple, build actual SDK/runtime product and
-   execute F2/F7 plus Graph/CHECK process result/cleanup obligations. Reuse this
-   product proof for SUBSTRATE-PRODUCT instead of a second daemon queue.
-7. Obtain release-owned installed trust and execute FCP-INSTALL positive CHECK.
-   Missing external prerequisites remain explicit; local refusal proof is separate.
-8. QGLang behavior changes require its smallest affected owner and one `just ci`
-   for repository completion; `just qualify-local` only on clean committed HEAD.
-   Prose-only plan publication supplies no new CI/runtime qualification.
+## Ticket dispatch matrix
 
-Every accepted result records source/dependency pins, toolchain/features/root,
-command, selected/executed/pass/fail/ignored/skip/leak counts, literal witnesses and
-immutable normal owner receipts. Pending publication or zero selected tests fails
-acceptance. Failed runs retain their source/receipt; fix only the reached owner,
-then rerun the affected gate on a successor tuple.
+Each active ID has one accountable slot. Shared A/B changes follow the exclusive
+write sets above; cross-ticket reuse never duplicates an executed request.
+
+| Active ID | Slot | Ready work / checkpoint |
+| --- | --- | --- |
+| FCP-COMPILE | A | W1 supplier + B callers; I capture/compile/integration CP1 |
+| CHECKED-RETAINED-CONTROL | B | W1 callers, W2 A contract + B producer/keeper; CP2 |
+| CHECKED-DEFUSE | A | W3 extraction/binding/refusal after affected context closure; CP3 |
+| CHECKED-LANG-SUPPLIERS | A | W3 remaining controlled-carrier/custody; ordinary owners reused; CP3 |
+| CHECKED-CALLBACK-FIRST-CAUSE | A | W3 bridge chronology after parser compile; CP3 |
+| CHECKED-CURSOR | A | W3 original-issued five after parser/issuer closure; CP3 |
+| D1-PROOF | B | W0/W1 map review, W3 Shape/Cost SDK/features; CP3 |
+| D2-PTA-PROOF | B | W3 PTA adapter/Andersen/runtime; core/facade reused; CP3 |
+| D2-TAINT-PROOF | B | W3 public contract and explicit ignored50k owner; CP3 |
+| D2-CALLER-COVERAGE | C | W0/W1 map, W3 eleven consumers with B request reuse; CP3 |
+| D3-PROOF | B | W3 PortDFG/MemSSA/taint promotion; CP3 |
+| FCP-PTA | B | W3 current bootstrap; source repair only on reached defect; CP3 |
+| F2 | C | W0/W1 oracles, W3 real Native/Preview owner; CP3 |
+| F7 | C | W1 authored SDK2 review, W3 deadline/domain owner + integration; CP3 |
+| SUBSTRATE-POLICY | I | A/C review; final integrated affected mandatory gates; CP4 |
+| FCP-PROCESS | I | W4 receipt-bound Graph/CHECK result/cleanup; CP5 |
+| FCP-INSTALL | I | W0 prerequisites, W4 release-owned installed positive CHECK; CP6 |
+| SUBSTRATE-PRODUCT | I | W4 accepted owners/public projections/process/install rollup; CP7 |
+
+Closed QG-DIAG and scoped accepted D4/D5 are not dispatched. Missing external
+prerequisites stay explicit; CP7 retains open rows instead of claiming full
+campaign completion.
+
+## Local proof sequence and handoff record
+
+- Resolve actual captured features/root/target/selector with
+  `scripts/quanta-build-cli owner resolve` and run its admitted `owner run`.
+  Metadata/raw Cargo is not owner/product proof. Require finished GREEN
+  publication and matching hashes; pending publication fails. A test request
+  requiring executable witnesses cannot pass with zero tests; a compile-only
+  check retains its narrower verdict.
+- Reuse matching accepted SCC core/facade, ordinary language, worklist and scoped
+  D4/D5 receipts. Reconcile Shape/Cost features and eleven SCC consumers once.
+- Require independent exact results plus relevant source/backend/missing-authority,
+  low-budget/work/cancel/first-cause and last-owner lifetime/refund witnesses.
+  Keep original5, original8/JSON13/quarantine discovery and actual counts distinct;
+  the [test plan](test-plan.md) owns executable selections.
+- Run final affected feature/topology/Honesty/GOD/source policies; repair reached
+  causes without weakening selectors, minima, baselines or allows.
+- Execute actual SDK/runtime/Preview and Graph/CHECK on receipt-bound binaries
+  with result/cleanup counts. Installed positive CHECK additionally needs signed
+  x86_64 Linux profile, immutable root-owned slots, independent approval/key and
+  active generation. Reuse the same product evidence rather than another queue.
+- QGLang behavior changes require its smallest affected owner and one `just ci`
+  for repository completion; `just qualify-local` only on clean committed HEAD.
+  This prose-only plan supplies no new CI/runtime qualification.
+
+Each handoff records ticket IDs, owner/claim, base HEAD and exact changed hunks;
+postimage digests and full supplier/caller/sibling pins; compatibility/failure/
+lifetime invariants; command/toolchain/features/root; selected/executed/pass/fail/
+ignored/skip/leak counts and literal oracle witnesses; immutable owner receipt/
+publication hashes; integration HEAD; blocker and next ready action. Preserve
+`NOT_RUN`, failed capture, compile failure, focused GREEN and product acceptance
+as separate states.
 
 ## Exit rule
 
-All committed retired carrier calls are gone; duplicate resource mechanics have
-an explicit disposition; actual source/backend binding and original resource
-lifetime survive the entire product path. Every required local owner/policy and
-real product result has accepted matching evidence. External installed trust
-retains its own state until its DoD is met; QG-DIAG is already resolved.
-Move completed decisions to ADR/contracts and retire the packet only after its
-own acceptance. Proposed query/optimizer development is not included in this exit.
+Required local producer/consumer, affected owner/policy and actual product
+obligations have matching accepted evidence on their integrated compatible inputs.
+Missing authority/unsupported operations never fabricate success. Installed trust
+retains its state until DoD is met. Move accepted durable decisions to ADR/contracts
+and retire this packet only after its acceptance; proposed query/optimizer work
+remains separate.

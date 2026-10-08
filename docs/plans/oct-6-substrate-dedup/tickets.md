@@ -18,6 +18,10 @@ Semantica; `core/` means `packages/core/`, `qv2/` means
 Latest source/diagnostic RCA and execution order: [R77](rca.md). Historical
 observations below keep their original inputs. Core20/facade1 are accepted on
 the fixed f574 tuple; current WIP compilation is not accepted.
+The [R78 dispatch matrix](parallel-dispatch.md#ticket-dispatch-matrix) assigns
+each active ID to one accountable slot with explicit wave/checkpoint dependencies.
+Its write boundaries and actual capacity constrain parallel execution; ticket
+assignment alone does not transfer another owner's files.
 
 ## Queue and state snapshot
 

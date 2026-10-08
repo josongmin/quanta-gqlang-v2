@@ -13,6 +13,14 @@ capture rejection and unfinished Original output are separate causes. R76's
 manifest alias is repaired in WIP; R77 metadata succeeds, but current compilation
 and SDK execution remain unqualified.
 
+The [R78 parallel dispatch](parallel-dispatch.md) splits work into one integrator
+and three existing-owner slots: supplier/contracts, Original producer/analysis,
+and independent consumer/oracles. It maps all18 active IDs to dependency waves,
+exclusive write sets, immutable capture and one heavy Rust build queue. Existing
+child agents currently report usage-limit errors; this is the intended allocation,
+not a report of running workers. Local-main integration is serial per complete
+compatible bundle.
+
 ## Current remaining audit — R77
 
 Documentation input is clean QGLang `b8dd3c29e43a`; Semantica committed main is
