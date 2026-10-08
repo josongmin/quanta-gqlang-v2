@@ -43,7 +43,7 @@ assignment alone does not transfer another owner's files.
 | D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Affected feature/topology/Honesty/GOD policies |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P0 | BLOCKED_COMPILE | Parser repairs integrated; native supplier/caller migration remains WIP; latest frozen F2 reaches paid-row public-interface visibility |
+| FCP-COMPILE | P0 | BLOCKED_COMPILE | Parser repairs integrated; native supplier/caller migration remains WIP; frozen F2 passes facts and reaches core DFG internal scope/refusal projection |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |
@@ -264,6 +264,14 @@ execute the runtime/SDK/gate matrix or both shared-allocation feature closures.
   select ignored `deep_chain_50k` as its own request; zero selected is failure.
 
 ## D2-CALLER-COVERAGE
+
+R83 continuity verifies all eight earlier publication hashes against pinned
+committed `d29`: dominance3 and worklist77 match their owner input. Rule34,
+concurrency engine38/domain6, metrics14, import graph32 and core CFG30 have
+changed conservative IR-build dependency closure and require successor proof;
+this change does not assert a behavior regression or feature-specific execution.
+The six exact recipes are resolved, not executed. Current-target, navigation and
+community remain three separate pending scopes. See [execution record](execution-r79.md).
 
 The historical45 map and Tarjan10 filters do not select these eleven consumer
 scopes. This is a proof-inventory gap; source reuse is integrated. Resolve current

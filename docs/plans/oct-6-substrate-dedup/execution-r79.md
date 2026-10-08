@@ -10,6 +10,10 @@ separate states. The [R77 RCA](rca.md) retains its original inputs.
 - QGLang documentation input: `main` at `5bf60a1ad1e2415bb36865c0cde0308faffe749c`.
 - Semantica initially `f574fa82bf123c817e80fc3afc795b4dd033ea3f`; the owned parser
   repair is now `d29ac508b4dec9d1a48dd359541a064fa43f1053` on local `main`.
+- Concurrent coowner integration advances Semantica to `6bab127740a` (runtime
+  search-evidence change) and QGLang to `753a2054f637` (nine-document checkpoint).
+  The parser repair remains an ancestor; subsequent proof captures bind their
+  own HEAD/overlay/sibling tuple. Neither external commit is this queue's test result.
 - Other Semantica changes remain separately claimed shared WIP. Their source
   presence is not a main commit or current qualified result. Compatible reads
   below record particular files; only the leased snapshots bind execution inputs.
@@ -20,6 +24,12 @@ separate states. The [R77 RCA](rca.md) retains its original inputs.
   same process and holds it through the owner sequence. Earlier unleased roots
   were collected before later use; that operational gap is corrected. The lease
   ends after the run, so retained receipts/logs are evidence, not reusable roots.
+- R84 rejects QGLang's changing document overlay before compilation. R85 uses
+  the canonical topology owner's default committed-HEAD policy for this sibling
+  (`753a2054f637`), after checking its dirty paths contain documents only; other
+  required sibling code overlays and Semantica WIP remain captured. Exact
+  materialization validation and the execution lease are retained. This selects
+  a different declared input; it does not qualify the excluded document WIP.
 - Evidence root: `/Users/songmin/.codex/task-evidence/oct8-closeout-execution-r79/`.
   The normal lane is `gqlang-closeout-r79-snapshot-artifact`, one heavy owner at a
   time in this execution queue. Source drift rejects a mixed input before tests.
@@ -32,6 +42,8 @@ separate states. The [R77 RCA](rca.md) retains its original inputs.
 | A / native API | Core IR Foundation imports `codegraph_native_allocation_core::copy_string_v1` through its existing public root export | Authored WIP; do not integrate without the native supplier/manifests/caller packet |
 | A / CFG reader | Explicit index and error signatures for the existing `IntervalReaderV3` callbacks; no algorithm or paid-storage change | Authored after reached R81 `E0282`; leaf format/diff PASS, successor owner pending |
 | A / paid row type | Public opaque nominal `PaidBoolRowsV3<T>` for the sealed storage trait's associated type | Authored after R82 `E0446`; private fields and domain-only constructors/loan methods retained; leaf format/diff PASS |
+| A+B / facts compile | Canonical FileId error import, two value-loan lifetimes and receiver checkpoint's typed unpublished-refusal mapping | Authored after R83; leaf formatting/whitespace checks PASS; general producer/output proof still open |
+| A+B / core DFG compile | Existing sibling read import, common internal reader visibility and canonical `UnsupportedOperation` refusal | Authored after R85; companion Source/Dynamic rejection test corrected with zero-birth and cancellation assertions preserved; successor owner proof required |
 | B / Original | Readback of authenticated member handoff, admitted relation/index/prepared rows and remaining final refusals | Existing coowner progress verified statically; no duplicate producer or fabricated grant added |
 | C / consumer | Nine exact SCC/F2/F7 owner requests resolved; SDK2/community2 and eleven SCC scopes reconciled | `RESOLVED_ONLY`; no test acceptance inferred |
 | C / lock | Root and nested lock add the existing DFG package to SDK executor's dev-dependency list | Exact one-line delta each; full locked metadata PASS; coupled manifest WIP not separately committed |
@@ -71,6 +83,9 @@ Its required witnesses are
 | R80 / `a3eb835ec14f077bd7c61ab06277f4dc84caa7d3b2c53df5e9982427d5bcaf24` | Finished RED, exit101, zero tests | SDK executor gained DFG dev dependency after an earlier lock repair; exact two lock edges repaired |
 | R81 / `ae7fd46950fa02702a8169de55a9d08de2335b404e1d83cb48f4430862f5ee6f` | Finished RED, exit101, zero tests | Passed those prerequisites; CFG span reader's `.get(index)` reaches `E0282` at `cfg_span_index.rs:100`; owning type-inference repair authored |
 | R82 / `d64ab3ed0ec449dc5a1421bd8b810350a5de97f94f17a8ce9600a3591447a863` | Finished RED, exit101, zero tests | Passed the reader repair; public span storage mode leaks restricted `PaidBoolRowsV3<T>` (`E0446`); opaque nominal type visibility repair authored |
+| R83 / `f7b6f8d91a73780e7a8ef5574d34c28a74555bbb9816ed7609fe88d9325e15fc` | Finished RED, exit101, zero tests | Passed CFG prerequisites; facts crate reaches one canonical import, two borrowed-projection lifetimes and one typed checkpoint-error conversion; A/B repairs authored in disjoint owning hunks |
+| R84 / no issued owner input | Source capture rejects, exit1; compiler not started, zero tests | External QGLang document overlay changed after capture; `source-capture-r84-failure.json` records the rejection; successor chooses committed frontend input |
+| R85 / `68024eb04f3f7413dbf08f92b7d15d7a5bb3db3f9c4076f91262962664366a7c` | Finished RED, exit101, zero tests | Committed frontend capture succeeds; facts compiles. Core DFG reaches internal read import/visibility and a nonexistent native refusal variant; three repairs authored, companion test expectation follows the canonical enum |
 
 Each run has its own `f2-native-owner-rNN.json`, `owned-proof-results-rNN.json`
 and archived stdout/stderr. No required witness ran. These are compile failures,
@@ -137,8 +152,12 @@ boundaries. Preserve first typed refusal and publish no partial output.
 3. **Independent owner proof / P1:** execute Shape/Cost, PTA/taint/DFG, the three
    pending SCC scopes, SDK2/community2 and F2/F7 after each complete closure is
    available. The C request map (`c-consumer-owner-request-map-r79.json`) is not
-   a result. Eight earlier SCC GREEN scopes retain their old inputs; current
-   source continuity is still required. Existing accepted core/facade and scoped
+   a result. `c-scc-continuity-d29-r83.json` verifies the eight earlier receipts'
+   publication hashes: dominance3 and worklist77 match pinned committed `d29`,
+   with no external path dependencies. Rule34, concurrency engine38/domain6,
+   metrics14, import graph32 and core CFG30 have changed IR-build dependency
+   closure and require successor owner proof. This continuity does not qualify
+   moving WIP or later `6bab`. Existing accepted core/facade and scoped
    D4/D5 are not reassigned as source repairs.
 4. **Policies and product:** run affected mandatory gates and receipt-bound real
    Graph/CHECK process oracles. Positive installed CHECK requires release-owned
