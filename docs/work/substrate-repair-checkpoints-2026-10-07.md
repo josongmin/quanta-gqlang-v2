@@ -1502,3 +1502,21 @@ allowances. No Parser mutation, compiler/test, Semantica Git or runtime proof.
 SDK4 tests, ordinary handoff receiving and whole compatible owner proof remain
 open. Evidence: `r245-semantic-mint-highest-boundary-readonly.json`,
 `r246-qra-controlled-axes-source-packet.json` and R247 receiving review.
+
+
+## R249–R251 ordinary positive-fixture acceptance checkpoint
+
+Two read-only reviews find admitted-only catalogs and no valid nonempty
+ordinary catalog producer. A raw ordinary view must not be fabricated. V1's
+sole in-repo caller is the positive runtime-test-support QRA→PTA fixture,
+including owner stages, eight fixture entries and mixed-source/W6 consumers.
+Its type-finalizer call lacks a located current definition. No compiler or
+current positive success is inferred.
+
+Standalone collector deletion/always-refuse cleanup was not authored. Complete
+genuine Original fixture/finalization and outer-birth migration with raw-reader
+removal, preserving independent positive nonempty oracles. Empty success is
+rejected by ordinary hydration and QRA. SDK's private helper is not a public
+fixture provider. This remains CHECKED-RETAINED-CONTROL scope, with no new
+engine, duplicate catalog, ticket or executed product-defect claim.
+Evidence: R249 design decision and R250/R251 source review records.

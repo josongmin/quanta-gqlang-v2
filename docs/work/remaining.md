@@ -586,7 +586,12 @@ external per-row input/encoder/portable/row custody, exact-count retained storag
 public birth mounts and removal of the owned Original issuer. Production SDK's
 composite already uses an external birth. Four direct SDK test calls still need
 migration; R246 receives the controlled axes-only loan in genuine preflight.
-Ordinary handoff receiving and complete compatible owner proof remain pending. R239 AST/format/LLM/diff10 and new-module God2 pass; whole God
+Ordinary handoff receiving and complete compatible owner proof remain pending.
+R250/R251 trace the sole V1 caller into positive test-support fixtures and a
+removed type-finalizer call. Genuine Original migration must accompany
+raw-reader removal; refusal-only cleanup does not satisfy that acceptance.
+[Compatible fixture scope](../plans/oct-6-substrate-dedup/code-map.md#r249-ordinary-receiving-and-positive-fixture-co-cut).
+No R249 source edit was made; empty workspace success is unsupported. R239 AST/format/LLM/diff10 and new-module God2 pass; whole God
 stays RED for four pre-existing findings and two legacy allowances. R220 retains
 its separate three-legacy receipt. No Rust build/test, snapshot, Semantica
 source integration or product proof ran for these source cuts. The earlier R194/R206 observations below keep

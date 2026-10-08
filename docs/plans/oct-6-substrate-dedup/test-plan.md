@@ -675,3 +675,15 @@ controlled-tree read, independent of generic Python projection storage. Test
 the symbol minted by external finalization and the separately sourced existing
 call occurrence; do not invent an external fresh-occurrence test path. The
 review proves enclosing chronology only, not every global SDK Source origin.
+
+
+R249 ordinary receiving must include the positive test-support route, not only
+negative catalog rejection. Migrate
+`exact_native_generation_fixture_v1/{original_execution_v1,type_identities_v3}.rs`
+to genuine canonical Original inputs/finalization and outer birth. Preserve
+owner_stages positive oracles, all eight fixture entries and affected mixed-source/W6
+consumers. Their declared coverage is not a current execution receipt. Empty
+batch success is not an oracle: ordinary hydration and QRA both reject it.
+Do not turn positive assertions into refusal/empty results or copy the SDK's
+private helper as a new authority owner. R250/R251 are read-only; R249 source
+implementation and behavior proof are NOT_RUN.

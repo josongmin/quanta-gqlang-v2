@@ -636,6 +636,37 @@ AST11/format11/LLM11/diff11 and axes-only God pass; whole-scope God remains RED
 on the same four existing findings/two legacy allowances. No build/test result.
 Evidence: `r246-qra-controlled-axes-source-packet.json` and owned diff.
 
+### R249 ordinary receiving and positive fixture co-cut
+
+R250/R251 challenge a proposed ordinary raw-reader deletion. Current member
+handoff holds only admitted function/runtime catalogs: ordinary construction
+sets None, Original finalization supplies Some. No valid nonempty ordinary
+catalog producer is found. An ordinary view of admitted backing or a duplicate
+catalog family would violate the existing authority boundary.
+
+The V1 wrapper's sole in-repo caller feeds the positive test-support fixture.
+Replacing that wrapper/collector with unconditional refusal does not complete
+its acceptance. Empty success is also unavailable: ordinary batch hydration
+rejects member-count0 and QRA rejects EmptyWorkspaceInventory.
+**No R249 source edit was made.** Declared legacy fixture coverage is not a
+current compiler or positive execution receipt.
+
+| Exact path under `packages/analysis/quanta-v2/crates/` | Before | Required compatible after |
+| --- | --- | --- |
+| `quanta-runtime-test-support-pta/src/exact_native_generation_fixture_v1/original_execution_v1.rs:76` | Calls V1 with an ordinary batch and pin None for QRA→PTA positive fixtures. | Genuine Original inventory/pin/control through existing Parser owners; real composite birth before Source; existing into-birth composer; result/full error after finisher. |
+| Same `exact_native_generation_fixture_v1/type_identities_v3.rs:35` | Calls `try_finalize_exact_type_identities_v1`; current definition not found. | Receive canonical Original finalization in the same fixture cut; no ordinary catalog reconstruction. |
+| Same `exact_native_generation_fixture_v1/owner_stages_v1.rs` and parent `exact_native_generation_fixture_v1.rs` | Positive owner stages, eight fixture entries and mixed-source/W6 consumers use that route. | Keep independent nonempty identity/row/digest/publication expectations on the genuine route. Never change positives to refusal or empty results. |
+| `quanta-runtime-analysis/src/queries/intraprocedural/production_live_native_lowering_generation_parts_v1.rs` | Ordinary observer/collector uses stale Parser raw getters. | Remove invalid extraction together with genuine fixture migration; missing/Original-only authority stays typed refusal. Remove an obsolete wrapper only with its consumers. |
+
+SDK's genuine helper is private to its test module, not a public fixture
+provider. Reuse canonical Parser/Analysis owners without copying a serializer,
+issuer or synthetic positive. SDK4 direct-issuer migration and this test-support
+path are distinct receiving scope under the existing retained-control ticket.
+Actual production SDK already uses external birth. Source, owner/feature and
+positive runtime proof remain open. Evidence: R249 design decision and
+`r250-ordinary-authority-design-review.json` /
+`r251-ordinary-authority-design-review.json` at the existing recovery root.
+
 ### Native ID caller co-cut — R228
 
 R223–R225 audit four additional native hash leaves under the existing

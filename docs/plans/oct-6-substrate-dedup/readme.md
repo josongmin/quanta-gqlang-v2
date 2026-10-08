@@ -15,7 +15,7 @@ selectors not run. R194 SDK owner also stops at pretest compile on its separate
 R191 source; R206 canonical successor capture refused moving untracked input.
 Original positive, SDK behavior and product acceptance remain open. See the
 [R201–R206 successor](../../work/substrate-repair-checkpoints-2026-10-07.md#r201r206-final-batch-and-sdk-capture-checkpoint).
-Updated: 2026-10-08.
+Updated: 2026-10-09.
 
 R220 authors the four-file QRA component-copy/input-visitor producer; R230
 confirms matching encoder receiving source. R239 now authors the
@@ -25,7 +25,10 @@ public birth mounts, and removal of the owned Original issuer. The actual SDK
 production composite already keeps its birth beyond Source finish. Four direct
 SDK test calls still need the public into-birth API. R246 also receives the
 existing controlled axes loan in genuine QRA preflight; ordinary handoff
-receiving and complete compatible owner verification remain open.
+receiving and complete compatible owner verification remain open. R250/R251
+also trace the positive test-support fixture's V1/removed-finalizer coupling;
+[fixture migration](code-map.md#r249-ordinary-receiving-and-positive-fixture-co-cut)
+must accompany raw-reader removal. Standalone refusal-only cleanup was not authored.
 R239 AST/format/LLM/diff10 and God on the two new modules pass. Whole-scope God
 remains RED on four pre-existing findings and two legacy allowances; none were
 waived. This is dirty Semantica source, with no Rust/runtime/integration proof.
