@@ -15,7 +15,8 @@ not defects or prerequisites for these tickets. Paths below are relative to
 Semantica; `core/` means `packages/core/`, `qv2/` means
 `packages/analysis/quanta-v2/crates/`.
 
-Latest source/diagnostic RCA and execution order: [R77](rca.md). Historical
+Latest repair, integration and owner results: [R79–R81 execution](execution-r79.md).
+R77 source/diagnostic RCA and execution order: [R77](rca.md). Historical
 observations below keep their original inputs. Core20/facade1 are accepted on
 the fixed f574 tuple; current WIP compilation is not accepted.
 The [R78 dispatch matrix](parallel-dispatch.md#ticket-dispatch-matrix) assigns
@@ -42,7 +43,7 @@ assignment alone does not transfer another owner's files.
 | D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Affected feature/topology/Honesty/GOD policies |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P0 | BLOCKED_COMPILE | Committed parser/module/supplier closure plus stable live source capture; alias metadata prerequisite repaired in WIP |
+| FCP-COMPILE | P0 | BLOCKED_COMPILE | Parser repairs integrated; native supplier/caller migration remains WIP; latest frozen F2 reaches paid-row public-interface visibility |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |
@@ -331,6 +332,10 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
 
 ## F2
 
+- R79/R80 frozen minimal-owner attempts both stop before tests: R79 reaches
+  Foundation's private native module import; R80 reaches a newly missing SDK
+  dev-dependency lock edge. The owning repairs are authored and R81 re-executes
+  the same request. These are compile prerequisites, not Preview behavior results.
 - Native registry/mutation source is integrated. Owner: `quanta-cli-ingress-runtime`.
 - DoD: minimal/full registry and admitted context→worker→real Preview backend
   cover canonical operation parity, six mutation IDs and provider-off refusal.
@@ -340,6 +345,12 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
 
 ## FCP-COMPILE
 
+- R79 integrates the three hierarchy mount corrections and feature-scoped imports
+  in Semantica `d29ac508b4d`. The live Foundation native-copy alias now uses the
+  existing public root export. Its native-core supplier/manifests and the two
+  R80 lock rows remain coupled WIP. Full root/nested locked dependency resolution
+  passed after the lock repair; Rust owner acceptance remains separate. See
+  [current execution and integration boundary](execution-r79.md).
 - R77 groups the fixed tuple's 105 parser diagnostics as 11 missing module mounts,
   32 unresolved/private names, four declaration/trait diagnostics and 58 denied
   unused imports. Parser and PTA SCC reach the same diagnostic set. Eight mounts

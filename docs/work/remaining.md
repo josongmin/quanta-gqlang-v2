@@ -5,15 +5,34 @@ committed Semantica `f574fa82bf1` and separately inventoried moving WIP.
 The [R77 RCA](../plans/oct-6-substrate-dedup/rca.md) owns the cause/dependency
 analysis; this file owns the 18 active states.
 
+Latest local repairs, integration and frozen owner outcomes are in the
+[R79 onward execution record](../plans/oct-6-substrate-dedup/execution-r79.md).
+Parser hierarchy mounts and feature imports are integrated as Semantica
+`d29ac508b4d`; native allocation and Original success remain co-owned WIP.
+The R77 observations below retain their historical input.
+
+Latest authored checkpoint: R78–R85 on Semantica `d29ac508b4d` plus separately
+claimed WIP. Java FileId handoff now borrows the parser's authenticated member;
+the external `members_v3` selector is removed. Original relation computation
+reuses the existing emitter and retains a checked output wrapper. These changes
+and genuine SDK/DFG regressions are **not yet compiled, qualified or integrated**.
+The [parallel source checkpoint](substrate-repair-checkpoints-2026-10-07.md#r78r85-parallel-original-owner-implementation)
+records the actual remaining owner changes and verification input.
+
 ## Current required work — R77
 
 1. **P0 / FCP-COMPILE:** reconcile and capture the compatible supplier/module/
    caller tuple, then compile no-Java, Java and actual SDK/runtime owners. The
    fixed tuple's 105 parser diagnostics have four cause classes. The live alias
-   metadata prerequisite is repaired; live compilation remains unqualified.
-2. **P0 / CHECKED-RETAINED-CONTROL:** forward genuine members through runtime/SDK,
-   finish admitted PTA transactions and DFG publication, and carry canonical
-   output admission through general facts extraction and its final keeper.
+   metadata prerequisite and path dependency lock records are repaired. A frozen
+   DFG request reached nine Native allocation lifetime/borrow diagnostics;
+   minimal repairs are authored, with successor owner proof pending.
+2. **P0 / CHECKED-RETAINED-CONTROL:** prove the authenticated member handoff;
+   finish admitted PTA phases, transaction census and DFG publication. The Java
+   collector and QRA pre-native request/result issuer also require Original
+   checked reads and paid nested births before the public positive path opens.
+   Carry canonical output admission through general facts extraction and its
+   final keeper. These are prerequisites of the existing ticket, not new engines.
 3. **P0–P1 / controlled-language proof:** actual DefUse, supplier, callback and
    cursor rejection/resource/lifetime witnesses pass on the complete closure.
 4. **P1 / analysis proof:** Shape/Cost SDK matrix, PTA/Andersen/runtime, taint
@@ -109,7 +128,7 @@ before claiming completion. Broader AG5/IRC releases remain downstream-owned.
 
 | ID / state | Required work | Acceptance |
 | --- | --- | --- |
-| FCP-COMPILE / BLOCKED_COMPILE | Fixed f574 parser and PTA SCC both stop at the same105 parser diagnostics/exit101,0 tests: module mounts11, unresolved/private names32, declaration/trait4 and denied unused imports58. Supplier/module postimages remain co-owned WIP; three hierarchy mounts need current review. The committed Java generated-callable candidate lacks its complete committed Foundation shared-backing supplier. R77 current WIP metadata succeeds with447 workspace members after the alias repair, but source capture/compile remains unqualified. Reconcile, capture and validate the complete tree-sitter→Kernel→Foundation→SourceWire/parser/DFG and actual SDK/runtime caller bundle before integration. | Canonical product build and SDK owner rails on one captured compatible source tuple; verified publication and coordinated integration. Historical failures retain their exact inputs. |
+| FCP-COMPILE / BLOCKED_COMPILE | R77 fixed-f574105 parser diagnostics retain their original input. Three hierarchy mount corrections and feature-scoped imports are integrated in d29ac508b4d. The canonical native-core supplier, workspace/lock and Foundation/tree-sitter/Kernel consumer migration remain co-owned WIP. Frozen F2 attempts reached successive private-import, lock and CFG-storage compile errors with zero tests; see the [execution record](../plans/oct-6-substrate-dedup/execution-r79.md) for source digests, repairs and latest outcome. No current broad parser/SDK runtime qualification is claimed. | Canonical product build and SDK owner rails on one captured compatible source tuple; verified publication and coordinated integration. Historical failures retain their exact inputs. |
 | FCP-PTA / REVERIFY | Verify the seed-consumption lifetime repair against the historical first `PtaOccurrenceAuthorityRefused` boundary; no current reproduction is claimed. | Current owner/bootstrap succeeds, or a reached refusal identifies the exact remaining owner repair. Source changes alone do not close it. |
 | FCP-PROCESS / NOT_RUN | Execute integrated Graph/CHECK positive and refusal fixtures. | Same tuple/artifacts; Linux Graph success, non-Linux Graph refusal, signed Linux CHECK and relevant non-Linux controls; record selected/executed/pass/skip/leak counts and exact output oracle. |
 | FCP-INSTALL / EXTERNAL_PREREQUISITE | Obtain release-owned signed x86_64 profile, root-owned immutable slots, independent approval/key and active generation. | Actual installed CHECK proof. Generic aarch64 artifacts and scripted daemon evidence do not satisfy this gate. |
@@ -138,7 +157,7 @@ are unfinished proof scopes, not instructions to reimplement those changes.
 | SUBSTRATE-PRODUCT / UNVERIFIED | Aggregate F1/D6 and D7 consumer acceptance. Python/component evidence retains its original sources. Reuse FCP-PROCESS/FCP-INSTALL runs for the same product boundary; do not schedule a second daemon/installed proof. |
 | CHECKED-DEFUSE / PROOF_PENDING | Python checked extraction is integrated `27d9505015e`; production retired-carrier getter census is now0 across the inventoried owners. Its145 package files and manifest match the R49 frozen source. Source migration is complete; actual owner walk/control/binding proof remains open. Rust/Java/C/Kotlin/Go/TypeScript cuts are already integrated; no new migration writer. |
 | CHECKED-LANG-SUPPLIERS / PARTIAL | All five inventoried plugin migrations are source-integrated; TypeScript joined C/Kotlin/Rust/Go as `b32361e9d83`. R67 Rust76 lacked the required retained regression because it was raw-string fixture text. `f574fa82bf1` activates it. R70/R71 now accepts whole ordinary libraries Rust77/C57/Go54/TypeScript120/Kotlin43 with32 required witnesses across these libraries and SCV2; active dependency closures match that committed main. Remaining work is controlled-carrier refusal and custody reconciliation after the coupled original-output source handoff. Live ParseResult getters retain their separate API; the public trait has no current parameter. |
-| CHECKED-RETAINED-CONTROL / OPEN | General facts ingress still carries erased Native control without original output admission. R74 finds the existing dirty runtime→PTA→DFG original issuer caller and keeper calls; do not create another issuer. Complete the producer's new members_v3 handoff at runtime/SDK callers, admitted PTA workspace transactions and DFG original source-world/publication births; both final boundaries currently refuse UnsupportedOperation. Complete canonical adapter→context→extractor→facts retainer output admission in the same coordinated change. Missing required authority refuses. Shared C/Go/TypeScript cap/overflow mechanics and Kotlin exact source/backend binding are already integrated as f2d85a9/df315e6 with their earlier scoped proofs; they do not establish original grant custody. Prove low-budget/cancel/first-refusal/output lifetime, preserve ordinary unsealed compatibility; current/no-tree has test-support coverage but no demonstrated production caller. |
+| CHECKED-RETAINED-CONTROL / OPEN | Authenticated Parser FileId loan and DFG identity handoff are authored WIP; no external members_v3 slice is required. PTA shared relation emitter/output keeper, 33-category index census and void-only transaction are authored. General Java facts G/B/S/A production/keeper, DFG callable/source-world/Tree C publication and nonempty PTA phases/transactions still need admitted success; final typed refusals remain. The collector and QRA request/result/digest births are additional prerequisites within the same ticket. Existing runtime→PTA→DFG caller is reused. Integrated local-ledger/Kotlin repairs retain their earlier scoped proof; they do not qualify Original success. | Prove actual same-operation source/output loans, pre-growth admission, low-budget/cancel/first-refusal and final-drop refund; preserve ordinary unsealed compatibility and publish no partial output. |
 | CHECKED-CURSOR / PROOF_PENDING | Three common/vendor cursor paths are integrated as `dc2611b96e1`; only their original-issued execution acceptance remains open. Common 7 and Java 139 passed on R38; original issuer's five memory/work/cancel cases previously stopped before execution at DefUse compilation. Retain no-backing-growth and first-refusal oracles on the successor source. Java ten paths, CFG six paths and R43 path/CFG/manifest bundle (`26f16598905`) are integrated; do not import them twice. R44 confirmed 14/5/413/13 on its fixed committed checkpoint, not these five controls or current main. |
 
 Fixed-pair R72 owner observation (2026-10-08): Semantica `f574fa82bf1`, QGLang

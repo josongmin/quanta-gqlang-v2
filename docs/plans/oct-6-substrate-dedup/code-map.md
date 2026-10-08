@@ -8,7 +8,14 @@ All paths below are relative to `semantica-codegraph-v2` unless marked QGLang.
 `packages/analysis/quanta-v2/crates/`. Subtrees indicate reachable files to
 review, not authority to replace every file. Final claims enumerate exact paths.
 
-Latest cause/source classification is [R77 RCA](rca.md): committed parser/module
+Latest repaired boundaries are in [R79–R81 execution](execution-r79.md).
+Native allocation now has the WIP canonical physical owner
+`core/codegraph-native-allocation-core/`; tree-sitter consumes/reexports that
+owner. The retired `native_shared_birth_v3.rs` path below is historical.
+The Java member handoff now borrows actual parser FileId instead of forwarding
+an external `members_v3` slice. Neither source change proves public Original success.
+
+R77 cause/source classification is [R77 RCA](rca.md): committed parser/module
 closure, live capture rejection and three unfinished Original output boundaries.
 The source paths below retain their historical observations; R77's per-file
 hashes identify current readbacks separately from the fixed proof tuple.

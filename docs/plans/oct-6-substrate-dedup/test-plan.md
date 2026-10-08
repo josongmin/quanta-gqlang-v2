@@ -7,7 +7,12 @@ Current issued requests/results and the issued candidate are recorded
 in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair).
 `qv2/` abbreviates Semantica `packages/analysis/quanta-v2/crates/`.
 
-Latest [R77 RCA](rca.md) identifies prerequisite causes; its
+Latest frozen owner requests/results are in [R79–R81 execution](execution-r79.md).
+The nine C-lane resolves are request discovery only. F2 minimal has two required
+witnesses; parser checks are compilation only. The generated-getter facts keeper
+does not cover general callable, DFG source-world/Tree C or PTA transaction output.
+
+The [R77 RCA](rca.md) identifies prerequisite causes; its
 [final order](rca.md#final-execution-order) routes all 18 IDs. Fixed-tuple SCC
 core20/facade1 and abstract worklist77 are already accepted. Current shared WIP
 has no accepted compile/runtime result from this RCA.

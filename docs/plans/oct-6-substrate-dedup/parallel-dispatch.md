@@ -5,6 +5,10 @@ All execution is local. [R77 RCA](rca.md) owns cause analysis;
 [tickets](tickets.md) own scope/DoD and [remaining work](../../work/remaining.md)
 owns current states.
 
+Executed handoffs, source custody, serial main integration and owner outcomes
+are in [R79–R81 execution](execution-r79.md). The capacity/error observations
+below are planning history; three replacement workers executed A/B/C afterward.
+
 ## Planning inputs and capacity
 
 - QGLang: clean `main` at `9eee2bee1728c67abfae26f74804bd2ce9e5fd67` before
@@ -61,7 +65,7 @@ tests until an explicit hunk/symbol handoff. Do not add a second implementation.
 | Wave | A | B | C | I / exit |
 | --- | --- | --- | --- | --- |
 | W0 — ownership/design | Inventory supplier postimages, parser mounts/exports and shared contracts | Trace members, transaction/publication births and last retainers; agree signatures with A | Reconcile SDK2/community2, eleven SCC scopes and policy/product oracles; inspect installed prerequisites | Record owners, exact coupled paths/siblings, invariants and acceptance before edits |
-| W1 — compile/preparation | Finish existing tree-sitter→Kernel→Foundation→SourceWire/parser closure; preserve lint strength | Complete genuine member arguments at both actual callers; prepare admitted-success changes | Review existing SDK2/community2 oracles and deduplicate owner requests | Capture supplier + changed callers; metadata and owning no-Java/Java/runtime/SDK compile pass. CP1 |
+| W1 — compile/preparation | Finish existing native-core/tree-sitter→Kernel→Foundation→SourceWire/parser closure; preserve lint strength | Verify authenticated parser member loans through both actual callers; prepare admitted-success changes | Review existing SDK2/community2 oracles and deduplicate owner requests | Capture supplier + changed callers; metadata and owning no-Java/Java/runtime/SDK compile pass. CP1 |
 | W2 — Original success | Carry canonical output admission through existing context/supplier contracts | Complete admitted PTA transactions, DFG publication and language/facts keepers | Prepare independent exact facts, rejection, deadline/value and lifetime expectations | Capture/prove complete producer + consumers: success, typed rejection and last-drop/refund. CP2 |
 | W3 — owner acceptance | Controlled DefUse/language/callback/cursor witnesses | Shape/Cost features, PTA/Andersen/runtime, taint50k, DFG promotion and current bootstrap | Real SDK/Preview and eleven SCC consumers, including community2; policy coverage | One heavy owner at a time; unique source-bound receipts and test integration CP3; final affected policies CP4 |
 | W4 — product/closeout | Review first-refusal/output custody through actual callers | Review analysis/public projections and cleanup | Review SDK/Preview/Graph/CHECK results and installed assets | Receipt-bound product/process CP5; installed positive CHECK CP6 when available; all18-state reconciliation CP7 |
@@ -86,14 +90,16 @@ staging of foreign WIP. Refresh claims/hunks before edits.
 
 ### A — supplier and canonical contract
 
-- Existing backing packet: `third_party/tree-sitter/binding_rust/`,
+- Existing backing packet: `core/codegraph-native-allocation-core/`,
+  `third_party/tree-sitter/binding_rust/`,
   `core/codegraph-cfg-dfg-kernel/src/ports/language_plugin_port/`,
   `qv2/quanta-runtime-query-surface-foundation/` and
   `qv2/quanta-runtime-source-authority-wire/`; follow the
   [coupled supplier closure](code-map.md#coupled-shared-backing-supplier-closure).
 - Parser: `qv2/quanta-adapters-parser/src/lib.rs` and exact hierarchy mount pairs
   under `language_host_adapter/java_workspace_resolution_syntax_v1/`.
-  Review the three R77 mount risks and owned no-Java enum export hunk. The105
+  R79 integrated the three R77 hierarchy mounts and feature-scoped imports;
+  qualify them with the owned no-Java enum export hunk. The105
   diagnostics are fixed-tuple evidence, not a current WIP count.
 - Facts context: `core/codegraph-defuse-extractor-contract/src/lib.rs` and its
   owning admission interfaces/construction. A coordinates canonical semantics

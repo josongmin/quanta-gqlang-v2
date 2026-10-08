@@ -1,8 +1,15 @@
 # Closeout root-cause analysis — R77
 
-Updated: 2026-10-08. This is the current cause and dependency map for the
+Updated: 2026-10-08. This records the R77 cause and dependency map for the
 [18 active tickets](tickets.md). [Remaining work](../../work/remaining.md)
 owns their states. All execution is local.
+
+Successor repairs and actual runs are recorded in [R79–R81 execution](execution-r79.md).
+The hierarchy mounts are integrated in `d29ac508b4d`; live Java member handoff
+now borrows the parser's authenticated FileId internally and no longer needs the
+external `members_v3` argument. Preserve the R77 observations below as history.
+Its `--no-deps` metadata result did not prove full locked dependency resolution;
+the later complete resolution and two reached pretest failures have separate inputs.
 
 ## Inputs and evidence limits
 

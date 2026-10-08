@@ -6,7 +6,10 @@ recorded in the R49 update below and the
 No product qualification is claimed.
 Updated: 2026-10-08.
 
-Latest routing is the [R77 root-cause analysis](rca.md). There are 18 active IDs,
+Latest local execution is the [R79–R81 closeout record](execution-r79.md).
+Two parser repairs are integrated on Semantica `main` as `d29ac508b4d`;
+the native allocation supplier and Original publication changes remain WIP.
+The [R77 root-cause analysis](rca.md) retains its historical input. There are 18 active IDs,
 plus resolved QG-DIAG and scoped accepted D4/D5. Fixed-tuple SCC core20/facade1
 and abstract worklist77 are accepted. The parser's 105 diagnostics, live source
 capture rejection and unfinished Original output are separate causes. R76's
@@ -17,8 +20,8 @@ The [R78 parallel dispatch](parallel-dispatch.md) splits work into one integrato
 and three existing-owner slots: supplier/contracts, Original producer/analysis,
 and independent consumer/oracles. It maps all18 active IDs to dependency waves,
 exclusive write sets, immutable capture and one heavy Rust build queue. Existing
-child agents currently report usage-limit errors; this is the intended allocation,
-not a report of running workers. Local-main integration is serial per complete
+child-agent errors describe the planning input. Three replacement workers
+executed supplier, Original and consumer lanes in R79–R81. Local-main integration is serial per complete
 compatible bundle.
 
 ## Current remaining audit — R77

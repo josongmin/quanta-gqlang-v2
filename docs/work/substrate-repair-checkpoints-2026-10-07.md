@@ -6,6 +6,14 @@ proof history.
 [Remaining work](remaining.md) owns IDs and acceptance; [ADR-0005](../adr/0005-substrate-reuse-and-consumer-projection.md)
 owns integrated decisions. This handoff issues no runtime or qualification claim.
 
+## Local parser integration and frozen F2 execution
+
+The [R79 onward execution record](../plans/oct-6-substrate-dedup/execution-r79.md)
+records two parser repairs integrated as Semantica `d29ac508b4d`, exact lock
+resolution and successive source-bound F2 compile attempts. Those attempts
+execute zero tests; native supplier/Original implementation remains a coupled
+WIP packet. The source checkpoint below is separate from these owner receipts.
+
 ## Current source and next execution input
 
 Initial committed-source audit: Semantica
@@ -17,6 +25,55 @@ allocation and exact request/oracle review; a final execution tuple is not yet f
 The [ticket index](../plans/oct-6-substrate-dedup/tickets.md) reconciles18 active
 closeout IDs plus resolved QG-DIAG and scoped accepted D4/D5; proposed A-series
 work remains a separate roadmap.
+
+## R78–R85 parallel Original owner implementation
+
+Source inventory: Semantica `d29ac508b4d` plus claimed WIP; QGLang documentation
+input `5bf60a1ad1e`. No new source bundle has been integrated by this checkpoint.
+
+- **Member handoff:** Parser lends the actual admitted `FileId` in the same
+  Original callback as source/path. DFG validates member identity and PTA consumes
+  the canonical batch directly. The existing seven-argument reader is preserved;
+  no fabricated ingress or external `members_v3` slice is introduced.
+- **Relation owner:** V1 and Original share the classifier/emitter. Checked
+  Parser and DFG member loans feed paid storage, exact census and an opaque
+  Original output wrapper. Workspace handoff validates its operation/group.
+  `into_parts_v1` is crate-private; Original refusal payloads avoid unadmitted
+  String/Vec copies. This is an authority carrier over the same result IR.
+- **PTA transaction:** the existing 33-category index census supports Original
+  paid birth and retains its group. Prepared stage and relation assembly are
+  connected. Remaining phases, identity/sidecar census and retained transaction
+  output still require owner changes; the final typed refusal remains.
+- **Actual earlier caller:** Java function-authority collection and QRA
+  pre-native issuance still read ordinary inventories. Request/result builders
+  and generation-digest materialization also make ordinary nested allocations.
+  The existing resource wrapper explicitly cannot pay those births afterwards.
+  The collector and canonical paid request/result/digest owners are assigned
+  together; wrapping an ordinary result is not a positive implementation.
+- **Authored oracles:** Original facts keeper checks three exact publications,
+  foreign-root refusal, same-operation sibling-group loan, cancellation and final
+  refund. Genuine SDK/JDK fixtures exercise FileId loan and source-to-DFG identity.
+  These tests have formatter/static proof only, not execution acceptance.
+- **Reached compile repair:** R78 exact SDK source capture succeeded but Cargo
+  refused stale lock records. Offline metadata kept all registry versions,
+  sources and checksums while updating local dependency records (root18,
+  nested25 plus one existing native path package). R79 exact DFG then reached
+  nine Native allocation lifetime/borrow errors; two getter lifetime bounds and
+  one checked-read borrow ordering repair are authored with foreign bytes intact.
+
+Verification remains source-bound. R80 mutable-source finalization and R81
+external Index capture were rejected; neither qualifies the source. A durable
+task-local fixed input now exists at
+`/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/query-owner-build-r1/r82-fixed-input/semantica-codegraph-v2`.
+It contains the recorded Semantica overlay and committed GQLang/Index siblings,
+with exclusive QBC lane `gqlang-original-fixed-r82`. A candidate result does not
+qualify moving main or complete public PTA publication.
+
+Evidence at the existing recovery root: `r78-lock-closure-applied.json`,
+`r79-native-supplier-postimage.json`, `r82-source-capture.json`,
+`r82-fixed-input-pins.json` and `r85-parallel-source-checkpoint.json`.
+
+## Historical next-input observations
 
 - C/Go/Kotlin/Rust/Java and latest TypeScript (`b32361e9d83`) source cuts are
   integrated. Python checked extraction joined main as `27d9505015e`: zero retired carrier
