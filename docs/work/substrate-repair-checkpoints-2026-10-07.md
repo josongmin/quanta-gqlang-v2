@@ -73,7 +73,7 @@ Evidence at the existing recovery root: `r78-lock-closure-applied.json`,
 `r79-native-supplier-postimage.json`, `r82-source-capture.json`,
 `r82-fixed-input-pins.json` and `r85-parallel-source-checkpoint.json`.
 
-## R87–R91 fixed-candidate compile and ownership checkpoint
+## R87–R93 fixed-candidate compile and ownership checkpoint
 
 Live source observed at Semantica `6bab127740a3`; candidate source retains the
 R82 fixed topology and explicit later file captures. No coupled new source
@@ -85,6 +85,8 @@ bundle is integrated by this checkpoint.
 | R88 exact Original facts keeper | Exit101 at CFG span reader E0282. | Target executed zero cases. C compiler warnings are not the diagnosed blocker. |
 | R89 Kernel lib/all-features CHECK | Exit101 at restricted paid CFG row type in a public associated type. | Candidate explicit span-reader type annotation; no Kernel behavioral verdict. |
 | R90 successor Kernel CHECK | Exit101 at shared DFG fact import, two TypeScript returned-loan lifetimes, and callsite error conversion. | Existing live CFG visibility repair captured; zero tests. |
+| R91 successor Kernel CHECK | Exit101 at the remaining shared-facts callsite error conversion; source `202255f4dbce127a0acc7d44036ab146a5a97e3f071d4f3f3c01b41e31976c0a`. | Partial candidate preparation had copied the import/two lifetime repairs but stopped before the callsite and newer Kernel capture; zero tests. |
+| R93 successor Kernel CHECK | Exit101 at Core DFG schema import, refusal-variant and helper-visibility errors; source `d756c22adf3c3417eacd17fb37fa3628372e52bdfd6f7c052d44870efc06394b`. | Actual shared-facts callsite fix and six stable Kernel/shared files captured; earlier facts boundary passed, zero tests. |
 
 The root span-reader annotation preserves every foreign postimage byte outside
 its one closure parameter. Core DFG fact files already have active supplier
@@ -111,9 +113,20 @@ not a compile or runtime verdict for this cut.
 
 Locators at the existing recovery root: `r87-fixed-native-check-result.json`,
 `r87-native-status-observational.json`, `r88-fixed-facts-keeper-result.json`,
-`r89-fixed-kernel-check-result.json`, `r90-fixed-kernel-check-result.json`, and
-full corresponding compiler logs. R91 successor execution is pending; no
-outcome is inferred from admission or started work.
+`r89-fixed-kernel-check-result.json`, `r90-fixed-kernel-check-result.json`,
+`r91-fixed-kernel-check-result.json`, `r93-fixed-kernel-check-result.json`, and
+full corresponding compiler logs. `r93-kernel-compile-readback.json` records
+the exact owner results; `r93-core-and-kernel-source-capture.json` records the
+seven captured files. Neither RED run establishes Kernel or product success.
+
+Genuine Original ingress now uses the parser's borrowed same-cohort member,
+actual Java handoff and source text. The authored
+`visit_inventories_with_native_handoff_v3` loan does not construct an ordinary
+workspace handoff. QRA must authenticate source-membership/projection alias
+against the existing `PinnedQuerySessionGenerationSealV1` source closure;
+matching caller metadata alone cannot grant that authority. Its paid issuer,
+SDK pin propagation and genuine fixture regressions remain unverified source
+work until their complete caller/supplier tuple is captured and executed.
 
 ## Historical next-input observations
 
