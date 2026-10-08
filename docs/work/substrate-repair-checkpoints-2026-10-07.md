@@ -1614,3 +1614,38 @@ Receipts: `r273-selection-source-packet.json`,
 `r275-native4-final-static-readback.json`,
 `r276-statement-final-delta-review.json`. Compiler/tests/QBC/runtime/source
 capture/Semantica Git: **NOT_RUN**. QGLang historical R167 `just ci` was not rerun.
+
+## R278–R286 terminal guard and stable failure latching
+
+SourceWire `begin_v3` originally polled the supplied output before its terminal
+state check. R278 moves that guard first. R280 independent review then locates
+semantic bridge preparation before begin. R281 extends the same ledger owner
+with read-only `ensure_open_v3`; semantic exact-output/canonical preparation and
+stable factory/callbacks reuse it before output access. Statement issue/copy
+already begin first and need no additional state check. R283 splits semantic
+post-ledger result finishing in place, preserving exact typed-error projection,
+missing-result and final-checkpoint order; scoped God passes with no allowance.
+
+R285 review identifies another concrete stable boundary: callback and final
+checkpoint failures leave the ledger open. R286 latches the existing stop on
+both exits, preserving the original generic/Native error. Terminal reuse returns
+the ledger-native first cause when present, otherwise `InvalidBoundary`, without
+recording on or polling the later output. Open successful factory calls remain
+reusable. No hash/authority/serializer/allocation owner is replaced.
+
+R279/R282 add three genuine Parser ledger/semantic tests. R284/R286 add an
+owner-local stable regression with a real minted symbol and post-callback
+cancellation, then a different canceled Current; strengthen the existing typed
+callback error's later-reuse oracle. Four new tests check zero later polls/work/
+memory/cause changes, earlier charge retention and final refund. Authored tests
+are **NOT_RUN**. Final four-path AST/format/diff pass; changed-file LLM covers
+three production paths with one normal test exemption; God3 passes. Neither
+source review nor this documentation checkpoint establishes Rust type
+compatibility, owner publication, runtime/refund execution or product acceptance.
+
+Receipts: `r279-ledger-terminal-genuine-tests-source.json`,
+`r281-semantic-terminal-bridge-source.json`,
+`r283-semantic-bridge-god-source.json`,
+`r285-terminal-regression-static-review.json`,
+`r286-terminal-final-source-packet.json`. Semantica remains shared dirty main;
+no compiler/tests/QBC/runtime/source capture or Semantica Git publication ran.

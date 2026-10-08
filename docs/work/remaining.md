@@ -622,6 +622,14 @@ source; its import boundary remains separate. Exhaustive highest Source/runtime
 custody is unproved. Compiler/tests, source capture and Semantica Git publication
 are NOT_RUN.
 
+
+R278–R286 [terminal reuse](../plans/oct-6-substrate-dedup/native-identity-boundary.md#terminal-reuse-ordering--r278r286)
+repairs ledger guards before any new output/current access, semantic/stable
+supplier preparation, and stable callback/final-checkpoint failure latching.
+Four genuine regressions plus the existing typed callback-error oracle are
+authored; AST4/format4/diff4, production God3 and LLM3 pass. Test execution,
+compatible receiving, Semantica integration and product proof remain open.
+
 ## R201–R206 final batch and SDK capture state
 
 R201 completes the R107 held-lease postflight on frozen `1dff82deb346…`:

@@ -728,3 +728,25 @@ exemption. R276 reviews the final source delta independently. Shared symbol
 query God remains RED (802/800 lines and two shared function findings); its
 file-size delta partly includes this cut. Complete that owner policy repair
 without moving active foreign algorithms blindly or refreshing the baseline.
+
+### Terminal ledger and supplier acceptance — R278–R286
+
+- Ledger: after a genuine paid attempt, stop then supply a different canceled
+  Current; refuse `InvalidBoundary` without polling it or changing its first
+  cause, work or memory. After an actual first cancellation, a fresh active
+  Current must return the same ledger-native cause without touching that Current.
+- Semantic: mint a real symbol, stop the external ledger, then try the same
+  descriptor with a matching fresh genuine output. Reject before exact-output
+  validation/current polling and retain the earlier charge until final drop.
+- Stable: successfully mint inside the callback, cancel before its final
+  checkpoint, and verify the factory's actual failure closes attempts. A fresh
+  canceled Current must never enter its callback or be polled. Also preserve the
+  existing generic callback error verbatim; later reuse must not replace it with
+  later cancellation.
+- Execute these four new mounted Parser tests and the strengthened callback-error
+  regression on the complete compatible `parser-java` owner; retain existing
+  Java/Python parity and same-group/different-output checks. Source AST/format/
+  God/LLM results do not execute the counter/refund oracles. **NOT_RUN.**
+
+See the [terminal source cut](native-identity-boundary.md#terminal-reuse-ordering--r278r286)
+for exact owner paths and deliberate terminal-failure precedence.

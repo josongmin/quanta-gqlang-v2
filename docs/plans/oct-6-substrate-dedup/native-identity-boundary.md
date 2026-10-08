@@ -27,7 +27,10 @@ Paths below are Semantica-relative. `parser/` means
 ```mermaid
 flowchart LR
   A[Caller creates empty DATA frame] --> B[Highest Source begins]
-  B --> C[Bridge validates exact output]
+  B --> O{Ledger open?}
+  O -->|yes| C[Bridge validates exact output]
+  O -->|no| T[Return retained cause or InvalidBoundary]
+  T --> G
   C --> D[Existing owner admits paid attempt node]
   D --> E[Canonical encoder and hash]
   E --> F[External ID or partial state and typed failure]
@@ -95,7 +98,8 @@ issue authority or introduce another query/runtime engine.
 ### Mandatory receiving ABI
 
 - SourceWire: `OriginalIdentityMintLedgerV3<T>::begin_v3(output, (operation, group))`
-  and `stop_v3()`. Default T is empty DATA; no current/control/callback is stored.
+  and `stop_v3()`. `ensure_open_v3()` rejects terminal DATA before any bridge
+  output method. Default T is empty DATA; no current/control/callback is stored.
 - Stable Python: `with_original_python_stable_hash_v3(output, &mut stable_attempts, callback)`.
   `stable_attempts` is `OriginalIdentityMintLedgerV3<OriginalStableIdentityAttemptV3>`.
 - Semantic: `OriginalSemanticIdentityHashV3::new(output, project_native, &semantic_attempts)`.
@@ -207,3 +211,48 @@ control ticket. It does not add a source issuer or query engine.
 Receipts: `r273-selection-receiving-design.json`,
 `r273-selection-source-packet.json`, `r275-selection-independent-source-review.json`.
 No compiler/test/QBC/runtime/source capture or Semantica Git publication ran.
+
+## Terminal reuse ordering — R278–R286
+
+Source review located three related ordering defects; no executed runtime failure
+is claimed. They are repaired at the existing storage and supplier owners:
+
+| Boundary | Before | Authored repair |
+| --- | --- | --- |
+| SourceWire `OriginalIdentityMintLedgerV3::begin_v3` | Polls a supplied output before rejecting stopped/pending/born DATA. A later Current can be observed unnecessarily. | `ensure_open_v3()` returns the already stored Native first cause, otherwise static `InvalidBoundary`, before any output method, node default or allocation. `begin_v3` reuses this one owner check. |
+| Parser `semantic_identity_mint/original_hash_v3.rs` | Output validation, checkpoints and lease/canonical preparation precede the ledger guard. | Both exact-output validation and canonical preparation check the ledger first; RefCell conflicts return static typed refusal without recording on a different output. The same-owner finish helper preserves drop-before-error projection and final-checkpoint precedence; scoped God passes. |
+| Parser `language_host_adapter/adapter_impl/native_typed_surface_cache/original_java_canonical_semantic_v3.rs` | Outer factory and callbacks validate/poll before begin. Callback or final-checkpoint failure returns without closing attempts. | Guard the factory and three hash callbacks before output access. Latch `stop_v3()` on callback and final-checkpoint failure exits; preserve the first generic callback error and Native final-checkpoint error unchanged. A later call refuses terminal DATA. |
+
+Terminal rejection deliberately precedes later cancellation or foreign-admission
+failure. `stop_v3()` retains lower typed error DATA; when no ledger-native first
+cause exists, reuse returns `InvalidBoundary`. No later output is asked to record
+that static refusal. Successful repeated factory calls remain allowed. Statement
+issue/copy already call `begin_v3` before output methods and need no extra guard.
+Hash axes, canonical bytes, ID domains and allocation ownership are unchanged.
+Prebirth factory admission failures before a mint begins are outside this
+terminal-ledger acceptance; R285 does not classify them as another defect.
+
+Four new genuine regressions are authored: stopped ledger with canceled fresh
+Current, ledger-native first cause with a different active Current, stopped
+semantic bridge after a real canonical symbol, and actual stable post-callback
+cancellation followed by a different canceled Current. Each checks zero new
+lifecycle polls/work/memory/first-refusal changes, retained first backing and final
+refund. The existing generic callback-error test now also requires terminal
+rejection before later cancellation while retaining its original typed error.
+Tests use real budget/current/output issuers; the counting lifecycle is only an
+observer. **All these tests are NOT_RUN.**
+
+Final scoped source checks cover four paths: AST4, rustfmt4 and diff4 pass;
+changed-file LLM covers three production files with one normal test exemption;
+God passes on the three production files without allowance or baseline changes.
+R285 independently reviews the final regression and supplier source; R286 records
+the stable failure-latching correction. These are source facts, not Rust type,
+owner-publication, runtime/refund or product proof. The remaining receiving and
+owner/test obligations above stay open.
+
+Receipts: `r278-ledger-terminal-source-packet.json`,
+`r279-ledger-terminal-genuine-tests-source.json`,
+`r281-semantic-terminal-bridge-source.json`,
+`r283-semantic-bridge-god-source.json`,
+`r285-terminal-regression-static-review.json`,
+`r286-terminal-final-source-packet.json`.
