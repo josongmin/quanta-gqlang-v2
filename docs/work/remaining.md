@@ -464,3 +464,16 @@ source. Preserve durable decisions in the owning ADR/contract and exact receipts
 in source-bound evidence. For this repository, `just ci` is local composition;
 `just qualify-local` requires clean committed HEAD. No stale receipt, source
 presence, compiler success or Python fixture alone grants product qualification.
+
+## Source/caller checkpoint — R169–R178
+
+Existing-owner PTA output-slot, QRA axes-slot and checked test-executor callers
+are source-ready; the genuine SDK positive also has retained-charge/last-drop
+refund assertions. Complete Kernel/context/supplier/consumer compilation and
+those actual behavior rails remain open. R174 nominal SourceWire9 is accepted
+on its own fixed source with committed QBC publication. It does not establish
+Original Native, SDK or current-main acceptance. The PTA early-drop review
+found no proven early-refund defect; QRA's initial owned callback return was the
+specific source boundary repaired. All18 IDs remain at their prior product DoD.
+See [current checkpoint](substrate-repair-checkpoints-2026-10-07.md#source-callback-and-caller-checkpoint--r169r178)
+and [proof order](../plans/oct-6-substrate-dedup/test-plan.md#source-callback-and-caller-proof-order).

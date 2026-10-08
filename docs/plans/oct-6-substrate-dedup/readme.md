@@ -481,3 +481,20 @@ SourceWire repo-relative normalization module. Minimal fixes preserve other
 workers' storage/issuer edits; successor owner proof and coupled integration
 remain required. Unicode manifest/lock projection likewise awaits its complete
 coowned checkpoint; metadata coherence on the dirty tree is not clean-main proof.
+
+## R169–R178 Source callback and caller checkpoint
+
+PTA's relation producer/caller and QRA's initial/request/result axes use existing
+canonical APIs with unit/status Source callbacks and caller-owned typed slots.
+The initial axes DTO is constructed only after Parser Source postvalidation.
+This is an in-place custody/caller repair; no compiler, solver or issuer was added.
+
+R174 accepts nine SourceWire nominal copy/refusal tests with committed QBC
+publication on fixed source `8c199a14c47c93cdc8a6fd68027f9f373e8b48c9e5dee04f5239e4d5c5304c91`.
+The genuine SDK positive now asserts a live retained charge and exact refund on
+result drop; QRA's test executor uses the current checked wire/erasure APIs.
+Those two caller/test changes and the PTA/QRA Source cuts are source-ready and
+remain uncompiled on a complete current consumer tuple. See the
+[checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#source-callback-and-caller-checkpoint--r169r178)
+and [proof order](test-plan.md#source-callback-and-caller-proof-order).
+All18 active IDs retain their existing acceptance boundaries.

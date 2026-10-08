@@ -508,3 +508,19 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
   are broader foreign dirty work. This index records overlapping boundaries without
   replacing their owner's queue, accepting their WIP, or assigning duplicate writers.
   Refresh their source/claims/barriers at the next actual handoff.
+
+## R169–R178 scoped Source/caller progress
+
+FCP-COMPILE and CHECKED-RETAINED-CONTROL now include source-ready PTA
+unit/status output slots, QRA's initial/request/result axes slots and the current
+checked test-executor caller. The SDK genuine positive's retained-charge and
+last-drop refund assertions are authored. They need complete consumer tuple
+compilation and actual execution; no active ID is closed by source shape alone.
+
+R174 nominal SourceWire9 is accepted with committed publication; R172's one
+unused-import error belongs to the older fixed prefix capture, while live Source
+uses the import in a separate snapshot-digest helper. The PTA early payload drop
+review did not establish early reservation refund or a runtime safety defect.
+Its comment was narrowed to the demonstrated lease/publication behavior.
+Remaining owner/consumer/product oracles follow the
+[proof order](test-plan.md#source-callback-and-caller-proof-order).

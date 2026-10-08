@@ -451,3 +451,34 @@ Receipt acceptance distinguishes source integration, focused owner proof,
 feature/policy proof, product process proof and installed qualification. Close
 only the corresponding remaining-work row; unavailable prerequisites are not
 successful executions.
+
+## Source callback and caller proof order
+
+1. Accepted R174: `quanta-runtime-source-authority-wire`, lib/test,
+   package-all-features, module `generation_source_projection_copy_v3`,
+   max-test-threads1, jobs2. Nine actual named witnesses pass, zero failed/ignored,
+   236 filtered; normal QBC publication is committed. This is nominal member and
+   projection copy/refusal behavior, not Original positive authority.
+2. Freeze the complete current Kernel/carrier/context, Foundation supplier and
+   PTA/QRA/SDK caller tuple. Resolve actual owner CHECK targets/features and
+   compare existing frozen receipts before rerunning them. An isolated old-F
+   bound fix or broad live-file copy is not the current contract proof.
+3. Run the SDK module
+   `client::product_java_exact_build_authority_owner_v1::original_java_build_input_v3::tests::genuine_original_pre_native_authority_v3`,
+   feature-isolation `quanta-sdk-runtime-executor.no-default.0415f206f0e0`, lib/test,
+   expected3. The positive reaches initial axes and both copies, asserts the
+   literal body/digest/one row and exact last-drop refund. Two existing negatives
+   reject a different genuine FD pin and an ordinary pin before QRA row birth.
+4. Separately exercise the actual PTA producer/caller with a genuine sealed
+   Parser/DFG cohort: zero relation positive, the existing nonempty typed refusal,
+   late recorded cause and final group refund. Do not turn the intentional
+   UnsupportedOperation into a fabricated successful plan.
+5. A deterministic mid-QRA Source-refusal hook is not established in the current
+   genuine fixture. Partial sink refusal has nominal9 evidence; QRA late Source
+   postvalidation, first-cause and partial-copy refund remain a separate gap.
+   Add that rail through the genuine lifecycle/work owner when its actual input
+   can reproduce the boundary; no fake issuer or delegated authority fixture.
+
+All R169/R171/R175/R176 consumer changes have formatter/static source checks
+only at this checkpoint. Compile success and nominal9 cannot close SDK, process,
+installed-positive or whole-main qualification.

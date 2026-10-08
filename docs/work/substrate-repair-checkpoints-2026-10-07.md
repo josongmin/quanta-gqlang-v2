@@ -1265,3 +1265,31 @@ existing authority/work/memory/cancel oracles before closing these owners.
 ownership and scoped acceptance; `supplier-r45-peer-owner-archive/manifest.json`
 binds archived receipt/result/summary hashes. R38 common/Java, R44 445 and
 cursor source absorption do not qualify these remaining supplier owners.
+
+## Source callback and caller checkpoint — R169–R178
+
+Live source: Semantica `3b8f86dd9ea7f94a2426277311037ea9d6480a6a` plus
+claimed WIP. QGLang's previous local-main docs checkpoint is `d9708f6`.
+Source-ready downstream changes are not integrated/qualified by a documentation
+commit. Exact Source/API cuts and independent reviews are retained under
+`/Users/songmin/.codex/task-evidence/oct6-substrate-dedup/recovery-20261006/query-owner-build-r1/`.
+
+| Scope | Verified result | Limit / next owner |
+| --- | --- | --- |
+| R169 PTA producer and actual Parser caller | Unit/status callbacks and outer result slots authored; formatting/static type-shape review pass | Genuine zero/nonempty/late-refusal/final-refund owner execution pending. Nonempty workspace relation remains intentionally unsupported. |
+| R170–R171 QRA initial/request/result axes | Initial axes owned callback return found and repaired; existing Source lens, distinct slots and Kernel nominal constructor reused | No QRA compile or SDK positive acceptance. Full request/result creation is outside actual Parser loans, so later fallible work alone is not another lender defect. |
+| R170 PTA payload/lease review | No concrete transition or early reservation refund defect found; overly broad lifetime comment corrected | Some temporary payloads drop inside a failed callback; the retained destination group keeps their committed charges until final lease drop. Runtime refund still needs its actual oracle. |
+| R171–R172 SourceWire sink capture | Three-file compatible cut captured; R172 exit101 before tests on one fixed-only unused import | Live import is used in the excluded snapshot-digest helper. No live bug or new API shim assigned. |
+| R174 SourceWire nominal copy/refusal | **9/9 passed**, zero failed/ignored, 236 filtered; QBC publication **committed**; source `8c199a14c47c93cdc8a6fd68027f9f373e8b48c9e5dee04f5239e4d5c5304c91`; run `20261008T084355.910990Z-ec6b007f661e` | Exact member metadata/digest, partial text/vector retention, work/copy mismatch and occupied sink refusal. Not Original Native positive, current-main or SDK proof. |
+| R175 genuine SDK positive regression | Actual session IntermediateBytes baseline, retained result charge and last-drop exact refund assertions authored; existing literal row/body/digest oracles kept | Formatter/static only; module3 execution pending complete current tuple. No deterministic mid-QRA lifecycle injection is yet established. |
+| R176 QRA test-executor caller | Removed raw-wire/infallible erasure calls replaced with current checked canonical operations and actual context; typed errors propagated | Formatter/static only; owner lib/test compile pending. No public compatibility method restored. |
+
+R173's consumer trace distinguishes moved methods from genuine removed or
+changed signatures. Its file union is a static dependency inventory, not a
+compiler-complete bundle. Kernel/carrier sources changed while other work was
+active; R106/R107-family receipts retain their own frozen source and cannot be
+merged into R174 or called current-main proof. Reconcile exact source/feature
+closure before the next owning CHECK. The
+[remaining IDs](remaining.md) and
+[Source/caller proof order](../plans/oct-6-substrate-dedup/test-plan.md#source-callback-and-caller-proof-order)
+retain actual unresolved acceptance; no new engine/library was introduced.

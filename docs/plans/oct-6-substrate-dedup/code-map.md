@@ -409,3 +409,23 @@ is stale and the new PTA adapter proof is missing from that old request map.
 Keep these concrete proof/product rows in remaining work.
 If a current test exposes a failure, assign the smallest owning repair with its
 caller and oracle; do not automatically move or rewrite these owners again.
+
+## Source callback and checked caller cut — R169–R176
+
+Paths below use Semantica `qv2/`. All changes reuse the existing owner.
+
+| File / function | Before | After / remaining proof |
+| --- | --- | --- |
+| `quanta-adapters-pta/src/production_native_lowering_relation_output_v1/original_relation_output_v3.rs::produce_native_relation_lowering_outputs_from_original_v3` | DFG Source callback returned owned relation output | Callback returns unit; outer accumulators/final-output slots feed the opaque wrapper only after Source success. Parser/DFG member checks, census and order retained; genuine owner execution pending. |
+| `quanta-adapters-pta/src/production_live_native_workspace_generation_v1/original_java_workspace_v1.rs::produce_original_java_relation_v3` | Parser callback returned owned relation | Local result slot; scratch publication follows successful Parser postvalidation. Existing nonempty UnsupportedOperation remains; no new solver. |
+| `quanta-runtime-analysis/src/queries/intraprocedural/pre_native_function_build_authority_owner_v1/original_workspace_rows_v3.rs::axes_from_original_sources_v3` | Owned axes returned through Parser Source callback | Paid context/projection and Copy digests stay outside the loan; callback returns unit; existing Kernel nominal axes constructor runs afterwards. Checked validator work is paid explicitly. |
+| Same file, `copy_axes_v3` request/result callers | Owned projection copy inside scoped read | Distinct outer projection/context slots; canonical axes constructor after read. Actual whole request/result construction is outside the Parser loan; it is not an additional lender defect. |
+| `quanta-sdk-runtime-executor/src/client/product_java_exact_build_authority_owner_v1/original_java_build_input_v3/tests/genuine_original_pre_native_authority_v3.rs` | Independent one-row/body/digest oracle; refund only in preflight negatives | Positive also observes retained IntermediateBytes above baseline and exact baseline after last result drop. Source-ready, not executed. |
+| `quanta-runtime-analysis/src/testing.rs::execute_typed_request_v1` | Calls removed raw-wire and infallible erasure APIs | Existing checked wire/erasure APIs use the actual RuntimeCtx and propagate typed failure. Source-ready, not executed. |
+
+The QRA supplier cut also requires Kernel's existing axes-from-slots constructor,
+Foundation's axes read/projection slots/reexports and SourceWire's canonical
+member/projection sink APIs. Capturing the QRA file alone cannot establish it.
+Kernel methods moved to child impls are not automatically removed APIs; compare
+the actual definition, signature and consumer. Current source hash drift keeps
+the complete carrier/context/SDK integration outside the accepted nominal9 proof.
