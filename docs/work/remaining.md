@@ -12,7 +12,7 @@ Parser hierarchy mounts and feature imports are integrated as Semantica
 The R77 observations below retain their historical input.
 
 Latest observed source: Semantica `3b8f86dd9ea7` plus separately claimed WIP.
-The R78–R121 candidate receipts retain their own fixed input; none establishes
+The R78–R127 candidate receipts retain their own fixed input; none establishes
 whole-main runtime completion. Native allocation core all-features CHECK is
 GREEN with committed QBC publication (R87, zero tests). DFG keeper and Kernel
 checks stopped in dependency compilation before cases. R93 passed the previously
@@ -52,7 +52,26 @@ failed/ignored/filtered, including the eight-case nested-cause regression, sourc
 `0452578af7dd9d779be4d140dd3ae994a1aba0d75eaddcab9359b33ec783c058`.
 R121 successor Kernel CHECK passes that mapping and stops at two contract-ports
 `BootstrapInputMutationV1` equality derives on a controlled indexed input;
-zero tests. Current canonical repairs must be compared before another writer.
+zero tests. R125 captures the existing contract-ports derive repair, its
+Foundation evidence fixture oracle, and only the compatible SourceWire private
+helper feature guard. The narrow PTA owner request passes that boundary and
+stops at 91 interproc diagnostics in 26 files, zero tests. Twenty-two error
+files are byte-identical in the fixed candidate and live Semantica; this is an
+unfinished consumer migration, not 91 independently established defects.
+R127 Foundation input-store evidence regression also executes zero tests: its
+minimal feature closure stops at one invalid Kernel facade import and three
+unused imports. These are separate compile inputs, not regression failures.
+
+The current interproc consumer cut is being migrated in this chat across facts,
+context/heap, PTA delta/incidence, alias/attempt and direct taint callers. Reuse
+the canonical private result accessors and constructor; do not restore public
+fields, structural `Clone/Eq`, or convert retained-storage refusal to empty
+facts, `NoAlias` or successful publication. Ordinary APIs now return typed
+failure where their old signatures could not represent refusal. Retained
+positive paths still require real read and output controls under
+CHECKED-RETAINED-CONTROL. Source edits, static formatting, owner compilation,
+nonzero regression execution, QBC publication and main integration remain
+separate acceptance steps. This cut is not yet compiled or integrated.
 
 Latest authored checkpoint: R78–R85 on Semantica `d29ac508b4d` plus separately
 claimed WIP. Java FileId handoff now borrows the parser's authenticated member;

@@ -73,7 +73,7 @@ Evidence at the existing recovery root: `r78-lock-closure-applied.json`,
 `r79-native-supplier-postimage.json`, `r82-source-capture.json`,
 `r82-fixed-input-pins.json` and `r85-parallel-source-checkpoint.json`.
 
-## R87–R121 fixed-candidate compile and ownership checkpoint
+## R87–R127 fixed-candidate compile and ownership checkpoint
 
 Live source observed at Semantica `6bab127740a3`; candidate source retains the
 R82 fixed topology and explicit later file captures. No coupled new source
@@ -101,6 +101,9 @@ bundle is integrated by this checkpoint.
 | R117 whole SourceWire contract target | Exit0, owner GREEN, publication committed; 236 passed, zero failed/ignored/filtered; source `9f38002d01d6b44f0fb40074361f84f602fad03524cf0867e8437c3c30f499d1`. | Qualifies the compatible fixed SourceWire owner cut, not the newer live auxiliary/text closure or SDK first-FD ingress. |
 | R119 whole error-shared contract target | Exit0, owner GREEN, publication committed; 35 passed, zero failed/ignored/filtered; source `0452578af7dd9d779be4d140dd3ae994a1aba0d75eaddcab9359b33ec783c058`. | Includes the eight-case nested-cause regression; no Kernel/SDK execution verdict. |
 | R121 successor Kernel CHECK | Exit101 at two contract-ports `BootstrapInputMutationV1` equality derives on a controlled indexed input; same source `0452578af7dd9d779be4d140dd3ae994a1aba0d75eaddcab9359b33ec783c058`. | Runtime-error mapping boundary passes; zero tests. |
+| R123 narrow PTA SCC owner request | Exit101 at a private SourceWire helper reexport unused with repository-FD capture disabled; source `0452578af7dd9d779be4d140dd3ae994a1aba0d75eaddcab9359b33ec783c058`. | Zero tests; current live source already has the relevant feature guard. Normal after-run cache maintenance delayed the finished failure publication. |
+| R125 compatible successor PTA SCC request | Exit101, source `23e7aff38446fcc28d85eca4e7618db33dd81d2a8289f3dab950324dd9893bee`; 91 diagnostics in 26 interproc files. | SourceWire helper and contract-ports boundary pass; zero tests. Twenty-two affected files match live source. Consumer migration remains open. |
+| R127 Foundation bootstrap evidence owner regression | Exit101 on the same candidate source; one invalid Kernel facade import plus three unused imports in the minimal input-store feature closure. | Zero tests; the changed evidence fixture oracle has not executed. No product or fixture-failure verdict. |
 
 The root span-reader annotation preserves every foreign postimage byte outside
 its one closure parameter. Core DFG fact files already have active supplier
@@ -258,6 +261,43 @@ pre-existing stale baseline/expired allowance remains separate policy debt.
 R121 now reaches the contract-ports equality boundary. The typed supplier and
 consumer source bundle remains coupled WIP; these results do not authorize a
 partial main integration of its mapper alone.
+
+R125 capture records the existing controlled-input derive correction and the
+Foundation exact-field fixture repair, rather than adding an equality shim.
+The SourceWire helper captures only its matching feature guard: the newer live
+auxiliary/text closure is deliberately excluded and does not share the fixed
+candidate's source identity. Retain this distinction in any successor receipt.
+The actual R123/R125/R127 result JSONs, publication readbacks and immutable
+stdout/stderr archives are under the same evidence root as earlier requests.
+
+### Interproc consumer migration acceptance
+
+- Owner: existing `quanta-analysis-interproc-contract` consumers and their direct
+  runtime/SDK/taint/heap callers; canonical result storage remains in
+  `quanta-contract-pta-result-shared`.
+- Input/storage: ordinary and retained are distinct. Ordinary result access and
+  explicit copies use canonical fallible accessors; retained cannot acquire
+  ordinary `Clone`, equality or a private-field bypass.
+- Facts and heap projections: preflight storage before allocating output or
+  mutating an admitted Facts carrier. Preserve ordinary ordering/digest and
+  propagate typed refusal; never silently omit PTA facts.
+- Alias/attempt: storage failure cannot become `NoAlias` or publishable output;
+  changed ordinary projections retain all axes and preserve source identity on
+  failure. Exact equality for ordinary generation capture compares all canonical
+  parts. Retained generation/read needs its existing authenticated-control owner.
+- Context: remove infallible copy assumptions without adding another carrier or
+  dual wire representation. Complete fallible V1/V2 signatures and all direct
+  callers in one cut, including SDK heap and runtime authoritative surface.
+- Verification: smallest owning request on one stable captured closure,
+  independent ordinary oracles and applicable typed-rejection regressions;
+  nonzero executed tests plus committed QBC publication before source acceptance.
+  Capture, owner proof and coordinated main integration are distinct gates.
+- Genuine retained positive handoff remains `CHECKED-RETAINED-CONTROL`; no fake
+  validator, uncontrolled temporary output, error-to-default or new engine.
+
+This is authored WIP in live Semantica and is not accepted as compiled,
+qualified or integrated. R125's compile inventory is not a defect-count score.
+
 
 The remaining explicit 50k taint depth rail is resolved without execution in
 `r112-taint-50k-owner-readback.json`. The ignored integration target and separate
