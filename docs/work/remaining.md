@@ -18,7 +18,7 @@ commit are recorded in the execution record. General Original facts/DFG/PTA
 success and the Native source packet remain separate open implementation work.
 
 Latest observed source: Semantica `3b8f86dd9ea7` plus separately claimed WIP.
-The R78–R136 candidate receipts retain their own fixed input; none establishes
+The R78–R142 candidate receipts retain their own fixed input; none establishes
 whole-main runtime completion. Native allocation core all-features CHECK is
 GREEN with committed QBC publication (R87, zero tests). DFG keeper and Kernel
 checks stopped in dependency compilation before cases. R93 passed the previously
@@ -88,6 +88,25 @@ Two use the wrong path to an already public metadata accessor; one still uses
 an obsolete incidence insertion call. Independent review also found a narrowed
 empty-gap completeness input and restores that input for the successor.
 These are fixture/API repairs; no test success is claimed.
+R137 captures those repairs and executes the whole target: 1,093 passed, ten
+failed, zero ignored/filtered, source
+`9be7d65be25bef8999a59a8cad5e7525015d7fe38ce4c0bd222cada007d53cd8`.
+Six failures share a real current producer/consumer mismatch: ConstraintSet
+writes schema v6 while the bounded nested delta reader requires v4. R140 moves
+the current schema into one existing owner constant, keeps nested decode budgets,
+and rejects duplicate/unsorted rows like the canonical reader. The other four
+failures are traced to schema-before-digest validation order, a one-event input
+with a six-event census expectation, metadata enrichment preserving an already
+configured value, and an unadmitted positive publication fixture. Compatible
+successor source is captured by R142. R141 was an accidental repeat of R137's
+unchanged source after capture validation aborted before any writes; its RED
+result is retained, not successor evidence. R142 executes the whole interproc
+lib/all-features target: **1,104 passed, zero failed/ignored/filtered**, QBC
+publication committed, source
+`e33930b2c05cdc0825447ddf467a808b92631e8f731d6a001f46c38f6f81ff6b`.
+This accepts that fixed interproc owner cut, including the bounded current-schema
+reader and independent rejection regressions. It does not qualify live Taint,
+external runtime/SDK callers, newer source storage or main integration.
 
 The current interproc consumer cut is being migrated in this chat across facts,
 context/heap, PTA delta/incidence, alias/attempt and direct taint callers. Reuse
@@ -98,10 +117,19 @@ failure where their old signatures could not represent refusal. Retained
 positive paths still require real read and output controls under
 CHECKED-RETAINED-CONTROL. Source edits, static formatting, owner compilation,
 nonzero regression execution, QBC publication and main integration remain
-separate acceptance steps. The R136 whole target remains compile RED; this cut
-is not accepted or integrated.
+separate acceptance steps. R142 accepts the fixed interproc owner scope; the
+complete live supplier and external consumer bundle remains unintegrated.
 
-Latest authored checkpoint: R78–R85 on Semantica `d29ac508b4d` plus separately
+The direct Taint successor preserves finite storage-refusal causes across
+seed configuration, full/delta/current-SCC completion and executed full fallback.
+The engine already rejected unsound completion; no false-success defect was
+confirmed. The repair preserves the specific cause that some mappings replaced
+with generic `NotComputed` or discarded with the raw fallback result. Source
+edits and ordinary fixture migrations are authored; owning compilation and
+behavior tests remain required before acceptance. No retained-positive claim
+follows from negative fixtures or this interproc receipt.
+
+Original source checkpoint: R78–R85 on Semantica `d29ac508b4d` plus separately
 claimed WIP. Java FileId handoff now borrows the parser's authenticated member;
 the external `members_v3` selector is removed. Original relation computation
 reuses the existing emitter and retains a checked output wrapper. These changes

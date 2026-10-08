@@ -375,7 +375,14 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
 
 ## FCP-COMPILE
 
-- **Latest reached owning cut:** R92 parser stops on two finite error projections
+- **Scoped fixed-input acceptance:** the separate R82 recovery evidence family
+  reaches R142 interproc whole lib/all-features **1,104/1,104 GREEN**, committed
+  QBC publication, source `e33930b2c05cdc0825447ddf467a808b92631e8f731d6a001f46c38f6f81ff6b`.
+  See the [current checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r87r145-fixed-candidate-compile-and-ownership-checkpoint).
+  The broad ticket stays `BLOCKED_COMPILE`: live external callers, canonical
+  Kernel/SourceText/RuntimeCtx feature closure and coordinated main integration
+  remain required. The R79 execution family below retains its own inputs.
+- **Earlier R79-family reached cut:** R92 parser stops on two finite error projections
   whose existing owner has authored the successor; R93 exact regression1 is
   accepted with immutable publication on its own input. R96 parser passes that
   boundary and reaches18 Kernel errors before tests. Its guarded source and

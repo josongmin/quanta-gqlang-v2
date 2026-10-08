@@ -73,9 +73,10 @@ Evidence at the existing recovery root: `r78-lock-closure-applied.json`,
 `r79-native-supplier-postimage.json`, `r82-source-capture.json`,
 `r82-fixed-input-pins.json` and `r85-parallel-source-checkpoint.json`.
 
-## R87–R136 fixed-candidate compile and ownership checkpoint
+## R87–R145 fixed-candidate compile and ownership checkpoint
 
-Live source observed at Semantica `6bab127740a3`; candidate source retains the
+Earlier live source was observed at Semantica `6bab127740a3`; latest live
+readback is `3b8f86dd9ea7` plus separately claimed WIP. Candidate source retains the
 R82 fixed topology and explicit later file captures. No coupled new source
 bundle is integrated by this checkpoint.
 
@@ -108,6 +109,11 @@ bundle is integrated by this checkpoint.
 | R133 interproc lib/all-features CHECK | Exit101 at HRTB string-loan escape; source `a0511f05f9263d71a7aa3b71b149b4cddc7d941ed8445ead7ee7af1a4495ea1a`. | Twenty-nine existing interproc files captured; zero tests. External heap/taint/SDK consumers are not qualified by this request. |
 | R135 whole interproc lib/all-features test target | Exit101 at eighty diagnostics in eight fixture files; source `182cbff82a69f684deb38e79f02fe520980bdf14c45b85bbc74b36108b8f396d`. | Paid temporary digest repair passes the reached production lifetime boundary; whole target remains RED, zero executed tests. |
 | R136 successor whole interproc lib test target | Exit101, three fixture diagnostics, source `fc023ca44fd658e4f39b84fa65b74cca58d3b7e975c6305ec7b50beb6d0d7354`. | Zero tests. Two metadata accessor paths and one obsolete incidence insertion remain; successor also restores the independently reviewed empty-gap completeness input. |
+| R137 whole interproc lib test target | Exit101; 1,093 passed, ten failed, zero ignored/filtered; source `9be7d65be25bef8999a59a8cad5e7525015d7fe38ce4c0bd222cada007d53cd8`. | Whole owner remains RED. Six nested current-schema failures plus four individually traced facts/fixture failures; no acceptance from the passing subset. |
+| R140 bounded ConstraintSet wire successor | Source/static review at R140; existing owner schema constant reused by current producer and nested reader, strict canonical row order enforced under unchanged decode budgets. | No wire version/bytes change or retired reader added. New nonempty roundtrip, duplicate/reversed-row and v4/v5 rejection oracles subsequently pass at R142 below. |
+| R141 accidental unchanged owner repeat | Same source `9be7d65…` and same 1,093 pass / ten fail RED as R137. | Capture validation aborted before writes; no successor acceptance. `r141-repeat-classification.json` retains the orchestration failure. |
+| R142 whole interproc owner successor | **1,104/1,104 GREEN**, zero failed/ignored/filtered; QBC publication **committed**; source `e33930b2c05cdc0825447ddf467a808b92631e8f731d6a001f46c38f6f81ff6b`. | Current ConstraintSet schema/bounded canonical reader and four traced facts/fixture repairs accepted on this fixed input. External Taint/runtime/SDK and main integration remain open. |
+| R143–R145 Taint cause/consumer successor | Source edits authored; capture validation detects five test files changed by another writer and stops before fixed-input writes. | Reconcile postimages before owner CHECK and engine fallback regression. Cause preservation repairs do not assert previously publishable unsound completion or retained-positive authority. |
 
 The root span-reader annotation preserves every foreign postimage byte outside
 its one closure parameter. Core DFG fact files already have active supplier
@@ -299,19 +305,28 @@ stdout/stderr archives are under the same evidence root as earlier requests.
 - Genuine retained positive handoff remains `CHECKED-RETAINED-CONTROL`; no fake
   validator, uncontrolled temporary output, error-to-default or new engine.
 
-This is authored WIP in live Semantica and is not accepted or integrated.
+The live coupled bundle remains WIP and unintegrated. Its captured interproc
+owner scope is accepted at R142; external consumers are separate proof scopes.
 R125/R135 compiler diagnostics are not a defect-count score. The eight fixture
 successors use ordinary checked metadata/frontier/result APIs; they retain
 independent completeness, alias, wire and failed-projection expectations.
 `r136-fixed-interproc-eight-test-source-capture.json` binds all eight postimages;
 R136 is compile RED; its result/readback/full stdout/stderr are retained. A
-matching successor must execute tests and publish its result before acceptance.
+matching successor R142 executes 1,104/1,104 and has committed publication
+`20261008T064829.360940Z-db3070e728bd`. The result JSON, full stdout/stderr,
+`r142-fixed-interproc-runtime-failure-successor-capture.json` and
+`r142-interproc-owner-publication-committed-readback.json` bind that fixed cut.
 Full stderr is the diagnostic source; short
 `result_lines` excerpts must not be treated as complete inventories.
 
 Taint direct consumers are a separate coupled WIP cut. Existing structural
-failure and fallible V2 seed views carry PTA storage refusal; the final result
-owner must reject those causes even in non-strict mode. Budget/truncation keeps
+failure and fallible V2 seed views carry PTA storage refusal. Existing completed
+owners already reject unsound output; no false-success path was confirmed.
+The remaining defect is loss of the specific storage cause at seed/final mapping
+and failed full fallback. The existing shared error boundary now preserves two
+finite causes across strict/non-strict modes and full/delta/current-SCC, with
+actual fallback rejection/refund regression authored in the core IFDS owner.
+Owning compile/test execution is pending. Budget/truncation keeps
 its existing typed incomplete behavior. A bare set-returning flow API cannot
 by itself establish failure propagation: its admitted wrapper, IFDS engine and
 final result owner are required proof points. No new engine, library or legacy
