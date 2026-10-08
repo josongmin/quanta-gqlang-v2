@@ -4,7 +4,7 @@ Parent: [execution plan](readme.md). This is a request/oracle specification,
 not an execution receipt. Old selectors below are inputs to re-resolution.
 Historical caller/request audit: Semantica `871224b2059422a8f36eca91ffb0c9119238ac9c`.
 Current issued requests/results and the issued candidate are recorded
-in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair).
+in the [active handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#fixed-candidate-compile-and-ownership-checkpoints).
 `qv2/` abbreviates Semantica `packages/analysis/quanta-v2/crates/`.
 
 Latest frozen owner requests/results are in [R79 onward execution](execution-r79.md).
@@ -12,13 +12,43 @@ The nine C-lane resolves are request discovery only. F2 minimal has two required
 witnesses; parser checks are compilation only. The generated-getter facts keeper
 does not cover general callable, DFG source-world/Tree C or PTA transaction output.
 
-Current executed evidence: QGLang `just ci` passes at67377d5 (Nextest1514,
+The R79-family executed evidence includes QGLang `just ci` at67377d5 (Nextest1514,
 external facade positive1/negative23); SCC core CFG30/domain6/engine38/import
 graph32 pass at R87; Foundation exact1 passes at R88. Minimum counts, required
 names and publication hashes are validated independently. R88 parser/F2 are
 RED compiler diagnostics with zero tests. Their R89 successor and the remaining
 SDK/runtime owners require their own finished receipts; static gate success is
 not substituted for them.
+
+The separate R82 fixed-candidate family accepts SourceWire236 at R117,
+error-shared35 at R119, interproc1,104 at R142 and the actual engine failed-full-
+fallback regression1 at R154, each with committed QBC publication and its own
+source digest. R155 Taint CHECK stops before tests on an older canonical-error
+owner capture. R157 captures the existing single-owner type, matched runtime
+error transport/projection and the ordinary-copy method required by two Taint
+callers. R158 passes that boundary and stops on thirteen Kernel diagnostics,
+zero tests, source `50fc536971794c766dcf74c28f67aea6d8ced580fac0bdd5b3a0cf05c92b4921`.
+Historical counts do not describe live-main defects. Reconcile Kernel source
+before assigning repairs; core error/copy owner oracles and Taint root/CS
+regressions remain separate rails. None of these scopes replaces an SDK,
+retained-positive, process or installed-product result.
+
+R162–R166 succeeds on one later candidate source
+`66967a3678286a921fae2d441c7912d45aa48a78d9eece0d6dda8ade3dd8b8d8`:
+Core storage-error2, seed-refusal retry classification1, ordinary-copy1 and
+whole interproc1,105; each has committed QBC publication. R160 finite error
+projection1 retains its earlier `50fc5369…` source. Required remaining Taint
+module witnesses are structural failure4, PTA-CS internal12 and separate
+PTA-CS2 under the unchanged no-default `cfg-dfg` class; they have not executed
+because the complete Kernel/context/caller successor has not been captured.
+The ignored 50k-depth integration, SDK positive and process/installed owners
+retain their separate requirements.
+R167 additionally passes repository-wide QGLang local `just ci`: Nextest1,514/
+1,514, zero skipped, external facade positive1/negative23, both Clippy rails and
+all local groups. Source `f49c7d5ac1f795e91ec7e580834ab9182243dd000dc1e18f7bfce5bec5b86b90`
+is bound to `b559c49…` plus documentation changes; final receipt wording is a
+later documentation-only delta. No clean committed-HEAD or downstream runtime
+qualification follows.
 
 The [R77 RCA](rca.md) identifies prerequisite causes; its
 [final order](rca.md#final-execution-order) routes all 18 IDs. Fixed-tuple SCC

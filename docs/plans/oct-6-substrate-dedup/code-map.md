@@ -34,7 +34,7 @@ R63 rule owner34/34 includes the same-IR connection regression, integrated as
 `a23ced26e09`. Minimal compile repairs
 remain in their coowners' source bundles; R52 semantic contract55 passed.
 R54 also accepted common callback2 and Kernel finisher5. The
-[current handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair)
+[current handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#fixed-candidate-compile-and-ownership-checkpoints)
 records later SourceWire/DFG compile repairs and preserves their coupled ownership.
 
 ## Before / after at the real caller
@@ -87,9 +87,10 @@ records later SourceWire/DFG compile repairs and preserves their coupled ownersh
   dirty runtime-analysis→PTA original Java evidence path calling
   `try_issue_original_java_workspace_evidence_v3`. This corrects the earlier
   "no actual ingress caller" statement; successful publication is still absent.
-  The workspace producer's new `members_v3` argument is omitted by the runtime
-  production helper and SDK fixture, and PTA transaction issuance plus retained
-  DFG workspace publication still return `UnsupportedOperation`. Its retained
+  At R74 the workspace producer's proposed `members_v3` argument was omitted by
+  runtime and SDK fixture callers. R96 supersedes it with the genuine parser
+  member loan; current callers pass `parser_handoff_v1`. The R74 PTA transaction
+  and retained DFG publication refusals retain their historical source. Its retained
   workspace validator consumes existing evidence; it does not issue that evidence.
   The shared backing and original assignment-index constructors are co-owned
   precursors, not a demonstrated successful general issuer/final keeper. Finish
@@ -103,19 +104,21 @@ Semantica-relative paths:
 1. `qv2/quanta-runtime-analysis/src/queries/intraprocedural/production_live_native_lowering_generation_parts_v1.rs`
    calls the exported PTA workspace producer under `live-native-java-generation`.
 2. `qv2/quanta-adapters-pta/src/production_live_native_workspace_generation_v1/original_java_workspace_v1.rs`
-   now accepts genuine `members_v3` and calls `original_java_evidence_v1.rs`;
+   at R74 accepted the proposed `members_v3`; current source accepts the actual
+   `parser_handoff_v1` and calls `original_java_evidence_v1.rs`;
    that helper invokes the existing DFG workspace issuer under the same cohort.
 3. The runtime call and
    `qv2/quanta-sdk-session-backend-owner/src/production_normal_source_java_workspace_generation_port_v1_tests/original_native_parts_v1.rs`
-   still omit that added member argument. Validate and update these actual callers
-   in the same complete source bundle; no alternate issuer is needed.
-4. PTA `issue_workspace_transactions_v1` currently refuses the nonempty workspace
+   both now pass the actual parser handoff. The old argument-missing work item is
+   superseded; complete coupled owner/caller validation remains required.
+4. At R74 PTA `issue_workspace_transactions_v1` refused the nonempty workspace
    pending admitted formal/alias/catalog births and canonical extraction phases.
    `retained_workspace_issuance_v1.rs` separately refuses the original DFG source
    world before ordinary births. These source refusals must be completed before
    declaring live Original output success.
 
-This is static dirty-source inspection, not a current build or product receipt.
+This is historical static inspection with the current handoff correction, not a
+current build or product receipt.
 General `FactExtractionRequestV1`/`single_parse` output admission remains the
 separate missing seam inside the same coordinated change. Preserve missing-
 authority refusal, operation binding and final-drop grant lifetime.

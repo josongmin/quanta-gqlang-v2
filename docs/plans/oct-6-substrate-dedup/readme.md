@@ -2,8 +2,13 @@
 
 Status: implementation in progress; source edits and execution attempts are
 recorded in the R49 update below and the
-[current execution handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r67r71-main-integration-and-missing-test-repair).
+[current execution handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#fixed-candidate-compile-and-ownership-checkpoints).
 No product qualification is claimed.
+Latest QGLang local CI is R167: `just ci` passes Nextest1,514 and external
+facade positive1/negative23 at `b559c49…` plus documentation dirt. The
+[fixed-candidate checkpoints](../../work/substrate-repair-checkpoints-2026-10-07.md#fixed-candidate-compile-and-ownership-checkpoints)
+accept interproc1,105 and the scoped storage-error/copy owners separately.
+Kernel/context/caller, Original positive and SDK/product acceptance remain open.
 Updated: 2026-10-08.
 
 Latest local execution is the [R79 onward closeout record](execution-r79.md).
@@ -37,9 +42,9 @@ child-agent errors describe the planning input. Three replacement workers
 executed supplier, Original and consumer lanes from R79 onward. Local-main
 integration is serial per complete compatible bundle.
 
-## Current remaining audit — R77
+## Historical remaining audit — R77
 
-Documentation input is clean QGLang `b8dd3c29e43a`; Semantica committed main is
+That audit's documentation input is clean QGLang `b8dd3c29e43a`; Semantica committed main is
 `f574fa82bf1`, with separately changing shared WIP. The RCA maps diagnostic
 classes, exact producer/consumer seams, accepted scopes and all active ticket
 dependencies. Its [final execution order](rca.md#final-execution-order) governs
@@ -55,10 +60,11 @@ assigned. Hosted CI, automatic fuzz scheduling and A-series features remain outs
 this queue. R77's RCA performs static/receipt analysis and metadata only; the
 successor execution record contains actual owner attempts.
 
-## Current remaining audit — R74
+## Historical remaining audit — R74
 
-The following section retains the historical R74 observation. Use R77 above for
-current source risks, completed proof scopes and execution dependencies.
+The following section retains the historical R74 observation. Use the current
+handoff and [active ticket index](tickets.md) for source risks, accepted proof
+scopes and execution dependencies.
 
 Observed committed sources: GQLang `7d0c2ccbdb61` (clean before this documentation
 update), Semantica `f574fa82bf1`. Separately inventoried Semantica dirty postimages
@@ -81,18 +87,18 @@ six execution groups below; they are not 18 new implementation defects.
    SourceWire, parser and module definitions are dirty/untracked. This is one
    compatible source packet to validate, not 105 independent bug tickets or a
    request to author another shared holder.
-2. **Existing runtime→PTA→DFG contract handoff:** current dirty source now calls
-   the DFG workspace issuer from PTA. The Java workspace producer requires
-   `members_v3`; the runtime production helper and SDK fixture still omit that
-   additional argument. Supply genuine source/ingress members through the
-   existing path and compile both callers. This is a static current-WIP contract
-   mismatch, not a claimed fresh compiler verdict.
+2. **Historical runtime→PTA→DFG handoff:** at R74 the producer required an
+   external `members_v3` argument omitted by runtime and SDK fixture callers.
+   R96 supersedes that proposal with the genuine parser member loan. Current
+   producer and both callers pass `parser_handoff_v1`; no extra member argument
+   or alternate issuer is assigned. The complete owner/caller source still
+   needs its own frozen compile and runtime proof.
 3. **Successful Original publication:** the existing PTA
    `issue_workspace_transactions_v1` intentionally returns `UnsupportedOperation`
    until formal/alias/catalog births and canonical extraction phases are admitted.
    DFG retained-workspace publication separately refuses ordinary source-world/
    digest-map births. Complete these owners and retain the same operation/output
-   permits through final publication; passing the new argument alone cannot
+   permits through final publication; the member loan alone cannot
    close this scope.
 4. **General facts output authority:** `FactExtractionRequestV1`→
    `DefUseFactsParseContextV1::single_parse` still carries erased Native control,

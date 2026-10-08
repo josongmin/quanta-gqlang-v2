@@ -48,7 +48,7 @@ scope. Implementation, frozen owner proof and product qualification are separate
 | D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Scoped Honesty/GOD/boundary checks pass; Python-search floor policy bundle integrated as3b8f86d; whole affected policy closure remains |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P0 | BLOCKED_COMPILE | Native packet remains WIP; R93 exact finite error regression1 is accepted on its own source. R97 parser captures four Kernel repairs and stops on14 errors, zero tests; later minimal-import postimages require a fresh capture. R92 F2's91 is historical. Complete current V1/V2/facts/taint caller/authority migration, broad compile and compatible integration |
+| FCP-COMPILE | P0 | BLOCKED_COMPILE | Native packet remains WIP; R93 exact finite error regression1 is accepted on its own source. R97 parser captures four Kernel repairs and stops on14 errors, zero tests; later minimal-import postimages require a fresh capture. R92 F2's91 is historical. Complete current V1/V2/facts/taint caller/authority migration, broad compile and compatible integration. Separate R82 candidate: interproc1105 and actual fallback1 have committed owner receipts; R155 canonical-error capture is superseded, and R158 Taint CHECK now stops at thirteen Kernel diagnostics with zero tests. Live caller closure and coupled integration remain open. |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |
@@ -148,10 +148,11 @@ eighteen unfinished implementations. No percentage is inferred from their count.
   but no output-admission interface. Carry the existing canonical admission through
   adapter→context→actual extractor and final facts retainer. Admit before physical
   growth; retain permits through the last consumer and refund on final drop.
-- **R74 actual Java callers:** dirty runtime-analysis→PTA workspace producer→DFG
-  original issuer is now present. The producer adds `members_v3`, but runtime
-  production and SDK fixture calls omit it. Complete that real argument handoff
-  and the existing workspace transaction formal/alias/catalog/extraction births;
+- **R74 caller observation, superseded handoff:** runtime-analysis→PTA→DFG was
+  already reachable. Its proposed external `members_v3` argument is removed in
+  favor of the genuine parser member loan at R96; current runtime and SDK
+  fixture callers both pass `parser_handoff_v1`. No extra argument repair is
+  assigned. Complete and prove the existing workspace formal/alias/catalog/extraction births;
   transaction issuance and retained DFG publication still intentionally refuse
   UnsupportedOperation. This narrows the earlier missing-caller claim without
   closing compile or runtime acceptance. [Code map](code-map.md#existing-java-producer-callers-and-remaining-refusal--r74)
@@ -378,7 +379,7 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
 - **Scoped fixed-input acceptance:** the separate R82 recovery evidence family
   reaches R142 interproc whole lib/all-features **1,104/1,104 GREEN**, committed
   QBC publication, source `e33930b2c05cdc0825447ddf467a808b92631e8f731d6a001f46c38f6f81ff6b`.
-  See the [current checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r87r145-fixed-candidate-compile-and-ownership-checkpoint).
+  See the [current checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#fixed-candidate-compile-and-ownership-checkpoints).
   The broad ticket stays `BLOCKED_COMPILE`: live external callers, canonical
   Kernel/SourceText/RuntimeCtx feature closure and coordinated main integration
   remain required. The R79 execution family below retains its own inputs.

@@ -73,7 +73,7 @@ Evidence at the existing recovery root: `r78-lock-closure-applied.json`,
 `r79-native-supplier-postimage.json`, `r82-source-capture.json`,
 `r82-fixed-input-pins.json` and `r85-parallel-source-checkpoint.json`.
 
-## R87–R145 fixed-candidate compile and ownership checkpoint
+## Fixed-candidate compile and ownership checkpoints
 
 Earlier live source was observed at Semantica `6bab127740a3`; latest live
 readback is `3b8f86dd9ea7` plus separately claimed WIP. Candidate source retains the
@@ -114,6 +114,21 @@ bundle is integrated by this checkpoint.
 | R141 accidental unchanged owner repeat | Same source `9be7d65…` and same 1,093 pass / ten fail RED as R137. | Capture validation aborted before writes; no successor acceptance. `r141-repeat-classification.json` retains the orchestration failure. |
 | R142 whole interproc owner successor | **1,104/1,104 GREEN**, zero failed/ignored/filtered; QBC publication **committed**; source `e33930b2c05cdc0825447ddf467a808b92631e8f731d6a001f46c38f6f81ff6b`. | Current ConstraintSet schema/bounded canonical reader and four traced facts/fixture repairs accepted on this fixed input. External Taint/runtime/SDK and main integration remain open. |
 | R143–R145 Taint cause/consumer successor | Source edits authored; capture validation detects five test files changed by another writer and stops before fixed-input writes. | Reconcile postimages before owner CHECK and engine fallback regression. Cause preservation repairs do not assert previously publishable unsound completion or retained-positive authority. |
+| R146 core IFDS exact fallback regression request | Exit101 before tests; source `a21203f9a03eda987fd393e28165803c3d03994b0aa004de66921eeb4e482da9`. | Six Core DFG engine import/visibility diagnostics confirmed in live source; actual fallback regression not executed. |
+| R148 Taint production lib/cfg-dfg CHECK | Exit101, source `1248ed1ac9b051a8f967da6e5aa7d186bf465eb81bcab796e7ff7b0906431ab8`. | Reviewed current Taint source captured after drift reconciliation; same six DFG dependency errors, zero tests. Post-r141 authorship remains unknown; reviewed current candidate is not r141 identity. |
+| R150 DFG/MemSSA successor and core regression request | Exit101, source `dda4ac4b1a1b48d5ff1c9adb5f6a60f879343b25e58618ec770c20c181eb4764`. | Prior six errors passed after three compatible repair hunks. Thirty-two private-type diagnostics share one ordinary SSA default-type visibility cause; zero tests. |
+| R151–R152 ordinary SSA/context successor | One internal visibility hunk plus five current PTA/dispatch files and existing typed Taint error owner captured. Core request exit101, source `3b2136710d7671476e25e97df6c0914defab6b22dac99514bd6e633f90664ea5`. | Reached production boundary passed; three Arc trait-object coercion errors in one engine test-fixture file, zero tests. No Original visibility widened, fake Current or new engine. |
+| R153–R154 actual core fallback regression | **One passed**, zero failed/ignored, 481 filtered; QBC publication **committed**; source `5e1381e63cc0e91fcdd082e8a559ceccff0d6a6779ba619d272050c202f3df4d`. | Same releaser/refund assertions preserved after three coercion repairs. Actual executed full fallback retains admitted raw failure; completed owner refuses publication and report drop refunds. Whole engine, live main and retained positive remain unqualified by this one test. |
+| R155 Taint production CHECK | Exit101, one E0432 unresolved canonical storage-error import, zero tests; same source as R154. | Live already moves the type to types-core and reexports it from PTA-result. The fixed candidate still has the previous local enum; compatible capture is required, not a second type or shim. |
+| R157–R158 canonical storage-error/copy capture and Taint CHECK | Ten existing Core, PTA-result and error-shared files captured together. Taint CHECK exits101 at thirteen Kernel diagnostics, zero tests; source `50fc536971794c766dcf74c28f67aea6d8ced580fac0bdd5b3a0cf05c92b4921`. | Previous import boundary passed. Existing copied-ordinary method is required by two captured Taint callers; retained storage is refused before cloning. Compare reached Kernel files with live before any repair; no live or SDK acceptance follows. |
+| R159 Core typed storage-error module request | Exit101 on the same fixed source; eleven lib(test) diagnostics in seven paths, zero tests. | Live already has the compatible fixture/reason-classifier repairs. Only the needed test-path hunk may be copied from the broad SourcePhysical reader file. No new live repair is assigned. |
+| R160 finite PTA storage-error projection | **One passed**, zero failed/ignored, 35 filtered; QBC publication **committed**; same fixed source `50fc5369…`. | One regression covers eighteen finite causes, exact context, category and nonretryable error projection. This is not eighteen tests or a final SDK-response guarantee. |
+| R161 ordinary-copy owner request | Exit101 on the same fixed source; one stale ordinary completeness fixture accesses a Result as a value, zero tests. | The existing live successor adds the ordinary-fixture expectation while preserving the expected absorption count. Actual copy regression remains unexecuted. |
+| R162–R163 Core storage-error successor | Eight existing fixture/reason-classifier files repaired in the candidate, excluding SourcePhysical reader changes. **Two passed**, zero failed/ignored, 444 filtered; QBC publication **committed**; source `66967a3678286a921fae2d441c7912d45aa48a78d9eece0d6dda8ade3dd8b8d8`. | Finite error serde roundtrip/invalid-input rejection and map-error conversion accepted. This is not whole-Core runtime acceptance. |
+| R164 request-local seed refusal retry classification | **One passed**, zero failed/ignored, 445 filtered; publication **committed**; same `66967a36…` source. | Cancelled/unavailable seed probes remain retryable; structural missing DFG authority remains deterministic. No new classifier owner or reason enum. |
+| R165 ordinary copy evidence and independent mutation | **One passed**, zero failed/ignored, 36 filtered; publication **committed**; same source. | Ordinary rows, metadata and completeness preserved; copy mutation is independent and invalidates its digest. Does not qualify retained-positive copying. |
+| R166 current interproc whole lib/all-features | **1,105/1,105 GREEN**, zero failed/ignored/filtered; publication **committed**; same source. | Includes the canonical typed PTA storage cause added since R142. Taint root/CS regressions still depend on the complete Kernel/context/caller capture; live main and SDK remain unqualified. |
+| R167 QGLang repository local CI | `CARGO_BUILD_JOBS=2 just ci` exits0 at QGLang `b559c49…` plus documentation changes; source `f49c7d5ac1f795e91ec7e580834ab9182243dd000dc1e18f7bfce5bec5b86b90`. | Nextest1,514/1,514, zero skipped; external consumer positive1/negative23 and all local groups pass. Final receipt wording is a later documentation-only delta; no clean-HEAD qualification or Semantica runtime claim. |
 
 The root span-reader annotation preserves every foreign postimage byte outside
 its one closure parameter. Core DFG fact files already have active supplier
@@ -749,13 +764,15 @@ remain open.
 Committed main is unchanged at Semantica `f574fa82bf1`; GQLang input is clean
 `7d0c2ccbdb61` before this docs update. A fresh source/claim inventory records
 co-owned dirty postimages separately. It does not authorize partial integration.
-The [remaining audit](../plans/oct-6-substrate-dedup/readme.md#current-remaining-audit--r74)
+The [remaining audit](../plans/oct-6-substrate-dedup/readme.md#historical-remaining-audit--r74)
 maps all18 active IDs into six groups with their remaining source/proof/product
 exit conditions. No new issue count or replacement implementation is added.
 
-Current dirty source already connects runtime-analysis's Java native helper to
-PTA's workspace producer and the DFG original evidence issuer. The producer's
-new `members_v3` input is not yet passed by runtime and SDK fixture callers.
+At R74 dirty source already connected runtime-analysis's Java native helper to
+PTA's workspace producer and DFG issuer, but runtime and SDK fixture callers
+omitted a proposed external `members_v3` argument. R96 supersedes that proposal:
+the current producer and both callers pass the genuine `parser_handoff_v1`.
+This historical missing-argument observation is not a current repair assignment.
 PTA transaction issuance intentionally refuses pending admitted formal/alias/
 catalog/extraction births; retained DFG publication separately refuses ordinary
 source-world/digest-map births. The general facts context still has no original

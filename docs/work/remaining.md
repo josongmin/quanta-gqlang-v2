@@ -18,7 +18,7 @@ commit are recorded in the execution record. General Original facts/DFG/PTA
 success and the Native source packet remain separate open implementation work.
 
 Latest observed source: Semantica `3b8f86dd9ea7` plus separately claimed WIP.
-The R78–R142 candidate receipts retain their own fixed input; none establishes
+The R78–R167 candidate receipts retain their own fixed input; none establishes
 whole-main runtime completion. Native allocation core all-features CHECK is
 GREEN with committed QBC publication (R87, zero tests). DFG keeper and Kernel
 checks stopped in dependency compilation before cases. R93 passed the previously
@@ -69,9 +69,13 @@ Its full archived stderr contains fifteen diagnostics; the short result excerpt
 showed only one invalid Kernel facade import and three unused imports. R129
 captures four compatible import/feature hunks. R130 then reports ten diagnostics,
 zero tests, source `6e9ee0e9697f42c6c0c723a6e64e8f0cb52eefedac686ad6905ba768e519fdb7`.
-Live-source reconciliation finds three already repaired and seven still pending
-in Kernel/SourceText/RuntimeCtx ownership. This is a separate minimal feature
-closure; it does not establish a regression failure or ten live defects.
+The R132 live-source reconciliation found three already repaired and seven
+pending in Kernel/SourceText/RuntimeCtx ownership. A fresh R147 read finds nine
+of the ten diagnostics statically repaired; the remaining unused query-port
+import is then removed. Its later live formatting/module successor preserves
+that removal. Ordinary context/text repairs retain typed refusal for Original
+authority; none proves a retained positive. Current source still requires a
+fresh compatible owner build; ten historical diagnostics are not ten live defects.
 
 R132 captures twenty-nine existing interproc files, including the coupled
 consumer migration. R133 all-features lib CHECK is RED at one HRTB string-loan
@@ -128,6 +132,62 @@ with generic `NotComputed` or discarded with the raw fallback result. Source
 edits and ordinary fixture migrations are authored; owning compilation and
 behavior tests remain required before acceptance. No retained-positive claim
 follows from negative fixtures or this interproc receipt.
+
+R148 captures the reviewed Taint source and minimal existing lock records. Its
+actual production CHECK and R146 core fallback test request both stop before
+tests on six Core DFG engine import/visibility diagnostics. Three minimal owner
+repairs pass that boundary at R150, which then reports 32 uses of one inaccessible
+ordinary SSA default type. Its one-line visibility successor is authored at
+R151; Original storage remains private. R152 captures that compatible hunk,
+five context/dispatch sources and the canonical typed Taint storage error owner.
+The core fallback request passes the reached production boundary and stops at
+three test-fixture Arc trait-object coercions, zero tests. These are new fixed
+inputs, not live-main proof.
+R153 repairs those three coercions without changing the releaser or assertions.
+R154 then executes the actual engine fallback regression: **one passed**, zero
+failed/ignored, 481 filtered, committed QBC publication, source
+`5e1381e63cc0e91fcdd082e8a559ceccff0d6a6779ba619d272050c202f3df4d`.
+It proves raw failed-fallback cause retention, completed-output refusal and
+paid diagnostic refund on this fixed input. Whole-engine, Taint and retained
+positive/product claims remain separate. R155 production Taint CHECK is RED:
+one unresolved canonical storage-error import, zero tests, on the same fixed
+source as R154. Live already owns the type in types-core; the fixed input still
+has the older result-local definition. This is a missing coupled capture, not
+a demonstrated live defect or regression failure.
+
+R157 captures that existing canonical owner, the matched runtime serde/error
+projection and the ordinary-copy API already used by two Taint callers. R158
+passes the previous import boundary, then stops at thirteen Kernel diagnostics,
+zero tests, source `50fc536971794c766dcf74c28f67aea6d8ced580fac0bdd5b3a0cf05c92b4921`.
+R159 live-source reconciliation finds corresponding repairs for all thirteen:
+nine local hunks and four coupled RuntimeCtx/output-contract diagnostics. The
+complete owner/caller cut must be captured and verified together; source
+presence does not prove compilation, and no duplicate live repair is assigned.
+The separate Core typed-error request stops on eleven test-compilation
+diagnostics in seven older fixture/reason-classifier paths. R160's finite error
+projection regression passes with committed publication: one test covers
+eighteen causes. R161 ordinary-copy regression still executes zero tests because
+of one older completeness fixture's Result access. Both fixture successors
+already exist in live source. R162 captures only those existing repairs, excluding
+the broad SourcePhysical reader change. On source
+`66967a3678286a921fae2d441c7912d45aa48a78d9eece0d6dda8ade3dd8b8d8`,
+R163 Core storage-error tests2, R164 seed-refusal retry classification1 and R165
+ordinary-copy regression1 all pass with committed QBC publication. R166 also
+reexecutes the complete interproc lib/all-features target: **1,105/1,105 GREEN**,
+zero failed/ignored/filtered, committed publication. Taint root/CS, current live
+Kernel/SDK and retained-positive proof remain separate open acceptance requirements.
+R167 also passes QGLang local `just ci`: Nextest1,514, external facade positive1/
+negative23, current/MSRV Clippy and all local groups. Its source is
+`f49c7d5ac1f795e91ec7e580834ab9182243dd000dc1e18f7bfce5bec5b86b90`,
+QGLang `b559c49…` with documentation-only dirt. Subsequent receipt-wording edits
+are documentation-only; no clean-HEAD qualification or downstream runtime claim.
+
+The current MemSSA alias/projection/publication callers already propagate typed
+storage errors; the remaining constructor private-field access is repaired with
+one fallible ordinary loan before building its allocation index. Taint context
+dispatch now preserves the exact storage error, and k-CFA base-variable seeding
+uses the existing checked mutable map. No extra result carrier or algorithm is
+introduced. Their owning compile and behavioral acceptance remain open.
 
 Original source checkpoint: R78–R85 on Semantica `d29ac508b4d` plus separately
 claimed WIP. Java FileId handoff now borrows the parser's authenticated member;
@@ -217,12 +277,13 @@ accepts D5 solver225/API2 on that same source and closes D4/D5-CUSTODY. The eigh
 requests total612 cases; the separate R72 worklist77 is not added to that total.
 SDK2/community2 remain unintegrated; these scopes do not close original custody
 or whole product.
-The [R74 remaining audit](../plans/oct-6-substrate-dedup/readme.md#current-remaining-audit--r74)
-maps all18 active IDs into six execution groups. Current dirty runtime→PTA code
-now calls the DFG original issuer, correcting the earlier missing-caller claim.
-Remaining source work is its changed member-argument handoff, admitted workspace
-transactions/publication and the general facts output-admission seam, alongside
-complete supplier/module integration. Source presence has no execution verdict.
+The [historical R74 audit](../plans/oct-6-substrate-dedup/readme.md#historical-remaining-audit--r74)
+maps all18 active IDs into six execution groups. At that observation, dirty
+runtime→PTA called the DFG original issuer, correcting the earlier missing-caller
+claim. Its proposed external member argument was subsequently removed in favor
+of the genuine parser member loan recorded above. Admitted workspace publication,
+general facts output admission and complete supplier/caller integration remain
+open; source presence has no execution verdict.
 Original consolidation provenance is retained in ADR-0001/ADR-0005.
 
 Only unfinished work belongs here. Integrated architecture is recorded in
@@ -263,7 +324,7 @@ before claiming completion. Broader AG5/IRC releases remain downstream-owned.
 
 | ID / state | Required work | Acceptance |
 | --- | --- | --- |
-| FCP-COMPILE / BLOCKED_COMPILE | R77 fixed-f574105 retains its original input. Parser hierarchy/import repairs are integrated in d29ac508b4d; the canonical Native supplier/manifests/locks/callers remain co-owned WIP. R93 accepts the finite error regression1 on its own source. R97 captures four Kernel repairs and stops on14 errors, zero tests; later minimal-import postimages require a new capture, so14 is not a current live-main residual. R92 F2's91 interproc diagnostics are historical; current V1/V2/facts/taint child owners are migrating the opaque PointsToResult caller cut. Five mounts, three control repairs and four Kernel successor files are authored with leaf checks; broad successor compile remains open. See the [execution record](../plans/oct-6-substrate-dedup/execution-r79.md) for bound inputs, current causes/claims and results. | Canonical product build and SDK owner rails on one captured compatible source tuple; verified publication and coordinated integration. Preserve typed cause, first refusal, atomic facts and public compatibility across the entire consumer cut. Historical failures retain their exact inputs. |
+| FCP-COMPILE / BLOCKED_COMPILE | The canonical Native supplier/manifests/locks/Original callers remain co-owned WIP. Earlier R79-family attempts retain the [execution record](../plans/oct-6-substrate-dedup/execution-r79.md). The separate R82 candidate accepts interproc1,104 at R142 and the actual failed-fallback regression1 at R154, with committed QBC publication. R166 renews interproc whole-owner acceptance at1,105 on the later fixed source. R157 captures the existing canonical storage-error and ordinary-copy owner; R158 Taint CHECK passes that import boundary and stops at thirteen Kernel diagnostics, zero tests. Reconcile live Kernel/SourceText/RuntimeCtx successors before another capture; their static presence and fixed-owner successes do not establish live compilation. | Canonical product build and SDK owner rails on one complete compatible source tuple; verified publication and coordinated integration. Preserve typed cause, first refusal, atomic facts and public compatibility across the entire consumer cut. Historical failures retain their exact inputs. |
 | FCP-PTA / REVERIFY | Verify the seed-consumption lifetime repair against the historical first `PtaOccurrenceAuthorityRefused` boundary; no current reproduction is claimed. | Current owner/bootstrap succeeds, or a reached refusal identifies the exact remaining owner repair. Source changes alone do not close it. |
 | FCP-PROCESS / NOT_RUN | Execute integrated Graph/CHECK positive and refusal fixtures. | Same tuple/artifacts; Linux Graph success, non-Linux Graph refusal, signed Linux CHECK and relevant non-Linux controls; record selected/executed/pass/skip/leak counts and exact output oracle. |
 | FCP-INSTALL / EXTERNAL_PREREQUISITE | Obtain release-owned signed x86_64 profile, root-owned immutable slots, independent approval/key and active generation. | Actual installed CHECK proof. Generic aarch64 artifacts and scripted daemon evidence do not satisfy this gate. |
