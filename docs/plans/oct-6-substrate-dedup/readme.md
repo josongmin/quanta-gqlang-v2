@@ -9,9 +9,12 @@ facade positive1/negative23 at `b559c49…` plus documentation dirt. The
 [fixed-candidate checkpoints](../../work/substrate-repair-checkpoints-2026-10-07.md#fixed-candidate-compile-and-ownership-checkpoints)
 accept interproc1,105 and the scoped storage-error/copy owners separately.
 R183 accepts R107 frozen Kernel whole-lib569, and R192 confirms the separate
-Kernel driver11 has committed QBC publication on the same source. Other batch
-owners/postflight, Original positive and SDK/product acceptance remain open.
-See the [R190–R193 successor](../../work/substrate-repair-checkpoints-2026-10-07.md#r190r193-owner-and-sdk-capture-successor).
+Kernel driver11 has committed QBC publication on the same source. R201 final
+postflight records four other owners RED before tests and three dependent
+selectors not run. R194 SDK owner also stops at pretest compile on its separate
+R191 source; R206 canonical successor capture refused moving untracked input.
+Original positive, SDK behavior and product acceptance remain open. See the
+[R201–R206 successor](../../work/substrate-repair-checkpoints-2026-10-07.md#r201r206-final-batch-and-sdk-capture-checkpoint).
 Updated: 2026-10-08.
 
 Latest local execution is the [R79 onward closeout record](execution-r79.md).
@@ -539,3 +542,26 @@ owner request is resolved but **not run**. R186 finds no deterministic genuine
 mid-QRA refusal injection in the present SDK fixture; the positive/refusal and
 last-drop tests still require execution. No current-main or product verdict
 follows from capture or static review.
+
+## R201–R206 final batch and SDK capture checkpoint
+
+R201 closes the R107 held-lease postflight as **scoped results with RED** on
+`1dff82deb346…`: Kernel whole-lib569 and driver11 have committed QBC
+publication; PTA retained-copy, Taint MemSSA, metrics depth and navigation
+import each stop at compile with zero tests. PTA SCC and two dependent Taint
+selectors are not run. Three RED owners share the frozen DFG
+`original_writes_v3` mount; metrics reaches a feature-off Foundation admission
+module through HirArgs. Both owning source successors exist live. The DFG
+mount exists in R191; the metrics feature guard does not. The verified 45-file
+archive does not establish batch, current-main or product acceptance.
+
+R194 runs the three-case SDK owner request on R191 source `8537a14ae748…`
+and stops at one Kernel E0412 `QueryLiveOutputOverlaysV3` missing alias before
+any test executes. R205 confirms the exact alias pair exists in the current
+Kernel owner; no duplicate source edit is assigned. R200 resolves two DFG
+selectors on the same SDK target, but their execution remains blocked by that
+compile failure. R206 attempts canonical capture three times and refuses
+untracked source changing between capture and copy. It produces no successor
+manifest, owner resolve or test result. After the coupled writers quiesce,
+capture one verified tuple, rerun the same SDK three-case owner, then run the
+two DFG selectors if that target compiles. The 18 ticket DoDs remain open.

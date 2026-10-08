@@ -530,3 +530,28 @@ installed-positive or whole-main qualification.
   `feature-isolation:quanta-sdk-runtime-executor.no-default.0415f206f0e0`.
   **NOT_RUN:** compile, the three actual SDK outcomes, genuine PTA behavior
   and product proof await the serialized owner queue.
+
+### R201–R206 reached rails and next owner order
+
+- R201 final held-lease R107 postflight verifies the 45-file archive and accepts
+  whole Kernel569 and driver11 on frozen source `1dff82deb346…`. PTA
+  retained-copy, Taint MemSSA, metrics depth and navigation import each stop
+  during compile with zero tests; PTA SCC and two dependent Taint selectors are
+  `NOT_RUN_SHARED_COMPILE_BLOCKER`. PTA, Taint and navigation share the DFG
+  child mount; metrics has the feature-off HirArgs/Foundation admission boundary.
+  Do not rerun accepted Kernel owners merely to restate this frozen result.
+- R194 executes the R191 SDK owner request `8228f57b83295f2c46747d2e12d48b75`
+  as a QBC attempt and returns RED exit101 on one Kernel E0412 missing
+  `QueryLiveOutputOverlaysV3` alias. **Zero of three expected SDK tests
+  executed**; no positive, refusal or last-drop behavior is established.
+  R205 finds the alias pair already present live. R200's two DFG owner tests
+  are resolved but remain `NOT_RUN_SHARED_SDK_COMPILE_BLOCKER` on this target.
+- R206 refuses all three canonical capture attempts when untracked overlay
+  content changes between capture and copy. No successor manifest, owner
+  resolve or test exists. After the coupled writers quiesce, capture and
+  verify the complete source tuple under the existing policy; run the same
+  SDK three-case owner first, then the two DFG selectors after its target
+  compiles. Continue the affected Native/PTA/Taint/metrics/navigation and
+  Original producer/consumer oracles on a compatible frozen tuple. Preserve
+  R182's exact `.gitignore` source exception; do not bypass ignored-file
+  custody or claim current-main/product acceptance from scoped results.

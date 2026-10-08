@@ -466,3 +466,28 @@ another mount repair without a fresh failure. R191's six required SDK postimages
 include `.gitignore`, the two QRA child modules, QRA axes, the SDK positive test
 and test executor. The new capture digest is `8537a14ae748…`; owner behavior
 remains unexecuted. See the [successor checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r190r193-owner-and-sdk-capture-successor).
+
+## R201–R206 compile owner map
+
+R201's final R107 frozen postflight reaches four zero-test compile failures.
+The shared DFG `storage_mode_v3.rs` child mount for `original_writes_v3`
+blocks PTA retained-copy, Taint MemSSA and navigation import; the explicit
+mount exists in R191 and current source. Metrics instead reaches the
+HirArgs `try_retain_original_typed_input_v3` override in query-surface
+symbol-owner under a feature class where Foundation's
+`original_semantic_output_admission_v3` is disabled. The owning feature guard
+exists live but is absent from R191. These are two frozen compile causes,
+not four independent runtime defects.
+
+R194's SDK target reaches `quanta-runtime-kernel-contract/src/domain/contracts/query_trait.rs`:
+its `try_live_output_overlays_from_checked_output_v3` return type lacks the
+`QueryLiveOutputOverlaysV3` alias in the R191 source. R205 verifies that the
+current owner already supplies the exact pair of `ErasedLiveOutputOverlayV1`;
+the alias successor has not passed compile. R206 then refuses a new canonical
+capture because untracked overlay content changes between capture and copy.
+No new manifest or owner result exists for that attempt. The SDK three-case
+owner and R200's two resolved DFG selectors retain separate behavior oracles
+after one complete source tuple is frozen. Nonempty PTA publication remains
+explicitly unsupported by the current composer; general Original facts and
+output publication require implementation. See the
+[R201–R206 checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r201r206-final-batch-and-sdk-capture-checkpoint).

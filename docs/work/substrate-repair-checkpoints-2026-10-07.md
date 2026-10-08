@@ -1356,3 +1356,24 @@ refusal is needed for this checkpoint. Evidence:
 All 18 closeout IDs retain their product acceptance criteria. SDK owner
 execution, compatible Native/Original integration and product process gates
 remain pending on the captured or a newly reconciled source tuple.
+
+## R201–R206 final batch and SDK capture checkpoint
+
+| Scope | Actual result | Limit / next action |
+| --- | --- | --- |
+| R201 R107 final held-lease postflight | Frozen `1dff82deb346…`: whole Kernel569 and driver11 committed GREEN; PTA retained-copy, Taint MemSSA, metrics depth and navigation import compile RED with zero tests; PTA SCC and two dependent Taint selectors not run. The 45-file archive hashes match. | Three REDs share frozen DFG `original_writes_v3` E0583; metrics has feature-off Foundation admission E0433 through HirArgs. Both repairs exist live, but this is scoped RED, not a current-main or product result. |
+| R194 SDK owner on R191 capture | QBC RED exit101 on `8537a14ae748…`: one Kernel E0412 missing `QueryLiveOutputOverlaysV3` alias; zero of three expected SDK tests executed. | No SDK behavior or committed GREEN publication. R205 finds the exact alias pair already in the current Kernel owner; do not duplicate its source fix. |
+| R200 SDK DFG selectors | Two existing tests resolve on the same SDK lib target. | `NOT_RUN_SHARED_SDK_COMPILE_BLOCKER`; neither test result is established by R194. |
+| R206 successor capture | Three canonical attempts refuse untracked overlay content changing between capture and copy. | No new manifest, owner resolve or test. Keep full source policy and exact `.gitignore` exception; wait for writers to quiesce, capture one verified tuple, run the same SDK three-case owner, then the two DFG selectors if it compiles. |
+
+R182's `.gitignore` exception was authored and captured in R191 but remains
+uncommitted in Semantica. R193's static review found no concrete producer
+defect; the composer still returns typed `UnsupportedOperation` for nonempty
+PTA publication. General Original facts and output publication remain
+implementation work. These results do not establish Native/Original positive,
+installed CHECK, current-main or product acceptance. All 18 active ticket
+DoDs remain in force. Evidence: `r201-r107-final-batch-readback.json`,
+`r204-sdk-owner-completed-readback.json`,
+`r205-sdk-kernel-type-reconciliation.json`,
+`r200-sdk-dfg-owner-ready.json`, and
+`r206-sdk-capture-guard-refusal.json` at the recovery evidence root.

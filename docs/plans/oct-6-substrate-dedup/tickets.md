@@ -24,9 +24,11 @@ integration. R106's 557/11 whole Kernel result is historical; R183 accepts the
 R107 frozen whole-lib successor at 569/569 with committed QBC publication.
 R185's separate Kernel driver inner11 was publication-pending at that
 observation; R192 confirms committed central publication on the same frozen
-source. Other R107 batch owners/postflight remain open. Runtime symbol
-checked-view migration and actual SDK
-source/pin/cold-baseline regression remain separate current execution scopes.
+source. R201 final postflight records four other owners RED at compile with
+zero tests and three dependent selectors not run. R194 SDK owner also stops
+at compile on the R191 frozen source; R206 successor capture is blocked by
+changing untracked input. Runtime symbol checked-view migration and actual
+SDK source/pin/cold-baseline regression remain separate execution scopes.
 Round numbers from the separate R82 recovery retain their own input.
 R77 source/diagnostic RCA and execution order: [R77](rca.md). Historical
 observations below keep their original inputs. Core20/facade1 are accepted on
@@ -60,7 +62,7 @@ scope. Implementation, frozen owner proof and product qualification are separate
 | D4/D5-CUSTODY | P1 | SCOPED_ACCEPTED | SCV2 34 + solver225/API2 accepted; active source closures match main f574 |
 | SUBSTRATE-POLICY | P1 | INCOMPLETE | Scoped Honesty/GOD/boundary checks pass; Python-search floor policy bundle integrated as3b8f86d; whole affected policy closure remains |
 | F2 | P1 | PROOF_PENDING | Native registry and real Preview path |
-| FCP-COMPILE | P0 | BLOCKED_COMPILE | Native packet remains WIP. R79-family R98 finite PTA error1, R99 PTA result37 and R103 whole Core447 are accepted on separate frozen sources. R106 Kernel557/11 is historical; R183 R107 frozen Kernel whole-lib569/569 and R192 separate driver11 have committed QBC publication on the same frozen source; other batch owners/postflight remain open. Runtime trace reaches34 symbol checked-carrier errors; PTA/Taint share one now-repaired Java lifetime error. SCC feature-off Parse retention is repaired. R190's frozen PTA/DFG mount failure is fixed in live source and the R191 capture; R193 found no concrete static regression in the mounted 14-path PTA successor. R191 resolved the three-case SDK owner request but has no test result. Complete the whole external caller/authority cut and compatible integration; historical diagnostic counts are not current live defect totals. Separate R82 candidate: interproc1105 and actual fallback1 have committed owner receipts; R155 canonical-error capture is superseded, and R158 Taint CHECK stops at thirteen Kernel diagnostics with zero tests. Live caller closure and coupled integration remain open. |
+| FCP-COMPILE | P0 | BLOCKED_COMPILE | Native packet remains WIP. R79-family R98 finite PTA error1, R99 PTA result37 and R103 whole Core447 are accepted on separate frozen sources. R106 Kernel557/11 is historical; R183 R107 frozen Kernel whole-lib569/569 and R192 separate driver11 have committed QBC publication on the same frozen source; R201 final postflight has four other owners RED before tests and three dependent selectors not run. Runtime trace reaches34 symbol checked-carrier errors; PTA/Taint share one now-repaired Java lifetime error. SCC feature-off Parse retention is repaired. R190's frozen PTA/DFG mount failure is fixed in live source and the R191 capture; R193 found no concrete static regression in the mounted 14-path PTA successor. R194 runs the R191 three-case SDK owner request but stops at one Kernel E0412 before tests; R205 finds the alias repair live, while R206 successor capture refuses moving untracked input after three attempts. Complete the whole external caller/authority cut and compatible integration; historical diagnostic counts are not current live defect totals. Separate R82 candidate: interproc1105 and actual fallback1 have committed owner receipts; R155 canonical-error capture is superseded, and R158 Taint CHECK stops at thirteen Kernel diagnostics with zero tests. Live caller closure and coupled integration remain open. |
 | FCP-PTA | P1 | REVERIFY | Historical PTA bootstrap refusal; reproduce on current source |
 | FCP-PROCESS | P1 | NOT_RUN | Real Graph/CHECK daemon process results |
 | FCP-INSTALL | P1 | EXTERNAL_PREREQUISITE | Release-owned installed Linux CHECK trust |
@@ -591,3 +593,25 @@ earlier publication-pending observation forward as the final driver state.
 Actual paid Fresh/FileText producer source is connected, while HIR/ItemIndex, paid
 drift/snapshot/memo and genuine PTA nonempty final output remain implementation/proof
 work. [Source, counts and hashes](execution-r79.md#r107-completed-owner-postflight).
+
+## R201–R206 final batch and SDK capture state
+
+R201 closes the R107 held-lease postflight as scoped results with RED, source
+`1dff82deb346…`: whole Kernel569 and driver11 remain committed GREEN; four
+other owners stop at compile with zero tests, and three dependent selectors
+are not run. The DFG child mount blocks PTA/Taint/navigation on that frozen
+input; metrics reaches a separate feature-off Foundation admission boundary.
+Both causes have current source successors, but no successor owner verdict.
+
+R194 attempts the three-case SDK owner on R191 source `8537a14ae748…` and
+stops at one Kernel E0412 missing `QueryLiveOutputOverlaysV3` alias, with zero
+tests. R205 confirms the alias already exists live. R200 resolves two DFG
+selectors on the same SDK target; they remain unrun behind its compile failure.
+R206's three canonical successor captures refuse changing untracked overlay
+content before manifest, owner resolve or test. Once writers quiesce, freeze
+the complete tuple, run the same SDK three-case owner, then the two DFG
+selectors if the target compiles. Preserve the R182 `.gitignore` source
+exception without an ignored-file bypass. General Original facts/output
+publication and the current nonempty PTA `UnsupportedOperation` restriction
+remain implementation scope; owner and product gates remain open. See the
+[checkpoint](../../work/substrate-repair-checkpoints-2026-10-07.md#r201r206-final-batch-and-sdk-capture-checkpoint).

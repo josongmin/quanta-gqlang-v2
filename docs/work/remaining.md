@@ -13,7 +13,10 @@ Core447/447 GREEN. R106's whole Kernel557 passed/11 failed is historical;
 R183 accepts the R107 frozen Kernel whole-lib569/569 with zero ignored/filtered
 and committed QBC publication on source `1dff82deb346…`. R192 confirms
 committed central publication for the separate driver11 on the same frozen
-source; other R107 batch owners and postflight remain open. Recursive integration has one released borrow
+source. R201 final held-lease postflight has four other owner compiles RED with
+zero tests and three dependent selectors not run. R194 SDK owner on a separate
+R191 source also stops before tests at one Kernel E0412; R206 successor capture
+refuses changing untracked input. Recursive integration has one released borrow
 repair. Runtime symbol-view and Java borrowed-byte lifetime successors are
 source-ready and unexecuted. R106 Taint shares the Java compile blocker; metrics
 stops at the feature-off
@@ -337,7 +340,7 @@ before claiming completion. Broader AG5/IRC releases remain downstream-owned.
 
 | ID / state | Required work | Acceptance |
 | --- | --- | --- |
-| FCP-COMPILE / BLOCKED_COMPILE | The canonical Native supplier/manifests/locks/Original callers remain co-owned WIP. R79-family R183 accepts R107 frozen Kernel whole-lib569/569 and R192 separate driver11 with committed QBC publication on the same frozen source after R106's historical557/11; other batch owners/postflight remain open. The separate R82 candidate accepts interproc1,104 at R142 and failed-fallback regression1 at R154; R166 renews interproc acceptance at1,105. R158 Taint CHECK stops at thirteen Kernel diagnostics, zero tests. R190's frozen PTA/DFG mount error ran zero tests and the mount is fixed in live/R191 source; R193's mounted 14-path static review found no concrete regression. R191 resolves the three-case SDK owner request on a fresh captured tuple, but execution is pending. Fixed owner successes do not establish live compilation. | Canonical product build and SDK owner rails on one complete compatible source tuple; verified publication and coordinated integration. Preserve typed cause, first refusal, atomic facts and public compatibility across the entire consumer cut. Historical failures retain their exact inputs. |
+| FCP-COMPILE / BLOCKED_COMPILE | The canonical Native supplier/manifests/locks/Original callers remain co-owned WIP. R79-family R183 accepts R107 frozen Kernel whole-lib569/569 and R192 separate driver11 with committed QBC publication on the same frozen source after R106's historical557/11; R201 final postflight has four other compile RED owners with zero tests and three dependent selectors not run. The separate R82 candidate accepts interproc1,104 at R142 and failed-fallback regression1 at R154; R166 renews interproc acceptance at1,105. R158 Taint CHECK stops at thirteen Kernel diagnostics, zero tests. R190's frozen PTA/DFG mount error ran zero tests and the mount is fixed in live/R191 source; R193's mounted 14-path static review found no concrete regression. R194 runs the R191 three-case SDK owner but stops on Kernel E0412 before tests; R205 confirms the alias repair live, while R206 successor capture refuses changing untracked input after three canonical attempts, before new owner execution. Fixed owner successes do not establish live compilation. | Canonical product build and SDK owner rails on one complete compatible source tuple; verified publication and coordinated integration. Preserve typed cause, first refusal, atomic facts and public compatibility across the entire consumer cut. Historical failures retain their exact inputs. |
 | FCP-PTA / REVERIFY | Verify the seed-consumption lifetime repair against the historical first `PtaOccurrenceAuthorityRefused` boundary; no current reproduction is claimed. | Current owner/bootstrap succeeds, or a reached refusal identifies the exact remaining owner repair. Source changes alone do not close it. |
 | FCP-PROCESS / NOT_RUN | Execute integrated Graph/CHECK positive and refusal fixtures. | Same tuple/artifacts; Linux Graph success, non-Linux Graph refusal, signed Linux CHECK and relevant non-Linux controls; record selected/executed/pass/skip/leak counts and exact output oracle. |
 | FCP-INSTALL / EXTERNAL_PREREQUISITE | Obtain release-owned signed x86_64 profile, root-owned immutable slots, independent approval/key and active generation. | Actual installed CHECK proof. Generic aarch64 artifacts and scripted daemon evidence do not satisfy this gate. |
@@ -544,3 +547,29 @@ SDK selected-provider FileText carrier regression, and parser/QRA→DFG→PTA no
 final output with paid rows. The generic Fresh owner now invokes only a genuine
 query-owned paid pair; FileText has its real selected provider route. Source changes
 remain unqualified until executed affected owners and complete compatible integration.
+
+## R201–R206 final batch and SDK capture state
+
+R201 completes the R107 held-lease postflight on frozen `1dff82deb346…`:
+Kernel whole-lib569 and driver11 are committed scoped GREEN; PTA retained-copy,
+Taint MemSSA, metrics depth and navigation import each stop at compile with
+zero tests; PTA SCC and two dependent Taint selectors are not run. Three REDs
+share the DFG child mount and metrics reaches a feature-off Foundation
+admission module. Current source contains both repairs, but neither successor
+has an owner verdict on one compatible tuple. The verified 45-file archive
+does not qualify current main or product behavior.
+
+R194 runs the R191 captured SDK owner request and stops at one Kernel E0412
+missing `QueryLiveOutputOverlaysV3` alias, before any of the three expected
+tests executes. R205 confirms the alias pair already exists live. R200's two
+DFG selectors are resolved but unrun behind the same SDK target compile.
+R206 tries canonical source capture three times; untracked overlay content
+changes between capture and copy, so no successor manifest, owner resolve or
+test exists. After the coupled writers quiesce, capture and verify the full
+tuple, run the same SDK three-case owner, then the two DFG selectors after
+that target compiles. Preserve R182's `.gitignore` source exception and
+normal build-artifact ignores; it is authored/captured but is not a committed
+Semantica source result. General Original facts/output publication and the
+current nonempty PTA `UnsupportedOperation` restriction remain implementation
+scope. FCP-COMPILE, FCP-PROCESS, FCP-INSTALL and product DoD remain open. See
+the [checkpoint](substrate-repair-checkpoints-2026-10-07.md#r201r206-final-batch-and-sdk-capture-checkpoint).
