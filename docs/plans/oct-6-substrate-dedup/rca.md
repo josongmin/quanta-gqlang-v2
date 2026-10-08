@@ -310,3 +310,125 @@ higher Native producer work. No new Shape/SCC traversal defect was found.
 Acceptance remains owner-scoped. New19-path snapshot and active trace/ItemIndex
 encoder changes need compatible frozen proof; existing digest GREENs do not
 qualify those later sources.
+
+## R79 root R121–R146 owner/source boundary RCA
+
+[Successor evidence and dependency order](execution-r79.md#r79-root-r121r128-successor-closure).
+
+- ContractPorts test breakage came from encapsulation and complete error-contract
+  changes: corruption fixtures belonged beside private storage. Repair the test
+  owner instead of widening production storage visibility. Root R122 preserves
+  both rejection oracles and full `QueryFailed` reason/phase fields.
+- Original trace had two semantic defects: native demand overflow lost its
+  arithmetic cause, and an unpinned read incorrectly conflicted with an existing
+  pinned revision. The source successor preserves finite cause and ordinary
+  input-fact semantics; its new regressions require owner execution.
+- Selected text authentication bound group/text but omitted captured row path.
+  Same-B/A substitution could relabel source. Bind the private issuer's actual
+  row path, reject incomplete tokens, and park paid path partials outside the
+  highest Source keeper loan, including CAS/product/provider callers.
+- Genuine managed Java success is blocked by missing SDK implementation, not
+  solely absent tests: generation-pair decode, Original receipt/evidence birth
+  and paid live-base build context. The exact-edit provider has an actual product
+  caller; parser/Runtime must receive its current external birth API. No ordinary
+  join or fabricated issuer satisfies these contracts.
+- Packet/memo still project ordinary snapshot carriers and allocate collection
+  DTOs. A successful lower digest or one recorder cannot authorize these consumers;
+  keep the explicit Original refusal until the coupled carrier cut is implemented.
+
+R121 value-carriers98, R124 SourceWire259 and R132 QCP387 are published GREEN
+on their recorded sources. R134 trace passes symbol-owner then stops at three
+relation-authority compile diagnostics; R132 SDK passes BuildContext then stops
+at33 Foundation diagnostics. Foundation's14-path successor is released;
+relation and parser/Runtime receiving successors still need exact owner proof.
+
+The relation cause is an incomplete move-only source contract migration: preserve
+canonical fallible ordinary copy, reject Original before producer effects, and
+carry typed identity/native/control causes to the actual SDK terminal. The
+six-path successor does this without restoring blanket Clone. Concurrent D4
+owns parser materialization DATA; the actual provider must enclose highest Source,
+with accepted output and losing causes retained outside. Remove the superseded
+receiver instead of maintaining two contracts. No independent genuine D4
+cause/custody regression was found; source readback cannot close that proof gap.
+
+R138 exposes shared input drift before compilation: two already-declared Native
+allocation dependencies are absent from the root lock. The active nested
+workspace also lacks five local and two Index SDK edges. R139 synchronizes only
+those edges under separate reconciled claims, preserves every package/version/
+source/checksum, and passes full offline locked metadata for both workspaces.
+R138's seven zero-test requests are lock-input rejections, not new Rust defects.
+Stable postflight/archive50 is accepted. R140 then reaches vendored Serde's
+deny-missing-docs contract, not the requested test bodies: two new scratch
+methods lack documentation. R142 static review catches the same omission on a
+concurrently added seed constructor before owner resolution. Three accurate
+comments fix these omissions without suppressing the lint. R144 captures106
+selected inputs with only the released constructor comment changed since R142.
+Its serial Rust result must remain separate from these static checks.
+
+R144's four owner compiles reach the same23-error JSON caller/API mismatch;
+two dependent selectors are not run. The separately compiled relation target
+executes18/1: its failing fixture constructs a1031-byte `FileRefV1` before the
+validation walk, exceeding the512-byte contract. A263-byte common-prefix fixture
+preserves the128-comparison window,64-stop and both refund oracles. R146 accepts
+the whole relation owner19/19, with verified publication and stable archive9.
+This is a fixture repair, not a relaxed production limit.
+The latest read-only JSON refresh finds all3 old production calls migrated to
+external DATA;3 decoder test calls and7 scratch constructors are still stale.
+Claim83 remains active. Current compile is UNKNOWN; historical23 is not a live total.
+
+The guard Drop seam is separate from deliberate RAII trace finalization:
+`TraceFinalizeGuard` only cleans failed/abandoned executions and must discard
+without producing trace/hash/publication. A required port avoids a default
+finalizer fallback or silent stack leak. The14-path successor routes all16
+workspace implementations; external implementors must add the operation. Root
+finds and closes two initially missed multiline implementations. Two ordinary
+counter/parent-fact regressions are authored but not executed; genuine Original
+B/A guard acceptance and inherited TaskLocal formatting remain open. The
+intentional `TraceFrame` auto-finalizer is preserved.
+
+The D4 regression gap has a producer prerequisite: installed Scenario02 uses
+ordinary transition preparation, while Original generation hydration and
+receipt admission refuse before genuine binding birth. A synthetic parser
+fixture cannot prove that installed route's first cause or retained-partial
+cleanup; complete the paid SDK carrier/evidence cut before that regression.
+Implementation, Rust proof, main integration and product qualification remain distinct.
+
+Root R128/R129 review adds two distinct causes: the partial UTF-8 fixture omits
+one actual boundary-work unit (source-only fixture repair), while native nested
+trace start can lose its parent when funding fails after a field move (production
+ordering repair). Their success criteria are exact retained partial/cause and
+actual parent/pre-key/refund preservation respectively. Pure helper tests do not
+establish the second. Product context copy and pre-key arm/bind remain ordinary
+gates before these new native events; finalizer-only changes cannot close them.
+
+R128 runtime compile diagnostics are missing canonical facade exports and one
+crate-local visibility mismatch, repaired at existing owners. SDK evidence is
+separately invalidated by Python cache writes in the leased frozen tree: strict
+source custody rejects exit125 and no publication. Repeat on a fresh capture;
+never reinterpret an inner run as accepted SDK behavior. Nested trace discard
+also dropped the parent chain; R130 restores the parent and adds actual finite
+B/A input-map/refund oracles. Source-only repairs require successor owner proof.
+
+R130 reveals a coupled API cut, not23 independent runtime behavior failures:
+verified shared outputs no longer expose `as_ref`/implicit root reads; protected
+HIR requires checked views, ordinary consumers explicitly select ordinary roots,
+and encoder errors must remain in their external phase slots. Repair narrow
+owner imports and consumer types without adding dereference/Clone escapes. R130
+ends with stable custody and23 matching archived artifacts; its RED diagnostics
+remain distinct from the released successor source and pending R132 owner run.
+
+R132 confirms the symbol-owner repair removed its23 former compile diagnostics;
+one checked SpanMap callback has an ambiguous generic error type (two E0283),
+repaired by explicit `RuntimeError`. SDK reaches the next incomplete shared
+retained-source store cut,33 archived AdaptersFoundation compile diagnostics.
+This shifts the owning repair to storage/source receiving and lifetimes rather
+than the installed SDK fixture. R132 QCP387 and stable archive23 are accepted;
+R134 affected trace proof and compatible SDK source closure are separate.
+
+R135 current-source refresh corrects the old SDK no-caller inference: the binder
+became `prepare_original_exact_edit_binding_provider_v3` and is called by actual
+product existing-file composition. Source wiring is present; generation-pair
+hydration, Original receipt/evidence birth and positive preparation still refuse.
+Foundation33 receives a14-path facade/ordinary/lifetime repair with exact scalar
+comparison regression authored; Rust proof remains separate. R134 shifts trace
+compile to the relation wrapper/actual ingress and controlled identity callers.

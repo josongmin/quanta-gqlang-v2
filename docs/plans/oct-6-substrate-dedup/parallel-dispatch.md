@@ -323,3 +323,41 @@ remains separate.
 - Integration: no partial Semantica Native commit. Review released postimages,
   freeze the complete compatible closure, run affected owner rails, then serialize
   local-main integration. Installed product acceptance remains separate.
+
+## R79 root R145–R146 coupled dispatch
+
+- Root serial proof: R124 SourceWire259 and R132 QCP387 accepted on recorded
+  exact sources. R134 trace reaches relation's three compile diagnostics;
+  R132 SDK reaches33 Foundation diagnostics. Both execute zero tests; ordinary
+  trace is NOT_RUN. Their stable custody/archive readbacks are accepted.
+- A released: native event storage, actual finite B/A parent-start/discard
+  regressions; symbol-owner wiring; Foundation facade; six relation/ingress/SDK
+  consumer paths with exact typed source refusal and ordinary copy before effects.
+- C released: path-bound selected snapshots/SDK fixture, canonical facade repairs,
+  encoder error slots, BuildContext and seven Foundation ordinary consumers.
+  Concurrent D4 parser/Runtime birth supersedes C's initial receiving object;
+  C removes only the obsolete object/export/test. No D4 behavior proof is claimed.
+- Root released: private contract corruption fixtures, exact UTF-8 work/cause
+  oracle, self-crate reference, lock edge, checked HIR consumers, SpanMap error
+  annotation and actual paid admission short reborrow/move ordering.
+- R144 fresh queue verifies106 selected postimages, including both repaired locks,
+  reviewed D4/terminal successors and the three Serde documentation fixes.
+  R140 stopped at two missing-doc errors, zero tests; R142 caught the later
+  constructor omission statically before Rust. Run QCP and relation whole targets, native/ordinary
+  trace, Foundation equality and two SDK witnesses serially. No parallel tooling
+  in the root's leased execution tree. Genuine D4 cause/custody regression needs
+  paid SDK generation/receipt/preparation; installed Scenario02 is ordinary.
+- R144 completes stable custody/postflight/archive36: four owner compiles stop
+  at the same23 SourceWire JSON diagnostics, relation18/1, two dependent scopes
+  NOT_RUN. A releases the legal long-prefix fixture; root R146 accepts only that
+  reached relation whole target19/19, with verified publication and stable
+  custody/archive9. Do not transfer this to Runtime/SDK.
+- C releases the14-path required discard port/guard cut after root finds two
+  missing multiline implementations. All16 are covered; two ordinary regressions
+  are authored, NOT_RUN. Format13/14; inherited TaskLocal findings remain.
+- Latest canonical JSON readback: three production calls migrated after R144;
+  three decoder test calls and seven scratch constructors remain with active83.
+  Coordinate that whole owner/test cut before new runtime/SDK acceptance.
+- Actual product pre-key/owned-context receiving, admitted final trace/packet/memo
+  and genuine SDK generation/receipt/preparation remain implementation work. Freeze
+  and integrate one complete compatible bundle; keep Product acceptance separate.

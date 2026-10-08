@@ -583,6 +583,46 @@ product gates still need execution on one compatible source tuple. See the
 
 ## R107 final proof checkpoint
 
+Root successor: [R121–R146](execution-r79.md#r79-root-r121r128-successor-closure).
+R124 SourceWire259 and R132 QCP387 are published whole-target GREEN on their
+separately recorded sources. Symbol-owner and BuildContext compile diagnostics
+are passed by their successors. R134 trace stops at three relation-authority
+compile diagnostics, zero tests; ordinary trace is NOT_RUN. R132 SDK stops at33
+Foundation compile diagnostics, zero tests. Their stable custody and independent
+archive readbacks pass; R128 SDK remains UNKNOWN.
+
+Foundation's14-path facade/ordinary/admission-lifetime successor is released.
+Relation's six-path consumer cut is released. Parser/Runtime use the concurrent
+canonical D4 materialization birth; the obsolete receiving duplicate is removed.
+Native call/hash/capability events and actual finite B/A parent-preserving
+start/discard regressions are authored. R138 is locked-input RED before Rust;
+R139 repairs both workspace locks with unchanged versions/checksums and locked
+metadata PASS. R140 passes locks and stops at two vendored Serde missing-doc
+errors, zero tests. The two methods and subsequent constructor are documented;
+R142 stops before Rust on the constructor omission. R144 reviews106 selected
+inputs: four owner compiles stop at the same23 SourceWire JSON diagnostics,
+relation executes18/1 and two dependent selectors are NOT_RUN. Postflight and
+archive36 readback match. Relation's legal-prefix fixture successor is released;
+R146 accepts its whole owner19/19 on `467abb121f9f…`, with verified publication
+and independent archive9 readback. R145 authors the14-path discard-only guard cut and
+two ordinary regressions; all16 recorder implementations supply the port.
+Rust is NOT_RUN and aggregate format is not accepted (13/14, inherited findings).
+Current JSON production3 calls are migrated; three old decoder test calls and
+seven scratch constructors remain under the active canonical owner. Current
+compilation is UNKNOWN; R144's23 errors retain their historical source.
+Genuine D4 receiving/cause-precedence
+regression requires the paid SDK producer cut; installed Scenario02 remains
+ordinary and does not issue the genuine Original binding birth.
+Open implementation remains: actual product pre-key/owned-context receiving;
+admitted trace final output and snapshot/packet/memo; actual SDK session axes into
+existing FULL hydration/selection, paid generation carrier, receipt/evidence and
+live-base build context. The exact-edit provider has an actual
+product caller; qualify its coupled TARGET birth/receiving rather than add another.
+Then qualify the compatible bundle and serialize complete local-main integration.
+These source cuts do not close FCP-COMPILE or CHECKED-RETAINED-CONTROL.
+
+The R117–R120 paragraphs below retain their historical source state.
+
 Latest root successor: [R117–R120](execution-r79.md#r79-root-r117r120-lower-owner-closure).
 ContractIds82, ContractBase58 and value-carriers98 are whole-target GREEN on the
 recorded R117 source. R119 SourceWire was258/1; R120 accepts the genuine late-stop successor at259/259

@@ -1,9 +1,11 @@
 # Local parallel closeout execution — R79 onward
 
-Updated: 2026-10-08. This is the executed successor of the [R78 dispatch](parallel-dispatch.md),
+Updated: 2026-10-09. This is the executed successor of the [R78 dispatch](parallel-dispatch.md),
 within the existing [18-ticket queue](tickets.md). All execution is local.
 Source integration, WIP implementation, compilation and product acceptance are
 separate states. The [R77 RCA](rca.md) retains its original inputs.
+
+Latest root closure: [R121–R146](#r79-root-r121r128-successor-closure).
 
 ## Inputs and custody
 
@@ -916,3 +918,405 @@ QGLang non-document source is unchanged since `just ci` GREEN at
 No Semantica partial WIP bundle is staged or committed by this root. Local-main
 source integration, installed Linux CHECK/product proof, hosted CI and push
 remain distinct; hosted execution and push are not requested.
+
+<a id="r79-root-r121r128-successor-closure"></a>
+
+## R79 root R121–R146 successor closure
+
+Updated: 2026-10-09 KST. This section supersedes the source-only state of the
+root R120 checkpoint above; independent campaign round IDs remain separate.
+Original Shape/SCC is committed. Native/Original runtime product success is open.
+
+### Reached owner proof and fixture RCA
+
+- R121 reuses exact R120 source `c4134fbcfb18…` under a new held lease.
+  Value-carriers whole lib/all-features is GREEN98/98, zero ignored/filtered;
+  receipt `44151f415555b132f99a98e7ecf3b4f03ab61ad287784bacf78ef3046620291b`,
+  committed publication `8dd0711989b706fbe9d692daeef1d8c73b871d3c79cc0b26cba2c2cd4e985941`.
+  This compiles the newer borrowed snapshot fields, not the later paid recorder.
+- R121 ContractPorts whole lib/all-features stops at four test compile errors,
+  zero tests: one incomplete `QueryFailed` fixture and three accesses to private
+  imported-surface/batch storage. R122 moves two corruption tests beside the
+  private ordinary owner and supplies reason/phase fields. Negative oracles are
+  preserved; no production field is made public. Later coowner fixture successors
+  keep those fields and add current parked target-read/error tests.
+- R121 postflight `23ac27be60678f71417f499afa5822c1e3a9c1578edb9ae1c9f5545b146d276d`
+  has independent16-file archive hash readback. R124 captures fresh full WIP at
+  `0167ae17caf38976f4d2e6acff31fe910e99d859bce86073463b166dbe8556e9`;
+  its45 selected input postimages match. SourceWire whole lib/all-features is
+  GREEN259/259, zero ignored/filtered; receipt
+  `f7f161caa0e976dac668a5906cd1c047577049b9bd672ce3f7c58f8f71734abb`,
+  committed publication `49ed297b7849937046f587dcd215d74a1fd5a7caa1f0bd563f7ad1f591e31454`.
+  ContractPorts passes the four old fixture diagnostics and stops at one later
+  rewrite's `quanta_contract_ports::` self-reference, zero tests. R126 changes
+  it to `crate::`; no behavior change or public API widening. R124 postflight
+  `716562a38d57bf95195e7c03c490b808eeb5d8228ed27443583000f3f9260d3b`
+  has independent16-file archive readback. Planned R125 runtime proof is not run
+  on that known compile blocker. R127 captures successor source
+  `7c515e2044dea9888240b957b64b442166753cf123c51e45ebee9c567ed46bb4`
+  with55 matching selected postimages; the proof helper stops before Rust on a
+  nested Cargo workspace dependency lookup. R128 fixes only that helper and
+  reuses the exact captured tree under a new held lease for QCP/runtime/SDK proof.
+
+### Released source, acceptance boundaries
+
+1. Trace's nine-path compile checkpoint has paid native stack/frame/input storage
+   and one non-Clone runtime owner. Native map demand overflow preserves
+   `MemoryArithmeticOverflow`; pinned input followed by unpinned keeps its pinned
+   revision, while distinct pinned revisions conflict. Independent regression
+   source is present. The later R125 event cut implements paid native
+   call/child-hash/capability recording for active and pre-key frames, preserving
+   ordinary duplicate/conflict semantics and fixed-width scope ordering.
+   Start refusal restores all four pre-key roots. Leaf SHA-256
+   `19230bba345a743affce44d61248e01ec19cb3c6e0b4d711515f0544c53db618`
+   is captured for R128; finalization and packet/memo remain explicitly fenced.
+   Format/diff/boundary checks pass; Rust execution is pending.
+2. The selected FileText/snapshot successor binds tokens to their authenticated
+   captured row path. Incomplete paid path shells and selected/error slots live
+   outside highest FD/CAS/product Source keeper loans; incomplete reads/retain
+   refuse. The genuine SDK fixture binds actual B/A, uses the typed Original
+   trace owner and checks same-B/A path substitution. Sixteen final postimages
+   are released; the later SourceWire lib successor only mounts the identity
+   mint ledger. Compiler/runtime acceptance is pending.
+3. ItemIndex fresh encode receives the canonical external nine-phase birth API;
+   shared-pair errors/partials are retained outside Source currents. Managed HIR
+   and ItemIndex share atomic retained backing. This is source integration only.
+   The genuine Java fixture remains blocked by actual SDK producer contracts.
+4. R123 adds only RuntimeExecution's missing `codegraph-cfg-dfg-kernel` lock edge.
+   Versions/sources/checksums are unchanged. Offline metadata and locked metadata
+   pass; metadata is diagnostic, not Rust owner proof.
+
+### Required dependency order
+
+- SDK durable store: implement paid Original generation-pair decode in
+  `hydrate_exact_transition_pair_original_v3`; current body explicitly refuses.
+- SDK receipt admission: implement native receipt/evidence first birth and keeper
+  in `ReceiptAdmissionControlV3::Original`; current branch counts rows then refuses.
+- SDK preparation: carry live-base identity and paid build context through
+  `prepare_exact_edit_authority_transition_original_v3`; ordinary generation join
+  allocates Vec/PathBuf/Arc and cannot substitute for Original.
+- R135 live refresh supersedes the earlier no-caller inventory: the old binder
+  symbol is replaced by `prepare_original_exact_edit_binding_provider_v3`, now
+  called from product `existing_file_source_parts_v1.rs`. Verify the reachable
+  provider → TARGET binding and genuine final output. This is source wiring;
+  no SDK/Product execution is accepted by that discovery.
+- Migrate the actual owned context and pre-key caller before claiming reachable
+  Original events. Product dispatch still calls ordinary-only
+  `arm_pre_key_trace_capture_v1`; generic scope binding calls ordinary-only
+  `bind_pre_key_trace_query_key_v1`. Four execute-core variants call
+  `runtime_ctx_with_current_trace_context_handle_v1`, which copies ordinary ctx.
+  Native owner existence in a direct SDK fixture does not bypass these gates.
+- Preserve panic cleanup: `TraceFinalizeGuard::Drop` currently invokes admitted
+  finalization. Positive Original finalization requires explicit discard-on-error
+  cleanup, not publishing a partial trace during unwind.
+- Finish admitted trace final output and checked snapshot receiving across
+  execution flow/preparation, packet, ephemeral authority, persistence and memo.
+  Current `Option<AnalysisSnapshot>` projections, `to_snapshot_inputs()` Vec and
+  BTreeSet/BTreeMap bridge births are incompatible with Original. Keep the fence.
+- Run affected owner rails on one compatible capture, verify publication/custody,
+  then integrate the complete source bundle into local main. Installed Graph/CHECK
+  remains separate. No partial Semantica WIP commit, hosted CI or push is claimed.
+
+### R128 review and R129 repair successor
+
+R128 QCP whole target compiles and executes387 tests:386 pass, one fails, zero
+ignored/filtered. The failed partial UTF-8 fixture grants1024 work but canonical
+copy charges one boundary probe before its1024-byte first chunk; it correctly
+refuses before copying. R129 supplies1025 and keeps independent exact512-character
+partial text/1202-capacity/no-final-result oracles, adding exact first-cause checks.
+No production copy policy changes. Its successor owner run is pending.
+
+Independent review finds a separate real trace defect in frozen leaf19230bba:
+a fallible funding retain follows taking the active parent into a frame literal,
+so refusal can drop that parent before any external pending frame exists. The
+released live successor `dc7db6d8…` acquires funding before moving parent/query
+and all four pre-key roots. The original helper regressions do not exercise
+actual stack/map/refund; R130 adds genuine finite issued B/A owner regressions.
+Neither that fix nor its behavior is accepted by the older R128 input.
+Runtime/SDK predecessor results are recorded below; successor proof is separate.
+
+### R128 custody incident and R130 compatible successor
+
+R128 RuntimeExecution stops at five QRSFoundation compile diagnostics, zero
+tests. Canonical Kernel types existed but QueryFloor omitted three reexports;
+FileText's intermediate hash helper had narrower visibility than its crate-local
+reexport. Two released source paths repair those owners. The one inference
+diagnostic may be derivative; successor compilation decides. The second runtime
+trace selector is NOT_RUN because it shares that exact compile target.
+
+SDK Cargo starts, but another lane runs a Python boundary preflight inside the
+leased frozen tree and creates caches. Strict custody detects changed root/tools
+directory metadata and rejects exit125: zero recorded tests, no publication and
+no result locator. This is UNKNOWN/unpublished SDK behavior, not acceptance.
+The lane confirms the exact command; no custody guard is weakened. Root retains
+23 independently hashed interrupted artifacts in
+`owner-interrupted-postflight-r128.json`; stable end postflight is NOT_ESTABLISHED.
+All later agent static tools use live/separate source; only root touches a leased
+execution tree.
+
+R130 also fixes refusal cleanup dropping an entire nested parent chain: discard
+now restores the parent before dropping only the child outside the mutex. Genuine
+finite issued B/A owner regressions check actual paid parent Box identity,
+retained input-map keys/revisions and final-owner memory refund. The late-funding
+case uses a private deterministic assembly seam after real stack/frame birth;
+it establishes lower owner custody, not SDK/Product success. Latest trace leaf
+SHA-256 `0373eabe389e4d6a97d675dbfc5e674edd8da2d1205a0d8594a5bab217c7b7b2`
+is source-ready. R130 fresh capture includes60 selected released postimages and
+runs QCP whole, the native trace module including genuine owner regressions,
+ordinary trace and actual SDK installed-source witness serially. Results follow.
+
+The original five canonical Shape/SCC source files remain clean, byte-identical
+to committed Semantica `3b8f86dd9ea7…` and the R107 readback. No new traversal
+implementation is assigned. Current QGLang `a9f4e7cb53a1…` still has no non-doc
+change since its accepted local CI source; this successor does not claim new CI.
+
+### R130 completed proof and R131 compile-owner repair
+
+Exact source `8459802765e62075e40b41450147720319d2fbf8f7bdcde5d82fb63363ba3cd1`
+retains all60 selected postimages. QCP whole lib/all-features is GREEN387/387,
+zero ignored/filtered. Receipt
+`8bf30c237706bac52097da78c187077060c2be3a9eba9cec06ab9073b6f160fc`;
+verified publication
+`d905d5b3e30750129e7d1cdc0e7c05ed1372f6b0185baa04ad6f36bf00268239`.
+This accepts the UTF-8 fixture repair and earlier contract-owner fixture changes.
+
+Runtime native trace stops before tests at23 symbol-owner compile diagnostics:
+missing narrow owner imports/visibility, HIR output versus root consumer types,
+external encode error-slot shadowing and exact native error conversion. Ordinary
+trace is NOT_RUN on that same compile target. SDK independently stops before
+tests at one BuildContext consumer calling removed `as_ref()` on a verified
+shared output. Both receipts remain RED diagnostics without publication.
+
+Unlike R128, source custody completes unchanged. Held-lease postflight
+`518c2a74c31a6822e6826de9d8eb5d509e69ed6e77d51f6f4c8c9ea2f54195cc`
+has independent23-file archive hash readback. No inner run is promoted to GREEN.
+
+Released A/C/root repairs cover14 symbol-owner paths: canonical narrow reexports,
+verified shared HIR input with external partial state, explicit ordinary-root
+selection inside existing admitted callbacks, native first-cause side channel
+with a fixed serde marker, canonical birth-error conversion and distinct Value
+error slot. No Clone/Deref/AsRef escape or managed-to-ordinary conversion is added.
+Live format/diff and affected boundary checks pass; new Rust acceptance is pending.
+R132 also reviews coowner SourceWire finite first-cause helper extraction, Kernel's
+existing tier0 dependency becoming unconditional, and QCP external bind-slot
+receiving. These source successors require a new capture; R130 GREEN stays bound
+to its recorded source. BuildContext repair and fresh compatible proof follow.
+
+### R132 completed proof and R134 affected successor
+
+Source `d98830c20fed8bb7383e75efa21f1cd791052688a3cdfb641193d2c637827001`
+includes72 matching selected postimages. QCP whole lib/all-features remains
+GREEN387/387, zero ignored/filtered. Receipt
+`e4f9b6118318a063944ad3813842bdb7901aa16b0fdb4e8c0f7d86d51f5882ac`;
+verified publication
+`b4f5495395f257dd4d3ed42e1afab28edb86e7e280a143550c9090a77c24455c`.
+
+The23 previous symbol-owner diagnostics disappear. Native trace now stops before
+tests at two E0283 diagnostics for one SpanMap checked callback; ordinary trace
+is NOT_RUN on the shared target. R133 explicitly types that existing callback's
+success as `RuntimeError`, preserving both admission and behavior. Static format
+and diff pass; the successor is not accepted by the older R132 source.
+
+SDK passes its old BuildContext error and reaches33 compile diagnostics in
+AdaptersFoundation's coupled retained-source receiving cut, before tests. These
+are historical diagnostics on this exact input, not33 proven current independent
+defects. Do not restore blanket Eq/Clone/Deref or ordinary text projection to make
+Native compile. A live source/claim review owns the compatible repair inventory.
+
+Stable held-lease postflight
+`b1cc430cf4f7e8ba3af905c74285dae02d76e4e264ad127cfc54a46c597f2676`
+has independent23-file archive hash readback. R134 captures the explicit error
+type successor for affected native/ordinary RuntimeExecution modules only. SDK
+is not retried before the upstream compatible source cut. QCP GREEN stays at
+R132; source-only and executed states remain distinct.
+
+### R134/R135 live repair and producer inventory
+
+R134 source `703010aa8e8a35f3ef7dded484350037059375934f8dc4f368ff86763420ce0b`
+passes the SpanMap type site and reaches three RelationInputAuthority compile
+errors: non-Clone source authority and two fallible identity signatures. Trace
+regression bodies still do not execute; ordinary trace is NOT_RUN. Stable
+postflight `ebac289f66c4fa634ef60a10cf872c81f5b9c4655dc3bf9c0ba36a4dce769d01`
+has independent8-file archive hash readback. Relation wrapper and actual ingress/
+composition callers are a coupled source repair, not a blanket Clone restoration.
+
+Three Foundation lanes release14 source paths (seven facade/import paths, seven
+ordinary/recovery paths, one shared paid-lifetime file): narrow digest visibility,
+canonical ordinary byte/value readers, exact kind/revision/provenance comparisons,
+explicit ordinary changeset callers and short actual admission reborrows. Opaque
+bootstrap evidence drops unusable equality derives; no repository equality caller
+exists. One independent kind/revision regression is authored, NOT_RUN. Shared
+prepared changeset final postimage is `904e87f4c0128e78de8cdd85ad3c6c8ba089ccc33e04ec9e28e3ed4a006c9474`.
+These fixes preserve paid Source B/output A and need successor Rust proof.
+
+Current SDK still explicitly refuses Original generation-pair hydration and
+receipt/evidence birth; exact transition preparation still returns its retained
+first refusal. The binder is now a reachable paid binding-provider source cut,
+so the earlier missing-caller claim is superseded. Genuine positive issuance and
+installed Product qualification remain open; record the actual current names.
+
+### R136 compatible source successor
+
+The six-path relation cut removes blanket authority/bound-input Clone, delegates
+ordinary copy to its canonical owner before producer effects, preserves exact
+identity refusal through composition and the SDK terminal, and adds ordinary,
+control-refusal and terminal-cause regressions. The old compiler diagnostics do
+not establish those new tests. Five leaves format and20 boundary policies pass;
+the SDK leaf initially has two foreign formatter differences, subsequently
+captured with the reviewed typed generation-input terminal successor.
+
+Concurrent D4 replaces the initial parser receiving candidate with canonical
+`ParserNormalizedParseHirMaterializationBirthV3`. Both parser trait frontdoor and
+Runtime `execute_original_java_requests_v3` invoke the actual composition-supplied
+binding provider before highest Source. Syntax/binding/provenance births and full
+errors live outside that loan; ordered source errors precede parked callback
+causes at the final extractor. C removes its now-dead duplicate receiver/export/
+test while preserving D4. This is current source review, with no isolated patch
+claim against the moving intermediate or independent genuine D4 regression.
+
+R136 selects104 reviewed source postimages for fresh full-WIP canonical capture:
+Foundation14, relation6, D4 receiving and their existing coupled dependencies.
+The serial queue is QCP whole, relation whole, native/ordinary trace modules,
+Foundation's independent kind/revision equality regression, installed SDK source
+negative and SDK terminal-cause regression. Product qualification and a complete
+Semantica source commit remain separate; no blanket trait escape or Original
+success is introduced to pass compilation.
+
+R136 captures and verifies all104 selected inputs, then stops before Rust because
+the helper passes invalid selector `all-target`; the canonical spelling is
+`whole-target`. R137's preflight detects a further D4 successor; its dependent
+launcher incorrectly starts and stops on the absent expected manifest before
+owner resolve/Rust. Neither has an owner receipt or normal completed postflight.
+R138 corrects the selector and adds a held-lease review barrier before every
+resolve: review the actual immutable source, bind selected hashes, then run.
+
+R138 freezes source `017f9a2d44121dd9e10b0c7becbbfbf5335d05347477aad65ca240ce7a6de4e1`,
+Semantica `3b8f86dd9ea7…`, committed QGLang `ec41025af097…`, and104 matching
+selected postimages. The reached failure is pre-compile `Cargo.lock` rejection
+under `--locked`, not a Rust diagnostic or failed test. R139 uses a reconciled
+lock claim and offline metadata to add only the already-declared Native allocation
+dependency edges of `quanta-contract-retrieval` and `quanta-runtime`. Every package,
+version, source and checksum is preserved; full offline locked metadata passes.
+Lock SHA-256 is `cee9c497b5920cb79dc9cf745d22903a27d616fa51abc843983ef1c1111999cf`.
+This is diagnostic/source repair only and requires a fresh owner capture. The
+successor helper skips redundant targets after a shared locked-input rejection;
+a package's own unit-test compile failure does not preempt distinct owner targets.
+
+R138 completes all seven requests as the same locked-input rejection, zero Rust
+compilation/tests. Held-lease postflight
+`162e9e982ca88da43e92501c34ffe13dec16ebba92f1995603c70edc71bda98c`
+and independent50-file archive readback pass. Earlier QCP GREEN387 remains bound
+to R132, not transferred to R138. R139 also checks nested workspace consumers:
+local testctl and locked fetch use `packages/analysis/quanta-v2/Cargo.toml`, so
+its lock is an active authority. Under a separate reconciled claim, synchronize
+five local and two already-declared Index SDK edges; preserve every package,
+version, source and checksum. Nested lock
+`ddbc429015bf1554d566a6850a2ec5d12303e2d85b515684887be70fe017dcb5`
+passes full offline locked metadata and both locks pass diff checks. Both claims
+are released. No Cargo metadata result is Rust or product qualification.
+
+R140 captures source `f56d17c6a7b5642bbc2d5cdbf4c68eb0619788391972c7784066d41f95f86a6b`
+with105 matched inputs, including both repaired locks. Exact archived R138 D4
+preimages show the later private tuple aliases and paid funding-owner drop-order
+repair; preserve both. Selected raw105 source files are archived under the root's
+held lease before execution, so later snapshot GC does not erase the comparison
+base. The seven affected owner requests run serially on this fixed source.
+
+R140 passes the lock boundary. Five distinct owner targets stop at the same two
+`serde_json` `missing_docs` errors before tests; ordinary trace and SDK terminal
+selectors are NOT_RUN on their shared package compile failures. Held-lease
+postflight `d65740e830879ec8f822ba2ff2403b16166071208f700a79461c12a0a7980a38`
+and independent36-file archive readback pass. A's released two-comment successor
+documents `ScratchStorageV3::scratch_v3` and `scratch_mut_v3`; no lint suppression
+or algorithm change. Leaf hash is
+`8ad23f0973f8246cf76bf73c1d6758773317c1c6df6f3d6d9a0ef023087f3267`.
+R142 captures this successor; no earlier GREEN accepts it.
+
+R142 fixed source `ec071ee94284b92220fb0b34191e5f97012d6f798665b1272f31382dbe416e12`
+is rejected at the held static review before owner resolve or Rust. The two
+ScratchStorage method docs remain intact, but the concurrent serde owner adds
+public `StringSlotSeedV3::new_v3` without documentation under the same deny lint.
+Archive106 selected raw preimages and request only that new constructor's doc;
+do not run five redundant compiler failures or attribute the new seed to A.
+R142 has no owner receipt or normal owner postflight; no test result is claimed.
+
+R144 captures source `41b2a263cfae2c8544e31d3d9ae53a1954c5b15563e353cc1558fb589d50d340`
+with committed QGLang sibling `93d84ecad0d2…` and Index `5d02a969a9b7…`.
+Selected106 raw postimages match R142 except the released one-line documentation
+for `StringSlotSeedV3::new_v3` (`d22255bf626d…`); all106 are archived under the
+held root lease. Serde's documentation boundary now passes.
+
+- QCP whole target stops before tests at23 SourceWire JSON diagnostics. The
+  canonical decoder now receives external state/data and a unit-returning
+  callback, but manifest decode and two canonical preflight sites still use the
+  old returning callback. Three unit callers also remain stale. Claim
+  `OCT9-SOURCE289-CANONICAL-JSON-CUSTODY-83` owns the complete supplier/caller cut.
+  No returning-value compatibility shim or ordinary fallback was added.
+- Relation whole target executes19:18 passed, one fixture failure before the
+  validation walk. Its path is1031 bytes; typed `FileRefV1` limits it to512.
+  Preserve the128-comparison window,64-visit stop and duplicate/lease-release
+  oracles while repairing that fixture to a legal long common prefix. The
+  released one-line successor uses263 bytes (`22173e762224…`); R146 accepts only
+  the reached relation whole target19/19 on a fresh source.
+- Native trace stops before tests at the same SourceWire compile cut; ordinary
+  trace is NOT_RUN on the same package/target closure.
+
+Foundation equality and SDK source also stop before tests at that same23-error
+SourceWire cut; SDK terminal is NOT_RUN on its shared compile closure. R144's
+normal source/custody postflight is stable (`a0cee36ec495…`), and independent
+readback matches all36 archived files. The reached relation failure remains
+18/1 at this source; its legal-prefix successor requires a fresh owner receipt.
+
+Read-only packet `r144-source-json-sdk-prerequisites-a.json` binds exact current
+files and the archived supplier/caller delta. Actual Source B FULL hydration,
+member selection and composition binding provider already exist. Exact Original
+preparation never creates the selection, pair hydration refuses before decode,
+and Original receipt admission is unreachable and refuses before evidence birth.
+Complete that coherent paid carrier/evidence/build-context cut; removing one
+refusal cannot qualify genuine Java TARGET or D4 first-cause/partial cleanup.
+
+R145 adds a required, infallible, non-panicking discard port to `TraceRecorder`.
+`TraceFinalizeGuard::Drop` uses only that port; ordinary cleanup pops the child
+outside the mutex, preserves an active parent, and invalidates capture only at
+the root. Original cleanup delegates to the existing typed child-only owner.
+Transparent wrappers forward it. Root's multiline search catches two omitted
+implementations; the final14-path successor covers all16 workspace implementations,
+including the active-flag fixture and the shared publication-counting wrapper.
+External implementations must add the new method. Intentional ordinary
+`TraceFrame::Drop` auto-finalization remains unchanged.
+
+Exact raw14 preimages match the held R144 capture and root independently matches
+all14 postimages and the isolated patch in `r145-trace-discard-root-review.json`.
+Scoped diff checks pass; rustfmt checks pass13/14. TaskLocal still has five
+inherited formatting findings, so no aggregate format PASS is claimed. Two new
+ordinary tests reject finalization/publication from guard Drop and preserve exact
+parent facts across child panic without a child hash. Both are NOT_RUN. Genuine
+Original B/A guard acceptance remains separate from the earlier authored native
+stack refusal tests. This source cut does not enable positive trace finalization
+or authorize packet/memo consumers.
+
+R146 relation whole lib/all-features is published GREEN19/19, zero failed,
+ignored or filtered, on source
+`467abb121f9f27b5704560bf5d70321d313e745c2c8675134251aa534f4b4ea1`.
+Receipt `582518192749ece442bb02f643c22f66c3d02641b304aaa5f7c990ff25f6100a`
+and publication `9086805b1a959b74f467e84ca07834f4372e9062f025e014b2eeae9529d8c092`
+are verified against the exact owner request, command and source. Held-lease
+postflight `0fbead241f3e44eb83a1a08c6d64d6dead257dd62e7a5af11b6b40b27ec78291`
+is stable; independent readback matches all9 archived files. This accepts the
+ordinary-copy/typed-source-refusal regression and the repaired real validation
+cancellation/refund witness. It does not accept Runtime/SDK or the new guard.
+
+R146's live read-only JSON refresh is a separate source observation: all3 R144
+old production calls are migrated to external DATA, including the new
+`decode_data_v3` owner. Three decoder test calls and seven scratch constructor
+calls remain stale under active83. See `r146-json-owner-source-refresh-a.json`.
+Current compilation is UNKNOWN; the historical R14423-error count is not a
+current defect total. Finish that canonical whole owner/test cut before a new
+compatible runtime/SDK proof. Root rechecks the original five Shape/SCC files:
+all are committed, clean and unchanged on Semantica `3b8f86dd9ea…`.
+
+QGLang still has no non-document delta from the recorded `just ci`1514 PASS at
+`67377d561da…`; this is historical CI plus source continuity, not an exact-current
+HEAD CI receipt. This root checkpoint changes five documents on local QGLang
+main. Semantica's Native source remains coupled shared WIP: no partial source
+stage/commit, hosted CI, push or installed product acceptance is claimed.

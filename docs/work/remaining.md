@@ -5,7 +5,48 @@ committed Semantica `f574fa82bf1` and separately inventoried moving WIP.
 The [R77 RCA](../plans/oct-6-substrate-dedup/rca.md) owns the cause/dependency
 analysis; this file owns the 18 active states.
 
-Latest root proof: [R79 root R117–R120](../plans/oct-6-substrate-dedup/execution-r79.md#r79-root-r117r120-lower-owner-closure).
+Latest root successor: [R121–R146](../plans/oct-6-substrate-dedup/execution-r79.md#r79-root-r121r128-successor-closure).
+Original Shape/SCC is committed; five selected canonical files are clean and
+unchanged. Published lower proof: SourceWire259 at R124 and QCP387 at R132,
+on separate exact sources. R134 trace passes symbol-owner and stops at three
+relation-authority compile diagnostics; ordinary trace is NOT_RUN. R132 SDK
+passes BuildContext and stops at33 Foundation compile diagnostics. Their
+postflights and independent archive readbacks pass. R128 SDK stays UNKNOWN.
+Foundation has a released14-path facade/ordinary/admission-lifetime successor
+and an authored equality regression. Relation's six-path successor is released;
+parser/Runtime use canonical D4 external birth and the duplicate receiver is
+removed. R138 stopped before Rust on stale lock edges; R139 repairs both locks,
+with unchanged versions/checksums and full locked metadata PASS. R140 passes
+locks but stops at two vendored Serde documentation errors, zero tests. Both
+methods and the later constructor are documented; R142 rejects the undocumented
+constructor before Rust. R144 reviews106 selected inputs: four owner compiles
+stop at23 shared SourceWire JSON diagnostics, relation executes18/1, and two
+dependent selectors are NOT_RUN. Postflight/archive36 matches. The relation
+failure is an overlong fixture, now repaired; R146 accepts that whole owner19/19
+on `467abb121f9f…`, with verified publication and independent archive9 readback.
+R145's14-path discard-only port/guard cut covers all16 recorder implementations;
+two ordinary regressions are authored, NOT_RUN. Format is13/14, with inherited
+TaskLocal findings still open. Current JSON production3 calls are migrated after
+R144; three old decoder test calls and seven old scratch constructors remain
+under the active canonical owner. Current compile is UNKNOWN, not23 live errors.
+Genuine D4 custody/cause regression requires the paid SDK producer cut;
+the existing installed Scenario02 fixture uses ordinary preparation.
+
+Remaining dependency order:
+
+1. Complete SourceWire's JSON test/API cut and accept affected runtime/SDK owners
+   on one compatible frozen source; clear inherited formatting at that owner.
+2. Wire actual product pre-key arm/bind and owned RuntimeCtx receiving.
+3. Finish admitted final trace and checked snapshot → packet/memo receiving;
+   qualify the authored discard-only panic cleanup before positive finalization.
+4. Bind actual SDK repo/pinned-session axes into existing Source B FULL hydration
+   and member selection; finish paid generation carrier, receipt/evidence keeper
+   and live-base context. Verify the existing provider's coupled TARGET birth
+   and D4 receiving path. The binder has an actual product caller.
+5. Run installed product acceptance and integrate the complete compatible bundle
+   into local main. No partial Semantica Native source commit is accepted.
+
+Historical root proof: [R79 root R117–R120](../plans/oct-6-substrate-dedup/execution-r79.md#r79-root-r117r120-lower-owner-closure).
 On frozen source `45051e94534a…`, whole ContractIds82, ContractBase58 and
 value-carriers98 are GREEN with verified publication and archived postflight.
 SourceWire R120 successor `c4134fbcfb18…` is whole-target GREEN259/259 with
@@ -18,9 +59,10 @@ Current required implementation/proof, within the existing tickets:
 
 - Receive ItemIndex's external fresh-encode ABI; retain full errors and partials
   outside highest Source, then execute the coupled managed output/reader scope.
-- Repair genuine SDK Original generation hydration/evidence/build-context and
-  install the exact-edit binder caller. It currently refuses before Java TARGET
-  issuance; no synthetic positive fixture substitutes for this producer.
+- Repair genuine SDK Original generation hydration/evidence/build-context.
+  `prepare_original_exact_edit_binding_provider_v3` has an actual product caller;
+  the parser and Runtime receiving bridge must use its current external birth
+  API. Upstream producer refusal still precedes genuine Java TARGET acceptance.
 - Finish actual paid trace/context producer. The19-path selected FileText paid
   snapshot successor is source-ready and needs compatible owner/SDK execution.
 - Carry admitted trace/snapshot/output through packet, ephemeral authority,
