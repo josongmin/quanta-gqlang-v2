@@ -1649,3 +1649,21 @@ Receipts: `r279-ledger-terminal-genuine-tests-source.json`,
 `r285-terminal-regression-static-review.json`,
 `r286-terminal-final-source-packet.json`. Semantica remains shared dirty main;
 no compiler/tests/QBC/runtime/source capture or Semantica Git publication ran.
+
+## R288–R289 SDK join hunk boundary and target frame correction
+
+The [SDK/FULL receiving map](../plans/oct-6-substrate-dedup/native-identity-boundary.md#sdk-join-and-full-factory-handoff--r288r289)
+separates private join/keeper/Source bridge and SourceWire factory/head/parent
+receiving from this lane's existing Native4 `lower_target_hir_v3` forwarding and
+R273 canonical input-slot selection. The SDK join file contains that Native4
+hunk and must not be treated as an entirely unowned file. No outbound app
+message was sent; the exact seven-path SHA/hunk/invariant map is recorded for
+the authorized courier.
+
+R289 fixes one extra `&mut statement_slots_v3` of a borrowed non-mut parameter
+in the Parser facet by directly forwarding the existing external frame. No
+identity algorithm or foreign facet method is changed. Scoped rustfmt parse,
+diff, God and LLM pass; actual forwarding readback finds no further confirmed
+same-pattern defect. This is a successor postimage, not renewed final27 or
+whole-consumer qualification. Compiler/tests/QBC/source capture/Semantica Git
+remain NOT_RUN; FULL Source capability and complete receiving stay open.

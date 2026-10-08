@@ -256,3 +256,34 @@ Receipts: `r278-ledger-terminal-source-packet.json`,
 `r283-semantic-bridge-god-source.json`,
 `r285-terminal-regression-static-review.json`,
 `r286-terminal-final-source-packet.json`.
+
+## SDK join and FULL factory handoff — R288–R289
+
+The private SDK join receiving cut is a different ownership hunk from Native ID
+projection. Preserve the latter while its existing supplier owner repairs the
+former. Paths are Semantica-relative under `packages/analysis/quanta-v2/crates/`.
+
+| Exact surface | This lane's authored hunk | Receiving boundary |
+| --- | --- | --- |
+| SDK `quanta-sdk-session-backend-owner/src/normal_source_attribution_build_context_v1/original_exact_edit_join_v3.rs` | Only `PortRetainedTargetSyntaxV3::lower_target_hir_v3`: caller-supplied Port birth and unit forwarding. The whole file is not unowned. | Private bind/joined-owner/keeper/source-bridge and builder logic are not this lane's hunks. Parent export and source-parts/provider composition belong to that receiving owner. |
+| Parser `.../exact_incremental_transition_authority/original_v3/retained_target_v3/syntax_facet_v3.rs` | External-frame lowering only. R289 directly forwards the borrowed frame, removing an extra `&mut` of its non-mut binding. | Existing copy/from/new/retained syntax ownership methods are separate; preserve their active hunks. |
+| SourceWire FULL `original_generation_source_input_v3/{factory_v3,head_read_v3}.rs` and parent pair/input/target-transfer declarations | No authored hunk in this lane. | Genuine hydration/HEAD Source capability and earlier external pair/input/result/error births remain a coupled prerequisite. |
+| SourceWire `original_generation_source_input_v3/selection_v3.rs` | R273 canonical input-slot selection and genuine SDK fixture oracles. | Preserve the same FULL through fallible checks; transfer only after Source finishes successfully. |
+
+Receiving must retain real source/member/generation/manifest/path/token checks,
+external full errors and physical backings through the highest enclosing Source.
+Keep the external `PortStatementProjectionBirthV3`; no local default frame,
+dummy ledger or copied source DTO establishes the missing factory capability.
+Typed `Unsupported` remains until the actual owner can issue that capability.
+Identity algorithms, domains and canonical axes are unchanged.
+
+R289's one-line forwarding correction passes scoped rustfmt parse, diff, LLM
+and God. A readback of actual external-frame callers finds no further confirmed
+extra reborrow; the runtime entry with a genuine mutable local frame is valid.
+This changes one current shared postimage after the historical final27 receipt;
+it does not requalify that whole source tuple. Compiler/tests/QBC/Git/source
+capture remain **NOT_RUN**. An incoming report of Source289 owner success is
+not independently adopted as this lane's current product proof.
+
+Receipts: `r288-private-join-and-full-source-hunk-map.json`,
+`r289-native4-target-frame-forward-source.json`.
