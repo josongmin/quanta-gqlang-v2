@@ -11,6 +11,12 @@ Parser hierarchy mounts and feature imports are integrated as Semantica
 `d29ac508b4d`; native allocation and Original success remain co-owned WIP.
 The R77 observations below retain their historical input.
 
+Latest observed source: Semantica `6bab127740a3` plus separately claimed WIP.
+The R78–R90 candidate receipts retain their own fixed input; none establishes
+whole-main runtime completion. Native allocation core all-features CHECK is
+GREEN with committed QBC publication (R87, zero tests). DFG keeper and Kernel
+checks stopped in dependency compilation before cases.
+
 Latest authored checkpoint: R78–R85 on Semantica `d29ac508b4d` plus separately
 claimed WIP. Java FileId handoff now borrows the parser's authenticated member;
 the external `members_v3` selector is removed. Original relation computation
@@ -26,7 +32,9 @@ records the actual remaining owner changes and verification input.
    fixed tuple's 105 parser diagnostics have four cause classes. The live alias
    metadata prerequisite and path dependency lock records are repaired. A frozen
    DFG request reached nine Native allocation lifetime/borrow diagnostics;
-   minimal repairs are authored, with successor owner proof pending.
+   the owning native-core CHECK now passes on its fixed candidate. The next
+   owning requests reached CFG type/visibility and shared DFG fact errors.
+   Their zero-case compile outcomes do not qualify DFG/Kernel/runtime behavior.
 2. **P0 / CHECKED-RETAINED-CONTROL:** prove the authenticated member handoff;
    finish admitted PTA phases, transaction census and DFG publication. The Java
    collector and QRA pre-native request/result issuer also require Original
@@ -43,6 +51,14 @@ records the actual remaining owner changes and verification input.
 6. **P1 / policy:** affected mandatory gates pass on the integrated source tuple.
 7. **P1 / product:** receipt-bound Graph/CHECK processes and release-owned installed
    CHECK trust; reuse those results for SUBSTRATE-PRODUCT.
+
+The full PTA prepared-phase/identity/materializer implementation overlaps an
+existing downstream owner. This chat's additional writers are quiescent and
+released their broad claims; exact postimages and API contracts are preserved
+before owner reuse. QRA request/input/result assembly remains an independent
+active cut. Rust 1.92 has no stable `BTreeSet` vacant-entry API, so this cut reuses
+ordered-row storage and the canonical component/digest owner rather than
+performing comparisons or payload disposal inside a birth transaction.
 
 The [final order](../plans/oct-6-substrate-dedup/rca.md#final-execution-order)
 allows independent owner closures to proceed. Source capture failures are pretest

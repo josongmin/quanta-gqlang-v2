@@ -73,6 +73,48 @@ Evidence at the existing recovery root: `r78-lock-closure-applied.json`,
 `r79-native-supplier-postimage.json`, `r82-source-capture.json`,
 `r82-fixed-input-pins.json` and `r85-parallel-source-checkpoint.json`.
 
+## R87–R91 fixed-candidate compile and ownership checkpoint
+
+Live source observed at Semantica `6bab127740a3`; candidate source retains the
+R82 fixed topology and explicit later file captures. No coupled new source
+bundle is integrated by this checkpoint.
+
+| Request | Source-bound result | Limit |
+| --- | --- | --- |
+| R87 native allocation core, lib/all-features CHECK | Exit0, owner GREEN, publication committed; source digest `5365d50b437ae0d52130ad30b86cdcfe5480f33b67672d8f25576ba38f5ce53a`. | Zero tests; qualifies compile only on that input. |
+| R88 exact Original facts keeper | Exit101 at CFG span reader E0282. | Target executed zero cases. C compiler warnings are not the diagnosed blocker. |
+| R89 Kernel lib/all-features CHECK | Exit101 at restricted paid CFG row type in a public associated type. | Candidate explicit span-reader type annotation; no Kernel behavioral verdict. |
+| R90 successor Kernel CHECK | Exit101 at shared DFG fact import, two TypeScript returned-loan lifetimes, and callsite error conversion. | Existing live CFG visibility repair captured; zero tests. |
+
+The root span-reader annotation preserves every foreign postimage byte outside
+its one closure parameter. Core DFG fact files already have active supplier
+owners; this chat did not create a second live repair writer. Candidate-only
+prerequisite diagnostics must be compared with their completed source cuts
+before they support any main claim.
+
+PTA full phase/identity/materializer work is now assigned to the existing
+canonical downstream writer. This chat's overlapping phase and final-stage
+writers are quiescent; broad final-stage claim is released. Exact files, full
+hashes, hunk headers, keeper/error/API readback and an unqualified bounded
+void-only cut are preserved at
+`/Users/songmin/.codex/task-evidence/oct8-pta-original-final-stage/`.
+The preserved cut still has obsolete Original backing indexing and an ordinary
+projection clone; it is not a completed positive producer. Rich Java phase,
+exact-target, sidecar and final nested output remain owner work.
+
+The independent QRA cut extends the existing request's ordered-row storage,
+borrows the canonical inventory digest and shares one generation preimage for
+ordinary/native encoding. A borrowed request visitor emits existing function
+input DTOs through the same component selector and paid encoding owner without
+constructing a cloned intermediate body catalog. Source/static validation is
+not a compile or runtime verdict for this cut.
+
+Locators at the existing recovery root: `r87-fixed-native-check-result.json`,
+`r87-native-status-observational.json`, `r88-fixed-facts-keeper-result.json`,
+`r89-fixed-kernel-check-result.json`, `r90-fixed-kernel-check-result.json`, and
+full corresponding compiler logs. R91 successor execution is pending; no
+outcome is inferred from admission or started work.
+
 ## Historical next-input observations
 
 - C/Go/Kotlin/Rust/Java and latest TypeScript (`b32361e9d83`) source cuts are
