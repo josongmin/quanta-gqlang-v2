@@ -73,7 +73,7 @@ Evidence at the existing recovery root: `r78-lock-closure-applied.json`,
 `r79-native-supplier-postimage.json`, `r82-source-capture.json`,
 `r82-fixed-input-pins.json` and `r85-parallel-source-checkpoint.json`.
 
-## R87–R93 fixed-candidate compile and ownership checkpoint
+## R87–R101 fixed-candidate compile and ownership checkpoint
 
 Live source observed at Semantica `6bab127740a3`; candidate source retains the
 R82 fixed topology and explicit later file captures. No coupled new source
@@ -87,6 +87,10 @@ bundle is integrated by this checkpoint.
 | R90 successor Kernel CHECK | Exit101 at shared DFG fact import, two TypeScript returned-loan lifetimes, and callsite error conversion. | Existing live CFG visibility repair captured; zero tests. |
 | R91 successor Kernel CHECK | Exit101 at the remaining shared-facts callsite error conversion; source `202255f4dbce127a0acc7d44036ab146a5a97e3f071d4f3f3c01b41e31976c0a`. | Partial candidate preparation had copied the import/two lifetime repairs but stopped before the callsite and newer Kernel capture; zero tests. |
 | R93 successor Kernel CHECK | Exit101 at Core DFG schema import, refusal-variant and helper-visibility errors; source `d756c22adf3c3417eacd17fb37fa3628372e52bdfd6f7c052d44870efc06394b`. | Actual shared-facts callsite fix and six stable Kernel/shared files captured; earlier facts boundary passed, zero tests. |
+| R95 successor Kernel CHECK | Exit101 at a restricted `OriginalDfgIdPathV3` exposed by the public storage trait; source `50672215e84f1cfa3d2fe265517ab1438d50e2c44fe20fed03302bdd96a568db`. | Existing live three-file schema repairs captured; no tests. |
+| R97 successor Kernel CHECK | Exit101 at nine CoreTypes comparator/callback diagnostics; source `5f7fbd10af7ea2ed7c284ebb3052023d8558c8008a80ed3655e38d09e8bc40b9`. | DFG nominal visibility and 26-file Original/QRA/test cut captured; these dependent source files are not all compiled by the Kernel request. |
+| R99 successor Kernel CHECK | Exit101 at CoreTypes private iterator policy and unreachable error re-export; source `2c10e09349812531e8f55acd1b2f06cde7906f9d3bab90107b304f098e65d368`. | All nine R97 diagnostics had existing live repairs; three files reused, zero tests. |
+| R101 successor Kernel CHECK | Exit101 at three FD traversal module mounts in `quanta-repo-identity-fs`; source `a2f98e4415192cbdb4e10f5cd0a4f5630c3bf24a9d4452e2edccc5979d2d5779`. | CoreTypes interface repairs compile beyond their prior boundary; zero tests. |
 
 The root span-reader annotation preserves every foreign postimage byte outside
 its one closure parameter. Core DFG fact files already have active supplier
@@ -127,6 +131,34 @@ against the existing `PinnedQuerySessionGenerationSealV1` source closure;
 matching caller metadata alone cannot grant that authority. Its paid issuer,
 SDK pin propagation and genuine fixture regressions remain unverified source
 work until their complete caller/supplier tuple is captured and executed.
+
+R96 caller tracing separates this direct QRA cut from whole SDK support. Normal
+Java capture and receipt admission still require ordinary inventory; the
+Original receipt branch explicitly refuses `UnsupportedAllocation` before the
+NativeLowering view. No alternate normal-source native ingress was found. This
+is current unsupported behavior, not a runtime defect proved by execution.
+The former genuine Parser fixture also has an ordinary generation pin; it
+cannot qualify Original pin custody. A true first-FD pin fixture is required.
+`r96-original-sdk-caller-boundaries.json` records the twelve source hashes,
+caller edges and active overlapping claims. No second attribution pipeline is
+assigned by this checkpoint.
+
+The R97 authored cut now includes true first-FD pin SDK regressions for actual
+function/body/portable output, a different genuine pin, and an ordinary pin.
+SourceWire adds an ordinary-pin/cancellation-first regression. QRA preflight
+compares actual member path/source before destination birth; duplicate key
+compaction and all result-row map probes pay checked work. The pin validator
+performs no eager diagnostic string allocation. These are static source changes,
+not executed test results.
+
+Live readback advanced to Semantica `109fd7575d27`. R99's reached interface
+repairs keep DFG storage policy fields private, expose the ordinary set iterator
+through `impl ExactSizeIterator`, and keep the concrete cursor inside delta
+assembly. The unreachable error alias becomes a private import; required public
+error re-exports remain. `r101-core-types-interface-source-capture.json` records
+the two exact files. R101 is terminal RED at the subsequent filesystem module
+mount boundary; `r101-fixed-kernel-check-result.json` and its archived stderr
+retain the exact result. No Kernel/Original behavior acceptance is inferred.
 
 ## Historical next-input observations
 

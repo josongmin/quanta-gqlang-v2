@@ -11,13 +11,16 @@ Parser hierarchy mounts and feature imports are integrated as Semantica
 `d29ac508b4d`; native allocation and Original success remain co-owned WIP.
 The R77 observations below retain their historical input.
 
-Latest observed source: Semantica `6bab127740a3` plus separately claimed WIP.
-The R78–R93 candidate receipts retain their own fixed input; none establishes
+Latest observed source: Semantica `109fd7575d27` plus separately claimed WIP.
+The R78–R101 candidate receipts retain their own fixed input; none establishes
 whole-main runtime completion. Native allocation core all-features CHECK is
 GREEN with committed QBC publication (R87, zero tests). DFG keeper and Kernel
 checks stopped in dependency compilation before cases. R93 passed the previously
 reached shared-facts compile boundary and stopped at three Core DFG schema errors;
-it executed zero tests.
+it executed zero tests. R97 passed the DFG schema boundary; R99 then passed
+the nine reached CoreTypes diagnostics and stopped at two interface errors.
+R101 passes that interface boundary and stops at three FD traversal module mounts.
+All these CHECK outcomes execute zero tests.
 
 Latest authored checkpoint: R78–R85 on Semantica `d29ac508b4d` plus separately
 claimed WIP. Java FileId handoff now borrows the parser's authenticated member;

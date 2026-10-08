@@ -151,6 +151,23 @@ eighteen unfinished implementations. No percentage is inferred from their count.
   UnsupportedOperation. This narrows the earlier missing-caller claim without
   closing compile or runtime acceptance. [Code map](code-map.md#existing-java-producer-callers-and-remaining-refusal--r74)
   records the complete caller paths; no second issuer/keeper is assigned.
+- **R96 current Original authority:** the R74 external `members_v3` selector is
+  superseded by the parser's authenticated member and borrowed same-cohort
+  handoff visitor. QRA's authored Original request issuer takes the actual
+  `PinnedQuerySessionGenerationSealV1` and derives membership/provider-alias
+  authority from its source closure. A narrow existing-owner custody validator
+  checks the pin without serializing and discarding its identity material;
+  source/batch census validation precedes destination births. This cut and its
+  SDK regressions have no compiler/test acceptance yet.
+- **R96 actual SDK boundary:** normal Java capture, receipt admission and the
+  NativeLowering input still require ordinary inventory/concrete workspace
+  handoff. The receipt frontdoor explicitly returns `UnsupportedAllocation` on
+  Original. This is an existing unsupported feature, not a demonstrated runtime
+  defect. Direct genuine QRA proof must not be reported as end-to-end SDK support;
+  any future product cut must extend this canonical caller path rather than
+  create a second attribution issuer. The older sealed Parser fixture has an
+  ordinary generation pin and cannot prove Original pin custody. Evidence:
+  `r96-original-sdk-caller-boundaries.json` at the existing recovery root.
 - **C/Go/TypeScript controls and dedup:** `core/codegraph-lang-common/src/{c,go,typescript}_syntax_snapshot_v1.rs`
   had identical 128 MiB cap/checked-add ledgers. R49 extracts those mechanics
   into private `syntax_snapshot_budget_v1.rs`, preserving all charge sites;
