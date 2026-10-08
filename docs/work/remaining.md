@@ -12,7 +12,7 @@ Parser hierarchy mounts and feature imports are integrated as Semantica
 The R77 observations below retain their historical input.
 
 Latest observed source: Semantica `3b8f86dd9ea7` plus separately claimed WIP.
-The R78–R105 candidate receipts retain their own fixed input; none establishes
+The R78–R111 candidate receipts retain their own fixed input; none establishes
 whole-main runtime completion. Native allocation core all-features CHECK is
 GREEN with committed QBC publication (R87, zero tests). DFG keeper and Kernel
 checks stopped in dependency compilation before cases. R93 passed the previously
@@ -25,7 +25,15 @@ at four PTA result digest import/generic diagnostics.
 R105 passes those four diagnostics and stops at eighteen SourceWire and six
 PTA retained-wire diagnostics. The counts are compiler reports, not separate
 confirmed live defects; live repairs are checked before any duplicate work.
-All these CHECK outcomes execute zero tests.
+R107's exact pin test stops at twenty-three stale test-API diagnostics before
+execution. R109 advances beyond the R105 library diagnostics and reports five
+import/access-policy errors. Their compatible successor cut and test fixtures
+are captured for R111. R111's exact SourceWire pin test is GREEN with committed
+QBC publication: one passed, zero failed/ignored, 235 filtered. It proves ordinary
+pin refusal and preservation of a prior cancellation on source
+`82ce719bdd5c0538d87e81547d3927e86e2459565e50d2ad463ebc356949db07`.
+All CHECK outcomes execute zero tests; this one test is not whole-main or SDK
+qualification. SourceWire positive/material/refund coverage is a separate rail.
 
 Latest authored checkpoint: R78–R85 on Semantica `d29ac508b4d` plus separately
 claimed WIP. Java FileId handoff now borrows the parser's authenticated member;

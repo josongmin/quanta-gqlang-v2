@@ -73,7 +73,7 @@ Evidence at the existing recovery root: `r78-lock-closure-applied.json`,
 `r79-native-supplier-postimage.json`, `r82-source-capture.json`,
 `r82-fixed-input-pins.json` and `r85-parallel-source-checkpoint.json`.
 
-## R87–R105 fixed-candidate compile and ownership checkpoint
+## R87–R111 fixed-candidate compile and ownership checkpoint
 
 Live source observed at Semantica `6bab127740a3`; candidate source retains the
 R82 fixed topology and explicit later file captures. No coupled new source
@@ -93,6 +93,9 @@ bundle is integrated by this checkpoint.
 | R101 successor Kernel CHECK | Exit101 at three FD traversal module mounts in `quanta-repo-identity-fs`; source `a2f98e4415192cbdb4e10f5cd0a4f5630c3bf24a9d4452e2edccc5979d2d5779`. | CoreTypes interface repairs compile beyond their prior boundary; zero tests. |
 | R103 successor Kernel CHECK | Exit101 at four PTA result digest diagnostics: private canonical codec import and implicit `Sized` axes; source `610d65f4b2b2c3b7e98b4e2a368c9026beb9bdeea3e27438557af33be59fec57`. | Six explicit FD child mounts compile beyond their prior boundary; zero tests. |
 | R105 successor Kernel CHECK | Exit101 at eighteen SourceWire and six PTA retained-wire diagnostics; source `d53527db501dfd6a6a4db461abcfbae8424a5a2581851dba71a0fec8f9cc0f67`. | The four reached digest import/generic diagnostics pass; zero tests. |
+| R107 exact SourceWire pin/cancel test | Exit101 at twenty-three test-API diagnostics; source `879c1b8ccee26ec793b8388596d0e95bd2c8aeb4ed1196baeeb287dbd5757ec1`. | A lib test target compiles all fixtures before exact filtering; zero tests. |
+| R109 successor Kernel CHECK | Exit101 at five import/access-policy diagnostics; same source `879c1b8ccee26ec793b8388596d0e95bd2c8aeb4ed1196baeeb287dbd5757ec1`. | Previous R105 library errors pass their reached boundaries; zero tests. |
+| R111 exact SourceWire pin/cancel test | Exit0, owner GREEN, publication committed; one passed, zero failed/ignored, 235 filtered; source `82ce719bdd5c0538d87e81547d3927e86e2459565e50d2ad463ebc356949db07`. | Ordinary-pin refusal and prior-cancel preservation only; no first-FD positive or SDK execution verdict. |
 
 The root span-reader annotation preserves every foreign postimage byte outside
 its one closure parameter. Core DFG fact files already have active supplier
@@ -188,6 +191,33 @@ existing SDK DFG keeper positive (one). No selector has executed yet. The DFG
 fixture has an ordinary indexed pin and must not qualify first-FD authority.
 Retained digest byte parity still lacks an executed native fixture; shared
 serializer structure alone is not proof of native/ordinary digest equality.
+
+R107 captures thirteen source deltas plus the existing native-core direct path
+dependency in both workspace lock records. `capture_v3.rs` retains the compatible
+fixed auxiliary topology and receives only the checked row-work conversion;
+copying its whole live parent would mix a newer, unqualified auxiliary/text
+closure with old child files. `r107-sourcewire-pta-source-capture.json` records
+this intentional candidate/live difference, and
+`r107-sourcewire-path-lock-records.json` binds the dependency-only lock edits.
+No registry pin is changed.
+
+The R107 fixture errors require fallible authority/material APIs and independent
+ordinary fixture issuance, not restoring authority `Clone`. The R111 seven-file
+capture preserves the independent literal preimage/Blake3, ordering, mismatch,
+typed refusal, exact work/memory/refund and shared allocation assertions. The
+native/ordinary authority distinction was independently reviewed before the
+rerun. PTA internal checked-read methods now use `pub(crate)`; the two descriptor
+constants were already private in live source and are reused without a second
+writer. `r111-sourcewire-tests-visibility-source-capture.json` binds this cut.
+
+R111's matching central QBC registry entry is `publication_state_v1=committed`,
+not merely an inner Cargo success. Its run is
+`20261008T050214.449573Z-885267b3ddc2`; result, stdout/stderr and registry readback
+are retained as `r111-fixed-sourcewire-pin-test-result.json` and
+`r111-sourcewire-owner-publication-readback.json`. SourceWire positive material,
+digest and refund oracles still require the same-input contract target rail.
+The fixed candidate intentionally differs from the newer live auxiliary closure;
+this one-test GREEN must not be promoted to a moving-main or product verdict.
 
 ## Historical next-input observations
 
