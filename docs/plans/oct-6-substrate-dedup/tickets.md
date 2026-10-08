@@ -301,6 +301,16 @@ semantics. Extend policy/owner inventory only where current coverage is absent.
 
 ## FCP-COMPILE
 
+- R76 SDK attempt reaches a new dirty-source manifest prerequisite:
+  Foundation's `semantic-original-admission` forwarded a query-floor feature
+  using the package name instead of its existing `quanta_runtime_query_floor`
+  dependency alias. The one-string owner repair preserves other WIP and passes
+  offline locked all-features Cargo metadata (327 workspace packages), with
+  unchanged manifest/lock during that diagnostic. It is not independently
+  integrated. Subsequent whole-target and exact SDK attempts stop at source
+  custody capture while sibling HEAD/overlays or Semantica files change; no SDK
+  test execution or accepted owner publication is claimed. See the
+  [R76 handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r76-sdk-attempts-and-reached-manifest-repair).
 - Earlier reached closure is recorded in the
   [R53–R60 handoff](../../work/substrate-repair-checkpoints-2026-10-07.md#r53r60-reached-repairs-and-successor-input).
   R52 semantic contract55 passed, but later SourceWire pre-test errors and

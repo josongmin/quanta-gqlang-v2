@@ -451,6 +451,36 @@ includes this existing FCP-COMPILE packet. Evidence is
 `r74-concurrent-observer-handoff-readback.json`; source changes are concurrent
 work, with no root edit, owner test or new ticket assigned by this audit.
 
+## R76 SDK attempts and reached manifest repair
+
+Semantica main remains `f574fa82bf1`; current dirty postimages are inventoried
+separately in `r75-shared-main-status.json`. GQLang source/HEAD changes during
+the attempts retain their own identity; concurrent fixed-pair R75 core/facade
+SCC acceptance does not qualify this SDK input.
+
+The real `quanta-runtime` integration target
+`abstract_interpret_fluent_api_e2e_test` first stops during manifest discovery:
+Foundation's `semantic-original-admission` names the package
+`quanta-runtime-query-floor` instead of its existing dependency alias
+`quanta_runtime_query_floor`. The root-owned repair changes only that feature
+forwarding string and preserves the surrounding supplier WIP. Its normal claim
+is `OCT8-GQLANG-FOUNDATION-FEATURE-ALIAS-R75`; pre/postimages and acceptance are
+recorded in `r75-feature-alias-repair-{preflight,postimage}.json`.
+
+Offline locked all-features Cargo metadata then succeeds (327 packages), with
+the manifest and root lock unchanged during the check. This is a manifest
+diagnostic, not compilation, SDK execution or QBC owner qualification. Evidence:
+`r75-feature-alias-metadata-check.json` and the recorded metadata/stderr.
+Do not stage the complete foreign manifest or integrate this dependent string
+repair separately from its owning supplier packet.
+
+Two whole-target retries stop during source-custody hashing: a changed GQLang
+source closure, then a concurrently modified Semantica PTA file. An exact
+zero-deadline request uses QBC's automatic immutable snapshot route but also
+refuses a changed external sibling overlay. These attempts execute no SDK tests,
+produce no accepted publication, and close no F7/FCP ticket. Freeze the complete
+compatible source tuple before retrying; do not bypass the source guards.
+
 ## Historical source-bound proof inputs
 
 | Input | Exact identity |
