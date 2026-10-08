@@ -1520,3 +1520,16 @@ rejected by ordinary hydration and QRA. SDK's private helper is not a public
 fixture provider. This remains CHECKED-RETAINED-CONTROL scope, with no new
 engine, duplicate catalog, ticket or executed product-defect claim.
 Evidence: R249 design decision and R250/R251 source review records.
+
+## R259 Native identity source checkpoint
+
+R256–R258 refreshed the actual Lang, semantic symbol/occurrence and statement
+caller paths. The [bounded receiving packet](../plans/oct-6-substrate-dedup/native-identity-boundary.md)
+records purpose, before/after code map, ownership and independent acceptance.
+R259 authored the Parser DATA-only attempt ledger and root mount using existing
+Kernel admitted Box birth. Pending, born and prior nodes survive source refusal;
+cleanup keeps each issuing grant beyond payload and Box destruction.
+AST2, new-module format, changed-file guard2, new-module God and parent diff
+check pass. The per-ID caller cuts remain in progress at this checkpoint.
+No Rust compilation/test, Semantica source capture/stage/commit/push, SDK or
+product qualification ran. QGLang's historical R167 CI receipt is not rerun.

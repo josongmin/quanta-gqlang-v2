@@ -709,6 +709,21 @@ global highest boundary and every SDK origin are still not proved. Evidence: `r2
 at the existing recovery root.
 
 
+### R259 Native identity receiving source cut
+
+The [Native identity packet](native-identity-boundary.md) specifies current
+before/after paths, receiving boundaries, compatibility and independent oracles.
+R256–R258 re-read the four leaves and their actual callers. R259 authors a
+Parser DATA ledger with the existing Kernel admitted Box primitive: fresh paid
+node per attempt, external pending/born/prior state and issuing operation/group
+custody. Cleanup destroys each Box before releasing its detached leases and
+drains the remaining chain iteratively. No serializer, hash or allocator owner
+is added. R259 AST2/format-new/guard2/God-new/diff pass; compiler/tests are NOT_RUN.
+
+The three per-ID lanes are in progress. No helper-only completion, complete
+Python receiving, full statement scratch/HIR custody or product proof is claimed.
+R228/R245 below retain their historical read-only observations.
+
 ### R245 external binary and Python import mint boundaries
 
 - External binary: `java_workspace_resolution_syntax_v1/workspace_original_build_type_owner_v3.rs`

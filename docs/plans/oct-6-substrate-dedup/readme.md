@@ -35,9 +35,11 @@ waived. This is dirty Semantica source, with no Rust/runtime/integration proof.
 The [producer ABI](code-map.md#r220-physical-qra-input-producer-abi) retains its
 separate R220 receipt and three legacy allowances.
 R223–R228 also maps the existing native ID [caller co-cut](code-map.md#native-id-caller-co-cut--r228);
-its additional leaves are audited, not implemented or qualified. R245 traces
-two more enclosing mint boundaries: an external binary batch is born inside
-Source, and the Python import read carrier lacks per-mint encoder storage.
+its additional leaves entered the [Native identity source cut](native-identity-boundary.md)
+at R259. The shared admitted per-attempt ledger is authored and statically checked;
+per-ID callers and Python receiving remain in progress, without Rust qualification.
+R245 traced two more enclosing mint boundaries: an external binary batch is born
+inside Source, and the Python import read carrier lacks per-mint encoder storage.
 
 Latest local execution is the [R79 onward closeout record](execution-r79.md).
 Two parser repairs are integrated on Semantica `main` as `d29ac508b4d`;

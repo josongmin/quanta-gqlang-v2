@@ -687,3 +687,13 @@ batch success is not an oracle: ordinary hydration and QRA both reject it.
 Do not turn positive assertions into refusal/empty results or copy the SDK's
 private helper as a new authority owner. R250/R251 are read-only; R249 source
 implementation and behavior proof are NOT_RUN.
+
+## Native identity receiving acceptance — R259
+
+The [Native identity test matrix](native-identity-boundary.md#acceptance-and-test-plan)
+adds exact canonical parity, multiple-attempt retention, partial encode/late hash,
+partial text/mismatch, occupied reuse, same-group/wrong-output, late Source finish
+and payload-before-grant destruction checks to CHECKED-RETAINED-CONTROL.
+Use the existing owning rails after complete compatible caller receiving; no
+new engine, mock genuine-positive qualification or weakened golden is assigned.
+Current source/static receipts do not execute these tests: **NOT_RUN**.

@@ -601,8 +601,10 @@ R223–R228 maps the existing native ID [caller scope](../plans/oct-6-substrate-
 per-ID external state in Java/Python/hierarchy frames, coupled semantic symbol
 and occurrence mint, and statement partial/complete text custody. This extends
 the existing retained-control change map; no new product defect is asserted.
-These extra leaves are read-only audited, not implemented. External/import/augment
-semantic mint exhaustive highest Source boundaries remain unproved. R245
+These extra leaves now enter the [Native identity source cut](../plans/oct-6-substrate-dedup/native-identity-boundary.md):
+R259 shared admitted ledger authored/static-checked; per-ID caller and Python
+receiving lanes are in progress. External/import/augment semantic mint exhaustive
+highest Source boundaries remain unproved. R245
 traces the external batch's prior request loan and the Python import enclosing
 registered-tree loan: batch-only storage is too late, and import read slots
 lack a mint ledger. Dedicated prior-loan storage is unimplemented; compile/tests
