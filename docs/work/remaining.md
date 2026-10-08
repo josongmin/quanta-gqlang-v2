@@ -11,8 +11,8 @@ Parser hierarchy mounts and feature imports are integrated as Semantica
 `d29ac508b4d`; native allocation and Original success remain co-owned WIP.
 The R77 observations below retain their historical input.
 
-Latest observed source: Semantica `109fd7575d27` plus separately claimed WIP.
-The R78–R101 candidate receipts retain their own fixed input; none establishes
+Latest observed source: Semantica `3b8f86dd9ea7` plus separately claimed WIP.
+The R78–R105 candidate receipts retain their own fixed input; none establishes
 whole-main runtime completion. Native allocation core all-features CHECK is
 GREEN with committed QBC publication (R87, zero tests). DFG keeper and Kernel
 checks stopped in dependency compilation before cases. R93 passed the previously
@@ -20,6 +20,11 @@ reached shared-facts compile boundary and stopped at three Core DFG schema error
 it executed zero tests. R97 passed the DFG schema boundary; R99 then passed
 the nine reached CoreTypes diagnostics and stopped at two interface errors.
 R101 passes that interface boundary and stops at three FD traversal module mounts.
+The six explicit child mounts are repaired; R103 passes that boundary and stops
+at four PTA result digest import/generic diagnostics.
+R105 passes those four diagnostics and stops at eighteen SourceWire and six
+PTA retained-wire diagnostics. The counts are compiler reports, not separate
+confirmed live defects; live repairs are checked before any duplicate work.
 All these CHECK outcomes execute zero tests.
 
 Latest authored checkpoint: R78–R85 on Semantica `d29ac508b4d` plus separately

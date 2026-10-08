@@ -73,7 +73,7 @@ Evidence at the existing recovery root: `r78-lock-closure-applied.json`,
 `r79-native-supplier-postimage.json`, `r82-source-capture.json`,
 `r82-fixed-input-pins.json` and `r85-parallel-source-checkpoint.json`.
 
-## R87–R101 fixed-candidate compile and ownership checkpoint
+## R87–R105 fixed-candidate compile and ownership checkpoint
 
 Live source observed at Semantica `6bab127740a3`; candidate source retains the
 R82 fixed topology and explicit later file captures. No coupled new source
@@ -91,6 +91,8 @@ bundle is integrated by this checkpoint.
 | R97 successor Kernel CHECK | Exit101 at nine CoreTypes comparator/callback diagnostics; source `5f7fbd10af7ea2ed7c284ebb3052023d8558c8008a80ed3655e38d09e8bc40b9`. | DFG nominal visibility and 26-file Original/QRA/test cut captured; these dependent source files are not all compiled by the Kernel request. |
 | R99 successor Kernel CHECK | Exit101 at CoreTypes private iterator policy and unreachable error re-export; source `2c10e09349812531e8f55acd1b2f06cde7906f9d3bab90107b304f098e65d368`. | All nine R97 diagnostics had existing live repairs; three files reused, zero tests. |
 | R101 successor Kernel CHECK | Exit101 at three FD traversal module mounts in `quanta-repo-identity-fs`; source `a2f98e4415192cbdb4e10f5cd0a4f5630c3bf24a9d4452e2edccc5979d2d5779`. | CoreTypes interface repairs compile beyond their prior boundary; zero tests. |
+| R103 successor Kernel CHECK | Exit101 at four PTA result digest diagnostics: private canonical codec import and implicit `Sized` axes; source `610d65f4b2b2c3b7e98b4e2a368c9026beb9bdeea3e27438557af33be59fec57`. | Six explicit FD child mounts compile beyond their prior boundary; zero tests. |
+| R105 successor Kernel CHECK | Exit101 at eighteen SourceWire and six PTA retained-wire diagnostics; source `d53527db501dfd6a6a4db461abcfbae8424a5a2581851dba71a0fec8f9cc0f67`. | The four reached digest import/generic diagnostics pass; zero tests. |
 
 The root span-reader annotation preserves every foreign postimage byte outside
 its one closure parameter. Core DFG fact files already have active supplier
@@ -159,6 +161,33 @@ error re-exports remain. `r101-core-types-interface-source-capture.json` records
 the two exact files. R101 is terminal RED at the subsequent filesystem module
 mount boundary; `r101-fixed-kernel-check-result.json` and its archived stderr
 retain the exact result. No Kernel/Original behavior acceptance is inferred.
+
+The FD traversal repair adds explicit paths for the six existing child modules
+in two parent files; it changes no traversal algorithm. The exact cut is in
+`r103-fd-module-source-capture.json`. R103's next reached owner is
+`quanta-contract-pta-result-shared/src/digest.rs`: two imports use a private
+Foundation module, and two borrowed axis types disagree with the serializer's
+existing `?Sized` bounds. `r103-fixed-kernel-check-result.json` and archived
+stderr record this later compile boundary. These are candidate diagnostics;
+current live postimages must be checked before another writer repairs them.
+
+R105 captures the digest's existing public `ssot_hash` trait exports and allows
+unsized borrowed axes. Its seven-field serializer is unchanged. The writer's
+normal schema-v2 claim was registered after that source mutation; the capture
+records this chronology and grants no current-main integration qualification.
+`r105-pta-digest-source-capture.json`, the owner result and archived stderr retain
+the exact source/result tuple. The next reports are grouped by three disjoint
+file ranges: SourceWire pin/shared-payload/read loans, SourceWire peripheral
+imports/paths/work conversion, and PTA retained-wire callback lifetimes.
+Compiler counts must not be recast as twenty-four confirmed current defects.
+
+Read-only owner resolution also fixes the next behavioral selectors in
+`r104-sdk-sourcewire-dfg-owner-selectors.json`: SDK first-FD QRA module (three
+expected tests), SourceWire ordinary-pin/prior-cancel case (one), and the
+existing SDK DFG keeper positive (one). No selector has executed yet. The DFG
+fixture has an ordinary indexed pin and must not qualify first-FD authority.
+Retained digest byte parity still lacks an executed native fixture; shared
+serializer structure alone is not proof of native/ordinary digest equality.
 
 ## Historical next-input observations
 
