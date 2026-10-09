@@ -38,10 +38,16 @@ and admitted assembly. W3's typed V4 loan/QRA consumer do not migrate ordinary
 worker storage/selection or native constraints. Foundation external history/
 commit banks and W4 owned registry/memo/persist/packet remain. W7 installed
 inputs are unset on Darwin arm64. Current Rust acceptance remains pending.
-Latest completed Cut7 reaches SourceWire lib-test with52 fixed-input diagnostics
-and zero tests; eight mounts and canonical import/receiver fixes are authored.
-W2 fixture completion/seal custody remains RED until the external Parser owner
-is connected. W4's owned Integrated entry/registry/Core source and genuine SDK
+Cut7 reaches SourceWire lib-test with52 fixed-input diagnostics and zero tests;
+eight mounts and canonical import/receiver fixes are authored. Later Cut8 narrows
+to DFG facts and stops at two missing trait-import diagnostics, zero tests.
+Cut9 then passes DFG facts157/157 on `0162aa2d8d91`, with verified publication
+and independent archive readback. This excludes Parser/SDK/product acceptance.
+W2 external Parser sealed/files/inventory API and two-Source caller are released
+source. Qualification stays HOLD for import/provider local map/row custody.
+Nonzero Source lambda CFG,
+facts and exact binding producer remain implementation work. W4's TraceCtx unit
+receiver is source-only. Owned Integrated entry/registry/Core source and genuine SDK
 ordinary-input rejection are authored; FileText selected Original typed input,
 registered handler ownership, snapshot/persist/packet remain open. See the
 [W014 successor](../plans/oct-6-substrate-dedup/execution-r79.md#latest-local-checks-and-released-source--w014-successor)

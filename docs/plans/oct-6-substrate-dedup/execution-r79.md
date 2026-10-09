@@ -1127,8 +1127,8 @@ failed tuple to later source.
 
 ### Latest local checks and released source — W014 successor
 
-Current QGLang main is `d8e7417eb40b`; the two commits since the executed local
-CI input modify documentation only. Semantica remains `8217a38bf04d` plus
+QGLang input at the Cut9 capture is `dca0aa1b5eb1`; commits since the executed
+local CI input modify documentation only. Semantica remains `8217a38bf04d` plus
 separately owned concurrent WIP. Source imported by another owner is not accepted
 execution or complete-bundle integration.
 
@@ -1226,9 +1226,44 @@ facts alone cannot prove absence of lambda bindings. Production declaration and
 function semantic-identity consumers still need the canonical Source read.
 
 
-No current-source Rust GREEN, owner publication or complete local-main bundle
-acceptance is inferred from these cuts. Root runs the common prerequisite
-before broadening to dependent consumer requests.
+Complete local-main bundle acceptance is not established. Each owner receipt
+qualifies its exact input and scope; Root closes common prerequisites before
+running their dependent consumer requests.
+
+Cut8 narrows the canonical owner to `codegraph-dfg-facts-shared` whole lib with
+package all-features. Source
+`7c29d95f4a297ff6c9f07fa428c77d4a27c456d023774520d722839062f8d8ce`
+matches22 released postimages; it stops at two E0405 diagnostics in
+`source_function_owner_writer_v3/tests_v3.rs:65,72`, zero tests/no publication.
+Receipt SHA256 `48b42741dc1ff9a6afe47925c67c8ee108680d48d027b1ef250592de1c051e3f`;
+postflight `55b492665597557e320ac6ae16e66a0b19e5a91762e2b7e6f241301ed7598e86`.
+B adds the canonical admission trait import and removes two independently
+confirmed unused imports. Scoped rustfmt/diff-check pass. Cut9 recaptures25
+exact postimages and passes157/157, zero ignored/filtered, for the same owner.
+Exact source `0162aa2d8d91b689d38f09cdd4c5aa8b6d20d335a11cc04b038dc75e0a674da5`;
+receipt `d6a07b6e6a69fe061ff7d034ef0029ada7a3ed4bc16317550cac6776e08fb745`;
+verified publication `7f27414a9aae03a39c2e3488ae6864c1ae1dbe394423295e7fb40863d08c0655`.
+Postflight `38021672f3a1f2c54d9cd94a05c3292bd7f8fda9c190adc54c5c9cc4b113bed0`;
+independent nine-file archive readback matches
+(`w0-facts-cut9-independent-archive-readback.json`). These lower cuts do not
+compile the adapter keeper/refund regressions or qualify Parser/SDK.
+
+The Parser Source2 external sealed/files/inventory facade and W2 two-Source
+fixture caller are released source; scoped format/diff pass, Rust NOT_RUN.
+`w1-parser-source2-external-birth-a.json` records the supplier's nine postimages.
+Fixture qualification remains on hold for the Original import/provider
+projection's local map/row births; A is migrating that canonical owner externally.
+Nonzero Source lambda needs
+actual CFG statement/return edges, admitted facts and exact DFG binding inventory;
+Parser anchor counting or upstream refusal does not satisfy that implementation.
+
+W4 releases the two-file TraceCtx unit receiving ABI using the existing Kernel
+`QueryOutputCurrentsReadBirthV3` engine. Owner and consumer full errors remain in
+separate external slots; owner failure takes precedence after the Source loans.
+Packet: `w4-trace-currents-unit-c.json`; scoped format/diff pass, Rust NOT_RUN.
+Authenticating each lender does not establish retained trace-group equality;
+the concrete trace owner must enforce that boundary. Native parent/read receiving
+stays with owner72. Actual FileText typed-input and consuming handler remain open.
 
 W7 preflight records Darwin arm64 and all10 required installed process inputs
 unset in `w7-installed-prerequisite-preflight-20261009.json`. Linux positive
