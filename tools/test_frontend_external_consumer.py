@@ -12,7 +12,8 @@ reuses the checkout's gitignored Cargo target:
    only that checkout's fixture build cache;
 
 2. ask Cargo to parse the complete dependency tables, require exactly one
-   unconditional path edge in each manifest (fixture -> facade -> pipeline),
+   unconditional facade path edge for the fixture and exactly two facade
+   owner edges (pipeline + execution-contract),
    and assert the facade source shape (zero glob re-exports, zero public
    modules, curated allowlist == the pinned literal);
 
@@ -103,7 +104,8 @@ FACADE_PACKAGE = "quanta-gqlang-v2-frontend-contract"
 FIXTURE_PACKAGE = "quanta-gqlang-v2-frontend-external-consumer"
 PIPELINE_PACKAGE = "quanta-gqlang-v2-pipeline"
 FACADE_DEP_LINE = 'path = "../../crates/quanta-gqlang-v2-frontend-contract"'
-FACADE_OWNER_CRATE = "quanta_gqlang_v2_pipeline"
+FACADE_OWNER_CRATES = ("quanta_gqlang_v2_execution_contract", "quanta_gqlang_v2_pipeline")
+EXECUTION_CONTRACT_PACKAGE = "quanta-gqlang-v2-execution-contract"
 
 POSITIVE_MARKER = "external-consumer positive: ok"
 
@@ -333,6 +335,7 @@ NEGATIVE_CASES: Dict[str, Tuple[str, str]] = {
     "d22_read_canonical_files_name": (
         "E0616", "field `source_name` of struct `AdmittedCanonicalFilesScalarReadV3` is private",
     ),
+    "d24_import_execution_projection": ("E0432", "no `ExecutionProjectionV3` in the root"),
     "d23_detach_canonical_files_read": (
         "E0515", "cannot return value referencing function parameter `value`",
     ),
@@ -539,10 +542,10 @@ def positive_executable(build: subprocess.CompletedProcess, fixture: Path, targe
 
 
 def facade_allowlist(text: str) -> List[str]:
-    """Names re-exported from the facade's sole owner crate, in source order."""
+    """Names re-exported from the pinned compiler and DTO owners, in source order."""
     names: List[str] = []
     for match in PUB_USE_RE.finditer(text):
-        if match.group(1) != FACADE_OWNER_CRATE:
+        if match.group(1) not in FACADE_OWNER_CRATES:
             continue
         if match.group(2) is not None:
             for part in match.group(2).split(","):
@@ -556,6 +559,31 @@ def facade_allowlist(text: str) -> List[str]:
 
 def facade_owner_crates(text: str) -> List[str]:
     return sorted({match.group(1) for match in PUB_USE_RE.finditer(text)})
+
+
+def facade_symbol_owner_mismatches(text: str) -> List[str]:
+    mismatches = []
+    for match in PUB_USE_RE.finditer(text):
+        parts = match.group(2).split(",") if match.group(2) is not None else [match.group(3)]
+        for part in parts:
+            name = part.strip()
+            if not name:
+                continue
+            expected = (FACADE_OWNER_CRATES[0] if name.startswith("Execution")
+                        or name == "execution_operator_descriptor_v3" else FACADE_OWNER_CRATES[1])
+            if match.group(1) != expected:
+                mismatches.append("%s from %s (expected %s)" % (name, match.group(1), expected))
+    return mismatches
+
+
+def exact_facade_dependencies(dependencies: List[Dict[str, object]]) -> bool:
+    expected = (PIPELINE_PACKAGE, EXECUTION_CONTRACT_PACKAGE)
+    return len(dependencies) == len(expected) and all(
+        exact_path_dependency(
+            [dep for dep in dependencies if dep.get("name") == name],
+            name, REPOSITORY_ROOT / "crates" / name,
+        ) for name in expected
+    )
 
 
 def public_api_roots(output: str) -> Tuple[List[str], List[str]]:
@@ -1014,16 +1042,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
         facade_deps = manifest_dependencies(FACADE_MANIFEST)
         counts["facade_normal_deps"] = len(facade_deps)
-        counts["facade_exact_dep"] = int(
-            exact_path_dependency(
-                facade_deps,
-                PIPELINE_PACKAGE,
-                REPOSITORY_ROOT / "crates" / PIPELINE_PACKAGE,
-            )
-        )
+        counts["facade_exact_dep"] = int(exact_facade_dependencies(facade_deps))
         if not counts["facade_exact_dep"]:
             violations.append(
-                "facade must have exactly one unconditional pipeline path dependency, got %s"
+                "facade must have exactly the unconditional pipeline and execution-contract path dependencies, got %s"
                 % facade_deps
             )
 
@@ -1046,8 +1068,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 "facade source allowlist drifted from the pinned surface: extra=%s missing=%s"
                 % (extra, missing)
             )
+        for mismatch in facade_symbol_owner_mismatches(source_text):
+            violations.append("facade symbol has wrong owner: %s" % mismatch)
         owner_crates = facade_owner_crates(source_text)
-        if owner_crates != [FACADE_OWNER_CRATE]:
+        if owner_crates != list(FACADE_OWNER_CRATES):
             violations.append("facade source re-exports owner crates %s" % owner_crates)
 
         if violations:

@@ -9,7 +9,7 @@ use quanta_gqlang_v2_sema::{
     SourceQualifiedNodeIdV2, TypedExprShapeV2,
 };
 
-mod bounded;
+pub(crate) mod bounded;
 
 impl ExecutionItemV3 {
     pub(crate) fn new_scalar_relation_v3(
@@ -32,7 +32,7 @@ impl ExecutionItemV3 {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ScalarProjectionFailureV3 {
+pub enum ScalarProjectionFailureV3 {
     UnsupportedShape,
     DemandOverflow,
     Allocation,
@@ -59,7 +59,7 @@ fn scalar_field_bytes(output: &quanta_gqlang_v2_sema::RelationOutputContractV2) 
 
 /// Validate every supported expression and count its first projection birth.
 /// This read walk allocates nothing and uses only the retained semantic map.
-pub(crate) fn scalar_relation_projection_demand_v3(
+pub fn scalar_relation_projection_demand_v3(
     read: &ScalarSourceProjectReadV3<'_, '_>,
 ) -> Result<usize, ScalarProjectionFailureV3> {
     let ResolvedScanSourceV2::Relation(source_id) = read

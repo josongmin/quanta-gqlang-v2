@@ -124,18 +124,19 @@ class LocalGateTest(unittest.TestCase):
                 '#[cfg(test)]\n#[path = "compile/tests.rs"]\nmod tests;\n',
                 encoding="utf-8",
             )
-            oracle_path = "crates/quanta-gqlang-v2-pipeline/src/execution_digest_oracle.rs"
+            oracle_path = "crates/quanta-gqlang-v2-execution-contract/src/digest_oracle.rs"
             oracle_file = root / oracle_path
+            oracle_file.parent.mkdir(parents=True)
             oracle_file.write_text("fn digest_fixture() {}\n", encoding="utf-8")
-            oracle_owner = root / "crates/quanta-gqlang-v2-pipeline/src/execution.rs"
+            oracle_owner = root / "crates/quanta-gqlang-v2-execution-contract/src/lib.rs"
             oracle_owner.write_text(
-                '// #[cfg(test)]\n#[path = "execution_digest_oracle.rs"]\nmod digest_oracle;\n',
+                '// #[cfg(test)]\n#[path = "digest_oracle.rs"]\nmod digest_oracle;\n',
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(size_gate.SizeGateError, "not cfg\\(test\\) guarded"):
                 size_gate.source_paths(root)
             oracle_owner.write_text(
-                '#[cfg(test)]\n#[path = "execution_digest_oracle.rs"]\nmod digest_oracle;\n',
+                '#[cfg(test)]\n#[path = "digest_oracle.rs"]\nmod digest_oracle;\n',
                 encoding="utf-8",
             )
             paths = size_gate.source_paths(root)

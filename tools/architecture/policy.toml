@@ -18,6 +18,7 @@ members = [
     "quanta-gqlang-v2-cli",
     "quanta-gqlang-v2-conformance",
     "quanta-gqlang-v2-diagnostics-stdio",
+    "quanta-gqlang-v2-execution-contract",
     "quanta-gqlang-v2-frontend-contract",
     "quanta-gqlang-v2-hir",
     "quanta-gqlang-v2-logic",
@@ -35,6 +36,9 @@ members = [
 # Pinned version requirement for internal path deps (when version is present).
 dev = [
     "quanta-gqlang-v2-algebra -> quanta-gqlang-v2-sema",
+    "quanta-gqlang-v2-execution-contract -> quanta-gqlang-v2-modules",
+    "quanta-gqlang-v2-execution-contract -> quanta-gqlang-v2-sema",
+    "quanta-gqlang-v2-execution-contract -> quanta-gqlang-v2-surface",
     "quanta-gqlang-v2-logic -> quanta-gqlang-v2-sema",
     "quanta-gqlang-v2-pipeline -> quanta-gqlang-v2-modules",
     "quanta-gqlang-v2-pipeline -> quanta-gqlang-v2-sema",
@@ -47,6 +51,11 @@ normal = [
     "quanta-gqlang-v2-cli -> quanta-gqlang-v2-frontend-contract",
     "quanta-gqlang-v2-conformance -> quanta-gqlang-v2-frontend-contract",
     "quanta-gqlang-v2-diagnostics-stdio -> quanta-gqlang-v2-frontend-contract",
+    "quanta-gqlang-v2-execution-contract -> quanta-gqlang-v2-algebra",
+    "quanta-gqlang-v2-execution-contract -> quanta-gqlang-v2-logic",
+    "quanta-gqlang-v2-execution-contract -> quanta-gqlang-v2-planning",
+    "quanta-gqlang-v2-execution-contract -> quanta-gqlang-v2-sema",
+    "quanta-gqlang-v2-frontend-contract -> quanta-gqlang-v2-execution-contract",
     "quanta-gqlang-v2-frontend-contract -> quanta-gqlang-v2-pipeline",
     "quanta-gqlang-v2-logic -> quanta-gqlang-v2-modules",
     "quanta-gqlang-v2-logic -> quanta-gqlang-v2-sema",
@@ -54,6 +63,7 @@ normal = [
     "quanta-gqlang-v2-modules -> quanta-gqlang-v2-hir",
     "quanta-gqlang-v2-modules -> quanta-gqlang-v2-types",
     "quanta-gqlang-v2-pipeline -> quanta-gqlang-v2-algebra",
+    "quanta-gqlang-v2-pipeline -> quanta-gqlang-v2-execution-contract",
     "quanta-gqlang-v2-pipeline -> quanta-gqlang-v2-logic",
     "quanta-gqlang-v2-pipeline -> quanta-gqlang-v2-planning",
     "quanta-gqlang-v2-pipeline -> quanta-gqlang-v2-sema",
@@ -78,10 +88,11 @@ build = []
 # "consumer|kind|dependency"; the value lists every feature that edge may
 # enable. Any feature not listed here is feature drift and is rejected.
 [internal.allowed_features]
-"quanta-gqlang-v2-algebra|dev|quanta-gqlang-v2-sema"  = ["test"]
-"quanta-gqlang-v2-logic|dev|quanta-gqlang-v2-sema"    = ["test"]
-"quanta-gqlang-v2-pipeline|dev|quanta-gqlang-v2-sema" = ["test"]
-"quanta-gqlang-v2-planning|dev|quanta-gqlang-v2-sema" = ["test"]
+"quanta-gqlang-v2-algebra|dev|quanta-gqlang-v2-sema"            = ["test"]
+"quanta-gqlang-v2-execution-contract|dev|quanta-gqlang-v2-sema" = ["test"]
+"quanta-gqlang-v2-logic|dev|quanta-gqlang-v2-sema"              = ["test"]
+"quanta-gqlang-v2-pipeline|dev|quanta-gqlang-v2-sema"           = ["test"]
+"quanta-gqlang-v2-planning|dev|quanta-gqlang-v2-sema"           = ["test"]
 
 # Exact external (non-workspace) allowlists per crate per kind. A crate with
 # no table for a kind admits no external dependency of that kind. In
@@ -94,7 +105,7 @@ sha2 = { version = "=0.10.9", features = [] }
 [external.normal."quanta-gqlang-v2-cli"]
 libc = { version = "=0.2.186", features = [] }
 
-[external.normal."quanta-gqlang-v2-pipeline"]
+[external.normal."quanta-gqlang-v2-execution-contract"]
 sha2 = { version = "=0.10.9", features = [] }
 
 [external.normal."quanta-gqlang-v2-diagnostics-stdio"]

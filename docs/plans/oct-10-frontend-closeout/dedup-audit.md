@@ -302,6 +302,64 @@ Nextest1524)다. 이는 아래 변경 후 source의 qualification이 아니며 �
   subset을 유지한다. generic relation expression closure는 Foreign/Dangling을 거절한다.
   이번에는 public execution contract를 변경하지 않았으며 새 consumer/runtime proof는 NOT_RUN이다.
 
+## D07 — Execution DTO의 계약 owner 물리 분리: SOURCE_REPAIRED / FOCUSED_PASS
+
+입력은 clean main `a6a85d125d87d421632034fab8c38fe70b59fcd3`이다.
+사용자가 보류했던 DTO 이동을 이번 범위에 명시적으로 추가했다.
+
+### RCA·선택한 구조·acceptance
+
+- 기존 dependency는 facade→Pipeline이었다. Pipeline의 DTO를 facade crate로 직접 옮기면
+  compiler→facade→compiler cycle이 생긴다. DTO의 private field/constructor는 projection 및
+  encoder와 같은 crate에 있어야 하므로 계약-side 내부 `quanta-gqlang-v2-execution-contract`로
+  함께 이동했다. 새 외부 library는 없다. 기존 sha2 dependency도 해당 owner로 이동했다.
+- 방향은 facade→Pipeline+execution-contract, Pipeline→execution-contract,
+  execution-contract→Algebra/Logic/Planning/Sema다. contract→Pipeline 및 normal Surface 의존은 없다.
+  facade 공개 Execution roots는 새 contract crate에서 직접 import한다. 외부 seam은 기존 facade 하나다.
+- consumer는 기존 facade-only sibling/compiler entry와 staged SHOW/scalar continuations다.
+  acceptance는 public roots156 및 private constructor 유지, 동일 source→DTO/diagnostic/byte digests,
+  모든 plan-required item 유지, 기존 request exact/short/refund custody, backward edge 없음이다.
+- Pipeline `execution.rs`는 compatibility imports만 남는다. DTO/encoding/projector 선언의 두 번째
+  사본이나 include/path mount는 없다. Pipeline은 compile orchestration과 error bridge/permits를 유지한다.
+
+### 발행 경계·자원·호환성
+
+- public facade에 raw constructor, producer module 또는 mutable field를 추가하지 않는다.
+  `ExecutionDocumentV3::new`와 `ExecutionItemV3::new`는 contract crate 내부로 유지한다.
+- 내부 `producer::ExecutionProjectionV3`는 move-only item Vec를 소유한다. checked plan과 stage
+  projections로 item을 만들고 자신의 buffer를 document로 넘긴다. raw item Vec/외부 digest를 받지 않는다.
+  내부 owner crate에 직접 의존하는 코드는 지원하는 downstream surface가 아니다.
+- 일반 source와 lexical source compile은 이 owner를 사용한다. SHOW는 original count의 capacity를
+  사전 확보하고 기존 semantic/plan agreement check 후 같은 buffer에 삽입한다.
+- scalar는 `repr(transparent)` move-only issued item wrapper를 쓴다. Pipeline이 기존 request root로
+  projection과2개 item slots를 예약한 다음 contract가 exact1 Vec를 만들고 document를 seal한다.
+  중간 변환 buffer/extra allocation은 추가하지 않는다. permit chain과 drop 시점은 Pipeline 소유다.
+- public names/accessors와 source schema3/contract·qualification schema8/field order/shared vectors는
+  유지한다. Rust definition path는 이동하므로 consumer는 새 source closure로 재빌드해야 한다.
+  allocator/RSS/latency 비교 및 Semantica consumer/runtime 실행은 NOT_RUN이다.
+
+### 검증·gate·문서
+
+- `cargo test --offline -p quanta-gqlang-v2-execution-contract -p quanta-gqlang-v2-pipeline`:
+  **171 Rust tests +3 doctests PASS**, failed0/ignored0. contract unit40, Pipeline unit30,
+  integration101이며 기존 exact-byte/stream/digest, source assembly/command, SHOW와 scalar custody 포함.
+- 외부 gate는 facade의 dependency2개를 정확히 검사하고 Execution roots가 contract에서,
+  compile/authority roots가 Pipeline에서 오는지 검사한다. owner drift/missing/extra/path/feature mutation
+  controls를 추가했다. scoped Python owner24/24 PASS (`dto-consumer-policy-tests.log`).
+- 새 d24 compile-fail probe는 facade에서 내부 `ExecutionProjectionV3` import를 거절해야 한다.
+  기존 d15 private document constructor probe와 함께 full qualification에서 실행한다.
+- architecture exact15 members/새 normal·dev edges/sha2 owner, root+fixture lockfiles,
+  moved test-module guards 및 fake-guard refusal fixture를 갱신했다. 이동한 contract unit tests를
+  production으로 잘못 세지 않도록 cfg(test) owner/path inventory도 옮겼다.
+- 생성 instruction은 source에서 dependency DAG를 수정하고 `just pm-sync`, `just pm-check` PASS.
+  최초 prompt byte ratchet growth는 내용을 줄여 해결했으며 budget/ratchet 상한은 올리지 않았다.
+- 최초 compile 단계의 이동된 lib name/unused exports/dev dependencies, 새 opaque carrier의 accessor와
+  test Debug, Python workspace count assertion을 수정했다. 초기 로그는 ignored audit 디렉터리에
+  보존한다. 현재 owner proof는 `dto-owner-tests.log`; full 성공은 현재 HEAD receipt로만 판정한다.
+- normative frontend contract, ADR-0003, language owner stack, test ledger와 QFC-03를 함께 갱신했다.
+  초기 F01 subtree match는 과거 입력 증거다. D07은 facade/pipeline subtree와 dependency closure를
+  바꾸므로 QFC-02/E13에서 paired source pins·consumer proof를 갱신해야 한다. Semantica 파일은 수정하지 않았다.
+
 ## 이전 D01/D02 실행과 증거 (D03 전환 전 snapshot)
 
 | 검증 | 현재 결과 |
@@ -326,7 +384,7 @@ nextest 원문/metadata 복사본을 보관한다. 원문 inventory/events hash 
 
 ## 최종 source와 qualification 판정
 
-D01~06 source 수정과 focused owner 검증을 묶어 로컬 main에 커밋한다.
+D01~07 source 수정과 focused owner 검증을 묶어 로컬 main에 커밋한다.
 commit SHA를 문서에 다시 삽입해 qualification 입력을 바꾸지 않는다. 현재 checkout의
 `git rev-parse HEAD`로 `target/qualification/<HEAD>/receipt.json`을 조회하고 schema3, exit0,
 SHA/tree, clean pre/post custody 및 같은 run의 raw Nextest evidence를 확인한 경우에만

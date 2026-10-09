@@ -75,11 +75,11 @@ use crate::diagnostic::{
 };
 use crate::execution::{
     project_check, project_composition, project_graph_query, project_presentation,
-    project_relation, project_relation_root, project_selected_show_item_v2, ExecutionCheckV3,
-    ExecutionClosureFailureV3, ExecutionCompositionBodyProjectionV3,
-    ExecutionCompositionProducerProjectionV3, ExecutionCompositionProjectionFailureV3,
-    ExecutionCompositionV3, ExecutionDocumentV3, ExecutionFamilyV3, ExecutionGraphQueryV3,
-    ExecutionItemV3, ExecutionPresentationKindV3, ExecutionRelationV3,
+    project_relation, project_relation_root, ExecutionCheckV3, ExecutionClosureFailureV3,
+    ExecutionCompositionBodyProjectionV3, ExecutionCompositionProducerProjectionV3,
+    ExecutionCompositionProjectionFailureV3, ExecutionCompositionV3, ExecutionDocumentV3,
+    ExecutionFamilyV3, ExecutionGraphQueryV3, ExecutionItemV3, ExecutionPresentationKindV3,
+    ExecutionProjectionV3, ExecutionRelationV3,
 };
 
 mod request_owner;
@@ -855,7 +855,7 @@ pub fn compile_source_document_v3(
         let (compiled, execution_items) = compile_resolved_parts(&document)?;
         Ok(CompiledSourceDocumentV3 {
             compiled,
-            execution: ExecutionDocumentV3::new(source_id, source.as_bytes(), execution_items),
+            execution: execution_items.finish(source_id, source.as_bytes()),
         })
     })();
     result.map_err(|error| {
@@ -881,7 +881,7 @@ pub fn compile_source_document_with_lexical_owner_v1<'root, 'source>(
             let (compiled, execution_items) = compile_resolved_parts(&document)?;
             Ok(CompiledSourceDocumentV3 {
                 compiled,
-                execution: ExecutionDocumentV3::new(source_id, source.as_bytes(), execution_items),
+                execution: execution_items.finish(source_id, source.as_bytes()),
             })
         })
     })();
@@ -993,13 +993,8 @@ pub fn admit_show_execution_v2<'root, 'source>(
     let permit = root
         .reserve_stage_v2(planned.source_id_v2(), source, bytes)
         .map_err(|_error| ShowSyntaxAdmissionErrorV2::IncompleteShowOutputStorage)?;
-    let mut items = Vec::new();
-    items
-        .try_reserve_exact(count)
+    let mut items = ExecutionProjectionV3::try_with_capacity(count)
         .map_err(|_error| ShowSyntaxAdmissionErrorV2::IncompleteShowOutputStorage)?;
-    if items.capacity() > count {
-        return Err(ShowSyntaxAdmissionErrorV2::IncompleteShowOutputStorage);
-    }
     for (index, plan) in planned.plans.iter().enumerate() {
         let resolved = planned
             .declared
@@ -1007,12 +1002,11 @@ pub fn admit_show_execution_v2<'root, 'source>(
             .value_v1()
             .resolve_show_item_v2(index)
             .map_err(ShowSyntaxAdmissionErrorV2::IncompleteShowExecution)?;
-        items.push(
-            project_selected_show_item_v2(&resolved, plan)
-                .map_err(ShowSyntaxAdmissionErrorV2::IncompleteShowExecution)?,
-        );
+        items
+            .push_show(&resolved, plan)
+            .map_err(ShowSyntaxAdmissionErrorV2::IncompleteShowExecution)?;
     }
-    let execution = ExecutionDocumentV3::new(planned.source_id_v2(), source.as_bytes(), items);
+    let execution = items.finish(planned.source_id_v2(), source.as_bytes());
     Ok(AdmittedShowExecutionDocumentV2 {
         execution,
         planned,
@@ -1064,7 +1058,7 @@ pub fn compile_resolved_document_v2(
 
 fn compile_resolved_parts(
     document: &SemanticDocumentV2,
-) -> Result<(CompiledDocumentV2, Vec<ExecutionItemV3>), FrontendTransactionErrorV2> {
+) -> Result<(CompiledDocumentV2, ExecutionProjectionV3), FrontendTransactionErrorV2> {
     let (items, rule_program, execution_items) = run_document(document)?.into_compiled()?;
     let compiled =
         CompiledDocumentV2::try_new(document.source_id(), Vec::new(), items, rule_program)?;

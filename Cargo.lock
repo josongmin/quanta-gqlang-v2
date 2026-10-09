@@ -240,9 +240,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "quanta-gqlang-v2-execution-contract"
+version = "0.1.0"
+dependencies = [
+ "quanta-gqlang-v2-algebra",
+ "quanta-gqlang-v2-logic",
+ "quanta-gqlang-v2-modules",
+ "quanta-gqlang-v2-planning",
+ "quanta-gqlang-v2-sema",
+ "quanta-gqlang-v2-surface",
+ "sha2",
+]
+
+[[package]]
 name = "quanta-gqlang-v2-frontend-contract"
 version = "0.1.0"
 dependencies = [
+ "quanta-gqlang-v2-execution-contract",
  "quanta-gqlang-v2-pipeline",
 ]
 
@@ -273,12 +287,12 @@ name = "quanta-gqlang-v2-pipeline"
 version = "0.1.0"
 dependencies = [
  "quanta-gqlang-v2-algebra",
+ "quanta-gqlang-v2-execution-contract",
  "quanta-gqlang-v2-logic",
  "quanta-gqlang-v2-modules",
  "quanta-gqlang-v2-planning",
  "quanta-gqlang-v2-sema",
  "quanta-gqlang-v2-surface",
- "sha2",
 ]
 
 [[package]]

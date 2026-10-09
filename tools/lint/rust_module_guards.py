@@ -27,10 +27,10 @@ TEST_MODULES = {
         ("crates/quanta-gqlang-v2-pipeline/src/compile.rs", "compile/tests.rs", "tests"),
     "crates/quanta-gqlang-v2-pipeline/src/compile/request_owner/source_body/session_tests.rs":
         ("crates/quanta-gqlang-v2-pipeline/src/compile/request_owner/source_body.rs", "source_body/session_tests.rs", "session_tests"),
-    "crates/quanta-gqlang-v2-pipeline/src/execution_digest_oracle.rs":
-        ("crates/quanta-gqlang-v2-pipeline/src/execution.rs", "execution_digest_oracle.rs", "digest_oracle"),
-    "crates/quanta-gqlang-v2-pipeline/src/execution/tests.rs":
-        ("crates/quanta-gqlang-v2-pipeline/src/execution.rs", "execution/tests.rs", "tests"),
+    "crates/quanta-gqlang-v2-execution-contract/src/digest_oracle.rs":
+        ("crates/quanta-gqlang-v2-execution-contract/src/lib.rs", "digest_oracle.rs", "digest_oracle"),
+    "crates/quanta-gqlang-v2-execution-contract/src/tests.rs":
+        ("crates/quanta-gqlang-v2-execution-contract/src/lib.rs", "tests.rs", "tests"),
     "crates/quanta-gqlang-v2-planning/src/plan/tests.rs":
         ("crates/quanta-gqlang-v2-planning/src/plan.rs", "plan/tests.rs", "tests"),
     "crates/quanta-gqlang-v2-sema/src/document/tests.rs":

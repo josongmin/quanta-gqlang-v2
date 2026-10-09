@@ -1,6 +1,6 @@
 # 기존 작업 마감: source 상태와 남은 acceptance
 
-Updated: 2026-10-10. QGLang D01~06 source 수정 및 focused proof 완료.
+Updated: 2026-10-10. QGLang D01~07 source 수정 및 focused proof 완료.
 전체 저장소 검증 상태는 QFC-04의 **현재 HEAD receipt**로 판정한다.
 [감사](audit.md)는 초기 snapshot, [후속 감사](dedup-audit.md)는 실제 source 변경과 owner 검증을 기록한다.
 
@@ -18,6 +18,7 @@ Owner: QGLang; downstream 전체 입력은 기존 Semantica E13 owner.
 ## QFC-02 — bootstrap/producer paired 입력 조정: OPEN_DOWNSTREAM
 
 - [ ] 전체 revision `9060e469…`와 현재 producer subtree/vector 경로의 입력 정책을 조정한다.
+  D07의 새 internal execution-contract package와 변경된 facade/pipeline subtree를 consumer source closure에 포함한다.
   Semantica E13-T04/T08/T11의 기존 source/verification 작업에 연결한다.
 - [ ] pin 변경이 필요하면 compatible bundle과 actual V3 consumer compile/contract-vector owner proof를
   함께 확보한다. 과거 pin 유지 시 최신 producer acceptance가 별도 OPEN임을 명시한다.
@@ -55,11 +56,16 @@ Owner: QGLang Modules graph + Logic recursion. Semantica Core SCC와는 별개�
 
 - [x] catalog namespace mapping과 canonical lock text writer를 기존 owner에서 공통화했다.
   public const/signature, canonical bytes와 validation/budget/error ordering을 유지했다.
-- [x] D01~06 동반 변경과 문서/원장의 중복 배정을 대조했다. 신규 동작 결함은 재현하지 않았다.
+- [x] D01~07 동반 변경과 문서/원장의 중복 배정을 대조했다. 신규 동작 결함은 재현하지 않았다.
   Record/Union validator 유사 코드는 서로 다른 payload/diagnostic owner이므로 추가 generic engine을 발급하지 않았다.
 - [x] D06 lock parser의 가변 field Vec, 추가 pack-name 복제와 canonical text 재생성을 제거했다.
   기존 field validator/serializer owner를 유지하며 late-field/duplicate-before-order와 exact span을 보존한다.
   Modules authority122 tests PASS:24 permutations,131072-space malformed line 및 기존 resource rails 포함.
+- [x] D07 DTO/encoding/projection을 내부 execution-contract로 물리 이동했다. Pipeline→contract,
+  facade→Pipeline+contract 방향으로 연결하고 공개 roots156과 private constructor를 유지한다.
+  일반/SHOW/scalar 발행은 contract owner를 사용하며 request permits는 Pipeline에 남긴다.
+- [x] 계약/architecture/두 lockfile/test guard/문서와 기존 owner tests171+doctest3를 함께 갱신했다.
+  전체 gate와 외부 privacy/소비자 proof는 QFC-04의 현재 HEAD receipt로 판정한다.
 - [x] test ledger와 guarded-test-module inventory를 새 SCC oracle에 맞춰 갱신했다.
 - source 반영 결과는 `git log -1`과 caller clean status로 확인한다. 이 packet 자체를 포함한
   하나의 변경 단위를 로컬 main에 커밋하고, 해당 HEAD에서 QFC-04를 실행한다.
@@ -84,7 +90,7 @@ Owner: QGLang. 로컬 gate만 사용하며 새 hosted/remote CI는 필수조건�
 
 ## QFC-05 — 범위별 종료
 
-- source/ownership: D01~03 공통화와 양쪽 caller 전환 완료, focused owner 검증 PASS.
+- source/ownership: D01~07 공통화와 양쪽 caller 전환 완료, focused owner 검증 PASS.
 - QGLang standalone: QFC-04의 현재 HEAD receipt로 완료 여부를 판정한다.
 - paired contract/compile: QFC-02 **OPEN_DOWNSTREAM**.
 - Semantica runtime/product: 기존 Oct-10 compiled required exits의 owner 결과가 필요하며 이 작업에서 **NOT_RUN**.

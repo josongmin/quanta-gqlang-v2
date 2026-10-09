@@ -69,7 +69,8 @@ The live owner stack is:
 7. `logic`: recursive predicate, graph, witness, recursion legality
 8. `planning`: truth, evidence, effect, result-kind, cost
 9. `pipeline`: one shared compiler service
-10. `frontend-contract`: downstream facade
+10. `execution-contract`: execution DTO, sealed-stage projection and canonical encoding owner; consumed by Pipeline
+11. `frontend-contract`: downstream facade importing compiler entries from Pipeline and DTOs from execution-contract
 
 ## Public Compile Surface
 

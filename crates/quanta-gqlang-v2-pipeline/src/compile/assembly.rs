@@ -10,11 +10,11 @@ use super::{
     CompositionRelationalBodyPlanInputV2, DocumentAssemblyCodeV2, ExecutionCheckV3,
     ExecutionClosureFailureV3, ExecutionCompositionBodyProjectionV3,
     ExecutionCompositionProducerProjectionV3, ExecutionCompositionProjectionFailureV3,
-    ExecutionCompositionV3, ExecutionFamilyV3, ExecutionGraphQueryV3, ExecutionItemV3,
-    ExecutionPresentationKindV3, ExecutionRelationV3, FrontendFailureV2,
-    FrontendTransactionErrorV2, GraphQueryContractV2, LocatedSpanV2, NoPlanReasonV2, PlanOutcomeV2,
-    PlannedItemV2, PlanningDiagnosticV1, PlanningSessionV2, PresentationContractV2,
-    ResolvedCatalogItemV2, ResolvedCatalogPayloadV2, ResolvedCheckV2, ResolvedCompositionBodyV2,
+    ExecutionCompositionV3, ExecutionFamilyV3, ExecutionGraphQueryV3, ExecutionPresentationKindV3,
+    ExecutionProjectionV3, ExecutionRelationV3, FrontendFailureV2, FrontendTransactionErrorV2,
+    GraphQueryContractV2, LocatedSpanV2, NoPlanReasonV2, PlanOutcomeV2, PlannedItemV2,
+    PlanningDiagnosticV1, PlanningSessionV2, PresentationContractV2, ResolvedCatalogItemV2,
+    ResolvedCatalogPayloadV2, ResolvedCheckV2, ResolvedCompositionBodyV2,
     ResolvedCompositionProducerV2, ResolvedCompositionV2, ResolvedMetaKindV2,
     RuleProgramContractV2, RuleProgramMemberV2, SemanticDocumentV2, SemanticItemIdV2,
     SemanticItemV2, SemanticPlanInputV2, SemanticPlanV2, SourceIdV2, SpanV1,
@@ -30,7 +30,7 @@ pub(super) struct DocumentRunV2 {
 type CompiledPartsV2 = (
     Vec<CompiledItemV2>,
     Option<CompiledRuleProgramV2>,
-    Vec<ExecutionItemV3>,
+    ExecutionProjectionV3,
 );
 
 /// Boxed planned payload: the plan plus its two execution projections dwarf the
@@ -69,12 +69,12 @@ impl DocumentRunV2 {
             return Err(FrontendTransactionErrorV2::Document(failure.deduplicated()));
         }
         let mut items = Vec::with_capacity(self.items.len());
-        let mut execution_items = Vec::new();
+        let mut execution_items = ExecutionProjectionV3::default();
         for item in self.items {
             match item {
                 ItemRunV2::Planned(run) => {
                     if let Some((family, plan)) = execution_identity(run.planned.as_ref()) {
-                        execution_items.push(ExecutionItemV3::new(
+                        execution_items.push_planned(
                             run.planned.item_id(),
                             family,
                             run.relation,
@@ -83,7 +83,7 @@ impl DocumentRunV2 {
                             run.presentation,
                             run.composition,
                             plan,
-                        ));
+                        );
                     }
                     items.push(CompiledItemV2::Planned(run.planned));
                 }

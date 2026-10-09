@@ -2,6 +2,30 @@
 
 Status: producer contract for the breaking, pre-release qglang/Semantica source-pin cutover. The producer is qglang's checked Pipeline. Runtime admission and execution are not part of this contract.
 
+## Contract ownership
+
+`quanta-gqlang-v2-execution-contract` owns the Execution DTO declarations,
+canonical encoding/digests, and projection from sealed Algebra/Logic/Planning/Sema
+facts. Private DTO fields and constructors stay with their projector. It has no
+Pipeline dependency and no normal Surface/runtime/provider dependency.
+`quanta-gqlang-v2-pipeline` owns parsing, stage orchestration, diagnostics and
+request permit chains, and consumes the internal contract producer bridge.
+`quanta-gqlang-v2-frontend-contract` remains the sole downstream seam: it imports
+compiler entries from Pipeline and Execution roots directly from execution-contract.
+
+The internal `producer` module is not a facade export. Its move-only projection
+buffer constructs items from checked stage facts and seals its own Vec; it accepts
+no caller-built ExecutionItem Vec or supplied digest. The scalar projection uses
+a transparent move-only wrapper and the original two-slot reservation before seal.
+No second item buffer is introduced; exact/short reservation and final-drop
+regressions remain required. Direct dependency on an owner crate is outside the
+supported downstream contract.
+
+The physical move changes Rust type definition paths and requires a source-pinned
+consumer rebuild. Public facade names/signatures, source schema3, contract/qualification
+schema8, field ordering and shared golden vectors are unchanged. Paired downstream
+source pins and consumer proof must be refreshed separately.
+
 ## Public boundary
 
 `compile_source_document_v3(SourceIdV2, &str, &ClosedFrontendAuthorityV2) -> Result<CompiledSourceDocumentV3, FrontendTransactionErrorV2>` is the direct closed source entry that issues an `ExecutionDocumentV3`. The result retains the source-ordered compiled item dispositions and exposes one immutable execution document. `compile_source_document_with_lexical_owner_v1` performs the same closed compile while retaining a source-bound permit for lexer and top-level parser storage in `AdmittedLexicalCompiledSourceDocumentV1`; its permit does **not** cover nested HIR, semantic, planning, or execution allocations. Neither entry grants downstream runtime admission or complete frontend memory qualification. No public constructor accepts preassembled execution items or a caller-supplied digest. `compile_resolved_document_v2` can check a sealed semantic document without original bytes, but its result exposes **no** execution document or source/qualification digest. Open analysis is never promoted to closed execution.
@@ -437,7 +461,7 @@ whose binding sequence already encodes that exact slot. Host and catalog scans
 carry no Composition slot. This accessor retains the producer proof and does
 not authorize a new source or infer correlation from source use.
 
-The checked owner enforces finite float and exact source membership before encoding; public DTO fields and document constructor remain private. `crates/quanta-gqlang-v2-pipeline/src/execution.rs` is the producer implementation of these rules, not a second source of policy.
+The checked owner enforces finite float and exact source membership before encoding; public DTO fields and document constructor remain private. `crates/quanta-gqlang-v2-execution-contract/src/lib.rs` and its encoding/projection children implement these rules; Pipeline imports that owner.
 
 ## Shared conformance vectors
 

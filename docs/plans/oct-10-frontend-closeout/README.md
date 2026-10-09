@@ -1,6 +1,6 @@
 # Oct-10 QGLang 기존 작업 마감
 
-Updated: 2026-10-10. 상태: **DEDUP6_SOURCE_DONE / FOCUSED_PASS / QUALIFICATION_RECEIPT_DERIVED / PAIRED_OPEN**.
+Updated: 2026-10-10. 상태: **DEDUP7_SOURCE_DONE / FOCUSED_PASS / QUALIFICATION_RECEIPT_DERIVED / PAIRED_OPEN**.
 
 ## 목적과 범위
 
@@ -12,7 +12,7 @@ Updated: 2026-10-10. 상태: **DEDUP6_SOURCE_DONE / FOCUSED_PASS / QUALIFICATION
 
 - QGLang: syntax/HIR/sema/normalized IR, CLI/diagnostics, host-agnostic frontend-contract.
 - Semantica: runtime/provider/SDK wiring, factory guard 통합, analysis 및 product 실행 증명.
-- V4/A00~A15, optimizer/Index, DTO 물리 이동, fuzz 자동 주기, 추가 hosted CI는 이번 마감 범위 밖이다.
+- V4/A00~A15, optimizer/Index, fuzz 자동 주기, 추가 hosted CI는 이번 마감 범위 밖이다.
 - 사용자 지정 검증 방식은 로컬 CI다. 새 유료 hosted/remote CI 조건을 추가하지 않는다.
 
 ## 감사 결론
@@ -20,7 +20,8 @@ Updated: 2026-10-10. 상태: **DEDUP6_SOURCE_DONE / FOCUSED_PASS / QUALIFICATION
 1. 초기 감사는 구조/설정 대조였다. 후속 AST 감사에서 Modules 중복 구현2묶음을 확인해
    기존 owner 안에서 공통화했다. 기존 Modules authority120개와 전체 local CI1514개는 통과했다.
 2. 파일·테스트 분할, size/MSRV 게이트, examples 18개의 closed-authority 검사는 소스에 있다.
-3. Semantica closeout의 frontend/pipeline subtree 및 golden vector pin은 현재 producer와 일치한다.
+3. 초기 감사의 Semantica closeout subtree/vector pin은 당시 producer와 일치했다.
+   D07 DTO 이동은 frontend/pipeline subtree를 바꾸므로 기존 E13에서 paired 입력·consumer proof를 갱신해야 한다.
 4. 별도 external-workspace bootstrap의 전체 revision은 과거 `9060e469…`다.
    현재 로컬 sibling SHA와 다르므로 **두 검증 경로의 입력 일관성 조정이 남는다**.
 5. clean committed HEAD qualification은 현재 HEAD의 `target/qualification/<HEAD>/receipt.json`으로
@@ -41,6 +42,10 @@ Updated: 2026-10-10. 상태: **DEDUP6_SOURCE_DONE / FOCUSED_PASS / QUALIFICATION
    전체 text 재직렬화를 제거했다. canonical field owner를 재사용하고 모든 줄 검증 후
    borrowed 입력 순서를 대조한다. Modules authority122 tests와24 permutation/error-precedence
    oracle가 통과했다. allocator/RSS 수치는 측정하지 않았다.
+
+10. 사용자 승인으로 D07 DTO 물리 이동을 마감 범위에 추가했다. 계약-side 내부 execution-contract가
+    DTO/encoding/projection을 소유하고 facade는 이를 직접 공개한다. Pipeline은 compiler/permit owner다.
+    순환 의존·raw constructor 공개·wire 변경 없이 source entry/SHOW/scalar 경로를 전환했다.
 
 정적 감사는 명시한 소스·호출·설정 범위의 대조다. 저장소 전체 중복0,
 최신 CI 통과 또는 Semantica 제품 완료를 뜻하지 않는다.

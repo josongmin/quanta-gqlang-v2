@@ -1,11 +1,12 @@
 //! Execution projection and seal for the same parser-issued scalar request.
 
 use super::PlannedSourceBodyRequestSourceV3;
-use crate::execution::scalar_request::{
-    project_scalar_relation_v3, scalar_relation_projection_demand_v3, ScalarProjectionFailureV3,
-};
 use crate::execution::{ExecutionDocumentV3, ExecutionFamilyV3, ExecutionItemV3};
 use quanta_gqlang_v2_algebra::AlgebraFamilyV2;
+use quanta_gqlang_v2_execution_contract::producer::{
+    project_scalar_item_v3, scalar_relation_projection_demand_v3, seal_scalar_item_v3,
+    ProjectedScalarItemV3, ScalarProjectionFailureV3,
+};
 use quanta_gqlang_v2_planning::AdmittedScalarPlanV3;
 use quanta_gqlang_v2_sema::{DownstreamBudgetReceiptV2, SemanticItemIdV2, SourceIdV2};
 use quanta_gqlang_v2_surface::{
@@ -17,7 +18,7 @@ use quanta_gqlang_v2_surface::{
 pub struct ProjectedSourceBodyRequestSourceV3<'authority> {
     owner: FrontendRequestOwnedValueV3<(
         AdmittedScalarPlanV3<'authority>,
-        ExecutionItemV3,
+        ProjectedScalarItemV3,
         FrontendRetainedStoragePermitV3,
     )>,
 }
@@ -452,8 +453,7 @@ pub fn project_source_body_with_request_owner_v3<'authority>(
             let permit = root
                 .reserve_v3(read.source_id_v3(), source, bytes)
                 .map_err(ScalarExecutionRequestErrorV3::Storage)?;
-            let relation = project_scalar_relation_v3(&read)?;
-            let item = ExecutionItemV3::new_scalar_relation_v3(read.item_id_v3(), relation, &plan);
+            let item = project_scalar_item_v3(&read, &plan)?;
             (item, permit)
         };
         Ok::<_, ScalarExecutionRequestErrorV3>((plan, item, permit))
@@ -478,24 +478,15 @@ pub fn seal_scalar_execution_document_with_request_owner_v3(
                 .scalar_semantic_read_v3()
                 .ok_or(ScalarExecutionRequestErrorV3::UnsupportedShape)?
                 .budget_receipt_v3();
-            let source_id = item.item_id().source_id();
             let item_id = item.item_id();
             let item_family = item.family();
             let item_slots = std::mem::size_of::<ExecutionItemV3>()
                 .checked_mul(2)
                 .ok_or(ScalarExecutionRequestErrorV3::DemandOverflow)?;
             let document_permit = root
-                .reserve_v3(source_id, source, item_slots)
+                .reserve_v3(item_id.source_id(), source, item_slots)
                 .map_err(ScalarExecutionRequestErrorV3::Storage)?;
-            let mut items = Vec::new();
-            items
-                .try_reserve_exact(1)
-                .map_err(|_error| ScalarExecutionRequestErrorV3::Allocation)?;
-            if items.capacity() > 1 {
-                return Err(ScalarExecutionRequestErrorV3::DemandOverflow);
-            }
-            items.push(item);
-            let execution = ExecutionDocumentV3::new(source_id, source.as_bytes(), items);
+            let execution = seal_scalar_item_v3(item, source.as_bytes())?;
             drop(plan);
             Ok::<_, ScalarExecutionRequestErrorV3>((
                 execution,

@@ -1,7 +1,7 @@
 //! Fallible, capacity-checked births for the finite scalar request projection.
 
 use super::ScalarProjectionFailureV3;
-use crate::execution::{
+use crate::{
     project_cardinality, project_value_type, ExecutionBindingV3, ExecutionExpressionShapeV3,
     ExecutionExpressionV3, ExecutionFieldV3, ExecutionRecordFieldV3, ExecutionRelationAuthorityV3,
     ExecutionSchemaV3, ExecutionSourceKindV3, ExecutionSourceV3, ExecutionValueTypeV3,
@@ -14,7 +14,7 @@ use quanta_gqlang_v2_sema::{
 
 /// The demand charges `count` slots. Reject an allocator's larger capacity
 /// before writing any element into an uncharged slot.
-pub(super) fn slots<T>(count: usize) -> Result<Vec<T>, ScalarProjectionFailureV3> {
+pub(crate) fn slots<T>(count: usize) -> Result<Vec<T>, ScalarProjectionFailureV3> {
     let mut values = Vec::new();
     values
         .try_reserve_exact(count)

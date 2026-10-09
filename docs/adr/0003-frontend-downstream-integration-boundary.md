@@ -61,6 +61,9 @@ Unfinished acceptance remains in [remaining work](../work/remaining.md).
 ### The frontend contract is the only public downstream seam
 
 `quanta-gqlang-v2-frontend-contract` is the product-facing integration boundary.
+Execution DTO/projection/encoding definitions live in the internal `execution-contract`
+crate, while Pipeline owns compiler orchestration and request permits. The facade
+imports each owner directly; there is no contract-to-Pipeline reverse edge.
 Downstream code consumes its public DTOs and closed compilation entry points;
 it does not depend on owner HIR, recreate frontend semantics, or retain a legacy
 adapter as a compatibility facade.

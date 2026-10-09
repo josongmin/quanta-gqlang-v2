@@ -14,12 +14,12 @@ name = "quanta_gqlang_v2_pipeline"
 path = "src/lib.rs"
 
 [dependencies]
-quanta-gqlang-v2-algebra  = { version = "0.1.0", path = "../quanta-gqlang-v2-algebra" }
-quanta-gqlang-v2-logic    = { version = "0.1.0", path = "../quanta-gqlang-v2-logic" }
-quanta-gqlang-v2-planning = { version = "0.1.0", path = "../quanta-gqlang-v2-planning" }
-quanta-gqlang-v2-sema     = { version = "0.1.0", path = "../quanta-gqlang-v2-sema" }
-quanta-gqlang-v2-surface  = { version = "0.1.0", path = "../quanta-gqlang-v2-surface" }
-sha2                      = "=0.10.9"
+quanta-gqlang-v2-algebra            = { version = "0.1.0", path = "../quanta-gqlang-v2-algebra" }
+quanta-gqlang-v2-execution-contract = { version = "0.1.0", path = "../quanta-gqlang-v2-execution-contract" }
+quanta-gqlang-v2-logic              = { version = "0.1.0", path = "../quanta-gqlang-v2-logic" }
+quanta-gqlang-v2-planning           = { version = "0.1.0", path = "../quanta-gqlang-v2-planning" }
+quanta-gqlang-v2-sema               = { version = "0.1.0", path = "../quanta-gqlang-v2-sema" }
+quanta-gqlang-v2-surface            = { version = "0.1.0", path = "../quanta-gqlang-v2-surface" }
 
 [dev-dependencies]
 quanta-gqlang-v2-modules = { version = "0.1.0", path = "../quanta-gqlang-v2-modules" }

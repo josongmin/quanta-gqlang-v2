@@ -5,6 +5,7 @@ members = [
     "crates/quanta-gqlang-v2-cli",
     "crates/quanta-gqlang-v2-conformance",
     "crates/quanta-gqlang-v2-diagnostics-stdio",
+    "crates/quanta-gqlang-v2-execution-contract",
     "crates/quanta-gqlang-v2-frontend-contract",
     "crates/quanta-gqlang-v2-hir",
     "crates/quanta-gqlang-v2-logic",

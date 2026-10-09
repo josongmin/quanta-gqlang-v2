@@ -28,8 +28,10 @@ The [Oct-10 frontend closeout packet](../plans/oct-10-frontend-closeout/README.m
 records the latest scoped audit and QGLang-local finish sequence. Its
 [actions](../plans/oct-10-frontend-closeout/actions.md) separate clean local
 qualification from paired bootstrap/source reconciliation and downstream product
-acceptance. The Semantica closeout subtree/vector pins match the audited producer;
-its separate external-workspace bootstrap still pins an older full revision.
+acceptance. The initial Semantica closeout subtree/vector pins matched that audited producer;
+D07 changes the facade/pipeline subtrees and introduces an internal contract package,
+so paired source-closure pins and consumer proof require refresh. The separate
+external-workspace bootstrap was observed at an older full revision.
 This is an input-reconciliation obligation for the existing downstream E13 owner,
 not a second implementation queue or a closed Parent18 state.
 
@@ -55,8 +57,9 @@ line and late-field/duplicate error precedence; allocator/RSS comparisons are un
 The current committed HEAD's `target/qualification/<HEAD>/receipt.json`
 is authoritative for standalone local qualification; no matching successful
 receipt means NOT_QUALIFIED. Paired downstream acceptance remains OPEN under
-E13. File/test splits and local size/MSRV gates are present. DTO physical
-extraction and automatic fuzz cadence remain deferred/optional. The proposed
+E13. D07 physically moves DTO/projection/encoding into execution-contract with
+facade direct imports; Pipeline retains compilation and request permits. File/test
+splits and local size/MSRV gates are present. Automatic fuzz cadence remains optional. The proposed
 V4 A03/A04/A08-Q work below remains a separate roadmap. This source closeout does not close downstream Parent18 or the separate V4 roadmap.
 Peer repair successor [R356](../plans/oct-6-substrate-dedup/peer-audit-r343.md#current-checkpoint--r356)
 connects the existing external occurrence/index births and removes the live

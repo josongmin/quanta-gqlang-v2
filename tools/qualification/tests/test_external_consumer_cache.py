@@ -53,10 +53,11 @@ class ExternalConsumerCacheTest(unittest.TestCase):
 
     def test_preflight_inventory_covers_root_fixture_and_all_workspace_members(self):
         paths = consumer_gate.preflight_manifests()
-        self.assertEqual(len(paths), 16)
+        self.assertEqual(len(paths), 17)
+        self.assertIn(REPOSITORY_ROOT / "crates/quanta-gqlang-v2-execution-contract/Cargo.toml", paths)
         self.assertIn(REPOSITORY_ROOT / "Cargo.toml", paths)
         self.assertIn(FIXTURE_DIR / "Cargo.toml", paths)
-        self.assertEqual(len([path for path in paths if path.parent.parent == REPOSITORY_ROOT / "crates"]), 14)
+        self.assertEqual(len([path for path in paths if path.parent.parent == REPOSITORY_ROOT / "crates"]), 15)
 
     def test_negative_cargo_json_is_bound_to_exact_probe_source(self):
         name = "d01_read_diagnostic_stage"
@@ -455,6 +456,29 @@ class ExternalConsumerCacheTest(unittest.TestCase):
             public_api_inventory(["FrontendBudgetV2", "FrontendBudgetV2"], ["FrontendBudgetV2"]),
             ([], [], ["FrontendBudgetV2"]),
         )
+
+    def test_facade_dto_roots_have_exact_contract_owner(self):
+        valid = "\n".join([
+            "pub use quanta_gqlang_v2_pipeline::compile_source_document_v3;",
+            "pub use quanta_gqlang_v2_execution_contract::{ExecutionDocumentV3, execution_operator_descriptor_v3};",
+        ])
+        self.assertEqual(consumer_gate.facade_symbol_owner_mismatches(valid), [])
+        self.assertEqual(len(consumer_gate.facade_allowlist(valid)), 3)
+        for old, new in [
+            ("quanta_gqlang_v2_execution_contract", "quanta_gqlang_v2_pipeline"),
+            ("quanta_gqlang_v2_pipeline", "quanta_gqlang_v2_execution_contract"),
+        ]:
+            self.assertTrue(consumer_gate.facade_symbol_owner_mismatches(valid.replace(old, new)))
+
+    def test_facade_requires_exact_compiler_and_contract_edges(self):
+        deps = manifest_dependencies(consumer_gate.FACADE_MANIFEST)
+        self.assertTrue(consumer_gate.exact_facade_dependencies(deps))
+        self.assertFalse(consumer_gate.exact_facade_dependencies(deps[:1]))
+        self.assertFalse(consumer_gate.exact_facade_dependencies(deps + deps[:1]))
+        for key, value in [("optional", True), ("features", ["test"]), ("path", "/tmp/foreign")]:
+            changed = [dict(dep) for dep in deps]
+            changed[0][key] = value
+            self.assertFalse(consumer_gate.exact_facade_dependencies(changed), key)
 
     def test_source_shape_rejects_indented_glob_and_module_mutations(self):
         source = "  pub use owner::*;\n\tpub mod leak;\n"

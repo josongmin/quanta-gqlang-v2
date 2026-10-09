@@ -31,14 +31,14 @@ use super::{
     WitnessTieBreakV1,
 };
 
-pub(crate) fn project_relation(
+pub fn project_relation(
     document: &SemanticDocumentV2,
     lowered: &LoweredRelationItemV2,
 ) -> Result<ExecutionRelationV3, ExecutionClosureFailureV3> {
     project_relation_root(document, lowered.item_id(), lowered.root())
 }
 
-pub(crate) fn project_relation_root(
+pub fn project_relation_root(
     document: &SemanticDocumentV2,
     item_id: SemanticItemIdV2,
     root: &CheckedAlgebraNodeV2,
@@ -154,7 +154,7 @@ pub(super) fn close_expression_ids(
 ///
 /// This tagged projection prevents relation/graph payload arrays from drifting
 /// out of alignment with the sealed binding order.
-pub(crate) enum ExecutionCompositionProducerProjectionV3 {
+pub enum ExecutionCompositionProducerProjectionV3 {
     Relation(ExecutionRelationV3),
     Sample,
     Graph {
@@ -164,7 +164,7 @@ pub(crate) enum ExecutionCompositionProducerProjectionV3 {
 }
 
 /// Exactly one checked execution payload for the Composition body.
-pub(crate) enum ExecutionCompositionBodyProjectionV3 {
+pub enum ExecutionCompositionBodyProjectionV3 {
     Relation(ExecutionRelationV3),
     Graph {
         item_id: SemanticItemIdV2,
@@ -175,12 +175,12 @@ pub(crate) enum ExecutionCompositionBodyProjectionV3 {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum ExecutionCompositionProjectionFailureV3 {
+pub enum ExecutionCompositionProjectionFailureV3 {
     Producer,
     Body,
 }
 
-pub(crate) fn project_composition(
+pub fn project_composition(
     composition: &ResolvedCompositionV2,
     producer_projections: Vec<ExecutionCompositionProducerProjectionV3>,
     body_projection: ExecutionCompositionBodyProjectionV3,
@@ -297,7 +297,7 @@ pub(crate) fn project_composition(
     })
 }
 
-pub(crate) fn project_graph_query(contract: &GraphQueryContractV2) -> ExecutionGraphQueryV3 {
+pub fn project_graph_query(contract: &GraphQueryContractV2) -> ExecutionGraphQueryV3 {
     ExecutionGraphQueryV3 {
         kind: project_graph_kind(contract.kind()),
         references: contract
@@ -320,7 +320,7 @@ pub(crate) fn project_graph_query(contract: &GraphQueryContractV2) -> ExecutionG
     }
 }
 
-pub(crate) fn project_check(contract: &CheckContractV2) -> ExecutionCheckV3 {
+pub fn project_check(contract: &CheckContractV2) -> ExecutionCheckV3 {
     let policy = contract.policy();
     ExecutionCheckV3 {
         rule: project_catalog_identity(policy.rule()),
@@ -356,9 +356,7 @@ fn project_catalog_identity(
     }
 }
 
-pub(crate) fn project_presentation(
-    contract: &PresentationContractV2,
-) -> ExecutionPresentationKindV3 {
+pub fn project_presentation(contract: &PresentationContractV2) -> ExecutionPresentationKindV3 {
     match contract.kind() {
         ResolvedPresentationKindV2::Explain {
             target,

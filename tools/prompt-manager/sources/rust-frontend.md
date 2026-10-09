@@ -1,11 +1,11 @@
 # Rust frontend boundaries
 
-- Preserve the stage direction `surface -> hir -> binder/types/modules -> algebra/logic -> planning -> pipeline -> frontend-contract`.
-- Only `quanta-gqlang-v2-frontend-contract` is a public downstream seam. Do not expose pipeline internals as a second public API.
-- Keep open analysis distinct from closed compilation. Missing external authority must remain typed `Incomplete`, never a fabricated plan or success.
-- Do not add provider, backend, runtime execution, host DTO, or SDK wiring to this repository.
-- Keep invalid states unrepresentable where practical. Validate external input at its boundary; propagate typed errors with source spans instead of panics or success-shaped defaults.
-- Preserve source order and deterministic tie-breaks in diagnostics and DTOs. Do not derive public ordering or identity from hash-map iteration, wall clocks, or process-local state.
-- Treat frontend IDs as transaction-local. A matching raw ID or digest alone cannot establish runtime provenance; use the documented owner contract.
-- Review schema/digest changes against producer and consumer expectations. Preserve all plan-required items; unsupported payloads need explicit typed rejection at the responsible boundary.
-- Match test depth to changed behavior: independent semantic oracles for transformations, exact bytes for encoding contracts, and process tests when exit/stdout/stderr behavior changes.
+- Preserve `surface -> hir -> binder/types/modules -> algebra/logic -> planning`. Pipeline consumes these stages and `execution-contract`; the facade consumes both. No reverse owner edge.
+- `execution-contract` owns private DTOs, projection and encoding; Pipeline owns compilation and permits. Only `quanta-gqlang-v2-frontend-contract` is a downstream seam; keep producer internals private there.
+- Keep open analysis separate from closed compilation. Missing authority stays typed `Incomplete`, never a fabricated plan or success.
+- No provider, backend, runtime execution, host DTO or SDK wiring belongs here.
+- Validate external input at its boundary. Preserve typed errors and source spans; avoid panics and success-shaped defaults.
+- Preserve source order and deterministic diagnostic/DTO tie-breaks. Never derive public identity or ordering from hash iteration, clocks or process-local state.
+- Frontend IDs are transaction-local. A raw ID or digest match alone proves no runtime provenance; follow the owner contract.
+- Check schema/digest changes against producer and consumer expectations. Preserve every plan-required item; reject unsupported payloads explicitly at their owner.
+- Use independent semantic oracles, exact encoding bytes, and process tests for exit/stdout/stderr changes.
