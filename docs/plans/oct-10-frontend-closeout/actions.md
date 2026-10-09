@@ -1,6 +1,6 @@
 # 기존 작업 마감: source 상태와 남은 acceptance
 
-Updated: 2026-10-10. QGLang D01~05 source 수정 및 focused proof 완료.
+Updated: 2026-10-10. QGLang D01~06 source 수정 및 focused proof 완료.
 전체 저장소 검증 상태는 QFC-04의 **현재 HEAD receipt**로 판정한다.
 [감사](audit.md)는 초기 snapshot, [후속 감사](dedup-audit.md)는 실제 source 변경과 owner 검증을 기록한다.
 
@@ -55,8 +55,11 @@ Owner: QGLang Modules graph + Logic recursion. Semantica Core SCC와는 별개�
 
 - [x] catalog namespace mapping과 canonical lock text writer를 기존 owner에서 공통화했다.
   public const/signature, canonical bytes와 validation/budget/error ordering을 유지했다.
-- [x] D01~05 동반 변경과 문서/원장의 중복 배정을 대조했다. 신규 동작 결함은 재현하지 않았다.
+- [x] D01~06 동반 변경과 문서/원장의 중복 배정을 대조했다. 신규 동작 결함은 재현하지 않았다.
   Record/Union validator 유사 코드는 서로 다른 payload/diagnostic owner이므로 추가 generic engine을 발급하지 않았다.
+- [x] D06 lock parser의 가변 field Vec, 추가 pack-name 복제와 canonical text 재생성을 제거했다.
+  기존 field validator/serializer owner를 유지하며 late-field/duplicate-before-order와 exact span을 보존한다.
+  Modules authority122 tests PASS:24 permutations,131072-space malformed line 및 기존 resource rails 포함.
 - [x] test ledger와 guarded-test-module inventory를 새 SCC oracle에 맞춰 갱신했다.
 - source 반영 결과는 `git log -1`과 caller clean status로 확인한다. 이 packet 자체를 포함한
   하나의 변경 단위를 로컬 main에 커밋하고, 해당 HEAD에서 QFC-04를 실행한다.

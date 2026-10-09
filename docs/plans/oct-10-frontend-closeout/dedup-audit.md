@@ -243,6 +243,61 @@ Nextest1524)다. 이는 아래 변경 후 source의 qualification이 아니며 �
   frontend-contract는 curated re-export seam이며 DTO declaration은 Pipeline에 있다.
   확인한 경로에서 새 placeholder success나 두 번째 execution owner는 발견하지 않았다.
 
+## D06 — lock parsing의 중복 canonical 작업과 입력 비례 임시 할당: SOURCE_REPAIRED / FOCUSED_PASS
+
+입력은 clean main `cd9aec00c43dd89998b934054319f75c3ca05247`이다.
+해당 입력의 qualification은 exit0/Nextest1527이며 아래 수정 후 source의 증거는 아니다.
+
+### RCA·caller·수정
+
+- `ModuleAuthorityBuilderV2::try_set_lockfile`은 path/raw bytes를 과금한 뒤 pending text를 보관한다.
+  `finish`는 graph/catalog/manifest를 검증하고 nonempty pack graph에만 `LockfileV2::parse`를 호출한다.
+  empty graph에 명시한 empty lock도 기존처럼 `modules.unexpected_lockfile`이다.
+- parser의 `line.split(' ').collect::<Vec<_>>()`는 정확히3필드인지 확인하기 전에 모든 slice를
+  보관했다. 예를 들어131072 spaces는 raw bytes 한도 안에서도 공백 수에 비례하는 slice Vec를
+  만든다. 이는 **정적 allocation amplification 확인**이며 OOM/잘못된 외부 성공을 재현한 것은 아니다.
+- 이제 split iterator에서 최대4필드만 확인한다. field-shape 검사용 동적 Vec는 없으며
+  blank/CR/tab, 정확히3개의 nonempty single-space fields, missing EOF LF의 거절을 유지한다.
+- 정렬 검사만을 위해 각 `PackId` 문자열을 다시 clone하던 order list는 입력 `&str`을 빌린다.
+  `LockfileV2::to_text()`로 전체 canonical String을 만든 뒤 원문과 비교하던 경로는 제거했다.
+- `PackIdV2::try_new`, `VersionV2::try_parse`, `ContentDigestV2::try_parse`가 각 canonical spelling을
+  이미 검증한다. unique pin count와 parsed count가 같으므로 마지막 검사는 borrowed names와
+  BTreeMap keys의 순서 대조만 필요하다. public writer는 기존 `canonical_lock_text` 하나를 유지한다.
+
+### acceptance·compatibility·실패 경계
+
+- 소유 stage는 Modules lock authority, consumer는 `finish`의 verified pack authority다.
+  DTO/schema/digest/API를 바꾸지 않으며 새 외부 library나 stage dependency는 없다.
+- 전체 줄 검증을 끝낸 뒤 정렬을 확인한다. 뒤쪽 malformed field/duplicate/budget 거절이
+  앞쪽 정렬 오류보다 우선하고 primary는 sorted sequence와 처음 다른 입력 줄이다.
+- raw byte charge, field-width check, pin node charge 및 duplicate 위치/secondary는 그대로다.
+  공통 field owner를 우회하는 permissive parse나 global allowance 증가는 없다.
+- 제거한 부가 저장만 field-shape O(1), pack-name extra clones0, canonical-check full String0이다.
+  pending raw text, pin map 및 위치를 보관하는 order list는 남는다. 전체 parser의 O(1) 메모리나
+  request-owned allocator custody, 측정 latency/RSS 개선을 주장하지 않는다.
+
+### 실행 증거와 추가 대조
+
+- `cargo test --locked --offline -p quanta-gqlang-v2-modules --test v3_modules_v2_authority`:
+  **122/122 PASS**, failed0/ignored0/filtered0.
+- literal `[A,a,a-b,a.b]`의24 permutations: canonical bytes positive와 모든 noncanonical 순열의
+  first-mismatch exact span/secondary 없음. canonical expected를 production serializer로 만들지 않는다.
+- 기존 separator/field-shape rail에 missing field와131072-space line 및 exact whole-line span을
+  추가했다. 비정렬 prefix 뒤 invalid version/overflow/uppercase digest/extra field/duplicate pin의
+  exact primary/duplicate secondary oracle를 추가했다. 기존 source-length/EOF/field-width/resource
+  및 module/catalog/pack graph exact-budget controls도 같은 owner target에서 실행했다.
+- 초기 focused 실행의 새 test accessor 오기와 fixture digest mismatch는 수정했다.
+  각각 `lock-parser-initial-compile.log`, `lock-parser-initial-fixture.log`를 보존하며
+  최종 `lock-parser-focused.log`가122/122 성공 증거다. full qualification은 current-HEAD receipt로 판정한다.
+- 추가 source 대조: Version parse의 `.ok()`는 overflow를 typed invalid-version으로 거절한다.
+  lock source-length mismatch의 `.ok()`는 error 진단 위치 부착에만 쓰이며 성공으로 바꾸지 않는다.
+  Types candidate generation은 finite-domain shape cost를 mutation 전에 charge하며 propagation의
+  tuple arity는 `Engine::add`가 검증한다. saturating cost는 u32 charge conversion/checked-add에서
+  거절된다. 이 선택 경로에서 새로운 잘못된 성공은 확인하지 않았으며 Types 전체 증명은 아니다.
+- Pipeline scalar bounded projector의 unsupported shapes는 typed refusal이며 source-only relation
+  subset을 유지한다. generic relation expression closure는 Foreign/Dangling을 거절한다.
+  이번에는 public execution contract를 변경하지 않았으며 새 consumer/runtime proof는 NOT_RUN이다.
+
 ## 이전 D01/D02 실행과 증거 (D03 전환 전 snapshot)
 
 | 검증 | 현재 결과 |
@@ -267,7 +322,7 @@ nextest 원문/metadata 복사본을 보관한다. 원문 inventory/events hash 
 
 ## 최종 source와 qualification 판정
 
-D01~03 source 수정과 focused owner 검증을 묶어 로컬 main에 커밋한다.
+D01~06 source 수정과 focused owner 검증을 묶어 로컬 main에 커밋한다.
 commit SHA를 문서에 다시 삽입해 qualification 입력을 바꾸지 않는다. 현재 checkout의
 `git rev-parse HEAD`로 `target/qualification/<HEAD>/receipt.json`을 조회하고 schema3, exit0,
 SHA/tree, clean pre/post custody 및 같은 run의 raw Nextest evidence를 확인한 경우에만

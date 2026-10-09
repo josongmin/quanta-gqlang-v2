@@ -1,6 +1,6 @@
 # Oct-10 QGLang 기존 작업 마감
 
-Updated: 2026-10-10. 상태: **DEDUP5_SOURCE_DONE / FOCUSED_PASS / QUALIFICATION_RECEIPT_DERIVED / PAIRED_OPEN**.
+Updated: 2026-10-10. 상태: **DEDUP6_SOURCE_DONE / FOCUSED_PASS / QUALIFICATION_RECEIPT_DERIVED / PAIRED_OPEN**.
 
 ## 목적과 범위
 
@@ -36,6 +36,11 @@ Updated: 2026-10-10. 상태: **DEDUP5_SOURCE_DONE / FOCUSED_PASS / QUALIFICATION
 8. D05에서 Logic의 SCC membership 재구성과 edge-order 중복을 제거했다. scan/BFS/strata는
    canonical dense index를 재사용하고 offending 후보는 borrowed minima2개만 유지한다.
    대량 후보/과금/first-tie 및 내부 malformed-index refusal를 포함한 Logic84 owner tests가 통과했다.
+
+9. D06에서 lock parser의 입력 폭 비례 field-slice Vec, 정렬 검사 전용 pack-name 복제와
+   전체 text 재직렬화를 제거했다. canonical field owner를 재사용하고 모든 줄 검증 후
+   borrowed 입력 순서를 대조한다. Modules authority122 tests와24 permutation/error-precedence
+   oracle가 통과했다. allocator/RSS 수치는 측정하지 않았다.
 
 정적 감사는 명시한 소스·호출·설정 범위의 대조다. 저장소 전체 중복0,
 최신 CI 통과 또는 Semantica 제품 완료를 뜻하지 않는다.

@@ -195,21 +195,24 @@ impl LockfileV2 {
                     &location,
                 ));
             }
-            let fields = line.split(' ').collect::<Vec<_>>();
-            if fields.len() != 3 || fields.iter().any(|field| field.is_empty()) {
-                return Err(ModuleDiagnosticV2::new(
-                    "modules.invalid_lock_syntax",
-                    "lock line must contain exactly three single-space-separated fields",
-                    &location,
-                ));
-            }
-            let [pack_text, version_text, digest_text] = fields.as_slice() else {
-                return Err(ModuleDiagnosticV2::new(
-                    "modules.invalid_lock_syntax",
-                    "lock line has an invalid field shape",
-                    &location,
-                ));
-            };
+            // Read at most four fields: malformed whitespace must not allocate
+            // a slice vector proportional to the submitted line width.
+            let mut fields = line.split(' ');
+            let (pack_text, version_text, digest_text) =
+                match (fields.next(), fields.next(), fields.next(), fields.next()) {
+                    (Some(pack), Some(version), Some(digest), None)
+                        if !pack.is_empty() && !version.is_empty() && !digest.is_empty() =>
+                    {
+                        (pack, version, digest)
+                    }
+                    _ => {
+                        return Err(ModuleDiagnosticV2::new(
+                            "modules.invalid_lock_syntax",
+                            "lock line must contain exactly three single-space-separated fields",
+                            &location,
+                        ));
+                    }
+                };
             session.check_string_width(pack_text)?;
             session.check_string_width(version_text)?;
             session.check_string_width(digest_text)?;
@@ -217,7 +220,7 @@ impl LockfileV2 {
             let version = VersionV2::try_parse(version_text, location.clone())?;
             let content_digest = ContentDigestV2::try_parse(digest_text, location.clone())?;
             session.charge_node()?;
-            parsed_order.push((pack_id.clone(), location.clone()));
+            parsed_order.push((pack_text, location.clone()));
             if let Some(original) = pins.get(&pack_id) {
                 return Err(ModuleDiagnosticV2::conflict(
                     "modules.duplicate_lock_pin",
@@ -243,19 +246,15 @@ impl LockfileV2 {
             registry_identity: source_registry.identity(),
             reference: None,
         };
-        if lock.to_text() != text {
-            let primary = parsed_order
-                .iter()
-                .zip(lock.pins.keys())
-                .find(|((actual, _), canonical)| actual != *canonical)
-                .map(|((_, location), _)| location)
-                .or_else(|| parsed_order.first().map(|(_, location)| location));
-            let Some(primary) = primary else {
-                return Err(ModuleDiagnosticV2::without_location(
-                    "modules.invalid_lock_syntax",
-                    "lock text is not canonical",
-                ));
-            };
+        // Each field parser already requires its canonical spelling. Unique
+        // pins have the same count as parsed_order, so only ordering remains.
+        // Compare after all lines validate to preserve later field/duplicate/
+        // budget errors and the first mismatching line's primary location.
+        if let Some(((_, primary), _)) = parsed_order
+            .iter()
+            .zip(lock.pins.keys())
+            .find(|((actual, _), canonical)| *actual != canonical.as_str())
+        {
             return Err(ModuleDiagnosticV2::new(
                 "modules.invalid_lock_syntax",
                 "lock entries are not in canonical sorted order",

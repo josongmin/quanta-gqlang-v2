@@ -48,7 +48,11 @@ production path with exact/one-short work budgets, alongside wide/isolated
 50k controls. D05 retains one canonical Logic membership index across offending
 scan/return-path/strata and selects borrowed minima using the graph's sole edge-order
 owner. All-edge charge/first-tie behavior and malformed internal index rejection
-are covered by84 Logic owner tests. The current committed HEAD's `target/qualification/<HEAD>/receipt.json`
+are covered by84 Logic owner tests. D06 removes lock parsing's input-width field
+slice vector, extra order-only pack-name clones and full canonical text rebuild.
+Modules122 owner tests pass with24 ordering permutations, a131072-space malformed
+line and late-field/duplicate error precedence; allocator/RSS comparisons are unrun.
+The current committed HEAD's `target/qualification/<HEAD>/receipt.json`
 is authoritative for standalone local qualification; no matching successful
 receipt means NOT_QUALIFIED. Paired downstream acceptance remains OPEN under
 E13. File/test splits and local size/MSRV gates are present. DTO physical

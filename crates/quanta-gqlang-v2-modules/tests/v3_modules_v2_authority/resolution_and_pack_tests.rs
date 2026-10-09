@@ -1301,6 +1301,8 @@ fn lock_line_grammar_rejects_every_noncanonical_separator_and_field_shape() {
         format!("a 1.0.0 {zeros} \n"),
         format!("a 1.0.0  {zeros}\n"),
         "a 1.0.0\n".to_owned(),
+        "a\n".to_owned(),
+        format!("a{}1.0.0 {zeros}\n", " ".repeat(131_072)),
         format!("a extra 1.0.0 {zeros}\n"),
     ];
     for lock in cases {
@@ -1317,7 +1319,14 @@ fn lock_line_grammar_rejects_every_noncanonical_separator_and_field_shape() {
         })
         .unwrap_err();
         assert_eq!(error.code(), "modules.invalid_lock_syntax", "{lock:?}");
-        assert_eq!(error.primary().unwrap().source_id, SourceIdV2::from_raw(2));
+        assert_eq!(
+            error.primary(),
+            Some(LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(2),
+                span: SpanV1::new(0, lock.len() - 1),
+            })
+        );
+        assert!(error.secondary().is_none());
     }
 }
 
@@ -1411,6 +1420,140 @@ fn noncanonical_lock_order_points_at_first_out_of_order_line() {
             span: SpanV1::new(0, first_line.len() - 1),
         }
     );
+}
+
+#[test]
+fn lock_order_all_permutations_preserve_first_mismatch_and_canonical_bytes() {
+    // Literal byte ordering, independent of the lock serializer and PackId Ord.
+    let canonical = ["A", "a", "a-b", "a.b"];
+    let digest = "0123456789abcdef".repeat(4);
+    let mut checked_permutations = 0;
+    for encoded in 0..256usize {
+        let indices = [
+            encoded & 3,
+            (encoded >> 2) & 3,
+            (encoded >> 4) & 3,
+            encoded >> 6,
+        ];
+        if indices
+            .iter()
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
+            != 4
+        {
+            continue;
+        }
+        checked_permutations += 1;
+        let names = indices.map(|index| canonical[index]);
+        let lines = names.map(|name| format!("{name} 1.0.0 {digest}\n"));
+        let lock = lines.concat();
+        let result = finish_pack_inputs(Some(&lock), |sources| {
+            canonical
+                .iter()
+                .enumerate()
+                .map(|(index, name)| {
+                    let mut input = manifest_input(
+                        sources,
+                        name,
+                        VersionV2::new(1, 0, 0),
+                        vec![],
+                        vec![],
+                        vec![],
+                        10 + 10 * index,
+                    );
+                    input.content_digest =
+                        ContentDigestV2::try_parse(&digest, checked(sources, 1, 100)).unwrap();
+                    input
+                })
+                .collect()
+        });
+        if let Some(first) = names
+            .iter()
+            .zip(canonical)
+            .position(|(actual, expected)| *actual != expected)
+        {
+            let error = result.unwrap_err();
+            assert_eq!(error.code(), "modules.invalid_lock_syntax");
+            let start: usize = lines.iter().take(first).map(String::len).sum();
+            assert_eq!(
+                error.primary(),
+                Some(LocatedSpanV2 {
+                    source_id: SourceIdV2::from_raw(2),
+                    span: SpanV1::new(start, start + lines[first].len() - 1),
+                })
+            );
+            assert!(error.secondary().is_none());
+        } else {
+            assert_eq!(
+                result.unwrap().pack_authority().verified_lock().to_text(),
+                lock
+            );
+        }
+    }
+    assert_eq!(checked_permutations, 24);
+}
+
+#[test]
+fn lock_later_field_and_duplicate_errors_precede_unsorted_order() {
+    let digest = "0".repeat(64);
+    let prefix = format!("b 1.0.0 {digest}\na 1.0.0 {digest}\n");
+    for (tail, code) in [
+        (format!("c 01.0.0 {digest}\n"), "modules.invalid_version"),
+        (
+            format!("c 18446744073709551616.0.0 {digest}\n"),
+            "modules.invalid_version",
+        ),
+        (
+            format!("c 1.0.0 {}\n", "A".repeat(64)),
+            "modules.invalid_content_digest",
+        ),
+        (
+            format!("c 1.0.0 {digest} extra\n"),
+            "modules.invalid_lock_syntax",
+        ),
+        (format!("a 1.0.0 {digest}\n"), "modules.duplicate_lock_pin"),
+    ] {
+        let lock = format!("{prefix}{tail}");
+        let error = finish_pack_inputs(Some(&lock), |sources| {
+            ["a", "b"]
+                .iter()
+                .enumerate()
+                .map(|(index, name)| {
+                    manifest_input(
+                        sources,
+                        name,
+                        VersionV2::new(1, 0, 0),
+                        vec![],
+                        vec![],
+                        vec![],
+                        10 + 10 * index,
+                    )
+                })
+                .collect()
+        })
+        .unwrap_err();
+        assert_eq!(error.code(), code);
+        assert_eq!(
+            error.primary(),
+            Some(LocatedSpanV2 {
+                source_id: SourceIdV2::from_raw(2),
+                span: SpanV1::new(prefix.len(), lock.len() - 1),
+            })
+        );
+        if code == "modules.duplicate_lock_pin" {
+            let first_line_len = prefix.len() / 2;
+            assert_eq!(
+                error.secondary(),
+                Some(LocatedSpanV2 {
+                    source_id: SourceIdV2::from_raw(2),
+                    span: SpanV1::new(first_line_len, prefix.len() - 1),
+                })
+            );
+        } else {
+            assert!(error.secondary().is_none());
+        }
+    }
 }
 
 #[test]
