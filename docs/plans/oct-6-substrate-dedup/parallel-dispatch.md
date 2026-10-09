@@ -10,6 +10,8 @@ Current Semantica execution map:
 The W0–W7 and R356 sections below retain historical scope/acceptance detail;
 the consolidated map owns current downstream scheduling and existing-owner
 reconciliation. These documents do not create competing source writers.
+Its E00–E18 and sections9–10 retain original25/Parent18, residual source scopes,
+cross-cut budget/codec/durable controls and all eleven actual SCC consumers.
 
 R356 audit detail: [existing-owner reconciliation,
 source packages, handoffs and checkpoint DoD](completion-dispatch-r356.md).

@@ -5,6 +5,8 @@ Semantica remaining-work map is
 [Oct-10 compiled](../../../../semantica-codegraph-v2/docs/handoff/oct-10/oct-10-compiled.md).
 Its section 0 merges P1–P6 into E06/E07/E10/E13 with existing owners, actual
 Runtime grant and fixture/feature dependencies, independent tests and DoD.
+The broader E00–E18/sections9–10 map preserves original25/Parent18, residual
+IFDS/F28/F27/SDK/finite-Path/product scope and actual SCC consumer proof.
 This document retains the three read-only audits' detailed source reasoning;
 its A/B/C scheduling roles do not authorize a second implementation queue.
 It records no new implementation, test execution or Semantica integration.

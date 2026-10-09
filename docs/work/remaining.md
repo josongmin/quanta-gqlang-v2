@@ -5,8 +5,8 @@ committed Semantica `f574fa82bf1` and separately inventoried moving WIP.
 The [R77 RCA](../plans/oct-6-substrate-dedup/rca.md) owns the cause/dependency
 analysis; this file owns the 18 active states.
 
-Latest plan/source: [W0–W7 completion plan](../plans/oct-6-substrate-dedup/parallel-dispatch.md#current-completion-plan--2026-10-09),
-QGLang `661f87d38dae` and latest Semantica `e234efb0c1b` plus separately inventoried WIP.
+Historical W0–W7 input: [completion plan](../plans/oct-6-substrate-dedup/parallel-dispatch.md#current-completion-plan--2026-10-09),
+QGLang `661f87d38dae` and Semantica `e234efb0c1b` plus separately inventoried WIP.
 The16:18/16:48 audits retain their own inputs. The later main commit imports
 source; current owner acceptance remains pending.
 The audit distinguishes committed source, authored source and accepted execution.
@@ -18,6 +18,11 @@ retains DFG/SSA/binding/selected PTA/fixture code maps, exact prebirth grant,
 feature closure, tests and checkpoint DoD. Its three scheduling roles are not
 additional writers. The original 18 states and downstream Native14+IR9+proof2
 cover different scopes and must not be added together.
+The expanded E00–E18 map preserves the complete original25 and Parent18 exits,
+including residual IFDS/F28/TPC, SDK publication/replay DTO/readers, F27 effects,
+finite Graph/Path, CHECK/Composition and installed product. Its sections9–10
+specify original cross-cut controls, eleven SCC consumer oracles and source
+observations that prevent reissuing old repaired gaps as new implementation.
 
 No separate required GQLang code change was identified for this substrate
 closeout: file/test splits and local size/MSRV gates are present. DTO physical

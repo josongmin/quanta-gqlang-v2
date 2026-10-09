@@ -5,6 +5,10 @@ Current Semantica execution map:
 It consolidates the six handoffs and the R356 acceptance supplement into existing
 E06/E07/E10/E13 owners; it is the remaining-work dispatch reference. This packet
 retains audit history and original ticket contracts rather than a second queue.
+The expanded E00–E18 map also retains all original25 and Parent18 obligations:
+IFDS/F28/TPC, SDK publication/replay DTO/readers, F27 effects, finite Graph/Path,
+CHECK/Composition and installed product. Its sections9–10 preserve detailed
+controls, eleven actual SCC consumers and current source-versus-proof limits.
 [R356 detail](completion-dispatch-r356.md) retains the code map, before/after,
 tests and checkpoint criteria. No new source writer is assigned by that map.
 
