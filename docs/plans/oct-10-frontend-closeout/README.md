@@ -1,6 +1,6 @@
 # Oct-10 QGLang 기존 작업 마감
 
-Updated: 2026-10-10. 상태: **DEDUP3_SOURCE_DONE / FOCUSED_PASS / QUALIFICATION_RECEIPT_DERIVED / PAIRED_OPEN**.
+Updated: 2026-10-10. 상태: **DEDUP4_SOURCE_DONE / FOCUSED_PASS / QUALIFICATION_RECEIPT_DERIVED / PAIRED_OPEN**.
 
 ## 목적과 범위
 
@@ -29,6 +29,9 @@ Updated: 2026-10-10. 상태: **DEDUP3_SOURCE_DONE / FOCUSED_PASS / QUALIFICATION
 6. 의미 기반 caller 대조에서 Modules Kosaraju/Logic Tarjan의 SCC 계산 책임 겹침을 확인했다.
    D03/QFC-06에서 공통 partition kernel로 두 caller를 전환하고 budget/witness 정책을 보존했다.
    후속 actual caller/first-refusal/storage owner 검증이 통과했다.
+7. 추가 D04 감사에서 DAG preflight 중복과 ready Vec의 반복 이동을 확인해 수정했다.
+   공통 borrowed DP와 cursor FIFO, canonical View min-heap을 사용한다. 별도 cfg(test) helper만
+   확인하던 oracle에 actual production exact/one-short 검증을 연결했다.
 
 정적 감사는 명시한 소스·호출·설정 범위의 대조다. 저장소 전체 중복0,
 최신 CI 통과 또는 Semantica 제품 완료를 뜻하지 않는다.

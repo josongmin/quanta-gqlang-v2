@@ -41,7 +41,11 @@ The semantic caller audit also consolidated Modules Kosaraju/Logic Tarjan into
 one borrowed iterative partition owner (QFC-06), preserving caller-owned
 work/diagnostic/witness policy and recalculating scratch phase bounds. Actual
 Modules/Logic graph, 50k narrow-stack, first-refusal and request-storage boundary
-owners pass. The current committed HEAD's `target/qualification/<HEAD>/receipt.json`
+owners pass. Follow-up D04 also unifies duplicate DAG preflight, removes copied
+adjacency and quadratic ready-Vec shifts, and preserves canonical View order
+with a standard min-heap. The five-node oracle now exercises the actual
+production path with exact/one-short work budgets, alongside wide/isolated
+50k controls. The current committed HEAD's `target/qualification/<HEAD>/receipt.json`
 is authoritative for standalone local qualification; no matching successful
 receipt means NOT_QUALIFIED. Paired downstream acceptance remains OPEN under
 E13. File/test splits and local size/MSRV gates are present. DTO physical

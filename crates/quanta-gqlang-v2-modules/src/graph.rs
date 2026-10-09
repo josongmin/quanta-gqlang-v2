@@ -1,9 +1,9 @@
 //! Checked module/import authority and deterministic visibility resolution.
 
 pub mod indexed_scc;
+pub(crate) mod indexed_walk;
 
 use std::collections::BTreeMap;
-use std::collections::VecDeque;
 
 use crate::budget::ModuleBudgetSessionV2;
 use crate::visibility::VisibilityV2;
@@ -744,36 +744,10 @@ impl ModuleGraphBuilderV2 {
             })
             .collect::<Vec<_>>();
 
-        if let Some(order) = topological_order(&graph) {
-            // A root is visited once by itself and once for every path from
-            // another root. This computes precisely the edge visits charged by
-            // the former path-enumerating DFS, including edges to absent nodes.
-            let mut visits = vec![1usize; nodes.len()];
-            let mut steps = 0usize;
-            let mut overflowed = false;
-            for source in order {
-                let edge_visits = visits[source]
-                    .checked_mul(graph[source].len())
-                    .unwrap_or_else(|| {
-                        overflowed = true;
-                        usize::MAX
-                    });
-                steps = steps.checked_add(edge_visits).unwrap_or_else(|| {
-                    overflowed = true;
-                    usize::MAX
-                });
-                for edge in &graph[source] {
-                    if let Some(target) = edge.target {
-                        visits[target] =
-                            visits[target]
-                                .checked_add(visits[source])
-                                .unwrap_or_else(|| {
-                                    overflowed = true;
-                                    usize::MAX
-                                });
-                    }
-                }
-            }
+        if let Some((steps, overflowed)) =
+            indexed_walk::acyclic_steps_v1(&graph, 0..graph.len(), |edge| edge.target)
+                .map_err(indexed_walk::InvalidIndexedGraphV1::into_diagnostic)?
+        {
             session.charge_steps(steps)?;
             if overflowed {
                 // The true legacy count exceeds usize::MAX. Even a profile at
@@ -816,39 +790,6 @@ impl ModuleGraphBuilderV2 {
 struct DependencyEdge<'a> {
     target: Option<usize>,
     edge: &'a EdgeV2,
-}
-
-#[expect(
-    clippy::indexing_slicing,
-    reason = "dependency targets are produced from this graph's node index"
-)]
-fn topological_order(graph: &[Vec<DependencyEdge<'_>>]) -> Option<Vec<usize>> {
-    let mut indegree = vec![0usize; graph.len()];
-    for edges in graph {
-        for edge in edges {
-            if let Some(target) = edge.target {
-                indegree[target] += 1;
-            }
-        }
-    }
-    let mut ready = indegree
-        .iter()
-        .enumerate()
-        .filter_map(|(node, count)| (*count == 0).then_some(node))
-        .collect::<VecDeque<_>>();
-    let mut order = Vec::with_capacity(graph.len());
-    while let Some(node) = ready.pop_front() {
-        order.push(node);
-        for edge in &graph[node] {
-            if let Some(target) = edge.target {
-                indegree[target] -= 1;
-                if indegree[target] == 0 {
-                    ready.push_back(target);
-                }
-            }
-        }
-    }
-    (order.len() == graph.len()).then_some(order)
 }
 
 #[expect(

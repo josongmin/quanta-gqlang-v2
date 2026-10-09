@@ -1,6 +1,6 @@
 //! Sealed local View dependency proof and dependency-first order.
 
-use std::sync::Arc;
+use std::{cmp::Reverse, collections::BinaryHeap, sync::Arc};
 
 use super::{
     ensure_registry, DocumentCatalogDependencyInputV2, DocumentCatalogDependencyV2,
@@ -111,7 +111,7 @@ pub(crate) fn request_topology_bytes_v3(
     add::<&CatalogAssetIdV2>(&mut scratch, assets)?; // all local asset slots inspected
     add::<usize>(&mut scratch, views)?; // unresolved View dependency counts
     add::<(usize, usize)>(&mut scratch, edges)?; // dependents
-    add::<usize>(&mut scratch, views)?; // ready View indices
+    add::<Reverse<usize>>(&mut scratch, views)?; // ready View min-heap
     add::<CatalogAssetIdV2>(&mut retained, views)?; // retained order
     retained = retained.checked_add(copied_id_bytes)?;
     let state_layout = std::alloc::Layout::new::<[std::sync::atomic::AtomicUsize; 2]>()
@@ -391,15 +391,16 @@ fn dependency_first_view_order(
         }
     }
     dependents.sort_unstable();
-    let mut ready = Vec::with_capacity(views.len());
+    // Unlike the private cycle preflight FIFO, this order is sealed output:
+    // always select the smallest ready View ID, without shifting a sorted Vec.
+    let mut ready = BinaryHeap::with_capacity(views.len());
     for (index, count) in unresolved_dependencies.iter().enumerate() {
         if *count == 0 {
-            ready.push(index);
+            ready.push(Reverse(index));
         }
     }
     let mut order = Vec::with_capacity(views.len());
-    while !ready.is_empty() {
-        let index = ready.remove(0);
+    while let Some(Reverse(index)) = ready.pop() {
         session.charge_step()?;
         let Some(view) = views.get(index) else {
             return Err(ModuleDiagnosticV2::without_location(
@@ -433,9 +434,7 @@ fn dependency_first_view_order(
                 )
             })?;
             if *count == 0 {
-                if let Err(insertion) = ready.binary_search(dependent) {
-                    ready.insert(insertion, *dependent);
-                }
+                ready.push(Reverse(*dependent));
             }
         }
     }

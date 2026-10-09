@@ -563,10 +563,8 @@ pub(crate) fn cycle_with_legacy_steps<Id: Ord + Clone, Key: Ord + Clone>(
         outbound[source_index] += 1;
     }
     let mut adjacency = Vec::with_capacity(nodes.len());
-    let mut adjacency_ids = Vec::with_capacity(nodes.len());
     for count in outbound {
         adjacency.push(Vec::with_capacity(count));
-        adjacency_ids.push(Vec::with_capacity(count));
     }
     for (index, (source, target, key)) in edges.iter().enumerate() {
         let source_index = nodes.binary_search(source).expect("source was indexed");
@@ -578,14 +576,17 @@ pub(crate) fn cycle_with_legacy_steps<Id: Ord + Clone, Key: Ord + Clone>(
                 index,
             },
         ));
-        adjacency_ids[source_index].push(target_index);
     }
     let root_indices = roots
         .iter()
         .map(|root| nodes.binary_search(root).expect("root was indexed"))
         .collect::<Vec<_>>();
-    if let Some((steps, overflowed)) =
-        acyclic_cycle_walk_steps_indexed(&adjacency_ids, &root_indices)
+    if let Some((steps, overflowed)) = crate::graph::indexed_walk::acyclic_steps_v1(
+        &adjacency,
+        root_indices.iter().copied(),
+        |edge| Some(edge.0),
+    )
+    .map_err(crate::graph::indexed_walk::InvalidIndexedGraphV1::into_diagnostic)?
     {
         session.charge_steps(steps)?;
         if overflowed {
@@ -635,8 +636,6 @@ pub(crate) fn cycle_scratch_bytes_v3<Id, Key>(edges: usize, roots: usize) -> Opt
     add::<usize>(&mut total, nodes)?; // outbound counts
     add::<Vec<(usize, CycleEdgeLabel<Key>)>>(&mut total, nodes)?;
     add::<(usize, CycleEdgeLabel<Key>)>(&mut total, edges)?;
-    add::<Vec<usize>>(&mut total, nodes)?;
-    add::<usize>(&mut total, edges)?;
     add::<usize>(&mut total, roots)?; // root indices
     add::<usize>(&mut total, nodes)?; // indegree
     add::<usize>(&mut total, nodes)?; // ways
@@ -671,63 +670,6 @@ impl<Key: Ord> Ord for CycleEdgeLabel<Key> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.key.cmp(&other.key)
     }
-}
-
-/// Counts the edge visits of the legacy all-root simple-path walk on a DAG.
-/// This keeps the public step budget exact without enumerating its paths.
-fn acyclic_cycle_walk_steps_indexed(
-    adjacency: &[Vec<usize>],
-    roots: &[usize],
-) -> Option<(usize, bool)> {
-    let mut indegree = vec![0_usize; adjacency.len()];
-    for targets in adjacency {
-        for &target in targets {
-            *indegree.get_mut(target)? += 1;
-        }
-    }
-    let mut ways = vec![0_usize; adjacency.len()];
-    for &root in roots {
-        *ways.get_mut(root)? += 1;
-    }
-    let mut ready = Vec::with_capacity(indegree.len());
-    for (index, count) in indegree.iter().enumerate() {
-        if *count == 0 {
-            ready.push(index);
-        }
-    }
-    let mut steps = 0_usize;
-    let mut overflowed = false;
-    let mut visited = 0_usize;
-    while !ready.is_empty() {
-        let node = ready.remove(0);
-        visited += 1;
-        let visits = *ways.get(node)?;
-        let targets = adjacency.get(node)?;
-        let edge_visits = visits.checked_mul(targets.len()).unwrap_or_else(|| {
-            overflowed = true;
-            usize::MAX
-        });
-        steps = steps.checked_add(edge_visits).unwrap_or_else(|| {
-            overflowed = true;
-            usize::MAX
-        });
-        for &target in targets {
-            let target_ways = ways.get_mut(target)?;
-            *target_ways = target_ways.checked_add(visits).unwrap_or_else(|| {
-                overflowed = true;
-                usize::MAX
-            });
-            let count = indegree.get_mut(target)?;
-            *count -= 1;
-            if *count == 0 {
-                match ready.binary_search(&target) {
-                    Ok(_) => {}
-                    Err(index) => ready.insert(index, target),
-                }
-            }
-        }
-    }
-    (visited == indegree.len()).then_some((steps, overflowed))
 }
 
 /// Compatibility test oracle for the historical map-based step count. The
@@ -902,13 +844,55 @@ mod cycle_walk_tests {
                 }
             }
             for roots in [&[0, 1, 2, 3, 4][..], &[0, 2][..]] {
+                let expected = legacy_steps(&adjacency, roots);
                 assert_eq!(
                     acyclic_cycle_walk_steps(&adjacency, roots),
-                    Some((legacy_steps(&adjacency, roots), false)),
+                    Some((expected, false)),
                     "mask={mask}, roots={roots:?}"
                 );
+                // Exercise the actual production owner, not only the
+                // historical cfg(test) compatibility implementation above.
+                let edges = adjacency
+                    .iter()
+                    .flat_map(|(&source, targets)| {
+                        targets
+                            .iter()
+                            .map(move |&target| (source, target, (source, target)))
+                    })
+                    .collect::<Vec<_>>();
+                assert_eq!(
+                    cycle_with_legacy_steps(&edges, roots, &mut session(expected.max(1))).unwrap(),
+                    None
+                );
+                if expected > 1 {
+                    let error = cycle_with_legacy_steps(&edges, roots, &mut session(expected - 1))
+                        .unwrap_err();
+                    let exhaustion = error.resource_exhaustion().unwrap();
+                    assert_eq!(exhaustion.dimension(), "steps");
+                    assert_eq!(exhaustion.limit(), expected - 1);
+                    assert_eq!(exhaustion.observed(), expected);
+                }
             }
         }
+    }
+
+    #[test]
+    fn production_dag_fast_path_accepts_wide_frontier_and_isolated_roots() {
+        const NODES: usize = 50_000;
+        let roots = (0..NODES).collect::<Vec<_>>();
+        assert_eq!(
+            cycle_with_legacy_steps::<usize, usize>(&[], &roots, &mut session(1)).unwrap(),
+            None
+        );
+        let star = (1..NODES)
+            .map(|target| (0, target, target))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            cycle_with_legacy_steps(&star, &[0], &mut session(NODES - 1)).unwrap(),
+            None
+        );
+        let error = cycle_with_legacy_steps(&star, &[0], &mut session(NODES - 2)).unwrap_err();
+        assert_eq!(error.resource_exhaustion().unwrap().observed(), NODES - 1);
     }
 
     #[test]

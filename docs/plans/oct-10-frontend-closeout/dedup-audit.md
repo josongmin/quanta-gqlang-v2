@@ -130,6 +130,58 @@ SCC partition 책임 겹침을 확인했다. 재현된 결과 오류는 아니�
 `scc-duplicate-postflight.json`, `scc-source-state.json`에 보관한다.
 새 source의 repository qualification은 아래 current-HEAD receipt로 별도 판정한다.
 
+## D04 — DAG preflight 중복과 ready frontier 반복 이동: SOURCE_REPAIRED
+
+후속 감사 입력은 clean main `c5b27aa59e2f76f6844d9f74ce434803050e05af`다.
+이 SHA의 qualification은 exit0/Nextest1520이며 아래 successor source의 증명으로 재사용하지 않는다.
+
+### 확인한 원인과 실제 caller
+
+- Modules `ModuleGraphBuilderV2::detect_cycle`는 `topological_order`와 visits DP를,
+  manifest `cycle_with_legacy_steps`는 별도 indexed Kahn/ways DP를 소유했다.
+  서로 다르게 작성된 같은 legacy DAG edge-visit 계산이며 AST exact-body census로는 검출되지 않았다.
+- manifest ready Vec의 `remove(0)`와 sorted `insert`는 넓은 frontier에서 반복해서 원소를 이동한다.
+  isolated N roots만 있어도 제거에 O(N²) 이동이 발생하고 charged edge work는0일 수 있다.
+  이는 source로 확인한 구조적 work bound 문제다. 기존 production latency/회귀 수치를 측정한 주장은 아니다.
+- View `dependency_first_view_order`에도 같은 이동 패턴이 있지만 최소 ready ID 선택은 sealed output이다.
+  이 경로를 private preflight FIFO와 단순 통합하면 canonical order가 바뀌므로 별도 정책을 유지한다.
+- 기존 `dag_fast_path_matches_legacy_steps_for_all_five_node_forward_graphs`는 cfg(test) map 기반
+  compatibility helper만 호출했다. 이름과 달리 production indexed path의 직접 증명이 부족했다.
+
+### 변경과 보존 조건
+
+- [indexed_walk.rs](../../../crates/quanta-gqlang-v2-modules/src/graph/indexed_walk.rs)의
+  `acyclic_steps_v1`이 두 production caller의 DAG 계산을 소유한다. borrowed adjacency,
+  root multiset, dangling terminal edge count, overflow flag와 cyclic fallback 의미를 보존한다.
+  잘못된 root/target은 typed error이며 acyclic success로 바꾸지 않는다.
+- ready Vec는 append와 cursor만 사용한다. 각 정점은 한 번 enqueue되며 이 **preflight 순회**는
+  O(V+E+roots), scratch는 usize buffer3개다. 전체 caller의 ID indexing/sorting까지 선형이라고 주장하지 않는다.
+- manifest의 중복 `adjacency_ids`를 제거하고 labeled adjacency를 빌린다.
+  `cycle_scratch_bytes_v3`에서 제거된 Vec headers/target capacity를 함께 빼며 global cap은 올리지 않는다.
+- [View topology](../../../crates/quanta-gqlang-v2-modules/src/catalog/view_topology.rs)는 표준
+  `BinaryHeap<Reverse<usize>>`로 최소 ready ID를 계속 선택한다. heap push/pop은 O(log V),
+  capacity는 Views 수로 선할당하며 request bound도 `Reverse<usize>` 원소 크기를 사용한다.
+  기존 순서/진단/step charge와 cycle witness 의미를 변경하지 않는다. 새 외부 dependency는 없다.
+
+### 실제 검증과 한계
+
+- DAG 공통 owner:3정점512 graphs × dangling patterns8 × root multisets4 = **16384 cases**를
+  독립 reachability/path-enumeration oracle와 대조했다. malformed root/target, reachable overflow,
+  empty-root unreachable branching과 dangling edge 과금도 검사했다.
+- 기존5정점 forward DAG1024 graphs × root sets2에서 **실제 `cycle_with_legacy_steps`**를 호출해
+  독립 legacy path count의 exact/one-short refusal를 검사하도록 수정했다.
+- actual production wrapper에서 isolated roots50000, wide-star50000 vertices의 exact/one-short를 검사했다.
+  wall-clock threshold나 속도 향상 배수로 판정하지 않는다.
+- Modules lib25 + authority120 + request topology8 = **153/153 PASS**.
+  heap 전환 후 document predeclaration25 + topology storage8 = **33/33 PASS**;
+  기존 unrelated-ready diamond의 literal canonical order, asset/edge permutation과 duplicate-edge controls 포함.
+- 최종 typed diagnostic projection 정리 후 Modules lib25/25 재검증 PASS.
+- production 재대조 **162 files /2866 functions**, parse error0,80-token 이상 exact-body group0.
+  old production `topological_order`, `acyclic_cycle_walk_steps_indexed`, `adjacency_ids`와
+  Modules ready frontier의 `remove(0)`/Vec insert는 제거됐다. map compatibility oracle는 test-only다.
+- 증거: `.audit/oct10-frontend-closeout/{dag-focused,dag-final-unit,view-heap-focused}.log`,
+  `dag-duplicate-postflight.json`. 최종 full qualification은 현재 HEAD receipt로 별도 판정한다.
+
 ## 이전 D01/D02 실행과 증거 (D03 전환 전 snapshot)
 
 | 검증 | 현재 결과 |

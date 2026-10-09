@@ -1,6 +1,6 @@
 # 기존 작업 마감: source 상태와 남은 acceptance
 
-Updated: 2026-10-10. QGLang D01~03 source 수정 및 focused proof 완료.
+Updated: 2026-10-10. QGLang D01~04 source 수정 및 focused proof 완료.
 전체 저장소 검증 상태는 QFC-04의 **현재 HEAD receipt**로 판정한다.
 [감사](audit.md)는 초기 snapshot, [후속 감사](dedup-audit.md)는 실제 source 변경과 owner 검증을 기록한다.
 
@@ -39,13 +39,18 @@ Owner: Semantica E13. QGLang standalone qualification의 선행조건은 아니�
   exact/one-byte-short 및 drop custody owner 검증을 실행했다. 결과와 한계는 dedup-audit.md 참조.
 - [x] old traversal caller census와 production AST 재대조 완료. 새 source의 full gate는 QFC-04로 판정한다.
 
+- [x] D04 후속 감사의 DAG preflight 중복을 공통 owner로 통합하고 duplicate adjacency를 제거했다.
+  cursor FIFO와 canonical View min-heap으로 ready frontier 반복 이동을 제거했다.
+- [x] compatibility helper만 검사하던5정점 DAG oracle에 production exact/one-short 호출을 추가했다.
+  DAG16384 oracle cases, production wide/isolated50000 및 View canonical/resource owner 검증 PASS.
+
 Owner: QGLang Modules graph + Logic recursion. Semantica Core SCC와는 별개다.
 
 ## QFC-03 — 필요한 수정과 로컬 main
 
 - [x] catalog namespace mapping과 canonical lock text writer를 기존 owner에서 공통화했다.
   public const/signature, canonical bytes와 validation/budget/error ordering을 유지했다.
-- [x] D01~03 동반 변경과 문서/원장의 중복 배정을 대조했다. 신규 동작 결함은 재현하지 않았다.
+- [x] D01~04 동반 변경과 문서/원장의 중복 배정을 대조했다. 신규 동작 결함은 재현하지 않았다.
   Record/Union validator 유사 코드는 서로 다른 payload/diagnostic owner이므로 추가 generic engine을 발급하지 않았다.
 - [x] test ledger와 guarded-test-module inventory를 새 SCC oracle에 맞춰 갱신했다.
 - source 반영 결과는 `git log -1`과 caller clean status로 확인한다. 이 packet 자체를 포함한
