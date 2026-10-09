@@ -9,18 +9,24 @@ compiler, runtime, product or installation results.
 
 | ID | Classification | Required completion |
 | --- | --- | --- |
-| W1 | Committed-baseline lifetime defect; R348 repair applied to dirty source, not qualified | External text and full allocator-cause custody, genuine late-refusal and exact refund proof |
+| W1 | R348 repair plus R352 regression source and unused-wrapper removal applied; not compiled or qualified | Execute helper and full Java/Python Source custody/refund proof, then integrate the coupled source |
 | A2 | Staged Source integration partly connected for ExactZero; final-generation consumer still ordinary-only | One supplier-owned contract, all reachable consumers connected, genuine positive and negative proof |
 | T2 | Confirmed R346 defect; existing owner's R347 source correction independently reviewed | Execute genuine Source-zero positive and rejection/finisher regression; runtime not run |
 | T1 | Initial static false-pass possibility; successor pre-final regression authored by the existing topology lane | Execute the positive and strict negative tests through the actual pre-final owner; current execution remains unproved |
 
-### Current checkpoint — R348
+### Current checkpoint — R352
 
-Readback: QGLang `30c0fad3a9d835dec07ecba60f3e663f33d7a47a`;
+Readback: QGLang parent `c3dbeb2900618c7623f4ebb96034cc5ac883b59f`;
 Semantica `8217a38bf04d6c2fb2a535d43753408ac4621972` plus concurrent changes.
-The W1 successor changes are applied in fourteen Semantica files under reconciled
-claim `OCT9-GQLANG-WORKSPACE-CUSTODY-PEER-R345`. This chat did not stage, commit
-or push Semantica, or run its Rust compiler, tests, QBC or runtime.
+The W1 successor now covers fifteen Semantica files: the fourteen-file R348
+repair plus one test module. R352 changes the helper and its existing test, with
+the other twelve R348 files unchanged. Its reconciled source claim was
+`OCT9-GQLANG-WORKSPACE-REFUSAL-REGRESSION-R352`, released after the final source
+packet and checks; the prior R345 claim was also released.
+This chat did not stage, commit or push Semantica, or run its Rust compiler,
+tests, QBC or runtime. Another writer staged some of these files; the existing
+test's index bytes differ from its final worktree bytes. Neither is integrated
+into the recorded Semantica HEAD.
 
 W1 has independent source review and static checks. A2 remains source work;
 T1, T2 and W1 still require executed owner proof. Existing Source ExactZero support
@@ -103,6 +109,54 @@ and the required owner regressions. This peer's write claim was released after
 the source changes and independent review completed. The packet is ready for the
 existing serial owner proof queue; it is not accepted execution, an integration
 receipt or a message sent to another task. No Semantica staging or commit occurred.
+
+### Regression source and duplicate removal — R352
+
+`semantic_scope_identity/workspace_custody_tests_v3.rs` adds one owner-local test
+using the actual Original budget, control and output admission. The lifecycle
+probe changes only cancellation timing; it does not issue grants or fabricate
+successful allocation. It measures the successful helper's checkpoints and
+repeats fresh-root runs for each observed checkpoint, with a 512-checkpoint bound.
+The test requires both late refusal witnesses: funded capacity 64 with length 0,
+and capacity/length 64 with the exact independently computed BLAKE3 digest.
+
+Its assertions retain the external destination through the actual output callback
+finisher, require typed Cancelled in the output and original root, and forbid a
+post-error callback or poll. Funding is compared with the baseline **after** output
+group creation, so the group's header cannot mask a missing payload charge.
+Dropping payloads while output/group readers remain must retain the charge;
+dropping the last group must restore the controller baseline, then dropping the
+controller must restore zero. These are authored execution oracles, not passed
+runtime results. The test is mounted for Java and Python-min features; it does
+not exercise their complete public wrappers or highest Source finisher.
+
+Repository-wide caller tracing found the private return-shaped
+`workspace_owner_identity_namespace_digest_with_output_admission_v3` had only
+three test callers. It is removed; those tests now use the same external-slot
+helper as all four production callers. Namespace bytes, public contracts and
+production call sites are unchanged by this removal.
+
+The existing denied-work fixture also had a concrete setup error: work limit 1
+cannot construct the genuine output group, so its helper assertion is unreachable.
+It now measures the actual successful control/group setup work, reconstructs that
+same owner under the measured limit, asserts equal setup consumption, then requires
+WorkLimitExceeded at the helper's first paid axes read with empty external slots.
+No fixed setup-cost constant or substitute issuer is introduced.
+
+Final static checks pass: AST and rustfmt for three paths, LLM guardrails for two
+eligible paths, God for the one production path, and diff checks. The test files
+are outside God production scope; that exclusion is not a separate passing God
+result. No allowance or baseline changed. Independent oracle and feature/type
+reviews found no additional source defect after correcting the funding baseline
+and denied setup. Rust compile/tests, QBC, full wrapper/Source proof and main
+integration remain **NOT_RUN** or unconfirmed.
+
+Exact final source, HEAD/index/worktree custody, owned delta and static results
+are recorded in `r352-workspace-source-closeout.json`,
+`r352-workspace-owned-delta.patch` and the two R352 peer-review reports. The
+final setup-equality assertion is recorded in the source closeout; the preceding
+peer snapshot differs by that assertion only. R350's owner execution requirements
+remain open and must use the R352 successor bytes.
 
 ## A2: complete the existing supplier and consumer contract
 
@@ -188,6 +242,26 @@ charged work/cancellation, external partial/full-error custody and last-drop
 refund. Required void/alias/lambda and alternate-build fixtures must actually run;
 the selected-row validation/publication path must also use genuine Source
 authority. None of these executions or a full main bundle is proved here.
+
+### Successor source readback — R352
+
+Four DFG/PTA files changed after R350. The Source producer now records
+`BindingRequired` for lambda-allocation candidates, and the controlled
+FunctionRef-zero reader refuses that state. Other supported Source candidates
+retain `ExactZero`. This avoids treating an unresolved lambda binding as a
+verified zero count; it does not publish the exact DFG lookup-key contract.
+
+The actual occurrence builder still calls `declaration_by_dfg_key_v1` at
+`native_occurrence_admission_v1.rs:73-75`. The index still uses ordinary row and
+DFG-result readers; Source rows refuse those readers. The external index birth
+still has no construction caller and uses the same ordinary reader internally.
+Selected-row lookup and validation also remain ordinary-only. These are
+fail-closed integration gaps, not evidence of fabricated successful results.
+
+All fourteen inspected full-fixture paths are unchanged from R350. The exact-key
+and fixture co-cut above remains open. Current supplier and consumer traces are
+recorded separately in `r352-a2-producer-successor-review.json` and
+`r352-a2-consumer-successor-review.json`; no Rust execution was performed.
 
 ## T2: Source-zero completion state in the R346 patch
 
@@ -291,6 +365,8 @@ patch at that historical checkpoint. Current source is recorded by
 postimage peer reviews and final static-check logs. `r347-source-zero-peer-review.json`
 records T2 and the remaining A2 final-generation/fixture paths. Prepared, applied,
 executed and integrated states must remain distinct.
+The R352 source closeout supersedes two R348 postimages and adds the genuine
+namespace regression source; twelve R348 postimages remain unchanged.
 
 See [the current execution plan](parallel-dispatch.md) for the existing
 integration and owner queue. This peer audit does not rewrite that queue or
